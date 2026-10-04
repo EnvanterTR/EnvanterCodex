@@ -217,12 +217,54 @@ public static class DataExportEndpoints
             if (string.IsNullOrWhiteSpace(row[1].Trim()) || row[1].Trim().Length > 240) AddError(errors, $"{index + 2}. satırda varlık adı boş veya 240 karakterden uzun.");
             if (row[2] is not (AssetStatuses.Available or AssetStatuses.Deployed or AssetStatuses.Maintenance or AssetStatuses.Archived)) AddError(errors, $"{index + 2}. satırdaki durum desteklenmiyor.");
             if ((row[2] == AssetStatuses.Deployed) != !string.IsNullOrWhiteSpace(row[8])) AddError(errors, $"{index + 2}. satırda atanmış durumuyla personel bilgisi eşleşmiyor.");
-            if (row[3].Length > 120 || row[4].Length > 120 || row[5].Length > 120 || row[6].Length > 160 || row[7].Length > 160 || row[8].Length > 80 || row[9].Length > 200 || row[12].Length != 3)
+            if (row[3].Length > 120 || row[4].Length > 120 || row[5].Length > 120 || row[6].Length > 160 || row[7].Length > 160 || row[8].Length > 80 || row[9].Length > 200 || row[12].Length != 3 || !row[12].All(char.IsAsciiLetter))
                 AddError(errors, $"{index + 2}. satırda alan uzunluğu veya para birimi biçimi geçersiz.");
             if (!string.IsNullOrWhiteSpace(row[10]) && !DateOnly.TryParseExact(row[10], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
                 AddError(errors, $"{index + 2}. satırdaki alış tarihi yyyy-AA-gg biçiminde olmalı.");
-            if (!string.IsNullOrWhiteSpace(row[11]) && (!decimal.TryParse(row[11], System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var cost) || cost < 0))
+            if (!string.IsNullOrWhiteSpace(row[11]) && (!decimal.TryParse(row[11], System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var cost) || cost < 0 || cost > 9999999999999999.99m))
                 AddError(errors, $"{index + 2}. satırdaki alış bedeli geçersiz veya negatif.");
+        }
+
+        var validRows = records.Skip(1).Select((row, index) => (row, index)).Where(item => item.row.Count == expectedHeader.Length).ToArray();
+        var categoryNames = validRows.Select(item => item.row[3].Trim()).Where(value => value.Length > 0).Select(value => value.ToUpperInvariant()).Distinct().ToArray();
+        var brandNames = validRows.Select(item => item.row[4].Trim()).Where(value => value.Length > 0).Select(value => value.ToUpperInvariant()).Distinct().ToArray();
+        var modelNames = validRows.Select(item => item.row[5].Trim()).Where(value => value.Length > 0).Select(value => value.ToUpperInvariant()).Distinct().ToArray();
+        var employeeNumbers = validRows.Select(item => item.row[8].Trim()).Where(value => value.Length > 0).Select(value => value.ToUpperInvariant()).Distinct().ToArray();
+        var availableCategories = await db.AssetCategories.AsNoTracking().Where(item => item.CompanyId == companyId && categoryNames.Contains(item.Name.ToUpper()))
+            .Select(item => item.Name).ToListAsync(cancellationToken);
+        var availableBrands = await db.AssetBrands.AsNoTracking().Where(item => item.CompanyId == companyId && brandNames.Contains(item.Name.ToUpper()))
+            .Select(item => item.Name).ToListAsync(cancellationToken);
+        var matchedBrandIds = await db.AssetBrands.AsNoTracking().Where(item => item.CompanyId == companyId && brandNames.Contains(item.Name.ToUpper()))
+            .Select(item => new { item.Id, item.Name }).ToListAsync(cancellationToken);
+        var matchedModels = await db.AssetModels.AsNoTracking().Where(item => item.CompanyId == companyId && modelNames.Contains(item.Name.ToUpper()))
+            .Select(item => new { item.BrandId, item.Name }).ToListAsync(cancellationToken);
+        var matchedEmployees = await db.Employees.AsNoTracking().Where(item => item.CompanyId == companyId && employeeNumbers.Contains(item.EmployeeNumber.ToUpper()))
+            .Select(item => new { item.EmployeeNumber, item.DisplayName }).ToListAsync(cancellationToken);
+        var categoryCounts = availableCategories.GroupBy(value => value.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
+        var brandCounts = availableBrands.GroupBy(value => value.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
+        var brandIds = matchedBrandIds.GroupBy(item => item.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Select(item => item.Id).ToArray(), StringComparer.OrdinalIgnoreCase);
+        var employeeLookup = matchedEmployees.GroupBy(item => item.EmployeeNumber.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Select(item => item.DisplayName.Trim()).ToArray(), StringComparer.OrdinalIgnoreCase);
+        var modelLookup = matchedModels.Select(item => (item.BrandId, Name: item.Name.Trim())).ToHashSet(new BrandModelComparer());
+        foreach (var (row, index) in validRows)
+        {
+            if (string.IsNullOrWhiteSpace(row[3]) || !categoryCounts.TryGetValue(row[3].Trim(), out var categoryCount) || categoryCount != 1)
+                AddError(errors, $"{index + 2}. satırdaki kategori bu şirkette tekil olarak bulunamadı.");
+            Guid? brandId = null;
+            if (!string.IsNullOrWhiteSpace(row[4]))
+            {
+                if (!brandCounts.TryGetValue(row[4].Trim(), out var brandCount) || brandCount != 1 || !brandIds.TryGetValue(row[4].Trim(), out var ids) || ids.Length != 1)
+                    AddError(errors, $"{index + 2}. satırdaki marka bu şirkette tekil olarak bulunamadı.");
+                else brandId = ids[0];
+            }
+            if (!string.IsNullOrWhiteSpace(row[5]) && (brandId is null || !modelLookup.Contains((brandId, row[5].Trim()))))
+                AddError(errors, $"{index + 2}. satırdaki model seçilen marka altında bulunamadı.");
+            if (!string.IsNullOrWhiteSpace(row[8]) && (!employeeLookup.TryGetValue(row[8].Trim(), out var names) ||
+                names.Length != 1 || !string.Equals(names[0], row[9].Trim(), StringComparison.OrdinalIgnoreCase)))
+                AddError(errors, $"{index + 2}. satırdaki çalışan numarası ve adı bu şirkette eşleşmiyor.");
         }
 
         var normalizedTags = tags.Select(tag => tag.ToUpperInvariant()).ToArray();
@@ -240,7 +282,7 @@ public static class DataExportEndpoints
             counts = new { assets = records.Count - 1 },
             existingMatches = new { assets = existingMatches },
             errors = errors.Take(30).ToArray(),
-            warning = "Bu önizleme yalnızca EnvanterTR CSV sütunlarını ve varlık etiketlerini denetler; mevcut eşleşmeler otomatik birleştirilmez ve hiçbir kayıt değiştirilmez."
+            warning = "Önizleme kategori, marka, model ve çalışan eşleşmelerini de denetler. Var olan kayıtlar birleştirilmez; bu aşamada hiçbir kayıt değiştirilmez."
         });
     }
 
