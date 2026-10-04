@@ -721,6 +721,31 @@ public static class AssetEndpoints
             return Results.NoContent();
         }).RequireAuthorization("asset.write");
 
+        api.MapPost("/assets/{id:guid}/transfer", async (Guid id, [FromBody] TransferAssetRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var target = request.TargetLocation?.Trim();
+            if (string.IsNullOrWhiteSpace(target) || target.Length > 160 || request.Notes?.Length > 2000)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["transfer"] = ["Yeni konum zorunludur (en fazla 160 karakter); notlar 2.000 karakteri aşamaz."] });
+            var asset = await db.Assets.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (asset is null) return Results.NotFound();
+            if (asset.AssignedEmployeeId is not null || asset.Status == AssetStatuses.Archived)
+                return Results.Conflict(new { message = "Zimmetli veya arşivlenmiş varlık taşınamaz. Önce iade alın veya varlığı etkinleştirin." });
+            var source = asset.Location?.Trim();
+            if (string.Equals(source, target, StringComparison.OrdinalIgnoreCase))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["targetLocation"] = ["Yeni konum mevcut konumla aynı olamaz."] });
+            if (string.IsNullOrWhiteSpace(source)) source = "Konum belirtilmemiş";
+            asset.Location = target;
+            asset.UpdatedAt = DateTimeOffset.UtcNow;
+            var details = $"Konum transferi: {source} → {target}";
+            if (!string.IsNullOrWhiteSpace(request.Notes)) details += $" · {request.Notes.Trim()}";
+            db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = id,
+                ActorUserId = CurrentUserId(user), EventType = "Transferred", Details = details });
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.NoContent();
+        }).RequireAuthorization("asset.write");
+
         api.MapGet("/lookups/{kind}", async (string kind, ClaimsPrincipal user, AppDbContext db,
             CancellationToken cancellationToken) =>
         {
@@ -1036,6 +1061,7 @@ public static class AssetEndpoints
     public sealed record AccessoryCheckoutRequest(string TargetType, Guid? EmployeeId, Guid? AssetId, string? Location, int Quantity, string? Notes);
     public sealed record AccessoryCheckinRequest(Guid AssignmentId, int Quantity, string? Notes);
     public sealed record RecordAssetAuditRequest(DateOnly AuditDate, string? Notes);
+    public sealed record TransferAssetRequest(string? TargetLocation, string? Notes);
 
     private sealed record AssetExportRow(string AssetTag, string Name, string Status, string? Category,
         string? Brand, string? Model, string? SerialNumber, string? Location, string? EmployeeNumber,

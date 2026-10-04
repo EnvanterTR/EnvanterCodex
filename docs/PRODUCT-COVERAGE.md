@@ -29,7 +29,7 @@ Bu belge EnvanterTR'nin kurumsal envanter yönetiminde beklenen ana işlevleri n
 | Kitler | **Yok** | Önceden tanımlı varlık/aksesuar setleri ve kullanılabilirlik/teslim akışı oluşturulmalı. |
 | Bakım kayıtları | **Yok** | Bakım türü, tedarikçi, maliyet, başlangıç/bitiş, durum, not/dosya ve varlık geçmişi akışı oluşturulmalı. |
 | Denetim ve kabul | **Kısmi** | Varlık ayrıntısından tarih ve notla fiziksel denetim kaydı açılabilir; kayıt denetim olay türü ve işlemi yapan kullanıcıyla geçmişe eklenir. Planlı denetim kuyruğu/takvimi, kullanıcı kabulü, hatırlatma, kabul edilmeyen öğe ve sonuç raporları yok. |
-| Transfer ve rezervasyon | **Yok** | Konumlar arası transfer, onay/rezervasyon, çakışma ve işlem geçmişi tasarlanmalı. |
+| Transfer ve rezervasyon | **Kısmi** | Zimmetli olmayan etkin varlıklar için notlu konum transferi ve işlem geçmişi var. Konum kataloğu, onay/rezervasyon, çakışma denetimi ve toplu transfer yok. |
 | Siparişler ve tedarik | **Yok** | Sipariş, sipariş kalemi, tedarikçi ve teslim alım/varlığa dönüştürme ilişkileri yok. |
 | Ek dosya ve fotoğraflar | **Yok** | Şirket logosu yüklemesi, varlık/kişi/modül dosya depolaması yerine geçmez. Erişim, boyut, tür, silme ve yedekleme politikalarıyla eklenmeli. |
 | İçe aktarma / dışa aktarma | **Kısmi** | Varlık CSV dışa aktarma ve sınırlı önizlemeli CSV varlık ekleme; şirket JSON dışa aktarma/önizleme var. Modül bazlı import, kolon eşleme, katalog oluşturma, JSON geri yükleme, Excel dosyası ve atomik geri alma eksik. |
