@@ -42,7 +42,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 - Aksesuar modülünde sipariş/dosya ilişkileri, katalog bağlantıları, sütun/çıktı/toplu işlem ve isteğe bağlı kullanıcı akışları; ayrıca lisans, bileşen, sarf malzemesi, kit, transfer, rezervasyon, bakım, denetim ve garanti kayıtları.
 - Departman ve konum için yapılandırılmış kataloglar ve ad birleştirme/düzeltme akışı. Çalışan departmanı ve varlık konumu bugün serbest metindir; mevcut ekranlar yalnızca özetler ve filtreler.
 - CSV varlık biçimi için salt okunur sütun/çakışma önizlemesi ve mevcut katalog kayıtlarını kullanan sınırlı, atomik kayıt ekleme eklendi; Excel içe aktarma, alan eşleme, katalog kaydı oluşturma ve güvenli JSON geri yükleme akışı tamamlanmalı.
-- Raporlarda maliyet denetimi ve daha ayrıntılı ölçütler; ayrıca gerçek veriden beslenen takvim. Mevcut rapor durum/kategori adetleri, alış tarihi aralığı ve kayıtlı alış bedeli özetidir; muhasebe değerlemesi değildir.
+- Bakım ve lisans etkinliklerini şirket verisinden besleyen; liste, gün, hafta ve ay görünümleri, dönem gezinmesi ve CSV dışa aktarımı içeren ilk takvim akışı eklendi. Denetim/garanti/iade/zimmet/varlık ömrü etkinlikleri ve hatırlatmalar hâlâ kapsamda; raporlar da maliyet denetimi ve ayrıntılı ölçütlerle genişletilmeli. Mevcut rapor durum/kategori adetleri, alış tarihi aralığı ve kayıtlı alış bedeli özetidir; muhasebe değerlemesi değildir.
 
 ### P1 — Barındırılan hizmet ve ticari akışlar
 

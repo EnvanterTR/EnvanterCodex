@@ -202,7 +202,7 @@
     </section>
     <section class="workspace-page" id="calendarPage" hidden>
       <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / TAKVİM</div><h1 id="calendarPageTitle">Takvim</h1><p id="calendarDescription">Yaklaşan bakım planlarını ve lisans bitişlerini birlikte izleyin.</p></div><div class="head-actions"><button class="btn" id="calendarExport" type="button">⇩ CSV indir</button><button class="btn" id="calendarRefresh" type="button">↻ Yenile</button></div></div>
-      <section class="panel"><div class="table-tools"><label class="muted">Başlangıç tarihi <input id="calendarFrom" type="date"></label><label class="muted">Bitiş tarihi <input id="calendarTo" type="date"></label><select id="calendarKind" aria-label="Takvim etkinlik türü"><option value="">Bakım ve lisans</option><option value="maintenance">Yalnızca bakım planları</option><option value="license">Yalnızca lisans bitişleri</option></select><button class="btn small primary" id="applyCalendarFilters" type="button">Takvimi göster</button><small id="calendarCount" role="status" aria-live="polite">—</small></div><p class="muted" id="calendarRangeNote" style="padding:0 14px 10px">En fazla 366 günlük aralık gösterilir. Otomatik e-posta hatırlatmaları henüz etkin değildir.</p><div class="table-wrap"><table><caption class="sr-only">Şirket bakım ve lisans takvimi</caption><thead><tr><th>Tarih</th><th>Etkinlik</th><th>Kayıt</th><th>Ayrıntı</th><th>Durum</th><th>İşlem</th></tr></thead><tbody id="calendarRows"><tr><td colspan="6">Takvim yükleniyor…</td></tr></tbody></table></div></section>
+      <section class="panel"><div class="table-tools"><label class="muted">Başlangıç tarihi <input id="calendarFrom" type="date"></label><label class="muted">Bitiş tarihi <input id="calendarTo" type="date"></label><select id="calendarKind" aria-label="Takvim etkinlik türü"><option value="">Bakım ve lisans</option><option value="maintenance">Yalnızca bakım planları</option><option value="license">Yalnızca lisans bitişleri</option></select><select id="calendarViewMode" aria-label="Takvim görünümü"><option value="list">Liste görünümü</option><option value="day">Gün görünümü</option><option value="week">Hafta görünümü</option><option value="month">Ay görünümü</option></select><button class="btn small primary" id="applyCalendarFilters" type="button">Takvimi göster</button><small id="calendarCount" role="status" aria-live="polite">—</small></div><div id="calendarPeriodNav" class="calendar-period-nav" hidden><button class="btn small" id="calendarPeriodPrev" type="button" aria-label="Önceki dönem">← Önceki</button><h2 id="calendarPeriodTitle" aria-live="polite"></h2><button class="btn small" id="calendarPeriodToday" type="button">Bugün</button><button class="btn small" id="calendarPeriodNext" type="button" aria-label="Sonraki dönem">Sonraki →</button></div><p class="muted" id="calendarRangeNote" style="padding:0 14px 10px">En fazla 366 günlük aralık gösterilir. Otomatik e-posta hatırlatmaları henüz etkin değildir.</p><div id="calendarMonthGrid" class="calendar-month-grid" hidden></div><div id="calendarListWrap" class="table-wrap"><table><caption class="sr-only">Şirket bakım ve lisans takvimi</caption><thead><tr><th>Tarih</th><th>Etkinlik</th><th>Kayıt</th><th>Ayrıntı</th><th>Durum</th><th>İşlem</th></tr></thead><tbody id="calendarRows"><tr><td colspan="6">Takvim yükleniyor…</td></tr></tbody></table></div></section>
     </section>
     <section class="workspace-page" id="reportPage" hidden>
       <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / RAPORLAMA</div><h1>Envanter raporları</h1><p>Şirket kayıtlarını güncel durum, kategori ve kaydedilmiş satın alma maliyetiyle inceleyin.</p></div><div class="head-actions"><button class="btn" id="reportExport" type="button" disabled>⇩ Raporu Excel'e aktar</button><button class="btn" id="reportRefresh" type="button">↻ Verileri yenile</button></div></div>
@@ -252,7 +252,11 @@
   <script src="/vendor/qrcodegen.js"></script>
   <script>
     const toast = document.getElementById('toast');
-    let toastTimer, requestToken = '', lookupCache = { categories: [], brands: [], models: [] }, loadedAssets = [], selectedAssetIds = new Set(), selectedAssetRows = new Map(), currentAsset = null, currentEmployeeId = null, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, latestCalendarEvents = [], assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', assetRowDensity = 'comfortable', visibleAssetColumns = Array(7).fill(true), labelSettingsKey = '', bwipLoadPromise = null;
+    let toastTimer, requestToken = '', lookupCache = { categories: [], brands: [], models: [] }, loadedAssets = [], selectedAssetIds = new Set(), selectedAssetRows = new Map(), currentAsset = null, currentEmployeeId = null, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, calendarRequestId = 0, calendarCursorDate = '', sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, latestCalendarEvents = [], latestCalendarFrom = '', latestCalendarTo = '', assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', assetRowDensity = 'comfortable', visibleAssetColumns = Array(7).fill(true), labelSettingsKey = '', bwipLoadPromise = null;
+    const calendarStyle = document.createElement('style');
+    calendarStyle.textContent = '.calendar-month-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px;padding:14px}.calendar-month{min-width:0}.calendar-month-title{margin:0 0 9px;color:#253650;font-size:.95rem}.calendar-weekdays,.calendar-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.calendar-weekday{padding:5px 2px;color:#8793a6;text-align:center;font-size:.65rem;font-weight:700}.calendar-day{min-width:0;min-height:92px;padding:5px;border:1px solid #e3eaf3;border-radius:8px;background:white;overflow:hidden}.calendar-day.is-outside{background:#f6f8fb;color:#b2bccb}.calendar-day.is-today{border-color:#3488f4;box-shadow:inset 0 0 0 1px #3488f433}.calendar-day-number{display:block;margin-bottom:4px;color:#52637a;font-size:.68rem;font-weight:700}.calendar-day.is-today .calendar-day-number{color:#1768cc}.calendar-day-event{display:block;width:100%;margin:2px 0;padding:3px 4px;border:0;border-radius:4px;color:#1659a8;background:#edf5ff;text-align:left;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;font-size:.59rem}.calendar-day-event.license{color:#7351a8;background:#f3efff}.calendar-day-event.overdue{color:#a23e39;background:#fff0ee}.calendar-day-more{color:#76849a;font-size:.58rem}.calendar-period-nav{display:flex;align-items:center;gap:8px;padding:0 14px 12px}.calendar-period-nav h2{flex:1;margin:0;text-align:center;color:#253650;font-size:.95rem}.calendar-week-view{overflow-x:auto;padding:0 14px 14px}.calendar-week-grid{display:grid;grid-template-columns:repeat(7,minmax(110px,1fr));gap:6px;min-width:790px}.calendar-week-day{min-height:170px;padding:8px;border:1px solid #e3eaf3;border-radius:8px;background:white}.calendar-week-day.is-outside{background:#f6f8fb;color:#aeb9c8}.calendar-agenda{padding:0 14px 18px}.calendar-agenda-day{margin-bottom:10px;padding:12px;border:1px solid #e3eaf3;border-radius:8px;background:white}.calendar-agenda-day h3{margin:0 0 8px;color:#253650;font-size:.9rem}.calendar-agenda-event{display:flex;gap:10px;align-items:flex-start;width:100%;margin-top:6px;padding:10px;border:1px solid #e1e8f2;border-radius:7px;background:#fff;text-align:left}.calendar-agenda-event.maintenance{border-left:4px solid #df9c23}.calendar-agenda-event.license{border-left:4px solid #8062c5}.calendar-agenda-event strong{display:block;color:#26374e}.calendar-agenda-event small{display:block;margin-top:3px;color:#76849a}.calendar-agenda-empty{color:#8793a6;font-size:.84rem}@media(max-width:600px){.calendar-day{min-height:74px;padding:3px}.calendar-weekday{font-size:.58rem}.calendar-day-event{font-size:.52rem;padding:2px}.calendar-period-nav{gap:4px;padding-right:8px;padding-left:8px}.calendar-period-nav .btn{padding:6px 8px;font-size:.7rem}}';
+    calendarStyle.textContent += '.calendar-day-number-button{padding:0;border:0;background:transparent;font:inherit;cursor:pointer}';
+    document.head.append(calendarStyle);
     const defaultLabelPrintSettings = Object.freeze({ barcode1d: 'code128', barcode2d: 'qrcode', widthMm: 86, heightMm: 48, offsetXmm: 0, offsetYmm: 0, paddingMm: 4, codeSizeMm: 25, qrTarget: 'tag', showName: true, showSerial: true, showModel: false, showLocation: false, showStatus: false });
     let labelPrintSettings = { ...defaultLabelPrintSettings };
     const pageSize = 12;
@@ -1136,28 +1140,42 @@
     function dateInputValue(date) {
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     }
+    function invalidateOperationalCalendar() {
+      calendarRequestId++; latestCalendarEvents = []; latestCalendarFrom = ''; latestCalendarTo = '';
+      $('#calendarExport').disabled = true; $('#calendarCount').textContent = 'Filtreleri uygulayın';
+      $('#calendarRows').innerHTML = '<tr><td colspan="6">Filtreler değişti. Yeni sonuçları görmek için “Takvimi göster” seçeneğine basın.</td></tr>';
+      renderCalendarView();
+    }
     async function loadOperationalCalendar() {
       const from = $('#calendarFrom').value, to = $('#calendarTo').value, kind = $('#calendarKind').value;
-      if (!from || !to || from > to) { notify('Takvim başlangıç ve bitiş tarihlerini kontrol edin.'); return; }
+      if (!from || !to || from > to) { invalidateOperationalCalendar(); notify('Takvim başlangıç ve bitiş tarihlerini kontrol edin.'); return; }
       const spanDays = (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000;
-      if (spanDays > 365) { notify('Takvim aralığı en fazla 366 takvim günü olabilir.'); return; }
+      if (spanDays > 365) { invalidateOperationalCalendar(); notify('Takvim aralığı en fazla 366 takvim günü olabilir.'); return; }
       const params = new URLSearchParams({ from, to, limit: '500' }); if (kind) params.set('kind', kind);
       const body = $('#calendarRows'); body.innerHTML = '<tr><td colspan="6">Takvim yükleniyor…</td></tr>';
-      $('#calendarExport').disabled = true;
+      const requestId = ++calendarRequestId;
+      $('#calendarExport').disabled = true; $('#calendarCount').textContent = 'Yükleniyor…';
+      latestCalendarEvents = []; latestCalendarFrom = ''; latestCalendarTo = ''; renderCalendarView();
       let result;
       try { result = await api(`/api/calendar?${params}`); }
       catch (error) {
+        if (requestId !== calendarRequestId) return;
         body.innerHTML = '<tr><td colspan="6">Takvim yüklenemedi. Yeniden deneyin.</td></tr>';
-        latestCalendarEvents = []; $('#calendarCount').textContent = 'Yüklenemedi'; throw error;
+        latestCalendarEvents = []; latestCalendarFrom = ''; latestCalendarTo = ''; $('#calendarCount').textContent = 'Yüklenemedi'; renderCalendarView(); throw error;
       }
-      latestCalendarEvents = result.items || []; body.replaceChildren();
+      if (requestId !== calendarRequestId) return;
+      latestCalendarEvents = result.items || []; latestCalendarFrom = result.from; latestCalendarTo = result.to; body.replaceChildren();
+      if (!calendarCursorDate || calendarCursorDate < latestCalendarFrom || calendarCursorDate > latestCalendarTo) {
+        const today = dateInputValue(new Date());
+        calendarCursorDate = today < latestCalendarFrom ? latestCalendarFrom : today > latestCalendarTo ? latestCalendarTo : today;
+      }
       $('#calendarCount').textContent = `${fmt.format(result.total)} etkinlik`;
       $('#calendarRangeNote').textContent = result.total > latestCalendarEvents.length
         ? `İlk ${fmt.format(latestCalendarEvents.length)} kayıt gösteriliyor; tamamını görmek için tarih aralığını daraltın. E-posta hatırlatmaları henüz etkin değil.`
-        : 'Bakım planları ve lisans bitişleri listelenir. E-posta hatırlatmaları henüz etkin değildir.';
+        : 'Bakım planları ve lisans bitişleri birlikte gösterilir. E-posta hatırlatmaları henüz etkin değildir.';
       $('#calendarExport').disabled = !latestCalendarEvents.length || result.total > latestCalendarEvents.length;
       if (!latestCalendarEvents.length) {
-        const row = document.createElement('tr'), cell = document.createElement('td'); cell.colSpan = 6; cell.textContent = 'Bu tarih aralığında bakım planı veya lisans bitişi yok.'; row.append(cell); body.append(row); return;
+        const row = document.createElement('tr'), cell = document.createElement('td'); cell.colSpan = 6; cell.textContent = 'Bu tarih aralığında bakım planı veya lisans bitişi yok.'; row.append(cell); body.append(row); renderCalendarView(); return;
       }
       const today = dateInputValue(new Date());
       for (const item of latestCalendarEvents) {
@@ -1181,6 +1199,116 @@
         } else actions.textContent = '—';
         row.append(date, type, title, subtitle, state, actions); body.append(row);
       }
+      renderCalendarView();
+    }
+    function openCalendarEvent(item) {
+      if (item.kind === 'maintenance') return openAsset(item.assetId).then(() => selectAssetTab('maintenance')).catch(error => notify(error.message));
+      return openLicense(item.recordId).catch(error => notify(error.message));
+    }
+    function renderCalendarView() {
+      const mode = $('#calendarViewMode').value, host = $('#calendarMonthGrid'), nav = $('#calendarPeriodNav');
+      $('#calendarListWrap').hidden = mode !== 'list'; host.hidden = !['day', 'week', 'month'].includes(mode);
+      host.replaceChildren(); nav.hidden = !['day', 'week'].includes(mode);
+      if (!latestCalendarFrom || !latestCalendarTo) {
+        if (!nav.hidden) { $('#calendarPeriodTitle').textContent = 'Takvim verisini yükleyin'; $('#calendarPeriodPrev').disabled = true; $('#calendarPeriodNext').disabled = true; $('#calendarPeriodToday').disabled = true; }
+        return;
+      }
+      const eventsByDay = new Map();
+      for (const item of latestCalendarEvents) { if (!eventsByDay.has(item.date)) eventsByDay.set(item.date, []); eventsByDay.get(item.date).push(item); }
+      if (mode === 'day' || mode === 'week') { renderCalendarPeriod(mode, host, nav, eventsByDay); return; }
+      if (mode !== 'month') return;
+      const [fromYear, fromMonth] = latestCalendarFrom.split('-').map(Number), [toYear, toMonth] = latestCalendarTo.split('-').map(Number), today = dateInputValue(new Date());
+      const weekdays = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+      let monthDate = new Date(fromYear, fromMonth - 1, 1, 12);
+      const lastMonth = new Date(toYear, toMonth - 1, 1, 12);
+      while (monthDate <= lastMonth) {
+        const year = monthDate.getFullYear(), monthIndex = monthDate.getMonth();
+        const section = document.createElement('section'); section.className = 'calendar-month';
+        const heading = document.createElement('h2'); heading.className = 'calendar-month-title'; heading.textContent = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(monthDate); section.append(heading);
+        const weekdayHost = document.createElement('div'); weekdayHost.className = 'calendar-weekdays';
+        for (const day of weekdays) { const label = document.createElement('span'); label.className = 'calendar-weekday'; label.textContent = day; weekdayHost.append(label); }
+        const dayHost = document.createElement('div'); dayHost.className = 'calendar-days';
+        const firstOffset = (new Date(year, monthIndex, 1, 12).getDay() + 6) % 7;
+        for (let index = 0; index < firstOffset; index++) { const blank = document.createElement('span'); blank.setAttribute('aria-hidden', 'true'); dayHost.append(blank); }
+        const dayCount = new Date(year, monthIndex + 1, 0).getDate();
+        for (let number = 1; number <= dayCount; number++) {
+          const date = dateInputValue(new Date(year, monthIndex, number, 12)), cell = document.createElement('div'); cell.className = 'calendar-day';
+          if (date < latestCalendarFrom || date > latestCalendarTo) cell.classList.add('is-outside');
+          if (date === today) cell.classList.add('is-today');
+          cell.append(createCalendarDateButton(date, String(number)));
+          if (date >= latestCalendarFrom && date <= latestCalendarTo) {
+            const dayEvents = eventsByDay.get(date) || [];
+            for (const item of dayEvents.slice(0, 2)) {
+              cell.append(createCalendarEventButton(item, date, true));
+            }
+            if (dayEvents.length > 2) { const more = document.createElement('small'); more.className = 'calendar-day-more'; more.textContent = `+${dayEvents.length - 2} etkinlik`; cell.append(more); }
+          }
+          dayHost.append(cell);
+        }
+        section.append(weekdayHost, dayHost); host.append(section);
+        monthDate = new Date(year, monthIndex + 1, 1, 12);
+      }
+    }
+    function createCalendarEventButton(item, date, compact = false) {
+      const event = document.createElement('button'); event.type = 'button';
+      event.className = compact ? `calendar-day-event ${item.kind}${date < dateInputValue(new Date()) ? ' overdue' : ''}` : `calendar-agenda-event ${item.kind}`;
+      if (compact) event.textContent = item.kind === 'maintenance' ? `Bakım · ${item.title}` : `Lisans · ${item.title}`;
+      else {
+        const title = document.createElement('strong'), detail = document.createElement('small');
+        title.textContent = item.title; detail.textContent = `${item.kind === 'maintenance' ? 'Bakım planı' : 'Lisans bitişi'} · ${item.subtitle || 'Ayrıntı belirtilmemiş'}`;
+        event.append(title, detail);
+      }
+      event.title = `${item.kind === 'maintenance' ? 'Bakım planı' : 'Lisans bitişi'} · ${item.subtitle || ''} · ${maintenanceDate(date)}`;
+      event.setAttribute('aria-label', `${event.title}: ${item.title}`); event.addEventListener('click', () => openCalendarEvent(item));
+      return event;
+    }
+    function createCalendarDateButton(date, text) {
+      const inRange = date >= latestCalendarFrom && date <= latestCalendarTo, label = document.createElement(inRange ? 'button' : 'span');
+      label.className = `calendar-day-number${inRange ? ' calendar-day-number-button' : ''}`; label.textContent = text;
+      if (inRange) { label.type = 'button'; label.setAttribute('aria-label', `${maintenanceDate(date)} için gün görünümünü aç`); label.addEventListener('click', () => { calendarCursorDate = date; $('#calendarViewMode').value = 'day'; renderCalendarView(); }); }
+      return label;
+    }
+    function renderCalendarPeriod(mode, host, nav, eventsByDay) {
+      const date = new Date(`${calendarCursorDate}T12:00:00`), today = dateInputValue(new Date()), step = mode === 'week' ? 7 : 1;
+      const previous = new Date(date); previous.setDate(previous.getDate() - step);
+      const next = new Date(date); next.setDate(next.getDate() + step);
+      $('#calendarPeriodPrev').disabled = dateInputValue(previous) < latestCalendarFrom;
+      $('#calendarPeriodNext').disabled = dateInputValue(next) > latestCalendarTo;
+      $('#calendarPeriodToday').disabled = today < latestCalendarFrom || today > latestCalendarTo;
+      if (mode === 'day') {
+        $('#calendarPeriodTitle').textContent = new Intl.DateTimeFormat('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+        host.className = 'calendar-agenda';
+        const section = document.createElement('section'); section.className = 'calendar-agenda-day';
+        const heading = document.createElement('h3'); heading.textContent = $('#calendarPeriodTitle').textContent; section.append(heading);
+        const events = eventsByDay.get(calendarCursorDate) || [];
+        if (!events.length) { const empty = document.createElement('p'); empty.className = 'calendar-agenda-empty'; empty.textContent = 'Bu gün için planlanmış etkinlik yok.'; section.append(empty); }
+        else for (const item of events) section.append(createCalendarEventButton(item, calendarCursorDate));
+        host.append(section); return;
+      }
+      const monday = new Date(date); monday.setDate(date.getDate() - (date.getDay() + 6) % 7);
+      const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+      const rangeLabel = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'short' });
+      $('#calendarPeriodTitle').textContent = `${rangeLabel.format(monday)} – ${new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }).format(sunday)}`;
+      host.className = 'calendar-week-view';
+      const grid = document.createElement('div'); grid.className = 'calendar-week-grid';
+      for (let offset = 0; offset < 7; offset++) {
+        const day = new Date(monday); day.setDate(monday.getDate() + offset);
+        const dateValue = dateInputValue(day), cell = document.createElement('section'); cell.className = 'calendar-week-day';
+        if (dateValue < latestCalendarFrom || dateValue > latestCalendarTo) cell.classList.add('is-outside');
+        if (dateValue === today) cell.classList.add('is-today');
+        cell.append(createCalendarDateButton(dateValue, `${new Intl.DateTimeFormat('tr-TR', { weekday: 'short' }).format(day)} ${day.getDate()}`));
+        const events = dateValue >= latestCalendarFrom && dateValue <= latestCalendarTo ? eventsByDay.get(dateValue) || [] : [];
+        for (const item of events.slice(0, 3)) cell.append(createCalendarEventButton(item, dateValue, true));
+        if (events.length > 3) { const more = document.createElement('small'); more.className = 'calendar-day-more'; more.textContent = `+${events.length - 3} etkinlik`; cell.append(more); }
+        grid.append(cell);
+      }
+      host.append(grid);
+    }
+    function shiftCalendarPeriod(delta) {
+      const date = new Date(`${calendarCursorDate}T12:00:00`), step = $('#calendarViewMode').value === 'week' ? 7 : 1;
+      date.setDate(date.getDate() + delta * step); const target = dateInputValue(date);
+      if (target < latestCalendarFrom || target > latestCalendarTo) return;
+      calendarCursorDate = target; renderCalendarView();
     }
     function exportOperationalCalendar() {
       if (!latestCalendarEvents.length) return;
@@ -1188,7 +1316,7 @@
       for (const item of latestCalendarEvents) rows.push([item.date, item.kind === 'maintenance' ? 'Bakım planı' : 'Lisans bitişi', item.title, item.subtitle || '', item.status]);
       const csv = '\uFEFF' + rows.map(row => row.map(reportCsvCell).join(';')).join('\r\n');
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-      const link = document.createElement('a'); link.href = url; link.download = `envantertr-takvim-${$('#calendarFrom').value}-${$('#calendarTo').value}.csv`; link.click();
+      const link = document.createElement('a'); link.href = url; link.download = `envantertr-takvim-${latestCalendarFrom}-${latestCalendarTo}.csv`; link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000); notify('Takvim görünümü CSV olarak indirildi.');
     }
     let maintenancePageNumber = 1;
@@ -2003,6 +2131,11 @@
     $('#maintenanceNext').addEventListener('click', () => loadCompanyMaintenances(maintenancePageNumber + 1).catch(error => notify(error.message)));
     $('#calendarRefresh').addEventListener('click', () => loadOperationalCalendar().then(() => notify('Takvim güncellendi.')).catch(error => notify(error.message)));
     $('#applyCalendarFilters').addEventListener('click', () => loadOperationalCalendar().catch(error => notify(error.message)));
+    $('#calendarViewMode').addEventListener('change', renderCalendarView);
+    $('#calendarPeriodPrev').addEventListener('click', () => shiftCalendarPeriod(-1));
+    $('#calendarPeriodNext').addEventListener('click', () => shiftCalendarPeriod(1));
+    $('#calendarPeriodToday').addEventListener('click', () => { const today = dateInputValue(new Date()); if (today < latestCalendarFrom || today > latestCalendarTo) return; calendarCursorDate = today; renderCalendarView(); });
+    for (const selector of ['#calendarFrom', '#calendarTo', '#calendarKind']) $(selector).addEventListener('change', invalidateOperationalCalendar);
     $('#calendarExport').addEventListener('click', exportOperationalCalendar);
     $('#auditTarget').addEventListener('change', () => loadAudit(1).catch(error => notify(error.message)));
     $('#auditSearch').addEventListener('input', () => { clearTimeout(auditQueryTimer); auditQueryTimer = setTimeout(() => loadAudit(1).catch(error => notify(error.message)), 250); });
