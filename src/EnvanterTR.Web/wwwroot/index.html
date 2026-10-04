@@ -408,7 +408,7 @@
       const requestId = managerOptionRequest[selectId] = (managerOptionRequest[selectId] || 0) + 1;
       let result;
       try { result = await api(`/api/employees?${params}`); }
-      catch (error) { if (requestId !== employeeListRequestId) return; throw error; }
+      catch (error) { if (managerOptionRequest[selectId] !== requestId || search.value.trim() !== term) return; throw error; }
       if (managerOptionRequest[selectId] !== requestId || search.value.trim() !== term) return;
       const previousId = select.value;
       const previousName = select.selectedOptions[0]?.textContent || '';
@@ -428,7 +428,9 @@
       const params = new URLSearchParams({ page: employeePage, pageSize, active: $('#employeeState').value });
       const query = $('#employeeSearch').value.trim(); if (query) params.set('q', query);
       const department = $('#employeeDepartmentFilter').value.trim(); if (department) params.set('department', department);
-      const result = await api(`/api/employees?${params}`);
+      let result;
+      try { result = await api(`/api/employees?${params}`); }
+      catch (error) { if (requestId !== employeeListRequestId) return; throw error; }
       if (requestId !== employeeListRequestId) return;
       employeeTotal = result.total;
       $('#clearEmployeeDepartmentFilter').hidden = !department;
