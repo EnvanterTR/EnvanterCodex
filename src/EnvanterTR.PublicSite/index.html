@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f8fc">
+  <meta name="description" content="EnvanterTR ile şirket varlıklarını, zimmetleri ve bakım süreçlerini tek yerde yönetin.">
+  <title>EnvanterTR — Kurumunuzun envanteri, kontrolünüzde</title>
+  <style>
+    :root { font-family: Inter, "Segoe UI", Arial, sans-serif; color: #162033; background: #f6f8fc; font-synthesis: none; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    a { color: inherit; text-decoration: none; }
+    .wrap { width: min(1160px, calc(100% - 40px)); margin-inline: auto; }
+    header { height: 76px; display: flex; align-items: center; background: #ffffffd9; border-bottom: 1px solid #e8edf4; }
+    nav { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.08rem; letter-spacing: -.035em; }
+    .brand-mark { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 11px; color: white; background: linear-gradient(145deg,#2876ef,#1456c8); box-shadow: 0 5px 14px #1f66da38; }
+    .nav-links { display: flex; gap: 30px; color: #5d687d; font-size: .91rem; }
+    .nav-actions { display: flex; align-items: center; gap: 18px; font-size: .9rem; font-weight: 650; }
+    .button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0 18px; border: 1px solid #1769e0; border-radius: 10px; color: white; background: #1769e0; font-weight: 700; box-shadow: 0 6px 15px #1769e027; }
+    .button.secondary { color: #1769e0; background: white; box-shadow: none; }
+    .hero { position: relative; overflow: hidden; padding: 86px 0 80px; background: radial-gradient(ellipse at 78% 44%,#dceaff 0,transparent 34%),linear-gradient(180deg,#fff 0%,#f6f8fc 100%); }
+    .hero-grid { display: grid; grid-template-columns: 1.04fr .96fr; align-items: center; gap: 58px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 8px 11px; border: 1px solid #d9e7fb; border-radius: 99px; color: #2461b9; background: #f3f8ff; font-size: .78rem; font-weight: 750; }
+    .eyebrow i { width: 7px; height: 7px; border-radius: 50%; background: #27ad78; }
+    h1 { max-width: 630px; margin: 21px 0 18px; font-size: clamp(2.65rem,5vw,4.3rem); line-height: 1.04; letter-spacing: -.065em; }
+    h1 span { color: #1769e0; }
+    .lead { max-width: 540px; margin: 0; color: #66738a; font-size: 1.12rem; line-height: 1.72; }
+    .hero-actions { display: flex; align-items: center; gap: 13px; margin-top: 29px; }
+    .micro { margin-top: 17px; color: #8792a5; font-size: .83rem; }
+    .preview { padding: 14px; border: 1px solid #dfe6f0; border-radius: 19px; background: #fff; box-shadow: 0 30px 75px #243b5b1a,0 5px 15px #243b5b0a; transform: rotate(.6deg); }
+    .preview-top { display: flex; align-items: center; justify-content: space-between; padding: 4px 4px 14px; color: #4e5c73; font-size: .78rem; font-weight: 700; }
+    .window-dots { display: flex; gap: 5px; }
+    .window-dots i { width: 7px; height: 7px; border-radius: 50%; background: #d5dce7; }
+    .dash { display: grid; grid-template-columns: 126px 1fr; min-height: 310px; overflow: hidden; border: 1px solid #edf0f5; border-radius: 12px; }
+    .dash-side { padding: 15px 10px; color: #c3d1e7; background: #15243a; font-size: .66rem; }
+    .dash-logo { margin: 0 0 22px 5px; color: white; font-size: .73rem; font-weight: 800; }
+    .dash-link { margin: 4px 0; padding: 9px 8px; border-radius: 6px; }
+    .dash-link.active { color: white; background: #2267cb; }
+    .dash-main { padding: 17px; background: #f8fafd; }
+    .dash-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-size: .88rem; font-weight: 800; }
+    .dash-pill { padding: 6px 9px; border-radius: 7px; color: #1769e0; background: #eaf2ff; font-size: .62rem; }
+    .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+    .stat { padding: 11px 10px; border: 1px solid #e8edf4; border-radius: 8px; background: white; }
+    .stat small { display: block; color: #7d889b; font-size: .61rem; }
+    .stat strong { display: block; margin-top: 5px; font-size: 1.12rem; }
+    .table { margin-top: 12px; padding: 11px; border: 1px solid #e8edf4; border-radius: 8px; background: white; }
+    .table-title { margin-bottom: 8px; font-size: .67rem; font-weight: 800; }
+    .row { display: grid; grid-template-columns: 1.25fr 1fr .72fr; gap: 6px; padding: 8px 0; border-top: 1px solid #f0f2f6; color: #69758a; font-size: .59rem; }
+    .tag { color: #16815b; }
+    .section { padding: 78px 0; }
+    .section-head { max-width: 690px; margin: 0 auto 34px; text-align: center; }
+    .section-head h2 { margin: 0 0 12px; font-size: clamp(1.85rem,3vw,2.65rem); letter-spacing: -.05em; }
+    .section-head p { margin: 0; color: #69758a; line-height: 1.7; }
+    .feature-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+    .feature { min-height: 180px; padding: 23px; border: 1px solid #e4eaf2; border-radius: 14px; background: white; }
+    .icon { width: 39px; height: 39px; display: grid; place-items: center; border-radius: 11px; color: #1769e0; background: #edf4ff; font-size: 1.1rem; font-weight: 800; }
+    .feature h3 { margin: 18px 0 8px; font-size: 1rem; }
+    .feature p { margin: 0; color: #6c788d; font-size: .9rem; line-height: 1.6; }
+    .pricing-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+    .price-card { display:flex; flex-direction:column; min-height:290px; padding:22px; border:1px solid #e4eaf2; border-radius:14px; background:#fff; box-shadow:0 4px 18px #1a34500a; }
+    .price-card h3 { margin:0 0 8px; font-size:1.08rem; }
+    .price-card p { min-height:48px; margin:0 0 16px; color:#6c788d; font-size:.86rem; line-height:1.55; }
+    .price-main { margin:2px 0 4px; color:#142642; font-size:1.6rem; font-weight:800; letter-spacing:-.04em; }
+    .price-sub { min-height:22px; color:#78869a; font-size:.75rem; }
+    .price-list { display:grid; gap:8px; margin:18px 0 20px; padding:0; color:#54647b; font-size:.81rem; list-style:none; }
+    .price-list li::before { content:'✓'; margin-right:8px; color:#159568; font-weight:800; }
+    .price-card .button { margin-top:auto; }
+    .pricing-note { margin:17px 0 0; color:#79869a; font-size:.78rem; line-height:1.6; text-align:center; }
+    .pricing-state { padding:25px; border:1px dashed #ccd7e5; border-radius:12px; color:#63738a; background:#fff; line-height:1.65; text-align:center; }
+    .deployment { padding: 64px 0; background: #13243b; color: white; }
+    .deploy-grid { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 45px; }
+    .deployment h2 { max-width: 480px; margin: 0 0 15px; font-size: 2.2rem; letter-spacing: -.045em; }
+    .deployment p { max-width: 560px; color: #c2cee0; line-height: 1.75; }
+    .deploy-options { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+    .option { padding: 18px; border: 1px solid #35465d; border-radius: 12px; background: #1a2d47; }
+    .option strong { display: block; margin-bottom: 7px; }
+    .option span { color: #bfccde; font-size: .84rem; line-height: 1.5; }
+    .cta { padding: 70px 0; text-align: center; }
+    .cta h2 { margin: 0 0 12px; font-size: 2rem; letter-spacing: -.045em; }
+    .cta p { margin: 0 auto 23px; color: #6d788b; }
+    footer { padding: 26px 0; border-top: 1px solid #e5eaf1; color: #7b8799; background: #fff; font-size: .84rem; }
+    .foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    @media (max-width: 850px) { .nav-links { display:none; } .hero-grid,.deploy-grid { grid-template-columns: 1fr; gap: 38px; } .hero { padding: 64px 0; } .preview { max-width: 620px; transform:none; } .feature-grid,.pricing-grid { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width: 560px) { .wrap { width: min(100% - 28px,1160px); } header { height: 66px; } .nav-actions { gap: 12px; } .nav-login { display:inline-flex; white-space:nowrap; font-size:.77rem; } .nav-actions .button { display:none; } .hero { padding: 48px 0; } h1 { font-size: 2.6rem; } .hero-actions { align-items: stretch; flex-direction: column; } .button { width: 100%; } .dash { grid-template-columns: 88px 1fr; min-height: 275px; } .dash-side { padding: 12px 7px; } .dash-main { padding: 12px 9px; } .stats { gap: 5px; } .stat { padding: 8px 6px; } .stat strong { font-size: .92rem; } .feature-grid,.deploy-options,.pricing-grid { grid-template-columns: 1fr; } .section { padding: 58px 0; } .foot { align-items: flex-start; flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="wrap" aria-label="Ana menü">
+      <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true">E</span><span>EnvanterTR</span></a>
+      <div class="nav-links"><a href="#ozellikler">Özellikler</a><a href="#kurulum">Kurulum seçenekleri</a><a href="#paketler">Paketler</a><a href="#iletisim">İletişim</a></div>
+      <div class="nav-actions"><a class="nav-login" href="/giris">Müşteri girişi</a><a class="button" href="#demo">Tanıtım iste</a></div>
+    </nav>
+  </header>
+  <main id="top">
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <div class="eyebrow"><i aria-hidden="true"></i> Kurumunuzun envanteri, tek yerde</div>
+          <h1 id="content-home-hero-title">Her varlığın nerede olduğunu bilin.</h1>
+          <p class="lead" id="content-home-hero-body">Cihazları, zimmetleri, kullanıcıları ve bakım süreçlerini kurumunuzun çalışma biçimine uygun tek bir envanter alanında yönetin.</p>
+          <div class="hero-actions"><a class="button" href="#demo">Tanıtım iste</a><a class="button secondary" href="#kurulum">Kurulum seçeneklerini gör</a></div>
+          <div class="micro">Geliştirme önizlemesi · Çevrim içi satış henüz açık değil</div>
+        </div>
+        <div class="preview" aria-label="Envanter yönetim ekranı taslak önizlemesi">
+          <div class="preview-top"><span>Envanter özeti · Örnek görünüm</span><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+          <div class="dash">
+            <aside class="dash-side"><div class="dash-logo">EnvanterTR</div><div class="dash-link active">Genel Bakış</div><div class="dash-link">Varlıklar</div><div class="dash-link">Kişiler</div><div class="dash-link">Konumlar</div><div class="dash-link">Raporlar</div></aside>
+            <div class="dash-main"><div class="dash-heading"><span>Genel Bakış</span><span class="dash-pill">Bu ay</span></div>
+              <div class="stats"><div class="stat"><small>Toplam varlık</small><strong>1.284</strong></div><div class="stat"><small>Zimmetli</small><strong>936</strong></div><div class="stat"><small>Bakımda</small><strong>12</strong></div></div>
+              <div class="table"><div class="table-title">Son hareketler</div><div class="row"><span>Dizüstü bilgisayar</span><span>Bilgi İşlem</span><span class="tag">Atandı</span></div><div class="row"><span>Ofis monitörü</span><span>İstanbul</span><span class="tag">Depoda</span></div><div class="row"><span>Mobil telefon</span><span>Satış Ekibi</span><span class="tag">Atandı</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="section" id="ozellikler">
+      <div class="wrap"><div class="section-head"><h2 id="content-home-features-title">Envanterin tamamını görünür kılın</h2><p id="content-home-features-body">Ürün kapsamı oluşturuluyor. Bu önizlemede aşağıdaki modüllerin tamamı henüz etkin değildir; ilk cihaz kaydından zimmet iadesine, bakım ve denetimden raporlamaya kadar kurum iş akışları birlikte tasarlanıyor.</p></div>
+        <div class="feature-grid">
+          <article class="feature"><div class="icon">▦</div><h3>Varlık ve zimmet takibi</h3><p>Kimde, hangi konumda ve hangi durumda olduğunu kayıt geçmişiyle izleyin.</p></article>
+          <article class="feature"><div class="icon">⌕</div><h3>Hızlı kayıt ve arama</h3><p>Marka, model, kategori veya konumu kayıt akışından ayrılmadan ekleyin.</p></article>
+          <article class="feature"><div class="icon">▤</div><h3>İçe ve dışa aktarma</h3><p>Tablo verilerini aktarın; raporları analiz ve arşiv için indirin.</p></article>
+          <article class="feature"><div class="icon">⌗</div><h3>QR ve barkod</h3><p>Varlık etiketleriyle kayıtları sahada hızlıca açın ve doğrulayın.</p></article>
+          <article class="feature"><div class="icon">◷</div><h3>Bakım ve denetim</h3><p>Planlı bakım, yaklaşan işler ve denetim durumlarını takip edin.</p></article>
+          <article class="feature"><div class="icon">♙</div><h3>Roller ve şirket alanı</h3><p>Çalışan kayıtlarıyla uygulama kullanıcılarını ayırın; yetkileri role göre verin.</p></article>
+        </div>
+      </div>
+    </section>
+    <section class="section" id="paketler">
+      <div class="wrap"><div class="section-head"><h2 id="content-home-pricing-title">İşletmenize uygun planı seçin</h2><p id="content-home-pricing-body">Yayımlanan planlar platform yönetim panelindeki paket kataloğundan gelir. Bu önizlemede ödeme ve çevrim içi satın alma henüz etkin değildir.</p></div>
+        <div class="pricing-grid" id="pricingGrid" aria-live="polite"><div class="pricing-state">Yayımlanmış planlar yükleniyor…</div></div>
+        <p class="pricing-note">Paket fiyatları ve kapsamı netleşmeden satın alma alınmaz. Kurumunuza özel bilgi için <a href="mailto:admin@envantertr.com?subject=EnvanterTR%20plan%20bilgisi" style="color:#1769e0;font-weight:700">admin@envantertr.com</a> adresine yazın.</p>
+      </div>
+    </section>
+    <section class="deployment" id="kurulum">
+      <div class="wrap deploy-grid"><div><div class="eyebrow">PLANLANAN DAĞITIMLAR</div><h2 id="content-home-deployment-title">Kurumunuzun çalışma biçimine göre kurun</h2><p id="content-home-deployment-body">Bulut, Windows ve Ubuntu seçenekleri ürün hedefidir; son kullanıcı kurucusu ve çevrim içi satın alma henüz hazır değildir. Yerel kurulumda tek bir ana bilgisayar uygulama ve veritabanını çalıştırır, çalışanlar kendi bilgisayarlarına veritabanı kurmadan tarayıcıyla bağlanır.</p></div>
+        <div class="deploy-options"><div class="option"><strong>Bulut hizmeti</strong><span>Kullanıcı bilgisayarına kurulum gerekmez. Şirket alanı, kullanıcı ve lisans akışları hazırlanıyor; merkezî yedekleme ve güncellemeler henüz devrede değil.</span></div><div class="option"><strong>Windows 11 / Windows Server</strong><span>Bir ana bilgisayar sürekli açık kalır. Şirket ağına erişim, güvenli adres ve otomatik servis kurulumu son kurulum paketinde çözülecek.</span></div><div class="option"><strong>Ubuntu Linux</strong><span>Sunucu servisi ve veritabanı aynı ortamda çalışır. İşletim ve ağ yönetimi kurumun IT ekibinde olur.</span></div><div class="option"><strong>Veri dışa aktarma</strong><span>Şirket JSON ve varlık CSV indirme temeli eklendi. Otomatik yedek geçmişi ve gerçek geri yükleme henüz hazır değil.</span></div></div>
+      </div>
+    </section>
+    <section class="cta" id="demo"><div class="wrap"><h2 id="content-home-demo-title">Kurumunuz için tanıtım planlayın</h2><p id="content-home-demo-body">Bu sayfa ürün ana sayfası taslağıdır. Tanıtım ve müşteri kayıt akışları henüz bağlanmadı.</p><a class="button" href="mailto:admin@envantertr.com?subject=EnvanterTR%20tan%C4%B1t%C4%B1m">E-posta ile iletişime geçin</a></div></section>
+  </main>
+  <footer id="iletisim"><div class="wrap foot"><a class="brand" href="#top"><span class="brand-mark" aria-hidden="true">E</span><span>EnvanterTR</span></a><span>© 2026 EnvanterTR · Ürün geliştirme önizlemesi</span></div></footer>
+  <script>
+    const grid = document.querySelector('#pricingGrid');
+    const deploymentNames = { cloud: 'Bulut hizmeti', 'local-windows': 'Windows 11 yerel kurulum', 'windows-server': 'Windows Server', linux: 'Linux / Ubuntu' };
+    function priceText(value, currency) {
+      if (!Number.isFinite(Number(value)) || Number(value) <= 0) return null;
+      try { return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(Number(value)); }
+      catch { return `${value} ${currency}`; }
+    }
+    function addText(parent, tag, className, text) {
+      const element = document.createElement(tag);
+      if (className) element.className = className;
+      element.textContent = text;
+      parent.append(element);
+      return element;
+    }
+    function planCard(plan) {
+      const card = document.createElement('article'); card.className = 'price-card';
+      addText(card, 'h3', '', plan.name || 'EnvanterTR planı');
+      addText(card, 'p', '', plan.description || 'Şirketinizin dağıtım ve kullanım gereksinimlerine uygun plan.');
+      const prices = [
+        [priceText(plan.annualPrice, plan.currency), 'yıllık'],
+        [priceText(plan.monthlyPrice, plan.currency), 'aylık'],
+        [priceText(plan.oneTimePrice, plan.currency), 'tek seferlik']
+      ].filter(([value]) => value);
+      addText(card, 'div', 'price-main', prices[0]?.[0] || 'Teklif alın');
+      addText(card, 'div', 'price-sub', prices[0] ? `${prices[0][1]} · ${plan.currency}` : 'Fiyat için bize ulaşın');
+      const list = document.createElement('ul'); list.className = 'price-list';
+      prices.slice(1).forEach(([value, term]) => list.append(Object.assign(document.createElement('li'), { textContent: `${term[0].toLocaleUpperCase('tr-TR')}${term.slice(1)}: ${value}` })));
+      list.append(Object.assign(document.createElement('li'), { textContent: deploymentNames[plan.deploymentKind] || 'Dağıtım seçeneği' }));
+      list.append(Object.assign(document.createElement('li'), { textContent: plan.maxLoginUsers == null ? 'Giriş kullanıcısı sınırı yok' : `En fazla ${plan.maxLoginUsers} giriş kullanıcısı` }));
+      list.append(Object.assign(document.createElement('li'), { textContent: plan.maxAssets == null ? 'Varlık kaydı sınırı yok' : `En fazla ${plan.maxAssets} varlık kaydı` }));
+      if (plan.supportsOfflineUse) list.append(Object.assign(document.createElement('li'), { textContent: `Çevrim dışı kullanım · ${plan.offlineGraceDays} gün tolerans` }));
+      card.append(list);
+      const link = document.createElement('a'); link.className = 'button secondary';
+      link.href = `mailto:admin@envantertr.com?subject=${encodeURIComponent(`EnvanterTR ${plan.name || 'plan'} hakkında`)}`;
+      link.textContent = 'Plan hakkında bilgi alın'; card.append(link);
+      return card;
+    }
+    fetch('/api/plans', { headers: { Accept: 'application/json' }, cache: 'no-store' })
+      .then(response => { if (!response.ok) throw new Error('Planlar şu anda yüklenemiyor.'); return response.json(); })
+      .then(plans => {
+        grid.replaceChildren();
+        if (!Array.isArray(plans) || plans.length === 0) {
+          addText(grid, 'div', 'pricing-state', 'Henüz satışa açık plan yayımlanmadı. Paketler ve fiyatlar kesinleştiğinde burada gösterilecek.');
+          return;
+        }
+        plans.forEach(plan => grid.append(planCard(plan)));
+      })
+      .catch(() => { grid.replaceChildren(); addText(grid, 'div', 'pricing-state', 'Plan bilgisi şu anda yüklenemiyor. Lütfen daha sonra tekrar deneyin.'); });
+    const contentTargets = {
+      'home.hero': ['content-home-hero-title', 'content-home-hero-body'],
+      'home.features': ['content-home-features-title', 'content-home-features-body'],
+      'home.pricing': ['content-home-pricing-title', 'content-home-pricing-body'],
+      'home.deployment': ['content-home-deployment-title', 'content-home-deployment-body'],
+      'home.demo': ['content-home-demo-title', 'content-home-demo-body']
+    };
+    fetch('/api/site-content', { headers: { Accept: 'application/json' }, cache: 'no-store' })
+      .then(response => { if (!response.ok) throw new Error('İçerik yüklenemedi.'); return response.json(); })
+      .then(blocks => {
+        for (const block of blocks) {
+          const targets = contentTargets[block.contentKey];
+          if (!targets) continue;
+          if (typeof block.title === 'string') document.getElementById(targets[0]).textContent = block.title;
+          if (typeof block.body === 'string' && block.body.trim()) document.getElementById(targets[1]).textContent = block.body;
+        }
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>

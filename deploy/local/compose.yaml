@@ -1,0 +1,61 @@
+name: envantertr-product-dev
+
+services:
+  database:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: envantertr
+      POSTGRES_USER: envantertr
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/local/.env}
+    volumes:
+      - envantertr_database:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      - envantertr_internal
+
+  web:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__EnvanterTR: "Host=database;Port=5432;Database=envantertr;Username=envantertr;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/local/.env}"
+      Setup__BootstrapToken: ${SETUP_BOOTSTRAP_TOKEN:-}
+      Setup__PlatformBootstrapToken: ${SETUP_PLATFORM_BOOTSTRAP_TOKEN:-}
+    depends_on:
+      database:
+        condition: service_healthy
+    volumes:
+      - envantertr_company_media:/var/lib/envantertr/company-media
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
+    networks:
+      - envantertr_internal
+
+  public-site:
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      - web
+    volumes:
+      - ../../src/EnvanterTR.PublicSite:/usr/share/nginx/html:ro
+      - ./nginx-public.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "127.0.0.1:8081:80"
+    networks:
+      - envantertr_internal
+
+networks:
+  envantertr_internal:
+
+volumes:
+  envantertr_database:
+  envantertr_company_media:

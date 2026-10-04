@@ -1,0 +1,29 @@
+# .NET build outputs
+**/bin/
+**/obj/
+.vs/
+*.user
+*.suo
+
+# Local configuration and secrets
+appsettings.Development.json
+*.local.json
+.env
+.env.*
+!.env.example
+
+# Customer data and local databases
+/data/
+/backups/
+**/backups/
+*.db
+*.db-shm
+*.db-wal
+*.bak
+*.dump
+
+# IDE and operating-system files
+.idea/
+.vscode/
+Thumbs.db
+desktop.ini
