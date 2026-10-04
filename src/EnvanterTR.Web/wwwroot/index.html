@@ -205,7 +205,7 @@
       if (response.status === 401) { showLogin(); throw new Error('Oturum açmanız gerekiyor.'); }
       if (!response.ok) {
         let message = `İstek başarısız (${response.status}).`;
-        try { const body = await response.json(); message = body.message || Object.values(body.errors || {}).flat().join(' ') || message; } catch {}
+        try { const body = await response.json(); const details = Array.isArray(body.errors) ? body.errors : Object.values(body.errors || {}).flat(); message = [body.message, ...details].filter(Boolean).join('\n') || message; } catch {}
         throw new Error(message);
       }
       if (response.status === 204) return null;
