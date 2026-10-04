@@ -69,6 +69,15 @@
     .price-card .button { margin-top:auto; }
     .pricing-note { margin:17px 0 0; color:#79869a; font-size:.78rem; line-height:1.6; text-align:center; }
     .pricing-state { padding:25px; border:1px dashed #ccd7e5; border-radius:12px; color:#63738a; background:#fff; line-height:1.65; text-align:center; }
+    .faq { background:linear-gradient(180deg,#f5f8fd,#fff); }
+    .faq-list { display:grid; max-width:850px; gap:10px; margin:0 auto; }
+    .faq-item { overflow:hidden; border:1px solid #e3eaf3; border-radius:13px; background:#fff; box-shadow:0 4px 16px #1a345008; }
+    .faq-item summary { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:19px 21px; color:#1b2b44; font-weight:750; cursor:pointer; list-style:none; }
+    .faq-item summary::-webkit-details-marker { display:none; }
+    .faq-item summary::after { width:25px; height:25px; display:grid; flex:none; place-items:center; border-radius:50%; color:#1769e0; background:#edf4ff; content:"+"; font-size:1.1rem; }
+    .faq-item[open] summary::after { content:"−"; }
+    .faq-answer { padding:0 21px 19px; color:#64738a; font-size:.91rem; line-height:1.75; }
+    .faq-answer a { color:#1769e0; font-weight:700; text-decoration:underline; text-underline-offset:3px; }
     .deployment { padding: 64px 0; background: #13243b; color: white; }
     .deploy-grid { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 45px; }
     .deployment h2 { max-width: 480px; margin: 0 0 15px; font-size: 2.2rem; letter-spacing: -.045em; }
@@ -82,6 +91,8 @@
     .cta p { margin: 0 auto 23px; color: #6d788b; }
     footer { padding: 26px 0; border-top: 1px solid #e5eaf1; color: #7b8799; background: #fff; font-size: .84rem; }
     .foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .skip-link { position:fixed; z-index:100; top:8px; left:8px; padding:11px 14px; transform:translateY(-160%); border-radius:9px; color:#fff; background:#15345d; box-shadow:0 8px 24px #10223d38; font-weight:750; transition:transform .15s ease; }
+    .skip-link:focus { transform:translateY(0); }
     html { scroll-behavior: smooth; scroll-padding-top: 88px; }
     header { position: sticky; top: 0; z-index: 20; background: #fffffff0; backdrop-filter: blur(18px); }
     :focus-visible { outline: 3px solid #91b8ff; outline-offset: 3px; }
@@ -142,15 +153,16 @@
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#top">Ana içeriğe geç</a>
   <header>
     <nav class="wrap" aria-label="Ana menü">
       <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true">E</span><span class="brand-name">Envanter<span>TR</span></span></a>
-      <div class="nav-links" id="primaryNav"><a href="#ozellikler">Özellikler</a><a href="#kurulum">Kurulum seçenekleri</a><a href="#paketler">Paketler</a><a href="#iletisim">İletişim</a></div>
+      <div class="nav-links" id="primaryNav"><a href="#ozellikler">Özellikler</a><a href="#kurulum">Kurulum seçenekleri</a><a href="#paketler">Paketler</a><a href="#sss">SSS</a><a href="#iletisim">İletişim</a></div>
       <div class="nav-actions"><a class="nav-login" href="/giris">Müşteri girişi</a><a class="button" href="#demo">Tanıtım iste</a></div>
       <button class="menu-toggle" id="menuToggle" type="button" aria-label="Menüyü aç" aria-expanded="false" aria-controls="primaryNav">☰</button>
     </nav>
   </header>
-  <main id="top">
+  <main id="top" tabindex="-1">
     <section class="hero">
       <div class="wrap hero-grid">
         <div>
@@ -194,6 +206,18 @@
     <section class="deployment" id="kurulum">
       <div class="wrap deploy-grid"><div><div class="eyebrow">PLANLANAN DAĞITIMLAR</div><h2 id="content-home-deployment-title">Kurumunuzun çalışma biçimine göre kurun</h2><p id="content-home-deployment-body">Bulut, Windows ve Ubuntu seçenekleri ürün hedefidir; son kullanıcı kurucusu ve çevrim içi satın alma henüz hazır değildir. Yerel kurulumda tek bir ana bilgisayar uygulama ve veritabanını çalıştırır, çalışanlar kendi bilgisayarlarına veritabanı kurmadan tarayıcıyla bağlanır.</p></div>
         <div class="deploy-options"><div class="option"><strong>Bulut hizmeti</strong><span>Kullanıcı bilgisayarına kurulum gerekmez. Şirket alanı, kullanıcı ve lisans akışları hazırlanıyor; merkezî yedekleme ve güncellemeler henüz devrede değil.</span></div><div class="option"><strong>Windows 11 / Windows Server</strong><span>Bir ana bilgisayar sürekli açık kalır. Şirket ağına erişim, güvenli adres ve otomatik servis kurulumu son kurulum paketinde çözülecek.</span></div><div class="option"><strong>Ubuntu Linux</strong><span>Sunucu servisi ve veritabanı aynı ortamda çalışır. İşletim ve ağ yönetimi kurumun IT ekibinde olur.</span></div><div class="option"><strong>Veri dışa aktarma</strong><span>Şirket JSON ve varlık CSV indirme temeli eklendi. Otomatik yedek geçmişi ve gerçek geri yükleme henüz hazır değil.</span></div></div>
+      </div>
+    </section>
+    <section class="section faq" id="sss">
+      <div class="wrap"><div class="section-head"><h2>Sık sorulan sorular</h2><p>Dağıtım, kullanıcı sınırları ve veri taşınabilirliği hakkındaki mevcut durum.</p></div>
+        <div class="faq-list">
+          <details class="faq-item"><summary>EnvanterTR şu anda internetten satın alınabilir mi?</summary><div class="faq-answer">Hayır. Bu sayfa yerel geliştirme önizlemesidir. Çevrim içi ödeme, deneme hesabı açma ve abonelik başlatma henüz etkin değil. Paketler ve fiyatlar kesinleştiğinde bu bölüm güncellenecek.</div></details>
+          <details class="faq-item"><summary>Bulut, Windows ve Linux seçenekleri nasıl ayrılıyor?</summary><div class="faq-answer">Bulut seçeneğinde uygulama sağlayıcı altyapısında çalışır; Windows veya Ubuntu kurulumunda kurum kendi ana bilgisayarını yönetir ve çalışanlar tarayıcıyla bağlanır. Bu dağıtım türleri ürün hedefidir; son kullanıcı kurucuları ve bulut hizmeti henüz yayıma hazır değildir.</div></details>
+          <details class="faq-item"><summary>Paketlerde kaç çalışan ve varlık olacak?</summary><div class="faq-answer">Kullanıcı ve varlık sınırları yönetim panelindeki yayımlanmış planlardan gösterilecek. Henüz satışa açık plan olmadığından kesin kota veya fiyat taahhüdü verilmiyor. Kurumunuzun ihtiyacını <a href="mailto:admin@envantertr.com?subject=EnvanterTR%20paket%20ihtiyac%C4%B1">admin@envantertr.com</a> adresine iletebilirsiniz.</div></details>
+          <details class="faq-item"><summary>Abonelik sona ererse verilerimi indirebilir miyim?</summary><div class="faq-answer">Önizlemede varlık CSV’si ve şirket verisi JSON olarak dışa aktarılabilir. Bu dosyalar tam, geri yüklenebilir yedek değildir; bir içe alma ve geri yükleme akışı henüz sunulmuyor. Veri taşıma güvencesi tamamlanmadan ürün bu konuda hazırmış gibi tanıtılmayacak.</div></details>
+          <details class="faq-item"><summary>Çalışanlar kendi bilgisayarlarına kurulum yapacak mı?</summary><div class="faq-answer">Planlanan kurum içi kurulumda uygulama tek bir ana bilgisayarda çalışır, çalışanlar kendi bilgisayarlarından web tarayıcısıyla bağlanır. Mevcut geliştirme önizlemesi yalnızca kurulu olduğu bilgisayardaki localhost adreslerine açıktır; şirket ağına veya internete açılmaz.</div></details>
+          <details class="faq-item"><summary>Windows ve Linux için sistem gereksinimleri belli mi?</summary><div class="faq-answer">Son kullanıcı Windows 11, Windows Server ve Ubuntu kurulum paketleri henüz hazır değil. Kesin donanım gereksinimleri yük ve kullanıcı sayısı ölçümleri tamamlandıktan sonra yayımlanacak; şu anki Docker geliştirici önizlemesi müşteri kurulum gereksinimi olarak değerlendirilmemeli.</div></details>
+        </div>
       </div>
     </section>
     <section class="cta" id="demo"><div class="wrap"><h2 id="content-home-demo-title">Kurumunuz için tanıtım planlayın</h2><p id="content-home-demo-body">Bu sayfa ürün ana sayfası taslağıdır. Tanıtım ve müşteri kayıt akışları henüz bağlanmadı.</p><a class="button" href="mailto:admin@envantertr.com?subject=EnvanterTR%20tan%C4%B1t%C4%B1m">E-posta ile iletişime geçin</a></div></section>
