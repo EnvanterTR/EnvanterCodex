@@ -746,6 +746,53 @@ public static class AssetEndpoints
             return Results.NoContent();
         }).RequireAuthorization("asset.write");
 
+        api.MapGet("/maintenances", async (ClaimsPrincipal user, AppDbContext db, string? q, string? status,
+            DateOnly? from, DateOnly? to, int? page, int? pageSize, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (from.HasValue && to.HasValue && from > to)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Başlangıç tarihi bitiş tarihinden sonra olamaz."] });
+            if (q?.Length > 120)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
+            var query = from maintenance in db.AssetMaintenances.AsNoTracking()
+                        join asset in db.Assets.AsNoTracking() on new { maintenance.CompanyId, maintenance.AssetId } equals new { asset.CompanyId, AssetId = asset.Id }
+                        where maintenance.CompanyId == companyId
+                        select new { maintenance, asset };
+            if (status is "InProgress" or "Completed") query = query.Where(x => x.maintenance.Status == status);
+            else if (!string.IsNullOrWhiteSpace(status))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["status"] = ["Durum InProgress veya Completed olmalıdır."] });
+            if (from.HasValue) query = query.Where(x => x.maintenance.StartedOn >= from.Value);
+            if (to.HasValue) query = query.Where(x => x.maintenance.StartedOn <= to.Value);
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                query = query.Where(x => x.maintenance.MaintenanceType.Contains(term) ||
+                    (x.maintenance.Supplier != null && x.maintenance.Supplier.Contains(term)) ||
+                    (x.maintenance.Description != null && x.maintenance.Description.Contains(term)) ||
+                    (x.maintenance.Notes != null && x.maintenance.Notes.Contains(term)) ||
+                    x.asset.AssetTag.Contains(term) || x.asset.Name.Contains(term) ||
+                    (x.asset.SerialNumber != null && x.asset.SerialNumber.Contains(term)) ||
+                    (x.asset.Location != null && x.asset.Location.Contains(term)));
+            }
+            var total = await query.CountAsync(cancellationToken);
+            var size = Math.Clamp(pageSize ?? 50, 1, 100);
+            var pageCount = (int)Math.Ceiling(total / (double)size);
+            var pageNumber = Math.Clamp(page ?? 1, 1, Math.Max(1, pageCount));
+            var rows = await query.OrderByDescending(x => x.maintenance.StartedOn)
+                .ThenByDescending(x => x.maintenance.CreatedAt).Skip((pageNumber - 1) * size).Take(size)
+                .Select(x => new
+                {
+                    x.maintenance.Id, x.maintenance.AssetId, x.asset.AssetTag, assetName = x.asset.Name,
+                    x.asset.Location, x.maintenance.MaintenanceType, x.maintenance.Supplier,
+                    x.maintenance.Description, x.maintenance.StartedOn, x.maintenance.CompletedOn,
+                    x.maintenance.Status, x.maintenance.Cost, x.maintenance.Currency,
+                    x.maintenance.Notes, x.maintenance.CompletionNotes,
+                    actorName = db.Users.Where(actor => actor.Id == x.maintenance.ActorUserId)
+                        .Select(actor => actor.DisplayName).FirstOrDefault()
+                }).ToListAsync(cancellationToken);
+            return Results.Ok(new { rows, total, page = pageNumber, pageSize = size, pageCount = Math.Max(1, pageCount) });
+        }).RequireAuthorization("asset.read");
+
         api.MapGet("/assets/{id:guid}/maintenances", async (Guid id, ClaimsPrincipal user,
             AppDbContext db, CancellationToken cancellationToken) =>
         {

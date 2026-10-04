@@ -101,7 +101,7 @@
         <button class="nav-item" data-group="places" aria-expanded="false"><span class="nav-icon">⌖</span><span class="nav-label">Konumlar</span><span class="chevron">›</span></button>
         <div class="sub-menu" id="sub-places"><button class="sub-item" data-page="Lokasyonlar">Lokasyonlar</button><button class="sub-item" data-page="Binalar ve odalar">Binalar ve odalar</button><button class="sub-item" data-page="Şirket birimleri">Şirket birimleri</button></div>
         <button class="nav-item" data-group="operations" aria-expanded="false"><span class="nav-icon">◷</span><span class="nav-label">Bakım ve denetim</span><span class="chevron">›</span></button>
-        <div class="sub-menu" id="sub-operations"><button class="sub-item" data-page="Bakım planları">Bakım planları</button><button class="sub-item" data-page="Denetimler">Denetimler</button><button class="sub-item" data-page="Takvim">Takvim</button><button class="sub-item" data-page="Görevler">Görevler</button></div>
+        <div class="sub-menu" id="sub-operations"><button class="sub-item" data-page="Bakım kayıtları">Bakım kayıtları</button><button class="sub-item" data-page="Bakım planları">Bakım planları</button><button class="sub-item" data-page="Denetimler">Denetimler</button><button class="sub-item" data-page="Takvim">Takvim</button><button class="sub-item" data-page="Görevler">Görevler</button></div>
         <button class="nav-item" data-group="reports" aria-expanded="false"><span class="nav-icon">▥</span><span class="nav-label">Raporlar</span><span class="chevron">›</span></button>
         <div class="sub-menu" id="sub-reports"><button class="sub-item" data-page="Hazır raporlar">Hazır raporlar</button><button class="sub-item" data-page="Özel rapor oluştur">Özel rapor oluştur</button><button class="sub-item" data-page="Dışa aktarımlar">Dışa aktarımlar</button></div>
         <button class="nav-item" data-group="data" aria-expanded="false"><span class="nav-icon">⇧</span><span class="nav-label">Veri ve yedekler</span><span class="chevron">›</span></button>
@@ -195,6 +195,10 @@
       <section class="panel"><div class="panel-head"><h2>Dışa aktar</h2><span class="pill blue">Şirket yöneticisi</span></div><div class="dialog-body"><p>JSON şirket dosyası çalışanları, varlıkları, sözlükleri ve kayıt geçmişini içerir. CSV dosyası yalnızca varlık listesini Excel uyumlu biçimde indirir.</p><div class="dialog-actions"><button class="btn primary" type="button" id="dataDownloadCompany">Tüm şirket verisini indir (JSON)</button><button class="btn" type="button" id="dataDownloadAssets">Varlık listesini indir (CSV)</button></div></div></section>
       <section class="panel" style="margin-top:15px"><div class="panel-head"><h2>Dosyayı kontrol et veya geri yükle</h2><span class="pill warn">Geri yükleme henüz kapalı</span></div><div class="dialog-body"><p id="dataRestoreNotice">JSON dosyası seçildiğinde yalnızca biçim ve kayıt bağlantıları kontrol edilir; mevcut şirket verileri değişmez. Otomatik yedekleme geçmişi ve gerçek geri yükleme işlemi henüz etkin değildir.</p><div class="dialog-actions"><button class="btn" type="button" id="dataValidateFile">JSON dosyasını kontrol et</button></div></div></section>
       <section class="panel" style="margin-top:15px"><div class="panel-head"><h2>Aktarım kapsamı</h2></div><div class="dialog-body"><p><strong>JSON'a dahil:</strong> çalışan kayıtları, varlık kategorileri/markaları/modelleri, varlıklar, hareket ve denetim geçmişi, şirket kullanıcılarının ad/e-posta/rolleri.</p><p><strong>Güvenlik için dahil değil:</strong> parolalar, oturumlar, parola yenileme anahtarları ve ödeme/lisans sırları. Logo ve ek dosyalar da henüz arşivlenmiyor.</p></div></section>
+    </section>
+    <section class="workspace-page" id="maintenancePage" hidden>
+      <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / BAKIM</div><h1>Bakım kayıtları</h1><p>Şirket varlıklarının devam eden ve tamamlanan servis işlemlerini birlikte inceleyin.</p></div><div class="head-actions"><button class="btn" id="maintenanceRefresh" type="button">↻ Yenile</button></div></div>
+      <section class="panel"><div class="table-tools"><input id="maintenanceSearch" placeholder="Varlık, etiket, servis veya bakım notu ara" aria-label="Bakım kayıtlarında ara"><select id="maintenanceStatus"><option value="">Tüm durumlar</option><option value="InProgress">Devam ediyor</option><option value="Completed">Tamamlandı</option></select><label class="muted">Başlangıç <input id="maintenanceFrom" type="date"></label><label class="muted">Bitiş <input id="maintenanceTo" type="date"></label><button class="btn small" id="applyMaintenanceFilters" type="button">Filtrele</button><button class="btn small" id="clearMaintenanceFilters" type="button">Temizle</button><small id="maintenanceCount" role="status" aria-live="polite">—</small></div><div class="table-wrap"><table><caption class="sr-only">Şirket bakım kayıtları</caption><thead><tr><th>Varlık</th><th>Bakım türü</th><th>Servis</th><th>Durum</th><th>Başlangıç</th><th>Tamamlanma</th><th>Maliyet</th><th>İşlemi yapan</th><th>Notlar</th></tr></thead><tbody id="maintenanceRows"><tr><td colspan="9">Bakım kayıtları yükleniyor…</td></tr></tbody></table></div><div class="pager"><button id="maintenancePrev" type="button">← Önceki</button><span id="maintenancePageInfo">Sayfa —</span><button id="maintenanceNext" type="button">Sonraki →</button></div></section>
     </section>
     <section class="workspace-page" id="reportPage" hidden>
       <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / RAPORLAMA</div><h1>Envanter raporları</h1><p>Şirket kayıtlarını güncel durum, kategori ve kaydedilmiş satın alma maliyetiyle inceleyin.</p></div><div class="head-actions"><button class="btn" id="reportExport" type="button" disabled>⇩ Raporu Excel'e aktar</button><button class="btn" id="reportRefresh" type="button">↻ Verileri yenile</button></div></div>
@@ -1048,6 +1052,39 @@
     function maintenanceDate(value) {
       return value ? new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium' }).format(new Date(`${value}T12:00:00`)) : '—';
     }
+    let maintenancePageNumber = 1;
+    async function loadCompanyMaintenances(page = maintenancePageNumber) {
+      maintenancePageNumber = page;
+      const params = new URLSearchParams({ page: String(page), pageSize: '50' });
+      const q = $('#maintenanceSearch').value.trim(), status = $('#maintenanceStatus').value;
+      const from = $('#maintenanceFrom').value, to = $('#maintenanceTo').value;
+      if (q) params.set('q', q); if (status) params.set('status', status);
+      if (from) params.set('from', from); if (to) params.set('to', to);
+      const result = await api(`/api/maintenances?${params}`);
+      const body = $('#maintenanceRows'); body.replaceChildren();
+      $('#maintenanceCount').textContent = `${fmt.format(result.total)} bakım kaydı`;
+      $('#maintenancePageInfo').textContent = `Sayfa ${fmt.format(result.page)} / ${fmt.format(Math.max(1, result.pageCount))}`;
+      $('#maintenancePrev').disabled = result.page <= 1; $('#maintenanceNext').disabled = result.page >= result.pageCount;
+      if (!result.rows.length) { const row = document.createElement('tr'), cell = document.createElement('td'); cell.colSpan = 9; cell.textContent = 'Filtrelerle eşleşen bakım kaydı bulunamadı.'; row.append(cell); body.append(row); return; }
+      for (const item of result.rows) {
+        const row = document.createElement('tr'); row.tabIndex = 0; row.setAttribute('role', 'button'); row.setAttribute('aria-label', `Varlık ${item.assetTag} ayrıntısını aç`);
+        const asset = document.createElement('td'), link = document.createElement('button'); link.type = 'button'; link.className = 'row-open-link asset-name'; link.textContent = item.assetName;
+        const tag = document.createElement('small'); tag.className = 'asset-tag'; tag.textContent = item.assetTag; asset.append(link, tag);
+        const type = document.createElement('td'); type.textContent = item.maintenanceType;
+        const supplier = document.createElement('td'); supplier.textContent = item.supplier || '—';
+        const state = document.createElement('td'), pill = document.createElement('span'); pill.className = item.status === 'InProgress' ? 'pill warn' : 'pill'; pill.textContent = item.status === 'InProgress' ? 'Devam ediyor' : 'Tamamlandı'; state.append(pill);
+        const started = document.createElement('td'); started.textContent = maintenanceDate(item.startedOn);
+        const completed = document.createElement('td'); completed.textContent = maintenanceDate(item.completedOn);
+        const cost = document.createElement('td'); cost.textContent = item.cost == null ? '—' : `${fmt.format(item.cost)} ${item.currency}`;
+        const actor = document.createElement('td'); actor.textContent = item.actorName || '—';
+        const notes = document.createElement('td'); notes.textContent = item.completionNotes || item.notes || item.description || '—'; notes.title = notes.textContent;
+        row.append(asset, type, supplier, state, started, completed, cost, actor, notes);
+        const open = () => openAsset(item.assetId).then(() => selectAssetTab('maintenance')).catch(error => notify(error.message));
+        row.addEventListener('click', event => { if (event.target !== link) open(); });
+        row.addEventListener('keydown', event => { if (event.target === row && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); open(); } });
+        link.addEventListener('click', open); body.append(row);
+      }
+    }
     async function loadAssetMaintenances(assetId) {
       const rows = await api(`/api/assets/${assetId}/maintenances`);
       if (!currentAsset || currentAsset.id !== assetId) return;
@@ -1327,12 +1364,12 @@
       if (['Çalışan kayıtları','Departmanlar'].includes(page) && !canReadPeople()) { notify('Bu hesabın çalışan ve departman kayıtlarını görüntüleme yetkisi yok.'); return; }
       if (page === 'Lokasyonlar' && !canReadAssets()) { notify('Bu hesabın varlık konumlarını görüntüleme yetkisi yok.'); return; }
       if (page === 'Uygulama kullanıcıları' && !canReadAudit()) { notify('Şirket kullanıcılarını ve rollerini yalnızca şirket sahibi ve yöneticileri yönetebilir.'); return; }
-      if (['Genel Bakış','Varlıklar','Hareket geçmişi','Hazır raporlar'].includes(page) && !canReadAssets()) { notify('Bu hesabın varlık kayıtlarını görüntüleme yetkisi yok.'); return; }
+      if (['Genel Bakış','Varlıklar','Hareket geçmişi','Hazır raporlar','Bakım kayıtları'].includes(page) && !canReadAssets()) { notify('Bu hesabın varlık kayıtlarını görüntüleme yetkisi yok.'); return; }
       if (page === 'Denetim kayıtları' && !canReadAudit()) { notify('Denetim kayıtlarını yalnızca şirket sahibi ve yöneticileri görüntüleyebilir.'); return; }
       document.querySelectorAll('.nav-item,.sub-item').forEach(item => item.classList.remove('active','selected'));
       if (button.classList.contains('nav-item')) button.classList.add('active'); else button.classList.add('selected');
       setMobileSidebarOpen(false);
-      for (const id of ['overview','employeesPage','directoryPage','moduleStatusPage','accessoriesPage','consumablesPage','licensesPage','licenseAssignmentsPage','componentsPage','inventoryMovementsPage','labelSettingsPage','reportPage','membersPage','activityPage','auditPage','dataToolsPage','companySettingsPage','catalogPage']) $(`#${id}`).hidden = true;
+      for (const id of ['overview','employeesPage','directoryPage','moduleStatusPage','accessoriesPage','consumablesPage','licensesPage','licenseAssignmentsPage','componentsPage','inventoryMovementsPage','labelSettingsPage','maintenancePage','reportPage','membersPage','activityPage','auditPage','dataToolsPage','companySettingsPage','catalogPage']) $(`#${id}`).hidden = true;
       if (page === 'Aksesuarlar') { if (!canReadAssets()) { notify('Aksesuar stoklarını görüntüleme yetkiniz bulunmuyor.'); return; } $('#accessoriesPage').hidden = false; $('#pageTitle').textContent = page; $('#newAccessoryButton').hidden = !canWriteAssets(); loadAccessories(1).catch(error => notify(error.message)); }
       else if (page === 'Sarf malzemeleri') { if (!canReadAssets()) { notify('Sarf stoklarını görüntüleme yetkiniz bulunmuyor.'); return; } $('#consumablesPage').hidden = false; $('#pageTitle').textContent = page; loadConsumables(1).catch(error => notify(error.message)); }
       else if (page === 'Yazılım lisansları') { if (!canReadAssets()) { notify('Lisans kayıtlarını görüntüleme yetkiniz bulunmuyor.'); return; } $('#licensesPage').hidden = false; $('#pageTitle').textContent = page; loadLicenses(1).catch(error => notify(error.message)); }
@@ -1344,6 +1381,7 @@
       else if (page === 'Departmanlar' || page === 'Lokasyonlar') { $('#directoryPage').hidden = false; $('#pageTitle').textContent = page; loadDirectory(page === 'Departmanlar' ? 'departments' : 'locations').catch(error => notify(error.message)); }
       else if (page === 'Uygulama kullanıcıları') { $('#membersPage').hidden = false; $('#pageTitle').textContent = page; loadMembers().catch(error => notify(error.message)); }
       else if (page === 'Hareket geçmişi') { $('#activityPage').hidden = false; $('#pageTitle').textContent = page; loadActivity(1).catch(error => notify(error.message)); }
+      else if (page === 'Bakım kayıtları') { $('#maintenancePage').hidden = false; $('#pageTitle').textContent = page; loadCompanyMaintenances(1).catch(error => notify(error.message)); }
       else if (page === 'Denetim kayıtları') { $('#auditPage').hidden = false; $('#pageTitle').textContent = page; loadAudit(1).catch(error => notify(error.message)); }
       else if (page === 'Hazır raporlar') { $('#reportPage').hidden = false; $('#pageTitle').textContent = 'Envanter raporları'; loadAssetReports().catch(error => notify(error.message)); }
       else if (['Kategoriler','Markalar','Varlık modelleri'].includes(page)) { if (!canReadAssets()) { notify('Bu hesabın envanter tanımlarını görüntüleme yetkisi yok.'); return; } catalogKind = page === 'Kategoriler' ? 'categories' : page === 'Markalar' ? 'brands' : 'models'; $('#catalogPage').hidden = false; $('#pageTitle').textContent = page; $('#catalogTitle').textContent = page; $('#catalogDescription').textContent = `${page} şirket envanterinde kullanılacak. Kullanılan tanımlar silinemez; yeniden adlandırma mevcut ilişkilere dokunmaz.`; $('#catalogBrandLabel').hidden = catalogKind !== 'models'; $('#catalogCreateForm').hidden = !canWriteAssets(); loadCatalog().catch(error => notify(error.message)); }
@@ -1714,6 +1752,12 @@
     $('#auditPrev').addEventListener('click', () => loadAudit(auditPage - 1).catch(error => notify(error.message)));
     $('#auditNext').addEventListener('click', () => loadAudit(auditPage + 1).catch(error => notify(error.message)));
     $('#auditRefresh').addEventListener('click', () => loadAudit().then(() => notify('Denetim kayıtları yenilendi.')).catch(error => notify(error.message)));
+    $('#maintenanceRefresh').addEventListener('click', () => loadCompanyMaintenances().then(() => notify('Bakım kayıtları güncellendi.')).catch(error => notify(error.message)));
+    $('#applyMaintenanceFilters').addEventListener('click', () => loadCompanyMaintenances(1).catch(error => notify(error.message)));
+    $('#clearMaintenanceFilters').addEventListener('click', () => { $('#maintenanceSearch').value = ''; $('#maintenanceStatus').value = ''; $('#maintenanceFrom').value = ''; $('#maintenanceTo').value = ''; loadCompanyMaintenances(1).catch(error => notify(error.message)); });
+    $('#maintenanceSearch').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); loadCompanyMaintenances(1).catch(error => notify(error.message)); } });
+    $('#maintenancePrev').addEventListener('click', () => loadCompanyMaintenances(Math.max(1, maintenancePageNumber - 1)).catch(error => notify(error.message)));
+    $('#maintenanceNext').addEventListener('click', () => loadCompanyMaintenances(maintenancePageNumber + 1).catch(error => notify(error.message)));
     $('#auditTarget').addEventListener('change', () => loadAudit(1).catch(error => notify(error.message)));
     $('#auditSearch').addEventListener('input', () => { clearTimeout(auditQueryTimer); auditQueryTimer = setTimeout(() => loadAudit(1).catch(error => notify(error.message)), 250); });
     $('#assetListSearch').addEventListener('input', event => { clearTimeout(assetQueryTimer); assetQueryTimer = setTimeout(() => { $('#globalSearch').value = event.target.value; loadDashboard(event.target.value.trim(), 1).catch(error => notify(error.message)); }, 250); });
