@@ -1,0 +1,60 @@
+# Snipe-IT kapsam karşılaştırması
+
+Bu belge EnvanterTR'nin yerel Snipe-IT 8.7.2 kaynak ağacındaki ana işlevleri ne ölçüde karşıladığını izler. Amaç, her düğmeyi körü körüne kopyalamak değil; aynı işi yapan kurumsal envanter akışlarını, izinleri ve kayıt ilişkilerini eksiltmeden ürün kararlarıyla tamamlamaktır. Ürün gereksinimi olan bir satır, uygulama ve kabul kontrolü yapılana kadar tamamlanmış sayılmaz.
+
+## Durum anahtarı
+
+- **Var:** İşlevin çalışan bir EnvanterTR akışı bulunuyor; bu, üretim kabulünden geçtiği anlamına gelmez.
+- **Kısmi:** İlk ekran veya temel akış var; Snipe-IT'deki ilişkiler, operasyonlar, kalıcılık ya da kapsamın bir kısmı eksik.
+- **Yok:** Uygulanmış müşteri akışı yok.
+- **Karar gerekli:** Kaynakta özellik var; ürün gereksinimi, güvenlik veya müşteri ihtiyacı açısından dahil edilip edilmeyeceği kararlaştırılmalı.
+
+## Snipe-IT işlev aileleri
+
+| İşlev ailesi | EnvanterTR durumu | Kapsam / eksik iş |
+|---|---|---|
+| Ana sayfa ve canlı özet | **Kısmi** | Şirket kapsamlı varlık durumları, etkinlik ve temel rapor bağlantıları var. Snipe-IT'deki çoklu grafik/panel seçenekleri ve tüm modül sayaçları yok. |
+| Varlık kayıtları ve tabloları | **Kısmi** | Varlık CRUD, arama, filtre, sıralama, sayfalama, sütun tercihi, CSV, detay, geçmiş, zimmet/iade ve durum akışları var. Gelişmiş arama kaydedilmiş sorguları, silinen kayıt geri alma, sipariş ve tüm toplu işlemler eksik. |
+| Varlık durum kuyrukları | **Kısmi** | Kullanılabilir, zimmetli, bakım ve arşiv durumları temel düzeyde var. Beklemede, kullanılamaz, BYOD, istenebilir, denetimi/iadesi gelen-geçen gibi ayrı operasyon kuyrukları eksik. |
+| Varlık detay ilişkileri | **Kısmi** | Genel bakış, ilişkili kayıt bağlantıları ve gerçek hareket geçmişi var. Lisans, bileşen, bağlı varlık, aksesuar, bakım, denetim, not, dosya ve model dosyası sekmeleri yok. |
+| Barkod, QR ve etiketler | **Kısmi** | Tek varlık kartında C128/C39/EAN5/EAN13/UPC-A/UPC-E ve QR/PDF417/Data Matrix; ölçü, X/Y hizası, boşluk ve alan ayarı var. Seçili varlıklara toplu etiket sayfası, şirket sunucu ayarları, mobil kamerayla tarama ve tarayarak zimmet/iade yok. |
+| Kişi/çalışan kayıtları | **Kısmi** | Çalışan CRUD, departman filtresi, yönetici ilişkisi, doğrudan raporlayanlar, zimmetli varlıklar ve profil var. Yazılım kullanıcı hesabı ile sadece personel kaydı ayrımının tamamı, lisans/aksesuar/sarf/bakım/file/EULA sekmeleri, hesap durum kuyrukları ve toplu kişi işlemleri eksik. |
+| Departmanlar | **Kısmi** | Çalışanlardaki metinden özet ve çalışan listesi filtresi var. Yönetilebilir katalog, yeniden adlandırma/birleştirme ve silme kuralları yok. |
+| Konumlar | **Kısmi** | Varlık metninden özet çıkarma ve konumdaki varlıkları filtreleme var. Hiyerarşik konum kataloğu, kullanıcı/varsayılan konum/aksesuar/sarf/bileşen ilişkileri ve yöneticiler yok. |
+| Modeller, kategoriler, markalar | **Kısmi** | Temel kataloglar ve varlık formunda seçiciler var. Snipe-IT benzeri model ayrıntı sayfasında varlık/sipariş/dosya/geçmiş ilişkileri, toplu yönetim ve gelişmiş alanlar eksik. |
+| Lisanslar | **Yok** | Lisans yaşam döngüsü, koltuk/adet, atanabilir kullanıcı/varlık, süre/yenileme ve geçmiş modülü oluşturulmalı. |
+| Aksesuarlar | **Yok** | Stok miktarı, kategori/tedarikçi/konum, kişiye zimmet ve iade, hareket geçmişi ve minimum stok akışı oluşturulmalı. |
+| Sarf malzemeleri | **Yok** | Stok ve tüketim miktarı, kullanıcıya dağıtım, sipariş ve geçmiş akışı oluşturulmalı. |
+| Bileşenler | **Yok** | Miktar/seri takibi, varlığa atanan bileşen, iade/çıkarma, sipariş ve raporlama oluşturulmalı. |
+| Kitler | **Yok** | Önceden tanımlı varlık/aksesuar setleri ve kullanılabilirlik/teslim akışı oluşturulmalı. |
+| Bakım kayıtları | **Yok** | Bakım türü, tedarikçi, maliyet, başlangıç/bitiş, durum, not/dosya ve varlık geçmişi akışı oluşturulmalı. |
+| Denetim ve kabul | **Kısmi** | Hareket/audit kayıtları ve geçmiş görüntüleme var. Varlık sayımı/denetim oturumu, kullanıcı kabulü, hatırlatma, kabul edilmeyen öğe ve sonuç raporları yok. |
+| Transfer ve rezervasyon | **Yok** | Konumlar arası transfer, onay/rezervasyon, çakışma ve işlem geçmişi tasarlanmalı. |
+| Siparişler ve tedarik | **Yok** | Sipariş, sipariş kalemi, tedarikçi ve teslim alım/varlığa dönüştürme ilişkileri yok. |
+| Ek dosya ve fotoğraflar | **Yok** | Şirket logosu yüklemesi, varlık/kişi/modül dosya depolaması yerine geçmez. Erişim, boyut, tür, silme ve yedekleme politikalarıyla eklenmeli. |
+| İçe aktarma / dışa aktarma | **Kısmi** | Varlık CSV dışa aktarma ve sınırlı önizlemeli CSV varlık ekleme; şirket JSON dışa aktarma/önizleme var. Modül bazlı import, kolon eşleme, katalog oluşturma, JSON geri yükleme, Excel dosyası ve atomik geri alma eksik. |
+| Raporlar | **Kısmi** | Varlık durum/kategori, alış tarihi ve kaydedilmiş maliyet özetleri ile CSV var. Lisans, bileşen, bakım, denetim, teslim alınmamış öğeler, amortisman ve özel rapor oluşturucu eksik. |
+| Kullanıcı, roller ve izinler | **Kısmi** | Şirket oturumu ve temel owner/admin/operator rolleri ile şirket üyeleri var. Snipe-IT'nin ince taneli modül/işlem izin matrisi ve her uçta kabul kapsamı tamamlanmalı. |
+| Şirket ve tenant ayrımı | **Kısmi** | Çok şirketli kimlik/veri modeli hedefi ve API kapsam denetimleri mevcut. Uçtan uca tenant güvenlik kabulü, plan sınırları ve üretim operasyonu açık. |
+| Bildirimler ve e-posta | **Yok** | SMTP teslimatı, parola sıfırlama e-postası, bakım/denetim/iade uyarıları ve kullanıcı bildirim tercihleri henüz yok. |
+| API, entegrasyon ve otomasyon | **Kısmi** | Dahili JSON API var. Belgelenmiş müşteri API'si, anahtar yaşam döngüsü, webhook olayları, hız sınırlaması ve entegrasyon yönetimi yok. |
+| Kimlik ve oturum güvenliği | **Kısmi** | Parola tabanlı oturum, CSRF ve temel roller var. MFA/kurtarma, LDAP/AD/SSO, oturum denetimi, parola e-postası ve güvenlik kabul matrisi eksik. |
+| Dil ve kullanıcı tercihleri | **Kısmi** | Türkçe arayüz ağırlıklı. Tam Türkçe/İngilizce yerelleştirme, tarih/sayı/para biçimleri ve kullanıcı bazlı kalıcı tercihler tamamlanmalı. |
+| Kurulum, güncelleme ve yedekleme | **Yok / prototip** | Yerel geliştirici Compose ve elle yedek betikleri var. İmzalı Windows/Linux kurulumu, LAN/HTTPS, otomatik şifreli yedek, geri yükleme ve güncelleme geri alma yok. |
+| Platform abonelik ve ticari yönetimi | **Kısmi** | Platform admin temel şirket/plan/abonelik görünümü ve bazı operasyonlar var. Gerçek satın alma, ödeme, fatura, yenileme, mutabakat ve destek iş akışı yok. |
+
+## Öncelik ve tamamlanma ölçütü
+
+1. **Önce güvenli temel:** tenant/rol denetimi, yedekleme-geri yükleme, oturum ve üretim kurulum gereksinimleri.
+2. **Sonra envanter yaşam döngüsü:** departman/konum katalogları, ilişki ayrıntıları, transfer/rezervasyon, denetim ve ek dosyalar.
+3. **Modül paritesi:** lisans, aksesuar, sarf, bileşen, kit ve bakım modüllerini her biri için liste + filtre/sıralama + detay ilişkileri + oluştur/düzenle + toplu işlem + geçmiş + izin + dışa aktarma ile tamamlamak.
+4. **Operasyonel işlevler:** toplu etiket ve tarayıcı iş akışları, modül bazlı içe/dışa aktarma, bildirim, raporlar ve API/webhook.
+5. **Ürün teslimatı:** Windows/Linux kurum içi kurulum, barındırılan hizmet, dil ve ticari akışlar.
+
+Bir modül ancak temel liste ve detayın yanında bağlantılı kayıtlar, hata/boş durumları, filtrelerin korunması, yetki kontrolleri, işlem geçmişi ve veri taşıma davranışı gözden geçirildiğinde “Var” durumuna alınır. Kullanıcı tarafından paylaşılan Snipe-IT ekran görüntüleri etkileşim/tasarım kabul ölçütüdür; yerel 8.7.2 kaynak envanteri davranış karşılaştırmasının referansıdır.
+
+## Kaynaklar ve denetim sınırı
+
+- Yerel referans kopyası: EnvanterTR çalışma alanındaki `snipe-it-8.7.2/snipe-it-8.7.2/docs/product/source-feature-inventory.md` (Snipe-IT 8.7.2); bu kaynak EnvanterCodex uygulama deposunun dışında tutulur.
+- EnvanterTR durumu: `ROADMAP.md`, `PRODUCT-REQUIREMENTS.md`, mevcut API uçları ve `src/EnvanterTR.Web/wwwroot/index.html`.
+- Bu ilk karşılaştırma ürün/modül düzeyindedir; her Snipe-IT butonunun her izin kombinasyonundaki davranışını henüz tek tek doğruladığını iddia etmez. Her modül geliştirildikçe kaynak route/controller/table/policy ile kabul senaryoları bu matrise işlenmelidir.
