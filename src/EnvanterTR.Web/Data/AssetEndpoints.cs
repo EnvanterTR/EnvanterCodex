@@ -34,6 +34,7 @@ public static class AssetEndpoints
         api.MapConsumableEndpoints();
         api.MapSoftwareLicenseEndpoints();
         api.MapComponentEndpoints();
+        api.MapInventoryMovementEndpoints();
 
         api.MapGet("/assets", async ([FromQuery] string? q, [FromQuery] string? status,
             [FromQuery] Guid? categoryId, [FromQuery] Guid? brandId, [FromQuery] Guid? modelId,
