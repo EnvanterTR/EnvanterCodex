@@ -5,7 +5,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 ## Şu an kullanılabilir geliştirme parçaları
 
 - Şirket hesabı ve rol tabanlı oturum; varlık, çalışan, kategori, marka ve model kayıtları.
-- Varlık arama, filtreleme, sıralama, sayfalama, şirket kapsamlı CSV dışa aktarımı; model/marka/çalışan/konum ilişki filtreleri ayrı ayrı veya birlikte kaldırılabilir; zimmet, iade, durum ve hareket geçmişi.
+- Varlık arama, filtreleme, sıralama, sayfalama, şirket kapsamlı CSV dışa aktarımı; kullanıcı sütun görünümünü şirket ve tarayıcı bazında saklayabilir. Model/marka/çalışan/konum ilişki filtreleri ayrı ayrı veya birlikte kaldırılabilir; zimmet, iade, durum ve hareket geçmişi.
 - Varlık ve çalışan tablolarında ad bağlantıları klavyeyle erişilebilir; ad seçildiğinde ilgili ayrıntı profili açılır, model/departman gibi ilişki bağlantıları kendi filtre akışını korur. Hızlı aramada geciken eski istek yanıtları yeni listenin üzerine yazılmaz.
 - Varlık detayında genel bakış, bağlantılı kayıtlar ve gerçek işlem geçmişi; etiket kopyalama ve basit yazdırılabilir varlık kartı.
 - Çalışanlarda departman filtreleme, isteğe bağlı yönetici ilişkisi, doğrudan raporlayanlar ve zimmetli varlıkları gösteren profiller. Yönetici döngüleri ve başka şirkete ait yönetici seçimi sunucuda engellenir.
