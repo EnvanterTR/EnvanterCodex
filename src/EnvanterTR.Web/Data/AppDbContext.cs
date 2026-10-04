@@ -17,6 +17,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Accessory> Accessories => Set<Accessory>();
     public DbSet<AccessoryAssignment> AccessoryAssignments => Set<AccessoryAssignment>();
     public DbSet<AccessoryMovement> AccessoryMovements => Set<AccessoryMovement>();
+    public DbSet<Consumable> Consumables => Set<Consumable>();
+    public DbSet<ConsumableMovement> ConsumableMovements => Set<ConsumableMovement>();
     public DbSet<CompanyMembership> CompanyMemberships => Set<CompanyMembership>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
@@ -115,6 +117,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Asset>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<Accessory>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AccessoryAssignment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<Consumable>().HasAlternateKey(x => new { x.CompanyId, x.Id });
 
         modelBuilder.Entity<Employee>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AssetCategory>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
@@ -124,6 +127,42 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Accessory>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AccessoryAssignment>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AccessoryMovement>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Consumable>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ConsumableMovement>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Consumable>().Property(x => x.Name).HasMaxLength(200).IsRequired();
+        modelBuilder.Entity<Consumable>().Property(x => x.Category).HasMaxLength(120);
+        modelBuilder.Entity<Consumable>().Property(x => x.ModelNumber).HasMaxLength(120);
+        modelBuilder.Entity<Consumable>().Property(x => x.ItemNumber).HasMaxLength(120);
+        modelBuilder.Entity<Consumable>().Property(x => x.Supplier).HasMaxLength(200);
+        modelBuilder.Entity<Consumable>().Property(x => x.Location).HasMaxLength(160);
+        modelBuilder.Entity<Consumable>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
+        modelBuilder.Entity<Consumable>().Property(x => x.UnitCost).HasPrecision(18, 2);
+        modelBuilder.Entity<Consumable>().Property(x => x.Notes).HasMaxLength(2000);
+        modelBuilder.Entity<Consumable>().HasIndex(x => new { x.CompanyId, x.Name });
+        modelBuilder.Entity<Consumable>().HasIndex(x => new { x.CompanyId, x.Category, x.Location });
+        modelBuilder.Entity<Consumable>().ToTable("Consumables", table =>
+        {
+            table.HasCheckConstraint("CK_Consumables_Quantities", "\"MinimumQuantity\" >= 0 AND \"TotalQuantity\" >= 0");
+            table.HasCheckConstraint("CK_Consumables_Cost", "\"UnitCost\" IS NULL OR \"UnitCost\" >= 0");
+            table.HasCheckConstraint("CK_Consumables_Currency", "char_length(\"Currency\") = 3");
+        });
+        modelBuilder.Entity<ConsumableMovement>().Property(x => x.MovementType).HasMaxLength(24).IsRequired();
+        modelBuilder.Entity<ConsumableMovement>().Property(x => x.Notes).HasMaxLength(2000);
+        modelBuilder.Entity<ConsumableMovement>().HasIndex(x => new { x.CompanyId, x.ConsumableId, x.OccurredAt });
+        modelBuilder.Entity<ConsumableMovement>().ToTable("ConsumableMovements", table =>
+        {
+            table.HasCheckConstraint("CK_ConsumableMovements_Quantity", "\"Quantity\" > 0");
+            table.HasCheckConstraint("CK_ConsumableMovements_Type", "\"MovementType\" IN ('Received', 'Adjustment', 'Checkout')");
+        });
+        modelBuilder.Entity<ConsumableMovement>().HasOne<Consumable>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ConsumableId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ConsumableMovement>().HasOne<Employee>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.EmployeeId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<ConsumableMovement>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<AssetEvent>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Employee>().HasIndex(x => new { x.CompanyId, x.EmployeeNumber }).IsUnique();

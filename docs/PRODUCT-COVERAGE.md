@@ -24,7 +24,7 @@ Bu belge EnvanterTR'nin kurumsal envanter yönetiminde beklenen ana işlevleri n
 | Modeller, kategoriler, markalar | **Kısmi** | Temel kataloglar ve varlık formunda seçiciler var. Model ayrıntı sayfasında varlık/sipariş/dosya/geçmiş ilişkileri, toplu yönetim ve gelişmiş alanlar eksik. |
 | Lisanslar | **Yok** | Lisans yaşam döngüsü, koltuk/adet, atanabilir kullanıcı/varlık, süre/yenileme ve geçmiş modülü oluşturulmalı. |
 | Aksesuarlar | **Kısmi** | Şirket kapsamlı katalog, arama/sıralama/sayfalama, düşük stok filtresi, stok girişi/düzeltme, miktarlı çalışan/varlık/konum teslimi, kısmi iade, hareket geçmişi, birim maliyet, etkin arama/stok filtresini koruyan CSV dışa aktarma, tarayıcıda saklanan sütun görünümü ve sayfa başına 12/25/50/100 satır seçimi var; mevcut sayfa yazdırılabilir ve tam ekran açılabilir. Sipariş/dosya sekmeleri, gelişmiş arama, toplu işlem, kategori/tedarikçi katalog ilişkileri ve istek onayı eksik. |
-| Sarf malzemeleri | **Yok** | Stok ve tüketim miktarı, kullanıcıya dağıtım, sipariş ve geçmiş akışı oluşturulmalı. |
+| Sarf malzemeleri | **Temel stok akışı** | Şirket kapsamlı katalog, başlangıç stoğu, stok girişi/sayım düzeltmesi, çalışana tüketim çıkışı, minimum stok uyarısı, arama/sıralama ve hareket geçmişi. Talep onayı ve satın alma siparişi sonraki kapsam. |
 | Bileşenler | **Yok** | Miktar/seri takibi, varlığa atanan bileşen, iade/çıkarma, sipariş ve raporlama oluşturulmalı. |
 | Kitler | **Yok** | Önceden tanımlı varlık/aksesuar setleri ve kullanılabilirlik/teslim akışı oluşturulmalı. |
 | Bakım kayıtları | **Yok** | Bakım türü, tedarikçi, maliyet, başlangıç/bitiş, durum, not/dosya ve varlık geçmişi akışı oluşturulmalı. |

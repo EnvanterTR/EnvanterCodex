@@ -31,6 +31,7 @@ public static class AssetEndpoints
             catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
             return await next(invocation);
         });
+        api.MapConsumableEndpoints();
 
         api.MapGet("/assets", async ([FromQuery] string? q, [FromQuery] string? status,
             [FromQuery] Guid? categoryId, [FromQuery] Guid? brandId, [FromQuery] Guid? modelId,
