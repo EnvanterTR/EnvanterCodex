@@ -94,8 +94,8 @@ try {
     Write-Output 'Bu yedek şifrelenmemiştir; uygulama içinden geri yükleme henüz desteklenmez.'
 }
 finally {
-    if ($helperCreated) { & docker rm $helperName *> $null }
-    if ($dumpInContainer -and $databaseContainer) { & docker exec $databaseContainer rm -f "/tmp/$dumpName" *> $null }
+    if ($helperCreated) { try { & docker rm $helperName *> $null } catch {} }
+    if ($dumpInContainer -and $databaseContainer) { try { & docker exec $databaseContainer rm -f "/tmp/$dumpName" *> $null } catch {} }
     if (-not $backupCompleted -and (Test-Path -LiteralPath $backupDirectory -PathType Container)) {
         $resolvedRoot = [System.IO.Path]::GetFullPath($backupRoot)
         $resolvedBackup = [System.IO.Path]::GetFullPath($backupDirectory)
