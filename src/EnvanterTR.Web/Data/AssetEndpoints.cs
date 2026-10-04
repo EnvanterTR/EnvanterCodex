@@ -552,6 +552,26 @@ public static class AssetEndpoints
             return Results.Ok(new { asset, references, history });
         }).RequireAuthorization("asset.read");
 
+        api.MapPost("/assets/labels/selected", async ([FromBody] SelectedAssetLabelsRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var ids = request.AssetIds?.Distinct().ToArray() ?? [];
+            if (ids.Length is < 1 or > 100)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["assetIds"] = ["Etiket için 1–100 arası farklı varlık seçin."] });
+            var rows = await db.Assets.AsNoTracking()
+                .Where(x => x.CompanyId == companyId && ids.Contains(x.Id))
+                .Select(x => new
+                {
+                    x.Id, x.AssetTag, x.Name, x.Status, x.SerialNumber, locationName = x.Location,
+                    modelName = db.AssetModels.Where(model => model.CompanyId == companyId && model.Id == x.ModelId)
+                        .Select(model => model.Name).FirstOrDefault()
+                }).ToListAsync(cancellationToken);
+            if (rows.Count != ids.Length) return Results.ValidationProblem(new Dictionary<string, string[]> { ["assetIds"] = ["Seçimde mevcut olmayan veya bu şirkete ait olmayan varlık bulunuyor."] });
+            var order = ids.Select((id, index) => (id, index)).ToDictionary(x => x.id, x => x.index);
+            return Results.Ok(rows.OrderBy(x => order[x.Id]));
+        }).RequireAuthorization("asset.read");
+
         api.MapPost("/assets", async ([FromBody] CreateAssetRequest request, ClaimsPrincipal user,
             AppDbContext db, CancellationToken cancellationToken) =>
         {
@@ -1273,6 +1293,7 @@ public static class AssetEndpoints
     public sealed record StartMaintenanceRequest(string? MaintenanceType, string? Supplier, string? Description,
         DateOnly StartedOn, decimal? Cost, string Currency, string? Notes);
     public sealed record CompleteMaintenanceRequest(DateOnly CompletedOn, string? Notes);
+    public sealed record SelectedAssetLabelsRequest(Guid[]? AssetIds);
 
     private sealed record AssetExportRow(string AssetTag, string Name, string Status, string? Category,
         string? Brand, string? Model, string? SerialNumber, string? Location, string? EmployeeNumber,

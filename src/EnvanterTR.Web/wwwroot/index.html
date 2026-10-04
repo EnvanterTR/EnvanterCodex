@@ -153,7 +153,7 @@
               </div>
               <fieldset style="display:flex;flex-wrap:wrap;gap:12px;margin:8px 0;padding:10px;border:1px solid #e4eaf2;border-radius:8px"><legend class="muted">Etikette gösterilecek bilgiler</legend><label><input name="showName" type="checkbox" checked> Varlık adı</label><label><input name="showSerial" type="checkbox" checked> Seri numarası</label><label><input name="showModel" type="checkbox"> Model</label><label><input name="showLocation" type="checkbox"> Konum</label><label><input name="showStatus" type="checkbox"> Durum</label></fieldset>
               <div class="dialog-actions"><button class="btn primary" type="submit">Ayarları kaydet</button><span id="labelSettingsFeedback" class="muted" role="status"></span></div>
-              <p class="muted">EAN/UPC biçimleri yalnızca uygun uzunlukta sayısal etiketleri kabul eder. Hizalama değerleri yazdırma penceresindeki tek kartın konumunu ayarlar. Seçimler bu tarayıcıda, şirket hesabına göre saklanır.</p>
+              <p class="muted">EAN/UPC biçimleri yalnızca uygun uzunlukta sayısal etiketleri kabul eder. Ölçü, iç boşluk ve X/Y hizası tek etiket ve toplu baskıda her etikete uygulanır. Toplu baskı etiket yazıcılarında her etiketi ayrı sayfaya yerleştirir. Seçimler bu tarayıcıda, şirket hesabına göre saklanır.</p>
             </form>
           </section>
           <section class="panel"><div class="panel-head"><h2>Canlı etiket önizlemesi</h2></div><div class="dialog-body"><div id="labelPreviewCanvas" aria-live="polite"></div><p id="labelPreviewMessage" class="muted" role="status" style="margin-top:12px">Örnek etiket hazırlanıyor…</p></div></section>
@@ -243,7 +243,7 @@
   <script src="/vendor/qrcodegen.js"></script>
   <script>
     const toast = document.getElementById('toast');
-    let toastTimer, requestToken = '', lookupCache = { categories: [], brands: [], models: [] }, loadedAssets = [], selectedAssetIds = new Set(), currentAsset = null, currentEmployeeId = null, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', assetRowDensity = 'comfortable', visibleAssetColumns = Array(7).fill(true), labelSettingsKey = '', bwipLoadPromise = null;
+    let toastTimer, requestToken = '', lookupCache = { categories: [], brands: [], models: [] }, loadedAssets = [], selectedAssetIds = new Set(), selectedAssetRows = new Map(), currentAsset = null, currentEmployeeId = null, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', assetRowDensity = 'comfortable', visibleAssetColumns = Array(7).fill(true), labelSettingsKey = '', bwipLoadPromise = null;
     let labelPrintSettings = { barcode1d: 'code128', barcode2d: 'qrcode', widthMm: 86, heightMm: 48, offsetXmm: 0, offsetYmm: 0, paddingMm: 4, codeSizeMm: 25, qrTarget: 'tag', showName: true, showSerial: true, showModel: false, showLocation: false, showStatus: false };
     const pageSize = 12;
     let accessoryPage = 1, accessoryTotal = 0, accessoryQueryTimer, currentAccessory = null, accessoryRequestId = 0, visibleAccessoryColumns = Array(9).fill(true);
@@ -326,19 +326,23 @@
       saveAssetColumnPreferences();
       notify('Varsayılan tablo sütunları gösteriliyor.');
     }
+    const selectedLabelsButton = document.createElement('button'); selectedLabelsButton.id = 'printSelectedAssetLabels'; selectedLabelsButton.type = 'button'; selectedLabelsButton.className = 'btn small'; selectedLabelsButton.textContent = 'Etiketleri yazdır'; selectedLabelsButton.disabled = true; $('#bulkAssetToolbar').append(selectedLabelsButton);
     function updateBulkAssetSelection() {
       const toolbar = $('#bulkAssetToolbar'), count = selectedAssetIds.size;
       toolbar.hidden = count === 0;
-      $('#selectedAssetCount').textContent = `${fmt.format(count)} varlık seçildi${count > 100 ? ' · En fazla 100 kayıt işlenebilir' : ''}`;
-      $('#applyBulkAssetStatus').disabled = count === 0 || count > 100 || !$('#bulkAssetStatus').value;
+      const statusSelectionInvalid = [...selectedAssetIds].some(id => { const asset = selectedAssetRows.get(id); return !asset || !!asset.assignedEmployeeId || asset.status === 'Archived'; });
+      $('#selectedAssetCount').textContent = `${fmt.format(count)} varlık seçildi${count > 100 ? ' · En fazla 100 kayıt işlenebilir' : statusSelectionInvalid ? ' · Zimmetli/arşivli seçimde durum değiştirilemez' : ''}`;
+      $('#applyBulkAssetStatus').disabled = count === 0 || count > 100 || !$('#bulkAssetStatus').value || statusSelectionInvalid;
       $('#exportSelectedAssets').disabled = count === 0 || count > 100;
-      const selectable = loadedAssets.filter(asset => !asset.assignedEmployeeId && asset.status !== 'Archived');
+      $('#printSelectedAssetLabels').disabled = count === 0 || count > 100;
+      const selectable = loadedAssets;
       const allSelected = selectable.length > 0 && selectable.every(asset => selectedAssetIds.has(asset.id));
       for (const checkbox of [$('#selectAllAssets'), $('#selectAllAssetsHeader')]) { checkbox.checked = allSelected; checkbox.indeterminate = !allSelected && selectable.some(asset => selectedAssetIds.has(asset.id)); checkbox.disabled = selectable.length === 0; }
       $('#selectedAssetCount').setAttribute('aria-label', `${count} varlık seçildi`);
     }
     function clearBulkAssetSelection() {
       selectedAssetIds.clear();
+      selectedAssetRows.clear();
       document.querySelectorAll('.asset-row-select').forEach(input => { input.checked = false; });
       updateBulkAssetSelection();
     }
@@ -351,11 +355,11 @@
       const row = document.createElement('tr'); row.dataset.id = asset.id; row.dataset.asset = asset.assetTag;
       const selectCell = document.createElement('td'); selectCell.className = 'asset-select-cell';
       const select = document.createElement('input'); select.type = 'checkbox'; select.className = 'asset-row-select'; select.checked = selectedAssetIds.has(asset.id);
-      select.disabled = Boolean(asset.assignedEmployeeId) || asset.status === 'Archived';
+      select.disabled = false;
       select.setAttribute('aria-label', `${asset.assetTag} ${asset.name} varlığını seç`);
-      select.title = asset.assignedEmployeeId ? 'Zimmetli varlıklar toplu durum işlemine alınamaz.' : asset.status === 'Archived' ? 'Arşivlenmiş varlıklar bu işlemden seçilemez.' : '';
+      select.title = asset.assignedEmployeeId || asset.status === 'Archived' ? 'Etiket yazdırılabilir; zimmetli/arşiv varlıklar toplu durum değişikliğine alınamaz.' : '';
       select.addEventListener('click', event => event.stopPropagation());
-      select.addEventListener('change', () => { if (select.checked && selectedAssetIds.size >= 100) { select.checked = false; notify('Toplu işlemde en fazla 100 varlık seçilebilir.'); return; } if (select.checked) selectedAssetIds.add(asset.id); else selectedAssetIds.delete(asset.id); updateBulkAssetSelection(); });
+      select.addEventListener('change', () => { if (select.checked && selectedAssetIds.size >= 100) { select.checked = false; notify('Toplu işlemde en fazla 100 varlık seçilebilir.'); return; } if (select.checked) { selectedAssetIds.add(asset.id); selectedAssetRows.set(asset.id, asset); } else { selectedAssetIds.delete(asset.id); selectedAssetRows.delete(asset.id); } updateBulkAssetSelection(); });
       selectCell.append(select);
       const identity = document.createElement('td'), tag = document.createElement('span');
       const open = document.createElement('button'); open.type = 'button'; open.className = 'asset-name row-open-link'; open.textContent = asset.name;
@@ -1460,6 +1464,26 @@
     $('#labelSettingsForm').addEventListener('input', () => { clearTimeout(labelPreviewTimer); labelPreviewTimer = setTimeout(() => renderLabelPreview().catch(error => { $('#labelPreviewMessage').textContent = error.message; }), 300); });
     $('#labelSettingsReset').addEventListener('click', () => { labelPrintSettings = { barcode1d: 'code128', barcode2d: 'qrcode', widthMm: 86, heightMm: 48, offsetXmm: 0, offsetYmm: 0, paddingMm: 4, codeSizeMm: 25, qrTarget: 'tag', showName: true, showSerial: true, showModel: false, showLocation: false, showStatus: false }; populateLabelSettingsForm(); $('#labelSettingsForm').requestSubmit(); });
     $('#labelSettingsGoAssets').addEventListener('click', () => document.querySelector('.sub-item[data-page="Varlıklar"]')?.click());
+    $('#printSelectedAssetLabels').addEventListener('click', async () => {
+      const ids = [...selectedAssetIds], button = $('#printSelectedAssetLabels');
+      if (!ids.length || ids.length > 100) return;
+      const popup = window.open('', '_blank', 'width=700,height=700');
+      if (!popup) { notify('Yazdırma penceresi açılamadı. Tarayıcı açılır pencere iznini kontrol edin.'); return; }
+      button.disabled = true; popup.document.write('<!doctype html><html lang="tr"><meta charset="utf-8"><title>Etiketler hazırlanıyor</title><body style="font:16px Segoe UI,Arial;padding:24px">Seçili varlık etiketleri hazırlanıyor…</body></html>');
+      try {
+        const assets = await api('/api/assets/labels/selected', { method: 'POST', body: JSON.stringify({ assetIds: ids }) });
+        const settings = labelPrintSettings, codeSize = Math.max(0, Math.min(settings.codeSizeMm, settings.heightMm - settings.paddingMm * 2)), cards = [];
+        for (let index = 0; index < assets.length; index++) {
+          const asset = assets[index], images = await labelCodeImages(asset, settings);
+          const title = escapeHtml(asset.assetTag), meta = [settings.showSerial && asset.serialNumber && `Seri no: ${asset.serialNumber}`, settings.showModel && asset.modelName && `Model: ${asset.modelName}`, settings.showLocation && asset.locationName && `Konum: ${asset.locationName}`, settings.showStatus && `Durum: ${statusLabel(asset.status)}`].filter(Boolean).map(escapeHtml).join(' · ');
+          cards.push(`<article class="label"><div class="brand">ENVANTERTR · VARLIK KARTI</div><div class="copy">${settings.showName ? `<div class="name">${escapeHtml(asset.name)}</div>` : ''}<div class="tag">${title}</div><div class="meta">${meta}</div></div>${images.twoD ? `<img class="two-d" alt="2D barkod" src="${images.twoD}">` : ''}${images.oneD ? `<img class="one-d" alt="1D barkod" src="${images.oneD}">` : ''}<div class="hint">${index + 1} / ${assets.length} · ${settings.qrTarget === 'asset-url' ? 'Varlık ayrıntısı' : 'Varlık etiketi'}</div></article>`);
+        }
+        popup.document.open();
+        popup.document.write(`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${assets.length} EnvanterTR etiketi</title><style>*{box-sizing:border-box}@page{size:${settings.widthMm}mm ${settings.heightMm}mm;margin:0}body{margin:0;font-family:Arial,sans-serif;color:#111}.label{width:${settings.widthMm}mm;height:${settings.heightMm}mm;padding:${settings.paddingMm}mm;margin:${settings.offsetYmm}mm 0 0 ${settings.offsetXmm}mm;display:grid;grid-template-columns:minmax(0,1fr) ${settings.barcode2d !== 'none' ? codeSize : 0}mm;grid-template-rows:auto 1fr auto;gap:2mm;align-items:center;overflow:hidden;break-after:page;page-break-after:always}.label:last-child{break-after:auto;page-break-after:auto}.brand{grid-column:1/-1;color:#52637a;font-size:7pt;font-weight:700;letter-spacing:.08em}.copy{min-width:0;overflow:hidden}.name{font-size:10pt;font-weight:700;overflow-wrap:anywhere}.tag{margin:2mm 0;font-size:17pt;font-weight:800;letter-spacing:.4px;overflow-wrap:anywhere}.meta{color:#5b6573;font-size:7pt;overflow-wrap:anywhere}.two-d{width:${settings.barcode2d !== 'none' ? codeSize : 0}mm;height:${settings.barcode2d !== 'none' ? codeSize : 0}mm;object-fit:contain}.one-d{grid-column:1/-1;width:100%;height:auto;max-height:10mm;justify-self:center;object-fit:contain}.hint{grid-column:1/-1;color:#667085;font-size:6pt}@media screen{body{padding:12px;background:#eef2f7}.label{margin-bottom:12px;border:1px dashed #718096;background:#fff;box-shadow:0 5px 20px #182d491f}}</style></head><body>${cards.join('')}<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),200));<\/script></body></html>`);
+        popup.document.close(); popup.focus(); notify(`${fmt.format(assets.length)} etiket yazdırma önizlemesi açıldı.`);
+      } catch (error) { popup.close(); notify(`Etiketler hazırlanamadı: ${error.message}`); }
+      finally { updateBulkAssetSelection(); }
+    });
     $('#printAssetLabel').addEventListener('click', async () => {
       if (!currentAsset) return;
       const popup = window.open('', '_blank', 'width=520,height=440');
@@ -1780,11 +1804,10 @@
     $('#assetRowDensity').addEventListener('change', saveAssetRowDensity);
     const selectVisibleAssets = checked => {
       for (const asset of loadedAssets) {
-        if (asset.assignedEmployeeId || asset.status === 'Archived') continue;
         if (checked) {
           if (!selectedAssetIds.has(asset.id) && selectedAssetIds.size >= 100) { notify('Toplu işlemde en fazla 100 varlık seçilebilir.'); break; }
-          selectedAssetIds.add(asset.id);
-        } else selectedAssetIds.delete(asset.id);
+          selectedAssetIds.add(asset.id); selectedAssetRows.set(asset.id, asset);
+        } else { selectedAssetIds.delete(asset.id); selectedAssetRows.delete(asset.id); }
       }
       document.querySelectorAll('.asset-row-select').forEach(input => { const asset = loadedAssets.find(item => item.id === input.closest('tr')?.dataset.id); if (asset) input.checked = selectedAssetIds.has(asset.id); });
       updateBulkAssetSelection();
