@@ -65,7 +65,7 @@ public static class InventoryMovementEndpoints
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
-                query = query!.Where(x => x.Item.Contains(term) || (x.Target != null && x.Target.Contains(term)) || (x.Notes != null && x.Notes.Contains(term)));
+                query = query!.Where(x => x.Item.Contains(term) || (x.Target != null && x.Target.Contains(term)) || (x.Actor != null && x.Actor.Contains(term)) || (x.Notes != null && x.Notes.Contains(term)));
             }
             if (movementType is not null) query = query!.Where(x => x.MovementType == movementType);
             if (from.HasValue) query = query!.Where(x => x.OccurredAt >= new DateTimeOffset(from.Value.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero));
