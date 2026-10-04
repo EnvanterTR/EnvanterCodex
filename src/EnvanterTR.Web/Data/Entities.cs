@@ -157,6 +157,26 @@ public sealed class AssetEvent
     public DateTimeOffset OccurredAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class AssetMaintenance
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid AssetId { get; set; }
+    public Guid? ActorUserId { get; set; }
+    public required string MaintenanceType { get; set; }
+    public string? Supplier { get; set; }
+    public string? Description { get; set; }
+    public DateOnly StartedOn { get; set; }
+    public DateOnly? CompletedOn { get; set; }
+    public string Status { get; set; } = "InProgress";
+    public decimal? Cost { get; set; }
+    public string Currency { get; set; } = "TRY";
+    public string? Notes { get; set; }
+    public string? CompletionNotes { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class Accessory
 {
     public Guid Id { get; set; } = Guid.NewGuid();

@@ -406,6 +406,9 @@ public static class OperationalEndpoints
                 return Results.Conflict(new { message = "Önce varlığı çalışandan iade alın." });
             if (asset.Status == AssetStatuses.Archived && next != AssetStatuses.Archived)
                 return Results.Conflict(new { message = "Arşivlenen varlığı tekrar kullanıma almak için ayrı geri alma akışı gereklidir." });
+            if (next != AssetStatuses.Maintenance && await db.AssetMaintenances.AnyAsync(x =>
+                    x.CompanyId == companyId && x.AssetId == id && x.Status == "InProgress", cancellationToken))
+                return Results.Conflict(new { message = "Açık bakım kaydı tamamlanmadan varlığın durumu değiştirilemez." });
             if (asset.Status == next) return Results.Ok(new { asset.Id, asset.Status });
             var previous = asset.Status;
             asset.Status = next;
@@ -443,6 +446,9 @@ public static class OperationalEndpoints
                 return Results.Conflict(new { message = "Seçimde çalışana zimmetli varlık var. Önce iade işlemi yapın; hiçbir kayıt değiştirilmedi." });
             if (assets.Any(asset => asset.Status == AssetStatuses.Archived && next != AssetStatuses.Archived))
                 return Results.Conflict(new { message = "Arşivlenmiş varlıklar toplu işlemle yeniden etkinleştirilemez; hiçbir kayıt değiştirilmedi." });
+            if (next != AssetStatuses.Maintenance && await db.AssetMaintenances.AnyAsync(x =>
+                    x.CompanyId == companyId && ids.Contains(x.AssetId) && x.Status == "InProgress", cancellationToken))
+                return Results.Conflict(new { message = "Seçimde tamamlanmamış bakım kaydı bulunan varlık var; hiçbir kayıt değiştirilmedi." });
 
             var now = DateTimeOffset.UtcNow;
             var changed = assets.Where(asset => asset.Status != next).ToList();

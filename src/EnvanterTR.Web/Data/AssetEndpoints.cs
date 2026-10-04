@@ -730,8 +730,8 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["transfer"] = ["Yeni konum zorunludur (en fazla 160 karakter); notlar 2.000 karakteri aşamaz."] });
             var asset = await db.Assets.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
             if (asset is null) return Results.NotFound();
-            if (asset.AssignedEmployeeId is not null || asset.Status == AssetStatuses.Archived)
-                return Results.Conflict(new { message = "Zimmetli veya arşivlenmiş varlık taşınamaz. Önce iade alın veya varlığı etkinleştirin." });
+            if (asset.AssignedEmployeeId is not null || asset.Status != AssetStatuses.Available)
+                return Results.Conflict(new { message = "Transfer için varlık kullanılabilir durumda ve zimmet dışı olmalıdır." });
             var source = asset.Location?.Trim();
             if (string.Equals(source, target, StringComparison.OrdinalIgnoreCase))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["targetLocation"] = ["Yeni konum mevcut konumla aynı olamaz."] });
@@ -745,6 +745,108 @@ public static class AssetEndpoints
             await db.SaveChangesAsync(cancellationToken);
             return Results.NoContent();
         }).RequireAuthorization("asset.write");
+
+        api.MapGet("/assets/{id:guid}/maintenances", async (Guid id, ClaimsPrincipal user,
+            AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (!await db.Assets.AnyAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken))
+                return Results.NotFound();
+            var rows = await db.AssetMaintenances.AsNoTracking()
+                .Where(x => x.CompanyId == companyId && x.AssetId == id)
+                .OrderByDescending(x => x.StartedOn).ThenByDescending(x => x.CreatedAt)
+                .Select(x => new
+                {
+                    x.Id, x.MaintenanceType, x.Supplier, x.Description, x.StartedOn, x.CompletedOn,
+                    x.Status, x.Cost, x.Currency, x.Notes, x.CompletionNotes, x.CreatedAt,
+                    actorName = db.Users.Where(actor => actor.Id == x.ActorUserId)
+                        .Select(actor => actor.DisplayName).FirstOrDefault()
+                }).ToListAsync(cancellationToken);
+            return Results.Ok(rows);
+        }).RequireAuthorization("asset.read");
+
+        api.MapPost("/assets/{id:guid}/maintenances", async (Guid id, [FromBody] StartMaintenanceRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var type = request.MaintenanceType?.Trim();
+            var supplier = request.Supplier?.Trim();
+            var description = request.Description?.Trim();
+            var notes = request.Notes?.Trim();
+            if (string.IsNullOrWhiteSpace(type) || type.Length > 120 || supplier?.Length > 200 ||
+                description?.Length > 1000 || notes?.Length > 2000 || request.StartedOn == default ||
+                request.StartedOn > DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) ||
+                request.Cost is < 0 or > 1_000_000_000m || !IsCurrency(request.Currency))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["maintenance"] = ["Bakım türü, tarih, para birimi veya alan uzunluklarını kontrol edin."] });
+
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            var asset = await db.Assets.FromSqlInterpolated(
+                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+                .SingleOrDefaultAsync(cancellationToken);
+            if (asset is null) return Results.NotFound();
+            if (asset.Status is not (AssetStatuses.Available or AssetStatuses.Maintenance) || asset.AssignedEmployeeId is not null)
+                return Results.Conflict(new { message = "Bakım başlatmak için varlık kullanılabilir durumda, zimmet dışı olmalıdır." });
+            if (await db.AssetMaintenances.AnyAsync(x => x.CompanyId == companyId && x.AssetId == id && x.Status == "InProgress", cancellationToken))
+                return Results.Conflict(new { message = "Bu varlık için tamamlanmamış bir bakım kaydı zaten var." });
+
+            var now = DateTimeOffset.UtcNow;
+            var maintenance = new AssetMaintenance
+            {
+                CompanyId = companyId, AssetId = id, ActorUserId = CurrentUserId(user),
+                MaintenanceType = type, Supplier = Clean(supplier), Description = Clean(description),
+                StartedOn = request.StartedOn, Cost = request.Cost, Currency = request.Currency.Trim().ToUpperInvariant(),
+                Notes = Clean(notes), Status = "InProgress", CreatedAt = now, UpdatedAt = now
+            };
+            asset.Status = AssetStatuses.Maintenance; asset.UpdatedAt = now;
+            db.AssetMaintenances.Add(maintenance);
+            db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = id,
+                ActorUserId = CurrentUserId(user), EventType = "MaintenanceStarted",
+                Details = $"Bakım başladı: {type}" + (string.IsNullOrWhiteSpace(supplier) ? "" : $" · {supplier}") });
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return Results.Conflict(new { message = "Bakım kaydı çakıştı; varlığın güncel durumunu yenileyip tekrar deneyin." });
+            }
+            return Results.Created($"/api/assets/{id}/maintenances/{maintenance.Id}", new { maintenance.Id, maintenance.Status });
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/assets/{assetId:guid}/maintenances/{maintenanceId:guid}/complete",
+            async (Guid assetId, Guid maintenanceId, [FromBody] CompleteMaintenanceRequest request,
+                ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+            {
+                if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+                if (request.CompletedOn == default || request.CompletedOn > DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) || request.Notes?.Length > 2000)
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["completion"] = ["Tamamlanma tarihi veya not uzunluğunu kontrol edin."] });
+
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+                var maintenance = await db.AssetMaintenances.FromSqlInterpolated(
+                        $"SELECT * FROM \"AssetMaintenances\" WHERE \"CompanyId\" = {companyId} AND \"AssetId\" = {assetId} AND \"Id\" = {maintenanceId} FOR UPDATE")
+                    .SingleOrDefaultAsync(cancellationToken);
+                if (maintenance is null) return Results.NotFound();
+                if (maintenance.Status != "InProgress") return Results.Conflict(new { message = "Bu bakım kaydı zaten kapatılmış." });
+                if (request.CompletedOn < maintenance.StartedOn)
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["completedOn"] = ["Tamamlanma tarihi başlangıç tarihinden önce olamaz."] });
+                var asset = await db.Assets.FromSqlInterpolated(
+                        $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {assetId} FOR UPDATE")
+                    .SingleOrDefaultAsync(cancellationToken);
+                if (asset is null) return Results.NotFound();
+                var now = DateTimeOffset.UtcNow;
+                maintenance.Status = "Completed"; maintenance.CompletedOn = request.CompletedOn;
+                maintenance.CompletionNotes = Clean(request.Notes); maintenance.UpdatedAt = now;
+                if (asset.Status == AssetStatuses.Maintenance) asset.Status = AssetStatuses.Available;
+                asset.UpdatedAt = now;
+                db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = assetId,
+                    ActorUserId = CurrentUserId(user), EventType = "MaintenanceCompleted",
+                    Details = $"Bakım tamamlandı: {maintenance.MaintenanceType} · {request.CompletedOn:yyyy-MM-dd}" });
+                await db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return Results.NoContent();
+            }).RequireAuthorization("asset.write");
 
         api.MapGet("/lookups/{kind}", async (string kind, ClaimsPrincipal user, AppDbContext db,
             CancellationToken cancellationToken) =>
@@ -1027,6 +1129,8 @@ public static class AssetEndpoints
         Guid.TryParse(user.FindFirstValue("company_id"), out companyId);
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static bool IsCurrency(string? value) => value is not null &&
+        (value.Trim().ToUpperInvariant() is "TRY" or "USD" or "EUR");
 
     private static Guid? CurrentUserId(ClaimsPrincipal user) =>
         Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : null;
@@ -1062,6 +1166,9 @@ public static class AssetEndpoints
     public sealed record AccessoryCheckinRequest(Guid AssignmentId, int Quantity, string? Notes);
     public sealed record RecordAssetAuditRequest(DateOnly AuditDate, string? Notes);
     public sealed record TransferAssetRequest(string? TargetLocation, string? Notes);
+    public sealed record StartMaintenanceRequest(string? MaintenanceType, string? Supplier, string? Description,
+        DateOnly StartedOn, decimal? Cost, string Currency, string? Notes);
+    public sealed record CompleteMaintenanceRequest(DateOnly CompletedOn, string? Notes);
 
     private sealed record AssetExportRow(string AssetTag, string Name, string Status, string? Category,
         string? Brand, string? Model, string? SerialNumber, string? Location, string? EmployeeNumber,

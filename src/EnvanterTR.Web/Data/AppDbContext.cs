@@ -14,6 +14,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AssetModel> AssetModels => Set<AssetModel>();
     public DbSet<Asset> Assets => Set<Asset>();
     public DbSet<AssetEvent> AssetEvents => Set<AssetEvent>();
+    public DbSet<AssetMaintenance> AssetMaintenances => Set<AssetMaintenance>();
     public DbSet<Accessory> Accessories => Set<Accessory>();
     public DbSet<AccessoryAssignment> AccessoryAssignments => Set<AccessoryAssignment>();
     public DbSet<AccessoryMovement> AccessoryMovements => Set<AccessoryMovement>();
@@ -371,5 +372,33 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetEvent>().HasOne<Asset>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.AssetId })
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AssetMaintenance>().HasIndex(x => new { x.CompanyId, x.AssetId, x.CreatedAt });
+        modelBuilder.Entity<AssetMaintenance>().HasIndex(x => new { x.CompanyId, x.AssetId, x.Status });
+        modelBuilder.Entity<AssetMaintenance>().HasIndex(x => new { x.CompanyId, x.AssetId })
+            .IsUnique().HasFilter("\"Status\" = 'InProgress'");
+        modelBuilder.Entity<AssetMaintenance>().Property(x => x.MaintenanceType).HasMaxLength(120).IsRequired();
+        modelBuilder.Entity<AssetMaintenance>().Property(x => x.Supplier).HasMaxLength(200);
+        modelBuilder.Entity<AssetMaintenance>().Property(x => x.Description).HasMaxLength(1000);
+        modelBuilder.Entity<AssetMaintenance>().Property(x => x.Status).HasMaxLength(24).IsRequired();
+        modelBuilder.Entity<AssetMaintenance>().Property(x => x.Cost).HasPrecision(18, 2);
+        modelBuilder.Entity<AssetMaintenance>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
+        modelBuilder.Entity<AssetMaintenance>().Property(x => x.Notes).HasMaxLength(2000);
+        modelBuilder.Entity<AssetMaintenance>().Property(x => x.CompletionNotes).HasMaxLength(2000);
+        modelBuilder.Entity<AssetMaintenance>().ToTable("AssetMaintenances", table =>
+        {
+            table.HasCheckConstraint("CK_AssetMaintenances_Status", "\"Status\" IN ('InProgress', 'Completed')");
+            table.HasCheckConstraint("CK_AssetMaintenances_Period", "\"CompletedOn\" IS NULL OR \"CompletedOn\" >= \"StartedOn\"");
+            table.HasCheckConstraint("CK_AssetMaintenances_Cost", "\"Cost\" IS NULL OR \"Cost\" >= 0");
+            table.HasCheckConstraint("CK_AssetMaintenances_Currency", "char_length(\"Currency\") = 3");
+            table.HasCheckConstraint("CK_AssetMaintenances_Completion", "(\"Status\" = 'InProgress' AND \"CompletedOn\" IS NULL) OR (\"Status\" = 'Completed' AND \"CompletedOn\" IS NOT NULL)");
+        });
+        modelBuilder.Entity<AssetMaintenance>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssetMaintenance>().HasOne<Asset>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.AssetId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssetMaintenance>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
     }
 }

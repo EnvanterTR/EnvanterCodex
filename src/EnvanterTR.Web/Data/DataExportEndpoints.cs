@@ -647,6 +647,8 @@ public static class DataExportEndpoints
             .Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
         await WritePagedAsync(writer, "assets", db.Assets.AsNoTracking()
             .Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
+        await WritePagedAsync(writer, "assetMaintenances", db.AssetMaintenances.AsNoTracking()
+            .Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
         await WritePagedAsync(writer, "assetEvents", db.AssetEvents.AsNoTracking()
             .Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
         await WritePagedAsync(writer, "auditEntries", db.AuditEntries.AsNoTracking()

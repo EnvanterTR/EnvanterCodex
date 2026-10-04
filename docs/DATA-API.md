@@ -67,6 +67,9 @@ Rol politikaları ayrı tutulur: varlık okuma, varlık değiştirme, çalışan
 - `POST /api/assets/{id}/assign`
 - `POST /api/assets/{id}/return`
 - `PATCH /api/assets/{id}/status`
+- `GET /api/assets/{id}/maintenances` (şirket kapsamlı bakım geçmişi, kaydı açan kullanıcıyı içerir)
+- `POST /api/assets/{id}/maintenances` (kullanılabilir ve zimmet dışı varlıkta tek açık bakım; tür, servis, tarih, maliyet, notlar; varlığı bakım durumuna alır)
+- `POST /api/assets/{assetId}/maintenances/{maintenanceId}/complete` (tamamlanma tarihi/notu; bakım kaydını kapatır ve varlığı kullanılabilir duruma getirir)
 - `GET /api/activity?page=1&pageSize=50`
 - `GET /api/activity?assetId=&employeeId=&from=&to=&eventType=&q=` (şirket içinde varlık/çalışan/tarih/tür/metin filtreli)
 - `GET /api/audit?page=1&pageSize=50&q=&targetType=` (sahip/yönetici; filtreler ve sayfalama)
@@ -77,7 +80,7 @@ Rol politikaları ayrı tutulur: varlık okuma, varlık değiştirme, çalışan
 - `GET /api/assets/export-all.csv?q=&status=&categoryId=&brandId=&modelId=&employeeId=&location=&sortBy=tag&sortDirection=asc` (bellekte tüm dosyayı oluşturmadan akış halinde tam dışa aktarım; etiket/ad/durum, kategori/marka/model, seri no/konum, çalışan numarası/adı, alış tarihi/tutarı ve para birimi; CSV formül enjeksiyonu için hücre kaçışı uygulanır)
 - `POST /api/assets/export-selected.csv` (`asset.read`; CSRF zorunlu; 1–100 şirket varlık kimliği; seçili kayıtları aynı sütun ve formül güvenli CSV biçiminde indirir)
 - `POST /api/assets/bulk-status` (`asset.write`; CSRF zorunlu; 1–100 tekrarsız şirket varlık kimliği; durum güncellemesini tek işlemde uygular, zimmetli/arşiv kısıtlarını doğrular ve her değişen varlık için hareket/denetim kaydı oluşturur)
-- `GET /api/company/export.json` (şirket sahibi/yöneticisi; JSON biçim sürüm 1, şirket ayarları, çalışanlar, envanter sözlükleri, varlıklar, olaylar, denetim kayıtları ve üyelik rolleri; parola hashleri/kimlik bilgileri içermez; indirilen dosya henüz geri yüklenemez).
+- `GET /api/company/export.json` (şirket sahibi/yöneticisi; JSON biçim sürüm 1, şirket ayarları, çalışanlar, envanter sözlükleri, varlıklar, bakım kayıtları, olaylar, denetim kayıtları ve üyelik rolleri; parola hashleri/kimlik bilgileri içermez; indirilen dosya henüz geri yüklenemez).
 - `POST /api/company/import/preview` (şirket sahibi/yöneticisi; CSRF zorunlu; en fazla 32 MiB JSON; biçim/sürüm/şirket kimliği/tekrar eden GUID, alan kuralları ve kayıt bağlantılarını doğrular; dosya adetlerini ve büyük-küçük harf farkını yok sayarak mevcut şirkette aynı çalışan numarası/varlık etiketi/kategori/marka adına sahip kayıt sayılarını döndürür; bu yalnızca olası eşleşme sayısıdır; salt okunur, otomatik eşleştirme veya yazma yapmaz).
 - `POST /api/assets/import/preview.csv` (`asset.write`; CSRF zorunlu; en fazla 32 MiB ve 5.000 varlık satırı; noktalı virgülle ayrılmış UTF-8 EnvanterTR CSV'si; başlık/sütun sayısı, alan sınırları, durum/tarih/tutar biçimi, tekil kategori/marka/model/çalışan eşleşmeleri, yinelenen etiket ve mevcut şirket etiket çakışmalarını doğrular; salt okunur).
 - `POST /api/assets/import.csv` (`asset.write`; CSRF zorunlu; aynı CSV biçimi ve 5.000 satır sınırı; yalnızca aynı şirkette tekil olarak bulunan kategori/marka/model ve personel numarası+adı eşleşmeleriyle yeni varlık ekler; yinelenen etiket/bozuk ilişki halinde tüm istek reddedilir; her varlık için hareket ve aktarım için denetim kaydı ekler; tüm yazmalar tek veritabanı işlemi içindedir).
