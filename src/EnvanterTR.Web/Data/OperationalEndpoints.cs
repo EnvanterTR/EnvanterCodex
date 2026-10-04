@@ -468,6 +468,40 @@ public static class OperationalEndpoints
             return Results.Ok(new { updated = changed.Count, unchanged = assets.Count - changed.Count, status = next });
         }).RequireAuthorization("asset.write");
 
+        api.MapPost("/assets/export-selected.csv", async ([FromBody] SelectedAssetExportRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
+            var ids = request.AssetIds ?? [];
+            if (ids.Length is < 1 or > 100 || ids.Any(id => id == Guid.Empty) || ids.Distinct().Count() != ids.Length)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["assetIds"] = ["1 ile 100 arasında, tekrarsız varlık seçin."] });
+            var rows = await db.Assets.AsNoTracking()
+                .Where(x => x.CompanyId == companyId && ids.Contains(x.Id))
+                .OrderBy(x => x.AssetTag)
+                .Select(x => new SelectedAssetExportRow(
+                    x.AssetTag, x.Name, x.Status,
+                    db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault(),
+                    db.AssetBrands.Where(b => b.CompanyId == companyId && b.Id == x.BrandId).Select(b => b.Name).FirstOrDefault(),
+                    db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.Name).FirstOrDefault(),
+                    x.SerialNumber, x.Location,
+                    db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault(),
+                    db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
+                    x.PurchaseDate, x.PurchaseCost, x.Currency))
+                .ToListAsync(cancellationToken);
+            if (rows.Count != ids.Length) return Results.NotFound(new { message = "Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil." });
+            var csv = new StringBuilder();
+            csv.AppendLine("Etiket;Ad;Durum;Kategori;Marka;Model;Seri No;Konum;Personel No;Çalışan;Alış Tarihi;Alış Bedeli;Para Birimi");
+            foreach (var row in rows)
+                csv.AppendLine(string.Join(';', new[] { Cell(row.AssetTag), Cell(row.Name), Cell(row.Status),
+                    Cell(row.Category), Cell(row.Brand), Cell(row.Model), Cell(row.SerialNumber),
+                    Cell(row.Location), Cell(row.EmployeeNumber), Cell(row.EmployeeName),
+                    Cell(row.PurchaseDate?.ToString("yyyy-MM-dd")),
+                    Cell(row.PurchaseCost?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
+                    Cell(row.Currency) }));
+            return Results.File(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray(),
+                "text/csv; charset=utf-8", $"envantertr-secili-varliklar-{DateTime.UtcNow:yyyyMMdd}.csv");
+        }).RequireAuthorization("asset.read");
+
         api.MapGet("/activity", async ([FromQuery] int page, [FromQuery] int pageSize,
             [FromQuery] Guid? assetId, [FromQuery] Guid? employeeId,
             [FromQuery] DateTimeOffset? from, [FromQuery] DateTimeOffset? to,
@@ -759,4 +793,8 @@ public static class OperationalEndpoints
         if (safe.Length > 0 && safe[0] is '=' or '+' or '-' or '@' or '\t' or '\r') safe = "'" + safe;
         return "\"" + safe.Replace("\"", "\"\"") + "\"";
     }
+
+    private sealed record SelectedAssetExportRow(string AssetTag, string Name, string Status, string? Category,
+        string? Brand, string? Model, string? SerialNumber, string? Location, string? EmployeeNumber,
+        string? EmployeeName, DateOnly? PurchaseDate, decimal? PurchaseCost, string Currency);
 }
