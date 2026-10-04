@@ -75,7 +75,7 @@
     .table-sort{padding:0;border:0;color:inherit;background:transparent;font:inherit;font-weight:inherit;text-align:left}.table-sort:hover{color:#1769df}.table-sort:focus-visible{outline:2px solid #1769df;outline-offset:3px;border-radius:2px}
     @media(max-width:720px){#overview.inventory-mode .table-tools{align-items:stretch}#overview.inventory-mode .table-tools input{flex-basis:100%}}
   </style>
-<style>.bulk-asset-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:10px 13px;border-bottom:1px solid #edf0f5;background:#f8faff}.bulk-asset-toolbar[hidden]{display:none}.bulk-asset-toolbar label{display:flex;align-items:center;gap:7px;color:#526178;font-size:.72rem}.bulk-asset-toolbar>span{margin-right:auto;color:#526178;font-size:.72rem;font-weight:700}.bulk-asset-toolbar select{min-height:32px;padding:0 9px;border:1px solid #dce4ee;border-radius:7px;background:white;color:#33445e;font-size:.72rem}.asset-select-column{width:38px}.asset-select-cell{text-align:center}.asset-select-cell input{width:15px;height:15px;accent-color:#1769df}</style></head>
+<style>.bulk-asset-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:10px 13px;border-bottom:1px solid #edf0f5;background:#f8faff}.bulk-asset-toolbar[hidden]{display:none}.bulk-asset-toolbar label{display:flex;align-items:center;gap:7px;color:#526178;font-size:.72rem}.bulk-asset-toolbar>span{margin-right:auto;color:#526178;font-size:.72rem;font-weight:700}.bulk-asset-toolbar select{min-height:32px;padding:0 9px;border:1px solid #dce4ee;border-radius:7px;background:white;color:#33445e;font-size:.72rem}.asset-select-column{width:38px}.asset-select-cell{text-align:center}.asset-select-cell input{width:15px;height:15px;accent-color:#1769df}.stats .stat-actionable{cursor:pointer;transition:box-shadow .15s,transform .15s}.stats .stat-actionable:hover{transform:translateY(-2px);box-shadow:0 8px 20px #10213a14}.stats .stat-actionable:focus-visible{outline:2px solid #1769df;outline-offset:2px}</style></head>
 <body>
   <div class="app">
     <aside class="sidebar" id="sidebar">
@@ -1144,6 +1144,23 @@
     $('#newEmployeeForm').addEventListener('submit', async event => { event.preventDefault(); const form = new FormData(event.currentTarget); const button = $('button[type="submit"]', event.currentTarget); button.disabled = true; try { await api('/api/employees', { method: 'POST', body: JSON.stringify({ displayName: form.get('displayName'), employeeNumber: form.get('employeeNumber'), email: form.get('email') || null, department: form.get('department') || null, managerEmployeeId: form.get('managerEmployeeId') || null }) }); $('#newEmployeeDialog').close(); event.currentTarget.reset(); $('#employeeState').value = 'true'; await loadEmployees(1); notify('Çalışan kaydı şirkete eklendi.'); } catch (error) { notify(error.message); } finally { button.disabled = false; } });
     $('#assetPrev').addEventListener('click', () => loadDashboard($('#globalSearch').value.trim(), assetPage - 1).catch(error => notify(error.message)));
     $('#assetNext').addEventListener('click', () => loadDashboard($('#globalSearch').value.trim(), assetPage + 1).catch(error => notify(error.message)));
+    const dashboardStatusFilters = ['', 'Deployed', 'Available', 'Maintenance'];
+    document.querySelectorAll('.stats .stat').forEach((card, index) => {
+      const status = dashboardStatusFilters[index] || '', label = status ? statusLabel(status) : 'Tüm varlıklar';
+      card.classList.add('stat-actionable'); card.tabIndex = 0; card.setAttribute('role', 'button');
+      card.setAttribute('aria-label', `${label} varlık kayıtlarını aç`);
+      const openFilteredInventory = () => {
+        $('#assetStatusFilter').value = status;
+        $('#assetCategoryFilter').value = ''; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = '';
+        assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = '';
+        $('#globalSearch').value = ''; $('#assetListSearch').value = '';
+        updateAssetRelationFilter();
+        document.querySelector('.sub-item[data-page="Varlıklar"]')?.click();
+        $('#assetRows').closest('.panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      };
+      card.addEventListener('click', openFilteredInventory);
+      card.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openFilteredInventory(); } });
+    });
     $('#employeePrev').addEventListener('click', () => loadEmployees(employeePage - 1).catch(error => notify(error.message)));
     $('#employeeNext').addEventListener('click', () => loadEmployees(employeePage + 1).catch(error => notify(error.message)));
     $('#employeeState').addEventListener('change', () => loadEmployees(1).catch(error => notify(error.message)));
