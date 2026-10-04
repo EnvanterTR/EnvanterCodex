@@ -23,7 +23,7 @@ Bu belge EnvanterTR'nin yerel Snipe-IT 8.7.2 kaynak ağacındaki ana işlevleri 
 | Konumlar | **Kısmi** | Varlık metninden özet çıkarma ve konumdaki varlıkları filtreleme var. Hiyerarşik konum kataloğu, kullanıcı/varsayılan konum/aksesuar/sarf/bileşen ilişkileri ve yöneticiler yok. |
 | Modeller, kategoriler, markalar | **Kısmi** | Temel kataloglar ve varlık formunda seçiciler var. Snipe-IT benzeri model ayrıntı sayfasında varlık/sipariş/dosya/geçmiş ilişkileri, toplu yönetim ve gelişmiş alanlar eksik. |
 | Lisanslar | **Yok** | Lisans yaşam döngüsü, koltuk/adet, atanabilir kullanıcı/varlık, süre/yenileme ve geçmiş modülü oluşturulmalı. |
-| Aksesuarlar | **Kısmi** | Şirket kapsamlı katalog, arama/sıralama/sayfalama, düşük stok filtresi, stok girişi/düzeltme, miktarlı çalışan zimmeti, kısmi iade, hareket geçmişi ve birim maliyet var. Snipe-IT sipariş/dosya sekmeleri, sütun seçimi, CSV/çıktı araçları, toplu işlem, kategori/tedarikçi katalog ilişkileri ve istek onayı eksik. |
+| Aksesuarlar | **Kısmi** | Şirket kapsamlı katalog, arama/sıralama/sayfalama, düşük stok filtresi, stok girişi/düzeltme, miktarlı çalışan/varlık/konum teslimi, kısmi iade, hareket geçmişi ve birim maliyet var. Snipe-IT sipariş/dosya sekmeleri, sütun seçimi, CSV/çıktı araçları, toplu işlem, kategori/tedarikçi katalog ilişkileri ve istek onayı eksik. |
 | Sarf malzemeleri | **Yok** | Stok ve tüketim miktarı, kullanıcıya dağıtım, sipariş ve geçmiş akışı oluşturulmalı. |
 | Bileşenler | **Yok** | Miktar/seri takibi, varlığa atanan bileşen, iade/çıkarma, sipariş ve raporlama oluşturulmalı. |
 | Kitler | **Yok** | Önceden tanımlı varlık/aksesuar setleri ve kullanılabilirlik/teslim akışı oluşturulmalı. |
