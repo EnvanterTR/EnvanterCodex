@@ -377,7 +377,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetMaintenance>().HasIndex(x => new { x.CompanyId, x.AssetId, x.CreatedAt });
         modelBuilder.Entity<AssetMaintenance>().HasIndex(x => new { x.CompanyId, x.AssetId, x.Status });
         modelBuilder.Entity<AssetMaintenance>().HasIndex(x => new { x.CompanyId, x.AssetId })
-            .IsUnique().HasFilter("\"Status\" = 'InProgress'");
+            .IsUnique().HasFilter("\"Status\" IN ('InProgress', 'Scheduled')");
         modelBuilder.Entity<AssetMaintenance>().Property(x => x.MaintenanceType).HasMaxLength(120).IsRequired();
         modelBuilder.Entity<AssetMaintenance>().Property(x => x.Supplier).HasMaxLength(200);
         modelBuilder.Entity<AssetMaintenance>().Property(x => x.Description).HasMaxLength(1000);
@@ -388,11 +388,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetMaintenance>().Property(x => x.CompletionNotes).HasMaxLength(2000);
         modelBuilder.Entity<AssetMaintenance>().ToTable("AssetMaintenances", table =>
         {
-            table.HasCheckConstraint("CK_AssetMaintenances_Status", "\"Status\" IN ('InProgress', 'Completed')");
+            table.HasCheckConstraint("CK_AssetMaintenances_Status", "\"Status\" IN ('Scheduled', 'InProgress', 'Completed', 'Cancelled')");
             table.HasCheckConstraint("CK_AssetMaintenances_Period", "\"CompletedOn\" IS NULL OR \"CompletedOn\" >= \"StartedOn\"");
+            table.HasCheckConstraint("CK_AssetMaintenances_Planned", "\"Status\" NOT IN ('Scheduled', 'Cancelled') OR \"PlannedOn\" IS NOT NULL");
             table.HasCheckConstraint("CK_AssetMaintenances_Cost", "\"Cost\" IS NULL OR \"Cost\" >= 0");
             table.HasCheckConstraint("CK_AssetMaintenances_Currency", "char_length(\"Currency\") = 3");
-            table.HasCheckConstraint("CK_AssetMaintenances_Completion", "(\"Status\" = 'InProgress' AND \"CompletedOn\" IS NULL) OR (\"Status\" = 'Completed' AND \"CompletedOn\" IS NOT NULL)");
+            table.HasCheckConstraint("CK_AssetMaintenances_Completion", "(\"Status\" IN ('Scheduled', 'Cancelled', 'InProgress') AND \"CompletedOn\" IS NULL) OR (\"Status\" = 'Completed' AND \"CompletedOn\" IS NOT NULL)");
         });
         modelBuilder.Entity<AssetMaintenance>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);

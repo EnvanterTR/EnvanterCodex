@@ -167,6 +167,7 @@ public sealed class AssetMaintenance
     public required string MaintenanceType { get; set; }
     public string? Supplier { get; set; }
     public string? Description { get; set; }
+    public DateOnly? PlannedOn { get; set; }
     public DateOnly StartedOn { get; set; }
     public DateOnly? CompletedOn { get; set; }
     public string Status { get; set; } = "InProgress";

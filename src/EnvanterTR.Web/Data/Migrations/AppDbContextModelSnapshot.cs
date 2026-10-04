@@ -437,6 +437,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<DateOnly?>("PlannedOn")
+                        .HasColumnType("date");
+
                     b.Property<DateOnly>("StartedOn")
                         .HasColumnType("date");
 
@@ -458,7 +461,7 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("CompanyId", "AssetId")
                         .IsUnique()
-                        .HasFilter("\"Status\" = 'InProgress'");
+                        .HasFilter("\"Status\" IN ('InProgress', 'Scheduled')");
 
                     b.HasIndex("CompanyId", "AssetId", "CreatedAt");
 
@@ -466,7 +469,7 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.ToTable("AssetMaintenances", null, t =>
                         {
-                            t.HasCheckConstraint("CK_AssetMaintenances_Completion", "(\"Status\" = 'InProgress' AND \"CompletedOn\" IS NULL) OR (\"Status\" = 'Completed' AND \"CompletedOn\" IS NOT NULL)");
+                            t.HasCheckConstraint("CK_AssetMaintenances_Completion", "(\"Status\" IN ('Scheduled', 'Cancelled', 'InProgress') AND \"CompletedOn\" IS NULL) OR (\"Status\" = 'Completed' AND \"CompletedOn\" IS NOT NULL)");
 
                             t.HasCheckConstraint("CK_AssetMaintenances_Cost", "\"Cost\" IS NULL OR \"Cost\" >= 0");
 
@@ -474,7 +477,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                             t.HasCheckConstraint("CK_AssetMaintenances_Period", "\"CompletedOn\" IS NULL OR \"CompletedOn\" >= \"StartedOn\"");
 
-                            t.HasCheckConstraint("CK_AssetMaintenances_Status", "\"Status\" IN ('InProgress', 'Completed')");
+                            t.HasCheckConstraint("CK_AssetMaintenances_Planned", "\"Status\" NOT IN ('Scheduled', 'Cancelled') OR \"PlannedOn\" IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_AssetMaintenances_Status", "\"Status\" IN ('Scheduled', 'InProgress', 'Completed', 'Cancelled')");
                         });
                 });
 

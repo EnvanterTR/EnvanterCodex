@@ -515,7 +515,7 @@ public static class AssetEndpoints
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
             if (from is DateOnly start && to is DateOnly end && start > end)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Başlangıç tarihi bitiş tarihinden sonra olamaz."] });
-            var query = db.AssetMaintenances.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var query = db.AssetMaintenances.AsNoTracking().Where(x => x.CompanyId == companyId && (x.Status == "InProgress" || x.Status == "Completed"));
             if (from is DateOnly fromDate) query = query.Where(x => x.StartedOn >= fromDate);
             if (to is DateOnly toDate) query = query.Where(x => x.StartedOn <= toDate);
 
@@ -817,11 +817,13 @@ public static class AssetEndpoints
                         join asset in db.Assets.AsNoTracking() on new { maintenance.CompanyId, maintenance.AssetId } equals new { asset.CompanyId, AssetId = asset.Id }
                         where maintenance.CompanyId == companyId
                         select new { maintenance, asset };
-            if (status is "InProgress" or "Completed") query = query.Where(x => x.maintenance.Status == status);
+            if (status is "Scheduled" or "InProgress" or "Completed" or "Cancelled") query = query.Where(x => x.maintenance.Status == status);
             else if (!string.IsNullOrWhiteSpace(status))
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["status"] = ["Durum InProgress veya Completed olmalıdır."] });
-            if (from.HasValue) query = query.Where(x => x.maintenance.StartedOn >= from.Value);
-            if (to.HasValue) query = query.Where(x => x.maintenance.StartedOn <= to.Value);
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["status"] = ["Durum Scheduled, InProgress, Completed veya Cancelled olmalıdır."] });
+            if (from.HasValue) query = query.Where(x => x.maintenance.Status == "Scheduled" || x.maintenance.Status == "Cancelled"
+                ? x.maintenance.PlannedOn >= from.Value : x.maintenance.StartedOn >= from.Value);
+            if (to.HasValue) query = query.Where(x => x.maintenance.Status == "Scheduled" || x.maintenance.Status == "Cancelled"
+                ? x.maintenance.PlannedOn <= to.Value : x.maintenance.StartedOn <= to.Value);
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
@@ -838,13 +840,13 @@ public static class AssetEndpoints
             var size = Math.Clamp(pageSize ?? 50, 1, 100);
             var pageCount = (int)Math.Ceiling(total / (double)size);
             var pageNumber = Math.Clamp(page ?? 1, 1, Math.Max(1, pageCount));
-            var rows = await query.OrderByDescending(x => x.maintenance.StartedOn)
+            var rows = await query.OrderByDescending(x => x.maintenance.PlannedOn ?? x.maintenance.StartedOn)
                 .ThenByDescending(x => x.maintenance.CreatedAt).Skip((pageNumber - 1) * size).Take(size)
                 .Select(x => new
                 {
                     x.maintenance.Id, x.maintenance.AssetId, x.asset.AssetTag, assetName = x.asset.Name,
                     x.asset.Location, x.maintenance.MaintenanceType, x.maintenance.Supplier,
-                    x.maintenance.Description, x.maintenance.StartedOn, x.maintenance.CompletedOn,
+                    x.maintenance.Description, x.maintenance.PlannedOn, x.maintenance.StartedOn, x.maintenance.CompletedOn,
                     x.maintenance.Status, x.maintenance.Cost, x.maintenance.Currency,
                     x.maintenance.Notes, x.maintenance.CompletionNotes,
                     actorName = db.Users.Where(actor => actor.Id == x.maintenance.ActorUserId)
@@ -859,7 +861,7 @@ public static class AssetEndpoints
         {
             if (!TryCompanyId(user, out var companyId)) { context.Response.StatusCode = 403; return; }
             if (q?.Length > 120 || (from.HasValue && to.HasValue && from > to) ||
-                (!string.IsNullOrWhiteSpace(status) && status is not ("InProgress" or "Completed")))
+                (!string.IsNullOrWhiteSpace(status) && status is not ("Scheduled" or "InProgress" or "Completed" or "Cancelled")))
             {
                 await Results.ValidationProblem(new Dictionary<string, string[]> {
                     ["filters"] = ["Arama, durum veya tarih filtrelerini kontrol edin."]
@@ -870,9 +872,11 @@ public static class AssetEndpoints
                         join asset in db.Assets.AsNoTracking() on new { maintenance.CompanyId, maintenance.AssetId } equals new { asset.CompanyId, AssetId = asset.Id }
                         where maintenance.CompanyId == companyId
                         select new { maintenance, asset };
-            if (status is "InProgress" or "Completed") query = query.Where(x => x.maintenance.Status == status);
-            if (from.HasValue) query = query.Where(x => x.maintenance.StartedOn >= from.Value);
-            if (to.HasValue) query = query.Where(x => x.maintenance.StartedOn <= to.Value);
+            if (status is "Scheduled" or "InProgress" or "Completed" or "Cancelled") query = query.Where(x => x.maintenance.Status == status);
+            if (from.HasValue) query = query.Where(x => x.maintenance.Status == "Scheduled" || x.maintenance.Status == "Cancelled"
+                ? x.maintenance.PlannedOn >= from.Value : x.maintenance.StartedOn >= from.Value);
+            if (to.HasValue) query = query.Where(x => x.maintenance.Status == "Scheduled" || x.maintenance.Status == "Cancelled"
+                ? x.maintenance.PlannedOn <= to.Value : x.maintenance.StartedOn <= to.Value);
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
@@ -889,18 +893,19 @@ public static class AssetEndpoints
             context.Response.Headers["Content-Disposition"] = $"attachment; filename=envantertr-bakim-{DateTime.UtcNow:yyyyMMdd}.csv";
             context.Response.Headers["Cache-Control"] = "no-store";
             await using var writer = new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
-            await writer.WriteLineAsync("Varlık Etiketi;Varlık;Konum;Bakım Türü;Servis;Durum;Başlangıç;Tamamlanma;Maliyet;Para Birimi;İşlemi Yapan;Açıklama;Not;Tamamlanma Notu".AsMemory(), cancellationToken);
-            var rows = query.OrderByDescending(x => x.maintenance.StartedOn).ThenByDescending(x => x.maintenance.CreatedAt)
+            await writer.WriteLineAsync("Varlık Etiketi;Varlık;Konum;Bakım Türü;Servis;Durum;Planlanan Tarih;Başlangıç;Tamamlanma;Maliyet;Para Birimi;İşlemi Yapan;Açıklama;Not;Tamamlanma Notu".AsMemory(), cancellationToken);
+            var rows = query.OrderByDescending(x => x.maintenance.PlannedOn ?? x.maintenance.StartedOn).ThenByDescending(x => x.maintenance.CreatedAt)
                 .Select(x => new { x.asset.AssetTag, AssetName = x.asset.Name, x.asset.Location,
                     x.maintenance.MaintenanceType, x.maintenance.Supplier, x.maintenance.Status,
-                    x.maintenance.StartedOn, x.maintenance.CompletedOn, x.maintenance.Cost, x.maintenance.Currency,
+                    x.maintenance.PlannedOn, x.maintenance.StartedOn, x.maintenance.CompletedOn, x.maintenance.Cost, x.maintenance.Currency,
                     ActorName = db.Users.Where(actor => actor.Id == x.maintenance.ActorUserId).Select(actor => actor.DisplayName).FirstOrDefault(),
                     x.maintenance.Description, x.maintenance.Notes, x.maintenance.CompletionNotes });
             await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
             {
                 var line = string.Join(';', new[] { CsvCell(row.AssetTag), CsvCell(row.AssetName), CsvCell(row.Location),
                     CsvCell(row.MaintenanceType), CsvCell(row.Supplier), CsvCell(row.Status),
-                    CsvCell(row.StartedOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)),
+                    CsvCell(row.PlannedOn?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)),
+                    CsvCell(row.Status is "Scheduled" or "Cancelled" ? null : row.StartedOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)),
                     CsvCell(row.CompletedOn?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)),
                     CsvCell(row.Cost?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
                     CsvCell(row.Currency), CsvCell(row.ActorName), CsvCell(row.Description), CsvCell(row.Notes), CsvCell(row.CompletionNotes) });
@@ -917,16 +922,113 @@ public static class AssetEndpoints
                 return Results.NotFound();
             var rows = await db.AssetMaintenances.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && x.AssetId == id)
-                .OrderByDescending(x => x.StartedOn).ThenByDescending(x => x.CreatedAt)
+                .OrderByDescending(x => x.PlannedOn ?? x.StartedOn).ThenByDescending(x => x.CreatedAt)
                 .Select(x => new
                 {
-                    x.Id, x.MaintenanceType, x.Supplier, x.Description, x.StartedOn, x.CompletedOn,
+                    x.Id, x.MaintenanceType, x.Supplier, x.Description, x.PlannedOn, x.StartedOn, x.CompletedOn,
                     x.Status, x.Cost, x.Currency, x.Notes, x.CompletionNotes, x.CreatedAt,
                     actorName = db.Users.Where(actor => actor.Id == x.ActorUserId)
                         .Select(actor => actor.DisplayName).FirstOrDefault()
                 }).ToListAsync(cancellationToken);
             return Results.Ok(rows);
         }).RequireAuthorization("asset.read");
+
+        api.MapPost("/assets/{id:guid}/maintenances/schedule", async (Guid id, [FromBody] ScheduleMaintenanceRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var type = request.MaintenanceType?.Trim();
+            var supplier = request.Supplier?.Trim();
+            var description = request.Description?.Trim();
+            var notes = request.Notes?.Trim();
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            if (string.IsNullOrWhiteSpace(type) || type.Length > 120 || supplier?.Length > 200 ||
+                description?.Length > 1000 || notes?.Length > 2000 || request.PlannedOn < today ||
+                request.PlannedOn > today.AddYears(5) || request.Cost is < 0 or > 1_000_000_000m || !IsCurrency(request.Currency))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["maintenance"] = ["Bakım türü, gelecekteki plan tarihi, para birimi veya alan uzunluklarını kontrol edin."] });
+
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            var asset = await db.Assets.FromSqlInterpolated(
+                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+                .SingleOrDefaultAsync(cancellationToken);
+            if (asset is null) return Results.NotFound();
+            if (asset.Status is not (AssetStatuses.Available or AssetStatuses.Deployed))
+                return Results.Conflict(new { message = "Yalnızca kullanılabilir veya zimmetli varlık için bakım planlanabilir." });
+            if (await db.AssetMaintenances.AnyAsync(x => x.CompanyId == companyId && x.AssetId == id && (x.Status == "InProgress" || x.Status == "Scheduled"), cancellationToken))
+                return Results.Conflict(new { message = "Bu varlık için devam eden bakım veya başka bir planlanmış bakım bulunuyor." });
+
+            var now = DateTimeOffset.UtcNow;
+            var maintenance = new AssetMaintenance
+            {
+                CompanyId = companyId, AssetId = id, ActorUserId = CurrentUserId(user),
+                MaintenanceType = type, Supplier = Clean(supplier), Description = Clean(description),
+                PlannedOn = request.PlannedOn, StartedOn = request.PlannedOn, Cost = request.Cost,
+                Currency = request.Currency.Trim().ToUpperInvariant(), Notes = Clean(notes),
+                Status = "Scheduled", CreatedAt = now, UpdatedAt = now
+            };
+            db.AssetMaintenances.Add(maintenance);
+            db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = id,
+                ActorUserId = CurrentUserId(user), EventType = "MaintenanceScheduled",
+                Details = $"Bakım planlandı: {type} · {request.PlannedOn:yyyy-MM-dd}" });
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return Results.Conflict(new { message = "Bakım planı çakıştı; varlığın güncel durumunu yenileyip tekrar deneyin." });
+            }
+            return Results.Created($"/api/assets/{id}/maintenances/{maintenance.Id}", new { maintenance.Id, maintenance.Status, maintenance.PlannedOn });
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/assets/{assetId:guid}/maintenances/{maintenanceId:guid}/start",
+            async (Guid assetId, Guid maintenanceId, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+            {
+                if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+                var maintenance = await db.AssetMaintenances.FromSqlInterpolated(
+                        $"SELECT * FROM \"AssetMaintenances\" WHERE \"CompanyId\" = {companyId} AND \"AssetId\" = {assetId} AND \"Id\" = {maintenanceId} FOR UPDATE")
+                    .SingleOrDefaultAsync(cancellationToken);
+                if (maintenance is null) return Results.NotFound();
+                if (maintenance.Status != "Scheduled") return Results.Conflict(new { message = "Yalnızca planlanmış bakım başlatılabilir." });
+                var asset = await db.Assets.FromSqlInterpolated(
+                        $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {assetId} FOR UPDATE")
+                    .SingleOrDefaultAsync(cancellationToken);
+                if (asset is null) return Results.NotFound();
+                if (asset.Status != AssetStatuses.Available || asset.AssignedEmployeeId is not null)
+                    return Results.Conflict(new { message = "Bakım başlatmak için planlı varlık kullanılabilir ve zimmet dışı olmalıdır. Varlığı iade alın, sonra tekrar deneyin." });
+                var now = DateTimeOffset.UtcNow;
+                var startedOn = DateOnly.FromDateTime(now.UtcDateTime);
+                maintenance.Status = "InProgress"; maintenance.StartedOn = startedOn; maintenance.UpdatedAt = now;
+                asset.Status = AssetStatuses.Maintenance; asset.UpdatedAt = now;
+                db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = assetId,
+                    ActorUserId = CurrentUserId(user), EventType = "MaintenanceStarted",
+                    Details = $"Planlı bakım başlatıldı: {maintenance.MaintenanceType}" });
+                await db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return Results.NoContent();
+            }).RequireAuthorization("asset.write");
+
+        api.MapPost("/assets/{assetId:guid}/maintenances/{maintenanceId:guid}/cancel",
+            async (Guid assetId, Guid maintenanceId, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+            {
+                if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+                var maintenance = await db.AssetMaintenances.FromSqlInterpolated(
+                        $"SELECT * FROM \"AssetMaintenances\" WHERE \"CompanyId\" = {companyId} AND \"AssetId\" = {assetId} AND \"Id\" = {maintenanceId} FOR UPDATE")
+                    .SingleOrDefaultAsync(cancellationToken);
+                if (maintenance is null) return Results.NotFound();
+                if (maintenance.Status != "Scheduled") return Results.Conflict(new { message = "Yalnızca planlanmış bakım iptal edilebilir." });
+                maintenance.Status = "Cancelled"; maintenance.UpdatedAt = DateTimeOffset.UtcNow;
+                db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = assetId,
+                    ActorUserId = CurrentUserId(user), EventType = "MaintenanceScheduleCancelled",
+                    Details = $"Bakım planı iptal edildi: {maintenance.MaintenanceType}" });
+                await db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return Results.NoContent();
+            }).RequireAuthorization("asset.write");
 
         api.MapPost("/assets/{id:guid}/maintenances", async (Guid id, [FromBody] StartMaintenanceRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
@@ -949,8 +1051,8 @@ public static class AssetEndpoints
             if (asset is null) return Results.NotFound();
             if (asset.Status is not (AssetStatuses.Available or AssetStatuses.Maintenance) || asset.AssignedEmployeeId is not null)
                 return Results.Conflict(new { message = "Bakım başlatmak için varlık kullanılabilir durumda, zimmet dışı olmalıdır." });
-            if (await db.AssetMaintenances.AnyAsync(x => x.CompanyId == companyId && x.AssetId == id && x.Status == "InProgress", cancellationToken))
-                return Results.Conflict(new { message = "Bu varlık için tamamlanmamış bir bakım kaydı zaten var." });
+            if (await db.AssetMaintenances.AnyAsync(x => x.CompanyId == companyId && x.AssetId == id && (x.Status == "InProgress" || x.Status == "Scheduled"), cancellationToken))
+                return Results.Conflict(new { message = "Bu varlık için devam eden bakım veya planlanmış bir bakım kaydı zaten var." });
 
             var now = DateTimeOffset.UtcNow;
             var maintenance = new AssetMaintenance
@@ -1331,6 +1433,8 @@ public static class AssetEndpoints
     public sealed record TransferAssetRequest(string? TargetLocation, string? Notes);
     public sealed record StartMaintenanceRequest(string? MaintenanceType, string? Supplier, string? Description,
         DateOnly StartedOn, decimal? Cost, string Currency, string? Notes);
+    public sealed record ScheduleMaintenanceRequest(string? MaintenanceType, string? Supplier, string? Description,
+        DateOnly PlannedOn, decimal? Cost, string Currency, string? Notes);
     public sealed record CompleteMaintenanceRequest(DateOnly CompletedOn, string? Notes);
     public sealed record SelectedAssetLabelsRequest(Guid[]? AssetIds);
 

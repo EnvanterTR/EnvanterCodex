@@ -67,10 +67,13 @@ Rol politikaları ayrı tutulur: varlık okuma, varlık değiştirme, çalışan
 - `POST /api/assets/{id}/assign`
 - `POST /api/assets/{id}/return`
 - `PATCH /api/assets/{id}/status`
-- `GET /api/maintenances?q=&status=&from=&to=&page=1&pageSize=50` (şirket kapsamlı arama ve filtreleme; varlık/etiket/servis/not, durum ve başlangıç tarihine göre; sayfa boyutu en fazla 100)
+- `GET /api/maintenances?q=&status=&from=&to=&page=1&pageSize=50` (şirket kapsamlı arama ve filtreleme; varlık/etiket/servis/not, planlandı/devam/tamamlandı/iptal durumu ve planlanan/başlangıç tarihine göre; sayfa boyutu en fazla 100)
 - `GET /api/maintenances/export.csv?q=&status=&from=&to=` (aynı filtrelere uyan tüm şirket bakım kayıtları; akış halinde UTF-8 CSV, hücre formül enjeksiyonuna karşı kaçış uygulanır)
 - `GET /api/reports/maintenances?from=&to=` (başlayan bakım kayıtlarını tarih aralığına göre toplam, devam/tamamlandı sayısı, en sık 25 bakım türü ve para birimi bazında maliyet olarak özetler; para birimlerini birleştirmez)
 - `GET /api/assets/{id}/maintenances` (şirket kapsamlı bakım geçmişi, kaydı açan kullanıcıyı içerir)
+- `POST /api/assets/{id}/maintenances/schedule` (kullanılabilir veya zimmetli varlığa 5 yıla kadar bakım tarihi planlar; varlığın mevcut durumunu değiştirmez)
+- `POST /api/assets/{assetId}/maintenances/{maintenanceId}/start` (planlı bakımı başlatır; yalnızca kullanılabilir ve zimmet dışı varlıkta çalışır)
+- `POST /api/assets/{assetId}/maintenances/{maintenanceId}/cancel` (planlı bakımı iptal eder; varlık ve hareket geçmişi korunur)
 - `GET /api/company/label-settings` (şirket üyesi; barkod/etiket ayar profilini döndürür)
 - `PUT /api/company/label-settings` (`settings.manage`; şirket ortak etiket profilini ölçü, hizalama, kod türü ve gösterilecek alanlarla günceller; değişiklik denetime eklenir)
 - `POST /api/assets/{id}/maintenances` (kullanılabilir ve zimmet dışı varlıkta tek açık bakım; tür, servis, tarih, maliyet, notlar; varlığı bakım durumuna alır)
