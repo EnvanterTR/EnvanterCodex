@@ -6,6 +6,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 
 - Şirket hesabı ve rol tabanlı oturum; varlık, çalışan, kategori, marka ve model kayıtları.
 - Varlık arama, filtreleme, sıralama, sayfalama, şirket kapsamlı CSV dışa aktarımı; zimmet, iade, durum ve hareket geçmişi.
+- Varlık ve çalışan tablolarında ad bağlantıları klavyeyle erişilebilir; ad seçildiğinde ilgili ayrıntı profili açılır, model/departman gibi ilişki bağlantıları kendi filtre akışını korur. Hızlı aramada geciken eski istek yanıtları yeni listenin üzerine yazılmaz.
 - Varlık detayında genel bakış, bağlantılı kayıtlar ve gerçek işlem geçmişi; etiket kopyalama ve basit yazdırılabilir varlık kartı.
 - Çalışanlarda departman filtreleme, isteğe bağlı yönetici ilişkisi, doğrudan raporlayanlar ve zimmetli varlıkları gösteren profiller. Yönetici döngüleri ve başka şirkete ait yönetici seçimi sunucuda engellenir.
 - Departman ve konum ekranları şirket verisinden özet çıkarır; departman çalışanlarını ve konumdaki varlıkları tek tıkla filtreler. Departman özetleri baştaki/sondaki boşluk ve harf büyüklüğü farklarını birleştirir; bölüm filtresi büyük/küçük harfe duyarsız eşleşir. Değerler hâlâ serbest metinden türetildiği için katalog yönetimi ve güvenli yeniden adlandırma sonraki adımdır.
@@ -23,7 +24,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 
 - Kimlik doğrulamalı iş akışlarının kabul doğrulaması; şirketler arası veri erişimi, izinler, eşzamanlı değişiklikler ve parola yenileme için güvenlik incelemesi.
 - Veritabanı ve şirket medyası için otomatik, şifreli yedek; geri yükleme önizlemesi, güvenli geri alma ve düzenli geri yükleme tatbikatı. Bugünkü elle yerel yedek betikleri bu gereksinimi karşılamaz.
-- Özel `EnvanterTR/EnvanterCodex` deposuna ilk çalışma sürümü gönderildi. Bu geliştirme oturumunda tamamlanan beş yerel commit henüz uzak depoya gönderilmedi; GitHub Desktop ile `main` dalı yayımlanmalıdır.
+- Özel `EnvanterTR/EnvanterCodex` deposuna ilk çalışma sürümü gönderildi. Bu geliştirme oturumunda tamamlanan altı yerel commit henüz uzak depoya gönderilmedi; GitHub Desktop ile `main` dalı yayımlanmalıdır.
 - Lisans ve üçüncü taraf bağımlılık envanteri yayıma çıkmadan önce gözden geçirilmeli; ürün adı ve görünümü, lisans/attribution yükümlülüklerini gizlemek için kullanılmamalı.
 
 ### P1 — Kurum içi kurulum ve ağ erişimi
