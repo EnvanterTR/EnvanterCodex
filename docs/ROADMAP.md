@@ -13,6 +13,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 - Hazır raporlar ekranı şirket varlıklarından durum/kategori sayılarını ve kaydedilmiş alış bedellerini üretir; Excel uyumlu CSV raporu indirilebilir. Para birimleri ayrı kalır, kategori/durum satırları varlık listesine filtre uygular.
 - Şirket logosu/ana rengi, şirket JSON dışa aktarımı ve salt okunur dosya önizlemesi. JSON indirme yedeği geri yüklenebilir bir yedek değildir.
 - Yerel Compose önizlemesi için Windows PowerShell ve Linux Bash ile elle veritabanı + şirket medya yedeği ve SHA-256 dosya özetleri. Çıktı şifrelenmez, otomatik alınmaz ve uygulamadan geri yüklenemez; müşteri/üretim yedeklemesi sayılmaz.
+- Web yanıtlarında `nosniff`, iframe engeli ve sınırlı referrer/izin politikaları; API yanıtlarında önbelleği kapatma; şirket logo yüklemesinde istek gövdesi boyut sınırı.
 - Platform yönetici ekranı ve tanıtım sayfası için metin/paket taslakları.
 - Windows makinede Docker ile çalışan **geliştirici önizlemesi**: `http://localhost:8080/`. Bu kurulum müşteri kurucusu değildir ve başka bilgisayarlara ağ erişimi açmaz.
 
@@ -22,7 +23,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 
 - Kimlik doğrulamalı iş akışlarının kabul doğrulaması; şirketler arası veri erişimi, izinler, eşzamanlı değişiklikler ve parola yenileme için güvenlik incelemesi.
 - Veritabanı ve şirket medyası için otomatik, şifreli yedek; geri yükleme önizlemesi, güvenli geri alma ve düzenli geri yükleme tatbikatı. Bugünkü elle yerel yedek betikleri bu gereksinimi karşılamaz.
-- İlk kaynak commit'i `38744c6` oluşturuldu ve `main` dalı özel `EnvanterTR/EnvanterCodex` deposuna gönderildi. GitHub Desktop ekranında `Fetch origin` görünüyor; yerel dal `origin/main` ile eşit ve çalışma ağacı temiz.
+- Özel `EnvanterTR/EnvanterCodex` deposuna ilk çalışma sürümü gönderildi. Bu geliştirme oturumunda tamamlanan beş yerel commit henüz uzak depoya gönderilmedi; GitHub Desktop ile `main` dalı yayımlanmalıdır.
 - Lisans ve üçüncü taraf bağımlılık envanteri yayıma çıkmadan önce gözden geçirilmeli; ürün adı ve görünümü, lisans/attribution yükümlülüklerini gizlemek için kullanılmamalı.
 
 ### P1 — Kurum içi kurulum ve ağ erişimi

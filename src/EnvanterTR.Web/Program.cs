@@ -82,6 +82,24 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 
 var app = builder.Build();
 
+// Apply browser protections to both static pages and API responses. API responses
+// can contain private records or set session cookies, so the browser must not cache them.
+app.Use(async (context, next) =>
+{
+    var headers = context.Response.Headers;
+    headers["X-Content-Type-Options"] = "nosniff";
+    headers["X-Frame-Options"] = "DENY";
+    headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+
+    if (context.Request.Path.StartsWithSegments("/api"))
+    {
+        headers.CacheControl = "no-store, private";
+    }
+
+    await next();
+});
+
 // Schema changes are deliberately opt-in so a normal app start never mutates customer data.
 if (args.Contains("--migrate", StringComparer.OrdinalIgnoreCase))
 {

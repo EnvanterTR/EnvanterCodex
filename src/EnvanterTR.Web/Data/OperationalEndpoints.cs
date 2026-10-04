@@ -12,6 +12,8 @@ namespace EnvanterTR.Web.Data;
 
 public static class OperationalEndpoints
 {
+    private const long CompanyLogoRequestLimitBytes = 2_162_688; // 2 MiB logo plus bounded multipart overhead.
+
     public static IEndpointRouteBuilder MapOperationalEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var api = endpoints.MapGroup("/api").RequireAuthorization();
@@ -107,7 +109,8 @@ public static class OperationalEndpoints
                 if (System.IO.File.Exists(oldPath)) System.IO.File.Delete(oldPath);
             }
             return Results.Ok(new { hasLogo = true, contentType });
-        }).RequireAuthorization("settings.manage");
+        }).RequireAuthorization("settings.manage")
+            .WithMetadata(new RequestSizeLimitAttribute(CompanyLogoRequestLimitBytes));
 
         api.MapGet("/company/branding/logo", async (ClaimsPrincipal user, AppDbContext db,
             IConfiguration configuration, CancellationToken cancellationToken) =>
