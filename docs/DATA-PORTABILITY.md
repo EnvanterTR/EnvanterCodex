@@ -30,4 +30,4 @@ Bu JSON şu an **taşınabilir veri dışa aktarımıdır; tam sistem yedeği de
 
 ## Tamamlanmamış işler
 
-Güncel ürün diliminde şirket JSON dışa aktarma ve salt okunur önizleme vardır; sınırlı EnvanterTR CSV varlık ekleme uygulanmıştır. Tam JSON geri yükleme, veri birleştirme arayüzü, ek dosyaları dahil eden şifreli tam yedek ve geri yükleme tatbikatı henüz uygulanmadı. Lisans sona erdiğinde veriyi dışa alma ilkesi korunmalıdır; tekrar satın alımda geri yükleme açılmadan önce tam akışın yedek/önizleme/işlem/geri alma adımları tamamlanmalıdır.
+Güncel ürün diliminde şirket JSON dışa aktarma ve salt okunur önizleme vardır; sınırlı EnvanterTR CSV varlık ekleme uygulanmıştır. Yerel Compose yedeği için sonradan manifest, SHA-256, medya arşivi ve PostgreSQL döküm dizinini doğrulayan salt okunur komutlar eklendi; bunlar hiçbir veriyi geri yüklemez. Tam JSON geri yükleme, veri birleştirme arayüzü, ek dosyaları dahil eden şifreli/otomatik tam yedek ve izole geri yükleme tatbikatı henüz uygulanmadı. Lisans sona erdiğinde veriyi dışa alma ilkesi korunmalıdır; tekrar satın alımda geri yükleme açılmadan önce tam akışın yedek/önizleme/işlem/geri alma adımları tamamlanmalıdır.

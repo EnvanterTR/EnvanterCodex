@@ -25,7 +25,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 ### P0 — Güvenli geliştirme ve sürüm temeli
 
 - Kimlik doğrulamalı iş akışlarının kabul doğrulaması; şirketler arası veri erişimi, izinler, eşzamanlı değişiklikler ve parola yenileme için güvenlik incelemesi.
-- Veritabanı ve şirket medyası için otomatik, şifreli yedek; geri yükleme önizlemesi, güvenli geri alma ve düzenli geri yükleme tatbikatı. Bugünkü elle yerel yedek betikleri bu gereksinimi karşılamaz.
+- Veritabanı ve şirket medyası için otomatik, şifreli yedek; geri yükleme önizlemesi, güvenli geri alma ve düzenli geri yükleme tatbikatı. Elle yerel yedeklere sonradan SHA-256, tar ve PostgreSQL döküm kataloğu doğrulama aracı eklendi; bu araç şifreleme/otomatik yedekleme/geri yükleme gereksinimlerini karşılamaz.
 - Özel `EnvanterTR/EnvanterCodex` deposu kaynak kodun yayımlama hedefidir; doğrulanan yerel değişiklikler `origin/main` dalına gönderilir. Yayımdan önce dal ve çalışma ağacı durumu kontrol edilmelidir.
 - Lisans ve üçüncü taraf bağımlılık envanteri yayıma çıkmadan önce gözden geçirilmeli; ürün adı ve görünümü, lisans/attribution yükümlülüklerini gizlemek için kullanılmamalı.
 
