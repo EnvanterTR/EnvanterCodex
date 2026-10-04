@@ -300,11 +300,18 @@
       if (assetEmployeeFilterId) filters.set('employeeId', assetEmployeeFilterId);
       if (assetLocationFilter) filters.set('location', assetLocationFilter);
       filters.set('sortBy', assetSortBy); filters.set('sortDirection', assetSortDirection);
-      const [summary, assets, activity] = await Promise.all([
-        inventoryMode ? Promise.resolve(null) : api('/api/dashboard/summary'),
-        api(`/api/assets?${filters}`),
-        inventoryMode ? Promise.resolve(null) : api('/api/activity?page=1&pageSize=5')
-      ]);
+      let results;
+      try {
+        results = await Promise.all([
+          inventoryMode ? Promise.resolve(null) : api('/api/dashboard/summary'),
+          api(`/api/assets?${filters}`),
+          inventoryMode ? Promise.resolve(null) : api('/api/activity?page=1&pageSize=5')
+        ]);
+      } catch (error) {
+        if (requestId !== assetDashboardRequestId) return;
+        throw error;
+      }
+      const [summary, assets, activity] = results;
       if (requestId !== assetDashboardRequestId) return;
       if (summary) {
         $('#totalAssets').textContent = fmt.format(summary.totalAssets);
@@ -399,7 +406,9 @@
       const select = $(`#${selectId}`), search = $(`#${searchId}`), params = new URLSearchParams({ page: '1', pageSize: '200', active: 'true' });
       const term = search.value.trim(); if (term) params.set('q', term);
       const requestId = managerOptionRequest[selectId] = (managerOptionRequest[selectId] || 0) + 1;
-      const result = await api(`/api/employees?${params}`);
+      let result;
+      try { result = await api(`/api/employees?${params}`); }
+      catch (error) { if (requestId !== employeeListRequestId) return; throw error; }
       if (managerOptionRequest[selectId] !== requestId || search.value.trim() !== term) return;
       const previousId = select.value;
       const previousName = select.selectedOptions[0]?.textContent || '';
