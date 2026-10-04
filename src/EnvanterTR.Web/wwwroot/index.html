@@ -144,7 +144,7 @@
               <div class="form-grid">
                 <label>1D barkod türü<select name="barcode1d"><option value="code128">C128 · alfasayısal</option><option value="code39">C39 · büyük harf ve rakam</option><option value="ean5">EAN5 · 5 rakam</option><option value="ean13">EAN13 · 12/13 rakam</option><option value="upca">UPC-A · 11/12 rakam</option><option value="upce">UPC-E · 6–8 rakam</option><option value="none">Kapalı</option></select></label>
                 <label>2D barkod türü<select name="barcode2d"><option value="qrcode">QR Code</option><option value="pdf417">PDF417</option><option value="datamatrix">Data Matrix</option><option value="none">Kapalı</option></select></label>
-                <label>Etiket genişliği (mm)<input name="widthMm" type="number" min="25" max="150" step="0.5" required></label>
+                <label>Etiket şablonu<select name="sizePreset"><option value="86x48">86 × 48 mm · varsayılan</option><option value="50x30">50 × 30 mm</option><option value="60x40">60 × 40 mm</option><option value="70x35">70 × 35 mm</option><option value="100x50">100 × 50 mm</option><option value="custom">Özel ölçü</option></select></label><label>Etiket genişliği (mm)<input name="widthMm" type="number" min="25" max="150" step="0.5" required></label>
                 <label>Etiket yüksekliği (mm)<input name="heightMm" type="number" min="15" max="100" step="0.5" required></label>
                 <label>Yatay hizalama (mm)<input name="offsetXmm" type="number" min="-30" max="30" step="0.5" required></label>
                 <label>Dikey hizalama (mm)<input name="offsetYmm" type="number" min="-30" max="30" step="0.5" required></label>
@@ -261,6 +261,8 @@
     calendarStyle.textContent += '.calendar-day-event.warranty{color:#176e64;background:#e8f7f3}.calendar-agenda-event.warranty{border-left:4px solid #278b7e}';
     document.head.append(calendarStyle);
     const defaultLabelPrintSettings = Object.freeze({ barcode1d: 'code128', barcode2d: 'qrcode', widthMm: 86, heightMm: 48, offsetXmm: 0, offsetYmm: 0, paddingMm: 4, codeSizeMm: 25, qrTarget: 'tag', showName: true, showSerial: true, showModel: false, showLocation: false, showStatus: false });
+    const labelSizePresets = Object.freeze({ '86x48': [86, 48], '50x30': [50, 30], '60x40': [60, 40], '70x35': [70, 35], '100x50': [100, 50], custom: null });
+    function matchLabelSizePreset(width, height) { return Object.entries(labelSizePresets).find(([key, size]) => key !== 'custom' && size[0] === Number(width) && size[1] === Number(height))?.[0] || 'custom'; }
     let labelPrintSettings = { ...defaultLabelPrintSettings };
     const pageSize = 12;
     let accessoryPage = 1, accessoryTotal = 0, accessoryQueryTimer, currentAccessory = null, accessoryRequestId = 0, visibleAccessoryColumns = Array(9).fill(true);
@@ -485,6 +487,7 @@
     function populateLabelSettingsForm() {
       const form = $('#labelSettingsForm');
       for (const [name, value] of Object.entries(labelPrintSettings)) if (form.elements[name]) { if (form.elements[name].type === 'checkbox') form.elements[name].checked = Boolean(value); else form.elements[name].value = String(value); }
+      form.elements.sizePreset.value = matchLabelSizePreset(labelPrintSettings.widthMm, labelPrintSettings.heightMm);
     }
     function readLabelSettingsForm() {
       const form = $('#labelSettingsForm'), fields = ['widthMm','heightMm','offsetXmm','offsetYmm','paddingMm','codeSizeMm'];
@@ -1783,6 +1786,9 @@
       finally { saveButton.disabled = false; }
     });
     let labelPreviewTimer;
+    const labelForm = $('#labelSettingsForm');
+    labelForm.elements.sizePreset.addEventListener('change', event => { const size = labelSizePresets[event.currentTarget.value]; if (!size) return; labelForm.elements.widthMm.value = String(size[0]); labelForm.elements.heightMm.value = String(size[1]); labelForm.dispatchEvent(new Event('input', { bubbles: true })); });
+    for (const fieldName of ['widthMm', 'heightMm']) labelForm.elements[fieldName].addEventListener('input', () => { labelForm.elements.sizePreset.value = matchLabelSizePreset(labelForm.elements.widthMm.value, labelForm.elements.heightMm.value); });
     $('#labelSettingsForm').addEventListener('input', () => { clearTimeout(labelPreviewTimer); labelPreviewTimer = setTimeout(() => renderLabelPreview().catch(error => { $('#labelPreviewMessage').textContent = error.message; }), 300); });
     $('#labelSettingsReset').addEventListener('click', () => { labelPrintSettings = { ...defaultLabelPrintSettings }; populateLabelSettingsForm(); $('#labelSettingsForm').requestSubmit(); });
     $('#labelSettingsGoAssets').addEventListener('click', () => document.querySelector('.sub-item[data-page="Varlıklar"]')?.click());

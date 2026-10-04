@@ -7,7 +7,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 - Şirket hesabı ve rol tabanlı oturum; varlık, çalışan, kategori, marka ve model kayıtları.
 - Varlık arama, filtreleme, sıralama, sayfalama, şirket kapsamlı ve seçili kayıt CSV dışa aktarımı; en fazla 100 seçili varlığın güvenli toplu durum değişikliği. Kullanıcı sütun, satır aralığı ve sıralama görünümünü şirket ve tarayıcı bazında saklayabilir. Model/marka/çalışan/konum ilişki filtreleri ayrı ayrı veya birlikte kaldırılabilir; zimmet, iade, durum ve hareket geçmişi.
 - Varlık ve çalışan tablolarında ad bağlantıları klavyeyle erişilebilir; ad seçildiğinde ilgili ayrıntı profili açılır, model/departman gibi ilişki bağlantıları kendi filtre akışını korur. Hızlı aramada geciken eski istek yanıtları yeni listenin üzerine yazılmaz.
-- Varlık detayında genel bakış, bağlantılı kayıtlar ve gerçek işlem geçmişi; etiket kopyalama ve QR/PDF417/Data Matrix ile C128/C39/EAN5/EAN13/UPC-A/UPC-E seçilebilir yazdırılabilir varlık kartı. Etiket boyutu, X/Y hizası, iç boşluk ve gösterilen alanlar ayarlanır; QR varlık etiketi ya da oturum sonrası varlık ayrıntısı bağlantısı taşır.
+- Varlık detayında genel bakış, bağlantılı kayıtlar ve gerçek işlem geçmişi; etiket kopyalama ve QR/PDF417/Data Matrix ile C128/C39/EAN5/EAN13/UPC-A/UPC-E seçilebilir yazdırılabilir varlık kartı. Hazır 50×30, 60×40, 70×35, 86×48 ve 100×50 mm ölçüleri veya özel ebat seçilebilir; X/Y hizası, iç boşluk ve gösterilen alanlar ayarlanır. QR varlık etiketi ya da oturum sonrası varlık ayrıntısı bağlantısı taşır.
 - Dashboard, canlı şirket varlık durumlarını erişilebilir halka grafik ve tıklanabilir filtrelerle özetler; ayrıntılı hazır rapor ekranına geçiş sağlar.
 - Çalışanlarda departman filtreleme, isteğe bağlı yönetici ilişkisi, doğrudan raporlayanlar ve zimmetli varlıkları gösteren profiller. Yönetici döngüleri ve başka şirkete ait yönetici seçimi sunucuda engellenir.
 - Departman ve konum ekranları şirket verisinden özet çıkarır; departman çalışanlarını ve konumdaki varlıkları tek tıkla filtreler. Departman özetleri baştaki/sondaki boşluk ve harf büyüklüğü farklarını birleştirir; bölüm filtresi büyük/küçük harfe duyarsız eşleşir. Değerler hâlâ serbest metinden türetildiği için katalog yönetimi ve güvenli yeniden adlandırma sonraki adımdır.
@@ -38,7 +38,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 
 ### P1 — Envanter iş akışlarının kapsamı
 
-- Varlık fotoğrafı ve ek dosyalar; çoklu okutmayla toplu zimmet/iade ve yazıcı/kağıt şablon kataloğu. Kamera veya USB okuyucuyla kayıt açma ve seçili kayıt için yetki kontrollü zimmet/iade akışına geçiş; tek varlık ve en fazla 100 seçili varlık için dokuz yaygın barkod türü, ölçü/hizalama/alan ayarlı kart yazdırma eklendi. Etiket ayarları şirket düzeyinde saklanıp üyeler arasında eşitlenir, yalnızca tablo görünümü tercihleri tarayıcıda kalır.
+- Varlık fotoğrafı ve ek dosyalar; çoklu okutmayla toplu zimmet/iade ve yazıcı/kağıt şablon kataloğu. Kamera veya USB okuyucuyla kayıt açma ve seçili kayıt için yetki kontrollü zimmet/iade akışına geçiş; tek varlık ve en fazla 100 seçili varlık için dokuz yaygın barkod türü, hazır ölçü seçenekleri, özel ebat/hizalama/alan ayarlı kart yazdırma eklendi. Etiket ayarları şirket düzeyinde saklanıp üyeler arasında eşitlenir, yalnızca tablo görünümü tercihleri tarayıcıda kalır.
 - Aksesuar modülünde sipariş/dosya ilişkileri, katalog bağlantıları, sütun/çıktı/toplu işlem ve isteğe bağlı kullanıcı akışları; ayrıca lisans, bileşen, sarf malzemesi, kit, transfer, rezervasyon, bakım, denetim ve garanti kayıtları.
 - Departman ve konum için yapılandırılmış kataloglar ve ad birleştirme/düzeltme akışı. Çalışan departmanı ve varlık konumu bugün serbest metindir; mevcut ekranlar yalnızca özetler ve filtreler.
 - CSV varlık biçimi için salt okunur sütun/çakışma önizlemesi ve mevcut katalog kayıtlarını kullanan sınırlı, atomik kayıt ekleme eklendi; Excel içe aktarma, alan eşleme, katalog kaydı oluşturma ve güvenli JSON geri yükleme akışı tamamlanmalı.
@@ -61,7 +61,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 ## Bilinçli ürün sınırları
 
 - Müşteri kaynak deposu ile müşterinin indireceği kurulum paketi ayrı teslim kanallarıdır. Kurulum paketi henüz üretilmiyor veya imzalanmıyor.
-- Etiket kartı etiket motorunda sunulan 1D (C128, C39, EAN5, EAN13, UPCA, UPCE) ve 2D (QR Code, PDF417, Data Matrix) biçim seçeneklerini karşılar. Çalışan telefonunda kamera ile okutma, toplu etiket sayfaları/şablonları ve sunucuya kaydedilen şirket düzeyi ayarlar henüz yoktur.
+- Etiket kartı C128/C39/EAN5/EAN13/UPC-A/UPC-E ve QR/PDF417/Data Matrix biçimlerini, 50×30 ile 100×50 mm arasındaki beş hazır ölçüyü, özel ebatları, hizalamayı ve şirket düzeyinde eşitlenen ayarları destekler. Kamera ile kayıt bulma ve en fazla 100 seçili varlığı yazdırma vardır. Yazıcı/kağıt kataloğundan çoklu etiket sayfası düzeni ve seri okutmayla toplu zimmet/iade henüz yoktur.
 - Şirket logosu yükleme vardır; varlık fotoğrafı ve ek dosya saklama henüz yoktur.
 - JSON dosyası önizlemesi vardır; gerçek içe alma/geri yükleme henüz yoktur.
 - `docs/ARCHITECTURE.md`, `docs/DATA-PORTABILITY.md` ve `docs/PLATFORM-ADMIN.md` daha ayrıntılı teknik kapsamı tutar.
