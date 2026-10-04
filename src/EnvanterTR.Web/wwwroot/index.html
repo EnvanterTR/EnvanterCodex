@@ -1264,6 +1264,7 @@
       $('#loginForm button[type="submit"]').disabled = false; $('#forgotPasswordButton').disabled = false;
       const session = await api('/api/session'); if (!session.companyId) { showLogin('Bu ekran şirket hesabı içindir.'); return; }
       sessionRole = session.role || '';
+      $('#bulkAssetStatus').hidden = !canWriteAssets(); $('#applyBulkAssetStatus').hidden = !canWriteAssets();
       loadAssetColumnPreferences(session.companyId);
       try { await loadTenantBranding(); } catch (error) { console.warn('Şirket görünümü yüklenemedi.', error); }
       $('#membersNav').hidden = !canReadAudit();
