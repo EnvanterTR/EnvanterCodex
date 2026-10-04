@@ -9,6 +9,7 @@ public static class InventoryMovementEndpoints
     public static RouteGroupBuilder MapInventoryMovementEndpoints(this RouteGroupBuilder api)
     {
         api.MapGet("/inventory/movements", async ([FromQuery] string? q, [FromQuery] string? kind,
+            [FromQuery] string? movementType, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to,
             [FromQuery] int page, [FromQuery] int pageSize, ClaimsPrincipal user,
             AppDbContext db, CancellationToken ct) =>
         {
@@ -19,6 +20,10 @@ public static class InventoryMovementEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama 120 karakteri aşamaz."] });
             if (kind is not (null or "accessory" or "consumable" or "component"))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["kind"] = ["Geçerli bir stok türü seçin."] });
+            if (movementType is not (null or "Received" or "Adjustment" or "Checkout" or "Checkin"))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["movementType"] = ["Geçerli bir hareket türü seçin."] });
+            if (from is { Year: < 1970 or > 2100 } || to is { Year: < 1970 or > 2100 } || (from.HasValue && to.HasValue && from > to))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["date"] = ["Tarih aralığı 1970–2100 arasında ve başlangıç bitişten önce olmalı."] });
 
             IQueryable<InventoryMovementRow>? query = null;
             if (kind is null or "accessory")
@@ -59,6 +64,9 @@ public static class InventoryMovementEndpoints
                 var term = q.Trim();
                 query = query!.Where(x => x.Item.Contains(term) || (x.Target != null && x.Target.Contains(term)) || (x.Notes != null && x.Notes.Contains(term)));
             }
+            if (movementType is not null) query = query!.Where(x => x.MovementType == movementType);
+            if (from.HasValue) query = query!.Where(x => x.OccurredAt >= new DateTimeOffset(from.Value.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero));
+            if (to.HasValue && to.Value < DateOnly.MaxValue) query = query!.Where(x => x.OccurredAt < new DateTimeOffset(to.Value.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero));
             var total = await query!.CountAsync(ct);
             var items = await query!.OrderByDescending(x => x.OccurredAt).ThenBy(x => x.Id)
                 .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
