@@ -13,6 +13,7 @@ fi
 
 OUTPUT_ROOT="${1:-$PROJECT_ROOT/backups}"
 mkdir -p -- "$OUTPUT_ROOT"
+OUTPUT_ROOT="$(cd -- "$OUTPUT_ROOT" && pwd -P)"
 STAMP="$(date -u +%Y%m%d-%H%M%S)"
 SUFFIX="$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
 BACKUP_DIR="$OUTPUT_ROOT/envantertr-$STAMP-$SUFFIX"
@@ -23,11 +24,15 @@ DB_CONTAINER=""
 WEB_CONTAINER=""
 DUMP_IN_CONTAINER=0
 HELPER_CREATED=0
+BACKUP_COMPLETE=0
 
 cleanup() {
   if (( HELPER_CREATED )); then docker rm "$HELPER_NAME" >/dev/null 2>&1 || true; fi
   if (( DUMP_IN_CONTAINER )) && [[ -n "$DB_CONTAINER" ]]; then
     docker exec "$DB_CONTAINER" rm -f "/tmp/$DUMP_NAME" >/dev/null 2>&1 || true
+  fi
+  if (( ! BACKUP_COMPLETE )) && [[ -d "$BACKUP_DIR" ]] && [[ "$(dirname -- "$BACKUP_DIR")" == "$OUTPUT_ROOT" ]]; then
+    rm -rf -- "$BACKUP_DIR" || true
   fi
 }
 trap cleanup EXIT
@@ -79,6 +84,7 @@ cat > "$BACKUP_DIR/manifest.json" <<EOF
   "restoreSupportedByApplication": false
 }
 EOF
+BACKUP_COMPLETE=1
 
 echo "Yedek oluşturuldu: $BACKUP_DIR"
 echo 'Kapsam: yerel Compose veritabanı ve şirket medya volume’u. Dosyaları yetkisiz erişime kapalı, ayrı bir depoda saklayın.'

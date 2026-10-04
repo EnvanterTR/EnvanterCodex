@@ -19,18 +19,6 @@ $backupRoot = (Resolve-Path -LiteralPath $OutputDirectory).Path
 $stamp = [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss')
 $suffix = [Guid]::NewGuid().ToString('N').Substring(0, 8)
 $backupDirectory = Join-Path $backupRoot "envantertr-$stamp-$suffix"
-New-Item -ItemType Directory -Path $backupDirectory | Out-Null
-$backupAcl = Get-Acl -LiteralPath $backupDirectory
-$backupAcl.SetAccessRuleProtection($true, $false)
-$ownerSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
-$systemSid = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18')
-$administratorsSid = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-32-544')
-foreach ($sid in @($ownerSid, $systemSid, $administratorsSid)) {
-    $rule = [System.Security.AccessControl.FileSystemAccessRule]::new(
-        $sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
-    [void]$backupAcl.AddAccessRule($rule)
-}
-Set-Acl -LiteralPath $backupDirectory -AclObject $backupAcl
 $dumpName = "database-$suffix.dump"
 $helperName = "envantertr-backup-$suffix"
 $databaseContainer = $null
@@ -40,6 +28,7 @@ $dumpPath = Join-Path $backupDirectory $dumpName
 $mediaPath = Join-Path $backupDirectory 'company-media.tar.gz'
 $helperCreated = $false
 $dumpInContainer = $false
+$backupCompleted = $false
 
 function Invoke-Docker([string[]] $Arguments) {
     & docker @Arguments
@@ -47,6 +36,19 @@ function Invoke-Docker([string[]] $Arguments) {
 }
 
 try {
+    New-Item -ItemType Directory -Path $backupDirectory | Out-Null
+    $backupAcl = Get-Acl -LiteralPath $backupDirectory
+    $backupAcl.SetAccessRuleProtection($true, $false)
+    $ownerSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+    $systemSid = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18')
+    $administratorsSid = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-32-544')
+    foreach ($sid in @($ownerSid, $systemSid, $administratorsSid)) {
+        $rule = [System.Security.AccessControl.FileSystemAccessRule]::new(
+            $sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
+        [void]$backupAcl.AddAccessRule($rule)
+    }
+    Set-Acl -LiteralPath $backupDirectory -AclObject $backupAcl
+
     $composePrefix = @('compose', '--env-file', $environmentFile, '-f', $composeFile)
     $databaseContainer = (& docker @composePrefix ps -q database | Select-Object -First 1).Trim()
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($databaseContainer)) {
@@ -86,6 +88,7 @@ try {
         restoreSupportedByApplication = $false
     }
     $manifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $backupDirectory 'manifest.json') -Encoding utf8
+    $backupCompleted = $true
     Write-Output "Yedek oluşturuldu: $backupDirectory"
     Write-Output 'Kapsam: yerel Compose veritabanı ve şirket medya volume dosyaları. Dosyaları yetkisiz erişime kapalı, ayrı bir depoda saklayın.'
     Write-Output 'Bu yedek şifrelenmemiştir; uygulama içinden geri yükleme henüz desteklenmez.'
@@ -93,4 +96,12 @@ try {
 finally {
     if ($helperCreated) { & docker rm $helperName *> $null }
     if ($dumpInContainer -and $databaseContainer) { & docker exec $databaseContainer rm -f "/tmp/$dumpName" *> $null }
+    if (-not $backupCompleted -and (Test-Path -LiteralPath $backupDirectory -PathType Container)) {
+        $resolvedRoot = [System.IO.Path]::GetFullPath($backupRoot)
+        $resolvedBackup = [System.IO.Path]::GetFullPath($backupDirectory)
+        $resolvedParent = [System.IO.Path]::GetFullPath([System.IO.Path]::GetDirectoryName($resolvedBackup))
+        if ($resolvedParent.Equals($resolvedRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+            Remove-Item -LiteralPath $resolvedBackup -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 }
