@@ -26,8 +26,14 @@ public static class InventoryMovementEndpoints
                     .Select(x => new InventoryMovementRow(x.Id, "Aksesuar", "accessory",
                         db.Accessories.Where(i => i.CompanyId == companyId && i.Id == x.AccessoryId).Select(i => i.Name).FirstOrDefault() ?? "Silinmiş kayıt",
                         x.MovementType, x.Quantity,
-                        db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
-                        x.Notes, x.OccurredAt));
+                        db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.Id == x.AssignmentId)
+                            .Select(a => a.TargetType == "Employee"
+                                ? db.Employees.Where(e => e.CompanyId == companyId && e.Id == a.EmployeeId).Select(e => e.DisplayName).FirstOrDefault()
+                                : a.TargetType == "Asset"
+                                    ? db.Assets.Where(asset => asset.CompanyId == companyId && asset.Id == a.AssetId).Select(asset => asset.AssetTag + " · " + asset.Name).FirstOrDefault()
+                                    : a.Location).FirstOrDefault()
+                            ?? db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
+                        db.Users.Where(u => u.Id == x.ActorUserId).Select(u => u.DisplayName).FirstOrDefault(), x.Notes, x.OccurredAt));
             if (kind is null or "consumable")
             {
                 var consumables = db.ConsumableMovements.AsNoTracking().Where(x => x.CompanyId == companyId)
@@ -35,7 +41,7 @@ public static class InventoryMovementEndpoints
                         db.Consumables.Where(i => i.CompanyId == companyId && i.Id == x.ConsumableId).Select(i => i.Name).FirstOrDefault() ?? "Silinmiş kayıt",
                         x.MovementType, x.Quantity,
                         db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
-                        x.Notes, x.OccurredAt));
+                        db.Users.Where(u => u.Id == x.ActorUserId).Select(u => u.DisplayName).FirstOrDefault(), x.Notes, x.OccurredAt));
                 query = query is null ? consumables : query.Concat(consumables);
             }
             if (kind is null or "component")
@@ -45,7 +51,7 @@ public static class InventoryMovementEndpoints
                         db.InventoryComponents.Where(i => i.CompanyId == companyId && i.Id == x.ComponentId).Select(i => i.Name).FirstOrDefault() ?? "Silinmiş kayıt",
                         x.MovementType, x.Quantity,
                         db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.AssetTag + " · " + a.Name).FirstOrDefault(),
-                        x.Notes, x.OccurredAt));
+                        db.Users.Where(u => u.Id == x.ActorUserId).Select(u => u.DisplayName).FirstOrDefault(), x.Notes, x.OccurredAt));
                 query = query is null ? components : query.Concat(components);
             }
             if (!string.IsNullOrWhiteSpace(q))
@@ -62,5 +68,5 @@ public static class InventoryMovementEndpoints
     }
 
     private sealed record InventoryMovementRow(Guid Id, string KindLabel, string Kind, string Item,
-        string MovementType, int Quantity, string? Target, string? Notes, DateTimeOffset OccurredAt);
+        string MovementType, int Quantity, string? Target, string? Actor, string? Notes, DateTimeOffset OccurredAt);
 }
