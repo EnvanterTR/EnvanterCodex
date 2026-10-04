@@ -23,7 +23,7 @@ Bu belge EnvanterTR'nin yerel Snipe-IT 8.7.2 kaynak ağacındaki ana işlevleri 
 | Konumlar | **Kısmi** | Varlık metninden özet çıkarma ve konumdaki varlıkları filtreleme var. Hiyerarşik konum kataloğu, kullanıcı/varsayılan konum/aksesuar/sarf/bileşen ilişkileri ve yöneticiler yok. |
 | Modeller, kategoriler, markalar | **Kısmi** | Temel kataloglar ve varlık formunda seçiciler var. Snipe-IT benzeri model ayrıntı sayfasında varlık/sipariş/dosya/geçmiş ilişkileri, toplu yönetim ve gelişmiş alanlar eksik. |
 | Lisanslar | **Yok** | Lisans yaşam döngüsü, koltuk/adet, atanabilir kullanıcı/varlık, süre/yenileme ve geçmiş modülü oluşturulmalı. |
-| Aksesuarlar | **Yok** | Stok miktarı, kategori/tedarikçi/konum, kişiye zimmet ve iade, hareket geçmişi ve minimum stok akışı oluşturulmalı. |
+| Aksesuarlar | **Kısmi** | Şirket kapsamlı katalog, arama/sıralama/sayfalama, düşük stok filtresi, stok girişi/düzeltme, miktarlı çalışan zimmeti, kısmi iade, hareket geçmişi ve birim maliyet var. Snipe-IT sipariş/dosya sekmeleri, sütun seçimi, CSV/çıktı araçları, toplu işlem, kategori/tedarikçi katalog ilişkileri ve istek onayı eksik. |
 | Sarf malzemeleri | **Yok** | Stok ve tüketim miktarı, kullanıcıya dağıtım, sipariş ve geçmiş akışı oluşturulmalı. |
 | Bileşenler | **Yok** | Miktar/seri takibi, varlığa atanan bileşen, iade/çıkarma, sipariş ve raporlama oluşturulmalı. |
 | Kitler | **Yok** | Önceden tanımlı varlık/aksesuar setleri ve kullanılabilirlik/teslim akışı oluşturulmalı. |
@@ -52,6 +52,23 @@ Bu belge EnvanterTR'nin yerel Snipe-IT 8.7.2 kaynak ağacındaki ana işlevleri 
 5. **Ürün teslimatı:** Windows/Linux kurum içi kurulum, barındırılan hizmet, dil ve ticari akışlar.
 
 Bir modül ancak temel liste ve detayın yanında bağlantılı kayıtlar, hata/boş durumları, filtrelerin korunması, yetki kontrolleri, işlem geçmişi ve veri taşıma davranışı gözden geçirildiğinde “Var” durumuna alınır. Kullanıcı tarafından paylaşılan Snipe-IT ekran görüntüleri etkileşim/tasarım kabul ölçütüdür; yerel 8.7.2 kaynak envanteri davranış karşılaştırmasının referansıdır.
+
+## Demo arayüzü gözlemleri (4 Ekim 2026)
+
+Kullanıcı isteğiyle `https://demo.snipeitapp.com` üzerinde herkese açık demo hesabı salt okunur biçimde incelendi. Demo altbilgisi **Snipe-IT v8.8.0 build 25378** gösteriyor; depodaki kaynak karşılaştırması **v8.7.2**. Demo bazı işlevlerin kapalı olduğunu belirtiyor. Bu nedenle gözlem, bütün izin rolleri ve her olası düğme davranışı için tam bir davranış sertifikası değildir; tehlikeli veri değiştirme, silme, içe aktarma ve ayar kaydetme işlemleri çalıştırılmadı.
+
+Gezinme ve ekran incelemesinde doğrulanan kapsam:
+
+- **Gösterge paneli:** altı varlık ailesi için sayaç kartları; yakın etkinlik tablosu ve araçları; gün/sonraki takvim; duruma göre grafik; düşük stok; denetim, iade, talep ve kullanım ömrü uyarıları; konum ve kategori özetleri.
+- **Varlık listesi:** tümü, zimmetli, dağıtıma hazır, beklemede, kullanılamaz, BYOD, arşiv, talep edilebilir, denetim/iade zamanı gelen ve silinmiş kuyrukları; filtreleme, sayfa boyutu, sütun/çıktı araçları, gelişmiş arama ve seçili satırlar için toplu işlem. Ayrı akışlarda hızlı taramayla iade, toplu zimmet ve tarayıcıyla toplu denetim alanları var. Seri numarasıyla tarama ayarı benzersizlik yapılandırmasına bağlı.
+- **Varlık detayı:** bilgi, lisans, bileşen, bağlı varlık, aksesuar, bakım, denetim, not, dosya, modele ait ek dosya ve geçmiş sekmeleri; durum, son/gelecek iade, denetim, cihaz ömrü, özel model alanları, amortisman, toplam maliyet, QR ve işlem sayacı. Düzenle, kopyala, zimmet, denetim gibi ayrı işlemler bulunuyor.
+- **Stok aileleri:** aksesuar, sarf ve bileşen listelerinde modüle göre değişen model/ürün kodu, konum, minimum/toplam/kalan miktar, zimmet, yüzde, alış maliyeti ve sipariş alanları; detayda atanmış/zimmetli, dosya, sipariş ve geçmiş sekmeleri; miktar düzeltme ve teslim/iade akışları.
+- **Kişiler:** tüm kullanıcılar, süper kullanıcılar, yöneticiler, silinmiş, oturumu açık/kapalı filtreleri; kullanıcı profilinde varlık/lisans/aksesuar/sarf/bakım/dosya/EULA/konum/yönetilen kullanıcı/geçmiş ilişkileri. Profil ayrıca giriş ve MFA durumu, cihaz kaydı, API token sayısı, otomatik lisans atama ve rol/izin özetlerini gösteriyor.
+- **Takvim ve raporlar:** denetim, beklenen iade, zimmet, varlık ömrü, garanti, lisans ve işten ayrılma etkinlikleri; gün/hafta/ay/liste görünümü. Rapor menüsünde etkinlik, varlık/bileşen/sarf, denetim, amortisman, lisans, bakım ve kabul edilmeyen öğe raporları yer alıyor.
+- **Ayarlar ve kataloglar:** özel alan kümeleri, model/kategori/marka/tedarikçi/departman/konum/şirket/amortisman katalogları; durum etiketleri; otomatik varlık etiketi öneki/sıfır doldurma; yeni etiket motoru/şablon seçimi; bildirim, güvenlik ve kimlik sağlayıcı ayarları. Bunlar ayrı ekran ve izin yüzeyleridir.
+- **İçe aktarma, kit, talep ve bakım:** içe aktarma türlerine göre örnek CSV ve geçmiş; önceden tanımlı kitler; bekleyen talepler; tür, varlık, sağlayıcı, maliyet, tarih, not/dosya ve tamamlandı durumu içeren bakım kayıtları.
+
+Bu gözlemler ürün fark listesini zenginleştirir. Henüz uygulamaya alınmamış bir aileyi tamamlanmış saymaz ve 8.8.0 demosunun kapalı düğmelerini gözlemlemiş gibi göstermez.
 
 ## Kaynaklar ve denetim sınırı
 

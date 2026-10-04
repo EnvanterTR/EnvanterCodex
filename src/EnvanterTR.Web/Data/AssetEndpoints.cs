@@ -84,6 +84,254 @@ public static class AssetEndpoints
             return Results.Ok(new { items, page, pageSize, total });
         }).RequireAuthorization("asset.read");
 
+        api.MapGet("/accessories", async ([FromQuery] string? q, [FromQuery] string? category,
+            [FromQuery] string? location, [FromQuery] string? stock, [FromQuery] string? sortBy,
+            [FromQuery] string? sortDirection, [FromQuery] int page, [FromQuery] int pageSize,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            page = Math.Max(page, 1);
+            pageSize = Math.Clamp(pageSize == 0 ? 25 : pageSize, 1, 200);
+            var query = db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                if (term.Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
+                query = query.Where(x => x.Name.Contains(term) || (x.Category != null && x.Category.Contains(term)) ||
+                    (x.ModelNumber != null && x.ModelNumber.Contains(term)) || (x.ItemNumber != null && x.ItemNumber.Contains(term)) ||
+                    (x.Supplier != null && x.Supplier.Contains(term)) || (x.Location != null && x.Location.Contains(term)));
+            }
+            if (!string.IsNullOrWhiteSpace(category)) query = query.Where(x => x.Category == category.Trim());
+            if (!string.IsNullOrWhiteSpace(location)) query = query.Where(x => x.Location == location.Trim());
+            if (stock == "low") query = query.Where(x => x.TotalQuantity - (db.AccessoryAssignments
+                .Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id)
+                .Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0) <= x.MinimumQuantity);
+            if (stock == "available") query = query.Where(x => x.TotalQuantity > (db.AccessoryAssignments
+                .Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id)
+                .Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0));
+            var descending = string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase);
+            var sort = (sortBy ?? "name").Trim().ToLowerInvariant();
+            if (sort is not ("name" or "category" or "location" or "total" or "remaining" or "updated"))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["sortBy"] = ["Sıralama alanı desteklenmiyor."] });
+            if (sortDirection is not null && !new[] { "asc", "desc" }.Contains(sortDirection.Trim(), StringComparer.OrdinalIgnoreCase))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["sortDirection"] = ["Sıralama yönü asc veya desc olmalı."] });
+            IOrderedQueryable<Accessory> ordered = (sort, descending) switch
+            {
+                ("category", false) => query.OrderBy(x => x.Category), ("category", true) => query.OrderByDescending(x => x.Category),
+                ("location", false) => query.OrderBy(x => x.Location), ("location", true) => query.OrderByDescending(x => x.Location),
+                ("total", false) => query.OrderBy(x => x.TotalQuantity), ("total", true) => query.OrderByDescending(x => x.TotalQuantity),
+                ("remaining", false) => query.OrderBy(x => x.TotalQuantity - (db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0)),
+                ("remaining", true) => query.OrderByDescending(x => x.TotalQuantity - (db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0)),
+                ("updated", false) => query.OrderBy(x => x.UpdatedAt), ("updated", true) => query.OrderByDescending(x => x.UpdatedAt),
+                (_, false) => query.OrderBy(x => x.Name), _ => query.OrderByDescending(x => x.Name)
+            };
+            var total = await query.CountAsync(cancellationToken);
+            var items = await ordered.ThenBy(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize)
+                .Select(x => new
+                {
+                    x.Id, x.Name, x.Category, x.ModelNumber, x.ItemNumber, x.Supplier, x.Location,
+                    x.MinimumQuantity, x.TotalQuantity,
+                    checkedOut = db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0,
+                    x.UnitCost, x.Currency, x.PurchaseDate, x.IsRequestable, x.UpdatedAt
+                }).ToListAsync(cancellationToken);
+            return Results.Ok(new { items, page, pageSize, total });
+        }).RequireAuthorization("asset.read");
+
+        api.MapGet("/accessories/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db,
+            CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var item = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
+                .Select(x => new
+                {
+                    x.Id, x.Name, x.Category, x.ModelNumber, x.ItemNumber, x.Supplier, x.Location,
+                    x.MinimumQuantity, x.TotalQuantity,
+                    checkedOut = db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0,
+                    x.UnitCost, x.Currency, x.PurchaseDate, x.Notes, x.IsRequestable, x.CreatedAt, x.UpdatedAt
+                }).FirstOrDefaultAsync(cancellationToken);
+            if (item is null) return Results.NotFound();
+            var assignments = await db.AccessoryAssignments.AsNoTracking().Where(x => x.CompanyId == companyId && x.AccessoryId == id && x.Quantity > x.ReturnedQuantity)
+                .OrderByDescending(x => x.CheckedOutAt).Select(x => new
+                {
+                    x.Id, x.TargetType, x.EmployeeId, x.AssetId, x.Location,
+                    targetName = x.TargetType == "Employee"
+                        ? db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.DisplayName).FirstOrDefault()
+                        : x.TargetType == "Asset"
+                            ? db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.AssetTag + " · " + a.Name).FirstOrDefault()
+                            : x.Location,
+                    x.Quantity, x.ReturnedQuantity, remainingQuantity = x.Quantity - x.ReturnedQuantity, x.Notes, x.CheckedOutAt
+                }).ToListAsync(cancellationToken);
+            var movements = await db.AccessoryMovements.AsNoTracking().Where(x => x.CompanyId == companyId && x.AccessoryId == id)
+                .OrderByDescending(x => x.OccurredAt).Take(50).Select(x => new
+                {
+                    x.Id, x.MovementType, x.Quantity, x.Notes, x.OccurredAt,
+                    targetName = db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.Id == x.AssignmentId)
+                        .Select(a => a.TargetType == "Employee"
+                            ? db.Employees.Where(e => e.CompanyId == companyId && e.Id == a.EmployeeId).Select(e => e.DisplayName).FirstOrDefault()
+                            : a.TargetType == "Asset"
+                                ? db.Assets.Where(asset => asset.CompanyId == companyId && asset.Id == a.AssetId).Select(asset => asset.AssetTag + " · " + asset.Name).FirstOrDefault()
+                                : a.Location).FirstOrDefault()
+                }).ToListAsync(cancellationToken);
+            return Results.Ok(new { item, assignments, movements });
+        }).RequireAuthorization("asset.read");
+
+        api.MapPost("/accessories", async (CreateAccessoryRequest request, ClaimsPrincipal user, AppDbContext db,
+            CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var errors = ValidateAccessory(request.Name, request.MinimumQuantity, request.Quantity,
+                request.UnitCost, request.Currency, request.Category, request.ModelNumber, request.ItemNumber,
+                request.Supplier, request.Location, request.Notes);
+            if (errors.Count > 0) return Results.ValidationProblem(errors);
+            var item = new Accessory
+            {
+                CompanyId = companyId, Name = request.Name.Trim(), Category = Clean(request.Category),
+                ModelNumber = Clean(request.ModelNumber), ItemNumber = Clean(request.ItemNumber),
+                Supplier = Clean(request.Supplier), Location = Clean(request.Location),
+                MinimumQuantity = request.MinimumQuantity, TotalQuantity = request.Quantity,
+                UnitCost = request.UnitCost, Currency = request.Currency.Trim().ToUpperInvariant(),
+                PurchaseDate = request.PurchaseDate, Notes = Clean(request.Notes), IsRequestable = request.IsRequestable
+            };
+            db.Accessories.Add(item);
+            if (item.TotalQuantity > 0) db.AccessoryMovements.Add(new AccessoryMovement
+            {
+                CompanyId = companyId, AccessoryId = item.Id, ActorUserId = CurrentUserId(user),
+                MovementType = "Received", Quantity = item.TotalQuantity, Notes = "İlk stok girişi"
+            });
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = CurrentUserId(user), TargetType = "Accessory", TargetId = item.Id, Action = "created", Details = $"Aksesuar kaydı oluşturuldu; ilk stok {item.TotalQuantity} adet." });
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.Created($"/api/accessories/{item.Id}", new { item.Id, item.Name });
+        }).RequireAuthorization("asset.write");
+
+        api.MapPut("/accessories/{id:guid}", async (Guid id, UpdateAccessoryRequest request, ClaimsPrincipal user,
+            AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var item = await db.Accessories.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (item is null) return Results.NotFound();
+            var errors = ValidateAccessory(request.Name, request.MinimumQuantity, item.TotalQuantity,
+                request.UnitCost, request.Currency, request.Category, request.ModelNumber, request.ItemNumber,
+                request.Supplier, request.Location, request.Notes);
+            if (errors.Count > 0) return Results.ValidationProblem(errors);
+            item.Name = request.Name.Trim(); item.Category = Clean(request.Category); item.ModelNumber = Clean(request.ModelNumber);
+            item.ItemNumber = Clean(request.ItemNumber); item.Supplier = Clean(request.Supplier); item.Location = Clean(request.Location);
+            item.MinimumQuantity = request.MinimumQuantity; item.UnitCost = request.UnitCost;
+            item.Currency = request.Currency.Trim().ToUpperInvariant(); item.PurchaseDate = request.PurchaseDate;
+            item.Notes = Clean(request.Notes); item.IsRequestable = request.IsRequestable; item.UpdatedAt = DateTimeOffset.UtcNow;
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = CurrentUserId(user), TargetType = "Accessory", TargetId = item.Id, Action = "updated", Details = "Aksesuar temel bilgileri güncellendi." });
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.NoContent();
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/accessories/{id:guid}/stock", async (Guid id, AccessoryStockRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (request.Quantity == 0 || Math.Abs((long)request.Quantity) > 100000 || request.Notes?.Length > 2000)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["quantity"] = ["Stok hareketi 0 olamaz, 100.000 adedi aşamaz ve not 2.000 karakterden uzun olamaz."] });
+            var item = await db.Accessories.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (item is null) return Results.NotFound();
+            var outstanding = await db.AccessoryAssignments.Where(x => x.CompanyId == companyId && x.AccessoryId == id)
+                .SumAsync(x => (int?)(x.Quantity - x.ReturnedQuantity), cancellationToken) ?? 0;
+            if (item.TotalQuantity + request.Quantity > 100000)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["quantity"] = ["Toplam stok 100.000 adedi aşamaz."] });
+            if (item.TotalQuantity + request.Quantity < outstanding || item.TotalQuantity + request.Quantity < 0)
+                return Results.Conflict(new { message = $"Stok {outstanding} zimmetli adet altına indirilemez." });
+            item.TotalQuantity += request.Quantity; item.UpdatedAt = DateTimeOffset.UtcNow;
+            db.AccessoryMovements.Add(new AccessoryMovement
+            {
+                CompanyId = companyId, AccessoryId = item.Id, ActorUserId = CurrentUserId(user),
+                MovementType = request.Quantity > 0 ? "Received" : "Adjustment", Quantity = Math.Abs(request.Quantity), Notes = Clean(request.Notes)
+            });
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = CurrentUserId(user), TargetType = "Accessory", TargetId = id, Action = request.Quantity > 0 ? "stock_received" : "stock_adjusted", Details = $"Stok {request.Quantity:+#;-#;0} adet değiştirildi." });
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.Ok(new { item.TotalQuantity, checkedOut = outstanding, remaining = item.TotalQuantity - outstanding });
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/accessories/{id:guid}/checkout", async (Guid id, AccessoryCheckoutRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (request.Quantity is < 1 or > 100000 || request.Notes?.Length > 2000)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["quantity"] = ["Adet 1 ile 100.000 arasında olmalı; not en fazla 2.000 karakter olabilir."] });
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
+            var targetType = request.TargetType?.Trim().ToLowerInvariant();
+            var targetErrors = new Dictionary<string, string[]>();
+            var normalizedLocation = Clean(request.Location);
+            var employeeId = request.EmployeeId;
+            var assetId = request.AssetId;
+            if (targetType == "employee")
+            {
+                if (employeeId is not Guid selectedEmployee || !await db.Employees.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == selectedEmployee && x.IsActive, cancellationToken))
+                    targetErrors["employeeId"] = ["Etkin çalışan bu şirkette bulunamadı."];
+                assetId = null; normalizedLocation = null;
+            }
+            else if (targetType == "asset")
+            {
+                if (assetId is not Guid selectedAsset || !await db.Assets.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == selectedAsset, cancellationToken))
+                    targetErrors["assetId"] = ["Varlık bu şirkette bulunamadı."];
+                employeeId = null; normalizedLocation = null;
+            }
+            else if (targetType == "location")
+            {
+                if (string.IsNullOrWhiteSpace(normalizedLocation) || normalizedLocation.Length > 160)
+                    targetErrors["location"] = ["Konum zorunludur ve 160 karakteri aşamaz."];
+                employeeId = null; assetId = null;
+            }
+            else targetErrors["targetType"] = ["Teslim hedefi çalışan, varlık veya konum olmalı."];
+            if (targetErrors.Count > 0) return Results.ValidationProblem(targetErrors);
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            var item = await db.Accessories.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (item is null) return Results.NotFound();
+            var outstanding = await db.AccessoryAssignments.Where(x => x.CompanyId == companyId && x.AccessoryId == id)
+                .SumAsync(x => (int?)(x.Quantity - x.ReturnedQuantity), cancellationToken) ?? 0;
+            var available = item.TotalQuantity - outstanding;
+            if (request.Quantity > available) return Results.Conflict(new { message = $"Yalnızca {available} adet stokta kullanılabilir." });
+            var assignment = new AccessoryAssignment
+            {
+                CompanyId = companyId, AccessoryId = id, TargetType = targetType![..1].ToUpperInvariant() + targetType[1..],
+                EmployeeId = employeeId, AssetId = assetId, Location = normalizedLocation,
+                Quantity = request.Quantity, Notes = Clean(request.Notes)
+            };
+            db.AccessoryAssignments.Add(assignment);
+            db.AccessoryMovements.Add(new AccessoryMovement
+            {
+                CompanyId = companyId, AccessoryId = id, AssignmentId = assignment.Id, EmployeeId = employeeId,
+                ActorUserId = userId, MovementType = "Checkout", Quantity = request.Quantity, Notes = Clean(request.Notes)
+            });
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = userId, TargetType = "Accessory", TargetId = id, Action = "checked_out", Details = $"{request.Quantity} adet aksesuar çalışana zimmetlendi." });
+            item.UpdatedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Created($"/api/accessories/{id}", new { assignment.Id, assignment.Quantity, remaining = available - request.Quantity });
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/accessories/{id:guid}/checkin", async (Guid id, AccessoryCheckinRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (request.Quantity is < 1 or > 100000 || request.Notes?.Length > 2000)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["quantity"] = ["Adet 1 ile 100.000 arasında olmalı; not en fazla 2.000 karakter olabilir."] });
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            var assignment = await db.AccessoryAssignments.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.AccessoryId == id && x.Id == request.AssignmentId, cancellationToken);
+            if (assignment is null) return Results.NotFound();
+            var outstanding = assignment.Quantity - assignment.ReturnedQuantity;
+            if (request.Quantity > outstanding) return Results.Conflict(new { message = $"Bu zimmette yalnızca {outstanding} adet iade alınabilir." });
+            assignment.ReturnedQuantity += request.Quantity; assignment.LastReturnedAt = DateTimeOffset.UtcNow;
+            var item = await db.Accessories.SingleAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            item.UpdatedAt = DateTimeOffset.UtcNow;
+            db.AccessoryMovements.Add(new AccessoryMovement
+            {
+                CompanyId = companyId, AccessoryId = id, AssignmentId = assignment.Id, EmployeeId = assignment.EmployeeId,
+                ActorUserId = userId, MovementType = "Checkin", Quantity = request.Quantity, Notes = Clean(request.Notes)
+            });
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = userId, TargetType = "Accessory", TargetId = id, Action = "checked_in", Details = $"{request.Quantity} adet aksesuar iade alındı." });
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { assignment.Id, assignment.Quantity, assignment.ReturnedQuantity, remainingOnAssignment = assignment.Quantity - assignment.ReturnedQuantity });
+        }).RequireAuthorization("asset.write");
+
         // Locations are currently free-text values on assets. The directory therefore
         // summarizes exact stored location labels and never implies a managed hierarchy.
         api.MapGet("/locations", async (ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
@@ -638,6 +886,39 @@ public static class AssetEndpoints
         Guid.TryParse(user.FindFirstValue("company_id"), out companyId);
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static Guid? CurrentUserId(ClaimsPrincipal user) =>
+        Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : null;
+
+    private static Dictionary<string, string[]> ValidateAccessory(string? name, int minimumQuantity, int totalQuantity,
+        decimal? unitCost, string? currency, string? category, string? modelNumber, string? itemNumber,
+        string? supplier, string? location, string? notes)
+    {
+        var errors = new Dictionary<string, string[]>();
+        void Add(string key, string message) => errors[key] = [message];
+        if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 200) Add("name", "Ad zorunludur ve 200 karakteri aşamaz.");
+        if (minimumQuantity is < 0 or > 100000) Add("minimumQuantity", "Minimum adet 0 ile 100.000 arasında olmalı.");
+        if (totalQuantity is < 0 or > 100000) Add("quantity", "Toplam adet 0 ile 100.000 arasında olmalı.");
+        if (unitCost < 0) Add("unitCost", "Birim maliyet negatif olamaz.");
+        if (currency is null || currency.Trim().Length != 3 || currency.Any(c => !char.IsAsciiLetter(c))) Add("currency", "Para birimi üç harfli ISO kodu olmalı.");
+        if (category?.Length > 120) Add("category", "Kategori 120 karakteri aşamaz.");
+        if (modelNumber?.Length > 120) Add("modelNumber", "Model numarası 120 karakteri aşamaz.");
+        if (itemNumber?.Length > 120) Add("itemNumber", "Ürün numarası 120 karakteri aşamaz.");
+        if (supplier?.Length > 200) Add("supplier", "Tedarikçi 200 karakteri aşamaz.");
+        if (location?.Length > 160) Add("location", "Konum 160 karakteri aşamaz.");
+        if (notes?.Length > 2000) Add("notes", "Notlar 2.000 karakteri aşamaz.");
+        return errors;
+    }
+
+    public sealed record CreateAccessoryRequest(string Name, string? Category, string? ModelNumber, string? ItemNumber,
+        string? Supplier, string? Location, int MinimumQuantity, int Quantity, decimal? UnitCost,
+        string Currency, DateOnly? PurchaseDate, string? Notes, bool IsRequestable);
+    public sealed record UpdateAccessoryRequest(string Name, string? Category, string? ModelNumber, string? ItemNumber,
+        string? Supplier, string? Location, int MinimumQuantity, decimal? UnitCost,
+        string Currency, DateOnly? PurchaseDate, string? Notes, bool IsRequestable);
+    public sealed record AccessoryStockRequest(int Quantity, string? Notes);
+    public sealed record AccessoryCheckoutRequest(string TargetType, Guid? EmployeeId, Guid? AssetId, string? Location, int Quantity, string? Notes);
+    public sealed record AccessoryCheckinRequest(Guid AssignmentId, int Quantity, string? Notes);
 
     private sealed record AssetExportRow(string AssetTag, string Name, string Status, string? Category,
         string? Brand, string? Model, string? SerialNumber, string? Location, string? EmployeeNumber,

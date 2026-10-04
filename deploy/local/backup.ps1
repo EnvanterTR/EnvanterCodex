@@ -51,11 +51,11 @@ try {
 
     $composePrefix = @('compose', '--env-file', $environmentFile, '-f', $composeFile)
     $databaseContainer = (& docker @composePrefix ps -q database | Select-Object -First 1).Trim()
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($databaseContainer)) {
+    if ([string]::IsNullOrWhiteSpace($databaseContainer)) {
         throw 'Veritabanı konteyneri çalışmıyor. Önce deploy/local yönergeleriyle geliştirme ortamını başlatın.'
     }
     $webContainer = (& docker @composePrefix ps -q web | Select-Object -First 1).Trim()
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($webContainer)) {
+    if ([string]::IsNullOrWhiteSpace($webContainer)) {
         throw 'Uygulama konteyneri çalışmıyor; şirket medya volume adı güvenle belirlenemedi.'
     }
     $ready = (& docker @composePrefix exec -T database sh -c 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"' 2>&1 | Out-String).Trim()

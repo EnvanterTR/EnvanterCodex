@@ -157,6 +157,57 @@ public sealed class AssetEvent
     public DateTimeOffset OccurredAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class Accessory
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public required string Name { get; set; }
+    public string? Category { get; set; }
+    public string? ModelNumber { get; set; }
+    public string? ItemNumber { get; set; }
+    public string? Supplier { get; set; }
+    public string? Location { get; set; }
+    public int MinimumQuantity { get; set; }
+    public int TotalQuantity { get; set; }
+    public decimal? UnitCost { get; set; }
+    public string Currency { get; set; } = "TRY";
+    public DateOnly? PurchaseDate { get; set; }
+    public string? Notes { get; set; }
+    public bool IsRequestable { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class AccessoryAssignment
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid AccessoryId { get; set; }
+    public string TargetType { get; set; } = "Employee";
+    public Guid? EmployeeId { get; set; }
+    public Guid? AssetId { get; set; }
+    public string? Location { get; set; }
+    public int Quantity { get; set; }
+    public int ReturnedQuantity { get; set; }
+    public string? Notes { get; set; }
+    public DateTimeOffset CheckedOutAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? LastReturnedAt { get; set; }
+}
+
+public sealed class AccessoryMovement
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid AccessoryId { get; set; }
+    public Guid? AssignmentId { get; set; }
+    public Guid? EmployeeId { get; set; }
+    public Guid? ActorUserId { get; set; }
+    public required string MovementType { get; set; }
+    public int Quantity { get; set; }
+    public string? Notes { get; set; }
+    public DateTimeOffset OccurredAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public static class AssetStatuses
 {
     public const string Available = "Available";
