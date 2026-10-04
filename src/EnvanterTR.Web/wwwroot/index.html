@@ -138,7 +138,7 @@
       <section class="workspace-page" id="labelSettingsPage" hidden>
         <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / ENVANTER ETİKETLERİ</div><h1>QR ve barkodlar</h1><p>Etiket biçimini, ölçüsünü ve yazıcıya göre hizasını ayarlayın.</p></div><button class="btn" id="labelSettingsReset" type="button">Varsayılanlara dön</button></div>
         <div class="grid" style="grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr);align-items:start">
-          <section class="panel"><div class="panel-head"><h2>Etiket ve kod ayarları</h2><span class="pill blue">Bu tarayıcıda saklanır</span></div>
+          <section class="panel"><div class="panel-head"><h2>Etiket ve kod ayarları</h2><span class="pill blue">Şirket profiliyle eşitlenir</span></div>
             <form id="labelSettingsForm" class="dialog-body">
               <div class="form-grid">
                 <label>1D barkod türü<select name="barcode1d"><option value="code128">C128 · alfasayısal</option><option value="code39">C39 · büyük harf ve rakam</option><option value="ean5">EAN5 · 5 rakam</option><option value="ean13">EAN13 · 12/13 rakam</option><option value="upca">UPC-A · 11/12 rakam</option><option value="upce">UPC-E · 6–8 rakam</option><option value="none">Kapalı</option></select></label>
@@ -152,8 +152,8 @@
                 <label>QR içeriği<select name="qrTarget"><option value="tag">Varlık etiketi · aramayla bulunur</option><option value="asset-url">Giriş sonrası varlık ayrıntısını aç</option></select></label>
               </div>
               <fieldset style="display:flex;flex-wrap:wrap;gap:12px;margin:8px 0;padding:10px;border:1px solid #e4eaf2;border-radius:8px"><legend class="muted">Etikette gösterilecek bilgiler</legend><label><input name="showName" type="checkbox" checked> Varlık adı</label><label><input name="showSerial" type="checkbox" checked> Seri numarası</label><label><input name="showModel" type="checkbox"> Model</label><label><input name="showLocation" type="checkbox"> Konum</label><label><input name="showStatus" type="checkbox"> Durum</label></fieldset>
-              <div class="dialog-actions"><button class="btn primary" type="submit">Ayarları kaydet</button><span id="labelSettingsFeedback" class="muted" role="status"></span></div>
-              <p class="muted">EAN/UPC biçimleri yalnızca uygun uzunlukta sayısal etiketleri kabul eder. Ölçü, iç boşluk ve X/Y hizası tek etiket ve toplu baskıda her etikete uygulanır. Toplu baskı etiket yazıcılarında her etiketi ayrı sayfaya yerleştirir. Seçimler bu tarayıcıda, şirket hesabına göre saklanır.</p>
+              <div class="dialog-actions"><button class="btn primary" id="labelSettingsSave" type="submit">Ayarları kaydet</button><span id="labelSettingsFeedback" class="muted" role="status"></span></div>
+              <p class="muted">EAN/UPC biçimleri yalnızca uygun uzunlukta sayısal etiketleri kabul eder. Ölçü, iç boşluk ve X/Y hizası tek etiket ve toplu baskıda her etikete uygulanır. Toplu baskı etiket yazıcılarında her etiketi ayrı sayfaya yerleştirir. Kaydedilen profil şirket üyeleriyle paylaşılır; mevcut tarayıcı ayarları ilk eşitlemeye kadar yedek olarak kullanılır.</p>
             </form>
           </section>
           <section class="panel"><div class="panel-head"><h2>Canlı etiket önizlemesi</h2></div><div class="dialog-body"><div id="labelPreviewCanvas" aria-live="polite"></div><p id="labelPreviewMessage" class="muted" role="status" style="margin-top:12px">Örnek etiket hazırlanıyor…</p></div></section>
@@ -244,7 +244,8 @@
   <script>
     const toast = document.getElementById('toast');
     let toastTimer, requestToken = '', lookupCache = { categories: [], brands: [], models: [] }, loadedAssets = [], selectedAssetIds = new Set(), selectedAssetRows = new Map(), currentAsset = null, currentEmployeeId = null, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', assetRowDensity = 'comfortable', visibleAssetColumns = Array(7).fill(true), labelSettingsKey = '', bwipLoadPromise = null;
-    let labelPrintSettings = { barcode1d: 'code128', barcode2d: 'qrcode', widthMm: 86, heightMm: 48, offsetXmm: 0, offsetYmm: 0, paddingMm: 4, codeSizeMm: 25, qrTarget: 'tag', showName: true, showSerial: true, showModel: false, showLocation: false, showStatus: false };
+    const defaultLabelPrintSettings = Object.freeze({ barcode1d: 'code128', barcode2d: 'qrcode', widthMm: 86, heightMm: 48, offsetXmm: 0, offsetYmm: 0, paddingMm: 4, codeSizeMm: 25, qrTarget: 'tag', showName: true, showSerial: true, showModel: false, showLocation: false, showStatus: false });
+    let labelPrintSettings = { ...defaultLabelPrintSettings };
     const pageSize = 12;
     let accessoryPage = 1, accessoryTotal = 0, accessoryQueryTimer, currentAccessory = null, accessoryRequestId = 0, visibleAccessoryColumns = Array(9).fill(true);
     const $ = (selector, root = document) => root.querySelector(selector);
@@ -439,21 +440,29 @@
     }
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]); }
     function statusLabel(status) { return ({ Available: 'Kullanılabilir', Deployed: 'Atanmış', Maintenance: 'Bakımda', Archived: 'Arşiv' })[status] || status || 'Bilinmiyor'; }
-    function loadLabelSettings(companyId) {
+    async function loadLabelSettings(companyId) {
       labelSettingsKey = `envantertr:label-settings:${companyId}`;
+      labelPrintSettings = { ...defaultLabelPrintSettings };
+      let stored = null;
       try {
-        const stored = JSON.parse(localStorage.getItem(labelSettingsKey) || 'null');
-        if (stored && typeof stored === 'object') {
-          const base = labelPrintSettings, numeric = (key, min, max) => { const value = Number(stored[key]); return Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : base[key]; };
-          labelPrintSettings = {
-            barcode1d: ['code128','code39','ean5','ean13','upca','upce','none'].includes(stored.barcode1d) ? stored.barcode1d : base.barcode1d,
-            barcode2d: ['qrcode','pdf417','datamatrix','none'].includes(stored.barcode2d) ? stored.barcode2d : base.barcode2d,
-            qrTarget: ['tag','asset-url'].includes(stored.qrTarget) ? stored.qrTarget : base.qrTarget,
-            widthMm: numeric('widthMm',25,150), heightMm: numeric('heightMm',15,100), offsetXmm: numeric('offsetXmm',-30,30), offsetYmm: numeric('offsetYmm',-30,30), paddingMm: numeric('paddingMm',0,15), codeSizeMm: numeric('codeSizeMm',10,45),
-            showName: stored.showName !== false, showSerial: stored.showSerial !== false, showModel: stored.showModel === true, showLocation: stored.showLocation === true, showStatus: stored.showStatus === true
-          };
-        }
-      } catch { notify('Etiket ayarları okunamadı; varsayılan değerler kullanılıyor.'); }
+        const profile = await api('/api/company/label-settings');
+        if (profile.isConfigured) stored = profile.settings;
+        else stored = JSON.parse(localStorage.getItem(labelSettingsKey) || 'null');
+      } catch (error) {
+        console.warn('Şirket etiket profili yüklenemedi; bu tarayıcıdaki yedek ayarlar kullanılacak.', error);
+        try { stored = JSON.parse(localStorage.getItem(labelSettingsKey) || 'null'); } catch { stored = null; }
+      }
+      if (stored && typeof stored === 'object') {
+        const base = defaultLabelPrintSettings, numeric = (key, min, max) => { const value = Number(stored[key]); return Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : base[key]; };
+        labelPrintSettings = {
+          barcode1d: ['code128','code39','ean5','ean13','upca','upce','none'].includes(stored.barcode1d) ? stored.barcode1d : base.barcode1d,
+          barcode2d: ['qrcode','pdf417','datamatrix','none'].includes(stored.barcode2d) ? stored.barcode2d : base.barcode2d,
+          qrTarget: ['tag','asset-url'].includes(stored.qrTarget) ? stored.qrTarget : base.qrTarget,
+          widthMm: numeric('widthMm',25,150), heightMm: numeric('heightMm',15,100), offsetXmm: numeric('offsetXmm',-30,30), offsetYmm: numeric('offsetYmm',-30,30), paddingMm: numeric('paddingMm',0,15), codeSizeMm: numeric('codeSizeMm',10,45),
+          showName: stored.showName !== false, showSerial: stored.showSerial !== false, showModel: stored.showModel === true, showLocation: stored.showLocation === true, showStatus: stored.showStatus === true
+        };
+        try { localStorage.setItem(labelSettingsKey, JSON.stringify(labelPrintSettings)); } catch { }
+      }
     }
     function populateLabelSettingsForm() {
       const form = $('#labelSettingsForm');
@@ -1388,7 +1397,7 @@
       else if (page === 'Bileşenler') { if (!canReadAssets()) { notify('Bileşen stoklarını görüntüleme yetkiniz bulunmuyor.'); return; } $('#componentsPage').hidden = false; $('#pageTitle').textContent = page; loadComponents(1).catch(error => notify(error.message)); }
       else if (page === 'Stok hareketleri') { if (!canReadAssets()) { notify('Stok hareketlerini görüntüleme yetkiniz bulunmuyor.'); return; } $('#inventoryMovementsPage').hidden = false; $('#pageTitle').textContent = page; loadInventoryMovements(1).catch(error => notify(error.message)); }
       else if (page === 'Çalışan kayıtları') { $('#employeesPage').hidden = false; $('#pageTitle').textContent = page; loadEmployees().catch(error => notify(error.message)); }
-      else if (page === 'QR ve barkodlar') { if (!canReadAssets()) { notify('Bu hesabın varlık kayıtlarını görme yetkisi yok.'); return; } $('#labelSettingsPage').hidden = false; $('#pageTitle').textContent = page; populateLabelSettingsForm(); renderLabelPreview().catch(error => { $('#labelPreviewMessage').textContent = error.message; }); }
+      else if (page === 'QR ve barkodlar') { if (!canReadAssets()) { notify('Bu hesabın varlık kayıtlarını görme yetkisi yok.'); return; } $('#labelSettingsPage').hidden = false; $('#pageTitle').textContent = page; $('#labelSettingsSave').hidden = !canManageSettings(); $('#labelSettingsReset').hidden = !canManageSettings(); populateLabelSettingsForm(); renderLabelPreview().catch(error => { $('#labelPreviewMessage').textContent = error.message; }); }
       else if (page === 'Departmanlar' || page === 'Lokasyonlar') { $('#directoryPage').hidden = false; $('#pageTitle').textContent = page; loadDirectory(page === 'Departmanlar' ? 'departments' : 'locations').catch(error => notify(error.message)); }
       else if (page === 'Uygulama kullanıcıları') { $('#membersPage').hidden = false; $('#pageTitle').textContent = page; loadMembers().catch(error => notify(error.message)); }
       else if (page === 'Hareket geçmişi') { $('#activityPage').hidden = false; $('#pageTitle').textContent = page; loadActivity(1).catch(error => notify(error.message)); }
@@ -1451,18 +1460,24 @@
       try { await navigator.clipboard.writeText(currentAsset.assetTag); notify('Varlık etiketi panoya kopyalandı.'); }
       catch { notify('Etiket kopyalanamadı. Tarayıcı pano iznini kontrol edin.'); }
     });
-    $('#labelSettingsForm').addEventListener('submit', event => {
+    $('#labelSettingsForm').addEventListener('submit', async event => {
       event.preventDefault();
+      if (!canManageSettings()) { $('#labelSettingsFeedback').textContent = 'Şirket etiket ayarlarını yalnızca şirket sahibi veya yöneticisi kaydedebilir.'; return; }
       const settings = readLabelSettingsForm();
       if (!Object.values(settings).every(value => typeof value === 'string' || typeof value === 'boolean' || Number.isFinite(value))) { $('#labelSettingsFeedback').textContent = 'Tüm ölçüleri geçerli sayılarla doldurun.'; return; }
-      labelPrintSettings = settings;
-      try { localStorage.setItem(labelSettingsKey, JSON.stringify(labelPrintSettings)); $('#labelSettingsFeedback').textContent = 'Ayarlar bu şirketteki tarayıcınız için kaydedildi.'; }
-      catch { $('#labelSettingsFeedback').textContent = 'Tarayıcı saklama alanına yazılamadı. Bu sekmede kullanabilirsiniz.'; }
-      renderLabelPreview().catch(error => { $('#labelPreviewMessage').textContent = error.message; });
+      const saveButton = $('#labelSettingsSave'); saveButton.disabled = true; $('#labelSettingsFeedback').textContent = 'Şirket etiket profili kaydediliyor…';
+      try {
+        const response = await api('/api/company/label-settings', { method: 'PUT', body: JSON.stringify(settings) });
+        labelPrintSettings = response.settings;
+        try { localStorage.setItem(labelSettingsKey, JSON.stringify(labelPrintSettings)); } catch { }
+        $('#labelSettingsFeedback').textContent = 'Şirket profiline kaydedildi; üyeleriniz ayarı diğer cihazlarında da kullanabilir.';
+        renderLabelPreview().catch(error => { $('#labelPreviewMessage').textContent = error.message; });
+      } catch (error) { $('#labelSettingsFeedback').textContent = `Şirket profili kaydedilemedi: ${error.message}`; }
+      finally { saveButton.disabled = false; }
     });
     let labelPreviewTimer;
     $('#labelSettingsForm').addEventListener('input', () => { clearTimeout(labelPreviewTimer); labelPreviewTimer = setTimeout(() => renderLabelPreview().catch(error => { $('#labelPreviewMessage').textContent = error.message; }), 300); });
-    $('#labelSettingsReset').addEventListener('click', () => { labelPrintSettings = { barcode1d: 'code128', barcode2d: 'qrcode', widthMm: 86, heightMm: 48, offsetXmm: 0, offsetYmm: 0, paddingMm: 4, codeSizeMm: 25, qrTarget: 'tag', showName: true, showSerial: true, showModel: false, showLocation: false, showStatus: false }; populateLabelSettingsForm(); $('#labelSettingsForm').requestSubmit(); });
+    $('#labelSettingsReset').addEventListener('click', () => { labelPrintSettings = { ...defaultLabelPrintSettings }; populateLabelSettingsForm(); $('#labelSettingsForm').requestSubmit(); });
     $('#labelSettingsGoAssets').addEventListener('click', () => document.querySelector('.sub-item[data-page="Varlıklar"]')?.click());
     $('#printSelectedAssetLabels').addEventListener('click', async () => {
       const ids = [...selectedAssetIds], button = $('#printSelectedAssetLabels');
@@ -1904,7 +1919,7 @@
       sessionRole = session.role || '';
       $('#bulkAssetStatus').hidden = !canWriteAssets(); $('#applyBulkAssetStatus').hidden = !canWriteAssets();
       loadAssetColumnPreferences(session.companyId);
-      loadLabelSettings(session.companyId);
+      await loadLabelSettings(session.companyId);
       try { await loadTenantBranding(); } catch (error) { console.warn('Şirket görünümü yüklenemedi.', error); }
       $('#membersNav').hidden = !canReadAudit();
       $('#inviteMemberButton').hidden = !canReadAudit(); if (sessionRole !== 'owner') $('#inviteAdminRole').remove();

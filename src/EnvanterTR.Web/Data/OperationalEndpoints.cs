@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
+using System.Text.Json;
 
 namespace EnvanterTR.Web.Data;
 
@@ -52,6 +53,37 @@ public static class OperationalEndpoints
                 .SingleOrDefaultAsync(cancellationToken);
             return branding is null ? Results.NotFound() : Results.Ok(branding);
         }).RequireAuthorization("company.member");
+
+        api.MapGet("/company/label-settings", async (ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
+            var raw = await db.Companies.AsNoTracking().Where(x => x.Id == companyId)
+                .Select(x => x.LabelPrintSettingsJson).SingleOrDefaultAsync(cancellationToken);
+            if (raw is null) return Results.Ok(new { isConfigured = false, settings = DefaultLabelPrintSettings });
+            try { return Results.Ok(new { isConfigured = true, settings = JsonSerializer.Deserialize<LabelPrintSettingsRequest>(raw) ?? DefaultLabelPrintSettings }); }
+            catch (JsonException) { return Results.Ok(new { isConfigured = false, settings = DefaultLabelPrintSettings }); }
+        }).RequireAuthorization("company.member");
+
+        api.MapPut("/company/label-settings", async ([FromBody] LabelPrintSettingsRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            if (request.Barcode1d is not ("code128" or "code39" or "ean5" or "ean13" or "upca" or "upce" or "none") ||
+                request.Barcode2d is not ("qrcode" or "pdf417" or "datamatrix" or "none") ||
+                request.QrTarget is not ("tag" or "asset-url") ||
+                request.WidthMm is < 25 or > 150 || request.HeightMm is < 15 or > 100 ||
+                request.OffsetXmm is < -30 or > 30 || request.OffsetYmm is < -30 or > 30 ||
+                request.PaddingMm is < 0 or > 15 || request.CodeSizeMm is < 10 or > 45)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["settings"] = ["Barkod türü ve yazdırma ölçülerini izin verilen aralıklarla kontrol edin."] });
+            var company = await db.Companies.SingleOrDefaultAsync(x => x.Id == companyId, cancellationToken);
+            if (company is null) return Results.NotFound();
+            company.LabelPrintSettingsJson = JsonSerializer.Serialize(request);
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                TargetType = "Company", TargetId = companyId, Action = "LabelSettingsUpdated",
+                Details = "Şirketin barkod ve etiket yazdırma tercihleri güncellendi." });
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.Ok(new { isConfigured = true, settings = request });
+        }).RequireAuthorization("settings.manage");
 
         api.MapPut("/company/profile", async ([FromBody] UpdateCompanyProfileRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
@@ -777,6 +809,11 @@ public static class OperationalEndpoints
     private sealed record ExportRow(string AssetTag, string Name, string Status, string? SerialNumber,
         string? Location, string? EmployeeNumber, DateOnly? PurchaseDate, decimal? PurchaseCost, string Currency);
     private sealed record UpdateCompanyProfileRequest(string? Name, string? ContactEmail, string? BrandPrimaryColor);
+    public sealed record LabelPrintSettingsRequest(string? Barcode1d, string? Barcode2d, decimal WidthMm,
+        decimal HeightMm, decimal OffsetXmm, decimal OffsetYmm, decimal PaddingMm, decimal CodeSizeMm,
+        string? QrTarget, bool ShowName, bool ShowSerial, bool ShowModel, bool ShowLocation, bool ShowStatus);
+    private static readonly LabelPrintSettingsRequest DefaultLabelPrintSettings = new("code128", "qrcode", 86, 48,
+        0, 0, 4, 25, "tag", true, true, false, false, false);
 
     private static (string? ContentType, string Extension) DetectLogo(byte[] bytes)
     {

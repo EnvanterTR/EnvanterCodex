@@ -571,6 +571,10 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("LabelPrintSettingsJson")
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)

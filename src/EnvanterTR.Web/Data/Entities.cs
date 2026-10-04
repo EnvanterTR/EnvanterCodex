@@ -8,6 +8,7 @@ public sealed class Company
     public string? ContactEmail { get; set; }
     public string? BrandLogoPath { get; set; }
     public string BrandPrimaryColor { get; set; } = "#1769E0";
+    public string? LabelPrintSettingsJson { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

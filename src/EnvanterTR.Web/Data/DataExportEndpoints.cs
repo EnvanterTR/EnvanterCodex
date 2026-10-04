@@ -634,7 +634,7 @@ public static class DataExportEndpoints
         JsonSerializer.Serialize(writer, new
         {
             company.Id, company.Name, company.Slug, company.ContactEmail,
-            company.BrandLogoPath, company.BrandPrimaryColor, company.CreatedAt
+            company.BrandLogoPath, company.BrandPrimaryColor, company.LabelPrintSettingsJson, company.CreatedAt
         }, JsonOptions);
 
         await WritePagedAsync(writer, "employees", db.Employees.AsNoTracking()
