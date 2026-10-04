@@ -137,6 +137,98 @@ public static class AssetEndpoints
             return Results.Ok(new { items, page, pageSize, total });
         }).RequireAuthorization("asset.read");
 
+        api.MapGet("/accessories/export.csv", async ([FromQuery] string? q, [FromQuery] string? category,
+            [FromQuery] string? location, [FromQuery] string? stock, [FromQuery] string? sortBy,
+            [FromQuery] string? sortDirection, HttpContext context, ClaimsPrincipal user,
+            AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId))
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
+            if (q is not null && q.Trim().Length > 120)
+            {
+                await Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] }).ExecuteAsync(context);
+                return;
+            }
+            if (location is not null && location.Trim().Length > 160)
+            {
+                await Results.ValidationProblem(new Dictionary<string, string[]> { ["location"] = ["Konum filtresi 160 karakteri aşamaz."] }).ExecuteAsync(context);
+                return;
+            }
+
+            var query = db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                query = query.Where(x => x.Name.Contains(term) || (x.Category != null && x.Category.Contains(term)) ||
+                    (x.ModelNumber != null && x.ModelNumber.Contains(term)) || (x.ItemNumber != null && x.ItemNumber.Contains(term)) ||
+                    (x.Supplier != null && x.Supplier.Contains(term)) || (x.Location != null && x.Location.Contains(term)));
+            }
+            if (!string.IsNullOrWhiteSpace(category)) query = query.Where(x => x.Category == category.Trim());
+            if (!string.IsNullOrWhiteSpace(location)) query = query.Where(x => x.Location == location.Trim());
+            if (stock == "low") query = query.Where(x => x.TotalQuantity - (db.AccessoryAssignments
+                .Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id)
+                .Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0) <= x.MinimumQuantity);
+            if (stock == "available") query = query.Where(x => x.TotalQuantity > (db.AccessoryAssignments
+                .Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id)
+                .Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0));
+
+            var descending = string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase);
+            var sort = (sortBy ?? "name").Trim().ToLowerInvariant();
+            if (sort is not ("name" or "category" or "location" or "total" or "remaining" or "updated") ||
+                (sortDirection is not null && !new[] { "asc", "desc" }.Contains(sortDirection.Trim(), StringComparer.OrdinalIgnoreCase)))
+            {
+                await Results.ValidationProblem(new Dictionary<string, string[]> { ["sortBy"] = ["Sıralama alanı veya yönü desteklenmiyor."] }).ExecuteAsync(context);
+                return;
+            }
+            IOrderedQueryable<Accessory> ordered = (sort, descending) switch
+            {
+                ("category", false) => query.OrderBy(x => x.Category), ("category", true) => query.OrderByDescending(x => x.Category),
+                ("location", false) => query.OrderBy(x => x.Location), ("location", true) => query.OrderByDescending(x => x.Location),
+                ("total", false) => query.OrderBy(x => x.TotalQuantity), ("total", true) => query.OrderByDescending(x => x.TotalQuantity),
+                ("remaining", false) => query.OrderBy(x => x.TotalQuantity - (db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0)),
+                ("remaining", true) => query.OrderByDescending(x => x.TotalQuantity - (db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0)),
+                ("updated", false) => query.OrderBy(x => x.UpdatedAt), ("updated", true) => query.OrderByDescending(x => x.UpdatedAt),
+                (_, false) => query.OrderBy(x => x.Name), _ => query.OrderByDescending(x => x.Name)
+            };
+
+            var total = await query.CountAsync(cancellationToken);
+            context.Response.StatusCode = StatusCodes.Status200OK;
+            context.Response.ContentType = "text/csv; charset=utf-8";
+            context.Response.Headers["Content-Disposition"] = $"attachment; filename=envantertr-aksesuarlar-{DateTime.UtcNow:yyyyMMdd}.csv";
+            context.Response.Headers["Cache-Control"] = "no-store";
+            context.Response.Headers["X-Total-Count"] = total.ToString(CultureInfo.InvariantCulture);
+            await using var writer = new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
+            await writer.WriteLineAsync("Ad;Kategori;Model No;Ürün No;Tedarikçi;Konum;Toplam;Zimmetli;Kalan;Minimum;Birim Maliyeti;Para Birimi;Alış Tarihi;İstek Açık".AsMemory(), cancellationToken);
+            var rows = ordered.ThenBy(x => x.Id).Select(x => new
+            {
+                x.Name, x.Category, x.ModelNumber, x.ItemNumber, x.Supplier, x.Location,
+                x.TotalQuantity,
+                CheckedOut = db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id)
+                    .Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0,
+                x.MinimumQuantity, x.UnitCost, x.Currency, x.PurchaseDate, x.IsRequestable
+            });
+            var written = 0;
+            await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
+            {
+                var remaining = row.TotalQuantity - row.CheckedOut;
+                var line = string.Join(';', new[] { CsvCell(row.Name), CsvCell(row.Category), CsvCell(row.ModelNumber),
+                    CsvCell(row.ItemNumber), CsvCell(row.Supplier), CsvCell(row.Location),
+                    CsvCell(row.TotalQuantity.ToString(CultureInfo.InvariantCulture)),
+                    CsvCell(row.CheckedOut.ToString(CultureInfo.InvariantCulture)),
+                    CsvCell(remaining.ToString(CultureInfo.InvariantCulture)),
+                    CsvCell(row.MinimumQuantity.ToString(CultureInfo.InvariantCulture)),
+                    CsvCell(row.UnitCost?.ToString("0.00", CultureInfo.InvariantCulture)), CsvCell(row.Currency),
+                    CsvCell(row.PurchaseDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
+                    CsvCell(row.IsRequestable ? "Evet" : "Hayır") });
+                await writer.WriteLineAsync(line.AsMemory(), cancellationToken);
+                if (++written % 500 == 0) await writer.FlushAsync(cancellationToken);
+            }
+            await writer.FlushAsync(cancellationToken);
+        }).RequireAuthorization("asset.read");
+
         api.MapGet("/accessories/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db,
             CancellationToken cancellationToken) =>
         {
