@@ -919,6 +919,179 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("PublicSiteContents");
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.SoftwareLicense", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("AutoRenew")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<DateOnly?>("ExpirationDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("LicenseReference")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("LicenseType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("ProductVersion")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Publisher")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<DateOnly?>("PurchaseDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Seats")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Supplier")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal?>("UnitCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "ExpirationDate");
+
+                    b.HasIndex("CompanyId", "Name");
+
+                    b.ToTable("SoftwareLicenses", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SoftwareLicenses_Cost", "\"UnitCost\" IS NULL OR \"UnitCost\" >= 0");
+
+                            t.HasCheckConstraint("CK_SoftwareLicenses_Currency", "char_length(\"Currency\") = 3");
+
+                            t.HasCheckConstraint("CK_SoftwareLicenses_Seats", "\"Seats\" >= 0");
+
+                            t.HasCheckConstraint("CK_SoftwareLicenses_Type", "\"LicenseType\" IN ('Subscription', 'Perpetual', 'Device', 'Site', 'Trial', 'Other')");
+                        });
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.SoftwareLicenseAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AssignedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("LicenseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("CompanyId", "Id");
+
+                    b.HasIndex("ActorUserId");
+
+                    b.HasIndex("CompanyId", "EmployeeId");
+
+                    b.HasIndex("CompanyId", "LicenseId", "EmployeeId")
+                        .IsUnique()
+                        .HasFilter("\"RevokedAt\" IS NULL");
+
+                    b.HasIndex("CompanyId", "LicenseId", "RevokedAt");
+
+                    b.ToTable("SoftwareLicenseAssignments", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SoftwareLicenseAssignments_Revocation", "\"RevokedAt\" IS NULL OR \"RevokedAt\" >= \"AssignedAt\"");
+                        });
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.SoftwareLicenseEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid?>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("LicenseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorUserId");
+
+                    b.HasIndex("CompanyId", "EmployeeId");
+
+                    b.HasIndex("CompanyId", "LicenseId", "OccurredAt");
+
+                    b.ToTable("SoftwareLicenseEvents");
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.SubscriptionPlan", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1438,6 +1611,70 @@ namespace EnvanterTR.Web.Data.Migrations
                         .WithMany()
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.SoftwareLicense", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.SoftwareLicenseAssignment", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("ActorUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "EmployeeId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.SoftwareLicense", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "LicenseId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.SoftwareLicenseEvent", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("ActorUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "EmployeeId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EnvanterTR.Web.Data.SoftwareLicense", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "LicenseId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.TenantSubscription", b =>

@@ -19,6 +19,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AccessoryMovement> AccessoryMovements => Set<AccessoryMovement>();
     public DbSet<Consumable> Consumables => Set<Consumable>();
     public DbSet<ConsumableMovement> ConsumableMovements => Set<ConsumableMovement>();
+    public DbSet<SoftwareLicense> SoftwareLicenses => Set<SoftwareLicense>();
+    public DbSet<SoftwareLicenseAssignment> SoftwareLicenseAssignments => Set<SoftwareLicenseAssignment>();
+    public DbSet<SoftwareLicenseEvent> SoftwareLicenseEvents => Set<SoftwareLicenseEvent>();
     public DbSet<CompanyMembership> CompanyMemberships => Set<CompanyMembership>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
@@ -118,6 +121,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Accessory>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AccessoryAssignment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<Consumable>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<SoftwareLicense>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<SoftwareLicenseAssignment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
 
         modelBuilder.Entity<Employee>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AssetCategory>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
@@ -162,6 +167,49 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasForeignKey(x => new { x.CompanyId, x.EmployeeId })
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<ConsumableMovement>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<SoftwareLicense>().Property(x => x.Name).HasMaxLength(200).IsRequired();
+        modelBuilder.Entity<SoftwareLicense>().Property(x => x.Publisher).HasMaxLength(160);
+        modelBuilder.Entity<SoftwareLicense>().Property(x => x.ProductVersion).HasMaxLength(120);
+        modelBuilder.Entity<SoftwareLicense>().Property(x => x.LicenseType).HasMaxLength(32).IsRequired();
+        modelBuilder.Entity<SoftwareLicense>().Property(x => x.LicenseReference).HasMaxLength(160);
+        modelBuilder.Entity<SoftwareLicense>().Property(x => x.Supplier).HasMaxLength(200);
+        modelBuilder.Entity<SoftwareLicense>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
+        modelBuilder.Entity<SoftwareLicense>().Property(x => x.UnitCost).HasPrecision(18, 2);
+        modelBuilder.Entity<SoftwareLicense>().Property(x => x.Notes).HasMaxLength(2000);
+        modelBuilder.Entity<SoftwareLicense>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SoftwareLicense>().HasIndex(x => new { x.CompanyId, x.Name });
+        modelBuilder.Entity<SoftwareLicense>().HasIndex(x => new { x.CompanyId, x.ExpirationDate });
+        modelBuilder.Entity<SoftwareLicense>().ToTable("SoftwareLicenses", table =>
+        {
+            table.HasCheckConstraint("CK_SoftwareLicenses_Seats", "\"Seats\" >= 0");
+            table.HasCheckConstraint("CK_SoftwareLicenses_Cost", "\"UnitCost\" IS NULL OR \"UnitCost\" >= 0");
+            table.HasCheckConstraint("CK_SoftwareLicenses_Currency", "char_length(\"Currency\") = 3");
+            table.HasCheckConstraint("CK_SoftwareLicenses_Type", "\"LicenseType\" IN ('Subscription', 'Perpetual', 'Device', 'Site', 'Trial', 'Other')");
+        });
+        modelBuilder.Entity<SoftwareLicenseAssignment>().Property(x => x.Notes).HasMaxLength(2000);
+        modelBuilder.Entity<SoftwareLicenseAssignment>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SoftwareLicenseAssignment>().HasIndex(x => new { x.CompanyId, x.LicenseId, x.RevokedAt });
+        modelBuilder.Entity<SoftwareLicenseAssignment>().HasIndex(x => new { x.CompanyId, x.LicenseId, x.EmployeeId })
+            .IsUnique().HasFilter("\"RevokedAt\" IS NULL");
+        modelBuilder.Entity<SoftwareLicenseAssignment>().ToTable("SoftwareLicenseAssignments", table =>
+            table.HasCheckConstraint("CK_SoftwareLicenseAssignments_Revocation", "\"RevokedAt\" IS NULL OR \"RevokedAt\" >= \"AssignedAt\""));
+        modelBuilder.Entity<SoftwareLicenseAssignment>().HasOne<SoftwareLicense>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.LicenseId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SoftwareLicenseAssignment>().HasOne<Employee>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.EmployeeId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<SoftwareLicenseAssignment>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<SoftwareLicenseEvent>().Property(x => x.EventType).HasMaxLength(32).IsRequired();
+        modelBuilder.Entity<SoftwareLicenseEvent>().Property(x => x.Details).HasMaxLength(2000);
+        modelBuilder.Entity<SoftwareLicenseEvent>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SoftwareLicenseEvent>().HasIndex(x => new { x.CompanyId, x.LicenseId, x.OccurredAt });
+        modelBuilder.Entity<SoftwareLicenseEvent>().HasOne<SoftwareLicense>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.LicenseId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SoftwareLicenseEvent>().HasOne<Employee>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.EmployeeId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<SoftwareLicenseEvent>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<AssetEvent>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
 

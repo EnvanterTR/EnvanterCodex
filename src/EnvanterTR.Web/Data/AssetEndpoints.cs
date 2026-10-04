@@ -32,6 +32,7 @@ public static class AssetEndpoints
             return await next(invocation);
         });
         api.MapConsumableEndpoints();
+        api.MapSoftwareLicenseEndpoints();
 
         api.MapGet("/assets", async ([FromQuery] string? q, [FromQuery] string? status,
             [FromQuery] Guid? categoryId, [FromQuery] Guid? brandId, [FromQuery] Guid? modelId,

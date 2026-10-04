@@ -242,6 +242,51 @@ public sealed class ConsumableMovement
     public DateTimeOffset OccurredAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class SoftwareLicense
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public required string Name { get; set; }
+    public string? Publisher { get; set; }
+    public string? ProductVersion { get; set; }
+    public string LicenseType { get; set; } = "Subscription";
+    public string? LicenseReference { get; set; }
+    public string? Supplier { get; set; }
+    public int Seats { get; set; }
+    public decimal? UnitCost { get; set; }
+    public string Currency { get; set; } = "TRY";
+    public DateOnly? PurchaseDate { get; set; }
+    public DateOnly? ExpirationDate { get; set; }
+    public bool AutoRenew { get; set; }
+    public string? Notes { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class SoftwareLicenseAssignment
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid LicenseId { get; set; }
+    public Guid EmployeeId { get; set; }
+    public Guid? ActorUserId { get; set; }
+    public DateTimeOffset AssignedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? RevokedAt { get; set; }
+    public string? Notes { get; set; }
+}
+
+public sealed class SoftwareLicenseEvent
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid LicenseId { get; set; }
+    public Guid? EmployeeId { get; set; }
+    public Guid? ActorUserId { get; set; }
+    public required string EventType { get; set; }
+    public string? Details { get; set; }
+    public DateTimeOffset OccurredAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public static class AssetStatuses
 {
     public const string Available = "Available";
