@@ -33,7 +33,7 @@ Bu belge EnvanterTR'nin kurumsal envanter yönetiminde beklenen ana işlevleri n
 | Siparişler ve tedarik | **Yok** | Sipariş, sipariş kalemi, tedarikçi ve teslim alım/varlığa dönüştürme ilişkileri yok. |
 | Ek dosya ve fotoğraflar | **Yok** | Şirket logosu yüklemesi, varlık/kişi/modül dosya depolaması yerine geçmez. Erişim, boyut, tür, silme ve yedekleme politikalarıyla eklenmeli. |
 | İçe aktarma / dışa aktarma | **Kısmi** | Varlık CSV dışa aktarma ve sınırlı önizlemeli CSV varlık ekleme; şirket JSON dışa aktarma/önizleme var. Modül bazlı import, kolon eşleme, katalog oluşturma, JSON geri yükleme, Excel dosyası ve atomik geri alma eksik. |
-| Raporlar | **Kısmi** | Varlık durum/kategori, alış tarihi ve kaydedilmiş maliyet özetleri ile CSV var. Lisans, bileşen, bakım, denetim, teslim alınmamış öğeler, amortisman ve özel rapor oluşturucu eksik. |
+| Raporlar | **Kısmi** | Varlık durum/kategori, alış tarihi ve kaydedilmiş maliyet özetleri ile CSV; bakım başlangıç tarihine göre tür, durum ve para birimi bazlı maliyet özeti var. Lisans, bileşen, denetim, teslim alınmamış öğeler, amortisman ve özel rapor oluşturucu eksik. |
 | Kullanıcı, roller ve izinler | **Kısmi** | Şirket oturumu ve temel owner/admin/operator rolleri ile şirket üyeleri var. İnce taneli modül/işlem izin matrisi ve her uçta kabul kapsamı tamamlanmalı. |
 | Şirket ve tenant ayrımı | **Kısmi** | Çok şirketli kimlik/veri modeli hedefi ve API kapsam denetimleri mevcut. Uçtan uca tenant güvenlik kabulü, plan sınırları ve üretim operasyonu açık. |
 | Bildirimler ve e-posta | **Yok** | SMTP teslimatı, parola sıfırlama e-postası, bakım/denetim/iade uyarıları ve kullanıcı bildirim tercihleri henüz yok. |

@@ -509,6 +509,45 @@ public static class AssetEndpoints
             });
         }).RequireAuthorization("asset.read");
 
+        api.MapGet("/reports/maintenances", async ([FromQuery] DateOnly? from, [FromQuery] DateOnly? to,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (from is DateOnly start && to is DateOnly end && start > end)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Başlangıç tarihi bitiş tarihinden sonra olamaz."] });
+            var query = db.AssetMaintenances.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (from is DateOnly fromDate) query = query.Where(x => x.StartedOn >= fromDate);
+            if (to is DateOnly toDate) query = query.Where(x => x.StartedOn <= toDate);
+
+            var total = await query.CountAsync(cancellationToken);
+            var active = await query.CountAsync(x => x.Status == "InProgress", cancellationToken);
+            var completed = await query.CountAsync(x => x.Status == "Completed", cancellationToken);
+            var byType = await query.GroupBy(x => x.MaintenanceType)
+                .Select(group => new { name = group.Key, count = group.Count() })
+                .OrderByDescending(row => row.count).ThenBy(row => row.name)
+                .Take(25).ToListAsync(cancellationToken);
+            var costRows = await query.Where(x => x.Cost != null).GroupBy(x => x.Currency)
+                .Select(group => new { currency = group.Key, recordCount = group.Count(), totalCost = group.Sum(x => x.Cost!.Value) })
+                .OrderBy(row => row.currency).ToListAsync(cancellationToken);
+            return Results.Ok(new
+            {
+                generatedAt = DateTimeOffset.UtcNow,
+                dateFrom = from,
+                dateTo = to,
+                total,
+                inProgress = active,
+                completed,
+                byType,
+                costByCurrency = costRows.Select(row => new
+                {
+                    row.currency,
+                    row.recordCount,
+                    row.totalCost,
+                    totalCostExact = row.totalCost.ToString(CultureInfo.InvariantCulture)
+                })
+            });
+        }).RequireAuthorization("asset.read");
+
         api.MapGet("/assets/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db,
             CancellationToken cancellationToken) =>
         {

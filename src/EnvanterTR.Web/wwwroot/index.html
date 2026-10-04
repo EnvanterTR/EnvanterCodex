@@ -209,6 +209,11 @@
         <section class="panel"><div class="panel-head"><h2>Kayıtlı satın alma maliyeti</h2></div><div class="table-wrap"><table><thead><tr><th>Para birimi</th><th>Kayıt</th><th>Toplam alış bedeli</th></tr></thead><tbody id="reportCostRows"><tr><td colspan="3">Rapor yükleniyor…</td></tr></tbody></table></div><p class="muted" id="reportCostNote" style="padding:0 14px 12px">Para birimleri ayrı tutulur; bu toplam muhasebe defter değeri değildir.</p></section>
       </div>
       <section class="panel"><div class="panel-head"><h2>Kategori dağılımı</h2><span class="muted">Bir kategoriyi seçerek varlık listesini daraltın.</span></div><div class="table-wrap"><table><thead><tr><th>Kategori</th><th>Toplam</th><th>Atanmış</th><th>Kullanılabilir</th><th>Bakımda</th><th>İşlem</th></tr></thead><tbody id="reportCategoryRows"><tr><td colspan="6">Rapor yükleniyor…</td></tr></tbody></table></div></section>
+      <section class="panel" style="margin-top:15px"><div class="panel-head"><div><h2>Bakım raporu</h2><span class="muted" id="maintenanceReportNote">Bakım başlangıç tarihine göre şirket kayıtları.</span></div><button class="btn small" id="maintenanceReportRefresh" type="button">↻ Yenile</button></div>
+        <div class="dialog-body" style="display:flex;align-items:end;gap:12px;flex-wrap:wrap"><label>Başlangıç tarihi<input id="maintenanceReportFrom" type="date" style="display:block;margin-top:5px;min-height:38px;padding:7px 10px;border:1px solid #dce4ee;border-radius:7px"></label><label>Bitiş tarihi<input id="maintenanceReportTo" type="date" style="display:block;margin-top:5px;min-height:38px;padding:7px 10px;border:1px solid #dce4ee;border-radius:7px"></label><button class="btn primary" id="applyMaintenanceReportFilter" type="button">Filtrele</button><button class="btn" id="clearMaintenanceReportFilter" type="button">Temizle</button></div>
+        <div class="stats" id="maintenanceReportSummary" style="padding:0 14px 14px"></div>
+        <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(300px,.9fr);padding:0 14px 14px"><section class="panel"><div class="panel-head"><h3>Bakım türleri</h3></div><div class="table-wrap"><table><thead><tr><th>Tür</th><th>Kayıt</th></tr></thead><tbody id="maintenanceReportTypes"><tr><td colspan="2">Rapor yükleniyor…</td></tr></tbody></table></div></section><section class="panel"><div class="panel-head"><h3>Kaydedilen bakım maliyeti</h3></div><div class="table-wrap"><table><thead><tr><th>Para birimi</th><th>Kayıt</th><th>Toplam</th></tr></thead><tbody id="maintenanceReportCosts"><tr><td colspan="3">Rapor yükleniyor…</td></tr></tbody></table></div><p class="muted" style="padding:0 12px 10px">Tutarlar para birimine göre ayrı tutulur ve kur çevrimi yapılmaz.</p></section></div>
+      </section>
     </section>
   </main>
   </div>
@@ -877,6 +882,41 @@
         const action = document.createElement('td'), open = document.createElement('button'); open.type = 'button'; open.className = 'btn small'; open.textContent = 'İncele →'; open.addEventListener('click', openAssets); action.append(open); row.append(action); categoryRows.append(row);
       }
     }
+    async function loadMaintenanceReport() {
+      const params = new URLSearchParams();
+      if ($('#maintenanceReportFrom').value) params.set('from', $('#maintenanceReportFrom').value);
+      if ($('#maintenanceReportTo').value) params.set('to', $('#maintenanceReportTo').value);
+      const result = await api(`/api/reports/maintenances${params.size ? `?${params}` : ''}`);
+      $('#maintenanceReportNote').textContent = result.dateFrom || result.dateTo
+        ? `Başlangıç tarihi: ${result.dateFrom || 'en eski'} – ${result.dateTo || 'en yeni'}. Planlı işler değil, başlamış bakımlar sayılır.`
+        : 'Tüm şirket bakım kayıtları; tarih aralığı kapalı.';
+      const summary = $('#maintenanceReportSummary'); summary.replaceChildren();
+      for (const [label, value, note] of [
+        ['Toplam bakım', result.total, 'Seçili tarih aralığında'],
+        ['Devam eden', result.inProgress, 'Henüz tamamlanmamış'],
+        ['Tamamlanan', result.completed, 'Kapanış kaydı bulunan']
+      ]) {
+        const card = document.createElement('article'); card.className = 'stat';
+        const caption = document.createElement('div'); caption.className = 'stat-top'; caption.textContent = label;
+        const number = document.createElement('strong'); number.textContent = fmt.format(value || 0);
+        const hint = document.createElement('small'); hint.textContent = note; card.append(caption, number, hint); summary.append(card);
+      }
+      const types = $('#maintenanceReportTypes'); types.replaceChildren();
+      if (!(result.byType || []).length) reportEmpty(types, 2, 'Seçili aralıkta bakım kaydı yok.');
+      for (const item of result.byType || []) {
+        const row = document.createElement('tr'), name = document.createElement('td'), count = document.createElement('td');
+        name.textContent = item.name; count.textContent = fmt.format(item.count); row.append(name, count); types.append(row);
+      }
+      const costs = $('#maintenanceReportCosts'); costs.replaceChildren();
+      if (!(result.costByCurrency || []).length) reportEmpty(costs, 3, 'Bakım maliyeti kaydı yok.');
+      for (const item of result.costByCurrency || []) {
+        const row = document.createElement('tr');
+        for (const value of [item.currency, fmt.format(item.recordCount), formatRecordedCurrency(item.totalCostExact ?? item.totalCost, item.currency)]) {
+          const cell = document.createElement('td'); cell.textContent = value; row.append(cell);
+        }
+        costs.append(row);
+      }
+    }
     function localDateIso(value, endOfDay = false) {
       if (!value) return '';
       const [year, month, day] = value.split('-').map(Number);
@@ -1403,7 +1443,7 @@
       else if (page === 'Hareket geçmişi') { $('#activityPage').hidden = false; $('#pageTitle').textContent = page; loadActivity(1).catch(error => notify(error.message)); }
       else if (page === 'Bakım kayıtları') { $('#maintenancePage').hidden = false; $('#pageTitle').textContent = page; loadCompanyMaintenances(1).catch(error => notify(error.message)); }
       else if (page === 'Denetim kayıtları') { $('#auditPage').hidden = false; $('#pageTitle').textContent = page; loadAudit(1).catch(error => notify(error.message)); }
-      else if (page === 'Hazır raporlar') { $('#reportPage').hidden = false; $('#pageTitle').textContent = 'Envanter raporları'; loadAssetReports().catch(error => notify(error.message)); }
+      else if (page === 'Hazır raporlar') { $('#reportPage').hidden = false; $('#pageTitle').textContent = 'Envanter raporları'; loadAssetReports().catch(error => notify(error.message)); loadMaintenanceReport().catch(error => notify(error.message)); }
       else if (['Kategoriler','Markalar','Varlık modelleri'].includes(page)) { if (!canReadAssets()) { notify('Bu hesabın envanter tanımlarını görüntüleme yetkisi yok.'); return; } catalogKind = page === 'Kategoriler' ? 'categories' : page === 'Markalar' ? 'brands' : 'models'; $('#catalogPage').hidden = false; $('#pageTitle').textContent = page; $('#catalogTitle').textContent = page; $('#catalogDescription').textContent = `${page} şirket envanterinde kullanılacak. Kullanılan tanımlar silinemez; yeniden adlandırma mevcut ilişkilere dokunmaz.`; $('#catalogBrandLabel').hidden = catalogKind !== 'models'; $('#catalogCreateForm').hidden = !canWriteAssets(); loadCatalog().catch(error => notify(error.message)); }
       else if (page === 'Firma profili' || page === 'Logo ve tema') { if (!canManageSettings()) { notify('Şirket görünümünü yalnızca şirket sahibi ve yöneticileri değiştirebilir.'); return; } $('#companySettingsPage').hidden = false; $('#pageTitle').textContent = page === 'Firma profili' ? 'Şirket profili' : 'Logo ve tema'; loadCompanyProfile().catch(error => notify(error.message)); }
       else if (dataPages.includes(page)) {
@@ -1772,7 +1812,10 @@
     $('#employeeSearch').addEventListener('input', () => { clearTimeout(employeeQueryTimer); employeeQueryTimer = setTimeout(() => loadEmployees(1).catch(error => notify(error.message)), 250); });
     $('#directorySearch').addEventListener('input', renderDirectoryRows);
     $('#directoryRefresh').addEventListener('click', () => loadDirectory(directoryKind).then(() => notify('Şirket kayıtlarından oluşturulan liste yenilendi.')).catch(error => notify(error.message)));
-    $('#reportRefresh').addEventListener('click', () => loadAssetReports().then(() => notify('Envanter raporları güncel şirket verileriyle yenilendi.')).catch(error => notify(error.message)));
+    $('#reportRefresh').addEventListener('click', () => Promise.all([loadAssetReports(), loadMaintenanceReport()]).then(() => notify('Şirket raporları güncel verilerle yenilendi.')).catch(error => notify(error.message)));
+    $('#maintenanceReportRefresh').addEventListener('click', () => loadMaintenanceReport().then(() => notify('Bakım raporu güncellendi.')).catch(error => notify(error.message)));
+    $('#applyMaintenanceReportFilter').addEventListener('click', () => loadMaintenanceReport().catch(error => notify(error.message)));
+    $('#clearMaintenanceReportFilter').addEventListener('click', () => { $('#maintenanceReportFrom').value = ''; $('#maintenanceReportTo').value = ''; loadMaintenanceReport().catch(error => notify(error.message)); });
     $('#applyReportDateFilter').addEventListener('click', () => loadAssetReports().catch(error => notify(error.message)));
     $('#clearReportDateFilter').addEventListener('click', () => { $('#reportDateFrom').value = ''; $('#reportDateTo').value = ''; loadAssetReports().catch(error => notify(error.message)); });
     $('#reportExport').addEventListener('click', exportAssetReportCsv);
