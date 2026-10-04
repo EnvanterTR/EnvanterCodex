@@ -139,7 +139,8 @@ public static class OperationalEndpoints
             {
                 var selectedDepartment = department.Trim();
                 if (selectedDepartment.Length > 160) return Results.ValidationProblem(new Dictionary<string, string[]> { ["department"] = ["Departman filtresi 160 karakteri aşamaz."] });
-                query = query.Where(x => x.Department == selectedDepartment);
+                var departmentPattern = selectedDepartment.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+                query = query.Where(x => x.Department != null && EF.Functions.ILike(x.Department.Trim(), departmentPattern, "\\"));
             }
             if (!string.IsNullOrWhiteSpace(q))
             {
@@ -315,11 +316,11 @@ public static class OperationalEndpoints
             if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
             var departments = await db.Employees.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && x.Department != null && x.Department.Trim() != "")
-                .GroupBy(x => x.Department!.Trim())
+                .GroupBy(x => x.Department!.Trim().ToLower())
                 .OrderBy(group => group.Key)
                 .Select(group => new
                 {
-                    name = group.Key,
+                    name = group.Min(employee => employee.Department!.Trim()),
                     employeeCount = group.Count(),
                     activeEmployeeCount = group.Count(employee => employee.IsActive),
                     inactiveEmployeeCount = group.Count(employee => !employee.IsActive)
