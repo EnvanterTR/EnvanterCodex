@@ -197,7 +197,7 @@
       <section class="panel" style="margin-top:15px"><div class="panel-head"><h2>Aktarım kapsamı</h2></div><div class="dialog-body"><p><strong>JSON'a dahil:</strong> çalışan kayıtları, varlık kategorileri/markaları/modelleri, varlıklar, hareket ve denetim geçmişi, şirket kullanıcılarının ad/e-posta/rolleri.</p><p><strong>Güvenlik için dahil değil:</strong> parolalar, oturumlar, parola yenileme anahtarları ve ödeme/lisans sırları. Logo ve ek dosyalar da henüz arşivlenmiyor.</p></div></section>
     </section>
     <section class="workspace-page" id="maintenancePage" hidden>
-      <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / BAKIM</div><h1>Bakım kayıtları</h1><p>Şirket varlıklarının devam eden ve tamamlanan servis işlemlerini birlikte inceleyin.</p></div><div class="head-actions"><button class="btn" id="maintenanceRefresh" type="button">↻ Yenile</button></div></div>
+      <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / BAKIM</div><h1>Bakım kayıtları</h1><p>Şirket varlıklarının devam eden ve tamamlanan servis işlemlerini birlikte inceleyin.</p></div><div class="head-actions"><button class="btn" id="maintenanceExport" type="button">⇩ CSV indir</button><button class="btn" id="maintenanceRefresh" type="button">↻ Yenile</button></div></div>
       <section class="panel"><div class="table-tools"><input id="maintenanceSearch" placeholder="Varlık, etiket, servis veya bakım notu ara" aria-label="Bakım kayıtlarında ara"><select id="maintenanceStatus"><option value="">Tüm durumlar</option><option value="InProgress">Devam ediyor</option><option value="Completed">Tamamlandı</option></select><label class="muted">Başlangıç <input id="maintenanceFrom" type="date"></label><label class="muted">Bitiş <input id="maintenanceTo" type="date"></label><button class="btn small" id="applyMaintenanceFilters" type="button">Filtrele</button><button class="btn small" id="clearMaintenanceFilters" type="button">Temizle</button><small id="maintenanceCount" role="status" aria-live="polite">—</small></div><div class="table-wrap"><table><caption class="sr-only">Şirket bakım kayıtları</caption><thead><tr><th>Varlık</th><th>Bakım türü</th><th>Servis</th><th>Durum</th><th>Başlangıç</th><th>Tamamlanma</th><th>Maliyet</th><th>İşlemi yapan</th><th>Notlar</th></tr></thead><tbody id="maintenanceRows"><tr><td colspan="9">Bakım kayıtları yükleniyor…</td></tr></tbody></table></div><div class="pager"><button id="maintenancePrev" type="button">← Önceki</button><span id="maintenancePageInfo">Sayfa —</span><button id="maintenanceNext" type="button">Sonraki →</button></div></section>
     </section>
     <section class="workspace-page" id="reportPage" hidden>
@@ -1085,6 +1085,13 @@
         link.addEventListener('click', open); body.append(row);
       }
     }
+    function exportCompanyMaintenances() {
+      const params = new URLSearchParams(), q = $('#maintenanceSearch').value.trim(), status = $('#maintenanceStatus').value;
+      if (q) params.set('q', q); if (status) params.set('status', status);
+      if ($('#maintenanceFrom').value) params.set('from', $('#maintenanceFrom').value);
+      if ($('#maintenanceTo').value) params.set('to', $('#maintenanceTo').value);
+      location.href = `/api/maintenances/export.csv?${params}`;
+    }
     async function loadAssetMaintenances(assetId) {
       const rows = await api(`/api/assets/${assetId}/maintenances`);
       if (!currentAsset || currentAsset.id !== assetId) return;
@@ -1753,6 +1760,7 @@
     $('#auditNext').addEventListener('click', () => loadAudit(auditPage + 1).catch(error => notify(error.message)));
     $('#auditRefresh').addEventListener('click', () => loadAudit().then(() => notify('Denetim kayıtları yenilendi.')).catch(error => notify(error.message)));
     $('#maintenanceRefresh').addEventListener('click', () => loadCompanyMaintenances().then(() => notify('Bakım kayıtları güncellendi.')).catch(error => notify(error.message)));
+    $('#maintenanceExport').addEventListener('click', exportCompanyMaintenances);
     $('#applyMaintenanceFilters').addEventListener('click', () => loadCompanyMaintenances(1).catch(error => notify(error.message)));
     $('#clearMaintenanceFilters').addEventListener('click', () => { $('#maintenanceSearch').value = ''; $('#maintenanceStatus').value = ''; $('#maintenanceFrom').value = ''; $('#maintenanceTo').value = ''; loadCompanyMaintenances(1).catch(error => notify(error.message)); });
     $('#maintenanceSearch').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); loadCompanyMaintenances(1).catch(error => notify(error.message)); } });

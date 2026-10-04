@@ -770,6 +770,7 @@ public static class AssetEndpoints
                     (x.maintenance.Supplier != null && x.maintenance.Supplier.Contains(term)) ||
                     (x.maintenance.Description != null && x.maintenance.Description.Contains(term)) ||
                     (x.maintenance.Notes != null && x.maintenance.Notes.Contains(term)) ||
+                    (x.maintenance.CompletionNotes != null && x.maintenance.CompletionNotes.Contains(term)) ||
                     x.asset.AssetTag.Contains(term) || x.asset.Name.Contains(term) ||
                     (x.asset.SerialNumber != null && x.asset.SerialNumber.Contains(term)) ||
                     (x.asset.Location != null && x.asset.Location.Contains(term)));
@@ -791,6 +792,62 @@ public static class AssetEndpoints
                         .Select(actor => actor.DisplayName).FirstOrDefault()
                 }).ToListAsync(cancellationToken);
             return Results.Ok(new { rows, total, page = pageNumber, pageSize = size, pageCount = Math.Max(1, pageCount) });
+        }).RequireAuthorization("asset.read");
+
+        api.MapGet("/maintenances/export.csv", async (ClaimsPrincipal user, AppDbContext db,
+            string? q, string? status, DateOnly? from, DateOnly? to, HttpContext context,
+            CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) { context.Response.StatusCode = 403; return; }
+            if (q?.Length > 120 || (from.HasValue && to.HasValue && from > to) ||
+                (!string.IsNullOrWhiteSpace(status) && status is not ("InProgress" or "Completed")))
+            {
+                await Results.ValidationProblem(new Dictionary<string, string[]> {
+                    ["filters"] = ["Arama, durum veya tarih filtrelerini kontrol edin."]
+                }).ExecuteAsync(context);
+                return;
+            }
+            var query = from maintenance in db.AssetMaintenances.AsNoTracking()
+                        join asset in db.Assets.AsNoTracking() on new { maintenance.CompanyId, maintenance.AssetId } equals new { asset.CompanyId, AssetId = asset.Id }
+                        where maintenance.CompanyId == companyId
+                        select new { maintenance, asset };
+            if (status is "InProgress" or "Completed") query = query.Where(x => x.maintenance.Status == status);
+            if (from.HasValue) query = query.Where(x => x.maintenance.StartedOn >= from.Value);
+            if (to.HasValue) query = query.Where(x => x.maintenance.StartedOn <= to.Value);
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                query = query.Where(x => x.maintenance.MaintenanceType.Contains(term) ||
+                    (x.maintenance.Supplier != null && x.maintenance.Supplier.Contains(term)) ||
+                    (x.maintenance.Description != null && x.maintenance.Description.Contains(term)) ||
+                    (x.maintenance.Notes != null && x.maintenance.Notes.Contains(term)) ||
+                    (x.maintenance.CompletionNotes != null && x.maintenance.CompletionNotes.Contains(term)) ||
+                    x.asset.AssetTag.Contains(term) || x.asset.Name.Contains(term) ||
+                    (x.asset.SerialNumber != null && x.asset.SerialNumber.Contains(term)) ||
+                    (x.asset.Location != null && x.asset.Location.Contains(term)));
+            }
+            context.Response.ContentType = "text/csv; charset=utf-8";
+            context.Response.Headers["Content-Disposition"] = $"attachment; filename=envantertr-bakim-{DateTime.UtcNow:yyyyMMdd}.csv";
+            context.Response.Headers["Cache-Control"] = "no-store";
+            await using var writer = new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
+            await writer.WriteLineAsync("Varlık Etiketi;Varlık;Konum;Bakım Türü;Servis;Durum;Başlangıç;Tamamlanma;Maliyet;Para Birimi;İşlemi Yapan;Açıklama;Not;Tamamlanma Notu".AsMemory(), cancellationToken);
+            var rows = query.OrderByDescending(x => x.maintenance.StartedOn).ThenByDescending(x => x.maintenance.CreatedAt)
+                .Select(x => new { x.asset.AssetTag, AssetName = x.asset.Name, x.asset.Location,
+                    x.maintenance.MaintenanceType, x.maintenance.Supplier, x.maintenance.Status,
+                    x.maintenance.StartedOn, x.maintenance.CompletedOn, x.maintenance.Cost, x.maintenance.Currency,
+                    ActorName = db.Users.Where(actor => actor.Id == x.maintenance.ActorUserId).Select(actor => actor.DisplayName).FirstOrDefault(),
+                    x.maintenance.Description, x.maintenance.Notes, x.maintenance.CompletionNotes });
+            await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
+            {
+                var line = string.Join(';', new[] { CsvCell(row.AssetTag), CsvCell(row.AssetName), CsvCell(row.Location),
+                    CsvCell(row.MaintenanceType), CsvCell(row.Supplier), CsvCell(row.Status),
+                    CsvCell(row.StartedOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)),
+                    CsvCell(row.CompletedOn?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)),
+                    CsvCell(row.Cost?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
+                    CsvCell(row.Currency), CsvCell(row.ActorName), CsvCell(row.Description), CsvCell(row.Notes), CsvCell(row.CompletionNotes) });
+                await writer.WriteLineAsync(line.AsMemory(), cancellationToken);
+            }
+            await writer.FlushAsync(cancellationToken);
         }).RequireAuthorization("asset.read");
 
         api.MapGet("/assets/{id:guid}/maintenances", async (Guid id, ClaimsPrincipal user,
