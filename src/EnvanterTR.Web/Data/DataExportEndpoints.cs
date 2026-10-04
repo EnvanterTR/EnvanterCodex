@@ -112,28 +112,30 @@ public static class DataExportEndpoints
         var row = new List<string>();
         var cell = new System.Text.StringBuilder();
         var quoted = false;
+        var afterQuote = false;
         for (var i = 0; i < text.Length; i++)
         {
             var value = text[i];
             if (quoted)
             {
                 if (value == '"' && i + 1 < text.Length && text[i + 1] == '"') { cell.Append('"'); i++; }
-                else if (value == '"') quoted = false;
+                else if (value == '"') { quoted = false; afterQuote = true; }
                 else cell.Append(value);
                 continue;
             }
+            if (afterQuote && value is not (';' or '\r' or '\n')) throw new FormatException();
             if (value == '"')
             {
                 if (cell.Length != 0) throw new FormatException();
                 quoted = true;
             }
-            else if (value == ';') { row.Add(cell.ToString()); cell.Clear(); }
+            else if (value == ';') { row.Add(cell.ToString()); cell.Clear(); afterQuote = false; }
             else if (value is '\r' or '\n')
             {
                 if (value == '\r' && i + 1 < text.Length && text[i + 1] == '\n') i++;
                 row.Add(cell.ToString()); cell.Clear();
                 if (row.Any(field => field.Length > 0)) { records.Add(row); if (records.Count > maximumRecords) return records; }
-                row = [];
+                row = []; afterQuote = false;
             }
             else cell.Append(value);
         }
