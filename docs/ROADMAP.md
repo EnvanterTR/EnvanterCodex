@@ -38,7 +38,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 
 ### P1 — Envanter iş akışlarının kapsamı
 
-- Varlık fotoğrafı ve ek dosyalar; telefon kamerasıyla QR/barkod okutma, seçili varlıkları toplu etiketleme ve şirketler arasında eşitlenen kalıcı yazdırma tercihleri. Tek varlık için dokuz Snipe-IT uyumlu barkod türü ve ölçü/hizalama/alan ayarlı kart yazdırma eklendi; tercihler şimdilik yerel tarayıcıda tutulur.
+- Varlık fotoğrafı ve ek dosyalar; telefon kamerasıyla QR/barkod okutma, seçili varlıkları toplu etiketleme ve şirketler arasında eşitlenen kalıcı yazdırma tercihleri. Tek varlık için dokuz yaygın barkod türü ve ölçü/hizalama/alan ayarlı kart yazdırma eklendi; tercihler şimdilik yerel tarayıcıda tutulur.
 - Aksesuar modülünde sipariş/dosya ilişkileri, katalog bağlantıları, sütun/çıktı/toplu işlem ve isteğe bağlı kullanıcı akışları; ayrıca lisans, bileşen, sarf malzemesi, kit, transfer, rezervasyon, bakım, denetim ve garanti kayıtları.
 - Departman ve konum için yapılandırılmış kataloglar ve ad birleştirme/düzeltme akışı. Çalışan departmanı ve varlık konumu bugün serbest metindir; mevcut ekranlar yalnızca özetler ve filtreler.
 - CSV varlık biçimi için salt okunur sütun/çakışma önizlemesi ve mevcut katalog kayıtlarını kullanan sınırlı, atomik kayıt ekleme eklendi; Excel içe aktarma, alan eşleme, katalog kaydı oluşturma ve güvenli JSON geri yükleme akışı tamamlanmalı.
@@ -61,7 +61,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 ## Bilinçli ürün sınırları
 
 - Müşteri kaynak deposu ile müşterinin indireceği kurulum paketi ayrı teslim kanallarıdır. Kurulum paketi henüz üretilmiyor veya imzalanmıyor.
-- Etiket kartı Snipe-IT'nin yeni etiket motorunda sunduğu 1D (C128, C39, EAN5, EAN13, UPCA, UPCE) ve 2D (QR Code, PDF417, Data Matrix) biçim seçeneklerini karşılar. Çalışan telefonunda kamera ile okutma, toplu etiket sayfaları/şablonları ve sunucuya kaydedilen şirket düzeyi ayarlar henüz yoktur.
+- Etiket kartı etiket motorunda sunulan 1D (C128, C39, EAN5, EAN13, UPCA, UPCE) ve 2D (QR Code, PDF417, Data Matrix) biçim seçeneklerini karşılar. Çalışan telefonunda kamera ile okutma, toplu etiket sayfaları/şablonları ve sunucuya kaydedilen şirket düzeyi ayarlar henüz yoktur.
 - Şirket logosu yükleme vardır; varlık fotoğrafı ve ek dosya saklama henüz yoktur.
 - JSON dosyası önizlemesi vardır; gerçek içe alma/geri yükleme henüz yoktur.
 - `docs/ARCHITECTURE.md`, `docs/DATA-PORTABILITY.md` ve `docs/PLATFORM-ADMIN.md` daha ayrıntılı teknik kapsamı tutar.
