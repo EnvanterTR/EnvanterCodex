@@ -98,6 +98,34 @@ public static class SoftwareLicenseEndpoints
             assignment.RevokedAt = DateTimeOffset.UtcNow; AddEvent(db, item, user, "Revoked", "Lisans ataması kaldırıldı.", assignment.EmployeeId);
             await db.SaveChangesAsync(ct); return Results.NoContent();
         }).RequireAuthorization("asset.write");
+
+        api.MapGet("/software-license-assignments", async ([FromQuery] string? q, [FromQuery] bool? active, [FromQuery] int page,
+            [FromQuery] int pageSize, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!Company(user, out var companyId)) return Results.Forbid();
+            page = Math.Max(1, page); pageSize = Math.Clamp(pageSize == 0 ? 25 : pageSize, 1, 200);
+            var query = db.SoftwareLicenseAssignments.AsNoTracking().Where(a => a.CompanyId == companyId);
+            if (active == true) query = query.Where(a => a.RevokedAt == null);
+            if (active == false) query = query.Where(a => a.RevokedAt != null);
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim(); if (term.Length > 120) return Results.ValidationProblem(new Dictionary<string,string[]> { ["q"]=["Arama metni 120 karakteri aşamaz."] });
+                query = query.Where(a => db.Employees.Any(e => e.CompanyId == companyId && e.Id == a.EmployeeId && (e.DisplayName.Contains(term) || e.EmployeeNumber.Contains(term))) ||
+                    db.SoftwareLicenses.Any(l => l.CompanyId == companyId && l.Id == a.LicenseId && (l.Name.Contains(term) || (l.Publisher != null && l.Publisher.Contains(term)))));
+            }
+            var total = await query.CountAsync(ct);
+            var items = await query.OrderBy(a => a.RevokedAt != null).ThenByDescending(a => a.AssignedAt)
+                .Skip((page - 1) * pageSize).Take(pageSize).Select(a => new
+                {
+                    a.Id, a.LicenseId, license = db.SoftwareLicenses.Where(l => l.CompanyId == companyId && l.Id == a.LicenseId).Select(l => l.Name).FirstOrDefault(),
+                    licenseType = db.SoftwareLicenses.Where(l => l.CompanyId == companyId && l.Id == a.LicenseId).Select(l => l.LicenseType).FirstOrDefault(),
+                    a.EmployeeId, employee = db.Employees.Where(e => e.CompanyId == companyId && e.Id == a.EmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
+                    employeeNumber = db.Employees.Where(e => e.CompanyId == companyId && e.Id == a.EmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault(),
+                    a.AssignedAt, a.RevokedAt, a.Notes,
+                    expirationDate = db.SoftwareLicenses.Where(l => l.CompanyId == companyId && l.Id == a.LicenseId).Select(l => l.ExpirationDate).FirstOrDefault()
+                }).ToListAsync(ct);
+            return Results.Ok(new { items, page, pageSize, total });
+        }).RequireAuthorization("asset.read");
         return api;
     }
 
