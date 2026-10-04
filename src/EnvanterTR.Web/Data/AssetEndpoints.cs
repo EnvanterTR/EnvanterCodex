@@ -38,7 +38,7 @@ public static class AssetEndpoints
 
         api.MapGet("/assets", async ([FromQuery] string? q, [FromQuery] string? status,
             [FromQuery] Guid? categoryId, [FromQuery] Guid? brandId, [FromQuery] Guid? modelId,
-            [FromQuery] Guid? employeeId, [FromQuery] string? location,
+            [FromQuery] Guid? employeeId, [FromQuery] string? location, [FromQuery] string? warranty,
             [FromQuery] string? sortBy, [FromQuery] string? sortDirection,
             [FromQuery] int page, [FromQuery] int pageSize,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
@@ -58,6 +58,9 @@ public static class AssetEndpoints
                 if (selectedLocation.Length > 160) return Results.ValidationProblem(new Dictionary<string, string[]> { ["location"] = ["Konum filtresi 160 karakteri aşamaz."] });
                 query = query.Where(x => x.Location == selectedLocation);
             }
+            if (!TryApplyWarrantyFilter(query, warranty, out var warrantyFiltered))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["warranty"] = ["Garanti filtresi expired, expiring, active veya unspecified olmalıdır."] });
+            query = warrantyFiltered;
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
@@ -1310,7 +1313,7 @@ public static class AssetEndpoints
 
         api.MapGet("/assets/export-all.csv", async ([FromQuery] string? q, [FromQuery] string? status,
             [FromQuery] Guid? categoryId, [FromQuery] Guid? brandId, [FromQuery] Guid? modelId,
-            [FromQuery] Guid? employeeId, [FromQuery] string? location,
+            [FromQuery] Guid? employeeId, [FromQuery] string? location, [FromQuery] string? warranty,
             [FromQuery] string? sortBy, [FromQuery] string? sortDirection,
             HttpContext context, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
@@ -1343,6 +1346,12 @@ public static class AssetEndpoints
                 }
                 query = query.Where(x => x.Location == selectedLocation);
             }
+            if (!TryApplyWarrantyFilter(query, warranty, out var warrantyFiltered))
+            {
+                await Results.ValidationProblem(new Dictionary<string, string[]> { ["warranty"] = ["Garanti filtresi expired, expiring, active veya unspecified olmalıdır."] }).ExecuteAsync(context);
+                return;
+            }
+            query = warrantyFiltered;
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
@@ -1430,6 +1439,24 @@ public static class AssetEndpoints
             _ => null
         };
         return ordered?.ThenBy(x => x.AssetTag).ThenBy(x => x.Id);
+    }
+
+    private static bool TryApplyWarrantyFilter(IQueryable<Asset> query, string? warranty, out IQueryable<Asset> filtered)
+    {
+        filtered = query;
+        if (string.IsNullOrWhiteSpace(warranty)) return true;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var state = warranty.Trim().ToLowerInvariant();
+        if (state is not ("expired" or "expiring" or "active" or "unspecified")) return false;
+        filtered = state switch
+        {
+            "expired" => query.Where(x => x.WarrantyExpiresAt < today),
+            "expiring" => query.Where(x => x.WarrantyExpiresAt >= today && x.WarrantyExpiresAt <= today.AddDays(30)),
+            "active" => query.Where(x => x.WarrantyExpiresAt > today.AddDays(30)),
+            "unspecified" => query.Where(x => x.WarrantyExpiresAt == null),
+            _ => query
+        };
+        return true;
     }
 
     private static object AddCategory(AppDbContext db, Guid companyId, string name)

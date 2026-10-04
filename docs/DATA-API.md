@@ -20,7 +20,7 @@
 - Zimmet/iade ve bakım/arşiv durum geçişleri satır kilidi ve veritabanı transaction'ı içinde yapılır. Aynı varlığın iki kullanıcıya eşzamanlı zimmetlenmesi önlenir.
 - Hareket geçmişi aktör/çalışan bilgisi taşır; çalışan işlemleri ayrı denetim tablosuna kaydedilir. Yönetici denetim kaydını sayfalı görebilir.
 - Sayfalı varlık CSV dışa aktarımında hücre değerleri Excel formül enjeksiyonuna karşı nötrlenir; `X-Has-More` ve `X-Total-Count` başlıkları sonraki sayfa gerekip gerekmediğini gösterir. Arayüzdeki tam dışa aktarma ayrı bir akış uç noktası kullanır; tüm dosyayı sunucu belleğinde biriktirmeden kayıtları yazar.
-- Varlık listesi sayfa başına 25/50/100/200 kayıt gösterir; sütun başlıklarından etiket, kategori, marka/model, çalışan, konum, durum, garanti bitişi ve güncellenme tarihine göre artan/azalan sıralanır; aynı değerlerde etiket ve kayıt kimliği sabit sıra sağlar. CSV dışa aktarımı da seçili sıralamayı korur. Arama yanında durum, kategori, marka, model, zimmetli çalışan ve tam konum filtrelerini destekler. Varlık listesindeki kategori/marka/model/çalışan/konum bağlantıları ilişkili kayıt görünümünü açar; çalışan listesindeki departman bağlantısı aynı departmandaki kişileri süzer. CSV dışa aktarımı da ekrandaki bu filtreleri uygular. Veritabanı durum, zimmet ve negatif alış bedeli gibi tutarsızlıkları da kontrol eder.
+- Varlık listesi sayfa başına 25/50/100/200 kayıt gösterir; sütun başlıklarından etiket, kategori, marka/model, çalışan, konum, durum, garanti bitişi ve güncellenme tarihine göre artan/azalan sıralanır; aynı değerlerde etiket ve kayıt kimliği sabit sıra sağlar. CSV dışa aktarımı da seçili sıralamayı korur. Arama yanında durum, kategori, marka, model, zimmetli çalışan, tam konum ve garanti durumu (süresi dolmuş, 30 gün içinde dolacak, 30 günden uzun süre aktif, tarihi girilmemiş) filtrelerini destekler. Varlık listesindeki kategori/marka/model/çalışan/konum bağlantıları ilişkili kayıt görünümünü açar; çalışan listesindeki departman bağlantısı aynı departmandaki kişileri süzer. CSV dışa aktarımı da ekrandaki filtreleri uygular. Veritabanı durum, zimmet ve negatif alış bedeli gibi tutarsızlıkları da kontrol eder.
 
 ## Yerel yapılandırma değişkenleri
 
@@ -35,7 +35,7 @@ Rol politikaları ayrı tutulur: varlık okuma, varlık değiştirme, çalışan
 
 ## API sözleşmesi (oturum açma akışı eklendikten sonra)
 
-- `GET /api/assets?q=&status=&categoryId=&brandId=&modelId=&employeeId=&location=&sortBy=tag&sortDirection=asc&page=1&pageSize=50`
+- `GET /api/assets?q=&status=&categoryId=&brandId=&modelId=&employeeId=&location=&warranty=expired|expiring|active|unspecified&sortBy=tag&sortDirection=asc&page=1&pageSize=50` (`warranty` isteğe bağlı; süresi dolanlar, bugünden itibaren 30 gün içinde dolacaklar, 30 günden uzun süre etkin olanlar veya bitiş tarihi girilmemiş olanlar)
 - `GET /api/assets/{id}`
   - Yanıt, şirket kapsamındaki varlık alanlarını, kategori/marka/model/çalışan adlarını ve en yeniden eskiye hareket listesini içerir. Hareketlerde varsa çalışan adı da bulunur; olaylar başka şirket kayıtlarıyla eşleştirilmez.
 - `GET /api/employees?q=&department=&managerId=&active=true&page=1&pageSize=50`
@@ -86,7 +86,7 @@ Rol politikaları ayrı tutulur: varlık okuma, varlık değiştirme, çalışan
 - `POST /api/members/invite` (sahip/yönetici; ad, e-posta ve rol; CSRF + istek sınırı + etkin plan/koltuk kontrolü)
 - `PATCH /api/members/{userId}/role` (sahip/yönetici; denetim kaydı üretir)
 - `GET /api/assets/export.csv?page=1&pageSize=5000&q=`
-- `GET /api/assets/export-all.csv?q=&status=&categoryId=&brandId=&modelId=&employeeId=&location=&sortBy=tag&sortDirection=asc` (bellekte tüm dosyayı oluşturmadan akış halinde tam dışa aktarım; etiket/ad/durum, kategori/marka/model, seri no/konum, çalışan numarası/adı, alış tarihi, garanti bitiş tarihi/tutarı ve para birimi; CSV formül enjeksiyonu için hücre kaçışı uygulanır)
+- `GET /api/assets/export-all.csv?q=&status=&categoryId=&brandId=&modelId=&employeeId=&location=&warranty=expired|expiring|active|unspecified&sortBy=tag&sortDirection=asc` (bellekte tüm dosyayı oluşturmadan akış halinde tam dışa aktarım; etiket/ad/durum, kategori/marka/model, seri no/konum, çalışan numarası/adı, alış tarihi, garanti bitiş tarihi/tutarı ve para birimi; arayüzdeki garanti filtresi ve diğer süzgeçler uygulanır; CSV formül enjeksiyonu için hücre kaçışı uygulanır)
 - `POST /api/assets/export-selected.csv` (`asset.read`; CSRF zorunlu; 1–100 şirket varlık kimliği; seçili kayıtları garanti bitiş tarihi dahil tam dışa aktarımla aynı sütunlarda ve formül güvenli CSV biçiminde indirir)
 - `POST /api/assets/labels/selected` (`asset.read`; CSRF zorunlu; 1–100 tekrarsız ve şirkete ait varlık kimliği; seçili kimlik sırasını ve etiket alanlarını döndürür)
 - `POST /api/assets/bulk-status` (`asset.write`; CSRF zorunlu; 1–100 tekrarsız şirket varlık kimliği; durum güncellemesini tek işlemde uygular, zimmetli/arşiv kısıtlarını doğrular ve her değişen varlık için hareket/denetim kaydı oluşturur)
