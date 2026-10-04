@@ -76,7 +76,7 @@
     @media(max-width:720px){#overview.inventory-mode .table-tools{align-items:stretch}#overview.inventory-mode .table-tools input{flex-basis:100%}}
   </style>
 <style>.bulk-asset-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:10px 13px;border-bottom:1px solid #edf0f5;background:#f8faff}.bulk-asset-toolbar[hidden]{display:none}.bulk-asset-toolbar label{display:flex;align-items:center;gap:7px;color:#526178;font-size:.72rem}.bulk-asset-toolbar>span{margin-right:auto;color:#526178;font-size:.72rem;font-weight:700}.bulk-asset-toolbar select{min-height:32px;padding:0 9px;border:1px solid #dce4ee;border-radius:7px;background:white;color:#33445e;font-size:.72rem}.asset-select-column{width:38px}.asset-select-cell{text-align:center}.asset-select-cell input{width:15px;height:15px;accent-color:#1769df}.stats .stat-actionable{cursor:pointer;transition:box-shadow .15s,transform .15s}.stats .stat-actionable:hover{transform:translateY(-2px);box-shadow:0 8px 20px #10213a14}.stats .stat-actionable:focus-visible{outline:2px solid #1769df;outline-offset:2px}</style>
-<style>.dashboard-status{display:grid;grid-template-columns:minmax(112px,150px) minmax(0,1fr);align-items:center;gap:18px;padding:16px}.dashboard-donut{position:relative;display:grid;place-items:center;width:min(100%,150px);aspect-ratio:1;border-radius:50%;background:#eef2f8}.dashboard-donut:after{position:absolute;inset:19%;border-radius:50%;background:#fff;content:""}.dashboard-donut-center{z-index:1;text-align:center}.dashboard-donut-center strong{display:block;color:#26364d;font-size:1.2rem}.dashboard-donut-center small{color:#8793a6;font-size:.62rem}.dashboard-status-legend{display:grid;gap:4px}.dashboard-status-item{display:flex;align-items:center;gap:8px;width:100%;padding:7px 8px;border:0;border-radius:7px;color:#56657a;background:transparent;text-align:left;font-size:.68rem;cursor:pointer}.dashboard-status-item:hover,.dashboard-status-item:focus-visible{outline:2px solid #cfe0fa;background:#f4f8ff}.dashboard-status-item .legend-dot{width:8px;height:8px;flex:none;border-radius:50%}.dashboard-status-item .legend-count{margin-left:auto;color:#26364d;font-weight:700}.dashboard-status-note{padding:0 16px 12px;color:#8793a6;font-size:.63rem}@media(max-width:420px){.dashboard-status{grid-template-columns:108px minmax(0,1fr);gap:10px;padding:13px}.dashboard-status-item{padding:7px 4px;font-size:.64rem}}</style></head>
+<style>.dashboard-status{display:grid;grid-template-columns:minmax(112px,150px) minmax(0,1fr);align-items:center;gap:18px;padding:16px}.dashboard-donut{position:relative;display:grid;place-items:center;width:min(100%,150px);aspect-ratio:1;border-radius:50%;background:#eef2f8}.dashboard-donut:after{position:absolute;inset:19%;border-radius:50%;background:#fff;content:""}.dashboard-donut-center{z-index:1;text-align:center}.dashboard-donut-center strong{display:block;color:#26364d;font-size:1.2rem}.dashboard-donut-center small{color:#8793a6;font-size:.62rem}.dashboard-status-legend{display:grid;gap:4px}.dashboard-status-item{display:flex;align-items:center;gap:8px;width:100%;padding:7px 8px;border:0;border-radius:7px;color:#56657a;background:transparent;text-align:left;font-size:.68rem;cursor:pointer}.dashboard-status-item:hover,.dashboard-status-item:focus-visible{outline:2px solid #cfe0fa;background:#f4f8ff}.dashboard-status-item .legend-dot{width:8px;height:8px;flex:none;border-radius:50%}.dashboard-status-item .legend-count{margin-left:auto;color:#26364d;font-weight:700}.dashboard-status-note{padding:0 16px 12px;color:#8793a6;font-size:.63rem}@media(max-width:420px){.dashboard-status{grid-template-columns:108px minmax(0,1fr);gap:10px;padding:13px}.dashboard-status-item{padding:7px 4px;font-size:.64rem}}</style><style>.label-preview-card{box-sizing:border-box;max-width:none;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto 1fr auto;align-items:center;gap:4px;border:1px dashed #8494a8;border-radius:6px;background:#fff;box-shadow:0 5px 20px #182d491f;overflow:hidden}.label-preview-brand{grid-column:1/-1;color:#52637a;font-size:8px;font-weight:800;letter-spacing:.08em}.label-preview-copy{min-width:0;display:grid;gap:4px;overflow:hidden}.label-preview-copy strong{font-size:10px}.label-preview-copy b{font-size:17px;overflow-wrap:anywhere}.label-preview-copy small{font-size:8px;color:#667085}.label-preview-2d{width:25mm;height:25mm;object-fit:contain}.label-preview-1d{grid-column:1/-1;width:100%;height:auto;max-height:10mm;object-fit:fill}.label-preview-1d[src^="data:"]{image-rendering:auto}#labelPreviewCanvas{overflow:auto;padding:4px 0 12px}#labelSettingsForm .form-grid{margin-bottom:8px}@media(max-width:720px){#labelSettingsPage .grid{grid-template-columns:1fr!important}}</style></head>
 <body>
   <div class="app">
     <aside class="sidebar" id="sidebar">
@@ -123,6 +123,31 @@
       <section class="workspace-page" id="employeesPage" hidden><div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / EKİP</div><h1>Çalışan kayıtları</h1><p>Departmana ve yöneticiye göre ilişki kurun; profilden doğrudan raporlayanları ve zimmetlerini görüntüleyin.</p></div><div class="head-actions"><button class="btn primary" id="newEmployeeButton">＋ Çalışan ekle</button></div></div><section class="panel"><div class="table-tools"><input id="employeeSearch" placeholder="Ad, personel no, e-posta veya departman ara" aria-label="Çalışan kayıtlarında ara"><input id="employeeDepartmentFilter" maxlength="160" placeholder="Departman filtresi" aria-label="Departmana göre filtrele"><button class="btn small" id="clearEmployeeDepartmentFilter" type="button" hidden>Departmanı temizle</button><select id="employeeState" aria-label="Çalışan durumuna göre filtrele"><option value="true">Aktif çalışanlar</option><option value="false">Pasif çalışanlar</option></select><small id="employeeCount" role="status" aria-live="polite" aria-atomic="true">—</small></div><div class="table-wrap"><table><caption class="sr-only">Şirket çalışan kayıtları</caption><thead><tr><th>Çalışan</th><th>Personel no</th><th>E-posta</th><th>Departman</th><th>Yönetici</th><th>Durum</th><th>İşlem</th></tr></thead><tbody id="employeeRows"><tr><td colspan="7">Çalışanlar yükleniyor…</td></tr></tbody></table></div><div class="pager"><button id="employeePrev">← Önceki</button><span id="employeePageInfo">Sayfa —</span><button id="employeeNext">Sonraki →</button></div></section></section>
       <section class="workspace-page" id="directoryPage" hidden><div class="page-head"><div><div class="eyebrow" id="directoryEyebrow">ŞİRKET ALANI / KAYITLAR</div><h1 id="directoryTitle">Şirket kayıtları</h1><p id="directoryDescription">Şirket kayıtlarından güncel özet.</p></div><button class="btn" id="directoryRefresh" type="button">↻ Yenile</button></div><section class="panel"><div class="table-tools"><input id="directorySearch" placeholder="Listede ara" aria-label="Liste kayıtlarında ara"><small id="directoryCount">—</small></div><div class="table-wrap"><table><thead id="directoryHead"></thead><tbody id="directoryRows"><tr><td>Yükleniyor…</td></tr></tbody></table></div><div class="notice" id="directoryNotice" style="margin:12px">Liste, şirketinizdeki gerçek kayıtlardan oluşturulur. Departman ve konum adları şimdilik ilgili kayıtlardaki metinlerden derlenir.</div></section></section>
       <section class="workspace-page" id="moduleStatusPage" hidden><div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / ÜRÜN DURUMU</div><h1 id="moduleStatusTitle">Modül</h1><p id="moduleStatusSummary">Bu modülün kullanılabilirliği hakkında bilgi.</p></div><span class="pill warn">Geliştirme aşamasında</span></div><section class="panel"><div class="dialog-body"><h2 id="moduleStatusHeading">Bu bölüm henüz kayıt işlemi yapmıyor</h2><p id="moduleStatusDetail" class="muted">Henüz etkin olmayan bir ekrana yönlendirildiniz.</p><div class="dialog-actions"><button class="btn primary" id="moduleGoAssets" type="button">Varlıkları aç</button><button class="btn" id="moduleGoPeople" type="button">Çalışanları aç</button></div></div></section></section>
+      <section class="workspace-page" id="labelSettingsPage" hidden>
+        <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / ENVANTER ETİKETLERİ</div><h1>QR ve barkodlar</h1><p>Etiket biçimini, ölçüsünü ve yazıcıya göre hizasını ayarlayın.</p></div><button class="btn" id="labelSettingsReset" type="button">Varsayılanlara dön</button></div>
+        <div class="grid" style="grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr);align-items:start">
+          <section class="panel"><div class="panel-head"><h2>Etiket ve kod ayarları</h2><span class="pill blue">Bu tarayıcıda saklanır</span></div>
+            <form id="labelSettingsForm" class="dialog-body">
+              <div class="form-grid">
+                <label>1D barkod türü<select name="barcode1d"><option value="code128">C128 · alfasayısal</option><option value="code39">C39 · büyük harf ve rakam</option><option value="ean5">EAN5 · 5 rakam</option><option value="ean13">EAN13 · 12/13 rakam</option><option value="upca">UPC-A · 11/12 rakam</option><option value="upce">UPC-E · 6–8 rakam</option><option value="none">Kapalı</option></select></label>
+                <label>2D barkod türü<select name="barcode2d"><option value="qrcode">QR Code</option><option value="pdf417">PDF417</option><option value="datamatrix">Data Matrix</option><option value="none">Kapalı</option></select></label>
+                <label>Etiket genişliği (mm)<input name="widthMm" type="number" min="25" max="150" step="0.5" required></label>
+                <label>Etiket yüksekliği (mm)<input name="heightMm" type="number" min="15" max="100" step="0.5" required></label>
+                <label>Yatay hizalama (mm)<input name="offsetXmm" type="number" min="-30" max="30" step="0.5" required></label>
+                <label>Dikey hizalama (mm)<input name="offsetYmm" type="number" min="-30" max="30" step="0.5" required></label>
+                <label>İç boşluk (mm)<input name="paddingMm" type="number" min="0" max="15" step="0.5" required></label>
+                <label>2D kod boyutu (mm)<input name="codeSizeMm" type="number" min="10" max="45" step="0.5" required></label>
+                <label>QR içeriği<select name="qrTarget"><option value="tag">Varlık etiketi · aramayla bulunur</option><option value="asset-url">Giriş sonrası varlık ayrıntısını aç</option></select></label>
+              </div>
+              <fieldset style="display:flex;flex-wrap:wrap;gap:12px;margin:8px 0;padding:10px;border:1px solid #e4eaf2;border-radius:8px"><legend class="muted">Etikette gösterilecek bilgiler</legend><label><input name="showName" type="checkbox" checked> Varlık adı</label><label><input name="showSerial" type="checkbox" checked> Seri numarası</label><label><input name="showModel" type="checkbox"> Model</label><label><input name="showLocation" type="checkbox"> Konum</label><label><input name="showStatus" type="checkbox"> Durum</label></fieldset>
+              <div class="dialog-actions"><button class="btn primary" type="submit">Ayarları kaydet</button><span id="labelSettingsFeedback" class="muted" role="status"></span></div>
+              <p class="muted">EAN/UPC biçimleri yalnızca uygun uzunlukta sayısal etiketleri kabul eder. Hizalama değerleri yazdırma penceresindeki tek kartın konumunu ayarlar. Seçimler bu tarayıcıda, şirket hesabına göre saklanır.</p>
+            </form>
+          </section>
+          <section class="panel"><div class="panel-head"><h2>Canlı etiket önizlemesi</h2></div><div class="dialog-body"><div id="labelPreviewCanvas" aria-live="polite"></div><p id="labelPreviewMessage" class="muted" role="status" style="margin-top:12px">Örnek etiket hazırlanıyor…</p></div></section>
+        </div>
+        <section class="panel" style="margin-top:15px"><div class="dialog-body"><h2 style="margin:0 0 7px;font-size:.9rem">Varlık etiketlerini yazdır</h2><p class="muted">Ayarları kaydettikten sonra varlık listesinden bir kaydı açın ve “Etiket kartını yazdır” düğmesine basın. Yazdırma ekranında kağıt boyutunu etiket ölçüsüne göre seçin; gerçek yazıcıda ilk olarak tek deneme etiketi alın.</p><div class="dialog-actions"><button class="btn primary" id="labelSettingsGoAssets" type="button">Varlık listesini aç</button></div></div></section>
+      </section>
       <section class="workspace-page" id="membersPage" hidden><div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / ERİŞİM</div><h1>Uygulama kullanıcıları</h1><p>Şirket alanına giriş yetkisi olan hesapları ve rollerini yönetin. Çalışan kayıtlarıyla giriş hesapları farklıdır.</p></div><div class="head-actions"><button class="btn" id="membersRefresh">↻ Yenile</button><button class="btn primary" id="inviteMemberButton">＋ Kullanıcı davet et</button></div></div><section class="panel"><div class="table-tools"><small id="membersCount">—</small><span class="muted">Davet edilen kişiye güvenli parola belirleme bağlantısı e-postalanır. Planın giriş hesabı sınırı uygulanır.</span></div><div class="table-wrap"><table><thead><tr><th>Kullanıcı</th><th>E-posta</th><th>Rol</th><th>Üyelik tarihi</th><th>İşlem</th></tr></thead><tbody id="membersRows"><tr><td colspan="5">Kullanıcılar yükleniyor…</td></tr></tbody></table></div></section></section>
       <section class="workspace-page" id="catalogPage" hidden>
         <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / VARLIK TANIMLARI</div><h1 id="catalogTitle">Varlık tanımları</h1><p id="catalogDescription">Şirketinizde tekrar kullanılacak kategori, marka ve modelleri yönetin.</p></div><button class="btn" id="catalogRefresh" type="button">↻ Yenile</button></div>
@@ -185,7 +210,8 @@
   <script src="/vendor/qrcodegen.js"></script>
   <script>
     const toast = document.getElementById('toast');
-    let toastTimer, requestToken = '', lookupCache = { categories: [], brands: [], models: [] }, loadedAssets = [], selectedAssetIds = new Set(), currentAsset = null, currentEmployeeId = null, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', assetRowDensity = 'comfortable', visibleAssetColumns = Array(7).fill(true);
+    let toastTimer, requestToken = '', lookupCache = { categories: [], brands: [], models: [] }, loadedAssets = [], selectedAssetIds = new Set(), currentAsset = null, currentEmployeeId = null, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', assetRowDensity = 'comfortable', visibleAssetColumns = Array(7).fill(true), labelSettingsKey = '', bwipLoadPromise = null;
+    let labelPrintSettings = { barcode1d: 'code128', barcode2d: 'qrcode', widthMm: 86, heightMm: 48, offsetXmm: 0, offsetYmm: 0, paddingMm: 4, codeSizeMm: 25, qrTarget: 'tag', showName: true, showSerial: true, showModel: false, showLocation: false, showStatus: false };
     const pageSize = 12;
     const $ = (selector, root = document) => root.querySelector(selector);
     const fmt = new Intl.NumberFormat('tr-TR');
@@ -375,6 +401,81 @@
     }
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]); }
     function statusLabel(status) { return ({ Available: 'Kullanılabilir', Deployed: 'Atanmış', Maintenance: 'Bakımda', Archived: 'Arşiv' })[status] || status || 'Bilinmiyor'; }
+    function loadLabelSettings(companyId) {
+      labelSettingsKey = `envantertr:label-settings:${companyId}`;
+      try {
+        const stored = JSON.parse(localStorage.getItem(labelSettingsKey) || 'null');
+        if (stored && typeof stored === 'object') {
+          const base = labelPrintSettings, numeric = (key, min, max) => { const value = Number(stored[key]); return Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : base[key]; };
+          labelPrintSettings = {
+            barcode1d: ['code128','code39','ean5','ean13','upca','upce','none'].includes(stored.barcode1d) ? stored.barcode1d : base.barcode1d,
+            barcode2d: ['qrcode','pdf417','datamatrix','none'].includes(stored.barcode2d) ? stored.barcode2d : base.barcode2d,
+            qrTarget: ['tag','asset-url'].includes(stored.qrTarget) ? stored.qrTarget : base.qrTarget,
+            widthMm: numeric('widthMm',25,150), heightMm: numeric('heightMm',15,100), offsetXmm: numeric('offsetXmm',-30,30), offsetYmm: numeric('offsetYmm',-30,30), paddingMm: numeric('paddingMm',0,15), codeSizeMm: numeric('codeSizeMm',10,45),
+            showName: stored.showName !== false, showSerial: stored.showSerial !== false, showModel: stored.showModel === true, showLocation: stored.showLocation === true, showStatus: stored.showStatus === true
+          };
+        }
+      } catch { notify('Etiket ayarları okunamadı; varsayılan değerler kullanılıyor.'); }
+    }
+    function populateLabelSettingsForm() {
+      const form = $('#labelSettingsForm');
+      for (const [name, value] of Object.entries(labelPrintSettings)) if (form.elements[name]) { if (form.elements[name].type === 'checkbox') form.elements[name].checked = Boolean(value); else form.elements[name].value = String(value); }
+    }
+    function readLabelSettingsForm() {
+      const form = $('#labelSettingsForm'), fields = ['widthMm','heightMm','offsetXmm','offsetYmm','paddingMm','codeSizeMm'];
+      const result = { barcode1d: form.elements.barcode1d.value, barcode2d: form.elements.barcode2d.value, qrTarget: form.elements.qrTarget.value, showName: form.elements.showName.checked, showSerial: form.elements.showSerial.checked, showModel: form.elements.showModel.checked, showLocation: form.elements.showLocation.checked, showStatus: form.elements.showStatus.checked };
+      for (const name of fields) result[name] = Number(form.elements[name].value);
+      return result;
+    }
+    function loadBwipJs() {
+      if (window.bwipjs) return Promise.resolve(window.bwipjs);
+      if (bwipLoadPromise) return bwipLoadPromise;
+      bwipLoadPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script'); script.src = '/vendor/bwip-js-min.js'; script.async = true;
+        script.onload = () => window.bwipjs ? resolve(window.bwipjs) : reject(new Error('Barkod motoru yüklenemedi.'));
+        script.onerror = () => { bwipLoadPromise = null; reject(new Error('Barkod motoru indirilemedi. Sayfayı yenileyip deneyin.')); };
+        document.head.append(script);
+      });
+      return bwipLoadPromise;
+    }
+    const labelBarcodeSamples = { code128: 'ASSET-001', code39: 'ASSET-001', ean5: '12345', ean13: '5901234123457', upca: '036000291452', upce: '04252614' };
+    function qrSvg(text) {
+      const qr = qrcodegen.QrCode.encodeText(text, qrcodegen.QrCode.Ecc.MEDIUM), quietZone = 4, viewSize = qr.size + quietZone * 2;
+      let path = '';
+      for (let y = 0; y < qr.size; y++) for (let x = 0; x < qr.size; x++) if (qr.getModule(x, y)) path += `M${x + quietZone},${y + quietZone}h1v1h-1z`;
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${viewSize} ${viewSize}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="${path}" fill="#111"/></svg>`;
+    }
+    function svgDataUrl(svg) { return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`; }
+    async function barcodeDataUrl(type, text, height = 9) {
+      const bwip = await loadBwipJs(), canvas = document.createElement('canvas');
+      bwip.toCanvas(canvas, { bcid: type, text, scale: 3, height, includetext: true, textxalign: 'center', paddingwidth: 0, paddingheight: 0 });
+      return canvas.toDataURL('image/png');
+    }
+    function barcodeForAsset(asset, settings) {
+      if (settings.qrTarget === 'asset-url') return new URL(`/?assetId=${encodeURIComponent(asset.id)}`, location.origin).href;
+      return asset.assetTag;
+    }
+    async function labelCodeImages(asset, settings) {
+      const result = { twoD: '', oneD: '' };
+      if (settings.barcode2d === 'qrcode') result.twoD = svgDataUrl(qrSvg(barcodeForAsset(asset, settings)));
+      else if (settings.barcode2d !== 'none') result.twoD = await barcodeDataUrl(settings.barcode2d, barcodeForAsset(asset, settings), 18);
+      if (settings.barcode1d !== 'none') result.oneD = await barcodeDataUrl(settings.barcode1d, asset.assetTag, 8);
+      return result;
+    }
+    async function renderLabelPreview() {
+      const settings = readLabelSettingsForm(), host = $('#labelPreviewCanvas'), message = $('#labelPreviewMessage');
+      const sample = { id: 'preview', assetTag: labelBarcodeSamples[settings.barcode1d] || 'ASSET-001', name: 'Örnek dizüstü bilgisayar', modelName: 'ThinkPad T14', locationName: 'İstanbul / Merkez', serialNumber: 'SN-2026-001', status: 'Available' };
+      host.replaceChildren(); message.textContent = 'Barkodlar hazırlanıyor…';
+      try {
+        const images = await labelCodeImages(sample, settings), card = document.createElement('article');
+        card.className = 'label-preview-card'; card.style.width = `${settings.widthMm}mm`; card.style.minHeight = `${settings.heightMm}mm`; card.style.padding = `${settings.paddingMm}mm`; card.style.marginLeft = `${settings.offsetXmm}mm`; card.style.marginTop = `${settings.offsetYmm}mm`;
+        const meta = [settings.showSerial && `Seri no: ${sample.serialNumber}`, settings.showModel && `Model: ${sample.modelName}`, settings.showLocation && `Konum: ${sample.locationName}`, settings.showStatus && `Durum: ${statusLabel(sample.status)}`].filter(Boolean).join(' · ');
+        card.innerHTML = `<div class="label-preview-brand">ENVANTERTR · VARLIK KARTI</div><div class="label-preview-copy">${settings.showName ? `<strong>${escapeHtml(sample.name)}</strong>` : ''}<b>${escapeHtml(sample.assetTag)}</b>${meta ? `<small>${escapeHtml(meta)}</small>` : ''}</div>${images.twoD ? `<img class="label-preview-2d" alt="2D barkod önizlemesi" src="${images.twoD}">` : ''}${images.oneD ? `<img class="label-preview-1d" alt="1D barkod önizlemesi" src="${images.oneD}">` : ''}`;
+        host.append(card);
+        const twoD = card.querySelector('.label-preview-2d'); if (twoD) { twoD.style.width = `${settings.codeSizeMm}mm`; twoD.style.height = `${settings.codeSizeMm}mm`; }
+        message.textContent = 'Örnek etiket · yazdırma ölçüsü ve kaydırma önizlemesi.';
+      } catch (error) { message.textContent = `Bu kod türü örnek etiketle üretilemedi: ${error.message}`; }
+    }
     function openInventoryForStatus(status) {
       $('#assetStatusFilter').value = status;
       $('#assetCategoryFilter').value = ''; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = '';
@@ -916,7 +1017,7 @@
     async function openAsset(id) {
       try {
         const result = await api(`/api/assets/${id}`), asset = result.asset;
-        currentAsset = asset;
+        currentAsset = { ...asset, modelName: result.references.model, locationName: asset.location };
         $('#dialogTitle').textContent = asset.name; $('#detailTag').textContent = asset.assetTag; $('#detailTagTop').textContent = asset.assetTag;
         const status = $('#detailStatus'), statusTop = $('#detailStatusTop');
         status.textContent = statusLabel(asset.status); statusTop.textContent = statusLabel(asset.status);
@@ -950,8 +1051,9 @@
       document.querySelectorAll('.nav-item,.sub-item').forEach(item => item.classList.remove('active','selected'));
       if (button.classList.contains('nav-item')) button.classList.add('active'); else button.classList.add('selected');
       setMobileSidebarOpen(false);
-      for (const id of ['overview','employeesPage','directoryPage','moduleStatusPage','reportPage','membersPage','activityPage','auditPage','dataToolsPage','companySettingsPage','catalogPage']) $(`#${id}`).hidden = true;
+      for (const id of ['overview','employeesPage','directoryPage','moduleStatusPage','labelSettingsPage','reportPage','membersPage','activityPage','auditPage','dataToolsPage','companySettingsPage','catalogPage']) $(`#${id}`).hidden = true;
       if (page === 'Çalışan kayıtları') { $('#employeesPage').hidden = false; $('#pageTitle').textContent = page; loadEmployees().catch(error => notify(error.message)); }
+      else if (page === 'QR ve barkodlar') { if (!canReadAssets()) { notify('Bu hesabın varlık kayıtlarını görme yetkisi yok.'); return; } $('#labelSettingsPage').hidden = false; $('#pageTitle').textContent = page; populateLabelSettingsForm(); renderLabelPreview().catch(error => { $('#labelPreviewMessage').textContent = error.message; }); }
       else if (page === 'Departmanlar' || page === 'Lokasyonlar') { $('#directoryPage').hidden = false; $('#pageTitle').textContent = page; loadDirectory(page === 'Departmanlar' ? 'departments' : 'locations').catch(error => notify(error.message)); }
       else if (page === 'Uygulama kullanıcıları') { $('#membersPage').hidden = false; $('#pageTitle').textContent = page; loadMembers().catch(error => notify(error.message)); }
       else if (page === 'Hareket geçmişi') { $('#activityPage').hidden = false; $('#pageTitle').textContent = page; loadActivity(1).catch(error => notify(error.message)); }
@@ -977,7 +1079,7 @@
       else {
         $('#moduleStatusPage').hidden = false; $('#pageTitle').textContent = page; $('#moduleStatusTitle').textContent = page;
         const guidance = {
-          'QR ve barkodlar': ['QR kodlu varlık etiketi yazdırma hazır.', 'Varlık listesinden bir kaydı açıp “Etiket kartını yazdır” seçin. QR yalnızca varlık etiketini içerir; kamera ile okutma ve çizgisel barkod sonraki adımlardır.', 'Varlık kayıtlarını aç'],
+          'QR ve barkodlar': ['Etiket biçimi, ölçüsü ve yazıcı hizalaması ayarlanabilir.', 'Varlık etiketleri QR, PDF417 veya Data Matrix ile birlikte C128, C39, EAN5, EAN13, UPC-A ya da UPC-E olarak basılabilir.', 'Varlık kayıtlarını aç'],
           'Zimmetler': ['Toplu zimmet listesi henüz hazır değil.', 'Kullanılabilir varlığı açıp “Çalışana zimmetle” işlemini kaydedebilir; geçmişi varlık ve çalışan ayrıntısında görebilirsiniz.', 'Varlık kayıtlarını aç'],
           'İadeler': ['Merkezi iade kuyruğu henüz hazır değil.', 'İade işlemi varlık ayrıntısından yapılır; mevcut çalışana ve işleme ait geçmiş korunur.', 'Varlık kayıtlarını aç'],
           'Binalar ve odalar': ['Bina/oda hiyerarşisi henüz modellenmedi.', 'Şu an varlıklar üzerindeki konum metinlerini Lokasyonlar ekranında özetleyebilir ve filtreleyebilirsiniz.', 'Lokasyonları aç'],
@@ -1013,19 +1115,31 @@
       try { await navigator.clipboard.writeText(currentAsset.assetTag); notify('Varlık etiketi panoya kopyalandı.'); }
       catch { notify('Etiket kopyalanamadı. Tarayıcı pano iznini kontrol edin.'); }
     });
-    $('#printAssetLabel').addEventListener('click', () => {
+    $('#labelSettingsForm').addEventListener('submit', event => {
+      event.preventDefault();
+      const settings = readLabelSettingsForm();
+      if (!Object.values(settings).every(value => typeof value === 'string' || typeof value === 'boolean' || Number.isFinite(value))) { $('#labelSettingsFeedback').textContent = 'Tüm ölçüleri geçerli sayılarla doldurun.'; return; }
+      labelPrintSettings = settings;
+      try { localStorage.setItem(labelSettingsKey, JSON.stringify(labelPrintSettings)); $('#labelSettingsFeedback').textContent = 'Ayarlar bu şirketteki tarayıcınız için kaydedildi.'; }
+      catch { $('#labelSettingsFeedback').textContent = 'Tarayıcı saklama alanına yazılamadı. Bu sekmede kullanabilirsiniz.'; }
+      renderLabelPreview().catch(error => { $('#labelPreviewMessage').textContent = error.message; });
+    });
+    let labelPreviewTimer;
+    $('#labelSettingsForm').addEventListener('input', () => { clearTimeout(labelPreviewTimer); labelPreviewTimer = setTimeout(() => renderLabelPreview().catch(error => { $('#labelPreviewMessage').textContent = error.message; }), 300); });
+    $('#labelSettingsReset').addEventListener('click', () => { labelPrintSettings = { barcode1d: 'code128', barcode2d: 'qrcode', widthMm: 86, heightMm: 48, offsetXmm: 0, offsetYmm: 0, paddingMm: 4, codeSizeMm: 25, qrTarget: 'tag', showName: true, showSerial: true, showModel: false, showLocation: false, showStatus: false }; populateLabelSettingsForm(); $('#labelSettingsForm').requestSubmit(); });
+    $('#labelSettingsGoAssets').addEventListener('click', () => document.querySelector('.sub-item[data-page="Varlıklar"]')?.click());
+    $('#printAssetLabel').addEventListener('click', async () => {
       if (!currentAsset) return;
-      if (!window.qrcodegen?.QrCode) { notify('QR kod modülü yüklenemedi. Sayfayı yenileyip yeniden deneyin.'); return; }
       const popup = window.open('', '_blank', 'width=520,height=440');
       if (!popup) { notify('Yazdırma penceresi açılamadı. Tarayıcı açılır pencere iznini kontrol edin.'); return; }
-      const qr = qrcodegen.QrCode.encodeText(currentAsset.assetTag, qrcodegen.QrCode.Ecc.MEDIUM);
-      const quietZone = 4, viewSize = qr.size + quietZone * 2;
-      let qrPath = '';
-      for (let y = 0; y < qr.size; y++) for (let x = 0; x < qr.size; x++) if (qr.getModule(x, y)) qrPath += `M${x + quietZone},${y + quietZone}h1v1h-1z`;
-      const qrSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${viewSize} ${viewSize}" role="img" aria-label="${escapeHtml(currentAsset.assetTag)} QR kodu" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="${qrPath}" fill="#111"/></svg>`;
-      popup.document.open();
-      popup.document.write(`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(currentAsset.assetTag)} · Envanter etiketi</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111;padding:8mm}.label{width:86mm;min-height:38mm;padding:4mm;border:1px solid #aeb8c5;border-radius:2mm;display:grid;grid-template-columns:minmax(0,1fr) 27mm;gap:4mm;align-items:center}.brand{grid-column:1/-1;color:#52637a;font-size:8pt;font-weight:700;letter-spacing:.08em}.copy{min-width:0}.name{font-size:11pt;font-weight:700;overflow-wrap:anywhere}.tag{margin:3mm 0;font-size:19pt;font-weight:800;letter-spacing:.5px;overflow-wrap:anywhere}.meta{color:#5b6573;font-size:8pt;overflow-wrap:anywhere}.qr{width:27mm;height:27mm}.qr svg{display:block;width:100%;height:100%}.hint{grid-column:1/-1;color:#667085;font-size:7pt}@media print{body{padding:0}.label{break-inside:avoid}}</style></head><body><article class="label"><div class="brand">ENVANTERTR · VARLIK KARTI</div><div class="copy"><div class="name">${escapeHtml(currentAsset.name)}</div><div class="tag">${escapeHtml(currentAsset.assetTag)}</div><div class="meta">${escapeHtml(currentAsset.serialNumber ? `Seri no: ${currentAsset.serialNumber}` : statusLabel(currentAsset.status))}</div></div><div class="qr">${qrSvg}</div><div class="hint">QR içeriği: yalnızca varlık etiketi</div></article><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));<\/script></body></html>`);
-      popup.document.close(); popup.focus();
+      try {
+        const settings = labelPrintSettings, images = await labelCodeImages(currentAsset, settings), title = escapeHtml(currentAsset.assetTag);
+        const cardWidth = settings.widthMm, cardHeight = settings.heightMm, codeSize = Math.max(0, Math.min(settings.codeSizeMm, cardHeight - settings.paddingMm * 2));
+        const metaLines = [settings.showSerial && currentAsset.serialNumber && `Seri no: ${currentAsset.serialNumber}`, settings.showModel && currentAsset.modelName && `Model: ${currentAsset.modelName}`, settings.showLocation && currentAsset.locationName && `Konum: ${currentAsset.locationName}`, settings.showStatus && `Durum: ${statusLabel(currentAsset.status)}`].filter(Boolean).map(escapeHtml).join(' · ');
+        popup.document.open();
+        popup.document.write(`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · Envanter etiketi</title><style>*{box-sizing:border-box}@page{size:${cardWidth}mm ${cardHeight}mm;margin:0}body{margin:0;font-family:Arial,sans-serif;color:#111}.label{width:${cardWidth}mm;height:${cardHeight}mm;padding:${settings.paddingMm}mm;margin:${settings.offsetYmm}mm 0 0 ${settings.offsetXmm}mm;display:grid;grid-template-columns:minmax(0,1fr) ${images.twoD ? codeSize : 0}mm;grid-template-rows:auto 1fr auto;gap:2mm;align-items:center;overflow:hidden}.brand{grid-column:1/-1;color:#52637a;font-size:7pt;font-weight:700;letter-spacing:.08em}.copy{min-width:0;overflow:hidden}.name{font-size:10pt;font-weight:700;overflow-wrap:anywhere}.tag{margin:2mm 0;font-size:17pt;font-weight:800;letter-spacing:.4px;overflow-wrap:anywhere}.meta{color:#5b6573;font-size:7pt;overflow-wrap:anywhere}.two-d{width:${images.twoD ? codeSize : 0}mm;height:${images.twoD ? codeSize : 0}mm;object-fit:contain}.one-d{grid-column:1/-1;width:100%;height:auto;max-height:10mm;justify-self:center;object-fit:contain}.hint{grid-column:1/-1;color:#667085;font-size:6pt}@media screen{body{padding:12px}.label{border:1px dashed #718096;box-shadow:0 5px 20px #182d491f}}</style></head><body><article class="label"><div class="brand">ENVANTERTR · VARLIK KARTI</div><div class="copy">${settings.showName ? `<div class="name">${escapeHtml(currentAsset.name)}</div>` : ''}<div class="tag">${title}</div><div class="meta">${metaLines}</div></div>${images.twoD ? `<img class="two-d" alt="2D barkod" src="${images.twoD}">` : ''}${images.oneD ? `<img class="one-d" alt="1D barkod" src="${images.oneD}">` : ''}<div class="hint">2D içeriği: ${settings.qrTarget === 'asset-url' ? 'varlık ayrıntısı bağlantısı' : 'varlık etiketi'} · Ölçek: %100</div></article><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));<\/script></body></html>`);
+        popup.document.close(); popup.focus();
+      } catch (error) { popup.close(); notify(`Bu varlık seçili barkod türüne uymuyor: ${error.message}`); }
     });
     $('#dataDownloadCompany').addEventListener('click', () => $('#exportBackupButton').click());
     $('#dataDownloadAssets').addEventListener('click', () => $('#exportButton').click());
@@ -1349,6 +1463,7 @@
       sessionRole = session.role || '';
       $('#bulkAssetStatus').hidden = !canWriteAssets(); $('#applyBulkAssetStatus').hidden = !canWriteAssets();
       loadAssetColumnPreferences(session.companyId);
+      loadLabelSettings(session.companyId);
       try { await loadTenantBranding(); } catch (error) { console.warn('Şirket görünümü yüklenemedi.', error); }
       $('#membersNav').hidden = !canReadAudit();
       $('#inviteMemberButton').hidden = !canReadAudit(); if (sessionRole !== 'owner') $('#inviteAdminRole').remove();
@@ -1361,6 +1476,11 @@
       if (canReadAssets()) { try { await loadLookups(); await loadDashboard(); } catch (error) { $('#dataStatus').textContent = 'Veriler yüklenemedi'; notify(`Şirket verileri alınamadı: ${error.message}`); } }
       else if (canReadPeople()) { $('#employeesPage').hidden = false; await loadEmployees(1); }
       else { showLogin('Bu hesapta şirket envanteri veya çalışan kayıtlarına erişim rolü bulunmuyor. Şirket yöneticinizden rol atamasını isteyin.'); }
+      const linkedAssetId = new URL(location.href).searchParams.get('assetId');
+      if (canReadAssets() && linkedAssetId && /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(linkedAssetId)) {
+        const cleanUrl = new URL(location.href); cleanUrl.searchParams.delete('assetId'); history.replaceState(null, '', cleanUrl);
+        await openAsset(linkedAssetId);
+      }
     }
     (async () => { try { await refreshCsrf(); await startApp(); } catch (error) { showLogin(error.message === 'Oturum açmanız gerekiyor.' ? '' : 'Uygulama API’sine ulaşılamıyor. Sunucu ve veritabanı bağlantısını kontrol edin.'); } })();
   </script>

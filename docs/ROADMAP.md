@@ -7,7 +7,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 - Şirket hesabı ve rol tabanlı oturum; varlık, çalışan, kategori, marka ve model kayıtları.
 - Varlık arama, filtreleme, sıralama, sayfalama, şirket kapsamlı ve seçili kayıt CSV dışa aktarımı; en fazla 100 seçili varlığın güvenli toplu durum değişikliği. Kullanıcı sütun, satır aralığı ve sıralama görünümünü şirket ve tarayıcı bazında saklayabilir. Model/marka/çalışan/konum ilişki filtreleri ayrı ayrı veya birlikte kaldırılabilir; zimmet, iade, durum ve hareket geçmişi.
 - Varlık ve çalışan tablolarında ad bağlantıları klavyeyle erişilebilir; ad seçildiğinde ilgili ayrıntı profili açılır, model/departman gibi ilişki bağlantıları kendi filtre akışını korur. Hızlı aramada geciken eski istek yanıtları yeni listenin üzerine yazılmaz.
-- Varlık detayında genel bakış, bağlantılı kayıtlar ve gerçek işlem geçmişi; etiket kopyalama ve envanter etiketini QR koduyla basan yazdırılabilir kart. QR yalnızca varlık etiketini içerir.
+- Varlık detayında genel bakış, bağlantılı kayıtlar ve gerçek işlem geçmişi; etiket kopyalama ve QR/PDF417/Data Matrix ile C128/C39/EAN5/EAN13/UPC-A/UPC-E seçilebilir yazdırılabilir varlık kartı. Etiket boyutu, X/Y hizası, iç boşluk ve gösterilen alanlar ayarlanır; QR varlık etiketi ya da oturum sonrası varlık ayrıntısı bağlantısı taşır.
 - Dashboard, canlı şirket varlık durumlarını erişilebilir halka grafik ve tıklanabilir filtrelerle özetler; ayrıntılı hazır rapor ekranına geçiş sağlar.
 - Çalışanlarda departman filtreleme, isteğe bağlı yönetici ilişkisi, doğrudan raporlayanlar ve zimmetli varlıkları gösteren profiller. Yönetici döngüleri ve başka şirkete ait yönetici seçimi sunucuda engellenir.
 - Departman ve konum ekranları şirket verisinden özet çıkarır; departman çalışanlarını ve konumdaki varlıkları tek tıkla filtreler. Departman özetleri baştaki/sondaki boşluk ve harf büyüklüğü farklarını birleştirir; bölüm filtresi büyük/küçük harfe duyarsız eşleşir. Değerler hâlâ serbest metinden türetildiği için katalog yönetimi ve güvenli yeniden adlandırma sonraki adımdır.
@@ -37,7 +37,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 
 ### P1 — Envanter iş akışlarının kapsamı
 
-- Varlık fotoğrafı ve ek dosyalar; kamera ile QR/barkod okutma, çizgisel barkod ve toplu/şablon yazıcı etiketleri. Tek varlık için QR kodlu kart yazdırma eklendi.
+- Varlık fotoğrafı ve ek dosyalar; telefon kamerasıyla QR/barkod okutma, seçili varlıkları toplu etiketleme ve şirketler arasında eşitlenen kalıcı yazdırma tercihleri. Tek varlık için dokuz Snipe-IT uyumlu barkod türü ve ölçü/hizalama/alan ayarlı kart yazdırma eklendi; tercihler şimdilik yerel tarayıcıda tutulur.
 - Lisans, bileşen, sarf malzemesi, aksesuar, kit, transfer, rezervasyon, bakım, denetim ve garanti kayıtları.
 - Departman ve konum için yapılandırılmış kataloglar ve ad birleştirme/düzeltme akışı. Çalışan departmanı ve varlık konumu bugün serbest metindir; mevcut ekranlar yalnızca özetler ve filtreler.
 - CSV varlık biçimi için salt okunur sütun/çakışma önizlemesi ve mevcut katalog kayıtlarını kullanan sınırlı, atomik kayıt ekleme eklendi; Excel içe aktarma, alan eşleme, katalog kaydı oluşturma ve güvenli JSON geri yükleme akışı tamamlanmalı.
@@ -60,7 +60,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 ## Bilinçli ürün sınırları
 
 - Müşteri kaynak deposu ile müşterinin indireceği kurulum paketi ayrı teslim kanallarıdır. Kurulum paketi henüz üretilmiyor veya imzalanmıyor.
-- Varlık kartı QR kodu üretir ve yazdırır; kamera ile okuma, çizgisel barkod ve toplu etiket baskısı henüz yoktur.
+- Etiket kartı Snipe-IT'nin yeni etiket motorunda sunduğu 1D (C128, C39, EAN5, EAN13, UPCA, UPCE) ve 2D (QR Code, PDF417, Data Matrix) biçim seçeneklerini karşılar. Çalışan telefonunda kamera ile okutma, toplu etiket sayfaları/şablonları ve sunucuya kaydedilen şirket düzeyi ayarlar henüz yoktur.
 - Şirket logosu yükleme vardır; varlık fotoğrafı ve ek dosya saklama henüz yoktur.
 - JSON dosyası önizlemesi vardır; gerçek içe alma/geri yükleme henüz yoktur.
 - `docs/ARCHITECTURE.md`, `docs/DATA-PORTABILITY.md` ve `docs/PLATFORM-ADMIN.md` daha ayrıntılı teknik kapsamı tutar.
