@@ -38,7 +38,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 
 ### P1 — Envanter iş akışlarının kapsamı
 
-- Varlık fotoğrafı ve ek dosyalar; telefon kamerasıyla QR/barkod okutma ve yazıcı/kağıt şablon kataloğu. Tek varlık ve en fazla 100 seçili varlık için dokuz yaygın barkod türü, ölçü/hizalama/alan ayarlı kart yazdırma eklendi; etiket ayarları şirket düzeyinde saklanıp üyeler arasında eşitlenir, yalnızca tablo görünümü tercihleri tarayıcıda kalır.
+- Varlık fotoğrafı ve ek dosyalar; kod okutarak zimmet/iade ve yazıcı/kağıt şablon kataloğu. Kamera veya USB okuyucuyla varlık bulma; tek varlık ve en fazla 100 seçili varlık için dokuz yaygın barkod türü, ölçü/hizalama/alan ayarlı kart yazdırma eklendi. Etiket ayarları şirket düzeyinde saklanıp üyeler arasında eşitlenir, yalnızca tablo görünümü tercihleri tarayıcıda kalır.
 - Aksesuar modülünde sipariş/dosya ilişkileri, katalog bağlantıları, sütun/çıktı/toplu işlem ve isteğe bağlı kullanıcı akışları; ayrıca lisans, bileşen, sarf malzemesi, kit, transfer, rezervasyon, bakım, denetim ve garanti kayıtları.
 - Departman ve konum için yapılandırılmış kataloglar ve ad birleştirme/düzeltme akışı. Çalışan departmanı ve varlık konumu bugün serbest metindir; mevcut ekranlar yalnızca özetler ve filtreler.
 - CSV varlık biçimi için salt okunur sütun/çakışma önizlemesi ve mevcut katalog kayıtlarını kullanan sınırlı, atomik kayıt ekleme eklendi; Excel içe aktarma, alan eşleme, katalog kaydı oluşturma ve güvenli JSON geri yükleme akışı tamamlanmalı.
