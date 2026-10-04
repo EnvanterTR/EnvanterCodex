@@ -9,6 +9,7 @@ public sealed record CreateAssetRequest(
     string? SerialNumber,
     string? Location,
     DateOnly? PurchaseDate,
+    DateOnly? WarrantyExpiresAt,
     decimal? PurchaseCost,
     string? Currency);
 
@@ -21,6 +22,7 @@ public sealed record UpdateAssetRequest(
     string? SerialNumber,
     string? Location,
     DateOnly? PurchaseDate,
+    DateOnly? WarrantyExpiresAt,
     decimal? PurchaseCost,
     string? Currency,
     DateTimeOffset ExpectedUpdatedAt);
@@ -59,4 +61,5 @@ public sealed record AssetListItem(
     string? ModelName,
     string? AssignedEmployeeName,
     Guid? AssignedEmployeeId,
+    DateOnly? WarrantyExpiresAt,
     DateTimeOffset UpdatedAt);

@@ -278,6 +278,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateOnly?>("WarrantyExpiresAt")
+                        .HasColumnType("date");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId", "AssetTag")
@@ -290,6 +293,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasIndex("CompanyId", "Location");
 
                     b.HasIndex("CompanyId", "SerialNumber");
+
+                    b.HasIndex("CompanyId", "WarrantyExpiresAt");
 
                     b.HasIndex("CompanyId", "Status", "UpdatedAt");
 

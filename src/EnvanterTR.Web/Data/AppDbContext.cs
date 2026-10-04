@@ -346,6 +346,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Asset>().Property(x => x.Status).HasMaxLength(40).IsRequired();
         modelBuilder.Entity<Asset>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
         modelBuilder.Entity<Asset>().Property(x => x.PurchaseCost).HasPrecision(18, 2);
+        modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.WarrantyExpiresAt });
         modelBuilder.Entity<Asset>().ToTable("Assets", table =>
         {
             table.HasCheckConstraint("CK_Assets_Status", "\"Status\" IN ('Available', 'Deployed', 'Maintenance', 'Archived')");

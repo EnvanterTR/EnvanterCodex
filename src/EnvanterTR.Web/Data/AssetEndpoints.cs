@@ -84,7 +84,7 @@ public static class AssetEndpoints
                     x.ModelId,
                     db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.Name).FirstOrDefault(),
                     db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
-                    x.AssignedEmployeeId, x.UpdatedAt)).ToListAsync(cancellationToken);
+                    x.AssignedEmployeeId, x.WarrantyExpiresAt, x.UpdatedAt)).ToListAsync(cancellationToken);
             return Results.Ok(new { items, page, pageSize, total });
         }).RequireAuthorization("asset.read");
 
@@ -558,7 +558,7 @@ public static class AssetEndpoints
                 {
                     x.Id, x.AssetTag, x.Name, x.Status, x.SerialNumber, x.Location,
                     x.CategoryId, x.BrandId, x.ModelId, x.AssignedEmployeeId,
-                    x.PurchaseDate, x.PurchaseCost, x.Currency, x.CreatedAt, x.UpdatedAt
+                    x.PurchaseDate, x.WarrantyExpiresAt, x.PurchaseCost, x.Currency, x.CreatedAt, x.UpdatedAt
                 }).SingleOrDefaultAsync(cancellationToken);
             if (asset is null) return Results.NotFound();
             var references = new
@@ -651,7 +651,7 @@ public static class AssetEndpoints
                 CompanyId = companyId, AssetTag = tag, Name = name, CategoryId = request.CategoryId,
                 BrandId = request.BrandId, ModelId = request.ModelId,
                 SerialNumber = serial, Location = location,
-                PurchaseDate = request.PurchaseDate, PurchaseCost = request.PurchaseCost,
+                PurchaseDate = request.PurchaseDate, WarrantyExpiresAt = request.WarrantyExpiresAt, PurchaseCost = request.PurchaseCost,
                 Currency = currency
             };
             db.Assets.Add(asset);
@@ -677,7 +677,7 @@ public static class AssetEndpoints
                 asset.BrandId is Guid savedBrand ? await db.AssetBrands.Where(x => x.CompanyId == companyId && x.Id == savedBrand).Select(x => x.Name).SingleAsync(cancellationToken) : null,
                 asset.ModelId,
                 asset.ModelId is Guid savedModel ? await db.AssetModels.Where(x => x.CompanyId == companyId && x.Id == savedModel).Select(x => x.Name).SingleAsync(cancellationToken) : null,
-                null, asset.AssignedEmployeeId, asset.UpdatedAt));
+                null, asset.AssignedEmployeeId, asset.WarrantyExpiresAt, asset.UpdatedAt));
         }).RequireAuthorization("asset.write");
 
         api.MapPatch("/assets/{id:guid}", async (Guid id, [FromBody] UpdateAssetRequest request,
@@ -720,6 +720,7 @@ public static class AssetEndpoints
             if (current.SerialNumber != serial) changed.Add("seri numarası");
             if (current.Location != location) changed.Add("konum");
             if (current.PurchaseDate != request.PurchaseDate) changed.Add("alış tarihi");
+            if (current.WarrantyExpiresAt != request.WarrantyExpiresAt) changed.Add("garanti bitiş tarihi");
             if (current.PurchaseCost != request.PurchaseCost || current.Currency != currency) changed.Add("alış bedeli");
             if (changed.Count == 0) return Results.Ok(new { id, updatedAt = current.UpdatedAt, changed = false });
 
@@ -737,6 +738,7 @@ public static class AssetEndpoints
                         .SetProperty(x => x.SerialNumber, serial)
                         .SetProperty(x => x.Location, location)
                         .SetProperty(x => x.PurchaseDate, request.PurchaseDate)
+                        .SetProperty(x => x.WarrantyExpiresAt, request.WarrantyExpiresAt)
                         .SetProperty(x => x.PurchaseCost, request.PurchaseCost)
                         .SetProperty(x => x.Currency, currency)
                         .SetProperty(x => x.UpdatedAt, now), cancellationToken);
@@ -815,12 +817,12 @@ public static class AssetEndpoints
             kind = string.IsNullOrWhiteSpace(kind) ? null : kind.Trim().ToLowerInvariant();
             if (start > end || end.DayNumber - start.DayNumber > 365)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Takvim aralığı ters olamaz ve en fazla 366 gün olabilir."] });
-            if (!string.IsNullOrWhiteSpace(kind) && kind is not ("maintenance" or "license"))
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["kind"] = ["Tür maintenance veya license olmalıdır."] });
+            if (!string.IsNullOrWhiteSpace(kind) && kind is not ("maintenance" or "license" or "warranty"))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["kind"] = ["Tür maintenance, license veya warranty olmalıdır."] });
 
             var maxItems = Math.Clamp(limit ?? 200, 1, 500);
             var total = 0;
-            var events = new List<CalendarEntry>(maxItems * 2);
+            var events = new List<CalendarEntry>(maxItems * 3);
             if (kind is null or "maintenance")
             {
                 var maintenanceQuery =
@@ -845,6 +847,17 @@ public static class AssetEndpoints
                     .Take(maxItems).Select(license => new CalendarEntry("license", license.ExpirationDate!.Value, null, license.Id,
                         license.Name, license.Publisher, "Expiration", license.AutoRenew)).ToListAsync(cancellationToken);
                 events.AddRange(licenseEvents);
+            }
+            if (kind is null or "warranty")
+            {
+                var warrantyQuery = db.Assets.AsNoTracking()
+                    .Where(asset => asset.CompanyId == companyId && asset.WarrantyExpiresAt >= start && asset.WarrantyExpiresAt <= end);
+                total += await warrantyQuery.CountAsync(cancellationToken);
+                var warrantyEvents = await warrantyQuery.OrderBy(asset => asset.WarrantyExpiresAt).ThenBy(asset => asset.AssetTag).ThenBy(asset => asset.Id)
+                    .Take(maxItems).Select(asset => new CalendarEntry("warranty", asset.WarrantyExpiresAt!.Value, asset.Id, asset.Id,
+                        asset.AssetTag + " · " + asset.Name, asset.Location, "WarrantyExpiration", null))
+                    .ToListAsync(cancellationToken);
+                events.AddRange(warrantyEvents);
             }
 
             var ordered = events.OrderBy(item => item.Date).ThenBy(item => item.Kind).ThenBy(item => item.Title).ToArray();
@@ -1356,7 +1369,7 @@ public static class AssetEndpoints
             context.Response.Headers["Cache-Control"] = "no-store";
             context.Response.Headers["X-Total-Count"] = total.ToString(System.Globalization.CultureInfo.InvariantCulture);
             await using var writer = new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
-            await writer.WriteLineAsync("Etiket;Ad;Durum;Kategori;Marka;Model;Seri No;Konum;Personel No;Çalışan;Alış Tarihi;Alış Bedeli;Para Birimi".AsMemory(), cancellationToken);
+            await writer.WriteLineAsync("Etiket;Ad;Durum;Kategori;Marka;Model;Seri No;Konum;Personel No;Çalışan;Alış Tarihi;Garanti Bitiş Tarihi;Alış Bedeli;Para Birimi".AsMemory(), cancellationToken);
             var rows = ordered.Select(x => new AssetExportRow(
                 x.AssetTag, x.Name, x.Status,
                 db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault(),
@@ -1367,7 +1380,7 @@ public static class AssetEndpoints
                     .Select(e => e.EmployeeNumber).FirstOrDefault(),
                 db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId)
                     .Select(e => e.DisplayName).FirstOrDefault(),
-                x.PurchaseDate, x.PurchaseCost, x.Currency));
+                x.PurchaseDate, x.WarrantyExpiresAt, x.PurchaseCost, x.Currency));
             var written = 0;
             await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
             {
@@ -1375,6 +1388,7 @@ public static class AssetEndpoints
                     CsvCell(row.Category), CsvCell(row.Brand), CsvCell(row.Model), CsvCell(row.SerialNumber),
                     CsvCell(row.Location), CsvCell(row.EmployeeNumber), CsvCell(row.EmployeeName),
                     CsvCell(row.PurchaseDate?.ToString("yyyy-MM-dd")),
+                    CsvCell(row.WarrantyExpiresAt?.ToString("yyyy-MM-dd")),
                     CsvCell(row.PurchaseCost?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
                     CsvCell(row.Currency) });
                 await writer.WriteLineAsync(line.AsMemory(), cancellationToken);
@@ -1407,6 +1421,8 @@ public static class AssetEndpoints
             ("employee", true) => query.OrderByDescending(x => db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.DisplayName).FirstOrDefault()),
             ("location", false) => query.OrderBy(x => x.Location),
             ("location", true) => query.OrderByDescending(x => x.Location),
+            ("warranty", false) => query.OrderBy(x => x.WarrantyExpiresAt),
+            ("warranty", true) => query.OrderByDescending(x => x.WarrantyExpiresAt),
             ("status", false) => query.OrderBy(x => x.Status),
             ("status", true) => query.OrderByDescending(x => x.Status),
             ("updated", false) => query.OrderBy(x => x.UpdatedAt),
@@ -1489,7 +1505,7 @@ public static class AssetEndpoints
 
     private sealed record AssetExportRow(string AssetTag, string Name, string Status, string? Category,
         string? Brand, string? Model, string? SerialNumber, string? Location, string? EmployeeNumber,
-        string? EmployeeName, DateOnly? PurchaseDate, decimal? PurchaseCost, string Currency);
+        string? EmployeeName, DateOnly? PurchaseDate, DateOnly? WarrantyExpiresAt, decimal? PurchaseCost, string Currency);
 
     private static string CsvCell(string? value)
     {

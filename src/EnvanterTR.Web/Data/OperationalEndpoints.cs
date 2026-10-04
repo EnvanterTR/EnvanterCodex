@@ -768,13 +768,13 @@ public static class OperationalEndpoints
             var rows = await query.OrderBy(x => x.AssetTag).Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(x => new ExportRow(x.AssetTag, x.Name, x.Status, x.SerialNumber, x.Location,
                     db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault(),
-                    x.PurchaseDate, x.PurchaseCost, x.Currency)).ToListAsync(cancellationToken);
+                    x.PurchaseDate, x.WarrantyExpiresAt, x.PurchaseCost, x.Currency)).ToListAsync(cancellationToken);
             var csv = new StringBuilder();
-            csv.AppendLine("Etiket;Ad;Durum;Seri No;Konum;Personel No;Alış Tarihi;Alış Bedeli;Para Birimi");
+            csv.AppendLine("Etiket;Ad;Durum;Seri No;Konum;Personel No;Alış Tarihi;Garanti Bitiş Tarihi;Alış Bedeli;Para Birimi");
             foreach (var row in rows)
                 csv.AppendLine(string.Join(';', new[] { Cell(row.AssetTag), Cell(row.Name), Cell(row.Status),
                     Cell(row.SerialNumber), Cell(row.Location), Cell(row.EmployeeNumber),
-                    Cell(row.PurchaseDate?.ToString("yyyy-MM-dd")), Cell(row.PurchaseCost?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)), Cell(row.Currency) }));
+                    Cell(row.PurchaseDate?.ToString("yyyy-MM-dd")), Cell(row.WarrantyExpiresAt?.ToString("yyyy-MM-dd")), Cell(row.PurchaseCost?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)), Cell(row.Currency) }));
             var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray();
             context.Response.Headers["X-Total-Count"] = total.ToString(System.Globalization.CultureInfo.InvariantCulture);
             context.Response.Headers["X-Page"] = page.ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -807,7 +807,7 @@ public static class OperationalEndpoints
     }
 
     private sealed record ExportRow(string AssetTag, string Name, string Status, string? SerialNumber,
-        string? Location, string? EmployeeNumber, DateOnly? PurchaseDate, decimal? PurchaseCost, string Currency);
+        string? Location, string? EmployeeNumber, DateOnly? PurchaseDate, DateOnly? WarrantyExpiresAt, decimal? PurchaseCost, string Currency);
     private sealed record UpdateCompanyProfileRequest(string? Name, string? ContactEmail, string? BrandPrimaryColor);
     public sealed record LabelPrintSettingsRequest(string? Barcode1d, string? Barcode2d, decimal WidthMm,
         decimal HeightMm, decimal OffsetXmm, decimal OffsetYmm, decimal PaddingMm, decimal CodeSizeMm,
