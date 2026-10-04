@@ -160,6 +160,7 @@
     </section>
     <section class="workspace-page" id="reportPage" hidden>
       <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / RAPORLAMA</div><h1>Envanter raporları</h1><p>Şirket kayıtlarını güncel durum, kategori ve kaydedilmiş satın alma maliyetiyle inceleyin.</p></div><div class="head-actions"><button class="btn" id="reportExport" type="button" disabled>⇩ Raporu Excel'e aktar</button><button class="btn" id="reportRefresh" type="button">↻ Verileri yenile</button></div></div>
+      <section class="panel" style="margin-bottom:15px"><div class="dialog-body" style="display:flex;align-items:end;gap:12px;flex-wrap:wrap"><label>Alış tarihi başlangıcı<input id="reportDateFrom" type="date" style="display:block;margin-top:5px;min-height:38px;padding:7px 10px;border:1px solid #dce4ee;border-radius:7px"></label><label>Alış tarihi bitişi<input id="reportDateTo" type="date" style="display:block;margin-top:5px;min-height:38px;padding:7px 10px;border:1px solid #dce4ee;border-radius:7px"></label><button class="btn primary" id="applyReportDateFilter" type="button">Tarih aralığını uygula</button><button class="btn" id="clearReportDateFilter" type="button">Temizle</button><span class="muted" id="reportDateNote" role="status">Tarih filtresi kapalı; tüm varlıklar gösteriliyor.</span></div></section>
       <div class="stats" id="reportSummary"></div>
       <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(300px,.9fr);margin-bottom:15px">
         <section class="panel"><div class="panel-head"><h2>Durum dağılımı</h2></div><div class="table-wrap"><table><thead><tr><th>Durum</th><th>Varlık</th><th>İşlem</th></tr></thead><tbody id="reportStatusRows"><tr><td colspan="3">Rapor yükleniyor…</td></tr></tbody></table></div></section>
@@ -621,6 +622,8 @@
     function exportAssetReportCsv() {
       if (!latestAssetReport) { notify('Önce güncel rapor verilerini yükleyin.'); return; }
       const rows = [['Bölüm','Kayıt','Toplam','Atanmış','Kullanılabilir','Bakımda','Alış Bedeli','Para Birimi']];
+      rows.push(['Filtre', 'Alış tarihi başlangıcı', latestAssetReport.purchaseDateFrom || 'Tümü', '', '', '', '', '']);
+      rows.push(['Filtre', 'Alış tarihi bitişi', latestAssetReport.purchaseDateTo || 'Tümü', '', '', '', '', '']);
       rows.push(['Özet','Toplam varlık', latestAssetReport.totalAssets, '', '', '', '', '']);
       rows.push(['Özet','Alış bedeli kayıtlı varlık', latestAssetReport.pricedAssetCount, '', '', '', '', '']);
       rows.push(['Özet','Alış bedeli girilmemiş varlık', latestAssetReport.withoutPurchaseCostCount, '', '', '', '', '']);
@@ -629,13 +632,20 @@
       for (const item of latestAssetReport.purchaseCostByCurrency || []) rows.push(['Alış bedeli', 'Kaydı olan varlık', item.recordedAssetCount, '', '', '', String(item.recordedPurchaseCostExact ?? item.recordedPurchaseCost).replace('.', ','), item.currency]);
       const csv = '\uFEFF' + rows.map(row => row.map(reportCsvCell).join(';')).join('\r\n');
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-      const link = document.createElement('a'); link.href = url; link.download = `envantertr-envanter-raporu-${new Date().toISOString().slice(0,10)}.csv`; link.click();
+      const dateSuffix = latestAssetReport.purchaseDateFrom || latestAssetReport.purchaseDateTo ? `-${latestAssetReport.purchaseDateFrom || 'baslangic'}-${latestAssetReport.purchaseDateTo || 'bugun'}` : '';
+      const link = document.createElement('a'); link.href = url; link.download = `envantertr-envanter-raporu${dateSuffix}-${new Date().toISOString().slice(0,10)}.csv`; link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000); notify('Güncel rapor Excel uyumlu CSV olarak indirildi. Para birimleri ayrı satırlardadır.');
     }
     async function loadAssetReports() {
       latestAssetReport = null; $('#reportExport').disabled = true;
-      const result = await api('/api/reports/assets');
+      const params = new URLSearchParams();
+      if ($('#reportDateFrom').value) params.set('purchaseDateFrom', $('#reportDateFrom').value);
+      if ($('#reportDateTo').value) params.set('purchaseDateTo', $('#reportDateTo').value);
+      const result = await api(`/api/reports/assets${params.size ? `?${params}` : ''}`);
       latestAssetReport = result; $('#reportExport').disabled = false;
+      $('#reportDateNote').textContent = result.purchaseDateFrom || result.purchaseDateTo
+        ? `Alış tarihi filtresi: ${result.purchaseDateFrom || 'en eski'} – ${result.purchaseDateTo || 'en yeni'}. Alış tarihi boş kayıtlar kapsam dışı.`
+        : 'Tarih filtresi kapalı; tüm varlıklar gösteriliyor.';
       const statusMap = Object.fromEntries((result.statusCounts || []).map(item => [item.status, item.count]));
       const tiles = $('#reportSummary'); tiles.replaceChildren();
       for (const [label, value, note] of [
@@ -1168,6 +1178,8 @@
     $('#directorySearch').addEventListener('input', renderDirectoryRows);
     $('#directoryRefresh').addEventListener('click', () => loadDirectory(directoryKind).then(() => notify('Şirket kayıtlarından oluşturulan liste yenilendi.')).catch(error => notify(error.message)));
     $('#reportRefresh').addEventListener('click', () => loadAssetReports().then(() => notify('Envanter raporları güncel şirket verileriyle yenilendi.')).catch(error => notify(error.message)));
+    $('#applyReportDateFilter').addEventListener('click', () => loadAssetReports().catch(error => notify(error.message)));
+    $('#clearReportDateFilter').addEventListener('click', () => { $('#reportDateFrom').value = ''; $('#reportDateTo').value = ''; loadAssetReports().catch(error => notify(error.message)); });
     $('#reportExport').addEventListener('click', exportAssetReportCsv);
     $('#moduleGoAssets').addEventListener('click', () => $(`[data-page="${CSS.escape(moduleAssetTarget)}"]`).click());
     $('#moduleGoPeople').addEventListener('click', () => $(`[data-page="${CSS.escape(modulePeopleTarget)}"]`).click());

@@ -105,10 +105,15 @@ public static class AssetEndpoints
             return Results.Ok(new { items = locations, total = locations.Count });
         }).RequireAuthorization("asset.read");
 
-        api.MapGet("/reports/assets", async (ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        api.MapGet("/reports/assets", async ([FromQuery] DateOnly? purchaseDateFrom, [FromQuery] DateOnly? purchaseDateTo,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (purchaseDateFrom is DateOnly from && purchaseDateTo is DateOnly to && from > to)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["purchaseDate"] = ["Başlangıç tarihi bitiş tarihinden sonra olamaz."] });
             var companyAssets = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (purchaseDateFrom is DateOnly startDate) companyAssets = companyAssets.Where(x => x.PurchaseDate >= startDate);
+            if (purchaseDateTo is DateOnly endDate) companyAssets = companyAssets.Where(x => x.PurchaseDate <= endDate);
             var totalAssets = await companyAssets.CountAsync(cancellationToken);
             var statusCounts = await companyAssets.GroupBy(x => x.Status)
                 .Select(group => new { status = group.Key, count = group.Count() })
@@ -149,6 +154,8 @@ public static class AssetEndpoints
             return Results.Ok(new
             {
                 generatedAt = DateTimeOffset.UtcNow,
+                purchaseDateFrom,
+                purchaseDateTo,
                 totalAssets,
                 pricedAssetCount,
                 withoutPurchaseCostCount = totalAssets - pricedAssetCount,
