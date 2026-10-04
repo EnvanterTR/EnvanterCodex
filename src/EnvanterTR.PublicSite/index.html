@@ -82,14 +82,62 @@
     .cta p { margin: 0 auto 23px; color: #6d788b; }
     footer { padding: 26px 0; border-top: 1px solid #e5eaf1; color: #7b8799; background: #fff; font-size: .84rem; }
     .foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-    @media (max-width: 850px) { .nav-links { display:none; } .hero-grid,.deploy-grid { grid-template-columns: 1fr; gap: 38px; } .hero { padding: 64px 0; } .preview { max-width: 620px; transform:none; } .feature-grid,.pricing-grid { grid-template-columns: repeat(2,1fr); } }
-    @media (max-width: 560px) { .wrap { width: min(100% - 28px,1160px); } header { height: 66px; } .nav-actions { gap: 12px; } .nav-login { display:inline-flex; white-space:nowrap; font-size:.77rem; } .nav-actions .button { display:none; } .hero { padding: 48px 0; } h1 { font-size: 2.6rem; } .hero-actions { align-items: stretch; flex-direction: column; } .button { width: 100%; } .dash { grid-template-columns: 88px 1fr; min-height: 275px; } .dash-side { padding: 12px 7px; } .dash-main { padding: 12px 9px; } .stats { gap: 5px; } .stat { padding: 8px 6px; } .stat strong { font-size: .92rem; } .feature-grid,.deploy-options,.pricing-grid { grid-template-columns: 1fr; } .section { padding: 58px 0; } .foot { align-items: flex-start; flex-direction: column; } }
+    html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+    header { position: sticky; top: 0; z-index: 20; background: #fffffff0; backdrop-filter: blur(18px); }
+    :focus-visible { outline: 3px solid #91b8ff; outline-offset: 3px; }
+    .brand-name span { color: #e63c46; }
+    .hero { isolation: isolate; background: radial-gradient(ellipse at 82% 42%,#d8eaff 0,transparent 34%),radial-gradient(ellipse at 5% 100%,#f1f6ff 0,transparent 42%),linear-gradient(180deg,#fff 0%,#f5f8fd 100%); }
+    .hero::before { position:absolute; z-index:-1; top:7%; right:-8%; width:min(560px,55vw); aspect-ratio:1; border:1px solid #dbe8fb; border-radius:50%; background:linear-gradient(145deg,#ffffff6b,#ddecff30); content:""; }
+    .preview { position:relative; border-color:#d9e4f2; border-radius:22px; box-shadow:0 38px 90px #162f531f,0 8px 24px #24466f0c; transform:none; }
+    .preview::after { position:absolute; z-index:-1; right:-18px; bottom:24px; width:42%; height:65%; border-radius:50%; background:#4a91f21c; filter:blur(24px); content:""; }
+    .dash { grid-template-columns:112px 1fr; min-height:356px; border-color:#e3eaf4; box-shadow:0 8px 24px #213b5a0a; }
+    .dash-side { padding:15px 9px; background:linear-gradient(180deg,#172944,#102038); }
+    .dash-logo { margin-bottom:18px; letter-spacing:-.03em; }
+    .dash-logo span { color:#ff6871; }
+    .dash-link { display:flex; align-items:center; gap:7px; margin:4px 0; padding:8px 7px; color:#c2d0e3; }
+    .dash-link.active { color:#fff; background:linear-gradient(90deg,#2776e6,#2464c4); box-shadow:0 4px 12px #0b17352a; }
+    .dash-link b { width:14px; color:inherit; font-size:.78rem; text-align:center; }
+    .dash-main { padding:13px; background:linear-gradient(135deg,#f9fbfe,#f2f6fb); }
+    .dash-toolbar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:14px; }
+    .dash-search { flex:1; padding:7px 9px; border:1px solid #e4eaf3; border-radius:7px; color:#8995a8; background:#fff; font-size:.59rem; }
+    .dash-user { display:grid; width:25px; height:25px; place-items:center; border-radius:50%; color:#fff; background:linear-gradient(145deg,#357eea,#1856b8); font-size:.54rem; font-weight:800; }
+    .dash-heading { margin-bottom:10px; }
+    .stat { position:relative; overflow:hidden; padding:10px; box-shadow:0 3px 10px #1d34500a; }
+    .stat::after { position:absolute; top:9px; right:9px; width:7px; height:7px; border-radius:50%; background:#36b984; content:""; }
+    .stat:nth-child(2)::after { background:#4389ee; }
+    .stat:nth-child(3)::after { background:#f4a43b; }
+    .dashboard-lower { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:9px; }
+    .mini-panel { min-width:0; padding:10px; border:1px solid #e7edf5; border-radius:8px; background:#fff; }
+    .mini-title { display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; font-size:.61rem; font-weight:800; }
+    .mini-title span { color:#8491a6; font-size:.54rem; font-weight:600; }
+    .asset-health { display:flex; align-items:center; gap:11px; }
+    .donut { display:grid; width:59px; height:59px; flex:none; place-items:center; border-radius:50%; background:conic-gradient(#327be5 0 72%,#32b986 72% 94%,#f5a542 94% 98%,#e8edf4 98%); }
+    .donut::before { grid-area:1/1; width:41px; height:41px; border-radius:50%; background:#fff; content:""; }
+    .donut strong { z-index:1; grid-area:1/1; font-size:.55rem; }
+    .health-legend { display:grid; gap:5px; width:100%; color:#66758b; font-size:.52rem; }
+    .health-legend li { display:flex; align-items:center; gap:5px; list-style:none; }
+    .health-legend i { width:6px; height:6px; flex:none; border-radius:50%; background:#327be5; }
+    .health-legend li:nth-child(2) i { background:#32b986; }
+    .health-legend li:nth-child(3) i { background:#f5a542; }
+    .health-legend b { margin-left:auto; color:#24334b; }
+    .attention-list { display:grid; gap:7px; }
+    .attention-item { display:flex; align-items:center; gap:7px; min-width:0; color:#66758b; font-size:.53rem; }
+    .attention-item i { width:22px; height:22px; display:grid; flex:none; place-items:center; border-radius:6px; color:#b97012; background:#fff3df; font-style:normal; }
+    .attention-item:nth-child(2) i { color:#316ecc; background:#eaf2ff; }
+    .attention-item span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .feature { position:relative; overflow:hidden; transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease; }
+    .feature:hover { transform:translateY(-3px); border-color:#cbdcf4; box-shadow:0 14px 32px #19385810; }
+    .icon { box-shadow:inset 0 0 0 1px #dce9fb; }
+    .icon svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior:auto; } *,*::before,*::after { transition-duration:.01ms !important; animation-duration:.01ms !important; } }
+    @media (max-width: 850px) { .nav-links { display:none; } .hero-grid,.deploy-grid { grid-template-columns: 1fr; gap: 38px; } .hero { padding: 64px 0; } .preview { max-width: 620px; } .feature-grid,.pricing-grid { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width: 560px) { .wrap { width: min(100% - 28px,1160px); } header { height: 66px; } .nav-actions { gap: 12px; } .nav-login { display:inline-flex; white-space:nowrap; font-size:.77rem; } .nav-actions .button { display:none; } .hero { padding: 48px 0; } h1 { font-size: 2.6rem; } .hero-actions { align-items: stretch; flex-direction: column; } .button { width: 100%; } .dash { grid-template-columns: 78px 1fr; min-height: 0; } .dash-side { padding: 12px 5px; font-size:.57rem; } .dash-link { gap:4px; padding:8px 4px; } .dash-link b { width:12px; } .dash-main { padding: 10px 8px; } .dash-toolbar { margin-bottom:10px; } .stats { gap:5px; } .stat { padding:8px 6px; } .stat strong { font-size:.86rem; } .stat small { font-size:.54rem; } .table { padding:8px; } .row { font-size:.51rem; } .dashboard-lower { grid-template-columns:1fr; } .mini-panel { padding:8px; } .feature-grid,.deploy-options,.pricing-grid { grid-template-columns:1fr; } .section { padding:58px 0; } .foot { align-items:flex-start; flex-direction:column; } }
   </style>
 </head>
 <body>
   <header>
     <nav class="wrap" aria-label="Ana menü">
-      <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true">E</span><span>EnvanterTR</span></a>
+      <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true">E</span><span class="brand-name">Envanter<span>TR</span></span></a>
       <div class="nav-links"><a href="#ozellikler">Özellikler</a><a href="#kurulum">Kurulum seçenekleri</a><a href="#paketler">Paketler</a><a href="#iletisim">İletişim</a></div>
       <div class="nav-actions"><a class="nav-login" href="/giris">Müşteri girişi</a><a class="button" href="#demo">Tanıtım iste</a></div>
     </nav>
@@ -107,10 +155,11 @@
         <div class="preview" aria-label="Envanter yönetim ekranı taslak önizlemesi">
           <div class="preview-top"><span>Envanter özeti · Örnek görünüm</span><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
           <div class="dash">
-            <aside class="dash-side"><div class="dash-logo">EnvanterTR</div><div class="dash-link active">Genel Bakış</div><div class="dash-link">Varlıklar</div><div class="dash-link">Kişiler</div><div class="dash-link">Konumlar</div><div class="dash-link">Raporlar</div></aside>
-            <div class="dash-main"><div class="dash-heading"><span>Genel Bakış</span><span class="dash-pill">Bu ay</span></div>
+            <aside class="dash-side"><div class="dash-logo">Envanter<span>TR</span></div><div class="dash-link active"><b>⌂</b>Genel Bakış</div><div class="dash-link"><b>▣</b>Varlıklar</div><div class="dash-link"><b>♙</b>Kişiler</div><div class="dash-link"><b>⌖</b>Konumlar</div><div class="dash-link"><b>▤</b>Raporlar</div></aside>
+            <div class="dash-main"><div class="dash-toolbar"><span class="dash-search">⌕ &nbsp; Varlık, kişi veya seri no ara…</span><span class="dash-user">ET</span></div><div class="dash-heading"><span>Genel Bakış</span><span class="dash-pill">Son 30 gün</span></div>
               <div class="stats"><div class="stat"><small>Toplam varlık</small><strong>1.284</strong></div><div class="stat"><small>Zimmetli</small><strong>936</strong></div><div class="stat"><small>Bakımda</small><strong>12</strong></div></div>
               <div class="table"><div class="table-title">Son hareketler</div><div class="row"><span>Dizüstü bilgisayar</span><span>Bilgi İşlem</span><span class="tag">Atandı</span></div><div class="row"><span>Ofis monitörü</span><span>İstanbul</span><span class="tag">Depoda</span></div><div class="row"><span>Mobil telefon</span><span>Satış Ekibi</span><span class="tag">Atandı</span></div></div>
+              <div class="dashboard-lower"><section class="mini-panel"><div class="mini-title">Varlık durumu <span>Örnek dağılım</span></div><div class="asset-health"><div class="donut" role="img" aria-label="Örnek varlık dağılımı"><strong>1.284</strong></div><ul class="health-legend"><li><i></i>Atanmış <b>936</b></li><li><i></i>Kullanılabilir <b>284</b></li><li><i></i>Bakımda <b>64</b></li></ul></div></section><section class="mini-panel"><div class="mini-title">Yaklaşan işler <span>Bu hafta</span></div><div class="attention-list"><div class="attention-item"><i>◷</i><span>ThinkPad · Garanti bitişi</span></div><div class="attention-item"><i>✓</i><span>İstanbul Ofis · Envanter sayımı</span></div></div></section></div>
             </div>
           </div>
         </div>
@@ -119,12 +168,12 @@
     <section class="section" id="ozellikler">
       <div class="wrap"><div class="section-head"><h2 id="content-home-features-title">Envanterin tamamını görünür kılın</h2><p id="content-home-features-body">Ürün kapsamı oluşturuluyor. Bu önizlemede aşağıdaki modüllerin tamamı henüz etkin değildir; ilk cihaz kaydından zimmet iadesine, bakım ve denetimden raporlamaya kadar kurum iş akışları birlikte tasarlanıyor.</p></div>
         <div class="feature-grid">
-          <article class="feature"><div class="icon">▦</div><h3>Varlık ve zimmet takibi</h3><p>Kimde, hangi konumda ve hangi durumda olduğunu kayıt geçmişiyle izleyin.</p></article>
-          <article class="feature"><div class="icon">⌕</div><h3>Hızlı kayıt ve arama</h3><p>Marka, model, kategori veya konumu kayıt akışından ayrılmadan ekleyin.</p></article>
-          <article class="feature"><div class="icon">▤</div><h3>İçe ve dışa aktarma</h3><p>Tablo verilerini aktarın; raporları analiz ve arşiv için indirin.</p></article>
-          <article class="feature"><div class="icon">⌗</div><h3>QR ve barkod</h3><p>Varlık etiketleriyle kayıtları sahada hızlıca açın ve doğrulayın.</p></article>
-          <article class="feature"><div class="icon">◷</div><h3>Bakım ve denetim</h3><p>Planlı bakım, yaklaşan işler ve denetim durumlarını takip edin.</p></article>
-          <article class="feature"><div class="icon">♙</div><h3>Roller ve şirket alanı</h3><p>Çalışan kayıtlarıyla uygulama kullanıcılarını ayırın; yetkileri role göre verin.</p></article>
+          <article class="feature"><div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M7 8h4M7 12h7"/></svg></div><h3>Varlık ve zimmet takibi</h3><p>Kimde, hangi konumda ve hangi durumda olduğunu kayıt geçmişiyle izleyin.</p></article>
+          <article class="feature"><div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5M8 10.8h5.5M10.8 8v5.5"/></svg></div><h3>Hızlı kayıt ve arama</h3><p>Marka, model, kategori veya konumu kayıt akışından ayrılmadan ekleyin.</p></article>
+          <article class="feature"><div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 17v3h16v-3"/></svg></div><h3>İçe ve dışa aktarma</h3><p>Tablo verilerini aktarın; raporları analiz ve arşiv için indirin.</p></article>
+          <article class="feature"><div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h4v4H4zM16 4h4v4h-4zM4 16h4v4H4zM16 16h4v4h-4zM9 6h6M6 9v6M18 9v6M9 18h6"/></svg></div><h3>QR ve barkod</h3><p>Varlık etiketleriyle kayıtları sahada hızlıca açın ve doğrulayın.</p></article>
+          <article class="feature"><div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2M5.5 5.5l2 2"/></svg></div><h3>Bakım ve denetim</h3><p>Planlı bakım, yaklaşan işler ve denetim durumlarını takip edin.</p></article>
+          <article class="feature"><div class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 20v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V20M9.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM16 4.5a4 4 0 0 1 0 7.5M17 14.5a4 4 0 0 1 4 4V20"/></svg></div><h3>Roller ve şirket alanı</h3><p>Çalışan kayıtlarıyla uygulama kullanıcılarını ayırın; yetkileri role göre verin.</p></article>
         </div>
       </div>
     </section>
@@ -141,7 +190,7 @@
     </section>
     <section class="cta" id="demo"><div class="wrap"><h2 id="content-home-demo-title">Kurumunuz için tanıtım planlayın</h2><p id="content-home-demo-body">Bu sayfa ürün ana sayfası taslağıdır. Tanıtım ve müşteri kayıt akışları henüz bağlanmadı.</p><a class="button" href="mailto:admin@envantertr.com?subject=EnvanterTR%20tan%C4%B1t%C4%B1m">E-posta ile iletişime geçin</a></div></section>
   </main>
-  <footer id="iletisim"><div class="wrap foot"><a class="brand" href="#top"><span class="brand-mark" aria-hidden="true">E</span><span>EnvanterTR</span></a><span>© 2026 EnvanterTR · Ürün geliştirme önizlemesi</span></div></footer>
+  <footer id="iletisim"><div class="wrap foot"><a class="brand" href="#top"><span class="brand-mark" aria-hidden="true">E</span><span class="brand-name">Envanter<span>TR</span></span></a><span>© 2026 EnvanterTR · Ürün geliştirme önizlemesi</span></div></footer>
   <script>
     const grid = document.querySelector('#pricingGrid');
     const deploymentNames = { cloud: 'Bulut hizmeti', 'local-windows': 'Windows 11 yerel kurulum', 'windows-server': 'Windows Server', linux: 'Linux / Ubuntu' };
