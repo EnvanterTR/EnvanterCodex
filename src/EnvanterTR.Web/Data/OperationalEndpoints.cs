@@ -749,13 +749,16 @@ public static class OperationalEndpoints
         {
             if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
             var assets = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var statusCounts = await assets.GroupBy(x => x.Status)
+                .Select(group => new { status = group.Key, count = group.Count() })
+                .ToDictionaryAsync(row => row.status, row => row.count, cancellationToken);
             var summary = new
             {
-                totalAssets = await assets.CountAsync(cancellationToken),
-                availableAssets = await assets.CountAsync(x => x.Status == AssetStatuses.Available, cancellationToken),
-                assignedAssets = await assets.CountAsync(x => x.Status == AssetStatuses.Deployed, cancellationToken),
-                maintenanceAssets = await assets.CountAsync(x => x.Status == AssetStatuses.Maintenance, cancellationToken),
-                archivedAssets = await assets.CountAsync(x => x.Status == AssetStatuses.Archived, cancellationToken),
+                totalAssets = statusCounts.Values.Sum(),
+                availableAssets = statusCounts.GetValueOrDefault(AssetStatuses.Available),
+                assignedAssets = statusCounts.GetValueOrDefault(AssetStatuses.Deployed),
+                maintenanceAssets = statusCounts.GetValueOrDefault(AssetStatuses.Maintenance),
+                archivedAssets = statusCounts.GetValueOrDefault(AssetStatuses.Archived),
                 activeEmployees = await db.Employees.CountAsync(x => x.CompanyId == companyId && x.IsActive, cancellationToken),
                 recentActivityCount = await db.AssetEvents.CountAsync(x => x.CompanyId == companyId && x.OccurredAt >= DateTimeOffset.UtcNow.AddDays(-7), cancellationToken)
             };
