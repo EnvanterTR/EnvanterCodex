@@ -28,7 +28,7 @@ Bu belge EnvanterTR'nin kurumsal envanter yönetiminde beklenen ana işlevleri n
 | Bileşenler | **Temel stok ve atama akışı** | Şirket kapsamlı miktar/seri katalogu, arama ve düşük stok filtresi, stok girişi/sayım düzeltmesi, bileşenleri varlıklara miktarlı atama ve notlu kısmi çıkarma, ayrıntı ve hareket geçmişi, katalog düzenleme ve filtreli CSV dışa aktarımı var. Aksesuar, sarf ve bileşen hareketleri tür, işlem ve tarih aralığıyla filtrelenen ortak geçmişte gösterilir; hedef/çalışan ve işlemi yapan görünür, etkin filtrelerle 10.000 satıra kadar CSV alınır. Satın alma ve gelişmiş raporlar sonraki kapsam. |
 | Kitler | **Yok** | Önceden tanımlı varlık/aksesuar setleri ve kullanılabilirlik/teslim akışı oluşturulmalı. |
 | Bakım kayıtları | **Yok** | Bakım türü, tedarikçi, maliyet, başlangıç/bitiş, durum, not/dosya ve varlık geçmişi akışı oluşturulmalı. |
-| Denetim ve kabul | **Kısmi** | Hareket/audit kayıtları ve geçmiş görüntüleme var. Varlık sayımı/denetim oturumu, kullanıcı kabulü, hatırlatma, kabul edilmeyen öğe ve sonuç raporları yok. |
+| Denetim ve kabul | **Kısmi** | Varlık ayrıntısından tarih ve notla fiziksel denetim kaydı açılabilir; kayıt denetim olay türü ve işlemi yapan kullanıcıyla geçmişe eklenir. Planlı denetim kuyruğu/takvimi, kullanıcı kabulü, hatırlatma, kabul edilmeyen öğe ve sonuç raporları yok. |
 | Transfer ve rezervasyon | **Yok** | Konumlar arası transfer, onay/rezervasyon, çakışma ve işlem geçmişi tasarlanmalı. |
 | Siparişler ve tedarik | **Yok** | Sipariş, sipariş kalemi, tedarikçi ve teslim alım/varlığa dönüştürme ilişkileri yok. |
 | Ek dosya ve fotoğraflar | **Yok** | Şirket logosu yüklemesi, varlık/kişi/modül dosya depolaması yerine geçmez. Erişim, boyut, tür, silme ve yedekleme politikalarıyla eklenmeli. |

@@ -701,6 +701,22 @@ public static class AssetEndpoints
             return Results.Ok(new { id, updatedAt = now, changed = true });
         }).RequireAuthorization("asset.write");
 
+        api.MapPost("/assets/{id:guid}/audit", async (Guid id, [FromBody] RecordAssetAuditRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (request.AuditDate == default || request.AuditDate > DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) || request.Notes?.Length > 2000)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["audit"] = ["Denetim tarihi gelecekte olamaz; notlar 2.000 karakteri aşamaz."] });
+            var asset = await db.Assets.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (asset is null) return Results.NotFound();
+            var details = $"Fiziksel denetim tamamlandı · {request.AuditDate:yyyy-MM-dd}";
+            if (!string.IsNullOrWhiteSpace(request.Notes)) details += $" · {request.Notes.Trim()}";
+            db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = id,
+                ActorUserId = CurrentUserId(user), EventType = "Audited", Details = details });
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.NoContent();
+        }).RequireAuthorization("asset.write");
+
         api.MapGet("/lookups/{kind}", async (string kind, ClaimsPrincipal user, AppDbContext db,
             CancellationToken cancellationToken) =>
         {
@@ -1015,6 +1031,7 @@ public static class AssetEndpoints
     public sealed record AccessoryStockRequest(int Quantity, string? Notes);
     public sealed record AccessoryCheckoutRequest(string TargetType, Guid? EmployeeId, Guid? AssetId, string? Location, int Quantity, string? Notes);
     public sealed record AccessoryCheckinRequest(Guid AssignmentId, int Quantity, string? Notes);
+    public sealed record RecordAssetAuditRequest(DateOnly AuditDate, string? Notes);
 
     private sealed record AssetExportRow(string AssetTag, string Name, string Status, string? Category,
         string? Brand, string? Model, string? SerialNumber, string? Location, string? EmployeeNumber,
