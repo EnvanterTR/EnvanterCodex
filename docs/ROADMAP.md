@@ -39,7 +39,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 - Varlık fotoğrafı ve ek dosyalar; QR/barkod üretme, kamera ile okutma ve yazıcıya uygun etiket çıktısı.
 - Lisans, bileşen, sarf malzemesi, aksesuar, kit, transfer, rezervasyon, bakım, denetim ve garanti kayıtları.
 - Departman ve konum için yapılandırılmış kataloglar ve ad birleştirme/düzeltme akışı. Çalışan departmanı ve varlık konumu bugün serbest metindir; mevcut ekranlar yalnızca özetler ve filtreler.
-- Excel/CSV içe aktarma, alan eşleme ve çakışma önizlemesi; eksiksiz veri dışa aktarma ve geri yükleme.
+- CSV varlık biçimi için salt okunur sütun/çakışma önizlemesi eklendi; Excel içe aktarma, alan eşleme, kayıt yazan içe aktarma ve güvenli geri yükleme akışı tamamlanmalı.
 - Raporlarda gelişmiş tarih aralığı, maliyet denetimi ve dışa aktarma; ayrıca gerçek veriden beslenen takvim. Mevcut rapor durum/kategori adetleri ve kayıtlı alış bedeli özetidir; muhasebe değerlemesi değildir.
 
 ### P1 — Barındırılan hizmet ve ticari akışlar

@@ -22,7 +22,128 @@ public static class DataExportEndpoints
         endpoints.MapPost("/api/company/import/preview", PreviewImportAsync)
             .RequireAuthorization("settings.manage")
             .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
+        endpoints.MapPost("/api/assets/import/preview.csv", PreviewAssetCsvAsync)
+            .RequireAuthorization("asset.write")
+            .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
         return endpoints;
+    }
+
+    private static async Task<IResult> PreviewAssetCsvAsync(HttpContext context, AppDbContext db,
+        IAntiforgery antiforgery, CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(context.User.FindFirstValue("company_id"), out var companyId) ||
+            !Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            return Results.Forbid();
+        var role = context.User.FindFirstValue("company_role");
+        var activeMembership = await db.Companies.AsNoTracking().AnyAsync(c => c.Id == companyId && c.IsActive &&
+            db.CompanyMemberships.Any(m => m.CompanyId == companyId && m.UserId == userId && m.RoleKey == role), cancellationToken);
+        if (!activeMembership) return Results.Forbid();
+        try { await antiforgery.ValidateRequestAsync(context); }
+        catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
+        if (context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true)
+            return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
+
+        using var buffer = new MemoryStream();
+        var chunk = new byte[64 * 1024];
+        while (true)
+        {
+            var read = await context.Request.Body.ReadAsync(chunk.AsMemory(), cancellationToken);
+            if (read == 0) break;
+            if (buffer.Length + read > PreviewMaxBytes) return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+            await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken);
+        }
+
+        string text;
+        try { text = new System.Text.UTF8Encoding(false, true).GetString(buffer.ToArray()).TrimStart('\uFEFF'); }
+        catch (System.Text.DecoderFallbackException)
+        { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV dosyası UTF-8 kodlamasında olmalıdır." } }); }
+        List<List<string>> records;
+        try { records = ParseSemicolonCsv(text, PreviewMaxRows + 1); }
+        catch (FormatException)
+        { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV tırnak/ayraç biçimi bozuk." } }); }
+        if (records.Count is < 2 || records.Count > PreviewMaxRows + 1)
+            return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"CSV başlık ve en fazla {PreviewMaxRows:N0} varlık satırı içermelidir." } });
+
+        string[] expectedHeader = ["Etiket", "Ad", "Durum", "Kategori", "Marka", "Model", "Seri No", "Konum", "Personel No", "Çalışan", "Alış Tarihi", "Alış Bedeli", "Para Birimi"];
+        if (!records[0].SequenceEqual(expectedHeader, StringComparer.OrdinalIgnoreCase))
+            return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV sütun başlıkları EnvanterTR varlık dışa aktarımıyla eşleşmiyor." } });
+
+        var errors = new List<string>();
+        var tags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (row, index) in records.Skip(1).Select((row, index) => (row, index)))
+        {
+            if (row.Count != expectedHeader.Length) { AddError(errors, $"{index + 2}. satırda 13 sütun olmalıdır."); continue; }
+            var tag = row[0].Trim();
+            if (string.IsNullOrWhiteSpace(tag) || tag.Length > 80) AddError(errors, $"{index + 2}. satırda varlık etiketi boş veya 80 karakterden uzun.");
+            else if (!tags.Add(tag)) AddError(errors, "CSV içinde yinelenen varlık etiketi var.");
+            if (string.IsNullOrWhiteSpace(row[1].Trim()) || row[1].Trim().Length > 240) AddError(errors, $"{index + 2}. satırda varlık adı boş veya 240 karakterden uzun.");
+            if (row[2] is not (AssetStatuses.Available or AssetStatuses.Deployed or AssetStatuses.Maintenance or AssetStatuses.Archived)) AddError(errors, $"{index + 2}. satırdaki durum desteklenmiyor.");
+            if ((row[2] == AssetStatuses.Deployed) != !string.IsNullOrWhiteSpace(row[8])) AddError(errors, $"{index + 2}. satırda atanmış durumuyla personel bilgisi eşleşmiyor.");
+            if (row[3].Length > 120 || row[4].Length > 120 || row[5].Length > 120 || row[6].Length > 160 || row[7].Length > 160 || row[8].Length > 80 || row[9].Length > 200 || row[12].Length != 3)
+                AddError(errors, $"{index + 2}. satırda alan uzunluğu veya para birimi biçimi geçersiz.");
+            if (!string.IsNullOrWhiteSpace(row[10]) && !DateOnly.TryParseExact(row[10], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
+                AddError(errors, $"{index + 2}. satırdaki alış tarihi yyyy-AA-gg biçiminde olmalı.");
+            if (!string.IsNullOrWhiteSpace(row[11]) && (!decimal.TryParse(row[11], System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var cost) || cost < 0))
+                AddError(errors, $"{index + 2}. satırdaki alış bedeli geçersiz veya negatif.");
+        }
+
+        var normalizedTags = tags.Select(tag => tag.ToUpperInvariant()).ToArray();
+        var existingMatches = 0;
+        foreach (var batch in normalizedTags.Chunk(500))
+            existingMatches += await db.Assets.AsNoTracking()
+                .CountAsync(asset => asset.CompanyId == companyId && batch.Contains(asset.AssetTag.ToUpper()), cancellationToken);
+        var targetName = await db.Companies.AsNoTracking().Where(c => c.Id == companyId).Select(c => c.Name).SingleAsync(cancellationToken);
+        return Results.Ok(new
+        {
+            isValid = errors.Count == 0,
+            sourceCompany = "CSV dosyası",
+            targetCompany = targetName,
+            schemaVersion = 1,
+            counts = new { assets = records.Count - 1 },
+            existingMatches = new { assets = existingMatches },
+            errors = errors.Take(30).ToArray(),
+            warning = "Bu önizleme yalnızca EnvanterTR CSV sütunlarını ve varlık etiketlerini denetler; mevcut eşleşmeler otomatik birleştirilmez ve hiçbir kayıt değiştirilmez."
+        });
+    }
+
+    private static List<List<string>> ParseSemicolonCsv(string text, int maximumRecords)
+    {
+        var records = new List<List<string>>();
+        var row = new List<string>();
+        var cell = new System.Text.StringBuilder();
+        var quoted = false;
+        for (var i = 0; i < text.Length; i++)
+        {
+            var value = text[i];
+            if (quoted)
+            {
+                if (value == '"' && i + 1 < text.Length && text[i + 1] == '"') { cell.Append('"'); i++; }
+                else if (value == '"') quoted = false;
+                else cell.Append(value);
+                continue;
+            }
+            if (value == '"')
+            {
+                if (cell.Length != 0) throw new FormatException();
+                quoted = true;
+            }
+            else if (value == ';') { row.Add(cell.ToString()); cell.Clear(); }
+            else if (value is '\r' or '\n')
+            {
+                if (value == '\r' && i + 1 < text.Length && text[i + 1] == '\n') i++;
+                row.Add(cell.ToString()); cell.Clear();
+                if (row.Any(field => field.Length > 0)) { records.Add(row); if (records.Count > maximumRecords) return records; }
+                row = [];
+            }
+            else cell.Append(value);
+        }
+        if (quoted) throw new FormatException();
+        if (cell.Length > 0 || row.Count > 0)
+        {
+            row.Add(cell.ToString());
+            if (row.Any(field => field.Length > 0)) records.Add(row);
+        }
+        return records;
     }
 
     private static async Task<IResult> PreviewImportAsync(HttpContext context, AppDbContext db,
