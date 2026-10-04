@@ -13,6 +13,7 @@ public static class DataExportEndpoints
     private const int BatchSize = 500;
     private const int PreviewMaxBytes = 32 * 1024 * 1024;
     private const int PreviewMaxRows = 250_000;
+    private const int CsvImportMaxRows = 5_000;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public static IEndpointRouteBuilder MapDataExportEndpoints(this IEndpointRouteBuilder endpoints)
@@ -25,7 +26,144 @@ public static class DataExportEndpoints
         endpoints.MapPost("/api/assets/import/preview.csv", PreviewAssetCsvAsync)
             .RequireAuthorization("asset.write")
             .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
+        endpoints.MapPost("/api/assets/import.csv", ImportAssetCsvAsync)
+            .RequireAuthorization("asset.write")
+            .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
         return endpoints;
+    }
+
+    private static async Task<IResult> ImportAssetCsvAsync(HttpContext context, AppDbContext db,
+        IAntiforgery antiforgery, CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(context.User.FindFirstValue("company_id"), out var companyId) ||
+            !Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            return Results.Forbid();
+        var role = context.User.FindFirstValue("company_role");
+        if (!await db.Companies.AsNoTracking().AnyAsync(c => c.Id == companyId && c.IsActive &&
+            db.CompanyMemberships.Any(m => m.CompanyId == companyId && m.UserId == userId && m.RoleKey == role), cancellationToken))
+            return Results.Forbid();
+        try { await antiforgery.ValidateRequestAsync(context); }
+        catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
+        if (context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true)
+            return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
+
+        using var buffer = new MemoryStream();
+        var chunk = new byte[64 * 1024];
+        while (true)
+        {
+            var read = await context.Request.Body.ReadAsync(chunk.AsMemory(), cancellationToken);
+            if (read == 0) break;
+            if (buffer.Length + read > PreviewMaxBytes) return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+            await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken);
+        }
+        string text;
+        try { text = new System.Text.UTF8Encoding(false, true).GetString(buffer.ToArray()).TrimStart('\uFEFF'); }
+        catch (System.Text.DecoderFallbackException)
+        { return Results.UnprocessableEntity(new { message = "CSV dosyası UTF-8 kodlamasında olmalıdır." }); }
+        List<List<string>> rows;
+        try { rows = ParseSemicolonCsv(text, CsvImportMaxRows + 2); }
+        catch (FormatException)
+        { return Results.UnprocessableEntity(new { message = "CSV tırnak/ayraç biçimi bozuk." }); }
+        string[] expectedHeader = ["Etiket", "Ad", "Durum", "Kategori", "Marka", "Model", "Seri No", "Konum", "Personel No", "Çalışan", "Alış Tarihi", "Alış Bedeli", "Para Birimi"];
+        if (rows.Count is < 2 || rows.Count > CsvImportMaxRows + 1 || !rows[0].SequenceEqual(expectedHeader, StringComparer.OrdinalIgnoreCase))
+            return Results.UnprocessableEntity(new { message = $"EnvanterTR başlıklarıyla {CsvImportMaxRows:N0} veya daha az satır içeren bir CSV yükleyin." });
+
+        var errors = new List<string>();
+        var tags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (row, index) in rows.Skip(1).Select((row, index) => (row, index)))
+        {
+            if (row.Count != expectedHeader.Length) { AddError(errors, $"{index + 2}. satırda 13 sütun olmalıdır."); continue; }
+            var tag = row[0].Trim();
+            if (string.IsNullOrWhiteSpace(tag) || tag.Length > 80 || !tags.Add(tag)) AddError(errors, $"{index + 2}. satırda varlık etiketi boş, uzun veya yineleniyor.");
+            if (string.IsNullOrWhiteSpace(row[1].Trim()) || row[1].Trim().Length > 240) AddError(errors, $"{index + 2}. satırda varlık adı boş veya çok uzun.");
+            if (row[2] is not (AssetStatuses.Available or AssetStatuses.Deployed or AssetStatuses.Maintenance or AssetStatuses.Archived)) AddError(errors, $"{index + 2}. satırdaki durum desteklenmiyor.");
+            if ((row[2] == AssetStatuses.Deployed) != !string.IsNullOrWhiteSpace(row[8])) AddError(errors, $"{index + 2}. satırda durum ve personel numarası eşleşmiyor.");
+            if (string.IsNullOrWhiteSpace(row[3]) || row[3].Length > 120 || row[4].Length > 120 || row[5].Length > 120 || row[6].Length > 160 || row[7].Length > 160 || row[8].Length > 80 || row[9].Length > 200 || row[12].Length != 3 || !row[12].All(char.IsAsciiLetter))
+                AddError(errors, $"{index + 2}. satırda alan uzunluğu, kategori veya para birimi geçersiz.");
+            if (!string.IsNullOrWhiteSpace(row[10]) && !DateOnly.TryParseExact(row[10], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
+                AddError(errors, $"{index + 2}. satırdaki alış tarihi yyyy-AA-gg biçiminde olmalı.");
+            if (!string.IsNullOrWhiteSpace(row[11]) && (!decimal.TryParse(row[11], System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var cost) || cost < 0 || cost > 9999999999999999.99m))
+                AddError(errors, $"{index + 2}. satırdaki alış bedeli geçersiz.");
+        }
+        var cleanErrors = errors.Distinct(StringComparer.Ordinal).Take(30).ToArray();
+        if (cleanErrors.Length > 0) return Results.UnprocessableEntity(new { message = "CSV içe alınamadı; dosya sorunlarını düzeltin.", errors = cleanErrors });
+
+        var categories = await db.AssetCategories.AsNoTracking().Where(x => x.CompanyId == companyId).ToListAsync(cancellationToken);
+        var brands = await db.AssetBrands.AsNoTracking().Where(x => x.CompanyId == companyId).ToListAsync(cancellationToken);
+        var models = await db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId).ToListAsync(cancellationToken);
+        var employees = await db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId).ToListAsync(cancellationToken);
+        var categoryLookup = categories.GroupBy(x => x.Name.Trim(), StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.ToArray(), StringComparer.OrdinalIgnoreCase);
+        var brandLookup = brands.GroupBy(x => x.Name.Trim(), StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.ToArray(), StringComparer.OrdinalIgnoreCase);
+        var modelLookup = models.GroupBy(x => (x.BrandId, Name: x.Name.Trim()), new BrandModelComparer()).ToDictionary(x => x.Key, x => x.ToArray(), new BrandModelComparer());
+        var employeeLookup = employees.GroupBy(x => x.EmployeeNumber.Trim(), StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.ToArray(), StringComparer.OrdinalIgnoreCase);
+        var importRows = new List<(Asset Asset, Guid? EmployeeId)>(rows.Count - 1);
+        foreach (var (row, index) in rows.Skip(1).Select((row, index) => (row, index)))
+        {
+            if (!categoryLookup.TryGetValue(row[3].Trim(), out var categoryMatches) || categoryMatches.Length != 1)
+                AddError(errors, $"{index + 2}. satırdaki kategori mevcut şirkette yok veya birden fazla kez tanımlı.");
+            Guid? brandId = null; Guid? modelId = null;
+            if (!string.IsNullOrWhiteSpace(row[4]))
+            {
+                if (!brandLookup.TryGetValue(row[4].Trim(), out var brandMatches) || brandMatches.Length != 1)
+                    AddError(errors, $"{index + 2}. satırdaki marka mevcut şirkette yok veya birden fazla kez tanımlı.");
+                else brandId = brandMatches[0].Id;
+            }
+            if (!string.IsNullOrWhiteSpace(row[5]))
+            {
+                if (brandId is null || !modelLookup.TryGetValue((brandId, row[5].Trim()), out var modelMatches) || modelMatches.Length != 1)
+                    AddError(errors, $"{index + 2}. satırdaki model seçilen markayla mevcut şirkette bulunamadı.");
+                else modelId = modelMatches[0].Id;
+            }
+            Guid? employeeId = null;
+            if (!string.IsNullOrWhiteSpace(row[8]))
+            {
+                if (!employeeLookup.TryGetValue(row[8].Trim(), out var employeeMatches) || employeeMatches.Length != 1 ||
+                    !string.Equals(employeeMatches[0].DisplayName.Trim(), row[9].Trim(), StringComparison.OrdinalIgnoreCase))
+                    AddError(errors, $"{index + 2}. satırdaki çalışan numarası ve adı mevcut şirkette eşleşmiyor.");
+                else employeeId = employeeMatches[0].Id;
+            }
+            if (categoryLookup.TryGetValue(row[3].Trim(), out categoryMatches) && categoryMatches.Length == 1)
+            {
+                DateOnly? purchaseDate = string.IsNullOrWhiteSpace(row[10]) ? null : DateOnly.ParseExact(row[10], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+                decimal? purchaseCost = string.IsNullOrWhiteSpace(row[11]) ? null : decimal.Parse(row[11], System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture);
+                importRows.Add((new Asset
+                {
+                    CompanyId = companyId, AssetTag = row[0].Trim().ToUpperInvariant(), Name = row[1].Trim(), Status = row[2],
+                    CategoryId = categoryMatches[0].Id, BrandId = brandId, ModelId = modelId, SerialNumber = CleanCsv(row[6]),
+                    Location = CleanCsv(row[7]), AssignedEmployeeId = employeeId, PurchaseDate = purchaseDate,
+                    PurchaseCost = purchaseCost, Currency = row[12].Trim().ToUpperInvariant()
+                }, employeeId));
+            }
+        }
+        var normalizedTags = tags.Select(x => x.ToUpperInvariant()).ToArray();
+        var alreadyPresent = await db.Assets.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && normalizedTags.Contains(x.AssetTag.ToUpper()), cancellationToken);
+        if (alreadyPresent) AddError(errors, "Dosyadaki en az bir varlık etiketi bu şirkette zaten kayıtlı.");
+        cleanErrors = errors.Distinct(StringComparer.Ordinal).Take(30).ToArray();
+        if (cleanErrors.Length > 0) return Results.UnprocessableEntity(new { message = "CSV içe alınamadı; mevcut şirket kayıtlarıyla eşleşme sorunlarını düzeltin.", errors = cleanErrors });
+
+        var actorId = userId;
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        db.Assets.AddRange(importRows.Select(x => x.Asset));
+        foreach (var item in importRows)
+            db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = item.Asset.Id, ActorUserId = actorId,
+                EventType = "Created", Details = "Varlık CSV dosyasından içe aktarıldı.", EmployeeId = item.EmployeeId });
+        db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Asset", Action = "CsvImported",
+            Details = $"CSV dosyasından {importRows.Count} varlık içe aktarıldı." });
+        try { await db.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken); }
+        catch (DbUpdateException)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return Results.Conflict(new { message = "CSV kaydedilmedi. Etiket veya ilişkili kayıtlar işlem sırasında değişmiş olabilir; önizlemeyi yenileyin." });
+        }
+        return Results.Ok(new { imported = importRows.Count, message = $"{importRows.Count:N0} varlık başarıyla içe aktarıldı." });
+    }
+
+    private static string? CleanCsv(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private sealed class BrandModelComparer : IEqualityComparer<(Guid? BrandId, string Name)>
+    {
+        public bool Equals((Guid? BrandId, string Name) x, (Guid? BrandId, string Name) y) => x.BrandId == y.BrandId && StringComparer.OrdinalIgnoreCase.Equals(x.Name, y.Name);
+        public int GetHashCode((Guid? BrandId, string Name) value) => HashCode.Combine(value.BrandId, StringComparer.OrdinalIgnoreCase.GetHashCode(value.Name));
     }
 
     private static async Task<IResult> PreviewAssetCsvAsync(HttpContext context, AppDbContext db,
@@ -58,11 +196,11 @@ public static class DataExportEndpoints
         catch (System.Text.DecoderFallbackException)
         { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV dosyası UTF-8 kodlamasında olmalıdır." } }); }
         List<List<string>> records;
-        try { records = ParseSemicolonCsv(text, PreviewMaxRows + 1); }
+        try { records = ParseSemicolonCsv(text, CsvImportMaxRows + 2); }
         catch (FormatException)
         { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV tırnak/ayraç biçimi bozuk." } }); }
-        if (records.Count is < 2 || records.Count > PreviewMaxRows + 1)
-            return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"CSV başlık ve en fazla {PreviewMaxRows:N0} varlık satırı içermelidir." } });
+        if (records.Count is < 2 || records.Count > CsvImportMaxRows + 1)
+            return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"CSV başlık ve en fazla {CsvImportMaxRows:N0} varlık satırı içermelidir." } });
 
         string[] expectedHeader = ["Etiket", "Ad", "Durum", "Kategori", "Marka", "Model", "Seri No", "Konum", "Personel No", "Çalışan", "Alış Tarihi", "Alış Bedeli", "Para Birimi"];
         if (!records[0].SequenceEqual(expectedHeader, StringComparer.OrdinalIgnoreCase))

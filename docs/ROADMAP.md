@@ -12,7 +12,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 - Departman ve konum ekranları şirket verisinden özet çıkarır; departman çalışanlarını ve konumdaki varlıkları tek tıkla filtreler. Departman özetleri baştaki/sondaki boşluk ve harf büyüklüğü farklarını birleştirir; bölüm filtresi büyük/küçük harfe duyarsız eşleşir. Değerler hâlâ serbest metinden türetildiği için katalog yönetimi ve güvenli yeniden adlandırma sonraki adımdır.
 - Henüz işlevi bağlanmayan menüler dashboard görünümünü yanlışlıkla göstermiyor; bu önizlemede nelerin hazır olmadığını ve yakın kullanılabilir ekranları açıklıyor.
 - Hazır raporlar ekranı şirket varlıklarından durum/kategori sayılarını ve kaydedilmiş alış bedellerini üretir; Excel uyumlu CSV raporu indirilebilir. Para birimleri ayrı kalır, kategori/durum satırları varlık listesine filtre uygular.
-- Şirket logosu/ana rengi, şirket JSON dışa aktarımı ve JSON/EnvanterTR CSV için salt okunur dosya önizlemesi. JSON indirme yedeği geri yüklenebilir bir yedek değildir.
+- Şirket logosu/ana rengi, şirket JSON dışa aktarımı ve JSON/EnvanterTR CSV için salt okunur dosya önizlemesi. EnvanterTR CSV dosyası ayrıca mevcut kategori/marka/model/çalışan kayıtlarıyla eşleştirilerek en fazla 5.000 yeni varlığı tek işlem içinde içe aktarabilir; şirket JSON geri yüklemesi yoktur.
 - Yerel Compose önizlemesi için Windows PowerShell ve Linux Bash ile elle veritabanı + şirket medya yedeği ve SHA-256 dosya özetleri. Çıktı şifrelenmez, otomatik alınmaz ve uygulamadan geri yüklenemez; müşteri/üretim yedeklemesi sayılmaz.
 - Web yanıtlarında `nosniff`, iframe engeli ve sınırlı referrer/izin politikaları; API yanıtlarında önbelleği kapatma; şirket logo yüklemesinde istek gövdesi boyut sınırı.
 - Platform yönetici ekranı ve tanıtım sayfası için metin/paket taslakları.
@@ -39,7 +39,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 - Varlık fotoğrafı ve ek dosyalar; QR/barkod üretme, kamera ile okutma ve yazıcıya uygun etiket çıktısı.
 - Lisans, bileşen, sarf malzemesi, aksesuar, kit, transfer, rezervasyon, bakım, denetim ve garanti kayıtları.
 - Departman ve konum için yapılandırılmış kataloglar ve ad birleştirme/düzeltme akışı. Çalışan departmanı ve varlık konumu bugün serbest metindir; mevcut ekranlar yalnızca özetler ve filtreler.
-- CSV varlık biçimi için salt okunur sütun/çakışma önizlemesi eklendi; Excel içe aktarma, alan eşleme, kayıt yazan içe aktarma ve güvenli geri yükleme akışı tamamlanmalı.
+- CSV varlık biçimi için salt okunur sütun/çakışma önizlemesi ve mevcut katalog kayıtlarını kullanan sınırlı, atomik kayıt ekleme eklendi; Excel içe aktarma, alan eşleme, katalog kaydı oluşturma ve güvenli JSON geri yükleme akışı tamamlanmalı.
 - Raporlarda gelişmiş tarih aralığı, maliyet denetimi ve dışa aktarma; ayrıca gerçek veriden beslenen takvim. Mevcut rapor durum/kategori adetleri ve kayıtlı alış bedeli özetidir; muhasebe değerlemesi değildir.
 
 ### P1 — Barındırılan hizmet ve ticari akışlar
