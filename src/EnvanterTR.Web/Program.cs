@@ -90,7 +90,7 @@ app.Use(async (context, next) =>
     headers["X-Content-Type-Options"] = "nosniff";
     headers["X-Frame-Options"] = "DENY";
     headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
-    headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+    headers["Permissions-Policy"] = "camera=(self), microphone=(), geolocation=()";
 
     if (context.Request.Path.StartsWithSegments("/api"))
     {
