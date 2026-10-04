@@ -524,16 +524,17 @@ public static class OperationalEndpoints
                     x.SerialNumber, x.Location,
                     db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault(),
                     db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
-                    x.PurchaseDate, x.PurchaseCost, x.Currency))
+                    x.PurchaseDate, x.WarrantyExpiresAt, x.PurchaseCost, x.Currency))
                 .ToListAsync(cancellationToken);
             if (rows.Count != ids.Length) return Results.NotFound(new { message = "Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil." });
             var csv = new StringBuilder();
-            csv.AppendLine("Etiket;Ad;Durum;Kategori;Marka;Model;Seri No;Konum;Personel No;Çalışan;Alış Tarihi;Alış Bedeli;Para Birimi");
+            csv.AppendLine("Etiket;Ad;Durum;Kategori;Marka;Model;Seri No;Konum;Personel No;Çalışan;Alış Tarihi;Garanti Bitiş Tarihi;Alış Bedeli;Para Birimi");
             foreach (var row in rows)
                 csv.AppendLine(string.Join(';', new[] { Cell(row.AssetTag), Cell(row.Name), Cell(row.Status),
                     Cell(row.Category), Cell(row.Brand), Cell(row.Model), Cell(row.SerialNumber),
                     Cell(row.Location), Cell(row.EmployeeNumber), Cell(row.EmployeeName),
                     Cell(row.PurchaseDate?.ToString("yyyy-MM-dd")),
+                    Cell(row.WarrantyExpiresAt?.ToString("yyyy-MM-dd")),
                     Cell(row.PurchaseCost?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
                     Cell(row.Currency) }));
             return Results.File(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray(),
@@ -842,5 +843,5 @@ public static class OperationalEndpoints
 
     private sealed record SelectedAssetExportRow(string AssetTag, string Name, string Status, string? Category,
         string? Brand, string? Model, string? SerialNumber, string? Location, string? EmployeeNumber,
-        string? EmployeeName, DateOnly? PurchaseDate, decimal? PurchaseCost, string Currency);
+        string? EmployeeName, DateOnly? PurchaseDate, DateOnly? WarrantyExpiresAt, decimal? PurchaseCost, string Currency);
 }
