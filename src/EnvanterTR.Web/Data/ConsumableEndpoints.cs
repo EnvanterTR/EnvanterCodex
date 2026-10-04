@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Globalization;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -44,6 +46,38 @@ public static class ConsumableEndpoints
                 issued = db.ConsumableMovements.Where(m => m.CompanyId == companyId && m.ConsumableId == x.Id && m.MovementType == "Checkout").Sum(m => (int?)m.Quantity) ?? 0
             }).ToListAsync(ct);
             return Results.Ok(new { items, page, pageSize, total });
+        }).RequireAuthorization("asset.read");
+
+        api.MapGet("/consumables/export.csv", async ([FromQuery] string? q, [FromQuery] string? stock,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!Tenant(user, out var companyId)) return Results.Forbid();
+            var query = db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim(); if (term.Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
+                query = query.Where(x => x.Name.Contains(term) || (x.Category != null && x.Category.Contains(term)) ||
+                    (x.ModelNumber != null && x.ModelNumber.Contains(term)) || (x.ItemNumber != null && x.ItemNumber.Contains(term)) ||
+                    (x.Supplier != null && x.Supplier.Contains(term)) || (x.Location != null && x.Location.Contains(term)));
+            }
+            if (stock == "low") query = query.Where(x => x.TotalQuantity - (db.ConsumableMovements.Where(m => m.CompanyId == companyId && m.ConsumableId == x.Id && m.MovementType == "Checkout").Sum(m => (int?)m.Quantity) ?? 0) <= x.MinimumQuantity);
+            if (stock == "available") query = query.Where(x => x.TotalQuantity - (db.ConsumableMovements.Where(m => m.CompanyId == companyId && m.ConsumableId == x.Id && m.MovementType == "Checkout").Sum(m => (int?)m.Quantity) ?? 0) > 0);
+            if (await query.CountAsync(ct) > 10000) return Results.ValidationProblem(new Dictionary<string, string[]> { ["export"] = ["Dışa aktarım tek dosyada en fazla 10.000 satır içerebilir. Arama veya stok filtresini daraltın."] });
+            var rows = await query.OrderBy(x => x.Name).Select(x => new
+            {
+                x.Name, x.Category, x.ModelNumber, x.ItemNumber, x.Supplier, x.Location, x.TotalQuantity, x.MinimumQuantity, x.UnitCost, x.Currency,
+                Issued = db.ConsumableMovements.Where(m => m.CompanyId == companyId && m.ConsumableId == x.Id && m.MovementType == "Checkout").Sum(m => (int?)m.Quantity) ?? 0
+            }).ToListAsync(ct);
+            var csv = new StringBuilder("\uFEFF\"Malzeme\",\"Kategori\",\"Model\",\"Ürün no\",\"Tedarikçi\",\"Konum\",\"Toplam\",\"Tüketilen\",\"Kalan\",\"Minimum\",\"Birim maliyeti\",\"Para birimi\"\r\n");
+            foreach (var row in rows)
+            {
+                var cells = new[] { row.Name, row.Category, row.ModelNumber, row.ItemNumber, row.Supplier, row.Location,
+                    row.TotalQuantity.ToString(CultureInfo.InvariantCulture), row.Issued.ToString(CultureInfo.InvariantCulture),
+                    (row.TotalQuantity - row.Issued).ToString(CultureInfo.InvariantCulture), row.MinimumQuantity.ToString(CultureInfo.InvariantCulture),
+                    row.UnitCost?.ToString("0.00", CultureInfo.InvariantCulture), row.Currency };
+                csv.AppendJoin(',', cells.Select(CsvCell)).Append("\r\n");
+            }
+            return Results.File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv; charset=utf-8", $"sarf-stoklari-{DateTime.UtcNow:yyyyMMdd}.csv");
         }).RequireAuthorization("asset.read");
 
         api.MapGet("/consumables/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
@@ -138,6 +172,12 @@ public static class ConsumableEndpoints
     private static bool Tenant(ClaimsPrincipal user, out Guid id) => Guid.TryParse(user.FindFirstValue("company_id"), out id);
     private static Guid? UserId(ClaimsPrincipal user) => Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static string CsvCell(string? value)
+    {
+        var safe = value?.Trim() ?? "";
+        if (safe.Length > 0 && safe[0] is '=' or '+' or '-' or '@' or '\t' or '\r') safe = "'" + safe;
+        return "\"" + safe.Replace("\"", "\"\"") + "\"";
+    }
     private static void AddAudit(AppDbContext db, Guid companyId, ClaimsPrincipal user, Guid id, string action, string details) =>
         db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = UserId(user), TargetType = "Consumable", TargetId = id, Action = action, Details = details });
 
