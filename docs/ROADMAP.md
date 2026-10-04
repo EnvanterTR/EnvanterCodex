@@ -22,7 +22,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 
 - Kimlik doğrulamalı iş akışlarının kabul doğrulaması; şirketler arası veri erişimi, izinler, eşzamanlı değişiklikler ve parola yenileme için güvenlik incelemesi.
 - Veritabanı ve şirket medyası için otomatik, şifreli yedek; geri yükleme önizlemesi, güvenli geri alma ve düzenli geri yükleme tatbikatı. Bugünkü elle yerel yedek betikleri bu gereksinimi karşılamaz.
-- Git başlangıç commit'i ve uzak depo henüz yok. Kaynak kodu özel depoda tutma tercihi var; önceki GitHub ekran görüntüsü `EnvanterTR/EnvanterCodex` deposunu herkese açık gösteriyordu. Gizlilik doğrulanmadan kaynak kodu gönderilmeyecek.
+- İlk kaynak commit'i `38744c6` oluşturuldu ve `main` dalı özel `EnvanterTR/EnvanterCodex` deposuna gönderildi. GitHub Desktop ekranında `Fetch origin` görünüyor; yerel dal `origin/main` ile eşit ve çalışma ağacı temiz.
 - Lisans ve üçüncü taraf bağımlılık envanteri yayıma çıkmadan önce gözden geçirilmeli; ürün adı ve görünümü, lisans/attribution yükümlülüklerini gizlemek için kullanılmamalı.
 
 ### P1 — Kurum içi kurulum ve ağ erişimi
