@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Globalization;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +12,7 @@ public static class InventoryMovementEndpoints
     {
         api.MapGet("/inventory/movements", async ([FromQuery] string? q, [FromQuery] string? kind,
             [FromQuery] string? movementType, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to,
+            [FromQuery] bool export,
             [FromQuery] int page, [FromQuery] int pageSize, ClaimsPrincipal user,
             AppDbContext db, CancellationToken ct) =>
         {
@@ -67,6 +70,17 @@ public static class InventoryMovementEndpoints
             if (movementType is not null) query = query!.Where(x => x.MovementType == movementType);
             if (from.HasValue) query = query!.Where(x => x.OccurredAt >= new DateTimeOffset(from.Value.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero));
             if (to.HasValue && to.Value < DateOnly.MaxValue) query = query!.Where(x => x.OccurredAt < new DateTimeOffset(to.Value.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero));
+            if (export)
+            {
+                if (await query!.CountAsync(ct) > 10000)
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["export"] = ["Dışa aktarım en fazla 10.000 satır içerir; filtreyi daraltın."] });
+                var rows = await query!.OrderByDescending(x => x.OccurredAt).ThenBy(x => x.Id).ToListAsync(ct);
+                var csv = new StringBuilder("\uFEFF\"Tarih (UTC)\",\"Tür\",\"Ürün\",\"Hareket\",\"Miktar\",\"Hedef / çalışan\",\"İşlemi yapan\",\"Not\"\r\n");
+                foreach (var row in rows)
+                    csv.AppendJoin(',', new[] { row.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture), row.KindLabel, row.Item,
+                        row.MovementType, row.Quantity.ToString(CultureInfo.InvariantCulture), row.Target, row.Actor, row.Notes }.Select(CsvCell)).Append("\r\n");
+                return Results.File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv; charset=utf-8", $"stok-hareketleri-{DateTime.UtcNow:yyyyMMdd}.csv");
+            }
             var total = await query!.CountAsync(ct);
             var items = await query!.OrderByDescending(x => x.OccurredAt).ThenBy(x => x.Id)
                 .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
@@ -77,4 +91,11 @@ public static class InventoryMovementEndpoints
 
     private sealed record InventoryMovementRow(Guid Id, string KindLabel, string Kind, string Item,
         string MovementType, int Quantity, string? Target, string? Actor, string? Notes, DateTimeOffset OccurredAt);
+
+    private static string CsvCell(string? value)
+    {
+        var safe = value?.Trim() ?? "";
+        if (safe.Length > 0 && safe[0] is '=' or '+' or '-' or '@' or '\t' or '\r') safe = "'" + safe;
+        return "\"" + safe.Replace("\"", "\"\"") + "\"";
+    }
 }
