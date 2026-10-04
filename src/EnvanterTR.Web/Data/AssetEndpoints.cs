@@ -538,6 +538,10 @@ public static class AssetEndpoints
                     x.EventType,
                     x.Details,
                     x.EmployeeId,
+                    actorName = db.Users
+                        .Where(actor => actor.Id == x.ActorUserId)
+                        .Select(actor => actor.DisplayName)
+                        .FirstOrDefault(),
                     employeeName = db.Employees
                         .Where(employee => employee.CompanyId == companyId && employee.Id == x.EmployeeId)
                         .Select(employee => employee.DisplayName)
