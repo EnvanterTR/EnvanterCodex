@@ -75,7 +75,7 @@
     .table-sort{padding:0;border:0;color:inherit;background:transparent;font:inherit;font-weight:inherit;text-align:left}.table-sort:hover{color:#1769df}.table-sort:focus-visible{outline:2px solid #1769df;outline-offset:3px;border-radius:2px}
     @media(max-width:720px){#overview.inventory-mode .table-tools{align-items:stretch}#overview.inventory-mode .table-tools input{flex-basis:100%}}
   </style>
-</head>
+<style>.bulk-asset-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:10px 13px;border-bottom:1px solid #edf0f5;background:#f8faff}.bulk-asset-toolbar[hidden]{display:none}.bulk-asset-toolbar label{display:flex;align-items:center;gap:7px;color:#526178;font-size:.72rem}.bulk-asset-toolbar>span{margin-right:auto;color:#526178;font-size:.72rem;font-weight:700}.bulk-asset-toolbar select{min-height:32px;padding:0 9px;border:1px solid #dce4ee;border-radius:7px;background:white;color:#33445e;font-size:.72rem}.asset-select-column{width:38px}.asset-select-cell{text-align:center}.asset-select-cell input{width:15px;height:15px;accent-color:#1769df}</style></head>
 <body>
   <div class="app">
     <aside class="sidebar" id="sidebar">
@@ -115,7 +115,7 @@
         <div class="page-head"><div><div class="eyebrow" id="pageEyebrow">ŞİRKET ALANI / GENEL BAKIŞ</div><h1 id="pageTitle">Envanter genel bakışı</h1><p id="pageSubtitle">Şirket varlıklarını, zimmetleri ve yaklaşan işleri tek ekranda izleyin.</p></div><div class="head-actions"><button class="btn" id="exportButton">⇩ Varlık CSV</button><button class="btn" id="exportBackupButton" hidden>⇩ Şirket verisi</button><button class="btn" id="importPreviewButton" hidden>✓ Dosyayı kontrol et</button><button class="btn primary" id="newAssetButton">＋ Yeni varlık</button></div></div>
         <div class="welcome"><div><strong id="welcomeName">Şirket envanterinize hoş geldiniz</strong><span id="welcomeCompany">Güncel şirket verileriniz yükleniyor.</span></div><span class="period" id="dataStatus" role="status" aria-live="polite">Sunucu bağlantısı kontrol ediliyor</span></div>
         <div class="stats"><article class="stat"><div class="stat-top"><span>Toplam varlık</span><span class="stat-icon">▣</span></div><strong id="totalAssets">—</strong><small>Şirket kayıtları</small></article><article class="stat"><div class="stat-top"><span>Atanmış</span><span class="stat-icon">♙</span></div><strong id="assignedAssets">—</strong><small>Çalışanlara zimmetli</small></article><article class="stat"><div class="stat-top"><span>Kullanılabilir</span><span class="stat-icon">⬡</span></div><strong id="availableAssets">—</strong><small>Dağıtıma hazır</small></article><article class="stat"><div class="stat-top"><span>Bakımda</span><span class="stat-icon">⚒</span></div><strong id="maintenanceAssets">—</strong><small>İşlem gerektiriyor</small></article></div>
-        <div class="grid"><section class="panel"><div class="panel-head"><h2 id="assetListHeading">Son eklenen ve güncellenen varlıklar</h2><button class="text-link inventory-open-link" data-page="Varlıklar">Tüm varlıkları gör →</button></div><div class="table-tools"><input id="assetListSearch" placeholder="Etiket, çalışan, model, seri no veya konum ara" aria-label="Varlık listesini ara"><select id="assetPageSize" aria-label="Sayfa başına kayıt"><option value="25">25 kayıt</option><option value="50" selected>50 kayıt</option><option value="100">100 kayıt</option><option value="200">200 kayıt</option></select><select id="assetStatusFilter" aria-label="Duruma göre filtrele"><option value="">Tüm durumlar</option><option value="Available">Kullanılabilir</option><option value="Deployed">Atanmış</option><option value="Maintenance">Bakımda</option><option value="Archived">Arşiv</option></select><select id="assetCategoryFilter" aria-label="Kategoriye göre filtrele"><option value="">Tüm kategoriler</option></select><select id="assetBrandFilter" aria-label="Markaya göre filtrele"><option value="">Tüm markalar</option></select><select id="assetModelFilter" aria-label="Modele göre filtrele"><option value="">Tüm modeller</option></select><div class="filter-chips" id="assetRelationFilter" role="group" aria-label="Etkin ilişki filtreleri" hidden></div><button class="btn small" id="clearAssetRelationFilter" type="button" hidden>Bağlantı filtrelerini temizle</button><details class="column-picker" id="assetColumnPicker"><summary class="btn small">Sütunlar</summary><fieldset><legend>Görüntülenecek sütunlar</legend><label><input type="checkbox" data-asset-column="0" checked> Varlık / Etiket</label><label><input type="checkbox" data-asset-column="1" checked> Kategori</label><label><input type="checkbox" data-asset-column="2" checked> Marka / Model</label><label><input type="checkbox" data-asset-column="3" checked> Zimmetli çalışan</label><label><input type="checkbox" data-asset-column="4" checked> Konum</label><label><input type="checkbox" data-asset-column="5" checked> Durum</label><label><input type="checkbox" data-asset-column="6" checked> Son güncelleme</label><button class="btn small" id="resetAssetColumns" type="button">Varsayılan sütunlar</button></fieldset></details><select id="assetRowDensity" aria-label="Tablo satır yoğunluğu"><option value="comfortable">Rahat satırlar</option><option value="compact">Sık satırlar</option></select><small id="assetCount" role="status" aria-live="polite" aria-atomic="true">—</small></div><div class="table-wrap"><table><caption class="sr-only">Şirket envanterindeki varlık kayıtları</caption><thead><tr><th aria-sort="ascending"><button class="table-sort" type="button" data-sort-by="tag" data-sort-label="Varlık / Etiket">Varlık / Etiket</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="category" data-sort-label="Kategori">Kategori</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="brand" data-sort-label="Marka / Model">Marka / Model</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="employee" data-sort-label="Zimmetli çalışan">Zimmetli çalışan</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="location" data-sort-label="Konum">Konum</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="status" data-sort-label="Durum">Durum</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="updated" data-sort-label="Son güncelleme">Son güncelleme</button></th></tr></thead><tbody id="assetRows"><tr><td colspan="7">Oturum açıldıktan sonra şirket kayıtları gösterilir.</td></tr></tbody></table></div><div class="pager"><button id="assetPrev">← Önceki</button><span id="assetPageInfo">Sayfa —</span><button id="assetNext">Sonraki →</button></div></section>
+        <div class="grid"><section class="panel"><div class="panel-head"><h2 id="assetListHeading">Son eklenen ve güncellenen varlıklar</h2><button class="text-link inventory-open-link" data-page="Varlıklar">Tüm varlıkları gör →</button></div><div class="table-tools"><input id="assetListSearch" placeholder="Etiket, çalışan, model, seri no veya konum ara" aria-label="Varlık listesini ara"><select id="assetPageSize" aria-label="Sayfa başına kayıt"><option value="25">25 kayıt</option><option value="50" selected>50 kayıt</option><option value="100">100 kayıt</option><option value="200">200 kayıt</option></select><select id="assetStatusFilter" aria-label="Duruma göre filtrele"><option value="">Tüm durumlar</option><option value="Available">Kullanılabilir</option><option value="Deployed">Atanmış</option><option value="Maintenance">Bakımda</option><option value="Archived">Arşiv</option></select><select id="assetCategoryFilter" aria-label="Kategoriye göre filtrele"><option value="">Tüm kategoriler</option></select><select id="assetBrandFilter" aria-label="Markaya göre filtrele"><option value="">Tüm markalar</option></select><select id="assetModelFilter" aria-label="Modele göre filtrele"><option value="">Tüm modeller</option></select><div class="filter-chips" id="assetRelationFilter" role="group" aria-label="Etkin ilişki filtreleri" hidden></div><button class="btn small" id="clearAssetRelationFilter" type="button" hidden>Bağlantı filtrelerini temizle</button><details class="column-picker" id="assetColumnPicker"><summary class="btn small">Sütunlar</summary><fieldset><legend>Görüntülenecek sütunlar</legend><label><input type="checkbox" data-asset-column="0" checked> Varlık / Etiket</label><label><input type="checkbox" data-asset-column="1" checked> Kategori</label><label><input type="checkbox" data-asset-column="2" checked> Marka / Model</label><label><input type="checkbox" data-asset-column="3" checked> Zimmetli çalışan</label><label><input type="checkbox" data-asset-column="4" checked> Konum</label><label><input type="checkbox" data-asset-column="5" checked> Durum</label><label><input type="checkbox" data-asset-column="6" checked> Son güncelleme</label><button class="btn small" id="resetAssetColumns" type="button">Varsayılan sütunlar</button></fieldset></details><select id="assetRowDensity" aria-label="Tablo satır yoğunluğu"><option value="comfortable">Rahat satırlar</option><option value="compact">Sık satırlar</option></select><small id="assetCount" role="status" aria-live="polite" aria-atomic="true">—</small></div><div id="bulkAssetToolbar" class="bulk-asset-toolbar" hidden><label><input id="selectAllAssets" type="checkbox" aria-label="Bu sayfadaki seçilebilir varlıkları seç"> Sayfadakileri seç</label><span id="selectedAssetCount" role="status" aria-live="polite">0 varlık seçildi</span><select id="bulkAssetStatus" aria-label="Seçili varlıklara uygulanacak durum"><option value="">Yeni durumu seçin</option><option value="Available">Kullanılabilir</option><option value="Maintenance">Bakımda</option><option value="Archived">Arşiv</option></select><button id="applyBulkAssetStatus" class="btn primary small" type="button" disabled>Durumu uygula</button><button id="clearSelectedAssets" class="btn small" type="button">Seçimi temizle</button></div><div class="table-wrap"><table><caption class="sr-only">Şirket envanterindeki varlık kayıtları</caption><thead><tr><th class="asset-select-column"><input id="selectAllAssetsHeader" type="checkbox" aria-label="Bu sayfadaki seçilebilir varlıkları seç"></th><th aria-sort="ascending"><button class="table-sort" type="button" data-sort-by="tag" data-sort-label="Varlık / Etiket">Varlık / Etiket</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="category" data-sort-label="Kategori">Kategori</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="brand" data-sort-label="Marka / Model">Marka / Model</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="employee" data-sort-label="Zimmetli çalışan">Zimmetli çalışan</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="location" data-sort-label="Konum">Konum</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="status" data-sort-label="Durum">Durum</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="updated" data-sort-label="Son güncelleme">Son güncelleme</button></th></tr></thead><tbody id="assetRows"><tr><td colspan="8">Oturum açıldıktan sonra şirket kayıtları gösterilir.</td></tr></tbody></table></div><div class="pager"><button id="assetPrev">← Önceki</button><span id="assetPageInfo">Sayfa —</span><button id="assetNext">Sonraki →</button></div></section>
           <section class="panel"><div class="panel-head"><h2>Son hareketler</h2><button class="text-link" data-page="Hareket geçmişi">Tümünü gör →</button></div><div class="activity" id="activityRows"><div class="activity-row"><div class="activity-copy"><strong>Hareket verileri yükleniyor…</strong></div></div></div></section></div>
         <div class="lower"><section class="panel"><div class="panel-head"><h2>Yaklaşan işlemler</h2><button class="text-link" data-page="Takvim">Takvimi aç →</button></div><div class="attention"><div class="attention-row"><span>Garanti, bakım ve denetim takvimi</span><span>Bu modül sırada</span></div><div class="attention-row"><span>Hatırlatma kuralları</span><span>Yakında</span></div></div></section><section class="panel"><div class="panel-head"><h2>Varlık durumu</h2><button class="text-link" data-page="Hazır raporlar">Raporu aç →</button></div><div class="attention"><div class="attention-row"><span>Durum raporu ve grafikler</span><span>Canlı raporlama modülü sırada</span></div></div></section></div>
       </section>
@@ -182,7 +182,7 @@
   <div class="toast" id="toast" role="status"></div>
   <script>
     const toast = document.getElementById('toast');
-    let toastTimer, requestToken = '', lookupCache = { categories: [], brands: [], models: [] }, loadedAssets = [], currentAsset = null, currentEmployeeId = null, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', assetRowDensity = 'comfortable', visibleAssetColumns = Array(7).fill(true);
+    let toastTimer, requestToken = '', lookupCache = { categories: [], brands: [], models: [] }, loadedAssets = [], selectedAssetIds = new Set(), currentAsset = null, currentEmployeeId = null, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', assetRowDensity = 'comfortable', visibleAssetColumns = Array(7).fill(true);
     const pageSize = 12;
     const $ = (selector, root = document) => root.querySelector(selector);
     const fmt = new Intl.NumberFormat('tr-TR');
@@ -214,15 +214,17 @@
     async function refreshCsrf() { const result = await api('/api/session/csrf'); requestToken = result.requestToken; }
     function showLogin(message = '') { $('#authLayer').classList.add('show'); $('#authError').textContent = message; }
     function hideLogin() { $('#authLayer').classList.remove('show'); $('#authError').textContent = ''; }
-    function setEmptyRow(message) { const row = document.createElement('tr'), cell = document.createElement('td'); row.className = 'asset-empty-row'; cell.colSpan = visibleAssetColumns.filter(Boolean).length; cell.textContent = message; row.append(cell); $('#assetRows').replaceChildren(row); }
+    function setEmptyRow(message) { const row = document.createElement('tr'), cell = document.createElement('td'); row.className = 'asset-empty-row'; cell.colSpan = visibleAssetColumns.filter(Boolean).length + 1; cell.textContent = message; $('#assetRows').replaceChildren(row); row.append(cell); }
     function applyAssetColumnVisibility() {
       const table = $('#assetRows').closest('table');
       for (const row of table.querySelectorAll('tr')) {
-        if (row.classList.contains('asset-empty-row')) { row.cells[0].colSpan = visibleAssetColumns.filter(Boolean).length; continue; }
-        [...row.cells].forEach((cell, index) => { cell.hidden = !visibleAssetColumns[index]; });
+        if (row.classList.contains('asset-empty-row')) { row.cells[0].colSpan = visibleAssetColumns.filter(Boolean).length + 1; continue; }
+        [...row.cells].forEach((cell, index) => { if (index > 0) cell.hidden = !visibleAssetColumns[index - 1]; });
       }
     }
     function loadAssetColumnPreferences(companyId) {
+      selectedAssetIds.clear();
+      $('#bulkAssetStatus').value = '';
       assetColumnPreferenceKey = `envantertr:asset-columns:${companyId}`;
       assetSortPreferenceKey = `envantertr:asset-sort:${companyId}`;
       assetDensityPreferenceKey = `envantertr:asset-density:${companyId}`;
@@ -261,6 +263,21 @@
       saveAssetColumnPreferences();
       notify('Varsayılan tablo sütunları gösteriliyor.');
     }
+    function updateBulkAssetSelection() {
+      const toolbar = $('#bulkAssetToolbar'), count = selectedAssetIds.size;
+      toolbar.hidden = count === 0;
+      $('#selectedAssetCount').textContent = `${fmt.format(count)} varlık seçildi${count > 100 ? ' · En fazla 100 kayıt işlenebilir' : ''}`;
+      $('#applyBulkAssetStatus').disabled = count === 0 || count > 100 || !$('#bulkAssetStatus').value;
+      const selectable = loadedAssets.filter(asset => !asset.assignedEmployeeId && asset.status !== 'Archived');
+      const allSelected = selectable.length > 0 && selectable.every(asset => selectedAssetIds.has(asset.id));
+      for (const checkbox of [$('#selectAllAssets'), $('#selectAllAssetsHeader')]) { checkbox.checked = allSelected; checkbox.indeterminate = !allSelected && selectable.some(asset => selectedAssetIds.has(asset.id)); checkbox.disabled = selectable.length === 0; }
+      $('#selectedAssetCount').setAttribute('aria-label', `${count} varlık seçildi`);
+    }
+    function clearBulkAssetSelection() {
+      selectedAssetIds.clear();
+      document.querySelectorAll('.asset-row-select').forEach(input => { input.checked = false; });
+      updateBulkAssetSelection();
+    }
     function assetFilterLink(label, type, value) {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'text-link relationship-link'; button.textContent = label;
       button.addEventListener('click', event => { event.stopPropagation(); applyAssetRelationshipFilter(type, value, label); });
@@ -268,6 +285,14 @@
     }
     function addAssetRow(asset) {
       const row = document.createElement('tr'); row.dataset.id = asset.id; row.dataset.asset = asset.assetTag;
+      const selectCell = document.createElement('td'); selectCell.className = 'asset-select-cell';
+      const select = document.createElement('input'); select.type = 'checkbox'; select.className = 'asset-row-select'; select.checked = selectedAssetIds.has(asset.id);
+      select.disabled = Boolean(asset.assignedEmployeeId) || asset.status === 'Archived';
+      select.setAttribute('aria-label', `${asset.assetTag} ${asset.name} varlığını seç`);
+      select.title = asset.assignedEmployeeId ? 'Zimmetli varlıklar toplu durum işlemine alınamaz.' : asset.status === 'Archived' ? 'Arşivlenmiş varlıklar bu işlemden seçilemez.' : '';
+      select.addEventListener('click', event => event.stopPropagation());
+      select.addEventListener('change', () => { if (select.checked && selectedAssetIds.size >= 100) { select.checked = false; notify('Toplu işlemde en fazla 100 varlık seçilebilir.'); return; } if (select.checked) selectedAssetIds.add(asset.id); else selectedAssetIds.delete(asset.id); updateBulkAssetSelection(); });
+      selectCell.append(select);
       const identity = document.createElement('td'), tag = document.createElement('span');
       const open = document.createElement('button'); open.type = 'button'; open.className = 'asset-name row-open-link'; open.textContent = asset.name;
       open.setAttribute('aria-label', `${asset.name}, varlık ayrıntısını aç`); open.addEventListener('click', event => { event.stopPropagation(); openAsset(asset.id); });
@@ -283,7 +308,7 @@
       if (asset.location) location.append(assetFilterLink(asset.location, 'location', asset.location)); else location.textContent = '—';
       const state = document.createElement('td'), pill = document.createElement('span'); pill.className = `pill ${asset.status === 'Maintenance' ? 'warn' : asset.status === 'Available' ? 'blue' : ''}`; pill.textContent = statusLabel(asset.status); state.append(pill);
       const updated = document.createElement('td'); updated.textContent = new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium' }).format(new Date(asset.updatedAt));
-      row.append(identity, category, makeModel, employee, location, state, updated);
+      row.append(selectCell, identity, category, makeModel, employee, location, state, updated);
       row.addEventListener('click', () => openAsset(asset.id));
       $('#assetRows').append(row);
     }
@@ -384,6 +409,7 @@
       if (!loadedAssets.length) setEmptyRow(query || $('#assetStatusFilter').value || $('#assetCategoryFilter').value || $('#assetBrandFilter').value || $('#assetModelFilter').value || assetEmployeeFilterId || assetLocationFilter ? 'Seçtiğiniz arama ve filtrelere uygun varlık bulunamadı.' : 'Henüz varlık kaydı yok. İlk kaydı “Yeni varlık” düğmesinden ekleyin.');
       else loadedAssets.forEach(addAssetRow);
       applyAssetColumnVisibility();
+      updateBulkAssetSelection();
       $('#assetCount').textContent = `${fmt.format(assetTotal)} kayıt`;
       $('#assetPageInfo').textContent = assetTotal ? `${assetPage}. sayfa · ${Math.min((assetPage - 1) * currentPageSize + 1, assetTotal)}–${Math.min(assetPage * currentPageSize, assetTotal)} / ${fmt.format(assetTotal)}` : 'Kayıt yok';
       $('#assetPrev').disabled = assetPage <= 1; $('#assetNext').disabled = assetPage * currentPageSize >= assetTotal;
@@ -1152,6 +1178,36 @@
     $('#assetColumnPicker').addEventListener('change', saveAssetColumnPreferences);
     $('#resetAssetColumns').addEventListener('click', resetAssetColumnPreferences);
     $('#assetRowDensity').addEventListener('change', saveAssetRowDensity);
+    const selectVisibleAssets = checked => {
+      for (const asset of loadedAssets) {
+        if (asset.assignedEmployeeId || asset.status === 'Archived') continue;
+        if (checked) {
+          if (!selectedAssetIds.has(asset.id) && selectedAssetIds.size >= 100) { notify('Toplu işlemde en fazla 100 varlık seçilebilir.'); break; }
+          selectedAssetIds.add(asset.id);
+        } else selectedAssetIds.delete(asset.id);
+      }
+      document.querySelectorAll('.asset-row-select').forEach(input => { const asset = loadedAssets.find(item => item.id === input.closest('tr')?.dataset.id); if (asset) input.checked = selectedAssetIds.has(asset.id); });
+      updateBulkAssetSelection();
+    };
+    $('#selectAllAssets').addEventListener('change', event => selectVisibleAssets(event.target.checked));
+    $('#selectAllAssetsHeader').addEventListener('change', event => selectVisibleAssets(event.target.checked));
+    $('#bulkAssetStatus').addEventListener('change', updateBulkAssetSelection);
+    $('#clearSelectedAssets').addEventListener('click', clearBulkAssetSelection);
+    $('#applyBulkAssetStatus').addEventListener('click', async () => {
+      const status = $('#bulkAssetStatus').value, ids = [...selectedAssetIds];
+      if (!status || ids.length < 1 || ids.length > 100) return;
+      if (!confirm(`${ids.length} varlığın durumunu “${statusLabel(status)}” olarak değiştirmek istiyor musunuz?`)) return;
+      const note = prompt('Hareket geçmişine eklenecek açıklama (isteğe bağlı):');
+      if (note === null) return;
+      const button = $('#applyBulkAssetStatus'); button.disabled = true;
+      try {
+        const result = await api('/api/assets/bulk-status', { method: 'POST', body: JSON.stringify({ assetIds: ids, status, note: note.trim() || null }) });
+        clearBulkAssetSelection(); $('#bulkAssetStatus').value = '';
+        await loadDashboard($('#globalSearch').value.trim(), assetPage);
+        notify(`${fmt.format(result.updated)} varlığın durumu güncellendi${result.unchanged ? `; ${fmt.format(result.unchanged)} kayıt zaten bu durumdaydı` : ''}.`);
+      } catch (error) { notify(error.message); }
+      finally { updateBulkAssetSelection(); }
+    });
     document.addEventListener('pointerdown', event => { const picker = $('#assetColumnPicker'); if (picker.open && !picker.contains(event.target)) picker.open = false; });
     document.querySelectorAll('.table-sort[data-sort-by]').forEach(button => button.addEventListener('click', () => toggleAssetSort(button.dataset.sortBy)));
     updateAssetSortIndicators();

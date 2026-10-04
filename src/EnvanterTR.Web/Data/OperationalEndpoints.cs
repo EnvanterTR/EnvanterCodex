@@ -420,6 +420,54 @@ public static class OperationalEndpoints
             return Results.Ok(new { asset.Id, asset.Status, asset.UpdatedAt });
         }).RequireAuthorization("asset.write");
 
+        api.MapPost("/assets/bulk-status", async ([FromBody] BulkChangeAssetStatusRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            var ids = request.AssetIds ?? [];
+            var next = request.Status?.Trim();
+            if (ids.Length is < 1 or > 100 || ids.Any(id => id == Guid.Empty) || ids.Distinct().Count() != ids.Length)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["assetIds"] = ["1 ile 100 arasında, tekrarsız varlık seçin."] });
+            if (request.Note is { Length: > 1900 })
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Açıklama en fazla 1900 karakter olabilir."] });
+            if (next is not (AssetStatuses.Available or AssetStatuses.Maintenance or AssetStatuses.Archived))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["status"] = ["Durum Kullanılabilir, Bakımda veya Arşiv olabilir."] });
+
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            var assets = await db.Assets.FromSqlInterpolated(
+                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) ORDER BY \"Id\" FOR UPDATE")
+                .ToListAsync(cancellationToken);
+            if (assets.Count != ids.Length)
+                return Results.NotFound(new { message = "Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil. Hiçbir kayıt değiştirilmedi." });
+            if (assets.Any(asset => asset.AssignedEmployeeId is not null))
+                return Results.Conflict(new { message = "Seçimde çalışana zimmetli varlık var. Önce iade işlemi yapın; hiçbir kayıt değiştirilmedi." });
+            if (assets.Any(asset => asset.Status == AssetStatuses.Archived && next != AssetStatuses.Archived))
+                return Results.Conflict(new { message = "Arşivlenmiş varlıklar toplu işlemle yeniden etkinleştirilemez; hiçbir kayıt değiştirilmedi." });
+
+            var now = DateTimeOffset.UtcNow;
+            var changed = assets.Where(asset => asset.Status != next).ToList();
+            foreach (var asset in changed)
+            {
+                var previous = asset.Status;
+                asset.Status = next!;
+                asset.UpdatedAt = now;
+                var details = $"{previous} → {next}. {Clean(request.Note)}".Trim();
+                db.AssetEvents.Add(new AssetEvent
+                {
+                    CompanyId = companyId, AssetId = asset.Id, ActorUserId = actorId,
+                    EventType = "StatusChanged", Details = details
+                });
+                db.AuditEntries.Add(new AuditEntry
+                {
+                    CompanyId = companyId, ActorUserId = actorId, TargetType = "Asset",
+                    TargetId = asset.Id, Action = "BulkStatusChanged", Details = details
+                });
+            }
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { updated = changed.Count, unchanged = assets.Count - changed.Count, status = next });
+        }).RequireAuthorization("asset.write");
+
         api.MapGet("/activity", async ([FromQuery] int page, [FromQuery] int pageSize,
             [FromQuery] Guid? assetId, [FromQuery] Guid? employeeId,
             [FromQuery] DateTimeOffset? from, [FromQuery] DateTimeOffset? to,

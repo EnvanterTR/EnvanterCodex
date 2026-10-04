@@ -40,6 +40,7 @@ public sealed record SetEmployeeManagerRequest(Guid? ManagerEmployeeId);
 public sealed record AssignAssetRequest(Guid EmployeeId, string? Note);
 public sealed record ReturnAssetRequest(string? Note);
 public sealed record ChangeAssetStatusRequest(string Status, string? Note);
+public sealed record BulkChangeAssetStatusRequest(Guid[] AssetIds, string Status, string? Note);
 public sealed record SetEmployeeActiveRequest(bool IsActive);
 
 public sealed record AssetListItem(
