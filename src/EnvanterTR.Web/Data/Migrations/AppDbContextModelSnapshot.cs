@@ -467,6 +467,8 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("CompanyId", "AssetId", "Status");
 
+                    b.HasIndex("CompanyId", "Status", "PlannedOn");
+
                     b.ToTable("AssetMaintenances", null, t =>
                         {
                             t.HasCheckConstraint("CK_AssetMaintenances_Completion", "(\"Status\" IN ('Scheduled', 'Cancelled', 'InProgress') AND \"CompletedOn\" IS NULL) OR (\"Status\" = 'Completed' AND \"CompletedOn\" IS NOT NULL)");

@@ -67,6 +67,7 @@ Rol politikaları ayrı tutulur: varlık okuma, varlık değiştirme, çalışan
 - `POST /api/assets/{id}/assign`
 - `POST /api/assets/{id}/return`
 - `PATCH /api/assets/{id}/status`
+- `GET /api/calendar?from=&to=&kind=&limit=200` (şirket kapsamlı planlı bakım ve lisans bitiş tarihleri; `kind=maintenance|license`, en çok 366 takvim günü ve 500 kayıt)
 - `GET /api/maintenances?q=&status=&from=&to=&page=1&pageSize=50` (şirket kapsamlı arama ve filtreleme; varlık/etiket/servis/not, planlandı/devam/tamamlandı/iptal durumu ve planlanan/başlangıç tarihine göre; sayfa boyutu en fazla 100)
 - `GET /api/maintenances/export.csv?q=&status=&from=&to=` (aynı filtrelere uyan tüm şirket bakım kayıtları; akış halinde UTF-8 CSV, hücre formül enjeksiyonuna karşı kaçış uygulanır)
 - `GET /api/reports/maintenances?from=&to=` (başlayan bakım kayıtlarını tarih aralığına göre toplam, devam/tamamlandı sayısı, en sık 25 bakım türü ve para birimi bazında maliyet olarak özetler; para birimlerini birleştirmez)

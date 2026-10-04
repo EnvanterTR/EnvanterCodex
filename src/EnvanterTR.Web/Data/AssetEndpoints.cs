@@ -805,6 +805,53 @@ public static class AssetEndpoints
             return Results.NoContent();
         }).RequireAuthorization("asset.write");
 
+        api.MapGet("/calendar", async (ClaimsPrincipal user, AppDbContext db, DateOnly? from,
+            DateOnly? to, string? kind, int? limit, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var start = from ?? today.AddDays(-30);
+            var end = to ?? today.AddDays(90);
+            kind = string.IsNullOrWhiteSpace(kind) ? null : kind.Trim().ToLowerInvariant();
+            if (start > end || end.DayNumber - start.DayNumber > 365)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Takvim aralığı ters olamaz ve en fazla 366 gün olabilir."] });
+            if (!string.IsNullOrWhiteSpace(kind) && kind is not ("maintenance" or "license"))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["kind"] = ["Tür maintenance veya license olmalıdır."] });
+
+            var maxItems = Math.Clamp(limit ?? 200, 1, 500);
+            var total = 0;
+            var events = new List<CalendarEntry>(maxItems * 2);
+            if (kind is null or "maintenance")
+            {
+                var maintenanceQuery =
+                    from maintenance in db.AssetMaintenances.AsNoTracking()
+                    join asset in db.Assets.AsNoTracking() on new { maintenance.CompanyId, maintenance.AssetId } equals new { asset.CompanyId, AssetId = asset.Id }
+                    where maintenance.CompanyId == companyId && maintenance.Status == "Scheduled" &&
+                        maintenance.PlannedOn >= start && maintenance.PlannedOn <= end
+                    select new { maintenance, asset };
+                total += await maintenanceQuery.CountAsync(cancellationToken);
+                var maintenanceEvents = await maintenanceQuery.OrderBy(item => item.maintenance.PlannedOn).ThenBy(item => item.asset.AssetTag).ThenBy(item => item.maintenance.Id)
+                    .Take(maxItems).Select(item => new CalendarEntry("maintenance", item.maintenance.PlannedOn!.Value, item.asset.Id, item.maintenance.Id,
+                        item.asset.AssetTag + " · " + item.asset.Name, item.maintenance.MaintenanceType + (item.asset.Location == null ? "" : " · " + item.asset.Location), "Scheduled", null))
+                    .ToListAsync(cancellationToken);
+                events.AddRange(maintenanceEvents);
+            }
+            if (kind is null or "license")
+            {
+                var licenseQuery = db.SoftwareLicenses.AsNoTracking()
+                    .Where(license => license.CompanyId == companyId && license.ExpirationDate >= start && license.ExpirationDate <= end);
+                total += await licenseQuery.CountAsync(cancellationToken);
+                var licenseEvents = await licenseQuery.OrderBy(item => item.ExpirationDate).ThenBy(item => item.Name).ThenBy(item => item.Id)
+                    .Take(maxItems).Select(license => new CalendarEntry("license", license.ExpirationDate!.Value, null, license.Id,
+                        license.Name, license.Publisher, "Expiration", license.AutoRenew)).ToListAsync(cancellationToken);
+                events.AddRange(licenseEvents);
+            }
+
+            var ordered = events.OrderBy(item => item.Date).ThenBy(item => item.Kind).ThenBy(item => item.Title).ToArray();
+            return Results.Ok(new { from = start, to = end, kind, total,
+                items = ordered.Take(maxItems) });
+        }).RequireAuthorization("asset.read");
+
         api.MapGet("/maintenances", async (ClaimsPrincipal user, AppDbContext db, string? q, string? status,
             DateOnly? from, DateOnly? to, int? page, int? pageSize, CancellationToken cancellationToken) =>
         {
@@ -1437,6 +1484,8 @@ public static class AssetEndpoints
         DateOnly PlannedOn, decimal? Cost, string Currency, string? Notes);
     public sealed record CompleteMaintenanceRequest(DateOnly CompletedOn, string? Notes);
     public sealed record SelectedAssetLabelsRequest(Guid[]? AssetIds);
+    private sealed record CalendarEntry(string Kind, DateOnly Date, Guid? AssetId, Guid RecordId,
+        string Title, string? Subtitle, string Status, bool? AutoRenew);
 
     private sealed record AssetExportRow(string AssetTag, string Name, string Status, string? Category,
         string? Brand, string? Model, string? SerialNumber, string? Location, string? EmployeeNumber,

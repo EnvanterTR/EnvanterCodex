@@ -120,7 +120,7 @@
         <div class="stats"><article class="stat"><div class="stat-top"><span>Toplam varlık</span><span class="stat-icon">▣</span></div><strong id="totalAssets">—</strong><small>Şirket kayıtları</small></article><article class="stat"><div class="stat-top"><span>Atanmış</span><span class="stat-icon">♙</span></div><strong id="assignedAssets">—</strong><small>Çalışanlara zimmetli</small></article><article class="stat"><div class="stat-top"><span>Kullanılabilir</span><span class="stat-icon">⬡</span></div><strong id="availableAssets">—</strong><small>Dağıtıma hazır</small></article><article class="stat"><div class="stat-top"><span>Bakımda</span><span class="stat-icon">⚒</span></div><strong id="maintenanceAssets">—</strong><small>İşlem gerektiriyor</small></article></div>
         <div class="grid"><section class="panel"><div class="panel-head"><h2 id="assetListHeading">Son eklenen ve güncellenen varlıklar</h2><button class="text-link inventory-open-link" data-page="Varlıklar">Tüm varlıkları gör →</button></div><div class="table-tools"><input id="assetListSearch" placeholder="Etiket, çalışan, model, seri no veya konum ara" aria-label="Varlık listesini ara"><select id="assetPageSize" aria-label="Sayfa başına kayıt"><option value="25">25 kayıt</option><option value="50" selected>50 kayıt</option><option value="100">100 kayıt</option><option value="200">200 kayıt</option></select><select id="assetStatusFilter" aria-label="Duruma göre filtrele"><option value="">Tüm durumlar</option><option value="Available">Kullanılabilir</option><option value="Deployed">Atanmış</option><option value="Maintenance">Bakımda</option><option value="Archived">Arşiv</option></select><select id="assetCategoryFilter" aria-label="Kategoriye göre filtrele"><option value="">Tüm kategoriler</option></select><select id="assetBrandFilter" aria-label="Markaya göre filtrele"><option value="">Tüm markalar</option></select><select id="assetModelFilter" aria-label="Modele göre filtrele"><option value="">Tüm modeller</option></select><div class="filter-chips" id="assetRelationFilter" role="group" aria-label="Etkin ilişki filtreleri" hidden></div><button class="btn small" id="clearAssetRelationFilter" type="button" hidden>Bağlantı filtrelerini temizle</button><details class="column-picker" id="assetColumnPicker"><summary class="btn small">Sütunlar</summary><fieldset><legend>Görüntülenecek sütunlar</legend><label><input type="checkbox" data-asset-column="0" checked> Varlık / Etiket</label><label><input type="checkbox" data-asset-column="1" checked> Kategori</label><label><input type="checkbox" data-asset-column="2" checked> Marka / Model</label><label><input type="checkbox" data-asset-column="3" checked> Zimmetli çalışan</label><label><input type="checkbox" data-asset-column="4" checked> Konum</label><label><input type="checkbox" data-asset-column="5" checked> Durum</label><label><input type="checkbox" data-asset-column="6" checked> Son güncelleme</label><button class="btn small" id="resetAssetColumns" type="button">Varsayılan sütunlar</button></fieldset></details><select id="assetRowDensity" aria-label="Tablo satır yoğunluğu"><option value="comfortable">Rahat satırlar</option><option value="compact">Sık satırlar</option></select><small id="assetCount" role="status" aria-live="polite" aria-atomic="true">—</small></div><div id="bulkAssetToolbar" class="bulk-asset-toolbar" hidden><label><input id="selectAllAssets" type="checkbox" aria-label="Bu sayfadaki seçilebilir varlıkları seç"> Sayfadakileri seç</label><span id="selectedAssetCount" role="status" aria-live="polite">0 varlık seçildi</span><select id="bulkAssetStatus" aria-label="Seçili varlıklara uygulanacak durum"><option value="">Yeni durumu seçin</option><option value="Available">Kullanılabilir</option><option value="Maintenance">Bakımda</option><option value="Archived">Arşiv</option></select><button id="applyBulkAssetStatus" class="btn primary small" type="button" disabled>Durumu uygula</button><button id="exportSelectedAssets" class="btn small" type="button" disabled>Seçileni CSV indir</button><button id="clearSelectedAssets" class="btn small" type="button">Seçimi temizle</button></div><div class="table-wrap"><table><caption class="sr-only">Şirket envanterindeki varlık kayıtları</caption><thead><tr><th class="asset-select-column"><input id="selectAllAssetsHeader" type="checkbox" aria-label="Bu sayfadaki seçilebilir varlıkları seç"></th><th aria-sort="ascending"><button class="table-sort" type="button" data-sort-by="tag" data-sort-label="Varlık / Etiket">Varlık / Etiket</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="category" data-sort-label="Kategori">Kategori</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="brand" data-sort-label="Marka / Model">Marka / Model</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="employee" data-sort-label="Zimmetli çalışan">Zimmetli çalışan</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="location" data-sort-label="Konum">Konum</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="status" data-sort-label="Durum">Durum</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="updated" data-sort-label="Son güncelleme">Son güncelleme</button></th></tr></thead><tbody id="assetRows"><tr><td colspan="8">Oturum açıldıktan sonra şirket kayıtları gösterilir.</td></tr></tbody></table></div><div class="pager"><button id="assetPrev">← Önceki</button><span id="assetPageInfo">Sayfa —</span><button id="assetNext">Sonraki →</button></div></section>
           <section class="panel"><div class="panel-head"><h2>Son hareketler</h2><button class="text-link" data-page="Hareket geçmişi">Tümünü gör →</button></div><div class="activity" id="activityRows"><div class="activity-row"><div class="activity-copy"><strong>Hareket verileri yükleniyor…</strong></div></div></div></section></div>
-        <div class="lower"><section class="panel"><div class="panel-head"><h2>Yaklaşan işlemler</h2><button class="text-link" data-page="Takvim">Takvimi aç →</button></div><div class="attention"><div class="attention-row"><span>Garanti, bakım ve denetim takvimi</span><span>Bu modül sırada</span></div><div class="attention-row"><span>Hatırlatma kuralları</span><span>Yakında</span></div></div></section><section class="panel"><div class="panel-head"><h2>Varlık durumu</h2><button class="text-link" data-page="Hazır raporlar">Raporu aç →</button></div><div class="dashboard-status"><div id="dashboardStatusChart" class="dashboard-donut" role="img" aria-label="Varlık durum dağılımı yükleniyor"><div class="dashboard-donut-center"><strong id="dashboardStatusTotal">—</strong><small>varlık</small></div></div><div id="dashboardStatusLegend" class="dashboard-status-legend"><span class="muted">Durum özeti yükleniyor…</span></div></div><div id="dashboardStatusNote" class="dashboard-status-note">Şirket envanterinizdeki güncel durumlar</div></section></div>
+        <div class="lower"><section class="panel"><div class="panel-head"><h2>Yaklaşan işlemler</h2><button class="text-link" data-page="Takvim">Takvimi aç →</button></div><div class="attention" id="upcomingEvents" aria-live="polite"><div class="attention-row"><span>Şirket takvimi yükleniyor…</span></div></div><div class="dashboard-status-note" id="upcomingEventsNote">Bakım planları ve lisans bitiş tarihleri</div></section><section class="panel"><div class="panel-head"><h2>Varlık durumu</h2><button class="text-link" data-page="Hazır raporlar">Raporu aç →</button></div><div class="dashboard-status"><div id="dashboardStatusChart" class="dashboard-donut" role="img" aria-label="Varlık durum dağılımı yükleniyor"><div class="dashboard-donut-center"><strong id="dashboardStatusTotal">—</strong><small>varlık</small></div></div><div id="dashboardStatusLegend" class="dashboard-status-legend"><span class="muted">Durum özeti yükleniyor…</span></div></div><div id="dashboardStatusNote" class="dashboard-status-note">Şirket envanterinizdeki güncel durumlar</div></section></div>
       </section>
       <section class="workspace-page" id="employeesPage" hidden><div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / EKİP</div><h1>Çalışan kayıtları</h1><p>Departmana ve yöneticiye göre ilişki kurun; profilden doğrudan raporlayanları ve zimmetlerini görüntüleyin.</p></div><div class="head-actions"><button class="btn primary" id="newEmployeeButton">＋ Çalışan ekle</button></div></div><section class="panel"><div class="table-tools"><input id="employeeSearch" placeholder="Ad, personel no, e-posta veya departman ara" aria-label="Çalışan kayıtlarında ara"><input id="employeeDepartmentFilter" maxlength="160" placeholder="Departman filtresi" aria-label="Departmana göre filtrele"><button class="btn small" id="clearEmployeeDepartmentFilter" type="button" hidden>Departmanı temizle</button><select id="employeeState" aria-label="Çalışan durumuna göre filtrele"><option value="true">Aktif çalışanlar</option><option value="false">Pasif çalışanlar</option></select><small id="employeeCount" role="status" aria-live="polite" aria-atomic="true">—</small></div><div class="table-wrap"><table><caption class="sr-only">Şirket çalışan kayıtları</caption><thead><tr><th>Çalışan</th><th>Personel no</th><th>E-posta</th><th>Departman</th><th>Yönetici</th><th>Durum</th><th>İşlem</th></tr></thead><tbody id="employeeRows"><tr><td colspan="7">Çalışanlar yükleniyor…</td></tr></tbody></table></div><div class="pager"><button id="employeePrev">← Önceki</button><span id="employeePageInfo">Sayfa —</span><button id="employeeNext">Sonraki →</button></div></section></section>
       <section class="workspace-page" id="directoryPage" hidden><div class="page-head"><div><div class="eyebrow" id="directoryEyebrow">ŞİRKET ALANI / KAYITLAR</div><h1 id="directoryTitle">Şirket kayıtları</h1><p id="directoryDescription">Şirket kayıtlarından güncel özet.</p></div><button class="btn" id="directoryRefresh" type="button">↻ Yenile</button></div><section class="panel"><div class="table-tools"><input id="directorySearch" placeholder="Listede ara" aria-label="Liste kayıtlarında ara"><small id="directoryCount">—</small></div><div class="table-wrap"><table><thead id="directoryHead"></thead><tbody id="directoryRows"><tr><td>Yükleniyor…</td></tr></tbody></table></div><div class="notice" id="directoryNotice" style="margin:12px">Liste, şirketinizdeki gerçek kayıtlardan oluşturulur. Departman ve konum adları şimdilik ilgili kayıtlardaki metinlerden derlenir.</div></section></section>
@@ -200,6 +200,10 @@
       <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / BAKIM</div><h1>Bakım kayıtları</h1><p>Planları ve servis işlemlerini şirket genelinde izleyin; planlı işleri buradan başlatın veya iptal edin.</p></div><div class="head-actions"><button class="btn" id="maintenanceExport" type="button">⇩ CSV indir</button><button class="btn" id="maintenanceRefresh" type="button">↻ Yenile</button></div></div>
       <section class="panel"><div class="table-tools"><input id="maintenanceSearch" placeholder="Varlık, etiket, servis veya bakım notu ara" aria-label="Bakım kayıtlarında ara"><select id="maintenanceStatus"><option value="">Tüm durumlar</option><option value="Scheduled">Planlandı</option><option value="InProgress">Devam ediyor</option><option value="Completed">Tamamlandı</option><option value="Cancelled">İptal edildi</option></select><label class="muted">Planlanan / başlangıç <input id="maintenanceFrom" type="date"></label><label class="muted">Bitiş <input id="maintenanceTo" type="date"></label><button class="btn small" id="applyMaintenanceFilters" type="button">Filtrele</button><button class="btn small" id="clearMaintenanceFilters" type="button">Temizle</button><small id="maintenanceCount" role="status" aria-live="polite">—</small></div><div class="table-wrap"><table><caption class="sr-only">Şirket bakım kayıtları</caption><thead><tr><th>Varlık</th><th>Bakım türü</th><th>Servis</th><th>Durum</th><th>Planlanan / başlangıç</th><th>Tamamlanma</th><th>Maliyet</th><th>İşlemi yapan</th><th>Notlar</th><th>İşlemler</th></tr></thead><tbody id="maintenanceRows"><tr><td colspan="10">Bakım kayıtları yükleniyor…</td></tr></tbody></table></div><div class="pager"><button id="maintenancePrev" type="button">← Önceki</button><span id="maintenancePageInfo">Sayfa —</span><button id="maintenanceNext" type="button">Sonraki →</button></div></section>
     </section>
+    <section class="workspace-page" id="calendarPage" hidden>
+      <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / TAKVİM</div><h1 id="calendarPageTitle">Takvim</h1><p id="calendarDescription">Yaklaşan bakım planlarını ve lisans bitişlerini birlikte izleyin.</p></div><div class="head-actions"><button class="btn" id="calendarExport" type="button">⇩ CSV indir</button><button class="btn" id="calendarRefresh" type="button">↻ Yenile</button></div></div>
+      <section class="panel"><div class="table-tools"><label class="muted">Başlangıç tarihi <input id="calendarFrom" type="date"></label><label class="muted">Bitiş tarihi <input id="calendarTo" type="date"></label><select id="calendarKind" aria-label="Takvim etkinlik türü"><option value="">Bakım ve lisans</option><option value="maintenance">Yalnızca bakım planları</option><option value="license">Yalnızca lisans bitişleri</option></select><button class="btn small primary" id="applyCalendarFilters" type="button">Takvimi göster</button><small id="calendarCount" role="status" aria-live="polite">—</small></div><p class="muted" id="calendarRangeNote" style="padding:0 14px 10px">En fazla 366 günlük aralık gösterilir. Otomatik e-posta hatırlatmaları henüz etkin değildir.</p><div class="table-wrap"><table><caption class="sr-only">Şirket bakım ve lisans takvimi</caption><thead><tr><th>Tarih</th><th>Etkinlik</th><th>Kayıt</th><th>Ayrıntı</th><th>Durum</th><th>İşlem</th></tr></thead><tbody id="calendarRows"><tr><td colspan="6">Takvim yükleniyor…</td></tr></tbody></table></div></section>
+    </section>
     <section class="workspace-page" id="reportPage" hidden>
       <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / RAPORLAMA</div><h1>Envanter raporları</h1><p>Şirket kayıtlarını güncel durum, kategori ve kaydedilmiş satın alma maliyetiyle inceleyin.</p></div><div class="head-actions"><button class="btn" id="reportExport" type="button" disabled>⇩ Raporu Excel'e aktar</button><button class="btn" id="reportRefresh" type="button">↻ Verileri yenile</button></div></div>
       <section class="panel" style="margin-bottom:15px"><div class="dialog-body" style="display:flex;align-items:end;gap:12px;flex-wrap:wrap"><label>Alış tarihi başlangıcı<input id="reportDateFrom" type="date" style="display:block;margin-top:5px;min-height:38px;padding:7px 10px;border:1px solid #dce4ee;border-radius:7px"></label><label>Alış tarihi bitişi<input id="reportDateTo" type="date" style="display:block;margin-top:5px;min-height:38px;padding:7px 10px;border:1px solid #dce4ee;border-radius:7px"></label><button class="btn primary" id="applyReportDateFilter" type="button">Tarih aralığını uygula</button><button class="btn" id="clearReportDateFilter" type="button">Temizle</button><span class="muted" id="reportDateNote" role="status">Tarih filtresi kapalı; tüm varlıklar gösteriliyor.</span></div></section>
@@ -248,7 +252,7 @@
   <script src="/vendor/qrcodegen.js"></script>
   <script>
     const toast = document.getElementById('toast');
-    let toastTimer, requestToken = '', lookupCache = { categories: [], brands: [], models: [] }, loadedAssets = [], selectedAssetIds = new Set(), selectedAssetRows = new Map(), currentAsset = null, currentEmployeeId = null, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', assetRowDensity = 'comfortable', visibleAssetColumns = Array(7).fill(true), labelSettingsKey = '', bwipLoadPromise = null;
+    let toastTimer, requestToken = '', lookupCache = { categories: [], brands: [], models: [] }, loadedAssets = [], selectedAssetIds = new Set(), selectedAssetRows = new Map(), currentAsset = null, currentEmployeeId = null, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, latestCalendarEvents = [], assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', assetRowDensity = 'comfortable', visibleAssetColumns = Array(7).fill(true), labelSettingsKey = '', bwipLoadPromise = null;
     const defaultLabelPrintSettings = Object.freeze({ barcode1d: 'code128', barcode2d: 'qrcode', widthMm: 86, heightMm: 48, offsetXmm: 0, offsetYmm: 0, paddingMm: 4, codeSizeMm: 25, qrTarget: 'tag', showName: true, showSerial: true, showModel: false, showLocation: false, showStatus: false });
     let labelPrintSettings = { ...defaultLabelPrintSettings };
     const pageSize = 12;
@@ -564,6 +568,28 @@
       }
       $('#dashboardStatusNote').textContent = total ? `Canlı şirket özeti · ${fmt.format(total)} varlık · Duruma tıklayarak listeyi filtreleyin.` : 'Henüz raporlanacak varlık yok.';
     }
+    function renderUpcomingEvents(events, total = events.length, unavailable = false) {
+      const host = $('#upcomingEvents'); host.replaceChildren();
+      if (unavailable || !events.length) {
+        const row = document.createElement('div'); row.className = 'attention-row';
+        const message = document.createElement('span'); message.textContent = unavailable ? 'Takvim verileri yüklenemedi; takvim sayfasından yeniden deneyin.' : 'Yakın dönemde planlanmış bakım veya lisans bitişi yok.'; row.append(message); host.append(row);
+      }
+      const today = dateInputValue(new Date());
+      for (const item of events) {
+        const row = document.createElement('div'); row.className = 'attention-row';
+        const copy = document.createElement('span'); copy.textContent = `${maintenanceDate(item.date)} · ${item.title}`;
+        const sub = document.createElement('small'); sub.className = 'muted'; sub.textContent = item.kind === 'maintenance' ? `Bakım planı · ${item.subtitle || ''}` : `Lisans bitişi · ${item.subtitle || 'Yayıncı belirtilmemiş'}`;
+        const open = document.createElement('button'); open.type = 'button'; open.className = 'text-link'; open.textContent = 'Aç';
+        open.addEventListener('click', () => item.kind === 'maintenance'
+          ? openAsset(item.assetId).then(() => selectAssetTab('maintenance')).catch(error => notify(error.message))
+          : openLicense(item.recordId).catch(error => notify(error.message)));
+        if (item.date < today) { const late = document.createElement('span'); late.className = 'pill warn'; late.textContent = 'Tarihi geçti'; row.append(late); }
+        const detail = document.createElement('span'); detail.append(copy, sub); row.append(detail, open); host.append(row);
+      }
+      $('#upcomingEventsNote').textContent = unavailable ? 'Takvim verileri şu anda alınamadı.' : total > events.length
+        ? `En yakın ${fmt.format(events.length)} etkinlik gösteriliyor · ${fmt.format(total)} toplam`
+        : 'Bakım planları ve lisans bitiş tarihleri · Son 30 gün ve gelecek 90 gün';
+    }
     async function loadDashboard(query = $('#globalSearch').value.trim(), requestedPage = assetPage) {
       const requestId = ++assetDashboardRequestId;
       assetPage = Math.max(1, requestedPage);
@@ -583,13 +609,14 @@
         results = await Promise.all([
           inventoryMode ? Promise.resolve(null) : api('/api/dashboard/summary'),
           api(`/api/assets?${filters}`),
-          inventoryMode ? Promise.resolve(null) : api('/api/activity?page=1&pageSize=5')
+          inventoryMode ? Promise.resolve(null) : api('/api/activity?page=1&pageSize=5'),
+          inventoryMode ? Promise.resolve(null) : api('/api/calendar?limit=5').catch(() => null)
         ]);
       } catch (error) {
         if (requestId !== assetDashboardRequestId) return;
         throw error;
       }
-      const [summary, assets, activity] = results;
+      const [summary, assets, activity, calendar] = results;
       if (requestId !== assetDashboardRequestId) return;
       if (summary) {
         $('#totalAssets').textContent = fmt.format(summary.totalAssets);
@@ -597,6 +624,7 @@
         $('#availableAssets').textContent = fmt.format(summary.availableAssets);
         $('#maintenanceAssets').textContent = fmt.format(summary.maintenanceAssets);
         renderDashboardStatus(summary);
+        renderUpcomingEvents(calendar?.items || [], calendar?.total || 0, !calendar);
       }
       loadedAssets = assets.items || []; assetTotal = assets.total || 0;
       $('#assetRows').replaceChildren();
@@ -1108,6 +1136,61 @@
     function dateInputValue(date) {
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     }
+    async function loadOperationalCalendar() {
+      const from = $('#calendarFrom').value, to = $('#calendarTo').value, kind = $('#calendarKind').value;
+      if (!from || !to || from > to) { notify('Takvim başlangıç ve bitiş tarihlerini kontrol edin.'); return; }
+      const spanDays = (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000;
+      if (spanDays > 365) { notify('Takvim aralığı en fazla 366 takvim günü olabilir.'); return; }
+      const params = new URLSearchParams({ from, to, limit: '500' }); if (kind) params.set('kind', kind);
+      const body = $('#calendarRows'); body.innerHTML = '<tr><td colspan="6">Takvim yükleniyor…</td></tr>';
+      $('#calendarExport').disabled = true;
+      let result;
+      try { result = await api(`/api/calendar?${params}`); }
+      catch (error) {
+        body.innerHTML = '<tr><td colspan="6">Takvim yüklenemedi. Yeniden deneyin.</td></tr>';
+        latestCalendarEvents = []; $('#calendarCount').textContent = 'Yüklenemedi'; throw error;
+      }
+      latestCalendarEvents = result.items || []; body.replaceChildren();
+      $('#calendarCount').textContent = `${fmt.format(result.total)} etkinlik`;
+      $('#calendarRangeNote').textContent = result.total > latestCalendarEvents.length
+        ? `İlk ${fmt.format(latestCalendarEvents.length)} kayıt gösteriliyor; tamamını görmek için tarih aralığını daraltın. E-posta hatırlatmaları henüz etkin değil.`
+        : 'Bakım planları ve lisans bitişleri listelenir. E-posta hatırlatmaları henüz etkin değildir.';
+      $('#calendarExport').disabled = !latestCalendarEvents.length || result.total > latestCalendarEvents.length;
+      if (!latestCalendarEvents.length) {
+        const row = document.createElement('tr'), cell = document.createElement('td'); cell.colSpan = 6; cell.textContent = 'Bu tarih aralığında bakım planı veya lisans bitişi yok.'; row.append(cell); body.append(row); return;
+      }
+      const today = dateInputValue(new Date());
+      for (const item of latestCalendarEvents) {
+        const row = document.createElement('tr'), date = document.createElement('td'), type = document.createElement('td'), title = document.createElement('td'), subtitle = document.createElement('td'), state = document.createElement('td'), actions = document.createElement('td');
+        date.textContent = maintenanceDate(item.date);
+        const kindPill = document.createElement('span'); kindPill.className = `pill ${item.kind === 'maintenance' ? 'warn' : 'blue'}`; kindPill.textContent = item.kind === 'maintenance' ? 'Bakım planı' : 'Lisans bitişi'; type.append(kindPill);
+        const open = document.createElement('button'); open.type = 'button'; open.className = 'row-open-link asset-name'; open.textContent = item.title;
+        open.addEventListener('click', () => item.kind === 'maintenance'
+          ? openAsset(item.assetId).then(() => selectAssetTab('maintenance')).catch(error => notify(error.message))
+          : openLicense(item.recordId).catch(error => notify(error.message)));
+        title.append(open); subtitle.textContent = item.subtitle || 'Ayrıntı belirtilmemiş';
+        if (item.date < today) { const pill = document.createElement('span'); pill.className = 'pill warn'; pill.textContent = item.kind === 'license' ? 'Süresi doldu' : 'Tarihi geçti'; state.append(pill); }
+        else if (item.kind === 'maintenance') { const pill = document.createElement('span'); pill.className = 'pill'; pill.textContent = 'Planlandı'; state.append(pill); }
+        else { const pill = document.createElement('span'); pill.className = `pill ${item.autoRenew ? 'blue' : 'warn'}`; pill.textContent = item.autoRenew ? 'Otomatik yenileme' : 'Yenileme gerekli'; state.append(pill); }
+        if (item.kind === 'maintenance' && canWriteAssets()) {
+          const startButton = document.createElement('button'); startButton.type = 'button'; startButton.className = 'btn small primary'; startButton.textContent = 'Başlat';
+          startButton.addEventListener('click', () => updateCompanyMaintenancePlan(item.assetId, item.recordId, 'start'));
+          const cancelButton = document.createElement('button'); cancelButton.type = 'button'; cancelButton.className = 'btn small'; cancelButton.style.marginLeft = '5px'; cancelButton.textContent = 'İptal';
+          cancelButton.addEventListener('click', () => updateCompanyMaintenancePlan(item.assetId, item.recordId, 'cancel'));
+          actions.append(startButton, cancelButton);
+        } else actions.textContent = '—';
+        row.append(date, type, title, subtitle, state, actions); body.append(row);
+      }
+    }
+    function exportOperationalCalendar() {
+      if (!latestCalendarEvents.length) return;
+      const rows = [['Tarih', 'Etkinlik türü', 'Kayıt', 'Ayrıntı', 'Durum']];
+      for (const item of latestCalendarEvents) rows.push([item.date, item.kind === 'maintenance' ? 'Bakım planı' : 'Lisans bitişi', item.title, item.subtitle || '', item.status]);
+      const csv = '\uFEFF' + rows.map(row => row.map(reportCsvCell).join(';')).join('\r\n');
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+      const link = document.createElement('a'); link.href = url; link.download = `envantertr-takvim-${$('#calendarFrom').value}-${$('#calendarTo').value}.csv`; link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000); notify('Takvim görünümü CSV olarak indirildi.');
+    }
     let maintenancePageNumber = 1;
     async function loadCompanyMaintenances(page = maintenancePageNumber) {
       maintenancePageNumber = page;
@@ -1171,7 +1254,8 @@
       if (action === 'cancel' && !confirm('Bu bakım planını iptal etmek istiyor musunuz?')) return;
       try {
         await api(`/api/assets/${assetId}/maintenances/${maintenanceId}/${action}`, { method: 'POST' });
-        await loadCompanyMaintenances(maintenancePageNumber);
+        if (!$('#maintenancePage').hidden) await loadCompanyMaintenances(maintenancePageNumber);
+        if (!$('#calendarPage').hidden) await loadOperationalCalendar();
         await loadDashboard($('#globalSearch').value.trim());
         notify(action === 'start' ? 'Planlı bakım başladı; varlık bakım durumuna alındı.' : 'Bakım planı iptal edildi.');
       } catch (error) { notify(error.message); }
@@ -1462,12 +1546,12 @@
       if (['Çalışan kayıtları','Departmanlar'].includes(page) && !canReadPeople()) { notify('Bu hesabın çalışan ve departman kayıtlarını görüntüleme yetkisi yok.'); return; }
       if (page === 'Lokasyonlar' && !canReadAssets()) { notify('Bu hesabın varlık konumlarını görüntüleme yetkisi yok.'); return; }
       if (page === 'Uygulama kullanıcıları' && !canReadAudit()) { notify('Şirket kullanıcılarını ve rollerini yalnızca şirket sahibi ve yöneticileri yönetebilir.'); return; }
-      if (['Genel Bakış','Varlıklar','Hareket geçmişi','Hazır raporlar','Bakım kayıtları'].includes(page) && !canReadAssets()) { notify('Bu hesabın varlık kayıtlarını görüntüleme yetkisi yok.'); return; }
+      if (['Genel Bakış','Varlıklar','Hareket geçmişi','Hazır raporlar','Bakım kayıtları','Bakım planları','Takvim'].includes(page) && !canReadAssets()) { notify('Bu hesabın varlık kayıtlarını görüntüleme yetkisi yok.'); return; }
       if (page === 'Denetim kayıtları' && !canReadAudit()) { notify('Denetim kayıtlarını yalnızca şirket sahibi ve yöneticileri görüntüleyebilir.'); return; }
       document.querySelectorAll('.nav-item,.sub-item').forEach(item => item.classList.remove('active','selected'));
       if (button.classList.contains('nav-item')) button.classList.add('active'); else button.classList.add('selected');
       setMobileSidebarOpen(false);
-      for (const id of ['overview','employeesPage','directoryPage','moduleStatusPage','accessoriesPage','consumablesPage','licensesPage','licenseAssignmentsPage','componentsPage','inventoryMovementsPage','labelSettingsPage','maintenancePage','reportPage','membersPage','activityPage','auditPage','dataToolsPage','companySettingsPage','catalogPage']) $(`#${id}`).hidden = true;
+      for (const id of ['overview','employeesPage','directoryPage','moduleStatusPage','accessoriesPage','consumablesPage','licensesPage','licenseAssignmentsPage','componentsPage','inventoryMovementsPage','labelSettingsPage','maintenancePage','calendarPage','reportPage','membersPage','activityPage','auditPage','dataToolsPage','companySettingsPage','catalogPage']) $(`#${id}`).hidden = true;
       if (page === 'Aksesuarlar') { if (!canReadAssets()) { notify('Aksesuar stoklarını görüntüleme yetkiniz bulunmuyor.'); return; } $('#accessoriesPage').hidden = false; $('#pageTitle').textContent = page; $('#newAccessoryButton').hidden = !canWriteAssets(); loadAccessories(1).catch(error => notify(error.message)); }
       else if (page === 'Sarf malzemeleri') { if (!canReadAssets()) { notify('Sarf stoklarını görüntüleme yetkiniz bulunmuyor.'); return; } $('#consumablesPage').hidden = false; $('#pageTitle').textContent = page; loadConsumables(1).catch(error => notify(error.message)); }
       else if (page === 'Yazılım lisansları') { if (!canReadAssets()) { notify('Lisans kayıtlarını görüntüleme yetkiniz bulunmuyor.'); return; } $('#licensesPage').hidden = false; $('#pageTitle').textContent = page; loadLicenses(1).catch(error => notify(error.message)); }
@@ -1480,6 +1564,18 @@
       else if (page === 'Uygulama kullanıcıları') { $('#membersPage').hidden = false; $('#pageTitle').textContent = page; loadMembers().catch(error => notify(error.message)); }
       else if (page === 'Hareket geçmişi') { $('#activityPage').hidden = false; $('#pageTitle').textContent = page; loadActivity(1).catch(error => notify(error.message)); }
       else if (page === 'Bakım kayıtları') { $('#maintenancePage').hidden = false; $('#pageTitle').textContent = page; loadCompanyMaintenances(1).catch(error => notify(error.message)); }
+      else if (page === 'Takvim' || page === 'Bakım planları') {
+        $('#calendarPage').hidden = false;
+        const plansOnly = page === 'Bakım planları';
+        $('#pageTitle').textContent = plansOnly ? 'Bakım planları' : 'Şirket takvimi';
+        $('#calendarPageTitle').textContent = $('#pageTitle').textContent;
+        $('#calendarDescription').textContent = plansOnly ? 'İleri tarihli bakım planlarını görüntüleyin, başlatın veya iptal edin.' : 'Bakım planlarını ve lisans bitiş tarihlerini tek listede takip edin.';
+        $('#calendarKind').value = plansOnly ? 'maintenance' : '';
+        const today = new Date();
+        if (!$('#calendarFrom').value) $('#calendarFrom').value = dateInputValue(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30, 12));
+        if (!$('#calendarTo').value) $('#calendarTo').value = dateInputValue(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 90, 12));
+        loadOperationalCalendar().catch(error => notify(error.message));
+      }
       else if (page === 'Denetim kayıtları') { $('#auditPage').hidden = false; $('#pageTitle').textContent = page; loadAudit(1).catch(error => notify(error.message)); }
       else if (page === 'Hazır raporlar') { $('#reportPage').hidden = false; $('#pageTitle').textContent = 'Envanter raporları'; loadAssetReports().catch(error => notify(error.message)); loadMaintenanceReport().catch(error => notify(error.message)); }
       else if (['Kategoriler','Markalar','Varlık modelleri'].includes(page)) { if (!canReadAssets()) { notify('Bu hesabın envanter tanımlarını görüntüleme yetkisi yok.'); return; } catalogKind = page === 'Kategoriler' ? 'categories' : page === 'Markalar' ? 'brands' : 'models'; $('#catalogPage').hidden = false; $('#pageTitle').textContent = page; $('#catalogTitle').textContent = page; $('#catalogDescription').textContent = `${page} şirket envanterinde kullanılacak. Kullanılan tanımlar silinemez; yeniden adlandırma mevcut ilişkilere dokunmaz.`; $('#catalogBrandLabel').hidden = catalogKind !== 'models'; $('#catalogCreateForm').hidden = !canWriteAssets(); loadCatalog().catch(error => notify(error.message)); }
@@ -1905,6 +2001,9 @@
     $('#maintenanceSearch').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); loadCompanyMaintenances(1).catch(error => notify(error.message)); } });
     $('#maintenancePrev').addEventListener('click', () => loadCompanyMaintenances(Math.max(1, maintenancePageNumber - 1)).catch(error => notify(error.message)));
     $('#maintenanceNext').addEventListener('click', () => loadCompanyMaintenances(maintenancePageNumber + 1).catch(error => notify(error.message)));
+    $('#calendarRefresh').addEventListener('click', () => loadOperationalCalendar().then(() => notify('Takvim güncellendi.')).catch(error => notify(error.message)));
+    $('#applyCalendarFilters').addEventListener('click', () => loadOperationalCalendar().catch(error => notify(error.message)));
+    $('#calendarExport').addEventListener('click', exportOperationalCalendar);
     $('#auditTarget').addEventListener('change', () => loadAudit(1).catch(error => notify(error.message)));
     $('#auditSearch').addEventListener('input', () => { clearTimeout(auditQueryTimer); auditQueryTimer = setTimeout(() => loadAudit(1).catch(error => notify(error.message)), 250); });
     $('#assetListSearch').addEventListener('input', event => { clearTimeout(assetQueryTimer); assetQueryTimer = setTimeout(() => { $('#globalSearch').value = event.target.value; loadDashboard(event.target.value.trim(), 1).catch(error => notify(error.message)); }, 250); });

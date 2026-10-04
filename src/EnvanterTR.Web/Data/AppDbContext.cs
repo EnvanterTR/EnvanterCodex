@@ -376,6 +376,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 
         modelBuilder.Entity<AssetMaintenance>().HasIndex(x => new { x.CompanyId, x.AssetId, x.CreatedAt });
         modelBuilder.Entity<AssetMaintenance>().HasIndex(x => new { x.CompanyId, x.AssetId, x.Status });
+        modelBuilder.Entity<AssetMaintenance>().HasIndex(x => new { x.CompanyId, x.Status, x.PlannedOn });
         modelBuilder.Entity<AssetMaintenance>().HasIndex(x => new { x.CompanyId, x.AssetId })
             .IsUnique().HasFilter("\"Status\" IN ('InProgress', 'Scheduled')");
         modelBuilder.Entity<AssetMaintenance>().Property(x => x.MaintenanceType).HasMaxLength(120).IsRequired();
