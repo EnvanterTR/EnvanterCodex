@@ -22,6 +22,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<SoftwareLicense> SoftwareLicenses => Set<SoftwareLicense>();
     public DbSet<SoftwareLicenseAssignment> SoftwareLicenseAssignments => Set<SoftwareLicenseAssignment>();
     public DbSet<SoftwareLicenseEvent> SoftwareLicenseEvents => Set<SoftwareLicenseEvent>();
+    public DbSet<InventoryComponent> InventoryComponents => Set<InventoryComponent>();
+    public DbSet<ComponentAllocation> ComponentAllocations => Set<ComponentAllocation>();
+    public DbSet<ComponentMovement> ComponentMovements => Set<ComponentMovement>();
     public DbSet<CompanyMembership> CompanyMemberships => Set<CompanyMembership>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
@@ -123,6 +126,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Consumable>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<SoftwareLicense>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<SoftwareLicenseAssignment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<InventoryComponent>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<ComponentAllocation>().HasAlternateKey(x => new { x.CompanyId, x.Id });
 
         modelBuilder.Entity<Employee>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AssetCategory>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
@@ -211,6 +216,55 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasForeignKey(x => new { x.CompanyId, x.EmployeeId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<SoftwareLicenseEvent>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<InventoryComponent>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<InventoryComponent>().Property(x => x.Name).HasMaxLength(200).IsRequired();
+        modelBuilder.Entity<InventoryComponent>().Property(x => x.Category).HasMaxLength(120);
+        modelBuilder.Entity<InventoryComponent>().Property(x => x.ModelNumber).HasMaxLength(120);
+        modelBuilder.Entity<InventoryComponent>().Property(x => x.ItemNumber).HasMaxLength(120);
+        modelBuilder.Entity<InventoryComponent>().Property(x => x.SerialNumber).HasMaxLength(160);
+        modelBuilder.Entity<InventoryComponent>().Property(x => x.Supplier).HasMaxLength(200);
+        modelBuilder.Entity<InventoryComponent>().Property(x => x.Location).HasMaxLength(160);
+        modelBuilder.Entity<InventoryComponent>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
+        modelBuilder.Entity<InventoryComponent>().Property(x => x.UnitCost).HasPrecision(18, 2);
+        modelBuilder.Entity<InventoryComponent>().Property(x => x.Notes).HasMaxLength(2000);
+        modelBuilder.Entity<InventoryComponent>().HasIndex(x => new { x.CompanyId, x.Name });
+        modelBuilder.Entity<InventoryComponent>().HasIndex(x => new { x.CompanyId, x.SerialNumber });
+        modelBuilder.Entity<InventoryComponent>().ToTable("InventoryComponents", table =>
+        {
+            table.HasCheckConstraint("CK_InventoryComponents_Quantities", "\"MinimumQuantity\" >= 0 AND \"TotalQuantity\" >= 0");
+            table.HasCheckConstraint("CK_InventoryComponents_Cost", "\"UnitCost\" IS NULL OR \"UnitCost\" >= 0");
+            table.HasCheckConstraint("CK_InventoryComponents_Currency", "char_length(\"Currency\") = 3");
+        });
+        modelBuilder.Entity<ComponentAllocation>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ComponentAllocation>().Property(x => x.Notes).HasMaxLength(2000);
+        modelBuilder.Entity<ComponentAllocation>().HasIndex(x => new { x.CompanyId, x.ComponentId, x.AssetId, x.LastRemovedAt });
+        modelBuilder.Entity<ComponentAllocation>().ToTable("ComponentAllocations", table =>
+        {
+            table.HasCheckConstraint("CK_ComponentAllocations_Quantities", "\"Quantity\" > 0 AND \"RemovedQuantity\" BETWEEN 0 AND \"Quantity\"");
+            table.HasCheckConstraint("CK_ComponentAllocations_RemovedAt", "\"LastRemovedAt\" IS NULL OR \"LastRemovedAt\" >= \"AllocatedAt\"");
+        });
+        modelBuilder.Entity<ComponentAllocation>().HasOne<InventoryComponent>().WithMany().HasForeignKey(x => new { x.CompanyId, x.ComponentId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ComponentAllocation>().HasOne<Asset>().WithMany().HasForeignKey(x => new { x.CompanyId, x.AssetId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ComponentAllocation>().HasOne<EnvanterUser>().WithMany().HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<ComponentMovement>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ComponentMovement>().Property(x => x.MovementType).HasMaxLength(24).IsRequired();
+        modelBuilder.Entity<ComponentMovement>().Property(x => x.Notes).HasMaxLength(2000);
+        modelBuilder.Entity<ComponentMovement>().HasIndex(x => new { x.CompanyId, x.ComponentId, x.OccurredAt });
+        modelBuilder.Entity<ComponentMovement>().ToTable("ComponentMovements", table =>
+        {
+            table.HasCheckConstraint("CK_ComponentMovements_Quantity", "\"Quantity\" > 0");
+            table.HasCheckConstraint("CK_ComponentMovements_Type", "\"MovementType\" IN ('Received', 'Adjustment', 'Checkout', 'Checkin')");
+        });
+        modelBuilder.Entity<ComponentMovement>().HasOne<InventoryComponent>().WithMany().HasForeignKey(x => new { x.CompanyId, x.ComponentId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ComponentMovement>().HasOne<ComponentAllocation>().WithMany().HasForeignKey(x => new { x.CompanyId, x.AllocationId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<ComponentMovement>().HasOne<Asset>().WithMany().HasForeignKey(x => new { x.CompanyId, x.AssetId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<ComponentMovement>().HasOne<EnvanterUser>().WithMany().HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<AssetEvent>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Employee>().HasIndex(x => new { x.CompanyId, x.EmployeeNumber }).IsUnique();
