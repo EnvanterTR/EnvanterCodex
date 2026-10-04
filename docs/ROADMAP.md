@@ -26,7 +26,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 
 - Kimlik doğrulamalı iş akışlarının kabul doğrulaması; şirketler arası veri erişimi, izinler, eşzamanlı değişiklikler ve parola yenileme için güvenlik incelemesi.
 - Veritabanı ve şirket medyası için otomatik, şifreli yedek; geri yükleme önizlemesi, güvenli geri alma ve düzenli geri yükleme tatbikatı. Bugünkü elle yerel yedek betikleri bu gereksinimi karşılamaz.
-- Özel `EnvanterTR/EnvanterCodex` deposu kaynak kodun yayımlama hedefidir; yerel commit'ler GitHub Desktop üzerinden uzak `main` dalıyla eşitlenir. Yayımdan önce dal ve çalışma ağacı durumu kontrol edilmelidir.
+- Özel `EnvanterTR/EnvanterCodex` deposu kaynak kodun yayımlama hedefidir; doğrulanan yerel değişiklikler `origin/main` dalına gönderilir. Yayımdan önce dal ve çalışma ağacı durumu kontrol edilmelidir.
 - Lisans ve üçüncü taraf bağımlılık envanteri yayıma çıkmadan önce gözden geçirilmeli; ürün adı ve görünümü, lisans/attribution yükümlülüklerini gizlemek için kullanılmamalı.
 
 ### P1 — Kurum içi kurulum ve ağ erişimi
@@ -38,7 +38,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 
 ### P1 — Envanter iş akışlarının kapsamı
 
-- Varlık fotoğrafı ve ek dosyalar; telefon kamerasıyla QR/barkod okutma, seçili varlıkları toplu etiketleme ve şirketler arasında eşitlenen kalıcı yazdırma tercihleri. Tek varlık için dokuz yaygın barkod türü ve ölçü/hizalama/alan ayarlı kart yazdırma eklendi; tercihler şimdilik yerel tarayıcıda tutulur.
+- Varlık fotoğrafı ve ek dosyalar; telefon kamerasıyla QR/barkod okutma ve yazıcı/kağıt şablon kataloğu. Tek varlık ve en fazla 100 seçili varlık için dokuz yaygın barkod türü, ölçü/hizalama/alan ayarlı kart yazdırma eklendi; etiket ayarları şirket düzeyinde saklanıp üyeler arasında eşitlenir, yalnızca tablo görünümü tercihleri tarayıcıda kalır.
 - Aksesuar modülünde sipariş/dosya ilişkileri, katalog bağlantıları, sütun/çıktı/toplu işlem ve isteğe bağlı kullanıcı akışları; ayrıca lisans, bileşen, sarf malzemesi, kit, transfer, rezervasyon, bakım, denetim ve garanti kayıtları.
 - Departman ve konum için yapılandırılmış kataloglar ve ad birleştirme/düzeltme akışı. Çalışan departmanı ve varlık konumu bugün serbest metindir; mevcut ekranlar yalnızca özetler ve filtreler.
 - CSV varlık biçimi için salt okunur sütun/çakışma önizlemesi ve mevcut katalog kayıtlarını kullanan sınırlı, atomik kayıt ekleme eklendi; Excel içe aktarma, alan eşleme, katalog kaydı oluşturma ve güvenli JSON geri yükleme akışı tamamlanmalı.

@@ -66,9 +66,11 @@ try {
     $dumpContainerPath = "/tmp/$dumpName"
     $dumpInContainer = $true
     Invoke-Docker ($composePrefix + @('exec', '-T', 'database', 'sh', '-c', "pg_dump --no-owner --no-acl --format=custom --username=`"`$POSTGRES_USER`" `"`$POSTGRES_DB`" --file='$dumpContainerPath'"))
+    & docker exec $databaseContainer pg_restore --list $dumpContainerPath *> $null
+    if ($LASTEXITCODE -ne 0) { throw 'PostgreSQL yedeği okunamadı; kopya tamamlanmış sayılmadı.' }
     Invoke-Docker @('cp', "${databaseContainer}:$dumpContainerPath", $dumpPath)
 
-    Invoke-Docker @('create', '--name', $helperName, '--volume', "${mediaVolume}:/source:ro", 'postgres:17-alpine', 'sh', '-c', 'tar -czf /tmp/company-media.tar.gz -C /source .')
+    Invoke-Docker @('create', '--name', $helperName, '--volume', "${mediaVolume}:/source:ro", 'postgres:17-alpine', 'sh', '-c', 'tar -czf /tmp/company-media.tar.gz -C /source . && tar -tzf /tmp/company-media.tar.gz >/dev/null')
     $helperCreated = $true
     Invoke-Docker @('start', '-a', $helperName)
     Invoke-Docker @('cp', "${helperName}:/tmp/company-media.tar.gz", $mediaPath)
@@ -84,6 +86,7 @@ try {
             databaseDump = (Get-FileHash -LiteralPath $dumpPath -Algorithm SHA256).Hash.ToLowerInvariant()
             companyMediaArchive = (Get-FileHash -LiteralPath $mediaPath -Algorithm SHA256).Hash.ToLowerInvariant()
         }
+        verification = [ordered]@{ databaseDumpReadable = $true; companyMediaArchiveReadable = $true }
         encryption = 'none'
         restoreSupportedByApplication = $false
     }

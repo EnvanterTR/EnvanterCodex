@@ -57,10 +57,14 @@ fi
 DUMP_CONTAINER_PATH="/tmp/$DUMP_NAME"
 DUMP_IN_CONTAINER=1
 "${COMPOSE[@]}" exec -T database sh -c "pg_dump --no-owner --no-acl --format=custom --username=\"\$POSTGRES_USER\" \"\$POSTGRES_DB\" --file='$DUMP_CONTAINER_PATH'"
+if ! docker exec "$DB_CONTAINER" pg_restore --list "$DUMP_CONTAINER_PATH" >/dev/null; then
+  echo 'PostgreSQL yedeği okunamadı; kopya tamamlanmış sayılmadı.' >&2
+  exit 1
+fi
 docker cp "$DB_CONTAINER:$DUMP_CONTAINER_PATH" "$BACKUP_DIR/$DUMP_NAME" >/dev/null
 
 docker create --name "$HELPER_NAME" --volume "$MEDIA_VOLUME:/source:ro" postgres:17-alpine \
-  sh -c 'tar -czf /tmp/company-media.tar.gz -C /source .'
+  sh -c 'tar -czf /tmp/company-media.tar.gz -C /source . && tar -tzf /tmp/company-media.tar.gz >/dev/null'
 HELPER_CREATED=1
 docker start -a "$HELPER_NAME"
 docker cp "$HELPER_NAME:/tmp/company-media.tar.gz" "$BACKUP_DIR/company-media.tar.gz" >/dev/null
@@ -79,6 +83,10 @@ cat > "$BACKUP_DIR/manifest.json" <<EOF
   "sha256": {
     "databaseDump": "$DB_SHA",
     "companyMediaArchive": "$MEDIA_SHA"
+  },
+  "verification": {
+    "databaseDumpReadable": true,
+    "companyMediaArchiveReadable": true
   },
   "encryption": "none",
   "restoreSupportedByApplication": false
