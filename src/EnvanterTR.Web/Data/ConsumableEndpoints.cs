@@ -136,7 +136,9 @@ public static class ConsumableEndpoints
             if (!Tenant(user, out var companyId)) return Results.Forbid();
             if (request.Quantity is 0 or < -100000 or > 100000) return Results.ValidationProblem(new Dictionary<string, string[]> { ["quantity"] = ["Stok değişimi sıfır dışında, -100.000 ile 100.000 arasında olmalı."] });
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
-            var item = await db.Consumables.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
+            var item = await db.Consumables.FromSqlInterpolated(
+                    $"SELECT * FROM \"Consumables\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+                .SingleOrDefaultAsync(ct);
             if (item is null) return Results.NotFound();
             var consumed = await db.ConsumableMovements.Where(m => m.CompanyId == companyId && m.ConsumableId == id && m.MovementType == "Checkout").SumAsync(m => (int?)m.Quantity, ct) ?? 0;
             var newTotal = item.TotalQuantity + request.Quantity;
@@ -153,7 +155,9 @@ public static class ConsumableEndpoints
             if (!Tenant(user, out var companyId)) return Results.Forbid();
             if (request.Quantity is < 1 or > 100000) return Results.ValidationProblem(new Dictionary<string, string[]> { ["quantity"] = ["Tüketim adedi 1 ile 100.000 arasında olmalı."] });
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
-            var item = await db.Consumables.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
+            var item = await db.Consumables.FromSqlInterpolated(
+                    $"SELECT * FROM \"Consumables\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+                .SingleOrDefaultAsync(ct);
             if (item is null) return Results.NotFound();
             if (!await db.Employees.AnyAsync(e => e.CompanyId == companyId && e.Id == request.EmployeeId && e.IsActive, ct))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeId"] = ["Aktif çalışan seçilmelidir."] });
