@@ -391,7 +391,9 @@ public static class AssetEndpoints
             else targetErrors["targetType"] = ["Teslim hedefi çalışan, varlık veya konum olmalı."];
             if (targetErrors.Count > 0) return Results.ValidationProblem(targetErrors);
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
-            var item = await db.Accessories.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            var item = await db.Accessories.FromSqlInterpolated(
+                    $"SELECT * FROM \"Accessories\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+                .SingleOrDefaultAsync(cancellationToken);
             if (item is null) return Results.NotFound();
             var outstanding = await db.AccessoryAssignments.Where(x => x.CompanyId == companyId && x.AccessoryId == id)
                 .SumAsync(x => (int?)(x.Quantity - x.ReturnedQuantity), cancellationToken) ?? 0;
@@ -611,12 +613,15 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["quantity"] = ["Adet 1 ile 100.000 arasında olmalı; not en fazla 2.000 karakter olabilir."] });
             if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            var item = await db.Accessories.FromSqlInterpolated(
+                    $"SELECT * FROM \"Accessories\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+                .SingleOrDefaultAsync(cancellationToken);
+            if (item is null) return Results.NotFound();
             var assignment = await db.AccessoryAssignments.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.AccessoryId == id && x.Id == request.AssignmentId, cancellationToken);
             if (assignment is null) return Results.NotFound();
             var outstanding = assignment.Quantity - assignment.ReturnedQuantity;
             if (request.Quantity > outstanding) return Results.Conflict(new { message = $"Bu zimmette yalnızca {outstanding} adet iade alınabilir." });
             assignment.ReturnedQuantity += request.Quantity; assignment.LastReturnedAt = DateTimeOffset.UtcNow;
-            var item = await db.Accessories.SingleAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
             item.UpdatedAt = DateTimeOffset.UtcNow;
             db.AccessoryMovements.Add(new AccessoryMovement
             {
