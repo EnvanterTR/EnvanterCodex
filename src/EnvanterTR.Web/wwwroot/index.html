@@ -1816,15 +1816,51 @@
       saveAccessoryColumnPreferences();
       notify('Varsayılan aksesuar sütunları gösteriliyor.');
     }
+    const selectedAccessoryAssignmentIds = new Set();
+    let accessoryAssignmentToolbar;
+    function updateAccessoryCheckinSelection() {
+      const selectedCount = selectedAccessoryAssignmentIds.size;
+      if (!accessoryAssignmentToolbar) return;
+      accessoryAssignmentToolbar.hidden = !canWriteAssets();
+      accessoryAssignmentToolbar.querySelector('button').disabled = !$('#accessoryAssignments .accessory-checkin-select');
+      $('#bulkCheckinAccessories').disabled = selectedCount < 1 || selectedCount > 100;
+      $('#clearAccessoryAssignmentSelection').hidden = selectedCount === 0;
+      $('#selectedAccessoryAssignmentCount').textContent = selectedCount ? `${fmt.format(selectedCount)} açık zimmet seçildi (en fazla 100)` : 'Her iade adedini satırda düzenleyip birden çok zimmeti seçebilirsiniz.';
+    }
     async function openAccessory(id) {
+      selectedAccessoryAssignmentIds.clear();
       const result = await api(`/api/accessories/${id}`); currentAccessory = result.item;
       $('#accessoryDetailTitle').textContent = currentAccessory.name;
       const fields = [['Kategori', currentAccessory.category], ['Model numarası', currentAccessory.modelNumber], ['Ürün numarası', currentAccessory.itemNumber], ['Tedarikçi', currentAccessory.supplier], ['Konum', currentAccessory.location], ['Toplam stok', fmt.format(currentAccessory.totalQuantity)], ['Zimmetli', fmt.format(currentAccessory.checkedOut)], ['Kullanılabilir', fmt.format(currentAccessory.totalQuantity - currentAccessory.checkedOut)], ['Minimum miktar', fmt.format(currentAccessory.minimumQuantity)], ['Birim maliyeti', currentAccessory.unitCost == null ? '—' : `${fmt.format(currentAccessory.unitCost)} ${currentAccessory.currency}`], ['Toplam stok maliyeti', currentAccessory.unitCost == null ? '—' : `${fmt.format(currentAccessory.unitCost * currentAccessory.totalQuantity)} ${currentAccessory.currency}`], ['Alış tarihi', currentAccessory.purchaseDate || '—'], ['Çalışan isteğine açık', currentAccessory.isRequestable ? 'Evet' : 'Hayır'], ['Notlar', currentAccessory.notes || '—']];
       $('#accessoryDetailFields').innerHTML = fields.map(([label, value]) => `<div class="detail-field"><small>${escapeHtml(label)}</small><strong>${escapeHtml(value ?? '—')}</strong></div>`).join('');
       $('#accessoryDetailActions').innerHTML = `<button class="btn small" id="editAccessoryButton" type="button" ${canWriteAssets() ? '' : 'hidden'}>Düzenle</button><button class="btn small" id="accessoryStockButton" type="button" ${canWriteAssets() ? '' : 'hidden'}>Stok ekle / düzelt</button><button class="btn primary small" id="accessoryCheckoutButton" type="button" ${canWriteAssets() && currentAccessory.totalQuantity > currentAccessory.checkedOut ? '' : 'hidden'}>Çalışana teslim et</button>`;
       const assignments = $('#accessoryAssignments'); assignments.replaceChildren();
+      if (!accessoryAssignmentToolbar) {
+        accessoryAssignmentToolbar = document.createElement('div'); accessoryAssignmentToolbar.id = 'accessoryAssignmentBulkToolbar'; accessoryAssignmentToolbar.className = 'table-tools';
+        const selectButton = document.createElement('button'); selectButton.type = 'button'; selectButton.className = 'btn small'; selectButton.textContent = 'En fazla 100 açık zimmeti seç'; selectButton.addEventListener('click', () => {
+          for (const checkbox of assignments.querySelectorAll('.accessory-checkin-select')) {
+            if (selectedAccessoryAssignmentIds.size >= 100) break;
+            selectedAccessoryAssignmentIds.add(checkbox.dataset.assignmentId); checkbox.checked = true;
+          }
+          updateAccessoryCheckinSelection();
+        }); accessoryAssignmentToolbar.append(selectButton);
+        const clearButton = document.createElement('button'); clearButton.id = 'clearAccessoryAssignmentSelection'; clearButton.type = 'button'; clearButton.className = 'btn small'; clearButton.textContent = 'Seçimi temizle'; clearButton.addEventListener('click', () => { selectedAccessoryAssignmentIds.clear(); assignments.querySelectorAll('.accessory-checkin-select').forEach(input => { input.checked = false; }); updateAccessoryCheckinSelection(); }); accessoryAssignmentToolbar.append(clearButton);
+        const bulkButton = document.createElement('button'); bulkButton.id = 'bulkCheckinAccessories'; bulkButton.type = 'button'; bulkButton.className = 'btn primary small'; bulkButton.textContent = 'Seçilenleri iade al'; bulkButton.addEventListener('click', async () => {
+          const selected = [...assignments.querySelectorAll('.accessory-checkin-select:checked')]; if (!selected.length || selected.length > 100) return;
+          const items = selected.map(input => ({ assignmentId: input.dataset.assignmentId, quantity: Number(input.closest('tr').querySelector('.accessory-checkin-quantity').value) }));
+          const invalid = selected.find(input => { const quantity = Number(input.closest('tr').querySelector('.accessory-checkin-quantity').value), remaining = Number(input.closest('tr').querySelector('.accessory-checkin-quantity').max); return !Number.isSafeInteger(quantity) || quantity < 1 || quantity > remaining; });
+          if (invalid) { const quantityInput = invalid.closest('tr').querySelector('.accessory-checkin-quantity'); quantityInput.focus(); notify('Her iade adedi 1 ile kalan miktar arasında tam sayı olmalı.'); return; }
+          if (!confirm(`${items.length} açık zimmet için seçilen adetler stoğa iade edilsin mi?`)) return;
+          const button = $('#bulkCheckinAccessories'); button.disabled = true;
+          try { const result = await api(`/api/accessories/${currentAccessory.id}/bulk-checkin`, { method: 'POST', body: JSON.stringify({ items }) }); selectedAccessoryAssignmentIds.clear(); await openAccessory(currentAccessory.id); await loadAccessories(accessoryPage); notify(`${fmt.format(result.returnedQuantity)} adet, ${fmt.format(result.returnedAssignments)} açık zimmetten atomik olarak iade alındı.`); }
+          catch (error) { notify(error.message); }
+          finally { updateAccessoryCheckinSelection(); }
+        }); accessoryAssignmentToolbar.append(bulkButton);
+        const selectionCount = document.createElement('small'); selectionCount.id = 'selectedAccessoryAssignmentCount'; selectionCount.setAttribute('role', 'status'); selectionCount.setAttribute('aria-live', 'polite'); accessoryAssignmentToolbar.append(selectionCount);
+        assignments.closest('.table-wrap').before(accessoryAssignmentToolbar);
+      }
       for (const assignment of result.assignments) {
-        const row = document.createElement('tr'); row.innerHTML = `<td>${escapeHtml(assignment.targetName || 'Teslim hedefi bulunamadı')}<span class="asset-tag">${escapeHtml(assignment.targetType)}</span></td><td>${fmt.format(assignment.quantity)}</td><td>${fmt.format(assignment.returnedQuantity)}</td><td>${fmt.format(assignment.remainingQuantity)}</td><td><button class="btn small accessory-checkin" type="button" data-assignment-id="${assignment.id}" ${canWriteAssets() ? '' : 'disabled'}>İade al</button></td>`; assignments.append(row);
+        const row = document.createElement('tr'); row.innerHTML = `<td>${escapeHtml(assignment.targetName || 'Teslim hedefi bulunamadı')}<span class="asset-tag">${escapeHtml(assignment.targetType)}</span></td><td>${fmt.format(assignment.quantity)}</td><td>${fmt.format(assignment.returnedQuantity)}</td><td>${fmt.format(assignment.remainingQuantity)}</td><td><input type="checkbox" class="accessory-checkin-select" data-assignment-id="${assignment.id}" aria-label="${escapeHtml(assignment.targetName || 'Açık zimmet')} iadesini seç" ${canWriteAssets() ? '' : 'disabled'}><input type="number" class="accessory-checkin-quantity" min="1" max="${assignment.remainingQuantity}" value="${assignment.remainingQuantity}" aria-label="${escapeHtml(assignment.targetName || 'Açık zimmet')} için toplu iade adedi" title="Yalnızca seçili toplu iadede kullanılır" style="width:74px;margin:0 6px" ${canWriteAssets() ? '' : 'disabled'}><button class="btn small accessory-checkin" type="button" data-assignment-id="${assignment.id}" ${canWriteAssets() ? '' : 'disabled'}>İade al</button></td>`; assignments.append(row);
       }
       if (!result.assignments.length) assignments.innerHTML = '<tr><td colspan="5">Açık zimmet bulunmuyor.</td></tr>';
       const movementLabels = { Received: 'Stok girişi', Adjustment: 'Stok düzeltmesi', Checkout: 'Çalışana teslim', Checkin: 'İade alındı' };
@@ -1833,7 +1869,9 @@
       $('#editAccessoryButton')?.addEventListener('click', editAccessory);
       $('#accessoryStockButton')?.addEventListener('click', () => { $('#accessoryStockContext').textContent = `${currentAccessory.name} · mevcut toplam ${fmt.format(currentAccessory.totalQuantity)} adet`; $('#accessoryStockForm').reset(); $('#accessoryStockDialog').showModal(); });
       $('#accessoryCheckoutButton')?.addEventListener('click', openAccessoryCheckout);
+      assignments.onchange = event => { const checkbox = event.target.closest('.accessory-checkin-select'); if (!checkbox) return; if (checkbox.checked && selectedAccessoryAssignmentIds.size >= 100) { checkbox.checked = false; notify('Toplu iadede en fazla 100 açık zimmet seçilebilir.'); return; } if (checkbox.checked) selectedAccessoryAssignmentIds.add(checkbox.dataset.assignmentId); else selectedAccessoryAssignmentIds.delete(checkbox.dataset.assignmentId); updateAccessoryCheckinSelection(); };
       assignments.querySelectorAll('.accessory-checkin').forEach(button => button.addEventListener('click', () => checkinAccessory(button.dataset.assignmentId)));
+      updateAccessoryCheckinSelection();
     }
     function openNewAccessory() {
       if (!canWriteAssets()) return notify('Aksesuar kaydı eklemek için yazma yetkiniz bulunmuyor.');
