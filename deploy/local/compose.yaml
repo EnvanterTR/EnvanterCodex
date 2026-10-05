@@ -27,6 +27,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_HTTP_PORTS: 8080
+      DataProtection__KeysPath: /var/lib/envantertr/data-protection-keys
       ConnectionStrings__EnvanterTR: "Host=database;Port=5432;Database=envantertr;Username=envantertr;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/local/.env}"
       Setup__BootstrapToken: ${SETUP_BOOTSTRAP_TOKEN:-}
       Setup__PlatformBootstrapToken: ${SETUP_PLATFORM_BOOTSTRAP_TOKEN:-}
@@ -35,6 +36,7 @@ services:
         condition: service_healthy
     volumes:
       - envantertr_company_media:/var/lib/envantertr/company-media
+      - envantertr_data_protection_keys:/var/lib/envantertr/data-protection-keys
     ports:
       - "127.0.0.1:${APP_PORT:-8080}:8080"
     networks:
@@ -59,3 +61,4 @@ networks:
 volumes:
   envantertr_database:
   envantertr_company_media:
+  envantertr_data_protection_keys:

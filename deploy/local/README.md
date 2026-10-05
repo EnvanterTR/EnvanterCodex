@@ -1,6 +1,6 @@
 # Yerel geliştirme kurulumu (Windows + Docker Desktop)
 
-Bu paket geliştirici önizlemesi içindir; müşteriye dağıtılacak son Windows kurulum programı değildir. Uygulama `localhost` ile sınırlıdır. PostgreSQL portu Windows ana makinesine yayımlanmaz. Şirket veritabanı Docker'ın adlandırılmış `envantertr_database` volume'unda kalır; konteyneri durdurmak volume'u silmez.
+Bu paket geliştirici önizlemesi içindir; müşteriye dağıtılacak son Windows kurulum programı değildir. Uygulama `localhost` ile sınırlıdır. PostgreSQL portu Windows ana makinesine yayımlanmaz. Şirket veritabanı, medya dosyaları ve oturum şifreleme anahtarları ayrı Docker adlandırılmış volume'larında kalır; konteyneri durdurmak volume'ları silmez.
 
 ## İlk çalıştırma
 
@@ -49,7 +49,7 @@ docker compose stop
 docker compose start
 ```
 
-Compose projesinin adı `envantertr-product-dev` olarak ayrılmıştır; eski test kurulumlarıyla aynı Docker projesini paylaşmaz. `stop`, `start` veya `docker compose down` veritabanı volume'unu silmez. **`docker compose down --volumes` çalıştırmayın**: bu yerel geliştirme veritabanını kalıcı olarak siler. Uygulama güncellemesinde kaynak kodun değişmesi PostgreSQL volume'unu ezmez. Yeni migration uygulanmadan önce ayrıca yedek alınmalıdır; migration komutu şemayı değiştirir.
+Compose projesinin adı `envantertr-product-dev` olarak ayrılmıştır; eski test kurulumlarıyla aynı Docker projesini paylaşmaz. `stop`, `start` veya `docker compose down` veri volume'larını silmez. **`docker compose down --volumes` çalıştırmayın**: bu yerel geliştirme veritabanını, şirket medyasını ve oturum anahtarlarını kalıcı olarak siler. Uygulama güncellemesinde kaynak kodun değişmesi PostgreSQL volume'unu ezmez. Yeni migration uygulanmadan önce ayrıca yedek alınmalıdır; migration komutu şemayı değiştirir. Oturum anahtarları konteyner yeniden oluşturulduğunda korunur; volume'lar silinirse mevcut oturum çerezleri geçersiz olur.
 
 `deploy/local/.env` parolaları ve kurulum anahtarlarını içerir; paylaşmayın ve Git'e eklemeyin. `.env.example` yalnızca şablondur.
 

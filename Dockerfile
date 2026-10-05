@@ -10,7 +10,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
-RUN mkdir -p /var/lib/envantertr/company-media && chown -R $APP_UID:$APP_UID /var/lib/envantertr
+RUN mkdir -p /var/lib/envantertr/company-media /var/lib/envantertr/data-protection-keys && chown -R $APP_UID:$APP_UID /var/lib/envantertr
 COPY --from=build /out ./
 USER $APP_UID
 ENTRYPOINT ["dotnet", "EnvanterTR.Web.dll"]
