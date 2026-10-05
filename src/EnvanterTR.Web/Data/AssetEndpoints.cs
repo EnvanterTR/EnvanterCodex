@@ -106,7 +106,9 @@ public static class AssetEndpoints
                 if (term.Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
                 query = query.Where(x => x.Name.Contains(term) || (x.Category != null && x.Category.Contains(term)) ||
                     (x.ModelNumber != null && x.ModelNumber.Contains(term)) || (x.ItemNumber != null && x.ItemNumber.Contains(term)) ||
-                    (x.Supplier != null && x.Supplier.Contains(term)) || (x.Location != null && x.Location.Contains(term)));
+                    (x.Supplier != null && x.Supplier.Contains(term)) || (x.Location != null && x.Location.Contains(term)) ||
+                    db.AccessoryAssignments.Any(a => a.CompanyId == companyId && a.AccessoryId == x.Id &&
+                        a.TargetType == "Location" && a.Quantity > a.ReturnedQuantity && a.Location != null && a.Location.Contains(term)));
             }
             if (!string.IsNullOrWhiteSpace(category)) query = query.Where(x => x.Category == category.Trim());
             if (!string.IsNullOrWhiteSpace(location)) query = query.Where(x => x.Location == location.Trim());
@@ -171,7 +173,9 @@ public static class AssetEndpoints
                 var term = q.Trim();
                 query = query.Where(x => x.Name.Contains(term) || (x.Category != null && x.Category.Contains(term)) ||
                     (x.ModelNumber != null && x.ModelNumber.Contains(term)) || (x.ItemNumber != null && x.ItemNumber.Contains(term)) ||
-                    (x.Supplier != null && x.Supplier.Contains(term)) || (x.Location != null && x.Location.Contains(term)));
+                    (x.Supplier != null && x.Supplier.Contains(term)) || (x.Location != null && x.Location.Contains(term)) ||
+                    db.AccessoryAssignments.Any(a => a.CompanyId == companyId && a.AccessoryId == x.Id &&
+                        a.TargetType == "Location" && a.Quantity > a.ReturnedQuantity && a.Location != null && a.Location.Contains(term)));
             }
             if (!string.IsNullOrWhiteSpace(category)) query = query.Where(x => x.Category == category.Trim());
             if (!string.IsNullOrWhiteSpace(location)) query = query.Where(x => x.Location == location.Trim());
@@ -436,16 +440,17 @@ public static class AssetEndpoints
         api.MapGet("/locations", async (ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
-            var locations = new Dictionary<string, (string Name, int Assets, int Assigned, int Available, int Maintenance, int Accessories, int Consumables, int Components)>(StringComparer.Ordinal);
+            var locations = new Dictionary<string, (string Name, int Assets, int Assigned, int Available, int Maintenance, int Accessories, int AccessoryAssignments, int Consumables, int Components)>(StringComparer.Ordinal);
             void AddLocation(string name, int assets = 0, int assigned = 0, int available = 0, int maintenance = 0,
-                int accessories = 0, int consumables = 0, int components = 0)
+                int accessories = 0, int accessoryAssignments = 0, int consumables = 0, int components = 0)
             {
                 if (string.IsNullOrWhiteSpace(name)) return;
                 var key = name.Trim();
                 locations.TryGetValue(key, out var current);
                 locations[key] = (key, current.Assets + assets, current.Assigned + assigned,
                     current.Available + available, current.Maintenance + maintenance,
-                    current.Accessories + accessories, current.Consumables + consumables,
+                    current.Accessories + accessories, current.AccessoryAssignments + accessoryAssignments,
+                    current.Consumables + consumables,
                     current.Components + components);
             }
 
@@ -466,6 +471,12 @@ public static class AssetEndpoints
             var accessoryLocations = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() != "")
                 .GroupBy(x => x.Location!.Trim()).Select(group => new { name = group.Key, count = group.Count() }).ToListAsync(cancellationToken);
             foreach (var row in accessoryLocations) AddLocation(row.name, accessories: row.count);
+            var accessoryAssignmentLocations = await db.AccessoryAssignments.AsNoTracking()
+                .Where(x => x.CompanyId == companyId && x.TargetType == "Location" && x.Location != null &&
+                    x.Location.Trim() != "" && x.Quantity > x.ReturnedQuantity)
+                .GroupBy(x => x.Location!.Trim())
+                .Select(group => new { name = group.Key, count = group.Count() }).ToListAsync(cancellationToken);
+            foreach (var row in accessoryAssignmentLocations) AddLocation(row.name, accessoryAssignments: row.count);
             var consumableLocations = await db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() != "")
                 .GroupBy(x => x.Location!.Trim()).Select(group => new { name = group.Key, count = group.Count() }).ToListAsync(cancellationToken);
             foreach (var row in consumableLocations) AddLocation(row.name, consumables: row.count);
@@ -475,7 +486,8 @@ public static class AssetEndpoints
             var items = locations.Values.OrderBy(x => x.Name, StringComparer.Create(CultureInfo.GetCultureInfo("tr-TR"), true))
                 .Select(x => new { name = x.Name, assetCount = x.Assets, assignedCount = x.Assigned,
                     availableCount = x.Available, maintenanceCount = x.Maintenance,
-                    accessoryCount = x.Accessories, consumableCount = x.Consumables, componentCount = x.Components })
+                    accessoryCount = x.Accessories, accessoryAssignmentCount = x.AccessoryAssignments,
+                    consumableCount = x.Consumables, componentCount = x.Components })
                 .ToList();
             return Results.Ok(new { items, total = items.Count });
         }).RequireAuthorization("asset.read");
@@ -497,22 +509,27 @@ public static class AssetEndpoints
             var accessories = db.Accessories.Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() == currentName);
             var consumables = db.Consumables.Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() == currentName);
             var components = db.InventoryComponents.Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() == currentName);
+            var accessoryAssignments = db.AccessoryAssignments.Where(x => x.CompanyId == companyId && x.TargetType == "Location" &&
+                x.Location != null && x.Location.Trim() == currentName && x.Quantity > x.ReturnedQuantity);
             var assetCount = await assets.CountAsync(cancellationToken);
             var accessoryCount = await accessories.CountAsync(cancellationToken);
             var consumableCount = await consumables.CountAsync(cancellationToken);
             var componentCount = await components.CountAsync(cancellationToken);
-            if (assetCount + accessoryCount + consumableCount + componentCount == 0) return Results.NotFound();
+            var accessoryAssignmentCount = await accessoryAssignments.CountAsync(cancellationToken);
+            if (assetCount + accessoryCount + consumableCount + componentCount + accessoryAssignmentCount == 0) return Results.NotFound();
             if (string.Equals(currentName, newName, StringComparison.Ordinal))
             {
                 await transaction.CommitAsync(cancellationToken);
-                return Results.Ok(new { name = currentName, updatedCount = assetCount + accessoryCount + consumableCount + componentCount,
-                    assetCount, accessoryCount, consumableCount, componentCount });
+                return Results.Ok(new { name = currentName, updatedCount = assetCount + accessoryCount + consumableCount + componentCount + accessoryAssignmentCount,
+                    assetCount, accessoryCount, accessoryAssignmentCount, consumableCount, componentCount });
             }
 
             var targetExists = await db.Assets.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken) ||
                 await db.Accessories.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken) ||
                 await db.Consumables.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken) ||
-                await db.InventoryComponents.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken);
+                await db.InventoryComponents.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken) ||
+                await db.AccessoryAssignments.Where(x => x.CompanyId == companyId && x.TargetType == "Location" && x.Location != null && x.Quantity > x.ReturnedQuantity)
+                    .AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken);
             if (targetExists && !request.Merge)
                 return Results.Conflict(new { message = "Bu adla başka bir konum var. Birleştirme onayı gereklidir." });
 
@@ -521,14 +538,16 @@ public static class AssetEndpoints
             var updatedAccessories = await accessories.ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Location, newName).SetProperty(x => x.UpdatedAt, updatedAt), cancellationToken);
             var updatedConsumables = await consumables.ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Location, newName).SetProperty(x => x.UpdatedAt, updatedAt), cancellationToken);
             var updatedComponents = await components.ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Location, newName).SetProperty(x => x.UpdatedAt, updatedAt), cancellationToken);
-            var total = updatedAssets + updatedAccessories + updatedConsumables + updatedComponents;
+            var updatedAccessoryAssignments = await accessoryAssignments.ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Location, newName), cancellationToken);
+            var total = updatedAssets + updatedAccessories + updatedConsumables + updatedComponents + updatedAccessoryAssignments;
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
                 TargetType = "Location", TargetId = companyId, Action = "Renamed",
-                Details = $"Konum “{currentName}” → “{newName}”{(targetExists ? " (mevcut konumla birleştirildi)" : "")}; {updatedAssets} varlık, {updatedAccessories} aksesuar, {updatedConsumables} sarf malzemesi ve {updatedComponents} bileşen güncellendi." });
+                Details = $"Konum “{currentName}” → “{newName}”{(targetExists ? " (mevcut konumla birleştirildi)" : "")}; {updatedAssets} varlık, {updatedAccessories} aksesuar, {updatedAccessoryAssignments} aktif aksesuar teslimi, {updatedConsumables} sarf malzemesi ve {updatedComponents} bileşen güncellendi. Kapanmış teslim geçmişi korundu." });
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return Results.Ok(new { name = newName, updatedCount = total, assetCount = updatedAssets,
-                accessoryCount = updatedAccessories, consumableCount = updatedConsumables, componentCount = updatedComponents });
+                accessoryCount = updatedAccessories, accessoryAssignmentCount = updatedAccessoryAssignments,
+                consumableCount = updatedConsumables, componentCount = updatedComponents });
         }).RequireAuthorization("asset.write");
 
         api.MapGet("/reports/assets", async ([FromQuery] DateOnly? purchaseDateFrom, [FromQuery] DateOnly? purchaseDateTo,

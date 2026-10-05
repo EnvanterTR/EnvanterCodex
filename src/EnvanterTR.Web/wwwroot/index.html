@@ -808,11 +808,11 @@
       input.setAttribute('list', 'departmentSuggestions'); input.addEventListener('change', scheduleDirectorySuggestionRefresh);
     });
     function openDirectoryLocation(item, family = '') {
-      const selected = family || (item.assetCount ? 'assets' : item.accessoryCount ? 'accessories' : item.consumableCount ? 'consumables' : 'components');
+      const selected = family || (item.assetCount ? 'assets' : item.accessoryCount ? 'accessories' : item.accessoryAssignmentCount ? 'accessoryAssignments' : item.consumableCount ? 'consumables' : 'components');
       if (selected === 'assets') {
         $('#assetStatusFilter').value = ''; $('#assetWarrantyFilter').value = ''; $('#assetCategoryFilter').value = ''; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = '';
         assetLocationFilter = item.name; assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; updateAssetRelationFilter(); $('[data-page="Varlıklar"]').click();
-      } else if (selected === 'accessories') {
+      } else if (selected === 'accessories' || selected === 'accessoryAssignments') {
         $('#accessorySearch').value = item.name; $('#accessoryStockFilter').value = ''; $('[data-page="Aksesuarlar"]').click();
       } else if (selected === 'consumables') {
         $('#consumableSearch').value = item.name; $('#consumableStockFilter').value = ''; $('[data-page="Sarf malzemeleri"]').click();
@@ -826,7 +826,7 @@
       const rows = $('#directoryRows'); rows.replaceChildren();
       if (!entries.length) {
         const row = document.createElement('tr'), cell = document.createElement('td');
-        cell.colSpan = directoryKind === 'departments' ? 5 : 9;
+        cell.colSpan = directoryKind === 'departments' ? 5 : 10;
         cell.textContent = $('#directorySearch').value.trim() ? 'Aramayla eşleşen kayıt bulunamadı.' : 'Bu şirket için henüz kayıtlı departman veya konum yok.';
         row.append(cell); rows.append(row);
       }
@@ -844,7 +844,7 @@
         name.append(link); row.append(name);
         const values = directoryKind === 'departments'
           ? [item.employeeCount, item.activeEmployeeCount, item.inactiveEmployeeCount]
-          : [item.assetCount, item.assignedCount, item.availableCount, item.maintenanceCount, item.accessoryCount, item.consumableCount, item.componentCount];
+          : [item.assetCount, item.assignedCount, item.availableCount, item.maintenanceCount, item.accessoryCount, item.accessoryAssignmentCount, item.consumableCount, item.componentCount];
         for (const value of values) { const cell = document.createElement('td'); cell.textContent = fmt.format(value); row.append(cell); }
         const action = document.createElement('td');
         if (directoryKind === 'departments') {
@@ -854,6 +854,7 @@
           const destinations = [
             { key: 'assets', count: item.assetCount, label: 'Varlık' },
             { key: 'accessories', count: item.accessoryCount, label: 'Aksesuar' },
+            { key: 'accessoryAssignments', count: item.accessoryAssignmentCount, label: 'Teslim' },
             { key: 'consumables', count: item.consumableCount, label: 'Sarf' },
             { key: 'components', count: item.componentCount, label: 'Bileşen' }
           ];
@@ -882,13 +883,13 @@
       $('#directorySearch').value = '';
       $('#directoryHead').innerHTML = departments
         ? '<tr><th>Departman</th><th>Çalışan</th><th>Aktif</th><th>Pasif</th><th>İşlem</th></tr>'
-        : '<tr><th>Konum</th><th>Varlık</th><th>Atanmış</th><th>Kullanılabilir</th><th>Bakımda</th><th>Aksesuar</th><th>Sarf</th><th>Bileşen</th><th>İşlem</th></tr>';
-      $('#directoryRows').innerHTML = `<tr><td colspan="${departments ? 5 : 9}">Kayıtlar yükleniyor…</td></tr>`;
+        : '<tr><th>Konum</th><th>Varlık</th><th>Atanmış</th><th>Kullanılabilir</th><th>Bakımda</th><th>Aksesuar stoğu</th><th>Aksesuar teslim kaydı</th><th>Sarf</th><th>Bileşen</th><th>İşlem</th></tr>';
+      $('#directoryRows').innerHTML = `<tr><td colspan="${departments ? 5 : 10}">Kayıtlar yükleniyor…</td></tr>`;
       const result = await api(`/api/${kind}`);
       directoryEntries = result.items || [];
       $('#directoryNotice').textContent = departments
         ? 'Sayılar şirket çalışan kayıtlarından hesaplanır. Bir departmanı yeniden adlandırmak o şirketin tüm eşleşen çalışan kartlarını tek işlemde günceller.'
-        : 'Konumlar varlık, aksesuar, sarf ve bileşen kayıtlarından derlenir. Bir konumu yeniden adlandırmak bağlı tüm kayıtları aynı işlemde günceller; bina/oda hiyerarşisi ayrıca geliştirilecektir.';
+        : 'Konumlar varlık ve stok kayıtlarıyla aktif konuma aksesuar teslimlerinden derlenir. Yeniden adlandırma açık teslim konumlarını da günceller; tamamlanmış teslim geçmişi korunur.';
       renderDirectoryRows();
     }
     function openDirectoryRename(item) {
@@ -898,7 +899,7 @@
       $('#directoryRenameTitle').textContent = departments ? 'Departman adını değiştir' : 'Konum adını değiştir';
       $('#directoryRenameDescription').textContent = departments
         ? `${fmt.format(item.employeeCount)} çalışan kaydındaki departman adı güncellenecek. Başka şirket verisi değişmeyecek.`
-        : `${fmt.format(item.assetCount + item.accessoryCount + item.consumableCount + item.componentCount)} varlık ve stok kaydındaki konum adı güncellenecek.`;
+        : `${fmt.format(item.assetCount + item.accessoryCount + item.accessoryAssignmentCount + item.consumableCount + item.componentCount)} varlık, stok ve aktif aksesuar teslim kaydındaki konum adı güncellenecek. Tamamlanmış teslim geçmişi korunur.`;
       $('#directoryRenameFeedback').textContent = '';
       $('#directoryRenameDialog').showModal(); form.elements.newName.focus(); form.elements.newName.select();
     }
@@ -916,7 +917,17 @@
       if (merge && !window.confirm(`“${currentName}” adındaki kayıtları mevcut “${newName}” grubuyla birleştirmek istiyor musunuz? Kayıtların geçmişi korunur.`)) return;
       button.disabled = true; $('#directoryRenameFeedback').textContent = 'Şirket kayıtları güncelleniyor…';
       try {
-        const result = await api(`/api/${kind}/rename`, { method: 'PATCH', body: JSON.stringify({ currentName, newName, merge }) });
+        const submitRename = allowMerge => api(`/api/${kind}/rename`, { method: 'PATCH', body: JSON.stringify({ currentName, newName, merge: allowMerge }) });
+        let result;
+        try { result = await submitRename(merge); }
+        catch (error) {
+          if (merge || !error.message.includes('Birleştirme onayı gereklidir.')) throw error;
+          if (!window.confirm(`Sunucu bu adla eşleşen kayıt buldu. “${currentName}” kayıtlarını “${newName}” ile birleştireyim mi?`)) {
+            $('#directoryRenameFeedback').textContent = 'Birleştirme iptal edildi; kayıtlar değiştirilmedi.';
+            return;
+          }
+          result = await submitRename(true);
+        }
         $('#directoryRenameDialog').close();
         if (kind === 'locations' && assetLocationFilter === currentName) assetLocationFilter = result.name;
         if (kind === 'departments' && $('#employeeDepartmentFilter').value === currentName) $('#employeeDepartmentFilter').value = result.name;
