@@ -363,6 +363,7 @@
     const bulkAssignButton = document.createElement('button'); bulkAssignButton.id = 'bulkAssignSelectedAssets'; bulkAssignButton.type = 'button'; bulkAssignButton.className = 'btn primary small'; bulkAssignButton.textContent = 'Toplu zimmet'; bulkAssignButton.addEventListener('click', () => openBulkAssignDialog().catch(error => notify(error.message))); $('#bulkAssetToolbar').append(bulkAssignButton);
     const bulkReturnButton = document.createElement('button'); bulkReturnButton.id = 'bulkReturnSelectedAssets'; bulkReturnButton.type = 'button'; bulkReturnButton.className = 'btn small'; bulkReturnButton.textContent = 'Toplu iade'; $('#bulkAssetToolbar').append(bulkReturnButton);
     const bulkTransferButton = document.createElement('button'); bulkTransferButton.id = 'bulkTransferSelectedAssets'; bulkTransferButton.type = 'button'; bulkTransferButton.className = 'btn small'; bulkTransferButton.textContent = 'Toplu konum aktar'; bulkTransferButton.addEventListener('click', openBulkAssetTransferDialog); $('#bulkAssetToolbar').append(bulkTransferButton);
+    const bulkAuditButton = document.createElement('button'); bulkAuditButton.id = 'bulkAuditSelectedAssets'; bulkAuditButton.type = 'button'; bulkAuditButton.className = 'btn small'; bulkAuditButton.textContent = 'Toplu denetim'; bulkAuditButton.addEventListener('click', openBulkAssetAuditDialog); $('#bulkAssetToolbar').append(bulkAuditButton);
     function updateBulkAssetSelection() {
       const toolbar = $('#bulkAssetToolbar'), count = selectedAssetIds.size;
       toolbar.hidden = count === 0;
@@ -377,6 +378,7 @@
       bulkAssignButton.hidden = !canWriteAssets(); bulkAssignButton.disabled = count === 0 || count > 100 || bulkAssignmentInvalid;
       bulkReturnButton.hidden = !canWriteAssets(); bulkReturnButton.disabled = count === 0 || count > 100 || bulkReturnInvalid;
       bulkTransferButton.hidden = !canWriteAssets(); bulkTransferButton.disabled = count === 0 || count > 100 || bulkAssignmentInvalid;
+      bulkAuditButton.hidden = !canWriteAssets(); bulkAuditButton.disabled = count === 0 || count > 100 || selectedAssets.some(asset => !asset);
       const selectable = loadedAssets;
       const allSelected = selectable.length > 0 && selectable.every(asset => selectedAssetIds.has(asset.id));
       for (const checkbox of [$('#selectAllAssets'), $('#selectAllAssetsHeader')]) { checkbox.checked = allSelected; checkbox.indeterminate = !allSelected && selectable.some(asset => selectedAssetIds.has(asset.id)); checkbox.disabled = selectable.length === 0; }
@@ -2260,13 +2262,22 @@
       } catch (error) { notify(error.message); }
       finally { submit.disabled = false; }
     });
-    $('#auditAssetButton').addEventListener('click', () => {
-      const form = $('#assetAuditForm'); form.reset();
+    function setAssetAuditDialogMode(bulk) {
+      const dialog = $('#assetAuditDialog'), form = $('#assetAuditForm'); dialog.dataset.bulkMode = bulk ? 'true' : 'false'; form.reset();
+      $('h2', dialog).textContent = bulk ? 'Seçili varlıkları denetle' : 'Fiziksel denetim kaydı';
+      $('.eyebrow', dialog).textContent = bulk ? 'TOPLU FİZİKSEL DENETİM' : 'ENVANTER KONTROLÜ';
+      $('button[type="submit"]', form).textContent = bulk ? 'Toplu denetimi kaydet' : 'Denetimi kaydet';
+      form.elements.notes.maxLength = bulk ? 1900 : 2000;
       const localToday = new Date(); localToday.setMinutes(localToday.getMinutes() - localToday.getTimezoneOffset());
       const today = localToday.toISOString().slice(0, 10);
       form.elements.auditDate.max = today; form.elements.auditDate.value = today;
+    }
+    async function openBulkAssetAuditDialog() {
+      if (!selectedAssetIds.size || selectedAssetIds.size > 100 || [...selectedAssetIds].some(id => !selectedAssetRows.get(id))) return;
+      currentAsset = null; setAssetAuditDialogMode(true);
       $('#assetAuditDialog').showModal();
-    });
+    }
+    $('#auditAssetButton').addEventListener('click', () => { setAssetAuditDialogMode(false); $('#assetAuditDialog').showModal(); });
     document.querySelectorAll('[data-close-asset-audit]').forEach(button => button.addEventListener('click', () => $('#assetAuditDialog').close()));
     $('#assetAuditForm').addEventListener('submit', async event => {
       event.preventDefault(); if (!currentAsset) return;
@@ -2277,6 +2288,20 @@
         $('#assetAuditDialog').close(); $('#assetDialog').close();
         await openAsset(assetId);
         notify('Fiziksel denetim kaydedildi ve varlık geçmişine eklendi.');
+      } catch (error) { notify(error.message); }
+      finally { submit.disabled = false; }
+    });
+    $('#assetAuditForm').addEventListener('submit', async event => {
+      if ($('#assetAuditDialog').dataset.bulkMode !== 'true') return;
+      event.preventDefault();
+      const form = event.currentTarget, data = new FormData(form), ids = [...selectedAssetIds], submit = $('button[type="submit"]', form);
+      if (!ids.length || ids.length > 100 || ids.some(id => !selectedAssetRows.get(id))) return;
+      submit.disabled = true;
+      try {
+        const result = await api('/api/assets/bulk-audit', { method: 'POST', body: JSON.stringify({ assetIds: ids, auditDate: data.get('auditDate'), notes: data.get('notes') || null }) });
+        $('#assetAuditDialog').close(); setAssetAuditDialogMode(false); clearBulkAssetSelection();
+        await loadDashboard($('#globalSearch').value.trim(), assetPage);
+        notify(`${fmt.format(result.recorded)} varlık için ${result.auditDate} tarihli fiziksel denetim kaydedildi.`);
       } catch (error) { notify(error.message); }
       finally { submit.disabled = false; }
     });

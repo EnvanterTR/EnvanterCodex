@@ -983,6 +983,38 @@ public static class AssetEndpoints
             return Results.NoContent();
         }).RequireAuthorization("asset.write");
 
+        api.MapPost("/assets/bulk-audit", async ([FromBody] BulkRecordAssetAuditRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var ids = request.AssetIds ?? [];
+            if (ids.Length is < 1 or > 100 || ids.Any(id => id == Guid.Empty) || ids.Distinct().Count() != ids.Length)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["assetIds"] = ["1 ile 100 arasında, tekrarsız varlık seçin."] });
+            if (request.AuditDate == default || request.AuditDate > DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) || request.Notes?.Length > 1900)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["audit"] = ["Denetim tarihi gelecekte olamaz; toplu denetim notu en fazla 1.900 karakter olabilir."] });
+
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            var assets = await db.Assets.FromSqlInterpolated(
+                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) ORDER BY \"Id\" FOR UPDATE")
+                .ToListAsync(cancellationToken);
+            if (assets.Count != ids.Length)
+                return Results.NotFound(new { message = "Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil. Hiçbir denetim kaydedilmedi." });
+
+            var note = request.Notes?.Trim();
+            foreach (var asset in assets)
+            {
+                var details = $"Toplu fiziksel denetim tamamlandı · {request.AuditDate:yyyy-MM-dd}";
+                if (!string.IsNullOrWhiteSpace(note)) details += $" · {note}";
+                db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = asset.Id,
+                    ActorUserId = actorId, EventType = "Audited", Details = details });
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                    TargetType = "Asset", TargetId = asset.Id, Action = "BulkAudited", Details = details });
+            }
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { recorded = assets.Count, auditDate = request.AuditDate });
+        }).RequireAuthorization("asset.write");
+
         api.MapPost("/assets/{id:guid}/transfer", async (Guid id, [FromBody] TransferAssetRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
