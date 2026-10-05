@@ -2478,6 +2478,30 @@
       } catch (error) { result.textContent = error.message; }
       finally { button.disabled = false; }
     });
+    let assetScanBatchSeenCodes = new Set();
+    const scanBatchDoneButton = document.createElement('button');
+    scanBatchDoneButton.id = 'finishAssetBatchScan'; scanBatchDoneButton.type = 'button'; scanBatchDoneButton.className = 'btn primary'; scanBatchDoneButton.textContent = 'Seçimi tamamla'; scanBatchDoneButton.hidden = true;
+    $('#startAssetCamera').after(scanBatchDoneButton);
+    $('#scanAssetAction').add(new Option('Çoklu okutma · seçime ekle', 'collect'));
+    function updateScanAssetAction() {
+      const collecting = $('#scanAssetAction').value === 'collect';
+      scanBatchDoneButton.hidden = !collecting;
+      $('#scanAssetForm button[type="submit"]').textContent = collecting ? 'Kodu seçime ekle' : 'Varlığı bul';
+      if (collecting) $('#scanAssetFeedback').textContent = 'Kodları sırayla okutun. Her kayıt seçime eklenir ve kamera okumaya devam eder; işlem için “Seçimi tamamla”ya basın.';
+    }
+    function addScannedAssetToBatch(asset) {
+      if (selectedAssetIds.has(asset.id)) {
+        $('#scanAssetFeedback').textContent = `${asset.assetTag} zaten seçili; başka kod okutabilirsiniz.`;
+      } else if (selectedAssetIds.size >= 100) {
+        $('#scanAssetFeedback').textContent = 'Toplu işlem sınırı 100 varlık. Seçimi tamamlayıp devam edin.';
+        stopAssetScanner();
+        return;
+      } else {
+        selectedAssetIds.add(asset.id); selectedAssetRows.set(asset.id, asset); updateBulkAssetSelection();
+        $('#scanAssetFeedback').textContent = `${asset.assetTag} · ${asset.name} seçime eklendi (${selectedAssetIds.size}/100).`;
+      }
+      $('#scanAssetCode').value = ''; $('#scanAssetCode').focus();
+    }
     function stopAssetScanner() {
       if (assetScanFrame) cancelAnimationFrame(assetScanFrame);
       assetScanFrame = 0; assetScanBusy = false; assetScanner = null;
@@ -2499,19 +2523,32 @@
     }
     async function handleScannedAsset(rawValue) {
       const code = String(rawValue || '').trim(); if (!code) return;
-      stopAssetScanner(); $('#scanAssetFeedback').textContent = 'Kod okunuyor; şirket envanteri aranıyor…';
+      const collecting = $('#scanAssetAction').value === 'collect';
+      if (!collecting) stopAssetScanner();
+      const codeKey = code.toLocaleLowerCase('tr-TR');
+      if (collecting && assetScanBatchSeenCodes.has(codeKey)) { $('#scanAssetFeedback').textContent = 'Bu kod bu okutma oturumunda zaten tarandı; başka kod okutabilirsiniz.'; return; }
+      if (collecting) assetScanBatchSeenCodes.add(codeKey);
+      $('#scanAssetFeedback').textContent = 'Kod okunuyor; şirket envanteri aranıyor…';
       try {
         const scannedUrl = new URL(code, location.origin), linkedAssetId = scannedUrl.origin === location.origin ? scannedUrl.searchParams.get('assetId') : null;
-        if (linkedAssetId && /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(linkedAssetId)) { await openScannedAsset(linkedAssetId); return; }
+        if (linkedAssetId && /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(linkedAssetId)) {
+          if (collecting) {
+            const result = await api(`/api/assets/${linkedAssetId}`);
+            addScannedAssetToBatch({ ...result.asset, assignedEmployeeName: result.references.employee });
+          } else await openScannedAsset(linkedAssetId);
+          return;
+        }
         const params = new URLSearchParams({ q: code, page: '1', pageSize: '200', sortBy: 'tag', sortDirection: 'asc' });
         const result = await api('/api/assets?' + params.toString());
         const normalized = code.toLocaleLowerCase('tr-TR');
         const exact = result.items.find(asset => [asset.assetTag, asset.serialNumber].some(value => value && value.toLocaleLowerCase('tr-TR') === normalized));
         const asset = exact || (result.total === 1 ? result.items[0] : null);
-        if (asset) { await openScannedAsset(asset.id); return; }
-        if (result.total > 0) { $('#scanAssetDialog').close(); $('#globalSearch').value = code; $('#assetListSearch').value = code; await loadDashboard(code, 1); notify('Birden fazla kayıt eşleşti; sonuçlar listede gösteriliyor.'); return; }
+        if (asset) { if (collecting) addScannedAssetToBatch(asset); else await openScannedAsset(asset.id); return; }
+        if (collecting) assetScanBatchSeenCodes.delete(codeKey);
+        if (result.total > 0 && !collecting) { $('#scanAssetDialog').close(); $('#globalSearch').value = code; $('#assetListSearch').value = code; await loadDashboard(code, 1); notify('Birden fazla kayıt eşleşti; sonuçlar listede gösteriliyor.'); return; }
+        if (result.total > 0) { $('#scanAssetFeedback').textContent = 'Birden fazla kayıt eşleşti. Daha kısa ve benzersiz varlık etiketi okutun.'; $('#scanAssetCode').focus(); $('#scanAssetCode').select(); return; }
         $('#scanAssetFeedback').textContent = 'Bu kodla eşleşen varlık bulunamadı. Kodu kontrol edip yeniden deneyin.'; $('#scanAssetCode').focus(); $('#scanAssetCode').select();
-      } catch (error) { $('#scanAssetFeedback').textContent = error.message || 'Kod aranamadı. Yeniden deneyin.'; }
+      } catch (error) { if (collecting) assetScanBatchSeenCodes.delete(codeKey); $('#scanAssetFeedback').textContent = error.message || 'Kod aranamadı. Yeniden deneyin.'; }
     }
     async function startAssetCamera() {
       const feedback = $('#scanAssetFeedback');
@@ -2529,7 +2566,7 @@
           if (!assetScanStream) return;
           if (!assetScanBusy && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
             assetScanBusy = true;
-            try { const found = await assetScanner.detect(video); if (found[0]?.rawValue) { await handleScannedAsset(found[0].rawValue); return; } }
+            try { const found = await assetScanner.detect(video); if (found[0]?.rawValue) { await handleScannedAsset(found[0].rawValue); if (assetScanStream) assetScanFrame = requestAnimationFrame(scanFrame); return; } }
             catch (error) { stopAssetScanner(); feedback.textContent = 'Kamera okuması başarısız. USB okuyucu veya klavyeyle kod girmeyi kullanabilirsiniz.'; return; }
             finally { assetScanBusy = false; }
           }
@@ -2541,7 +2578,9 @@
         feedback.textContent = error.name === 'NotAllowedError' ? 'Kamera izni verilmedi. Tarayıcı izinlerini açın veya kodu elle girin.' : 'Kamera başlatılamadı. USB okuyucu veya klavyeyle kod girmeyi kullanabilirsiniz.';
       }
     }
-    $('#scanAssetButton').addEventListener('click', () => { $('#scanAssetCode').value = ''; $('#scanAssetFeedback').textContent = 'Kamera desteklenmiyorsa USB okuyucu ya da klavyeyle kod girebilirsiniz.'; $('#scanAssetDialog').showModal(); $('#scanAssetCode').focus(); });
+    $('#scanAssetAction').addEventListener('change', () => { assetScanBatchSeenCodes.clear(); updateScanAssetAction(); });
+    scanBatchDoneButton.addEventListener('click', () => { stopAssetScanner(); $('#scanAssetDialog').close(); notify(`${selectedAssetIds.size} varlık seçildi. Uygun kayıtlar için toplu zimmet veya iade işlemini seçili varlık araçlarından başlatabilirsiniz.`); });
+    $('#scanAssetButton').addEventListener('click', () => { assetScanBatchSeenCodes.clear(); $('#scanAssetCode').value = ''; updateScanAssetAction(); if ($('#scanAssetAction').value !== 'collect') $('#scanAssetFeedback').textContent = 'Kamera desteklenmiyorsa USB okuyucu ya da klavyeyle kod girebilirsiniz.'; $('#scanAssetDialog').showModal(); $('#scanAssetCode').focus(); });
     $('#closeAssetScanner').addEventListener('click', () => $('#scanAssetDialog').close());
     $('#scanAssetDialog').addEventListener('close', stopAssetScanner);
     $('#scanAssetForm').addEventListener('submit', async event => { event.preventDefault(); await handleScannedAsset(new FormData(event.currentTarget).get('code')); });
