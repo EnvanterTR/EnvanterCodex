@@ -692,7 +692,7 @@
     function canReadAssets() { return ['owner','admin','asset_manager','asset_operator','auditor','viewer'].includes(sessionRole); }
     function canManagePeople() { return ['owner','admin','asset_manager','hr_operator'].includes(sessionRole); }
     function canManageSettings() { return ['owner','admin'].includes(sessionRole); }
-    function canReadPeople() { return ['owner','admin','asset_manager','asset_operator','auditor','viewer','hr_operator'].includes(sessionRole); }
+    function canReadPeople() { return ['owner','admin','asset_manager','asset_operator','auditor','hr_operator'].includes(sessionRole); }
     function canReadAudit() { return ['owner','admin'].includes(sessionRole); }
     async function loadTenantBranding() {
       const branding = await api('/api/company/branding');
