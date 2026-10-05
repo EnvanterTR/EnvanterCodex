@@ -310,6 +310,56 @@ namespace EnvanterTR.Web.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.AssetAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AssetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Length")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("StorageFileName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid?>("UploadedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("CompanyId", "Id");
+
+                    b.HasIndex("UploadedByUserId");
+
+                    b.HasIndex("CompanyId", "AssetId", "CreatedAt");
+
+                    b.ToTable("AssetAttachments", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_AssetAttachments_Length", "\"Length\" BETWEEN 1 AND 10485760");
+                        });
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.AssetBrand", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1734,6 +1784,21 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId", "CategoryId")
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.AssetAttachment", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("EnvanterTR.Web.Data.Asset", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "AssetId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

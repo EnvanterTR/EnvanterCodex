@@ -10,6 +10,9 @@ namespace EnvanterTR.Web.Data;
 
 public static class AssetEndpoints
 {
+    private const long AssetAttachmentMaxSizeBytes = 10_485_760;
+    private const long AssetAttachmentRequestLimitBytes = 10_616_832;
+
     public static IEndpointRouteBuilder MapAssetEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var api = endpoints.MapGroup("/api").RequireAuthorization();
@@ -689,8 +692,105 @@ public static class AssetEndpoints
                     x.OccurredAt
                 })
                 .ToListAsync(cancellationToken);
-            return Results.Ok(new { asset, references, history });
+            var attachments = await db.AssetAttachments.AsNoTracking()
+                .Where(x => x.CompanyId == companyId && x.AssetId == id)
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(x => new { x.Id, x.OriginalFileName, x.ContentType, x.Length, x.CreatedAt,
+                    uploadedBy = db.Users.Where(actor => actor.Id == x.UploadedByUserId).Select(actor => actor.DisplayName).FirstOrDefault() })
+                .ToListAsync(cancellationToken);
+            return Results.Ok(new { asset, references, history, attachments });
         }).RequireAuthorization("asset.read");
+
+        api.MapPost("/assets/{id:guid}/attachments", async (Guid id, HttpRequest request, ClaimsPrincipal user,
+            AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            if (!request.HasFormContentType) return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
+            var form = await request.ReadFormAsync(cancellationToken);
+            var upload = form.Files.GetFile("file");
+            if (upload is null || upload.Length is < 1 or > AssetAttachmentMaxSizeBytes)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Dosya 1 bayt ile 10 MB arasında olmalıdır."] });
+            await using var buffer = new MemoryStream((int)upload.Length);
+            await upload.CopyToAsync(buffer, cancellationToken);
+            var bytes = buffer.ToArray();
+            var detected = DetectAssetAttachment(bytes);
+            if (detected is null)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Yalnızca gerçek PNG, JPEG, WebP görselleri ve PDF dosyaları yüklenebilir."] });
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            var asset = await db.Assets.FromSqlInterpolated($"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+                .SingleOrDefaultAsync(cancellationToken);
+            if (asset is null) return Results.NotFound();
+            if (await db.AssetAttachments.CountAsync(x => x.CompanyId == companyId && x.AssetId == id, cancellationToken) >= 30)
+                return Results.Conflict(new { message = "Bir varlığa en fazla 30 dosya eklenebilir." });
+
+            var originalName = CleanAttachmentFileName(upload.FileName);
+            var attachmentId = Guid.NewGuid();
+            var storageFileName = $"{attachmentId:N}.{detected.Value.Extension}";
+            var directory = AssetAttachmentDirectory(configuration, companyId, id);
+            Directory.CreateDirectory(directory);
+            var destination = Path.Combine(directory, storageFileName);
+            var attachment = new AssetAttachment { Id = attachmentId, CompanyId = companyId, AssetId = id,
+                UploadedByUserId = actorId, OriginalFileName = originalName, StorageFileName = storageFileName,
+                ContentType = detected.Value.ContentType, Length = bytes.LongLength };
+            try
+            {
+                await System.IO.File.WriteAllBytesAsync(destination, bytes, cancellationToken);
+                db.AssetAttachments.Add(attachment);
+                db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = id, ActorUserId = actorId,
+                    EventType = "AttachmentAdded", Details = $"Dosya eklendi: {originalName}" });
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Asset",
+                    TargetId = id, Action = "AttachmentAdded", Details = $"{asset.AssetTag}: {originalName} ({bytes.LongLength} bayt)." });
+                await db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch
+            {
+                try { if (System.IO.File.Exists(destination)) System.IO.File.Delete(destination); }
+                catch (IOException) { /* The rolled-back metadata keeps an incomplete upload inaccessible. */ }
+                catch (UnauthorizedAccessException) { /* The rolled-back metadata keeps an incomplete upload inaccessible. */ }
+                throw;
+            }
+            return Results.Created($"/api/assets/{id}/attachments/{attachmentId}/file", new { attachment.Id,
+                attachment.OriginalFileName, attachment.ContentType, attachment.Length, attachment.CreatedAt });
+        }).RequireAuthorization("asset.write")
+            .WithMetadata(new RequestSizeLimitAttribute(AssetAttachmentRequestLimitBytes));
+
+        api.MapGet("/assets/{id:guid}/attachments/{attachmentId:guid}/file", async (Guid id, Guid attachmentId,
+            [FromQuery] bool download, ClaimsPrincipal user, AppDbContext db, IConfiguration configuration,
+            CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var attachment = await db.AssetAttachments.AsNoTracking().SingleOrDefaultAsync(x =>
+                x.CompanyId == companyId && x.AssetId == id && x.Id == attachmentId, cancellationToken);
+            if (attachment is null || !IsSafeAssetAttachmentFileName(attachment.StorageFileName)) return Results.NotFound();
+            var path = Path.Combine(AssetAttachmentDirectory(configuration, companyId, id), attachment.StorageFileName);
+            if (!System.IO.File.Exists(path)) return Results.NotFound();
+            var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024,
+                FileOptions.Asynchronous | FileOptions.SequentialScan);
+            var fileName = download || !attachment.ContentType.StartsWith("image/", StringComparison.Ordinal)
+                ? attachment.OriginalFileName : null;
+            return Results.File(stream, attachment.ContentType, fileName, enableRangeProcessing: false);
+        }).RequireAuthorization("asset.read");
+
+        api.MapDelete("/assets/{id:guid}/attachments/{attachmentId:guid}", async (Guid id, Guid attachmentId,
+            ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var attachment = await db.AssetAttachments.SingleOrDefaultAsync(x =>
+                x.CompanyId == companyId && x.AssetId == id && x.Id == attachmentId, cancellationToken);
+            if (attachment is null) return Results.NotFound();
+            db.AssetAttachments.Remove(attachment);
+            db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = id, ActorUserId = actorId,
+                EventType = "AttachmentRemoved", Details = $"Dosya kaldırıldı: {attachment.OriginalFileName}" });
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Asset",
+                TargetId = id, Action = "AttachmentRemoved", Details = attachment.OriginalFileName });
+            await db.SaveChangesAsync(cancellationToken);
+            var path = Path.Combine(AssetAttachmentDirectory(configuration, companyId, id), attachment.StorageFileName);
+            try { if (System.IO.File.Exists(path)) System.IO.File.Delete(path); }
+            catch (IOException) { /* The row is removed, so an orphaned file cannot be accessed through the app. */ }
+            catch (UnauthorizedAccessException) { /* The row is removed, so an orphaned file cannot be accessed through the app. */ }
+            return Results.NoContent();
+        }).RequireAuthorization("asset.write");
 
         api.MapPost("/assets/labels/selected", async ([FromBody] SelectedAssetLabelsRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
@@ -1587,6 +1687,38 @@ public static class AssetEndpoints
 
     private static Guid? CurrentUserId(ClaimsPrincipal user) =>
         Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : null;
+
+    private static string AssetAttachmentDirectory(IConfiguration configuration, Guid companyId, Guid assetId) =>
+        Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media",
+            companyId.ToString("N"), "assets", assetId.ToString("N"));
+
+    private static string CleanAttachmentFileName(string? fileName)
+    {
+        var leaf = Path.GetFileName((fileName ?? "").Replace('\\', '/'));
+        var safe = new string(leaf.Where(character => !char.IsControl(character)).ToArray()).Trim();
+        if (safe.Length == 0) safe = "dosya";
+        return safe.Length <= 255 ? safe : safe[..255];
+    }
+
+    private static bool IsSafeAssetAttachmentFileName(string fileName)
+    {
+        var dot = fileName.LastIndexOf('.');
+        return dot > 0 && Guid.TryParseExact(fileName[..dot], "N", out _) &&
+            fileName[(dot + 1)..] is "png" or "jpg" or "webp" or "pdf";
+    }
+
+    private static (string ContentType, string Extension)? DetectAssetAttachment(ReadOnlySpan<byte> bytes)
+    {
+        if (bytes.Length >= 8 && bytes[..8].SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }))
+            return ("image/png", "png");
+        if (bytes.Length >= 3 && bytes[..3].SequenceEqual(new byte[] { 255, 216, 255 }))
+            return ("image/jpeg", "jpg");
+        if (bytes.Length >= 12 && bytes[..4].SequenceEqual("RIFF"u8) && bytes.Slice(8, 4).SequenceEqual("WEBP"u8))
+            return ("image/webp", "webp");
+        if (bytes.Length >= 5 && bytes[..5].SequenceEqual("%PDF-"u8))
+            return ("application/pdf", "pdf");
+        return null;
+    }
 
     private static Dictionary<string, string[]> ValidateAccessory(string? name, int minimumQuantity, int totalQuantity,
         decimal? unitCost, string? currency, string? category, string? modelNumber, string? itemNumber,

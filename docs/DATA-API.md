@@ -2,7 +2,7 @@
 
 ## Şu anki kapsam
 
-- PostgreSQL EF Core modeli: şirket, çalışan, varlık kategorisi, marka, model, varlık ve varlık olayları.
+- PostgreSQL EF Core modeli: şirket, çalışan, varlık kategorisi, marka, model, varlıklar, varlık ekleri ve varlık olayları.
 - Çalışanlar, giriş yapabilen kullanıcı hesaplarından ayrı tablodadır.
 - Varlık etiketi şirket içinde benzersiz ve büyük harfe normalize edilir. Etiket, durum, çalışan, konum ve şirket içindeki garanti bitiş tarihi sorguları için indeksler tanımlıdır.
 - Varlık listeleme arama ve sayfalama destekler; ayrıntı cevabı kategori/marka/model/zimmetli çalışan adlarını ve olay geçmişini içerir.
@@ -14,6 +14,7 @@
 - Oturum açma Identity parola hash'i, 12 karakterlik parola kuralları, başarısız girişte hesap kilitleme ve IP başına istek sınırı kullanır. Cookie `Secure`, `HttpOnly`, `SameSite=Strict`; yazma istekleri CSRF token'ı ister.
 - Tarayıcı yanıtlarında MIME koklama ve iframe içine gömme engellenir; referrer bilgisi sınırlandırılır, kamera yalnızca aynı kaynakta kullanıcı başlatınca kullanılabilir; mikrofon ve konum izinleri kapalıdır. Tüm `/api` yanıtları `Cache-Control: no-store, private` ile işaretlenir; şirket verisi ve oturum yanıtları tarayıcı önbelleğinde tutulmaz.
 - Şirket logosu yükleme ucu, doğrulanmış görsel içeriğine ek olarak multipart isteğinin tamamını yaklaşık 2,06 MiB ile sınırlar; dosya seçildikten sonra boyut kontrolüne kadar büyük gövdenin diske taşınmasını engeller. Yerel Nginx geçidi aynı limiti uygular; salt okunur içe aktarma önizlemesi için 32 MiB isteğe izin verir.
+- Varlık dosyaları şirket ve varlık kimliğine göre özel medya dizininde tutulur; public static dosya olarak sunulmaz. PNG/JPEG/WebP/PDF dosyaları 10 MiB ve varlık başına 30 kayıtla sınırlıdır; tür dosya imzasından belirlenir, indirme yalnızca aynı şirket kapsamındaki yetkili oturumdan yapılır, ekleme/kaldırma olay ve denetim geçmişine işlenir.
 - Parola kurtarma, hesap varlığını açıklamayan yanıt kullanır; Identity tek kullanımlık reset token'ı SMTP ile e-postalanır. Token yalnızca HTTPS reset sayfasında gönderilir. SMTP veya genel site adresi yapılandırılmadığında bağlantı gönderilmez; operatör loguna yapılandırma uyarısı yazılır.
 - Çalışan listesi arama/etkinlik filtreleri, ayrıntıda zimmetli varlıklar ve pasife alma/yeniden etkinleştirme uçları eklendi. Çalışan pasife alındığında geçmiş ve zimmet bağlantıları silinmez. Departman adı şimdilik metinsel alandır; departman özet ekranı çalışan kayıtlarından sayıları hesaplar. Çalışan-yönetici ilişkisi ayrı kimlik alanıdır; aynı şirketten etkin çalışan seçilir, kendini yönetici seçme ve döngü oluşturma sunucuda engellenir. Çalışan profilinde yönetici, ilk 100 doğrudan raporlayan ve zimmetler gösterilir.
 - Lokasyon özeti varlık, aksesuar, sarf ve bileşen stoklarının yanı sıra aktif konuma aksesuar teslim kayıtlarını şirket kapsamında sayar. Yeniden adlandırma açık teslim kayıtlarını da taşır; kapanmış teslim geçmişi korunur. Bina/oda ağacı veya ayrı lokasyon kataloğu henüz yoktur.
@@ -37,7 +38,10 @@ Rol politikaları ayrı tutulur: varlık okuma, varlık değiştirme, çalışan
 
 - `GET /api/assets?q=&status=&categoryId=&brandId=&modelId=&employeeId=&location=&warranty=expired|expiring|active|unspecified&sortBy=tag&sortDirection=asc&page=1&pageSize=50` (`warranty` isteğe bağlı; süresi dolanlar, bugünden itibaren 30 gün içinde dolacaklar, 30 günden uzun süre etkin olanlar veya bitiş tarihi girilmemiş olanlar)
 - `GET /api/assets/{id}`
-  - Yanıt, şirket kapsamındaki varlık alanlarını, kategori/marka/model/çalışan adlarını ve en yeniden eskiye hareket listesini içerir. Hareketlerde varsa çalışan adı da bulunur; olaylar başka şirket kayıtlarıyla eşleştirilmez.
+  - Yanıt, şirket kapsamındaki varlık alanlarını, kategori/marka/model/çalışan adlarını, en yeniden eskiye hareket listesini ve ek dosya metaverisini içerir. Hareketlerde varsa çalışan adı da bulunur; olaylar başka şirket kayıtlarıyla eşleştirilmez.
+- `POST /api/assets/{id}/attachments` (`multipart/form-data`, `file`; PNG/JPEG/WebP/PDF, dosya başına 10 MiB, varlık başına 30 dosya; içerik imzası denetlenir; `asset.write`)
+- `GET /api/assets/{id}/attachments/{attachmentId}/file[?download=true]` (şirket ve varlık kapsamında yetki denetimli görsel önizleme veya ek indirme; `asset.read`)
+- `DELETE /api/assets/{id}/attachments/{attachmentId}` (dosya kaydını ve özel medya dosyasını kaldırır; olay ve denetim izi yazar; `asset.write`)
 - `GET /api/employees?q=&department=&managerId=&active=true&page=1&pageSize=50`
 - `GET /api/departments` (şirket çalışan kayıtlarındaki departman metinlerini ve aktif/pasif çalışan sayılarını özetler; `people.read`)
 - `PATCH /api/departments/rename` (`{ currentName, newName, merge? }`; eşleşen şirket çalışan departmanlarını tek transaction'da değiştirir; hedef departman varsa yalnızca `merge: true` ile birleştirir, aksi hâlde `409`; kayıt yoksa `404`; denetim izi yazar; `people.manage`)

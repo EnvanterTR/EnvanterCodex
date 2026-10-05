@@ -14,6 +14,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AssetModel> AssetModels => Set<AssetModel>();
     public DbSet<Asset> Assets => Set<Asset>();
     public DbSet<AssetEvent> AssetEvents => Set<AssetEvent>();
+    public DbSet<AssetAttachment> AssetAttachments => Set<AssetAttachment>();
     public DbSet<AssetMaintenance> AssetMaintenances => Set<AssetMaintenance>();
     public DbSet<Accessory> Accessories => Set<Accessory>();
     public DbSet<AccessoryAssignment> AccessoryAssignments => Set<AccessoryAssignment>();
@@ -123,6 +124,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetBrand>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AssetModel>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<Asset>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<AssetAttachment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<Accessory>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AccessoryAssignment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<Consumable>().HasAlternateKey(x => new { x.CompanyId, x.Id });
@@ -374,6 +376,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetEvent>().HasOne<Asset>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.AssetId })
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AssetAttachment>().Property(x => x.OriginalFileName).HasMaxLength(255).IsRequired();
+        modelBuilder.Entity<AssetAttachment>().Property(x => x.StorageFileName).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<AssetAttachment>().Property(x => x.ContentType).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<AssetAttachment>().HasIndex(x => new { x.CompanyId, x.AssetId, x.CreatedAt });
+        modelBuilder.Entity<AssetAttachment>().ToTable("AssetAttachments", table =>
+            table.HasCheckConstraint("CK_AssetAttachments_Length", "\"Length\" BETWEEN 1 AND 10485760"));
+        modelBuilder.Entity<AssetAttachment>().HasOne<Asset>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.AssetId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssetAttachment>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<AssetMaintenance>().HasIndex(x => new { x.CompanyId, x.AssetId, x.CreatedAt });
         modelBuilder.Entity<AssetMaintenance>().HasIndex(x => new { x.CompanyId, x.AssetId, x.Status });

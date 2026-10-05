@@ -159,6 +159,19 @@ public sealed class AssetEvent
     public DateTimeOffset OccurredAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class AssetAttachment
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid AssetId { get; set; }
+    public Guid? UploadedByUserId { get; set; }
+    public required string OriginalFileName { get; set; }
+    public required string StorageFileName { get; set; }
+    public required string ContentType { get; set; }
+    public long Length { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class AssetMaintenance
 {
     public Guid Id { get; set; } = Guid.NewGuid();
