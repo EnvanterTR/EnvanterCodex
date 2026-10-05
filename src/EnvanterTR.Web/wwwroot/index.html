@@ -1750,6 +1750,24 @@
     $('#consumableCheckoutForm').addEventListener('submit', async event => {event.preventDefault();const f=new FormData(event.currentTarget);try{await api(`/api/consumables/${currentConsumable.id}/checkout`,{method:'POST',body:JSON.stringify({employeeId:f.get('employeeId'),quantity:Number(f.get('quantity')),notes:f.get('notes')||null})});$('#consumableCheckoutDialog').close();await openConsumable(currentConsumable.id);await loadConsumables();notify('Tüketim çıkışı kaydedildi.');}catch(error){notify(error.message);}});
     $('#closeConsumableDetail').addEventListener('click',()=>$('#consumableDialog').close()); document.querySelectorAll('[data-close-consumable]').forEach(b=>b.addEventListener('click',()=>$('#consumableFormDialog').close())); document.querySelectorAll('[data-close-consumable-stock]').forEach(b=>b.addEventListener('click',()=>$('#consumableStockDialog').close())); document.querySelectorAll('[data-close-consumable-checkout]').forEach(b=>b.addEventListener('click',()=>$('#consumableCheckoutDialog').close()));
     let accessoryPageSize = 12;
+    const selectedAccessories = new Map();
+    let accessoryPageItems = [];
+    const accessorySelectionToolbar = document.createElement('div'); accessorySelectionToolbar.className = 'table-tools'; accessorySelectionToolbar.style.flexBasis = '100%';
+    const selectAccessoryPageButton = document.createElement('button'); selectAccessoryPageButton.type = 'button'; selectAccessoryPageButton.className = 'btn small'; selectAccessoryPageButton.textContent = 'Sayfadakileri seç'; accessorySelectionToolbar.append(selectAccessoryPageButton);
+    const clearAccessorySelectionButton = document.createElement('button'); clearAccessorySelectionButton.type = 'button'; clearAccessorySelectionButton.className = 'btn small'; clearAccessorySelectionButton.textContent = 'Seçimi temizle'; accessorySelectionToolbar.append(clearAccessorySelectionButton);
+    const bulkCheckoutAccessoriesButton = document.createElement('button'); bulkCheckoutAccessoriesButton.type = 'button'; bulkCheckoutAccessoriesButton.className = 'btn primary small'; bulkCheckoutAccessoriesButton.textContent = 'Seçilenleri teslim et'; accessorySelectionToolbar.append(bulkCheckoutAccessoriesButton);
+    const selectedAccessoryCount = document.createElement('small'); selectedAccessoryCount.setAttribute('role', 'status'); selectedAccessoryCount.setAttribute('aria-live', 'polite'); accessorySelectionToolbar.append(selectedAccessoryCount);
+    $('#accessoryListPanel .table-tools').append(accessorySelectionToolbar);
+    function updateAccessorySelection() {
+      const count = selectedAccessories.size;
+      accessorySelectionToolbar.hidden = count === 0 && !canWriteAssets();
+      clearAccessorySelectionButton.hidden = count === 0;
+      bulkCheckoutAccessoriesButton.hidden = count === 0 || !canWriteAssets(); bulkCheckoutAccessoriesButton.disabled = count === 0 || count > 100;
+      selectedAccessoryCount.hidden = count === 0; selectedAccessoryCount.textContent = count ? `${fmt.format(count)} aksesuar seçildi (en fazla 100)` : '';
+      const eligible = accessoryPageItems.filter(item => item.remaining > 0 && !selectedAccessories.has(item.id));
+      selectAccessoryPageButton.disabled = !canWriteAssets() || eligible.length === 0 || count >= 100;
+      selectAccessoryPageButton.textContent = accessoryPageItems.length > 0 && accessoryPageItems.every(item => item.remaining < 1 || selectedAccessories.has(item.id)) ? 'Sayfa seçildi' : 'Sayfadakileri seç';
+    }
     try { const savedPageSize = Number(localStorage.getItem('envantertr:accessory-page-size')); if ([12,25,50,100].includes(savedPageSize)) accessoryPageSize = savedPageSize; } catch {}
     $('#accessoryPageSize').value = String(accessoryPageSize);
     async function loadAccessories(page = accessoryPage) {
@@ -1759,11 +1777,15 @@
       if (q) params.set('q', q); if (stock) params.set('stock', stock);
       const result = await api(`/api/accessories?${params}`); if (requestId !== accessoryRequestId) return;
       accessoryTotal = result.total; const body = $('#accessoryRows'); body.replaceChildren();
+      accessoryPageItems = result.items;
       for (const item of result.items) {
+        if (selectedAccessories.has(item.id)) { if (item.remaining < 1) selectedAccessories.delete(item.id); else selectedAccessories.set(item.id, item); }
         const row = document.createElement('tr'); row.dataset.accessoryId = item.id;
         const cost = item.unitCost == null ? '—' : `${fmt.format(item.unitCost)} ${item.currency}`;
         const low = item.remaining <= item.minimumQuantity;
         row.innerHTML = `<td><button class="row-open-link accessory-open asset-name" type="button">${escapeHtml(item.name)}</button><span class="asset-tag">${escapeHtml(item.itemNumber || item.modelNumber || 'Stok kodu tanımlanmamış')}</span></td><td>${escapeHtml(item.category || '—')}<span class="asset-tag">${escapeHtml(item.modelNumber || 'Model belirtilmemiş')}</span></td><td>${escapeHtml(item.supplier || '—')}<span class="asset-tag">${escapeHtml(item.location || 'Konum belirtilmemiş')}</span></td><td>${fmt.format(item.totalQuantity)}</td><td>${fmt.format(item.checkedOut)}</td><td><span class="pill ${low ? 'warn' : 'blue'}">${fmt.format(item.remaining)} · ${low ? 'Az stok' : 'Stokta'}</span></td><td>${fmt.format(item.minimumQuantity)}</td><td>${cost}<span class="asset-tag">Toplam ${item.unitCost == null ? '—' : `${fmt.format(item.unitCost * item.totalQuantity)} ${item.currency}`}</span></td><td><div class="row-actions"><button class="btn small accessory-open" type="button">Ayrıntı</button><button class="btn small accessory-checkout" type="button" ${item.remaining < 1 || !canWriteAssets() ? 'disabled' : ''}>Teslim</button></div></td>`;
+        const selection = document.createElement('input'); selection.type = 'checkbox'; selection.className = 'accessory-select'; selection.checked = selectedAccessories.has(item.id); selection.disabled = item.remaining < 1 || !canWriteAssets(); selection.setAttribute('aria-label', `${item.name} aksesuarını toplu teslim için seç`); selection.style.marginInlineEnd = '8px';
+        row.cells[0].prepend(selection);
         row.dataset.unitCost = cost; body.append(row);
       }
       if (!result.items.length) body.innerHTML = `<tr class="accessory-empty-row"><td colspan="9">${q || stock ? 'Bu filtrelerle eşleşen aksesuar bulunamadı.' : 'Henüz aksesuar kaydı yok. İlk stok kaydını ekleyebilirsiniz.'}</td></tr>`;
@@ -1771,6 +1793,7 @@
       $('#accessoryCount').textContent = `${fmt.format(accessoryTotal)} aksesuar`;
       $('#accessoryPageInfo').textContent = accessoryTotal ? `${accessoryPage}. sayfa · ${Math.min((accessoryPage - 1) * accessoryPageSize + 1, accessoryTotal)}–${Math.min(accessoryPage * accessoryPageSize, accessoryTotal)} / ${fmt.format(accessoryTotal)}` : 'Kayıt yok';
       $('#accessoryPrev').disabled = accessoryPage <= 1; $('#accessoryNext').disabled = accessoryPage * accessoryPageSize >= accessoryTotal;
+      updateAccessorySelection();
     }
     function applyAccessoryColumnVisibility() {
       const table = $('#accessoryRows').closest('table'), visibleCount = visibleAccessoryColumns.filter(Boolean).length;
@@ -1826,14 +1849,41 @@
       form.elements.quantity.closest('label').hidden = true; $('#accessoryFormStockNote').hidden = true; $('#accessoryFormTitle').textContent = 'Aksesuar kaydını düzenle';
       $('#accessoryDialog').close(); $('#accessoryFormDialog').showModal();
     }
-    async function openAccessoryCheckout() {
+    async function populateAccessoryCheckoutTargets() {
       const [result, assetResult] = await Promise.all([api('/api/employees?page=1&pageSize=200&active=true'), api('/api/assets?page=1&pageSize=200')]), select = $('#accessoryCheckoutForm').elements.employeeId, assetSelect = $('#accessoryCheckoutForm').elements.assetId;
       select.replaceChildren(new Option(result.total ? 'Çalışan seçin' : 'Etkin çalışan bulunmuyor', ''));
       for (const employee of result.items) select.add(new Option(`${employee.displayName} · ${employee.employeeNumber}`, employee.id));
       assetSelect.replaceChildren(new Option(assetResult.total ? 'Varlık seçin' : 'Varlık bulunmuyor', ''));
       for (const asset of assetResult.items) assetSelect.add(new Option(`${asset.assetTag} · ${asset.name}`, asset.id));
-      const form = $('#accessoryCheckoutForm'); form.reset(); form.elements.quantity.max = String(currentAccessory.totalQuantity - currentAccessory.checkedOut);
+    }
+    async function openAccessoryCheckout() {
+      await populateAccessoryCheckoutTargets();
+      const form = $('#accessoryCheckoutForm'); form.reset(); form.dataset.bulkMode = 'false'; form.elements.quantity.closest('label').hidden = false; form.elements.quantity.required = true;
+      const quantities = $('#bulkAccessoryQuantities'); if (quantities) { quantities.hidden = true; quantities.replaceChildren(); }
+      $('#accessoryCheckoutDialog h2').textContent = 'Teslim hedefi seçin';
+      $('#accessoryCheckoutDialog .eyebrow').textContent = 'AKSESUAR ZİMMETİ';
+      $('button[type="submit"]', form).textContent = 'Teslimi kaydet';
+      form.elements.quantity.max = String(currentAccessory.totalQuantity - currentAccessory.checkedOut);
       updateAccessoryCheckoutTarget(); $('#accessoryDialog').close(); $('#accessoryCheckoutDialog').showModal();
+    }
+    async function openBulkAccessoryCheckout() {
+      if (!canWriteAssets() || selectedAccessories.size < 1 || selectedAccessories.size > 100) return;
+      await populateAccessoryCheckoutTargets();
+      const form = $('#accessoryCheckoutForm'); form.reset(); form.dataset.bulkMode = 'true'; form.elements.quantity.closest('label').hidden = true; form.elements.quantity.required = false;
+      let quantities = $('#bulkAccessoryQuantities');
+      if (!quantities) { quantities = document.createElement('div'); quantities.id = 'bulkAccessoryQuantities'; quantities.className = 'form-grid detail-field'; form.elements.quantity.closest('label').after(quantities); }
+      quantities.replaceChildren();
+      for (const item of selectedAccessories.values()) {
+        const label = document.createElement('label'); label.className = 'detail-field';
+        const heading = document.createElement('small'); heading.textContent = `${item.name} · ${fmt.format(item.remaining)} adet kullanılabilir`;
+        const input = document.createElement('input'); input.type = 'number'; input.min = '1'; input.max = String(item.remaining); input.value = '1'; input.required = true; input.dataset.accessoryId = item.id; input.setAttribute('aria-label', `${item.name} teslim adedi`); input.style.cssText = 'width:100%;margin-top:7px';
+        label.append(heading, input); quantities.append(label);
+      }
+      quantities.hidden = false;
+      $('#accessoryCheckoutDialog h2').textContent = `${selectedAccessories.size} aksesuarı teslim et`;
+      $('#accessoryCheckoutDialog .eyebrow').textContent = 'TOPLU AKSESUAR ZİMMETİ';
+      $('button[type="submit"]', form).textContent = 'Toplu teslimi kaydet';
+      updateAccessoryCheckoutTarget(); $('#accessoryCheckoutDialog').showModal();
     }
     function updateAccessoryCheckoutTarget() {
       const target = $('#accessoryCheckoutForm').elements.targetType.value;
@@ -1850,6 +1900,28 @@
       if (event.target.closest('.accessory-checkout')) { openAccessory(row.dataset.accessoryId).then(() => openAccessoryCheckout()).catch(error => notify(error.message)); return; }
       if (event.target.closest('.accessory-open')) openAccessory(row.dataset.accessoryId).catch(error => notify(error.message));
     });
+    $('#accessoryRows').addEventListener('change', event => {
+      const checkbox = event.target.closest('.accessory-select'); if (!checkbox) return;
+      const item = accessoryPageItems.find(candidate => candidate.id === checkbox.closest('tr')?.dataset.accessoryId); if (!item) return;
+      if (checkbox.checked) {
+        if (selectedAccessories.size >= 100) { checkbox.checked = false; notify('Toplu teslimde en fazla 100 farklı aksesuar seçilebilir.'); return; }
+        selectedAccessories.set(item.id, item);
+      } else selectedAccessories.delete(item.id);
+      updateAccessorySelection();
+    });
+    selectAccessoryPageButton.addEventListener('click', () => {
+      for (const item of accessoryPageItems) {
+        if (item.remaining < 1 || selectedAccessories.has(item.id)) continue;
+        if (selectedAccessories.size >= 100) { notify('Toplu teslimde en fazla 100 farklı aksesuar seçilebilir.'); break; }
+        selectedAccessories.set(item.id, item);
+      }
+      document.querySelectorAll('#accessoryRows .accessory-select').forEach(input => { input.checked = selectedAccessories.has(input.closest('tr')?.dataset.accessoryId); });
+      updateAccessorySelection();
+    });
+    clearAccessorySelectionButton.addEventListener('click', () => {
+      selectedAccessories.clear(); document.querySelectorAll('#accessoryRows .accessory-select').forEach(input => { input.checked = false; }); updateAccessorySelection();
+    });
+    bulkCheckoutAccessoriesButton.addEventListener('click', () => openBulkAccessoryCheckout().catch(error => notify(error.message)));
     $('#newAccessoryButton').addEventListener('click', openNewAccessory);
     try {
       const stored = JSON.parse(localStorage.getItem('envantertr:accessory-columns') || 'null');
@@ -1893,6 +1965,17 @@
     });
     $('#accessoryCheckoutForm').addEventListener('submit', async event => {
       event.preventDefault(); const data = new FormData(event.currentTarget);
+      if (event.currentTarget.dataset.bulkMode === 'true') {
+        const items = [...$('#bulkAccessoryQuantities').querySelectorAll('input[data-accessory-id]')].map(input => ({ accessoryId: input.dataset.accessoryId, quantity: Number(input.value) }));
+        const submit = $('button[type="submit"]', event.currentTarget); submit.disabled = true;
+        try {
+          const result = await api('/api/accessories/bulk-checkout', { method: 'POST', body: JSON.stringify({ targetType: data.get('targetType'), employeeId: data.get('employeeId') || null, assetId: data.get('assetId') || null, location: data.get('location') || null, items, notes: data.get('notes') || null }) });
+          $('#accessoryCheckoutDialog').close(); selectedAccessories.clear(); await loadAccessories(accessoryPage);
+          notify(`${fmt.format(result.checkedOut)} farklı aksesuar tek işlemde teslim edildi ve hareket geçmişine yazıldı.`);
+        } catch (error) { notify(error.message); }
+        finally { submit.disabled = false; }
+        return;
+      }
       try { await api(`/api/accessories/${currentAccessory.id}/checkout`, { method: 'POST', body: JSON.stringify({ targetType: data.get('targetType'), employeeId: data.get('employeeId') || null, assetId: data.get('assetId') || null, location: data.get('location') || null, quantity: Number(data.get('quantity')), notes: data.get('notes') || null }) }); $('#accessoryCheckoutDialog').close(); await openAccessory(currentAccessory.id); await loadAccessories(); notify('Aksesuar teslimi kaydedildi ve zimmet geçmişine işlendi.'); }
       catch (error) { notify(error.message); }
     });

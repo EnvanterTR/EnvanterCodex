@@ -412,6 +412,89 @@ public static class AssetEndpoints
             return Results.Created($"/api/accessories/{id}", new { assignment.Id, assignment.Quantity, remaining = available - request.Quantity });
         }).RequireAuthorization("asset.write");
 
+        api.MapPost("/accessories/bulk-checkout", async (BulkAccessoryCheckoutRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
+            var items = request.Items ?? [];
+            if (items.Length is < 1 or > 100 || items.Any(x => x.AccessoryId == Guid.Empty || x.Quantity is < 1 or > 100000) || items.Select(x => x.AccessoryId).Distinct().Count() != items.Length)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["items"] = ["1 ile 100 arasında, tekrarsız aksesuar ve her biri için 1–100.000 arası adet girin."] });
+            if (request.Notes?.Length > 2000)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["notes"] = ["Not en fazla 2.000 karakter olabilir."] });
+
+            var targetType = request.TargetType?.Trim().ToLowerInvariant();
+            var employeeId = request.EmployeeId;
+            var assetId = request.AssetId;
+            var location = Clean(request.Location);
+            var targetErrors = new Dictionary<string, string[]>();
+            if (targetType == "employee")
+            {
+                if (employeeId is not Guid selectedEmployee || !await db.Employees.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == selectedEmployee && x.IsActive, cancellationToken))
+                    targetErrors["employeeId"] = ["Etkin çalışan bu şirkette bulunamadı."];
+                assetId = null; location = null;
+            }
+            else if (targetType == "asset")
+            {
+                if (assetId is not Guid selectedAsset || !await db.Assets.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == selectedAsset, cancellationToken))
+                    targetErrors["assetId"] = ["Varlık bu şirkette bulunamadı."];
+                employeeId = null; location = null;
+            }
+            else if (targetType == "location")
+            {
+                if (string.IsNullOrWhiteSpace(location) || location.Length > 160) targetErrors["location"] = ["Konum zorunludur ve 160 karakteri aşamaz."];
+                employeeId = null; assetId = null;
+            }
+            else targetErrors["targetType"] = ["Teslim hedefi çalışan, varlık veya konum olmalı."];
+            if (targetErrors.Count > 0) return Results.ValidationProblem(targetErrors);
+
+            var ids = items.Select(x => x.AccessoryId).ToArray();
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            var accessories = await db.Accessories.FromSqlInterpolated(
+                    $"SELECT * FROM \"Accessories\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) ORDER BY \"Id\" FOR UPDATE")
+                .ToListAsync(cancellationToken);
+            if (accessories.Count != items.Length) return Results.NotFound(new { message = "Aksesuarlardan biri bu şirkette bulunamadı. Hiçbir teslim kaydedilmedi." });
+            var checkedOutById = await db.AccessoryAssignments.Where(x => x.CompanyId == companyId && ids.Contains(x.AccessoryId))
+                .GroupBy(x => x.AccessoryId).Select(group => new { AccessoryId = group.Key, Quantity = group.Sum(x => x.Quantity - x.ReturnedQuantity) })
+                .ToDictionaryAsync(x => x.AccessoryId, x => x.Quantity, cancellationToken);
+            var shortages = new List<string>();
+            foreach (var accessory in accessories)
+            {
+                var item = items.Single(x => x.AccessoryId == accessory.Id);
+                var available = accessory.TotalQuantity - checkedOutById.GetValueOrDefault(accessory.Id);
+                if (item.Quantity > available) shortages.Add($"{accessory.Name}: {available} adet kullanılabilir.");
+            }
+            if (shortages.Count > 0) return Results.Conflict(new { message = "Bazı ürünlerde yeterli stok yok; hiçbir teslim kaydedilmedi.", items = shortages });
+
+            var notes = Clean(request.Notes);
+            var now = DateTimeOffset.UtcNow;
+            foreach (var accessory in accessories)
+            {
+                var item = items.Single(x => x.AccessoryId == accessory.Id);
+                var assignment = new AccessoryAssignment
+                {
+                    CompanyId = companyId, AccessoryId = accessory.Id,
+                    TargetType = targetType![..1].ToUpperInvariant() + targetType[1..],
+                    EmployeeId = employeeId, AssetId = assetId, Location = location,
+                    Quantity = item.Quantity, Notes = notes
+                };
+                db.AccessoryAssignments.Add(assignment);
+                db.AccessoryMovements.Add(new AccessoryMovement
+                {
+                    CompanyId = companyId, AccessoryId = accessory.Id, AssignmentId = assignment.Id,
+                    EmployeeId = employeeId, ActorUserId = userId, MovementType = "Checkout", Quantity = item.Quantity, Notes = notes
+                });
+                db.AuditEntries.Add(new AuditEntry
+                {
+                    CompanyId = companyId, ActorUserId = userId, TargetType = "Accessory", TargetId = accessory.Id,
+                    Action = "bulk_checked_out", Details = $"{item.Quantity} adet aksesuar toplu teslim edildi."
+                });
+                accessory.UpdatedAt = now;
+            }
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { checkedOut = accessories.Count, targetType, employeeId, assetId, location });
+        }).RequireAuthorization("asset.write");
+
         api.MapPost("/accessories/{id:guid}/checkin", async (Guid id, AccessoryCheckinRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
@@ -1823,6 +1906,9 @@ public static class AssetEndpoints
         string Currency, DateOnly? PurchaseDate, string? Notes, bool IsRequestable);
     public sealed record AccessoryStockRequest(int Quantity, string? Notes);
     public sealed record AccessoryCheckoutRequest(string TargetType, Guid? EmployeeId, Guid? AssetId, string? Location, int Quantity, string? Notes);
+    public sealed record BulkAccessoryCheckoutRequest(string? TargetType, Guid? EmployeeId, Guid? AssetId, string? Location,
+        BulkAccessoryCheckoutItem[]? Items, string? Notes);
+    public sealed record BulkAccessoryCheckoutItem(Guid AccessoryId, int Quantity);
     public sealed record AccessoryCheckinRequest(Guid AssignmentId, int Quantity, string? Notes);
     public sealed record RecordAssetAuditRequest(DateOnly AuditDate, string? Notes);
     public sealed record TransferAssetRequest(string? TargetLocation, string? Notes);
