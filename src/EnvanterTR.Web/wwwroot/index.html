@@ -252,6 +252,7 @@
   <dialog class="detail-dialog" id="scanAssetDialog"><div class="dialog-head"><div><div class="eyebrow">HIZLI VARLIK BULMA</div><h2>Barkod veya QR okut</h2></div><button class="close" id="closeAssetScanner" type="button" aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="muted">Kamerayla okutun veya USB barkod okuyucuyu kullanıp kodu alana girin. Kamera görüntüsü bu cihazda işlenir; yalnızca okunan kodla şirket envanterinde arama yapılır.</p><video id="scanAssetVideo" muted autoplay playsinline hidden style="width:100%;max-height:42vh;object-fit:cover;border-radius:9px;background:#101828"></video><div class="dialog-actions"><button class="btn" id="startAssetCamera" type="button">Kamerayı başlat</button></div><label class="field" id="scanAssetActionWrap">Okutma işlemi<select id="scanAssetAction"><option value="view">Varlık ayrıntısını aç</option><option value="assign">Uygunsa zimmet formunu aç</option><option value="return">Zimmetliyse iade onayını göster</option></select></label><form id="scanAssetForm"><label class="field">Varlık etiketi veya QR içeriği<input id="scanAssetCode" name="code" autocomplete="off" autofocus required maxlength="500" placeholder="Etiketi okutun veya yazın"></label><div class="dialog-actions"><button class="btn primary" type="submit">Varlığı bul</button></div></form><p id="scanAssetFeedback" class="muted" role="status" aria-live="polite">Kamera desteklenmiyorsa USB okuyucu ya da klavyeyle kod girebilirsiniz.</p></div></dialog>
   <div class="toast" id="toast" role="status"></div>
   <dialog class="detail-dialog" id="directoryRenameDialog"><form id="directoryRenameForm"><div class="dialog-head"><div><div class="eyebrow" id="directoryRenameEyebrow">ŞİRKET ALANI / KAYITLAR</div><h2 id="directoryRenameTitle">Adı değiştir</h2></div><button class="close" type="button" id="closeDirectoryRename" aria-label="Kapat">✕</button></div><div class="dialog-body"><input name="kind" type="hidden"><input name="currentName" type="hidden"><p class="muted" id="directoryRenameDescription"></p><label>Yeni ad<input name="newName" maxlength="160" required autocomplete="off"></label><p class="muted" id="directoryRenameFeedback" role="status" aria-live="polite"></p><div class="dialog-actions"><button class="btn" type="button" id="cancelDirectoryRename">Vazgeç</button><button class="btn primary" type="submit" id="saveDirectoryRename">Değişiklikleri kaydet</button></div></div></form></dialog>
+  <datalist id="departmentSuggestions"></datalist><datalist id="locationSuggestions"></datalist>
   <script src="/vendor/qrcodegen.js"></script>
   <script>
     const toast = document.getElementById('toast');
@@ -783,6 +784,29 @@
       $('#employeePageInfo').textContent = employeeTotal ? `${employeePage}. sayfa · ${Math.min((employeePage - 1) * pageSize + 1, employeeTotal)}–${Math.min(employeePage * pageSize, employeeTotal)} / ${fmt.format(employeeTotal)}` : 'Kayıt yok';
       $('#employeePrev').disabled = employeePage <= 1; $('#employeeNext').disabled = employeePage * pageSize >= employeeTotal;
     }
+    let directorySuggestionsTimer;
+    async function refreshDirectorySuggestions() {
+      const tasks = [];
+      if (canReadAssets()) tasks.push(api('/api/locations').then(result => {
+        const names = [...new Set((result.items || []).map(item => item.name))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+        $('#locationSuggestions').replaceChildren(...names.map(name => new Option(name, name)));
+      }));
+      if (canReadPeople()) tasks.push(api('/api/departments').then(result => {
+        const names = [...new Set((result.items || []).map(item => item.name))].sort((a, b) => a.localeCompare(b, 'tr-TR'));
+        $('#departmentSuggestions').replaceChildren(...names.map(name => new Option(name, name)));
+      }));
+      await Promise.allSettled(tasks);
+    }
+    function scheduleDirectorySuggestionRefresh() {
+      clearTimeout(directorySuggestionsTimer);
+      directorySuggestionsTimer = setTimeout(() => refreshDirectorySuggestions(), 450);
+    }
+    document.querySelectorAll('input[name="location"], input[name="targetLocation"]').forEach(input => {
+      input.setAttribute('list', 'locationSuggestions'); input.addEventListener('change', scheduleDirectorySuggestionRefresh);
+    });
+    document.querySelectorAll('input[name="department"]').forEach(input => {
+      input.setAttribute('list', 'departmentSuggestions'); input.addEventListener('change', scheduleDirectorySuggestionRefresh);
+    });
     function openDirectoryLocation(item, family = '') {
       const selected = family || (item.assetCount ? 'assets' : item.accessoryCount ? 'accessories' : item.consumableCount ? 'consumables' : 'components');
       if (selected === 'assets') {
@@ -895,6 +919,7 @@
         const count = kind === 'departments' ? result.employeeCount : result.updatedCount;
         try {
           await loadDirectory(kind);
+          await refreshDirectorySuggestions();
           notify(`“${currentName}” adı “${result.name}” olarak değiştirildi; ${fmt.format(count)} kayıt güncellendi.`);
         } catch {
           notify(`“${currentName}” adı değiştirildi ve ${fmt.format(count)} kayıt güncellendi; listeyi yenilemek için Yenile'yi seçin.`);
@@ -2416,6 +2441,7 @@
       $('#companyName').textContent = session.companyName || 'Şirket çalışma alanı'; $('#welcomeCompany').textContent = `${session.companyName || 'Şirketiniz'} envanterinde yalnızca yetkili olduğunuz kayıtlar gösterilir.`;
       $('#newAssetButton').hidden = !canWriteAssets(); $('#scanAssetButton').hidden = !canReadAssets(); $('#newEmployeeButton').hidden = !canManagePeople(); $('#exportButton').hidden = !canReadAssets(); $('#exportBackupButton').hidden = !canManageSettings(); $('#importPreviewButton').hidden = !canWriteAssets(); $('#globalSearch').disabled = !canReadAssets();
       $('#overview').hidden = !canReadAssets();
+      if (canReadAssets() || canReadPeople()) await refreshDirectorySuggestions();
       if (canReadAssets()) { try { await loadLookups(); await loadDashboard(); } catch (error) { $('#dataStatus').textContent = 'Veriler yüklenemedi'; notify(`Şirket verileri alınamadı: ${error.message}`); } }
       else if (canReadPeople()) { $('#employeesPage').hidden = false; await loadEmployees(1); }
       else { showLogin('Bu hesapta şirket envanteri veya çalışan kayıtlarına erişim rolü bulunmuyor. Şirket yöneticinizden rol atamasını isteyin.'); }
