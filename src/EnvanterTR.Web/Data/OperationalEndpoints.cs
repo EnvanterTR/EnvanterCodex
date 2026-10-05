@@ -364,6 +364,40 @@ public static class OperationalEndpoints
             return Results.Ok(new { items = departments, total = departments.Count });
         }).RequireAuthorization("people.read");
 
+        api.MapPatch("/departments/rename", async ([FromBody] RenameDirectoryEntryRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            var currentName = request.CurrentName?.Trim();
+            var newName = request.NewName?.Trim();
+            if (string.IsNullOrWhiteSpace(currentName) || currentName.Length > 160 || currentName.Any(char.IsControl) ||
+                string.IsNullOrWhiteSpace(newName) || newName.Length > 160 || newName.Any(char.IsControl))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Mevcut ve yeni departman adları 1–160 karakter olmalı ve kontrol karakteri içermemelidir."] });
+
+            var currentPattern = currentName.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal);
+            var newPattern = newName.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal);
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            if (await db.Companies.FromSqlInterpolated($"SELECT * FROM \"Companies\" WHERE \"Id\" = {companyId} FOR UPDATE")
+                    .SingleOrDefaultAsync(cancellationToken) is null) return Results.Forbid();
+            var employees = db.Employees.Where(employee => employee.CompanyId == companyId && employee.Department != null &&
+                EF.Functions.ILike(employee.Department.Trim(), currentPattern));
+            var count = await employees.CountAsync(cancellationToken);
+            if (count == 0) return Results.NotFound();
+            var collision = await db.Employees.AnyAsync(employee => employee.CompanyId == companyId && employee.Department != null &&
+                EF.Functions.ILike(employee.Department.Trim(), newPattern) &&
+                !EF.Functions.ILike(employee.Department.Trim(), currentPattern), cancellationToken);
+            if (collision) return Results.Conflict(new { message = "Bu adla başka bir departman zaten var. Yeni adı seçin veya mevcut departman adını kullanın." });
+
+            var updated = await employees.ExecuteUpdateAsync(setters => setters
+                .SetProperty(employee => employee.Department, newName), cancellationToken);
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                TargetType = "Department", TargetId = companyId, Action = "Renamed",
+                Details = $"Departman adı “{currentName}” → “{newName}”; {updated} çalışan güncellendi." });
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { name = newName, employeeCount = updated });
+        }).RequireAuthorization("people.manage");
+
         api.MapPost("/assets/{id:guid}/assign", async (Guid id, [FromBody] AssignAssetRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {

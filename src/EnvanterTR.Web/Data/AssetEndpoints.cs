@@ -431,26 +431,104 @@ public static class AssetEndpoints
             return Results.Ok(new { assignment.Id, assignment.Quantity, assignment.ReturnedQuantity, remainingOnAssignment = assignment.Quantity - assignment.ReturnedQuantity });
         }).RequireAuthorization("asset.write");
 
-        // Locations are currently free-text values on assets. The directory therefore
-        // summarizes exact stored location labels and never implies a managed hierarchy.
+        // Location labels remain text fields, but this directory includes every tracked
+        // stock family and supports a company-scoped, audited rename across them.
         api.MapGet("/locations", async (ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
-            var locations = await db.Assets.AsNoTracking()
+            var locations = new Dictionary<string, (string Name, int Assets, int Assigned, int Available, int Maintenance, int Accessories, int Consumables, int Components)>(StringComparer.Ordinal);
+            void AddLocation(string name, int assets = 0, int assigned = 0, int available = 0, int maintenance = 0,
+                int accessories = 0, int consumables = 0, int components = 0)
+            {
+                if (string.IsNullOrWhiteSpace(name)) return;
+                var key = name.Trim();
+                locations.TryGetValue(key, out var current);
+                locations[key] = (key, current.Assets + assets, current.Assigned + assigned,
+                    current.Available + available, current.Maintenance + maintenance,
+                    current.Accessories + accessories, current.Consumables + consumables,
+                    current.Components + components);
+            }
+
+            var assetLocations = await db.Assets.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() != "")
                 .GroupBy(x => x.Location!.Trim())
-                .OrderBy(group => group.Key)
                 .Select(group => new
                 {
                     name = group.Key,
-                    assetCount = group.Count(),
-                    assignedCount = group.Count(asset => asset.AssignedEmployeeId != null),
-                    availableCount = group.Count(asset => asset.Status == AssetStatuses.Available),
-                    maintenanceCount = group.Count(asset => asset.Status == AssetStatuses.Maintenance)
+                    assets = group.Count(),
+                    assigned = group.Count(asset => asset.AssignedEmployeeId != null),
+                    available = group.Count(asset => asset.Status == AssetStatuses.Available),
+                    maintenance = group.Count(asset => asset.Status == AssetStatuses.Maintenance)
                 })
                 .ToListAsync(cancellationToken);
-            return Results.Ok(new { items = locations, total = locations.Count });
+            foreach (var row in assetLocations) AddLocation(row.name, assets: row.assets, assigned: row.assigned,
+                available: row.available, maintenance: row.maintenance);
+            var accessoryLocations = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() != "")
+                .GroupBy(x => x.Location!.Trim()).Select(group => new { name = group.Key, count = group.Count() }).ToListAsync(cancellationToken);
+            foreach (var row in accessoryLocations) AddLocation(row.name, accessories: row.count);
+            var consumableLocations = await db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() != "")
+                .GroupBy(x => x.Location!.Trim()).Select(group => new { name = group.Key, count = group.Count() }).ToListAsync(cancellationToken);
+            foreach (var row in consumableLocations) AddLocation(row.name, consumables: row.count);
+            var componentLocations = await db.InventoryComponents.AsNoTracking().Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() != "")
+                .GroupBy(x => x.Location!.Trim()).Select(group => new { name = group.Key, count = group.Count() }).ToListAsync(cancellationToken);
+            foreach (var row in componentLocations) AddLocation(row.name, components: row.count);
+            var items = locations.Values.OrderBy(x => x.Name, StringComparer.Create(CultureInfo.GetCultureInfo("tr-TR"), true))
+                .Select(x => new { name = x.Name, assetCount = x.Assets, assignedCount = x.Assigned,
+                    availableCount = x.Available, maintenanceCount = x.Maintenance,
+                    accessoryCount = x.Accessories, consumableCount = x.Consumables, componentCount = x.Components })
+                .ToList();
+            return Results.Ok(new { items, total = items.Count });
         }).RequireAuthorization("asset.read");
+
+        api.MapPatch("/locations/rename", async ([FromBody] RenameDirectoryEntryRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var currentName = request.CurrentName?.Trim();
+            var newName = request.NewName?.Trim();
+            if (string.IsNullOrWhiteSpace(currentName) || currentName.Length > 160 || currentName.Any(char.IsControl) ||
+                string.IsNullOrWhiteSpace(newName) || newName.Length > 160 || newName.Any(char.IsControl))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Mevcut ve yeni konum adları 1–160 karakter olmalı ve kontrol karakteri içermemelidir."] });
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            if (await db.Companies.FromSqlInterpolated($"SELECT * FROM \"Companies\" WHERE \"Id\" = {companyId} FOR UPDATE")
+                    .SingleOrDefaultAsync(cancellationToken) is null) return Results.Forbid();
+
+            var assets = db.Assets.Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() == currentName);
+            var accessories = db.Accessories.Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() == currentName);
+            var consumables = db.Consumables.Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() == currentName);
+            var components = db.InventoryComponents.Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() == currentName);
+            var assetCount = await assets.CountAsync(cancellationToken);
+            var accessoryCount = await accessories.CountAsync(cancellationToken);
+            var consumableCount = await consumables.CountAsync(cancellationToken);
+            var componentCount = await components.CountAsync(cancellationToken);
+            if (assetCount + accessoryCount + consumableCount + componentCount == 0) return Results.NotFound();
+            if (string.Equals(currentName, newName, StringComparison.Ordinal))
+            {
+                await transaction.CommitAsync(cancellationToken);
+                return Results.Ok(new { name = currentName, updatedCount = assetCount + accessoryCount + consumableCount + componentCount,
+                    assetCount, accessoryCount, consumableCount, componentCount });
+            }
+
+            if (await db.Assets.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken) ||
+                await db.Accessories.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken) ||
+                await db.Consumables.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken) ||
+                await db.InventoryComponents.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken))
+                return Results.Conflict(new { message = "Bu adla başka bir konum zaten var. Yeni adı seçin veya mevcut konum adını kullanın." });
+
+            var updatedAt = DateTimeOffset.UtcNow;
+            var updatedAssets = await assets.ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Location, newName).SetProperty(x => x.UpdatedAt, updatedAt), cancellationToken);
+            var updatedAccessories = await accessories.ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Location, newName).SetProperty(x => x.UpdatedAt, updatedAt), cancellationToken);
+            var updatedConsumables = await consumables.ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Location, newName).SetProperty(x => x.UpdatedAt, updatedAt), cancellationToken);
+            var updatedComponents = await components.ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Location, newName).SetProperty(x => x.UpdatedAt, updatedAt), cancellationToken);
+            var total = updatedAssets + updatedAccessories + updatedConsumables + updatedComponents;
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                TargetType = "Location", TargetId = companyId, Action = "Renamed",
+                Details = $"Konum adı “{currentName}” → “{newName}”; {updatedAssets} varlık, {updatedAccessories} aksesuar, {updatedConsumables} sarf malzemesi ve {updatedComponents} bileşen güncellendi." });
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { name = newName, updatedCount = total, assetCount = updatedAssets,
+                accessoryCount = updatedAccessories, consumableCount = updatedConsumables, componentCount = updatedComponents });
+        }).RequireAuthorization("asset.write");
 
         api.MapGet("/reports/assets", async ([FromQuery] DateOnly? purchaseDateFrom, [FromQuery] DateOnly? purchaseDateTo,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
