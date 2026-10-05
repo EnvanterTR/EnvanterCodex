@@ -551,8 +551,8 @@ public static class OperationalEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["assetIds"] = ["1 ile 100 arasında, tekrarsız varlık seçin."] });
             if (request.EmployeeId == Guid.Empty)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeId"] = ["Etkin çalışan bu şirkette bulunamadı."] });
-            if (request.Note is { Length: > 2000 })
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Açıklama en fazla 2000 karakter olabilir."] });
+            if (request.Note is { Length: > 1900 })
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Toplu zimmet notu en fazla 1900 karakter olabilir."] });
 
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             var employee = await db.Employees.FromSqlInterpolated(
@@ -593,8 +593,8 @@ public static class OperationalEndpoints
             var ids = request.AssetIds ?? [];
             if (ids.Length is < 1 or > 100 || ids.Any(id => id == Guid.Empty) || ids.Distinct().Count() != ids.Length)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["assetIds"] = ["1 ile 100 arasında, tekrarsız varlık seçin."] });
-            if (request.Note is { Length: > 2000 })
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Açıklama en fazla 2000 karakter olabilir."] });
+            if (request.Note is { Length: > 1900 })
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Toplu iade notu en fazla 1900 karakter olabilir."] });
 
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             var assets = await db.Assets.FromSqlInterpolated(

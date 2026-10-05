@@ -362,6 +362,7 @@
     const selectedLabelsButton = document.createElement('button'); selectedLabelsButton.id = 'printSelectedAssetLabels'; selectedLabelsButton.type = 'button'; selectedLabelsButton.className = 'btn small'; selectedLabelsButton.textContent = 'Etiketleri yazdır'; selectedLabelsButton.disabled = true; $('#bulkAssetToolbar').append(selectedLabelsButton);
     const bulkAssignButton = document.createElement('button'); bulkAssignButton.id = 'bulkAssignSelectedAssets'; bulkAssignButton.type = 'button'; bulkAssignButton.className = 'btn primary small'; bulkAssignButton.textContent = 'Toplu zimmet'; bulkAssignButton.addEventListener('click', () => openBulkAssignDialog().catch(error => notify(error.message))); $('#bulkAssetToolbar').append(bulkAssignButton);
     const bulkReturnButton = document.createElement('button'); bulkReturnButton.id = 'bulkReturnSelectedAssets'; bulkReturnButton.type = 'button'; bulkReturnButton.className = 'btn small'; bulkReturnButton.textContent = 'Toplu iade'; $('#bulkAssetToolbar').append(bulkReturnButton);
+    const bulkTransferButton = document.createElement('button'); bulkTransferButton.id = 'bulkTransferSelectedAssets'; bulkTransferButton.type = 'button'; bulkTransferButton.className = 'btn small'; bulkTransferButton.textContent = 'Toplu konum aktar'; bulkTransferButton.addEventListener('click', openBulkAssetTransferDialog); $('#bulkAssetToolbar').append(bulkTransferButton);
     function updateBulkAssetSelection() {
       const toolbar = $('#bulkAssetToolbar'), count = selectedAssetIds.size;
       toolbar.hidden = count === 0;
@@ -375,6 +376,7 @@
       $('#printSelectedAssetLabels').disabled = count === 0 || count > 100;
       bulkAssignButton.hidden = !canWriteAssets(); bulkAssignButton.disabled = count === 0 || count > 100 || bulkAssignmentInvalid;
       bulkReturnButton.hidden = !canWriteAssets(); bulkReturnButton.disabled = count === 0 || count > 100 || bulkReturnInvalid;
+      bulkTransferButton.hidden = !canWriteAssets(); bulkTransferButton.disabled = count === 0 || count > 100 || bulkAssignmentInvalid;
       const selectable = loadedAssets;
       const allSelected = selectable.length > 0 && selectable.every(asset => selectedAssetIds.has(asset.id));
       for (const checkbox of [$('#selectAllAssets'), $('#selectAllAssetsHeader')]) { checkbox.checked = allSelected; checkbox.indeterminate = !allSelected && selectable.some(asset => selectedAssetIds.has(asset.id)); checkbox.disabled = selectable.length === 0; }
@@ -1163,6 +1165,7 @@
       $('h2', dialog).textContent = bulk ? 'Seçili varlıkları zimmetle' : 'Çalışana zimmetle';
       $('.eyebrow', dialog).textContent = bulk ? 'TOPLU ZİMMET İŞLEMİ' : 'ZİMMET İŞLEMİ';
       $('button[type="submit"]', dialog).textContent = bulk ? 'Toplu zimmeti kaydet' : 'Zimmeti kaydet';
+      $('#assignForm').elements.note.maxLength = bulk ? 1900 : 2000;
       $('#assignForm').reset();
     }
     async function openAssignDialog() { setAssignDialogMode(false); $('#assignSearch').value = ''; await loadAssignableEmployees(); $('#assignDialog').showModal(); }
@@ -2276,10 +2279,26 @@
         notify('Fiziksel denetim kaydedildi ve varlık geçmişine eklendi.');
       } catch (error) { notify(error.message); }
       finally { submit.disabled = false; }
-    });    $('#transferAssetButton').addEventListener('click', () => {
-      const form = $('#assetTransferForm'); form.reset();
+    });
+    function setAssetTransferMode(bulk) {
+      const dialog = $('#assetTransferDialog'), form = $('#assetTransferForm'); dialog.dataset.bulkMode = bulk ? 'true' : 'false'; form.reset();
+      $('h2', dialog).textContent = bulk ? 'Seçili varlıkları yeni konuma aktar' : 'Konum transferi';
+      $('.eyebrow', dialog).textContent = bulk ? 'TOPLU KONUM TRANSFERİ' : 'VARLIK HAREKETİ';
+      $('button[type="submit"]', form).textContent = bulk ? 'Toplu transferi kaydet' : 'Transferi kaydet';
+      form.elements.notes.maxLength = 1600;
+      $('p.muted', dialog).textContent = bulk ? 'Seçilen bütün varlıklar kullanılabilir ve zimmet dışı olmalıdır. İşlem tüm seçime tek seferde uygulanır ve her varlığın geçmişine yazılır.' : 'Zimmetli varlıklar önce iade alınmalıdır. Transfer, varlık geçmişine eklenir.';
+    }
+    async function openBulkAssetTransferDialog() {
+      const assets = [...selectedAssetIds].map(id => selectedAssetRows.get(id));
+      if (!assets.length || assets.length > 100 || assets.some(asset => !asset || asset.assignedEmployeeId || asset.status !== 'Available')) return;
+      currentAsset = null; setAssetTransferMode(true);
+      $('#transferSourceLocation').value = 'Seçili kayıtların kaynak konumları';
+      $('#assetTransferForm').elements.targetLocation.focus(); $('#assetTransferDialog').showModal();
+    }
+    $('#transferAssetButton').addEventListener('click', () => {
+      setAssetTransferMode(false);
       $('#transferSourceLocation').value = currentAsset?.location || 'Konum belirtilmemiş';
-      form.elements.targetLocation.focus(); $('#assetTransferDialog').showModal();
+      $('#assetTransferForm').elements.targetLocation.focus(); $('#assetTransferDialog').showModal();
     });
     document.querySelectorAll('[data-close-asset-transfer]').forEach(button => button.addEventListener('click', () => $('#assetTransferDialog').close()));
     $('#assetTransferForm').addEventListener('submit', async event => {
@@ -2291,6 +2310,20 @@
         $('#assetTransferDialog').close(); $('#assetDialog').close();
         await loadDashboard($('#globalSearch').value.trim()); await openAsset(assetId);
         notify('Varlık yeni konumuna aktarıldı ve işlem geçmişine eklendi.');
+      } catch (error) { notify(error.message); }
+      finally { submit.disabled = false; }
+    });
+    $('#assetTransferForm').addEventListener('submit', async event => {
+      if ($('#assetTransferDialog').dataset.bulkMode !== 'true') return;
+      event.preventDefault();
+      const form = event.currentTarget, data = new FormData(form), ids = [...selectedAssetIds], submit = $('button[type="submit"]', form);
+      if (!ids.length || ids.length > 100 || ids.some(id => { const asset = selectedAssetRows.get(id); return !asset || asset.assignedEmployeeId || asset.status !== 'Available'; })) return;
+      submit.disabled = true;
+      try {
+        const result = await api('/api/assets/bulk-transfer', { method: 'POST', body: JSON.stringify({ assetIds: ids, targetLocation: String(data.get('targetLocation')).trim(), notes: data.get('notes') || null }) });
+        $('#assetTransferDialog').close(); setAssetTransferMode(false); clearBulkAssetSelection();
+        await loadDashboard($('#globalSearch').value.trim(), assetPage);
+        notify(`${fmt.format(result.updated)} varlık “${result.targetLocation}” konumuna aktarıldı; işlem geçmişi kaydedildi.`);
       } catch (error) { notify(error.message); }
       finally { submit.disabled = false; }
     });

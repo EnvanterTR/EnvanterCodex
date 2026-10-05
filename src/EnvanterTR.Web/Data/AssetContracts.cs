@@ -46,6 +46,7 @@ public sealed record ChangeAssetStatusRequest(string Status, string? Note);
 public sealed record BulkChangeAssetStatusRequest(Guid[] AssetIds, string Status, string? Note);
 public sealed record BulkAssignAssetsRequest(Guid[] AssetIds, Guid EmployeeId, string? Note);
 public sealed record BulkReturnAssetsRequest(Guid[] AssetIds, string? Note);
+public sealed record BulkTransferAssetsRequest(Guid[] AssetIds, string TargetLocation, string? Notes);
 public sealed record SelectedAssetExportRequest(Guid[] AssetIds);
 public sealed record SetEmployeeActiveRequest(bool IsActive);
 

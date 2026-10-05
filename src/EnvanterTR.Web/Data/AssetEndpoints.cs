@@ -988,8 +988,8 @@ public static class AssetEndpoints
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
             var target = request.TargetLocation?.Trim();
-            if (string.IsNullOrWhiteSpace(target) || target.Length > 160 || request.Notes?.Length > 2000)
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["transfer"] = ["Yeni konum zorunludur (en fazla 160 karakter); notlar 2.000 karakteri aşamaz."] });
+            if (string.IsNullOrWhiteSpace(target) || target.Length > 160 || request.Notes?.Length > 1600)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["transfer"] = ["Yeni konum zorunludur (en fazla 160 karakter); transfer notları en fazla 1.600 karakter olabilir."] });
             var asset = await db.Assets.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
             if (asset is null) return Results.NotFound();
             if (asset.AssignedEmployeeId is not null || asset.Status != AssetStatuses.Available)
@@ -1006,6 +1006,49 @@ public static class AssetEndpoints
                 ActorUserId = CurrentUserId(user), EventType = "Transferred", Details = details });
             await db.SaveChangesAsync(cancellationToken);
             return Results.NoContent();
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/assets/bulk-transfer", async ([FromBody] BulkTransferAssetsRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var ids = request.AssetIds ?? [];
+            var target = request.TargetLocation?.Trim();
+            if (ids.Length is < 1 or > 100 || ids.Any(id => id == Guid.Empty) || ids.Distinct().Count() != ids.Length)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["assetIds"] = ["1 ile 100 arasında, tekrarsız varlık seçin."] });
+            if (string.IsNullOrWhiteSpace(target) || target.Length > 160 || request.Notes?.Length > 1600)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["transfer"] = ["Yeni konum zorunludur (en fazla 160 karakter); transfer notları en fazla 1.600 karakter olabilir."] });
+
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            var assets = await db.Assets.FromSqlInterpolated(
+                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) ORDER BY \"Id\" FOR UPDATE")
+                .ToListAsync(cancellationToken);
+            if (assets.Count != ids.Length)
+                return Results.NotFound(new { message = "Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil. Hiçbir kayıt değiştirilmedi." });
+            if (assets.Any(asset => asset.AssignedEmployeeId is not null || asset.Status != AssetStatuses.Available))
+                return Results.Conflict(new { message = "Toplu transfer için seçilen bütün varlıklar kullanılabilir ve zimmet dışı olmalı. Hiçbir kayıt değiştirilmedi." });
+            if (assets.Any(asset => string.Equals(
+                    string.IsNullOrWhiteSpace(asset.Location) ? "Konum belirtilmemiş" : asset.Location.Trim(),
+                    target, StringComparison.OrdinalIgnoreCase)))
+                return Results.Conflict(new { message = "Hedef konum seçilen varlıklardan en az biri için zaten geçerli. Hiçbir kayıt değiştirilmedi." });
+
+            var now = DateTimeOffset.UtcNow;
+            var notes = request.Notes?.Trim();
+            foreach (var asset in assets)
+            {
+                var source = string.IsNullOrWhiteSpace(asset.Location) ? "Konum belirtilmemiş" : asset.Location.Trim();
+                asset.Location = target;
+                asset.UpdatedAt = now;
+                var details = $"Toplu konum transferi: {source} → {target}";
+                if (!string.IsNullOrWhiteSpace(notes)) details += $" · {notes}";
+                db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = asset.Id,
+                    ActorUserId = actorId, EventType = "Transferred", Details = details });
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                    TargetType = "Asset", TargetId = asset.Id, Action = "BulkTransferred", Details = details });
+            }
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { updated = assets.Count, targetLocation = target });
         }).RequireAuthorization("asset.write");
 
         api.MapGet("/calendar", async (ClaimsPrincipal user, AppDbContext db, DateOnly? from,
