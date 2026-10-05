@@ -49,6 +49,45 @@ public static class ComponentEndpoints
         {
             if(!Tenant(user,out var companyId))return Results.Forbid();if(r.Quantity is 0 or <-100000 or >100000)return Results.ValidationProblem(new Dictionary<string,string[]>{{"quantity",["Sıfır dışı stok düzeltmesi -100.000 ile 100.000 arasında olmalı."]}});await using var tx=await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable,ct);var x=await db.InventoryComponents.FromSqlInterpolated($"SELECT * FROM \"InventoryComponents\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct);if(x is null)return Results.NotFound();var assigned=await db.ComponentAllocations.Where(a=>a.CompanyId==companyId&&a.ComponentId==id).SumAsync(a=>(int?)(a.Quantity-a.RemovedQuantity),ct)??0;var total=x.TotalQuantity+r.Quantity;if(total<assigned||total>100000)return Results.ValidationProblem(new Dictionary<string,string[]>{{"quantity",[$"Yeni toplam, atanmış {assigned} adetten az veya 100.000'den fazla olamaz."]}});x.TotalQuantity=total;x.UpdatedAt=DateTimeOffset.UtcNow;db.ComponentMovements.Add(new ComponentMovement{CompanyId=companyId,ComponentId=id,ActorUserId=UserId(user),MovementType=r.Quantity>0?"Received":"Adjustment",Quantity=Math.Abs(r.Quantity),Notes=Clean(r.Notes)});Audit(db,companyId,user,id,"component.stock-adjusted",$"{r.Quantity:+#;-#;0} adet");await db.SaveChangesAsync(ct);await tx.CommitAsync(ct);return Results.Ok(new{totalQuantity=total,allocated=assigned,available=total-assigned});
         }).RequireAuthorization("asset.write");
+        api.MapPost("/components/bulk-stock-adjustment", async (BulkStockRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!Tenant(user, out var companyId) || UserId(user) is not Guid actorId) return Results.Forbid();
+            var items = request.Items ?? [];
+            if (items.Length is < 1 or > 100 || items.Any(x => x.ComponentId == Guid.Empty || x.Quantity == 0 || Math.Abs((long)x.Quantity) > 100000) || items.Select(x => x.ComponentId).Distinct().Count() != items.Length)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["items"] = ["1 ile 100 arasında tekrarsız bileşen seçin; fark sıfır olamaz ve ±100.000 aralığında olmalı."] });
+            if (request.Notes?.Length > 1900) return Results.ValidationProblem(new Dictionary<string, string[]> { ["notes"] = ["Sayım notu en fazla 1.900 karakter olabilir."] });
+            var ids = items.Select(x => x.ComponentId).ToArray();
+            await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+            var components = await db.InventoryComponents.FromSqlInterpolated(
+                    $"SELECT * FROM \"InventoryComponents\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) ORDER BY \"Id\" FOR UPDATE")
+                .ToListAsync(ct);
+            if (components.Count != items.Length) return Results.NotFound(new { message = "Bileşenlerden biri bu şirkette bulunamadı; hiçbir stok değişmedi." });
+            var allocated = await db.ComponentAllocations.Where(x => x.CompanyId == companyId && ids.Contains(x.ComponentId))
+                .GroupBy(x => x.ComponentId).Select(group => new { ComponentId = group.Key, Quantity = group.Sum(x => x.Quantity - x.RemovedQuantity) })
+                .ToDictionaryAsync(x => x.ComponentId, x => x.Quantity, ct);
+            var invalid = new List<string>();
+            foreach (var component in components)
+            {
+                var delta = items.Single(x => x.ComponentId == component.Id).Quantity;
+                var total = component.TotalQuantity + delta;
+                var assigned = allocated.GetValueOrDefault(component.Id);
+                if (total is < 0 or > 100000 || total < assigned)
+                    invalid.Add($"{component.Name}: yeni toplam {total}; en az {assigned}, en fazla 100.000 olmalı.");
+            }
+            if (invalid.Count > 0) return Results.Conflict(new { message = "Bir bileşenin stok farkı geçersiz; hiçbir stok değişmedi.", items = invalid });
+            var note = Clean(request.Notes);
+            foreach (var component in components)
+            {
+                var delta = items.Single(x => x.ComponentId == component.Id).Quantity;
+                var movementNote = $"Toplu stok sayım farkı {delta:+#;-#;0} adet" + (string.IsNullOrWhiteSpace(note) ? "" : $" · {note}");
+                component.TotalQuantity += delta; component.UpdatedAt = DateTimeOffset.UtcNow;
+                db.ComponentMovements.Add(new ComponentMovement { CompanyId = companyId, ComponentId = component.Id, ActorUserId = actorId, MovementType = delta > 0 ? "Received" : "Adjustment", Quantity = Math.Abs(delta), Notes = movementNote });
+                Audit(db, companyId, user, component.Id, delta > 0 ? "component.bulk-stock-received" : "component.bulk-stock-adjusted", movementNote);
+            }
+            await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
+            return Results.Ok(new { adjusted = components.Count });
+        }).RequireAuthorization("asset.write");
+
         api.MapPost("/components/{id:guid}/allocate",async(Guid id,AllocateRequest r,ClaimsPrincipal user,AppDbContext db,CancellationToken ct)=>
         {
             if(!Tenant(user,out var companyId))return Results.Forbid();if(r.Quantity is <1 or >100000)return Results.ValidationProblem(new Dictionary<string,string[]>{{"quantity",["Atama miktarı 1 ile 100.000 arasında olmalı."]}});await using var tx=await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable,ct);var x=await db.InventoryComponents.FromSqlInterpolated($"SELECT * FROM \"InventoryComponents\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct);if(x is null)return Results.NotFound();if(!await db.Assets.AnyAsync(a=>a.CompanyId==companyId&&a.Id==r.AssetId&&a.Status!="Archived",ct))return Results.ValidationProblem(new Dictionary<string,string[]>{{"assetId",["Aktif varlık seçilmelidir."]}});var allocated=await db.ComponentAllocations.Where(a=>a.CompanyId==companyId&&a.ComponentId==id).SumAsync(a=>(int?)(a.Quantity-a.RemovedQuantity),ct)??0;if(r.Quantity>x.TotalQuantity-allocated)return Results.Conflict(new{message=$"Yeterli bileşen stoğu yok. Kullanılabilir miktar: {x.TotalQuantity-allocated}."});var arow=new ComponentAllocation{CompanyId=companyId,ComponentId=id,AssetId=r.AssetId,ActorUserId=UserId(user),Quantity=r.Quantity,Notes=Clean(r.Notes)};db.ComponentAllocations.Add(arow);db.ComponentMovements.Add(new ComponentMovement{CompanyId=companyId,ComponentId=id,AllocationId=arow.Id,AssetId=r.AssetId,ActorUserId=UserId(user),MovementType="Checkout",Quantity=r.Quantity,Notes=Clean(r.Notes)});Audit(db,companyId,user,id,"component.allocated",$"{r.Quantity} adet · varlık {r.AssetId}");await db.SaveChangesAsync(ct);await tx.CommitAsync(ct);return Results.Created($"/api/components/{id}",new{arow.Id,available=x.TotalQuantity-allocated-r.Quantity});
@@ -67,5 +106,5 @@ public static class ComponentEndpoints
     private static Dictionary<string,string[]> Validate(string name,int min,int total,decimal? cost,string currency,string? category,string? model,string? item,string? serial,string? supplier,string? location,string? notes){var e=new Dictionary<string,string[]>();void A(string k,string m)=>e[k]=[m];if(string.IsNullOrWhiteSpace(name)||name.Trim().Length>200)A("name","Ad zorunludur ve 200 karakteri aşamaz.");if(min is <0 or >100000)A("minimumQuantity","Minimum miktar 0–100.000 arasında olmalı.");if(total is <0 or >100000)A("quantity","Stok miktarı 0–100.000 arasında olmalı.");if(cost<0)A("unitCost","Maliyet negatif olamaz.");if(string.IsNullOrWhiteSpace(currency)||currency.Trim().Length!=3||currency.Any(c=>!char.IsAsciiLetter(c)))A("currency","Para birimi üç harfli kod olmalı.");if(category?.Length>120)A("category","Kategori 120 karakteri aşamaz.");if(model?.Length>120)A("modelNumber","Model 120 karakteri aşamaz.");if(item?.Length>120)A("itemNumber","Ürün no 120 karakteri aşamaz.");if(serial?.Length>160)A("serialNumber","Seri no 160 karakteri aşamaz.");if(supplier?.Length>200)A("supplier","Tedarikçi 200 karakteri aşamaz.");if(location?.Length>160)A("location","Konum 160 karakteri aşamaz.");if(notes?.Length>2000)A("notes","Not 2.000 karakteri aşamaz.");return e;}
     public sealed record CreateRequest(string Name,string? Category,string? ModelNumber,string? ItemNumber,string? SerialNumber,string? Supplier,string? Location,int MinimumQuantity,int Quantity,decimal? UnitCost,string Currency,DateOnly? PurchaseDate,string? Notes);
     public sealed record UpdateRequest(string Name,string? Category,string? ModelNumber,string? ItemNumber,string? SerialNumber,string? Supplier,string? Location,int MinimumQuantity,decimal? UnitCost,string Currency,DateOnly? PurchaseDate,string? Notes);
-    public sealed record StockRequest(int Quantity,string? Notes);public sealed record AllocateRequest(Guid AssetId,int Quantity,string? Notes);public sealed record RemoveRequest(Guid AllocationId,int Quantity,string? Notes);
+    public sealed record StockRequest(int Quantity,string? Notes);public sealed record BulkStockRequest(BulkStockItem[]? Items,string? Notes);public sealed record BulkStockItem(Guid ComponentId,int Quantity);public sealed record AllocateRequest(Guid AssetId,int Quantity,string? Notes);public sealed record RemoveRequest(Guid AllocationId,int Quantity,string? Notes);
 }
