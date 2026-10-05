@@ -364,6 +364,7 @@
     const bulkReturnButton = document.createElement('button'); bulkReturnButton.id = 'bulkReturnSelectedAssets'; bulkReturnButton.type = 'button'; bulkReturnButton.className = 'btn small'; bulkReturnButton.textContent = 'Toplu iade'; $('#bulkAssetToolbar').append(bulkReturnButton);
     const bulkTransferButton = document.createElement('button'); bulkTransferButton.id = 'bulkTransferSelectedAssets'; bulkTransferButton.type = 'button'; bulkTransferButton.className = 'btn small'; bulkTransferButton.textContent = 'Toplu konum aktar'; bulkTransferButton.addEventListener('click', openBulkAssetTransferDialog); $('#bulkAssetToolbar').append(bulkTransferButton);
     const bulkAuditButton = document.createElement('button'); bulkAuditButton.id = 'bulkAuditSelectedAssets'; bulkAuditButton.type = 'button'; bulkAuditButton.className = 'btn small'; bulkAuditButton.textContent = 'Toplu denetim'; bulkAuditButton.addEventListener('click', openBulkAssetAuditDialog); $('#bulkAssetToolbar').append(bulkAuditButton);
+    const bulkEligibilityHint = document.createElement('small'); bulkEligibilityHint.id = 'bulkAssetEligibilityHint'; bulkEligibilityHint.className = 'muted'; bulkEligibilityHint.style.flexBasis = '100%'; $('#bulkAssetToolbar').append(bulkEligibilityHint);
     function updateBulkAssetSelection() {
       const toolbar = $('#bulkAssetToolbar'), count = selectedAssetIds.size;
       toolbar.hidden = count === 0;
@@ -371,7 +372,14 @@
       const selectedAssets = [...selectedAssetIds].map(id => selectedAssetRows.get(id));
       const bulkAssignmentInvalid = selectedAssets.some(asset => !asset || asset.assignedEmployeeId || asset.status !== 'Available');
       const bulkReturnInvalid = selectedAssets.some(asset => !asset || !asset.assignedEmployeeId);
-      $('#selectedAssetCount').textContent = `${fmt.format(count)} varlık seçildi${count > 100 ? ' · En fazla 100 kayıt işlenebilir' : statusSelectionInvalid ? ' · Zimmetli/arşivli seçimde durum değiştirilemez' : ''}`;
+      const allAvailable = count > 0 && selectedAssets.every(asset => asset && !asset.assignedEmployeeId && asset.status === 'Available');
+      const allAssigned = count > 0 && selectedAssets.every(asset => asset?.assignedEmployeeId);
+      $('#selectedAssetCount').textContent = `${fmt.format(count)} varlık seçildi${count > 100 ? ' · En fazla 100 kayıt işlenebilir' : ''}`;
+      bulkEligibilityHint.textContent = count === 0 ? '' : allAvailable
+        ? 'Seçimin tamamı kullanılabilir: toplu zimmet, konum aktarımı, durum değişikliği ve denetim uygun.'
+        : allAssigned
+          ? 'Seçimin tamamı zimmetli: toplu iade ve denetim uygun; önce iade almadan durum veya konum değiştiremezsiniz.'
+          : 'Seçimde farklı durumlar var: zimmet/konum aktarımı için tümü kullanılabilir, iade için tümü zimmetli olmalı. Denetim, CSV ve etiket işlemleri seçimin tamamında kullanılabilir.';
       $('#applyBulkAssetStatus').disabled = count === 0 || count > 100 || !$('#bulkAssetStatus').value || statusSelectionInvalid;
       $('#exportSelectedAssets').disabled = count === 0 || count > 100;
       $('#printSelectedAssetLabels').disabled = count === 0 || count > 100;
@@ -379,6 +387,9 @@
       bulkReturnButton.hidden = !canWriteAssets(); bulkReturnButton.disabled = count === 0 || count > 100 || bulkReturnInvalid;
       bulkTransferButton.hidden = !canWriteAssets(); bulkTransferButton.disabled = count === 0 || count > 100 || bulkAssignmentInvalid;
       bulkAuditButton.hidden = !canWriteAssets(); bulkAuditButton.disabled = count === 0 || count > 100 || selectedAssets.some(asset => !asset);
+      bulkAssignButton.title = bulkAssignmentInvalid ? 'Toplu zimmet için seçimin tamamı boşta ve kullanılabilir olmalı.' : '';
+      bulkTransferButton.title = bulkAssignmentInvalid ? 'Toplu konum aktarımı için seçimin tamamı boşta ve kullanılabilir olmalı.' : '';
+      bulkReturnButton.title = bulkReturnInvalid ? 'Toplu iade için seçimin tamamı zimmetli olmalı.' : '';
       const selectable = loadedAssets;
       const allSelected = selectable.length > 0 && selectable.every(asset => selectedAssetIds.has(asset.id));
       for (const checkbox of [$('#selectAllAssets'), $('#selectAllAssetsHeader')]) { checkbox.checked = allSelected; checkbox.indeterminate = !allSelected && selectable.some(asset => selectedAssetIds.has(asset.id)); checkbox.disabled = selectable.length === 0; }
