@@ -1756,17 +1756,19 @@
     const selectAccessoryPageButton = document.createElement('button'); selectAccessoryPageButton.type = 'button'; selectAccessoryPageButton.className = 'btn small'; selectAccessoryPageButton.textContent = 'Sayfadakileri seç'; accessorySelectionToolbar.append(selectAccessoryPageButton);
     const clearAccessorySelectionButton = document.createElement('button'); clearAccessorySelectionButton.type = 'button'; clearAccessorySelectionButton.className = 'btn small'; clearAccessorySelectionButton.textContent = 'Seçimi temizle'; accessorySelectionToolbar.append(clearAccessorySelectionButton);
     const bulkCheckoutAccessoriesButton = document.createElement('button'); bulkCheckoutAccessoriesButton.type = 'button'; bulkCheckoutAccessoriesButton.className = 'btn primary small'; bulkCheckoutAccessoriesButton.textContent = 'Seçilenleri teslim et'; accessorySelectionToolbar.append(bulkCheckoutAccessoriesButton);
+    const bulkStockAdjustAccessoriesButton = document.createElement('button'); bulkStockAdjustAccessoriesButton.type = 'button'; bulkStockAdjustAccessoriesButton.className = 'btn small'; bulkStockAdjustAccessoriesButton.textContent = 'Seçilen stokları düzelt'; accessorySelectionToolbar.append(bulkStockAdjustAccessoriesButton);
     const selectedAccessoryCount = document.createElement('small'); selectedAccessoryCount.setAttribute('role', 'status'); selectedAccessoryCount.setAttribute('aria-live', 'polite'); accessorySelectionToolbar.append(selectedAccessoryCount);
     $('#accessoryListPanel .table-tools').append(accessorySelectionToolbar);
     function updateAccessorySelection() {
       const count = selectedAccessories.size;
       accessorySelectionToolbar.hidden = count === 0 && !canWriteAssets();
       clearAccessorySelectionButton.hidden = count === 0;
-      bulkCheckoutAccessoriesButton.hidden = count === 0 || !canWriteAssets(); bulkCheckoutAccessoriesButton.disabled = count === 0 || count > 100;
+      bulkCheckoutAccessoriesButton.hidden = count === 0 || !canWriteAssets(); bulkCheckoutAccessoriesButton.disabled = count === 0 || count > 100 || [...selectedAccessories.values()].some(item => item.remaining < 1);
+      bulkStockAdjustAccessoriesButton.hidden = count === 0 || !canWriteAssets(); bulkStockAdjustAccessoriesButton.disabled = count === 0 || count > 100;
       selectedAccessoryCount.hidden = count === 0; selectedAccessoryCount.textContent = count ? `${fmt.format(count)} aksesuar seçildi (en fazla 100)` : '';
-      const eligible = accessoryPageItems.filter(item => item.remaining > 0 && !selectedAccessories.has(item.id));
+      const eligible = accessoryPageItems.filter(item => !selectedAccessories.has(item.id));
       selectAccessoryPageButton.disabled = !canWriteAssets() || eligible.length === 0 || count >= 100;
-      selectAccessoryPageButton.textContent = accessoryPageItems.length > 0 && accessoryPageItems.every(item => item.remaining < 1 || selectedAccessories.has(item.id)) ? 'Sayfa seçildi' : 'Sayfadakileri seç';
+      selectAccessoryPageButton.textContent = accessoryPageItems.length > 0 && accessoryPageItems.every(item => selectedAccessories.has(item.id)) ? 'Sayfa seçildi' : 'Sayfadakileri seç';
     }
     try { const savedPageSize = Number(localStorage.getItem('envantertr:accessory-page-size')); if ([12,25,50,100].includes(savedPageSize)) accessoryPageSize = savedPageSize; } catch {}
     $('#accessoryPageSize').value = String(accessoryPageSize);
@@ -1779,12 +1781,12 @@
       accessoryTotal = result.total; const body = $('#accessoryRows'); body.replaceChildren();
       accessoryPageItems = result.items;
       for (const item of result.items) {
-        if (selectedAccessories.has(item.id)) { if (item.remaining < 1) selectedAccessories.delete(item.id); else selectedAccessories.set(item.id, item); }
+        if (selectedAccessories.has(item.id)) selectedAccessories.set(item.id, item);
         const row = document.createElement('tr'); row.dataset.accessoryId = item.id;
         const cost = item.unitCost == null ? '—' : `${fmt.format(item.unitCost)} ${item.currency}`;
         const low = item.remaining <= item.minimumQuantity;
         row.innerHTML = `<td><button class="row-open-link accessory-open asset-name" type="button">${escapeHtml(item.name)}</button><span class="asset-tag">${escapeHtml(item.itemNumber || item.modelNumber || 'Stok kodu tanımlanmamış')}</span></td><td>${escapeHtml(item.category || '—')}<span class="asset-tag">${escapeHtml(item.modelNumber || 'Model belirtilmemiş')}</span></td><td>${escapeHtml(item.supplier || '—')}<span class="asset-tag">${escapeHtml(item.location || 'Konum belirtilmemiş')}</span></td><td>${fmt.format(item.totalQuantity)}</td><td>${fmt.format(item.checkedOut)}</td><td><span class="pill ${low ? 'warn' : 'blue'}">${fmt.format(item.remaining)} · ${low ? 'Az stok' : 'Stokta'}</span></td><td>${fmt.format(item.minimumQuantity)}</td><td>${cost}<span class="asset-tag">Toplam ${item.unitCost == null ? '—' : `${fmt.format(item.unitCost * item.totalQuantity)} ${item.currency}`}</span></td><td><div class="row-actions"><button class="btn small accessory-open" type="button">Ayrıntı</button><button class="btn small accessory-checkout" type="button" ${item.remaining < 1 || !canWriteAssets() ? 'disabled' : ''}>Teslim</button></div></td>`;
-        const selection = document.createElement('input'); selection.type = 'checkbox'; selection.className = 'accessory-select'; selection.checked = selectedAccessories.has(item.id); selection.disabled = item.remaining < 1 || !canWriteAssets(); selection.setAttribute('aria-label', `${item.name} aksesuarını toplu teslim için seç`); selection.style.marginInlineEnd = '8px';
+        const selection = document.createElement('input'); selection.type = 'checkbox'; selection.className = 'accessory-select'; selection.checked = selectedAccessories.has(item.id); selection.disabled = !canWriteAssets(); selection.setAttribute('aria-label', `${item.name} aksesuarını toplu işlem için seç`); selection.style.marginInlineEnd = '8px';
         row.cells[0].prepend(selection);
         row.dataset.unitCost = cost; body.append(row);
       }
@@ -1906,6 +1908,7 @@
     }
     async function openBulkAccessoryCheckout() {
       if (!canWriteAssets() || selectedAccessories.size < 1 || selectedAccessories.size > 100) return;
+      if ([...selectedAccessories.values()].some(item => item.remaining < 1)) return notify('Toplu teslim için seçili tüm aksesuarlarda kullanılabilir stok bulunmalı.');
       await populateAccessoryCheckoutTargets();
       const form = $('#accessoryCheckoutForm'); form.reset(); form.dataset.bulkMode = 'true'; form.elements.quantity.closest('label').hidden = true; form.elements.quantity.required = false;
       let quantities = $('#bulkAccessoryQuantities');
@@ -1922,6 +1925,39 @@
       $('#accessoryCheckoutDialog .eyebrow').textContent = 'TOPLU AKSESUAR ZİMMETİ';
       $('button[type="submit"]', form).textContent = 'Toplu teslimi kaydet';
       updateAccessoryCheckoutTarget(); $('#accessoryCheckoutDialog').showModal();
+    }
+    function openBulkAccessoryStockAdjustment() {
+      if (!canWriteAssets() || selectedAccessories.size < 1 || selectedAccessories.size > 100) return;
+      let dialog = $('#bulkAccessoryStockDialog');
+      if (!dialog) {
+        dialog = document.createElement('dialog'); dialog.id = 'bulkAccessoryStockDialog'; dialog.className = 'detail-dialog';
+        dialog.innerHTML = '<form><div class="dialog-head"><div><div class="eyebrow">AKSESUAR ENVANTER SAYIMI</div><h2>Seçilen stokları düzelt</h2></div><button class="close" type="button" data-stock-adjust-close aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="muted">Her ürün için stok farkını girin: pozitif değer stok ekler, negatif değer sayım farkını düşer. Değişmeyen ürünlere 0 yazın.</p><div id="bulkAccessoryStockItems" class="form-grid"></div><label class="detail-field" style="display:block;margin-top:12px"><small>Sayım notu</small><input name="notes" maxlength="1900" style="width:100%;margin-top:7px" placeholder="Örn. 2026 Ekim depo sayımı"></label><div class="dialog-actions"><button class="btn" type="button" data-stock-adjust-close>Vazgeç</button><button class="btn primary" type="submit">Stok farklarını kaydet</button></div></div></form>';
+        document.body.append(dialog);
+        dialog.querySelectorAll('[data-stock-adjust-close]').forEach(button => button.addEventListener('click', () => dialog.close()));
+        dialog.querySelector('form').addEventListener('submit', async event => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const entries = [...dialog.querySelectorAll('[data-accessory-id]')].map(input => ({ accessoryId: input.dataset.accessoryId, quantity: Number(input.value) }));
+          if (entries.some(item => !Number.isSafeInteger(item.quantity) || Math.abs(item.quantity) > 100000)) return notify('Her stok farkı −100.000 ile +100.000 arasında tam sayı olmalı.');
+          const items = entries.filter(item => item.quantity !== 0);
+          if (!items.length) return notify('Kaydedilecek bir stok farkı girin.');
+          if (items.some(item => item.quantity < 0) && !confirm(`${items.filter(item => item.quantity < 0).length} ürünün stok miktarı azaltılacak. Sayım farkları kaydedilsin mi? Zimmetli miktarın altına düşülemez.`)) return;
+          const submit = form.querySelector('button[type="submit"]'); submit.disabled = true;
+          try {
+            const result = await api('/api/accessories/bulk-stock-adjustment', { method: 'POST', body: JSON.stringify({ items, notes: form.elements.notes.value || null }) });
+            dialog.close(); selectedAccessories.clear(); await loadAccessories(accessoryPage); notify(`${fmt.format(result.adjusted)} aksesuarın stok sayım farkı tek işlemde kaydedildi.`);
+          } catch (error) { notify(error.message); }
+          finally { submit.disabled = false; updateAccessorySelection(); }
+        });
+      }
+      const list = $('#bulkAccessoryStockItems'); list.replaceChildren();
+      for (const item of selectedAccessories.values()) {
+        const label = document.createElement('label'); label.className = 'detail-field';
+        const heading = document.createElement('small'); heading.textContent = `${item.name} · toplam ${fmt.format(item.totalQuantity)}, zimmetli ${fmt.format(item.checkedOut)}`;
+        const input = document.createElement('input'); input.type = 'number'; input.min = '-100000'; input.max = '100000'; input.step = '1'; input.value = '0'; input.dataset.accessoryId = item.id; input.setAttribute('aria-label', `${item.name} stok sayım farkı`); input.style.cssText = 'width:100%;margin-top:7px';
+        label.append(heading, input); list.append(label);
+      }
+      $('#bulkAccessoryStockDialog form').elements.notes.value = ''; dialog.showModal();
     }
     function updateAccessoryCheckoutTarget() {
       const target = $('#accessoryCheckoutForm').elements.targetType.value;
@@ -1949,7 +1985,7 @@
     });
     selectAccessoryPageButton.addEventListener('click', () => {
       for (const item of accessoryPageItems) {
-        if (item.remaining < 1 || selectedAccessories.has(item.id)) continue;
+        if (selectedAccessories.has(item.id)) continue;
         if (selectedAccessories.size >= 100) { notify('Toplu teslimde en fazla 100 farklı aksesuar seçilebilir.'); break; }
         selectedAccessories.set(item.id, item);
       }
@@ -1960,6 +1996,7 @@
       selectedAccessories.clear(); document.querySelectorAll('#accessoryRows .accessory-select').forEach(input => { input.checked = false; }); updateAccessorySelection();
     });
     bulkCheckoutAccessoriesButton.addEventListener('click', () => openBulkAccessoryCheckout().catch(error => notify(error.message)));
+    bulkStockAdjustAccessoriesButton.addEventListener('click', openBulkAccessoryStockAdjustment);
     $('#newAccessoryButton').addEventListener('click', openNewAccessory);
     try {
       const stored = JSON.parse(localStorage.getItem('envantertr:accessory-columns') || 'null');

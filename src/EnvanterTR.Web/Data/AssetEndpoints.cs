@@ -335,7 +335,10 @@ public static class AssetEndpoints
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
             if (request.Quantity == 0 || Math.Abs((long)request.Quantity) > 100000 || request.Notes?.Length > 2000)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["quantity"] = ["Stok hareketi 0 olamaz, 100.000 adedi aşamaz ve not 2.000 karakterden uzun olamaz."] });
-            var item = await db.Accessories.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            var item = await db.Accessories.FromSqlInterpolated(
+                    $"SELECT * FROM \"Accessories\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+                .SingleOrDefaultAsync(cancellationToken);
             if (item is null) return Results.NotFound();
             var outstanding = await db.AccessoryAssignments.Where(x => x.CompanyId == companyId && x.AccessoryId == id)
                 .SumAsync(x => (int?)(x.Quantity - x.ReturnedQuantity), cancellationToken) ?? 0;
@@ -351,6 +354,7 @@ public static class AssetEndpoints
             });
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = CurrentUserId(user), TargetType = "Accessory", TargetId = id, Action = request.Quantity > 0 ? "stock_received" : "stock_adjusted", Details = $"Stok {request.Quantity:+#;-#;0} adet değiştirildi." });
             await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
             return Results.Ok(new { item.TotalQuantity, checkedOut = outstanding, remaining = item.TotalQuantity - outstanding });
         }).RequireAuthorization("asset.write");
 
@@ -493,6 +497,61 @@ public static class AssetEndpoints
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return Results.Ok(new { checkedOut = accessories.Count, targetType, employeeId, assetId, location });
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/accessories/bulk-stock-adjustment", async (BulkAccessoryStockAdjustmentRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
+            var items = request.Items ?? [];
+            if (items.Length is < 1 or > 100 || items.Any(x => x.AccessoryId == Guid.Empty || x.Quantity == 0 || Math.Abs((long)x.Quantity) > 100000) || items.Select(x => x.AccessoryId).Distinct().Count() != items.Length)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["items"] = ["1 ile 100 arasında tekrarsız aksesuar seçin; değişiklik adedi sıfır olamaz ve ±100.000 aralığında olmalı."] });
+            if (request.Notes?.Length > 1900)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["notes"] = ["Toplu düzeltme notu 1.900 karakteri aşamaz."] });
+
+            var ids = items.Select(x => x.AccessoryId).ToArray();
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            var accessories = await db.Accessories.FromSqlInterpolated(
+                    $"SELECT * FROM \"Accessories\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) ORDER BY \"Id\" FOR UPDATE")
+                .ToListAsync(cancellationToken);
+            if (accessories.Count != items.Length) return Results.NotFound(new { message = "Aksesuarlardan biri bu şirkette bulunamadı. Hiçbir stok değiştirilmedi." });
+            var outstandingById = await db.AccessoryAssignments.Where(x => x.CompanyId == companyId && ids.Contains(x.AccessoryId))
+                .GroupBy(x => x.AccessoryId).Select(group => new { AccessoryId = group.Key, Quantity = group.Sum(x => x.Quantity - x.ReturnedQuantity) })
+                .ToDictionaryAsync(x => x.AccessoryId, x => x.Quantity, cancellationToken);
+            var invalid = new List<string>();
+            foreach (var accessory in accessories)
+            {
+                var delta = items.Single(x => x.AccessoryId == accessory.Id).Quantity;
+                var adjusted = accessory.TotalQuantity + delta;
+                var outstanding = outstandingById.GetValueOrDefault(accessory.Id);
+                if (adjusted is < 0 or > 100000 || adjusted < outstanding)
+                    invalid.Add($"{accessory.Name}: yeni toplam {adjusted}; en az {outstanding} zimmetli adedi ve en fazla 100.000 toplam stoku karşılamalı.");
+            }
+            if (invalid.Count > 0) return Results.Conflict(new { message = "Stok sayımı seçilen ürünlerden en az birinde geçersiz; hiçbir stok değiştirilmedi.", items = invalid });
+
+            var now = DateTimeOffset.UtcNow;
+            var note = Clean(request.Notes);
+            foreach (var accessory in accessories)
+            {
+                var delta = items.Single(x => x.AccessoryId == accessory.Id).Quantity;
+                accessory.TotalQuantity += delta;
+                accessory.UpdatedAt = now;
+                var movementNotes = $"Stok sayım farkı {delta:+#;-#;0} adet";
+                if (!string.IsNullOrWhiteSpace(note)) movementNotes += $" · {note}";
+                db.AccessoryMovements.Add(new AccessoryMovement
+                {
+                    CompanyId = companyId, AccessoryId = accessory.Id, ActorUserId = userId,
+                    MovementType = delta > 0 ? "Received" : "Adjustment", Quantity = Math.Abs(delta), Notes = movementNotes
+                });
+                db.AuditEntries.Add(new AuditEntry
+                {
+                    CompanyId = companyId, ActorUserId = userId, TargetType = "Accessory", TargetId = accessory.Id,
+                    Action = delta > 0 ? "bulk_stock_received" : "bulk_stock_adjusted", Details = movementNotes
+                });
+            }
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { adjusted = accessories.Count });
         }).RequireAuthorization("asset.write");
 
         api.MapPost("/accessories/{id:guid}/bulk-checkin", async (Guid id, BulkAccessoryCheckinRequest request,
@@ -1958,6 +2017,8 @@ public static class AssetEndpoints
     public sealed record BulkAccessoryCheckoutRequest(string? TargetType, Guid? EmployeeId, Guid? AssetId, string? Location,
         BulkAccessoryCheckoutItem[]? Items, string? Notes);
     public sealed record BulkAccessoryCheckoutItem(Guid AccessoryId, int Quantity);
+    public sealed record BulkAccessoryStockAdjustmentRequest(BulkAccessoryStockAdjustmentItem[]? Items, string? Notes);
+    public sealed record BulkAccessoryStockAdjustmentItem(Guid AccessoryId, int Quantity);
     public sealed record AccessoryCheckinRequest(Guid AssignmentId, int Quantity, string? Notes);
     public sealed record BulkAccessoryCheckinRequest(BulkAccessoryCheckinItem[]? Items, string? Notes);
     public sealed record BulkAccessoryCheckinItem(Guid AssignmentId, int Quantity);
