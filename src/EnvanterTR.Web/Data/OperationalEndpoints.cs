@@ -542,6 +542,88 @@ public static class OperationalEndpoints
             return Results.Ok(new { updated = changed.Count, unchanged = assets.Count - changed.Count, status = next });
         }).RequireAuthorization("asset.write");
 
+        api.MapPost("/assets/bulk-assign", async ([FromBody] BulkAssignAssetsRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            var ids = request.AssetIds ?? [];
+            if (ids.Length is < 1 or > 100 || ids.Any(id => id == Guid.Empty) || ids.Distinct().Count() != ids.Length)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["assetIds"] = ["1 ile 100 arasında, tekrarsız varlık seçin."] });
+            if (request.EmployeeId == Guid.Empty)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeId"] = ["Etkin çalışan bu şirkette bulunamadı."] });
+            if (request.Note is { Length: > 2000 })
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Açıklama en fazla 2000 karakter olabilir."] });
+
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            var employee = await db.Employees.FromSqlInterpolated(
+                    $"SELECT * FROM \"Employees\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {request.EmployeeId} FOR UPDATE")
+                .SingleOrDefaultAsync(cancellationToken);
+            if (employee is null || !employee.IsActive)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeId"] = ["Etkin çalışan bu şirkette bulunamadı."] });
+            var assets = await db.Assets.FromSqlInterpolated(
+                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) ORDER BY \"Id\" FOR UPDATE")
+                .ToListAsync(cancellationToken);
+            if (assets.Count != ids.Length)
+                return Results.NotFound(new { message = "Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil. Hiçbir kayıt değiştirilmedi." });
+            if (assets.Any(asset => asset.AssignedEmployeeId is not null || asset.Status != AssetStatuses.Available))
+                return Results.Conflict(new { message = "Toplu zimmet için seçilen bütün varlıklar boşta ve kullanılabilir olmalı. Hiçbir kayıt değiştirilmedi." });
+
+            var now = DateTimeOffset.UtcNow;
+            var note = Clean(request.Note);
+            foreach (var asset in assets)
+            {
+                asset.AssignedEmployeeId = employee.Id;
+                asset.Status = AssetStatuses.Deployed;
+                asset.UpdatedAt = now;
+                var details = string.IsNullOrWhiteSpace(note) ? "Toplu zimmet işlemi." : $"Toplu zimmet işlemi. {note}";
+                db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = asset.Id,
+                    ActorUserId = actorId, EmployeeId = employee.Id, EventType = "Assigned", Details = details });
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                    TargetType = "Asset", TargetId = asset.Id, Action = "BulkAssigned", Details = details });
+            }
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { updated = assets.Count, employeeId = employee.Id, employeeName = employee.DisplayName });
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/assets/bulk-return", async ([FromBody] BulkReturnAssetsRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            var ids = request.AssetIds ?? [];
+            if (ids.Length is < 1 or > 100 || ids.Any(id => id == Guid.Empty) || ids.Distinct().Count() != ids.Length)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["assetIds"] = ["1 ile 100 arasında, tekrarsız varlık seçin."] });
+            if (request.Note is { Length: > 2000 })
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Açıklama en fazla 2000 karakter olabilir."] });
+
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            var assets = await db.Assets.FromSqlInterpolated(
+                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) ORDER BY \"Id\" FOR UPDATE")
+                .ToListAsync(cancellationToken);
+            if (assets.Count != ids.Length)
+                return Results.NotFound(new { message = "Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil. Hiçbir kayıt değiştirilmedi." });
+            if (assets.Any(asset => asset.AssignedEmployeeId is null))
+                return Results.Conflict(new { message = "Toplu iade için seçilen bütün varlıklar bir çalışana zimmetli olmalı. Hiçbir kayıt değiştirilmedi." });
+
+            var now = DateTimeOffset.UtcNow;
+            var note = Clean(request.Note);
+            foreach (var asset in assets)
+            {
+                var previousEmployeeId = asset.AssignedEmployeeId!.Value;
+                asset.AssignedEmployeeId = null;
+                asset.Status = AssetStatuses.Available;
+                asset.UpdatedAt = now;
+                var details = string.IsNullOrWhiteSpace(note) ? "Toplu iade işlemi." : $"Toplu iade işlemi. {note}";
+                db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = asset.Id,
+                    ActorUserId = actorId, EmployeeId = previousEmployeeId, EventType = "Returned", Details = details });
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                    TargetType = "Asset", TargetId = asset.Id, Action = "BulkReturned", Details = details });
+            }
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { updated = assets.Count });
+        }).RequireAuthorization("asset.write");
+
         api.MapPost("/assets/export-selected.csv", async ([FromBody] SelectedAssetExportRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {

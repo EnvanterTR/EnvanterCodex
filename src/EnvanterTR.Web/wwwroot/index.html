@@ -358,14 +358,21 @@
       notify('Varsayılan tablo sütunları gösteriliyor.');
     }
     const selectedLabelsButton = document.createElement('button'); selectedLabelsButton.id = 'printSelectedAssetLabels'; selectedLabelsButton.type = 'button'; selectedLabelsButton.className = 'btn small'; selectedLabelsButton.textContent = 'Etiketleri yazdır'; selectedLabelsButton.disabled = true; $('#bulkAssetToolbar').append(selectedLabelsButton);
+    const bulkAssignButton = document.createElement('button'); bulkAssignButton.id = 'bulkAssignSelectedAssets'; bulkAssignButton.type = 'button'; bulkAssignButton.className = 'btn primary small'; bulkAssignButton.textContent = 'Toplu zimmet'; bulkAssignButton.addEventListener('click', () => openBulkAssignDialog().catch(error => notify(error.message))); $('#bulkAssetToolbar').append(bulkAssignButton);
+    const bulkReturnButton = document.createElement('button'); bulkReturnButton.id = 'bulkReturnSelectedAssets'; bulkReturnButton.type = 'button'; bulkReturnButton.className = 'btn small'; bulkReturnButton.textContent = 'Toplu iade'; $('#bulkAssetToolbar').append(bulkReturnButton);
     function updateBulkAssetSelection() {
       const toolbar = $('#bulkAssetToolbar'), count = selectedAssetIds.size;
       toolbar.hidden = count === 0;
       const statusSelectionInvalid = [...selectedAssetIds].some(id => { const asset = selectedAssetRows.get(id); return !asset || !!asset.assignedEmployeeId || asset.status === 'Archived'; });
+      const selectedAssets = [...selectedAssetIds].map(id => selectedAssetRows.get(id));
+      const bulkAssignmentInvalid = selectedAssets.some(asset => !asset || asset.assignedEmployeeId || asset.status !== 'Available');
+      const bulkReturnInvalid = selectedAssets.some(asset => !asset || !asset.assignedEmployeeId);
       $('#selectedAssetCount').textContent = `${fmt.format(count)} varlık seçildi${count > 100 ? ' · En fazla 100 kayıt işlenebilir' : statusSelectionInvalid ? ' · Zimmetli/arşivli seçimde durum değiştirilemez' : ''}`;
       $('#applyBulkAssetStatus').disabled = count === 0 || count > 100 || !$('#bulkAssetStatus').value || statusSelectionInvalid;
       $('#exportSelectedAssets').disabled = count === 0 || count > 100;
       $('#printSelectedAssetLabels').disabled = count === 0 || count > 100;
+      bulkAssignButton.hidden = !canWriteAssets(); bulkAssignButton.disabled = count === 0 || count > 100 || bulkAssignmentInvalid;
+      bulkReturnButton.hidden = !canWriteAssets(); bulkReturnButton.disabled = count === 0 || count > 100 || bulkReturnInvalid;
       const selectable = loadedAssets;
       const allSelected = selectable.length > 0 && selectable.every(asset => selectedAssetIds.has(asset.id));
       for (const checkbox of [$('#selectAllAssets'), $('#selectAllAssetsHeader')]) { checkbox.checked = allSelected; checkbox.indeterminate = !allSelected && selectable.some(asset => selectedAssetIds.has(asset.id)); checkbox.disabled = selectable.length === 0; }
@@ -1131,10 +1138,22 @@
         const previous = select.value; select.replaceChildren(new Option(result.total ? 'Çalışan seçin' : 'Eşleşen aktif çalışan bulunamadı', ''));
         for (const employee of result.items) select.add(new Option(`${employee.displayName} · ${employee.employeeNumber}`, employee.id));
         if (result.items.some(item => item.id === previous)) select.value = previous;
-        $('#assignMatches').textContent = `${fmt.format(result.total)} eşleşme · ilk ${result.items.length} gösteriliyor`;
+        $('#assignMatches').textContent = `${fmt.format(result.total)} eşleşme · ilk ${result.items.length} gösteriliyor${$('#assignDialog').dataset.bulkMode === 'true' ? ` · ${fmt.format(selectedAssetIds.size)} varlık seçili` : ''}`;
       } catch (error) { notify(error.message); }
     }
-    async function openAssignDialog() { $('#assignSearch').value = ''; await loadAssignableEmployees(); $('#assignDialog').showModal(); }
+    function setAssignDialogMode(bulk) {
+      const dialog = $('#assignDialog'); dialog.dataset.bulkMode = bulk ? 'true' : 'false';
+      $('h2', dialog).textContent = bulk ? 'Seçili varlıkları zimmetle' : 'Çalışana zimmetle';
+      $('.eyebrow', dialog).textContent = bulk ? 'TOPLU ZİMMET İŞLEMİ' : 'ZİMMET İŞLEMİ';
+      $('button[type="submit"]', dialog).textContent = bulk ? 'Toplu zimmeti kaydet' : 'Zimmeti kaydet';
+      $('#assignForm').reset();
+    }
+    async function openAssignDialog() { setAssignDialogMode(false); $('#assignSearch').value = ''; await loadAssignableEmployees(); $('#assignDialog').showModal(); }
+    async function openBulkAssignDialog() {
+      const selectedAssets = [...selectedAssetIds].map(id => selectedAssetRows.get(id));
+      if (!selectedAssets.length || selectedAssets.length > 100 || selectedAssets.some(asset => !asset || asset.assignedEmployeeId || asset.status !== 'Available')) return;
+      currentAsset = null; setAssignDialogMode(true); $('#assignSearch').value = ''; await loadAssignableEmployees(); $('#assignDialog').showModal();
+    }
     async function openEmployee(id) {
       try {
         const result = await api(`/api/employees/${id}?page=1&pageSize=50`), employee = result.employee;
@@ -2242,6 +2261,20 @@
     let assignSearchTimer; $('#assignSearch').addEventListener('input', event => { clearTimeout(assignSearchTimer); assignSearchTimer = setTimeout(() => loadAssignableEmployees(event.target.value.trim()), 220); });
     document.querySelectorAll('[data-close-assign]').forEach(button => button.addEventListener('click', () => $('#assignDialog').close()));
     $('#assignForm').addEventListener('submit', async event => { event.preventDefault(); if (!currentAsset) return; const form = new FormData(event.currentTarget); try { await api(`/api/assets/${currentAsset.id}/assign`, { method: 'POST', body: JSON.stringify({ employeeId: form.get('employeeId'), note: form.get('note') || null }) }); $('#assignDialog').close(); $('#assetDialog').close(); await loadDashboard(); notify('Varlık çalışana zimmetlendi ve hareket geçmişine işlendi.'); } catch (error) { notify(error.message); } });
+    $('#assignForm').addEventListener('submit', async event => {
+      if ($('#assignDialog').dataset.bulkMode !== 'true') return;
+      event.preventDefault();
+      const ids = [...selectedAssetIds], form = new FormData(event.currentTarget), submit = $('button[type="submit"]', $('#assignForm'));
+      if (!ids.length || ids.length > 100 || ids.some(id => { const asset = selectedAssetRows.get(id); return !asset || asset.assignedEmployeeId || asset.status !== 'Available'; })) return;
+      submit.disabled = true;
+      try {
+        const result = await api('/api/assets/bulk-assign', { method: 'POST', body: JSON.stringify({ assetIds: ids, employeeId: form.get('employeeId'), note: form.get('note') || null }) });
+        $('#assignDialog').close(); setAssignDialogMode(false); clearBulkAssetSelection();
+        await loadDashboard($('#globalSearch').value.trim(), assetPage);
+        notify(`${fmt.format(result.updated)} varlık ${result.employeeName} çalışanına zimmetlendi; tüm işlemler geçmişe kaydedildi.`);
+      } catch (error) { notify(error.message); }
+      finally { submit.disabled = false; }
+    });
     $('#returnAssetButton').addEventListener('click', async () => { if (!currentAsset || !confirm(`${currentAsset.assetTag} varlığını iade alıp kullanılabilir duruma geçirmek istiyor musunuz?`)) return; const note = prompt('İade notu (isteğe bağlı):') || null; try { await api(`/api/assets/${currentAsset.id}/return`, { method: 'POST', body: JSON.stringify({ note }) }); $('#assetDialog').close(); await loadDashboard(); notify('Varlık iade alındı; işlem geçmişine kaydedildi.'); } catch (error) { notify(error.message); } });
     $('#assetStatusAction').addEventListener('change', async event => { const status = event.target.value; if (!status || !currentAsset) return; if (!confirm(`${currentAsset.assetTag} durumunu “${statusLabel(status)}” olarak değiştirmek istiyor musunuz?`)) { event.target.value = ''; return; } const note = prompt('Durum değişikliği notu (isteğe bağlı):') || null; try { await api(`/api/assets/${currentAsset.id}/status`, { method: 'PATCH', body: JSON.stringify({ status, note }) }); $('#assetDialog').close(); await loadDashboard(); notify('Varlık durumu güncellendi ve denetim geçmişine yazıldı.'); } catch (error) { notify(error.message); } finally { event.target.value = ''; } });
     $('#newEmployeeButton').addEventListener('click', () => {
@@ -2360,6 +2393,19 @@
     };
     $('#selectAllAssets').addEventListener('change', event => selectVisibleAssets(event.target.checked));
     $('#selectAllAssetsHeader').addEventListener('change', event => selectVisibleAssets(event.target.checked));
+    $('#bulkReturnSelectedAssets').addEventListener('click', async () => {
+      const ids = [...selectedAssetIds], assets = ids.map(id => selectedAssetRows.get(id));
+      if (!ids.length || ids.length > 100 || assets.some(asset => !asset?.assignedEmployeeId)) return;
+      if (!confirm(`${ids.length} seçili varlığı zimmetli çalışanlarından iade alıp kullanılabilir duruma geçirmek istiyor musunuz?`)) return;
+      const note = prompt('İade notu (isteğe bağlı):'); if (note === null) return;
+      const button = $('#bulkReturnSelectedAssets'); button.disabled = true;
+      try {
+        const result = await api('/api/assets/bulk-return', { method: 'POST', body: JSON.stringify({ assetIds: ids, note: note.trim() || null }) });
+        clearBulkAssetSelection(); await loadDashboard($('#globalSearch').value.trim(), assetPage);
+        notify(`${fmt.format(result.updated)} varlık iade alındı; her kayıt için işlem geçmişi oluşturuldu.`);
+      } catch (error) { notify(error.message); }
+      finally { updateBulkAssetSelection(); }
+    });
     $('#bulkAssetStatus').addEventListener('change', updateBulkAssetSelection);
     $('#clearSelectedAssets').addEventListener('click', clearBulkAssetSelection);
     $('#exportSelectedAssets').addEventListener('click', async () => {
