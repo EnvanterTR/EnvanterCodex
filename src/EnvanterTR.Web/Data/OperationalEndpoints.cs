@@ -386,13 +386,15 @@ public static class OperationalEndpoints
             var collision = await db.Employees.AnyAsync(employee => employee.CompanyId == companyId && employee.Department != null &&
                 EF.Functions.ILike(employee.Department.Trim(), newPattern) &&
                 !EF.Functions.ILike(employee.Department.Trim(), currentPattern), cancellationToken);
-            if (collision) return Results.Conflict(new { message = "Bu adla başka bir departman zaten var. Yeni adı seçin veya mevcut departman adını kullanın." });
+            if (collision && !request.Merge) return Results.Conflict(new { message = "Bu adla başka bir departman var. Birleştirme onayı gereklidir." });
 
             var updated = await employees.ExecuteUpdateAsync(setters => setters
                 .SetProperty(employee => employee.Department, newName), cancellationToken);
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
                 TargetType = "Department", TargetId = companyId, Action = "Renamed",
-                Details = $"Departman adı “{currentName}” → “{newName}”; {updated} çalışan güncellendi." });
+                Details = collision
+                    ? $"Departman “{currentName}” mevcut “{newName}” grubuyla birleştirildi; {updated} çalışan taşındı."
+                    : $"Departman adı “{currentName}” → “{newName}”; {updated} çalışan güncellendi." });
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return Results.Ok(new { name = newName, employeeCount = updated });

@@ -910,9 +910,13 @@
       const kind = form.elements.kind.value, currentName = form.elements.currentName.value;
       const newName = form.elements.newName.value.trim();
       if (!newName) { form.elements.newName.focus(); return; }
+      const normalizeName = value => kind === 'departments' ? value.toLocaleLowerCase('tr-TR') : value;
+      const currentKey = normalizeName(currentName), newKey = normalizeName(newName);
+      const merge = currentKey !== newKey && directoryEntries.some(item => normalizeName(item.name) === newKey);
+      if (merge && !window.confirm(`“${currentName}” adındaki kayıtları mevcut “${newName}” grubuyla birleştirmek istiyor musunuz? Kayıtların geçmişi korunur.`)) return;
       button.disabled = true; $('#directoryRenameFeedback').textContent = 'Şirket kayıtları güncelleniyor…';
       try {
-        const result = await api(`/api/${kind}/rename`, { method: 'PATCH', body: JSON.stringify({ currentName, newName }) });
+        const result = await api(`/api/${kind}/rename`, { method: 'PATCH', body: JSON.stringify({ currentName, newName, merge }) });
         $('#directoryRenameDialog').close();
         if (kind === 'locations' && assetLocationFilter === currentName) assetLocationFilter = result.name;
         if (kind === 'departments' && $('#employeeDepartmentFilter').value === currentName) $('#employeeDepartmentFilter').value = result.name;

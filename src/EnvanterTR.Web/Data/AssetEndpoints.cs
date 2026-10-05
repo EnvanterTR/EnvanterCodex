@@ -509,11 +509,12 @@ public static class AssetEndpoints
                     assetCount, accessoryCount, consumableCount, componentCount });
             }
 
-            if (await db.Assets.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken) ||
+            var targetExists = await db.Assets.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken) ||
                 await db.Accessories.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken) ||
                 await db.Consumables.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken) ||
-                await db.InventoryComponents.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken))
-                return Results.Conflict(new { message = "Bu adla başka bir konum zaten var. Yeni adı seçin veya mevcut konum adını kullanın." });
+                await db.InventoryComponents.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken);
+            if (targetExists && !request.Merge)
+                return Results.Conflict(new { message = "Bu adla başka bir konum var. Birleştirme onayı gereklidir." });
 
             var updatedAt = DateTimeOffset.UtcNow;
             var updatedAssets = await assets.ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Location, newName).SetProperty(x => x.UpdatedAt, updatedAt), cancellationToken);
@@ -523,7 +524,7 @@ public static class AssetEndpoints
             var total = updatedAssets + updatedAccessories + updatedConsumables + updatedComponents;
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
                 TargetType = "Location", TargetId = companyId, Action = "Renamed",
-                Details = $"Konum adı “{currentName}” → “{newName}”; {updatedAssets} varlık, {updatedAccessories} aksesuar, {updatedConsumables} sarf malzemesi ve {updatedComponents} bileşen güncellendi." });
+                Details = $"Konum “{currentName}” → “{newName}”{(targetExists ? " (mevcut konumla birleştirildi)" : "")}; {updatedAssets} varlık, {updatedAccessories} aksesuar, {updatedConsumables} sarf malzemesi ve {updatedComponents} bileşen güncellendi." });
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return Results.Ok(new { name = newName, updatedCount = total, assetCount = updatedAssets,

@@ -40,9 +40,9 @@ Rol politikaları ayrı tutulur: varlık okuma, varlık değiştirme, çalışan
   - Yanıt, şirket kapsamındaki varlık alanlarını, kategori/marka/model/çalışan adlarını ve en yeniden eskiye hareket listesini içerir. Hareketlerde varsa çalışan adı da bulunur; olaylar başka şirket kayıtlarıyla eşleştirilmez.
 - `GET /api/employees?q=&department=&managerId=&active=true&page=1&pageSize=50`
 - `GET /api/departments` (şirket çalışan kayıtlarındaki departman metinlerini ve aktif/pasif çalışan sayılarını özetler; `people.read`)
-- `PATCH /api/departments/rename` (`{ currentName, newName }`; eşleşen şirket çalışan departmanlarını tek transaction'da değiştirir, çakışmada `409`, kayıt yoksa `404`, denetim izi yazar; `people.manage`)
+- `PATCH /api/departments/rename` (`{ currentName, newName, merge? }`; eşleşen şirket çalışan departmanlarını tek transaction'da değiştirir; hedef departman varsa yalnızca `merge: true` ile birleştirir, aksi hâlde `409`; kayıt yoksa `404`; denetim izi yazar; `people.manage`)
 - `GET /api/locations` (şirket varlık, aksesuar, sarf ve bileşen kayıtlarındaki konumları ve aile başına sayıları özetler; `asset.read`)
-- `PATCH /api/locations/rename` (`{ currentName, newName }`; dört kayıt ailesindeki tam eşleşen şirket konumlarını tek transaction'da değiştirir, çakışmada `409`, kayıt yoksa `404`, denetim izi yazar; `asset.write`)
+- `PATCH /api/locations/rename` (`{ currentName, newName, merge? }`; dört kayıt ailesindeki tam eşleşen şirket konumlarını tek transaction'da değiştirir; hedef konum varsa yalnızca `merge: true` ile birleştirir, aksi hâlde `409`; kayıt yoksa `404`; denetim izi yazar; `asset.write`)
 - `GET /api/accessories?q=&location=&stock=&sortBy=&sortDirection=&page=1&pageSize=25` (şirket aksesuarları; tam konum ve stok durumu filtreleri, arama, sıralama ve sayfalama; `asset.read`)
 - `GET /api/consumables?q=&stock=&sortBy=&sortDirection=&page=1&pageSize=25` (şirket sarf kayıtları; ad/kategori/model/ürün no/tedarikçi/konum araması, stok durumu filtresi, sıralama ve sayfalama; `asset.read`)
 - `GET /api/components?q=&stock=&page=1&pageSize=25` (şirket bileşenleri; ad/kategori/model/seri no/ürün no/tedarikçi/konum araması ve stok durumu filtresi; `asset.read`)

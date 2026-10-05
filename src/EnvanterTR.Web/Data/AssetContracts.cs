@@ -29,7 +29,7 @@ public sealed record UpdateAssetRequest(
 
 public sealed record CreateLookupRequest(string Name, Guid? BrandId = null);
 public sealed record RenameLookupRequest(string Name);
-public sealed record RenameDirectoryEntryRequest(string CurrentName, string NewName);
+public sealed record RenameDirectoryEntryRequest(string CurrentName, string NewName, bool Merge = false);
 
 public sealed record CreateEmployeeRequest(
     string EmployeeNumber,
