@@ -19,6 +19,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Accessory> Accessories => Set<Accessory>();
     public DbSet<AccessoryAssignment> AccessoryAssignments => Set<AccessoryAssignment>();
     public DbSet<AccessoryMovement> AccessoryMovements => Set<AccessoryMovement>();
+    public DbSet<AccessoryPurchaseOrder> AccessoryPurchaseOrders => Set<AccessoryPurchaseOrder>();
+    public DbSet<AccessoryPurchaseOrderLine> AccessoryPurchaseOrderLines => Set<AccessoryPurchaseOrderLine>();
     public DbSet<Consumable> Consumables => Set<Consumable>();
     public DbSet<ConsumableMovement> ConsumableMovements => Set<ConsumableMovement>();
     public DbSet<SoftwareLicense> SoftwareLicenses => Set<SoftwareLicense>();
@@ -337,6 +339,39 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<AccessoryMovement>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<AccessoryPurchaseOrder>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<AccessoryPurchaseOrder>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AccessoryPurchaseOrder>().Property(x => x.OrderNumber).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<AccessoryPurchaseOrder>().Property(x => x.Supplier).HasMaxLength(200).IsRequired();
+        modelBuilder.Entity<AccessoryPurchaseOrder>().Property(x => x.Status).HasMaxLength(24).IsRequired();
+        modelBuilder.Entity<AccessoryPurchaseOrder>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
+        modelBuilder.Entity<AccessoryPurchaseOrder>().Property(x => x.Notes).HasMaxLength(2000);
+        modelBuilder.Entity<AccessoryPurchaseOrder>().HasIndex(x => new { x.CompanyId, x.OrderNumber }).IsUnique();
+        modelBuilder.Entity<AccessoryPurchaseOrder>().HasIndex(x => new { x.CompanyId, x.Status, x.OrderDate });
+        modelBuilder.Entity<AccessoryPurchaseOrder>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<AccessoryPurchaseOrder>().ToTable("AccessoryPurchaseOrders", table =>
+        {
+            table.HasCheckConstraint("CK_AccessoryPurchaseOrders_Status", "\"Status\" IN ('Ordered', 'PartiallyReceived', 'Received', 'Cancelled')");
+            table.HasCheckConstraint("CK_AccessoryPurchaseOrders_Dates", "\"ExpectedOn\" IS NULL OR \"ExpectedOn\" >= \"OrderDate\"");
+            table.HasCheckConstraint("CK_AccessoryPurchaseOrders_Currency", "char_length(\"Currency\") = 3");
+        });
+        modelBuilder.Entity<AccessoryPurchaseOrderLine>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<AccessoryPurchaseOrderLine>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AccessoryPurchaseOrderLine>().Property(x => x.Notes).HasMaxLength(500);
+        modelBuilder.Entity<AccessoryPurchaseOrderLine>().Property(x => x.UnitCost).HasPrecision(18, 2);
+        modelBuilder.Entity<AccessoryPurchaseOrderLine>().HasIndex(x => new { x.CompanyId, x.PurchaseOrderId });
+        modelBuilder.Entity<AccessoryPurchaseOrderLine>().HasIndex(x => new { x.CompanyId, x.AccessoryId });
+        modelBuilder.Entity<AccessoryPurchaseOrderLine>().ToTable("AccessoryPurchaseOrderLines", table =>
+        {
+            table.HasCheckConstraint("CK_AccessoryPurchaseOrderLines_Quantity", "\"Quantity\" > 0 AND \"QuantityReceived\" BETWEEN 0 AND \"Quantity\"");
+            table.HasCheckConstraint("CK_AccessoryPurchaseOrderLines_Cost", "\"UnitCost\" >= 0");
+        });
+        modelBuilder.Entity<AccessoryPurchaseOrderLine>().HasOne<AccessoryPurchaseOrder>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.PurchaseOrderId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AccessoryPurchaseOrderLine>().HasOne<Accessory>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.AccessoryId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.AssetTag }).IsUnique();
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.SerialNumber });

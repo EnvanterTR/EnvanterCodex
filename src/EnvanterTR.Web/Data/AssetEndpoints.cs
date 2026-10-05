@@ -38,6 +38,7 @@ public static class AssetEndpoints
         api.MapSoftwareLicenseEndpoints();
         api.MapComponentEndpoints();
         api.MapInventoryMovementEndpoints();
+        api.MapAccessoryPurchaseOrderEndpoints();
 
         api.MapGet("/assets", async ([FromQuery] string? q, [FromQuery] string? status,
             [FromQuery] Guid? categoryId, [FromQuery] Guid? brandId, [FromQuery] Guid? modelId,
@@ -278,7 +279,17 @@ public static class AssetEndpoints
                                 ? db.Assets.Where(asset => asset.CompanyId == companyId && asset.Id == a.AssetId).Select(asset => asset.AssetTag + " · " + asset.Name).FirstOrDefault()
                                 : a.Location).FirstOrDefault()
                 }).ToListAsync(cancellationToken);
-            return Results.Ok(new { item, assignments, movements });
+            var orders = await (from line in db.AccessoryPurchaseOrderLines.AsNoTracking()
+                                join order in db.AccessoryPurchaseOrders.AsNoTracking()
+                                    on new { line.CompanyId, Id = line.PurchaseOrderId } equals new { order.CompanyId, order.Id }
+                                where line.CompanyId == companyId && line.AccessoryId == id
+                                orderby order.OrderDate descending, order.CreatedAt descending
+                                select new
+                                {
+                                    line.PurchaseOrderId, order.OrderNumber, order.Supplier, order.Status, order.OrderDate, order.Currency,
+                                    line.Quantity, line.QuantityReceived, remaining = line.Quantity - line.QuantityReceived, line.UnitCost
+                                }).Take(25).ToListAsync(cancellationToken);
+            return Results.Ok(new { item, assignments, movements, orders });
         }).RequireAuthorization("asset.read");
 
         api.MapPost("/accessories", async (CreateAccessoryRequest request, ClaimsPrincipal user, AppDbContext db,
