@@ -61,7 +61,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 ## Bilinçli ürün sınırları
 
 - Müşteri kaynak deposu ile müşterinin indireceği kurulum paketi ayrı teslim kanallarıdır. Kurulum paketi henüz üretilmiyor veya imzalanmıyor.
-- Etiket kartı C128/C39/EAN5/EAN13/UPC-A/UPC-E ve QR/PDF417/Data Matrix biçimlerini, 50×30 ile 100×50 mm arasındaki beş hazır ölçüyü, özel ebatları, hizalamayı ve şirket düzeyinde eşitlenen ayarları destekler. Kamera ile kayıt bulma ve en fazla 100 seçili varlığı yazdırma vardır. Yazıcı/kağıt kataloğundan çoklu etiket sayfası düzeni ve seri okutmayla toplu zimmet/iade henüz yoktur.
+- Etiket kartı C128/C39/EAN5/EAN13/UPC-A/UPC-E ve QR/PDF417/Data Matrix biçimlerini, 50×30 ile 100×50 mm arasındaki beş hazır ölçüyü, özel ebatları, hizalamayı ve şirket düzeyinde eşitlenen ayarları destekler. Kamera ile kayıt bulma, çoklu barkod okutarak en fazla 100 varlık seçme, atomik toplu zimmet/iade ve A4/Letter üzerinde sayfa etiket yerleşimi vardır. Marka/ürün koduna göre ön tanımlı yazıcı ve etiket stoğu şablon kataloğu henüz yoktur.
 - Şirket logosu ile varlık fotoğrafı/PDF eki yükleme vardır; şirket JSON dışa aktarımı bu ikili dosyaları henüz arşivlemez. Yerel medya klasörü yedek betiği kapsamında kalır; bu, üretim yedekleme/geri yükleme özelliği değildir.
 - JSON dosyası önizlemesi vardır; gerçek içe alma/geri yükleme henüz yoktur.
 - `docs/ARCHITECTURE.md`, `docs/DATA-PORTABILITY.md` ve `docs/PLATFORM-ADMIN.md` daha ayrıntılı teknik kapsamı tutar.
