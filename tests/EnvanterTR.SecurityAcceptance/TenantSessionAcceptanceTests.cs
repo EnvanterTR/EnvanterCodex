@@ -25,6 +25,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     private readonly Guid _otherCompanyAssetId = Guid.NewGuid();
     private readonly Guid _ownLicenseId = Guid.NewGuid();
     private readonly Guid _otherCompanyLicenseId = Guid.NewGuid();
+    private readonly Guid _ownAccessoryId = Guid.NewGuid();
+    private readonly Guid _otherCompanyAccessoryId = Guid.NewGuid();
+    private readonly Guid _ownConsumableId = Guid.NewGuid();
+    private readonly Guid _otherCompanyConsumableId = Guid.NewGuid();
+    private readonly Guid _ownComponentId = Guid.NewGuid();
+    private readonly Guid _otherCompanyComponentId = Guid.NewGuid();
     private string? _previousConnectionString;
     private string? _previousForwardedHeadersSetting;
     private WebApplicationFactory<Program>? _factory;
@@ -73,6 +79,24 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         db.SoftwareLicenses.AddRange(
             new SoftwareLicense { Id = _ownLicenseId, CompanyId = _companyId, Name = $"OWN-SECURITY-LICENSE-{_userId:N}", Seats = 4, Currency = "USD", ExpirationDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30) },
             new SoftwareLicense { Id = _otherCompanyLicenseId, CompanyId = _otherCompanyId, Name = $"OTHER-SECURITY-LICENSE-{_userId:N}", Seats = 8, Currency = "USD", ExpirationDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30) });
+        db.Accessories.AddRange(
+            new Accessory { Id = _ownAccessoryId, CompanyId = _companyId, Name = $"OWN-SECURITY-ACCESSORY-{_userId:N}", TotalQuantity = 5 },
+            new Accessory { Id = _otherCompanyAccessoryId, CompanyId = _otherCompanyId, Name = $"OTHER-SECURITY-ACCESSORY-{_userId:N}", TotalQuantity = 7 });
+        db.Consumables.AddRange(
+            new Consumable { Id = _ownConsumableId, CompanyId = _companyId, Name = $"OWN-SECURITY-CONSUMABLE-{_userId:N}", TotalQuantity = 5 },
+            new Consumable { Id = _otherCompanyConsumableId, CompanyId = _otherCompanyId, Name = $"OTHER-SECURITY-CONSUMABLE-{_userId:N}", TotalQuantity = 7 });
+        db.InventoryComponents.AddRange(
+            new InventoryComponent { Id = _ownComponentId, CompanyId = _companyId, Name = $"OWN-SECURITY-COMPONENT-{_userId:N}", TotalQuantity = 5 },
+            new InventoryComponent { Id = _otherCompanyComponentId, CompanyId = _otherCompanyId, Name = $"OTHER-SECURITY-COMPONENT-{_userId:N}", TotalQuantity = 7 });
+        db.AccessoryMovements.AddRange(
+            new AccessoryMovement { CompanyId = _companyId, AccessoryId = _ownAccessoryId, MovementType = "Received", Quantity = 2 },
+            new AccessoryMovement { CompanyId = _otherCompanyId, AccessoryId = _otherCompanyAccessoryId, MovementType = "Received", Quantity = 2 });
+        db.ConsumableMovements.AddRange(
+            new ConsumableMovement { CompanyId = _companyId, ConsumableId = _ownConsumableId, MovementType = "Received", Quantity = 2 },
+            new ConsumableMovement { CompanyId = _otherCompanyId, ConsumableId = _otherCompanyConsumableId, MovementType = "Received", Quantity = 2 });
+        db.ComponentMovements.AddRange(
+            new ComponentMovement { CompanyId = _companyId, ComponentId = _ownComponentId, MovementType = "Received", Quantity = 2 },
+            new ComponentMovement { CompanyId = _otherCompanyId, ComponentId = _otherCompanyComponentId, MovementType = "Received", Quantity = 2 });
         db.Users.Add(new EnvanterUser
         {
             Id = _userId,
@@ -224,6 +248,63 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.True(response.StatusCode == expectedStatus,
                 $"{path} should respond with {(int)expectedStatus} when paging and optional filters are omitted, but returned {(int)response.StatusCode}: {detail}");
         }
+    }
+
+    [Fact]
+    public async Task Stock_lists_details_exports_and_combined_movements_stay_within_the_active_company()
+    {
+        var inventory = new (string ListPath, string DetailPath, string ExportPath, Guid OwnId, Guid OtherId,
+            string OwnName, string OtherName)[]
+        {
+            ($"/api/accessories", $"/api/accessories/{_otherCompanyAccessoryId}", "/api/accessories/export.csv",
+                _ownAccessoryId, _otherCompanyAccessoryId, $"OWN-SECURITY-ACCESSORY-{_userId:N}", $"OTHER-SECURITY-ACCESSORY-{_userId:N}"),
+            ($"/api/consumables", $"/api/consumables/{_otherCompanyConsumableId}", "/api/consumables/export.csv",
+                _ownConsumableId, _otherCompanyConsumableId, $"OWN-SECURITY-CONSUMABLE-{_userId:N}", $"OTHER-SECURITY-CONSUMABLE-{_userId:N}"),
+            ($"/api/components", $"/api/components/{_otherCompanyComponentId}", "/api/components/export.csv",
+                _ownComponentId, _otherCompanyComponentId, $"OWN-SECURITY-COMPONENT-{_userId:N}", $"OTHER-SECURITY-COMPONENT-{_userId:N}")
+        };
+
+        foreach (var (listPath, detailPath, exportPath, ownId, otherId, ownName, otherName) in inventory)
+        {
+            using (var listResponse = await SendAsAdminAsync(listPath))
+            {
+                Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
+                using var payload = JsonDocument.Parse(await listResponse.Content.ReadAsStringAsync());
+                var ids = payload.RootElement.GetProperty("items").EnumerateArray()
+                    .Select(item => item.GetProperty("id").GetGuid()).ToArray();
+                Assert.Contains(ownId, ids);
+                Assert.DoesNotContain(otherId, ids);
+            }
+
+            using (var detailResponse = await SendAsAdminAsync(detailPath))
+                Assert.Equal(HttpStatusCode.NotFound, detailResponse.StatusCode);
+
+            using var exportResponse = await SendAsAdminAsync(exportPath);
+            Assert.Equal(HttpStatusCode.OK, exportResponse.StatusCode);
+            var csv = await exportResponse.Content.ReadAsStringAsync();
+            Assert.Contains(ownName, csv, StringComparison.Ordinal);
+            Assert.False(csv.Contains(otherName, StringComparison.Ordinal));
+        }
+
+        using (var movementsResponse = await SendAsAdminAsync("/api/inventory/movements"))
+        {
+            Assert.Equal(HttpStatusCode.OK, movementsResponse.StatusCode);
+            using var payload = JsonDocument.Parse(await movementsResponse.Content.ReadAsStringAsync());
+            var items = payload.RootElement.GetProperty("items").EnumerateArray().ToArray();
+            Assert.Equal(3, items.Length);
+            Assert.Contains(items, item => item.GetProperty("item").GetString() == $"OWN-SECURITY-ACCESSORY-{_userId:N}");
+            Assert.Contains(items, item => item.GetProperty("item").GetString() == $"OWN-SECURITY-CONSUMABLE-{_userId:N}");
+            Assert.Contains(items, item => item.GetProperty("item").GetString() == $"OWN-SECURITY-COMPONENT-{_userId:N}");
+            Assert.DoesNotContain(items, item => item.GetProperty("item").GetString()?.StartsWith("OTHER-SECURITY-", StringComparison.Ordinal) == true);
+        }
+
+        using var movementsExportResponse = await SendAsAdminAsync("/api/inventory/movements?export=true");
+        Assert.Equal(HttpStatusCode.OK, movementsExportResponse.StatusCode);
+        var movementsCsv = await movementsExportResponse.Content.ReadAsStringAsync();
+        Assert.Contains($"OWN-SECURITY-ACCESSORY-{_userId:N}", movementsCsv, StringComparison.Ordinal);
+        Assert.Contains($"OWN-SECURITY-CONSUMABLE-{_userId:N}", movementsCsv, StringComparison.Ordinal);
+        Assert.Contains($"OWN-SECURITY-COMPONENT-{_userId:N}", movementsCsv, StringComparison.Ordinal);
+        Assert.False(movementsCsv.Contains("OTHER-SECURITY-", StringComparison.Ordinal));
     }
 
     private async Task<HttpResponseMessage> SendAsAdminAsync(string path, Guid? companyId = null)
