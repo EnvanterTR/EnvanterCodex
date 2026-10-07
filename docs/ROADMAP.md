@@ -63,8 +63,8 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 
 ## Bilinçli ürün sınırları
 
-- Müşteri kaynak deposu ile müşterinin indireceği kurulum paketi ayrı teslim kanallarıdır. Kurulum paketi henüz üretilmiyor veya imzalanmıyor.
+- Kaynak deposu ile müşteriye verilecek kurulum paketi ayrı teslim kanallarıdır. `win-x64` self-contained uygulama ve servis/yedek betiklerini içeren Windows paket prototipi Docker SDK ile üretilebiliyor; imzalı ileri-ileri kurulum sihirbazı ve gerçek Windows Server kabulü henüz yok. Linux kurulum da kaynak tabanlı sunucu prototipidir; imzalı sürüm ve gerçek Ubuntu kabulü açık iştir.
 - Etiket kartı C128/C39/EAN5/EAN13/UPC-A/UPC-E ve QR/PDF417/Data Matrix biçimlerini, 50×30 ile 100×50 mm arasındaki beş hazır ölçüyü, özel ebatları, hizalamayı ve şirket düzeyinde eşitlenen ayarları destekler. Kamera ile kayıt bulma, çoklu barkod okutarak en fazla 100 varlık seçme, atomik toplu zimmet/iade ve A4/Letter üzerinde sayfa etiket yerleşimi vardır. Marka/ürün koduna göre ön tanımlı yazıcı ve etiket stoğu şablon kataloğu henüz yoktur.
-- Şirket logosu ile varlık fotoğrafı/PDF eki yükleme vardır; şirket JSON dışa aktarımı bu ikili dosyaları henüz arşivlemez. Yerel medya klasörü yedek betiği kapsamında kalır; bu, üretim yedekleme/geri yükleme özelliği değildir.
+- Şirket logosu ile varlık fotoğrafı/PDF eki yükleme vardır. Şirket JSON çıktısı tek başına ikili dosyaları içermez; ayrı şirket ZIP dışa aktarımı JSON kayıtlarını şirket medyasıyla (logo, varlık ekleri, çalışan belgeleri/fotoğrafları ve şirkete üye kullanıcıların profil fotoğrafları) paketler. Yerel tam yedek DB, medya ve Data Protection anahtarlarını da alabilir. Bu dışa aktarımlar üretim sunucusuna geri yükleme özelliği değildir.
 - JSON dosyası önizlemesi vardır; gerçek içe alma/geri yükleme henüz yoktur.
 - `docs/ARCHITECTURE.md`, `docs/DATA-PORTABILITY.md` ve `docs/PLATFORM-ADMIN.md` daha ayrıntılı teknik kapsamı tutar.
