@@ -1248,6 +1248,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
 
+                    b.Property<Guid?>("LocationCatalogId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("ManagerEmployeeId")
                         .HasColumnType("uuid");
 
@@ -1268,6 +1271,8 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("CompanyId", "EmployeeNumber")
                         .IsUnique();
+
+                    b.HasIndex("CompanyId", "LocationCatalogId");
 
                     b.HasIndex("CompanyId", "ManagerEmployeeId");
 
@@ -2558,6 +2563,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.CompanyLocation", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "LocationCatalogId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("EnvanterTR.Web.Data.Employee", null)
                         .WithMany()

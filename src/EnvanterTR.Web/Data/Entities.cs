@@ -141,6 +141,7 @@ public sealed class Employee
     public string? JobTitle { get; set; }
     public string? Phone { get; set; }
     public string? Location { get; set; }
+    public Guid? LocationCatalogId { get; set; }
     public DateOnly? StartedOn { get; set; }
     public string? PrivateNotes { get; set; }
     public Guid? ManagerEmployeeId { get; set; }

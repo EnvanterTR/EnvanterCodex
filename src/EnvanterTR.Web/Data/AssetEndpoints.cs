@@ -817,6 +817,8 @@ public static class AssetEndpoints
                 await db.Assets.Where(x => x.CompanyId == companyId && x.LocationCatalogId == catalogLocation.Id && x.Location != path)
                     .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Location, path)
                         .SetProperty(x => x.UpdatedAt, DateTimeOffset.UtcNow), cancellationToken);
+                await db.Employees.Where(x => x.CompanyId == companyId && x.LocationCatalogId == catalogLocation.Id && x.Location != path)
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Location, path), cancellationToken);
             }
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
                 TargetType = "Location", TargetId = id, Action = "CatalogRenamed", Details = $"Konum adı “{oldName}” → “{name}”." });
@@ -842,6 +844,9 @@ public static class AssetEndpoints
             var assets = db.Assets.Where(x => x.CompanyId == companyId && x.Location != null && EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"));
             if (await assets.AnyAsync(x => x.LocationCatalogId != null, cancellationToken))
                 return Results.Conflict(new { message = "Bu ad katalog konumuna bağlı varlıklarda kullanılıyor. Katalog düğümünü düzenleyerek kimlik bağlantısını koruyun." });
+            var employees = db.Employees.Where(x => x.CompanyId == companyId && x.Location != null && EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"));
+            if (await employees.AnyAsync(x => x.LocationCatalogId != null, cancellationToken))
+                return Results.Conflict(new { message = "Bu ad katalog konumuna bağlı çalışanlarda kullanılıyor. Katalog düğümünü düzenleyerek kimlik bağlantısını koruyun." });
             var accessories = db.Accessories.Where(x => x.CompanyId == companyId && x.Location != null && EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"));
             var consumables = db.Consumables.Where(x => x.CompanyId == companyId && x.Location != null && EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"));
             var components = db.InventoryComponents.Where(x => x.CompanyId == companyId && x.Location != null && EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"));

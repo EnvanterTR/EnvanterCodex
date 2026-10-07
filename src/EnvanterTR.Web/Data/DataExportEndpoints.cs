@@ -114,8 +114,14 @@ public static class DataExportEndpoints
         if (cleanErrors.Length > 0)
             return Results.UnprocessableEntity(new { isValid = false, rowCount = rows.Count - 1, errors = cleanErrors, message = "Dosyada düzeltilmesi gereken alanlar bulundu. Hiçbir çalışan eklenmedi." });
 
+        var employeeLocationCatalogPaths = await AssetEndpoints.GetActiveLocationPathMapAsync(db, companyId, cancellationToken);
+        foreach (var employee in employees)
+            if (employee.Location is not null && employeeLocationCatalogPaths.TryGetValue(employee.Location, out var locationCatalogId))
+                employee.LocationCatalogId = locationCatalogId;
+
         if (!import) return Results.Ok(new { isValid = true, rowCount = employees.Count, errors = Array.Empty<string>(),
-            message = $"{employees.Count:N0} yeni çalışan kaydı doğrulandı. Önizleme hiçbir kayıt eklemedi." });
+            linkedLocations = employees.Count(x => x.LocationCatalogId is not null),
+            message = $"{employees.Count:N0} yeni çalışan kaydı doğrulandı. Konum kataloğuyla eşleşen {employees.Count(x => x.LocationCatalogId is not null):N0} kayıt bağlanacak. Önizleme hiçbir kayıt eklemedi." });
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
         // Recheck under the write transaction so duplicate employee numbers never partially import.
@@ -508,6 +514,13 @@ public static class DataExportEndpoints
             var departmentCatalog = ReadOptionalRows(root, "departmentCatalog", errors, counts);
             var locationCatalog = ReadOptionalRows(root, "locationCatalog", errors, counts);
             var locationCatalogIds = ValidateCompanyCatalogs(departmentCatalog, locationCatalog, sourceCompanyId, errors);
+            foreach (var employee in EnumerateRows(root, "employees"))
+            {
+                if (employee.ValueKind != JsonValueKind.Object) continue;
+                if (employee.TryGetProperty("locationCatalogId", out var locationCatalogId) && locationCatalogId.ValueKind != JsonValueKind.Null &&
+                    (!TryGuid(employee, "locationCatalogId", out var selectedLocationId) || !locationCatalogIds.Contains(selectedLocationId)))
+                    AddError(errors, "Bir çalışanın konum kataloğu bağlantısı dosyada bulunamadı veya geçersiz.");
+            }
             if (!root.TryGetProperty("members", out var members) || members.ValueKind != JsonValueKind.Array)
                 AddError(errors, "members alanı eksik veya dizi değil.");
             else

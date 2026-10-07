@@ -36,7 +36,7 @@ Rol politikaları ayrı tutulur: varlık okuma, varlık değiştirme, çalışan
 
 ## API sözleşmesi (oturum açma akışı eklendikten sonra)
 
-Çalışan oluşturma/güncelleme uçları (`POST/PATCH /api/employees`) isteğe bağlı `jobTitle`, `phone`, `location` ve ISO `startedOn` (`YYYY-MM-DD`) alanlarını kabul eder. Profil yanıtı bu alanları döndürür; arama ve `/api/employees/export.csv` de bu değerleri kapsar. Görev unvanı/konum en fazla 160, telefon 40 karakterdir.
+Çalışan oluşturma/güncelleme uçları (`POST/PATCH /api/employees`) isteğe bağlı `jobTitle`, `phone`, `location` ve ISO `startedOn` (`YYYY-MM-DD`) alanlarını kabul eder. Profil yanıtı `locationCatalogId` ile eşleşen etkin konum kimliğini döndürür; kayıt ve çalışan CSV aktarımı tam eşleşen etkin katalog yolunu bağlar, serbest metin geriye uyumludur. Konum kataloğunda ad değişirse bağlı çalışan yolu da güncellenir. Arama ve `/api/employees/export.csv` konum metnini kapsar. Görev unvanı/konum en fazla 160, telefon 40 karakterdir.
 
 `GET /api/employees` ve `/api/employees/export.csv`, `startedFrom` ve `startedTo` (`YYYY-MM-DD`) işe başlama tarihi aralığı filtrelerini kabul eder; başlangıç bitişten sonraysa doğrulama hatası döner.
 

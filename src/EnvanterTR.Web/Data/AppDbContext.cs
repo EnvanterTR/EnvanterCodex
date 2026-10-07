@@ -118,6 +118,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Employee>().Property(x => x.JobTitle).HasMaxLength(160);
         modelBuilder.Entity<Employee>().Property(x => x.Phone).HasMaxLength(40);
         modelBuilder.Entity<Employee>().Property(x => x.Location).HasMaxLength(160);
+        modelBuilder.Entity<Employee>().HasIndex(x => new { x.CompanyId, x.LocationCatalogId });
+        modelBuilder.Entity<Employee>().HasOne<CompanyLocation>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.LocationCatalogId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<Employee>().Property(x => x.PrivateNotes).HasMaxLength(4000);
         modelBuilder.Entity<AssetCategory>().Property(x => x.Name).HasMaxLength(120).IsRequired();
         modelBuilder.Entity<AssetBrand>().Property(x => x.Name).HasMaxLength(120).IsRequired();

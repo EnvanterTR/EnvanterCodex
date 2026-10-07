@@ -198,7 +198,7 @@ public static class OperationalEndpoints
             var items = await query.OrderBy(x => x.DisplayName).Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(x => new
                 {
-                    x.Id, x.EmployeeNumber, x.DisplayName, x.Email, x.Department, x.JobTitle, x.Phone, x.Location, x.StartedOn, x.IsActive,
+                    x.Id, x.EmployeeNumber, x.DisplayName, x.Email, x.Department, x.JobTitle, x.Phone, x.Location, x.LocationCatalogId, x.StartedOn, x.IsActive,
                     x.ManagerEmployeeId,
                     ManagerName = db.Employees.Where(manager => manager.CompanyId == companyId && manager.Id == x.ManagerEmployeeId)
                         .Select(manager => manager.DisplayName).FirstOrDefault()
@@ -279,6 +279,7 @@ public static class OperationalEndpoints
             var jobTitle = Clean(request.JobTitle);
             var phone = Clean(request.Phone);
             var location = Clean(request.Location);
+            var locationCatalogId = await AssetEndpoints.ResolveLocationCatalogIdAsync(db, companyId, location, cancellationToken);
             if (string.IsNullOrWhiteSpace(number) || number.Length > 80 ||
                 string.IsNullOrWhiteSpace(displayName) || displayName.Length > 200 ||
                 email is { Length: > 256 } || department is { Length: > 160 } || jobTitle is { Length: > 160 } ||
@@ -296,7 +297,7 @@ public static class OperationalEndpoints
             {
                 CompanyId = companyId, EmployeeNumber = number, DisplayName = displayName,
                 Email = email, Department = department, JobTitle = jobTitle, Phone = phone,
-                Location = location, StartedOn = request.StartedOn, ManagerEmployeeId = request.ManagerEmployeeId
+                Location = location, LocationCatalogId = locationCatalogId, StartedOn = request.StartedOn, ManagerEmployeeId = request.ManagerEmployeeId
             };
             db.Employees.Add(employee);
             db.AuditEntries.Add(new AuditEntry
@@ -309,7 +310,7 @@ public static class OperationalEndpoints
             return Results.Created($"/api/employees/{employee.Id}", new
             {
                 employee.Id, employee.EmployeeNumber, employee.DisplayName, employee.Email, employee.Department,
-                employee.JobTitle, employee.Phone, employee.Location, employee.StartedOn,
+                employee.JobTitle, employee.Phone, employee.Location, employee.LocationCatalogId, employee.StartedOn,
                 employee.ManagerEmployeeId, employee.IsActive
             });
         }).RequireAuthorization("people.manage");
@@ -327,6 +328,7 @@ public static class OperationalEndpoints
             var jobTitle = Clean(request.JobTitle);
             var phone = Clean(request.Phone);
             var location = Clean(request.Location);
+            var locationCatalogId = await AssetEndpoints.ResolveLocationCatalogIdAsync(db, companyId, location, cancellationToken);
             if (string.IsNullOrWhiteSpace(number) || number.Length > 80 ||
                 string.IsNullOrWhiteSpace(displayName) || displayName.Length > 200 ||
                 email is { Length: > 256 } || department is { Length: > 160 } || jobTitle is { Length: > 160 } ||
@@ -342,8 +344,9 @@ public static class OperationalEndpoints
             if (employee.JobTitle != jobTitle) { changes.Add("görev unvanı"); employee.JobTitle = jobTitle; }
             if (employee.Phone != phone) { changes.Add("telefon"); employee.Phone = phone; }
             if (employee.Location != location) { changes.Add("konum"); employee.Location = location; }
+            if (employee.LocationCatalogId != locationCatalogId) { changes.Add("konum kataloğu bağlantısı"); employee.LocationCatalogId = locationCatalogId; }
             if (employee.StartedOn != request.StartedOn) { changes.Add("işe başlama tarihi"); employee.StartedOn = request.StartedOn; }
-            if (changes.Count == 0) return Results.Ok(new { employee.Id, employee.EmployeeNumber, employee.DisplayName, employee.Email, employee.Department, employee.JobTitle, employee.Phone, employee.Location, employee.StartedOn });
+            if (changes.Count == 0) return Results.Ok(new { employee.Id, employee.EmployeeNumber, employee.DisplayName, employee.Email, employee.Department, employee.JobTitle, employee.Phone, employee.Location, employee.LocationCatalogId, employee.StartedOn });
             db.AuditEntries.Add(new AuditEntry
             {
                 CompanyId = companyId, ActorUserId = actorId, TargetType = "Employee", TargetId = id,
@@ -351,7 +354,7 @@ public static class OperationalEndpoints
             });
             try { await db.SaveChangesAsync(cancellationToken); }
             catch (DbUpdateException) { return Results.Conflict(new { message = "Çalışan kaydı çakıştı." }); }
-            return Results.Ok(new { employee.Id, employee.EmployeeNumber, employee.DisplayName, employee.Email, employee.Department, employee.JobTitle, employee.Phone, employee.Location, employee.StartedOn });
+            return Results.Ok(new { employee.Id, employee.EmployeeNumber, employee.DisplayName, employee.Email, employee.Department, employee.JobTitle, employee.Phone, employee.Location, employee.LocationCatalogId, employee.StartedOn });
         }).RequireAuthorization("people.manage");
 
         api.MapGet("/employees/{id:guid}", async (Guid id, [FromQuery] int page, [FromQuery] int pageSize,
@@ -364,7 +367,7 @@ public static class OperationalEndpoints
             var employee = await db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
                 .Select(x => new
                 {
-                    x.Id, x.EmployeeNumber, x.DisplayName, x.Email, x.Department, x.JobTitle, x.Phone, x.Location, x.StartedOn, x.IsActive, x.CreatedAt,
+                    x.Id, x.EmployeeNumber, x.DisplayName, x.Email, x.Department, x.JobTitle, x.Phone, x.Location, x.LocationCatalogId, x.StartedOn, x.IsActive, x.CreatedAt,
                     x.ManagerEmployeeId,
                     ManagerName = db.Employees.Where(manager => manager.CompanyId == companyId && manager.Id == x.ManagerEmployeeId)
                         .Select(manager => manager.DisplayName).FirstOrDefault()
