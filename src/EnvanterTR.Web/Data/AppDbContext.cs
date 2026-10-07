@@ -29,6 +29,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AccessoryPurchaseOrderLine> AccessoryPurchaseOrderLines => Set<AccessoryPurchaseOrderLine>();
     public DbSet<Consumable> Consumables => Set<Consumable>();
     public DbSet<ConsumableMovement> ConsumableMovements => Set<ConsumableMovement>();
+    public DbSet<InventoryRequest> InventoryRequests => Set<InventoryRequest>();
     public DbSet<SoftwareLicense> SoftwareLicenses => Set<SoftwareLicense>();
     public DbSet<SoftwareLicenseAssignment> SoftwareLicenseAssignments => Set<SoftwareLicenseAssignment>();
     public DbSet<SoftwareLicenseEvent> SoftwareLicenseEvents => Set<SoftwareLicenseEvent>();
@@ -240,6 +241,28 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<ConsumableMovement>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<InventoryRequest>().Property(x => x.ItemType).HasMaxLength(24).IsRequired();
+        modelBuilder.Entity<InventoryRequest>().Property(x => x.Status).HasMaxLength(24).IsRequired();
+        modelBuilder.Entity<InventoryRequest>().Property(x => x.RequestNote).HasMaxLength(1000);
+        modelBuilder.Entity<InventoryRequest>().Property(x => x.ReviewNote).HasMaxLength(1000);
+        modelBuilder.Entity<InventoryRequest>().HasIndex(x => new { x.CompanyId, x.Status, x.CreatedAt });
+        modelBuilder.Entity<InventoryRequest>().HasIndex(x => new { x.CompanyId, x.EmployeeId, x.CreatedAt });
+        modelBuilder.Entity<InventoryRequest>().ToTable("InventoryRequests", table =>
+        {
+            table.HasCheckConstraint("CK_InventoryRequests_ItemType", "\"ItemType\" IN ('Accessory', 'Consumable')");
+            table.HasCheckConstraint("CK_InventoryRequests_Status", "\"Status\" IN ('Pending', 'Approved', 'Rejected', 'Cancelled')");
+            table.HasCheckConstraint("CK_InventoryRequests_Quantity", "\"Quantity\" BETWEEN 1 AND 100000");
+            table.HasCheckConstraint("CK_InventoryRequests_ReviewedAt", "(\"Status\" = 'Pending' AND \"ReviewedAt\" IS NULL) OR (\"Status\" <> 'Pending' AND \"ReviewedAt\" IS NOT NULL)");
+        });
+        modelBuilder.Entity<InventoryRequest>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<InventoryRequest>().HasOne<Employee>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.EmployeeId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<InventoryRequest>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.RequestedByUserId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<InventoryRequest>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.ReviewedByUserId).OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.Name).HasMaxLength(200).IsRequired();
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.Publisher).HasMaxLength(160);

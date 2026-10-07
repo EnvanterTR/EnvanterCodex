@@ -35,6 +35,7 @@ public static class AssetEndpoints
             return await next(invocation);
         });
         api.MapConsumableEndpoints();
+        api.MapInventoryRequestEndpoints();
         api.MapSoftwareLicenseEndpoints();
         api.MapComponentEndpoints();
         api.MapAccessoryImportEndpoints();

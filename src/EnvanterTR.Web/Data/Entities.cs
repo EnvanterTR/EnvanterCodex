@@ -395,6 +395,23 @@ public sealed class ConsumableMovement
     public DateTimeOffset OccurredAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class InventoryRequest
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid EmployeeId { get; set; }
+    public Guid? RequestedByUserId { get; set; }
+    public Guid? ReviewedByUserId { get; set; }
+    public required string ItemType { get; set; }
+    public Guid ItemId { get; set; }
+    public int Quantity { get; set; }
+    public string Status { get; set; } = "Pending";
+    public string? RequestNote { get; set; }
+    public string? ReviewNote { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? ReviewedAt { get; set; }
+}
+
 public sealed class SoftwareLicense
 {
     public Guid Id { get; set; } = Guid.NewGuid();

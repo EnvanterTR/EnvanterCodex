@@ -1001,13 +1001,14 @@ public static class DataExportEndpoints
         await WritePagedAsync(writer, "assetBrands", db.AssetBrands.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
         await WritePagedAsync(writer, "assetModels", db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
         await WritePagedAsync(writer, "assets", db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
+        await WritePagedAsync(writer, "inventoryRequests", db.InventoryRequests.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
         await WritePagedAsync(writer, "assetMaintenances", db.AssetMaintenances.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
         await WritePagedAsync(writer, "assetEvents", db.AssetEvents.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
         await WritePagedAsync(writer, "auditEntries", db.AuditEntries.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
         var members = from membership in db.CompanyMemberships.AsNoTracking().Where(x => x.CompanyId == companyId)
                       join user in db.Users.AsNoTracking() on membership.UserId equals user.Id
                       orderby membership.UserId
-                      select new { user.DisplayName, Email = user.Email!, membership.RoleKey, membership.CreatedAt };
+                      select new { UserId = user.Id, user.DisplayName, Email = user.Email!, membership.RoleKey, membership.CreatedAt };
         await WritePagedAsync(writer, "members", members, cancellationToken);
         writer.WriteEndObject();
     }
