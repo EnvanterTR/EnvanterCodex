@@ -82,6 +82,10 @@ if (!string.IsNullOrWhiteSpace(connectionString))
             "owner", "admin", "asset_manager", "asset_operator", "auditor", "hr_operator"));
         options.AddPolicy("people.manage", policy => policy.RequireAuthenticatedUser().RequireClaim("company_role",
             "owner", "admin", "asset_manager", "hr_operator"));
+        options.AddPolicy("people.files.read", policy => policy.RequireAuthenticatedUser().RequireClaim("company_role",
+            "owner", "admin", "hr_operator"));
+        options.AddPolicy("people.files.manage", policy => policy.RequireAuthenticatedUser().RequireClaim("company_role",
+            "owner", "admin", "hr_operator"));
         options.AddPolicy("company.member", policy => policy.RequireAuthenticatedUser().RequireClaim("company_role",
             "owner", "admin", "asset_manager", "asset_operator", "auditor", "viewer", "hr_operator"));
         options.AddPolicy("platform.admin", policy => policy.RequireAuthenticatedUser().RequireClaim("platform_admin", "true"));

@@ -36,7 +36,21 @@ public sealed record CreateEmployeeRequest(
     string DisplayName,
     string? Email,
     string? Department,
-    Guid? ManagerEmployeeId = null);
+    Guid? ManagerEmployeeId = null,
+    string? JobTitle = null,
+    string? Phone = null,
+    string? Location = null,
+    DateOnly? StartedOn = null);
+
+public sealed record UpdateEmployeeRequest(
+    string EmployeeNumber,
+    string DisplayName,
+    string? Email,
+    string? Department,
+    string? JobTitle = null,
+    string? Phone = null,
+    string? Location = null,
+    DateOnly? StartedOn = null);
 
 public sealed record SetEmployeeManagerRequest(Guid? ManagerEmployeeId);
 
@@ -50,6 +64,7 @@ public sealed record BulkTransferAssetsRequest(Guid[] AssetIds, string TargetLoc
 public sealed record BulkRecordAssetAuditRequest(Guid[] AssetIds, DateOnly AuditDate, string? Notes);
 public sealed record SelectedAssetExportRequest(Guid[] AssetIds);
 public sealed record SetEmployeeActiveRequest(bool IsActive);
+public sealed record UpdateEmployeePrivateNotesRequest(string? Notes);
 
 public sealed record AssetListItem(
     Guid Id,
@@ -67,4 +82,5 @@ public sealed record AssetListItem(
     string? AssignedEmployeeName,
     Guid? AssignedEmployeeId,
     DateOnly? WarrantyExpiresAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    Guid? PhotoAttachmentId = null);

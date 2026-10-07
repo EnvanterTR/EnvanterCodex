@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,13 +9,114 @@ public static class AccessoryPurchaseOrderEndpoints
 {
     public static RouteGroupBuilder MapAccessoryPurchaseOrderEndpoints(this RouteGroupBuilder api)
     {
+        api.MapGet("/accessory-orders/export.csv", async ([FromQuery] string? q, [FromQuery] string? status,
+            [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] bool overdueOnly,
+            [FromQuery] DateOnly? asOf,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!Tenant(user, out var companyId)) return Results.Forbid();
+            if (from is not null && to is not null && from.Value > to.Value)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Başlangıç tarihi bitiş tarihinden sonra olamaz."] });
+            if (!string.IsNullOrWhiteSpace(q) && q.Trim().Length > 120)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama 120 karakteri aşamaz."] });
+
+            var query = from order in db.AccessoryPurchaseOrders.AsNoTracking()
+                        join line in db.AccessoryPurchaseOrderLines.AsNoTracking()
+                            on new { order.CompanyId, Id = order.Id } equals new { line.CompanyId, Id = line.PurchaseOrderId }
+                        join accessory in db.Accessories.AsNoTracking()
+                            on new { line.CompanyId, Id = line.AccessoryId } equals new { accessory.CompanyId, Id = accessory.Id }
+                        where order.CompanyId == companyId
+                        select new { order, line, accessory };
+            if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.order.Status == status.Trim());
+            if (from is not null) query = query.Where(x => x.order.OrderDate >= from.Value);
+            if (to is not null) query = query.Where(x => x.order.OrderDate <= to.Value);
+            if (overdueOnly)
+            {
+                var cutoff = asOf ?? DateOnly.FromDateTime(DateTime.UtcNow);
+                query = query.Where(x => (x.order.Status == "Ordered" || x.order.Status == "PartiallyReceived") && x.order.ExpectedOn != null && x.order.ExpectedOn < cutoff);
+            }
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                query = query.Where(x => x.order.OrderNumber.Contains(term) || x.order.Supplier.Contains(term) ||
+                    (x.accessory.ItemNumber != null && x.accessory.ItemNumber.Contains(term)) ||
+                    (x.order.Notes != null && x.order.Notes.Contains(term)) || x.accessory.Name.Contains(term));
+            }
+
+            const int exportLimit = 50_000;
+            var count = await query.CountAsync(ct);
+            if (count > exportLimit)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["export"] = [$"Dışa aktarma en fazla {exportLimit:N0} sipariş satırını destekler. Sonuçları arama veya durum filtresiyle daraltın."] });
+
+            var rows = await query.OrderByDescending(x => x.order.OrderDate).ThenBy(x => x.order.OrderNumber).ThenBy(x => x.accessory.Name)
+                .Select(x => new
+                {
+                    x.order.OrderNumber, x.order.Supplier, x.order.Status, x.order.OrderDate, x.order.ExpectedOn, x.order.Currency,
+                    Accessory = x.accessory.Name, x.accessory.ItemNumber,
+                    x.line.Quantity, x.line.QuantityReceived, Remaining = x.line.Quantity - x.line.QuantityReceived,
+                    x.line.UnitCost, TotalCost = x.line.Quantity * x.line.UnitCost, x.line.Notes
+                }).ToListAsync(ct);
+
+            static string Cell(string? value)
+            {
+                if (string.IsNullOrEmpty(value)) return "";
+                var trimmed = value.TrimStart();
+                var startsWithFormula = trimmed.Length > 0 && (trimmed[0] == '=' || trimmed[0] == '+' || trimmed[0] == '-' || trimmed[0] == '@');
+                var safe = startsWithFormula ? "'" + value : value;
+                return "\"" + safe.Replace("\"", "\"\"") + "\"";
+            }
+
+            var csv = new StringBuilder();
+            csv.AppendLine("Sipariş No;Tedarikçi;Durum;Sipariş Tarihi;Beklenen Tarih;Para Birimi;Aksesuar;Stok Kodu;Sipariş Adedi;Teslim Alınan;Kalan;Birim Bedeli;Satır Toplamı;Satır Notu");
+            foreach (var row in rows)
+                csv.AppendLine(string.Join(';', new[]
+                {
+                    Cell(row.OrderNumber), Cell(row.Supplier), Cell(row.Status), Cell(row.OrderDate.ToString("yyyy-MM-dd")),
+                    Cell(row.ExpectedOn?.ToString("yyyy-MM-dd")), Cell(row.Currency), Cell(row.Accessory), Cell(row.ItemNumber),
+                    row.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    row.QuantityReceived.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    row.Remaining.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    row.UnitCost.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                    row.TotalCost.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture), Cell(row.Notes)
+                }));
+            var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray();
+            return Results.File(bytes, "text/csv; charset=utf-8", $"envantertr-aksesuar-siparisleri-{DateTime.UtcNow:yyyyMMdd}.csv");
+        }).RequireAuthorization("asset.read");
+
+        api.MapGet("/accessory-orders/suppliers", async (ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!Tenant(user, out var companyId)) return Results.Forbid();
+            var names = new List<string>();
+            names.AddRange(await db.SupplierCatalogEntries.AsNoTracking().Where(x => x.CompanyId == companyId && x.IsActive).Select(x => x.Name).ToListAsync(ct));
+            names.AddRange(await db.AccessoryPurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId).Select(x => x.Supplier).ToListAsync(ct));
+            names.AddRange(await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && x.Supplier != null).Select(x => x.Supplier!).ToListAsync(ct));
+            names.AddRange(await db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId && x.Supplier != null).Select(x => x.Supplier!).ToListAsync(ct));
+            names.AddRange(await db.InventoryComponents.AsNoTracking().Where(x => x.CompanyId == companyId && x.Supplier != null).Select(x => x.Supplier!).ToListAsync(ct));
+            names.AddRange(await db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId && x.Supplier != null).Select(x => x.Supplier!).ToListAsync(ct));
+            names.AddRange(await db.AssetMaintenances.AsNoTracking().Where(x => x.CompanyId == companyId && x.Supplier != null).Select(x => x.Supplier!).ToListAsync(ct));
+            var items = names.Select(x => x.Trim()).Where(x => x.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x, StringComparer.OrdinalIgnoreCase).Take(500).ToArray();
+            return Results.Ok(new { items });
+        }).RequireAuthorization("asset.read");
+
         api.MapGet("/accessory-orders", async ([FromQuery] string? q, [FromQuery] string? status,
+            [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] bool overdueOnly,
+            [FromQuery] DateOnly? asOf,
             [FromQuery] int page, [FromQuery] int pageSize, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
+            if (from is not null && to is not null && from.Value > to.Value)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Başlangıç tarihi bitiş tarihinden sonra olamaz."] });
             page = Math.Max(page, 1); pageSize = Math.Clamp(pageSize == 0 ? 25 : pageSize, 1, 100);
             var query = db.AccessoryPurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId);
             if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.Status == status.Trim());
+            if (from is not null) query = query.Where(x => x.OrderDate >= from.Value);
+            if (to is not null) query = query.Where(x => x.OrderDate <= to.Value);
+            if (overdueOnly)
+            {
+                var cutoff = asOf ?? DateOnly.FromDateTime(DateTime.UtcNow);
+                query = query.Where(x => (x.Status == "Ordered" || x.Status == "PartiallyReceived") && x.ExpectedOn != null && x.ExpectedOn < cutoff);
+            }
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
@@ -22,7 +124,8 @@ public static class AccessoryPurchaseOrderEndpoints
                 query = query.Where(x => x.OrderNumber.Contains(term) || x.Supplier.Contains(term) ||
                     (x.Notes != null && x.Notes.Contains(term)) || db.AccessoryPurchaseOrderLines.Any(line =>
                         line.CompanyId == companyId && line.PurchaseOrderId == x.Id &&
-                        db.Accessories.Any(accessory => accessory.CompanyId == companyId && accessory.Id == line.AccessoryId && accessory.Name.Contains(term))));
+                        db.Accessories.Any(accessory => accessory.CompanyId == companyId && accessory.Id == line.AccessoryId &&
+                            (accessory.Name.Contains(term) || (accessory.ItemNumber != null && accessory.ItemNumber.Contains(term))))));
             }
             var total = await query.CountAsync(ct);
             var items = await query.OrderByDescending(x => x.OrderDate).ThenByDescending(x => x.CreatedAt)
@@ -73,10 +176,19 @@ public static class AccessoryPurchaseOrderEndpoints
             var accessoryIds = lines.Select(x => x.AccessoryId).ToArray();
             var existingIds = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && accessoryIds.Contains(x.Id)).Select(x => x.Id).ToListAsync(ct);
             if (existingIds.Count != lines.Length) return Results.ValidationProblem(new Dictionary<string, string[]> { ["items"] = ["Aksesuarlardan biri bu şirkette bulunamadı."] });
+            var normalizedSupplier = supplier!.Normalize(NormalizationForm.FormKC).ToUpperInvariant();
+            var supplierEntry = await db.SupplierCatalogEntries.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.NormalizedName == normalizedSupplier, ct);
+            if (supplierEntry is null)
+            {
+                supplierEntry = new SupplierCatalogEntry { CompanyId = companyId, Name = supplier, NormalizedName = normalizedSupplier };
+                db.SupplierCatalogEntries.Add(supplierEntry);
+            }
+            else if (!supplierEntry.IsActive) return Results.Conflict(new { message = "Bu tedarikçi arşivlenmiş. Yeni siparişten önce tedarikçi kataloğundan geri alın." });
+            else supplier = supplierEntry.Name;
             orderNumber ??= $"ST-{request.OrderDate:yyyyMMdd}-{Guid.NewGuid():N}"[..20].ToUpperInvariant();
             var order = new AccessoryPurchaseOrder
             {
-                CompanyId = companyId, OrderNumber = orderNumber, Supplier = supplier!, Status = "Ordered",
+                CompanyId = companyId, OrderNumber = orderNumber, Supplier = supplier!, SupplierId = supplierEntry.Id, Status = "Ordered",
                 OrderDate = request.OrderDate, ExpectedOn = request.ExpectedOn, Currency = currency,
                 Notes = Clean(request.Notes), CreatedByUserId = actorId
             };
@@ -133,6 +245,7 @@ public static class AccessoryPurchaseOrderEndpoints
                 line.QuantityReceived += quantity;
                 accessory.TotalQuantity += quantity;
                 accessory.Supplier = order.Supplier;
+                accessory.SupplierId = order.SupplierId;
                 accessory.UnitCost = line.UnitCost;
                 accessory.Currency = order.Currency;
                 accessory.PurchaseDate = request.ReceivedOn;

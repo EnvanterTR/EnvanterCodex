@@ -55,8 +55,60 @@ Compose projesinin adı `envantertr-product-dev` olarak ayrılmıştır; eski te
 
 ## Elle yerel yedek alma
 
-Uygulama ve veritabanı çalışırken proje kökünden Windows'ta `pwsh -File deploy/local/backup.ps1`, Linux'ta `bash deploy/local/backup.sh` çalıştırın. İsterseniz ilk argümanla yedeklerin yazılacağı dizini belirtebilirsiniz. Betikler PostgreSQL özel biçimli dökümünü, şirket medya volume'unu ve iki içerik için SHA-256 özetlerini ayrı bir klasöre yazar; dökümün PostgreSQL aracıyla, medya arşivinin tar ile okunabildiğini kontrol eder ve geçici konteyner dosyalarını işlem sonunda kaldırır. Yalnızca manifesto ve özetleri tamamlanan yedek klasörü başarılı sayılır; hata durumunda betik kendi oluşturduğu kısmi klasörü temizlemeyi dener. Yedek klasörü Git'e eklenmez.
+Uygulama ve veritabanı çalışırken proje kökünden Windows'ta `pwsh -File deploy/local/backup.ps1`, Linux'ta `bash deploy/local/backup.sh` çalıştırın. İsterseniz ilk argümanla yedeklerin yazılacağı dizini belirtebilirsiniz. Betikler PostgreSQL özel biçimli dökümünü, şirket medya volume'unu ve iki içerik için SHA-256 özetlerini ayrı bir klasöre yazar; dökümün PostgreSQL aracıyla, medya arşivinin tar ile okunabildiğini kontrol eder ve geçici konteyner dosyalarını işlem sonunda kaldırır. Medya arşivi, şirket logoları, varlık ekleri, çalışan profil fotoğrafları ve yönetici/İK erişimine açık çalışan PDF/görsel belgeleri ile oturum hesabı profil fotoğrafları dahil medya volume'undaki dosyaların tamamını içerir; dosya metaverileri ve şirket kayıtları PostgreSQL dökümündedir. Yalnızca manifesto ve özetleri tamamlanan yedek klasörü başarılı sayılır; hata durumunda betik kendi oluşturduğu kısmi klasörü temizlemeyi dener. Yedek klasörü Git'e eklenmez.
 
 Kopyalandıktan veya taşındıktan sonra bir paketi yeniden doğrulamak için Windows'ta `pwsh -File deploy/local/verify-backup.ps1 "D:\Yedekler\envantertr-20261005-120000-ab12cd34"` ya da Linux'ta `bash deploy/local/verify-backup.sh /mnt/backups/envantertr-20261005-120000-ab12cd34` çalıştırın. Doğrulayıcı manifesti ve SHA-256 özetlerini denetler, medya arşivini açmadan tar içerik dizinini okur ve PostgreSQL döküm kataloğunu doğrular. Docker ve `postgres:17-alpine` imajı gerekir; eksik imaj indirilip yalnızca salt okunur dosya bağlamasıyla, ağ bağlantısı kapalı bir geçici konteynerde kullanılır. Veritabanını değiştirmez ve geri yükleme yapmaz.
 
-Bu, yerel Docker Compose geliştirme kurulumu için **elle alınan, şifrelenmemiş bir kopyadır**. Parola hash'leri ve şirket verileri veritabanı dökümünde bulunduğundan klasörü erişimi kısıtlı ayrı bir diske taşıyın ve saklama/şifrelemeyi işletim sistemi veya güvenli yedekleme altyapısıyla sağlayın. PowerShell betiği oluşturduğu klasörde erişimi geçerli kullanıcı, Windows SYSTEM ve yöneticilerle sınırlar; Bash betiği özel dosya izinleriyle oluşturur. Veritabanı ve medya ayrı adımlarda kopyalandığından işlem sırasında yazma yapılmayan sakin bir zamanda alın. Arayüz içinden geri yükleme, otomatik zamanlama, şifreleme, izole bir ortama geri yükleme tatbikatı ve üretim/başka kurulum türleri için destek henüz yoktur. Bu nedenle müşteri hizmetinde tek yedek olarak kullanmayın. Geri yükleme desteği gelene kadar komut satırından dökümü elle yüklemeye çalışmayın.
+### İzole kurtarma önizlemesi
+
+Bir yedeğin PostgreSQL'e gerçekten geri yüklenebildiğini ve medya arşivinin açılabildiğini kontrol etmek için Windows'ta `pwsh -File deploy/local/restore-preview.ps1 "D:\Yedekler\envantertr-20261005-120000-ab12cd34"`, Linux'ta `bash deploy/local/restore-preview.sh /mnt/backups/envantertr-20261005-120000-ab12cd34` çalıştırın. Önce manifest ve SHA-256 denetimleri yapılır; ardından PostgreSQL 17 yalıtılmış, ağa bağlanmayan, port yayımlamayan ve ana makineden volume bağlamayan geçici konteynere yüklenir. Medya arşivi aynı konteynerde geçici dizine açılır; migration satırları ve dosya sayısı raporlanır. Komut sonunda konteyner zorla kaldırılır. Etkin Compose veritabanına/volume'una dokunmaz; canlı veritabanına geri yükleme aracı değildir. Yalnızca açılmış yedek klasörünü kabul eder; `.etbackup` önce `decrypt` komutuyla yeni bir klasöre çıkarılmalıdır.
+
+Yedek betiğinin klasör çıktısı başlangıçta **şifrelenmemiştir**; parola hash'leri ve şirket verileri veritabanı dökümündedir. PowerShell betiği oluşturduğu klasörde erişimi geçerli kullanıcı, Windows SYSTEM ve yöneticilerle sınırlar; Bash betiği özel dosya izinleriyle oluşturur. Veritabanı ve medya ayrı adımlarda kopyalandığından işlem sırasında yazma yapılmayan sakin bir zamanda alın. Aşağıdaki akış bu klasörü şifreleyebilir ve yerel geliştirici makinesinde zamanlayabilir. Canlı uygulama veritabanına geri yükleme ve üretim işletimi desteklenmiyor; müşteri hizmetinde tek yedek olarak kullanmayın. Açılmış klasör için yukarıdaki izole kurtarma önizlemesini kullanın; etkin veritabanına komut satırından elle yükleme yapmayın.
+
+### Elle alınan yedeği parola ile şifreleme
+
+`tools/EnvanterTR.Backup` aracı mevcut bir yedek klasörünü AES-256-CBC ile şifreler ve HMAC-SHA256 ile doğrular; parola anahtarı PBKDF2-SHA256 ile 600.000 turda türetilir. Yalnızca tamamlanmış bir yedek klasörünü şifreleyin. Komutları depo kökünde PowerShell veya Bash'ten çalıştırın; Docker ve `mcr.microsoft.com/dotnet/sdk:10.0` imajı gerekir. Parola terminalde görünmeden istenir ve en az 16 karakter olmalıdır:
+
+```powershell
+docker run --rm -it -v "${PWD}:/source" -w /source mcr.microsoft.com/dotnet/sdk:10.0 dotnet run --project tools/EnvanterTR.Backup/EnvanterTR.Backup.csproj -- encrypt /source/backups/YEDEK-KLASORU /source/backups/YEDEK-KLASORU.etbackup
+docker run --rm -it -v "${PWD}:/source" -w /source mcr.microsoft.com/dotnet/sdk:10.0 dotnet run --project tools/EnvanterTR.Backup/EnvanterTR.Backup.csproj -- verify /source/backups/YEDEK-KLASORU.etbackup
+docker run --rm -it -v "${PWD}:/source" -w /source mcr.microsoft.com/dotnet/sdk:10.0 dotnet run --project tools/EnvanterTR.Backup/EnvanterTR.Backup.csproj -- decrypt /source/backups/YEDEK-KLASORU.etbackup /source/restore-preview
+```
+
+Bash'te aynı komutlarda `-v "${PWD}:/source"` yerine `-v "$(pwd):/source"` kullanın:
+
+```bash
+docker run --rm -it -v "$(pwd):/source" -w /source mcr.microsoft.com/dotnet/sdk:10.0 dotnet run --project tools/EnvanterTR.Backup/EnvanterTR.Backup.csproj -- encrypt /source/backups/YEDEK-KLASORU /source/backups/YEDEK-KLASORU.etbackup
+docker run --rm -it -v "$(pwd):/source" -w /source mcr.microsoft.com/dotnet/sdk:10.0 dotnet run --project tools/EnvanterTR.Backup/EnvanterTR.Backup.csproj -- verify /source/backups/YEDEK-KLASORU.etbackup
+docker run --rm -it -v "$(pwd):/source" -w /source mcr.microsoft.com/dotnet/sdk:10.0 dotnet run --project tools/EnvanterTR.Backup/EnvanterTR.Backup.csproj -- decrypt /source/backups/YEDEK-KLASORU.etbackup /source/restore-preview
+```
+
+`YEDEK-KLASORU` yerine yedek betiğinin oluşturduğu gerçek klasör adını yazın. Doğrulama parola/MAC kontrolü yapar ve içeriğin ZIP olarak okunabildiğini inceler. Açma işlemi doğrulamadan sonra dosyaları **yeni ve henüz var olmayan** hedef klasöre çıkarır; var olan verilerin üstüne yazmaz. Bu, PostgreSQL veritabanına geri yükleme yapmaz. Şifreleme sırasında işletim sisteminin geçici klasöründe kısa süreli bir düz ZIP oluşturulur ve işlem başarıyla tamamlandığında silinir; bu nedenle yalnızca erişimi kısıtlı, güvenilir bir bilgisayarda çalıştırın. Çıkarılan yedek klasörü de şirket verisi içerir; hedef dizinin erişim izinlerini kısıtlayın. `.etbackup` dosyası dışında parolayı da aynı yere koymayın. Bu tekil araç zamanlama veya veritabanı geri yüklemesi sağlamaz; sonraki akış yerel zamanlamayı ayrıca kurar.
+
+### Yerel geliştirme makinesinde günlük şifreli yedek
+
+`run-backup.ps1` ve `run-backup.sh`, mevcut yedek betiğini çalıştırır; ham klasörü doğrular, parolalı arşivi üretip tekrar doğrular ve **ancak bundan sonra** düz yedek klasörünü kaldırır. Başarılı `.etbackup` arşivlerini varsayılan olarak 30 günden sonra temizler. Şifreleme veya doğrulama başarısız olursa düz kopyayı kurtarılabilmesi için bırakır; hata bildirimini zamanlayıcı geçmişinden/logundan kontrol edin. Klasör/dosya silme SSD, günlükleme dosya sistemi veya anlık görüntülerde güvenli fiziksel silme garantisi vermez; yedek diski için BitLocker/LUKS gibi tam disk şifrelemesi kullanın.
+
+Önce en az 16 karakterlik parola içeren dosyayı proje dizini ve bulut eşitleme klasörlerinin dışında oluşturun. Windows'ta kurulum betiği bu dosyanın ACL'ini geçerli kullanıcı, SYSTEM ve yöneticilerle sınırlar. Linux'ta parola dosyasının izni `600` yapılır. Parolayı yedekten ayrı, güvenli bir yere de saklayın; kaybolursa şifreli arşiv açılamaz.
+
+Windows PowerShell 7 ve Docker Desktop kullanırken depo kökünden günlük 02:00 görevi kurun:
+
+```powershell
+New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\EnvanterTR" | Out-Null
+# Parola dosyasını editörle bu konuma oluşturun; içeriğini komut geçmişine yazmayın.
+pwsh -File deploy/local/configure-backup-task.ps1 -PassphraseFile "$env:LOCALAPPDATA\EnvanterTR\backup-passphrase.txt" -At 02:00 -RetentionDays 30
+```
+
+Görev kullanıcı oturumu açıkken çalışır ve Docker Desktop'ın hazır olmasını bekler; bu önizlemede Windows oturumu kapalıyken arka plan Docker erişimi garanti edilmez. Elle çalıştırmak için `Start-ScheduledTask -TaskName EnvanterTR-Encrypted-Backup`; kaldırmak için kurulum betiğine `-Uninstall` verin. Ayrıntılı çıktı `backups/.scheduled-logs` altında tutulur; ayrıca Görev Geçmişi ve yeni `.etbackup` dosyasını kontrol edin.
+
+Linux'ta kullanıcı systemd zamanlayıcısını kurun (yolları kendi özel parola dosyanıza ve depolama alanınıza göre değiştirin):
+
+```bash
+mkdir -p /home/USER/.config/envantertr
+chmod 700 /home/USER/.config/envantertr
+chmod 600 /home/USER/.config/envantertr/backup-passphrase
+bash deploy/local/configure-backup-timer.sh /home/USER/.config/envantertr/backup-passphrase /home/USER/backups 02:00 30
+systemctl --user status envantertr-backup.timer
+```
+
+Kullanıcı systemd yöneticisi çalışıyor ve Docker erişimi varsa zamanlayıcı günlük çalışır; oturum yöneticisi kapalıyken çalıştırmak için Linux yönetiminizde ayrıca `systemd --user` linger yapılandırılmalıdır. Elle başlatmak için `systemctl --user start envantertr-backup.service`; sonucu okumak için `journalctl --user -u envantertr-backup.service`; kaldırmak için `bash deploy/local/configure-backup-timer.sh --uninstall` kullanın. Bu akış yerel geliştirme kolaylığıdır; çevrim dışı kopya, başka makinede geri yükleme tatbikatı, yedek alarmı/izleme veya üretim saklama politikası yerine geçmez.

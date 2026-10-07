@@ -36,6 +36,12 @@ Rol politikaları ayrı tutulur: varlık okuma, varlık değiştirme, çalışan
 
 ## API sözleşmesi (oturum açma akışı eklendikten sonra)
 
+Çalışan oluşturma/güncelleme uçları (`POST/PATCH /api/employees`) isteğe bağlı `jobTitle`, `phone`, `location` ve ISO `startedOn` (`YYYY-MM-DD`) alanlarını kabul eder. Profil yanıtı bu alanları döndürür; arama ve `/api/employees/export.csv` de bu değerleri kapsar. Görev unvanı/konum en fazla 160, telefon 40 karakterdir.
+
+`GET /api/employees` ve `/api/employees/export.csv`, `startedFrom` ve `startedTo` (`YYYY-MM-DD`) işe başlama tarihi aralığı filtrelerini kabul eder; başlangıç bitişten sonraysa doğrulama hatası döner.
+
+İK notları `/api/employees/{id}/private-notes` GET/PUT uçlarıyla yönetilir; yalnızca `people.files.read` / `people.files.manage` yetkileri (şirket sahibi, yönetici, İK) erişebilir. Notlar en fazla 4.000 karakterdir; denetim kaydında metnin kendisi tutulmaz.
+
 - `GET /api/assets?q=&status=&categoryId=&brandId=&modelId=&employeeId=&location=&warranty=expired|expiring|active|unspecified&sortBy=tag&sortDirection=asc&page=1&pageSize=50` (`warranty` isteğe bağlı; süresi dolanlar, bugünden itibaren 30 gün içinde dolacaklar, 30 günden uzun süre etkin olanlar veya bitiş tarihi girilmemiş olanlar)
 - `GET /api/assets/{id}`
   - Yanıt, şirket kapsamındaki varlık alanlarını, kategori/marka/model/çalışan adlarını, en yeniden eskiye hareket listesini ve ek dosya metaverisini içerir. Hareketlerde varsa çalışan adı da bulunur; olaylar başka şirket kayıtlarıyla eşleştirilmez.
@@ -55,6 +61,9 @@ Rol politikaları ayrı tutulur: varlık okuma, varlık değiştirme, çalışan
 - `POST /api/accessories/{id}/checkout` (seçilen çalışan, varlık veya konuma kullanılabilir miktardan teslim yapar; stok satırını transaction boyunca kilitler, zimmet, hareket ve denetim kaydını birlikte yazar; `asset.write`)
 - `POST /api/accessories/{id}/checkin` (`{ assignmentId, quantity, notes? }`; açık zimmetin bir kısmını veya tamamını iade alır; aynı stok satırı kilit sırasını izler, hareket ve denetim kaydını atomik yazar; `asset.write`)
 - `GET /api/accessory-orders?q=&status=&page=1&pageSize=25` (sipariş no/tedarikçi/not/aksesuar adı araması, durum filtresi ve sayfalı şirket sipariş listesi; miktar ve maliyet özeti döndürür; `asset.read`)
+- `GET /api/accessory-orders/suppliers` (etkin tedarikçi kataloğu ile sipariş, aksesuar, sarf, bileşen, lisans ve bakım kayıtlarından şirket kapsamlı öneri adlarını birleştirir; `asset.read`)
+- `GET /api/suppliers?q=&includeArchived=false` (şirket tedarikçi kartları ve sipariş bağlantı sayısı; `asset.read`)
+- `POST /api/suppliers`, `PUT /api/suppliers/{id}`, `POST /api/suppliers/{id}/archive|restore` (yetkili kişi/iletişim alanları doğrulanır; şirket içinde normalize edilmiş ad tekildir; ad değişikliği aksesuar/sarf/bileşen/lisans/bakım kayıtlarının metnini ve yabancı anahtarını aynı transaction içinde günceller, sipariş başlığının geçmiş metnini değiştirmez; `asset.write`)
 - `GET /api/accessory-orders/{id}` (şirket kapsamındaki sipariş başlığı ve kalemleri; kalemlerde sipariş/teslim/kalan miktar ve maliyet bilgisi; `asset.read`)
 - `POST /api/accessory-orders` (`{ orderNumber?, supplier, orderDate, expectedOn?, currency, notes?, items: [{ accessoryId, quantity, unitCost, notes? }] }`; 1–100 tekrarsız aksesuar kalemi, sipariş numarası şirket içinde benzersiz; sipariş `Ordered` durumuyla açılır; `asset.write`)
 - `POST /api/accessory-orders/{id}/receive` (`{ receivedOn, notes?, items: [{ lineId, quantity }] }`; 1–100 sipariş satırında kısmi veya tam miktar kabulü; sipariş ve aksesuar satırları transaction içinde kilitlenir, kalan miktar/şirket/100.000 stok sınırı denetlenir, aksesuar stoku, maliyet/tedarikçi bilgisi, stok hareketi ve denetim izi birlikte yazılır; hatada hiçbir stok değişmez; `asset.write`)
@@ -75,6 +84,7 @@ Rol politikaları ayrı tutulur: varlık okuma, varlık değiştirme, çalışan
 - `DELETE /api/lookups/{categories|brands|models}/{id}` (tanım herhangi bir varlıkta veya bağlı modelde kullanılıyorsa `409 Conflict`; veri silmez)
 - `GET /api/setup/status` (şirket ilk kurulumu gerekli mi ve `Setup:BootstrapToken` sunucu ayarında yapılandırılmış mı bilgisini verir; anahtarın değerini döndürmez).
 - `GET /api/platform/bootstrap/status` (platform ilk kurulumu gerekli mi ve `Setup:PlatformBootstrapToken` ayarlanmış mı bilgisini verir; anahtarın değerini döndürmez).
+- `GET /api/company/export.zip` (`settings.manage`; özel/no-store, tekrarlanabilir şirket veri görünümünü ZIP içinde `company-data.json` ile şirket medya dosyalarını birleştirir; şirket üyelerinin hesap profil fotoğrafları dahil edilir, diğer hesapların dosyaları alınmaz; 100.000 dosya/4 GiB medya sınırı; symlink ve harici oturum dosyalarını izlemez; sistem yedeği/geri yükleme değildir).
 - `GET /api/status` (veritabanı bağlantısı, migration varlığı ve bekleyen migration sayısı; bağlantı parolasını göstermez)
 - `GET /api/session/csrf`
 - `POST /api/setup/initial-owner` (`X-Setup-Token` ve CSRF başlığı gerekir; e-posta mevcut hesapta kayıtlıysa mevcut parola doğrulanarak hesap şirkete bağlanabilir, parola/profile dokunulmaz).
@@ -84,7 +94,19 @@ Rol politikaları ayrı tutulur: varlık okuma, varlık değiştirme, çalışan
 - `GET /api/session`
 - `POST /api/session/logout` (`X-CSRF-TOKEN` gerekir)
 - `GET /api/employees` departman filtresi tam eşleşir ve en fazla 160 karakterdir; yönetici kimliğiyle doğrudan raporlayanlar filtrelenebilir.
+- `POST /api/employees/import/preview.csv` (`people.manage`; CSRF zorunlu; en fazla 32 MiB ve 5.000 satır; UTF-8, virgülle ayrılmış çalışan şablonu; personel no yinelenmesi, alan sınırları, e-posta ve yyyy-MM-dd tarihi doğrulanır; mevcut şirket numaralarıyla çakışma reddedilir; salt okunur).
+- `POST /api/employees/import.csv` (`people.manage`; CSRF zorunlu; aynı doğrulama ve sınırlar; sadece yeni etkin çalışan kaydı ekler, yöneticiyi sonradan atamak üzere boş bırakır; yinelenen personel no durumunda aktarımın tamamı reddedilir; tüm çalışan ve denetim kayıtları tek transaction içinde yazılır).
+- `POST /api/accessories/import/preview.csv` (`asset.write`; CSRF zorunlu; en fazla 32 MiB ve 5.000 satır; UTF-8 aksesuar şablonu, miktar/maliyet/tarih alanları ve dosya/şirket içi ad/ürün no tekrarlarını doğrular; salt okunur).
+- `POST /api/accessories/import.csv` (`asset.write`; CSRF zorunlu; önizlemedeki aynı doğrulama ve sınırlar; yalnızca yeni aksesuarlar eklenir; başlangıç stoku, stok hareketi ve denetim izi tek transaction içinde yazılır; mevcut zimmetler değiştirilmez).
+- `POST /api/software-licenses/import/preview.csv` (`asset.write`; CSRF zorunlu; en fazla 16 MiB ve 5.000 satır; lisans alanlarını, tür/koltuk/maliyet/tarih değerlerini ve dosya/şirket içi ad-yayıncı-sürüm tekrarlarını denetler; lisans anahtarı/referansı almaz, salt okunur).
+- `POST /api/software-licenses/import.csv` (`asset.write`; aynı doğrulama ve sınırlar; yeni lisans kayıtları ve oluşturulma olayları transaction içinde eklenir; mevcut atamalar değişmez).
+- `GET /api/software-licenses/export.csv?q=...` (`asset.read`; etkin lisans aramasıyla eşleşen en fazla 10.000 satır; CSV formül başlatıcıları nötrlenir; lisans anahtarı/referansı dışa aktarılmaz).
 - `GET /api/employees/{id}?page=1&pageSize=20` çalışanı, yöneticiyi, doğrudan raporlayanları ve sayfalı zimmetli varlıkları döndürür.
+- `GET /api/employees/{id}/documents` (`owner`, `admin`, `hr_operator`; yalnızca belge metaverisi; en fazla 30 belge)
+- `POST /api/employees/{id}/documents` (`multipart/form-data`, `file`; `owner`, `admin`, `hr_operator`; PDF/PNG/JPEG/WebP, dosya başına 10 MiB; içerik imzası doğrulanır)
+- `GET /api/employees/{id}/documents/{documentId}/file` (aynı şirket/çalışan kapsamında yetkili oturuma attachment indirmesi; `owner`, `admin`, `hr_operator`)
+- `DELETE /api/employees/{id}/documents/{documentId}` (özel medya dosyasını ve kaydı kaldırır, denetim izi yazar; `owner`, `admin`, `hr_operator`)
+- `GET /api/employees/{id}/offboarding-summary` (`people.manage`; pasife alma öncesinde varlık, açık aksesuar teslimi, aktif lisans ve aktif doğrudan raporlayan adetleri; kayıt ayrıntılarını döndürmez)
 - `PATCH /api/employees/{id}/active`
 - `POST /api/assets/{id}/assign`
 - `POST /api/assets/{id}/return`
@@ -120,8 +142,10 @@ Rol politikaları ayrı tutulur: varlık okuma, varlık değiştirme, çalışan
 - `POST /api/company/import/preview` (şirket sahibi/yöneticisi; CSRF zorunlu; en fazla 32 MiB JSON; biçim/sürüm/şirket kimliği/tekrar eden GUID, alan kuralları ve kayıt bağlantılarını doğrular; dosya adetlerini ve büyük-küçük harf farkını yok sayarak mevcut şirkette aynı çalışan numarası/varlık etiketi/kategori/marka adına sahip kayıt sayılarını döndürür; bu yalnızca olası eşleşme sayısıdır; salt okunur, otomatik eşleştirme veya yazma yapmaz).
 - `POST /api/assets/import/preview.csv` (`asset.write`; CSRF zorunlu; en fazla 32 MiB ve 5.000 varlık satırı; noktalı virgülle ayrılmış UTF-8 EnvanterTR CSV'si; garanti bitiş tarihli yeni 14 sütunlu şemayı ve eski 13 sütunlu dosyaları kabul eder; başlık/sütun sayısı, alan sınırları, durum/tarih/tutar biçimi, tekil kategori/marka/model/çalışan eşleşmeleri, yinelenen etiket ve mevcut şirket etiket çakışmalarını doğrular; salt okunur).
 - `POST /api/assets/import.csv` (`asset.write`; CSRF zorunlu; aynı CSV biçimi ve 5.000 satır sınırı; yeni 14 sütunlu dosyada garanti bitiş tarihini içe alır, eski 13 sütunlu dosyaları da kabul eder; yalnızca aynı şirkette tekil olarak bulunan kategori/marka/model ve personel numarası+adı eşleşmeleriyle yeni varlık ekler; yinelenen etiket/bozuk ilişki halinde tüm istek reddedilir; her varlık için hareket ve aktarım için denetim kaydı ekler; tüm yazmalar tek veritabanı işlemi içindedir).
-- Yerel Compose yedek betikleri (`deploy/local/backup.ps1`, `deploy/local/backup.sh`) uygulama API'si değildir; çalışan geliştirme konteynerinden tüm PostgreSQL örneği ve şirket medya volume'u için elle dosya üretir. Çıktı şifrelenmez ve uygulama içinden geri yüklenemez.
-- Şirket panelindeki **Veri ve yedekler** menüsü JSON/CSV dışa aktarımını ve JSON/CSV doğrulamasını sunar. Varlık listesindeki içe aktarma aracı, mevcut sözlüklerle sınırlı CSV varlık eklemesini ve indirilebilir şablonu sunar. CSV alan eşleme, JSON geri yükleme ve yedekleme geçmişi henüz etkin değildir.
+- `POST /api/consumables/import/preview.csv`, `POST /api/consumables/import.csv` (`asset.write`; CSRF zorunlu; en fazla 32 MiB ve 5.000 satır; UTF-8 virgülle ayrılmış CSV, miktar/tarih/maliyet/para birimi doğrulaması; aynı ad/ürün no veya dosya içi tekrarları reddeder; önizleme yazma yapmaz; içe aktarma yalnızca yeni kayıtları ekler, başlangıç miktarı için stok girişi hareketi ve denetim izi oluşturur; tüm yazmalar tek transaction içindedir).
+- `POST /api/components/import/preview.csv`, `POST /api/components/import.csv` (`asset.write`; CSRF zorunlu; en fazla 32 MiB ve 5.000 satır; UTF-8 CSV, ürün no/seri no/miktar/tarih/maliyet doğrulaması ve yinelenen kayıt kontrolü; salt okunur önizleme; yalnızca yeni bileşen ekler, başlangıç stok hareketi ve denetim izi yazar; var olan atamaları değiştirmez; tüm yazmalar tek transaction içindedir).
+- Yerel Compose yedek betikleri (`deploy/local/backup.ps1`, `deploy/local/backup.sh`) uygulama API'si değildir; çalışan geliştirme konteynerinden tüm PostgreSQL örneği ve şirket medya volume'u için elle dosya üretir. Bu klasör çıktısı başlangıçta şifrelenmemiştir. `tools/EnvanterTR.Backup` onu ayrıca parola ile şifreli arşive çevirebilir ve dosya bütünlüğünü doğrulayabilir. `restore-preview.ps1` ve `restore-preview.sh`, doğrulanmış paketi kalıcı volume veya ağ kullanmayan geçici PostgreSQL konteynerine geri yükleyip medya arşivini açarak kurtarılabilirliği gösterir; çalışan uygulama veritabanına geri yükleme yapmaz.
+- Şirket panelindeki **Veri ve yedekler** menüsü JSON/CSV dışa aktarımını ve JSON doğrulamasını sunar. Varlık ve çalışan listelerindeki CSV araçları, indirilebilir şablonla yeni kayıtları doğrulayıp toplu ekler. CSV alan eşleme, JSON geri yükleme ve yedekleme geçmişi henüz etkin değildir.
 - `GET /api/dashboard/summary`
 
 `pageSize` en fazla 200'dür. Hatalı alanlar doğrulama cevabı, yinelenen varlık etiketi 409 cevabı verir.

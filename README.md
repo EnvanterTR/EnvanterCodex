@@ -9,6 +9,9 @@ EnvanterTR, kurumların donanım ve diğer kaynaklarını kaydetmesi, sorumlular
 - `src/EnvanterTR.PublicSite`: tanıtım sitesi ana sayfası prototipi.
 - `deploy/local`: Windows geliştirici önizlemesi için uygulama + PostgreSQL Compose kurulumu; yönergeler `deploy/local/README.md` içindedir.
 - `docs/PRODUCT-REQUIREMENTS.md`: ürün kapsamı ve kabul ölçütleri.
+- `docs/DEMO-GUIDE.md`: yerel önizleme için kısa demo akışı ve doğru kapsam beyanları.
+- `docs/PROJECT-STATUS.md`: kapsam tablosuna ve Windows/Linux teslimat durumuna dayalı ilerleme raporu.
+- `docs/PRODUCT-COVERAGE.md`: 30 işlev ailesi için kapsam ve eksik iş matrisi.
 - `docs/ARCHITECTURE.md`: dağıtım ve teknik mimari kararları.
 - `docs/PLATFORM-ADMIN.md`: EnvanterTR ürün sahibinin platform admin kapsamı ve açık işleri.
 
@@ -16,4 +19,4 @@ Müşteri paneli; giriş, canlı varlık listesi ve ayrıntısı, çalışan kay
 
 ## Geliştirme durumu
 
-Bu klasör yeni uygulama için oluşturulmuş geliştirme alanıdır; müşteri kullanımı için hazır değildir. Ana makineye .NET SDK kurmadan Docker içindeki .NET 10 SDK ile derleme doğrulandı. İlk migration yalnızca yerel boş geliştirme veritabanına uygulandı; gerçek müşteri verisi veya eski deneme veritabanına dokunulmadı. Ayrıntılar için `deploy/local/README.md`, `docs/DATA-API.md` ve `docs/ARCHITECTURE.md` belgelerine bakın.
+Bu klasör yeni uygulama için oluşturulmuş geliştirme alanıdır; müşteri kullanımı için hazır değildir. Ana makineye .NET SDK kurmadan Docker içindeki .NET 10 SDK ile derleme doğrulandı. Yerel geliştirme veritabanında 20 migration uygulanmıştır; müşteri veritabanı değildir. Çalışan listesinde CSV içe aktarma için şablon, önizleme, doğrulama ve toplu ekleme akışı vardır. Ayrıntılı kapsam ve yaklaşık ilerleme hesabı `docs/PROJECT-STATUS.md` içindedir. Diğer teknik ayrıntılar için `deploy/local/README.md`, `docs/DATA-API.md` ve `docs/ARCHITECTURE.md` belgelerine bakın.

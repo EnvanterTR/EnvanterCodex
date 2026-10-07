@@ -2,6 +2,8 @@ using System.Data;
 using System.Security.Claims;
 using System.Linq;
 using System.Text.Json;
+using System.Text;
+using System.IO.Compression;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +22,8 @@ public static class DataExportEndpoints
     {
         endpoints.MapGet("/api/company/export.json", ExportCompanyAsync)
             .RequireAuthorization("settings.manage");
+        endpoints.MapGet("/api/company/export.zip", ExportCompanyArchiveAsync)
+            .RequireAuthorization("settings.manage");
         endpoints.MapPost("/api/company/import/preview", PreviewImportAsync)
             .RequireAuthorization("settings.manage")
             .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
@@ -29,7 +33,107 @@ public static class DataExportEndpoints
         endpoints.MapPost("/api/assets/import.csv", ImportAssetCsvAsync)
             .RequireAuthorization("asset.write")
             .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
+        endpoints.MapPost("/api/employees/import/preview.csv", (HttpContext context, AppDbContext db,
+            IAntiforgery antiforgery, CancellationToken cancellationToken) => ImportEmployeeCsvAsync(context, db, antiforgery, false, cancellationToken))
+            .RequireAuthorization("people.manage")
+            .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
+        endpoints.MapPost("/api/employees/import.csv", (HttpContext context, AppDbContext db,
+            IAntiforgery antiforgery, CancellationToken cancellationToken) => ImportEmployeeCsvAsync(context, db, antiforgery, true, cancellationToken))
+            .RequireAuthorization("people.manage")
+            .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
         return endpoints;
+    }
+
+    private static async Task<IResult> ImportEmployeeCsvAsync(HttpContext context, AppDbContext db,
+        IAntiforgery antiforgery, bool import, CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(context.User.FindFirstValue("company_id"), out var companyId) ||
+            !Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+        var role = context.User.FindFirstValue("company_role");
+        if (!await db.Companies.AsNoTracking().AnyAsync(c => c.Id == companyId && c.IsActive &&
+            db.CompanyMemberships.Any(m => m.CompanyId == companyId && m.UserId == actorId && m.RoleKey == role), cancellationToken)) return Results.Forbid();
+        try { await antiforgery.ValidateRequestAsync(context); }
+        catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
+        if (context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true)
+            return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
+        if (context.Request.ContentLength > PreviewMaxBytes) return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+
+        using var buffer = new MemoryStream();
+        var chunk = new byte[64 * 1024];
+        while (true)
+        {
+            var read = await context.Request.Body.ReadAsync(chunk.AsMemory(), cancellationToken);
+            if (read == 0) break;
+            if (buffer.Length + read > PreviewMaxBytes) return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+            await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken);
+        }
+        string text;
+        try { text = new System.Text.UTF8Encoding(false, true).GetString(buffer.ToArray()).TrimStart('\uFEFF'); }
+        catch (System.Text.DecoderFallbackException)
+        { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV dosyası UTF-8 kodlamasında olmalıdır." } }); }
+        List<List<string>> rows;
+        try { rows = ParseSemicolonCsv(text, CsvImportMaxRows + 2, ','); }
+        catch (FormatException)
+        { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV tırnak/ayraç biçimi bozuk." } }); }
+        string[] header = ["Personel No", "Ad Soyad", "E-posta", "Departman", "Görev Unvanı", "Telefon", "Konum", "İşe Başlama Tarihi"];
+        if (rows.Count is < 2 || rows.Count > CsvImportMaxRows + 1 || !rows[0].SequenceEqual(header, StringComparer.OrdinalIgnoreCase))
+            return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"İçe aktarma şablonunu kullanın: başlık satırı ve en fazla {CsvImportMaxRows:N0} çalışan satırı." } });
+
+        var errors = new List<string>();
+        var seenNumbers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var employees = new List<Employee>(rows.Count - 1);
+        foreach (var (row, index) in rows.Skip(1).Select((row, index) => (row, index)))
+        {
+            var line = index + 2;
+            if (row.Count != header.Length) { AddError(errors, $"{line}. satırda {header.Length} sütun olmalıdır."); continue; }
+            var number = row[0].Trim().ToUpperInvariant();
+            var name = row[1].Trim();
+            var email = CleanCsv(row[2]); var department = CleanCsv(row[3]); var jobTitle = CleanCsv(row[4]);
+            var phone = CleanCsv(row[5]); var location = CleanCsv(row[6]);
+            DateOnly? startedOn = null;
+            if (string.IsNullOrWhiteSpace(number) || number.Length > 80 || !seenNumbers.Add(number)) AddError(errors, $"{line}. satırdaki personel numarası boş, 80 karakterden uzun veya dosyada yineleniyor.");
+            if (string.IsNullOrWhiteSpace(name) || name.Length > 200) AddError(errors, $"{line}. satırdaki ad soyad boş veya 200 karakterden uzun.");
+            if (email is { Length: > 256 } || email is not null && (!System.Net.Mail.MailAddress.TryCreate(email, out var parsedEmail) || !string.Equals(parsedEmail.Address, email, StringComparison.OrdinalIgnoreCase)))
+                AddError(errors, $"{line}. satırdaki e-posta biçimi geçersiz veya 256 karakterden uzun.");
+            if (department is { Length: > 160 } || jobTitle is { Length: > 160 } || phone is { Length: > 40 } || location is { Length: > 160 })
+                AddError(errors, $"{line}. satırdaki departman, görev, telefon veya konum alanı sınırı aşıyor.");
+            if (!string.IsNullOrWhiteSpace(row[7]))
+            {
+                if (DateOnly.TryParseExact(row[7].Trim(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsedDate)) startedOn = parsedDate;
+                else AddError(errors, $"{line}. satırdaki işe başlama tarihi yyyy-AA-gg biçiminde olmalıdır.");
+            }
+            employees.Add(new Employee { CompanyId = companyId, EmployeeNumber = number, DisplayName = name,
+                Email = email, Department = department, JobTitle = jobTitle, Phone = phone, Location = location, StartedOn = startedOn });
+        }
+        var numbers = seenNumbers.ToArray();
+        var existingNumbers = await db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId && numbers.Contains(x.EmployeeNumber.ToUpper()))
+            .Select(x => x.EmployeeNumber).ToListAsync(cancellationToken);
+        if (existingNumbers.Count > 0)
+            AddError(errors, $"Şirkette zaten kayıtlı personel numaraları var: {string.Join(", ", existingNumbers.Take(10))}{(existingNumbers.Count > 10 ? "…" : "")}");
+        var cleanErrors = errors.Distinct(StringComparer.Ordinal).Take(30).ToArray();
+        if (cleanErrors.Length > 0)
+            return Results.UnprocessableEntity(new { isValid = false, rowCount = rows.Count - 1, errors = cleanErrors, message = "Dosyada düzeltilmesi gereken alanlar bulundu. Hiçbir çalışan eklenmedi." });
+
+        if (!import) return Results.Ok(new { isValid = true, rowCount = employees.Count, errors = Array.Empty<string>(),
+            message = $"{employees.Count:N0} yeni çalışan kaydı doğrulandı. Önizleme hiçbir kayıt eklemedi." });
+
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        // Recheck under the write transaction so duplicate employee numbers never partially import.
+        if (await db.Employees.AnyAsync(x => x.CompanyId == companyId && numbers.Contains(x.EmployeeNumber.ToUpper()), cancellationToken))
+            return Results.Conflict(new { message = "Dosyadaki bir personel numarası önizlemeden sonra eklenmiş. Hiçbir kayıt aktarılmadı; önizlemeyi yenileyin." });
+        db.Employees.AddRange(employees);
+        foreach (var employee in employees)
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Employee",
+                TargetId = employee.Id, Action = "Created", Details = $"Personel no: {employee.EmployeeNumber}; CSV içe aktarımı." });
+        db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Employee",
+            Action = "CsvImported", Details = $"CSV dosyasından {employees.Count} çalışan içe aktarıldı." });
+        try { await db.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken); }
+        catch (DbUpdateException)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return Results.Conflict(new { message = "CSV aktarılmadı. Kayıt çakışması oluştu; önizlemeyi yenileyip tekrar deneyin." });
+        }
+        return Results.Ok(new { imported = employees.Count, message = $"{employees.Count:N0} çalışan başarıyla içe aktarıldı." });
     }
 
     private static async Task<IResult> ImportAssetCsvAsync(HttpContext context, AppDbContext db,
@@ -302,7 +406,7 @@ public static class DataExportEndpoints
         });
     }
 
-    private static List<List<string>> ParseSemicolonCsv(string text, int maximumRecords)
+    private static List<List<string>> ParseSemicolonCsv(string text, int maximumRecords, char delimiter = ';')
     {
         var records = new List<List<string>>();
         var row = new List<string>();
@@ -319,13 +423,13 @@ public static class DataExportEndpoints
                 else cell.Append(value);
                 continue;
             }
-            if (afterQuote && value is not (';' or '\r' or '\n')) throw new FormatException();
+            if (afterQuote && value != delimiter && value is not ('\r' or '\n')) throw new FormatException();
             if (value == '"')
             {
                 if (cell.Length != 0) throw new FormatException();
                 quoted = true;
             }
-            else if (value == ';') { row.Add(cell.ToString()); cell.Clear(); afterQuote = false; }
+            else if (value == delimiter) { row.Add(cell.ToString()); cell.Clear(); afterQuote = false; }
             else if (value is '\r' or '\n')
             {
                 if (value == '\r' && i + 1 < text.Length && text[i + 1] == '\n') i++;
@@ -645,50 +749,126 @@ public static class DataExportEndpoints
             SkipValidation = false
         });
 
+        await WriteCompanyJsonAsync(writer, db, company, companyId, cancellationToken);
+        await writer.FlushAsync(cancellationToken);
+        return Results.Empty;
+    }
+
+    private static async Task<IResult> ExportCompanyArchiveAsync(HttpContext context, AppDbContext db,
+        IConfiguration configuration, CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(context.User.FindFirstValue("company_id"), out var companyId) ||
+            !Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, cancellationToken);
+        var role = context.User.FindFirstValue("company_role");
+        if (!await db.Companies.AsNoTracking().AnyAsync(c => c.Id == companyId && c.IsActive &&
+            db.CompanyMemberships.Any(m => m.CompanyId == companyId && m.UserId == userId && m.RoleKey == role), cancellationToken)) return Results.Forbid();
+        var company = await db.Companies.AsNoTracking().SingleOrDefaultAsync(x => x.Id == companyId, cancellationToken);
+        if (company is null) return Results.NotFound();
+
+        var mediaRoot = Path.GetFullPath(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media");
+        var companyDirectory = Path.GetFullPath(Path.Combine(mediaRoot, companyId.ToString("N")));
+        var pathComparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        if (!companyDirectory.StartsWith(mediaRoot.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, pathComparison))
+            return Results.Problem("Medya dizini geçersiz.", statusCode: StatusCodes.Status500InternalServerError);
+        if (Directory.Exists(companyDirectory) && (File.GetAttributes(companyDirectory) & FileAttributes.ReparsePoint) != 0)
+            return Results.Problem("Şirket medya dizini sembolik bağlantı olamaz.", statusCode: StatusCodes.Status500InternalServerError);
+        var files = new List<(string Source, string Entry)>(); long totalBytes = 0;
+        if (Directory.Exists(companyDirectory))
+        {
+            foreach (var file in EnumerateMediaFiles(companyDirectory))
+            {
+                var relative = Path.GetRelativePath(companyDirectory, file).Replace(Path.DirectorySeparatorChar, '/');
+                if (relative.Split('/').Any(part => part is ".." or ".")) continue;
+                files.Add((file, "media/" + relative)); totalBytes += new FileInfo(file).Length;
+                if (files.Count > 100_000 || totalBytes > 4L * 1024 * 1024 * 1024)
+                    return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+            }
+        }
+        var accountMediaRoot = Path.Combine(mediaRoot, "accounts");
+        var memberUserIds = await db.CompanyMemberships.AsNoTracking().Where(x => x.CompanyId == companyId)
+            .Select(x => x.UserId).Distinct().ToListAsync(cancellationToken);
+        foreach (var memberUserId in memberUserIds)
+        {
+            var profileDirectory = Path.Combine(accountMediaRoot, memberUserId.ToString("N"));
+            if (!Directory.Exists(profileDirectory) || (File.GetAttributes(profileDirectory) & FileAttributes.ReparsePoint) != 0) continue;
+            foreach (var extension in new[] { "png", "jpg", "webp" })
+            {
+                var profile = Path.Combine(profileDirectory, $"profile.{extension}");
+                if (!File.Exists(profile) || (File.GetAttributes(profile) & FileAttributes.ReparsePoint) != 0) continue;
+                files.Add((profile, $"media/account-profiles/{memberUserId:N}/profile.{extension}"));
+                totalBytes += new FileInfo(profile).Length;
+                if (files.Count > 100_000 || totalBytes > 4L * 1024 * 1024 * 1024)
+                    return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+            }
+        }
+
+        context.Response.StatusCode = StatusCodes.Status200OK;
+        context.Response.ContentType = "application/zip";
+        context.Response.Headers.CacheControl = "no-store, private";
+        context.Response.Headers.ContentDisposition = $"attachment; filename=envantertr-sirket-arsivi-{DateTime.UtcNow:yyyyMMdd}.zip";
+        using (var archive = new ZipArchive(context.Response.Body, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var jsonEntry = archive.CreateEntry("company-data.json", CompressionLevel.Fastest);
+            await using (var jsonStream = jsonEntry.Open())
+            using (var writer = new Utf8JsonWriter(jsonStream, new JsonWriterOptions { Indented = false }))
+            {
+                await WriteCompanyJsonAsync(writer, db, company, companyId, cancellationToken);
+                await writer.FlushAsync(cancellationToken);
+            }
+            foreach (var file in files)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var entry = archive.CreateEntry(file.Entry, CompressionLevel.Fastest);
+                await using var output = entry.Open();
+                await using var input = new FileStream(file.Source, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
+                await input.CopyToAsync(output, cancellationToken);
+            }
+            var readme = archive.CreateEntry("README.txt", CompressionLevel.Fastest);
+            await using var readmeStream = readme.Open();
+            await using var readmeWriter = new StreamWriter(readmeStream, new UTF8Encoding(false));
+            await readmeWriter.WriteAsync("EnvanterTR şirket veri arşivi\r\ncompany-data.json şirket kayıtlarını içerir. media/ klasörü şirket logolarını, varlık dosyalarını, çalışan fotoğraflarını/belgelerini ve bu şirkete üye hesapların profil fotoğraflarını içerir. Bu arşiv tam sistem yedeği veya geri yükleme paketi değildir. Kimlik bilgileri ve oturumlar dahil edilmez.\r\n");
+        }
+        return Results.Empty;
+    }
+
+    private static async Task WriteCompanyJsonAsync(Utf8JsonWriter writer, AppDbContext db, Company company,
+        Guid companyId, CancellationToken cancellationToken)
+    {
         writer.WriteStartObject();
         writer.WriteString("format", "envantertr-company-data");
         writer.WriteNumber("schemaVersion", 1);
         writer.WriteString("exportedAt", DateTimeOffset.UtcNow);
         writer.WritePropertyName("company");
-        JsonSerializer.Serialize(writer, new
-        {
-            company.Id, company.Name, company.Slug, company.ContactEmail,
-            company.BrandLogoPath, company.BrandPrimaryColor, company.LabelPrintSettingsJson, company.CreatedAt
-        }, JsonOptions);
-
-        await WritePagedAsync(writer, "employees", db.Employees.AsNoTracking()
-            .Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
-        await WritePagedAsync(writer, "assetCategories", db.AssetCategories.AsNoTracking()
-            .Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
-        await WritePagedAsync(writer, "assetBrands", db.AssetBrands.AsNoTracking()
-            .Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
-        await WritePagedAsync(writer, "assetModels", db.AssetModels.AsNoTracking()
-            .Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
-        await WritePagedAsync(writer, "assets", db.Assets.AsNoTracking()
-            .Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
-        await WritePagedAsync(writer, "assetMaintenances", db.AssetMaintenances.AsNoTracking()
-            .Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
-        await WritePagedAsync(writer, "assetEvents", db.AssetEvents.AsNoTracking()
-            .Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
-        await WritePagedAsync(writer, "auditEntries", db.AuditEntries.AsNoTracking()
-            .Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
-
-        var members = from membership in db.CompanyMemberships.AsNoTracking()
-                          .Where(x => x.CompanyId == companyId)
+        JsonSerializer.Serialize(writer, new { company.Id, company.Name, company.Slug, company.ContactEmail,
+            company.BrandLogoPath, company.BrandPrimaryColor, company.LabelPrintSettingsJson, company.CreatedAt }, JsonOptions);
+        await WritePagedAsync(writer, "employees", db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
+        await WritePagedAsync(writer, "assetCategories", db.AssetCategories.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
+        await WritePagedAsync(writer, "assetBrands", db.AssetBrands.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
+        await WritePagedAsync(writer, "assetModels", db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
+        await WritePagedAsync(writer, "assets", db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
+        await WritePagedAsync(writer, "assetMaintenances", db.AssetMaintenances.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
+        await WritePagedAsync(writer, "assetEvents", db.AssetEvents.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
+        await WritePagedAsync(writer, "auditEntries", db.AuditEntries.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
+        var members = from membership in db.CompanyMemberships.AsNoTracking().Where(x => x.CompanyId == companyId)
                       join user in db.Users.AsNoTracking() on membership.UserId equals user.Id
                       orderby membership.UserId
-                      select new
-                      {
-                          user.DisplayName,
-                          Email = user.Email!,
-                          membership.RoleKey,
-                          membership.CreatedAt
-                      };
+                      select new { user.DisplayName, Email = user.Email!, membership.RoleKey, membership.CreatedAt };
         await WritePagedAsync(writer, "members", members, cancellationToken);
-
         writer.WriteEndObject();
-        await writer.FlushAsync(cancellationToken);
-        return Results.Empty;
+    }
+
+    private static IEnumerable<string> EnumerateMediaFiles(string root)
+    {
+        var pending = new Stack<string>(); pending.Push(root);
+        while (pending.Count > 0)
+        {
+            var directory = pending.Pop();
+            foreach (var child in Directory.EnumerateDirectories(directory))
+                if ((File.GetAttributes(child) & FileAttributes.ReparsePoint) == 0) pending.Push(child);
+            foreach (var file in Directory.EnumerateFiles(directory))
+                if ((File.GetAttributes(file) & FileAttributes.ReparsePoint) == 0) yield return file;
+        }
     }
 
     private static async Task WritePagedAsync<T>(Utf8JsonWriter writer, string propertyName,

@@ -77,6 +77,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("TotalQuantity")
                         .HasColumnType("integer");
 
@@ -90,6 +93,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId", "Name");
+
+                    b.HasIndex("CompanyId", "SupplierId");
 
                     b.HasIndex("CompanyId", "Category", "Location");
 
@@ -161,6 +166,78 @@ namespace EnvanterTR.Web.Data.Migrations
                             t.HasCheckConstraint("CK_AccessoryAssignments_Quantities", "\"Quantity\" > 0 AND \"ReturnedQuantity\" >= 0 AND \"ReturnedQuantity\" <= \"Quantity\"");
 
                             t.HasCheckConstraint("CK_AccessoryAssignments_Target", "(\"TargetType\" = 'Employee' AND \"EmployeeId\" IS NOT NULL AND \"AssetId\" IS NULL AND \"Location\" IS NULL) OR (\"TargetType\" = 'Asset' AND \"AssetId\" IS NOT NULL AND \"EmployeeId\" IS NULL AND \"Location\" IS NULL) OR (\"TargetType\" = 'Location' AND \"Location\" IS NOT NULL AND \"EmployeeId\" IS NULL AND \"AssetId\" IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryKit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "Name")
+                        .IsUnique();
+
+                    b.HasIndex("CompanyId", "IsActive", "Name");
+
+                    b.ToTable("AccessoryKits");
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryKitLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccessoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccessoryKitId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("CompanyId", "Id");
+
+                    b.HasIndex("CompanyId", "AccessoryId");
+
+                    b.HasIndex("CompanyId", "AccessoryKitId");
+
+                    b.HasIndex("CompanyId", "AccessoryKitId", "AccessoryId")
+                        .IsUnique();
+
+                    b.ToTable("AccessoryKitLines", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_AccessoryKitLines_Quantity", "\"Quantity\" > 0");
                         });
                 });
 
@@ -263,6 +340,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -272,6 +352,8 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("CompanyId", "OrderNumber")
                         .IsUnique();
+
+                    b.HasIndex("CompanyId", "SupplierId");
 
                     b.HasIndex("CompanyId", "Status", "OrderDate");
 
@@ -622,6 +704,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -632,6 +717,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasIndex("CompanyId", "AssetId")
                         .IsUnique()
                         .HasFilter("\"Status\" IN ('InProgress', 'Scheduled')");
+
+                    b.HasIndex("CompanyId", "SupplierId");
 
                     b.HasIndex("CompanyId", "AssetId", "CreatedAt");
 
@@ -953,6 +1040,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("TotalQuantity")
                         .HasColumnType("integer");
 
@@ -966,6 +1056,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId", "Name");
+
+                    b.HasIndex("CompanyId", "SupplierId");
 
                     b.HasIndex("CompanyId", "Category", "Location");
 
@@ -1061,8 +1153,27 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("JobTitle")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
                     b.Property<Guid?>("ManagerEmployeeId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("PrivateNotes")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateOnly?>("StartedOn")
+                        .HasColumnType("date");
 
                     b.HasKey("Id");
 
@@ -1076,6 +1187,56 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("Employees", null, t =>
                         {
                             t.HasCheckConstraint("CK_Employees_NoSelfManager", "\"ManagerEmployeeId\" IS NULL OR \"ManagerEmployeeId\" <> \"Id\"");
+                        });
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.EmployeeDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Length")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("StorageFileName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid?>("UploadedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("CompanyId", "Id");
+
+                    b.HasIndex("UploadedByUserId");
+
+                    b.HasIndex("CompanyId", "EmployeeId", "CreatedAt");
+
+                    b.ToTable("EmployeeDocuments", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_EmployeeDocuments_Length", "\"Length\" BETWEEN 1 AND 10485760");
                         });
                 });
 
@@ -1205,6 +1366,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("TotalQuantity")
                         .HasColumnType("integer");
 
@@ -1220,6 +1384,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasIndex("CompanyId", "Name");
 
                     b.HasIndex("CompanyId", "SerialNumber");
+
+                    b.HasIndex("CompanyId", "SupplierId");
 
                     b.ToTable("InventoryComponents", null, t =>
                         {
@@ -1433,6 +1599,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uuid");
+
                     b.Property<decimal?>("UnitCost")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -1445,6 +1614,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasIndex("CompanyId", "ExpirationDate");
 
                     b.HasIndex("CompanyId", "Name");
+
+                    b.HasIndex("CompanyId", "SupplierId");
 
                     b.ToTable("SoftwareLicenses", null, t =>
                         {
@@ -1631,6 +1802,64 @@ namespace EnvanterTR.Web.Data.Migrations
 
                             t.HasCheckConstraint("CK_SubscriptionPlans_Seats", "\"MaxLoginUsers\" IS NULL OR \"MaxLoginUsers\" > 0");
                         });
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.SupplierCatalogEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContactName")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Website")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "NormalizedName")
+                        .IsUnique();
+
+                    b.HasIndex("CompanyId", "IsActive", "Name");
+
+                    b.ToTable("SupplierCatalogEntries", (string)null);
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.TenantSubscription", b =>
@@ -1823,6 +2052,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.SupplierCatalogEntry", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "SupplierId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryAssignment", b =>
@@ -1851,6 +2086,38 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId", "EmployeeId")
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryKit", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryKitLine", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.Accessory", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "AccessoryId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.AccessoryKit", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "AccessoryKitId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryMovement", b =>
@@ -1898,6 +2165,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("EnvanterTR.Web.Data.SupplierCatalogEntry", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "SupplierId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryPurchaseOrderLine", b =>
@@ -2012,6 +2285,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.SupplierCatalogEntry", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "SupplierId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.AssetModel", b =>
@@ -2120,6 +2399,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.SupplierCatalogEntry", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "SupplierId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.ConsumableMovement", b =>
@@ -2164,6 +2449,21 @@ namespace EnvanterTR.Web.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.EmployeeDocument", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("EnvanterTR.Web.Data.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "EmployeeId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.InventoryComponent", b =>
                 {
                     b.HasOne("EnvanterTR.Web.Data.Company", null)
@@ -2171,6 +2471,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.SupplierCatalogEntry", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "SupplierId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.LocalLicenseGrant", b =>
@@ -2218,6 +2524,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.SupplierCatalogEntry", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "SupplierId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.SoftwareLicenseAssignment", b =>
@@ -2271,6 +2583,15 @@ namespace EnvanterTR.Web.Data.Migrations
                         .WithMany()
                         .HasForeignKey("CompanyId", "LicenseId")
                         .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.SupplierCatalogEntry", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

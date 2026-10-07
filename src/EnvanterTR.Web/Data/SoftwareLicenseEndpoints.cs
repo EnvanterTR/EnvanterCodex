@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Globalization;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +10,7 @@ public static class SoftwareLicenseEndpoints
 {
     public static RouteGroupBuilder MapSoftwareLicenseEndpoints(this RouteGroupBuilder api)
     {
+        api.MapSoftwareLicenseImportEndpoints();
         api.MapGet("/software-licenses", async ([FromQuery] string? q, [FromQuery] int page, [FromQuery] int pageSize,
             ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
@@ -23,6 +26,35 @@ public static class SoftwareLicenseEndpoints
                 assigned = db.SoftwareLicenseAssignments.Count(a => a.CompanyId == companyId && a.LicenseId == x.Id && a.RevokedAt == null)
             }).ToListAsync(ct);
             return Results.Ok(new { items, page, pageSize, total });
+        }).RequireAuthorization("asset.read");
+
+        api.MapGet("/software-licenses/export.csv", async ([FromQuery] string? q, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!Company(user, out var companyId)) return Results.Forbid();
+            var query = db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                if (term.Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
+                query = query.Where(x => x.Name.Contains(term) || (x.Publisher != null && x.Publisher.Contains(term)) ||
+                    (x.ProductVersion != null && x.ProductVersion.Contains(term)) || (x.Supplier != null && x.Supplier.Contains(term)));
+            }
+            if (await query.CountAsync(ct) > 10000) return Results.ValidationProblem(new Dictionary<string, string[]> { ["export"] = ["Dışa aktarım en fazla 10.000 lisans içerir; aramayı daraltın."] });
+            var rows = await query.OrderBy(x => x.Name).ThenBy(x => x.Id).Select(x => new
+            {
+                x.Name, x.Publisher, x.ProductVersion, x.LicenseType, x.Supplier, x.Seats, x.UnitCost, x.Currency,
+                x.PurchaseDate, x.ExpirationDate, x.AutoRenew,
+                Assigned = db.SoftwareLicenseAssignments.Count(a => a.CompanyId == companyId && a.LicenseId == x.Id && a.RevokedAt == null)
+            }).ToListAsync(ct);
+            var csv = new StringBuilder("\uFEFF\"Lisans\",\"Yayıncı\",\"Ürün sürümü\",\"Tür\",\"Tedarikçi\",\"Koltuk\",\"Atanmış\",\"Birim maliyeti\",\"Para birimi\",\"Alış tarihi\",\"Bitiş tarihi\",\"Otomatik yenileme\"\r\n");
+            foreach (var x in rows)
+            {
+                var cells = new[] { x.Name, x.Publisher, x.ProductVersion, x.LicenseType, x.Supplier, x.Seats.ToString(CultureInfo.InvariantCulture),
+                    x.Assigned.ToString(CultureInfo.InvariantCulture), x.UnitCost?.ToString("0.00", CultureInfo.InvariantCulture), x.Currency,
+                    x.PurchaseDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), x.ExpirationDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), x.AutoRenew ? "true" : "false" };
+                csv.AppendJoin(',', cells.Select(CsvCell)).Append("\r\n");
+            }
+            return Results.File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv; charset=utf-8", $"envantertr-lisanslar-{DateTime.UtcNow:yyyyMMdd}.csv");
         }).RequireAuthorization("asset.read");
 
         api.MapGet("/software-licenses/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
@@ -52,7 +84,8 @@ public static class SoftwareLicenseEndpoints
             var errors = Validate(request);
             if (errors.Count > 0) return Results.ValidationProblem(errors);
             var item = new SoftwareLicense { CompanyId = companyId, Name = request.Name.Trim(), Publisher = Clean(request.Publisher), ProductVersion = Clean(request.ProductVersion),
-                LicenseType = request.LicenseType, LicenseReference = Clean(request.LicenseReference), Supplier = Clean(request.Supplier), Seats = request.Seats,
+                LicenseType = request.LicenseType, LicenseReference = Clean(request.LicenseReference), Supplier = Clean(request.Supplier),
+                SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, ct), Seats = request.Seats,
                 UnitCost = request.UnitCost, Currency = request.Currency.Trim().ToUpperInvariant(), PurchaseDate = request.PurchaseDate, ExpirationDate = request.ExpirationDate,
                 AutoRenew = request.AutoRenew, Notes = Clean(request.Notes) };
             db.SoftwareLicenses.Add(item); AddEvent(db, item, user, "Created", "Lisans kaydı oluşturuldu.");
@@ -67,7 +100,7 @@ public static class SoftwareLicenseEndpoints
             if (request.Seats < active) errors["seats"] = [$"Koltuk sayısı mevcut {active} atamadan düşük olamaz."];
             if (errors.Count > 0) return Results.ValidationProblem(errors);
             item.Name = request.Name.Trim(); item.Publisher = Clean(request.Publisher); item.ProductVersion = Clean(request.ProductVersion); item.LicenseType = request.LicenseType;
-            item.LicenseReference = Clean(request.LicenseReference); item.Supplier = Clean(request.Supplier); item.Seats = request.Seats; item.UnitCost = request.UnitCost;
+            item.LicenseReference = Clean(request.LicenseReference); item.Supplier = Clean(request.Supplier); item.SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, ct); item.Seats = request.Seats; item.UnitCost = request.UnitCost;
             item.Currency = request.Currency.Trim().ToUpperInvariant(); item.PurchaseDate = request.PurchaseDate; item.ExpirationDate = request.ExpirationDate;
             item.AutoRenew = request.AutoRenew; item.Notes = Clean(request.Notes); item.UpdatedAt = DateTimeOffset.UtcNow;
             AddEvent(db, item, user, "Updated", "Lisans bilgileri güncellendi."); await db.SaveChangesAsync(ct); return Results.NoContent();
@@ -132,6 +165,12 @@ public static class SoftwareLicenseEndpoints
     private static bool Company(ClaimsPrincipal user, out Guid id) => Guid.TryParse(user.FindFirstValue("company_id"), out id);
     private static Guid? UserId(ClaimsPrincipal user) => Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
     private static string? Clean(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
+    private static string CsvCell(string? value)
+    {
+        var safe = value?.Trim() ?? "";
+        if (safe.Length > 0 && safe[0] is '=' or '+' or '-' or '@' or '\t' or '\r') safe = "'" + safe;
+        return "\"" + safe.Replace("\"", "\"\"") + "\"";
+    }
     private static void AddEvent(AppDbContext db, SoftwareLicense license, ClaimsPrincipal user, string type, string details, Guid? employeeId = null) => db.SoftwareLicenseEvents.Add(new SoftwareLicenseEvent { CompanyId = license.CompanyId, LicenseId = license.Id, ActorUserId = UserId(user), EmployeeId = employeeId, EventType = type, Details = details });
     private static Dictionary<string,string[]> Validate(LicenseRequest r)
     {

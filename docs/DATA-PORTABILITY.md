@@ -2,13 +2,13 @@
 
 ## Mevcut dışa aktarma
 
-`GET /api/company/export.json` yalnızca oturum açmış şirket sahibi/yöneticisine açıktır. Şirket kimliği doğrulanmış oturumdan alınır; istek gövdesinden veya URL'den seçilmez. PostgreSQL `REPEATABLE READ` işlemiyle şirket kaydı ve veri dilimleri aynı tutarlı görünümden okunur. Yanıt özel/no-store olarak işaretlenir ve 500 satırlık dilimler halinde akıtılır.
+`GET /api/company/export.json` ve `GET /api/company/export.zip` yalnızca oturum açmış şirket sahibi/yöneticisine açıktır. Şirket kimliği doğrulanmış oturumdan alınır; istek gövdesinden veya URL'den seçilmez. PostgreSQL `REPEATABLE READ` işlemiyle şirket kaydı ve veri dilimleri aynı tutarlı görünümden okunur. Yanıt özel/no-store olarak işaretlenir ve JSON 500 satırlık dilimler halinde akıtılır.
 
 Şema sürümü 1 şu verileri içerir: şirket tanımı/marka ayarları, çalışan kayıtları, varlık kategorileri/markaları/modelleri, varlıklar, varlık olayları, denetim kayıtları ve üyelerin e-posta/ad/rol bilgileri. Parolalar, parola hashleri, oturumlar, sıfırlama tokenları, platform yöneticileri, lisans imzalama sırları ve ödeme referansları dışarı aktarılmaz.
 
 Varlık nesneleri alış ve garanti bitiş tarihlerini tarih-only `yyyy-AA-gg` değerleriyle taşır. Eski dosyalarda garanti alanı bulunmayabilir; bu alan isteğe bağlıdır.
 
-Bu JSON şu an **taşınabilir veri dışa aktarımıdır; tam sistem yedeği değildir**. Logo ve ek dosyalar ikili içerikleriyle dahil değildir; SaaS aboneliği/lisans durumu, oturumlar ve kimlik bilgileri de dahil değildir. İndirme özelliği geri yükleme yapmaz.
+JSON çıktısı tek başına **taşınabilir veri dışa aktarımıdır; tam sistem yedeği değildir**. ZIP dışa aktarımı aynı `company-data.json` dosyasını ve şirkete ait medya klasörünün dosyalarını `media/` altında birlikte indirir; şirket logosu, varlık ekleri, çalışan fotoğrafları/belgeleri ve bu şirkete üye hesapların profil fotoğrafları dahil edilir. Başka şirketlere üye hesapların fotoğrafları pakete alınmaz. ZIP ayrıca 100.000 dosya ve 4 GiB toplam medya sınırı uygular, sembolik bağlantıları dışarı almaz. JSON dosyası fotoğraf veya belge ikili verisi içermez; şirket dışa aktarımı SaaS aboneliği/lisans durumunu, oturumları, parolaları veya kimlik bilgilerini içermez. ZIP de tam sistem yedeği veya geri yükleme aracı değildir; veritabanı ve medya için işletimsel yedekler `deploy/local` akışından alınmalıdır.
 
 ## İçe alma/geri yükleme uygulanırken zorunlu akış
 
@@ -30,4 +30,4 @@ Bu JSON şu an **taşınabilir veri dışa aktarımıdır; tam sistem yedeği de
 
 ## Tamamlanmamış işler
 
-Güncel ürün diliminde şirket JSON dışa aktarma ve salt okunur önizleme vardır; sınırlı EnvanterTR CSV varlık ekleme uygulanmıştır. Yerel Compose yedeği için sonradan manifest, SHA-256, medya arşivi ve PostgreSQL döküm dizinini doğrulayan salt okunur komutlar eklendi; bunlar hiçbir veriyi geri yüklemez. Tam JSON geri yükleme, veri birleştirme arayüzü, ek dosyaları dahil eden şifreli/otomatik tam yedek ve izole geri yükleme tatbikatı henüz uygulanmadı. Lisans sona erdiğinde veriyi dışa alma ilkesi korunmalıdır; tekrar satın alımda geri yükleme açılmadan önce tam akışın yedek/önizleme/işlem/geri alma adımları tamamlanmalıdır.
+Güncel ürün diliminde şirket JSON dışa aktarma ve salt okunur önizleme vardır; sınırlı EnvanterTR CSV varlık ekleme uygulanmıştır. Yerel Compose yedeğinde manifest, SHA-256, medya arşivi ve PostgreSQL döküm dizini doğrulanır. Windows ve Linux kurtarma önizlemeleri doğrulanmış paketi izole, geçici PostgreSQL konteynerine gerçekten geri yükleyip medya arşivini geçici alana açar; bu tatbikat uygulamanın etkin veritabanını değiştirmez. Tam JSON geri yükleme, veri birleştirme arayüzü, yedek geçmişi ve canlı uygulamaya güvenli geri yükleme/geri alma akışı henüz uygulanmadı. Lisans sona erdiğinde veriyi dışa alma ilkesi korunmalıdır; tekrar satın alımda geri yükleme açılmadan önce tam akışın yedek/önizleme/işlem/geri alma adımları tamamlanmalıdır.

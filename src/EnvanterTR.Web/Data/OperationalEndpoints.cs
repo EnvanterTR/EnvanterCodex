@@ -14,6 +14,9 @@ namespace EnvanterTR.Web.Data;
 public static class OperationalEndpoints
 {
     private const long CompanyLogoRequestLimitBytes = 2_162_688; // 2 MiB logo plus bounded multipart overhead.
+    private const long EmployeePhotoMaxSizeBytes = 2_097_152;
+    private const long EmployeeDocumentMaxSizeBytes = 10_485_760;
+    private const long EmployeeDocumentRequestLimitBytes = 10_551_296;
 
     public static IEndpointRouteBuilder MapOperationalEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -161,6 +164,7 @@ public static class OperationalEndpoints
 
         api.MapGet("/employees", async ([FromQuery] string? q, [FromQuery] string? department,
             [FromQuery] Guid? managerId, [FromQuery] bool? active,
+            [FromQuery] DateOnly? startedFrom, [FromQuery] DateOnly? startedTo,
             [FromQuery] int page, [FromQuery] int pageSize, ClaimsPrincipal user,
             AppDbContext db, CancellationToken cancellationToken) =>
         {
@@ -168,7 +172,11 @@ public static class OperationalEndpoints
             page = Math.Max(page, 1);
             pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
             var query = db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (startedFrom is DateOnly start && startedTo is DateOnly end && start > end)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["startedFrom"] = ["İşe başlama başlangıç tarihi bitiş tarihinden sonra olamaz."] });
             if (active is bool isActive) query = query.Where(x => x.IsActive == isActive);
+            if (startedFrom is DateOnly from) query = query.Where(x => x.StartedOn >= from);
+            if (startedTo is DateOnly to) query = query.Where(x => x.StartedOn <= to);
             if (managerId is Guid selectedManager) query = query.Where(x => x.ManagerEmployeeId == selectedManager);
             if (!string.IsNullOrWhiteSpace(department))
             {
@@ -182,19 +190,82 @@ public static class OperationalEndpoints
                 var term = q.Trim();
                 query = query.Where(x => x.EmployeeNumber.Contains(term) || x.DisplayName.Contains(term) ||
                     (x.Email != null && x.Email.Contains(term)) || (x.Department != null && x.Department.Contains(term)) ||
+                    (x.JobTitle != null && x.JobTitle.Contains(term)) || (x.Phone != null && x.Phone.Contains(term)) ||
+                    (x.Location != null && x.Location.Contains(term)) ||
                     db.Employees.Any(manager => manager.CompanyId == companyId && manager.Id == x.ManagerEmployeeId && manager.DisplayName.Contains(term)));
             }
             var total = await query.CountAsync(cancellationToken);
             var items = await query.OrderBy(x => x.DisplayName).Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(x => new
                 {
-                    x.Id, x.EmployeeNumber, x.DisplayName, x.Email, x.Department, x.IsActive,
+                    x.Id, x.EmployeeNumber, x.DisplayName, x.Email, x.Department, x.JobTitle, x.Phone, x.Location, x.StartedOn, x.IsActive,
                     x.ManagerEmployeeId,
                     ManagerName = db.Employees.Where(manager => manager.CompanyId == companyId && manager.Id == x.ManagerEmployeeId)
                         .Select(manager => manager.DisplayName).FirstOrDefault()
                 })
                 .ToListAsync(cancellationToken);
             return Results.Ok(new { items, total, page, pageSize });
+        }).RequireAuthorization("people.read");
+
+        api.MapGet("/employees/export.csv", async ([FromQuery] string? q, [FromQuery] string? department,
+            [FromQuery] Guid? managerId, [FromQuery] bool? active,
+            [FromQuery] DateOnly? startedFrom, [FromQuery] DateOnly? startedTo, HttpContext context,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
+            if (q?.Trim().Length > 160 || department?.Trim().Length > 160)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["filter"] = ["Arama ve departman filtresi 160 karakteri aşamaz."] });
+
+            var query = db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (startedFrom is DateOnly start && startedTo is DateOnly end && start > end)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["startedFrom"] = ["İşe başlama başlangıç tarihi bitiş tarihinden sonra olamaz."] });
+            if (active is bool isActive) query = query.Where(x => x.IsActive == isActive);
+            if (startedFrom is DateOnly from) query = query.Where(x => x.StartedOn >= from);
+            if (startedTo is DateOnly to) query = query.Where(x => x.StartedOn <= to);
+            if (managerId is Guid selectedManager) query = query.Where(x => x.ManagerEmployeeId == selectedManager);
+            if (!string.IsNullOrWhiteSpace(department))
+            {
+                var selectedDepartment = department.Trim();
+                var pattern = selectedDepartment.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+                query = query.Where(x => x.Department != null && EF.Functions.ILike(x.Department.Trim(), pattern, "\\"));
+            }
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                query = query.Where(x => x.EmployeeNumber.Contains(term) || x.DisplayName.Contains(term) ||
+                    (x.Email != null && x.Email.Contains(term)) || (x.Department != null && x.Department.Contains(term)) ||
+                    (x.JobTitle != null && x.JobTitle.Contains(term)) || (x.Phone != null && x.Phone.Contains(term)) ||
+                    (x.Location != null && x.Location.Contains(term)) ||
+                    db.Employees.Any(manager => manager.CompanyId == companyId && manager.Id == x.ManagerEmployeeId && manager.DisplayName.Contains(term)));
+            }
+
+            var total = await query.CountAsync(cancellationToken);
+            if (total > 50000)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["export"] = ["Tek dosyada en fazla 50.000 çalışan dışa aktarılabilir; filtreleri daraltın."] });
+            var rows = await query.OrderBy(x => x.DisplayName)
+                .Select(x => new
+                {
+                    x.EmployeeNumber, x.DisplayName, x.Email, x.Department, x.JobTitle, x.Phone, x.Location, x.StartedOn, x.IsActive,
+                    ManagerName = db.Employees.Where(manager => manager.CompanyId == companyId && manager.Id == x.ManagerEmployeeId)
+                        .Select(manager => manager.DisplayName).FirstOrDefault(),
+                    x.CreatedAt
+                }).ToListAsync(cancellationToken);
+            static string Cell(string? value)
+            {
+                if (string.IsNullOrEmpty(value)) return "\"\"";
+                var trimmed = value.TrimStart();
+                var safe = trimmed.Length > 0 && trimmed[0] is '=' or '+' or '-' or '@' or '\t' or '\r' ? "'" + value : value;
+                return "\"" + safe.Replace("\"", "\"\"") + "\"";
+            }
+            var csv = new StringBuilder("\uFEFF\"Personel No\",\"Ad Soyad\",\"E-posta\",\"Departman\",\"Görev Unvanı\",\"Telefon\",\"Konum\",\"İşe Başlama Tarihi\",\"Yönetici\",\"Durum\",\"Kayıt Tarihi\"\r\n");
+            foreach (var row in rows)
+                csv.AppendJoin(',', new[] { Cell(row.EmployeeNumber), Cell(row.DisplayName), Cell(row.Email),
+                    Cell(row.Department), Cell(row.JobTitle), Cell(row.Phone), Cell(row.Location),
+                    Cell(row.StartedOn?.ToString("yyyy-MM-dd")), Cell(row.ManagerName), Cell(row.IsActive ? "Etkin" : "Pasif"),
+                    Cell(row.CreatedAt.ToString("O")) }).Append("\r\n");
+            context.Response.Headers["X-Total-Count"] = total.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var bytes = Encoding.UTF8.GetBytes(csv.ToString());
+            return Results.File(bytes, "text/csv; charset=utf-8", $"envantertr-calisanlar-{DateTime.UtcNow:yyyyMMdd}.csv");
         }).RequireAuthorization("people.read");
 
         api.MapPost("/employees", async ([FromBody] CreateEmployeeRequest request,
@@ -205,9 +276,13 @@ public static class OperationalEndpoints
             var displayName = request.DisplayName?.Trim();
             var email = Clean(request.Email);
             var department = Clean(request.Department);
+            var jobTitle = Clean(request.JobTitle);
+            var phone = Clean(request.Phone);
+            var location = Clean(request.Location);
             if (string.IsNullOrWhiteSpace(number) || number.Length > 80 ||
                 string.IsNullOrWhiteSpace(displayName) || displayName.Length > 200 ||
-                email is { Length: > 256 } || department is { Length: > 160 })
+                email is { Length: > 256 } || department is { Length: > 160 } || jobTitle is { Length: > 160 } ||
+                phone is { Length: > 40 } || location is { Length: > 160 })
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
                     ["employee"] = ["Personel numarası ve görünen ad zorunludur; numara 80, ad 200 karakteri aşamaz."]
@@ -220,7 +295,8 @@ public static class OperationalEndpoints
             var employee = new Employee
             {
                 CompanyId = companyId, EmployeeNumber = number, DisplayName = displayName,
-                Email = email, Department = department, ManagerEmployeeId = request.ManagerEmployeeId
+                Email = email, Department = department, JobTitle = jobTitle, Phone = phone,
+                Location = location, StartedOn = request.StartedOn, ManagerEmployeeId = request.ManagerEmployeeId
             };
             db.Employees.Add(employee);
             db.AuditEntries.Add(new AuditEntry
@@ -233,8 +309,49 @@ public static class OperationalEndpoints
             return Results.Created($"/api/employees/{employee.Id}", new
             {
                 employee.Id, employee.EmployeeNumber, employee.DisplayName, employee.Email, employee.Department,
+                employee.JobTitle, employee.Phone, employee.Location, employee.StartedOn,
                 employee.ManagerEmployeeId, employee.IsActive
             });
+        }).RequireAuthorization("people.manage");
+
+        api.MapPatch("/employees/{id:guid}", async (Guid id, [FromBody] UpdateEmployeeRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            var employee = await db.Employees.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (employee is null) return Results.NotFound();
+            var number = request.EmployeeNumber?.Trim().ToUpperInvariant();
+            var displayName = request.DisplayName?.Trim();
+            var email = Clean(request.Email);
+            var department = Clean(request.Department);
+            var jobTitle = Clean(request.JobTitle);
+            var phone = Clean(request.Phone);
+            var location = Clean(request.Location);
+            if (string.IsNullOrWhiteSpace(number) || number.Length > 80 ||
+                string.IsNullOrWhiteSpace(displayName) || displayName.Length > 200 ||
+                email is { Length: > 256 } || department is { Length: > 160 } || jobTitle is { Length: > 160 } ||
+                phone is { Length: > 40 } || location is { Length: > 160 })
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["employee"] = ["Personel numarası ve görünen ad zorunludur; numara 80, ad 200 karakteri aşamaz."] });
+            if (await db.Employees.AnyAsync(x => x.CompanyId == companyId && x.Id != id && x.EmployeeNumber == number, cancellationToken))
+                return Results.Conflict(new { message = "Bu personel numarası şirket içinde kullanılıyor." });
+            var changes = new List<string>();
+            if (employee.EmployeeNumber != number) { changes.Add("personel no"); employee.EmployeeNumber = number; }
+            if (employee.DisplayName != displayName) { changes.Add("ad soyad"); employee.DisplayName = displayName; }
+            if (employee.Email != email) { changes.Add("e-posta"); employee.Email = email; }
+            if (employee.Department != department) { changes.Add("departman"); employee.Department = department; }
+            if (employee.JobTitle != jobTitle) { changes.Add("görev unvanı"); employee.JobTitle = jobTitle; }
+            if (employee.Phone != phone) { changes.Add("telefon"); employee.Phone = phone; }
+            if (employee.Location != location) { changes.Add("konum"); employee.Location = location; }
+            if (employee.StartedOn != request.StartedOn) { changes.Add("işe başlama tarihi"); employee.StartedOn = request.StartedOn; }
+            if (changes.Count == 0) return Results.Ok(new { employee.Id, employee.EmployeeNumber, employee.DisplayName, employee.Email, employee.Department, employee.JobTitle, employee.Phone, employee.Location, employee.StartedOn });
+            db.AuditEntries.Add(new AuditEntry
+            {
+                CompanyId = companyId, ActorUserId = actorId, TargetType = "Employee", TargetId = id,
+                Action = "Updated", Details = "Güncellenen alanlar: " + string.Join(", ", changes)
+            });
+            try { await db.SaveChangesAsync(cancellationToken); }
+            catch (DbUpdateException) { return Results.Conflict(new { message = "Çalışan kaydı çakıştı." }); }
+            return Results.Ok(new { employee.Id, employee.EmployeeNumber, employee.DisplayName, employee.Email, employee.Department, employee.JobTitle, employee.Phone, employee.Location, employee.StartedOn });
         }).RequireAuthorization("people.manage");
 
         api.MapGet("/employees/{id:guid}", async (Guid id, [FromQuery] int page, [FromQuery] int pageSize,
@@ -247,20 +364,59 @@ public static class OperationalEndpoints
             var employee = await db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
                 .Select(x => new
                 {
-                    x.Id, x.EmployeeNumber, x.DisplayName, x.Email, x.Department, x.IsActive, x.CreatedAt,
+                    x.Id, x.EmployeeNumber, x.DisplayName, x.Email, x.Department, x.JobTitle, x.Phone, x.Location, x.StartedOn, x.IsActive, x.CreatedAt,
                     x.ManagerEmployeeId,
                     ManagerName = db.Employees.Where(manager => manager.CompanyId == companyId && manager.Id == x.ManagerEmployeeId)
                         .Select(manager => manager.DisplayName).FirstOrDefault()
-                })
+            })
                 .SingleOrDefaultAsync(cancellationToken);
             if (employee is null) return Results.NotFound();
+            var role = user.FindFirstValue("company_role");
+            var canReadAssetData = role is "owner" or "admin" or "asset_manager" or "asset_operator" or "auditor" or "viewer";
             var assignedQuery = db.Assets.AsNoTracking()
-                .Where(x => x.CompanyId == companyId && x.AssignedEmployeeId == id);
+                .Where(x => canReadAssetData && x.CompanyId == companyId && x.AssignedEmployeeId == id);
             var assignedAssetCount = await assignedQuery.CountAsync(cancellationToken);
             var assignedAssets = await assignedQuery.OrderBy(x => x.AssetTag)
                 .Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(x => new { x.Id, x.AssetTag, x.Name, x.Status, x.Location })
                 .ToListAsync(cancellationToken);
+            var accessoryQuery = from assignment in db.AccessoryAssignments.AsNoTracking()
+                                 join accessory in db.Accessories.AsNoTracking()
+                                     on new { assignment.CompanyId, Id = assignment.AccessoryId } equals new { accessory.CompanyId, Id = accessory.Id }
+                                 where canReadAssetData && assignment.CompanyId == companyId && assignment.EmployeeId == id && assignment.ReturnedQuantity < assignment.Quantity
+                                 orderby assignment.CheckedOutAt descending
+                                 select new
+                                 {
+                                     assignment.Id, accessoryId = accessory.Id, accessoryName = accessory.Name, accessory.ModelNumber,
+                                     assignment.Quantity, assignment.ReturnedQuantity,
+                                     remaining = assignment.Quantity - assignment.ReturnedQuantity,
+                                     assignment.CheckedOutAt, assignment.Notes
+                                 };
+            var assignedAccessoryCount = await accessoryQuery.CountAsync(cancellationToken);
+            var assignedAccessories = await accessoryQuery.Take(100).ToListAsync(cancellationToken);
+
+            var licenseQuery = from assignment in db.SoftwareLicenseAssignments.AsNoTracking()
+                               join license in db.SoftwareLicenses.AsNoTracking()
+                                   on new { assignment.CompanyId, Id = assignment.LicenseId } equals new { license.CompanyId, Id = license.Id }
+                               where canReadAssetData && assignment.CompanyId == companyId && assignment.EmployeeId == id && assignment.RevokedAt == null
+                               orderby assignment.AssignedAt descending
+                               select new
+                               {
+                                   assignment.Id, licenseId = license.Id, license.Name, license.Publisher,
+                                   license.ProductVersion, license.ExpirationDate, assignment.AssignedAt, assignment.Notes
+                               };
+            var activeLicenseCount = await licenseQuery.CountAsync(cancellationToken);
+            var activeLicenses = await licenseQuery.Take(100).ToListAsync(cancellationToken);
+
+            var consumableQuery = from movement in db.ConsumableMovements.AsNoTracking()
+                                  join consumable in db.Consumables.AsNoTracking()
+                                      on new { movement.CompanyId, Id = movement.ConsumableId } equals new { consumable.CompanyId, Id = consumable.Id }
+                                  where canReadAssetData && movement.CompanyId == companyId && movement.EmployeeId == id && movement.MovementType == "Checkout"
+                                  orderby movement.OccurredAt descending
+                                  select new { movement.Id, consumableName = consumable.Name, movement.Quantity, movement.OccurredAt, movement.Notes };
+            var consumableCheckoutCount = await consumableQuery.CountAsync(cancellationToken);
+            var consumableCheckouts = await consumableQuery.Take(100).ToListAsync(cancellationToken);
+
             var reportsQuery = db.Employees.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && x.ManagerEmployeeId == id);
             var directReportCount = await reportsQuery.CountAsync(cancellationToken);
@@ -268,10 +424,261 @@ public static class OperationalEndpoints
                 .Select(x => new
                 {
                     x.Id, x.EmployeeNumber, x.DisplayName, x.Department, x.IsActive,
-                    AssignedAssetCount = db.Assets.Count(asset => asset.CompanyId == companyId && asset.AssignedEmployeeId == x.Id)
+                    AssignedAssetCount = canReadAssetData ? db.Assets.Count(asset => asset.CompanyId == companyId && asset.AssignedEmployeeId == x.Id) : 0
                 }).ToListAsync(cancellationToken);
-            return Results.Ok(new { employee, assignedAssets, assignedAssetCount, directReports, directReportCount, page, pageSize });
+            return Results.Ok(new
+            {
+                employee, assignedAssets, assignedAssetCount,
+                assignedAccessories, assignedAccessoryCount,
+                activeLicenses, activeLicenseCount,
+                consumableCheckouts, consumableCheckoutCount,
+                directReports, directReportCount, assetsVisible = canReadAssetData, page, pageSize
+            });
         }).RequireAuthorization("people.read");
+
+        api.MapGet("/employees/{id:guid}/private-notes", async (Guid id, ClaimsPrincipal user,
+            AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
+            var notes = await db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
+                .Select(x => x.PrivateNotes).SingleOrDefaultAsync(cancellationToken);
+            return notes is null && !await db.Employees.AnyAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken)
+                ? Results.NotFound() : Results.Ok(new { notes, maxLength = 4000 });
+        }).RequireAuthorization("people.files.read");
+
+        api.MapPut("/employees/{id:guid}/private-notes", async (Guid id,
+            [FromBody] UpdateEmployeePrivateNotesRequest request, ClaimsPrincipal user, AppDbContext db,
+            CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            var employee = await db.Employees.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (employee is null) return Results.NotFound();
+            var notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
+            if (notes is { Length: > 4000 })
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["notes"] = ["Özel çalışan notu 4.000 karakteri aşamaz."] });
+            if (employee.PrivateNotes == notes) return Results.Ok(new { notes = employee.PrivateNotes, updated = false });
+            employee.PrivateNotes = notes;
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                TargetType = "Employee", TargetId = id, Action = "PrivateNotesUpdated",
+                Details = notes is null ? "İK özel notları temizlendi." : "İK özel notları güncellendi." });
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.Ok(new { notes = employee.PrivateNotes, updated = true });
+        }).RequireAuthorization("people.files.manage");
+
+        api.MapPost("/employees/{id:guid}/photo", async (Guid id, HttpRequest request, ClaimsPrincipal user,
+            AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            if (!request.HasFormContentType) return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
+            if (!await db.Employees.AnyAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken)) return Results.NotFound();
+            var form = await request.ReadFormAsync(cancellationToken);
+            var upload = form.Files.GetFile("file");
+            if (upload is null || upload.Length is < 1 or > EmployeePhotoMaxSizeBytes)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Profil fotoğrafı 1 bayt ile 2 MB arasında olmalıdır."] });
+            await using var buffer = new MemoryStream((int)upload.Length);
+            await upload.CopyToAsync(buffer, cancellationToken);
+            var bytes = buffer.ToArray();
+            var detected = DetectLogo(bytes);
+            if (detected.ContentType is null)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Yalnızca doğrulanmış PNG, JPEG veya WebP fotoğraf yüklenebilir."] });
+
+            var directory = EmployeePhotoDirectory(configuration, companyId, id);
+            Directory.CreateDirectory(directory);
+            var temporaryPath = Path.Combine(directory, $"upload-{Guid.NewGuid():N}.tmp");
+            var destination = Path.Combine(directory, $"profile.{detected.Extension}");
+            var previousPath = new[] { "png", "jpg", "webp" }
+                .Select(extension => Path.Combine(directory, $"profile.{extension}"))
+                .FirstOrDefault(path => System.IO.File.Exists(path));
+            var previousBackupPath = previousPath is null ? null : Path.Combine(directory, $"replace-{Guid.NewGuid():N}.tmp");
+            try
+            {
+                await System.IO.File.WriteAllBytesAsync(temporaryPath, bytes, cancellationToken);
+                if (previousPath is not null) System.IO.File.Move(previousPath, previousBackupPath!);
+                System.IO.File.Move(temporaryPath, destination);
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                    TargetType = "Employee", TargetId = id, Action = "ProfilePhotoUpdated",
+                    Details = $"Profil fotoğrafı yüklendi ({detected.ContentType}, {bytes.LongLength} bayt)." });
+                await db.SaveChangesAsync(cancellationToken);
+            }
+            catch
+            {
+                try { if (System.IO.File.Exists(temporaryPath)) System.IO.File.Delete(temporaryPath); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+                try { if (System.IO.File.Exists(destination)) System.IO.File.Delete(destination); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+                try { if (previousPath is not null && previousBackupPath is not null && System.IO.File.Exists(previousBackupPath)) System.IO.File.Move(previousBackupPath, previousPath, true); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+                throw;
+            }
+            foreach (var extension in new[] { "png", "jpg", "webp" })
+            {
+                var oldPath = Path.Combine(directory, $"profile.{extension}");
+                try { if (!string.Equals(oldPath, destination, StringComparison.Ordinal) && System.IO.File.Exists(oldPath)) System.IO.File.Delete(oldPath); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+            try { if (previousBackupPath is not null && System.IO.File.Exists(previousBackupPath)) System.IO.File.Delete(previousBackupPath); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+            return Results.Ok(new { photoUrl = $"/api/employees/{id}/photo?v={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}" });
+        }).RequireAuthorization("people.manage")
+            .WithMetadata(new RequestSizeLimitAttribute(EmployeePhotoMaxSizeBytes + 65_536));
+
+        api.MapGet("/employees/{id:guid}/photo", async (Guid id, ClaimsPrincipal user, AppDbContext db,
+            IConfiguration configuration, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
+            if (!await db.Employees.AnyAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken)) return Results.NotFound();
+            var directory = EmployeePhotoDirectory(configuration, companyId, id);
+            foreach (var candidate in new[] { ("png", "image/png"), ("jpg", "image/jpeg"), ("webp", "image/webp") })
+            {
+                var path = Path.Combine(directory, $"profile.{candidate.Item1}");
+                if (!System.IO.File.Exists(path)) continue;
+                var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024,
+                    FileOptions.Asynchronous | FileOptions.SequentialScan);
+                return Results.File(stream, candidate.Item2, enableRangeProcessing: false);
+            }
+            return Results.NotFound();
+        }).RequireAuthorization("people.read");
+
+        api.MapDelete("/employees/{id:guid}/photo", async (Guid id, ClaimsPrincipal user, AppDbContext db,
+            IConfiguration configuration, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            if (!await db.Employees.AnyAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken)) return Results.NotFound();
+            var directory = EmployeePhotoDirectory(configuration, companyId, id);
+            var quarantined = new List<(string Original, string Temporary)>();
+            try
+            {
+                foreach (var extension in new[] { "png", "jpg", "webp" })
+                {
+                    var path = Path.Combine(directory, $"profile.{extension}");
+                    if (!System.IO.File.Exists(path)) continue;
+                    var temporary = Path.Combine(directory, $"remove-{Guid.NewGuid():N}.tmp");
+                    System.IO.File.Move(path, temporary);
+                    quarantined.Add((path, temporary));
+                }
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                    TargetType = "Employee", TargetId = id, Action = "ProfilePhotoRemoved", Details = "Profil fotoğrafı kaldırıldı." });
+                await db.SaveChangesAsync(cancellationToken);
+            }
+            catch
+            {
+                foreach (var item in quarantined)
+                    try { if (System.IO.File.Exists(item.Temporary)) System.IO.File.Move(item.Temporary, item.Original, true); }
+                    catch (IOException) { }
+                    catch (UnauthorizedAccessException) { }
+                throw;
+            }
+            foreach (var item in quarantined)
+                try { if (System.IO.File.Exists(item.Temporary)) System.IO.File.Delete(item.Temporary); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            return Results.NoContent();
+        }).RequireAuthorization("people.manage");
+
+        api.MapGet("/employees/{id:guid}/documents", async (Guid id, ClaimsPrincipal user, AppDbContext db,
+            CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
+            if (!await db.Employees.AnyAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken)) return Results.NotFound();
+            var documents = await db.EmployeeDocuments.AsNoTracking()
+                .Where(x => x.CompanyId == companyId && x.EmployeeId == id)
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(x => new { x.Id, x.OriginalFileName, x.ContentType, x.Length, x.CreatedAt,
+                    uploadedBy = db.Users.Where(actor => actor.Id == x.UploadedByUserId).Select(actor => actor.DisplayName).FirstOrDefault() })
+                .ToListAsync(cancellationToken);
+            return Results.Ok(new { documents, maxFiles = 30, maxFileSizeBytes = EmployeeDocumentMaxSizeBytes });
+        }).RequireAuthorization("people.files.read");
+
+        api.MapPost("/employees/{id:guid}/documents", async (Guid id, HttpRequest request, ClaimsPrincipal user,
+            AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            if (!request.HasFormContentType) return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
+            var form = await request.ReadFormAsync(cancellationToken);
+            var upload = form.Files.GetFile("file");
+            if (upload is null || upload.Length is < 1 or > EmployeeDocumentMaxSizeBytes)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Çalışan belgesi 1 bayt ile 10 MB arasında olmalıdır."] });
+            await using var buffer = new MemoryStream((int)upload.Length);
+            await upload.CopyToAsync(buffer, cancellationToken);
+            var bytes = buffer.ToArray();
+            var detected = DetectEmployeeDocument(bytes);
+            if (detected is null)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Yalnızca gerçek PDF, PNG, JPEG veya WebP dosyaları yüklenebilir."] });
+
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            var employee = await db.Employees.FromSqlInterpolated($"SELECT * FROM \"Employees\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+                .SingleOrDefaultAsync(cancellationToken);
+            if (employee is null) return Results.NotFound();
+            if (await db.EmployeeDocuments.CountAsync(x => x.CompanyId == companyId && x.EmployeeId == id, cancellationToken) >= 30)
+                return Results.Conflict(new { message = "Bir çalışan profiline en fazla 30 belge eklenebilir." });
+
+            var documentId = Guid.NewGuid();
+            var storageFileName = $"{documentId:N}.{detected.Value.Extension}";
+            var originalFileName = CleanEmployeeDocumentFileName(upload.FileName, detected.Value.Extension);
+            var directory = EmployeeDocumentDirectory(configuration, companyId, id);
+            Directory.CreateDirectory(directory);
+            var destination = Path.Combine(directory, storageFileName);
+            var document = new EmployeeDocument { Id = documentId, CompanyId = companyId, EmployeeId = id,
+                UploadedByUserId = actorId, OriginalFileName = originalFileName, StorageFileName = storageFileName,
+                ContentType = detected.Value.ContentType, Length = bytes.LongLength };
+            try
+            {
+                await System.IO.File.WriteAllBytesAsync(destination, bytes, cancellationToken);
+                db.EmployeeDocuments.Add(document);
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                    TargetType = "Employee", TargetId = id, Action = "DocumentAdded",
+                    Details = $"Çalışan belgesi eklendi ({detected.Value.ContentType}, {bytes.LongLength} bayt)." });
+                await db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch
+            {
+                try { if (System.IO.File.Exists(destination)) System.IO.File.Delete(destination); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+                throw;
+            }
+            return Results.Created($"/api/employees/{id}/documents/{documentId}/file", new { document.Id,
+                document.OriginalFileName, document.ContentType, document.Length, document.CreatedAt });
+        }).RequireAuthorization("people.files.manage")
+            .WithMetadata(new RequestSizeLimitAttribute(EmployeeDocumentRequestLimitBytes));
+
+        api.MapGet("/employees/{id:guid}/documents/{documentId:guid}/file", async (Guid id, Guid documentId,
+            ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
+            var document = await db.EmployeeDocuments.AsNoTracking().SingleOrDefaultAsync(x =>
+                x.CompanyId == companyId && x.EmployeeId == id && x.Id == documentId, cancellationToken);
+            if (document is null || !IsSafeEmployeeDocumentFileName(document.StorageFileName)) return Results.NotFound();
+            var path = Path.Combine(EmployeeDocumentDirectory(configuration, companyId, id), document.StorageFileName);
+            if (!System.IO.File.Exists(path)) return Results.NotFound();
+            var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024,
+                FileOptions.Asynchronous | FileOptions.SequentialScan);
+            return Results.File(stream, document.ContentType, document.OriginalFileName, enableRangeProcessing: false);
+        }).RequireAuthorization("people.files.read");
+
+        api.MapDelete("/employees/{id:guid}/documents/{documentId:guid}", async (Guid id, Guid documentId,
+            ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            var document = await db.EmployeeDocuments.SingleOrDefaultAsync(x =>
+                x.CompanyId == companyId && x.EmployeeId == id && x.Id == documentId, cancellationToken);
+            if (document is null) return Results.NotFound();
+            db.EmployeeDocuments.Remove(document);
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Employee",
+                TargetId = id, Action = "DocumentRemoved", Details = $"Çalışan belgesi kaldırıldı ({document.ContentType}, {document.Length} bayt)." });
+            await db.SaveChangesAsync(cancellationToken);
+            var path = Path.Combine(EmployeeDocumentDirectory(configuration, companyId, id), document.StorageFileName);
+            try { if (System.IO.File.Exists(path)) System.IO.File.Delete(path); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+            return Results.NoContent();
+        }).RequireAuthorization("people.files.manage");
 
         api.MapPatch("/employees/{id:guid}/manager", async (Guid id, [FromBody] SetEmployeeManagerRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
@@ -341,6 +748,25 @@ public static class OperationalEndpoints
             });
             await db.SaveChangesAsync(cancellationToken);
             return Results.Ok(new { employee.Id, employee.IsActive });
+        }).RequireAuthorization("people.manage");
+
+        api.MapGet("/employees/{id:guid}/offboarding-summary", async (Guid id, ClaimsPrincipal user,
+            AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
+            if (!await db.Employees.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken))
+                return Results.NotFound();
+            var assetCount = await db.Assets.AsNoTracking().CountAsync(x =>
+                x.CompanyId == companyId && x.AssignedEmployeeId == id, cancellationToken);
+            var accessoryCount = await db.AccessoryAssignments.AsNoTracking().CountAsync(x =>
+                x.CompanyId == companyId && x.EmployeeId == id && x.ReturnedQuantity < x.Quantity, cancellationToken);
+            var activeLicenseCount = await db.SoftwareLicenseAssignments.AsNoTracking().CountAsync(x =>
+                x.CompanyId == companyId && x.EmployeeId == id && x.RevokedAt == null, cancellationToken);
+            var activeDirectReportCount = await db.Employees.AsNoTracking().CountAsync(x =>
+                x.CompanyId == companyId && x.ManagerEmployeeId == id && x.IsActive, cancellationToken);
+            return Results.Ok(new { assetCount, accessoryCount, activeLicenseCount,
+                activeDirectReportCount,
+                hasOutstandingItems = assetCount + accessoryCount + activeLicenseCount + activeDirectReportCount > 0 });
         }).RequireAuthorization("people.manage");
 
         // Department names are currently captured on employee records. This directory is a
@@ -951,6 +1377,38 @@ public static class OperationalEndpoints
     }
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string EmployeePhotoDirectory(IConfiguration configuration, Guid companyId, Guid employeeId) =>
+        Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media",
+            companyId.ToString("N"), "employees", employeeId.ToString("N"));
+
+    private static string EmployeeDocumentDirectory(IConfiguration configuration, Guid companyId, Guid employeeId) =>
+        Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media",
+            companyId.ToString("N"), "employees", employeeId.ToString("N"), "documents");
+
+    private static string CleanEmployeeDocumentFileName(string? fileName, string detectedExtension)
+    {
+        var safe = Path.GetFileNameWithoutExtension(Path.GetFileName((fileName ?? "belge").Replace('\\', '/')));
+        var filtered = new string(safe.Where(character => !char.IsControl(character) && character is not '/' and not '\\').ToArray()).Trim();
+        if (filtered.Length > 175) filtered = filtered[^175..];
+        if (string.IsNullOrWhiteSpace(filtered)) filtered = "belge";
+        return $"{filtered}.{detectedExtension}";
+    }
+
+    private static bool IsSafeEmployeeDocumentFileName(string fileName) =>
+        Regex.IsMatch(fileName, "^[a-fA-F0-9]{32}\\.(pdf|png|jpg|webp)$", RegexOptions.CultureInvariant);
+
+    private static (string ContentType, string Extension)? DetectEmployeeDocument(ReadOnlySpan<byte> bytes)
+    {
+        if (bytes.Length >= 5 && bytes[..5].SequenceEqual("%PDF-"u8)) return ("application/pdf", "pdf");
+        if (bytes.Length >= 8 && bytes[..8].SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }))
+            return ("image/png", "png");
+        if (bytes.Length >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF)
+            return ("image/jpeg", "jpg");
+        if (bytes.Length >= 12 && bytes[..4].SequenceEqual("RIFF"u8) && bytes[8..12].SequenceEqual("WEBP"u8))
+            return ("image/webp", "webp");
+        return null;
+    }
 
     private static string Cell(string? value)
     {

@@ -21,6 +21,9 @@ appsettings.Development.json
 *.db-wal
 *.bak
 *.dump
+*.etbackup
+**/.scheduled-logs/
+**/backup-passphrase*
 
 # IDE and operating-system files
 .idea/

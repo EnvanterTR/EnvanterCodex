@@ -14,6 +14,7 @@ namespace EnvanterTR.Web.Data;
 
 public static class AccountEndpoints
 {
+    private const long AccountPhotoMaxSizeBytes = 2_097_152;
     public static IEndpointRouteBuilder MapAccountEndpoints(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGet("/api/setup/status", async (AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
@@ -300,8 +301,9 @@ public static class AccountEndpoints
             return Results.NoContent();
         }).RequireAuthorization();
 
-        endpoints.MapGet("/api/session", async (ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        endpoints.MapGet("/api/session", async (ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
         {
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
             var companyId = Guid.TryParse(user.FindFirstValue("company_id"), out var parsedCompanyId)
                 ? parsedCompanyId : (Guid?)null;
             var companyName = companyId is Guid id
@@ -310,13 +312,114 @@ public static class AccountEndpoints
                 : null;
             return Results.Ok(new
             {
-                userId = user.FindFirstValue(ClaimTypes.NameIdentifier),
+                userId,
                 companyId = companyId?.ToString(),
                 companyName,
                 role = user.FindFirstValue("company_role"),
                 platformAdmin = user.HasClaim("platform_admin", "true"),
-                name = user.Identity?.Name
+                name = user.Identity?.Name,
+                hasPhoto = Guid.TryParse(userId, out var parsedUserId) && new[] { "png", "jpg", "webp" }
+                    .Any(extension => System.IO.File.Exists(AccountPhotoPath(configuration, parsedUserId, extension)))
             });
+        }).RequireAuthorization();
+
+        endpoints.MapPost("/api/session/photo", async (HttpRequest request, HttpContext context, IAntiforgery antiforgery,
+            ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
+        {
+            if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
+            if (!request.HasFormContentType) return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
+            var form = await request.ReadFormAsync(cancellationToken);
+            var upload = form.Files.GetFile("file");
+            if (upload is null || upload.Length is < 1 or > AccountPhotoMaxSizeBytes)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Profil fotoğrafı 1 bayt ile 2 MB arasında olmalıdır."] });
+            await using var buffer = new MemoryStream((int)upload.Length);
+            await upload.CopyToAsync(buffer, cancellationToken);
+            var bytes = buffer.ToArray();
+            var detected = DetectProfileImage(bytes);
+            if (detected.ContentType is null)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Yalnızca doğrulanmış PNG, JPEG veya WebP fotoğraf yüklenebilir."] });
+
+            var directory = AccountPhotoDirectory(configuration, userId);
+            Directory.CreateDirectory(directory);
+            var tempPath = Path.Combine(directory, $"upload-{Guid.NewGuid():N}.tmp");
+            var destination = AccountPhotoPath(configuration, userId, detected.Extension);
+            var previousPath = new[] { "png", "jpg", "webp" }.Select(extension => AccountPhotoPath(configuration, userId, extension))
+                .FirstOrDefault(System.IO.File.Exists);
+            var previousBackupPath = previousPath is null ? null : Path.Combine(directory, $"replace-{Guid.NewGuid():N}.tmp");
+            try
+            {
+                await System.IO.File.WriteAllBytesAsync(tempPath, bytes, cancellationToken);
+                if (previousPath is not null) System.IO.File.Move(previousPath, previousBackupPath!);
+                System.IO.File.Move(tempPath, destination);
+                if (Guid.TryParse(user.FindFirstValue("company_id"), out var companyId))
+                {
+                    db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = userId,
+                        TargetType = "Account", TargetId = userId, Action = "ProfilePhotoUpdated",
+                        Details = $"Hesap profil fotoğrafı güncellendi ({detected.ContentType}, {bytes.LongLength} bayt)." });
+                    await db.SaveChangesAsync(cancellationToken);
+                }
+            }
+            catch
+            {
+                try { if (System.IO.File.Exists(tempPath)) System.IO.File.Delete(tempPath); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+                try { if (System.IO.File.Exists(destination)) System.IO.File.Delete(destination); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+                try { if (previousPath is not null && previousBackupPath is not null && System.IO.File.Exists(previousBackupPath)) System.IO.File.Move(previousBackupPath, previousPath, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+                throw;
+            }
+            foreach (var extension in new[] { "png", "jpg", "webp" })
+            {
+                var oldPath = AccountPhotoPath(configuration, userId, extension);
+                try { if (!string.Equals(oldPath, destination, StringComparison.Ordinal) && System.IO.File.Exists(oldPath)) System.IO.File.Delete(oldPath); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            }
+            try { if (previousBackupPath is not null && System.IO.File.Exists(previousBackupPath)) System.IO.File.Delete(previousBackupPath); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            return Results.Ok(new { photoUrl = $"/api/session/photo?v={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}" });
+        }).RequireAuthorization().WithMetadata(new RequestSizeLimitAttribute(AccountPhotoMaxSizeBytes + 65_536));
+
+        endpoints.MapGet("/api/session/photo", (ClaimsPrincipal user, IConfiguration configuration) =>
+        {
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
+            foreach (var candidate in new[] { ("png", "image/png"), ("jpg", "image/jpeg"), ("webp", "image/webp") })
+            {
+                var path = AccountPhotoPath(configuration, userId, candidate.Item1);
+                if (!System.IO.File.Exists(path)) continue;
+                var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024,
+                    FileOptions.Asynchronous | FileOptions.SequentialScan);
+                return Results.File(stream, candidate.Item2, enableRangeProcessing: false);
+            }
+            return Results.NotFound();
+        }).RequireAuthorization();
+
+        endpoints.MapDelete("/api/session/photo", async (HttpContext context, IAntiforgery antiforgery,
+            ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
+        {
+            if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
+            var directory = AccountPhotoDirectory(configuration, userId);
+            var staged = new List<(string Original, string Temporary)>();
+            try
+            {
+                foreach (var extension in new[] { "png", "jpg", "webp" })
+                {
+                    var path = AccountPhotoPath(configuration, userId, extension);
+                    if (!System.IO.File.Exists(path)) continue;
+                    var temporary = Path.Combine(directory, $"remove-{Guid.NewGuid():N}.tmp");
+                    System.IO.File.Move(path, temporary); staged.Add((path, temporary));
+                }
+                if (Guid.TryParse(user.FindFirstValue("company_id"), out var companyId))
+                {
+                    db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = userId,
+                        TargetType = "Account", TargetId = userId, Action = "ProfilePhotoRemoved", Details = "Hesap profil fotoğrafı kaldırıldı." });
+                    await db.SaveChangesAsync(cancellationToken);
+                }
+            }
+            catch
+            {
+                foreach (var item in staged) try { if (System.IO.File.Exists(item.Temporary)) System.IO.File.Move(item.Temporary, item.Original, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+                throw;
+            }
+            foreach (var item in staged) try { if (System.IO.File.Exists(item.Temporary)) System.IO.File.Delete(item.Temporary); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            return Results.NoContent();
         }).RequireAuthorization();
 
         return endpoints;
@@ -341,6 +444,20 @@ public static class AccountEndpoints
         var left = Encoding.UTF8.GetBytes(supplied);
         var right = Encoding.UTF8.GetBytes(expected);
         return left.Length == right.Length && CryptographicOperations.FixedTimeEquals(left, right);
+    }
+
+    private static string AccountPhotoDirectory(IConfiguration configuration, Guid userId) =>
+        Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media", "accounts", userId.ToString("N"));
+
+    private static string AccountPhotoPath(IConfiguration configuration, Guid userId, string extension) =>
+        Path.Combine(AccountPhotoDirectory(configuration, userId), $"profile.{extension}");
+
+    private static (string? ContentType, string Extension) DetectProfileImage(ReadOnlySpan<byte> bytes)
+    {
+        if (bytes.Length >= 8 && bytes[..8].SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 })) return ("image/png", "png");
+        if (bytes.Length >= 3 && bytes[..3].SequenceEqual(new byte[] { 255, 216, 255 })) return ("image/jpeg", "jpg");
+        if (bytes.Length >= 12 && bytes[..4].SequenceEqual("RIFF"u8) && bytes.Slice(8, 4).SequenceEqual("WEBP"u8)) return ("image/webp", "webp");
+        return (null, "");
     }
 
     private static Task SendPasswordResetEmailAsync(string recipient, string token,

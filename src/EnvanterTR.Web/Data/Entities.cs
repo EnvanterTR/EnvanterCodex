@@ -13,6 +13,22 @@ public sealed class Company
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class SupplierCatalogEntry
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public required string Name { get; set; }
+    public required string NormalizedName { get; set; }
+    public string? ContactName { get; set; }
+    public string? Email { get; set; }
+    public string? Phone { get; set; }
+    public string? Website { get; set; }
+    public string? Notes { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class SubscriptionPlan
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -99,6 +115,11 @@ public sealed class Employee
     public required string DisplayName { get; set; }
     public string? Email { get; set; }
     public string? Department { get; set; }
+    public string? JobTitle { get; set; }
+    public string? Phone { get; set; }
+    public string? Location { get; set; }
+    public DateOnly? StartedOn { get; set; }
+    public string? PrivateNotes { get; set; }
     public Guid? ManagerEmployeeId { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
@@ -172,6 +193,19 @@ public sealed class AssetAttachment
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class EmployeeDocument
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid EmployeeId { get; set; }
+    public Guid? UploadedByUserId { get; set; }
+    public required string OriginalFileName { get; set; }
+    public required string StorageFileName { get; set; }
+    public required string ContentType { get; set; }
+    public long Length { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class AssetMaintenance
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -180,6 +214,7 @@ public sealed class AssetMaintenance
     public Guid? ActorUserId { get; set; }
     public required string MaintenanceType { get; set; }
     public string? Supplier { get; set; }
+    public Guid? SupplierId { get; set; }
     public string? Description { get; set; }
     public DateOnly? PlannedOn { get; set; }
     public DateOnly StartedOn { get; set; }
@@ -202,6 +237,7 @@ public sealed class Accessory
     public string? ModelNumber { get; set; }
     public string? ItemNumber { get; set; }
     public string? Supplier { get; set; }
+    public Guid? SupplierId { get; set; }
     public string? Location { get; set; }
     public int MinimumQuantity { get; set; }
     public int TotalQuantity { get; set; }
@@ -244,12 +280,33 @@ public sealed class AccessoryMovement
     public DateTimeOffset OccurredAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class AccessoryKit
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public required string Name { get; set; }
+    public string? Description { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class AccessoryKitLine
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid AccessoryKitId { get; set; }
+    public Guid AccessoryId { get; set; }
+    public int Quantity { get; set; }
+}
+
 public sealed class AccessoryPurchaseOrder
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid CompanyId { get; set; }
     public required string OrderNumber { get; set; }
     public required string Supplier { get; set; }
+    public Guid? SupplierId { get; set; }
     public string Status { get; set; } = "Ordered";
     public DateOnly OrderDate { get; set; }
     public DateOnly? ExpectedOn { get; set; }
@@ -282,6 +339,7 @@ public sealed class Consumable
     public string? ModelNumber { get; set; }
     public string? ItemNumber { get; set; }
     public string? Supplier { get; set; }
+    public Guid? SupplierId { get; set; }
     public string? Location { get; set; }
     public int MinimumQuantity { get; set; }
     public int TotalQuantity { get; set; }
@@ -317,6 +375,7 @@ public sealed class SoftwareLicense
     public string LicenseType { get; set; } = "Subscription";
     public string? LicenseReference { get; set; }
     public string? Supplier { get; set; }
+    public Guid? SupplierId { get; set; }
     public int Seats { get; set; }
     public decimal? UnitCost { get; set; }
     public string Currency { get; set; } = "TRY";
@@ -362,6 +421,7 @@ public sealed class InventoryComponent
     public string? ItemNumber { get; set; }
     public string? SerialNumber { get; set; }
     public string? Supplier { get; set; }
+    public Guid? SupplierId { get; set; }
     public string? Location { get; set; }
     public int MinimumQuantity { get; set; }
     public int TotalQuantity { get; set; }

@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using System.Globalization;
 using System.Text;
+using System.Data;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,8 +10,18 @@ namespace EnvanterTR.Web.Data;
 
 public static class ComponentEndpoints
 {
+    private const int CsvImportMaxBytes = 32 * 1024 * 1024;
+    private const int CsvImportMaxRows = 5000;
+
     public static RouteGroupBuilder MapComponentEndpoints(this RouteGroupBuilder api)
     {
+        api.MapPost("/components/import/preview.csv", (HttpContext context, AppDbContext db, IAntiforgery antiforgery, CancellationToken ct) =>
+            ImportCsvAsync(context, db, antiforgery, false, ct)).RequireAuthorization("asset.write")
+            .WithMetadata(new RequestSizeLimitAttribute(CsvImportMaxBytes));
+        api.MapPost("/components/import.csv", (HttpContext context, AppDbContext db, IAntiforgery antiforgery, CancellationToken ct) =>
+            ImportCsvAsync(context, db, antiforgery, true, ct)).RequireAuthorization("asset.write")
+            .WithMetadata(new RequestSizeLimitAttribute(CsvImportMaxBytes));
+
         api.MapGet("/components", async ([FromQuery]string? q,[FromQuery]string? stock,[FromQuery]int page,[FromQuery]int pageSize,ClaimsPrincipal user,AppDbContext db,CancellationToken ct)=>
         {
             if(!Tenant(user,out var companyId))return Results.Forbid(); page=Math.Max(1,page);pageSize=Math.Clamp(pageSize==0?25:pageSize,1,200);
@@ -39,11 +51,11 @@ public static class ComponentEndpoints
         api.MapPost("/components",async(CreateRequest r,ClaimsPrincipal user,AppDbContext db,CancellationToken ct)=>
         {
             if(!Tenant(user,out var companyId))return Results.Forbid();var err=Validate(r.Name,r.MinimumQuantity,r.Quantity,r.UnitCost,r.Currency,r.Category,r.ModelNumber,r.ItemNumber,r.SerialNumber,r.Supplier,r.Location,r.Notes);if(err.Count>0)return Results.ValidationProblem(err);
-            var x=new InventoryComponent{CompanyId=companyId,Name=r.Name.Trim(),Category=Clean(r.Category),ModelNumber=Clean(r.ModelNumber),ItemNumber=Clean(r.ItemNumber),SerialNumber=Clean(r.SerialNumber),Supplier=Clean(r.Supplier),Location=Clean(r.Location),MinimumQuantity=r.MinimumQuantity,TotalQuantity=r.Quantity,UnitCost=r.UnitCost,Currency=r.Currency.Trim().ToUpperInvariant(),PurchaseDate=r.PurchaseDate,Notes=Clean(r.Notes)};db.InventoryComponents.Add(x);if(r.Quantity>0)db.ComponentMovements.Add(new ComponentMovement{CompanyId=companyId,ComponentId=x.Id,ActorUserId=UserId(user),MovementType="Received",Quantity=r.Quantity,Notes="İlk stok kaydı"});Audit(db,companyId,user,x.Id,"component.created",x.Name);await db.SaveChangesAsync(ct);return Results.Created($"/api/components/{x.Id}",new{ x.Id});
+            var x=new InventoryComponent{CompanyId=companyId,Name=r.Name.Trim(),Category=Clean(r.Category),ModelNumber=Clean(r.ModelNumber),ItemNumber=Clean(r.ItemNumber),SerialNumber=Clean(r.SerialNumber),Supplier=Clean(r.Supplier),SupplierId=await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db,companyId,r.Supplier,ct),Location=Clean(r.Location),MinimumQuantity=r.MinimumQuantity,TotalQuantity=r.Quantity,UnitCost=r.UnitCost,Currency=r.Currency.Trim().ToUpperInvariant(),PurchaseDate=r.PurchaseDate,Notes=Clean(r.Notes)};db.InventoryComponents.Add(x);if(r.Quantity>0)db.ComponentMovements.Add(new ComponentMovement{CompanyId=companyId,ComponentId=x.Id,ActorUserId=UserId(user),MovementType="Received",Quantity=r.Quantity,Notes="İlk stok kaydı"});Audit(db,companyId,user,x.Id,"component.created",x.Name);await db.SaveChangesAsync(ct);return Results.Created($"/api/components/{x.Id}",new{ x.Id});
         }).RequireAuthorization("asset.write");
         api.MapPut("/components/{id:guid}",async(Guid id,UpdateRequest r,ClaimsPrincipal user,AppDbContext db,CancellationToken ct)=>
         {
-            if(!Tenant(user,out var companyId))return Results.Forbid();var x=await db.InventoryComponents.SingleOrDefaultAsync(a=>a.CompanyId==companyId&&a.Id==id,ct);if(x is null)return Results.NotFound();var assigned=await db.ComponentAllocations.Where(a=>a.CompanyId==companyId&&a.ComponentId==id).SumAsync(a=>(int?)(a.Quantity-a.RemovedQuantity),ct)??0;var errors=Validate(r.Name,r.MinimumQuantity,x.TotalQuantity,r.UnitCost,r.Currency,r.Category,r.ModelNumber,r.ItemNumber,r.SerialNumber,r.Supplier,r.Location,r.Notes);if(x.TotalQuantity<assigned)errors["quantity"]=["Toplam stok atanmış miktardan az olamaz."];if(errors.Count>0)return Results.ValidationProblem(errors);x.Name=r.Name.Trim();x.Category=Clean(r.Category);x.ModelNumber=Clean(r.ModelNumber);x.ItemNumber=Clean(r.ItemNumber);x.SerialNumber=Clean(r.SerialNumber);x.Supplier=Clean(r.Supplier);x.Location=Clean(r.Location);x.MinimumQuantity=r.MinimumQuantity;x.UnitCost=r.UnitCost;x.Currency=r.Currency.Trim().ToUpperInvariant();x.PurchaseDate=r.PurchaseDate;x.Notes=Clean(r.Notes);x.UpdatedAt=DateTimeOffset.UtcNow;Audit(db,companyId,user,id,"component.updated",x.Name);await db.SaveChangesAsync(ct);return Results.NoContent();
+            if(!Tenant(user,out var companyId))return Results.Forbid();var x=await db.InventoryComponents.SingleOrDefaultAsync(a=>a.CompanyId==companyId&&a.Id==id,ct);if(x is null)return Results.NotFound();var assigned=await db.ComponentAllocations.Where(a=>a.CompanyId==companyId&&a.ComponentId==id).SumAsync(a=>(int?)(a.Quantity-a.RemovedQuantity),ct)??0;var errors=Validate(r.Name,r.MinimumQuantity,x.TotalQuantity,r.UnitCost,r.Currency,r.Category,r.ModelNumber,r.ItemNumber,r.SerialNumber,r.Supplier,r.Location,r.Notes);if(x.TotalQuantity<assigned)errors["quantity"]=["Toplam stok atanmış miktardan az olamaz."];if(errors.Count>0)return Results.ValidationProblem(errors);x.Name=r.Name.Trim();x.Category=Clean(r.Category);x.ModelNumber=Clean(r.ModelNumber);x.ItemNumber=Clean(r.ItemNumber);x.SerialNumber=Clean(r.SerialNumber);x.Supplier=Clean(r.Supplier);x.SupplierId=await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db,companyId,r.Supplier,ct);x.Location=Clean(r.Location);x.MinimumQuantity=r.MinimumQuantity;x.UnitCost=r.UnitCost;x.Currency=r.Currency.Trim().ToUpperInvariant();x.PurchaseDate=r.PurchaseDate;x.Notes=Clean(r.Notes);x.UpdatedAt=DateTimeOffset.UtcNow;Audit(db,companyId,user,id,"component.updated",x.Name);await db.SaveChangesAsync(ct);return Results.NoContent();
         }).RequireAuthorization("asset.write");
         api.MapPost("/components/{id:guid}/stock",async(Guid id,StockRequest r,ClaimsPrincipal user,AppDbContext db,CancellationToken ct)=>
         {
@@ -131,6 +143,104 @@ public static class ComponentEndpoints
             if(!Tenant(user,out var companyId))return Results.Forbid();if(r.Quantity is <1 or >100000)return Results.ValidationProblem(new Dictionary<string,string[]>{{"quantity",["Çıkarma miktarı 1 ile 100.000 arasında olmalı."]}});await using var tx=await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable,ct);var x=await db.InventoryComponents.FromSqlInterpolated($"SELECT * FROM \"InventoryComponents\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct);if(x is null)return Results.NotFound();var allocation=await db.ComponentAllocations.SingleOrDefaultAsync(a=>a.CompanyId==companyId&&a.ComponentId==id&&a.Id==r.AllocationId,ct);if(allocation is null)return Results.NotFound();var remaining=allocation.Quantity-allocation.RemovedQuantity;if(r.Quantity>remaining)return Results.ValidationProblem(new Dictionary<string,string[]>{{"quantity",[$"Bu varlığa atanmış kalan miktar {remaining}."]}});allocation.RemovedQuantity+=r.Quantity;allocation.LastRemovedAt=DateTimeOffset.UtcNow;db.ComponentMovements.Add(new ComponentMovement{CompanyId=companyId,ComponentId=id,AllocationId=allocation.Id,AssetId=allocation.AssetId,ActorUserId=UserId(user),MovementType="Checkin",Quantity=r.Quantity,Notes=Clean(r.Notes)});Audit(db,companyId,user,id,"component.removed",$"{r.Quantity} adet varlıktan çıkarıldı.");await db.SaveChangesAsync(ct);await tx.CommitAsync(ct);return Results.NoContent();
         }).RequireAuthorization("asset.write");
         return api;
+    }
+
+    private static async Task<IResult> ImportCsvAsync(HttpContext context, AppDbContext db, IAntiforgery antiforgery, bool commit, CancellationToken ct)
+    {
+        if (!Tenant(context.User, out var companyId) || UserId(context.User) is not { } actorId) return Results.Forbid();
+        try { await antiforgery.ValidateRequestAsync(context); }
+        catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
+        if (context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true) return Results.StatusCode(415);
+        if (context.Request.ContentLength > CsvImportMaxBytes) return Results.StatusCode(413);
+        using var buffer = new MemoryStream(); var chunk = new byte[64 * 1024];
+        while (true) { var read = await context.Request.Body.ReadAsync(chunk.AsMemory(), ct); if (read == 0) break; if (buffer.Length + read > CsvImportMaxBytes) return Results.StatusCode(413); await buffer.WriteAsync(chunk.AsMemory(0, read), ct); }
+        string text;
+        try { text = new UTF8Encoding(false, true).GetString(buffer.ToArray()).TrimStart('\uFEFF'); }
+        catch (DecoderFallbackException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV UTF-8 biçiminde olmalıdır." } }); }
+        List<List<string>> rows;
+        try { rows = ParseCsv(text, CsvImportMaxRows + 2); }
+        catch (FormatException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV tırnak veya ayraç biçimi bozuk." } }); }
+        string[] header = ["Bileşen", "Kategori", "Model", "Ürün no", "Seri no", "Tedarikçi", "Konum", "Toplam", "Minimum", "Birim maliyeti", "Para birimi", "Alış tarihi", "Notlar"];
+        if (rows.Count is < 2 || rows.Count > CsvImportMaxRows + 1 || !rows[0].SequenceEqual(header, StringComparer.OrdinalIgnoreCase))
+            return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Şablon başlığı ve en fazla {CsvImportMaxRows:N0} bileşen satırı kullanın." } });
+
+        var errors = new List<string>(); var components = new List<InventoryComponent>(rows.Count - 1);
+        var rowKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase); var rowItems = new HashSet<string>(StringComparer.OrdinalIgnoreCase); var rowSerials = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (row, index) in rows.Skip(1).Select((value, index) => (value, index)))
+        {
+            var line = index + 2;
+            if (row.Count != header.Length) { AddCsvError(errors, $"{line}. satırda {header.Length} sütun olmalıdır."); continue; }
+            var name = row[0].Trim(); var category = Clean(row[1]); var model = Clean(row[2]); var itemNumber = Clean(row[3]);
+            var serialNumber = Clean(row[4]); var supplier = Clean(row[5]); var location = Clean(row[6]); var notes = Clean(row[12]);
+            if (string.IsNullOrWhiteSpace(name) || name.Length > 200) AddCsvError(errors, $"{line}. satırdaki bileşen adı boş veya 200 karakterden uzun.");
+            if (!int.TryParse(row[7], NumberStyles.None, CultureInfo.InvariantCulture, out var total) || total is < 0 or > 100000) AddCsvError(errors, $"{line}. satırdaki toplam stok 0–100.000 arasında tam sayı olmalıdır.");
+            if (!int.TryParse(row[8], NumberStyles.None, CultureInfo.InvariantCulture, out var minimum) || minimum is < 0 or > 100000) AddCsvError(errors, $"{line}. satırdaki minimum stok 0–100.000 arasında tam sayı olmalıdır.");
+            decimal? costValue = null;
+            if (!string.IsNullOrWhiteSpace(row[9])) { if (!decimal.TryParse(row[9], NumberStyles.Number, CultureInfo.InvariantCulture, out var value) || value is < 0 or > 9999999999999999.99m) AddCsvError(errors, $"{line}. satırdaki birim maliyeti geçersiz."); else costValue = value; }
+            var currency = row[10].Trim().ToUpperInvariant(); if (currency.Length != 3 || !currency.All(char.IsAsciiLetter)) AddCsvError(errors, $"{line}. satırdaki para birimi üç harfli olmalıdır.");
+            DateOnly? purchaseDate = null;
+            if (!string.IsNullOrWhiteSpace(row[11])) { if (DateOnly.TryParseExact(row[11].Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)) purchaseDate = date; else AddCsvError(errors, $"{line}. satırdaki alış tarihi yyyy-AA-gg olmalıdır."); }
+            if (category?.Length > 120 || model?.Length > 120 || itemNumber?.Length > 120 || serialNumber?.Length > 160 || supplier?.Length > 200 || location?.Length > 160 || notes?.Length > 2000) AddCsvError(errors, $"{line}. satırdaki metin alanlarından biri uzunluk sınırını aşıyor.");
+            var key = $"{name.ToUpperInvariant()}\u001f{itemNumber?.ToUpperInvariant() ?? ""}";
+            if (!rowKeys.Add(key)) AddCsvError(errors, $"{line}. satır aynı bileşen/ürün no bileşimini yineliyor.");
+            if (itemNumber is not null && !rowItems.Add(itemNumber)) AddCsvError(errors, $"{line}. satırdaki ürün no dosyada yineleniyor.");
+            if (serialNumber is not null && !rowSerials.Add(serialNumber)) AddCsvError(errors, $"{line}. satırdaki seri no dosyada yineleniyor.");
+            components.Add(new InventoryComponent { CompanyId = companyId, Name = name, Category = category, ModelNumber = model, ItemNumber = itemNumber,
+                SerialNumber = serialNumber, Supplier = supplier, Location = location, TotalQuantity = total, MinimumQuantity = minimum,
+                UnitCost = costValue, Currency = currency, PurchaseDate = purchaseDate, Notes = notes });
+        }
+        if (errors.Count > 0) return Results.UnprocessableEntity(new { isValid = false, rowCount = rows.Count - 1, errors = errors.Distinct(StringComparer.Ordinal).Take(30), message = "CSV'de düzeltilmesi gereken alanlar bulundu. Hiçbir bileşen eklenmedi." });
+
+        var names = components.Select(x => x.Name.ToUpper()).Distinct().ToArray();
+        var itemNumbers = components.Where(x => x.ItemNumber != null).Select(x => x.ItemNumber!.ToUpper()).Distinct().ToArray();
+        var serialNumbers = components.Where(x => x.SerialNumber != null).Select(x => x.SerialNumber!.ToUpper()).Distinct().ToArray();
+        var existing = await db.InventoryComponents.AsNoTracking().Where(x => x.CompanyId == companyId &&
+            (names.Contains(x.Name.ToUpper()) || (x.ItemNumber != null && itemNumbers.Contains(x.ItemNumber.ToUpper())) || (x.SerialNumber != null && serialNumbers.Contains(x.SerialNumber.ToUpper()))))
+            .Select(x => new { x.Name, x.ItemNumber, x.SerialNumber }).ToListAsync(ct);
+        var oldKeys = existing.Select(x => $"{x.Name.ToUpperInvariant()}\u001f{x.ItemNumber?.ToUpperInvariant() ?? ""}").ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var oldItems = existing.Where(x => x.ItemNumber != null).Select(x => x.ItemNumber!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var oldSerials = existing.Where(x => x.SerialNumber != null).Select(x => x.SerialNumber!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var matches = components.Count(x => oldKeys.Contains($"{x.Name.ToUpperInvariant()}\u001f{x.ItemNumber?.ToUpperInvariant() ?? ""}") || x.ItemNumber != null && oldItems.Contains(x.ItemNumber) || x.SerialNumber != null && oldSerials.Contains(x.SerialNumber));
+        if (matches > 0) return Results.Conflict(new { isValid = false, existingMatches = matches, errors = new[] { $"Şirkette mevcut ad/ürün no/seri no eşleşmeleri bulundu ({matches}). Yinelenen bileşen eklenmedi." } });
+        if (!commit) return Results.Ok(new { isValid = true, rowCount = components.Count, errors = Array.Empty<string>(), message = $"{components.Count:N0} yeni bileşen doğrulandı. Önizleme kayıt eklemedi." });
+
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        var latest = await db.InventoryComponents.AsNoTracking().Where(x => x.CompanyId == companyId &&
+            (names.Contains(x.Name.ToUpper()) || (x.ItemNumber != null && itemNumbers.Contains(x.ItemNumber.ToUpper())) || (x.SerialNumber != null && serialNumbers.Contains(x.SerialNumber.ToUpper()))))
+            .Select(x => new { x.Name, x.ItemNumber, x.SerialNumber }).ToListAsync(ct);
+        var latestKeys = latest.Select(x => $"{x.Name.ToUpperInvariant()}\u001f{x.ItemNumber?.ToUpperInvariant() ?? ""}").ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var latestItems = latest.Where(x => x.ItemNumber != null).Select(x => x.ItemNumber!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var latestSerials = latest.Where(x => x.SerialNumber != null).Select(x => x.SerialNumber!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (components.Any(x => latestKeys.Contains($"{x.Name.ToUpperInvariant()}\u001f{x.ItemNumber?.ToUpperInvariant() ?? ""}") || x.ItemNumber != null && latestItems.Contains(x.ItemNumber) || x.SerialNumber != null && latestSerials.Contains(x.SerialNumber)))
+            return Results.Conflict(new { message = "Önizlemeden sonra aynı bileşen eklendi. Hiçbir kayıt aktarılmadı; önizlemeyi yenileyin." });
+        var suppliers = await db.SupplierCatalogEntries.AsNoTracking().Where(x => x.CompanyId == companyId).Select(x => new { x.Id, x.NormalizedName }).ToListAsync(ct);
+        var supplierMap = suppliers.GroupBy(x => x.NormalizedName, StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.Select(y => y.Id).ToArray(), StringComparer.OrdinalIgnoreCase);
+        foreach (var component in components)
+        {
+            var normalizedSupplier = component.Supplier?.Normalize(NormalizationForm.FormKC).ToUpperInvariant();
+            if (normalizedSupplier is not null && supplierMap.TryGetValue(normalizedSupplier, out var ids) && ids.Length == 1) component.SupplierId = ids[0];
+            db.InventoryComponents.Add(component);
+            if (component.TotalQuantity > 0) db.ComponentMovements.Add(new ComponentMovement { CompanyId = companyId, ComponentId = component.Id, ActorUserId = actorId,
+                MovementType = "Received", Quantity = component.TotalQuantity, Notes = "CSV içe aktarımındaki başlangıç stoku" });
+            Audit(db, companyId, context.User, component.Id, "component.created", $"{component.Name}; CSV içe aktarımı.");
+        }
+        db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Component", Action = "CsvImported", Details = $"CSV dosyasından {components.Count} bileşen içe aktarıldı." });
+        try { await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); }
+        catch (DbUpdateException) { await transaction.RollbackAsync(ct); return Results.Conflict(new { message = "CSV aktarılmadı; bir kayıt çakıştı. Önizlemeyi yenileyip tekrar deneyin." }); }
+        return Results.Ok(new { imported = components.Count, message = $"{components.Count:N0} bileşen ve başlangıç stok hareketleri eklendi." });
+    }
+
+    private static void AddCsvError(List<string> errors, string message) { if (errors.Count < 100) errors.Add(message); }
+    private static List<List<string>> ParseCsv(string text, int maximumRecords)
+    {
+        var records = new List<List<string>>(); var row = new List<string>(); var cell = new StringBuilder(); var quoted = false; var afterQuote = false;
+        for (var i = 0; i < text.Length; i++) { var ch = text[i]; if (quoted) { if (ch == '"' && i + 1 < text.Length && text[i + 1] == '"') { cell.Append('"'); i++; } else if (ch == '"') { quoted = false; afterQuote = true; } else cell.Append(ch); continue; }
+            if (afterQuote && ch != ',' && ch is not ('\r' or '\n')) throw new FormatException();
+            if (ch == '"') { if (cell.Length != 0) throw new FormatException(); quoted = true; } else if (ch == ',') { row.Add(cell.ToString()); cell.Clear(); afterQuote = false; }
+            else if (ch is '\r' or '\n') { if (ch == '\r' && i + 1 < text.Length && text[i + 1] == '\n') i++; row.Add(cell.ToString()); cell.Clear(); afterQuote = false; if (row.Any(x => x.Length > 0)) { records.Add(row); if (records.Count > maximumRecords) throw new FormatException(); } row = []; }
+            else { cell.Append(ch); afterQuote = false; } }
+        if (quoted) throw new FormatException(); if (cell.Length > 0 || row.Count > 0) { row.Add(cell.ToString()); if (row.Any(x => x.Length > 0)) records.Add(row); }
+        return records;
     }
     private static bool Tenant(ClaimsPrincipal u,out Guid id)=>Guid.TryParse(u.FindFirstValue("company_id"),out id);
     private static Guid? UserId(ClaimsPrincipal u)=>Guid.TryParse(u.FindFirstValue(ClaimTypes.NameIdentifier),out var id)?id:null;

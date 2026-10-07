@@ -37,8 +37,11 @@ public static class AssetEndpoints
         api.MapConsumableEndpoints();
         api.MapSoftwareLicenseEndpoints();
         api.MapComponentEndpoints();
+        api.MapAccessoryImportEndpoints();
         api.MapInventoryMovementEndpoints();
         api.MapAccessoryPurchaseOrderEndpoints();
+        api.MapSupplierCatalogEndpoints();
+        api.MapAccessoryKitEndpoints();
 
         api.MapGet("/assets", async ([FromQuery] string? q, [FromQuery] string? status,
             [FromQuery] Guid? categoryId, [FromQuery] Guid? brandId, [FromQuery] Guid? modelId,
@@ -91,7 +94,9 @@ public static class AssetEndpoints
                     x.ModelId,
                     db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.Name).FirstOrDefault(),
                     db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
-                    x.AssignedEmployeeId, x.WarrantyExpiresAt, x.UpdatedAt)).ToListAsync(cancellationToken);
+                    x.AssignedEmployeeId, x.WarrantyExpiresAt, x.UpdatedAt,
+                    db.AssetAttachments.Where(photo => photo.CompanyId == companyId && photo.AssetId == x.Id && photo.ContentType.StartsWith("image/"))
+                        .OrderByDescending(photo => photo.CreatedAt).Select(photo => (Guid?)photo.Id).FirstOrDefault())).ToListAsync(cancellationToken);
             return Results.Ok(new { items, page, pageSize, total });
         }).RequireAuthorization("asset.read");
 
@@ -304,7 +309,7 @@ public static class AssetEndpoints
             {
                 CompanyId = companyId, Name = request.Name.Trim(), Category = Clean(request.Category),
                 ModelNumber = Clean(request.ModelNumber), ItemNumber = Clean(request.ItemNumber),
-                Supplier = Clean(request.Supplier), Location = Clean(request.Location),
+                Supplier = Clean(request.Supplier), SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, cancellationToken), Location = Clean(request.Location),
                 MinimumQuantity = request.MinimumQuantity, TotalQuantity = request.Quantity,
                 UnitCost = request.UnitCost, Currency = request.Currency.Trim().ToUpperInvariant(),
                 PurchaseDate = request.PurchaseDate, Notes = Clean(request.Notes), IsRequestable = request.IsRequestable
@@ -331,7 +336,7 @@ public static class AssetEndpoints
                 request.Supplier, request.Location, request.Notes);
             if (errors.Count > 0) return Results.ValidationProblem(errors);
             item.Name = request.Name.Trim(); item.Category = Clean(request.Category); item.ModelNumber = Clean(request.ModelNumber);
-            item.ItemNumber = Clean(request.ItemNumber); item.Supplier = Clean(request.Supplier); item.Location = Clean(request.Location);
+            item.ItemNumber = Clean(request.ItemNumber); item.Supplier = Clean(request.Supplier); item.SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, cancellationToken); item.Location = Clean(request.Location);
             item.MinimumQuantity = request.MinimumQuantity; item.UnitCost = request.UnitCost;
             item.Currency = request.Currency.Trim().ToUpperInvariant(); item.PurchaseDate = request.PurchaseDate;
             item.Notes = Clean(request.Notes); item.IsRequestable = request.IsRequestable; item.UpdatedAt = DateTimeOffset.UtcNow;
@@ -650,14 +655,14 @@ public static class AssetEndpoints
         api.MapGet("/locations", async (ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
-            var locations = new Dictionary<string, (string Name, int Assets, int Assigned, int Available, int Maintenance, int Accessories, int AccessoryAssignments, int Consumables, int Components)>(StringComparer.Ordinal);
+            var locations = new Dictionary<string, (string Name, int Assets, int Assigned, int Available, int Maintenance, int Accessories, int AccessoryAssignments, int Consumables, int Components)>(StringComparer.OrdinalIgnoreCase);
             void AddLocation(string name, int assets = 0, int assigned = 0, int available = 0, int maintenance = 0,
                 int accessories = 0, int accessoryAssignments = 0, int consumables = 0, int components = 0)
             {
                 if (string.IsNullOrWhiteSpace(name)) return;
                 var key = name.Trim();
                 locations.TryGetValue(key, out var current);
-                locations[key] = (key, current.Assets + assets, current.Assigned + assigned,
+                locations[key] = (current.Name ?? key, current.Assets + assets, current.Assigned + assigned,
                     current.Available + available, current.Maintenance + maintenance,
                     current.Accessories + accessories, current.AccessoryAssignments + accessoryAssignments,
                     current.Consumables + consumables,
@@ -711,16 +716,18 @@ public static class AssetEndpoints
             if (string.IsNullOrWhiteSpace(currentName) || currentName.Length > 160 || currentName.Any(char.IsControl) ||
                 string.IsNullOrWhiteSpace(newName) || newName.Length > 160 || newName.Any(char.IsControl))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Mevcut ve yeni konum adları 1–160 karakter olmalı ve kontrol karakteri içermemelidir."] });
+            var currentPattern = currentName.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal);
+            var newPattern = newName.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal);
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             if (await db.Companies.FromSqlInterpolated($"SELECT * FROM \"Companies\" WHERE \"Id\" = {companyId} FOR UPDATE")
                     .SingleOrDefaultAsync(cancellationToken) is null) return Results.Forbid();
 
-            var assets = db.Assets.Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() == currentName);
-            var accessories = db.Accessories.Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() == currentName);
-            var consumables = db.Consumables.Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() == currentName);
-            var components = db.InventoryComponents.Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() == currentName);
+            var assets = db.Assets.Where(x => x.CompanyId == companyId && x.Location != null && EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"));
+            var accessories = db.Accessories.Where(x => x.CompanyId == companyId && x.Location != null && EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"));
+            var consumables = db.Consumables.Where(x => x.CompanyId == companyId && x.Location != null && EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"));
+            var components = db.InventoryComponents.Where(x => x.CompanyId == companyId && x.Location != null && EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"));
             var accessoryAssignments = db.AccessoryAssignments.Where(x => x.CompanyId == companyId && x.TargetType == "Location" &&
-                x.Location != null && x.Location.Trim() == currentName && x.Quantity > x.ReturnedQuantity);
+                x.Location != null && EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\") && x.Quantity > x.ReturnedQuantity);
             var assetCount = await assets.CountAsync(cancellationToken);
             var accessoryCount = await accessories.CountAsync(cancellationToken);
             var consumableCount = await consumables.CountAsync(cancellationToken);
@@ -734,12 +741,12 @@ public static class AssetEndpoints
                     assetCount, accessoryCount, accessoryAssignmentCount, consumableCount, componentCount });
             }
 
-            var targetExists = await db.Assets.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken) ||
-                await db.Accessories.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken) ||
-                await db.Consumables.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken) ||
-                await db.InventoryComponents.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken) ||
+            var targetExists = await db.Assets.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => EF.Functions.ILike(x.Location!.Trim(), newPattern, "\\") && !EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"), cancellationToken) ||
+                await db.Accessories.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => EF.Functions.ILike(x.Location!.Trim(), newPattern, "\\") && !EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"), cancellationToken) ||
+                await db.Consumables.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => EF.Functions.ILike(x.Location!.Trim(), newPattern, "\\") && !EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"), cancellationToken) ||
+                await db.InventoryComponents.Where(x => x.CompanyId == companyId && x.Location != null).AnyAsync(x => EF.Functions.ILike(x.Location!.Trim(), newPattern, "\\") && !EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"), cancellationToken) ||
                 await db.AccessoryAssignments.Where(x => x.CompanyId == companyId && x.TargetType == "Location" && x.Location != null && x.Quantity > x.ReturnedQuantity)
-                    .AnyAsync(x => x.Location!.Trim() == newName && x.Location.Trim() != currentName, cancellationToken);
+                    .AnyAsync(x => EF.Functions.ILike(x.Location!.Trim(), newPattern, "\\") && !EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"), cancellationToken);
             if (targetExists && !request.Merge)
                 return Results.Conflict(new { message = "Bu adla başka bir konum var. Birleştirme onayı gereklidir." });
 
@@ -1504,7 +1511,7 @@ public static class AssetEndpoints
             var maintenance = new AssetMaintenance
             {
                 CompanyId = companyId, AssetId = id, ActorUserId = CurrentUserId(user),
-                MaintenanceType = type, Supplier = Clean(supplier), Description = Clean(description),
+                MaintenanceType = type, Supplier = Clean(supplier), SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, supplier, cancellationToken), Description = Clean(description),
                 PlannedOn = request.PlannedOn, StartedOn = request.PlannedOn, Cost = request.Cost,
                 Currency = request.Currency.Trim().ToUpperInvariant(), Notes = Clean(notes),
                 Status = "Scheduled", CreatedAt = now, UpdatedAt = now
@@ -1601,7 +1608,7 @@ public static class AssetEndpoints
             var maintenance = new AssetMaintenance
             {
                 CompanyId = companyId, AssetId = id, ActorUserId = CurrentUserId(user),
-                MaintenanceType = type, Supplier = Clean(supplier), Description = Clean(description),
+                MaintenanceType = type, Supplier = Clean(supplier), SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, supplier, cancellationToken), Description = Clean(description),
                 StartedOn = request.StartedOn, Cost = request.Cost, Currency = request.Currency.Trim().ToUpperInvariant(),
                 Notes = Clean(notes), Status = "InProgress", CreatedAt = now, UpdatedAt = now
             };
