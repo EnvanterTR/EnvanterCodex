@@ -88,8 +88,10 @@ done
 ln -s "$RELEASE_DIR" "$INSTALL_ROOT/current"
 install -m 0644 "$RELEASE_DIR/deploy/server/envantertr-backup.service" /etc/systemd/system/envantertr-backup.service
 install -m 0644 "$RELEASE_DIR/deploy/server/envantertr-backup.timer" /etc/systemd/system/envantertr-backup.timer
+install -m 0644 "$RELEASE_DIR/deploy/server/envantertr-backup-health.service" /etc/systemd/system/envantertr-backup-health.service
+install -m 0644 "$RELEASE_DIR/deploy/server/envantertr-backup-health.timer" /etc/systemd/system/envantertr-backup-health.timer
 systemctl daemon-reload
-systemctl enable --now envantertr-backup.timer
+systemctl enable --now envantertr-backup.timer envantertr-backup-health.timer
 printf '\nEnvanterTR sunucu kurulumu hazır: https://%s\n' "$DOMAIN"
 printf 'İlk şirket sahibi kurulumu: https://%s/setup.html\n' "$DOMAIN"
 printf 'Şirket kurulum anahtarını görüntüleme: sudo awk -F= '\''$1=="SETUP_BOOTSTRAP_TOKEN" {print $2}'\'' %s\n' "$CONFIG_FILE"

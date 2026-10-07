@@ -29,7 +29,7 @@ sudo docker compose --project-name envantertr-server \
   -f /opt/envantertr/current/deploy/server/compose.yaml up -d web proxy
 ```
 
-İlk kurulum ayrıca her gün systemd zamanlayıcısı kurar. Şifreli yedeklerin açılması için gereken parola `/etc/envantertr/backup.pass` dosyasındadır; bu dosyanın kopyasını sunucunun dışında, çevrim dışı ve ayrı erişim denetimli bir yerde saklayın. Sunucu ve yedek birlikte kaybolursa parola olmadan `.etbackup` açılamaz.
+İlk kurulum her gün şifreli yedek alan systemd zamanlayıcısını ve ondan bağımsız yedek sağlık denetimi zamanlayıcısını kurar. Sağlık denetimi günlük olarak `BACKUP_ROOT` içindeki en yeni yerel `.etbackup` arşivinin 36 saatten eski olmadığını ve yanındaki SHA-256 dosyasıyla eşleştiğini kontrol eder. Başarılı/başarısız sonuç systemd journal'a yazılır. Şifreli yedeklerin açılması için gereken parola `/etc/envantertr/backup.pass` dosyasındadır; bu dosyanın kopyasını sunucunun dışında, çevrim dışı ve ayrı erişim denetimli bir yerde saklayın. Sunucu ve yedek birlikte kaybolursa parola olmadan `.etbackup` açılamaz.
 
 ## Şifreli yedek ve güncelleme
 
@@ -39,7 +39,12 @@ Elle yedek almak için:
 sudo systemctl start envantertr-backup.service
 sudo systemctl status envantertr-backup.service
 sudo journalctl -u envantertr-backup.service
+sudo systemctl start envantertr-backup-health.service
+sudo systemctl status envantertr-backup-health.timer envantertr-backup-health.service
+sudo journalctl -u envantertr-backup-health.service
 ```
+
+`envantertr-backup-health.service` yalnızca yerel yedek klasörünü denetler; günlük SFTP gönderim adımındaki uzak kopya doğrulaması ayrıca çalışır. Bu sağlık kontrolü başarısız yedek veya 36 saati aşan yedek bulursa non-zero sonuç üretip journal'a nedenini yazar; e-posta/SMS alarmı ya da uzaktaki eski arşivleri tarama henüz yoktur.
 
 Yedek betiği veritabanı dökümünü, şirket medya volume'unu (profil ve envanter görselleri dahil) ve ASP.NET Data Protection anahtar volume'unu geçici klasöre alır; SHA-256 manifesti ekler; AES-256-CBC/HMAC-SHA256 ile `.etbackup` oluşturup doğrular; parolayla yeniden açarak izole PostgreSQL/medya/anahtar kurtarma önizlemesini çalıştırır. Başarıda şifreli arşiv ve SHA-256 özeti bırakılır. Saklama süresi `BACKUP_RETENTION_DAYS` ile yönetilir.
 

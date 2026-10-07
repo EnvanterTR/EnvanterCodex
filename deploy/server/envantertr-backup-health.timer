@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily EnvanterTR backup freshness and integrity check
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+Persistent=true
+RandomizedDelaySec=5m
+Unit=envantertr-backup-health.service
+
+[Install]
+WantedBy=timers.target

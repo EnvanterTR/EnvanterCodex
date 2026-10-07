@@ -1,0 +1,8 @@
+[Unit]
+Description=Verify freshness and integrity of the latest EnvanterTR backup
+ConditionPathExists=/etc/envantertr/server.env
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/bash /opt/envantertr/current/deploy/server/check-backup-health.sh
