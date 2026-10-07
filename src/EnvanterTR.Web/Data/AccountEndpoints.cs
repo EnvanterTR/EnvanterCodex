@@ -195,12 +195,20 @@ public static class AccountEndpoints
                 return Results.Json(new { message = "Davet e-postasındaki bağlantıdan parolanızı belirleyerek hesabınızı etkinleştirin." }, statusCode: StatusCodes.Status403Forbidden);
 
             var isPlatformAdmin = await db.PlatformAdministrators.AsNoTracking().AnyAsync(x => x.UserId == user.Id, cancellationToken);
-            var memberships = await db.CompanyMemberships.AsNoTracking().Where(x => x.UserId == user.Id).ToListAsync(cancellationToken);
+            var memberships = await db.CompanyMemberships.AsNoTracking().Where(x => x.UserId == user.Id &&
+                db.Companies.Any(company => company.Id == x.CompanyId && company.IsActive)).ToListAsync(cancellationToken);
             var membership = request.CompanyId is Guid selected
                 ? memberships.SingleOrDefault(x => x.CompanyId == selected)
                 : memberships.Count == 1 ? memberships[0] : null;
             if (request.CompanyId is not null && membership is null)
                 return Results.Forbid();
+            if (memberships.Count > 1 && request.CompanyId is null)
+            {
+                var companyIds = memberships.Select(x => x.CompanyId).ToArray();
+                var companies = await db.Companies.AsNoTracking().Where(x => companyIds.Contains(x.Id))
+                    .OrderBy(x => x.Name).Select(x => new { id = x.Id, name = x.Name }).ToListAsync(cancellationToken);
+                return Results.Conflict(new { message = "Devam etmek için çalışacağınız şirketi seçin.", companies });
+            }
             if (membership is null && !isPlatformAdmin)
                 return memberships.Count == 0
                     ? Results.Forbid()
