@@ -85,6 +85,58 @@ public static class InventoryRequestEndpoints
             return Results.Ok(new { items = rows, page, pageSize, total });
         }).RequireAuthorization("asset.read");
 
+        api.MapGet("/requests/export.csv", async ([FromQuery] string? q, [FromQuery] string? status,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!Tenant(user, out var companyId)) return Results.Forbid();
+            var query = db.InventoryRequests.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                var normalized = status.Trim();
+                if (normalized is not ("Pending" or "Approved" or "Rejected" or "Cancelled"))
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["status"] = ["Talep durumu geçerli değil."] });
+                query = query.Where(x => x.Status == normalized);
+            }
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                if (term.Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
+                query = query.Where(x => db.Employees.Any(e => e.CompanyId == companyId && e.Id == x.EmployeeId &&
+                    (e.DisplayName.Contains(term) || e.EmployeeNumber.Contains(term))) ||
+                    (x.RequestNote != null && x.RequestNote.Contains(term)) ||
+                    (x.ItemType == "Accessory" && db.Accessories.Any(a => a.CompanyId == companyId && a.Id == x.ItemId && a.Name.Contains(term))) ||
+                    (x.ItemType == "Consumable" && db.Consumables.Any(c => c.CompanyId == companyId && c.Id == x.ItemId && c.Name.Contains(term))));
+            }
+            if (await query.CountAsync(ct) > 10000)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["export"] = ["Dışa aktarım en fazla 10.000 talep içerir; aramayı veya durumu daraltın."] });
+            var rows = await query.OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id).Select(x => new
+            {
+                x.ItemType, x.Quantity, x.Status, x.RequestNote, x.ReviewNote, x.CreatedAt, x.ReviewedAt,
+                employee = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
+                employeeNumber = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault(),
+                item = x.ItemType == "Accessory"
+                    ? db.Accessories.Where(a => a.CompanyId == companyId && a.Id == x.ItemId).Select(a => a.Name).FirstOrDefault()
+                    : db.Consumables.Where(c => c.CompanyId == companyId && c.Id == x.ItemId).Select(c => c.Name).FirstOrDefault(),
+                requestedBy = db.Users.Where(u => u.Id == x.RequestedByUserId).Select(u => u.DisplayName).FirstOrDefault(),
+                reviewedBy = db.Users.Where(u => u.Id == x.ReviewedByUserId).Select(u => u.DisplayName).FirstOrDefault()
+            }).ToListAsync(ct);
+            var csv = new System.Text.StringBuilder("\uFEFF\"Çalışan\",\"Çalışan numarası\",\"Kalem\",\"Tür\",\"Adet\",\"Durum\",\"Talep eden\",\"Talep tarihi (UTC)\",\"Talep notu\",\"Kararı veren\",\"Karar tarihi (UTC)\",\"Karar notu\"\r\n");
+            foreach (var row in rows)
+            {
+                var cells = new[]
+                {
+                    CsvCell(row.employee), CsvCell(row.employeeNumber), CsvCell(row.item),
+                    CsvCell(row.ItemType == "Accessory" ? "Aksesuar" : "Sarf"), CsvCell(row.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                    CsvCell(row.Status switch { "Pending" => "Bekliyor", "Approved" => "Onaylandı", "Rejected" => "Reddedildi", "Cancelled" => "İptal edildi", _ => row.Status }),
+                    CsvCell(row.requestedBy), CsvCell(row.CreatedAt.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture)),
+                    CsvCell(row.RequestNote), CsvCell(row.reviewedBy),
+                    CsvCell(row.ReviewedAt?.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture)), CsvCell(row.ReviewNote)
+                };
+                csv.AppendJoin(',', cells).Append("\r\n");
+            }
+            return Results.File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()), "text/csv; charset=utf-8", $"envantertr-stok-talepleri-{DateTime.UtcNow:yyyyMMdd}.csv");
+        }).RequireAuthorization("asset.read");
+
         api.MapPost("/requests", async (CreateRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Tenant(user, out var companyId) || UserId(user) is not Guid userId) return Results.Forbid();
@@ -204,6 +256,12 @@ public static class InventoryRequestEndpoints
     private static bool Tenant(ClaimsPrincipal user, out Guid companyId) => Guid.TryParse(user.FindFirstValue("company_id"), out companyId);
     private static Guid? UserId(ClaimsPrincipal user) => Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static string CsvCell(string? value)
+    {
+        var safe = value?.Trim() ?? "";
+        if (safe.Length > 0 && safe[0] is '=' or '+' or '-' or '@' or '\t' or '\r') safe = "'" + safe;
+        return "\"" + safe.Replace("\"", "\"\"") + "\"";
+    }
     private sealed record RequestCatalogItem(Guid Id, string Type, string Name, string? Category, string? ModelNumber, string? Location, int Available);
     public sealed record CreateRequest(Guid EmployeeId, string ItemType, Guid ItemId, int Quantity, string? Note);
     public sealed record DecisionRequest(bool Approve, string? Note);
