@@ -51,6 +51,13 @@ Yeni sürüm migration içeriyorsa, doğrulanmış veritabanı yedeğinin dosya 
 
 Betik uygulama servisini durdurur, yeni uygulamadan `--migrate` komutunu çalıştırır, sonra servisi açıp hazır durumunu bekler. Hata olursa eski uygulama dosyalarını geri koyar; **veritabanını yedekten geri yüklemez ve migration'ı geri almaz**. Yedek dosyasının gerçekten doğrulanmış olması operatörün sorumluluğundadır; betik yalnızca dosyanın varlığını kontrol eder.
 
+## Şifreli Windows yedeği
+
+Yönetici PowerShell'de backup.ps1 komutunu çalıştırın.
+
+Betik servisi kısa süre durdurur; pg_dump ile PostgreSQL 17 dökümünü alır; şirket medyası (profil, envanter ve şirket dosyaları) ile Data Protection anahtarlarını aynı arşive ekler. Arşiv PBKDF2-SHA256 (600.000 tur) ile türetilen anahtarlar kullanılarak AES-256-CBC/HMAC-SHA256 ile şifrelenir. Parola iki kez gizli istenir ve yedeğe yazılmaz. Arşiv açılarak parola/MAC, manifest dosya sayıları ve SHA-256 değerleri denetlenir; ayrıca pg_restore --list döküm kataloğunu okuyabildiğini doğrular. Yedek ve SHA-256 yan dosyası varsayılan olarak ACL ile kısıtlı C:\ProgramData\EnvanterTR\backups altına yazılır.
+
+Bu kontrol canlı geri yükleme veya ayrı bir PostgreSQL'e gerçek restore provası değildir. Yedek sunucu içinde kalır; sunucu kaybına karşı başka bir makineye/çevrim dışı ortama ve parolaya ayrı erişim denetimiyle kopyalayın. Windows için doğrulama/izole geri yükleme ve canlı restore aracı henüz teslim edilmedi; bu betik tek başına üretim yedekleme politikası sayılmaz.
 ## Henüz teslim edilmemiş
 
-PostgreSQL otomatik kurulumu ve güvenli rol/veritabanı hazırlığı, migration/ilk yönetici sihirbazı, DPAPI veya Windows secret store, özel PKI sertifika yetkilendirmesinin otomasyonu, firewall onay akışı, imzalı paket/otomatik güncelleme, şifreli Windows yedeklemesi, gerçek Windows Server kurulumu-güncelleme-kurtarma kabul testi ve migration rollback'i bu ilk taslakta yoktur.
+PostgreSQL otomatik kurulumu ve güvenli rol/veritabanı hazırlığı, migration/ilk yönetici sihirbazı, DPAPI veya Windows secret store, özel PKI sertifika yetkilendirmesinin otomasyonu, firewall onay akışı, imzalı paket/otomatik güncelleme, offsite saklama/retention/uyarılar, Windows izole restore provası ve canlı restore, gerçek Windows Server kurulumu-güncelleme-kurtarma kabul testi ve migration rollback'i bu ilk taslakta yoktur.

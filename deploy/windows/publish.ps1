@@ -22,6 +22,7 @@ if (-not (Test-Path $exe)) { throw "Publish completed without expected executabl
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "install.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "migrate.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "disable-bootstrap.ps1") -Destination $output -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot "backup.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "update.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "README.md") -Destination $output -Force
 Write-Output "Windows x64 package ready: $output"
