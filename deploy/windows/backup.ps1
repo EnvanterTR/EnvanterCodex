@@ -14,6 +14,9 @@ $configPath = Join-Path $appPath "appsettings.Production.json"
 if (-not (Test-Path -LiteralPath $configPath)) { throw "Production configuration is missing." }
 if (-not (Test-Path -LiteralPath (Join-Path $PgBinDirectory "pg_dump.exe"))) { throw "PostgreSQL 17 pg_dump.exe was not found at $PgBinDirectory." }
 if (-not (Test-Path -LiteralPath (Join-Path $PgBinDirectory "pg_restore.exe"))) { throw "PostgreSQL 17 pg_restore.exe was not found at $PgBinDirectory." }
+foreach ($toolName in "initdb.exe","pg_ctl.exe","createdb.exe","psql.exe") {
+    if (-not (Test-Path -LiteralPath (Join-Path $PgBinDirectory $toolName))) { throw "PostgreSQL recovery tool is missing: $toolName" }
+}
 
 $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
 $connection = [System.Data.Common.DbConnectionStringBuilder]::new()
@@ -73,8 +76,12 @@ $zipPath = Join-Path $work "payload.zip"
 $cipherPath = Join-Path $work "cipher.bin"
 $decryptedZip = Join-Path $work "verified.zip"
 $expandedPath = Join-Path $work "verified"
+$previewData = Join-Path $work "preview-pgdata"
+$previewLog = Join-Path $work "preview-postgres.log"
+$previewPasswordFile = Join-Path $work "preview-postgres.pass"
 $tempBackup = "$finalPath.partial"
 $serviceWasRunning = $false
+$previewStarted = $false
 
 function Add-FileToHmac([Security.Cryptography.HMAC]$Hmac, [string]$Path, [long]$Length = -1) {
     $stream = [IO.File]::OpenRead($Path)
@@ -310,13 +317,80 @@ try {
     }
     if ([int]$verifiedManifest.fileCount -ne @($verifiedManifest.files).Count) { throw "Backup manifest file count does not match." }
 
+    # Restore the authenticated dump into a fresh, loopback-only PostgreSQL cluster.
+    # This cluster is temporary and distinct from the production PostgreSQL service.
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,0)
+    $listener.Start()
+    $previewPort = $listener.LocalEndpoint.Port
+    $listener.Stop()
+    $initdb = Join-Path $PgBinDirectory "initdb.exe"
+    $pgCtl = Join-Path $PgBinDirectory "pg_ctl.exe"
+    $createDb = Join-Path $PgBinDirectory "createdb.exe"
+    $psql = Join-Path $PgBinDirectory "psql.exe"
+    function Invoke-BackupTool([string]$Executable,[string[]]$Arguments,[hashtable]$Environment = @{}) {
+        $toolStart = [Diagnostics.ProcessStartInfo]::new()
+        $toolStart.FileName = $Executable
+        $toolStart.Arguments = (($Arguments | ForEach-Object { Quote-Argument $_ }) -join " ")
+        $toolStart.UseShellExecute = $false
+        $toolStart.CreateNoWindow = $true
+        $toolStart.RedirectStandardOutput = $true
+        $toolStart.RedirectStandardError = $true
+        foreach ($key in $Environment.Keys) { $toolStart.EnvironmentVariables[$key] = [string]$Environment[$key] }
+        $tool = [Diagnostics.Process]::Start($toolStart)
+        $stdoutTask = $tool.StandardOutput.ReadToEndAsync()
+        $stderrTask = $tool.StandardError.ReadToEndAsync()
+        $tool.WaitForExit()
+        $stdout = $stdoutTask.Result
+        $stderr = $stderrTask.Result
+        if ($tool.ExitCode -ne 0) { throw "$([IO.Path]::GetFileName($Executable)) failed with exit code $($tool.ExitCode): $stderr" }
+        return $stdout
+    }
+    $previewPasswordBytes = New-Object byte[] 48
+    $previewRng = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try { $previewRng.GetBytes($previewPasswordBytes) } finally { $previewRng.Dispose() }
+    $previewPassword = [Convert]::ToBase64String($previewPasswordBytes)
+    [Array]::Clear($previewPasswordBytes,0,$previewPasswordBytes.Length)
+    Set-Content -LiteralPath $previewPasswordFile -Value $previewPassword -Encoding ASCII
+    [void](Invoke-BackupTool $initdb @(
+        "-D",$previewData,"-U","postgres","--auth-local=scram-sha-256",
+        "--auth-host=scram-sha-256","--pwfile=$previewPasswordFile","--encoding=UTF8"
+    ))
+    Remove-Item -LiteralPath $previewPasswordFile -Force
+    $serverOptions = "-h 127.0.0.1 -p $previewPort -c listen_addresses=127.0.0.1 -c fsync=off -c synchronous_commit=off -c full_page_writes=off -c max_connections=10 -c shared_buffers=32MB -c work_mem=4MB"
+    $previewStarted = $true
+    [void](Invoke-BackupTool $pgCtl @("start","-D",$previewData,"-l",$previewLog,"-o",$serverOptions,"-w","-t","90"))
+    $previewStarted = $true
+    $previewEnvironment = @{ PGPASSWORD = $previewPassword }
+    [void](Invoke-BackupTool $createDb @("--host=127.0.0.1","--port=$previewPort","--username=postgres","envantertr_restore_preview") $previewEnvironment)
+    [void](Invoke-BackupTool (Join-Path $PgBinDirectory "pg_restore.exe") @(
+        "--exit-on-error","--single-transaction","--no-owner","--no-privileges",
+        "--host=127.0.0.1","--port=$previewPort","--username=postgres",
+        "--dbname=envantertr_restore_preview",(Join-Path $expandedPath "database.dump")
+    ) $previewEnvironment)
+    $migrationCountText = Invoke-BackupTool $psql @(
+        "-X","-A","-t","-v","ON_ERROR_STOP=1","--host=127.0.0.1",
+        "--port=$previewPort","--username=postgres","--dbname=envantertr_restore_preview",
+        "--command",'select count(*) from public."__EFMigrationsHistory";'
+    ) $previewEnvironment
+    $migrationCount = 0
+    if (-not [int]::TryParse($migrationCountText.Trim(),[ref]$migrationCount) -or $migrationCount -lt 1) {
+        throw "Isolated database restore did not produce a valid EF migration history."
+    }
+
     Move-Item -LiteralPath $tempBackup -Destination $finalPath
     $digest = (Get-FileHash -LiteralPath $finalPath -Algorithm SHA256).Hash.ToLowerInvariant()
     Set-Content -LiteralPath $checksumPath -Value "$digest *$backupName" -Encoding ASCII
     Write-Output "Encrypted backup created and verified: $finalPath"
     Write-Output "SHA-256: $digest"
-    Write-Warning "The passphrase is not stored. Keep it offline and separately from this backup. This verifies archive authentication, file hashes, and pg_restore listing; it does not perform a live database restore."
+    Write-Output "Isolated PostgreSQL restore preview passed; migration records: $migrationCount"
+    Write-Warning "The passphrase is not stored. Keep it offline and separately from this backup. The recovery preview used a temporary loopback-only PostgreSQL cluster, not the live database."
 } finally {
+    if ($previewStarted -and (Test-Path -LiteralPath $previewData)) {
+        try { & (Join-Path $PgBinDirectory "pg_ctl.exe") stop -D $previewData -m fast -w -t 60 | Out-Null } catch { Write-Warning "Temporary PostgreSQL preview did not stop cleanly: $previewData" }
+    }
+    if (Test-Path -LiteralPath $previewPasswordFile) { Remove-Item -LiteralPath $previewPasswordFile -Force }
+    $previewPassword = $null
     Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
     if ($serviceWasRunning) { Start-Service -Name $ServiceName }
     if ($backupPassword) { [Array]::Clear($backupPassword.ToCharArray(),0,$backupPassword.Length); $backupPassword = $null }
