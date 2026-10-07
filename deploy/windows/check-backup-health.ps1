@@ -1,4 +1,5 @@
 param(
+    [string]$DataRoot = "$env:ProgramData\EnvanterTR",
     [string]$OutputDirectory = "$env:ProgramData\EnvanterTR\backups",
     [string]$MirrorDirectory,
     [ValidateRange(1,8760)][int]$MaxAgeHours = 36,
@@ -61,6 +62,13 @@ try {
     Write-Output "Backup health check passed: $summary"
 } catch {
     $failure = $_.Exception.Message -replace '[\r\n]+',' '
-    try { Add-HealthLog "FAIL" $failure } catch { throw "Backup health check failed and its status log could not be written: $failure; $($_.Exception.Message)" }
+    $healthLogFailure = $null
+    try { Add-HealthLog "FAIL" $failure } catch { $healthLogFailure = $_.Exception.Message -replace '[\r\n]+',' ' }
+    $alertScript = Join-Path $PSScriptRoot "send-backup-alert.ps1"
+    if (Test-Path -LiteralPath $alertScript -PathType Leaf) {
+        try { & $alertScript -DataRoot $DataRoot -Event "backup_health_failed" -Source "Daily Backup Health Check" }
+        catch { Write-Warning "Backup health check failed and the optional alert handler could not run." }
+    }
+    if ($healthLogFailure) { throw "Backup health check failed: $failure; its status log could not be written: $healthLogFailure" }
     throw "Backup health check failed: $failure"
 }
