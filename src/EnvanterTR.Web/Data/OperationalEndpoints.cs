@@ -1198,21 +1198,14 @@ public static class OperationalEndpoints
         }).RequireAuthorization("asset.read");
 
         api.MapGet("/audit", async ([FromQuery] int page, [FromQuery] int pageSize,
-            [FromQuery] string? q, [FromQuery] string? targetType,
+            [FromQuery] string? q, [FromQuery] string? targetType, DateOnly? from, DateOnly? to,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
+            if (!ValidateAuditFilters(q, targetType, from, to, out var filterError)) return filterError!;
             page = Math.Max(page, 1);
             pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
-            var query = db.AuditEntries.AsNoTracking().Where(x => x.CompanyId == companyId);
-            if (!string.IsNullOrWhiteSpace(targetType)) query = query.Where(x => x.TargetType == targetType.Trim());
-            if (!string.IsNullOrWhiteSpace(q))
-            {
-                var term = q.Trim();
-                if (term.Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
-                query = query.Where(x => x.Action.Contains(term) || (x.Details != null && x.Details.Contains(term)) ||
-                    db.Users.Any(u => u.Id == x.ActorUserId && u.DisplayName.Contains(term)));
-            }
+            var query = FilterAuditEntries(db, companyId, q, targetType, from, to);
             var total = await query.CountAsync(cancellationToken);
             var entries = await query.OrderByDescending(x => x.OccurredAt).Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(x => new
@@ -1221,6 +1214,39 @@ public static class OperationalEndpoints
                     ActorName = db.Users.Where(u => u.Id == x.ActorUserId).Select(u => u.DisplayName).FirstOrDefault()
                 }).ToListAsync(cancellationToken);
             return Results.Ok(new { entries, total, page, pageSize });
+        }).RequireAuthorization("settings.manage");
+
+        api.MapGet("/audit/export.csv", async (string? q, string? targetType, DateOnly? from, DateOnly? to,
+            HttpContext context, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out _)) { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
+            if (!ValidateAuditFilters(q, targetType, from, to, out var filterError))
+            {
+                await filterError!.ExecuteAsync(context);
+                return;
+            }
+            var query = FilterAuditEntries(db, companyId, q, targetType, from, to);
+            var total = await query.CountAsync(cancellationToken);
+            context.Response.StatusCode = StatusCodes.Status200OK;
+            context.Response.ContentType = "text/csv; charset=utf-8";
+            context.Response.Headers["Content-Disposition"] = $"attachment; filename=envantertr-denetim-kayitlari-{DateTime.UtcNow:yyyyMMdd}.csv";
+            context.Response.Headers["Cache-Control"] = "no-store";
+            context.Response.Headers["X-Total-Count"] = total.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            await using var writer = new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
+            await writer.WriteLineAsync("Tarih;İşlemi yapan;Kayıt türü;Kayıt kimliği;İşlem;Ayrıntı".AsMemory(), cancellationToken);
+            var rows = query.OrderByDescending(x => x.OccurredAt).ThenBy(x => x.Id)
+                .Select(x => new { x.OccurredAt, x.TargetType, x.TargetId, x.Action, x.Details,
+                    ActorName = db.Users.Where(u => u.Id == x.ActorUserId).Select(u => u.DisplayName).FirstOrDefault() });
+            var written = 0;
+            await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
+            {
+                var line = string.Join(';', new[] { Cell(row.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss 'UTC'", System.Globalization.CultureInfo.InvariantCulture)),
+                    Cell(row.ActorName ?? "Silinmiş kullanıcı"), Cell(row.TargetType), Cell(row.TargetId?.ToString()),
+                    Cell(row.Action), Cell(row.Details) });
+                await writer.WriteLineAsync(line.AsMemory(), cancellationToken);
+                if (++written % 500 == 0) await writer.FlushAsync(cancellationToken);
+            }
+            await writer.FlushAsync(cancellationToken);
         }).RequireAuthorization("settings.manage");
 
         api.MapGet("/members", async (ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
@@ -1490,6 +1516,41 @@ public static class OperationalEndpoints
         var safe = value?.Trim() ?? "";
         if (safe.Length > 0 && safe[0] is '=' or '+' or '-' or '@' or '\t' or '\r') safe = "'" + safe;
         return "\"" + safe.Replace("\"", "\"\"") + "\"";
+    }
+
+    private static bool ValidateAuditFilters(string? q, string? targetType, DateOnly? from, DateOnly? to, out IResult? error)
+    {
+        var errors = new Dictionary<string, string[]>();
+        if (q?.Trim().Length > 120) errors["q"] = ["Arama metni 120 karakteri aşamaz."];
+        if (targetType?.Trim().Length > 80) errors["targetType"] = ["Kayıt türü 80 karakteri aşamaz."];
+        if (from.HasValue && to.HasValue && from.Value > to.Value) errors["to"] = ["Bitiş tarihi başlangıç tarihinden önce olamaz."];
+        if (to == DateOnly.MaxValue) errors["to"] = ["Bitiş tarihi desteklenen aralığın dışında."];
+        error = errors.Count == 0 ? null : Results.ValidationProblem(errors);
+        return error is null;
+    }
+
+    private static IQueryable<AuditEntry> FilterAuditEntries(AppDbContext db, Guid companyId, string? q,
+        string? targetType, DateOnly? from, DateOnly? to)
+    {
+        var query = db.AuditEntries.AsNoTracking().Where(x => x.CompanyId == companyId);
+        if (!string.IsNullOrWhiteSpace(targetType)) query = query.Where(x => x.TargetType == targetType.Trim());
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var term = q.Trim();
+            query = query.Where(x => x.Action.Contains(term) || (x.Details != null && x.Details.Contains(term)) ||
+                db.Users.Any(u => u.Id == x.ActorUserId && u.DisplayName.Contains(term)));
+        }
+        if (from.HasValue)
+        {
+            var start = new DateTimeOffset(from.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+            query = query.Where(x => x.OccurredAt >= start);
+        }
+        if (to.HasValue)
+        {
+            var endExclusive = new DateTimeOffset(to.Value.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+            query = query.Where(x => x.OccurredAt < endExclusive);
+        }
+        return query;
     }
 
     private sealed record SelectedAssetExportRow(string AssetTag, string Name, string Status, string? Category,
