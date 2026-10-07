@@ -24,6 +24,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     private readonly Guid _otherCompanyId = Guid.NewGuid();
     private readonly Guid _otherCompanyAssetId = Guid.NewGuid();
     private string? _previousConnectionString;
+    private string? _previousForwardedHeadersSetting;
     private WebApplicationFactory<Program>? _factory;
     private HttpClient? _client;
 
@@ -34,12 +35,18 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             throw new InvalidOperationException("Set ENVANTERTR_SECURITY_TEST_CONNECTION to the disposable acceptance-test PostgreSQL database.");
 
         _previousConnectionString = Environment.GetEnvironmentVariable("ConnectionStrings__EnvanterTR");
+        _previousForwardedHeadersSetting = Environment.GetEnvironmentVariable("ForwardedHeaders__Enabled");
         Environment.SetEnvironmentVariable("ConnectionStrings__EnvanterTR", connectionString);
+        Environment.SetEnvironmentVariable("ForwardedHeaders__Enabled", "true");
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Development");
             builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
-                new Dictionary<string, string?> { ["ConnectionStrings:EnvanterTR"] = connectionString }));
+                new Dictionary<string, string?>
+                {
+                    ["ConnectionStrings:EnvanterTR"] = connectionString,
+                    ["ForwardedHeaders:Enabled"] = "true"
+                }));
             builder.ConfigureTestServices(services => services.AddAuthentication(options =>
                 {
                     options.DefaultAuthenticateScheme = TestScheme;
@@ -77,11 +84,36 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         await db.SaveChangesAsync();
     }
 
+    [Fact]
+    public async Task Login_rate_limit_partitions_by_forwarded_client_ip()
+    {
+        using var csrfResponse = await _client!.GetAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(requestToken));
+
+        for (var attempt = 0; attempt < 10; attempt++)
+        {
+            using var response = await SendLoginAsync("203.0.113.10", requestToken!);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        using (var limitedResponse = await SendLoginAsync("203.0.113.10", requestToken!))
+            Assert.Equal(HttpStatusCode.TooManyRequests, limitedResponse.StatusCode);
+
+        // A different client address must receive its own bucket even though
+        // both requests pass through the same TestServer/reverse-proxy hop.
+        using var otherClientResponse = await SendLoginAsync("203.0.113.11", requestToken!);
+        Assert.Equal(HttpStatusCode.Unauthorized, otherClientResponse.StatusCode);
+    }
+
     public async Task DisposeAsync()
     {
         _client?.Dispose();
         if (_factory is not null) await _factory.DisposeAsync();
         Environment.SetEnvironmentVariable("ConnectionStrings__EnvanterTR", _previousConnectionString);
+        Environment.SetEnvironmentVariable("ForwardedHeaders__Enabled", _previousForwardedHeadersSetting);
     }
 
     [Fact]
@@ -141,6 +173,18 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         request.Headers.Add("X-Acceptance-Company", (companyId ?? _companyId).ToString());
         request.Headers.Add("X-Acceptance-Role", "admin");
         return await _client!.SendAsync(request);
+    }
+
+    private Task<HttpResponseMessage> SendLoginAsync(string clientIp, string requestToken)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/session/login")
+        {
+            Content = new StringContent("{\"email\":\"missing@example.invalid\",\"password\":\"invalid\"}",
+                System.Text.Encoding.UTF8, "application/json")
+        };
+        request.Headers.Add("X-Forwarded-For", clientIp);
+        request.Headers.Add("X-CSRF-TOKEN", requestToken);
+        return _client!.SendAsync(request);
     }
 }
 

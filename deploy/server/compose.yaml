@@ -31,6 +31,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_HTTP_PORTS: 8080
+      ForwardedHeaders__Enabled: "true"
       DataProtection__KeysPath: /var/lib/envantertr/data-protection-keys
       ConnectionStrings__EnvanterTR: "Host=database;Port=5432;Database=envantertr;Username=envantertr;Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
       Setup__BootstrapToken: ${SETUP_BOOTSTRAP_TOKEN:-}

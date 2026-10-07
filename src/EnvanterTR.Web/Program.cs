@@ -10,6 +10,11 @@ using System.Threading.RateLimiting;
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseWindowsService();
 
+// The Linux production profile exposes the app only to Caddy on its private
+// Compose network. Caddy's rightmost X-Forwarded-For entry is the client IP.
+// Keep this opt-in: never trust caller-supplied forwarding headers on a public app port.
+var trustProxyForwardedFor = builder.Configuration.GetValue<bool>("ForwardedHeaders:Enabled");
+
 var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
 if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
 {
@@ -28,16 +33,36 @@ builder.Services.AddAntiforgery(options =>
 });
 builder.Services.AddAuthentication();
 builder.Services.AddAuthorization();
-builder.Services.AddRateLimiter(options => options.AddPolicy("login", context =>
-    RateLimitPartition.GetFixedWindowLimiter(
-        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy("login", context =>
+    {
+        var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        if (trustProxyForwardedFor)
         {
-            PermitLimit = 10,
-            Window = TimeSpan.FromMinutes(5),
-            QueueLimit = 0,
-            AutoReplenishment = true
-        })));
+            var forwarded = context.Request.Headers["X-Forwarded-For"].ToString()
+                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .LastOrDefault();
+            if (System.Net.IPAddress.TryParse(forwarded, out var parsedForwardedIp))
+                clientIp = parsedForwardedIp.ToString();
+        }
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            clientIp,
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            });
+    });
+    options.OnRejected = (context, _) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        return ValueTask.CompletedTask;
+    };
+});
 
 var connectionString = builder.Configuration.GetConnectionString("EnvanterTR");
 if (!string.IsNullOrWhiteSpace(connectionString))

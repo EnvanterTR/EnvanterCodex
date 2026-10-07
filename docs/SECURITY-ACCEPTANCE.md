@@ -18,5 +18,6 @@ Senaryo aynı eski `admin` kimlik bilgilerini her istekte tekrar gönderir ve ve
 - Varlık listesi yalnız geçerli şirkete ait kaydı içerir; diğer şirkete ait varlık kimliğiyle ayrıntı isteği `404` döner.
 - Şirket üyeliği kaldırıldığında sonraki istek `401` döner.
 - Üyelik yeniden eklenip şirket devre dışı bırakıldığında sonraki istek `401` döner.
+- Linux production profilindeki forwarded-header ayarıyla giriş hız sınırı gerçek istemci IP'sine göre bölünür: aynı IP 10 deneme sonrasında `429` alırken ayrı IP kendi 10 denemelik hakkını korur.
 
 Bu, oturumdaki şirket üyeliğinin/rolünün güncel veritabanı durumuyla eşitlenmesine yönelik dar bir regresyon kontrolüdür. Tam izin matrisi, şirketler arası veri izolasyonu, kimlik/parola kurtarma, yük dengeleme ve üretim Windows/Linux sunucu kabulünün yerine geçmez.

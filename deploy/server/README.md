@@ -18,7 +18,7 @@ Kaynak arşivini sunucuya aktarın ve komutu kaynak ağacının içinden çalı�
 sudo bash deploy/server/install.sh envanter.sirketiniz.com
 ```
 
-Kurulum betiği root-only `/etc/envantertr/server.env` yapılandırması ile 256 bit rastgele PostgreSQL, ilk şirket sahibi, platform yöneticisi ve yedek parola sırları üretir; kaynak kopyasını `/opt/envantertr/releases/` altına yerleştirir; PostgreSQL'i başlatır; migration'ları açıkça uygular; uygulama ve Caddy'yi açar; HTTPS üzerinden `/api/status` yanıtının `ready` olmasını bekler. Kurulum veritabanı veya medya volume'larını silmez.
+Kurulum betiği root-only `/etc/envantertr/server.env` yapılandırması ile 256 bit rastgele PostgreSQL, ilk şirket sahibi, platform yöneticisi ve yedek parola sırları üretir; kaynak kopyasını `/opt/envantertr/releases/` altına yerleştirir; PostgreSQL'i başlatır; migration'ları açıkça uygular; uygulama ve Caddy'yi açar; HTTPS üzerinden `/api/status` yanıtının `ready` olmasını bekler. Uygulama konteyneri dış porta yayımlanmadığından Caddy tek HTTP girişidir; bu profilde tek bir forwarded hop güvenilir kabul edilir ve giriş deneme sınırı Caddy'nin aktardığı istemci IP'sine göre ayrılır. Kurulum veritabanı veya medya volume'larını silmez.
 
 İlk şirket sahibi hesabını `https://envanter.sirketiniz.com/setup.html` üzerinden oluşturun. Kurulum betiğinin gösterdiği `awk` komutuyla yalnızca gerekli şirket anahtarını okuyup güvenli biçimde kullanın. İlk şirket/platform hesapları kurulduktan sonra bootstrap anahtarlarını yapılandırmadan kaldırın; ardından web hizmetini yeniden oluşturun:
 
