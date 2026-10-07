@@ -89,6 +89,9 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         db.InventoryComponents.AddRange(
             new InventoryComponent { Id = _ownComponentId, CompanyId = _companyId, Name = $"OWN-SECURITY-COMPONENT-{_userId:N}", TotalQuantity = 5 },
             new InventoryComponent { Id = _otherCompanyComponentId, CompanyId = _otherCompanyId, Name = $"OTHER-SECURITY-COMPONENT-{_userId:N}", TotalQuantity = 7 });
+        db.Employees.AddRange(
+            new Employee { CompanyId = _companyId, EmployeeNumber = $"OWN-{_userId:N}", DisplayName = "Own dashboard employee" },
+            new Employee { CompanyId = _otherCompanyId, EmployeeNumber = $"OTHER-{_userId:N}", DisplayName = "Other dashboard employee" });
         db.AccessoryMovements.AddRange(
             new AccessoryMovement { CompanyId = _companyId, AccessoryId = _ownAccessoryId, MovementType = "Received", Quantity = 2 },
             new AccessoryMovement { CompanyId = _otherCompanyId, AccessoryId = _otherCompanyAccessoryId, MovementType = "Received", Quantity = 2 });
@@ -330,6 +333,21 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(3, components[0].GetProperty("remaining").GetInt32());
         Assert.DoesNotContain(accessories, item => item.GetProperty("accessoryName").GetString()?.StartsWith("OTHER-SECURITY-", StringComparison.Ordinal) == true);
         Assert.DoesNotContain(components, item => item.GetProperty("componentName").GetString()?.StartsWith("OTHER-SECURITY-", StringComparison.Ordinal) == true);
+    }
+
+    [Fact]
+    public async Task Dashboard_inventory_counts_are_scoped_to_the_selected_company()
+    {
+        using var response = await SendAsAdminAsync("/api/dashboard/summary");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var summary = payload.RootElement;
+        Assert.Equal(1, summary.GetProperty("totalAssets").GetInt32());
+        Assert.Equal(1, summary.GetProperty("softwareLicenses").GetInt32());
+        Assert.Equal(1, summary.GetProperty("accessories").GetInt32());
+        Assert.Equal(1, summary.GetProperty("consumables").GetInt32());
+        Assert.Equal(1, summary.GetProperty("components").GetInt32());
+        Assert.Equal(1, summary.GetProperty("activeEmployees").GetInt32());
     }
 
     private async Task<HttpResponseMessage> SendAsAdminAsync(string path, Guid? companyId = null)

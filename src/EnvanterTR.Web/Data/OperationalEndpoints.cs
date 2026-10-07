@@ -1447,6 +1447,10 @@ public static class OperationalEndpoints
                 assignedAssets = statusCounts.GetValueOrDefault(AssetStatuses.Deployed),
                 maintenanceAssets = statusCounts.GetValueOrDefault(AssetStatuses.Maintenance),
                 archivedAssets = statusCounts.GetValueOrDefault(AssetStatuses.Archived),
+                softwareLicenses = await db.SoftwareLicenses.CountAsync(x => x.CompanyId == companyId, cancellationToken),
+                accessories = await db.Accessories.CountAsync(x => x.CompanyId == companyId, cancellationToken),
+                consumables = await db.Consumables.CountAsync(x => x.CompanyId == companyId, cancellationToken),
+                components = await db.InventoryComponents.CountAsync(x => x.CompanyId == companyId, cancellationToken),
                 activeEmployees = await db.Employees.CountAsync(x => x.CompanyId == companyId && x.IsActive, cancellationToken),
                 recentActivityCount = await db.AssetEvents.CountAsync(x => x.CompanyId == companyId && x.OccurredAt >= DateTimeOffset.UtcNow.AddDays(-7), cancellationToken)
             };
