@@ -22,7 +22,7 @@ SFTP_KNOWN_HOSTS_FILE="$(read_config BACKUP_SFTP_KNOWN_HOSTS_FILE || true)"
 [[ "$BACKUP_ROOT" = /* && "$BACKUP_ROOT" != / ]] || { echo 'BACKUP_ROOT güvenli bir mutlak yol olmalıdır.' >&2; exit 1; }
 [[ "$RETENTION_DAYS" =~ ^[1-9][0-9]{0,3}$ ]] || { echo 'BACKUP_RETENTION_DAYS 1-999 arasında olmalıdır.' >&2; exit 1; }
 [[ -f "$PASSWORD_FILE" && -r "$PASSWORD_FILE" ]] || { echo 'Şifreleme parola dosyası eksik veya okunamıyor.' >&2; exit 1; }
-[[ "$(stat -c '%a' "$PASSWORD_FILE")" == 600 ]] || { echo 'Şifreleme parola dosyası chmod 600 ile korunmalıdır.' >&2; exit 1; }
+[[ "$(stat -c '%u:%a' "$PASSWORD_FILE")" == 0:600 ]] || { echo 'Şifreleme parola dosyası root sahipliğinde ve chmod 600 ile korunmalıdır.' >&2; exit 1; }
 install -d -m 0700 "$BACKUP_ROOT"
 BACKUP_ROOT="$(cd -- "$BACKUP_ROOT" && pwd -P)"
 STAMP="$(date -u +%Y%m%d-%H%M%S)"

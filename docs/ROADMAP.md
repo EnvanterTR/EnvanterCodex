@@ -26,7 +26,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 ### P0 — Güvenli geliştirme ve sürüm temeli
 
 - Kimlik doğrulamalı iş akışlarının kabul doğrulaması; şirketler arası veri erişimi, izinler, eşzamanlı değişiklikler ve parola yenileme için güvenlik incelemesi.
-- Üretim ölçeğinde yedekleme/izleme, güvenli anahtar yaşam döngüsü, doğrulamalı PostgreSQL geri yükleme akışı, geri alma ve düzenli kurtarma tatbikatı. Yerel geliştirme için şifreli günlük zamanlayıcı; Linux sunucu profili için doğrulama sonrası isteğe bağlı SFTP kopyası eklendi. Gerçek uzak hedef doğrulaması, hata alarmı, işletimsel geri yükleme tatbikatı ve çevrim dışı parola/anahtar kurtarma planı hâlâ gerekli.
+- Üretim ölçeğinde yedekleme/izleme, güvenli anahtar yaşam döngüsü, doğrulamalı PostgreSQL geri yükleme akışı, geri alma ve düzenli kurtarma tatbikatı. Yerel geliştirme için şifreli günlük zamanlayıcı; Linux sunucu profili için doğrulama sonrası isteğe bağlı SFTP kopyası ve uzak yedekten SHA-256/şifre/izole prova doğrulamalı indirme aracı eklendi. Gerçek uzak hedef doğrulaması, hata alarmı, işletimsel geri yükleme tatbikatı ve çevrim dışı parola/anahtar kurtarma planı hâlâ gerekli.
 - Özel `EnvanterTR/EnvanterCodex` deposu kaynak kodun yayımlama hedefidir; doğrulanan yerel değişiklikler `origin/main` dalına gönderilir. Yayımdan önce dal ve çalışma ağacı durumu kontrol edilmelidir.
 - Lisans ve üçüncü taraf bağımlılık envanteri yayıma çıkmadan önce gözden geçirilmeli; ürün adı ve görünümü, lisans/attribution yükümlülüklerini gizlemek için kullanılmamalı.
 

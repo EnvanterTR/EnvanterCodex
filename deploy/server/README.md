@@ -45,6 +45,15 @@ Yedek betiği veritabanı dökümünü, şirket medya volume'unu (profil ve enva
 
 Sunucudan ayrı SFTP kopyası isteğe bağlıdır. Dört `BACKUP_SFTP_*` ayarının tümünü `/etc/envantertr/server.env` içinde tanımlayın: hedef `user@host`, önceden oluşturulmuş uzak mutlak dizin, root sahipli `chmod 600` özel anahtar ve root sahipli, grup/diğer kullanıcıların yazamadığı, sunucu anahtarını önceden sabitleyen `known_hosts` dosyası. SFTP anahtarını çevrim dışı/başka sunucuda üretin; parolayı veya özel anahtarı bu depoya eklemeyin. Yedek tamamlanıp yerel kurtarma provası geçtikten sonra arşiv ve `.sha256` dosyası SFTP'ye geçici adla aktarılır, son ada çevrilir, geri indirilir ve byte-byte karşılaştırılır. SHA-256 yan dosyası arşiv adını göreli tutar; kurtarma makinesinde `sha256sum -c yedek.etbackup.sha256` ile doğrulanabilir. Uzak sunucuya erişim veya doğrulama başarısız olursa işlem hata verir, yerel yedek korunur ve yerel saklama temizliği atlanır. Uzak saklama süresi/izleme politikası SFTP sunucusunda ayrıca ayarlanmalıdır; otomatik arıza bildirimi henüz yoktur.
 
+Sunucu tamamen kaybolduysa aynı SFTP ayarlarını kurtarma sunucusundaki `/etc/envantertr/server.env` dosyasına ve yedek parola dosyasına güvenli biçimde sağlayın. Yedek adını uzak dizin listesinden alıp SHA-256, şifre ve izole kurtarma provasından geçirerek indirin:
+
+```bash
+sudo bash /opt/envantertr/current/deploy/server/fetch-sftp-backup.sh \
+  envantertr-server-YYYYMMDD-HHMMSS-XXXXXXXX.etbackup
+```
+
+Komut doğrulamadan önce yedeği canlı sisteme taşımaz veya var olan yerel dosyanın üzerine yazmaz. Başarılı indirmeden sonra normal `restore.sh` akışı için yeni sunucu kurulmuş ve `ready` durumda olmalıdır.
+
 Yeni kaynak sürümünü sunucuya aktarın ve `update.sh`'yi o ağacın içinden çalıştırın:
 
 ```bash
