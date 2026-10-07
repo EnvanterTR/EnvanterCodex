@@ -278,13 +278,14 @@ public static class ConsumableEndpoints
             return Results.Conflict(new { isValid = false, existingMatches, errors = new[] { $"Şirkette aynı ad/ürün numarası bileşiminde {existingMatches} kayıt var. Yinelenen stok açılmaması için dosya reddedildi." } });
         var locationPaths = await AssetEndpoints.GetActiveLocationPathMapAsync(db, companyId, ct);
         var defaultLocation = await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, ct);
+        var defaultLocationApplied = defaultLocation is null ? 0 : parsed.Count(x => x.Location is null);
         foreach (var item in parsed)
         {
             item.Location ??= defaultLocation;
             if (item.Location is not null && locationPaths.TryGetValue(item.Location, out var locationCatalogId)) item.LocationCatalogId = locationCatalogId;
         }
-        if (!commit) return Results.Ok(new { isValid = true, rowCount = parsed.Count, errors = Array.Empty<string>(),
-            message = $"{parsed.Count:N0} yeni sarf kaydı doğrulandı. Önizleme hiçbir kayıt eklemedi." });
+        if (!commit) return Results.Ok(new { isValid = true, rowCount = parsed.Count, defaultLocationApplied, errors = Array.Empty<string>(),
+            message = $"{parsed.Count:N0} yeni sarf kaydı doğrulandı. Varsayılan konum {defaultLocationApplied:N0} boş satıra uygulanacak. Önizleme hiçbir kayıt eklemedi." });
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         var latestExisting = await db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId &&

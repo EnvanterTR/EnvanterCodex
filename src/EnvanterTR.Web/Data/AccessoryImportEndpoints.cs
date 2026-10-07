@@ -63,12 +63,13 @@ public static class AccessoryImportEndpoints
             return Results.Conflict(new { isValid = false, errors = new[] { "Şirkette aynı ad veya ürün no ile aksesuar bulundu. Yinelenen kayıt eklenmedi." } });
         var locationPaths = await AssetEndpoints.GetActiveLocationPathMapAsync(db, companyId, ct);
         var defaultLocation = await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, ct);
+        var defaultLocationApplied = defaultLocation is null ? 0 : items.Count(x => x.Location is null);
         foreach (var item in items)
         {
             item.Location ??= defaultLocation;
             if (item.Location is not null && locationPaths.TryGetValue(item.Location, out var locationCatalogId)) item.LocationCatalogId = locationCatalogId;
         }
-        if (!commit) return Results.Ok(new { isValid = true, rowCount = items.Count, errors = Array.Empty<string>(), message = $"{items.Count:N0} yeni aksesuar doğrulandı. Önizleme kayıt eklemedi." });
+        if (!commit) return Results.Ok(new { isValid = true, rowCount = items.Count, defaultLocationApplied, errors = Array.Empty<string>(), message = $"{items.Count:N0} yeni aksesuar doğrulandı. Varsayılan konum {defaultLocationApplied:N0} boş satıra uygulanacak. Önizleme kayıt eklemedi." });
         await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         var current = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && (upperNames.Contains(x.Name.ToUpper()) || x.ItemNumber != null && upperNos.Contains(x.ItemNumber.ToUpper()))).Select(x => new { x.Name, x.ItemNumber }).ToListAsync(ct);
         if (current.Any(x => items.Any(y => string.Equals(x.Name, y.Name, StringComparison.OrdinalIgnoreCase) || y.ItemNumber != null && string.Equals(x.ItemNumber, y.ItemNumber, StringComparison.OrdinalIgnoreCase)))) return Results.Conflict(new { message = "Önizlemeden sonra aynı aksesuar eklendi. Hiçbir kayıt aktarılmadı; önizlemeyi yenileyin." });
@@ -77,7 +78,7 @@ public static class AccessoryImportEndpoints
         foreach (var item in items) { var key = item.Supplier?.Normalize(NormalizationForm.FormKC).ToUpperInvariant(); if (key is not null && suppliers.TryGetValue(key, out var ids) && ids.Length == 1) item.SupplierId = ids[0]; db.Accessories.Add(item); if (item.TotalQuantity > 0) db.AccessoryMovements.Add(new AccessoryMovement { CompanyId = companyId, AccessoryId = item.Id, ActorUserId = actorId, MovementType = "Received", Quantity = item.TotalQuantity, Notes = "CSV içe aktarımındaki başlangıç stoku" }); db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Accessory", TargetId = item.Id, Action = "accessory.created", Details = item.Name + "; CSV içe aktarımı." }); }
         db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Accessory", Action = "CsvImported", Details = $"CSV dosyasından {items.Count} aksesuar içe aktarıldı." });
         try { await db.SaveChangesAsync(ct); await tx.CommitAsync(ct); } catch (DbUpdateException) { await tx.RollbackAsync(ct); return Results.Conflict(new { message = "CSV aktarılmadı; bir kayıt çakıştı. Önizlemeyi yenileyip tekrar deneyin." }); }
-        return Results.Ok(new { imported = items.Count, message = $"{items.Count:N0} aksesuar ve başlangıç stok hareketleri eklendi." });
+        return Results.Ok(new { imported = items.Count, defaultLocationApplied, message = $"{items.Count:N0} aksesuar ve başlangıç stok hareketleri eklendi; varsayılan konum {defaultLocationApplied:N0} kayda uygulandı." });
     }
 
     private static void AddError(List<string> errors, string message) { if (errors.Count < 100) errors.Add(message); }

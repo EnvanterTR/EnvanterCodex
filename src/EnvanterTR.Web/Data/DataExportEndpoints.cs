@@ -410,6 +410,8 @@ public static class DataExportEndpoints
             existingMatches += await db.Assets.AsNoTracking()
                 .CountAsync(asset => asset.CompanyId == companyId && batch.Contains(asset.AssetTag.ToUpper()), cancellationToken);
         var targetName = await db.Companies.AsNoTracking().Where(c => c.Id == companyId).Select(c => c.Name).SingleAsync(cancellationToken);
+        var defaultAssetLocation = await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, cancellationToken);
+        var defaultLocationApplied = defaultAssetLocation is null ? 0 : validRows.Count(item => string.IsNullOrWhiteSpace(item.row[7]));
         return Results.Ok(new
         {
             isValid = errors.Count == 0,
@@ -417,9 +419,10 @@ public static class DataExportEndpoints
             targetCompany = targetName,
             schemaVersion = hasWarrantyColumn ? 2 : 1,
             counts = new { assets = records.Count - 1 },
+            defaultLocationApplied,
             existingMatches = new { assets = existingMatches },
             errors = errors.Take(30).ToArray(),
-            warning = "Önizleme kategori, marka, model ve çalışan eşleşmelerini de denetler. Var olan kayıtlar birleştirilmez; bu aşamada hiçbir kayıt değiştirilmez."
+            warning = $"Varsayılan konum {defaultLocationApplied:N0} boş konumlu varlığa uygulanacak. Önizleme kategori, marka, model ve çalışan eşleşmelerini denetler. Var olan kayıtlar birleştirilmez; bu aşamada hiçbir kayıt değiştirilmez."
         });
     }
 

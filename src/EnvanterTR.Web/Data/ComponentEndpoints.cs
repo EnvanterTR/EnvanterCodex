@@ -204,12 +204,13 @@ public static class ComponentEndpoints
         if (matches > 0) return Results.Conflict(new { isValid = false, existingMatches = matches, errors = new[] { $"Şirkette mevcut ad/ürün no/seri no eşleşmeleri bulundu ({matches}). Yinelenen bileşen eklenmedi." } });
         var locationPaths = await AssetEndpoints.GetActiveLocationPathMapAsync(db, companyId, ct);
         var defaultLocation = await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, ct);
+        var defaultLocationApplied = defaultLocation is null ? 0 : components.Count(x => x.Location is null);
         foreach (var component in components)
         {
             component.Location ??= defaultLocation;
             if (component.Location is not null && locationPaths.TryGetValue(component.Location, out var locationCatalogId)) component.LocationCatalogId = locationCatalogId;
         }
-        if (!commit) return Results.Ok(new { isValid = true, rowCount = components.Count, errors = Array.Empty<string>(), message = $"{components.Count:N0} yeni bileşen doğrulandı. Önizleme kayıt eklemedi." });
+        if (!commit) return Results.Ok(new { isValid = true, rowCount = components.Count, defaultLocationApplied, errors = Array.Empty<string>(), message = $"{components.Count:N0} yeni bileşen doğrulandı. Varsayılan konum {defaultLocationApplied:N0} boş satıra uygulanacak. Önizleme kayıt eklemedi." });
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         var latest = await db.InventoryComponents.AsNoTracking().Where(x => x.CompanyId == companyId &&
