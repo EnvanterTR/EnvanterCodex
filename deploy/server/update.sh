@@ -85,6 +85,12 @@ rm -f -- "$TAG_OVERRIDE"
 NEXT_LINK="$INSTALL_ROOT/current.$STAMP"
 ln -s "$RELEASE_DIR" "$NEXT_LINK"
 mv -Tf -- "$NEXT_LINK" "$CURRENT_RELEASE"
+install -m 0644 "$CURRENT_RELEASE/deploy/server/envantertr-backup.service" /etc/systemd/system/envantertr-backup.service
+install -m 0644 "$CURRENT_RELEASE/deploy/server/envantertr-backup.timer" /etc/systemd/system/envantertr-backup.timer
+install -m 0644 "$CURRENT_RELEASE/deploy/server/envantertr-backup-health.service" /etc/systemd/system/envantertr-backup-health.service
+install -m 0644 "$CURRENT_RELEASE/deploy/server/envantertr-backup-health.timer" /etc/systemd/system/envantertr-backup-health.timer
+install -m 0644 "$CURRENT_RELEASE/deploy/server/envantertr-backup-alert@.service" /etc/systemd/system/envantertr-backup-alert@.service
+systemctl daemon-reload
 printf 'Güncelleme tamamlandı: https://%s\n' "$DOMAIN"
 printf 'Önceki sürüm korunuyor: %s\n' "$OLD_RELEASE"
 printf 'Güncelleme öncesi doğrulanmış şifreli yedek /var/backups/envantertr altında bulunuyor.\n'

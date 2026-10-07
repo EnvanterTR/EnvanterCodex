@@ -44,7 +44,9 @@ sudo systemctl status envantertr-backup-health.timer envantertr-backup-health.se
 sudo journalctl -u envantertr-backup-health.service
 ```
 
-`envantertr-backup-health.service` yalnızca yerel yedek klasörünü denetler; günlük SFTP gönderim adımındaki uzak kopya doğrulaması ayrıca çalışır. Bu sağlık kontrolü başarısız yedek veya 36 saati aşan yedek bulursa non-zero sonuç üretip journal'a nedenini yazar; e-posta/SMS alarmı ya da uzaktaki eski arşivleri tarama henüz yoktur.
+`envantertr-backup-health.service` yalnızca yerel yedek klasörünü denetler; günlük SFTP gönderim adımındaki uzak kopya doğrulaması ayrıca çalışır. Bu sağlık kontrolü başarısız yedek veya 36 saati aşan yedek bulursa non-zero sonuç üretip journal'a nedenini yazar. Yedek işi veya sağlık kontrolü başarısız olduğunda systemd isteğe bağlı bir HTTPS JSON webhook'una bildirim gönderebilir. Kurulumda `BACKUP_ALERT_WEBHOOK_URL` boş gelir; hedefi root-only `/etc/envantertr/server.env` içine yazın. URL sır niteliğinde ele alınmalı ve günlüklere basılmaz. Adres tanımlanmazsa hata journal'da kalır. Bu webhook e-posta/SMS teslimatı değildir; gerçek bildirim hedefinde uçtan uca kabul ayrıca yapılmalıdır. Sağlık kontrolü uzaktaki eski arşivleri taramaz.
+
+Webhook bildirimi için sunucuda `sudoedit /etc/envantertr/server.env` ile `BACKUP_ALERT_WEBHOOK_URL=https://...` satırını ayarlayın. Kurulum bu değişkeni ve `envantertr-backup-alert@.service` birimini hazırlar; güncelleme betiği de systemd birimlerini sürüm değişiminde yeniler. `sudo systemctl start envantertr-backup-health.service` ile sağlık kontrolünü elle başlatabilir, ardından `sudo journalctl -u 'envantertr-backup-alert@*'` ile bildirim sonucunu inceleyebilirsiniz.
 
 Yedek betiği veritabanı dökümünü, şirket medya volume'unu (profil ve envanter görselleri dahil) ve ASP.NET Data Protection anahtar volume'unu geçici klasöre alır; SHA-256 manifesti ekler; AES-256-CBC/HMAC-SHA256 ile `.etbackup` oluşturup doğrular; parolayla yeniden açarak izole PostgreSQL/medya/anahtar kurtarma önizlemesini çalıştırır. Başarıda şifreli arşiv ve SHA-256 özeti bırakılır. Saklama süresi `BACKUP_RETENTION_DAYS` ile yönetilir.
 

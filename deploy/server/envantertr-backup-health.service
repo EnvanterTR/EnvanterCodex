@@ -1,6 +1,7 @@
 [Unit]
 Description=Verify freshness and integrity of the latest EnvanterTR backup
 ConditionPathExists=/etc/envantertr/server.env
+OnFailure=envantertr-backup-alert@%p.service
 
 [Service]
 Type=oneshot

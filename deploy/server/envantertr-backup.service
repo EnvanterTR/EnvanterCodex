@@ -3,6 +3,7 @@ Description=EnvanterTR encrypted database and company media backup
 After=docker.service
 Requires=docker.service
 ConditionPathExists=/etc/envantertr/server.env
+OnFailure=envantertr-backup-alert@%p.service
 
 [Service]
 Type=oneshot

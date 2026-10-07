@@ -52,6 +52,7 @@ DATA_PROTECTION_KEYS_VOLUME_NAME=envantertr_server_data_protection_keys
 BACKUP_ROOT=/var/backups/envantertr
 BACKUP_PASSPHRASE_FILE=$BACKUP_PASSWORD_FILE
 BACKUP_RETENTION_DAYS=30
+BACKUP_ALERT_WEBHOOK_URL=
 BACKUP_SFTP_TARGET=
 BACKUP_SFTP_DIRECTORY=
 BACKUP_SFTP_KEY_FILE=
@@ -90,6 +91,7 @@ install -m 0644 "$RELEASE_DIR/deploy/server/envantertr-backup.service" /etc/syst
 install -m 0644 "$RELEASE_DIR/deploy/server/envantertr-backup.timer" /etc/systemd/system/envantertr-backup.timer
 install -m 0644 "$RELEASE_DIR/deploy/server/envantertr-backup-health.service" /etc/systemd/system/envantertr-backup-health.service
 install -m 0644 "$RELEASE_DIR/deploy/server/envantertr-backup-health.timer" /etc/systemd/system/envantertr-backup-health.timer
+install -m 0644 "$RELEASE_DIR/deploy/server/envantertr-backup-alert@.service" /etc/systemd/system/envantertr-backup-alert@.service
 systemctl daemon-reload
 systemctl enable --now envantertr-backup.timer envantertr-backup-health.timer
 printf '\nEnvanterTR sunucu kurulumu hazır: https://%s\n' "$DOMAIN"
