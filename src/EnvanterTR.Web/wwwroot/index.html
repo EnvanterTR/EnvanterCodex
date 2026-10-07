@@ -1076,11 +1076,11 @@
       }
       $('#directoryCount').textContent = `${fmt.format(entries.length)} kayıt`;
     }
-    async function loadDirectory(kind) {
+    async function loadDirectory(kind, titleOverride = '') {
       directoryKind = kind;
       const departments = kind === 'departments';
       $('#directoryEyebrow').textContent = departments ? 'ŞİRKET ALANI / EKİP' : 'ŞİRKET ALANI / KONUM';
-      $('#directoryTitle').textContent = departments ? 'Departmanlar' : 'Lokasyonlar';
+      $('#directoryTitle').textContent = titleOverride || (departments ? 'Departmanlar' : 'Lokasyonlar');
       $('#directoryDescription').textContent = departments ? 'Departman kataloğunu ve çalışan sayılarını yönetin; ekipleri çalışan atanmadan önce tanımlayın.' : 'Şirket konumlarını bina, kat ve oda düzeyinde hiyerarşik yönetin.';
       $('#addDepartmentButton').hidden = !departments || !canManagePeople();
       $('#addLocationButton').hidden = departments || !canWriteAssets();
@@ -2980,7 +2980,7 @@
       const dataPages = ['Tablodan içe aktar','Verileri dışa aktar','Dışa aktarımlar','Yedekleme geçmişi','Geri yükle'];
       if (dataPages.includes(page) && !canManageSettings()) { notify('Şirket verisi aktarma işlemleri yalnızca şirket sahibi ve yöneticilerine açıktır.'); return; }
       if (['Çalışan kayıtları','Departmanlar'].includes(page) && !canReadPeople()) { notify('Bu hesabın çalışan ve departman kayıtlarını görüntüleme yetkisi yok.'); return; }
-      if (page === 'Lokasyonlar' && !canReadAssets()) { notify('Bu hesabın varlık konumlarını görüntüleme yetkisi yok.'); return; }
+      if (['Lokasyonlar','Binalar ve odalar'].includes(page) && !canReadAssets()) { notify('Bu hesabın varlık konumlarını görüntüleme yetkisi yok.'); return; }
       if (page === 'Uygulama kullanıcıları' && !canReadAudit()) { notify('Şirket kullanıcılarını ve rollerini yalnızca şirket sahibi ve yöneticileri yönetebilir.'); return; }
       if (['Genel Bakış','Varlıklar','Hareket geçmişi','Hazır raporlar','Bakım kayıtları','Bakım planları','Takvim','Siparişler','Hazır kitler'].includes(page) && !canReadAssets()) { notify('Bu hesabın varlık kayıtlarını görüntüleme yetkisi yok.'); return; }
       if (page === 'Denetim kayıtları' && !canReadAudit()) { notify('Denetim kayıtlarını yalnızca şirket sahibi ve yöneticileri görüntüleyebilir.'); return; }
@@ -2998,7 +2998,7 @@
       else if (page === 'Stok hareketleri') { if (!canReadAssets()) { notify('Stok hareketlerini görüntüleme yetkiniz bulunmuyor.'); return; } $('#inventoryMovementsPage').hidden = false; $('#pageTitle').textContent = page; loadInventoryMovements(1).catch(error => notify(error.message)); }
       else if (page === 'Çalışan kayıtları') { $('#employeesPage').hidden = false; $('#pageTitle').textContent = page; loadEmployees().catch(error => notify(error.message)); }
       else if (page === 'QR ve barkodlar') { if (!canReadAssets()) { notify('Bu hesabın varlık kayıtlarını görme yetkisi yok.'); return; } $('#labelSettingsPage').hidden = false; $('#pageTitle').textContent = page; $('#labelSettingsSave').hidden = !canManageSettings(); $('#labelSettingsReset').hidden = !canManageSettings(); populateLabelSettingsForm(); renderLabelPreview().catch(error => { $('#labelPreviewMessage').textContent = error.message; }); }
-      else if (page === 'Departmanlar' || page === 'Lokasyonlar') { $('#directoryPage').hidden = false; $('#pageTitle').textContent = page; loadDirectory(page === 'Departmanlar' ? 'departments' : 'locations').catch(error => notify(error.message)); }
+      else if (page === 'Departmanlar' || page === 'Lokasyonlar' || page === 'Binalar ve odalar') { $('#directoryPage').hidden = false; $('#pageTitle').textContent = page; loadDirectory(page === 'Departmanlar' ? 'departments' : 'locations', page === 'Binalar ve odalar' ? page : '').catch(error => notify(error.message)); }
       else if (page === 'Uygulama kullanıcıları') { $('#membersPage').hidden = false; $('#pageTitle').textContent = page; loadMembers().catch(error => notify(error.message)); }
       else if (page === 'Hareket geçmişi') { $('#activityPage').hidden = false; $('#pageTitle').textContent = page; loadActivity(1).catch(error => notify(error.message)); }
       else if (page === 'Bakım kayıtları') { $('#maintenancePage').hidden = false; $('#pageTitle').textContent = page; loadCompanyMaintenances(1).catch(error => notify(error.message)); }
@@ -3039,7 +3039,7 @@
           'QR ve barkodlar': ['Etiket biçimi, ölçüsü ve yazıcı hizalaması ayarlanabilir.', 'Varlık etiketleri QR, PDF417 veya Data Matrix ile birlikte C128, C39, EAN5, EAN13, UPC-A ya da UPC-E olarak basılabilir.', 'Varlık kayıtlarını aç'],
           'Zimmetler': ['Toplu zimmet listesi henüz hazır değil.', 'Kullanılabilir varlığı açıp “Çalışana zimmetle” işlemini kaydedebilir; geçmişi varlık ve çalışan ayrıntısında görebilirsiniz.', 'Varlık kayıtlarını aç'],
           'İadeler': ['Merkezi iade kuyruğu henüz hazır değil.', 'İade işlemi varlık ayrıntısından yapılır; mevcut çalışana ve işleme ait geçmiş korunur.', 'Varlık kayıtlarını aç'],
-          'Binalar ve odalar': ['Bina/oda hiyerarşisi henüz modellenmedi.', 'Şu an varlıklar üzerindeki konum metinlerini Lokasyonlar ekranında özetleyebilir ve filtreleyebilirsiniz.', 'Lokasyonları aç'],
+          'Binalar ve odalar': ['Bina/kat/oda hiyerarşisi kullanılabilir.', 'Şirket konum kataloğunu bu menüden açıp bina, kat ve oda ekleyebilir, yeniden adlandırabilir, arşivleyebilir ve varsayılan konum ile sorumlu çalışanı yönetebilirsiniz.', 'Lokasyonları aç'],
           'Şirket birimleri': ['Şirket birimi yönetimi henüz etkin değil.', 'Departman adları çalışan kartlarında tutulur ve Departmanlar ekranında gerçek çalışan sayılarıyla listelenir.', 'Departmanları aç'],
           'Özel rapor oluştur': ['Sürükle-bırak rapor oluşturucu henüz etkin değil.', 'Şimdilik varlık tablosunun filtreleri ve sıralamasıyla görünümü daraltıp CSV indirebilirsiniz.', 'Varlık kayıtlarını aç'],
           'Yetki rolleri': ['Yetki matrisi düzenleme ekranı henüz hazır değil.', 'Mevcut roller, kullanıcı davetinde ve Uygulama kullanıcıları ekranında uygulanır.', 'Çalışanları aç'],
