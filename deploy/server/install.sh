@@ -12,7 +12,8 @@ RELEASE_DIR="$INSTALL_ROOT/releases/$STAMP"
 DOMAIN="${1:-${APP_DOMAIN:-}}"
 
 fail() { printf 'HATA: %s\n' "$*" >&2; exit 1; }
-trap 'status=$?; printf "Kurulum %s koduyla durdu. Dosyalar ve volume\x27lar korundu; günlükleri inceleyin.\n" "$status" >&2' ERR
+on_error() { local status=$?; printf 'Kurulum %s koduyla durdu. Dosyalar ve volume\x27lar korundu; günlükleri inceleyin.\n' "$status" >&2; }
+trap on_error ERR
 
 [[ "$EUID" -eq 0 ]] || fail 'Kurulumu sudo ile root olarak çalıştırın.'
 [[ -n "$DOMAIN" && "$DOMAIN" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ && "$DOMAIN" != *..* ]] || fail 'Geçerli bir DNS alan adı verin: sudo bash deploy/server/install.sh envanter.sirketiniz.com'
@@ -75,7 +76,7 @@ for _ in $(seq 1 60); do
   fi
   sleep 2
 done
-[[ "$ready" == true ]] || fail 'HTTPS uygulaması ready durumuna geçmedi. `docker compose logs web proxy` çıktısını inceleyin; veri volume’ları korunuyor.'
+[[ "$ready" == true ]] || fail "HTTPS uygulaması ready durumuna geçmedi. `docker compose logs web proxy` çıktısını inceleyin; veri volume'ları korunuyor."
 
 ln -s "$RELEASE_DIR" "$INSTALL_ROOT/current"
 install -m 0644 "$RELEASE_DIR/deploy/server/envantertr-backup.service" /etc/systemd/system/envantertr-backup.service

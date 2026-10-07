@@ -47,7 +47,7 @@ restore_old_app_if_safe() {
   local status=$?
   if [[ "$status" -ne 0 && "$WEB_STOPPED" -eq 1 && "$MIGRATION_STARTED" -eq 0 ]]; then
     echo 'Migration başlamadı; önceki uygulama yeniden başlatılıyor.' >&2
-    "${compose_old[@]}" up -d web proxy || echo 'Önceki uygulama otomatik başlatılamadı; volume’lar korunuyor.' >&2
+    "${compose_old[@]}" up -d web proxy || echo "Önceki uygulama otomatik başlatılamadı; volume'lar korunuyor." >&2
   fi
 }
 trap restore_old_app_if_safe EXIT

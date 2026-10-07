@@ -40,9 +40,9 @@ WEB_CONTAINER="$("${COMPOSE[@]}" ps -q --all web)"
 [[ -n "$DB_CONTAINER" && -n "$WEB_CONTAINER" ]] || { cleanup; echo 'Veritabanı veya uygulama servisi bulunamadı.' >&2; exit 1; }
 [[ "$(docker inspect --format '{{.State.Health.Status}}' "$DB_CONTAINER" 2>/dev/null || true)" == healthy ]] || { cleanup "$DB_CONTAINER"; echo 'Veritabanı hazır değil.' >&2; exit 1; }
 MEDIA_VOLUME="$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/lib/envantertr/company-media"}}{{.Name}}{{end}}{{end}}' "$WEB_CONTAINER")"
-[[ -n "$MEDIA_VOLUME" ]] || { cleanup "$DB_CONTAINER"; echo 'Şirket medya volume’u bulunamadı; eksik yedek oluşturulmadı.' >&2; exit 1; }
+[[ -n "$MEDIA_VOLUME" ]] || { cleanup "$DB_CONTAINER"; echo "Şirket medya volume'u bulunamadı; eksik yedek oluşturulmadı." >&2; exit 1; }
 KEYS_VOLUME="$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/lib/envantertr/data-protection-keys"}}{{.Name}}{{end}}{{end}}' "$WEB_CONTAINER")"
-[[ -n "$KEYS_VOLUME" ]] || { cleanup "$DB_CONTAINER"; echo 'Data Protection anahtar volume’u bulunamadı; eksik yedek oluşturulmadı.' >&2; exit 1; }
+[[ -n "$KEYS_VOLUME" ]] || { cleanup "$DB_CONTAINER"; echo "Data Protection anahtar volume'u bulunamadı; eksik yedek oluşturulmadı." >&2; exit 1; }
 
 trap 'cleanup "$DB_CONTAINER"' EXIT
 "${COMPOSE[@]}" exec -T database sh -ec "pg_dump --no-owner --no-acl --format=custom --username=\"\$POSTGRES_USER\" \"\$POSTGRES_DB\" --file='$DATABASE_TEMP'"
