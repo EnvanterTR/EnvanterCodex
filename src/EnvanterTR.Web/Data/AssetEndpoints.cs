@@ -650,8 +650,8 @@ public static class AssetEndpoints
             return Results.Ok(new { assignment.Id, assignment.Quantity, assignment.ReturnedQuantity, remainingOnAssignment = assignment.Quantity - assignment.ReturnedQuantity });
         }).RequireAuthorization("asset.write");
 
-        // Location labels remain text fields, but this directory includes every tracked
-        // stock family and supports a company-scoped, audited rename across them.
+        // Free-text location values stay backward compatible while a company-scoped
+        // building/floor/room catalog supplies managed choices to forms.
         api.MapGet("/locations", async (ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
@@ -698,14 +698,113 @@ public static class AssetEndpoints
             var componentLocations = await db.InventoryComponents.AsNoTracking().Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() != "")
                 .GroupBy(x => x.Location!.Trim()).Select(group => new { name = group.Key, count = group.Count() }).ToListAsync(cancellationToken);
             foreach (var row in componentLocations) AddLocation(row.name, components: row.count);
-            var items = locations.Values.OrderBy(x => x.Name, StringComparer.Create(CultureInfo.GetCultureInfo("tr-TR"), true))
-                .Select(x => new { name = x.Name, assetCount = x.Assets, assignedCount = x.Assigned,
-                    availableCount = x.Available, maintenanceCount = x.Maintenance,
-                    accessoryCount = x.Accessories, accessoryAssignmentCount = x.AccessoryAssignments,
-                    consumableCount = x.Consumables, componentCount = x.Components })
-                .ToList();
+            var items = locations.Values.Select(x => new LocationDirectoryEntry(x.Name, x.Assets, x.Assigned,
+                x.Available, x.Maintenance, x.Accessories, x.AccessoryAssignments, x.Consumables, x.Components,
+                null, null, 0, false, true)).ToList();
+            var catalog = await db.CompanyLocations.AsNoTracking().Where(x => x.CompanyId == companyId)
+                .OrderBy(x => x.Name).ToListAsync(cancellationToken);
+            var byId = catalog.ToDictionary(x => x.Id);
+            (string Path, int Depth) GetPath(CompanyLocation location)
+            {
+                if (location.ParentLocationId is not Guid parentId || !byId.TryGetValue(parentId, out var parent))
+                    return (location.Name, 0);
+                var parentPath = GetPath(parent);
+                return ($"{parentPath.Path} / {location.Name}", parentPath.Depth + 1);
+            }
+            foreach (var location in catalog)
+            {
+                var (path, depth) = GetPath(location);
+                var index = items.FindIndex(x => string.Equals(x.Name, path, StringComparison.OrdinalIgnoreCase));
+                var entry = index >= 0 ? items[index] : new LocationDirectoryEntry(path, 0, 0, 0, 0, 0, 0, 0, 0,
+                    null, null, 0, false, true);
+                var selectedIndex = index;
+                var catalogEntry = entry with { LocationId = location.Id, ParentLocationId = location.ParentLocationId,
+                    Depth = depth, IsCatalogEntry = true, IsActive = location.IsActive };
+                if (selectedIndex >= 0) items[selectedIndex] = catalogEntry; else items.Add(catalogEntry);
+            }
+            items = items.OrderBy(x => x.Name, StringComparer.Create(CultureInfo.GetCultureInfo("tr-TR"), true)).ToList();
             return Results.Ok(new { items, total = items.Count });
         }).RequireAuthorization("asset.read");
+
+        api.MapPost("/locations/catalog", async ([FromBody] LocationCatalogRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var name = request.Name?.Trim();
+            if (string.IsNullOrWhiteSpace(name) || name.Length > 120 || name.Any(char.IsControl) || name.Contains('/') || name.Contains('\\'))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Konum adı 1–120 karakter olmalı; eğik çizgi ve kontrol karakteri içeremez."] });
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            if (await db.Companies.FromSqlInterpolated($"SELECT * FROM \"Companies\" WHERE \"Id\" = {companyId} FOR UPDATE")
+                    .SingleOrDefaultAsync(cancellationToken) is null) return Results.Forbid();
+            CompanyLocation? parent = null;
+            var depth = 0;
+            var path = name;
+            if (request.ParentLocationId is Guid parentId)
+            {
+                parent = await db.CompanyLocations.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == parentId, cancellationToken);
+                if (parent is null || !parent.IsActive) return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentLocationId"] = ["Etkin üst konum bu şirkette bulunamadı."] });
+                var chain = await GetLocationChainAsync(db, companyId, parent, cancellationToken);
+                depth = chain.Count;
+                if (depth >= 3) return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentLocationId"] = ["Hiyerarşi en fazla bina, kat ve oda olmak üzere üç seviyedir."] });
+                path = string.Join(" / ", chain.Select(x => x.Name).Append(name));
+            }
+            if (path.Length > 160) return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Tam konum yolu 160 karakteri aşamaz; adları kısaltın."] });
+            var normalized = NormalizeLocationName(name);
+            var siblingExists = await db.CompanyLocations.AnyAsync(x => x.CompanyId == companyId && x.ParentLocationId == request.ParentLocationId &&
+                x.NormalizedName == normalized, cancellationToken);
+            if (siblingExists) return Results.Conflict(new { message = "Aynı üst konum altında bu ad zaten kayıtlı." });
+            var location = new CompanyLocation { CompanyId = companyId, ParentLocationId = parent?.Id,
+                Name = name, NormalizedName = normalized };
+            db.CompanyLocations.Add(location);
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                TargetType = "Location", TargetId = location.Id, Action = "CatalogCreated",
+                Details = $"Konum kataloğa eklendi: {path}." });
+            try { await db.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken); }
+            catch (DbUpdateException)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return Results.Conflict(new { message = "Bu hiyerarşide aynı adlı konum zaten kaydedilmiş." });
+            }
+            return Results.Created("/api/locations/catalog", new { location.Id, location.ParentLocationId,
+                location.Name, displayPath = path, depth, location.IsActive });
+        }).RequireAuthorization("asset.write");
+
+        api.MapPatch("/locations/catalog/{id:guid}", async (Guid id, [FromBody] LocationCatalogRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var name = request.Name?.Trim();
+            if (string.IsNullOrWhiteSpace(name) || name.Length > 120 || name.Any(char.IsControl) || name.Contains('/') || name.Contains('\\'))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Konum adı 1–120 karakter olmalı; eğik çizgi ve kontrol karakteri içeremez."] });
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            if (await db.Companies.FromSqlInterpolated($"SELECT * FROM \"Companies\" WHERE \"Id\" = {companyId} FOR UPDATE")
+                    .SingleOrDefaultAsync(cancellationToken) is null) return Results.Forbid();
+            var location = await db.CompanyLocations.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (location is null) return Results.NotFound();
+            var normalized = NormalizeLocationName(name);
+            if (await db.CompanyLocations.AnyAsync(x => x.CompanyId == companyId && x.ParentLocationId == location.ParentLocationId &&
+                x.NormalizedName == normalized && x.Id != id, cancellationToken))
+                return Results.Conflict(new { message = "Aynı üst konum altında bu ad zaten kayıtlı." });
+            var allLocations = await db.CompanyLocations.AsNoTracking().Where(x => x.CompanyId == companyId).ToListAsync(cancellationToken);
+            var parentChain = await GetLocationChainAsync(db, companyId, location, cancellationToken);
+            var pathPrefix = string.Join(" / ", parentChain.Take(parentChain.Count - 1).Select(x => x.Name));
+            bool DescendantPathsFit(Guid currentId, string prefix)
+            {
+                var currentName = currentId == id ? name : allLocations.Single(x => x.Id == currentId).Name;
+                var path = string.IsNullOrEmpty(prefix) ? currentName : $"{prefix} / {currentName}";
+                if (path.Length > 160) return false;
+                return allLocations.Where(x => x.ParentLocationId == currentId)
+                    .All(child => DescendantPathsFit(child.Id, path));
+            }
+            if (!DescendantPathsFit(id, pathPrefix))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Bu ad, alt konumlarla birlikte 160 karakterlik konum yolu sınırını aşar."] });
+            var oldName = location.Name;
+            location.Name = name; location.NormalizedName = normalized; location.UpdatedAt = DateTimeOffset.UtcNow;
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                TargetType = "Location", TargetId = id, Action = "CatalogRenamed", Details = $"Konum adı “{oldName}” → “{name}”." });
+            await db.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { location.Id, location.Name, location.ParentLocationId, location.IsActive });
+        }).RequireAuthorization("asset.write");
 
         api.MapPatch("/locations/rename", async ([FromBody] RenameDirectoryEntryRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
@@ -765,6 +864,45 @@ public static class AssetEndpoints
             return Results.Ok(new { name = newName, updatedCount = total, assetCount = updatedAssets,
                 accessoryCount = updatedAccessories, accessoryAssignmentCount = updatedAccessoryAssignments,
                 consumableCount = updatedConsumables, componentCount = updatedComponents });
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/locations/catalog/{id:guid}/archive", async (Guid id, ClaimsPrincipal user,
+            AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            if (await db.Companies.FromSqlInterpolated($"SELECT * FROM \"Companies\" WHERE \"Id\" = {companyId} FOR UPDATE")
+                    .SingleOrDefaultAsync(cancellationToken) is null) return Results.Forbid();
+            var location = await db.CompanyLocations.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (location is null) return Results.NotFound();
+            if (await db.CompanyLocations.AnyAsync(x => x.CompanyId == companyId && x.ParentLocationId == id && x.IsActive, cancellationToken))
+                return Results.Conflict(new { message = "Önce bu konumun altındaki etkin konumları arşivleyin." });
+            if (!location.IsActive) return Results.Ok(new { location.Id, location.IsActive });
+            location.IsActive = false; location.UpdatedAt = DateTimeOffset.UtcNow;
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                TargetType = "Location", TargetId = id, Action = "CatalogArchived", Details = $"Konum arşivlendi: {location.Name}." });
+            await db.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { location.Id, location.IsActive });
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/locations/catalog/{id:guid}/restore", async (Guid id, ClaimsPrincipal user,
+            AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            if (await db.Companies.FromSqlInterpolated($"SELECT * FROM \"Companies\" WHERE \"Id\" = {companyId} FOR UPDATE")
+                    .SingleOrDefaultAsync(cancellationToken) is null) return Results.Forbid();
+            var location = await db.CompanyLocations.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (location is null) return Results.NotFound();
+            if (location.ParentLocationId is Guid parentId && !await db.CompanyLocations.AnyAsync(x =>
+                x.CompanyId == companyId && x.Id == parentId && x.IsActive, cancellationToken))
+                return Results.Conflict(new { message = "Önce üst konumu geri alın." });
+            if (location.IsActive) return Results.Ok(new { location.Id, location.IsActive });
+            location.IsActive = true; location.UpdatedAt = DateTimeOffset.UtcNow;
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                TargetType = "Location", TargetId = id, Action = "CatalogRestored", Details = $"Konum geri alındı: {location.Name}." });
+            await db.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { location.Id, location.IsActive });
         }).RequireAuthorization("asset.write");
 
         api.MapGet("/reports/assets", async ([FromQuery] DateOnly? purchaseDateFrom, [FromQuery] DateOnly? purchaseDateTo,
@@ -1967,8 +2105,27 @@ public static class AssetEndpoints
         return new { row.Id, row.Name, row.BrandId };
     }
 
+    private static async Task<List<CompanyLocation>> GetLocationChainAsync(AppDbContext db, Guid companyId,
+        CompanyLocation location, CancellationToken cancellationToken)
+    {
+        var chain = new List<CompanyLocation> { location };
+        var parentId = location.ParentLocationId;
+        while (parentId is Guid id)
+        {
+            var parent = await db.CompanyLocations.AsNoTracking().SingleOrDefaultAsync(x =>
+                x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (parent is null) break;
+            chain.Insert(0, parent);
+            parentId = parent.ParentLocationId;
+            if (chain.Count > 3) break;
+        }
+        return chain;
+    }
+
     private static bool TryCompanyId(ClaimsPrincipal user, out Guid companyId) =>
         Guid.TryParse(user.FindFirstValue("company_id"), out companyId);
+
+    private static string NormalizeLocationName(string value) => value.Trim().ToUpperInvariant();
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     private static bool IsCurrency(string? value) => value is not null &&
@@ -2053,6 +2210,9 @@ public static class AssetEndpoints
         DateOnly PlannedOn, decimal? Cost, string Currency, string? Notes);
     public sealed record CompleteMaintenanceRequest(DateOnly CompletedOn, string? Notes);
     public sealed record SelectedAssetLabelsRequest(Guid[]? AssetIds);
+    private sealed record LocationDirectoryEntry(string Name, int AssetCount, int AssignedCount, int AvailableCount,
+        int MaintenanceCount, int AccessoryCount, int AccessoryAssignmentCount, int ConsumableCount, int ComponentCount,
+        Guid? LocationId, Guid? ParentLocationId, int Depth, bool IsCatalogEntry, bool IsActive);
     private sealed record CalendarEntry(string Kind, DateOnly Date, Guid? AssetId, Guid RecordId,
         string Title, string? Subtitle, string Status, bool? AutoRenew);
 

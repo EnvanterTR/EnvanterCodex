@@ -895,6 +895,50 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("CompanyDepartments", (string)null);
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.CompanyLocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<Guid?>("ParentLocationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "NormalizedName")
+                        .IsUnique()
+                        .HasFilter("\"ParentLocationId\" IS NULL");
+
+                    b.HasIndex("CompanyId", "ParentLocationId", "NormalizedName")
+                        .IsUnique()
+                        .HasFilter("\"ParentLocationId\" IS NOT NULL");
+
+                    b.ToTable("CompanyLocations", (string)null);
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.CompanyMembership", b =>
                 {
                     b.Property<Guid>("CompanyId")
@@ -2361,6 +2405,21 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.CompanyLocation", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.CompanyLocation", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "ParentLocationId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.CompanyMembership", b =>

@@ -10,6 +10,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<SupplierCatalogEntry> SupplierCatalogEntries => Set<SupplierCatalogEntry>();
     public DbSet<CompanyDepartment> CompanyDepartments => Set<CompanyDepartment>();
+    public DbSet<CompanyLocation> CompanyLocations => Set<CompanyLocation>();
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<AssetCategory> AssetCategories => Set<AssetCategory>();
     public DbSet<AssetBrand> AssetBrands => Set<AssetBrand>();
@@ -173,6 +174,19 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<CompanyDepartment>().HasIndex(x => new { x.CompanyId, x.NormalizedName }).IsUnique();
         modelBuilder.Entity<CompanyDepartment>().ToTable("CompanyDepartments");
         modelBuilder.Entity<CompanyDepartment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<CompanyLocation>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CompanyLocation>().Property(x => x.Name).HasMaxLength(120).IsRequired();
+        modelBuilder.Entity<CompanyLocation>().Property(x => x.NormalizedName).HasMaxLength(120).IsRequired();
+        modelBuilder.Entity<CompanyLocation>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<CompanyLocation>().HasOne<CompanyLocation>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ParentLocationId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<CompanyLocation>().HasIndex(x => new { x.CompanyId, x.NormalizedName })
+            .IsUnique().HasFilter("\"ParentLocationId\" IS NULL");
+        modelBuilder.Entity<CompanyLocation>().HasIndex(x => new { x.CompanyId, x.ParentLocationId, x.NormalizedName })
+            .IsUnique().HasFilter("\"ParentLocationId\" IS NOT NULL");
+        modelBuilder.Entity<CompanyLocation>().ToTable("CompanyLocations");
         modelBuilder.Entity<AssetCategory>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AssetBrand>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AssetModel>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
