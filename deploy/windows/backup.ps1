@@ -3,7 +3,9 @@ param(
     [string]$DataRoot = "$env:ProgramData\EnvanterTR",
     [string]$ServiceName = "EnvanterTR",
     [string]$OutputDirectory = "$env:ProgramData\EnvanterTR\backups",
-    [string]$PgBinDirectory = "$env:ProgramFiles\PostgreSQL\17\bin"
+    [string]$PgBinDirectory = "$env:ProgramFiles\PostgreSQL\17\bin",
+    [string]$PassphraseFile,
+    [ValidateRange(0,3650)][int]$RetentionDays = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -41,19 +43,41 @@ if ([string]::IsNullOrWhiteSpace($hostName) -or [string]::IsNullOrWhiteSpace($da
 
 $service = Get-Service -Name $ServiceName -ErrorAction Stop
 if ($service.Status -ne "Running") { throw "The EnvanterTR service must be running before a backup can begin." }
-$backupPasswordSecure = Read-Host "Backup encryption passphrase (minimum 16 characters; store it separately)" -AsSecureString
-$confirmPasswordSecure = Read-Host "Repeat backup encryption passphrase" -AsSecureString
 function Convert-SecureToPlain([Security.SecureString]$Value) {
     $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Value)
     try { return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer) }
     finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointer) }
 }
-$backupPassword = Convert-SecureToPlain $backupPasswordSecure
-$confirmPassword = Convert-SecureToPlain $confirmPasswordSecure
-$backupPasswordSecure.Dispose()
-$confirmPasswordSecure.Dispose()
+$backupPassword = $null
+$confirmPassword = $null
+if (-not [string]::IsNullOrWhiteSpace($PassphraseFile)) {
+    $dataRootFull = [IO.Path]::GetFullPath($DataRoot).TrimEnd('\') + '\'
+    $passphrasePath = [IO.Path]::GetFullPath($PassphraseFile)
+    if (-not $passphrasePath.StartsWith($dataRootFull,[StringComparison]::OrdinalIgnoreCase)) {
+        throw "The DPAPI passphrase file must be inside the protected EnvanterTR data directory."
+    }
+    if (-not (Test-Path -LiteralPath $passphrasePath -PathType Leaf)) { throw "DPAPI passphrase file is missing: $passphrasePath" }
+    Add-Type -AssemblyName System.Security
+    $protectedBytes = [IO.File]::ReadAllBytes($passphrasePath)
+    $plainBytes = $null
+    try {
+        $plainBytes = [Security.Cryptography.ProtectedData]::Unprotect(
+            $protectedBytes,$null,[Security.Cryptography.DataProtectionScope]::LocalMachine)
+        $backupPassword = [Text.Encoding]::Unicode.GetString($plainBytes)
+    } finally {
+        [Array]::Clear($protectedBytes,0,$protectedBytes.Length)
+        if ($plainBytes) { [Array]::Clear($plainBytes,0,$plainBytes.Length) }
+    }
+} else {
+    $backupPasswordSecure = Read-Host "Backup encryption passphrase (minimum 16 characters; store it separately)" -AsSecureString
+    $confirmPasswordSecure = Read-Host "Repeat backup encryption passphrase" -AsSecureString
+    $backupPassword = Convert-SecureToPlain $backupPasswordSecure
+    $confirmPassword = Convert-SecureToPlain $confirmPasswordSecure
+    $backupPasswordSecure.Dispose()
+    $confirmPasswordSecure.Dispose()
+}
 if ($backupPassword.Length -lt 16) { throw "Use a passphrase with at least 16 characters." }
-if (-not [string]::Equals($backupPassword, $confirmPassword, [StringComparison]::Ordinal)) { throw "Passphrases do not match." }
+if ($null -ne $confirmPassword -and -not [string]::Equals($backupPassword, $confirmPassword, [StringComparison]::Ordinal)) { throw "Passphrases do not match." }
 
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 $root = [IO.Path]::GetFullPath($DataRoot).TrimEnd('\')
@@ -207,6 +231,9 @@ function Verify-And-Decrypt([string]$Source, [string]$Destination, [string]$Pass
 }
 
 try {
+    New-Item -ItemType Directory -Path $work -Force | Out-Null
+    & icacls.exe $work /inheritance:r /grant:r "SYSTEM:(OI)(CI)F" "Administrators:(OI)(CI)F" /T /C | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Could not restrict temporary backup workspace access." }
     New-Item -ItemType Directory -Path $payload -Force | Out-Null
     $serviceWasRunning = $true
     Stop-Service -Name $ServiceName
@@ -384,7 +411,22 @@ try {
     Write-Output "Encrypted backup created and verified: $finalPath"
     Write-Output "SHA-256: $digest"
     Write-Output "Isolated PostgreSQL restore preview passed; migration records: $migrationCount"
-    Write-Warning "The passphrase is not stored. Keep it offline and separately from this backup. The recovery preview used a temporary loopback-only PostgreSQL cluster, not the live database."
+    if ([string]::IsNullOrWhiteSpace($PassphraseFile)) {
+        Write-Warning "The passphrase is not stored. Keep it offline and separately from this backup. The recovery preview used a temporary loopback-only PostgreSQL cluster, not the live database."
+    } else {
+        Write-Warning "The passphrase file is DPAPI machine-bound and is not included in this backup. Keep the passphrase in an approved password manager for disaster recovery. The preview used a temporary loopback-only PostgreSQL cluster, not the live database."
+    }
+    if ($RetentionDays -gt 0) {
+        $cutoff = [DateTime]::UtcNow.AddDays(-$RetentionDays)
+        foreach ($oldBackup in Get-ChildItem -LiteralPath $OutputDirectory -File -Filter "envantertr-*.etbackup" |
+            Where-Object { $_.LastWriteTimeUtc -lt $cutoff -and -not ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) }) {
+            Remove-Item -LiteralPath $oldBackup.FullName -Force
+            if (Test-Path -LiteralPath ($oldBackup.FullName + ".sha256")) {
+                Remove-Item -LiteralPath ($oldBackup.FullName + ".sha256") -Force
+            }
+            Write-Output "Removed expired encrypted backup: $($oldBackup.Name)"
+        }
+    }
 } finally {
     if ($previewStarted -and (Test-Path -LiteralPath $previewData)) {
         try { & (Join-Path $PgBinDirectory "pg_ctl.exe") stop -D $previewData -m fast -w -t 60 | Out-Null } catch { Write-Warning "Temporary PostgreSQL preview did not stop cleanly: $previewData" }

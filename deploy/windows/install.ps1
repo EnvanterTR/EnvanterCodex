@@ -48,8 +48,12 @@ if (-not (Get-ChildItem -LiteralPath $appPath -Force | Select-Object -First 1)) 
 # Restrict the tree before writing any database or bootstrap secrets into Production configuration.
 & icacls.exe $InstallRoot /inheritance:r /grant:r "SYSTEM:(OI)(CI)F" "Administrators:(OI)(CI)F" "NT AUTHORITY\LOCAL SERVICE:(OI)(CI)RX" /T /C | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Could not set application directory permissions." }
-& icacls.exe $DataRoot /inheritance:r /grant:r "SYSTEM:(OI)(CI)F" "Administrators:(OI)(CI)F" "NT AUTHORITY\LOCAL SERVICE:(OI)(CI)M" /T /C | Out-Null
+& icacls.exe $DataRoot /inheritance:r /grant:r "SYSTEM:(OI)(CI)F" "Administrators:(OI)(CI)F" "NT AUTHORITY\LOCAL SERVICE:(OI)(CI)RX" /T /C | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Could not set data directory permissions." }
+foreach ($writableDataPath in @($mediaPath,$keysPath)) {
+    & icacls.exe $writableDataPath /grant:r "NT AUTHORITY\LOCAL SERVICE:(OI)(CI)M" /T /C | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Could not grant the service access to $writableDataPath" }
+}
 
 $tokenBytes = New-Object byte[] 32
 $random = [Security.Cryptography.RandomNumberGenerator]::Create()
