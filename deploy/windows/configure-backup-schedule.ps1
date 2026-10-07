@@ -5,18 +5,35 @@ param(
     [string]$PgBinDirectory = "$env:ProgramFiles\PostgreSQL\17\bin",
     [string]$MirrorDirectory,
     [ValidatePattern('^(?:[01][0-9]|2[0-3]):[0-5][0-9]$')][string]$DailyAt = "02:30",
+    [ValidatePattern('^(?:[01][0-9]|2[0-3]):[0-5][0-9]$')][string]$HealthCheckAt = "04:00",
     [ValidateRange(1,3650)][int]$RetentionDays = 30,
-    [string]$TaskName = "EnvanterTR Daily Encrypted Backup"
+    [string]$TaskName = "EnvanterTR Daily Encrypted Backup",
+    [string]$HealthTaskName = "EnvanterTR Daily Backup Health Check"
 )
 
 $ErrorActionPreference = "Stop"
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
     [Security.Principal.WindowsBuiltInRole]::Administrator)) { throw "Run PowerShell as Administrator." }
 if ($PSVersionTable.PSVersion.Major -lt 5) { throw "Windows PowerShell 5.1 or PowerShell 7 is required." }
+foreach ($value in @($InstallRoot,$DataRoot,$ServiceName,$PgBinDirectory)) {
+    if (-not [string]::IsNullOrEmpty($value) -and
+        ($value.Contains('"') -or $value.Contains("`r") -or $value.Contains("`n"))) {
+        throw "Install, data, service, and PostgreSQL paths/names must not contain quotes or line breaks."
+    }
+}
+if ([string]::Equals($TaskName,$HealthTaskName,[StringComparison]::OrdinalIgnoreCase)) {
+    throw "Backup and health-check scheduled task names must be different."
+}
+if ([string]::Equals($DailyAt,$HealthCheckAt,[StringComparison]::Ordinal)) {
+    throw "HealthCheckAt must differ from DailyAt so the health check does not race the backup task."
+}
 
 $backupScript = Join-Path (Join-Path $InstallRoot "app") "backup.ps1"
+$healthScript = Join-Path (Join-Path $InstallRoot "app") "check-backup-health.ps1"
 $configPath = Join-Path (Join-Path $InstallRoot "app") "appsettings.Production.json"
-if (-not (Test-Path -LiteralPath $backupScript -PathType Leaf) -or -not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
+if (-not (Test-Path -LiteralPath $backupScript -PathType Leaf) -or
+    -not (Test-Path -LiteralPath $healthScript -PathType Leaf) -or
+    -not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
     throw "An installed EnvanterTR service is required before scheduling backups."
 }
 if (-not (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue)) { throw "EnvanterTR service '$ServiceName' was not found." }
@@ -96,7 +113,24 @@ $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatt
 $task = New-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -Settings $settings
 Register-ScheduledTask -TaskName $TaskName -InputObject $task -Force | Out-Null
 
+$healthTime = [DateTime]::Today.Add([TimeSpan]::ParseExact($HealthCheckAt,"hh\:mm",[Globalization.CultureInfo]::InvariantCulture))
+$healthTrigger = New-ScheduledTaskTrigger -Daily -At $healthTime
+$healthArguments = @(
+    "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", ('"' + $healthScript + '"'),
+    "-OutputDirectory", ('"' + (Join-Path $DataRoot 'backups') + '"'),
+    "-HealthLogPath", ('"' + (Join-Path $DataRoot 'backup-health.log') + '"'),
+    "-MaxAgeHours", "36"
+) -join " "
+if (-not [string]::IsNullOrWhiteSpace($MirrorDirectory)) {
+    $healthArguments += ' -MirrorDirectory "' + $MirrorDirectory + '"'
+}
+$healthAction = New-ScheduledTaskAction -Execute $powerShellExe -Argument $healthArguments
+$healthTask = New-ScheduledTask -Action $healthAction -Trigger $healthTrigger -Principal $principal -Settings $settings
+Register-ScheduledTask -TaskName $HealthTaskName -InputObject $healthTask -Force | Out-Null
+
 Write-Output "Scheduled encrypted EnvanterTR backup daily at $DailyAt."
 Write-Output "Retention: $RetentionDays days. Backup directory: $(Join-Path $DataRoot 'backups')"
 Write-Output "The encryption passphrase is protected with Windows DPAPI and is not saved in task arguments or configuration."
 Write-Output "Use Get-ScheduledTaskInfo -TaskName '$TaskName' to inspect the last result; run the task once manually to confirm PostgreSQL and restore preview prerequisites."
+Write-Output "Scheduled backup health check daily at $HealthCheckAt (36-hour freshness limit)."
+Write-Output "Use Get-ScheduledTaskInfo -TaskName '$HealthTaskName' and $(Join-Path $DataRoot 'backup-health.log') to inspect health results."

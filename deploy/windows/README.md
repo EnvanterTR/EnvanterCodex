@@ -65,7 +65,9 @@ Betik servisi kısa süre durdurur; pg_dump ile PostgreSQL 17 dökümünü alır
 ./configure-backup-schedule.ps1 -DailyAt "02:30" -RetentionDays 30
 ```
 
-Alan dışı bir SMB paylaşımına kopya istenirse `-MirrorDirectory "\\yedek-sunucu\envantertr"` verin. Görev `SYSTEM` olarak çalıştığından Windows ağında etki alanı bilgisayar hesabına bu paylaşımda yazma izni verilmelidir; kullanıcı parolası göreve kaydedilmez. Aktarım şifreli `.etbackup` ve SHA-256 dosyasını geçici adla kopyalar, hedefte hash'i yeniden hesaplar ve ancak eşleşirse son ada taşır. Uzak paylaşımda saklama temizliği yapmaz; uzak saklama ve erişim politikası paylaşım yöneticisinin sorumluluğundadır. Gerçek ağ paylaşımıyla uçtan uca kabul henüz yapılmadı.
+Alan dışı bir SMB paylaşımına kopya istenirse `-MirrorDirectory "\\yedek-sunucu\envantertr"` verin. Görev `SYSTEM` olarak çalıştığından Windows ağında etki alanı bilgisayar hesabına bu paylaşımda okuma ve yazma izni verilmelidir; kullanıcı parolası göreve kaydedilmez. Aktarım şifreli `.etbackup` ve SHA-256 dosyasını geçici adla kopyalar, hedefte hash'i yeniden hesaplar ve ancak eşleşirse son ada taşır. Uzak paylaşımda saklama temizliği yapmaz; uzak saklama ve erişim politikası paylaşım yöneticisinin sorumluluğundadır. Gerçek ağ paylaşımıyla uçtan uca kabul henüz yapılmadı.
+
+Yedek zamanlayıcısını kurmak ayrıca günlük `EnvanterTR Daily Backup Health Check` görevini oluşturur (varsayılan 04:00). Bu görev son yerel yedeğin güncelliğini ve SHA-256 yan dosyasını kontrol eder; `-MirrorDirectory` verildiyse SMB kopyasının da erişilebilir, 36 saatten yeni ve hash bakımından doğru olduğunu denetler. Sonuç `C:\ProgramData\EnvanterTR\backup-health.log` dosyasına PASS/FAIL olarak yazılır ve başarısızlık görevde sıfır dışı sonuç verir. E-posta/SMS göndermez ve eski yedekleri silmez; uzak saklama temizliği paylaşım yöneticisindedir. Farklı kontrol saati `-HealthCheckAt "04:00"` ile ayarlanabilir.
 
 Yedek üretiminde veritabanı dökümü, arşiv ve izole restore geçici dizini SYSTEM/Administrators dışına kapatılır. Zamanlanmış yedeğin ilk çalıştırmasını Task Scheduler'dan elle başlatın ve `Get-ScheduledTaskInfo` sonucunu kontrol edin.
 
