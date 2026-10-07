@@ -7,4 +7,4 @@ ConditionPathExists=/etc/envantertr/server.env
 [Service]
 Type=oneshot
 UMask=0077
-ExecStart=/opt/envantertr/current/deploy/server/backup.sh
+ExecStart=/usr/bin/bash /opt/envantertr/current/deploy/server/backup.sh

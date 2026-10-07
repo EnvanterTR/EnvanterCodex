@@ -15,6 +15,9 @@ fail() { printf 'HATA: %s\n' "$*" >&2; exit 1; }
 trap 'status=$?; printf "Güncelleme %s koduyla durdu. Veritabanı ve medya volume\x27ları silinmedi.\n" "$status" >&2' ERR
 
 [[ "$EUID" -eq 0 ]] || fail 'Güncellemeyi sudo ile root olarak çalıştırın.'
+command -v flock >/dev/null || fail 'Güncelleme için flock gereklidir.'
+exec 9>/run/lock/envantertr-operations.lock
+flock -n 9 || fail 'Başka bir EnvanterTR sunucu işlemi sürüyor; güncelleme başlatılmadı.'
 [[ -d "$CURRENT_RELEASE" && -f "$CONFIG_FILE" ]] || fail 'Kurulu EnvanterTR bulunamadı; önce install.sh çalıştırın.'
 [[ -d "$SOURCE_ARGUMENT" ]] || fail 'Kaynak dizini bulunamadı.'
 SOURCE_ROOT="$(cd -- "$SOURCE_ARGUMENT" && pwd -P)"
@@ -53,7 +56,7 @@ restore_old_app_if_safe() {
 trap restore_old_app_if_safe EXIT
 "${compose_old[@]}" stop web
 WEB_STOPPED=1
-ENVT_SERVER_ENV_FILE="$CONFIG_FILE" bash "$CURRENT_RELEASE/deploy/server/backup.sh"
+ENVT_SERVER_LOCK_HELD=1 ENVT_SERVER_ENV_FILE="$CONFIG_FILE" bash "$CURRENT_RELEASE/deploy/server/backup.sh"
 
 "${compose_new[@]}" build web
 MIGRATION_STARTED=1

@@ -6,6 +6,11 @@ PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd -P)"
 CONFIG_FILE="${ENVT_SERVER_ENV_FILE:-/etc/envantertr/server.env}"
 [[ "$EUID" -eq 0 ]] || { echo 'Yedeği sudo ile root olarak alın.' >&2; exit 1; }
 [[ -r "$CONFIG_FILE" ]] || { echo "Yapılandırma bulunamadı: $CONFIG_FILE" >&2; exit 1; }
+command -v flock >/dev/null || { echo 'Yedek işlemi için flock gereklidir.' >&2; exit 1; }
+if [[ "${ENVT_SERVER_LOCK_HELD:-0}" != 1 ]]; then
+  exec 9>/run/lock/envantertr-operations.lock
+  flock -n 9 || { echo 'Başka bir EnvanterTR sunucu işlemi sürüyor; yedek başlatılmadı.' >&2; exit 1; }
+fi
 read_config() { awk -F= -v key="$1" '$1 == key {sub(/^[^=]*=/, ""); print; exit}' "$CONFIG_FILE"; }
 BACKUP_ROOT="$(read_config BACKUP_ROOT)"
 PASSWORD_FILE="$(read_config BACKUP_PASSPHRASE_FILE)"

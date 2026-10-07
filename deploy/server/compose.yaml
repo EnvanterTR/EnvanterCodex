@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: envantertr
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
-      - database:/var/lib/postgresql/data
+      - database_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 5s
@@ -39,8 +39,8 @@ services:
       database:
         condition: service_healthy
     volumes:
-      - company_media:/var/lib/envantertr/company-media
-      - data_protection_keys:/var/lib/envantertr/data-protection-keys
+      - company_media_data:/var/lib/envantertr/company-media
+      - data_protection_keys_data:/var/lib/envantertr/data-protection-keys
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m
@@ -81,12 +81,12 @@ networks:
   edge: {}
 
 volumes:
-  database:
-    name: envantertr_server_database
-  company_media:
-    name: envantertr_server_company_media
-  data_protection_keys:
-    name: envantertr_server_data_protection_keys
+  database_data:
+    name: ${DATABASE_VOLUME_NAME:-envantertr_server_database}
+  company_media_data:
+    name: ${COMPANY_MEDIA_VOLUME_NAME:-envantertr_server_company_media}
+  data_protection_keys_data:
+    name: ${DATA_PROTECTION_KEYS_VOLUME_NAME:-envantertr_server_data_protection_keys}
   caddy_data:
     name: envantertr_server_caddy_data
   caddy_config:

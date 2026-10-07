@@ -2,7 +2,7 @@
 
 Bu profil `systemd` kullanan Ubuntu/Linux ana bilgisayarda Docker Compose ile EnvanterTR'yi üretim yapılandırmasında çalıştırır. Uygulama ve PostgreSQL konteynerleri dış porta bağlanmaz; Caddy 80/443 üzerinden HTTPS sağlar. PostgreSQL, şirket medyası, oturum anahtarları ve Caddy sertifika durumu sabit adlı kalıcı volume'larda tutulur. **`docker compose down --volumes` çalıştırmayın.**
 
-Bu, Linux sunucu kurulumunun ilk sürümüdür; imzalı, sürümlü müşteri kurulum paketi değildir. Sunucuya aktarılan kaynak ağacı ve Docker imajları kullanılmaktadır. İmzalı yayın kanalı, Windows Server paketi, LAN için özel PKI/HTTPS akışı ve canlı yedekten geri yükleme aracı hâlâ ayrı teslimatlardır.
+Bu, Linux sunucu kurulumunun ilk sürümüdür; imzalı, sürümlü müşteri kurulum paketi değildir. Sunucuya aktarılan kaynak ağacı ve Docker imajları kullanılmaktadır. İmzalı yayın kanalı, Windows Server paketi ve LAN için özel PKI/HTTPS akışı hâlâ ayrı teslimatlardır.
 
 ## Gereksinimler
 
@@ -49,9 +49,19 @@ Yeni kaynak sürümünü sunucuya aktarın ve `update.sh`'yi o ağacın içinden
 sudo bash /yeni/kaynak/deploy/server/update.sh /yeni/kaynak
 ```
 
-Güncelleme önce uygulamayı durdurur, şifreli yedek ve izole kurtarma önizlemesi tamamlanmadan veritabanı şemasına dokunmaz, yeni imajı ayrı sürüm etiketiyle derler, migration'ları açıkça uygular ve HTTPS `ready` yanıtını bekler. Başarıda atomik `current` bağlantısını yeni sürüme geçirir; eski kaynak sürümü ile veritabanı/medya volume'ları korunur. Başarısız güncellemede eski uygulama otomatik başlatılmaz; migration geriye uyumluluğu varsayılmaz. Önce yeni uygulama günlükleri ve oluşturulan `.etbackup` incelenmelidir. Mevcut araç yalıtılmış kurtarılabilirlik önizlemesi sağlar; canlı veritabanına geri yüklemeyi otomatikleştirmez.
+Güncelleme önce uygulamayı durdurur, şifreli yedek ve izole kurtarma önizlemesi tamamlanmadan veritabanı şemasına dokunmaz, yeni imajı ayrı sürüm etiketiyle derler, migration'ları açıkça uygular ve HTTPS `ready` yanıtını bekler. Başarıda atomik `current` bağlantısını yeni sürüme geçirir; eski kaynak sürümü ile veritabanı/medya volume'ları korunur. Başarısız migration sonrasında eski binary'nin şemayla uyumu doğrulanmadığı için güncelleme betiği otomatik olarak çalıştırmaz; oluşturulan `.etbackup` ve günlükler saklanır. Bir yedeği canlı sisteme geçirmek için aşağıdaki `restore.sh` ayrı işlemidir.
 
-Yedek parola dosyasını doğrulama/açma ve kurtarma önizlemesi için mevcut araçlar kullanılabilir. **Canlı Compose veritabanı ve medya volume'una geri yükleme işlemi bu pakette yoktur**; üretim verisini ezebilecek el ile `pg_restore` komutu uygulamayın.
+### Canlı geri yükleme
+
+`restore.sh` önce verilen `.etbackup` parolasını doğrular ve PostgreSQL/medya/anahtar içeriğini izole kurtarma provasından geçirir. Sonra `RESTORE <alan-adı>` onayı alır, uygulamayı durdurur ve mevcut veriyi şifreli güvenlik yedeğine alır. Geri yüklemeyi **yeni ve ayrı** Docker volume'larına hazırlar, veritabanını canlı Compose veritabanına bağlamadan sorgular ve yalnızca doğrulama başarılıysa yapılandırmayı yeni volume adlarına geçirir. Migration sonrası HTTPS sağlık kontrolü geçmezse önceki yapılandırma/volume'lar yeniden bağlanır; yeni volume'lar inceleme için saklanır.
+
+```bash
+sudo bash /opt/envantertr/current/deploy/server/restore.sh /var/backups/envantertr/envantertr-server-YYYYMMDD-HHMMSS-XXXXXXXX.etbackup
+```
+
+Başarılı işlem eski veritabanı, medya ve anahtar volume'larını silmez. Eski volume'ları kaldırmadan önce uygulamayı ve geri yüklenen kayıtları kontrol edin ve ayrı yedek kopyasını doğrulayın. Bu akış Ubuntu sunucusunda henüz uçtan uca çalıştırılmadı; müşteri kurulumu öncesinde yalıtılmış deneme sunucusunda doğrulanmalıdır. Başarısız uygulama güncellemesinde önceki uygulama sürümüne geçiş ve migration'ı eski şemaya döndürme ayrıca desteklenmiyor.
+
+Yedek parola dosyasını çevrim dışı doğrulama/açma ve salt okunur kurtarma önizlemesi için mevcut araçlar kullanılabilir. Canlı geri yüklemede daima yukarıdaki `restore.sh` akışını kullanın; üretim veritabanına elle `pg_restore` uygulamayın.
 
 ## Kontrol ve günlükler
 
