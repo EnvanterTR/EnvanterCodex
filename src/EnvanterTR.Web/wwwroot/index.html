@@ -325,7 +325,12 @@
       const headers = new Headers(options.headers || {});
       if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
       if (options.method && options.method !== 'GET' && requestToken) headers.set('X-CSRF-TOKEN', requestToken);
-      const response = await fetch(path, { credentials: 'same-origin', ...options, headers });
+      let response;
+      try { response = await fetch(path, { credentials: 'same-origin', ...options, headers }); }
+      catch (error) {
+        if (error instanceof TypeError) throw new Error('Sunucuya bağlanılamadı. Uygulamanın çalıştığını ve ağ bağlantınızı kontrol edip yeniden deneyin.');
+        throw error;
+      }
       if (response.status === 401) { showLogin(); throw new Error('Oturum açmanız gerekiyor.'); }
       if (!response.ok) {
         let message = `İstek başarısız (${response.status}).`;
