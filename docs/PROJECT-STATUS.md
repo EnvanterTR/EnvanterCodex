@@ -30,12 +30,13 @@
 - Profil fotoğrafları için sunucu tarafında 2 MiB sınırı ve istemci tarafında sınır aşımı uyarısı.
 - Garanti raporu: yaklaşan (30/90/180/366 gün), süresi dolan, ileri tarihli ve garanti tarihi bulunmayan varlıkları arama ve sayfalama; etkin filtrelerle Excel uyumlu CSV dışa aktarımı.
 - Yerel geliştirme veritabanı ve şirket medyası için elle/zamanlanmış şifreli yedek üretimi ve doğrulama araçları.
+- Ubuntu/systemd sunucusu için ayrı Production Compose ve Caddy HTTPS kurulumu; sabit adlı kalıcı DB/medya/Data Protection volume'ları, root-only sırlar, açık migration adımı ve Linux kaynak güncelleme betiği. Güncelleme öncesi şifreli veritabanı/görsel/anahtar yedeği, SHA-256 doğrulaması ve yalıtılmış geri yükleme provası otomatik çalıştırılır; günlük systemd yedek zamanlayıcısı kurulur.
 - Windows ve Linux için izole kurtarma önizlemesi: SHA-256 doğrulamasından sonra PostgreSQL 17'ye geçici, ağ/port/volume bağlantısı olmayan konteynerde geri yükleme; medya arşivini açma; migration ve dosya sayısını raporlama; işlem sonunda konteyneri kaldırma.
 
 ## Tamamlanması gereken ana işler
 
 1. **P0 — Veri kurtarma ve güvenlik:** İzole kurtarma provası tamamlandı; canlı sistem için geri yükleme/geri alma tasarımı, yedek doğrulama/izleme; tenant ve izin kapsamı için kabul matrisi; oturum ve parola kurtarma güvenlik incelemesi sürüyor.
-2. **P1 — Windows Server ve Linux teslimatı:** kurulum/servis yönetimi, kalıcı yapılandırma, ön yedek, güncelleme ve geri alma; LAN/HTTPS ve güvenlik duvarı rehberi.
+2. **P1 — Windows Server ve Linux teslimatı:** Linux kaynak tabanlı kurulum/güncelleme prototipi eklendi. Windows Server paketi, imzalı müşteri dağıtımı, LAN/özel PKI, uzak yedekleme, canlı geri yükleme ve güvenli rollback tamamlanmalı.
 3. **P1 — Envanter kapsamı:** varlık durumu kuyrukları; daha fazla modülde ilişkili dosya/geçmiş/toplu işlemler; planlı denetim ve iade akışları.
 4. **P1 — Veri taşıma:** çalışan/varlık dışındaki modüllerde CSV içe aktarma, kolon eşleme ve güvenli JSON geri yükleme.
 5. **P2 — Kurumsal kullanım:** bildirim/e-posta, MFA/SSO, müşteri API anahtarları ve webhooklar, İngilizce yerelleştirme, kapsamlı raporlar ve kabul doğrulaması.

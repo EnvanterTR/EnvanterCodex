@@ -1,0 +1,93 @@
+name: envantertr-server
+
+services:
+  database:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: envantertr
+      POSTGRES_USER: envantertr
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    networks: [internal]
+    logging:
+      options:
+        max-size: 10m
+        max-file: "5"
+
+  web:
+    image: envantertr-server-web:${RELEASE_TAG:-current}
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: 8080
+      DataProtection__KeysPath: /var/lib/envantertr/data-protection-keys
+      ConnectionStrings__EnvanterTR: "Host=database;Port=5432;Database=envantertr;Username=envantertr;Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
+      Setup__BootstrapToken: ${SETUP_BOOTSTRAP_TOKEN:-}
+      Setup__PlatformBootstrapToken: ${SETUP_PLATFORM_BOOTSTRAP_TOKEN:-}
+    depends_on:
+      database:
+        condition: service_healthy
+    volumes:
+      - company_media:/var/lib/envantertr/company-media
+      - data_protection_keys:/var/lib/envantertr/data-protection-keys
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    security_opt:
+      - no-new-privileges:true
+    networks: [internal]
+    logging:
+      options:
+        max-size: 10m
+        max-file: "5"
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN is required}
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    security_opt:
+      - no-new-privileges:true
+    networks: [internal, edge]
+    logging:
+      options:
+        max-size: 10m
+        max-file: "5"
+
+networks:
+  internal:
+    internal: true
+  edge: {}
+
+volumes:
+  database:
+    name: envantertr_server_database
+  company_media:
+    name: envantertr_server_company_media
+  data_protection_keys:
+    name: envantertr_server_data_protection_keys
+  caddy_data:
+    name: envantertr_server_caddy_data
+  caddy_config:
+    name: envantertr_server_caddy_config

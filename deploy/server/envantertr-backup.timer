@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily EnvanterTR encrypted backup
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=15m
+Unit=envantertr-backup.service
+
+[Install]
+WantedBy=timers.target

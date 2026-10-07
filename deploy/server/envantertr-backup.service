@@ -1,0 +1,10 @@
+[Unit]
+Description=EnvanterTR encrypted database and company media backup
+After=docker.service
+Requires=docker.service
+ConditionPathExists=/etc/envantertr/server.env
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/opt/envantertr/current/deploy/server/backup.sh

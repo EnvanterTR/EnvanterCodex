@@ -33,7 +33,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 ### P1 — Kurum içi kurulum ve ağ erişimi
 
 - Windows 11 ve Windows Server için imzalı, ileri-ileri kurulum sihirbazı ve servis yönetimi.
-- Ubuntu/Linux için tekrarlanabilir kurulum ve güncelleme betiği.
+- Ubuntu/systemd için Production Compose, Caddy HTTPS, root-only yapılandırma, ilk kurulum/migration, yedek doğrulamalı güncelleme ve günlük şifreli yedek zamanlayıcısı eklendi (`deploy/server`). İmzalı müşteri paketi, Windows Server kurulumu, LAN/özel PKI, uzak yedekleme/izleme ve canlı geri yükleme/rollback hâlâ gerekli.
 - Ana bilgisayarın LAN adresi, DHCP değişimi veya sabit IP/DNS seçeneği, HTTPS, güvenlik duvarı kuralı ve istemci tarayıcı bağlantısı. Geliştirme Compose ayarı yalnızca localhost'a bağlıdır; şirket ağına açılmamalıdır.
 - Güncelleme/kurulum sırasında veritabanını veya dosyaları silmeme, önce yedek alma ve geri alma prosedürü.
 

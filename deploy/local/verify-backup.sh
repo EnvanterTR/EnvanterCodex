@@ -41,16 +41,25 @@ try:
         raise ValueError("invalid database hash")
     if not isinstance(media_hash, str) or not re.fullmatch(r"[a-fA-F0-9]{64}", media_hash):
         raise ValueError("invalid media hash")
+    keys_name = data.get("dataProtectionKeysArchive")
+    keys_hash = sha.get("dataProtectionKeysArchive")
+    if (keys_name is None) != (keys_hash is None):
+        raise ValueError("incomplete Data Protection keys metadata")
+    if keys_name is not None and (keys_name != "data-protection-keys.tar.gz" or not isinstance(keys_hash, str) or not re.fullmatch(r"[a-fA-F0-9]{64}", keys_hash)):
+        raise ValueError("invalid Data Protection keys metadata")
     print(dump)
     print(media)
     print(dump_hash.lower())
     print(media_hash.lower())
+    if keys_name is not None:
+        print(keys_name)
+        print(keys_hash.lower())
 except Exception as exc:
     print(f"Yedek manifesti geçersiz: {exc}", file=sys.stderr)
     sys.exit(1)
 PY
 )
-if [[ ${#METADATA[@]} -ne 4 ]]; then
+if [[ ${#METADATA[@]} -ne 4 && ${#METADATA[@]} -ne 6 ]]; then
   echo 'Yedek manifesti okunamadı veya desteklenmiyor.' >&2
   exit 1
 fi
@@ -65,6 +74,10 @@ for file in "$DUMP_NAME" "$MEDIA_NAME"; do
     exit 1
   fi
 done
+if [[ ${#METADATA[@]} -eq 6 && ! -f "$BACKUP_DIR/${METADATA[4]}" ]]; then
+  echo "Yedek dosyası bulunamadı: ${METADATA[4]}" >&2
+  exit 1
+fi
 
 ACTUAL_DUMP_SHA="$(sha256sum -- "$BACKUP_DIR/$DUMP_NAME" | cut -d ' ' -f 1)"
 ACTUAL_MEDIA_SHA="$(sha256sum -- "$BACKUP_DIR/$MEDIA_NAME" | cut -d ' ' -f 1)"
@@ -72,10 +85,18 @@ if [[ "$ACTUAL_DUMP_SHA" != "$EXPECTED_DUMP_SHA" || "$ACTUAL_MEDIA_SHA" != "$EXP
   echo 'SHA-256 özeti manifest ile eşleşmiyor. Dosya değiştirilmiş veya bozulmuş olabilir.' >&2
   exit 1
 fi
+if [[ ${#METADATA[@]} -eq 6 ]]; then
+  ACTUAL_KEYS_SHA="$(sha256sum -- "$BACKUP_DIR/${METADATA[4]}" | cut -d ' ' -f 1)"
+  if [[ "$ACTUAL_KEYS_SHA" != "${METADATA[5]}" ]]; then
+    echo 'Data Protection anahtarları SHA-256 özeti manifest ile eşleşmiyor.' >&2
+    exit 1
+  fi
+  tar -tzf "$BACKUP_DIR/${METADATA[4]}" >/dev/null
+fi
 
 tar -tzf "$BACKUP_DIR/$MEDIA_NAME" >/dev/null
 docker run --rm --network none --mount "type=bind,source=$BACKUP_DIR,target=/backup,readonly" \
   postgres:17-alpine pg_restore --list "/backup/$DUMP_NAME" >/dev/null
 
-echo 'Yedek doğrulandı: manifest, iki SHA-256 özeti, medya arşivi ve PostgreSQL döküm dizini okunabilir.'
+echo 'Yedek doğrulandı: manifest, SHA-256 özetleri, mevcut medya/anahtar arşivleri ve PostgreSQL döküm dizini okunabilir.'
 echo 'Bu komut veritabanını değiştirmez ve yedeği geri yüklemez.'
