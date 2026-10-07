@@ -5,6 +5,7 @@ param(
     [string]$OutputDirectory = "$env:ProgramData\EnvanterTR\backups",
     [string]$PgBinDirectory = "$env:ProgramFiles\PostgreSQL\17\bin",
     [string]$PassphraseFile,
+    [string]$MirrorDirectory,
     [ValidateRange(0,3650)][int]$RetentionDays = 0
 )
 
@@ -85,6 +86,22 @@ $outputFull = [IO.Path]::GetFullPath($OutputDirectory).TrimEnd('\')
 if (-not $outputFull.Equals($root, [StringComparison]::OrdinalIgnoreCase) -and
     -not $outputFull.StartsWith($root + '\', [StringComparison]::OrdinalIgnoreCase)) {
     throw "Backups must be stored under the protected EnvanterTR data directory."
+}
+$mirrorFull = $null
+if (-not [string]::IsNullOrWhiteSpace($MirrorDirectory)) {
+    if (-not $MirrorDirectory.StartsWith('\\',[StringComparison]::Ordinal) -or $MirrorDirectory.Contains('"') -or
+        $MirrorDirectory.Contains("`r") -or $MirrorDirectory.Contains("`n")) {
+        throw "MirrorDirectory must be a UNC path without quote or line-break characters."
+    }
+    $mirrorParts = $MirrorDirectory.TrimEnd('\').Substring(2).Split('\')
+    if ($mirrorParts.Count -lt 2 -or @($mirrorParts | Where-Object { [string]::IsNullOrWhiteSpace($_) -or $_ -in @('.','..') -or $_ -match '[<>:"|?*]' }).Count -gt 0) {
+        throw "MirrorDirectory must contain a valid UNC server and share path."
+    }
+    $mirrorFull = [IO.Path]::GetFullPath($MirrorDirectory).TrimEnd('\')
+    if ($mirrorFull.Equals($root, [StringComparison]::OrdinalIgnoreCase) -or
+        $mirrorFull.StartsWith($root + '\', [StringComparison]::OrdinalIgnoreCase)) {
+        throw "MirrorDirectory must be outside the EnvanterTR data directory."
+    }
 }
 & icacls.exe $OutputDirectory /inheritance:r /grant:r "SYSTEM:(OI)(CI)F" "Administrators:(OI)(CI)F" /T /C | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Could not restrict backup directory access." }
@@ -415,6 +432,27 @@ try {
         Write-Warning "The passphrase is not stored. Keep it offline and separately from this backup. The recovery preview used a temporary loopback-only PostgreSQL cluster, not the live database."
     } else {
         Write-Warning "The passphrase file is DPAPI machine-bound and is not included in this backup. Keep the passphrase in an approved password manager for disaster recovery. The preview used a temporary loopback-only PostgreSQL cluster, not the live database."
+    }
+    if ($mirrorFull) {
+        New-Item -ItemType Directory -Path $mirrorFull -Force | Out-Null
+        $remoteFinalPath = Join-Path $mirrorFull $backupName
+        $remotePartialPath = Join-Path $mirrorFull ("." + $backupName + ".uploading")
+        $remoteChecksumPath = "$remoteFinalPath.sha256"
+        $remoteChecksumPartialPath = "$remoteChecksumPath.uploading"
+        try {
+            Copy-Item -LiteralPath $finalPath -Destination $remotePartialPath
+            $remoteDigest = (Get-FileHash -LiteralPath $remotePartialPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($remoteDigest -ne $digest) { throw "UNC mirror checksum did not match the verified local backup." }
+            Move-Item -LiteralPath $remotePartialPath -Destination $remoteFinalPath
+            $remoteFinalDigest = (Get-FileHash -LiteralPath $remoteFinalPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($remoteFinalDigest -ne $digest) { throw "UNC mirror changed after its atomic rename." }
+            Set-Content -LiteralPath $remoteChecksumPartialPath -Value "$digest *$backupName" -Encoding ASCII
+            Move-Item -LiteralPath $remoteChecksumPartialPath -Destination $remoteChecksumPath
+            Write-Output "Encrypted backup mirrored and re-verified at: $remoteFinalPath"
+        } catch {
+            Remove-Item -LiteralPath $remotePartialPath,$remoteChecksumPartialPath -Force -ErrorAction SilentlyContinue
+            throw
+        }
     }
     if ($RetentionDays -gt 0) {
         $cutoff = [DateTime]::UtcNow.AddDays(-$RetentionDays)

@@ -3,6 +3,7 @@ param(
     [string]$DataRoot = "$env:ProgramData\EnvanterTR",
     [string]$ServiceName = "EnvanterTR",
     [string]$PgBinDirectory = "$env:ProgramFiles\PostgreSQL\17\bin",
+    [string]$MirrorDirectory,
     [ValidatePattern('^(?:[01][0-9]|2[0-3]):[0-5][0-9]$')][string]$DailyAt = "02:30",
     [ValidateRange(1,3650)][int]$RetentionDays = 30,
     [string]$TaskName = "EnvanterTR Daily Encrypted Backup"
@@ -75,6 +76,17 @@ $actionArguments = @(
     "-ServiceName", ('"' + $ServiceName + '"'), "-PgBinDirectory", ('"' + $PgBinDirectory + '"'),
     "-PassphraseFile", ('"' + $secretPath + '"'), "-RetentionDays", [string]$RetentionDays
 ) -join " "
+if (-not [string]::IsNullOrWhiteSpace($MirrorDirectory)) {
+    if (-not $MirrorDirectory.StartsWith('\\',[StringComparison]::Ordinal) -or $MirrorDirectory.Contains('"') -or
+        $MirrorDirectory.Contains("`r") -or $MirrorDirectory.Contains("`n")) {
+        throw "MirrorDirectory must be a UNC path without quote or line-break characters."
+    }
+    $mirrorParts = $MirrorDirectory.TrimEnd('\').Substring(2).Split('\')
+    if ($mirrorParts.Count -lt 2 -or @($mirrorParts | Where-Object { [string]::IsNullOrWhiteSpace($_) -or $_ -in @('.','..') -or $_ -match '[<>:"|?*]' }).Count -gt 0) {
+        throw "MirrorDirectory must contain a valid UNC server and share path."
+    }
+    $actionArguments += ' -MirrorDirectory "' + $MirrorDirectory + '"'
+}
 $powerShellExe = [Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
 if (-not (Test-Path -LiteralPath $powerShellExe -PathType Leaf)) { throw "Could not resolve the active PowerShell executable." }
 $action = New-ScheduledTaskAction -Execute $powerShellExe -Argument $actionArguments

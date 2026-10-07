@@ -65,6 +65,8 @@ Betik servisi kısa süre durdurur; pg_dump ile PostgreSQL 17 dökümünü alır
 ./configure-backup-schedule.ps1 -DailyAt "02:30" -RetentionDays 30
 ```
 
+Alan dışı bir SMB paylaşımına kopya istenirse `-MirrorDirectory "\\yedek-sunucu\envantertr"` verin. Görev `SYSTEM` olarak çalıştığından Windows ağında etki alanı bilgisayar hesabına bu paylaşımda yazma izni verilmelidir; kullanıcı parolası göreve kaydedilmez. Aktarım şifreli `.etbackup` ve SHA-256 dosyasını geçici adla kopyalar, hedefte hash'i yeniden hesaplar ve ancak eşleşirse son ada taşır. Uzak paylaşımda saklama temizliği yapmaz; uzak saklama ve erişim politikası paylaşım yöneticisinin sorumluluğundadır. Gerçek ağ paylaşımıyla uçtan uca kabul henüz yapılmadı.
+
 Yedek üretiminde veritabanı dökümü, arşiv ve izole restore geçici dizini SYSTEM/Administrators dışına kapatılır. Zamanlanmış yedeğin ilk çalıştırmasını Task Scheduler'dan elle başlatın ve `Get-ScheduledTaskInfo` sonucunu kontrol edin.
 
 Bu, canlı sistemden bağımsız yerel bir restore provasıdır; gerçek Windows Server'da henüz çalıştırılmadı ve ayrı bir kurtarma sunucusunda sınanmamış durumda. Yedek sunucu içinde kalır; sunucu kaybına karşı başka bir makineye/çevrim dışı ortama ve parolaya ayrı erişim denetimiyle kopyalayın. Ayrı offline doğrulama ve canlı restore aracı henüz teslim edilmedi; bu betik tek başına üretim yedekleme politikası sayılmaz. Görev sonucunu `Get-ScheduledTaskInfo -TaskName 'EnvanterTR Daily Encrypted Backup'` ile görüntüleyin; ilk çalıştırmada Task Scheduler'dan elle başlatıp izole restore provası tamamlandığını kontrol edin.
