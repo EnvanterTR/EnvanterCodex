@@ -1,8 +1,10 @@
 using EnvanterTR.Web.Data;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -141,6 +143,85 @@ if (args.Contains("--migrate", StringComparer.OrdinalIgnoreCase))
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseAuthentication();
+app.Use(async (context, next) =>
+{
+    var principal = context.User;
+    if (principal.Identity?.IsAuthenticated != true)
+    {
+        await next();
+        return;
+    }
+
+    var db = context.RequestServices.GetRequiredService<AppDbContext>();
+    if (!Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+    {
+        await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return;
+    }
+
+    var companyClaim = principal.FindFirst("company_id")?.Value;
+    var roleClaim = principal.FindFirst("company_role")?.Value;
+    string? currentRole = null;
+    if (companyClaim is not null)
+    {
+        if (!Guid.TryParse(companyClaim, out var companyId) || string.IsNullOrWhiteSpace(roleClaim))
+        {
+            await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+
+        currentRole = await (from membership in db.CompanyMemberships.AsNoTracking()
+            join company in db.Companies.AsNoTracking() on membership.CompanyId equals company.Id
+            where membership.CompanyId == companyId && membership.UserId == userId && company.IsActive
+            select membership.RoleKey).SingleOrDefaultAsync(context.RequestAborted);
+        if (currentRole is null)
+        {
+            await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+    }
+    else if (roleClaim is not null)
+    {
+        await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return;
+    }
+
+    var platformAdminClaim = principal.HasClaim("platform_admin", "true");
+    var isPlatformAdmin = platformAdminClaim && await db.PlatformAdministrators.AsNoTracking()
+        .AnyAsync(x => x.UserId == userId, context.RequestAborted);
+    if (companyClaim is null && !isPlatformAdmin)
+    {
+        await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return;
+    }
+
+    if (principal.Identity is ClaimsIdentity identity)
+    {
+        var changed = false;
+        if (currentRole is not null && !string.Equals(currentRole, roleClaim, StringComparison.Ordinal))
+        {
+            foreach (var staleRole in identity.FindAll("company_role").ToArray())
+                identity.RemoveClaim(staleRole);
+            identity.AddClaim(new Claim("company_role", currentRole));
+            changed = true;
+        }
+        if (platformAdminClaim && !isPlatformAdmin)
+        {
+            foreach (var staleAdminClaim in identity.FindAll("platform_admin").ToArray())
+                identity.RemoveClaim(staleAdminClaim);
+            changed = true;
+        }
+        if (changed)
+            await context.SignInAsync(IdentityConstants.ApplicationScheme, principal);
+    }
+
+    await next();
+});
 app.UseAuthorization();
 app.UseRateLimiter();
 app.MapHealthChecks("/health");
