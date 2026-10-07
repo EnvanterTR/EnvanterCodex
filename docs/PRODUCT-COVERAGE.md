@@ -47,7 +47,7 @@ Bu belge EnvanterTR'nin kurumsal envanter yönetiminde beklenen ana işlevleri n
 ## Öncelik ve tamamlanma ölçütü
 
 1. **Önce güvenli temel:** tenant/rol denetimi, yedekleme-geri yükleme, oturum ve üretim kurulum gereksinimleri.
-2. **Sonra envanter yaşam döngüsü:** departman/konum katalogları, ilişki ayrıntıları, transfer/rezervasyon, denetim, ek dosyaları diğer modüllere yayma ve yedek/geri yükleme kapsamını tamamlama.
+2. **Sonra envanter yaşam döngüsü:** konum kimliğini stok/varlık/çalışan kayıtlarına bağlama, varsayılan konum ve konum yöneticileri; ilişki ayrıntıları, transfer/rezervasyon, denetim, ek dosyaları diğer modüllere yayma ve yedek/geri yükleme kapsamını tamamlama.
 3. **Modül paritesi:** lisans, aksesuar, sarf, bileşen, kit ve bakım modüllerini her biri için liste + filtre/sıralama + detay ilişkileri + oluştur/düzenle + toplu işlem + geçmiş + izin + dışa aktarma ile tamamlamak.
 4. **Operasyonel işlevler:** toplu etiket ve tarayıcı iş akışları, modül bazlı içe/dışa aktarma, bildirim, raporlar ve API/webhook.
 5. **Ürün teslimatı:** Windows/Linux kurum içi kurulum, barındırılan hizmet, dil ve ticari akışlar.
