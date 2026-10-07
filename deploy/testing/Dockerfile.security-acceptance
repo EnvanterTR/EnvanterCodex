@@ -1,0 +1,10 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS acceptance
+WORKDIR /source
+COPY global.json ./
+COPY src/EnvanterTR.Web/EnvanterTR.Web.csproj src/EnvanterTR.Web/
+COPY tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj tests/EnvanterTR.SecurityAcceptance/
+RUN dotnet restore tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj
+COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
+COPY tests/EnvanterTR.SecurityAcceptance/ tests/EnvanterTR.SecurityAcceptance/
+WORKDIR /source/tests/EnvanterTR.SecurityAcceptance
+ENTRYPOINT ["dotnet", "test", "--no-restore", "--logger", "console;verbosity=normal"]
