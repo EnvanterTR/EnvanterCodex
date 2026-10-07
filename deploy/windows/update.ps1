@@ -24,24 +24,28 @@ if ($ApplyMigrations) {
 }
 $production = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
 $httpsUrl = [uri]$production.Kestrel.Endpoints.Https.Url
-$releasePath = Join-Path $InstallRoot ("rollback-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
+$releasePath = Join-Path $InstallRoot ("rollback-" + (Get-Date -Format "yyyyMMdd-HHmmss") + "-" + [guid]::NewGuid().ToString("N").Substring(0,8))
 $wasRunning = $service.Status -eq "Running"
+$snapshotReady = $false
+$migrationAttempted = $false
 if ($wasRunning) { Stop-Service -Name $ServiceName; (Get-Service -Name $ServiceName).WaitForStatus("Stopped", [TimeSpan]::FromSeconds(60)) }
 try {
     Copy-Item -LiteralPath $appPath -Destination $releasePath -Recurse
+    $snapshotReady = $true
     Get-ChildItem -LiteralPath $appPath -Force | Remove-Item -Recurse -Force
     Copy-Item -Path (Join-Path $package "*") -Destination $appPath -Recurse -Force
     Copy-Item -LiteralPath (Join-Path $releasePath "appsettings.Production.json") -Destination $configPath -Force
     & icacls.exe $appPath /inheritance:r /grant:r "SYSTEM:(OI)(CI)F" "Administrators:(OI)(CI)F" "NT AUTHORITY\LOCAL SERVICE:(OI)(CI)RX" /T /C | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "Could not set application directory permissions." }
     if ($ApplyMigrations) {
+        $migrationAttempted = $true
         Push-Location $appPath
         try {
             & (Join-Path $appPath "EnvanterTR.Web.exe") --migrate
-            if ($LASTEXITCODE -ne 0) { throw "Database migration process failed with exit code $LASTEXITCODE. The app files will roll back, but the database will not; restore the verified backup before retrying." }
+            if ($LASTEXITCODE -ne 0) { throw "Database migration process failed with exit code $LASTEXITCODE. The migration may have changed the database; restore the verified backup before running the previous application." }
         } finally { Pop-Location }
     }
-    if ($wasRunning) { Start-Service -Name $ServiceName }
+    Start-Service -Name $ServiceName
     $deadline = (Get-Date).AddMinutes(2)
     do {
         Start-Sleep -Seconds 3
@@ -56,16 +60,34 @@ try {
                 finally { [Net.ServicePointManager]::ServerCertificateValidationCallback = $previousCallback }
             }
         } catch { $status = $null }
-        if ($status.status -eq "ready") { Write-Output "Update is healthy. Previous application files remain at $releasePath"; return }
+        if ($status.status -eq "ready") {
+            if (-not $wasRunning) { Stop-Service -Name $ServiceName; (Get-Service -Name $ServiceName).WaitForStatus("Stopped", [TimeSpan]::FromSeconds(60)) }
+            Write-Output "Update is healthy. Previous application files remain at $releasePath"
+            if (-not $wasRunning) { Write-Output "The service was stopped before the update and has been left stopped." }
+            return
+        }
     } while ((Get-Date) -lt $deadline)
     throw "Health check did not report ready."
 } catch {
-    if (Test-Path $releasePath) {
-        if ((Get-Service -Name $ServiceName).Status -eq "Running") { Stop-Service -Name $ServiceName -ErrorAction SilentlyContinue }
+    $updateFailure = $_
+    if ($migrationAttempted) {
+        try {
+            if ((Get-Service -Name $ServiceName).Status -eq "Running") {
+                Stop-Service -Name $ServiceName -ErrorAction SilentlyContinue
+                (Get-Service -Name $ServiceName).WaitForStatus("Stopped", [TimeSpan]::FromSeconds(60))
+            }
+        } catch { }
+        throw "Update stopped after a database migration was started. The updated application files remain in place and the previous files are preserved at '$releasePath'. The database may have changed; restore the verified backup before running the previous application. Original error: $($updateFailure.Exception.Message)"
+    }
+    if ($snapshotReady) {
+        if ((Get-Service -Name $ServiceName).Status -eq "Running") {
+            Stop-Service -Name $ServiceName -ErrorAction SilentlyContinue
+            (Get-Service -Name $ServiceName).WaitForStatus("Stopped", [TimeSpan]::FromSeconds(60))
+        }
         Get-ChildItem -LiteralPath $appPath -Force | Remove-Item -Recurse -Force
         Copy-Item -Path (Join-Path $releasePath "*") -Destination $appPath -Recurse -Force
         & icacls.exe $appPath /inheritance:r /grant:r "SYSTEM:(OI)(CI)F" "Administrators:(OI)(CI)F" "NT AUTHORITY\LOCAL SERVICE:(OI)(CI)RX" /T /C | Out-Null
         if ($wasRunning) { Start-Service -Name $ServiceName -ErrorAction SilentlyContinue }
     }
-    throw
+    throw $updateFailure
 }

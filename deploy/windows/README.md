@@ -43,7 +43,7 @@ Sonra `/setup.html` ile şirket sahibini, `/platform-setup.html` ile platform y�
 ./update.ps1 -PackagePath C:\Staging\publish
 ```
 
-Betik uygulama dosyalarının kopyasını `C:\Program Files\EnvanterTR\rollback-*` altında tutar, üretim ayar dosyasını korur ve `/api/status` `ready` değilse önceki uygulama dosyalarını geri koyar. **Veritabanı migration'ını geri almaz.** Migration gerektiren sürümlerde bu mekanizma tek başına güvenli rollback sağlamaz; migration öncesi yedek ve uyumlu geri yükleme planı zorunludur.
+Betik uygulama dosyalarının kopyasını `C:\Program Files\EnvanterTR\rollback-*` altında tutar ve üretim ayar dosyasını korur. Servis güncelleme öncesinde çalışıyorsa güncelleme sırasında durdurulur; önceden durmuşsa yeni dosyalar sağlık kontrolü için kısa süre başlatılır ve başarılı kontrolden sonra tekrar durdurulur. Migration başlatılmadıysa kopyalama/sağlık kontrolü hatasında önceki uygulama dosyaları geri yüklenir; servis başlangıçtaki çalışma durumuna döndürülür. **Veritabanı migration'ı hiçbir durumda otomatik geri alınmaz.**
 
 Yeni sürüm migration içeriyorsa, doğrulanmış veritabanı yedeğinin dosya yolunu açıkça verin. Betik bu dosyanın varlığını kontrol eder ve `MIGRATE` yazarak onay ister:
 
@@ -51,7 +51,15 @@ Yeni sürüm migration içeriyorsa, doğrulanmış veritabanı yedeğinin dosya 
 ./update.ps1 -PackagePath C:\Staging\publish -ApplyMigrations -BackupPath D:\VerifiedBackups\database.dump
 ```
 
-Betik uygulama servisini durdurur, yeni uygulamadan `--migrate` komutunu çalıştırır, sonra servisi açıp hazır durumunu bekler. Hata olursa eski uygulama dosyalarını geri koyar; **veritabanını yedekten geri yüklemez ve migration'ı geri almaz**. Yedek dosyasının gerçekten doğrulanmış olması operatörün sorumluluğundadır; betik yalnızca dosyanın varlığını kontrol eder.
+Betik uygulama servisini durdurur, uygulama dosyalarının önceki sürüm kopyasını alır, yeni uygulamadan `--migrate` komutunu çalıştırır, sonra servisi açıp hazır durumunu bekler. Migration komutu başlatıldıktan sonra hata oluşursa betik yeni uygulama dosyalarını otomatik olarak geri almaz; veritabanı şeması değişmiş olabilir. Servis durdurulur, eski uygulama dosyaları rollback klasöründe korunur ve hata açıkça raporlanır. Önce veritabanı ile eşleşen doğrulanmış yedeği geri yükleyip sonra eski uygulamayı çalıştırın. Migration öncesi kopyalama hatasında eski uygulama dosyaları geri yüklenir. Yedek dosyasının gerçekten doğrulanmış olması operatörün sorumluluğundadır; betik yalnızca dosyanın varlığını kontrol eder.
+
+Güncelleme kurtarma dallarının statik regresyon kontrolü `tests/update-safety-check.ps1` ile yapılabilir:
+
+```powershell
+./tests/update-safety-check.ps1
+```
+
+Bu kontrol PowerShell sözdizimini ve tehlikeli rollback sıralamasını denetler; gerçek Windows Server servis/migration/sağlık kontrolü kabul testinin yerini tutmaz.
 
 ## Şifreli Windows yedeği
 
