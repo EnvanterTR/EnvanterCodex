@@ -20,6 +20,10 @@ $verifyScript = Join-Path $PSScriptRoot 'verify-backup.ps1'
 $manifest = Get-Content -LiteralPath (Join-Path $backupRoot 'manifest.json') -Raw | ConvertFrom-Json
 $dumpPath = Join-Path $backupRoot ([string]$manifest.databaseDump)
 $mediaPath = Join-Path $backupRoot ([string]$manifest.companyMediaArchive)
+$keysPath = $null
+if ($manifest.dataProtectionKeysArchive) {
+    $keysPath = Join-Path $backupRoot ([string]$manifest.dataProtectionKeysArchive)
+}
 $containerName = 'envantertr-restore-preview-' + [Guid]::NewGuid().ToString('N').Substring(0, 12)
 $password = [Guid]::NewGuid().ToString('N') + [Guid]::NewGuid().ToString('N')
 $containerCreated = $false
@@ -50,9 +54,9 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Migration geçmişi okunamadı.' }
     }
 
-    $entries = @(& docker exec $containerName tar -tzf /tmp/company-media.tar.gz)
+    $mediaEntries = @(& docker exec $containerName tar -tzf /tmp/company-media.tar.gz)
     if ($LASTEXITCODE -ne 0) { throw 'Medya arşivinin dizini okunamadı.' }
-    foreach ($entry in $entries) {
+    foreach ($entry in $mediaEntries) {
         $normalized = ([string]$entry).Replace('\', '/')
         if ($normalized.StartsWith('/') -or $normalized -match '^[A-Za-z]:' -or $normalized.Split('/') -contains '..') {
             throw 'Medya arşivinde hedef klasör dışına çıkabilecek bir yol bulundu.'
@@ -62,9 +66,25 @@ try {
     Invoke-Docker @('exec', $containerName, 'tar', '-xzf', '/tmp/company-media.tar.gz', '-C', '/tmp/media-preview', '--no-same-owner', '--no-same-permissions')
     $mediaFileCount = (& docker exec $containerName sh -c 'find /tmp/media-preview -type f | wc -l' | Out-String).Trim()
     if ($LASTEXITCODE -ne 0) { throw 'Geçici medya açılımı doğrulanamadı.' }
+    $keysFileCount = '0'
+    if ($keysPath) {
+        Invoke-Docker @('cp', $keysPath, "${containerName}:/tmp/data-protection-keys.tar.gz")
+        $keysEntries = @(& docker exec $containerName tar -tzf /tmp/data-protection-keys.tar.gz)
+        if ($LASTEXITCODE -ne 0) { throw 'Data Protection anahtar arşivinin dizini okunamadı.' }
+        foreach ($entry in $keysEntries) {
+            $normalized = ([string]$entry).Replace('\', '/')
+            if ($normalized.StartsWith('/') -or $normalized -match '^[A-Za-z]:' -or $normalized.Split('/') -contains '..') {
+                throw 'Data Protection anahtar arşivinde hedef klasör dışına çıkabilecek bir yol bulundu.'
+            }
+        }
+        Invoke-Docker @('exec', $containerName, 'mkdir', '-p', '/tmp/data-protection-preview')
+        Invoke-Docker @('exec', $containerName, 'tar', '-xzf', '/tmp/data-protection-keys.tar.gz', '-C', '/tmp/data-protection-preview', '--no-same-owner', '--no-same-permissions')
+        $keysFileCount = (& docker exec $containerName sh -c 'find /tmp/data-protection-preview -type f | wc -l' | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0) { throw 'Geçici anahtar arşivi açılımı doğrulanamadı.' }
+    }
 
-    Write-Output 'Kurtarma önizlemesi başarılı: PostgreSQL dökümü izole konteynere geri yüklendi; medya arşivi geçici alana açıldı.'
-    Write-Output "Migration kaydı: $migrationCount; medya dosyası: $mediaFileCount."
+    Write-Output 'Kurtarma önizlemesi başarılı: PostgreSQL, medya ve varsa Data Protection anahtar arşivi izole konteynere açıldı.'
+    Write-Output "Migration kaydı: $migrationCount; medya dosyası: $mediaFileCount; anahtar dosyası: $keysFileCount."
     Write-Output "Üretim/yerel uygulama veritabanına veya kalıcı Docker volume'una dokunulmadı."
 }
 finally {

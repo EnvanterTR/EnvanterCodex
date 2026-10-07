@@ -27,6 +27,13 @@ if ([System.IO.Path]::GetFileName($dumpName) -cne $dumpName -or $dumpName -notma
 if ($mediaName -cne 'company-media.tar.gz') {
     throw 'Manifest medya dosyası beklenen biçimde değil.'
 }
+$keysName = [string]$manifest.dataProtectionKeysArchive
+if ($keysName -and $keysName -cne 'data-protection-keys.tar.gz') {
+    throw 'Manifest Data Protection anahtar arşivi beklenen biçimde değil.'
+}
+if (-not $keysName -and $null -ne $manifest.sha256.dataProtectionKeysArchive) {
+    throw 'Manifest Data Protection anahtar özeti var ancak arşiv adı yok.'
+}
 
 function Assert-Sha256([string]$Path, [string]$Expected, [string]$Label) {
     if ($Expected -notmatch '^[a-fA-F0-9]{64}$') { throw "$Label için manifest özeti geçersiz." }
@@ -41,13 +48,21 @@ $dumpPath = Join-Path $backupRoot $dumpName
 $mediaPath = Join-Path $backupRoot $mediaName
 Assert-Sha256 $dumpPath ([string]$manifest.sha256.databaseDump) 'Veritabanı yedeği'
 Assert-Sha256 $mediaPath ([string]$manifest.sha256.companyMediaArchive) 'Şirket medya arşivi'
+if ($keysName) {
+    $keysPath = Join-Path $backupRoot $keysName
+    Assert-Sha256 $keysPath ([string]$manifest.sha256.dataProtectionKeysArchive) 'Data Protection anahtar arşivi'
+}
 
 & tar -tzf $mediaPath *> $null
 if ($LASTEXITCODE -ne 0) { throw 'Şirket medya arşivi açılamadı veya içeriği okunamıyor.' }
+if ($keysName) {
+    & tar -tzf $keysPath *> $null
+    if ($LASTEXITCODE -ne 0) { throw 'Data Protection anahtar arşivi açılamadı veya içeriği okunamıyor.' }
+}
 
 $mount = "type=bind,source=$backupRoot,target=/backup,readonly"
 & docker run --rm --network none --mount $mount postgres:17-alpine pg_restore --list "/backup/$dumpName" *> $null
 if ($LASTEXITCODE -ne 0) { throw 'Veritabanı döküm dizini PostgreSQL araçlarıyla okunamadı.' }
 
-Write-Output 'Yedek doğrulandı: manifest, iki SHA-256 özeti, medya arşivi ve PostgreSQL döküm dizini okunabilir.'
+Write-Output 'Yedek doğrulandı: manifest, SHA-256 özetleri, medya/varsa anahtar arşivi ve PostgreSQL döküm dizini okunabilir.'
 Write-Output 'Bu komut veritabanını değiştirmez ve yedeği geri yüklemez.'
