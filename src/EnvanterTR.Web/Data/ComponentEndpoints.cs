@@ -203,8 +203,12 @@ public static class ComponentEndpoints
         var matches = components.Count(x => oldKeys.Contains($"{x.Name.ToUpperInvariant()}\u001f{x.ItemNumber?.ToUpperInvariant() ?? ""}") || x.ItemNumber != null && oldItems.Contains(x.ItemNumber) || x.SerialNumber != null && oldSerials.Contains(x.SerialNumber));
         if (matches > 0) return Results.Conflict(new { isValid = false, existingMatches = matches, errors = new[] { $"Şirkette mevcut ad/ürün no/seri no eşleşmeleri bulundu ({matches}). Yinelenen bileşen eklenmedi." } });
         var locationPaths = await AssetEndpoints.GetActiveLocationPathMapAsync(db, companyId, ct);
+        var defaultLocation = await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, ct);
         foreach (var component in components)
+        {
+            component.Location ??= defaultLocation;
             if (component.Location is not null && locationPaths.TryGetValue(component.Location, out var locationCatalogId)) component.LocationCatalogId = locationCatalogId;
+        }
         if (!commit) return Results.Ok(new { isValid = true, rowCount = components.Count, errors = Array.Empty<string>(), message = $"{components.Count:N0} yeni bileşen doğrulandı. Önizleme kayıt eklemedi." });
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);

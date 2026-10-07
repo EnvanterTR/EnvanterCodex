@@ -62,8 +62,12 @@ public static class AccessoryImportEndpoints
         if (existing.Any(x => items.Any(y => string.Equals(x.Name, y.Name, StringComparison.OrdinalIgnoreCase) || y.ItemNumber != null && string.Equals(x.ItemNumber, y.ItemNumber, StringComparison.OrdinalIgnoreCase))))
             return Results.Conflict(new { isValid = false, errors = new[] { "Şirkette aynı ad veya ürün no ile aksesuar bulundu. Yinelenen kayıt eklenmedi." } });
         var locationPaths = await AssetEndpoints.GetActiveLocationPathMapAsync(db, companyId, ct);
+        var defaultLocation = await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, ct);
         foreach (var item in items)
+        {
+            item.Location ??= defaultLocation;
             if (item.Location is not null && locationPaths.TryGetValue(item.Location, out var locationCatalogId)) item.LocationCatalogId = locationCatalogId;
+        }
         if (!commit) return Results.Ok(new { isValid = true, rowCount = items.Count, errors = Array.Empty<string>(), message = $"{items.Count:N0} yeni aksesuar doğrulandı. Önizleme kayıt eklemedi." });
         await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         var current = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && (upperNames.Contains(x.Name.ToUpper()) || x.ItemNumber != null && upperNos.Contains(x.ItemNumber.ToUpper()))).Select(x => new { x.Name, x.ItemNumber }).ToListAsync(ct);

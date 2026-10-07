@@ -790,6 +790,13 @@ public static class AssetEndpoints
             if (request.IsDefault && !location.IsActive)
                 return Results.Conflict(new { message = "Arşivlenmiş konum varsayılan yapılamaz; önce konumu geri alın." });
             if (request.IsDefault)
+            {
+                var paths = await GetActiveLocationPathMapAsync(db, companyId, cancellationToken);
+                var path = paths.FirstOrDefault(x => x.Value == id).Key;
+                if (string.IsNullOrWhiteSpace(path) || path.Length > 160)
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["location"] = ["Varsayılan konumun tam yolu 160 karakteri aşamaz."] });
+            }
+            if (request.IsDefault)
                 await db.CompanyLocations.Where(x => x.CompanyId == companyId && x.IsDefault && x.Id != id)
                     .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.IsDefault, false)
                         .SetProperty(x => x.UpdatedAt, DateTimeOffset.UtcNow), cancellationToken);
@@ -2253,7 +2260,8 @@ public static class AssetEndpoints
             .Select(x => (Guid?)x.Id).SingleOrDefaultAsync(cancellationToken);
         if (defaultId is not Guid id) return null;
         var paths = await GetActiveLocationPathMapAsync(db, companyId, cancellationToken);
-        return paths.FirstOrDefault(x => x.Value == id).Key;
+        var path = paths.FirstOrDefault(x => x.Value == id).Key;
+        return path is { Length: <= 160 } ? path : null;
     }
 
     internal static async Task<Dictionary<string, Guid>> GetActiveLocationPathMapAsync(AppDbContext db,

@@ -115,13 +115,19 @@ public static class DataExportEndpoints
             return Results.UnprocessableEntity(new { isValid = false, rowCount = rows.Count - 1, errors = cleanErrors, message = "Dosyada düzeltilmesi gereken alanlar bulundu. Hiçbir çalışan eklenmedi." });
 
         var employeeLocationCatalogPaths = await AssetEndpoints.GetActiveLocationPathMapAsync(db, companyId, cancellationToken);
+        var defaultEmployeeLocation = await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, cancellationToken);
+        var defaultEmployeeLocationApplied = defaultEmployeeLocation is null ? 0 : employees.Count(x => x.Location is null);
         foreach (var employee in employees)
+        {
+            employee.Location ??= defaultEmployeeLocation;
             if (employee.Location is not null && employeeLocationCatalogPaths.TryGetValue(employee.Location, out var locationCatalogId))
                 employee.LocationCatalogId = locationCatalogId;
+        }
 
         if (!import) return Results.Ok(new { isValid = true, rowCount = employees.Count, errors = Array.Empty<string>(),
             linkedLocations = employees.Count(x => x.LocationCatalogId is not null),
-            message = $"{employees.Count:N0} yeni çalışan kaydı doğrulandı. Konum kataloğuyla eşleşen {employees.Count(x => x.LocationCatalogId is not null):N0} kayıt bağlanacak. Önizleme hiçbir kayıt eklemedi." });
+            defaultLocationApplied = defaultEmployeeLocationApplied,
+            message = $"{employees.Count:N0} yeni çalışan kaydı doğrulandı. Varsayılan konum {defaultEmployeeLocationApplied:N0} boş kayda uygulanacak; katalogla eşleşen {employees.Count(x => x.LocationCatalogId is not null):N0} kayıt bağlanacak. Önizleme hiçbir kayıt eklemedi." });
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
         // Recheck under the write transaction so duplicate employee numbers never partially import.
@@ -215,6 +221,7 @@ public static class DataExportEndpoints
         var modelLookup = models.GroupBy(x => (x.BrandId, Name: x.Name.Trim()), new BrandModelComparer()).ToDictionary(x => x.Key, x => x.ToArray(), new BrandModelComparer());
         var employeeLookup = employees.GroupBy(x => x.EmployeeNumber.Trim(), StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.ToArray(), StringComparer.OrdinalIgnoreCase);
         var locationCatalogPaths = await AssetEndpoints.GetActiveLocationPathMapAsync(db, companyId, cancellationToken);
+        var defaultAssetLocation = await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, cancellationToken);
         var importRows = new List<(Asset Asset, Guid? EmployeeId)>(rows.Count - 1);
         foreach (var (row, index) in rows.Skip(1).Select((row, index) => (row, index)))
         {
@@ -246,7 +253,7 @@ public static class DataExportEndpoints
                 DateOnly? purchaseDate = string.IsNullOrWhiteSpace(row[10]) ? null : DateOnly.ParseExact(row[10], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
                 DateOnly? warrantyExpiresAt = hasWarrantyColumn && !string.IsNullOrWhiteSpace(row[11]) ? DateOnly.ParseExact(row[11], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) : null;
                 decimal? purchaseCost = string.IsNullOrWhiteSpace(row[costIndex]) ? null : decimal.Parse(row[costIndex], System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture);
-                var location = CleanCsv(row[7]);
+                var location = CleanCsv(row[7]) ?? defaultAssetLocation;
                 var locationCatalogId = location is not null && locationCatalogPaths.TryGetValue(location, out var catalogLocationId)
                     ? catalogLocationId : (Guid?)null;
                 importRows.Add((new Asset
