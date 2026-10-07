@@ -1079,6 +1079,61 @@ public static class AssetEndpoints
             });
         }).RequireAuthorization("asset.read");
 
+        api.MapGet("/reports/warranties", async (DateOnly? through, string? state, string? q, int page,
+            int pageSize, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (!TryGetWarrantyReportFilters(through, state, q, out var today, out var end, out var normalizedState, out var error)) return error!;
+            page = Math.Max(1, page);
+            pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
+            var activeAssets = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.Status != AssetStatuses.Archived);
+            var expired = await activeAssets.CountAsync(x => x.WarrantyExpiresAt != null && x.WarrantyExpiresAt < today, cancellationToken);
+            var upcoming = await activeAssets.CountAsync(x => x.WarrantyExpiresAt != null && x.WarrantyExpiresAt >= today && x.WarrantyExpiresAt <= end, cancellationToken);
+            var withoutDate = await activeAssets.CountAsync(x => x.WarrantyExpiresAt == null, cancellationToken);
+            var query = FilterWarrantyReportAssets(db, companyId, normalizedState, today, end, q);
+            var total = await query.CountAsync(cancellationToken);
+            var items = await query.OrderBy(x => x.WarrantyExpiresAt).ThenBy(x => x.AssetTag)
+                .Skip((page - 1) * pageSize).Take(pageSize)
+                .Select(x => new { x.Id, x.AssetTag, x.Name, x.Status, x.WarrantyExpiresAt, x.Location,
+                    employeeName = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId)
+                        .Select(e => e.DisplayName).FirstOrDefault() })
+                .ToListAsync(cancellationToken);
+            return Results.Ok(new { today, through = end, state = normalizedState, expired, upcoming, withoutDate,
+                total, page, pageSize, pageCount = (int)Math.Ceiling(total / (double)pageSize), items });
+        }).RequireAuthorization("asset.read");
+
+        api.MapGet("/reports/warranties/export.csv", async (DateOnly? through, string? state, string? q,
+            HttpContext context, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
+            if (!TryGetWarrantyReportFilters(through, state, q, out var today, out var end, out var normalizedState, out var error))
+            {
+                await error!.ExecuteAsync(context);
+                return;
+            }
+            var query = FilterWarrantyReportAssets(db, companyId, normalizedState, today, end, q);
+            var total = await query.CountAsync(cancellationToken);
+            context.Response.StatusCode = StatusCodes.Status200OK;
+            context.Response.ContentType = "text/csv; charset=utf-8";
+            context.Response.Headers["Content-Disposition"] = $"attachment; filename=envantertr-garanti-raporu-{DateTime.UtcNow:yyyyMMdd}.csv";
+            context.Response.Headers["Cache-Control"] = "no-store";
+            context.Response.Headers["X-Total-Count"] = total.ToString(CultureInfo.InvariantCulture);
+            await using var writer = new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
+            await writer.WriteLineAsync("Etiket;Varlık;Durum;Garanti bitişi;Konum;Zimmetli çalışan".AsMemory(), cancellationToken);
+            var rows = query.OrderBy(x => x.WarrantyExpiresAt).ThenBy(x => x.AssetTag)
+                .Select(x => new { x.AssetTag, x.Name, x.Status, x.WarrantyExpiresAt, x.Location,
+                    EmployeeName = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId)
+                        .Select(e => e.DisplayName).FirstOrDefault() });
+            await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
+            {
+                var line = string.Join(';', new[] { CsvCell(row.AssetTag), CsvCell(row.Name), CsvCell(row.Status),
+                    CsvCell(row.WarrantyExpiresAt?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
+                    CsvCell(row.Location), CsvCell(row.EmployeeName) });
+                await writer.WriteLineAsync(line.AsMemory(), cancellationToken);
+            }
+            await writer.FlushAsync(cancellationToken);
+        }).RequireAuthorization("asset.read");
+
         api.MapGet("/reports/maintenances", async ([FromQuery] DateOnly? from, [FromQuery] DateOnly? to,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
@@ -2474,5 +2529,42 @@ public static class AssetEndpoints
         var safe = value?.Trim() ?? "";
         if (safe.Length > 0 && safe[0] is '=' or '+' or '-' or '@' or '\t' or '\r') safe = "'" + safe;
         return "\"" + safe.Replace("\"", "\"\"") + "\"";
+    }
+
+    private static bool TryGetWarrantyReportFilters(DateOnly? through, string? state, string? q,
+        out DateOnly today, out DateOnly end, out string normalizedState, out IResult? error)
+    {
+        today = DateOnly.FromDateTime(DateTime.UtcNow);
+        end = through ?? today.AddDays(90);
+        normalizedState = string.IsNullOrWhiteSpace(state) ? "upcoming" : state.Trim().ToLowerInvariant();
+        var errors = new Dictionary<string, string[]>();
+        if (end < today || end > today.AddDays(366)) errors["through"] = ["Bitiş tarihi bugün ile 366 gün sonrası arasında olmalıdır."];
+        if (normalizedState is not ("all" or "expired" or "upcoming" or "later" or "missing"))
+            errors["state"] = ["Durum all, expired, upcoming, later veya missing olmalıdır."];
+        if (q?.Trim().Length > 120) errors["q"] = ["Arama metni 120 karakteri aşamaz."];
+        error = errors.Count == 0 ? null : Results.ValidationProblem(errors);
+        return error is null;
+    }
+
+    private static IQueryable<Asset> FilterWarrantyReportAssets(AppDbContext db, Guid companyId, string state,
+        DateOnly today, DateOnly through, string? q)
+    {
+        var query = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.Status != AssetStatuses.Archived);
+        query = state switch
+        {
+            "expired" => query.Where(x => x.WarrantyExpiresAt != null && x.WarrantyExpiresAt < today),
+            "upcoming" => query.Where(x => x.WarrantyExpiresAt != null && x.WarrantyExpiresAt >= today && x.WarrantyExpiresAt <= through),
+            "later" => query.Where(x => x.WarrantyExpiresAt != null && x.WarrantyExpiresAt > through),
+            "missing" => query.Where(x => x.WarrantyExpiresAt == null),
+            _ => query.Where(x => x.WarrantyExpiresAt != null)
+        };
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var term = q.Trim();
+            query = query.Where(x => x.AssetTag.Contains(term) || x.Name.Contains(term) ||
+                (x.SerialNumber != null && x.SerialNumber.Contains(term)) || (x.Location != null && x.Location.Contains(term)) ||
+                db.Employees.Any(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId && e.DisplayName.Contains(term)));
+        }
+        return query;
     }
 }
