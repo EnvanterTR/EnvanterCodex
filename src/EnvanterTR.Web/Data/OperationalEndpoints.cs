@@ -1198,7 +1198,7 @@ public static class OperationalEndpoints
         }).RequireAuthorization("asset.read");
 
         api.MapGet("/audit", async ([FromQuery] int page, [FromQuery] int pageSize,
-            [FromQuery] string? q, [FromQuery] string? targetType, [FromQuery] string? action, DateOnly? from, DateOnly? to,
+            [FromQuery] string? q, [FromQuery] string? targetType, [FromQuery] string? action, DateTimeOffset? from, DateTimeOffset? to,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
@@ -1224,7 +1224,7 @@ public static class OperationalEndpoints
             return Results.Ok(new { actions });
         }).RequireAuthorization("settings.manage");
 
-        api.MapGet("/audit/export.csv", async (string? q, string? targetType, string? action, DateOnly? from, DateOnly? to,
+        api.MapGet("/audit/export.csv", async (string? q, string? targetType, string? action, DateTimeOffset? from, DateTimeOffset? to,
             HttpContext context, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryScope(user, out var companyId, out _)) { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
@@ -1526,20 +1526,19 @@ public static class OperationalEndpoints
         return "\"" + safe.Replace("\"", "\"\"") + "\"";
     }
 
-    private static bool ValidateAuditFilters(string? q, string? targetType, string? action, DateOnly? from, DateOnly? to, out IResult? error)
+    private static bool ValidateAuditFilters(string? q, string? targetType, string? action, DateTimeOffset? from, DateTimeOffset? to, out IResult? error)
     {
         var errors = new Dictionary<string, string[]>();
         if (q?.Trim().Length > 120) errors["q"] = ["Arama metni 120 karakteri aşamaz."];
         if (targetType?.Trim().Length > 80) errors["targetType"] = ["Kayıt türü 80 karakteri aşamaz."];
         if (action?.Trim().Length > 100) errors["action"] = ["İşlem türü 100 karakteri aşamaz."];
         if (from.HasValue && to.HasValue && from.Value > to.Value) errors["to"] = ["Bitiş tarihi başlangıç tarihinden önce olamaz."];
-        if (to == DateOnly.MaxValue) errors["to"] = ["Bitiş tarihi desteklenen aralığın dışında."];
         error = errors.Count == 0 ? null : Results.ValidationProblem(errors);
         return error is null;
     }
 
     private static IQueryable<AuditEntry> FilterAuditEntries(AppDbContext db, Guid companyId, string? q,
-        string? targetType, string? action, DateOnly? from, DateOnly? to)
+        string? targetType, string? action, DateTimeOffset? from, DateTimeOffset? to)
     {
         var query = db.AuditEntries.AsNoTracking().Where(x => x.CompanyId == companyId);
         if (!string.IsNullOrWhiteSpace(targetType)) query = query.Where(x => x.TargetType == targetType.Trim());
@@ -1550,16 +1549,8 @@ public static class OperationalEndpoints
             query = query.Where(x => x.Action.Contains(term) || (x.Details != null && x.Details.Contains(term)) ||
                 db.Users.Any(u => u.Id == x.ActorUserId && u.DisplayName.Contains(term)));
         }
-        if (from.HasValue)
-        {
-            var start = new DateTimeOffset(from.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
-            query = query.Where(x => x.OccurredAt >= start);
-        }
-        if (to.HasValue)
-        {
-            var endExclusive = new DateTimeOffset(to.Value.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
-            query = query.Where(x => x.OccurredAt < endExclusive);
-        }
+        if (from.HasValue) query = query.Where(x => x.OccurredAt >= from.Value);
+        if (to.HasValue) query = query.Where(x => x.OccurredAt <= to.Value);
         return query;
     }
 
