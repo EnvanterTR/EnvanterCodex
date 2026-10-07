@@ -686,11 +686,19 @@
       }
       $('#dashboardStatusNote').textContent = total ? `Canlı şirket özeti · ${fmt.format(total)} varlık · Duruma tıklayarak listeyi filtreleyin.` : 'Henüz raporlanacak varlık yok.';
     }
-    function renderUpcomingEvents(events, total = events.length, unavailable = false) {
+    function renderUpcomingEvents(events, total = events.length, unavailable = false, overdueAudits = 0) {
       const host = $('#upcomingEvents'); host.replaceChildren();
+      if (overdueAudits > 0 && canReadAudit()) {
+        const row = document.createElement('div'); row.className = 'attention-row';
+        const warning = document.createElement('span'); warning.className = 'pill warn'; warning.textContent = `${fmt.format(overdueAudits)} gecikmiş denetim`;
+        const copy = document.createElement('span'); copy.textContent = 'Fiziksel kontrol bekleyen varlıklar bulunuyor.';
+        const open = document.createElement('button'); open.type = 'button'; open.className = 'text-link'; open.textContent = 'Kuyruğu aç';
+        open.addEventListener('click', () => $('[data-page="Denetim kayıtları"]').click());
+        row.append(warning, copy, open); host.append(row);
+      }
       if (unavailable || !events.length) {
         const row = document.createElement('div'); row.className = 'attention-row';
-        const message = document.createElement('span'); message.textContent = unavailable ? 'Takvim verileri yüklenemedi; takvim sayfasından yeniden deneyin.' : 'Yakın dönemde bakım, denetim, lisans veya garanti bitişi yok.'; row.append(message); host.append(row);
+        const message = document.createElement('span'); message.textContent = unavailable ? 'Takvim verileri yüklenemedi; takvim sayfasından yeniden deneyin.' : overdueAudits ? 'Yaklaşan takvim etkinliği yok; gecikmiş denetimler yukarıda listeleniyor.' : 'Yakın dönemde bakım, denetim, lisans veya garanti bitişi yok.'; row.append(message); host.append(row);
       }
       const today = dateInputValue(new Date());
       for (const item of events) {
@@ -727,13 +735,14 @@
           inventoryMode ? Promise.resolve(null) : api('/api/dashboard/summary'),
           api(`/api/assets?${filters}`),
           inventoryMode ? Promise.resolve(null) : api('/api/activity?page=1&pageSize=5'),
-          inventoryMode ? Promise.resolve(null) : api('/api/calendar?limit=5').catch(() => null)
+          inventoryMode ? Promise.resolve(null) : api('/api/calendar?limit=5').catch(() => null),
+          inventoryMode || !canReadAudit() ? Promise.resolve(null) : api('/api/assets/audit-schedule?state=overdue').catch(() => null)
         ]);
       } catch (error) {
         if (requestId !== assetDashboardRequestId) return;
         throw error;
       }
-      const [summary, assets, activity, calendar] = results;
+      const [summary, assets, activity, calendar, auditSchedule] = results;
       if (requestId !== assetDashboardRequestId) return;
       if (summary) {
         $('#totalAssets').textContent = fmt.format(summary.totalAssets);
@@ -741,7 +750,7 @@
         $('#availableAssets').textContent = fmt.format(summary.availableAssets);
         $('#maintenanceAssets').textContent = fmt.format(summary.maintenanceAssets);
         renderDashboardStatus(summary);
-        renderUpcomingEvents(calendar?.items || [], calendar?.total || 0, !calendar);
+        renderUpcomingEvents(calendar?.items || [], calendar?.total || 0, !calendar, auditSchedule?.overdue || 0);
       }
       loadedAssets = assets.items || []; assetTotal = assets.total || 0;
       $('#assetRows').replaceChildren();
