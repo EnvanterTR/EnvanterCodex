@@ -117,7 +117,7 @@ public static class ConsumableEndpoints
             var item = new Consumable { CompanyId = companyId, Name = request.Name.Trim(), Category = Clean(request.Category),
                 ModelNumber = Clean(request.ModelNumber), ItemNumber = Clean(request.ItemNumber), Supplier = Clean(request.Supplier),
                 SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, ct),
-                Location = Clean(request.Location), MinimumQuantity = request.MinimumQuantity, TotalQuantity = request.Quantity,
+                Location = Clean(request.Location), LocationCatalogId = await AssetEndpoints.ResolveLocationCatalogIdAsync(db, companyId, request.Location, ct), MinimumQuantity = request.MinimumQuantity, TotalQuantity = request.Quantity,
                 UnitCost = request.UnitCost, Currency = request.Currency.Trim().ToUpperInvariant(), PurchaseDate = request.PurchaseDate,
                 Notes = Clean(request.Notes), IsRequestable = request.IsRequestable };
             db.Consumables.Add(item);
@@ -138,6 +138,7 @@ public static class ConsumableEndpoints
             if (errors.Count > 0) return Results.ValidationProblem(errors);
             item.Name = request.Name.Trim(); item.Category = Clean(request.Category); item.ModelNumber = Clean(request.ModelNumber);
             item.ItemNumber = Clean(request.ItemNumber); item.Supplier = Clean(request.Supplier); item.SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, ct); item.Location = Clean(request.Location);
+            item.LocationCatalogId = await AssetEndpoints.ResolveLocationCatalogIdAsync(db, companyId, request.Location, ct);
             item.MinimumQuantity = request.MinimumQuantity; item.UnitCost = request.UnitCost; item.Currency = request.Currency.Trim().ToUpperInvariant();
             item.PurchaseDate = request.PurchaseDate; item.Notes = Clean(request.Notes); item.IsRequestable = request.IsRequestable; item.UpdatedAt = DateTimeOffset.UtcNow;
             AddAudit(db, companyId, user, item.Id, "consumable.updated", item.Name);
@@ -274,6 +275,9 @@ public static class ConsumableEndpoints
             x.ItemNumber is not null && existingItemNumbers.Contains(x.ItemNumber));
         if (existingMatches > 0)
             return Results.Conflict(new { isValid = false, existingMatches, errors = new[] { $"Şirkette aynı ad/ürün numarası bileşiminde {existingMatches} kayıt var. Yinelenen stok açılmaması için dosya reddedildi." } });
+        var locationPaths = await AssetEndpoints.GetActiveLocationPathMapAsync(db, companyId, ct);
+        foreach (var item in parsed)
+            if (item.Location is not null && locationPaths.TryGetValue(item.Location, out var locationCatalogId)) item.LocationCatalogId = locationCatalogId;
         if (!commit) return Results.Ok(new { isValid = true, rowCount = parsed.Count, errors = Array.Empty<string>(),
             message = $"{parsed.Count:N0} yeni sarf kaydı doğrulandı. Önizleme hiçbir kayıt eklemedi." });
 

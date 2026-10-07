@@ -38,6 +38,8 @@ Rol politikaları ayrı tutulur: varlık okuma, varlık değiştirme, çalışan
 
 Çalışan oluşturma/güncelleme uçları (`POST/PATCH /api/employees`) isteğe bağlı `jobTitle`, `phone`, `location` ve ISO `startedOn` (`YYYY-MM-DD`) alanlarını kabul eder. Profil yanıtı `locationCatalogId` ile eşleşen etkin konum kimliğini döndürür; kayıt ve çalışan CSV aktarımı tam eşleşen etkin katalog yolunu bağlar, serbest metin geriye uyumludur. Konum kataloğunda ad değişirse bağlı çalışan yolu da güncellenir. Arama ve `/api/employees/export.csv` konum metnini kapsar. Görev unvanı/konum en fazla 160, telefon 40 karakterdir.
 
+Aksesuar, sarf ve bileşen kayıtları da etkin katalog yolu tam eşleştiğinde `locationCatalogId` ile bağlanır; kayıt/düzenleme ve CSV aktarımı bu bağı kurar. Konum kataloğunda ad değişirse bağlı stok konum metni de eş zamanlı güncellenir. Bilinmeyen veya arşivli yol eski serbest metin davranışını korur.
+
 `GET /api/employees` ve `/api/employees/export.csv`, `startedFrom` ve `startedTo` (`YYYY-MM-DD`) işe başlama tarihi aralığı filtrelerini kabul eder; başlangıç bitişten sonraysa doğrulama hatası döner.
 
 İK notları `/api/employees/{id}/private-notes` GET/PUT uçlarıyla yönetilir; yalnızca `people.files.read` / `people.files.manage` yetkileri (şirket sahibi, yönetici, İK) erişebilir. Notlar en fazla 4.000 karakterdir; denetim kaydında metnin kendisi tutulmaz.

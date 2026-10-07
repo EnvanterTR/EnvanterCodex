@@ -54,6 +54,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
 
+                    b.Property<Guid?>("LocationCatalogId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("MinimumQuantity")
                         .HasColumnType("integer");
 
@@ -91,6 +94,8 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "LocationCatalogId");
 
                     b.HasIndex("CompanyId", "Name");
 
@@ -1104,6 +1109,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
 
+                    b.Property<Guid?>("LocationCatalogId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("MinimumQuantity")
                         .HasColumnType("integer");
 
@@ -1141,6 +1149,8 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "LocationCatalogId");
 
                     b.HasIndex("CompanyId", "Name");
 
@@ -1431,6 +1441,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
 
+                    b.Property<Guid?>("LocationCatalogId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("MinimumQuantity")
                         .HasColumnType("integer");
 
@@ -1472,6 +1485,8 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "LocationCatalogId");
 
                     b.HasIndex("CompanyId", "Name");
 
@@ -2145,6 +2160,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("EnvanterTR.Web.Data.CompanyLocation", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "LocationCatalogId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("EnvanterTR.Web.Data.SupplierCatalogEntry", null)
                         .WithMany()
                         .HasForeignKey("CompanyId", "SupplierId")
@@ -2522,6 +2543,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("EnvanterTR.Web.Data.CompanyLocation", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "LocationCatalogId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("EnvanterTR.Web.Data.SupplierCatalogEntry", null)
                         .WithMany()
                         .HasForeignKey("CompanyId", "SupplierId")
@@ -2599,6 +2626,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.CompanyLocation", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "LocationCatalogId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("EnvanterTR.Web.Data.SupplierCatalogEntry", null)
                         .WithMany()

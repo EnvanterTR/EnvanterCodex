@@ -458,6 +458,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Asset>().HasOne<CompanyLocation>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.LocationCatalogId })
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<Accessory>().HasIndex(x => new { x.CompanyId, x.LocationCatalogId });
+        modelBuilder.Entity<Accessory>().HasOne<CompanyLocation>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.LocationCatalogId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<Consumable>().HasIndex(x => new { x.CompanyId, x.LocationCatalogId });
+        modelBuilder.Entity<Consumable>().HasOne<CompanyLocation>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.LocationCatalogId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<InventoryComponent>().HasIndex(x => new { x.CompanyId, x.LocationCatalogId });
+        modelBuilder.Entity<InventoryComponent>().HasOne<CompanyLocation>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.LocationCatalogId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<Asset>().Property(x => x.AssetTag).HasMaxLength(80).IsRequired();
         modelBuilder.Entity<Asset>().Property(x => x.Name).HasMaxLength(240).IsRequired();
         modelBuilder.Entity<Asset>().Property(x => x.Status).HasMaxLength(40).IsRequired();

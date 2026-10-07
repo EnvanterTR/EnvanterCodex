@@ -311,6 +311,7 @@ public static class AssetEndpoints
                 CompanyId = companyId, Name = request.Name.Trim(), Category = Clean(request.Category),
                 ModelNumber = Clean(request.ModelNumber), ItemNumber = Clean(request.ItemNumber),
                 Supplier = Clean(request.Supplier), SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, cancellationToken), Location = Clean(request.Location),
+                LocationCatalogId = await ResolveLocationCatalogIdAsync(db, companyId, request.Location, cancellationToken),
                 MinimumQuantity = request.MinimumQuantity, TotalQuantity = request.Quantity,
                 UnitCost = request.UnitCost, Currency = request.Currency.Trim().ToUpperInvariant(),
                 PurchaseDate = request.PurchaseDate, Notes = Clean(request.Notes), IsRequestable = request.IsRequestable
@@ -338,6 +339,7 @@ public static class AssetEndpoints
             if (errors.Count > 0) return Results.ValidationProblem(errors);
             item.Name = request.Name.Trim(); item.Category = Clean(request.Category); item.ModelNumber = Clean(request.ModelNumber);
             item.ItemNumber = Clean(request.ItemNumber); item.Supplier = Clean(request.Supplier); item.SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, cancellationToken); item.Location = Clean(request.Location);
+            item.LocationCatalogId = await ResolveLocationCatalogIdAsync(db, companyId, request.Location, cancellationToken);
             item.MinimumQuantity = request.MinimumQuantity; item.UnitCost = request.UnitCost;
             item.Currency = request.Currency.Trim().ToUpperInvariant(); item.PurchaseDate = request.PurchaseDate;
             item.Notes = Clean(request.Notes); item.IsRequestable = request.IsRequestable; item.UpdatedAt = DateTimeOffset.UtcNow;
@@ -819,6 +821,15 @@ public static class AssetEndpoints
                         .SetProperty(x => x.UpdatedAt, DateTimeOffset.UtcNow), cancellationToken);
                 await db.Employees.Where(x => x.CompanyId == companyId && x.LocationCatalogId == catalogLocation.Id && x.Location != path)
                     .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Location, path), cancellationToken);
+                await db.Accessories.Where(x => x.CompanyId == companyId && x.LocationCatalogId == catalogLocation.Id && x.Location != path)
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Location, path)
+                        .SetProperty(x => x.UpdatedAt, DateTimeOffset.UtcNow), cancellationToken);
+                await db.Consumables.Where(x => x.CompanyId == companyId && x.LocationCatalogId == catalogLocation.Id && x.Location != path)
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Location, path)
+                        .SetProperty(x => x.UpdatedAt, DateTimeOffset.UtcNow), cancellationToken);
+                await db.InventoryComponents.Where(x => x.CompanyId == companyId && x.LocationCatalogId == catalogLocation.Id && x.Location != path)
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Location, path)
+                        .SetProperty(x => x.UpdatedAt, DateTimeOffset.UtcNow), cancellationToken);
             }
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
                 TargetType = "Location", TargetId = id, Action = "CatalogRenamed", Details = $"Konum adı “{oldName}” → “{name}”." });
@@ -848,8 +859,14 @@ public static class AssetEndpoints
             if (await employees.AnyAsync(x => x.LocationCatalogId != null, cancellationToken))
                 return Results.Conflict(new { message = "Bu ad katalog konumuna bağlı çalışanlarda kullanılıyor. Katalog düğümünü düzenleyerek kimlik bağlantısını koruyun." });
             var accessories = db.Accessories.Where(x => x.CompanyId == companyId && x.Location != null && EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"));
+            if (await accessories.AnyAsync(x => x.LocationCatalogId != null, cancellationToken))
+                return Results.Conflict(new { message = "Bu ad katalog konumuna bağlı stok kayıtlarında kullanılıyor. Katalog düğümünü düzenleyerek kimlik bağlantısını koruyun." });
             var consumables = db.Consumables.Where(x => x.CompanyId == companyId && x.Location != null && EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"));
+            if (await consumables.AnyAsync(x => x.LocationCatalogId != null, cancellationToken))
+                return Results.Conflict(new { message = "Bu ad katalog konumuna bağlı stok kayıtlarında kullanılıyor. Katalog düğümünü düzenleyerek kimlik bağlantısını koruyun." });
             var components = db.InventoryComponents.Where(x => x.CompanyId == companyId && x.Location != null && EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"));
+            if (await components.AnyAsync(x => x.LocationCatalogId != null, cancellationToken))
+                return Results.Conflict(new { message = "Bu ad katalog konumuna bağlı stok kayıtlarında kullanılıyor. Katalog düğümünü düzenleyerek kimlik bağlantısını koruyun." });
             var accessoryAssignments = db.AccessoryAssignments.Where(x => x.CompanyId == companyId && x.TargetType == "Location" &&
                 x.Location != null && EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\") && x.Quantity > x.ReturnedQuantity);
             var assetCount = await assets.CountAsync(cancellationToken);

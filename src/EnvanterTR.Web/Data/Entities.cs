@@ -264,6 +264,7 @@ public sealed class Accessory
     public string? Supplier { get; set; }
     public Guid? SupplierId { get; set; }
     public string? Location { get; set; }
+    public Guid? LocationCatalogId { get; set; }
     public int MinimumQuantity { get; set; }
     public int TotalQuantity { get; set; }
     public decimal? UnitCost { get; set; }
@@ -366,6 +367,7 @@ public sealed class Consumable
     public string? Supplier { get; set; }
     public Guid? SupplierId { get; set; }
     public string? Location { get; set; }
+    public Guid? LocationCatalogId { get; set; }
     public int MinimumQuantity { get; set; }
     public int TotalQuantity { get; set; }
     public decimal? UnitCost { get; set; }
@@ -448,6 +450,7 @@ public sealed class InventoryComponent
     public string? Supplier { get; set; }
     public Guid? SupplierId { get; set; }
     public string? Location { get; set; }
+    public Guid? LocationCatalogId { get; set; }
     public int MinimumQuantity { get; set; }
     public int TotalQuantity { get; set; }
     public decimal? UnitCost { get; set; }
