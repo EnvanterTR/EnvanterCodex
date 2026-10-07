@@ -465,6 +465,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(240)
                         .HasColumnType("character varying(240)");
 
+                    b.Property<DateOnly?>("NextAuditOn")
+                        .HasColumnType("date");
+
                     b.Property<decimal?>("PurchaseCost")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -498,6 +501,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasIndex("CompanyId", "Location");
 
                     b.HasIndex("CompanyId", "LocationCatalogId");
+
+                    b.HasIndex("CompanyId", "NextAuditOn");
 
                     b.HasIndex("CompanyId", "SerialNumber");
 

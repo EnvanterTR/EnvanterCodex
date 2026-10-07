@@ -1129,7 +1129,7 @@ public static class AssetEndpoints
                     x.Id, x.AssetTag, x.Name, x.Status, x.SerialNumber, x.Location,
                     x.LocationCatalogId,
                     x.CategoryId, x.BrandId, x.ModelId, x.AssignedEmployeeId,
-                    x.PurchaseDate, x.WarrantyExpiresAt, x.PurchaseCost, x.Currency, x.CreatedAt, x.UpdatedAt
+                    x.PurchaseDate, x.WarrantyExpiresAt, x.NextAuditOn, x.PurchaseCost, x.Currency, x.CreatedAt, x.UpdatedAt
                 }).SingleOrDefaultAsync(cancellationToken);
             if (asset is null) return Results.NotFound();
             var references = new
@@ -1167,6 +1167,64 @@ public static class AssetEndpoints
                 .ToListAsync(cancellationToken);
             return Results.Ok(new { asset, references, history, attachments });
         }).RequireAuthorization("asset.read");
+
+        api.MapGet("/assets/audit-schedule", async (DateOnly? through, string? q, string? state, ClaimsPrincipal user,
+            AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var end = through ?? today.AddDays(30);
+            if (end < today || end > today.AddDays(366))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["through"] = ["Bitiş tarihi bugünden başlayıp en fazla 366 gün sonrasını kapsamalıdır."] });
+            if (q?.Trim().Length > 120)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
+            state = string.IsNullOrWhiteSpace(state) ? "all" : state.Trim().ToLowerInvariant();
+            if (state is not ("all" or "overdue" or "upcoming"))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["state"] = ["Durum all, overdue veya upcoming olmalıdır."] });
+            var query = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.NextAuditOn != null && x.Status != AssetStatuses.Archived);
+            var overdue = await query.CountAsync(x => x.NextAuditOn < today, cancellationToken);
+            var dueSoon = await query.CountAsync(x => x.NextAuditOn >= today && x.NextAuditOn <= end, cancellationToken);
+            var filtered = state == "overdue" ? query.Where(x => x.NextAuditOn < today) :
+                state == "upcoming" ? query.Where(x => x.NextAuditOn >= today && x.NextAuditOn <= end) : query.Where(x => x.NextAuditOn <= end);
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                filtered = filtered.Where(x => x.AssetTag.Contains(term) || x.Name.Contains(term) ||
+                    (x.SerialNumber != null && x.SerialNumber.Contains(term)) || (x.Location != null && x.Location.Contains(term)) ||
+                    db.Employees.Any(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId && e.DisplayName.Contains(term)));
+            }
+            var total = await filtered.CountAsync(cancellationToken);
+            var items = await filtered
+                .OrderBy(x => x.NextAuditOn).ThenBy(x => x.AssetTag).Take(250)
+                .Select(x => new { x.Id, x.AssetTag, x.Name, x.NextAuditOn, x.Status, x.Location,
+                    employeeName = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.DisplayName).FirstOrDefault() })
+                .ToListAsync(cancellationToken);
+            return Results.Ok(new { today, through = end, overdue, dueSoon, total, items });
+        }).RequireAuthorization("asset.read");
+
+        api.MapPut("/assets/{id:guid}/audit-schedule", async (Guid id, [FromBody] SetAssetAuditScheduleRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            if (request.NextAuditOn is { } date && (date < today || date > today.AddYears(10)))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["nextAuditOn"] = ["Denetim tarihi bugün ile 10 yıl sonrası arasında olmalıdır."] });
+            var asset = await db.Assets.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (asset is null) return Results.NotFound();
+            asset.NextAuditOn = request.NextAuditOn;
+            asset.UpdatedAt = DateTimeOffset.UtcNow;
+            var actorId = CurrentUserId(user);
+            var scheduleDetails = request.NextAuditOn is { } scheduled
+                ? $"Sonraki fiziksel denetim planlandı · {scheduled:yyyy-MM-dd}"
+                : "Planlı fiziksel denetim kaldırıldı.";
+            db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = id, ActorUserId = actorId,
+                EventType = request.NextAuditOn is null ? "AuditScheduleCleared" : "AuditScheduled", Details = scheduleDetails });
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                TargetType = "Asset", TargetId = id, Action = request.NextAuditOn is null ? "AuditScheduleCleared" : "AuditScheduled",
+                Details = scheduleDetails });
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.Ok(new { id, nextAuditOn = asset.NextAuditOn });
+        }).RequireAuthorization("asset.write");
 
         api.MapPost("/assets/{id:guid}/attachments", async (Guid id, HttpRequest request, ClaimsPrincipal user,
             AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
@@ -1446,8 +1504,13 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["audit"] = ["Denetim tarihi gelecekte olamaz; notlar 1.900 karakteri aşamaz."] });
             var asset = await db.Assets.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
             if (asset is null) return Results.NotFound();
+            if (request.NextAuditOn is { } nextAudit && (nextAudit < DateOnly.FromDateTime(DateTime.UtcNow) || nextAudit > DateOnly.FromDateTime(DateTime.UtcNow.AddYears(10))))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["nextAuditOn"] = ["Sonraki denetim tarihi bugün ile 10 yıl sonrası arasında olmalıdır."] });
+            asset.NextAuditOn = request.NextAuditOn;
+            asset.UpdatedAt = DateTimeOffset.UtcNow;
             var details = $"Fiziksel denetim tamamlandı · {request.AuditDate:yyyy-MM-dd}";
             if (!string.IsNullOrWhiteSpace(request.Notes)) details += $" · {request.Notes.Trim()}";
+            if (request.NextAuditOn is { } next) details += $" · Sonraki denetim: {next:yyyy-MM-dd}";
             db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = id,
                 ActorUserId = CurrentUserId(user), EventType = "Audited", Details = details });
             await db.SaveChangesAsync(cancellationToken);
@@ -1463,6 +1526,8 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["assetIds"] = ["1 ile 100 arasında, tekrarsız varlık seçin."] });
             if (request.AuditDate == default || request.AuditDate > DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) || request.Notes?.Length > 1900)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["audit"] = ["Denetim tarihi gelecekte olamaz; toplu denetim notu en fazla 1.900 karakter olabilir."] });
+            if (request.NextAuditOn is { } nextAudit && (nextAudit < DateOnly.FromDateTime(DateTime.UtcNow) || nextAudit > DateOnly.FromDateTime(DateTime.UtcNow.AddYears(10))))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["nextAuditOn"] = ["Sonraki denetim tarihi bugün ile 10 yıl sonrası arasında olmalıdır."] });
 
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             var assets = await db.Assets.FromSqlInterpolated(
@@ -1476,14 +1541,17 @@ public static class AssetEndpoints
             {
                 var details = $"Toplu fiziksel denetim tamamlandı · {request.AuditDate:yyyy-MM-dd}";
                 if (!string.IsNullOrWhiteSpace(note)) details += $" · {note}";
+                if (request.NextAuditOn is { } scheduled) details += $" · Sonraki denetim: {scheduled:yyyy-MM-dd}";
                 db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = asset.Id,
                     ActorUserId = actorId, EventType = "Audited", Details = details });
+                asset.NextAuditOn = request.NextAuditOn;
+                asset.UpdatedAt = DateTimeOffset.UtcNow;
                 db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
                     TargetType = "Asset", TargetId = asset.Id, Action = "BulkAudited", Details = details });
             }
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            return Results.Ok(new { recorded = assets.Count, auditDate = request.AuditDate });
+            return Results.Ok(new { recorded = assets.Count, auditDate = request.AuditDate, nextAuditOn = request.NextAuditOn });
         }).RequireAuthorization("asset.write");
 
         api.MapPost("/assets/{id:guid}/transfer", async (Guid id, [FromBody] TransferAssetRequest request,
@@ -1567,8 +1635,8 @@ public static class AssetEndpoints
             kind = string.IsNullOrWhiteSpace(kind) ? null : kind.Trim().ToLowerInvariant();
             if (start > end || end.DayNumber - start.DayNumber > 365)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Takvim aralığı ters olamaz ve en fazla 366 gün olabilir."] });
-            if (!string.IsNullOrWhiteSpace(kind) && kind is not ("maintenance" or "license" or "warranty"))
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["kind"] = ["Tür maintenance, license veya warranty olmalıdır."] });
+            if (!string.IsNullOrWhiteSpace(kind) && kind is not ("maintenance" or "license" or "warranty" or "audit"))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["kind"] = ["Tür maintenance, license, warranty veya audit olmalıdır."] });
 
             var maxItems = Math.Clamp(limit ?? 200, 1, 500);
             var total = 0;
@@ -1608,6 +1676,18 @@ public static class AssetEndpoints
                         asset.AssetTag + " · " + asset.Name, asset.Location, "WarrantyExpiration", null))
                     .ToListAsync(cancellationToken);
                 events.AddRange(warrantyEvents);
+            }
+            if (kind is null or "audit")
+            {
+                var auditQuery = db.Assets.AsNoTracking()
+                    .Where(asset => asset.CompanyId == companyId && asset.Status != AssetStatuses.Archived &&
+                        asset.NextAuditOn >= start && asset.NextAuditOn <= end);
+                total += await auditQuery.CountAsync(cancellationToken);
+                var auditEvents = await auditQuery.OrderBy(asset => asset.NextAuditOn).ThenBy(asset => asset.AssetTag).ThenBy(asset => asset.Id)
+                    .Take(maxItems).Select(asset => new CalendarEntry("audit", asset.NextAuditOn!.Value, asset.Id, asset.Id,
+                        asset.AssetTag + " · " + asset.Name, asset.Location, "AuditScheduled", null))
+                    .ToListAsync(cancellationToken);
+                events.AddRange(auditEvents);
             }
 
             var ordered = events.OrderBy(item => item.Date).ThenBy(item => item.Kind).ThenBy(item => item.Title).ToArray();
@@ -2370,7 +2450,7 @@ public static class AssetEndpoints
     public sealed record AccessoryCheckinRequest(Guid AssignmentId, int Quantity, string? Notes);
     public sealed record BulkAccessoryCheckinRequest(BulkAccessoryCheckinItem[]? Items, string? Notes);
     public sealed record BulkAccessoryCheckinItem(Guid AssignmentId, int Quantity);
-    public sealed record RecordAssetAuditRequest(DateOnly AuditDate, string? Notes);
+    public sealed record RecordAssetAuditRequest(DateOnly AuditDate, string? Notes, DateOnly? NextAuditOn = null);
     public sealed record TransferAssetRequest(string? TargetLocation, string? Notes);
     public sealed record StartMaintenanceRequest(string? MaintenanceType, string? Supplier, string? Description,
         DateOnly StartedOn, decimal? Cost, string Currency, string? Notes);

@@ -189,6 +189,7 @@ public sealed class Asset
     public Guid? AssignedEmployeeId { get; set; }
     public DateOnly? PurchaseDate { get; set; }
     public DateOnly? WarrantyExpiresAt { get; set; }
+    public DateOnly? NextAuditOn { get; set; }
     public decimal? PurchaseCost { get; set; }
     public string Currency { get; set; } = "TRY";
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
