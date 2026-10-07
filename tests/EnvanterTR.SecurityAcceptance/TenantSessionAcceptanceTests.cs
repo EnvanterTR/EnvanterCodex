@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using System.Text.Json;
 using EnvanterTR.Web.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -20,6 +21,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     private const string TestScheme = "SecurityAcceptance";
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _companyId = Guid.NewGuid();
+    private readonly Guid _otherCompanyId = Guid.NewGuid();
+    private readonly Guid _otherCompanyAssetId = Guid.NewGuid();
     private string? _previousConnectionString;
     private WebApplicationFactory<Program>? _factory;
     private HttpClient? _client;
@@ -49,7 +52,15 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         await using var scope = _factory!.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.MigrateAsync();
-        db.Companies.Add(new Company { Id = _companyId, Name = "Security acceptance company", IsActive = true });
+        db.Companies.AddRange(
+            new Company { Id = _companyId, Name = "Security acceptance company", IsActive = true },
+            new Company { Id = _otherCompanyId, Name = "Other security acceptance company", IsActive = true });
+        var ownCategory = new AssetCategory { CompanyId = _companyId, Name = "Own category" };
+        var otherCategory = new AssetCategory { CompanyId = _otherCompanyId, Name = "Other category" };
+        db.AssetCategories.AddRange(ownCategory, otherCategory);
+        db.Assets.AddRange(
+            new Asset { CompanyId = _companyId, AssetTag = "OWN-1", Name = "Own asset", CategoryId = ownCategory.Id },
+            new Asset { Id = _otherCompanyAssetId, CompanyId = _otherCompanyId, AssetTag = "OTHER-1", Name = "Other tenant asset", CategoryId = otherCategory.Id });
         db.Users.Add(new EnvanterUser
         {
             Id = _userId,
@@ -89,7 +100,17 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         // The request still presents an admin claim, as an old cookie would. The server
         // refreshes it from the database before authorization evaluates settings.manage.
         Assert.Equal(HttpStatusCode.Forbidden, (await SendAsAdminAsync("/api/members")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await SendAsAdminAsync("/api/assets?page=1&pageSize=20")).StatusCode);
+        using (var assetsResponse = await SendAsAdminAsync("/api/assets?page=1&pageSize=20"))
+        {
+            Assert.Equal(HttpStatusCode.OK, assetsResponse.StatusCode);
+            using var payload = JsonDocument.Parse(await assetsResponse.Content.ReadAsStringAsync());
+            var assetIds = payload.RootElement.GetProperty("items").EnumerateArray()
+                .Select(item => item.GetProperty("id").GetGuid()).ToArray();
+            Assert.Single(assetIds);
+            Assert.DoesNotContain(_otherCompanyAssetId, assetIds);
+        }
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await SendAsAdminAsync($"/api/assets/{_otherCompanyAssetId}")).StatusCode);
 
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {

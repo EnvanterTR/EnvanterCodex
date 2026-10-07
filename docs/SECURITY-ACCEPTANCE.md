@@ -14,6 +14,7 @@ Senaryo aynı eski `admin` kimlik bilgilerini her istekte tekrar gönderir ve ve
 
 - Başlangıçta üye yönetimi izni çalışır.
 - Üyelik rolü `viewer` olduğunda üye yönetimi isteği `403`, varlıkları okuma isteği `200` döner.
+- Varlık listesi yalnız geçerli şirkete ait kaydı içerir; diğer şirkete ait varlık kimliğiyle ayrıntı isteği `404` döner.
 - Şirket üyeliği kaldırıldığında sonraki istek `401` döner.
 - Üyelik yeniden eklenip şirket devre dışı bırakıldığında sonraki istek `401` döner.
 
