@@ -686,7 +686,7 @@
       }
       $('#dashboardStatusNote').textContent = total ? `Canlı şirket özeti · ${fmt.format(total)} varlık · Duruma tıklayarak listeyi filtreleyin.` : 'Henüz raporlanacak varlık yok.';
     }
-    function renderUpcomingEvents(events, total = events.length, unavailable = false, overdueAudits = 0) {
+    function renderUpcomingEvents(events, total = events.length, unavailable = false, overdueAudits = 0, dueSoonAudits = 0) {
       const host = $('#upcomingEvents'); host.replaceChildren();
       if (overdueAudits > 0 && canReadAudit()) {
         const row = document.createElement('div'); row.className = 'attention-row';
@@ -696,9 +696,17 @@
         open.addEventListener('click', () => $('[data-page="Denetim kayıtları"]').click());
         row.append(warning, copy, open); host.append(row);
       }
+      if (dueSoonAudits > 0 && canReadAudit()) {
+        const row = document.createElement('div'); row.className = 'attention-row';
+        const notice = document.createElement('span'); notice.className = 'pill blue'; notice.textContent = `${fmt.format(dueSoonAudits)} yaklaşan denetim`;
+        const copy = document.createElement('span'); copy.textContent = 'Önümüzdeki 30 gün içinde fiziksel kontrol planlandı.';
+        const open = document.createElement('button'); open.type = 'button'; open.className = 'text-link'; open.textContent = 'Planları aç';
+        open.addEventListener('click', () => $('[data-page="Denetim kayıtları"]').click());
+        row.append(notice, copy, open); host.append(row);
+      }
       if (unavailable || !events.length) {
         const row = document.createElement('div'); row.className = 'attention-row';
-        const message = document.createElement('span'); message.textContent = unavailable ? 'Takvim verileri yüklenemedi; takvim sayfasından yeniden deneyin.' : overdueAudits ? 'Yaklaşan takvim etkinliği yok; gecikmiş denetimler yukarıda listeleniyor.' : 'Yakın dönemde bakım, denetim, lisans veya garanti bitişi yok.'; row.append(message); host.append(row);
+        const message = document.createElement('span'); message.textContent = unavailable ? 'Takvim verileri yüklenemedi; takvim sayfasından yeniden deneyin.' : overdueAudits || dueSoonAudits ? 'Yaklaşan takvim etkinliği yok; planlı denetimler yukarıda listeleniyor.' : 'Yakın dönemde bakım, denetim, lisans veya garanti bitişi yok.'; row.append(message); host.append(row);
       }
       const today = dateInputValue(new Date());
       for (const item of events) {
@@ -750,7 +758,7 @@
         $('#availableAssets').textContent = fmt.format(summary.availableAssets);
         $('#maintenanceAssets').textContent = fmt.format(summary.maintenanceAssets);
         renderDashboardStatus(summary);
-        renderUpcomingEvents(calendar?.items || [], calendar?.total || 0, !calendar, auditSchedule?.overdue || 0);
+        renderUpcomingEvents(calendar?.items || [], calendar?.total || 0, !calendar, auditSchedule?.overdue || 0, auditSchedule?.dueSoon || 0);
       }
       loadedAssets = assets.items || []; assetTotal = assets.total || 0;
       $('#assetRows').replaceChildren();
