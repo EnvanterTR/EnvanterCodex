@@ -26,14 +26,14 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 ### P0 — Güvenli geliştirme ve sürüm temeli
 
 - Kimlik doğrulamalı iş akışlarının kabul doğrulaması; şirketler arası veri erişimi, izinler, eşzamanlı değişiklikler ve parola yenileme için güvenlik incelemesi.
-- Üretim ölçeğinde yedekleme/izleme, güvenli anahtar yaşam döngüsü, doğrulamalı PostgreSQL geri yükleme akışı, geri alma ve düzenli kurtarma tatbikatı. Yerel geliştirme için şifreli günlük zamanlayıcı akışı eklendi; çevrim dışı kopya ve işletimsel geri yükleme garantisi vermez.
+- Üretim ölçeğinde yedekleme/izleme, güvenli anahtar yaşam döngüsü, doğrulamalı PostgreSQL geri yükleme akışı, geri alma ve düzenli kurtarma tatbikatı. Yerel geliştirme için şifreli günlük zamanlayıcı; Linux sunucu profili için doğrulama sonrası isteğe bağlı SFTP kopyası eklendi. Gerçek uzak hedef doğrulaması, hata alarmı, işletimsel geri yükleme tatbikatı ve çevrim dışı parola/anahtar kurtarma planı hâlâ gerekli.
 - Özel `EnvanterTR/EnvanterCodex` deposu kaynak kodun yayımlama hedefidir; doğrulanan yerel değişiklikler `origin/main` dalına gönderilir. Yayımdan önce dal ve çalışma ağacı durumu kontrol edilmelidir.
 - Lisans ve üçüncü taraf bağımlılık envanteri yayıma çıkmadan önce gözden geçirilmeli; ürün adı ve görünümü, lisans/attribution yükümlülüklerini gizlemek için kullanılmamalı.
 
 ### P1 — Kurum içi kurulum ve ağ erişimi
 
 - Windows 11 ve Windows Server için imzalı, ileri-ileri kurulum sihirbazı ve servis yönetimi.
-- Ubuntu/systemd için Production Compose, Caddy HTTPS, root-only yapılandırma, ilk kurulum/migration, yedek doğrulamalı güncelleme, günlük şifreli yedek ve eski volume'ları koruyan canlı geri yükleme prototipi eklendi (`deploy/server`). Gerçek Ubuntu sunucusunda uçtan uca doğrulama, imzalı müşteri paketi, Windows Server kurulumu, LAN/özel PKI, uzak yedekleme/izleme ve başarısız migration sonrası uygulama sürümü geri alma hâlâ gerekli.
+- Ubuntu/systemd için Production Compose, Caddy HTTPS, root-only yapılandırma, ilk kurulum/migration, yedek doğrulamalı güncelleme, günlük şifreli yedek, isteğe bağlı sabit host anahtarlı SFTP kopyası ve eski volume'ları koruyan canlı geri yükleme prototipi eklendi (`deploy/server`). Gerçek Ubuntu/SFTP uçtan uca doğrulama, imzalı müşteri paketi, Windows Server kurulumu, LAN/özel PKI, uzak yedekleme hata alarmı ve başarısız migration sonrası uygulama sürümü geri alma hâlâ gerekli.
 - Ana bilgisayarın LAN adresi, DHCP değişimi veya sabit IP/DNS seçeneği, HTTPS, güvenlik duvarı kuralı ve istemci tarayıcı bağlantısı. Geliştirme Compose ayarı yalnızca localhost'a bağlıdır; şirket ağına açılmamalıdır.
 - Güncelleme/kurulum sırasında veritabanını veya dosyaları silmeme, önce yedek alma ve geri alma prosedürü.
 

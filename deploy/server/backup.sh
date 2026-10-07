@@ -15,6 +15,10 @@ read_config() { awk -F= -v key="$1" '$1 == key {sub(/^[^=]*=/, ""); print; exit}
 BACKUP_ROOT="$(read_config BACKUP_ROOT)"
 PASSWORD_FILE="$(read_config BACKUP_PASSPHRASE_FILE)"
 RETENTION_DAYS="$(read_config BACKUP_RETENTION_DAYS)"
+SFTP_TARGET="$(read_config BACKUP_SFTP_TARGET || true)"
+SFTP_DIRECTORY="$(read_config BACKUP_SFTP_DIRECTORY || true)"
+SFTP_KEY_FILE="$(read_config BACKUP_SFTP_KEY_FILE || true)"
+SFTP_KNOWN_HOSTS_FILE="$(read_config BACKUP_SFTP_KNOWN_HOSTS_FILE || true)"
 [[ "$BACKUP_ROOT" = /* && "$BACKUP_ROOT" != / ]] || { echo 'BACKUP_ROOT güvenli bir mutlak yol olmalıdır.' >&2; exit 1; }
 [[ "$RETENTION_DAYS" =~ ^[1-9][0-9]{0,3}$ ]] || { echo 'BACKUP_RETENTION_DAYS 1-999 arasında olmalıdır.' >&2; exit 1; }
 [[ -f "$PASSWORD_FILE" && -r "$PASSWORD_FILE" ]] || { echo 'Şifreleme parola dosyası eksik veya okunamıyor.' >&2; exit 1; }
@@ -99,11 +103,51 @@ docker run --rm --network none \
   --configuration Release --no-launch-profile -- decrypt "/backup/$(basename "$ENCRYPTED")" /backup/verified /run/secrets/backup-password
 bash "$PROJECT_ROOT/deploy/local/restore-preview.sh" "$VERIFY_DIR"
 
-FINAL_PATH="$BACKUP_ROOT/$(basename "$ENCRYPTED")"
+BACKUP_NAME="$(basename "$ENCRYPTED")"
+FINAL_PATH="$BACKUP_ROOT/$BACKUP_NAME"
 [[ ! -e "$FINAL_PATH" ]] || { echo 'Hedef yedek dosyası zaten var; üzerine yazılmadı.' >&2; exit 1; }
 mv -- "$ENCRYPTED" "$FINAL_PATH"
-sha256sum "$FINAL_PATH" > "$FINAL_PATH.sha256"
+(cd -- "$BACKUP_ROOT" && sha256sum -- "$BACKUP_NAME") > "$FINAL_PATH.sha256"
 chmod 0600 "$FINAL_PATH" "$FINAL_PATH.sha256"
+if [[ -n "$SFTP_TARGET$SFTP_DIRECTORY$SFTP_KEY_FILE$SFTP_KNOWN_HOSTS_FILE" ]]; then
+  [[ -n "$SFTP_TARGET" && -n "$SFTP_DIRECTORY" && -n "$SFTP_KEY_FILE" && -n "$SFTP_KNOWN_HOSTS_FILE" ]] || {
+    echo 'Uzak yedekleme için BACKUP_SFTP_TARGET, BACKUP_SFTP_DIRECTORY, BACKUP_SFTP_KEY_FILE ve BACKUP_SFTP_KNOWN_HOSTS_FILE birlikte ayarlanmalıdır.' >&2
+    exit 1
+  }
+  [[ "$SFTP_TARGET" =~ ^[A-Za-z0-9._-]+@[A-Za-z0-9.-]+$ ]] || { echo 'BACKUP_SFTP_TARGET user@host biçiminde olmalıdır.' >&2; exit 1; }
+  [[ "$SFTP_DIRECTORY" =~ ^/[A-Za-z0-9._/-]+$ && "$SFTP_DIRECTORY" != *..* && "$SFTP_DIRECTORY" != *//* ]] || {
+    echo 'BACKUP_SFTP_DIRECTORY boşluksuz, mutlak ve güvenli bir uzak dizin olmalıdır.' >&2; exit 1;
+  }
+  [[ "$BACKUP_ROOT" != *'"'* && "$BACKUP_ROOT" != *$'\n'* && "$BACKUP_ROOT" != *$'\r'* ]] || {
+    echo 'BACKUP_ROOT SFTP batch dosyası için çift tırnak veya satır sonu içeremez.' >&2; exit 1;
+  }
+  [[ -f "$SFTP_KEY_FILE" && -r "$SFTP_KEY_FILE" && "$(stat -c '%u:%a' "$SFTP_KEY_FILE")" == 0:600 ]] || {
+    echo 'BACKUP_SFTP_KEY_FILE root sahipliğinde, chmod 600 ile korunan özel anahtar olmalıdır.' >&2; exit 1;
+  }
+  KNOWN_HOSTS_MODE="$(stat -c '%u:%a' "$SFTP_KNOWN_HOSTS_FILE" 2>/dev/null || true)"
+  [[ -f "$SFTP_KNOWN_HOSTS_FILE" && -r "$SFTP_KNOWN_HOSTS_FILE" && "$KNOWN_HOSTS_MODE" =~ ^0:[0-7]{3,4}$ && \
+    "${KNOWN_HOSTS_MODE: -2:1}" != [2367] && "${KNOWN_HOSTS_MODE: -1}" != [2367] ]] || {
+    echo 'BACKUP_SFTP_KNOWN_HOSTS_FILE root sahipliğinde olmalı, sabitlenmiş anahtar içermeli ve grup/diğer kullanıcılarca yazılamamalıdır.' >&2; exit 1;
+  }
+  command -v sftp >/dev/null || { echo 'Uzak yedekleme için OpenSSH sftp istemcisi kurulu olmalıdır.' >&2; exit 1; }
+  VERIFY_REMOTE_DIR="$WORK_DIR/remote-verify"
+  mkdir -m 0700 "$VERIFY_REMOTE_DIR"
+  BATCH_FILE="$WORK_DIR/sftp.batch"
+  printf 'cd "%s"\nlcd "%s"\n' "$SFTP_DIRECTORY" "$BACKUP_ROOT" > "$BATCH_FILE"
+  printf 'put "%s" ".%s.uploading"\nrename ".%s.uploading" "%s"\n' \
+    "$BACKUP_NAME" "$BACKUP_NAME" "$BACKUP_NAME" "$BACKUP_NAME" >> "$BATCH_FILE"
+  printf 'put "%s.sha256" ".%s.sha256.uploading"\nrename ".%s.sha256.uploading" "%s.sha256"\n' \
+    "$BACKUP_NAME" "$BACKUP_NAME" "$BACKUP_NAME" "$BACKUP_NAME" >> "$BATCH_FILE"
+  printf 'get "%s" "%s/%s"\n' "$BACKUP_NAME" "$VERIFY_REMOTE_DIR" "$BACKUP_NAME" >> "$BATCH_FILE"
+  sftp -i "$SFTP_KEY_FILE" -oBatchMode=yes -oIdentitiesOnly=yes \
+    -oStrictHostKeyChecking=yes -oUserKnownHostsFile="$SFTP_KNOWN_HOSTS_FILE" \
+    -b "$BATCH_FILE" "$SFTP_TARGET"
+  cmp -- "$FINAL_PATH" "$VERIFY_REMOTE_DIR/$BACKUP_NAME" || {
+    echo 'Uzak yedek kopyası indirildi ancak yerel dosyayla eşleşmedi; uzak kopya doğrulanamadı.' >&2
+    exit 1
+  }
+  echo "Uzak SFTP yedek kopyası SHA-256 ile doğrulandı: $SFTP_TARGET:$SFTP_DIRECTORY/$BACKUP_NAME"
+fi
 find "$BACKUP_ROOT" -maxdepth 1 -type f -name 'envantertr-server-*.etbackup*' -mtime "+$RETENTION_DAYS" -delete
 printf 'Şifreli yedek doğrulandı ve kaydedildi: %s\n' "$FINAL_PATH"
-printf 'SHA-256: %s\n' "$(sha256sum "$FINAL_PATH" | awk '{print $1}')"
+printf 'SHA-256: %s\n' "$(sha256sum -- "$FINAL_PATH" | awk '{print $1}')"
