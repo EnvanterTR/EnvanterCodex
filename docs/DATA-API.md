@@ -40,6 +40,8 @@ Rol politikaları ayrı tutulur: varlık okuma, varlık değiştirme, çalışan
 
 Aksesuar, sarf ve bileşen kayıtları da etkin katalog yolu tam eşleştiğinde `locationCatalogId` ile bağlanır; kayıt/düzenleme ve CSV aktarımı bu bağı kurar. Konum kataloğunda ad değişirse bağlı stok konum metni de eş zamanlı güncellenir. Bilinmeyen veya arşivli yol eski serbest metin davranışını korur.
 
+Konum listesi `isDefault`, `managerEmployeeId` ve `managerName` alanlarını içerir. `POST /api/locations/catalog/{id}/default` gövdesi `{ "isDefault": true }` ile şirkette tek etkin varsayılan konumu belirler veya kaldırır; şirket satır kilidi eşzamanlı güncellemeleri sıraya koyar. `POST /api/locations/catalog/{id}/manager` gövdesi `{ "employeeId": "..." }` ile aynı şirketteki etkin çalışanı sorumlu atar; `null` sorumluyu kaldırır. Her iki işlem şirket denetim kaydı üretir. Yeni varlık, çalışan, aksesuar, sarf ve bileşen oluşturma isteğinde konum boşsa etkin varsayılan yol kullanılır; açıkça gönderilen konum önceliklidir.
+
 `GET /api/employees` ve `/api/employees/export.csv`, `startedFrom` ve `startedTo` (`YYYY-MM-DD`) işe başlama tarihi aralığı filtrelerini kabul eder; başlangıç bitişten sonraysa doğrulama hatası döner.
 
 İK notları `/api/employees/{id}/private-notes` GET/PUT uçlarıyla yönetilir; yalnızca `people.files.read` / `people.files.manage` yetkileri (şirket sahibi, yönetici, İK) erişebilir. Notlar en fazla 4.000 karakterdir; denetim kaydında metnin kendisi tutulmaz.

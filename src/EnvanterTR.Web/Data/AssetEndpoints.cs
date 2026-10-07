@@ -306,12 +306,13 @@ public static class AssetEndpoints
                 request.UnitCost, request.Currency, request.Category, request.ModelNumber, request.ItemNumber,
                 request.Supplier, request.Location, request.Notes);
             if (errors.Count > 0) return Results.ValidationProblem(errors);
+            var location = Clean(request.Location) ?? await GetDefaultLocationPathAsync(db, companyId, cancellationToken);
             var item = new Accessory
             {
                 CompanyId = companyId, Name = request.Name.Trim(), Category = Clean(request.Category),
                 ModelNumber = Clean(request.ModelNumber), ItemNumber = Clean(request.ItemNumber),
-                Supplier = Clean(request.Supplier), SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, cancellationToken), Location = Clean(request.Location),
-                LocationCatalogId = await ResolveLocationCatalogIdAsync(db, companyId, request.Location, cancellationToken),
+                Supplier = Clean(request.Supplier), SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, cancellationToken), Location = location,
+                LocationCatalogId = await ResolveLocationCatalogIdAsync(db, companyId, location, cancellationToken),
                 MinimumQuantity = request.MinimumQuantity, TotalQuantity = request.Quantity,
                 UnitCost = request.UnitCost, Currency = request.Currency.Trim().ToUpperInvariant(),
                 PurchaseDate = request.PurchaseDate, Notes = Clean(request.Notes), IsRequestable = request.IsRequestable
@@ -703,10 +704,13 @@ public static class AssetEndpoints
             foreach (var row in componentLocations) AddLocation(row.name, components: row.count);
             var items = locations.Values.Select(x => new LocationDirectoryEntry(x.Name, x.Assets, x.Assigned,
                 x.Available, x.Maintenance, x.Accessories, x.AccessoryAssignments, x.Consumables, x.Components,
-                null, null, 0, false, true)).ToList();
+                null, null, 0, false, true, false, null, null)).ToList();
             var catalog = await db.CompanyLocations.AsNoTracking().Where(x => x.CompanyId == companyId)
                 .OrderBy(x => x.Name).ToListAsync(cancellationToken);
             var byId = catalog.ToDictionary(x => x.Id);
+            var managerIds = catalog.Where(x => x.ManagerEmployeeId != null).Select(x => x.ManagerEmployeeId!.Value).Distinct().ToArray();
+            var managers = await db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId && managerIds.Contains(x.Id))
+                .ToDictionaryAsync(x => x.Id, x => x.DisplayName, cancellationToken);
             (string Path, int Depth) GetPath(CompanyLocation location)
             {
                 if (location.ParentLocationId is not Guid parentId || !byId.TryGetValue(parentId, out var parent))
@@ -719,10 +723,12 @@ public static class AssetEndpoints
                 var (path, depth) = GetPath(location);
                 var index = items.FindIndex(x => string.Equals(x.Name, path, StringComparison.OrdinalIgnoreCase));
                 var entry = index >= 0 ? items[index] : new LocationDirectoryEntry(path, 0, 0, 0, 0, 0, 0, 0, 0,
-                    null, null, 0, false, true);
+                    null, null, 0, false, true, false, null, null);
                 var selectedIndex = index;
                 var catalogEntry = entry with { LocationId = location.Id, ParentLocationId = location.ParentLocationId,
-                    Depth = depth, IsCatalogEntry = true, IsActive = location.IsActive };
+                    Depth = depth, IsCatalogEntry = true, IsActive = location.IsActive, IsDefault = location.IsDefault,
+                    ManagerEmployeeId = location.ManagerEmployeeId,
+                    ManagerName = location.ManagerEmployeeId is Guid managerId && managers.TryGetValue(managerId, out var managerName) ? managerName : null };
                 if (selectedIndex >= 0) items[selectedIndex] = catalogEntry; else items.Add(catalogEntry);
             }
             items = items.OrderBy(x => x.Name, StringComparer.Create(CultureInfo.GetCultureInfo("tr-TR"), true)).ToList();
@@ -770,6 +776,65 @@ public static class AssetEndpoints
             }
             return Results.Created("/api/locations/catalog", new { location.Id, location.ParentLocationId,
                 location.Name, displayPath = path, depth, location.IsActive });
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/locations/catalog/{id:guid}/default", async (Guid id, [FromBody] SetLocationDefaultRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            if (await db.Companies.FromSqlInterpolated($"SELECT * FROM \"Companies\" WHERE \"Id\" = {companyId} FOR UPDATE")
+                    .SingleOrDefaultAsync(cancellationToken) is null) return Results.Forbid();
+            var location = await db.CompanyLocations.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (location is null) return Results.NotFound();
+            if (request.IsDefault && !location.IsActive)
+                return Results.Conflict(new { message = "Arşivlenmiş konum varsayılan yapılamaz; önce konumu geri alın." });
+            if (request.IsDefault)
+                await db.CompanyLocations.Where(x => x.CompanyId == companyId && x.IsDefault && x.Id != id)
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.IsDefault, false)
+                        .SetProperty(x => x.UpdatedAt, DateTimeOffset.UtcNow), cancellationToken);
+            if (location.IsDefault != request.IsDefault)
+            {
+                location.IsDefault = request.IsDefault; location.UpdatedAt = DateTimeOffset.UtcNow;
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                    TargetType = "Location", TargetId = id, Action = request.IsDefault ? "CatalogDefaultSet" : "CatalogDefaultCleared",
+                    Details = request.IsDefault ? $"Varsayılan konum: {location.Name}." : $"Varsayılan konum kaldırıldı: {location.Name}." });
+                await db.SaveChangesAsync(cancellationToken);
+            }
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { location.Id, location.IsDefault });
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/locations/catalog/{id:guid}/manager", async (Guid id, [FromBody] SetLocationManagerRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            if (await db.Companies.FromSqlInterpolated($"SELECT * FROM \"Companies\" WHERE \"Id\" = {companyId} FOR UPDATE")
+                    .SingleOrDefaultAsync(cancellationToken) is null) return Results.Forbid();
+            var location = await db.CompanyLocations.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (location is null) return Results.NotFound();
+            if (!location.IsActive) return Results.Conflict(new { message = "Arşivlenmiş konuma sorumlu atanamaz." });
+            Employee? manager = null;
+            if (request.EmployeeId is Guid employeeId)
+            {
+                manager = await db.Employees.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == employeeId && x.IsActive, cancellationToken);
+                if (manager is null) return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeId"] = ["Sorumlu, bu şirkette kayıtlı etkin bir çalışan olmalıdır."] });
+            }
+            if (location.ManagerEmployeeId == request.EmployeeId)
+            {
+                await transaction.CommitAsync(cancellationToken);
+                return Results.Ok(new { location.Id, location.ManagerEmployeeId, managerName = manager?.DisplayName });
+            }
+            var previousManager = location.ManagerEmployeeId is Guid previousId
+                ? await db.Employees.Where(x => x.CompanyId == companyId && x.Id == previousId).Select(x => x.DisplayName).SingleOrDefaultAsync(cancellationToken)
+                : null;
+            location.ManagerEmployeeId = request.EmployeeId; location.UpdatedAt = DateTimeOffset.UtcNow;
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                TargetType = "Location", TargetId = id, Action = "CatalogManagerChanged",
+                Details = $"Konum sorumlusu: {previousManager ?? "atanmamış"} → {manager?.DisplayName ?? "atanmamış"}." });
+            await db.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { location.Id, location.ManagerEmployeeId, managerName = manager?.DisplayName });
         }).RequireAuthorization("asset.write");
 
         api.MapPatch("/locations/catalog/{id:guid}", async (Guid id, [FromBody] LocationCatalogRequest request,
@@ -920,7 +985,7 @@ public static class AssetEndpoints
             if (await db.CompanyLocations.AnyAsync(x => x.CompanyId == companyId && x.ParentLocationId == id && x.IsActive, cancellationToken))
                 return Results.Conflict(new { message = "Önce bu konumun altındaki etkin konumları arşivleyin." });
             if (!location.IsActive) return Results.Ok(new { location.Id, location.IsActive });
-            location.IsActive = false; location.UpdatedAt = DateTimeOffset.UtcNow;
+            location.IsActive = false; location.IsDefault = false; location.UpdatedAt = DateTimeOffset.UtcNow;
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
                 TargetType = "Location", TargetId = id, Action = "CatalogArchived", Details = $"Konum arşivlendi: {location.Name}." });
             await db.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken);
@@ -1219,7 +1284,7 @@ public static class AssetEndpoints
             var tag = request.AssetTag.Trim().ToUpperInvariant();
             var name = request.Name.Trim();
             var serial = Clean(request.SerialNumber);
-            var location = Clean(request.Location);
+            var location = Clean(request.Location) ?? await GetDefaultLocationPathAsync(db, companyId, cancellationToken);
             if (tag.Length > 80 || name.Length > 240 || request.CategoryId == Guid.Empty)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
@@ -2180,6 +2245,17 @@ public static class AssetEndpoints
         return paths.TryGetValue(locationPath.Trim(), out var id) ? id : null;
     }
 
+    internal static async Task<string?> GetDefaultLocationPathAsync(AppDbContext db, Guid companyId,
+        CancellationToken cancellationToken)
+    {
+        var defaultId = await db.CompanyLocations.AsNoTracking()
+            .Where(x => x.CompanyId == companyId && x.IsActive && x.IsDefault)
+            .Select(x => (Guid?)x.Id).SingleOrDefaultAsync(cancellationToken);
+        if (defaultId is not Guid id) return null;
+        var paths = await GetActiveLocationPathMapAsync(db, companyId, cancellationToken);
+        return paths.FirstOrDefault(x => x.Value == id).Key;
+    }
+
     internal static async Task<Dictionary<string, Guid>> GetActiveLocationPathMapAsync(AppDbContext db,
         Guid companyId, CancellationToken cancellationToken)
     {
@@ -2296,7 +2372,8 @@ public static class AssetEndpoints
     public sealed record SelectedAssetLabelsRequest(Guid[]? AssetIds);
     private sealed record LocationDirectoryEntry(string Name, int AssetCount, int AssignedCount, int AvailableCount,
         int MaintenanceCount, int AccessoryCount, int AccessoryAssignmentCount, int ConsumableCount, int ComponentCount,
-        Guid? LocationId, Guid? ParentLocationId, int Depth, bool IsCatalogEntry, bool IsActive);
+        Guid? LocationId, Guid? ParentLocationId, int Depth, bool IsCatalogEntry, bool IsActive, bool IsDefault,
+        Guid? ManagerEmployeeId, string? ManagerName);
     private sealed record CalendarEntry(string Kind, DateOnly Date, Guid? AssetId, Guid RecordId,
         string Title, string? Subtitle, string Status, bool? AutoRenew);
 

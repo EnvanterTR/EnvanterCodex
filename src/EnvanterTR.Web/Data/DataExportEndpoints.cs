@@ -513,7 +513,7 @@ public static class DataExportEndpoints
             _ = ReadRows(root, "auditEntries", sourceCompanyId, errors, counts);
             var departmentCatalog = ReadOptionalRows(root, "departmentCatalog", errors, counts);
             var locationCatalog = ReadOptionalRows(root, "locationCatalog", errors, counts);
-            var locationCatalogIds = ValidateCompanyCatalogs(departmentCatalog, locationCatalog, sourceCompanyId, errors);
+            var locationCatalogIds = ValidateCompanyCatalogs(departmentCatalog, locationCatalog, sourceCompanyId, employees, errors);
             foreach (var employee in EnumerateRows(root, "employees"))
             {
                 if (employee.ValueKind != JsonValueKind.Object) continue;
@@ -670,7 +670,7 @@ public static class DataExportEndpoints
     }
 
     private static HashSet<Guid> ValidateCompanyCatalogs(IReadOnlyList<JsonElement> departmentRows,
-        IReadOnlyList<JsonElement> locationRows, Guid sourceCompanyId, List<string> errors)
+        IReadOnlyList<JsonElement> locationRows, Guid sourceCompanyId, IReadOnlySet<Guid> employeeIds, List<string> errors)
     {
         var departmentIds = new HashSet<Guid>();
         var departmentNames = new HashSet<string>(StringComparer.Ordinal);
@@ -693,6 +693,7 @@ public static class DataExportEndpoints
 
         var locations = new Dictionary<Guid, (Guid? ParentId, string Name, string NormalizedName)>();
         var siblings = new HashSet<string>(StringComparer.Ordinal);
+        var defaultCount = 0;
         foreach (var row in locationRows)
         {
             if (row.ValueKind != JsonValueKind.Object || !TryGuid(row, "id", out var id) ||
@@ -723,8 +724,23 @@ public static class DataExportEndpoints
             var siblingKey = (parentId?.ToString() ?? "root") + ":" + normalized;
             if (!siblings.Add(siblingKey))
                 AddError(errors, "Konum kataloğunda aynı üst düğüm altında yinelenen ad var.");
+            if (row.TryGetProperty("isDefault", out var isDefault))
+            {
+                if (isDefault.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                    AddError(errors, "Konum kataloğunda varsayılan durumu geçersiz.");
+                else if (isDefault.GetBoolean())
+                {
+                    defaultCount++;
+                    if (!row.TryGetProperty("isActive", out active) || active.ValueKind != JsonValueKind.True)
+                        AddError(errors, "Arşivlenmiş konum varsayılan olarak işaretlenemez.");
+                }
+            }
+            if (row.TryGetProperty("managerEmployeeId", out var managerId) && managerId.ValueKind != JsonValueKind.Null &&
+                (!TryGuid(row, "managerEmployeeId", out var selectedManagerId) || !employeeIds.Contains(selectedManagerId)))
+                AddError(errors, "Konum sorumlusu çalışanı dosyada bulunamadı veya geçersiz.");
             locations.Add(id, (parentId, name, normalized!));
         }
+        if (defaultCount > 1) AddError(errors, "Bir şirket konum kataloğunda en fazla bir varsayılan konum olabilir.");
 
         foreach (var (id, location) in locations)
         {

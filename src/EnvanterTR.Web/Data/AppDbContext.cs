@@ -186,6 +186,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<CompanyLocation>().HasOne<CompanyLocation>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.ParentLocationId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
             .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<CompanyLocation>().HasOne<Employee>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ManagerEmployeeId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<CompanyLocation>().HasIndex(x => x.CompanyId).IsUnique().HasFilter("\"IsDefault\" = TRUE");
         modelBuilder.Entity<CompanyLocation>().HasIndex(x => new { x.CompanyId, x.NormalizedName })
             .IsUnique().HasFilter("\"ParentLocationId\" IS NULL");
         modelBuilder.Entity<CompanyLocation>().HasIndex(x => new { x.CompanyId, x.ParentLocationId, x.NormalizedName })

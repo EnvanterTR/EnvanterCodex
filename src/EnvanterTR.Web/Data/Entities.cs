@@ -47,6 +47,8 @@ public sealed class CompanyLocation
     public Guid? ParentLocationId { get; set; }
     public required string Name { get; set; }
     public required string NormalizedName { get; set; }
+    public bool IsDefault { get; set; }
+    public Guid? ManagerEmployeeId { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;

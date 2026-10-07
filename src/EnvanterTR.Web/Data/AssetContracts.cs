@@ -31,6 +31,8 @@ public sealed record CreateLookupRequest(string Name, Guid? BrandId = null);
 public sealed record RenameLookupRequest(string Name);
 public sealed record RenameDirectoryEntryRequest(string CurrentName, string NewName, bool Merge = false);
 public sealed record LocationCatalogRequest(string? Name, Guid? ParentLocationId = null);
+public sealed record SetLocationDefaultRequest(bool IsDefault);
+public sealed record SetLocationManagerRequest(Guid? EmployeeId);
 
 public sealed record CreateEmployeeRequest(
     string EmployeeNumber,

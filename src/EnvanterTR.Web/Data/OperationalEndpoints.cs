@@ -278,7 +278,7 @@ public static class OperationalEndpoints
             var department = Clean(request.Department);
             var jobTitle = Clean(request.JobTitle);
             var phone = Clean(request.Phone);
-            var location = Clean(request.Location);
+            var location = Clean(request.Location) ?? await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, cancellationToken);
             var locationCatalogId = await AssetEndpoints.ResolveLocationCatalogIdAsync(db, companyId, location, cancellationToken);
             if (string.IsNullOrWhiteSpace(number) || number.Length > 80 ||
                 string.IsNullOrWhiteSpace(displayName) || displayName.Length > 200 ||

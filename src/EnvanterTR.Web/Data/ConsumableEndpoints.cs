@@ -114,10 +114,11 @@ public static class ConsumableEndpoints
             var errors = Validate(request.Name, request.MinimumQuantity, request.Quantity, request.UnitCost, request.Currency,
                 request.Category, request.ModelNumber, request.ItemNumber, request.Supplier, request.Location, request.Notes);
             if (errors.Count > 0) return Results.ValidationProblem(errors);
+            var location = Clean(request.Location) ?? await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, ct);
             var item = new Consumable { CompanyId = companyId, Name = request.Name.Trim(), Category = Clean(request.Category),
                 ModelNumber = Clean(request.ModelNumber), ItemNumber = Clean(request.ItemNumber), Supplier = Clean(request.Supplier),
                 SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, ct),
-                Location = Clean(request.Location), LocationCatalogId = await AssetEndpoints.ResolveLocationCatalogIdAsync(db, companyId, request.Location, ct), MinimumQuantity = request.MinimumQuantity, TotalQuantity = request.Quantity,
+                Location = location, LocationCatalogId = await AssetEndpoints.ResolveLocationCatalogIdAsync(db, companyId, location, ct), MinimumQuantity = request.MinimumQuantity, TotalQuantity = request.Quantity,
                 UnitCost = request.UnitCost, Currency = request.Currency.Trim().ToUpperInvariant(), PurchaseDate = request.PurchaseDate,
                 Notes = Clean(request.Notes), IsRequestable = request.IsRequestable };
             db.Consumables.Add(item);

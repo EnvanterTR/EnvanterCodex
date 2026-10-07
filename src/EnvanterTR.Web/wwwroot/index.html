@@ -285,6 +285,7 @@
   <dialog class="detail-dialog" id="directoryRenameDialog"><form id="directoryRenameForm"><div class="dialog-head"><div><div class="eyebrow" id="directoryRenameEyebrow">ŞİRKET ALANI / KAYITLAR</div><h2 id="directoryRenameTitle">Adı değiştir</h2></div><button class="close" type="button" id="closeDirectoryRename" aria-label="Kapat">✕</button></div><div class="dialog-body"><input name="kind" type="hidden"><input name="currentName" type="hidden"><input name="locationId" type="hidden"><p class="muted" id="directoryRenameDescription"></p><label>Yeni ad<input name="newName" maxlength="160" required autocomplete="off"></label><p class="muted" id="directoryRenameFeedback" role="status" aria-live="polite"></p><div class="dialog-actions"><button class="btn" type="button" id="cancelDirectoryRename">Vazgeç</button><button class="btn primary" type="submit" id="saveDirectoryRename">Değişiklikleri kaydet</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="createDepartmentDialog"><form id="createDepartmentForm"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ALANI / EKİP</div><h2>Departman ekle</h2></div><button class="close" type="button" id="closeCreateDepartment" aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="muted">Departmanı çalışan atanmadan önce kataloğa ekleyebilirsiniz. Yeni çalışan kaydında da öneri olarak görünür.</p><label>Departman adı *<input name="name" maxlength="160" required autocomplete="off"></label><p class="muted" id="createDepartmentFeedback" role="status" aria-live="polite"></p><div class="dialog-actions"><button class="btn" type="button" id="cancelCreateDepartment">Vazgeç</button><button class="btn primary" id="saveDepartment" type="submit">Departmanı kaydet</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="createLocationDialog"><form id="createLocationForm"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ALANI / KONUM</div><h2>Konum ekle</h2></div><button class="close" type="button" id="closeCreateLocation" aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="muted">Bina, kat ve oda düzeyinde en fazla üç seviyeli şirket konumu tanımlayın. Mevcut serbest metinli kayıtlar korunur; bu adlar formlarda önerilir.</p><div class="form-grid"><label>Üst konum<select name="parentLocationId"><option value="">Üst seviye · bina</option></select></label><label>Konum adı *<input name="name" maxlength="120" required autocomplete="off" placeholder="Örn. Merkez Ofis"></label></div><p class="muted" id="createLocationPreview"></p><p class="muted" id="createLocationFeedback" role="status" aria-live="polite"></p><div class="dialog-actions"><button class="btn" type="button" id="cancelCreateLocation">Vazgeç</button><button class="btn primary" id="saveLocation" type="submit">Konumu kaydet</button></div></div></form></dialog>
+  <dialog class="detail-dialog" id="locationManagerDialog"><form id="locationManagerForm"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ALANI / KONUM</div><h2>Konum sorumlusu ata</h2></div><button class="close" type="button" id="closeLocationManager" aria-label="Kapat">✕</button></div><div class="dialog-body"><input name="locationId" type="hidden"><p class="muted" id="locationManagerContext"></p><label>Çalışan ara<input id="locationManagerSearch" type="search" maxlength="120" placeholder="Ad veya personel numarası"></label><label>Aktif çalışan<select id="locationManagerEmployee" name="employeeId"><option value="">Sorumlu atanmamış</option></select></label><p class="muted" id="locationManagerFeedback" role="status" aria-live="polite"></p><div class="dialog-actions"><button class="btn" type="button" id="cancelLocationManager">Vazgeç</button><button class="btn primary" type="submit" id="saveLocationManager">Sorumluyu kaydet</button></div></div></form></dialog>
   <datalist id="departmentSuggestions"></datalist><datalist id="locationSuggestions"></datalist>
   <script src="/vendor/qrcodegen.js"></script>
   <dialog class="detail-dialog" id="supplierCatalogDialog"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET KATALOĞU</div><h2>Tedarikçiler</h2></div><button class="close" type="button" id="closeSupplierCatalog" aria-label="Kapat">✕</button></div><div class="dialog-body"><form id="supplierCatalogForm"><input name="id" type="hidden"><div class="form-grid"><label>Firma adı *<input name="name" maxlength="200" required></label><label>Yetkili kişi<input name="contactName" maxlength="160"></label><label>E-posta<input name="email" type="email" maxlength="254"></label><label>Telefon<input name="phone" maxlength="50"></label><label class="wide">Web sitesi<input name="website" type="url" maxlength="500" placeholder="https://ornek.com"></label><label class="wide">Notlar<textarea name="notes" maxlength="2000" rows="2"></textarea></label></div><div class="dialog-actions"><button class="btn" id="resetSupplierForm" type="button">Temizle</button><button class="btn primary" type="submit">Tedarikçiyi kaydet</button></div></form><div class="table-tools"><input id="supplierCatalogSearch" placeholder="Firma, yetkili, e-posta veya telefon ara" aria-label="Tedarikçilerde ara"><label><input id="showArchivedSuppliers" type="checkbox"> Arşivdekileri göster</label></div><div class="table-wrap"><table><thead><tr><th>Firma</th><th>Yetkili / iletişim</th><th>Bağlı kayıt</th><th>Durum</th><th>İşlemler</th></tr></thead><tbody id="supplierCatalogRows"><tr><td colspan="5">Tedarikçiler yükleniyor…</td></tr></tbody></table></div><p class="muted">Kayıt sayısı envanter, sarf, bileşen, lisans, bakım ve sipariş bağlantılarını gösterir. Siparişlerdeki tedarikçi adı geçmiş metni olarak korunur.</p></div></dialog>
@@ -954,11 +955,11 @@
     }
     function renderDirectoryRows() {
       const search = $('#directorySearch').value.trim().toLocaleLowerCase('tr-TR');
-      const entries = directoryEntries.filter(item => !search || item.name.toLocaleLowerCase('tr-TR').includes(search));
+      const entries = directoryEntries.filter(item => !search || `${item.name} ${item.managerName || ''}`.toLocaleLowerCase('tr-TR').includes(search));
       const rows = $('#directoryRows'); rows.replaceChildren();
       if (!entries.length) {
         const row = document.createElement('tr'), cell = document.createElement('td');
-        cell.colSpan = directoryKind === 'departments' ? 5 : 10;
+        cell.colSpan = directoryKind === 'departments' ? 5 : 12;
         cell.textContent = $('#directorySearch').value.trim() ? 'Aramayla eşleşen kayıt bulunamadı.' : 'Bu şirket için henüz kayıtlı departman veya konum yok.';
         row.append(cell); rows.append(row);
       }
@@ -978,6 +979,12 @@
           ? [item.employeeCount, item.activeEmployeeCount, item.inactiveEmployeeCount]
           : [item.assetCount, item.assignedCount, item.availableCount, item.maintenanceCount, item.accessoryCount, item.accessoryAssignmentCount, item.consumableCount, item.componentCount];
         for (const value of values) { const cell = document.createElement('td'); cell.textContent = fmt.format(value); row.append(cell); }
+        if (directoryKind === 'locations') {
+          const defaultCell = document.createElement('td'), managerCell = document.createElement('td');
+          defaultCell.textContent = item.isCatalogEntry && item.isDefault ? 'Varsayılan' : '—';
+          managerCell.textContent = item.isCatalogEntry ? (item.managerName || 'Atanmamış') : '—';
+          row.append(defaultCell, managerCell);
+        }
         const action = document.createElement('td');
         if (directoryKind === 'departments') {
           const open = document.createElement('button'); open.type = 'button'; open.className = 'btn small'; open.textContent = 'Ekibi gör →';
@@ -1011,6 +1018,17 @@
             action.append(register);
           }
           if (item.isCatalogEntry && canWriteAssets()) {
+            const setDefault = document.createElement('button'); setDefault.type = 'button'; setDefault.className = 'btn small';
+            setDefault.textContent = item.isDefault ? 'Varsayılanı kaldır' : 'Varsayılan yap';
+            setDefault.disabled = !item.isActive;
+            setDefault.addEventListener('click', async () => {
+              setDefault.disabled = true;
+              try { await api(`/api/locations/catalog/${item.locationId}/default`, { method: 'POST', body: JSON.stringify({ isDefault: !item.isDefault }) }); await loadDirectory('locations'); await refreshDirectorySuggestions(); notify(item.isDefault ? 'Varsayılan konum kaldırıldı.' : `“${item.name}” yeni kayıtların varsayılan konumu oldu.`); }
+              catch (error) { notify(error.message); } finally { setDefault.disabled = false; }
+            }); action.append(setDefault);
+            const manager = document.createElement('button'); manager.type = 'button'; manager.className = 'btn small';
+            manager.textContent = item.managerName || 'Sorumlu ata'; manager.disabled = !item.isActive;
+            manager.addEventListener('click', () => openLocationManager(item)); action.append(manager);
             const archive = document.createElement('button'); archive.type = 'button'; archive.className = 'btn small';
             archive.textContent = item.isActive ? 'Arşivle' : 'Geri al';
             archive.addEventListener('click', async () => {
@@ -1045,13 +1063,13 @@
       $('#directorySearch').value = '';
       $('#directoryHead').innerHTML = departments
         ? '<tr><th>Departman</th><th>Çalışan</th><th>Aktif</th><th>Pasif</th><th>İşlem</th></tr>'
-        : '<tr><th>Konum</th><th>Varlık</th><th>Atanmış</th><th>Kullanılabilir</th><th>Bakımda</th><th>Aksesuar stoğu</th><th>Aksesuar teslim kaydı</th><th>Sarf</th><th>Bileşen</th><th>İşlem</th></tr>';
-      $('#directoryRows').innerHTML = `<tr><td colspan="${departments ? 5 : 10}">Kayıtlar yükleniyor…</td></tr>`;
+        : '<tr><th>Konum</th><th>Varlık</th><th>Atanmış</th><th>Kullanılabilir</th><th>Bakımda</th><th>Aksesuar stoğu</th><th>Aksesuar teslim kaydı</th><th>Sarf</th><th>Bileşen</th><th>Varsayılan</th><th>Konum sorumlusu</th><th>İşlem</th></tr>';
+      $('#directoryRows').innerHTML = `<tr><td colspan="${departments ? 5 : 12}">Kayıtlar yükleniyor…</td></tr>`;
       const result = await api(`/api/${kind}`);
       directoryEntries = result.items || [];
       $('#directoryNotice').textContent = departments
         ? 'Katalogdaki ve çalışan kayıtlarında kullanılan departmanlar birlikte listelenir. Yeni bir departman ekleyebilir, adı değiştirirken çalışan kayıtlarını tek işlemde güncelleyebilirsiniz.'
-        : 'Katalog konumları bina / kat / oda şeklinde önerilir. Eski serbest metinli stok ve varlık konumları listede kalır; katalog yönetimi henüz bu kayıtların kimliğini değiştirmez. Serbest metin konumlarını yeniden adlandırma açık aksesuar teslimlerini günceller.';
+        : 'Konumları bina / kat / oda biçiminde hiyerarşik yönetin, aktif bir konumu şirket varsayılanı seçin ve aktif çalışan sorumlu atayın. Varsayılan konum, yeni varlık, çalışan ve stok kayıtlarında otomatik doldurulur. Kataloğa bağlı ad değişiklikleri kayıtlarla birlikte güncellenir; eski serbest metinli kayıtlar korunur.';
       renderDirectoryRows();
     }
     function rebuildLocationParentOptions() {
@@ -1091,6 +1109,49 @@
         await loadDirectory('locations'); await refreshDirectorySuggestions();
         $('#createLocationDialog').close(); notify(`“${name}” konumu kataloğa eklendi.`);
       } catch (error) { $('#createLocationFeedback').textContent = error.message; }
+      finally { button.disabled = false; }
+    });
+    let locationManagerSearchTimer;
+    async function loadLocationManagerCandidates(query = '', selectedId = '') {
+      const select = $('#locationManagerEmployee');
+      select.replaceChildren(new Option('Sorumlu atanmamış', ''));
+      const result = await api(`/api/employees?active=true&page=1&pageSize=100&q=${encodeURIComponent(query.trim())}`);
+      const employees = result.items || [];
+      for (const employee of employees) {
+        const label = `${employee.displayName} · ${employee.employeeNumber}`;
+        select.add(new Option(label, employee.id, false, employee.id === selectedId));
+      }
+      if (selectedId && !employees.some(employee => employee.id === selectedId)) {
+        const existing = directoryEntries.find(item => item.managerEmployeeId === selectedId)?.managerName;
+        if (existing) select.add(new Option(existing, selectedId, true, true));
+      }
+      if (!employees.length) $('#locationManagerFeedback').textContent = query.trim() ? 'Aramayla eşleşen aktif çalışan bulunamadı.' : 'Atama yapılabilecek aktif çalışan bulunamadı.';
+      else $('#locationManagerFeedback').textContent = `${fmt.format(result.total ?? employees.length)} aktif çalışan bulundu.`;
+    }
+    async function openLocationManager(item) {
+      if (!canWriteAssets() || !item.isActive) return;
+      const form = $('#locationManagerForm'); form.reset(); form.elements.locationId.value = item.locationId;
+      $('#locationManagerContext').textContent = item.name;
+      $('#locationManagerFeedback').textContent = 'Aktif çalışanlar yükleniyor…';
+      $('#locationManagerDialog').showModal();
+      try { await loadLocationManagerCandidates('', item.managerEmployeeId || ''); }
+      catch (error) { $('#locationManagerFeedback').textContent = error.message; }
+      $('#locationManagerSearch').focus();
+    }
+    $('#locationManagerSearch').addEventListener('input', () => {
+      clearTimeout(locationManagerSearchTimer);
+      locationManagerSearchTimer = setTimeout(() => loadLocationManagerCandidates($('#locationManagerSearch').value, $('#locationManagerEmployee').value).catch(error => { $('#locationManagerFeedback').textContent = error.message; }), 250);
+    });
+    $('#closeLocationManager').addEventListener('click', () => $('#locationManagerDialog').close());
+    $('#cancelLocationManager').addEventListener('click', () => $('#locationManagerDialog').close());
+    $('#locationManagerForm').addEventListener('submit', async event => {
+      event.preventDefault(); if (!canWriteAssets()) return;
+      const form = event.currentTarget, button = $('#saveLocationManager'), locationId = form.elements.locationId.value;
+      button.disabled = true; $('#locationManagerFeedback').textContent = 'Sorumlu kaydediliyor…';
+      try {
+        await api(`/api/locations/catalog/${locationId}/manager`, { method: 'POST', body: JSON.stringify({ employeeId: $('#locationManagerEmployee').value || null }) });
+        $('#locationManagerDialog').close(); await loadDirectory('locations'); notify('Konum sorumlusu güncellendi.');
+      } catch (error) { $('#locationManagerFeedback').textContent = error.message; }
       finally { button.disabled = false; }
     });
     $('#addDepartmentButton').addEventListener('click', () => {
