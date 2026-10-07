@@ -32,6 +32,7 @@
 - Birden fazla etkin şirkette üyeliği olan hesaplar parola doğrulamasından sonra şirket seçerek giriş yapabilir; devre dışı şirketler seçim listesinden çıkarılır.
 - Doğrulanmış her istekte şirketin etkinliği, hesabın güncel şirket rolü/üyeliği ve platform yöneticiliği veritabanından kontrol edilir. Üyelik kaldırılması veya şirket askısı eski oturumu reddeder; rol değişikliği sonraki istekte yeni yetkiyle çalışır ve çerez yenilenir. İlk otomatik oturum senaryosu geçti; çok kiracılı güvenlik kabul matrisi ve canlı sunucu kabulü hâlâ açık.
 - Çok kiracılı güvenlik kabul senaryosu boş/geçici PostgreSQL üzerinde geçti: eski `admin` oturumunda rol düşürme, salt-okuma izni, üyeliği olmayan şirkete kimlik değiştirme isteğini reddetme, diğer şirketin varlıklarını liste/ayrıntı uçlarından gizleme, üyelik kaldırılması ve şirketi askıya alma. Tek komutla çalıştırma ve kapsam sınırları [`SECURITY-ACCEPTANCE.md`](SECURITY-ACCEPTANCE.md) içinde; bu senaryo tüm izin matrisini veya üretim kabulünü tamamlamaz.
+- Aynı izole kabul akışı yazılım lisansı bitiş raporunun liste, ayrıntı ve CSV uçlarında şirket sınırını da doğrular. Test, rapor parametreleri API'de varsayılan gibi görünmesine rağmen HTTP bağlayıcısının zorunlu saydığı bir hatayı buldu; sayfa ve sayfa boyutu artık gerçekten isteğe bağlıdır. Kabul akışı 3/3 geçti.
 - Garanti raporu: yaklaşan (30/90/180/366 gün), süresi dolan, ileri tarihli ve garanti tarihi bulunmayan varlıkları arama ve sayfalama; etkin filtrelerle Excel uyumlu CSV dışa aktarımı.
 - Yerel geliştirme veritabanı ve şirket medyası için elle/zamanlanmış şifreli yedek üretimi ve doğrulama araçları.
 - Ubuntu/systemd sunucusu için ayrı Production Compose ve Caddy HTTPS kurulumu; sabit adlı kalıcı DB/medya/Data Protection volume'ları, root-only sırlar, açık migration adımı ve Linux kaynak güncelleme betiği. Güncelleme öncesi şifreli veritabanı/görsel/anahtar yedeği, SHA-256 doğrulaması ve yalıtılmış geri yükleme provası otomatik çalıştırılır; günlük systemd yedek zamanlayıcısı kurulur.
@@ -66,3 +67,9 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 
 - Lisans raporu API'si ve rapor ekranı eklendi. Şirket kapsamlı yetki kontrolü, arama, bitiş durumu ve dönem filtreleri, lisans koltuk doluluğu, ayrıntıya geçiş ve 10.000 satır sınırına sahip formül güvenli CSV çıktısı sunar. Lisans referansı/anahtarı rapora alınmaz.
 - Docker Release derlemesi geçti; yeni web imajı yerel `localhost:8080` uygulamasına alındı. `/api/status` `ready`, migration sayısı 28 ve bekleyen migration 0. Rapor API rotası oturum gerektiriyor; bu kontrol oturumsuz isteğe `401` döndürdü. Raporun oturum açmış kullanıcı arayüzünde veriyle kabulü ayrıca yapılmalı.
+
+## 2026-10-08 Lisans raporu şirket sınırı kabulü
+
+- İzole PostgreSQL kabul senaryosuna iki şirkete ait lisans fixture'ı eklendi. Liste ve CSV yalnız oturum şirketinin kaydını verir; kendi lisans ayrıntısı `200`, diğer şirket lisansı `404` döndürür. CSV yanıtı `no-store` başlığını taşır.
+- Bu kabul ilk çalıştırmada `state=all` ile yapılan liste isteğinin `400` döndüğünü yakaladı. `page` ve `pageSize` parametreleri, API işleyicisinde kod varsayılanlarına sahip olmasına rağmen HTTP katmanında zorunlu bağlanıyordu. İmza gerçek sorgu varsayılanlarını alacak şekilde düzeltildi.
+- `run-security-acceptance.ps1` izole geçici PostgreSQL ile yeniden çalıştırıldı: **3 test geçti, 0 başarısız**. Geçici konteyner ve ağı betik tarafından kaldırıldı. Ana uygulama veritabanı ve medya volume'larına dokunulmadı.

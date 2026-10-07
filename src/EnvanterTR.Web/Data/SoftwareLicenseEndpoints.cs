@@ -57,8 +57,8 @@ public static class SoftwareLicenseEndpoints
             return Results.File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv; charset=utf-8", $"envantertr-lisanslar-{DateTime.UtcNow:yyyyMMdd}.csv");
         }).RequireAuthorization("asset.read");
 
-        api.MapGet("/reports/software-licenses", async (DateOnly? through, string? state, string? q, int page,
-            int pageSize, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        api.MapGet("/reports/software-licenses", async (DateOnly? through, string? state, string? q,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {
             if (!Company(user, out var companyId)) return Results.Forbid();
             if (!TryGetLicenseReportFilters(through, state, q, out var today, out var end, out var normalizedState, out var term, out var error)) return error!;

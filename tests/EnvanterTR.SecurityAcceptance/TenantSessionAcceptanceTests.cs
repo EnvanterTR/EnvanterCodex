@@ -23,6 +23,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     private readonly Guid _companyId = Guid.NewGuid();
     private readonly Guid _otherCompanyId = Guid.NewGuid();
     private readonly Guid _otherCompanyAssetId = Guid.NewGuid();
+    private readonly Guid _ownLicenseId = Guid.NewGuid();
+    private readonly Guid _otherCompanyLicenseId = Guid.NewGuid();
     private string? _previousConnectionString;
     private string? _previousForwardedHeadersSetting;
     private WebApplicationFactory<Program>? _factory;
@@ -68,6 +70,9 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         db.Assets.AddRange(
             new Asset { CompanyId = _companyId, AssetTag = "OWN-1", Name = "Own asset", CategoryId = ownCategory.Id },
             new Asset { Id = _otherCompanyAssetId, CompanyId = _otherCompanyId, AssetTag = "OTHER-1", Name = "Other tenant asset", CategoryId = otherCategory.Id });
+        db.SoftwareLicenses.AddRange(
+            new SoftwareLicense { Id = _ownLicenseId, CompanyId = _companyId, Name = $"OWN-SECURITY-LICENSE-{_userId:N}", Seats = 4, Currency = "USD", ExpirationDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30) },
+            new SoftwareLicense { Id = _otherCompanyLicenseId, CompanyId = _otherCompanyId, Name = $"OTHER-SECURITY-LICENSE-{_userId:N}", Seats = 8, Currency = "USD", ExpirationDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30) });
         db.Users.Add(new EnvanterUser
         {
             Id = _userId,
@@ -164,6 +169,31 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             await db.SaveChangesAsync();
         }
         Assert.Equal(HttpStatusCode.Unauthorized, (await SendAsAdminAsync("/api/assets")).StatusCode);
+    }
+
+    [Fact]
+    public async Task License_expiry_report_list_detail_and_csv_are_scoped_to_the_active_company()
+    {
+        using (var reportResponse = await SendAsAdminAsync("/api/reports/software-licenses?state=all"))
+        {
+            Assert.Equal(HttpStatusCode.OK, reportResponse.StatusCode);
+            using var payload = JsonDocument.Parse(await reportResponse.Content.ReadAsStringAsync());
+            var items = payload.RootElement.GetProperty("items").EnumerateArray().ToArray();
+            Assert.Single(items);
+            Assert.Equal(_ownLicenseId, items[0].GetProperty("id").GetGuid());
+        }
+
+        using (var ownLicenseResponse = await SendAsAdminAsync($"/api/software-licenses/{_ownLicenseId}"))
+            Assert.Equal(HttpStatusCode.OK, ownLicenseResponse.StatusCode);
+        using (var otherLicenseResponse = await SendAsAdminAsync($"/api/software-licenses/{_otherCompanyLicenseId}"))
+            Assert.Equal(HttpStatusCode.NotFound, otherLicenseResponse.StatusCode);
+
+        using var csvResponse = await SendAsAdminAsync("/api/reports/software-licenses/export.csv?state=all");
+        Assert.Equal(HttpStatusCode.OK, csvResponse.StatusCode);
+        Assert.True(csvResponse.Headers.CacheControl?.NoStore == true);
+        var csv = await csvResponse.Content.ReadAsStringAsync();
+        Assert.Contains($"OWN-SECURITY-LICENSE-{_userId:N}", csv, StringComparison.Ordinal);
+        Assert.False(csv.Contains($"OTHER-SECURITY-LICENSE-{_userId:N}", StringComparison.Ordinal));
     }
 
     private async Task<HttpResponseMessage> SendAsAdminAsync(string path, Guid? companyId = null)
