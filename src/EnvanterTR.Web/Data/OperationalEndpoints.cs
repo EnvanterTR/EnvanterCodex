@@ -1241,7 +1241,7 @@ public static class OperationalEndpoints
             context.Response.Headers["Cache-Control"] = "no-store";
             context.Response.Headers["X-Total-Count"] = total.ToString(System.Globalization.CultureInfo.InvariantCulture);
             await using var writer = new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
-            await writer.WriteLineAsync("Tarih;İşlemi yapan;Kayıt türü;Kayıt kimliği;İşlem;Ayrıntı".AsMemory(), cancellationToken);
+            await writer.WriteLineAsync("Tarih;İşlemi yapan;Kayıt türü;Kayıt kimliği;İşlem;Ayrıntı;Kayıt türü kodu;İşlem kodu".AsMemory(), cancellationToken);
             var rows = query.OrderByDescending(x => x.OccurredAt).ThenBy(x => x.Id)
                 .Select(x => new { x.OccurredAt, x.TargetType, x.TargetId, x.Action, x.Details,
                     ActorName = db.Users.Where(u => u.Id == x.ActorUserId).Select(u => u.DisplayName).FirstOrDefault() });
@@ -1249,8 +1249,8 @@ public static class OperationalEndpoints
             await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
             {
                 var line = string.Join(';', new[] { Cell(row.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss 'UTC'", System.Globalization.CultureInfo.InvariantCulture)),
-                    Cell(row.ActorName ?? "Silinmiş kullanıcı"), Cell(row.TargetType), Cell(row.TargetId?.ToString()),
-                    Cell(row.Action), Cell(row.Details) });
+                    Cell(row.ActorName ?? "Silinmiş kullanıcı"), Cell(AuditTargetLabel(row.TargetType)), Cell(row.TargetId?.ToString()),
+                    Cell(AuditActionLabel(row.Action)), Cell(row.Details), Cell(row.TargetType), Cell(row.Action) });
                 await writer.WriteLineAsync(line.AsMemory(), cancellationToken);
                 if (++written % 500 == 0) await writer.FlushAsync(cancellationToken);
             }
@@ -1525,6 +1525,40 @@ public static class OperationalEndpoints
         if (safe.Length > 0 && safe[0] is '=' or '+' or '-' or '@' or '\t' or '\r') safe = "'" + safe;
         return "\"" + safe.Replace("\"", "\"\"") + "\"";
     }
+
+    private static string AuditTargetLabel(string value) => value switch
+    {
+        "Asset" => "Varlık", "Employee" => "Çalışan", "Company" => "Şirket", "Account" => "Hesap",
+        "Accessory" => "Aksesuar", "AccessoryKit" => "Aksesuar kiti", "AccessoryPurchaseOrder" => "Aksesuar siparişi",
+        "Consumable" => "Sarf malzemesi", "Component" => "Bileşen", "SoftwareLicense" => "Yazılım lisansı",
+        "Supplier" => "Tedarikçi", "Location" => "Konum", "Department" => "Departman", "categories" => "Kategori",
+        "brands" => "Marka", "models" => "Model", _ => value
+    };
+
+    private static string AuditActionLabel(string value) => value switch
+    {
+        "Created" or "created" => "Oluşturuldu", "Updated" or "updated" => "Güncellendi", "Renamed" => "Adı değiştirildi",
+        "Deleted" => "Silindi", "Reactivated" => "Yeniden etkinleştirildi", "Deactivated" => "Pasife alındı",
+        "BulkStatusChanged" => "Toplu durum değişikliği", "BulkAssigned" => "Toplu zimmet", "BulkReturned" => "Toplu iade",
+        "BulkAudited" => "Toplu denetim", "BulkTransferred" => "Toplu konum transferi", "ProfileUpdated" => "Profil güncellendi",
+        "BrandLogoUpdated" => "Şirket logosu güncellendi", "LabelSettingsUpdated" => "Etiket ayarları güncellendi",
+        "Invited" => "Kullanıcı davet edildi", "RoleChanged" => "Kullanıcı rolü değiştirildi", "ManagerChanged" => "Yönetici bağlantısı değiştirildi",
+        "CsvImported" => "CSV içe aktarıldı", "AuditScheduled" => "Denetim planlandı", "AuditScheduleCleared" => "Denetim planı kaldırıldı",
+        "ProfilePhotoUpdated" => "Profil fotoğrafı güncellendi", "ProfilePhotoRemoved" => "Profil fotoğrafı kaldırıldı",
+        "PrivateNotesUpdated" => "Özel notlar güncellendi", "DocumentAdded" => "Belge eklendi", "DocumentRemoved" => "Belge kaldırıldı",
+        "AttachmentAdded" => "Ek dosya eklendi", "AttachmentRemoved" => "Ek dosya kaldırıldı", "CatalogCreated" => "Katalog kaydı oluşturuldu",
+        "CatalogManagerChanged" => "Konum sorumlusu değiştirildi", "CatalogRenamed" => "Katalog kaydı yeniden adlandırıldı",
+        "CatalogArchived" or "archived" => "Arşivlendi", "CatalogRestored" or "restored" => "Geri alındı",
+        "checked_out" or "bulk_checked_out" => "Aksesuar teslim edildi", "checked_in" or "bulk_checked_in" => "Aksesuar iade alındı",
+        "accessory.created" => "Aksesuar oluşturuldu", "accessory.updated" => "Aksesuar güncellendi",
+        "accessory-order.created" => "Aksesuar siparişi oluşturuldu", "accessory-order.received" => "Sipariş kalemi teslim alındı",
+        "accessory-order.receipt" => "Sipariş teslim alındı", "accessory-order.cancelled" => "Sipariş iptal edildi",
+        "consumable.created" => "Sarf malzemesi oluşturuldu", "consumable.updated" => "Sarf malzemesi güncellendi",
+        "consumable.stock-adjusted" => "Sarf stoğu düzeltildi", "consumable.checked-out" => "Sarf teslim edildi",
+        "component.created" => "Bileşen oluşturuldu", "component.removed" => "Bileşen varlıktan çıkarıldı",
+        "supplier.created" => "Tedarikçi oluşturuldu", "supplier.updated" => "Tedarikçi güncellendi",
+        "supplier.archived" => "Tedarikçi arşivlendi", "supplier.restored" => "Tedarikçi geri alındı", _ => value
+    };
 
     private static bool ValidateAuditFilters(string? q, string? targetType, string? action, DateTimeOffset? from, DateTimeOffset? to, out IResult? error)
     {
