@@ -13,6 +13,7 @@ Docker gereklidir. Betik benzersiz bir Compose proje adıyla geçici PostgreSQL 
 Senaryo aynı eski `admin` kimlik bilgilerini her istekte tekrar gönderir ve veritabanındaki güncel durumu değiştirir:
 
 - Başlangıçta üye yönetimi izni çalışır.
+- İstek şirket kimliği, kullanıcının üyesi olmadığı etkin bir şirkete çevrilince `401` döner.
 - Üyelik rolü `viewer` olduğunda üye yönetimi isteği `403`, varlıkları okuma isteği `200` döner.
 - Varlık listesi yalnız geçerli şirkete ait kaydı içerir; diğer şirkete ait varlık kimliğiyle ayrıntı isteği `404` döner.
 - Şirket üyeliği kaldırıldığında sonraki istek `401` döner.

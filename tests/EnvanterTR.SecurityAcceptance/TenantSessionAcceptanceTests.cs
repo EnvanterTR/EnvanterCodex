@@ -88,6 +88,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     public async Task Role_downgrade_revocation_and_company_suspension_take_effect_on_the_next_request()
     {
         Assert.Equal(HttpStatusCode.OK, (await SendAsAdminAsync("/api/members")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await SendAsAdminAsync("/api/assets", _otherCompanyId)).StatusCode);
 
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
@@ -132,11 +134,11 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Unauthorized, (await SendAsAdminAsync("/api/assets")).StatusCode);
     }
 
-    private async Task<HttpResponseMessage> SendAsAdminAsync(string path)
+    private async Task<HttpResponseMessage> SendAsAdminAsync(string path, Guid? companyId = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
         request.Headers.Add("X-Acceptance-User", _userId.ToString());
-        request.Headers.Add("X-Acceptance-Company", _companyId.ToString());
+        request.Headers.Add("X-Acceptance-Company", (companyId ?? _companyId).ToString());
         request.Headers.Add("X-Acceptance-Role", "admin");
         return await _client!.SendAsync(request);
     }
