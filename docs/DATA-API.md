@@ -94,6 +94,9 @@ Rol politikaları ayrı tutulur: varlık okuma, varlık değiştirme, çalışan
 - `GET /api/session`
 - `POST /api/session/logout` (`X-CSRF-TOKEN` gerekir)
 - `GET /api/employees` departman filtresi tam eşleşir ve en fazla 160 karakterdir; yönetici kimliğiyle doğrudan raporlayanlar filtrelenebilir.
+- `GET /api/departments` (`people.read`; çalışan kayıtlarındaki değerleri ve henüz çalışanı olmayan katalog birimlerini birleştirilmiş sayımla verir).
+- `POST /api/departments` (`people.manage`; şirkette benzersiz 1–160 karakterli ad ekler; denetim kaydı yazar; CSV/çalışan serbest metin kayıtları değişmeden kalır).
+- `PATCH /api/departments/rename` (`people.manage`; çalışan değerlerini ve katalog adını atomik olarak yeniden adlandırır veya onaylı gruba birleştirir; şirket satırını kilitler ve denetim kaydı yazar).
 - `POST /api/employees/import/preview.csv` (`people.manage`; CSRF zorunlu; en fazla 32 MiB ve 5.000 satır; UTF-8, virgülle ayrılmış çalışan şablonu; personel no yinelenmesi, alan sınırları, e-posta ve yyyy-MM-dd tarihi doğrulanır; mevcut şirket numaralarıyla çakışma reddedilir; salt okunur).
 - `POST /api/employees/import.csv` (`people.manage`; CSRF zorunlu; aynı doğrulama ve sınırlar; sadece yeni etkin çalışan kaydı ekler, yöneticiyi sonradan atamak üzere boş bırakır; yinelenen personel no durumunda aktarımın tamamı reddedilir; tüm çalışan ve denetim kayıtları tek transaction içinde yazılır).
 - `POST /api/accessories/import/preview.csv` (`asset.write`; CSRF zorunlu; en fazla 32 MiB ve 5.000 satır; UTF-8 aksesuar şablonu, miktar/maliyet/tarih alanları ve dosya/şirket içi ad/ürün no tekrarlarını doğrular; salt okunur).

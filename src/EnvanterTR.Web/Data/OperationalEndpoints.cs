@@ -769,9 +769,8 @@ public static class OperationalEndpoints
                 hasOutstandingItems = assetCount + accessoryCount + activeLicenseCount + activeDirectReportCount > 0 });
         }).RequireAuthorization("people.manage");
 
-        // Department names are currently captured on employee records. This directory is a
-        // live, company-scoped summary; it does not pretend those free-text values are a
-        // separately managed department catalog.
+        // Employee values remain backward-compatible free text while this catalog lets a
+        // company maintain departments before they have employees assigned.
         api.MapGet("/departments", async (ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
@@ -787,8 +786,62 @@ public static class OperationalEndpoints
                     inactiveEmployeeCount = group.Count(employee => !employee.IsActive)
                 })
                 .ToListAsync(cancellationToken);
-            return Results.Ok(new { items = departments, total = departments.Count });
+            var catalog = await db.CompanyDepartments.AsNoTracking().Where(x => x.CompanyId == companyId)
+                .OrderBy(x => x.Name).ToListAsync(cancellationToken);
+            var catalogNames = catalog.Select(x => x.NormalizedName).ToHashSet(StringComparer.Ordinal);
+            var items = new Dictionary<string, (string name, int employeeCount, int activeEmployeeCount,
+                int inactiveEmployeeCount, bool isCatalogEntry, bool isActive)>(StringComparer.Ordinal);
+            foreach (var department in departments)
+            {
+                var key = NormalizeDepartmentName(department.name!);
+                if (items.TryGetValue(key, out var current))
+                    items[key] = (current.name, current.employeeCount + department.employeeCount,
+                        current.activeEmployeeCount + department.activeEmployeeCount,
+                        current.inactiveEmployeeCount + department.inactiveEmployeeCount,
+                        catalogNames.Contains(key), true);
+                else items[key] = (department.name!, department.employeeCount, department.activeEmployeeCount,
+                    department.inactiveEmployeeCount, catalogNames.Contains(key), true);
+            }
+            foreach (var entry in catalog)
+            {
+                var key = entry.NormalizedName;
+                if (items.TryGetValue(key, out var current))
+                    items[key] = (current.name, current.employeeCount, current.activeEmployeeCount,
+                        current.inactiveEmployeeCount, true, entry.IsActive);
+                else items[key] = (entry.Name, 0, 0, 0, true, entry.IsActive);
+            }
+            var result = items.Values.OrderBy(x => x.name, StringComparer.CurrentCultureIgnoreCase)
+                .Select(x => new { name = x.name, employeeCount = x.employeeCount,
+                    activeEmployeeCount = x.activeEmployeeCount, inactiveEmployeeCount = x.inactiveEmployeeCount,
+                    isCatalogEntry = x.isCatalogEntry, isActive = x.isActive }).ToArray();
+            return Results.Ok(new { items = result, total = result.Length });
         }).RequireAuthorization("people.read");
+
+        api.MapPost("/departments", async ([FromBody] CreateDepartmentRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            var name = request.Name?.Trim();
+            if (string.IsNullOrWhiteSpace(name) || name.Length > 160 || name.Any(char.IsControl))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Departman adı 1–160 karakter olmalı ve kontrol karakteri içermemelidir."] });
+            var normalized = NormalizeDepartmentName(name);
+            var existsInCatalog = await db.CompanyDepartments.AnyAsync(x => x.CompanyId == companyId && x.NormalizedName == normalized, cancellationToken);
+            var existsOnEmployee = await db.Employees.AnyAsync(x => x.CompanyId == companyId && x.Department != null &&
+                EF.Functions.ILike(x.Department.Trim(), name.Replace("\\", "\\\\", StringComparison.Ordinal)
+                    .Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal)), cancellationToken);
+            if (existsInCatalog || existsOnEmployee)
+                return Results.Conflict(new { message = "Bu departman adı bu şirkette zaten kayıtlı." });
+            var entry = new CompanyDepartment { CompanyId = companyId, Name = name, NormalizedName = normalized };
+            db.CompanyDepartments.Add(entry);
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                TargetType = "Department", TargetId = entry.Id, Action = "Created", Details = $"Departman kataloğa eklendi: {name}." });
+            try { await db.SaveChangesAsync(cancellationToken); }
+            catch (DbUpdateException)
+            {
+                return Results.Conflict(new { message = "Bu departman adı eşzamanlı olarak başka bir işlemde kaydedildi." });
+            }
+            return Results.Created("/api/departments", new { entry.Id, entry.Name, entry.IsActive, employeeCount = 0 });
+        }).RequireAuthorization("people.manage");
 
         api.MapPatch("/departments/rename", async ([FromBody] RenameDirectoryEntryRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
@@ -802,20 +855,36 @@ public static class OperationalEndpoints
 
             var currentPattern = currentName.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal);
             var newPattern = newName.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal);
+            var currentNormalized = NormalizeDepartmentName(currentName);
+            var newNormalized = NormalizeDepartmentName(newName);
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             if (await db.Companies.FromSqlInterpolated($"SELECT * FROM \"Companies\" WHERE \"Id\" = {companyId} FOR UPDATE")
                     .SingleOrDefaultAsync(cancellationToken) is null) return Results.Forbid();
+            var catalogEntry = await db.CompanyDepartments.SingleOrDefaultAsync(x => x.CompanyId == companyId &&
+                x.NormalizedName == currentNormalized, cancellationToken);
             var employees = db.Employees.Where(employee => employee.CompanyId == companyId && employee.Department != null &&
                 EF.Functions.ILike(employee.Department.Trim(), currentPattern));
             var count = await employees.CountAsync(cancellationToken);
-            if (count == 0) return Results.NotFound();
+            if (count == 0 && catalogEntry is null) return Results.NotFound();
             var collision = await db.Employees.AnyAsync(employee => employee.CompanyId == companyId && employee.Department != null &&
                 EF.Functions.ILike(employee.Department.Trim(), newPattern) &&
-                !EF.Functions.ILike(employee.Department.Trim(), currentPattern), cancellationToken);
+                !EF.Functions.ILike(employee.Department.Trim(), currentPattern), cancellationToken) ||
+                await db.CompanyDepartments.AnyAsync(entry => entry.CompanyId == companyId && entry.NormalizedName == newNormalized &&
+                    entry.Id != (catalogEntry == null ? Guid.Empty : catalogEntry.Id), cancellationToken);
             if (collision && !request.Merge) return Results.Conflict(new { message = "Bu adla başka bir departman var. Birleştirme onayı gereklidir." });
 
             var updated = await employees.ExecuteUpdateAsync(setters => setters
                 .SetProperty(employee => employee.Department, newName), cancellationToken);
+            var targetEntry = collision ? await db.CompanyDepartments.SingleOrDefaultAsync(x => x.CompanyId == companyId &&
+                x.NormalizedName == newNormalized, cancellationToken) : null;
+            if (catalogEntry is not null && targetEntry is not null && catalogEntry.Id != targetEntry.Id)
+                db.CompanyDepartments.Remove(catalogEntry);
+            else if (catalogEntry is not null)
+            {
+                catalogEntry.Name = newName; catalogEntry.NormalizedName = newNormalized; catalogEntry.UpdatedAt = DateTimeOffset.UtcNow;
+            }
+            else if (targetEntry is null)
+                db.CompanyDepartments.Add(new CompanyDepartment { CompanyId = companyId, Name = newName, NormalizedName = newNormalized });
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
                 TargetType = "Department", TargetId = companyId, Action = "Renamed",
                 Details = collision
@@ -1353,6 +1422,7 @@ public static class OperationalEndpoints
 
     private sealed record ExportRow(string AssetTag, string Name, string Status, string? SerialNumber,
         string? Location, string? EmployeeNumber, DateOnly? PurchaseDate, DateOnly? WarrantyExpiresAt, decimal? PurchaseCost, string Currency);
+    private sealed record CreateDepartmentRequest(string? Name);
     private sealed record UpdateCompanyProfileRequest(string? Name, string? ContactEmail, string? BrandPrimaryColor);
     public sealed record LabelPrintSettingsRequest(string? Barcode1d, string? Barcode2d, decimal WidthMm,
         decimal HeightMm, decimal OffsetXmm, decimal OffsetYmm, decimal PaddingMm, decimal CodeSizeMm,
@@ -1375,6 +1445,8 @@ public static class OperationalEndpoints
         return Guid.TryParse(user.FindFirstValue("company_id"), out companyId) &&
             Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out actorId);
     }
+
+    private static string NormalizeDepartmentName(string value) => value.Trim().ToUpperInvariant();
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 

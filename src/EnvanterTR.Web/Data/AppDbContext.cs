@@ -9,6 +9,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 {
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<SupplierCatalogEntry> SupplierCatalogEntries => Set<SupplierCatalogEntry>();
+    public DbSet<CompanyDepartment> CompanyDepartments => Set<CompanyDepartment>();
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<AssetCategory> AssetCategories => Set<AssetCategory>();
     public DbSet<AssetBrand> AssetBrands => Set<AssetBrand>();
@@ -165,6 +166,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<SupplierCatalogEntry>().HasIndex(x => new { x.CompanyId, x.IsActive, x.Name });
         modelBuilder.Entity<SupplierCatalogEntry>().ToTable("SupplierCatalogEntries");
         modelBuilder.Entity<SupplierCatalogEntry>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<CompanyDepartment>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CompanyDepartment>().Property(x => x.Name).HasMaxLength(160).IsRequired();
+        modelBuilder.Entity<CompanyDepartment>().Property(x => x.NormalizedName).HasMaxLength(160).IsRequired();
+        modelBuilder.Entity<CompanyDepartment>().HasIndex(x => new { x.CompanyId, x.NormalizedName }).IsUnique();
+        modelBuilder.Entity<CompanyDepartment>().ToTable("CompanyDepartments");
+        modelBuilder.Entity<CompanyDepartment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AssetCategory>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AssetBrand>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AssetModel>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);

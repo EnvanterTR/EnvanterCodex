@@ -857,6 +857,44 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("Companies");
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.CompanyDepartment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("CompanyId", "Id");
+
+                    b.HasIndex("CompanyId", "NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("CompanyDepartments", (string)null);
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.CompanyMembership", b =>
                 {
                     b.Property<Guid>("CompanyId")
@@ -2309,6 +2347,15 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("ActorUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.CompanyDepartment", b =>
+                {
                     b.HasOne("EnvanterTR.Web.Data.Company", null)
                         .WithMany()
                         .HasForeignKey("CompanyId")
