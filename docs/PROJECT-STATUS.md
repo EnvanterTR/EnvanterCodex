@@ -14,6 +14,7 @@
 
 - Lisans bitiş raporu: 30/90/180/366 günlük dönem ve bitiş durumu filtreleri, lisans/yayıncı/sürüm/tedarikçi araması, atanmış/boş koltuk görünümü, lisans ayrıntısına geçiş ve filtreli CSV indirme. Şirket kapsamı korunur; CSV 10.000 kayıtla sınırlıdır ve ürün anahtarı/referansı içermez.
 - Varlık ve çalışan kayıtları, arama/filtreleme, CSV dışa aktarımı; temel envanter sözlükleri ve zimmet/iade/hareket akışları.
+- Varlık ayrıntısının “İlişkiler” sekmesi açık aksesuar teslimlerini ve takılı bileşenleri kalan/verilen miktar, tarih ve notlarıyla listeler; API yalnız aynı şirkete ait, açık kayıtları döndürür. Lisansın varlığa atanması, bağlı varlık, sipariş ve model dosyası ilişkileri açık kalır.
 - Lisans koltukları, aksesuar/sarf/bileşen stokları, aksesuar kitleri, sipariş ve tedarikçi kataloğu, bakım ve planlama.
 - Barkod/QR etiket ayarları ve tarayıcıyla varlık bulma; varlık/çalışan fotoğrafı ve yetkili ek dosyaları.
 - Çalışan yönetici hiyerarşisi, görev/telefon/konum/işe başlama alanları, özel İK notları ve işe başlama tarihi aralığı filtresi.
@@ -79,4 +80,10 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 
 - Varlık/aksesuar, sarf, bileşen, lisans ve lisans atamaları, çalışanlar, çalışan ayrıntısı, etkinlik, denetim, stok hareketleri, satın alma emirleri, talepler, garanti raporu ve varlık CSV dışa aktarımında kodun amaçladığı sayfa/sayfa boyutu değerleri HTTP sorgu varsayılanı olarak tanımlandı. Platform yönetimi şirket, yenileme ve denetim listelerinde de aynı düzenleme yapıldı. Stok hareketlerinde `export` ve satın alma emirlerinde `overdueOnly` atlanabilir hale getirildi; yenileme raporunda `days` varsayılanı 30 gündür.
 - Kabul sırasında `/api/inventory/movements` çağrısı daha önce `Concat` öncesi istemci projeksiyonu nedeniyle EF Core tarafından SQL'e çevrilemiyordu. Sorgu artık önce eş biçimli sunucu tarafı projeksiyonlarını birleştiriyor, DTO'yu sonuç sıralanıp sayfalandıktan sonra oluşturuyor.
-- `run-security-acceptance.ps1`: **5 test geçti, 0 başarısız**. Dördüncü senaryo 14 uç noktayı parametresiz çağırır. Beşinci senaryo aksesuar, sarf ve bileşen liste/detay/CSV'si ile birleşik stok hareketi JSON/CSV çıktısında şirket sınırını doğrular. Geçici veritabanı/konteyner/ağ temizlendi; Docker Release derlemesi geçti ve yerel web servisi yenilendi. `/api/status` `ready`, 28 migration uygulanmış, bekleyen migration 0.
+- `run-security-acceptance.ps1`: **6 test geçti, 0 başarısız**. Dördüncü senaryo 14 uç noktayı parametresiz çağırır. Beşinci senaryo stok liste/detay/CSV şirket sınırını; altıncı senaryo varlık ayrıntısındaki açık aksesuar/bileşen ilişkilerini doğrular. Geçici veritabanı/konteyner/ağ temizlendi; Docker Release derlemesi geçti, yerel web hizmeti yenilendi. `/api/status` `ready`, 28 migration uygulanmış, bekleyen migration 0. Ana sayfa `200` döndürdü ve yeni ilişki tablolarının HTML'de bulunduğu doğrulandı.
+
+## 2026-10-08 Varlık ayrıntısında aksesuar ve bileşen ilişkileri
+
+- `GET /api/assets/{id}` artık aynı şirketin varlığa açık teslim edilmiş aksesuarlarını ve takılı bileşenlerini kalan/verilen adet, tarih ve notla döndürür. Arşivlenen ya da tamamen iade/çıkarılan kayıtlar gizlenir; diğer şirketin kayıtları sorguya dahil edilmez.
+- Varlık “İlişkiler” sekmesinde açık aksesuar zimmetleri ve bileşenler ayrı tablolarda, boş durum metni ve kayıt sayısıyla görünür. Değerler DOM `textContent` ile yazılır.
+- İzole kabul testi iki şirkette varlık/aksesuar/bileşen ilişkileri kurup yanıtın yalnız kendi şirketinin aktif kayıtlarını içerdiğini doğruladı. `run-security-acceptance.ps1`: **6/6 geçti**. Docker Release derlemesi, yerel uygulama güncellemesi ve `/api/status` doğrulaması tamamlandı.

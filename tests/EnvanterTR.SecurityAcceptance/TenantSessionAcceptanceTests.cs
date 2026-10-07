@@ -22,6 +22,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _companyId = Guid.NewGuid();
     private readonly Guid _otherCompanyId = Guid.NewGuid();
+    private readonly Guid _ownAssetId = Guid.NewGuid();
     private readonly Guid _otherCompanyAssetId = Guid.NewGuid();
     private readonly Guid _ownLicenseId = Guid.NewGuid();
     private readonly Guid _otherCompanyLicenseId = Guid.NewGuid();
@@ -74,7 +75,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var otherCategory = new AssetCategory { CompanyId = _otherCompanyId, Name = "Other category" };
         db.AssetCategories.AddRange(ownCategory, otherCategory);
         db.Assets.AddRange(
-            new Asset { CompanyId = _companyId, AssetTag = "OWN-1", Name = "Own asset", CategoryId = ownCategory.Id },
+            new Asset { Id = _ownAssetId, CompanyId = _companyId, AssetTag = "OWN-1", Name = "Own asset", CategoryId = ownCategory.Id },
             new Asset { Id = _otherCompanyAssetId, CompanyId = _otherCompanyId, AssetTag = "OTHER-1", Name = "Other tenant asset", CategoryId = otherCategory.Id });
         db.SoftwareLicenses.AddRange(
             new SoftwareLicense { Id = _ownLicenseId, CompanyId = _companyId, Name = $"OWN-SECURITY-LICENSE-{_userId:N}", Seats = 4, Currency = "USD", ExpirationDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30) },
@@ -91,12 +92,18 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         db.AccessoryMovements.AddRange(
             new AccessoryMovement { CompanyId = _companyId, AccessoryId = _ownAccessoryId, MovementType = "Received", Quantity = 2 },
             new AccessoryMovement { CompanyId = _otherCompanyId, AccessoryId = _otherCompanyAccessoryId, MovementType = "Received", Quantity = 2 });
+        db.AccessoryAssignments.AddRange(
+            new AccessoryAssignment { CompanyId = _companyId, AccessoryId = _ownAccessoryId, TargetType = "Asset", AssetId = _ownAssetId, Quantity = 3, ReturnedQuantity = 1, Notes = "Own asset accessory" },
+            new AccessoryAssignment { CompanyId = _otherCompanyId, AccessoryId = _otherCompanyAccessoryId, TargetType = "Asset", AssetId = _otherCompanyAssetId, Quantity = 4, Notes = "Other tenant accessory" });
         db.ConsumableMovements.AddRange(
             new ConsumableMovement { CompanyId = _companyId, ConsumableId = _ownConsumableId, MovementType = "Received", Quantity = 2 },
             new ConsumableMovement { CompanyId = _otherCompanyId, ConsumableId = _otherCompanyConsumableId, MovementType = "Received", Quantity = 2 });
         db.ComponentMovements.AddRange(
             new ComponentMovement { CompanyId = _companyId, ComponentId = _ownComponentId, MovementType = "Received", Quantity = 2 },
             new ComponentMovement { CompanyId = _otherCompanyId, ComponentId = _otherCompanyComponentId, MovementType = "Received", Quantity = 2 });
+        db.ComponentAllocations.AddRange(
+            new ComponentAllocation { CompanyId = _companyId, ComponentId = _ownComponentId, AssetId = _ownAssetId, Quantity = 5, RemovedQuantity = 2, Notes = "Own asset component" },
+            new ComponentAllocation { CompanyId = _otherCompanyId, ComponentId = _otherCompanyComponentId, AssetId = _otherCompanyAssetId, Quantity = 6, Notes = "Other tenant component" });
         db.Users.Add(new EnvanterUser
         {
             Id = _userId,
@@ -305,6 +312,24 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Contains($"OWN-SECURITY-CONSUMABLE-{_userId:N}", movementsCsv, StringComparison.Ordinal);
         Assert.Contains($"OWN-SECURITY-COMPONENT-{_userId:N}", movementsCsv, StringComparison.Ordinal);
         Assert.False(movementsCsv.Contains("OTHER-SECURITY-", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Asset_detail_shows_open_accessory_and_component_relations_only_for_its_company()
+    {
+        using var response = await SendAsAdminAsync($"/api/assets/{_ownAssetId}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var accessories = payload.RootElement.GetProperty("accessories").EnumerateArray().ToArray();
+        Assert.Single(accessories);
+        Assert.Equal($"OWN-SECURITY-ACCESSORY-{_userId:N}", accessories[0].GetProperty("accessoryName").GetString());
+        Assert.Equal(2, accessories[0].GetProperty("remaining").GetInt32());
+        var components = payload.RootElement.GetProperty("components").EnumerateArray().ToArray();
+        Assert.Single(components);
+        Assert.Equal($"OWN-SECURITY-COMPONENT-{_userId:N}", components[0].GetProperty("componentName").GetString());
+        Assert.Equal(3, components[0].GetProperty("remaining").GetInt32());
+        Assert.DoesNotContain(accessories, item => item.GetProperty("accessoryName").GetString()?.StartsWith("OTHER-SECURITY-", StringComparison.Ordinal) == true);
+        Assert.DoesNotContain(components, item => item.GetProperty("componentName").GetString()?.StartsWith("OTHER-SECURITY-", StringComparison.Ordinal) == true);
     }
 
     private async Task<HttpResponseMessage> SendAsAdminAsync(string path, Guid? companyId = null)

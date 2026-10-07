@@ -18,6 +18,7 @@ Senaryo aynı eski `admin` kimlik bilgilerini her istekte tekrar gönderir ve ve
 - Varlık listesi yalnız geçerli şirkete ait kaydı içerir; diğer şirkete ait varlık kimliğiyle ayrıntı isteği `404` döner.
 - Lisans bitiş raporu listesi ve CSV yalnız etkin şirkete ait lisansları içerir; kendi lisansı ayrıntıda `200`, diğer şirketin lisans kimliği `404` döner. CSV yanıtı `no-store` olarak işaretlenir.
 - Aksesuar, sarf ve bileşen listesi/detay/CSV uçları diğer şirkete ait stok kayıtlarını göstermez. Birleşik stok hareketi listesi ve CSV'si de her stok türünü geçerli şirket için birleştirir.
+- Varlık ayrıntısı kendi şirketindeki açık aksesuar teslimlerini ve takılı bileşenleri gösterir; başka şirkete ait varlığa bağlı kayıtlar yanıta eklenmez.
 - Varlık, aksesuar, sarf, bileşen, lisans, çalışan, etkinlik, denetim, stok hareketi, satın alma, talep ve garanti liste uçları sayfa parametreleri gönderilmeden çağrıldığında varsayılan sayfalama ile yanıt verir; varlık CSV dışa aktarımı da varsayılan kayıt sınırını kullanır.
 - Şirket üyeliği kaldırıldığında sonraki istek `401` döner.
 - Üyelik yeniden eklenip şirket devre dışı bırakıldığında sonraki istek `401` döner.

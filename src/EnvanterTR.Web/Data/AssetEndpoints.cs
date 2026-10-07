@@ -1195,6 +1195,38 @@ public static class AssetEndpoints
                 model = await db.AssetModels.Where(x => x.CompanyId == companyId && x.Id == asset.ModelId).Select(x => x.Name).SingleOrDefaultAsync(cancellationToken),
                 employee = await db.Employees.Where(x => x.CompanyId == companyId && x.Id == asset.AssignedEmployeeId).Select(x => x.DisplayName).SingleOrDefaultAsync(cancellationToken)
             };
+            var accessoryAssignments = await db.AccessoryAssignments.AsNoTracking()
+                .Where(x => x.CompanyId == companyId && x.TargetType == "Asset" && x.AssetId == id && x.ReturnedQuantity < x.Quantity)
+                .OrderByDescending(x => x.CheckedOutAt)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.AccessoryId,
+                    accessoryName = db.Accessories.Where(accessory => accessory.CompanyId == companyId && accessory.Id == x.AccessoryId)
+                        .Select(accessory => accessory.Name).FirstOrDefault() ?? "Silinmiş aksesuar",
+                    x.Quantity,
+                    x.ReturnedQuantity,
+                    remaining = x.Quantity - x.ReturnedQuantity,
+                    x.CheckedOutAt,
+                    x.Notes
+                })
+                .ToListAsync(cancellationToken);
+            var componentAllocations = await db.ComponentAllocations.AsNoTracking()
+                .Where(x => x.CompanyId == companyId && x.AssetId == id && x.RemovedQuantity < x.Quantity)
+                .OrderByDescending(x => x.AllocatedAt)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.ComponentId,
+                    componentName = db.InventoryComponents.Where(component => component.CompanyId == companyId && component.Id == x.ComponentId)
+                        .Select(component => component.Name).FirstOrDefault() ?? "Silinmiş bileşen",
+                    x.Quantity,
+                    x.RemovedQuantity,
+                    remaining = x.Quantity - x.RemovedQuantity,
+                    x.AllocatedAt,
+                    x.Notes
+                })
+                .ToListAsync(cancellationToken);
             var history = await db.AssetEvents.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && x.AssetId == id)
                 .OrderByDescending(x => x.OccurredAt)
@@ -1221,7 +1253,7 @@ public static class AssetEndpoints
                 .Select(x => new { x.Id, x.OriginalFileName, x.ContentType, x.Length, x.CreatedAt,
                     uploadedBy = db.Users.Where(actor => actor.Id == x.UploadedByUserId).Select(actor => actor.DisplayName).FirstOrDefault() })
                 .ToListAsync(cancellationToken);
-            return Results.Ok(new { asset, references, history, attachments });
+            return Results.Ok(new { asset, references, accessories = accessoryAssignments, components = componentAllocations, history, attachments });
         }).RequireAuthorization("asset.read");
 
         api.MapGet("/assets/audit-schedule", async (DateOnly? through, string? q, string? state, ClaimsPrincipal user,
