@@ -501,6 +501,9 @@ public static class DataExportEndpoints
             var assets = ReadRows(root, "assets", sourceCompanyId, errors, counts);
             var events = ReadRows(root, "assetEvents", sourceCompanyId, errors, counts);
             _ = ReadRows(root, "auditEntries", sourceCompanyId, errors, counts);
+            var departmentCatalog = ReadOptionalRows(root, "departmentCatalog", errors, counts);
+            var locationCatalog = ReadOptionalRows(root, "locationCatalog", errors, counts);
+            ValidateCompanyCatalogs(departmentCatalog, locationCatalog, sourceCompanyId, errors);
             if (!root.TryGetProperty("members", out var members) || members.ValueKind != JsonValueKind.Array)
                 AddError(errors, "members alanı eksik veya dizi değil.");
             else
@@ -626,6 +629,106 @@ public static class DataExportEndpoints
                 AddError(errors, $"{name} içinde başka şirket kimliğine ait kayıt var.");
         }
         return ids;
+    }
+
+    private static List<JsonElement> ReadOptionalRows(JsonElement root, string name,
+        List<string> errors, Dictionary<string, int> counts)
+    {
+        if (!root.TryGetProperty(name, out var rows))
+        {
+            counts[name] = 0; // Older schema-version-1 exports predate these catalogs.
+            return [];
+        }
+        if (rows.ValueKind != JsonValueKind.Array)
+        {
+            AddError(errors, $"{name} alanı dizi değil.");
+            counts[name] = 0;
+            return [];
+        }
+        counts[name] = rows.GetArrayLength();
+        return rows.EnumerateArray().ToList();
+    }
+
+    private static void ValidateCompanyCatalogs(IReadOnlyList<JsonElement> departmentRows,
+        IReadOnlyList<JsonElement> locationRows, Guid sourceCompanyId, List<string> errors)
+    {
+        var departmentIds = new HashSet<Guid>();
+        var departmentNames = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var row in departmentRows)
+        {
+            if (row.ValueKind != JsonValueKind.Object || !TryGuid(row, "id", out var id) ||
+                !departmentIds.Add(id) || !TryGuid(row, "companyId", out var companyId) || companyId != sourceCompanyId)
+            {
+                AddError(errors, "Departman kataloğunda yinelenen kimlik veya kaynak şirketle uyuşmayan kayıt var.");
+                continue;
+            }
+            var name = ReadString(row, "name")?.Trim();
+            var normalized = ReadString(row, "normalizedName");
+            if (string.IsNullOrWhiteSpace(name) || name.Length > 160 ||
+                !string.Equals(normalized, name.ToUpperInvariant(), StringComparison.Ordinal) ||
+                !departmentNames.Add(name.ToUpperInvariant()) ||
+                !row.TryGetProperty("isActive", out var active) || active.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                AddError(errors, "Departman kataloğunda geçersiz, yinelenen veya etkinlik durumu bozuk kayıt var.");
+        }
+
+        var locations = new Dictionary<Guid, (Guid? ParentId, string Name, string NormalizedName)>();
+        var siblings = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var row in locationRows)
+        {
+            if (row.ValueKind != JsonValueKind.Object || !TryGuid(row, "id", out var id) ||
+                locations.ContainsKey(id) || !TryGuid(row, "companyId", out var companyId) || companyId != sourceCompanyId)
+            {
+                AddError(errors, "Konum kataloğunda yinelenen kimlik veya kaynak şirketle uyuşmayan kayıt var.");
+                continue;
+            }
+            Guid? parentId = null;
+            if (row.TryGetProperty("parentLocationId", out var parent) && parent.ValueKind != JsonValueKind.Null)
+            {
+                if (parent.ValueKind != JsonValueKind.String || !Guid.TryParse(parent.GetString(), out var parsedParent))
+                {
+                    AddError(errors, "Konum kataloğunda geçersiz üst konum kimliği var.");
+                    continue;
+                }
+                parentId = parsedParent;
+            }
+            var name = ReadString(row, "name")?.Trim();
+            var normalized = ReadString(row, "normalizedName");
+            if (string.IsNullOrWhiteSpace(name) || name.Length > 120 || name.Contains('/') || name.Contains('\\') ||
+                name.Any(char.IsControl) || !string.Equals(normalized, name.ToUpperInvariant(), StringComparison.Ordinal) ||
+                !row.TryGetProperty("isActive", out var active) || active.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+            {
+                AddError(errors, "Konum kataloğunda geçersiz ad, normalleştirilmiş ad veya etkinlik durumu var.");
+                continue;
+            }
+            var siblingKey = (parentId?.ToString() ?? "root") + ":" + normalized;
+            if (!siblings.Add(siblingKey))
+                AddError(errors, "Konum kataloğunda aynı üst düğüm altında yinelenen ad var.");
+            locations.Add(id, (parentId, name, normalized!));
+        }
+
+        foreach (var (id, location) in locations)
+        {
+            var names = new List<string> { location.Name };
+            var seen = new HashSet<Guid> { id };
+            var parentId = location.ParentId;
+            while (parentId is Guid parent)
+            {
+                if (!seen.Add(parent) || !locations.TryGetValue(parent, out var parentLocation))
+                {
+                    AddError(errors, "Konum kataloğunda döngü veya dosyada bulunmayan üst konum var.");
+                    break;
+                }
+                names.Add(parentLocation.Name);
+                parentId = parentLocation.ParentId;
+                if (names.Count > 3)
+                {
+                    AddError(errors, "Konum kataloğu bina, kat ve oda olmak üzere en fazla üç seviyeli olabilir.");
+                    break;
+                }
+            }
+            if (string.Join(" / ", names.AsEnumerable().Reverse()).Length > 160)
+                AddError(errors, "Konum kataloğunda tam gösterim yolu 160 karakteri aşamaz.");
+        }
     }
 
     private static bool TryGuid(JsonElement element, string property, out Guid value)
