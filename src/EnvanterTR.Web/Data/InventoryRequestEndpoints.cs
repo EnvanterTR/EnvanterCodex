@@ -45,8 +45,8 @@ public static class InventoryRequestEndpoints
             return Results.Ok(new { items });
         }).RequireAuthorization("asset.read");
 
-        api.MapGet("/requests", async ([FromQuery] string? q, [FromQuery] string? status, [FromQuery] int page,
-            [FromQuery] int pageSize, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        api.MapGet("/requests", async ([FromQuery] string? q, [FromQuery] string? status, ClaimsPrincipal user, AppDbContext db,
+            CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 25) =>
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
             page = Math.Max(1, page); pageSize = Math.Clamp(pageSize == 0 ? 25 : pageSize, 1, 100);

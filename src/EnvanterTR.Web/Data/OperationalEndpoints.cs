@@ -165,8 +165,8 @@ public static class OperationalEndpoints
         api.MapGet("/employees", async ([FromQuery] string? q, [FromQuery] string? department,
             [FromQuery] Guid? managerId, [FromQuery] bool? active,
             [FromQuery] DateOnly? startedFrom, [FromQuery] DateOnly? startedTo,
-            [FromQuery] int page, [FromQuery] int pageSize, ClaimsPrincipal user,
-            AppDbContext db, CancellationToken cancellationToken) =>
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken,
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {
             if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
             page = Math.Max(page, 1);
@@ -357,9 +357,8 @@ public static class OperationalEndpoints
             return Results.Ok(new { employee.Id, employee.EmployeeNumber, employee.DisplayName, employee.Email, employee.Department, employee.JobTitle, employee.Phone, employee.Location, employee.LocationCatalogId, employee.StartedOn });
         }).RequireAuthorization("people.manage");
 
-        api.MapGet("/employees/{id:guid}", async (Guid id, [FromQuery] int page, [FromQuery] int pageSize,
-            ClaimsPrincipal user, AppDbContext db,
-            CancellationToken cancellationToken) =>
+        api.MapGet("/employees/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db,
+            CancellationToken cancellationToken, [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
         {
             if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
             page = Math.Max(page, 1);
@@ -1157,11 +1156,11 @@ public static class OperationalEndpoints
                 "text/csv; charset=utf-8", $"envantertr-secili-varliklar-{DateTime.UtcNow:yyyyMMdd}.csv");
         }).RequireAuthorization("asset.read");
 
-        api.MapGet("/activity", async ([FromQuery] int page, [FromQuery] int pageSize,
-            [FromQuery] Guid? assetId, [FromQuery] Guid? employeeId,
+        api.MapGet("/activity", async ([FromQuery] Guid? assetId, [FromQuery] Guid? employeeId,
             [FromQuery] DateTimeOffset? from, [FromQuery] DateTimeOffset? to,
             [FromQuery] string? eventType, [FromQuery] string? q,
-            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken,
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {
             if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
             if (from is not null && to is not null && from.Value > to.Value)
@@ -1197,9 +1196,9 @@ public static class OperationalEndpoints
             return Results.Ok(new { entries, total, page, pageSize });
         }).RequireAuthorization("asset.read");
 
-        api.MapGet("/audit", async ([FromQuery] int page, [FromQuery] int pageSize,
-            [FromQuery] string? q, [FromQuery] string? targetType, [FromQuery] string? action, DateTimeOffset? from, DateTimeOffset? to,
-            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        api.MapGet("/audit", async ([FromQuery] string? q, [FromQuery] string? targetType, [FromQuery] string? action, DateTimeOffset? from, DateTimeOffset? to,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken,
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {
             if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
             if (!ValidateAuditFilters(q, targetType, action, from, to, out var filterError)) return filterError!;
@@ -1402,8 +1401,8 @@ public static class OperationalEndpoints
             return Results.Ok(new { membership.UserId, membership.RoleKey });
         }).RequireAuthorization("settings.manage");
 
-        api.MapGet("/assets/export.csv", async ([FromQuery] string? q, [FromQuery] int page,
-            [FromQuery] int pageSize, HttpContext context, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        api.MapGet("/assets/export.csv", async ([FromQuery] string? q, HttpContext context, ClaimsPrincipal user, AppDbContext db,
+            CancellationToken cancellationToken, [FromQuery] int page = 1, [FromQuery] int pageSize = 5000) =>
         {
             if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
             page = Math.Max(page, 1);

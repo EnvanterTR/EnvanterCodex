@@ -11,8 +11,8 @@ public static class SoftwareLicenseEndpoints
     public static RouteGroupBuilder MapSoftwareLicenseEndpoints(this RouteGroupBuilder api)
     {
         api.MapSoftwareLicenseImportEndpoints();
-        api.MapGet("/software-licenses", async ([FromQuery] string? q, [FromQuery] int page, [FromQuery] int pageSize,
-            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        api.MapGet("/software-licenses", async ([FromQuery] string? q, ClaimsPrincipal user, AppDbContext db, CancellationToken ct,
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 25) =>
         {
             if (!Company(user, out var companyId)) return Results.Forbid();
             page = Math.Max(1, page); pageSize = Math.Clamp(pageSize == 0 ? 25 : pageSize, 1, 200);
@@ -211,8 +211,8 @@ public static class SoftwareLicenseEndpoints
             await db.SaveChangesAsync(ct); return Results.NoContent();
         }).RequireAuthorization("asset.write");
 
-        api.MapGet("/software-license-assignments", async ([FromQuery] string? q, [FromQuery] bool? active, [FromQuery] int page,
-            [FromQuery] int pageSize, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        api.MapGet("/software-license-assignments", async ([FromQuery] string? q, [FromQuery] bool? active,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 25) =>
         {
             if (!Company(user, out var companyId)) return Results.Forbid();
             page = Math.Max(1, page); pageSize = Math.Clamp(pageSize == 0 ? 25 : pageSize, 1, 200);

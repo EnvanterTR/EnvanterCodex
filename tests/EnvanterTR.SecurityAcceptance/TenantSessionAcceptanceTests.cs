@@ -196,6 +196,36 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.False(csv.Contains($"OTHER-SECURITY-LICENSE-{_userId:N}", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Inventory_and_operations_lists_apply_documented_pagination_defaults_when_query_is_omitted()
+    {
+        var endpoints = new (string Path, HttpStatusCode ExpectedStatus)[]
+        {
+            ("/api/assets", HttpStatusCode.OK),
+            ("/api/accessories", HttpStatusCode.OK),
+            ("/api/consumables", HttpStatusCode.OK),
+            ("/api/components", HttpStatusCode.OK),
+            ("/api/software-licenses", HttpStatusCode.OK),
+            ("/api/software-license-assignments", HttpStatusCode.OK),
+            ("/api/employees", HttpStatusCode.OK),
+            ("/api/activity", HttpStatusCode.OK),
+            ("/api/audit", HttpStatusCode.OK),
+            ("/api/inventory/movements", HttpStatusCode.OK),
+            ("/api/accessory-orders", HttpStatusCode.OK),
+            ("/api/requests", HttpStatusCode.OK),
+            ("/api/reports/warranties", HttpStatusCode.OK),
+            ("/api/assets/export.csv", HttpStatusCode.OK)
+        };
+
+        foreach (var (path, expectedStatus) in endpoints)
+        {
+            using var response = await SendAsAdminAsync(path);
+            var detail = response.StatusCode == expectedStatus ? "" : await response.Content.ReadAsStringAsync();
+            Assert.True(response.StatusCode == expectedStatus,
+                $"{path} should respond with {(int)expectedStatus} when paging and optional filters are omitted, but returned {(int)response.StatusCode}: {detail}");
+        }
+    }
+
     private async Task<HttpResponseMessage> SendAsAdminAsync(string path, Guid? companyId = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, path);

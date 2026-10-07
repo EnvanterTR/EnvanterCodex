@@ -100,9 +100,9 @@ public static class AccessoryPurchaseOrderEndpoints
         }).RequireAuthorization("asset.read");
 
         api.MapGet("/accessory-orders", async ([FromQuery] string? q, [FromQuery] string? status,
-            [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] bool overdueOnly,
-            [FromQuery] DateOnly? asOf,
-            [FromQuery] int page, [FromQuery] int pageSize, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+            [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] DateOnly? asOf,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken ct,
+            [FromQuery] bool overdueOnly = false, [FromQuery] int page = 1, [FromQuery] int pageSize = 25) =>
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
             if (from is not null && to is not null && from.Value > to.Value)

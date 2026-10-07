@@ -48,8 +48,8 @@ public static class AssetEndpoints
             [FromQuery] Guid? categoryId, [FromQuery] Guid? brandId, [FromQuery] Guid? modelId,
             [FromQuery] Guid? employeeId, [FromQuery] string? location, [FromQuery] string? warranty,
             [FromQuery] string? sortBy, [FromQuery] string? sortDirection,
-            [FromQuery] int page, [FromQuery] int pageSize,
-            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken,
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
             page = Math.Max(page, 1);
@@ -104,8 +104,8 @@ public static class AssetEndpoints
 
         api.MapGet("/accessories", async ([FromQuery] string? q, [FromQuery] string? category,
             [FromQuery] string? location, [FromQuery] string? stock, [FromQuery] string? sortBy,
-            [FromQuery] string? sortDirection, [FromQuery] int page, [FromQuery] int pageSize,
-            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+            [FromQuery] string? sortDirection, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken,
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 25) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
             page = Math.Max(page, 1);
@@ -1080,8 +1080,8 @@ public static class AssetEndpoints
             });
         }).RequireAuthorization("asset.read");
 
-        api.MapGet("/reports/warranties", async (DateOnly? through, string? state, string? q, int page,
-            int pageSize, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        api.MapGet("/reports/warranties", async (DateOnly? through, string? state, string? q,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken, int page = 1, int pageSize = 50) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
             if (!TryGetWarrantyReportFilters(through, state, q, out var today, out var end, out var normalizedState, out var error)) return error!;

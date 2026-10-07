@@ -108,7 +108,7 @@ public static class PlatformEndpoints
         });
 
         admin.MapGet("/companies", async ([FromQuery] string? q, [FromQuery] bool? active,
-            [FromQuery] int page, [FromQuery] int pageSize, AppDbContext db, CancellationToken cancellationToken) =>
+            AppDbContext db, CancellationToken cancellationToken, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {
             page = Math.Clamp(page, 1, 1_000_000);
             pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
@@ -160,8 +160,8 @@ public static class PlatformEndpoints
             return Results.Ok(new { company, memberCount, members, membersTruncated = memberCount > members.Count, subscriptions });
         });
 
-        admin.MapGet("/companies/renewals", async ([FromQuery] int days, [FromQuery] int page,
-            [FromQuery] int pageSize, AppDbContext db, CancellationToken cancellationToken) =>
+        admin.MapGet("/companies/renewals", async (AppDbContext db, CancellationToken cancellationToken,
+            [FromQuery] int days = 30, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {
             days = Math.Clamp(days == 0 ? 30 : days, 1, 90);
             page = Math.Clamp(page, 1, 1_000_000);
@@ -288,8 +288,8 @@ public static class PlatformEndpoints
             return Results.Ok(new { block.Id, block.ContentKey, block.IsPublished, block.UpdatedAt });
         });
 
-        admin.MapGet("/audit", async ([FromQuery] int page, [FromQuery] int pageSize,
-            AppDbContext db, CancellationToken cancellationToken) =>
+        admin.MapGet("/audit", async (AppDbContext db, CancellationToken cancellationToken,
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {
             page = Math.Clamp(page, 1, 1_000_000);
             pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);

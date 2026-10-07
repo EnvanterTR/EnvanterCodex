@@ -22,7 +22,7 @@ public static class ComponentEndpoints
             ImportCsvAsync(context, db, antiforgery, true, ct)).RequireAuthorization("asset.write")
             .WithMetadata(new RequestSizeLimitAttribute(CsvImportMaxBytes));
 
-        api.MapGet("/components", async ([FromQuery]string? q,[FromQuery]string? stock,[FromQuery]int page,[FromQuery]int pageSize,ClaimsPrincipal user,AppDbContext db,CancellationToken ct)=>
+        api.MapGet("/components", async ([FromQuery]string? q,[FromQuery]string? stock,ClaimsPrincipal user,AppDbContext db,CancellationToken ct,[FromQuery]int page=1,[FromQuery]int pageSize=25)=>
         {
             if(!Tenant(user,out var companyId))return Results.Forbid(); page=Math.Max(1,page);pageSize=Math.Clamp(pageSize==0?25:pageSize,1,200);
             var query=db.InventoryComponents.AsNoTracking().Where(x=>x.CompanyId==companyId);
