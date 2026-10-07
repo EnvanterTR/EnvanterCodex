@@ -827,7 +827,7 @@ public static class DataExportEndpoints
             var readme = archive.CreateEntry("README.txt", CompressionLevel.Fastest);
             await using var readmeStream = readme.Open();
             await using var readmeWriter = new StreamWriter(readmeStream, new UTF8Encoding(false));
-            await readmeWriter.WriteAsync("EnvanterTR şirket veri arşivi\r\ncompany-data.json şirket kayıtlarını içerir. media/ klasörü şirket logolarını, varlık dosyalarını, çalışan fotoğraflarını/belgelerini ve bu şirkete üye hesapların profil fotoğraflarını içerir. Bu arşiv tam sistem yedeği veya geri yükleme paketi değildir. Kimlik bilgileri ve oturumlar dahil edilmez.\r\n");
+            await readmeWriter.WriteAsync("EnvanterTR şirket veri arşivi\r\ncompany-data.json şirket kayıtlarının bir bölümünü, departman ve konum kataloglarını içerir. media/ klasörü şirket logolarını, varlık dosyalarını, çalışan fotoğraflarını/belgelerini ve bu şirkete üye hesapların profil fotoğraflarını içerir. Bu arşiv tam sistem yedeği veya geri yükleme paketi değildir. Kimlik bilgileri ve oturumlar dahil edilmez.\r\n");
         }
         return Results.Empty;
     }
@@ -842,6 +842,10 @@ public static class DataExportEndpoints
         writer.WritePropertyName("company");
         JsonSerializer.Serialize(writer, new { company.Id, company.Name, company.Slug, company.ContactEmail,
             company.BrandLogoPath, company.BrandPrimaryColor, company.LabelPrintSettingsJson, company.CreatedAt }, JsonOptions);
+        await WritePagedAsync(writer, "departmentCatalog", db.CompanyDepartments.AsNoTracking()
+            .Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
+        await WritePagedAsync(writer, "locationCatalog", db.CompanyLocations.AsNoTracking()
+            .Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
         await WritePagedAsync(writer, "employees", db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
         await WritePagedAsync(writer, "assetCategories", db.AssetCategories.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
         await WritePagedAsync(writer, "assetBrands", db.AssetBrands.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);

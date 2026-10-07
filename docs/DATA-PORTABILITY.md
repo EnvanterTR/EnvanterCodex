@@ -4,7 +4,7 @@
 
 `GET /api/company/export.json` ve `GET /api/company/export.zip` yalnızca oturum açmış şirket sahibi/yöneticisine açıktır. Şirket kimliği doğrulanmış oturumdan alınır; istek gövdesinden veya URL'den seçilmez. PostgreSQL `REPEATABLE READ` işlemiyle şirket kaydı ve veri dilimleri aynı tutarlı görünümden okunur. Yanıt özel/no-store olarak işaretlenir ve JSON 500 satırlık dilimler halinde akıtılır.
 
-Şema sürümü 1 şu verileri içerir: şirket tanımı/marka ayarları, çalışan kayıtları, varlık kategorileri/markaları/modelleri, varlıklar, varlık olayları, denetim kayıtları ve üyelerin e-posta/ad/rol bilgileri. Parolalar, parola hashleri, oturumlar, sıfırlama tokenları, platform yöneticileri, lisans imzalama sırları ve ödeme referansları dışarı aktarılmaz.
+Şema sürümü 1 şu verileri içerir: şirket tanımı/marka ayarları, departman ve konum katalogları, çalışan kayıtları, varlık kategorileri/markaları/modelleri, varlıklar, varlık olayları, denetim kayıtları ve üyelerin e-posta/ad/rol bilgileri. Konum kataloğu üst konum kimlikleriyle hiyerarşisini korur. Parolalar, parola hashleri, oturumlar, sıfırlama tokenları, platform yöneticileri, lisans imzalama sırları ve ödeme referansları dışarı aktarılmaz. Bu kataloglar arşive dahildir; JSON içe alma/geri yükleme henüz desteklenmez.
 
 Varlık nesneleri alış ve garanti bitiş tarihlerini tarih-only `yyyy-AA-gg` değerleriyle taşır. Eski dosyalarda garanti alanı bulunmayabilir; bu alan isteğe bağlıdır.
 
