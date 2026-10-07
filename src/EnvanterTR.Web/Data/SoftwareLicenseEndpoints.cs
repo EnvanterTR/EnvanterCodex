@@ -57,6 +57,85 @@ public static class SoftwareLicenseEndpoints
             return Results.File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv; charset=utf-8", $"envantertr-lisanslar-{DateTime.UtcNow:yyyyMMdd}.csv");
         }).RequireAuthorization("asset.read");
 
+        api.MapGet("/reports/software-licenses", async (DateOnly? through, string? state, string? q, int page,
+            int pageSize, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!Company(user, out var companyId)) return Results.Forbid();
+            if (!TryGetLicenseReportFilters(through, state, q, out var today, out var end, out var normalizedState, out var term, out var error)) return error!;
+            page = Math.Max(1, page);
+            pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
+            var companyLicenses = db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var searchQuery = FilterLicenseReportSearch(companyLicenses, term);
+            var expired = await searchQuery.CountAsync(x => x.ExpirationDate != null && x.ExpirationDate < today, ct);
+            var upcoming = await searchQuery.CountAsync(x => x.ExpirationDate != null && x.ExpirationDate >= today && x.ExpirationDate <= end, ct);
+            var withoutDate = await searchQuery.CountAsync(x => x.ExpirationDate == null, ct);
+            var query = FilterLicenseReportState(searchQuery, normalizedState, today, end);
+            var total = await query.CountAsync(ct);
+            var rows = await query.OrderBy(x => x.ExpirationDate == null).ThenBy(x => x.ExpirationDate).ThenBy(x => x.Name).ThenBy(x => x.Id)
+                .Skip((page - 1) * pageSize).Take(pageSize)
+                .Select(x => new
+                {
+                    x.Id, x.Name, x.Publisher, x.ProductVersion, x.LicenseType, x.Supplier,
+                    x.Seats, x.ExpirationDate, x.AutoRenew,
+                    assigned = db.SoftwareLicenseAssignments.Count(a => a.CompanyId == companyId && a.LicenseId == x.Id && a.RevokedAt == null)
+                }).ToListAsync(ct);
+            var items = rows.Select(x => new
+            {
+                x.Id, x.Name, x.Publisher, x.ProductVersion, x.LicenseType, x.Supplier,
+                x.Seats, x.ExpirationDate, x.AutoRenew, x.assigned,
+                available = Math.Max(0, x.Seats - x.assigned),
+                daysUntilExpiration = x.ExpirationDate is DateOnly expiration ? expiration.DayNumber - today.DayNumber : (int?)null
+            });
+            return Results.Ok(new { today, through = end, state = normalizedState, expired, upcoming, withoutDate,
+                total, page, pageSize, pageCount = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize)), items });
+        }).RequireAuthorization("asset.read");
+
+        api.MapGet("/reports/software-licenses/export.csv", async (DateOnly? through, string? state, string? q,
+            HttpContext context, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!Company(user, out var companyId)) { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
+            if (!TryGetLicenseReportFilters(through, state, q, out var today, out var end, out var normalizedState, out var term, out var error))
+            {
+                await error!.ExecuteAsync(context);
+                return;
+            }
+            var query = FilterLicenseReportState(
+                FilterLicenseReportSearch(db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId), term),
+                normalizedState, today, end);
+            var total = await query.CountAsync(ct);
+            if (total > 10000)
+            {
+                await Results.ValidationProblem(new Dictionary<string, string[]> { ["export"] = ["Dışa aktarım en fazla 10.000 lisans içerir; aramayı daraltın."] }).ExecuteAsync(context);
+                return;
+            }
+            context.Response.StatusCode = StatusCodes.Status200OK;
+            context.Response.ContentType = "text/csv; charset=utf-8";
+            context.Response.Headers["Content-Disposition"] = $"attachment; filename=envantertr-lisans-bitis-raporu-{DateTime.UtcNow:yyyyMMdd}.csv";
+            context.Response.Headers["Cache-Control"] = "no-store";
+            context.Response.Headers["X-Total-Count"] = total.ToString(CultureInfo.InvariantCulture);
+            await using var writer = new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
+            await writer.WriteLineAsync("Lisans;Yayıncı;Ürün sürümü;Tür;Tedarikçi;Bitiş tarihi;Kalan gün;Atanmış koltuk;Toplam koltuk;Boş koltuk;Otomatik yenileme".AsMemory(), ct);
+            var rows = query.OrderBy(x => x.ExpirationDate == null).ThenBy(x => x.ExpirationDate).ThenBy(x => x.Name).ThenBy(x => x.Id)
+                .Select(x => new
+                {
+                    x.Name, x.Publisher, x.ProductVersion, x.LicenseType, x.Supplier, x.ExpirationDate, x.Seats, x.AutoRenew,
+                    Assigned = db.SoftwareLicenseAssignments.Count(a => a.CompanyId == companyId && a.LicenseId == x.Id && a.RevokedAt == null)
+                });
+            await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(ct))
+            {
+                var days = row.ExpirationDate is DateOnly expiration ? (expiration.DayNumber - today.DayNumber).ToString(CultureInfo.InvariantCulture) : "";
+                var line = string.Join(';', new[]
+                {
+                    CsvCell(row.Name), CsvCell(row.Publisher), CsvCell(row.ProductVersion), CsvCell(row.LicenseType), CsvCell(row.Supplier),
+                    CsvCell(row.ExpirationDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)), CsvCell(days),
+                    CsvCell(row.Assigned.ToString(CultureInfo.InvariantCulture)), CsvCell(row.Seats.ToString(CultureInfo.InvariantCulture)),
+                    CsvCell(Math.Max(0, row.Seats - row.Assigned).ToString(CultureInfo.InvariantCulture)), CsvCell(row.AutoRenew ? "Evet" : "Hayır")
+                });
+                await writer.WriteLineAsync(line.AsMemory(), ct);
+            }
+            await writer.FlushAsync(ct);
+        }).RequireAuthorization("asset.read");
+
         api.MapGet("/software-licenses/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Company(user, out var companyId)) return Results.Forbid();
@@ -161,6 +240,49 @@ public static class SoftwareLicenseEndpoints
         }).RequireAuthorization("asset.read");
         return api;
     }
+
+    private static bool TryGetLicenseReportFilters(DateOnly? throughInput, string? stateInput, string? queryInput,
+        out DateOnly today, out DateOnly through, out string state, out string? term, out IResult? error)
+    {
+        today = DateOnly.FromDateTime(DateTime.UtcNow);
+        through = throughInput ?? today.AddDays(90);
+        state = string.IsNullOrWhiteSpace(stateInput) ? "upcoming" : stateInput.Trim().ToLowerInvariant();
+        term = string.IsNullOrWhiteSpace(queryInput) ? null : queryInput.Trim();
+        error = null;
+        if (state is not ("upcoming" or "expired" or "later" or "missing" or "all"))
+        {
+            error = Results.ValidationProblem(new Dictionary<string, string[]> { ["state"] = ["Durum upcoming, expired, later, missing veya all olmalıdır."] });
+            return false;
+        }
+        if (through < today || through > today.AddDays(366))
+        {
+            error = Results.ValidationProblem(new Dictionary<string, string[]> { ["through"] = ["Bitiş tarihi bugünden başlayıp en fazla 366 gün sonrasını kapsamalıdır."] });
+            return false;
+        }
+        if (term?.Length > 120)
+        {
+            error = Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
+            return false;
+        }
+        return true;
+    }
+
+    private static IQueryable<SoftwareLicense> FilterLicenseReportSearch(IQueryable<SoftwareLicense> query, string? term)
+    {
+        if (term is null) return query;
+        return query.Where(x => x.Name.Contains(term) || (x.Publisher != null && x.Publisher.Contains(term)) ||
+            (x.ProductVersion != null && x.ProductVersion.Contains(term)) || (x.Supplier != null && x.Supplier.Contains(term)));
+    }
+
+    private static IQueryable<SoftwareLicense> FilterLicenseReportState(IQueryable<SoftwareLicense> query, string state,
+        DateOnly today, DateOnly through) => state switch
+    {
+        "upcoming" => query.Where(x => x.ExpirationDate != null && x.ExpirationDate >= today && x.ExpirationDate <= through),
+        "expired" => query.Where(x => x.ExpirationDate != null && x.ExpirationDate < today),
+        "later" => query.Where(x => x.ExpirationDate != null && x.ExpirationDate > through),
+        "missing" => query.Where(x => x.ExpirationDate == null),
+        _ => query
+    };
 
     private static bool Company(ClaimsPrincipal user, out Guid id) => Guid.TryParse(user.FindFirstValue("company_id"), out id);
     private static Guid? UserId(ClaimsPrincipal user) => Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;

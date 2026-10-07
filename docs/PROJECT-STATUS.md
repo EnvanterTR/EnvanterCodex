@@ -12,6 +12,7 @@
 
 ## Uygulanmış ana akışlar
 
+- Lisans bitiş raporu: 30/90/180/366 günlük dönem ve bitiş durumu filtreleri, lisans/yayıncı/sürüm/tedarikçi araması, atanmış/boş koltuk görünümü, lisans ayrıntısına geçiş ve filtreli CSV indirme. Şirket kapsamı korunur; CSV 10.000 kayıtla sınırlıdır ve ürün anahtarı/referansı içermez.
 - Varlık ve çalışan kayıtları, arama/filtreleme, CSV dışa aktarımı; temel envanter sözlükleri ve zimmet/iade/hareket akışları.
 - Lisans koltukları, aksesuar/sarf/bileşen stokları, aksesuar kitleri, sipariş ve tedarikçi kataloğu, bakım ve planlama.
 - Barkod/QR etiket ayarları ve tarayıcıyla varlık bulma; varlık/çalışan fotoğrafı ve yetkili ek dosyaları.
@@ -60,3 +61,8 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 - Windows yedekleri için günlük Görev Zamanlayıcı kurulumu eklendi: SYSTEM hesabı, varsayılan 02:30 çalışma, ayarlanabilir 1–3650 günlük saklama temizliği, LocalMachine DPAPI parolası ve servis hesabının erişemediği sır dizini. Windows kurulum/yayın betikleri ProgramData ACL'lerini servis hesabını yalnız medya ve Data Protection klasörlerinde yazabilir tutacak şekilde daralttı. Yeni betiklerin PowerShell parser kontrolü ve DPAPI LocalMachine geçici round-trip kontrolü geçti; gerçek Windows Server'da görev/servis/PG işlemi çalıştırılmadı.
 - Windows yedek hata bildirimleri için DPAPI ile korunan HTTPS webhook, görev hatasını koruyan zamanlanmış yedek sarmalayıcısı ve sağlık denetiminde webhook bildirimi eklendi. Kabul kontrolü; sahte HTTP istemcisiyle HTTPS kuralı, yönlendirme kapatma, gizli URL'nin günlüklere düşmemesi, bildirim kapalı davranışı ve başarısız görev dönüş kodlarını doğruladı. Gerçek webhook hedefine istek gönderilmedi.
 - `publish.ps1`, derleme makinesinde yerel .NET SDK yoksa Docker Desktop'taki resmî .NET 10 SDK imajına geçiyor. Bu makinede fallback ile Windows x64 self-contained paket gerçekten üretildi; `EnvanterTR.Web.exe` (55.233.689 bayt) ve servis/kurulum/yedekleme betikleri çıktı dizininde doğrulandı. Webhook kabul kontrolü ve yedek kripto kontrolü tekrar geçti. Bu, derleme/paketleme doğrulamasıdır; Windows Server üzerinde uygulama başlatma veya servis kurulumu kabulü değildir.
+
+## 2026-10-08 Lisans bitiş raporu
+
+- Lisans raporu API'si ve rapor ekranı eklendi. Şirket kapsamlı yetki kontrolü, arama, bitiş durumu ve dönem filtreleri, lisans koltuk doluluğu, ayrıntıya geçiş ve 10.000 satır sınırına sahip formül güvenli CSV çıktısı sunar. Lisans referansı/anahtarı rapora alınmaz.
+- Docker Release derlemesi geçti; yeni web imajı yerel `localhost:8080` uygulamasına alındı. `/api/status` `ready`, migration sayısı 28 ve bekleyen migration 0. Rapor API rotası oturum gerektiriyor; bu kontrol oturumsuz isteğe `401` döndürdü. Raporun oturum açmış kullanıcı arayüzünde veriyle kabulü ayrıca yapılmalı.

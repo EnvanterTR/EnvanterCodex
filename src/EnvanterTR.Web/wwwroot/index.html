@@ -245,6 +245,7 @@
         <div class="stats" id="maintenanceReportSummary" style="padding:0 14px 14px"></div>
         <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(300px,.9fr);padding:0 14px 14px"><section class="panel"><div class="panel-head"><h3>Bakım türleri</h3></div><div class="table-wrap"><table><thead><tr><th>Tür</th><th>Kayıt</th></tr></thead><tbody id="maintenanceReportTypes"><tr><td colspan="2">Rapor yükleniyor…</td></tr></tbody></table></div></section><section class="panel"><div class="panel-head"><h3>Kaydedilen bakım maliyeti</h3></div><div class="table-wrap"><table><thead><tr><th>Para birimi</th><th>Kayıt</th><th>Toplam</th></tr></thead><tbody id="maintenanceReportCosts"><tr><td colspan="3">Rapor yükleniyor…</td></tr></tbody></table></div><p class="muted" style="padding:0 12px 10px">Tutarlar para birimine göre ayrı tutulur ve kur çevrimi yapılmaz.</p></section></div>
       </section>
+      <section class="panel" style="margin-top:15px"><div class="panel-head"><div><h2>Lisans bitişleri</h2><small id="licenseReportNote">Şirket lisanslarının süresi ve kullanılabilir koltukları.</small></div><button class="btn small" id="licenseReportExport" type="button">CSV indir</button></div><div class="table-tools"><select id="licenseReportState" aria-label="Lisans bitiş raporu durumu"><option value="upcoming">Yaklaşan</option><option value="expired">Süresi dolan</option><option value="later">Daha ileri tarih</option><option value="missing">Tarihi olmayan</option><option value="all">Tümü</option></select><label class="muted">Dönem <select id="licenseReportHorizon"><option value="30">30 gün</option><option value="90" selected>90 gün</option><option value="180">180 gün</option><option value="366">1 yıl</option></select></label><input id="licenseReportSearch" placeholder="Lisans, yayıncı, sürüm veya tedarikçi ara" aria-label="Lisans bitiş raporunda ara"><button class="btn small" id="licenseReportRefresh" type="button">↻ Yenile</button></div><div class="stats" id="licenseReportSummary" style="padding:0 14px 14px"></div><div class="table-wrap"><table><thead><tr><th>Bitiş tarihi</th><th>Lisans</th><th>Yayıncı / sürüm</th><th>Tür</th><th>Koltuk kullanımı</th><th>Otomatik yenileme</th><th>Tedarikçi</th></tr></thead><tbody id="licenseReportRows"><tr><td colspan="7">Lisans raporu yükleniyor…</td></tr></tbody></table></div><div class="pager"><button id="licenseReportPrev">← Önceki</button><span id="licenseReportPageInfo">Sayfa —</span><button id="licenseReportNext">Sonraki →</button></div></section>
     </section>
   </main>
   </div>
@@ -302,6 +303,7 @@
       const toast = document.getElementById('toast');
     let toastTimer, requestToken = '', lookupCache = { categories: [], brands: [], models: [] }, loadedAssets = [], selectedAssetIds = new Set(), selectedAssetRows = new Map(), currentAsset = null, currentEmployeeId = null, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, calendarRequestId = 0, calendarCursorDate = '', sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, auditRequestId = 0, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, latestCalendarEvents = [], latestCalendarFrom = '', latestCalendarTo = '', assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', assetRowDensity = 'comfortable', visibleAssetColumns = Array(8).fill(true), labelSettingsKey = '', bwipLoadPromise = null, assetScanStream = null, assetScanFrame = 0, assetScanner = null, assetScanBusy = false;
     let warrantyReportPage = 1, warrantyReportRequestId = 0, warrantyReportSearchTimer;
+    let licenseReportPage = 1, licenseReportRequestId = 0, licenseReportSearchTimer;
     let employeeListManagerSearchTimer;
     const calendarStyle = document.createElement('style');
     calendarStyle.textContent = '.calendar-month-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px;padding:14px}.calendar-month{min-width:0}.calendar-month-title{margin:0 0 9px;color:#253650;font-size:.95rem}.calendar-weekdays,.calendar-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.calendar-weekday{padding:5px 2px;color:#8793a6;text-align:center;font-size:.65rem;font-weight:700}.calendar-day{min-width:0;min-height:92px;padding:5px;border:1px solid #e3eaf3;border-radius:8px;background:white;overflow:hidden}.calendar-day.is-outside{background:#f6f8fb;color:#b2bccb}.calendar-day.is-today{border-color:#3488f4;box-shadow:inset 0 0 0 1px #3488f433}.calendar-day-number{display:block;margin-bottom:4px;color:#52637a;font-size:.68rem;font-weight:700}.calendar-day.is-today .calendar-day-number{color:#1768cc}.calendar-day-event{display:block;width:100%;margin:2px 0;padding:3px 4px;border:0;border-radius:4px;color:#1659a8;background:#edf5ff;text-align:left;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;font-size:.59rem}.calendar-day-event.license{color:#7351a8;background:#f3efff}.calendar-day-event.overdue{color:#a23e39;background:#fff0ee}.calendar-day-more{color:#76849a;font-size:.58rem}.calendar-period-nav{display:flex;align-items:center;gap:8px;padding:0 14px 12px}.calendar-period-nav h2{flex:1;margin:0;text-align:center;color:#253650;font-size:.95rem}.calendar-week-view{overflow-x:auto;padding:0 14px 14px}.calendar-week-grid{display:grid;grid-template-columns:repeat(7,minmax(110px,1fr));gap:6px;min-width:790px}.calendar-week-day{min-height:170px;padding:8px;border:1px solid #e3eaf3;border-radius:8px;background:white}.calendar-week-day.is-outside{background:#f6f8fb;color:#aeb9c8}.calendar-agenda{padding:0 14px 18px}.calendar-agenda-day{margin-bottom:10px;padding:12px;border:1px solid #e3eaf3;border-radius:8px;background:white}.calendar-agenda-day h3{margin:0 0 8px;color:#253650;font-size:.9rem}.calendar-agenda-event{display:flex;gap:10px;align-items:flex-start;width:100%;margin-top:6px;padding:10px;border:1px solid #e1e8f2;border-radius:7px;background:#fff;text-align:left}.calendar-agenda-event.maintenance{border-left:4px solid #df9c23}.calendar-agenda-event.license{border-left:4px solid #8062c5}.calendar-agenda-event strong{display:block;color:#26374e}.calendar-agenda-event small{display:block;margin-top:3px;color:#76849a}.calendar-agenda-empty{color:#8793a6;font-size:.84rem}@media(max-width:600px){.calendar-day{min-height:74px;padding:3px}.calendar-weekday{font-size:.58rem}.calendar-day-event{font-size:.52rem;padding:2px}.calendar-period-nav{gap:4px;padding-right:8px;padding-left:8px}.calendar-period-nav .btn{padding:6px 8px;font-size:.7rem}}';
@@ -1430,6 +1432,54 @@
     function exportWarrantyReport() {
       const params = warrantyReportParams(); params.delete('page'); params.delete('pageSize');
       location.href = `/api/reports/warranties/export.csv?${params}`;
+    }
+    function licenseReportParams() {
+      const horizon = Number($('#licenseReportHorizon').value) || 90;
+      const today = new Date(), through = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + horizon)).toISOString().slice(0, 10);
+      const params = new URLSearchParams({ through, state: $('#licenseReportState').value, page: licenseReportPage, pageSize: 50 });
+      const q = $('#licenseReportSearch').value.trim(); if (q) params.set('q', q);
+      return params;
+    }
+    async function loadLicenseExpiryReport(page = licenseReportPage) {
+      licenseReportPage = Math.max(1, page);
+      const requestId = ++licenseReportRequestId, params = licenseReportParams();
+      const result = await api(`/api/reports/software-licenses?${params}`);
+      if (requestId !== licenseReportRequestId) return;
+      const formatDate = value => value ? new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`)) : 'Süre belirtilmemiş';
+      const stateLabels = { upcoming: 'yaklaşan lisans bitişleri', expired: 'süresi dolmuş lisanslar', later: 'seçili dönemin sonrasındaki lisanslar', missing: 'bitiş tarihi girilmemiş lisanslar', all: 'tüm lisanslar' };
+      $('#licenseReportNote').textContent = `${formatDate(result.today)} – ${formatDate(result.through)}; ${stateLabels[result.state] || 'lisanslar'}. Sayılar şirket kapsamındadır.`;
+      const summary = $('#licenseReportSummary'); summary.replaceChildren();
+      for (const [label, value, note] of [['Süresi dolan', result.expired, 'Bugünden önce biten'], ['Yaklaşan', result.upcoming, 'Seçili dönem içinde'], ['Tarihi olmayan', result.withoutDate, 'Bitiş tarihi girilmemiş']]) {
+        const card = document.createElement('article'); card.className = 'stat';
+        const caption = document.createElement('div'); caption.className = 'stat-top'; caption.textContent = label;
+        const number = document.createElement('strong'); number.textContent = fmt.format(value || 0);
+        const hint = document.createElement('small'); hint.textContent = note; card.append(caption, number, hint); summary.append(card);
+      }
+      const rows = $('#licenseReportRows'); rows.replaceChildren();
+      if (!(result.items || []).length) reportEmpty(rows, 7, 'Bu filtrelerle eşleşen lisans bulunamadı.');
+      const typeLabels = { Subscription: 'Abonelik', Perpetual: 'Süresiz', Device: 'Cihaz', Site: 'Kurumsal', Trial: 'Deneme', Other: 'Diğer' };
+      for (const item of result.items || []) {
+        const row = document.createElement('tr');
+        const date = document.createElement('td'), datePill = document.createElement('span');
+        datePill.className = `pill ${item.daysUntilExpiration != null && item.daysUntilExpiration < 0 ? 'red' : item.daysUntilExpiration != null && item.daysUntilExpiration <= 30 ? 'warn' : ''}`;
+        datePill.textContent = formatDate(item.expirationDate); date.append(datePill);
+        const nameCell = document.createElement('td'), open = document.createElement('button'); open.type = 'button'; open.className = 'text-link'; open.textContent = item.name;
+        open.addEventListener('click', () => openLicense(item.id).catch(error => notify(error.message))); nameCell.append(open);
+        const publisher = document.createElement('td'); publisher.textContent = [item.publisher, item.productVersion].filter(Boolean).join(' · ') || '—';
+        const type = document.createElement('td'); type.textContent = typeLabels[item.licenseType] || item.licenseType || '—';
+        const seats = document.createElement('td'); seats.textContent = `${fmt.format(item.assigned || 0)} / ${fmt.format(item.seats || 0)} · ${fmt.format(item.available || 0)} boş`;
+        const renew = document.createElement('td'); renew.textContent = item.autoRenew ? 'Evet' : 'Hayır';
+        const supplier = document.createElement('td'); supplier.textContent = item.supplier || '—';
+        row.append(date, nameCell, publisher, type, seats, renew, supplier); rows.append(row);
+      }
+      licenseReportPage = result.page || 1;
+      $('#licenseReportPageInfo').textContent = `${fmt.format(result.total || 0)} kayıt · Sayfa ${result.page || 1} / ${result.pageCount || 1}`;
+      $('#licenseReportPrev').disabled = licenseReportPage <= 1;
+      $('#licenseReportNext').disabled = licenseReportPage >= (result.pageCount || 1);
+    }
+    function exportLicenseReport() {
+      const params = licenseReportParams(); params.delete('page'); params.delete('pageSize');
+      location.href = `/api/reports/software-licenses/export.csv?${params}`;
     }
     function localDateIso(value, endOfDay = false) {
       if (!value) return '';
@@ -3023,7 +3073,7 @@
         loadOperationalCalendar().catch(error => notify(error.message));
       }
       else if (page === 'Denetim kayıtları') { $('#auditPage').hidden = false; $('#pageTitle').textContent = page; loadAuditActions().then(() => loadAudit(1)).catch(error => notify(error.message)); loadAuditSchedule().catch(error => notify(error.message)); }
-      else if (page === 'Hazır raporlar') { $('#reportPage').hidden = false; $('#pageTitle').textContent = 'Envanter raporları'; loadAssetReports().catch(error => notify(error.message)); loadMaintenanceReport().catch(error => notify(error.message)); loadWarrantyReport(1).catch(error => notify(error.message)); }
+      else if (page === 'Hazır raporlar') { $('#reportPage').hidden = false; $('#pageTitle').textContent = 'Envanter raporları'; loadAssetReports().catch(error => notify(error.message)); loadMaintenanceReport().catch(error => notify(error.message)); loadWarrantyReport(1).catch(error => notify(error.message)); loadLicenseExpiryReport(1).catch(error => notify(error.message)); }
       else if (['Kategoriler','Markalar','Varlık modelleri'].includes(page)) { if (!canReadAssets()) { notify('Bu hesabın envanter tanımlarını görüntüleme yetkisi yok.'); return; } catalogKind = page === 'Kategoriler' ? 'categories' : page === 'Markalar' ? 'brands' : 'models'; $('#catalogPage').hidden = false; $('#pageTitle').textContent = page; $('#catalogTitle').textContent = page; $('#catalogDescription').textContent = `${page} şirket envanterinde kullanılacak. Kullanılan tanımlar silinemez; yeniden adlandırma mevcut ilişkilere dokunmaz.`; $('#catalogBrandLabel').hidden = catalogKind !== 'models'; $('#catalogCreateForm').hidden = !canWriteAssets(); loadCatalog().catch(error => notify(error.message)); }
       else if (page === 'Firma profili' || page === 'Logo ve tema') { if (!canManageSettings()) { notify('Şirket görünümünü yalnızca şirket sahibi ve yöneticileri değiştirebilir.'); return; } $('#companySettingsPage').hidden = false; $('#pageTitle').textContent = page === 'Firma profili' ? 'Şirket profili' : 'Logo ve tema'; loadCompanyProfile().catch(error => notify(error.message)); }
       else if (dataPages.includes(page)) {
@@ -3634,7 +3684,7 @@
     $('#employeeManagerFilterSearch').addEventListener('input', () => { clearTimeout(employeeListManagerSearchTimer); employeeListManagerSearchTimer = setTimeout(() => loadEmployeeManagerChoices('employeeManagerFilter', 'employeeManagerFilterSearch', '', $('#employeeManagerFilter').value, $('#employeeManagerFilter').selectedOptions[0]?.textContent || '', 'Tüm yöneticiler', false).catch(error => notify(error.message)), 220); });
     $('#directorySearch').addEventListener('input', renderDirectoryRows);
     $('#directoryRefresh').addEventListener('click', () => loadDirectory(directoryKind).then(() => notify('Şirket kayıtlarından oluşturulan liste yenilendi.')).catch(error => notify(error.message)));
-    $('#reportRefresh').addEventListener('click', () => Promise.all([loadAssetReports(), loadMaintenanceReport(), loadWarrantyReport(1)]).then(() => notify('Şirket raporları güncel verilerle yenilendi.')).catch(error => notify(error.message)));
+    $('#reportRefresh').addEventListener('click', () => Promise.all([loadAssetReports(), loadMaintenanceReport(), loadWarrantyReport(1), loadLicenseExpiryReport(1)]).then(() => notify('Şirket raporları güncel verilerle yenilendi.')).catch(error => notify(error.message)));
     $('#warrantyReportRefresh').addEventListener('click', () => loadWarrantyReport(1).then(() => notify('Garanti raporu güncellendi.')).catch(error => notify(error.message)));
     $('#warrantyReportExport').addEventListener('click', exportWarrantyReport);
     $('#warrantyReportState').addEventListener('change', () => loadWarrantyReport(1).catch(error => notify(error.message)));
@@ -3642,6 +3692,13 @@
     $('#warrantyReportSearch').addEventListener('input', () => { clearTimeout(warrantyReportSearchTimer); warrantyReportSearchTimer = setTimeout(() => loadWarrantyReport(1).catch(error => notify(error.message)), 250); });
     $('#warrantyReportPrev').addEventListener('click', () => loadWarrantyReport(warrantyReportPage - 1).catch(error => notify(error.message)));
     $('#warrantyReportNext').addEventListener('click', () => loadWarrantyReport(warrantyReportPage + 1).catch(error => notify(error.message)));
+    $('#licenseReportRefresh').addEventListener('click', () => loadLicenseExpiryReport(1).then(() => notify('Lisans bitiş raporu güncellendi.')).catch(error => notify(error.message)));
+    $('#licenseReportExport').addEventListener('click', exportLicenseReport);
+    $('#licenseReportState').addEventListener('change', () => loadLicenseExpiryReport(1).catch(error => notify(error.message)));
+    $('#licenseReportHorizon').addEventListener('change', () => loadLicenseExpiryReport(1).catch(error => notify(error.message)));
+    $('#licenseReportSearch').addEventListener('input', () => { clearTimeout(licenseReportSearchTimer); licenseReportSearchTimer = setTimeout(() => loadLicenseExpiryReport(1).catch(error => notify(error.message)), 250); });
+    $('#licenseReportPrev').addEventListener('click', () => loadLicenseExpiryReport(licenseReportPage - 1).catch(error => notify(error.message)));
+    $('#licenseReportNext').addEventListener('click', () => loadLicenseExpiryReport(licenseReportPage + 1).catch(error => notify(error.message)));
     $('#maintenanceReportRefresh').addEventListener('click', () => loadMaintenanceReport().then(() => notify('Bakım raporu güncellendi.')).catch(error => notify(error.message)));
     $('#applyMaintenanceReportFilter').addEventListener('click', () => loadMaintenanceReport().catch(error => notify(error.message)));
     $('#clearMaintenanceReportFilter').addEventListener('click', () => { $('#maintenanceReportFrom').value = ''; $('#maintenanceReportTo').value = ''; loadMaintenanceReport().catch(error => notify(error.message)); });
