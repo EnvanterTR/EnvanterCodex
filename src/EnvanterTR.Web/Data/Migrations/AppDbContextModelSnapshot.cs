@@ -449,6 +449,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<string>("Location")
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("LocationCatalogId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("ModelId")
                         .HasColumnType("uuid");
 
@@ -488,6 +491,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasIndex("CompanyId", "CategoryId");
 
                     b.HasIndex("CompanyId", "Location");
+
+                    b.HasIndex("CompanyId", "LocationCatalogId");
 
                     b.HasIndex("CompanyId", "SerialNumber");
 
@@ -2292,6 +2297,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.CompanyLocation", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "LocationCatalogId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.AssetAttachment", b =>

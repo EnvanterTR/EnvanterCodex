@@ -84,4 +84,5 @@ public sealed record AssetListItem(
     Guid? AssignedEmployeeId,
     DateOnly? WarrantyExpiresAt,
     DateTimeOffset UpdatedAt,
-    Guid? PhotoAttachmentId = null);
+    Guid? PhotoAttachmentId = null,
+    Guid? LocationCatalogId = null);

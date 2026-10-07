@@ -182,6 +182,7 @@ public sealed class Asset
     public string Status { get; set; } = AssetStatuses.Available;
     public string? SerialNumber { get; set; }
     public string? Location { get; set; }
+    public Guid? LocationCatalogId { get; set; }
     public Guid? AssignedEmployeeId { get; set; }
     public DateOnly? PurchaseDate { get; set; }
     public DateOnly? WarrantyExpiresAt { get; set; }

@@ -96,7 +96,8 @@ public static class AssetEndpoints
                     db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
                     x.AssignedEmployeeId, x.WarrantyExpiresAt, x.UpdatedAt,
                     db.AssetAttachments.Where(photo => photo.CompanyId == companyId && photo.AssetId == x.Id && photo.ContentType.StartsWith("image/"))
-                        .OrderByDescending(photo => photo.CreatedAt).Select(photo => (Guid?)photo.Id).FirstOrDefault())).ToListAsync(cancellationToken);
+                        .OrderByDescending(photo => photo.CreatedAt).Select(photo => (Guid?)photo.Id).FirstOrDefault(),
+                    x.LocationCatalogId)).ToListAsync(cancellationToken);
             return Results.Ok(new { items, page, pageSize, total });
         }).RequireAuthorization("asset.read");
 
@@ -800,6 +801,23 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Bu ad, alt konumlarla birlikte 160 karakterlik konum yolu sınırını aşar."] });
             var oldName = location.Name;
             location.Name = name; location.NormalizedName = normalized; location.UpdatedAt = DateTimeOffset.UtcNow;
+            var pathsById = allLocations.ToDictionary(x => x.Id);
+            pathsById[id] = location;
+            (string Path, int Depth) ResolvePath(Guid currentId)
+            {
+                var current = pathsById[currentId];
+                if (current.ParentLocationId is not Guid parentId || !pathsById.TryGetValue(parentId, out var parent))
+                    return (current.Name, 0);
+                var parentPath = ResolvePath(parentId);
+                return ($"{parentPath.Path} / {current.Name}", parentPath.Depth + 1);
+            }
+            foreach (var catalogLocation in allLocations)
+            {
+                var path = ResolvePath(catalogLocation.Id).Path;
+                await db.Assets.Where(x => x.CompanyId == companyId && x.LocationCatalogId == catalogLocation.Id && x.Location != path)
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Location, path)
+                        .SetProperty(x => x.UpdatedAt, DateTimeOffset.UtcNow), cancellationToken);
+            }
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
                 TargetType = "Location", TargetId = id, Action = "CatalogRenamed", Details = $"Konum adı “{oldName}” → “{name}”." });
             await db.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken);
@@ -822,6 +840,8 @@ public static class AssetEndpoints
                     .SingleOrDefaultAsync(cancellationToken) is null) return Results.Forbid();
 
             var assets = db.Assets.Where(x => x.CompanyId == companyId && x.Location != null && EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"));
+            if (await assets.AnyAsync(x => x.LocationCatalogId != null, cancellationToken))
+                return Results.Conflict(new { message = "Bu ad katalog konumuna bağlı varlıklarda kullanılıyor. Katalog düğümünü düzenleyerek kimlik bağlantısını koruyun." });
             var accessories = db.Accessories.Where(x => x.CompanyId == companyId && x.Location != null && EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"));
             var consumables = db.Consumables.Where(x => x.CompanyId == companyId && x.Location != null && EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"));
             var components = db.InventoryComponents.Where(x => x.CompanyId == companyId && x.Location != null && EF.Functions.ILike(x.Location.Trim(), currentPattern, "\\"));
@@ -1013,6 +1033,7 @@ public static class AssetEndpoints
                 .Select(x => new
                 {
                     x.Id, x.AssetTag, x.Name, x.Status, x.SerialNumber, x.Location,
+                    x.LocationCatalogId,
                     x.CategoryId, x.BrandId, x.ModelId, x.AssignedEmployeeId,
                     x.PurchaseDate, x.WarrantyExpiresAt, x.PurchaseCost, x.Currency, x.CreatedAt, x.UpdatedAt
                 }).SingleOrDefaultAsync(cancellationToken);
@@ -1199,11 +1220,12 @@ public static class AssetEndpoints
             if (request.ModelId is Guid modelId && !await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.Id == modelId && x.BrandId == request.BrandId, cancellationToken))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["modelId"] = ["Model seçilen marka ve şirketle eşleşmiyor."] });
 
+            var locationCatalogId = await ResolveLocationCatalogIdAsync(db, companyId, location, cancellationToken);
             var asset = new Asset
             {
                 CompanyId = companyId, AssetTag = tag, Name = name, CategoryId = request.CategoryId,
                 BrandId = request.BrandId, ModelId = request.ModelId,
-                SerialNumber = serial, Location = location,
+                SerialNumber = serial, Location = location, LocationCatalogId = locationCatalogId,
                 PurchaseDate = request.PurchaseDate, WarrantyExpiresAt = request.WarrantyExpiresAt, PurchaseCost = request.PurchaseCost,
                 Currency = currency
             };
@@ -1230,7 +1252,7 @@ public static class AssetEndpoints
                 asset.BrandId is Guid savedBrand ? await db.AssetBrands.Where(x => x.CompanyId == companyId && x.Id == savedBrand).Select(x => x.Name).SingleAsync(cancellationToken) : null,
                 asset.ModelId,
                 asset.ModelId is Guid savedModel ? await db.AssetModels.Where(x => x.CompanyId == companyId && x.Id == savedModel).Select(x => x.Name).SingleAsync(cancellationToken) : null,
-                null, asset.AssignedEmployeeId, asset.WarrantyExpiresAt, asset.UpdatedAt));
+                null, asset.AssignedEmployeeId, asset.WarrantyExpiresAt, asset.UpdatedAt, null, asset.LocationCatalogId));
         }).RequireAuthorization("asset.write");
 
         api.MapPatch("/assets/{id:guid}", async (Guid id, [FromBody] UpdateAssetRequest request,
@@ -1264,6 +1286,7 @@ public static class AssetEndpoints
             if (request.ModelId is Guid modelId && !await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.Id == modelId && x.BrandId == request.BrandId, cancellationToken))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["modelId"] = ["Model seçilen marka ve şirketle eşleşmiyor."] });
 
+            var locationCatalogId = await ResolveLocationCatalogIdAsync(db, companyId, location, cancellationToken);
             var changed = new List<string>();
             if (current.AssetTag != tag) changed.Add("etiket");
             if (current.Name != name) changed.Add("ad");
@@ -1272,6 +1295,7 @@ public static class AssetEndpoints
             if (current.ModelId != request.ModelId) changed.Add("model");
             if (current.SerialNumber != serial) changed.Add("seri numarası");
             if (current.Location != location) changed.Add("konum");
+            if (current.LocationCatalogId != locationCatalogId) changed.Add("konum kataloğu bağlantısı");
             if (current.PurchaseDate != request.PurchaseDate) changed.Add("alış tarihi");
             if (current.WarrantyExpiresAt != request.WarrantyExpiresAt) changed.Add("garanti bitiş tarihi");
             if (current.PurchaseCost != request.PurchaseCost || current.Currency != currency) changed.Add("alış bedeli");
@@ -1290,6 +1314,7 @@ public static class AssetEndpoints
                         .SetProperty(x => x.ModelId, request.ModelId)
                         .SetProperty(x => x.SerialNumber, serial)
                         .SetProperty(x => x.Location, location)
+                        .SetProperty(x => x.LocationCatalogId, locationCatalogId)
                         .SetProperty(x => x.PurchaseDate, request.PurchaseDate)
                         .SetProperty(x => x.WarrantyExpiresAt, request.WarrantyExpiresAt)
                         .SetProperty(x => x.PurchaseCost, request.PurchaseCost)
@@ -1383,6 +1408,7 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["targetLocation"] = ["Yeni konum mevcut konumla aynı olamaz."] });
             if (string.IsNullOrWhiteSpace(source)) source = "Konum belirtilmemiş";
             asset.Location = target;
+            asset.LocationCatalogId = await ResolveLocationCatalogIdAsync(db, companyId, target, cancellationToken);
             asset.UpdatedAt = DateTimeOffset.UtcNow;
             var details = $"Konum transferi: {source} → {target}";
             if (!string.IsNullOrWhiteSpace(request.Notes)) details += $" · {request.Notes.Trim()}";
@@ -1416,12 +1442,14 @@ public static class AssetEndpoints
                     target, StringComparison.OrdinalIgnoreCase)))
                 return Results.Conflict(new { message = "Hedef konum seçilen varlıklardan en az biri için zaten geçerli. Hiçbir kayıt değiştirilmedi." });
 
+            var locationCatalogId = await ResolveLocationCatalogIdAsync(db, companyId, target, cancellationToken);
             var now = DateTimeOffset.UtcNow;
             var notes = request.Notes?.Trim();
             foreach (var asset in assets)
             {
                 var source = string.IsNullOrWhiteSpace(asset.Location) ? "Konum belirtilmemiş" : asset.Location.Trim();
                 asset.Location = target;
+                asset.LocationCatalogId = locationCatalogId;
                 asset.UpdatedAt = now;
                 var details = $"Toplu konum transferi: {source} → {target}";
                 if (!string.IsNullOrWhiteSpace(notes)) details += $" · {notes}";
@@ -2120,6 +2148,40 @@ public static class AssetEndpoints
             if (chain.Count > 3) break;
         }
         return chain;
+    }
+
+    internal static async Task<Guid?> ResolveLocationCatalogIdAsync(AppDbContext db, Guid companyId,
+        string? locationPath, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(locationPath)) return null;
+        var paths = await GetActiveLocationPathMapAsync(db, companyId, cancellationToken);
+        return paths.TryGetValue(locationPath.Trim(), out var id) ? id : null;
+    }
+
+    internal static async Task<Dictionary<string, Guid>> GetActiveLocationPathMapAsync(AppDbContext db,
+        Guid companyId, CancellationToken cancellationToken)
+    {
+        var locations = await db.CompanyLocations.AsNoTracking().Where(x => x.CompanyId == companyId)
+            .ToListAsync(cancellationToken);
+        var byId = locations.ToDictionary(x => x.Id);
+        var paths = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
+        foreach (var location in locations.Where(x => x.IsActive))
+        {
+            var names = new List<string>();
+            var current = location;
+            var valid = true;
+            while (true)
+            {
+                if (!current.IsActive) { valid = false; break; }
+                names.Add(current.Name);
+                if (names.Count > 3) { valid = false; break; }
+                if (current.ParentLocationId is not Guid parentId) break;
+                if (!byId.TryGetValue(parentId, out var parentLocation)) { valid = false; break; }
+                current = parentLocation;
+            }
+            if (valid) paths.TryAdd(string.Join(" / ", names.AsEnumerable().Reverse()), location.Id);
+        }
+        return paths;
     }
 
     private static bool TryCompanyId(ClaimsPrincipal user, out Guid companyId) =>

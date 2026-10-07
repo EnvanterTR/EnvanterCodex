@@ -208,6 +208,7 @@ public static class DataExportEndpoints
         var brandLookup = brands.GroupBy(x => x.Name.Trim(), StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.ToArray(), StringComparer.OrdinalIgnoreCase);
         var modelLookup = models.GroupBy(x => (x.BrandId, Name: x.Name.Trim()), new BrandModelComparer()).ToDictionary(x => x.Key, x => x.ToArray(), new BrandModelComparer());
         var employeeLookup = employees.GroupBy(x => x.EmployeeNumber.Trim(), StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.ToArray(), StringComparer.OrdinalIgnoreCase);
+        var locationCatalogPaths = await AssetEndpoints.GetActiveLocationPathMapAsync(db, companyId, cancellationToken);
         var importRows = new List<(Asset Asset, Guid? EmployeeId)>(rows.Count - 1);
         foreach (var (row, index) in rows.Skip(1).Select((row, index) => (row, index)))
         {
@@ -239,11 +240,14 @@ public static class DataExportEndpoints
                 DateOnly? purchaseDate = string.IsNullOrWhiteSpace(row[10]) ? null : DateOnly.ParseExact(row[10], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
                 DateOnly? warrantyExpiresAt = hasWarrantyColumn && !string.IsNullOrWhiteSpace(row[11]) ? DateOnly.ParseExact(row[11], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) : null;
                 decimal? purchaseCost = string.IsNullOrWhiteSpace(row[costIndex]) ? null : decimal.Parse(row[costIndex], System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture);
+                var location = CleanCsv(row[7]);
+                var locationCatalogId = location is not null && locationCatalogPaths.TryGetValue(location, out var catalogLocationId)
+                    ? catalogLocationId : (Guid?)null;
                 importRows.Add((new Asset
                 {
                     CompanyId = companyId, AssetTag = row[0].Trim().ToUpperInvariant(), Name = row[1].Trim(), Status = row[2],
                     CategoryId = categoryMatches[0].Id, BrandId = brandId, ModelId = modelId, SerialNumber = CleanCsv(row[6]),
-                    Location = CleanCsv(row[7]), AssignedEmployeeId = employeeId, PurchaseDate = purchaseDate, WarrantyExpiresAt = warrantyExpiresAt,
+                    Location = location, LocationCatalogId = locationCatalogId, AssignedEmployeeId = employeeId, PurchaseDate = purchaseDate, WarrantyExpiresAt = warrantyExpiresAt,
                     PurchaseCost = purchaseCost, Currency = row[currencyIndex].Trim().ToUpperInvariant()
                 }, employeeId));
             }
@@ -503,7 +507,7 @@ public static class DataExportEndpoints
             _ = ReadRows(root, "auditEntries", sourceCompanyId, errors, counts);
             var departmentCatalog = ReadOptionalRows(root, "departmentCatalog", errors, counts);
             var locationCatalog = ReadOptionalRows(root, "locationCatalog", errors, counts);
-            ValidateCompanyCatalogs(departmentCatalog, locationCatalog, sourceCompanyId, errors);
+            var locationCatalogIds = ValidateCompanyCatalogs(departmentCatalog, locationCatalog, sourceCompanyId, errors);
             if (!root.TryGetProperty("members", out var members) || members.ValueKind != JsonValueKind.Array)
                 AddError(errors, "members alanı eksik veya dizi değil.");
             else
@@ -562,6 +566,9 @@ public static class DataExportEndpoints
                      (modelBrand is not null && (!TryGuid(asset, "brandId", out var assetBrand) || assetBrand != modelBrand))))
                     AddError(errors, "Bir varlığın seçilen modeliyle markası eşleşmiyor.");
                 if (TryGuid(asset, "assignedEmployeeId", out var employeeId) && !employees.Contains(employeeId)) AddError(errors, "Bir varlığın zimmetli çalışanı dosyada bulunamadı.");
+                if (asset.TryGetProperty("locationCatalogId", out var locationCatalogId) && locationCatalogId.ValueKind != JsonValueKind.Null &&
+                    (!TryGuid(asset, "locationCatalogId", out var selectedLocationId) || !locationCatalogIds.Contains(selectedLocationId)))
+                    AddError(errors, "Bir varlığın konum kataloğu bağlantısı dosyada bulunamadı veya geçersiz.");
                 var status = ReadString(asset, "status");
                 var hasEmployee = TryGuid(asset, "assignedEmployeeId", out _);
                 if (status is not (AssetStatuses.Available or AssetStatuses.Deployed or AssetStatuses.Maintenance or AssetStatuses.Archived))
@@ -649,7 +656,7 @@ public static class DataExportEndpoints
         return rows.EnumerateArray().ToList();
     }
 
-    private static void ValidateCompanyCatalogs(IReadOnlyList<JsonElement> departmentRows,
+    private static HashSet<Guid> ValidateCompanyCatalogs(IReadOnlyList<JsonElement> departmentRows,
         IReadOnlyList<JsonElement> locationRows, Guid sourceCompanyId, List<string> errors)
     {
         var departmentIds = new HashSet<Guid>();
@@ -729,6 +736,7 @@ public static class DataExportEndpoints
             if (string.Join(" / ", names.AsEnumerable().Reverse()).Length > 160)
                 AddError(errors, "Konum kataloğunda tam gösterim yolu 160 karakteri aşamaz.");
         }
+        return locations.Keys.ToHashSet();
     }
 
     private static bool TryGuid(JsonElement element, string property, out Guid value)

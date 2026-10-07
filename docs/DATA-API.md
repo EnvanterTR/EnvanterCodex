@@ -44,7 +44,7 @@ Rol politikaları ayrı tutulur: varlık okuma, varlık değiştirme, çalışan
 
 - `GET /api/assets?q=&status=&categoryId=&brandId=&modelId=&employeeId=&location=&warranty=expired|expiring|active|unspecified&sortBy=tag&sortDirection=asc&page=1&pageSize=50` (`warranty` isteğe bağlı; süresi dolanlar, bugünden itibaren 30 gün içinde dolacaklar, 30 günden uzun süre etkin olanlar veya bitiş tarihi girilmemiş olanlar)
 - `GET /api/assets/{id}`
-  - Yanıt, şirket kapsamındaki varlık alanlarını, kategori/marka/model/çalışan adlarını, en yeniden eskiye hareket listesini ve ek dosya metaverisini içerir. Hareketlerde varsa çalışan adı da bulunur; olaylar başka şirket kayıtlarıyla eşleştirilmez.
+  - Yanıt, şirket kapsamındaki varlık alanlarını, kategori/marka/model/çalışan adlarını, `locationCatalogId` konum kataloğu bağlantısını, en yeniden eskiye hareket listesini ve ek dosya metaverisini içerir. Yeni kayıt/düzenleme/transfer ve CSV içe aktarma, girilen yol etkin katalogda tam eşleşirse kimliği bağlar; serbest metin geriye uyumludur. Katalog düğümü yeniden adlandırılınca bağlı varlıkların gösterilen konum yolu güncellenir. Hareketlerde varsa çalışan adı da bulunur; olaylar başka şirket kayıtlarıyla eşleştirilmez.
 - `POST /api/assets/{id}/attachments` (`multipart/form-data`, `file`; PNG/JPEG/WebP/PDF, dosya başına 10 MiB, varlık başına 30 dosya; içerik imzası denetlenir; `asset.write`)
 - `GET /api/assets/{id}/attachments/{attachmentId}/file[?download=true]` (şirket ve varlık kapsamında yetki denetimli görsel önizleme veya ek indirme; `asset.read`)
 - `DELETE /api/assets/{id}/attachments/{attachmentId}` (dosya kaydını ve özel medya dosyasını kaldırır; olay ve denetim izi yazar; `asset.write`)
