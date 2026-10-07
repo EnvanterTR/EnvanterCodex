@@ -4,7 +4,7 @@ Bu klasör Windows x64 self-contained yayın, servis kurma ve uygulama güncelle
 
 ## Gereksinimler ve sınırlar
 
-- Windows Server 2019 veya 2022 x64, yönetici PowerShell'i ve Windows için .NET 10 self-contained yayınını üretebilen .NET 10 SDK'lı derleme makinesi.
+- Windows Server 2019 veya 2022 x64, yönetici PowerShell'i ve paket derlemesi için .NET 10 SDK'sı ya da çalışan Docker Desktop (resmî .NET 10 SDK imajıyla) bulunan derleme makinesi.
 - PostgreSQL 17 ayrıca kurulmuş, ağ erişimi ayarlanmış, uygulama veritabanı ve rolü hazırlanmış olmalı. Bu betik PostgreSQL kurmaz ve rol/veritabanı oluşturmaz; ayrı `migrate.ps1` ile yalnızca açık onaydan sonra uygulama şeması oluşturulur/güncellenir.
 - TLS sertifikası `Local Computer > Personal (My)` deposunda olmalı; betik tam subject eşleşmesini ve özel anahtarı doğrular. `LocalService` hesabına sertifikanın özel anahtarını okuma izni Windows Sertifikalar MMC'sinden verilmelidir.
 - Şirket görselleri ve Data Protection anahtarları `C:\ProgramData\EnvanterTR` altında tutulur. Servis hesabı yalnızca gerekli veri dizinlerinde yazma izni alır. Veritabanı bağlantı dizesi `Program Files` altındaki Production ayar dosyasında bulunur; erişim SYSTEM, Administrators ve LocalService ile sınırlandırılır. Zamanlanmış yedek parolası ve isteğe bağlı HTTPS bildirim adresi Windows DPAPI LocalMachine ile makineye bağlı şifrelenir ve yalnız SYSTEM/Administrators ACL'li dizinde saklanır. Bağlantı dizesi için DPAPI tabanlı sır kasası hâlâ sonraki iştir.
@@ -18,6 +18,8 @@ Derleme makinesinde:
 Set-ExecutionPolicy -Scope Process Bypass
 ./deploy/windows/publish.ps1
 ```
+
+Betik önce yerel .NET SDK'sını kullanır; SDK yoksa çalışan Docker Desktop üzerinden resmî .NET 10 SDK imajını çağırır. İlk Docker derlemesi imajı indirebilir. Özel çıktı dizini için `-OutputPath` verilebilir.
 
 `artifacts/windows/publish` dizinini sunucuya güvenli biçimde aktarın. Sunucuda yönetici PowerShell açın:
 

@@ -1,21 +1,40 @@
 param(
-    [string]$OutputPath = (Join-Path $PSScriptRoot "..\..\artifacts\windows\publish")
+    [string]$OutputPath = (Join-Path $PSScriptRoot "..\..\artifacts\windows\publish"),
+    [string]$SdkContainerImage = "mcr.microsoft.com/dotnet/sdk:10.0"
 )
 
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $project = Join-Path $repoRoot "src\EnvanterTR.Web\EnvanterTR.Web.csproj"
 $output = [System.IO.Path]::GetFullPath($OutputPath)
+$dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
+$docker = Get-Command docker -ErrorAction SilentlyContinue
 
-if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
-    throw ".NET 10 SDK is required. Install the SDK on the build machine, then rerun this script."
+if (-not $dotnet -and -not $docker) {
+    throw ".NET 10 SDK or Docker Desktop with a running engine is required to build the Windows package."
 }
 
 New-Item -ItemType Directory -Path $output -Force | Out-Null
-dotnet publish $project --configuration Release --runtime win-x64 --self-contained true `
-    -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
-    -p:EnableCompressionInSingleFile=true --output $output
-if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE" }
+$publishArguments = @(
+    "publish",
+    $(if ($dotnet) { $project } else { "/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj" }),
+    "--configuration", "Release", "--runtime", "win-x64", "--self-contained", "true",
+    "-p:PublishSingleFile=true", "-p:IncludeNativeLibrariesForSelfExtract=true",
+    "-p:EnableCompressionInSingleFile=true",
+    "--output", $(if ($dotnet) { $output } else { "/package" })
+)
+if ($dotnet) {
+    & $dotnet.Source @publishArguments
+} else {
+    $dockerArguments = @(
+        "run", "--rm",
+        "--mount", "type=bind,source=$repoRoot,target=/source",
+        "--mount", "type=bind,source=$output,target=/package",
+        "--workdir", "/source", $SdkContainerImage, "dotnet"
+    ) + $publishArguments
+    & $docker.Source @dockerArguments
+}
+if ($LASTEXITCODE -ne 0) { throw "Windows x64 dotnet publish failed with exit code $LASTEXITCODE" }
 
 $exe = Join-Path $output "EnvanterTR.Web.exe"
 if (-not (Test-Path $exe)) { throw "Publish completed without expected executable: $exe" }
