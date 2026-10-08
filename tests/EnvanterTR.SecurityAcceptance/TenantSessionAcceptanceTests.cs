@@ -463,6 +463,68 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(HttpStatusCode.NotFound, crossCompanyAssetFileResponse.StatusCode);
     }
 
+    [Fact]
+    public async Task Account_profile_photo_enforces_the_two_mib_limit_and_preserves_the_existing_photo()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(requestToken));
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var maximumPhoto = new byte[2 * 1024 * 1024];
+        new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }.CopyTo(maximumPhoto, 0);
+        using (var uploadResponse = await SendProfilePhotoUploadAsync(maximumPhoto, requestToken!, antiforgeryCookie))
+            Assert.True(uploadResponse.StatusCode == HttpStatusCode.OK,
+                $"Profile photo upload returned {(int)uploadResponse.StatusCode}: {await uploadResponse.Content.ReadAsStringAsync()}");
+
+        var storedPhotoPath = Path.Combine(_mediaPath, "accounts", _userId.ToString("N"), "profile.png");
+        Assert.True(File.Exists(storedPhotoPath));
+        Assert.Equal(maximumPhoto, await File.ReadAllBytesAsync(storedPhotoPath));
+
+        var oversizedPhoto = new byte[maximumPhoto.Length + 1];
+        maximumPhoto.CopyTo(oversizedPhoto, 0);
+        using (var oversizedResponse = await SendProfilePhotoUploadAsync(oversizedPhoto, requestToken!, antiforgeryCookie))
+            Assert.True(oversizedResponse.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.RequestEntityTooLarge);
+        Assert.Equal(maximumPhoto, await File.ReadAllBytesAsync(storedPhotoPath));
+
+        using (var invalidImageResponse = await SendProfilePhotoUploadAsync(new byte[] { 1, 2, 3, 4 }, requestToken!, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidImageResponse.StatusCode);
+        Assert.Equal(maximumPhoto, await File.ReadAllBytesAsync(storedPhotoPath));
+
+        using var photoResponse = await SendAsAdminAsync("/api/session/photo");
+        Assert.Equal(HttpStatusCode.OK, photoResponse.StatusCode);
+        Assert.Equal("image/png", photoResponse.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(maximumPhoto, await photoResponse.Content.ReadAsByteArrayAsync());
+
+        using var deleteRequest = new HttpRequestMessage(HttpMethod.Delete, "/api/session/photo");
+        deleteRequest.Headers.Add("X-Acceptance-User", _userId.ToString());
+        deleteRequest.Headers.Add("X-Acceptance-Company", _companyId.ToString());
+        deleteRequest.Headers.Add("X-Acceptance-Role", "admin");
+        deleteRequest.Headers.Add("X-CSRF-TOKEN", requestToken);
+        deleteRequest.Headers.Add("Cookie", antiforgeryCookie);
+        using var deleteResponse = await _client!.SendAsync(deleteRequest);
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+        Assert.False(File.Exists(storedPhotoPath));
+    }
+
+    private async Task<HttpResponseMessage> SendProfilePhotoUploadAsync(byte[] bytes, string requestToken, string antiforgeryCookie)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/session/photo");
+        request.Headers.Add("X-Acceptance-User", _userId.ToString());
+        request.Headers.Add("X-Acceptance-Company", _companyId.ToString());
+        request.Headers.Add("X-Acceptance-Role", "admin");
+        request.Headers.Add("X-CSRF-TOKEN", requestToken);
+        request.Headers.Add("Cookie", antiforgeryCookie);
+        var multipart = new MultipartFormDataContent();
+        multipart.Add(new ByteArrayContent(bytes), "file", "profile.png");
+        request.Content = multipart;
+        return await _client!.SendAsync(request);
+    }
+
     private async Task SetCompanyRoleAsync(string role)
     {
         await using var scope = _factory!.Services.CreateAsyncScope();
