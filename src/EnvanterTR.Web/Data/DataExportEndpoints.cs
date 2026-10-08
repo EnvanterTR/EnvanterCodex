@@ -178,9 +178,12 @@ public static class DataExportEndpoints
         catch (System.Text.DecoderFallbackException)
         { return Results.UnprocessableEntity(new { message = "CSV dosyası UTF-8 kodlamasında olmalıdır." }); }
         List<List<string>> rows;
-        try { rows = ParseSemicolonCsv(text, CsvImportMaxRows + 2); }
+        try { rows = ParseAssetCsv(text, CsvImportMaxRows + 2); }
         catch (FormatException)
         { return Results.UnprocessableEntity(new { message = "CSV tırnak/ayraç biçimi bozuk." }); }
+        rows = AssetCsvImportMapping.Normalize(rows, out var unsupportedColumns);
+        if (unsupportedColumns.Length > 0)
+            return Results.UnprocessableEntity(new { message = $"Bu dosyada henüz eşlenmeyen ve dolu veri içeren sütunlar var: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu; önce bu sütunları eşleyin veya boş olduklarını doğrulayın." });
         string[] legacyHeader = ["Etiket", "Ad", "Durum", "Kategori", "Marka", "Model", "Seri No", "Konum", "Personel No", "Çalışan", "Alış Tarihi", "Alış Bedeli", "Para Birimi"];
         string[] warrantyHeader = ["Etiket", "Ad", "Durum", "Kategori", "Marka", "Model", "Seri No", "Konum", "Personel No", "Çalışan", "Alış Tarihi", "Garanti Bitiş Tarihi", "Alış Bedeli", "Para Birimi"];
         var legacyWithParent = legacyHeader.Append("Üst Varlık Etiketi").ToArray();
@@ -375,9 +378,12 @@ public static class DataExportEndpoints
         catch (System.Text.DecoderFallbackException)
         { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV dosyası UTF-8 kodlamasında olmalıdır." } }); }
         List<List<string>> records;
-        try { records = ParseSemicolonCsv(text, CsvImportMaxRows + 2); }
+        try { records = ParseAssetCsv(text, CsvImportMaxRows + 2); }
         catch (FormatException)
         { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV tırnak/ayraç biçimi bozuk." } }); }
+        records = AssetCsvImportMapping.Normalize(records, out var unsupportedColumns);
+        if (unsupportedColumns.Length > 0)
+            return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Bu dosyada henüz eşlenmeyen ve dolu veri içeren sütunlar var: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu; önce bu sütunları eşleyin veya boş olduklarını doğrulayın." } });
         if (records.Count is < 2 || records.Count > CsvImportMaxRows + 1)
             return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"CSV başlık ve en fazla {CsvImportMaxRows:N0} varlık satırı içermelidir." } });
 
@@ -504,6 +510,28 @@ public static class DataExportEndpoints
             errors = errors.Take(30).ToArray(),
             warning = $"Varsayılan konum {defaultLocationApplied:N0} boş konumlu varlığa uygulanacak. Önizleme kategori, marka, model, çalışan ve varsa üst varlık eşleşmelerini denetler. Var olan kayıtlar birleştirilmez; bu aşamada hiçbir kayıt değiştirilmez."
         });
+    }
+
+    private static List<List<string>> ParseAssetCsv(string text, int maximumRecords)
+    {
+        var delimiter = DetectAssetCsvDelimiter(text);
+        return ParseSemicolonCsv(text, maximumRecords, delimiter);
+    }
+
+    private static char DetectAssetCsvDelimiter(string text)
+    {
+        var commas = 0;
+        var semicolons = 0;
+        var quoted = false;
+        foreach (var value in text)
+        {
+            if (value == '"') { quoted = !quoted; continue; }
+            if (quoted) continue;
+            if (value is '\r' or '\n') break;
+            if (value == ',') commas++;
+            else if (value == ';') semicolons++;
+        }
+        return commas > semicolons ? ',' : ';';
     }
 
     private static List<List<string>> ParseSemicolonCsv(string text, int maximumRecords, char delimiter = ';')

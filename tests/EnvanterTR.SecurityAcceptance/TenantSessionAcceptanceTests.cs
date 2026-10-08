@@ -515,6 +515,78 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Asset_csv_import_maps_reordered_english_headers_and_rejects_unmapped_data()
+    {
+        string categoryName;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var categoryId = await db.Assets.Where(x => x.CompanyId == _companyId && x.Id == _ownAssetId)
+                .Select(x => x.CategoryId).SingleAsync();
+            categoryName = await db.AssetCategories.Where(x => x.CompanyId == _companyId && x.Id == categoryId)
+                .Select(x => x.Name).SingleAsync();
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var tag = $"MAP-{_userId:N}".ToUpperInvariant();
+        var headers = "Serial number,Location,Purchase Cost,Asset Tag,Model,Manufacturer,Category,Name,Status,Purchase Date";
+        var row = $"SN-001,\"Lab, Floor 2\",125.50,{tag},,,\"{categoryName}\",Desk,Ready to Deploy,10/8/2026";
+        var compatibleCsv = $"{headers}\r\n{row}";
+        using (var preview = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import/preview.csv", "admin",
+                   new StringContent(compatibleCsv, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, preview.StatusCode);
+            var previewJson = await preview.Content.ReadAsStringAsync();
+            using var payload = JsonDocument.Parse(previewJson);
+            Assert.True(payload.RootElement.GetProperty("isValid").GetBoolean(), previewJson);
+        }
+
+        using (var imported = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import.csv", "admin",
+                   new StringContent(compatibleCsv, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, imported.StatusCode);
+
+        await using var verifyScope = _factory!.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var asset = await verifyDb.Assets.SingleAsync(x => x.CompanyId == _companyId && x.AssetTag == tag);
+        Assert.Equal("SN-001", asset.SerialNumber);
+        Assert.Equal("Lab, Floor 2", asset.Location);
+        Assert.Equal(125.50m, asset.PurchaseCost);
+        Assert.Equal("TRY", asset.Currency);
+        Assert.Equal(AssetStatuses.Available, asset.Status);
+        Assert.Equal(new DateOnly(2026, 10, 8), asset.PurchaseDate);
+
+        var turkishTag = $"MAP-TR-{_userId:N}".ToUpperInvariant();
+        var turkishCsv = "Serial number;Location;Purchase Cost;Asset Tag;Model;Manufacturer;Category;Name;Status;Purchase Date\r\n" +
+            $"SN-002;Lab;125,50;{turkishTag};;;\"{categoryName}\";Desk;Ready to Deploy;08.10.2026";
+        using (var turkishPreview = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import/preview.csv", "admin",
+                   new StringContent(turkishCsv, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, turkishPreview.StatusCode);
+            var previewJson = await turkishPreview.Content.ReadAsStringAsync();
+            using var payload = JsonDocument.Parse(previewJson);
+            Assert.True(payload.RootElement.GetProperty("isValid").GetBoolean(), previewJson);
+        }
+        using (var turkishImport = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import.csv", "admin",
+                   new StringContent(turkishCsv, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, turkishImport.StatusCode);
+        var turkishAsset = await verifyDb.Assets.SingleAsync(x => x.CompanyId == _companyId && x.AssetTag == turkishTag);
+        Assert.Equal(125.50m, turkishAsset.PurchaseCost);
+
+        var unsafeCsv = $"{headers},Asset Notes\r\n{row},must not be discarded";
+        using var unsafePreview = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import/preview.csv", "admin",
+            new StringContent(unsafeCsv, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, unsafePreview.StatusCode);
+        Assert.Contains("Asset Notes", await unsafePreview.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Software_license_can_be_assigned_to_same_company_asset_and_is_visible_in_both_details()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
