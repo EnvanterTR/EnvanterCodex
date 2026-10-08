@@ -526,13 +526,13 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     {
         var roleMatrix = new[]
         {
-            (Role: "owner", AssetRead: true, AssetWrite: true, EmployeeRead: true, EmployeeWrite: true, SettingsManage: true),
-            (Role: "admin", AssetRead: true, AssetWrite: true, EmployeeRead: true, EmployeeWrite: true, SettingsManage: true),
-            (Role: "asset_manager", AssetRead: true, AssetWrite: true, EmployeeRead: true, EmployeeWrite: true, SettingsManage: false),
-            (Role: "asset_operator", AssetRead: true, AssetWrite: true, EmployeeRead: true, EmployeeWrite: false, SettingsManage: false),
-            (Role: "auditor", AssetRead: true, AssetWrite: false, EmployeeRead: true, EmployeeWrite: false, SettingsManage: false),
-            (Role: "viewer", AssetRead: true, AssetWrite: false, EmployeeRead: false, EmployeeWrite: false, SettingsManage: false),
-            (Role: "hr_operator", AssetRead: false, AssetWrite: false, EmployeeRead: true, EmployeeWrite: true, SettingsManage: false)
+            (Role: "owner", AssetRead: true, AssetWrite: true, EmployeeRead: true, EmployeeWrite: true, HrFiles: true, SettingsManage: true),
+            (Role: "admin", AssetRead: true, AssetWrite: true, EmployeeRead: true, EmployeeWrite: true, HrFiles: true, SettingsManage: true),
+            (Role: "asset_manager", AssetRead: true, AssetWrite: true, EmployeeRead: true, EmployeeWrite: true, HrFiles: false, SettingsManage: false),
+            (Role: "asset_operator", AssetRead: true, AssetWrite: true, EmployeeRead: true, EmployeeWrite: false, HrFiles: false, SettingsManage: false),
+            (Role: "auditor", AssetRead: true, AssetWrite: false, EmployeeRead: true, EmployeeWrite: false, HrFiles: false, SettingsManage: false),
+            (Role: "viewer", AssetRead: true, AssetWrite: false, EmployeeRead: false, EmployeeWrite: false, HrFiles: false, SettingsManage: false),
+            (Role: "hr_operator", AssetRead: false, AssetWrite: false, EmployeeRead: true, EmployeeWrite: true, HrFiles: true, SettingsManage: false)
         };
 
         foreach (var role in roleMatrix)
@@ -593,6 +593,20 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             using (var employeePreview = await SendAsRoleAsync(HttpMethod.Post, "/api/employees/import/preview.csv", role.Role,
                        new StringContent("EmployeeNumber,DisplayName\n", System.Text.Encoding.UTF8, "text/csv")))
                 Assert.Equal(role.EmployeeWrite, employeePreview.StatusCode != HttpStatusCode.Forbidden);
+
+            using (var privateNotes = await SendAsRoleAsync(HttpMethod.Get, $"/api/employees/{_ownEmployeeId}/private-notes", role.Role))
+                Assert.Equal(role.HrFiles ? HttpStatusCode.OK : HttpStatusCode.Forbidden, privateNotes.StatusCode);
+
+            using (var updatePrivateNotes = await SendAsRoleAsync(HttpMethod.Put, $"/api/employees/{_ownEmployeeId}/private-notes", role.Role,
+                       new StringContent("{}", System.Text.Encoding.UTF8, "application/json")))
+                Assert.Equal(role.HrFiles, updatePrivateNotes.StatusCode != HttpStatusCode.Forbidden);
+
+            using (var employeeDocuments = await SendAsRoleAsync(HttpMethod.Get, $"/api/employees/{_ownEmployeeId}/documents", role.Role))
+                Assert.Equal(role.HrFiles ? HttpStatusCode.OK : HttpStatusCode.Forbidden, employeeDocuments.StatusCode);
+
+            using (var uploadEmployeeDocument = await SendAsRoleAsync(HttpMethod.Post, $"/api/employees/{_ownEmployeeId}/documents", role.Role,
+                       new StringContent(string.Empty, System.Text.Encoding.UTF8, "application/x-www-form-urlencoded")))
+                Assert.Equal(role.HrFiles, uploadEmployeeDocument.StatusCode != HttpStatusCode.Forbidden);
 
             using var companyProfile = await SendAsRoleAsync(HttpMethod.Get, "/api/company/profile", role.Role);
             Assert.Equal(role.SettingsManage ? HttpStatusCode.OK : HttpStatusCode.Forbidden, companyProfile.StatusCode);
