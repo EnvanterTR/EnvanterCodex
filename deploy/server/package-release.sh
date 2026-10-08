@@ -26,6 +26,15 @@ test -s "$temporary_path"
 mv -- "$temporary_path" "$package_path"
 (cd -- "$OUTPUT_DIR" && sha256sum "$package_name") > "$checksum_temporary_path"
 mv -- "$checksum_temporary_path" "$checksum_path"
+(cd -- "$OUTPUT_DIR" && sha256sum --check --status "$(basename -- "$checksum_path")")
+
+archive_prefix="envantertr-linux-server-${short_commit}"
+for required_path in Dockerfile deploy/server/compose.yaml deploy/server/install.sh deploy/server/update.sh deploy/server/restore.sh; do
+  if ! tar -tzf "$package_path" | grep -Fqx -- "$archive_prefix/$required_path"; then
+    echo "Source package is missing required path: $required_path" >&2
+    exit 1
+  fi
+done
 
 echo "Source package: $package_path"
 echo "SHA-256: $(cut -d ' ' -f 1 "$checksum_path")"
