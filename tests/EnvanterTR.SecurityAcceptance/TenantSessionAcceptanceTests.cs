@@ -1077,6 +1077,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var ownerPhoto = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x11 };
         var memberPhoto = new byte[] { 0x52, 0x49, 0x46, 0x46, 0x10, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50 };
         var otherTenantPhoto = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x42 };
+        var assetPhoto = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x22 };
+        var assetPhotoId = Guid.NewGuid();
         var accountMedia = Path.Combine(_mediaPath, "accounts");
         var ownerDirectory = Path.Combine(accountMedia, _userId.ToString("N"));
         var memberDirectory = Path.Combine(accountMedia, _sameCompanyOtherUserId.ToString("N"));
@@ -1087,6 +1089,20 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         await File.WriteAllBytesAsync(Path.Combine(ownerDirectory, "profile.png"), ownerPhoto);
         await File.WriteAllBytesAsync(Path.Combine(memberDirectory, "profile.webp"), memberPhoto);
         await File.WriteAllBytesAsync(Path.Combine(otherTenantDirectory, "profile.jpg"), otherTenantPhoto);
+        var assetDirectory = Path.Combine(_mediaPath, _companyId.ToString("N"), "assets", _ownAssetId.ToString("N"));
+        Directory.CreateDirectory(assetDirectory);
+        await File.WriteAllBytesAsync(Path.Combine(assetDirectory, $"{assetPhotoId:N}.png"), assetPhoto);
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.AssetAttachments.Add(new AssetAttachment
+            {
+                Id = assetPhotoId, CompanyId = _companyId, AssetId = _ownAssetId,
+                OriginalFileName = "asset-photo.png", StorageFileName = $"{assetPhotoId:N}.png",
+                ContentType = "image/png", Length = assetPhoto.Length
+            });
+            await db.SaveChangesAsync();
+        }
 
         using var response = await SendAsAdminAsync("/api/company/export.json");
         var body = await response.Content.ReadAsStringAsync();
@@ -1108,6 +1124,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             entry => entry.FullName == $"media/account-profiles/{_userId:N}/profile.png");
         var memberPhotoEntry = Assert.Single(archive.Entries,
             entry => entry.FullName == $"media/account-profiles/{_sameCompanyOtherUserId:N}/profile.webp");
+        var assetPhotoEntry = Assert.Single(archive.Entries,
+            entry => entry.FullName == $"media/assets/{_ownAssetId:N}/{assetPhotoId:N}.png");
         Assert.DoesNotContain(archive.Entries, entry =>
             entry.FullName.StartsWith($"media/account-profiles/{otherTenantUserId:N}/", StringComparison.Ordinal));
         await using var ownerPhotoStream = ownerPhotoEntry.Open();
@@ -1118,6 +1136,10 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var memberPhotoBytes = new MemoryStream();
         await memberPhotoStream.CopyToAsync(memberPhotoBytes);
         Assert.Equal(memberPhoto, memberPhotoBytes.ToArray());
+        await using var assetPhotoStream = assetPhotoEntry.Open();
+        using var assetPhotoBytes = new MemoryStream();
+        await assetPhotoStream.CopyToAsync(assetPhotoBytes);
+        Assert.Equal(assetPhoto, assetPhotoBytes.ToArray());
     }
 
     [Fact]
