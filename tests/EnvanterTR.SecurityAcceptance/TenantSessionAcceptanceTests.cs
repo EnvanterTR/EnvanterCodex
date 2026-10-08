@@ -1468,6 +1468,21 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
 
         using (var authenticatorLogin = await SendAnonymousLoginAsync(loginClient, email, password, GenerateAuthenticatorCode(secret), loginToken, loginCookie))
             Assert.Equal(HttpStatusCode.OK, authenticatorLogin.StatusCode);
+
+        using var rotateResponse = await SendAsUserAsync(HttpMethod.Post, "/api/session/2fa/recovery-codes", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { currentPassword = password, code = GenerateAuthenticatorCode(secret) }), setupToken, setupCookie);
+        Assert.Equal(HttpStatusCode.OK, rotateResponse.StatusCode);
+        using var rotatePayload = JsonDocument.Parse(await rotateResponse.Content.ReadAsStringAsync());
+        var rotatedRecoveryCode = rotatePayload.RootElement.GetProperty("recoveryCodes").EnumerateArray().First().GetString()!;
+
+        using (var disabledRecoveryLogin = await SendAnonymousLoginAsync(loginClient, email, password, rotatedRecoveryCode, loginToken, loginCookie))
+            Assert.Equal(HttpStatusCode.OK, disabledRecoveryLogin.StatusCode);
+
+        using var disableResponse = await SendAsUserAsync(HttpMethod.Post, "/api/session/2fa/disable", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { currentPassword = password, code = GenerateAuthenticatorCode(secret) }), setupToken, setupCookie);
+        Assert.Equal(HttpStatusCode.OK, disableResponse.StatusCode);
+        using (var passwordOnlyLogin = await SendAnonymousLoginAsync(loginClient, email, password, null, loginToken, loginCookie))
+            Assert.Equal(HttpStatusCode.OK, passwordOnlyLogin.StatusCode);
     }
 
     private async Task<HttpResponseMessage> SendAnonymousLoginAsync(HttpClient client, string email, string password, string? twoFactorCode,
