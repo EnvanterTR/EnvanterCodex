@@ -26,7 +26,7 @@ appsettings.Development.json
 **/backup-passphrase*
 
 # Generated distributable packages (publish locally; do not commit binaries)
-/artifacts/windows/publish/
+/artifacts/windows/publish*/
 
 # IDE and operating-system files
 .idea/

@@ -20,7 +20,7 @@ $publishArguments = @(
     $(if ($dotnet) { $project } else { "/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj" }),
     "--configuration", "Release", "--runtime", "win-x64", "--self-contained", "true",
     "-p:PublishSingleFile=true", "-p:IncludeNativeLibrariesForSelfExtract=true",
-    "-p:EnableCompressionInSingleFile=true",
+    "-p:EnableCompressionInSingleFile=true", "-p:DebugType=None", "-p:DebugSymbols=false",
     "--output", $(if ($dotnet) { $output } else { "/package" })
 )
 if ($dotnet) {
