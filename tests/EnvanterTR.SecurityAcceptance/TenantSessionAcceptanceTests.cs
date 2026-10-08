@@ -522,7 +522,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Company_roles_follow_the_asset_employee_and_settings_policy_matrix()
+    public async Task Company_roles_follow_the_asset_stock_employee_and_settings_policy_matrix()
     {
         var roleMatrix = new[]
         {
@@ -545,6 +545,33 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             using (var assetPreview = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import/preview.csv", role.Role,
                        new StringContent("AssetTag,Name\n", System.Text.Encoding.UTF8, "text/csv")))
                 Assert.Equal(role.AssetWrite, assetPreview.StatusCode != HttpStatusCode.Forbidden);
+
+            var stockReadPaths = new[]
+            {
+                "/api/accessories?page=1&pageSize=20",
+                "/api/consumables?page=1&pageSize=20",
+                "/api/components?page=1&pageSize=20",
+                "/api/software-licenses?page=1&pageSize=20"
+            };
+            foreach (var path in stockReadPaths)
+            {
+                using var stockList = await SendAsRoleAsync(HttpMethod.Get, path, role.Role);
+                Assert.Equal(role.AssetRead ? HttpStatusCode.OK : HttpStatusCode.Forbidden, stockList.StatusCode);
+            }
+
+            var stockImportPreviews = new[]
+            {
+                "/api/accessories/import/preview.csv",
+                "/api/consumables/import/preview.csv",
+                "/api/components/import/preview.csv",
+                "/api/software-licenses/import/preview.csv"
+            };
+            foreach (var path in stockImportPreviews)
+            {
+                using var stockPreview = await SendAsRoleAsync(HttpMethod.Post, path, role.Role,
+                    new StringContent("invalid preview payload", System.Text.Encoding.UTF8, "text/csv"));
+                Assert.Equal(role.AssetWrite, stockPreview.StatusCode != HttpStatusCode.Forbidden);
+            }
 
             using (var employeeList = await SendAsRoleAsync(HttpMethod.Get, "/api/employees?page=1&pageSize=20", role.Role))
                 Assert.Equal(role.EmployeeRead ? HttpStatusCode.OK : HttpStatusCode.Forbidden, employeeList.StatusCode);

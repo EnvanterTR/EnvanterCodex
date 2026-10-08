@@ -113,3 +113,8 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 - İzole PostgreSQL tenant kabul paketi, SMTP alıcı kontrolü de dahil **14/14 geçti**. Sahte sunucunun yerel olması gerçek sağlayıcı kimlik bilgileriyle teslimatı kanıtlamaz; bu üretim kabulü açık kalır.
 - Parola kurtarma ve sahte SMTP kapsamı `e921f64` commit'iyle GitHub `main` dalına gönderildi; uzak `main` SHA'sı ile yerel HEAD aynı, çalışma ağacı temiz.
 - GitHub Actions koşum sayfası bu oturumdan doğrulanamadı: `gh` CLI kurulu değil ve anonim API private repo için 404 döndürüyor. Yerel kabul sonucu CI'nin GitHub tarafında geçtiğini kanıtlamaz.
+
+## 2026-10-08 Stok aileleri rol matrisi
+
+- Yedi şirket rolünün aksesuar, sarf malzemesi, bileşen ve lisans listeleme izinleri ile CSV içe aktarma önizleme izinleri mevcut gerçek HTTP rol matrisi testine eklendi. İzinli roller liste uçlarında 200, içe aktarma önizlemesinde yetkilendirme katmanını geçiyor; yetkisiz roller 403 alıyor.
+- Genişletilmiş rol matrisi testi izole PostgreSQL üzerinde **1/1 geçti**. Ardından SMTP teslim kontrolü dahil tüm tenant kabul paketi **14/14 geçti**. Bu ek kapsam doğrulama testi; stok uçları aynı şirket `asset.read/write` politikalarını kullanıyor. Henüz her stok mutasyonu veya her alan/rol bileşimi tek tek kabul edilmedi.
