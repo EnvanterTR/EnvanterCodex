@@ -6,6 +6,7 @@ using System.Text.Json;
 using EnvanterTR.Web.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
@@ -120,9 +121,9 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             Id = _userId,
             UserName = $"acceptance-{_userId:N}",
-            NormalizedUserName = $"ACCEPTANCE-{_userId:N}",
+            NormalizedUserName = $"ACCEPTANCE-{_userId:N}".ToUpperInvariant(),
             Email = $"acceptance-{_userId:N}@example.invalid",
-            NormalizedEmail = $"ACCEPTANCE-{_userId:N}@EXAMPLE.INVALID",
+            NormalizedEmail = $"ACCEPTANCE-{_userId:N}@EXAMPLE.INVALID".ToUpperInvariant(),
             EmailConfirmed = true,
             SecurityStamp = Guid.NewGuid().ToString("N"),
             ConcurrencyStamp = Guid.NewGuid().ToString("N"),
@@ -603,6 +604,71 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var allocated = await db.ComponentAllocations.Where(x => x.CompanyId == _companyId && x.ComponentId == _ownComponentId)
             .SumAsync(x => x.Quantity - x.RemovedQuantity);
         Assert.Equal(5, allocated);
+    }
+
+    [Fact]
+    public async Task Password_recovery_does_not_disclose_account_existence_and_reset_tokens_are_single_use()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        string accountEmail;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<EnvanterUser>>();
+            var user = await userManager.FindByIdAsync(_userId.ToString());
+            Assert.NotNull(user);
+            accountEmail = Assert.IsType<string>(user.Email);
+            Assert.Equal(accountEmail.ToUpperInvariant(), user.NormalizedEmail);
+            Assert.NotNull(await userManager.FindByEmailAsync(accountEmail));
+        }
+
+        using var existingAccountResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/session/password/forgot", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { email = accountEmail }), requestToken, antiforgeryCookie);
+        using var missingAccountResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/session/password/forgot", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { email = "missing@example.invalid" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Accepted, existingAccountResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, missingAccountResponse.StatusCode);
+        using var existingMessage = JsonDocument.Parse(await existingAccountResponse.Content.ReadAsStringAsync());
+        using var missingMessage = JsonDocument.Parse(await missingAccountResponse.Content.ReadAsStringAsync());
+        Assert.Equal(existingMessage.RootElement.GetProperty("message").GetString(),
+            missingMessage.RootElement.GetProperty("message").GetString());
+
+        string resetToken;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<EnvanterUser>>();
+            var user = await userManager.FindByIdAsync(_userId.ToString());
+            Assert.NotNull(user);
+            resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
+        }
+
+        const string newPassword = "New.Acceptance-Password-42!";
+        var resetContent = () => System.Net.Http.Json.JsonContent.Create(new
+        {
+            email = accountEmail,
+            token = resetToken,
+            newPassword
+        });
+        using var resetResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/session/password/reset", "admin",
+            resetContent(), requestToken, antiforgeryCookie);
+        Assert.True(resetResponse.StatusCode == HttpStatusCode.OK,
+            $"Password reset returned {(int)resetResponse.StatusCode}: {await resetResponse.Content.ReadAsStringAsync()}");
+
+        using var replayResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/session/password/reset", "admin",
+            resetContent(), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.BadRequest, replayResponse.StatusCode);
+
+        await using var verificationScope = _factory!.Services.CreateAsyncScope();
+        var verificationManager = verificationScope.ServiceProvider.GetRequiredService<UserManager<EnvanterUser>>();
+        var updatedUser = await verificationManager.FindByIdAsync(_userId.ToString());
+        Assert.NotNull(updatedUser);
+        Assert.True(await verificationManager.CheckPasswordAsync(updatedUser, newPassword));
     }
 
     private async Task<HttpResponseMessage> SendProfilePhotoUploadAsync(byte[] bytes, string requestToken, string antiforgeryCookie)
