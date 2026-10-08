@@ -5,7 +5,7 @@ Bu klasör Windows x64 self-contained yayın, servis kurma ve uygulama güncelle
 ## Gereksinimler ve sınırlar
 
 - Windows Server 2019 veya 2022 x64, yönetici PowerShell'i ve paket derlemesi için .NET 10 SDK'sı ya da çalışan Docker Desktop (resmî .NET 10 SDK imajıyla) bulunan derleme makinesi.
-- PostgreSQL 17 ayrıca kurulmuş, ağ erişimi ayarlanmış, uygulama veritabanı ve rolü hazırlanmış olmalı. Bu betik PostgreSQL kurmaz ve rol/veritabanı oluşturmaz; ayrı `migrate.ps1` ile yalnızca açık onaydan sonra uygulama şeması oluşturulur/güncellenir.
+- PostgreSQL 17 ayrıca kurulmuş ve çalışıyor olmalı. `prepare-postgresql.ps1` yalnızca yerel PostgreSQL'e bağlanarak yeni, sınırlı yetkili uygulama rolü ve UTF-8 veritabanı hazırlar; PostgreSQL yazılımını kurmaz. `migrate.ps1` açık onaydan sonra uygulama şemasını oluşturur/günceller.
 - TLS sertifikası `Local Computer > Personal (My)` deposunda olmalı; betik tam subject eşleşmesini ve özel anahtarı doğrular. `LocalService` hesabına sertifikanın özel anahtarını okuma izni Windows Sertifikalar MMC'sinden verilmelidir.
 - Şirket görselleri ve Data Protection anahtarları `C:\ProgramData\EnvanterTR` altında tutulur. Servis hesabı yalnızca gerekli veri dizinlerinde yazma izni alır. Veritabanı bağlantı dizesi `Program Files` altındaki Production ayar dosyasında bulunur; erişim SYSTEM, Administrators ve LocalService ile sınırlandırılır. Zamanlanmış yedek parolası ve isteğe bağlı HTTPS bildirim adresi Windows DPAPI LocalMachine ile makineye bağlı şifrelenir ve yalnız SYSTEM/Administrators ACL'li dizinde saklanır. Bağlantı dizesi için DPAPI tabanlı sır kasası hâlâ sonraki iştir.
 - Kurulum Windows Güvenlik Duvarı'nı değiştirmez. HTTPS 8443 varsayılandır; kurumun ağ ve sertifika politikasına göre erişimi ayrıca ayarlayın.
@@ -26,6 +26,8 @@ Betik önce yerel .NET SDK'sını kullanır; SDK yoksa çalışan Docker Desktop
 ```powershell
 ./install.ps1 -PackagePath C:\Staging\publish
 ```
+
+PostgreSQL'e önceden EnvanterTR rolü/veritabanı açılmadıysa paketteki `prepare-postgresql.ps1` betiğini yönetici oturumunda çalıştırın. Betik yalnızca `127.0.0.1` üzerindeki PostgreSQL 17'ye bağlanır, administrator parolasını gizli ister, mevcut adlara dokunmaz ve yalnız yeni bir veritabanı/rol oluşturur. Ürettiği bağlantı dizesini doğrudan yukarıdaki `install.ps1` parolalı bağlantı dizesi istemine yapıştırın; dosyaya kaydetmeyin. Rol oluşturulup veritabanı oluşturulamazsa yeni rolü kaldırmayı dener. PostgreSQL kurulumunu, uzak veritabanı sunucusu veya kurumsal TLS ayarlarını otomatikleştirmez.
 
 Betik HTTPS sertifika subject'ini ve PostgreSQL bağlantı dizesini gizli giriş olarak ister; servis ve veri klasörlerini ACL ile sınırlar; servisi `NT AUTHORITY\LocalService` hesabıyla otomatik başlatılacak şekilde kaydeder. İlk kurulum sırasında HTTPS `/api/status` uç noktasını iki dakikaya kadar yoklar ve API'nin PostgreSQL'e erişebildiğini doğrulamadan bootstrap anahtarlarını göstermez. Servis başlatma veya bağlantı doğrulaması başarısız olursa oluşturduğu servisi ve uygulama dosyalarını geri alır; `DataRoot`'u silmez. İlk şirket ve platform bootstrap anahtarlarını yalnız başarılı kurulumdan sonra güvenli kasada saklayın. Yeni ve boş veritabanı için:
 
