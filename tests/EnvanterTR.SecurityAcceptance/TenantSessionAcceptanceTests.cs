@@ -879,6 +879,98 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Asset_trash_is_tenant_scoped_blocks_live_relations_and_restores_with_audit_history()
+    {
+        var trashAssetId = Guid.NewGuid();
+        var collisionAssetId = Guid.NewGuid();
+        var trashAssetTag = $"TRASH-{_userId:N}";
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var categoryId = await db.Assets.Where(x => x.CompanyId == _companyId && x.Id == _ownAssetId)
+                .Select(x => x.CategoryId).SingleAsync();
+            db.Assets.Add(new Asset { Id = trashAssetId, CompanyId = _companyId, AssetTag = trashAssetTag, Name = "Trash acceptance asset", CategoryId = categoryId });
+            var foreignAsset = await db.Assets.IgnoreQueryFilters().SingleAsync(x => x.CompanyId == _otherCompanyId && x.Id == _otherCompanyAssetId);
+            foreignAsset.DeletedAt = DateTimeOffset.UtcNow;
+            foreignAsset.DeletedByUserId = _userId;
+            await db.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using (var relatedAsset = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_ownAssetId}/trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { note = "open relations must remain safe" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, relatedAsset.StatusCode);
+
+        using (var foreignRestore = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_otherCompanyAssetId}/restore-from-trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { note = "cross-tenant attempt" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, foreignRestore.StatusCode);
+
+        using (var trashResponse = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{trashAssetId}/trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { note = "retired test device" }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, trashResponse.StatusCode);
+            using var responsePayload = JsonDocument.Parse(await trashResponse.Content.ReadAsStringAsync());
+            Assert.Equal(trashAssetId, responsePayload.RootElement.GetProperty("id").GetGuid());
+        }
+
+        using (var hiddenDetail = await SendAsAdminAsync($"/api/assets/{trashAssetId}"))
+            Assert.Equal(HttpStatusCode.NotFound, hiddenDetail.StatusCode);
+        using (var trashResponse = await SendAsAdminAsync("/api/assets/trash?page=1&pageSize=100"))
+        {
+            Assert.Equal(HttpStatusCode.OK, trashResponse.StatusCode);
+            using var responsePayload = JsonDocument.Parse(await trashResponse.Content.ReadAsStringAsync());
+            var items = responsePayload.RootElement.GetProperty("items").EnumerateArray().ToArray();
+            Assert.Contains(items, item => item.GetProperty("id").GetGuid() == trashAssetId);
+            Assert.DoesNotContain(items, item => item.GetProperty("id").GetGuid() == _otherCompanyAssetId);
+        }
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var categoryId = await db.Assets.Where(x => x.CompanyId == _companyId && x.Id == _ownAssetId)
+                .Select(x => x.CategoryId).SingleAsync();
+            db.Assets.Add(new Asset { Id = collisionAssetId, CompanyId = _companyId, AssetTag = trashAssetTag, Name = "Active tag collision", CategoryId = categoryId });
+            await db.SaveChangesAsync();
+        }
+        using (var collisionRestore = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{trashAssetId}/restore-from-trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { note = "tag collision" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, collisionRestore.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var collision = await db.Assets.SingleAsync(x => x.CompanyId == _companyId && x.Id == collisionAssetId);
+            db.Assets.Remove(collision);
+            await db.SaveChangesAsync();
+        }
+        using (var restoreResponse = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{trashAssetId}/restore-from-trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { note = "recovered after review" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, restoreResponse.StatusCode);
+
+        using (var restoredDetail = await SendAsAdminAsync($"/api/assets/{trashAssetId}"))
+            Assert.Equal(HttpStatusCode.OK, restoredDetail.StatusCode);
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var events = await db.AssetEvents.AsNoTracking().Where(x => x.CompanyId == _companyId && x.AssetId == trashAssetId)
+                .Select(x => x.EventType).ToArrayAsync();
+            Assert.Contains("Trashed", events);
+            Assert.Contains("RestoredFromTrash", events);
+            var auditActions = await db.AuditEntries.AsNoTracking().Where(x => x.CompanyId == _companyId && x.TargetId == trashAssetId)
+                .Select(x => x.Action).ToArrayAsync();
+            Assert.Contains("Trashed", auditActions);
+            Assert.Contains("RestoredFromTrash", auditActions);
+        }
+    }
+
+    [Fact]
     public async Task Asset_hierarchy_is_tenant_scoped_and_rejects_cycles()
     {
         await using (var scope = _factory!.Services.CreateAsyncScope())
