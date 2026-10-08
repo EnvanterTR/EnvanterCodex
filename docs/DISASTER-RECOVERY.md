@@ -6,6 +6,8 @@ Bu runbook, EnvanterTR sunucusu veya veri diski kaybolduğunda şirket verisini 
 
 Şifreli EnvanterTR yedeği PostgreSQL dökümünü, şirket medya deposunu ve ASP.NET Data Protection anahtarlarını içerir. Medya deposunda profil fotoğrafları, envanter görselleri ve şirket dosyaları bulunur. Yedek ayrıca manifest ve dosya SHA-256 değerlerini taşır. Parola, yedek arşivinin içine yazılmaz.
 
+Geri yükleme öncesinde dış şifreli arşiv ve iç medya/anahtar arşivleri sınırlandırılır: en fazla 250.000 girdi, toplam 64 GiB açılmış veri ve 1.024 karakter yol. Mutlak/yukarı çıkan yollar, yinelenen yollar, dosya-dizin çakışmaları ve bağlantı/özel dosya türleri reddedilir. Bu kontroller hem Linux kurtarma önizlemesinde hem Windows geri yüklemesinde yapılır; gerçek sunucuda geri yükleme tatbikatının yerini almaz.
+
 Yedek sunucusundan bağımsız, erişimi sınırlandırılmış bir kasada şu malzemeleri saklayın:
 
 - `.etbackup` arşivi ve ona ait `.sha256` yan dosyası. Arşivi ve yan dosyayı aynı yedekleme işiyle kopyalayın.

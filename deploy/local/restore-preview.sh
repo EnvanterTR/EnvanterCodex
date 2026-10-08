@@ -56,30 +56,6 @@ if [[ "$migration_exists" == t ]]; then
   migration_count="$(docker exec "$CONTAINER" psql -X -A -t -U postgres -d postgres -c 'SELECT count(*) FROM "__EFMigrationsHistory"' | tr -d '[:space:]')"
 fi
 
-python3 - "$MEDIA_PATH" <<'PY'
-import sys
-import tarfile
-from pathlib import PurePosixPath
-with tarfile.open(sys.argv[1], "r:gz") as archive:
-    for member in archive.getmembers():
-        path = PurePosixPath(member.name)
-        if path.is_absolute() or ".." in path.parts or not (member.isfile() or member.isdir()):
-            raise SystemExit(f"Güvenli olmayan medya arşivi girdisi: {member.name}")
-PY
-
-if [[ -n "$KEYS_PATH" ]]; then
-  python3 - "$KEYS_PATH" <<'PY'
-import sys
-import tarfile
-from pathlib import PurePosixPath
-with tarfile.open(sys.argv[1], "r:gz") as archive:
-    for member in archive.getmembers():
-        path = PurePosixPath(member.name)
-        if path.is_absolute() or ".." in path.parts or not (member.isfile() or member.isdir()):
-            raise SystemExit(f"Güvenli olmayan anahtar arşivi girdisi: {member.name}")
-PY
-fi
-
 docker exec "$CONTAINER" mkdir -p /tmp/media-preview
 docker exec "$CONTAINER" tar -xzf /tmp/company-media.tar.gz -C /tmp/media-preview --no-same-owner --no-same-permissions
 media_file_count="$(docker exec "$CONTAINER" sh -c 'find /tmp/media-preview -type f | wc -l' | tr -d '[:space:]')"

@@ -42,6 +42,11 @@ jobs:
           for script in deploy/server/*.sh deploy/local/*.sh deploy/server/tests/*.sh; do
             bash -n "$script"
           done
+          python3 -m py_compile deploy/local/validate-tar-archive.py
+
+      - name: Test media and key archive validation
+        shell: bash
+        run: python3 -m unittest discover -s deploy/local/tests -v
 
       - name: Test Linux backup health decisions
         shell: bash

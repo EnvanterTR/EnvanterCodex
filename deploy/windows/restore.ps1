@@ -184,7 +184,17 @@ try {
     $archive = [IO.Compression.ZipFile]::OpenRead($plainZip)
     try {
         $archiveEntries = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        $maximumArchiveEntries = 250000
+        [long]$maximumExpandedBytes = 64L * 1024 * 1024 * 1024
+        [long]$expandedBytes = 0
+        [long]$actualExpandedBytes = 0
+        if ($archive.Entries.Count -gt $maximumArchiveEntries) { throw "Backup exceeds the $($maximumArchiveEntries.ToString('N0'))-entry restore limit." }
         foreach ($entry in $archive.Entries) {
+            if ($entry.FullName.Length -gt 1024) { throw "Backup contains a path longer than the 1,024-character restore limit." }
+            if ($entry.Length -lt 0 -or $expandedBytes -gt ($maximumExpandedBytes - [long]$entry.Length)) {
+                throw "Backup exceeds the 64 GiB expanded restore limit."
+            }
+            $expandedBytes += [long]$entry.Length
             $relative = $entry.FullName.Replace('/','\')
             if ([IO.Path]::IsPathRooted($relative) -or $relative -match '(^|\\)\.\.(\\|$)' -or $relative -match '^[A-Za-z]:' -or $relative -match '[\x00-\x1F<>:"|?*]') {
                 throw "Backup contains an unsafe path."
@@ -197,7 +207,19 @@ try {
             New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
             $source = $entry.Open()
             $output = [IO.File]::Create($destination)
-            try { $source.CopyTo($output) } finally { $output.Dispose(); $source.Dispose() }
+            [long]$entryBytes = 0
+            $buffer = [byte[]]::new(131072)
+            try {
+                while (($read = $source.Read($buffer,0,$buffer.Length)) -gt 0) {
+                    if ($entryBytes -gt ([long]$entry.Length - $read) -or $actualExpandedBytes -gt ($maximumExpandedBytes - $read)) {
+                        throw "Backup entry exceeded its declared or allowed expanded size: $relative"
+                    }
+                    $entryBytes += $read
+                    $actualExpandedBytes += $read
+                    $output.Write($buffer,0,$read)
+                }
+                if ($entryBytes -ne [long]$entry.Length) { throw "Backup entry size does not match its ZIP directory: $relative" }
+            } finally { $output.Dispose(); $source.Dispose() }
         }
     } finally { $archive.Dispose() }
 

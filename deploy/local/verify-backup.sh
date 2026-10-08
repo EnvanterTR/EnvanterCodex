@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 umask 077
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 if [[ $# -ne 1 || ! -d "$1" ]]; then
   echo 'Kullanım: bash deploy/local/verify-backup.sh <yedek-klasörü>' >&2
@@ -91,10 +92,10 @@ if [[ ${#METADATA[@]} -eq 6 ]]; then
     echo 'Data Protection anahtarları SHA-256 özeti manifest ile eşleşmiyor.' >&2
     exit 1
   fi
-  tar -tzf "$BACKUP_DIR/${METADATA[4]}" >/dev/null
+  python3 "$SCRIPT_DIR/validate-tar-archive.py" "$BACKUP_DIR/${METADATA[4]}" >/dev/null
 fi
 
-tar -tzf "$BACKUP_DIR/$MEDIA_NAME" >/dev/null
+python3 "$SCRIPT_DIR/validate-tar-archive.py" "$BACKUP_DIR/$MEDIA_NAME" >/dev/null
 docker run --rm --network none --mount "type=bind,source=$BACKUP_DIR,target=/backup,readonly" \
   postgres:17-alpine pg_restore --list "/backup/$DUMP_NAME" >/dev/null
 

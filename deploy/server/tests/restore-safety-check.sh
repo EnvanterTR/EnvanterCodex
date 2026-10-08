@@ -72,4 +72,14 @@ print("PASS: live and restored Docker volumes are never deleted")
 if not all(name in source for name in ("OLD_DB_VOLUME", "OLD_MEDIA_VOLUME", "OLD_KEYS_VOLUME")):
     raise SystemExit("FAIL: existing database, media, and key volume names must all be preserved")
 print("PASS: existing database, media, and key volume names are preserved")
+
+verify_source = Path(sys.argv[1]).resolve().parents[1] / "local" / "verify-backup.sh"
+verify = verify_source.read_text(encoding="utf-8")
+media_check = 'python3 "$SCRIPT_DIR/validate-tar-archive.py" "$BACKUP_DIR/$MEDIA_NAME"'
+keys_check = 'python3 "$SCRIPT_DIR/validate-tar-archive.py" "$BACKUP_DIR/${METADATA[4]}"'
+database_inspection = 'docker run --rm --network none --mount "type=bind,source=$BACKUP_DIR,target=/backup,readonly"'
+positions = [verify.find(part) for part in (keys_check, media_check, database_inspection)]
+if any(position < 0 for position in positions) or positions != sorted(positions):
+    raise SystemExit("FAIL: media/key path, type, duplicate and expanded-size validation must happen before database restore preview")
+print("PASS: Linux backup verification bounds media/key tar paths, types, duplicates, entries and expanded bytes before restore preview")
 PY

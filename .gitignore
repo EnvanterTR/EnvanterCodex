@@ -31,5 +31,6 @@ appsettings.Development.json
 # IDE and operating-system files
 .idea/
 .vscode/
+__pycache__/
 Thumbs.db
 desktop.ini

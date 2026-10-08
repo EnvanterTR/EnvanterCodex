@@ -15,6 +15,10 @@ function Assert-Contains([string]$Name,[string]$Pattern) {
 
 Assert-Contains "HMAC is verified before any restore flow" '(?s)Verify-And-Decrypt\s+\$backup\s+\$plainZip.*?manifest\.json'
 Assert-Contains "restored manifest files are checked against SHA-256 and size" '(?s)\$actual\.Length\s+-ne\s+\[long\]\$file\.length.*?\$hash\s+-ne\s+\[string\]\$file\.sha256'
+Assert-Contains "ZIP restore caps archive entry count" '(?s)\$maximumArchiveEntries\s*=\s*250000.*?\$archive\.Entries\.Count\s+-gt\s+\$maximumArchiveEntries'
+Assert-Contains "ZIP restore caps expanded bytes before extraction" '(?s)\$maximumExpandedBytes\s*=\s*64L\s*\*\s*1024\s*\*\s*1024\s*\*\s*1024.*?\$expandedBytes\s+-gt\s+\(\$maximumExpandedBytes\s+-\s+\[long\]\$entry\.Length\).*?\$source\s*=\s*\$entry\.Open\(\)'
+Assert-Contains "ZIP restore caps path length before extraction" '(?s)\$entry\.FullName\.Length\s+-gt\s+1024.*?\$source\s*=\s*\$entry\.Open\(\)'
+Assert-Contains "ZIP restore enforces actual streamed bytes against declared entry sizes" '(?s)\$actualExpandedBytes\s+-gt\s+\(\$maximumExpandedBytes\s+-\s+\$read\).*?\$entryBytes\s+-ne\s+\[long\]\$entry\.Length'
 Assert-Contains "database is restored into a separate staging name" '(?s)\$createdbSql\s*=.*?\$stageDatabase.*?Invoke-PgTool\s+\$pgRestore.*?--dbname=\$stageDatabase'
 Assert-Contains "PostgreSQL recovery tools have a bounded timeout and timeout kills their process tree" '(?s)PgToolTimeoutSeconds\s*=\s*1800.*?WaitForExit\(\$PgToolTimeoutSeconds\s*\*\s*1000\).*?\$process\.Kill\(\$true\).*?exceeded the \$PgToolTimeoutSeconds-second recovery command limit'
 $quoteArgumentFunction = $restoreAst.Find({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq "Quote-Argument" },$true)
