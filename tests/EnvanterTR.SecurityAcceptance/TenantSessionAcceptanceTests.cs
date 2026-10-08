@@ -218,6 +218,18 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Public_web_shell_uses_EnvanterTR_branding_without_reference_product_name()
+    {
+        var response = await _client!.GetAsync("/");
+        response.EnsureSuccessStatusCode();
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains("EnvanterTR", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Snipe-IT", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("SnipeIT", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Login_rate_limit_partitions_by_forwarded_client_ip()
     {
         using var csrfResponse = await _client!.GetAsync("/api/session/csrf");

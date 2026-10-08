@@ -29,3 +29,5 @@ Senaryo aynı eski `admin` kimlik bilgilerini her istekte tekrar gönderir ve ve
 - Linux production profilindeki forwarded-header ayarıyla giriş hız sınırı gerçek istemci IP'sine göre bölünür: aynı IP 10 deneme sonrasında `429` alırken ayrı IP kendi 10 denemelik hakkını korur.
 
 Bu, güncel oturum üyeliği/rolü ile seçilmiş varlık, stok, talep kataloğu ve lisans şirket sınırlarını kapsayan dar bir regresyon kontrolüdür; liste uçlarının parametresiz varsayılanlarını da kapsar. Varlık talebi açma/onaylama senaryosu kabul konteynerindeki geçici PostgreSQL üzerinde çalışır; geliştirme veritabanına yazmaz. Diğer modüllerin tüm liste/ayrıntı/dışa aktarma uçlarını kapsayan tam izin matrisi, kimlik/parola kurtarma, yük dengeleme ve üretim Windows/Linux sunucu kabulünün yerine geçmez.
+
+- Herkese açık web kabuğu EnvanterTR markasını gösterir ve karşılaştırma ürününün adını içermez.
