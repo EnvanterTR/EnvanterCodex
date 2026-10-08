@@ -1,6 +1,7 @@
 using System.Net;
 using System.IO.Compression;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -1406,6 +1407,98 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var updatedUser = await verificationManager.FindByIdAsync(_userId.ToString());
         Assert.NotNull(updatedUser);
         Assert.True(await verificationManager.CheckPasswordAsync(updatedUser, newPassword));
+    }
+
+    [Fact]
+    public async Task Authenticator_two_factor_requires_second_step_and_recovery_codes_are_single_use()
+    {
+        const string password = "Acceptance-2fa-Password-43!";
+        var email = $"acceptance-{_userId:N}@example.invalid";
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<EnvanterUser>>();
+            var user = await users.FindByIdAsync(_userId.ToString());
+            Assert.NotNull(user);
+            var passwordResult = await users.AddPasswordAsync(user, password);
+            Assert.True(passwordResult.Succeeded, string.Join("; ", passwordResult.Errors.Select(error => error.Description)));
+        }
+
+        using var setupCsrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        using var setupCsrfPayload = JsonDocument.Parse(await setupCsrfResponse.Content.ReadAsStringAsync());
+        var setupToken = setupCsrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var setupCookie = setupCsrfResponse.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        using var setupResponse = await SendAsUserAsync(HttpMethod.Post, "/api/session/2fa/setup", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { currentPassword = password }), setupToken, setupCookie);
+        Assert.Equal(HttpStatusCode.OK, setupResponse.StatusCode);
+        using var setupPayload = JsonDocument.Parse(await setupResponse.Content.ReadAsStringAsync());
+        var secret = setupPayload.RootElement.GetProperty("secret").GetString()!;
+        Assert.StartsWith("otpauth://totp/", setupPayload.RootElement.GetProperty("authenticatorUri").GetString());
+
+        using var enableResponse = await SendAsUserAsync(HttpMethod.Post, "/api/session/2fa/enable", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { code = GenerateAuthenticatorCode(secret) }), setupToken, setupCookie);
+        Assert.Equal(HttpStatusCode.OK, enableResponse.StatusCode);
+        using var enablePayload = JsonDocument.Parse(await enableResponse.Content.ReadAsStringAsync());
+        var recoveryCode = enablePayload.RootElement.GetProperty("recoveryCodes").EnumerateArray().First().GetString()!;
+        Assert.Equal(10, enablePayload.RootElement.GetProperty("recoveryCodes").GetArrayLength());
+
+        using var loginClient = _factory!.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        using var loginCsrfResponse = await loginClient.GetAsync("/api/session/csrf");
+        using var loginCsrfPayload = JsonDocument.Parse(await loginCsrfResponse.Content.ReadAsStringAsync());
+        var loginToken = loginCsrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var loginCookie = loginCsrfResponse.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using (var challenge = await SendAnonymousLoginAsync(loginClient, email, password, null, loginToken, loginCookie))
+        using (var payload = JsonDocument.Parse(await challenge.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, challenge.StatusCode);
+            Assert.True(payload.RootElement.GetProperty("twoFactorRequired").GetBoolean());
+        }
+
+        using (var recoveryLogin = await SendAnonymousLoginAsync(loginClient, email, password, recoveryCode, loginToken, loginCookie))
+            Assert.Equal(HttpStatusCode.OK, recoveryLogin.StatusCode);
+
+        using (var replayedRecovery = await SendAnonymousLoginAsync(loginClient, email, password, recoveryCode, loginToken, loginCookie))
+        using (var payload = JsonDocument.Parse(await replayedRecovery.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, replayedRecovery.StatusCode);
+            Assert.True(payload.RootElement.GetProperty("twoFactorRequired").GetBoolean());
+        }
+
+        using (var authenticatorLogin = await SendAnonymousLoginAsync(loginClient, email, password, GenerateAuthenticatorCode(secret), loginToken, loginCookie))
+            Assert.Equal(HttpStatusCode.OK, authenticatorLogin.StatusCode);
+    }
+
+    private async Task<HttpResponseMessage> SendAnonymousLoginAsync(HttpClient client, string email, string password, string? twoFactorCode,
+        string requestToken, string antiforgeryCookie)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/session/login")
+        {
+            Content = System.Net.Http.Json.JsonContent.Create(new { email, password, companyId = _companyId, rememberMe = true, twoFactorCode })
+        };
+        request.Headers.Add("X-CSRF-TOKEN", requestToken);
+        request.Headers.Add("Cookie", antiforgeryCookie);
+        return await client.SendAsync(request);
+    }
+
+    private static string GenerateAuthenticatorCode(string base32Secret)
+    {
+        const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+        var bytes = new List<byte>(); var buffer = 0; var bitCount = 0;
+        foreach (var character in base32Secret.TrimEnd('=').ToUpperInvariant())
+        {
+            buffer = (buffer << 5) | alphabet.IndexOf(character);
+            bitCount += 5;
+            if (bitCount >= 8) { bitCount -= 8; bytes.Add((byte)(buffer >> bitCount)); }
+        }
+        var counter = (ulong)(DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 30);
+        Span<byte> counterBytes = stackalloc byte[8];
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(counterBytes, counter);
+        var hash = HMACSHA1.HashData(bytes.ToArray(), counterBytes);
+        var offset = hash[^1] & 0x0f;
+        var binary = ((hash[offset] & 0x7f) << 24) | (hash[offset + 1] << 16) | (hash[offset + 2] << 8) | hash[offset + 3];
+        return (binary % 1_000_000).ToString("D6", System.Globalization.CultureInfo.InvariantCulture);
     }
 
     private async Task<HttpResponseMessage> SendProfilePhotoUploadAsync(byte[] bytes, string requestToken, string antiforgeryCookie)

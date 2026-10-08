@@ -10,6 +10,8 @@ Tekrarlanabilir kabul senaryosu `tests/EnvanterTR.SecurityAcceptance` içindedir
 
 Docker gereklidir. Betik benzersiz bir Compose proje adıyla geçici PostgreSQL ve test konteynerleri açar; uygulama migration'larını boş veritabanına uygular ve sonuç ne olursa olsun yalnızca kendi konteyner, ağı ve volume'larını kaldırır. Geliştirme veritabanına, mevcut Compose projesine veya kalıcı yedeklere bağlanmaz.
 
+Kimlik doğrulama kabulü, TOTP MFA etkin kullanıcı için ikinci adımın zorunlu olduğunu, kurtarma kodunun başarılı girişte tüketildiğini ve aynı kodla tekrar girişin reddedildiğini doğrular; ayrıca güncel Authenticator koduyla girişin başarılı olduğunu sınar.
+
 Senaryo aynı eski `admin` kimlik bilgilerini her istekte tekrar gönderir ve veritabanındaki güncel durumu değiştirir:
 
 - Başlangıçta üye yönetimi izni çalışır.

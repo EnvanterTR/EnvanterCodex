@@ -49,7 +49,7 @@ Hazır raporları ve CSV dışa aktarmayı gösterin. Ürünün hangi ortamda ç
 ## Bugün için doğru kapsam beyanı
 
 - **Gösterilebilir:** varlık arama/filtreleme, kayıt ayrıntıları, zimmet-iade akışları, etiket ayarları, aksesuar stokları, aksesuar hazır kitleri ve atomik kit teslimi, aksesuar satın alma/teslim alma, temel raporlar ve CSV.
-- **Henüz hazır değil:** imzalı Windows/Windows Server veya Linux kurucusu, şirket ağına açılmış HTTPS dağıtımı, otomatik şifreli yedekleme ve uygulama içi geri yükleme, MFA/SSO, e-posta bildirimleri ve tam modül kapsamı.
+- **Henüz hazır değil:** imzalı Windows/Windows Server veya Linux kurucusu, şirket ağına açılmış HTTPS dağıtımı, otomatik şifreli yedekleme ve uygulama içi geri yükleme, LDAP/AD/SSO, e-posta bildirimleri ve tam modül kapsamı. İsteğe bağlı Authenticator tabanlı MFA ve tek kullanımlık kurtarma kodları uygulamada mevcuttur.
 - `localhost` adresi internetten müşterilerin erişebileceği bir demo bağlantısı değildir. Ürünü bugün dışarıya açık hizmet veya üretim kurulumuyla sunmayın.
 
 ## Sorulara kısa yanıtlar

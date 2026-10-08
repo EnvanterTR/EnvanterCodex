@@ -99,6 +99,12 @@ Konum listesi `isDefault`, `managerEmployeeId` ve `managerName` alanlarını iç
 - `GET /api/session/csrf`
 - `POST /api/setup/initial-owner` (`X-Setup-Token` ve CSRF başlığı gerekir; e-posta mevcut hesapta kayıtlıysa mevcut parola doğrulanarak hesap şirkete bağlanabilir, parola/profile dokunulmaz).
 - `POST /api/session/login` (`X-CSRF-TOKEN` gerekir)
+- `GET /api/session/2fa` (oturum hesabının iki aşamalı doğrulama durumu)
+- `POST /api/session/2fa/setup` (mevcut parola ve CSRF gerekir; Authenticator sırrı/otpauth URI döndürür)
+- `POST /api/session/2fa/enable` (Authenticator kodunu doğrular; 10 kurtarma kodu yalnız bir kez döndürülür)
+- `POST /api/session/2fa/recovery-codes` (mevcut parola + Authenticator koduyla kurtarma kodlarını yeniler; önceki kodları geçersiz kılar)
+- `POST /api/session/2fa/disable` (mevcut parola ve Authenticator ya da tek kullanımlık kurtarma kodu gerekir)
+- İki aşamalı doğrulama etkin hesaplarda `/api/session/login` ikinci adımda `twoFactorCode` alanını ister; kurtarma kodu da kullanılabilir. Yanlış kodlar başarısız giriş sayacına ve hesap kilitlemesine dahildir.
 - `POST /api/session/password/forgot` (genel yanıt; SMTP yapılandırması gerekir)
 - `POST /api/session/password/reset` (e-posta, token ve yeni parola; CSRF gerekir)
 - `GET /api/session`

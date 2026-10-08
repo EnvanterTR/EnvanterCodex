@@ -217,6 +217,27 @@ public static class AccountEndpoints
                     .AnyAsync(x => x.Id == membership.CompanyId && x.IsActive, cancellationToken))
                 return Results.Forbid();
 
+            if (user.TwoFactorEnabled)
+            {
+                var code = request.TwoFactorCode?.Trim();
+                if (string.IsNullOrWhiteSpace(code))
+                    return Results.Conflict(new { twoFactorRequired = true, message = "Authenticator uygulamanızdaki 6 haneli kodu veya tek kullanımlık kurtarma kodunu girin." });
+                var verified = code.Length <= 32 && await userManager.VerifyTwoFactorTokenAsync(
+                    user, TokenOptions.DefaultAuthenticatorProvider, code.Replace(" ", "", StringComparison.Ordinal).Replace("-", "", StringComparison.Ordinal));
+                if (!verified)
+                {
+                    var recovery = await userManager.RedeemTwoFactorRecoveryCodeAsync(user, code);
+                    if (!recovery.Succeeded)
+                    {
+                        await userManager.AccessFailedAsync(user);
+                        return await userManager.IsLockedOutAsync(user)
+                            ? Results.Json(new { message = "Çok sayıda hatalı doğrulama kodu. Bir süre sonra tekrar deneyin." }, statusCode: StatusCodes.Status423Locked)
+                            : Results.Json(new { twoFactorRequired = true, message = "Doğrulama kodu geçersiz veya kullanılmış. Yeniden deneyin." }, statusCode: StatusCodes.Status400BadRequest);
+                    }
+                }
+                await userManager.ResetAccessFailedCountAsync(user);
+            }
+
             var claims = new List<Claim>
             {
                 new(ClaimTypes.Name, user.DisplayName)
@@ -231,6 +252,88 @@ public static class AccountEndpoints
             return Results.Ok(new { authenticated = true, companyId = membership?.CompanyId, role = membership?.RoleKey,
                 platformAdmin = isPlatformAdmin, name = user.DisplayName });
         }).AllowAnonymous().RequireRateLimiting("login");
+
+        endpoints.MapGet("/api/session/2fa", async (ClaimsPrincipal principal, UserManager<EnvanterUser> userManager) =>
+        {
+            var user = await userManager.GetUserAsync(principal);
+            return user is null ? Results.Unauthorized() : Results.Ok(new { enabled = user.TwoFactorEnabled });
+        }).RequireAuthorization();
+
+        endpoints.MapPost("/api/session/2fa/setup", async ([FromBody] TwoFactorSetupRequest request, ClaimsPrincipal principal,
+            HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager, CancellationToken cancellationToken) =>
+        {
+            if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
+            var user = await userManager.GetUserAsync(principal);
+            if (user is null) return Results.Unauthorized();
+            if (user.TwoFactorEnabled) return Results.Conflict(new { message = "İki aşamalı doğrulama zaten etkin." });
+            if (string.IsNullOrEmpty(request.CurrentPassword) || !await userManager.CheckPasswordAsync(user, request.CurrentPassword))
+                return Results.Unauthorized();
+            var reset = await userManager.ResetAuthenticatorKeyAsync(user);
+            if (!reset.Succeeded) return Results.Problem("Authenticator anahtarı oluşturulamadı.", statusCode: StatusCodes.Status500InternalServerError);
+            var key = await userManager.GetAuthenticatorKeyAsync(user);
+            if (string.IsNullOrWhiteSpace(key)) return Results.Problem("Authenticator anahtarı oluşturulamadı.", statusCode: StatusCodes.Status500InternalServerError);
+            var issuer = "EnvanterTR";
+            var account = user.Email ?? user.UserName ?? user.Id.ToString("N");
+            var label = Uri.EscapeDataString($"{issuer}:{account}");
+            var uri = $"otpauth://totp/{label}?secret={Uri.EscapeDataString(key)}&issuer={Uri.EscapeDataString(issuer)}&digits=6&period=30";
+            return Results.Ok(new { secret = key, authenticatorUri = uri });
+        }).RequireAuthorization().RequireRateLimiting("login");
+
+        endpoints.MapPost("/api/session/2fa/enable", async ([FromBody] TwoFactorCodeRequest request, ClaimsPrincipal principal,
+            HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager) =>
+        {
+            if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
+            var user = await userManager.GetUserAsync(principal);
+            if (user is null) return Results.Unauthorized();
+            if (user.TwoFactorEnabled) return Results.Conflict(new { message = "İki aşamalı doğrulama zaten etkin." });
+            var code = request.Code?.Trim().Replace(" ", "", StringComparison.Ordinal).Replace("-", "", StringComparison.Ordinal);
+            if (string.IsNullOrWhiteSpace(await userManager.GetAuthenticatorKeyAsync(user)) || string.IsNullOrEmpty(code) ||
+                !await userManager.VerifyTwoFactorTokenAsync(user, TokenOptions.DefaultAuthenticatorProvider, code))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["code"] = ["Authenticator uygulamasındaki güncel 6 haneli kod doğrulanamadı."] });
+            var enabled = await userManager.SetTwoFactorEnabledAsync(user, true);
+            if (!enabled.Succeeded) return Results.ValidationProblem(new Dictionary<string, string[]> { ["twoFactor"] = enabled.Errors.Select(x => x.Description).ToArray() });
+            var recoveryCodes = await userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
+            return recoveryCodes is null
+                ? Results.Problem("Kurtarma kodları oluşturulamadı.", statusCode: StatusCodes.Status500InternalServerError)
+                : Results.Ok(new { enabled = true, recoveryCodes });
+        }).RequireAuthorization().RequireRateLimiting("login");
+
+        endpoints.MapPost("/api/session/2fa/recovery-codes", async ([FromBody] TwoFactorRecoveryRequest request, ClaimsPrincipal principal,
+            HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager) =>
+        {
+            if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
+            var user = await userManager.GetUserAsync(principal);
+            if (user is null) return Results.Unauthorized();
+            if (!user.TwoFactorEnabled || string.IsNullOrEmpty(request.CurrentPassword) ||
+                !await userManager.CheckPasswordAsync(user, request.CurrentPassword)) return Results.Unauthorized();
+            var code = request.Code?.Trim().Replace(" ", "", StringComparison.Ordinal).Replace("-", "", StringComparison.Ordinal);
+            if (string.IsNullOrEmpty(code) || !await userManager.VerifyTwoFactorTokenAsync(user, TokenOptions.DefaultAuthenticatorProvider, code))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["code"] = ["Yeni kurtarma kodları üretmek için authenticator kodunu doğrulayın."] });
+            var recoveryCodes = await userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
+            return recoveryCodes is null
+                ? Results.Problem("Kurtarma kodları oluşturulamadı.", statusCode: StatusCodes.Status500InternalServerError)
+                : Results.Ok(new { recoveryCodes });
+        }).RequireAuthorization().RequireRateLimiting("login");
+
+        endpoints.MapPost("/api/session/2fa/disable", async ([FromBody] TwoFactorRecoveryRequest request, ClaimsPrincipal principal,
+            HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager) =>
+        {
+            if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
+            var user = await userManager.GetUserAsync(principal);
+            if (user is null) return Results.Unauthorized();
+            if (!user.TwoFactorEnabled || string.IsNullOrEmpty(request.CurrentPassword) ||
+                !await userManager.CheckPasswordAsync(user, request.CurrentPassword)) return Results.Unauthorized();
+            var code = request.Code?.Trim();
+            var verified = !string.IsNullOrEmpty(code) && await userManager.VerifyTwoFactorTokenAsync(user,
+                TokenOptions.DefaultAuthenticatorProvider, code.Replace(" ", "", StringComparison.Ordinal).Replace("-", "", StringComparison.Ordinal));
+            if (!verified && !string.IsNullOrEmpty(code))
+                verified = (await userManager.RedeemTwoFactorRecoveryCodeAsync(user, code)).Succeeded;
+            if (!verified) return Results.ValidationProblem(new Dictionary<string, string[]> { ["code"] = ["Authenticator veya kullanılmamış kurtarma kodu doğrulanamadı."] });
+            var disabled = await userManager.SetTwoFactorEnabledAsync(user, false);
+            if (!disabled.Succeeded) return Results.ValidationProblem(new Dictionary<string, string[]> { ["twoFactor"] = disabled.Errors.Select(x => x.Description).ToArray() });
+            await userManager.ResetAuthenticatorKeyAsync(user);
+            return Results.Ok(new { enabled = false });
+        }).RequireAuthorization().RequireRateLimiting("login");
 
         endpoints.MapPost("/api/session/password/forgot", async ([FromBody] ForgotPasswordRequest request,
             HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager,
