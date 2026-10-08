@@ -32,6 +32,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     private readonly Guid _otherCompanyConsumableId = Guid.NewGuid();
     private readonly Guid _ownComponentId = Guid.NewGuid();
     private readonly Guid _otherCompanyComponentId = Guid.NewGuid();
+    private readonly Guid _ownEmployeeId = Guid.NewGuid();
+    private readonly Guid _otherCompanyEmployeeId = Guid.NewGuid();
     private string? _previousConnectionString;
     private string? _previousForwardedHeadersSetting;
     private WebApplicationFactory<Program>? _factory;
@@ -90,8 +92,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             new InventoryComponent { Id = _ownComponentId, CompanyId = _companyId, Name = $"OWN-SECURITY-COMPONENT-{_userId:N}", TotalQuantity = 5 },
             new InventoryComponent { Id = _otherCompanyComponentId, CompanyId = _otherCompanyId, Name = $"OTHER-SECURITY-COMPONENT-{_userId:N}", TotalQuantity = 7 });
         db.Employees.AddRange(
-            new Employee { CompanyId = _companyId, EmployeeNumber = $"OWN-{_userId:N}", DisplayName = "Own dashboard employee" },
-            new Employee { CompanyId = _otherCompanyId, EmployeeNumber = $"OTHER-{_userId:N}", DisplayName = "Other dashboard employee" });
+            new Employee { Id = _ownEmployeeId, CompanyId = _companyId, EmployeeNumber = $"OWN-{_userId:N}", DisplayName = $"OWN-SECURITY-EMPLOYEE-{_userId:N}" },
+            new Employee { Id = _otherCompanyEmployeeId, CompanyId = _otherCompanyId, EmployeeNumber = $"OTHER-{_userId:N}", DisplayName = $"OTHER-SECURITY-EMPLOYEE-{_userId:N}" });
         db.AccessoryMovements.AddRange(
             new AccessoryMovement { CompanyId = _companyId, AccessoryId = _ownAccessoryId, MovementType = "Received", Quantity = 2 },
             new AccessoryMovement { CompanyId = _otherCompanyId, AccessoryId = _otherCompanyAccessoryId, MovementType = "Received", Quantity = 2 });
@@ -348,6 +350,36 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(1, summary.GetProperty("consumables").GetInt32());
         Assert.Equal(1, summary.GetProperty("components").GetInt32());
         Assert.Equal(1, summary.GetProperty("activeEmployees").GetInt32());
+    }
+
+    [Fact]
+    public async Task Employee_list_detail_and_export_are_scoped_to_the_active_company()
+    {
+        using (var listResponse = await SendAsAdminAsync("/api/employees"))
+        {
+            Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
+            using var payload = JsonDocument.Parse(await listResponse.Content.ReadAsStringAsync());
+            var items = payload.RootElement.GetProperty("items").EnumerateArray().ToArray();
+            Assert.Single(items);
+            Assert.Equal(_ownEmployeeId, items[0].GetProperty("id").GetGuid());
+        }
+
+        using (var ownEmployeeResponse = await SendAsAdminAsync($"/api/employees/{_ownEmployeeId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, ownEmployeeResponse.StatusCode);
+            using var payload = JsonDocument.Parse(await ownEmployeeResponse.Content.ReadAsStringAsync());
+            Assert.Equal($"OWN-SECURITY-EMPLOYEE-{_userId:N}",
+                payload.RootElement.GetProperty("employee").GetProperty("displayName").GetString());
+        }
+
+        using (var otherEmployeeResponse = await SendAsAdminAsync($"/api/employees/{_otherCompanyEmployeeId}"))
+            Assert.Equal(HttpStatusCode.NotFound, otherEmployeeResponse.StatusCode);
+
+        using var exportResponse = await SendAsAdminAsync("/api/employees/export.csv");
+        Assert.Equal(HttpStatusCode.OK, exportResponse.StatusCode);
+        var csv = await exportResponse.Content.ReadAsStringAsync();
+        Assert.Contains($"OWN-SECURITY-EMPLOYEE-{_userId:N}", csv, StringComparison.Ordinal);
+        Assert.False(csv.Contains($"OTHER-SECURITY-EMPLOYEE-{_userId:N}", StringComparison.Ordinal));
     }
 
     private async Task<HttpResponseMessage> SendAsAdminAsync(string path, Guid? companyId = null)
