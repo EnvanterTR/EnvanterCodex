@@ -1146,6 +1146,63 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Software_license_attachments_are_validated_audited_and_tenant_scoped()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var pdfBytes = Encoding.ASCII.GetBytes("%PDF-1.7\nlicense agreement\n%%EOF");
+        using (var invalidUpload = await SendLicenseAttachmentUploadAsync(_ownLicenseId, new byte[] { 1, 2, 3 }, "fake.pdf", requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidUpload.StatusCode);
+
+        using var upload = await SendLicenseAttachmentUploadAsync(_ownLicenseId, pdfBytes, "..\\license-agreement.pdf", requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, upload.StatusCode);
+        using var uploaded = JsonDocument.Parse(await upload.Content.ReadAsStringAsync());
+        var attachmentId = uploaded.RootElement.GetProperty("id").GetGuid();
+        Assert.Equal("license-agreement.pdf", uploaded.RootElement.GetProperty("originalFileName").GetString());
+
+        using (var ownDownload = await SendAsAdminAsync($"/api/software-licenses/{_ownLicenseId}/attachments/{attachmentId}/file"))
+        {
+            Assert.Equal(HttpStatusCode.OK, ownDownload.StatusCode);
+            Assert.Equal("application/pdf", ownDownload.Content.Headers.ContentType?.MediaType);
+            Assert.Equal(pdfBytes, await ownDownload.Content.ReadAsByteArrayAsync());
+        }
+        using (var crossTenantDownload = await SendAsAdminAsync($"/api/software-licenses/{_otherCompanyLicenseId}/attachments/{attachmentId}/file"))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenantDownload.StatusCode);
+
+        using (var detail = await SendAsAdminAsync($"/api/software-licenses/{_ownLicenseId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, detail.StatusCode);
+            using var payload = JsonDocument.Parse(await detail.Content.ReadAsStringAsync());
+            Assert.Equal(attachmentId, payload.RootElement.GetProperty("attachments")[0].GetProperty("id").GetGuid());
+        }
+
+        await SetCompanyRoleAsync("viewer");
+        using (var forbiddenDeleteWithMethod = await SendAsUserAsync(HttpMethod.Delete, $"/api/software-licenses/{_ownLicenseId}/attachments/{attachmentId}",
+            _userId, _companyId, requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, forbiddenDeleteWithMethod.StatusCode);
+        await SetCompanyRoleAsync("admin");
+
+        using (var delete = await SendAsUserAsync(HttpMethod.Delete, $"/api/software-licenses/{_ownLicenseId}/attachments/{attachmentId}",
+            _userId, _companyId, requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+        using (var missing = await SendAsAdminAsync($"/api/software-licenses/{_ownLicenseId}/attachments/{attachmentId}/file"))
+            Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+
+        await using var auditScope = _factory!.Services.CreateAsyncScope();
+        var auditDb = auditScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var attachmentActions = await auditDb.AuditEntries.AsNoTracking().Where(entry => entry.CompanyId == _companyId &&
+            entry.TargetType == "SoftwareLicense" && entry.TargetId == _ownLicenseId).Select(entry => entry.Action).ToListAsync();
+        Assert.Contains("AttachmentAdded", attachmentActions);
+        Assert.Contains("AttachmentRemoved", attachmentActions);
+    }
+
+    [Fact]
     public async Task Employee_photo_and_document_storage_are_scoped_to_the_active_company()
     {
         var pngSignature = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
@@ -1874,6 +1931,15 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         multipart.Add(new ByteArrayContent(bytes), "file", "profile.png");
         request.Content = multipart;
         return await _client!.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> SendLicenseAttachmentUploadAsync(Guid licenseId, byte[] bytes, string fileName,
+        string requestToken, string antiforgeryCookie)
+    {
+        using var multipart = new MultipartFormDataContent();
+        multipart.Add(new ByteArrayContent(bytes), "file", fileName);
+        return await SendAsUserAsync(HttpMethod.Post, $"/api/software-licenses/{licenseId}/attachments", _userId, _companyId,
+            multipart, requestToken, antiforgeryCookie);
     }
 
     private async Task SetCompanyRoleAsync(string role)

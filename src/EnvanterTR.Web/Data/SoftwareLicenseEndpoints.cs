@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +9,9 @@ namespace EnvanterTR.Web.Data;
 
 public static class SoftwareLicenseEndpoints
 {
+    private const long LicenseAttachmentMaxBytes = 10 * 1024 * 1024;
+    private const long LicenseAttachmentRequestBytes = LicenseAttachmentMaxBytes + 65_536;
+
     public static RouteGroupBuilder MapSoftwareLicenseEndpoints(this RouteGroupBuilder api)
     {
         api.MapSoftwareLicenseImportEndpoints();
@@ -157,8 +161,88 @@ public static class SoftwareLicenseEndpoints
                 .OrderByDescending(e => e.OccurredAt).Take(100).Select(e => new { e.EventType, e.Details, e.OccurredAt,
                     employee = db.Employees.Where(p => p.CompanyId == companyId && p.Id == e.EmployeeId).Select(p => p.DisplayName).FirstOrDefault(),
                     assetTag = db.Assets.Where(asset => asset.CompanyId == companyId && asset.Id == e.AssetId).Select(asset => asset.AssetTag).FirstOrDefault() }).ToListAsync(ct);
-            return Results.Ok(new { license, assignments, events });
+            var attachments = await db.SoftwareLicenseAttachments.AsNoTracking().Where(x => x.CompanyId == companyId && x.LicenseId == id)
+                .OrderByDescending(x => x.CreatedAt).Select(x => new { x.Id, x.OriginalFileName, x.ContentType, x.Length, x.CreatedAt,
+                    uploadedBy = db.Users.Where(actor => actor.Id == x.UploadedByUserId).Select(actor => actor.DisplayName).FirstOrDefault() }).ToListAsync(ct);
+            return Results.Ok(new { license, assignments, events, attachments, maxAttachmentCount = 30, maxAttachmentSizeBytes = LicenseAttachmentMaxBytes });
         }).RequireAuthorization("asset.read");
+
+        api.MapPost("/software-licenses/{id:guid}/attachments", async (Guid id, HttpRequest request, ClaimsPrincipal user,
+            AppDbContext db, IConfiguration configuration, CancellationToken ct) =>
+        {
+            if (!Company(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            if (!request.HasFormContentType) return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
+            var form = await request.ReadFormAsync(ct);
+            var upload = form.Files.GetFile("file");
+            if (upload is null || upload.Length is < 1 or > LicenseAttachmentMaxBytes)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Lisans dosyası 1 bayt ile 10 MB arasında olmalıdır."] });
+            await using var buffer = new MemoryStream((int)upload.Length);
+            await upload.CopyToAsync(buffer, ct);
+            var bytes = buffer.ToArray();
+            var detected = DetectLicenseAttachment(bytes);
+            if (detected is null) return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Yalnızca gerçek PDF, PNG, JPEG veya WebP dosyaları yüklenebilir."] });
+
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            var license = await db.SoftwareLicenses.FromSqlInterpolated($"SELECT * FROM \"SoftwareLicenses\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+                .SingleOrDefaultAsync(ct);
+            if (license is null) return Results.NotFound();
+            if (await db.SoftwareLicenseAttachments.CountAsync(x => x.CompanyId == companyId && x.LicenseId == id, ct) >= 30)
+                return Results.Conflict(new { message = "Bir lisansa en fazla 30 dosya eklenebilir." });
+
+            var attachmentId = Guid.NewGuid();
+            var storageName = $"{attachmentId:N}.{detected.Value.Extension}";
+            var originalName = CleanLicenseAttachmentName(upload.FileName, detected.Value.Extension);
+            var directory = LicenseAttachmentDirectory(configuration, companyId, id);
+            Directory.CreateDirectory(directory);
+            var destination = Path.Combine(directory, storageName);
+            var attachment = new SoftwareLicenseAttachment { Id = attachmentId, CompanyId = companyId, LicenseId = id, UploadedByUserId = actorId,
+                OriginalFileName = originalName, StorageFileName = storageName, ContentType = detected.Value.ContentType, Length = bytes.LongLength };
+            try
+            {
+                await System.IO.File.WriteAllBytesAsync(destination, bytes, ct);
+                db.SoftwareLicenseAttachments.Add(attachment);
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "SoftwareLicense", TargetId = id,
+                    Action = "AttachmentAdded", Details = $"Lisans dosyası eklendi ({detected.Value.ContentType}, {bytes.LongLength} bayt)." });
+                await db.SaveChangesAsync(ct);
+                await transaction.CommitAsync(ct);
+            }
+            catch
+            {
+                try { if (System.IO.File.Exists(destination)) System.IO.File.Delete(destination); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+                throw;
+            }
+            return Results.Created($"/api/software-licenses/{id}/attachments/{attachmentId}/file", new { attachment.Id, attachment.OriginalFileName,
+                attachment.ContentType, attachment.Length, attachment.CreatedAt });
+        }).RequireAuthorization("asset.write").WithMetadata(new RequestSizeLimitAttribute(LicenseAttachmentRequestBytes));
+
+        api.MapGet("/software-licenses/{id:guid}/attachments/{attachmentId:guid}/file", async (Guid id, Guid attachmentId,
+            ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken ct) =>
+        {
+            if (!Company(user, out var companyId)) return Results.Forbid();
+            var attachment = await db.SoftwareLicenseAttachments.AsNoTracking().SingleOrDefaultAsync(x =>
+                x.CompanyId == companyId && x.LicenseId == id && x.Id == attachmentId, ct);
+            if (attachment is null || !IsSafeLicenseAttachmentName(attachment.StorageFileName)) return Results.NotFound();
+            var path = Path.Combine(LicenseAttachmentDirectory(configuration, companyId, id), attachment.StorageFileName);
+            if (!System.IO.File.Exists(path)) return Results.NotFound();
+            var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024,
+                FileOptions.Asynchronous | FileOptions.SequentialScan);
+            return Results.File(stream, attachment.ContentType, attachment.OriginalFileName, enableRangeProcessing: false);
+        }).RequireAuthorization("asset.read");
+
+        api.MapDelete("/software-licenses/{id:guid}/attachments/{attachmentId:guid}", async (Guid id, Guid attachmentId,
+            ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken ct) =>
+        {
+            if (!Company(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var attachment = await db.SoftwareLicenseAttachments.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.LicenseId == id && x.Id == attachmentId, ct);
+            if (attachment is null) return Results.NotFound();
+            db.SoftwareLicenseAttachments.Remove(attachment);
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "SoftwareLicense", TargetId = id,
+                Action = "AttachmentRemoved", Details = $"Lisans dosyası kaldırıldı ({attachment.ContentType}, {attachment.Length} bayt)." });
+            await db.SaveChangesAsync(ct);
+            var path = Path.Combine(LicenseAttachmentDirectory(configuration, companyId, id), attachment.StorageFileName);
+            try { if (System.IO.File.Exists(path)) System.IO.File.Delete(path); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            return Results.NoContent();
+        }).RequireAuthorization("asset.write");
 
         api.MapPost("/software-licenses", async (LicenseRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
@@ -300,6 +384,24 @@ public static class SoftwareLicenseEndpoints
     };
 
     private static bool Company(ClaimsPrincipal user, out Guid id) => Guid.TryParse(user.FindFirstValue("company_id"), out id);
+    private static string LicenseAttachmentDirectory(IConfiguration configuration, Guid companyId, Guid licenseId) =>
+        Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media", companyId.ToString("N"), "licenses", licenseId.ToString("N"), "attachments");
+    private static string CleanLicenseAttachmentName(string? fileName, string extension)
+    {
+        var safe = Path.GetFileNameWithoutExtension(Path.GetFileName((fileName ?? "dosya").Replace('\\', '/')));
+        var filtered = new string(safe.Where(c => !char.IsControl(c) && c is not '/' and not '\\').ToArray()).Trim();
+        if (filtered.Length > 175) filtered = filtered[..175];
+        return $"{(string.IsNullOrWhiteSpace(filtered) ? "dosya" : filtered)}.{extension}";
+    }
+    private static bool IsSafeLicenseAttachmentName(string name) => Regex.IsMatch(name, "^[a-fA-F0-9]{32}\\.(pdf|png|jpg|webp)$", RegexOptions.CultureInvariant);
+    private static (string ContentType, string Extension)? DetectLicenseAttachment(ReadOnlySpan<byte> bytes)
+    {
+        if (bytes.Length >= 5 && bytes[..5].SequenceEqual("%PDF-"u8)) return ("application/pdf", "pdf");
+        if (bytes.Length >= 8 && bytes[..8].SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 })) return ("image/png", "png");
+        if (bytes.Length >= 3 && bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[2] == 0xff) return ("image/jpeg", "jpg");
+        if (bytes.Length >= 12 && bytes[..4].SequenceEqual("RIFF"u8) && bytes[8..12].SequenceEqual("WEBP"u8)) return ("image/webp", "webp");
+        return null;
+    }
     private static Guid? UserId(ClaimsPrincipal user) => Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
     private static string? Clean(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
     private static string CsvCell(string? value)

@@ -515,6 +515,19 @@ public sealed class SoftwareLicense
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class SoftwareLicenseAttachment
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid LicenseId { get; set; }
+    public Guid? UploadedByUserId { get; set; }
+    public required string OriginalFileName { get; set; }
+    public required string StorageFileName { get; set; }
+    public required string ContentType { get; set; }
+    public long Length { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class SoftwareLicenseAssignment
 {
     public Guid Id { get; set; } = Guid.NewGuid();

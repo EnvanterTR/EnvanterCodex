@@ -37,6 +37,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<ConsumableMovement> ConsumableMovements => Set<ConsumableMovement>();
     public DbSet<InventoryRequest> InventoryRequests => Set<InventoryRequest>();
     public DbSet<SoftwareLicense> SoftwareLicenses => Set<SoftwareLicense>();
+    public DbSet<SoftwareLicenseAttachment> SoftwareLicenseAttachments => Set<SoftwareLicenseAttachment>();
     public DbSet<SoftwareLicenseAssignment> SoftwareLicenseAssignments => Set<SoftwareLicenseAssignment>();
     public DbSet<SoftwareLicenseEvent> SoftwareLicenseEvents => Set<SoftwareLicenseEvent>();
     public DbSet<InventoryComponent> InventoryComponents => Set<InventoryComponent>();
@@ -195,6 +196,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AccessoryKitLine>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<Consumable>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<SoftwareLicense>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<SoftwareLicenseAttachment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<SoftwareLicenseAssignment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<InventoryComponent>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<ComponentAllocation>().HasAlternateKey(x => new { x.CompanyId, x.Id });
@@ -320,6 +322,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.UnitCost).HasPrecision(18, 2);
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.Notes).HasMaxLength(2000);
         modelBuilder.Entity<SoftwareLicense>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SoftwareLicenseAttachment>().Property(x => x.OriginalFileName).HasMaxLength(255).IsRequired();
+        modelBuilder.Entity<SoftwareLicenseAttachment>().Property(x => x.StorageFileName).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<SoftwareLicenseAttachment>().Property(x => x.ContentType).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<SoftwareLicenseAttachment>().HasIndex(x => new { x.CompanyId, x.LicenseId, x.CreatedAt });
+        modelBuilder.Entity<SoftwareLicenseAttachment>().ToTable("SoftwareLicenseAttachments", table =>
+            table.HasCheckConstraint("CK_SoftwareLicenseAttachments_Length", "\"Length\" BETWEEN 1 AND 10485760"));
+        modelBuilder.Entity<SoftwareLicenseAttachment>().HasOne<SoftwareLicense>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.LicenseId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SoftwareLicenseAttachment>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<SoftwareLicense>().HasIndex(x => new { x.CompanyId, x.Name });
         modelBuilder.Entity<SoftwareLicense>().HasIndex(x => new { x.CompanyId, x.ExpirationDate });
         modelBuilder.Entity<SoftwareLicense>().ToTable("SoftwareLicenses", table =>
