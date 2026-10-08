@@ -89,6 +89,8 @@ Bu, canlı sistemden bağımsız yerel bir restore provasıdır; gerçek Windows
 
 `restore.ps1` yedeğin parolasını/HMAC doğrulamasını, dosya manifestini ve PostgreSQL döküm kataloğunu canlı verilere dokunmadan denetler; dökümü ayrıca geçici bir hedef veritabanına yükleyip migration geçmişini kontrol eder. Canlı değişiklikten hemen önce mevcut sistem için yeni ve doğrulanmış bir güvenlik yedeği alır. Sonra veritabanı, şirket medyası ve Data Protection anahtarlarını değiştirir, uygulama migration'ını çalıştırır ve HTTPS sağlık kontrolünü bekler. Başarıda eski veritabanı ve medya/anahtar klasörleri kurtarma için korunur; hata halinde önceki adlar ve klasörler geri alınmaya çalışılır.
 
+Her PostgreSQL kurtarma komutu varsayılan olarak 30 dakika ile sınırlıdır. Komut takılırsa süreç ağacı sonlandırılır ve kurtarma, canlı sisteme geçmeden hata verir. Büyük veritabanlarında sınır `-PgToolTimeoutSeconds` parametresiyle artırılabilir (1–86.400 saniye).
+
 Yönetici PowerShell'de, sunucudaki yayın klasöründen çalıştırın:
 
 ```powershell

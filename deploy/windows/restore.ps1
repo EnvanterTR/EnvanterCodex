@@ -4,7 +4,8 @@ param(
     [string]$DataRoot = "$env:ProgramData\EnvanterTR",
     [string]$ServiceName = "EnvanterTR",
     [string]$PgBinDirectory = "$env:ProgramFiles\PostgreSQL\17\bin",
-    [string]$PassphraseFile
+    [string]$PassphraseFile,
+    [ValidateRange(1,86400)][int]$PgToolTimeoutSeconds = 1800
 )
 
 $ErrorActionPreference = "Stop"
@@ -49,13 +50,22 @@ function Invoke-PgTool([string]$Executable,[string[]]$Arguments,[hashtable]$Envi
     $start.RedirectStandardError = $true
     foreach ($key in $Environment.Keys) { $start.EnvironmentVariables[$key] = [string]$Environment[$key] }
     $process = [Diagnostics.Process]::Start($start)
-    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-    $stderrTask = $process.StandardError.ReadToEndAsync()
-    $process.WaitForExit()
-    $stdout = $stdoutTask.Result
-    $stderr = $stderrTask.Result
-    if ($process.ExitCode -ne 0) { throw "$([IO.Path]::GetFileName($Executable)) failed with exit code $($process.ExitCode): $stderr" }
-    return $stdout
+    try {
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        if (-not $process.WaitForExit($PgToolTimeoutSeconds * 1000)) {
+            try { $process.Kill($true) } catch { }
+            $process.WaitForExit()
+            throw "$([IO.Path]::GetFileName($Executable)) exceeded the $PgToolTimeoutSeconds-second recovery command limit and was terminated."
+        }
+        $process.WaitForExit()
+        $stdout = $stdoutTask.Result
+        $stderr = $stderrTask.Result
+        if ($process.ExitCode -ne 0) { throw "$([IO.Path]::GetFileName($Executable)) failed with exit code $($process.ExitCode): $stderr" }
+        return $stdout
+    } finally {
+        $process.Dispose()
+    }
 }
 function Quote-SqlIdentifier([string]$Value) { return '"' + $Value.Replace('"','""') + '"' }
 function Quote-SqlLiteral([string]$Value) { return "'" + $Value.Replace("'","''") + "'" }
