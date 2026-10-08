@@ -390,12 +390,32 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Employee_photo_storage_is_scoped_to_the_active_company()
+    public async Task Employee_photo_and_document_storage_are_scoped_to_the_active_company()
     {
         var pngSignature = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+        var documentId = Guid.NewGuid();
+        var otherCompanyDocumentId = Guid.NewGuid();
+        var pdfBytes = System.Text.Encoding.ASCII.GetBytes("%PDF-1.4\n%%EOF");
         var ownPhotoDirectory = Path.Combine(_mediaPath, _companyId.ToString("N"), "employees", _ownEmployeeId.ToString("N"));
         Directory.CreateDirectory(ownPhotoDirectory);
         await File.WriteAllBytesAsync(Path.Combine(ownPhotoDirectory, "profile.png"), pngSignature);
+        var ownDocumentDirectory = Path.Combine(ownPhotoDirectory, "documents");
+        Directory.CreateDirectory(ownDocumentDirectory);
+        await File.WriteAllBytesAsync(Path.Combine(ownDocumentDirectory, $"{documentId:N}.pdf"), pdfBytes);
+        var otherCompanyDocumentDirectory = Path.Combine(_mediaPath, _otherCompanyId.ToString("N"), "employees", _otherCompanyEmployeeId.ToString("N"), "documents");
+        Directory.CreateDirectory(otherCompanyDocumentDirectory);
+        await File.WriteAllBytesAsync(Path.Combine(otherCompanyDocumentDirectory, $"{otherCompanyDocumentId:N}.pdf"), pdfBytes);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.EmployeeDocuments.AddRange(
+                new EmployeeDocument { Id = documentId, CompanyId = _companyId, EmployeeId = _ownEmployeeId,
+                    OriginalFileName = "own.pdf", StorageFileName = $"{documentId:N}.pdf", ContentType = "application/pdf", Length = pdfBytes.Length },
+                new EmployeeDocument { Id = otherCompanyDocumentId, CompanyId = _otherCompanyId, EmployeeId = _otherCompanyEmployeeId,
+                    OriginalFileName = "other.pdf", StorageFileName = $"{otherCompanyDocumentId:N}.pdf", ContentType = "application/pdf", Length = pdfBytes.Length });
+            await db.SaveChangesAsync();
+        }
 
         using (var ownPhotoResponse = await SendAsAdminAsync($"/api/employees/{_ownEmployeeId}/photo"))
         {
@@ -405,6 +425,15 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         }
         using (var crossCompanyPhotoResponse = await SendAsAdminAsync($"/api/employees/{_otherCompanyEmployeeId}/photo"))
             Assert.Equal(HttpStatusCode.NotFound, crossCompanyPhotoResponse.StatusCode);
+
+        using (var ownDocumentResponse = await SendAsAdminAsync($"/api/employees/{_ownEmployeeId}/documents/{documentId}/file"))
+        {
+            Assert.Equal(HttpStatusCode.OK, ownDocumentResponse.StatusCode);
+            Assert.Equal("application/pdf", ownDocumentResponse.Content.Headers.ContentType?.MediaType);
+            Assert.Equal(pdfBytes, await ownDocumentResponse.Content.ReadAsByteArrayAsync());
+        }
+        using (var crossCompanyDocumentResponse = await SendAsAdminAsync($"/api/employees/{_otherCompanyEmployeeId}/documents/{otherCompanyDocumentId}/file"))
+            Assert.Equal(HttpStatusCode.NotFound, crossCompanyDocumentResponse.StatusCode);
     }
 
     private async Task<HttpResponseMessage> SendAsAdminAsync(string path, Guid? companyId = null)
