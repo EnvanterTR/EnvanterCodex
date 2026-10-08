@@ -89,6 +89,10 @@ jobs:
         shell: pwsh
         run: ./deploy/windows/tests/backup-crypto-check.ps1
 
+      - name: Validate local Windows backup ACLs
+        shell: pwsh
+        run: ./deploy/local/tests/private-acl-check.ps1
+
       - name: Validate backup alert handling
         shell: pwsh
         run: ./deploy/windows/tests/backup-alert-check.ps1
