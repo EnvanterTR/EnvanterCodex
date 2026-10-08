@@ -248,6 +248,8 @@ public static class OperationalEndpoints
                     x.EmployeeNumber, x.DisplayName, x.Email, x.Department, x.JobTitle, x.Phone, x.Location, x.StartedOn, x.IsActive,
                     ManagerName = db.Employees.Where(manager => manager.CompanyId == companyId && manager.Id == x.ManagerEmployeeId)
                         .Select(manager => manager.DisplayName).FirstOrDefault(),
+                    ManagerEmployeeNumber = db.Employees.Where(manager => manager.CompanyId == companyId && manager.Id == x.ManagerEmployeeId)
+                        .Select(manager => manager.EmployeeNumber).FirstOrDefault(),
                     x.CreatedAt
                 }).ToListAsync(cancellationToken);
             static string Cell(string? value)
@@ -257,12 +259,12 @@ public static class OperationalEndpoints
                 var safe = trimmed.Length > 0 && trimmed[0] is '=' or '+' or '-' or '@' or '\t' or '\r' ? "'" + value : value;
                 return "\"" + safe.Replace("\"", "\"\"") + "\"";
             }
-            var csv = new StringBuilder("\uFEFF\"Personel No\",\"Ad Soyad\",\"E-posta\",\"Departman\",\"Görev Unvanı\",\"Telefon\",\"Konum\",\"İşe Başlama Tarihi\",\"Yönetici\",\"Durum\",\"Kayıt Tarihi\"\r\n");
+            var csv = new StringBuilder("\uFEFF\"Personel No\",\"Ad Soyad\",\"E-posta\",\"Departman\",\"Görev Unvanı\",\"Telefon\",\"Konum\",\"İşe Başlama Tarihi\",\"Yönetici\",\"Durum\",\"Kayıt Tarihi\",\"Yönetici Personel No\"\r\n");
             foreach (var row in rows)
                 csv.AppendJoin(',', new[] { Cell(row.EmployeeNumber), Cell(row.DisplayName), Cell(row.Email),
                     Cell(row.Department), Cell(row.JobTitle), Cell(row.Phone), Cell(row.Location),
                     Cell(row.StartedOn?.ToString("yyyy-MM-dd")), Cell(row.ManagerName), Cell(row.IsActive ? "Etkin" : "Pasif"),
-                    Cell(row.CreatedAt.ToString("O")) }).Append("\r\n");
+                    Cell(row.CreatedAt.ToString("O")), Cell(row.ManagerEmployeeNumber) }).Append("\r\n");
             context.Response.Headers["X-Total-Count"] = total.ToString(System.Globalization.CultureInfo.InvariantCulture);
             var bytes = Encoding.UTF8.GetBytes(csv.ToString());
             return Results.File(bytes, "text/csv; charset=utf-8", $"envantertr-calisanlar-{DateTime.UtcNow:yyyyMMdd}.csv");

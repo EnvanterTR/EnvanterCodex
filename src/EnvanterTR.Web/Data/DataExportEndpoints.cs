@@ -99,17 +99,24 @@ public static class DataExportEndpoints
         { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV tırnak/ayraç biçimi bozuk." } }); }
         catch (Exception exception) when (isXlsx && exception is InvalidDataException or InvalidOperationException or System.Xml.XmlException or OverflowException)
         { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { exception.Message } }); }
-        string[] header = ["Personel No", "Ad Soyad", "E-posta", "Departman", "Görev Unvanı", "Telefon", "Konum", "İşe Başlama Tarihi"];
-        if (rows.Count is < 2 || rows.Count > CsvImportMaxRows + 1 || !rows[0].SequenceEqual(header, StringComparer.OrdinalIgnoreCase))
-            return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"İçe aktarma şablonunu kullanın: başlık satırı ve en fazla {CsvImportMaxRows:N0} çalışan satırı." } });
+        string[] baseHeader = ["Personel No", "Ad Soyad", "E-posta", "Departman", "Görev Unvanı", "Telefon", "Konum", "İşe Başlama Tarihi"];
+        string[] legacyExportHeader = [.. baseHeader, "Yönetici", "Durum", "Kayıt Tarihi"];
+        string[] exportHeader = [.. legacyExportHeader, "Yönetici Personel No"];
+        var hasRoundTripManagerColumn = rows.Count > 0 && rows[0].SequenceEqual(exportHeader, StringComparer.OrdinalIgnoreCase);
+        var hasExportColumns = hasRoundTripManagerColumn || rows.Count > 0 && rows[0].SequenceEqual(legacyExportHeader, StringComparer.OrdinalIgnoreCase);
+        if (rows.Count is < 2 || rows.Count > CsvImportMaxRows + 1 ||
+            (!hasExportColumns && !rows[0].SequenceEqual(baseHeader, StringComparer.OrdinalIgnoreCase)))
+            return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Çalışan şablonunu kullanın veya uygulamadan alınan çalışan CSV'sini yükleyin. En fazla {CsvImportMaxRows:N0} satır aktarılabilir." } });
 
         var errors = new List<string>();
         var seenNumbers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var employees = new List<Employee>(rows.Count - 1);
+        var managerNumbers = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var (row, index) in rows.Skip(1).Select((row, index) => (row, index)))
         {
             var line = index + 2;
-            if (row.Count != header.Length) { AddError(errors, $"{line}. satırda {header.Length} sütun olmalıdır."); continue; }
+            var expectedColumns = hasExportColumns ? exportHeader.Length : baseHeader.Length;
+            if (row.Count != expectedColumns) { AddError(errors, $"{line}. satırda {expectedColumns} sütun olmalıdır."); continue; }
             var number = row[0].Trim().ToUpperInvariant();
             var name = row[1].Trim();
             var email = CleanCsv(row[2]); var department = CleanCsv(row[3]); var jobTitle = CleanCsv(row[4]);
@@ -126,14 +133,68 @@ public static class DataExportEndpoints
                 if (DateOnly.TryParseExact(row[7].Trim(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsedDate)) startedOn = parsedDate;
                 else AddError(errors, $"{line}. satırdaki işe başlama tarihi yyyy-AA-gg biçiminde olmalıdır.");
             }
-            employees.Add(new Employee { CompanyId = companyId, EmployeeNumber = number, DisplayName = name,
-                Email = email, Department = department, JobTitle = jobTitle, Phone = phone, Location = location, StartedOn = startedOn });
+            var employee = new Employee { CompanyId = companyId, EmployeeNumber = number, DisplayName = name,
+                Email = email, Department = department, JobTitle = jobTitle, Phone = phone, Location = location, StartedOn = startedOn };
+            if (hasExportColumns)
+            {
+                var activeText = row[9].Trim();
+                if (activeText.Equals("Etkin", StringComparison.OrdinalIgnoreCase)) employee.IsActive = true;
+                else if (activeText.Equals("Pasif", StringComparison.OrdinalIgnoreCase)) employee.IsActive = false;
+                else AddError(errors, $"{line}. satırdaki durum Etkin veya Pasif olmalıdır.");
+                var managerNumber = hasRoundTripManagerColumn ? CleanCsv(row[11])?.ToUpperInvariant() : null;
+                if (managerNumber is { Length: > 80 }) AddError(errors, $"{line}. satırdaki yönetici personel numarası 80 karakteri aşamaz.");
+                managerNumbers[number] = managerNumber;
+            }
+            employees.Add(employee);
         }
         var numbers = seenNumbers.ToArray();
         var existingNumbers = await db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId && numbers.Contains(x.EmployeeNumber.ToUpper()))
             .Select(x => x.EmployeeNumber).ToListAsync(cancellationToken);
         if (existingNumbers.Count > 0)
             AddError(errors, $"Şirkette zaten kayıtlı personel numaraları var: {string.Join(", ", existingNumbers.Take(10))}{(existingNumbers.Count > 10 ? "…" : "")}");
+
+        if (hasExportColumns && hasRoundTripManagerColumn)
+        {
+            var managerNumberList = managerNumbers.Values.Where(x => x is not null).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            var existingManagers = await db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId && managerNumberList.Contains(x.EmployeeNumber.ToUpper()))
+                .Select(x => new { x.Id, x.EmployeeNumber, x.IsActive, x.ManagerEmployeeId }).ToListAsync(cancellationToken);
+            var importedByNumber = employees.GroupBy(x => x.EmployeeNumber, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+            var existingByNumber = existingManagers.ToDictionary(x => x.EmployeeNumber, StringComparer.OrdinalIgnoreCase);
+            foreach (var employee in employees)
+            {
+                if (!managerNumbers.TryGetValue(employee.EmployeeNumber, out var managerNumber) || managerNumber is null) continue;
+                if (string.Equals(employee.EmployeeNumber, managerNumber, StringComparison.OrdinalIgnoreCase))
+                { AddError(errors, $"{employee.EmployeeNumber} numaralı çalışan kendisini yönetici seçemez."); continue; }
+                if (importedByNumber.TryGetValue(managerNumber, out var importedManager))
+                {
+                    if (!importedManager.IsActive) { AddError(errors, $"{employee.EmployeeNumber} için yönetici olarak seçilen {managerNumber} pasif."); continue; }
+                    employee.ManagerEmployeeId = importedManager.Id;
+                }
+                else if (existingByNumber.TryGetValue(managerNumber, out var existingManager) && existingManager.IsActive)
+                    employee.ManagerEmployeeId = existingManager.Id;
+                else AddError(errors, $"{employee.EmployeeNumber} için {managerNumber} numaralı etkin yönetici aynı şirket dosyasında veya kayıtlarında bulunamadı.");
+            }
+            if (errors.Count == 0)
+            {
+                var hierarchy = await db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId)
+                    .Select(x => new { x.Id, x.ManagerEmployeeId }).ToDictionaryAsync(x => x.Id, x => x.ManagerEmployeeId, cancellationToken);
+                foreach (var employee in employees) hierarchy[employee.Id] = employee.ManagerEmployeeId;
+                var cycleDetected = false;
+                foreach (var employee in employees)
+                {
+                    var visited = new HashSet<Guid>();
+                    Guid? ancestor = employee.Id;
+                    while (ancestor is Guid ancestorId && hierarchy.TryGetValue(ancestorId, out var next))
+                    {
+                        if (!visited.Add(ancestorId)) { cycleDetected = true; break; }
+                        ancestor = next;
+                    }
+                    if (cycleDetected) break;
+                }
+                if (cycleDetected) AddError(errors, "Yönetici personel numaraları çalışan-yönetici döngüsü oluşturuyor.");
+            }
+        }
         var cleanErrors = errors.Distinct(StringComparer.Ordinal).Take(30).ToArray();
         if (cleanErrors.Length > 0)
             return Results.UnprocessableEntity(new { isValid = false, rowCount = rows.Count - 1, errors = cleanErrors, message = "Dosyada düzeltilmesi gereken alanlar bulundu. Hiçbir çalışan eklenmedi." });

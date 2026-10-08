@@ -147,6 +147,12 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 - İlk kurulum başarısızlıkla yarıda kalırsa tekrar çağrı, yalnızca root sahipli `0600` yapılandırmayı, `initial-<UTC damgası>` sürüm dizinini ve root sahipli yedek parolasını doğrulayarak devam eder. Aynı alan adı ve kimlik bilgileri korunur; başka sürümü gösteren `current` bağlantısı veya tamamlanmış kurulum reddedilir. Mevcut volume'lar hiçbir aşamada silinmez.
 - Linux CI'a resume akışı için izole komut taklitli kurulum senaryosu eklendi: HTTPS hazır olma adımında ilk çağrı bilerek başarısız oluyor, farklı DNS adıyla devam denemesi sırları değiştirmeden reddediliyor ve doğru DNS adıyla tekrar çağrı aynı config/yedek parolası/sürümle tamamlanıyor. Tüm Linux dağıtım betikleri `bash -n` kontrolünden ve restore sıralama kontrolü geçti; `git diff --check` temiz. Bu fixture gerçek Docker Engine, Ubuntu/systemd veya HTTPS sertifikası doğrulamasının yerine geçmez.
 
+## 2026-10-08 Çalışan CSV dışa aktarma/geri aktarma
+
+- Çalışan CSV dışa aktarımı 8 sütunlu import şablonuyla uyumlu değildi. Dışa aktarılan dosyalar artık içe aktarma tarafından doğrudan tanınır; `Yönetici Personel No` sütunu eklendi ve etkin/pasif durumu korunur. Önceki 8 sütunlu şablon ve önceki 11 sütunlu dışa aktarımlar da kabul edilmeye devam eder.
+- Önizleme yönetici personel numarasını aynı dosya veya şirketteki etkin çalışanla çözer; eksik/pasif yöneticileri, kendini yönetici seçmeyi ve çalışan-yönetici döngülerini işlem başlamadan reddeder. CSV/Excel biçimindeki atomik kayıt ekleme mevcut işlem kaydını kullanır.
+- Kullanıcıya görünen çalışan aktarım penceresi yeni round-trip davranışını ve güvenli reddetme kurallarını açıklar. Değişiklik sonrası Docker Release derlemesi başarılı oldu; paket yerel önizleme konteynerine alındı. GitHub Actions çalışması push sonrasında ayrıca doğrulanacak.
+
 ## 2026-10-08 Windows güncelleme öncesi otomatik yedek
 
 - `deploy/windows/update.ps1` artık dosya/migration işleminden önce `backup.ps1` ile yeni şifreli tam yedek alır. Yedek oluşturma şifre, HMAC, manifest/SHA-256 ve PostgreSQL 17 izole geri yükleme provasını tamamlamalıdır; çıkan `.etbackup` ve `.sha256` dosyası tekrar hash eşleşmesiyle doğrulanır.
