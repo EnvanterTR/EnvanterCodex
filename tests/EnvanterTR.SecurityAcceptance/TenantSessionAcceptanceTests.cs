@@ -30,6 +30,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     private readonly Guid _companyId = Guid.NewGuid();
     private readonly Guid _otherCompanyId = Guid.NewGuid();
     private readonly Guid _ownAssetId = Guid.NewGuid();
+    private readonly Guid _ownSecondAssetId = Guid.NewGuid();
     private readonly Guid _otherCompanyAssetId = Guid.NewGuid();
     private readonly Guid _ownLicenseId = Guid.NewGuid();
     private readonly Guid _otherCompanyLicenseId = Guid.NewGuid();
@@ -412,6 +413,46 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(3, components[0].GetProperty("remaining").GetInt32());
         Assert.DoesNotContain(accessories, item => item.GetProperty("accessoryName").GetString()?.StartsWith("OTHER-SECURITY-", StringComparison.Ordinal) == true);
         Assert.DoesNotContain(components, item => item.GetProperty("componentName").GetString()?.StartsWith("OTHER-SECURITY-", StringComparison.Ordinal) == true);
+    }
+
+    [Fact]
+    public async Task Asset_hierarchy_is_tenant_scoped_and_rejects_cycles()
+    {
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var categoryId = await db.Assets.Where(x => x.CompanyId == _companyId && x.Id == _ownAssetId).Select(x => x.CategoryId).SingleAsync();
+            db.Assets.Add(new Asset { Id = _ownSecondAssetId, CompanyId = _companyId, AssetTag = "OWN-2", Name = "Own child asset", CategoryId = categoryId });
+            await db.SaveChangesAsync();
+        }
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using var childDetail = await SendAsAdminAsync($"/api/assets/{_ownSecondAssetId}");
+        using var childPayload = JsonDocument.Parse(await childDetail.Content.ReadAsStringAsync());
+        var childUpdatedAt = childPayload.RootElement.GetProperty("asset").GetProperty("updatedAt").GetDateTimeOffset();
+        using (var crossTenant = await SendAsRoleAsync(HttpMethod.Patch, $"/api/assets/{_ownSecondAssetId}/parent", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { parentAssetId = _otherCompanyAssetId, expectedUpdatedAt = childUpdatedAt }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, crossTenant.StatusCode);
+        using (var link = await SendAsRoleAsync(HttpMethod.Patch, $"/api/assets/{_ownSecondAssetId}/parent", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { parentAssetId = _ownAssetId, expectedUpdatedAt = childUpdatedAt }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, link.StatusCode);
+
+        using var parentDetail = await SendAsAdminAsync($"/api/assets/{_ownAssetId}");
+        using var parentPayload = JsonDocument.Parse(await parentDetail.Content.ReadAsStringAsync());
+        var parentUpdatedAt = parentPayload.RootElement.GetProperty("asset").GetProperty("updatedAt").GetDateTimeOffset();
+        using (var cycle = await SendAsRoleAsync(HttpMethod.Patch, $"/api/assets/{_ownAssetId}/parent", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { parentAssetId = _ownSecondAssetId, expectedUpdatedAt = parentUpdatedAt }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, cycle.StatusCode);
+
+        using var parentWithChildren = await SendAsAdminAsync($"/api/assets/{_ownAssetId}");
+        using var parentWithChildrenPayload = JsonDocument.Parse(await parentWithChildren.Content.ReadAsStringAsync());
+        Assert.Equal("Child", Assert.Single(parentWithChildrenPayload.RootElement.GetProperty("relatedAssets").EnumerateArray()).GetProperty("relationship").GetString());
     }
 
     [Fact]

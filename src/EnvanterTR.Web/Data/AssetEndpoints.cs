@@ -1,3 +1,4 @@
+using System.Data;
 using System.Security.Claims;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -1174,6 +1175,64 @@ public static class AssetEndpoints
             });
         }).RequireAuthorization("asset.read");
 
+        api.MapPatch("/assets/{id:guid}/parent", async (Guid id, [FromBody] SetAssetParentRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var current = await db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
+                .Select(x => new { x.ParentAssetId, x.UpdatedAt }).SingleOrDefaultAsync(cancellationToken);
+            if (current is null) return Results.NotFound();
+            if (current.UpdatedAt != request.ExpectedUpdatedAt)
+                return Results.Conflict(new { message = "Varlık başka bir kullanıcı tarafından güncellendi. Yenileyip tekrar deneyin." });
+            if (current.ParentAssetId == request.ParentAssetId)
+                return Results.Ok(new { id, parentAssetId = current.ParentAssetId, changed = false });
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+
+            string? parentTag = null;
+            if (request.ParentAssetId is { } parentId)
+            {
+                var parent = await db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == parentId)
+                    .Select(x => new { x.AssetTag, x.Status, x.ParentAssetId }).SingleOrDefaultAsync(cancellationToken);
+                if (parent is null) return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentAssetId"] = ["Üst varlık aynı şirkette bulunamadı."] });
+                if (parent.Status == AssetStatuses.Archived)
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentAssetId"] = ["Arşivlenmiş bir varlık üst varlık olarak seçilemez."] });
+                parentTag = parent.AssetTag;
+
+                var visited = new HashSet<Guid>();
+                var cursor = request.ParentAssetId;
+                while (cursor is { } ancestorId)
+                {
+                    if (ancestorId == id) return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentAssetId"] = ["Varlık hiyerarşisinde döngü oluşturulamaz."] });
+                    if (!visited.Add(ancestorId) || visited.Count > 100)
+                        return Results.Conflict(new { message = "Üst varlık zinciri geçersiz veya çok derin; ilişki güncellenemedi." });
+                    cursor = await db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == ancestorId)
+                        .Select(x => x.ParentAssetId).SingleOrDefaultAsync(cancellationToken);
+                }
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            try
+            {
+                var affected = await db.Assets.Where(x => x.CompanyId == companyId && x.Id == id && x.UpdatedAt == request.ExpectedUpdatedAt)
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.ParentAssetId, request.ParentAssetId).SetProperty(x => x.UpdatedAt, now), cancellationToken);
+                if (affected == 0)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return Results.Conflict(new { message = "Varlık başka bir kullanıcı tarafından güncellendi. Yenileyip tekrar deneyin." });
+                }
+                db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = id, ActorUserId = CurrentUserId(user),
+                    EventType = "ParentChanged", Details = parentTag is null ? "Üst varlık bağlantısı kaldırıldı." : $"Üst varlık {parentTag} olarak ayarlandı." });
+                await db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return Results.Conflict(new { message = "Varlık bağlantısı güncellenemedi. Son durumu yenileyip tekrar deneyin." });
+            }
+            return Results.Ok(new { id, parentAssetId = request.ParentAssetId, updatedAt = now, changed = true });
+        }).RequireAuthorization("asset.write");
+
         api.MapGet("/assets/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db,
             CancellationToken cancellationToken) =>
         {
@@ -1184,10 +1243,15 @@ public static class AssetEndpoints
                 {
                     x.Id, x.AssetTag, x.Name, x.Status, x.SerialNumber, x.Location,
                     x.LocationCatalogId,
-                    x.CategoryId, x.BrandId, x.ModelId, x.AssignedEmployeeId,
+                    x.CategoryId, x.BrandId, x.ModelId, x.ParentAssetId, x.AssignedEmployeeId,
                     x.PurchaseDate, x.WarrantyExpiresAt, x.NextAuditOn, x.PurchaseCost, x.Currency, x.IsRequestable, x.CreatedAt, x.UpdatedAt
                 }).SingleOrDefaultAsync(cancellationToken);
             if (asset is null) return Results.NotFound();
+            var relatedAssets = await db.Assets.AsNoTracking()
+                .Where(x => x.CompanyId == companyId && (x.ParentAssetId == id || x.Id == asset.ParentAssetId))
+                .OrderBy(x => x.AssetTag)
+                .Select(x => new { x.Id, x.AssetTag, x.Name, x.Status, relationship = x.Id == asset.ParentAssetId ? "Parent" : "Child" })
+                .ToListAsync(cancellationToken);
             var references = new
             {
                 category = await db.AssetCategories.Where(x => x.CompanyId == companyId && x.Id == asset.CategoryId).Select(x => x.Name).SingleOrDefaultAsync(cancellationToken),
@@ -1270,7 +1334,7 @@ public static class AssetEndpoints
                 .Select(x => new { x.Id, x.OriginalFileName, x.ContentType, x.Length, x.CreatedAt,
                     uploadedBy = db.Users.Where(actor => actor.Id == x.UploadedByUserId).Select(actor => actor.DisplayName).FirstOrDefault() })
                 .ToListAsync(cancellationToken);
-            return Results.Ok(new { asset, references, accessories = accessoryAssignments, components = componentAllocations, softwareLicenses, history, attachments });
+            return Results.Ok(new { asset, references, relatedAssets, accessories = accessoryAssignments, components = componentAllocations, softwareLicenses, history, attachments });
         }).RequireAuthorization("asset.read");
 
         api.MapGet("/assets/audit-schedule", async (DateOnly? through, string? q, string? state, ClaimsPrincipal user,

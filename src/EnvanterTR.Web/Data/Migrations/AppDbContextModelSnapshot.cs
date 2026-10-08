@@ -471,6 +471,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateOnly?>("NextAuditOn")
                         .HasColumnType("date");
 
+                    b.Property<Guid?>("ParentAssetId")
+                        .HasColumnType("uuid");
+
                     b.Property<decimal?>("PurchaseCost")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -507,6 +510,8 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("CompanyId", "NextAuditOn");
 
+                    b.HasIndex("CompanyId", "ParentAssetId");
+
                     b.HasIndex("CompanyId", "SerialNumber");
 
                     b.HasIndex("CompanyId", "WarrantyExpiresAt");
@@ -520,6 +525,8 @@ namespace EnvanterTR.Web.Data.Migrations
                             t.HasCheckConstraint("CK_Assets_Currency", "char_length(\"Currency\") = 3");
 
                             t.HasCheckConstraint("CK_Assets_NonnegativeCost", "\"PurchaseCost\" IS NULL OR \"PurchaseCost\" >= 0");
+
+                            t.HasCheckConstraint("CK_Assets_NotOwnParent", "\"ParentAssetId\" IS NULL OR \"ParentAssetId\" <> \"Id\"");
 
                             t.HasCheckConstraint("CK_Assets_Status", "\"Status\" IN ('Available', 'Deployed', 'Pending', 'Maintenance', 'Unusable', 'Archived')");
                         });
@@ -2433,6 +2440,12 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasOne("EnvanterTR.Web.Data.CompanyLocation", null)
                         .WithMany()
                         .HasForeignKey("CompanyId", "LocationCatalogId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EnvanterTR.Web.Data.Asset", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "ParentAssetId")
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Restrict);
                 });

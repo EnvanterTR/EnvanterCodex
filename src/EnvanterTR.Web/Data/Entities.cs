@@ -182,6 +182,7 @@ public sealed class Asset
     public Guid CategoryId { get; set; }
     public Guid? BrandId { get; set; }
     public Guid? ModelId { get; set; }
+    public Guid? ParentAssetId { get; set; }
     public string Status { get; set; } = AssetStatuses.Available;
     public string? SerialNumber { get; set; }
     public string? Location { get; set; }

@@ -491,6 +491,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.AssignedEmployeeId });
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.Location });
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.LocationCatalogId });
+        modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.ParentAssetId });
         modelBuilder.Entity<Asset>().HasOne<CompanyLocation>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.LocationCatalogId })
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
@@ -519,10 +520,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             table.HasCheckConstraint("CK_Assets_AssignmentStatus", "(\"Status\" = 'Deployed' AND \"AssignedEmployeeId\" IS NOT NULL) OR (\"Status\" <> 'Deployed' AND \"AssignedEmployeeId\" IS NULL)");
             table.HasCheckConstraint("CK_Assets_NonnegativeCost", "\"PurchaseCost\" IS NULL OR \"PurchaseCost\" >= 0");
             table.HasCheckConstraint("CK_Assets_Currency", "char_length(\"Currency\") = 3");
+            table.HasCheckConstraint("CK_Assets_NotOwnParent", "\"ParentAssetId\" IS NULL OR \"ParentAssetId\" <> \"Id\"");
         });
         modelBuilder.Entity<Asset>().HasOne<AssetCategory>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.CategoryId })
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Asset>().HasOne<Asset>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ParentAssetId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
 
         modelBuilder.Entity<AssetEvent>().HasIndex(x => new { x.CompanyId, x.AssetId, x.OccurredAt });
         modelBuilder.Entity<AssetEvent>().Property(x => x.EventType).HasMaxLength(60).IsRequired();
