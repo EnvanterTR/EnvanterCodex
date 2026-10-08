@@ -173,6 +173,21 @@ public sealed class AssetModel
     public required string Name { get; set; }
 }
 
+public sealed class AssetCustomFieldDefinition
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public required string Key { get; set; }
+    public required string Name { get; set; }
+    public required string FieldType { get; set; }
+    public string? OptionsJson { get; set; }
+    public bool IsRequired { get; set; }
+    public int SortOrder { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class Asset
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -196,6 +211,7 @@ public sealed class Asset
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
     public bool IsRequestable { get; set; }
+    public string? CustomFieldsJson { get; set; }
 }
 
 public sealed class SavedAssetSearch

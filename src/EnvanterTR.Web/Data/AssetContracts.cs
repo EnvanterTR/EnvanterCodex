@@ -12,7 +12,8 @@ public sealed record CreateAssetRequest(
     DateOnly? WarrantyExpiresAt,
     decimal? PurchaseCost,
     string? Currency,
-    bool? IsRequestable = null);
+    bool? IsRequestable = null,
+    Dictionary<string, string>? CustomFields = null);
 
 public sealed record UpdateAssetRequest(
     string AssetTag,
@@ -27,7 +28,16 @@ public sealed record UpdateAssetRequest(
     decimal? PurchaseCost,
     string? Currency,
     DateTimeOffset ExpectedUpdatedAt,
-    bool? IsRequestable = null);
+    bool? IsRequestable = null,
+    Dictionary<string, string>? CustomFields = null);
+
+public sealed record AssetCustomFieldDefinitionRequest(
+    string Key,
+    string Name,
+    string FieldType,
+    string[]? Options,
+    bool IsRequired,
+    int SortOrder = 0);
 
 public sealed record CreateLookupRequest(string Name, Guid? BrandId = null);
 public sealed record RenameLookupRequest(string Name);

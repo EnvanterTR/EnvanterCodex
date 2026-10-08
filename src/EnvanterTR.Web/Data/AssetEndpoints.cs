@@ -2,6 +2,7 @@ using System.Data;
 using System.Security.Claims;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 using System.Globalization;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
@@ -46,6 +47,7 @@ public static class AssetEndpoints
         api.MapAccessoryKitEndpoints();
         api.MapSavedAssetSearchEndpoints();
         api.MapDashboardPreferenceEndpoints();
+        api.MapAssetCustomFieldEndpoints();
 
         api.MapGet("/assets", async ([FromQuery] string? q, [FromQuery] string? status,
             [FromQuery] Guid? categoryId, [FromQuery] Guid? brandId, [FromQuery] Guid? modelId,
@@ -1246,7 +1248,8 @@ public static class AssetEndpoints
                     x.Id, x.AssetTag, x.Name, x.Status, x.SerialNumber, x.Location,
                     x.LocationCatalogId,
                     x.CategoryId, x.BrandId, x.ModelId, x.ParentAssetId, x.AssignedEmployeeId,
-                    x.PurchaseDate, x.WarrantyExpiresAt, x.NextAuditOn, x.PurchaseCost, x.Currency, x.IsRequestable, x.CreatedAt, x.UpdatedAt
+                    x.PurchaseDate, x.WarrantyExpiresAt, x.NextAuditOn, x.PurchaseCost, x.Currency, x.IsRequestable, x.CreatedAt, x.UpdatedAt,
+                    x.CustomFieldsJson
                 }).SingleOrDefaultAsync(cancellationToken);
             if (asset is null) return Results.NotFound();
             var relatedAssets = await db.Assets.AsNoTracking()
@@ -1336,7 +1339,14 @@ public static class AssetEndpoints
                 .Select(x => new { x.Id, x.OriginalFileName, x.ContentType, x.Length, x.CreatedAt,
                     uploadedBy = db.Users.Where(actor => actor.Id == x.UploadedByUserId).Select(actor => actor.DisplayName).FirstOrDefault() })
                 .ToListAsync(cancellationToken);
-            return Results.Ok(new { asset, references, relatedAssets, accessories = accessoryAssignments, components = componentAllocations, softwareLicenses, history, attachments });
+            Dictionary<string, string> customFields;
+            try { customFields = JsonSerializer.Deserialize<Dictionary<string, string>>(asset.CustomFieldsJson ?? "{}") ?? new(StringComparer.Ordinal); }
+            catch (JsonException) { customFields = new(StringComparer.Ordinal); }
+            return Results.Ok(new { asset = new { asset.Id, asset.AssetTag, asset.Name, asset.Status, asset.SerialNumber, asset.Location,
+                asset.LocationCatalogId, asset.CategoryId, asset.BrandId, asset.ModelId, asset.ParentAssetId, asset.AssignedEmployeeId,
+                asset.PurchaseDate, asset.WarrantyExpiresAt, asset.NextAuditOn, asset.PurchaseCost, asset.Currency, asset.IsRequestable,
+                asset.CreatedAt, asset.UpdatedAt, customFields }, references, relatedAssets, accessories = accessoryAssignments,
+                components = componentAllocations, softwareLicenses, history, attachments });
         }).RequireAuthorization("asset.read");
 
         api.MapGet("/assets/audit-schedule", async (DateOnly? through, string? q, string? state, ClaimsPrincipal user,
@@ -1543,6 +1553,11 @@ public static class AssetEndpoints
             if (request.ModelId is Guid modelId && !await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.Id == modelId && x.BrandId == request.BrandId, cancellationToken))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["modelId"] = ["Model seçilen marka ve şirketle eşleşmiyor."] });
 
+            var customFields = await AssetCustomFieldEndpoints.NormalizeValuesAsync(db, companyId,
+                request.CustomFields, null, preserveWhenMissing: false, cancellationToken);
+            if (customFields.Error is not null)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["customFields"] = [customFields.Error] });
+
             var locationCatalogId = await ResolveLocationCatalogIdAsync(db, companyId, location, cancellationToken);
             var asset = new Asset
             {
@@ -1550,7 +1565,7 @@ public static class AssetEndpoints
                 BrandId = request.BrandId, ModelId = request.ModelId,
                 SerialNumber = serial, Location = location, LocationCatalogId = locationCatalogId,
                 PurchaseDate = request.PurchaseDate, WarrantyExpiresAt = request.WarrantyExpiresAt, PurchaseCost = request.PurchaseCost,
-                Currency = currency, IsRequestable = request.IsRequestable == true
+                Currency = currency, IsRequestable = request.IsRequestable == true, CustomFieldsJson = customFields.Json
             };
             db.Assets.Add(asset);
             db.AssetEvents.Add(new AssetEvent
@@ -1610,6 +1625,11 @@ public static class AssetEndpoints
             if (request.ModelId is Guid modelId && !await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.Id == modelId && x.BrandId == request.BrandId, cancellationToken))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["modelId"] = ["Model seçilen marka ve şirketle eşleşmiyor."] });
 
+            var customFields = await AssetCustomFieldEndpoints.NormalizeValuesAsync(db, companyId,
+                request.CustomFields, current.CustomFieldsJson, preserveWhenMissing: true, cancellationToken);
+            if (customFields.Error is not null)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["customFields"] = [customFields.Error] });
+
             var locationCatalogId = await ResolveLocationCatalogIdAsync(db, companyId, location, cancellationToken);
             var changed = new List<string>();
             if (current.AssetTag != tag) changed.Add("etiket");
@@ -1624,6 +1644,7 @@ public static class AssetEndpoints
             if (current.WarrantyExpiresAt != request.WarrantyExpiresAt) changed.Add("garanti bitiş tarihi");
             if (current.PurchaseCost != request.PurchaseCost || current.Currency != currency) changed.Add("alış bedeli");
             if (current.IsRequestable != isRequestable) changed.Add("talep edilebilir durumu");
+            if (current.CustomFieldsJson != customFields.Json) changed.Add("özel alanlar");
             if (changed.Count == 0) return Results.Ok(new { id, updatedAt = current.UpdatedAt, changed = false });
 
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
@@ -1645,6 +1666,7 @@ public static class AssetEndpoints
                         .SetProperty(x => x.PurchaseCost, request.PurchaseCost)
                         .SetProperty(x => x.Currency, currency)
                         .SetProperty(x => x.IsRequestable, isRequestable)
+                        .SetProperty(x => x.CustomFieldsJson, customFields.Json)
                         .SetProperty(x => x.UpdatedAt, now), cancellationToken);
                 if (affected == 0)
                 {

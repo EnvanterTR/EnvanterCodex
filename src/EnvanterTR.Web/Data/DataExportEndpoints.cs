@@ -252,6 +252,8 @@ public static class DataExportEndpoints
         if (!await db.Companies.AsNoTracking().AnyAsync(c => c.Id == companyId && c.IsActive &&
             db.CompanyMemberships.Any(m => m.CompanyId == companyId && m.UserId == userId && m.RoleKey == role), cancellationToken))
             return Results.Forbid();
+        if (await db.AssetCustomFieldDefinitions.AnyAsync(x => x.CompanyId == companyId && x.IsActive && x.IsRequired, cancellationToken))
+            return Results.Conflict(new { message = "Etkin zorunlu özel alanlar tanımlı. CSV/Excel içe aktarma bu alanları henüz eşleyemiyor; içe aktarmadan önce alanları dolduracak biçimde web formunu kullanın veya zorunluluğu geçici olarak kaldırın." });
         try { await antiforgery.ValidateRequestAsync(context); }
         catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
         var isXlsx = IsXlsxRequest(context.Request);
@@ -463,6 +465,8 @@ public static class DataExportEndpoints
         var activeMembership = await db.Companies.AsNoTracking().AnyAsync(c => c.Id == companyId && c.IsActive &&
             db.CompanyMemberships.Any(m => m.CompanyId == companyId && m.UserId == userId && m.RoleKey == role), cancellationToken);
         if (!activeMembership) return Results.Forbid();
+        if (await db.AssetCustomFieldDefinitions.AnyAsync(x => x.CompanyId == companyId && x.IsActive && x.IsRequired, cancellationToken))
+            return Results.Conflict(new { message = "Etkin zorunlu özel alanlar tanımlı. CSV/Excel içe aktarma bu alanları henüz eşleyemiyor; önizleme ve aktarım için bu alanları dolduracak biçimde web formunu kullanın veya zorunluluğu geçici olarak kaldırın." });
         try { await antiforgery.ValidateRequestAsync(context); }
         catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
         var isXlsx = IsXlsxRequest(context.Request);

@@ -16,6 +16,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AssetBrand> AssetBrands => Set<AssetBrand>();
     public DbSet<AssetModel> AssetModels => Set<AssetModel>();
     public DbSet<Asset> Assets => Set<Asset>();
+    public DbSet<AssetCustomFieldDefinition> AssetCustomFieldDefinitions => Set<AssetCustomFieldDefinition>();
     public DbSet<SavedAssetSearch> SavedAssetSearches => Set<SavedAssetSearch>();
     public DbSet<DashboardPreference> DashboardPreferences => Set<DashboardPreference>();
     public DbSet<AssetEvent> AssetEvents => Set<AssetEvent>();
@@ -129,6 +130,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetCategory>().Property(x => x.Name).HasMaxLength(120).IsRequired();
         modelBuilder.Entity<AssetBrand>().Property(x => x.Name).HasMaxLength(120).IsRequired();
         modelBuilder.Entity<AssetModel>().Property(x => x.Name).HasMaxLength(120).IsRequired();
+        modelBuilder.Entity<AssetCustomFieldDefinition>().Property(x => x.Key).HasMaxLength(40).IsRequired();
+        modelBuilder.Entity<AssetCustomFieldDefinition>().Property(x => x.Name).HasMaxLength(100).IsRequired();
+        modelBuilder.Entity<AssetCustomFieldDefinition>().Property(x => x.FieldType).HasMaxLength(20).IsRequired();
+        modelBuilder.Entity<AssetCustomFieldDefinition>().Property(x => x.OptionsJson).HasMaxLength(8000);
+        modelBuilder.Entity<AssetCustomFieldDefinition>().HasIndex(x => new { x.CompanyId, x.Key }).IsUnique();
+        modelBuilder.Entity<AssetCustomFieldDefinition>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssetCustomFieldDefinition>().ToTable("AssetCustomFieldDefinitions", table =>
+            table.HasCheckConstraint("CK_AssetCustomFieldDefinitions_Type", "\"FieldType\" IN ('text', 'number', 'date', 'checkbox', 'select')"));
+        modelBuilder.Entity<Asset>().Property(x => x.CustomFieldsJson).HasMaxLength(16000);
         modelBuilder.Entity<EnvanterUser>().Property(x => x.DisplayName).HasMaxLength(160).IsRequired();
         modelBuilder.Entity<CompanyMembership>().HasKey(x => new { x.CompanyId, x.UserId });
         modelBuilder.Entity<CompanyMembership>().Property(x => x.RoleKey).HasMaxLength(40).IsRequired();

@@ -2438,7 +2438,9 @@
     async function openAsset(id) {
       try {
         const result = await api(`/api/assets/${id}`), asset = result.asset;
+        await loadAssetCustomFieldDefinitions();
         currentAsset = { ...asset, modelName: result.references.model, locationName: asset.location };
+        renderAssetCustomFieldDetail(asset);
         $('#addMaintenanceButton').textContent = asset.status === 'Deployed' ? 'Bakımı planla' : 'Bakım başlat';
         $('#dialogTitle').textContent = asset.name; $('#detailTag').textContent = asset.assetTag; $('#detailTagTop').textContent = asset.assetTag;
         const status = $('#detailStatus'), statusTop = $('#detailStatusTop');
@@ -3300,7 +3302,7 @@
       else if (page === 'Denetim kayıtları') { $('#auditPage').hidden = false; $('#pageTitle').textContent = page; loadAuditActions().then(() => loadAudit(1)).catch(error => notify(error.message)); loadAuditSchedule().catch(error => notify(error.message)); }
       else if (page === 'Hazır raporlar') { $('#reportPage').hidden = false; $('#pageTitle').textContent = 'Envanter raporları'; loadAssetReports().catch(error => notify(error.message)); loadMaintenanceReport().catch(error => notify(error.message)); loadWarrantyReport(1).catch(error => notify(error.message)); loadLicenseExpiryReport(1).catch(error => notify(error.message)); }
       else if (['Kategoriler','Markalar','Varlık modelleri'].includes(page)) { if (!canReadAssets()) { notify('Bu hesabın envanter tanımlarını görüntüleme yetkisi yok.'); return; } catalogKind = page === 'Kategoriler' ? 'categories' : page === 'Markalar' ? 'brands' : 'models'; $('#catalogPage').hidden = false; $('#pageTitle').textContent = page; $('#catalogTitle').textContent = page; $('#catalogDescription').textContent = `${page} şirket envanterinde kullanılacak. Kullanılan tanımlar silinemez; yeniden adlandırma mevcut ilişkilere dokunmaz.`; $('#catalogBrandLabel').hidden = catalogKind !== 'models'; $('#catalogCreateForm').hidden = !canWriteAssets(); loadCatalog().catch(error => notify(error.message)); }
-      else if (page === 'Firma profili' || page === 'Logo ve tema') { if (!canManageSettings()) { notify('Şirket görünümünü yalnızca şirket sahibi ve yöneticileri değiştirebilir.'); return; } $('#companySettingsPage').hidden = false; $('#pageTitle').textContent = page === 'Firma profili' ? 'Şirket profili' : 'Logo ve tema'; loadCompanyProfile().catch(error => notify(error.message)); }
+      else if (page === 'Firma profili' || page === 'Logo ve tema') { if (!canManageSettings()) { notify('Şirket görünümünü yalnızca şirket sahibi ve yöneticileri değiştirebilir.'); return; } $('#companySettingsPage').hidden = false; $('#pageTitle').textContent = page === 'Firma profili' ? 'Şirket profili' : 'Logo ve tema'; ensureAssetCustomFieldSettings(); Promise.all([loadCompanyProfile(), loadAssetCustomFieldDefinitions()]).catch(error => notify(error.message)); }
       else if (dataPages.includes(page)) {
         $('#dataToolsPage').hidden = false; $('#pageTitle').textContent = page === 'Geri yükle' ? 'Şirket verisini geri yükle' : page === 'Tablodan içe aktar' ? 'Tablodan içe aktar' : page === 'Yedekleme geçmişi' ? 'Yedekleme geçmişi' : 'Şirket verisini dışa aktar';
         $('#dataToolsTitle').textContent = $('#pageTitle').textContent;
@@ -3535,8 +3537,97 @@
       } catch (error) { notify(error.message); }
       finally { button.disabled = false; }
     });
+    let assetCustomFieldDefinitions = null;
+    async function loadAssetCustomFieldDefinitions(force = false) {
+      if (assetCustomFieldDefinitions && !force) return assetCustomFieldDefinitions;
+      assetCustomFieldDefinitions = await api('/api/assets/custom-fields');
+      renderAssetCustomFieldTable();
+      return assetCustomFieldDefinitions;
+    }
+    function customFieldControl(field, value = '') {
+      const label = document.createElement('label'); label.className = 'detail-field';
+      const caption = document.createElement('small'); caption.textContent = `${field.name}${field.isRequired ? ' *' : ''}`; label.append(caption);
+      let control;
+      if (field.fieldType === 'select') {
+        control = document.createElement('select'); control.append(new Option('Seçin', ''));
+        for (const option of field.options || []) control.add(new Option(option, option));
+      } else {
+        control = document.createElement('input');
+        control.type = ({ text: 'text', number: 'number', date: 'date', checkbox: 'checkbox' })[field.fieldType] || 'text';
+        if (field.fieldType === 'number') { control.step = 'any'; control.inputMode = 'decimal'; }
+      }
+      control.name = `customField:${field.key}`; control.dataset.customFieldKey = field.key;
+      control.required = field.isRequired;
+      if (field.fieldType === 'checkbox') control.checked = value === 'true'; else control.value = value || '';
+      label.append(control); return label;
+    }
+    function renderAssetCustomFieldInputs(form, values = {}) {
+      let root = form.querySelector('[data-asset-custom-fields]');
+      if (!root) { root = document.createElement('div'); root.dataset.assetCustomFields = ''; root.className = 'detail-grid'; root.style.gridColumn = '1 / -1'; form.querySelector('.detail-grid, .form-grid')?.append(root); }
+      root.replaceChildren();
+      for (const field of (assetCustomFieldDefinitions || []).filter(x => x.isActive)) root.append(customFieldControl(field, values[field.key] || ''));
+      root.hidden = root.childElementCount === 0;
+    }
+    function collectAssetCustomFieldValues(form) {
+      const values = {};
+      for (const field of (assetCustomFieldDefinitions || []).filter(x => x.isActive)) {
+        const input = form.querySelector(`[data-custom-field-key="${CSS.escape(field.key)}"]`);
+        if (input) values[field.key] = field.fieldType === 'checkbox' ? String(input.checked) : input.value.trim();
+      }
+      return values;
+    }
+    function renderAssetCustomFieldDetail(asset) {
+      const overview = $('#assetTabOverview'); let section = overview.querySelector('[data-asset-custom-field-detail]');
+      if (!section) { section = document.createElement('section'); section.dataset.assetCustomFieldDetail = ''; section.className = 'asset-detail-grid'; overview.querySelector('.asset-detail-grid')?.after(section); }
+      section.replaceChildren();
+      const values = asset.customFields || {};
+      for (const field of (assetCustomFieldDefinitions || []).filter(x => x.isActive || values[x.key] != null)) {
+        const value = values[field.key]; if (value == null || value === '') continue;
+        const item = document.createElement('div'); item.className = 'detail-field';
+        const caption = document.createElement('small'); caption.textContent = field.name;
+        const output = document.createElement('strong'); output.textContent = field.fieldType === 'checkbox' ? (value === 'true' ? 'Evet' : 'Hayır') : value;
+        item.append(caption, output); section.append(item);
+      }
+      section.hidden = section.childElementCount === 0;
+    }
+    function ensureAssetCustomFieldSettings() {
+      if ($('#assetCustomFieldSettings')) return;
+      $('#companySettingsPage').insertAdjacentHTML('beforeend', `<section class="panel" id="assetCustomFieldSettings" style="margin-top:15px"><div class="panel-head"><h2>Varlık özel alanları</h2><span class="pill blue">Şirket kapsamı</span></div><div class="dialog-body"><p class="muted">Varlık kayıtlarına şirketinize özel metin, sayı, tarih, onay kutusu ve seçim alanları ekleyin. Alanlar yalnızca bu şirkette görünür ve doğrulanır.</p><form id="assetCustomFieldForm" class="form-grid"><label>Anahtar *<input name="key" required maxlength="40" pattern="[a-z][a-z0-9_]{1,39}" placeholder="ornek_kod"></label><label>Alan adı *<input name="name" required maxlength="100" placeholder="Satın alma referansı"></label><label>Tür<select name="fieldType"><option value="text">Metin</option><option value="number">Sayı</option><option value="date">Tarih</option><option value="checkbox">Onay kutusu</option><option value="select">Seçim listesi</option></select></label><label>Seçenekler<textarea name="options" rows="2" placeholder="Yalnızca seçim listesinde; her satıra bir seçenek"></textarea></label><label class="check"><input name="isRequired" type="checkbox"> Zorunlu alan</label><label>Sıra<input name="sortOrder" type="number" value="0" min="-10000" max="10000"></label><div class="wide"><button class="btn primary" type="submit">Özel alan ekle</button><span id="assetCustomFieldFeedback" class="muted" role="status" style="margin-left:10px"></span></div></form><div class="table-wrap"><table><thead><tr><th>Alan</th><th>Anahtar</th><th>Tür</th><th>Zorunlu</th><th>Durum</th><th>İşlem</th></tr></thead><tbody id="assetCustomFieldRows"><tr><td colspan="6">Alanlar yükleniyor…</td></tr></tbody></table></div></div></section>`);
+      $('#assetCustomFieldForm').elements.fieldType.addEventListener('change', event => { $('#assetCustomFieldForm').elements.options.disabled = event.target.value !== 'select'; });
+      $('#assetCustomFieldForm').elements.options.disabled = true;
+      $('#assetCustomFieldForm').addEventListener('submit', async event => {
+        event.preventDefault(); const form = event.currentTarget, data = new FormData(form), optionsText = String(data.get('options') || '');
+        const payload = { key: data.get('key'), name: data.get('name'), fieldType: data.get('fieldType'), options: optionsText.split(/\r?\n/).map(x => x.trim()).filter(Boolean), isRequired: data.get('isRequired') === 'on', sortOrder: Number(data.get('sortOrder') || 0) };
+        try { await api('/api/assets/custom-fields', { method: 'POST', body: JSON.stringify(payload) }); form.reset(); form.elements.options.disabled = true; $('#assetCustomFieldFeedback').textContent = 'Alan eklendi.'; await loadAssetCustomFieldDefinitions(true); }
+        catch (error) { $('#assetCustomFieldFeedback').textContent = error.message; }
+      });
+      $('#assetCustomFieldRows').addEventListener('click', async event => {
+        const button = event.target.closest('[data-custom-field-toggle], [data-custom-field-edit]'); if (!button) return;
+        const field = assetCustomFieldDefinitions.find(x => x.id === button.dataset.id); if (!field) return;
+        try {
+          if (button.hasAttribute('data-custom-field-edit')) {
+            const name = prompt('Özel alan adı', field.name); if (!name?.trim()) return;
+            await api(`/api/assets/custom-fields/${field.id}`, { method: 'PUT', body: JSON.stringify({ key: field.key, name: name.trim(), fieldType: field.fieldType, options: field.options || [], isRequired: field.isRequired, sortOrder: field.sortOrder }) });
+          } else {
+            await api(`/api/assets/custom-fields/${field.id}/active`, { method: 'PATCH', body: JSON.stringify({ isActive: button.dataset.active !== 'true' }) });
+          }
+          await loadAssetCustomFieldDefinitions(true);
+        }
+        catch (error) { notify(error.message); }
+      });
+    }
+    function renderAssetCustomFieldTable() {
+      const body = $('#assetCustomFieldRows'); if (!body || !assetCustomFieldDefinitions) return;
+      body.replaceChildren();
+      if (!assetCustomFieldDefinitions.length) { body.innerHTML = '<tr><td colspan="6">Henüz özel alan tanımlanmadı.</td></tr>'; return; }
+      for (const field of assetCustomFieldDefinitions) {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${escapeHtml(field.name)}</td><td><code>${escapeHtml(field.key)}</code></td><td>${escapeHtml(field.fieldType)}${field.options?.length ? `<small class="muted"> · ${field.options.length} seçenek</small>` : ''}</td><td>${field.isRequired ? 'Evet' : 'Hayır'}</td><td>${field.isActive ? 'Etkin' : 'Pasif'}</td><td><button class="btn small" type="button" data-custom-field-edit data-id="${field.id}">Adı düzenle</button> <button class="btn small" type="button" data-custom-field-toggle data-id="${field.id}" data-active="${field.isActive}">${field.isActive ? 'Pasifleştir' : 'Etkinleştir'}</button></td>`;
+        body.append(row);
+      }
+    }
     const newAssetDialog = $('#newAssetDialog');
-    $('#newAssetButton').addEventListener('click', async () => { try { await loadLookups(); newAssetDialog.showModal(); } catch (error) { notify(error.message); } });
+    $('#newAssetButton').addEventListener('click', async () => { try { await Promise.all([loadLookups(), loadAssetCustomFieldDefinitions()]); renderAssetCustomFieldInputs($('#newAssetForm')); newAssetDialog.showModal(); } catch (error) { notify(error.message); } });
     document.querySelectorAll('[data-close-new]').forEach(button => button.addEventListener('click', () => newAssetDialog.close()));
     $('#newAssetForm').elements.brandId.addEventListener('change', () => refreshModels('', $('#newAssetForm')));
     document.querySelectorAll('[data-quick-add]').forEach(button => button.addEventListener('click', async () => {
@@ -3554,7 +3645,7 @@
     }));
     $('#newAssetForm').addEventListener('submit', async event => {
       event.preventDefault(); const form = new FormData(event.currentTarget), costText = String(form.get('purchaseCost') || '').trim();
-      const payload = { assetTag: String(form.get('assetTag')).trim(), name: String(form.get('assetName')).trim(), categoryId: form.get('categoryId'), brandId: form.get('brandId') || null, modelId: form.get('modelId') || null, serialNumber: form.get('serialNumber') || null, location: form.get('location') || null, purchaseDate: form.get('purchaseDate') || null, warrantyExpiresAt: form.get('warrantyExpiresAt') || null, purchaseCost: costText ? Number(costText) : null, currency: form.get('currency'), isRequestable: form.get('isRequestable') === 'true' };
+      const payload = { assetTag: String(form.get('assetTag')).trim(), name: String(form.get('assetName')).trim(), categoryId: form.get('categoryId'), brandId: form.get('brandId') || null, modelId: form.get('modelId') || null, serialNumber: form.get('serialNumber') || null, location: form.get('location') || null, purchaseDate: form.get('purchaseDate') || null, warrantyExpiresAt: form.get('warrantyExpiresAt') || null, purchaseCost: costText ? Number(costText) : null, currency: form.get('currency'), isRequestable: form.get('isRequestable') === 'true', customFields: collectAssetCustomFieldValues(event.currentTarget) };
       const submit = $('button[type="submit"]', event.currentTarget); submit.disabled = true;
       try { await api('/api/assets', { method: 'POST', body: JSON.stringify(payload) }); newAssetDialog.close(); event.currentTarget.reset(); await loadDashboard($('#globalSearch').value.trim()); await refreshDirectorySuggestions(); notify('Varlık şirket envanterine kaydedildi.'); }
       catch (error) { notify(error.message); } finally { submit.disabled = false; }
@@ -3576,6 +3667,7 @@
         form.elements.purchaseCost.value = asset.purchaseCost ?? '';
         form.elements.currency.value = asset.currency || 'TRY';
         form.elements.isRequestable.checked = asset.isRequestable === true;
+        await loadAssetCustomFieldDefinitions(); renderAssetCustomFieldInputs(form, asset.customFields || {});
         refreshModels(asset.modelId || '', form);
         $('#editAssetDialog').showModal();
       } catch (error) { notify(error.message); }
@@ -3591,7 +3683,7 @@
         categoryId: data.get('categoryId'), brandId: data.get('brandId') || null, modelId: data.get('modelId') || null,
         serialNumber: data.get('serialNumber') || null, location: data.get('location') || null,
         purchaseDate: data.get('purchaseDate') || null, warrantyExpiresAt: data.get('warrantyExpiresAt') || null, purchaseCost: costText ? Number(costText) : null,
-        currency: data.get('currency'), expectedUpdatedAt: data.get('expectedUpdatedAt'), isRequestable: data.get('isRequestable') === 'true'
+        currency: data.get('currency'), expectedUpdatedAt: data.get('expectedUpdatedAt'), isRequestable: data.get('isRequestable') === 'true', customFields: collectAssetCustomFieldValues(form)
       };
       const submit = $('button[type="submit"]', form), assetId = currentAsset.id;
       submit.disabled = true;

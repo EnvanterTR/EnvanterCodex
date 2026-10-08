@@ -451,6 +451,10 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(3)
                         .HasColumnType("character varying(3)");
 
+                    b.Property<string>("CustomFieldsJson")
+                        .HasMaxLength(16000)
+                        .HasColumnType("character varying(16000)");
+
                     b.Property<bool>("IsRequestable")
                         .HasColumnType("boolean");
 
@@ -626,6 +630,60 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("AssetCategories");
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.AssetCustomFieldDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FieldType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("OptionsJson")
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "Key")
+                        .IsUnique();
+
+                    b.ToTable("AssetCustomFieldDefinitions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_AssetCustomFieldDefinitions_Type", "\"FieldType\" IN ('text', 'number', 'date', 'checkbox', 'select')");
+                        });
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.AssetEvent", b =>
@@ -2548,6 +2606,15 @@ namespace EnvanterTR.Web.Data.Migrations
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.AssetCategory", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.AssetCustomFieldDefinition", b =>
                 {
                     b.HasOne("EnvanterTR.Web.Data.Company", null)
                         .WithMany()
