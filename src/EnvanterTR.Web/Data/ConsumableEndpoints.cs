@@ -211,8 +211,11 @@ public static class ConsumableEndpoints
         try { text = new UTF8Encoding(false, true).GetString(buffer.ToArray()).TrimStart('\uFEFF'); }
         catch (DecoderFallbackException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV UTF-8 biçiminde olmalıdır." } }); }
         List<List<string>> rows;
-        try { rows = ParseCsv(text, CsvImportMaxRows + 2); }
+        try { rows = ParseCsv(text, CsvImportMaxRows + 2, DetectCsvDelimiter(text)); }
         catch (FormatException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV tırnak veya ayraç biçimi bozuk." } }); }
+        rows = ConsumableCsvImportMapping.Normalize(rows, out var unsupportedColumns);
+        if (unsupportedColumns.Length > 0)
+            return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Bu dosyada henüz eşlenmeyen ve dolu veri içeren sütunlar var: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu." } });
 
         string[] header = ["Malzeme", "Kategori", "Model", "Ürün no", "Tedarikçi", "Konum", "Toplam", "Minimum", "Birim maliyeti", "Para birimi", "Alış tarihi", "İstek yapılabilir", "Notlar"];
         if (rows.Count is < 2 || rows.Count > CsvImportMaxRows + 1 || !rows[0].SequenceEqual(header, StringComparer.OrdinalIgnoreCase))
@@ -323,16 +326,38 @@ public static class ConsumableEndpoints
 
     private static string CsvDuplicateKey(string name, string? itemNumber) => $"{name.Trim().ToUpperInvariant()}\u001f{itemNumber?.Trim().ToUpperInvariant() ?? ""}";
     private static void AddCsvError(List<string> errors, string message) { if (errors.Count < 100) errors.Add(message); }
-    private static List<List<string>> ParseCsv(string text, int maximumRecords)
+    private static char DetectCsvDelimiter(string text)
+    {
+        var commas = 0;
+        var semicolons = 0;
+        var quoted = false;
+        for (var i = 0; i < text.Length; i++)
+        {
+            var value = text[i];
+            if (value == '"')
+            {
+                if (quoted && i + 1 < text.Length && text[i + 1] == '"') { i++; continue; }
+                quoted = !quoted;
+                continue;
+            }
+            if (quoted) continue;
+            if (value is '\r' or '\n') break;
+            if (value == ',') commas++;
+            else if (value == ';') semicolons++;
+        }
+        return semicolons > commas ? ';' : ',';
+    }
+
+    private static List<List<string>> ParseCsv(string text, int maximumRecords, char delimiter)
     {
         var records = new List<List<string>>(); var row = new List<string>(); var cell = new StringBuilder(); var quoted = false; var afterQuote = false;
         for (var i = 0; i < text.Length; i++)
         {
             var ch = text[i];
             if (quoted) { if (ch == '"' && i + 1 < text.Length && text[i + 1] == '"') { cell.Append('"'); i++; } else if (ch == '"') { quoted = false; afterQuote = true; } else cell.Append(ch); continue; }
-            if (afterQuote && ch != ',' && ch is not ('\r' or '\n')) throw new FormatException();
+            if (afterQuote && ch != delimiter && ch is not ('\r' or '\n')) throw new FormatException();
             if (ch == '"') { if (cell.Length != 0) throw new FormatException(); quoted = true; }
-            else if (ch == ',') { row.Add(cell.ToString()); cell.Clear(); afterQuote = false; }
+            else if (ch == delimiter) { row.Add(cell.ToString()); cell.Clear(); afterQuote = false; }
             else if (ch is '\r' or '\n')
             {
                 if (ch == '\r' && i + 1 < text.Length && text[i + 1] == '\n') i++;
