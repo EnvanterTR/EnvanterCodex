@@ -188,3 +188,9 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 - Talep onayında çalışan ve varlık şirket içinde/etkin olmalı, varlık hâlâ uygun olmalı ve işlem tek transaction içinde atama, durum ve varlık hareket geçmişini güncellemelidir. Çakışan veya geçersiz talepler reddedilir.
 - Yedi şirket rolünün talep karar uç noktasındaki yazma izni rol matrisi testine eklendi. Tam PostgreSQL HTTP kabul paketi izole ve geçici veritabanında **16/16 geçti**; yeni katalog/atama senaryoları da pakete dahildir. `git diff --check` temiz.
 - Yerel `http://localhost:8080/api/status` `ready` döndü; 32 migration uygulanmış, bekleyen migration 0. Değişiklikler GitHub `main` dalına `d44454f` commit'iyle gönderildi. GitHub Actions uzak koşum sonucu bu oturumda ayrıca gözlenmedi.
+## 2026-10-08 Güncel dağıtım kabulü ve sonraki ürün açığı
+
+- PostgreSQL tabanlı çok şirketli HTTP güvenlik/kabul paketi bu kaynak durumunda başarıyla tamamlandı. Testler geçici izole veritabanı kullanır; canlı müşteri verisine dokunmaz.
+- Windows dağıtım testlerinden yedek alarmı, şifreli yedek turu/tahrifat reddi, kurulum geri alma, DPAPI sır taşıma, geri yükleme güvenliği, güncelleme güvenliği ve DPAPI sır açma kontrollerinin tümü geçti. Yayınlanmış win-x64 uygulamasını başlatan ayrı kontrol bu çalıştırmaya dahil değildir; Windows Server üzerinde gerçek kurulum/kurtarma tatbikatı da hâlâ gereklidir.
+- Yerel Docker uygulaması `http://localhost:8080/api/status` üzerinden `ready` dönüyor; 37 migration uygulanmış, bekleyen migration yok. `http://localhost:8080` ana sayfası erişilebilir.
+- Kapsam taramasında satın alma siparişlerinin yalnızca aksesuarları kapsadığı doğrulandı. Bileşen ve sarf siparişlerini stok artırımı, hareket/denetim izi, kısmi teslim alma ve şirket sınırıyla tamamlamak sıradaki yüksek öncelikli ürün işidir; bu özellik henüz uygulanmış sayılmaz.
