@@ -474,6 +474,9 @@ public sealed class AssetPurchaseOrder
     public DateOnly OrderDate { get; set; }
     public DateOnly? ExpectedOn { get; set; }
     public string Currency { get; set; } = "TRY";
+    public decimal TaxRatePercent { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public decimal FreightAmount { get; set; }
     public string? Notes { get; set; }
     public Guid? CreatedByUserId { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;

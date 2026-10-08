@@ -950,8 +950,16 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(3)
                         .HasColumnType("character varying(3)");
 
+                    b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<DateOnly?>("ExpectedOn")
                         .HasColumnType("date");
+
+                    b.Property<decimal>("FreightAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(2000)
@@ -978,6 +986,10 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid?>("SupplierId")
                         .HasColumnType("uuid");
 
+                    b.Property<decimal>("TaxRatePercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -997,6 +1009,8 @@ namespace EnvanterTR.Web.Data.Migrations
                             t.HasCheckConstraint("CK_AssetPurchaseOrders_Currency", "char_length(\"Currency\") = 3");
 
                             t.HasCheckConstraint("CK_AssetPurchaseOrders_Dates", "\"ExpectedOn\" IS NULL OR \"ExpectedOn\" >= \"OrderDate\"");
+
+                            t.HasCheckConstraint("CK_AssetPurchaseOrders_FinancialAdjustments", "\"TaxRatePercent\" BETWEEN 0 AND 100 AND \"DiscountAmount\" >= 0 AND \"FreightAmount\" >= 0");
 
                             t.HasCheckConstraint("CK_AssetPurchaseOrders_Status", "\"Status\" IN ('Ordered', 'PartiallyReceived', 'Received', 'Cancelled')");
                         });
