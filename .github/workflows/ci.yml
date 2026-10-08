@@ -51,6 +51,10 @@ jobs:
         shell: bash
         run: bash deploy/server/tests/restore-safety-check.sh
 
+      - name: Validate Linux update safety ordering
+        shell: bash
+        run: bash deploy/server/tests/update-safety-check.sh
+
       - name: Validate resumable Linux first install
         shell: bash
         run: sudo -n bash deploy/server/tests/install-resume-check.sh
