@@ -61,15 +61,15 @@ if any(position < 0 for position in positions) or positions != sorted(positions)
     raise SystemExit("FAIL: restore failure must restore the old configuration before restarting old services and preserve new volumes")
 print("PASS: failed live restore reattaches the old configuration before restarting services and keeps new volumes for inspection")
 
-for invariant, fragment in (
-    ("maintenance operations are serialized", "flock -n 9"),
-    ("live and restored Docker volumes are never deleted", "docker volume rm"),
-    ("the existing database, media, and key volume names are preserved", "OLD_KEYS_VOLUME"),
-):
-    if invariant.startswith("live and"):
-        if fragment in source:
-            raise SystemExit(f"FAIL: {invariant}")
-    elif fragment not in source:
-        raise SystemExit(f"FAIL: {invariant}")
-    print(f"PASS: {invariant}")
+if "flock -n 9" not in source:
+    raise SystemExit("FAIL: maintenance operations are serialized")
+print("PASS: maintenance operations are serialized")
+
+if any(fragment in source for fragment in ("docker volume rm", "docker volume prune", "down --volumes")):
+    raise SystemExit("FAIL: restore must never delete existing or newly staged Docker volumes")
+print("PASS: live and restored Docker volumes are never deleted")
+
+if not all(name in source for name in ("OLD_DB_VOLUME", "OLD_MEDIA_VOLUME", "OLD_KEYS_VOLUME")):
+    raise SystemExit("FAIL: existing database, media, and key volume names must all be preserved")
+print("PASS: existing database, media, and key volume names are preserved")
 PY
