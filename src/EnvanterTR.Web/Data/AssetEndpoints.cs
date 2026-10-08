@@ -2339,7 +2339,7 @@ public static class AssetEndpoints
         api.MapGet("/assets/export-all.csv", async ([FromQuery] string? q, [FromQuery] string? status,
             [FromQuery] Guid? categoryId, [FromQuery] Guid? brandId, [FromQuery] Guid? modelId,
             [FromQuery] Guid? employeeId, [FromQuery] string? location, [FromQuery] string? warranty,
-            [FromQuery] string? sortBy, [FromQuery] string? sortDirection,
+            [FromQuery] string? sortBy, [FromQuery] string? sortDirection, [FromQuery] string? columns,
             HttpContext context, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId))
@@ -2399,17 +2399,45 @@ public static class AssetEndpoints
                 return;
             }
             var total = await query.CountAsync(cancellationToken);
+            if (columns is not null && total > 50000)
+            {
+                await Results.ValidationProblem(new Dictionary<string, string[]> {
+                    ["columns"] = ["Özel rapor tarayıcı belleğini korumak için en fazla 50.000 satır indirebilir; aramayı veya filtreleri daraltın."]
+                }).ExecuteAsync(context);
+                return;
+            }
             var customFields = await db.AssetCustomFieldDefinitions.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && x.IsActive).OrderBy(x => x.SortOrder).ThenBy(x => x.Name)
                 .ToListAsync(cancellationToken);
+            var availableColumns = new (string Key, string Header)[]
+            {
+                ("tag", "Etiket"), ("name", "Ad"), ("status", "Durum"), ("category", "Kategori"),
+                ("brand", "Marka"), ("model", "Model"), ("serial", "Seri No"), ("location", "Konum"),
+                ("employeeNumber", "Personel No"), ("employeeName", "Çalışan"), ("purchaseDate", "Alış Tarihi"),
+                ("warrantyExpiresAt", "Garanti Bitiş Tarihi"), ("purchaseCost", "Alış Bedeli"),
+                ("currency", "Para Birimi"), ("parentAssetTag", "Üst Varlık Etiketi")
+            }.Concat(customFields.Select(field => (Key: $"custom:{field.Key}", Header: $"Özel alan: {field.Key}"))).ToArray();
+            var columnsByKey = availableColumns.ToDictionary(column => column.Key, column => column, StringComparer.Ordinal);
+            var selectedKeys = string.IsNullOrWhiteSpace(columns)
+                ? availableColumns.Select(column => column.Key).ToArray()
+                : columns.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            if ((columns?.Length ?? 0) > 2048 || selectedKeys.Length is < 1 or > 64 ||
+                selectedKeys.Distinct(StringComparer.Ordinal).Count() != selectedKeys.Length ||
+                selectedKeys.Any(key => !columnsByKey.ContainsKey(key)))
+            {
+                await Results.ValidationProblem(new Dictionary<string, string[]> {
+                    ["columns"] = ["Rapor sütunlarını etkin alanlardan seçin; 1–64 farklı sütun kullanılabilir."]
+                }).ExecuteAsync(context);
+                return;
+            }
+            var selectedColumns = selectedKeys.Select(key => columnsByKey[key]).ToArray();
             context.Response.StatusCode = StatusCodes.Status200OK;
             context.Response.ContentType = "text/csv; charset=utf-8";
             context.Response.Headers["Content-Disposition"] = $"attachment; filename=envantertr-varliklar-{DateTime.UtcNow:yyyyMMdd}.csv";
             context.Response.Headers["Cache-Control"] = "no-store";
             context.Response.Headers["X-Total-Count"] = total.ToString(System.Globalization.CultureInfo.InvariantCulture);
             await using var writer = new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
-            await writer.WriteLineAsync(string.Join(';', new[] { "Etiket", "Ad", "Durum", "Kategori", "Marka", "Model", "Seri No", "Konum", "Personel No", "Çalışan", "Alış Tarihi", "Garanti Bitiş Tarihi", "Alış Bedeli", "Para Birimi", "Üst Varlık Etiketi" }
-                .Concat(customFields.Select(field => $"Özel alan: {field.Key}")).Select(CsvCell)).AsMemory(), cancellationToken);
+            await writer.WriteLineAsync(string.Join(';', selectedColumns.Select(column => CsvCell(column.Header))).AsMemory(), cancellationToken);
             var rows = ordered.Select(x => new AssetExportRow(
                 x.AssetTag, x.Name, x.Status,
                 db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault(),
@@ -2426,14 +2454,22 @@ public static class AssetEndpoints
             var written = 0;
             await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
             {
-                var line = string.Join(';', new[] { CsvCell(row.AssetTag), CsvCell(row.Name), CsvCell(row.Status),
-                    CsvCell(row.Category), CsvCell(row.Brand), CsvCell(row.Model), CsvCell(row.SerialNumber),
-                    CsvCell(row.Location), CsvCell(row.EmployeeNumber), CsvCell(row.EmployeeName),
-                    CsvCell(row.PurchaseDate?.ToString("yyyy-MM-dd")),
-                    CsvCell(row.WarrantyExpiresAt?.ToString("yyyy-MM-dd")),
-                    CsvCell(row.PurchaseCost?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
-                    CsvCell(row.Currency), CsvCell(row.ParentAssetTag) }
-                    .Concat(AssetCustomFieldEndpoints.ExportValues(row.CustomFieldsJson, customFields).Select(CsvCell)));
+                var customValues = AssetCustomFieldEndpoints.ExportValues(row.CustomFieldsJson, customFields).ToArray();
+                var customValuesByKey = customFields.Select((field, index) => (field.Key, Value: customValues[index]))
+                    .ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal);
+                var line = string.Join(';', selectedColumns.Select(column => CsvCell(column.Key switch
+                {
+                    "tag" => row.AssetTag, "name" => row.Name, "status" => row.Status,
+                    "category" => row.Category, "brand" => row.Brand, "model" => row.Model,
+                    "serial" => row.SerialNumber, "location" => row.Location,
+                    "employeeNumber" => row.EmployeeNumber, "employeeName" => row.EmployeeName,
+                    "purchaseDate" => row.PurchaseDate?.ToString("yyyy-MM-dd"),
+                    "warrantyExpiresAt" => row.WarrantyExpiresAt?.ToString("yyyy-MM-dd"),
+                    "purchaseCost" => row.PurchaseCost?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                    "currency" => row.Currency, "parentAssetTag" => row.ParentAssetTag,
+                    _ when column.Key.StartsWith("custom:", StringComparison.Ordinal) => customValuesByKey.GetValueOrDefault(column.Key[7..]),
+                    _ => ""
+                })));
                 await writer.WriteLineAsync(line.AsMemory(), cancellationToken);
                 if (++written % 500 == 0) await writer.FlushAsync(cancellationToken);
             }

@@ -423,6 +423,44 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Custom_asset_report_exports_only_selected_active_company_columns()
+    {
+        const string customFieldKey = "acceptanceCode";
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.AssetCustomFieldDefinitions.Add(new AssetCustomFieldDefinition
+            {
+                CompanyId = _companyId, Key = customFieldKey, Name = "Acceptance code", FieldType = "text"
+            });
+            var asset = await db.Assets.SingleAsync(x => x.Id == _ownAssetId);
+            asset.CustomFieldsJson = "{\"acceptanceCode\":\"RND-42\"}";
+            await db.SaveChangesAsync();
+        }
+
+        using (var response = await SendAsRoleAsync(HttpMethod.Get,
+                   $"/api/assets/export-all.csv?columns=tag,name,custom:{customFieldKey}&status=Available", "viewer"))
+        {
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("1", response.Headers.GetValues("X-Total-Count").Single());
+            var csv = await response.Content.ReadAsStringAsync();
+            Assert.Contains("\"Etiket\";\"Ad\";\"Özel alan: acceptanceCode\"", csv, StringComparison.Ordinal);
+            Assert.Contains("\"OWN-1\";\"Own asset\";\"RND-42\"", csv, StringComparison.Ordinal);
+            Assert.False(csv.Contains("Marka", StringComparison.Ordinal));
+            Assert.False(csv.Contains("OTHER-1", StringComparison.Ordinal));
+        }
+
+        using (var duplicateColumn = await SendAsRoleAsync(HttpMethod.Get,
+                   "/api/assets/export-all.csv?columns=tag,tag", "viewer"))
+            Assert.Equal(HttpStatusCode.BadRequest, duplicateColumn.StatusCode);
+
+        using (var otherTenantColumn = await SendAsRoleAsync(HttpMethod.Get,
+                   "/api/assets/export-all.csv?columns=custom:otherTenantOnly", "viewer"))
+            Assert.Equal(HttpStatusCode.BadRequest, otherTenantColumn.StatusCode);
+
+    }
+
+    [Fact]
     public async Task Request_catalog_includes_only_requestable_available_assets_from_the_active_company()
     {
         using var response = await SendAsAdminAsync("/api/requests/catalog");
