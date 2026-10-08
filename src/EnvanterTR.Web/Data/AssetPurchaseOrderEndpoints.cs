@@ -131,7 +131,15 @@ public static class AssetPurchaseOrderEndpoints
                     uploadedBy = db.Users.Where(actor => actor.Id == x.UploadedByUserId).Select(actor => actor.DisplayName).FirstOrDefault() }).ToListAsync(ct);
             var subtotal = lines.Sum(x => x.Quantity * x.UnitCost);
             var taxAmount = CalculateTax(subtotal, order.DiscountAmount, order.TaxRatePercent);
-            return Results.Ok(new { order, lines, subtotal, taxableAmount = subtotal - order.DiscountAmount, taxAmount,
+            var landedUnitCosts = CalculateLandedUnitCosts(lines.Select(x => (x.Id, x.Quantity, x.UnitCost)).ToArray(),
+                order.DiscountAmount, taxAmount, order.FreightAmount, subtotal);
+            var pricedLines = lines.Select(line => new
+            {
+                line.Id, line.Name, line.CategoryId, line.categoryName, line.BrandId, line.ModelId,
+                line.Quantity, line.QuantityReceived, line.remaining, line.UnitCost, landedUnitCost = landedUnitCosts[line.Id],
+                line.WarrantyExpiresAt, line.Notes
+            }).ToArray();
+            return Results.Ok(new { order, lines = pricedLines, subtotal, taxableAmount = subtotal - order.DiscountAmount, taxAmount,
                 totalCost = CalculateTotal(subtotal, order.DiscountAmount, taxAmount, order.FreightAmount),
                 quantity = lines.Sum(x => x.Quantity), quantityReceived = lines.Sum(x => x.QuantityReceived), assets = receivedAssets, attachments,
                 maxAttachmentCount = 30, maxAttachmentSizeBytes = 10 * 1024 * 1024 });
@@ -223,7 +231,8 @@ public static class AssetPurchaseOrderEndpoints
                 .OrderBy(x => x.CreatedAt).ThenBy(x => x.Id).ToListAsync(ct);
             var orderSubtotal = allOrderLines.Sum(x => x.Quantity * x.UnitCost);
             var taxAmount = CalculateTax(orderSubtotal, order.DiscountAmount, order.TaxRatePercent);
-            var landedUnitCosts = CalculateLandedUnitCosts(allOrderLines, order.DiscountAmount, taxAmount, order.FreightAmount, orderSubtotal);
+            var landedUnitCosts = CalculateLandedUnitCosts(allOrderLines.Select(x => (x.Id, x.Quantity, x.UnitCost)).ToArray(),
+                order.DiscountAmount, taxAmount, order.FreightAmount, orderSubtotal);
             var note = Clean(request.Notes); var received = 0;
             foreach (var line in lines)
             {
@@ -274,7 +283,8 @@ public static class AssetPurchaseOrderEndpoints
     private static decimal CalculateTax(decimal subtotal, decimal discount, decimal taxRatePercent) =>
         Math.Round((subtotal - discount) * taxRatePercent / 100m, 2, MidpointRounding.AwayFromZero);
     private static decimal CalculateTotal(decimal subtotal, decimal discount, decimal tax, decimal freight) => subtotal - discount + tax + freight;
-    private static Dictionary<Guid, decimal> CalculateLandedUnitCosts(IReadOnlyList<AssetPurchaseOrderLine> lines, decimal discount, decimal tax, decimal freight, decimal subtotal)
+    private static Dictionary<Guid, decimal> CalculateLandedUnitCosts(IReadOnlyList<(Guid Id, int Quantity, decimal UnitCost)> lines,
+        decimal discount, decimal tax, decimal freight, decimal subtotal)
     {
         var costs = new Dictionary<Guid, decimal>(lines.Count);
         var allocatedDiscount = 0m; var allocatedTax = 0m; var allocatedFreight = 0m;

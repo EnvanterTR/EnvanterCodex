@@ -1996,6 +1996,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(36000m, detail.RootElement.GetProperty("taxableAmount").GetDecimal());
         Assert.Equal(7200m, detail.RootElement.GetProperty("taxAmount").GetDecimal());
         Assert.Equal(43800m, detail.RootElement.GetProperty("totalCost").GetDecimal());
+        Assert.Equal(14600m, Assert.Single(detail.RootElement.GetProperty("lines").EnumerateArray()).GetProperty("landedUnitCost").GetDecimal());
         var lineId = Assert.Single(detail.RootElement.GetProperty("lines").EnumerateArray()).GetProperty("id").GetGuid();
         var receiptPayload = System.Net.Http.Json.JsonContent.Create(new
         {
