@@ -1541,6 +1541,17 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, overdueList.StatusCode);
         using var overduePayload = JsonDocument.Parse(await overdueList.Content.ReadAsStringAsync());
         Assert.Equal(1, overduePayload.RootElement.GetProperty("total").GetInt32());
+        using var consumableList = await SendAsAdminAsync($"/api/stock-orders?q={Uri.EscapeDataString(orderNumber)}&itemType=Consumable&page=1&pageSize=25");
+        Assert.Equal(HttpStatusCode.OK, consumableList.StatusCode);
+        using var consumablePayload = JsonDocument.Parse(await consumableList.Content.ReadAsStringAsync());
+        Assert.Equal(1, consumablePayload.RootElement.GetProperty("total").GetInt32());
+        using var componentExport = await SendAsAdminAsync($"/api/stock-orders/export.csv?q={Uri.EscapeDataString(orderNumber)}&itemType=Component");
+        Assert.Equal(HttpStatusCode.OK, componentExport.StatusCode);
+        var componentCsv = await componentExport.Content.ReadAsStringAsync();
+        Assert.Contains("Bileşen", componentCsv);
+        Assert.DoesNotContain("Sarf;", componentCsv);
+        using var invalidItemType = await SendAsAdminAsync($"/api/stock-orders?q={Uri.EscapeDataString(orderNumber)}&itemType=Invalid");
+        Assert.Equal(HttpStatusCode.BadRequest, invalidItemType.StatusCode);
         using var crossTenantExport = await SendAsAdminAsync($"/api/stock-orders/export.csv?q={Uri.EscapeDataString(orderNumber)}", _otherCompanyId);
         Assert.Equal(HttpStatusCode.Unauthorized, crossTenantExport.StatusCode);
         using var crossTenantDetail = await SendAsAdminAsync($"/api/stock-orders/{orderId}", _otherCompanyId);

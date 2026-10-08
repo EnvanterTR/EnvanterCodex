@@ -9,13 +9,15 @@ public static class StockPurchaseOrderEndpoints
 {
     public static RouteGroupBuilder MapStockPurchaseOrderEndpoints(this RouteGroupBuilder api)
     {
-        api.MapGet("/stock-orders/export.csv", async ([FromQuery] string? q, [FromQuery] string? status,
+        api.MapGet("/stock-orders/export.csv", async ([FromQuery] string? q, [FromQuery] string? status, [FromQuery] string? itemType,
             [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] bool? overdueOnly, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
             if (from is not null && to is not null && from > to)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Başlangıç tarihi bitiş tarihinden sonra olamaz."] });
             if (q?.Trim().Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama 120 karakteri aşamaz."] });
+            if (!string.IsNullOrWhiteSpace(itemType) && itemType is not ("Consumable" or "Component"))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["itemType"] = ["Kalem türü Sarf veya Bileşen olmalıdır."] });
             var query = from order in db.StockPurchaseOrders.AsNoTracking()
                         join line in db.StockPurchaseOrderLines.AsNoTracking() on new { order.CompanyId, Id = order.Id } equals new { line.CompanyId, Id = line.PurchaseOrderId }
                         where order.CompanyId == companyId
@@ -23,6 +25,8 @@ public static class StockPurchaseOrderEndpoints
             if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.order.Status == status.Trim());
             if (from is not null) query = query.Where(x => x.order.OrderDate >= from);
             if (to is not null) query = query.Where(x => x.order.OrderDate <= to);
+            if (itemType == "Consumable") query = query.Where(x => x.line.ConsumableId != null);
+            if (itemType == "Component") query = query.Where(x => x.line.ComponentId != null);
             if (overdueOnly == true)
             {
                 var today = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -72,7 +76,7 @@ public static class StockPurchaseOrderEndpoints
             return Results.File(bytes, "text/csv; charset=utf-8", $"envantertr-sarf-bilesen-siparisleri-{DateTime.UtcNow:yyyyMMdd}.csv");
         }).RequireAuthorization("asset.read");
 
-        api.MapGet("/stock-orders", async ([FromQuery] string? q, [FromQuery] string? status,
+        api.MapGet("/stock-orders", async ([FromQuery] string? q, [FromQuery] string? status, [FromQuery] string? itemType,
             [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] bool? overdueOnly,
             [FromQuery] int page, [FromQuery] int pageSize, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
@@ -80,11 +84,15 @@ public static class StockPurchaseOrderEndpoints
             if (from is not null && to is not null && from > to)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Başlangıç tarihi bitiş tarihinden sonra olamaz."] });
             if (q?.Trim().Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama 120 karakteri aşamaz."] });
+            if (!string.IsNullOrWhiteSpace(itemType) && itemType is not ("Consumable" or "Component"))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["itemType"] = ["Kalem türü Sarf veya Bileşen olmalıdır."] });
             page = Math.Max(1, page); pageSize = Math.Clamp(pageSize == 0 ? 25 : pageSize, 1, 100);
             var query = db.StockPurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId);
             if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.Status == status.Trim());
             if (from is not null) query = query.Where(x => x.OrderDate >= from);
             if (to is not null) query = query.Where(x => x.OrderDate <= to);
+            if (itemType == "Consumable") query = query.Where(x => db.StockPurchaseOrderLines.Any(l => l.CompanyId == companyId && l.PurchaseOrderId == x.Id && l.ConsumableId != null));
+            if (itemType == "Component") query = query.Where(x => db.StockPurchaseOrderLines.Any(l => l.CompanyId == companyId && l.PurchaseOrderId == x.Id && l.ComponentId != null));
             if (overdueOnly == true)
             {
                 var today = DateOnly.FromDateTime(DateTime.UtcNow);
