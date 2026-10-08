@@ -6,6 +6,16 @@ Sunucu veya disk kaybı için platformlar arası çevrim dışı kurtarma malzem
 
 Bu, Linux sunucu kurulumunun ilk sürümüdür; imzalı, sürümlü müşteri kurulum paketi değildir. Sunucuya aktarılan kaynak ağacı ve Docker imajları kullanılmaktadır. İmzalı yayın kanalı, Windows Server paketi ve LAN için özel PKI/HTTPS akışı hâlâ ayrı teslimatlardır.
 
+## CI sunucu paketi
+
+Linux güvenlik/kabul işi, doğruladığı commit için kaynak ağacını sürümlü bir `.tar.gz` dosyası ve SHA-256 yan dosyası olarak GitHub Actions artifact'ine ekler. Artifact adı `envantertr-linux-server-<commit>` biçimindedir ve 14 gün saklanır. Paketi sunucuya aktarmadan önce checksum'ı doğrulayın:
+
+```bash
+sha256sum -c envantertr-linux-server-<commit>.tar.gz.sha256
+```
+
+Arşivi açıp `deploy/server/install.sh` adımlarını izleyin. Bu paket kaynak ve Compose tabanlıdır; Linux self-contained binary veya dijital imzalı kurulum paketi değildir. Müşteri kullanıma hazır imzalı sürüm ve gerçek Ubuntu sunucu kabulü hâlâ gereklidir.
+
 ## Gereksinimler
 
 - Ubuntu/Linux sunucu, systemd, Docker Engine ve Docker Compose v2 eklentisi.

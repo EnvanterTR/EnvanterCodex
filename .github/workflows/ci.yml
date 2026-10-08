@@ -64,6 +64,18 @@ jobs:
         shell: bash
         run: sudo -n bash deploy/server/tests/install-resume-check.sh
 
+      - name: Package the tested Linux server source release
+        shell: bash
+        run: bash deploy/server/package-release.sh "$RUNNER_TEMP/envantertr-linux-release"
+
+      - name: Preserve the Linux server release package and checksum
+        uses: actions/upload-artifact@v7
+        with:
+          name: envantertr-linux-server-${{ github.sha }}
+          path: ${{ runner.temp }}/envantertr-linux-release
+          if-no-files-found: error
+          retention-days: 14
+
   windows-deployment-safety:
     name: Windows deployment and backup safety
     runs-on: windows-latest
