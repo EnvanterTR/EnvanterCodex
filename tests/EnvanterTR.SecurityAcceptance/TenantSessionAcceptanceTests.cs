@@ -971,6 +971,25 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Calendar_feed_for_upcoming_work_contains_only_the_active_company_records()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var from = today.AddDays(-7).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        var to = today.AddDays(30).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        using var response = await SendAsRoleAsync(HttpMethod.Get, $"/api/calendar?from={from}&to={to}&limit=500", "viewer");
+        var responseBody = await response.Content.ReadAsStringAsync();
+        Assert.True(response.StatusCode == HttpStatusCode.OK, $"Expected 200 but got {(int)response.StatusCode}: {responseBody}");
+
+        using var payload = JsonDocument.Parse(responseBody);
+        Assert.Equal(1, payload.RootElement.GetProperty("total").GetInt32());
+        var items = payload.RootElement.GetProperty("items").EnumerateArray().ToArray();
+        var ownLicense = Assert.Single(items);
+        Assert.Equal(_ownLicenseId, ownLicense.GetProperty("recordId").GetGuid());
+        Assert.StartsWith("OWN-SECURITY-LICENSE-", ownLicense.GetProperty("title").GetString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(items, item => item.GetProperty("title").GetString()?.StartsWith("OTHER-SECURITY-", StringComparison.Ordinal) == true);
+    }
+
+    [Fact]
     public async Task Asset_hierarchy_is_tenant_scoped_and_rejects_cycles()
     {
         await using (var scope = _factory!.Services.CreateAsyncScope())
