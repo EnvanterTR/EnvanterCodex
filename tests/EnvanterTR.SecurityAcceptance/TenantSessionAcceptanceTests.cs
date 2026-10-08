@@ -1829,6 +1829,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(10.50m, detail.RootElement.GetProperty("taxAmount").GetDecimal());
         Assert.Equal(120.50m, detail.RootElement.GetProperty("totalCost").GetDecimal());
         Assert.Equal(20m, detail.RootElement.GetProperty("order").GetProperty("discountAmount").GetDecimal());
+        Assert.Equal(12.05m, detail.RootElement.GetProperty("lines").EnumerateArray().Single(line => line.GetProperty("itemType").GetString() == "Consumable").GetProperty("landedUnitCost").GetDecimal());
+        Assert.Equal(24.10m, detail.RootElement.GetProperty("lines").EnumerateArray().Single(line => line.GetProperty("itemType").GetString() == "Component").GetProperty("landedUnitCost").GetDecimal());
         var lineIds = detail.RootElement.GetProperty("lines").EnumerateArray().ToDictionary(
             line => line.GetProperty("itemType").GetString()!, line => line.GetProperty("id").GetGuid());
         Assert.Equal(50m, detail.RootElement.GetProperty("lines").EnumerateArray().Single(line => line.GetProperty("itemType").GetString() == "Consumable").GetProperty("totalCost").GetDecimal());
@@ -1885,6 +1887,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(75m, accessoryOrderDetail.RootElement.GetProperty("taxableAmount").GetDecimal());
         Assert.Equal(7.5m, accessoryOrderDetail.RootElement.GetProperty("taxAmount").GetDecimal());
         Assert.Equal(84.5m, accessoryOrderDetail.RootElement.GetProperty("totalCost").GetDecimal());
+        Assert.Equal(21.13m, accessoryOrderDetail.RootElement.GetProperty("lines")[0].GetProperty("landedUnitCost").GetDecimal());
         using var accessoryOrderExport = await SendAsAdminAsync($"/api/accessory-orders/export.csv?q={Uri.EscapeDataString(accessoryOrderNumber)}");
         Assert.Equal(HttpStatusCode.OK, accessoryOrderExport.StatusCode);
         var accessoryCsv = await accessoryOrderExport.Content.ReadAsStringAsync();
