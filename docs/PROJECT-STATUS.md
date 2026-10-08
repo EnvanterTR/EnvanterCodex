@@ -143,6 +143,12 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 - İlk kurulum başarısızlıkla yarıda kalırsa tekrar çağrı, yalnızca root sahipli `0600` yapılandırmayı, `initial-<UTC damgası>` sürüm dizinini ve root sahipli yedek parolasını doğrulayarak devam eder. Aynı alan adı ve kimlik bilgileri korunur; başka sürümü gösteren `current` bağlantısı veya tamamlanmış kurulum reddedilir. Mevcut volume'lar hiçbir aşamada silinmez.
 - Linux CI'a resume akışı için izole komut taklitli kurulum senaryosu eklendi: HTTPS hazır olma adımında ilk çağrı bilerek başarısız oluyor, farklı DNS adıyla devam denemesi sırları değiştirmeden reddediliyor ve doğru DNS adıyla tekrar çağrı aynı config/yedek parolası/sürümle tamamlanıyor. Tüm Linux dağıtım betikleri `bash -n` kontrolünden ve restore sıralama kontrolü geçti; `git diff --check` temiz. Bu fixture gerçek Docker Engine, Ubuntu/systemd veya HTTPS sertifikası doğrulamasının yerine geçmez.
 
+## 2026-10-08 Windows güncelleme öncesi otomatik yedek
+
+- `deploy/windows/update.ps1` artık dosya/migration işleminden önce `backup.ps1` ile yeni şifreli tam yedek alır. Yedek oluşturma şifre, HMAC, manifest/SHA-256 ve PostgreSQL 17 izole geri yükleme provasını tamamlamalıdır; çıkan `.etbackup` ve `.sha256` dosyası tekrar hash eşleşmesiyle doğrulanır.
+- Yedekleme, güncelleme bakım kilidi tutulurken aynı PowerShell sürecinde çalışır; test, aynı thread üzerinde named mutex'in yeniden girişini doğrular. Servis çalışmıyorsa veya yedek doğrulanamazsa güncelleme dosyalara dokunmadan durur. DPAPI zamanlanmış yedek parolası varsa varsayılan kullanılır; yoksa backup betiği parolayı gizli olarak ister.
+- Windows güncelleme güvenlik kontrolü PowerShell parser, yedek/yan dosya doğrulama sırası, migration kapısı ve bakım mutex paylaşımını geçti. Windows Server + PostgreSQL üstünde gerçek upgrade kabulü yapılmadı.
+
 ## 2026-10-08 Talep edilebilir varlık ve karar rolü kabulü
 
 - Varlık kartında `Talep edilebilir` seçeneği bulunur. Stok talebi kataloğu yalnız etkin şirketteki bu işaretli ve kullanılabilir varlıkları gösterir; başka şirkete ait veya uygun olmayan varlıklar listelenmez. Varlık talepleri tek adetle sınırlıdır.
