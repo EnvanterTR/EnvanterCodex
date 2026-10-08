@@ -1516,9 +1516,10 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, crossTenantCreate.StatusCode);
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var orderNumber = $"ST-{Guid.NewGuid():N}"[..15];
         var createPayload = System.Net.Http.Json.JsonContent.Create(new
         {
-            orderNumber = $"ST-{Guid.NewGuid():N}"[..15], supplier = "Acceptance supplier", orderDate = today, expectedOn = (DateOnly?)null,
+            orderNumber, supplier = "=Acceptance supplier", orderDate = today, expectedOn = (DateOnly?)null,
             currency = "TRY", notes = "Mixed stock receipt acceptance",
             items = new object[]
             {
@@ -1530,6 +1531,11 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
         using var created = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
         var orderId = created.RootElement.GetProperty("id").GetGuid();
+        using var exportResponse = await SendAsAdminAsync($"/api/stock-orders/export.csv?q={Uri.EscapeDataString(orderNumber)}&status=Ordered");
+        Assert.Equal(HttpStatusCode.OK, exportResponse.StatusCode);
+        Assert.Contains("'=Acceptance supplier", await exportResponse.Content.ReadAsStringAsync());
+        using var crossTenantExport = await SendAsAdminAsync($"/api/stock-orders/export.csv?q={Uri.EscapeDataString(orderNumber)}", _otherCompanyId);
+        Assert.Equal(HttpStatusCode.Unauthorized, crossTenantExport.StatusCode);
         using var crossTenantDetail = await SendAsAdminAsync($"/api/stock-orders/{orderId}", _otherCompanyId);
         Assert.Equal(HttpStatusCode.Unauthorized, crossTenantDetail.StatusCode);
 

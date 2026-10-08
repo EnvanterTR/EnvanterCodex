@@ -9,6 +9,64 @@ public static class StockPurchaseOrderEndpoints
 {
     public static RouteGroupBuilder MapStockPurchaseOrderEndpoints(this RouteGroupBuilder api)
     {
+        api.MapGet("/stock-orders/export.csv", async ([FromQuery] string? q, [FromQuery] string? status,
+            [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!Tenant(user, out var companyId)) return Results.Forbid();
+            if (from is not null && to is not null && from > to)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Başlangıç tarihi bitiş tarihinden sonra olamaz."] });
+            if (q?.Trim().Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama 120 karakteri aşamaz."] });
+            var query = from order in db.StockPurchaseOrders.AsNoTracking()
+                        join line in db.StockPurchaseOrderLines.AsNoTracking() on new { order.CompanyId, Id = order.Id } equals new { line.CompanyId, Id = line.PurchaseOrderId }
+                        where order.CompanyId == companyId
+                        select new { order, line };
+            if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.order.Status == status.Trim());
+            if (from is not null) query = query.Where(x => x.order.OrderDate >= from);
+            if (to is not null) query = query.Where(x => x.order.OrderDate <= to);
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                query = query.Where(x => x.order.OrderNumber.Contains(term) || x.order.Supplier.Contains(term) ||
+                    (x.order.Notes != null && x.order.Notes.Contains(term)) ||
+                    (x.line.ConsumableId != null && db.Consumables.Any(i => i.CompanyId == companyId && i.Id == x.line.ConsumableId &&
+                        (i.Name.Contains(term) || (i.ItemNumber != null && i.ItemNumber.Contains(term))))) ||
+                    (x.line.ComponentId != null && db.InventoryComponents.Any(i => i.CompanyId == companyId && i.Id == x.line.ComponentId &&
+                        (i.Name.Contains(term) || (i.ItemNumber != null && i.ItemNumber.Contains(term))))));
+            }
+            const int exportLimit = 50_000;
+            if (await query.CountAsync(ct) > exportLimit)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["export"] = [$"Dışa aktarma en fazla {exportLimit:N0} sipariş satırını destekler. Sonuçları arama veya durum filtresiyle daraltın."] });
+            var rows = await query.OrderByDescending(x => x.order.OrderDate).ThenBy(x => x.order.OrderNumber)
+                .Select(x => new
+                {
+                    x.order.OrderNumber, x.order.Supplier, x.order.Status, x.order.OrderDate, x.order.ExpectedOn, x.order.Currency,
+                    ItemType = x.line.ConsumableId != null ? "Sarf" : "Bileşen",
+                    ItemName = x.line.ConsumableId != null ? db.Consumables.Where(i => i.CompanyId == companyId && i.Id == x.line.ConsumableId).Select(i => i.Name).FirstOrDefault() :
+                        db.InventoryComponents.Where(i => i.CompanyId == companyId && i.Id == x.line.ComponentId).Select(i => i.Name).FirstOrDefault(),
+                    ItemNumber = x.line.ConsumableId != null ? db.Consumables.Where(i => i.CompanyId == companyId && i.Id == x.line.ConsumableId).Select(i => i.ItemNumber).FirstOrDefault() :
+                        db.InventoryComponents.Where(i => i.CompanyId == companyId && i.Id == x.line.ComponentId).Select(i => i.ItemNumber).FirstOrDefault(),
+                    x.line.Quantity, x.line.QuantityReceived, Remaining = x.line.Quantity - x.line.QuantityReceived, x.line.UnitCost,
+                    TotalCost = x.line.Quantity * x.line.UnitCost, x.line.Notes
+                }).ToListAsync(ct);
+            static string Cell(string? value)
+            {
+                if (string.IsNullOrEmpty(value)) return "";
+                var trimmed = value.TrimStart();
+                var formula = trimmed.Length > 0 && (trimmed[0] == '=' || trimmed[0] == '+' || trimmed[0] == '-' || trimmed[0] == '@');
+                return "\"" + (formula ? "'" + value : value).Replace("\"", "\"\"") + "\"";
+            }
+            var csv = new StringBuilder("Sipariş No;Tedarikçi;Durum;Sipariş Tarihi;Beklenen Tarih;Para Birimi;Kalem Türü;Kalem;Stok Kodu;Sipariş Adedi;Teslim Alınan;Kalan;Birim Bedeli;Satır Toplamı;Satır Notu\r\n");
+            foreach (var row in rows) csv.AppendLine(string.Join(';', new[]
+            {
+                Cell(row.OrderNumber), Cell(row.Supplier), Cell(row.Status), Cell(row.OrderDate.ToString("yyyy-MM-dd")), Cell(row.ExpectedOn?.ToString("yyyy-MM-dd")), Cell(row.Currency),
+                Cell(row.ItemType), Cell(row.ItemName), Cell(row.ItemNumber), row.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                row.QuantityReceived.ToString(System.Globalization.CultureInfo.InvariantCulture), row.Remaining.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                row.UnitCost.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture), row.TotalCost.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture), Cell(row.Notes)
+            }));
+            var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray();
+            return Results.File(bytes, "text/csv; charset=utf-8", $"envantertr-sarf-bilesen-siparisleri-{DateTime.UtcNow:yyyyMMdd}.csv");
+        }).RequireAuthorization("asset.read");
+
         api.MapGet("/stock-orders", async ([FromQuery] string? q, [FromQuery] string? status,
             [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] bool overdueOnly,
             [FromQuery] int page, [FromQuery] int pageSize, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
