@@ -65,6 +65,7 @@ try {
     [System.IO.File]::WriteAllText($temporaryChecksum, "$hash  $archiveName`n", [System.Text.UTF8Encoding]::new($false))
     Move-Item -LiteralPath $temporaryArchive -Destination $archivePath -Force
     Move-Item -LiteralPath $temporaryChecksum -Destination $checksumPath -Force
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot "verify-release.ps1") -Destination (Join-Path $output "verify-release.ps1") -Force
 
     $recordedHash = ((Get-Content -LiteralPath $checksumPath -Raw).Trim() -split '\s+')[0]
     $actualHash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()

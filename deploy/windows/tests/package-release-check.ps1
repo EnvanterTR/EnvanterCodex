@@ -22,9 +22,18 @@ try {
     if (-not (Test-Path -LiteralPath $archive -PathType Leaf) -or -not (Test-Path -LiteralPath $checksum -PathType Leaf)) {
         throw "Release ZIP or checksum sidecar was not created."
     }
+    if (-not (Test-Path -LiteralPath (Join-Path $output "verify-release.ps1") -PathType Leaf)) { throw "Release verification helper was not included alongside the ZIP." }
+    & (Join-Path $output "verify-release.ps1") -ArchivePath $archive
     $expectedHash = ((Get-Content -LiteralPath $checksum -Raw).Trim() -split '\s+')[0]
     $actualHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($expectedHash -ne $actualHash) { throw "Release checksum sidecar does not match the ZIP." }
+    $validSidecar = Get-Content -LiteralPath $checksum -Raw
+    $replacementDigit = if ($validSidecar[0] -eq '0') { '1' } else { '0' }
+    Set-Content -LiteralPath $checksum -Value ($replacementDigit + $validSidecar.Substring(1)) -NoNewline
+    $checksumRejected = $false
+    try { & (Join-Path $output "verify-release.ps1") -ArchivePath $archive } catch { $checksumRejected = $true }
+    if (-not $checksumRejected) { throw "Release verification accepted an altered SHA-256 sidecar." }
+    Set-Content -LiteralPath $checksum -Value $validSidecar -NoNewline
 
     $secretPath = Join-Path $fixture "nested"
     New-Item -ItemType Directory -Path $secretPath -Force | Out-Null

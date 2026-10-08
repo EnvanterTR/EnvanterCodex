@@ -23,15 +23,14 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 Betik önce yerel .NET SDK'sını kullanır; SDK yoksa çalışan Docker Desktop üzerinden resmî .NET 10 SDK imajını çağırır. İlk Docker derlemesi imajı indirebilir. Özel çıktı dizini için `-OutputPath` verilebilir.
 
-`main` dalındaki GitHub Actions Windows doğrulama işi başarılı tamamlanırsa, aynı işin **Artifacts** bölümünde `envantertr-windows-x64-<commit-sha>` adlı indirme 14 gün boyunca saklanır. GitHub'da **Actions → EnvanterTR CI → başarılı çalıştırma → Artifacts** yolunu izleyin. İndirme içinde `envantertr-windows-x64-<12-karakter-commit>.zip` ve `.zip.sha256` yan dosyası bulunur. Bu, CI kontrollerinden geçmiş imzasız x64 pakettir; kurulum sihirbazı veya gerçek Windows Server kabulü değildir.
+`main` dalındaki GitHub Actions Windows doğrulama işi başarılı tamamlanırsa, aynı işin **Artifacts** bölümünde `envantertr-windows-x64-<commit-sha>` adlı indirme 14 gün boyunca saklanır. GitHub'da **Actions → EnvanterTR CI → başarılı çalıştırma → Artifacts** yolunu izleyin. İndirme içinde `envantertr-windows-x64-<12-karakter-commit>.zip`, `.zip.sha256` yan dosyası ve `verify-release.ps1` doğrulama aracı bulunur. Bu, CI kontrollerinden geçmiş imzasız x64 pakettir; kurulum sihirbazı veya gerçek Windows Server kabulü değildir.
 
 Arşivi açmadan önce SHA-256 değerini doğrulayın:
 
 ```powershell
-$archive = (Resolve-Path .\envantertr-windows-x64-<12-karakter-commit>.zip).Path
-$expected = ((Get-Content -Raw "$archive.sha256").Trim() -split '\s+')[0]
-$actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
-if ($actual -ne $expected) { throw "Windows yayın ZIP SHA-256 doğrulaması başarısız." }
+$archive = Get-ChildItem .\envantertr-windows-x64-*.zip | Select-Object -First 1
+if (-not $archive) { throw "Windows yayın ZIP dosyası bulunamadı." }
+./verify-release.ps1 -ArchivePath $archive.FullName
 Expand-Archive -LiteralPath $archive -DestinationPath C:\Staging\publish
 ```
 

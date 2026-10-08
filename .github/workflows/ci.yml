@@ -137,6 +137,10 @@ jobs:
         shell: pwsh
         run: ./deploy/windows/package-release.ps1 -PackagePath "$env:RUNNER_TEMP\envantertr-windows-publish" -OutputDirectory "$env:RUNNER_TEMP\envantertr-windows-release" -Commit "$env:GITHUB_SHA"
 
+      - name: Verify distributable Windows release files
+        shell: pwsh
+        run: ./deploy/windows/verify-release.ps1 -ArchivePath "$env:RUNNER_TEMP\envantertr-windows-release\envantertr-windows-x64-$($env:GITHUB_SHA.Substring(0,12)).zip"
+
       - name: Preserve the verified Windows x64 package
         uses: actions/upload-artifact@v7
         with:
