@@ -220,6 +220,69 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Custom_asset_reports_sync_across_sessions_but_remain_private_to_their_owner()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var definition = new { name = "Laptop warranties", columns = new[] { "tag", "name", "warrantyExpiresAt" },
+            q = "laptop", status = "Available", warranty = "expiring", sortBy = "warranty", sortDirection = "asc" };
+
+        using (var noCsrf = await SendAsUserAsync(HttpMethod.Post, "/api/assets/custom-reports", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(definition)))
+            Assert.Equal(HttpStatusCode.BadRequest, noCsrf.StatusCode);
+
+        using var create = await SendAsUserAsync(HttpMethod.Post, "/api/assets/custom-reports", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(definition), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, create.StatusCode);
+        using var created = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
+        var reportId = created.RootElement.GetProperty("id").GetGuid();
+        Assert.Equal("expiring", created.RootElement.GetProperty("definition").GetProperty("warranty").GetString());
+
+        using (var invalidColumns = await SendAsUserAsync(HttpMethod.Post, "/api/assets/custom-reports", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Invalid", columns = new[] { "custom:secret-from-another-company" } }),
+            requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidColumns.StatusCode);
+
+        using (var ownList = await SendAsUserAsync(HttpMethod.Get, "/api/assets/custom-reports", _userId, _companyId))
+        using (var payload = JsonDocument.Parse(await ownList.Content.ReadAsStringAsync()))
+            Assert.Equal(reportId, Assert.Single(payload.RootElement.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
+
+        using (var otherUserList = await SendAsUserAsync(HttpMethod.Get, "/api/assets/custom-reports", _sameCompanyOtherUserId, _companyId))
+        using (var payload = JsonDocument.Parse(await otherUserList.Content.ReadAsStringAsync()))
+            Assert.Empty(payload.RootElement.GetProperty("items").EnumerateArray());
+
+        using (var crossCompanyList = await SendAsUserAsync(HttpMethod.Get, "/api/assets/custom-reports", _userId, _otherCompanyId))
+            Assert.Equal(HttpStatusCode.Unauthorized, crossCompanyList.StatusCode);
+
+        var otherCsrfResponse = await SendAsUserAsync(HttpMethod.Get, "/api/session/csrf", _sameCompanyOtherUserId, _companyId);
+        using (otherCsrfResponse)
+        using (var otherCsrf = JsonDocument.Parse(await otherCsrfResponse.Content.ReadAsStringAsync()))
+        {
+            var otherToken = otherCsrf.RootElement.GetProperty("requestToken").GetString()!;
+            var otherCookie = otherCsrfResponse.Headers.TryGetValues("Set-Cookie", out var otherSetCookies)
+                ? otherSetCookies.Select(value => value.Split(';', 2)[0])
+                    .FirstOrDefault(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase))
+                : null;
+            using var forbiddenUpdate = await SendAsUserAsync(HttpMethod.Put, $"/api/assets/custom-reports/{reportId}",
+                _sameCompanyOtherUserId, _companyId, System.Net.Http.Json.JsonContent.Create(definition), otherToken, otherCookie ?? antiforgeryCookie);
+            Assert.Equal(HttpStatusCode.NotFound, forbiddenUpdate.StatusCode);
+        }
+
+        using var update = await SendAsUserAsync(HttpMethod.Put, $"/api/assets/custom-reports/{reportId}", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Warranty review", columns = new[] { "tag", "warrantyExpiresAt" },
+                q = "device", status = "", warranty = "expired", sortBy = "tag", sortDirection = "desc" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+
+        using var delete = await SendAsUserAsync(HttpMethod.Delete, $"/api/assets/custom-reports/{reportId}",
+            _userId, _companyId, requestToken: requestToken, antiforgeryCookie: antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+    }
+
+    [Fact]
     public async Task Dashboard_preferences_are_private_validated_and_csrf_protected()
     {
         using (var defaultsResponse = await SendAsAdminAsync("/api/dashboard/preferences"))

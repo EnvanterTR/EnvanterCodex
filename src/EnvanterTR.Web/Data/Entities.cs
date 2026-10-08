@@ -226,6 +226,18 @@ public sealed class SavedAssetSearch
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class CustomAssetReport
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid UserId { get; set; }
+    public required string Name { get; set; }
+    public required string NormalizedName { get; set; }
+    public required string DefinitionJson { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class DashboardPreference
 {
     public Guid CompanyId { get; set; }

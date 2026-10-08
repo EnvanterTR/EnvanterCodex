@@ -331,7 +331,7 @@
     const labelSizePresets = Object.freeze({ '86x48': [86, 48], '50x30': [50, 30], '60x40': [60, 40], '70x35': [70, 35], '100x50': [100, 50], custom: null });
     function matchLabelSizePreset(width, height) { return Object.entries(labelSizePresets).find(([key, size]) => key !== 'custom' && size[0] === Number(width) && size[1] === Number(height))?.[0] || 'custom'; }
     let labelPrintSettings = { ...defaultLabelPrintSettings }, labelSheetSettings = { ...defaultLabelSheetSettings }, labelSheetSettingsKey = '', labelStockTemplates = [];
-    let customReportSettingsKey = '', customReportFieldsLoaded = false;
+    let customReportSettingsKey = '', customReportFieldsLoaded = false, customReportPresetsCache = [];
     const pageSize = 12;
     let accessoryPage = 1, accessoryTotal = 0, accessoryQueryTimer, currentAccessory = null, accessoryRequestId = 0, visibleAccessoryColumns = Array(9).fill(true);
     const $ = (selector, root = document) => root.querySelector(selector);
@@ -1504,8 +1504,7 @@
       } finally { button.disabled = false; }
     });
     function customReportPresets() {
-      try { const value = JSON.parse(localStorage.getItem(customReportSettingsKey) || '[]'); return Array.isArray(value) ? value.filter(item => item && typeof item.id === 'string' && typeof item.name === 'string') : []; }
-      catch { return []; }
+      return customReportPresetsCache;
     }
     function renderCustomReportPresets() {
       const select = $('#customReportPreset'), previous = select.value, presets = customReportPresets();
@@ -1539,26 +1538,52 @@
       const sort = `${draft.sortBy || 'tag'}:${draft.sortDirection || 'asc'}`;
       $('#customReportSort').value = [...$('#customReportSort').options].some(option => option.value === sort) ? sort : 'tag:asc';
     }
-    function saveCustomReportPreset() {
+    async function loadCustomReportPresets() {
+      let server = await api('/api/assets/custom-reports');
+      let legacy = [];
+      try { const value = JSON.parse(localStorage.getItem(customReportSettingsKey) || '[]'); if (Array.isArray(value)) legacy = value.filter(item => item && typeof item.id === 'string' && typeof item.name === 'string'); } catch { }
+      let migrated = 0, migrationFailed = false;
+      for (const preset of legacy) {
+        if (server.items.some(item => item.name.localeCompare(preset.name, undefined, { sensitivity: 'accent' }) === 0)) continue;
+        try {
+          await api('/api/assets/custom-reports', { method: 'POST', body: JSON.stringify({ name: preset.name, columns: preset.columns, q: preset.q, status: preset.status, warranty: preset.warranty, sortBy: preset.sortBy, sortDirection: preset.sortDirection }) });
+          migrated++;
+        } catch { migrationFailed = true; }
+      }
+      if (legacy.length && !migrationFailed) localStorage.removeItem(customReportSettingsKey);
+      if (migrated) server = await api('/api/assets/custom-reports');
+      customReportPresetsCache = server.items.map(item => ({ ...item.definition, id: item.id, name: item.name }));
+      renderCustomReportPresets();
+      if (migrationFailed) $('#customReportFeedback').textContent = 'Bazı eski taslaklar sunucuya aktarılamadı; tarayıcıda korundu. Tekrar deneyin veya adı/sütunları kontrol edin.';
+      else if (migrated) $('#customReportFeedback').textContent = `${migrated} eski rapor taslağı hesabınıza aktarıldı ve cihazlarınızla eşitlenecek.`;
+    }
+    async function saveCustomReportPreset() {
       const draft = readCustomReportDraft();
       if (!draft.name) { $('#customReportFeedback').textContent = 'Taslağı kaydetmek için bir rapor adı yazın.'; $('#customReportName').focus(); return; }
       if (!draft.columns.length) { $('#customReportFeedback').textContent = 'En az bir rapor sütunu seçin.'; return; }
-      const presets = customReportPresets(), selectedId = $('#customReportPreset').value, existing = presets.find(item => item.id === selectedId);
-      if (existing) { existing.name = draft.name; Object.assign(existing, draft); }
-      else { if (presets.length >= 30) { $('#customReportFeedback').textContent = 'Bu tarayıcıda en fazla 30 rapor taslağı saklanabilir.'; return; } presets.push({ ...draft, id: crypto.randomUUID() }); }
-      try { localStorage.setItem(customReportSettingsKey, JSON.stringify(presets)); renderCustomReportPresets(); const saved = presets.find(item => item.name === draft.name); if (saved) $('#customReportPreset').value = saved.id; $('#customReportFeedback').textContent = 'Rapor taslağı bu tarayıcıya kaydedildi.'; }
-      catch { $('#customReportFeedback').textContent = 'Tarayıcı depolaması kapalı veya dolu; taslak kaydedilemedi.'; }
+      const selectedId = $('#customReportPreset').value, body = JSON.stringify(draft), feedback = $('#customReportFeedback');
+      $('#customReportSavePreset').disabled = true; feedback.textContent = 'Rapor taslağı hesabınıza kaydediliyor…';
+      try {
+        const saved = selectedId
+          ? await api(`/api/assets/custom-reports/${encodeURIComponent(selectedId)}`, { method: 'PUT', body })
+          : await api('/api/assets/custom-reports', { method: 'POST', body });
+        await loadCustomReportPresets(); $('#customReportPreset').value = saved.id;
+        feedback.textContent = 'Rapor taslağı hesabınıza kaydedildi ve diğer cihazlarınızla eşitlenecek.';
+      } catch (error) { feedback.textContent = error.message; }
+      finally { $('#customReportSavePreset').disabled = false; }
     }
     function loadSelectedCustomReportPreset() {
       const preset = customReportPresets().find(item => item.id === $('#customReportPreset').value);
       if (!preset) { $('#customReportFeedback').textContent = 'Önce kaydedilmiş bir taslak seçin.'; return; }
       applyCustomReportDraft(preset); $('#customReportFeedback').textContent = `“${preset.name}” taslağı yüklendi.`;
     }
-    function deleteSelectedCustomReportPreset() {
+    async function deleteSelectedCustomReportPreset() {
       const id = $('#customReportPreset').value;
       if (!id) { $('#customReportFeedback').textContent = 'Silmek için bir taslak seçin.'; return; }
-      localStorage.setItem(customReportSettingsKey, JSON.stringify(customReportPresets().filter(item => item.id !== id)));
-      renderCustomReportPresets(); $('#customReportFeedback').textContent = 'Rapor taslağı bu tarayıcıdan silindi.';
+      $('#customReportDeletePreset').disabled = true;
+      try { await api(`/api/assets/custom-reports/${encodeURIComponent(id)}`, { method: 'DELETE' }); await loadCustomReportPresets(); $('#customReportFeedback').textContent = 'Rapor taslağı hesabınızdan silindi.'; }
+      catch (error) { $('#customReportFeedback').textContent = error.message; }
+      finally { $('#customReportDeletePreset').disabled = !customReportPresetsCache.length; }
     }
     async function exportCustomAssetReport() {
       const draft = readCustomReportDraft(), feedback = $('#customReportFeedback'), button = $('#customReportExport');
@@ -3435,7 +3460,7 @@
       }
       else if (page === 'Denetim kayıtları') { $('#auditPage').hidden = false; $('#pageTitle').textContent = page; loadAuditActions().then(() => loadAudit(1)).catch(error => notify(error.message)); loadAuditSchedule().catch(error => notify(error.message)); }
        else if (page === 'Hazır raporlar') { $('#reportPage').hidden = false; $('#pageTitle').textContent = 'Envanter raporları'; loadAssetReports().catch(error => notify(error.message)); loadMaintenanceReport().catch(error => notify(error.message)); loadWarrantyReport(1).catch(error => notify(error.message)); loadLicenseExpiryReport(1).catch(error => notify(error.message)); }
-       else if (page === 'Özel rapor oluştur') { if (!canReadAssets()) { notify('Özel varlık raporu için varlıkları görüntüleme yetkisi gerekir.'); return; } $('#customReportPage').hidden = false; $('#pageTitle').textContent = 'Özel varlık raporu'; loadCustomReportFields().then(renderCustomReportPresets).catch(error => { $('#customReportFeedback').textContent = error.message; }); }
+       else if (page === 'Özel rapor oluştur') { if (!canReadAssets()) { notify('Özel varlık raporu için varlıkları görüntüleme yetkisi gerekir.'); return; } $('#customReportPage').hidden = false; $('#pageTitle').textContent = 'Özel varlık raporu'; loadCustomReportFields().then(loadCustomReportPresets).catch(error => { $('#customReportFeedback').textContent = error.message; }); }
       else if (['Kategoriler','Markalar','Varlık modelleri'].includes(page)) { if (!canReadAssets()) { notify('Bu hesabın envanter tanımlarını görüntüleme yetkisi yok.'); return; } catalogKind = page === 'Kategoriler' ? 'categories' : page === 'Markalar' ? 'brands' : 'models'; $('#catalogPage').hidden = false; $('#pageTitle').textContent = page; $('#catalogTitle').textContent = page; $('#catalogDescription').textContent = `${page} şirket envanterinde kullanılacak. Kullanılan tanımlar silinemez; yeniden adlandırma mevcut ilişkilere dokunmaz.`; $('#catalogBrandLabel').hidden = catalogKind !== 'models'; $('#catalogCreateForm').hidden = !canWriteAssets(); loadCatalog().catch(error => notify(error.message)); }
       else if (page === 'Firma profili' || page === 'Logo ve tema') { if (!canManageSettings()) { notify('Şirket görünümünü yalnızca şirket sahibi ve yöneticileri değiştirebilir.'); return; } $('#companySettingsPage').hidden = false; $('#pageTitle').textContent = page === 'Firma profili' ? 'Şirket profili' : 'Logo ve tema'; ensureAssetCustomFieldSettings(); Promise.all([loadCompanyProfile(), loadAssetCustomFieldDefinitions()]).catch(error => notify(error.message)); }
       else if (dataPages.includes(page)) {
