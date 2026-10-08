@@ -14,6 +14,7 @@ Senaryo aynı eski `admin` kimlik bilgilerini her istekte tekrar gönderir ve ve
 
 - Başlangıçta üye yönetimi izni çalışır.
 - İstek şirket kimliği, kullanıcının üyesi olmadığı etkin bir şirkete çevrilince `401` döner.
+- Kayıtlı varlık aramaları yalnız oluşturan kullanıcıya görünür; aynı şirketteki başka kullanıcı boş liste alır, başka şirkete geçiş `401` olur. Büyük/küçük harf farklılığı mevcut aramayı yinelenen kayıt yerine günceller, yalnız sahibinin silebildiği doğrulanır ve CSRF token'ı olmayan yazma isteği `400` döner.
 - Üyelik rolü `viewer` olduğunda üye yönetimi isteği `403`, varlıkları okuma isteği `200` döner.
 - Varlık listesi yalnız geçerli şirkete ait kaydı içerir; diğer şirkete ait varlık kimliğiyle ayrıntı isteği `404` döner.
 - Lisans bitiş raporu listesi ve CSV yalnız etkin şirkete ait lisansları içerir; kendi lisansı ayrıntıda `200`, diğer şirketin lisans kimliği `404` döner. CSV yanıtı `no-store` olarak işaretlenir.

@@ -27,6 +27,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
 {
     private const string TestScheme = "SecurityAcceptance";
     private readonly Guid _userId = Guid.NewGuid();
+    private readonly Guid _sameCompanyOtherUserId = Guid.NewGuid();
     private readonly Guid _companyId = Guid.NewGuid();
     private readonly Guid _otherCompanyId = Guid.NewGuid();
     private readonly Guid _ownAssetId = Guid.NewGuid();
@@ -138,7 +139,82 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             DisplayName = "Security Acceptance User"
         });
         db.CompanyMemberships.Add(new CompanyMembership { CompanyId = _companyId, UserId = _userId, RoleKey = "admin" });
+        db.Users.Add(new EnvanterUser
+        {
+            Id = _sameCompanyOtherUserId,
+            UserName = $"acceptance-other-{_sameCompanyOtherUserId:N}",
+            NormalizedUserName = $"ACCEPTANCE-OTHER-{_sameCompanyOtherUserId:N}".ToUpperInvariant(),
+            Email = $"acceptance-other-{_sameCompanyOtherUserId:N}@example.invalid",
+            NormalizedEmail = $"ACCEPTANCE-OTHER-{_sameCompanyOtherUserId:N}@EXAMPLE.INVALID".ToUpperInvariant(),
+            EmailConfirmed = true,
+            SecurityStamp = Guid.NewGuid().ToString("N"),
+            ConcurrencyStamp = Guid.NewGuid().ToString("N"),
+            DisplayName = "Second Security Acceptance User"
+        });
+        db.CompanyMemberships.Add(new CompanyMembership { CompanyId = _companyId, UserId = _sameCompanyOtherUserId, RoleKey = "admin" });
         await db.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task Saved_asset_searches_are_private_to_user_and_company_and_require_csrf_for_changes()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using (var noCsrfResponse = await SendAsUserAsync(HttpMethod.Post, "/api/assets/saved-searches", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Laptop", filters = new { q = "laptop" } })))
+            Assert.Equal(HttpStatusCode.BadRequest, noCsrfResponse.StatusCode);
+
+        var filters = new
+        {
+            q = "laptop", status = "Available", warranty = "active", categoryId = (Guid?)null,
+            brandId = (Guid?)null, modelId = (Guid?)null, employeeId = (Guid?)null,
+            employeeName = "", location = "Merkez", sortBy = "name", sortDirection = "desc"
+        };
+        using var createResponse = await SendAsUserAsync(HttpMethod.Post, "/api/assets/saved-searches", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Laptop", filters }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
+        using var created = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var searchId = created.RootElement.GetProperty("id").GetGuid();
+        Assert.Equal("Available", created.RootElement.GetProperty("filters").GetProperty("status").GetString());
+
+        using (var updateResponse = await SendAsUserAsync(HttpMethod.Post, "/api/assets/saved-searches", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "LAPTOP", filters = new { q = "notebook", sortBy = "tag", sortDirection = "asc" } }),
+            requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+            using var updated = JsonDocument.Parse(await updateResponse.Content.ReadAsStringAsync());
+            Assert.Equal(searchId, updated.RootElement.GetProperty("id").GetGuid());
+            Assert.Equal("notebook", updated.RootElement.GetProperty("filters").GetProperty("q").GetString());
+        }
+
+        using (var ownList = await SendAsUserAsync(HttpMethod.Get, "/api/assets/saved-searches", _userId, _companyId))
+        using (var ownPayload = JsonDocument.Parse(await ownList.Content.ReadAsStringAsync()))
+            Assert.Single(ownPayload.RootElement.GetProperty("items").EnumerateArray());
+
+        using (var otherUserList = await SendAsUserAsync(HttpMethod.Get, "/api/assets/saved-searches", _sameCompanyOtherUserId, _companyId))
+        using (var otherUserPayload = JsonDocument.Parse(await otherUserList.Content.ReadAsStringAsync()))
+            Assert.Empty(otherUserPayload.RootElement.GetProperty("items").EnumerateArray());
+
+        using (var crossCompanyList = await SendAsUserAsync(HttpMethod.Get, "/api/assets/saved-searches", _userId, _otherCompanyId))
+            Assert.Equal(HttpStatusCode.Unauthorized, crossCompanyList.StatusCode);
+
+        using var otherUserCsrfResponse = await SendAsUserAsync(HttpMethod.Get, "/api/session/csrf", _sameCompanyOtherUserId, _companyId);
+        using var otherUserCsrfPayload = JsonDocument.Parse(await otherUserCsrfResponse.Content.ReadAsStringAsync());
+        var otherUserRequestToken = otherUserCsrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        using (var otherUserDelete = await SendAsUserAsync(HttpMethod.Delete, $"/api/assets/saved-searches/{searchId}",
+            _sameCompanyOtherUserId, _companyId, requestToken: otherUserRequestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.True(otherUserDelete.StatusCode == HttpStatusCode.NotFound,
+                $"A different company member must not delete this user's saved search. Received {(int)otherUserDelete.StatusCode}: {await otherUserDelete.Content.ReadAsStringAsync()}");
+
+        using (var deleteResponse = await SendAsUserAsync(HttpMethod.Delete, $"/api/assets/saved-searches/{searchId}",
+            _userId, _companyId, requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
     }
 
     [Fact]
@@ -1070,6 +1146,18 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         request.Headers.Add("X-Acceptance-User", _userId.ToString());
         request.Headers.Add("X-Acceptance-Company", (companyId ?? _companyId).ToString());
         request.Headers.Add("X-Acceptance-Role", "admin");
+        return await _client!.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> SendAsUserAsync(HttpMethod method, string path, Guid userId, Guid companyId,
+        HttpContent? content = null, string? requestToken = null, string? antiforgeryCookie = null)
+    {
+        using var request = new HttpRequestMessage(method, path) { Content = content };
+        request.Headers.Add("X-Acceptance-User", userId.ToString());
+        request.Headers.Add("X-Acceptance-Company", companyId.ToString());
+        request.Headers.Add("X-Acceptance-Role", "admin");
+        if (!string.IsNullOrWhiteSpace(requestToken)) request.Headers.Add("X-CSRF-TOKEN", requestToken);
+        if (!string.IsNullOrWhiteSpace(antiforgeryCookie)) request.Headers.Add("Cookie", antiforgeryCookie);
         return await _client!.SendAsync(request);
     }
 
