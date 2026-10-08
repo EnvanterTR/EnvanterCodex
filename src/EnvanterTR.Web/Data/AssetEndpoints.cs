@@ -40,6 +40,7 @@ public static class AssetEndpoints
         api.MapInventoryRequestEndpoints();
         api.MapSoftwareLicenseEndpoints();
         api.MapMaintenanceAttachmentEndpoints();
+        api.MapAccessoryPhotoEndpoints();
         api.MapComponentEndpoints();
         api.MapAccessoryImportEndpoints();
         api.MapInventoryMovementEndpoints();
@@ -161,6 +162,7 @@ public static class AssetEndpoints
                 {
                     x.Id, x.Name, x.Category, x.ModelNumber, x.ItemNumber, x.Supplier, x.Location,
                     x.MinimumQuantity, x.TotalQuantity,
+                    photoUrl = x.PhotoFileName == null ? null : $"/api/accessories/{x.Id}/photo",
                     checkedOut = db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0,
                     x.UnitCost, x.Currency, x.PurchaseDate, x.IsRequestable, x.UpdatedAt
                 }).ToListAsync(cancellationToken);
@@ -270,6 +272,7 @@ public static class AssetEndpoints
                 {
                     x.Id, x.Name, x.Category, x.ModelNumber, x.ItemNumber, x.Supplier, x.Location,
                     x.MinimumQuantity, x.TotalQuantity,
+                    photoUrl = x.PhotoFileName == null ? null : $"/api/accessories/{x.Id}/photo",
                     checkedOut = db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0,
                     x.UnitCost, x.Currency, x.PurchaseDate, x.Notes, x.IsRequestable, x.CreatedAt, x.UpdatedAt
                 }).FirstOrDefaultAsync(cancellationToken);

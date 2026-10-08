@@ -445,6 +445,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Accessory>().Property(x => x.Supplier).HasMaxLength(200);
         modelBuilder.Entity<Accessory>().Property(x => x.Location).HasMaxLength(160);
         modelBuilder.Entity<Accessory>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
+        modelBuilder.Entity<Accessory>().Property(x => x.PhotoFileName).HasMaxLength(80);
         modelBuilder.Entity<Accessory>().Property(x => x.UnitCost).HasPrecision(18, 2);
         modelBuilder.Entity<Accessory>().Property(x => x.Notes).HasMaxLength(2000);
         modelBuilder.Entity<Accessory>().HasIndex(x => new { x.CompanyId, x.Name });

@@ -1284,6 +1284,66 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Accessory_photos_are_company_scoped_audited_and_included_in_company_archive()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var pngBytes = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3 };
+        using (var invalid = await SendAccessoryPhotoUploadAsync(_ownAccessoryId, [1, 2, 3], "fake.png", requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        using (var tooLarge = await SendAccessoryPhotoUploadAsync(_ownAccessoryId, new byte[2 * 1024 * 1024 + 1], "large.png", requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, tooLarge.StatusCode);
+        using var upload = await SendAccessoryPhotoUploadAsync(_ownAccessoryId, pngBytes, "product.png", requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, upload.StatusCode);
+        using (var photo = await SendAsAdminAsync($"/api/accessories/{_ownAccessoryId}/photo"))
+        {
+            Assert.Equal(HttpStatusCode.OK, photo.StatusCode);
+            Assert.Equal("image/png", photo.Content.Headers.ContentType?.MediaType);
+            Assert.Equal(pngBytes, await photo.Content.ReadAsByteArrayAsync());
+        }
+        using (var crossTenant = await SendAsAdminAsync($"/api/accessories/{_otherCompanyAccessoryId}/photo"))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
+        string storedPhoto;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            storedPhoto = await db.Accessories.AsNoTracking().Where(item => item.CompanyId == _companyId && item.Id == _ownAccessoryId)
+                .Select(item => item.PhotoFileName!).SingleAsync();
+        }
+        using (var archiveResponse = await SendAsAdminAsync("/api/company/export.zip"))
+        {
+            Assert.Equal(HttpStatusCode.OK, archiveResponse.StatusCode);
+            using var archive = new ZipArchive(new MemoryStream(await archiveResponse.Content.ReadAsByteArrayAsync()), ZipArchiveMode.Read);
+            var entry = Assert.Single(archive.Entries, item => item.FullName == $"media/accessories/{_ownAccessoryId:N}/photo/{storedPhoto}");
+            await using var stream = entry.Open();
+            using var bytes = new MemoryStream();
+            await stream.CopyToAsync(bytes);
+            Assert.Equal(pngBytes, bytes.ToArray());
+        }
+        await SetCompanyRoleAsync("viewer");
+        using (var denied = await SendAsUserAsync(HttpMethod.Delete, $"/api/accessories/{_ownAccessoryId}/photo",
+            _userId, _companyId, requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        await SetCompanyRoleAsync("admin");
+        using (var remove = await SendAsUserAsync(HttpMethod.Delete, $"/api/accessories/{_ownAccessoryId}/photo",
+            _userId, _companyId, requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NoContent, remove.StatusCode);
+        using (var missing = await SendAsAdminAsync($"/api/accessories/{_ownAccessoryId}/photo"))
+            Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        await using var auditScope = _factory!.Services.CreateAsyncScope();
+        var auditDb = auditScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var actions = await auditDb.AuditEntries.AsNoTracking().Where(entry => entry.CompanyId == _companyId &&
+            entry.TargetType == "Accessory" && entry.TargetId == _ownAccessoryId).Select(entry => entry.Action).ToListAsync();
+        Assert.Contains("PhotoUpdated", actions);
+        Assert.Contains("PhotoRemoved", actions);
+    }
+
+    [Fact]
     public async Task Employee_photo_and_document_storage_are_scoped_to_the_active_company()
     {
         var pngSignature = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
@@ -2046,6 +2106,15 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var multipart = new MultipartFormDataContent();
         multipart.Add(new ByteArrayContent(bytes), "file", fileName);
         return await SendAsUserAsync(HttpMethod.Post, $"/api/maintenances/{maintenanceId}/attachments", _userId, _companyId,
+            multipart, requestToken, antiforgeryCookie);
+    }
+
+    private async Task<HttpResponseMessage> SendAccessoryPhotoUploadAsync(Guid accessoryId, byte[] bytes, string fileName,
+        string requestToken, string antiforgeryCookie)
+    {
+        using var multipart = new MultipartFormDataContent();
+        multipart.Add(new ByteArrayContent(bytes), "file", fileName);
+        return await SendAsUserAsync(HttpMethod.Post, $"/api/accessories/{accessoryId}/photo", _userId, _companyId,
             multipart, requestToken, antiforgeryCookie);
     }
 

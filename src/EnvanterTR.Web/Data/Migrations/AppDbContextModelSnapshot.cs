@@ -73,6 +73,10 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<string>("PhotoFileName")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
                     b.Property<DateOnly?>("PurchaseDate")
                         .HasColumnType("date");
 
