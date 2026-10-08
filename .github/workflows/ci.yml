@@ -35,6 +35,18 @@ jobs:
           docker compose --project-name "$project_name" --file "$compose_file" up \
             --build --abort-on-container-exit --exit-code-from acceptance
 
+      - name: Check Linux deployment script syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          for script in deploy/server/*.sh deploy/local/*.sh deploy/server/tests/*.sh; do
+            bash -n "$script"
+          done
+
+      - name: Test Linux backup health decisions
+        shell: bash
+        run: sudo -n bash deploy/server/tests/backup-health-check.sh
+
   windows-deployment-safety:
     name: Windows deployment and backup safety
     runs-on: windows-latest
