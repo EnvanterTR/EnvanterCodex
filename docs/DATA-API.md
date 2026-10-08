@@ -94,7 +94,7 @@ Konum listesi `isDefault`, `managerEmployeeId` ve `managerName` alanlarını iç
 - `DELETE /api/lookups/{categories|brands|models}/{id}` (tanım herhangi bir varlıkta veya bağlı modelde kullanılıyorsa `409 Conflict`; veri silmez)
 - `GET /api/setup/status` (şirket ilk kurulumu gerekli mi ve `Setup:BootstrapToken` sunucu ayarında yapılandırılmış mı bilgisini verir; anahtarın değerini döndürmez).
 - `GET /api/platform/bootstrap/status` (platform ilk kurulumu gerekli mi ve `Setup:PlatformBootstrapToken` ayarlanmış mı bilgisini verir; anahtarın değerini döndürmez).
-- `GET /api/company/export.zip` (`settings.manage`; özel/no-store, tekrarlanabilir şirket veri görünümünü ZIP içinde `company-data.json` ile şirket medya dosyalarını birleştirir; şirket üyelerinin hesap profil fotoğrafları dahil edilir, diğer hesapların dosyaları alınmaz; 100.000 dosya/4 GiB medya sınırı; symlink ve harici oturum dosyalarını izlemez; sistem yedeği/geri yükleme değildir).
+- `GET /api/company/export.zip` (`settings.manage`; özel/no-store, tekrarlanabilir şirket veri görünümünü ZIP içinde `company-data.json` ile şirket medya dosyalarını birleştirir; lisans dosyaları ve şirket üyelerinin hesap profil fotoğrafları dahil edilir, diğer hesapların dosyaları alınmaz; 100.000 dosya/4 GiB medya sınırı; symlink ve harici oturum dosyalarını izlemez; sistem yedeği/geri yükleme değildir).
 - `GET /api/status` (veritabanı bağlantısı, migration varlığı ve bekleyen migration sayısı; bağlantı parolasını göstermez)
 - `GET /api/session/csrf`
 - `POST /api/setup/initial-owner` (`X-Setup-Token` ve CSRF başlığı gerekir; e-posta mevcut hesapta kayıtlıysa mevcut parola doğrulanarak hesap şirkete bağlanabilir, parola/profile dokunulmaz).

@@ -1451,6 +1451,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var otherTenantPhoto = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x42 };
         var assetPhoto = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x22 };
         var assetPhotoId = Guid.NewGuid();
+        var licenseFile = Encoding.ASCII.GetBytes("%PDF-1.7\nlicense agreement\n%%EOF");
+        var licenseFileId = Guid.NewGuid();
         var accountMedia = Path.Combine(_mediaPath, "accounts");
         var ownerDirectory = Path.Combine(accountMedia, _userId.ToString("N"));
         var memberDirectory = Path.Combine(accountMedia, _sameCompanyOtherUserId.ToString("N"));
@@ -1462,8 +1464,11 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         await File.WriteAllBytesAsync(Path.Combine(memberDirectory, "profile.webp"), memberPhoto);
         await File.WriteAllBytesAsync(Path.Combine(otherTenantDirectory, "profile.jpg"), otherTenantPhoto);
         var assetDirectory = Path.Combine(_mediaPath, _companyId.ToString("N"), "assets", _ownAssetId.ToString("N"));
+        var licenseDirectory = Path.Combine(_mediaPath, _companyId.ToString("N"), "licenses", _ownLicenseId.ToString("N"), "attachments");
         Directory.CreateDirectory(assetDirectory);
+        Directory.CreateDirectory(licenseDirectory);
         await File.WriteAllBytesAsync(Path.Combine(assetDirectory, $"{assetPhotoId:N}.png"), assetPhoto);
+        await File.WriteAllBytesAsync(Path.Combine(licenseDirectory, $"{licenseFileId:N}.pdf"), licenseFile);
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -1472,6 +1477,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 Id = assetPhotoId, CompanyId = _companyId, AssetId = _ownAssetId,
                 OriginalFileName = "asset-photo.png", StorageFileName = $"{assetPhotoId:N}.png",
                 ContentType = "image/png", Length = assetPhoto.Length
+            });
+            db.SoftwareLicenseAttachments.Add(new SoftwareLicenseAttachment
+            {
+                Id = licenseFileId, CompanyId = _companyId, LicenseId = _ownLicenseId,
+                OriginalFileName = "license-agreement.pdf", StorageFileName = $"{licenseFileId:N}.pdf",
+                ContentType = "application/pdf", Length = licenseFile.Length
             });
             db.AssetMaintenances.Add(new AssetMaintenance
             {
@@ -1537,6 +1548,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             entry => entry.FullName == $"media/account-profiles/{_sameCompanyOtherUserId:N}/profile.webp");
         var assetPhotoEntry = Assert.Single(archive.Entries,
             entry => entry.FullName == $"media/assets/{_ownAssetId:N}/{assetPhotoId:N}.png");
+        var licenseFileEntry = Assert.Single(archive.Entries,
+            entry => entry.FullName == $"media/licenses/{_ownLicenseId:N}/attachments/{licenseFileId:N}.pdf");
         Assert.DoesNotContain(archive.Entries, entry =>
             entry.FullName.StartsWith($"media/account-profiles/{otherTenantUserId:N}/", StringComparison.Ordinal));
         await using var ownerPhotoStream = ownerPhotoEntry.Open();
@@ -1551,6 +1564,10 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var assetPhotoBytes = new MemoryStream();
         await assetPhotoStream.CopyToAsync(assetPhotoBytes);
         Assert.Equal(assetPhoto, assetPhotoBytes.ToArray());
+        await using var licenseFileStream = licenseFileEntry.Open();
+        using var licenseFileBytes = new MemoryStream();
+        await licenseFileStream.CopyToAsync(licenseFileBytes);
+        Assert.Equal(licenseFile, licenseFileBytes.ToArray());
     }
 
     [Fact]
