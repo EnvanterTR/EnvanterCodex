@@ -104,8 +104,10 @@ public static class AssetPurchaseOrderEndpoints
                 select new { line.Id, line.Name, line.CategoryId, categoryName = category.Name, line.BrandId, line.ModelId,
                     line.Quantity, line.QuantityReceived, remaining = line.Quantity - line.QuantityReceived,
                     line.UnitCost, line.WarrantyExpiresAt, line.Notes }).ToListAsync(ct);
+            var receivedAssets = await db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.PurchaseOrderId == id)
+                .OrderBy(x => x.AssetTag).Select(x => new { x.Id, x.AssetTag, x.Name, x.Status, x.SerialNumber, x.PurchaseDate }).ToListAsync(ct);
             return Results.Ok(new { order, lines, totalCost = lines.Sum(x => x.Quantity * x.UnitCost),
-                quantity = lines.Sum(x => x.Quantity), quantityReceived = lines.Sum(x => x.QuantityReceived) });
+                quantity = lines.Sum(x => x.Quantity), quantityReceived = lines.Sum(x => x.QuantityReceived), assets = receivedAssets });
         }).RequireAuthorization("asset.read");
 
         api.MapPost("/asset-orders", async (CreateRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
@@ -183,7 +185,7 @@ public static class AssetPurchaseOrderEndpoints
                 var qty = items.Single(x => x.LineId == line.Id).Quantity;
                 for (var index = 0; index < qty; index++)
                 {
-                    var asset = new Asset { CompanyId = companyId, AssetTag = $"AT-{request.ReceivedOn:yyMMdd}-{Guid.NewGuid():N}"[..23].ToUpperInvariant(),
+                    var asset = new Asset { CompanyId = companyId, PurchaseOrderId = id, AssetTag = $"AT-{request.ReceivedOn:yyMMdd}-{Guid.NewGuid():N}"[..23].ToUpperInvariant(),
                         Name = line.Name, CategoryId = line.CategoryId, BrandId = line.BrandId, ModelId = line.ModelId,
                         PurchaseDate = request.ReceivedOn, WarrantyExpiresAt = line.WarrantyExpiresAt, PurchaseCost = line.UnitCost, Currency = order.Currency };
                     db.Assets.Add(asset);

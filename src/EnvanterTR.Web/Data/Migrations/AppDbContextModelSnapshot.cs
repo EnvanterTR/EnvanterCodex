@@ -495,6 +495,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateOnly?>("PurchaseDate")
                         .HasColumnType("date");
 
+                    b.Property<Guid?>("PurchaseOrderId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("SerialNumber")
                         .HasColumnType("text");
 
@@ -526,6 +529,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasIndex("CompanyId", "NextAuditOn");
 
                     b.HasIndex("CompanyId", "ParentAssetId");
+
+                    b.HasIndex("CompanyId", "PurchaseOrderId");
 
                     b.HasIndex("CompanyId", "SerialNumber");
 
@@ -2994,6 +2999,12 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasOne("EnvanterTR.Web.Data.Asset", null)
                         .WithMany()
                         .HasForeignKey("CompanyId", "ParentAssetId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EnvanterTR.Web.Data.AssetPurchaseOrder", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "PurchaseOrderId")
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Restrict);
                 });

@@ -634,6 +634,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.Location });
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.LocationCatalogId });
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.ParentAssetId });
+        modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.PurchaseOrderId });
+        modelBuilder.Entity<Asset>().HasOne<AssetPurchaseOrder>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.PurchaseOrderId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<Asset>().HasOne<CompanyLocation>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.LocationCatalogId })
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);

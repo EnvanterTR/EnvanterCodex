@@ -203,6 +203,7 @@ public sealed class Asset
     public string? Location { get; set; }
     public Guid? LocationCatalogId { get; set; }
     public Guid? AssignedEmployeeId { get; set; }
+    public Guid? PurchaseOrderId { get; set; }
     public DateOnly? PurchaseDate { get; set; }
     public DateOnly? WarrantyExpiresAt { get; set; }
     public DateOnly? NextAuditOn { get; set; }

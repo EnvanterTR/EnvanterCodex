@@ -938,6 +938,9 @@ public static class DataExportEndpoints
                 if (!IsValidDateOnly(order, "orderDate", required: true) || !IsValidDateOnly(order, "expectedOn"))
                     AddError(errors, "Bir varlık siparişinin tarihi yyyy-AA-gg biçiminde olmalı.");
             }
+            foreach (var asset in EnumerateRows(root, "assets"))
+                if (asset.ValueKind == JsonValueKind.Object && TryGuid(asset, "purchaseOrderId", out var purchaseOrderId) && !assetPurchaseOrderIds.Contains(purchaseOrderId))
+                    AddError(errors, "Bir varlık satın alma siparişine bağlı ancak sipariş dosyada bulunmuyor.");
             foreach (var line in EnumerateRows(root, "assetPurchaseOrderLines"))
             {
                 if (line.ValueKind != JsonValueKind.Object) continue;
@@ -1086,7 +1089,8 @@ public static class DataExportEndpoints
             {
                 item.CategoryId = Map(item.CategoryId) ?? Guid.Empty; item.BrandId = Map(item.BrandId); item.ModelId = Map(item.ModelId);
                 item.ParentAssetId = Map(item.ParentAssetId); item.LocationCatalogId = Map(item.LocationCatalogId);
-                item.AssignedEmployeeId = Map(item.AssignedEmployeeId); item.DeletedAt = null; item.DeletedByUserId = null;
+                item.AssignedEmployeeId = Map(item.AssignedEmployeeId); item.PurchaseOrderId = Map(item.PurchaseOrderId);
+                item.DeletedAt = null; item.DeletedByUserId = null;
             }
             foreach (var item in requests)
             {

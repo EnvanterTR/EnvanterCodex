@@ -1807,6 +1807,95 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Asset_purchase_orders_are_tenant_scoped_export_formula_safe_and_receive_assets_atomically()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var orderNumber = $"AT-{Guid.NewGuid():N}"[..15];
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SupplierCatalogEntries.Add(new SupplierCatalogEntry { CompanyId = _companyId, Name = "=Acceptance supplier", NormalizedName = "=ACCEPTANCE SUPPLIER" });
+            await db.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var crossTenantPayload = System.Net.Http.Json.JsonContent.Create(new
+        {
+            supplier = "=Acceptance supplier", orderDate = today, currency = "TRY",
+            items = new[] { new { name = "Foreign asset", categoryId = Guid.NewGuid(), brandId = (Guid?)null, modelId = (Guid?)null, quantity = 1, unitCost = 10m } }
+        });
+        using var crossTenantCreate = await SendAsRoleAsync(HttpMethod.Post, "/api/asset-orders", "admin", crossTenantPayload, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.BadRequest, crossTenantCreate.StatusCode);
+
+        var createPayload = System.Net.Http.Json.JsonContent.Create(new
+        {
+            orderNumber, supplier = "=Acceptance supplier", orderDate = today.AddDays(-1), expectedOn = (DateOnly?)today,
+            currency = "TRY", notes = "Purchase order acceptance",
+            items = new[] { new { name = "Test laptop", categoryId = (await GetOwnCategoryIdAsync()), brandId = (Guid?)null, modelId = (Guid?)null, quantity = 3, unitCost = 12500m, warrantyExpiresAt = (DateOnly?)today.AddYears(2) } }
+        });
+        using var createResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/asset-orders", "admin", createPayload, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        using var created = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var orderId = created.RootElement.GetProperty("id").GetGuid();
+
+        using var csvResponse = await SendAsAdminAsync($"/api/asset-orders/export.csv?q={Uri.EscapeDataString(orderNumber)}&status=Ordered&from={today.AddDays(-2):yyyy-MM-dd}&to={today:yyyy-MM-dd}");
+        Assert.Equal(HttpStatusCode.OK, csvResponse.StatusCode);
+        var csv = await csvResponse.Content.ReadAsStringAsync();
+        Assert.Contains(orderNumber, csv);
+        Assert.Contains("'=Acceptance supplier", csv);
+        using var crossTenantExport = await SendAsAdminAsync($"/api/asset-orders/export.csv?q={Uri.EscapeDataString(orderNumber)}", _otherCompanyId);
+        Assert.Equal(HttpStatusCode.Unauthorized, crossTenantExport.StatusCode);
+        using var crossTenantDetail = await SendAsAdminAsync($"/api/asset-orders/{orderId}", _otherCompanyId);
+        Assert.Equal(HttpStatusCode.Unauthorized, crossTenantDetail.StatusCode);
+
+        using var detailResponse = await SendAsAdminAsync($"/api/asset-orders/{orderId}");
+        Assert.Equal(HttpStatusCode.OK, detailResponse.StatusCode);
+        using var detail = JsonDocument.Parse(await detailResponse.Content.ReadAsStringAsync());
+        var lineId = Assert.Single(detail.RootElement.GetProperty("lines").EnumerateArray()).GetProperty("id").GetGuid();
+        var receiptPayload = System.Net.Http.Json.JsonContent.Create(new
+        {
+            receivedOn = today, notes = "Partial device shipment", items = new[] { new { lineId, quantity = 2 } }
+        });
+        using var receiptResponse = await SendAsRoleAsync(HttpMethod.Post, $"/api/asset-orders/{orderId}/receive", "admin", receiptPayload, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, receiptResponse.StatusCode);
+        using var receiptResult = JsonDocument.Parse(await receiptResponse.Content.ReadAsStringAsync());
+        Assert.Equal("PartiallyReceived", receiptResult.RootElement.GetProperty("status").GetString());
+        Assert.Equal(2, receiptResult.RootElement.GetProperty("receivedQuantity").GetInt32());
+
+        using var receivedOrderResponse = await SendAsAdminAsync($"/api/asset-orders/{orderId}");
+        Assert.Equal(HttpStatusCode.OK, receivedOrderResponse.StatusCode);
+        using var receivedOrder = JsonDocument.Parse(await receivedOrderResponse.Content.ReadAsStringAsync());
+        var receivedAssets = receivedOrder.RootElement.GetProperty("assets").EnumerateArray().ToArray();
+        Assert.Equal(2, receivedAssets.Length);
+        var receivedAssetId = receivedAssets[0].GetProperty("id").GetGuid();
+        using var assetProfileResponse = await SendAsAdminAsync($"/api/assets/{receivedAssetId}");
+        Assert.Equal(HttpStatusCode.OK, assetProfileResponse.StatusCode);
+        using var assetProfile = JsonDocument.Parse(await assetProfileResponse.Content.ReadAsStringAsync());
+        Assert.Equal(orderId, assetProfile.RootElement.GetProperty("purchaseOrder").GetProperty("id").GetGuid());
+        using var crossTenantAssetProfile = await SendAsAdminAsync($"/api/assets/{receivedAssetId}", _otherCompanyId);
+        Assert.Equal(HttpStatusCode.Unauthorized, crossTenantAssetProfile.StatusCode);
+
+        await using var verifyScope = _factory.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(2, await verifyDb.Assets.CountAsync(x => x.CompanyId == _companyId && x.Name == "Test laptop" && x.PurchaseOrderId == orderId));
+        Assert.Equal(2, await verifyDb.AssetEvents.CountAsync(x => x.CompanyId == _companyId && x.EventType == "Purchased" && x.Details != null && x.Details.Contains(orderNumber)));
+    }
+
+    private async Task<Guid> GetOwnCategoryIdAsync()
+    {
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await db.AssetCategories.Where(x => x.CompanyId == _companyId).Select(x => x.Id).SingleAsync();
+    }
+
+    [Fact]
     public async Task Asset_purchase_report_is_company_scoped_searchable_and_exports_formula_safe_csv()
     {
         var purchaseDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-5);

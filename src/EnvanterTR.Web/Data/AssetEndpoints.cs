@@ -1406,6 +1406,7 @@ public static class AssetEndpoints
                     x.Id, x.AssetTag, x.Name, x.Status, x.SerialNumber, x.Location,
                     x.LocationCatalogId,
                     x.CategoryId, x.BrandId, x.ModelId, x.ParentAssetId, x.AssignedEmployeeId,
+                    x.PurchaseOrderId,
                     x.PurchaseDate, x.WarrantyExpiresAt, x.NextAuditOn, x.PurchaseCost, x.Currency, x.IsRequestable, x.CreatedAt, x.UpdatedAt,
                     x.CustomFieldsJson
                 }).SingleOrDefaultAsync(cancellationToken);
@@ -1422,6 +1423,10 @@ public static class AssetEndpoints
                 model = await db.AssetModels.Where(x => x.CompanyId == companyId && x.Id == asset.ModelId).Select(x => x.Name).SingleOrDefaultAsync(cancellationToken),
                 employee = await db.Employees.Where(x => x.CompanyId == companyId && x.Id == asset.AssignedEmployeeId).Select(x => x.DisplayName).SingleOrDefaultAsync(cancellationToken)
             };
+            var purchaseOrder = asset.PurchaseOrderId is Guid orderId
+                ? await db.AssetPurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == orderId)
+                    .Select(x => new { x.Id, x.OrderNumber, x.Supplier, x.OrderDate }).SingleOrDefaultAsync(cancellationToken)
+                : null;
             var accessoryAssignments = await db.AccessoryAssignments.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && x.TargetType == "Asset" && x.AssetId == id && x.ReturnedQuantity < x.Quantity)
                 .OrderByDescending(x => x.CheckedOutAt)
@@ -1501,9 +1506,9 @@ public static class AssetEndpoints
             try { customFields = JsonSerializer.Deserialize<Dictionary<string, string>>(asset.CustomFieldsJson ?? "{}") ?? new(StringComparer.Ordinal); }
             catch (JsonException) { customFields = new(StringComparer.Ordinal); }
             return Results.Ok(new { asset = new { asset.Id, asset.AssetTag, asset.Name, asset.Status, asset.SerialNumber, asset.Location,
-                asset.LocationCatalogId, asset.CategoryId, asset.BrandId, asset.ModelId, asset.ParentAssetId, asset.AssignedEmployeeId,
+                asset.LocationCatalogId, asset.CategoryId, asset.BrandId, asset.ModelId, asset.ParentAssetId, asset.AssignedEmployeeId, asset.PurchaseOrderId,
                 asset.PurchaseDate, asset.WarrantyExpiresAt, asset.NextAuditOn, asset.PurchaseCost, asset.Currency, asset.IsRequestable,
-                asset.CreatedAt, asset.UpdatedAt, customFields }, references, relatedAssets, accessories = accessoryAssignments,
+                asset.CreatedAt, asset.UpdatedAt, customFields }, references, purchaseOrder, relatedAssets, accessories = accessoryAssignments,
                 components = componentAllocations, softwareLicenses, history, attachments });
         }).RequireAuthorization("asset.read");
 
