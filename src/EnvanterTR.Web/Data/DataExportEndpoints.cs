@@ -31,7 +31,13 @@ public static class DataExportEndpoints
         endpoints.MapPost("/api/assets/import/preview.csv", PreviewAssetCsvAsync)
             .RequireAuthorization("asset.write")
             .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
+        endpoints.MapPost("/api/assets/import/preview.xlsx", PreviewAssetCsvAsync)
+            .RequireAuthorization("asset.write")
+            .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
         endpoints.MapPost("/api/assets/import.csv", ImportAssetCsvAsync)
+            .RequireAuthorization("asset.write")
+            .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
+        endpoints.MapPost("/api/assets/import.xlsx", ImportAssetCsvAsync)
             .RequireAuthorization("asset.write")
             .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
         endpoints.MapPost("/api/employees/import/preview.csv", (HttpContext context, AppDbContext db,
@@ -161,7 +167,8 @@ public static class DataExportEndpoints
             return Results.Forbid();
         try { await antiforgery.ValidateRequestAsync(context); }
         catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
-        if (context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true)
+        var isXlsx = IsXlsxRequest(context.Request);
+        if (!isXlsx && context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true)
             return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
 
         using var buffer = new MemoryStream();
@@ -173,14 +180,22 @@ public static class DataExportEndpoints
             if (buffer.Length + read > PreviewMaxBytes) return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
             await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken);
         }
-        string text;
-        try { text = new System.Text.UTF8Encoding(false, true).GetString(buffer.ToArray()).TrimStart('\uFEFF'); }
+        List<List<string>> rows;
+        try
+        {
+            if (isXlsx) rows = AssetXlsxImportParser.Parse(buffer, CsvImportMaxRows + 2);
+            else
+            {
+                var text = new System.Text.UTF8Encoding(false, true).GetString(buffer.ToArray()).TrimStart('\uFEFF');
+                rows = ParseAssetCsv(text, CsvImportMaxRows + 2);
+            }
+        }
         catch (System.Text.DecoderFallbackException)
         { return Results.UnprocessableEntity(new { message = "CSV dosyası UTF-8 kodlamasında olmalıdır." }); }
-        List<List<string>> rows;
-        try { rows = ParseAssetCsv(text, CsvImportMaxRows + 2); }
         catch (FormatException)
         { return Results.UnprocessableEntity(new { message = "CSV tırnak/ayraç biçimi bozuk." }); }
+        catch (Exception exception) when (isXlsx && exception is InvalidDataException or InvalidOperationException or System.Xml.XmlException or OverflowException)
+        { return Results.UnprocessableEntity(new { message = exception.Message }); }
         rows = AssetCsvImportMapping.Normalize(rows, out var unsupportedColumns);
         if (unsupportedColumns.Length > 0)
             return Results.UnprocessableEntity(new { message = $"Bu dosyada henüz eşlenmeyen ve dolu veri içeren sütunlar var: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu; önce bu sütunları eşleyin veya boş olduklarını doğrulayın." });
@@ -318,9 +333,9 @@ public static class DataExportEndpoints
         db.Assets.AddRange(importRows.Select(x => x.Asset));
         foreach (var item in importRows)
             db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = item.Asset.Id, ActorUserId = actorId,
-                EventType = "Created", Details = "Varlık CSV dosyasından içe aktarıldı.", EmployeeId = item.EmployeeId });
-        db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Asset", Action = "CsvImported",
-            Details = $"CSV dosyasından {importRows.Count} varlık içe aktarıldı." });
+                EventType = "Created", Details = $"Varlık {(isXlsx ? "Excel" : "CSV")} dosyasından içe aktarıldı.", EmployeeId = item.EmployeeId });
+        db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Asset", Action = isXlsx ? "XlsxImported" : "CsvImported",
+            Details = $"{(isXlsx ? "Excel" : "CSV")} dosyasından {importRows.Count} varlık içe aktarıldı." });
         try
         {
             await db.SaveChangesAsync(cancellationToken);
@@ -335,12 +350,15 @@ public static class DataExportEndpoints
         catch (DbUpdateException)
         {
             await transaction.RollbackAsync(cancellationToken);
-            return Results.Conflict(new { message = "CSV kaydedilmedi. Etiket veya ilişkili kayıtlar işlem sırasında değişmiş olabilir; önizlemeyi yenileyin." });
+            return Results.Conflict(new { message = $"{(isXlsx ? "Excel" : "CSV")} kaydedilmedi. Etiket veya ilişkili kayıtlar işlem sırasında değişmiş olabilir; önizlemeyi yenileyin." });
         }
-        return Results.Ok(new { imported = importRows.Count, message = $"{importRows.Count:N0} varlık başarıyla içe aktarıldı." });
+        return Results.Ok(new { imported = importRows.Count, message = $"{importRows.Count:N0} varlık başarıyla {(isXlsx ? "Excel" : "CSV")} dosyasından içe aktarıldı." });
     }
 
     private static string? CleanCsv(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static bool IsXlsxRequest(HttpRequest request) =>
+        request.ContentType?.StartsWith("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", StringComparison.OrdinalIgnoreCase) == true;
 
     private sealed class BrandModelComparer : IEqualityComparer<(Guid? BrandId, string Name)>
     {
@@ -360,7 +378,8 @@ public static class DataExportEndpoints
         if (!activeMembership) return Results.Forbid();
         try { await antiforgery.ValidateRequestAsync(context); }
         catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
-        if (context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true)
+        var isXlsx = IsXlsxRequest(context.Request);
+        if (!isXlsx && context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true)
             return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
 
         using var buffer = new MemoryStream();
@@ -373,14 +392,22 @@ public static class DataExportEndpoints
             await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken);
         }
 
-        string text;
-        try { text = new System.Text.UTF8Encoding(false, true).GetString(buffer.ToArray()).TrimStart('\uFEFF'); }
+        List<List<string>> records;
+        try
+        {
+            if (isXlsx) records = AssetXlsxImportParser.Parse(buffer, CsvImportMaxRows + 2);
+            else
+            {
+                var text = new System.Text.UTF8Encoding(false, true).GetString(buffer.ToArray()).TrimStart('\uFEFF');
+                records = ParseAssetCsv(text, CsvImportMaxRows + 2);
+            }
+        }
         catch (System.Text.DecoderFallbackException)
         { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV dosyası UTF-8 kodlamasında olmalıdır." } }); }
-        List<List<string>> records;
-        try { records = ParseAssetCsv(text, CsvImportMaxRows + 2); }
         catch (FormatException)
         { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV tırnak/ayraç biçimi bozuk." } }); }
+        catch (Exception exception) when (isXlsx && exception is InvalidDataException or InvalidOperationException or System.Xml.XmlException or OverflowException)
+        { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { exception.Message } }); }
         records = AssetCsvImportMapping.Normalize(records, out var unsupportedColumns);
         if (unsupportedColumns.Length > 0)
             return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Bu dosyada henüz eşlenmeyen ve dolu veri içeren sütunlar var: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu; önce bu sütunları eşleyin veya boş olduklarını doğrulayın." } });
