@@ -954,6 +954,41 @@ public static class OperationalEndpoints
             return Results.Ok(new { asset.Id, asset.AssetTag, asset.Status, asset.AssignedEmployeeId, asset.UpdatedAt });
         }).RequireAuthorization("asset.write");
 
+        api.MapPost("/assets/{id:guid}/restore", async (Guid id, [FromBody] ChangeAssetStatusRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            if (request.Note is { Length: > 1900 })
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Açıklama en fazla 1900 karakter olabilir."] });
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            var asset = await db.Assets.FromSqlInterpolated($"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+                .SingleOrDefaultAsync(cancellationToken);
+            if (asset is null) return Results.NotFound();
+            if (asset.Status != AssetStatuses.Archived)
+                return Results.Conflict(new { message = "Yalnızca arşivlenmiş varlıklar geri alınabilir." });
+            if (asset.AssignedEmployeeId is not null)
+                return Results.Conflict(new { message = "Arşivlenmiş varlık beklenmedik biçimde zimmetli; önce zimmet ilişkisini çözün." });
+            if (await db.AssetMaintenances.AnyAsync(x => x.CompanyId == companyId && x.AssetId == id && x.Status == "InProgress", cancellationToken))
+                return Results.Conflict(new { message = "Açık bakım kaydı tamamlanmadan varlık arşivden geri alınamaz." });
+
+            asset.Status = AssetStatuses.Available;
+            asset.UpdatedAt = DateTimeOffset.UtcNow;
+            var details = $"Arşiv → Kullanılabilir. {Clean(request.Note)}".Trim();
+            db.AssetEvents.Add(new AssetEvent
+            {
+                CompanyId = companyId, AssetId = asset.Id, ActorUserId = actorId,
+                EventType = "StatusChanged", Details = details
+            });
+            db.AuditEntries.Add(new AuditEntry
+            {
+                CompanyId = companyId, ActorUserId = actorId, TargetType = "Asset",
+                TargetId = asset.Id, Action = "Restored", Details = details
+            });
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { asset.Id, asset.AssetTag, asset.Status, asset.UpdatedAt });
+        }).RequireAuthorization("asset.write");
+
         api.MapPatch("/assets/{id:guid}/status", async (Guid id, [FromBody] ChangeAssetStatusRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
