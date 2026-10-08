@@ -53,7 +53,7 @@ jobs:
 
       - name: Validate resumable Linux first install
         shell: bash
-        run: bash deploy/server/tests/install-resume-check.sh
+        run: sudo -n bash deploy/server/tests/install-resume-check.sh
 
   windows-deployment-safety:
     name: Windows deployment and backup safety

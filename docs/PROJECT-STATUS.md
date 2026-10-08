@@ -141,7 +141,7 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 
 - `deploy/server/install.sh` aynı `/run/lock/envantertr-operations.lock` bakım kilidini alarak yedekleme, güncelleme ve geri yüklemeyle çakışmayı önler.
 - İlk kurulum başarısızlıkla yarıda kalırsa tekrar çağrı, yalnızca root sahipli `0600` yapılandırmayı, `initial-<UTC damgası>` sürüm dizinini ve root sahipli yedek parolasını doğrulayarak devam eder. Aynı alan adı ve kimlik bilgileri korunur; başka sürümü gösteren `current` bağlantısı veya tamamlanmış kurulum reddedilir. Mevcut volume'lar hiçbir aşamada silinmez.
-- Linux CI'a resume akışı için kaynak güvenlik kontrolü eklendi. Tüm Linux dağıtım betikleri `bash -n` kontrolünden, yeni devam testi ve restore sıralama kontrolü geçti; `git diff --check` temiz. Bu kontroller gerçek Ubuntu/systemd kurulumunun yerine geçmez.
+- Linux CI'a resume akışı için izole komut taklitli kurulum senaryosu eklendi: HTTPS hazır olma adımında ilk çağrı bilerek başarısız oluyor, farklı DNS adıyla devam denemesi sırları değiştirmeden reddediliyor ve doğru DNS adıyla tekrar çağrı aynı config/yedek parolası/sürümle tamamlanıyor. Tüm Linux dağıtım betikleri `bash -n` kontrolünden ve restore sıralama kontrolü geçti; `git diff --check` temiz. Bu fixture gerçek Docker Engine, Ubuntu/systemd veya HTTPS sertifikası doğrulamasının yerine geçmez.
 
 ## 2026-10-08 Talep edilebilir varlık ve karar rolü kabulü
 
