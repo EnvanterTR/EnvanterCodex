@@ -13,13 +13,13 @@ function Set-EnvanterTRPrivateAcl {
     $systemSid = 'S-1-5-18'
     $administratorsSid = 'S-1-5-32-544'
     $inheritance = if ($Kind -eq 'Directory') { '(OI)(CI)' } else { '' }
-    $rules = @(
-        "*$ownerSid`:$inheritance" + 'F',
-        "*$systemSid`:$inheritance" + 'F',
-        "*$administratorsSid`:$inheritance" + 'F'
-    )
+    $rules = [System.Collections.Generic.List[string]]::new()
+    $rules.Add("*$ownerSid`:$inheritance" + 'F')
+    $rules.Add("*$systemSid`:$inheritance" + 'F')
+    $rules.Add("*$administratorsSid`:$inheritance" + 'F')
+    $arguments = @($resolvedPath, '/inheritance:r', '/grant:r') + $rules.ToArray()
 
-    & "$env:SystemRoot\System32\icacls.exe" $resolvedPath '/inheritance:r' '/grant:r' @rules | Out-Null
+    & "$env:SystemRoot\System32\icacls.exe" @arguments | Out-Null
     if ($LASTEXITCODE -ne 0) {
         throw "Yedek yolu için güvenli Windows erişim listesi kurulamadı (icacls kodu $LASTEXITCODE): $resolvedPath"
     }
