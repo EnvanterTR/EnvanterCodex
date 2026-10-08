@@ -247,8 +247,8 @@ public static class ComponentEndpoints
             if (normalizedSupplier is not null && supplierMap.TryGetValue(normalizedSupplier, out var ids) && ids.Length == 1) component.SupplierId = ids[0];
             db.InventoryComponents.Add(component);
             if (component.TotalQuantity > 0) db.ComponentMovements.Add(new ComponentMovement { CompanyId = companyId, ComponentId = component.Id, ActorUserId = actorId,
-                MovementType = "Received", Quantity = component.TotalQuantity, Notes = "CSV içe aktarımındaki başlangıç stoku" });
-            Audit(db, companyId, context.User, component.Id, "component.created", $"{component.Name}; CSV içe aktarımı.");
+                MovementType = "Received", Quantity = component.TotalQuantity, Notes = $"{(isXlsx ? "Excel" : "CSV")} içe aktarımındaki başlangıç stoku" });
+            Audit(db, companyId, context.User, component.Id, "component.created", $"{component.Name}; {(isXlsx ? "Excel" : "CSV")} içe aktarımı.");
         }
         db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Component", Action = isXlsx ? "XlsxImported" : "CsvImported", Details = $"{(isXlsx ? "Excel" : "CSV")} dosyasından {components.Count} bileşen içe aktarıldı." });
         try { await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); }

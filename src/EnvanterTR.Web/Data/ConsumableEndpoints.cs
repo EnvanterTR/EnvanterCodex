@@ -321,8 +321,8 @@ public static class ConsumableEndpoints
                 item.SupplierId = supplierIds[0];
             db.Consumables.Add(item);
             if (item.TotalQuantity > 0) db.ConsumableMovements.Add(new ConsumableMovement { CompanyId = companyId, ConsumableId = item.Id,
-                ActorUserId = actorId, MovementType = "Received", Quantity = item.TotalQuantity, Notes = "CSV içe aktarımındaki başlangıç stoku" });
-            AddAudit(db, companyId, context.User, item.Id, "consumable.created", $"{item.Name}; CSV içe aktarımı.");
+                ActorUserId = actorId, MovementType = "Received", Quantity = item.TotalQuantity, Notes = $"{(isXlsx ? "Excel" : "CSV")} içe aktarımındaki başlangıç stoku" });
+            AddAudit(db, companyId, context.User, item.Id, "consumable.created", $"{item.Name}; {(isXlsx ? "Excel" : "CSV")} içe aktarımı.");
         }
         db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Consumable",
             Action = isXlsx ? "XlsxImported" : "CsvImported", Details = $"{(isXlsx ? "Excel" : "CSV")} dosyasından {parsed.Count} sarf kaydı içe aktarıldı." });
