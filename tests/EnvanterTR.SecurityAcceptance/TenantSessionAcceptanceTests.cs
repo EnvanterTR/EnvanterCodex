@@ -92,8 +92,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var otherCategory = new AssetCategory { CompanyId = _otherCompanyId, Name = "Other category" };
         db.AssetCategories.AddRange(ownCategory, otherCategory);
         db.Assets.AddRange(
-            new Asset { Id = _ownAssetId, CompanyId = _companyId, AssetTag = "OWN-1", Name = "Own asset", CategoryId = ownCategory.Id },
-            new Asset { Id = _otherCompanyAssetId, CompanyId = _otherCompanyId, AssetTag = "OTHER-1", Name = "Other tenant asset", CategoryId = otherCategory.Id });
+            new Asset { Id = _ownAssetId, CompanyId = _companyId, AssetTag = "OWN-1", Name = "Own asset", CategoryId = ownCategory.Id, IsRequestable = true },
+            new Asset { Id = _otherCompanyAssetId, CompanyId = _otherCompanyId, AssetTag = "OTHER-1", Name = "Other tenant asset", CategoryId = otherCategory.Id, IsRequestable = true });
         db.SoftwareLicenses.AddRange(
             new SoftwareLicense { Id = _ownLicenseId, CompanyId = _companyId, Name = $"OWN-SECURITY-LICENSE-{_userId:N}", Seats = 4, Currency = "USD", ExpirationDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30) },
             new SoftwareLicense { Id = _otherCompanyLicenseId, CompanyId = _otherCompanyId, Name = $"OTHER-SECURITY-LICENSE-{_userId:N}", Seats = 8, Currency = "USD", ExpirationDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30) });
@@ -277,6 +277,66 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.True(response.StatusCode == expectedStatus,
                 $"{path} should respond with {(int)expectedStatus} when paging and optional filters are omitted, but returned {(int)response.StatusCode}: {detail}");
         }
+    }
+
+    [Fact]
+    public async Task Request_catalog_includes_only_requestable_available_assets_from_the_active_company()
+    {
+        using var response = await SendAsAdminAsync("/api/requests/catalog");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var items = payload.RootElement.GetProperty("items").EnumerateArray().ToArray();
+        var assetItems = items.Where(item => item.GetProperty("type").GetString() == "Asset").ToArray();
+
+        var assetItem = Assert.Single(assetItems);
+        Assert.Equal(_ownAssetId, assetItem.GetProperty("id").GetGuid());
+        Assert.Equal("OWN-1", assetItem.GetProperty("modelNumber").GetString());
+        Assert.Equal(1, assetItem.GetProperty("available").GetInt32());
+        Assert.DoesNotContain(items, item => item.GetProperty("name").GetString() == "Other tenant asset");
+    }
+
+    [Fact]
+    public async Task Requesting_an_asset_rejects_invalid_scope_and_approval_assigns_it_atomically()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(requestToken));
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using (var wrongTenantResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/requests", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { employeeId = _ownEmployeeId, itemType = "Asset", itemId = _otherCompanyAssetId, quantity = 1, note = "cross-tenant" }),
+            requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, wrongTenantResponse.StatusCode);
+
+        using (var multipleAssetResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/requests", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { employeeId = _ownEmployeeId, itemType = "Asset", itemId = _ownAssetId, quantity = 2, note = "invalid quantity" }),
+            requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, multipleAssetResponse.StatusCode);
+
+        using var createResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/requests", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { employeeId = _ownEmployeeId, itemType = "Asset", itemId = _ownAssetId, quantity = 1, note = "acceptance request" }),
+            requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        using var createPayload = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var requestId = createPayload.RootElement.GetProperty("id").GetGuid();
+        Assert.Equal("Pending", createPayload.RootElement.GetProperty("status").GetString());
+
+        using var decisionResponse = await SendAsRoleAsync(HttpMethod.Post, $"/api/requests/{requestId}/decision", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { approve = true, note = "accepted" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, decisionResponse.StatusCode);
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var asset = await db.Assets.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownAssetId);
+        Assert.Equal(AssetStatuses.Deployed, asset.Status);
+        Assert.Equal(_ownEmployeeId, asset.AssignedEmployeeId);
+        Assert.Contains(await db.AssetEvents.Where(x => x.CompanyId == _companyId && x.AssetId == _ownAssetId).ToListAsync(),
+            item => item.EventType == "Assigned" && item.EmployeeId == _ownEmployeeId);
+        Assert.Equal("Approved", (await db.InventoryRequests.SingleAsync(x => x.CompanyId == _companyId && x.Id == requestId)).Status);
     }
 
     [Fact]
