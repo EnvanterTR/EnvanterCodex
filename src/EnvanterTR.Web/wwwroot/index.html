@@ -4034,7 +4034,7 @@
         const lowerName = file.name.toLocaleLowerCase('tr-TR'); const isCsv = lowerName.endsWith('.csv'); const isXlsx = lowerName.endsWith('.xlsx'); const isAssetImport = isCsv || isXlsx;
         const contentType = isXlsx ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/csv; charset=utf-8';
         const preview = await api(isAssetImport ? `/api/assets/import/preview.${isXlsx ? 'xlsx' : 'csv'}` : '/api/company/import/preview', { method: 'POST', headers: isAssetImport ? { 'Content-Type': contentType } : undefined, body: isXlsx ? await file.arrayBuffer() : await file.text() });
-        const countLabels = { assets: 'Varlıklar', employees: 'Çalışanlar', assetCategories: 'Kategoriler', assetBrands: 'Markalar', assetModels: 'Modeller', assetEvents: 'Hareketler', auditEntries: 'Denetim kayıtları', members: 'Kullanıcılar' };
+        const countLabels = { assets: 'Varlıklar', employees: 'Çalışanlar', assetCategories: 'Kategoriler', assetBrands: 'Markalar', assetModels: 'Modeller', assetEvents: 'Hareketler', auditEntries: 'Denetim kayıtları', inventoryRequests: 'Stok talepleri', assetMaintenances: 'Bakım kayıtları', members: 'Kullanıcılar' };
         const counts = Object.entries(preview.counts || {}).map(([name, count]) => `${countLabels[name] || name}: ${fmt.format(count)}`).join('\n');
         const matchLabels = { employees: 'Çalışan numarası', assets: 'Varlık etiketi', categories: 'Kategori adı', brands: 'Marka adı' };
         const matches = Object.entries(preview.existingMatches || {}).map(([name, count]) => `${matchLabels[name] || name}: ${fmt.format(count)}`).join('\n');

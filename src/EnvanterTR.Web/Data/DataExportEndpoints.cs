@@ -673,6 +673,8 @@ public static class DataExportEndpoints
             var assets = ReadRows(root, "assets", sourceCompanyId, errors, counts);
             var events = ReadRows(root, "assetEvents", sourceCompanyId, errors, counts);
             _ = ReadRows(root, "auditEntries", sourceCompanyId, errors, counts);
+            _ = ReadRows(root, "inventoryRequests", sourceCompanyId, errors, counts);
+            _ = ReadRows(root, "assetMaintenances", sourceCompanyId, errors, counts);
             var departmentCatalog = ReadOptionalRows(root, "departmentCatalog", errors, counts);
             var locationCatalog = ReadOptionalRows(root, "locationCatalog", errors, counts);
             var locationCatalogIds = ValidateCompanyCatalogs(departmentCatalog, locationCatalog, sourceCompanyId, employees, errors);
@@ -763,6 +765,60 @@ public static class DataExportEndpoints
                 if (entry.ValueKind != JsonValueKind.Object) continue;
                 if (TryGuid(entry, "assetId", out var assetId) && !assets.Contains(assetId)) AddError(errors, "Bir hareket, dosyada bulunmayan bir varlığa bağlı.");
                 if (TryGuid(entry, "employeeId", out var employeeId) && !employees.Contains(employeeId)) AddError(errors, "Bir hareket, dosyada bulunmayan bir çalışana bağlı.");
+            }
+            foreach (var request in EnumerateRows(root, "inventoryRequests"))
+            {
+                if (request.ValueKind != JsonValueKind.Object) continue;
+                if (!TryGuid(request, "employeeId", out var employeeId) || !employees.Contains(employeeId))
+                    AddError(errors, "Bir stok talebinin çalışanı dosyada bulunamadı.");
+                var itemType = ReadString(request, "itemType");
+                if (itemType is not ("Asset" or "Accessory" or "Consumable"))
+                    AddError(errors, "Bir stok talebinin türü desteklenmiyor.");
+                if (!TryGuid(request, "itemId", out var itemId))
+                    AddError(errors, "Bir stok talebinin ürün kimliği geçersiz.");
+                else if (itemType == "Asset" && !assets.Contains(itemId))
+                    AddError(errors, "Bir varlık talebi dosyada bulunmayan bir varlığa bağlı.");
+                var status = ReadString(request, "status");
+                if (status is not ("Pending" or "Approved" or "Rejected" or "Cancelled"))
+                    AddError(errors, "Bir stok talebinin durumu desteklenmiyor.");
+                if (!request.TryGetProperty("quantity", out var quantity) || !quantity.TryGetInt32(out var requestedQuantity) || requestedQuantity is < 1 or > 100_000)
+                    AddError(errors, "Bir stok talebinin adedi 1 ile 100.000 arasında olmalı.");
+                if (OptionalTextExceeds(request, "requestNote", 1000) || OptionalTextExceeds(request, "reviewNote", 1000))
+                    AddError(errors, "Bir stok talebinin notu 1.000 karakteri aşamaz.");
+                var hasReviewedAt = request.TryGetProperty("reviewedAt", out var reviewedAt) && reviewedAt.ValueKind != JsonValueKind.Null;
+                if (status == "Pending" ? hasReviewedAt : !IsValidDateTimeOffset(reviewedAt))
+                    AddError(errors, "Bir stok talebinin incelenme tarihi durumu ile uyumlu olmalı.");
+            }
+            foreach (var maintenance in EnumerateRows(root, "assetMaintenances"))
+            {
+                if (maintenance.ValueKind != JsonValueKind.Object) continue;
+                if (!TryGuid(maintenance, "assetId", out var assetId) || !assets.Contains(assetId))
+                    AddError(errors, "Bir bakım kaydının varlığı dosyada bulunamadı.");
+                var status = ReadString(maintenance, "status");
+                if (status is not ("Scheduled" or "InProgress" or "Completed" or "Cancelled"))
+                    AddError(errors, "Bir bakım kaydının durumu desteklenmiyor.");
+                if (string.IsNullOrWhiteSpace(ReadString(maintenance, "maintenanceType")) || ReadString(maintenance, "maintenanceType")!.Length > 120)
+                    AddError(errors, "Bakım türü boş olamaz ve 120 karakteri aşamaz.");
+                if (!IsValidDateOnly(maintenance, "startedOn", required: true) ||
+                    !IsValidDateOnly(maintenance, "plannedOn") || !IsValidDateOnly(maintenance, "completedOn"))
+                    AddError(errors, "Bir bakım kaydının tarihi yyyy-AA-gg biçiminde olmalı.");
+                var startedOn = ReadDateOnly(maintenance, "startedOn");
+                var completedOn = ReadDateOnly(maintenance, "completedOn");
+                var plannedOn = ReadDateOnly(maintenance, "plannedOn");
+                if (completedOn is not null && startedOn is not null && completedOn < startedOn)
+                    AddError(errors, "Bakım bitiş tarihi başlangıç tarihinden önce olamaz.");
+                if (status is "Scheduled" or "Cancelled" && plannedOn is null)
+                    AddError(errors, "Planlı veya iptal edilmiş bakımda planlanan tarih bulunmalı.");
+                if ((status == "Completed") != (completedOn is not null))
+                    AddError(errors, "Bakım bitiş tarihi yalnızca tamamlanmış kayıtlarda bulunmalı.");
+                if (ReadString(maintenance, "currency") is not { Length: 3 })
+                    AddError(errors, "Bir bakım kaydının para birimi 3 harfli kod olmalı.");
+                if (maintenance.TryGetProperty("cost", out var cost) && cost.ValueKind != JsonValueKind.Null &&
+                    (cost.ValueKind != JsonValueKind.Number || !cost.TryGetDecimal(out var amount) || amount < 0))
+                    AddError(errors, "Bir bakım kaydının maliyeti geçersiz veya negatif.");
+                if (OptionalTextExceeds(maintenance, "supplier", 200) || OptionalTextExceeds(maintenance, "description", 1000) ||
+                    OptionalTextExceeds(maintenance, "notes", 2000) || OptionalTextExceeds(maintenance, "completionNotes", 2000))
+                    AddError(errors, "Bir bakım kaydının metin alanı izin verilen uzunluğu aşıyor.");
             }
 
             if (counts.Values.Sum() > PreviewMaxRows) AddError(errors, $"Dosya en fazla {PreviewMaxRows:N0} kayıt içerebilir.");
@@ -963,6 +1019,24 @@ public static class DataExportEndpoints
                 AddError(errors, $"{label} {maxLength} karakteri aşamaz.");
         }
     }
+
+    private static bool OptionalTextExceeds(JsonElement item, string propertyName, int maxLength) =>
+        item.TryGetProperty(propertyName, out var value) && value.ValueKind != JsonValueKind.Null &&
+        (value.ValueKind != JsonValueKind.String || value.GetString()!.Length > maxLength);
+
+    private static DateOnly? ReadDateOnly(JsonElement item, string propertyName) =>
+        item.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.String &&
+        DateOnly.TryParseExact(value.GetString(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out var date) ? date : null;
+
+    private static bool IsValidDateOnly(JsonElement item, string propertyName, bool required = false) =>
+        item.TryGetProperty(propertyName, out var value) && (value.ValueKind == JsonValueKind.Null
+            ? !required
+            : value.ValueKind == JsonValueKind.String && ReadDateOnly(item, propertyName) is not null);
+
+    private static bool IsValidDateTimeOffset(JsonElement value) => value.ValueKind == JsonValueKind.String &&
+        DateTimeOffset.TryParse(value.GetString(), System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.RoundtripKind, out _);
 
     private static void CheckUniqueText(JsonElement root, string rowsProperty, string valueProperty,
         string label, List<string> errors, bool normalizeUpper = false)

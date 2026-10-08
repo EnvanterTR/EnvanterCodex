@@ -1101,6 +1101,19 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 OriginalFileName = "asset-photo.png", StorageFileName = $"{assetPhotoId:N}.png",
                 ContentType = "image/png", Length = assetPhoto.Length
             });
+            db.AssetMaintenances.Add(new AssetMaintenance
+            {
+                Id = Guid.NewGuid(), CompanyId = _companyId, AssetId = _ownAssetId,
+                MaintenanceType = "Inspection", StartedOn = new DateOnly(2026, 10, 1),
+                Status = "InProgress", Currency = "TRY", CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+            db.InventoryRequests.Add(new InventoryRequest
+            {
+                Id = Guid.NewGuid(), CompanyId = _companyId, EmployeeId = _ownEmployeeId,
+                ItemType = "Asset", ItemId = _ownAssetId, Quantity = 1,
+                Status = "Pending", CreatedAt = DateTimeOffset.UtcNow
+            });
             await db.SaveChangesAsync();
         }
 
@@ -1112,6 +1125,32 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal("envantertr-company-data", document.RootElement.GetProperty("format").GetString());
         Assert.Equal(_companyId, document.RootElement.GetProperty("company").GetProperty("id").GetGuid());
         Assert.DoesNotContain(_otherCompanyAssetId.ToString(), body, StringComparison.OrdinalIgnoreCase);
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        using var previewResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/company/import/preview", "admin",
+            new StringContent(body, System.Text.Encoding.UTF8, "application/json"), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, previewResponse.StatusCode);
+        using var preview = JsonDocument.Parse(await previewResponse.Content.ReadAsStringAsync());
+        Assert.True(preview.RootElement.GetProperty("isValid").GetBoolean());
+        var previewCounts = preview.RootElement.GetProperty("counts");
+        Assert.Equal(1, previewCounts.GetProperty("inventoryRequests").GetInt32());
+        Assert.Equal(1, previewCounts.GetProperty("assetMaintenances").GetInt32());
+
+        var invalidMaintenance = body.Replace("\"maintenanceType\":\"Inspection\"", "\"maintenanceType\":\"\"", StringComparison.Ordinal);
+        Assert.NotEqual(body, invalidMaintenance);
+        using var invalidPreviewResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/company/import/preview", "admin",
+            new StringContent(invalidMaintenance, System.Text.Encoding.UTF8, "application/json"), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, invalidPreviewResponse.StatusCode);
+        using var invalidPreview = JsonDocument.Parse(await invalidPreviewResponse.Content.ReadAsStringAsync());
+        Assert.False(invalidPreview.RootElement.GetProperty("isValid").GetBoolean());
+        Assert.Contains(invalidPreview.RootElement.GetProperty("errors").EnumerateArray(),
+            error => error.GetString()!.Contains("Bakım türü", StringComparison.Ordinal));
 
         using var archiveResponse = await SendAsAdminAsync("/api/company/export.zip");
         var archiveBytes = await archiveResponse.Content.ReadAsByteArrayAsync();
