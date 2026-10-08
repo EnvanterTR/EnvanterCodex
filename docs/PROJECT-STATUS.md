@@ -14,7 +14,7 @@
 
 - Lisans bitiş raporu: 30/90/180/366 günlük dönem ve bitiş durumu filtreleri, lisans/yayıncı/sürüm/tedarikçi araması, atanmış/boş koltuk görünümü, lisans ayrıntısına geçiş ve filtreli CSV indirme. Şirket kapsamı korunur; CSV 10.000 kayıtla sınırlıdır ve ürün anahtarı/referansı içermez.
 - Varlık ve çalışan kayıtları, arama/filtreleme, CSV dışa aktarımı; temel envanter sözlükleri ve zimmet/iade/hareket akışları.
-- Varlık ayrıntısının “İlişkiler” sekmesi açık aksesuar teslimlerini ve takılı bileşenleri kalan/verilen miktar, tarih ve notlarıyla listeler; API yalnız aynı şirkete ait, açık kayıtları döndürür. Lisansın varlığa atanması, bağlı varlık, sipariş ve model dosyası ilişkileri açık kalır.
+- Varlık ayrıntısının “İlişkiler” sekmesi açık aksesuar teslimlerini, takılı bileşenleri ve cihaza atanmış etkin yazılım lisanslarını listeler. Lisans koltuğu çalışan veya varlık hedeflerinden yalnız birine atanır; şirket kapsamı, koltuk sınırı, yinelenen atama denetimi, arama, olay geçmişi ve geri alma akışı korunur. PostgreSQL kabul testi çapraz şirket hedefini, tekrar atamayı, iki detay görünümünü ve geri almayı doğrular. Bağlı varlık, sipariş ve model dosyası ilişkileri açık kalır.
 - Lisans koltukları, aksesuar/sarf/bileşen stokları, aksesuar kitleri, sipariş ve tedarikçi kataloğu, bakım ve planlama.
 - Barkod/QR etiket ayarları ve tarayıcıyla varlık bulma; varlık/çalışan fotoğrafı ve yetkili ek dosyaları.
 - Çalışan yönetici hiyerarşisi, görev/telefon/konum/işe başlama alanları, özel İK notları ve işe başlama tarihi aralığı filtresi.

@@ -440,7 +440,8 @@ public sealed class SoftwareLicenseAssignment
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid CompanyId { get; set; }
     public Guid LicenseId { get; set; }
-    public Guid EmployeeId { get; set; }
+    public Guid? EmployeeId { get; set; }
+    public Guid? AssetId { get; set; }
     public Guid? ActorUserId { get; set; }
     public DateTimeOffset AssignedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? RevokedAt { get; set; }
@@ -453,6 +454,7 @@ public sealed class SoftwareLicenseEvent
     public Guid CompanyId { get; set; }
     public Guid LicenseId { get; set; }
     public Guid? EmployeeId { get; set; }
+    public Guid? AssetId { get; set; }
     public Guid? ActorUserId { get; set; }
     public required string EventType { get; set; }
     public string? Details { get; set; }

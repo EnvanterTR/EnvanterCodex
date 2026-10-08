@@ -1227,6 +1227,23 @@ public static class AssetEndpoints
                     x.Notes
                 })
                 .ToListAsync(cancellationToken);
+            var softwareLicenses = await db.SoftwareLicenseAssignments.AsNoTracking()
+                .Where(x => x.CompanyId == companyId && x.AssetId == id && x.RevokedAt == null)
+                .OrderByDescending(x => x.AssignedAt)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.LicenseId,
+                    licenseName = db.SoftwareLicenses.Where(license => license.CompanyId == companyId && license.Id == x.LicenseId)
+                        .Select(license => license.Name).FirstOrDefault() ?? "Silinmiş lisans",
+                    licenseType = db.SoftwareLicenses.Where(license => license.CompanyId == companyId && license.Id == x.LicenseId)
+                        .Select(license => license.LicenseType).FirstOrDefault(),
+                    expirationDate = db.SoftwareLicenses.Where(license => license.CompanyId == companyId && license.Id == x.LicenseId)
+                        .Select(license => license.ExpirationDate).FirstOrDefault(),
+                    x.AssignedAt,
+                    x.Notes
+                })
+                .ToListAsync(cancellationToken);
             var history = await db.AssetEvents.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && x.AssetId == id)
                 .OrderByDescending(x => x.OccurredAt)
@@ -1253,7 +1270,7 @@ public static class AssetEndpoints
                 .Select(x => new { x.Id, x.OriginalFileName, x.ContentType, x.Length, x.CreatedAt,
                     uploadedBy = db.Users.Where(actor => actor.Id == x.UploadedByUserId).Select(actor => actor.DisplayName).FirstOrDefault() })
                 .ToListAsync(cancellationToken);
-            return Results.Ok(new { asset, references, accessories = accessoryAssignments, components = componentAllocations, history, attachments });
+            return Results.Ok(new { asset, references, accessories = accessoryAssignments, components = componentAllocations, softwareLicenses, history, attachments });
         }).RequireAuthorization("asset.read");
 
         api.MapGet("/assets/audit-schedule", async (DateOnly? through, string? q, string? state, ClaimsPrincipal user,

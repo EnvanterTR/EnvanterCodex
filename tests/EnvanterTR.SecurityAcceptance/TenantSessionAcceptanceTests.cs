@@ -415,6 +415,65 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Software_license_can_be_assigned_to_same_company_asset_and_is_visible_in_both_details()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var assignmentPath = $"/api/software-licenses/{_ownLicenseId}/assign";
+        using (var crossCompanyResponse = await SendAsRoleAsync(HttpMethod.Post, assignmentPath, "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetId = _otherCompanyAssetId, notes = "cross-tenant attempt" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, crossCompanyResponse.StatusCode);
+
+        using var assignmentResponse = await SendAsRoleAsync(HttpMethod.Post, assignmentPath, "admin",
+            System.Net.Http.Json.JsonContent.Create(new { assetId = _ownAssetId, notes = "installed on device" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, assignmentResponse.StatusCode);
+        using var assignmentPayload = JsonDocument.Parse(await assignmentResponse.Content.ReadAsStringAsync());
+        var assignmentId = assignmentPayload.RootElement.GetProperty("id").GetGuid();
+        Assert.Equal(1, assignmentPayload.RootElement.GetProperty("assigned").GetInt32());
+
+        using (var duplicateResponse = await SendAsRoleAsync(HttpMethod.Post, assignmentPath, "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetId = _ownAssetId }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, duplicateResponse.StatusCode);
+
+        using (var licenseResponse = await SendAsAdminAsync($"/api/software-licenses/{_ownLicenseId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, licenseResponse.StatusCode);
+            using var payload = JsonDocument.Parse(await licenseResponse.Content.ReadAsStringAsync());
+            Assert.Equal(1, payload.RootElement.GetProperty("license").GetProperty("assigned").GetInt32());
+            var target = Assert.Single(payload.RootElement.GetProperty("assignments").EnumerateArray());
+            Assert.Equal(_ownAssetId, target.GetProperty("assetId").GetGuid());
+            Assert.Equal("OWN-1", target.GetProperty("assetTag").GetString());
+        }
+        using (var assetResponse = await SendAsAdminAsync($"/api/assets/{_ownAssetId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, assetResponse.StatusCode);
+            using var payload = JsonDocument.Parse(await assetResponse.Content.ReadAsStringAsync());
+            var licenses = payload.RootElement.GetProperty("softwareLicenses").EnumerateArray().ToArray();
+            Assert.Single(licenses);
+            Assert.Equal(_ownLicenseId, licenses[0].GetProperty("licenseId").GetGuid());
+        }
+        using (var searchResponse = await SendAsAdminAsync("/api/software-license-assignments?q=OWN-1"))
+        {
+            Assert.Equal(HttpStatusCode.OK, searchResponse.StatusCode);
+            using var payload = JsonDocument.Parse(await searchResponse.Content.ReadAsStringAsync());
+            Assert.Equal(assignmentId, Assert.Single(payload.RootElement.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
+        }
+
+        using var revokeResponse = await SendAsRoleAsync(HttpMethod.Post, $"/api/software-licenses/{_ownLicenseId}/revoke", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { assignmentId }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.NoContent, revokeResponse.StatusCode);
+        using var afterRevokeResponse = await SendAsAdminAsync($"/api/software-licenses/{_ownLicenseId}");
+        using var afterRevokePayload = JsonDocument.Parse(await afterRevokeResponse.Content.ReadAsStringAsync());
+        Assert.Equal(0, afterRevokePayload.RootElement.GetProperty("license").GetProperty("assigned").GetInt32());
+    }
+
+    [Fact]
     public async Task Dashboard_inventory_counts_are_scoped_to_the_selected_company()
     {
         using var response = await SendAsAdminAsync("/api/dashboard/summary");
