@@ -546,6 +546,30 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var createdRequest = await db.InventoryRequests.SingleAsync(x => x.CompanyId == _companyId && x.Id == requestId);
         Assert.Equal(_ownEmployeeId, createdRequest.EmployeeId);
         Assert.Equal(_sameCompanyOtherUserId, createdRequest.RequestedByUserId);
+
+        db.InventoryRequests.Add(new InventoryRequest { CompanyId = _companyId, EmployeeId = _ownSecondEmployeeId,
+            RequestedByUserId = _userId, ItemType = "Asset", ItemId = _ownAssetId, Quantity = 1, RequestNote = "Manager-created request" });
+        var linkedMembership = await db.CompanyMemberships.SingleAsync(x => x.CompanyId == _companyId && x.UserId == _sameCompanyOtherUserId);
+        linkedMembership.RoleKey = "viewer";
+        await db.SaveChangesAsync();
+
+        using (var managerRequests = await SendAsAdminAsync("/api/requests"))
+        using (var managerPayload = JsonDocument.Parse(await managerRequests.Content.ReadAsStringAsync()))
+            Assert.Equal(2, managerPayload.RootElement.GetProperty("total").GetInt32());
+
+        using (var ownRequests = await SendAsUserAsync(HttpMethod.Get, "/api/requests", _sameCompanyOtherUserId, _companyId, role: "viewer"))
+        using (var ownPayload = JsonDocument.Parse(await ownRequests.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, ownRequests.StatusCode);
+            var ownItems = ownPayload.RootElement.GetProperty("items").EnumerateArray().ToArray();
+            Assert.Equal(requestId, Assert.Single(ownItems).GetProperty("id").GetGuid());
+        }
+
+        using var ownExport = await SendAsUserAsync(HttpMethod.Get, "/api/requests/export.csv", _sameCompanyOtherUserId, _companyId, role: "viewer");
+        var ownCsv = await ownExport.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, ownExport.StatusCode);
+        Assert.Contains($"OWN-{_userId:N}", ownCsv);
+        Assert.DoesNotContain("OWN-SECOND-", ownCsv);
     }
 
     [Fact]
@@ -1394,12 +1418,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     private async Task<HttpResponseMessage> SendAsUserAsync(HttpMethod method, string path, Guid userId, Guid companyId,
-        HttpContent? content = null, string? requestToken = null, string? antiforgeryCookie = null)
+        HttpContent? content = null, string? requestToken = null, string? antiforgeryCookie = null, string? role = null)
     {
         using var request = new HttpRequestMessage(method, path) { Content = content };
         request.Headers.Add("X-Acceptance-User", userId.ToString());
         request.Headers.Add("X-Acceptance-Company", companyId.ToString());
-        request.Headers.Add("X-Acceptance-Role", "admin");
+        request.Headers.Add("X-Acceptance-Role", role ?? "admin");
         if (!string.IsNullOrWhiteSpace(requestToken)) request.Headers.Add("X-CSRF-TOKEN", requestToken);
         if (!string.IsNullOrWhiteSpace(antiforgeryCookie)) request.Headers.Add("Cookie", antiforgeryCookie);
         return await _client!.SendAsync(request);

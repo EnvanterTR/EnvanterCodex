@@ -63,9 +63,10 @@ public static class InventoryRequestEndpoints
         api.MapGet("/requests", async ([FromQuery] string? q, [FromQuery] string? status, ClaimsPrincipal user, AppDbContext db,
             CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 25) =>
         {
-            if (!Tenant(user, out var companyId)) return Results.Forbid();
+            if (!Tenant(user, out var companyId) || UserId(user) is not Guid userId) return Results.Forbid();
             page = Math.Max(1, page); pageSize = Math.Clamp(pageSize == 0 ? 25 : pageSize, 1, 100);
             var query = db.InventoryRequests.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (!CanReviewRequests(user)) query = query.Where(x => x.RequestedByUserId == userId);
             if (!string.IsNullOrWhiteSpace(status))
             {
                 var normalized = status.Trim();
@@ -106,8 +107,9 @@ public static class InventoryRequestEndpoints
         api.MapGet("/requests/export.csv", async ([FromQuery] string? q, [FromQuery] string? status,
             ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
-            if (!Tenant(user, out var companyId)) return Results.Forbid();
+            if (!Tenant(user, out var companyId) || UserId(user) is not Guid userId) return Results.Forbid();
             var query = db.InventoryRequests.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (!CanReviewRequests(user)) query = query.Where(x => x.RequestedByUserId == userId);
             if (!string.IsNullOrWhiteSpace(status))
             {
                 var normalized = status.Trim();
@@ -304,6 +306,8 @@ public static class InventoryRequestEndpoints
 
     private static bool Tenant(ClaimsPrincipal user, out Guid companyId) => Guid.TryParse(user.FindFirstValue("company_id"), out companyId);
     private static Guid? UserId(ClaimsPrincipal user) => Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
+    private static bool CanReviewRequests(ClaimsPrincipal user) =>
+        user.FindFirstValue("company_role") is "owner" or "admin" or "asset_manager" or "asset_operator";
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     private static string CsvCell(string? value)
     {
