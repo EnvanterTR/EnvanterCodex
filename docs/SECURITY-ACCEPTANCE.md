@@ -20,6 +20,7 @@ Senaryo aynı eski `admin` kimlik bilgilerini her istekte tekrar gönderir ve ve
 - Aksesuar, sarf ve bileşen listesi/detay/CSV uçları diğer şirkete ait stok kayıtlarını göstermez. Birleşik stok hareketi listesi ve CSV'si de her stok türünü geçerli şirket için birleştirir.
 - Talep kataloğunda talebe açık ve kullanılabilir kendi şirket varlığı görünür; diğer şirketin talep edilebilir varlığı sonuçlara sızmaz.
 - Varlık talebi başka şirketin varlığında ve birden çok adet istendiğinde reddedilir; geçerli talep onaylanınca varlık çalışanla zimmetlenir, talep durumu ve hareket geçmişi aynı kabul veritabanında doğrulanır.
+- Varlık talebi karar uç noktası şirket rol matrisi içinde denetlenir; yalnızca `asset.write` yetkisi olan roller erişebilir.
 - Varlık ayrıntısı kendi şirketindeki açık aksesuar teslimlerini ve takılı bileşenleri gösterir; başka şirkete ait varlığa bağlı kayıtlar yanıta eklenmez.
 - Varlık, aksesuar, sarf, bileşen, lisans, çalışan, etkinlik, denetim, stok hareketi, satın alma, talep ve garanti liste uçları sayfa parametreleri gönderilmeden çağrıldığında varsayılan sayfalama ile yanıt verir; varlık CSV dışa aktarımı da varsayılan kayıt sınırını kullanır.
 - Şirket üyeliği kaldırıldığında sonraki istek `401` döner.

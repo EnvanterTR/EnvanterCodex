@@ -606,6 +606,10 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                        new StringContent("AssetTag,Name\n", System.Text.Encoding.UTF8, "text/csv")))
                 Assert.Equal(role.AssetWrite, assetPreview.StatusCode != HttpStatusCode.Forbidden);
 
+            using (var requestDecision = await SendAsRoleAsync(HttpMethod.Post, $"/api/requests/{Guid.NewGuid()}/decision", role.Role,
+                       new StringContent("{}", System.Text.Encoding.UTF8, "application/json")))
+                Assert.Equal(role.AssetWrite, requestDecision.StatusCode != HttpStatusCode.Forbidden);
+
             var stockReadPaths = new[]
             {
                 "/api/accessories?page=1&pageSize=20",
