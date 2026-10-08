@@ -24,7 +24,8 @@ internal static class AssetCsvImportMapping
     private static readonly string[] CanonicalBaseHeaders =
         ["Etiket", "Ad", "Durum", "Kategori", "Marka", "Model", "Seri No", "Konum", "Personel No", "Çalışan", "Alış Tarihi"];
 
-    public static List<List<string>> Normalize(List<List<string>> records, out string[] unsupportedColumns)
+    public static List<List<string>> Normalize(List<List<string>> records,
+        IReadOnlyCollection<AssetCustomFieldDefinition>? customFields, out string[] unsupportedColumns)
     {
         unsupportedColumns = [];
         if (records.Count == 0) return records;
@@ -32,17 +33,49 @@ internal static class AssetCsvImportMapping
         var sourceHeader = records[0];
         var sourceIndexes = new int[HeaderAliases.Length];
         Array.Fill(sourceIndexes, -1);
+        var customIndexes = new Dictionary<string, int>(StringComparer.Ordinal);
         var matchedIndexes = new HashSet<int>();
         for (var sourceIndex = 0; sourceIndex < sourceHeader.Count; sourceIndex++)
         {
             var normalized = NormalizeHeader(sourceHeader[sourceIndex]);
-            for (var targetIndex = 0; targetIndex < HeaderAliases.Length; targetIndex++)
+            var baseMatches = HeaderAliases.Select((aliases, index) => (aliases, index))
+                .Where(item => item.aliases.Any(alias => NormalizeHeader(alias) == normalized)).ToArray();
+            if (baseMatches.Length > 1)
             {
-                if (!HeaderAliases[targetIndex].Any(alias => NormalizeHeader(alias) == normalized)) continue;
-                if (sourceIndexes[targetIndex] >= 0) return records;
+                unsupportedColumns = [sourceHeader[sourceIndex].Trim()];
+                return records;
+            }
+            if (baseMatches.Length == 1)
+            {
+                var targetIndex = baseMatches[0].index;
+                if (sourceIndexes[targetIndex] >= 0)
+                {
+                    unsupportedColumns = [sourceHeader[sourceIndex].Trim()];
+                    return records;
+                }
                 sourceIndexes[targetIndex] = sourceIndex;
                 matchedIndexes.Add(sourceIndex);
-                break;
+                continue;
+            }
+            var customMatches = (customFields ?? []).Where(field =>
+                new[] { field.Key, field.Name, $"Özel alan: {field.Key}", $"Custom field: {field.Key}", $"Custom: {field.Key}" }
+                    .Any(alias => NormalizeHeader(alias) == normalized)).ToArray();
+            if (customMatches.Length > 1)
+            {
+                unsupportedColumns = [sourceHeader[sourceIndex].Trim()];
+                return records;
+            }
+            if (customMatches.Length == 1)
+            {
+                var key = customMatches[0].Key;
+                if (customIndexes.ContainsKey(key))
+                {
+                    unsupportedColumns = [sourceHeader[sourceIndex].Trim()];
+                    return records;
+                }
+                customIndexes[key] = sourceIndex;
+                matchedIndexes.Add(sourceIndex);
+                continue;
             }
         }
 
@@ -56,6 +89,8 @@ internal static class AssetCsvImportMapping
         targetHeaders.Add("Alış Bedeli");
         targetHeaders.Add("Para Birimi");
         if (hasParent) targetHeaders.Add("Üst Varlık Etiketi");
+        foreach (var field in (customFields ?? []).OrderBy(field => field.SortOrder).ThenBy(field => field.Name, StringComparer.OrdinalIgnoreCase))
+            targetHeaders.Add($"Özel alan: {field.Key}");
 
         var sourceRows = records.Skip(1).ToArray();
         unsupportedColumns = sourceHeader.Select((header, index) => (header, index))
@@ -87,6 +122,8 @@ internal static class AssetCsvImportMapping
             mapped.Add(NormalizeDecimal(Read(row, sourceIndexes[12])));
             mapped.Add(string.IsNullOrWhiteSpace(Read(row, sourceIndexes[13])) ? "TRY" : Read(row, sourceIndexes[13]));
             if (hasParent) mapped.Add(Read(row, sourceIndexes[14]));
+            foreach (var field in (customFields ?? []).OrderBy(field => field.SortOrder).ThenBy(field => field.Name, StringComparer.OrdinalIgnoreCase))
+                mapped.Add(customIndexes.TryGetValue(field.Key, out var customIndex) ? Read(row, customIndex) : "");
             result.Add(mapped);
         }
         return result;

@@ -2395,13 +2395,17 @@ public static class AssetEndpoints
                 return;
             }
             var total = await query.CountAsync(cancellationToken);
+            var customFields = await db.AssetCustomFieldDefinitions.AsNoTracking()
+                .Where(x => x.CompanyId == companyId && x.IsActive).OrderBy(x => x.SortOrder).ThenBy(x => x.Name)
+                .ToListAsync(cancellationToken);
             context.Response.StatusCode = StatusCodes.Status200OK;
             context.Response.ContentType = "text/csv; charset=utf-8";
             context.Response.Headers["Content-Disposition"] = $"attachment; filename=envantertr-varliklar-{DateTime.UtcNow:yyyyMMdd}.csv";
             context.Response.Headers["Cache-Control"] = "no-store";
             context.Response.Headers["X-Total-Count"] = total.ToString(System.Globalization.CultureInfo.InvariantCulture);
             await using var writer = new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
-            await writer.WriteLineAsync("Etiket;Ad;Durum;Kategori;Marka;Model;Seri No;Konum;Personel No;Çalışan;Alış Tarihi;Garanti Bitiş Tarihi;Alış Bedeli;Para Birimi;Üst Varlık Etiketi".AsMemory(), cancellationToken);
+            await writer.WriteLineAsync(string.Join(';', new[] { "Etiket", "Ad", "Durum", "Kategori", "Marka", "Model", "Seri No", "Konum", "Personel No", "Çalışan", "Alış Tarihi", "Garanti Bitiş Tarihi", "Alış Bedeli", "Para Birimi", "Üst Varlık Etiketi" }
+                .Concat(customFields.Select(field => $"Özel alan: {field.Key}")).Select(CsvCell)).AsMemory(), cancellationToken);
             var rows = ordered.Select(x => new AssetExportRow(
                 x.AssetTag, x.Name, x.Status,
                 db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault(),
@@ -2414,7 +2418,7 @@ public static class AssetEndpoints
                     .Select(e => e.EmployeeNumber).FirstOrDefault(),
                 db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId)
                     .Select(e => e.DisplayName).FirstOrDefault(),
-                x.PurchaseDate, x.WarrantyExpiresAt, x.PurchaseCost, x.Currency));
+                x.PurchaseDate, x.WarrantyExpiresAt, x.PurchaseCost, x.Currency, x.CustomFieldsJson));
             var written = 0;
             await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
             {
@@ -2424,7 +2428,8 @@ public static class AssetEndpoints
                     CsvCell(row.PurchaseDate?.ToString("yyyy-MM-dd")),
                     CsvCell(row.WarrantyExpiresAt?.ToString("yyyy-MM-dd")),
                     CsvCell(row.PurchaseCost?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
-                    CsvCell(row.Currency), CsvCell(row.ParentAssetTag) });
+                    CsvCell(row.Currency), CsvCell(row.ParentAssetTag) }
+                    .Concat(AssetCustomFieldEndpoints.ExportValues(row.CustomFieldsJson, customFields).Select(CsvCell)));
                 await writer.WriteLineAsync(line.AsMemory(), cancellationToken);
                 if (++written % 500 == 0) await writer.FlushAsync(cancellationToken);
             }
@@ -2665,7 +2670,7 @@ public static class AssetEndpoints
 
     private sealed record AssetExportRow(string AssetTag, string Name, string Status, string? Category,
         string? Brand, string? Model, string? SerialNumber, string? Location, string? ParentAssetTag, string? EmployeeNumber,
-        string? EmployeeName, DateOnly? PurchaseDate, DateOnly? WarrantyExpiresAt, decimal? PurchaseCost, string Currency);
+        string? EmployeeName, DateOnly? PurchaseDate, DateOnly? WarrantyExpiresAt, decimal? PurchaseCost, string Currency, string? CustomFieldsJson);
 
     private static string CsvCell(string? value)
     {

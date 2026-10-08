@@ -90,9 +90,15 @@ public static partial class AssetCustomFieldEndpoints
     public static async Task<(string? Json, string? Error)> NormalizeValuesAsync(AppDbContext db, Guid companyId,
         Dictionary<string, string>? submitted, string? existingJson, bool preserveWhenMissing, CancellationToken ct)
     {
-        if (preserveWhenMissing && submitted is null) return (existingJson, null);
         var fields = await db.AssetCustomFieldDefinitions.AsNoTracking()
             .Where(x => x.CompanyId == companyId && x.IsActive).ToListAsync(ct);
+        return NormalizeValues(fields, submitted, existingJson, preserveWhenMissing);
+    }
+
+    public static (string? Json, string? Error) NormalizeValues(IReadOnlyCollection<AssetCustomFieldDefinition> fields,
+        Dictionary<string, string>? submitted, string? existingJson = null, bool preserveWhenMissing = false)
+    {
+        if (preserveWhenMissing && submitted is null) return (existingJson, null);
         var input = submitted ?? new Dictionary<string, string>(StringComparer.Ordinal);
         var definitions = fields.ToDictionary(x => x.Key, StringComparer.Ordinal);
         foreach (var key in input.Keys)
@@ -132,6 +138,15 @@ public static partial class AssetCustomFieldEndpoints
         return serialized.Length > 16000
             ? (null, "Varlık özel alanlarının toplam boyutu 16.000 karakteri aşamaz.")
             : (serialized, null);
+    }
+
+    public static string[] ExportValues(string? json, IReadOnlyCollection<AssetCustomFieldDefinition> fields)
+    {
+        Dictionary<string, string> values;
+        try { values = JsonSerializer.Deserialize<Dictionary<string, string>>(json ?? "{}") ?? new(StringComparer.Ordinal); }
+        catch (JsonException) { values = new(StringComparer.Ordinal); }
+        return fields.OrderBy(x => x.SortOrder).ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(field => values.GetValueOrDefault(field.Key, "")).ToArray();
     }
 
     private static bool TryNormalizeDefinition(AssetCustomFieldDefinitionRequest request, out string? key,

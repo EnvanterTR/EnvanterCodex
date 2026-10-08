@@ -1168,6 +1168,9 @@ public static class OperationalEndpoints
             var ids = request.AssetIds ?? [];
             if (ids.Length is < 1 or > 100 || ids.Any(id => id == Guid.Empty) || ids.Distinct().Count() != ids.Length)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["assetIds"] = ["1 ile 100 arasında, tekrarsız varlık seçin."] });
+            var customFields = await db.AssetCustomFieldDefinitions.AsNoTracking()
+                .Where(x => x.CompanyId == companyId && x.IsActive).OrderBy(x => x.SortOrder).ThenBy(x => x.Name)
+                .ToListAsync(cancellationToken);
             var rows = await db.Assets.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && ids.Contains(x.Id))
                 .OrderBy(x => x.AssetTag)
@@ -1180,11 +1183,12 @@ public static class OperationalEndpoints
                     db.Assets.Where(parent => parent.CompanyId == companyId && parent.Id == x.ParentAssetId).Select(parent => parent.AssetTag).FirstOrDefault(),
                     db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault(),
                     db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
-                    x.PurchaseDate, x.WarrantyExpiresAt, x.PurchaseCost, x.Currency))
+                    x.PurchaseDate, x.WarrantyExpiresAt, x.PurchaseCost, x.Currency, x.CustomFieldsJson))
                 .ToListAsync(cancellationToken);
             if (rows.Count != ids.Length) return Results.NotFound(new { message = "Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil." });
             var csv = new StringBuilder();
-            csv.AppendLine("Etiket;Ad;Durum;Kategori;Marka;Model;Seri No;Konum;Personel No;Çalışan;Alış Tarihi;Garanti Bitiş Tarihi;Alış Bedeli;Para Birimi;Üst Varlık Etiketi");
+            csv.AppendLine(string.Join(';', new[] { "Etiket", "Ad", "Durum", "Kategori", "Marka", "Model", "Seri No", "Konum", "Personel No", "Çalışan", "Alış Tarihi", "Garanti Bitiş Tarihi", "Alış Bedeli", "Para Birimi", "Üst Varlık Etiketi" }
+                .Concat(customFields.Select(field => $"Özel alan: {field.Key}")).Select(Cell)));
             foreach (var row in rows)
                 csv.AppendLine(string.Join(';', new[] { Cell(row.AssetTag), Cell(row.Name), Cell(row.Status),
                     Cell(row.Category), Cell(row.Brand), Cell(row.Model), Cell(row.SerialNumber),
@@ -1192,7 +1196,8 @@ public static class OperationalEndpoints
                     Cell(row.PurchaseDate?.ToString("yyyy-MM-dd")),
                     Cell(row.WarrantyExpiresAt?.ToString("yyyy-MM-dd")),
                     Cell(row.PurchaseCost?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
-                    Cell(row.Currency), Cell(row.ParentAssetTag) }));
+                    Cell(row.Currency), Cell(row.ParentAssetTag) }
+                    .Concat(AssetCustomFieldEndpoints.ExportValues(row.CustomFieldsJson, customFields).Select(Cell))));
             return Results.File(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray(),
                 "text/csv; charset=utf-8", $"envantertr-secili-varliklar-{DateTime.UtcNow:yyyyMMdd}.csv");
         }).RequireAuthorization("asset.read");
@@ -1491,6 +1496,9 @@ public static class OperationalEndpoints
             CancellationToken cancellationToken, [FromQuery] int page = 1, [FromQuery] int pageSize = 5000) =>
         {
             if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
+            var customFields = await db.AssetCustomFieldDefinitions.AsNoTracking()
+                .Where(x => x.CompanyId == companyId && x.IsActive).OrderBy(x => x.SortOrder).ThenBy(x => x.Name)
+                .ToListAsync(cancellationToken);
             page = Math.Max(page, 1);
             pageSize = Math.Clamp(pageSize == 0 ? 5000 : pageSize, 1, 10000);
             var query = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId);
@@ -1504,13 +1512,15 @@ public static class OperationalEndpoints
             var rows = await query.OrderBy(x => x.AssetTag).Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(x => new ExportRow(x.AssetTag, x.Name, x.Status, x.SerialNumber, x.Location,
                     db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault(),
-                    x.PurchaseDate, x.WarrantyExpiresAt, x.PurchaseCost, x.Currency)).ToListAsync(cancellationToken);
+                    x.PurchaseDate, x.WarrantyExpiresAt, x.PurchaseCost, x.Currency, x.CustomFieldsJson)).ToListAsync(cancellationToken);
             var csv = new StringBuilder();
-            csv.AppendLine("Etiket;Ad;Durum;Seri No;Konum;Personel No;Alış Tarihi;Garanti Bitiş Tarihi;Alış Bedeli;Para Birimi");
+            csv.AppendLine(string.Join(';', new[] { "Etiket", "Ad", "Durum", "Seri No", "Konum", "Personel No", "Alış Tarihi", "Garanti Bitiş Tarihi", "Alış Bedeli", "Para Birimi" }
+                .Concat(customFields.Select(field => $"Özel alan: {field.Key}")).Select(Cell)));
             foreach (var row in rows)
                 csv.AppendLine(string.Join(';', new[] { Cell(row.AssetTag), Cell(row.Name), Cell(row.Status),
                     Cell(row.SerialNumber), Cell(row.Location), Cell(row.EmployeeNumber),
-                    Cell(row.PurchaseDate?.ToString("yyyy-MM-dd")), Cell(row.WarrantyExpiresAt?.ToString("yyyy-MM-dd")), Cell(row.PurchaseCost?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)), Cell(row.Currency) }));
+                    Cell(row.PurchaseDate?.ToString("yyyy-MM-dd")), Cell(row.WarrantyExpiresAt?.ToString("yyyy-MM-dd")), Cell(row.PurchaseCost?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)), Cell(row.Currency) }
+                    .Concat(AssetCustomFieldEndpoints.ExportValues(row.CustomFieldsJson, customFields).Select(Cell))));
             var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray();
             context.Response.Headers["X-Total-Count"] = total.ToString(System.Globalization.CultureInfo.InvariantCulture);
             context.Response.Headers["X-Page"] = page.ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -1549,7 +1559,7 @@ public static class OperationalEndpoints
     }
 
     private sealed record ExportRow(string AssetTag, string Name, string Status, string? SerialNumber,
-        string? Location, string? EmployeeNumber, DateOnly? PurchaseDate, DateOnly? WarrantyExpiresAt, decimal? PurchaseCost, string Currency);
+        string? Location, string? EmployeeNumber, DateOnly? PurchaseDate, DateOnly? WarrantyExpiresAt, decimal? PurchaseCost, string Currency, string? CustomFieldsJson);
     private sealed record CreateDepartmentRequest(string? Name);
     private sealed record UpdateCompanyProfileRequest(string? Name, string? ContactEmail, string? BrandPrimaryColor);
     public sealed record LabelPrintSettingsRequest(string? Barcode1d, string? Barcode2d, decimal WidthMm,
@@ -1683,5 +1693,5 @@ public static class OperationalEndpoints
 
     private sealed record SelectedAssetExportRow(string AssetTag, string Name, string Status, string? Category,
         string? Brand, string? Model, string? SerialNumber, string? Location, string? ParentAssetTag, string? EmployeeNumber,
-        string? EmployeeName, DateOnly? PurchaseDate, DateOnly? WarrantyExpiresAt, decimal? PurchaseCost, string Currency);
+        string? EmployeeName, DateOnly? PurchaseDate, DateOnly? WarrantyExpiresAt, decimal? PurchaseCost, string Currency, string? CustomFieldsJson);
 }
