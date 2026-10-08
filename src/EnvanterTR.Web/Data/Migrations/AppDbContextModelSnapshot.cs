@@ -2250,6 +2250,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateOnly?>("PurchaseDate")
                         .HasColumnType("date");
 
+                    b.Property<bool>("RequiresEulaAcceptance")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Seats")
                         .HasColumnType("integer");
 
@@ -2308,6 +2311,12 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid?>("EmployeeId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("EulaAcceptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("EulaAcceptedByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("LicenseId")
                         .HasColumnType("uuid");
 
@@ -2323,6 +2332,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasAlternateKey("CompanyId", "Id");
 
                     b.HasIndex("ActorUserId");
+
+                    b.HasIndex("EulaAcceptedByUserId");
 
                     b.HasIndex("CompanyId", "AssetId");
 
@@ -3708,6 +3719,11 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("EulaAcceptedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("EnvanterTR.Web.Data.Asset", null)
                         .WithMany()

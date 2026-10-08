@@ -367,6 +367,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasForeignKey(x => new { x.CompanyId, x.AssetId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<SoftwareLicenseAssignment>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<SoftwareLicenseAssignment>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.EulaAcceptedByUserId).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<SoftwareLicenseEvent>().Property(x => x.EventType).HasMaxLength(32).IsRequired();
         modelBuilder.Entity<SoftwareLicenseEvent>().Property(x => x.Details).HasMaxLength(2000);
         modelBuilder.Entity<SoftwareLicenseEvent>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);

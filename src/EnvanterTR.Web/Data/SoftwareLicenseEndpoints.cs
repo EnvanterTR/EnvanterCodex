@@ -26,7 +26,7 @@ public static class SoftwareLicenseEndpoints
             var items = await query.OrderBy(x => x.Name).ThenBy(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize).Select(x => new
             {
                 x.Id, x.Name, x.Publisher, x.ProductVersion, x.LicenseType, x.LicenseReference, x.Supplier, x.Seats,
-                x.UnitCost, x.Currency, x.PurchaseDate, x.ExpirationDate, x.AutoRenew, x.UpdatedAt,
+                x.UnitCost, x.Currency, x.PurchaseDate, x.ExpirationDate, x.AutoRenew, x.RequiresEulaAcceptance, x.UpdatedAt,
                 assigned = db.SoftwareLicenseAssignments.Count(a => a.CompanyId == companyId && a.LicenseId == x.Id && a.RevokedAt == null)
             }).ToListAsync(ct);
             return Results.Ok(new { items, page, pageSize, total });
@@ -146,7 +146,7 @@ public static class SoftwareLicenseEndpoints
             var license = await db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id).Select(x => new
             {
                 x.Id, x.Name, x.Publisher, x.ProductVersion, x.LicenseType, x.LicenseReference, x.Supplier, x.Seats, x.UnitCost, x.Currency,
-                x.PurchaseDate, x.ExpirationDate, x.AutoRenew, x.Notes, x.UpdatedAt,
+                x.PurchaseDate, x.ExpirationDate, x.AutoRenew, x.RequiresEulaAcceptance, x.Notes, x.UpdatedAt,
                 assigned = db.SoftwareLicenseAssignments.Count(a => a.CompanyId == companyId && a.LicenseId == x.Id && a.RevokedAt == null)
             }).SingleOrDefaultAsync(ct);
             if (license is null) return Results.NotFound();
@@ -156,7 +156,8 @@ public static class SoftwareLicenseEndpoints
                     employeeNumber = db.Employees.Where(e => e.CompanyId == companyId && e.Id == a.EmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault(),
                     assetTag = db.Assets.Where(asset => asset.CompanyId == companyId && asset.Id == a.AssetId).Select(asset => asset.AssetTag).FirstOrDefault(),
                     assetName = db.Assets.Where(asset => asset.CompanyId == companyId && asset.Id == a.AssetId).Select(asset => asset.Name).FirstOrDefault(),
-                    a.AssignedAt, a.RevokedAt, a.Notes }).ToListAsync(ct);
+                    a.AssignedAt, a.EulaAcceptedAt, eulaAcceptedBy = db.Users.Where(actor => actor.Id == a.EulaAcceptedByUserId).Select(actor => actor.DisplayName).FirstOrDefault(),
+                    a.RevokedAt, a.Notes }).ToListAsync(ct);
             var events = await db.SoftwareLicenseEvents.AsNoTracking().Where(e => e.CompanyId == companyId && e.LicenseId == id)
                 .OrderByDescending(e => e.OccurredAt).Take(100).Select(e => new { e.EventType, e.Details, e.OccurredAt,
                     employee = db.Employees.Where(p => p.CompanyId == companyId && p.Id == e.EmployeeId).Select(p => p.DisplayName).FirstOrDefault(),
@@ -253,7 +254,7 @@ public static class SoftwareLicenseEndpoints
                 LicenseType = request.LicenseType, LicenseReference = Clean(request.LicenseReference), Supplier = Clean(request.Supplier),
                 SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, ct), Seats = request.Seats,
                 UnitCost = request.UnitCost, Currency = request.Currency.Trim().ToUpperInvariant(), PurchaseDate = request.PurchaseDate, ExpirationDate = request.ExpirationDate,
-                AutoRenew = request.AutoRenew, Notes = Clean(request.Notes) };
+                AutoRenew = request.AutoRenew, RequiresEulaAcceptance = request.RequiresEulaAcceptance, Notes = Clean(request.Notes) };
             db.SoftwareLicenses.Add(item); AddEvent(db, item, user, "Created", "Lisans kaydı oluşturuldu.");
             await db.SaveChangesAsync(ct); return Results.Created($"/api/software-licenses/{item.Id}", new { item.Id });
         }).RequireAuthorization("asset.write");
@@ -268,7 +269,7 @@ public static class SoftwareLicenseEndpoints
             item.Name = request.Name.Trim(); item.Publisher = Clean(request.Publisher); item.ProductVersion = Clean(request.ProductVersion); item.LicenseType = request.LicenseType;
             item.LicenseReference = Clean(request.LicenseReference); item.Supplier = Clean(request.Supplier); item.SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, ct); item.Seats = request.Seats; item.UnitCost = request.UnitCost;
             item.Currency = request.Currency.Trim().ToUpperInvariant(); item.PurchaseDate = request.PurchaseDate; item.ExpirationDate = request.ExpirationDate;
-            item.AutoRenew = request.AutoRenew; item.Notes = Clean(request.Notes); item.UpdatedAt = DateTimeOffset.UtcNow;
+            item.AutoRenew = request.AutoRenew; item.RequiresEulaAcceptance = request.RequiresEulaAcceptance; item.Notes = Clean(request.Notes); item.UpdatedAt = DateTimeOffset.UtcNow;
             AddEvent(db, item, user, "Updated", "Lisans bilgileri güncellendi."); await db.SaveChangesAsync(ct); return Results.NoContent();
         }).RequireAuthorization("asset.write");
 
@@ -280,6 +281,8 @@ public static class SoftwareLicenseEndpoints
                 .SingleOrDefaultAsync(ct); if (item is null) return Results.NotFound();
             if ((request.EmployeeId is null) == (request.AssetId is null))
                 return Results.ValidationProblem(new Dictionary<string,string[]> { ["target"]=["Tek bir çalışan veya varlık seçilmelidir."] });
+            if (item.RequiresEulaAcceptance && !request.EulaAccepted)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["eulaAccepted"] = ["Bu lisans için kullanıcı EULA kabulünün alındığını teyit etmelisiniz."] });
             if (request.EmployeeId is Guid employeeId && !await db.Employees.AnyAsync(e => e.CompanyId == companyId && e.Id == employeeId && e.IsActive, ct))
                 return Results.ValidationProblem(new Dictionary<string,string[]> { ["employeeId"]=["Aktif çalışan seçilmelidir."] });
             if (request.AssetId is Guid assetId && !await db.Assets.AnyAsync(a => a.CompanyId == companyId && a.Id == assetId && a.Status != AssetStatuses.Archived, ct))
@@ -289,11 +292,15 @@ public static class SoftwareLicenseEndpoints
                 return Results.Conflict(new { message = "Bu lisans seçilen hedefe zaten atanmış." });
             var count = await db.SoftwareLicenseAssignments.CountAsync(a => a.CompanyId == companyId && a.LicenseId == id && a.RevokedAt == null, ct);
             if (count >= item.Seats) return Results.Conflict(new { message = "Kullanılabilir lisans koltuğu kalmadı." });
-            var assignment = new SoftwareLicenseAssignment { CompanyId = companyId, LicenseId = id, EmployeeId = request.EmployeeId, AssetId = request.AssetId, ActorUserId = UserId(user), Notes = Clean(request.Notes) };
+            var actorId = UserId(user);
+            var assignment = new SoftwareLicenseAssignment { CompanyId = companyId, LicenseId = id, EmployeeId = request.EmployeeId, AssetId = request.AssetId,
+                ActorUserId = actorId, EulaAcceptedAt = request.EulaAccepted ? DateTimeOffset.UtcNow : null,
+                EulaAcceptedByUserId = request.EulaAccepted ? actorId : null, Notes = Clean(request.Notes) };
             db.SoftwareLicenseAssignments.Add(assignment);
             var targetDetails = request.EmployeeId is Guid employeeTarget
                 ? $"Çalışana atandı: {employeeTarget}"
                 : $"Varlığa atandı: {request.AssetId}";
+            if (request.EulaAccepted) targetDetails += "; EULA kabulü yetkili tarafından teyit edildi";
             AddEvent(db, item, user, "Assigned", targetDetails, request.EmployeeId, request.AssetId);
             await db.SaveChangesAsync(ct); await tx.CommitAsync(ct); return Results.Created($"/api/software-licenses/{id}", new { assignment.Id, assigned = count + 1, available = item.Seats - count - 1 });
         }).RequireAuthorization("asset.write");
@@ -310,6 +317,8 @@ public static class SoftwareLicenseEndpoints
             var item = await db.SoftwareLicenses.FromSqlInterpolated($"SELECT * FROM \"SoftwareLicenses\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
                 .SingleOrDefaultAsync(ct);
             if (item is null) return Results.NotFound();
+            if (item.RequiresEulaAcceptance && !request.EulaAccepted)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["eulaAccepted"] = ["Bu lisans için her seçili kullanıcıdan EULA kabulü alındığını teyit etmelisiniz."] });
 
             var activeEmployees = await db.Employees.AsNoTracking().Where(e => e.CompanyId == companyId && e.IsActive && employeeIds.Contains(e.Id))
                 .Select(e => e.Id).ToListAsync(ct);
@@ -325,14 +334,16 @@ public static class SoftwareLicenseEndpoints
                 return Results.Conflict(new { message = $"Yeterli lisans koltuğu yok. Kullanılabilir: {Math.Max(0, item.Seats - assigned)}, istenen: {employeeIds.Length}; hiçbir atama yapılmadı." });
 
             var now = DateTimeOffset.UtcNow;
+            var actorId = UserId(user);
+            var eulaAcceptedAt = request.EulaAccepted ? now : (DateTimeOffset?)null;
             var assignments = employeeIds.Select(employeeId => new SoftwareLicenseAssignment
             {
-                CompanyId = companyId, LicenseId = id, EmployeeId = employeeId, ActorUserId = UserId(user),
-                AssignedAt = now, Notes = Clean(request.Notes)
+                CompanyId = companyId, LicenseId = id, EmployeeId = employeeId, ActorUserId = actorId,
+                AssignedAt = now, EulaAcceptedAt = eulaAcceptedAt, EulaAcceptedByUserId = request.EulaAccepted ? actorId : null, Notes = Clean(request.Notes)
             }).ToArray();
             db.SoftwareLicenseAssignments.AddRange(assignments);
             foreach (var employeeId in employeeIds)
-                AddEvent(db, item, user, "Assigned", $"Toplu atama: çalışan {employeeId}", employeeId);
+                AddEvent(db, item, user, "Assigned", $"Toplu atama: çalışan {employeeId}" + (request.EulaAccepted ? "; EULA kabulü yetkili tarafından teyit edildi" : ""), employeeId);
             await db.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
             return Results.Created($"/api/software-licenses/{id}", new
@@ -470,8 +481,9 @@ public static class SoftwareLicenseEndpoints
         return e;
     }
     public sealed record LicenseRequest(string Name, string? Publisher, string? ProductVersion, string LicenseType, string? LicenseReference,
-        string? Supplier, int Seats, decimal? UnitCost, string Currency, DateOnly? PurchaseDate, DateOnly? ExpirationDate, bool AutoRenew, string? Notes);
-    public sealed record AssignmentRequest(Guid? EmployeeId, Guid? AssetId, string? Notes);
-    public sealed record BulkAssignmentRequest(Guid[]? EmployeeIds, string? Notes);
+        string? Supplier, int Seats, decimal? UnitCost, string Currency, DateOnly? PurchaseDate, DateOnly? ExpirationDate, bool AutoRenew, string? Notes,
+        bool RequiresEulaAcceptance = false);
+    public sealed record AssignmentRequest(Guid? EmployeeId, Guid? AssetId, string? Notes, bool EulaAccepted = false);
+    public sealed record BulkAssignmentRequest(Guid[]? EmployeeIds, string? Notes, bool EulaAccepted = false);
     public sealed record AssignmentRevokeRequest(Guid AssignmentId);
 }

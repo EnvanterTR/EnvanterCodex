@@ -596,6 +596,7 @@ public sealed class SoftwareLicense
     public DateOnly? PurchaseDate { get; set; }
     public DateOnly? ExpirationDate { get; set; }
     public bool AutoRenew { get; set; }
+    public bool RequiresEulaAcceptance { get; set; }
     public string? Notes { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
@@ -623,6 +624,8 @@ public sealed class SoftwareLicenseAssignment
     public Guid? AssetId { get; set; }
     public Guid? ActorUserId { get; set; }
     public DateTimeOffset AssignedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? EulaAcceptedAt { get; set; }
+    public Guid? EulaAcceptedByUserId { get; set; }
     public DateTimeOffset? RevokedAt { get; set; }
     public string? Notes { get; set; }
 }

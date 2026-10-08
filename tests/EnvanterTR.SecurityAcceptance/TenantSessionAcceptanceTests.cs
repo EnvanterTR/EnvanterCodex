@@ -1121,12 +1121,20 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.Employees.AddRange(additionalEmployees);
+            var license = await db.SoftwareLicenses.SingleAsync(item => item.CompanyId == _companyId && item.Id == _ownLicenseId);
+            license.RequiresEulaAcceptance = true;
             await db.SaveChangesAsync();
         }
 
         var assignPath = $"/api/software-licenses/{_ownLicenseId}/assign/bulk";
+        using var missingSingleEulaResponse = await SendAsRoleAsync(HttpMethod.Post, $"/api/software-licenses/{_ownLicenseId}/assign", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { employeeId = additionalEmployees[3].Id }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.BadRequest, missingSingleEulaResponse.StatusCode);
+        using var missingBulkEulaResponse = await SendAsRoleAsync(HttpMethod.Post, assignPath, "admin",
+            System.Net.Http.Json.JsonContent.Create(new { employeeIds = new[] { _ownEmployeeId, additionalEmployees[0].Id } }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.BadRequest, missingBulkEulaResponse.StatusCode);
         using var assignedResponse = await SendAsRoleAsync(HttpMethod.Post, assignPath, "admin",
-            System.Net.Http.Json.JsonContent.Create(new { employeeIds = new[] { _ownEmployeeId, additionalEmployees[0].Id }, notes = "Quarterly rollout" }),
+            System.Net.Http.Json.JsonContent.Create(new { employeeIds = new[] { _ownEmployeeId, additionalEmployees[0].Id }, notes = "Quarterly rollout", eulaAccepted = true }),
             requestToken, antiforgeryCookie);
         Assert.Equal(HttpStatusCode.Created, assignedResponse.StatusCode);
         using var assignedPayload = JsonDocument.Parse(await assignedResponse.Content.ReadAsStringAsync());
@@ -1135,16 +1143,16 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(2, assignedPayload.RootElement.GetProperty("assignments").GetArrayLength());
 
         using var crossTenantResponse = await SendAsRoleAsync(HttpMethod.Post, assignPath, "admin",
-            System.Net.Http.Json.JsonContent.Create(new { employeeIds = new[] { _otherCompanyEmployeeId } }), requestToken, antiforgeryCookie);
+            System.Net.Http.Json.JsonContent.Create(new { employeeIds = new[] { _otherCompanyEmployeeId }, eulaAccepted = true }), requestToken, antiforgeryCookie);
         Assert.Equal(HttpStatusCode.BadRequest, crossTenantResponse.StatusCode);
 
         using var duplicateIdsResponse = await SendAsRoleAsync(HttpMethod.Post, assignPath, "admin",
-            System.Net.Http.Json.JsonContent.Create(new { employeeIds = new[] { additionalEmployees[1].Id, additionalEmployees[1].Id } }),
+            System.Net.Http.Json.JsonContent.Create(new { employeeIds = new[] { additionalEmployees[1].Id, additionalEmployees[1].Id }, eulaAccepted = true }),
             requestToken, antiforgeryCookie);
         Assert.Equal(HttpStatusCode.BadRequest, duplicateIdsResponse.StatusCode);
 
         using var overCapacityResponse = await SendAsRoleAsync(HttpMethod.Post, assignPath, "admin",
-            System.Net.Http.Json.JsonContent.Create(new { employeeIds = additionalEmployees.Skip(1).Select(employee => employee.Id).ToArray() }),
+            System.Net.Http.Json.JsonContent.Create(new { employeeIds = additionalEmployees.Skip(1).Select(employee => employee.Id).ToArray(), eulaAccepted = true }),
             requestToken, antiforgeryCookie);
         Assert.Equal(HttpStatusCode.Conflict, overCapacityResponse.StatusCode);
 
@@ -1152,10 +1160,17 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, detailResponse.StatusCode);
         using var detail = JsonDocument.Parse(await detailResponse.Content.ReadAsStringAsync());
         Assert.Equal(2, detail.RootElement.GetProperty("license").GetProperty("assigned").GetInt32());
+        Assert.True(detail.RootElement.GetProperty("license").GetProperty("requiresEulaAcceptance").GetBoolean());
         var assignmentEmployees = detail.RootElement.GetProperty("assignments").EnumerateArray()
             .Where(assignment => assignment.GetProperty("revokedAt").ValueKind == JsonValueKind.Null)
-            .Select(assignment => assignment.GetProperty("employeeId").GetGuid()).ToHashSet();
-        Assert.Equal(new HashSet<Guid> { _ownEmployeeId, additionalEmployees[0].Id }, assignmentEmployees);
+            .ToArray();
+        Assert.Equal(new HashSet<Guid> { _ownEmployeeId, additionalEmployees[0].Id },
+            assignmentEmployees.Select(assignment => assignment.GetProperty("employeeId").GetGuid()).ToHashSet());
+        Assert.All(assignmentEmployees, assignment =>
+        {
+            Assert.NotEqual(JsonValueKind.Null, assignment.GetProperty("eulaAcceptedAt").ValueKind);
+            Assert.False(string.IsNullOrWhiteSpace(assignment.GetProperty("eulaAcceptedBy").GetString()));
+        });
     }
 
     [Fact]
