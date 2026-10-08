@@ -186,8 +186,13 @@ public static class AccountEndpoints
 
             var user = await userManager.FindByEmailAsync(request.Email.Trim());
             if (user is null) return LoginCredentialsRejected();
+            var accountWasLocked = await userManager.IsLockedOutAsync(user);
             var passwordCheck = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
-            if (!passwordCheck.Succeeded) return LoginCredentialsRejected();
+            if (!passwordCheck.Succeeded)
+            {
+                if (!accountWasLocked) await RecordFailedLoginAsync(db, user, cancellationToken);
+                return LoginCredentialsRejected();
+            }
             if (!user.EmailConfirmed)
                 return Results.Json(new { message = "Davet e-postasındaki bağlantıdan parolanızı belirleyerek hesabınızı etkinleştirin." }, statusCode: StatusCodes.Status403Forbidden);
 
@@ -223,10 +228,12 @@ public static class AccountEndpoints
                     user, TokenOptions.DefaultAuthenticatorProvider, code.Replace(" ", "", StringComparison.Ordinal).Replace("-", "", StringComparison.Ordinal));
                 if (!verified)
                 {
+                    var accountWasLockedBeforeCodeCheck = await userManager.IsLockedOutAsync(user);
                     var recovery = await userManager.RedeemTwoFactorRecoveryCodeAsync(user, code);
                     if (!recovery.Succeeded)
                     {
                         await userManager.AccessFailedAsync(user);
+                        if (!accountWasLockedBeforeCodeCheck) await RecordFailedLoginAsync(db, user, cancellationToken);
                         return await userManager.IsLockedOutAsync(user)
                             ? Results.Json(new { message = "Çok sayıda hatalı doğrulama kodu. Bir süre sonra tekrar deneyin." }, statusCode: StatusCodes.Status423Locked)
                             : Results.Json(new { twoFactorRequired = true, message = "Doğrulama kodu geçersiz veya kullanılmış. Yeniden deneyin." }, statusCode: StatusCodes.Status400BadRequest);
@@ -560,6 +567,18 @@ public static class AccountEndpoints
 
     private static IResult LoginCredentialsRejected() =>
         Results.Json(new { message = "Giriş bilgileri geçersiz veya hesap geçici olarak kullanılamıyor." }, statusCode: StatusCodes.Status401Unauthorized);
+
+    private static async Task RecordFailedLoginAsync(AppDbContext db, EnvanterUser user, CancellationToken cancellationToken)
+    {
+        var companyIds = await db.CompanyMemberships.AsNoTracking().Where(x => x.UserId == user.Id)
+            .Select(x => x.CompanyId).Distinct().ToListAsync(cancellationToken);
+        foreach (var companyId in companyIds)
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, TargetType = "Account", TargetId = user.Id,
+                Action = "LoginFailed", Details = "Parola doğrulaması başarısız oldu." });
+        db.PlatformAuditEntries.Add(new PlatformAuditEntry { ActorUserId = user.Id, CompanyId = companyIds.Count == 1 ? companyIds[0] : null,
+            Action = "LoginFailed", TargetType = "Account", TargetId = user.Id, Details = "Parola doğrulaması başarısız oldu." });
+        await db.SaveChangesAsync(cancellationToken);
+    }
 
     private static async Task<bool> HasValidCsrfAsync(HttpContext context, IAntiforgery antiforgery)
     {
