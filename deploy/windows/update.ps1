@@ -28,8 +28,13 @@ $releasePath = Join-Path $InstallRoot ("rollback-" + (Get-Date -Format "yyyyMMdd
 $wasRunning = $service.Status -eq "Running"
 $snapshotReady = $false
 $migrationAttempted = $false
-if ($wasRunning) { Stop-Service -Name $ServiceName; (Get-Service -Name $ServiceName).WaitForStatus("Stopped", [TimeSpan]::FromSeconds(60)) }
+$maintenanceMutex = [Threading.Mutex]::new($false,"Global\EnvanterTR_Maintenance")
+$maintenanceMutexAcquired = $false
+try { $maintenanceMutexAcquired = $maintenanceMutex.WaitOne(0) }
+catch [Threading.AbandonedMutexException] { $maintenanceMutexAcquired = $true; Write-Warning "An earlier maintenance process ended unexpectedly; continuing with the abandoned operation lock." }
+if (-not $maintenanceMutexAcquired) { $maintenanceMutex.Dispose(); throw "Another EnvanterTR backup, restore or update operation is in progress." }
 try {
+    if ($wasRunning) { Stop-Service -Name $ServiceName; (Get-Service -Name $ServiceName).WaitForStatus("Stopped", [TimeSpan]::FromSeconds(60)) }
     Copy-Item -LiteralPath $appPath -Destination $releasePath -Recurse
     $snapshotReady = $true
     Get-ChildItem -LiteralPath $appPath -Force | Remove-Item -Recurse -Force
@@ -90,4 +95,7 @@ try {
         if ($wasRunning) { Start-Service -Name $ServiceName -ErrorAction SilentlyContinue }
     }
     throw $updateFailure
+} finally {
+    if ($maintenanceMutexAcquired) { $maintenanceMutex.ReleaseMutex(); $maintenanceMutexAcquired = $false }
+    $maintenanceMutex.Dispose()
 }

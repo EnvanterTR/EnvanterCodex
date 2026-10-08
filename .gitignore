@@ -25,6 +25,9 @@ appsettings.Development.json
 **/.scheduled-logs/
 **/backup-passphrase*
 
+# Generated distributable packages (publish locally; do not commit binaries)
+/artifacts/windows/publish/
+
 # IDE and operating-system files
 .idea/
 .vscode/

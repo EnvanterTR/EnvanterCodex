@@ -21,4 +21,6 @@ foreach ($check in $checks) {
     if ($source -notmatch $check.Pattern) { throw "FAIL: $($check.Name)" }
     Write-Output "PASS: $($check.Name)"
 }
+if ($source -notmatch '(?s)Global\\EnvanterTR_Maintenance.*?WaitOne\(0\).*?ReleaseMutex\(\)') { throw 'FAIL: update does not hold the shared maintenance lock through cleanup.' }
+Write-Output 'PASS: update takes and releases the shared maintenance lock.'
 Write-Output 'PASS: update.ps1 parses successfully.'
