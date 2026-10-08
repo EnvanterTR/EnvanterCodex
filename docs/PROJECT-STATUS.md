@@ -137,6 +137,12 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 - Linux canlı geri yükleme için CI kaynağa dayalı emniyet kontrolleri eklendi: yedek doğrulama ve izole prova, canlı değişiklik öncesi doğrulanmış güvenlik yedeği, geçici veritabanı SQL kontrolü, sağlık kontrolü ve hata anında eski yapılandırmayı geri bağlayıp eski servisleri başlatma sırası denetleniyor. Eski/yenilenmiş Docker volume'larının silinmediği ve bakım kilidi de korunuyor.
 - Yeni emniyet kontrolü ve Linux dağıtım Bash sözdizimi izole Linux konteynerinde geçti. Bu kaynak/sıra kontrolüdür; gerçek Ubuntu'da canlı geri yükleme tatbikatını kanıtlamaz.
 
+## 2026-10-08 Linux ilk kurulum devamı
+
+- `deploy/server/install.sh` aynı `/run/lock/envantertr-operations.lock` bakım kilidini alarak yedekleme, güncelleme ve geri yüklemeyle çakışmayı önler.
+- İlk kurulum başarısızlıkla yarıda kalırsa tekrar çağrı, yalnızca root sahipli `0600` yapılandırmayı, `initial-<UTC damgası>` sürüm dizinini ve root sahipli yedek parolasını doğrulayarak devam eder. Aynı alan adı ve kimlik bilgileri korunur; başka sürümü gösteren `current` bağlantısı veya tamamlanmış kurulum reddedilir. Mevcut volume'lar hiçbir aşamada silinmez.
+- Linux CI'a resume akışı için kaynak güvenlik kontrolü eklendi. Tüm Linux dağıtım betikleri `bash -n` kontrolünden, yeni devam testi ve restore sıralama kontrolü geçti; `git diff --check` temiz. Bu kontroller gerçek Ubuntu/systemd kurulumunun yerine geçmez.
+
 ## 2026-10-08 Talep edilebilir varlık ve karar rolü kabulü
 
 - Varlık kartında `Talep edilebilir` seçeneği bulunur. Stok talebi kataloğu yalnız etkin şirketteki bu işaretli ve kullanılabilir varlıkları gösterir; başka şirkete ait veya uygun olmayan varlıklar listelenmez. Varlık talepleri tek adetle sınırlıdır.

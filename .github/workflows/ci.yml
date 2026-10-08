@@ -51,6 +51,10 @@ jobs:
         shell: bash
         run: bash deploy/server/tests/restore-safety-check.sh
 
+      - name: Validate resumable Linux first install
+        shell: bash
+        run: bash deploy/server/tests/install-resume-check.sh
+
   windows-deployment-safety:
     name: Windows deployment and backup safety
     runs-on: windows-latest

@@ -12,6 +12,8 @@ Bu, Linux sunucu kurulumunun ilk sürümüdür; imzalı, sürümlü müşteri ku
 
 ## İlk kurulum
 
+İlk kurulum Docker, migration, TLS/HTTPS veya sağlık kontrolünde kesilirse yapılandırma, ilk sürüm ve oluşturulmuş volume'lar korunur. Hata nedenini düzelttikten sonra aynı kaynak ağacından aynı alan adıyla `sudo bash deploy/server/install.sh envanter.sirketiniz.com` komutunu yeniden çalıştırın. Betik yalnızca root sahipli `chmod 600` yapılandırmayı, onun ilk sürümünü ve yedek parolasını doğrulayınca aynı kimlik bilgileriyle devam eder; ilk şirket/platform kurulum anahtarlarını veya PostgreSQL parolasını yenilemez. Farklı alan adı ya da değiştirilmiş/eksik sırlarla devam etmez. Başarılı kurulumdan sonra `current` sürüm bağlantısı oluştuğunda yeni kurulum yerine `update.sh` kullanılır.
+
 Kaynak arşivini sunucuya aktarın ve komutu kaynak ağacının içinden çalıştırın:
 
 ```bash

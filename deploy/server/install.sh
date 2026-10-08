@@ -7,8 +7,6 @@ INSTALL_ROOT="/opt/envantertr"
 CONFIG_DIR="/etc/envantertr"
 CONFIG_FILE="$CONFIG_DIR/server.env"
 BACKUP_PASSWORD_FILE="$CONFIG_DIR/backup.pass"
-STAMP="$(date -u +%Y%m%d-%H%M%S)"
-RELEASE_DIR="$INSTALL_ROOT/releases/$STAMP"
 DOMAIN="${1:-${APP_DOMAIN:-}}"
 
 fail() { printf 'HATA: %s\n' "$*" >&2; exit 1; }
@@ -16,31 +14,54 @@ on_error() { local status=$?; printf 'Kurulum %s koduyla durdu. Dosyalar ve volu
 trap on_error ERR
 
 [[ "$EUID" -eq 0 ]] || fail 'Kurulumu sudo ile root olarak çalıştırın.'
-[[ -n "$DOMAIN" && "$DOMAIN" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ && "$DOMAIN" != *..* ]] || fail 'Geçerli bir DNS alan adı verin: sudo bash deploy/server/install.sh envanter.sirketiniz.com'
-[[ "${DOMAIN,,}" != localhost ]] || fail 'HTTPS kurulumu için localhost kullanılamaz.'
+command -v flock >/dev/null || fail 'Kurulum için flock gereklidir.'
+exec 9>/run/lock/envantertr-operations.lock
+flock -n 9 || fail 'Başka bir EnvanterTR sunucu işlemi sürüyor; ilk kurulum başlatılmadı.'
 command -v docker >/dev/null || fail 'Docker Engine kurulu olmalıdır.'
 command -v openssl >/dev/null || fail 'OpenSSL kurulu olmalıdır.'
 command -v curl >/dev/null || fail 'curl kurulu olmalıdır.'
 command -v systemctl >/dev/null || fail 'systemd bu kurulum profili için gereklidir.'
 docker compose version >/dev/null 2>&1 || fail 'Docker Compose v2 eklentisi kurulu olmalıdır.'
 [[ -f "$SOURCE_ROOT/Dockerfile" && -f "$SCRIPT_DIR/compose.yaml" ]] || fail 'Komutu EnvanterTR kaynak paketinin içinden çalıştırın.'
-[[ ! -e "$INSTALL_ROOT/current" && ! -e "$CONFIG_FILE" ]] || fail 'EnvanterTR kurulumu zaten var; update.sh komutunu kullanın.'
 
-install -d -m 0750 "$INSTALL_ROOT/releases" "$CONFIG_DIR" /var/backups/envantertr
-install -d -m 0750 "$RELEASE_DIR"
-tar -C "$SOURCE_ROOT" \
-  --exclude=.git --exclude=backups --exclude=data --exclude='*/.env' --exclude=.env \
-  --exclude='*/bin' --exclude='*/obj' --exclude='*/node_modules' --exclude='*/.vs' \
-  -cf - . | tar -C "$RELEASE_DIR" -xf -
+if [[ -e "$CONFIG_FILE" ]]; then
+  [[ -f "$CONFIG_FILE" && "$(stat -c '%u:%a' "$CONFIG_FILE")" == '0:600' ]] || fail 'Yarım kurulum yapılandırması root sahipli ve chmod 600 olmalıdır; güvenli biçimde devam edilemiyor.'
+  read_config() { awk -F= -v key="$1" '$1 == key {sub(/^[^=]*=/, ""); print; exit}' "$CONFIG_FILE"; }
+  SAVED_DOMAIN="$(read_config APP_DOMAIN)"
+  SAVED_RELEASE_TAG="$(read_config RELEASE_TAG)"
+  [[ "$SAVED_RELEASE_TAG" =~ ^initial-[0-9]{8}-[0-9]{6}$ ]] || fail 'Mevcut yapılandırma ilk kurulum devamı değil; mevcut kurulumda update.sh kullanın.'
+  [[ -n "$SAVED_DOMAIN" ]] || fail 'Yarım kurulumda alan adı bulunamadı.'
+  if [[ -n "$DOMAIN" && "${DOMAIN,,}" != "${SAVED_DOMAIN,,}" ]]; then fail 'Yarım kurulum farklı bir alan adıyla devam ettirilemez.'; fi
+  DOMAIN="$SAVED_DOMAIN"
+  STAMP="${SAVED_RELEASE_TAG#initial-}"
+  RELEASE_DIR="$INSTALL_ROOT/releases/$STAMP"
+  [[ -d "$RELEASE_DIR" && -f "$RELEASE_DIR/deploy/server/compose.yaml" ]] || fail "Yarım kurulumun sürüm dosyaları bulunamadı: $RELEASE_DIR"
+  if [[ -e "$INSTALL_ROOT/current" || -L "$INSTALL_ROOT/current" ]]; then
+    [[ "$(readlink -f "$INSTALL_ROOT/current")" == "$RELEASE_DIR" ]] || fail 'current bağlantısı başka bir sürümü gösteriyor; update.sh/geri yükleme akışı kullanılmalıdır.'
+  fi
+  [[ -f "$BACKUP_PASSWORD_FILE" && "$(stat -c '%u:%a' "$BACKUP_PASSWORD_FILE")" == '0:600' ]] || fail 'Yarım kurulumun yedek parolası eksik veya izinleri güvensiz; mevcut volume verileri korunuyor.'
+  printf 'Yarım ilk kurulum bulundu; mevcut yapılandırma, sürüm ve volume adları korunarak devam ediliyor.\n'
+else
+  [[ ! -e "$INSTALL_ROOT/current" && ! -L "$INSTALL_ROOT/current" ]] || fail 'EnvanterTR kurulumu zaten var; update.sh komutunu kullanın.'
+  STAMP="$(date -u +%Y%m%d-%H%M%S)"
+  RELEASE_DIR="$INSTALL_ROOT/releases/$STAMP"
+  [[ -n "$DOMAIN" && "$DOMAIN" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ && "$DOMAIN" != *..* ]] || fail 'Geçerli bir DNS alan adı verin: sudo bash deploy/server/install.sh envanter.sirketiniz.com'
+  [[ "${DOMAIN,,}" != localhost ]] || fail 'HTTPS kurulumu için localhost kullanılamaz.'
+  install -d -m 0750 "$INSTALL_ROOT/releases" "$CONFIG_DIR" /var/backups/envantertr
+  install -d -m 0750 "$RELEASE_DIR"
+  tar -C "$SOURCE_ROOT" \
+    --exclude=.git --exclude=backups --exclude=data --exclude='*/.env' --exclude=.env \
+    --exclude='*/bin' --exclude='*/obj' --exclude='*/node_modules' --exclude='*/.vs' \
+    -cf - . | tar -C "$RELEASE_DIR" -xf -
 
-POSTGRES_PASSWORD="$(openssl rand -hex 32)"
-SETUP_BOOTSTRAP_TOKEN="$(openssl rand -hex 32)"
-SETUP_PLATFORM_BOOTSTRAP_TOKEN="$(openssl rand -hex 32)"
-BACKUP_PASSPHRASE="$(openssl rand -hex 32)"
-printf '%s\n' "$BACKUP_PASSPHRASE" > "$BACKUP_PASSWORD_FILE"
-chmod 0600 "$BACKUP_PASSWORD_FILE"
-unset BACKUP_PASSPHRASE
-cat > "$CONFIG_FILE" <<EOF
+  POSTGRES_PASSWORD="$(openssl rand -hex 32)"
+  SETUP_BOOTSTRAP_TOKEN="$(openssl rand -hex 32)"
+  SETUP_PLATFORM_BOOTSTRAP_TOKEN="$(openssl rand -hex 32)"
+  BACKUP_PASSPHRASE="$(openssl rand -hex 32)"
+  printf '%s\n' "$BACKUP_PASSPHRASE" > "$BACKUP_PASSWORD_FILE"
+  chmod 0600 "$BACKUP_PASSWORD_FILE"
+  unset BACKUP_PASSPHRASE
+  cat > "$CONFIG_FILE" <<EOF
 APP_DOMAIN=$DOMAIN
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 SETUP_BOOTSTRAP_TOKEN=$SETUP_BOOTSTRAP_TOKEN
@@ -58,8 +79,14 @@ BACKUP_SFTP_DIRECTORY=
 BACKUP_SFTP_KEY_FILE=
 BACKUP_SFTP_KNOWN_HOSTS_FILE=
 EOF
-chmod 0600 "$CONFIG_FILE"
-unset POSTGRES_PASSWORD SETUP_BOOTSTRAP_TOKEN SETUP_PLATFORM_BOOTSTRAP_TOKEN
+  chmod 0600 "$CONFIG_FILE"
+  unset POSTGRES_PASSWORD SETUP_BOOTSTRAP_TOKEN SETUP_PLATFORM_BOOTSTRAP_TOKEN
+fi
+
+install -d -m 0750 "$INSTALL_ROOT/releases" "$CONFIG_DIR" /var/backups/envantertr
+
+[[ -n "$DOMAIN" && "$DOMAIN" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ && "$DOMAIN" != *..* ]] || fail 'Kurulum yapılandırmasındaki DNS adı geçersiz.'
+[[ "${DOMAIN,,}" != localhost ]] || fail 'HTTPS kurulumu için localhost kullanılamaz.'
 
 compose=(docker compose --project-name envantertr-server --env-file "$CONFIG_FILE" -f "$RELEASE_DIR/deploy/server/compose.yaml")
 "${compose[@]}" build web
@@ -86,7 +113,7 @@ for _ in $(seq 1 60); do
 done
 [[ "$ready" == true ]] || fail "HTTPS uygulaması ready durumuna geçmedi. `docker compose logs web proxy` çıktısını inceleyin; veri volume'ları korunuyor."
 
-ln -s "$RELEASE_DIR" "$INSTALL_ROOT/current"
+if [[ ! -e "$INSTALL_ROOT/current" && ! -L "$INSTALL_ROOT/current" ]]; then ln -s "$RELEASE_DIR" "$INSTALL_ROOT/current"; fi
 install -m 0644 "$RELEASE_DIR/deploy/server/envantertr-backup.service" /etc/systemd/system/envantertr-backup.service
 install -m 0644 "$RELEASE_DIR/deploy/server/envantertr-backup.timer" /etc/systemd/system/envantertr-backup.timer
 install -m 0644 "$RELEASE_DIR/deploy/server/envantertr-backup-health.service" /etc/systemd/system/envantertr-backup-health.service
