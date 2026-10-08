@@ -2,6 +2,8 @@
 
 Bu profil `systemd` kullanan Ubuntu/Linux ana bilgisayarda Docker Compose ile EnvanterTR'yi üretim yapılandırmasında çalıştırır. Uygulama ve PostgreSQL konteynerleri dış porta bağlanmaz; Caddy 80/443 üzerinden HTTPS sağlar. PostgreSQL, şirket medyası, oturum anahtarları ve Caddy sertifika durumu sabit adlı kalıcı volume'larda tutulur. **`docker compose down --volumes` çalıştırmayın.**
 
+Sunucu veya disk kaybı için platformlar arası çevrim dışı kurtarma malzemeleri ve adım adım prosedür: [`docs/DISASTER-RECOVERY.md`](../../docs/DISASTER-RECOVERY.md).
+
 Bu, Linux sunucu kurulumunun ilk sürümüdür; imzalı, sürümlü müşteri kurulum paketi değildir. Sunucuya aktarılan kaynak ağacı ve Docker imajları kullanılmaktadır. İmzalı yayın kanalı, Windows Server paketi ve LAN için özel PKI/HTTPS akışı hâlâ ayrı teslimatlardır.
 
 ## Gereksinimler

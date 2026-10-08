@@ -2,6 +2,8 @@
 
 Bu klasör Windows x64 self-contained yayın, servis kurma ve uygulama güncelleme betiklerini içerir. Bu, henüz müşteri kurulum sihirbazı veya onaylanmış üretim dağıtımı değildir. Betikler gerçek Windows Server ortamında uçtan uca doğrulanmadan üretim kullanımı için değerlendirilmemelidir.
 
+Sunucu veya disk kaybı için çevrim dışı parola/anahtar saklama ve iki platformlu kurtarma adımları: [`docs/DISASTER-RECOVERY.md`](../../docs/DISASTER-RECOVERY.md).
+
 ## Gereksinimler ve sınırlar
 
 - Windows Server 2019 veya 2022 x64, yönetici PowerShell'i ve paket derlemesi için .NET 10 SDK'sı ya da çalışan Docker Desktop (resmî .NET 10 SDK imajıyla) bulunan derleme makinesi.
