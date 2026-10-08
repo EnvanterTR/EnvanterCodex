@@ -112,4 +112,4 @@ Yedek parolası gizli giriş olarak istenir. Aynı makinede hazırlanmış DPAPI
 Bu betik henüz gerçek Windows Server/PostgreSQL kurulumunda uçtan uca kabul edilmedi. Üretim kullanımı öncesi ayrı ve yalıtılmış Windows Server'da gerçek yedekle prova yapılmalı; kurtarma klasörleri ve `envtr_previous_*` veritabanı geri yüklenen kayıtlar doğrulanmadan silinmemelidir.
 ## Henüz teslim edilmemiş
 
-PostgreSQL otomatik kurulumu ve güvenli rol/veritabanı hazırlığı, migration/ilk yönetici sihirbazı, otomatik offsite saklama temizliği, gerçek Windows Server kurulumu-güncelleme-kurtarma ve webhook hedefi kabul testi, imzalı paket/otomatik uygulama güncellemesi ve migration rollback'i henüz tamamlanmadı.
+PostgreSQL otomatik kurulumu ve güvenli rol/veritabanı hazırlığı, migration/ilk yönetici sihirbazı, gerçek Windows Server kurulumu-güncelleme-kurtarma ve webhook hedefi kabul testi, imzalı paket/otomatik uygulama güncellemesi ve migration rollback'i henüz tamamlanmadı. SMB saklama temizliği yapılandırılabilir; SFTP hedefi için sunucu tarafı saklama/izleme ayrıca ayarlanmalıdır.
