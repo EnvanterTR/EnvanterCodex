@@ -18,7 +18,11 @@ public static class SoftwareLicenseImportEndpoints
     {
         api.MapPost("/software-licenses/import/preview.csv", (HttpContext c, AppDbContext db, CancellationToken ct) => Import(c, db, false, ct))
             .RequireAuthorization("asset.write").WithMetadata(new RequestSizeLimitAttribute(MaxBytes));
+        api.MapPost("/software-licenses/import/preview.xlsx", (HttpContext c, AppDbContext db, CancellationToken ct) => Import(c, db, false, ct))
+            .RequireAuthorization("asset.write").WithMetadata(new RequestSizeLimitAttribute(MaxBytes));
         api.MapPost("/software-licenses/import.csv", (HttpContext c, AppDbContext db, CancellationToken ct) => Import(c, db, true, ct))
+            .RequireAuthorization("asset.write").WithMetadata(new RequestSizeLimitAttribute(MaxBytes));
+        api.MapPost("/software-licenses/import.xlsx", (HttpContext c, AppDbContext db, CancellationToken ct) => Import(c, db, true, ct))
             .RequireAuthorization("asset.write").WithMetadata(new RequestSizeLimitAttribute(MaxBytes));
         return api;
     }
@@ -26,15 +30,21 @@ public static class SoftwareLicenseImportEndpoints
     private static async Task<IResult> Import(HttpContext context, AppDbContext db, bool commit, CancellationToken ct)
     {
         if (!Guid.TryParse(context.User.FindFirstValue("company_id"), out var companyId) || !Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
-        if (context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true) return Results.StatusCode(415);
+        var isXlsx = DataExportEndpoints.IsXlsxRequest(context.Request);
+        if (!isXlsx && context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true) return Results.StatusCode(415);
         if (context.Request.ContentLength > MaxBytes) return Results.StatusCode(413);
         using var buffer = new MemoryStream(); var chunk = new byte[65536];
         while (true) { var n = await context.Request.Body.ReadAsync(chunk.AsMemory(), ct); if (n == 0) break; if (buffer.Length + n > MaxBytes) return Results.StatusCode(413); await buffer.WriteAsync(chunk.AsMemory(0, n), ct); }
-        string text;
-        try { text = new UTF8Encoding(false, true).GetString(buffer.ToArray()).TrimStart('\uFEFF'); }
-        catch (DecoderFallbackException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV UTF-8 biçiminde olmalıdır." } }); }
         List<List<string>> rows;
-        try { rows = Parse(text, DetectDelimiter(text)); } catch (FormatException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV tırnak veya ayraç biçimi bozuk ya da satır sınırı aşıldı." } }); }
+        try
+        {
+            if (isXlsx) rows = AssetXlsxImportParser.Parse(buffer, MaxRows + 2);
+            else { var text = new UTF8Encoding(false, true).GetString(buffer.ToArray()).TrimStart('\uFEFF'); rows = Parse(text, DetectDelimiter(text)); }
+        }
+        catch (DecoderFallbackException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV UTF-8 biçiminde olmalıdır." } }); }
+        catch (FormatException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV tırnak veya ayraç biçimi bozuk ya da satır sınırı aşıldı." } }); }
+        catch (Exception exception) when (isXlsx && exception is InvalidDataException or InvalidOperationException or System.Xml.XmlException or OverflowException)
+        { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { exception.Message } }); }
         rows = SoftwareLicenseCsvImportMapping.Normalize(rows, out var unsupportedColumns);
         if (unsupportedColumns.Length > 0)
             return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Bu dosyada henüz eşlenmeyen ve dolu veri içeren sütunlar var: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu." } });
@@ -73,8 +83,8 @@ public static class SoftwareLicenseImportEndpoints
         if (Conflict(latest.Select(x => (x.Name, x.Publisher, x.ProductVersion)))) return Results.Conflict(new { message = "Önizlemeden sonra aynı lisans eklendi. Hiçbir kayıt aktarılmadı; önizlemeyi yenileyin." });
         var suppliers = await db.SupplierCatalogEntries.AsNoTracking().Where(x => x.CompanyId == companyId).Select(x => new { x.Id, x.NormalizedName }).ToListAsync(ct);
         var supplierMap = suppliers.GroupBy(x => x.NormalizedName, StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.Select(y => y.Id).ToArray(), StringComparer.OrdinalIgnoreCase);
-        foreach (var license in licenses) { var key = license.Supplier?.Normalize(NormalizationForm.FormKC).ToUpperInvariant(); if (key is not null && supplierMap.TryGetValue(key, out var ids) && ids.Length == 1) license.SupplierId = ids[0]; db.SoftwareLicenses.Add(license); db.SoftwareLicenseEvents.Add(new SoftwareLicenseEvent { CompanyId = companyId, LicenseId = license.Id, ActorUserId = actorId, EventType = "Created", Details = "CSV içe aktarımı ile lisans kaydı oluşturuldu." }); }
-        db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "SoftwareLicense", Action = "CsvImported", Details = $"CSV dosyasından {licenses.Count} lisans içe aktarıldı." });
+        foreach (var license in licenses) { var key = license.Supplier?.Normalize(NormalizationForm.FormKC).ToUpperInvariant(); if (key is not null && supplierMap.TryGetValue(key, out var ids) && ids.Length == 1) license.SupplierId = ids[0]; db.SoftwareLicenses.Add(license); db.SoftwareLicenseEvents.Add(new SoftwareLicenseEvent { CompanyId = companyId, LicenseId = license.Id, ActorUserId = actorId, EventType = "Created", Details = $"{(isXlsx ? "Excel" : "CSV")} içe aktarımı ile lisans kaydı oluşturuldu." }); }
+        db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "SoftwareLicense", Action = isXlsx ? "XlsxImported" : "CsvImported", Details = $"{(isXlsx ? "Excel" : "CSV")} dosyasından {licenses.Count} lisans içe aktarıldı." });
         try { await db.SaveChangesAsync(ct); await tx.CommitAsync(ct); } catch (DbUpdateException) { await tx.RollbackAsync(ct); return Results.Conflict(new { message = "CSV aktarılmadı; bir kayıt çakıştı. Önizlemeyi yenileyip tekrar deneyin." }); }
         return Results.Ok(new { imported = licenses.Count, message = $"{licenses.Count:N0} lisans ve denetim geçmişi eklendi." });
     }

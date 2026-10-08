@@ -374,7 +374,7 @@ public static class DataExportEndpoints
 
     private static string? CleanCsv(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private static bool IsXlsxRequest(HttpRequest request) =>
+    internal static bool IsXlsxRequest(HttpRequest request) =>
         request.ContentType?.StartsWith("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", StringComparison.OrdinalIgnoreCase) == true;
 
     private sealed class BrandModelComparer : IEqualityComparer<(Guid? BrandId, string Name)>

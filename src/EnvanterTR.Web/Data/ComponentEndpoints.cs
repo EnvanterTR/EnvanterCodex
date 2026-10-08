@@ -18,7 +18,13 @@ public static class ComponentEndpoints
         api.MapPost("/components/import/preview.csv", (HttpContext context, AppDbContext db, IAntiforgery antiforgery, CancellationToken ct) =>
             ImportCsvAsync(context, db, antiforgery, false, ct)).RequireAuthorization("asset.write")
             .WithMetadata(new RequestSizeLimitAttribute(CsvImportMaxBytes));
+        api.MapPost("/components/import/preview.xlsx", (HttpContext context, AppDbContext db, IAntiforgery antiforgery, CancellationToken ct) =>
+            ImportCsvAsync(context, db, antiforgery, false, ct)).RequireAuthorization("asset.write")
+            .WithMetadata(new RequestSizeLimitAttribute(CsvImportMaxBytes));
         api.MapPost("/components/import.csv", (HttpContext context, AppDbContext db, IAntiforgery antiforgery, CancellationToken ct) =>
+            ImportCsvAsync(context, db, antiforgery, true, ct)).RequireAuthorization("asset.write")
+            .WithMetadata(new RequestSizeLimitAttribute(CsvImportMaxBytes));
+        api.MapPost("/components/import.xlsx", (HttpContext context, AppDbContext db, IAntiforgery antiforgery, CancellationToken ct) =>
             ImportCsvAsync(context, db, antiforgery, true, ct)).RequireAuthorization("asset.write")
             .WithMetadata(new RequestSizeLimitAttribute(CsvImportMaxBytes));
 
@@ -154,16 +160,21 @@ public static class ComponentEndpoints
         if (!Tenant(context.User, out var companyId) || UserId(context.User) is not { } actorId) return Results.Forbid();
         try { await antiforgery.ValidateRequestAsync(context); }
         catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
-        if (context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true) return Results.StatusCode(415);
+        var isXlsx = DataExportEndpoints.IsXlsxRequest(context.Request);
+        if (!isXlsx && context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true) return Results.StatusCode(415);
         if (context.Request.ContentLength > CsvImportMaxBytes) return Results.StatusCode(413);
         using var buffer = new MemoryStream(); var chunk = new byte[64 * 1024];
         while (true) { var read = await context.Request.Body.ReadAsync(chunk.AsMemory(), ct); if (read == 0) break; if (buffer.Length + read > CsvImportMaxBytes) return Results.StatusCode(413); await buffer.WriteAsync(chunk.AsMemory(0, read), ct); }
-        string text;
-        try { text = new UTF8Encoding(false, true).GetString(buffer.ToArray()).TrimStart('\uFEFF'); }
-        catch (DecoderFallbackException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV UTF-8 biçiminde olmalıdır." } }); }
         List<List<string>> rows;
-        try { rows = ParseCsv(text, CsvImportMaxRows + 2, DetectCsvDelimiter(text)); }
+        try
+        {
+            if (isXlsx) rows = AssetXlsxImportParser.Parse(buffer, CsvImportMaxRows + 2);
+            else { var text = new UTF8Encoding(false, true).GetString(buffer.ToArray()).TrimStart('\uFEFF'); rows = ParseCsv(text, CsvImportMaxRows + 2, DetectCsvDelimiter(text)); }
+        }
+        catch (DecoderFallbackException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV UTF-8 biçiminde olmalıdır." } }); }
         catch (FormatException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV tırnak veya ayraç biçimi bozuk." } }); }
+        catch (Exception exception) when (isXlsx && exception is InvalidDataException or InvalidOperationException or System.Xml.XmlException or OverflowException)
+        { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { exception.Message } }); }
         rows = ComponentCsvImportMapping.Normalize(rows, out var unsupportedColumns);
         if (unsupportedColumns.Length > 0)
             return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Bu dosyada henüz eşlenmeyen ve dolu veri içeren sütunlar var: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu." } });
@@ -239,7 +250,7 @@ public static class ComponentEndpoints
                 MovementType = "Received", Quantity = component.TotalQuantity, Notes = "CSV içe aktarımındaki başlangıç stoku" });
             Audit(db, companyId, context.User, component.Id, "component.created", $"{component.Name}; CSV içe aktarımı.");
         }
-        db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Component", Action = "CsvImported", Details = $"CSV dosyasından {components.Count} bileşen içe aktarıldı." });
+        db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Component", Action = isXlsx ? "XlsxImported" : "CsvImported", Details = $"{(isXlsx ? "Excel" : "CSV")} dosyasından {components.Count} bileşen içe aktarıldı." });
         try { await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); }
         catch (DbUpdateException) { await transaction.RollbackAsync(ct); return Results.Conflict(new { message = "CSV aktarılmadı; bir kayıt çakıştı. Önizlemeyi yenileyip tekrar deneyin." }); }
         return Results.Ok(new { imported = components.Count, message = $"{components.Count:N0} bileşen ve başlangıç stok hareketleri eklendi." });

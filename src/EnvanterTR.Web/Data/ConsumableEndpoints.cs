@@ -18,7 +18,13 @@ public static class ConsumableEndpoints
         api.MapPost("/consumables/import/preview.csv", (HttpContext context, AppDbContext db, IAntiforgery antiforgery, CancellationToken ct) =>
             ImportCsvAsync(context, db, antiforgery, false, ct)).RequireAuthorization("asset.write")
             .WithMetadata(new RequestSizeLimitAttribute(CsvImportMaxBytes));
+        api.MapPost("/consumables/import/preview.xlsx", (HttpContext context, AppDbContext db, IAntiforgery antiforgery, CancellationToken ct) =>
+            ImportCsvAsync(context, db, antiforgery, false, ct)).RequireAuthorization("asset.write")
+            .WithMetadata(new RequestSizeLimitAttribute(CsvImportMaxBytes));
         api.MapPost("/consumables/import.csv", (HttpContext context, AppDbContext db, IAntiforgery antiforgery, CancellationToken ct) =>
+            ImportCsvAsync(context, db, antiforgery, true, ct)).RequireAuthorization("asset.write")
+            .WithMetadata(new RequestSizeLimitAttribute(CsvImportMaxBytes));
+        api.MapPost("/consumables/import.xlsx", (HttpContext context, AppDbContext db, IAntiforgery antiforgery, CancellationToken ct) =>
             ImportCsvAsync(context, db, antiforgery, true, ct)).RequireAuthorization("asset.write")
             .WithMetadata(new RequestSizeLimitAttribute(CsvImportMaxBytes));
 
@@ -194,7 +200,8 @@ public static class ConsumableEndpoints
         if (!Tenant(context.User, out var companyId) || UserId(context.User) is not { } actorId) return Results.Forbid();
         try { await antiforgery.ValidateRequestAsync(context); }
         catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
-        if (context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true)
+        var isXlsx = DataExportEndpoints.IsXlsxRequest(context.Request);
+        if (!isXlsx && context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true)
             return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
         if (context.Request.ContentLength > CsvImportMaxBytes) return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
 
@@ -207,12 +214,16 @@ public static class ConsumableEndpoints
             if (buffer.Length + read > CsvImportMaxBytes) return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
             await buffer.WriteAsync(chunk.AsMemory(0, read), ct);
         }
-        string text;
-        try { text = new UTF8Encoding(false, true).GetString(buffer.ToArray()).TrimStart('\uFEFF'); }
-        catch (DecoderFallbackException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV UTF-8 biçiminde olmalıdır." } }); }
         List<List<string>> rows;
-        try { rows = ParseCsv(text, CsvImportMaxRows + 2, DetectCsvDelimiter(text)); }
+        try
+        {
+            if (isXlsx) rows = AssetXlsxImportParser.Parse(buffer, CsvImportMaxRows + 2);
+            else { var text = new UTF8Encoding(false, true).GetString(buffer.ToArray()).TrimStart('\uFEFF'); rows = ParseCsv(text, CsvImportMaxRows + 2, DetectCsvDelimiter(text)); }
+        }
+        catch (DecoderFallbackException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV UTF-8 biçiminde olmalıdır." } }); }
         catch (FormatException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV tırnak veya ayraç biçimi bozuk." } }); }
+        catch (Exception exception) when (isXlsx && exception is InvalidDataException or InvalidOperationException or System.Xml.XmlException or OverflowException)
+        { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { exception.Message } }); }
         rows = ConsumableCsvImportMapping.Normalize(rows, out var unsupportedColumns);
         if (unsupportedColumns.Length > 0)
             return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Bu dosyada henüz eşlenmeyen ve dolu veri içeren sütunlar var: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu." } });
@@ -314,7 +325,7 @@ public static class ConsumableEndpoints
             AddAudit(db, companyId, context.User, item.Id, "consumable.created", $"{item.Name}; CSV içe aktarımı.");
         }
         db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Consumable",
-            Action = "CsvImported", Details = $"CSV dosyasından {parsed.Count} sarf kaydı içe aktarıldı." });
+            Action = isXlsx ? "XlsxImported" : "CsvImported", Details = $"{(isXlsx ? "Excel" : "CSV")} dosyasından {parsed.Count} sarf kaydı içe aktarıldı." });
         try { await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); }
         catch (DbUpdateException)
         {

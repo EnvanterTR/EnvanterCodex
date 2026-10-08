@@ -171,7 +171,7 @@ internal static class AssetXlsxImportParser
             var header = NormalizeHeader(rows[0][column]);
             if (header is not ("alistarihi" or "purchasedate" or "assetpurchasedate" or
                 "garantibitistarihi" or "warrantyexpiration" or "warrantyexpirationdate" or "assetwarranty" or
-                "isebaslamatarihi" or "startdate" or "employmentstartdate")) continue;
+                "isebaslamatarihi" or "startdate" or "employmentstartdate" or "bitistarihi" or "expirationdate" or "expirydate")) continue;
             for (var rowIndex = 1; rowIndex < rows.Count; rowIndex++)
             {
                 if (column >= rows[rowIndex].Count || !double.TryParse(rows[rowIndex][column], NumberStyles.Float, CultureInfo.InvariantCulture, out var serial) ||
