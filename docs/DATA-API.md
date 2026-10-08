@@ -143,6 +143,8 @@ Konum listesi `isDefault`, `managerEmployeeId` ve `managerName` alanlarını iç
 - `POST /api/assets/{assetId}/maintenances/{maintenanceId}/cancel` (planlı bakımı iptal eder; varlık ve hareket geçmişi korunur)
 - `GET /api/company/label-settings` (şirket üyesi; barkod/etiket ayar profilini döndürür)
 - `PUT /api/company/label-settings` (`settings.manage`; şirket ortak etiket profilini ölçü, hizalama, kod türü ve gösterilecek alanlarla günceller; değişiklik denetime eklenir)
+- `GET /api/company/label-templates` (şirket üyesi; yazıcı/etiket stoğu şablon kataloğunu döndürür)
+- `PUT /api/company/label-templates` (`settings.manage`; en fazla 100 şirket ortak şablonunu üretici, yazıcı modeli, ürün kodu ve barkod/ölçü/hizalama/içerik ayarlarıyla değiştirir; toplam gövde 128 KiB ile sınırlı ve değişiklik denetlenir; eski etiket ayarları korunur)
 - `POST /api/assets/{id}/maintenances` (kullanılabilir ve zimmet dışı varlıkta tek açık bakım; tür, servis, tarih, maliyet, notlar; varlığı bakım durumuna alır)
 - `POST /api/assets/{assetId}/maintenances/{maintenanceId}/complete` (tamamlanma tarihi/notu; bakım kaydını kapatır ve varlığı kullanılabilir duruma getirir)
 - `GET /api/activity?page=1&pageSize=50`

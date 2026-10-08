@@ -461,6 +461,75 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Label_stock_templates_are_company_scoped_validated_and_preserve_legacy_settings()
+    {
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var company = await db.Companies.SingleAsync(x => x.Id == _companyId);
+            company.LabelPrintSettingsJson = JsonSerializer.Serialize(new
+            {
+                Barcode1d = "code39", Barcode2d = "none", WidthMm = 70m, HeightMm = 35m,
+                OffsetXmm = 2m, OffsetYmm = -2m, PaddingMm = 3m, CodeSizeMm = 18m,
+                QrTarget = "tag", ShowName = true, ShowSerial = false, ShowModel = true,
+                ShowLocation = false, ShowStatus = false
+            });
+            await db.SaveChangesAsync();
+        }
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var settings = new
+        {
+            barcode1d = "code128", barcode2d = "qrcode", widthMm = 60, heightMm = 40,
+            offsetXmm = 1, offsetYmm = -1, paddingMm = 3, codeSizeMm = 20,
+            qrTarget = "tag", showName = true, showSerial = true, showModel = false,
+            showLocation = false, showStatus = false
+        };
+        var templateId = Guid.NewGuid();
+        var payload = System.Net.Http.Json.JsonContent.Create(new
+        {
+            templates = new[] { new { id = templateId, name = "Raf etiketi", manufacturer = "Zebra", printerModel = "ZD421", productCode = "Z-60X40", settings } }
+        });
+        using (var save = await SendAsRoleAsync(HttpMethod.Put, "/api/company/label-templates", "admin", payload,
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, save.StatusCode);
+
+        using (var read = await SendAsRoleAsync(HttpMethod.Get, "/api/company/label-templates", "viewer"))
+        {
+            Assert.Equal(HttpStatusCode.OK, read.StatusCode);
+            using var result = JsonDocument.Parse(await read.Content.ReadAsStringAsync());
+            Assert.Equal(templateId, result.RootElement[0].GetProperty("id").GetGuid());
+            Assert.Equal("Z-60X40", result.RootElement[0].GetProperty("productCode").GetString());
+            Assert.Equal(60, result.RootElement[0].GetProperty("settings").GetProperty("widthMm").GetInt32());
+        }
+
+        using (var legacySettings = await SendAsRoleAsync(HttpMethod.Get, "/api/company/label-settings", "viewer"))
+        {
+            Assert.Equal(HttpStatusCode.OK, legacySettings.StatusCode);
+            using var result = JsonDocument.Parse(await legacySettings.Content.ReadAsStringAsync());
+            Assert.Equal("code39", result.RootElement.GetProperty("settings").GetProperty("barcode1d").GetString());
+            Assert.Equal(70, result.RootElement.GetProperty("settings").GetProperty("widthMm").GetInt32());
+        }
+
+        using var duplicatePayload = System.Net.Http.Json.JsonContent.Create(new
+        {
+            templates = new[]
+            {
+                new { id = templateId, name = "Aynı", manufacturer = "Zebra", printerModel = "ZD421", productCode = "Z-60X40", settings },
+                new { id = templateId, name = "Tekrar", manufacturer = "Zebra", printerModel = "ZD421", productCode = "Z-60X40", settings }
+            }
+        });
+        using var duplicate = await SendAsRoleAsync(HttpMethod.Put, "/api/company/label-templates", "admin", duplicatePayload,
+            requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.BadRequest, duplicate.StatusCode);
+    }
+
+    [Fact]
     public async Task Request_catalog_includes_only_requestable_available_assets_from_the_active_company()
     {
         using var response = await SendAsAdminAsync("/api/requests/catalog");

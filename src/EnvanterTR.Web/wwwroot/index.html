@@ -167,6 +167,7 @@
         <div class="grid" style="grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr);align-items:start">
           <section class="panel"><div class="panel-head"><h2>Etiket ve kod ayarları</h2><span class="pill blue">Şirket profiliyle eşitlenir</span></div>
             <form id="labelSettingsForm" class="dialog-body">
+              <fieldset style="margin:0 0 12px;padding:10px;border:1px solid #e4eaf2;border-radius:8px"><legend class="muted">Şirket yazıcı ve etiket stoğu kataloğu</legend><div class="form-grid"><label>Kayıtlı şablon<select id="labelStockTemplate"><option value="">Şablon seçin</option></select></label><label>Şablon adı<input id="labelStockTemplateName" maxlength="80" placeholder="Örn. Depo raf etiketi"></label><label>Üretici<input id="labelStockTemplateManufacturer" maxlength="80" placeholder="Örn. Zebra"></label><label>Yazıcı modeli<input id="labelStockTemplatePrinter" maxlength="120" placeholder="Model"></label><label>Etiket ürün kodu<input id="labelStockTemplateProduct" maxlength="80" placeholder="Ürün / stok kodu"></label></div><div class="dialog-actions"><button class="btn" id="labelStockTemplateLoad" type="button">Şablon ayarlarını yükle</button><button class="btn primary" id="labelStockTemplateSave" type="button">Şablonu kaydet</button><button class="btn danger" id="labelStockTemplateDelete" type="button">Şablonu sil</button><span id="labelStockTemplateFeedback" class="muted" role="status"></span></div></fieldset>
               <div class="form-grid">
                 <label>1D barkod türü<select name="barcode1d"><option value="code128">C128 · alfasayısal</option><option value="code39">C39 · büyük harf ve rakam</option><option value="code93">C93 · kompakt alfasayısal</option><option value="code93ext">C93 Extended · geniş karakter kümesi</option><option value="rationalizedCodabar">Codabar · sayısal / A–D başlangıç-bitiş</option><option value="msi">MSI Plessey · sayısal stok kodu</option><option value="ean5">EAN5 · 5 rakam</option><option value="ean13">EAN13 · 12/13 rakam</option><option value="upca">UPC-A · 11/12 rakam</option><option value="upce">UPC-E · 6–8 rakam</option><option value="none">Kapalı</option></select></label>
                 <label>2D barkod türü<select name="barcode2d"><option value="qrcode">QR Code</option><option value="pdf417">PDF417</option><option value="datamatrix">Data Matrix</option><option value="azteccode">Aztec Code</option><option value="none">Kapalı</option></select></label>
@@ -329,7 +330,7 @@
     const defaultLabelSheetSettings = Object.freeze({ layout: 'single', paper: 'a4', marginMm: 6, gapMm: 2 });
     const labelSizePresets = Object.freeze({ '86x48': [86, 48], '50x30': [50, 30], '60x40': [60, 40], '70x35': [70, 35], '100x50': [100, 50], custom: null });
     function matchLabelSizePreset(width, height) { return Object.entries(labelSizePresets).find(([key, size]) => key !== 'custom' && size[0] === Number(width) && size[1] === Number(height))?.[0] || 'custom'; }
-    let labelPrintSettings = { ...defaultLabelPrintSettings }, labelSheetSettings = { ...defaultLabelSheetSettings }, labelSheetSettingsKey = '';
+    let labelPrintSettings = { ...defaultLabelPrintSettings }, labelSheetSettings = { ...defaultLabelSheetSettings }, labelSheetSettingsKey = '', labelStockTemplates = [];
     let customReportSettingsKey = '', customReportFieldsLoaded = false;
     const pageSize = 12;
     let accessoryPage = 1, accessoryTotal = 0, accessoryQueryTimer, currentAccessory = null, accessoryRequestId = 0, visibleAccessoryColumns = Array(9).fill(true);
@@ -732,6 +733,9 @@
           labelSheetSettings = { layout: sheet.layout === 'sheet' ? 'sheet' : 'single', paper: sheet.paper === 'letter' ? 'letter' : 'a4', marginMm: number('marginMm', 3, 25), gapMm: number('gapMm', 0, 10) };
         }
       } catch { labelSheetSettings = { ...defaultLabelSheetSettings }; }
+      try { const response = await api('/api/company/label-templates'); labelStockTemplates = Array.isArray(response) ? response : []; }
+      catch (error) { labelStockTemplates = []; console.warn('Şirket etiket şablonları yüklenemedi.', error); }
+      renderLabelStockTemplates();
     }
     function populateLabelSettingsForm() {
       const form = $('#labelSettingsForm');
@@ -751,6 +755,51 @@
       for (const name of fields) result[name] = Number(form.elements[name].value);
       return result;
     }
+    function renderLabelStockTemplates(selectedId = $('#labelStockTemplate')?.value || '') {
+      const select = $('#labelStockTemplate'); if (!select) return;
+      select.replaceChildren(new Option('Şablon seçin', ''));
+      for (const template of labelStockTemplates) select.add(new Option(`${template.name}${template.manufacturer ? ` · ${template.manufacturer}` : ''}${template.productCode ? ` · ${template.productCode}` : ''}`, template.id));
+      if (labelStockTemplates.some(template => template.id === selectedId)) select.value = selectedId;
+      $('#labelStockTemplateDelete').disabled = !select.value || !canManageSettings();
+      $('#labelStockTemplateSave').disabled = !canManageSettings();
+    }
+    function selectedLabelStockTemplate() { return labelStockTemplates.find(template => template.id === $('#labelStockTemplate').value); }
+    $('#labelStockTemplate').addEventListener('change', () => {
+      const template = selectedLabelStockTemplate();
+      $('#labelStockTemplateName').value = template?.name || '';
+      $('#labelStockTemplateManufacturer').value = template?.manufacturer || '';
+      $('#labelStockTemplatePrinter').value = template?.printerModel || '';
+      $('#labelStockTemplateProduct').value = template?.productCode || '';
+      renderLabelStockTemplates();
+    });
+    $('#labelStockTemplateLoad').addEventListener('click', () => {
+      const template = selectedLabelStockTemplate();
+      if (!template) { $('#labelStockTemplateFeedback').textContent = 'Önce katalogdan bir etiket stoğu şablonu seçin.'; return; }
+      labelPrintSettings = { ...defaultLabelPrintSettings, ...template.settings };
+      populateLabelSettingsForm();
+      saveLabelSheetSettings();
+      $('#labelStockTemplateFeedback').textContent = `${template.name} ayarları önizlemeye uygulandı. Kalıcı şirket ayarı için “Ayarları kaydet” düğmesini kullanın.`;
+      renderLabelPreview().catch(error => { $('#labelPreviewMessage').textContent = error.message; });
+    });
+    $('#labelStockTemplateSave').addEventListener('click', async () => {
+      if (!canManageSettings()) { $('#labelStockTemplateFeedback').textContent = 'Şablon kataloğunu yalnızca şirket sahibi veya yöneticisi değiştirebilir.'; return; }
+      const selected = selectedLabelStockTemplate(), name = $('#labelStockTemplateName').value.trim();
+      if (!name) { $('#labelStockTemplateFeedback').textContent = 'Şablon için bir ad girin.'; $('#labelStockTemplateName').focus(); return; }
+      const template = { id: selected?.id || crypto.randomUUID(), name, manufacturer: $('#labelStockTemplateManufacturer').value.trim() || null, printerModel: $('#labelStockTemplatePrinter').value.trim() || null, productCode: $('#labelStockTemplateProduct').value.trim() || null, settings: readLabelSettingsForm() };
+      const templates = selected ? labelStockTemplates.map(item => item.id === selected.id ? template : item) : [...labelStockTemplates, template];
+      const button = $('#labelStockTemplateSave'); button.disabled = true; $('#labelStockTemplateFeedback').textContent = 'Şirket şablon kataloğu kaydediliyor…';
+      try { labelStockTemplates = await api('/api/company/label-templates', { method: 'PUT', body: JSON.stringify({ templates }) }); renderLabelStockTemplates(template.id); $('#labelStockTemplateFeedback').textContent = 'Yazıcı ve etiket stoğu şablonu şirket kataloğuna kaydedildi.'; }
+      catch (error) { $('#labelStockTemplateFeedback').textContent = `Şablon kaydedilemedi: ${error.message}`; }
+      finally { button.disabled = !canManageSettings(); }
+    });
+    $('#labelStockTemplateDelete').addEventListener('click', async () => {
+      if (!canManageSettings()) return;
+      const selected = selectedLabelStockTemplate(); if (!selected) return;
+      const templates = labelStockTemplates.filter(item => item.id !== selected.id), button = $('#labelStockTemplateDelete'); button.disabled = true;
+      try { labelStockTemplates = await api('/api/company/label-templates', { method: 'PUT', body: JSON.stringify({ templates }) }); $('#labelStockTemplateName').value = ''; $('#labelStockTemplateManufacturer').value = ''; $('#labelStockTemplatePrinter').value = ''; $('#labelStockTemplateProduct').value = ''; renderLabelStockTemplates(); $('#labelStockTemplateFeedback').textContent = 'Şablon şirket kataloğundan kaldırıldı.'; }
+      catch (error) { $('#labelStockTemplateFeedback').textContent = `Şablon silinemedi: ${error.message}`; }
+      finally { button.disabled = !canManageSettings() || !$('#labelStockTemplate').value; }
+    });
     function loadBwipJs() {
       if (window.bwipjs) return Promise.resolve(window.bwipjs);
       if (bwipLoadPromise) return bwipLoadPromise;

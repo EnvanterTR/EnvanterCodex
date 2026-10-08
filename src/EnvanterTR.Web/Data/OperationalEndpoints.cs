@@ -65,8 +65,18 @@ public static class OperationalEndpoints
             var raw = await db.Companies.AsNoTracking().Where(x => x.Id == companyId)
                 .Select(x => x.LabelPrintSettingsJson).SingleOrDefaultAsync(cancellationToken);
             if (raw is null) return Results.Ok(new { isConfigured = false, settings = DefaultLabelPrintSettings });
-            try { return Results.Ok(new { isConfigured = true, settings = JsonSerializer.Deserialize<LabelPrintSettingsRequest>(raw) ?? DefaultLabelPrintSettings }); }
+            try { return Results.Ok(new { isConfigured = true, settings = ReadLabelPrintDocument(raw).Settings }); }
             catch (JsonException) { return Results.Ok(new { isConfigured = false, settings = DefaultLabelPrintSettings }); }
+        }).RequireAuthorization("company.member");
+
+        api.MapGet("/company/label-templates", async (ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
+            var raw = await db.Companies.AsNoTracking().Where(x => x.Id == companyId)
+                .Select(x => x.LabelPrintSettingsJson).SingleOrDefaultAsync(cancellationToken);
+            if (string.IsNullOrWhiteSpace(raw)) return Results.Ok(Array.Empty<LabelPrintTemplateRequest>());
+            try { return Results.Ok(ReadLabelPrintDocument(raw).Templates); }
+            catch (JsonException) { return Results.Ok(Array.Empty<LabelPrintTemplateRequest>()); }
         }).RequireAuthorization("company.member");
 
         api.MapPut("/company/label-settings", async ([FromBody] LabelPrintSettingsRequest request,
@@ -82,12 +92,43 @@ public static class OperationalEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["settings"] = ["Barkod türü ve yazdırma ölçülerini izin verilen aralıklarla kontrol edin."] });
             var company = await db.Companies.SingleOrDefaultAsync(x => x.Id == companyId, cancellationToken);
             if (company is null) return Results.NotFound();
-            company.LabelPrintSettingsJson = JsonSerializer.Serialize(request);
+            var existing = string.IsNullOrWhiteSpace(company.LabelPrintSettingsJson)
+                ? new LabelPrintSettingsDocument(DefaultLabelPrintSettings, [])
+                : ReadLabelPrintDocument(company.LabelPrintSettingsJson);
+            company.LabelPrintSettingsJson = JsonSerializer.Serialize(existing with { Settings = request });
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
                 TargetType = "Company", TargetId = companyId, Action = "LabelSettingsUpdated",
                 Details = "Şirketin barkod ve etiket yazdırma tercihleri güncellendi." });
             await db.SaveChangesAsync(cancellationToken);
             return Results.Ok(new { isConfigured = true, settings = request });
+        }).RequireAuthorization("settings.manage");
+
+        api.MapPut("/company/label-templates", async ([FromBody] LabelPrintTemplatesRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            var templates = request.Templates ?? [];
+            if (templates.Count > 100 || templates.Any(template => template.Id == Guid.Empty ||
+                string.IsNullOrWhiteSpace(template.Name) || template.Name.Trim().Length > 80 ||
+                (template.Manufacturer?.Length ?? 0) > 80 || (template.PrinterModel?.Length ?? 0) > 120 ||
+                (template.ProductCode?.Length ?? 0) > 80 || template.Settings is null || !IsValidLabelSettings(template.Settings)) ||
+                templates.Select(template => template.Id).Distinct().Count() != templates.Count ||
+                templates.Select(template => string.Join("|", template.Manufacturer?.Trim(), template.PrinterModel?.Trim(), template.ProductCode?.Trim(), template.Name.Trim()))
+                    .Distinct(StringComparer.OrdinalIgnoreCase).Count() != templates.Count)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["templates"] = ["Etiket şablonlarını kontrol edin. En fazla 100 benzersiz şablon kaydedilebilir; her şablon geçerli yazdırma ayarı içermelidir."] });
+            if (Encoding.UTF8.GetByteCount(JsonSerializer.Serialize(templates)) > 128 * 1024)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["templates"] = ["Etiket şablonları toplamı 128 KiB sınırını aşamaz."] });
+            var company = await db.Companies.SingleOrDefaultAsync(x => x.Id == companyId, cancellationToken);
+            if (company is null) return Results.NotFound();
+            var existing = string.IsNullOrWhiteSpace(company.LabelPrintSettingsJson)
+                ? new LabelPrintSettingsDocument(DefaultLabelPrintSettings, [])
+                : ReadLabelPrintDocument(company.LabelPrintSettingsJson);
+            company.LabelPrintSettingsJson = JsonSerializer.Serialize(existing with { Templates = templates });
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                TargetType = "Company", TargetId = companyId, Action = "LabelTemplatesUpdated",
+                Details = $"Şirketin yazıcı/etiket şablon kataloğu güncellendi ({templates.Count} şablon)." });
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.Ok(templates);
         }).RequireAuthorization("settings.manage");
 
         api.MapPut("/company/profile", async ([FromBody] UpdateCompanyProfileRequest request,
@@ -1565,8 +1606,33 @@ public static class OperationalEndpoints
     public sealed record LabelPrintSettingsRequest(string? Barcode1d, string? Barcode2d, decimal WidthMm,
         decimal HeightMm, decimal OffsetXmm, decimal OffsetYmm, decimal PaddingMm, decimal CodeSizeMm,
         string? QrTarget, bool ShowName, bool ShowSerial, bool ShowModel, bool ShowLocation, bool ShowStatus);
+    public sealed record LabelPrintTemplateRequest(Guid Id, string Name, string? Manufacturer, string? PrinterModel,
+        string? ProductCode, LabelPrintSettingsRequest Settings);
+    public sealed record LabelPrintTemplatesRequest(List<LabelPrintTemplateRequest>? Templates);
+    private sealed record LabelPrintSettingsDocument(LabelPrintSettingsRequest? Settings,
+        List<LabelPrintTemplateRequest>? Templates);
     private static readonly LabelPrintSettingsRequest DefaultLabelPrintSettings = new("code128", "qrcode", 86, 48,
         0, 0, 4, 25, "tag", true, true, false, false, false);
+
+    private static LabelPrintSettingsDocument ReadLabelPrintDocument(string raw)
+    {
+        using var document = JsonDocument.Parse(raw);
+        if (document.RootElement.ValueKind == JsonValueKind.Object && document.RootElement.TryGetProperty("Settings", out _))
+        {
+            var stored = JsonSerializer.Deserialize<LabelPrintSettingsDocument>(raw);
+            return new LabelPrintSettingsDocument(stored?.Settings ?? DefaultLabelPrintSettings,
+                stored?.Templates ?? []);
+        }
+        return new LabelPrintSettingsDocument(JsonSerializer.Deserialize<LabelPrintSettingsRequest>(raw) ?? DefaultLabelPrintSettings, []);
+    }
+
+    private static bool IsValidLabelSettings(LabelPrintSettingsRequest request) =>
+        request.Barcode1d is "code128" or "code39" or "code93" or "code93ext" or "rationalizedCodabar" or "msi" or "ean5" or "ean13" or "upca" or "upce" or "none" &&
+        request.Barcode2d is "qrcode" or "pdf417" or "datamatrix" or "azteccode" or "none" &&
+        request.QrTarget is "tag" or "asset-url" && request.WidthMm is >= 25 and <= 150 &&
+        request.HeightMm is >= 15 and <= 100 && request.OffsetXmm is >= -30 and <= 30 &&
+        request.OffsetYmm is >= -30 and <= 30 && request.PaddingMm is >= 0 and <= 15 &&
+        request.CodeSizeMm is >= 10 and <= 45;
 
     private static (string? ContentType, string Extension) DetectLogo(byte[] bytes)
     {
@@ -1643,6 +1709,7 @@ public static class OperationalEndpoints
         "BulkStatusChanged" => "Toplu durum değişikliği", "BulkAssigned" => "Toplu zimmet", "BulkReturned" => "Toplu iade",
         "BulkAudited" => "Toplu denetim", "BulkTransferred" => "Toplu konum transferi", "ProfileUpdated" => "Profil güncellendi",
         "BrandLogoUpdated" => "Şirket logosu güncellendi", "LabelSettingsUpdated" => "Etiket ayarları güncellendi",
+        "LabelTemplatesUpdated" => "Yazıcı ve etiket şablonları güncellendi",
         "Invited" => "Kullanıcı davet edildi", "RoleChanged" => "Kullanıcı rolü değiştirildi", "ManagerChanged" => "Yönetici bağlantısı değiştirildi",
         "CsvImported" => "CSV içe aktarıldı", "XlsxImported" => "Excel içe aktarıldı", "AuditScheduled" => "Denetim planlandı", "AuditScheduleCleared" => "Denetim planı kaldırıldı",
         "ProfilePhotoUpdated" => "Profil fotoğrafı güncellendi", "ProfilePhotoRemoved" => "Profil fotoğrafı kaldırıldı",
