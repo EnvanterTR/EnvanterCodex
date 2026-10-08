@@ -226,12 +226,12 @@ public static class DataExportEndpoints
         var modelLookup = models.GroupBy(x => (x.BrandId, Name: x.Name.Trim()), new BrandModelComparer()).ToDictionary(x => x.Key, x => x.ToArray(), new BrandModelComparer());
         var employeeLookup = employees.GroupBy(x => x.EmployeeNumber.Trim(), StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.ToArray(), StringComparer.OrdinalIgnoreCase);
         var parentTags = hasParentColumn ? rows.Skip(1).Select(row => row[^1].Trim().ToUpperInvariant()).Where(tag => tag.Length > 0).Distinct(StringComparer.Ordinal).ToArray() : [];
-        var parentLookup = parentTags.Length == 0 ? new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase) :
+        var parentLookup = parentTags.Length == 0 ? new Dictionary<string, (Guid Id, string Status)>(StringComparer.OrdinalIgnoreCase) :
             await db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.Status != AssetStatuses.Archived && parentTags.Contains(x.AssetTag.ToUpper()))
-                .Select(x => new { x.Id, x.AssetTag }).ToDictionaryAsync(x => x.AssetTag.ToUpper(), x => x.Id, StringComparer.OrdinalIgnoreCase, cancellationToken);
+                .Select(x => new { x.Id, x.AssetTag, x.Status }).ToDictionaryAsync(x => x.AssetTag.ToUpper(), x => (x.Id, x.Status), StringComparer.OrdinalIgnoreCase, cancellationToken);
         var locationCatalogPaths = await AssetEndpoints.GetActiveLocationPathMapAsync(db, companyId, cancellationToken);
         var defaultAssetLocation = await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, cancellationToken);
-        var importRows = new List<(Asset Asset, Guid? EmployeeId)>(rows.Count - 1);
+        var importRows = new List<(Asset Asset, Guid? EmployeeId, string? ParentTag)>(rows.Count - 1);
         foreach (var (row, index) in rows.Skip(1).Select((row, index) => (row, index)))
         {
             if (!categoryLookup.TryGetValue(row[3].Trim(), out var categoryMatches) || categoryMatches.Length != 1)
@@ -257,13 +257,11 @@ public static class DataExportEndpoints
                     AddError(errors, $"{index + 2}. satırdaki çalışan numarası ve adı mevcut şirkette eşleşmiyor.");
                 else employeeId = employeeMatches[0].Id;
             }
-            Guid? parentAssetId = null;
-            if (hasParentColumn && !string.IsNullOrWhiteSpace(row[^1]))
-            {
-                if (string.Equals(row[^1].Trim(), row[0].Trim(), StringComparison.OrdinalIgnoreCase) || !parentLookup.TryGetValue(row[^1].Trim(), out var foundParentId))
-                    AddError(errors, $"{index + 2}. satırdaki üst varlık bu şirkette bulunamadı veya varlık kendisini üst varlık seçiyor.");
-                else parentAssetId = foundParentId;
-            }
+            var parentTag = hasParentColumn ? CleanCsv(row[^1])?.ToUpperInvariant() : null;
+            if (parentTag is not null && string.Equals(parentTag, row[0].Trim(), StringComparison.OrdinalIgnoreCase))
+                AddError(errors, $"{index + 2}. satırdaki varlık kendisini üst varlık seçemez.");
+            else if (parentTag is not null && !parentLookup.ContainsKey(parentTag) && !tags.Contains(parentTag))
+                AddError(errors, $"{index + 2}. satırdaki üst varlık etiketi bu şirkette veya içe aktarma dosyasında bulunamadı.");
             if (categoryLookup.TryGetValue(row[3].Trim(), out categoryMatches) && categoryMatches.Length == 1)
             {
                 DateOnly? purchaseDate = string.IsNullOrWhiteSpace(row[10]) ? null : DateOnly.ParseExact(row[10], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
@@ -277,8 +275,33 @@ public static class DataExportEndpoints
                     CompanyId = companyId, AssetTag = row[0].Trim().ToUpperInvariant(), Name = row[1].Trim(), Status = row[2],
                     CategoryId = categoryMatches[0].Id, BrandId = brandId, ModelId = modelId, SerialNumber = CleanCsv(row[6]),
                     Location = location, LocationCatalogId = locationCatalogId, AssignedEmployeeId = employeeId, PurchaseDate = purchaseDate, WarrantyExpiresAt = warrantyExpiresAt,
-                    PurchaseCost = purchaseCost, Currency = row[currencyIndex].Trim().ToUpperInvariant(), ParentAssetId = parentAssetId
-                }, employeeId));
+                    PurchaseCost = purchaseCost, Currency = row[currencyIndex].Trim().ToUpperInvariant()
+                }, employeeId, parentTag));
+            }
+        }
+        var importedAssetsByTag = importRows.ToDictionary(x => x.Asset.AssetTag, x => x.Asset, StringComparer.OrdinalIgnoreCase);
+        var parentEdges = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var pendingParentAssignments = new List<(Asset Asset, Guid ParentId)>();
+        foreach (var item in importRows)
+        {
+            if (item.ParentTag is null) continue;
+            if (importedAssetsByTag.TryGetValue(item.ParentTag, out var importedParent))
+            {
+                if (importedParent.Status == AssetStatuses.Archived)
+                    AddError(errors, $"CSV içindeki arşivlenmiş {item.ParentTag} varlığı üst varlık olamaz.");
+                pendingParentAssignments.Add((item.Asset, importedParent.Id));
+                parentEdges[item.Asset.AssetTag] = item.ParentTag;
+            }
+            else if (parentLookup.TryGetValue(item.ParentTag, out var existingParent)) pendingParentAssignments.Add((item.Asset, existingParent.Id));
+        }
+        foreach (var startTag in parentEdges.Keys)
+        {
+            var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var cursor = startTag;
+            while (parentEdges.TryGetValue(cursor, out var parentTag))
+            {
+                if (!visited.Add(cursor)) { AddError(errors, $"CSV içe aktarma dosyası {startTag} varlığını içeren bir üst varlık döngüsü oluşturuyor."); break; }
+                cursor = parentTag;
             }
         }
         var normalizedTags = tags.Select(x => x.ToUpperInvariant()).ToArray();
@@ -295,7 +318,17 @@ public static class DataExportEndpoints
                 EventType = "Created", Details = "Varlık CSV dosyasından içe aktarıldı.", EmployeeId = item.EmployeeId });
         db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Asset", Action = "CsvImported",
             Details = $"CSV dosyasından {importRows.Count} varlık içe aktarıldı." });
-        try { await db.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken); }
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            foreach (var assignment in pendingParentAssignments)
+            {
+                assignment.Asset.ParentAssetId = assignment.ParentId;
+                assignment.Asset.UpdatedAt = DateTimeOffset.UtcNow;
+            }
+            if (pendingParentAssignments.Count > 0) await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
         catch (DbUpdateException)
         {
             await transaction.RollbackAsync(cancellationToken);
@@ -397,6 +430,8 @@ public static class DataExportEndpoints
             .Select(item => new { item.BrandId, item.Name }).ToListAsync(cancellationToken);
         var matchedEmployees = await db.Employees.AsNoTracking().Where(item => item.CompanyId == companyId && employeeNumbers.Contains(item.EmployeeNumber.ToUpper()))
             .Select(item => new { item.EmployeeNumber, item.DisplayName }).ToListAsync(cancellationToken);
+        var uploadedAssets = validRows.GroupBy(item => item.row[0].Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First().row[2], StringComparer.OrdinalIgnoreCase);
         var parentTags = hasParentColumn ? validRows.Select(item => item.row[^1].Trim().ToUpperInvariant()).Where(tag => tag.Length > 0).Distinct(StringComparer.Ordinal).ToArray() : [];
         var availableParentTags = parentTags.Length == 0 ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) :
             (await db.Assets.AsNoTracking().Where(asset => asset.CompanyId == companyId && asset.Status != AssetStatuses.Archived && parentTags.Contains(asset.AssetTag.ToUpper()))
@@ -427,8 +462,26 @@ public static class DataExportEndpoints
                 names.Length != 1 || !string.Equals(names[0], row[9].Trim(), StringComparison.OrdinalIgnoreCase)))
                 AddError(errors, $"{index + 2}. satırdaki çalışan numarası ve adı bu şirkette eşleşmiyor.");
             if (hasParentColumn && !string.IsNullOrWhiteSpace(row[^1]) &&
-                (string.Equals(row[^1].Trim(), row[0].Trim(), StringComparison.OrdinalIgnoreCase) || !availableParentTags.Contains(row[^1].Trim())))
-                AddError(errors, $"{index + 2}. satırdaki üst varlık etiketi bu şirkette bulunamadı veya varlık kendisini üst varlık seçiyor.");
+                (string.Equals(row[^1].Trim(), row[0].Trim(), StringComparison.OrdinalIgnoreCase) ||
+                 (!availableParentTags.Contains(row[^1].Trim()) && !uploadedAssets.ContainsKey(row[^1].Trim())) ||
+                 (uploadedAssets.TryGetValue(row[^1].Trim(), out var uploadedParentStatus) && uploadedParentStatus == AssetStatuses.Archived)))
+                AddError(errors, $"{index + 2}. satırdaki üst varlık etiketi geçersiz, arşivlenmiş veya varlık kendisini üst varlık seçiyor.");
+        }
+        if (hasParentColumn)
+        {
+            var importedEdges = validRows.Where(item => !string.IsNullOrWhiteSpace(item.row[^1]) && uploadedAssets.ContainsKey(item.row[^1].Trim()))
+                .GroupBy(item => item.row[0].Trim(), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First().row[^1].Trim(), StringComparer.OrdinalIgnoreCase);
+            foreach (var startTag in importedEdges.Keys)
+            {
+                var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var cursor = startTag;
+                while (importedEdges.TryGetValue(cursor, out var parentTag))
+                {
+                    if (!visited.Add(cursor)) { AddError(errors, $"CSV içe aktarma dosyası {startTag} varlığını içeren bir üst varlık döngüsü oluşturuyor."); break; }
+                    cursor = parentTag;
+                }
+            }
         }
 
         var normalizedTags = tags.Select(tag => tag.ToUpperInvariant()).ToArray();

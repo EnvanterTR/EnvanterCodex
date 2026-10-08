@@ -456,6 +456,65 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Asset_csv_import_preserves_parent_links_within_the_same_upload_and_rejects_cycles()
+    {
+        string categoryName;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var categoryId = await db.Assets.Where(x => x.CompanyId == _companyId && x.Id == _ownAssetId)
+                .Select(x => x.CategoryId).SingleAsync();
+            categoryName = await db.AssetCategories.Where(x => x.CompanyId == _companyId && x.Id == categoryId)
+                .Select(x => x.Name).SingleAsync();
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var suffix = _userId.ToString("N").ToUpperInvariant();
+        var rootTag = $"CSV-ROOT-{suffix}";
+        var childTag = $"CSV-CHILD-{suffix}";
+        var header = "Etiket;Ad;Durum;Kategori;Marka;Model;Seri No;Konum;Personel No;Çalışan;Alış Tarihi;Garanti Bitiş Tarihi;Alış Bedeli;Para Birimi;Üst Varlık Etiketi";
+        static string Row(string tag, string name, string category, string? parent) =>
+            string.Join(';', new[] { tag, name, AssetStatuses.Available, category, "", "", "", "", "", "", "", "", "", "TRY", parent ?? "" });
+        var validCsv = string.Join("\r\n", [header, Row(rootTag, "CSV root", categoryName, null), Row(childTag, "CSV child", categoryName, rootTag)]);
+        var cycleCsv = string.Join("\r\n", [header, Row(rootTag, "CSV root", categoryName, childTag), Row(childTag, "CSV child", categoryName, rootTag)]);
+
+        using (var cyclePreview = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import/preview.csv", "admin",
+                   new StringContent(cycleCsv, System.Text.Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, cyclePreview.StatusCode);
+            using var payload = JsonDocument.Parse(await cyclePreview.Content.ReadAsStringAsync());
+            Assert.False(payload.RootElement.GetProperty("isValid").GetBoolean());
+            Assert.Contains(payload.RootElement.GetProperty("errors").EnumerateArray(), error => error.GetString()!.Contains("döngü", StringComparison.OrdinalIgnoreCase));
+        }
+
+        using (var preview = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import/preview.csv", "admin",
+                   new StringContent(validCsv, System.Text.Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, preview.StatusCode);
+            using var payload = JsonDocument.Parse(await preview.Content.ReadAsStringAsync());
+            Assert.True(payload.RootElement.GetProperty("isValid").GetBoolean());
+        }
+
+        using (var imported = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import.csv", "admin",
+                   new StringContent(validCsv, System.Text.Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, imported.StatusCode);
+
+        await using var verifyScope = _factory!.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var root = await verifyDb.Assets.SingleAsync(x => x.CompanyId == _companyId && x.AssetTag == rootTag);
+        var child = await verifyDb.Assets.SingleAsync(x => x.CompanyId == _companyId && x.AssetTag == childTag);
+        Assert.Null(root.ParentAssetId);
+        Assert.Equal(root.Id, child.ParentAssetId);
+    }
+
+    [Fact]
     public async Task Software_license_can_be_assigned_to_same_company_asset_and_is_visible_in_both_details()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
