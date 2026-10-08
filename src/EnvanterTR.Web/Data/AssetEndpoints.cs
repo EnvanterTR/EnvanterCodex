@@ -1088,6 +1088,86 @@ public static class AssetEndpoints
             });
         }).RequireAuthorization("asset.read");
 
+        api.MapGet("/reports/audits", async (DateOnly? from, DateOnly? to, string? q,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken, int page = 1, int pageSize = 50) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (from is DateOnly start && to is DateOnly end && start > end)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Başlangıç tarihi bitiş tarihinden sonra olamaz."] });
+            if (from is DateOnly rangeStart && to is DateOnly rangeEnd && rangeEnd.DayNumber - rangeStart.DayNumber > 366)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Denetim raporu tarih aralığı en fazla 366 gün olabilir."] });
+            if (q?.Length > 120)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
+            var query = db.AssetEvents.AsNoTracking().Where(x => x.CompanyId == companyId && x.EventType == "Audited");
+            if (from is DateOnly startDate)
+            {
+                var lower = new DateTimeOffset(startDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+                query = query.Where(x => x.OccurredAt >= lower);
+            }
+            if (to is DateOnly endDate)
+            {
+                var upper = new DateTimeOffset(endDate.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+                query = query.Where(x => x.OccurredAt < upper);
+            }
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                query = query.Where(x => x.Details != null && x.Details.Contains(term) ||
+                    db.Assets.Any(a => a.CompanyId == companyId && a.Id == x.AssetId &&
+                        (a.AssetTag.Contains(term) || a.Name.Contains(term))));
+            }
+            page = Math.Max(1, page);
+            pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
+            var total = await query.CountAsync(cancellationToken);
+            var items = await query.OrderByDescending(x => x.OccurredAt).ThenByDescending(x => x.Id)
+                .Skip((page - 1) * pageSize).Take(pageSize)
+                .Select(x => new
+                {
+                    x.Id, x.AssetId, x.OccurredAt, x.Details,
+                    assetTag = db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.AssetTag).FirstOrDefault(),
+                    assetName = db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.Name).FirstOrDefault(),
+                    location = db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.Location).FirstOrDefault(),
+                    actorName = db.Users.Where(a => a.Id == x.ActorUserId).Select(a => a.DisplayName).FirstOrDefault()
+                }).ToListAsync(cancellationToken);
+            return Results.Ok(new { total, page, pageSize, pageCount = (int)Math.Ceiling(total / (double)pageSize), items });
+        }).RequireAuthorization("asset.read");
+
+        api.MapGet("/reports/audits/export.csv", async (DateOnly? from, DateOnly? to, string? q,
+            HttpContext context, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
+            if (from is DateOnly start && to is DateOnly end && start > end ||
+                from is DateOnly rangeStart && to is DateOnly rangeEnd && rangeEnd.DayNumber - rangeStart.DayNumber > 366 || q?.Length > 120)
+            {
+                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                await context.Response.WriteAsJsonAsync(new { message = "Denetim raporu filtrelerini kontrol edin; tarih aralığı 366 günü ve arama 120 karakteri aşamaz." }, cancellationToken);
+                return;
+            }
+            var query = db.AssetEvents.AsNoTracking().Where(x => x.CompanyId == companyId && x.EventType == "Audited");
+            if (from is DateOnly startDate) { var lower = new DateTimeOffset(startDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)); query = query.Where(x => x.OccurredAt >= lower); }
+            if (to is DateOnly endDate) { var upper = new DateTimeOffset(endDate.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)); query = query.Where(x => x.OccurredAt < upper); }
+            if (!string.IsNullOrWhiteSpace(q)) { var term = q.Trim(); query = query.Where(x => x.Details != null && x.Details.Contains(term) || db.Assets.Any(a => a.CompanyId == companyId && a.Id == x.AssetId && (a.AssetTag.Contains(term) || a.Name.Contains(term)))); }
+            var total = await query.CountAsync(cancellationToken);
+            if (total > 10000) { context.Response.StatusCode = StatusCodes.Status400BadRequest; await context.Response.WriteAsJsonAsync(new { message = "CSV en fazla 10.000 denetim içerir; tarih veya arama filtresini daraltın." }, cancellationToken); return; }
+            context.Response.ContentType = "text/csv; charset=utf-8";
+            context.Response.Headers["Content-Disposition"] = $"attachment; filename=envantertr-denetim-raporu-{DateTime.UtcNow:yyyyMMdd}.csv";
+            context.Response.Headers["Cache-Control"] = "no-store";
+            context.Response.Headers["X-Total-Count"] = total.ToString(CultureInfo.InvariantCulture);
+            await using var writer = new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
+            await writer.WriteLineAsync("Tarih;Etiket;Varlık;Konum;Denetimi yapan;Açıklama".AsMemory(), cancellationToken);
+            var rows = query.OrderByDescending(x => x.OccurredAt).ThenByDescending(x => x.Id).Select(x => new
+            {
+                x.OccurredAt, x.Details,
+                AssetTag = db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.AssetTag).FirstOrDefault(),
+                AssetName = db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.Name).FirstOrDefault(),
+                Location = db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.Location).FirstOrDefault(),
+                ActorName = db.Users.Where(a => a.Id == x.ActorUserId).Select(a => a.DisplayName).FirstOrDefault()
+            });
+            await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
+                await writer.WriteLineAsync(string.Join(';', new[] { CsvCell(row.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss 'UTC'", CultureInfo.InvariantCulture)), CsvCell(row.AssetTag), CsvCell(row.AssetName), CsvCell(row.Location), CsvCell(row.ActorName), CsvCell(row.Details) }).AsMemory(), cancellationToken);
+            await writer.FlushAsync(cancellationToken);
+        }).RequireAuthorization("asset.read");
+
         api.MapGet("/reports/warranties", async (DateOnly? through, string? state, string? q,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken, int page = 1, int pageSize = 50) =>
         {

@@ -98,6 +98,9 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         db.Assets.AddRange(
             new Asset { Id = _ownAssetId, CompanyId = _companyId, AssetTag = "OWN-1", Name = "Own asset", CategoryId = ownCategory.Id, IsRequestable = true },
             new Asset { Id = _otherCompanyAssetId, CompanyId = _otherCompanyId, AssetTag = "OTHER-1", Name = "Other tenant asset", CategoryId = otherCategory.Id, IsRequestable = true });
+        db.AssetEvents.AddRange(
+            new AssetEvent { CompanyId = _companyId, AssetId = _ownAssetId, ActorUserId = _userId, EventType = "Audited", Details = "Fiziksel denetim tamamlandı · OWN-AUDIT-REPORT" },
+            new AssetEvent { CompanyId = _otherCompanyId, AssetId = _otherCompanyAssetId, EventType = "Audited", Details = "OTHER-AUDIT-REPORT" });
         db.SoftwareLicenses.AddRange(
             new SoftwareLicense { Id = _ownLicenseId, CompanyId = _companyId, Name = $"OWN-SECURITY-LICENSE-{_userId:N}", Seats = 4, Currency = "USD", ExpirationDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30) },
             new SoftwareLicense { Id = _otherCompanyLicenseId, CompanyId = _otherCompanyId, Name = $"OTHER-SECURITY-LICENSE-{_userId:N}", Seats = 8, Currency = "USD", ExpirationDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30) });
@@ -810,6 +813,22 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(5, reportPayload.RootElement.GetProperty("totalQuantity").GetInt32());
             Assert.Equal(3, reportPayload.RootElement.GetProperty("allocatedQuantity").GetInt32());
             Assert.Equal(2, reportPayload.RootElement.GetProperty("availableQuantity").GetInt32());
+        }
+        using (var auditReport = await SendAsAdminAsync("/api/reports/audits?q=OWN-AUDIT-REPORT"))
+        {
+            var auditBody = await auditReport.Content.ReadAsStringAsync();
+            using var auditPayload = JsonDocument.Parse(auditBody);
+            Assert.Equal(HttpStatusCode.OK, auditReport.StatusCode);
+            Assert.Equal(1, auditPayload.RootElement.GetProperty("total").GetInt32());
+            Assert.Contains("OWN-1", auditBody, StringComparison.Ordinal);
+            Assert.DoesNotContain("OTHER-AUDIT-REPORT", auditBody, StringComparison.Ordinal);
+        }
+        using (var auditExport = await SendAsAdminAsync("/api/reports/audits/export.csv?q=OWN-AUDIT-REPORT"))
+        {
+            var csv = await auditExport.Content.ReadAsStringAsync();
+            Assert.Equal(HttpStatusCode.OK, auditExport.StatusCode);
+            Assert.Contains("OWN-1", csv, StringComparison.Ordinal);
+            Assert.DoesNotContain("OTHER-AUDIT-REPORT", csv, StringComparison.Ordinal);
         }
 
         using (var movementsResponse = await SendAsAdminAsync("/api/inventory/movements"))
