@@ -2317,6 +2317,13 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid?>("EulaAcceptedByUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("EulaAttachmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EulaVersion")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
                     b.Property<Guid>("LicenseId")
                         .HasColumnType("uuid");
 
@@ -2347,6 +2354,8 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsUnique()
                         .HasFilter("\"RevokedAt\" IS NULL AND \"EmployeeId\" IS NOT NULL");
 
+                    b.HasIndex("CompanyId", "LicenseId", "EulaAttachmentId");
+
                     b.HasIndex("CompanyId", "LicenseId", "RevokedAt");
 
                     b.ToTable("SoftwareLicenseAssignments", null, t =>
@@ -2374,6 +2383,16 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("EulaVersion")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<bool>("IsCurrentEula")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsEulaDocument")
+                        .HasColumnType("boolean");
+
                     b.Property<long>("Length")
                         .HasColumnType("bigint");
 
@@ -2384,6 +2403,10 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<string>("Sha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("StorageFileName")
                         .IsRequired()
@@ -2399,10 +2422,18 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("UploadedByUserId");
 
+                    b.HasIndex("CompanyId", "LicenseId")
+                        .IsUnique()
+                        .HasFilter("\"IsCurrentEula\" = TRUE");
+
                     b.HasIndex("CompanyId", "LicenseId", "CreatedAt");
 
                     b.ToTable("SoftwareLicenseAttachments", null, t =>
                         {
+                            t.HasCheckConstraint("CK_SoftwareLicenseAttachments_CurrentEula", "\"IsCurrentEula\" = FALSE OR \"IsEulaDocument\" = TRUE");
+
+                            t.HasCheckConstraint("CK_SoftwareLicenseAttachments_Eula", "(\"IsEulaDocument\" = TRUE AND \"EulaVersion\" IS NOT NULL AND char_length(\"EulaVersion\") BETWEEN 1 AND 80 AND \"Sha256\" IS NOT NULL) OR (\"IsEulaDocument\" = FALSE AND \"IsCurrentEula\" = FALSE AND \"EulaVersion\" IS NULL)");
+
                             t.HasCheckConstraint("CK_SoftwareLicenseAttachments_Length", "\"Length\" BETWEEN 1 AND 10485760");
                         });
                 });
@@ -3743,6 +3774,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.SoftwareLicenseAttachment", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "LicenseId", "EulaAttachmentId")
+                        .HasPrincipalKey("CompanyId", "LicenseId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.SoftwareLicenseAttachment", b =>

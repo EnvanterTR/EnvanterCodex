@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -156,7 +157,8 @@ public static class SoftwareLicenseEndpoints
                     employeeNumber = db.Employees.Where(e => e.CompanyId == companyId && e.Id == a.EmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault(),
                     assetTag = db.Assets.Where(asset => asset.CompanyId == companyId && asset.Id == a.AssetId).Select(asset => asset.AssetTag).FirstOrDefault(),
                     assetName = db.Assets.Where(asset => asset.CompanyId == companyId && asset.Id == a.AssetId).Select(asset => asset.Name).FirstOrDefault(),
-                    a.AssignedAt, a.EulaAcceptedAt, eulaAcceptedBy = db.Users.Where(actor => actor.Id == a.EulaAcceptedByUserId).Select(actor => actor.DisplayName).FirstOrDefault(),
+                    a.AssignedAt, a.EulaAcceptedAt, a.EulaVersion, a.EulaAttachmentId,
+                    eulaAcceptedBy = db.Users.Where(actor => actor.Id == a.EulaAcceptedByUserId).Select(actor => actor.DisplayName).FirstOrDefault(),
                     a.RevokedAt, a.Notes }).ToListAsync(ct);
             var events = await db.SoftwareLicenseEvents.AsNoTracking().Where(e => e.CompanyId == companyId && e.LicenseId == id)
                 .OrderByDescending(e => e.OccurredAt).Take(100).Select(e => new { e.EventType, e.Details, e.OccurredAt,
@@ -164,8 +166,10 @@ public static class SoftwareLicenseEndpoints
                     assetTag = db.Assets.Where(asset => asset.CompanyId == companyId && asset.Id == e.AssetId).Select(asset => asset.AssetTag).FirstOrDefault() }).ToListAsync(ct);
             var attachments = await db.SoftwareLicenseAttachments.AsNoTracking().Where(x => x.CompanyId == companyId && x.LicenseId == id)
                 .OrderByDescending(x => x.CreatedAt).Select(x => new { x.Id, x.OriginalFileName, x.ContentType, x.Length, x.CreatedAt,
+                    x.IsEulaDocument, x.IsCurrentEula, x.EulaVersion,
                     uploadedBy = db.Users.Where(actor => actor.Id == x.UploadedByUserId).Select(actor => actor.DisplayName).FirstOrDefault() }).ToListAsync(ct);
-            return Results.Ok(new { license, assignments, events, attachments, maxAttachmentCount = 30, maxAttachmentSizeBytes = LicenseAttachmentMaxBytes });
+            var currentEula = attachments.Where(x => x.IsCurrentEula).Select(x => new { x.Id, x.OriginalFileName, x.ContentType, x.EulaVersion }).SingleOrDefault();
+            return Results.Ok(new { license, assignments, events, attachments, currentEula, maxAttachmentCount = 30, maxAttachmentSizeBytes = LicenseAttachmentMaxBytes });
         }).RequireAuthorization("asset.read");
 
         api.MapPost("/software-licenses/{id:guid}/attachments", async (Guid id, HttpRequest request, ClaimsPrincipal user,
@@ -175,8 +179,12 @@ public static class SoftwareLicenseEndpoints
             if (!request.HasFormContentType) return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
             var form = await request.ReadFormAsync(ct);
             var upload = form.Files.GetFile("file");
+            var isEulaDocument = string.Equals(form["isEulaDocument"], "true", StringComparison.OrdinalIgnoreCase);
+            var eulaVersion = isEulaDocument ? form["eulaVersion"].ToString().Trim() : null;
             if (upload is null || upload.Length is < 1 or > LicenseAttachmentMaxBytes)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Lisans dosyası 1 bayt ile 10 MB arasında olmalıdır."] });
+            if (isEulaDocument && (string.IsNullOrWhiteSpace(eulaVersion) || eulaVersion.Length > 80))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["eulaVersion"] = ["EULA belgesi için 1 ile 80 karakter arasında sürüm girin."] });
             await using var buffer = new MemoryStream((int)upload.Length);
             await upload.CopyToAsync(buffer, ct);
             var bytes = buffer.ToArray();
@@ -189,6 +197,12 @@ public static class SoftwareLicenseEndpoints
             if (license is null) return Results.NotFound();
             if (await db.SoftwareLicenseAttachments.CountAsync(x => x.CompanyId == companyId && x.LicenseId == id, ct) >= 30)
                 return Results.Conflict(new { message = "Bir lisansa en fazla 30 dosya eklenebilir." });
+            if (isEulaDocument)
+            {
+                var previousCurrent = await db.SoftwareLicenseAttachments.Where(x => x.CompanyId == companyId && x.LicenseId == id && x.IsCurrentEula).ToListAsync(ct);
+                foreach (var previous in previousCurrent) previous.IsCurrentEula = false;
+                if (previousCurrent.Count > 0) await db.SaveChangesAsync(ct);
+            }
 
             var attachmentId = Guid.NewGuid();
             var storageName = $"{attachmentId:N}.{detected.Value.Extension}";
@@ -197,7 +211,9 @@ public static class SoftwareLicenseEndpoints
             Directory.CreateDirectory(directory);
             var destination = Path.Combine(directory, storageName);
             var attachment = new SoftwareLicenseAttachment { Id = attachmentId, CompanyId = companyId, LicenseId = id, UploadedByUserId = actorId,
-                OriginalFileName = originalName, StorageFileName = storageName, ContentType = detected.Value.ContentType, Length = bytes.LongLength };
+                OriginalFileName = originalName, StorageFileName = storageName, ContentType = detected.Value.ContentType, Length = bytes.LongLength,
+                IsEulaDocument = isEulaDocument, IsCurrentEula = isEulaDocument, EulaVersion = eulaVersion,
+                Sha256 = isEulaDocument ? Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant() : null };
             try
             {
                 await System.IO.File.WriteAllBytesAsync(destination, bytes, ct);
@@ -213,7 +229,7 @@ public static class SoftwareLicenseEndpoints
                 throw;
             }
             return Results.Created($"/api/software-licenses/{id}/attachments/{attachmentId}/file", new { attachment.Id, attachment.OriginalFileName,
-                attachment.ContentType, attachment.Length, attachment.CreatedAt });
+                attachment.ContentType, attachment.Length, attachment.CreatedAt, attachment.IsEulaDocument, attachment.IsCurrentEula, attachment.EulaVersion });
         }).RequireAuthorization("asset.write").WithMetadata(new RequestSizeLimitAttribute(LicenseAttachmentRequestBytes));
 
         api.MapGet("/software-licenses/{id:guid}/attachments/{attachmentId:guid}/file", async (Guid id, Guid attachmentId,
@@ -236,6 +252,10 @@ public static class SoftwareLicenseEndpoints
             if (!Company(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
             var attachment = await db.SoftwareLicenseAttachments.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.LicenseId == id && x.Id == attachmentId, ct);
             if (attachment is null) return Results.NotFound();
+            if (attachment.IsCurrentEula && await db.SoftwareLicenses.AnyAsync(x => x.CompanyId == companyId && x.Id == id && x.RequiresEulaAcceptance, ct))
+                return Results.Conflict(new { message = "Atamada zorunlu tutulan geçerli EULA silinemez. Önce yeni bir EULA sürümü yükleyin veya lisans ayarını kapatın." });
+            if (await db.SoftwareLicenseAssignments.AnyAsync(x => x.CompanyId == companyId && x.LicenseId == id && x.EulaAttachmentId == attachmentId, ct))
+                return Results.Conflict(new { message = "Kabul kaydında kullanılan EULA sürümü silinemez; denetim kaydı için saklanmalıdır." });
             db.SoftwareLicenseAttachments.Remove(attachment);
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "SoftwareLicense", TargetId = id,
                 Action = "AttachmentRemoved", Details = $"Lisans dosyası kaldırıldı ({attachment.ContentType}, {attachment.Length} bayt)." });
@@ -283,6 +303,11 @@ public static class SoftwareLicenseEndpoints
                 return Results.ValidationProblem(new Dictionary<string,string[]> { ["target"]=["Tek bir çalışan veya varlık seçilmelidir."] });
             if (item.RequiresEulaAcceptance && !request.EulaAccepted)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["eulaAccepted"] = ["Bu lisans için kullanıcı EULA kabulünün alındığını teyit etmelisiniz."] });
+            var currentEula = item.RequiresEulaAcceptance
+                ? await db.SoftwareLicenseAttachments.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.LicenseId == id && x.IsCurrentEula, ct)
+                : null;
+            if (item.RequiresEulaAcceptance && currentEula is null)
+                return Results.Conflict(new { message = "EULA kabulü zorunlu. Atama yapmadan önce lisansın güncel EULA belgesini ve sürümünü ekleyin." });
             if (request.EmployeeId is Guid employeeId && !await db.Employees.AnyAsync(e => e.CompanyId == companyId && e.Id == employeeId && e.IsActive, ct))
                 return Results.ValidationProblem(new Dictionary<string,string[]> { ["employeeId"]=["Aktif çalışan seçilmelidir."] });
             if (request.AssetId is Guid assetId && !await db.Assets.AnyAsync(a => a.CompanyId == companyId && a.Id == assetId && a.Status != AssetStatuses.Archived, ct))
@@ -294,13 +319,14 @@ public static class SoftwareLicenseEndpoints
             if (count >= item.Seats) return Results.Conflict(new { message = "Kullanılabilir lisans koltuğu kalmadı." });
             var actorId = UserId(user);
             var assignment = new SoftwareLicenseAssignment { CompanyId = companyId, LicenseId = id, EmployeeId = request.EmployeeId, AssetId = request.AssetId,
-                ActorUserId = actorId, EulaAcceptedAt = request.EulaAccepted ? DateTimeOffset.UtcNow : null,
-                EulaAcceptedByUserId = request.EulaAccepted ? actorId : null, Notes = Clean(request.Notes) };
+                ActorUserId = actorId, EulaAcceptedAt = currentEula is not null && request.EulaAccepted ? DateTimeOffset.UtcNow : null,
+                EulaAcceptedByUserId = currentEula is not null && request.EulaAccepted ? actorId : null,
+                EulaAttachmentId = currentEula?.Id, EulaVersion = currentEula?.EulaVersion, Notes = Clean(request.Notes) };
             db.SoftwareLicenseAssignments.Add(assignment);
             var targetDetails = request.EmployeeId is Guid employeeTarget
                 ? $"Çalışana atandı: {employeeTarget}"
                 : $"Varlığa atandı: {request.AssetId}";
-            if (request.EulaAccepted) targetDetails += "; EULA kabulü yetkili tarafından teyit edildi";
+            if (currentEula is not null && request.EulaAccepted) targetDetails += $"; EULA {currentEula.EulaVersion} kabulü yetkili tarafından teyit edildi";
             AddEvent(db, item, user, "Assigned", targetDetails, request.EmployeeId, request.AssetId);
             await db.SaveChangesAsync(ct); await tx.CommitAsync(ct); return Results.Created($"/api/software-licenses/{id}", new { assignment.Id, assigned = count + 1, available = item.Seats - count - 1 });
         }).RequireAuthorization("asset.write");
@@ -319,6 +345,11 @@ public static class SoftwareLicenseEndpoints
             if (item is null) return Results.NotFound();
             if (item.RequiresEulaAcceptance && !request.EulaAccepted)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["eulaAccepted"] = ["Bu lisans için her seçili kullanıcıdan EULA kabulü alındığını teyit etmelisiniz."] });
+            var currentEula = item.RequiresEulaAcceptance
+                ? await db.SoftwareLicenseAttachments.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.LicenseId == id && x.IsCurrentEula, ct)
+                : null;
+            if (item.RequiresEulaAcceptance && currentEula is null)
+                return Results.Conflict(new { message = "EULA kabulü zorunlu. Toplu atama öncesinde güncel EULA belgesini ve sürümünü ekleyin." });
 
             var activeEmployees = await db.Employees.AsNoTracking().Where(e => e.CompanyId == companyId && e.IsActive && employeeIds.Contains(e.Id))
                 .Select(e => e.Id).ToListAsync(ct);
@@ -335,15 +366,17 @@ public static class SoftwareLicenseEndpoints
 
             var now = DateTimeOffset.UtcNow;
             var actorId = UserId(user);
-            var eulaAcceptedAt = request.EulaAccepted ? now : (DateTimeOffset?)null;
+            var eulaAcceptedAt = currentEula is not null && request.EulaAccepted ? now : (DateTimeOffset?)null;
             var assignments = employeeIds.Select(employeeId => new SoftwareLicenseAssignment
             {
                 CompanyId = companyId, LicenseId = id, EmployeeId = employeeId, ActorUserId = actorId,
-                AssignedAt = now, EulaAcceptedAt = eulaAcceptedAt, EulaAcceptedByUserId = request.EulaAccepted ? actorId : null, Notes = Clean(request.Notes)
+                AssignedAt = now, EulaAcceptedAt = eulaAcceptedAt, EulaAcceptedByUserId = eulaAcceptedAt is not null ? actorId : null,
+                EulaAttachmentId = currentEula?.Id, EulaVersion = currentEula?.EulaVersion, Notes = Clean(request.Notes)
             }).ToArray();
             db.SoftwareLicenseAssignments.AddRange(assignments);
             foreach (var employeeId in employeeIds)
-                AddEvent(db, item, user, "Assigned", $"Toplu atama: çalışan {employeeId}" + (request.EulaAccepted ? "; EULA kabulü yetkili tarafından teyit edildi" : ""), employeeId);
+                AddEvent(db, item, user, "Assigned", $"Toplu atama: çalışan {employeeId}" +
+                    (currentEula is not null && request.EulaAccepted ? $"; EULA {currentEula.EulaVersion} kabulü yetkili tarafından teyit edildi" : ""), employeeId);
             await db.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
             return Results.Created($"/api/software-licenses/{id}", new

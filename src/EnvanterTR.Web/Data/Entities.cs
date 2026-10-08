@@ -612,6 +612,10 @@ public sealed class SoftwareLicenseAttachment
     public required string StorageFileName { get; set; }
     public required string ContentType { get; set; }
     public long Length { get; set; }
+    public bool IsEulaDocument { get; set; }
+    public bool IsCurrentEula { get; set; }
+    public string? EulaVersion { get; set; }
+    public string? Sha256 { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
@@ -626,6 +630,8 @@ public sealed class SoftwareLicenseAssignment
     public DateTimeOffset AssignedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? EulaAcceptedAt { get; set; }
     public Guid? EulaAcceptedByUserId { get; set; }
+    public Guid? EulaAttachmentId { get; set; }
+    public string? EulaVersion { get; set; }
     public DateTimeOffset? RevokedAt { get; set; }
     public string? Notes { get; set; }
 }

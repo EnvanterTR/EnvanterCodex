@@ -355,7 +355,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var csrfResponse = await _client!.GetAsync("/api/session/csrf");
         Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
         using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
-        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
         Assert.False(string.IsNullOrWhiteSpace(requestToken));
 
         for (var attempt = 0; attempt < 10; attempt++)
@@ -1106,7 +1106,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
         Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
         using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
-        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
         var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
             .Select(value => value.Split(';', 2)[0])
             .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
@@ -1127,6 +1127,17 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         }
 
         var assignPath = $"/api/software-licenses/{_ownLicenseId}/assign/bulk";
+        using (var missingDocumentResponse = await SendAsRoleAsync(HttpMethod.Post, $"/api/software-licenses/{_ownLicenseId}/assign", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { employeeId = additionalEmployees[3].Id, eulaAccepted = true }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, missingDocumentResponse.StatusCode);
+
+        using var eulaUpload = await SendLicenseAttachmentUploadAsync(_ownLicenseId,
+            Encoding.ASCII.GetBytes("%PDF-1.7\nEULA version one\n%%EOF"), "eula-v1.pdf", requestToken, antiforgeryCookie,
+            isEulaDocument: true, eulaVersion: "1.0");
+        Assert.Equal(HttpStatusCode.Created, eulaUpload.StatusCode);
+        using var eulaUploadPayload = JsonDocument.Parse(await eulaUpload.Content.ReadAsStringAsync());
+        var eulaAttachmentId = eulaUploadPayload.RootElement.GetProperty("id").GetGuid();
+
         using var missingSingleEulaResponse = await SendAsRoleAsync(HttpMethod.Post, $"/api/software-licenses/{_ownLicenseId}/assign", "admin",
             System.Net.Http.Json.JsonContent.Create(new { employeeId = additionalEmployees[3].Id }), requestToken, antiforgeryCookie);
         Assert.Equal(HttpStatusCode.BadRequest, missingSingleEulaResponse.StatusCode);
@@ -1170,7 +1181,17 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             Assert.NotEqual(JsonValueKind.Null, assignment.GetProperty("eulaAcceptedAt").ValueKind);
             Assert.False(string.IsNullOrWhiteSpace(assignment.GetProperty("eulaAcceptedBy").GetString()));
+            Assert.Equal("1.0", assignment.GetProperty("eulaVersion").GetString());
+            Assert.Equal(eulaAttachmentId, assignment.GetProperty("eulaAttachmentId").GetGuid());
         });
+
+        using var replacementEula = await SendLicenseAttachmentUploadAsync(_ownLicenseId,
+            Encoding.ASCII.GetBytes("%PDF-1.7\nEULA version two\n%%EOF"), "eula-v2.pdf", requestToken, antiforgeryCookie,
+            isEulaDocument: true, eulaVersion: "2.0");
+        Assert.Equal(HttpStatusCode.Created, replacementEula.StatusCode);
+        using var oldVersionDelete = await SendAsRoleAsync(HttpMethod.Delete,
+            $"/api/software-licenses/{_ownLicenseId}/attachments/{eulaAttachmentId}", "admin", null, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Conflict, oldVersionDelete.StatusCode);
     }
 
     [Fact]
@@ -2402,10 +2423,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     private async Task<HttpResponseMessage> SendLicenseAttachmentUploadAsync(Guid licenseId, byte[] bytes, string fileName,
-        string requestToken, string antiforgeryCookie)
+        string requestToken, string antiforgeryCookie, bool isEulaDocument = false, string? eulaVersion = null)
     {
         using var multipart = new MultipartFormDataContent();
         multipart.Add(new ByteArrayContent(bytes), "file", fileName);
+        if (isEulaDocument) multipart.Add(new StringContent("true"), "isEulaDocument");
+        if (eulaVersion is not null) multipart.Add(new StringContent(eulaVersion), "eulaVersion");
         return await SendAsUserAsync(HttpMethod.Post, $"/api/software-licenses/{licenseId}/attachments", _userId, _companyId,
             multipart, requestToken, antiforgeryCookie);
     }

@@ -330,9 +330,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<SoftwareLicenseAttachment>().Property(x => x.OriginalFileName).HasMaxLength(255).IsRequired();
         modelBuilder.Entity<SoftwareLicenseAttachment>().Property(x => x.StorageFileName).HasMaxLength(80).IsRequired();
         modelBuilder.Entity<SoftwareLicenseAttachment>().Property(x => x.ContentType).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<SoftwareLicenseAttachment>().Property(x => x.EulaVersion).HasMaxLength(80);
+        modelBuilder.Entity<SoftwareLicenseAttachment>().Property(x => x.Sha256).HasMaxLength(64);
+        modelBuilder.Entity<SoftwareLicenseAttachment>().HasAlternateKey(x => new { x.CompanyId, x.LicenseId, x.Id });
         modelBuilder.Entity<SoftwareLicenseAttachment>().HasIndex(x => new { x.CompanyId, x.LicenseId, x.CreatedAt });
+        modelBuilder.Entity<SoftwareLicenseAttachment>().HasIndex(x => new { x.CompanyId, x.LicenseId })
+            .IsUnique().HasFilter("\"IsCurrentEula\" = TRUE");
         modelBuilder.Entity<SoftwareLicenseAttachment>().ToTable("SoftwareLicenseAttachments", table =>
-            table.HasCheckConstraint("CK_SoftwareLicenseAttachments_Length", "\"Length\" BETWEEN 1 AND 10485760"));
+        {
+            table.HasCheckConstraint("CK_SoftwareLicenseAttachments_Length", "\"Length\" BETWEEN 1 AND 10485760");
+            table.HasCheckConstraint("CK_SoftwareLicenseAttachments_Eula", "(\"IsEulaDocument\" = TRUE AND \"EulaVersion\" IS NOT NULL AND char_length(\"EulaVersion\") BETWEEN 1 AND 80 AND \"Sha256\" IS NOT NULL) OR (\"IsEulaDocument\" = FALSE AND \"IsCurrentEula\" = FALSE AND \"EulaVersion\" IS NULL)");
+            table.HasCheckConstraint("CK_SoftwareLicenseAttachments_CurrentEula", "\"IsCurrentEula\" = FALSE OR \"IsEulaDocument\" = TRUE");
+        });
         modelBuilder.Entity<SoftwareLicenseAttachment>().HasOne<SoftwareLicense>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.LicenseId })
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
@@ -348,6 +357,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             table.HasCheckConstraint("CK_SoftwareLicenses_Type", "\"LicenseType\" IN ('Subscription', 'Perpetual', 'Device', 'Site', 'Trial', 'Other')");
         });
         modelBuilder.Entity<SoftwareLicenseAssignment>().Property(x => x.Notes).HasMaxLength(2000);
+        modelBuilder.Entity<SoftwareLicenseAssignment>().Property(x => x.EulaVersion).HasMaxLength(80);
         modelBuilder.Entity<SoftwareLicenseAssignment>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<SoftwareLicenseAssignment>().HasIndex(x => new { x.CompanyId, x.LicenseId, x.RevokedAt });
         modelBuilder.Entity<SoftwareLicenseAssignment>().HasIndex(x => new { x.CompanyId, x.LicenseId, x.EmployeeId })
@@ -369,6 +379,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<SoftwareLicenseAssignment>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.EulaAcceptedByUserId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<SoftwareLicenseAssignment>().HasOne<SoftwareLicenseAttachment>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.LicenseId, x.EulaAttachmentId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.LicenseId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<SoftwareLicenseEvent>().Property(x => x.EventType).HasMaxLength(32).IsRequired();
         modelBuilder.Entity<SoftwareLicenseEvent>().Property(x => x.Details).HasMaxLength(2000);
         modelBuilder.Entity<SoftwareLicenseEvent>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
