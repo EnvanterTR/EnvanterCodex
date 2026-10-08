@@ -111,4 +111,5 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 - Test Identity parola sıfırlama token'ıyla yeni parolanın kabul edildiğini, aynı token'ın tekrar kullanımının reddedildiğini ve yeni parolanın doğrulanabildiğini denetliyor.
 - Test düzeneğinde önceden küçük harfle yazılan normalize e-posta alanı, Identity'nin büyük harfli normalizasyonuyla eşleşmiyordu. Fixture doğru Identity kuralına getirildi; hedeflenen kabul testi geçti.
 - İzole PostgreSQL tenant kabul paketi, SMTP alıcı kontrolü de dahil **14/14 geçti**. Sahte sunucunun yerel olması gerçek sağlayıcı kimlik bilgileriyle teslimatı kanıtlamaz; bu üretim kabulü açık kalır.
-- Önceki parola kurtarma düzeltmesi `af15563` commit'iyle GitHub `main` dalına gönderilmiş ve uzak HEAD ile eşitliği doğrulanmıştı. Yeni SMTP kapsamı için tam test sonucu alındı; ek commit/push sırada.
+- Parola kurtarma ve sahte SMTP kapsamı `e921f64` commit'iyle GitHub `main` dalına gönderildi; uzak `main` SHA'sı ile yerel HEAD aynı, çalışma ağacı temiz.
+- GitHub Actions koşum sayfası bu oturumdan doğrulanamadı: `gh` CLI kurulu değil ve anonim API private repo için 404 döndürüyor. Yerel kabul sonucu CI'nin GitHub tarafında geçtiğini kanıtlamaz.

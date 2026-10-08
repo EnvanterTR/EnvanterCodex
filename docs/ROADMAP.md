@@ -25,7 +25,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 
 ### P0 — Güvenli geliştirme ve sürüm temeli
 
-- Kimlik doğrulamalı iş akışlarının kabul doğrulaması; şirketler arası veri erişimi, izinler, eşzamanlı değişiklikler ve parola yenileme için güvenlik incelemesi. `.github/workflows/ci.yml`, PostgreSQL üzerinde Linux tenant kabul testlerini, Linux dağıtım betiği sözdizimi/yedek sağlık senaryolarını ve Windows PowerShell yedek/geri yükleme/güncelleme kontrollerini push/PR kapısına bağlar. Yerel Linux fixture ve Windows kontrolleri geçti; GitHub Actions çalıştırması workflow push'undan sonra doğrulanmalı.
+- Kimlik doğrulamalı iş akışlarının kabul doğrulaması; şirketler arası veri erişimi, izinler ve eşzamanlı değişiklikler için güvenlik incelemesi. Parola kurtarma için aynı hesap-gizleyen HTTP yanıtı, tek kullanımlık token ve reset e-postası içeriği loopback sahte SMTP alıcısıyla kabul edildi; gerçek SMTP sağlayıcısında teslimat ayrıca doğrulanmalı. `.github/workflows/ci.yml`, PostgreSQL üzerinde Linux tenant kabul testlerini, Linux dağıtım betiği sözdizimi/yedek sağlık senaryolarını ve Windows PowerShell yedek/geri yükleme/güncelleme kontrollerini push/PR kapısına bağlar. Yerel Linux fixture ve Windows kontrolleri geçti; GitHub Actions çalıştırması workflow push'undan sonra doğrulanmalı.
 - Üretim ölçeğinde yedekleme/izleme, güvenli anahtar yaşam döngüsü, doğrulamalı PostgreSQL geri yükleme akışı, geri alma ve düzenli kurtarma tatbikatı. Yerel geliştirme için şifreli günlük zamanlayıcı; Linux sunucu profili için doğrulama sonrası isteğe bağlı SFTP kopyası, uzak yedekten SHA-256/şifre/izole prova doğrulamalı indirme aracı ve başarısız yedek/sağlık işi için isteğe bağlı HTTPS JSON webhook'u eklendi. Windows Görev Zamanlayıcısı da makineye bağlı DPAPI sırrıyla aynı tür bildirimleri destekler. Gerçek uzak hedef ve webhook teslim doğrulaması, işletimsel geri yükleme tatbikatı ve çevrim dışı parola/anahtar kurtarma planı hâlâ gerekli.
 - Özel `EnvanterTR/EnvanterCodex` deposu kaynak kodun yayımlama hedefidir; doğrulanan yerel değişiklikler `origin/main` dalına gönderilir. Yayımdan önce dal ve çalışma ağacı durumu kontrol edilmelidir.
 - Lisans ve üçüncü taraf bağımlılık envanteri yayıma çıkmadan önce gözden geçirilmeli; ürün adı ve görünümü, lisans/attribution yükümlülüklerini gizlemek için kullanılmamalı.
@@ -58,7 +58,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 
 - Profesyonel ürün sitesi, ekran görüntüsü/video içerikleri, doğru paket gereksinimleri ve satın alma bilgilendirmeleri.
 - Modern kurulum/kullanım kılavuzları, veri taşıma ve yönetici görevleri; Türkçe ve İngilizce ilk dalga.
-- SMTP ile teslim edilebilir parola yenileme, destek e-postası ve onaylı WhatsApp iletişim kanalı.
+- Gerçek müşteri SMTP sağlayıcısında parola yenileme teslimat kabulü, destek e-postası ve onaylı WhatsApp iletişim kanalı.
 - MFA/kurtarma, oturum denetimi, loglama, izleme ve üretim operasyon prosedürleri.
 
 ## Bilinçli ürün sınırları
