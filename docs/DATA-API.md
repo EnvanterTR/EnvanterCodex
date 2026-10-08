@@ -79,10 +79,13 @@ Konum listesi `isDefault`, `managerEmployeeId` ve `managerName` alanlarını iç
 - `POST /api/suppliers`, `PUT /api/suppliers/{id}`, `POST /api/suppliers/{id}/archive|restore` (yetkili kişi/iletişim alanları doğrulanır; şirket içinde normalize edilmiş ad tekildir; ad değişikliği aksesuar/sarf/bileşen/lisans/bakım kayıtlarının metnini ve yabancı anahtarını aynı transaction içinde günceller, sipariş başlığının geçmiş metnini değiştirmez; `asset.write`)
 - `GET /api/asset-orders?q=&status=&from=&to=&page=&pageSize=` and `GET /api/asset-orders/export.csv` (şirket kapsamlı varlık satın alma sipariş listesi ve aynı filtrelerle formül enjeksiyonuna dayanıklı CSV; `asset.read`)
 - `GET /api/asset-orders/{id}` (sipariş başlığı, kalemler ve teslim alınmış varlık profillerine bağlantı; `asset.read`)
+- `GET /api/asset-orders/{id}/attachments` (`asset.read`; siparişe bağlı belge metaverileri)
+- `POST /api/asset-orders/{id}/attachments` (`asset.write`; PDF/PNG/JPEG/WebP, dosya başına en fazla 10 MiB ve sipariş başına en fazla 30 ek; imza doğrulaması, şirket medya deposu ve denetim izi)
+- `GET /api/asset-orders/{id}/attachments/{attachmentId}/file`, `DELETE /api/asset-orders/{id}/attachments/{attachmentId}` (dosya erişimi şirket kapsamında denetlenir; indirme `asset.read`, silme `asset.write`)
 - `POST /api/asset-orders` (çok kalemli cihaz siparişi oluşturur; katalog kimliklerini şirket kapsamında doğrular; `asset.write`)
 - `POST /api/asset-orders/{id}/receive` (satır bazlı kısmi/tam teslim alma; yeni etiketli varlıklar, sipariş ilişkisi, satın alma hareketi ve denetim izi tek transaction; `asset.write`)
 - `POST /api/asset-orders/{id}/cancel` (şirket kapsamlı siparişi iptal eder; daha önce alınmış cihazlar ve geçmiş korunur; `asset.write`)
-- `GET /api/assets/{id}` returns `purchaseOrder` when a device originated from an asset purchase order; both sides are tenant-scoped.
+- `GET /api/assets/{id}` yanıtı, satın alma siparişinden oluşan cihaz için `purchaseOrder` alanını içerir; iki taraf da şirket kapsamında sorgulanır.
 - `GET /api/accessory-orders/{id}` (şirket kapsamındaki sipariş başlığı ve kalemleri; kalemlerde sipariş/teslim/kalan miktar ve maliyet bilgisi; `asset.read`)
 - `POST /api/accessory-orders` (`{ orderNumber?, supplier, orderDate, expectedOn?, currency, notes?, items: [{ accessoryId, quantity, unitCost, notes? }] }`; 1–100 tekrarsız aksesuar kalemi, sipariş numarası şirket içinde benzersiz; sipariş `Ordered` durumuyla açılır; `asset.write`)
 - `POST /api/accessory-orders/{id}/receive` (`{ receivedOn, notes?, items: [{ lineId, quantity }] }`; 1–100 sipariş satırında kısmi veya tam miktar kabulü; sipariş ve aksesuar satırları transaction içinde kilitlenir, kalan miktar/şirket/100.000 stok sınırı denetlenir, aksesuar stoku, maliyet/tedarikçi bilgisi, stok hareketi ve denetim izi birlikte yazılır; hatada hiçbir stok değişmez; `asset.write`)

@@ -1746,6 +1746,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
         using var created = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
         var orderId = created.RootElement.GetProperty("id").GetGuid();
+
         using var exportResponse = await SendAsAdminAsync($"/api/stock-orders/export.csv?q={Uri.EscapeDataString(orderNumber)}&status=Ordered");
         Assert.Equal(HttpStatusCode.OK, exportResponse.StatusCode);
         Assert.Contains("'=Acceptance supplier", await exportResponse.Content.ReadAsStringAsync());
@@ -1845,6 +1846,44 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var created = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
         var orderId = created.RootElement.GetProperty("id").GetGuid();
 
+        using var badAttachmentContent = new MultipartFormDataContent();
+        var spoofedPdf = new ByteArrayContent("not a pdf"u8.ToArray());
+        spoofedPdf.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
+        badAttachmentContent.Add(spoofedPdf, "file", "invoice.pdf");
+        using var rejectedAttachment = await SendAsRoleAsync(HttpMethod.Post, $"/api/asset-orders/{orderId}/attachments", "admin",
+            badAttachmentContent, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.BadRequest, rejectedAttachment.StatusCode);
+
+        using var attachmentContent = new MultipartFormDataContent();
+        var invoicePdf = new ByteArrayContent("%PDF-1.7\nacceptance invoice"u8.ToArray());
+        invoicePdf.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
+        attachmentContent.Add(invoicePdf, "file", "invoice.pdf");
+        using var attachmentResponse = await SendAsRoleAsync(HttpMethod.Post, $"/api/asset-orders/{orderId}/attachments", "admin",
+            attachmentContent, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, attachmentResponse.StatusCode);
+        using var attachmentPayload = JsonDocument.Parse(await attachmentResponse.Content.ReadAsStringAsync());
+        var attachmentId = attachmentPayload.RootElement.GetProperty("id").GetGuid();
+        using var attachmentList = await SendAsAdminAsync($"/api/asset-orders/{orderId}/attachments");
+        Assert.Equal(HttpStatusCode.OK, attachmentList.StatusCode);
+        using var attachmentListPayload = JsonDocument.Parse(await attachmentList.Content.ReadAsStringAsync());
+        Assert.Equal(attachmentId, Assert.Single(attachmentListPayload.RootElement.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
+        using var attachmentDownload = await SendAsAdminAsync($"/api/asset-orders/{orderId}/attachments/{attachmentId}/file");
+        Assert.Equal(HttpStatusCode.OK, attachmentDownload.StatusCode);
+        Assert.Equal("%PDF-1.7\nacceptance invoice", await attachmentDownload.Content.ReadAsStringAsync());
+        using var crossTenantAttachmentList = await SendAsAdminAsync($"/api/asset-orders/{orderId}/attachments", _otherCompanyId);
+        Assert.Equal(HttpStatusCode.Unauthorized, crossTenantAttachmentList.StatusCode);
+        using var companyArchiveResponse = await SendAsAdminAsync("/api/company/export.zip");
+        Assert.Equal(HttpStatusCode.OK, companyArchiveResponse.StatusCode);
+        using (var companyArchive = new ZipArchive(await companyArchiveResponse.Content.ReadAsStreamAsync(), ZipArchiveMode.Read, leaveOpen: true))
+        {
+            var archivedInvoice = Assert.Single(companyArchive.Entries,
+                entry => entry.FullName == $"media/asset-purchase-orders/{orderId:N}/attachments/{attachmentId:N}.pdf");
+            await using var archivedInvoiceStream = archivedInvoice.Open();
+            using var archivedInvoiceBytes = new MemoryStream();
+            await archivedInvoiceStream.CopyToAsync(archivedInvoiceBytes);
+            Assert.Equal("%PDF-1.7\nacceptance invoice"u8.ToArray(), archivedInvoiceBytes.ToArray());
+        }
+
         using var csvResponse = await SendAsAdminAsync($"/api/asset-orders/export.csv?q={Uri.EscapeDataString(orderNumber)}&status=Ordered&from={today.AddDays(-2):yyyy-MM-dd}&to={today:yyyy-MM-dd}");
         Assert.Equal(HttpStatusCode.OK, csvResponse.StatusCode);
         var csv = await csvResponse.Content.ReadAsStringAsync();
@@ -1886,6 +1925,11 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
         Assert.Equal(2, await verifyDb.Assets.CountAsync(x => x.CompanyId == _companyId && x.Name == "Test laptop" && x.PurchaseOrderId == orderId));
         Assert.Equal(2, await verifyDb.AssetEvents.CountAsync(x => x.CompanyId == _companyId && x.EventType == "Purchased" && x.Details != null && x.Details.Contains(orderNumber)));
+        Assert.Equal(1, await verifyDb.AssetPurchaseOrderAttachments.CountAsync(x => x.CompanyId == _companyId && x.PurchaseOrderId == orderId));
+        using var deleteAttachment = await SendAsRoleAsync(HttpMethod.Delete,
+            $"/api/asset-orders/{orderId}/attachments/{attachmentId}", "admin", null, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.NoContent, deleteAttachment.StatusCode);
+        Assert.Equal(0, await verifyDb.AssetPurchaseOrderAttachments.CountAsync(x => x.CompanyId == _companyId && x.PurchaseOrderId == orderId));
     }
 
     private async Task<Guid> GetOwnCategoryIdAsync()

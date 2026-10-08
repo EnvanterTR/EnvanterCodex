@@ -106,8 +106,12 @@ public static class AssetPurchaseOrderEndpoints
                     line.UnitCost, line.WarrantyExpiresAt, line.Notes }).ToListAsync(ct);
             var receivedAssets = await db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.PurchaseOrderId == id)
                 .OrderBy(x => x.AssetTag).Select(x => new { x.Id, x.AssetTag, x.Name, x.Status, x.SerialNumber, x.PurchaseDate }).ToListAsync(ct);
+            var attachments = await db.AssetPurchaseOrderAttachments.AsNoTracking().Where(x => x.CompanyId == companyId && x.PurchaseOrderId == id)
+                .OrderByDescending(x => x.CreatedAt).Select(x => new { x.Id, x.OriginalFileName, x.ContentType, x.Length, x.CreatedAt,
+                    uploadedBy = db.Users.Where(actor => actor.Id == x.UploadedByUserId).Select(actor => actor.DisplayName).FirstOrDefault() }).ToListAsync(ct);
             return Results.Ok(new { order, lines, totalCost = lines.Sum(x => x.Quantity * x.UnitCost),
-                quantity = lines.Sum(x => x.Quantity), quantityReceived = lines.Sum(x => x.QuantityReceived), assets = receivedAssets });
+                quantity = lines.Sum(x => x.Quantity), quantityReceived = lines.Sum(x => x.QuantityReceived), assets = receivedAssets, attachments,
+                maxAttachmentCount = 30, maxAttachmentSizeBytes = 10 * 1024 * 1024 });
         }).RequireAuthorization("asset.read");
 
         api.MapPost("/asset-orders", async (CreateRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>

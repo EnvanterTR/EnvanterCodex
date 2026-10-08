@@ -770,8 +770,10 @@ public static class DataExportEndpoints
             var events = ReadRows(root, "assetEvents", sourceCompanyId, errors, counts);
             var assetPurchaseOrders = root.TryGetProperty("assetPurchaseOrders", out _) ? ReadRows(root, "assetPurchaseOrders", sourceCompanyId, errors, counts) : [];
             var assetPurchaseOrderLines = root.TryGetProperty("assetPurchaseOrderLines", out _) ? ReadRows(root, "assetPurchaseOrderLines", sourceCompanyId, errors, counts) : [];
+            var assetPurchaseOrderAttachments = root.TryGetProperty("assetPurchaseOrderAttachments", out _) ? ReadRows(root, "assetPurchaseOrderAttachments", sourceCompanyId, errors, counts) : [];
             counts.TryAdd("assetPurchaseOrders", 0);
             counts.TryAdd("assetPurchaseOrderLines", 0);
+            counts.TryAdd("assetPurchaseOrderAttachments", 0);
             _ = ReadRows(root, "auditEntries", sourceCompanyId, errors, counts);
             _ = ReadRows(root, "inventoryRequests", sourceCompanyId, errors, counts);
             _ = ReadRows(root, "assetMaintenances", sourceCompanyId, errors, counts);
@@ -959,6 +961,16 @@ public static class DataExportEndpoints
                     AddError(errors, "Bir varlık sipariş kaleminin adı veya notu geçersiz.");
                 if (!IsValidDateOnly(line, "warrantyExpiresAt")) AddError(errors, "Bir varlık sipariş kaleminin garanti tarihi yyyy-AA-gg biçiminde olmalı.");
             }
+            foreach (var attachment in EnumerateRows(root, "assetPurchaseOrderAttachments"))
+            {
+                if (attachment.ValueKind != JsonValueKind.Object) continue;
+                if (!TryGuid(attachment, "purchaseOrderId", out var orderId) || !assetPurchaseOrderIds.Contains(orderId))
+                    AddError(errors, "Bir sipariş ekinin satın alma siparişi dosyada bulunamadı.");
+                if (ReadLong(attachment, "length") is not long length || length is < 1 or > 10_485_760)
+                    AddError(errors, "Bir sipariş ekinin dosya boyutu geçersiz.");
+                if (!SafeStoredAttachmentName(ReadString(attachment, "storageFileName")))
+                    AddError(errors, "Bir sipariş ekinin saklama adı geçersiz.");
+            }
 
             if (counts.Values.Sum() > PreviewMaxRows) AddError(errors, $"Dosya en fazla {PreviewMaxRows:N0} kayıt içerebilir.");
             var targetName = await db.Companies.AsNoTracking().Where(c => c.Id == targetCompanyId)
@@ -1049,6 +1061,7 @@ public static class DataExportEndpoints
             var requests = DeserializeRows<InventoryRequest>(root, "inventoryRequests");
             var assetPurchaseOrders = DeserializeRows<AssetPurchaseOrder>(root, "assetPurchaseOrders");
             var assetPurchaseOrderLines = DeserializeRows<AssetPurchaseOrderLine>(root, "assetPurchaseOrderLines");
+            var assetPurchaseOrderAttachments = DeserializeRows<AssetPurchaseOrderAttachment>(root, "assetPurchaseOrderAttachments");
             var maintenances = DeserializeRows<AssetMaintenance>(root, "assetMaintenances");
             var events = DeserializeRows<AssetEvent>(root, "assetEvents");
             var audits = DeserializeRows<AuditEntry>(root, "auditEntries");
@@ -1057,7 +1070,7 @@ public static class DataExportEndpoints
 
             var ids = new Dictionary<Guid, Guid>();
             var sourceIds = new object[] { departments, locations, employees, categories, brands, models, assets,
-                requests, maintenances, events, audits, assetPurchaseOrders, assetPurchaseOrderLines }.SelectMany(rows => ((System.Collections.IEnumerable)rows)
+                requests, maintenances, events, audits, assetPurchaseOrders, assetPurchaseOrderLines, assetPurchaseOrderAttachments }.SelectMany(rows => ((System.Collections.IEnumerable)rows)
                 .Cast<object>().Select(row => (Guid)row.GetType().GetProperty("Id")!.GetValue(row)!)).ToArray();
             if (sourceIds.Distinct().Count() != sourceIds.Length)
                 return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "Dosyada tablo aileleri arasında yinelenen kayıt kimliği var; hiçbir kayıt aktarılmadı." } });
@@ -1072,6 +1085,7 @@ public static class DataExportEndpoints
             RemapIds(departments); RemapIds(locations); RemapIds(employees); RemapIds(categories);
             RemapIds(brands); RemapIds(models); RemapIds(assets); RemapIds(requests); RemapIds(maintenances); RemapIds(events); RemapIds(audits);
             RemapIds(assetPurchaseOrders); RemapIds(assetPurchaseOrderLines);
+            RemapIds(assetPurchaseOrderAttachments);
             Guid? Map(Guid? source) => source is Guid id && ids.TryGetValue(id, out var mapped) ? mapped : null;
             void CompanyScope<T>(IEnumerable<T> rows) where T : class
             {
@@ -1082,6 +1096,7 @@ public static class DataExportEndpoints
             CompanyScope(brands); CompanyScope(models); CompanyScope(assets); CompanyScope(requests);
             CompanyScope(maintenances); CompanyScope(events); CompanyScope(audits);
             CompanyScope(assetPurchaseOrders); CompanyScope(assetPurchaseOrderLines);
+            CompanyScope(assetPurchaseOrderAttachments);
             foreach (var item in locations) { item.ParentLocationId = Map(item.ParentLocationId); item.ManagerEmployeeId = Map(item.ManagerEmployeeId); }
             foreach (var item in employees) { item.LocationCatalogId = Map(item.LocationCatalogId); item.ManagerEmployeeId = Map(item.ManagerEmployeeId); }
             foreach (var item in models) item.BrandId = Map(item.BrandId);
@@ -1107,12 +1122,14 @@ public static class DataExportEndpoints
                 item.CategoryId = Map(item.CategoryId) ?? Guid.Empty;
                 item.BrandId = Map(item.BrandId); item.ModelId = Map(item.ModelId);
             }
+            foreach (var item in assetPurchaseOrderAttachments) { item.PurchaseOrderId = Map(item.PurchaseOrderId) ?? Guid.Empty; item.UploadedByUserId = null; }
 
             db.CompanyDepartments.AddRange(departments); db.CompanyLocations.AddRange(locations);
             db.Employees.AddRange(employees); db.AssetCategories.AddRange(categories); db.AssetBrands.AddRange(brands);
             db.AssetModels.AddRange(models); db.Assets.AddRange(assets); db.InventoryRequests.AddRange(requests);
             db.AssetMaintenances.AddRange(maintenances); db.AssetEvents.AddRange(events); db.AuditEntries.AddRange(audits);
             db.AssetPurchaseOrders.AddRange(assetPurchaseOrders); db.AssetPurchaseOrderLines.AddRange(assetPurchaseOrderLines);
+            db.AssetPurchaseOrderAttachments.AddRange(assetPurchaseOrderAttachments);
             db.AuditEntries.Add(new AuditEntry { CompanyId = targetCompanyId, ActorUserId = userId,
                 TargetType = "Company", TargetId = targetCompanyId, Action = "CompanyDataImported",
                 Details = "Şirket JSON arşivindeki kataloglar, çalışanlar, varlıklar ve ilişkili kayıtlar yeni kimliklerle geri yüklendi." });
@@ -1321,6 +1338,12 @@ public static class DataExportEndpoints
 
     private static string? ReadString(JsonElement element, string property) =>
         element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+
+    private static long? ReadLong(JsonElement element, string property) =>
+        element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var number) ? number : null;
+
+    private static bool SafeStoredAttachmentName(string? value) => value is not null &&
+        System.Text.RegularExpressions.Regex.IsMatch(value, "^[a-fA-F0-9]{32}\\.(pdf|png|jpg|webp)$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
     private static void CheckRequiredText(JsonElement root, string rowsProperty, string valueProperty,
         string label, int maxLength, List<string> errors)
@@ -1550,7 +1573,7 @@ public static class DataExportEndpoints
                 var readme = archive.CreateEntry("README.txt", CompressionLevel.Fastest);
                 await using var readmeStream = readme.Open();
                 await using var readmeWriter = new StreamWriter(readmeStream, new UTF8Encoding(false));
-                await readmeWriter.WriteAsync("EnvanterTR şirket veri arşivi\r\ncompany-data.json şirket kayıtlarının bir bölümünü, departman ve konum kataloglarını içerir. media/ klasörü şirket logolarını, varlık dosyalarını, aksesuar fotoğraflarını, lisans ve bakım eklerini, çalışan fotoğraflarını/belgelerini ve bu şirkete üye hesapların profil fotoğraflarını içerir. Bu arşiv tam sistem yedeği veya geri yükleme paketi değildir. Kimlik bilgileri ve oturumlar dahil edilmez.\r\n");
+                await readmeWriter.WriteAsync("EnvanterTR şirket veri arşivi\r\ncompany-data.json şirket kayıtlarının bir bölümünü, departman ve konum kataloglarını içerir. media/ klasörü şirket logolarını, varlık dosyalarını, varlık satın alma sipariş belgelerini, aksesuar fotoğraflarını, lisans ve bakım eklerini, çalışan fotoğraflarını/belgelerini ve bu şirkete üye hesapların profil fotoğraflarını içerir. Bu arşiv tam sistem yedeği veya geri yükleme paketi değildir. Kimlik bilgileri ve oturumlar dahil edilmez.\r\n");
             }
             await archiveFile.FlushAsync(cancellationToken);
             archiveFile.Position = 0;
@@ -1594,6 +1617,7 @@ public static class DataExportEndpoints
         await WritePagedAsync(writer, "assetEvents", db.AssetEvents.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
         await WritePagedAsync(writer, "assetPurchaseOrders", db.AssetPurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
         await WritePagedAsync(writer, "assetPurchaseOrderLines", db.AssetPurchaseOrderLines.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
+        await WritePagedAsync(writer, "assetPurchaseOrderAttachments", db.AssetPurchaseOrderAttachments.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
         await WritePagedAsync(writer, "auditEntries", db.AuditEntries.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
         var members = from membership in db.CompanyMemberships.AsNoTracking().Where(x => x.CompanyId == companyId)
                       join user in db.Users.AsNoTracking() on membership.UserId equals user.Id
