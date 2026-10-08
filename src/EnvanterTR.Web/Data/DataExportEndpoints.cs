@@ -199,7 +199,7 @@ public static class DataExportEndpoints
             var tag = row[0].Trim();
             if (string.IsNullOrWhiteSpace(tag) || tag.Length > 80 || !tags.Add(tag)) AddError(errors, $"{index + 2}. satırda varlık etiketi boş, uzun veya yineleniyor.");
             if (string.IsNullOrWhiteSpace(row[1].Trim()) || row[1].Trim().Length > 240) AddError(errors, $"{index + 2}. satırda varlık adı boş veya çok uzun.");
-            if (row[2] is not (AssetStatuses.Available or AssetStatuses.Deployed or AssetStatuses.Maintenance or AssetStatuses.Archived)) AddError(errors, $"{index + 2}. satırdaki durum desteklenmiyor.");
+            if (row[2] is not (AssetStatuses.Available or AssetStatuses.Deployed or AssetStatuses.Pending or AssetStatuses.Maintenance or AssetStatuses.Unusable or AssetStatuses.Archived)) AddError(errors, $"{index + 2}. satırdaki durum desteklenmiyor.");
             if ((row[2] == AssetStatuses.Deployed) != !string.IsNullOrWhiteSpace(row[8])) AddError(errors, $"{index + 2}. satırda durum ve personel numarası eşleşmiyor.");
             if (string.IsNullOrWhiteSpace(row[3]) || row[3].Length > 120 || row[4].Length > 120 || row[5].Length > 120 || row[6].Length > 160 || row[7].Length > 160 || row[8].Length > 80 || row[9].Length > 200 || row[currencyIndex].Length != 3 || !row[currencyIndex].All(char.IsAsciiLetter))
                 AddError(errors, $"{index + 2}. satırda alan uzunluğu, kategori veya para birimi geçersiz.");
@@ -351,7 +351,7 @@ public static class DataExportEndpoints
             if (string.IsNullOrWhiteSpace(tag) || tag.Length > 80) AddError(errors, $"{index + 2}. satırda varlık etiketi boş veya 80 karakterden uzun.");
             else if (!tags.Add(tag)) AddError(errors, "CSV içinde yinelenen varlık etiketi var.");
             if (string.IsNullOrWhiteSpace(row[1].Trim()) || row[1].Trim().Length > 240) AddError(errors, $"{index + 2}. satırda varlık adı boş veya 240 karakterden uzun.");
-            if (row[2] is not (AssetStatuses.Available or AssetStatuses.Deployed or AssetStatuses.Maintenance or AssetStatuses.Archived)) AddError(errors, $"{index + 2}. satırdaki durum desteklenmiyor.");
+            if (row[2] is not (AssetStatuses.Available or AssetStatuses.Deployed or AssetStatuses.Pending or AssetStatuses.Maintenance or AssetStatuses.Unusable or AssetStatuses.Archived)) AddError(errors, $"{index + 2}. satırdaki durum desteklenmiyor.");
             if ((row[2] == AssetStatuses.Deployed) != !string.IsNullOrWhiteSpace(row[8])) AddError(errors, $"{index + 2}. satırda atanmış durumuyla personel bilgisi eşleşmiyor.");
             if (row[3].Length > 120 || row[4].Length > 120 || row[5].Length > 120 || row[6].Length > 160 || row[7].Length > 160 || row[8].Length > 80 || row[9].Length > 200 || row[currencyIndex].Length != 3 || !row[currencyIndex].All(char.IsAsciiLetter))
                 AddError(errors, $"{index + 2}. satırda alan uzunluğu veya para birimi biçimi geçersiz.");
@@ -595,7 +595,7 @@ public static class DataExportEndpoints
                     AddError(errors, "Bir varlığın konum kataloğu bağlantısı dosyada bulunamadı veya geçersiz.");
                 var status = ReadString(asset, "status");
                 var hasEmployee = TryGuid(asset, "assignedEmployeeId", out _);
-                if (status is not (AssetStatuses.Available or AssetStatuses.Deployed or AssetStatuses.Maintenance or AssetStatuses.Archived))
+                if (status is not (AssetStatuses.Available or AssetStatuses.Deployed or AssetStatuses.Pending or AssetStatuses.Maintenance or AssetStatuses.Unusable or AssetStatuses.Archived))
                     AddError(errors, "Bir varlığın durumu desteklenmiyor.");
                 if ((status == AssetStatuses.Deployed) != hasEmployee)
                     AddError(errors, "Atanmış durumundaki varlıkta çalışan olmalı; diğer durumlarda çalışan alanı boş olmalı.");

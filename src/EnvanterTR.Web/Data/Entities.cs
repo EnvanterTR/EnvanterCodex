@@ -513,7 +513,9 @@ public static class AssetStatuses
 {
     public const string Available = "Available";
     public const string Deployed = "Deployed";
+    public const string Pending = "Pending";
     public const string Maintenance = "Maintenance";
+    public const string Unusable = "Unusable";
     public const string Archived = "Archived";
 }
 

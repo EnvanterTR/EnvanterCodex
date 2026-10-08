@@ -961,8 +961,8 @@ public static class OperationalEndpoints
             var next = request.Status?.Trim();
             if (request.Note is { Length: > 1900 })
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Açıklama en fazla 1900 karakter olabilir."] });
-            if (next is not (AssetStatuses.Available or AssetStatuses.Maintenance or AssetStatuses.Archived))
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["status"] = ["Durum Available, Maintenance veya Archived olabilir; zimmet ayrı işlemle yapılır."] });
+            if (next is not (AssetStatuses.Available or AssetStatuses.Pending or AssetStatuses.Maintenance or AssetStatuses.Unusable or AssetStatuses.Archived))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["status"] = ["Durum Available, Pending, Maintenance, Unusable veya Archived olabilir; zimmet ayrı işlemle yapılır."] });
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             var asset = await db.Assets.FromSqlInterpolated($"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
                 .SingleOrDefaultAsync(cancellationToken);
@@ -998,8 +998,8 @@ public static class OperationalEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["assetIds"] = ["1 ile 100 arasında, tekrarsız varlık seçin."] });
             if (request.Note is { Length: > 1900 })
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Açıklama en fazla 1900 karakter olabilir."] });
-            if (next is not (AssetStatuses.Available or AssetStatuses.Maintenance or AssetStatuses.Archived))
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["status"] = ["Durum Kullanılabilir, Bakımda veya Arşiv olabilir."] });
+            if (next is not (AssetStatuses.Available or AssetStatuses.Pending or AssetStatuses.Maintenance or AssetStatuses.Unusable or AssetStatuses.Archived))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["status"] = ["Durum Kullanılabilir, Beklemede, Bakımda, Kullanılamaz veya Arşiv olabilir."] });
 
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             var assets = await db.Assets.FromSqlInterpolated(
@@ -1445,7 +1445,9 @@ public static class OperationalEndpoints
                 totalAssets = statusCounts.Values.Sum(),
                 availableAssets = statusCounts.GetValueOrDefault(AssetStatuses.Available),
                 assignedAssets = statusCounts.GetValueOrDefault(AssetStatuses.Deployed),
+                pendingAssets = statusCounts.GetValueOrDefault(AssetStatuses.Pending),
                 maintenanceAssets = statusCounts.GetValueOrDefault(AssetStatuses.Maintenance),
+                unusableAssets = statusCounts.GetValueOrDefault(AssetStatuses.Unusable),
                 archivedAssets = statusCounts.GetValueOrDefault(AssetStatuses.Archived),
                 softwareLicenses = await db.SoftwareLicenses.CountAsync(x => x.CompanyId == companyId, cancellationToken),
                 accessories = await db.Accessories.CountAsync(x => x.CompanyId == companyId, cancellationToken),
