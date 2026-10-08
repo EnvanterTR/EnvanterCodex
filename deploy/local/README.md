@@ -91,12 +91,12 @@ docker run --rm -it -v "$(pwd):/source" -w /source mcr.microsoft.com/dotnet/sdk:
 
 Önce en az 16 karakterlik parola içeren dosyayı proje dizini ve bulut eşitleme klasörlerinin dışında oluşturun. Windows'ta kurulum betiği bu dosyanın ACL'ini geçerli kullanıcı, SYSTEM ve yöneticilerle sınırlar. Linux'ta parola dosyasının izni `600` yapılır. Parolayı yedekten ayrı, güvenli bir yere de saklayın; kaybolursa şifreli arşiv açılamaz.
 
-Windows PowerShell 7 ve Docker Desktop kullanırken depo kökünden günlük 02:00 görevi kurun:
+Windows PowerShell 7 ve Docker Desktop kullanırken parola dosyasını Docker Desktop'ın bağlayabildiği, proje ve eşitlenen klasörlerin dışındaki bir konumda tutun. `C:\Users\<kullanıcı>\.envantertr-secrets` gibi kullanıcı profili altındaki bir dizin uygundur; bazı Docker Desktop kurulumları `%LOCALAPPDATA%` içindeki dosya bağlamalarını konteynere aktaramaz. Kurulum betiği parola dosyasının ACL'ini geçerli kullanıcı, SYSTEM ve yöneticilerle sınırlar. Depo kökünden günlük 02:00 görevi kurun:
 
 ```powershell
-New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\EnvanterTR" | Out-Null
-# Parola dosyasını editörle bu konuma oluşturun; içeriğini komut geçmişine yazmayın.
-pwsh -File deploy/local/configure-backup-task.ps1 -PassphraseFile "$env:LOCALAPPDATA\EnvanterTR\backup-passphrase.txt" -At 02:00 -RetentionDays 30
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.envantertr-secrets" | Out-Null
+# En az 16 karakterlik parola dosyasını editörle bu konuma oluşturun; içeriğini komut geçmişine yazmayın.
+pwsh -File deploy/local/configure-backup-task.ps1 -PassphraseFile "$env:USERPROFILE\.envantertr-secrets\backup-passphrase.txt" -At 02:00 -RetentionDays 30
 ```
 
 Görev kullanıcı oturumu açıkken çalışır ve Docker Desktop'ın hazır olmasını bekler; bu önizlemede Windows oturumu kapalıyken arka plan Docker erişimi garanti edilmez. Elle çalıştırmak için `Start-ScheduledTask -TaskName EnvanterTR-Encrypted-Backup`; kaldırmak için kurulum betiğine `-Uninstall` verin. Ayrıntılı çıktı `backups/.scheduled-logs` altında tutulur; ayrıca Görev Geçmişi ve yeni `.etbackup` dosyasını kontrol edin.
