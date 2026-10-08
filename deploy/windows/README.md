@@ -31,7 +31,7 @@ Arşivi açmadan önce SHA-256 değerini doğrulayın:
 $archive = Get-ChildItem .\envantertr-windows-x64-*.zip | Select-Object -First 1
 if (-not $archive) { throw "Windows yayın ZIP dosyası bulunamadı." }
 ./verify-release.ps1 -ArchivePath $archive.FullName
-Expand-Archive -LiteralPath $archive -DestinationPath C:\Staging\publish
+Expand-Archive -LiteralPath $archive.FullName -DestinationPath C:\Staging\publish
 ```
 
 SHA-256 aktarım bozulmasını saptar; dosyanın yayıncı kimliğini kanıtlamaz. Paketi sunucuya aktarmadan önce artifact'i doğru GitHub çalıştırmasından indirdiğinizi ve çalıştırmanın beklediğiniz commit'e ait olduğunu doğrulayın. Üretim paketi kod imzalama ve hedef sunucu kabulünden sonra ayrıca yayımlanmalıdır.
