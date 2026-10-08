@@ -1089,6 +1089,75 @@ public static class AssetEndpoints
             });
         }).RequireAuthorization("asset.read");
 
+        api.MapGet("/reports/assets/purchases", async ([FromQuery] string? q, [FromQuery] DateOnly? from,
+            [FromQuery] DateOnly? to, ClaimsPrincipal user, AppDbContext db, CancellationToken ct,
+            int page = 1, int pageSize = 50) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (from is not null && to is not null && from > to)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Başlangıç tarihi bitiş tarihinden sonra olamaz."] });
+            if (q?.Trim().Length > 120)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama 120 karakteri aşamaz."] });
+            page = Math.Max(1, page); pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
+            var query = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (from is DateOnly start) query = query.Where(x => x.PurchaseDate >= start);
+            if (to is DateOnly end) query = query.Where(x => x.PurchaseDate <= end);
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                query = query.Where(x => x.AssetTag.Contains(term) || x.Name.Contains(term) ||
+                    (x.SerialNumber != null && x.SerialNumber.Contains(term)) ||
+                    db.AssetCategories.Any(c => c.CompanyId == companyId && c.Id == x.CategoryId && c.Name.Contains(term)));
+            }
+            var total = await query.CountAsync(ct);
+            var items = await query.OrderByDescending(x => x.PurchaseDate).ThenBy(x => x.AssetTag)
+                .Skip((page - 1) * pageSize).Take(pageSize)
+                .Select(x => new { x.Id, x.AssetTag, x.Name, x.SerialNumber, x.PurchaseDate, x.PurchaseCost, x.Currency, x.Status, x.Location,
+                    category = db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault() })
+                .ToListAsync(ct);
+            return Results.Ok(new { total, page, pageSize, pageCount = (int)Math.Ceiling(total / (double)pageSize), items });
+        }).RequireAuthorization("asset.read");
+
+        api.MapGet("/reports/assets/purchases/export.csv", async ([FromQuery] string? q, [FromQuery] DateOnly? from,
+            [FromQuery] DateOnly? to, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (from is not null && to is not null && from > to)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Başlangıç tarihi bitiş tarihinden sonra olamaz."] });
+            if (q?.Trim().Length > 120)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama 120 karakteri aşamaz."] });
+            var query = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (from is DateOnly start) query = query.Where(x => x.PurchaseDate >= start);
+            if (to is DateOnly end) query = query.Where(x => x.PurchaseDate <= end);
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                query = query.Where(x => x.AssetTag.Contains(term) || x.Name.Contains(term) ||
+                    (x.SerialNumber != null && x.SerialNumber.Contains(term)) ||
+                    db.AssetCategories.Any(c => c.CompanyId == companyId && c.Id == x.CategoryId && c.Name.Contains(term)));
+            }
+            const int exportLimit = 10_000;
+            if (await query.CountAsync(ct) > exportLimit)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["export"] = [$"CSV en fazla {exportLimit:N0} varlık içerir. Arama veya tarih filtresini daraltın."] });
+            var rows = await query.OrderByDescending(x => x.PurchaseDate).ThenBy(x => x.AssetTag)
+                .Select(x => new { x.AssetTag, x.Name, x.SerialNumber, x.PurchaseDate, x.PurchaseCost, x.Currency, x.Status, x.Location,
+                    category = db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault() })
+                .ToListAsync(ct);
+            static string Cell(string? value)
+            {
+                if (string.IsNullOrEmpty(value)) return "\"\"";
+                var trimmed = value.TrimStart();
+                var formula = trimmed.Length > 0 && (trimmed[0] == '=' || trimmed[0] == '+' || trimmed[0] == '-' || trimmed[0] == '@');
+                return "\"" + (formula ? "'" + value : value).Replace("\"", "\"\"") + "\"";
+            }
+            var csv = new StringBuilder("Etiket;Varlık;Seri No;Alış Tarihi;Alış Bedeli;Para Birimi;Durum;Kategori;Konum\r\n");
+            foreach (var row in rows) csv.AppendLine(string.Join(';', new[] { Cell(row.AssetTag), Cell(row.Name), Cell(row.SerialNumber),
+                Cell(row.PurchaseDate?.ToString("yyyy-MM-dd")), row.PurchaseCost?.ToString("0.00", CultureInfo.InvariantCulture) ?? "", Cell(row.Currency),
+                Cell(row.Status), Cell(row.category), Cell(row.Location) }));
+            var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray();
+            return Results.File(bytes, "text/csv; charset=utf-8", $"envantertr-varlik-satin-alma-raporu-{DateTime.UtcNow:yyyyMMdd}.csv");
+        }).RequireAuthorization("asset.read");
+
         api.MapGet("/reports/audits", async (DateOnly? from, DateOnly? to, string? q,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken, int page = 1, int pageSize = 50) =>
         {

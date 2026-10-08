@@ -1592,6 +1592,41 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Asset_purchase_report_is_company_scoped_searchable_and_exports_formula_safe_csv()
+    {
+        var purchaseDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-5);
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var asset = await db.Assets.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownAssetId);
+            asset.Name = "=PURCHASE-REPORT formula";
+            asset.PurchaseDate = purchaseDate;
+            asset.PurchaseCost = 1234.56m;
+            asset.Currency = "TRY";
+            await db.SaveChangesAsync();
+        }
+
+        using var reportResponse = await SendAsAdminAsync($"/api/reports/assets/purchases?q=PURCHASE-REPORT&from={purchaseDate.AddDays(-1):yyyy-MM-dd}&to={purchaseDate.AddDays(1):yyyy-MM-dd}");
+        Assert.Equal(HttpStatusCode.OK, reportResponse.StatusCode);
+        using var report = JsonDocument.Parse(await reportResponse.Content.ReadAsStringAsync());
+        Assert.Equal(1, report.RootElement.GetProperty("total").GetInt32());
+        var item = report.RootElement.GetProperty("items")[0];
+        Assert.Equal(_ownAssetId, item.GetProperty("id").GetGuid());
+        Assert.Equal(1234.56m, item.GetProperty("purchaseCost").GetDecimal());
+
+        using var exportResponse = await SendAsAdminAsync($"/api/reports/assets/purchases/export.csv?q=PURCHASE-REPORT&from={purchaseDate:yyyy-MM-dd}&to={purchaseDate:yyyy-MM-dd}");
+        Assert.Equal(HttpStatusCode.OK, exportResponse.StatusCode);
+        var csv = await exportResponse.Content.ReadAsStringAsync();
+        Assert.Contains("'=PURCHASE-REPORT formula", csv, StringComparison.Ordinal);
+        Assert.DoesNotContain("OTHER-1", csv, StringComparison.Ordinal);
+
+        using var crossTenant = await SendAsAdminAsync("/api/reports/assets/purchases?q=PURCHASE-REPORT", _otherCompanyId);
+        Assert.Equal(HttpStatusCode.Unauthorized, crossTenant.StatusCode);
+        using var invalidRange = await SendAsAdminAsync($"/api/reports/assets/purchases?from={purchaseDate:yyyy-MM-dd}&to={purchaseDate.AddDays(-1):yyyy-MM-dd}");
+        Assert.Equal(HttpStatusCode.BadRequest, invalidRange.StatusCode);
+    }
+
+    [Fact]
     public async Task Concurrent_component_checkouts_cannot_allocate_the_same_remaining_stock_twice()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");

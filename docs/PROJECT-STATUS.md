@@ -3,6 +3,8 @@
 **Tarih:** 8 Ekim 2026
 **Ölçüm kapsamı:** Şirketlerin kullanabileceği envanter ürünü; uygulama işlevleri, üretim hazırlığı ve Windows/Linux teslimatı.
 
+- **8 Ekim çalışma güncellemesi:** Varlık alış raporu satır düzeyine genişletildi. Şirket kapsamlı API ve rapor tablosu varlık/seri/kategori aramasını, alış tarihi filtresini, 50 satırlık sayfalamayı, varlık ayrıntısına geçişi ve etkin filtreleri koruyan formül enjeksiyonuna dayanıklı 10.000 satırlık CSV çıktısını sunuyor. Yeni PostgreSQL kabul senaryosu şirket yalıtımı, tarih aralığı, arama ve CSV formül güvenliğini doğruladı; tam kabul paketi 30/30 geçti. Satır içi JavaScript sözdizimi kontrolü ve Docker Release derlemesi başarılı; yerel `/` HTTP 200, `/api/status` `ready`. Rapor API'si oturum gerektiriyor; anonim istek 401 döndürüyor.
+
 - **8 Ekim çalışma güncellemesi:** API’ye erişilemediğinde giriş ekranı artık bağlantı hatasını anlaşılır biçimde gösteriyor ve sunucu bağlantısını yeniden deneme düğmesi sunuyor. Yeniden denemede CSRF ve sunucu hazırlık durumu tekrar yükleniyor; oturum geçerli hale geldiyse giriş katmanı kapanıyor. Bu, sunucu/DB’nin gerçekten çalışması gereğini değiştirmez; geçici kesintiden sonra sayfayı yenileme zorunluluğunu kaldırır.
 
 - **8 Ekim çalışma güncellemesi:** Raporlara tamamlanmış fiziksel denetimler eklendi. 366 güne kadar tarih filtresi, varlık araması, sayfalama, denetimi yapan kişi/açıklama ve formül güvenli 10.000 satırlık CSV dışa aktarımı bulunuyor. API raporu ve CSV şirket kapsamını koruyor; PostgreSQL tenant kabul senaryosu iki şirketin denetim kayıtlarını ayırdı ve yalnız kendi şirketindeki sonucu doğruladı. Yerel Release uygulama güncellendi.
