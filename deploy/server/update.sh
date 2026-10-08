@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 SOURCE_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd -P)"
 INSTALL_ROOT="/opt/envantertr"
 CURRENT_RELEASE="$INSTALL_ROOT/current"
-OLD_RELEASE="$(readlink -f "$CURRENT_RELEASE")"
+OLD_RELEASE=""
 CONFIG_FILE="/etc/envantertr/server.env"
 STAMP="$(date -u +%Y%m%d-%H%M%S)"
 RELEASE_DIR="$INSTALL_ROOT/releases/$STAMP"
@@ -19,6 +19,7 @@ command -v flock >/dev/null || fail 'Güncelleme için flock gereklidir.'
 exec 9>/run/lock/envantertr-operations.lock
 flock -n 9 || fail 'Başka bir EnvanterTR sunucu işlemi sürüyor; güncelleme başlatılmadı.'
 [[ -d "$CURRENT_RELEASE" && -f "$CONFIG_FILE" ]] || fail 'Kurulu EnvanterTR bulunamadı; önce install.sh çalıştırın.'
+OLD_RELEASE="$(readlink -f "$CURRENT_RELEASE")"
 [[ -d "$SOURCE_ARGUMENT" ]] || fail 'Kaynak dizini bulunamadı.'
 SOURCE_ROOT="$(cd -- "$SOURCE_ARGUMENT" && pwd -P)"
 [[ -f "$SOURCE_ROOT/Dockerfile" && -f "$SOURCE_ROOT/deploy/server/compose.yaml" ]] || fail 'Kaynak klasöründe sunucu dağıtımı bulunamadı.'
