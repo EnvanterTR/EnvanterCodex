@@ -11,7 +11,8 @@ public sealed record CreateAssetRequest(
     DateOnly? PurchaseDate,
     DateOnly? WarrantyExpiresAt,
     decimal? PurchaseCost,
-    string? Currency);
+    string? Currency,
+    bool? IsRequestable = null);
 
 public sealed record UpdateAssetRequest(
     string AssetTag,
@@ -25,7 +26,8 @@ public sealed record UpdateAssetRequest(
     DateOnly? WarrantyExpiresAt,
     decimal? PurchaseCost,
     string? Currency,
-    DateTimeOffset ExpectedUpdatedAt);
+    DateTimeOffset ExpectedUpdatedAt,
+    bool? IsRequestable = null);
 
 public sealed record CreateLookupRequest(string Name, Guid? BrandId = null);
 public sealed record RenameLookupRequest(string Name);

@@ -194,6 +194,7 @@ public sealed class Asset
     public string Currency { get; set; } = "TRY";
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public bool IsRequestable { get; set; }
 }
 
 public sealed class AssetEvent

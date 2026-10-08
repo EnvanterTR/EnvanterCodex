@@ -431,6 +431,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
+                    b.Property<bool>("IsRequestable")
+                        .HasColumnType("boolean");
+
                     b.Property<Guid?>("AssignedEmployeeId")
                         .HasColumnType("uuid");
 
@@ -1581,7 +1584,7 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.ToTable("InventoryRequests", null, t =>
                         {
-                            t.HasCheckConstraint("CK_InventoryRequests_ItemType", "\"ItemType\" IN ('Accessory', 'Consumable')");
+                            t.HasCheckConstraint("CK_InventoryRequests_ItemType", "\"ItemType\" IN ('Accessory', 'Consumable', 'Asset')");
 
                             t.HasCheckConstraint("CK_InventoryRequests_Quantity", "\"Quantity\" BETWEEN 1 AND 100000");
 

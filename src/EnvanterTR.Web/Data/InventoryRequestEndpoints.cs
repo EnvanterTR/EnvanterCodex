@@ -30,18 +30,25 @@ public static class InventoryRequestEndpoints
                 (db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0));
             var consumables = db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId && x.IsRequestable && x.TotalQuantity >
                 (db.ConsumableMovements.Where(m => m.CompanyId == companyId && m.ConsumableId == x.Id && m.MovementType == "Checkout").Sum(m => (int?)m.Quantity) ?? 0));
+            var assets = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.IsRequestable &&
+                x.Status == AssetStatuses.Available && x.AssignedEmployeeId == null);
             if (!string.IsNullOrWhiteSpace(term))
             {
                 accessories = accessories.Where(x => x.Name.Contains(term) || (x.Category != null && x.Category.Contains(term)) ||
                     (x.ModelNumber != null && x.ModelNumber.Contains(term)) || (x.ItemNumber != null && x.ItemNumber.Contains(term)));
                 consumables = consumables.Where(x => x.Name.Contains(term) || (x.Category != null && x.Category.Contains(term)) ||
                     (x.ModelNumber != null && x.ModelNumber.Contains(term)) || (x.ItemNumber != null && x.ItemNumber.Contains(term)));
+                assets = assets.Where(x => x.Name.Contains(term) || x.AssetTag.Contains(term) ||
+                    (x.SerialNumber != null && x.SerialNumber.Contains(term)));
             }
             var accessoryItems = await accessories.OrderBy(x => x.Name).Take(200).Select(x => new RequestCatalogItem(x.Id, "Accessory", x.Name, x.Category, x.ModelNumber,
                 x.Location, x.TotalQuantity - (db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0))).ToListAsync(ct);
             var consumableItems = await consumables.OrderBy(x => x.Name).Take(200).Select(x => new RequestCatalogItem(x.Id, "Consumable", x.Name, x.Category, x.ModelNumber,
                 x.Location, x.TotalQuantity - (db.ConsumableMovements.Where(m => m.CompanyId == companyId && m.ConsumableId == x.Id && m.MovementType == "Checkout").Sum(m => (int?)m.Quantity) ?? 0))).ToListAsync(ct);
-            var items = accessoryItems.Concat(consumableItems).OrderBy(x => x.Name).ThenBy(x => x.Type).Take(200).ToList();
+            var assetItems = await assets.OrderBy(x => x.Name).Take(200).Select(x => new RequestCatalogItem(x.Id, "Asset", x.Name,
+                db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault(), x.AssetTag,
+                x.Location, 1)).ToListAsync(ct);
+            var items = accessoryItems.Concat(consumableItems).Concat(assetItems).OrderBy(x => x.Name).ThenBy(x => x.Type).Take(200).ToList();
             return Results.Ok(new { items });
         }).RequireAuthorization("asset.read");
 
@@ -66,7 +73,8 @@ public static class InventoryRequestEndpoints
                     (e.DisplayName.Contains(term) || e.EmployeeNumber.Contains(term))) ||
                     (x.RequestNote != null && x.RequestNote.Contains(term)) ||
                     (x.ItemType == "Accessory" && db.Accessories.Any(a => a.CompanyId == companyId && a.Id == x.ItemId && a.Name.Contains(term))) ||
-                    (x.ItemType == "Consumable" && db.Consumables.Any(c => c.CompanyId == companyId && c.Id == x.ItemId && c.Name.Contains(term))));
+                    (x.ItemType == "Consumable" && db.Consumables.Any(c => c.CompanyId == companyId && c.Id == x.ItemId && c.Name.Contains(term))) ||
+                    (x.ItemType == "Asset" && db.Assets.Any(a => a.CompanyId == companyId && a.Id == x.ItemId && (a.Name.Contains(term) || a.AssetTag.Contains(term)))));
             }
             var total = await query.CountAsync(ct);
             var rows = await query.OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize)
@@ -78,7 +86,9 @@ public static class InventoryRequestEndpoints
                     employeeNumber = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault(),
                     item = x.ItemType == "Accessory"
                         ? db.Accessories.Where(a => a.CompanyId == companyId && a.Id == x.ItemId).Select(a => a.Name).FirstOrDefault()
-                        : db.Consumables.Where(c => c.CompanyId == companyId && c.Id == x.ItemId).Select(c => c.Name).FirstOrDefault(),
+                        : x.ItemType == "Consumable"
+                            ? db.Consumables.Where(c => c.CompanyId == companyId && c.Id == x.ItemId).Select(c => c.Name).FirstOrDefault()
+                            : db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.ItemId).Select(a => a.Name + " · " + a.AssetTag).FirstOrDefault(),
                     requestedBy = db.Users.Where(u => u.Id == x.RequestedByUserId).Select(u => u.DisplayName).FirstOrDefault(),
                     reviewedBy = db.Users.Where(u => u.Id == x.ReviewedByUserId).Select(u => u.DisplayName).FirstOrDefault()
                 }).ToListAsync(ct);
@@ -105,7 +115,8 @@ public static class InventoryRequestEndpoints
                     (e.DisplayName.Contains(term) || e.EmployeeNumber.Contains(term))) ||
                     (x.RequestNote != null && x.RequestNote.Contains(term)) ||
                     (x.ItemType == "Accessory" && db.Accessories.Any(a => a.CompanyId == companyId && a.Id == x.ItemId && a.Name.Contains(term))) ||
-                    (x.ItemType == "Consumable" && db.Consumables.Any(c => c.CompanyId == companyId && c.Id == x.ItemId && c.Name.Contains(term))));
+                    (x.ItemType == "Consumable" && db.Consumables.Any(c => c.CompanyId == companyId && c.Id == x.ItemId && c.Name.Contains(term))) ||
+                    (x.ItemType == "Asset" && db.Assets.Any(a => a.CompanyId == companyId && a.Id == x.ItemId && (a.Name.Contains(term) || a.AssetTag.Contains(term)))));
             }
             if (await query.CountAsync(ct) > 10000)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["export"] = ["Dışa aktarım en fazla 10.000 talep içerir; aramayı veya durumu daraltın."] });
@@ -116,7 +127,9 @@ public static class InventoryRequestEndpoints
                 employeeNumber = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault(),
                 item = x.ItemType == "Accessory"
                     ? db.Accessories.Where(a => a.CompanyId == companyId && a.Id == x.ItemId).Select(a => a.Name).FirstOrDefault()
-                    : db.Consumables.Where(c => c.CompanyId == companyId && c.Id == x.ItemId).Select(c => c.Name).FirstOrDefault(),
+                    : x.ItemType == "Consumable"
+                        ? db.Consumables.Where(c => c.CompanyId == companyId && c.Id == x.ItemId).Select(c => c.Name).FirstOrDefault()
+                        : db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.ItemId).Select(a => a.Name + " · " + a.AssetTag).FirstOrDefault(),
                 requestedBy = db.Users.Where(u => u.Id == x.RequestedByUserId).Select(u => u.DisplayName).FirstOrDefault(),
                 reviewedBy = db.Users.Where(u => u.Id == x.ReviewedByUserId).Select(u => u.DisplayName).FirstOrDefault()
             }).ToListAsync(ct);
@@ -126,7 +139,7 @@ public static class InventoryRequestEndpoints
                 var cells = new[]
                 {
                     CsvCell(row.employee), CsvCell(row.employeeNumber), CsvCell(row.item),
-                    CsvCell(row.ItemType == "Accessory" ? "Aksesuar" : "Sarf"), CsvCell(row.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                    CsvCell(row.ItemType switch { "Accessory" => "Aksesuar", "Consumable" => "Sarf", "Asset" => "Varlık", _ => row.ItemType }), CsvCell(row.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)),
                     CsvCell(row.Status switch { "Pending" => "Bekliyor", "Approved" => "Onaylandı", "Rejected" => "Reddedildi", "Cancelled" => "İptal edildi", _ => row.Status }),
                     CsvCell(row.requestedBy), CsvCell(row.CreatedAt.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture)),
                     CsvCell(row.RequestNote), CsvCell(row.reviewedBy),
@@ -140,7 +153,8 @@ public static class InventoryRequestEndpoints
         api.MapPost("/requests", async (CreateRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Tenant(user, out var companyId) || UserId(user) is not Guid userId) return Results.Forbid();
-            if (request.Quantity is < 1 or > 100000 || request.Note?.Length > 1000 || request.ItemType is not ("Accessory" or "Consumable"))
+            if (request.Quantity is < 1 or > 100000 || request.Note?.Length > 1000 || request.ItemType is not ("Accessory" or "Consumable" or "Asset") ||
+                (request.ItemType == "Asset" && request.Quantity != 1))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["request"] = ["Talep türü, adet veya not bilgisi geçersiz. Adet 1–100.000; not en fazla 1.000 karakter olmalıdır."] });
             if (!await db.Employees.AnyAsync(e => e.CompanyId == companyId && e.Id == request.EmployeeId && e.IsActive, ct))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeId"] = ["Bu şirketteki etkin bir çalışan seçilmelidir."] });
@@ -169,7 +183,9 @@ public static class InventoryRequestEndpoints
             {
                 var available = row.ItemType == "Accessory"
                     ? await ApproveAccessoryAsync(db, row, companyId, userId, request.Note, ct)
-                    : await ApproveConsumableAsync(db, row, companyId, userId, request.Note, ct);
+                    : row.ItemType == "Consumable"
+                        ? await ApproveConsumableAsync(db, row, companyId, userId, request.Note, ct)
+                        : await ApproveAssetAsync(db, row, companyId, userId, request.Note, ct);
                 if (available < 0) return Results.Conflict(new { message = "Kalem artık talebe açık değil veya stok kaydı bulunamadı." });
                 if (row.Quantity > available) return Results.Conflict(new { message = $"Yeterli stok kalmadı. Kullanılabilir miktar: {available}. Talep açık bırakıldı." });
             }
@@ -210,6 +226,9 @@ public static class InventoryRequestEndpoints
                 .SumAsync(x => (int?)(x.Quantity - x.ReturnedQuantity), ct) ?? 0;
             return Math.Max(0, item.Value - assigned);
         }
+        if (type == "Asset")
+            return await db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == itemId && x.IsRequestable &&
+                x.Status == AssetStatuses.Available && x.AssignedEmployeeId == null).Select(_ => (int?)1).SingleOrDefaultAsync(ct);
         var consumable = await db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == itemId && x.IsRequestable)
             .Select(x => (int?)x.TotalQuantity).SingleOrDefaultAsync(ct);
         if (consumable is null) return null;
@@ -251,6 +270,23 @@ public static class InventoryRequestEndpoints
             Notes = Clean(note) ?? "Stok talebi onayı" });
         item.UpdatedAt = DateTimeOffset.UtcNow;
         return available;
+    }
+
+    private static async Task<int> ApproveAssetAsync(AppDbContext db, InventoryRequest request, Guid companyId, Guid actorId, string? note, CancellationToken ct)
+    {
+        if (request.Quantity != 1) return -1;
+        var employee = await db.Employees.FromSqlInterpolated(
+            $"SELECT * FROM \"Employees\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {request.EmployeeId} FOR UPDATE").SingleOrDefaultAsync(ct);
+        if (employee is null || !employee.IsActive) return -1;
+        var asset = await db.Assets.FromSqlInterpolated(
+            $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {request.ItemId} FOR UPDATE").SingleOrDefaultAsync(ct);
+        if (asset is null || !asset.IsRequestable || asset.Status != AssetStatuses.Available || asset.AssignedEmployeeId is not null) return -1;
+        asset.AssignedEmployeeId = request.EmployeeId;
+        asset.Status = AssetStatuses.Deployed;
+        asset.UpdatedAt = DateTimeOffset.UtcNow;
+        db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = asset.Id, ActorUserId = actorId,
+            EmployeeId = request.EmployeeId, EventType = "Assigned", Details = Clean(note) ?? "Varlık talebi onayı" });
+        return 1;
     }
 
     private static bool Tenant(ClaimsPrincipal user, out Guid companyId) => Guid.TryParse(user.FindFirstValue("company_id"), out companyId);

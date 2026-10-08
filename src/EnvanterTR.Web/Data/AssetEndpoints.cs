@@ -1185,7 +1185,7 @@ public static class AssetEndpoints
                     x.Id, x.AssetTag, x.Name, x.Status, x.SerialNumber, x.Location,
                     x.LocationCatalogId,
                     x.CategoryId, x.BrandId, x.ModelId, x.AssignedEmployeeId,
-                    x.PurchaseDate, x.WarrantyExpiresAt, x.NextAuditOn, x.PurchaseCost, x.Currency, x.CreatedAt, x.UpdatedAt
+                    x.PurchaseDate, x.WarrantyExpiresAt, x.NextAuditOn, x.PurchaseCost, x.Currency, x.IsRequestable, x.CreatedAt, x.UpdatedAt
                 }).SingleOrDefaultAsync(cancellationToken);
             if (asset is null) return Results.NotFound();
             var references = new
@@ -1467,7 +1467,7 @@ public static class AssetEndpoints
                 BrandId = request.BrandId, ModelId = request.ModelId,
                 SerialNumber = serial, Location = location, LocationCatalogId = locationCatalogId,
                 PurchaseDate = request.PurchaseDate, WarrantyExpiresAt = request.WarrantyExpiresAt, PurchaseCost = request.PurchaseCost,
-                Currency = currency
+                Currency = currency, IsRequestable = request.IsRequestable == true
             };
             db.Assets.Add(asset);
             db.AssetEvents.Add(new AssetEvent
@@ -1515,6 +1515,7 @@ public static class AssetEndpoints
 
             var current = await db.Assets.AsNoTracking().SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
             if (current is null) return Results.NotFound();
+            var isRequestable = request.IsRequestable ?? current.IsRequestable;
             if (current.UpdatedAt != request.ExpectedUpdatedAt)
                 return Results.Conflict(new { message = "Bu varlık başka bir kullanıcı tarafından güncellenmiş. Son bilgileri yenileyip tekrar düzenleyin." });
             if (await db.Assets.AnyAsync(x => x.CompanyId == companyId && x.Id != id && x.AssetTag == tag, cancellationToken))
@@ -1539,6 +1540,7 @@ public static class AssetEndpoints
             if (current.PurchaseDate != request.PurchaseDate) changed.Add("alış tarihi");
             if (current.WarrantyExpiresAt != request.WarrantyExpiresAt) changed.Add("garanti bitiş tarihi");
             if (current.PurchaseCost != request.PurchaseCost || current.Currency != currency) changed.Add("alış bedeli");
+            if (current.IsRequestable != isRequestable) changed.Add("talep edilebilir durumu");
             if (changed.Count == 0) return Results.Ok(new { id, updatedAt = current.UpdatedAt, changed = false });
 
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
@@ -1559,6 +1561,7 @@ public static class AssetEndpoints
                         .SetProperty(x => x.WarrantyExpiresAt, request.WarrantyExpiresAt)
                         .SetProperty(x => x.PurchaseCost, request.PurchaseCost)
                         .SetProperty(x => x.Currency, currency)
+                        .SetProperty(x => x.IsRequestable, isRequestable)
                         .SetProperty(x => x.UpdatedAt, now), cancellationToken);
                 if (affected == 0)
                 {
