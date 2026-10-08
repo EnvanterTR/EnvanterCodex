@@ -1747,6 +1747,42 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var created = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
         var orderId = created.RootElement.GetProperty("id").GetGuid();
 
+        using var fakeInvoice = new MultipartFormDataContent();
+        var invalidPdf = new ByteArrayContent("not a pdf"u8.ToArray());
+        invalidPdf.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
+        fakeInvoice.Add(invalidPdf, "file", "invoice.pdf");
+        using var rejectedAttachment = await SendAsRoleAsync(HttpMethod.Post, $"/api/stock-orders/{orderId}/attachments", "admin",
+            fakeInvoice, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.BadRequest, rejectedAttachment.StatusCode);
+        using var validInvoice = new MultipartFormDataContent();
+        var invoiceBytes = "%PDF-1.7\nstock invoice"u8.ToArray();
+        var invoice = new ByteArrayContent(invoiceBytes);
+        invoice.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
+        validInvoice.Add(invoice, "file", "stock-invoice.pdf");
+        using var uploadedAttachment = await SendAsRoleAsync(HttpMethod.Post, $"/api/stock-orders/{orderId}/attachments", "admin",
+            validInvoice, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, uploadedAttachment.StatusCode);
+        using var attachmentPayload = JsonDocument.Parse(await uploadedAttachment.Content.ReadAsStringAsync());
+        var attachmentId = attachmentPayload.RootElement.GetProperty("id").GetGuid();
+        using var attachmentList = await SendAsAdminAsync($"/api/stock-orders/{orderId}/attachments");
+        Assert.Equal(HttpStatusCode.OK, attachmentList.StatusCode);
+        using var attachmentListPayload = JsonDocument.Parse(await attachmentList.Content.ReadAsStringAsync());
+        Assert.Equal(attachmentId, Assert.Single(attachmentListPayload.RootElement.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
+        using var attachmentDownload = await SendAsAdminAsync($"/api/stock-orders/{orderId}/attachments/{attachmentId}/file");
+        Assert.Equal(HttpStatusCode.OK, attachmentDownload.StatusCode);
+        Assert.Equal(invoiceBytes, await attachmentDownload.Content.ReadAsByteArrayAsync());
+        using var crossTenantAttachmentList = await SendAsAdminAsync($"/api/stock-orders/{orderId}/attachments", _otherCompanyId);
+        Assert.Equal(HttpStatusCode.Unauthorized, crossTenantAttachmentList.StatusCode);
+        using var companyArchiveResponse = await SendAsAdminAsync("/api/company/export.zip");
+        Assert.Equal(HttpStatusCode.OK, companyArchiveResponse.StatusCode);
+        using (var archive = new ZipArchive(await companyArchiveResponse.Content.ReadAsStreamAsync(), ZipArchiveMode.Read, leaveOpen: true))
+        {
+            var archivedInvoice = Assert.Single(archive.Entries,
+                entry => entry.FullName == $"media/stock-purchase-orders/{orderId:N}/attachments/{attachmentId:N}.pdf");
+            await using var stream = archivedInvoice.Open(); using var bytes = new MemoryStream(); await stream.CopyToAsync(bytes);
+            Assert.Equal(invoiceBytes, bytes.ToArray());
+        }
+
         using var exportResponse = await SendAsAdminAsync($"/api/stock-orders/export.csv?q={Uri.EscapeDataString(orderNumber)}&status=Ordered");
         Assert.Equal(HttpStatusCode.OK, exportResponse.StatusCode);
         Assert.Contains("'=Acceptance supplier", await exportResponse.Content.ReadAsStringAsync());
@@ -1805,6 +1841,11 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(8, await db.InventoryComponents.Where(x => x.CompanyId == _companyId && x.Id == _ownComponentId).Select(x => x.TotalQuantity).SingleAsync());
         Assert.Equal(2, await db.ConsumableMovements.CountAsync(x => x.CompanyId == _companyId && x.ConsumableId == _ownConsumableId && x.MovementType == "Received" && x.Notes != null && x.Notes.Contains("ST-")));
         Assert.Equal(2, await db.ComponentMovements.CountAsync(x => x.CompanyId == _companyId && x.ComponentId == _ownComponentId && x.MovementType == "Received" && x.Notes != null && x.Notes.Contains("ST-")));
+        Assert.Equal(1, await db.StockPurchaseOrderAttachments.CountAsync(x => x.CompanyId == _companyId && x.PurchaseOrderId == orderId));
+        using var deleteAttachment = await SendAsRoleAsync(HttpMethod.Delete, $"/api/stock-orders/{orderId}/attachments/{attachmentId}",
+            "admin", null, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.NoContent, deleteAttachment.StatusCode);
+        Assert.Equal(0, await db.StockPurchaseOrderAttachments.CountAsync(x => x.CompanyId == _companyId && x.PurchaseOrderId == orderId));
     }
 
     [Fact]

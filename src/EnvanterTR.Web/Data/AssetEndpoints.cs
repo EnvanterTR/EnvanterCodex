@@ -46,6 +46,7 @@ public static class AssetEndpoints
         api.MapInventoryMovementEndpoints();
         api.MapAccessoryPurchaseOrderEndpoints();
         api.MapStockPurchaseOrderEndpoints();
+        api.MapStockPurchaseOrderAttachmentEndpoints();
         api.MapAssetPurchaseOrderEndpoints();
         api.MapAssetPurchaseOrderAttachmentEndpoints();
         api.MapSupplierCatalogEndpoints();

@@ -82,6 +82,7 @@ Konum listesi `isDefault`, `managerEmployeeId` ve `managerName` alanlarını iç
 - `GET /api/asset-orders/{id}/attachments` (`asset.read`; siparişe bağlı belge metaverileri)
 - `POST /api/asset-orders/{id}/attachments` (`asset.write`; PDF/PNG/JPEG/WebP, dosya başına en fazla 10 MiB ve sipariş başına en fazla 30 ek; imza doğrulaması, şirket medya deposu ve denetim izi)
 - `GET /api/asset-orders/{id}/attachments/{attachmentId}/file`, `DELETE /api/asset-orders/{id}/attachments/{attachmentId}` (dosya erişimi şirket kapsamında denetlenir; indirme `asset.read`, silme `asset.write`)
+- `GET /api/stock-orders/{id}/attachments`, `POST /api/stock-orders/{id}/attachments`, `GET /api/stock-orders/{id}/attachments/{attachmentId}/file`, `DELETE /api/stock-orders/{id}/attachments/{attachmentId}` (sarf/bileşen sipariş belgeleri; asset siparişiyle aynı dosya imzası, 10 MiB/30 ek sınırı ve rol/şirket kapsamı uygulanır)
 - `POST /api/asset-orders` (çok kalemli cihaz siparişi oluşturur; katalog kimliklerini şirket kapsamında doğrular; `asset.write`)
 - `POST /api/asset-orders/{id}/receive` (satır bazlı kısmi/tam teslim alma; yeni etiketli varlıklar, sipariş ilişkisi, satın alma hareketi ve denetim izi tek transaction; `asset.write`)
 - `POST /api/asset-orders/{id}/cancel` (şirket kapsamlı siparişi iptal eder; daha önce alınmış cihazlar ve geçmiş korunur; `asset.write`)

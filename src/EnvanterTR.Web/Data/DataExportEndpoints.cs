@@ -1573,7 +1573,7 @@ public static class DataExportEndpoints
                 var readme = archive.CreateEntry("README.txt", CompressionLevel.Fastest);
                 await using var readmeStream = readme.Open();
                 await using var readmeWriter = new StreamWriter(readmeStream, new UTF8Encoding(false));
-                await readmeWriter.WriteAsync("EnvanterTR şirket veri arşivi\r\ncompany-data.json şirket kayıtlarının bir bölümünü, departman ve konum kataloglarını içerir. media/ klasörü şirket logolarını, varlık dosyalarını, varlık satın alma sipariş belgelerini, aksesuar fotoğraflarını, lisans ve bakım eklerini, çalışan fotoğraflarını/belgelerini ve bu şirkete üye hesapların profil fotoğraflarını içerir. Bu arşiv tam sistem yedeği veya geri yükleme paketi değildir. Kimlik bilgileri ve oturumlar dahil edilmez.\r\n");
+                await readmeWriter.WriteAsync("EnvanterTR şirket veri arşivi\r\ncompany-data.json şirket kayıtlarının bir bölümünü, departman ve konum kataloglarını içerir. media/ klasörü şirket logolarını, varlık ve stok satın alma sipariş belgelerini, varlık dosyalarını, aksesuar fotoğraflarını, lisans ve bakım eklerini, çalışan fotoğraflarını/belgelerini ve bu şirkete üye hesapların profil fotoğraflarını içerir. Bu arşiv tam sistem yedeği veya geri yükleme paketi değildir. Kimlik bilgileri ve oturumlar dahil edilmez.\r\n");
             }
             await archiveFile.FlushAsync(cancellationToken);
             archiveFile.Position = 0;

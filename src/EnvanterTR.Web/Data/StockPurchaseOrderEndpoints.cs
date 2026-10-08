@@ -132,7 +132,11 @@ public static class StockPurchaseOrderEndpoints
                     itemNumber = x.ConsumableId != null ? db.Consumables.Where(i => i.CompanyId == companyId && i.Id == x.ConsumableId).Select(i => i.ItemNumber).FirstOrDefault() :
                         db.InventoryComponents.Where(i => i.CompanyId == companyId && i.Id == x.ComponentId).Select(i => i.ItemNumber).FirstOrDefault(),
                     x.Quantity, x.QuantityReceived, remaining = x.Quantity - x.QuantityReceived, x.UnitCost, totalCost = x.Quantity * x.UnitCost, x.Notes }).ToListAsync(ct);
-            return Results.Ok(new { order, lines, totalCost = lines.Sum(x => x.totalCost), quantity = lines.Sum(x => x.Quantity), quantityReceived = lines.Sum(x => x.QuantityReceived) });
+            var attachments = await db.StockPurchaseOrderAttachments.AsNoTracking().Where(x => x.CompanyId == companyId && x.PurchaseOrderId == id)
+                .OrderByDescending(x => x.CreatedAt).Select(x => new { x.Id, x.OriginalFileName, x.ContentType, x.Length, x.CreatedAt,
+                    uploadedBy = db.Users.Where(actor => actor.Id == x.UploadedByUserId).Select(actor => actor.DisplayName).FirstOrDefault() }).ToListAsync(ct);
+            return Results.Ok(new { order, lines, totalCost = lines.Sum(x => x.totalCost), quantity = lines.Sum(x => x.Quantity),
+                quantityReceived = lines.Sum(x => x.QuantityReceived), attachments, maxAttachmentCount = 30, maxAttachmentSizeBytes = 10 * 1024 * 1024 });
         }).RequireAuthorization("asset.read");
 
         api.MapPost("/stock-orders", async (CreateRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
