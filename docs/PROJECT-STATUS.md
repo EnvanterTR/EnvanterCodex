@@ -107,7 +107,8 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 ## 2026-10-08 Parola kurtarma kabulü
 
 - Parola kurtarma uç noktası için gerçek HTTP kabul testi eklendi. Var olan ve olmayan e-posta adresleri aynı `202 Accepted` yanıtını alıyor; bu, hesap varlığının dışarı sızmasını önlüyor.
-- Test Identity parola sıfırlama token'ıyla yeni parolanın kabul edildiğini, aynı token'ın tekrar kullanımının reddedildiğini ve yeni parolanın doğrulanabildiğini denetliyor. Gerçek SMTP teslimatı bu testin kapsamı değil.
+- Kabul düzeneğine yalnız loopback'te dinleyen sahte SMTP alıcısı eklendi. HTTP parola kurtarma isteği sonrası gerçek SMTP protokolüyle bir e-posta yakalanıyor; alıcı, sıfırlama yolu ve `#email=...&token=...` parçası doğrulanıyor; query string içinde e-posta/token bulunmadığı kontrol ediliyor. Müşterinin gerçek SMTP sağlayıcısı/kimlik bilgileriyle teslimat bu izole testin kapsamı değil.
+- Test Identity parola sıfırlama token'ıyla yeni parolanın kabul edildiğini, aynı token'ın tekrar kullanımının reddedildiğini ve yeni parolanın doğrulanabildiğini denetliyor.
 - Test düzeneğinde önceden küçük harfle yazılan normalize e-posta alanı, Identity'nin büyük harfli normalizasyonuyla eşleşmiyordu. Fixture doğru Identity kuralına getirildi; hedeflenen kabul testi geçti.
-- İzole PostgreSQL tenant kabul paketi **14/14 geçti**. Release web imajı yerel `localhost:8080` uygulamasına alındı; `/api/status` `ready`, 28 migration uygulanmış ve bekleyen migration 0. Bu senaryo SMTP sağlayıcısına e-posta teslimini doğrulamıyor; gerçek SMTP teslimat kabulü açık kalıyor.
-- Düzeltme ve kabul kapsamı GitHub `main` dalına aktarılmaya hazır; dış hedef branch ile yerel HEAD bu kayıttan önce `0d2ffdc` üzerinde aynıydı.
+- İzole PostgreSQL tenant kabul paketi, SMTP alıcı kontrolü de dahil **14/14 geçti**. Sahte sunucunun yerel olması gerçek sağlayıcı kimlik bilgileriyle teslimatı kanıtlamaz; bu üretim kabulü açık kalır.
+- Önceki parola kurtarma düzeltmesi `af15563` commit'iyle GitHub `main` dalına gönderilmiş ve uzak HEAD ile eşitliği doğrulanmıştı. Yeni SMTP kapsamı için tam test sonucu alındı; ek commit/push sırada.

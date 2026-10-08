@@ -1,6 +1,7 @@
 using System.Net;
 using System.IO.Compression;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using EnvanterTR.Web.Data;
@@ -42,6 +43,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     private readonly Guid _otherCompanyEmployeeId = Guid.NewGuid();
     private string? _previousConnectionString;
     private string? _previousForwardedHeadersSetting;
+    private readonly SmtpCaptureServer _smtpCapture = new();
     private readonly string _mediaPath = Path.Combine(Path.GetTempPath(), "envantertr-security-media-" + Guid.NewGuid().ToString("N"));
     private WebApplicationFactory<Program>? _factory;
     private HttpClient? _client;
@@ -64,7 +66,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 {
                     ["ConnectionStrings:EnvanterTR"] = connectionString,
                     ["ForwardedHeaders:Enabled"] = "true",
-                    ["Storage:CompanyMediaPath"] = _mediaPath
+                    ["Storage:CompanyMediaPath"] = _mediaPath,
+                    ["Email:Smtp:Host"] = "127.0.0.1",
+                    ["Email:Smtp:Port"] = _smtpCapture.Port.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["Email:Smtp:EnableSsl"] = "false",
+                    ["Email:FromAddress"] = "no-reply@example.invalid",
+                    ["Email:PublicBaseUrl"] = "https://portal.example.invalid"
                 }));
             builder.ConfigureTestServices(services => services.AddAuthentication(options =>
                 {
@@ -161,6 +168,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     {
         _client?.Dispose();
         if (_factory is not null) await _factory.DisposeAsync();
+        await _smtpCapture.DisposeAsync();
         Environment.SetEnvironmentVariable("ConnectionStrings__EnvanterTR", _previousConnectionString);
         Environment.SetEnvironmentVariable("ForwardedHeaders__Enabled", _previousForwardedHeadersSetting);
         if (Directory.Exists(_mediaPath)) Directory.Delete(_mediaPath, recursive: true);
@@ -638,6 +646,18 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var missingMessage = JsonDocument.Parse(await missingAccountResponse.Content.ReadAsStringAsync());
         Assert.Equal(existingMessage.RootElement.GetProperty("message").GetString(),
             missingMessage.RootElement.GetProperty("message").GetString());
+        var deliveredMessage = Assert.Single(_smtpCapture.Messages);
+        Assert.Contains($"To: {accountEmail}", deliveredMessage, StringComparison.OrdinalIgnoreCase);
+        var bodySeparator = deliveredMessage.IndexOf("\n\n", StringComparison.Ordinal);
+        Assert.True(bodySeparator >= 0, "The captured SMTP message must contain a MIME body.");
+        var headers = deliveredMessage[..bodySeparator];
+        var encodedBody = deliveredMessage[(bodySeparator + 2)..].Replace("\r", "", StringComparison.Ordinal).Trim();
+        var htmlBody = headers.Contains("Content-Transfer-Encoding: base64", StringComparison.OrdinalIgnoreCase)
+            ? Encoding.UTF8.GetString(Convert.FromBase64String(string.Concat(encodedBody.Where(character => !char.IsWhiteSpace(character)))))
+            : encodedBody;
+        Assert.Contains("reset-password.html", htmlBody, StringComparison.Ordinal);
+        Assert.Contains("#email", htmlBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("?email=", htmlBody, StringComparison.OrdinalIgnoreCase);
 
         string resetToken;
         await using (var scope = _factory!.Services.CreateAsyncScope())
