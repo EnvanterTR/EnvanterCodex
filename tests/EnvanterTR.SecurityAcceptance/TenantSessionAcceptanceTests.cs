@@ -218,6 +218,58 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Dashboard_preferences_are_private_validated_and_csrf_protected()
+    {
+        using (var defaultsResponse = await SendAsAdminAsync("/api/dashboard/preferences"))
+        using (var defaults = JsonDocument.Parse(await defaultsResponse.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, defaultsResponse.StatusCode);
+            Assert.Equal(5, defaults.RootElement.GetProperty("visibleWidgets").GetArrayLength());
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using (var noCsrf = await SendAsUserAsync(HttpMethod.Put, "/api/dashboard/preferences", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { visibleWidgets = new[] { "stats", "activity" } })))
+            Assert.Equal(HttpStatusCode.BadRequest, noCsrf.StatusCode);
+
+        using (var invalid = await SendAsUserAsync(HttpMethod.Put, "/api/dashboard/preferences", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { visibleWidgets = new[] { "stats", "admin" } }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+
+        using (var empty = await SendAsUserAsync(HttpMethod.Put, "/api/dashboard/preferences", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { visibleWidgets = Array.Empty<string>() }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, empty.StatusCode);
+
+        using (var update = await SendAsUserAsync(HttpMethod.Put, "/api/dashboard/preferences", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { visibleWidgets = new[] { "stats", "activity" } }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+
+        using (var sameUser = await SendAsUserAsync(HttpMethod.Get, "/api/dashboard/preferences", _userId, _companyId))
+        using (var payload = JsonDocument.Parse(await sameUser.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, sameUser.StatusCode);
+            Assert.Equal(new[] { "stats", "activity" }, payload.RootElement.GetProperty("visibleWidgets")
+                .EnumerateArray().Select(x => x.GetString()).ToArray());
+        }
+
+        using (var otherUser = await SendAsUserAsync(HttpMethod.Get, "/api/dashboard/preferences", _sameCompanyOtherUserId, _companyId))
+        using (var payload = JsonDocument.Parse(await otherUser.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, otherUser.StatusCode);
+            Assert.Equal(5, payload.RootElement.GetProperty("visibleWidgets").GetArrayLength());
+        }
+
+        using (var otherCompany = await SendAsUserAsync(HttpMethod.Get, "/api/dashboard/preferences", _userId, _otherCompanyId))
+            Assert.Equal(HttpStatusCode.Unauthorized, otherCompany.StatusCode);
+    }
+
+    [Fact]
     public async Task Public_web_shell_uses_EnvanterTR_branding_without_reference_product_name()
     {
         var response = await _client!.GetAsync("/");
