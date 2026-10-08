@@ -9,6 +9,9 @@ const int SaltLength = 16;
 const int IvLength = 16;
 const int KeyLength = 64;
 const int Iterations = 600_000;
+const int MaximumArchiveEntries = 250_000;
+const long MaximumArchiveExpandedBytes = 64L * 1024 * 1024 * 1024;
+const int MaximumArchivePathLength = 1024;
 var magic = Encoding.ASCII.GetBytes("EVTRBK01");
 
 try
@@ -258,11 +261,12 @@ async Task VerifyArchiveAsync(string zipPath)
 {
     await using var file = new FileStream(zipPath, FileMode.Open, FileAccess.Read, FileShare.Read, 128 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
     using var archive = new ZipArchive(file, ZipArchiveMode.Read, leaveOpen: false, Encoding.UTF8);
-    if (archive.Entries.Count == 0) throw new InvalidDataException("Yedek arşivi boş.");
+    ValidateArchive(archive);
+    long expandedBytes = 0;
     foreach (var entry in archive.Entries)
     {
         await using var input = entry.Open();
-        await input.CopyToAsync(Stream.Null);
+        expandedBytes = await DrainEntryAsync(input, expandedBytes);
     }
 }
 
@@ -271,6 +275,8 @@ async Task ExtractArchiveAsync(string zipPath, string destination)
     await using var file = new FileStream(zipPath, FileMode.Open, FileAccess.Read, FileShare.Read, 128 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
     using var archive = new ZipArchive(file, ZipArchiveMode.Read, leaveOpen: false, Encoding.UTF8);
     var root = Path.GetFullPath(destination) + Path.DirectorySeparatorChar;
+    ValidateArchive(archive);
+    long expandedBytes = 0;
     foreach (var entry in archive.Entries)
     {
         var target = Path.GetFullPath(Path.Combine(destination, entry.FullName.Replace('/', Path.DirectorySeparatorChar)));
@@ -281,8 +287,62 @@ async Task ExtractArchiveAsync(string zipPath, string destination)
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         await using var input = entry.Open();
         await using var output = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None, 128 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
-        await input.CopyToAsync(output);
+        expandedBytes = await CopyEntryAsync(input, output, expandedBytes);
     }
+}
+
+void ValidateArchive(ZipArchive archive)
+{
+    if (archive.Entries.Count == 0) throw new InvalidDataException("Yedek arşivi boş.");
+    if (archive.Entries.Count > MaximumArchiveEntries) throw new InvalidDataException($"Yedek arşivinde dosya sayısı sınırı aşıldı ({MaximumArchiveEntries:N0}).");
+
+    long declaredExpandedBytes = 0;
+    var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var entry in archive.Entries)
+    {
+        var name = entry.FullName;
+        if (string.IsNullOrWhiteSpace(name) || name.Length > MaximumArchivePathLength || name.Contains('\\') || name.Contains(':') || name.Contains('\0') ||
+            name.StartsWith('/') || Path.IsPathRooted(name) || name.Split('/').Any(part => part is ".." or "."))
+            throw new InvalidDataException("Arşivde geçersiz veya güvenli olmayan bir dosya yolu bulundu.");
+        var normalizedName = name.TrimEnd('/');
+        if (!names.Add(normalizedName)) throw new InvalidDataException("Arşivde yinelenen dosya yolu bulundu.");
+        if (entry.Length < 0 || entry.Length > MaximumArchiveExpandedBytes || declaredExpandedBytes > MaximumArchiveExpandedBytes - entry.Length)
+            throw new InvalidDataException($"Yedek arşivinin açılmış boyutu sınırı aşıldı ({MaximumArchiveExpandedBytes / (1024 * 1024 * 1024)} GiB).");
+        declaredExpandedBytes += entry.Length;
+        var unixType = (entry.ExternalAttributes >> 16) & 0xF000;
+        if (unixType is not 0 and not 0x8000 and not 0x4000)
+            throw new InvalidDataException("Arşivde normal dosya veya klasör dışında bir kayıt türü bulundu.");
+    }
+}
+
+async Task<long> DrainEntryAsync(Stream input, long expandedBytes)
+{
+    var buffer = new byte[128 * 1024];
+    int read;
+    while ((read = await input.ReadAsync(buffer)) > 0)
+    {
+        expandedBytes = AddExpandedBytes(expandedBytes, read);
+    }
+    return expandedBytes;
+}
+
+async Task<long> CopyEntryAsync(Stream input, Stream output, long expandedBytes)
+{
+    var buffer = new byte[128 * 1024];
+    int read;
+    while ((read = await input.ReadAsync(buffer)) > 0)
+    {
+        expandedBytes = AddExpandedBytes(expandedBytes, read);
+        await output.WriteAsync(buffer.AsMemory(0, read));
+    }
+    return expandedBytes;
+}
+
+long AddExpandedBytes(long total, int count)
+{
+    if (total > MaximumArchiveExpandedBytes - count)
+        throw new InvalidDataException($"Yedek arşivinin açılmış boyutu sınırı aşıldı ({MaximumArchiveExpandedBytes / (1024 * 1024 * 1024)} GiB).");
+    return total + count;
 }
 
 bool IsInside(string path, string directory)
