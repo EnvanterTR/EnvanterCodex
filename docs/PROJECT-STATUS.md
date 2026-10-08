@@ -3,6 +3,8 @@
 **Tarih:** 8 Ekim 2026
 **Ölçüm kapsamı:** Şirketlerin kullanabileceği envanter ürünü; uygulama işlevleri, üretim hazırlığı ve Windows/Linux teslimatı.
 
+- **8 Ekim çalışma güncellemesi:** API’ye erişilemediğinde giriş ekranı artık bağlantı hatasını anlaşılır biçimde gösteriyor ve sunucu bağlantısını yeniden deneme düğmesi sunuyor. Yeniden denemede CSRF ve sunucu hazırlık durumu tekrar yükleniyor; oturum geçerli hale geldiyse giriş katmanı kapanıyor. Bu, sunucu/DB’nin gerçekten çalışması gereğini değiştirmez; geçici kesintiden sonra sayfayı yenileme zorunluluğunu kaldırır.
+
 - **8 Ekim çalışma güncellemesi:** Raporlara tamamlanmış fiziksel denetimler eklendi. 366 güne kadar tarih filtresi, varlık araması, sayfalama, denetimi yapan kişi/açıklama ve formül güvenli 10.000 satırlık CSV dışa aktarımı bulunuyor. API raporu ve CSV şirket kapsamını koruyor; PostgreSQL tenant kabul senaryosu iki şirketin denetim kayıtlarını ayırdı ve yalnız kendi şirketindeki sonucu doğruladı. Yerel Release uygulama güncellendi.
 
 - **8 Ekim çalışma güncellemesi:** Hazır raporlara bileşen stok özeti eklendi. Kategori bazında bileşen sayısı, toplam/atanmış/kullanılabilir adet ve minimum stoğa eşit veya altındaki stok kaydı sayısı gösteriliyor; rapordan mevcut filtreli ve formül güvenli CSV çıktısına erişiliyor. Yeni rapor API'sinin şirket sınırı PostgreSQL tenant kabul paketinde doğrulandı. Release Docker derlemesi, satır içi JavaScript sözdizimi, uygulama ana sayfası HTTP 200 ve `/api/status` `ready` kontrolleri geçti; 37 migration uygulanmış, bekleyen yok.
