@@ -44,7 +44,15 @@ public static class DataExportEndpoints
             IAntiforgery antiforgery, CancellationToken cancellationToken) => ImportEmployeeCsvAsync(context, db, antiforgery, false, cancellationToken))
             .RequireAuthorization("people.manage")
             .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
+        endpoints.MapPost("/api/employees/import/preview.xlsx", (HttpContext context, AppDbContext db,
+            IAntiforgery antiforgery, CancellationToken cancellationToken) => ImportEmployeeCsvAsync(context, db, antiforgery, false, cancellationToken))
+            .RequireAuthorization("people.manage")
+            .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
         endpoints.MapPost("/api/employees/import.csv", (HttpContext context, AppDbContext db,
+            IAntiforgery antiforgery, CancellationToken cancellationToken) => ImportEmployeeCsvAsync(context, db, antiforgery, true, cancellationToken))
+            .RequireAuthorization("people.manage")
+            .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
+        endpoints.MapPost("/api/employees/import.xlsx", (HttpContext context, AppDbContext db,
             IAntiforgery antiforgery, CancellationToken cancellationToken) => ImportEmployeeCsvAsync(context, db, antiforgery, true, cancellationToken))
             .RequireAuthorization("people.manage")
             .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
@@ -61,7 +69,8 @@ public static class DataExportEndpoints
             db.CompanyMemberships.Any(m => m.CompanyId == companyId && m.UserId == actorId && m.RoleKey == role), cancellationToken)) return Results.Forbid();
         try { await antiforgery.ValidateRequestAsync(context); }
         catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
-        if (context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true)
+        var isXlsx = IsXlsxRequest(context.Request);
+        if (!isXlsx && context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true)
             return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
         if (context.Request.ContentLength > PreviewMaxBytes) return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
 
@@ -74,14 +83,22 @@ public static class DataExportEndpoints
             if (buffer.Length + read > PreviewMaxBytes) return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
             await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken);
         }
-        string text;
-        try { text = new System.Text.UTF8Encoding(false, true).GetString(buffer.ToArray()).TrimStart('\uFEFF'); }
+        List<List<string>> rows;
+        try
+        {
+            if (isXlsx) rows = AssetXlsxImportParser.Parse(buffer, CsvImportMaxRows + 2);
+            else
+            {
+                var text = new System.Text.UTF8Encoding(false, true).GetString(buffer.ToArray()).TrimStart('\uFEFF');
+                rows = ParseSemicolonCsv(text, CsvImportMaxRows + 2, ',');
+            }
+        }
         catch (System.Text.DecoderFallbackException)
         { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV dosyası UTF-8 kodlamasında olmalıdır." } }); }
-        List<List<string>> rows;
-        try { rows = ParseSemicolonCsv(text, CsvImportMaxRows + 2, ','); }
         catch (FormatException)
         { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV tırnak/ayraç biçimi bozuk." } }); }
+        catch (Exception exception) when (isXlsx && exception is InvalidDataException or InvalidOperationException or System.Xml.XmlException or OverflowException)
+        { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { exception.Message } }); }
         string[] header = ["Personel No", "Ad Soyad", "E-posta", "Departman", "Görev Unvanı", "Telefon", "Konum", "İşe Başlama Tarihi"];
         if (rows.Count is < 2 || rows.Count > CsvImportMaxRows + 1 || !rows[0].SequenceEqual(header, StringComparer.OrdinalIgnoreCase))
             return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"İçe aktarma şablonunu kullanın: başlık satırı ve en fazla {CsvImportMaxRows:N0} çalışan satırı." } });
@@ -143,16 +160,16 @@ public static class DataExportEndpoints
         db.Employees.AddRange(employees);
         foreach (var employee in employees)
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Employee",
-                TargetId = employee.Id, Action = "Created", Details = $"Personel no: {employee.EmployeeNumber}; CSV içe aktarımı." });
+                TargetId = employee.Id, Action = "Created", Details = $"Personel no: {employee.EmployeeNumber}; {(isXlsx ? "Excel" : "CSV")} içe aktarımı." });
         db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Employee",
-            Action = "CsvImported", Details = $"CSV dosyasından {employees.Count} çalışan içe aktarıldı." });
+            Action = isXlsx ? "XlsxImported" : "CsvImported", Details = $"{(isXlsx ? "Excel" : "CSV")} dosyasından {employees.Count} çalışan içe aktarıldı." });
         try { await db.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken); }
         catch (DbUpdateException)
         {
             await transaction.RollbackAsync(cancellationToken);
-            return Results.Conflict(new { message = "CSV aktarılmadı. Kayıt çakışması oluştu; önizlemeyi yenileyip tekrar deneyin." });
+            return Results.Conflict(new { message = $"{(isXlsx ? "Excel" : "CSV")} aktarılmadı. Kayıt çakışması oluştu; önizlemeyi yenileyip tekrar deneyin." });
         }
-        return Results.Ok(new { imported = employees.Count, message = $"{employees.Count:N0} çalışan başarıyla içe aktarıldı." });
+        return Results.Ok(new { imported = employees.Count, message = $"{employees.Count:N0} çalışan başarıyla {(isXlsx ? "Excel" : "CSV")} dosyasından içe aktarıldı." });
     }
 
     private static async Task<IResult> ImportAssetCsvAsync(HttpContext context, AppDbContext db,
