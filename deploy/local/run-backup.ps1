@@ -1,6 +1,5 @@
 param(
-    [Parameter(Mandatory = $true)]
-    [string] $PassphraseFile,
+    [string] $PassphraseFile = '',
     [string] $OutputDirectory = "",
     [ValidateRange(1, 3650)]
     [int] $RetentionDays = 30
@@ -14,19 +13,75 @@ $scriptDirectory = $PSScriptRoot
 $projectRoot = (Resolve-Path -LiteralPath (Join-Path $scriptDirectory '..\..')).Path
 $backupScript = Join-Path $scriptDirectory 'backup.ps1'
 $verifyScript = Join-Path $scriptDirectory 'verify-backup.ps1'
-$passwordPath = (Resolve-Path -LiteralPath $PassphraseFile -ErrorAction Stop).Path
-if (-not (Test-Path -LiteralPath $passwordPath -PathType Leaf)) { throw 'Parola dosyası bulunamadı.' }
-$passphrase = [System.IO.File]::ReadAllText($passwordPath).TrimEnd([char[]]@("`r", "`n"))
-if ($passphrase.Length -lt 16 -or $passphrase.Length -gt 4096) { throw 'Parola en az 16 ve en fazla 4.096 karakter olmalıdır; yedek alınmadı.' }
-$passphrase = $null
-if ([string]::IsNullOrWhiteSpace($OutputDirectory)) { $OutputDirectory = Join-Path $projectRoot 'backups' }
-New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
-$backupRoot = (Resolve-Path -LiteralPath $OutputDirectory).Path
-$logDirectory = Join-Path $backupRoot '.scheduled-logs'
-New-Item -ItemType Directory -Force -Path $logDirectory | Out-Null
-Set-EnvanterTRPrivateAcl -Path $logDirectory -Kind Directory
-$logPath = Join-Path $logDirectory ("run-{0}-{1}.log" -f [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss'), [Guid]::NewGuid().ToString('N').Substring(0, 8))
-Start-Transcript -LiteralPath $logPath | Out-Null
+$temporaryPasswordPath = $null
+$passwordPath = $null
+$firstPassphrase = $null
+$confirmationPassphrase = $null
+$firstPointer = [IntPtr]::Zero
+$confirmationPointer = [IntPtr]::Zero
+$firstPlaintext = $null
+$confirmationPlaintext = $null
+if ([string]::IsNullOrWhiteSpace($PassphraseFile)) {
+    Write-Output 'Yedek parolası ekranda gösterilmeden iki kez istenecek. En az 16 karakter kullanın ve parolayı yedekten ayrı bir yerde saklayın.'
+    $firstPassphrase = Read-Host 'Yeni yedek parolası' -AsSecureString
+    $confirmationPassphrase = Read-Host 'Yedek parolasını tekrar girin' -AsSecureString
+    try {
+        $firstPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($firstPassphrase)
+        $confirmationPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($confirmationPassphrase)
+        $firstPlaintext = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($firstPointer)
+        $confirmationPlaintext = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($confirmationPointer)
+        if (-not [string]::Equals($firstPlaintext, $confirmationPlaintext, [StringComparison]::Ordinal)) { throw 'Parolalar eşleşmedi; yedek alınmadı.' }
+        if ($firstPlaintext.Length -lt 16 -or $firstPlaintext.Length -gt 4096) { throw 'Parola en az 16 ve en fazla 4.096 karakter olmalıdır; yedek alınmadı.' }
+        $secretRoot = Join-Path $env:USERPROFILE '.envantertr-secrets'
+        if ((Test-Path -LiteralPath $secretRoot -PathType Container) -and ((Get-Item -LiteralPath $secretRoot -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            throw 'Geçici parola dizini junction veya symlink olamaz.'
+        }
+        New-Item -ItemType Directory -Force -Path $secretRoot | Out-Null
+        Set-EnvanterTRPrivateAcl -Path $secretRoot -Kind Directory
+        $temporaryPasswordPath = Join-Path $secretRoot ('.backup-{0}.tmp' -f [Guid]::NewGuid().ToString('N'))
+        try {
+            [IO.File]::WriteAllText($temporaryPasswordPath, $firstPlaintext, [Text.UTF8Encoding]::new($false))
+            Set-EnvanterTRPrivateAcl -Path $temporaryPasswordPath -Kind File
+        }
+        catch {
+            Remove-Item -LiteralPath $temporaryPasswordPath -Force -ErrorAction SilentlyContinue
+            $temporaryPasswordPath = $null
+            throw
+        }
+        $passwordPath = (Resolve-Path -LiteralPath $temporaryPasswordPath).Path
+    }
+    finally {
+        if ($firstPointer -ne [IntPtr]::Zero) { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($firstPointer) }
+        if ($confirmationPointer -ne [IntPtr]::Zero) { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($confirmationPointer) }
+        if ($firstPassphrase) { $firstPassphrase.Dispose() }
+        if ($confirmationPassphrase) { $confirmationPassphrase.Dispose() }
+        $firstPlaintext = $null
+        $confirmationPlaintext = $null
+    }
+}
+else {
+    $passwordPath = (Resolve-Path -LiteralPath $PassphraseFile -ErrorAction Stop).Path
+    if (-not (Test-Path -LiteralPath $passwordPath -PathType Leaf)) { throw 'Parola dosyası bulunamadı.' }
+    $passphrase = [System.IO.File]::ReadAllText($passwordPath).TrimEnd([char[]]@("`r", "`n"))
+    if ($passphrase.Length -lt 16 -or $passphrase.Length -gt 4096) { throw 'Parola en az 16 ve en fazla 4.096 karakter olmalıdır; yedek alınmadı.' }
+    $passphrase = $null
+}
+try {
+    if ([string]::IsNullOrWhiteSpace($OutputDirectory)) { $OutputDirectory = Join-Path $projectRoot 'backups' }
+    New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
+    $backupRoot = (Resolve-Path -LiteralPath $OutputDirectory).Path
+    $logDirectory = Join-Path $backupRoot '.scheduled-logs'
+    New-Item -ItemType Directory -Force -Path $logDirectory | Out-Null
+    Set-EnvanterTRPrivateAcl -Path $logDirectory -Kind Directory
+    $logPath = Join-Path $logDirectory ("run-{0}-{1}.log" -f [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss'), [Guid]::NewGuid().ToString('N').Substring(0, 8))
+    Start-Transcript -LiteralPath $logPath | Out-Null
+}
+catch {
+    if ($temporaryPasswordPath -and (Test-Path -LiteralPath $temporaryPasswordPath -PathType Leaf)) {
+        Remove-Item -LiteralPath $temporaryPasswordPath -Force -ErrorAction SilentlyContinue
+    }
+    throw
+}
 
 try {
 
@@ -102,4 +157,7 @@ Write-Output "Saklama süresi: $RetentionDays gün. Ham yedek klasörü işlem s
 }
 finally {
     try { Stop-Transcript | Out-Null } catch { }
+    if ($temporaryPasswordPath -and (Test-Path -LiteralPath $temporaryPasswordPath -PathType Leaf)) {
+        Remove-Item -LiteralPath $temporaryPasswordPath -Force -ErrorAction SilentlyContinue
+    }
 }

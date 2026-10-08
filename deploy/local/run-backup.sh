@@ -4,19 +4,29 @@ umask 077
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
-if [[ $# -lt 1 || $# -gt 3 ]]; then
-  echo 'Kullanım: bash deploy/local/run-backup.sh <parola-dosyası> [çıktı-dizini] [saklama-günü]' >&2
+if [[ $# -gt 3 ]]; then
+  echo 'Kullanım: bash deploy/local/run-backup.sh [parola-dosyası] [çıktı-dizini] [saklama-günü]' >&2
   exit 2
 fi
 
-PASSWORD_FILE="$(realpath -- "$1")"
-if [[ ! -f "$PASSWORD_FILE" ]]; then echo 'Parola dosyası bulunamadı.' >&2; exit 1; fi
-MODE="$(stat -c '%a' "$PASSWORD_FILE")"
-if (( (8#$MODE & 077) != 0 )); then
-  echo 'Linux parola dosyasının grup/diğer kullanıcı izinleri olmamalı (chmod 600 önerilir).' >&2
-  exit 1
-fi
-if ! python3 - "$PASSWORD_FILE" <<'PY'
+TEMP_PASSWORD_FILE=''
+cleanup() {
+  if [[ -n "$TEMP_PASSWORD_FILE" && -f "$TEMP_PASSWORD_FILE" ]]; then rm -f -- "$TEMP_PASSWORD_FILE"; fi
+}
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+if [[ -n "${1:-}" ]]; then
+  PASSWORD_FILE="$(realpath -- "$1")"
+  if [[ ! -f "$PASSWORD_FILE" ]]; then echo 'Parola dosyası bulunamadı.' >&2; exit 1; fi
+  MODE="$(stat -c '%a' "$PASSWORD_FILE")"
+  if (( (8#$MODE & 077) != 0 )); then
+    echo 'Linux parola dosyasının grup/diğer kullanıcı izinleri olmamalı (chmod 600 önerilir).' >&2
+    exit 1
+  fi
+  if ! python3 - "$PASSWORD_FILE" <<'PY'
 from pathlib import Path
 import sys
 
@@ -29,8 +39,27 @@ except Exception:
     print("Parola dosyası UTF-8 olmalı ve 16–4096 karakter içermelidir; yedek alınmadı.", file=sys.stderr)
     sys.exit(1)
 PY
-then
-  exit 1
+  then
+    exit 1
+  fi
+else
+  printf 'Yedek parolası ekranda gösterilmeden iki kez istenecek. En az 16 karakter kullanın ve parolayı yedekten ayrı bir yerde saklayın.\n' >&2
+  IFS= read -r -s -p 'Yeni yedek parolası: ' PASSPHRASE || { printf '\n' >&2; echo 'Parola okunamadı; yedek alınmadı.' >&2; exit 1; }
+  printf '\n' >&2
+  IFS= read -r -s -p 'Yedek parolasını tekrar girin: ' CONFIRMATION || { printf '\n' >&2; echo 'Parola doğrulaması okunamadı; yedek alınmadı.' >&2; exit 1; }
+  printf '\n' >&2
+  if [[ "$PASSPHRASE" != "$CONFIRMATION" ]]; then unset PASSPHRASE CONFIRMATION; echo 'Parolalar eşleşmedi; yedek alınmadı.' >&2; exit 1; fi
+  if ! printf '%s' "$PASSPHRASE" | python3 -c 'import sys; n=len(sys.stdin.read().encode("utf-16-le"))//2; sys.exit(0 if 16 <= n <= 4096 else 1)'; then
+    unset PASSPHRASE CONFIRMATION
+    echo 'Parola 16–4096 karakter olmalıdır; yedek alınmadı.' >&2
+    exit 1
+  fi
+  TEMP_ROOT="$(realpath -- "${TMPDIR:-/tmp}")"
+  TEMP_PASSWORD_FILE="$(mktemp "$TEMP_ROOT/envantertr-backup-password.XXXXXX")"
+  chmod 600 -- "$TEMP_PASSWORD_FILE"
+  printf '%s' "$PASSPHRASE" > "$TEMP_PASSWORD_FILE"
+  unset PASSPHRASE CONFIRMATION
+  PASSWORD_FILE="$TEMP_PASSWORD_FILE"
 fi
 OUTPUT_ROOT="${2:-$PROJECT_ROOT/backups}"
 RETENTION_DAYS="${3:-30}"
