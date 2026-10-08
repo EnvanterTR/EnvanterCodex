@@ -87,3 +87,9 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 - `GET /api/assets/{id}` artık aynı şirketin varlığa açık teslim edilmiş aksesuarlarını ve takılı bileşenlerini kalan/verilen adet, tarih ve notla döndürür. Arşivlenen ya da tamamen iade/çıkarılan kayıtlar gizlenir; diğer şirketin kayıtları sorguya dahil edilmez.
 - Varlık “İlişkiler” sekmesinde açık aksesuar zimmetleri ve bileşenler ayrı tablolarda, boş durum metni ve kayıt sayısıyla görünür. Değerler DOM `textContent` ile yazılır.
 - İzole kabul testi iki şirkette varlık/aksesuar/bileşen ilişkileri kurup yanıtın yalnız kendi şirketinin aktif kayıtlarını içerdiğini doğruladı. `run-security-acceptance.ps1`: **6/6 geçti**. Docker Release derlemesi, yerel uygulama güncellemesi ve `/api/status` doğrulaması tamamlandı.
+
+## 2026-10-08 GitHub CI ve medya erişim kabulü
+
+- `.github/workflows/ci.yml` eklendi. Her `main` push'u ve PR için Linux runner izole PostgreSQL tenant güvenlik kabul takımını; Windows runner şifreli yedek round-trip/tahrif reddi, webhook uyarı davranışı, geri yükleme ve güncelleme güvenlik sırası kontrollerini çalıştıracak. Windows kontrolleri bu makinede geçti; Actions'ın GitHub tarafındaki ilk çalıştırması henüz gözlenmedi.
+- Çalışan profil fotoğrafı/İK belgesi ve varlık eki indirmelerini tek gerçek HTTP senaryosunda kendi/başka şirket sınırında sınayan kabul kapsamı genişletildi. Bu test, varlık ek dosyası önizlemesinin `download` sorgusu olmadan 400 dönmesine neden olan zorunlu query binding'i yakaladı; `download` artık isteğe bağlı ve varsayılanı `false`.
+- İzin/dosya senaryosunun güncel biçimi izole kabul PostgreSQL'inde **1/1 geçti**; kendi şirketi dosyaları 200, yetkisiz İK belgesi 403, başka şirket dosyaları 404 verdi. Önceki tam güvenlik kabul takımı da değişiklik öncesi geçti. Üretim sunucu kurulum/restore kabulü hâlâ ayrı ve açık bir P0/P1 işidir.

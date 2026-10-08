@@ -1,0 +1,60 @@
+name: EnvanterTR CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: envantertr-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-security-acceptance:
+    name: Linux tenant security acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Run isolated PostgreSQL acceptance suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_name="envantertr-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          compose_file="deploy/testing/compose.security-acceptance.yaml"
+          cleanup() {
+            docker compose --project-name "$project_name" --file "$compose_file" down --volumes --remove-orphans
+          }
+          trap cleanup EXIT
+          docker compose --project-name "$project_name" --file "$compose_file" up \
+            --build --abort-on-container-exit --exit-code-from acceptance
+
+  windows-deployment-safety:
+    name: Windows deployment and backup safety
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Validate Windows backup encryption and tamper rejection
+        shell: pwsh
+        run: ./deploy/windows/tests/backup-crypto-check.ps1
+
+      - name: Validate backup alert handling
+        shell: pwsh
+        run: ./deploy/windows/tests/backup-alert-check.ps1
+
+      - name: Validate restore safety ordering
+        shell: pwsh
+        run: ./deploy/windows/tests/restore-safety-check.ps1
+
+      - name: Validate update safety ordering
+        shell: pwsh
+        run: ./deploy/windows/tests/update-safety-check.ps1
