@@ -396,6 +396,9 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var documentId = Guid.NewGuid();
         var otherCompanyDocumentId = Guid.NewGuid();
         var pdfBytes = System.Text.Encoding.ASCII.GetBytes("%PDF-1.4\n%%EOF");
+        var ownAssetAttachmentId = Guid.NewGuid();
+        var otherCompanyAssetAttachmentId = Guid.NewGuid();
+        var assetPdfBytes = System.Text.Encoding.ASCII.GetBytes("%PDF-1.7\nasset attachment\n%%EOF");
         var ownPhotoDirectory = Path.Combine(_mediaPath, _companyId.ToString("N"), "employees", _ownEmployeeId.ToString("N"));
         Directory.CreateDirectory(ownPhotoDirectory);
         await File.WriteAllBytesAsync(Path.Combine(ownPhotoDirectory, "profile.png"), pngSignature);
@@ -405,6 +408,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var otherCompanyDocumentDirectory = Path.Combine(_mediaPath, _otherCompanyId.ToString("N"), "employees", _otherCompanyEmployeeId.ToString("N"), "documents");
         Directory.CreateDirectory(otherCompanyDocumentDirectory);
         await File.WriteAllBytesAsync(Path.Combine(otherCompanyDocumentDirectory, $"{otherCompanyDocumentId:N}.pdf"), pdfBytes);
+        var ownAssetDirectory = Path.Combine(_mediaPath, _companyId.ToString("N"), "assets", _ownAssetId.ToString("N"));
+        Directory.CreateDirectory(ownAssetDirectory);
+        await File.WriteAllBytesAsync(Path.Combine(ownAssetDirectory, $"{ownAssetAttachmentId:N}.pdf"), assetPdfBytes);
+        var otherCompanyAssetDirectory = Path.Combine(_mediaPath, _otherCompanyId.ToString("N"), "assets", _otherCompanyAssetId.ToString("N"));
+        Directory.CreateDirectory(otherCompanyAssetDirectory);
+        await File.WriteAllBytesAsync(Path.Combine(otherCompanyAssetDirectory, $"{otherCompanyAssetAttachmentId:N}.pdf"), assetPdfBytes);
 
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
@@ -414,6 +423,11 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                     OriginalFileName = "own.pdf", StorageFileName = $"{documentId:N}.pdf", ContentType = "application/pdf", Length = pdfBytes.Length },
                 new EmployeeDocument { Id = otherCompanyDocumentId, CompanyId = _otherCompanyId, EmployeeId = _otherCompanyEmployeeId,
                     OriginalFileName = "other.pdf", StorageFileName = $"{otherCompanyDocumentId:N}.pdf", ContentType = "application/pdf", Length = pdfBytes.Length });
+            db.AssetAttachments.AddRange(
+                new AssetAttachment { Id = ownAssetAttachmentId, CompanyId = _companyId, AssetId = _ownAssetId,
+                    OriginalFileName = "asset-own.pdf", StorageFileName = $"{ownAssetAttachmentId:N}.pdf", ContentType = "application/pdf", Length = assetPdfBytes.Length },
+                new AssetAttachment { Id = otherCompanyAssetAttachmentId, CompanyId = _otherCompanyId, AssetId = _otherCompanyAssetId,
+                    OriginalFileName = "asset-other.pdf", StorageFileName = $"{otherCompanyAssetAttachmentId:N}.pdf", ContentType = "application/pdf", Length = assetPdfBytes.Length });
             await db.SaveChangesAsync();
         }
 
@@ -438,6 +452,15 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         await SetCompanyRoleAsync("admin");
         using (var crossCompanyDocumentResponse = await SendAsAdminAsync($"/api/employees/{_otherCompanyEmployeeId}/documents/{otherCompanyDocumentId}/file"))
             Assert.Equal(HttpStatusCode.NotFound, crossCompanyDocumentResponse.StatusCode);
+
+        using (var ownAssetFileResponse = await SendAsAdminAsync($"/api/assets/{_ownAssetId}/attachments/{ownAssetAttachmentId}/file"))
+        {
+            Assert.Equal(HttpStatusCode.OK, ownAssetFileResponse.StatusCode);
+            Assert.Equal("application/pdf", ownAssetFileResponse.Content.Headers.ContentType?.MediaType);
+            Assert.Equal(assetPdfBytes, await ownAssetFileResponse.Content.ReadAsByteArrayAsync());
+        }
+        using (var crossCompanyAssetFileResponse = await SendAsAdminAsync($"/api/assets/{_otherCompanyAssetId}/attachments/{otherCompanyAssetAttachmentId}/file"))
+            Assert.Equal(HttpStatusCode.NotFound, crossCompanyAssetFileResponse.StatusCode);
     }
 
     private async Task SetCompanyRoleAsync(string role)

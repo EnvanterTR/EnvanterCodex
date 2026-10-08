@@ -1369,8 +1369,8 @@ public static class AssetEndpoints
             .WithMetadata(new RequestSizeLimitAttribute(AssetAttachmentRequestLimitBytes));
 
         api.MapGet("/assets/{id:guid}/attachments/{attachmentId:guid}/file", async (Guid id, Guid attachmentId,
-            [FromQuery] bool download, ClaimsPrincipal user, AppDbContext db, IConfiguration configuration,
-            CancellationToken cancellationToken) =>
+            ClaimsPrincipal user, AppDbContext db, IConfiguration configuration,
+            CancellationToken cancellationToken, [FromQuery] bool download = false) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
             var attachment = await db.AssetAttachments.AsNoTracking().SingleOrDefaultAsync(x =>
