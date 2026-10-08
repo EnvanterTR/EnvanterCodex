@@ -17,6 +17,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AssetModel> AssetModels => Set<AssetModel>();
     public DbSet<Asset> Assets => Set<Asset>();
     public DbSet<SavedAssetSearch> SavedAssetSearches => Set<SavedAssetSearch>();
+    public DbSet<DashboardPreference> DashboardPreferences => Set<DashboardPreference>();
     public DbSet<AssetEvent> AssetEvents => Set<AssetEvent>();
     public DbSet<AssetAttachment> AssetAttachments => Set<AssetAttachment>();
     public DbSet<EmployeeDocument> EmployeeDocuments => Set<EmployeeDocument>();
@@ -144,6 +145,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<SavedAssetSearch>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<SavedAssetSearch>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<DashboardPreference>().HasKey(x => new { x.CompanyId, x.UserId });
+        modelBuilder.Entity<DashboardPreference>().Property(x => x.VisibleWidgetsJson).HasMaxLength(512).IsRequired();
+        modelBuilder.Entity<DashboardPreference>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<DashboardPreference>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Employee>().HasAlternateKey(x => new { x.CompanyId, x.Id });

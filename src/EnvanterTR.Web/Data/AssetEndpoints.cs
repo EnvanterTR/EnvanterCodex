@@ -45,6 +45,7 @@ public static class AssetEndpoints
         api.MapSupplierCatalogEndpoints();
         api.MapAccessoryKitEndpoints();
         api.MapSavedAssetSearchEndpoints();
+        api.MapDashboardPreferenceEndpoints();
 
         api.MapGet("/assets", async ([FromQuery] string? q, [FromQuery] string? status,
             [FromQuery] Guid? categoryId, [FromQuery] Guid? brandId, [FromQuery] Guid? modelId,

@@ -1244,6 +1244,29 @@ namespace EnvanterTR.Web.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.DashboardPreference", b =>
+                {
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VisibleWidgetsJson")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.HasKey("CompanyId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("DashboardPreferences");
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.Employee", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2749,6 +2772,21 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId", "EmployeeId")
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.DashboardPreference", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.Employee", b =>

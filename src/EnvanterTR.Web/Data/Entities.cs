@@ -210,6 +210,14 @@ public sealed class SavedAssetSearch
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class DashboardPreference
+{
+    public Guid CompanyId { get; set; }
+    public Guid UserId { get; set; }
+    public required string VisibleWidgetsJson { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class AssetEvent
 {
     public Guid Id { get; set; } = Guid.NewGuid();
