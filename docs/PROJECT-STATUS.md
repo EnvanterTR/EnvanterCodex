@@ -150,8 +150,8 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 ## 2026-10-08 Çalışan CSV dışa aktarma/geri aktarma
 
 - Çalışan CSV dışa aktarımı 8 sütunlu import şablonuyla uyumlu değildi. Dışa aktarılan dosyalar artık içe aktarma tarafından doğrudan tanınır; `Yönetici Personel No` sütunu eklendi ve etkin/pasif durumu korunur. Önceki 8 sütunlu şablon ve önceki 11 sütunlu dışa aktarımlar da kabul edilmeye devam eder.
-- Önizleme yönetici personel numarasını aynı dosya veya şirketteki etkin çalışanla çözer; eksik/pasif yöneticileri, kendini yönetici seçmeyi ve çalışan-yönetici döngülerini işlem başlamadan reddeder. CSV/Excel biçimindeki atomik kayıt ekleme mevcut işlem kaydını kullanır.
-- Kullanıcıya görünen çalışan aktarım penceresi yeni round-trip davranışını ve güvenli reddetme kurallarını açıklar. Değişiklik sonrası Docker Release derlemesi başarılı oldu; paket yerel önizleme konteynerine alındı. GitHub Actions çalışması push sonrasında ayrıca doğrulanacak.
+- Önizleme yönetici personel numarasını aynı dosya veya şirketteki etkin çalışanla çözer; eksik/pasif yöneticileri, kendini yönetici seçmeyi ve çalışan-yönetici döngülerini işlem başlamadan reddeder. CSV/Excel biçimindeki atomik kayıt ekleme işlem öncesi yinelenen çalışan numaralarını ve dış yöneticilerin etkinliğini transaction içinde yeniden kontrol eder.
+- Kullanıcıya görünen çalışan aktarım penceresi yeni round-trip davranışını ve güvenli reddetme kurallarını açıklar. Değişiklik sonrası Docker Release derlemesi başarılı oldu; yerel API `ready`, ana sayfa HTTP 200. GitHub Actions run `37763164944` (commit `e8394c3`) Linux ve Windows işlerinde başarılı; Windows x64 artifact'i `envantertr-windows-x64-e8394c34d636ad5137e43ef68658c00867234659` (51.15 MB) 22 Ekim 2026'ya kadar saklanıyor.
 
 ## 2026-10-08 Windows güncelleme öncesi otomatik yedek
 
