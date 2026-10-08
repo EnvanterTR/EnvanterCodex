@@ -129,10 +129,18 @@ jobs:
         shell: pwsh
         run: ./deploy/windows/tests/protect-connection-string-safety-check.ps1
 
+      - name: Validate Windows release ZIP and SHA-256
+        shell: pwsh
+        run: ./deploy/windows/tests/package-release-check.ps1
+
+      - name: Package Windows release and verify SHA-256
+        shell: pwsh
+        run: ./deploy/windows/package-release.ps1 -PackagePath "$env:RUNNER_TEMP\envantertr-windows-publish" -OutputDirectory "$env:RUNNER_TEMP\envantertr-windows-release" -Commit "$env:GITHUB_SHA"
+
       - name: Preserve the verified Windows x64 package
         uses: actions/upload-artifact@v7
         with:
           name: envantertr-windows-x64-${{ github.sha }}
-          path: ${{ runner.temp }}/envantertr-windows-publish
+          path: ${{ runner.temp }}/envantertr-windows-release
           if-no-files-found: error
           retention-days: 14

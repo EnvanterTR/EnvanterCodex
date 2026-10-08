@@ -23,7 +23,19 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 Betik önce yerel .NET SDK'sını kullanır; SDK yoksa çalışan Docker Desktop üzerinden resmî .NET 10 SDK imajını çağırır. İlk Docker derlemesi imajı indirebilir. Özel çıktı dizini için `-OutputPath` verilebilir.
 
-`main` dalındaki GitHub Actions Windows doğrulama işi başarılı tamamlanırsa, aynı işin **Artifacts** bölümünde `envantertr-windows-x64-<commit-sha>` adlı paket 14 gün boyunca indirilebilir. GitHub'da **Actions → EnvanterTR CI → başarılı çalıştırma → Artifacts** yolunu izleyin. Bu, CI kontrollerinden geçmiş imzasız x64 yayın klasörüdür; kurulum sihirbazı veya gerçek Windows Server kabulü değildir. Kurum sunucusuna aktarmadan önce paketin kaynağını ve SHA'sını doğrulayın; üretim paketi kod imzalama ve hedef sunucu kabulünden sonra ayrıca yayımlanmalıdır.
+`main` dalındaki GitHub Actions Windows doğrulama işi başarılı tamamlanırsa, aynı işin **Artifacts** bölümünde `envantertr-windows-x64-<commit-sha>` adlı indirme 14 gün boyunca saklanır. GitHub'da **Actions → EnvanterTR CI → başarılı çalıştırma → Artifacts** yolunu izleyin. İndirme içinde `envantertr-windows-x64-<12-karakter-commit>.zip` ve `.zip.sha256` yan dosyası bulunur. Bu, CI kontrollerinden geçmiş imzasız x64 pakettir; kurulum sihirbazı veya gerçek Windows Server kabulü değildir.
+
+Arşivi açmadan önce SHA-256 değerini doğrulayın:
+
+```powershell
+$archive = (Resolve-Path .\envantertr-windows-x64-<12-karakter-commit>.zip).Path
+$expected = ((Get-Content -Raw "$archive.sha256").Trim() -split '\s+')[0]
+$actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actual -ne $expected) { throw "Windows yayın ZIP SHA-256 doğrulaması başarısız." }
+Expand-Archive -LiteralPath $archive -DestinationPath C:\Staging\publish
+```
+
+SHA-256 aktarım bozulmasını saptar; dosyanın yayıncı kimliğini kanıtlamaz. Paketi sunucuya aktarmadan önce artifact'i doğru GitHub çalıştırmasından indirdiğinizi ve çalıştırmanın beklediğiniz commit'e ait olduğunu doğrulayın. Üretim paketi kod imzalama ve hedef sunucu kabulünden sonra ayrıca yayımlanmalıdır.
 
 `artifacts/windows/publish` dizinini sunucuya güvenli biçimde aktarın. Sunucuda yönetici PowerShell açın:
 
