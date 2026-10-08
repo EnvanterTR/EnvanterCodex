@@ -2181,6 +2181,60 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Depreciation_report_matches_half_year_boundaries_and_does_not_apply_linear_floor()
+    {
+        var categoryId = await GetOwnCategoryIdAsync();
+        var floorModel = new AssetModel
+        {
+            CompanyId = _companyId,
+            Name = $"Half-year floor check {_userId:N}",
+            DepreciationMonths = 24,
+            DepreciationMinimum = 20,
+            DepreciationMinimumType = "percent",
+            DepreciationMethod = "half_1"
+        };
+        var juneBoundaryModel = new AssetModel
+        {
+            CompanyId = _companyId,
+            Name = $"June boundary check {_userId:N}",
+            DepreciationMonths = 24,
+            DepreciationMethod = "half_2"
+        };
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.AssetModels.AddRange(floorModel, juneBoundaryModel);
+            db.Assets.AddRange(
+                new Asset
+                {
+                    CompanyId = _companyId, AssetTag = $"DEP-FLOOR-{_userId:N}", Name = "Half-year floor asset",
+                    CategoryId = categoryId, ModelId = floorModel.Id, PurchaseDate = new DateOnly(2024, 10, 1),
+                    PurchaseCost = 1000m, Currency = "TRY"
+                },
+                new Asset
+                {
+                    CompanyId = _companyId, AssetTag = $"DEP-JUNE-{_userId:N}", Name = "June first day asset",
+                    CategoryId = categoryId, ModelId = juneBoundaryModel.Id, PurchaseDate = new DateOnly(2026, 6, 1),
+                    PurchaseCost = 1000m, Currency = "TRY"
+                });
+            await db.SaveChangesAsync();
+        }
+
+        using var response = await SendAsAdminAsync("/api/reports/depreciation?asOf=2026-06-02&page=1&pageSize=10");
+        var responseBody = await response.Content.ReadAsStringAsync();
+        Assert.True(response.StatusCode == HttpStatusCode.OK, $"Expected 200 but got {(int)response.StatusCode}: {responseBody}");
+        using var payload = JsonDocument.Parse(responseBody);
+        Assert.Equal(2, payload.RootElement.GetProperty("total").GetInt32());
+        var items = payload.RootElement.GetProperty("items").EnumerateArray().ToArray();
+        var halfYearAsset = items.Single(item => item.GetProperty("name").GetString() == "Half-year floor asset");
+        Assert.Equal(0m, halfYearAsset.GetProperty("bookValue").GetDecimal());
+        Assert.Equal(1000m, halfYearAsset.GetProperty("accumulatedDepreciation").GetDecimal());
+        Assert.Equal(33.33m, halfYearAsset.GetProperty("monthlyDepreciation").GetDecimal());
+        var juneBoundaryAsset = items.Single(item => item.GetProperty("name").GetString() == "June first day asset");
+        Assert.Equal(1000m, juneBoundaryAsset.GetProperty("bookValue").GetDecimal());
+    }
+
+    [Fact]
     public async Task Concurrent_component_checkouts_cannot_allocate_the_same_remaining_stock_twice()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");

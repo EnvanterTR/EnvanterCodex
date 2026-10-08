@@ -37,8 +37,9 @@ public static class DepreciationReportEndpoints
             var total = await sourceQuery.CountAsync(ct);
             if (total > MaximumReportRows)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["report"] = [$"Amortisman raporu bir defada en fazla {MaximumReportRows:N0} uygun varlığı hesaplar. Aramayı daraltın."] });
-            var source = await sourceQuery.OrderBy(x => x.AssetTag).ToListAsync(ct);
-            var rows = source.Select(x => Calculate(x, effectiveDate)).ToList();
+            var source = await sourceQuery.ToListAsync(ct);
+            var rows = source.OrderBy(x => x.AssetTag, StringComparer.Ordinal)
+                .Select(x => Calculate(x, effectiveDate)).ToList();
             var totalsByCurrency = rows.GroupBy(x => x.Currency).OrderBy(x => x.Key).Select(group => new
             {
                 currency = group.Key,
@@ -73,7 +74,8 @@ public static class DepreciationReportEndpoints
             }
             if (await sourceQuery.CountAsync(ct) > MaximumReportRows)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["report"] = [$"CSV dışa aktarma en fazla {MaximumReportRows:N0} uygun varlığı destekler. Aramayı daraltın."] });
-            var rows = (await sourceQuery.OrderBy(x => x.AssetTag).ToListAsync(ct)).Select(x => Calculate(x, effectiveDate));
+            var rows = (await sourceQuery.ToListAsync(ct)).OrderBy(x => x.AssetTag, StringComparer.Ordinal)
+                .Select(x => Calculate(x, effectiveDate));
             static string Cell(string? value)
             {
                 if (string.IsNullOrEmpty(value)) return "\"\"";
@@ -120,10 +122,14 @@ public static class DepreciationReportEndpoints
             else if (!IsFirstHalf(source.PurchaseDate)) yearsPast -= .5;
             if (!IsFirstHalf(asOf)) yearsPast += .5;
             yearsPast = Math.Clamp(yearsPast, 0d, fiscalYears);
-            book = Math.Max(floor, source.PurchaseCost - Math.Round(source.PurchaseCost * (decimal)(yearsPast / fiscalYears), 2));
+            // The reference half-year methods prorate the original purchase cost and
+            // intentionally do not apply the linear method's minimum floor.
+            book = source.PurchaseCost - Math.Round(source.PurchaseCost * (decimal)(yearsPast / fiscalYears), 2,
+                MidpointRounding.AwayFromZero);
             if (asOf < source.PurchaseDate) book = source.PurchaseCost;
         }
-        book = Math.Round(Math.Clamp(book, floor, source.PurchaseCost), 2, MidpointRounding.AwayFromZero);
+        var minimumBookValue = source.Method == "linear" ? floor : 0m;
+        book = Math.Round(Math.Clamp(book, minimumBookValue, source.PurchaseCost), 2, MidpointRounding.AwayFromZero);
         var monthly = Math.Round((source.PurchaseCost - floor) / lifeMonths, 2, MidpointRounding.AwayFromZero);
         return new ReportRow(source.Id, source.AssetTag, source.Name, source.SerialNumber, source.Category, source.Model,
             source.Location, source.Status, source.PurchaseDate, source.PurchaseCost, source.Currency, lifeMonths, source.Minimum,
@@ -138,7 +144,7 @@ public static class DepreciationReportEndpoints
         return end.Day < start.Day ? months - 1 : months;
     }
     private static int FiscalYear(DateOnly date) => date.Month == 12 && date.Day == 31 ? date.Year : date.Year - 1;
-    private static bool IsFirstHalf(DateOnly date) => date.Month < 6 || (date.Month == 6 && date.Day == 1) || (date.Month == 12 && date.Day == 31);
+    private static bool IsFirstHalf(DateOnly date) => date.Month < 6 || (date.Month == 12 && date.Day == 31);
     private static string MethodLabel(string method) => method switch { "half_1" => "Yarım yıl · ilk dönem", "half_2" => "Yarım yıl · satın alma dönemine göre", _ => "Doğrusal" };
     private static string Number(decimal value) => value.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
     private static bool TryCompany(ClaimsPrincipal user, out Guid companyId) =>
