@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text;
 using System.IO.Compression;
+using System.IO.Pipelines;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -893,14 +894,24 @@ public static class DataExportEndpoints
         context.Response.Headers.ContentDisposition =
             $"attachment; filename=envantertr-veri-{DateTime.UtcNow:yyyyMMdd}.json";
 
-        using var writer = new Utf8JsonWriter(context.Response.Body, new JsonWriterOptions
+        var responseWriter = PipeWriter.Create(context.Response.Body, new StreamPipeWriterOptions(leaveOpen: true));
+        try
         {
-            Indented = false,
-            SkipValidation = false
-        });
-
-        await WriteCompanyJsonAsync(writer, db, company, companyId, cancellationToken);
-        await writer.FlushAsync(cancellationToken);
+            using (var writer = new Utf8JsonWriter(responseWriter, new JsonWriterOptions
+            {
+                Indented = false,
+                SkipValidation = false
+            }))
+            {
+                await WriteCompanyJsonAsync(writer, db, company, companyId, cancellationToken, responseWriter);
+                writer.Flush();
+            }
+            await responseWriter.FlushAsync(cancellationToken);
+        }
+        finally
+        {
+            await responseWriter.CompleteAsync();
+        }
         return Results.Empty;
     }
 
@@ -953,37 +964,55 @@ public static class DataExportEndpoints
             }
         }
 
-        context.Response.StatusCode = StatusCodes.Status200OK;
-        context.Response.ContentType = "application/zip";
-        context.Response.Headers.CacheControl = "no-store, private";
-        context.Response.Headers.ContentDisposition = $"attachment; filename=envantertr-sirket-arsivi-{DateTime.UtcNow:yyyyMMdd}.zip";
-        using (var archive = new ZipArchive(context.Response.Body, ZipArchiveMode.Create, leaveOpen: true))
+        var archivePath = Path.Combine(Path.GetTempPath(), $"envantertr-company-export-{Guid.NewGuid():N}.zip");
+        try
         {
-            var jsonEntry = archive.CreateEntry("company-data.json", CompressionLevel.Fastest);
-            await using (var jsonStream = jsonEntry.Open())
-            using (var writer = new Utf8JsonWriter(jsonStream, new JsonWriterOptions { Indented = false }))
+            await using var archiveFile = new FileStream(archivePath, FileMode.CreateNew, FileAccess.ReadWrite,
+                FileShare.None, 64 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan | FileOptions.DeleteOnClose);
+            if (!OperatingSystem.IsWindows())
+                File.SetUnixFileMode(archivePath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            using (var archive = new ZipArchive(archiveFile, ZipArchiveMode.Create, leaveOpen: true))
             {
-                await WriteCompanyJsonAsync(writer, db, company, companyId, cancellationToken);
-                await writer.FlushAsync(cancellationToken);
+                var jsonEntry = archive.CreateEntry("company-data.json", CompressionLevel.Fastest);
+                await using (var jsonStream = jsonEntry.Open())
+                using (var writer = new Utf8JsonWriter(jsonStream, new JsonWriterOptions { Indented = false }))
+                {
+                    await WriteCompanyJsonAsync(writer, db, company, companyId, cancellationToken);
+                    await writer.FlushAsync(cancellationToken);
+                }
+                foreach (var file in files)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var entry = archive.CreateEntry(file.Entry, CompressionLevel.Fastest);
+                    await using var output = entry.Open();
+                    await using var input = new FileStream(file.Source, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
+                    await input.CopyToAsync(output, cancellationToken);
+                }
+                var readme = archive.CreateEntry("README.txt", CompressionLevel.Fastest);
+                await using var readmeStream = readme.Open();
+                await using var readmeWriter = new StreamWriter(readmeStream, new UTF8Encoding(false));
+                await readmeWriter.WriteAsync("EnvanterTR şirket veri arşivi\r\ncompany-data.json şirket kayıtlarının bir bölümünü, departman ve konum kataloglarını içerir. media/ klasörü şirket logolarını, varlık dosyalarını, çalışan fotoğraflarını/belgelerini ve bu şirkete üye hesapların profil fotoğraflarını içerir. Bu arşiv tam sistem yedeği veya geri yükleme paketi değildir. Kimlik bilgileri ve oturumlar dahil edilmez.\r\n");
             }
-            foreach (var file in files)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var entry = archive.CreateEntry(file.Entry, CompressionLevel.Fastest);
-                await using var output = entry.Open();
-                await using var input = new FileStream(file.Source, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
-                await input.CopyToAsync(output, cancellationToken);
-            }
-            var readme = archive.CreateEntry("README.txt", CompressionLevel.Fastest);
-            await using var readmeStream = readme.Open();
-            await using var readmeWriter = new StreamWriter(readmeStream, new UTF8Encoding(false));
-            await readmeWriter.WriteAsync("EnvanterTR şirket veri arşivi\r\ncompany-data.json şirket kayıtlarının bir bölümünü, departman ve konum kataloglarını içerir. media/ klasörü şirket logolarını, varlık dosyalarını, çalışan fotoğraflarını/belgelerini ve bu şirkete üye hesapların profil fotoğraflarını içerir. Bu arşiv tam sistem yedeği veya geri yükleme paketi değildir. Kimlik bilgileri ve oturumlar dahil edilmez.\r\n");
+            await archiveFile.FlushAsync(cancellationToken);
+            archiveFile.Position = 0;
+            context.Response.StatusCode = StatusCodes.Status200OK;
+            context.Response.ContentType = "application/zip";
+            context.Response.Headers.CacheControl = "no-store, private";
+            context.Response.Headers.ContentDisposition = $"attachment; filename=envantertr-sirket-arsivi-{DateTime.UtcNow:yyyyMMdd}.zip";
+            context.Response.ContentLength = archiveFile.Length;
+            await archiveFile.CopyToAsync(context.Response.Body, 64 * 1024, cancellationToken);
+        }
+        finally
+        {
+            try { if (File.Exists(archivePath)) File.Delete(archivePath); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
         }
         return Results.Empty;
     }
 
     private static async Task WriteCompanyJsonAsync(Utf8JsonWriter writer, AppDbContext db, Company company,
-        Guid companyId, CancellationToken cancellationToken)
+        Guid companyId, CancellationToken cancellationToken, PipeWriter? responseWriter = null)
     {
         writer.WriteStartObject();
         writer.WriteString("format", "envantertr-company-data");
@@ -993,23 +1022,23 @@ public static class DataExportEndpoints
         JsonSerializer.Serialize(writer, new { company.Id, company.Name, company.Slug, company.ContactEmail,
             company.BrandLogoPath, company.BrandPrimaryColor, company.LabelPrintSettingsJson, company.CreatedAt }, JsonOptions);
         await WritePagedAsync(writer, "departmentCatalog", db.CompanyDepartments.AsNoTracking()
-            .Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
+            .Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
         await WritePagedAsync(writer, "locationCatalog", db.CompanyLocations.AsNoTracking()
-            .Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
-        await WritePagedAsync(writer, "employees", db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
-        await WritePagedAsync(writer, "assetCategories", db.AssetCategories.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
-        await WritePagedAsync(writer, "assetBrands", db.AssetBrands.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
-        await WritePagedAsync(writer, "assetModels", db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
-        await WritePagedAsync(writer, "assets", db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
-        await WritePagedAsync(writer, "inventoryRequests", db.InventoryRequests.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
-        await WritePagedAsync(writer, "assetMaintenances", db.AssetMaintenances.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
-        await WritePagedAsync(writer, "assetEvents", db.AssetEvents.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
-        await WritePagedAsync(writer, "auditEntries", db.AuditEntries.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken);
+            .Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
+        await WritePagedAsync(writer, "employees", db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
+        await WritePagedAsync(writer, "assetCategories", db.AssetCategories.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
+        await WritePagedAsync(writer, "assetBrands", db.AssetBrands.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
+        await WritePagedAsync(writer, "assetModels", db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
+        await WritePagedAsync(writer, "assets", db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
+        await WritePagedAsync(writer, "inventoryRequests", db.InventoryRequests.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
+        await WritePagedAsync(writer, "assetMaintenances", db.AssetMaintenances.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
+        await WritePagedAsync(writer, "assetEvents", db.AssetEvents.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
+        await WritePagedAsync(writer, "auditEntries", db.AuditEntries.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
         var members = from membership in db.CompanyMemberships.AsNoTracking().Where(x => x.CompanyId == companyId)
                       join user in db.Users.AsNoTracking() on membership.UserId equals user.Id
                       orderby membership.UserId
                       select new { UserId = user.Id, user.DisplayName, Email = user.Email!, membership.RoleKey, membership.CreatedAt };
-        await WritePagedAsync(writer, "members", members, cancellationToken);
+        await WritePagedAsync(writer, "members", members, cancellationToken, responseWriter);
         writer.WriteEndObject();
     }
 
@@ -1027,7 +1056,7 @@ public static class DataExportEndpoints
     }
 
     private static async Task WritePagedAsync<T>(Utf8JsonWriter writer, string propertyName,
-        IQueryable<T> query, CancellationToken cancellationToken)
+        IQueryable<T> query, CancellationToken cancellationToken, PipeWriter? responseWriter = null)
     {
         writer.WritePropertyName(propertyName);
         writer.WriteStartArray();
@@ -1038,6 +1067,8 @@ public static class DataExportEndpoints
             foreach (var item in batch)
                 JsonSerializer.Serialize(writer, item, JsonOptions);
             await writer.FlushAsync(cancellationToken);
+            if (responseWriter is not null)
+                await responseWriter.FlushAsync(cancellationToken);
             if (batch.Count < BatchSize) break;
             offset += batch.Count;
         }

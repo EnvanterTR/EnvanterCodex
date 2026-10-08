@@ -1,4 +1,5 @@
 using System.Net;
+using System.IO.Compression;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -511,6 +512,64 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.False(File.Exists(storedPhotoPath));
     }
 
+    [Fact]
+    public async Task Company_roles_follow_the_asset_employee_and_settings_policy_matrix()
+    {
+        var roleMatrix = new[]
+        {
+            (Role: "owner", AssetRead: true, AssetWrite: true, EmployeeRead: true, EmployeeWrite: true, SettingsManage: true),
+            (Role: "admin", AssetRead: true, AssetWrite: true, EmployeeRead: true, EmployeeWrite: true, SettingsManage: true),
+            (Role: "asset_manager", AssetRead: true, AssetWrite: true, EmployeeRead: true, EmployeeWrite: true, SettingsManage: false),
+            (Role: "asset_operator", AssetRead: true, AssetWrite: true, EmployeeRead: true, EmployeeWrite: false, SettingsManage: false),
+            (Role: "auditor", AssetRead: true, AssetWrite: false, EmployeeRead: true, EmployeeWrite: false, SettingsManage: false),
+            (Role: "viewer", AssetRead: true, AssetWrite: false, EmployeeRead: false, EmployeeWrite: false, SettingsManage: false),
+            (Role: "hr_operator", AssetRead: false, AssetWrite: false, EmployeeRead: true, EmployeeWrite: true, SettingsManage: false)
+        };
+
+        foreach (var role in roleMatrix)
+        {
+            await SetCompanyRoleAsync(role.Role);
+
+            using (var assetList = await SendAsRoleAsync(HttpMethod.Get, "/api/assets?page=1&pageSize=20", role.Role))
+                Assert.Equal(role.AssetRead ? HttpStatusCode.OK : HttpStatusCode.Forbidden, assetList.StatusCode);
+
+            using (var assetPreview = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import/preview.csv", role.Role,
+                       new StringContent("AssetTag,Name\n", System.Text.Encoding.UTF8, "text/csv")))
+                Assert.Equal(role.AssetWrite, assetPreview.StatusCode != HttpStatusCode.Forbidden);
+
+            using (var employeeList = await SendAsRoleAsync(HttpMethod.Get, "/api/employees?page=1&pageSize=20", role.Role))
+                Assert.Equal(role.EmployeeRead ? HttpStatusCode.OK : HttpStatusCode.Forbidden, employeeList.StatusCode);
+
+            using (var employeePreview = await SendAsRoleAsync(HttpMethod.Post, "/api/employees/import/preview.csv", role.Role,
+                       new StringContent("EmployeeNumber,DisplayName\n", System.Text.Encoding.UTF8, "text/csv")))
+                Assert.Equal(role.EmployeeWrite, employeePreview.StatusCode != HttpStatusCode.Forbidden);
+
+            using var companyProfile = await SendAsRoleAsync(HttpMethod.Get, "/api/company/profile", role.Role);
+            Assert.Equal(role.SettingsManage ? HttpStatusCode.OK : HttpStatusCode.Forbidden, companyProfile.StatusCode);
+        }
+    }
+
+    [Fact]
+    public async Task Company_json_export_returns_a_valid_company_scoped_document()
+    {
+        using var response = await SendAsAdminAsync("/api/company/export.json");
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.True(response.StatusCode == HttpStatusCode.OK,
+            $"Company JSON export returned {(int)response.StatusCode}: {body}");
+        using var document = JsonDocument.Parse(body);
+        Assert.Equal("envantertr-company-data", document.RootElement.GetProperty("format").GetString());
+        Assert.Equal(_companyId, document.RootElement.GetProperty("company").GetProperty("id").GetGuid());
+        Assert.DoesNotContain(_otherCompanyAssetId.ToString(), body, StringComparison.OrdinalIgnoreCase);
+
+        using var archiveResponse = await SendAsAdminAsync("/api/company/export.zip");
+        var archiveBytes = await archiveResponse.Content.ReadAsByteArrayAsync();
+        Assert.True(archiveResponse.StatusCode == HttpStatusCode.OK,
+            $"Company ZIP export returned {(int)archiveResponse.StatusCode}: {System.Text.Encoding.UTF8.GetString(archiveBytes)}");
+        using var archive = new ZipArchive(new MemoryStream(archiveBytes), ZipArchiveMode.Read);
+        Assert.Contains(archive.Entries, entry => entry.FullName == "company-data.json");
+        Assert.Contains(archive.Entries, entry => entry.FullName == "README.txt");
+    }
+
     private async Task<HttpResponseMessage> SendProfilePhotoUploadAsync(byte[] bytes, string requestToken, string antiforgeryCookie)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/session/photo");
@@ -540,6 +599,15 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         request.Headers.Add("X-Acceptance-User", _userId.ToString());
         request.Headers.Add("X-Acceptance-Company", (companyId ?? _companyId).ToString());
         request.Headers.Add("X-Acceptance-Role", "admin");
+        return await _client!.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> SendAsRoleAsync(HttpMethod method, string path, string role, HttpContent? content = null)
+    {
+        using var request = new HttpRequestMessage(method, path) { Content = content };
+        request.Headers.Add("X-Acceptance-User", _userId.ToString());
+        request.Headers.Add("X-Acceptance-Company", _companyId.ToString());
+        request.Headers.Add("X-Acceptance-Role", role);
         return await _client!.SendAsync(request);
     }
 
