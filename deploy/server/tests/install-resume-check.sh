@@ -60,6 +60,9 @@ BACKUP_PASSWORD_FILE="$WORK_DIR/etc/envantertr/backup.pass"
   cat "$WORK_DIR/first-install.log" >&2
   echo 'FAIL: failed install must retain protected config and secrets without exposing current.' >&2; exit 1;
 }
+[[ "$(stat -c '%a' "$CONFIG_FILE")" == '600' ]] || { echo 'FAIL: server environment must remain root-only.' >&2; exit 1; }
+grep -Fqx 'EMAIL_SMTP_PORT=587' "$CONFIG_FILE" || { echo 'FAIL: SMTP port default is missing.' >&2; exit 1; }
+grep -Fqx 'EMAIL_PUBLIC_BASE_URL=https://resume-test.example.invalid' "$CONFIG_FILE" || { echo 'FAIL: SMTP public URL must use the installed HTTPS domain.' >&2; exit 1; }
 cp -- "$CONFIG_FILE" "$WORK_DIR/server.env.before"
 cp -- "$BACKUP_PASSWORD_FILE" "$WORK_DIR/backup.pass.before"
 if PATH="$MOCK_BIN:$PATH" MOCK_CURL_MODE=succeed bash "$FIXTURE_SCRIPT" "other.$DOMAIN" > "$WORK_DIR/mismatched-domain.log" 2>&1; then
@@ -79,7 +82,7 @@ cmp -s "$BACKUP_PASSWORD_FILE" "$WORK_DIR/backup.pass.before" || { echo 'FAIL: r
 }
 echo 'PASS: failed first install safely resumes with the same config, secrets, release, and volumes.'
 
-python3 - "$INSTALL_SCRIPT" <<'PY'
+python3 - "$INSTALL_SCRIPT" "$SCRIPT_DIR/../compose.yaml" <<'PY'
 import sys
 from pathlib import Path
 
@@ -122,4 +125,19 @@ require(
 if any(fragment in source for fragment in ("docker volume rm", "docker volume prune", "down --volumes")):
     raise SystemExit("FAIL: installer must not remove database or media volumes when resuming")
 print("PASS: installer never deletes existing Docker volumes")
+
+compose = Path(sys.argv[2])
+compose_source = compose.read_text(encoding="utf-8")
+for setting in (
+    "Email__Smtp__Host: ${EMAIL_SMTP_HOST:-}",
+    "Email__Smtp__Port: ${EMAIL_SMTP_PORT:-587}",
+    "Email__Smtp__EnableSsl: ${EMAIL_SMTP_ENABLE_SSL:-true}",
+    "Email__Smtp__Username: ${EMAIL_SMTP_USERNAME:-}",
+    "Email__Smtp__Password: ${EMAIL_SMTP_PASSWORD:-}",
+    "Email__FromAddress: ${EMAIL_FROM_ADDRESS:-}",
+    "Email__PublicBaseUrl: ${EMAIL_PUBLIC_BASE_URL:-}",
+):
+    if setting not in compose_source:
+        raise SystemExit(f"FAIL: production Compose does not pass {setting.split(':', 1)[0]}")
+print("PASS: the production web container receives SMTP settings from the protected environment file")
 PY

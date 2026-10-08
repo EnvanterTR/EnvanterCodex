@@ -43,6 +43,23 @@ sudo docker compose --project-name envantertr-server \
   -f /opt/envantertr/current/deploy/server/compose.yaml up -d web proxy
 ```
 
+### SMTP e-posta gönderimi
+
+Parola yenileme ve şirket üyesi davet e-postaları için SMTP ayarlarını root-only `/etc/envantertr/server.env` dosyasında yapılandırın. İlk kurulum `EMAIL_PUBLIC_BASE_URL` alan adını otomatik yazar; SMTP sağlayıcınızın verdiği değerleri ekleyip web hizmetini yeniden oluşturun:
+
+```dotenv
+EMAIL_SMTP_HOST=smtp.saglayiciniz.example
+EMAIL_SMTP_PORT=587
+EMAIL_SMTP_ENABLE_SSL=true
+EMAIL_SMTP_USERNAME=uygulama-kullanici-adi
+EMAIL_SMTP_PASSWORD=uygulama-parolasi
+EMAIL_FROM_ADDRESS=envanter@sirketiniz.com
+EMAIL_FROM_NAME=EnvanterTR
+EMAIL_PUBLIC_BASE_URL=https://envanter.sirketiniz.com
+```
+
+`EMAIL_SMTP_ENABLE_SSL=true` STARTTLS'i etkinleştirir; `false` yalnızca SMTP sağlayıcınız şifrelemesiz bağlantı gerektiriyorsa kullanılmalıdır. Değerleri `sudoedit` ile girin, dosyayı paylaşmayın ve `sudo docker compose ... up -d web` ile uygulamayı yeniden başlatın. Ayarlar eksikse parola kurtarma ve davet e-postaları gönderilemez; kullanıcıya hesap varlığını açıklamayan genel yanıt korunur ve operatör günlüğüne yapılandırma/teslim hatası yazılır. Üretime geçmeden önce gerçek alıcıya gönderim, spam/teslim durumu ve HTTPS bağlantı hedefini test edin. Zamanlanmış envanter hatırlatmaları henüz bu SMTP akışına bağlı değildir.
+
 İlk kurulum her gün şifreli yedek alan systemd zamanlayıcısını ve ondan bağımsız yedek sağlık denetimi zamanlayıcısını kurar. Sağlık denetimi günlük olarak `BACKUP_ROOT` içindeki en yeni yerel `.etbackup` arşivinin 36 saatten eski olmadığını ve yanındaki SHA-256 dosyasıyla eşleştiğini kontrol eder. Başarılı/başarısız sonuç systemd journal'a yazılır. Şifreli yedeklerin açılması için gereken parola `/etc/envantertr/backup.pass` dosyasındadır; bu dosyanın kopyasını sunucunun dışında, çevrim dışı ve ayrı erişim denetimli bir yerde saklayın. Sunucu ve yedek birlikte kaybolursa parola olmadan `.etbackup` açılamaz.
 
 ## Şifreli yedek ve güncelleme
