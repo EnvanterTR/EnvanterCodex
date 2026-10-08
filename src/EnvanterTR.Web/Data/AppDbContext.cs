@@ -31,6 +31,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AccessoryKitLine> AccessoryKitLines => Set<AccessoryKitLine>();
     public DbSet<AccessoryPurchaseOrder> AccessoryPurchaseOrders => Set<AccessoryPurchaseOrder>();
     public DbSet<AccessoryPurchaseOrderLine> AccessoryPurchaseOrderLines => Set<AccessoryPurchaseOrderLine>();
+    public DbSet<StockPurchaseOrder> StockPurchaseOrders => Set<StockPurchaseOrder>();
+    public DbSet<StockPurchaseOrderLine> StockPurchaseOrderLines => Set<StockPurchaseOrderLine>();
     public DbSet<Consumable> Consumables => Set<Consumable>();
     public DbSet<ConsumableMovement> ConsumableMovements => Set<ConsumableMovement>();
     public DbSet<InventoryRequest> InventoryRequests => Set<InventoryRequest>();
@@ -528,6 +530,45 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasForeignKey(x => new { x.CompanyId, x.PurchaseOrderId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AccessoryPurchaseOrderLine>().HasOne<Accessory>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.AccessoryId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<StockPurchaseOrder>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<StockPurchaseOrder>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<StockPurchaseOrder>().Property(x => x.OrderNumber).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<StockPurchaseOrder>().Property(x => x.Supplier).HasMaxLength(200).IsRequired();
+        modelBuilder.Entity<StockPurchaseOrder>().Property(x => x.Status).HasMaxLength(24).IsRequired();
+        modelBuilder.Entity<StockPurchaseOrder>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
+        modelBuilder.Entity<StockPurchaseOrder>().Property(x => x.Notes).HasMaxLength(2000);
+        modelBuilder.Entity<StockPurchaseOrder>().HasIndex(x => new { x.CompanyId, x.OrderNumber }).IsUnique();
+        modelBuilder.Entity<StockPurchaseOrder>().HasIndex(x => new { x.CompanyId, x.Status, x.OrderDate });
+        modelBuilder.Entity<StockPurchaseOrder>().HasOne<EnvanterUser>().WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<StockPurchaseOrder>().HasOne<SupplierCatalogEntry>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.SupplierId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<StockPurchaseOrder>().ToTable("StockPurchaseOrders", table =>
+        {
+            table.HasCheckConstraint("CK_StockPurchaseOrders_Status", "\"Status\" IN ('Ordered', 'PartiallyReceived', 'Received', 'Cancelled')");
+            table.HasCheckConstraint("CK_StockPurchaseOrders_Dates", "\"ExpectedOn\" IS NULL OR \"ExpectedOn\" >= \"OrderDate\"");
+            table.HasCheckConstraint("CK_StockPurchaseOrders_Currency", "char_length(\"Currency\") = 3");
+        });
+        modelBuilder.Entity<StockPurchaseOrderLine>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<StockPurchaseOrderLine>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<StockPurchaseOrderLine>().Property(x => x.Notes).HasMaxLength(500);
+        modelBuilder.Entity<StockPurchaseOrderLine>().Property(x => x.UnitCost).HasPrecision(18, 2);
+        modelBuilder.Entity<StockPurchaseOrderLine>().HasIndex(x => new { x.CompanyId, x.PurchaseOrderId });
+        modelBuilder.Entity<StockPurchaseOrderLine>().HasIndex(x => new { x.CompanyId, x.ConsumableId });
+        modelBuilder.Entity<StockPurchaseOrderLine>().HasIndex(x => new { x.CompanyId, x.ComponentId });
+        modelBuilder.Entity<StockPurchaseOrderLine>().ToTable("StockPurchaseOrderLines", table =>
+        {
+            table.HasCheckConstraint("CK_StockPurchaseOrderLines_ExactlyOneStockItem", "(\"ConsumableId\" IS NOT NULL AND \"ComponentId\" IS NULL) OR (\"ConsumableId\" IS NULL AND \"ComponentId\" IS NOT NULL)");
+            table.HasCheckConstraint("CK_StockPurchaseOrderLines_Quantity", "\"Quantity\" > 0 AND \"QuantityReceived\" BETWEEN 0 AND \"Quantity\"");
+            table.HasCheckConstraint("CK_StockPurchaseOrderLines_Cost", "\"UnitCost\" >= 0");
+        });
+        modelBuilder.Entity<StockPurchaseOrderLine>().HasOne<StockPurchaseOrder>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.PurchaseOrderId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<StockPurchaseOrderLine>().HasOne<Consumable>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ConsumableId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<StockPurchaseOrderLine>().HasOne<InventoryComponent>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ComponentId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
 
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.AssetTag }).IsUnique();
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.SerialNumber });

@@ -253,7 +253,7 @@ public static class AccessoryPurchaseOrderEndpoints
                 db.AccessoryMovements.Add(new AccessoryMovement { CompanyId = companyId, AccessoryId = accessory.Id, ActorUserId = actorId, MovementType = "Received", Quantity = quantity, Notes = $"Sipariş {order.OrderNumber} · teslim alma {request.ReceivedOn:yyyy-MM-dd}" + (note is null ? "" : $" · {note}") });
                 db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Accessory", TargetId = accessory.Id, Action = "accessory-order.received", Details = $"Sipariş {order.OrderNumber} · {quantity} adet" });
             }
-            var allLines = await db.AccessoryPurchaseOrderLines.Where(x => x.CompanyId == companyId && x.PurchaseOrderId == id).ToListAsync(ct);
+            var allLines = await db.AccessoryPurchaseOrderLines.AsNoTracking().Where(x => x.CompanyId == companyId && x.PurchaseOrderId == id).ToListAsync(ct);
             var nextReceived = allLines.Sum(x => x.QuantityReceived) + items.Sum(x => x.Quantity);
             var orderedQuantity = allLines.Sum(x => x.Quantity);
             order.Status = nextReceived == orderedQuantity ? "Received" : "PartiallyReceived";

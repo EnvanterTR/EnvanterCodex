@@ -1497,6 +1497,77 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Stock_purchase_orders_are_tenant_scoped_and_partial_receipts_update_both_stock_families_atomically()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var crossTenantPayload = System.Net.Http.Json.JsonContent.Create(new
+        {
+            supplier = "Other tenant supplier", orderDate = DateOnly.FromDateTime(DateTime.UtcNow), currency = "TRY",
+            items = new[] { new { consumableId = (Guid?)null, componentId = (Guid?)_otherCompanyComponentId, quantity = 1, unitCost = 10m } }
+        });
+        using var crossTenantCreate = await SendAsRoleAsync(HttpMethod.Post, "/api/stock-orders", "admin", crossTenantPayload, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.BadRequest, crossTenantCreate.StatusCode);
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var createPayload = System.Net.Http.Json.JsonContent.Create(new
+        {
+            orderNumber = $"ST-{Guid.NewGuid():N}"[..15], supplier = "Acceptance supplier", orderDate = today, expectedOn = (DateOnly?)null,
+            currency = "TRY", notes = "Mixed stock receipt acceptance",
+            items = new object[]
+            {
+                new { consumableId = (Guid?)_ownConsumableId, componentId = (Guid?)null, quantity = 4, unitCost = 12.5m, notes = "paper" },
+                new { consumableId = (Guid?)null, componentId = (Guid?)_ownComponentId, quantity = 3, unitCost = 25m, notes = "memory" }
+            }
+        });
+        using var createResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/stock-orders", "admin", createPayload, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        using var created = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var orderId = created.RootElement.GetProperty("id").GetGuid();
+        using var crossTenantDetail = await SendAsAdminAsync($"/api/stock-orders/{orderId}", _otherCompanyId);
+        Assert.Equal(HttpStatusCode.Unauthorized, crossTenantDetail.StatusCode);
+
+        using var detailResponse = await SendAsAdminAsync($"/api/stock-orders/{orderId}");
+        Assert.Equal(HttpStatusCode.OK, detailResponse.StatusCode);
+        using var detail = JsonDocument.Parse(await detailResponse.Content.ReadAsStringAsync());
+        var lineIds = detail.RootElement.GetProperty("lines").EnumerateArray().ToDictionary(
+            line => line.GetProperty("itemType").GetString()!, line => line.GetProperty("id").GetGuid());
+        using var firstReceiptPayload = System.Net.Http.Json.JsonContent.Create(new
+        {
+            receivedOn = today, notes = "Partial delivery",
+            items = new[] { new { lineId = lineIds["Consumable"], quantity = 2 }, new { lineId = lineIds["Component"], quantity = 1 } }
+        });
+        using var firstReceipt = await SendAsRoleAsync(HttpMethod.Post, $"/api/stock-orders/{orderId}/receive", "admin", firstReceiptPayload, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, firstReceipt.StatusCode);
+        using var firstReceiptResult = JsonDocument.Parse(await firstReceipt.Content.ReadAsStringAsync());
+        Assert.Equal("PartiallyReceived", firstReceiptResult.RootElement.GetProperty("status").GetString());
+
+        using var secondReceiptPayload = System.Net.Http.Json.JsonContent.Create(new
+        {
+            receivedOn = today, notes = "Final delivery",
+            items = new[] { new { lineId = lineIds["Consumable"], quantity = 2 }, new { lineId = lineIds["Component"], quantity = 2 } }
+        });
+        using var secondReceipt = await SendAsRoleAsync(HttpMethod.Post, $"/api/stock-orders/{orderId}/receive", "admin", secondReceiptPayload, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, secondReceipt.StatusCode);
+        using var secondReceiptResult = JsonDocument.Parse(await secondReceipt.Content.ReadAsStringAsync());
+        Assert.Equal("Received", secondReceiptResult.RootElement.GetProperty("status").GetString());
+        Assert.Equal(7, secondReceiptResult.RootElement.GetProperty("orderQuantityReceived").GetInt32());
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(9, await db.Consumables.Where(x => x.CompanyId == _companyId && x.Id == _ownConsumableId).Select(x => x.TotalQuantity).SingleAsync());
+        Assert.Equal(8, await db.InventoryComponents.Where(x => x.CompanyId == _companyId && x.Id == _ownComponentId).Select(x => x.TotalQuantity).SingleAsync());
+        Assert.Equal(2, await db.ConsumableMovements.CountAsync(x => x.CompanyId == _companyId && x.ConsumableId == _ownConsumableId && x.MovementType == "Received" && x.Notes != null && x.Notes.Contains("ST-")));
+        Assert.Equal(2, await db.ComponentMovements.CountAsync(x => x.CompanyId == _companyId && x.ComponentId == _ownComponentId && x.MovementType == "Received" && x.Notes != null && x.Notes.Contains("ST-")));
+    }
+
+    [Fact]
     public async Task Concurrent_component_checkouts_cannot_allocate_the_same_remaining_stock_twice()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");

@@ -2112,6 +2112,133 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("SoftwareLicenseEvents");
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.StockPurchaseOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<DateOnly?>("ExpectedOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateOnly>("OrderDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("OrderNumber")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<string>("Supplier")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("CompanyId", "OrderNumber")
+                        .IsUnique();
+
+                    b.HasIndex("CompanyId", "SupplierId");
+
+                    b.HasIndex("CompanyId", "Status", "OrderDate");
+
+                    b.ToTable("StockPurchaseOrders", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_StockPurchaseOrders_Currency", "char_length(\"Currency\") = 3");
+
+                            t.HasCheckConstraint("CK_StockPurchaseOrders_Dates", "\"ExpectedOn\" IS NULL OR \"ExpectedOn\" >= \"OrderDate\"");
+
+                            t.HasCheckConstraint("CK_StockPurchaseOrders_Status", "\"Status\" IN ('Ordered', 'PartiallyReceived', 'Received', 'Cancelled')");
+                        });
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.StockPurchaseOrderLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ComponentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ConsumableId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("PurchaseOrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QuantityReceived")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("UnitCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("CompanyId", "Id");
+
+                    b.HasIndex("CompanyId", "ComponentId");
+
+                    b.HasIndex("CompanyId", "ConsumableId");
+
+                    b.HasIndex("CompanyId", "PurchaseOrderId");
+
+                    b.ToTable("StockPurchaseOrderLines", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_StockPurchaseOrderLines_Cost", "\"UnitCost\" >= 0");
+
+                            t.HasCheckConstraint("CK_StockPurchaseOrderLines_ExactlyOneStockItem", "(\"ConsumableId\" IS NOT NULL AND \"ComponentId\" IS NULL) OR (\"ConsumableId\" IS NULL AND \"ComponentId\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_StockPurchaseOrderLines_Quantity", "\"Quantity\" > 0 AND \"QuantityReceived\" BETWEEN 0 AND \"Quantity\"");
+                        });
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.SubscriptionPlan", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3139,6 +3266,54 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasOne("EnvanterTR.Web.Data.SoftwareLicense", null)
                         .WithMany()
                         .HasForeignKey("CompanyId", "LicenseId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.StockPurchaseOrder", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("EnvanterTR.Web.Data.SupplierCatalogEntry", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "SupplierId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.StockPurchaseOrderLine", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.InventoryComponent", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "ComponentId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EnvanterTR.Web.Data.Consumable", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "ConsumableId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EnvanterTR.Web.Data.StockPurchaseOrder", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "PurchaseOrderId")
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

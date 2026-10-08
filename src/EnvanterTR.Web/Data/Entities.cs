@@ -409,6 +409,37 @@ public sealed class AccessoryPurchaseOrderLine
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class StockPurchaseOrder
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public required string OrderNumber { get; set; }
+    public required string Supplier { get; set; }
+    public Guid? SupplierId { get; set; }
+    public string Status { get; set; } = "Ordered";
+    public DateOnly OrderDate { get; set; }
+    public DateOnly? ExpectedOn { get; set; }
+    public string Currency { get; set; } = "TRY";
+    public string? Notes { get; set; }
+    public Guid? CreatedByUserId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class StockPurchaseOrderLine
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid PurchaseOrderId { get; set; }
+    public Guid? ConsumableId { get; set; }
+    public Guid? ComponentId { get; set; }
+    public int Quantity { get; set; }
+    public int QuantityReceived { get; set; }
+    public decimal UnitCost { get; set; }
+    public string? Notes { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class Consumable
 {
     public Guid Id { get; set; } = Guid.NewGuid();
