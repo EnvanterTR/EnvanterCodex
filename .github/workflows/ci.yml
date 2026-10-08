@@ -107,3 +107,11 @@ jobs:
       - name: Validate legacy Windows secret migration rollback
         shell: pwsh
         run: ./deploy/windows/tests/protect-connection-string-safety-check.ps1
+
+      - name: Preserve the verified Windows x64 package
+        uses: actions/upload-artifact@v7
+        with:
+          name: envantertr-windows-x64-${{ github.sha }}
+          path: ${{ runner.temp }}/envantertr-windows-publish
+          if-no-files-found: error
+          retention-days: 14
