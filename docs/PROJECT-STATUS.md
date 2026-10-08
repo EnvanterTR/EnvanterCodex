@@ -136,3 +136,10 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 
 - Linux canlı geri yükleme için CI kaynağa dayalı emniyet kontrolleri eklendi: yedek doğrulama ve izole prova, canlı değişiklik öncesi doğrulanmış güvenlik yedeği, geçici veritabanı SQL kontrolü, sağlık kontrolü ve hata anında eski yapılandırmayı geri bağlayıp eski servisleri başlatma sırası denetleniyor. Eski/yenilenmiş Docker volume'larının silinmediği ve bakım kilidi de korunuyor.
 - Yeni emniyet kontrolü ve Linux dağıtım Bash sözdizimi izole Linux konteynerinde geçti. Bu kaynak/sıra kontrolüdür; gerçek Ubuntu'da canlı geri yükleme tatbikatını kanıtlamaz.
+
+## 2026-10-08 Talep edilebilir varlık ve karar rolü kabulü
+
+- Varlık kartında `Talep edilebilir` seçeneği bulunur. Stok talebi kataloğu yalnız etkin şirketteki bu işaretli ve kullanılabilir varlıkları gösterir; başka şirkete ait veya uygun olmayan varlıklar listelenmez. Varlık talepleri tek adetle sınırlıdır.
+- Talep onayında çalışan ve varlık şirket içinde/etkin olmalı, varlık hâlâ uygun olmalı ve işlem tek transaction içinde atama, durum ve varlık hareket geçmişini güncellemelidir. Çakışan veya geçersiz talepler reddedilir.
+- Yedi şirket rolünün talep karar uç noktasındaki yazma izni rol matrisi testine eklendi. Tam PostgreSQL HTTP kabul paketi izole ve geçici veritabanında **16/16 geçti**; yeni katalog/atama senaryoları da pakete dahildir. `git diff --check` temiz.
+- Yerel `http://localhost:8080/api/status` `ready` döndü; 30 migration uygulanmış, bekleyen migration 0. Değişiklikler GitHub `main` dalına `d44454f` commit'iyle gönderildi. GitHub Actions uzak koşum sonucu bu oturumda ayrıca gözlenmedi.
