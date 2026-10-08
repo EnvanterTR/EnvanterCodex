@@ -570,6 +570,41 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Contains(archive.Entries, entry => entry.FullName == "README.txt");
     }
 
+    [Fact]
+    public async Task Concurrent_component_checkouts_cannot_allocate_the_same_remaining_stock_twice()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var path = $"/api/components/{_ownComponentId}/allocate";
+        var firstRequest = SendAsRoleAsync(HttpMethod.Post, path, "admin",
+            System.Net.Http.Json.JsonContent.Create(new { assetId = _ownAssetId, quantity = 2, notes = "parallel checkout A" }), requestToken, antiforgeryCookie);
+        var secondRequest = SendAsRoleAsync(HttpMethod.Post, path, "admin",
+            System.Net.Http.Json.JsonContent.Create(new { assetId = _ownAssetId, quantity = 2, notes = "parallel checkout B" }), requestToken, antiforgeryCookie);
+
+        using var firstResponse = await firstRequest;
+        using var secondResponse = await secondRequest;
+
+        var responseDetails = $"first={(int)firstResponse.StatusCode} {await firstResponse.Content.ReadAsStringAsync()}; " +
+            $"second={(int)secondResponse.StatusCode} {await secondResponse.Content.ReadAsStringAsync()}";
+        Assert.True(new[] { firstResponse.StatusCode, secondResponse.StatusCode }.Contains(HttpStatusCode.Created), responseDetails);
+        Assert.Equal(1, new[] { firstResponse.StatusCode, secondResponse.StatusCode }
+            .Count(status => status == HttpStatusCode.Created));
+        Assert.Equal(1, new[] { firstResponse.StatusCode, secondResponse.StatusCode }
+            .Count(status => status == HttpStatusCode.Conflict));
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var allocated = await db.ComponentAllocations.Where(x => x.CompanyId == _companyId && x.ComponentId == _ownComponentId)
+            .SumAsync(x => x.Quantity - x.RemovedQuantity);
+        Assert.Equal(5, allocated);
+    }
+
     private async Task<HttpResponseMessage> SendProfilePhotoUploadAsync(byte[] bytes, string requestToken, string antiforgeryCookie)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/session/photo");
@@ -602,12 +637,15 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         return await _client!.SendAsync(request);
     }
 
-    private async Task<HttpResponseMessage> SendAsRoleAsync(HttpMethod method, string path, string role, HttpContent? content = null)
+    private async Task<HttpResponseMessage> SendAsRoleAsync(HttpMethod method, string path, string role, HttpContent? content = null,
+        string? requestToken = null, string? antiforgeryCookie = null)
     {
         using var request = new HttpRequestMessage(method, path) { Content = content };
         request.Headers.Add("X-Acceptance-User", _userId.ToString());
         request.Headers.Add("X-Acceptance-Company", _companyId.ToString());
         request.Headers.Add("X-Acceptance-Role", role);
+        if (!string.IsNullOrWhiteSpace(requestToken)) request.Headers.Add("X-CSRF-TOKEN", requestToken);
+        if (!string.IsNullOrWhiteSpace(antiforgeryCookie)) request.Headers.Add("Cookie", antiforgeryCookie);
         return await _client!.SendAsync(request);
     }
 
