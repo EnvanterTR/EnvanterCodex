@@ -1051,6 +1051,43 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     [Fact]
     public async Task Company_json_export_returns_a_valid_company_scoped_document()
     {
+        var otherTenantUserId = Guid.NewGuid();
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Users.Add(new EnvanterUser
+            {
+                Id = otherTenantUserId,
+                UserName = $"acceptance-other-tenant-{otherTenantUserId:N}",
+                NormalizedUserName = $"ACCEPTANCE-OTHER-TENANT-{otherTenantUserId:N}".ToUpperInvariant(),
+                Email = $"acceptance-other-tenant-{otherTenantUserId:N}@example.invalid",
+                NormalizedEmail = $"ACCEPTANCE-OTHER-TENANT-{otherTenantUserId:N}@EXAMPLE.INVALID".ToUpperInvariant(),
+                EmailConfirmed = true,
+                SecurityStamp = Guid.NewGuid().ToString("N"),
+                ConcurrencyStamp = Guid.NewGuid().ToString("N"),
+                DisplayName = "Other tenant profile"
+            });
+            db.CompanyMemberships.Add(new CompanyMembership
+            {
+                CompanyId = _otherCompanyId, UserId = otherTenantUserId, RoleKey = "admin"
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var ownerPhoto = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x11 };
+        var memberPhoto = new byte[] { 0x52, 0x49, 0x46, 0x46, 0x10, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50 };
+        var otherTenantPhoto = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x42 };
+        var accountMedia = Path.Combine(_mediaPath, "accounts");
+        var ownerDirectory = Path.Combine(accountMedia, _userId.ToString("N"));
+        var memberDirectory = Path.Combine(accountMedia, _sameCompanyOtherUserId.ToString("N"));
+        var otherTenantDirectory = Path.Combine(accountMedia, otherTenantUserId.ToString("N"));
+        Directory.CreateDirectory(ownerDirectory);
+        Directory.CreateDirectory(memberDirectory);
+        Directory.CreateDirectory(otherTenantDirectory);
+        await File.WriteAllBytesAsync(Path.Combine(ownerDirectory, "profile.png"), ownerPhoto);
+        await File.WriteAllBytesAsync(Path.Combine(memberDirectory, "profile.webp"), memberPhoto);
+        await File.WriteAllBytesAsync(Path.Combine(otherTenantDirectory, "profile.jpg"), otherTenantPhoto);
+
         using var response = await SendAsAdminAsync("/api/company/export.json");
         var body = await response.Content.ReadAsStringAsync();
         Assert.True(response.StatusCode == HttpStatusCode.OK,
@@ -1067,6 +1104,20 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var archive = new ZipArchive(new MemoryStream(archiveBytes), ZipArchiveMode.Read);
         Assert.Contains(archive.Entries, entry => entry.FullName == "company-data.json");
         Assert.Contains(archive.Entries, entry => entry.FullName == "README.txt");
+        var ownerPhotoEntry = Assert.Single(archive.Entries,
+            entry => entry.FullName == $"media/account-profiles/{_userId:N}/profile.png");
+        var memberPhotoEntry = Assert.Single(archive.Entries,
+            entry => entry.FullName == $"media/account-profiles/{_sameCompanyOtherUserId:N}/profile.webp");
+        Assert.DoesNotContain(archive.Entries, entry =>
+            entry.FullName.StartsWith($"media/account-profiles/{otherTenantUserId:N}/", StringComparison.Ordinal));
+        await using var ownerPhotoStream = ownerPhotoEntry.Open();
+        using var ownerPhotoBytes = new MemoryStream();
+        await ownerPhotoStream.CopyToAsync(ownerPhotoBytes);
+        Assert.Equal(ownerPhoto, ownerPhotoBytes.ToArray());
+        await using var memberPhotoStream = memberPhotoEntry.Open();
+        using var memberPhotoBytes = new MemoryStream();
+        await memberPhotoStream.CopyToAsync(memberPhotoBytes);
+        Assert.Equal(memberPhoto, memberPhotoBytes.ToArray());
     }
 
     [Fact]
