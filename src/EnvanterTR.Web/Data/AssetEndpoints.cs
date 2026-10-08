@@ -78,8 +78,10 @@ public static class AssetEndpoints
             {
                 var term = q.Trim();
                 if (term.Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
+                var escapedCustomFieldTerm = JsonSerializer.Serialize(term)[1..^1];
                 query = query.Where(x => x.AssetTag.Contains(term) || x.Name.Contains(term) ||
                     (x.SerialNumber != null && x.SerialNumber.Contains(term)) ||
+                    (x.CustomFieldsJson != null && (x.CustomFieldsJson.Contains(term) || x.CustomFieldsJson.Contains(escapedCustomFieldTerm))) ||
                     (x.Location != null && x.Location.Contains(term)) ||
                     db.Employees.Any(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId &&
                         (e.DisplayName.Contains(term) || e.EmployeeNumber.Contains(term))) ||
@@ -2378,8 +2380,10 @@ public static class AssetEndpoints
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
+                var escapedCustomFieldTerm = JsonSerializer.Serialize(term)[1..^1];
                 query = query.Where(x => x.AssetTag.Contains(term) || x.Name.Contains(term) ||
                     (x.SerialNumber != null && x.SerialNumber.Contains(term)) ||
+                    (x.CustomFieldsJson != null && (x.CustomFieldsJson.Contains(term) || x.CustomFieldsJson.Contains(escapedCustomFieldTerm))) ||
                     (x.Location != null && x.Location.Contains(term)) ||
                     db.Employees.Any(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId &&
                         (e.DisplayName.Contains(term) || e.EmployeeNumber.Contains(term))) ||
