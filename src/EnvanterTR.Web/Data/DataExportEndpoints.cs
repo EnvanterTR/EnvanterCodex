@@ -28,6 +28,9 @@ public static class DataExportEndpoints
         endpoints.MapPost("/api/company/import/preview", PreviewImportAsync)
             .RequireAuthorization("settings.manage")
             .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
+        endpoints.MapPost("/api/company/import/apply", ApplyCompanyImportAsync)
+            .RequireAuthorization("settings.manage")
+            .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
         endpoints.MapPost("/api/assets/import/preview.csv", PreviewAssetCsvAsync)
             .RequireAuthorization("asset.write")
             .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
@@ -866,6 +869,8 @@ public static class DataExportEndpoints
                 var itemType = ReadString(request, "itemType");
                 if (itemType is not ("Asset" or "Accessory" or "Consumable"))
                     AddError(errors, "Bir stok talebinin türü desteklenmiyor.");
+                else if (itemType is "Accessory" or "Consumable")
+                    AddError(errors, "Bu JSON geri yükleme sürümü yalnızca varlık taleplerini taşıyabilir; aksesuar/sarf talebi bulunan arşiv uygulanamaz.");
                 if (!TryGuid(request, "itemId", out var itemId))
                     AddError(errors, "Bir stok talebinin ürün kimliği geçersiz.");
                 else if (itemType == "Asset" && !assets.Contains(itemId))
@@ -917,6 +922,7 @@ public static class DataExportEndpoints
             var targetName = await db.Companies.AsNoTracking().Where(c => c.Id == targetCompanyId)
                 .Select(c => c.Name).SingleAsync(cancellationToken);
             var existingMatches = await CountExistingMatchesAsync(db, targetCompanyId, root, cancellationToken);
+            var restoreTargetEmpty = !await CompanyHasImportableDataAsync(db, targetCompanyId, cancellationToken);
             var cleanErrors = errors.Distinct(StringComparer.Ordinal).Take(30).ToArray();
             return Results.Ok(new
             {
@@ -926,8 +932,9 @@ public static class DataExportEndpoints
                 schemaVersion,
                 counts,
                 existingMatches,
+                restoreTargetEmpty,
                 errors = cleanErrors,
-                warning = "Eşleşme sayıları yalnızca aynı etiket/numara/adı taşıyan mevcut kayıtları gösterir; otomatik birleştirme kararı değildir. Bu işlem hiçbir kayıt değiştirmedi."
+                warning = "Eşleşme sayıları otomatik birleştirme kararı değildir. JSON geri yükleme yalnızca şirketin envanter kayıtları boşsa açılır; işlem kullanıcı hesaplarını, parolaları veya medya dosyalarını taşımaz. Bu önizleme hiçbir kayıt değiştirmedi."
             });
         }
         catch (JsonException)
@@ -935,6 +942,173 @@ public static class DataExportEndpoints
             return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "Dosya geçerli JSON değil veya iç içe veri sınırını aşıyor." } });
         }
     }
+
+    private static async Task<IResult> ApplyCompanyImportAsync(HttpContext context, AppDbContext db,
+        IAntiforgery antiforgery, CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(context.User.FindFirstValue("company_id"), out var targetCompanyId) ||
+            !Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
+        var role = context.User.FindFirstValue("company_role");
+        if (!await db.Companies.AsNoTracking().AnyAsync(c => c.Id == targetCompanyId && c.IsActive &&
+            db.CompanyMemberships.Any(m => m.CompanyId == targetCompanyId && m.UserId == userId && m.RoleKey == role), cancellationToken))
+            return Results.Forbid();
+        try { await antiforgery.ValidateRequestAsync(context); }
+        catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
+        if (context.Request.ContentType?.StartsWith("application/json", StringComparison.OrdinalIgnoreCase) != true)
+            return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
+
+        using var buffer = new MemoryStream();
+        var chunk = new byte[64 * 1024];
+        while (true)
+        {
+            var read = await context.Request.Body.ReadAsync(chunk.AsMemory(), cancellationToken);
+            if (read == 0) break;
+            if (buffer.Length + read > PreviewMaxBytes) return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+            await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken);
+        }
+
+        // Run the exact same read-only validation before any database write.
+        var validationContext = new DefaultHttpContext { User = context.User, RequestServices = context.RequestServices };
+        validationContext.Request.Method = "POST";
+        validationContext.Request.ContentType = context.Request.ContentType;
+        validationContext.Request.ContentLength = buffer.Length;
+        validationContext.Request.Body = new MemoryStream(buffer.ToArray(), writable: false);
+        foreach (var header in context.Request.Headers) validationContext.Request.Headers[header.Key] = header.Value;
+        var validationResult = await PreviewImportAsync(validationContext, db, antiforgery, cancellationToken);
+        await using var validationBody = new MemoryStream();
+        validationContext.Response.Body = validationBody;
+        await validationResult.ExecuteAsync(validationContext);
+        validationBody.Position = 0;
+        using var validationJson = await JsonDocument.ParseAsync(validationBody, cancellationToken: cancellationToken);
+        if (validationContext.Response.StatusCode != StatusCodes.Status200OK ||
+            !validationJson.RootElement.TryGetProperty("isValid", out var isValid) || isValid.ValueKind != JsonValueKind.True)
+            return Results.Json(validationJson.RootElement.Clone(), statusCode: validationContext.Response.StatusCode);
+
+        try
+        {
+            using var document = JsonDocument.Parse(buffer.ToArray(), new JsonDocumentOptions { MaxDepth = 32 });
+            var root = document.RootElement;
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+            // Company-level lock serializes imports; the first release is intentionally limited to an empty
+            // inventory workspace so no existing data can be overwritten or ambiguously merged.
+            _ = await db.Database.SqlQuery<Guid>($"SELECT \"Id\" AS \"Value\" FROM \"Companies\" WHERE \"Id\" = {targetCompanyId} FOR UPDATE")
+                .SingleAsync(cancellationToken);
+            var occupied = await CompanyHasImportableDataAsync(db, targetCompanyId, cancellationToken);
+            if (occupied)
+                return Results.Conflict(new { message = "Bu ilk geri yükleme sürümü yalnızca henüz envanter kaydı olmayan bir şirkette çalışır. Mevcut veriler korunmuştur; birleştirme modu henüz sunulmuyor." });
+
+            var departments = DeserializeRows<CompanyDepartment>(root, "departmentCatalog");
+            var locations = DeserializeRows<CompanyLocation>(root, "locationCatalog");
+            var employees = DeserializeRows<Employee>(root, "employees");
+            var categories = DeserializeRows<AssetCategory>(root, "assetCategories");
+            var brands = DeserializeRows<AssetBrand>(root, "assetBrands");
+            var models = DeserializeRows<AssetModel>(root, "assetModels");
+            var assets = DeserializeRows<Asset>(root, "assets");
+            var requests = DeserializeRows<InventoryRequest>(root, "inventoryRequests");
+            var maintenances = DeserializeRows<AssetMaintenance>(root, "assetMaintenances");
+            var events = DeserializeRows<AssetEvent>(root, "assetEvents");
+            var audits = DeserializeRows<AuditEntry>(root, "auditEntries");
+            if (requests.Any(x => x.ItemType is "Accessory" or "Consumable"))
+                return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "Dosyada bu JSON biçiminin taşımadığı aksesuar veya sarf talepleri var; hiçbir kayıt aktarılmadı." } });
+
+            var ids = new Dictionary<Guid, Guid>();
+            var sourceIds = new object[] { departments, locations, employees, categories, brands, models, assets,
+                requests, maintenances, events, audits }.SelectMany(rows => ((System.Collections.IEnumerable)rows)
+                .Cast<object>().Select(row => (Guid)row.GetType().GetProperty("Id")!.GetValue(row)!)).ToArray();
+            if (sourceIds.Distinct().Count() != sourceIds.Length)
+                return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "Dosyada tablo aileleri arasında yinelenen kayıt kimliği var; hiçbir kayıt aktarılmadı." } });
+            void RemapIds<T>(IEnumerable<T> rows) where T : class
+            {
+                foreach (var row in rows)
+                {
+                    var property = typeof(T).GetProperty("Id")!;
+                    ids.Add((Guid)property.GetValue(row)!, Guid.NewGuid());
+                }
+            }
+            RemapIds(departments); RemapIds(locations); RemapIds(employees); RemapIds(categories);
+            RemapIds(brands); RemapIds(models); RemapIds(assets); RemapIds(requests); RemapIds(maintenances); RemapIds(events); RemapIds(audits);
+            Guid? Map(Guid? source) => source is Guid id && ids.TryGetValue(id, out var mapped) ? mapped : null;
+            void CompanyScope<T>(IEnumerable<T> rows) where T : class
+            {
+                var type = typeof(T); var idProperty = type.GetProperty("Id")!; var companyProperty = type.GetProperty("CompanyId")!;
+                foreach (var row in rows) { idProperty.SetValue(row, ids[(Guid)idProperty.GetValue(row)!]); companyProperty.SetValue(row, targetCompanyId); }
+            }
+            CompanyScope(departments); CompanyScope(locations); CompanyScope(employees); CompanyScope(categories);
+            CompanyScope(brands); CompanyScope(models); CompanyScope(assets); CompanyScope(requests);
+            CompanyScope(maintenances); CompanyScope(events); CompanyScope(audits);
+            foreach (var item in locations) { item.ParentLocationId = Map(item.ParentLocationId); item.ManagerEmployeeId = Map(item.ManagerEmployeeId); }
+            foreach (var item in employees) { item.LocationCatalogId = Map(item.LocationCatalogId); item.ManagerEmployeeId = Map(item.ManagerEmployeeId); }
+            foreach (var item in models) item.BrandId = Map(item.BrandId);
+            foreach (var item in assets)
+            {
+                item.CategoryId = Map(item.CategoryId) ?? Guid.Empty; item.BrandId = Map(item.BrandId); item.ModelId = Map(item.ModelId);
+                item.ParentAssetId = Map(item.ParentAssetId); item.LocationCatalogId = Map(item.LocationCatalogId);
+                item.AssignedEmployeeId = Map(item.AssignedEmployeeId); item.DeletedAt = null; item.DeletedByUserId = null;
+            }
+            foreach (var item in requests)
+            {
+                item.EmployeeId = Map(item.EmployeeId) ?? Guid.Empty; item.ItemId = item.ItemType == "Asset" ? Map(item.ItemId) ?? Guid.Empty : item.ItemId;
+                item.RequestedByUserId = null; item.ReviewedByUserId = null;
+            }
+            foreach (var item in maintenances) { item.AssetId = Map(item.AssetId) ?? Guid.Empty; item.ActorUserId = null; item.SupplierId = null; }
+            foreach (var item in events) { item.AssetId = Map(item.AssetId) ?? Guid.Empty; item.EmployeeId = Map(item.EmployeeId); item.ActorUserId = null; }
+            foreach (var item in audits) { item.ActorUserId = null; item.TargetId = Map(item.TargetId); }
+
+            db.CompanyDepartments.AddRange(departments); db.CompanyLocations.AddRange(locations);
+            db.Employees.AddRange(employees); db.AssetCategories.AddRange(categories); db.AssetBrands.AddRange(brands);
+            db.AssetModels.AddRange(models); db.Assets.AddRange(assets); db.InventoryRequests.AddRange(requests);
+            db.AssetMaintenances.AddRange(maintenances); db.AssetEvents.AddRange(events); db.AuditEntries.AddRange(audits);
+            db.AuditEntries.Add(new AuditEntry { CompanyId = targetCompanyId, ActorUserId = userId,
+                TargetType = "Company", TargetId = targetCompanyId, Action = "CompanyDataImported",
+                Details = "Şirket JSON arşivindeki kataloglar, çalışanlar, varlıklar ve ilişkili kayıtlar yeni kimliklerle geri yüklendi." });
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { imported = true, counts = validationJson.RootElement.GetProperty("counts").Clone(),
+                message = "Katalog ve envanter kayıtları yeni kimliklerle geri yüklendi. Şirket profili/marka ayarları, kullanıcı hesapları, parolalar ve medya dosyaları JSON aktarımında uygulanmadı." });
+        }
+        catch (DbUpdateException)
+        {
+            return Results.Conflict(new { message = "Veritabanı bütünlük kısıtı nedeniyle aktarım geri alındı. Şirket verilerinde değişiklik yapılmadı." });
+        }
+        catch (JsonException)
+        {
+            return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "Geri yüklenecek JSON kayıtları okunamadı." } });
+        }
+    }
+
+    private static List<T> DeserializeRows<T>(JsonElement root, string property) =>
+        root.TryGetProperty(property, out var rows) && rows.ValueKind == JsonValueKind.Array
+            ? JsonSerializer.Deserialize<List<T>>(rows.GetRawText(), JsonOptions) ?? [] : [];
+
+    private static async Task<bool> CompanyHasImportableDataAsync(AppDbContext db, Guid companyId, CancellationToken cancellationToken) =>
+        await db.Employees.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.CompanyDepartments.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.CompanyLocations.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.AssetCategories.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.AssetBrands.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.AssetModels.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.Assets.IgnoreQueryFilters().AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.AssetEvents.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.AssetMaintenances.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.InventoryRequests.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.SupplierCatalogEntries.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.AssetCustomFieldDefinitions.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.Accessories.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.AccessoryAssignments.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.AccessoryMovements.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.AccessoryKits.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.AccessoryKitLines.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.AccessoryPurchaseOrders.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.AccessoryPurchaseOrderLines.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.Consumables.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.ConsumableMovements.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.InventoryComponents.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.ComponentAllocations.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.ComponentMovements.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.SoftwareLicenses.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.SoftwareLicenseAssignments.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.SoftwareLicenseEvents.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.StockPurchaseOrders.AnyAsync(x => x.CompanyId == companyId, cancellationToken);
 
     private static HashSet<Guid> ReadRows(JsonElement root, string name, Guid sourceCompanyId,
         List<string> errors, Dictionary<string, int> counts)
