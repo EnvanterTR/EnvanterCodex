@@ -1,4 +1,5 @@
 using System.Data;
+using System.Security.Cryptography;
 using System.Security.Claims;
 using System.Linq;
 using System.Text.Json;
@@ -1465,23 +1466,31 @@ public static class DataExportEndpoints
                 FileShare.None, 64 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan | FileOptions.DeleteOnClose);
             if (!OperatingSystem.IsWindows())
                 File.SetUnixFileMode(archivePath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            var manifestFiles = new List<ArchiveManifestFile>(files.Count + 1);
             using (var archive = new ZipArchive(archiveFile, ZipArchiveMode.Create, leaveOpen: true))
             {
                 var jsonEntry = archive.CreateEntry("company-data.json", CompressionLevel.Fastest);
                 await using (var jsonStream = jsonEntry.Open())
-                using (var writer = new Utf8JsonWriter(jsonStream, new JsonWriterOptions { Indented = false }))
+                await using (var hashingStream = new HashingWriteStream(jsonStream))
+                using (var writer = new Utf8JsonWriter(hashingStream, new JsonWriterOptions { Indented = false }))
                 {
                     await WriteCompanyJsonAsync(writer, db, company, companyId, cancellationToken);
                     await writer.FlushAsync(cancellationToken);
+                    manifestFiles.Add(new ArchiveManifestFile("company-data.json", hashingStream.BytesWritten, hashingStream.FinishHash()));
                 }
                 foreach (var file in files)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var entry = archive.CreateEntry(file.Entry, CompressionLevel.Fastest);
                     await using var output = entry.Open();
+                    await using var hashingOutput = new HashingWriteStream(output);
                     await using var input = new FileStream(file.Source, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
-                    await input.CopyToAsync(output, cancellationToken);
+                    await input.CopyToAsync(hashingOutput, cancellationToken);
+                    manifestFiles.Add(new ArchiveManifestFile(file.Entry, hashingOutput.BytesWritten, hashingOutput.FinishHash()));
                 }
+                var manifestEntry = archive.CreateEntry("manifest.json", CompressionLevel.Fastest);
+                await using (var manifestStream = manifestEntry.Open())
+                    await JsonSerializer.SerializeAsync(manifestStream, new { format = "envantertr-company-archive-manifest", schemaVersion = 1, files = manifestFiles }, JsonOptions, cancellationToken);
                 var readme = archive.CreateEntry("README.txt", CompressionLevel.Fastest);
                 await using var readmeStream = readme.Open();
                 await using var readmeWriter = new StreamWriter(readmeStream, new UTF8Encoding(false));
@@ -1546,6 +1555,59 @@ public static class DataExportEndpoints
                 if ((File.GetAttributes(child) & FileAttributes.ReparsePoint) == 0) pending.Push(child);
             foreach (var file in Directory.EnumerateFiles(directory))
                 if ((File.GetAttributes(file) & FileAttributes.ReparsePoint) == 0) yield return file;
+        }
+    }
+
+    private sealed record ArchiveManifestFile(string Path, long Length, string Sha256);
+
+    private sealed class HashingWriteStream : Stream
+    {
+        private readonly Stream _inner;
+        private readonly IncrementalHash _hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        private bool _hashFinished;
+        public long BytesWritten { get; private set; }
+
+        public HashingWriteStream(Stream inner) => _inner = inner;
+        public string FinishHash()
+        {
+            if (_hashFinished) throw new InvalidOperationException("Akış özeti zaten tamamlandı.");
+            _hashFinished = true;
+            return Convert.ToHexString(_hash.GetHashAndReset()).ToLowerInvariant();
+        }
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => BytesWritten;
+        public override long Position { get => BytesWritten; set => throw new NotSupportedException(); }
+        public override void Flush() => _inner.Flush();
+        public override Task FlushAsync(CancellationToken cancellationToken) => _inner.FlushAsync(cancellationToken);
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            _inner.Write(buffer, offset, count); _hash.AppendData(buffer, offset, count); BytesWritten += count;
+        }
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            _inner.Write(buffer); _hash.AppendData(buffer); BytesWritten += buffer.Length;
+        }
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            await _inner.WriteAsync(buffer, cancellationToken); _hash.AppendData(buffer.Span); BytesWritten += buffer.Length;
+        }
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            WriteAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) _hash.Dispose();
+            base.Dispose(disposing);
+        }
+        public override ValueTask DisposeAsync()
+        {
+            _hash.Dispose();
+            GC.SuppressFinalize(this);
+            return ValueTask.CompletedTask;
         }
     }
 
