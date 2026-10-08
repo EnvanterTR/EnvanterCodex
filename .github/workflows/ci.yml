@@ -86,3 +86,11 @@ jobs:
       - name: Validate Windows installer rollback and readiness
         shell: pwsh
         run: ./deploy/windows/tests/install-safety-check.ps1
+
+      - name: Validate Windows DPAPI database secret storage
+        shell: pwsh
+        run: ./deploy/windows/tests/windows-secrets-check.ps1
+
+      - name: Validate legacy Windows secret migration rollback
+        shell: pwsh
+        run: ./deploy/windows/tests/protect-connection-string-safety-check.ps1

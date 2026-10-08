@@ -5,10 +5,47 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Threading.RateLimiting;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseWindowsService();
+
+// Windows Server installs keep the PostgreSQL password in a LocalMachine DPAPI
+// blob under ProgramData. Only the service identity and administrators can read it.
+var protectedConnectionStringPath = builder.Configuration["WindowsSecrets:ConnectionStringPath"];
+if (!string.IsNullOrWhiteSpace(protectedConnectionStringPath))
+{
+    if (!OperatingSystem.IsWindows())
+        throw new InvalidOperationException("Windows DPAPI connection secrets can only be loaded on Windows.");
+    if (!File.Exists(protectedConnectionStringPath))
+        throw new InvalidOperationException("The protected PostgreSQL connection secret is missing.");
+
+    var protectedConnectionString = File.ReadAllBytes(protectedConnectionStringPath);
+    byte[]? clearConnectionString = null;
+    try
+    {
+        clearConnectionString = ProtectedData.Unprotect(protectedConnectionString, null, DataProtectionScope.LocalMachine);
+        var clearConnectionStringText = new UTF8Encoding(false, true).GetString(clearConnectionString);
+        if (string.IsNullOrWhiteSpace(clearConnectionStringText))
+            throw new InvalidOperationException("The protected PostgreSQL connection secret is empty.");
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:EnvanterTR"] = clearConnectionStringText
+        });
+    }
+    catch (Exception exception) when (exception is CryptographicException or DecoderFallbackException)
+    {
+        throw new InvalidOperationException("The protected PostgreSQL connection secret could not be opened on this machine.", exception);
+    }
+    finally
+    {
+        CryptographicOperations.ZeroMemory(protectedConnectionString);
+        if (clearConnectionString is not null)
+            CryptographicOperations.ZeroMemory(clearConnectionString);
+    }
+}
 
 // The Linux production profile exposes the app only to Caddy on its private
 // Compose network. Caddy's rightmost X-Forwarded-For entry is the client IP.

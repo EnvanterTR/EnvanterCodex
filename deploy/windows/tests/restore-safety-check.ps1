@@ -40,7 +40,7 @@ Assert-Contains "restore takes the shared maintenance lock and releases it in fi
 Assert-Contains "staging database preserves the live encoding and locale provider" '(?s)datlocprovider.*?datcollate.*?daticulocale.*?LOCALE_PROVIDER'
 Write-Output "PASS: restore PowerShell syntax and safety ordering."
 $publish = Get-Content -LiteralPath $publishPath -Raw
-if ($publish -notmatch 'Copy-Item.*BackupFormat\.psm1' -or $publish -notmatch 'Copy-Item.*restore\.ps1') {
-    throw "FAIL: Windows publish package must include the shared backup format module and restore script."
+if ($publish -notmatch 'Copy-Item.*BackupFormat\.psm1' -or $publish -notmatch 'Copy-Item.*WindowsSecrets\.psm1' -or $publish -notmatch 'Copy-Item.*restore\.ps1') {
+    throw "FAIL: Windows publish package must include the shared backup format, DPAPI secret modules, and restore script."
 }
-Write-Output "PASS: Windows package includes restore.ps1 and BackupFormat.psm1."
+Write-Output "PASS: Windows package includes restore.ps1, BackupFormat.psm1, and WindowsSecrets.psm1."

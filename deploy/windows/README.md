@@ -7,7 +7,7 @@ Bu klasör Windows x64 self-contained yayın, servis kurma ve uygulama güncelle
 - Windows Server 2019 veya 2022 x64, yönetici PowerShell'i ve paket derlemesi için .NET 10 SDK'sı ya da çalışan Docker Desktop (resmî .NET 10 SDK imajıyla) bulunan derleme makinesi.
 - PostgreSQL 17 ayrıca kurulmuş ve çalışıyor olmalı. `prepare-postgresql.ps1` yalnızca yerel PostgreSQL'e bağlanarak yeni, sınırlı yetkili uygulama rolü ve UTF-8 veritabanı hazırlar; PostgreSQL yazılımını kurmaz. `migrate.ps1` açık onaydan sonra uygulama şemasını oluşturur/günceller.
 - TLS sertifikası `Local Computer > Personal (My)` deposunda olmalı; betik tam subject eşleşmesini ve özel anahtarı doğrular. `LocalService` hesabına sertifikanın özel anahtarını okuma izni Windows Sertifikalar MMC'sinden verilmelidir.
-- Şirket görselleri ve Data Protection anahtarları `C:\ProgramData\EnvanterTR` altında tutulur. Servis hesabı yalnızca gerekli veri dizinlerinde yazma izni alır. Veritabanı bağlantı dizesi `Program Files` altındaki Production ayar dosyasında bulunur; erişim SYSTEM, Administrators ve LocalService ile sınırlandırılır. Zamanlanmış yedek parolası ve isteğe bağlı HTTPS bildirim adresi Windows DPAPI LocalMachine ile makineye bağlı şifrelenir ve yalnız SYSTEM/Administrators ACL'li dizinde saklanır. Bağlantı dizesi için DPAPI tabanlı sır kasası hâlâ sonraki iştir.
+- Şirket görselleri, Data Protection anahtarları ve DPAPI ile LocalMachine kapsamında şifrelenmiş PostgreSQL bağlantı sırrı `C:\ProgramData\EnvanterTR` altında tutulur. Production ayar dosyasında yalnızca şifreli sır dosyasının yolu bulunur; sır klasöründe SYSTEM ve Administrators tam yetkili, LocalService salt okunur erişimlidir. Uygulama ve bakım betikleri sırrı yalnız aynı Windows makinesinde açabilir; dosya başka makineye taşınırsa açılamaz. Zamanlanmış yedek parolası ve isteğe bağlı HTTPS bildirim adresi de DPAPI ile makineye bağlı şifrelenir. Çevrim dışı parola kasası/kurtarma kaydı zorunludur.
 - Kurulum Windows Güvenlik Duvarı'nı değiştirmez. HTTPS 8443 varsayılandır; kurumun ağ ve sertifika politikasına göre erişimi ayrıca ayarlayın.
 
 ## Yayın ve ilk servis kurulumu
@@ -27,9 +27,9 @@ Betik önce yerel .NET SDK'sını kullanır; SDK yoksa çalışan Docker Desktop
 ./install.ps1 -PackagePath C:\Staging\publish
 ```
 
-PostgreSQL'e önceden EnvanterTR rolü/veritabanı açılmadıysa paketteki `prepare-postgresql.ps1` betiğini yönetici oturumunda çalıştırın. Betik yalnızca `127.0.0.1` üzerindeki PostgreSQL 17'ye bağlanır, administrator parolasını gizli ister, mevcut adlara dokunmaz ve yalnız yeni bir veritabanı/rol oluşturur. Ürettiği bağlantı dizesini doğrudan yukarıdaki `install.ps1` parolalı bağlantı dizesi istemine yapıştırın; dosyaya kaydetmeyin. Rol oluşturulup veritabanı oluşturulamazsa yeni rolü kaldırmayı dener. PostgreSQL kurulumunu, uzak veritabanı sunucusu veya kurumsal TLS ayarlarını otomatikleştirmez.
+PostgreSQL'e önceden EnvanterTR rolü/veritabanı açılmadıysa paketteki `prepare-postgresql.ps1` betiğini yönetici oturumunda çalıştırın. Betik yalnızca `127.0.0.1` üzerindeki PostgreSQL 17'ye bağlanır, administrator parolasını gizli ister, mevcut adlara dokunmaz ve yalnız yeni bir veritabanı/rol oluşturur. Ürettiği bağlantı dizesini doğrudan `install.ps1` içindeki gizli bağlantı dizesi istemine yapıştırın; betik bunu DataRoot altında DPAPI ile şifreler ve ayar dosyasına düz metin yazmaz. Rol oluşturulup veritabanı oluşturulamazsa yeni rolü kaldırmayı dener. PostgreSQL kurulumunu, uzak veritabanı sunucusu veya kurumsal TLS ayarlarını otomatikleştirmez.
 
-Betik HTTPS sertifika subject'ini ve PostgreSQL bağlantı dizesini gizli giriş olarak ister; servis ve veri klasörlerini ACL ile sınırlar; servisi `NT AUTHORITY\LocalService` hesabıyla otomatik başlatılacak şekilde kaydeder. İlk kurulum sırasında HTTPS `/api/status` uç noktasını iki dakikaya kadar yoklar ve API'nin PostgreSQL'e erişebildiğini doğrulamadan bootstrap anahtarlarını göstermez. Servis başlatma veya bağlantı doğrulaması başarısız olursa oluşturduğu servisi ve uygulama dosyalarını geri alır; `DataRoot`'u silmez. İlk şirket ve platform bootstrap anahtarlarını yalnız başarılı kurulumdan sonra güvenli kasada saklayın. Yeni ve boş veritabanı için:
+Betik HTTPS sertifika subject'ini ve PostgreSQL bağlantı dizesini gizli giriş olarak ister; bağlantı dizesini DPAPI ile şifreleyip SYSTEM/Administrators/LocalService ACL'li DataRoot sır klasörüne yazar, ayar dosyasında yalnızca şifreli sır yolunu saklar; servisi `NT AUTHORITY\LocalService` hesabıyla otomatik başlatılacak şekilde kaydeder. İlk kurulum sırasında HTTPS `/api/status` uç noktasını iki dakikaya kadar yoklar ve API'nin PostgreSQL'e erişebildiğini doğrulamadan bootstrap anahtarlarını göstermez. Servis başlatma veya bağlantı doğrulaması başarısız olursa oluşturduğu servisi ve uygulama dosyalarını geri alır; `DataRoot`'u silmez. İlk şirket ve platform bootstrap anahtarlarını yalnız başarılı kurulumdan sonra güvenli kasada saklayın. Yeni ve boş veritabanı için:
 
 `InstallRoot` EnvanterTR'ye ayrılmış olmalı; `app` dışında dosya içermemelidir. `InstallRoot` ile `DataRoot` birbiri içine giremez veya junction/symlink olamaz. Bu koşullar kurulumun başka ürün dosyalarının ACL'lerini değiştirmesini ve hata rollback'inin başka bir dizine taşmasını önler.
 
@@ -46,6 +46,16 @@ Kurulum rollback ve readiness kontrolünün PowerShell kaynak regresyon denetimi
 ```
 
 Bu kontrol servis açma, veritabanına bağlanma veya Windows Server kurulumunu çalıştırmaz; gerçek hedef sunucu kabulünün yerini tutmaz.
+
+## Eski kurulumlarda veritabanı sırrını koruma
+
+Önce doğrulanmış bir yedek alın. Eski sürümde bağlantı dizesi `appsettings.Production.json` içinde düz metinse, paketteki yönetici PowerShell komutunu çalıştırın:
+
+```powershell
+./protect-connection-string.ps1
+```
+
+Komut sırrı aynı makineye bağlı DPAPI LocalMachine ile şifreler, `DataRoot\secrets` ACL'lerini sınırlar, ayar dosyasını atomik değiştirir ve servisi yeniden başlatıp HTTPS `/api/status` yanıtının `ready` olmasını bekler. Sağlık kontrolü başarısız olursa eski ayar dosyasını geri koyar, yeni DPAPI dosyasını kaldırır ve servisi eski ayarla başlatmayı dener. Zaten korumalı kurulumlarda sırrı doğrular ve değişiklik yapmadan çıkar. Parolayı sunucu dışında parola kasasına kaydedin; DPAPI dosyası makine kaybında başka sunucuda açılamaz.
 
 ## Uygulama güncelleme
 

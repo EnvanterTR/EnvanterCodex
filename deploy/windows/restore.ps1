@@ -22,7 +22,7 @@ foreach ($toolName in "pg_restore.exe","psql.exe") {
         throw "PostgreSQL recovery tool is missing: $(Join-Path $PgBinDirectory $toolName)"
     }
 }
-foreach ($required in @($configPath,(Join-Path $appPath "EnvanterTR.Web.exe"),(Join-Path $PSScriptRoot "BackupFormat.psm1"))) {
+foreach ($required in @($configPath,(Join-Path $appPath "EnvanterTR.Web.exe"),(Join-Path $PSScriptRoot "BackupFormat.psm1"),(Join-Path $PSScriptRoot "WindowsSecrets.psm1"))) {
     if (-not (Test-Path -LiteralPath $required -PathType Leaf)) { throw "Required installation file is missing: $required" }
 }
 $service = Get-Service -Name $ServiceName -ErrorAction Stop
@@ -30,7 +30,8 @@ if ($service.Status -ne "Running") { throw "The EnvanterTR service must be runni
 
 $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
 $connection = [System.Data.Common.DbConnectionStringBuilder]::new()
-$connection.ConnectionString = [string]$config.ConnectionStrings.EnvanterTR
+Import-Module (Join-Path $PSScriptRoot "WindowsSecrets.psm1") -Force
+$connection.ConnectionString = Get-EnvanterTRConnectionString -ConfigurationPath $configPath
 function Get-ConnectionValue([string[]]$Names, [string]$Default = "") {
     foreach ($name in $Names) {
         foreach ($key in $connection.Keys) {

@@ -52,7 +52,11 @@ if ([string]::IsNullOrWhiteSpace($connectionString) -or $connectionString -notma
 $appPath = Join-Path $InstallRoot "app"
 $mediaPath = Join-Path $DataRoot "company-media"
 $keysPath = Join-Path $DataRoot "data-protection-keys"
+$secretsPath = Join-Path $DataRoot "secrets"
+$connectionSecretPath = Join-Path $secretsPath "database-connection.dpapi"
 $configPath = Join-Path $appPath "appsettings.Production.json"
+$connectionSecretCreated = $false
+if (Test-Path -LiteralPath $connectionSecretPath) { throw "A protected database connection secret already exists; the installer will not overwrite DataRoot data." }
 $appPathWasPresent = Test-Path -LiteralPath $appPath -PathType Container
 if ($appPathWasPresent) {
     if ((Get-Item -LiteralPath $appPath).Attributes -band [IO.FileAttributes]::ReparsePoint) {
@@ -69,10 +73,10 @@ $serviceCreated = $false
 
 try {
     $appInstallStarted = $true
-    New-Item -ItemType Directory -Path $appPath,$mediaPath,$keysPath -Force | Out-Null
+    New-Item -ItemType Directory -Path $appPath,$mediaPath,$keysPath,$secretsPath -Force | Out-Null
     Copy-Item -Path (Join-Path $package "*") -Destination $appPath -Recurse -Force
 
-    # Restrict the tree before writing any database or bootstrap secrets into Production configuration.
+    # Restrict configuration and the DPAPI secret location before saving installation secrets.
     & icacls.exe $InstallRoot /inheritance:r /grant:r "SYSTEM:(OI)(CI)F" "Administrators:(OI)(CI)F" "NT AUTHORITY\LOCAL SERVICE:(OI)(CI)RX" /T /C | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "Could not set application directory permissions." }
     & icacls.exe $DataRoot /inheritance:r /grant:r "SYSTEM:(OI)(CI)F" "Administrators:(OI)(CI)F" "NT AUTHORITY\LOCAL SERVICE:(OI)(CI)RX" /T /C | Out-Null
@@ -81,6 +85,8 @@ try {
         & icacls.exe $writableDataPath /grant:r "NT AUTHORITY\LOCAL SERVICE:(OI)(CI)M" /T /C | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "Could not grant the service access to $writableDataPath" }
     }
+    & icacls.exe $secretsPath /inheritance:r /grant:r "SYSTEM:(OI)(CI)F" "Administrators:(OI)(CI)F" "NT AUTHORITY\LOCAL SERVICE:(OI)(CI)RX" /T /C | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Could not restrict protected secret directory permissions." }
 
 $tokenBytes = New-Object byte[] 32
 $random = [Security.Cryptography.RandomNumberGenerator]::Create()
@@ -92,7 +98,7 @@ try { $random.GetBytes($tokenBytes) } finally { $random.Dispose() }
 $platformBootstrapToken = [Convert]::ToBase64String($tokenBytes)
 
 $config = [ordered]@{
-    ConnectionStrings = @{ EnvanterTR = $connectionString }
+    WindowsSecrets = @{ ConnectionStringPath = $connectionSecretPath }
     DataProtection = @{ KeysPath = $keysPath }
     Storage = @{ CompanyMediaPath = $mediaPath }
     Setup = @{
@@ -103,6 +109,16 @@ $config = [ordered]@{
         Url = "https://0.0.0.0:$HttpsPort"
         Certificate = @{ Subject = $subject; Store = "My"; Location = "LocalMachine"; AllowInvalid = $false }
     } } }
+}
+$connectionBytes = [Text.Encoding]::UTF8.GetBytes($connectionString)
+try {
+    $protectedConnectionBytes = [Security.Cryptography.ProtectedData]::Protect(
+        $connectionBytes,$null,[Security.Cryptography.DataProtectionScope]::LocalMachine)
+    $connectionSecretCreated = $true
+    [IO.File]::WriteAllBytes($connectionSecretPath,$protectedConnectionBytes)
+} finally {
+    [Array]::Clear($connectionBytes,0,$connectionBytes.Length)
+    $connectionString = $null
 }
 $config | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $configPath -Encoding UTF8
 
@@ -164,6 +180,9 @@ $config | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $configPath -Encodi
         if (-not $appPathWasPresent) { Remove-Item -LiteralPath $appPath -Force -ErrorAction SilentlyContinue }
     } elseif ($appInstallStarted -and -not $serviceRemovalConfirmed) {
         Write-Warning "The failed service is still registered; application files were retained at '$appPath' so its binary path remains valid."
+    }
+    if ($connectionSecretCreated -and $serviceRemovalConfirmed) {
+        Remove-Item -LiteralPath $connectionSecretPath -Force -ErrorAction SilentlyContinue
     }
     throw "Windows installation failed; rollback was attempted and DataRoot was retained. $($installFailure.Exception.Message)"
 }

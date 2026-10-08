@@ -16,6 +16,7 @@ $magic = [byte[]](0x45,0x54,0x42,0x4B,0x01)
 $appPath = Join-Path $InstallRoot "app"
 $configPath = Join-Path $appPath "appsettings.Production.json"
 if (-not (Test-Path -LiteralPath $configPath)) { throw "Production configuration is missing." }
+if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot "WindowsSecrets.psm1"))) { throw "Windows DPAPI secret helper is missing from the package." }
 if (-not (Test-Path -LiteralPath (Join-Path $PgBinDirectory "pg_dump.exe"))) { throw "PostgreSQL 17 pg_dump.exe was not found at $PgBinDirectory." }
 if (-not (Test-Path -LiteralPath (Join-Path $PgBinDirectory "pg_restore.exe"))) { throw "PostgreSQL 17 pg_restore.exe was not found at $PgBinDirectory." }
 foreach ($toolName in "initdb.exe","pg_ctl.exe","createdb.exe","psql.exe") {
@@ -24,7 +25,8 @@ foreach ($toolName in "initdb.exe","pg_ctl.exe","createdb.exe","psql.exe") {
 
 $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
 $connection = [System.Data.Common.DbConnectionStringBuilder]::new()
-$connection.ConnectionString = [string]$config.ConnectionStrings.EnvanterTR
+Import-Module (Join-Path $PSScriptRoot "WindowsSecrets.psm1") -Force
+$connection.ConnectionString = Get-EnvanterTRConnectionString -ConfigurationPath $configPath
 function Get-ConnectionValue([string[]]$Names, [string]$Default = "") {
     foreach ($name in $Names) {
         foreach ($key in $connection.Keys) {

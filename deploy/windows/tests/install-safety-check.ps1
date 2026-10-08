@@ -20,6 +20,10 @@ Assert-Pattern 'service and application rollback only removes a service created 
 Assert-Pattern 'service files stay in place if service deletion cannot be confirmed' '(?s)if\s*\(\$appInstallStarted\s+-and\s+\$serviceRemovalConfirmed.*?elseif\s*\(\$appInstallStarted\s+-and\s+-not\s+\$serviceRemovalConfirmed\).*?application files were retained'
 Assert-Pattern 'failure rollback retains the DataRoot and its user data' '(?s)Windows installation failed.*?DataRoot was retained'
 Assert-Pattern 'setup tokens are not shown until HTTPS API and PostgreSQL connectivity pass' '(?s)\$status\.product\s+-eq\s+"EnvanterTR"\s+-and\s+\$status\.status\s+-notin\s+@\("database-unavailable","database-not-configured"\).*?if\s*\(-not\s+\$apiReady\).*?One-time company setup token'
+Assert-Pattern 'database credentials use LocalMachine DPAPI protection' '(?s)ProtectedData\]::Protect\(\s*\$connectionBytes,\$null,\[Security\.Cryptography\.DataProtectionScope\]::LocalMachine\)'
+Assert-Pattern 'production settings store the protected secret path instead of the plaintext connection string' 'WindowsSecrets = @\{ ConnectionStringPath = \$connectionSecretPath \}'
+Assert-Pattern 'the Windows service can read only the protected secret directory' '(?s)\$secretsPath /inheritance:r /grant:r "SYSTEM:\(OI\)\(CI\)F" "Administrators:\(OI\)\(CI\)F" "NT AUTHORITY\\LOCAL SERVICE:\(OI\)\(CI\)RX'
+if ($source -match '(?s)ConnectionStrings\s*=\s*@\{\s*EnvanterTR\s*=\s*\$connectionString') { throw 'FAIL: database credentials must not be written in appsettings.' }
 
 $apiReadyIndex = $source.IndexOf('if ($status.product -eq "EnvanterTR"')
 $companyTokenIndex = $source.IndexOf('One-time company setup token')
