@@ -46,11 +46,15 @@ PostgreSQL'e önceden EnvanterTR rolü/veritabanı açılmadıysa paketteki `pre
 
 Betik HTTPS sertifika subject'ini ve PostgreSQL bağlantı dizesini gizli giriş olarak ister; bağlantı dizesini DPAPI ile şifreleyip SYSTEM/Administrators/LocalService ACL'li DataRoot sır klasörüne yazar, ayar dosyasında yalnızca şifreli sır yolunu saklar; servisi `NT AUTHORITY\LocalService` hesabıyla otomatik başlatılacak şekilde kaydeder. İlk kurulum sırasında HTTPS `/api/status` uç noktasını iki dakikaya kadar yoklar ve API'nin PostgreSQL'e erişebildiğini doğrulamadan bootstrap anahtarlarını göstermez. Servis başlatma veya bağlantı doğrulaması başarısız olursa oluşturduğu servisi ve uygulama dosyalarını geri alır; `DataRoot`'u silmez. İlk şirket ve platform bootstrap anahtarlarını yalnız başarılı kurulumdan sonra güvenli kasada saklayın. Yeni ve boş veritabanı için:
 
-`InstallRoot` EnvanterTR'ye ayrılmış olmalı; `app` dışında dosya içermemelidir. `InstallRoot` ile `DataRoot` birbiri içine giremez veya junction/symlink olamaz. Bu koşullar kurulumun başka ürün dosyalarının ACL'lerini değiştirmesini ve hata rollback'inin başka bir dizine taşmasını önler.
-
 ```powershell
 ./migrate.ps1 -InitialSetup
 ```
+
+`InstallRoot` EnvanterTR'ye ayrılmış olmalı; `app` dışında dosya içermemelidir. `InstallRoot` ile `DataRoot` birbiri içine giremez veya junction/symlink olamaz. Bu koşullar kurulumun başka ürün dosyalarının ACL'lerini değiştirmesini ve hata rollback'inin başka bir dizine taşmasını önler.
+
+### SMTP e-posta ayarları
+
+Parola kurtarma ve şirket davet e-postaları için yönetici PowerShell oturumunda `./configure-email.ps1` komutunu çalıştırın. SMTP sunucusu, port, STARTTLS, hesap adı, gönderen adresi ve HTTPS site adresi sorulur; parola gizli giriş olarak alınır. Parola `DataRoot\secrets` altında makineye bağlı DPAPI ile korunur; `appsettings.Production.json` yalnızca sır dosyasının yolunu tutar. Ayarlar kaydedilirken çalışan servis durdurulur ve tekrar `/api/status` `ready` olana kadar doğrulanır. Başlatma/sağlık kontrolü başarısızsa eski ayar dosyası geri alınır. Güncelleme betiği bu ayarları mevcut üretim yapılandırmasından devralır. Gerçek e-posta teslimatını üretim adresiyle ayrıca doğrulayın; bakım/denetim/iade hatırlatmaları henüz SMTP'ye bağlı değildir.
 
 Sonra `/setup.html` ile şirket sahibini, `/platform-setup.html` ile platform yöneticisini oluşturun. İki hesap da hazır olduğunda, aynı paketteki `disable-bootstrap.ps1` anahtarları etkin ayar dosyasından kaldırır ve bunu yapmadan önce iki hesap durumunu doğrular. Ardından istemci bilgisayardan `https://sunucu-adı:8443/api/status` adresinin `ready` döndürdüğünü kontrol edin. `ready` değilse güvenlik duvarını açmak yerine servis olay günlüklerini, PostgreSQL bağlantısını, migration sayısını ve sertifika özel anahtar izinlerini inceleyin.
 

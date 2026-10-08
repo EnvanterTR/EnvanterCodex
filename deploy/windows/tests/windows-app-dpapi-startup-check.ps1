@@ -15,6 +15,7 @@ $oldEnvironment = @{
     StorageCompanyMediaPath = $env:Storage__CompanyMediaPath
     ConnectionString = $env:ConnectionStrings__EnvanterTR
     WindowsSecretPath = $env:WindowsSecrets__ConnectionStringPath
+    SmtpSecretPath = $env:WindowsSecrets__SmtpPasswordPath
 }
 
 try {
@@ -27,6 +28,14 @@ try {
         [IO.File]::WriteAllBytes($secretPath,$protectedBytes)
         [Array]::Clear($protectedBytes,0,$protectedBytes.Length)
     } finally { [Array]::Clear($connectionBytes,0,$connectionBytes.Length) }
+    $smtpSecretPath = Join-Path $tempRoot "smtp-password.dpapi"
+    $smtpPasswordBytes = [Text.Encoding]::UTF8.GetBytes("Test-only-SMTP-secret")
+    try {
+        $protectedSmtpBytes = [Security.Cryptography.ProtectedData]::Protect(
+            $smtpPasswordBytes,$null,[Security.Cryptography.DataProtectionScope]::LocalMachine)
+        [IO.File]::WriteAllBytes($smtpSecretPath,$protectedSmtpBytes)
+        [Array]::Clear($protectedSmtpBytes,0,$protectedSmtpBytes.Length)
+    } finally { [Array]::Clear($smtpPasswordBytes,0,$smtpPasswordBytes.Length) }
 
     $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,0)
     $listener.Start()
@@ -34,7 +43,7 @@ try {
     $listener.Stop()
 
     $settings = [ordered]@{
-        WindowsSecrets = @{ ConnectionStringPath = $secretPath }
+        WindowsSecrets = @{ ConnectionStringPath = $secretPath; SmtpPasswordPath = $smtpSecretPath }
         DataProtection = @{ KeysPath = (Join-Path $tempRoot "keys") }
         Storage = @{ CompanyMediaPath = (Join-Path $tempRoot "media") }
     }
@@ -46,6 +55,7 @@ try {
     $env:Storage__CompanyMediaPath = Join-Path $tempRoot "media"
     $env:ConnectionStrings__EnvanterTR = $null
     $env:WindowsSecrets__ConnectionStringPath = $null
+    $env:WindowsSecrets__SmtpPasswordPath = $null
 
     $stdoutPath = Join-Path $tempRoot "stdout.log"
     $stderrPath = Join-Path $tempRoot "stderr.log"
@@ -77,7 +87,7 @@ try {
         if (Test-Path -LiteralPath $stderrPath) { $diagnostics += Get-Content -LiteralPath $stderrPath -Tail 25 }
         throw "The published app did not start with the LocalMachine DPAPI secret and expose its status API. $($diagnostics -join [Environment]::NewLine)"
     }
-    Write-Output "PASS: published Windows x64 app opened the DPAPI connection secret and served /api/status; the isolated database target was intentionally unavailable."
+    Write-Output "PASS: published Windows x64 app opened the DPAPI database and SMTP secrets and served /api/status; the isolated database target was intentionally unavailable."
 } finally {
     if ($process -and -not $process.HasExited) { $process.Kill($true); $process.WaitForExit() }
     $env:ASPNETCORE_ENVIRONMENT = $oldEnvironment.AspNetCoreEnvironment
@@ -86,5 +96,6 @@ try {
     $env:Storage__CompanyMediaPath = $oldEnvironment.StorageCompanyMediaPath
     $env:ConnectionStrings__EnvanterTR = $oldEnvironment.ConnectionString
     $env:WindowsSecrets__ConnectionStringPath = $oldEnvironment.WindowsSecretPath
+    $env:WindowsSecrets__SmtpPasswordPath = $oldEnvironment.SmtpSecretPath
     Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
 }

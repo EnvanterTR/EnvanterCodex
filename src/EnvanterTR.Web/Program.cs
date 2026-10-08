@@ -47,6 +47,41 @@ if (!string.IsNullOrWhiteSpace(protectedConnectionStringPath))
     }
 }
 
+// Windows Server SMTP credentials are stored separately from appsettings and
+// protected with machine-scoped DPAPI by configure-email.ps1.
+var protectedSmtpPasswordPath = builder.Configuration["WindowsSecrets:SmtpPasswordPath"];
+if (!string.IsNullOrWhiteSpace(protectedSmtpPasswordPath))
+{
+    if (!OperatingSystem.IsWindows())
+        throw new InvalidOperationException("Windows DPAPI SMTP secrets can only be loaded on Windows.");
+    if (!File.Exists(protectedSmtpPasswordPath))
+        throw new InvalidOperationException("The protected SMTP password secret is missing.");
+
+    var protectedSmtpPassword = File.ReadAllBytes(protectedSmtpPasswordPath);
+    byte[]? clearSmtpPassword = null;
+    try
+    {
+        clearSmtpPassword = ProtectedData.Unprotect(protectedSmtpPassword, null, DataProtectionScope.LocalMachine);
+        var clearSmtpPasswordText = new UTF8Encoding(false, true).GetString(clearSmtpPassword);
+        if (string.IsNullOrWhiteSpace(clearSmtpPasswordText))
+            throw new InvalidOperationException("The protected SMTP password secret is empty.");
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Email:Smtp:Password"] = clearSmtpPasswordText
+        });
+    }
+    catch (Exception exception) when (exception is CryptographicException or DecoderFallbackException)
+    {
+        throw new InvalidOperationException("The protected SMTP password secret could not be opened on this machine.", exception);
+    }
+    finally
+    {
+        CryptographicOperations.ZeroMemory(protectedSmtpPassword);
+        if (clearSmtpPassword is not null)
+            CryptographicOperations.ZeroMemory(clearSmtpPassword);
+    }
+}
+
 // The Linux production profile exposes the app only to Caddy on its private
 // Compose network. Caddy's rightmost X-Forwarded-For entry is the client IP.
 // Keep this opt-in: never trust caller-supplied forwarding headers on a public app port.

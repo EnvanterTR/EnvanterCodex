@@ -129,6 +129,10 @@ jobs:
         shell: pwsh
         run: ./deploy/windows/tests/protect-connection-string-safety-check.ps1
 
+      - name: Validate Windows SMTP secret configuration safety
+        shell: pwsh
+        run: ./deploy/windows/tests/configure-email-safety-check.ps1
+
       - name: Validate Windows release ZIP and SHA-256
         shell: pwsh
         run: ./deploy/windows/tests/package-release-check.ps1

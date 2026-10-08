@@ -40,6 +40,7 @@ $exe = Join-Path $output "EnvanterTR.Web.exe"
 if (-not (Test-Path $exe)) { throw "Publish completed without expected executable: $exe" }
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "install.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "protect-connection-string.ps1") -Destination $output -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot "configure-email.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "prepare-postgresql.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "migrate.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "disable-bootstrap.ps1") -Destination $output -Force
