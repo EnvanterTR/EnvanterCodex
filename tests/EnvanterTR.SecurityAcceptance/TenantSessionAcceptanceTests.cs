@@ -1483,6 +1483,9 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, disableResponse.StatusCode);
         using (var passwordOnlyLogin = await SendAnonymousLoginAsync(loginClient, email, password, null, loginToken, loginCookie))
             Assert.Equal(HttpStatusCode.OK, passwordOnlyLogin.StatusCode);
+        using (var logoutResponse = await SendAsUserAsync(HttpMethod.Post, "/api/session/logout", _userId, _companyId,
+            requestToken: setupToken, antiforgeryCookie: setupCookie))
+            Assert.Equal(HttpStatusCode.NoContent, logoutResponse.StatusCode);
 
         await using var auditScope = _factory.Services.CreateAsyncScope();
         var auditDb = auditScope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -1490,6 +1493,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             .Where(entry => entry.CompanyId == _companyId && entry.TargetId == _userId)
             .Select(entry => new { entry.Action, entry.Details }).ToListAsync();
         Assert.True(accountEvents.Count(entry => entry.Action == "LoginSucceeded") >= 4);
+        Assert.Contains(accountEvents, entry => entry.Action == "Logout");
         Assert.Contains(accountEvents, entry => entry.Action == "TwoFactorEnabled");
         Assert.Contains(accountEvents, entry => entry.Action == "TwoFactorRecoveryCodesRotated");
         Assert.Contains(accountEvents, entry => entry.Action == "TwoFactorDisabled");
