@@ -48,6 +48,39 @@ public static class ComponentEndpoints
             var csv=new StringBuilder("\uFEFF\"Bileşen\",\"Kategori\",\"Model\",\"Ürün no\",\"Seri no\",\"Tedarikçi\",\"Konum\",\"Toplam\",\"Atanmış\",\"Kullanılabilir\",\"Minimum\",\"Birim maliyeti\",\"Para birimi\"\r\n");foreach(var x in rows){var cells=new[]{x.Name,x.Category,x.ModelNumber,x.ItemNumber,x.SerialNumber,x.Supplier,x.Location,x.TotalQuantity.ToString(CultureInfo.InvariantCulture),x.Allocated.ToString(CultureInfo.InvariantCulture),(x.TotalQuantity-x.Allocated).ToString(CultureInfo.InvariantCulture),x.MinimumQuantity.ToString(CultureInfo.InvariantCulture),x.UnitCost?.ToString("0.00",CultureInfo.InvariantCulture),x.Currency};csv.AppendJoin(',',cells.Select(CsvCell)).Append("\r\n");}
             return Results.File(Encoding.UTF8.GetBytes(csv.ToString()),"text/csv; charset=utf-8",$"bilesen-stoklari-{DateTime.UtcNow:yyyyMMdd}.csv");
         }).RequireAuthorization("asset.read");
+        api.MapGet("/reports/components", async (ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!Tenant(user, out var companyId)) return Results.Forbid();
+            var components = db.InventoryComponents.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var allocations = db.ComponentAllocations.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var rows = await components
+                .GroupBy(x => x.Category ?? "Kategorisiz")
+                .Select(group => new
+                {
+                    category = group.Key,
+                    componentCount = group.Count(),
+                    totalQuantity = group.Sum(x => x.TotalQuantity),
+                    allocatedQuantity = group.Sum(x => allocations.Where(a => a.ComponentId == x.Id)
+                        .Sum(a => (int?)(a.Quantity - a.RemovedQuantity)) ?? 0),
+                    lowStockCount = group.Count(x => x.TotalQuantity -
+                        (allocations.Where(a => a.ComponentId == x.Id).Sum(a => (int?)(a.Quantity - a.RemovedQuantity)) ?? 0)
+                        <= x.MinimumQuantity)
+                })
+                .OrderBy(x => x.category).ToListAsync(ct);
+            var totalComponents = await components.CountAsync(ct);
+            var totalQuantity = rows.Sum(x => x.totalQuantity);
+            var allocatedQuantity = rows.Sum(x => x.allocatedQuantity);
+            return Results.Ok(new
+            {
+                componentCount = totalComponents,
+                categoryCount = rows.Count,
+                totalQuantity,
+                allocatedQuantity,
+                availableQuantity = totalQuantity - allocatedQuantity,
+                lowStockCount = rows.Sum(x => x.lowStockCount),
+                categories = rows
+            });
+        }).RequireAuthorization("asset.read");
         api.MapGet("/components/{id:guid}",async(Guid id,ClaimsPrincipal user,AppDbContext db,CancellationToken ct)=>
         {
             if(!Tenant(user,out var companyId))return Results.Forbid();var item=await db.InventoryComponents.AsNoTracking().Where(x=>x.CompanyId==companyId&&x.Id==id).Select(x=>new{x.Id,x.Name,x.Category,x.ModelNumber,x.ItemNumber,x.SerialNumber,x.Supplier,x.Location,x.MinimumQuantity,x.TotalQuantity,x.UnitCost,x.Currency,x.PurchaseDate,x.Notes,x.UpdatedAt,allocated=db.ComponentAllocations.Where(a=>a.CompanyId==companyId&&a.ComponentId==x.Id).Sum(a=>(int?)(a.Quantity-a.RemovedQuantity))??0}).SingleOrDefaultAsync(ct);if(item is null)return Results.NotFound();

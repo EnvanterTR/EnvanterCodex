@@ -22,6 +22,7 @@ Senaryo aynı eski `admin` kimlik bilgilerini her istekte tekrar gönderir ve ve
 - Varlık listesi yalnız geçerli şirkete ait kaydı içerir; diğer şirkete ait varlık kimliğiyle ayrıntı isteği `404` döner.
 - Lisans bitiş raporu listesi ve CSV yalnız etkin şirkete ait lisansları içerir; kendi lisansı ayrıntıda `200`, diğer şirketin lisans kimliği `404` döner. CSV yanıtı `no-store` olarak işaretlenir.
 - Aksesuar, sarf ve bileşen listesi/detay/CSV uçları diğer şirkete ait stok kayıtlarını göstermez. Birleşik stok hareketi listesi ve CSV'si de her stok türünü geçerli şirket için birleştirir.
+- Bileşen stok raporu yalnız etkin şirketin kayıtlarından toplam, zimmetli ve kullanılabilir adetleri hesaplar; kabul senaryosu diğer şirketteki bileşen miktarlarının rapor toplamlarına karışmadığını denetler.
 - Talep kataloğunda talebe açık ve kullanılabilir kendi şirket varlığı görünür; diğer şirketin talep edilebilir varlığı sonuçlara sızmaz.
 - Varlık talebi başka şirketin varlığında ve birden çok adet istendiğinde reddedilir; geçerli talep onaylanınca varlık çalışanla zimmetlenir, talep durumu ve hareket geçmişi aynı kabul veritabanında doğrulanır.
 - Varlık talebi karar uç noktası şirket rol matrisi içinde denetlenir; yalnızca `asset.write` yetkisi olan roller erişebilir.

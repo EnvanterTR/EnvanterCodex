@@ -802,6 +802,16 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.False(csv.Contains(otherName, StringComparison.Ordinal));
         }
 
+        using (var componentReport = await SendAsAdminAsync("/api/reports/components"))
+        using (var reportPayload = JsonDocument.Parse(await componentReport.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, componentReport.StatusCode);
+            Assert.Equal(1, reportPayload.RootElement.GetProperty("componentCount").GetInt32());
+            Assert.Equal(5, reportPayload.RootElement.GetProperty("totalQuantity").GetInt32());
+            Assert.Equal(3, reportPayload.RootElement.GetProperty("allocatedQuantity").GetInt32());
+            Assert.Equal(2, reportPayload.RootElement.GetProperty("availableQuantity").GetInt32());
+        }
+
         using (var movementsResponse = await SendAsAdminAsync("/api/inventory/movements"))
         {
             Assert.Equal(HttpStatusCode.OK, movementsResponse.StatusCode);

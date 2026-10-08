@@ -242,6 +242,7 @@
         <section class="panel"><div class="panel-head"><h2>Kayıtlı satın alma maliyeti</h2></div><div class="table-wrap"><table><thead><tr><th>Para birimi</th><th>Kayıt</th><th>Toplam alış bedeli</th></tr></thead><tbody id="reportCostRows"><tr><td colspan="3">Rapor yükleniyor…</td></tr></tbody></table></div><p class="muted" id="reportCostNote" style="padding:0 14px 12px">Para birimleri ayrı tutulur; bu toplam muhasebe defter değeri değildir.</p></section>
       </div>
       <section class="panel"><div class="panel-head"><h2>Kategori dağılımı</h2><span class="muted">Bir kategoriyi seçerek varlık listesini daraltın.</span></div><div class="table-wrap"><table><thead><tr><th>Kategori</th><th>Toplam</th><th>Atanmış</th><th>Kullanılabilir</th><th>Bakımda</th><th>İşlem</th></tr></thead><tbody id="reportCategoryRows"><tr><td colspan="6">Rapor yükleniyor…</td></tr></tbody></table></div></section>
+      <section class="panel" style="margin-top:15px"><div class="panel-head"><div><h2>Bileşen stok raporu</h2><small id="componentReportNote">Kategoriye göre toplam ve atanmış miktar.</small></div><button class="btn small" id="componentReportExport" type="button">Bileşen CSV indir</button></div><div class="stats" id="componentReportSummary" style="padding:0 14px 14px"></div><div class="table-wrap"><table><thead><tr><th>Kategori</th><th>Bileşen</th><th>Toplam adet</th><th>Atanmış adet</th><th>Kullanılabilir adet</th><th>Düşük stok kaydı</th></tr></thead><tbody id="componentReportRows"><tr><td colspan="6">Rapor yükleniyor…</td></tr></tbody></table></div></section>
       <section class="panel" style="margin-top:15px"><div class="panel-head"><div><h2>Garanti bitişleri</h2><small id="warrantyReportNote">Aktif varlıkların garanti durumu ve yaklaşan bitişleri.</small></div><button class="btn small" id="warrantyReportExport" type="button">CSV indir</button></div><div class="table-tools"><select id="warrantyReportState" aria-label="Garanti raporu durumu"><option value="upcoming">Yaklaşan</option><option value="expired">Süresi dolan</option><option value="later">Daha ileri tarih</option><option value="missing">Tarihi olmayan</option><option value="all">Tümü</option></select><label class="muted">Dönem <select id="warrantyReportHorizon"><option value="30">30 gün</option><option value="90" selected>90 gün</option><option value="180">180 gün</option><option value="366">1 yıl</option></select></label><input id="warrantyReportSearch" placeholder="Etiket, varlık, konum veya çalışan ara" aria-label="Garanti raporunda ara"><button class="btn small" id="warrantyReportRefresh" type="button">↻ Yenile</button></div><div class="stats" id="warrantyReportSummary" style="padding:0 14px 14px"></div><div class="table-wrap"><table><thead><tr><th>Garanti bitişi</th><th>Etiket</th><th>Varlık</th><th>Durum</th><th>Konum</th><th>Zimmetli çalışan</th></tr></thead><tbody id="warrantyReportRows"><tr><td colspan="6">Garanti raporu yükleniyor…</td></tr></tbody></table></div><div class="pager"><button id="warrantyReportPrev">← Önceki</button><span id="warrantyReportPageInfo">Sayfa —</span><button id="warrantyReportNext">Sonraki →</button></div></section><section class="panel" style="margin-top:15px"><div class="panel-head"><div><h2>Bakım raporu</h2><span class="muted" id="maintenanceReportNote">Bakım başlangıç tarihine göre şirket kayıtları.</span></div><button class="btn small" id="maintenanceReportRefresh" type="button">↻ Yenile</button></div>
         <div class="dialog-body" style="display:flex;align-items:end;gap:12px;flex-wrap:wrap"><label>Başlangıç tarihi<input id="maintenanceReportFrom" type="date" style="display:block;margin-top:5px;min-height:38px;padding:7px 10px;border:1px solid #dce4ee;border-radius:7px"></label><label>Bitiş tarihi<input id="maintenanceReportTo" type="date" style="display:block;margin-top:5px;min-height:38px;padding:7px 10px;border:1px solid #dce4ee;border-radius:7px"></label><button class="btn primary" id="applyMaintenanceReportFilter" type="button">Filtrele</button><button class="btn" id="clearMaintenanceReportFilter" type="button">Temizle</button></div>
         <div class="stats" id="maintenanceReportSummary" style="padding:0 14px 14px"></div>
@@ -1687,6 +1688,31 @@
         category.addEventListener('click', openAssets); name.append(category); row.append(name);
         for (const value of [item.assetCount, item.assignedCount, item.availableCount, item.maintenanceCount]) { const cell = document.createElement('td'); cell.textContent = fmt.format(value); row.append(cell); }
         const action = document.createElement('td'), open = document.createElement('button'); open.type = 'button'; open.className = 'btn small'; open.textContent = 'İncele →'; open.addEventListener('click', openAssets); action.append(open); row.append(action); categoryRows.append(row);
+      }
+    }
+    async function loadComponentReport() {
+      const result = await api('/api/reports/components');
+      const summary = $('#componentReportSummary'); summary.replaceChildren();
+      for (const [label, value, note] of [
+        ['Bileşen kaydı', result.componentCount, 'Şirket kapsamındaki ürün çeşidi'],
+        ['Toplam adet', result.totalQuantity, 'Kaydedilmiş toplam stok'],
+        ['Atanmış adet', result.allocatedQuantity, 'Varlıklarda kullanımda'],
+        ['Kullanılabilir adet', result.availableQuantity, `${fmt.format(result.lowStockCount)} düşük stok kaydı`]
+      ]) {
+        const card = document.createElement('article'); card.className = 'stat';
+        const caption = document.createElement('div'); caption.className = 'stat-top'; caption.textContent = label;
+        const number = document.createElement('strong'); number.textContent = fmt.format(value || 0);
+        const hint = document.createElement('small'); hint.textContent = note; card.append(caption, number, hint); summary.append(card);
+      }
+      $('#componentReportNote').textContent = `${fmt.format(result.categoryCount || 0)} kategori; düşük stok, kullanılabilir adedin minimum miktara eşit veya altında olduğu bileşen kayıtlarını sayar.`;
+      const rows = $('#componentReportRows'); rows.replaceChildren();
+      if (!(result.categories || []).length) reportEmpty(rows, 6, 'Henüz raporlanacak bileşen stoğu yok.');
+      for (const item of result.categories || []) {
+        const row = document.createElement('tr');
+        for (const value of [item.category, fmt.format(item.componentCount), fmt.format(item.totalQuantity), fmt.format(item.allocatedQuantity), fmt.format(item.totalQuantity - item.allocatedQuantity), fmt.format(item.lowStockCount)]) {
+          const cell = document.createElement('td'); cell.textContent = value; row.append(cell);
+        }
+        rows.append(row);
       }
     }
     async function loadMaintenanceReport() {
@@ -3459,7 +3485,7 @@
         loadOperationalCalendar().catch(error => notify(error.message));
       }
       else if (page === 'Denetim kayıtları') { $('#auditPage').hidden = false; $('#pageTitle').textContent = page; loadAuditActions().then(() => loadAudit(1)).catch(error => notify(error.message)); loadAuditSchedule().catch(error => notify(error.message)); }
-       else if (page === 'Hazır raporlar') { $('#reportPage').hidden = false; $('#pageTitle').textContent = 'Envanter raporları'; loadAssetReports().catch(error => notify(error.message)); loadMaintenanceReport().catch(error => notify(error.message)); loadWarrantyReport(1).catch(error => notify(error.message)); loadLicenseExpiryReport(1).catch(error => notify(error.message)); }
+       else if (page === 'Hazır raporlar') { $('#reportPage').hidden = false; $('#pageTitle').textContent = 'Envanter raporları'; loadAssetReports().catch(error => notify(error.message)); loadComponentReport().catch(error => notify(error.message)); loadMaintenanceReport().catch(error => notify(error.message)); loadWarrantyReport(1).catch(error => notify(error.message)); loadLicenseExpiryReport(1).catch(error => notify(error.message)); }
        else if (page === 'Özel rapor oluştur') { if (!canReadAssets()) { notify('Özel varlık raporu için varlıkları görüntüleme yetkisi gerekir.'); return; } $('#customReportPage').hidden = false; $('#pageTitle').textContent = 'Özel varlık raporu'; loadCustomReportFields().then(loadCustomReportPresets).catch(error => { $('#customReportFeedback').textContent = error.message; }); }
       else if (['Kategoriler','Markalar','Varlık modelleri'].includes(page)) { if (!canReadAssets()) { notify('Bu hesabın envanter tanımlarını görüntüleme yetkisi yok.'); return; } catalogKind = page === 'Kategoriler' ? 'categories' : page === 'Markalar' ? 'brands' : 'models'; $('#catalogPage').hidden = false; $('#pageTitle').textContent = page; $('#catalogTitle').textContent = page; $('#catalogDescription').textContent = `${page} şirket envanterinde kullanılacak. Kullanılan tanımlar silinemez; yeniden adlandırma mevcut ilişkilere dokunmaz.`; $('#catalogBrandLabel').hidden = catalogKind !== 'models'; $('#catalogCreateForm').hidden = !canWriteAssets(); loadCatalog().catch(error => notify(error.message)); }
       else if (page === 'Firma profili' || page === 'Logo ve tema') { if (!canManageSettings()) { notify('Şirket görünümünü yalnızca şirket sahibi ve yöneticileri değiştirebilir.'); return; } $('#companySettingsPage').hidden = false; $('#pageTitle').textContent = page === 'Firma profili' ? 'Şirket profili' : 'Logo ve tema'; ensureAssetCustomFieldSettings(); Promise.all([loadCompanyProfile(), loadAssetCustomFieldDefinitions()]).catch(error => notify(error.message)); }
@@ -4187,7 +4213,11 @@
     $('#employeeManagerFilterSearch').addEventListener('input', () => { clearTimeout(employeeListManagerSearchTimer); employeeListManagerSearchTimer = setTimeout(() => loadEmployeeManagerChoices('employeeManagerFilter', 'employeeManagerFilterSearch', '', $('#employeeManagerFilter').value, $('#employeeManagerFilter').selectedOptions[0]?.textContent || '', 'Tüm yöneticiler', false).catch(error => notify(error.message)), 220); });
     $('#directorySearch').addEventListener('input', renderDirectoryRows);
     $('#directoryRefresh').addEventListener('click', () => loadDirectory(directoryKind).then(() => notify('Şirket kayıtlarından oluşturulan liste yenilendi.')).catch(error => notify(error.message)));
-    $('#reportRefresh').addEventListener('click', () => Promise.all([loadAssetReports(), loadMaintenanceReport(), loadWarrantyReport(1), loadLicenseExpiryReport(1)]).then(() => notify('Şirket raporları güncel verilerle yenilendi.')).catch(error => notify(error.message)));
+    $('#reportRefresh').addEventListener('click', () => Promise.all([loadAssetReports(), loadComponentReport(), loadMaintenanceReport(), loadWarrantyReport(1), loadLicenseExpiryReport(1)]).then(() => notify('Şirket raporları güncel verilerle yenilendi.')).catch(error => notify(error.message)));
+    $('#componentReportExport').addEventListener('click', async () => {
+      try { const response = await api('/api/components/export.csv'); const blob = await response.blob(), url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url; link.download = response.headers.get('content-disposition')?.match(/filename="?([^";]+)"?/i)?.[1] || 'bilesen-stoklari.csv'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
+      catch (error) { notify(error.message); }
+    });
     $('#warrantyReportRefresh').addEventListener('click', () => loadWarrantyReport(1).then(() => notify('Garanti raporu güncellendi.')).catch(error => notify(error.message)));
     $('#warrantyReportExport').addEventListener('click', exportWarrantyReport);
     $('#warrantyReportState').addEventListener('change', () => loadWarrantyReport(1).catch(error => notify(error.message)));
