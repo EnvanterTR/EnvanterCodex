@@ -4934,6 +4934,7 @@
       await loadLabelSettings(session.companyId);
       try { await loadTenantBranding(); } catch (error) { console.warn('Şirket görünümü yüklenemedi.', error); }
       $('#membersNav').hidden = !canReadAudit();
+      $('#openAssetTrash').hidden = !canWriteAssets();
       $('#inviteMemberButton').hidden = !canReadAudit(); if (sessionRole !== 'owner') $('#inviteAdminRole').remove();
       $('#profileName').innerHTML = `${escapeHtml(session.name || 'Kullanıcı')}<small>${escapeHtml(session.role || 'Şirket kullanıcısı')}</small>`;
       $('#userAvatar').textContent = (session.name || 'U').trim().slice(0,1).toLocaleUpperCase('tr-TR');

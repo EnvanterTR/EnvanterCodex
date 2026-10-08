@@ -1013,7 +1013,7 @@ public static class OperationalEndpoints
                 .Select(x => new { x.Id, x.AssetTag, x.Name, x.Status, x.SerialNumber, x.DeletedAt })
                 .ToListAsync(ct);
             return Results.Ok(new { items, page, pageSize, total });
-        }).RequireAuthorization("asset.read");
+        }).RequireAuthorization("asset.write");
 
         api.MapPost("/assets/{id:guid}/trash", async (Guid id, [FromBody] AssetTrashRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
