@@ -302,7 +302,7 @@
   <dialog class="detail-dialog" id="inventoryRequestDialog"><form id="inventoryRequestForm"><div class="dialog-head"><div><div class="eyebrow">STOK TALEBİ</div><h2 id="inventoryRequestTitle">Kalem talep et</h2></div><button class="close" type="button" data-close-inventory-request aria-label="Kapat">✕</button></div><div class="dialog-body"><input name="itemType" type="hidden"><input name="itemId" type="hidden"><div class="form-grid"><label class="wide">Çalışan *<input id="requestEmployeeSearch" placeholder="Ad veya çalışan numarası ara" autocomplete="off"><select id="requestEmployee" name="employeeId" required><option value="">Çalışan seçin</option></select></label><label>Adet *<input name="quantity" type="number" min="1" max="100000" value="1" required></label><label class="wide">Talep notu<textarea name="note" maxlength="1000" rows="3" placeholder="İhtiyaç veya teslim bilgisi"></textarea></label></div><p class="muted">Talep şirket içindeki etkin bir çalışan adına açılır. Onaylanan varlık talebi zimmete, aksesuar ve sarf talepleri stok teslimine dönüşür.</p><div class="dialog-actions"><button class="btn" type="button" data-close-inventory-request>Vazgeç</button><button class="btn primary" type="submit">Talebi gönder</button></div></div></form></dialog>
   <script>
       const toast = document.getElementById('toast');
-    let toastTimer, requestToken = '', lookupCache = { categories: [], brands: [], models: [] }, loadedAssets = [], selectedAssetIds = new Set(), selectedAssetRows = new Map(), currentAsset = null, currentEmployeeId = null, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, calendarRequestId = 0, calendarCursorDate = '', sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, auditRequestId = 0, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, latestCalendarEvents = [], latestCalendarFrom = '', latestCalendarTo = '', assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', savedAssetSearches = [], assetRowDensity = 'comfortable', visibleAssetColumns = Array(8).fill(true), labelSettingsKey = '', bwipLoadPromise = null, assetScanStream = null, assetScanFrame = 0, assetScanner = null, assetScanBusy = false;
+    let toastTimer, requestToken = '', lookupCache = { categories: [], brands: [], models: [] }, loadedAssets = [], selectedAssetIds = new Set(), selectedAssetRows = new Map(), currentAsset = null, currentEmployeeId = null, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, calendarRequestId = 0, calendarCursorDate = '', sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, auditRequestId = 0, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, latestCalendarEvents = [], latestCalendarFrom = '', latestCalendarTo = '', assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', savedAssetSearchesLegacyKey = '', savedAssetSearches = [], assetRowDensity = 'comfortable', visibleAssetColumns = Array(8).fill(true), labelSettingsKey = '', bwipLoadPromise = null, assetScanStream = null, assetScanFrame = 0, assetScanner = null, assetScanBusy = false;
     let warrantyReportPage = 1, warrantyReportRequestId = 0, warrantyReportSearchTimer;
     let licenseReportPage = 1, licenseReportRequestId = 0, licenseReportSearchTimer;
     let employeeListManagerSearchTimer;
@@ -414,6 +414,22 @@
       try {
         const result = await api('/api/assets/saved-searches');
         savedAssetSearches = Array.isArray(result.items) ? result.items.filter(item => item && typeof item.id === 'string' && typeof item.name === 'string' && item.name.trim() && typeof item.filters === 'object' && item.filters !== null).slice(0, 25) : [];
+        try {
+          const legacy = JSON.parse(localStorage.getItem(savedAssetSearchesLegacyKey) || 'null');
+          if (Array.isArray(legacy)) {
+            let migratedAll = true;
+            for (const oldItem of legacy.slice(0, 25)) {
+              if (!oldItem || typeof oldItem.name !== 'string' || !oldItem.name.trim() || oldItem.name.length > 60 || !oldItem.filters || typeof oldItem.filters !== 'object') continue;
+              if (savedAssetSearches.some(item => item.name.localeCompare(oldItem.name.trim(), 'tr', { sensitivity: 'base' }) === 0)) continue;
+              if (savedAssetSearches.length >= 25) { migratedAll = false; break; }
+              const filters = { ...oldItem.filters, categoryId: oldItem.filters.categoryId || null, brandId: oldItem.filters.brandId || null, modelId: oldItem.filters.modelId || null, employeeId: oldItem.filters.employeeId || null };
+              const saved = await api('/api/assets/saved-searches', { method: 'POST', body: JSON.stringify({ name: oldItem.name.trim(), filters }) });
+              savedAssetSearches.push(saved);
+            }
+            if (migratedAll) localStorage.removeItem(savedAssetSearchesLegacyKey);
+            else notify('Bazı eski aramalar bu hesaba sığmadı; aktarılmayanlar bu tarayıcıda korunuyor.');
+          }
+        } catch (migrationError) { notify(`Eski aramalarınız tarayıcıda korundu; sunucuya aktarım tamamlanamadı: ${migrationError.message}`); }
         savedAssetSearches.forEach(item => select.add(new Option(item.name, item.id)));
       } catch (error) { savedAssetSearches = []; notify(`Kayıtlı aramalar yüklenemedi: ${error.message}`); }
       $('#deleteAssetSearch').disabled = true;
@@ -4222,6 +4238,7 @@
       await loadSupplierNameSuggestions();
       sessionRole = session.role || ''; requestCurrentUserId = session.userId || ''; $('#scanAssetActionWrap').hidden = !canWriteAssets();
       $('#bulkAssetStatus').hidden = !canWriteAssets(); $('#applyBulkAssetStatus').hidden = !canWriteAssets();
+      savedAssetSearchesLegacyKey = `envantertr:saved-asset-searches:${session.companyId}:${requestCurrentUserId}`;
       loadAssetColumnPreferences(session.companyId); await loadSavedAssetSearches();
       await loadLabelSettings(session.companyId);
       try { await loadTenantBranding(); } catch (error) { console.warn('Şirket görünümü yüklenemedi.', error); }
