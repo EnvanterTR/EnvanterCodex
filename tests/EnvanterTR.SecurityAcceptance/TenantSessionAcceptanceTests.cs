@@ -16,6 +16,10 @@ using Xunit;
 
 namespace EnvanterTR.SecurityAcceptance;
 
+[CollectionDefinition("Tenant session acceptance", DisableParallelization = true)]
+public sealed class TenantSessionAcceptanceCollection { }
+
+[Collection("Tenant session acceptance")]
 public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
 {
     private const string TestScheme = "SecurityAcceptance";
@@ -36,6 +40,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     private readonly Guid _otherCompanyEmployeeId = Guid.NewGuid();
     private string? _previousConnectionString;
     private string? _previousForwardedHeadersSetting;
+    private readonly string _mediaPath = Path.Combine(Path.GetTempPath(), "envantertr-security-media-" + Guid.NewGuid().ToString("N"));
     private WebApplicationFactory<Program>? _factory;
     private HttpClient? _client;
 
@@ -56,7 +61,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 new Dictionary<string, string?>
                 {
                     ["ConnectionStrings:EnvanterTR"] = connectionString,
-                    ["ForwardedHeaders:Enabled"] = "true"
+                    ["ForwardedHeaders:Enabled"] = "true",
+                    ["Storage:CompanyMediaPath"] = _mediaPath
                 }));
             builder.ConfigureTestServices(services => services.AddAuthentication(options =>
                 {
@@ -155,6 +161,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         if (_factory is not null) await _factory.DisposeAsync();
         Environment.SetEnvironmentVariable("ConnectionStrings__EnvanterTR", _previousConnectionString);
         Environment.SetEnvironmentVariable("ForwardedHeaders__Enabled", _previousForwardedHeadersSetting);
+        if (Directory.Exists(_mediaPath)) Directory.Delete(_mediaPath, recursive: true);
     }
 
     [Fact]
@@ -380,6 +387,24 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var csv = await exportResponse.Content.ReadAsStringAsync();
         Assert.Contains($"OWN-SECURITY-EMPLOYEE-{_userId:N}", csv, StringComparison.Ordinal);
         Assert.False(csv.Contains($"OTHER-SECURITY-EMPLOYEE-{_userId:N}", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Employee_photo_storage_is_scoped_to_the_active_company()
+    {
+        var pngSignature = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+        var ownPhotoDirectory = Path.Combine(_mediaPath, _companyId.ToString("N"), "employees", _ownEmployeeId.ToString("N"));
+        Directory.CreateDirectory(ownPhotoDirectory);
+        await File.WriteAllBytesAsync(Path.Combine(ownPhotoDirectory, "profile.png"), pngSignature);
+
+        using (var ownPhotoResponse = await SendAsAdminAsync($"/api/employees/{_ownEmployeeId}/photo"))
+        {
+            Assert.Equal(HttpStatusCode.OK, ownPhotoResponse.StatusCode);
+            Assert.Equal("image/png", ownPhotoResponse.Content.Headers.ContentType?.MediaType);
+            Assert.Equal(pngSignature, await ownPhotoResponse.Content.ReadAsByteArrayAsync());
+        }
+        using (var crossCompanyPhotoResponse = await SendAsAdminAsync($"/api/employees/{_otherCompanyEmployeeId}/photo"))
+            Assert.Equal(HttpStatusCode.NotFound, crossCompanyPhotoResponse.StatusCode);
     }
 
     private async Task<HttpResponseMessage> SendAsAdminAsync(string path, Guid? companyId = null)
