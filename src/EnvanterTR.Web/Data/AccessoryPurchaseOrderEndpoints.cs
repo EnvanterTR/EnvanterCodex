@@ -10,9 +10,8 @@ public static class AccessoryPurchaseOrderEndpoints
     public static RouteGroupBuilder MapAccessoryPurchaseOrderEndpoints(this RouteGroupBuilder api)
     {
         api.MapGet("/accessory-orders/export.csv", async ([FromQuery] string? q, [FromQuery] string? status,
-            [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] bool overdueOnly,
-            [FromQuery] DateOnly? asOf,
-            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+            [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, ClaimsPrincipal user, AppDbContext db, CancellationToken ct,
+            [FromQuery] bool overdueOnly = false, [FromQuery] DateOnly? asOf = null) =>
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
             if (from is not null && to is not null && from.Value > to.Value)
@@ -54,7 +53,10 @@ public static class AccessoryPurchaseOrderEndpoints
                     x.order.OrderNumber, x.order.Supplier, x.order.Status, x.order.OrderDate, x.order.ExpectedOn, x.order.Currency,
                     Accessory = x.accessory.Name, x.accessory.ItemNumber,
                     x.line.Quantity, x.line.QuantityReceived, Remaining = x.line.Quantity - x.line.QuantityReceived,
-                    x.line.UnitCost, TotalCost = x.line.Quantity * x.line.UnitCost, x.line.Notes
+                    x.line.UnitCost, TotalCost = x.line.Quantity * x.line.UnitCost,
+                    Subtotal = db.AccessoryPurchaseOrderLines.Where(line => line.CompanyId == companyId && line.PurchaseOrderId == x.order.Id)
+                        .Sum(line => (decimal?)(line.Quantity * line.UnitCost)) ?? 0m,
+                    x.order.TaxRatePercent, x.order.DiscountAmount, x.order.FreightAmount, x.line.Notes
                 }).ToListAsync(ct);
 
             static string Cell(string? value)
@@ -67,8 +69,11 @@ public static class AccessoryPurchaseOrderEndpoints
             }
 
             var csv = new StringBuilder();
-            csv.AppendLine("Sipariş No;Tedarikçi;Durum;Sipariş Tarihi;Beklenen Tarih;Para Birimi;Aksesuar;Stok Kodu;Sipariş Adedi;Teslim Alınan;Kalan;Birim Bedeli;Satır Toplamı;Satır Notu");
+            csv.AppendLine("Sipariş No;Tedarikçi;Durum;Sipariş Tarihi;Beklenen Tarih;Para Birimi;Aksesuar;Stok Kodu;Sipariş Adedi;Teslim Alınan;Kalan;Birim Bedeli;Satır Toplamı;Ara Toplam;İskonto;Vergi Oranı %;Vergi;Nakliye;Genel Toplam;Satır Notu");
             foreach (var row in rows)
+            {
+                var taxAmount = CalculateTax(row.Subtotal, row.DiscountAmount, row.TaxRatePercent);
+                var grandTotal = CalculateTotal(row.Subtotal, row.DiscountAmount, taxAmount, row.FreightAmount);
                 csv.AppendLine(string.Join(';', new[]
                 {
                     Cell(row.OrderNumber), Cell(row.Supplier), Cell(row.Status), Cell(row.OrderDate.ToString("yyyy-MM-dd")),
@@ -77,8 +82,15 @@ public static class AccessoryPurchaseOrderEndpoints
                     row.QuantityReceived.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     row.Remaining.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     row.UnitCost.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
-                    row.TotalCost.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture), Cell(row.Notes)
+                    row.TotalCost.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                    row.Subtotal.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                    row.DiscountAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                    row.TaxRatePercent.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                    taxAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                    row.FreightAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                    grandTotal.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture), Cell(row.Notes)
                 }));
+            }
             var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray();
             return Results.File(bytes, "text/csv; charset=utf-8", $"envantertr-aksesuar-siparisleri-{DateTime.UtcNow:yyyyMMdd}.csv");
         }).RequireAuthorization("asset.read");
@@ -128,15 +140,23 @@ public static class AccessoryPurchaseOrderEndpoints
                             (accessory.Name.Contains(term) || (accessory.ItemNumber != null && accessory.ItemNumber.Contains(term))))));
             }
             var total = await query.CountAsync(ct);
-            var items = await query.OrderByDescending(x => x.OrderDate).ThenByDescending(x => x.CreatedAt)
+            var rows = await query.OrderByDescending(x => x.OrderDate).ThenByDescending(x => x.CreatedAt)
                 .Skip((page - 1) * pageSize).Take(pageSize).Select(x => new
                 {
                     x.Id, x.OrderNumber, x.Supplier, x.Status, x.OrderDate, x.ExpectedOn, x.Currency, x.CreatedAt, x.UpdatedAt,
                     lineCount = db.AccessoryPurchaseOrderLines.Count(line => line.CompanyId == companyId && line.PurchaseOrderId == x.Id),
                     quantity = db.AccessoryPurchaseOrderLines.Where(line => line.CompanyId == companyId && line.PurchaseOrderId == x.Id).Sum(line => (int?)line.Quantity) ?? 0,
                     quantityReceived = db.AccessoryPurchaseOrderLines.Where(line => line.CompanyId == companyId && line.PurchaseOrderId == x.Id).Sum(line => (int?)line.QuantityReceived) ?? 0,
-                    totalCost = db.AccessoryPurchaseOrderLines.Where(line => line.CompanyId == companyId && line.PurchaseOrderId == x.Id).Sum(line => (decimal?)(line.Quantity * line.UnitCost)) ?? 0m
+                    subtotal = db.AccessoryPurchaseOrderLines.Where(line => line.CompanyId == companyId && line.PurchaseOrderId == x.Id).Sum(line => (decimal?)(line.Quantity * line.UnitCost)) ?? 0m,
+                    x.TaxRatePercent, x.DiscountAmount, x.FreightAmount
                 }).ToListAsync(ct);
+            var items = rows.Select(x =>
+            {
+                var taxAmount = CalculateTax(x.subtotal, x.DiscountAmount, x.TaxRatePercent);
+                return new { x.Id, x.OrderNumber, x.Supplier, x.Status, x.OrderDate, x.ExpectedOn, x.Currency, x.CreatedAt, x.UpdatedAt,
+                    x.lineCount, x.quantity, x.quantityReceived, x.subtotal, x.TaxRatePercent, x.DiscountAmount, x.FreightAmount, taxAmount,
+                    totalCost = CalculateTotal(x.subtotal, x.DiscountAmount, taxAmount, x.FreightAmount) };
+            }).ToArray();
             return Results.Ok(new { items, page, pageSize, total });
         }).RequireAuthorization("asset.read");
 
@@ -144,7 +164,8 @@ public static class AccessoryPurchaseOrderEndpoints
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
             var order = await db.AccessoryPurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
-                .Select(x => new { x.Id, x.OrderNumber, x.Supplier, x.Status, x.OrderDate, x.ExpectedOn, x.Currency, x.Notes, x.CreatedAt, x.UpdatedAt }).SingleOrDefaultAsync(ct);
+                .Select(x => new { x.Id, x.OrderNumber, x.Supplier, x.Status, x.OrderDate, x.ExpectedOn, x.Currency, x.Notes,
+                    x.TaxRatePercent, x.DiscountAmount, x.FreightAmount, x.CreatedAt, x.UpdatedAt }).SingleOrDefaultAsync(ct);
             if (order is null) return Results.NotFound();
             var lines = await db.AccessoryPurchaseOrderLines.AsNoTracking().Where(x => x.CompanyId == companyId && x.PurchaseOrderId == id)
                 .OrderBy(x => x.CreatedAt).Select(x => new
@@ -153,7 +174,11 @@ public static class AccessoryPurchaseOrderEndpoints
                     itemNumber = db.Accessories.Where(a => a.CompanyId == companyId && a.Id == x.AccessoryId).Select(a => a.ItemNumber).FirstOrDefault(),
                     x.Quantity, x.QuantityReceived, remaining = x.Quantity - x.QuantityReceived, x.UnitCost, totalCost = x.Quantity * x.UnitCost, x.Notes
                 }).ToListAsync(ct);
-            return Results.Ok(new { order, lines, totalCost = lines.Sum(x => x.totalCost), quantity = lines.Sum(x => x.Quantity), quantityReceived = lines.Sum(x => x.QuantityReceived) });
+            var subtotal = lines.Sum(x => x.totalCost);
+            var taxAmount = CalculateTax(subtotal, order.DiscountAmount, order.TaxRatePercent);
+            return Results.Ok(new { order, lines, subtotal, taxableAmount = subtotal - order.DiscountAmount, taxAmount,
+                totalCost = CalculateTotal(subtotal, order.DiscountAmount, taxAmount, order.FreightAmount),
+                quantity = lines.Sum(x => x.Quantity), quantityReceived = lines.Sum(x => x.QuantityReceived) });
         }).RequireAuthorization("asset.read");
 
         api.MapPost("/accessory-orders", async (CreateOrderRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
@@ -164,14 +189,26 @@ public static class AccessoryPurchaseOrderEndpoints
             var supplier = Clean(request.Supplier);
             var orderNumber = Clean(request.OrderNumber);
             var currency = request.Currency?.Trim().ToUpperInvariant() ?? "";
+            var taxRatePercent = request.TaxRatePercent ?? 0m;
+            var discountAmount = request.DiscountAmount ?? 0m;
+            var freightAmount = request.FreightAmount ?? 0m;
             if (supplier is null || supplier.Length > 200) errors["supplier"] = ["Tedarikçi zorunludur ve en fazla 200 karakter olabilir."];
             if (orderNumber?.Length > 80) errors["orderNumber"] = ["Sipariş numarası en fazla 80 karakter olabilir."];
             if (currency.Length != 3 || !currency.All(char.IsAsciiLetter)) errors["currency"] = ["Üç harfli para birimi girin; ör. TRY, EUR veya USD."];
+            if (taxRatePercent is < 0 or > 100) errors["taxRatePercent"] = ["Vergi oranı %0 ile %100 arasında olmalıdır."];
+            if (discountAmount is < 0 or > 1000000000000000m) errors["discountAmount"] = ["İskonto 0 ile 1.000.000.000.000.000 arasında olmalıdır."];
+            if (freightAmount is < 0 or > 1000000000000000m) errors["freightAmount"] = ["Nakliye 0 ile 1.000.000.000.000.000 arasında olmalıdır."];
             if (request.OrderDate == default) errors["orderDate"] = ["Sipariş tarihi zorunludur."];
             if (request.ExpectedOn is DateOnly expected && expected < request.OrderDate) errors["expectedOn"] = ["Beklenen teslim tarihi sipariş tarihinden önce olamaz."];
             if (request.Notes?.Length > 2000) errors["notes"] = ["Not en fazla 2.000 karakter olabilir."];
             if (lines.Length is < 1 or > 100 || lines.Any(x => x.AccessoryId == Guid.Empty || x.Quantity is < 1 or > 100000 || x.UnitCost is < 0 or > 1000000000m || x.Notes?.Length > 500) || lines.Select(x => x.AccessoryId).Distinct().Count() != lines.Length)
                 errors["items"] = ["1–100 farklı aksesuar seçin; adet 1–100.000, birim fiyat 0–1.000.000.000 aralığında olmalı."];
+            if (lines.All(x => x.Quantity is >= 1 and <= 100000 && x.UnitCost is >= 0 and <= 1000000000m))
+            {
+                var subtotal = lines.Sum(x => x.Quantity * x.UnitCost);
+                if (subtotal > 1000000000000000m) errors["items"] = ["Sipariş ara toplamı 1.000.000.000.000.000 tutarını aşamaz."];
+                if (discountAmount > subtotal) errors["discountAmount"] = ["İskonto sipariş ara toplamından fazla olamaz."];
+            }
             if (errors.Count > 0) return Results.ValidationProblem(errors);
             var accessoryIds = lines.Select(x => x.AccessoryId).ToArray();
             var existingIds = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && accessoryIds.Contains(x.Id)).Select(x => x.Id).ToListAsync(ct);
@@ -190,6 +227,7 @@ public static class AccessoryPurchaseOrderEndpoints
             {
                 CompanyId = companyId, OrderNumber = orderNumber, Supplier = supplier!, SupplierId = supplierEntry.Id, Status = "Ordered",
                 OrderDate = request.OrderDate, ExpectedOn = request.ExpectedOn, Currency = currency,
+                TaxRatePercent = taxRatePercent, DiscountAmount = discountAmount, FreightAmount = freightAmount,
                 Notes = Clean(request.Notes), CreatedByUserId = actorId
             };
             db.AccessoryPurchaseOrders.Add(order);
@@ -223,6 +261,11 @@ public static class AccessoryPurchaseOrderEndpoints
             var lineIds = items.Select(x => x.LineId).ToArray();
             var lines = await db.AccessoryPurchaseOrderLines.Where(x => x.CompanyId == companyId && x.PurchaseOrderId == id && lineIds.Contains(x.Id)).ToListAsync(ct);
             if (lines.Count != items.Length) return Results.NotFound(new { message = "Sipariş satırlarından biri bulunamadı; stok değişmedi." });
+            var allOrderLines = await db.AccessoryPurchaseOrderLines.AsNoTracking().Where(x => x.CompanyId == companyId && x.PurchaseOrderId == id)
+                .OrderBy(x => x.CreatedAt).ThenBy(x => x.Id).ToListAsync(ct);
+            var orderSubtotal = allOrderLines.Sum(x => x.Quantity * x.UnitCost);
+            var taxAmount = CalculateTax(orderSubtotal, order.DiscountAmount, order.TaxRatePercent);
+            var landedUnitCosts = CalculateLandedUnitCosts(allOrderLines, order.DiscountAmount, taxAmount, order.FreightAmount, orderSubtotal);
             var accessoryIds = lines.Select(x => x.AccessoryId).Distinct().Order().ToArray();
             var accessories = await db.Accessories.FromSqlInterpolated(
                 $"SELECT * FROM \"Accessories\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({accessoryIds}) ORDER BY \"Id\" FOR UPDATE").ToListAsync(ct);
@@ -242,16 +285,17 @@ public static class AccessoryPurchaseOrderEndpoints
             {
                 var quantity = items.Single(x => x.LineId == line.Id).Quantity;
                 var accessory = accessories.Single(x => x.Id == line.AccessoryId);
+                var landedUnitCost = landedUnitCosts[line.Id];
                 line.QuantityReceived += quantity;
                 accessory.TotalQuantity += quantity;
                 accessory.Supplier = order.Supplier;
                 accessory.SupplierId = order.SupplierId;
-                accessory.UnitCost = line.UnitCost;
+                accessory.UnitCost = landedUnitCost;
                 accessory.Currency = order.Currency;
                 accessory.PurchaseDate = request.ReceivedOn;
                 accessory.UpdatedAt = DateTimeOffset.UtcNow;
                 db.AccessoryMovements.Add(new AccessoryMovement { CompanyId = companyId, AccessoryId = accessory.Id, ActorUserId = actorId, MovementType = "Received", Quantity = quantity, Notes = $"Sipariş {order.OrderNumber} · teslim alma {request.ReceivedOn:yyyy-MM-dd}" + (note is null ? "" : $" · {note}") });
-                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Accessory", TargetId = accessory.Id, Action = "accessory-order.received", Details = $"Sipariş {order.OrderNumber} · {quantity} adet" });
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Accessory", TargetId = accessory.Id, Action = "accessory-order.received", Details = $"Sipariş {order.OrderNumber} · {quantity} adet · birim maliyet {landedUnitCost:0.00} {order.Currency}" });
             }
             var allLines = await db.AccessoryPurchaseOrderLines.AsNoTracking().Where(x => x.CompanyId == companyId && x.PurchaseOrderId == id).ToListAsync(ct);
             var nextReceived = allLines.Sum(x => x.QuantityReceived) + items.Sum(x => x.Quantity);
@@ -285,8 +329,31 @@ public static class AccessoryPurchaseOrderEndpoints
     private static bool Tenant(ClaimsPrincipal user, out Guid companyId) => Guid.TryParse(user.FindFirstValue("company_id"), out companyId);
     private static bool UserId(ClaimsPrincipal user, out Guid userId) => Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static decimal CalculateTax(decimal subtotal, decimal discount, decimal taxRatePercent) =>
+        Math.Round((subtotal - discount) * taxRatePercent / 100m, 2, MidpointRounding.AwayFromZero);
+    private static decimal CalculateTotal(decimal subtotal, decimal discount, decimal tax, decimal freight) => subtotal - discount + tax + freight;
+    private static Dictionary<Guid, decimal> CalculateLandedUnitCosts(IReadOnlyList<AccessoryPurchaseOrderLine> lines, decimal discount, decimal tax, decimal freight, decimal subtotal)
+    {
+        var costs = new Dictionary<Guid, decimal>(lines.Count);
+        var allocatedDiscount = 0m; var allocatedTax = 0m; var allocatedFreight = 0m;
+        for (var index = 0; index < lines.Count; index++)
+        {
+            var line = lines[index]; var isLast = index == lines.Count - 1;
+            var lineSubtotal = line.Quantity * line.UnitCost;
+            var discountShare = isLast ? discount - allocatedDiscount : Allocate(discount, lineSubtotal, subtotal);
+            var taxShare = isLast ? tax - allocatedTax : Allocate(tax, lineSubtotal, subtotal);
+            var freightShare = isLast ? freight - allocatedFreight : Allocate(freight, lineSubtotal, subtotal);
+            allocatedDiscount += discountShare; allocatedTax += taxShare; allocatedFreight += freightShare;
+            costs[line.Id] = Math.Round((lineSubtotal - discountShare + taxShare + freightShare) / line.Quantity, 2, MidpointRounding.AwayFromZero);
+        }
+        return costs;
 
-    private sealed record CreateOrderRequest(string? OrderNumber, string? Supplier, DateOnly OrderDate, DateOnly? ExpectedOn, string? Currency, string? Notes, CreateOrderLine[]? Items);
+        static decimal Allocate(decimal amount, decimal lineSubtotal, decimal orderSubtotal) => orderSubtotal == 0m
+            ? 0m : Math.Round(amount * lineSubtotal / orderSubtotal, 2, MidpointRounding.AwayFromZero);
+    }
+
+    private sealed record CreateOrderRequest(string? OrderNumber, string? Supplier, DateOnly OrderDate, DateOnly? ExpectedOn,
+        string? Currency, decimal? TaxRatePercent, decimal? DiscountAmount, decimal? FreightAmount, string? Notes, CreateOrderLine[]? Items);
     private sealed record CreateOrderLine(Guid AccessoryId, int Quantity, decimal UnitCost, string? Notes);
     private sealed record ReceiveOrderRequest(ReceiptLine[]? Items, DateOnly ReceivedOn, string? Notes);
     private sealed record ReceiptLine(Guid LineId, int Quantity);

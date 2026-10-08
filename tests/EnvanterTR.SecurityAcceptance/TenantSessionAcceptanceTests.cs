@@ -1866,6 +1866,39 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             "admin", null, requestToken, antiforgeryCookie);
         Assert.Equal(HttpStatusCode.NoContent, deleteAttachment.StatusCode);
         Assert.Equal(0, await db.StockPurchaseOrderAttachments.CountAsync(x => x.CompanyId == _companyId && x.PurchaseOrderId == orderId));
+
+        var accessoryOrderNumber = $"AC-{Guid.NewGuid():N}"[..15];
+        using var accessoryOrderPayload = System.Net.Http.Json.JsonContent.Create(new
+        {
+            orderNumber = accessoryOrderNumber, supplier = "Accessory finance supplier", orderDate = today, currency = "TRY",
+            taxRatePercent = 10m, discountAmount = 5m, freightAmount = 2m,
+            items = new[] { new { accessoryId = _ownAccessoryId, quantity = 4, unitCost = 20m } }
+        });
+        using var accessoryOrderCreate = await SendAsRoleAsync(HttpMethod.Post, "/api/accessory-orders", "admin", accessoryOrderPayload, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, accessoryOrderCreate.StatusCode);
+        using var accessoryOrderCreated = JsonDocument.Parse(await accessoryOrderCreate.Content.ReadAsStringAsync());
+        var accessoryOrderId = accessoryOrderCreated.RootElement.GetProperty("id").GetGuid();
+        using var accessoryOrderDetailResponse = await SendAsAdminAsync($"/api/accessory-orders/{accessoryOrderId}");
+        Assert.Equal(HttpStatusCode.OK, accessoryOrderDetailResponse.StatusCode);
+        using var accessoryOrderDetail = JsonDocument.Parse(await accessoryOrderDetailResponse.Content.ReadAsStringAsync());
+        Assert.Equal(80m, accessoryOrderDetail.RootElement.GetProperty("subtotal").GetDecimal());
+        Assert.Equal(75m, accessoryOrderDetail.RootElement.GetProperty("taxableAmount").GetDecimal());
+        Assert.Equal(7.5m, accessoryOrderDetail.RootElement.GetProperty("taxAmount").GetDecimal());
+        Assert.Equal(84.5m, accessoryOrderDetail.RootElement.GetProperty("totalCost").GetDecimal());
+        using var accessoryOrderExport = await SendAsAdminAsync($"/api/accessory-orders/export.csv?q={Uri.EscapeDataString(accessoryOrderNumber)}");
+        Assert.Equal(HttpStatusCode.OK, accessoryOrderExport.StatusCode);
+        var accessoryCsv = await accessoryOrderExport.Content.ReadAsStringAsync();
+        Assert.Contains("Ara Toplam;İskonto;Vergi Oranı %;Vergi;Nakliye;Genel Toplam", accessoryCsv);
+        Assert.Contains("80.00;5.00;10.00;7.50;2.00;84.50", accessoryCsv);
+        var accessoryLineId = accessoryOrderDetail.RootElement.GetProperty("lines")[0].GetProperty("id").GetGuid();
+        using var accessoryReceiptPayload = System.Net.Http.Json.JsonContent.Create(new
+        {
+            receivedOn = today, items = new[] { new { lineId = accessoryLineId, quantity = 4 } }
+        });
+        using var accessoryReceipt = await SendAsRoleAsync(HttpMethod.Post, $"/api/accessory-orders/{accessoryOrderId}/receive", "admin",
+            accessoryReceiptPayload, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, accessoryReceipt.StatusCode);
+        Assert.Equal(21.13m, await db.Accessories.Where(x => x.CompanyId == _companyId && x.Id == _ownAccessoryId).Select(x => x.UnitCost).SingleAsync());
     }
 
     [Fact]

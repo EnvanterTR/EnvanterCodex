@@ -3761,14 +3761,16 @@
     }
     function updateAccessoryOrderTotal() {
       const total = [...$('#accessoryOrderCreateLines').children].reduce((sum, row) => sum + (Number(row.querySelector('[data-order-quantity]').value) || 0) * (Number(row.querySelector('[data-order-cost]').value) || 0), 0);
-      const currency = $('#accessoryOrderCreateForm').elements.currency.value;
-      $('#accessoryOrderCreateTotal').textContent = `Sipariş toplamı: ${orderCurrency(currency).format(total)}`;
+      const form = $('#accessoryOrderCreateForm'), currency = form.elements.currency.value;
+      const discount = Number(form.elements.discountAmount.value) || 0, taxRate = Number(form.elements.taxRatePercent.value) || 0, freight = Number(form.elements.freightAmount.value) || 0;
+      const taxable = Math.max(0, total - discount), tax = Math.round((taxable * taxRate + Number.EPSILON) * 100) / 100;
+      $('#accessoryOrderCreateTotal').textContent = `Ara toplam ${orderCurrency(currency).format(total)} · İskonto ${orderCurrency(currency).format(discount)} · Vergi (%${fmt.format(taxRate)}) ${orderCurrency(currency).format(tax)} · Nakliye ${orderCurrency(currency).format(freight)} · Genel toplam ${orderCurrency(currency).format(taxable + tax + freight)}`;
     }
     async function openAccessoryOrder(id) {
       const data = await api(`/api/accessory-orders/${id}`); currentAccessoryOrder = data;
       const order = data.order;
       $('#accessoryOrderDetailTitle').textContent = order.orderNumber;
-      const fields = [['Tedarikçi', order.supplier], ['Durum', orderStatusLabels[order.status] || order.status], ['Sipariş tarihi', order.orderDate], ['Beklenen tarih', order.expectedOn || '—'], ['Sipariş miktarı', `${fmt.format(data.quantity)} adet`], ['Teslim alınan', `${fmt.format(data.quantityReceived)} adet`], ['Sipariş toplamı', orderCurrency(order.currency).format(data.totalCost)]];
+      const fields = [['Tedarikçi', order.supplier], ['Durum', orderStatusLabels[order.status] || order.status], ['Sipariş tarihi', order.orderDate], ['Beklenen tarih', order.expectedOn || '—'], ['Sipariş miktarı', `${fmt.format(data.quantity)} adet`], ['Teslim alınan', `${fmt.format(data.quantityReceived)} adet`], ['Ara toplam', orderCurrency(order.currency).format(data.subtotal)], ['İskonto', orderCurrency(order.currency).format(order.discountAmount)], [`Vergi (%${fmt.format(order.taxRatePercent)})`, orderCurrency(order.currency).format(data.taxAmount)], ['Nakliye', orderCurrency(order.currency).format(order.freightAmount)], ['Genel toplam', orderCurrency(order.currency).format(data.totalCost)]];
       $('#accessoryOrderSummary').innerHTML = fields.map(([label, value]) => `<div class="detail-field"><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong></div>`).join('');
       $('#accessoryOrderDetailLines').innerHTML = data.lines.map(line => `<tr><td>${escapeHtml(line.accessoryName || 'Silinmiş aksesuar')}<span class="asset-tag">${escapeHtml(line.itemNumber || '')}</span></td><td>${fmt.format(line.quantity)}</td><td>${fmt.format(line.quantityReceived)}</td><td>${fmt.format(line.remaining)}</td><td>${orderCurrency(order.currency).format(line.unitCost)}</td><td>${orderCurrency(order.currency).format(line.totalCost)}</td></tr>`).join('');
       $('#accessoryOrderDetailNotes').textContent = order.notes ? `Not: ${order.notes}` : '';
@@ -3792,6 +3794,7 @@
     });
     $('#addAccessoryOrderLine').addEventListener('click', addAccessoryOrderLine);
     $('#accessoryOrderCreateForm').elements.currency.addEventListener('change', updateAccessoryOrderTotal);
+    ['taxRatePercent','discountAmount','freightAmount'].forEach(name => $('#accessoryOrderCreateForm').elements[name].addEventListener('input', updateAccessoryOrderTotal));
     $('#accessoryOrderCreateForm').addEventListener('submit', async event => {
       event.preventDefault(); const form = event.currentTarget, data = new FormData(form), rows = [...$('#accessoryOrderCreateLines').children];
       const items = rows.map(row => ({ accessoryId: row.querySelector('[data-order-accessory]').value, quantity: Number(row.querySelector('[data-order-quantity]').value), unitCost: Number(row.querySelector('[data-order-cost]').value) }));
@@ -3799,7 +3802,7 @@
       if (items.some(item => !item.accessoryId) || new Set(items.map(item => item.accessoryId)).size !== items.length) { notify('Her aksesuarı siparişte bir kez seçin; tekrar eden kalemleri birleştirin.'); return; }
       if (new Set(selectedCurrencies).size > 1 || (selectedCurrencies.length && selectedCurrencies[0] !== data.get('currency'))) { notify('Tüm kalemler sipariş başlığındaki aynı para biriminde olmalı.'); return; }
       const button = $('button[type="submit"]', form); button.disabled = true;
-      try { const created = await api('/api/accessory-orders', { method: 'POST', body: JSON.stringify({ orderNumber: data.get('orderNumber') || null, supplier: data.get('supplier'), orderDate: data.get('orderDate'), expectedOn: data.get('expectedOn') || null, currency: data.get('currency'), notes: data.get('notes') || null, items }) }); $('#accessoryOrderCreateDialog').close(); await loadAccessoryOrders(1); await loadSupplierNameSuggestions(); notify(`Sipariş ${created.orderNumber} oluşturuldu.`); }
+      try { const created = await api('/api/accessory-orders', { method: 'POST', body: JSON.stringify({ orderNumber: data.get('orderNumber') || null, supplier: data.get('supplier'), orderDate: data.get('orderDate'), expectedOn: data.get('expectedOn') || null, currency: data.get('currency'), taxRatePercent: Number(data.get('taxRatePercent')) || 0, discountAmount: Number(data.get('discountAmount')) || 0, freightAmount: Number(data.get('freightAmount')) || 0, notes: data.get('notes') || null, items }) }); $('#accessoryOrderCreateDialog').close(); await loadAccessoryOrders(1); await loadSupplierNameSuggestions(); notify(`Sipariş ${created.orderNumber} oluşturuldu.`); }
       catch (error) { notify(error.message); } finally { button.disabled = false; }
     });
     $('#accessoryOrderRows').addEventListener('click', async event => {
