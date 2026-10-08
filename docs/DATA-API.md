@@ -148,6 +148,10 @@ Konum listesi `isDefault`, `managerEmployeeId` ve `managerName` alanlarını iç
 - `PUT /api/company/label-templates` (`settings.manage`; en fazla 100 şirket ortak şablonunu üretici, yazıcı modeli, ürün kodu ve barkod/ölçü/hizalama/içerik ayarlarıyla değiştirir; toplam gövde 128 KiB ile sınırlı ve değişiklik denetlenir; eski etiket ayarları korunur)
 - `POST /api/assets/{id}/maintenances` (kullanılabilir ve zimmet dışı varlıkta tek açık bakım; tür, servis, tarih, maliyet, notlar; varlığı bakım durumuna alır)
 - `POST /api/assets/{assetId}/maintenances/{maintenanceId}/complete` (tamamlanma tarihi/notu; bakım kaydını kapatır ve varlığı kullanılabilir duruma getirir)
+- `GET /api/maintenances/{id}/attachments` (şirket kapsamlı bakım ekleri metaverisi; `asset.read`)
+- `POST /api/maintenances/{id}/attachments` (`multipart/form-data`, `file`; imzası doğrulanan PDF/PNG/JPEG/WebP, dosya başına 10 MiB, bakım kaydı başına 30 dosya; `asset.write`)
+- `GET /api/maintenances/{id}/attachments/{attachmentId}/file` (şirket ve bakım kaydı kapsamlı, yetki denetimli dosya indirme; `asset.read`)
+- `DELETE /api/maintenances/{id}/attachments/{attachmentId}` (dosyayı ve metaverisini kaldırır, denetim izi yazar; `asset.write`)
 - `GET /api/activity?page=1&pageSize=50`
 - `GET /api/activity?assetId=&employeeId=&from=&to=&eventType=&q=` (şirket içinde varlık/çalışan/tarih/tür/metin filtreli)
 - `GET /api/audit?page=1&pageSize=50&q=&targetType=` (sahip/yönetici; filtreler ve sayfalama)

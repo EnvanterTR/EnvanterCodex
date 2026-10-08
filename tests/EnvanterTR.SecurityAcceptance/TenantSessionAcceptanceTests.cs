@@ -1203,6 +1203,87 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Maintenance_attachments_are_validated_audited_and_included_in_company_archive()
+    {
+        var maintenanceId = Guid.NewGuid();
+        var otherMaintenanceId = Guid.NewGuid();
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.AssetMaintenances.AddRange(
+                new AssetMaintenance { Id = maintenanceId, CompanyId = _companyId, AssetId = _ownAssetId,
+                    MaintenanceType = "Repair", StartedOn = new DateOnly(2026, 10, 1), CompletedOn = new DateOnly(2026, 10, 2),
+                    Status = "Completed", Currency = "TRY" },
+                new AssetMaintenance { Id = otherMaintenanceId, CompanyId = _otherCompanyId, AssetId = _otherCompanyAssetId,
+                    MaintenanceType = "Repair", StartedOn = new DateOnly(2026, 10, 1), CompletedOn = new DateOnly(2026, 10, 2),
+                    Status = "Completed", Currency = "TRY" });
+            await db.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var pdfBytes = Encoding.ASCII.GetBytes("%PDF-1.7\nmaintenance receipt\n%%EOF");
+        using (var invalid = await SendMaintenanceAttachmentUploadAsync(maintenanceId, new byte[] { 1, 2, 3 }, "fake.pdf", requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        using var upload = await SendMaintenanceAttachmentUploadAsync(maintenanceId, pdfBytes, "..\\maintenance-receipt.pdf", requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, upload.StatusCode);
+        using var uploaded = JsonDocument.Parse(await upload.Content.ReadAsStringAsync());
+        var attachmentId = uploaded.RootElement.GetProperty("id").GetGuid();
+        Assert.Equal("maintenance-receipt.pdf", uploaded.RootElement.GetProperty("originalFileName").GetString());
+
+        using (var list = await SendAsAdminAsync($"/api/maintenances/{maintenanceId}/attachments"))
+        {
+            Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+            using var payload = JsonDocument.Parse(await list.Content.ReadAsStringAsync());
+            Assert.Equal(attachmentId, payload.RootElement.GetProperty("items")[0].GetProperty("id").GetGuid());
+        }
+        using (var download = await SendAsAdminAsync($"/api/maintenances/{maintenanceId}/attachments/{attachmentId}/file"))
+        {
+            Assert.Equal(HttpStatusCode.OK, download.StatusCode);
+            Assert.Equal(pdfBytes, await download.Content.ReadAsByteArrayAsync());
+        }
+        using (var crossTenantList = await SendAsAdminAsync($"/api/maintenances/{otherMaintenanceId}/attachments"))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenantList.StatusCode);
+        using (var crossTenantDownload = await SendAsAdminAsync($"/api/maintenances/{otherMaintenanceId}/attachments/{attachmentId}/file"))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenantDownload.StatusCode);
+
+        using (var archiveResponse = await SendAsAdminAsync("/api/company/export.zip"))
+        {
+            Assert.Equal(HttpStatusCode.OK, archiveResponse.StatusCode);
+            using var archive = new ZipArchive(new MemoryStream(await archiveResponse.Content.ReadAsByteArrayAsync()), ZipArchiveMode.Read);
+            var entry = Assert.Single(archive.Entries, item => item.FullName == $"media/maintenances/{maintenanceId:N}/attachments/{attachmentId:N}.pdf");
+            await using var stream = entry.Open();
+            using var archivedBytes = new MemoryStream();
+            await stream.CopyToAsync(archivedBytes);
+            Assert.Equal(pdfBytes, archivedBytes.ToArray());
+        }
+
+        await SetCompanyRoleAsync("viewer");
+        using (var denied = await SendAsUserAsync(HttpMethod.Delete, $"/api/maintenances/{maintenanceId}/attachments/{attachmentId}",
+            _userId, _companyId, requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        await SetCompanyRoleAsync("admin");
+        using (var delete = await SendAsUserAsync(HttpMethod.Delete, $"/api/maintenances/{maintenanceId}/attachments/{attachmentId}",
+            _userId, _companyId, requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+        using (var removed = await SendAsAdminAsync($"/api/maintenances/{maintenanceId}/attachments/{attachmentId}/file"))
+            Assert.Equal(HttpStatusCode.NotFound, removed.StatusCode);
+
+        await using var auditScope = _factory.Services.CreateAsyncScope();
+        var auditDb = auditScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var actions = await auditDb.AuditEntries.AsNoTracking().Where(entry => entry.CompanyId == _companyId &&
+            entry.TargetType == "AssetMaintenance" && entry.TargetId == maintenanceId).Select(entry => entry.Action).ToListAsync();
+        Assert.Contains("AttachmentAdded", actions);
+        Assert.Contains("AttachmentRemoved", actions);
+    }
+
+    [Fact]
     public async Task Employee_photo_and_document_storage_are_scoped_to_the_active_company()
     {
         var pngSignature = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
@@ -1956,6 +2037,15 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var multipart = new MultipartFormDataContent();
         multipart.Add(new ByteArrayContent(bytes), "file", fileName);
         return await SendAsUserAsync(HttpMethod.Post, $"/api/software-licenses/{licenseId}/attachments", _userId, _companyId,
+            multipart, requestToken, antiforgeryCookie);
+    }
+
+    private async Task<HttpResponseMessage> SendMaintenanceAttachmentUploadAsync(Guid maintenanceId, byte[] bytes, string fileName,
+        string requestToken, string antiforgeryCookie)
+    {
+        using var multipart = new MultipartFormDataContent();
+        multipart.Add(new ByteArrayContent(bytes), "file", fileName);
+        return await SendAsUserAsync(HttpMethod.Post, $"/api/maintenances/{maintenanceId}/attachments", _userId, _companyId,
             multipart, requestToken, antiforgeryCookie);
     }
 

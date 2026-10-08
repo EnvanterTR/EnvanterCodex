@@ -39,6 +39,7 @@ public static class AssetEndpoints
         api.MapConsumableEndpoints();
         api.MapInventoryRequestEndpoints();
         api.MapSoftwareLicenseEndpoints();
+        api.MapMaintenanceAttachmentEndpoints();
         api.MapComponentEndpoints();
         api.MapAccessoryImportEndpoints();
         api.MapInventoryMovementEndpoints();

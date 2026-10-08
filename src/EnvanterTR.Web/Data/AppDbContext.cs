@@ -24,6 +24,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AssetAttachment> AssetAttachments => Set<AssetAttachment>();
     public DbSet<EmployeeDocument> EmployeeDocuments => Set<EmployeeDocument>();
     public DbSet<AssetMaintenance> AssetMaintenances => Set<AssetMaintenance>();
+    public DbSet<AssetMaintenanceAttachment> AssetMaintenanceAttachments => Set<AssetMaintenanceAttachment>();
     public DbSet<Accessory> Accessories => Set<Accessory>();
     public DbSet<AccessoryAssignment> AccessoryAssignments => Set<AccessoryAssignment>();
     public DbSet<AccessoryMovement> AccessoryMovements => Set<AccessoryMovement>();
@@ -681,6 +682,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetMaintenance>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
         modelBuilder.Entity<AssetMaintenance>().Property(x => x.Notes).HasMaxLength(2000);
         modelBuilder.Entity<AssetMaintenance>().Property(x => x.CompletionNotes).HasMaxLength(2000);
+        modelBuilder.Entity<AssetMaintenance>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AssetMaintenance>().ToTable("AssetMaintenances", table =>
         {
             table.HasCheckConstraint("CK_AssetMaintenances_Status", "\"Status\" IN ('Scheduled', 'InProgress', 'Completed', 'Cancelled')");
@@ -697,5 +699,20 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AssetMaintenance>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<AssetMaintenanceAttachment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<AssetMaintenanceAttachment>().Property(x => x.OriginalFileName).HasMaxLength(255).IsRequired();
+        modelBuilder.Entity<AssetMaintenanceAttachment>().Property(x => x.StorageFileName).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<AssetMaintenanceAttachment>().Property(x => x.ContentType).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<AssetMaintenanceAttachment>().HasIndex(x => new { x.CompanyId, x.MaintenanceId, x.CreatedAt });
+        modelBuilder.Entity<AssetMaintenanceAttachment>().ToTable("AssetMaintenanceAttachments", table =>
+            table.HasCheckConstraint("CK_AssetMaintenanceAttachments_Length", "\"Length\" BETWEEN 1 AND 10485760"));
+        modelBuilder.Entity<AssetMaintenanceAttachment>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssetMaintenanceAttachment>().HasOne<AssetMaintenance>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.MaintenanceId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssetMaintenanceAttachment>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.SetNull);
     }
 }

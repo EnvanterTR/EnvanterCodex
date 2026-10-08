@@ -92,6 +92,7 @@
 <style>.bulk-asset-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:10px 13px;border-bottom:1px solid #edf0f5;background:#f8faff}.bulk-asset-toolbar[hidden]{display:none}.bulk-asset-toolbar label{display:flex;align-items:center;gap:7px;color:#526178;font-size:.72rem}.bulk-asset-toolbar>span{margin-right:auto;color:#526178;font-size:.72rem;font-weight:700}.bulk-asset-toolbar select{min-height:32px;padding:0 9px;border:1px solid #dce4ee;border-radius:7px;background:white;color:#33445e;font-size:.72rem}.asset-select-column{width:38px}.asset-select-cell{text-align:center}.asset-select-cell input{width:15px;height:15px;accent-color:#1769df}.stats .stat-actionable{cursor:pointer;transition:box-shadow .15s,transform .15s}.stats .stat-actionable:hover{transform:translateY(-2px);box-shadow:0 8px 20px #10213a14}.stats .stat-actionable:focus-visible{outline:2px solid #1769df;outline-offset:2px}</style>
 <style>.dashboard-status{display:grid;grid-template-columns:minmax(112px,150px) minmax(0,1fr);align-items:center;gap:18px;padding:16px}.dashboard-donut{position:relative;display:grid;place-items:center;width:min(100%,150px);aspect-ratio:1;border-radius:50%;background:#eef2f8}.dashboard-donut:after{position:absolute;inset:19%;border-radius:50%;background:#fff;content:""}.dashboard-donut-center{z-index:1;text-align:center}.dashboard-donut-center strong{display:block;color:#26364d;font-size:1.2rem}.dashboard-donut-center small{color:#8793a6;font-size:.62rem}.dashboard-status-legend{display:grid;gap:4px}.dashboard-status-item{display:flex;align-items:center;gap:8px;width:100%;padding:7px 8px;border:0;border-radius:7px;color:#56657a;background:transparent;text-align:left;font-size:.68rem;cursor:pointer}.dashboard-status-item:hover,.dashboard-status-item:focus-visible{outline:2px solid #cfe0fa;background:#f4f8ff}.dashboard-status-item .legend-dot{width:8px;height:8px;flex:none;border-radius:50%}.dashboard-status-item .legend-count{margin-left:auto;color:#26364d;font-weight:700}.dashboard-status-note{padding:0 16px 12px;color:#8793a6;font-size:.63rem}@media(max-width:420px){.dashboard-status{grid-template-columns:108px minmax(0,1fr);gap:10px;padding:13px}.dashboard-status-item{padding:7px 4px;font-size:.64rem}}</style><style>.label-preview-card{box-sizing:border-box;max-width:none;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto 1fr auto;align-items:center;gap:4px;border:1px dashed #8494a8;border-radius:6px;background:#fff;box-shadow:0 5px 20px #182d491f;overflow:hidden}.label-preview-brand{grid-column:1/-1;color:#52637a;font-size:8px;font-weight:800;letter-spacing:.08em}.label-preview-copy{min-width:0;display:grid;gap:4px;overflow:hidden}.label-preview-copy strong{font-size:10px}.label-preview-copy b{font-size:17px;overflow-wrap:anywhere}.label-preview-copy small{font-size:8px;color:#667085}.label-preview-2d{width:25mm;height:25mm;object-fit:contain}.label-preview-1d{grid-column:1/-1;width:100%;height:auto;max-height:10mm;object-fit:fill}.label-preview-1d[src^="data:"]{image-rendering:auto}#labelPreviewCanvas{overflow:auto;padding:4px 0 12px}#labelSettingsForm .form-grid{margin-bottom:8px}@media(max-width:720px){#labelSettingsPage .grid{grid-template-columns:1fr!important}}</style></head>
 <body>
+  <dialog class="detail-dialog" id="maintenanceAttachmentDialog"><div class="dialog-head"><div><div class="eyebrow">BAKIM KAYDI / DOSYALAR</div><h2 id="maintenanceAttachmentTitle">Bakım ekleri</h2></div><button class="close" id="maintenanceAttachmentClose" type="button" aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="muted">Servis formu, fatura ve bakım fotoğraflarını bu kayda ekleyin. PDF, PNG, JPEG veya WebP; dosya başına en fazla 10 MiB, kayıt başına 30 dosya.</p><form id="maintenanceAttachmentForm" class="form-grid" hidden><label class="wide">Dosya seçin *<input name="file" type="file" accept="application/pdf,image/png,image/jpeg,image/webp" required></label><div class="dialog-actions wide"><button class="btn primary" type="submit">Dosyayı yükle</button></div></form><div id="maintenanceAttachmentList" class="inventory-history" aria-live="polite" style="margin-top:12px"><p class="muted">Dosyalar yükleniyor…</p></div></div></dialog>
   <div class="app">
     <aside class="sidebar" id="sidebar">
       <a class="brand" href="#overview"><span class="brandmark">E</span><span>Envanter<em>TR</em></span></a>
@@ -2587,6 +2588,39 @@
       setTimeout(() => URL.revokeObjectURL(url), 1000); notify('Takvim görünümü CSV olarak indirildi.');
     }
     let maintenancePageNumber = 1;
+    let maintenanceAttachmentRecordId = null;
+    async function loadMaintenanceAttachments() {
+      if (!maintenanceAttachmentRecordId) return;
+      const result = await api(`/api/maintenances/${maintenanceAttachmentRecordId}/attachments`);
+      const form = $('#maintenanceAttachmentForm'); form.hidden = !canWriteAssets(); form.reset();
+      const host = $('#maintenanceAttachmentList'); host.replaceChildren();
+      if (!result.items.length) { const empty = document.createElement('p'); empty.className = 'muted'; empty.textContent = 'Bu bakım kaydına henüz dosya eklenmedi.'; host.append(empty); }
+      for (const item of result.items) {
+        const row = document.createElement('div'); row.className = 'inventory-history-item';
+        const info = document.createElement('div'); info.innerHTML = `<strong>${escapeHtml(item.originalFileName)}</strong><small>${escapeHtml(item.contentType)} · ${fmt.format(item.length)} bayt · ${new Date(item.createdAt).toLocaleString('tr-TR')} · ${escapeHtml(item.uploadedBy || 'Kullanıcı')}</small>`;
+        const actions = document.createElement('div'); actions.className = 'row-actions';
+        const download = document.createElement('button'); download.type = 'button'; download.className = 'btn small'; download.textContent = 'İndir';
+        download.addEventListener('click', async () => { try { const response = await api(`/api/maintenances/${maintenanceAttachmentRecordId}/attachments/${item.id}/file`); const url = URL.createObjectURL(await response.blob()); const link = document.createElement('a'); link.href = url; link.download = item.originalFileName; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); } catch (error) { notify(error.message); } });
+        actions.append(download);
+        if (canWriteAssets()) { const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'btn small danger'; remove.textContent = 'Kaldır'; remove.addEventListener('click', async () => { if (!confirm(`“${item.originalFileName}” dosyası kaldırılsın mı?`)) return; try { await api(`/api/maintenances/${maintenanceAttachmentRecordId}/attachments/${item.id}`, { method: 'DELETE' }); await loadMaintenanceAttachments(); notify('Bakım eki kaldırıldı.'); } catch (error) { notify(error.message); } }); actions.append(remove); }
+        row.append(info, actions); host.append(row);
+      }
+      if (canWriteAssets() && result.items.length >= result.maxFileCount) { form.hidden = true; const limit = document.createElement('p'); limit.className = 'muted'; limit.textContent = 'Bu kayıt için 30 dosya sınırına ulaşıldı.'; host.prepend(limit); }
+    }
+    async function openMaintenanceAttachments(id, title) {
+      maintenanceAttachmentRecordId = id; $('#maintenanceAttachmentTitle').textContent = `${title} · Dosyalar`;
+      $('#maintenanceAttachmentList').innerHTML = '<p class="muted">Dosyalar yükleniyor…</p>';
+      $('#maintenanceAttachmentDialog').showModal();
+      try { await loadMaintenanceAttachments(); } catch (error) { $('#maintenanceAttachmentList').textContent = error.message; }
+    }
+    $('#maintenanceAttachmentClose').addEventListener('click', () => $('#maintenanceAttachmentDialog').close());
+    $('#maintenanceAttachmentForm').addEventListener('submit', async event => {
+      event.preventDefault(); const form = event.currentTarget, button = form.querySelector('[type="submit"]');
+      if (!maintenanceAttachmentRecordId || !form.elements.file.files.length) return;
+      button.disabled = true;
+      try { await api(`/api/maintenances/${maintenanceAttachmentRecordId}/attachments`, { method: 'POST', body: new FormData(form) }); await loadMaintenanceAttachments(); notify('Dosya bakım kaydına eklendi.'); }
+      catch (error) { notify(error.message); } finally { button.disabled = false; }
+    });
     async function loadCompanyMaintenances(page = maintenancePageNumber) {
       maintenancePageNumber = page;
       const params = new URLSearchParams({ page: String(page), pageSize: '50' });
@@ -2621,6 +2655,9 @@
           cancel.addEventListener('click', event => { event.stopPropagation(); updateCompanyMaintenancePlan(item.assetId, item.id, 'cancel'); });
           actions.append(start, cancel);
         } else actions.textContent = '—';
+        const attachments = document.createElement('button'); attachments.type = 'button'; attachments.className = 'btn small'; attachments.textContent = 'Dosyalar'; attachments.setAttribute('aria-label', `${item.assetTag} ${item.maintenanceType} bakım eklerini aç`);
+        attachments.addEventListener('click', event => { event.stopPropagation(); openMaintenanceAttachments(item.id, `${item.assetTag} · ${item.maintenanceType}`); });
+        actions.append(attachments);
         row.append(asset, type, supplier, state, started, completed, cost, actor, notes, actions);
         const open = () => openAsset(item.assetId).then(() => selectAssetTab('maintenance')).catch(error => notify(error.message));
         row.addEventListener('click', event => { if (event.target !== link) open(); });
