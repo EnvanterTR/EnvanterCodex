@@ -442,6 +442,7 @@ public static class AccountEndpoints
 
         endpoints.MapPost("/api/session/password/reset", async ([FromBody] ResetPasswordRequest request,
             HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager,
+            AppDbContext db,
             CancellationToken cancellationToken) =>
         {
             if (!await HasValidCsrfAsync(context, antiforgery))
@@ -463,6 +464,16 @@ public static class AccountEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> {
                     ["reset"] = result.Errors.Select(error => error.Description).ToArray()
                 });
+            var companyIds = await db.CompanyMemberships.AsNoTracking().Where(x => x.UserId == user.Id)
+                .Select(x => x.CompanyId).Distinct().ToListAsync(cancellationToken);
+            foreach (var companyId in companyIds)
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = user.Id,
+                    TargetType = "Account", TargetId = user.Id, Action = "PasswordReset",
+                    Details = "E-posta doğrulamalı parola yenileme tamamlandı; diğer oturumlar geçersiz kılındı." });
+            db.PlatformAuditEntries.Add(new PlatformAuditEntry { ActorUserId = user.Id,
+                CompanyId = companyIds.Count == 1 ? companyIds[0] : null, TargetType = "Account", TargetId = user.Id,
+                Action = "PasswordReset", Details = "E-posta doğrulamalı parola yenileme tamamlandı." });
+            await db.SaveChangesAsync(cancellationToken);
             if (!user.EmailConfirmed)
             {
                 user.EmailConfirmed = true;
