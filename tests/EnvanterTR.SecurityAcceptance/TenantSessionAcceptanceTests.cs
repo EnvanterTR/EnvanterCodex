@@ -1932,7 +1932,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var createPayload = System.Net.Http.Json.JsonContent.Create(new
         {
             orderNumber, supplier = "=Acceptance supplier", orderDate = today.AddDays(-1), expectedOn = (DateOnly?)today,
-            currency = "TRY", notes = "Purchase order acceptance",
+            currency = "TRY", taxRatePercent = 20m, discountAmount = 1500m, freightAmount = 600m, notes = "Purchase order acceptance",
             items = new[] { new { name = "Test laptop", categoryId = (await GetOwnCategoryIdAsync()), brandId = (Guid?)null, modelId = (Guid?)null, quantity = 3, unitCost = 12500m, warrantyExpiresAt = (DateOnly?)today.AddYears(2) } }
         });
         using var createResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/asset-orders", "admin", createPayload, requestToken, antiforgeryCookie);
@@ -1983,6 +1983,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var csv = await csvResponse.Content.ReadAsStringAsync();
         Assert.Contains(orderNumber, csv);
         Assert.Contains("'=Acceptance supplier", csv);
+        Assert.Contains("37500.00;1500.00;20.00;7200.00;600.00;43800.00", csv);
         using var crossTenantExport = await SendAsAdminAsync($"/api/asset-orders/export.csv?q={Uri.EscapeDataString(orderNumber)}", _otherCompanyId);
         Assert.Equal(HttpStatusCode.Unauthorized, crossTenantExport.StatusCode);
         using var crossTenantDetail = await SendAsAdminAsync($"/api/asset-orders/{orderId}", _otherCompanyId);
@@ -1991,6 +1992,10 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var detailResponse = await SendAsAdminAsync($"/api/asset-orders/{orderId}");
         Assert.Equal(HttpStatusCode.OK, detailResponse.StatusCode);
         using var detail = JsonDocument.Parse(await detailResponse.Content.ReadAsStringAsync());
+        Assert.Equal(37500m, detail.RootElement.GetProperty("subtotal").GetDecimal());
+        Assert.Equal(36000m, detail.RootElement.GetProperty("taxableAmount").GetDecimal());
+        Assert.Equal(7200m, detail.RootElement.GetProperty("taxAmount").GetDecimal());
+        Assert.Equal(43800m, detail.RootElement.GetProperty("totalCost").GetDecimal());
         var lineId = Assert.Single(detail.RootElement.GetProperty("lines").EnumerateArray()).GetProperty("id").GetGuid();
         var receiptPayload = System.Net.Http.Json.JsonContent.Create(new
         {
@@ -2012,6 +2017,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, assetProfileResponse.StatusCode);
         using var assetProfile = JsonDocument.Parse(await assetProfileResponse.Content.ReadAsStringAsync());
         Assert.Equal(orderId, assetProfile.RootElement.GetProperty("purchaseOrder").GetProperty("id").GetGuid());
+        Assert.Equal(14600m, assetProfile.RootElement.GetProperty("asset").GetProperty("purchaseCost").GetDecimal());
         using var crossTenantAssetProfile = await SendAsAdminAsync($"/api/assets/{receivedAssetId}", _otherCompanyId);
         Assert.Equal(HttpStatusCode.Unauthorized, crossTenantAssetProfile.StatusCode);
 
