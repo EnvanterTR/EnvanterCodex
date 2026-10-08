@@ -58,6 +58,7 @@ public sealed record UpdateEmployeeRequest(
     DateOnly? StartedOn = null);
 
 public sealed record SetEmployeeManagerRequest(Guid? ManagerEmployeeId);
+public sealed record LinkCompanyMemberEmployeeRequest(Guid? EmployeeId);
 
 public sealed record AssignAssetRequest(Guid EmployeeId, string? Note);
 public sealed record ReturnAssetRequest(string? Note);

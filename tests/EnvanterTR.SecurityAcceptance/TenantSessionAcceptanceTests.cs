@@ -42,6 +42,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     private readonly Guid _ownComponentId = Guid.NewGuid();
     private readonly Guid _otherCompanyComponentId = Guid.NewGuid();
     private readonly Guid _ownEmployeeId = Guid.NewGuid();
+    private readonly Guid _ownSecondEmployeeId = Guid.NewGuid();
     private readonly Guid _otherCompanyEmployeeId = Guid.NewGuid();
     private string? _previousConnectionString;
     private string? _previousForwardedHeadersSetting;
@@ -478,6 +479,73 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Contains(await db.AssetEvents.Where(x => x.CompanyId == _companyId && x.AssetId == _ownAssetId).ToListAsync(),
             item => item.EventType == "Assigned" && item.EmployeeId == _ownEmployeeId);
         Assert.Equal("Approved", (await db.InventoryRequests.SingleAsync(x => x.CompanyId == _companyId && x.Id == requestId)).Status);
+    }
+
+    [Fact]
+    public async Task Member_employee_link_is_tenant_scoped_unique_and_binds_self_service_requests()
+    {
+        await using (var fixtureScope = _factory!.Services.CreateAsyncScope())
+        {
+            var fixtureDb = fixtureScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            fixtureDb.Employees.Add(new Employee { Id = _ownSecondEmployeeId, CompanyId = _companyId,
+                EmployeeNumber = $"OWN-SECOND-{_userId:N}", DisplayName = $"OWN-SECOND-SECURITY-EMPLOYEE-{_userId:N}" });
+            await fixtureDb.SaveChangesAsync();
+        }
+
+        using var adminCsrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        using var adminCsrfPayload = JsonDocument.Parse(await adminCsrfResponse.Content.ReadAsStringAsync());
+        var adminRequestToken = adminCsrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var adminAntiforgeryCookie = adminCsrfResponse.Headers.TryGetValues("Set-Cookie", out var adminCookies)
+            ? adminCookies.Select(value => value.Split(';', 2)[0])
+                .FirstOrDefault(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase))
+            : null;
+
+        using (var linkResponse = await SendAsRoleAsync(HttpMethod.Patch, $"/api/members/{_sameCompanyOtherUserId}/employee", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { employeeId = _ownEmployeeId }), adminRequestToken, adminAntiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, linkResponse.StatusCode);
+
+        using (var wrongTenantLink = await SendAsRoleAsync(HttpMethod.Patch, $"/api/members/{_sameCompanyOtherUserId}/employee", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { employeeId = _otherCompanyEmployeeId }), adminRequestToken, adminAntiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, wrongTenantLink.StatusCode);
+
+        using (var duplicateLink = await SendAsRoleAsync(HttpMethod.Patch, $"/api/members/{_userId}/employee", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { employeeId = _ownEmployeeId }), adminRequestToken, adminAntiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, duplicateLink.StatusCode);
+
+        using (var memberList = await SendAsAdminAsync("/api/members"))
+        using (var payload = JsonDocument.Parse(await memberList.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, memberList.StatusCode);
+            var linked = Assert.Single(payload.RootElement.GetProperty("members").EnumerateArray(),
+                item => item.GetProperty("userId").GetGuid() == _sameCompanyOtherUserId);
+            Assert.Equal(_ownEmployeeId, linked.GetProperty("employeeId").GetGuid());
+            Assert.Equal($"OWN-{_userId:N}", linked.GetProperty("employeeNumber").GetString());
+        }
+
+        using var csrfResponse = await SendAsUserAsync(HttpMethod.Get, "/api/session/csrf", _sameCompanyOtherUserId, _companyId);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.TryGetValues("Set-Cookie", out var userCookies)
+            ? userCookies.Select(value => value.Split(';', 2)[0])
+                .FirstOrDefault(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase))
+            : null;
+
+        using (var spoofedRequest = await SendAsUserAsync(HttpMethod.Post, "/api/requests", _sameCompanyOtherUserId, _companyId,
+                   System.Net.Http.Json.JsonContent.Create(new { employeeId = _ownSecondEmployeeId, itemType = "Asset", itemId = _ownAssetId, quantity = 1 }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, spoofedRequest.StatusCode);
+
+        using var requestResponse = await SendAsUserAsync(HttpMethod.Post, "/api/requests", _sameCompanyOtherUserId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { employeeId = _ownEmployeeId, itemType = "Asset", itemId = _ownAssetId, quantity = 1 }),
+            requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, requestResponse.StatusCode);
+        using var requestPayload = JsonDocument.Parse(await requestResponse.Content.ReadAsStringAsync());
+        var requestId = requestPayload.RootElement.GetProperty("id").GetGuid();
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var createdRequest = await db.InventoryRequests.SingleAsync(x => x.CompanyId == _companyId && x.Id == requestId);
+        Assert.Equal(_ownEmployeeId, createdRequest.EmployeeId);
+        Assert.Equal(_sameCompanyOtherUserId, createdRequest.RequestedByUserId);
     }
 
     [Fact]

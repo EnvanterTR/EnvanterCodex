@@ -142,9 +142,10 @@ Konum listesi `isDefault`, `managerEmployeeId` ve `managerName` alanlarını iç
 - `GET /api/activity?page=1&pageSize=50`
 - `GET /api/activity?assetId=&employeeId=&from=&to=&eventType=&q=` (şirket içinde varlık/çalışan/tarih/tür/metin filtreli)
 - `GET /api/audit?page=1&pageSize=50&q=&targetType=` (sahip/yönetici; filtreler ve sayfalama)
-- `GET /api/members` (sahip/yönetici; şirket üyelikleri ve kullanılabilir roller)
+- `GET /api/members` (sahip/yönetici; şirket üyelikleri, kullanılabilir roller ve varsa çalışan profili bağlantısı)
 - `POST /api/members/invite` (sahip/yönetici; ad, e-posta ve rol; CSRF + istek sınırı + etkin plan/koltuk kontrolü)
 - `PATCH /api/members/{userId}/role` (sahip/yönetici; denetim kaydı üretir)
+- `PATCH /api/members/{userId}/employee` (`settings.manage`; `{ "employeeId": "..." }` veya bağlantıyı kaldırmak için `{ "employeeId": null }`; yalnızca aynı şirketin etkin çalışanı, bir çalışan profiline tek üyelik ve denetim kaydı)
 - `GET /api/assets/export.csv?page=1&pageSize=5000&q=`
 - `GET /api/assets/export-all.csv?q=&status=&categoryId=&brandId=&modelId=&employeeId=&location=&warranty=expired|expiring|active|unspecified&sortBy=tag&sortDirection=asc` (bellekte tüm dosyayı oluşturmadan akış halinde tam dışa aktarım; etiket/ad/durum, kategori/marka/model, seri no/konum, çalışan numarası/adı, alış tarihi, garanti bitiş tarihi/tutarı ve para birimi; arayüzdeki garanti filtresi ve diğer süzgeçler uygulanır; CSV formül enjeksiyonu için hücre kaçışı uygulanır)
 - `POST /api/assets/export-selected.csv` (`asset.read`; CSRF zorunlu; 1–100 şirket varlık kimliği; seçili kayıtları garanti bitiş tarihi dahil tam dışa aktarımla aynı sütunlarda ve formül güvenli CSV biçiminde indirir)
@@ -198,8 +199,9 @@ Birden fazla uygulama örneği kullanılacağı zaman ASP.NET Core Data Protecti
 ## Stok talepleri
 
 - `GET /api/requests/catalog?q=` talebe açık ve kullanılabilir aksesuar/sarf kalemleriyle, talebe açık boşta/kullanılabilir varlıkları döndürür. `GET /api/requests/employees?q=` yalnızca akışta gerekli etkin çalışan kimliği, adı ve çalışan numarasını döndürür. İki uç da `asset.read` ister ve oturumdaki şirketle sınırlıdır.
+- `GET /api/requests/employees?q=` yanıtı, şirket üyeliği bir çalışan kaydına bağlıysa `selfEmployee` alanında o kişinin kimliğini ve görünen bilgilerini de içerir. Bağlı kullanıcı formda çalışan seçemez; `POST /api/requests` gövdesindeki çalışan kimliği oturum üyeliğiyle aynı değilse 403 döner. Üyeliğe bağlı çalışan pasifse talep oluşturulmaz.
 - `GET /api/requests?status=&q=&page=1&pageSize=25` şirketin taleplerini sayfalar; durum `Pending`, `Approved`, `Rejected` veya `Cancelled` olabilir. Yanıt kalem, çalışan, talep eden ve karar veren görünen adlarını içerir.
 - `POST /api/requests` gövdesi `{ "employeeId": "...", "itemType": "Accessory|Consumable|Asset", "itemId": "...", "quantity": 1, "note": "..." }` biçimindedir. Etkin çalışan ve talep edilebilir kalem şirket kapsamında doğrulanır. Varlık talebinde adet tam olarak 1 olmalıdır.
 - `POST /api/requests/{id}/decision` gövdesi `{ "approve": true, "note": "..." }` biçimindedir ve `asset.write` ister. Onay sırasında talep, çalışan ve hedef satır kilitlenip durum yeniden doğrulanır; onay, aksesuar zimmeti, sarf tüketim hareketi veya varlık zimmeti ile denetim kaydı tek transaction içinde yazılır. Stok azaldıysa veya varlık artık boşta değilse istek açık kalır ve 409 döner. Red stok/zimmet hareketi üretmez.
 - `POST /api/requests/{id}/cancel` yalnızca talebi açan kullanıcı tarafından beklemedeyken çağrılabilir; diğer durumlar 409 döndürür. İptal ve karar işlemleri aynı talep satırını kilitleyerek çakışan değişiklikleri engeller.
-- Talep ekranı oturum kullanıcısının yetkili olduğu şirkette, envanter okuma rolüyle açılır. Talep açma, bağlı oturum hesabı olmayan kullanıcı için seçilen etkin çalışan adına yapılır; kişi portalı/hesap-çalışan otomatik eşleştirmesi bu akışın kapsamı dışındadır.
+- Talep ekranı oturum kullanıcısının yetkili olduğu şirkette, envanter okuma rolüyle açılır. Yönetici `PATCH /api/members/{userId}/employee` ile üyeliği aynı şirketteki etkin bir çalışan profiline bağlayabilir veya `employeeId: null` ile kaldırabilir (`settings.manage`). Bir çalışan profili aynı şirkette en fazla bir üyeliğe bağlanabilir. Bağlı hesap sadece kendi adına talep açar; henüz eşleştirilmemiş hesaplar seçtikleri etkin çalışan adına talep açmaya devam eder.

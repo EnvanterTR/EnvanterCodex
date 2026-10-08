@@ -18,7 +18,15 @@ public static class InventoryRequestEndpoints
             if (!string.IsNullOrWhiteSpace(term)) employees = employees.Where(x => x.DisplayName.Contains(term) || x.EmployeeNumber.Contains(term));
             var items = await employees.OrderBy(x => x.DisplayName).Take(200)
                 .Select(x => new { x.Id, x.DisplayName, x.EmployeeNumber }).ToListAsync(ct);
-            return Results.Ok(new { items });
+            var userId = UserId(user);
+            var selfEmployee = userId is Guid accountId
+                ? await (from membership in db.CompanyMemberships.AsNoTracking()
+                         join employee in db.Employees.AsNoTracking() on new { membership.CompanyId, Id = membership.EmployeeId }
+                             equals new { employee.CompanyId, Id = (Guid?)employee.Id }
+                         where membership.CompanyId == companyId && membership.UserId == accountId
+                         select new { employee.Id, employee.DisplayName, employee.EmployeeNumber, employee.IsActive }).SingleOrDefaultAsync(ct)
+                : null;
+            return Results.Ok(new { items, selfEmployee });
         }).RequireAuthorization("asset.read");
 
         api.MapGet("/requests/catalog", async ([FromQuery] string? q, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
@@ -156,16 +164,21 @@ public static class InventoryRequestEndpoints
             if (request.Quantity is < 1 or > 100000 || request.Note?.Length > 1000 || request.ItemType is not ("Accessory" or "Consumable" or "Asset") ||
                 (request.ItemType == "Asset" && request.Quantity != 1))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["request"] = ["Talep türü, adet veya not bilgisi geçersiz. Adet 1–100.000; not en fazla 1.000 karakter olmalıdır."] });
-            if (!await db.Employees.AnyAsync(e => e.CompanyId == companyId && e.Id == request.EmployeeId && e.IsActive, ct))
+            var linkedEmployeeId = await db.CompanyMemberships.AsNoTracking()
+                .Where(x => x.CompanyId == companyId && x.UserId == userId).Select(x => x.EmployeeId).SingleOrDefaultAsync(ct);
+            if (linkedEmployeeId is Guid mappedEmployeeId && request.EmployeeId != mappedEmployeeId)
+                return Results.Forbid();
+            var employeeId = linkedEmployeeId ?? request.EmployeeId;
+            if (!await db.Employees.AnyAsync(e => e.CompanyId == companyId && e.Id == employeeId && e.IsActive, ct))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeId"] = ["Bu şirketteki etkin bir çalışan seçilmelidir."] });
             var available = await AvailableAsync(db, companyId, request.ItemType, request.ItemId, ct);
             if (available is null) return Results.ValidationProblem(new Dictionary<string, string[]> { ["itemId"] = ["İstenen kalem bu şirkette bulunamadı veya talebe açık değil."] });
             if (request.Quantity > available) return Results.Conflict(new { message = $"Şu anda yalnızca {available} adet kullanılabilir. Onay sırasında stok yeniden kontrol edilir." });
-            var row = new InventoryRequest { CompanyId = companyId, EmployeeId = request.EmployeeId, RequestedByUserId = userId,
+            var row = new InventoryRequest { CompanyId = companyId, EmployeeId = employeeId, RequestedByUserId = userId,
                 ItemType = request.ItemType, ItemId = request.ItemId, Quantity = request.Quantity, RequestNote = Clean(request.Note) };
             db.InventoryRequests.Add(row);
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = userId, TargetType = "InventoryRequest", TargetId = row.Id,
-                Action = "request.created", Details = $"{request.ItemType}; {request.Quantity} adet; çalışan {request.EmployeeId}." });
+                Action = "request.created", Details = $"{request.ItemType}; {request.Quantity} adet; çalışan {employeeId}." });
             await db.SaveChangesAsync(ct);
             return Results.Created($"/api/requests/{row.Id}", new { row.Id, row.Status });
         }).RequireAuthorization("asset.read");

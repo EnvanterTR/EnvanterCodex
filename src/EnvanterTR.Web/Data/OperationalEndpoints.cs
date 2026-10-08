@@ -1,11 +1,13 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Data;
 using System.Net.Mail;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using System.Text.RegularExpressions;
 using System.Text.Json;
 
@@ -840,7 +842,8 @@ public static class OperationalEndpoints
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
                 TargetType = "Department", TargetId = entry.Id, Action = "Created", Details = $"Departman kataloğa eklendi: {name}." });
             try { await db.SaveChangesAsync(cancellationToken); }
-            catch (DbUpdateException)
+            catch (DbUpdateException exception) when (exception.InnerException is PostgresException
+                { SqlState: PostgresErrorCodes.UniqueViolation or PostgresErrorCodes.SerializationFailure })
             {
                 return Results.Conflict(new { message = "Bu departman adı eşzamanlı olarak başka bir işlemde kaydedildi." });
             }
@@ -1304,10 +1307,13 @@ public static class OperationalEndpoints
                 .Select(x => new
                 {
                     x.UserId, x.RoleKey, x.CreatedAt,
+                    x.EmployeeId,
                     IsCurrentUser = x.UserId == actorId,
                     Name = db.Users.Where(u => u.Id == x.UserId).Select(u => u.DisplayName).FirstOrDefault(),
                     Email = db.Users.Where(u => u.Id == x.UserId).Select(u => u.Email).FirstOrDefault(),
-                    IsInvitationPending = db.Users.Where(u => u.Id == x.UserId).Select(u => !u.EmailConfirmed).FirstOrDefault()
+                    IsInvitationPending = db.Users.Where(u => u.Id == x.UserId).Select(u => !u.EmailConfirmed).FirstOrDefault(),
+                    EmployeeName = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
+                    EmployeeNumber = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault()
                 }).ToListAsync(cancellationToken);
             return Results.Ok(new { members, total = members.Count, roles = new[] { "admin", "asset_manager", "asset_operator", "auditor", "viewer", "hr_operator" } });
         }).RequireAuthorization("settings.manage");
@@ -1437,6 +1443,48 @@ public static class OperationalEndpoints
             });
             await db.SaveChangesAsync(cancellationToken);
             return Results.Ok(new { membership.UserId, membership.RoleKey });
+        }).RequireAuthorization("settings.manage");
+
+        api.MapPatch("/members/{userId:guid}/employee", async (Guid userId,
+            [FromBody] LinkCompanyMemberEmployeeRequest request, ClaimsPrincipal user, AppDbContext db,
+            CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+            var membership = await db.CompanyMemberships.FromSqlInterpolated(
+                    $"SELECT * FROM \"CompanyMemberships\" WHERE \"CompanyId\" = {companyId} AND \"UserId\" = {userId} FOR UPDATE")
+                .SingleOrDefaultAsync(cancellationToken);
+            if (membership is null) return Results.NotFound();
+            string? employeeName = null;
+            string? employeeNumber = null;
+            if (request.EmployeeId is Guid employeeId)
+            {
+                var employee = await db.Employees.FromSqlInterpolated(
+                        $"SELECT * FROM \"Employees\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {employeeId} FOR SHARE")
+                    .AsNoTracking().SingleOrDefaultAsync(cancellationToken);
+                if (employee is null || !employee.IsActive)
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeId"] = ["Şirket içinde etkin bir çalışan seçin."] });
+                employeeName = employee.DisplayName;
+                employeeNumber = employee.EmployeeNumber;
+            }
+            if (membership.EmployeeId == request.EmployeeId)
+                return Results.Ok(new { membership.UserId, membership.EmployeeId, employeeName, employeeNumber });
+            membership.EmployeeId = request.EmployeeId;
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                TargetType = "CompanyMembership", TargetId = userId, Action = "EmployeeLinkChanged",
+                Details = request.EmployeeId is null ? "Giriş hesabının çalışan bağlantısı kaldırıldı."
+                    : $"Giriş hesabı çalışan kaydına bağlandı ({employeeNumber})." });
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return Results.Conflict(new { message = "Bu çalışan başka bir giriş hesabına bağlı. Önce mevcut bağlantıyı kaldırın." });
+            }
+            return Results.Ok(new { membership.UserId, membership.EmployeeId, employeeName, employeeNumber });
         }).RequireAuthorization("settings.manage");
 
         api.MapGet("/assets/export.csv", async ([FromQuery] string? q, HttpContext context, ClaimsPrincipal user, AppDbContext db,

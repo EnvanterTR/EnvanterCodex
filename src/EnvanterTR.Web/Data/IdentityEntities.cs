@@ -12,6 +12,7 @@ public sealed class CompanyMembership
 {
     public Guid CompanyId { get; set; }
     public Guid UserId { get; set; }
+    public Guid? EmployeeId { get; set; }
     public required string RoleKey { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

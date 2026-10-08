@@ -133,10 +133,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<CompanyMembership>().HasKey(x => new { x.CompanyId, x.UserId });
         modelBuilder.Entity<CompanyMembership>().Property(x => x.RoleKey).HasMaxLength(40).IsRequired();
         modelBuilder.Entity<CompanyMembership>().HasIndex(x => new { x.UserId, x.CompanyId }).IsUnique();
+        modelBuilder.Entity<CompanyMembership>().HasIndex(x => new { x.CompanyId, x.EmployeeId })
+            .IsUnique().HasFilter("\"EmployeeId\" IS NOT NULL");
         modelBuilder.Entity<CompanyMembership>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<CompanyMembership>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CompanyMembership>().HasOne<Employee>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.EmployeeId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
 
         modelBuilder.Entity<SavedAssetSearch>().Property(x => x.Name).HasMaxLength(60).IsRequired();
         modelBuilder.Entity<SavedAssetSearch>().Property(x => x.NormalizedName).HasMaxLength(60).IsRequired();

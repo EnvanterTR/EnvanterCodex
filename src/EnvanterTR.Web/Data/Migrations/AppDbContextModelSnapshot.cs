@@ -987,12 +987,19 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("EmployeeId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("RoleKey")
                         .IsRequired()
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
                     b.HasKey("CompanyId", "UserId");
+
+                    b.HasIndex("CompanyId", "EmployeeId")
+                        .IsUnique()
+                        .HasFilter("\"EmployeeId\" IS NOT NULL");
 
                     b.HasIndex("UserId", "CompanyId")
                         .IsUnique();
@@ -2663,6 +2670,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "EmployeeId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.ComponentAllocation", b =>
