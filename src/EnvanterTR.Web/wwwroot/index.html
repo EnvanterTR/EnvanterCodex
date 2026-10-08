@@ -257,6 +257,8 @@
       </section>
       <section class="panel" style="margin-top:15px"><div class="panel-head"><div><h2>Lisans bitişleri</h2><small id="licenseReportNote">Şirket lisanslarının süresi ve kullanılabilir koltukları.</small></div><button class="btn small" id="licenseReportExport" type="button">CSV indir</button></div><div class="table-tools"><select id="licenseReportState" aria-label="Lisans bitiş raporu durumu"><option value="upcoming">Yaklaşan</option><option value="expired">Süresi dolan</option><option value="later">Daha ileri tarih</option><option value="missing">Tarihi olmayan</option><option value="all">Tümü</option></select><label class="muted">Dönem <select id="licenseReportHorizon"><option value="30">30 gün</option><option value="90" selected>90 gün</option><option value="180">180 gün</option><option value="366">1 yıl</option></select></label><input id="licenseReportSearch" placeholder="Lisans, yayıncı, sürüm veya tedarikçi ara" aria-label="Lisans bitiş raporunda ara"><button class="btn small" id="licenseReportRefresh" type="button">↻ Yenile</button></div><div class="stats" id="licenseReportSummary" style="padding:0 14px 14px"></div><div class="table-wrap"><table><thead><tr><th>Bitiş tarihi</th><th>Lisans</th><th>Yayıncı / sürüm</th><th>Tür</th><th>Koltuk kullanımı</th><th>Otomatik yenileme</th><th>Tedarikçi</th></tr></thead><tbody id="licenseReportRows"><tr><td colspan="7">Lisans raporu yükleniyor…</td></tr></tbody></table></div><div class="pager"><button id="licenseReportPrev">← Önceki</button><span id="licenseReportPageInfo">Sayfa —</span><button id="licenseReportNext">Sonraki →</button></div></section>
     </section>
+      <section class="panel" style="margin-top:15px"><div class="panel-head"><div><h2>Bekleyen teslimatlar</h2><small id="pendingDeliveryNote">Varlık, aksesuar, sarf ve bileşen satın alma siparişlerindeki kalan kalemler.</small></div><div class="head-actions"><button class="btn small" id="pendingDeliveryRefresh" type="button">↻ Yenile</button><button class="btn small" id="pendingDeliveryExport" type="button">CSV indir</button></div></div><div class="table-tools"><select id="pendingDeliveryState" aria-label="Bekleyen teslimat tarihine göre filtrele"><option value="all">Tüm açık kalemler</option><option value="overdue">Geciken teslimatlar</option><option value="due30">Önümüzdeki 30 gün</option><option value="undated">Tarihi belirtilmemiş</option></select><input id="pendingDeliverySearch" maxlength="120" placeholder="Sipariş, tedarikçi veya kalem ara" aria-label="Bekleyen teslimat raporunda ara"><small id="pendingDeliveryCount" role="status" aria-live="polite">—</small></div><div class="stats" id="pendingDeliverySummary" style="padding:0 14px 14px"></div><div class="table-wrap"><table><caption class="sr-only">Şirketin bekleyen satın alma siparişi kalemleri</caption><thead><tr><th>Beklenen teslim</th><th>Tür</th><th>Sipariş no</th><th>Tedarikçi</th><th>Kalem</th><th>Sipariş</th><th>Teslim</th><th>Kalan</th><th>Durum</th></tr></thead><tbody id="pendingDeliveryRows"><tr><td colspan="9">Teslimatlar yükleniyor…</td></tr></tbody></table></div><div class="pager"><button id="pendingDeliveryPrev" type="button">← Önceki</button><span id="pendingDeliveryPageInfo">Sayfa —</span><button id="pendingDeliveryNext" type="button">Sonraki →</button></div></section>
+    </section>
     <section class="workspace-page" id="customReportPage" hidden>
       <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / RAPORLAMA</div><h1>Özel varlık raporu</h1><p>Alanları seçin, şirket kayıtlarını filtreleyin ve Excel uyumlu CSV olarak indirin.</p></div></div>
       <section class="panel"><div class="panel-head"><div><h2>Rapor tasarımı</h2><p>Kaydedilen taslaklar hesabınıza özel sunucuda saklanır ve cihazlarınız arasında eşitlenir.</p></div></div>
@@ -343,6 +345,7 @@
     let toastTimer, requestToken = '', lookupCache = { categories: [], brands: [], models: [] }, loadedAssets = [], selectedAssetIds = new Set(), selectedAssetRows = new Map(), currentAsset = null, currentEmployeeId = null, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, calendarRequestId = 0, calendarCursorDate = '', sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, auditRequestId = 0, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, latestCalendarEvents = [], latestCalendarFrom = '', latestCalendarTo = '', assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', savedAssetSearchesLegacyKey = '', savedAssetSearches = [], assetRowDensity = 'comfortable', visibleAssetColumns = Array(8).fill(true), labelSettingsKey = '', bwipLoadPromise = null, assetScanStream = null, assetScanFrame = 0, assetScanner = null, assetScanBusy = false;
     let warrantyReportPage = 1, warrantyReportRequestId = 0, warrantyReportSearchTimer;
     let licenseReportPage = 1, licenseReportRequestId = 0, licenseReportSearchTimer;
+    let pendingDeliveryPage = 1, pendingDeliveryRequestId = 0, pendingDeliverySearchTimer;
     let assetPurchaseReportPage = 1, assetPurchaseReportTotal = 0, assetPurchaseReportSearchTimer;
     let employeeListManagerSearchTimer;
     const calendarStyle = document.createElement('style');
@@ -1875,6 +1878,52 @@
       if (from && to && from > to) { notify('Başlangıç tarihi bitiş tarihinden sonra olamaz.'); return; }
       window.location.href = `/api/reports/assets/purchases/export.csv?${params}`;
     }
+    function pendingDeliveryParams(includePage=true) {
+      const params = new URLSearchParams({ state: $('#pendingDeliveryState').value || 'all' });
+      const q = $('#pendingDeliverySearch').value.trim(); if (q) params.set('q', q);
+      if (includePage) { params.set('page', String(pendingDeliveryPage)); params.set('pageSize', '50'); }
+      return params;
+    }
+    async function loadPendingDeliveryReport(page= pendingDeliveryPage) {
+      pendingDeliveryPage = Math.max(1, page);
+      const requestId = ++pendingDeliveryRequestId, params = pendingDeliveryParams();
+      const result = await api(`/api/reports/pending-deliveries?${params}`);
+      if (requestId !== pendingDeliveryRequestId) return;
+      pendingDeliveryPage = result.page || 1;
+      $('#pendingDeliveryNote').textContent = `Rapor tarihi ${formatDate(result.asOf)}; iptal edilmiş siparişler ve teslim alınmış kalemler kapsam dışıdır.`;
+      $('#pendingDeliveryCount').textContent = `${fmt.format(result.total || 0)} kalem`;
+      const summary = $('#pendingDeliverySummary'); summary.replaceChildren();
+      for (const [label,value,note] of [
+        ['Gecikmiş sipariş',result.summary?.overdueOrders||0,`${fmt.format(result.summary?.overdueLines||0)} açık kalem`],
+        ['Tarihi belirtilmemiş',result.summary?.undatedLines||0,'teslim tarihi girilmemiş kalem'],
+        ['Beklenen kalan adet',result.summary?.remainingUnits||0,'tüm açık siparişlerde']
+      ]) { const card=document.createElement('article');card.className='stat';const caption=document.createElement('div');caption.className='stat-top';caption.textContent=label;const number=document.createElement('strong');number.textContent=fmt.format(value);const hint=document.createElement('small');hint.textContent=note;card.append(caption,number,hint);summary.append(card); }
+      const rows=$('#pendingDeliveryRows');rows.replaceChildren();
+      if (!(result.items||[]).length) reportEmpty(rows,9,$('#pendingDeliverySearch').value.trim()||$('#pendingDeliveryState').value!=='all'?'Bu filtrelerde bekleyen teslimat bulunamadı.':'Bekleyen sipariş teslimatı yok.');
+      for (const item of result.items||[]) {
+        const row=document.createElement('tr');
+        const expected=document.createElement('td');expected.textContent=item.expectedOn?formatDate(item.expectedOn):'Tarih belirtilmemiş';
+        if(item.expectedOn&&item.expectedOn<result.asOf) expected.className='pill warn';
+        const type=document.createElement('td');type.textContent=item.orderType;
+        const orderCell=document.createElement('td'),order=document.createElement('button');order.type='button';order.className='text-link';order.textContent=item.orderNumber;order.setAttribute('aria-label',`${item.orderNumber} siparişini aç`);order.addEventListener('click',()=>openPendingDeliveryOrder(item).catch(error=>notify(error.message)));orderCell.append(order);
+        const supplier=document.createElement('td');supplier.textContent=item.supplier;
+        const name=document.createElement('td');name.textContent=item.itemName;
+        const quantity=document.createElement('td');quantity.textContent=fmt.format(item.quantity);
+        const received=document.createElement('td');received.textContent=fmt.format(item.quantityReceived);
+        const remaining=document.createElement('td');remaining.textContent=fmt.format(item.remaining);
+        const status=document.createElement('td');status.textContent=item.status==='PartiallyReceived'?'Kısmi teslim alındı':'Sipariş verildi';
+        row.append(expected,type,orderCell,supplier,name,quantity,received,remaining,status);rows.append(row);
+      }
+      $('#pendingDeliveryPageInfo').textContent=`${fmt.format(result.total||0)} kalem · Sayfa ${result.page||1} / ${result.pageCount||1}`;
+      $('#pendingDeliveryPrev').disabled=(result.page||1)<=1;$('#pendingDeliveryNext').disabled=(result.page||1)>=(result.pageCount||1);
+    }
+    async function openPendingDeliveryOrder(item) {
+      if (item.orderType==='Varlık') { document.querySelector('.sub-item[data-page="Varlık siparişleri"]')?.click(); await openAssetOrder(item.orderId); return; }
+      document.querySelector('.sub-item[data-page="Siparişler"]')?.click();
+      if (item.orderType==='Aksesuar') { await openAccessoryOrder(item.orderId); return; }
+      $('#openStockOrders').click(); await openStockOrder(item.orderId);
+    }
+    function exportPendingDeliveryReport() { window.location.href=`/api/reports/pending-deliveries/export.csv?${pendingDeliveryParams(false)}`; }
     async function loadComponentReport() {
       const result = await api('/api/reports/components');
       const summary = $('#componentReportSummary'); summary.replaceChildren();
@@ -4021,7 +4070,7 @@
         loadOperationalCalendar().catch(error => notify(error.message));
       }
       else if (page === 'Denetim kayıtları') { $('#auditPage').hidden = false; $('#pageTitle').textContent = page; loadAuditActions().then(() => loadAudit(1)).catch(error => notify(error.message)); loadAuditSchedule().catch(error => notify(error.message)); }
-       else if (page === 'Hazır raporlar') { $('#reportPage').hidden = false; $('#pageTitle').textContent = 'Envanter raporları'; loadAssetReports().catch(error => notify(error.message)); loadComponentReport().catch(error => notify(error.message)); loadAuditReport(1).catch(error => notify(error.message)); loadMaintenanceReport().catch(error => notify(error.message)); loadWarrantyReport(1).catch(error => notify(error.message)); loadLicenseExpiryReport(1).catch(error => notify(error.message)); }
+       else if (page === 'Hazır raporlar') { $('#reportPage').hidden = false; $('#pageTitle').textContent = 'Envanter raporları'; loadAssetReports().catch(error => notify(error.message)); loadComponentReport().catch(error => notify(error.message)); loadAuditReport(1).catch(error => notify(error.message)); loadMaintenanceReport().catch(error => notify(error.message)); loadWarrantyReport(1).catch(error => notify(error.message)); loadLicenseExpiryReport(1).catch(error => notify(error.message)); loadPendingDeliveryReport(1).catch(error => notify(error.message)); }
        else if (page === 'Özel rapor oluştur') { if (!canReadAssets()) { notify('Özel varlık raporu için varlıkları görüntüleme yetkisi gerekir.'); return; } $('#customReportPage').hidden = false; $('#pageTitle').textContent = 'Özel varlık raporu'; loadCustomReportFields().then(loadCustomReportPresets).catch(error => { $('#customReportFeedback').textContent = error.message; }); }
       else if (['Kategoriler','Markalar','Varlık modelleri'].includes(page)) { if (!canReadAssets()) { notify('Bu hesabın envanter tanımlarını görüntüleme yetkisi yok.'); return; } catalogKind = page === 'Kategoriler' ? 'categories' : page === 'Markalar' ? 'brands' : 'models'; $('#catalogPage').hidden = false; $('#pageTitle').textContent = page; $('#catalogTitle').textContent = page; $('#catalogDescription').textContent = `${page} şirket envanterinde kullanılacak. Kullanılan tanımlar silinemez; yeniden adlandırma mevcut ilişkilere dokunmaz.`; $('#catalogBrandLabel').hidden = catalogKind !== 'models'; $('#catalogCreateForm').hidden = !canWriteAssets(); loadCatalog().catch(error => notify(error.message)); }
       else if (page === 'Firma profili' || page === 'Logo ve tema') { if (!canManageSettings()) { notify('Şirket görünümünü yalnızca şirket sahibi ve yöneticileri değiştirebilir.'); return; } $('#companySettingsPage').hidden = false; $('#pageTitle').textContent = page === 'Firma profili' ? 'Şirket profili' : 'Logo ve tema'; ensureAssetCustomFieldSettings(); Promise.all([loadCompanyProfile(), loadAssetCustomFieldDefinitions()]).catch(error => notify(error.message)); }
@@ -4761,7 +4810,13 @@
     $('#employeeManagerFilterSearch').addEventListener('input', () => { clearTimeout(employeeListManagerSearchTimer); employeeListManagerSearchTimer = setTimeout(() => loadEmployeeManagerChoices('employeeManagerFilter', 'employeeManagerFilterSearch', '', $('#employeeManagerFilter').value, $('#employeeManagerFilter').selectedOptions[0]?.textContent || '', 'Tüm yöneticiler', false).catch(error => notify(error.message)), 220); });
     $('#directorySearch').addEventListener('input', renderDirectoryRows);
     $('#directoryRefresh').addEventListener('click', () => loadDirectory(directoryKind).then(() => notify('Şirket kayıtlarından oluşturulan liste yenilendi.')).catch(error => notify(error.message)));
-    $('#reportRefresh').addEventListener('click', () => Promise.all([loadAssetReports(), loadComponentReport(), loadAuditReport(1), loadMaintenanceReport(), loadWarrantyReport(1), loadLicenseExpiryReport(1)]).then(() => notify('Şirket raporları güncel verilerle yenilendi.')).catch(error => notify(error.message)));
+    $('#reportRefresh').addEventListener('click', () => Promise.all([loadAssetReports(), loadComponentReport(), loadAuditReport(1), loadMaintenanceReport(), loadWarrantyReport(1), loadLicenseExpiryReport(1), loadPendingDeliveryReport(1)]).then(() => notify('Şirket raporları güncel verilerle yenilendi.')).catch(error => notify(error.message)));
+    $('#pendingDeliveryRefresh').addEventListener('click', () => loadPendingDeliveryReport(1).then(() => notify('Bekleyen teslimat raporu yenilendi.')).catch(error => notify(error.message)));
+    $('#pendingDeliveryExport').addEventListener('click', exportPendingDeliveryReport);
+    $('#pendingDeliveryState').addEventListener('change', () => loadPendingDeliveryReport(1).catch(error => notify(error.message)));
+    $('#pendingDeliverySearch').addEventListener('input', () => { clearTimeout(pendingDeliverySearchTimer); pendingDeliverySearchTimer=setTimeout(()=>loadPendingDeliveryReport(1).catch(error=>notify(error.message)),250); });
+    $('#pendingDeliveryPrev').addEventListener('click', () => loadPendingDeliveryReport(pendingDeliveryPage-1).catch(error=>notify(error.message)));
+    $('#pendingDeliveryNext').addEventListener('click', () => loadPendingDeliveryReport(pendingDeliveryPage+1).catch(error=>notify(error.message)));
     $('#auditReportApply').addEventListener('click', () => loadAuditReport(1).catch(error => notify(error.message)));
     $('#auditReportPrev').addEventListener('click', () => loadAuditReport(Math.max(1, auditReportPage - 1)).catch(error => notify(error.message)));
     $('#auditReportNext').addEventListener('click', () => loadAuditReport(auditReportPage + 1).catch(error => notify(error.message)));
