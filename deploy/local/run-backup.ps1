@@ -7,6 +7,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$privateAclModule = Join-Path $PSScriptRoot 'PrivateAcl.psm1'
+if (-not (Test-Path -LiteralPath $privateAclModule -PathType Leaf)) { throw 'Güvenli yedek ACL yardımcısı bulunamadı.' }
+Import-Module $privateAclModule -Force
 $scriptDirectory = $PSScriptRoot
 $projectRoot = (Resolve-Path -LiteralPath (Join-Path $scriptDirectory '..\..')).Path
 $backupScript = Join-Path $scriptDirectory 'backup.ps1'
@@ -21,17 +24,7 @@ New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 $backupRoot = (Resolve-Path -LiteralPath $OutputDirectory).Path
 $logDirectory = Join-Path $backupRoot '.scheduled-logs'
 New-Item -ItemType Directory -Force -Path $logDirectory | Out-Null
-$logAcl = Get-Acl -LiteralPath $logDirectory
-$logAcl.SetAccessRuleProtection($true, $false)
-$ownerSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
-$systemSid = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18')
-$administratorsSid = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-32-544')
-foreach ($sid in @($ownerSid, $systemSid, $administratorsSid)) {
-    $rule = [System.Security.AccessControl.FileSystemAccessRule]::new(
-        $sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
-    [void]$logAcl.AddAccessRule($rule)
-}
-Set-Acl -LiteralPath $logDirectory -AclObject $logAcl
+Set-EnvanterTRPrivateAcl -Path $logDirectory -Kind Directory
 $logPath = Join-Path $logDirectory ("run-{0}-{1}.log" -f [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss'), [Guid]::NewGuid().ToString('N').Substring(0, 8))
 Start-Transcript -LiteralPath $logPath | Out-Null
 
@@ -83,16 +76,7 @@ catch {
     throw
 }
 
-$archiveAcl = Get-Acl -LiteralPath $archivePath
-$archiveAcl.SetAccessRuleProtection($true, $false)
-$ownerSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
-$systemSid = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18')
-$administratorsSid = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-32-544')
-foreach ($sid in @($ownerSid, $systemSid, $administratorsSid)) {
-    $rule = [System.Security.AccessControl.FileSystemAccessRule]::new($sid, 'FullControl', 'Allow')
-    [void]$archiveAcl.AddAccessRule($rule)
-}
-Set-Acl -LiteralPath $archivePath -AclObject $archiveAcl
+Set-EnvanterTRPrivateAcl -Path $archivePath -Kind File
 
 # Remove the plaintext directory only after both archive creation and verification succeeded.
 if (Test-Path -LiteralPath $backupDirectory -PathType Container) {

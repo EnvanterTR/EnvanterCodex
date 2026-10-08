@@ -3,6 +3,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$privateAclModule = Join-Path $PSScriptRoot 'PrivateAcl.psm1'
+if (-not (Test-Path -LiteralPath $privateAclModule -PathType Leaf)) { throw 'Güvenli yedek ACL yardımcısı bulunamadı.' }
+Import-Module $privateAclModule -Force
 $scriptDirectory = $PSScriptRoot
 $projectRoot = (Resolve-Path -LiteralPath (Join-Path $scriptDirectory '..\..')).Path
 $composeFile = Join-Path $scriptDirectory 'compose.yaml'
@@ -37,17 +40,7 @@ function Invoke-Docker([string[]] $Arguments) {
 
 try {
     New-Item -ItemType Directory -Path $backupDirectory | Out-Null
-    $backupAcl = Get-Acl -LiteralPath $backupDirectory
-    $backupAcl.SetAccessRuleProtection($true, $false)
-    $ownerSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
-    $systemSid = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18')
-    $administratorsSid = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-32-544')
-    foreach ($sid in @($ownerSid, $systemSid, $administratorsSid)) {
-        $rule = [System.Security.AccessControl.FileSystemAccessRule]::new(
-            $sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
-        [void]$backupAcl.AddAccessRule($rule)
-    }
-    Set-Acl -LiteralPath $backupDirectory -AclObject $backupAcl
+    Set-EnvanterTRPrivateAcl -Path $backupDirectory -Kind Directory
 
     $composePrefix = @('compose', '--env-file', $environmentFile, '-f', $composeFile)
     $databaseContainer = (& docker @composePrefix ps -q database | Select-Object -First 1).Trim()
