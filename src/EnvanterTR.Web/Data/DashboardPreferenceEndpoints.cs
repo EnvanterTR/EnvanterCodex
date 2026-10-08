@@ -58,11 +58,13 @@ public static class DashboardPreferenceEndpoints
             if (!ValidOrder(order))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["widgetOrder"] = ["Pano sırası her bölümü bir kez içermelidir."] });
             order = NormalizeOrder(order);
-            if (!ValidCustomCharts(request.CustomCharts))
+            if (request.CustomCharts is not null && !ValidCustomCharts(request.CustomCharts))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["customCharts"] = ["En fazla 6 farklı pano grafiği tanımlayabilirsiniz; ölçüt ve grafik türü desteklenen değerlerden seçilmelidir."] });
-            var customCharts = NormalizeCustomCharts(request.CustomCharts ?? []);
             var row = await db.DashboardPreferences.SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.UserId == userId, ct);
+            var customCharts = request.CustomCharts is null
+                ? ReadCustomCharts(row?.VisibleWidgetsJson)
+                : NormalizeCustomCharts(request.CustomCharts);
             if (row is null)
             {
                 row = new DashboardPreference { CompanyId = companyId, UserId = userId, VisibleWidgetsJson = "[]" };
@@ -155,6 +157,20 @@ public static class DashboardPreferenceEndpoints
     }
     private static DashboardChartDefinition[] NormalizeCustomCharts(IEnumerable<DashboardChartDefinition> charts) => charts
         .Select(chart => new DashboardChartDefinition(chart.Dimension.Trim().ToLowerInvariant(), chart.Type.Trim().ToLowerInvariant())).ToArray();
+    private static DashboardChartDefinition[] ReadCustomCharts(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind != JsonValueKind.Object) return [];
+            var preferences = JsonSerializer.Deserialize<DashboardPreferenceDocument>(json, JsonOptions);
+            return ValidCustomCharts(preferences?.CustomCharts)
+                ? NormalizeCustomCharts(preferences?.CustomCharts ?? [])
+                : [];
+        }
+        catch (JsonException) { return []; }
+    }
     private static bool Valid(string[]? widgets) => widgets is { Length: > 0 and <= 5 } &&
         widgets.Distinct(StringComparer.Ordinal).Count() == widgets.Length &&
         widgets.All(x => AllowedWidgets.Contains(x, StringComparer.Ordinal));
