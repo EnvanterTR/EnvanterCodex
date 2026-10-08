@@ -67,6 +67,19 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Set up .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build the self-contained Windows x64 package
+        shell: pwsh
+        run: ./deploy/windows/publish.ps1 -OutputPath "$env:RUNNER_TEMP\envantertr-windows-publish"
+
+      - name: Run the published app with a DPAPI database secret
+        shell: pwsh
+        run: ./deploy/windows/tests/windows-app-dpapi-startup-check.ps1 -PackagePath "$env:RUNNER_TEMP\envantertr-windows-publish"
+
       - name: Validate Windows backup encryption and tamper rejection
         shell: pwsh
         run: ./deploy/windows/tests/backup-crypto-check.ps1
