@@ -1549,7 +1549,7 @@ public static class OperationalEndpoints
         "BulkAudited" => "Toplu denetim", "BulkTransferred" => "Toplu konum transferi", "ProfileUpdated" => "Profil güncellendi",
         "BrandLogoUpdated" => "Şirket logosu güncellendi", "LabelSettingsUpdated" => "Etiket ayarları güncellendi",
         "Invited" => "Kullanıcı davet edildi", "RoleChanged" => "Kullanıcı rolü değiştirildi", "ManagerChanged" => "Yönetici bağlantısı değiştirildi",
-        "CsvImported" => "CSV içe aktarıldı", "AuditScheduled" => "Denetim planlandı", "AuditScheduleCleared" => "Denetim planı kaldırıldı",
+        "CsvImported" => "CSV içe aktarıldı", "XlsxImported" => "Excel içe aktarıldı", "AuditScheduled" => "Denetim planlandı", "AuditScheduleCleared" => "Denetim planı kaldırıldı",
         "ProfilePhotoUpdated" => "Profil fotoğrafı güncellendi", "ProfilePhotoRemoved" => "Profil fotoğrafı kaldırıldı",
         "PrivateNotesUpdated" => "Özel notlar güncellendi", "DocumentAdded" => "Belge eklendi", "DocumentRemoved" => "Belge kaldırıldı",
         "AttachmentAdded" => "Ek dosya eklendi", "AttachmentRemoved" => "Ek dosya kaldırıldı", "CatalogCreated" => "Katalog kaydı oluşturuldu",
