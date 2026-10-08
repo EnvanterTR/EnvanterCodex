@@ -73,6 +73,7 @@ public sealed record LinkCompanyMemberEmployeeRequest(Guid? EmployeeId);
 public sealed record AssignAssetRequest(Guid EmployeeId, string? Note);
 public sealed record ReturnAssetRequest(string? Note);
 public sealed record ChangeAssetStatusRequest(string Status, string? Note);
+public sealed record AssetTrashRequest(string? Note);
 public sealed record BulkChangeAssetStatusRequest(Guid[] AssetIds, string Status, string? Note);
 public sealed record BulkAssignAssetsRequest(Guid[] AssetIds, Guid EmployeeId, string? Note);
 public sealed record BulkReturnAssetsRequest(Guid[] AssetIds, string? Note);

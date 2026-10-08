@@ -957,7 +957,7 @@ public static class OperationalEndpoints
                 .SingleOrDefaultAsync(cancellationToken);
             if (employee is null || !employee.IsActive)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeId"] = ["Etkin çalışan bu şirkette bulunamadı."] });
-            var asset = await db.Assets.FromSqlInterpolated($"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+            var asset = await db.Assets.FromSqlInterpolated($"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} AND \"DeletedAt\" IS NULL FOR UPDATE").IgnoreQueryFilters()
                 .SingleOrDefaultAsync(cancellationToken);
             if (asset is null) return Results.NotFound();
             if (asset.AssignedEmployeeId is not null || asset.Status != AssetStatuses.Available)
@@ -982,7 +982,7 @@ public static class OperationalEndpoints
             if (request.Note is { Length: > 2000 })
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Açıklama en fazla 2000 karakter olabilir."] });
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-            var asset = await db.Assets.FromSqlInterpolated($"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+            var asset = await db.Assets.FromSqlInterpolated($"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} AND \"DeletedAt\" IS NULL FOR UPDATE").IgnoreQueryFilters()
                 .SingleOrDefaultAsync(cancellationToken);
             if (asset is null) return Results.NotFound();
             if (asset.AssignedEmployeeId is not Guid employeeId)
@@ -1000,6 +1000,72 @@ public static class OperationalEndpoints
             return Results.Ok(new { asset.Id, asset.AssetTag, asset.Status, asset.AssignedEmployeeId, asset.UpdatedAt });
         }).RequireAuthorization("asset.write");
 
+        api.MapGet("/assets/trash", async (ClaimsPrincipal user, AppDbContext db, CancellationToken ct,
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
+        {
+            if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
+            page = Math.Max(1, page); pageSize = Math.Clamp(pageSize, 1, 100);
+            var query = db.Assets.IgnoreQueryFilters().AsNoTracking()
+                .Where(x => x.CompanyId == companyId && x.DeletedAt != null);
+            var total = await query.CountAsync(ct);
+            var items = await query.OrderByDescending(x => x.DeletedAt).ThenBy(x => x.AssetTag)
+                .Skip((page - 1) * pageSize).Take(pageSize)
+                .Select(x => new { x.Id, x.AssetTag, x.Name, x.Status, x.SerialNumber, x.DeletedAt })
+                .ToListAsync(ct);
+            return Results.Ok(new { items, page, pageSize, total });
+        }).RequireAuthorization("asset.read");
+
+        api.MapPost("/assets/{id:guid}/trash", async (Guid id, [FromBody] AssetTrashRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            if (request.Note is { Length: > 1500 })
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Not en fazla 1.500 karakter olabilir."] });
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            var asset = await db.Assets.FromSqlInterpolated(
+                $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} AND \"DeletedAt\" IS NULL FOR UPDATE").IgnoreQueryFilters()
+                .SingleOrDefaultAsync(ct);
+            if (asset is null) return Results.NotFound();
+            if (asset.AssignedEmployeeId is not null || asset.Status == AssetStatuses.Deployed)
+                return Results.Conflict(new { message = "Önce varlığı çalışandan iade alın; zimmetli kayıtlar çöp kutusuna taşınamaz." });
+            if (await db.Assets.AnyAsync(x => x.CompanyId == companyId && x.ParentAssetId == id, ct))
+                return Results.Conflict(new { message = "Alt varlıkları bulunan kayıt taşınamaz. Önce alt varlık bağlantılarını kaldırın veya taşıyın." });
+            if (await db.AssetMaintenances.AnyAsync(x => x.CompanyId == companyId && x.AssetId == id && (x.Status == "InProgress" || x.Status == "Scheduled"), ct))
+                return Results.Conflict(new { message = "Açık veya planlanmış bakım kaydı bulunan varlık taşınamaz." });
+            if (await db.AccessoryAssignments.AnyAsync(x => x.CompanyId == companyId && x.AssetId == id && x.Quantity > x.ReturnedQuantity, ct) ||
+                await db.ComponentAllocations.AnyAsync(x => x.CompanyId == companyId && x.AssetId == id && x.Quantity > x.RemovedQuantity, ct) ||
+                await db.SoftwareLicenseAssignments.AnyAsync(x => x.CompanyId == companyId && x.AssetId == id && x.RevokedAt == null, ct) ||
+                await db.InventoryRequests.AnyAsync(x => x.CompanyId == companyId && x.ItemType == "Asset" && x.ItemId == id && x.Status == "Pending", ct))
+                return Results.Conflict(new { message = "Açık talep, aksesuar, bileşen veya lisans ilişkileri çözülmeden varlık taşınamaz." });
+            var now = DateTimeOffset.UtcNow; asset.DeletedAt = now; asset.DeletedByUserId = actorId; asset.UpdatedAt = now;
+            var details = string.IsNullOrWhiteSpace(request.Note) ? "Varlık çöp kutusuna taşındı." : $"Varlık çöp kutusuna taşındı. {request.Note.Trim()}";
+            db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = id, ActorUserId = actorId, EventType = "Trashed", Details = details });
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Asset", TargetId = id, Action = "Trashed", Details = $"{asset.AssetTag}: {details}" });
+            await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
+            return Results.Ok(new { asset.Id, asset.AssetTag, asset.DeletedAt });
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/assets/{id:guid}/restore-from-trash", async (Guid id, [FromBody] AssetTrashRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            if (request.Note is { Length: > 1500 })
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Not en fazla 1.500 karakter olabilir."] });
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            var asset = await db.Assets.FromSqlInterpolated(
+                $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} AND \"DeletedAt\" IS NOT NULL FOR UPDATE").IgnoreQueryFilters()
+                .SingleOrDefaultAsync(ct);
+            if (asset is null) return Results.NotFound();
+            if (await db.Assets.AnyAsync(x => x.CompanyId == companyId && x.AssetTag == asset.AssetTag, ct))
+                return Results.Conflict(new { message = "Bu etiket etkin bir varlık tarafından kullanılıyor. Önce etiketi değiştirin; çöp kutusundaki kayıt korunuyor." });
+            asset.DeletedAt = null; asset.DeletedByUserId = null; asset.UpdatedAt = DateTimeOffset.UtcNow;
+            var details = string.IsNullOrWhiteSpace(request.Note) ? "Varlık çöp kutusundan geri alındı." : $"Varlık çöp kutusundan geri alındı. {request.Note.Trim()}";
+            db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = id, ActorUserId = actorId, EventType = "RestoredFromTrash", Details = details });
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Asset", TargetId = id, Action = "RestoredFromTrash", Details = $"{asset.AssetTag}: {details}" });
+            await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
+            return Results.Ok(new { asset.Id, asset.AssetTag, asset.Status, asset.UpdatedAt });
+        }).RequireAuthorization("asset.write");
+
         api.MapPost("/assets/{id:guid}/restore", async (Guid id, [FromBody] ChangeAssetStatusRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
@@ -1007,7 +1073,7 @@ public static class OperationalEndpoints
             if (request.Note is { Length: > 1900 })
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Açıklama en fazla 1900 karakter olabilir."] });
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-            var asset = await db.Assets.FromSqlInterpolated($"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+            var asset = await db.Assets.FromSqlInterpolated($"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} AND \"DeletedAt\" IS NULL FOR UPDATE").IgnoreQueryFilters()
                 .SingleOrDefaultAsync(cancellationToken);
             if (asset is null) return Results.NotFound();
             if (asset.Status != AssetStatuses.Archived)
@@ -1045,7 +1111,7 @@ public static class OperationalEndpoints
             if (next is not (AssetStatuses.Available or AssetStatuses.Pending or AssetStatuses.Maintenance or AssetStatuses.Unusable or AssetStatuses.Archived))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["status"] = ["Durum Available, Pending, Maintenance, Unusable veya Archived olabilir; zimmet ayrı işlemle yapılır."] });
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-            var asset = await db.Assets.FromSqlInterpolated($"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+            var asset = await db.Assets.FromSqlInterpolated($"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} AND \"DeletedAt\" IS NULL FOR UPDATE").IgnoreQueryFilters()
                 .SingleOrDefaultAsync(cancellationToken);
             if (asset is null) return Results.NotFound();
             if (asset.AssignedEmployeeId is not null)
@@ -1084,7 +1150,7 @@ public static class OperationalEndpoints
 
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             var assets = await db.Assets.FromSqlInterpolated(
-                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) ORDER BY \"Id\" FOR UPDATE")
+                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) AND \"DeletedAt\" IS NULL ORDER BY \"Id\" FOR UPDATE").IgnoreQueryFilters()
                 .ToListAsync(cancellationToken);
             if (assets.Count != ids.Length)
                 return Results.NotFound(new { message = "Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil. Hiçbir kayıt değiştirilmedi." });
@@ -1139,7 +1205,7 @@ public static class OperationalEndpoints
             if (employee is null || !employee.IsActive)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeId"] = ["Etkin çalışan bu şirkette bulunamadı."] });
             var assets = await db.Assets.FromSqlInterpolated(
-                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) ORDER BY \"Id\" FOR UPDATE")
+                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) AND \"DeletedAt\" IS NULL ORDER BY \"Id\" FOR UPDATE").IgnoreQueryFilters()
                 .ToListAsync(cancellationToken);
             if (assets.Count != ids.Length)
                 return Results.NotFound(new { message = "Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil. Hiçbir kayıt değiştirilmedi." });
@@ -1176,7 +1242,7 @@ public static class OperationalEndpoints
 
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             var assets = await db.Assets.FromSqlInterpolated(
-                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) ORDER BY \"Id\" FOR UPDATE")
+                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) AND \"DeletedAt\" IS NULL ORDER BY \"Id\" FOR UPDATE").IgnoreQueryFilters()
                 .ToListAsync(cancellationToken);
             if (assets.Count != ids.Length)
                 return Results.NotFound(new { message = "Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil. Hiçbir kayıt değiştirilmedi." });

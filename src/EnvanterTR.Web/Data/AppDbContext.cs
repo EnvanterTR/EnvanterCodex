@@ -585,7 +585,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<StockPurchaseOrderLine>().HasOne<InventoryComponent>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.ComponentId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
 
-        modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.AssetTag }).IsUnique();
+        modelBuilder.Entity<Asset>().HasQueryFilter(x => x.DeletedAt == null);
+        modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.AssetTag }).IsUnique().HasFilter("\"DeletedAt\" IS NULL");
+        modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.DeletedAt, x.UpdatedAt });
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.SerialNumber });
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.Status, x.UpdatedAt });
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.AssignedEmployeeId });

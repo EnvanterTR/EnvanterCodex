@@ -1580,7 +1580,7 @@ public static class AssetEndpoints
             if (detected is null)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Yalnızca gerçek PNG, JPEG, WebP görselleri ve PDF dosyaları yüklenebilir."] });
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-            var asset = await db.Assets.FromSqlInterpolated($"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+            var asset = await db.Assets.FromSqlInterpolated($"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} AND \"DeletedAt\" IS NULL FOR UPDATE").IgnoreQueryFilters()
                 .SingleOrDefaultAsync(cancellationToken);
             if (asset is null) return Results.NotFound();
             if (await db.AssetAttachments.CountAsync(x => x.CompanyId == companyId && x.AssetId == id, cancellationToken) >= 30)
@@ -1884,7 +1884,7 @@ public static class AssetEndpoints
 
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             var assets = await db.Assets.FromSqlInterpolated(
-                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) ORDER BY \"Id\" FOR UPDATE")
+                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) AND \"DeletedAt\" IS NULL ORDER BY \"Id\" FOR UPDATE").IgnoreQueryFilters()
                 .ToListAsync(cancellationToken);
             if (assets.Count != ids.Length)
                 return Results.NotFound(new { message = "Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil. Hiçbir denetim kaydedilmedi." });
@@ -1946,7 +1946,7 @@ public static class AssetEndpoints
 
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             var assets = await db.Assets.FromSqlInterpolated(
-                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) ORDER BY \"Id\" FOR UPDATE")
+                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) AND \"DeletedAt\" IS NULL ORDER BY \"Id\" FOR UPDATE").IgnoreQueryFilters()
                 .ToListAsync(cancellationToken);
             if (assets.Count != ids.Length)
                 return Results.NotFound(new { message = "Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil. Hiçbir kayıt değiştirilmedi." });
@@ -2192,7 +2192,7 @@ public static class AssetEndpoints
 
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
             var asset = await db.Assets.FromSqlInterpolated(
-                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} AND \"DeletedAt\" IS NULL FOR UPDATE").IgnoreQueryFilters()
                 .SingleOrDefaultAsync(cancellationToken);
             if (asset is null) return Results.NotFound();
             if (asset.Status is not (AssetStatuses.Available or AssetStatuses.Deployed))
@@ -2237,7 +2237,7 @@ public static class AssetEndpoints
                 if (maintenance is null) return Results.NotFound();
                 if (maintenance.Status != "Scheduled") return Results.Conflict(new { message = "Yalnızca planlanmış bakım başlatılabilir." });
                 var asset = await db.Assets.FromSqlInterpolated(
-                        $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {assetId} FOR UPDATE")
+                        $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {assetId} AND \"DeletedAt\" IS NULL FOR UPDATE").IgnoreQueryFilters()
                     .SingleOrDefaultAsync(cancellationToken);
                 if (asset is null) return Results.NotFound();
                 if (asset.Status != AssetStatuses.Available || asset.AssignedEmployeeId is not null)
@@ -2289,7 +2289,7 @@ public static class AssetEndpoints
 
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
             var asset = await db.Assets.FromSqlInterpolated(
-                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} AND \"DeletedAt\" IS NULL FOR UPDATE").IgnoreQueryFilters()
                 .SingleOrDefaultAsync(cancellationToken);
             if (asset is null) return Results.NotFound();
             if (asset.Status is not (AssetStatuses.Available or AssetStatuses.Maintenance) || asset.AssignedEmployeeId is not null)
@@ -2340,7 +2340,7 @@ public static class AssetEndpoints
                 if (request.CompletedOn < maintenance.StartedOn)
                     return Results.ValidationProblem(new Dictionary<string, string[]> { ["completedOn"] = ["Tamamlanma tarihi başlangıç tarihinden önce olamaz."] });
                 var asset = await db.Assets.FromSqlInterpolated(
-                        $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {assetId} FOR UPDATE")
+                        $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {assetId} AND \"DeletedAt\" IS NULL FOR UPDATE").IgnoreQueryFilters()
                     .SingleOrDefaultAsync(cancellationToken);
                 if (asset is null) return Results.NotFound();
                 var now = DateTimeOffset.UtcNow;

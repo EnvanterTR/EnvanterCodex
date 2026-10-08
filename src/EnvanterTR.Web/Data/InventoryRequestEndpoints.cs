@@ -302,7 +302,7 @@ public static class InventoryRequestEndpoints
             $"SELECT * FROM \"Employees\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {request.EmployeeId} FOR UPDATE").SingleOrDefaultAsync(ct);
         if (employee is null || !employee.IsActive) return -1;
         var asset = await db.Assets.FromSqlInterpolated(
-            $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {request.ItemId} FOR UPDATE").SingleOrDefaultAsync(ct);
+            $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {request.ItemId} AND \"DeletedAt\" IS NULL FOR UPDATE").IgnoreQueryFilters().SingleOrDefaultAsync(ct);
         if (asset is null || !asset.IsRequestable || asset.Status != AssetStatuses.Available || asset.AssignedEmployeeId is not null) return -1;
         asset.AssignedEmployeeId = request.EmployeeId;
         asset.Status = AssetStatuses.Deployed;

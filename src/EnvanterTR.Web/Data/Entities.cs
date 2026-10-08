@@ -212,6 +212,8 @@ public sealed class Asset
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
     public bool IsRequestable { get; set; }
     public string? CustomFieldsJson { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
+    public Guid? DeletedByUserId { get; set; }
 }
 
 public sealed class SavedAssetSearch

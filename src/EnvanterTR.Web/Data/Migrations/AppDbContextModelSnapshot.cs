@@ -459,6 +459,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(16000)
                         .HasColumnType("character varying(16000)");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DeletedByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("IsRequestable")
                         .HasColumnType("boolean");
 
@@ -506,7 +512,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId", "AssetTag")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"DeletedAt\" IS NULL");
 
                     b.HasIndex("CompanyId", "AssignedEmployeeId");
 
@@ -523,6 +530,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasIndex("CompanyId", "SerialNumber");
 
                     b.HasIndex("CompanyId", "WarrantyExpiresAt");
+
+                    b.HasIndex("CompanyId", "DeletedAt", "UpdatedAt");
 
                     b.HasIndex("CompanyId", "Status", "UpdatedAt");
 
