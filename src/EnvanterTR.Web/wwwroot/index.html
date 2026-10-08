@@ -92,6 +92,9 @@
     .table-sort{padding:0;border:0;color:inherit;background:transparent;font:inherit;font-weight:inherit;text-align:left}.table-sort:hover{color:#1769df}.table-sort:focus-visible{outline:2px solid #1769df;outline-offset:3px;border-radius:2px}
     @media(max-width:720px){#overview.inventory-mode .table-tools{align-items:stretch}#overview.inventory-mode .table-tools input{flex-basis:100%}}
   </style>
+  <style>
+    .notification-wrap{position:relative;flex:none}.notification-panel{position:absolute;top:calc(100% + 10px);right:0;z-index:18;width:min(390px,calc(100vw - 24px));max-height:min(70vh,480px);overflow:auto;border:1px solid #dce4ee;border-radius:12px;background:#fff;box-shadow:0 18px 48px #10213a24}.notification-panel[hidden]{display:none}.notification-panel-head{display:grid;gap:4px;padding:15px 16px 12px;border-bottom:1px solid #edf0f5}.notification-panel-head strong{color:#24334b;font-size:.84rem}.notification-panel-head span{color:#8491a3;font-size:.68rem}.notification-panel ul{display:grid;gap:0;margin:0;padding:0;list-style:none}.notification-panel li{border-bottom:1px solid #f0f2f6}.notification-panel li:last-child{border-bottom:0}.notification-entry{display:grid;width:100%;gap:4px;padding:11px 15px;border:0;color:#40516a;background:white;text-align:left}.notification-entry:hover,.notification-entry:focus-visible{outline:0;background:#f4f8ff}.notification-entry-top{display:flex;align-items:center;gap:7px;color:#77869b;font-size:.64rem}.notification-entry-top .pill{padding:3px 7px}.notification-entry strong{overflow:hidden;color:#2a3b55;font-size:.73rem;text-overflow:ellipsis;white-space:nowrap}.notification-entry small{overflow:hidden;color:#8491a3;font-size:.65rem;text-overflow:ellipsis;white-space:nowrap}.notification-empty{padding:16px;color:#8491a3;font-size:.71rem}.notification-calendar-link{width:100%;padding:11px 15px;border:0;border-top:1px solid #edf0f5;color:#1769df;background:#fbfcfe;text-align:left;font-size:.71rem;font-weight:750}.notification-calendar-link:hover{background:#f4f8ff}@media(max-width:520px){.notification-panel{position:fixed;top:66px;right:12px}}
+  </style>
 <style>.bulk-asset-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:10px 13px;border-bottom:1px solid #edf0f5;background:#f8faff}.bulk-asset-toolbar[hidden]{display:none}.bulk-asset-toolbar label{display:flex;align-items:center;gap:7px;color:#526178;font-size:.72rem}.bulk-asset-toolbar>span{margin-right:auto;color:#526178;font-size:.72rem;font-weight:700}.bulk-asset-toolbar select{min-height:32px;padding:0 9px;border:1px solid #dce4ee;border-radius:7px;background:white;color:#33445e;font-size:.72rem}.asset-select-column{width:38px}.asset-select-cell{text-align:center}.asset-select-cell input{width:15px;height:15px;accent-color:#1769df}.stats .stat-actionable{cursor:pointer;transition:box-shadow .15s,transform .15s}.stats .stat-actionable:hover{transform:translateY(-2px);box-shadow:0 8px 20px #10213a14}.stats .stat-actionable:focus-visible{outline:2px solid #1769df;outline-offset:2px}</style>
 <style>.dashboard-status{display:grid;grid-template-columns:minmax(112px,150px) minmax(0,1fr);align-items:center;gap:18px;padding:16px}.dashboard-donut{position:relative;display:grid;place-items:center;width:min(100%,150px);aspect-ratio:1;border-radius:50%;background:#eef2f8}.dashboard-donut:after{position:absolute;inset:19%;border-radius:50%;background:#fff;content:""}.dashboard-donut-center{z-index:1;text-align:center}.dashboard-donut-center strong{display:block;color:#26364d;font-size:1.2rem}.dashboard-donut-center small{color:#8793a6;font-size:.62rem}.dashboard-status-legend{display:grid;gap:4px}.dashboard-status-item{display:flex;align-items:center;gap:8px;width:100%;padding:7px 8px;border:0;border-radius:7px;color:#56657a;background:transparent;text-align:left;font-size:.68rem;cursor:pointer}.dashboard-status-item:hover,.dashboard-status-item:focus-visible{outline:2px solid #cfe0fa;background:#f4f8ff}.dashboard-status-item .legend-dot{width:8px;height:8px;flex:none;border-radius:50%}.dashboard-status-item .legend-count{margin-left:auto;color:#26364d;font-weight:700}.dashboard-status-note{padding:0 16px 12px;color:#8793a6;font-size:.63rem}@media(max-width:420px){.dashboard-status{grid-template-columns:108px minmax(0,1fr);gap:10px;padding:13px}.dashboard-status-item{padding:7px 4px;font-size:.64rem}}</style><style>.label-preview-card{box-sizing:border-box;max-width:none;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto 1fr auto;align-items:center;gap:4px;border:1px dashed #8494a8;border-radius:6px;background:#fff;box-shadow:0 5px 20px #182d491f;overflow:hidden}.label-preview-brand{grid-column:1/-1;color:#52637a;font-size:8px;font-weight:800;letter-spacing:.08em}.label-preview-copy{min-width:0;display:grid;gap:4px;overflow:hidden}.label-preview-copy strong{font-size:10px}.label-preview-copy b{font-size:17px;overflow-wrap:anywhere}.label-preview-copy small{font-size:8px;color:#667085}.label-preview-2d{width:25mm;height:25mm;object-fit:contain}.label-preview-1d{grid-column:1/-1;width:100%;height:auto;max-height:10mm;object-fit:fill}.label-preview-1d[src^="data:"]{image-rendering:auto}#labelPreviewCanvas{overflow:auto;padding:4px 0 12px}#labelSettingsForm .form-grid{margin-bottom:8px}@media(max-width:720px){#labelSettingsPage .grid{grid-template-columns:1fr!important}}</style></head>
 <body>
@@ -129,7 +132,7 @@
       <div class="sidebar-bottom"><div class="storage"><b>Şirket alanı</b><span id="companyStorage">Depolama kullanımı henüz hesaplanmıyor</span><div class="meter"><i style="width:0"></i></div></div>EnvanterTR · Şirket alanı</div>
     </aside>
     <main class="main">
-      <header class="topbar"><button class="mobile-menu" id="mobileMenu" aria-label="Menüyü aç" aria-controls="sidebar" aria-expanded="false">☰</button><label class="search"><span>⌕</span><input id="globalSearch" placeholder="Varlık etiketi, çalışan, model veya konum ara…" aria-label="Envanterde ara"></label><div class="top-spacer"></div><button class="icon-button" id="helpButton" aria-label="Yardım">?</button><button class="icon-button" aria-label="Bildirimler (henüz kullanılabilir değil)" title="Bildirim merkezi geliştirme aşamasında" disabled>♧</button><div class="profile"><button class="avatar" id="userAvatar" type="button" aria-label="Profil fotoğrafını yönet" style="border:0;padding:0">—</button><div class="profile-text" id="profileName">Oturum bilgisi bekleniyor<small id="profileRole">Şirket kullanıcısı</small></div><button class="text-link" id="logoutButton" type="button">Çıkış</button></div></header>
+      <header class="topbar"><button class="mobile-menu" id="mobileMenu" aria-label="Menüyü aç" aria-controls="sidebar" aria-expanded="false">☰</button><label class="search"><span>⌕</span><input id="globalSearch" placeholder="Varlık etiketi, çalışan, model veya konum ara…" aria-label="Envanterde ara"></label><div class="top-spacer"></div><button class="icon-button" id="helpButton" aria-label="Yardım">?</button><div class="notification-wrap"><button class="icon-button" id="notificationButton" type="button" aria-label="Yaklaşan işler" aria-controls="notificationPanel" aria-expanded="false" title="Yaklaşan bakım, denetim, lisans ve garanti işleri">♧<span class="badge" id="notificationCount" hidden></span></button><section class="notification-panel" id="notificationPanel" aria-label="Yaklaşan işler" hidden><div class="notification-panel-head"><strong>Yaklaşan işler</strong><span id="notificationSummary" role="status" aria-live="polite">Yükleniyor…</span></div><ul id="notificationList"><li class="notification-empty">Şirket takvimi yükleniyor…</li></ul><button class="notification-calendar-link" id="openNotificationCalendar" type="button">Şirket takvimini aç →</button></section></div><div class="profile"><button class="avatar" id="userAvatar" type="button" aria-label="Profil fotoğrafını yönet" style="border:0;padding:0">—</button><div class="profile-text" id="profileName">Oturum bilgisi bekleniyor<small id="profileRole">Şirket kullanıcısı</small></div><button class="text-link" id="logoutButton" type="button">Çıkış</button></div></header>
       <section class="content" id="overview">
         <div class="page-head"><div><div class="eyebrow" id="pageEyebrow">ŞİRKET ALANI / GENEL BAKIŞ</div><h1 id="pageTitle">Envanter genel bakışı</h1><p id="pageSubtitle">Şirket varlıklarını, zimmetleri ve yaklaşan işleri tek ekranda izleyin.</p></div><div class="head-actions"><button class="btn" id="dashboardCustomizeButton" type="button">Panoyu düzenle</button><button class="btn" id="exportButton">⇩ Varlık CSV</button><button class="btn" id="openAssetTrash" type="button">Çöp kutusu</button><button class="btn" id="exportBackupButton" hidden>⇩ Şirket verisi</button><button class="btn" id="importPreviewButton" hidden>✓ Dosyayı kontrol et</button><button class="btn" id="scanAssetButton" type="button">▥ Barkod okut</button><button class="btn primary" id="newAssetButton">＋ Yeni varlık</button></div></div>
         <div class="welcome"><div><strong id="welcomeName">Şirket envanterinize hoş geldiniz</strong><span id="welcomeCompany">Güncel şirket verileriniz yükleniyor.</span></div><span class="period" id="dataStatus" role="status" aria-live="polite">Sunucu bağlantısı kontrol ediliyor</span></div>
@@ -2684,6 +2687,50 @@
       return openLicense(item.recordId).catch(error => notify(error.message));
     }
     function calendarKindLabel(kind) { return kind === 'maintenance' ? 'Bakım planı' : kind === 'audit' ? 'Fiziksel denetim' : kind === 'warranty' ? 'Garanti bitişi' : 'Lisans bitişi'; }
+    let operationalAlertItems = [], operationalAlertRequestId = 0, operationalAlertTimer = 0;
+    async function loadOperationalAlerts() {
+      if (!canReadAssets()) return;
+      const requestId = ++operationalAlertRequestId, today = new Date();
+      const from = dateInputValue(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7, 12));
+      const to = dateInputValue(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30, 12));
+      try {
+        const params = new URLSearchParams({ from, to, limit: '500' });
+        const result = await api(`/api/calendar?${params}`);
+        if (requestId !== operationalAlertRequestId) return;
+        operationalAlertItems = Array.isArray(result.items) ? result.items : [];
+        const count = $('#notificationCount'), summary = $('#notificationSummary'), list = $('#notificationList');
+        count.textContent = result.total > 500 ? '500+' : fmt.format(result.total || 0);
+        count.hidden = !result.total;
+        $('#notificationButton').setAttribute('aria-label', result.total ? `Yaklaşan işler: ${fmt.format(result.total)} kayıt` : 'Yaklaşan işler: kayıt yok');
+        summary.textContent = result.total ? `${fmt.format(result.total)} takvim kaydı · son 7 gün ve gelecek 30 gün` : 'Son 7 gün ve gelecek 30 gün';
+        list.replaceChildren();
+        if (!operationalAlertItems.length) {
+          const empty = document.createElement('li'); empty.className = 'notification-empty';
+          empty.textContent = result.total ? 'Kayıtlar listelenemedi. Ayrıntılar için takvimi açın.' : 'Bu dönemde yaklaşan bakım, denetim, lisans veya garanti işi yok.';
+          list.append(empty); return;
+        }
+        for (const [index, item] of operationalAlertItems.slice(0, 8).entries()) {
+          const row = document.createElement('li'), button = document.createElement('button'), meta = document.createElement('span'), kind = document.createElement('span'), date = document.createElement('span'), title = document.createElement('strong'), subtitle = document.createElement('small');
+          button.type = 'button'; button.className = 'notification-entry'; button.dataset.notificationIndex = String(index);
+          meta.className = 'notification-entry-top'; kind.className = `pill ${item.date < dateInputValue(today) || item.kind === 'maintenance' ? 'warn' : item.kind === 'audit' ? '' : 'blue'}`;
+          kind.textContent = calendarKindLabel(item.kind); date.textContent = maintenanceDate(item.date); meta.append(kind, date);
+          title.textContent = item.title || 'Takvim kaydı'; subtitle.textContent = item.subtitle || 'Ayrıntı belirtilmemiş';
+          button.append(meta, title, subtitle); row.append(button); list.append(row);
+        }
+        if (result.total > operationalAlertItems.length) {
+          const more = document.createElement('li'); more.className = 'notification-empty';
+          more.textContent = `İlk ${fmt.format(operationalAlertItems.length)} kayıt gösteriliyor; tümünü takvimde açın.`; list.append(more);
+        }
+      } catch (error) {
+        if (requestId !== operationalAlertRequestId) return;
+        operationalAlertItems = [];
+        $('#notificationSummary').textContent = 'Şirket takvimi şu an alınamadı.';
+        $('#notificationList').replaceChildren();
+        const errorItem = document.createElement('li'); errorItem.className = 'notification-empty'; errorItem.textContent = 'Yenilemek için sayfayı yenileyin veya takvimi açın.'; $('#notificationList').append(errorItem);
+        console.warn('Yaklaşan işler yüklenemedi.', error);
+      }
+    }
+    function closeOperationalAlerts() { $('#notificationPanel').hidden = true; $('#notificationButton').setAttribute('aria-expanded', 'false'); }
     function renderCalendarView() {
       const mode = $('#calendarViewMode').value, host = $('#calendarMonthGrid'), nav = $('#calendarPeriodNav');
       $('#calendarListWrap').hidden = mode !== 'list'; host.hidden = !['day', 'week', 'month'].includes(mode);
@@ -5186,8 +5233,20 @@
     $('#startAssetCamera').addEventListener('click', startAssetCamera);
     window.addEventListener('pagehide', stopAssetScanner);
     $('#helpButton').addEventListener('click', () => notify('Destek kanalı şirket yöneticiniz tarafından yapılandırılmalıdır.'));
+    $('#notificationButton').addEventListener('click', async () => {
+      const panel = $('#notificationPanel'), open = panel.hidden;
+      panel.hidden = !open; $('#notificationButton').setAttribute('aria-expanded', String(open));
+      if (open) await loadOperationalAlerts();
+    });
+    $('#notificationList').addEventListener('click', event => {
+      const button = event.target.closest('[data-notification-index]'); if (!button) return;
+      const item = operationalAlertItems[Number(button.dataset.notificationIndex)]; if (!item) return;
+      closeOperationalAlerts(); openCalendarEvent(item);
+    });
+    $('#openNotificationCalendar').addEventListener('click', () => { closeOperationalAlerts(); document.querySelector('[data-page="Takvim"]')?.click(); });
+    document.addEventListener('click', event => { if (!event.target.closest('.notification-wrap')) closeOperationalAlerts(); });
     $('#mobileMenu').addEventListener('click', () => setMobileSidebarOpen(!$('#sidebar').classList.contains('open')));
-    document.addEventListener('keydown', event => { if (event.key !== 'Escape') return; if ($('#sidebar').classList.contains('open')) setMobileSidebarOpen(false); if ($('#assetColumnPicker').open) { $('#assetColumnPicker').open = false; $('summary', $('#assetColumnPicker')).focus(); } });
+    document.addEventListener('keydown', event => { if (event.key !== 'Escape') return; if (!$('#notificationPanel').hidden) { closeOperationalAlerts(); $('#notificationButton').focus(); } if ($('#sidebar').classList.contains('open')) setMobileSidebarOpen(false); if ($('#assetColumnPicker').open) { $('#assetColumnPicker').open = false; $('summary', $('#assetColumnPicker')).focus(); } });
     let searchTimer; $('#globalSearch').addEventListener('input', event => { $('#assetListSearch').value = event.target.value; clearTimeout(searchTimer); searchTimer = setTimeout(() => loadDashboard(event.target.value.trim(), 1).catch(error => notify(error.message)), 250); });
     const loginCompanyField = $('#loginCompanyField'), loginCompanySelect = $('#loginCompanyId');
     const loginCompanyButton = $('button[type="submit"]', $('#loginForm'));
@@ -5233,7 +5292,7 @@
     $('#closeForgotPassword').addEventListener('click', () => $('#forgotPasswordDialog').close());
     document.querySelector('[data-close-forgot]').addEventListener('click', () => $('#forgotPasswordDialog').close());
     $('#forgotPasswordForm').addEventListener('submit', async event => { event.preventDefault(); const form = new FormData(event.currentTarget); const button = $('button[type="submit"]', event.currentTarget); button.disabled = true; try { await refreshCsrf(); const result = await api('/api/session/password/forgot', { method: 'POST', body: JSON.stringify({ email: form.get('email') }) }); $('#forgotFeedback').textContent = result.message; event.currentTarget.reset(); } catch (error) { $('#forgotFeedback').textContent = error.message; } finally { button.disabled = false; } });
-    $('#logoutButton').addEventListener('click', async () => { try { await api('/api/session/logout', { method: 'POST' }); latestAssetReport = null; $('#reportExport').disabled = true; showLogin('Oturumunuz kapatıldı.'); } catch (error) { notify(error.message); } });
+    $('#logoutButton').addEventListener('click', async () => { try { await api('/api/session/logout', { method: 'POST' }); operationalAlertRequestId++; operationalAlertItems = []; if (operationalAlertTimer) { clearInterval(operationalAlertTimer); operationalAlertTimer = 0; } closeOperationalAlerts(); $('#notificationButton').hidden = true; $('#notificationCount').hidden = true; latestAssetReport = null; $('#reportExport').disabled = true; showLogin('Oturumunuz kapatıldı.'); } catch (error) { notify(error.message); } });
     async function loadSupplierNameSuggestions() {
       try {
         const result = await api('/api/accessory-orders/suppliers');
@@ -5337,6 +5396,7 @@
       try { await loadTenantBranding(); } catch (error) { console.warn('Şirket görünümü yüklenemedi.', error); }
       $('#membersNav').hidden = !canReadAudit();
       $('#openAssetTrash').hidden = !canWriteAssets();
+      $('#notificationButton').hidden = !canReadAssets();
       $('#inviteMemberButton').hidden = !canReadAudit(); if (sessionRole !== 'owner') $('#inviteAdminRole').remove();
       $('#profileName').innerHTML = `${escapeHtml(session.name || 'Kullanıcı')}<small>${escapeHtml(session.role || 'Şirket kullanıcısı')}</small>`;
       $('#userAvatar').textContent = (session.name || 'U').trim().slice(0,1).toLocaleUpperCase('tr-TR');
@@ -5346,7 +5406,7 @@
       $('#newAssetButton').hidden = !canWriteAssets(); $('#scanAssetButton').hidden = !canReadAssets(); $('#newEmployeeButton').hidden = !canManagePeople(); $('#employeeImportOpen').hidden = !canManagePeople(); $('#exportButton').hidden = !canReadAssets(); $('#exportBackupButton').hidden = !canManageSettings(); $('#importPreviewButton').hidden = !canWriteAssets(); $('#globalSearch').disabled = !canReadAssets();
       $('#overview').hidden = !canReadAssets();
       if (canReadAssets() || canReadPeople()) await refreshDirectorySuggestions();
-      if (canReadAssets()) { try { await loadDashboardPreferences(); await loadLookups(); await loadDashboard(); } catch (error) { $('#dataStatus').textContent = 'Veriler yüklenemedi'; notify(`Şirket verileri alınamadı: ${error.message}`); } }
+      if (canReadAssets()) { try { await loadDashboardPreferences(); await loadLookups(); await loadDashboard(); } catch (error) { $('#dataStatus').textContent = 'Veriler yüklenemedi'; notify(`Şirket verileri alınamadı: ${error.message}`); } void loadOperationalAlerts(); if (!operationalAlertTimer) operationalAlertTimer = window.setInterval(() => { if (!document.hidden) void loadOperationalAlerts(); }, 15 * 60 * 1000); }
       else if (canReadPeople()) { $('#employeesPage').hidden = false; await loadEmployees(1); }
       else { showLogin('Bu hesapta şirket envanteri veya çalışan kayıtlarına erişim rolü bulunmuyor. Şirket yöneticinizden rol atamasını isteyin.'); }
       const linkedAssetId = new URL(location.href).searchParams.get('assetId');
