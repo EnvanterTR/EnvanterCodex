@@ -10,7 +10,7 @@ public static class StockPurchaseOrderEndpoints
     public static RouteGroupBuilder MapStockPurchaseOrderEndpoints(this RouteGroupBuilder api)
     {
         api.MapGet("/stock-orders/export.csv", async ([FromQuery] string? q, [FromQuery] string? status,
-            [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+            [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] bool? overdueOnly, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
             if (from is not null && to is not null && from > to)
@@ -23,6 +23,11 @@ public static class StockPurchaseOrderEndpoints
             if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.order.Status == status.Trim());
             if (from is not null) query = query.Where(x => x.order.OrderDate >= from);
             if (to is not null) query = query.Where(x => x.order.OrderDate <= to);
+            if (overdueOnly == true)
+            {
+                var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                query = query.Where(x => (x.order.Status == "Ordered" || x.order.Status == "PartiallyReceived") && x.order.ExpectedOn != null && x.order.ExpectedOn < today);
+            }
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
@@ -68,7 +73,7 @@ public static class StockPurchaseOrderEndpoints
         }).RequireAuthorization("asset.read");
 
         api.MapGet("/stock-orders", async ([FromQuery] string? q, [FromQuery] string? status,
-            [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] bool overdueOnly,
+            [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] bool? overdueOnly,
             [FromQuery] int page, [FromQuery] int pageSize, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
@@ -80,7 +85,7 @@ public static class StockPurchaseOrderEndpoints
             if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.Status == status.Trim());
             if (from is not null) query = query.Where(x => x.OrderDate >= from);
             if (to is not null) query = query.Where(x => x.OrderDate <= to);
-            if (overdueOnly)
+            if (overdueOnly == true)
             {
                 var today = DateOnly.FromDateTime(DateTime.UtcNow);
                 query = query.Where(x => (x.Status == "Ordered" || x.Status == "PartiallyReceived") && x.ExpectedOn != null && x.ExpectedOn < today);

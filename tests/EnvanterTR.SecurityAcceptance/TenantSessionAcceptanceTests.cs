@@ -1519,7 +1519,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var orderNumber = $"ST-{Guid.NewGuid():N}"[..15];
         var createPayload = System.Net.Http.Json.JsonContent.Create(new
         {
-            orderNumber, supplier = "=Acceptance supplier", orderDate = today, expectedOn = (DateOnly?)null,
+            orderNumber, supplier = "=Acceptance supplier", orderDate = today.AddDays(-2), expectedOn = (DateOnly?)today.AddDays(-1),
             currency = "TRY", notes = "Mixed stock receipt acceptance",
             items = new object[]
             {
@@ -1534,6 +1534,13 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var exportResponse = await SendAsAdminAsync($"/api/stock-orders/export.csv?q={Uri.EscapeDataString(orderNumber)}&status=Ordered");
         Assert.Equal(HttpStatusCode.OK, exportResponse.StatusCode);
         Assert.Contains("'=Acceptance supplier", await exportResponse.Content.ReadAsStringAsync());
+        using var overdueExport = await SendAsAdminAsync($"/api/stock-orders/export.csv?q={Uri.EscapeDataString(orderNumber)}&overdueOnly=true");
+        Assert.Equal(HttpStatusCode.OK, overdueExport.StatusCode);
+        Assert.Contains(orderNumber, await overdueExport.Content.ReadAsStringAsync());
+        using var overdueList = await SendAsAdminAsync($"/api/stock-orders?q={Uri.EscapeDataString(orderNumber)}&overdueOnly=true&page=1&pageSize=25");
+        Assert.Equal(HttpStatusCode.OK, overdueList.StatusCode);
+        using var overduePayload = JsonDocument.Parse(await overdueList.Content.ReadAsStringAsync());
+        Assert.Equal(1, overduePayload.RootElement.GetProperty("total").GetInt32());
         using var crossTenantExport = await SendAsAdminAsync($"/api/stock-orders/export.csv?q={Uri.EscapeDataString(orderNumber)}", _otherCompanyId);
         Assert.Equal(HttpStatusCode.Unauthorized, crossTenantExport.StatusCode);
         using var crossTenantDetail = await SendAsAdminAsync($"/api/stock-orders/{orderId}", _otherCompanyId);
