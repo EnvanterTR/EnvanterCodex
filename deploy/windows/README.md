@@ -27,13 +27,23 @@ Betik önce yerel .NET SDK'sını kullanır; SDK yoksa çalışan Docker Desktop
 ./install.ps1 -PackagePath C:\Staging\publish
 ```
 
-Betik HTTPS sertifika subject'ini ve PostgreSQL bağlantı dizesini gizli giriş olarak ister; servis ve veri klasörlerini ACL ile sınırlar; servisi `NT AUTHORITY\LocalService` hesabıyla otomatik başlatılacak şekilde kaydeder. İlk şirket ve platform bootstrap anahtarlarını bir defa ekrana verir; bunları güvenli kasada saklayın. Yeni ve boş veritabanı için:
+Betik HTTPS sertifika subject'ini ve PostgreSQL bağlantı dizesini gizli giriş olarak ister; servis ve veri klasörlerini ACL ile sınırlar; servisi `NT AUTHORITY\LocalService` hesabıyla otomatik başlatılacak şekilde kaydeder. İlk kurulum sırasında HTTPS `/api/status` uç noktasını iki dakikaya kadar yoklar ve API'nin PostgreSQL'e erişebildiğini doğrulamadan bootstrap anahtarlarını göstermez. Servis başlatma veya bağlantı doğrulaması başarısız olursa oluşturduğu servisi ve uygulama dosyalarını geri alır; `DataRoot`'u silmez. İlk şirket ve platform bootstrap anahtarlarını yalnız başarılı kurulumdan sonra güvenli kasada saklayın. Yeni ve boş veritabanı için:
+
+`InstallRoot` EnvanterTR'ye ayrılmış olmalı; `app` dışında dosya içermemelidir. `InstallRoot` ile `DataRoot` birbiri içine giremez veya junction/symlink olamaz. Bu koşullar kurulumun başka ürün dosyalarının ACL'lerini değiştirmesini ve hata rollback'inin başka bir dizine taşmasını önler.
 
 ```powershell
 ./migrate.ps1 -InitialSetup
 ```
 
 Sonra `/setup.html` ile şirket sahibini, `/platform-setup.html` ile platform yöneticisini oluşturun. İki hesap da hazır olduğunda, aynı paketteki `disable-bootstrap.ps1` anahtarları etkin ayar dosyasından kaldırır ve bunu yapmadan önce iki hesap durumunu doğrular. Ardından istemci bilgisayardan `https://sunucu-adı:8443/api/status` adresinin `ready` döndürdüğünü kontrol edin. `ready` değilse güvenlik duvarını açmak yerine servis olay günlüklerini, PostgreSQL bağlantısını, migration sayısını ve sertifika özel anahtar izinlerini inceleyin.
+
+Kurulum rollback ve readiness kontrolünün PowerShell kaynak regresyon denetimi:
+
+```powershell
+./tests/install-safety-check.ps1
+```
+
+Bu kontrol servis açma, veritabanına bağlanma veya Windows Server kurulumunu çalıştırmaz; gerçek hedef sunucu kabulünün yerini tutmaz.
 
 ## Uygulama güncelleme
 

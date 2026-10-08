@@ -126,6 +126,12 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 - Windows restore emniyet testi sınırlandırma kodunu kaynaktan doğrulamanın yanında PowerShell'i bilerek bekleterek gerçek zaman aşımı/sonlandırma davranışını da çalıştırdı; betik ayrıştırma ve geri yükleme güvenlik kontrolleri geçti.
 - Bu değişiklik Windows Server üzerinde gerçek veritabanı kurtarma tatbikatı yerine geçmez; hedef sunucu kabulü ve büyük canlı veritabanında uygun zaman sınırı hâlâ doğrulanmalı.
 
+## 2026-10-08 Windows ilk kurulum geri alma
+
+- Windows `install.ps1` artık kurulum köklerinin birbiri içine girmesini ve dolu/yeniden yönlendirilmiş uygulama dizinini reddediyor. Servis ve uygulama dosyaları yarım kalırsa yalnız bu kurulumun oluşturdukları geri alınıyor; servis hâlâ kayıtlıysa binary dosyaları silinmiyor, `DataRoot` verileri korunuyor.
+- Kurulum, ilk kullanım anahtarlarını göstermeden önce HTTPS durum API'sinin cevap vermesini ve PostgreSQL erişiminin kullanılabilir olmasını bekliyor. Yeni `install-safety-check.ps1` parser, hazır olma koşulu, sır gösterme sırası ve geri alma sınırlarını kontrol ediyor; GitHub Windows iş akışına eklendi.
+- PowerShell kaynak testleri Windows servis kurulumunu gerçek Windows Server'da kanıtlamaz; kurulum, sertifika özel anahtarı, PostgreSQL servisi ve rollback kabulü ayrı Windows Server testinde açık kalıyor.
+
 ## 2026-10-08 Linux geri yükleme emniyet kapısı
 
 - Linux canlı geri yükleme için CI kaynağa dayalı emniyet kontrolleri eklendi: yedek doğrulama ve izole prova, canlı değişiklik öncesi doğrulanmış güvenlik yedeği, geçici veritabanı SQL kontrolü, sağlık kontrolü ve hata anında eski yapılandırmayı geri bağlayıp eski servisleri başlatma sırası denetleniyor. Eski/yenilenmiş Docker volume'larının silinmediği ve bakım kilidi de korunuyor.
