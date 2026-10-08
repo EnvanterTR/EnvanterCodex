@@ -7,6 +7,7 @@ param(
     [ValidatePattern('^(?:[01][0-9]|2[0-3]):[0-5][0-9]$')][string]$DailyAt = "02:30",
     [ValidatePattern('^(?:[01][0-9]|2[0-3]):[0-5][0-9]$')][string]$HealthCheckAt = "04:00",
     [ValidateRange(1,3650)][int]$RetentionDays = 30,
+    [ValidateRange(0,3650)][int]$MirrorRetentionDays = 90,
     [string]$TaskName = "EnvanterTR Daily Encrypted Backup",
     [string]$HealthTaskName = "EnvanterTR Daily Backup Health Check"
 )
@@ -135,6 +136,7 @@ $actionArguments = @(
     "-InstallRoot", ('"' + $InstallRoot + '"'), "-DataRoot", ('"' + $DataRoot + '"'),
     "-ServiceName", ('"' + $ServiceName + '"'), "-PgBinDirectory", ('"' + $PgBinDirectory + '"'),
     "-PassphraseFile", ('"' + $secretPath + '"'), "-RetentionDays", [string]$RetentionDays,
+    "-MirrorRetentionDays", [string]$MirrorRetentionDays,
     "-TaskName", ('"' + $TaskName + '"')
 ) -join " "
 if (-not [string]::IsNullOrWhiteSpace($MirrorDirectory)) {
@@ -175,6 +177,10 @@ Register-ScheduledTask -TaskName $HealthTaskName -InputObject $healthTask -Force
 
 Write-Output "Scheduled encrypted EnvanterTR backup daily at $DailyAt."
 Write-Output "Retention: $RetentionDays days. Backup directory: $(Join-Path $DataRoot 'backups')"
+if (-not [string]::IsNullOrWhiteSpace($MirrorDirectory)) {
+    if ($MirrorRetentionDays -eq 0) { Write-Output "SMB mirror retention cleanup: disabled." }
+    else { Write-Output "SMB mirror retention: $MirrorRetentionDays days." }
+}
 Write-Output "The encryption passphrase is protected with Windows DPAPI and is not saved in task arguments or configuration."
 Write-Output "Use Get-ScheduledTaskInfo -TaskName '$TaskName' to inspect the last result; run the task once manually to confirm PostgreSQL and restore preview prerequisites."
 Write-Output "Scheduled backup health check daily at $HealthCheckAt (36-hour freshness limit)."

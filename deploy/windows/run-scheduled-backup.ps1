@@ -7,6 +7,7 @@ param(
     [Parameter(Mandatory = $true)][string]$PassphraseFile,
     [string]$MirrorDirectory,
     [ValidateRange(0,3650)][int]$RetentionDays = 30,
+    [ValidateRange(0,3650)][int]$MirrorRetentionDays = 90,
     [string]$TaskName = "EnvanterTR Daily Encrypted Backup"
 )
 
@@ -16,7 +17,7 @@ $alertScript = Join-Path $PSScriptRoot "send-backup-alert.ps1"
 try {
     & $backupScript -InstallRoot $InstallRoot -DataRoot $DataRoot -ServiceName $ServiceName `
         -OutputDirectory $OutputDirectory -PgBinDirectory $PgBinDirectory -PassphraseFile $PassphraseFile `
-        -MirrorDirectory $MirrorDirectory -RetentionDays $RetentionDays
+        -MirrorDirectory $MirrorDirectory -RetentionDays $RetentionDays -MirrorRetentionDays $MirrorRetentionDays
 } catch {
     if (Test-Path -LiteralPath $alertScript -PathType Leaf) {
         try { & $alertScript -DataRoot $DataRoot -Event "scheduled_backup_failed" -Source $TaskName }

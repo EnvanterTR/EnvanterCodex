@@ -6,7 +6,8 @@ param(
     [string]$PgBinDirectory = "$env:ProgramFiles\PostgreSQL\17\bin",
     [string]$PassphraseFile,
     [string]$MirrorDirectory,
-    [ValidateRange(0,3650)][int]$RetentionDays = 0
+    [ValidateRange(0,3650)][int]$RetentionDays = 0,
+    [ValidateRange(0,3650)][int]$MirrorRetentionDays = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -334,6 +335,22 @@ try {
             Set-Content -LiteralPath $remoteChecksumPartialPath -Value "$digest *$backupName" -Encoding ASCII
             Move-Item -LiteralPath $remoteChecksumPartialPath -Destination $remoteChecksumPath
             Write-Output "Encrypted backup mirrored and re-verified at: $remoteFinalPath"
+            if ($MirrorRetentionDays -gt 0) {
+                $mirrorCutoff = [DateTime]::UtcNow.AddDays(-$MirrorRetentionDays)
+                foreach ($oldMirrorBackup in Get-ChildItem -LiteralPath $mirrorFull -File -Filter "envantertr-*.etbackup" |
+                    Where-Object { $_.Name -match '^envantertr-\d{8}-\d{6}-[0-9a-f]{8}\.etbackup$' -and
+                        $_.LastWriteTimeUtc -lt $mirrorCutoff -and -not ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) }) {
+                    Remove-Item -LiteralPath $oldMirrorBackup.FullName -Force
+                    $oldMirrorChecksum = "$($oldMirrorBackup.FullName).sha256"
+                    if (Test-Path -LiteralPath $oldMirrorChecksum -PathType Leaf) {
+                        $checksumItem = Get-Item -LiteralPath $oldMirrorChecksum -Force
+                        if (-not ($checksumItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+                            Remove-Item -LiteralPath $oldMirrorChecksum -Force
+                        }
+                    }
+                    Write-Output "Removed expired mirrored backup: $($oldMirrorBackup.Name)"
+                }
+            }
         } catch {
             Remove-Item -LiteralPath $remotePartialPath,$remoteChecksumPartialPath -Force -ErrorAction SilentlyContinue
             throw
