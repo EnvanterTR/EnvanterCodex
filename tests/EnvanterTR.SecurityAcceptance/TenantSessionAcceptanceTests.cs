@@ -1101,6 +1101,64 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Software_license_bulk_assignment_is_atomic_and_tenant_scoped()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var additionalEmployees = Enumerable.Range(0, 4).Select(_ => new Employee
+        {
+            CompanyId = _companyId,
+            EmployeeNumber = $"BULK-{Guid.NewGuid():N}"[..16],
+            DisplayName = $"Bulk License {Guid.NewGuid():N}"[..24]
+        }).ToArray();
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Employees.AddRange(additionalEmployees);
+            await db.SaveChangesAsync();
+        }
+
+        var assignPath = $"/api/software-licenses/{_ownLicenseId}/assign/bulk";
+        using var assignedResponse = await SendAsRoleAsync(HttpMethod.Post, assignPath, "admin",
+            System.Net.Http.Json.JsonContent.Create(new { employeeIds = new[] { _ownEmployeeId, additionalEmployees[0].Id }, notes = "Quarterly rollout" }),
+            requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, assignedResponse.StatusCode);
+        using var assignedPayload = JsonDocument.Parse(await assignedResponse.Content.ReadAsStringAsync());
+        Assert.Equal(2, assignedPayload.RootElement.GetProperty("assigned").GetInt32());
+        Assert.Equal(2, assignedPayload.RootElement.GetProperty("available").GetInt32());
+        Assert.Equal(2, assignedPayload.RootElement.GetProperty("assignments").GetArrayLength());
+
+        using var crossTenantResponse = await SendAsRoleAsync(HttpMethod.Post, assignPath, "admin",
+            System.Net.Http.Json.JsonContent.Create(new { employeeIds = new[] { _otherCompanyEmployeeId } }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.BadRequest, crossTenantResponse.StatusCode);
+
+        using var duplicateIdsResponse = await SendAsRoleAsync(HttpMethod.Post, assignPath, "admin",
+            System.Net.Http.Json.JsonContent.Create(new { employeeIds = new[] { additionalEmployees[1].Id, additionalEmployees[1].Id } }),
+            requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.BadRequest, duplicateIdsResponse.StatusCode);
+
+        using var overCapacityResponse = await SendAsRoleAsync(HttpMethod.Post, assignPath, "admin",
+            System.Net.Http.Json.JsonContent.Create(new { employeeIds = additionalEmployees.Skip(1).Select(employee => employee.Id).ToArray() }),
+            requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Conflict, overCapacityResponse.StatusCode);
+
+        using var detailResponse = await SendAsAdminAsync($"/api/software-licenses/{_ownLicenseId}");
+        Assert.Equal(HttpStatusCode.OK, detailResponse.StatusCode);
+        using var detail = JsonDocument.Parse(await detailResponse.Content.ReadAsStringAsync());
+        Assert.Equal(2, detail.RootElement.GetProperty("license").GetProperty("assigned").GetInt32());
+        var assignmentEmployees = detail.RootElement.GetProperty("assignments").EnumerateArray()
+            .Where(assignment => assignment.GetProperty("revokedAt").ValueKind == JsonValueKind.Null)
+            .Select(assignment => assignment.GetProperty("employeeId").GetGuid()).ToHashSet();
+        Assert.Equal(new HashSet<Guid> { _ownEmployeeId, additionalEmployees[0].Id }, assignmentEmployees);
+    }
+
+    [Fact]
     public async Task Dashboard_inventory_counts_are_scoped_to_the_selected_company()
     {
         using var response = await SendAsAdminAsync("/api/dashboard/summary");

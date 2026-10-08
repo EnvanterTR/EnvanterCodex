@@ -275,8 +275,9 @@ public static class SoftwareLicenseEndpoints
         api.MapPost("/software-licenses/{id:guid}/assign", async (Guid id, AssignmentRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Company(user, out var companyId)) return Results.Forbid();
-            await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
-            var item = await db.SoftwareLicenses.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct); if (item is null) return Results.NotFound();
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            var item = await db.SoftwareLicenses.FromSqlInterpolated($"SELECT * FROM \"SoftwareLicenses\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+                .SingleOrDefaultAsync(ct); if (item is null) return Results.NotFound();
             if ((request.EmployeeId is null) == (request.AssetId is null))
                 return Results.ValidationProblem(new Dictionary<string,string[]> { ["target"]=["Tek bir çalışan veya varlık seçilmelidir."] });
             if (request.EmployeeId is Guid employeeId && !await db.Employees.AnyAsync(e => e.CompanyId == companyId && e.Id == employeeId && e.IsActive, ct))
@@ -295,6 +296,50 @@ public static class SoftwareLicenseEndpoints
                 : $"Varlığa atandı: {request.AssetId}";
             AddEvent(db, item, user, "Assigned", targetDetails, request.EmployeeId, request.AssetId);
             await db.SaveChangesAsync(ct); await tx.CommitAsync(ct); return Results.Created($"/api/software-licenses/{id}", new { assignment.Id, assigned = count + 1, available = item.Seats - count - 1 });
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/software-licenses/{id:guid}/assign/bulk", async (Guid id, BulkAssignmentRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!Company(user, out var companyId)) return Results.Forbid();
+            var employeeIds = request.EmployeeIds ?? [];
+            if (employeeIds.Length is < 1 or > 100 || employeeIds.Distinct().Count() != employeeIds.Length || request.Notes?.Length > 2000)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeIds"] = ["1 ile 100 arasında, yinelenmeyen çalışan seçin; notlar en fazla 2.000 karakter olabilir."] });
+
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            var item = await db.SoftwareLicenses.FromSqlInterpolated($"SELECT * FROM \"SoftwareLicenses\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+                .SingleOrDefaultAsync(ct);
+            if (item is null) return Results.NotFound();
+
+            var activeEmployees = await db.Employees.AsNoTracking().Where(e => e.CompanyId == companyId && e.IsActive && employeeIds.Contains(e.Id))
+                .Select(e => e.Id).ToListAsync(ct);
+            if (activeEmployees.Count != employeeIds.Length)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeIds"] = ["Seçilen çalışanların tümü etkin ve bu şirkete ait olmalıdır."] });
+
+            var alreadyAssigned = await db.SoftwareLicenseAssignments.AnyAsync(a => a.CompanyId == companyId && a.LicenseId == id &&
+                a.RevokedAt == null && a.EmployeeId != null && employeeIds.Contains(a.EmployeeId.Value), ct);
+            if (alreadyAssigned) return Results.Conflict(new { message = "Seçilen çalışanlardan en az birine bu lisans zaten atanmış; hiçbir atama yapılmadı." });
+
+            var assigned = await db.SoftwareLicenseAssignments.CountAsync(a => a.CompanyId == companyId && a.LicenseId == id && a.RevokedAt == null, ct);
+            if (assigned + employeeIds.Length > item.Seats)
+                return Results.Conflict(new { message = $"Yeterli lisans koltuğu yok. Kullanılabilir: {Math.Max(0, item.Seats - assigned)}, istenen: {employeeIds.Length}; hiçbir atama yapılmadı." });
+
+            var now = DateTimeOffset.UtcNow;
+            var assignments = employeeIds.Select(employeeId => new SoftwareLicenseAssignment
+            {
+                CompanyId = companyId, LicenseId = id, EmployeeId = employeeId, ActorUserId = UserId(user),
+                AssignedAt = now, Notes = Clean(request.Notes)
+            }).ToArray();
+            db.SoftwareLicenseAssignments.AddRange(assignments);
+            foreach (var employeeId in employeeIds)
+                AddEvent(db, item, user, "Assigned", $"Toplu atama: çalışan {employeeId}", employeeId);
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+            return Results.Created($"/api/software-licenses/{id}", new
+            {
+                assignments = assignments.Select(a => new { a.Id, a.EmployeeId, a.AssignedAt }),
+                assigned = assigned + assignments.Length, available = item.Seats - assigned - assignments.Length
+            });
         }).RequireAuthorization("asset.write");
 
         api.MapPost("/software-licenses/{id:guid}/revoke", async (Guid id, AssignmentRevokeRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
@@ -427,5 +472,6 @@ public static class SoftwareLicenseEndpoints
     public sealed record LicenseRequest(string Name, string? Publisher, string? ProductVersion, string LicenseType, string? LicenseReference,
         string? Supplier, int Seats, decimal? UnitCost, string Currency, DateOnly? PurchaseDate, DateOnly? ExpirationDate, bool AutoRenew, string? Notes);
     public sealed record AssignmentRequest(Guid? EmployeeId, Guid? AssetId, string? Notes);
+    public sealed record BulkAssignmentRequest(Guid[]? EmployeeIds, string? Notes);
     public sealed record AssignmentRevokeRequest(Guid AssignmentId);
 }
