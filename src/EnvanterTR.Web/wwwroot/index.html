@@ -370,7 +370,7 @@
         if (error instanceof TypeError) throw new Error('Sunucuya bağlanılamadı. Uygulamanın çalıştığını ve ağ bağlantınızı kontrol edip yeniden deneyin.');
         throw error;
       }
-      if (response.status === 401) { showLogin(); throw new Error('Oturum açmanız gerekiyor.'); }
+      if (response.status === 401 && path !== '/api/session/login') { showLogin(); throw new Error('Oturum açmanız gerekiyor.'); }
       if (!response.ok) {
         let message = `İstek başarısız (${response.status}).`, payload = null;
         try { payload = await response.json(); const details = Array.isArray(payload.errors) ? payload.errors : Object.values(payload.errors || {}).flat(); message = [payload.message, ...details].filter(Boolean).join('\n') || message; } catch {}

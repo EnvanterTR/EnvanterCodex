@@ -185,12 +185,9 @@ public static class AccountEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["credentials"] = ["E-posta ve parola zorunludur."] });
 
             var user = await userManager.FindByEmailAsync(request.Email.Trim());
-            if (user is null) return Results.Unauthorized();
+            if (user is null) return LoginCredentialsRejected();
             var passwordCheck = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
-            if (!passwordCheck.Succeeded)
-                return passwordCheck.IsLockedOut
-                    ? Results.Json(new { message = "Çok sayıda hatalı deneme. Bir süre sonra tekrar deneyin." }, statusCode: StatusCodes.Status423Locked)
-                    : Results.Unauthorized();
+            if (!passwordCheck.Succeeded) return LoginCredentialsRejected();
             if (!user.EmailConfirmed)
                 return Results.Json(new { message = "Davet e-postasındaki bağlantıdan parolanızı belirleyerek hesabınızı etkinleştirin." }, statusCode: StatusCodes.Status403Forbidden);
 
@@ -560,6 +557,9 @@ public static class AccountEndpoints
 
         return endpoints;
     }
+
+    private static IResult LoginCredentialsRejected() =>
+        Results.Json(new { message = "Giriş bilgileri geçersiz veya hesap geçici olarak kullanılamıyor." }, statusCode: StatusCodes.Status401Unauthorized);
 
     private static async Task<bool> HasValidCsrfAsync(HttpContext context, IAntiforgery antiforgery)
     {
