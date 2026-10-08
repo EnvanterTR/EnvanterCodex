@@ -34,7 +34,10 @@ public static class AccessoryImportEndpoints
         try { text = new UTF8Encoding(false, true).GetString(buffer.ToArray()).TrimStart('\uFEFF'); }
         catch (DecoderFallbackException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV UTF-8 biçiminde olmalıdır." } }); }
         List<List<string>> rows;
-        try { rows = Parse(text); } catch (FormatException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV tırnak veya ayraç biçimi bozuk." } }); }
+        try { rows = Parse(text, DetectDelimiter(text)); } catch (FormatException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV tırnak veya ayraç biçimi bozuk." } }); }
+        rows = AccessoryCsvImportMapping.Normalize(rows, out var unsupportedColumns);
+        if (unsupportedColumns.Length > 0)
+            return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Bu dosyada henüz eşlenmeyen ve dolu veri içeren sütunlar var: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu." } });
         string[] header = ["Aksesuar", "Kategori", "Model", "Ürün no", "Tedarikçi", "Konum", "Toplam", "Minimum", "Birim maliyeti", "Para birimi", "Alış tarihi", "İstek yapılabilir", "Notlar"];
         if (rows.Count is < 2 || rows.Count > MaxRows + 1 || !rows[0].SequenceEqual(header, StringComparer.OrdinalIgnoreCase))
             return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Şablon başlığı ve en fazla {MaxRows:N0} aksesuar satırı kullanın." } });
@@ -82,10 +85,32 @@ public static class AccessoryImportEndpoints
     }
 
     private static void AddError(List<string> errors, string message) { if (errors.Count < 100) errors.Add(message); }
-    private static List<List<string>> Parse(string text)
+    private static char DetectDelimiter(string text)
+    {
+        var commas = 0;
+        var semicolons = 0;
+        var quoted = false;
+        for (var i = 0; i < text.Length; i++)
+        {
+            var value = text[i];
+            if (value == '"')
+            {
+                if (quoted && i + 1 < text.Length && text[i + 1] == '"') { i++; continue; }
+                quoted = !quoted;
+                continue;
+            }
+            if (quoted) continue;
+            if (value is '\r' or '\n') break;
+            if (value == ',') commas++;
+            else if (value == ';') semicolons++;
+        }
+        return semicolons > commas ? ';' : ',';
+    }
+
+    private static List<List<string>> Parse(string text, char delimiter)
     {
         var records = new List<List<string>>(); var row = new List<string>(); var cell = new StringBuilder(); bool quoted = false, afterQuote = false;
-        for (int i = 0; i < text.Length; i++) { var ch = text[i]; if (quoted) { if (ch == '"' && i + 1 < text.Length && text[i + 1] == '"') { cell.Append('"'); i++; } else if (ch == '"') { quoted = false; afterQuote = true; } else cell.Append(ch); continue; } if (afterQuote && ch != ',' && ch is not ('\r' or '\n')) throw new FormatException(); if (ch == '"') { if (cell.Length != 0) throw new FormatException(); quoted = true; } else if (ch == ',') { row.Add(cell.ToString()); cell.Clear(); afterQuote = false; } else if (ch is '\r' or '\n') { if (ch == '\r' && i + 1 < text.Length && text[i + 1] == '\n') i++; row.Add(cell.ToString()); cell.Clear(); afterQuote = false; if (row.Any(x => x.Length > 0)) { records.Add(row); if (records.Count > MaxRows + 1) throw new FormatException(); } row = []; } else { cell.Append(ch); afterQuote = false; } }
+        for (int i = 0; i < text.Length; i++) { var ch = text[i]; if (quoted) { if (ch == '"' && i + 1 < text.Length && text[i + 1] == '"') { cell.Append('"'); i++; } else if (ch == '"') { quoted = false; afterQuote = true; } else cell.Append(ch); continue; } if (afterQuote && ch != delimiter && ch is not ('\r' or '\n')) throw new FormatException(); if (ch == '"') { if (cell.Length != 0) throw new FormatException(); quoted = true; } else if (ch == delimiter) { row.Add(cell.ToString()); cell.Clear(); afterQuote = false; } else if (ch is '\r' or '\n') { if (ch == '\r' && i + 1 < text.Length && text[i + 1] == '\n') i++; row.Add(cell.ToString()); cell.Clear(); afterQuote = false; if (row.Any(x => x.Length > 0)) { records.Add(row); if (records.Count > MaxRows + 1) throw new FormatException(); } row = []; } else { cell.Append(ch); afterQuote = false; } }
         if (quoted) throw new FormatException(); if (cell.Length > 0 || row.Count > 0) { row.Add(cell.ToString()); if (row.Any(x => x.Length > 0)) records.Add(row); } return records;
     }
 }
