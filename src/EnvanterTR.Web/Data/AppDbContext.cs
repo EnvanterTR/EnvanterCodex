@@ -16,6 +16,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AssetBrand> AssetBrands => Set<AssetBrand>();
     public DbSet<AssetModel> AssetModels => Set<AssetModel>();
     public DbSet<Asset> Assets => Set<Asset>();
+    public DbSet<SavedAssetSearch> SavedAssetSearches => Set<SavedAssetSearch>();
     public DbSet<AssetEvent> AssetEvents => Set<AssetEvent>();
     public DbSet<AssetAttachment> AssetAttachments => Set<AssetAttachment>();
     public DbSet<EmployeeDocument> EmployeeDocuments => Set<EmployeeDocument>();
@@ -134,6 +135,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<CompanyMembership>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<CompanyMembership>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<SavedAssetSearch>().Property(x => x.Name).HasMaxLength(60).IsRequired();
+        modelBuilder.Entity<SavedAssetSearch>().Property(x => x.NormalizedName).HasMaxLength(60).IsRequired();
+        modelBuilder.Entity<SavedAssetSearch>().Property(x => x.FiltersJson).HasMaxLength(4096).IsRequired();
+        modelBuilder.Entity<SavedAssetSearch>().HasIndex(x => new { x.CompanyId, x.UserId, x.NormalizedName }).IsUnique();
+        modelBuilder.Entity<SavedAssetSearch>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SavedAssetSearch>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Employee>().HasAlternateKey(x => new { x.CompanyId, x.Id });

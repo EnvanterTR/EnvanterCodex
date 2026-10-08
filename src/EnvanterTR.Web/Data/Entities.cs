@@ -198,6 +198,18 @@ public sealed class Asset
     public bool IsRequestable { get; set; }
 }
 
+public sealed class SavedAssetSearch
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid UserId { get; set; }
+    public required string Name { get; set; }
+    public required string NormalizedName { get; set; }
+    public required string FiltersJson { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class AssetEvent
 {
     public Guid Id { get; set; } = Guid.NewGuid();
