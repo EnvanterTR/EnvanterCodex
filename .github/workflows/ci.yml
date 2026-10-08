@@ -47,6 +47,10 @@ jobs:
         shell: bash
         run: sudo -n bash deploy/server/tests/backup-health-check.sh
 
+      - name: Validate Linux restore safety ordering
+        shell: bash
+        run: bash deploy/server/tests/restore-safety-check.sh
+
   windows-deployment-safety:
     name: Windows deployment and backup safety
     runs-on: windows-latest

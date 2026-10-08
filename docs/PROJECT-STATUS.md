@@ -125,3 +125,8 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 - `deploy/windows/restore.ps1` içindeki PostgreSQL araç çağrıları artık varsayılan 30 dakikada zaman aşımına uğruyor; takılan `pg_restore`/`psql` süreci ve çocukları sonlandırılır. Büyük veritabanları için süre 1 saniye ile 24 saat arasında parametreyle ayarlanabilir.
 - Windows restore emniyet testi sınırlandırma kodunu kaynaktan doğrulamanın yanında PowerShell'i bilerek bekleterek gerçek zaman aşımı/sonlandırma davranışını da çalıştırdı; betik ayrıştırma ve geri yükleme güvenlik kontrolleri geçti.
 - Bu değişiklik Windows Server üzerinde gerçek veritabanı kurtarma tatbikatı yerine geçmez; hedef sunucu kabulü ve büyük canlı veritabanında uygun zaman sınırı hâlâ doğrulanmalı.
+
+## 2026-10-08 Linux geri yükleme emniyet kapısı
+
+- Linux canlı geri yükleme için CI kaynağa dayalı emniyet kontrolleri eklendi: yedek doğrulama ve izole prova, canlı değişiklik öncesi doğrulanmış güvenlik yedeği, geçici veritabanı SQL kontrolü, sağlık kontrolü ve hata anında eski yapılandırmayı geri bağlayıp eski servisleri başlatma sırası denetleniyor. Eski/yenilenmiş Docker volume'larının silinmediği ve bakım kilidi de korunuyor.
+- Yeni emniyet kontrolü ve Linux dağıtım Bash sözdizimi izole Linux konteynerinde geçti. Bu kaynak/sıra kontrolüdür; gerçek Ubuntu'da canlı geri yükleme tatbikatını kanıtlamaz.
