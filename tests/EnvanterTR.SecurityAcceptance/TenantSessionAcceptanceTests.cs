@@ -1730,12 +1730,21 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var crossTenantCreate = await SendAsRoleAsync(HttpMethod.Post, "/api/stock-orders", "admin", crossTenantPayload, requestToken, antiforgeryCookie);
         Assert.Equal(HttpStatusCode.BadRequest, crossTenantCreate.StatusCode);
 
+        var invalidFinancialPayload = System.Net.Http.Json.JsonContent.Create(new
+        {
+            supplier = "Invalid finance supplier", orderDate = DateOnly.FromDateTime(DateTime.UtcNow), currency = "TRY",
+            taxRatePercent = 100.01m, discountAmount = 0m, freightAmount = 0m,
+            items = new[] { new { consumableId = (Guid?)_ownConsumableId, componentId = (Guid?)null, quantity = 1, unitCost = 1m } }
+        });
+        using var invalidFinancialOrder = await SendAsRoleAsync(HttpMethod.Post, "/api/stock-orders", "admin", invalidFinancialPayload, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.BadRequest, invalidFinancialOrder.StatusCode);
+
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var orderNumber = $"ST-{Guid.NewGuid():N}"[..15];
         var createPayload = System.Net.Http.Json.JsonContent.Create(new
         {
             orderNumber, supplier = "=Acceptance supplier", orderDate = today.AddDays(-2), expectedOn = (DateOnly?)today.AddDays(-1),
-            currency = "TRY", notes = "Mixed stock receipt acceptance",
+            currency = "TRY", taxRatePercent = 10m, discountAmount = 20m, freightAmount = 5m, notes = "Mixed stock receipt acceptance",
             items = new object[]
             {
                 new { consumableId = (Guid?)_ownConsumableId, componentId = (Guid?)null, quantity = 4, unitCost = 12.5m, notes = "paper" },
@@ -1793,6 +1802,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, overdueList.StatusCode);
         using var overduePayload = JsonDocument.Parse(await overdueList.Content.ReadAsStringAsync());
         Assert.Equal(1, overduePayload.RootElement.GetProperty("total").GetInt32());
+        Assert.Equal(120.50m, overduePayload.RootElement.GetProperty("items")[0].GetProperty("totalCost").GetDecimal());
         using var consumableList = await SendAsAdminAsync($"/api/stock-orders?q={Uri.EscapeDataString(orderNumber)}&itemType=Consumable&page=1&pageSize=25");
         Assert.Equal(HttpStatusCode.OK, consumableList.StatusCode);
         using var consumablePayload = JsonDocument.Parse(await consumableList.Content.ReadAsStringAsync());
@@ -1802,6 +1812,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var componentCsv = await componentExport.Content.ReadAsStringAsync();
         Assert.Contains("Bileşen", componentCsv);
         Assert.DoesNotContain("Sarf;", componentCsv);
+        Assert.Contains("Ara Toplam;İskonto;Vergi Oranı %;Vergi;Nakliye;Genel Toplam", componentCsv);
+        Assert.Contains("125.00;20.00;10.00;10.50;5.00;120.50", componentCsv);
         using var invalidItemType = await SendAsAdminAsync($"/api/stock-orders?q={Uri.EscapeDataString(orderNumber)}&itemType=Invalid");
         Assert.Equal(HttpStatusCode.BadRequest, invalidItemType.StatusCode);
         using var crossTenantExport = await SendAsAdminAsync($"/api/stock-orders/export.csv?q={Uri.EscapeDataString(orderNumber)}", _otherCompanyId);
@@ -1812,8 +1824,14 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var detailResponse = await SendAsAdminAsync($"/api/stock-orders/{orderId}");
         Assert.Equal(HttpStatusCode.OK, detailResponse.StatusCode);
         using var detail = JsonDocument.Parse(await detailResponse.Content.ReadAsStringAsync());
+        Assert.Equal(125m, detail.RootElement.GetProperty("subtotal").GetDecimal());
+        Assert.Equal(105m, detail.RootElement.GetProperty("taxableAmount").GetDecimal());
+        Assert.Equal(10.50m, detail.RootElement.GetProperty("taxAmount").GetDecimal());
+        Assert.Equal(120.50m, detail.RootElement.GetProperty("totalCost").GetDecimal());
+        Assert.Equal(20m, detail.RootElement.GetProperty("order").GetProperty("discountAmount").GetDecimal());
         var lineIds = detail.RootElement.GetProperty("lines").EnumerateArray().ToDictionary(
             line => line.GetProperty("itemType").GetString()!, line => line.GetProperty("id").GetGuid());
+        Assert.Equal(50m, detail.RootElement.GetProperty("lines").EnumerateArray().Single(line => line.GetProperty("itemType").GetString() == "Consumable").GetProperty("totalCost").GetDecimal());
         using var firstReceiptPayload = System.Net.Http.Json.JsonContent.Create(new
         {
             receivedOn = today, notes = "Partial delivery",
@@ -1839,6 +1857,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         Assert.Equal(9, await db.Consumables.Where(x => x.CompanyId == _companyId && x.Id == _ownConsumableId).Select(x => x.TotalQuantity).SingleAsync());
         Assert.Equal(8, await db.InventoryComponents.Where(x => x.CompanyId == _companyId && x.Id == _ownComponentId).Select(x => x.TotalQuantity).SingleAsync());
+        Assert.Equal(12.05m, await db.Consumables.Where(x => x.CompanyId == _companyId && x.Id == _ownConsumableId).Select(x => x.UnitCost).SingleAsync());
+        Assert.Equal(24.10m, await db.InventoryComponents.Where(x => x.CompanyId == _companyId && x.Id == _ownComponentId).Select(x => x.UnitCost).SingleAsync());
         Assert.Equal(2, await db.ConsumableMovements.CountAsync(x => x.CompanyId == _companyId && x.ConsumableId == _ownConsumableId && x.MovementType == "Received" && x.Notes != null && x.Notes.Contains("ST-")));
         Assert.Equal(2, await db.ComponentMovements.CountAsync(x => x.CompanyId == _companyId && x.ComponentId == _ownComponentId && x.MovementType == "Received" && x.Notes != null && x.Notes.Contains("ST-")));
         Assert.Equal(1, await db.StockPurchaseOrderAttachments.CountAsync(x => x.CompanyId == _companyId && x.PurchaseOrderId == orderId));

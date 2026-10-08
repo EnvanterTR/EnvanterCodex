@@ -556,6 +556,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<StockPurchaseOrder>().Property(x => x.Supplier).HasMaxLength(200).IsRequired();
         modelBuilder.Entity<StockPurchaseOrder>().Property(x => x.Status).HasMaxLength(24).IsRequired();
         modelBuilder.Entity<StockPurchaseOrder>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
+        modelBuilder.Entity<StockPurchaseOrder>().Property(x => x.TaxRatePercent).HasPrecision(5, 2);
+        modelBuilder.Entity<StockPurchaseOrder>().Property(x => x.DiscountAmount).HasPrecision(18, 2);
+        modelBuilder.Entity<StockPurchaseOrder>().Property(x => x.FreightAmount).HasPrecision(18, 2);
         modelBuilder.Entity<StockPurchaseOrder>().Property(x => x.Notes).HasMaxLength(2000);
         modelBuilder.Entity<StockPurchaseOrder>().HasIndex(x => new { x.CompanyId, x.OrderNumber }).IsUnique();
         modelBuilder.Entity<StockPurchaseOrder>().HasIndex(x => new { x.CompanyId, x.Status, x.OrderDate });
@@ -568,6 +571,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             table.HasCheckConstraint("CK_StockPurchaseOrders_Status", "\"Status\" IN ('Ordered', 'PartiallyReceived', 'Received', 'Cancelled')");
             table.HasCheckConstraint("CK_StockPurchaseOrders_Dates", "\"ExpectedOn\" IS NULL OR \"ExpectedOn\" >= \"OrderDate\"");
             table.HasCheckConstraint("CK_StockPurchaseOrders_Currency", "char_length(\"Currency\") = 3");
+            table.HasCheckConstraint("CK_StockPurchaseOrders_FinancialAdjustments", "\"TaxRatePercent\" BETWEEN 0 AND 100 AND \"DiscountAmount\" >= 0 AND \"FreightAmount\" >= 0");
         });
         modelBuilder.Entity<StockPurchaseOrderLine>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<StockPurchaseOrderLine>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
