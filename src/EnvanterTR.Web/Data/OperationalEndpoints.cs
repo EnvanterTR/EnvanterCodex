@@ -73,8 +73,8 @@ public static class OperationalEndpoints
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
-            if (request.Barcode1d is not ("code128" or "code39" or "ean5" or "ean13" or "upca" or "upce" or "none") ||
-                request.Barcode2d is not ("qrcode" or "pdf417" or "datamatrix" or "none") ||
+            if (request.Barcode1d is not ("code128" or "code39" or "code93" or "code93ext" or "rationalizedCodabar" or "msi" or "ean5" or "ean13" or "upca" or "upce" or "none") ||
+                request.Barcode2d is not ("qrcode" or "pdf417" or "datamatrix" or "azteccode" or "none") ||
                 request.QrTarget is not ("tag" or "asset-url") ||
                 request.WidthMm is < 25 or > 150 || request.HeightMm is < 15 or > 100 ||
                 request.OffsetXmm is < -30 or > 30 || request.OffsetYmm is < -30 or > 30 ||

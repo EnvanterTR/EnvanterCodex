@@ -168,8 +168,8 @@
           <section class="panel"><div class="panel-head"><h2>Etiket ve kod ayarları</h2><span class="pill blue">Şirket profiliyle eşitlenir</span></div>
             <form id="labelSettingsForm" class="dialog-body">
               <div class="form-grid">
-                <label>1D barkod türü<select name="barcode1d"><option value="code128">C128 · alfasayısal</option><option value="code39">C39 · büyük harf ve rakam</option><option value="ean5">EAN5 · 5 rakam</option><option value="ean13">EAN13 · 12/13 rakam</option><option value="upca">UPC-A · 11/12 rakam</option><option value="upce">UPC-E · 6–8 rakam</option><option value="none">Kapalı</option></select></label>
-                <label>2D barkod türü<select name="barcode2d"><option value="qrcode">QR Code</option><option value="pdf417">PDF417</option><option value="datamatrix">Data Matrix</option><option value="none">Kapalı</option></select></label>
+                <label>1D barkod türü<select name="barcode1d"><option value="code128">C128 · alfasayısal</option><option value="code39">C39 · büyük harf ve rakam</option><option value="code93">C93 · kompakt alfasayısal</option><option value="code93ext">C93 Extended · geniş karakter kümesi</option><option value="rationalizedCodabar">Codabar · sayısal / A–D başlangıç-bitiş</option><option value="msi">MSI Plessey · sayısal stok kodu</option><option value="ean5">EAN5 · 5 rakam</option><option value="ean13">EAN13 · 12/13 rakam</option><option value="upca">UPC-A · 11/12 rakam</option><option value="upce">UPC-E · 6–8 rakam</option><option value="none">Kapalı</option></select></label>
+                <label>2D barkod türü<select name="barcode2d"><option value="qrcode">QR Code</option><option value="pdf417">PDF417</option><option value="datamatrix">Data Matrix</option><option value="azteccode">Aztec Code</option><option value="none">Kapalı</option></select></label>
                 <label>Etiket şablonu<select name="sizePreset"><option value="86x48">86 × 48 mm · varsayılan</option><option value="50x30">50 × 30 mm</option><option value="60x40">60 × 40 mm</option><option value="70x35">70 × 35 mm</option><option value="100x50">100 × 50 mm</option><option value="custom">Özel ölçü</option></select></label><label>Etiket genişliği (mm)<input name="widthMm" type="number" min="25" max="150" step="0.5" required></label>
                 <label>Etiket yüksekliği (mm)<input name="heightMm" type="number" min="15" max="100" step="0.5" required></label>
                 <label>Yatay hizalama (mm)<input name="offsetXmm" type="number" min="-30" max="30" step="0.5" required></label>
@@ -702,8 +702,8 @@
       if (stored && typeof stored === 'object') {
         const base = defaultLabelPrintSettings, numeric = (key, min, max) => { const value = Number(stored[key]); return Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : base[key]; };
         labelPrintSettings = {
-          barcode1d: ['code128','code39','ean5','ean13','upca','upce','none'].includes(stored.barcode1d) ? stored.barcode1d : base.barcode1d,
-          barcode2d: ['qrcode','pdf417','datamatrix','none'].includes(stored.barcode2d) ? stored.barcode2d : base.barcode2d,
+          barcode1d: ['code128','code39','code93','code93ext','rationalizedCodabar','msi','ean5','ean13','upca','upce','none'].includes(stored.barcode1d) ? stored.barcode1d : base.barcode1d,
+          barcode2d: ['qrcode','pdf417','datamatrix','azteccode','none'].includes(stored.barcode2d) ? stored.barcode2d : base.barcode2d,
           qrTarget: ['tag','asset-url'].includes(stored.qrTarget) ? stored.qrTarget : base.qrTarget,
           widthMm: numeric('widthMm',25,150), heightMm: numeric('heightMm',15,100), offsetXmm: numeric('offsetXmm',-30,30), offsetYmm: numeric('offsetYmm',-30,30), paddingMm: numeric('paddingMm',0,15), codeSizeMm: numeric('codeSizeMm',10,45),
           showName: stored.showName !== false, showSerial: stored.showSerial !== false, showModel: stored.showModel === true, showLocation: stored.showLocation === true, showStatus: stored.showStatus === true
@@ -748,7 +748,7 @@
       });
       return bwipLoadPromise;
     }
-    const labelBarcodeSamples = { code128: 'ASSET-001', code39: 'ASSET-001', ean5: '12345', ean13: '5901234123457', upca: '036000291452', upce: '04252614' };
+    const labelBarcodeSamples = { code128: 'ASSET-001', code39: 'ASSET-001', code93: 'ASSET-001', code93ext: 'ASSET-001', rationalizedCodabar: 'A123456B', msi: '123456', ean5: '12345', ean13: '5901234123457', upca: '036000291452', upce: '04252614' };
     function qrSvg(text) {
       const qr = qrcodegen.QrCode.encodeText(text, qrcodegen.QrCode.Ecc.MEDIUM), quietZone = 4, viewSize = qr.size + quietZone * 2;
       let path = '';
