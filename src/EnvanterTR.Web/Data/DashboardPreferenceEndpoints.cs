@@ -8,7 +8,7 @@ namespace EnvanterTR.Web.Data;
 public sealed record UpdateDashboardPreferencesRequest(string[]? VisibleWidgets, string[]? WidgetOrder = null, DashboardChartDefinition[]? CustomCharts = null);
 public sealed record DashboardChartDefinition(string Dimension, string Type);
 internal sealed record DashboardPreferenceDocument(string[] VisibleWidgets, string[] WidgetOrder, DashboardChartDefinition[]? CustomCharts = null);
-internal sealed record DashboardChartItem(string Label, int Count);
+internal sealed record DashboardChartItem(string Label, int Count, string? FilterValue = null);
 internal sealed record DashboardChartGroup(Guid? Id, int Count);
 
 public static class DashboardPreferenceEndpoints
@@ -96,13 +96,14 @@ public static class DashboardPreferenceEndpoints
                     [AssetStatuses.Pending] = "Beklemede", [AssetStatuses.Maintenance] = "Bakımda",
                     [AssetStatuses.Unusable] = "Kullanılamaz", [AssetStatuses.Archived] = "Arşiv"
                 };
-                items = groups.Select(g => new DashboardChartItem(labels.GetValueOrDefault(g.Key, g.Key), g.Count)).ToList();
+                items = groups.Select(g => new DashboardChartItem(labels.GetValueOrDefault(g.Key, g.Key), g.Count, g.Key)).ToList();
             }
             else if (dimension == "location")
             {
                 var groups = await assets.GroupBy(a => a.Location).Select(g => new { Key = g.Key, Count = g.Count() })
                     .OrderByDescending(g => g.Count).Take(10).ToListAsync(ct);
-                items = groups.Select(g => new DashboardChartItem(string.IsNullOrWhiteSpace(g.Key) ? "Konum belirtilmemiş" : g.Key!, g.Count)).ToList();
+                items = groups.Select(g => new DashboardChartItem(string.IsNullOrWhiteSpace(g.Key) ? "Konum belirtilmemiş" : g.Key!, g.Count,
+                    string.IsNullOrWhiteSpace(g.Key) ? null : g.Key)).ToList();
             }
             else
             {
@@ -132,7 +133,8 @@ public static class DashboardPreferenceEndpoints
                     labels = await db.AssetModels.AsNoTracking().Where(m => m.CompanyId == companyId && ids.Contains(m.Id))
                         .ToDictionaryAsync(m => m.Id, m => m.Name, ct);
                 }
-                items = groups.Select(g => new DashboardChartItem(g.Id is Guid id ? labels.GetValueOrDefault(id, "Katalog kaydı yok") : "Belirtilmemiş", g.Count)).ToList();
+                items = groups.Select(g => new DashboardChartItem(g.Id is Guid id ? labels.GetValueOrDefault(id, "Katalog kaydı yok") : "Belirtilmemiş",
+                    g.Count, g.Id?.ToString("D"))).ToList();
             }
             var shown = items.Sum(i => i.Count);
             if (total > shown) items.Add(new DashboardChartItem("Diğer", total - shown));
