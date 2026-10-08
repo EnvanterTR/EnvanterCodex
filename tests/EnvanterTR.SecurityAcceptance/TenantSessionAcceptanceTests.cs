@@ -573,6 +573,20 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 Assert.Equal(role.AssetWrite, stockPreview.StatusCode != HttpStatusCode.Forbidden);
             }
 
+            var stockMutationRequests = new[]
+            {
+                (Path: $"/api/accessories/{_ownAccessoryId}/checkout", Method: HttpMethod.Post),
+                (Path: $"/api/consumables/{_ownConsumableId}/checkout", Method: HttpMethod.Post),
+                (Path: $"/api/components/{_ownComponentId}/allocate", Method: HttpMethod.Post),
+                (Path: "/api/software-licenses", Method: HttpMethod.Post)
+            };
+            foreach (var request in stockMutationRequests)
+            {
+                using var mutationResponse = await SendAsRoleAsync(request.Method, request.Path, role.Role,
+                    new StringContent("{}", System.Text.Encoding.UTF8, "application/json"));
+                Assert.Equal(role.AssetWrite, mutationResponse.StatusCode != HttpStatusCode.Forbidden);
+            }
+
             using (var employeeList = await SendAsRoleAsync(HttpMethod.Get, "/api/employees?page=1&pageSize=20", role.Role))
                 Assert.Equal(role.EmployeeRead ? HttpStatusCode.OK : HttpStatusCode.Forbidden, employeeList.StatusCode);
 

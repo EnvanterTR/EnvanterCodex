@@ -116,5 +116,5 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 
 ## 2026-10-08 Stok aileleri rol matrisi
 
-- Yedi şirket rolünün aksesuar, sarf malzemesi, bileşen ve lisans listeleme izinleri ile CSV içe aktarma önizleme izinleri mevcut gerçek HTTP rol matrisi testine eklendi. İzinli roller liste uçlarında 200, içe aktarma önizlemesinde yetkilendirme katmanını geçiyor; yetkisiz roller 403 alıyor.
-- Genişletilmiş rol matrisi testi izole PostgreSQL üzerinde **1/1 geçti**. Ardından SMTP teslim kontrolü dahil tüm tenant kabul paketi **14/14 geçti**. Bu ek kapsam doğrulama testi; stok uçları aynı şirket `asset.read/write` politikalarını kullanıyor. Henüz her stok mutasyonu veya her alan/rol bileşimi tek tek kabul edilmedi.
+- Yedi şirket rolünün aksesuar, sarf malzemesi, bileşen ve lisans listeleme izinleri, CSV içe aktarma önizlemesi ve temsilî stok mutasyonu/atama yetkileri mevcut gerçek HTTP rol matrisi testine eklendi. İzinli roller liste uçlarında 200, yazma isteklerinde yetkilendirme katmanını geçiyor; yetkisiz roller 403 alıyor. Yazma kontrolleri stok değiştirmeyen geçersiz/boş gövdeler kullanıyor.
+- Genişletilmiş rol matrisi testi izole PostgreSQL üzerinde **1/1 geçti**. Son eklenen temsilî mutasyon/atama izinleriyle birlikte SMTP teslim kontrolü dahil tüm tenant kabul paketi **14/14 geçti**. Stok uçları aynı şirket `asset.read/write` politikalarını kullanıyor. Her stok mutasyonu veya her alan/rol bileşimi henüz tek tek kabul edilmedi.
