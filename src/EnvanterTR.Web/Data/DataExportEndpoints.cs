@@ -1063,7 +1063,10 @@ public static class DataExportEndpoints
                 Details = "Şirket JSON arşivindeki kataloglar, çalışanlar, varlıklar ve ilişkili kayıtlar yeni kimliklerle geri yüklendi." });
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            return Results.Ok(new { imported = true, counts = validationJson.RootElement.GetProperty("counts").Clone(),
+            var importedCounts = validationJson.RootElement.GetProperty("counts").EnumerateObject()
+                .Where(property => property.Name != "members")
+                .ToDictionary(property => property.Name, property => property.Value.GetInt32(), StringComparer.Ordinal);
+            return Results.Ok(new { imported = true, counts = importedCounts,
                 message = "Katalog ve envanter kayıtları yeni kimliklerle geri yüklendi. Şirket profili/marka ayarları, kullanıcı hesapları, parolalar ve medya dosyaları JSON aktarımında uygulanmadı." });
         }
         catch (DbUpdateException)
