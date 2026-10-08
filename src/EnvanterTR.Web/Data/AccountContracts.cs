@@ -8,5 +8,6 @@ public sealed record ResetPasswordRequest(string Email, string Token, string New
 public sealed record TwoFactorSetupRequest(string CurrentPassword);
 public sealed record TwoFactorCodeRequest(string Code);
 public sealed record TwoFactorRecoveryRequest(string CurrentPassword, string Code);
+public sealed record ChangeOwnPasswordRequest(string CurrentPassword, string NewPassword, string ConfirmPassword, string? TwoFactorCode);
 public sealed record ChangeMemberRoleRequest(string RoleKey);
 public sealed record InviteCompanyMemberRequest(string FullName, string Email, string RoleKey);

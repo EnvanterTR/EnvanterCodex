@@ -275,6 +275,56 @@ public static class AccountEndpoints
             return user is null ? Results.Unauthorized() : Results.Ok(new { enabled = user.TwoFactorEnabled });
         }).RequireAuthorization();
 
+        endpoints.MapPost("/api/session/password/change", async ([FromBody] ChangeOwnPasswordRequest request,
+            ClaimsPrincipal principal, HttpContext context, IAntiforgery antiforgery,
+            UserManager<EnvanterUser> userManager, SignInManager<EnvanterUser> signInManager,
+            AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
+            var user = await userManager.GetUserAsync(principal);
+            if (user is null) return Results.Unauthorized();
+            if (string.IsNullOrEmpty(request.CurrentPassword) || request.CurrentPassword.Length > 256 ||
+                string.IsNullOrEmpty(request.NewPassword) || request.NewPassword.Length > 256 ||
+                !string.Equals(request.NewPassword, request.ConfirmPassword, StringComparison.Ordinal))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["password"] = ["Mevcut parola, yeni parola ve eşleşen parola tekrarı gereklidir."] });
+            if (!await userManager.CheckPasswordAsync(user, request.CurrentPassword))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["currentPassword"] = ["Mevcut parola doğrulanamadı."] });
+
+            var validationErrors = new List<string>();
+            foreach (var validator in userManager.PasswordValidators)
+            {
+                var validation = await validator.ValidateAsync(userManager, user, request.NewPassword);
+                if (!validation.Succeeded) validationErrors.AddRange(validation.Errors.Select(error => error.Description));
+            }
+            if (validationErrors.Count > 0)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["newPassword"] = validationErrors.Distinct().ToArray() });
+
+            if (user.TwoFactorEnabled)
+            {
+                var code = request.TwoFactorCode?.Trim();
+                if (string.IsNullOrWhiteSpace(code) || code.Length > 32)
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["twoFactorCode"] = ["Authenticator veya kullanılmamış kurtarma kodu gereklidir."] });
+                var verified = await userManager.VerifyTwoFactorTokenAsync(user, TokenOptions.DefaultAuthenticatorProvider,
+                    code.Replace(" ", "", StringComparison.Ordinal).Replace("-", "", StringComparison.Ordinal));
+                if (!verified && !(await userManager.RedeemTwoFactorRecoveryCodeAsync(user, code)).Succeeded)
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["twoFactorCode"] = ["Doğrulama kodu geçersiz veya daha önce kullanılmış."] });
+            }
+
+            var changed = await userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+            if (!changed.Succeeded)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["newPassword"] = changed.Errors.Select(error => error.Description).ToArray() });
+            await userManager.UpdateSecurityStampAsync(user);
+            if (Guid.TryParse(principal.FindFirstValue("company_id"), out var companyId))
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = user.Id,
+                    TargetType = "Account", TargetId = user.Id, Action = "PasswordChanged", Details = "Hesap parolası değiştirildi; diğer oturumlar geçersiz kılındı." });
+            else
+                db.PlatformAuditEntries.Add(new PlatformAuditEntry { ActorUserId = user.Id,
+                    TargetType = "PlatformAccount", TargetId = user.Id, Action = "PasswordChanged", Details = "Platform hesabı parolası değiştirildi." });
+            await db.SaveChangesAsync(cancellationToken);
+            await signInManager.RefreshSignInAsync(user);
+            return Results.Ok(new { message = "Parolanız değiştirildi. Diğer cihazlardaki oturumlar en geç 5 dakika içinde kapatılacak." });
+        }).RequireAuthorization().RequireRateLimiting("login");
+
         endpoints.MapPost("/api/session/2fa/setup", async ([FromBody] TwoFactorSetupRequest request, ClaimsPrincipal principal,
             HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager, CancellationToken cancellationToken) =>
         {

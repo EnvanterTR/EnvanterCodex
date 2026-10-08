@@ -117,6 +117,8 @@ if (!string.IsNullOrWhiteSpace(connectionString))
         options.Lockout.MaxFailedAccessAttempts = 5;
         options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
     }).AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders();
+    builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+        options.ValidationInterval = TimeSpan.FromMinutes(5));
     builder.Services.ConfigureApplicationCookie(options =>
     {
         options.Cookie.Name = "EnvanterTR.Session";
