@@ -19,8 +19,11 @@ SFTP_TARGET="$(read_config BACKUP_SFTP_TARGET || true)"
 SFTP_DIRECTORY="$(read_config BACKUP_SFTP_DIRECTORY || true)"
 SFTP_KEY_FILE="$(read_config BACKUP_SFTP_KEY_FILE || true)"
 SFTP_KNOWN_HOSTS_FILE="$(read_config BACKUP_SFTP_KNOWN_HOSTS_FILE || true)"
+SFTP_RETENTION_DAYS="$(read_config BACKUP_SFTP_RETENTION_DAYS || true)"
+SFTP_RETENTION_DAYS="${SFTP_RETENTION_DAYS:-90}"
 [[ "$BACKUP_ROOT" = /* && "$BACKUP_ROOT" != / ]] || { echo 'BACKUP_ROOT güvenli bir mutlak yol olmalıdır.' >&2; exit 1; }
 [[ "$RETENTION_DAYS" =~ ^[1-9][0-9]{0,3}$ ]] || { echo 'BACKUP_RETENTION_DAYS 1-999 arasında olmalıdır.' >&2; exit 1; }
+[[ "$SFTP_RETENTION_DAYS" =~ ^([1-9][0-9]{0,2}|0)$ ]] || { echo 'BACKUP_SFTP_RETENTION_DAYS 0-999 arasında olmalıdır.' >&2; exit 1; }
 [[ -f "$PASSWORD_FILE" && -r "$PASSWORD_FILE" ]] || { echo 'Şifreleme parola dosyası eksik veya okunamıyor.' >&2; exit 1; }
 [[ "$(stat -c '%u:%a' "$PASSWORD_FILE")" == 0:600 ]] || { echo 'Şifreleme parola dosyası root sahipliğinde ve chmod 600 ile korunmalıdır.' >&2; exit 1; }
 install -d -m 0700 "$BACKUP_ROOT"
@@ -147,6 +150,45 @@ if [[ -n "$SFTP_TARGET$SFTP_DIRECTORY$SFTP_KEY_FILE$SFTP_KNOWN_HOSTS_FILE" ]]; t
     exit 1
   }
   echo "Uzak SFTP yedek kopyası SHA-256 ile doğrulandı: $SFTP_TARGET:$SFTP_DIRECTORY/$BACKUP_NAME"
+  if (( SFTP_RETENTION_DAYS > 0 )); then
+    REMOTE_LISTING="$WORK_DIR/remote-listing.txt"
+    LIST_BATCH="$WORK_DIR/sftp-list.batch"
+    CLEAN_BATCH="$WORK_DIR/sftp-clean.batch"
+    printf 'cd "%s"\nls -1 envantertr-server-*\n' "$SFTP_DIRECTORY" > "$LIST_BATCH"
+    sftp -q -i "$SFTP_KEY_FILE" -oBatchMode=yes -oIdentitiesOnly=yes \
+      -oStrictHostKeyChecking=yes -oUserKnownHostsFile="$SFTP_KNOWN_HOSTS_FILE" \
+      -b "$LIST_BATCH" "$SFTP_TARGET" > "$REMOTE_LISTING"
+    CUTOFF_EPOCH="$(date -u -d "$SFTP_RETENTION_DAYS days ago" +%s)"
+    declare -A REMOTE_NAMES=()
+    while IFS= read -r remote_name; do
+      remote_name="${remote_name#sftp> }"
+      [[ "$remote_name" =~ ^envantertr-server-[0-9]{8}-[0-9]{6}-[0-9a-f]{8}\.etbackup(\.sha256)?$ ]] || continue
+      REMOTE_NAMES["$remote_name"]=1
+    done < "$REMOTE_LISTING"
+    [[ -n "${REMOTE_NAMES[$BACKUP_NAME]:-}" && -n "${REMOTE_NAMES[$BACKUP_NAME.sha256]:-}" ]] || {
+      echo 'Uzak SFTP listelemesi yeni arşiv ve SHA-256 dosyasını doğrulayamadı; uzak saklama temizliği yapılmadı.' >&2
+      exit 1
+    }
+    printf 'cd "%s"\n' "$SFTP_DIRECTORY" > "$CLEAN_BATCH"
+    REMOVED_COUNT=0
+    for remote_name in "${!REMOTE_NAMES[@]}"; do
+      [[ "$remote_name" =~ ^envantertr-server-([0-9]{8}-[0-9]{6})-[0-9a-f]{8}\.etbackup$ ]] || continue
+      remote_timestamp="${BASH_REMATCH[1]}"
+      remote_epoch="$(date -u -d "${remote_timestamp:0:8} ${remote_timestamp:9:2}:${remote_timestamp:11:2}:${remote_timestamp:13:2}" +%s 2>/dev/null || true)"
+      [[ "$remote_epoch" =~ ^[0-9]+$ && "$remote_epoch" -lt "$CUTOFF_EPOCH" ]] || continue
+      printf 'rm "%s"\n' "$remote_name" >> "$CLEAN_BATCH"
+      if [[ -n "${REMOTE_NAMES[$remote_name.sha256]:-}" ]]; then printf 'rm "%s.sha256"\n' "$remote_name" >> "$CLEAN_BATCH"; fi
+      ((REMOVED_COUNT+=1))
+    done
+    if (( REMOVED_COUNT > 0 )); then
+      sftp -q -i "$SFTP_KEY_FILE" -oBatchMode=yes -oIdentitiesOnly=yes \
+        -oStrictHostKeyChecking=yes -oUserKnownHostsFile="$SFTP_KNOWN_HOSTS_FILE" \
+        -b "$CLEAN_BATCH" "$SFTP_TARGET"
+      echo "Uzak SFTP saklama temizliği: $REMOVED_COUNT adet $SFTP_RETENTION_DAYS günden eski EnvanterTR arşivi kaldırıldı."
+    fi
+  else
+    echo 'Uzak SFTP saklama temizliği BACKUP_SFTP_RETENTION_DAYS=0 ile kapalı.'
+  fi
 fi
 find "$BACKUP_ROOT" -maxdepth 1 -type f -name 'envantertr-server-*.etbackup*' -mtime "+$RETENTION_DAYS" -delete
 printf 'Şifreli yedek doğrulandı ve kaydedildi: %s\n' "$FINAL_PATH"
