@@ -238,6 +238,18 @@ public static class AccountEndpoints
                 await userManager.ResetAccessFailedCountAsync(user);
             }
 
+            if (membership is not null)
+            {
+                db.AuditEntries.Add(new AuditEntry { CompanyId = membership.CompanyId, ActorUserId = user.Id,
+                    TargetType = "Account", TargetId = user.Id, Action = "LoginSucceeded", Details = "Şirket oturumu açıldı." });
+            }
+            else if (isPlatformAdmin)
+            {
+                db.PlatformAuditEntries.Add(new PlatformAuditEntry { ActorUserId = user.Id, Action = "LoginSucceeded",
+                    TargetType = "PlatformAccount", TargetId = user.Id, Details = "Platform yönetici oturumu açıldı." });
+            }
+            await db.SaveChangesAsync(cancellationToken);
+
             var claims = new List<Claim>
             {
                 new(ClaimTypes.Name, user.DisplayName)
@@ -280,7 +292,7 @@ public static class AccountEndpoints
         }).RequireAuthorization().RequireRateLimiting("login");
 
         endpoints.MapPost("/api/session/2fa/enable", async ([FromBody] TwoFactorCodeRequest request, ClaimsPrincipal principal,
-            HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager) =>
+            HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager, AppDbContext db) =>
         {
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
             var user = await userManager.GetUserAsync(principal);
@@ -290,6 +302,7 @@ public static class AccountEndpoints
             if (string.IsNullOrWhiteSpace(await userManager.GetAuthenticatorKeyAsync(user)) || string.IsNullOrEmpty(code) ||
                 !await userManager.VerifyTwoFactorTokenAsync(user, TokenOptions.DefaultAuthenticatorProvider, code))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["code"] = ["Authenticator uygulamasındaki güncel 6 haneli kod doğrulanamadı."] });
+            AddAccountSecurityAudit(db, principal, user.Id, "TwoFactorEnabled", "İki aşamalı doğrulama etkinleştirildi.");
             var enabled = await userManager.SetTwoFactorEnabledAsync(user, true);
             if (!enabled.Succeeded) return Results.ValidationProblem(new Dictionary<string, string[]> { ["twoFactor"] = enabled.Errors.Select(x => x.Description).ToArray() });
             var recoveryCodes = await userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
@@ -299,7 +312,7 @@ public static class AccountEndpoints
         }).RequireAuthorization().RequireRateLimiting("login");
 
         endpoints.MapPost("/api/session/2fa/recovery-codes", async ([FromBody] TwoFactorRecoveryRequest request, ClaimsPrincipal principal,
-            HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager) =>
+            HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager, AppDbContext db) =>
         {
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
             var user = await userManager.GetUserAsync(principal);
@@ -309,6 +322,7 @@ public static class AccountEndpoints
             var code = request.Code?.Trim().Replace(" ", "", StringComparison.Ordinal).Replace("-", "", StringComparison.Ordinal);
             if (string.IsNullOrEmpty(code) || !await userManager.VerifyTwoFactorTokenAsync(user, TokenOptions.DefaultAuthenticatorProvider, code))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["code"] = ["Yeni kurtarma kodları üretmek için authenticator kodunu doğrulayın."] });
+            AddAccountSecurityAudit(db, principal, user.Id, "TwoFactorRecoveryCodesRotated", "İki aşamalı doğrulama kurtarma kodları yenilendi.");
             var recoveryCodes = await userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
             return recoveryCodes is null
                 ? Results.Problem("Kurtarma kodları oluşturulamadı.", statusCode: StatusCodes.Status500InternalServerError)
@@ -316,7 +330,7 @@ public static class AccountEndpoints
         }).RequireAuthorization().RequireRateLimiting("login");
 
         endpoints.MapPost("/api/session/2fa/disable", async ([FromBody] TwoFactorRecoveryRequest request, ClaimsPrincipal principal,
-            HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager) =>
+            HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager, AppDbContext db) =>
         {
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
             var user = await userManager.GetUserAsync(principal);
@@ -329,6 +343,7 @@ public static class AccountEndpoints
             if (!verified && !string.IsNullOrEmpty(code))
                 verified = (await userManager.RedeemTwoFactorRecoveryCodeAsync(user, code)).Succeeded;
             if (!verified) return Results.ValidationProblem(new Dictionary<string, string[]> { ["code"] = ["Authenticator veya kullanılmamış kurtarma kodu doğrulanamadı."] });
+            AddAccountSecurityAudit(db, principal, user.Id, "TwoFactorDisabled", "İki aşamalı doğrulama kapatıldı.");
             var disabled = await userManager.SetTwoFactorEnabledAsync(user, false);
             if (!disabled.Succeeded) return Results.ValidationProblem(new Dictionary<string, string[]> { ["twoFactor"] = disabled.Errors.Select(x => x.Description).ToArray() });
             await userManager.ResetAuthenticatorKeyAsync(user);
@@ -405,9 +420,19 @@ public static class AccountEndpoints
         }).AllowAnonymous().RequireRateLimiting("login");
 
         endpoints.MapPost("/api/session/logout", async (HttpContext context, IAntiforgery antiforgery,
-            SignInManager<EnvanterUser> signInManager) =>
+            SignInManager<EnvanterUser> signInManager, AppDbContext db) =>
         {
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
+            if (Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
+            {
+                if (Guid.TryParse(context.User.FindFirstValue("company_id"), out var companyId))
+                    db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Account",
+                        TargetId = actorId, Action = "Logout", Details = "Şirket oturumu kapatıldı." });
+                else
+                    db.PlatformAuditEntries.Add(new PlatformAuditEntry { ActorUserId = actorId, TargetType = "PlatformAccount",
+                        TargetId = actorId, Action = "Logout", Details = "Platform yönetici oturumu kapatıldı." });
+                await db.SaveChangesAsync();
+            }
             await signInManager.SignOutAsync();
             return Results.NoContent();
         }).RequireAuthorization();
@@ -547,6 +572,17 @@ public static class AccountEndpoints
         {
             return false;
         }
+    }
+
+    private static void AddAccountSecurityAudit(AppDbContext db, ClaimsPrincipal principal, Guid actorId,
+        string action, string details)
+    {
+        if (Guid.TryParse(principal.FindFirstValue("company_id"), out var companyId))
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Account",
+                TargetId = actorId, Action = action, Details = details });
+        else
+            db.PlatformAuditEntries.Add(new PlatformAuditEntry { ActorUserId = actorId, TargetType = "PlatformAccount",
+                TargetId = actorId, Action = action, Details = details });
     }
 
     private static bool TokensMatch(string supplied, string? expected)

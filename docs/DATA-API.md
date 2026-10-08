@@ -148,6 +148,7 @@ Konum listesi `isDefault`, `managerEmployeeId` ve `managerName` alanlarını iç
 - `GET /api/activity?page=1&pageSize=50`
 - `GET /api/activity?assetId=&employeeId=&from=&to=&eventType=&q=` (şirket içinde varlık/çalışan/tarih/tür/metin filtreli)
 - `GET /api/audit?page=1&pageSize=50&q=&targetType=` (sahip/yönetici; filtreler ve sayfalama)
+- Denetim günlüğü oturum açma/kapatma ile MFA etkinleştirme/kapatma/kurtarma kodu yenileme olaylarını kullanıcı ve zaman bilgisiyle gösterir; doğrulama sırlarını kaydetmez.
 - `GET /api/members` (sahip/yönetici; şirket üyelikleri, kullanılabilir roller ve varsa çalışan profili bağlantısı)
 - `POST /api/members/invite` (sahip/yönetici; ad, e-posta ve rol; CSRF + istek sınırı + etkin plan/koltuk kontrolü)
 - `PATCH /api/members/{userId}/role` (sahip/yönetici; denetim kaydı üretir)

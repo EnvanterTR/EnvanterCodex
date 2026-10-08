@@ -1483,6 +1483,19 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, disableResponse.StatusCode);
         using (var passwordOnlyLogin = await SendAnonymousLoginAsync(loginClient, email, password, null, loginToken, loginCookie))
             Assert.Equal(HttpStatusCode.OK, passwordOnlyLogin.StatusCode);
+
+        await using var auditScope = _factory.Services.CreateAsyncScope();
+        var auditDb = auditScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var accountEvents = await auditDb.AuditEntries.AsNoTracking()
+            .Where(entry => entry.CompanyId == _companyId && entry.TargetId == _userId)
+            .Select(entry => new { entry.Action, entry.Details }).ToListAsync();
+        Assert.True(accountEvents.Count(entry => entry.Action == "LoginSucceeded") >= 4);
+        Assert.Contains(accountEvents, entry => entry.Action == "TwoFactorEnabled");
+        Assert.Contains(accountEvents, entry => entry.Action == "TwoFactorRecoveryCodesRotated");
+        Assert.Contains(accountEvents, entry => entry.Action == "TwoFactorDisabled");
+        Assert.DoesNotContain(accountEvents, entry => entry.Details!.Contains(secret, StringComparison.Ordinal) ||
+            entry.Details.Contains(recoveryCode, StringComparison.Ordinal) ||
+            entry.Details.Contains(rotatedRecoveryCode, StringComparison.Ordinal));
     }
 
     private async Task<HttpResponseMessage> SendAnonymousLoginAsync(HttpClient client, string email, string password, string? twoFactorCode,

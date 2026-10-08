@@ -61,7 +61,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 - Profesyonel ürün sitesi, ekran görüntüsü/video içerikleri, doğru paket gereksinimleri ve satın alma bilgilendirmeleri.
 - Modern kurulum/kullanım kılavuzları, veri taşıma ve yönetici görevleri; Türkçe ve İngilizce ilk dalga.
 - Gerçek müşteri SMTP sağlayıcısında parola yenileme teslimat kabulü, destek e-postası ve onaylı WhatsApp iletişim kanalı.
-- MFA/kurtarma artık Authenticator TOTP ve tek kullanımlık kurtarma kodlarıyla kullanılabilir; kalan işler oturum denetimi, merkezi loglama, izleme ve üretim operasyon prosedürleridir.
+- Authenticator TOTP ve tek kullanımlık kurtarma kodları kullanılabilir; başarılı giriş/kapatma ve MFA değişiklikleri denetim günlüğüne yazılır. Kalan işler başarısız giriş/oturum cihazı denetimi, merkezi loglama, izleme ve üretim operasyon prosedürleridir.
 
 ## Bilinçli ürün sınırları
 

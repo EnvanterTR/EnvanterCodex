@@ -1636,6 +1636,8 @@ public static class OperationalEndpoints
         "Invited" => "Kullanıcı davet edildi", "RoleChanged" => "Kullanıcı rolü değiştirildi", "ManagerChanged" => "Yönetici bağlantısı değiştirildi",
         "CsvImported" => "CSV içe aktarıldı", "XlsxImported" => "Excel içe aktarıldı", "AuditScheduled" => "Denetim planlandı", "AuditScheduleCleared" => "Denetim planı kaldırıldı",
         "ProfilePhotoUpdated" => "Profil fotoğrafı güncellendi", "ProfilePhotoRemoved" => "Profil fotoğrafı kaldırıldı",
+        "LoginSucceeded" => "Oturum açıldı", "Logout" => "Oturum kapatıldı", "TwoFactorEnabled" => "İki aşamalı doğrulama açıldı",
+        "TwoFactorRecoveryCodesRotated" => "Kurtarma kodları yenilendi", "TwoFactorDisabled" => "İki aşamalı doğrulama kapatıldı",
         "PrivateNotesUpdated" => "Özel notlar güncellendi", "DocumentAdded" => "Belge eklendi", "DocumentRemoved" => "Belge kaldırıldı",
         "AttachmentAdded" => "Ek dosya eklendi", "AttachmentRemoved" => "Ek dosya kaldırıldı", "CatalogCreated" => "Katalog kaydı oluşturuldu",
         "CatalogManagerChanged" => "Konum sorumlusu değiştirildi", "CatalogRenamed" => "Katalog kaydı yeniden adlandırıldı",
