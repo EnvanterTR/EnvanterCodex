@@ -4629,7 +4629,13 @@
       if (!file || !file.name.toLocaleLowerCase('tr-TR').endsWith('.json') || file.size > 32 * 1024 * 1024) { result.textContent = 'En fazla 32 MB boyutunda bir şirket JSON dosyası seçin.'; return; }
       if (!confirm('JSON arşivindeki kayıtlar bu şirkete yeni kimliklerle eklenecek. Şirket kataloğu ve envanter tabloları boş olmalıdır. Fotoğraf ve belgeler bu JSON işlemine dahil değildir. Devam edilsin mi?')) return;
       button.disabled = true; result.textContent = 'Şirket arşivi tek işlem olarak geri yükleniyor…';
-      try { const response = await api('/api/company/import/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: await file.text() }); result.textContent = response.message; button.hidden = true; $('#runImportPreview').disabled = true; await loadDashboard('', 1); }
+      try {
+        const response = await api('/api/company/import/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: await file.text() });
+        const labels = { assets: 'Varlık', employees: 'Çalışan', assetCategories: 'Kategori', assetBrands: 'Marka', assetModels: 'Model', departmentCatalog: 'Departman', locationCatalog: 'Konum', assetEvents: 'Varlık hareketi', assetMaintenances: 'Bakım kaydı', inventoryRequests: 'Envanter talebi', auditEntries: 'Denetim kaydı' };
+        const details = Object.entries(response.counts || {}).filter(([, count]) => Number(count) > 0).map(([key, count]) => `${labels[key] || key}: ${fmt.format(Number(count))}`).join('\n');
+        result.textContent = details ? `${response.message}\n\nEklenen kayıtlar:\n${details}` : response.message;
+        button.hidden = true; $('#runImportPreview').disabled = true; await loadDashboard('', 1);
+      }
       catch (error) { result.textContent = error.message; }
       finally { button.disabled = false; }
     });
