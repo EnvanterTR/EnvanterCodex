@@ -2377,13 +2377,15 @@ public static class AssetEndpoints
             context.Response.Headers["Cache-Control"] = "no-store";
             context.Response.Headers["X-Total-Count"] = total.ToString(System.Globalization.CultureInfo.InvariantCulture);
             await using var writer = new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
-            await writer.WriteLineAsync("Etiket;Ad;Durum;Kategori;Marka;Model;Seri No;Konum;Personel No;Çalışan;Alış Tarihi;Garanti Bitiş Tarihi;Alış Bedeli;Para Birimi".AsMemory(), cancellationToken);
+            await writer.WriteLineAsync("Etiket;Ad;Durum;Kategori;Marka;Model;Seri No;Konum;Personel No;Çalışan;Alış Tarihi;Garanti Bitiş Tarihi;Alış Bedeli;Para Birimi;Üst Varlık Etiketi".AsMemory(), cancellationToken);
             var rows = ordered.Select(x => new AssetExportRow(
                 x.AssetTag, x.Name, x.Status,
                 db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault(),
                 db.AssetBrands.Where(b => b.CompanyId == companyId && b.Id == x.BrandId).Select(b => b.Name).FirstOrDefault(),
                 db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.Name).FirstOrDefault(),
                 x.SerialNumber, x.Location,
+                db.Assets.Where(parent => parent.CompanyId == companyId && parent.Id == x.ParentAssetId)
+                    .Select(parent => parent.AssetTag).FirstOrDefault(),
                 db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId)
                     .Select(e => e.EmployeeNumber).FirstOrDefault(),
                 db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId)
@@ -2398,7 +2400,7 @@ public static class AssetEndpoints
                     CsvCell(row.PurchaseDate?.ToString("yyyy-MM-dd")),
                     CsvCell(row.WarrantyExpiresAt?.ToString("yyyy-MM-dd")),
                     CsvCell(row.PurchaseCost?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)),
-                    CsvCell(row.Currency) });
+                    CsvCell(row.Currency), CsvCell(row.ParentAssetTag) });
                 await writer.WriteLineAsync(line.AsMemory(), cancellationToken);
                 if (++written % 500 == 0) await writer.FlushAsync(cancellationToken);
             }
@@ -2638,7 +2640,7 @@ public static class AssetEndpoints
         string Title, string? Subtitle, string Status, bool? AutoRenew);
 
     private sealed record AssetExportRow(string AssetTag, string Name, string Status, string? Category,
-        string? Brand, string? Model, string? SerialNumber, string? Location, string? EmployeeNumber,
+        string? Brand, string? Model, string? SerialNumber, string? Location, string? ParentAssetTag, string? EmployeeNumber,
         string? EmployeeName, DateOnly? PurchaseDate, DateOnly? WarrantyExpiresAt, decimal? PurchaseCost, string Currency);
 
     private static string CsvCell(string? value)

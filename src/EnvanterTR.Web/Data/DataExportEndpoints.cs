@@ -183,12 +183,15 @@ public static class DataExportEndpoints
         { return Results.UnprocessableEntity(new { message = "CSV tırnak/ayraç biçimi bozuk." }); }
         string[] legacyHeader = ["Etiket", "Ad", "Durum", "Kategori", "Marka", "Model", "Seri No", "Konum", "Personel No", "Çalışan", "Alış Tarihi", "Alış Bedeli", "Para Birimi"];
         string[] warrantyHeader = ["Etiket", "Ad", "Durum", "Kategori", "Marka", "Model", "Seri No", "Konum", "Personel No", "Çalışan", "Alış Tarihi", "Garanti Bitiş Tarihi", "Alış Bedeli", "Para Birimi"];
-        var hasWarrantyColumn = rows.Count > 0 && rows[0].SequenceEqual(warrantyHeader, StringComparer.OrdinalIgnoreCase);
-        var columnCount = hasWarrantyColumn ? warrantyHeader.Length : legacyHeader.Length;
+        var legacyWithParent = legacyHeader.Append("Üst Varlık Etiketi").ToArray();
+        var warrantyWithParent = warrantyHeader.Append("Üst Varlık Etiketi").ToArray();
+        var hasParentColumn = rows.Count > 0 && (rows[0].SequenceEqual(legacyWithParent, StringComparer.OrdinalIgnoreCase) || rows[0].SequenceEqual(warrantyWithParent, StringComparer.OrdinalIgnoreCase));
+        var hasWarrantyColumn = rows.Count > 0 && (rows[0].SequenceEqual(warrantyHeader, StringComparer.OrdinalIgnoreCase) || rows[0].SequenceEqual(warrantyWithParent, StringComparer.OrdinalIgnoreCase));
+        var columnCount = hasParentColumn ? (hasWarrantyColumn ? warrantyWithParent.Length : legacyWithParent.Length) : (hasWarrantyColumn ? warrantyHeader.Length : legacyHeader.Length);
         var costIndex = hasWarrantyColumn ? 12 : 11;
         var currencyIndex = hasWarrantyColumn ? 13 : 12;
         if (rows.Count is < 2 || rows.Count > CsvImportMaxRows + 1 ||
-            (!hasWarrantyColumn && !rows[0].SequenceEqual(legacyHeader, StringComparer.OrdinalIgnoreCase)))
+            (!hasWarrantyColumn && !rows[0].SequenceEqual(legacyHeader, StringComparer.OrdinalIgnoreCase) && !rows[0].SequenceEqual(legacyWithParent, StringComparer.OrdinalIgnoreCase)))
             return Results.UnprocessableEntity(new { message = $"EnvanterTR başlıklarıyla {CsvImportMaxRows:N0} veya daha az satır içeren bir CSV yükleyin." });
 
         var errors = new List<string>();
@@ -203,6 +206,7 @@ public static class DataExportEndpoints
             if ((row[2] == AssetStatuses.Deployed) != !string.IsNullOrWhiteSpace(row[8])) AddError(errors, $"{index + 2}. satırda durum ve personel numarası eşleşmiyor.");
             if (string.IsNullOrWhiteSpace(row[3]) || row[3].Length > 120 || row[4].Length > 120 || row[5].Length > 120 || row[6].Length > 160 || row[7].Length > 160 || row[8].Length > 80 || row[9].Length > 200 || row[currencyIndex].Length != 3 || !row[currencyIndex].All(char.IsAsciiLetter))
                 AddError(errors, $"{index + 2}. satırda alan uzunluğu, kategori veya para birimi geçersiz.");
+            if (hasParentColumn && row[^1].Length > 80) AddError(errors, $"{index + 2}. satırdaki üst varlık etiketi 80 karakteri aşamaz.");
             if (!string.IsNullOrWhiteSpace(row[10]) && !DateOnly.TryParseExact(row[10], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
                 AddError(errors, $"{index + 2}. satırdaki alış tarihi yyyy-AA-gg biçiminde olmalı.");
             if (hasWarrantyColumn && !string.IsNullOrWhiteSpace(row[11]) && !DateOnly.TryParseExact(row[11], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
@@ -221,6 +225,10 @@ public static class DataExportEndpoints
         var brandLookup = brands.GroupBy(x => x.Name.Trim(), StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.ToArray(), StringComparer.OrdinalIgnoreCase);
         var modelLookup = models.GroupBy(x => (x.BrandId, Name: x.Name.Trim()), new BrandModelComparer()).ToDictionary(x => x.Key, x => x.ToArray(), new BrandModelComparer());
         var employeeLookup = employees.GroupBy(x => x.EmployeeNumber.Trim(), StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.ToArray(), StringComparer.OrdinalIgnoreCase);
+        var parentTags = hasParentColumn ? rows.Skip(1).Select(row => row[^1].Trim().ToUpperInvariant()).Where(tag => tag.Length > 0).Distinct(StringComparer.Ordinal).ToArray() : [];
+        var parentLookup = parentTags.Length == 0 ? new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase) :
+            await db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.Status != AssetStatuses.Archived && parentTags.Contains(x.AssetTag.ToUpper()))
+                .Select(x => new { x.Id, x.AssetTag }).ToDictionaryAsync(x => x.AssetTag.ToUpper(), x => x.Id, StringComparer.OrdinalIgnoreCase, cancellationToken);
         var locationCatalogPaths = await AssetEndpoints.GetActiveLocationPathMapAsync(db, companyId, cancellationToken);
         var defaultAssetLocation = await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, cancellationToken);
         var importRows = new List<(Asset Asset, Guid? EmployeeId)>(rows.Count - 1);
@@ -249,6 +257,13 @@ public static class DataExportEndpoints
                     AddError(errors, $"{index + 2}. satırdaki çalışan numarası ve adı mevcut şirkette eşleşmiyor.");
                 else employeeId = employeeMatches[0].Id;
             }
+            Guid? parentAssetId = null;
+            if (hasParentColumn && !string.IsNullOrWhiteSpace(row[^1]))
+            {
+                if (string.Equals(row[^1].Trim(), row[0].Trim(), StringComparison.OrdinalIgnoreCase) || !parentLookup.TryGetValue(row[^1].Trim(), out var foundParentId))
+                    AddError(errors, $"{index + 2}. satırdaki üst varlık bu şirkette bulunamadı veya varlık kendisini üst varlık seçiyor.");
+                else parentAssetId = foundParentId;
+            }
             if (categoryLookup.TryGetValue(row[3].Trim(), out categoryMatches) && categoryMatches.Length == 1)
             {
                 DateOnly? purchaseDate = string.IsNullOrWhiteSpace(row[10]) ? null : DateOnly.ParseExact(row[10], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
@@ -262,7 +277,7 @@ public static class DataExportEndpoints
                     CompanyId = companyId, AssetTag = row[0].Trim().ToUpperInvariant(), Name = row[1].Trim(), Status = row[2],
                     CategoryId = categoryMatches[0].Id, BrandId = brandId, ModelId = modelId, SerialNumber = CleanCsv(row[6]),
                     Location = location, LocationCatalogId = locationCatalogId, AssignedEmployeeId = employeeId, PurchaseDate = purchaseDate, WarrantyExpiresAt = warrantyExpiresAt,
-                    PurchaseCost = purchaseCost, Currency = row[currencyIndex].Trim().ToUpperInvariant()
+                    PurchaseCost = purchaseCost, Currency = row[currencyIndex].Trim().ToUpperInvariant(), ParentAssetId = parentAssetId
                 }, employeeId));
             }
         }
@@ -335,11 +350,14 @@ public static class DataExportEndpoints
 
         string[] legacyHeader = ["Etiket", "Ad", "Durum", "Kategori", "Marka", "Model", "Seri No", "Konum", "Personel No", "Çalışan", "Alış Tarihi", "Alış Bedeli", "Para Birimi"];
         string[] warrantyHeader = ["Etiket", "Ad", "Durum", "Kategori", "Marka", "Model", "Seri No", "Konum", "Personel No", "Çalışan", "Alış Tarihi", "Garanti Bitiş Tarihi", "Alış Bedeli", "Para Birimi"];
-        var hasWarrantyColumn = records[0].SequenceEqual(warrantyHeader, StringComparer.OrdinalIgnoreCase);
-        var columnCount = hasWarrantyColumn ? warrantyHeader.Length : legacyHeader.Length;
+        var legacyWithParent = legacyHeader.Append("Üst Varlık Etiketi").ToArray();
+        var warrantyWithParent = warrantyHeader.Append("Üst Varlık Etiketi").ToArray();
+        var hasParentColumn = records[0].SequenceEqual(legacyWithParent, StringComparer.OrdinalIgnoreCase) || records[0].SequenceEqual(warrantyWithParent, StringComparer.OrdinalIgnoreCase);
+        var hasWarrantyColumn = records[0].SequenceEqual(warrantyHeader, StringComparer.OrdinalIgnoreCase) || records[0].SequenceEqual(warrantyWithParent, StringComparer.OrdinalIgnoreCase);
+        var columnCount = hasParentColumn ? (hasWarrantyColumn ? warrantyWithParent.Length : legacyWithParent.Length) : (hasWarrantyColumn ? warrantyHeader.Length : legacyHeader.Length);
         var costIndex = hasWarrantyColumn ? 12 : 11;
         var currencyIndex = hasWarrantyColumn ? 13 : 12;
-        if (!hasWarrantyColumn && !records[0].SequenceEqual(legacyHeader, StringComparer.OrdinalIgnoreCase))
+        if (!hasWarrantyColumn && !records[0].SequenceEqual(legacyHeader, StringComparer.OrdinalIgnoreCase) && !records[0].SequenceEqual(legacyWithParent, StringComparer.OrdinalIgnoreCase))
             return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV sütun başlıkları EnvanterTR varlık dışa aktarımıyla eşleşmiyor." } });
 
         var errors = new List<string>();
@@ -355,6 +373,7 @@ public static class DataExportEndpoints
             if ((row[2] == AssetStatuses.Deployed) != !string.IsNullOrWhiteSpace(row[8])) AddError(errors, $"{index + 2}. satırda atanmış durumuyla personel bilgisi eşleşmiyor.");
             if (row[3].Length > 120 || row[4].Length > 120 || row[5].Length > 120 || row[6].Length > 160 || row[7].Length > 160 || row[8].Length > 80 || row[9].Length > 200 || row[currencyIndex].Length != 3 || !row[currencyIndex].All(char.IsAsciiLetter))
                 AddError(errors, $"{index + 2}. satırda alan uzunluğu veya para birimi biçimi geçersiz.");
+            if (hasParentColumn && row[^1].Length > 80) AddError(errors, $"{index + 2}. satırdaki üst varlık etiketi 80 karakteri aşamaz.");
             if (!string.IsNullOrWhiteSpace(row[10]) && !DateOnly.TryParseExact(row[10], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
                 AddError(errors, $"{index + 2}. satırdaki alış tarihi yyyy-AA-gg biçiminde olmalı.");
             if (hasWarrantyColumn && !string.IsNullOrWhiteSpace(row[11]) && !DateOnly.TryParseExact(row[11], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
@@ -378,6 +397,10 @@ public static class DataExportEndpoints
             .Select(item => new { item.BrandId, item.Name }).ToListAsync(cancellationToken);
         var matchedEmployees = await db.Employees.AsNoTracking().Where(item => item.CompanyId == companyId && employeeNumbers.Contains(item.EmployeeNumber.ToUpper()))
             .Select(item => new { item.EmployeeNumber, item.DisplayName }).ToListAsync(cancellationToken);
+        var parentTags = hasParentColumn ? validRows.Select(item => item.row[^1].Trim().ToUpperInvariant()).Where(tag => tag.Length > 0).Distinct(StringComparer.Ordinal).ToArray() : [];
+        var availableParentTags = parentTags.Length == 0 ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) :
+            (await db.Assets.AsNoTracking().Where(asset => asset.CompanyId == companyId && asset.Status != AssetStatuses.Archived && parentTags.Contains(asset.AssetTag.ToUpper()))
+                .Select(asset => asset.AssetTag.ToUpper()).ToListAsync(cancellationToken)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var categoryCounts = availableCategories.GroupBy(value => value.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
         var brandCounts = availableBrands.GroupBy(value => value.Trim(), StringComparer.OrdinalIgnoreCase)
@@ -403,6 +426,9 @@ public static class DataExportEndpoints
             if (!string.IsNullOrWhiteSpace(row[8]) && (!employeeLookup.TryGetValue(row[8].Trim(), out var names) ||
                 names.Length != 1 || !string.Equals(names[0], row[9].Trim(), StringComparison.OrdinalIgnoreCase)))
                 AddError(errors, $"{index + 2}. satırdaki çalışan numarası ve adı bu şirkette eşleşmiyor.");
+            if (hasParentColumn && !string.IsNullOrWhiteSpace(row[^1]) &&
+                (string.Equals(row[^1].Trim(), row[0].Trim(), StringComparison.OrdinalIgnoreCase) || !availableParentTags.Contains(row[^1].Trim())))
+                AddError(errors, $"{index + 2}. satırdaki üst varlık etiketi bu şirkette bulunamadı veya varlık kendisini üst varlık seçiyor.");
         }
 
         var normalizedTags = tags.Select(tag => tag.ToUpperInvariant()).ToArray();
@@ -418,12 +444,12 @@ public static class DataExportEndpoints
             isValid = errors.Count == 0,
             sourceCompany = "CSV dosyası",
             targetCompany = targetName,
-            schemaVersion = hasWarrantyColumn ? 2 : 1,
+            schemaVersion = hasParentColumn ? 3 : hasWarrantyColumn ? 2 : 1,
             counts = new { assets = records.Count - 1 },
             defaultLocationApplied,
             existingMatches = new { assets = existingMatches },
             errors = errors.Take(30).ToArray(),
-            warning = $"Varsayılan konum {defaultLocationApplied:N0} boş konumlu varlığa uygulanacak. Önizleme kategori, marka, model ve çalışan eşleşmelerini denetler. Var olan kayıtlar birleştirilmez; bu aşamada hiçbir kayıt değiştirilmez."
+            warning = $"Varsayılan konum {defaultLocationApplied:N0} boş konumlu varlığa uygulanacak. Önizleme kategori, marka, model, çalışan ve varsa üst varlık eşleşmelerini denetler. Var olan kayıtlar birleştirilmez; bu aşamada hiçbir kayıt değiştirilmez."
         });
     }
 
