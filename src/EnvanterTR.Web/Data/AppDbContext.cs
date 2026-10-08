@@ -34,6 +34,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AccessoryPurchaseOrderLine> AccessoryPurchaseOrderLines => Set<AccessoryPurchaseOrderLine>();
     public DbSet<StockPurchaseOrder> StockPurchaseOrders => Set<StockPurchaseOrder>();
     public DbSet<StockPurchaseOrderLine> StockPurchaseOrderLines => Set<StockPurchaseOrderLine>();
+    public DbSet<AssetPurchaseOrder> AssetPurchaseOrders => Set<AssetPurchaseOrder>();
+    public DbSet<AssetPurchaseOrderLine> AssetPurchaseOrderLines => Set<AssetPurchaseOrderLine>();
     public DbSet<Consumable> Consumables => Set<Consumable>();
     public DbSet<ConsumableMovement> ConsumableMovements => Set<ConsumableMovement>();
     public DbSet<InventoryRequest> InventoryRequests => Set<InventoryRequest>();
@@ -584,6 +586,44 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasForeignKey(x => new { x.CompanyId, x.ConsumableId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<StockPurchaseOrderLine>().HasOne<InventoryComponent>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.ComponentId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+
+        modelBuilder.Entity<AssetPurchaseOrder>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<AssetPurchaseOrder>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssetPurchaseOrder>().Property(x => x.OrderNumber).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<AssetPurchaseOrder>().Property(x => x.Supplier).HasMaxLength(200).IsRequired();
+        modelBuilder.Entity<AssetPurchaseOrder>().Property(x => x.Status).HasMaxLength(24).IsRequired();
+        modelBuilder.Entity<AssetPurchaseOrder>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
+        modelBuilder.Entity<AssetPurchaseOrder>().Property(x => x.Notes).HasMaxLength(2000);
+        modelBuilder.Entity<AssetPurchaseOrder>().HasIndex(x => new { x.CompanyId, x.OrderNumber }).IsUnique();
+        modelBuilder.Entity<AssetPurchaseOrder>().HasIndex(x => new { x.CompanyId, x.Status, x.OrderDate });
+        modelBuilder.Entity<AssetPurchaseOrder>().HasOne<EnvanterUser>().WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<AssetPurchaseOrder>().HasOne<SupplierCatalogEntry>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.SupplierId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AssetPurchaseOrder>().ToTable("AssetPurchaseOrders", table =>
+        {
+            table.HasCheckConstraint("CK_AssetPurchaseOrders_Status", "\"Status\" IN ('Ordered', 'PartiallyReceived', 'Received', 'Cancelled')");
+            table.HasCheckConstraint("CK_AssetPurchaseOrders_Dates", "\"ExpectedOn\" IS NULL OR \"ExpectedOn\" >= \"OrderDate\"");
+            table.HasCheckConstraint("CK_AssetPurchaseOrders_Currency", "char_length(\"Currency\") = 3");
+        });
+        modelBuilder.Entity<AssetPurchaseOrderLine>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<AssetPurchaseOrderLine>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssetPurchaseOrderLine>().Property(x => x.Name).HasMaxLength(200).IsRequired();
+        modelBuilder.Entity<AssetPurchaseOrderLine>().Property(x => x.Notes).HasMaxLength(500);
+        modelBuilder.Entity<AssetPurchaseOrderLine>().Property(x => x.UnitCost).HasPrecision(18, 2);
+        modelBuilder.Entity<AssetPurchaseOrderLine>().HasIndex(x => new { x.CompanyId, x.PurchaseOrderId });
+        modelBuilder.Entity<AssetPurchaseOrderLine>().ToTable("AssetPurchaseOrderLines", table =>
+        {
+            table.HasCheckConstraint("CK_AssetPurchaseOrderLines_Quantity", "\"Quantity\" > 0 AND \"QuantityReceived\" BETWEEN 0 AND \"Quantity\"");
+            table.HasCheckConstraint("CK_AssetPurchaseOrderLines_Cost", "\"UnitCost\" >= 0");
+        });
+        modelBuilder.Entity<AssetPurchaseOrderLine>().HasOne<AssetPurchaseOrder>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.PurchaseOrderId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssetPurchaseOrderLine>().HasOne<AssetCategory>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.CategoryId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AssetPurchaseOrderLine>().HasOne<AssetBrand>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.BrandId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<AssetPurchaseOrderLine>().HasOne<AssetModel>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ModelId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
 
         modelBuilder.Entity<Asset>().HasQueryFilter(x => x.DeletedAt == null);
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.AssetTag }).IsUnique().HasFilter("\"DeletedAt\" IS NULL");

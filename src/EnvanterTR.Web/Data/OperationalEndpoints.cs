@@ -1762,7 +1762,7 @@ public static class OperationalEndpoints
     private static string AuditTargetLabel(string value) => value switch
     {
         "Asset" => "Varlık", "Employee" => "Çalışan", "Company" => "Şirket", "Account" => "Hesap",
-        "Accessory" => "Aksesuar", "AccessoryKit" => "Aksesuar kiti", "AccessoryPurchaseOrder" => "Aksesuar siparişi",
+        "Accessory" => "Aksesuar", "AccessoryKit" => "Aksesuar kiti", "AccessoryPurchaseOrder" => "Aksesuar siparişi", "AssetPurchaseOrder" => "Varlık siparişi",
         "Consumable" => "Sarf malzemesi", "Component" => "Bileşen", "SoftwareLicense" => "Yazılım lisansı",
         "Supplier" => "Tedarikçi", "Location" => "Konum", "Department" => "Departman", "categories" => "Kategori",
         "brands" => "Marka", "models" => "Model", _ => value
@@ -1785,6 +1785,7 @@ public static class OperationalEndpoints
         "AttachmentAdded" => "Ek dosya eklendi", "AttachmentRemoved" => "Ek dosya kaldırıldı", "CatalogCreated" => "Katalog kaydı oluşturuldu",
         "CatalogManagerChanged" => "Konum sorumlusu değiştirildi", "CatalogRenamed" => "Katalog kaydı yeniden adlandırıldı",
         "CatalogArchived" or "archived" => "Arşivlendi", "CatalogRestored" or "restored" => "Geri alındı",
+        "asset-order.created" => "Varlık siparişi oluşturuldu", "asset-order.receipt" => "Varlık siparişi teslim alındı", "asset-order.cancelled" => "Varlık siparişi iptal edildi",
         "checked_out" or "bulk_checked_out" => "Aksesuar teslim edildi", "checked_in" or "bulk_checked_in" => "Aksesuar iade alındı",
         "accessory.created" => "Aksesuar oluşturuldu", "accessory.updated" => "Aksesuar güncellendi",
         "accessory-order.created" => "Aksesuar siparişi oluşturuldu", "accessory-order.received" => "Sipariş kalemi teslim alındı",

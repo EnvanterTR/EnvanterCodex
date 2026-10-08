@@ -25,7 +25,9 @@ public static class SupplierCatalogEndpoints
             var items = await query.OrderBy(x => x.Name).Take(500).Select(x => new
             {
                 x.Id, x.Name, x.ContactName, x.Email, x.Phone, x.Website, x.Notes, x.IsActive, x.CreatedAt, x.UpdatedAt,
-                orderCount = db.AccessoryPurchaseOrders.Count(o => o.CompanyId == companyId && o.SupplierId == x.Id),
+                orderCount = db.AccessoryPurchaseOrders.Count(o => o.CompanyId == companyId && o.SupplierId == x.Id) +
+                    db.StockPurchaseOrders.Count(o => o.CompanyId == companyId && o.SupplierId == x.Id) +
+                    db.AssetPurchaseOrders.Count(o => o.CompanyId == companyId && o.SupplierId == x.Id),
                 accessoryCount = db.Accessories.Count(a => a.CompanyId == companyId && a.SupplierId == x.Id),
                 consumableCount = db.Consumables.Count(c => c.CompanyId == companyId && c.SupplierId == x.Id),
                 componentCount = db.InventoryComponents.Count(c => c.CompanyId == companyId && c.SupplierId == x.Id),
