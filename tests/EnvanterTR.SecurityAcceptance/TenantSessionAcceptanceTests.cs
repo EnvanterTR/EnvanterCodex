@@ -565,11 +565,34 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(requestId, Assert.Single(ownItems).GetProperty("id").GetGuid());
         }
 
+        using (var employeeChoices = await SendAsUserAsync(HttpMethod.Get, "/api/requests/employees", _sameCompanyOtherUserId, _companyId, role: "viewer"))
+        using (var employeePayload = JsonDocument.Parse(await employeeChoices.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, employeeChoices.StatusCode);
+            var choices = employeePayload.RootElement.GetProperty("items").EnumerateArray().ToArray();
+            Assert.Equal(_ownEmployeeId, Assert.Single(choices).GetProperty("id").GetGuid());
+        }
+
         using var ownExport = await SendAsUserAsync(HttpMethod.Get, "/api/requests/export.csv", _sameCompanyOtherUserId, _companyId, role: "viewer");
         var ownCsv = await ownExport.Content.ReadAsStringAsync();
         Assert.Equal(HttpStatusCode.OK, ownExport.StatusCode);
         Assert.Contains($"OWN-{_userId:N}", ownCsv);
         Assert.DoesNotContain("OWN-SECOND-", ownCsv);
+
+        linkedMembership.EmployeeId = null;
+        await db.SaveChangesAsync();
+        using (var unlinkedChoices = await SendAsUserAsync(HttpMethod.Get, "/api/requests/employees", _sameCompanyOtherUserId, _companyId, role: "viewer"))
+        using (var unlinkedPayload = JsonDocument.Parse(await unlinkedChoices.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, unlinkedChoices.StatusCode);
+            Assert.Empty(unlinkedPayload.RootElement.GetProperty("items").EnumerateArray());
+            Assert.Equal(JsonValueKind.Null, unlinkedPayload.RootElement.GetProperty("selfEmployee").ValueKind);
+        }
+
+        using (var unlinkedRequest = await SendAsUserAsync(HttpMethod.Post, "/api/requests", _sameCompanyOtherUserId, _companyId,
+                   System.Net.Http.Json.JsonContent.Create(new { employeeId = _ownSecondEmployeeId, itemType = "Asset", itemId = _ownAssetId, quantity = 1 }),
+                   requestToken, antiforgeryCookie, role: "viewer"))
+            Assert.Equal(HttpStatusCode.Conflict, unlinkedRequest.StatusCode);
     }
 
     [Fact]

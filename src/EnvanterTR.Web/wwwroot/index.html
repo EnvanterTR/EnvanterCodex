@@ -4228,6 +4228,13 @@
         $('#requestEmployeeHint').textContent = 'Bu giriş hesabı çalışan profiline bağlıdır. Talep yalnızca kendi adınıza açılır; varlık istekleri zimmete, aksesuar ve sarf istekleri stok teslimine dönüşür.';
         return;
       }
+      if (!canWriteAssets()) {
+        search.hidden = true; select.disabled = true; select.required = false;
+        select.replaceChildren(new Option('Hesap eşleştirmesi gerekli',''));
+        $('#inventoryRequestForm [type="submit"]').disabled = true;
+        $('#requestEmployeeHint').textContent = 'Stok talebi açabilmek için şirket yöneticisinin giriş hesabınızı çalışan profiline bağlaması gerekir.';
+        return;
+      }
       $('#inventoryRequestForm [type="submit"]').disabled = false;
       search.hidden = false; select.disabled = false; select.required = true;
       const previousId=selectedId||select.value,previousLabel=select.selectedOptions[0]?.textContent||'';select.replaceChildren(new Option('Çalışan seçin',''));

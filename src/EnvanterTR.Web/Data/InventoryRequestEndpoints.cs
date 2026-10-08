@@ -14,10 +14,6 @@ public static class InventoryRequestEndpoints
             if (!Tenant(user, out var companyId)) return Results.Forbid();
             var term = q?.Trim();
             if (term?.Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
-            var employees = db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId && x.IsActive);
-            if (!string.IsNullOrWhiteSpace(term)) employees = employees.Where(x => x.DisplayName.Contains(term) || x.EmployeeNumber.Contains(term));
-            var items = await employees.OrderBy(x => x.DisplayName).Take(200)
-                .Select(x => new { x.Id, x.DisplayName, x.EmployeeNumber }).ToListAsync(ct);
             var userId = UserId(user);
             var selfEmployee = userId is Guid accountId
                 ? await (from membership in db.CompanyMemberships.AsNoTracking()
@@ -26,6 +22,16 @@ public static class InventoryRequestEndpoints
                          where membership.CompanyId == companyId && membership.UserId == accountId
                          select new { employee.Id, employee.DisplayName, employee.EmployeeNumber, employee.IsActive }).SingleOrDefaultAsync(ct)
                 : null;
+            var employees = db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId && x.IsActive);
+            if (!CanReviewRequests(user))
+            {
+                employees = selfEmployee is { IsActive: true }
+                    ? employees.Where(x => x.Id == selfEmployee.Id)
+                    : employees.Where(_ => false);
+            }
+            if (!string.IsNullOrWhiteSpace(term)) employees = employees.Where(x => x.DisplayName.Contains(term) || x.EmployeeNumber.Contains(term));
+            var items = await employees.OrderBy(x => x.DisplayName).Take(200)
+                .Select(x => new { x.Id, x.DisplayName, x.EmployeeNumber }).ToListAsync(ct);
             return Results.Ok(new { items, selfEmployee });
         }).RequireAuthorization("asset.read");
 
@@ -168,6 +174,8 @@ public static class InventoryRequestEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["request"] = ["Talep türü, adet veya not bilgisi geçersiz. Adet 1–100.000; not en fazla 1.000 karakter olmalıdır."] });
             var linkedEmployeeId = await db.CompanyMemberships.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && x.UserId == userId).Select(x => x.EmployeeId).SingleOrDefaultAsync(ct);
+            if (linkedEmployeeId is null && !CanReviewRequests(user))
+                return Results.Conflict(new { message = "Talep göndermeden önce şirket yöneticisi hesabınızı çalışan profiline bağlamalı." });
             if (linkedEmployeeId is Guid mappedEmployeeId && request.EmployeeId != mappedEmployeeId)
                 return Results.Forbid();
             var employeeId = linkedEmployeeId ?? request.EmployeeId;
