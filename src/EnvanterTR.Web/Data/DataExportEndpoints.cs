@@ -218,6 +218,15 @@ public static class DataExportEndpoints
         // Recheck under the write transaction so duplicate employee numbers never partially import.
         if (await db.Employees.AnyAsync(x => x.CompanyId == companyId && numbers.Contains(x.EmployeeNumber.ToUpper()), cancellationToken))
             return Results.Conflict(new { message = "Dosyadaki bir personel numarası önizlemeden sonra eklenmiş. Hiçbir kayıt aktarılmadı; önizlemeyi yenileyin." });
+        if (hasRoundTripManagerColumn)
+        {
+            var importedIds = employees.Select(x => x.Id).ToHashSet();
+            var externalManagerIds = employees.Where(x => x.ManagerEmployeeId.HasValue && !importedIds.Contains(x.ManagerEmployeeId.Value))
+                .Select(x => x.ManagerEmployeeId!.Value).Distinct().ToArray();
+            var activeManagerCount = await db.Employees.CountAsync(x => x.CompanyId == companyId && x.IsActive && externalManagerIds.Contains(x.Id), cancellationToken);
+            if (activeManagerCount != externalManagerIds.Length)
+                return Results.Conflict(new { message = "Önizlemeden sonra bir yönetici kaydı pasife alınmış veya kaldırılmış. Hiçbir kayıt aktarılmadı; önizlemeyi yenileyin." });
+        }
         db.Employees.AddRange(employees);
         foreach (var employee in employees)
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Employee",
