@@ -139,6 +139,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetCategory>().Property(x => x.Name).HasMaxLength(120).IsRequired();
         modelBuilder.Entity<AssetBrand>().Property(x => x.Name).HasMaxLength(120).IsRequired();
         modelBuilder.Entity<AssetModel>().Property(x => x.Name).HasMaxLength(120).IsRequired();
+        modelBuilder.Entity<AssetModel>().Property(x => x.DepreciationMinimum).HasPrecision(18, 2);
+        modelBuilder.Entity<AssetModel>().Property(x => x.DepreciationMinimumType).HasMaxLength(12).IsRequired();
+        modelBuilder.Entity<AssetModel>().Property(x => x.DepreciationMethod).HasMaxLength(16).IsRequired();
+        modelBuilder.Entity<AssetModel>().ToTable("AssetModels", table =>
+        {
+            table.HasCheckConstraint("CK_AssetModels_DepreciationMonths", "\"DepreciationMonths\" IS NULL OR \"DepreciationMonths\" BETWEEN 1 AND 3600");
+            table.HasCheckConstraint("CK_AssetModels_DepreciationMinimum", "\"DepreciationMinimum\" IS NULL OR \"DepreciationMinimum\" >= 0");
+            table.HasCheckConstraint("CK_AssetModels_DepreciationMinimumType", "\"DepreciationMinimumType\" IN ('amount', 'percent')");
+            table.HasCheckConstraint("CK_AssetModels_DepreciationMethod", "\"DepreciationMethod\" IN ('linear', 'half_1', 'half_2')");
+        });
         modelBuilder.Entity<AssetCustomFieldDefinition>().Property(x => x.Key).HasMaxLength(40).IsRequired();
         modelBuilder.Entity<AssetCustomFieldDefinition>().Property(x => x.Name).HasMaxLength(100).IsRequired();
         modelBuilder.Entity<AssetCustomFieldDefinition>().Property(x => x.FieldType).HasMaxLength(20).IsRequired();

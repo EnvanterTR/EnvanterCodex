@@ -911,6 +911,23 @@ namespace EnvanterTR.Web.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<decimal?>("DepreciationMinimum")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("DepreciationMinimumType")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)");
+
+                    b.Property<int?>("DepreciationMonths")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DepreciationMethod")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<Guid?>("BrandId")
                         .HasColumnType("uuid");
 
@@ -927,7 +944,13 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasIndex("CompanyId", "BrandId", "Name")
                         .IsUnique();
 
-                    b.ToTable("AssetModels");
+                    b.ToTable("AssetModels", t =>
+                        {
+                            t.HasCheckConstraint("CK_AssetModels_DepreciationMonths", "\"DepreciationMonths\" IS NULL OR \"DepreciationMonths\" BETWEEN 1 AND 3600");
+                            t.HasCheckConstraint("CK_AssetModels_DepreciationMinimum", "\"DepreciationMinimum\" IS NULL OR \"DepreciationMinimum\" >= 0");
+                            t.HasCheckConstraint("CK_AssetModels_DepreciationMinimumType", "\"DepreciationMinimumType\" IN ('amount', 'percent')");
+                            t.HasCheckConstraint("CK_AssetModels_DepreciationMethod", "\"DepreciationMethod\" IN ('linear', 'half_1', 'half_2')");
+                        });
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.AssetPurchaseOrder", b =>

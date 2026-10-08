@@ -39,7 +39,9 @@ public sealed record AssetCustomFieldDefinitionRequest(
     bool IsRequired,
     int SortOrder = 0);
 
-public sealed record CreateLookupRequest(string Name, Guid? BrandId = null);
+public sealed record CreateLookupRequest(string Name, Guid? BrandId = null, int? DepreciationMonths = null,
+    decimal? DepreciationMinimum = null, string? DepreciationMinimumType = null, string? DepreciationMethod = null);
+public sealed record SetModelDepreciationRequest(int? Months, decimal? Minimum, string? MinimumType, string? Method);
 public sealed record RenameLookupRequest(string Name);
 public sealed record RenameDirectoryEntryRequest(string CurrentName, string NewName, bool Merge = false);
 public sealed record LocationCatalogRequest(string? Name, Guid? ParentLocationId = null);

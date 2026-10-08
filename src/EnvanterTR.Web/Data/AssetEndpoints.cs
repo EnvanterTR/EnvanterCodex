@@ -50,6 +50,7 @@ public static class AssetEndpoints
         api.MapAssetPurchaseOrderEndpoints();
         api.MapAssetPurchaseOrderAttachmentEndpoints();
         api.MapPendingDeliveryReportEndpoints();
+        api.MapDepreciationReportEndpoints();
         api.MapSupplierCatalogEndpoints();
         api.MapAccessoryKitEndpoints();
         api.MapSavedAssetSearchEndpoints();
@@ -2384,6 +2385,7 @@ public static class AssetEndpoints
                     return Results.Ok((object)await db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId)
                         .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name, x.BrandId,
                             BrandName = db.AssetBrands.Where(b => b.CompanyId == companyId && b.Id == x.BrandId).Select(b => b.Name).FirstOrDefault(),
+                            x.DepreciationMonths, x.DepreciationMinimum, x.DepreciationMinimumType, x.DepreciationMethod,
                             AssetCount = db.Assets.Count(a => a.CompanyId == companyId && a.ModelId == x.Id) }).ToListAsync(cancellationToken));
                 default:
                     return Results.NotFound();
@@ -2401,7 +2403,7 @@ public static class AssetEndpoints
                 "brands" => await db.AssetBrands.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
                     .Select(x => new { x.Id, x.Name }).SingleOrDefaultAsync(cancellationToken),
                 "models" => await db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
-                    .Select(x => new { x.Id, x.Name, x.BrandId }).SingleOrDefaultAsync(cancellationToken),
+                    .Select(x => new { x.Id, x.Name, x.BrandId, x.DepreciationMonths, x.DepreciationMinimum, x.DepreciationMinimumType, x.DepreciationMethod }).SingleOrDefaultAsync(cancellationToken),
                 _ => null
             };
             return item is null ? Results.NotFound() : Results.Ok(item);
@@ -2416,12 +2418,19 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Ad zorunludur ve en fazla 120 karakter olabilir."] });
             if (request.BrandId is Guid brandId && !await db.AssetBrands.AnyAsync(x => x.CompanyId == companyId && x.Id == brandId, cancellationToken))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["brandId"] = ["Marka bu şirkette bulunamadı."] });
+            if (kind.Equals("models", StringComparison.OrdinalIgnoreCase) && !ValidateDepreciation(request.DepreciationMonths,
+                    request.DepreciationMinimum, request.DepreciationMinimumType, request.DepreciationMethod, out var depreciationErrors))
+                return Results.ValidationProblem(depreciationErrors);
+            if (kind.Equals("models", StringComparison.OrdinalIgnoreCase) && request.DepreciationMonths is not null &&
+                user.FindFirstValue("company_role") is not ("owner" or "admin")) return Results.Forbid();
             object? created = kind.ToLowerInvariant() switch
             {
                 "categories" => AddCategory(db, companyId, name),
                 "brands" => AddBrand(db, companyId, name),
-                "models" when request.BrandId is not null => AddModel(db, companyId, name, request.BrandId.Value),
-                "models" => AddModel(db, companyId, name, null),
+                "models" when request.BrandId is not null => AddModel(db, companyId, name, request.BrandId.Value,
+                    request.DepreciationMonths, request.DepreciationMinimum, request.DepreciationMinimumType, request.DepreciationMethod),
+                "models" => AddModel(db, companyId, name, null, request.DepreciationMonths, request.DepreciationMinimum,
+                    request.DepreciationMinimumType, request.DepreciationMethod),
                 _ => null
             };
             if (created is null) return Results.NotFound();
@@ -2430,6 +2439,28 @@ public static class AssetEndpoints
             var id = (Guid)created.GetType().GetProperty("Id")!.GetValue(created)!;
             return Results.Created($"/api/lookups/{kind}/{id}", created);
         }).RequireAuthorization("asset.write");
+
+        api.MapPatch("/lookups/models/{id:guid}/depreciation", async (Guid id, [FromBody] SetModelDepreciationRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (!ValidateDepreciation(request.Months, request.Minimum, request.MinimumType, request.Method, out var errors))
+                return Results.ValidationProblem(errors);
+            var model = await db.AssetModels.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (model is null) return Results.NotFound();
+            model.DepreciationMonths = request.Months;
+            model.DepreciationMinimum = request.Months is null ? null : request.Minimum;
+            model.DepreciationMinimumType = request.MinimumType is "percent" ? "percent" : "amount";
+            model.DepreciationMethod = request.Method ?? "linear";
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId,
+                ActorUserId = Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId) ? actorId : null,
+                TargetType = "AssetModel", TargetId = id, Action = "DepreciationPolicyChanged",
+                Details = model.DepreciationMonths is null ? "Model amortismanı kapatıldı." :
+                    $"{model.DepreciationMonths} ay, {model.DepreciationMinimumType} taban değer, {model.DepreciationMethod} yöntemi." });
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.Ok(new { model.Id, model.DepreciationMonths, model.DepreciationMinimum,
+                model.DepreciationMinimumType, model.DepreciationMethod });
+        }).RequireAuthorization("settings.manage");
 
         api.MapPatch("/lookups/{kind}/{id:guid}", async (string kind, Guid id, [FromBody] RenameLookupRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
@@ -2707,11 +2738,29 @@ public static class AssetEndpoints
         return new { row.Id, row.Name };
     }
 
-    private static object AddModel(AppDbContext db, Guid companyId, string name, Guid? brandId)
+    private static object AddModel(AppDbContext db, Guid companyId, string name, Guid? brandId, int? depreciationMonths,
+        decimal? depreciationMinimum, string? depreciationMinimumType, string? depreciationMethod)
     {
-        var row = new AssetModel { CompanyId = companyId, Name = name, BrandId = brandId };
+        var row = new AssetModel { CompanyId = companyId, Name = name, BrandId = brandId,
+            DepreciationMonths = depreciationMonths, DepreciationMinimum = depreciationMonths is null ? null : depreciationMinimum,
+            DepreciationMinimumType = depreciationMinimumType is "percent" ? "percent" : "amount",
+            DepreciationMethod = depreciationMethod ?? "linear" };
         db.AssetModels.Add(row);
-        return new { row.Id, row.Name, row.BrandId };
+        return new { row.Id, row.Name, row.BrandId, row.DepreciationMonths, row.DepreciationMinimum,
+            row.DepreciationMinimumType, row.DepreciationMethod };
+    }
+
+    private static bool ValidateDepreciation(int? months, decimal? minimum, string? minimumType, string? method,
+        out Dictionary<string, string[]> errors)
+    {
+        errors = new Dictionary<string, string[]>();
+        if (months is < 1 or > 3600) errors["months"] = ["Amortisman süresi 1 ile 3600 ay arasında olmalıdır."];
+        if (months is null && minimum is not null) errors["minimum"] = ["Taban değer için amortisman süresi de tanımlanmalıdır."];
+        if (minimum is < 0) errors["minimum"] = ["Taban değer negatif olamaz."];
+        if (minimumType is not null and not ("amount" or "percent")) errors["minimumType"] = ["Taban değer türü amount veya percent olmalıdır."];
+        if (minimumType == "percent" && minimum is > 100) errors["minimum"] = ["Yüzde taban değer 100'ü aşamaz."];
+        if (method is not null and not ("linear" or "half_1" or "half_2")) errors["method"] = ["Yöntem linear, half_1 veya half_2 olmalıdır."];
+        return errors.Count == 0;
     }
 
     private static async Task<List<CompanyLocation>> GetLocationChainAsync(AppDbContext db, Guid companyId,

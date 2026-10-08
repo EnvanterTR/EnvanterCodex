@@ -171,6 +171,10 @@ public sealed class AssetModel
     public Guid CompanyId { get; set; }
     public Guid? BrandId { get; set; }
     public required string Name { get; set; }
+    public int? DepreciationMonths { get; set; }
+    public decimal? DepreciationMinimum { get; set; }
+    public string DepreciationMinimumType { get; set; } = "amount";
+    public string DepreciationMethod { get; set; } = "linear";
 }
 
 public sealed class AssetCustomFieldDefinition
