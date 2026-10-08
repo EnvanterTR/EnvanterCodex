@@ -432,8 +432,21 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal("application/pdf", ownDocumentResponse.Content.Headers.ContentType?.MediaType);
             Assert.Equal(pdfBytes, await ownDocumentResponse.Content.ReadAsByteArrayAsync());
         }
+        await SetCompanyRoleAsync("asset_operator");
+        using (var unauthorizedDocumentResponse = await SendAsAdminAsync($"/api/employees/{_ownEmployeeId}/documents/{documentId}/file"))
+            Assert.Equal(HttpStatusCode.Forbidden, unauthorizedDocumentResponse.StatusCode);
+        await SetCompanyRoleAsync("admin");
         using (var crossCompanyDocumentResponse = await SendAsAdminAsync($"/api/employees/{_otherCompanyEmployeeId}/documents/{otherCompanyDocumentId}/file"))
             Assert.Equal(HttpStatusCode.NotFound, crossCompanyDocumentResponse.StatusCode);
+    }
+
+    private async Task SetCompanyRoleAsync(string role)
+    {
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var membership = await db.CompanyMemberships.SingleAsync(x => x.CompanyId == _companyId && x.UserId == _userId);
+        membership.RoleKey = role;
+        await db.SaveChangesAsync();
     }
 
     private async Task<HttpResponseMessage> SendAsAdminAsync(string path, Guid? companyId = null)
