@@ -293,6 +293,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             Assert.Equal(HttpStatusCode.OK, defaultsResponse.StatusCode);
             Assert.Equal(5, defaults.RootElement.GetProperty("visibleWidgets").GetArrayLength());
+            Assert.Equal(5, defaults.RootElement.GetProperty("widgetOrder").GetArrayLength());
         }
 
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
@@ -314,8 +315,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             System.Net.Http.Json.JsonContent.Create(new { visibleWidgets = Array.Empty<string>() }), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.BadRequest, empty.StatusCode);
 
+        using (var invalidOrder = await SendAsUserAsync(HttpMethod.Put, "/api/dashboard/preferences", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { visibleWidgets = new[] { "stats", "activity" }, widgetOrder = new[] { "stats", "assets", "assets", "upcoming", "status" } }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidOrder.StatusCode);
+
         using (var update = await SendAsUserAsync(HttpMethod.Put, "/api/dashboard/preferences", _userId, _companyId,
-            System.Net.Http.Json.JsonContent.Create(new { visibleWidgets = new[] { "stats", "activity" } }), requestToken, antiforgeryCookie))
+            System.Net.Http.Json.JsonContent.Create(new { visibleWidgets = new[] { "stats", "activity" }, widgetOrder = new[] { "status", "upcoming", "activity", "assets", "stats" } }), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.OK, update.StatusCode);
 
         using (var sameUser = await SendAsUserAsync(HttpMethod.Get, "/api/dashboard/preferences", _userId, _companyId))
@@ -324,6 +329,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(HttpStatusCode.OK, sameUser.StatusCode);
             Assert.Equal(new[] { "stats", "activity" }, payload.RootElement.GetProperty("visibleWidgets")
                 .EnumerateArray().Select(x => x.GetString()).ToArray());
+            Assert.Equal(new[] { "status", "upcoming", "activity", "assets", "stats" }, payload.RootElement.GetProperty("widgetOrder")
+                .EnumerateArray().Select(x => x.GetString()).ToArray());
         }
 
         using (var otherUser = await SendAsUserAsync(HttpMethod.Get, "/api/dashboard/preferences", _sameCompanyOtherUserId, _companyId))
@@ -331,6 +338,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             Assert.Equal(HttpStatusCode.OK, otherUser.StatusCode);
             Assert.Equal(5, payload.RootElement.GetProperty("visibleWidgets").GetArrayLength());
+            Assert.Equal(5, payload.RootElement.GetProperty("widgetOrder").GetArrayLength());
         }
 
         using (var otherCompany = await SendAsUserAsync(HttpMethod.Get, "/api/dashboard/preferences", _userId, _otherCompanyId))
