@@ -2787,9 +2787,15 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     public async Task Company_json_export_returns_a_valid_company_scoped_document()
     {
         var otherTenantUserId = Guid.NewGuid();
+        var importTargetCompanyId = Guid.NewGuid();
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Companies.Add(new Company { Id = importTargetCompanyId, Name = "Empty import target", IsActive = true });
+            db.CompanyMemberships.Add(new CompanyMembership
+            {
+                CompanyId = importTargetCompanyId, UserId = _userId, RoleKey = "admin"
+            });
             db.Users.Add(new EnvanterUser
             {
                 Id = otherTenantUserId,
@@ -2816,6 +2822,9 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var assetPhotoId = Guid.NewGuid();
         var licenseFile = Encoding.ASCII.GetBytes("%PDF-1.7\nlicense agreement\n%%EOF");
         var licenseFileId = Guid.NewGuid();
+        var supplierId = Guid.NewGuid();
+        var supplierLogoName = Guid.NewGuid().ToString("N") + ".png";
+        var supplierLogo = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x33 };
         var accountMedia = Path.Combine(_mediaPath, "accounts");
         var ownerDirectory = Path.Combine(accountMedia, _userId.ToString("N"));
         var memberDirectory = Path.Combine(accountMedia, _sameCompanyOtherUserId.ToString("N"));
@@ -2832,9 +2841,17 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Directory.CreateDirectory(licenseDirectory);
         await File.WriteAllBytesAsync(Path.Combine(assetDirectory, $"{assetPhotoId:N}.png"), assetPhoto);
         await File.WriteAllBytesAsync(Path.Combine(licenseDirectory, $"{licenseFileId:N}.pdf"), licenseFile);
+        var supplierLogoDirectory = Path.Combine(_mediaPath, _companyId.ToString("N"), "catalog", "suppliers", supplierId.ToString("N"));
+        Directory.CreateDirectory(supplierLogoDirectory);
+        await File.WriteAllBytesAsync(Path.Combine(supplierLogoDirectory, supplierLogoName), supplierLogo);
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SupplierCatalogEntries.Add(new SupplierCatalogEntry
+            {
+                Id = supplierId, CompanyId = _companyId, Name = "Archive supplier", NormalizedName = "ARCHIVE SUPPLIER",
+                Email = "supplier@example.invalid", LogoFileName = supplierLogoName
+            });
             db.AssetAttachments.Add(new AssetAttachment
             {
                 Id = assetPhotoId, CompanyId = _companyId, AssetId = _ownAssetId,
@@ -2851,7 +2868,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             {
                 Id = Guid.NewGuid(), CompanyId = _companyId, AssetId = _ownAssetId,
                 MaintenanceType = "Inspection", StartedOn = new DateOnly(2026, 10, 1),
-                Status = "InProgress", Currency = "TRY", CreatedAt = DateTimeOffset.UtcNow,
+                Status = "InProgress", Currency = "TRY", Supplier = "Archive supplier", SupplierId = supplierId, CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow
             });
             db.InventoryRequests.Add(new InventoryRequest
@@ -2887,6 +2904,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var previewCounts = preview.RootElement.GetProperty("counts");
         Assert.Equal(1, previewCounts.GetProperty("inventoryRequests").GetInt32());
         Assert.Equal(1, previewCounts.GetProperty("assetMaintenances").GetInt32());
+        Assert.Equal(1, previewCounts.GetProperty("supplierCatalogEntries").GetInt32());
 
         var invalidMaintenance = body.Replace("\"maintenanceType\":\"Inspection\"", "\"maintenanceType\":\"\"", StringComparison.Ordinal);
         Assert.NotEqual(body, invalidMaintenance);
@@ -2905,6 +2923,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var archive = new ZipArchive(new MemoryStream(archiveBytes), ZipArchiveMode.Read);
         Assert.Contains(archive.Entries, entry => entry.FullName == "company-data.json");
         Assert.Contains(archive.Entries, entry => entry.FullName == "README.txt");
+        var supplierLogoEntry = Assert.Single(archive.Entries,
+            entry => entry.FullName == $"media/catalog/suppliers/{supplierId:N}/{supplierLogoName}");
         var ownerPhotoEntry = Assert.Single(archive.Entries,
             entry => entry.FullName == $"media/account-profiles/{_userId:N}/profile.png");
         var memberPhotoEntry = Assert.Single(archive.Entries,
@@ -2931,6 +2951,29 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var licenseFileBytes = new MemoryStream();
         await licenseFileStream.CopyToAsync(licenseFileBytes);
         Assert.Equal(licenseFile, licenseFileBytes.ToArray());
+        await using var supplierLogoStream = supplierLogoEntry.Open();
+        using var supplierLogoBytes = new MemoryStream();
+        await supplierLogoStream.CopyToAsync(supplierLogoBytes);
+        Assert.Equal(supplierLogo, supplierLogoBytes.ToArray());
+
+        using var targetCsrfResponse = await SendAsAdminAsync("/api/session/csrf", importTargetCompanyId);
+        Assert.Equal(HttpStatusCode.OK, targetCsrfResponse.StatusCode);
+        using var targetCsrfPayload = JsonDocument.Parse(await targetCsrfResponse.Content.ReadAsStringAsync());
+        var targetRequestToken = targetCsrfPayload.RootElement.GetProperty("requestToken").GetString();
+        using var importResponse = await SendAsUserAsync(HttpMethod.Post, "/api/company/import/apply", _userId, importTargetCompanyId,
+            new StringContent(body, Encoding.UTF8, "application/json"), targetRequestToken, antiforgeryCookie);
+        var importBody = await importResponse.Content.ReadAsStringAsync();
+        Assert.True(importResponse.StatusCode == HttpStatusCode.OK,
+            $"Company JSON import returned {(int)importResponse.StatusCode}: {importBody}");
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var importedSupplier = await db.SupplierCatalogEntries.SingleAsync(x => x.CompanyId == importTargetCompanyId && x.Name == "Archive supplier");
+            Assert.Equal("ARCHIVE SUPPLIER", importedSupplier.NormalizedName);
+            Assert.Null(importedSupplier.LogoFileName);
+            var importedMaintenance = await db.AssetMaintenances.SingleAsync(x => x.CompanyId == importTargetCompanyId && x.MaintenanceType == "Inspection");
+            Assert.Equal(importedSupplier.Id, importedMaintenance.SupplierId);
+        }
     }
 
     [Fact]
