@@ -16,6 +16,7 @@ public static class SoftwareLicenseImportEndpoints
 
     public static RouteGroupBuilder MapSoftwareLicenseImportEndpoints(this RouteGroupBuilder api)
     {
+        api.MapSoftwareLicenseImportMappingProfileEndpoints();
         api.MapPost("/software-licenses/import/preview.csv", (HttpContext c, AppDbContext db, CancellationToken ct) => Import(c, db, false, ct))
             .RequireAuthorization("asset.write").WithMetadata(new RequestSizeLimitAttribute(MaxBytes));
         api.MapPost("/software-licenses/import/preview.xlsx", (HttpContext c, AppDbContext db, CancellationToken ct) => Import(c, db, false, ct))
@@ -30,6 +31,17 @@ public static class SoftwareLicenseImportEndpoints
     private static async Task<IResult> Import(HttpContext context, AppDbContext db, bool commit, CancellationToken ct)
     {
         if (!Guid.TryParse(context.User.FindFirstValue("company_id"), out var companyId) || !Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+        Dictionary<string, string>? explicitMappings = null;
+        var encodedMapping = context.Request.Headers["X-Software-License-Import-Mapping"].ToString();
+        if (encodedMapping.Length > 0)
+        {
+            if (encodedMapping.Length > 24 * 1024) return Results.BadRequest(new { message = "Sütun eşlemesi sınırı aşıyor." });
+            try { explicitMappings = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(Convert.FromBase64String(encodedMapping)); }
+            catch (Exception exception) when (exception is FormatException or System.Text.Json.JsonException)
+            { return Results.ValidationProblem(new Dictionary<string, string[]> { ["mappings"] = ["Sütun eşlemesi okunamadı; dosyayı yeniden doğrulayın."] }); }
+            if (!SoftwareLicenseCsvImportMapping.ValidateExplicitMappings(explicitMappings, out var mappingError))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["mappings"] = [mappingError] });
+        }
         var isXlsx = DataExportEndpoints.IsXlsxRequest(context.Request);
         if (!isXlsx && context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true) return Results.StatusCode(415);
         if (context.Request.ContentLength > MaxBytes) return Results.StatusCode(413);
@@ -45,9 +57,9 @@ public static class SoftwareLicenseImportEndpoints
         catch (FormatException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV tırnak veya ayraç biçimi bozuk ya da satır sınırı aşıldı." } }); }
         catch (Exception exception) when (isXlsx && exception is InvalidDataException or InvalidOperationException or System.Xml.XmlException or OverflowException)
         { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { exception.Message } }); }
-        rows = SoftwareLicenseCsvImportMapping.Normalize(rows, out var unsupportedColumns);
+        rows = SoftwareLicenseCsvImportMapping.Normalize(rows, out var unsupportedColumns, explicitMappings);
         if (unsupportedColumns.Length > 0)
-            return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Bu dosyada henüz eşlenmeyen ve dolu veri içeren sütunlar var: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu." } });
+            return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Dosyadaki sütunları eşleyin veya açıkça yoksayın: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu." }, unmappedColumns = unsupportedColumns, mappingTargets = SoftwareLicenseCsvImportMapping.MappingTargets() });
         if (rows.Count is < 2 || rows.Count > MaxRows + 1 || !rows[0].SequenceEqual(Header, StringComparer.OrdinalIgnoreCase))
             return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Şablon başlığı ve en fazla {MaxRows:N0} lisans satırı kullanın." } });
         var errors = new List<string>(); var licenses = new List<SoftwareLicense>(rows.Count - 1); var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

@@ -334,6 +334,31 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(1, previewPayload.RootElement.GetProperty("rowCount").GetInt32());
         }
 
+        var licenseMap = new Dictionary<string, string>
+        {
+            ["Product Title"] = "name", ["License Category"] = "licenseType", ["Named Users"] = "seats", ["Ignore Extra"] = "ignore"
+        };
+        using (var licenseNoCsrf = await SendAsUserAsync(HttpMethod.Post, "/api/software-licenses/import-mappings", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Vendor A", mappings = licenseMap })))
+            Assert.Equal(HttpStatusCode.BadRequest, licenseNoCsrf.StatusCode);
+        using var licenseCreate = await SendAsUserAsync(HttpMethod.Post, "/api/software-licenses/import-mappings", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Vendor A", mappings = licenseMap }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, licenseCreate.StatusCode);
+        using var licenseCreated = JsonDocument.Parse(await licenseCreate.Content.ReadAsStringAsync());
+        var licenseProfileId = licenseCreated.RootElement.GetProperty("id").GetGuid();
+        var licenseCsv = new StringContent("Product Title,License Category,Named Users,Ignore Extra\nOffice Suite,Subscription,20,secret\n",
+            System.Text.Encoding.UTF8, "text/csv");
+        var licenseHeader = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(licenseMap)));
+        using (var licensePreview = await SendAsRoleWithHeadersAsync(HttpMethod.Post, "/api/software-licenses/import/preview.csv", "admin",
+            licenseCsv, requestToken, antiforgeryCookie, new Dictionary<string, string> { ["X-Software-License-Import-Mapping"] = licenseHeader }))
+        {
+            Assert.True(licensePreview.StatusCode == HttpStatusCode.OK,
+                $"Software license mapped preview failed: {(int)licensePreview.StatusCode} {await licensePreview.Content.ReadAsStringAsync()}");
+            using var previewPayload = JsonDocument.Parse(await licensePreview.Content.ReadAsStringAsync());
+            Assert.True(previewPayload.RootElement.GetProperty("isValid").GetBoolean());
+            Assert.Equal(1, previewPayload.RootElement.GetProperty("rowCount").GetInt32());
+        }
+
         var employeeMap = new Dictionary<string, string>
         {
             ["Staff Code"] = "employeeNumber", ["Full Name"] = "displayName", ["Business Unit"] = "department", ["Do Not Import"] = "ignore"
@@ -384,6 +409,10 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var ownComponent = JsonDocument.Parse(await ownComponentList.Content.ReadAsStringAsync()))
             Assert.Equal(componentProfileId, Assert.Single(ownComponent.RootElement.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
 
+        using (var ownLicenseList = await SendAsUserAsync(HttpMethod.Get, "/api/software-licenses/import-mappings", _userId, _companyId))
+        using (var ownLicense = JsonDocument.Parse(await ownLicenseList.Content.ReadAsStringAsync()))
+            Assert.Equal(licenseProfileId, Assert.Single(ownLicense.RootElement.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
+
         using (var otherUserList = await SendAsUserAsync(HttpMethod.Get, "/api/assets/import-mappings", _sameCompanyOtherUserId, _companyId))
         using (var other = JsonDocument.Parse(await otherUserList.Content.ReadAsStringAsync()))
             Assert.Empty(other.RootElement.GetProperty("items").EnumerateArray());
@@ -403,6 +432,10 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var otherUserComponentList = await SendAsUserAsync(HttpMethod.Get, "/api/components/import-mappings", _sameCompanyOtherUserId, _companyId))
         using (var otherComponent = JsonDocument.Parse(await otherUserComponentList.Content.ReadAsStringAsync()))
             Assert.Empty(otherComponent.RootElement.GetProperty("items").EnumerateArray());
+
+        using (var otherUserLicenseList = await SendAsUserAsync(HttpMethod.Get, "/api/software-licenses/import-mappings", _sameCompanyOtherUserId, _companyId))
+        using (var otherLicense = JsonDocument.Parse(await otherUserLicenseList.Content.ReadAsStringAsync()))
+            Assert.Empty(otherLicense.RootElement.GetProperty("items").EnumerateArray());
 
         using (var crossCompanyList = await SendAsUserAsync(HttpMethod.Get, "/api/assets/import-mappings", _userId, _otherCompanyId))
             Assert.Equal(HttpStatusCode.Unauthorized, crossCompanyList.StatusCode);
@@ -429,6 +462,9 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var deleteComponent = await SendAsUserAsync(HttpMethod.Delete, $"/api/components/import-mappings/{componentProfileId}", _userId, _companyId,
             requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
             Assert.Equal(HttpStatusCode.NoContent, deleteComponent.StatusCode);
+        using (var deleteLicense = await SendAsUserAsync(HttpMethod.Delete, $"/api/software-licenses/import-mappings/{licenseProfileId}", _userId, _companyId,
+            requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NoContent, deleteLicense.StatusCode);
     }
 
     [Fact]
