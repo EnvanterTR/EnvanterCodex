@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$ComposeProject = "envantertr-product-dev"
 )
 
