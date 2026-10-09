@@ -13,7 +13,8 @@ public sealed record CreateAssetRequest(
     decimal? PurchaseCost,
     string? Currency,
     bool? IsRequestable = null,
-    Dictionary<string, string>? CustomFields = null);
+    Dictionary<string, string>? CustomFields = null,
+    bool? IsByod = null);
 
 public sealed record UpdateAssetRequest(
     string AssetTag,
@@ -29,7 +30,8 @@ public sealed record UpdateAssetRequest(
     string? Currency,
     DateTimeOffset ExpectedUpdatedAt,
     bool? IsRequestable = null,
-    Dictionary<string, string>? CustomFields = null);
+    Dictionary<string, string>? CustomFields = null,
+    bool? IsByod = null);
 
 public sealed record AssetCustomFieldDefinitionRequest(
     string Key,
@@ -105,4 +107,5 @@ public sealed record AssetListItem(
     DateOnly? WarrantyExpiresAt,
     DateTimeOffset UpdatedAt,
     Guid? PhotoAttachmentId = null,
-    Guid? LocationCatalogId = null);
+    Guid? LocationCatalogId = null,
+    bool IsByod = false);

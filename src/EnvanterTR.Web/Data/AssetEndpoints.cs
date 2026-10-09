@@ -63,7 +63,7 @@ public static class AssetEndpoints
         api.MapGet("/assets", async ([FromQuery] string? q, [FromQuery] string? status,
             [FromQuery] Guid? categoryId, [FromQuery] Guid? brandId, [FromQuery] Guid? modelId,
             [FromQuery] Guid? employeeId, [FromQuery] string? location, [FromQuery] string? warranty,
-            [FromQuery] string? sortBy, [FromQuery] string? sortDirection,
+            [FromQuery] string? sortBy, [FromQuery] string? sortDirection, [FromQuery] bool? byod,
             [FromQuery] string? customFieldKey, [FromQuery] string? customFieldValue, [FromQuery] string? customFieldMode,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken,
             [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
@@ -72,6 +72,7 @@ public static class AssetEndpoints
             page = Math.Max(page, 1);
             pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
             var query = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (byod.HasValue) query = query.Where(x => x.IsByod == byod.Value);
             if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.Status == status.Trim());
             if (categoryId is Guid selectedCategory) query = query.Where(x => x.CategoryId == selectedCategory);
             if (brandId is Guid selectedBrand) query = query.Where(x => x.BrandId == selectedBrand);
@@ -122,7 +123,7 @@ public static class AssetEndpoints
                     x.AssignedEmployeeId, x.WarrantyExpiresAt, x.UpdatedAt,
                     db.AssetAttachments.Where(photo => photo.CompanyId == companyId && photo.AssetId == x.Id && photo.ContentType.StartsWith("image/"))
                         .OrderByDescending(photo => photo.CreatedAt).Select(photo => (Guid?)photo.Id).FirstOrDefault(),
-                    x.LocationCatalogId)).ToListAsync(cancellationToken);
+                    x.LocationCatalogId, x.IsByod)).ToListAsync(cancellationToken);
             return Results.Ok(new { items, page, pageSize, total });
         }).RequireAuthorization("asset.read");
 
@@ -1740,7 +1741,8 @@ public static class AssetEndpoints
                 BrandId = request.BrandId, ModelId = request.ModelId,
                 SerialNumber = serial, Location = location, LocationCatalogId = locationCatalogId,
                 PurchaseDate = request.PurchaseDate, WarrantyExpiresAt = request.WarrantyExpiresAt, PurchaseCost = request.PurchaseCost,
-                Currency = currency, IsRequestable = request.IsRequestable == true, CustomFieldsJson = customFields.Json
+                Currency = currency, IsRequestable = request.IsRequestable == true, IsByod = request.IsByod == true,
+                CustomFieldsJson = customFields.Json
             };
             db.Assets.Add(asset);
             db.AssetEvents.Add(new AssetEvent
@@ -1765,7 +1767,7 @@ public static class AssetEndpoints
                 asset.BrandId is Guid savedBrand ? await db.AssetBrands.Where(x => x.CompanyId == companyId && x.Id == savedBrand).Select(x => x.Name).SingleAsync(cancellationToken) : null,
                 asset.ModelId,
                 asset.ModelId is Guid savedModel ? await db.AssetModels.Where(x => x.CompanyId == companyId && x.Id == savedModel).Select(x => x.Name).SingleAsync(cancellationToken) : null,
-                null, asset.AssignedEmployeeId, asset.WarrantyExpiresAt, asset.UpdatedAt, null, asset.LocationCatalogId));
+                null, asset.AssignedEmployeeId, asset.WarrantyExpiresAt, asset.UpdatedAt, null, asset.LocationCatalogId, asset.IsByod));
         }).RequireAuthorization("asset.write");
 
         api.MapPatch("/assets/{id:guid}", async (Guid id, [FromBody] UpdateAssetRequest request,
@@ -1789,6 +1791,7 @@ public static class AssetEndpoints
             var current = await db.Assets.AsNoTracking().SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
             if (current is null) return Results.NotFound();
             var isRequestable = request.IsRequestable ?? current.IsRequestable;
+            var isByod = request.IsByod ?? current.IsByod;
             if (current.UpdatedAt != request.ExpectedUpdatedAt)
                 return Results.Conflict(new { message = "Bu varlık başka bir kullanıcı tarafından güncellenmiş. Son bilgileri yenileyip tekrar düzenleyin." });
             if (await db.Assets.AnyAsync(x => x.CompanyId == companyId && x.Id != id && x.AssetTag == tag, cancellationToken))
@@ -1819,6 +1822,7 @@ public static class AssetEndpoints
             if (current.WarrantyExpiresAt != request.WarrantyExpiresAt) changed.Add("garanti bitiş tarihi");
             if (current.PurchaseCost != request.PurchaseCost || current.Currency != currency) changed.Add("alış bedeli");
             if (current.IsRequestable != isRequestable) changed.Add("talep edilebilir durumu");
+            if (current.IsByod != isByod) changed.Add("kişisel cihaz (BYOD) durumu");
             if (current.CustomFieldsJson != customFields.Json) changed.Add("özel alanlar");
             if (changed.Count == 0) return Results.Ok(new { id, updatedAt = current.UpdatedAt, changed = false });
 
@@ -1841,6 +1845,7 @@ public static class AssetEndpoints
                         .SetProperty(x => x.PurchaseCost, request.PurchaseCost)
                         .SetProperty(x => x.Currency, currency)
                         .SetProperty(x => x.IsRequestable, isRequestable)
+                        .SetProperty(x => x.IsByod, isByod)
                         .SetProperty(x => x.CustomFieldsJson, customFields.Json)
                         .SetProperty(x => x.UpdatedAt, now), cancellationToken);
                 if (affected == 0)
@@ -2542,7 +2547,7 @@ public static class AssetEndpoints
         api.MapGet("/assets/export-all.csv", async ([FromQuery] string? q, [FromQuery] string? status,
             [FromQuery] Guid? categoryId, [FromQuery] Guid? brandId, [FromQuery] Guid? modelId,
             [FromQuery] Guid? employeeId, [FromQuery] string? location, [FromQuery] string? warranty,
-            [FromQuery] string? sortBy, [FromQuery] string? sortDirection, [FromQuery] string? columns,
+            [FromQuery] string? sortBy, [FromQuery] string? sortDirection, [FromQuery] bool? byod, [FromQuery] string? columns,
             [FromQuery] string? customFieldKey, [FromQuery] string? customFieldValue, [FromQuery] string? customFieldMode,
             HttpContext context, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
@@ -2560,6 +2565,7 @@ public static class AssetEndpoints
             }
 
             var query = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (byod.HasValue) query = query.Where(x => x.IsByod == byod.Value);
             if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.Status == status.Trim());
             if (categoryId is Guid selectedCategory) query = query.Where(x => x.CategoryId == selectedCategory);
             if (brandId is Guid selectedBrand) query = query.Where(x => x.BrandId == selectedBrand);
@@ -2627,7 +2633,7 @@ public static class AssetEndpoints
                 ("brand", "Marka"), ("model", "Model"), ("serial", "Seri No"), ("location", "Konum"),
                 ("employeeNumber", "Personel No"), ("employeeName", "Çalışan"), ("purchaseDate", "Alış Tarihi"),
                 ("warrantyExpiresAt", "Garanti Bitiş Tarihi"), ("purchaseCost", "Alış Bedeli"),
-                ("currency", "Para Birimi"), ("parentAssetTag", "Üst Varlık Etiketi")
+                ("currency", "Para Birimi"), ("parentAssetTag", "Üst Varlık Etiketi"), ("isByod", "BYOD")
             }.Concat(customFields.Select(field => (Key: $"custom:{field.Key}", Header: $"Özel alan: {field.Key}"))).ToArray();
             var columnsByKey = availableColumns.ToDictionary(column => column.Key, column => column, StringComparer.Ordinal);
             var selectedKeys = string.IsNullOrWhiteSpace(columns)
@@ -2662,7 +2668,7 @@ public static class AssetEndpoints
                     .Select(e => e.EmployeeNumber).FirstOrDefault(),
                 db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId)
                     .Select(e => e.DisplayName).FirstOrDefault(),
-                x.PurchaseDate, x.WarrantyExpiresAt, x.PurchaseCost, x.Currency, x.CustomFieldsJson));
+                x.PurchaseDate, x.WarrantyExpiresAt, x.PurchaseCost, x.Currency, x.CustomFieldsJson, x.IsByod));
             var written = 0;
             await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
             {
@@ -2679,6 +2685,7 @@ public static class AssetEndpoints
                     "warrantyExpiresAt" => row.WarrantyExpiresAt?.ToString("yyyy-MM-dd"),
                     "purchaseCost" => row.PurchaseCost?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
                     "currency" => row.Currency, "parentAssetTag" => row.ParentAssetTag,
+                    "isByod" => row.IsByod ? "Evet" : "Hayır",
                     _ when column.Key.StartsWith("custom:", StringComparison.Ordinal) => customValuesByKey.GetValueOrDefault(column.Key[7..]),
                     _ => ""
                 })));
@@ -2940,7 +2947,7 @@ public static class AssetEndpoints
 
     private sealed record AssetExportRow(string AssetTag, string Name, string Status, string? Category,
         string? Brand, string? Model, string? SerialNumber, string? Location, string? ParentAssetTag, string? EmployeeNumber,
-        string? EmployeeName, DateOnly? PurchaseDate, DateOnly? WarrantyExpiresAt, decimal? PurchaseCost, string Currency, string? CustomFieldsJson);
+        string? EmployeeName, DateOnly? PurchaseDate, DateOnly? WarrantyExpiresAt, decimal? PurchaseCost, string Currency, string? CustomFieldsJson, bool IsByod);
 
     private static string CsvCell(string? value)
     {

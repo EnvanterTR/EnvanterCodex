@@ -479,6 +479,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid?>("DeletedByUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("IsByod")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsRequestable")
                         .HasColumnType("boolean");
 

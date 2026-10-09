@@ -18,19 +18,20 @@ internal static class AssetCsvImportMapping
         ["Garanti Bitiş Tarihi", "Warranty Expiration", "Warranty Expiration Date", "Asset Warranty"],
         ["Alış Bedeli", "Purchase Cost", "Asset Purchase Cost"],
         ["Para Birimi", "Currency"],
-        ["Üst Varlık Etiketi", "Parent Asset Tag", "Parent Tag"]
+        ["Üst Varlık Etiketi", "Parent Asset Tag", "Parent Tag"],
+        ["BYOD", "Kişisel Cihaz", "Personal Device", "Bring Your Own Device"]
     ];
 
     private static readonly string[] CanonicalBaseHeaders =
         ["Etiket", "Ad", "Durum", "Kategori", "Marka", "Model", "Seri No", "Konum", "Personel No", "Çalışan", "Alış Tarihi"];
 
     private static readonly string[] TargetKeys =
-        ["assetTag", "name", "status", "category", "brand", "model", "serialNumber", "location", "employeeNumber", "employeeName", "purchaseDate", "warrantyExpiration", "purchaseCost", "currency", "parentAssetTag"];
+        ["assetTag", "name", "status", "category", "brand", "model", "serialNumber", "location", "employeeNumber", "employeeName", "purchaseDate", "warrantyExpiration", "purchaseCost", "currency", "parentAssetTag", "isByod"];
 
     public static object[] MappingTargets(IReadOnlyCollection<AssetCustomFieldDefinition>? customFields) =>
         TargetKeys.Select((key, index) => new { key, label = index < CanonicalBaseHeaders.Length ? CanonicalBaseHeaders[index] : index switch
         {
-            11 => "Garanti Bitiş Tarihi", 12 => "Alış Bedeli", 13 => "Para Birimi", _ => "Üst Varlık Etiketi"
+            11 => "Garanti Bitiş Tarihi", 12 => "Alış Bedeli", 13 => "Para Birimi", 14 => "Üst Varlık Etiketi", _ => "BYOD"
         } })
         .Concat((customFields ?? []).OrderBy(field => field.SortOrder).ThenBy(field => field.Name, StringComparer.OrdinalIgnoreCase)
             .Select(field => new { key = $"custom:{field.Key}", label = $"Özel alan: {field.Name}" }))
@@ -186,11 +187,13 @@ internal static class AssetCsvImportMapping
 
         var hasWarranty = sourceIndexes[11] >= 0;
         var hasParent = sourceIndexes[14] >= 0;
+        var hasByod = sourceIndexes[15] >= 0;
         var targetHeaders = new List<string>(CanonicalBaseHeaders);
         if (hasWarranty) targetHeaders.Add("Garanti Bitiş Tarihi");
         targetHeaders.Add("Alış Bedeli");
         targetHeaders.Add("Para Birimi");
         if (hasParent) targetHeaders.Add("Üst Varlık Etiketi");
+        targetHeaders.Add("BYOD");
         foreach (var field in (customFields ?? []).OrderBy(field => field.SortOrder).ThenBy(field => field.Name, StringComparer.OrdinalIgnoreCase))
             targetHeaders.Add($"Özel alan: {field.Key}");
 
@@ -224,6 +227,7 @@ internal static class AssetCsvImportMapping
             mapped.Add(NormalizeDecimal(Read(row, sourceIndexes[12])));
             mapped.Add(string.IsNullOrWhiteSpace(Read(row, sourceIndexes[13])) ? "TRY" : Read(row, sourceIndexes[13]));
             if (hasParent) mapped.Add(Read(row, sourceIndexes[14]));
+            mapped.Add(hasByod ? NormalizeBoolean(Read(row, sourceIndexes[15])) : "false");
             foreach (var field in (customFields ?? []).OrderBy(field => field.SortOrder).ThenBy(field => field.Name, StringComparer.OrdinalIgnoreCase))
                 mapped.Add(customIndexes.TryGetValue(field.Key, out var customIndex) ? Read(row, customIndex) : "");
             result.Add(mapped);
@@ -232,6 +236,13 @@ internal static class AssetCsvImportMapping
     }
 
     private static string Read(IReadOnlyList<string> row, int index) => index >= 0 && index < row.Count ? row[index].Trim() : "";
+
+    private static string NormalizeBoolean(string value) => value.Trim().ToLowerInvariant() switch
+    {
+        "1" or "true" or "yes" or "evet" or "kişisel" or "personal" => "true",
+        "0" or "false" or "no" or "hayır" or "hayir" or "şirket" or "company" or "" => "false",
+        _ => value.Trim()
+    };
 
     private static string NormalizeHeader(string value) => new(value
         .Where(char.IsLetterOrDigit)

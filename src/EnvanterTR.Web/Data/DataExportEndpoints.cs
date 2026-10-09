@@ -309,13 +309,15 @@ public static class DataExportEndpoints
         var legacyWithParent = legacyHeader.Append("Üst Varlık Etiketi").ToArray();
         var warrantyWithParent = warrantyHeader.Append("Üst Varlık Etiketi").ToArray();
         bool HeaderStartsWith(string[] expected) => rows.Count > 0 && rows[0].Count >= expected.Length && rows[0].Take(expected.Length).SequenceEqual(expected, StringComparer.OrdinalIgnoreCase);
-        var hasParentColumn = HeaderStartsWith(legacyWithParent) || HeaderStartsWith(warrantyWithParent);
-        var hasWarrantyColumn = HeaderStartsWith(warrantyHeader) || HeaderStartsWith(warrantyWithParent);
-        var columnCount = hasParentColumn ? (hasWarrantyColumn ? warrantyWithParent.Length : legacyWithParent.Length) : (hasWarrantyColumn ? warrantyHeader.Length : legacyHeader.Length);
-        var parentIndex = hasParentColumn ? columnCount - 1 : -1;
+        var hasParentColumn = HeaderStartsWith(legacyWithParent.Append("BYOD").ToArray()) || HeaderStartsWith(warrantyWithParent.Append("BYOD").ToArray());
+        var hasWarrantyColumn = HeaderStartsWith(warrantyHeader.Append("BYOD").ToArray()) || HeaderStartsWith(warrantyWithParent.Append("BYOD").ToArray());
+        var parentBaseCount = hasParentColumn ? (hasWarrantyColumn ? warrantyWithParent.Length : legacyWithParent.Length) : (hasWarrantyColumn ? warrantyHeader.Length : legacyHeader.Length);
+        var columnCount = parentBaseCount + 1;
+        var parentIndex = hasParentColumn ? parentBaseCount - 1 : -1;
+        var byodIndex = columnCount - 1;
         var costIndex = hasWarrantyColumn ? 12 : 11;
         var currencyIndex = hasWarrantyColumn ? 13 : 12;
-        var expectedBaseHeader = hasParentColumn ? (hasWarrantyColumn ? warrantyWithParent : legacyWithParent) : (hasWarrantyColumn ? warrantyHeader : legacyHeader);
+        var expectedBaseHeader = (hasParentColumn ? (hasWarrantyColumn ? warrantyWithParent : legacyWithParent) : (hasWarrantyColumn ? warrantyHeader : legacyHeader)).Append("BYOD").ToArray();
         var expectedHeader = expectedBaseHeader.Concat(customFields.Select(field => $"Özel alan: {field.Key}")).ToArray();
         if (rows.Count is < 2 || rows.Count > CsvImportMaxRows + 1 || !rows[0].SequenceEqual(expectedHeader, StringComparer.OrdinalIgnoreCase))
             return Results.UnprocessableEntity(new { message = $"EnvanterTR başlıklarıyla {CsvImportMaxRows:N0} veya daha az satır içeren bir CSV yükleyin." });
@@ -339,6 +341,7 @@ public static class DataExportEndpoints
             if (string.IsNullOrWhiteSpace(row[3]) || row[3].Length > 120 || row[4].Length > 120 || row[5].Length > 120 || row[6].Length > 160 || row[7].Length > 160 || row[8].Length > 80 || row[9].Length > 200 || row[currencyIndex].Length != 3 || !row[currencyIndex].All(char.IsAsciiLetter))
                 AddError(errors, $"{index + 2}. satırda alan uzunluğu, kategori veya para birimi geçersiz.");
             if (hasParentColumn && row[parentIndex].Length > 80) AddError(errors, $"{index + 2}. satırdaki üst varlık etiketi 80 karakteri aşamaz.");
+            if (row[byodIndex] is not ("true" or "false")) AddError(errors, $"{index + 2}. satırdaki BYOD alanı true/false olmalıdır.");
             if (!string.IsNullOrWhiteSpace(row[10]) && !DateOnly.TryParseExact(row[10], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
                 AddError(errors, $"{index + 2}. satırdaki alış tarihi yyyy-AA-gg biçiminde olmalı.");
             if (hasWarrantyColumn && !string.IsNullOrWhiteSpace(row[11]) && !DateOnly.TryParseExact(row[11], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
@@ -407,7 +410,7 @@ public static class DataExportEndpoints
                     CompanyId = companyId, AssetTag = row[0].Trim().ToUpperInvariant(), Name = row[1].Trim(), Status = row[2],
                     CategoryId = categoryMatches[0].Id, BrandId = brandId, ModelId = modelId, SerialNumber = CleanCsv(row[6]),
                     Location = location, LocationCatalogId = locationCatalogId, AssignedEmployeeId = employeeId, PurchaseDate = purchaseDate, WarrantyExpiresAt = warrantyExpiresAt,
-                    PurchaseCost = purchaseCost, Currency = row[currencyIndex].Trim().ToUpperInvariant(),
+                    PurchaseCost = purchaseCost, Currency = row[currencyIndex].Trim().ToUpperInvariant(), IsByod = row[byodIndex] == "true",
                     CustomFieldsJson = customFieldsByRow.GetValueOrDefault(index, "{}")
                 }, employeeId, parentTag));
             }
@@ -582,11 +585,12 @@ public static class DataExportEndpoints
         string[] warrantyHeader = ["Etiket", "Ad", "Durum", "Kategori", "Marka", "Model", "Seri No", "Konum", "Personel No", "Çalışan", "Alış Tarihi", "Garanti Bitiş Tarihi", "Alış Bedeli", "Para Birimi"];
         var legacyWithParent = legacyHeader.Append("Üst Varlık Etiketi").ToArray();
         var warrantyWithParent = warrantyHeader.Append("Üst Varlık Etiketi").ToArray();
-        var hasParentColumn = records[0].Take(legacyWithParent.Length).SequenceEqual(legacyWithParent, StringComparer.OrdinalIgnoreCase) || records[0].Take(warrantyWithParent.Length).SequenceEqual(warrantyWithParent, StringComparer.OrdinalIgnoreCase);
-        var hasWarrantyColumn = records[0].Take(warrantyHeader.Length).SequenceEqual(warrantyHeader, StringComparer.OrdinalIgnoreCase) || records[0].Take(warrantyWithParent.Length).SequenceEqual(warrantyWithParent, StringComparer.OrdinalIgnoreCase);
-        var baseColumnCount = hasParentColumn ? (hasWarrantyColumn ? warrantyWithParent.Length : legacyWithParent.Length) : (hasWarrantyColumn ? warrantyHeader.Length : legacyHeader.Length);
+        var hasParentColumn = records[0].Take(legacyWithParent.Length + 1).SequenceEqual(legacyWithParent.Append("BYOD"), StringComparer.OrdinalIgnoreCase) || records[0].Take(warrantyWithParent.Length + 1).SequenceEqual(warrantyWithParent.Append("BYOD"), StringComparer.OrdinalIgnoreCase);
+        var hasWarrantyColumn = records[0].Take(warrantyHeader.Length + 1).SequenceEqual(warrantyHeader.Append("BYOD"), StringComparer.OrdinalIgnoreCase) || records[0].Take(warrantyWithParent.Length + 1).SequenceEqual(warrantyWithParent.Append("BYOD"), StringComparer.OrdinalIgnoreCase);
+        var baseColumnCount = (hasParentColumn ? (hasWarrantyColumn ? warrantyWithParent.Length : legacyWithParent.Length) : (hasWarrantyColumn ? warrantyHeader.Length : legacyHeader.Length)) + 1;
         var columnCount = baseColumnCount + customFields.Count;
-        var parentIndex = hasParentColumn ? baseColumnCount - 1 : -1;
+        var parentIndex = hasParentColumn ? baseColumnCount - 2 : -1;
+        var byodIndex = baseColumnCount - 1;
         var costIndex = hasWarrantyColumn ? 12 : 11;
         var currencyIndex = hasWarrantyColumn ? 13 : 12;
         var expectedHeader = records[0].Take(baseColumnCount).Concat(customFields.Select(field => $"Özel alan: {field.Key}")).ToArray();

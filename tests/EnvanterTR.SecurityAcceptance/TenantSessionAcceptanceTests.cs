@@ -792,6 +792,42 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Byod_filter_and_export_are_company_scoped_and_mark_personal_devices()
+    {
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await db.Assets.Where(x => x.Id == _ownAssetId || x.Id == _otherCompanyAssetId)
+                .ExecuteUpdateAsync(update => update.SetProperty(x => x.IsByod, true));
+        }
+
+        using (var response = await SendAsAdminAsync("/api/assets?byod=true"))
+        {
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var assets = payload.RootElement.GetProperty("items").EnumerateArray().ToArray();
+            Assert.Equal(_ownAssetId, Assert.Single(assets).GetProperty("id").GetGuid());
+            Assert.True(assets[0].GetProperty("isByod").GetBoolean());
+        }
+
+        using (var response = await SendAsAdminAsync("/api/assets?byod=false"))
+        {
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.Empty(payload.RootElement.GetProperty("items").EnumerateArray());
+        }
+
+        using (var response = await SendAsAdminAsync("/api/assets/export-all.csv?byod=true"))
+        {
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var csv = await response.Content.ReadAsStringAsync();
+            Assert.Contains("BYOD", csv, StringComparison.Ordinal);
+            Assert.Contains("Evet", csv, StringComparison.Ordinal);
+            Assert.DoesNotContain("OTHER-1", csv, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public async Task License_expiry_report_list_detail_and_csv_are_scoped_to_the_active_company()
     {
         using (var reportResponse = await SendAsAdminAsync("/api/reports/software-licenses?state=all"))
