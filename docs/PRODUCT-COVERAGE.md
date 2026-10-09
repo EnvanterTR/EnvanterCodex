@@ -11,7 +11,9 @@ Bu belge EnvanterTR'nin kurumsal envanter yönetiminde beklenen ana işlevleri n
 
 ## Dağıtım doğrulama notu — 9 Ekim 2026
 
-İzole PostgreSQL güvenlik/kabul paketi 9 Ekim'de **58/58 geçti**. Bakım, varlık ve çalışan belgesi senaryoları yabancı şirkete ait kayda dosya yükleme/silme girişimlerinin reddini ve yabancı ekin veritabanı kaydıyla diskteki dosyasının korunduğunu doğrular. Aynı varlık için çakışan tarih aralığıyla gönderilen iki paralel rezervasyon isteğinde tam olarak bir `201 Created`, bir `409 Conflict`, tek bir bekleyen kayıt ve tek denetim olayı oluştuğu doğrulanır. Bu kanıt diğer rezervasyon yarışlarını ya da diğer modüllerdeki tüm dosya uçlarının her rol/tenant birleşimini kapsamaz.
+Güncel izole PostgreSQL HTTP güvenlik/kabul paketi **60 testle başarılı**. Çalışma zamanında keşfedilen 300’den fazla API rotasının her biri açıkça kimlik/yetki sınırı taşıyor; anonim küme 11 yöntem/yol ile sınırlandırılmış ve dokuz yetki politikasının tamamı kullanımda. Ek HTTP kabul testi bilinmeyen şirket rolünü reddeder, şirket yöneticisinin platform yönetim özetine erişimini engeller ve kayıtlı platform yöneticisinin erişimini doğrular. Bu kontroller tam endpoint×rol matrisi değildir.
+
+İlk dağıtım doğrulama kaydında izole PostgreSQL güvenlik/kabul paketi **58/58 geçti**. Bakım, varlık ve çalışan belgesi senaryoları yabancı şirkete ait kayda dosya yükleme/silme girişimlerinin reddini ve yabancı ekin veritabanı kaydıyla diskteki dosyasının korunduğunu doğrular. Aynı varlık için çakışan tarih aralığıyla gönderilen iki paralel rezervasyon isteğinde tam olarak bir `201 Created`, bir `409 Conflict`, tek bir bekleyen kayıt ve tek denetim olayı oluştuğu doğrulanır. Bu kanıt diğer rezervasyon yarışlarını ya da diğer modüllerdeki tüm dosya uçlarının her rol/tenant birleşimini kapsamaz.
 
 Rezervasyon CSV kabulü de yabancı şirket için gerçek bir kayıt ekleyip filtresiz yönetici dışa aktarımında bu kaydın bulunmadığını doğrular; şirketler arası CSV sızıntısına karşı somut testtir.
 

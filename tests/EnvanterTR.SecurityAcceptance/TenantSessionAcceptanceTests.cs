@@ -115,6 +115,32 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             string.Join(", ", expectedPolicies.Except(policies).OrderBy(x => x, StringComparer.Ordinal)));
     }
 
+    [Fact]
+    public async Task Company_member_and_platform_admin_boundaries_are_enforced_over_http()
+    {
+        using (var companyMember = await SendAsRoleAsync(HttpMethod.Get, "/api/company/branding", "viewer"))
+            Assert.Equal(HttpStatusCode.OK, companyMember.StatusCode);
+
+        await SetCompanyRoleAsync("unsupported_role");
+        using (var nonMemberRole = await SendAsRoleAsync(HttpMethod.Get, "/api/company/branding", "unsupported_role"))
+            Assert.Equal(HttpStatusCode.Forbidden, nonMemberRole.StatusCode);
+        await SetCompanyRoleAsync("admin");
+
+        using (var tenantAdmin = await SendAsAdminAsync("/api/platform/overview"))
+            Assert.Equal(HttpStatusCode.Forbidden, tenantAdmin.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            await db.SaveChangesAsync();
+        }
+        using var platformAdmin = await SendAsPlatformAdminAsync("/api/platform/overview");
+        Assert.Equal(HttpStatusCode.OK, platformAdmin.StatusCode);
+        using var payload = JsonDocument.Parse(await platformAdmin.Content.ReadAsStringAsync());
+        Assert.True(payload.RootElement.GetProperty("companies").GetProperty("total").GetInt32() >= 2);
+    }
+
     private static string DescribeEndpoint(RouteEndpoint endpoint)
     {
         var methods = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods;
@@ -4382,6 +4408,14 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         return await _client!.SendAsync(request);
     }
 
+    private async Task<HttpResponseMessage> SendAsPlatformAdminAsync(string path)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("X-Acceptance-User", _userId.ToString());
+        request.Headers.Add("X-Acceptance-Platform-Admin", "true");
+        return await _client!.SendAsync(request);
+    }
+
     private async Task<HttpResponseMessage> SendAsUserAsync(HttpMethod method, string path, Guid userId, Guid companyId,
         HttpContent? content = null, string? requestToken = null, string? antiforgeryCookie = null, string? role = null)
     {
@@ -4439,18 +4473,20 @@ internal sealed class AcceptanceHeaderAuthenticationHandler(
 {
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (!Guid.TryParse(Request.Headers["X-Acceptance-User"], out var userId) ||
-            !Guid.TryParse(Request.Headers["X-Acceptance-Company"], out var companyId))
+        if (!Guid.TryParse(Request.Headers["X-Acceptance-User"], out var userId))
             return Task.FromResult(AuthenticateResult.NoResult());
 
         var role = Request.Headers["X-Acceptance-Role"].ToString();
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, userId.ToString()),
-            new(ClaimTypes.Name, "Acceptance User"),
-            new("company_id", companyId.ToString()),
-            new("company_role", role)
+            new(ClaimTypes.Name, "Acceptance User")
         };
+        if (Guid.TryParse(Request.Headers["X-Acceptance-Company"], out var companyId))
+            claims.Add(new Claim("company_id", companyId.ToString()));
+        if (!string.IsNullOrWhiteSpace(role)) claims.Add(new Claim("company_role", role));
+        if (string.Equals(Request.Headers["X-Acceptance-Platform-Admin"], "true", StringComparison.OrdinalIgnoreCase))
+            claims.Add(new Claim("platform_admin", "true"));
         var identity = new ClaimsIdentity(claims, Scheme.Name);
         var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name);
         return Task.FromResult(AuthenticateResult.Success(ticket));

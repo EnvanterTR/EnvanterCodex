@@ -20,6 +20,8 @@ Hesap güvenliği kabulü başarılı giriş ve MFA yönetimi olaylarının şir
 
 Bu kontrol rota metadata envanterinin eksiksizliğini kanıtlar; her endpoint için tüm rollerin HTTP davranışını ayrı ayrı kanıtlayan tam bir 318×rol matrisi değildir. Temsilî rol matrisi ve tenant davranış testleri pakette ayrıca bulunur.
 
+`Company_member_and_platform_admin_boundaries_are_enforced_over_http` şirket üyesi rolüyle etiket ayarlarının okunabildiğini, tanınmayan şirket rolünün `403` aldığını, sıradan şirket yöneticisinin platform özetine erişemediğini ve veritabanında platform yöneticisi olan hesabın platform özetine erişebildiğini doğrular.
+
 Senaryo aynı eski `admin` kimlik bilgilerini her istekte tekrar gönderir ve veritabanındaki güncel durumu değiştirir:
 
 - Başlangıçta üye yönetimi izni çalışır.
