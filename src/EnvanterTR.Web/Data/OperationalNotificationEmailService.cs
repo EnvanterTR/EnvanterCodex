@@ -240,7 +240,7 @@ public sealed class OperationalNotificationEmailService(
                                     asset.PurchaseDate >= earliestPurchaseDate && asset.PurchaseDate <= rangeEnd && model.DepreciationMonths != null
                               orderby asset.PurchaseDate, asset.AssetTag
                               select new { asset.PurchaseDate, asset.AssetTag, asset.Name, ModelName = model.Name, Months = model.DepreciationMonths!.Value })
-                .Take(5000).ToListAsync(cancellationToken);
+                .ToListAsync(cancellationToken);
             items.AddRange(rows.Select(row => new
                 {
                     Date = row.PurchaseDate!.Value.AddMonths(row.Months),

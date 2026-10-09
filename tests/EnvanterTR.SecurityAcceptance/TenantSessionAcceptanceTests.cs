@@ -1553,7 +1553,19 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             db.AssetModels.Add(model);
             var assetForLifetime = await db.Assets.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownAssetId);
             assetForLifetime.ModelId = model.Id;
-            assetForLifetime.PurchaseDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(10).AddMonths(-24);
+            var lifetimeEndDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(10);
+            assetForLifetime.PurchaseDate = lifetimeEndDate.AddMonths(-24);
+            var longLifeModel = new AssetModel { CompanyId = _companyId, Name = "OWN-LONG-LIFE", DepreciationMonths = 3600 };
+            db.AssetModels.Add(longLifeModel);
+            db.Assets.AddRange(Enumerable.Range(1, 5000).Select(index => new Asset
+            {
+                CompanyId = _companyId,
+                AssetTag = $"LIFE-HISTORY-{index:D5}",
+                Name = "Historical lifetime fixture",
+                CategoryId = assetForLifetime.CategoryId,
+                ModelId = longLifeModel.Id,
+                PurchaseDate = lifetimeEndDate.AddDays(20).AddMonths(-3600)
+            }));
             db.AssetEvents.Add(new AssetEvent { CompanyId = _companyId, AssetId = _ownAssetId, EmployeeId = _ownEmployeeId,
                 ActorUserId = _userId, EventType = "Assigned", Details = "assignment-digest-fixture", OccurredAt = DateTimeOffset.UtcNow });
             await db.SaveChangesAsync();
