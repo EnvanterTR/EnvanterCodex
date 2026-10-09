@@ -186,6 +186,28 @@ const requiredLicenseListLabels = [
   'Lisans koltuğu çalışanlara atandı.', 'Lisans koltuğu çalışana atandı.',
   'Lisans koltuğu cihaza atandı.'
 ];
+const requiredLicenseImportLabels = [
+  'YAZILIM LİSANSLARI / DOSYA AKTARIMI', 'Lisans kayıtlarını içe aktar',
+  'Şablon alanları: Lisans, Yayıncı, Ürün sürümü, Tür, Tedarikçi, Koltuk, Birim maliyeti, Para birimi, Alış tarihi, Bitiş tarihi, Otomatik yenileme, Notlar. Tür: Subscription, Perpetual, Device, Site, Trial veya Other. UTF-8 CSV, yyyy-AA-gg tarih; en fazla 5.000 satır ve 16 MB.',
+  'Lisans anahtarı ve referansı aktarılmaz. Yalnızca yeni lisanslar eklenir; mevcut atamalar değişmez. Önizleme kayıt oluşturmaz.',
+  'Örn. Tedarikçi A', 'Lisans eşleme profili', 'Lisans eşleme profili kaydedildi.',
+  'Seçili lisans eşleme profili silinsin mi?', 'Lisans eşleme profili silindi.',
+  'Bilinmeyen sütunları lisans alanlarına bağlayın veya “Bu sütunu yoksay” seçin. Lisans adı, türü ve koltuk sayısı zorunludur.',
+  'Lisans sütununu eşle', 'Bir hedef alan seçin', 'Dosya sütunu:', 'bayt',
+  'Her sütun için bir hedef seçin veya yoksaymayı seçin.',
+  'Önce sütunları eşleyin, ardından profil adı girin.',
+  'Doğrulanmış yeni lisans kayıtları eklensin mi? Mevcut atamalar ve lisans referansları değişmez.',
+  'Dosya doğrulanıyor; hiçbir kayıt eklenmiyor…', 'Lisans kayıtları ekleniyor…',
+  'Dosya 16 MB sınırını aşıyor.', 'Dosya değişti. Önce yeniden doğrulayın.',
+  'CSV tırnak veya ayraç biçimi bozuk ya da satır sınırı aşıldı.',
+  'CSV\'de düzeltilmesi gereken alanlar bulundu. Hiçbir lisans eklenmedi.',
+  'Sütun eşlemesi sınırı aşıyor.',
+  'Önizlemeden sonra aynı lisans eklendi. Hiçbir kayıt aktarılmadı; önizlemeyi yenileyin.',
+  'CSV aktarılmadı; bir kayıt çakıştı. Önizlemeyi yenileyip tekrar deneyin.',
+  'Dosyadaki sütunları eşleyin veya açıkça yoksayın: {columns}. Veri kaybını önlemek için aktarım durduruldu.',
+  '{count} yeni lisans doğrulandı; {supplierCount} yeni tedarikçi yalnızca aktarımı onaylarsanız kataloğa eklenecek. Önizleme kayıt eklemedi.',
+  '{count} lisans ve denetim geçmişi eklendi; {supplierCount} yeni tedarikçi kataloğa bağlandı.'
+];
 
 const invalidRows = Object.entries(sandbox.localeRows)
   .filter(([key, values]) => !key.trim() || !Array.isArray(values) || values.length !== 4 || values.some(value => typeof value !== 'string' || !value.trim()))
@@ -196,8 +218,9 @@ const missingAccessoryLabels = requiredAccessoryLabels.filter(key => !sandbox.lo
 const missingEmployeeLabels = requiredEmployeeLabels.filter(key => !sandbox.localeRows[key]);
 const missingInventoryMovementLabels = requiredInventoryMovementLabels.filter(key => !sandbox.localeRows[key]);
 const missingLicenseListLabels = requiredLicenseListLabels.filter(key => !sandbox.localeRows[key]);
+const missingLicenseImportLabels = requiredLicenseImportLabels.filter(key => !sandbox.localeRows[key]);
 
-if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingLicenseListLabels.length) {
+if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length) {
   if (invalidRows.length) console.error(`Invalid 4-language locale entries: ${invalidRows.join(', ')}`);
   if (missingAssetLabels.length) console.error(`Missing asset-list locale entries: ${missingAssetLabels.join(', ')}`);
   if (missingReservationLabels.length) console.error(`Missing reservation-page locale entries: ${missingReservationLabels.join(', ')}`);
@@ -205,6 +228,7 @@ if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.
   if (missingEmployeeLabels.length) console.error(`Missing employee-page locale entries: ${missingEmployeeLabels.join(', ')}`);
   if (missingInventoryMovementLabels.length) console.error(`Missing inventory-movement locale entries: ${missingInventoryMovementLabels.join(', ')}`);
   if (missingLicenseListLabels.length) console.error(`Missing license-list locale entries: ${missingLicenseListLabels.join(', ')}`);
+  if (missingLicenseImportLabels.length) console.error(`Missing license-import locale entries: ${missingLicenseImportLabels.join(', ')}`);
   process.exitCode = 1;
 } else {
   console.log(`Verified ${Object.keys(sandbox.localeRows).length} locale entries in Turkish, English, Russian, Ukrainian, and Macedonian.`);
