@@ -18,6 +18,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Asset> Assets => Set<Asset>();
     public DbSet<AssetCustomFieldDefinition> AssetCustomFieldDefinitions => Set<AssetCustomFieldDefinition>();
     public DbSet<SavedAssetSearch> SavedAssetSearches => Set<SavedAssetSearch>();
+    public DbSet<SavedAssetImportMapping> SavedAssetImportMappings => Set<SavedAssetImportMapping>();
     public DbSet<CustomAssetReport> CustomAssetReports => Set<CustomAssetReport>();
     public DbSet<DashboardPreference> DashboardPreferences => Set<DashboardPreference>();
     public DbSet<OperationalNotificationPreference> OperationalNotificationPreferences => Set<OperationalNotificationPreference>();
@@ -182,6 +183,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<SavedAssetSearch>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<SavedAssetSearch>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<SavedAssetImportMapping>().Property(x => x.Name).HasMaxLength(60).IsRequired();
+        modelBuilder.Entity<SavedAssetImportMapping>().Property(x => x.NormalizedName).HasMaxLength(60).IsRequired();
+        modelBuilder.Entity<SavedAssetImportMapping>().Property(x => x.MappingJson).HasMaxLength(8192).IsRequired();
+        modelBuilder.Entity<SavedAssetImportMapping>().HasIndex(x => new { x.CompanyId, x.UserId, x.NormalizedName }).IsUnique();
+        modelBuilder.Entity<SavedAssetImportMapping>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SavedAssetImportMapping>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<CustomAssetReport>().Property(x => x.Name).HasMaxLength(80).IsRequired();

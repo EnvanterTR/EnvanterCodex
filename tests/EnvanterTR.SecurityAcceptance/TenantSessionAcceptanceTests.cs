@@ -241,6 +241,54 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Saved_asset_import_mappings_are_validated_and_private_to_their_owner()
+    {
+        using var csrfResponse = await SendAsUserAsync(HttpMethod.Get, "/api/session/csrf", _userId, _companyId);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var map = new Dictionary<string, string> { ["Inventory Code"] = "assetTag", ["Item Description"] = "name", ["Ignore me"] = "ignore" };
+
+        using (var noCsrf = await SendAsUserAsync(HttpMethod.Post, "/api/assets/import-mappings", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Vendor A", mappings = map })))
+            Assert.Equal(HttpStatusCode.BadRequest, noCsrf.StatusCode);
+
+        using var create = await SendAsUserAsync(HttpMethod.Post, "/api/assets/import-mappings", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Vendor A", mappings = map }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, create.StatusCode);
+        using var created = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
+        var profileId = created.RootElement.GetProperty("id").GetGuid();
+
+        using (var invalid = await SendAsUserAsync(HttpMethod.Post, "/api/assets/import-mappings", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Bad", mappings = new Dictionary<string, string> { ["Secret"] = "custom:otherTenantOnly" } }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+
+        using (var ownList = await SendAsUserAsync(HttpMethod.Get, "/api/assets/import-mappings", _userId, _companyId))
+        using (var own = JsonDocument.Parse(await ownList.Content.ReadAsStringAsync()))
+            Assert.Equal(profileId, Assert.Single(own.RootElement.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
+
+        using (var otherUserList = await SendAsUserAsync(HttpMethod.Get, "/api/assets/import-mappings", _sameCompanyOtherUserId, _companyId))
+        using (var other = JsonDocument.Parse(await otherUserList.Content.ReadAsStringAsync()))
+            Assert.Empty(other.RootElement.GetProperty("items").EnumerateArray());
+
+        using (var crossCompanyList = await SendAsUserAsync(HttpMethod.Get, "/api/assets/import-mappings", _userId, _otherCompanyId))
+            Assert.Equal(HttpStatusCode.Unauthorized, crossCompanyList.StatusCode);
+
+        using var otherUserCsrfResponse = await SendAsUserAsync(HttpMethod.Get, "/api/session/csrf", _sameCompanyOtherUserId, _companyId);
+        using var otherUserCsrfPayload = JsonDocument.Parse(await otherUserCsrfResponse.Content.ReadAsStringAsync());
+        var otherUserToken = otherUserCsrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        using (var otherUserDelete = await SendAsUserAsync(HttpMethod.Delete, $"/api/assets/import-mappings/{profileId}", _sameCompanyOtherUserId, _companyId,
+            requestToken: otherUserToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, otherUserDelete.StatusCode);
+
+        using (var delete = await SendAsUserAsync(HttpMethod.Delete, $"/api/assets/import-mappings/{profileId}", _userId, _companyId,
+            requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+    }
+
+    [Fact]
     public async Task Custom_asset_reports_sync_across_sessions_but_remain_private_to_their_owner()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");

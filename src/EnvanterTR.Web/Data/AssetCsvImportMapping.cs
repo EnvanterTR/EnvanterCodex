@@ -37,6 +37,40 @@ internal static class AssetCsvImportMapping
         .Append(new { key = "ignore", label = "Bu sütunu yoksay" })
         .Cast<object>().ToArray();
 
+    public static bool ValidateExplicitMappings(IReadOnlyDictionary<string, string>? mappings,
+        IReadOnlyCollection<AssetCustomFieldDefinition>? customFields, out string error)
+    {
+        error = "";
+        if (mappings is null || mappings.Count is < 1 or > 20)
+        {
+            error = "Bir eşleme profili 1–20 sütun eşlemesi içermelidir.";
+            return false;
+        }
+        var sources = new HashSet<string>(StringComparer.Ordinal);
+        var targets = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var (source, target) in mappings)
+        {
+            if (string.IsNullOrWhiteSpace(source) || source.Trim().Length > 160 || !sources.Add(NormalizeHeader(source)))
+            {
+                error = "Kaynak sütun adları boş, çok uzun veya yinelenen olamaz.";
+                return false;
+            }
+            var supported = target == "ignore" || TargetKeys.Contains(target, StringComparer.Ordinal) ||
+                target.StartsWith("custom:", StringComparison.Ordinal) && (customFields ?? []).Any(field => field.IsActive && field.Key == target[7..]);
+            if (!supported)
+            {
+                error = $"“{source}” sütununun hedef alanı bu şirkette etkin değil veya geçersiz.";
+                return false;
+            }
+            if (target != "ignore" && !targets.Add(target))
+            {
+                error = "Aynı varlık alanına birden fazla sütun eşlenemez.";
+                return false;
+            }
+        }
+        return true;
+    }
+
     public static List<List<string>> Normalize(List<List<string>> records,
         IReadOnlyCollection<AssetCustomFieldDefinition>? customFields, out string[] unsupportedColumns,
         IReadOnlyDictionary<string, string>? explicitMappings = null)
@@ -95,6 +129,8 @@ internal static class AssetCsvImportMapping
         {
             var candidates = sourceHeader.Select((header, index) => (header, index))
                 .Where(item => NormalizeHeader(item.header) == NormalizeHeader(sourceName)).Select(item => item.index).ToArray();
+            // A saved profile can contain columns absent from a later file; keep applying the matching entries.
+            if (candidates.Length == 0) continue;
             if (candidates.Length != 1)
             {
                 mappingErrors.Add(sourceName);

@@ -54,6 +54,7 @@ public static class AssetEndpoints
         api.MapSupplierCatalogEndpoints();
         api.MapAccessoryKitEndpoints();
         api.MapSavedAssetSearchEndpoints();
+        api.MapSavedAssetImportMappingEndpoints();
         api.MapCustomAssetReportEndpoints();
         api.MapDashboardPreferenceEndpoints();
         api.MapOperationalNotificationEndpoints();
