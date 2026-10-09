@@ -15,16 +15,24 @@ The file `src/EnvanterTR.Web/wwwroot/vendor/bwip-js-min.js` contains bwip-js
 under the MIT License. The package's license notices for bwip-js and its bundled
 components are retained beside the file as `BWIP-JS-LICENSE*`.
 
-## Build-time dependencies
+## Resolved NuGet dependencies
 
 `Microsoft.EntityFrameworkCore.Design` is used by the Entity Framework CLI for
 development and migration generation. It is marked `PrivateAssets=all` and is
 excluded from Release deployment output together with its MSBuild and Roslyn
-tooling dependencies. A resolved-version snapshot of all 40 direct and
-transitive NuGet packages in the web project, including each package's license
-expression and NuGet license URL, is recorded in
-[`THIRD-PARTY-DEPENDENCIES.csv`](THIRD-PARTY-DEPENDENCIES.csv). The snapshot
-uses package `.nuspec` metadata; it is an inventory aid, not a legal review or
-a replacement for notices shipped by each dependency. Recheck it whenever
-package versions change and distinguish build-only packages from files in each
-platform's published output.
+tooling dependencies. The generated snapshot in
+[`THIRD-PARTY-DEPENDENCIES.csv`](THIRD-PARTY-DEPENDENCIES.csv) records every
+resolved package separately for the web application, security acceptance
+project, and backup command-line project. Each NuGet record includes whether it
+is a direct or transitive project dependency, its resolved version, and license
+expression, URL, or package license-file reference read from its `.nuspec`.
+The generator runs in Windows CI and the job fails if the committed inventory
+is stale. The same file also lists the vendored QR/barcode libraries and the
+license notices retained beside them.
+
+This generated inventory is a release-review input, not a legal conclusion. It
+does not determine whether every resolved package is present in each platform's
+published output, replace package-specific notices, or establish license
+compatibility. Those checks still require review of the actual Windows and
+Linux publish artifacts and a human licensing/attribution review. Rebuild the
+inventory after changing project package references or vendored assets.

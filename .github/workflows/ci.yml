@@ -96,6 +96,15 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Rebuild the third-party dependency inventory
+        shell: pwsh
+        run: |
+          $packages = Join-Path $env:RUNNER_TEMP 'third-party-packages'
+          dotnet restore tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --packages $packages
+          dotnet restore tools/EnvanterTR.Backup/EnvanterTR.Backup.csproj --packages $packages
+          ./tools/Generate-ThirdPartyInventory.ps1 -NuGetPackagesPath $packages
+          git diff --exit-code -- docs/THIRD-PARTY-DEPENDENCIES.csv
+
       - name: Build the self-contained Windows x64 package
         shell: pwsh
         run: ./deploy/windows/publish.ps1 -OutputPath "$env:RUNNER_TEMP\envantertr-windows-publish"

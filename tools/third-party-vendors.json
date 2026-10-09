@@ -1,0 +1,37 @@
+[
+  {
+    "Package": "Project Nayuki QR Code generator",
+    "Version": "vendored snapshot",
+    "LicenseExpression": "MIT",
+    "LicenseFile": "src/EnvanterTR.Web/wwwroot/vendor/qrcodegen.ts (license embedded)",
+    "Source": "https://github.com/nayuki/QR-Code-generator"
+  },
+  {
+    "Package": "bwip-js",
+    "Version": "4.11.4",
+    "LicenseExpression": "MIT",
+    "LicenseFile": "src/EnvanterTR.Web/wwwroot/vendor/BWIP-JS-LICENSE",
+    "Source": "https://github.com/metafloor/bwip-js"
+  },
+  {
+    "Package": "CanvasToBlob (bwip-js bundled component)",
+    "Version": "vendored snapshot",
+    "LicenseExpression": "MIT/X11",
+    "LicenseFile": "src/EnvanterTR.Web/wwwroot/vendor/BWIP-JS-LICENSE.CANVASTOBLOB",
+    "Source": "Vendored with bwip-js"
+  },
+  {
+    "Package": "FileSaver.js (bwip-js bundled component)",
+    "Version": "vendored snapshot",
+    "LicenseExpression": "MIT",
+    "LicenseFile": "src/EnvanterTR.Web/wwwroot/vendor/BWIP-JS-LICENSE.FILESAVER",
+    "Source": "Vendored with bwip-js"
+  },
+  {
+    "Package": "Inconsolata font (bwip-js bundled component)",
+    "Version": "vendored snapshot",
+    "LicenseExpression": "OFL-1.1",
+    "LicenseFile": "src/EnvanterTR.Web/wwwroot/vendor/BWIP-JS-LICENSE.INCONSOLATA",
+    "Source": "Vendored with bwip-js"
+  }
+]
