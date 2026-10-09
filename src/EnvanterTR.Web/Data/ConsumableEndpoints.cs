@@ -60,7 +60,7 @@ public static class ConsumableEndpoints
             var items = await ordered.ThenBy(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize).Select(x => new
             {
                 x.Id, x.Name, x.Category, x.ModelNumber, x.ItemNumber, x.Supplier, x.Location,
-                x.MinimumQuantity, x.TotalQuantity, x.UnitCost, x.Currency, x.PurchaseDate, x.Notes,
+                x.MinimumQuantity, x.TotalQuantity, x.UnitCost, x.Currency, x.PurchaseDate, x.WarrantyExpiresAt, x.Notes,
                 x.IsRequestable, x.UpdatedAt,
                 issued = db.ConsumableMovements.Where(m => m.CompanyId == companyId && m.ConsumableId == x.Id && m.MovementType == "Checkout").Sum(m => (int?)m.Quantity) ?? 0
             }).ToListAsync(ct);
@@ -84,16 +84,16 @@ public static class ConsumableEndpoints
             if (await query.CountAsync(ct) > 10000) return Results.ValidationProblem(new Dictionary<string, string[]> { ["export"] = ["Dışa aktarım tek dosyada en fazla 10.000 satır içerebilir. Arama veya stok filtresini daraltın."] });
             var rows = await query.OrderBy(x => x.Name).Select(x => new
             {
-                x.Name, x.Category, x.ModelNumber, x.ItemNumber, x.Supplier, x.Location, x.TotalQuantity, x.MinimumQuantity, x.UnitCost, x.Currency,
+                x.Name, x.Category, x.ModelNumber, x.ItemNumber, x.Supplier, x.Location, x.TotalQuantity, x.MinimumQuantity, x.UnitCost, x.Currency, x.PurchaseDate, x.WarrantyExpiresAt,
                 Issued = db.ConsumableMovements.Where(m => m.CompanyId == companyId && m.ConsumableId == x.Id && m.MovementType == "Checkout").Sum(m => (int?)m.Quantity) ?? 0
             }).ToListAsync(ct);
-            var csv = new StringBuilder("\uFEFF\"Malzeme\",\"Kategori\",\"Model\",\"Ürün no\",\"Tedarikçi\",\"Konum\",\"Toplam\",\"Tüketilen\",\"Kalan\",\"Minimum\",\"Birim maliyeti\",\"Para birimi\"\r\n");
+            var csv = new StringBuilder("\uFEFF\"Malzeme\",\"Kategori\",\"Model\",\"Ürün no\",\"Tedarikçi\",\"Konum\",\"Toplam\",\"Tüketilen\",\"Kalan\",\"Minimum\",\"Birim maliyeti\",\"Para birimi\",\"Alış tarihi\",\"Garanti bitiş tarihi\"\r\n");
             foreach (var row in rows)
             {
                 var cells = new[] { row.Name, row.Category, row.ModelNumber, row.ItemNumber, row.Supplier, row.Location,
                     row.TotalQuantity.ToString(CultureInfo.InvariantCulture), row.Issued.ToString(CultureInfo.InvariantCulture),
                     (row.TotalQuantity - row.Issued).ToString(CultureInfo.InvariantCulture), row.MinimumQuantity.ToString(CultureInfo.InvariantCulture),
-                    row.UnitCost?.ToString("0.00", CultureInfo.InvariantCulture), row.Currency };
+                    row.UnitCost?.ToString("0.00", CultureInfo.InvariantCulture), row.Currency, row.PurchaseDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), row.WarrantyExpiresAt?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) };
                 csv.AppendJoin(',', cells.Select(CsvCell)).Append("\r\n");
             }
             return Results.File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv; charset=utf-8", $"sarf-stoklari-{DateTime.UtcNow:yyyyMMdd}.csv");
@@ -104,7 +104,7 @@ public static class ConsumableEndpoints
             if (!Tenant(user, out var companyId)) return Results.Forbid();
             var item = await db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
                 .Select(x => new { x.Id, x.Name, x.Category, x.ModelNumber, x.ItemNumber, x.Supplier, x.Location,
-                    x.MinimumQuantity, x.TotalQuantity, x.UnitCost, x.Currency, x.PurchaseDate, x.Notes, x.IsRequestable, x.UpdatedAt,
+                    x.MinimumQuantity, x.TotalQuantity, x.UnitCost, x.Currency, x.PurchaseDate, x.WarrantyExpiresAt, x.Notes, x.IsRequestable, x.UpdatedAt,
                     issued = db.ConsumableMovements.Where(m => m.CompanyId == companyId && m.ConsumableId == x.Id && m.MovementType == "Checkout").Sum(m => (int?)m.Quantity) ?? 0 })
                 .SingleOrDefaultAsync(ct);
             if (item is null) return Results.NotFound();
@@ -120,13 +120,15 @@ public static class ConsumableEndpoints
             if (!Tenant(user, out var companyId)) return Results.Forbid();
             var errors = Validate(request.Name, request.MinimumQuantity, request.Quantity, request.UnitCost, request.Currency,
                 request.Category, request.ModelNumber, request.ItemNumber, request.Supplier, request.Location, request.Notes);
+            if (request.WarrantyExpiresAt is { } warranty && request.PurchaseDate is { } purchase && warranty < purchase)
+                errors["warrantyExpiresAt"] = ["Garanti bitiş tarihi alış tarihinden önce olamaz."];
             if (errors.Count > 0) return Results.ValidationProblem(errors);
             var location = Clean(request.Location) ?? await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, ct);
             var item = new Consumable { CompanyId = companyId, Name = request.Name.Trim(), Category = Clean(request.Category),
                 ModelNumber = Clean(request.ModelNumber), ItemNumber = Clean(request.ItemNumber), Supplier = Clean(request.Supplier),
                 SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, ct),
                 Location = location, LocationCatalogId = await AssetEndpoints.ResolveLocationCatalogIdAsync(db, companyId, location, ct), MinimumQuantity = request.MinimumQuantity, TotalQuantity = request.Quantity,
-                UnitCost = request.UnitCost, Currency = request.Currency.Trim().ToUpperInvariant(), PurchaseDate = request.PurchaseDate,
+                UnitCost = request.UnitCost, Currency = request.Currency.Trim().ToUpperInvariant(), PurchaseDate = request.PurchaseDate, WarrantyExpiresAt = request.WarrantyExpiresAt,
                 Notes = Clean(request.Notes), IsRequestable = request.IsRequestable };
             db.Consumables.Add(item);
             if (request.Quantity > 0) db.ConsumableMovements.Add(new ConsumableMovement { CompanyId = companyId, ConsumableId = item.Id,
@@ -143,12 +145,14 @@ public static class ConsumableEndpoints
             if (item is null) return Results.NotFound();
             var errors = Validate(request.Name, request.MinimumQuantity, item.TotalQuantity, request.UnitCost, request.Currency,
                 request.Category, request.ModelNumber, request.ItemNumber, request.Supplier, request.Location, request.Notes);
+            if (request.WarrantyExpiresAt is { } warranty && request.PurchaseDate is { } purchase && warranty < purchase)
+                errors["warrantyExpiresAt"] = ["Garanti bitiş tarihi alış tarihinden önce olamaz."];
             if (errors.Count > 0) return Results.ValidationProblem(errors);
             item.Name = request.Name.Trim(); item.Category = Clean(request.Category); item.ModelNumber = Clean(request.ModelNumber);
             item.ItemNumber = Clean(request.ItemNumber); item.Supplier = Clean(request.Supplier); item.SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, ct); item.Location = Clean(request.Location);
             item.LocationCatalogId = await AssetEndpoints.ResolveLocationCatalogIdAsync(db, companyId, request.Location, ct);
             item.MinimumQuantity = request.MinimumQuantity; item.UnitCost = request.UnitCost; item.Currency = request.Currency.Trim().ToUpperInvariant();
-            item.PurchaseDate = request.PurchaseDate; item.Notes = Clean(request.Notes); item.IsRequestable = request.IsRequestable; item.UpdatedAt = DateTimeOffset.UtcNow;
+            item.PurchaseDate = request.PurchaseDate; item.WarrantyExpiresAt = request.WarrantyExpiresAt; item.Notes = Clean(request.Notes); item.IsRequestable = request.IsRequestable; item.UpdatedAt = DateTimeOffset.UtcNow;
             AddAudit(db, companyId, user, item.Id, "consumable.updated", item.Name);
             await db.SaveChangesAsync(ct); return Results.NoContent();
         }).RequireAuthorization("asset.write");
@@ -240,7 +244,7 @@ public static class ConsumableEndpoints
         if (unsupportedColumns.Length > 0)
             return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Dosyadaki sütunları eşleyin veya açıkça yoksayın: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu." }, unmappedColumns = unsupportedColumns, mappingTargets = ConsumableCsvImportMapping.MappingTargets() });
 
-        string[] header = ["Malzeme", "Kategori", "Model", "Ürün no", "Tedarikçi", "Konum", "Toplam", "Minimum", "Birim maliyeti", "Para birimi", "Alış tarihi", "İstek yapılabilir", "Notlar"];
+        string[] header = ["Malzeme", "Kategori", "Model", "Ürün no", "Tedarikçi", "Konum", "Toplam", "Minimum", "Birim maliyeti", "Para birimi", "Alış tarihi", "Garanti bitiş tarihi", "İstek yapılabilir", "Notlar"];
         if (rows.Count is < 2 || rows.Count > CsvImportMaxRows + 1 || !rows[0].SequenceEqual(header, StringComparer.OrdinalIgnoreCase))
             return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"İçe aktarma şablonunu kullanın: başlık satırı ve en fazla {CsvImportMaxRows:N0} sarf satırı." } });
 
@@ -253,7 +257,7 @@ public static class ConsumableEndpoints
             var line = index + 2;
             if (row.Count != header.Length) { AddCsvError(errors, $"{line}. satırda {header.Length} sütun olmalıdır."); continue; }
             var name = row[0].Trim(); var category = Clean(row[1]); var model = Clean(row[2]); var itemNumber = Clean(row[3]);
-            var supplier = Clean(row[4]); var location = Clean(row[5]); var notes = Clean(row[12]);
+            var supplier = Clean(row[4]); var location = Clean(row[5]); var notes = Clean(row[13]);
             if (string.IsNullOrWhiteSpace(name) || name.Length > 200) AddCsvError(errors, $"{line}. satırdaki malzeme adı boş veya 200 karakterden uzun.");
             if (!int.TryParse(row[6], NumberStyles.None, CultureInfo.InvariantCulture, out var total) || total is < 0 or > 100000)
                 AddCsvError(errors, $"{line}. satırdaki toplam stok 0–100.000 arasında tam sayı olmalıdır.");
@@ -274,7 +278,15 @@ public static class ConsumableEndpoints
                 if (DateOnly.TryParseExact(row[10].Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)) purchaseDate = date;
                 else AddCsvError(errors, $"{line}. satırdaki alış tarihi yyyy-AA-gg biçiminde olmalıdır.");
             }
-            var requestableText = row[11].Trim();
+            DateOnly? warrantyExpiresAt = null;
+            if (!string.IsNullOrWhiteSpace(row[11]))
+            {
+                if (DateOnly.TryParseExact(row[11].Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)) warrantyExpiresAt = date;
+                else AddCsvError(errors, $"{line}. satırdaki garanti bitiş tarihi yyyy-AA-gg biçiminde olmalıdır.");
+            }
+            if (warrantyExpiresAt is { } warranty && purchaseDate is { } purchase && warranty < purchase)
+                AddCsvError(errors, $"{line}. satırdaki garanti bitiş tarihi alış tarihinden önce olamaz.");
+            var requestableText = row[12].Trim();
             var requestable = requestableText.Equals("true", StringComparison.OrdinalIgnoreCase) || requestableText.Equals("evet", StringComparison.OrdinalIgnoreCase);
             if (!requestable && !requestableText.Equals("false", StringComparison.OrdinalIgnoreCase) && !requestableText.Equals("hayır", StringComparison.OrdinalIgnoreCase) && !requestableText.Equals("hayir", StringComparison.OrdinalIgnoreCase))
                 AddCsvError(errors, $"{line}. satırdaki istek yapılabilir alanı Evet/Hayır olmalıdır.");
@@ -285,7 +297,7 @@ public static class ConsumableEndpoints
             if (itemNumber is not null && !rowItemNumbers.Add(itemNumber)) AddCsvError(errors, $"{line}. satırdaki ürün numarası dosyada yineleniyor.");
             parsed.Add(new Consumable { CompanyId = companyId, Name = name, Category = category, ModelNumber = model, ItemNumber = itemNumber,
                 Supplier = supplier, Location = location, TotalQuantity = total, MinimumQuantity = minimum, UnitCost = unitCost,
-                Currency = currency, PurchaseDate = purchaseDate, IsRequestable = requestable, Notes = notes });
+                Currency = currency, PurchaseDate = purchaseDate, WarrantyExpiresAt = warrantyExpiresAt, IsRequestable = requestable, Notes = notes });
         }
 
         var cleanErrors = errors.Distinct(StringComparer.Ordinal).Take(30).ToArray();
@@ -419,9 +431,9 @@ public static class ConsumableEndpoints
         return errors;
     }
     public sealed record CreateRequest(string Name, string? Category, string? ModelNumber, string? ItemNumber, string? Supplier,
-        string? Location, int MinimumQuantity, int Quantity, decimal? UnitCost, string Currency, DateOnly? PurchaseDate, string? Notes, bool IsRequestable);
+        string? Location, int MinimumQuantity, int Quantity, decimal? UnitCost, string Currency, DateOnly? PurchaseDate, string? Notes, bool IsRequestable, DateOnly? WarrantyExpiresAt = null);
     public sealed record UpdateRequest(string Name, string? Category, string? ModelNumber, string? ItemNumber, string? Supplier,
-        string? Location, int MinimumQuantity, decimal? UnitCost, string Currency, DateOnly? PurchaseDate, string? Notes, bool IsRequestable);
+        string? Location, int MinimumQuantity, decimal? UnitCost, string Currency, DateOnly? PurchaseDate, string? Notes, bool IsRequestable, DateOnly? WarrantyExpiresAt = null);
     public sealed record StockRequest(int Quantity, string? Notes);
     public sealed record CheckoutRequest(Guid EmployeeId, int Quantity, string? Notes);
 }

@@ -16,14 +16,15 @@ internal static class ComponentCsvImportMapping
         ["Birim maliyeti", "Birim maliyet", "Unit Cost", "Purchase Cost"],
         ["Para birimi", "Currency"],
         ["Alış tarihi", "Alis tarihi", "Purchase Date"],
+        ["Garanti bitiş tarihi", "Garanti tarihi", "Warranty Expiration", "Warranty Expires At"],
         ["Notlar", "Notes"]
     ];
 
     private static readonly string[] Canonical =
-        ["Bileşen", "Kategori", "Model", "Ürün no", "Seri no", "Tedarikçi", "Konum", "Toplam", "Minimum", "Birim maliyeti", "Para birimi", "Alış tarihi", "Notlar"];
+        ["Bileşen", "Kategori", "Model", "Ürün no", "Seri no", "Tedarikçi", "Konum", "Toplam", "Minimum", "Birim maliyeti", "Para birimi", "Alış tarihi", "Garanti bitiş tarihi", "Notlar"];
 
     private static readonly string[] TargetKeys =
-        ["name", "category", "modelNumber", "itemNumber", "serialNumber", "supplier", "location", "totalQuantity", "minimumQuantity", "unitCost", "currency", "purchaseDate", "notes"];
+        ["name", "category", "modelNumber", "itemNumber", "serialNumber", "supplier", "location", "totalQuantity", "minimumQuantity", "unitCost", "currency", "purchaseDate", "warrantyExpiresAt", "notes"];
 
     public static object[] MappingTargets() => TargetKeys.Select((key, index) => new { key, label = Canonical[index] })
         .Append(new { key = "ignore", label = "Bu sütunu yoksay" }).Cast<object>().ToArray();
@@ -98,6 +99,7 @@ internal static class ComponentCsvImportMapping
             output[9] = NormalizeDecimal(output[9]);
             output[10] = string.IsNullOrWhiteSpace(output[10]) ? "TRY" : output[10];
             output[11] = NormalizeDate(output[11]);
+            output[12] = NormalizeDate(output[12]);
             outputRows.Add(output);
         }
         return outputRows;

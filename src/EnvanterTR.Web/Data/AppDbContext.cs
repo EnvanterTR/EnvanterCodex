@@ -356,6 +356,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             table.HasCheckConstraint("CK_Consumables_Quantities", "\"MinimumQuantity\" >= 0 AND \"TotalQuantity\" >= 0");
             table.HasCheckConstraint("CK_Consumables_Cost", "\"UnitCost\" IS NULL OR \"UnitCost\" >= 0");
             table.HasCheckConstraint("CK_Consumables_Currency", "char_length(\"Currency\") = 3");
+            table.HasCheckConstraint("CK_Consumables_WarrantyAfterPurchase", "\"WarrantyExpiresAt\" IS NULL OR \"PurchaseDate\" IS NULL OR \"WarrantyExpiresAt\" >= \"PurchaseDate\"");
         });
         modelBuilder.Entity<ConsumableMovement>().Property(x => x.MovementType).HasMaxLength(24).IsRequired();
         modelBuilder.Entity<ConsumableMovement>().Property(x => x.Notes).HasMaxLength(2000);
@@ -492,6 +493,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             table.HasCheckConstraint("CK_InventoryComponents_Quantities", "\"MinimumQuantity\" >= 0 AND \"TotalQuantity\" >= 0");
             table.HasCheckConstraint("CK_InventoryComponents_Cost", "\"UnitCost\" IS NULL OR \"UnitCost\" >= 0");
             table.HasCheckConstraint("CK_InventoryComponents_Currency", "char_length(\"Currency\") = 3");
+            table.HasCheckConstraint("CK_InventoryComponents_WarrantyAfterPurchase", "\"WarrantyExpiresAt\" IS NULL OR \"PurchaseDate\" IS NULL OR \"WarrantyExpiresAt\" >= \"PurchaseDate\"");
         });
         modelBuilder.Entity<ComponentAllocation>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<ComponentAllocation>().Property(x => x.Notes).HasMaxLength(2000);
