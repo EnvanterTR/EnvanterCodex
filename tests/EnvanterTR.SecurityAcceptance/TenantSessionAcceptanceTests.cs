@@ -479,8 +479,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
 
         var token = Guid.NewGuid().ToString("N");
         static string NormalizeSupplier(string name) => name.Trim().Normalize(System.Text.NormalizationForm.FormKC).ToUpperInvariant();
-        var duplicatedVendor = $"Import Vendor {token}";
-        var otherTenantVendor = $"Other Tenant Vendor {token}";
+        var duplicatedVendor = $"Other Tenant Vendor {token}";
+        var otherTenantVendor = duplicatedVendor;
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -565,10 +565,11 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         await using var tenantScope = _factory!.Services.CreateAsyncScope();
         var tenantDb = tenantScope.ServiceProvider.GetRequiredService<AppDbContext>();
         var normalizedOtherTenantVendor = NormalizeSupplier(otherTenantVendor);
-        Assert.False(await tenantDb.SupplierCatalogEntries.AnyAsync(x => x.CompanyId == _companyId &&
-            x.NormalizedName == normalizedOtherTenantVendor));
-        Assert.True(await tenantDb.SupplierCatalogEntries.AnyAsync(x => x.CompanyId == _otherCompanyId &&
-            x.NormalizedName == normalizedOtherTenantVendor));
+        var importedTenantSupplier = await tenantDb.SupplierCatalogEntries.SingleAsync(x => x.CompanyId == _companyId &&
+            x.NormalizedName == normalizedOtherTenantVendor);
+        var otherTenantSupplier = await tenantDb.SupplierCatalogEntries.SingleAsync(x => x.CompanyId == _otherCompanyId &&
+            x.NormalizedName == normalizedOtherTenantVendor);
+        Assert.NotEqual(importedTenantSupplier.Id, otherTenantSupplier.Id);
     }
 
     [Fact]
