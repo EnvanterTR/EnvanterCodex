@@ -15,12 +15,14 @@ public static class AssetCustomFieldFilter
                 : (query, "Özel alan anahtarı seçilmelidir.");
 
         key = key.Trim();
-        if (key.Length is < 2 or > 40 || mode is not ("equals" or "empty"))
+        if (key.Length is < 2 or > 40 || mode is not ("equals" or "empty" or "contains"))
             return (query, "Özel alan filtresi geçersiz.");
 
-        var fieldExists = await db.AssetCustomFieldDefinitions.AsNoTracking()
-            .AnyAsync(field => field.CompanyId == companyId && field.Key == key && field.IsActive, cancellationToken);
-        if (!fieldExists)
+        var fieldType = await db.AssetCustomFieldDefinitions.AsNoTracking()
+            .Where(field => field.CompanyId == companyId && field.Key == key && field.IsActive)
+            .Select(field => field.FieldType)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (fieldType is null)
             return (query, "Filtrelenen özel alan bu şirkette etkin değil.");
 
         var keyPrefix = JsonSerializer.Serialize(key) + ":";
@@ -32,9 +34,24 @@ public static class AssetCustomFieldFilter
         }
 
         if (value is null || value.Length > 2000 || value.Length == 0)
-            return (query, "Eşitlik filtresi için 1–2.000 karakterlik bir değer girilmelidir.");
+            return (query, "Özel alan filtresi için 1–2.000 karakterlik bir değer girilmelidir.");
+        if (mode == "contains")
+        {
+            if (fieldType != "text") return (query, "Metin içinde arama yalnızca text türündeki özel alanlarda kullanılabilir.");
+            var serializedValue = JsonSerializer.Serialize(value);
+            var escapedValue = EscapeLikePattern(serializedValue[1..^1]);
+            var pattern = $"%{EscapeLikePattern(keyPrefix)}\"%{escapedValue}%\"%";
+            query = query.Where(asset => asset.CustomFieldsJson != null &&
+                EF.Functions.Like(asset.CustomFieldsJson, pattern, "\\"));
+            return (query, null);
+        }
         var serializedPair = keyPrefix + JsonSerializer.Serialize(value);
         query = query.Where(asset => asset.CustomFieldsJson != null && asset.CustomFieldsJson.Contains(serializedPair));
         return (query, null);
     }
+
+    private static string EscapeLikePattern(string value) => value
+        .Replace("\\", "\\\\", StringComparison.Ordinal)
+        .Replace("%", "\\%", StringComparison.Ordinal)
+        .Replace("_", "\\_", StringComparison.Ordinal);
 }

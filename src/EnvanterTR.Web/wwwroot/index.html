@@ -584,9 +584,9 @@
       $('#assetCategoryFilter').value = isGuid(f.categoryId) ? f.categoryId : ''; $('#assetBrandFilter').value = isGuid(f.brandId) ? f.brandId : ''; populateAssetModelFilter(); $('#assetModelFilter').value = isGuid(f.modelId) ? f.modelId : '';
       assetEmployeeFilterId = isGuid(f.employeeId) ? f.employeeId : ''; assetEmployeeFilterName = typeof f.employeeName === 'string' ? f.employeeName.slice(0, 200) : ''; assetLocationFilter = typeof f.location === 'string' ? f.location.slice(0, 160) : '';
       $('#assetCustomFieldFilter').value = typeof f.customFieldKey === 'string' ? f.customFieldKey : '';
-      $('#assetCustomFieldMode').value = f.customFieldMode === 'empty' ? 'empty' : 'equals';
+      $('#assetCustomFieldMode').value = ['empty','contains'].includes(f.customFieldMode) ? f.customFieldMode : 'equals';
       $('#assetCustomFieldValue').value = typeof f.customFieldValue === 'string' ? f.customFieldValue.slice(0, 2000) : '';
-      $('#assetCustomFieldValue').disabled = $('#assetCustomFieldMode').value === 'empty';
+      syncAssetCustomFieldModeOptions();
       if (['tag','name','category','brand','employee','location','status','warranty','updated'].includes(f.sortBy)) assetSortBy = f.sortBy;
       if (['asc','desc'].includes(f.sortDirection)) assetSortDirection = f.sortDirection;
       updateAssetSortIndicators(); updateAssetRelationFilter(); saveAssetSortPreference();
@@ -4471,8 +4471,9 @@
     function ensureAssetCustomFieldFilter() {
       if ($('#assetCustomFieldFilterDetails')) return;
       const details = document.createElement('details'); details.id = 'assetCustomFieldFilterDetails'; details.className = 'column-picker';
-      details.innerHTML = `<summary class="btn small">Özel alan filtresi</summary><fieldset><legend>Özel alan filtresi</legend><label>Alan<select id="assetCustomFieldFilter"><option value="">Özel alan seçin</option></select></label><label>Koşul<select id="assetCustomFieldMode"><option value="equals">Değeri eşit</option><option value="empty">Değer girilmemiş</option></select></label><label>Değer<input id="assetCustomFieldValue" maxlength="2000" autocomplete="off" placeholder="Alan değerini girin"></label><button class="btn small" id="applyAssetCustomFieldFilter" type="button">Filtrele</button> <button class="btn small" id="clearAssetCustomFieldFilter" type="button">Temizle</button></fieldset>`;
+      details.innerHTML = `<summary class="btn small">Özel alan filtresi</summary><fieldset><legend>Özel alan filtresi</legend><label>Alan<select id="assetCustomFieldFilter"><option value="">Özel alan seçin</option></select></label><label>Koşul<select id="assetCustomFieldMode"><option value="equals">Değeri eşit</option><option value="contains">Metin içinde</option><option value="empty">Değer girilmemiş</option></select></label><label>Değer<input id="assetCustomFieldValue" maxlength="2000" autocomplete="off" placeholder="Alan değerini girin"></label><button class="btn small" id="applyAssetCustomFieldFilter" type="button">Filtrele</button> <button class="btn small" id="clearAssetCustomFieldFilter" type="button">Temizle</button></fieldset>`;
       $('#assetWarrantyFilter').insertAdjacentElement('afterend', details);
+      $('#assetCustomFieldFilter').addEventListener('change', syncAssetCustomFieldModeOptions);
       $('#assetCustomFieldMode').addEventListener('change', event => { $('#assetCustomFieldValue').disabled = event.target.value === 'empty'; });
       $('#applyAssetCustomFieldFilter').addEventListener('click', () => {
         const filter = readAssetCustomFieldFilter(); if (filter.error) return notify(filter.error);
@@ -4487,14 +4488,23 @@
     function renderAssetCustomFieldFilterOptions() {
       const select = $('#assetCustomFieldFilter'); if (!select) return;
       const selected = select.value; select.replaceChildren(new Option('Özel alan seçin', ''));
-      for (const field of (assetCustomFieldDefinitions || []).filter(item => item.isActive)) select.add(new Option(field.name, field.key));
+      for (const field of (assetCustomFieldDefinitions || []).filter(item => item.isActive)) { const option = new Option(field.name, field.key); option.dataset.fieldType = field.fieldType; select.add(option); }
       if ([...select.options].some(option => option.value === selected)) select.value = selected;
+      syncAssetCustomFieldModeOptions();
+    }
+    function syncAssetCustomFieldModeOptions() {
+      const field = (assetCustomFieldDefinitions || []).find(item => item.key === $('#assetCustomFieldFilter')?.value);
+      const contains = $('#assetCustomFieldMode')?.querySelector('option[value="contains"]'); if (!contains) return;
+      contains.disabled = !!field && field.fieldType !== 'text';
+      if (contains.disabled && $('#assetCustomFieldMode').value === 'contains') $('#assetCustomFieldMode').value = 'equals';
+      $('#assetCustomFieldValue').disabled = $('#assetCustomFieldMode').value === 'empty';
     }
     function readAssetCustomFieldFilter() {
       const key = $('#assetCustomFieldFilter')?.value || '';
       if (!key) return { key: null, value: null, mode: null, error: '' };
       const mode = $('#assetCustomFieldMode').value, value = $('#assetCustomFieldValue').value.trim();
       if (mode === 'empty') return { key, value: null, mode, error: '' };
+      if (mode === 'contains' && !assetCustomFieldDefinitions?.some(field => field.key === key && field.isActive && field.fieldType === 'text')) return { key, value, mode, error: 'Metin içinde arama yalnızca text türündeki özel alanlarda kullanılabilir.' };
       if (!value) return { key, value, mode, error: 'Özel alan filtresi için bir değer girin veya “Değer girilmemiş” koşulunu seçin.' };
       return { key, value, mode, error: '' };
     }

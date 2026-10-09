@@ -188,7 +188,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             q = "laptop", status = "Available", warranty = "active", categoryId = (Guid?)null,
             brandId = (Guid?)null, modelId = (Guid?)null, employeeId = (Guid?)null,
-            customFieldKey = "asset_code", customFieldValue = "TR-001", customFieldMode = "equals",
+            customFieldKey = "asset_code", customFieldValue = "TR-", customFieldMode = "contains",
             employeeName = "", location = "Merkez", sortBy = "name", sortDirection = "desc"
         };
         using var createResponse = await SendAsUserAsync(HttpMethod.Post, "/api/assets/saved-searches", _userId, _companyId,
@@ -198,7 +198,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var searchId = created.RootElement.GetProperty("id").GetGuid();
         Assert.Equal("Available", created.RootElement.GetProperty("filters").GetProperty("status").GetString());
         Assert.Equal("asset_code", created.RootElement.GetProperty("filters").GetProperty("customFieldKey").GetString());
-        Assert.Equal("TR-001", created.RootElement.GetProperty("filters").GetProperty("customFieldValue").GetString());
+        Assert.Equal("TR-", created.RootElement.GetProperty("filters").GetProperty("customFieldValue").GetString());
+        Assert.Equal("contains", created.RootElement.GetProperty("filters").GetProperty("customFieldMode").GetString());
 
         using (var invalidTenantField = await SendAsUserAsync(HttpMethod.Post, "/api/assets/saved-searches", _userId, _companyId,
             System.Net.Http.Json.JsonContent.Create(new { name = "Invalid custom field", filters = new { customFieldKey = "other_code", customFieldMode = "empty" } }),
@@ -555,17 +556,21 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     public async Task Asset_custom_field_filter_is_tenant_scoped_and_applies_to_csv()
     {
         const string fieldKey = "asset_code";
+        var containsAssetId = Guid.NewGuid();
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var categoryId = await db.AssetCategories.Where(x => x.CompanyId == _companyId).Select(x => x.Id).SingleAsync();
             db.AssetCustomFieldDefinitions.AddRange(
                 new AssetCustomFieldDefinition { CompanyId = _companyId, Key = fieldKey, Name = "Asset code", FieldType = "text" },
+                new AssetCustomFieldDefinition { CompanyId = _companyId, Key = "asset_number", Name = "Asset number", FieldType = "number" },
                 new AssetCustomFieldDefinition { CompanyId = _otherCompanyId, Key = "other_code", Name = "Other code", FieldType = "text" });
             var ownAsset = await db.Assets.SingleAsync(x => x.Id == _ownAssetId);
             ownAsset.CustomFieldsJson = "{\"asset_code\":\"TR-001\"}";
             db.Assets.Add(new Asset { Id = _ownSecondAssetId, CompanyId = _companyId, AssetTag = "OWN-2",
                 Name = "Uncoded asset", CategoryId = categoryId, CustomFieldsJson = "{}" });
+            db.Assets.Add(new Asset { Id = containsAssetId, CompanyId = _companyId, AssetTag = "OWN-3",
+                Name = "Partially coded asset", CategoryId = categoryId, CustomFieldsJson = "{\"asset_code\":\"DEV-42 100%_Ready\"}" });
             await db.SaveChangesAsync();
         }
 
@@ -587,6 +592,21 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(_ownSecondAssetId, payload.RootElement.GetProperty("items")[0].GetProperty("id").GetGuid());
         }
 
+        using (var contains = await SendAsRoleAsync(HttpMethod.Get,
+                   $"/api/assets?customFieldKey={fieldKey}&customFieldMode=contains&customFieldValue={Uri.EscapeDataString("100%_")}", "viewer"))
+        {
+            Assert.Equal(HttpStatusCode.OK, contains.StatusCode);
+            using var payload = JsonDocument.Parse(await contains.Content.ReadAsStringAsync());
+            Assert.Equal(1, payload.RootElement.GetProperty("total").GetInt32());
+            Assert.Equal(containsAssetId, payload.RootElement.GetProperty("items")[0].GetProperty("id").GetGuid());
+        }
+
+        using (var nonTextContains = await SendAsRoleAsync(HttpMethod.Get,
+                   "/api/assets?customFieldKey=asset_number&customFieldMode=contains&customFieldValue=42", "viewer"))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, nonTextContains.StatusCode);
+        }
+
         using (var otherTenantField = await SendAsRoleAsync(HttpMethod.Get,
                    "/api/assets?customFieldKey=other_code&customFieldMode=empty", "viewer"))
             Assert.Equal(HttpStatusCode.BadRequest, otherTenantField.StatusCode);
@@ -599,6 +619,16 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             var csv = await export.Content.ReadAsStringAsync();
             Assert.Contains("OWN-1", csv, StringComparison.Ordinal);
             Assert.DoesNotContain("OWN-2", csv, StringComparison.Ordinal);
+        }
+
+        using (var containsExport = await SendAsRoleAsync(HttpMethod.Get,
+                   $"/api/assets/export-all.csv?customFieldKey={fieldKey}&customFieldMode=contains&customFieldValue={Uri.EscapeDataString("100%_")}", "viewer"))
+        {
+            Assert.Equal(HttpStatusCode.OK, containsExport.StatusCode);
+            Assert.Equal("1", containsExport.Headers.GetValues("X-Total-Count").Single());
+            var csv = await containsExport.Content.ReadAsStringAsync();
+            Assert.Contains("OWN-3", csv, StringComparison.Ordinal);
+            Assert.DoesNotContain("OWN-1", csv, StringComparison.Ordinal);
         }
     }
 

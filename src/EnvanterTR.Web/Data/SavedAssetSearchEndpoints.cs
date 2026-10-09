@@ -48,10 +48,17 @@ public static class SavedAssetSearchEndpoints
             if (!Valid(filters))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["filters"] = ["Arama filtrelerinden biri geçersiz veya çok uzun."] });
             var validatedFilters = filters!;
-            if (!string.IsNullOrWhiteSpace(validatedFilters.CustomFieldKey) &&
-                !await db.AssetCustomFieldDefinitions.AsNoTracking().AnyAsync(field =>
-                    field.CompanyId == companyId && field.Key == validatedFilters.CustomFieldKey && field.IsActive, cancellationToken))
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["customFieldKey"] = ["Filtrelenen özel alan bu şirkette etkin değil."] });
+            if (!string.IsNullOrWhiteSpace(validatedFilters.CustomFieldKey))
+            {
+                var fieldType = await db.AssetCustomFieldDefinitions.AsNoTracking()
+                    .Where(field => field.CompanyId == companyId && field.Key == validatedFilters.CustomFieldKey && field.IsActive)
+                    .Select(field => field.FieldType)
+                    .SingleOrDefaultAsync(cancellationToken);
+                if (fieldType is null)
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["customFieldKey"] = ["Filtrelenen özel alan bu şirkette etkin değil."] });
+                if (validatedFilters.CustomFieldMode == "contains" && fieldType != "text")
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["customFieldMode"] = ["Metin içinde arama yalnızca text türündeki özel alanlarda kullanılabilir."] });
+            }
 
             var normalizedName = name.ToUpperInvariant();
             var row = await db.SavedAssetSearches.SingleOrDefaultAsync(x =>
@@ -101,7 +108,7 @@ public static class SavedAssetSearchEndpoints
         (string.IsNullOrWhiteSpace(filters.CustomFieldKey)
             ? filters.CustomFieldValue is null && filters.CustomFieldMode is null
             : filters.CustomFieldMode == "empty" && string.IsNullOrWhiteSpace(filters.CustomFieldValue) ||
-              filters.CustomFieldMode == "equals" && !string.IsNullOrEmpty(filters.CustomFieldValue)) &&
+              (filters.CustomFieldMode is "equals" or "contains") && !string.IsNullOrEmpty(filters.CustomFieldValue)) &&
         (string.IsNullOrEmpty(filters.Status) || Statuses.Contains(filters.Status, StringComparer.Ordinal)) &&
         (string.IsNullOrEmpty(filters.Warranty) || Warranties.Contains(filters.Warranty, StringComparer.Ordinal)) &&
         (string.IsNullOrEmpty(filters.SortBy) || SortFields.Contains(filters.SortBy, StringComparer.Ordinal)) &&
