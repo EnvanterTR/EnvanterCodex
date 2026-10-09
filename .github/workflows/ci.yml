@@ -35,6 +35,13 @@ jobs:
           docker compose --project-name "$project_name" --file "$compose_file" up \
             --build --abort-on-container-exit --exit-code-from acceptance
 
+      - name: Build Linux application image and verify PostgreSQL native dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --tag envantertr-web-ci --file Dockerfile .
+          docker run --rm envantertr-web-ci sh -c 'ldconfig -p | grep -q "libgssapi_krb5.so.2"'
+
       - name: Check Linux deployment script syntax
         shell: bash
         run: |
