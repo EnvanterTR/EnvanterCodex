@@ -1736,6 +1736,48 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Concurrent_overlapping_reservations_for_one_asset_create_only_one_pending_request()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var startsOn = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(12);
+        var endsOn = startsOn.AddDays(4);
+        var firstRequest = SendAsRoleAsync(HttpMethod.Post, "/api/reservations", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { assetId = _ownAssetId, employeeId = _ownEmployeeId, startsOn, endsOn, requestNote = "Concurrent reservation A" }), requestToken, antiforgeryCookie);
+        var secondRequest = SendAsRoleAsync(HttpMethod.Post, "/api/reservations", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { assetId = _ownAssetId, employeeId = _ownEmployeeId, startsOn = startsOn.AddDays(2), endsOn, requestNote = "Concurrent reservation B" }), requestToken, antiforgeryCookie);
+
+        using var firstResponse = await firstRequest;
+        using var secondResponse = await secondRequest;
+        var statuses = new[] { firstResponse.StatusCode, secondResponse.StatusCode };
+        var responseDetails = $"first={(int)firstResponse.StatusCode} {await firstResponse.Content.ReadAsStringAsync()}; " +
+            $"second={(int)secondResponse.StatusCode} {await secondResponse.Content.ReadAsStringAsync()}";
+        Assert.True(statuses.Contains(HttpStatusCode.Created), responseDetails);
+        Assert.Equal(1, statuses.Count(status => status == HttpStatusCode.Created));
+        Assert.Equal(1, statuses.Count(status => status == HttpStatusCode.Conflict));
+
+        using var createdPayload = JsonDocument.Parse(await (firstResponse.StatusCode == HttpStatusCode.Created
+            ? firstResponse.Content.ReadAsStringAsync() : secondResponse.Content.ReadAsStringAsync()));
+        var reservationId = createdPayload.RootElement.GetProperty("id").GetGuid();
+        await using var verificationScope = _factory!.Services.CreateAsyncScope();
+        var verificationDb = verificationScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var reservations = await verificationDb.AssetReservations
+            .Where(x => x.CompanyId == _companyId && x.AssetId == _ownAssetId && x.StartsOn <= endsOn && x.EndsOn >= startsOn)
+            .ToListAsync();
+        Assert.Single(reservations);
+        Assert.Equal(reservationId, reservations[0].Id);
+        Assert.Equal("Pending", reservations[0].Status);
+        Assert.Single(await verificationDb.AuditEntries.Where(x => x.CompanyId == _companyId && x.TargetType == "AssetReservation" &&
+            x.TargetId == reservationId && x.Action == "ReservationRequested").ToListAsync());
+        Assert.Empty(await verificationDb.AssetReservations.Where(x => x.CompanyId == _otherCompanyId).ToListAsync());
+    }
+
+    [Fact]
     public async Task Operational_notification_preferences_and_read_dismiss_states_are_private_to_each_user_and_company()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");

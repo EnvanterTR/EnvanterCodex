@@ -11,7 +11,7 @@ Bu belge EnvanterTR'nin kurumsal envanter yönetiminde beklenen ana işlevleri n
 
 ## Dağıtım doğrulama notu — 9 Ekim 2026
 
-İzole PostgreSQL güvenlik/kabul paketi 9 Ekim'de **57/57 geçti**. Bakım, varlık ve çalışan belgesi senaryoları yabancı şirkete ait kayda dosya yükleme/silme girişimlerinin reddini ve yabancı ekin veritabanı kaydıyla diskteki dosyasının korunduğunu doğrular. Bu kanıt bu üç dosya ailesiyle sınırlıdır; diğer modüllerdeki tüm dosya uçlarının her rol/tenant birleşimi için kabul edildiği anlamına gelmez.
+İzole PostgreSQL güvenlik/kabul paketi 9 Ekim'de **58/58 geçti**. Bakım, varlık ve çalışan belgesi senaryoları yabancı şirkete ait kayda dosya yükleme/silme girişimlerinin reddini ve yabancı ekin veritabanı kaydıyla diskteki dosyasının korunduğunu doğrular. Aynı varlık için çakışan tarih aralığıyla gönderilen iki paralel rezervasyon isteğinde tam olarak bir `201 Created`, bir `409 Conflict`, tek bir bekleyen kayıt ve tek denetim olayı oluştuğu doğrulanır. Bu kanıt diğer rezervasyon yarışlarını ya da diğer modüllerdeki tüm dosya uçlarının her rol/tenant birleşimini kapsamaz.
 
 Rezervasyon CSV kabulü de yabancı şirket için gerçek bir kayıt ekleyip filtresiz yönetici dışa aktarımında bu kaydın bulunmadığını doğrular; şirketler arası CSV sızıntısına karşı somut testtir.
 
