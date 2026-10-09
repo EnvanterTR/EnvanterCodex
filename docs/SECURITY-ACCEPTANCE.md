@@ -20,6 +20,8 @@ Hesap güvenliği kabulü başarılı giriş ve MFA yönetimi olaylarının şir
 
 Bu kontrol rota metadata envanterinin eksiksizliğini kanıtlar; her endpoint için tüm rollerin HTTP davranışını ayrı ayrı kanıtlayan tam bir 318×rol matrisi değildir. Temsilî rol matrisi ve tenant davranış testleri pakette ayrıca bulunur.
 
+`Anonymous_http_requests_are_rejected_by_every_protected_api_route` rota şablonlarından örnek parametrelerle 280'den fazla korumalı HTTP yöntem/yol isteği üretir. İstek gövdesi rota metadata'sındaki içerik türüne göre seçilir; oturumsuz her yanıtın `401` olmasını doğrular. Böylece politika etiketi yanında çalışma zamanındaki challenge da kontrol edilir. Bu, anonim erişim sınırını doğrular; kimliği doğrulanmış her rolün her endpoint'teki davranış matrisi değildir.
+
 `Company_roles_follow_the_asset_stock_employee_and_settings_policy_matrix` yedi geçerli şirket rolünün her biriyle şirket kapsamlı marka/etiket ayarlarının okunabildiğini ve hiçbirinin platform özetine erişemediğini de doğrular. `Company_member_and_platform_admin_boundaries_are_enforced_over_http` tanınmayan şirket rolünün `403` aldığını, sıradan şirket yöneticisinin platform özetine erişemediğini ve veritabanında platform yöneticisi olan hesabın platform özetine erişebildiğini doğrular.
 
 Senaryo aynı eski `admin` kimlik bilgilerini her istekte tekrar gönderir ve veritabanındaki güncel durumu değiştirir:

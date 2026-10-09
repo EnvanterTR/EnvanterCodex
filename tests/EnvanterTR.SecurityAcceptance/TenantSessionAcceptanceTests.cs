@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
+using System.Text.RegularExpressions;
 using System.Text.Json;
 using EnvanterTR.Web.Data;
 using Microsoft.AspNetCore.Authentication;
@@ -113,6 +114,61 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             string.Join(", ", policies.Except(expectedPolicies).OrderBy(x => x, StringComparer.Ordinal)) +
             "; unused: " +
             string.Join(", ", expectedPolicies.Except(policies).OrderBy(x => x, StringComparer.Ordinal)));
+    }
+
+    [Fact]
+    public async Task Anonymous_http_requests_are_rejected_by_every_protected_api_route()
+    {
+        var protectedRoutes = _factory!.Services.GetServices<EndpointDataSource>()
+            .SelectMany(source => source.Endpoints)
+            .OfType<RouteEndpoint>()
+            .Where(endpoint => endpoint.RoutePattern.RawText?.StartsWith("/api", StringComparison.OrdinalIgnoreCase) == true &&
+                               endpoint.Metadata.GetMetadata<IAllowAnonymous>() is null)
+            .SelectMany(endpoint =>
+            {
+                var methods = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods ?? ["GET"];
+                var path = BuildSampleRoutePath(endpoint);
+                var contentType = endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.Http.Metadata.IAcceptsMetadata>()?.ContentTypes.FirstOrDefault();
+                return methods.Select(method => (Method: method, Path: path, ContentType: contentType));
+            })
+            .Distinct()
+            .OrderBy(route => route.Path, StringComparer.Ordinal)
+            .ThenBy(route => route.Method, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.True(protectedRoutes.Length >= 280,
+            $"Expected to exercise the protected API surface, found {protectedRoutes.Length} method/path routes.");
+        foreach (var route in protectedRoutes)
+        {
+            using var request = new HttpRequestMessage(new HttpMethod(route.Method), route.Path);
+            if (route.Method is not ("GET" or "HEAD" or "OPTIONS"))
+            {
+                if (string.Equals(route.ContentType, "multipart/form-data", StringComparison.OrdinalIgnoreCase))
+                    request.Content = new MultipartFormDataContent();
+                else
+                    request.Content = new StringContent("{}", Encoding.UTF8,
+                        string.IsNullOrWhiteSpace(route.ContentType) ? "application/json" : route.ContentType);
+            }
+            using var response = await _client!.SendAsync(request);
+            Assert.True(response.StatusCode == HttpStatusCode.Unauthorized,
+                $"Anonymous {route.Method} {route.Path} returned {(int)response.StatusCode} instead of 401.");
+        }
+    }
+
+    private static string BuildSampleRoutePath(RouteEndpoint endpoint)
+    {
+        var rawPath = endpoint.RoutePattern.RawText!;
+        return Regex.Replace(rawPath, @"\{[^{}]+\}", match =>
+        {
+            var parameterText = match.Value[1..^1].TrimStart('*');
+            var parameterName = parameterText.Split(':', '?')[0];
+            var parameter = endpoint.RoutePattern.Parameters.First(candidate => candidate.Name == parameterName);
+            var policies = string.Join(":", parameter.ParameterPolicies.Select(policy => policy.Content));
+            var sample = policies.Contains("guid", StringComparison.OrdinalIgnoreCase) ? Guid.NewGuid().ToString("D") :
+                policies.Contains("int", StringComparison.OrdinalIgnoreCase) || policies.Contains("long", StringComparison.OrdinalIgnoreCase) ? "1" :
+                policies.Contains("alpha", StringComparison.OrdinalIgnoreCase) ? "x" : "acceptance";
+            return Uri.EscapeDataString(sample);
+        }, RegexOptions.CultureInvariant);
     }
 
     [Fact]
