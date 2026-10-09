@@ -310,8 +310,9 @@ public static class ConsumableEndpoints
             item.Location ??= defaultLocation;
             if (item.Location is not null && locationPaths.TryGetValue(item.Location, out var locationCatalogId)) item.LocationCatalogId = locationCatalogId;
         }
-        if (!commit) return Results.Ok(new { isValid = true, rowCount = parsed.Count, defaultLocationApplied, errors = Array.Empty<string>(),
-            message = $"{parsed.Count:N0} yeni sarf kaydı doğrulandı. Varsayılan konum {defaultLocationApplied:N0} boş satıra uygulanacak. Önizleme hiçbir kayıt eklemedi." });
+        var suppliersToCreate = await SupplierImportCatalog.FindMissingNamesAsync(db, companyId, parsed.Select(x => x.Supplier), ct);
+        if (!commit) return Results.Ok(new { isValid = true, rowCount = parsed.Count, defaultLocationApplied, suppliersToCreate, errors = Array.Empty<string>(),
+            message = $"{parsed.Count:N0} yeni sarf kaydı doğrulandı. Varsayılan konum {defaultLocationApplied:N0} boş satıra uygulanacak; {suppliersToCreate.Length:N0} yeni tedarikçi yalnızca aktarımı onaylarsanız kataloğa eklenecek. Önizleme hiçbir kayıt eklemedi." });
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         var latestExisting = await db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId &&
@@ -322,15 +323,10 @@ public static class ConsumableEndpoints
         if (parsed.Any(x => latestKeys.Contains(CsvDuplicateKey(x.Name, x.ItemNumber)) || x.ItemNumber is not null && latestItemNumbers.Contains(x.ItemNumber)))
             return Results.Conflict(new { message = "Önizlemeden sonra aynı sarf kaydı eklendi. Hiçbir kayıt aktarılmadı; önizlemeyi yenileyin." });
 
-        var suppliers = await db.SupplierCatalogEntries.AsNoTracking().Where(x => x.CompanyId == companyId)
-            .Select(x => new { x.Id, x.NormalizedName }).ToListAsync(ct);
-        var supplierLookup = suppliers.GroupBy(x => x.NormalizedName, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(x => x.Key, x => x.Select(y => y.Id).ToArray(), StringComparer.OrdinalIgnoreCase);
+        var suppliersCreated = await SupplierImportCatalog.LinkAndCreateAsync(db, companyId, actorId,
+            parsed.Select(item => (item.Supplier, (Action<Guid>)(id => item.SupplierId = id))), ct);
         foreach (var item in parsed)
         {
-            var normalizedSupplier = item.Supplier?.Normalize(NormalizationForm.FormKC).ToUpperInvariant();
-            if (normalizedSupplier is not null && supplierLookup.TryGetValue(normalizedSupplier, out var supplierIds) && supplierIds.Length == 1)
-                item.SupplierId = supplierIds[0];
             db.Consumables.Add(item);
             if (item.TotalQuantity > 0) db.ConsumableMovements.Add(new ConsumableMovement { CompanyId = companyId, ConsumableId = item.Id,
                 ActorUserId = actorId, MovementType = "Received", Quantity = item.TotalQuantity, Notes = $"{(isXlsx ? "Excel" : "CSV")} içe aktarımındaki başlangıç stoku" });
@@ -344,7 +340,7 @@ public static class ConsumableEndpoints
             await transaction.RollbackAsync(ct);
             return Results.Conflict(new { message = "CSV aktarılmadı. Kayıt çakışması oluştu; önizlemeyi yenileyip tekrar deneyin." });
         }
-        return Results.Ok(new { imported = parsed.Count, message = $"{parsed.Count:N0} sarf kaydı ve başlangıç stok hareketleri eklendi." });
+        return Results.Ok(new { imported = parsed.Count, suppliersCreated, message = $"{parsed.Count:N0} sarf kaydı ve başlangıç stok hareketleri eklendi; {suppliersCreated:N0} yeni tedarikçi kataloğa bağlandı." });
     }
 
     private static string CsvDuplicateKey(string name, string? itemNumber) => $"{name.Trim().ToUpperInvariant()}\u001f{itemNumber?.Trim().ToUpperInvariant() ?? ""}";

@@ -89,16 +89,17 @@ public static class SoftwareLicenseImportEndpoints
         var existing = await db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId && names.Contains(x.Name.ToUpper())).Select(x => new { x.Name, x.Publisher, x.ProductVersion }).ToListAsync(ct);
         bool Conflict(IEnumerable<(string Name, string? Publisher, string? Version)> values) => values.Any(x => licenses.Any(y => string.Equals(x.Name, y.Name, StringComparison.OrdinalIgnoreCase) && string.Equals(x.Publisher, y.Publisher, StringComparison.OrdinalIgnoreCase) && string.Equals(x.Version, y.ProductVersion, StringComparison.OrdinalIgnoreCase)));
         if (Conflict(existing.Select(x => (x.Name, x.Publisher, x.ProductVersion)))) return Results.Conflict(new { isValid = false, errors = new[] { "Şirkette aynı lisans adı/yayıncı/sürüm bileşimi bulundu; tekrar eklenmedi." } });
-        if (!commit) return Results.Ok(new { isValid = true, rowCount = licenses.Count, errors = Array.Empty<string>(), message = $"{licenses.Count:N0} yeni lisans doğrulandı. Önizleme kayıt eklemedi." });
+        var suppliersToCreate = await SupplierImportCatalog.FindMissingNamesAsync(db, companyId, licenses.Select(x => x.Supplier), ct);
+        if (!commit) return Results.Ok(new { isValid = true, rowCount = licenses.Count, suppliersToCreate, errors = Array.Empty<string>(), message = $"{licenses.Count:N0} yeni lisans doğrulandı; {suppliersToCreate.Length:N0} yeni tedarikçi yalnızca aktarımı onaylarsanız kataloğa eklenecek. Önizleme kayıt eklemedi." });
         await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         var latest = await db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId && names.Contains(x.Name.ToUpper())).Select(x => new { x.Name, x.Publisher, x.ProductVersion }).ToListAsync(ct);
         if (Conflict(latest.Select(x => (x.Name, x.Publisher, x.ProductVersion)))) return Results.Conflict(new { message = "Önizlemeden sonra aynı lisans eklendi. Hiçbir kayıt aktarılmadı; önizlemeyi yenileyin." });
-        var suppliers = await db.SupplierCatalogEntries.AsNoTracking().Where(x => x.CompanyId == companyId).Select(x => new { x.Id, x.NormalizedName }).ToListAsync(ct);
-        var supplierMap = suppliers.GroupBy(x => x.NormalizedName, StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.Select(y => y.Id).ToArray(), StringComparer.OrdinalIgnoreCase);
-        foreach (var license in licenses) { var key = license.Supplier?.Normalize(NormalizationForm.FormKC).ToUpperInvariant(); if (key is not null && supplierMap.TryGetValue(key, out var ids) && ids.Length == 1) license.SupplierId = ids[0]; db.SoftwareLicenses.Add(license); db.SoftwareLicenseEvents.Add(new SoftwareLicenseEvent { CompanyId = companyId, LicenseId = license.Id, ActorUserId = actorId, EventType = "Created", Details = $"{(isXlsx ? "Excel" : "CSV")} içe aktarımı ile lisans kaydı oluşturuldu." }); }
+        var suppliersCreated = await SupplierImportCatalog.LinkAndCreateAsync(db, companyId, actorId,
+            licenses.Select(license => (license.Supplier, (Action<Guid>)(id => license.SupplierId = id))), ct);
+        foreach (var license in licenses) { db.SoftwareLicenses.Add(license); db.SoftwareLicenseEvents.Add(new SoftwareLicenseEvent { CompanyId = companyId, LicenseId = license.Id, ActorUserId = actorId, EventType = "Created", Details = $"{(isXlsx ? "Excel" : "CSV")} içe aktarımı ile lisans kaydı oluşturuldu." }); }
         db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "SoftwareLicense", Action = isXlsx ? "XlsxImported" : "CsvImported", Details = $"{(isXlsx ? "Excel" : "CSV")} dosyasından {licenses.Count} lisans içe aktarıldı." });
         try { await db.SaveChangesAsync(ct); await tx.CommitAsync(ct); } catch (DbUpdateException) { await tx.RollbackAsync(ct); return Results.Conflict(new { message = "CSV aktarılmadı; bir kayıt çakıştı. Önizlemeyi yenileyip tekrar deneyin." }); }
-        return Results.Ok(new { imported = licenses.Count, message = $"{licenses.Count:N0} lisans ve denetim geçmişi eklendi." });
+        return Results.Ok(new { imported = licenses.Count, suppliersCreated, message = $"{licenses.Count:N0} lisans ve denetim geçmişi eklendi; {suppliersCreated:N0} yeni tedarikçi kataloğa bağlandı." });
     }
 
     private static void Error(List<string> errors, string message) { if (errors.Count < 100) errors.Add(message); }

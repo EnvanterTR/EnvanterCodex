@@ -273,7 +273,8 @@ public static class ComponentEndpoints
             component.Location ??= defaultLocation;
             if (component.Location is not null && locationPaths.TryGetValue(component.Location, out var locationCatalogId)) component.LocationCatalogId = locationCatalogId;
         }
-        if (!commit) return Results.Ok(new { isValid = true, rowCount = components.Count, defaultLocationApplied, errors = Array.Empty<string>(), message = $"{components.Count:N0} yeni bileşen doğrulandı. Varsayılan konum {defaultLocationApplied:N0} boş satıra uygulanacak. Önizleme kayıt eklemedi." });
+        var suppliersToCreate = await SupplierImportCatalog.FindMissingNamesAsync(db, companyId, components.Select(x => x.Supplier), ct);
+        if (!commit) return Results.Ok(new { isValid = true, rowCount = components.Count, defaultLocationApplied, suppliersToCreate, errors = Array.Empty<string>(), message = $"{components.Count:N0} yeni bileşen doğrulandı. Varsayılan konum {defaultLocationApplied:N0} boş satıra uygulanacak; {suppliersToCreate.Length:N0} yeni tedarikçi yalnızca aktarımı onaylarsanız kataloğa eklenecek. Önizleme kayıt eklemedi." });
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         var latest = await db.InventoryComponents.AsNoTracking().Where(x => x.CompanyId == companyId &&
@@ -284,12 +285,10 @@ public static class ComponentEndpoints
         var latestSerials = latest.Where(x => x.SerialNumber != null).Select(x => x.SerialNumber!).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (components.Any(x => latestKeys.Contains($"{x.Name.ToUpperInvariant()}\u001f{x.ItemNumber?.ToUpperInvariant() ?? ""}") || x.ItemNumber != null && latestItems.Contains(x.ItemNumber) || x.SerialNumber != null && latestSerials.Contains(x.SerialNumber)))
             return Results.Conflict(new { message = "Önizlemeden sonra aynı bileşen eklendi. Hiçbir kayıt aktarılmadı; önizlemeyi yenileyin." });
-        var suppliers = await db.SupplierCatalogEntries.AsNoTracking().Where(x => x.CompanyId == companyId).Select(x => new { x.Id, x.NormalizedName }).ToListAsync(ct);
-        var supplierMap = suppliers.GroupBy(x => x.NormalizedName, StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.Select(y => y.Id).ToArray(), StringComparer.OrdinalIgnoreCase);
+        var suppliersCreated = await SupplierImportCatalog.LinkAndCreateAsync(db, companyId, actorId,
+            components.Select(component => (component.Supplier, (Action<Guid>)(id => component.SupplierId = id))), ct);
         foreach (var component in components)
         {
-            var normalizedSupplier = component.Supplier?.Normalize(NormalizationForm.FormKC).ToUpperInvariant();
-            if (normalizedSupplier is not null && supplierMap.TryGetValue(normalizedSupplier, out var ids) && ids.Length == 1) component.SupplierId = ids[0];
             db.InventoryComponents.Add(component);
             if (component.TotalQuantity > 0) db.ComponentMovements.Add(new ComponentMovement { CompanyId = companyId, ComponentId = component.Id, ActorUserId = actorId,
                 MovementType = "Received", Quantity = component.TotalQuantity, Notes = $"{(isXlsx ? "Excel" : "CSV")} içe aktarımındaki başlangıç stoku" });
@@ -298,7 +297,7 @@ public static class ComponentEndpoints
         db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Component", Action = isXlsx ? "XlsxImported" : "CsvImported", Details = $"{(isXlsx ? "Excel" : "CSV")} dosyasından {components.Count} bileşen içe aktarıldı." });
         try { await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); }
         catch (DbUpdateException) { await transaction.RollbackAsync(ct); return Results.Conflict(new { message = "CSV aktarılmadı; bir kayıt çakıştı. Önizlemeyi yenileyip tekrar deneyin." }); }
-        return Results.Ok(new { imported = components.Count, message = $"{components.Count:N0} bileşen ve başlangıç stok hareketleri eklendi." });
+        return Results.Ok(new { imported = components.Count, suppliersCreated, message = $"{components.Count:N0} bileşen ve başlangıç stok hareketleri eklendi; {suppliersCreated:N0} yeni tedarikçi kataloğa bağlandı." });
     }
 
     private static void AddCsvError(List<string> errors, string message) { if (errors.Count < 100) errors.Add(message); }
