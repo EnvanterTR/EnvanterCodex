@@ -7383,6 +7383,7 @@
       const image = target?.closest('img');
       if (!image || !image.currentSrc || image.closest('#imageViewer')) return;
       event.preventDefault();
+      event.stopPropagation();
       const viewer = $('#imageViewer'), preview = $('#imageViewerPhoto');
       preview.alt = image.alt || 'Büyütülmüş görsel'; preview.src = image.currentSrc;
       if (!viewer.open) viewer.showModal();
