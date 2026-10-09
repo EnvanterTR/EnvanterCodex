@@ -254,6 +254,19 @@ app.UseStaticFiles(new StaticFileOptions
         }
     }
 });
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception exception) when (HasSerializationFailure(exception) && !context.Response.HasStarted)
+    {
+        context.Response.Clear();
+        context.Response.StatusCode = StatusCodes.Status409Conflict;
+        await context.Response.WriteAsJsonAsync(new { message = "Kayıt eşzamanlı olarak değiştirildi; güncel durumu yenileyip yeniden deneyin." });
+    }
+});
 app.UseAuthentication();
 app.Use(async (context, next) =>
 {
@@ -384,5 +397,12 @@ else
 }
 
 app.Run();
+
+static bool HasSerializationFailure(Exception exception)
+{
+    for (Exception? current = exception; current is not null; current = current.InnerException)
+        if (current is Npgsql.PostgresException { SqlState: "40001" }) return true;
+    return false;
+}
 
 public partial class Program { }

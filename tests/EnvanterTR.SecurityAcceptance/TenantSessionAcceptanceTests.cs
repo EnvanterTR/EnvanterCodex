@@ -3710,6 +3710,61 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Concurrent_purchase_order_receipts_cannot_receive_the_same_remaining_stock_twice()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var orderNumber = $"RACE-{Guid.NewGuid():N}"[..15];
+        using var createResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/stock-orders", "admin",
+            System.Net.Http.Json.JsonContent.Create(new
+            {
+                orderNumber, supplier = "Concurrent receipt supplier", orderDate = today, currency = "TRY",
+                items = new[] { new { consumableId = (Guid?)_ownConsumableId, componentId = (Guid?)null, quantity = 3, unitCost = 10m } }
+            }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        using var created = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var orderId = created.RootElement.GetProperty("id").GetGuid();
+
+        using var detailResponse = await SendAsAdminAsync($"/api/stock-orders/{orderId}");
+        Assert.Equal(HttpStatusCode.OK, detailResponse.StatusCode);
+        using var detail = JsonDocument.Parse(await detailResponse.Content.ReadAsStringAsync());
+        var lineId = Assert.Single(detail.RootElement.GetProperty("lines").EnumerateArray()).GetProperty("id").GetGuid();
+
+        var receivePath = $"/api/stock-orders/{orderId}/receive";
+        var firstRequest = SendAsRoleAsync(HttpMethod.Post, receivePath, "admin",
+            System.Net.Http.Json.JsonContent.Create(new { receivedOn = today, items = new[] { new { lineId, quantity = 2 } } }), requestToken, antiforgeryCookie);
+        var secondRequest = SendAsRoleAsync(HttpMethod.Post, receivePath, "admin",
+            System.Net.Http.Json.JsonContent.Create(new { receivedOn = today, items = new[] { new { lineId, quantity = 2 } } }), requestToken, antiforgeryCookie);
+
+        using var firstResponse = await firstRequest;
+        using var secondResponse = await secondRequest;
+        var statuses = new[] { firstResponse.StatusCode, secondResponse.StatusCode };
+        var responseDetails = $"first={(int)firstResponse.StatusCode} {await firstResponse.Content.ReadAsStringAsync()}; " +
+            $"second={(int)secondResponse.StatusCode} {await secondResponse.Content.ReadAsStringAsync()}";
+        Assert.True(statuses.Contains(HttpStatusCode.OK), responseDetails);
+        Assert.Equal(1, statuses.Count(status => status == HttpStatusCode.OK));
+        Assert.Equal(1, statuses.Count(status => status == HttpStatusCode.Conflict));
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var line = await db.StockPurchaseOrderLines.SingleAsync(x => x.CompanyId == _companyId && x.PurchaseOrderId == orderId);
+        Assert.Equal(2, line.QuantityReceived);
+        Assert.Equal("PartiallyReceived", await db.StockPurchaseOrders.Where(x => x.CompanyId == _companyId && x.Id == orderId)
+            .Select(x => x.Status).SingleAsync());
+        Assert.Equal(1, await db.ConsumableMovements.CountAsync(x => x.CompanyId == _companyId && x.ConsumableId == _ownConsumableId &&
+            x.MovementType == "Received" && x.Notes != null && x.Notes.Contains(orderNumber)));
+        Assert.Equal(2, await db.ConsumableMovements.Where(x => x.CompanyId == _companyId && x.ConsumableId == _ownConsumableId &&
+            x.MovementType == "Received" && x.Notes != null && x.Notes.Contains(orderNumber)).SumAsync(x => x.Quantity));
+    }
+
+    [Fact]
     public async Task Password_recovery_does_not_disclose_account_existence_and_reset_tokens_are_single_use()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
