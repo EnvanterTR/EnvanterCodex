@@ -8,9 +8,11 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using EnvanterTR.Web.Data;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -52,6 +54,72 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     private readonly string _mediaPath = Path.Combine(Path.GetTempPath(), "envantertr-security-media-" + Guid.NewGuid().ToString("N"));
     private WebApplicationFactory<Program>? _factory;
     private HttpClient? _client;
+
+    [Fact]
+    public async Task Every_api_endpoint_declares_an_explicit_authentication_boundary()
+    {
+        var endpoints = _factory!.Services.GetServices<EndpointDataSource>()
+            .SelectMany(source => source.Endpoints)
+            .OfType<RouteEndpoint>()
+            .Where(endpoint => endpoint.RoutePattern.RawText?.StartsWith("/api", StringComparison.OrdinalIgnoreCase) == true)
+            .ToArray();
+
+        Assert.True(endpoints.Length >= 300, $"Expected the complete API endpoint inventory, found {endpoints.Length}.");
+        var unprotected = endpoints.Where(endpoint =>
+                endpoint.Metadata.GetMetadata<IAllowAnonymous>() is null &&
+                !endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Any())
+            .Select(DescribeEndpoint)
+            .OrderBy(value => value, StringComparer.Ordinal)
+            .ToArray();
+        Assert.True(unprotected.Length == 0,
+            "API endpoints need explicit authorization or AllowAnonymous metadata:\n" + string.Join("\n", unprotected));
+
+        var actualPublicRoutes = endpoints
+            .Where(endpoint => endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null)
+            .Select(DescribeEndpoint)
+            .ToHashSet(StringComparer.Ordinal);
+        var expectedPublicRoutes = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "GET /api/status",
+            "GET /api/setup/status",
+            "GET /api/session/csrf",
+            "GET /api/platform/bootstrap/status",
+            "POST /api/setup/initial-owner",
+            "POST /api/platform/bootstrap",
+            "POST /api/session/login",
+            "POST /api/session/password/forgot",
+            "POST /api/session/password/reset",
+            "GET /api/plans",
+            "GET /api/site-content"
+        };
+        Assert.True(expectedPublicRoutes.SetEquals(actualPublicRoutes),
+            "Review anonymous API route changes. Unexpected: " +
+            string.Join(", ", actualPublicRoutes.Except(expectedPublicRoutes).OrderBy(x => x, StringComparer.Ordinal)) +
+            "; missing: " +
+            string.Join(", ", expectedPublicRoutes.Except(actualPublicRoutes).OrderBy(x => x, StringComparer.Ordinal)));
+
+        var policies = endpoints.SelectMany(endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>())
+            .Select(data => data.Policy)
+            .Where(policy => !string.IsNullOrWhiteSpace(policy))
+            .Select(policy => policy!)
+            .ToHashSet(StringComparer.Ordinal);
+        var expectedPolicies = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "asset.read", "asset.write", "settings.manage", "people.read", "people.manage",
+            "people.files.read", "people.files.manage", "company.member", "platform.admin"
+        };
+        Assert.True(expectedPolicies.SetEquals(policies),
+            "Review API authorization policy coverage. Unexpected: " +
+            string.Join(", ", policies.Except(expectedPolicies).OrderBy(x => x, StringComparer.Ordinal)) +
+            "; unused: " +
+            string.Join(", ", expectedPolicies.Except(policies).OrderBy(x => x, StringComparer.Ordinal)));
+    }
+
+    private static string DescribeEndpoint(RouteEndpoint endpoint)
+    {
+        var methods = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods;
+        return $"{(methods is { Count: > 0 } ? string.Join(",", methods) : "*")} {endpoint.RoutePattern.RawText}";
+    }
 
     public async Task InitializeAsync()
     {

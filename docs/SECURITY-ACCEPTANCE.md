@@ -14,6 +14,12 @@ Kimlik doğrulama kabulü, TOTP MFA etkin kullanıcı için ikinci adımın zoru
 Çok şirketli girişte şirket seçimi yalnız hesabın etkin `CompanyMembership` kayıtlarından oluşturulur: geçerli iki üyelik seçenek olarak sunulur, üçüncü/üyesiz şirket gizlenir ve kimliği doğrudan gönderilirse `403` alır; geçerli ikinci şirket seçilince oturum o şirket kimliğiyle açılır.
 Hesap güvenliği kabulü başarılı giriş ve MFA yönetimi olaylarının şirket denetim günlüğüne yazıldığını, doğrulama sırrı/kurtarma kodlarının denetim ayrıntısına sızmadığını da kontrol eder.
 
+## API rota yetki envanteri
+
+`Every_api_endpoint_declares_an_explicit_authentication_boundary` uygulamanın çalışma zamanında oluşturduğu API `RouteEndpoint` kayıtlarını tarar. En az 300 API endpoint'i bulunduğunu; her birinin `AllowAnonymous` veya en az bir `IAuthorizeData` politikası taşıdığını doğrular. Anonim erişim kümesi yöntem/yol bazında sabit allowlist ile eşleştirilir (11 rota); anonim rotaya yeni bir ekleme veya çıkarma testin açıkça güncellenmesini gerektirir. Test, dokuz şirket/platform yetki politikasının hepsinin kullanıldığını ve başka adlandırılmış politikanın eklenmediğini de doğrular.
+
+Bu kontrol rota metadata envanterinin eksiksizliğini kanıtlar; her endpoint için tüm rollerin HTTP davranışını ayrı ayrı kanıtlayan tam bir 318×rol matrisi değildir. Temsilî rol matrisi ve tenant davranış testleri pakette ayrıca bulunur.
+
 Senaryo aynı eski `admin` kimlik bilgilerini her istekte tekrar gönderir ve veritabanındaki güncel durumu değiştirir:
 
 - Başlangıçta üye yönetimi izni çalışır.
