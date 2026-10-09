@@ -2580,6 +2580,28 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         }
         using (var crossCompanyAssetFileResponse = await SendAsAdminAsync($"/api/assets/{_otherCompanyAssetId}/attachments/{otherCompanyAssetAttachmentId}/file"))
             Assert.Equal(HttpStatusCode.NotFound, crossCompanyAssetFileResponse.StatusCode);
+
+        using var assetCsrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, assetCsrfResponse.StatusCode);
+        using var assetCsrfPayload = JsonDocument.Parse(await assetCsrfResponse.Content.ReadAsStringAsync());
+        var assetRequestToken = assetCsrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var assetAntiforgeryCookie = assetCsrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        using (var crossCompanyAssetUpload = await SendAssetAttachmentUploadAsync(_otherCompanyAssetId, pdfBytes,
+            "intrusion.pdf", assetRequestToken, assetAntiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossCompanyAssetUpload.StatusCode);
+        using (var crossCompanyAssetDelete = await SendAsUserAsync(HttpMethod.Delete,
+            $"/api/assets/{_otherCompanyAssetId}/attachments/{otherCompanyAssetAttachmentId}", _userId, _companyId,
+            requestToken: assetRequestToken, antiforgeryCookie: assetAntiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossCompanyAssetDelete.StatusCode);
+        Assert.True(File.Exists(Path.Combine(otherCompanyAssetDirectory, $"{otherCompanyAssetAttachmentId:N}.pdf")));
+        await using (var verifyScope = _factory.Services.CreateAsyncScope())
+        {
+            var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.Equal(1, await verifyDb.AssetAttachments.CountAsync(x => x.CompanyId == _otherCompanyId &&
+                x.AssetId == _otherCompanyAssetId && x.Id == otherCompanyAssetAttachmentId));
+        }
     }
 
     [Fact]
@@ -4134,6 +4156,15 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var multipart = new MultipartFormDataContent();
         multipart.Add(new ByteArrayContent(bytes), "file", fileName);
         return await SendAsUserAsync(HttpMethod.Post, $"/api/maintenances/{maintenanceId}/attachments", _userId, _companyId,
+            multipart, requestToken, antiforgeryCookie);
+    }
+
+    private async Task<HttpResponseMessage> SendAssetAttachmentUploadAsync(Guid assetId, byte[] bytes, string fileName,
+        string requestToken, string antiforgeryCookie)
+    {
+        using var multipart = new MultipartFormDataContent();
+        multipart.Add(new ByteArrayContent(bytes), "file", fileName);
+        return await SendAsUserAsync(HttpMethod.Post, $"/api/assets/{assetId}/attachments", _userId, _companyId,
             multipart, requestToken, antiforgeryCookie);
     }
 

@@ -11,7 +11,7 @@ Bu belge EnvanterTR'nin kurumsal envanter yönetiminde beklenen ana işlevleri n
 
 ## Dağıtım doğrulama notu — 9 Ekim 2026
 
-İzole PostgreSQL güvenlik/kabul paketi 9 Ekim'de **57/57 geçti**. Bakım eki senaryosu artık yabancı şirket bakımına dosya yükleme, yabancı ek kimliğiyle indirme ve yabancı bakım ekini silme denemelerini de doğrular; her isteğin `404` ile reddedildiğini ve yabancı ekin veritabanı kaydıyla diskteki dosyasının korunduğunu kontrol eder. Bu kanıt bakım eki uçlarıyla sınırlıdır; diğer modüllerdeki tüm dosya uçlarının her rol/tenant birleşimi için kabul edildiği anlamına gelmez.
+İzole PostgreSQL güvenlik/kabul paketi 9 Ekim'de **57/57 geçti**. Bakım ve varlık eki senaryoları yabancı şirkete dosya yükleme/silme girişimlerinin ve kendi kaydında yabancı ek kimliği kullanmanın reddini; yabancı ekin veritabanı kaydıyla diskteki dosyasının korunduğunu doğrular. Bu kanıt bakım ve varlık eki uçlarıyla sınırlıdır; diğer modüllerdeki tüm dosya uçlarının her rol/tenant birleşimi için kabul edildiği anlamına gelmez.
 
 Windows x64 paketinin Docker SDK geri dönüşü Windows `C:\` yollarını Docker Linux konteynerinin kabul ettiği mount biçimine normalize eder. Bu geliştirici bilgisayarında güncel kaynakla self-contained yayın başarıyla oluşturuldu; yayımlanmış uygulamanın LocalMachine DPAPI ile korunan veritabanı ve SMTP sırlarını açıp `/api/status` yanıtı vermesi doğrulandı. `deploy/windows/tests/publish-path-check.ps1` bu davranışı CI'da korur. Bu kanıt Windows Server hizmeti, gerçek PostgreSQL veya üretim güncelleme/kurtarma kabulü değildir.
 
