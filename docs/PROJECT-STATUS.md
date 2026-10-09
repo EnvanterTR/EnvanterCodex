@@ -1,5 +1,7 @@
 # Proje ilerleme raporu
 
+- **9 Ekim rezervasyon ekranı yerelleştirmesi:** Form, filtreler, durumlar, satır eylemleri, boş/yükleniyor durumu, erişilebilir metinler ve tarih biçimi Türkçe/İngilizce/Rusça/Ukraynaca/Makedonca tercihlerine bağlandı. CI yerelleştirme denetimi 30 çekirdek rezervasyon anahtarının kapsamını da zorunlu kılıyor. 185 sözlük girdisi doğrulandı; iki inline JavaScript bloğu ayrıştırıldı. Release Docker derlemesi başarılı ve yerel uygulama güncellendi; `/health` 200, `/api/status` `ready`, 64 migration uygulanmış ve bekleyen 0.
+
 - **9 Ekim rezervasyon dışa aktarımı:** Rezervasyon ekranına mevcut arama/durum/tarih filtrelerini koruyan CSV indirme eklendi. API listeyle aynı şirket ve talep sahibi/yetkili görünürlük kurallarını uygular, 50.000 satırla sınırlar ve Excel formül enjeksiyonunu etkisizleştirir. PostgreSQL kabul senaryosu filtreyi, tenant görünürlüğünü ve formül güvenliğini doğruluyor. İzole PostgreSQL güvenlik/kabul paketi **57/57 geçti**; geçici veritabanı ve ağ kaldırıldı. Release Docker derlemesi başarılı; yerel web konteyneri güncellendi, `/health` 200 ve `/api/status` `ready`.
 
 - **9 Ekim çalışan belgesi kiracı erişimi:** Çalışan fotoğrafı/belge güvenlik kabuline yabancı tenant çalışanına belge yükleme ve silme girişimleri eklendi. HR dosya yetkisine sahip şirket yöneticisi için iki istek de `404` ile reddedildi; yabancı belgenin disk kopyası ve DB kaydı korundu. İzole PostgreSQL güvenlik/kabul paketi **57/57 geçti**; geçici Compose kaynakları kaldırıldı, yerel geliştirme veritabanı kullanılmadı.
