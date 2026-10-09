@@ -140,6 +140,23 @@ const requiredInventoryMovementLabels = [
   'Hareket sayısı: {count}', 'Sayfa', '← Önceki', 'Sonraki →', 'Silinmiş kayıt',
   'Stok çıkışı / atama', 'Çalışana teslim', 'İade alındı'
 ];
+const requiredLicenseListLabels = [
+  'ŞİRKET ALANI / YAZILIM', 'Yazılım lisansları',
+  'Lisans türünü, koltuk kullanımını, atamaları ve yenileme tarihlerini yönetin.',
+  '↓ CSV dışa aktar', '↑ CSV içe aktar', '＋ Lisans ekle',
+  'Lisans, yayıncı, tedarikçi veya referans ara', 'Lisans', 'Yayıncı / sürüm', 'Tür',
+  'Kullanılan koltuk', 'Bitiş tarihi', 'Yenileme', 'İşlem', 'Lisanslar yükleniyor…',
+  'Referans yok', 'Sürüm belirtilmemiş', 'Süresiz', 'Otomatik', 'Manuel', 'Ayrıntı',
+  'Abonelik', 'Cihaz başına', 'Şirket geneli', 'Deneme', 'Diğer', 'Lisans sayısı: {count}',
+  'Sayfa', '← Önceki', 'Sonraki →', 'Lisans bulunamadı.',
+  'Lisans atamaları', 'Çalışana verilmiş koltukları ve geri alınan eski atamaları inceleyin.',
+  'Lisans kataloğu', 'Çalışan veya lisans ara', 'Aktif atamalar', 'Geri alınan atamalar',
+  'Tüm atamalar', 'Atamalar yükleniyor…', 'Çalışan / varlık', 'Personel no',
+  'Atanma tarihi', 'Durum', 'Lisans atama sayısı: {count}', 'Aktif', 'Geri alındı',
+  'Atamayı kaldır', 'Henüz atama yok.',
+  'Bu lisans atamasını geri almak istiyor musunuz?',
+  'Atama kaldırıldı; geçmiş kaydı korundu.'
+];
 
 const invalidRows = Object.entries(sandbox.localeRows)
   .filter(([key, values]) => !key.trim() || !Array.isArray(values) || values.length !== 4 || values.some(value => typeof value !== 'string' || !value.trim()))
@@ -149,14 +166,16 @@ const missingReservationLabels = requiredReservationLabels.filter(key => !sandbo
 const missingAccessoryLabels = requiredAccessoryLabels.filter(key => !sandbox.localeRows[key]);
 const missingEmployeeLabels = requiredEmployeeLabels.filter(key => !sandbox.localeRows[key]);
 const missingInventoryMovementLabels = requiredInventoryMovementLabels.filter(key => !sandbox.localeRows[key]);
+const missingLicenseListLabels = requiredLicenseListLabels.filter(key => !sandbox.localeRows[key]);
 
-if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length) {
+if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingLicenseListLabels.length) {
   if (invalidRows.length) console.error(`Invalid 4-language locale entries: ${invalidRows.join(', ')}`);
   if (missingAssetLabels.length) console.error(`Missing asset-list locale entries: ${missingAssetLabels.join(', ')}`);
   if (missingReservationLabels.length) console.error(`Missing reservation-page locale entries: ${missingReservationLabels.join(', ')}`);
   if (missingAccessoryLabels.length) console.error(`Missing accessory-page locale entries: ${missingAccessoryLabels.join(', ')}`);
   if (missingEmployeeLabels.length) console.error(`Missing employee-page locale entries: ${missingEmployeeLabels.join(', ')}`);
   if (missingInventoryMovementLabels.length) console.error(`Missing inventory-movement locale entries: ${missingInventoryMovementLabels.join(', ')}`);
+  if (missingLicenseListLabels.length) console.error(`Missing license-list locale entries: ${missingLicenseListLabels.join(', ')}`);
   process.exitCode = 1;
 } else {
   console.log(`Verified ${Object.keys(sandbox.localeRows).length} locale entries in Turkish, English, Russian, Ukrainian, and Macedonian.`);
