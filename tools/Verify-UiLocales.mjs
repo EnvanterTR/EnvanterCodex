@@ -127,6 +127,19 @@ const requiredEmployeeLabels = [
   'Doğrulanan yeni çalışan kayıtları bu şirkete eklensin mi? Bu işlem mevcut kayıtları güncellemez.',
   '{count} satır incelendi.'
 ];
+const requiredInventoryMovementLabels = [
+  'ŞİRKET ALANI / STOK', 'Stok hareketleri',
+  'Aksesuar, sarf malzemesi ve bileşen girişlerini, çıkışlarını ve atamalarını birlikte inceleyin.',
+  'CSV indir', 'Ürün, çalışan, varlık veya not ara', 'Stok hareketlerinde ara',
+  'Tüm stok türleri', 'Aksesuar', 'Sarf', 'Bileşen', 'Stok türüne göre filtrele',
+  'Hareket türüne göre filtrele', 'Tüm hareketler', 'Stok girişi', 'Sayım düzeltmesi',
+  'Çıkış / atama', 'İade / çıkarma', 'Başlangıç (UTC)', 'Bitiş (UTC)',
+  'Başlangıç tarihi', 'Bitiş tarihi', 'Tarih', 'Tür', 'Ürün', 'Hareket', 'Miktar',
+  'Hedef / çalışan', 'İşlemi yapan', 'Not', 'Şirket stok hareketleri',
+  'Hareketler yükleniyor…', 'Bu filtrelerle eşleşen hareket yok.',
+  'Hareket sayısı: {count}', 'Sayfa', '← Önceki', 'Sonraki →', 'Silinmiş kayıt',
+  'Stok çıkışı / atama', 'Çalışana teslim', 'İade alındı'
+];
 
 const invalidRows = Object.entries(sandbox.localeRows)
   .filter(([key, values]) => !key.trim() || !Array.isArray(values) || values.length !== 4 || values.some(value => typeof value !== 'string' || !value.trim()))
@@ -135,13 +148,15 @@ const missingAssetLabels = requiredAssetLabels.filter(key => !sandbox.localeRows
 const missingReservationLabels = requiredReservationLabels.filter(key => !sandbox.localeRows[key]);
 const missingAccessoryLabels = requiredAccessoryLabels.filter(key => !sandbox.localeRows[key]);
 const missingEmployeeLabels = requiredEmployeeLabels.filter(key => !sandbox.localeRows[key]);
+const missingInventoryMovementLabels = requiredInventoryMovementLabels.filter(key => !sandbox.localeRows[key]);
 
-if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length) {
+if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length) {
   if (invalidRows.length) console.error(`Invalid 4-language locale entries: ${invalidRows.join(', ')}`);
   if (missingAssetLabels.length) console.error(`Missing asset-list locale entries: ${missingAssetLabels.join(', ')}`);
   if (missingReservationLabels.length) console.error(`Missing reservation-page locale entries: ${missingReservationLabels.join(', ')}`);
   if (missingAccessoryLabels.length) console.error(`Missing accessory-page locale entries: ${missingAccessoryLabels.join(', ')}`);
   if (missingEmployeeLabels.length) console.error(`Missing employee-page locale entries: ${missingEmployeeLabels.join(', ')}`);
+  if (missingInventoryMovementLabels.length) console.error(`Missing inventory-movement locale entries: ${missingInventoryMovementLabels.join(', ')}`);
   process.exitCode = 1;
 } else {
   console.log(`Verified ${Object.keys(sandbox.localeRows).length} locale entries in Turkish, English, Russian, Ukrainian, and Macedonian.`);
