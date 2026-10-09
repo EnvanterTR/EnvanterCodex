@@ -2954,6 +2954,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             await SetCompanyRoleAsync(role.Role);
 
+            using (var companyBranding = await SendAsRoleAsync(HttpMethod.Get, "/api/company/branding", role.Role))
+                Assert.Equal(HttpStatusCode.OK, companyBranding.StatusCode);
+
+            using (var platformOverview = await SendAsRoleAsync(HttpMethod.Get, "/api/platform/overview", role.Role))
+                Assert.Equal(HttpStatusCode.Forbidden, platformOverview.StatusCode);
+
             using (var assetList = await SendAsRoleAsync(HttpMethod.Get, "/api/assets?page=1&pageSize=20", role.Role))
                 Assert.Equal(role.AssetRead ? HttpStatusCode.OK : HttpStatusCode.Forbidden, assetList.StatusCode);
 
