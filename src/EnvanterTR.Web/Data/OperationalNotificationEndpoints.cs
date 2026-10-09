@@ -10,7 +10,7 @@ public sealed record UpdateOperationalNotificationStateRequest(string? Kind, Gui
 
 public static class OperationalNotificationEndpoints
 {
-    private static readonly string[] AllowedKinds = ["maintenance", "audit", "license", "warranty"];
+    private static readonly string[] AllowedKinds = ["maintenance", "audit", "license", "warranty", "return"];
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public static void MapOperationalNotificationEndpoints(this RouteGroupBuilder api)
@@ -98,6 +98,7 @@ public static class OperationalNotificationEndpoints
                 "license" => await db.SoftwareLicenses.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == request.RecordId, ct),
                 "warranty" => await db.Assets.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == request.RecordId && x.WarrantyExpiresAt != null, ct),
                 "audit" => await db.Assets.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == request.RecordId && x.NextAuditOn != null, ct),
+                "return" => await db.Assets.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == request.RecordId && x.ExpectedReturnOn != null, ct),
                 _ => false
             };
             if (!belongsToCompany) return Results.NotFound();

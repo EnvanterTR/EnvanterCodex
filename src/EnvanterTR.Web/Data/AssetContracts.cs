@@ -74,12 +74,12 @@ public sealed record UpdateEmployeeRequest(
 public sealed record SetEmployeeManagerRequest(Guid? ManagerEmployeeId);
 public sealed record LinkCompanyMemberEmployeeRequest(Guid? EmployeeId);
 
-public sealed record AssignAssetRequest(Guid EmployeeId, string? Note);
+public sealed record AssignAssetRequest(Guid EmployeeId, string? Note, DateOnly? ExpectedReturnOn = null);
 public sealed record ReturnAssetRequest(string? Note);
 public sealed record ChangeAssetStatusRequest(string Status, string? Note);
 public sealed record AssetTrashRequest(string? Note);
 public sealed record BulkChangeAssetStatusRequest(Guid[] AssetIds, string Status, string? Note);
-public sealed record BulkAssignAssetsRequest(Guid[] AssetIds, Guid EmployeeId, string? Note);
+public sealed record BulkAssignAssetsRequest(Guid[] AssetIds, Guid EmployeeId, string? Note, DateOnly? ExpectedReturnOn = null);
 public sealed record BulkReturnAssetsRequest(Guid[] AssetIds, string? Note);
 public sealed record BulkTransferAssetsRequest(Guid[] AssetIds, string TargetLocation, string? Notes);
 public sealed record BulkRecordAssetAuditRequest(Guid[] AssetIds, DateOnly AuditDate, string? Notes, DateOnly? NextAuditOn = null);
@@ -108,4 +108,5 @@ public sealed record AssetListItem(
     DateTimeOffset UpdatedAt,
     Guid? PhotoAttachmentId = null,
     Guid? LocationCatalogId = null,
-    bool IsByod = false);
+    bool IsByod = false,
+    DateOnly? ExpectedReturnOn = null);

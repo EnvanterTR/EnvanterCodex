@@ -479,6 +479,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid?>("DeletedByUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateOnly?>("ExpectedReturnOn")
+                        .HasColumnType("date");
+
                     b.Property<bool>("IsByod")
                         .HasColumnType("boolean");
 
@@ -539,6 +542,8 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("CompanyId", "CategoryId");
 
+                    b.HasIndex("CompanyId", "ExpectedReturnOn");
+
                     b.HasIndex("CompanyId", "Location");
 
                     b.HasIndex("CompanyId", "LocationCatalogId");
@@ -562,6 +567,8 @@ namespace EnvanterTR.Web.Data.Migrations
                             t.HasCheckConstraint("CK_Assets_AssignmentStatus", "(\"Status\" = 'Deployed' AND \"AssignedEmployeeId\" IS NOT NULL) OR (\"Status\" <> 'Deployed' AND \"AssignedEmployeeId\" IS NULL)");
 
                             t.HasCheckConstraint("CK_Assets_Currency", "char_length(\"Currency\") = 3");
+
+                            t.HasCheckConstraint("CK_Assets_ExpectedReturn", "\"ExpectedReturnOn\" IS NULL OR (\"Status\" = 'Deployed' AND \"AssignedEmployeeId\" IS NOT NULL)");
 
                             t.HasCheckConstraint("CK_Assets_NonnegativeCost", "\"PurchaseCost\" IS NULL OR \"PurchaseCost\" >= 0");
 

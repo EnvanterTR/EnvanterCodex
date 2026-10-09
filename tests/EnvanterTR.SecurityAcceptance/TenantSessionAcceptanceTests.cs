@@ -1456,6 +1456,67 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Expected_asset_returns_are_listed_in_the_calendar_only_for_the_active_company()
+    {
+        var expectedReturnOn = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(7);
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var asset = await db.Assets.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownAssetId);
+            asset.Status = AssetStatuses.Deployed;
+            asset.AssignedEmployeeId = _ownEmployeeId;
+            asset.ExpectedReturnOn = expectedReturnOn;
+            await db.SaveChangesAsync();
+        }
+
+        var from = DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        var to = expectedReturnOn.AddDays(1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        using var response = await SendAsRoleAsync(HttpMethod.Get, $"/api/calendar?from={from}&to={to}&kind=return&limit=500", "viewer");
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.True(response.StatusCode == HttpStatusCode.OK, $"Expected 200 but got {(int)response.StatusCode}: {body}");
+        using var payload = JsonDocument.Parse(body);
+        var item = Assert.Single(payload.RootElement.GetProperty("items").EnumerateArray());
+        Assert.Equal("return", item.GetProperty("kind").GetString());
+        Assert.Equal(_ownAssetId, item.GetProperty("assetId").GetGuid());
+        Assert.Equal(expectedReturnOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), item.GetProperty("date").GetString());
+        Assert.DoesNotContain("OTHER-SECURITY", item.GetProperty("title").GetString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Asset_assignment_accepts_a_valid_expected_return_and_return_clears_it_with_history()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var expectedReturnOn = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(14);
+        using (var invalidDate = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_ownAssetId}/assign", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { employeeId = _ownEmployeeId, expectedReturnOn = expectedReturnOn.AddDays(-20).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidDate.StatusCode);
+
+        using var assign = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_ownAssetId}/assign", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { employeeId = _ownEmployeeId, expectedReturnOn = expectedReturnOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), note = "Acceptance due date" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, assign.StatusCode);
+        using var assignedPayload = JsonDocument.Parse(await assign.Content.ReadAsStringAsync());
+        Assert.Equal(expectedReturnOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), assignedPayload.RootElement.GetProperty("expectedReturnOn").GetString());
+
+        using var returned = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_ownAssetId}/return", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { note = "Returned in acceptance test" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, returned.StatusCode);
+        using var returnedPayload = JsonDocument.Parse(await returned.Content.ReadAsStringAsync());
+        Assert.Equal(JsonValueKind.Null, returnedPayload.RootElement.GetProperty("expectedReturnOn").ValueKind);
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Contains(await db.AssetEvents.Where(x => x.CompanyId == _companyId && x.AssetId == _ownAssetId).ToListAsync(),
+            item => item.EventType == "Assigned" && item.Details!.Contains(expectedReturnOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal));
+        Assert.Contains(await db.AssetEvents.Where(x => x.CompanyId == _companyId && x.AssetId == _ownAssetId).ToListAsync(),
+            item => item.EventType == "Returned" && item.Details!.Contains(expectedReturnOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Operational_notification_preferences_and_read_dismiss_states_are_private_to_each_user_and_company()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
@@ -1470,7 +1531,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             Assert.Equal(HttpStatusCode.OK, defaultPreferences.StatusCode);
             using var payload = JsonDocument.Parse(await defaultPreferences.Content.ReadAsStringAsync());
-            Assert.Equal(new[] { "maintenance", "audit", "license", "warranty" },
+            Assert.Equal(new[] { "maintenance", "audit", "license", "warranty", "return" },
                 payload.RootElement.GetProperty("enabledKinds").EnumerateArray().Select(x => x.GetString()).ToArray());
         }
         using (var savedPreferences = await SendAsRoleAsync(HttpMethod.Put, "/api/notifications/preferences", "viewer",
@@ -1498,7 +1559,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                    _sameCompanyOtherUserId, _companyId))
         {
             using var payload = JsonDocument.Parse(await otherUserPreferences.Content.ReadAsStringAsync());
-            Assert.Equal(4, payload.RootElement.GetProperty("enabledKinds").GetArrayLength());
+            Assert.Equal(5, payload.RootElement.GetProperty("enabledKinds").GetArrayLength());
             Assert.Empty(payload.RootElement.GetProperty("emailEnabledKinds").EnumerateArray());
         }
         using (var invalidPreference = await SendAsRoleAsync(HttpMethod.Put, "/api/notifications/preferences", "viewer",

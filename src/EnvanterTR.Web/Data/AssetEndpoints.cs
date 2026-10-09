@@ -123,7 +123,7 @@ public static class AssetEndpoints
                     x.AssignedEmployeeId, x.WarrantyExpiresAt, x.UpdatedAt,
                     db.AssetAttachments.Where(photo => photo.CompanyId == companyId && photo.AssetId == x.Id && photo.ContentType.StartsWith("image/"))
                         .OrderByDescending(photo => photo.CreatedAt).Select(photo => (Guid?)photo.Id).FirstOrDefault(),
-                    x.LocationCatalogId, x.IsByod)).ToListAsync(cancellationToken);
+                    x.LocationCatalogId, x.IsByod, x.ExpectedReturnOn)).ToListAsync(cancellationToken);
             return Results.Ok(new { items, page, pageSize, total });
         }).RequireAuthorization("asset.read");
 
@@ -1420,7 +1420,7 @@ public static class AssetEndpoints
                     x.LocationCatalogId,
                     x.CategoryId, x.BrandId, x.ModelId, x.ParentAssetId, x.AssignedEmployeeId,
                     x.PurchaseOrderId,
-                    x.PurchaseDate, x.WarrantyExpiresAt, x.NextAuditOn, x.PurchaseCost, x.Currency, x.IsRequestable, x.CreatedAt, x.UpdatedAt,
+                    x.PurchaseDate, x.WarrantyExpiresAt, x.NextAuditOn, x.ExpectedReturnOn, x.PurchaseCost, x.Currency, x.IsRequestable, x.CreatedAt, x.UpdatedAt,
                     x.CustomFieldsJson
                 }).SingleOrDefaultAsync(cancellationToken);
             if (asset is null) return Results.NotFound();
@@ -1520,7 +1520,7 @@ public static class AssetEndpoints
             catch (JsonException) { customFields = new(StringComparer.Ordinal); }
             return Results.Ok(new { asset = new { asset.Id, asset.AssetTag, asset.Name, asset.Status, asset.SerialNumber, asset.Location,
                 asset.LocationCatalogId, asset.CategoryId, asset.BrandId, asset.ModelId, asset.ParentAssetId, asset.AssignedEmployeeId, asset.PurchaseOrderId,
-                asset.PurchaseDate, asset.WarrantyExpiresAt, asset.NextAuditOn, asset.PurchaseCost, asset.Currency, asset.IsRequestable,
+                asset.PurchaseDate, asset.WarrantyExpiresAt, asset.NextAuditOn, asset.ExpectedReturnOn, asset.PurchaseCost, asset.Currency, asset.IsRequestable,
                 asset.CreatedAt, asset.UpdatedAt, customFields }, references, purchaseOrder, relatedAssets, accessories = accessoryAssignments,
                 components = componentAllocations, softwareLicenses, history, attachments });
         }).RequireAuthorization("asset.read");
@@ -1767,7 +1767,7 @@ public static class AssetEndpoints
                 asset.BrandId is Guid savedBrand ? await db.AssetBrands.Where(x => x.CompanyId == companyId && x.Id == savedBrand).Select(x => x.Name).SingleAsync(cancellationToken) : null,
                 asset.ModelId,
                 asset.ModelId is Guid savedModel ? await db.AssetModels.Where(x => x.CompanyId == companyId && x.Id == savedModel).Select(x => x.Name).SingleAsync(cancellationToken) : null,
-                null, asset.AssignedEmployeeId, asset.WarrantyExpiresAt, asset.UpdatedAt, null, asset.LocationCatalogId, asset.IsByod));
+                null, asset.AssignedEmployeeId, asset.WarrantyExpiresAt, asset.UpdatedAt, null, asset.LocationCatalogId, asset.IsByod, asset.ExpectedReturnOn));
         }).RequireAuthorization("asset.write");
 
         api.MapPatch("/assets/{id:guid}", async (Guid id, [FromBody] UpdateAssetRequest request,
@@ -2011,8 +2011,8 @@ public static class AssetEndpoints
             kind = string.IsNullOrWhiteSpace(kind) ? null : kind.Trim().ToLowerInvariant();
             if (start > end || end.DayNumber - start.DayNumber > 365)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Takvim aralığı ters olamaz ve en fazla 366 gün olabilir."] });
-            if (!string.IsNullOrWhiteSpace(kind) && kind is not ("maintenance" or "license" or "warranty" or "audit"))
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["kind"] = ["Tür maintenance, license, warranty veya audit olmalıdır."] });
+            if (!string.IsNullOrWhiteSpace(kind) && kind is not ("maintenance" or "license" or "warranty" or "audit" or "return"))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["kind"] = ["Tür maintenance, license, warranty, audit veya return olmalıdır."] });
 
             var maxItems = Math.Clamp(limit ?? 200, 1, 500);
             var total = 0;
@@ -2064,6 +2064,20 @@ public static class AssetEndpoints
                         asset.AssetTag + " · " + asset.Name, asset.Location, "AuditScheduled", null))
                     .ToListAsync(cancellationToken);
                 events.AddRange(auditEvents);
+            }
+            if (kind is null or "return")
+            {
+                var returnQuery = db.Assets.AsNoTracking()
+                    .Where(asset => asset.CompanyId == companyId && asset.Status == AssetStatuses.Deployed &&
+                        asset.AssignedEmployeeId != null && asset.ExpectedReturnOn >= start && asset.ExpectedReturnOn <= end);
+                total += await returnQuery.CountAsync(cancellationToken);
+                var returnEvents = await returnQuery.OrderBy(asset => asset.ExpectedReturnOn).ThenBy(asset => asset.AssetTag).ThenBy(asset => asset.Id)
+                    .Take(maxItems).Select(asset => new CalendarEntry("return", asset.ExpectedReturnOn!.Value, asset.Id, asset.Id,
+                        asset.AssetTag + " · " + asset.Name,
+                        db.Employees.Where(employee => employee.CompanyId == companyId && employee.Id == asset.AssignedEmployeeId)
+                            .Select(employee => employee.DisplayName).FirstOrDefault(), "ExpectedReturn", null))
+                    .ToListAsync(cancellationToken);
+                events.AddRange(returnEvents);
             }
 
             var ordered = events.OrderBy(item => item.Date).ThenBy(item => item.Kind).ThenBy(item => item.Title).ToArray();

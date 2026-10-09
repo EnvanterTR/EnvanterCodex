@@ -951,6 +951,8 @@ public static class OperationalEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Açıklama en fazla 2000 karakter olabilir."] });
             if (request.EmployeeId == Guid.Empty)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeId"] = ["Etkin çalışan bu şirkette bulunamadı."] });
+            if (!ValidExpectedReturnDate(request.ExpectedReturnOn))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["expectedReturnOn"] = ["Beklenen iade tarihi bugün ile 10 yıl sonrası arasında olmalıdır."] });
 
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             var employee = await db.Employees.FromSqlInterpolated($"SELECT * FROM \"Employees\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {request.EmployeeId} FOR UPDATE")
@@ -963,16 +965,17 @@ public static class OperationalEndpoints
             if (asset.AssignedEmployeeId is not null || asset.Status != AssetStatuses.Available)
                 return Results.Conflict(new { message = "Yalnızca boşta ve kullanılabilir varlık zimmetlenebilir." });
             asset.AssignedEmployeeId = request.EmployeeId;
+            asset.ExpectedReturnOn = request.ExpectedReturnOn;
             asset.Status = AssetStatuses.Deployed;
             asset.UpdatedAt = DateTimeOffset.UtcNow;
             db.AssetEvents.Add(new AssetEvent
             {
                 CompanyId = companyId, AssetId = asset.Id, ActorUserId = actorId,
-                EmployeeId = request.EmployeeId, EventType = "Assigned", Details = Clean(request.Note)
+                EmployeeId = request.EmployeeId, EventType = "Assigned", Details = AssignmentDetails(Clean(request.Note), request.ExpectedReturnOn)
             });
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            return Results.Ok(new { asset.Id, asset.AssetTag, asset.Status, asset.AssignedEmployeeId, asset.UpdatedAt });
+            return Results.Ok(new { asset.Id, asset.AssetTag, asset.Status, asset.AssignedEmployeeId, asset.ExpectedReturnOn, asset.UpdatedAt });
         }).RequireAuthorization("asset.write");
 
         api.MapPost("/assets/{id:guid}/return", async (Guid id, [FromBody] ReturnAssetRequest request,
@@ -988,16 +991,18 @@ public static class OperationalEndpoints
             if (asset.AssignedEmployeeId is not Guid employeeId)
                 return Results.Conflict(new { message = "Bu varlık şu anda bir çalışana zimmetli değil." });
             asset.AssignedEmployeeId = null;
+            var previousExpectedReturnOn = asset.ExpectedReturnOn;
+            asset.ExpectedReturnOn = null;
             asset.Status = AssetStatuses.Available;
             asset.UpdatedAt = DateTimeOffset.UtcNow;
             db.AssetEvents.Add(new AssetEvent
             {
                 CompanyId = companyId, AssetId = asset.Id, ActorUserId = actorId,
-                EmployeeId = employeeId, EventType = "Returned", Details = Clean(request.Note)
+                EmployeeId = employeeId, EventType = "Returned", Details = ReturnDetails(Clean(request.Note), previousExpectedReturnOn)
             });
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            return Results.Ok(new { asset.Id, asset.AssetTag, asset.Status, asset.AssignedEmployeeId, asset.UpdatedAt });
+            return Results.Ok(new { asset.Id, asset.AssetTag, asset.Status, asset.AssignedEmployeeId, asset.ExpectedReturnOn, asset.UpdatedAt });
         }).RequireAuthorization("asset.write");
 
         api.MapGet("/assets/trash", async (ClaimsPrincipal user, AppDbContext db, CancellationToken ct,
@@ -1197,6 +1202,8 @@ public static class OperationalEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeId"] = ["Etkin çalışan bu şirkette bulunamadı."] });
             if (request.Note is { Length: > 1900 })
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Toplu zimmet notu en fazla 1900 karakter olabilir."] });
+            if (!ValidExpectedReturnDate(request.ExpectedReturnOn))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["expectedReturnOn"] = ["Beklenen iade tarihi bugün ile 10 yıl sonrası arasında olmalıdır."] });
 
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             var employee = await db.Employees.FromSqlInterpolated(
@@ -1217,9 +1224,10 @@ public static class OperationalEndpoints
             foreach (var asset in assets)
             {
                 asset.AssignedEmployeeId = employee.Id;
+                asset.ExpectedReturnOn = request.ExpectedReturnOn;
                 asset.Status = AssetStatuses.Deployed;
                 asset.UpdatedAt = now;
-                var details = string.IsNullOrWhiteSpace(note) ? "Toplu zimmet işlemi." : $"Toplu zimmet işlemi. {note}";
+                var details = AssignmentDetails(string.IsNullOrWhiteSpace(note) ? "Toplu zimmet işlemi." : $"Toplu zimmet işlemi. {note}", request.ExpectedReturnOn);
                 db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = asset.Id,
                     ActorUserId = actorId, EmployeeId = employee.Id, EventType = "Assigned", Details = details });
                 db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
@@ -1254,10 +1262,12 @@ public static class OperationalEndpoints
             foreach (var asset in assets)
             {
                 var previousEmployeeId = asset.AssignedEmployeeId!.Value;
+                var previousExpectedReturnOn = asset.ExpectedReturnOn;
                 asset.AssignedEmployeeId = null;
+                asset.ExpectedReturnOn = null;
                 asset.Status = AssetStatuses.Available;
                 asset.UpdatedAt = now;
-                var details = string.IsNullOrWhiteSpace(note) ? "Toplu iade işlemi." : $"Toplu iade işlemi. {note}";
+                var details = ReturnDetails(string.IsNullOrWhiteSpace(note) ? "Toplu iade işlemi." : $"Toplu iade işlemi. {note}", previousExpectedReturnOn);
                 db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = asset.Id,
                     ActorUserId = actorId, EmployeeId = previousEmployeeId, EventType = "Returned", Details = details });
                 db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
@@ -1717,6 +1727,29 @@ public static class OperationalEndpoints
     }
 
     private static string NormalizeDepartmentName(string value) => value.Trim().ToUpperInvariant();
+
+    private static bool ValidExpectedReturnDate(DateOnly? date)
+    {
+        if (date is null) return true;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        return date >= today && date <= today.AddYears(10);
+    }
+
+    private static string? AssignmentDetails(string? note, DateOnly? expectedReturnOn)
+    {
+        var parts = new List<string>();
+        if (note is not null) parts.Add(note);
+        if (expectedReturnOn is { } date) parts.Add($"Beklenen iade: {date:yyyy-MM-dd}");
+        return parts.Count == 0 ? null : string.Join(" · ", parts);
+    }
+
+    private static string? ReturnDetails(string? note, DateOnly? expectedReturnOn)
+    {
+        var parts = new List<string>();
+        if (note is not null) parts.Add(note);
+        if (expectedReturnOn is { } date) parts.Add($"Planlı iade tarihi: {date:yyyy-MM-dd}");
+        return parts.Count == 0 ? null : string.Join(" · ", parts);
+    }
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 

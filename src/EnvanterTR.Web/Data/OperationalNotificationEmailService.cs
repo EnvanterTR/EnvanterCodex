@@ -11,7 +11,7 @@ public sealed class OperationalNotificationEmailService(
     IConfiguration configuration,
     ILogger<OperationalNotificationEmailService> logger)
 {
-    private static readonly string[] AllowedKinds = ["maintenance", "audit", "license", "warranty"];
+    private static readonly string[] AllowedKinds = ["maintenance", "audit", "license", "warranty", "return"];
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly TimeSpan StaleClaimAge = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan RetryDelay = TimeSpan.FromHours(1);
@@ -188,6 +188,29 @@ public sealed class OperationalNotificationEmailService(
                 .Take(200).ToListAsync(cancellationToken);
             items.AddRange(rows);
         }
+        if (kinds.Contains("return", StringComparer.Ordinal))
+        {
+            var overdue = await db.Assets.AsNoTracking()
+                .Where(asset => asset.CompanyId == companyId && asset.DeletedAt == null && asset.Status == AssetStatuses.Deployed &&
+                    asset.AssignedEmployeeId != null && asset.ExpectedReturnOn < DateOnly.FromDateTime(DateTime.UtcNow))
+                .OrderByDescending(asset => asset.ExpectedReturnOn).ThenBy(asset => asset.AssetTag)
+                .Select(asset => new OperationalReminderItem("return", asset.ExpectedReturnOn!.Value,
+                    asset.AssetTag + " · " + asset.Name,
+                    "Gecikti · " + (db.Employees.Where(employee => employee.CompanyId == companyId && employee.Id == asset.AssignedEmployeeId)
+                        .Select(employee => employee.DisplayName).FirstOrDefault() ?? "Çalışan belirtilmemiş")))
+                .Take(100).ToListAsync(cancellationToken);
+            items.AddRange(overdue);
+            var upcomingReturns = await db.Assets.AsNoTracking()
+                .Where(asset => asset.CompanyId == companyId && asset.DeletedAt == null && asset.Status == AssetStatuses.Deployed &&
+                    asset.AssignedEmployeeId != null && asset.ExpectedReturnOn >= DateOnly.FromDateTime(DateTime.UtcNow) && asset.ExpectedReturnOn <= rangeEnd)
+                .OrderBy(asset => asset.ExpectedReturnOn).ThenBy(asset => asset.AssetTag)
+                .Select(asset => new OperationalReminderItem("return", asset.ExpectedReturnOn!.Value,
+                    asset.AssetTag + " · " + asset.Name,
+                    "Beklenen iade · " + (db.Employees.Where(employee => employee.CompanyId == companyId && employee.Id == asset.AssignedEmployeeId)
+                        .Select(employee => employee.DisplayName).FirstOrDefault() ?? "Çalışan belirtilmemiş")))
+                .Take(100).ToListAsync(cancellationToken);
+            items.AddRange(upcomingReturns);
+        }
         return items.OrderBy(x => x.Date).ThenBy(x => x.Kind, StringComparer.Ordinal).Take(500).ToList();
     }
 
@@ -204,7 +227,7 @@ public sealed class OperationalNotificationEmailService(
                 .Append(WebUtility.HtmlEncode(item.Detail ?? "")).Append("</td></tr>");
         }
         var link = WebUtility.HtmlEncode(new Uri(publicBaseUri, "/").AbsoluteUri);
-        var body = $"<div style=\"font-family:Arial,sans-serif;color:#25334a;max-width:760px;margin:auto\"><h2>Yaklaşan EnvanterTR işleri</h2><p>Son 7 gün ve gelecek 30 gün içindeki seçtiğiniz bakım, denetim, lisans ve garanti kayıtları:</p><table style=\"width:100%;border-collapse:collapse;text-align:left\"><thead><tr><th style=\"padding:8px\">Tür</th><th style=\"padding:8px\">Tarih</th><th style=\"padding:8px\">Kayıt</th><th style=\"padding:8px\">Açıklama</th></tr></thead><tbody>{rows}</tbody></table><p><a href=\"{link}\">EnvanterTR uygulamasını aç</a></p><p style=\"color:#738197;font-size:12px\">Bu özeti bildirim tercihlerinde e-posta hatırlatmalarını seçtiğiniz için aldınız.</p></div>";
+        var body = $"<div style=\"font-family:Arial,sans-serif;color:#25334a;max-width:760px;margin:auto\"><h2>EnvanterTR operasyon özeti</h2><p>Son 7 gün ve gelecek 30 gün içindeki seçtiğiniz bakım, denetim, lisans, garanti ve iade kayıtları:</p><table style=\"width:100%;border-collapse:collapse;text-align:left\"><thead><tr><th style=\"padding:8px\">Tür</th><th style=\"padding:8px\">Tarih</th><th style=\"padding:8px\">Kayıt</th><th style=\"padding:8px\">Açıklama</th></tr></thead><tbody>{rows}</tbody></table><p><a href=\"{link}\">EnvanterTR uygulamasını aç</a></p><p style=\"color:#738197;font-size:12px\">Bu özeti bildirim tercihlerinde e-posta hatırlatmalarını seçtiğiniz için aldınız.</p></div>";
         var message = new MailMessage(new MailAddress(fromAddress, fromName), recipient)
         {
             Subject = "EnvanterTR · yaklaşan işler özeti",
@@ -255,6 +278,7 @@ public sealed class OperationalNotificationEmailService(
         "audit" => "Fiziksel denetim",
         "license" => "Lisans bitişi",
         "warranty" => "Garanti bitişi",
+        "return" => "Varlık iadesi",
         _ => "İş"
     };
 
@@ -277,7 +301,7 @@ public sealed class OperationalNotificationEmailWorker(IServiceScopeFactory scop
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { return; }
             catch (Exception exception)
             {
-                logger.LogError("Operational email reminder cycle failed ({ErrorType}).", exception.GetType().Name);
+        logger.LogError("Operational email reminder cycle failed ({ErrorType}).", exception.GetType().Name);
             }
         } while (await timer.WaitForNextTickAsync(stoppingToken));
     }
