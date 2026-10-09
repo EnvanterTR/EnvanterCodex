@@ -440,7 +440,7 @@ public static class OperationalEndpoints
                                      assignment.CheckedOutAt, assignment.Notes
                                  };
             var assignedAccessoryCount = await accessoryQuery.CountAsync(cancellationToken);
-            var assignedAccessories = await accessoryQuery.Take(100).ToListAsync(cancellationToken);
+            var assignedAccessories = await accessoryQuery.Take(1000).ToListAsync(cancellationToken);
 
             var licenseQuery = from assignment in db.SoftwareLicenseAssignments.AsNoTracking()
                                join license in db.SoftwareLicenses.AsNoTracking()
