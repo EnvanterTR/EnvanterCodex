@@ -11,7 +11,7 @@ public sealed class OperationalNotificationEmailService(
     IConfiguration configuration,
     ILogger<OperationalNotificationEmailService> logger)
 {
-    private static readonly string[] AllowedKinds = ["maintenance", "audit", "license", "warranty", "return", "assignment", "asset-life"];
+    private static readonly string[] AllowedKinds = ["maintenance", "audit", "license", "warranty", "return", "reservation", "assignment", "asset-life"];
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly TimeSpan StaleClaimAge = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan RetryDelay = TimeSpan.FromHours(1);
@@ -61,7 +61,7 @@ public sealed class OperationalNotificationEmailService(
             if (recipient is null || !MailAddress.TryCreate(recipient.Email, out var parsedAddress) ||
                 !string.Equals(parsedAddress.Address, recipient.Email, StringComparison.OrdinalIgnoreCase)) continue;
 
-            var items = await GetUpcomingItemsAsync(preference.CompanyId, kinds, from, to, cancellationToken);
+            var items = await GetUpcomingItemsAsync(preference.CompanyId, preference.UserId, kinds, from, to, cancellationToken);
             if (items.Count == 0) continue;
 
             var digest = await TryClaimDigestAsync(preference.CompanyId, preference.UserId, today, now, cancellationToken);
@@ -140,7 +140,7 @@ public sealed class OperationalNotificationEmailService(
         }
     }
 
-    private async Task<List<OperationalReminderItem>> GetUpcomingItemsAsync(Guid companyId, string[] kinds,
+    private async Task<List<OperationalReminderItem>> GetUpcomingItemsAsync(Guid companyId, Guid userId, string[] kinds,
         DateOnly rangeStart, DateOnly rangeEnd, CancellationToken cancellationToken)
     {
         var items = new List<OperationalReminderItem>();
@@ -210,6 +210,31 @@ public sealed class OperationalNotificationEmailService(
                         .Select(employee => employee.DisplayName).FirstOrDefault() ?? "Çalışan belirtilmemiş")))
                 .Take(100).ToListAsync(cancellationToken);
             items.AddRange(upcomingReturns);
+        }
+        if (kinds.Contains("reservation", StringComparer.Ordinal))
+        {
+            var membership = await db.CompanyMemberships.AsNoTracking()
+                .Where(item => item.CompanyId == companyId && item.UserId == userId)
+                .Select(item => new { item.RoleKey, item.EmployeeId }).SingleOrDefaultAsync(cancellationToken);
+            if (membership is not null)
+            {
+                var reviewer = membership.RoleKey is "owner" or "admin" or "asset_manager" or "asset_operator";
+                var reservationQuery = from reservation in db.AssetReservations.AsNoTracking()
+                                       join asset in db.Assets.AsNoTracking() on new { reservation.CompanyId, AssetId = reservation.AssetId } equals new { asset.CompanyId, AssetId = asset.Id }
+                                       join employee in db.Employees.AsNoTracking() on new { reservation.CompanyId, reservation.EmployeeId } equals new { employee.CompanyId, EmployeeId = employee.Id }
+                                       where reservation.CompanyId == companyId && reservation.Status == "Approved" &&
+                                             reservation.StartsOn >= rangeStart && reservation.StartsOn <= rangeEnd && asset.DeletedAt == null
+                                       select new { reservation, asset, employee };
+                if (!reviewer)
+                    reservationQuery = reservationQuery.Where(item => item.reservation.RequestedByUserId == userId ||
+                        (membership.EmployeeId != null && item.reservation.EmployeeId == membership.EmployeeId));
+                var rows = await reservationQuery.OrderBy(item => item.reservation.StartsOn).ThenBy(item => item.asset.AssetTag)
+                    .Select(item => new OperationalReminderItem("reservation", item.reservation.StartsOn,
+                        item.asset.AssetTag + " · " + item.asset.Name,
+                        item.employee.DisplayName + " · " + item.reservation.StartsOn.ToString("yyyy-MM-dd") + " – " + item.reservation.EndsOn.ToString("yyyy-MM-dd")))
+                    .Take(200).ToListAsync(cancellationToken);
+                items.AddRange(rows);
+            }
         }
         if (kinds.Contains("assignment", StringComparer.Ordinal))
         {
@@ -284,7 +309,7 @@ public sealed class OperationalNotificationEmailService(
                 .Append(WebUtility.HtmlEncode(item.Detail ?? "")).Append("</td></tr>");
         }
         var link = WebUtility.HtmlEncode(new Uri(publicBaseUri, "/").AbsoluteUri);
-        var body = $"<div style=\"font-family:Arial,sans-serif;color:#25334a;max-width:760px;margin:auto\"><h2>EnvanterTR operasyon özeti</h2><p>Son 7 gün ve gelecek 30 gün içinde seçtiğiniz bakım, denetim, lisans, garanti, iade, yeni zimmet ve kullanım ömrü sonu kayıtları:</p><table style=\"width:100%;border-collapse:collapse;text-align:left\"><thead><tr><th style=\"padding:8px\">Tür</th><th style=\"padding:8px\">Tarih</th><th style=\"padding:8px\">Kayıt</th><th style=\"padding:8px\">Açıklama</th></tr></thead><tbody>{rows}</tbody></table><p><a href=\"{link}\">EnvanterTR uygulamasını aç</a></p><p style=\"color:#738197;font-size:12px\">Bu özeti bildirim tercihlerinde e-posta hatırlatmalarını seçtiğiniz için aldınız.</p></div>";
+        var body = $"<div style=\"font-family:Arial,sans-serif;color:#25334a;max-width:760px;margin:auto\"><h2>EnvanterTR operasyon özeti</h2><p>Son 7 gün ve gelecek 30 gün içinde seçtiğiniz bakım, denetim, lisans, garanti, iade, rezervasyon, yeni zimmet ve kullanım ömrü sonu kayıtları:</p><table style=\"width:100%;border-collapse:collapse;text-align:left\"><thead><tr><th style=\"padding:8px\">Tür</th><th style=\"padding:8px\">Tarih</th><th style=\"padding:8px\">Kayıt</th><th style=\"padding:8px\">Açıklama</th></tr></thead><tbody>{rows}</tbody></table><p><a href=\"{link}\">EnvanterTR uygulamasını aç</a></p><p style=\"color:#738197;font-size:12px\">Bu özeti bildirim tercihlerinde e-posta hatırlatmalarını seçtiğiniz için aldınız.</p></div>";
         var message = new MailMessage(new MailAddress(fromAddress, fromName), recipient)
         {
             Subject = "EnvanterTR · yaklaşan işler özeti",
@@ -336,6 +361,7 @@ public sealed class OperationalNotificationEmailService(
         "license" => "Lisans bitişi",
         "warranty" => "Garanti bitişi",
         "return" => "Varlık iadesi",
+        "reservation" => "Varlık rezervasyonu",
         "assignment" => "Yeni zimmet",
         "asset-life" => "Kullanım ömrü sonu",
         _ => "İş"

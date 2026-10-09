@@ -10,7 +10,7 @@ public sealed record UpdateOperationalNotificationStateRequest(string? Kind, Gui
 
 public static class OperationalNotificationEndpoints
 {
-    private static readonly string[] AllowedKinds = ["maintenance", "audit", "license", "warranty", "return"];
+    private static readonly string[] AllowedKinds = ["maintenance", "audit", "license", "warranty", "return", "reservation"];
     private static readonly string[] AllowedEmailKinds = [.. AllowedKinds, "assignment", "asset-life"];
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -100,6 +100,9 @@ public static class OperationalNotificationEndpoints
                 "warranty" => await db.Assets.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == request.RecordId && x.WarrantyExpiresAt != null, ct),
                 "audit" => await db.Assets.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == request.RecordId && x.NextAuditOn != null, ct),
                 "return" => await db.Assets.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == request.RecordId && x.ExpectedReturnOn != null, ct),
+                "reservation" => await db.AssetReservations.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == request.RecordId &&
+                    x.Status == "Approved" && (CanReview(user) || x.RequestedByUserId == userId ||
+                        db.CompanyMemberships.Any(membership => membership.CompanyId == companyId && membership.UserId == userId && membership.EmployeeId == x.EmployeeId)), ct),
                 _ => false
             };
             if (!belongsToCompany) return Results.NotFound();
@@ -158,4 +161,6 @@ public static class OperationalNotificationEndpoints
         var validUser = Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
         return validCompany && validUser;
     }
+
+    private static bool CanReview(ClaimsPrincipal user) => user.FindFirstValue("company_role") is "owner" or "admin" or "asset_manager" or "asset_operator";
 }

@@ -244,7 +244,7 @@
     </section>
     <section class="workspace-page" id="calendarPage" hidden>
       <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / TAKVİM</div><h1 id="calendarPageTitle">Takvim</h1><p id="calendarDescription">Yaklaşan bakım planlarını, lisans ve garanti bitişlerini birlikte izleyin.</p></div><div class="head-actions"><button class="btn" id="calendarExport" type="button">⇩ CSV indir</button><button class="btn" id="calendarRefresh" type="button">↻ Yenile</button></div></div>
-      <section class="panel"><div class="table-tools"><label class="muted">Başlangıç tarihi <input id="calendarFrom" type="date"></label><label class="muted">Bitiş tarihi <input id="calendarTo" type="date"></label><select id="calendarKind" aria-label="Takvim etkinlik türü"><option value="">Bakım, denetim, lisans, garanti ve iade</option><option value="maintenance">Yalnızca bakım planları</option><option value="audit">Yalnızca fiziksel denetimler</option><option value="license">Yalnızca lisans bitişleri</option><option value="warranty">Yalnızca garanti bitişleri</option><option value="return">Yalnızca beklenen varlık iadeleri</option></select><select id="calendarViewMode" aria-label="Takvim görünümü"><option value="list">Liste görünümü</option><option value="day">Gün görünümü</option><option value="week">Hafta görünümü</option><option value="month">Ay görünümü</option></select><button class="btn small primary" id="applyCalendarFilters" type="button">Takvimi göster</button><small id="calendarCount" role="status" aria-live="polite">—</small></div><div id="calendarPeriodNav" class="calendar-period-nav" hidden><button class="btn small" id="calendarPeriodPrev" type="button" aria-label="Önceki dönem">← Önceki</button><h2 id="calendarPeriodTitle" aria-live="polite"></h2><button class="btn small" id="calendarPeriodToday" type="button">Bugün</button><button class="btn small" id="calendarPeriodNext" type="button" aria-label="Sonraki dönem">Sonraki →</button></div><p class="muted" id="calendarRangeNote" style="padding:0 14px 10px">En fazla 366 günlük aralık gösterilir. E-posta hatırlatmaları için kullanıcı tercihi ve sunucu SMTP ayarı gerekir.</p><div id="calendarMonthGrid" class="calendar-month-grid" hidden></div><div id="calendarListWrap" class="table-wrap"><table><caption class="sr-only">Şirket bakım, denetim, lisans, garanti ve beklenen iade takvimi</caption><thead><tr><th>Tarih</th><th>Etkinlik</th><th>Kayıt</th><th>Ayrıntı</th><th>Durum</th><th>İşlem</th></tr></thead><tbody id="calendarRows"><tr><td colspan="6">Takvim yükleniyor…</td></tr></tbody></table></div></section>
+      <section class="panel"><div class="table-tools"><label class="muted">Başlangıç tarihi <input id="calendarFrom" type="date"></label><label class="muted">Bitiş tarihi <input id="calendarTo" type="date"></label><select id="calendarKind" aria-label="Takvim etkinlik türü"><option value="">Bakım, denetim, lisans, garanti, iade ve rezervasyon</option><option value="maintenance">Yalnızca bakım planları</option><option value="audit">Yalnızca fiziksel denetimler</option><option value="license">Yalnızca lisans bitişleri</option><option value="warranty">Yalnızca garanti bitişleri</option><option value="return">Yalnızca beklenen varlık iadeleri</option><option value="reservation">Yalnızca onaylı rezervasyonlar</option></select><select id="calendarViewMode" aria-label="Takvim görünümü"><option value="list">Liste görünümü</option><option value="day">Gün görünümü</option><option value="week">Hafta görünümü</option><option value="month">Ay görünümü</option></select><button class="btn small primary" id="applyCalendarFilters" type="button">Takvimi göster</button><small id="calendarCount" role="status" aria-live="polite">—</small></div><div id="calendarPeriodNav" class="calendar-period-nav" hidden><button class="btn small" id="calendarPeriodPrev" type="button" aria-label="Önceki dönem">← Önceki</button><h2 id="calendarPeriodTitle" aria-live="polite"></h2><button class="btn small" id="calendarPeriodToday" type="button">Bugün</button><button class="btn small" id="calendarPeriodNext" type="button" aria-label="Sonraki dönem">Sonraki →</button></div><p class="muted" id="calendarRangeNote" style="padding:0 14px 10px">En fazla 366 günlük aralık gösterilir; yalnızca onaylı rezervasyonlar takvime eklenir.</p><div id="calendarMonthGrid" class="calendar-month-grid" hidden></div><div id="calendarListWrap" class="table-wrap"><table><caption class="sr-only">Şirket bakım, denetim, lisans, garanti, iade ve rezervasyon takvimi</caption><thead><tr><th>Tarih</th><th>Etkinlik</th><th>Kayıt</th><th>Ayrıntı</th><th>Durum</th><th>İşlem</th></tr></thead><tbody id="calendarRows"><tr><td colspan="6">Takvim yükleniyor…</td></tr></tbody></table></div></section>
     </section>
     <section class="workspace-page" id="reportPage" hidden>
       <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / RAPORLAMA</div><h1>Envanter raporları</h1><p>Şirket kayıtlarını güncel durum, kategori ve kaydedilmiş satın alma maliyetiyle inceleyin.</p></div><div class="head-actions"><button class="btn" id="reportExport" type="button" disabled>⇩ Raporu Excel'e aktar</button><button class="btn" id="reportRefresh" type="button">↻ Verileri yenile</button></div></div>
@@ -976,7 +976,7 @@
       }
       if (unavailable || !events.length) {
         const row = document.createElement('div'); row.className = 'attention-row';
-        const message = document.createElement('span'); message.textContent = unavailable ? 'Takvim verileri yüklenemedi; takvim sayfasından yeniden deneyin.' : overdueAudits || dueSoonAudits ? 'Yaklaşan takvim etkinliği yok; planlı denetimler yukarıda listeleniyor.' : 'Yakın dönemde bakım, denetim, lisans veya garanti bitişi yok.'; row.append(message); host.append(row);
+        const message = document.createElement('span'); message.textContent = unavailable ? 'Takvim verileri yüklenemedi; takvim sayfasından yeniden deneyin.' : overdueAudits || dueSoonAudits ? 'Yaklaşan takvim etkinliği yok; planlı denetimler yukarıda listeleniyor.' : 'Yakın dönemde bakım, denetim, lisans, garanti veya rezervasyon yok.'; row.append(message); host.append(row);
       }
       const today = dateInputValue(new Date());
       for (const item of events) {
@@ -990,7 +990,7 @@
       }
       $('#upcomingEventsNote').textContent = unavailable ? 'Takvim verileri şu anda alınamadı.' : total > events.length
         ? `En yakın ${fmt.format(events.length)} etkinlik gösteriliyor · ${fmt.format(total)} toplam`
-        : 'Bakım, fiziksel denetim, lisans, garanti ve beklenen iade tarihleri · Son 30 gün ve gelecek 90 gün';
+        : 'Bakım, fiziksel denetim, lisans, garanti, iade ve onaylı rezervasyonlar · Son 30 gün ve gelecek 90 gün';
     }
     const dashboardWidgetIds = ['stats','assets','activity','upcoming','status'];
     let dashboardVisibleWidgets = new Set(dashboardWidgetIds);
@@ -2717,11 +2717,11 @@
       }
       $('#calendarCount').textContent = `${fmt.format(result.total)} etkinlik`;
       $('#calendarRangeNote').textContent = result.total > latestCalendarEvents.length
-        ? `İlk ${fmt.format(latestCalendarEvents.length)} kayıt gösteriliyor; tamamını görmek için tarih aralığını daraltın. E-posta hatırlatmaları henüz etkin değil.`
-        : 'Bakım planları, lisans ve garanti bitişleri birlikte gösterilir. E-posta hatırlatmaları henüz etkin değildir.';
+        ? `İlk ${fmt.format(latestCalendarEvents.length)} kayıt gösteriliyor; tamamını görmek için tarih aralığını daraltın. Onaylı rezervasyonlar da dahildir.`
+        : 'Bakım, denetim, lisans, garanti, iade ve onaylı rezervasyonlar gösterilir.';
       $('#calendarExport').disabled = !latestCalendarEvents.length || result.total > latestCalendarEvents.length;
       if (!latestCalendarEvents.length) {
-        const row = document.createElement('tr'), cell = document.createElement('td'); cell.colSpan = 6; cell.textContent = 'Bu tarih aralığında bakım, fiziksel denetim, lisans veya garanti etkinliği yok.'; row.append(cell); body.append(row); renderCalendarView(); return;
+        const row = document.createElement('tr'), cell = document.createElement('td'); cell.colSpan = 6; cell.textContent = 'Bu tarih aralığında eşleşen operasyon veya onaylı rezervasyon etkinliği yok.'; row.append(cell); body.append(row); renderCalendarView(); return;
       }
       const today = dateInputValue(new Date());
       for (const item of latestCalendarEvents) {
@@ -2735,6 +2735,7 @@
         else if (item.kind === 'maintenance') { const pill = document.createElement('span'); pill.className = 'pill'; pill.textContent = 'Planlandı'; state.append(pill); }
         else if (item.kind === 'audit') { const pill = document.createElement('span'); pill.className = 'pill'; pill.textContent = 'Planlandı'; state.append(pill); }
         else if (item.kind === 'warranty') { const pill = document.createElement('span'); pill.className = 'pill blue'; pill.textContent = 'Garanti sürüyor'; state.append(pill); }
+        else if (item.kind === 'reservation') { const pill = document.createElement('span'); pill.className = 'pill blue'; pill.textContent = 'Onaylandı'; state.append(pill); }
         else { const pill = document.createElement('span'); pill.className = `pill ${item.autoRenew ? 'blue' : 'warn'}`; pill.textContent = item.autoRenew ? 'Otomatik yenileme' : 'Yenileme gerekli'; state.append(pill); }
         if (item.kind === 'maintenance' && canWriteAssets()) {
           const startButton = document.createElement('button'); startButton.type = 'button'; startButton.className = 'btn small primary'; startButton.textContent = 'Başlat';
@@ -2755,11 +2756,12 @@
       if (item.kind === 'maintenance') return openAsset(item.assetId).then(() => selectAssetTab('maintenance')).catch(error => notify(error.message));
       if (item.kind === 'audit') return openAsset(item.assetId).catch(error => notify(error.message));
       if (item.kind === 'warranty' || item.kind === 'return') return openAsset(item.assetId).catch(error => notify(error.message));
+      if (item.kind === 'reservation') { document.querySelector('[data-page="Rezervasyonlar"]')?.click(); return Promise.resolve(); }
       return openLicense(item.recordId).catch(error => notify(error.message));
     }
-    function calendarKindLabel(kind) { return kind === 'maintenance' ? 'Bakım planı' : kind === 'audit' ? 'Fiziksel denetim' : kind === 'warranty' ? 'Garanti bitişi' : kind === 'return' ? 'Varlık iadesi' : 'Lisans bitişi'; }
+    function calendarKindLabel(kind) { return kind === 'maintenance' ? 'Bakım planı' : kind === 'audit' ? 'Fiziksel denetim' : kind === 'warranty' ? 'Garanti bitişi' : kind === 'return' ? 'Varlık iadesi' : kind === 'reservation' ? 'Varlık rezervasyonu' : 'Lisans bitişi'; }
     let operationalAlertItems = [], operationalAlertRequestId = 0, operationalAlertTimer = 0;
-    let operationalAlertKinds = ['maintenance', 'audit', 'license', 'warranty', 'return'], showDismissedOperationalAlerts = false;
+    let operationalAlertKinds = ['maintenance', 'audit', 'license', 'warranty', 'return', 'reservation'], showDismissedOperationalAlerts = false;
     function ensureOperationalNotificationControls() {
       const panel = $('#notificationPanel'), list = $('#notificationList');
       if ($('#notificationSettingsToggle')) return;
@@ -2769,12 +2771,12 @@
       controls.append(settings, dismissed);
       const form = document.createElement('form'); form.id = 'notificationPreferencesForm'; form.className = 'notification-preferences'; form.hidden = true;
       const title = document.createElement('strong'); title.textContent = 'Gösterilecek iş türleri'; form.append(title);
-      for (const [kind, label] of [['maintenance', 'Bakım planları'], ['audit', 'Fiziksel denetimler'], ['license', 'Lisans bitişleri'], ['warranty', 'Garanti bitişleri'], ['return', 'Beklenen varlık iadeleri']]) {
+      for (const [kind, label] of [['maintenance', 'Bakım planları'], ['audit', 'Fiziksel denetimler'], ['license', 'Lisans bitişleri'], ['warranty', 'Garanti bitişleri'], ['return', 'Beklenen varlık iadeleri'], ['reservation', 'Onaylı varlık rezervasyonları']]) {
         const wrapper = document.createElement('label'), checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = 'kind'; checkbox.value = kind; wrapper.append(checkbox, document.createTextNode(label)); form.append(wrapper);
       }
       const emailTitle = document.createElement('strong'); emailTitle.textContent = 'E-posta özeti (isteğe bağlı)'; form.append(emailTitle);
       const emailHint = document.createElement('small'); emailHint.textContent = 'Sunucu e-posta (SMTP) ayarı etkinse seçtikleriniz günde en fazla bir kez, hesabınızın doğrulanmış e-posta adresine gönderilir.'; form.append(emailHint);
-      for (const [kind, label] of [['maintenance', 'Bakım planları için e-posta'], ['audit', 'Fiziksel denetimler için e-posta'], ['license', 'Lisans bitişleri için e-posta'], ['warranty', 'Garanti bitişleri için e-posta'], ['return', 'Beklenen varlık iadeleri için e-posta'], ['assignment', 'Yeni zimmetler için e-posta (son 7 gün)'], ['asset-life', 'Kullanım ömrü dolan varlıklar için e-posta']]) {
+      for (const [kind, label] of [['maintenance', 'Bakım planları için e-posta'], ['audit', 'Fiziksel denetimler için e-posta'], ['license', 'Lisans bitişleri için e-posta'], ['warranty', 'Garanti bitişleri için e-posta'], ['return', 'Beklenen varlık iadeleri için e-posta'], ['reservation', 'Onaylı rezervasyonlar için e-posta'], ['assignment', 'Yeni zimmetler için e-posta (son 7 gün)'], ['asset-life', 'Kullanım ömrü dolan varlıklar için e-posta']]) {
         const wrapper = document.createElement('label'), checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = 'emailKind'; checkbox.value = kind; wrapper.append(checkbox, document.createTextNode(label)); form.append(wrapper);
       }
       const save = document.createElement('button'); save.type = 'submit'; save.textContent = 'Tercihleri kaydet'; form.append(save);
@@ -2908,7 +2910,7 @@
     function createCalendarEventButton(item, date, compact = false) {
       const event = document.createElement('button'); event.type = 'button';
       event.className = compact ? `calendar-day-event ${item.kind}${date < dateInputValue(new Date()) ? ' overdue' : ''}` : `calendar-agenda-event ${item.kind}`;
-      if (compact) event.textContent = `${item.kind === 'maintenance' ? 'Bakım' : item.kind === 'warranty' ? 'Garanti' : 'Lisans'} · ${item.title}`;
+      if (compact) event.textContent = `${calendarKindLabel(item.kind)} · ${item.title}`;
       else {
         const title = document.createElement('strong'), detail = document.createElement('small');
         title.textContent = item.title; detail.textContent = `${calendarKindLabel(item.kind)} · ${item.subtitle || 'Ayrıntı belirtilmemiş'}`;
@@ -2969,7 +2971,7 @@
     function exportOperationalCalendar() {
       if (!latestCalendarEvents.length) return;
       const rows = [['Tarih', 'Etkinlik türü', 'Kayıt', 'Ayrıntı', 'Durum']];
-      for (const item of latestCalendarEvents) rows.push([item.date, item.kind === 'maintenance' ? 'Bakım planı' : 'Lisans bitişi', item.title, item.subtitle || '', item.status]);
+      for (const item of latestCalendarEvents) rows.push([item.date, calendarKindLabel(item.kind), item.title, item.subtitle || '', item.status]);
       const csv = '\uFEFF' + rows.map(row => row.map(reportCsvCell).join(';')).join('\r\n');
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
       const link = document.createElement('a'); link.href = url; link.download = `envantertr-takvim-${latestCalendarFrom}-${latestCalendarTo}.csv`; link.click();

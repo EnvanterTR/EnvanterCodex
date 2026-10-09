@@ -1597,6 +1597,25 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var approvedPayload = JsonDocument.Parse(await approved.Content.ReadAsStringAsync());
         Assert.Equal("Approved", approvedPayload.RootElement.GetProperty("status").GetString());
 
+        using (var calendar = await SendAsRoleAsync(HttpMethod.Get,
+                   $"/api/calendar?kind=reservation&from={startsOn:yyyy-MM-dd}&to={endsOn:yyyy-MM-dd}", "admin"))
+        {
+            Assert.Equal(HttpStatusCode.OK, calendar.StatusCode);
+            using var calendarPayload = JsonDocument.Parse(await calendar.Content.ReadAsStringAsync());
+            var calendarItem = Assert.Single(calendarPayload.RootElement.GetProperty("items").EnumerateArray());
+            Assert.Equal("reservation", calendarItem.GetProperty("kind").GetString());
+            Assert.Equal(reservationId, calendarItem.GetProperty("recordId").GetGuid());
+        }
+        using (var readReservation = await SendAsRoleAsync(HttpMethod.Put, "/api/notifications/states", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { kind = "reservation", recordId = reservationId, action = "read" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, readReservation.StatusCode);
+        using (var reservationState = await SendAsRoleAsync(HttpMethod.Get,
+                   $"/api/notifications/states?key={Uri.EscapeDataString($"reservation:{reservationId:D}")}", "admin"))
+        {
+            using var statePayload = JsonDocument.Parse(await reservationState.Content.ReadAsStringAsync());
+            Assert.NotEqual(JsonValueKind.Null, Assert.Single(statePayload.RootElement.GetProperty("items").EnumerateArray()).GetProperty("readAt").ValueKind);
+        }
+
         using (var overlappingAssignment = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_ownAssetId}/assign", "admin",
                    System.Net.Http.Json.JsonContent.Create(new { employeeId = _ownEmployeeId, expectedReturnOn = endsOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) }), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.Conflict, overlappingAssignment.StatusCode);
@@ -1635,6 +1654,15 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(1, await db.AssetReservations.CountAsync(x => x.CompanyId == _companyId && x.AssetId == _ownAssetId));
         Assert.Equal("Completed", await db.AssetReservations.Where(x => x.Id == immediateReservationId).Select(x => x.Status).SingleAsync());
         Assert.Equal(0, await db.AssetReservations.CountAsync(x => x.CompanyId == _otherCompanyId));
+        var foreignReservationId = Guid.NewGuid();
+        db.AssetReservations.Add(new AssetReservation { Id = foreignReservationId, CompanyId = _otherCompanyId,
+            AssetId = _otherCompanyAssetId, EmployeeId = _otherCompanyEmployeeId, RequestedByUserId = _userId,
+            StartsOn = today, EndsOn = today.AddDays(1), Status = "Approved" });
+        await db.SaveChangesAsync();
+        using (var foreignNotification = await SendAsRoleAsync(HttpMethod.Put, "/api/notifications/states", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { kind = "reservation", recordId = foreignReservationId, action = "dismiss" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, foreignNotification.StatusCode);
+        Assert.Equal(1, await db.AssetReservations.CountAsync(x => x.CompanyId == _otherCompanyId));
     }
 
     [Fact]
@@ -1652,18 +1680,18 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             Assert.Equal(HttpStatusCode.OK, defaultPreferences.StatusCode);
             using var payload = JsonDocument.Parse(await defaultPreferences.Content.ReadAsStringAsync());
-            Assert.Equal(new[] { "maintenance", "audit", "license", "warranty", "return" },
+            Assert.Equal(new[] { "maintenance", "audit", "license", "warranty", "return", "reservation" },
                 payload.RootElement.GetProperty("enabledKinds").EnumerateArray().Select(x => x.GetString()).ToArray());
         }
         using (var savedPreferences = await SendAsRoleAsync(HttpMethod.Put, "/api/notifications/preferences", "viewer",
-                   System.Net.Http.Json.JsonContent.Create(new { enabledKinds = new[] { "LICENSE", "warranty" }, emailEnabledKinds = new[] { "LICENSE", "assignment", "asset-life" } }), requestToken, antiforgeryCookie))
+                   System.Net.Http.Json.JsonContent.Create(new { enabledKinds = new[] { "LICENSE", "warranty" }, emailEnabledKinds = new[] { "LICENSE", "assignment", "asset-life", "reservation" } }), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.OK, savedPreferences.StatusCode);
         using (var savedPreferences = await SendAsRoleAsync(HttpMethod.Get, "/api/notifications/preferences", "viewer"))
         {
             using var payload = JsonDocument.Parse(await savedPreferences.Content.ReadAsStringAsync());
             Assert.Equal(new[] { "license", "warranty" },
                 payload.RootElement.GetProperty("enabledKinds").EnumerateArray().Select(x => x.GetString()).ToArray());
-            Assert.Equal(new[] { "license", "assignment", "asset-life" },
+            Assert.Equal(new[] { "license", "reservation", "assignment", "asset-life" },
                 payload.RootElement.GetProperty("emailEnabledKinds").EnumerateArray().Select(x => x.GetString()).ToArray());
         }
         await using (var scope = _factory!.Services.CreateAsyncScope())
@@ -1689,6 +1717,10 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             }));
             db.AssetEvents.Add(new AssetEvent { CompanyId = _companyId, AssetId = _ownAssetId, EmployeeId = _ownEmployeeId,
                 ActorUserId = _userId, EventType = "Assigned", Details = "assignment-digest-fixture", OccurredAt = DateTimeOffset.UtcNow });
+            var reservationStart = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(10);
+            db.AssetReservations.Add(new AssetReservation { CompanyId = _companyId, AssetId = _ownAssetId,
+                EmployeeId = _ownEmployeeId, RequestedByUserId = _userId, StartsOn = reservationStart,
+                EndsOn = reservationStart.AddDays(2), Status = "Approved" });
             await db.SaveChangesAsync();
             await emailService.RunOnceAsync(CancellationToken.None);
             var deliveredDigest = Assert.Single(_smtpCapture.Messages);
@@ -1697,6 +1729,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Contains("Yeni zimmet", digestBody, StringComparison.Ordinal);
             Assert.Contains("OWN-1", digestBody, StringComparison.Ordinal);
             Assert.Contains("OWN-SECURITY-EMPLOYEE", digestBody, StringComparison.Ordinal);
+            Assert.Contains("Varlık rezervasyonu", digestBody, StringComparison.Ordinal);
             Assert.Contains(WebUtility.HtmlEncode("Kullanım ömrü sonu"), digestBody, StringComparison.Ordinal);
             Assert.Contains("OWN-SERVICE-LIFE", digestBody, StringComparison.Ordinal);
             Assert.DoesNotContain("OTHER-SECURITY-LICENSE", deliveredDigest, StringComparison.Ordinal);
@@ -1707,7 +1740,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                    _sameCompanyOtherUserId, _companyId))
         {
             using var payload = JsonDocument.Parse(await otherUserPreferences.Content.ReadAsStringAsync());
-            Assert.Equal(5, payload.RootElement.GetProperty("enabledKinds").GetArrayLength());
+            Assert.Equal(6, payload.RootElement.GetProperty("enabledKinds").GetArrayLength());
             Assert.Empty(payload.RootElement.GetProperty("emailEnabledKinds").EnumerateArray());
         }
         using (var invalidPreference = await SendAsRoleAsync(HttpMethod.Put, "/api/notifications/preferences", "viewer",

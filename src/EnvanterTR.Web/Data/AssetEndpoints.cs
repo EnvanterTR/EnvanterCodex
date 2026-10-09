@@ -2012,8 +2012,8 @@ public static class AssetEndpoints
             kind = string.IsNullOrWhiteSpace(kind) ? null : kind.Trim().ToLowerInvariant();
             if (start > end || end.DayNumber - start.DayNumber > 365)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Takvim aralığı ters olamaz ve en fazla 366 gün olabilir."] });
-            if (!string.IsNullOrWhiteSpace(kind) && kind is not ("maintenance" or "license" or "warranty" or "audit" or "return"))
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["kind"] = ["Tür maintenance, license, warranty, audit veya return olmalıdır."] });
+            if (!string.IsNullOrWhiteSpace(kind) && kind is not ("maintenance" or "license" or "warranty" or "audit" or "return" or "reservation"))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["kind"] = ["Tür maintenance, license, warranty, audit, return veya reservation olmalıdır."] });
 
             var maxItems = Math.Clamp(limit ?? 200, 1, 500);
             var total = 0;
@@ -2079,6 +2079,40 @@ public static class AssetEndpoints
                             .Select(employee => employee.DisplayName).FirstOrDefault(), "ExpectedReturn", null))
                     .ToListAsync(cancellationToken);
                 events.AddRange(returnEvents);
+            }
+            if (kind is null or "reservation")
+            {
+                var reservationQuery = from reservation in db.AssetReservations.AsNoTracking()
+                                      join asset in db.Assets.AsNoTracking() on new { reservation.CompanyId, AssetId = reservation.AssetId } equals new { asset.CompanyId, AssetId = asset.Id }
+                                      join employee in db.Employees.AsNoTracking() on new { reservation.CompanyId, reservation.EmployeeId } equals new { employee.CompanyId, EmployeeId = employee.Id }
+                                      where reservation.CompanyId == companyId && reservation.Status == "Approved" &&
+                                            reservation.StartsOn >= start && reservation.StartsOn <= end && asset.DeletedAt == null
+                                      select new { reservation, asset, employee };
+                var role = user.FindFirstValue("company_role");
+                var reviewer = role is "owner" or "admin" or "asset_manager" or "asset_operator";
+                if (!reviewer)
+                {
+                    if (CurrentUserId(user) is Guid currentUserId)
+                    {
+                        var linkedEmployeeId = await db.CompanyMemberships.AsNoTracking()
+                            .Where(membership => membership.CompanyId == companyId && membership.UserId == currentUserId)
+                            .Select(membership => membership.EmployeeId).SingleOrDefaultAsync(cancellationToken);
+                        reservationQuery = reservationQuery.Where(item => item.reservation.RequestedByUserId == currentUserId ||
+                            (linkedEmployeeId != null && item.reservation.EmployeeId == linkedEmployeeId));
+                    }
+                    else
+                    {
+                        reservationQuery = reservationQuery.Where(_ => false);
+                    }
+                }
+                total += await reservationQuery.CountAsync(cancellationToken);
+                var reservationEvents = await reservationQuery.OrderBy(item => item.reservation.StartsOn).ThenBy(item => item.asset.AssetTag).ThenBy(item => item.reservation.Id)
+                    .Take(maxItems).Select(item => new CalendarEntry("reservation", item.reservation.StartsOn, item.asset.Id, item.reservation.Id,
+                        item.asset.AssetTag + " · " + item.asset.Name,
+                        item.employee.DisplayName + " · " + item.reservation.StartsOn.ToString("yyyy-MM-dd") + " – " + item.reservation.EndsOn.ToString("yyyy-MM-dd"),
+                        "Approved", null))
+                    .ToListAsync(cancellationToken);
+                events.AddRange(reservationEvents);
             }
 
             var ordered = events.OrderBy(item => item.Date).ThenBy(item => item.Kind).ThenBy(item => item.Title).ToArray();
