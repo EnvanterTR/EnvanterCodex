@@ -129,6 +129,16 @@ public static class AssetEndpoints
             return Results.Ok(new { items, page, pageSize, total });
         }).RequireAuthorization("asset.read");
 
+        api.MapGet("/accessories/filter-options", async (ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var categories = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && x.Category != null && x.Category.Trim() != "")
+                .Select(x => x.Category!.Trim()).Distinct().OrderBy(x => x).Take(500).ToListAsync(cancellationToken);
+            var locations = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() != "")
+                .Select(x => x.Location!.Trim()).Distinct().OrderBy(x => x).Take(500).ToListAsync(cancellationToken);
+            return Results.Ok(new { categories, locations });
+        }).RequireAuthorization("asset.read");
+
         api.MapGet("/accessories", async ([FromQuery] string? q, [FromQuery] string? category,
             [FromQuery] string? location, [FromQuery] string? stock, [FromQuery] string? sortBy,
             [FromQuery] string? sortDirection, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken,
@@ -148,8 +158,8 @@ public static class AssetEndpoints
                     db.AccessoryAssignments.Any(a => a.CompanyId == companyId && a.AccessoryId == x.Id &&
                         a.TargetType == "Location" && a.Quantity > a.ReturnedQuantity && a.Location != null && a.Location.Contains(term)));
             }
-            if (!string.IsNullOrWhiteSpace(category)) query = query.Where(x => x.Category == category.Trim());
-            if (!string.IsNullOrWhiteSpace(location)) query = query.Where(x => x.Location == location.Trim());
+            if (!string.IsNullOrWhiteSpace(category)) query = query.Where(x => x.Category != null && x.Category.Trim() == category.Trim());
+            if (!string.IsNullOrWhiteSpace(location)) query = query.Where(x => x.Location != null && x.Location.Trim() == location.Trim());
             if (stock == "low") query = query.Where(x => x.TotalQuantity - (db.AccessoryAssignments
                 .Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id)
                 .Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0) <= x.MinimumQuantity);
@@ -216,8 +226,8 @@ public static class AssetEndpoints
                     db.AccessoryAssignments.Any(a => a.CompanyId == companyId && a.AccessoryId == x.Id &&
                         a.TargetType == "Location" && a.Quantity > a.ReturnedQuantity && a.Location != null && a.Location.Contains(term)));
             }
-            if (!string.IsNullOrWhiteSpace(category)) query = query.Where(x => x.Category == category.Trim());
-            if (!string.IsNullOrWhiteSpace(location)) query = query.Where(x => x.Location == location.Trim());
+            if (!string.IsNullOrWhiteSpace(category)) query = query.Where(x => x.Category != null && x.Category.Trim() == category.Trim());
+            if (!string.IsNullOrWhiteSpace(location)) query = query.Where(x => x.Location != null && x.Location.Trim() == location.Trim());
             if (stock == "low") query = query.Where(x => x.TotalQuantity - (db.AccessoryAssignments
                 .Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id)
                 .Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0) <= x.MinimumQuantity);

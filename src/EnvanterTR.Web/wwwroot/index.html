@@ -274,6 +274,7 @@
       <section class="workspace-page" id="accessoriesPage" hidden>
         <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / STOK</div><h1>Aksesuarlar</h1><p>Aksesuar stoklarını, teslimleri, iadeleri ve satın alma geçmişini yönetin.</p></div><div class="head-actions"><button class="btn" id="accessoryExport" type="button">CSV indir</button><button class="btn" id="accessoryImportOpen" type="button" hidden>↑ CSV içe aktar</button><button class="btn" id="accessoryRefresh" type="button">↻ Yenile</button><button class="btn primary" id="newAccessoryButton" type="button">＋ Aksesuar ekle</button></div></div>
         <section class="panel" id="accessoryListPanel"><div class="table-tools"><input id="accessorySearch" placeholder="Ad, kategori, model, tedarikçi veya konum ara" aria-label="Aksesuarlarda ara"><select id="accessoryStockFilter" aria-label="Stok durumuna göre filtrele"><option value="">Tüm stoklar</option><option value="available">Kullanılabilir stok</option><option value="low">Minimum seviyede veya altında</option></select><select id="accessorySort" aria-label="Aksesuarları sırala"><option value="name:asc">Ada göre A–Z</option><option value="name:desc">Ada göre Z–A</option><option value="remaining:asc">Kalan adede göre artan</option><option value="remaining:desc">Kalan adede göre azalan</option><option value="updated:desc">En son güncellenen</option></select><label class="muted" for="accessoryPageSize">Sayfa başına</label><select id="accessoryPageSize" aria-label="Sayfa başına aksesuar sayısı"><option>12</option><option>25</option><option>50</option><option>100</option></select><details class="column-picker" id="accessoryColumnPicker"><summary class="btn small">Sütunlar</summary><fieldset><legend>Görüntülenecek sütunlar</legend><label><input type="checkbox" data-accessory-column="0" checked> Aksesuar</label><label><input type="checkbox" data-accessory-column="1" checked> Kategori / model</label><label><input type="checkbox" data-accessory-column="2" checked> Tedarikçi / konum</label><label><input type="checkbox" data-accessory-column="3" checked> Toplam</label><label><input type="checkbox" data-accessory-column="4" checked> Zimmetli</label><label><input type="checkbox" data-accessory-column="5" checked> Kalan</label><label><input type="checkbox" data-accessory-column="6" checked> Minimum</label><label><input type="checkbox" data-accessory-column="7" checked> Maliyet</label><label><input type="checkbox" data-accessory-column="8" checked> İşlemler</label><button class="btn small" id="resetAccessoryColumns" type="button">Varsayılan sütunlar</button></fieldset></details><button class="btn small" id="accessoryPrint" type="button">Yazdır</button><button class="btn small" id="accessoryFullscreen" type="button" aria-pressed="false">Tam ekran</button><small id="accessoryCount" role="status" aria-live="polite">—</small></div>
+          <details id="accessoryAdvancedFilters" style="padding:0 14px 12px"><summary class="btn small" style="display:inline-flex;cursor:pointer">Kategori ve konum filtreleri</summary><div class="table-tools" style="padding:10px 0 0"><select id="accessoryCategoryFilter" aria-label="Kategoriye göre filtrele"><option value="">Tüm kategoriler</option></select><select id="accessoryLocationFilter" aria-label="Konuma göre filtrele"><option value="">Tüm konumlar</option></select><button class="btn small" id="clearAccessoryAdvancedFilters" type="button">Filtreleri temizle</button></div></details>
           <div class="table-wrap"><table><caption class="sr-only">Şirket aksesuar stokları</caption><thead><tr><th>Aksesuar</th><th>Kategori / Model</th><th>Tedarikçi / Konum</th><th>Toplam</th><th>Zimmetli</th><th>Kalan</th><th>Minimum</th><th>Birim / toplam maliyet</th><th>İşlemler</th></tr></thead><tbody id="accessoryRows"><tr><td colspan="9">Aksesuarlar yükleniyor…</td></tr></tbody></table></div>
           <div class="pager"><button id="accessoryPrev" type="button">← Önceki</button><span id="accessoryPageInfo">Sayfa —</span><button id="accessoryNext" type="button">Sonraki →</button></div></section>
       </section>
@@ -3597,11 +3598,20 @@
     }
     try { const savedPageSize = Number(localStorage.getItem('envantertr:accessory-page-size')); if ([12,25,50,100].includes(savedPageSize)) accessoryPageSize = savedPageSize; } catch {}
     $('#accessoryPageSize').value = String(accessoryPageSize);
+    async function loadAccessoryFilterOptions() {
+      const result = await api('/api/accessories/filter-options');
+      for (const [selector, values, label] of [['#accessoryCategoryFilter', result.categories || [], 'Tüm kategoriler'], ['#accessoryLocationFilter', result.locations || [], 'Tüm konumlar']]) {
+        const select = $(selector), current = select.value;
+        select.replaceChildren(new Option(label, ''));
+        values.forEach(value => select.add(new Option(value, value)));
+        if (values.includes(current)) select.value = current;
+      }
+    }
     async function loadAccessories(page = accessoryPage) {
       const requestId = ++accessoryRequestId; accessoryPage = Math.max(1, page);
       const params = new URLSearchParams({ page: accessoryPage, pageSize: accessoryPageSize, sortBy: $('#accessorySort').value.split(':')[0], sortDirection: $('#accessorySort').value.split(':')[1] });
-      const q = $('#accessorySearch').value.trim(), stock = $('#accessoryStockFilter').value;
-      if (q) params.set('q', q); if (stock) params.set('stock', stock);
+      const q = $('#accessorySearch').value.trim(), stock = $('#accessoryStockFilter').value, category = $('#accessoryCategoryFilter').value, location = $('#accessoryLocationFilter').value;
+      if (q) params.set('q', q); if (stock) params.set('stock', stock); if (category) params.set('category', category); if (location) params.set('location', location);
       const result = await api(`/api/accessories?${params}`); if (requestId !== accessoryRequestId) return;
       accessoryTotal = result.total; const body = $('#accessoryRows'); body.replaceChildren();
       accessoryPageItems = result.items;
@@ -3616,7 +3626,7 @@
         if (item.photoUrl) { const photo = document.createElement('img'); photo.src = item.photoUrl; photo.alt = `${item.name} ürün fotoğrafı`; photo.width = 48; photo.height = 48; photo.loading = 'lazy'; photo.style.cssText = 'object-fit:contain;border-radius:6px;background:#fff;flex:0 0 48px'; firstCell.insertBefore(photo, selection.nextSibling); }
         row.dataset.unitCost = cost; body.append(row);
       }
-      if (!result.items.length) body.innerHTML = `<tr class="accessory-empty-row"><td colspan="9">${q || stock ? 'Bu filtrelerle eşleşen aksesuar bulunamadı.' : 'Henüz aksesuar kaydı yok. İlk stok kaydını ekleyebilirsiniz.'}</td></tr>`;
+      if (!result.items.length) body.innerHTML = `<tr class="accessory-empty-row"><td colspan="9">${q || stock || category || location ? 'Bu filtrelerle eşleşen aksesuar bulunamadı.' : 'Henüz aksesuar kaydı yok. İlk stok kaydını ekleyebilirsiniz.'}</td></tr>`;
       applyAccessoryColumnVisibility();
       $('#accessoryCount').textContent = `${fmt.format(accessoryTotal)} aksesuar`;
       $('#accessoryPageInfo').textContent = accessoryTotal ? `${accessoryPage}. sayfa · ${Math.min((accessoryPage - 1) * accessoryPageSize + 1, accessoryTotal)}–${Math.min(accessoryPage * accessoryPageSize, accessoryTotal)} / ${fmt.format(accessoryTotal)}` : 'Kayıt yok';
@@ -4021,8 +4031,8 @@
     $('#commitAccessoryImport').addEventListener('click', async () => { const file = $('#accessoryImportFile').files?.[0]; if (!accessoryImportState.valid || !file || file !== accessoryImportState.file) { resetAccessoryImport(); $('#accessoryImportFeedback').textContent = 'Dosya değişti. Önce yeniden doğrulayın.'; return; } if (!confirm('Doğrulanmış aksesuarlar ve başlangıç stok hareketleri eklensin mi? Mevcut kayıtlar ve zimmetler değişmez.')) return; const button = $('#commitAccessoryImport'); button.disabled = true; $('#previewAccessoryImport').disabled = true; $('#accessoryImportFeedback').textContent = 'Aksesuarlar ve stok hareketleri ekleniyor…'; try { const upload = accessoryImportState.upload, headers = { 'Content-Type': upload.contentType }; if (Object.keys(accessoryImportMapping).length) headers['X-Accessory-Import-Mapping'] = encodeAccessoryImportMapping(accessoryImportMapping); const result = await api(`/api/accessories/import.${upload.format}`, { method: 'POST', headers, body: upload.body }); $('#accessoryImportFeedback').textContent = result.message; accessoryImportState.valid = false; accessoryImportState.upload = null; await loadAccessories(1); await refreshDirectorySuggestions(); notify(result.message); setTimeout(() => $('#accessoryImportDialog').close(), 500); } catch (error) { $('#accessoryImportFeedback').textContent = error.message; } finally { $('#previewAccessoryImport').disabled = !$('#accessoryImportFile').files?.[0]; button.disabled = true; } });
     $('#accessoryExport').addEventListener('click', () => {
       const params = new URLSearchParams({ sortBy: $('#accessorySort').value.split(':')[0], sortDirection: $('#accessorySort').value.split(':')[1] });
-      const q = $('#accessorySearch').value.trim(), stock = $('#accessoryStockFilter').value;
-      if (q) params.set('q', q); if (stock) params.set('stock', stock);
+      const q = $('#accessorySearch').value.trim(), stock = $('#accessoryStockFilter').value, category = $('#accessoryCategoryFilter').value, location = $('#accessoryLocationFilter').value;
+      if (q) params.set('q', q); if (stock) params.set('stock', stock); if (category) params.set('category', category); if (location) params.set('location', location);
       window.location.assign(`/api/accessories/export.csv?${params}`);
     });
     $('#accessoryRefresh').addEventListener('click', () => loadAccessories().then(() => notify('Aksesuar stokları yenilendi.')).catch(error => notify(error.message)));
@@ -4033,6 +4043,8 @@
     $('#accessoryPrev').addEventListener('click', () => loadAccessories(accessoryPage - 1).catch(error => notify(error.message)));
     $('#accessoryNext').addEventListener('click', () => loadAccessories(accessoryPage + 1).catch(error => notify(error.message)));
     $('#accessoryStockFilter').addEventListener('change', () => loadAccessories(1).catch(error => notify(error.message)));
+    for (const selector of ['#accessoryCategoryFilter', '#accessoryLocationFilter']) $(selector).addEventListener('change', () => loadAccessories(1).catch(error => notify(error.message)));
+    $('#clearAccessoryAdvancedFilters').addEventListener('click', () => { $('#accessoryCategoryFilter').value = ''; $('#accessoryLocationFilter').value = ''; loadAccessories(1).catch(error => notify(error.message)); });
     $('#accessorySort').addEventListener('change', () => loadAccessories(1).catch(error => notify(error.message)));
     $('#accessorySearch').addEventListener('input', () => { clearTimeout(accessoryQueryTimer); accessoryQueryTimer = setTimeout(() => loadAccessories(1).catch(error => notify(error.message)), 250); });
     $('#closeAccessoryDetail').addEventListener('click', () => $('#accessoryDialog').close());
@@ -4537,7 +4549,7 @@
       if (button.classList.contains('nav-item')) button.classList.add('active'); else button.classList.add('selected');
       setMobileSidebarOpen(false);
       for (const id of ['overview','employeesPage','directoryPage','moduleStatusPage','accessoriesPage','accessoryOrdersPage','stockOrdersPage','assetOrdersPage','accessoryKitsPage','consumablesPage','inventoryRequestsPage','licensesPage','licenseAssignmentsPage','componentsPage','inventoryMovementsPage','labelSettingsPage','maintenancePage','calendarPage','reportPage','customReportPage','membersPage','activityPage','reservationsPage','auditPage','dataToolsPage','companySettingsPage','catalogPage']) $(`#${id}`).hidden = true;
-      if (page === 'Aksesuarlar') { if (!canReadAssets()) { notify('Aksesuar stoklarını görüntüleme yetkiniz bulunmuyor.'); return; } $('#accessoriesPage').hidden = false; $('#pageTitle').textContent = page; $('#newAccessoryButton').hidden = !canWriteAssets(); $('#accessoryImportOpen').hidden = !canWriteAssets(); loadAccessories(1).catch(error => notify(error.message)); }
+      if (page === 'Aksesuarlar') { if (!canReadAssets()) { notify('Aksesuar stoklarını görüntüleme yetkiniz bulunmuyor.'); return; } $('#accessoriesPage').hidden = false; $('#pageTitle').textContent = page; $('#newAccessoryButton').hidden = !canWriteAssets(); $('#accessoryImportOpen').hidden = !canWriteAssets(); loadAccessoryFilterOptions().then(() => loadAccessories(1)).catch(error => notify(error.message)); }
       else if (page === 'Siparişler') { $('#accessoryOrdersPage').hidden = false; $('#pageTitle').textContent = 'Satın alma siparişleri'; $('#newAccessoryOrderButton').hidden = !canWriteAssets(); $('#supplierCatalogButton').hidden = !canWriteAssets(); loadAccessoryOrders(1).catch(error => notify(error.message)); }
       else if (page === 'Varlık siparişleri') { $('#assetOrdersPage').hidden = false; $('#pageTitle').textContent = page; $('#newAssetOrderButton').hidden = !canWriteAssets(); $('#assetOrdersSupplierCatalog').hidden = !canWriteAssets(); loadAssetOrders(1).catch(error => notify(error.message)); }
       else if (page === 'Hazır kitler') { $('#accessoryKitsPage').hidden = false; $('#pageTitle').textContent = page; $('#newAccessoryKitButton').hidden = !canWriteAssets(); loadAccessoryKits().catch(error => notify(error.message)); }
