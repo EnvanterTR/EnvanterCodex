@@ -30,9 +30,17 @@ The generator runs in Windows CI and the job fails if the committed inventory
 is stale. The same file also lists the vendored QR/barcode libraries and the
 license notices retained beside them.
 
-This generated inventory is a release-review input, not a legal conclusion. It
-does not determine whether every resolved package is present in each platform's
-published output, replace package-specific notices, or establish license
-compatibility. Those checks still require review of the actual Windows and
-Linux publish artifacts and a human licensing/attribution review. Rebuild the
-inventory after changing project package references or vendored assets.
+The inventory is a release-review input, not a legal conclusion. Windows CI
+checks the Windows RID dependency manifest produced by the same self-contained
+publish invocation; the manifest is bundled into the single-file executable
+and is not emitted as a separate release file. Linux CI extracts the final
+application image's dependency manifest. Both are checked against the web
+application's inventory rows by `tools/Verify-PublishedDependencies.ps1`; the
+check fails if a published NuGet package has no inventory record or license
+reference. The current local build reports 37 Windows RID package libraries
+and 12 Linux image package libraries, all mapped to recorded license metadata.
+
+These package-manifest checks do not identify or review every license notice
+embedded within a bundled binary, replace human licensing/attribution review,
+or establish license compatibility. Rebuild the inventory after changing
+project package references or vendored assets.
