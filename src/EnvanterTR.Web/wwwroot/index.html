@@ -50,6 +50,61 @@
     :root[data-theme="dark"] .appearance-dialog-head p,:root[data-theme="dark"] .appearance-dialog-body label{color:#aebbd0}
     :root[data-theme="dark"] .appearance-dialog-body select,:root[data-theme="dark"] .appearance-note{background:#101a29;color:#d2deed;border-color:#34445c}
   </style>
+  <style id="workspaceDesignPolish">
+    /* A calmer, more deliberate visual system for every company workspace. */
+    :root{--workspace-ink:#17243a;--workspace-muted:#68778d;--workspace-line:#e5eaf1;--workspace-surface:#fff;--workspace-canvas:#f4f6fa;--workspace-accent:#2468d8;--workspace-accent-soft:#edf3ff}
+    body{background:var(--workspace-canvas);color:var(--workspace-ink);letter-spacing:-.008em}
+    .app{grid-template-columns:264px minmax(0,1fr)}
+    .sidebar{background:linear-gradient(180deg,#14263f 0%,#10213a 100%);box-shadow:8px 0 28px #10213a0b}
+    .brand{height:72px;padding-inline:20px}
+    .brandmark{border-radius:12px;box-shadow:0 5px 13px #0c4caa55}
+    .company{margin:13px 12px 12px;border-radius:12px;background:#ffffff08}
+    .menu{padding:4px 10px 14px}
+    .nav-item{min-height:40px;margin:2px 0;padding:8px 11px;border-radius:9px;transition:background .16s,color .16s,transform .16s}
+    .nav-item:hover{transform:translateX(1px);background:#ffffff0b}
+    .nav-item.active{background:linear-gradient(100deg,#2468d8 0%,#1c5cbd 100%);box-shadow:0 5px 14px #071b3838}
+    .nav-icon{width:20px;height:20px;display:grid;place-items:center;flex:none;color:#a9bdd8}
+    .nav-icon svg,.toolbar-icon svg,.stat-icon svg{width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .sub-menu{margin:3px 0 8px 20px;padding-left:13px;border-left-color:#ffffff24}
+    .sub-item{min-height:32px;padding:7px 10px;border-radius:7px}
+    .sub-item.selected{background:#ffffff12;color:#fff}
+    .topbar{height:72px;padding-inline:clamp(16px,2.4vw,34px);box-shadow:0 1px 0 #14263f05}
+    .search input{height:42px;border-radius:11px;background:#f7f9fc}
+    .icon-button{border-radius:11px;transition:background .15s,border-color .15s,transform .15s}
+    .icon-button:hover{transform:translateY(-1px);border-color:#cbd6e5;background:#f8faff}
+    .content{padding-top:29px}
+    .page-head{margin-bottom:21px}
+    .page-head h1{font-size:1.62rem;letter-spacing:-.045em}
+    .eyebrow{letter-spacing:.08em;font-weight:750}
+    .welcome{border-color:#dfe8f5;border-radius:14px;background:linear-gradient(110deg,#eef4fd 0%,#fff 72%);padding:17px 19px}
+    .stats{grid-template-columns:repeat(20,minmax(0,1fr));gap:14px}
+    .stats>.stat:nth-child(-n+4){grid-column:span 5}
+    .stats>.stat:nth-child(n+5){grid-column:span 4}
+    .stat{position:relative;overflow:hidden;padding:17px 18px;border-color:#e7ebf1;border-radius:14px;box-shadow:0 2px 8px #162b4705;transition:transform .18s,box-shadow .18s}
+    .stat:after{position:absolute;inset:0 auto 0 0;width:3px;background:#4b83df;content:"";opacity:.7}
+    .stat-actionable:hover{transform:translateY(-2px);box-shadow:0 12px 26px #162b4710}
+    .stat-top{font-size:.75rem;font-weight:650;color:#65748a}
+    .stat-icon{width:34px;height:34px;border-radius:11px;color:#286bd5;background:#eef4ff}
+    .stat strong{margin-top:13px;font-size:1.7rem;font-variant-numeric:tabular-nums}
+    .panel,.dashboard-chart-gallery{border-color:#e6eaf0;border-radius:14px;box-shadow:0 2px 8px #162b4705}
+    .panel-head{min-height:56px;padding-inline:18px}
+    .panel-head h2{font-size:.92rem}
+    .dashboard-layout{gap:16px}
+    .dashboard-layout>.stats{gap:14px}
+    .table-wrap{border-radius:0 0 14px 14px}
+    .btn{min-height:40px;border-radius:9px;transition:transform .15s,box-shadow .15s}
+    .btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px #17243a10}
+    :root[data-theme="dark"]{--workspace-ink:#e8eef7;--workspace-muted:#a4b2c6;--workspace-line:#29384d;--workspace-surface:#151f30;--workspace-canvas:#0b1220;--workspace-accent:#76a8ff;--workspace-accent-soft:#1b2b45}
+    :root[data-theme="dark"] body,:root[data-theme="dark"] .main,:root[data-theme="dark"] .content{background:var(--workspace-canvas)}
+    :root[data-theme="dark"] .stat,:root[data-theme="dark"] .panel,:root[data-theme="dark"] .dashboard-chart-gallery{background:var(--workspace-surface);border-color:var(--workspace-line);box-shadow:none}
+    :root[data-theme="dark"] .welcome{background:linear-gradient(110deg,#18273c,#151f30);border-color:#29384d}
+    :root[data-theme="dark"] .stat-top,:root[data-theme="dark"] .page-head p{color:#a4b2c6}
+    :root[data-theme="dark"] .stat-icon{color:#9dbfff;background:#203452}
+    :root[data-theme="dark"] .search input{background:#101a29;border-color:#34445c;color:#e5edf8}
+    @media(max-width:1050px){.app{grid-template-columns:230px minmax(0,1fr)}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stats>.stat:nth-child(n){grid-column:auto}}
+    @media(max-width:720px){.app{display:block}.content{padding-top:20px}.page-head h1{font-size:1.4rem}.dashboard-layout>.stats{gap:9px}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
+  </style>
   <style>
     .asset-detail-dialog{width:min(980px,calc(100% - 28px));max-height:90vh;overflow:hidden;background:#f7f9fc}
     .asset-detail-dialog .dialog-head{padding:18px 22px;background:#fff}
@@ -139,9 +194,9 @@
       <div class="company"><small>ŞİRKET ALANI</small><strong id="companyName">Şirket bilgisi yükleniyor…</strong></div>
       <nav class="menu" aria-label="Şirket menüsü">
         <button class="nav-item active" data-page="Genel Bakış"><span class="nav-icon">⌂</span><span class="nav-label">Genel Bakış</span></button>
-        <button class="nav-item" data-group="inventory" aria-expanded="true"><span class="nav-icon">▣</span><span class="nav-label">Envanter</span><span class="chevron">›</span></button>
-        <div class="sub-menu open" id="sub-inventory">
-          <button class="sub-item selected" data-page="Varlıklar">Varlıklar</button><button class="sub-item" data-page="Varlık siparişleri">Varlık satın alma siparişleri</button><button class="sub-item" data-page="Varlık modelleri">Varlık modelleri</button><button class="sub-item" data-page="Markalar">Markalar</button><button class="sub-item" data-page="Kategoriler">Kategoriler</button><button class="sub-item" data-page="Durum etiketleri">Durum etiketleri</button><button class="sub-item" data-page="QR ve barkodlar">QR ve barkodlar</button>
+        <button class="nav-item" data-group="inventory" aria-expanded="false"><span class="nav-icon">▣</span><span class="nav-label">Envanter</span><span class="chevron">›</span></button>
+        <div class="sub-menu" id="sub-inventory">
+          <button class="sub-item" data-page="Varlıklar">Varlıklar</button><button class="sub-item" data-page="Varlık siparişleri">Varlık satın alma siparişleri</button><button class="sub-item" data-page="Varlık modelleri">Varlık modelleri</button><button class="sub-item" data-page="Markalar">Markalar</button><button class="sub-item" data-page="Kategoriler">Kategoriler</button><button class="sub-item" data-page="Durum etiketleri">Durum etiketleri</button><button class="sub-item" data-page="QR ve barkodlar">QR ve barkodlar</button>
         </div>
         <button class="nav-item" data-group="movement" aria-expanded="false"><span class="nav-icon">⇄</span><span class="nav-label">Zimmet ve hareketler</span><span class="chevron">›</span></button>
         <div class="sub-menu" id="sub-movement"><button class="sub-item" data-page="Zimmetler">Zimmetler</button><button class="sub-item" data-page="İadeler">İadeler</button><button class="sub-item" data-page="Transferler">Transferler</button><button class="sub-item" data-page="Rezervasyonlar">Rezervasyonlar</button><button class="sub-item" data-page="Hareket geçmişi">Hareket geçmişi</button></div>
@@ -412,6 +467,27 @@
     const appearanceTheme = $('#themePreference');
     const appearanceLanguage = $('#languagePreference');
     const appearanceKey = 'envantertr.appearance';
+    const workspaceIcons = {
+      overview:'<rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/>',
+      inventory:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4V2.5h8V4M3 9h18M8 13h3m2 0h3"/>',
+      movement:'<path d="M7 7h13m0 0-4-4m4 4-4 4M17 17H4m0 0 4-4m-4 4 4 4"/>',
+      software:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/>',
+      supplies:'<path d="M4 7h16l-1.5 13h-13L4 7Z"/><path d="M8 7V5a4 4 0 0 1 8 0v2M9 11v2m6-2v2"/>',
+      people:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 5.5a3.5 3.5 0 0 1 0 6.8M17 14a5.5 5.5 0 0 1 4.5 5.4"/>',
+      places:'<path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>',
+      operations:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2M18.5 5.5l1.5-1.5"/>',
+      reports:'<path d="M4 20V11m5 9V5m5 15v-7m5 7V8"/><path d="M2 20h20"/>',
+      data:'<path d="M12 16V3m0 0L7 8m5-5 5 5M4 14v6a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-6"/>',
+      settings:'<circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.6a8 8 0 0 1-1.5.9l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.5-.9l-1.7.6-1.4-2.4 1.4-1.1a7 7 0 0 1 0-1.8l-1.4-1.1 1.4-2.4 1.7.6a8 8 0 0 1 1.5-.9l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.5.9l1.7-.6 1.4 2.4-1.4 1.1a7 7 0 0 1-.1 1.7Z" transform="translate(-1 -1) scale(1.08)"/>',
+      support:'<path d="M4 13v-2a8 8 0 0 1 16 0v2M4 12H3a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h2v-7Zm16 0h1a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2v-7Zm-8 9h3"/>'
+    };
+    const sidebarIconNames = ['overview','inventory','movement','software','supplies','people','places','operations','reports','data','settings','support'];
+    document.querySelectorAll('#sidebar .nav-item .nav-icon').forEach((icon,index) => {
+      const name=sidebarIconNames[index]; if(!name||!workspaceIcons[name])return;
+      icon.innerHTML=`<svg viewBox="0 0 24 24" aria-hidden="true">${workspaceIcons[name]}</svg>`;
+    });
+    const dashboardStatIconNames=['inventory','people','inventory','operations','software','supplies','supplies','inventory','people'];
+    document.querySelectorAll('.stats .stat-icon').forEach((icon,index)=>{const name=dashboardStatIconNames[index];if(name&&workspaceIcons[name])icon.innerHTML=`<svg viewBox="0 0 24 24" aria-hidden="true">${workspaceIcons[name]}</svg>`;});
     function readAppearancePreferences() { try { return JSON.parse(localStorage.getItem(appearanceKey) || '{}'); } catch { return {}; } }
     function applyThemePreference(theme) {
       const dark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
