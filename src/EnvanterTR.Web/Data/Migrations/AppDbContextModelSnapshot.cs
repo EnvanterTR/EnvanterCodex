@@ -687,10 +687,34 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("LogoFileName")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
+
+                    b.Property<string>("SupportEmail")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<string>("SupportPhone")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("SupportUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("WarrantyUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Website")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
 
                     b.HasKey("Id");
 
@@ -974,6 +998,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid?>("BrandId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
@@ -999,7 +1026,13 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
 
+                    b.Property<string>("PhotoFileName")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "CategoryId");
 
                     b.HasIndex("CompanyId", "BrandId", "Name")
                         .IsUnique();
@@ -3645,6 +3678,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.AssetCategory", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "CategoryId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.AssetPurchaseOrder", b =>

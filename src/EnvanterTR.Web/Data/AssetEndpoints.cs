@@ -41,6 +41,7 @@ public static class AssetEndpoints
         api.MapSoftwareLicenseEndpoints();
         api.MapMaintenanceAttachmentEndpoints();
         api.MapAccessoryPhotoEndpoints();
+        api.MapCatalogImageEndpoints();
         api.MapComponentEndpoints();
         api.MapAccessoryImportEndpoints();
         api.MapInventoryMovementEndpoints();
@@ -1743,7 +1744,7 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["categoryId"] = ["Kategori bu şirkette bulunamadı."] });
             if (request.BrandId is Guid brandId && !await db.AssetBrands.AnyAsync(x => x.CompanyId == companyId && x.Id == brandId, cancellationToken))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["brandId"] = ["Marka bu şirkette bulunamadı."] });
-            if (request.ModelId is Guid modelId && !await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.Id == modelId && x.BrandId == request.BrandId, cancellationToken))
+            if (request.ModelId is Guid modelId && !await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.Id == modelId && x.BrandId == request.BrandId && (x.CategoryId == null || x.CategoryId == request.CategoryId), cancellationToken))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["modelId"] = ["Model seçilen marka ve şirketle eşleşmiyor."] });
 
             var customFields = await AssetCustomFieldEndpoints.NormalizeValuesAsync(db, companyId,
@@ -1817,7 +1818,7 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["categoryId"] = ["Kategori bu şirkette bulunamadı."] });
             if (request.BrandId is Guid brandId && !await db.AssetBrands.AnyAsync(x => x.CompanyId == companyId && x.Id == brandId, cancellationToken))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["brandId"] = ["Marka bu şirkette bulunamadı."] });
-            if (request.ModelId is Guid modelId && !await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.Id == modelId && x.BrandId == request.BrandId, cancellationToken))
+            if (request.ModelId is Guid modelId && !await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.Id == modelId && x.BrandId == request.BrandId && (x.CategoryId == null || x.CategoryId == request.CategoryId), cancellationToken))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["modelId"] = ["Model seçilen marka ve şirketle eşleşmiyor."] });
 
             var customFields = await AssetCustomFieldEndpoints.NormalizeValuesAsync(db, companyId,
@@ -2457,12 +2458,16 @@ public static class AssetEndpoints
                 case "brands":
                     return Results.Ok((object)await db.AssetBrands.AsNoTracking().Where(x => x.CompanyId == companyId)
                         .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name,
+                            x.Website, x.SupportUrl, x.WarrantyUrl, x.SupportPhone, x.SupportEmail,
+                            HasLogo = x.LogoFileName != null,
                             AssetCount = db.Assets.Count(a => a.CompanyId == companyId && a.BrandId == x.Id),
                             ModelCount = db.AssetModels.Count(m => m.CompanyId == companyId && m.BrandId == x.Id) }).ToListAsync(cancellationToken));
                 case "models":
                     return Results.Ok((object)await db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId)
                         .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name, x.BrandId,
                             BrandName = db.AssetBrands.Where(b => b.CompanyId == companyId && b.Id == x.BrandId).Select(b => b.Name).FirstOrDefault(),
+                            x.CategoryId, CategoryName = db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault(),
+                            HasPhoto = x.PhotoFileName != null,
                             x.DepreciationMonths, x.DepreciationMinimum, x.DepreciationMinimumType, x.DepreciationMethod,
                             AssetCount = db.Assets.Count(a => a.CompanyId == companyId && a.ModelId == x.Id) }).ToListAsync(cancellationToken));
                 default:
@@ -2479,9 +2484,9 @@ public static class AssetEndpoints
                 "categories" => await db.AssetCategories.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
                     .Select(x => new { x.Id, x.Name }).SingleOrDefaultAsync(cancellationToken),
                 "brands" => await db.AssetBrands.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
-                    .Select(x => new { x.Id, x.Name }).SingleOrDefaultAsync(cancellationToken),
+                    .Select(x => new { x.Id, x.Name, x.Website, x.SupportUrl, x.WarrantyUrl, x.SupportPhone, x.SupportEmail, HasLogo = x.LogoFileName != null }).SingleOrDefaultAsync(cancellationToken),
                 "models" => await db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
-                    .Select(x => new { x.Id, x.Name, x.BrandId, x.DepreciationMonths, x.DepreciationMinimum, x.DepreciationMinimumType, x.DepreciationMethod }).SingleOrDefaultAsync(cancellationToken),
+                    .Select(x => new { x.Id, x.Name, x.BrandId, x.CategoryId, HasPhoto = x.PhotoFileName != null, x.DepreciationMonths, x.DepreciationMinimum, x.DepreciationMinimumType, x.DepreciationMethod }).SingleOrDefaultAsync(cancellationToken),
                 _ => null
             };
             return item is null ? Results.NotFound() : Results.Ok(item);
@@ -2496,6 +2501,11 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Ad zorunludur ve en fazla 120 karakter olabilir."] });
             if (request.BrandId is Guid brandId && !await db.AssetBrands.AnyAsync(x => x.CompanyId == companyId && x.Id == brandId, cancellationToken))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["brandId"] = ["Marka bu şirkette bulunamadı."] });
+            if (request.CategoryId is Guid categoryId && !await db.AssetCategories.AnyAsync(x => x.CompanyId == companyId && x.Id == categoryId, cancellationToken))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["categoryId"] = ["Kategori bu şirkette bulunamadı."] });
+            if (kind.Equals("brands", StringComparison.OrdinalIgnoreCase) &&
+                new[] { request.Website, request.SupportUrl, request.WarrantyUrl, request.SupportPhone, request.SupportEmail }.Any(value => value?.Length > 300))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["brand"] = ["Marka iletişim alanlarından biri izin verilen uzunluğu aşıyor."] });
             if (kind.Equals("models", StringComparison.OrdinalIgnoreCase) && !ValidateDepreciation(request.DepreciationMonths,
                     request.DepreciationMinimum, request.DepreciationMinimumType, request.DepreciationMethod, out var depreciationErrors))
                 return Results.ValidationProblem(depreciationErrors);
@@ -2504,11 +2514,9 @@ public static class AssetEndpoints
             object? created = kind.ToLowerInvariant() switch
             {
                 "categories" => AddCategory(db, companyId, name),
-                "brands" => AddBrand(db, companyId, name),
-                "models" when request.BrandId is not null => AddModel(db, companyId, name, request.BrandId.Value,
+                "brands" => AddBrand(db, companyId, name, request),
+                "models" => AddModel(db, companyId, name, request.BrandId, request.CategoryId,
                     request.DepreciationMonths, request.DepreciationMinimum, request.DepreciationMinimumType, request.DepreciationMethod),
-                "models" => AddModel(db, companyId, name, null, request.DepreciationMonths, request.DepreciationMinimum,
-                    request.DepreciationMinimumType, request.DepreciationMethod),
                 _ => null
             };
             if (created is null) return Results.NotFound();
@@ -2560,7 +2568,16 @@ public static class AssetEndpoints
                     var brand = await db.AssetBrands.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
                     if (brand is null) return Results.NotFound();
                     if (await db.AssetBrands.AnyAsync(x => x.CompanyId == companyId && x.Id != id && x.Name.ToUpper() == name.ToUpper(), cancellationToken)) return Results.Conflict(new { message = "Bu isimde marka zaten var." });
-                    previous = brand.Name; brand.Name = name; break;
+                    if (request.UpdateBrandDetails && new[] { request.Website, request.SupportUrl, request.WarrantyUrl, request.SupportPhone }.Any(value => value?.Length > 300) || request.UpdateBrandDetails && request.SupportEmail?.Length > 254)
+                        return Results.ValidationProblem(new Dictionary<string, string[]> { ["brand"] = ["Marka iletişim alanlarından biri izin verilen uzunluğu aşıyor."] });
+                    previous = brand.Name; brand.Name = name;
+                    if (request.UpdateBrandDetails)
+                    {
+                        brand.Website = CleanLookupField(request.Website); brand.SupportUrl = CleanLookupField(request.SupportUrl);
+                        brand.WarrantyUrl = CleanLookupField(request.WarrantyUrl); brand.SupportPhone = CleanLookupField(request.SupportPhone);
+                        brand.SupportEmail = CleanLookupField(request.SupportEmail);
+                    }
+                    break;
                 case "models":
                     var model = await db.AssetModels.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
                     if (model is null) return Results.NotFound();
@@ -2820,24 +2837,29 @@ public static class AssetEndpoints
         return new { row.Id, row.Name };
     }
 
-    private static object AddBrand(AppDbContext db, Guid companyId, string name)
+    private static object AddBrand(AppDbContext db, Guid companyId, string name, CreateLookupRequest request)
     {
-        var row = new AssetBrand { CompanyId = companyId, Name = name };
+        var row = new AssetBrand { CompanyId = companyId, Name = name,
+            Website = CleanLookupField(request.Website), SupportUrl = CleanLookupField(request.SupportUrl),
+            WarrantyUrl = CleanLookupField(request.WarrantyUrl), SupportPhone = CleanLookupField(request.SupportPhone),
+            SupportEmail = CleanLookupField(request.SupportEmail) };
         db.AssetBrands.Add(row);
-        return new { row.Id, row.Name };
+        return new { row.Id, row.Name, row.Website, row.SupportUrl, row.WarrantyUrl, row.SupportPhone, row.SupportEmail };
     }
 
-    private static object AddModel(AppDbContext db, Guid companyId, string name, Guid? brandId, int? depreciationMonths,
+    private static object AddModel(AppDbContext db, Guid companyId, string name, Guid? brandId, Guid? categoryId, int? depreciationMonths,
         decimal? depreciationMinimum, string? depreciationMinimumType, string? depreciationMethod)
     {
-        var row = new AssetModel { CompanyId = companyId, Name = name, BrandId = brandId,
+        var row = new AssetModel { CompanyId = companyId, Name = name, BrandId = brandId, CategoryId = categoryId,
             DepreciationMonths = depreciationMonths, DepreciationMinimum = depreciationMonths is null ? null : depreciationMinimum,
             DepreciationMinimumType = depreciationMinimumType is "percent" ? "percent" : "amount",
             DepreciationMethod = depreciationMethod ?? "linear" };
         db.AssetModels.Add(row);
-        return new { row.Id, row.Name, row.BrandId, row.DepreciationMonths, row.DepreciationMinimum,
+        return new { row.Id, row.Name, row.BrandId, row.CategoryId, row.DepreciationMonths, row.DepreciationMinimum,
             row.DepreciationMinimumType, row.DepreciationMethod };
     }
+
+    private static string? CleanLookupField(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static bool ValidateDepreciation(int? months, decimal? minimum, string? minimumType, string? method,
         out Dictionary<string, string[]> errors)

@@ -165,6 +165,12 @@ public sealed class AssetBrand
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid CompanyId { get; set; }
     public required string Name { get; set; }
+    public string? Website { get; set; }
+    public string? SupportUrl { get; set; }
+    public string? WarrantyUrl { get; set; }
+    public string? SupportPhone { get; set; }
+    public string? SupportEmail { get; set; }
+    public string? LogoFileName { get; set; }
 }
 
 public sealed class AssetModel
@@ -172,7 +178,9 @@ public sealed class AssetModel
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid CompanyId { get; set; }
     public Guid? BrandId { get; set; }
+    public Guid? CategoryId { get; set; }
     public required string Name { get; set; }
+    public string? PhotoFileName { get; set; }
     public int? DepreciationMonths { get; set; }
     public decimal? DepreciationMinimum { get; set; }
     public string DepreciationMinimumType { get; set; } = "amount";

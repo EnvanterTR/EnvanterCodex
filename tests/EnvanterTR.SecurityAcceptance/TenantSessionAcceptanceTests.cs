@@ -3397,6 +3397,55 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Brand_model_category_and_images_are_company_scoped_and_reusable()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using var categoryResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/lookups/categories", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = $"CAT-{_userId:N}" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, categoryResponse.StatusCode);
+        using var categoryPayload = JsonDocument.Parse(await categoryResponse.Content.ReadAsStringAsync());
+        var categoryId = categoryPayload.RootElement.GetProperty("id").GetGuid();
+
+        using var brandResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/lookups/brands", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = $"BRAND-{_userId:N}", website = "https://brand.example.invalid", supportEmail = "support@example.invalid" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, brandResponse.StatusCode);
+        using var brandPayload = JsonDocument.Parse(await brandResponse.Content.ReadAsStringAsync());
+        var brandId = brandPayload.RootElement.GetProperty("id").GetGuid();
+
+        using var modelResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/lookups/models", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = $"MODEL-{_userId:N}", brandId, categoryId }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, modelResponse.StatusCode);
+        using var modelPayload = JsonDocument.Parse(await modelResponse.Content.ReadAsStringAsync());
+        var modelId = modelPayload.RootElement.GetProperty("id").GetGuid();
+        Assert.Equal(categoryId, modelPayload.RootElement.GetProperty("categoryId").GetGuid());
+
+        var png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jNioAAAAASUVORK5CYII=");
+        using var logoForm = new MultipartFormDataContent();
+        var logoContent = new ByteArrayContent(png); logoContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+        logoForm.Add(logoContent, "file", "logo.png");
+        using var logoResponse = await SendAsRoleAsync(HttpMethod.Post, $"/api/brands/{brandId}/logo", "admin", logoForm, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, logoResponse.StatusCode);
+
+        using var modelPhotoForm = new MultipartFormDataContent();
+        var modelPhotoContent = new ByteArrayContent(png); modelPhotoContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+        modelPhotoForm.Add(modelPhotoContent, "file", "model.png");
+        using var modelPhotoResponse = await SendAsRoleAsync(HttpMethod.Post, $"/api/models/{modelId}/photo", "admin", modelPhotoForm, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, modelPhotoResponse.StatusCode);
+
+        using var modelPhoto = await SendAsAdminAsync($"/api/models/{modelId}/photo");
+        Assert.Equal(HttpStatusCode.OK, modelPhoto.StatusCode);
+        using var brandLogo = await SendAsAdminAsync($"/api/brands/{brandId}/logo");
+        Assert.Equal(HttpStatusCode.OK, brandLogo.StatusCode);
+    }
+
+    [Fact]
     public async Task Concurrent_asset_checkouts_assign_one_asset_to_only_one_employee()
     {
         await using (var scope = _factory!.Services.CreateAsyncScope())

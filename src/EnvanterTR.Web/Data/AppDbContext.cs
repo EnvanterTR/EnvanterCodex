@@ -144,7 +144,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Employee>().Property(x => x.PrivateNotes).HasMaxLength(4000);
         modelBuilder.Entity<AssetCategory>().Property(x => x.Name).HasMaxLength(120).IsRequired();
         modelBuilder.Entity<AssetBrand>().Property(x => x.Name).HasMaxLength(120).IsRequired();
+        modelBuilder.Entity<AssetBrand>().Property(x => x.Website).HasMaxLength(300);
+        modelBuilder.Entity<AssetBrand>().Property(x => x.SupportUrl).HasMaxLength(300);
+        modelBuilder.Entity<AssetBrand>().Property(x => x.WarrantyUrl).HasMaxLength(300);
+        modelBuilder.Entity<AssetBrand>().Property(x => x.SupportPhone).HasMaxLength(60);
+        modelBuilder.Entity<AssetBrand>().Property(x => x.SupportEmail).HasMaxLength(254);
+        modelBuilder.Entity<AssetBrand>().Property(x => x.LogoFileName).HasMaxLength(40);
         modelBuilder.Entity<AssetModel>().Property(x => x.Name).HasMaxLength(120).IsRequired();
+        modelBuilder.Entity<AssetModel>().Property(x => x.PhotoFileName).HasMaxLength(40);
         modelBuilder.Entity<AssetModel>().Property(x => x.DepreciationMinimum).HasPrecision(18, 2);
         modelBuilder.Entity<AssetModel>().Property(x => x.DepreciationMinimumType).HasMaxLength(12).IsRequired();
         modelBuilder.Entity<AssetModel>().Property(x => x.DepreciationMethod).HasMaxLength(16).IsRequired();
@@ -245,6 +252,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetCategory>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AssetBrand>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AssetModel>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<AssetModel>().HasOne<AssetCategory>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.CategoryId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<Asset>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AssetReservation>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AssetAttachment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
@@ -518,6 +528,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetCategory>().HasIndex(x => new { x.CompanyId, x.Name }).IsUnique();
         modelBuilder.Entity<AssetBrand>().HasIndex(x => new { x.CompanyId, x.Name }).IsUnique();
         modelBuilder.Entity<AssetModel>().HasIndex(x => new { x.CompanyId, x.BrandId, x.Name }).IsUnique();
+        modelBuilder.Entity<AssetModel>().HasIndex(x => new { x.CompanyId, x.CategoryId });
 
         modelBuilder.Entity<Accessory>().Property(x => x.Name).HasMaxLength(200).IsRequired();
         modelBuilder.Entity<Accessory>().Property(x => x.Category).HasMaxLength(120);
