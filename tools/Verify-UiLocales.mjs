@@ -72,7 +72,16 @@ const requiredAccessoryLabels = [
   'Toplu teslimi kaydet', 'Seçilen aksesuarları teslim et', 'açık zimmet seçildi (en fazla 100)',
   'Aksesuar iadesi kaydedildi; stok ve hareket geçmişi güncellendi.',
   'Aksesuar teslimi kaydedildi ve zimmet geçmişine işlendi.', 'adet kullanılabilir', 'Teslim adedi',
-  'Teslim hedefi bulunamadı', 'Employee', 'Asset'
+  'Teslim hedefi bulunamadı', 'Employee', 'Asset',
+  'ŞİRKET ALANI / VARLIK TANIMLARI', 'Varlık tanımları', 'Şirketinizde tekrar kullanılacak kategori, marka ve modelleri yönetin.',
+  'Yeni kayıt ekle', 'Varlık yöneticisi', 'Marka seçin (isteğe bağlı)', '＋ Yeni marka ekle', 'Kategori seçin',
+  'Marka web sitesi', 'Teknik destek bağlantısı', 'Garanti sorgulama bağlantısı', 'Destek telefonu', 'Destek e-postası',
+  'Marka logosu (PNG/JPEG/WebP, en fazla 2 MiB)', 'Model görseli (PNG/JPEG/WebP, en fazla 2 MiB)',
+  'Amortisman ömrü (ay)', 'Taban değer', 'Taban değer türü', 'Amortisman yöntemi', 'Kayıt ara',
+  'Marka / Kategori / Görsel', 'Üretici bilgileri / Logo', 'Model görseli', 'Görseli yükle',
+  'Üretici bilgilerini kaydet', 'Logoyu yükle', 'Tanım eklendi. Varlık formunda kullanılabilir.',
+  'Yeni marka adı:', 'Sil', 'Tanım listesi yenilendi.', 'Marka bilgileri güncellendi.', 'Model amortisman politikası kaydedildi.',
+  '“{name}” tanımı silinsin mi?', 'Bir tanımı kullanan varlık varsa yanlışlıkla veri kaybını önlemek için bu tanım silinemez. Önce ilişkili varlıkları düzenleyin.'
 ];
 const requiredEmployeeLabels = [
   'Çalışan kayıtları', 'Departmana ve yöneticiye göre ilişki kurun; profilden doğrudan raporlayanları ve zimmetlerini görüntüleyin.',
