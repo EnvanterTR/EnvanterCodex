@@ -21,6 +21,9 @@ services:
         condition: service_healthy
     environment:
       ENVANTERTR_SECURITY_TEST_CONNECTION: "Host=database;Port=5432;Database=envantertr_security_acceptance;Username=envantertr_test;Password=security-acceptance-only"
+      Logging__LogLevel__Default: Warning
+      Logging__LogLevel__Microsoft: Warning
+      Logging__LogLevel__Microsoft.EntityFrameworkCore: Warning
     networks: [acceptance]
 
 networks:
