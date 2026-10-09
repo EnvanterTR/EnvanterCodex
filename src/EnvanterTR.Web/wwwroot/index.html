@@ -627,6 +627,7 @@
         const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
         let node;
         while ((node = walker.nextNode())) {
+          if (node.parentElement?.closest('.company,.profile,#assetRows,#activityRows,#upcomingEvents,#dashboardStatusLegend')) continue;
           if (!localeTextNodes.has(node)) localeTextNodes.set(node, node.nodeValue);
           const original = localeTextNodes.get(node);
           const key = original.trim();
