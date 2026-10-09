@@ -696,6 +696,59 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Appearance_preferences_are_private_validated_csrf_protected_and_preserved_with_dashboard_updates()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using (var defaults = await SendAsUserAsync(HttpMethod.Get, "/api/appearance/preferences", _userId, _companyId))
+        using (var payload = JsonDocument.Parse(await defaults.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, defaults.StatusCode);
+            Assert.Equal(JsonValueKind.Null, payload.RootElement.GetProperty("theme").ValueKind);
+            Assert.Equal(JsonValueKind.Null, payload.RootElement.GetProperty("language").ValueKind);
+        }
+
+        using (var noCsrf = await SendAsUserAsync(HttpMethod.Put, "/api/appearance/preferences", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { theme = "dark", language = "en" })))
+            Assert.Equal(HttpStatusCode.BadRequest, noCsrf.StatusCode);
+
+        using (var invalid = await SendAsUserAsync(HttpMethod.Put, "/api/appearance/preferences", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { theme = "amoled", language = "en" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+
+        using (var update = await SendAsUserAsync(HttpMethod.Put, "/api/appearance/preferences", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { theme = "dark", language = "uk" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+
+        using (var dashboardUpdate = await SendAsUserAsync(HttpMethod.Put, "/api/dashboard/preferences", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { visibleWidgets = new[] { "stats", "activity" } }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, dashboardUpdate.StatusCode);
+
+        using (var sameUser = await SendAsUserAsync(HttpMethod.Get, "/api/appearance/preferences", _userId, _companyId))
+        using (var payload = JsonDocument.Parse(await sameUser.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, sameUser.StatusCode);
+            Assert.Equal("dark", payload.RootElement.GetProperty("theme").GetString());
+            Assert.Equal("uk", payload.RootElement.GetProperty("language").GetString());
+        }
+
+        using (var otherUser = await SendAsUserAsync(HttpMethod.Get, "/api/appearance/preferences", _sameCompanyOtherUserId, _companyId))
+        using (var payload = JsonDocument.Parse(await otherUser.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, otherUser.StatusCode);
+            Assert.Equal(JsonValueKind.Null, payload.RootElement.GetProperty("theme").ValueKind);
+        }
+
+        using (var otherCompany = await SendAsUserAsync(HttpMethod.Get, "/api/appearance/preferences", _userId, _otherCompanyId))
+            Assert.Equal(HttpStatusCode.Unauthorized, otherCompany.StatusCode);
+    }
+
+    [Fact]
     public async Task Public_web_shell_uses_EnvanterTR_branding_without_reference_product_name()
     {
         var response = await _client!.GetAsync("/");

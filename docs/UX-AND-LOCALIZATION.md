@@ -7,7 +7,7 @@ Bu kapsam, tanıtım/marketing ana sayfası hariç oturum açılan tüm Envanter
 ## Temalar
 
 - En az Açık, Koyu ve Sistem görünümü; uygulamadaki bütün sayfalar, diyaloglar, açılır listeler, grafikler, tablolar, giriş/kurulum ve hata durumları aynı tema tercihini izler.
-- İlk arayüz adımında şirket uygulamasının üst çubuğuna kişisel görünüm paneli eklendi. Açık/Koyu/Sistem seçimi tarayıcıda saklanıyor; koyu yüzey stilleri ortak kabuk, tablolar, formlar ve temel diyaloglar için başladı. Bu, tüm modüllerin tema kabulünden geçtiği anlamına gelmiyor.
+- İlk arayüz adımında şirket uygulamasının üst çubuğuna görünüm paneli eklendi. Açık/Koyu/Sistem ve dil seçimleri kullanıcı/şirket kapsamlı API'de saklanıyor, tarayıcı depolaması ilk ekranda API yanıtı gelene kadar geri dönüş sağlıyor. Koyu yüzey stilleri ortak kabuk, tablolar, formlar ve temel diyaloglar için başladı. Görsel tasarım henüz son kullanıcı kabulünden geçmedi ve tüm modüllerin tema kabulünden geçtiği anlamına gelmiyor.
 - Kullanıcı seçimi cihazlar arasında devam eder; sistem tercihi işletim sisteminin `prefers-color-scheme` ayarını izler. Odak halkası, kontrast ve renk körlüğü için yalnız renge dayanmayan durum göstergeleri her temada korunur.
 - Renk, yazı, kenarlık, gölge, boşluk ve yüzey değerleri ortak tasarım tokenlarıyla verilir. Modül bazlı ayrı CSS renkleri veya birbirinden kopuk ekran tasarımları eklenmez.
 - Ana panolar modül/kullanıcı rolüne göre gerçek ölçüm, son hareket, yaklaşan iş ve eylem kısayollarını gösterecek; sahte örnek değer üretmeyecektir. Kullanıcı panelleri kişiselleştirebilir ve dar ekranda içerik taşmadan kullanılabilir.
@@ -18,7 +18,7 @@ Arayüz dilleri: Türkçe (`tr-TR`), İngilizce (`en`), Rusça (`ru`), Ukraynaca
 
 Çeviri yalnız menü başlıklarını değil; her modüldeki buton, form etiketi, tablo sütunu, filtre, durum, boş/yükleniyor/hata durumu, doğrulama metni, onay penceresi, toast, e-posta özeti, rapor başlığı, CSV dışa aktarım etiketi, erişilebilirlik metni ve kurulum/kurtarma akışını kapsar. Tarih, saat, sayı, para birimi, çoğul ve sıralama kuralları seçilen yerel ayara göre biçimlenir. Kaynak dil anahtarları kodda tutulur; kullanıcı girdisi ve API kodları çevrilmez. Bir çeviri eksikse ham anahtar kullanıcıya gösterilmez; güvenli İngilizce yedeği ve geliştirme denetimi kullanılır.
 
-Görünüm paneli beş dil için tercih kaydını başlattı. Türkçe, İngilizce, Rusça, Ukraynaca ve Makedonca seçimi menüyü, üst çubuğu, ana pano metinlerini ve görünüm panelini değiştirir; diğer modül metinleri çevrilme sırasını bekliyor. Eksik çeviri kapsamı kullanıcıya açıkça bildiriliyor. Tercih şimdilik tarayıcıda saklanıyor; tarih/sayı biçimleme ve şirketler arası/cihazlar arası senkronizasyon tamamlanmayı bekliyor.
+Görünüm paneli beş dil için tercih kaydını başlattı. Türkçe, İngilizce, Rusça, Ukraynaca ve Makedonca seçimi menüyü, üst çubuğu, ana pano metinlerini ve görünüm panelini değiştirir; diğer modül metinleri çevrilme sırasını bekliyor. Eksik çeviri kapsamı kullanıcıya açıkça bildiriliyor. Tercihler kullanıcı ve etkin şirket kapsamında API'de saklanır. Tarih/sayı biçimleme, tam modül çevirisi ve profesyonel görsel kabul tamamlanmayı bekliyor.
 
 ## Teslim ve kabul kapıları
 

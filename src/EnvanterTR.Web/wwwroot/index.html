@@ -456,14 +456,17 @@
     });
     $('#appearanceClose').addEventListener('click', () => appearanceDialog.close());
     $('#appearanceCancel').addEventListener('click', () => appearanceDialog.close());
-    $('#appearanceSave').addEventListener('click', () => {
+    $('#appearanceSave').addEventListener('click', async () => {
       const prefs = { theme: appearanceTheme.value, language: appearanceLanguage.value };
-      try { localStorage.setItem(appearanceKey, JSON.stringify(prefs)); } catch {}
-      applyThemePreference(prefs.theme);
-      applyShellLanguage(prefs.language);
-      $('#languageCoverageNote').textContent = prefs.language === 'tr' ? 'Türkçe arayüz seçildi.' : 'Menü ve ana pano seçilen dile çevrildi. Diğer modüllerin çevirileri sırayla ekleniyor.';
-      appearanceDialog.close();
-      notify(prefs.language === 'tr' ? 'Görünüm ve dil tercihleri kaydedildi.' : 'Görünüm ve dil tercihleri kaydedildi.');
+      const button = $('#appearanceSave'); button.disabled = true;
+      try {
+        const saved = await api('/api/appearance/preferences', { method: 'PUT', body: JSON.stringify(prefs) });
+        try { localStorage.setItem(appearanceKey, JSON.stringify(saved)); } catch {}
+        applyThemePreference(saved.theme); applyShellLanguage(saved.language);
+        $('#languageCoverageNote').textContent = saved.language === 'tr' ? 'Türkçe arayüz seçildi.' : 'Menü ve ana pano seçilen dile çevrildi. Diğer modüllerin çevirileri sırayla ekleniyor.';
+        appearanceDialog.close(); notify('Görünüm ve dil tercihleri kaydedildi.');
+      } catch (error) { notify(`Tercihler kaydedilemedi: ${error.message}`); }
+      finally { button.disabled = false; }
     });
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
       let fallbackTheme = 'system'; try { fallbackTheme = localStorage.getItem('envantertr.theme') || 'system'; } catch {}
@@ -1227,7 +1230,15 @@
       finally { button.disabled = false; }
     });
     async function loadDashboardPreferences() {
-      try { const result = await api('/api/dashboard/preferences'); applyDashboardPreferences(result.visibleWidgets, result.widgetOrder, result.customCharts); }
+      try {
+        const result = await api('/api/dashboard/preferences');
+        applyDashboardPreferences(result.visibleWidgets, result.widgetOrder, result.customCharts);
+        const local = readAppearancePreferences();
+        const theme = ['system','light','dark'].includes(result.theme) ? result.theme : (local.theme || appearanceTheme.value || 'system');
+        const language = ['tr','en','ru','uk','mk'].includes(result.language) ? result.language : (local.language || appearanceLanguage.value || 'tr');
+        applyThemePreference(theme); applyShellLanguage(language);
+        try { localStorage.setItem(appearanceKey, JSON.stringify({ theme, language })); } catch {}
+      }
       catch (error) { console.warn('Pano tercihleri yüklenemedi; varsayılan görünüm kullanılıyor.', error); applyDashboardPreferences(); }
     }    async function loadDashboard(query = $('#globalSearch').value.trim(), requestedPage = assetPage) {
       if (assetCustomFieldDefinitions === null) await loadAssetCustomFieldDefinitions();

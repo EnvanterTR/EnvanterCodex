@@ -7,7 +7,8 @@ namespace EnvanterTR.Web.Data;
 
 public sealed record UpdateDashboardPreferencesRequest(string[]? VisibleWidgets, string[]? WidgetOrder = null, DashboardChartDefinition[]? CustomCharts = null);
 public sealed record DashboardChartDefinition(string Dimension, string Type);
-internal sealed record DashboardPreferenceDocument(string[] VisibleWidgets, string[] WidgetOrder, DashboardChartDefinition[]? CustomCharts = null);
+internal sealed record DashboardPreferenceDocument(string[] VisibleWidgets, string[] WidgetOrder, DashboardChartDefinition[]? CustomCharts = null, string? Theme = null, string? Language = null);
+public sealed record UpdateAppearancePreferencesRequest(string? Theme, string? Language);
 internal sealed record DashboardChartItem(string Label, int Count, string? FilterValue = null);
 internal sealed record DashboardChartGroup(Guid? Id, int Count);
 
@@ -27,24 +28,41 @@ public static class DashboardPreferenceEndpoints
             var json = await db.DashboardPreferences.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && x.UserId == userId)
                 .Select(x => x.VisibleWidgetsJson).SingleOrDefaultAsync(ct);
-            if (json is null) return Results.Ok(new { visibleWidgets = AllowedWidgets, widgetOrder = DefaultWidgetOrder, customCharts = Array.Empty<DashboardChartDefinition>() });
-            try
+            var preferences = ReadDocument(json);
+            return Results.Ok(new { visibleWidgets = preferences.VisibleWidgets, widgetOrder = preferences.WidgetOrder, customCharts = preferences.CustomCharts, theme = preferences.Theme, language = preferences.Language });
+        }).RequireAuthorization("asset.read");
+
+        api.MapGet("/appearance/preferences", async (ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!TryIdentity(user, out var companyId, out var userId)) return Results.Forbid();
+            var json = await db.DashboardPreferences.AsNoTracking().Where(x => x.CompanyId == companyId && x.UserId == userId)
+                .Select(x => x.VisibleWidgetsJson).SingleOrDefaultAsync(ct);
+            var preferences = ReadDocument(json);
+            return Results.Ok(new { theme = preferences.Theme, language = preferences.Language });
+        }).RequireAuthorization("asset.read");
+
+        api.MapPut("/appearance/preferences", async ([FromBody] UpdateAppearancePreferencesRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!TryIdentity(user, out var companyId, out var userId)) return Results.Forbid();
+            var theme = request.Theme?.Trim().ToLowerInvariant();
+            var language = request.Language?.Trim().ToLowerInvariant();
+            if (theme is not ("system" or "light" or "dark"))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["theme"] = ["Tema seçimi geçersiz."] });
+            if (language is not ("tr" or "en" or "ru" or "uk" or "mk"))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["language"] = ["Arayüz dili geçersiz."] });
+            var row = await db.DashboardPreferences.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.UserId == userId, ct);
+            var preferences = ReadDocument(row?.VisibleWidgetsJson);
+            if (row is null)
             {
-                using var document = JsonDocument.Parse(json);
-                if (document.RootElement.ValueKind == JsonValueKind.Array)
-                {
-                    var legacyWidgets = JsonSerializer.Deserialize<string[]>(json, JsonOptions);
-                    return Results.Ok(new { visibleWidgets = Valid(legacyWidgets) ? Normalize(legacyWidgets!) : AllowedWidgets, widgetOrder = DefaultWidgetOrder, customCharts = Array.Empty<DashboardChartDefinition>() });
-                }
-                var preferences = JsonSerializer.Deserialize<DashboardPreferenceDocument>(json, JsonOptions);
-                return Results.Ok(new
-                {
-                    visibleWidgets = Valid(preferences?.VisibleWidgets) ? Normalize(preferences!.VisibleWidgets) : AllowedWidgets,
-                    widgetOrder = ValidOrder(preferences?.WidgetOrder) ? NormalizeOrder(preferences!.WidgetOrder) : DefaultWidgetOrder,
-                    customCharts = ValidCustomCharts(preferences?.CustomCharts) ? NormalizeCustomCharts(preferences!.CustomCharts!) : Array.Empty<DashboardChartDefinition>()
-                });
+                row = new DashboardPreference { CompanyId = companyId, UserId = userId, VisibleWidgetsJson = "[]" };
+                db.DashboardPreferences.Add(row);
             }
-            catch (JsonException) { return Results.Ok(new { visibleWidgets = AllowedWidgets }); }
+            row.VisibleWidgetsJson = JsonSerializer.Serialize(preferences with { Theme = theme, Language = language }, JsonOptions);
+            row.UpdatedAt = DateTimeOffset.UtcNow;
+            try { await db.SaveChangesAsync(ct); }
+            catch (DbUpdateException) { return Results.Conflict(new { message = "Görünüm tercihleri eşzamanlı olarak değiştirildi. Yenileyip tekrar deneyin." }); }
+            return Results.Ok(new { theme, language, row.UpdatedAt });
         }).RequireAuthorization("asset.read");
 
         api.MapPut("/dashboard/preferences", async ([FromBody] UpdateDashboardPreferencesRequest request,
@@ -62,15 +80,14 @@ public static class DashboardPreferenceEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["customCharts"] = ["En fazla 6 farklı pano grafiği tanımlayabilirsiniz; ölçüt ve grafik türü desteklenen değerlerden seçilmelidir."] });
             var row = await db.DashboardPreferences.SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.UserId == userId, ct);
-            var customCharts = request.CustomCharts is null
-                ? ReadCustomCharts(row?.VisibleWidgetsJson)
-                : NormalizeCustomCharts(request.CustomCharts);
+            var existing = ReadDocument(row?.VisibleWidgetsJson);
+            var customCharts = request.CustomCharts is null ? existing.CustomCharts ?? [] : NormalizeCustomCharts(request.CustomCharts);
             if (row is null)
             {
                 row = new DashboardPreference { CompanyId = companyId, UserId = userId, VisibleWidgetsJson = "[]" };
                 db.DashboardPreferences.Add(row);
             }
-            row.VisibleWidgetsJson = JsonSerializer.Serialize(new DashboardPreferenceDocument(widgets, order, customCharts), JsonOptions);
+            row.VisibleWidgetsJson = JsonSerializer.Serialize(new DashboardPreferenceDocument(widgets, order, customCharts, existing.Theme, existing.Language), JsonOptions);
             row.UpdatedAt = DateTimeOffset.UtcNow;
             try { await db.SaveChangesAsync(ct); }
             catch (DbUpdateException) { return Results.Conflict(new { message = "Pano ayarları eşzamanlı olarak değiştirildi. Yenileyip tekrar deneyin." }); }
@@ -159,19 +176,26 @@ public static class DashboardPreferenceEndpoints
     }
     private static DashboardChartDefinition[] NormalizeCustomCharts(IEnumerable<DashboardChartDefinition> charts) => charts
         .Select(chart => new DashboardChartDefinition(chart.Dimension.Trim().ToLowerInvariant(), chart.Type.Trim().ToLowerInvariant())).ToArray();
-    private static DashboardChartDefinition[] ReadCustomCharts(string? json)
+    private static DashboardPreferenceDocument ReadDocument(string? json)
     {
-        if (string.IsNullOrWhiteSpace(json)) return [];
+        if (string.IsNullOrWhiteSpace(json)) return new(AllowedWidgets, DefaultWidgetOrder, []);
         try
         {
             using var document = JsonDocument.Parse(json);
-            if (document.RootElement.ValueKind != JsonValueKind.Object) return [];
+            if (document.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                var legacyWidgets = JsonSerializer.Deserialize<string[]>(json, JsonOptions);
+                return new(Valid(legacyWidgets) ? Normalize(legacyWidgets!) : AllowedWidgets, DefaultWidgetOrder, []);
+            }
             var preferences = JsonSerializer.Deserialize<DashboardPreferenceDocument>(json, JsonOptions);
-            return ValidCustomCharts(preferences?.CustomCharts)
-                ? NormalizeCustomCharts(preferences?.CustomCharts ?? [])
-                : [];
+            return new(
+                Valid(preferences?.VisibleWidgets) ? Normalize(preferences!.VisibleWidgets) : AllowedWidgets,
+                ValidOrder(preferences?.WidgetOrder) ? NormalizeOrder(preferences!.WidgetOrder) : DefaultWidgetOrder,
+                ValidCustomCharts(preferences?.CustomCharts) ? NormalizeCustomCharts(preferences?.CustomCharts ?? []) : [],
+                preferences?.Theme is "system" or "light" or "dark" ? preferences.Theme : null,
+                preferences?.Language is "tr" or "en" or "ru" or "uk" or "mk" ? preferences.Language : null);
         }
-        catch (JsonException) { return []; }
+        catch (JsonException) { return new(AllowedWidgets, DefaultWidgetOrder, []); }
     }
     private static bool Valid(string[]? widgets) => widgets is { Length: > 0 and <= 5 } &&
         widgets.Distinct(StringComparer.Ordinal).Count() == widgets.Length &&
