@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Mail;
 using System.Text;
@@ -69,7 +70,8 @@ public sealed class OperationalNotificationEmailService(
 
             try
             {
-                using var message = BuildMessage(parsedAddress, fromAddress, fromName, baseUri, items);
+                var language = await GetPreferredLanguageAsync(preference.CompanyId, preference.UserId, cancellationToken);
+                using var message = BuildMessage(parsedAddress, fromAddress, fromName, baseUri, items, language);
                 using var client = new SmtpClient(host, port)
                 {
                     EnableSsl = !string.Equals(configuration["Email:Smtp:EnableSsl"], "false", StringComparison.OrdinalIgnoreCase),
@@ -296,23 +298,44 @@ public sealed class OperationalNotificationEmailService(
         return selected;
     }
 
-    private MailMessage BuildMessage(MailAddress recipient, string fromAddress, string fromName,
-        Uri publicBaseUri, IReadOnlyList<OperationalReminderItem> items)
+    private async Task<string> GetPreferredLanguageAsync(Guid companyId, Guid userId, CancellationToken cancellationToken)
     {
+        var json = await db.DashboardPreferences.AsNoTracking()
+            .Where(x => x.CompanyId == companyId && x.UserId == userId)
+            .Select(x => x.VisibleWidgetsJson).SingleOrDefaultAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(json)) return "tr";
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            if (document.RootElement.TryGetProperty("language", out var value) && value.ValueKind == JsonValueKind.String)
+            {
+                var language = value.GetString();
+                if (language is "tr" or "en" or "ru" or "uk" or "mk") return language;
+            }
+        }
+        catch (JsonException) { }
+        return "tr";
+    }
+
+    private MailMessage BuildMessage(MailAddress recipient, string fromAddress, string fromName,
+        Uri publicBaseUri, IReadOnlyList<OperationalReminderItem> items, string language)
+    {
+        var copy = EmailCopy.For(language);
+        var culture = CultureInfo.GetCultureInfo(copy.CultureName);
         var rows = new StringBuilder();
         foreach (var item in items)
         {
             rows.Append("<tr><td style=\"padding:8px;border-bottom:1px solid #e7edf5\">")
-                .Append(WebUtility.HtmlEncode(KindLabel(item.Kind))).Append("</td><td style=\"padding:8px;border-bottom:1px solid #e7edf5\">")
-                .Append(WebUtility.HtmlEncode(item.Date.ToString("yyyy-MM-dd"))).Append("</td><td style=\"padding:8px;border-bottom:1px solid #e7edf5\">")
+                .Append(WebUtility.HtmlEncode(copy.KindLabel(item.Kind))).Append("</td><td style=\"padding:8px;border-bottom:1px solid #e7edf5\">")
+                .Append(WebUtility.HtmlEncode(item.Date.ToDateTime(TimeOnly.MinValue).ToString("d", culture))).Append("</td><td style=\"padding:8px;border-bottom:1px solid #e7edf5\">")
                 .Append(WebUtility.HtmlEncode(item.Title)).Append("</td><td style=\"padding:8px;border-bottom:1px solid #e7edf5\">")
-                .Append(WebUtility.HtmlEncode(item.Detail ?? "")).Append("</td></tr>");
+                .Append(WebUtility.HtmlEncode(copy.TranslateDetail(item.Detail, culture))).Append("</td></tr>");
         }
         var link = WebUtility.HtmlEncode(new Uri(publicBaseUri, "/").AbsoluteUri);
-        var body = $"<div style=\"font-family:Arial,sans-serif;color:#25334a;max-width:760px;margin:auto\"><h2>EnvanterTR operasyon özeti</h2><p>Son 7 gün ve gelecek 30 gün içinde seçtiğiniz bakım, denetim, lisans, garanti, iade, rezervasyon, yeni zimmet ve kullanım ömrü sonu kayıtları:</p><table style=\"width:100%;border-collapse:collapse;text-align:left\"><thead><tr><th style=\"padding:8px\">Tür</th><th style=\"padding:8px\">Tarih</th><th style=\"padding:8px\">Kayıt</th><th style=\"padding:8px\">Açıklama</th></tr></thead><tbody>{rows}</tbody></table><p><a href=\"{link}\">EnvanterTR uygulamasını aç</a></p><p style=\"color:#738197;font-size:12px\">Bu özeti bildirim tercihlerinde e-posta hatırlatmalarını seçtiğiniz için aldınız.</p></div>";
+        var body = $"<div style=\"font-family:Arial,sans-serif;color:#25334a;max-width:760px;margin:auto\"><h2>{WebUtility.HtmlEncode(copy.Title)}</h2><p>{WebUtility.HtmlEncode(copy.Intro)}</p><table style=\"width:100%;border-collapse:collapse;text-align:left\"><thead><tr><th style=\"padding:8px\">{WebUtility.HtmlEncode(copy.Type)}</th><th style=\"padding:8px\">{WebUtility.HtmlEncode(copy.Date)}</th><th style=\"padding:8px\">{WebUtility.HtmlEncode(copy.Record)}</th><th style=\"padding:8px\">{WebUtility.HtmlEncode(copy.Description)}</th></tr></thead><tbody>{rows}</tbody></table><p><a href=\"{link}\">{WebUtility.HtmlEncode(copy.OpenApp)}</a></p><p style=\"color:#738197;font-size:12px\">{WebUtility.HtmlEncode(copy.Footer)}</p></div>";
         var message = new MailMessage(new MailAddress(fromAddress, fromName), recipient)
         {
-            Subject = "EnvanterTR · yaklaşan işler özeti",
+            Subject = copy.Subject,
             SubjectEncoding = Encoding.UTF8,
             BodyEncoding = Encoding.UTF8,
             IsBodyHtml = true,
@@ -354,18 +377,70 @@ public sealed class OperationalNotificationEmailService(
         catch (JsonException) { return []; }
     }
 
-    private static string KindLabel(string kind) => kind switch
+    private sealed record EmailCopy(string CultureName, string Title, string Subject, string Intro,
+        string Type, string Date, string Record, string Description, string OpenApp, string Footer,
+        string Maintenance, string Audit, string License, string Warranty, string Return,
+        string Reservation, string Assignment, string AssetLife, string Work,
+        string Late, string ExpectedReturn, string AssignedEmployee, string Model)
     {
-        "maintenance" => "Bakım planı",
-        "audit" => "Fiziksel denetim",
-        "license" => "Lisans bitişi",
-        "warranty" => "Garanti bitişi",
-        "return" => "Varlık iadesi",
-        "reservation" => "Varlık rezervasyonu",
-        "assignment" => "Yeni zimmet",
-        "asset-life" => "Kullanım ömrü sonu",
-        _ => "İş"
-    };
+        public string KindLabel(string kind) => kind switch
+        {
+            "maintenance" => Maintenance, "audit" => Audit, "license" => License,
+            "warranty" => Warranty, "return" => Return, "reservation" => Reservation,
+            "assignment" => Assignment, "asset-life" => AssetLife, _ => Work
+        };
+
+        public string? TranslateDetail(string? detail, CultureInfo culture)
+        {
+            if (string.IsNullOrEmpty(detail)) return detail;
+            var separator = detail.LastIndexOf(" · ", StringComparison.Ordinal);
+            if (separator >= 0)
+            {
+                var dates = detail[(separator + 3)..].Split(" – ", 2, StringSplitOptions.None);
+                if (dates.Length == 2 &&
+                    DateOnly.TryParseExact(dates[0], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var start) &&
+                    DateOnly.TryParseExact(dates[1], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var end))
+                    return detail[..(separator + 3)] + start.ToDateTime(TimeOnly.MinValue).ToString("d", culture) + " – " +
+                           end.ToDateTime(TimeOnly.MinValue).ToString("d", culture);
+            }
+            foreach (var (source, translated) in new[]
+                     {
+                         ("Gecikti · ", Late), ("Beklenen iade · ", ExpectedReturn),
+                         ("Zimmetlenen çalışan · ", AssignedEmployee), ("Model: ", Model)
+                     })
+                if (detail.StartsWith(source, StringComparison.Ordinal)) return translated + detail[source.Length..];
+            return detail;
+        }
+
+        public static EmailCopy For(string language) => language switch
+        {
+            "en" => new("en-US", "EnvanterTR operations summary", "EnvanterTR · upcoming operations summary",
+                "Selected maintenance, audit, license, warranty, return, reservation, new assignment, and end-of-life records from the past 7 days and next 30 days:",
+                "Type", "Date", "Record", "Details", "Open EnvanterTR", "You received this summary because email reminders are enabled in your notification preferences.",
+                "Maintenance", "Physical audit", "License expiry", "Warranty expiry", "Asset return", "Asset reservation", "New assignment", "End of service life", "Task",
+                "Overdue · ", "Expected return · ", "Assigned employee · ", "Model: "),
+            "ru" => new("ru-RU", "Сводка операций EnvanterTR", "EnvanterTR · сводка предстоящих задач",
+                "Выбранные записи о техобслуживании, проверках, лицензиях, гарантии, возвратах, резервациях, новых назначениях и окончании срока службы за последние 7 и следующие 30 дней:",
+                "Тип", "Дата", "Запись", "Описание", "Открыть EnvanterTR", "Вы получили эту сводку, потому что включили напоминания по электронной почте в настройках уведомлений.",
+                "Техобслуживание", "Физическая проверка", "Истечение лицензии", "Истечение гарантии", "Возврат актива", "Резервация актива", "Новое назначение", "Окончание срока службы", "Задача",
+                "Просрочено · ", "Ожидаемый возврат · ", "Назначенный сотрудник · ", "Модель: "),
+            "uk" => new("uk-UA", "Зведення операцій EnvanterTR", "EnvanterTR · зведення майбутніх справ",
+                "Вибрані записи про обслуговування, аудит, ліцензії, гарантії, повернення, резервування, нові призначення та завершення строку служби за останні 7 і наступні 30 днів:",
+                "Тип", "Дата", "Запис", "Опис", "Відкрити EnvanterTR", "Ви отримали це зведення, оскільки ввімкнули нагадування електронною поштою в налаштуваннях сповіщень.",
+                "Обслуговування", "Фізичний аудит", "Закінчення ліцензії", "Закінчення гарантії", "Повернення активу", "Резервування активу", "Нове призначення", "Завершення строку служби", "Завдання",
+                "Прострочено · ", "Очікуване повернення · ", "Призначений працівник · ", "Модель: "),
+            "mk" => new("mk-MK", "Преглед на операциите во EnvanterTR", "EnvanterTR · преглед на претстојни задачи",
+                "Избрани записи за одржување, ревизија, лиценци, гаранција, враќања, резервации, нови задолжувања и крај на работниот век во изминатите 7 и следните 30 дена:",
+                "Тип", "Датум", "Запис", "Опис", "Отвори EnvanterTR", "Овој преглед го добивте бидејќи сте вклучиле потсетници по е-пошта во поставките за известувања.",
+                "Одржување", "Физичка ревизија", "Истекување на лиценца", "Истекување на гаранција", "Враќање на опрема", "Резервација на опрема", "Ново задолжување", "Крај на работниот век", "Задача",
+                "Задоцнето · ", "Очекувано враќање · ", "Задолжен вработен · ", "Модел: "),
+            _ => new("tr-TR", "EnvanterTR operasyon özeti", "EnvanterTR · yaklaşan işler özeti",
+                "Son 7 gün ve gelecek 30 gün içinde seçtiğiniz bakım, denetim, lisans, garanti, iade, rezervasyon, yeni zimmet ve kullanım ömrü sonu kayıtları:",
+                "Tür", "Tarih", "Kayıt", "Açıklama", "EnvanterTR uygulamasını aç", "Bu özeti bildirim tercihlerinde e-posta hatırlatmalarını seçtiğiniz için aldınız.",
+                "Bakım planı", "Fiziksel denetim", "Lisans bitişi", "Garanti bitişi", "Varlık iadesi", "Varlık rezervasyonu", "Yeni zimmet", "Kullanım ömrü sonu", "İş",
+                "Gecikti · ", "Beklenen iade · ", "Zimmetlenen çalışan · ", "Model: ")
+        };
+    }
 
     private sealed record OperationalReminderItem(string Kind, DateOnly Date, string Title, string? Detail);
 }

@@ -1,5 +1,6 @@
 using System.Net;
 using System.IO.Compression;
+using System.Globalization;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -1824,6 +1825,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             var emailService = scope.ServiceProvider.GetRequiredService<OperationalNotificationEmailService>();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.DashboardPreferences.Add(new DashboardPreference
+            {
+                CompanyId = _companyId,
+                UserId = _userId,
+                VisibleWidgetsJson = "{\"visibleWidgets\":[],\"widgetOrder\":[],\"language\":\"en\"}"
+            });
             var model = new AssetModel { CompanyId = _companyId, Name = "OWN-SERVICE-LIFE", DepreciationMonths = 24 };
             db.AssetModels.Add(model);
             var assetForLifetime = await db.Assets.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownAssetId);
@@ -1844,6 +1851,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             db.AssetEvents.Add(new AssetEvent { CompanyId = _companyId, AssetId = _ownAssetId, EmployeeId = _ownEmployeeId,
                 ActorUserId = _userId, EventType = "Assigned", Details = "assignment-digest-fixture", OccurredAt = DateTimeOffset.UtcNow });
             var reservationStart = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(10);
+            var reservationStartLabel = reservationStart.ToDateTime(TimeOnly.MinValue).ToString("d", CultureInfo.GetCultureInfo("en-US"));
+            var reservationEndLabel = reservationStart.AddDays(2).ToDateTime(TimeOnly.MinValue).ToString("d", CultureInfo.GetCultureInfo("en-US"));
             db.AssetReservations.Add(new AssetReservation { CompanyId = _companyId, AssetId = _ownAssetId,
                 EmployeeId = _ownEmployeeId, RequestedByUserId = _userId, StartsOn = reservationStart,
                 EndsOn = reservationStart.AddDays(2), Status = "Approved" });
@@ -1852,11 +1861,14 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             var deliveredDigest = Assert.Single(_smtpCapture.Messages);
             Assert.Contains($"To: acceptance-{_userId:N}@example.invalid", deliveredDigest, StringComparison.OrdinalIgnoreCase);
             var digestBody = DecodeMimeBody(deliveredDigest);
-            Assert.Contains("Yeni zimmet", digestBody, StringComparison.Ordinal);
+            Assert.Contains("New assignment", digestBody, StringComparison.Ordinal);
             Assert.Contains("OWN-1", digestBody, StringComparison.Ordinal);
             Assert.Contains("OWN-SECURITY-EMPLOYEE", digestBody, StringComparison.Ordinal);
-            Assert.Contains("Varlık rezervasyonu", digestBody, StringComparison.Ordinal);
-            Assert.Contains(WebUtility.HtmlEncode("Kullanım ömrü sonu"), digestBody, StringComparison.Ordinal);
+            Assert.Contains("Asset reservation", digestBody, StringComparison.Ordinal);
+            Assert.Contains("End of service life", digestBody, StringComparison.Ordinal);
+            Assert.Contains("EnvanterTR operations summary", digestBody, StringComparison.Ordinal);
+            Assert.Contains("Type", digestBody, StringComparison.Ordinal);
+            Assert.Contains($"{reservationStartLabel} – {reservationEndLabel}", digestBody, StringComparison.Ordinal);
             Assert.Contains("OWN-SERVICE-LIFE", digestBody, StringComparison.Ordinal);
             Assert.DoesNotContain("OTHER-SECURITY-LICENSE", deliveredDigest, StringComparison.Ordinal);
             await emailService.RunOnceAsync(CancellationToken.None);
