@@ -22,6 +22,10 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Verify user interface locale dictionary coverage
+        shell: bash
+        run: node tools/Verify-UiLocales.mjs
+
       - name: Run isolated PostgreSQL acceptance suite
         shell: bash
         run: |

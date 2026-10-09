@@ -1,0 +1,45 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import vm from 'node:vm';
+
+const sourcePath = resolve(process.argv[2] || 'src/EnvanterTR.Web/wwwroot/index.html');
+const source = readFileSync(sourcePath, 'utf8');
+const baseMatch = source.match(/const localeRows\s*=\s*(\{[\s\S]*?\n\s{4}\});/);
+const additionsMatch = source.match(/Object\.assign\(localeRows,\s*(\{[\s\S]*?\n\s{4}\})\);/);
+
+if (!baseMatch || !additionsMatch) {
+  throw new Error(`Could not locate the locale dictionaries in ${sourcePath}`);
+}
+
+const sandbox = {};
+vm.runInNewContext(
+  `globalThis.localeRows = ${baseMatch[1]}; Object.assign(localeRows, ${additionsMatch[1]});`,
+  sandbox,
+  { timeout: 1000 }
+);
+
+const requiredAssetLabels = [
+  'Ayrıntıyı aç',
+  'Zimmeti iade al',
+  'Çalışana zimmetle',
+  'Fiziksel denetim kaydı aç',
+  'Envanter etiketini yazdır',
+  'Varlığı düzenle',
+  'Varlığı arşive taşı',
+  'Görsel yok',
+  'Görsel açılamadı',
+  'Kişisel cihaz'
+];
+
+const invalidRows = Object.entries(sandbox.localeRows)
+  .filter(([key, values]) => !key.trim() || !Array.isArray(values) || values.length !== 4 || values.some(value => typeof value !== 'string' || !value.trim()))
+  .map(([key]) => key || '<empty key>');
+const missingAssetLabels = requiredAssetLabels.filter(key => !sandbox.localeRows[key]);
+
+if (invalidRows.length || missingAssetLabels.length) {
+  if (invalidRows.length) console.error(`Invalid 4-language locale entries: ${invalidRows.join(', ')}`);
+  if (missingAssetLabels.length) console.error(`Missing asset-list locale entries: ${missingAssetLabels.join(', ')}`);
+  process.exitCode = 1;
+} else {
+  console.log(`Verified ${Object.keys(sandbox.localeRows).length} locale entries in Turkish, English, Russian, Ukrainian, and Macedonian.`);
+}
