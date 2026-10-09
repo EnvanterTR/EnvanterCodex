@@ -219,7 +219,7 @@ const requiredLicenseImportLabels = [
   '{count} yeni lisans doğrulandı; {supplierCount} yeni tedarikçi yalnızca aktarımı onaylarsanız kataloğa eklenecek. Önizleme kayıt eklemedi.',
   '{count} lisans ve denetim geçmişi eklendi; {supplierCount} yeni tedarikçi kataloğa bağlandı.'
 ];
-const requiredApiErrorLabels = [
+const requiredApiFeedbackLabels = [
   'İstek doğrulaması başarısız.',
   'Arama metni 120 karakteri aşamaz.',
   'Arama 120 karakteri aşamaz.',
@@ -287,7 +287,83 @@ const requiredApiErrorLabels = [
   'Bu şirket içinde varlık etiketi zaten kayıtlı.',
   'Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil. Hiçbir kayıt değiştirilmedi.',
   'Hedef konum seçilen varlıklardan en az biri için zaten geçerli. Hiçbir kayıt değiştirilmedi.',
-  'Açık zimmetlerden biri bulunamadı. Hiçbir iade kaydedilmedi.'
+  'Açık zimmetlerden biri bulunamadı. Hiçbir iade kaydedilmedi.',
+  'Aksesuarlardan biri bu şirkette bulunamadı. Hiçbir teslim kaydedilmedi.',
+  'Bazı ürünlerde yeterli stok yok; hiçbir teslim kaydedilmedi.',
+  'Aksesuarlardan biri bu şirkette bulunamadı. Hiçbir stok değiştirilmedi.',
+  'Stok sayımı seçilen ürünlerden en az birinde geçersiz; hiçbir stok değiştirilmedi.',
+  'Seçilen zimmetlerden en az birinde istenen miktar kalan adedi aşıyor. Hiçbir iade kaydedilmedi.',
+  'Bu hiyerarşide aynı adlı konum zaten kaydedilmiş.',
+  'Arşivlenmiş konum varsayılan yapılamaz; önce konumu geri alın.',
+  'Arşivlenmiş konuma sorumlu atanamaz.',
+  'Bu ad katalog konumuna bağlı varlıklarda kullanılıyor. Katalog düğümünü düzenleyerek kimlik bağlantısını koruyun.',
+  'Bu ad katalog konumuna bağlı çalışanlarda kullanılıyor. Katalog düğümünü düzenleyerek kimlik bağlantısını koruyun.',
+  'Bu adla başka bir konum var. Birleştirme onayı gereklidir.',
+  'Önce bu konumun altındaki etkin konumları arşivleyin.',
+  'Önce üst konumu geri alın.',
+  'Denetim raporu filtrelerini kontrol edin; tarih aralığı 366 günü ve arama 120 karakteri aşamaz.',
+  'CSV en fazla 10.000 denetim içerir; tarih veya arama filtresini daraltın.',
+  'Üst varlık zinciri geçersiz veya çok derin; ilişki güncellenemedi.',
+  'Varlık bağlantısı güncellenemedi. Son durumu yenileyip tekrar deneyin.',
+  'Bir varlığa en fazla 30 dosya eklenebilir.',
+  'Bu varlık başka bir kullanıcı tarafından güncellenmiş. Son bilgileri yenileyip tekrar düzenleyin.',
+  'Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil. Hiçbir denetim kaydedilmedi.',
+  'Transfer için varlık kullanılabilir durumda ve zimmet dışı olmalıdır.',
+  'Toplu transfer için seçilen bütün varlıklar kullanılabilir ve zimmet dışı olmalı. Hiçbir kayıt değiştirilmedi.',
+  'Yalnızca kullanılabilir veya zimmetli varlık için bakım planlanabilir.',
+  'Bu varlık için devam eden bakım veya başka bir planlanmış bakım bulunuyor.',
+  'Bakım planı çakıştı; varlığın güncel durumunu yenileyip tekrar deneyin.',
+  'Yalnızca planlanmış bakım başlatılabilir.',
+  'Bakım başlatmak için planlı varlık kullanılabilir ve zimmet dışı olmalıdır. Varlığı iade alın, sonra tekrar deneyin.',
+  'Yalnızca planlanmış bakım iptal edilebilir.',
+  'Bakım başlatmak için varlık kullanılabilir durumda, zimmet dışı olmalıdır.',
+  'Bu varlık için devam eden bakım veya planlanmış bir bakım kaydı zaten var.',
+  'Bakım kaydı çakıştı; varlığın güncel durumunu yenileyip tekrar deneyin.',
+  'Bu bakım kaydı zaten kapatılmış.',
+  'Bu marka altında aynı isimde aksesuar modeli zaten var.',
+  'Bu aksesuar modeli kullanımda; silinemez.',
+  'Kayıt başka bir veride kullanıldığı için silinemedi.',
+  'Bu personel numarası şirket içinde kullanılıyor.',
+  'Çalışan kaydı çakıştı.',
+  'Bir çalışan profiline en fazla 30 belge eklenebilir.',
+  'Şirket çalışan hiyerarşisinde mevcut bir döngü bulundu; yönetici bağlantısı değiştirilmedi.',
+  'Bu departman adı bu şirkette zaten kayıtlı.',
+  'Bu departman adı eşzamanlı olarak başka bir işlemde kaydedildi.',
+  'Bu adla başka bir departman var.',
+  'Departman başka bir işlemle aynı anda güncellendi; yenileyip tekrar deneyin.',
+  'Bu adla başka bir departman var. Birleştirme onayı gereklidir.',
+  'Yalnızca boşta ve kullanılabilir varlık zimmetlenebilir.',
+  'Bu varlık şu anda bir çalışana zimmetli değil.',
+  'Önce varlığı çalışandan iade alın; zimmetli kayıtlar çöp kutusuna taşınamaz.',
+  'Alt varlıkları bulunan kayıt taşınamaz. Önce alt varlık bağlantılarını kaldırın veya taşıyın.',
+  'Açık veya planlanmış bakım kaydı bulunan varlık taşınamaz.',
+  'Açık talep, aksesuar, bileşen veya lisans ilişkileri çözülmeden varlık taşınamaz.',
+  'Bu etiket etkin bir varlık tarafından kullanılıyor. Önce etiketi değiştirin; çöp kutusundaki kayıt korunuyor.',
+  'Yalnızca arşivlenmiş varlıklar geri alınabilir.',
+  'Arşivlenmiş varlık beklenmedik biçimde zimmetli; önce zimmet ilişkisini çözün.',
+  'Açık bakım kaydı tamamlanmadan varlık arşivden geri alınamaz.',
+  'Önce varlığı çalışandan iade alın.',
+  'Arşivlenen varlığı tekrar kullanıma almak için ayrı geri alma akışı gereklidir.',
+  'Açık bakım kaydı tamamlanmadan varlığın durumu değiştirilemez.',
+  'Seçimde çalışana zimmetli varlık var. Önce iade işlemi yapın; hiçbir kayıt değiştirilmedi.',
+  'Arşivlenmiş varlıklar toplu işlemle yeniden etkinleştirilemez; hiçbir kayıt değiştirilmedi.',
+  'Seçimde tamamlanmamış bakım kaydı bulunan varlık var; hiçbir kayıt değiştirilmedi.',
+  'Toplu zimmet için seçilen bütün varlıklar boşta ve kullanılabilir olmalı. Hiçbir kayıt değiştirilmedi.',
+  'Toplu iade için seçilen bütün varlıklar bir çalışana zimmetli olmalı. Hiçbir kayıt değiştirilmedi.',
+  'Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil.',
+  'Bu e-posta için davet açılamadı. E-posta adresini doğrulayın veya şirket yöneticinizle iletişime geçin.',
+  'Bu kullanıcı daveti zaten kabul etmiş. Rolünü kullanıcı listesinden değiştirebilirsiniz.',
+  'Bekleyen davetin rolünü önce kullanıcı listesinden güncelleyin.',
+  'Bekleyen davet yeniden gönderildi.',
+  'Davet kaydı duruyor ancak e-posta gönderilemedi. E-posta ayarlarını kontrol edip yeniden deneyin.',
+  'Şirketin etkin deneme veya aboneliği bulunamadı. Kullanıcı davetinden önce lisansı etkinleştirin.',
+  'Kullanıcı oluşturulamadı. E-posta daha önce kaydedilmiş olabilir.',
+  'Kullanıcı daveti çakıştı. Listeyi yenileyip tekrar deneyin.',
+  'Davet oluşturuldu; kullanıcıya parola belirleme bağlantısı gönderildi.',
+  'Davet kaydedildi ancak e-posta gönderilemedi. E-posta ayarlarını kontrol edip aynı daveti yeniden deneyin.',
+  'Kendi rolünüzü bu ekrandan değiştiremezsiniz; şirket erişiminizin kesilmesi önleniyor.',
+  'Şirket sahibi rolü normal rol düzenlemesiyle değiştirilemez.',
+  'Bu çalışan başka bir giriş hesabına bağlı. Önce mevcut bağlantıyı kaldırın.',
 ];
 
 const invalidRows = Object.entries(sandbox.localeRows)
@@ -300,9 +376,9 @@ const missingEmployeeLabels = requiredEmployeeLabels.filter(key => !sandbox.loca
 const missingInventoryMovementLabels = requiredInventoryMovementLabels.filter(key => !sandbox.localeRows[key]);
 const missingLicenseListLabels = requiredLicenseListLabels.filter(key => !sandbox.localeRows[key]);
 const missingLicenseImportLabels = requiredLicenseImportLabels.filter(key => !sandbox.localeRows[key]);
-const missingApiErrorLabels = requiredApiErrorLabels.filter(key => !sandbox.localeRows[key]);
+const missingApiFeedbackLabels = requiredApiFeedbackLabels.filter(key => !sandbox.localeRows[key]);
 
-if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingApiErrorLabels.length) {
+if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingApiFeedbackLabels.length) {
   if (invalidRows.length) console.error(`Invalid 4-language locale entries: ${invalidRows.join(', ')}`);
   if (missingAssetLabels.length) console.error(`Missing asset-list locale entries: ${missingAssetLabels.join(', ')}`);
   if (missingReservationLabels.length) console.error(`Missing reservation-page locale entries: ${missingReservationLabels.join(', ')}`);
@@ -311,7 +387,7 @@ if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.
   if (missingInventoryMovementLabels.length) console.error(`Missing inventory-movement locale entries: ${missingInventoryMovementLabels.join(', ')}`);
   if (missingLicenseListLabels.length) console.error(`Missing license-list locale entries: ${missingLicenseListLabels.join(', ')}`);
   if (missingLicenseImportLabels.length) console.error(`Missing license-import locale entries: ${missingLicenseImportLabels.join(', ')}`);
-  if (missingApiErrorLabels.length) console.error(`Missing common API-error locale entries: ${missingApiErrorLabels.join(', ')}`);
+  if (missingApiFeedbackLabels.length) console.error(`Missing asset/operations API-feedback locale entries: ${missingApiFeedbackLabels.join(', ')}`);
   process.exitCode = 1;
 } else {
   console.log(`Verified ${Object.keys(sandbox.localeRows).length} locale entries in Turkish, English, Russian, Ukrainian, and Macedonian.`);
