@@ -1,5 +1,7 @@
 # Proje ilerleme raporu
 
+- **9 Ekim yabancı bakım eki erişim denetimi:** Var olan bakım eki kiracı kabul senaryosu genişletildi. Aktif şirket yöneticisiyle yabancı şirkete dosya yükleme, yabancı ek kimliğiyle indirme ve yabancı bakım ekini silme denemeleri `404` ile reddedildi; yabancı şirketin dosyası ve DB kaydı silinmeden kaldı. İzole geçici PostgreSQL güvenlik/kabul paketi **57/57 geçti**; test konteynerleri ve ağı temizlendi. Geliştirme DB'si kullanılmadı.
+
 **Tarih:** 9 Ekim 2026
 **Ölçüm kapsamı:** Şirketlerin kullanabileceği envanter ürünü; uygulama işlevleri, üretim hazırlığı ve Windows/Linux teslimatı.
 - **9 Ekim satır işlemleri ve katalog bağlantıları:** Aksesuar, sarf ve bileşen listelerinde kategori/model/tedarikçi/konum değerleri tıklanınca ilgili listeyi daraltan mavi bağlantılar oldu. Aksesuar ve sarf satırlarına yetkiye bağlı düzenleme/stok işlemleri, bileşen satırlarına düzenleme/stok/atama işlemleri eklendi; ayrıntı, teslim/çıkış düğmeleri korundu. Varlık listesindeki saten ikon işlem grubu ve ilişki filtreleri aynı kaldı. Commit `3a4ac4e` Docker Release web imajında başarıyla derlendi ve yerel uygulamaya alındı; `/health` 200, `/api/status` `ready`, 64 migration uygulanmış ve bekleyen 0; ana inline JavaScript sözdizimi geçerli. Korumalı listelerin görsel/etkileşim kabulü giriş gerektirdiğinden bu turda tamamlanmadı.

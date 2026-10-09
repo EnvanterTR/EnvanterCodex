@@ -24,6 +24,7 @@ Senaryo aynı eski `admin` kimlik bilgilerini her istekte tekrar gönderir ve ve
 - Varlık listesi yalnız geçerli şirkete ait kaydı içerir; diğer şirkete ait varlık kimliğiyle ayrıntı isteği `404` döner.
 - Lisans bitiş raporu listesi ve CSV yalnız etkin şirkete ait lisansları içerir; kendi lisansı ayrıntıda `200`, diğer şirketin lisans kimliği `404` döner. CSV yanıtı `no-store` olarak işaretlenir.
 - Aksesuar, sarf ve bileşen listesi/detay/CSV uçları diğer şirkete ait stok kayıtlarını göstermez. Birleşik stok hareketi listesi ve CSV'si de her stok türünü geçerli şirket için birleştirir.
+- Bakım eki kabulü, yabancı şirket bakımına dosya yükleme, yabancı bakım ekini indirme ve silme isteklerinin `404` döndürdüğünü; reddedilen işlemlerden sonra yabancı ekin veritabanı metaverisi ve disk dosyasının yerinde kaldığını doğrular.
 - Bileşen stok raporu yalnız etkin şirketin kayıtlarından toplam, zimmetli ve kullanılabilir adetleri hesaplar; kabul senaryosu diğer şirketteki bileşen miktarlarının rapor toplamlarına karışmadığını denetler.
 - Tamamlanmış fiziksel denetim raporu ile CSV dışa aktarımı yalnız etkin şirkete ait denetim ve varlık bilgilerini döndürür.
 - Talep kataloğunda talebe açık ve kullanılabilir kendi şirket varlığı görünür; diğer şirketin talep edilebilir varlığı sonuçlara sızmaz.

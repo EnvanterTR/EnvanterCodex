@@ -2348,6 +2348,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     {
         var maintenanceId = Guid.NewGuid();
         var otherMaintenanceId = Guid.NewGuid();
+        var otherAttachmentId = Guid.NewGuid();
+        var otherAttachmentBytes = Encoding.ASCII.GetBytes("%PDF-1.7\nother company maintenance file\n%%EOF");
+        var otherAttachmentDirectory = Path.Combine(_mediaPath, _otherCompanyId.ToString("N"), "maintenances",
+            otherMaintenanceId.ToString("N"), "attachments");
+        Directory.CreateDirectory(otherAttachmentDirectory);
+        await File.WriteAllBytesAsync(Path.Combine(otherAttachmentDirectory, $"{otherAttachmentId:N}.pdf"), otherAttachmentBytes);
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -2358,6 +2364,9 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 new AssetMaintenance { Id = otherMaintenanceId, CompanyId = _otherCompanyId, AssetId = _otherCompanyAssetId,
                     MaintenanceType = "Repair", StartedOn = new DateOnly(2026, 10, 1), CompletedOn = new DateOnly(2026, 10, 2),
                     Status = "Completed", Currency = "TRY" });
+            db.AssetMaintenanceAttachments.Add(new AssetMaintenanceAttachment { Id = otherAttachmentId, CompanyId = _otherCompanyId,
+                MaintenanceId = otherMaintenanceId, OriginalFileName = "other-company.pdf", StorageFileName = $"{otherAttachmentId:N}.pdf",
+                ContentType = "application/pdf", Length = otherAttachmentBytes.Length });
             await db.SaveChangesAsync();
         }
 
@@ -2393,6 +2402,21 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(HttpStatusCode.NotFound, crossTenantList.StatusCode);
         using (var crossTenantDownload = await SendAsAdminAsync($"/api/maintenances/{otherMaintenanceId}/attachments/{attachmentId}/file"))
             Assert.Equal(HttpStatusCode.NotFound, crossTenantDownload.StatusCode);
+        using (var crossTenantUpload = await SendMaintenanceAttachmentUploadAsync(otherMaintenanceId, pdfBytes, "intrusion.pdf", requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenantUpload.StatusCode);
+        using (var foreignAttachmentOnOwnMaintenance = await SendAsAdminAsync($"/api/maintenances/{maintenanceId}/attachments/{otherAttachmentId}/file"))
+            Assert.Equal(HttpStatusCode.NotFound, foreignAttachmentOnOwnMaintenance.StatusCode);
+        using (var crossTenantDelete = await SendAsUserAsync(HttpMethod.Delete,
+            $"/api/maintenances/{otherMaintenanceId}/attachments/{otherAttachmentId}", _userId, _companyId,
+            requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenantDelete.StatusCode);
+        Assert.True(File.Exists(Path.Combine(otherAttachmentDirectory, $"{otherAttachmentId:N}.pdf")));
+        await using (var verifyScope = _factory.Services.CreateAsyncScope())
+        {
+            var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.Equal(1, await verifyDb.AssetMaintenanceAttachments.CountAsync(x => x.CompanyId == _otherCompanyId &&
+                x.MaintenanceId == otherMaintenanceId && x.Id == otherAttachmentId));
+        }
 
         using (var archiveResponse = await SendAsAdminAsync("/api/company/export.zip"))
         {
