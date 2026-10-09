@@ -128,4 +128,30 @@ INSERT INTO "AccessoryMovements" ("Id","CompanyId","AccessoryId","ActorUserId","
 SELECT gen_random_uuid(),s."Id",a."Id",:'owner_user_id'::uuid,'Received',a."Qty",'Santa örnek kurulumu · başlangıç stoku',now()
 FROM _accessory_seed a CROSS JOIN _santa s;
 
+-- A real, open accessory assignment makes the employee handoff form demonstrable.
+DO $$
+DECLARE
+    company_id uuid := (SELECT "Id" FROM "Companies" WHERE "Slug"='santa-demo');
+    accessory_id uuid;
+    employee_id uuid;
+    actor_id uuid;
+    assignment_id uuid;
+BEGIN
+    SELECT "Id" INTO accessory_id FROM "Accessories"
+      WHERE "CompanyId"=company_id AND "ItemNumber"='SNT-ACC-001';
+    SELECT "Id" INTO employee_id FROM "Employees"
+      WHERE "CompanyId"=company_id AND "EmployeeNumber"='SNT-002' AND "IsActive";
+    SELECT "UserId" INTO actor_id FROM "CompanyMemberships"
+      WHERE "CompanyId"=company_id AND "RoleKey"='owner' LIMIT 1;
+
+    INSERT INTO "AccessoryAssignments" ("Id","CompanyId","AccessoryId","TargetType","EmployeeId","Quantity","ReturnedQuantity","Notes","CheckedOutAt")
+    VALUES (gen_random_uuid(),company_id,accessory_id,'Employee',employee_id,1,0,'Santa demo · örnek aksesuar zimmeti',now())
+    RETURNING "Id" INTO assignment_id;
+    INSERT INTO "AccessoryMovements" ("Id","CompanyId","AccessoryId","AssignmentId","EmployeeId","ActorUserId","MovementType","Quantity","Notes","OccurredAt")
+    VALUES (gen_random_uuid(),company_id,accessory_id,assignment_id,employee_id,actor_id,'Checkout',1,'Santa demo · Ece Yıldız için örnek zimmet',now());
+    INSERT INTO "AuditEntries" ("Id","CompanyId","ActorUserId","TargetType","TargetId","Action","Details","OccurredAt")
+    VALUES (gen_random_uuid(),company_id,actor_id,'Accessory',accessory_id,'checked_out','1 adet aksesuar çalışana zimmetlendi.',now());
+    UPDATE "Accessories" SET "UpdatedAt"=now() WHERE "CompanyId"=company_id AND "Id"=accessory_id;
+END $$;
+
 COMMIT;
