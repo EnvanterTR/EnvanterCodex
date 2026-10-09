@@ -506,7 +506,7 @@
   <dialog class="detail-dialog" id="componentRemoveDialog"><form id="componentRemoveForm"><div class="dialog-head"><div><div class="eyebrow">BİLEŞEN İADESİ</div><h2>Varlıktan bileşen çıkar</h2></div><button class="close" type="button" data-close-component-remove aria-label="Kapat">✕</button></div><div class="dialog-body"><input name="allocationId" type="hidden"><p id="componentRemoveContext" class="muted"></p><label>Çıkarılacak miktar *<input name="quantity" type="number" min="1" required></label><label style="display:block;margin-top:10px">İşlem notu<input name="notes" maxlength="2000" style="width:100%;margin-top:6px"></label><div class="dialog-actions"><button class="btn" type="button" data-close-component-remove>Vazgeç</button><button class="btn primary" type="submit">Çıkarmayı kaydet</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="accessoryKitFormDialog"><form id="accessoryKitForm"><div class="dialog-head"><div><div class="eyebrow">HAZIR KİT</div><h2 id="accessoryKitFormTitle">Yeni kit oluştur</h2></div><button class="close" type="button" data-close-accessory-kit aria-label="Kapat">✕</button></div><div class="dialog-body"><input name="id" type="hidden"><div class="form-grid"><label>Kit adı *<input name="name" required maxlength="120" placeholder="Örn. Yeni çalışan başlangıç seti"></label><label>Açıklama<input name="description" maxlength="1000" placeholder="İçerik veya kullanım notu"></label></div><label class="detail-field" style="display:block;margin-top:12px"><small>Aksesuar kataloğunda ara</small><input id="accessoryKitItemSearch" type="search" maxlength="120" placeholder="Ad, model veya stok kodu" style="width:100%;margin-top:6px"></label><div class="panel-head" style="margin-top:16px"><h3>Kit içeriği</h3><button class="btn small" id="addAccessoryKitLine" type="button">＋ Aksesuar ekle</button></div><div id="accessoryKitLineEditor" class="form-grid" aria-live="polite"></div><p class="muted">En fazla 50 farklı aksesuar ekleyin. Uygun kit stoku en az bulunan parçaya göre hesaplanır. Teslim sırasında bütün parçalar tek atomik işlemle zimmetlenir.</p><div class="dialog-actions"><button class="btn" type="button" data-close-accessory-kit>Vazgeç</button><button class="btn primary" type="submit">Kiti kaydet</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="accessoryKitHistoryDialog"><div class="dialog-head"><div><div class="eyebrow">HAZIR KİT / HAREKETLER</div><h2 id="accessoryKitHistoryTitle">Kit teslim geçmişi</h2></div><button class="close" type="button" id="closeAccessoryKitHistory" aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="muted">Her satır bir kit içindeki aksesuar zimmetini gösterir. Kalan miktar sıfır olduğunda ilgili parça tamamen iade edilmiştir.</p><div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Aksesuar</th><th>Teslim edilen</th><th>İade edilen</th><th>Kalan</th><th>Hedef</th><th>İşlemi yapan</th><th>Not</th></tr></thead><tbody id="accessoryKitHistoryRows"><tr><td colspan="8">Geçmiş yükleniyor…</td></tr></tbody></table></div><div class="dialog-actions"><button class="btn" type="button" id="closeAccessoryKitHistoryFooter">Kapat</button></div></div></dialog>
-  <dialog class="detail-dialog" id="accessoryFormDialog"><form id="accessoryForm"><div class="dialog-head"><div><div class="eyebrow">AKSESUAR KAYDI</div><h2 id="accessoryFormTitle">Yeni aksesuar ekle</h2></div><button class="close" type="button" data-close-accessory-form aria-label="Kapat">✕</button></div><div class="dialog-body"><input name="accessoryId" type="hidden"><div class="form-grid"><label>Ad *<input name="name" required maxlength="200"></label><label>Kategori<input name="category" maxlength="120"></label><label>Marka<select name="brandId"><option value="">Marka seçin (isteğe bağlı)</option></select><button class="btn small" id="accessoryQuickBrand" type="button">＋ Marka oluştur</button></label><label>Model<select name="modelId"><option value="">Model seçin (isteğe bağlı)</option></select><button class="btn small" id="accessoryQuickModel" type="button">＋ Model oluştur</button></label><label class="wide">Model görseli (PNG/JPEG/WebP, en fazla 2 MiB)<input name="modelPhoto" type="file" accept="image/png,image/jpeg,image/webp"></label><label>Model numarası<input name="modelNumber" maxlength="120"></label><label>Ürün numarası<input name="itemNumber" maxlength="120"></label><label>Tedarikçi<input name="supplier" maxlength="200"></label><label>Konum<input name="location" maxlength="160"></label><label>Minimum stok<input name="minimumQuantity" type="number" min="0" max="100000" value="0" required></label><label>İlk stok adedi<input name="quantity" type="number" min="0" max="100000" value="0"></label><label>Birim maliyeti<input name="unitCost" type="number" min="0" step="0.01"></label><label>Para birimi<select name="currency"><option value="TRY">TRY</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label><label>Alış tarihi<input name="purchaseDate" type="date"></label><label class="wide">Notlar<input name="notes" maxlength="2000"></label><label class="wide"><span><input name="isRequestable" type="checkbox" value="true"> Çalışan isteğine aç</span></label></div><p class="muted" id="accessoryFormStockNote">İlk adet miktarı ilk stok girişi olarak geçmişe kaydedilir.</p><div class="dialog-actions"><button class="btn" type="button" data-close-accessory-form>Vazgeç</button><button class="btn primary" type="submit">Kaydet</button></div></div></form></dialog>
+  <dialog class="detail-dialog" id="accessoryFormDialog"><form id="accessoryForm"><div class="dialog-head"><div><div class="eyebrow">AKSESUAR KAYDI</div><h2 id="accessoryFormTitle">Yeni aksesuar ekle</h2></div><button class="close" type="button" data-close-accessory-form aria-label="Kapat" data-locale-aria="Kapat">✕</button></div><div class="dialog-body"><input name="accessoryId" type="hidden"><div class="form-grid"><label>Ad *<input name="name" required maxlength="200"></label><label>Kategori<input name="category" maxlength="120"></label><label>Marka<select name="brandId"><option value="">Marka seçin (isteğe bağlı)</option></select><button class="btn small" id="accessoryQuickBrand" type="button">＋ Marka oluştur</button></label><label>Model<select name="modelId"><option value="">Model seçin (isteğe bağlı)</option></select><button class="btn small" id="accessoryQuickModel" type="button">＋ Model oluştur</button></label><label class="wide">Model görseli (PNG/JPEG/WebP, en fazla 2 MiB)<input name="modelPhoto" type="file" accept="image/png,image/jpeg,image/webp"></label><label>Model numarası<input name="modelNumber" maxlength="120"></label><label>Ürün numarası<input name="itemNumber" maxlength="120"></label><label>Tedarikçi<input name="supplier" maxlength="200"></label><label>Konum<input name="location" maxlength="160"></label><label>Minimum stok<input name="minimumQuantity" type="number" min="0" max="100000" value="0" required></label><label>İlk stok adedi<input name="quantity" type="number" min="0" max="100000" value="0"></label><label>Birim maliyeti<input name="unitCost" type="number" min="0" step="0.01"></label><label>Para birimi<select name="currency"><option value="TRY">TRY</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label><label>Alış tarihi<input name="purchaseDate" type="date"></label><label class="wide">Notlar<input name="notes" maxlength="2000"></label><label class="wide"><span><input name="isRequestable" type="checkbox" value="true"> Çalışan isteğine aç</span></label></div><p class="muted" id="accessoryFormStockNote">İlk adet miktarı ilk stok girişi olarak geçmişe kaydedilir.</p><div class="dialog-actions"><button class="btn" type="button" data-close-accessory-form>Vazgeç</button><button class="btn primary" type="submit">Kaydet</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="accessoryStockDialog"><form id="accessoryStockForm"><div class="dialog-head"><div><div class="eyebrow">STOK HAREKETİ</div><h2>Stok ekle veya düzelt</h2></div><button class="close" type="button" data-close-stock aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="muted" id="accessoryStockContext"></p><label class="detail-field" style="display:block"><small>Adet (ekleme için pozitif, düşüm için negatif)</small><input name="quantity" type="number" min="-100000" max="100000" required style="width:100%;margin-top:7px"></label><label class="detail-field" style="display:block;margin-top:10px"><small>İşlem notu</small><input name="notes" maxlength="2000" style="width:100%;margin-top:7px"></label><div class="dialog-actions"><button class="btn" type="button" data-close-stock>Vazgeç</button><button class="btn primary" type="submit">Stok hareketini kaydet</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="accessoryCheckoutDialog"><form id="accessoryCheckoutForm"><div class="dialog-head"><div><div class="eyebrow">AKSESUAR ZİMMETİ</div><h2>Teslim hedefi seçin</h2></div><button class="close" type="button" data-close-checkout aria-label="Kapat">✕</button></div><div class="dialog-body"><fieldset class="detail-field" style="border:0;padding:0"><legend class="muted">Nereye teslim ediliyor?</legend><label><input type="radio" name="targetType" value="Employee" checked> Çalışan</label> <label><input type="radio" name="targetType" value="Asset"> Varlık</label> <label><input type="radio" name="targetType" value="Location"> Konum</label></fieldset><label class="detail-field" id="accessoryCheckoutEmployeeField" style="display:block;margin-top:10px"><small>Aktif çalışan *</small><select name="employeeId" style="width:100%;margin-top:7px"></select></label><label class="detail-field" id="accessoryCheckoutAssetField" style="display:block;margin-top:10px" hidden><small>Varlık *</small><select name="assetId" style="width:100%;margin-top:7px"></select></label><label class="detail-field" id="accessoryCheckoutLocationField" style="display:block;margin-top:10px" hidden><small>Konum *</small><input name="location" maxlength="160" style="width:100%;margin-top:7px"></label><label class="detail-field" style="display:block;margin-top:10px"><small>Adet *</small><input name="quantity" type="number" min="1" required value="1" style="width:100%;margin-top:7px"></label><label class="detail-field" id="accessoryKitSetsLabel" style="display:block;margin-top:10px" hidden><small>Tam kit adedi *</small><input id="accessoryKitSets" type="number" min="1" max="1" value="1" required style="width:100%;margin-top:7px"><small id="accessoryKitSetsHint" class="muted"></small></label><label class="detail-field" style="display:block;margin-top:10px"><small>Teslim notu</small><input name="notes" maxlength="2000" style="width:100%;margin-top:7px"></label><div class="dialog-actions"><button class="btn" type="button" data-close-checkout>Vazgeç</button><button class="btn primary" type="submit">Teslimi kaydet</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="scanAssetDialog"><div class="dialog-head"><div><div class="eyebrow">HIZLI VARLIK BULMA</div><h2>Barkod veya QR okut</h2></div><button class="close" id="closeAssetScanner" type="button" aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="muted">Kamerayla okutun veya USB barkod okuyucuyu kullanıp kodu alana girin. Kamera görüntüsü bu cihazda işlenir; yalnızca okunan kodla şirket envanterinde arama yapılır.</p><video id="scanAssetVideo" muted autoplay playsinline hidden style="width:100%;max-height:42vh;object-fit:cover;border-radius:9px;background:#101828"></video><div class="dialog-actions"><button class="btn" id="startAssetCamera" type="button">Kamerayı başlat</button></div><label class="field" id="scanAssetActionWrap">Okutma işlemi<select id="scanAssetAction"><option value="view">Varlık ayrıntısını aç</option><option value="assign">Uygunsa zimmet formunu aç</option><option value="return">Zimmetliyse iade onayını göster</option></select></label><form id="scanAssetForm"><label class="field">Varlık etiketi veya QR içeriği<input id="scanAssetCode" name="code" autocomplete="off" autofocus required maxlength="500" placeholder="Etiketi okutun veya yazın"></label><div class="dialog-actions"><button class="btn primary" type="submit">Varlığı bul</button></div></form><p id="scanAssetFeedback" class="muted" role="status" aria-live="polite">Kamera desteklenmiyorsa USB okuyucu ya da klavyeyle kod girebilirsiniz.</p></div></dialog>
@@ -671,7 +671,7 @@
       'Sayfadakileri seç':['Select page','Выбрать страницу','Вибрати сторінку','Избери страница'],'Sayfa seçildi':['Page selected','Страница выбрана','Сторінку вибрано','Страницата е избрана'],'Seçimi temizle':['Clear selection','Снять выделение','Очистити вибір','Исчисти избор'],'Seçilenleri teslim et':['Check out selected','Выдать выбранное','Видати вибране','Задолжи ги избраните'],'Seçilen stokları düzelt':['Adjust selected stock','Изменить выбранные запасы','Змінити вибрані запаси','Коригирај ги избраните залихи'],'aksesuar seçildi (en fazla 100)':['accessories selected (max 100)','аксессуаров выбрано (макс. 100)','аксесуарів вибрано (макс. 100)','избрани додатоци (најмногу 100)']
     });
     Object.assign(localeRows, {
-      'Menü, pano, varlık, çalışan listesi/profili ve zimmet formu ile aksesuar listeleri seçilen dile çevrildi. Diğer modüller sırayla ekleniyor.':['The menu, dashboard, asset list, employee list and profile, assignment form, and accessory list use the selected language. Other modules are being translated.','Меню, панель, список активов, список и профиль сотрудников, акт выдачи и список аксессуаров переведены на выбранный язык. Перевод остальных модулей продолжается.','Меню, панель, список активів, список і профіль працівників, акт закріплення та список аксесуарів перекладено вибраною мовою. Переклад інших модулів триває.','Менито, контролната табла, списокот на средства, списокот и профилот на вработени, записникот за задолжување и списокот на додатоци се на избраниот јазик. Преводот на другите модули продолжува.'],
+      'Menü, pano, varlık, çalışan listesi/profili ve zimmet formu ile aksesuar listesi ve oluşturma/düzenleme formu seçilen dile çevrildi. Diğer modüller sırayla ekleniyor.':['The menu, dashboard, asset list, employee list and profile, assignment form, and accessory list and create/edit form use the selected language. Other modules are being translated.','Меню, панель, список активов, список и профиль сотрудников, акт выдачи, список и форма создания/редактирования аксессуаров переведены на выбранный язык. Перевод остальных модулей продолжается.','Меню, панель, список активів, список і профіль працівників, акт закріплення, список і форма створення/редагування аксесуарів перекладено вибраною мовою. Переклад інших модулів триває.','Менито, контролната табла, списокот на средства, списокот и профилот на вработени, записникот за задолжување, списокот и формата за создавање/уредување додатоци се на избраниот јазик. Преводот на другите модули продолжува.'],
       'ŞİRKET ALANI / EKİP':['COMPANY / TEAM','КОМПАНИЯ / КОМАНДА','КОМПАНІЯ / КОМАНДА','КОМПАНИЈА / ТИМ'],
       'Departmana ve yöneticiye göre ilişki kurun; profilden doğrudan raporlayanları ve zimmetlerini görüntüleyin.':['Organize by department and manager; view direct reports and assigned items in each profile.','Связывайте сотрудников с отделами и руководителями; просматривайте подчинённых и выданное имущество в профиле.','Пов’язуйте працівників із відділами та керівниками; переглядайте підлеглих і видане майно у профілі.','Поврзете вработени со оддели и менаџери; прегледајте директно подредени и задолжени средства во профилот.'],
       '↓ CSV dışa aktar':['↓ Export CSV','↓ Экспорт CSV','↓ Експорт CSV','↓ Извези CSV'],'↑ CSV içe aktar':['↑ Import CSV','↑ Импорт CSV','↑ Імпорт CSV','↑ Увези CSV'],'＋ Çalışan ekle':['＋ Add employee','＋ Добавить сотрудника','＋ Додати працівника','＋ Додај вработен'],
@@ -771,6 +771,40 @@
       'Doğrulanan yeni çalışan kayıtları bu şirkete eklensin mi? Bu işlem mevcut kayıtları güncellemez.':['Add the validated new employee records to this company? Existing records will not be changed.','Добавить проверенные записи сотрудников в эту компанию? Существующие записи не изменятся.','Додати перевірені записи працівників до цієї компанії? Наявні записи не зміняться.','Да се додадат потврдените записи за вработени во компанијата? Постојните записи нема да се менуваат.'],
       'Çalışanlar ekleniyor…':['Adding employees…','Добавление сотрудников…','Додавання працівників…','Се додаваат вработени…']
     });
+    Object.assign(localeRows, {
+      'AKSESUAR KAYDI':['ACCESSORY RECORD','ЗАПИСЬ АКСЕССУАРА','ЗАПИС АКСЕСУАРА','ЗАПИС ЗА ДОДАТОК'],
+      'Yeni aksesuar ekle':['Add accessory','Добавить аксессуар','Додати аксесуар','Додај додаток'],
+      'Aksesuar kaydını düzenle':['Edit accessory','Изменить аксессуар','Редагувати аксесуар','Уреди додаток'],
+      'Ad *':['Name *','Название *','Назва *','Име *'],
+      'Kategori':['Category','Категория','Категорія','Категорија'],
+      'Marka':['Brand','Бренд','Бренд','Бренд'],
+      'Marka seçin (isteğe bağlı)':['Select a brand (optional)','Выберите бренд (необязательно)','Виберіть бренд (необязательно)','Изберете бренд (изборно)'],
+      '＋ Marka oluştur':['＋ Create brand','＋ Создать бренд','＋ Створити бренд','＋ Создај бренд'],
+      'Model':['Model','Модель','Модель','Модел'],
+      'Model seçin (isteğe bağlı)':['Select a model (optional)','Выберите модель (необязательно)','Виберіть модель (необязательно)','Изберете модел (изборно)'],
+      '＋ Model oluştur':['＋ Create model','＋ Создать модель','＋ Створити модель','＋ Создај модел'],
+      'Model görseli (PNG/JPEG/WebP, en fazla 2 MiB)':['Model image (PNG/JPEG/WebP, up to 2 MiB)','Изображение модели (PNG/JPEG/WebP, до 2 МиБ)','Зображення моделі (PNG/JPEG/WebP, до 2 МіБ)','Слика на моделот (PNG/JPEG/WebP, до 2 MiB)'],
+      'Model numarası':['Model number','Номер модели','Номер моделі','Број на модел'],
+      'Ürün numarası':['Product number','Номер товара','Номер товару','Број на производ'],
+      'Tedarikçi':['Supplier','Поставщик','Постачальник','Добавувач'],
+      'Konum':['Location','Местоположение','Місце','Локација'],
+      'Minimum stok':['Minimum stock','Минимальный запас','Мінімальний запас','Минимална залиха'],
+      'İlk stok adedi':['Initial stock quantity','Начальное количество','Початкова кількість','Почетна количина'],
+      'Birim maliyeti':['Unit cost','Стоимость единицы','Вартість одиниці','Единечна цена'],
+      'Para birimi':['Currency','Валюта','Валюта','Валута'],
+      'Alış tarihi':['Purchase date','Дата покупки','Дата придбання','Датум на купување'],
+      'Notlar':['Notes','Примечания','Примітки','Белешки'],
+      'Çalışan isteğine aç':['Make available for employee requests','Разрешить запросы сотрудников','Дозволити запити працівників','Овозможи барања од вработени'],
+      'İlk adet miktarı ilk stok girişi olarak geçmişe kaydedilir.':['The initial quantity is recorded as the first stock movement.','Начальное количество записывается как первое движение запаса.','Початкова кількість записується як перший рух запасу.','Почетната количина се запишува како прво движење на залихата.'],
+      'Kaydet':['Save','Сохранить','Зберегти','Зачувај'],
+      'Kapat':['Close','Закрыть','Закрити','Затвори'],
+      'Marka adı:':['Brand name:','Название бренда:','Назва бренду:','Име на бренд:'],
+      'Aksesuar model adı:':['Accessory model name:','Название модели аксессуара:','Назва моделі аксесуара:','Име на моделот на додаток:'],
+      'Önce bir marka seçin.':['Select a brand first.','Сначала выберите бренд.','Спочатку виберіть бренд.','Прво изберете бренд.'],
+      'Marka oluşturuldu. Logo ve üretici bilgilerini Markalar kataloğunda ekleyebilirsiniz.':['Brand created. You can add its logo and manufacturer details in the Brands catalog.','Бренд создан. Добавьте логотип и сведения о производителе в каталоге брендов.','Бренд створено. Додайте логотип і відомості про виробника в каталозі брендів.','Брендот е создаден. Додајте лого и информации за производителот во каталогот на брендови.'],
+      'Aksesuar modeli oluşturuldu ve seçildi.':['Accessory model created and selected.','Модель аксессуара создана и выбрана.','Модель аксесуара створено й вибрано.','Моделот на додаток е создаден и избран.'],
+      'Aksesuar kaydı eklemek için yazma yetkiniz bulunmuyor.':['You do not have permission to add accessory records.','У вас нет прав на добавление аксессуаров.','У вас немає дозволу додавати аксесуари.','Немате дозвола за додавање додатоци.']
+    });
     const localeIndexes = { en: 0, ru: 1, uk: 2, mk: 3 };
     function translateUiText(text) { const key = String(text ?? ''), index = localeIndexes[appearanceLanguage.value]; return index === undefined ? key : (localeRows[key]?.[index] || key); }
     const localeTextNodes = new WeakMap();
@@ -779,13 +813,14 @@
       selectedLocale = localeTags[language] || 'tr-TR';
       fmt = new Intl.NumberFormat(selectedLocale);
       document.documentElement.lang = language === 'tr' ? 'tr' : language;
-      const roots = [$('#sidebar'), $('.topbar'), $('#overview'), $('#reservationsPage'), $('#accessoriesPage'), $('#employeesPage'), $('#employeeDialog'), $('#newEmployeeDialog'), $('#editEmployeeDialog'), $('#employeeImportDialog'), appearanceDialog];
+      const roots = [$('#sidebar'), $('.topbar'), $('#overview'), $('#reservationsPage'), $('#accessoriesPage'), $('#accessoryFormDialog'), $('#employeesPage'), $('#employeeDialog'), $('#newEmployeeDialog'), $('#editEmployeeDialog'), $('#employeeImportDialog'), appearanceDialog];
       for (const root of roots) {
         if (!root) continue;
         const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
         let node;
         while ((node = walker.nextNode())) {
           if (node.parentElement?.closest('.company,.profile,#assetRows,#activityRows,#upcomingEvents,#dashboardStatusLegend')) continue;
+          if (node.parentElement?.closest('#accessoryForm select option')) continue;
           if (!localeTextNodes.has(node)) localeTextNodes.set(node, node.nodeValue);
           const original = localeTextNodes.get(node);
           const key = original.trim();
@@ -802,6 +837,13 @@
         element.setAttribute('aria-label', index === undefined ? key : (localeRows[key]?.[index] || key));
       }
       appearanceLanguage.value = language;
+      const accessoryForm = $('#accessoryForm');
+      if (accessoryForm) {
+        const brandOption = accessoryForm.elements.brandId?.options[0];
+        const modelOption = accessoryForm.elements.modelId?.options[0];
+        if (brandOption) brandOption.textContent = translateUiText('Marka seçin (isteğe bağlı)');
+        if (modelOption) modelOption.textContent = translateUiText('Model seçin (isteğe bağlı)');
+      }
     }
     function applyEmployeeProfileLanguage() {
       const t = translateUiText;
@@ -833,7 +875,7 @@
     $('#appearanceButton').addEventListener('click', () => {
       const language = appearanceLanguage.value;
       syncThemeChoices();
-      $('#languageCoverageNote').textContent = translateUiText(language === 'tr' ? 'Türkçe arayüz seçili.' : 'Menü, pano, varlık, çalışan listesi/profili ve zimmet formu ile aksesuar listeleri seçilen dile çevrildi. Diğer modüller sırayla ekleniyor.');
+      $('#languageCoverageNote').textContent = translateUiText(language === 'tr' ? 'Türkçe arayüz seçili.' : 'Menü, pano, varlık, çalışan listesi/profili ve zimmet formu ile aksesuar listesi ve oluşturma/düzenleme formu seçilen dile çevrildi. Diğer modüller sırayla ekleniyor.');
       appearanceDialog.showModal();
     });
     $('#appearanceClose').addEventListener('click', () => appearanceDialog.close());
@@ -852,7 +894,7 @@
         if (!$('#employeesPage').hidden) { $('#pageTitle').textContent = translateUiText('Çalışan kayıtları'); $('#employeeManagerFilter').dataset.initialized = ''; void loadEmployees(1).catch(error => notify(error.message)); }
         applyEmployeeProfileLanguage();
         if ($('#employeeDialog').open && currentEmployeeId) void openEmployee(currentEmployeeId);
-        $('#languageCoverageNote').textContent = translateUiText(saved.language === 'tr' ? 'Türkçe arayüz seçildi.' : 'Menü, pano, varlık, çalışan listesi/profili ve zimmet formu ile aksesuar listeleri seçilen dile çevrildi. Diğer modüller sırayla ekleniyor.');
+        $('#languageCoverageNote').textContent = translateUiText(saved.language === 'tr' ? 'Türkçe arayüz seçildi.' : 'Menü, pano, varlık, çalışan listesi/profili ve zimmet formu ile aksesuar listesi ve oluşturma/düzenleme formu seçilen dile çevrildi. Diğer modüller sırayla ekleniyor.');
         appearanceDialog.close(); notify('Görünüm ve dil tercihleri kaydedildi.');
       } catch (error) { notify(`Tercihler kaydedilemedi: ${error.message}`); }
       finally { button.disabled = false; }
@@ -4301,12 +4343,12 @@
     }
     async function populateAccessoryCatalog(form, selectedBrandId = '', selectedModelId = '') {
       const [brands, models] = await Promise.all([api('/api/lookups/brands'), api('/api/lookups/accessory-models')]);
-      form.elements.brandId.replaceChildren(new Option('Marka seçin (isteğe bağlı)', ''));
+      form.elements.brandId.replaceChildren(new Option(translateUiText('Marka seçin (isteğe bağlı)'), ''));
       for (const brand of brands) form.elements.brandId.add(new Option(brand.name, brand.id));
       form.elements.brandId.value = selectedBrandId || '';
       const fillModels = () => {
         const brandId = form.elements.brandId.value;
-        form.elements.modelId.replaceChildren(new Option('Model seçin (isteğe bağlı)', ''));
+        form.elements.modelId.replaceChildren(new Option(translateUiText('Model seçin (isteğe bağlı)'), ''));
         for (const model of models.filter(x => x.brandId === brandId)) form.elements.modelId.add(new Option(model.name, model.id));
         if (models.some(x => x.id === selectedModelId && x.brandId === brandId)) form.elements.modelId.value = selectedModelId;
       };
@@ -4314,9 +4356,9 @@
       fillModels();
     }
     async function openNewAccessory() {
-      if (!canWriteAssets()) return notify('Aksesuar kaydı eklemek için yazma yetkiniz bulunmuyor.');
+      if (!canWriteAssets()) return notify(translateUiText('Aksesuar kaydı eklemek için yazma yetkiniz bulunmuyor.'));
       const form = $('#accessoryForm'); form.reset(); form.elements.accessoryId.value = ''; form.elements.quantity.closest('label').hidden = false;
-      await populateAccessoryCatalog(form); $('#accessoryFormStockNote').hidden = false; $('#accessoryFormTitle').textContent = 'Yeni aksesuar ekle'; $('#accessoryFormDialog').showModal();
+      await populateAccessoryCatalog(form); $('#accessoryFormStockNote').hidden = false; $('#accessoryFormTitle').textContent = 'Yeni aksesuar ekle'; applyShellLanguage(appearanceLanguage.value); $('#accessoryFormDialog').showModal();
     }
     async function editAccessory() {
       const form = $('#accessoryForm'); form.reset(); const item = currentAccessory;
@@ -4326,22 +4368,22 @@
       form.elements.location.value = item.location || ''; form.elements.minimumQuantity.value = item.minimumQuantity; form.elements.unitCost.value = item.unitCost ?? '';
       form.elements.currency.value = item.currency; form.elements.purchaseDate.value = item.purchaseDate || ''; form.elements.notes.value = item.notes || ''; form.elements.isRequestable.checked = item.isRequestable;
       form.elements.quantity.closest('label').hidden = true; $('#accessoryFormStockNote').hidden = true; $('#accessoryFormTitle').textContent = 'Aksesuar kaydını düzenle';
-      $('#accessoryDialog').close(); $('#accessoryFormDialog').showModal();
+      $('#accessoryDialog').close(); applyShellLanguage(appearanceLanguage.value); $('#accessoryFormDialog').showModal();
     }
     $('#accessoryQuickBrand').addEventListener('click', async () => {
-      const name = prompt('Marka adı:'); if (!name?.trim()) return;
-      try { const brand = await api('/api/lookups/brands', { method: 'POST', body: JSON.stringify({ name: name.trim() }) }); await populateAccessoryCatalog($('#accessoryForm'), brand.id); notify('Marka oluşturuldu. Logo ve üretici bilgilerini Markalar kataloğunda ekleyebilirsiniz.'); }
+      const name = prompt(translateUiText('Marka adı:')); if (!name?.trim()) return;
+      try { const brand = await api('/api/lookups/brands', { method: 'POST', body: JSON.stringify({ name: name.trim() }) }); await populateAccessoryCatalog($('#accessoryForm'), brand.id); notify(translateUiText('Marka oluşturuldu. Logo ve üretici bilgilerini Markalar kataloğunda ekleyebilirsiniz.')); }
       catch (error) { notify(error.message); }
     });
     $('#accessoryQuickModel').addEventListener('click', async () => {
       const form = $('#accessoryForm'), brandId = form.elements.brandId.value;
-      if (!brandId) { notify('Önce bir marka seçin.'); return; }
-      const name = prompt('Aksesuar model adı:'); if (!name?.trim()) return;
+      if (!brandId) { notify(translateUiText('Önce bir marka seçin.')); return; }
+      const name = prompt(translateUiText('Aksesuar model adı:')); if (!name?.trim()) return;
       try {
         const model = await api('/api/lookups/accessory-models', { method: 'POST', body: JSON.stringify({ name: name.trim(), brandId }) });
         const file = form.elements.modelPhoto.files?.[0];
         if (file) { const upload = new FormData(); upload.append('file', file); await api(`/api/accessory-models/${model.id}/photo`, { method: 'POST', body: upload }); }
-        await populateAccessoryCatalog(form, brandId, model.id); notify('Aksesuar modeli oluşturuldu ve seçildi.');
+        await populateAccessoryCatalog(form, brandId, model.id); notify(translateUiText('Aksesuar modeli oluşturuldu ve seçildi.'));
       } catch (error) { notify(error.message); }
     });
     async function populateAccessoryCheckoutTargets() {

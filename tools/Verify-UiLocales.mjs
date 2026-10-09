@@ -51,11 +51,19 @@ const requiredAccessoryLabels = [
   'Stok kodu tanımlanmamış', 'Az stok', 'Stokta', 'Ayrıntı', 'Düzenle', 'Teslim',
   'Bu filtrelerle eşleşen aksesuar bulunamadı.', 'Henüz aksesuar kaydı yok. İlk stok kaydını ekleyebilirsiniz.',
   'aksesuarını toplu işlem için seç', 'Sayfadakileri seç', 'Sayfa seçildi', 'Seçimi temizle',
-  'Seçilenleri teslim et', 'Seçilen stokları düzelt', 'aksesuar seçildi (en fazla 100)'
+  'Seçilenleri teslim et', 'Seçilen stokları düzelt', 'aksesuar seçildi (en fazla 100)',
+  'AKSESUAR KAYDI', 'Yeni aksesuar ekle', 'Aksesuar kaydını düzenle', 'Ad *', 'Kategori', 'Marka',
+  'Marka seçin (isteğe bağlı)', '＋ Marka oluştur', 'Model', 'Model seçin (isteğe bağlı)', '＋ Model oluştur',
+  'Model görseli (PNG/JPEG/WebP, en fazla 2 MiB)', 'Model numarası', 'Ürün numarası', 'Tedarikçi', 'Konum',
+  'Minimum stok', 'İlk stok adedi', 'Birim maliyeti', 'Para birimi', 'Alış tarihi', 'Notlar',
+  'Çalışan isteğine aç', 'İlk adet miktarı ilk stok girişi olarak geçmişe kaydedilir.', 'Kaydet', 'Kapat',
+  'Marka adı:', 'Aksesuar model adı:', 'Önce bir marka seçin.',
+  'Marka oluşturuldu. Logo ve üretici bilgilerini Markalar kataloğunda ekleyebilirsiniz.',
+  'Aksesuar modeli oluşturuldu ve seçildi.', 'Aksesuar kaydı eklemek için yazma yetkiniz bulunmuyor.'
 ];
 const requiredEmployeeLabels = [
   'Çalışan kayıtları', 'Departmana ve yöneticiye göre ilişki kurun; profilden doğrudan raporlayanları ve zimmetlerini görüntüleyin.',
-  'Menü, pano, varlık, çalışan listesi/profili ve zimmet formu ile aksesuar listeleri seçilen dile çevrildi. Diğer modüller sırayla ekleniyor.',
+  'Menü, pano, varlık, çalışan listesi/profili ve zimmet formu ile aksesuar listesi ve oluşturma/düzenleme formu seçilen dile çevrildi. Diğer modüller sırayla ekleniyor.',
   '↓ CSV dışa aktar', '＋ Çalışan ekle', 'Ad, personel no, e-posta, departman, görev veya konum ara',
   'Departman filtresi', 'Departmanı temizle', 'Yönetici adı veya personel no ara', 'Tüm yöneticiler',
   'Tüm çalışanlar', 'Aktif çalışanlar', 'Pasif çalışanlar', 'İşe başlama (başlangıç)',
