@@ -2588,6 +2588,20 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var assetAntiforgeryCookie = assetCsrfResponse.Headers.GetValues("Set-Cookie")
             .Select(value => value.Split(';', 2)[0])
             .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        using (var crossCompanyEmployeeUpload = await SendEmployeeDocumentUploadAsync(_otherCompanyEmployeeId, pdfBytes,
+            "intrusion.pdf", assetRequestToken, assetAntiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossCompanyEmployeeUpload.StatusCode);
+        using (var crossCompanyEmployeeDelete = await SendAsUserAsync(HttpMethod.Delete,
+            $"/api/employees/{_otherCompanyEmployeeId}/documents/{otherCompanyDocumentId}", _userId, _companyId,
+            requestToken: assetRequestToken, antiforgeryCookie: assetAntiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossCompanyEmployeeDelete.StatusCode);
+        Assert.True(File.Exists(Path.Combine(otherCompanyDocumentDirectory, $"{otherCompanyDocumentId:N}.pdf")));
+        await using (var verifyEmployeeScope = _factory.Services.CreateAsyncScope())
+        {
+            var verifyDb = verifyEmployeeScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.Equal(1, await verifyDb.EmployeeDocuments.CountAsync(x => x.CompanyId == _otherCompanyId &&
+                x.EmployeeId == _otherCompanyEmployeeId && x.Id == otherCompanyDocumentId));
+        }
         using (var crossCompanyAssetUpload = await SendAssetAttachmentUploadAsync(_otherCompanyAssetId, pdfBytes,
             "intrusion.pdf", assetRequestToken, assetAntiforgeryCookie))
             Assert.Equal(HttpStatusCode.NotFound, crossCompanyAssetUpload.StatusCode);
@@ -4165,6 +4179,15 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var multipart = new MultipartFormDataContent();
         multipart.Add(new ByteArrayContent(bytes), "file", fileName);
         return await SendAsUserAsync(HttpMethod.Post, $"/api/assets/{assetId}/attachments", _userId, _companyId,
+            multipart, requestToken, antiforgeryCookie);
+    }
+
+    private async Task<HttpResponseMessage> SendEmployeeDocumentUploadAsync(Guid employeeId, byte[] bytes, string fileName,
+        string requestToken, string antiforgeryCookie)
+    {
+        using var multipart = new MultipartFormDataContent();
+        multipart.Add(new ByteArrayContent(bytes), "file", fileName);
+        return await SendAsUserAsync(HttpMethod.Post, $"/api/employees/{employeeId}/documents", _userId, _companyId,
             multipart, requestToken, antiforgeryCookie);
     }
 

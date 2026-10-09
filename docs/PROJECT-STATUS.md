@@ -1,5 +1,7 @@
 # Proje ilerleme raporu
 
+- **9 Ekim çalışan belgesi kiracı erişimi:** Çalışan fotoğrafı/belge güvenlik kabuline yabancı tenant çalışanına belge yükleme ve silme girişimleri eklendi. HR dosya yetkisine sahip şirket yöneticisi için iki istek de `404` ile reddedildi; yabancı belgenin disk kopyası ve DB kaydı korundu. İzole PostgreSQL güvenlik/kabul paketi **57/57 geçti**; geçici Compose kaynakları kaldırıldı, yerel geliştirme veritabanı kullanılmadı.
+
 - **9 Ekim varlık eki erişim denetimi:** Çalışan fotoğraf/belge kabul senaryosuna yabancı şirkete ait varlık eklerini indirme, yükleme ve silme denemeleri eklendi. Her istek `404` ile reddedildi; yabancı şirket dosyası ve veritabanı eki korundu. İzole geçici PostgreSQL güvenlik/kabul paketi **57/57 geçti**; uygulama ve test veritabanı konteynerleri temizlendi. Yerel geliştirme veritabanı kullanılmadı.
 
 - **9 Ekim yabancı bakım eki erişim denetimi:** Var olan bakım eki kiracı kabul senaryosu genişletildi. Aktif şirket yöneticisiyle yabancı şirkete dosya yükleme, yabancı ek kimliğiyle indirme ve yabancı bakım ekini silme denemeleri `404` ile reddedildi; yabancı şirketin dosyası ve DB kaydı silinmeden kaldı. İzole geçici PostgreSQL güvenlik/kabul paketi **57/57 geçti**; test konteynerleri ve ağı temizlendi. Geliştirme DB'si kullanılmadı.

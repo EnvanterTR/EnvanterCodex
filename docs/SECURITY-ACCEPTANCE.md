@@ -26,6 +26,7 @@ Senaryo aynı eski `admin` kimlik bilgilerini her istekte tekrar gönderir ve ve
 - Aksesuar, sarf ve bileşen listesi/detay/CSV uçları diğer şirkete ait stok kayıtlarını göstermez. Birleşik stok hareketi listesi ve CSV'si de her stok türünü geçerli şirket için birleştirir.
 - Bakım eki kabulü, yabancı şirket bakımına dosya yükleme, yabancı bakım ekini indirme ve silme isteklerinin `404` döndürdüğünü; reddedilen işlemlerden sonra yabancı ekin veritabanı metaverisi ve disk dosyasının yerinde kaldığını doğrular.
 - Varlık dosya kabulü, yabancı şirkete ait varlık ekini indirme, yabancı varlığa dosya yükleme ve silme girişimlerinin `404` döndürdüğünü; yabancı ekin veritabanı metaverisiyle disk dosyasının korunduğunu doğrular.
+- Çalışan belge kabulü, yabancı şirkete ait çalışan profiline belge yükleme ve belge silme girişimlerinin `404` döndürdüğünü; yabancı belge metaverisiyle disk dosyasının korunduğunu doğrular.
 - Bileşen stok raporu yalnız etkin şirketin kayıtlarından toplam, zimmetli ve kullanılabilir adetleri hesaplar; kabul senaryosu diğer şirketteki bileşen miktarlarının rapor toplamlarına karışmadığını denetler.
 - Tamamlanmış fiziksel denetim raporu ile CSV dışa aktarımı yalnız etkin şirkete ait denetim ve varlık bilgilerini döndürür.
 - Talep kataloğunda talebe açık ve kullanılabilir kendi şirket varlığı görünür; diğer şirketin talep edilebilir varlığı sonuçlara sızmaz.
