@@ -3525,6 +3525,36 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var accessoryModelPhotoResponse = await SendAsRoleAsync(HttpMethod.Post, $"/api/accessory-models/{accessoryModelId}/photo", "admin", accessoryModelPhotoForm, requestToken, antiforgeryCookie);
         Assert.Equal(HttpStatusCode.OK, accessoryModelPhotoResponse.StatusCode);
 
+        var catalogImagePaths = new[]
+        {
+            $"/api/brands/{brandId}/logo",
+            $"/api/models/{modelId}/photo",
+            $"/api/accessory-models/{accessoryModelId}/photo",
+            $"/api/suppliers/{ownSupplierId}/logo"
+        };
+        foreach (var imagePath in catalogImagePaths)
+        {
+            using (var ownImage = await SendAsAdminAsync(imagePath))
+            {
+                Assert.Equal(HttpStatusCode.OK, ownImage.StatusCode);
+                Assert.Equal("image/png", ownImage.Content.Headers.ContentType?.MediaType);
+                Assert.Equal(png, await ownImage.Content.ReadAsByteArrayAsync());
+            }
+
+            using (var crossTenantRead = await SendAsAdminAsync(imagePath, _otherCompanyId))
+                Assert.Equal(HttpStatusCode.NotFound, crossTenantRead.StatusCode);
+
+            using (var crossTenantDelete = await SendAsUserAsync(HttpMethod.Delete, imagePath, _userId, _otherCompanyId,
+                requestToken: requestToken, antiforgeryCookie: antiforgeryCookie, role: "admin"))
+                Assert.Equal(HttpStatusCode.NotFound, crossTenantDelete.StatusCode);
+
+            using var crossTenantUploadForm = new MultipartFormDataContent();
+            crossTenantUploadForm.Add(new ByteArrayContent(png), "file", "cross-tenant.png");
+            using var crossTenantUpload = await SendAsUserAsync(HttpMethod.Post, imagePath, _userId, _otherCompanyId,
+                crossTenantUploadForm, requestToken, antiforgeryCookie, role: "admin");
+            Assert.Equal(HttpStatusCode.NotFound, crossTenantUpload.StatusCode);
+        }
+
         using var accessoryResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/accessories", "admin",
             System.Net.Http.Json.JsonContent.Create(new
             {
