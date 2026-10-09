@@ -25,6 +25,7 @@ const requiredAssetLabels = [
   'Çalışana zimmetle',
   'Fiziksel denetim kaydı aç',
   'Envanter etiketini yazdır',
+  'Varlığı kopyala',
   'Varlığı düzenle',
   'Varlığı arşive taşı',
   'Görsel yok',
