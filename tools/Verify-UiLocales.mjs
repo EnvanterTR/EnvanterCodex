@@ -270,7 +270,24 @@ const requiredApiErrorLabels = [
   'Rezervasyon durumu geçerli değil.',
   'Bu şirketteki etkin bir çalışan seçilmelidir.',
   'Dışa aktarım en fazla 10.000 satır içerir; filtreyi daraltın.',
-  'Aktif çalışan seçilmelidir.'
+  'Aktif çalışan seçilmelidir.',
+  'Authenticator uygulamanızdaki 6 haneli kodu veya tek kullanımlık kurtarma kodunu girin.',
+  'Çok sayıda hatalı doğrulama kodu. Bir süre sonra tekrar deneyin.',
+  'Doğrulama kodu geçersiz veya kullanılmış. Yeniden deneyin.',
+  'İlk kurulum zaten tamamlanmış.',
+  'Parolanız yenilendi. Yeni parolanızla giriş yapabilirsiniz.',
+  'Aynı isimde kayıt zaten var.',
+  'Aynı isimli kayıt zaten mevcut veya marka geçersiz.',
+  'Bu isimde kategori zaten var.',
+  'Bu isimde marka zaten var.',
+  'Bu marka altında aynı isimde model zaten var.',
+  'Bu marka varlıklarda veya modellerde kullanılıyor; önce ilişkili kayıtları düzenleyin.',
+  'Bu kategori varlıklarda kullanılıyor; silinemez.',
+  'Bu model varlıklarda kullanılıyor; silinemez.',
+  'Bu şirket içinde varlık etiketi zaten kayıtlı.',
+  'Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil. Hiçbir kayıt değiştirilmedi.',
+  'Hedef konum seçilen varlıklardan en az biri için zaten geçerli. Hiçbir kayıt değiştirilmedi.',
+  'Açık zimmetlerden biri bulunamadı. Hiçbir iade kaydedilmedi.'
 ];
 
 const invalidRows = Object.entries(sandbox.localeRows)
