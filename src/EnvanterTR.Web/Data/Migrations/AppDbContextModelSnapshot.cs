@@ -933,6 +933,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateOnly?>("PlannedOn")
                         .HasColumnType("date");
 
+                    b.Property<Guid?>("ResponsibleEmployeeId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateOnly>("StartedOn")
                         .HasColumnType("date");
 
@@ -964,6 +967,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasIndex("CompanyId", "AssetId", "CreatedAt");
 
                     b.HasIndex("CompanyId", "AssetId", "Status");
+
+                    b.HasIndex("CompanyId", "ResponsibleEmployeeId", "CreatedAt");
 
                     b.HasIndex("CompanyId", "Status", "PlannedOn");
 
@@ -3723,6 +3728,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "ResponsibleEmployeeId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("EnvanterTR.Web.Data.SupplierCatalogEntry", null)
                         .WithMany()

@@ -375,6 +375,7 @@ public sealed class AssetMaintenance
     public Guid CompanyId { get; set; }
     public Guid AssetId { get; set; }
     public Guid? ActorUserId { get; set; }
+    public Guid? ResponsibleEmployeeId { get; set; }
     public required string MaintenanceType { get; set; }
     public string? Supplier { get; set; }
     public Guid? SupplierId { get; set; }

@@ -2201,6 +2201,8 @@ public static class AssetEndpoints
                     (x.maintenance.Description != null && x.maintenance.Description.Contains(term)) ||
                     (x.maintenance.Notes != null && x.maintenance.Notes.Contains(term)) ||
                     (x.maintenance.CompletionNotes != null && x.maintenance.CompletionNotes.Contains(term)) ||
+                    db.Employees.Any(employee => employee.CompanyId == companyId && employee.Id == x.maintenance.ResponsibleEmployeeId &&
+                        (employee.DisplayName.Contains(term) || employee.EmployeeNumber.Contains(term))) ||
                     x.asset.AssetTag.Contains(term) || x.asset.Name.Contains(term) ||
                     (x.asset.SerialNumber != null && x.asset.SerialNumber.Contains(term)) ||
                     (x.asset.Location != null && x.asset.Location.Contains(term)));
@@ -2218,6 +2220,9 @@ public static class AssetEndpoints
                     x.maintenance.Description, x.maintenance.PlannedOn, x.maintenance.StartedOn, x.maintenance.CompletedOn,
                     x.maintenance.Status, x.maintenance.Cost, x.maintenance.Currency,
                     x.maintenance.Notes, x.maintenance.CompletionNotes,
+                    x.maintenance.ResponsibleEmployeeId,
+                    responsibleEmployeeName = db.Employees.Where(employee => employee.CompanyId == companyId && employee.Id == x.maintenance.ResponsibleEmployeeId)
+                        .Select(employee => employee.DisplayName).FirstOrDefault(),
                     actorName = db.Users.Where(actor => actor.Id == x.maintenance.ActorUserId)
                         .Select(actor => actor.DisplayName).FirstOrDefault()
                 }).ToListAsync(cancellationToken);
@@ -2254,6 +2259,8 @@ public static class AssetEndpoints
                     (x.maintenance.Description != null && x.maintenance.Description.Contains(term)) ||
                     (x.maintenance.Notes != null && x.maintenance.Notes.Contains(term)) ||
                     (x.maintenance.CompletionNotes != null && x.maintenance.CompletionNotes.Contains(term)) ||
+                    db.Employees.Any(employee => employee.CompanyId == companyId && employee.Id == x.maintenance.ResponsibleEmployeeId &&
+                        (employee.DisplayName.Contains(term) || employee.EmployeeNumber.Contains(term))) ||
                     x.asset.AssetTag.Contains(term) || x.asset.Name.Contains(term) ||
                     (x.asset.SerialNumber != null && x.asset.SerialNumber.Contains(term)) ||
                     (x.asset.Location != null && x.asset.Location.Contains(term)));
@@ -2262,17 +2269,19 @@ public static class AssetEndpoints
             context.Response.Headers["Content-Disposition"] = $"attachment; filename=envantertr-bakim-{DateTime.UtcNow:yyyyMMdd}.csv";
             context.Response.Headers["Cache-Control"] = "no-store";
             await using var writer = new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
-            await writer.WriteLineAsync("Varlık Etiketi;Varlık;Konum;Bakım Türü;Servis;Durum;Planlanan Tarih;Başlangıç;Tamamlanma;Maliyet;Para Birimi;İşlemi Yapan;Açıklama;Not;Tamamlanma Notu".AsMemory(), cancellationToken);
+            await writer.WriteLineAsync("Varlık Etiketi;Varlık;Konum;Bakım Türü;Servis;Sorumlu Çalışan;Durum;Planlanan Tarih;Başlangıç;Tamamlanma;Maliyet;Para Birimi;İşlemi Yapan;Açıklama;Not;Tamamlanma Notu".AsMemory(), cancellationToken);
             var rows = query.OrderByDescending(x => x.maintenance.PlannedOn ?? x.maintenance.StartedOn).ThenByDescending(x => x.maintenance.CreatedAt)
                 .Select(x => new { x.asset.AssetTag, AssetName = x.asset.Name, x.asset.Location,
                     x.maintenance.MaintenanceType, x.maintenance.Supplier, x.maintenance.Status,
                     x.maintenance.PlannedOn, x.maintenance.StartedOn, x.maintenance.CompletedOn, x.maintenance.Cost, x.maintenance.Currency,
+                    ResponsibleEmployeeName = db.Employees.Where(employee => employee.CompanyId == companyId && employee.Id == x.maintenance.ResponsibleEmployeeId)
+                        .Select(employee => employee.DisplayName).FirstOrDefault(),
                     ActorName = db.Users.Where(actor => actor.Id == x.maintenance.ActorUserId).Select(actor => actor.DisplayName).FirstOrDefault(),
                     x.maintenance.Description, x.maintenance.Notes, x.maintenance.CompletionNotes });
             await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
             {
                 var line = string.Join(';', new[] { CsvCell(row.AssetTag), CsvCell(row.AssetName), CsvCell(row.Location),
-                    CsvCell(row.MaintenanceType), CsvCell(row.Supplier), CsvCell(row.Status),
+                    CsvCell(row.MaintenanceType), CsvCell(row.Supplier), CsvCell(row.ResponsibleEmployeeName), CsvCell(row.Status),
                     CsvCell(row.PlannedOn?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)),
                     CsvCell(row.Status is "Scheduled" or "Cancelled" ? null : row.StartedOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)),
                     CsvCell(row.CompletedOn?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)),
@@ -2296,6 +2305,9 @@ public static class AssetEndpoints
                 {
                     x.Id, x.MaintenanceType, x.Supplier, x.Description, x.PlannedOn, x.StartedOn, x.CompletedOn,
                     x.Status, x.Cost, x.Currency, x.Notes, x.CompletionNotes, x.CreatedAt,
+                    x.ResponsibleEmployeeId,
+                    responsibleEmployeeName = db.Employees.Where(employee => employee.CompanyId == companyId && employee.Id == x.ResponsibleEmployeeId)
+                        .Select(employee => employee.DisplayName).FirstOrDefault(),
                     actorName = db.Users.Where(actor => actor.Id == x.ActorUserId)
                         .Select(actor => actor.DisplayName).FirstOrDefault()
                 }).ToListAsync(cancellationToken);
@@ -2315,6 +2327,9 @@ public static class AssetEndpoints
                 description?.Length > 1000 || notes?.Length > 2000 || request.PlannedOn < today ||
                 request.PlannedOn > today.AddYears(5) || request.Cost is < 0 or > 1_000_000_000m || !IsCurrency(request.Currency))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["maintenance"] = ["Bakım türü, gelecekteki plan tarihi, para birimi veya alan uzunluklarını kontrol edin."] });
+            if (request.ResponsibleEmployeeId is Guid scheduledEmployeeId &&
+                !await db.Employees.AnyAsync(employee => employee.CompanyId == companyId && employee.Id == scheduledEmployeeId && employee.IsActive, cancellationToken))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["responsibleEmployeeId"] = ["Sorumlu çalışan etkin ve bu şirkete bağlı olmalıdır."] });
 
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
             var asset = await db.Assets.FromSqlInterpolated(
@@ -2329,7 +2344,7 @@ public static class AssetEndpoints
             var now = DateTimeOffset.UtcNow;
             var maintenance = new AssetMaintenance
             {
-                CompanyId = companyId, AssetId = id, ActorUserId = CurrentUserId(user),
+                CompanyId = companyId, AssetId = id, ActorUserId = CurrentUserId(user), ResponsibleEmployeeId = request.ResponsibleEmployeeId,
                 MaintenanceType = type, Supplier = Clean(supplier), SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, supplier, cancellationToken), Description = Clean(description),
                 PlannedOn = request.PlannedOn, StartedOn = request.PlannedOn, Cost = request.Cost,
                 Currency = request.Currency.Trim().ToUpperInvariant(), Notes = Clean(notes),
@@ -2412,6 +2427,9 @@ public static class AssetEndpoints
                 request.StartedOn > DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) ||
                 request.Cost is < 0 or > 1_000_000_000m || !IsCurrency(request.Currency))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["maintenance"] = ["Bakım türü, tarih, para birimi veya alan uzunluklarını kontrol edin."] });
+            if (request.ResponsibleEmployeeId is Guid activeEmployeeId &&
+                !await db.Employees.AnyAsync(employee => employee.CompanyId == companyId && employee.Id == activeEmployeeId && employee.IsActive, cancellationToken))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["responsibleEmployeeId"] = ["Sorumlu çalışan etkin ve bu şirkete bağlı olmalıdır."] });
 
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
             var asset = await db.Assets.FromSqlInterpolated(
@@ -2426,7 +2444,7 @@ public static class AssetEndpoints
             var now = DateTimeOffset.UtcNow;
             var maintenance = new AssetMaintenance
             {
-                CompanyId = companyId, AssetId = id, ActorUserId = CurrentUserId(user),
+                CompanyId = companyId, AssetId = id, ActorUserId = CurrentUserId(user), ResponsibleEmployeeId = request.ResponsibleEmployeeId,
                 MaintenanceType = type, Supplier = Clean(supplier), SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, supplier, cancellationToken), Description = Clean(description),
                 StartedOn = request.StartedOn, Cost = request.Cost, Currency = request.Currency.Trim().ToUpperInvariant(),
                 Notes = Clean(notes), Status = "InProgress", CreatedAt = now, UpdatedAt = now
@@ -3085,9 +3103,9 @@ public static class AssetEndpoints
     public sealed record RecordAssetAuditRequest(DateOnly AuditDate, string? Notes, DateOnly? NextAuditOn = null);
     public sealed record TransferAssetRequest(string? TargetLocation, string? Notes);
     public sealed record StartMaintenanceRequest(string? MaintenanceType, string? Supplier, string? Description,
-        DateOnly StartedOn, decimal? Cost, string Currency, string? Notes);
+        DateOnly StartedOn, decimal? Cost, string Currency, string? Notes, Guid? ResponsibleEmployeeId = null);
     public sealed record ScheduleMaintenanceRequest(string? MaintenanceType, string? Supplier, string? Description,
-        DateOnly PlannedOn, decimal? Cost, string Currency, string? Notes);
+        DateOnly PlannedOn, decimal? Cost, string Currency, string? Notes, Guid? ResponsibleEmployeeId = null);
     public sealed record CompleteMaintenanceRequest(DateOnly CompletedOn, string? Notes);
     public sealed record SelectedAssetLabelsRequest(Guid[]? AssetIds);
     private sealed record LocationDirectoryEntry(string Name, int AssetCount, int AssignedCount, int AvailableCount,

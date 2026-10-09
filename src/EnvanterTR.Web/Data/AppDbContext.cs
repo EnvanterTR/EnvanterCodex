@@ -895,6 +895,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetMaintenance>().HasIndex(x => new { x.CompanyId, x.AssetId, x.CreatedAt });
         modelBuilder.Entity<AssetMaintenance>().HasIndex(x => new { x.CompanyId, x.AssetId, x.Status });
         modelBuilder.Entity<AssetMaintenance>().HasIndex(x => new { x.CompanyId, x.Status, x.PlannedOn });
+        modelBuilder.Entity<AssetMaintenance>().HasIndex(x => new { x.CompanyId, x.ResponsibleEmployeeId, x.CreatedAt });
         modelBuilder.Entity<AssetMaintenance>().HasIndex(x => new { x.CompanyId, x.AssetId })
             .IsUnique().HasFilter("\"Status\" IN ('InProgress', 'Scheduled')");
         modelBuilder.Entity<AssetMaintenance>().Property(x => x.MaintenanceType).HasMaxLength(120).IsRequired();
@@ -922,6 +923,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AssetMaintenance>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<AssetMaintenance>().HasOne<Employee>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ResponsibleEmployeeId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
 
         modelBuilder.Entity<AssetMaintenanceAttachment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AssetMaintenanceAttachment>().Property(x => x.OriginalFileName).HasMaxLength(255).IsRequired();
