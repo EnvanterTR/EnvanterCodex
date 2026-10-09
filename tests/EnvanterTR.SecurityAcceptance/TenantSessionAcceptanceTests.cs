@@ -1535,22 +1535,30 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 payload.RootElement.GetProperty("enabledKinds").EnumerateArray().Select(x => x.GetString()).ToArray());
         }
         using (var savedPreferences = await SendAsRoleAsync(HttpMethod.Put, "/api/notifications/preferences", "viewer",
-                   System.Net.Http.Json.JsonContent.Create(new { enabledKinds = new[] { "LICENSE", "warranty" }, emailEnabledKinds = new[] { "LICENSE" } }), requestToken, antiforgeryCookie))
+                   System.Net.Http.Json.JsonContent.Create(new { enabledKinds = new[] { "LICENSE", "warranty" }, emailEnabledKinds = new[] { "LICENSE", "assignment" } }), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.OK, savedPreferences.StatusCode);
         using (var savedPreferences = await SendAsRoleAsync(HttpMethod.Get, "/api/notifications/preferences", "viewer"))
         {
             using var payload = JsonDocument.Parse(await savedPreferences.Content.ReadAsStringAsync());
             Assert.Equal(new[] { "license", "warranty" },
                 payload.RootElement.GetProperty("enabledKinds").EnumerateArray().Select(x => x.GetString()).ToArray());
-            Assert.Equal(new[] { "license" },
+            Assert.Equal(new[] { "license", "assignment" },
                 payload.RootElement.GetProperty("emailEnabledKinds").EnumerateArray().Select(x => x.GetString()).ToArray());
         }
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var emailService = scope.ServiceProvider.GetRequiredService<OperationalNotificationEmailService>();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.AssetEvents.Add(new AssetEvent { CompanyId = _companyId, AssetId = _ownAssetId, EmployeeId = _ownEmployeeId,
+                ActorUserId = _userId, EventType = "Assigned", Details = "assignment-digest-fixture", OccurredAt = DateTimeOffset.UtcNow });
+            await db.SaveChangesAsync();
             await emailService.RunOnceAsync(CancellationToken.None);
             var deliveredDigest = Assert.Single(_smtpCapture.Messages);
             Assert.Contains($"To: acceptance-{_userId:N}@example.invalid", deliveredDigest, StringComparison.OrdinalIgnoreCase);
+            var digestBody = DecodeMimeBody(deliveredDigest);
+            Assert.Contains("Yeni zimmet", digestBody, StringComparison.Ordinal);
+            Assert.Contains("OWN-1", digestBody, StringComparison.Ordinal);
+            Assert.Contains("OWN-SECURITY-EMPLOYEE", digestBody, StringComparison.Ordinal);
             Assert.DoesNotContain("OTHER-SECURITY-LICENSE", deliveredDigest, StringComparison.Ordinal);
             await emailService.RunOnceAsync(CancellationToken.None);
             Assert.Single(_smtpCapture.Messages);
@@ -1565,6 +1573,9 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var invalidPreference = await SendAsRoleAsync(HttpMethod.Put, "/api/notifications/preferences", "viewer",
                    System.Net.Http.Json.JsonContent.Create(new { enabledKinds = new[] { "payroll" } }), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.BadRequest, invalidPreference.StatusCode);
+        using (var assignmentIsNotAInAppKind = await SendAsRoleAsync(HttpMethod.Put, "/api/notifications/preferences", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { enabledKinds = new[] { "assignment" }, emailEnabledKinds = Array.Empty<string>() }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, assignmentIsNotAInAppKind.StatusCode);
 
         var key = $"license:{_ownLicenseId:D}";
         using (var emptyState = await SendAsRoleAsync(HttpMethod.Get, $"/api/notifications/states?key={Uri.EscapeDataString(key)}", "viewer"))
@@ -3270,6 +3281,17 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var offset = hash[^1] & 0x0f;
         var binary = ((hash[offset] & 0x7f) << 24) | (hash[offset + 1] << 16) | (hash[offset + 2] << 8) | hash[offset + 3];
         return (binary % 1_000_000).ToString("D6", System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private static string DecodeMimeBody(string message)
+    {
+        var bodySeparator = message.IndexOf("\n\n", StringComparison.Ordinal);
+        Assert.True(bodySeparator >= 0, "The captured SMTP message must contain a MIME body.");
+        var headers = message[..bodySeparator];
+        var encodedBody = message[(bodySeparator + 2)..].Replace("\r", "", StringComparison.Ordinal).Trim();
+        return headers.Contains("Content-Transfer-Encoding: base64", StringComparison.OrdinalIgnoreCase)
+            ? Encoding.UTF8.GetString(Convert.FromBase64String(string.Concat(encodedBody.Where(character => !char.IsWhiteSpace(character)))))
+            : encodedBody;
     }
 
     private async Task<HttpResponseMessage> SendProfilePhotoUploadAsync(byte[] bytes, string requestToken, string antiforgeryCookie)

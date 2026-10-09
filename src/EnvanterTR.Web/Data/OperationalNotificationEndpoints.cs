@@ -11,6 +11,7 @@ public sealed record UpdateOperationalNotificationStateRequest(string? Kind, Gui
 public static class OperationalNotificationEndpoints
 {
     private static readonly string[] AllowedKinds = ["maintenance", "audit", "license", "warranty", "return"];
+    private static readonly string[] AllowedEmailKinds = [.. AllowedKinds, "assignment"];
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public static void MapOperationalNotificationEndpoints(this RouteGroupBuilder api)
@@ -35,13 +36,13 @@ public static class OperationalNotificationEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["enabledKinds"] = ["Bildirim türü seçimi geçersiz."] });
 
             var requestedEmailKinds = request.EmailEnabledKinds?.Select(kind => kind?.Trim().ToLowerInvariant()).ToArray() ?? [];
-            if (requestedEmailKinds.Length > AllowedKinds.Length ||
-                requestedEmailKinds.Any(kind => kind is null || !AllowedKinds.Contains(kind, StringComparer.Ordinal)) ||
+            if (requestedEmailKinds.Length > AllowedEmailKinds.Length ||
+                requestedEmailKinds.Any(kind => kind is null || !AllowedEmailKinds.Contains(kind, StringComparer.Ordinal)) ||
                 requestedEmailKinds.Distinct(StringComparer.Ordinal).Count() != requestedEmailKinds.Length)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["emailEnabledKinds"] = ["E-posta bildirim türü seçimi geçersiz."] });
 
             var kinds = AllowedKinds.Where(requestedKinds.Contains).ToArray();
-            var emailKinds = AllowedKinds.Where(requestedEmailKinds.Contains).ToArray();
+            var emailKinds = AllowedEmailKinds.Where(requestedEmailKinds.Contains).ToArray();
             var row = await db.OperationalNotificationPreferences.SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.UserId == userId, ct);
             if (row is null)
@@ -144,9 +145,9 @@ public static class OperationalNotificationEndpoints
         try
         {
             var kinds = JsonSerializer.Deserialize<string[]>(json, JsonOptions);
-            if (kinds is null || kinds.Length > AllowedKinds.Length || kinds.Any(x => !AllowedKinds.Contains(x, StringComparer.Ordinal)) ||
+            if (kinds is null || kinds.Length > AllowedEmailKinds.Length || kinds.Any(x => !AllowedEmailKinds.Contains(x, StringComparer.Ordinal)) ||
                 kinds.Distinct(StringComparer.Ordinal).Count() != kinds.Length) return [];
-            return AllowedKinds.Where(kinds.Contains).ToArray();
+            return AllowedEmailKinds.Where(kinds.Contains).ToArray();
         }
         catch (JsonException) { return []; }
     }

@@ -11,7 +11,7 @@ public sealed class OperationalNotificationEmailService(
     IConfiguration configuration,
     ILogger<OperationalNotificationEmailService> logger)
 {
-    private static readonly string[] AllowedKinds = ["maintenance", "audit", "license", "warranty", "return"];
+    private static readonly string[] AllowedKinds = ["maintenance", "audit", "license", "warranty", "return", "assignment"];
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly TimeSpan StaleClaimAge = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan RetryDelay = TimeSpan.FromHours(1);
@@ -211,6 +211,23 @@ public sealed class OperationalNotificationEmailService(
                 .Take(100).ToListAsync(cancellationToken);
             items.AddRange(upcomingReturns);
         }
+        if (kinds.Contains("assignment", StringComparer.Ordinal))
+        {
+            var rangeStartUtc = new DateTimeOffset(rangeStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+            var rangeEndExclusiveUtc = new DateTimeOffset(rangeEnd.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+            var rows = await (from assetEvent in db.AssetEvents.AsNoTracking()
+                              join asset in db.Assets.AsNoTracking() on new { assetEvent.CompanyId, AssetId = assetEvent.AssetId } equals new { asset.CompanyId, AssetId = asset.Id }
+                              join employee in db.Employees.AsNoTracking() on new { assetEvent.CompanyId, EmployeeId = assetEvent.EmployeeId!.Value } equals new { employee.CompanyId, EmployeeId = employee.Id }
+                              where assetEvent.CompanyId == companyId && assetEvent.EventType == "Assigned" && assetEvent.EmployeeId != null &&
+                                    assetEvent.OccurredAt >= rangeStartUtc && assetEvent.OccurredAt < rangeEndExclusiveUtc &&
+                                    asset.DeletedAt == null
+                              orderby assetEvent.OccurredAt descending, asset.AssetTag
+                              select new { assetEvent.OccurredAt, asset.AssetTag, asset.Name, EmployeeName = employee.DisplayName })
+                .Take(200).ToListAsync(cancellationToken);
+            items.AddRange(rows.Select(row => new OperationalReminderItem("assignment",
+                DateOnly.FromDateTime(row.OccurredAt.UtcDateTime), row.AssetTag + " · " + row.Name,
+                "Zimmetlenen çalışan · " + row.EmployeeName)));
+        }
         return items.OrderBy(x => x.Date).ThenBy(x => x.Kind, StringComparer.Ordinal).Take(500).ToList();
     }
 
@@ -227,7 +244,7 @@ public sealed class OperationalNotificationEmailService(
                 .Append(WebUtility.HtmlEncode(item.Detail ?? "")).Append("</td></tr>");
         }
         var link = WebUtility.HtmlEncode(new Uri(publicBaseUri, "/").AbsoluteUri);
-        var body = $"<div style=\"font-family:Arial,sans-serif;color:#25334a;max-width:760px;margin:auto\"><h2>EnvanterTR operasyon özeti</h2><p>Son 7 gün ve gelecek 30 gün içindeki seçtiğiniz bakım, denetim, lisans, garanti ve iade kayıtları:</p><table style=\"width:100%;border-collapse:collapse;text-align:left\"><thead><tr><th style=\"padding:8px\">Tür</th><th style=\"padding:8px\">Tarih</th><th style=\"padding:8px\">Kayıt</th><th style=\"padding:8px\">Açıklama</th></tr></thead><tbody>{rows}</tbody></table><p><a href=\"{link}\">EnvanterTR uygulamasını aç</a></p><p style=\"color:#738197;font-size:12px\">Bu özeti bildirim tercihlerinde e-posta hatırlatmalarını seçtiğiniz için aldınız.</p></div>";
+        var body = $"<div style=\"font-family:Arial,sans-serif;color:#25334a;max-width:760px;margin:auto\"><h2>EnvanterTR operasyon özeti</h2><p>Son 7 gün ve gelecek 30 gün içinde seçtiğiniz bakım, denetim, lisans, garanti, iade ve yeni zimmet kayıtları:</p><table style=\"width:100%;border-collapse:collapse;text-align:left\"><thead><tr><th style=\"padding:8px\">Tür</th><th style=\"padding:8px\">Tarih</th><th style=\"padding:8px\">Kayıt</th><th style=\"padding:8px\">Açıklama</th></tr></thead><tbody>{rows}</tbody></table><p><a href=\"{link}\">EnvanterTR uygulamasını aç</a></p><p style=\"color:#738197;font-size:12px\">Bu özeti bildirim tercihlerinde e-posta hatırlatmalarını seçtiğiniz için aldınız.</p></div>";
         var message = new MailMessage(new MailAddress(fromAddress, fromName), recipient)
         {
             Subject = "EnvanterTR · yaklaşan işler özeti",
@@ -279,6 +296,7 @@ public sealed class OperationalNotificationEmailService(
         "license" => "Lisans bitişi",
         "warranty" => "Garanti bitişi",
         "return" => "Varlık iadesi",
+        "assignment" => "Yeni zimmet",
         _ => "İş"
     };
 
