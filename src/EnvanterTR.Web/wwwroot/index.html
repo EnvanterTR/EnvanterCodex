@@ -265,8 +265,8 @@
     .row-actions .btn:active:not(:disabled){transform:translateY(0);box-shadow:inset 0 2px 4px #172b4624}
     .row-actions .btn:focus-visible{outline:2px solid #3488f4;outline-offset:2px;z-index:1}
     .row-actions .btn:disabled{opacity:.48;cursor:not-allowed;box-shadow:none}
-    .relationship-link,.text-link{color:#1769c2;text-decoration:none;text-underline-offset:2px}
-    .relationship-link:hover,.text-link:hover{color:#0d4f99;text-decoration:underline}
+    .relationship-link,.text-link,.row-open-link,.employee-profile-link{color:#1769c2;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;cursor:pointer}
+    .relationship-link:hover,.text-link:hover,.row-open-link:hover,.employee-profile-link:hover{color:#0d4f99;text-decoration-thickness:2px}
     .relationship-link:focus-visible,.text-link:focus-visible{outline:2px solid #3488f4;outline-offset:3px;border-radius:3px}
     .relation-clear{white-space:nowrap}
     .column-picker{position:relative}.column-picker>summary{list-style:none}.column-picker>summary::-webkit-details-marker{display:none}.column-picker fieldset{position:absolute;top:calc(100% + 7px);right:0;z-index:6;min-width:205px;margin:0;padding:9px;border:1px solid #dce4ee;border-radius:9px;background:#fff;box-shadow:0 10px 28px #10213a24}.column-picker legend{padding:0 5px;color:#66758c;font-size:.67rem;font-weight:700}.column-picker fieldset label{display:flex;align-items:center;gap:8px;padding:6px 4px;color:#33445e;font-size:.71rem;cursor:pointer}.column-picker input{margin:0}td[hidden],th[hidden]{display:none!important}button:disabled{cursor:not-allowed;opacity:.55}
@@ -1342,8 +1342,62 @@
       'Bekleyen teslimatlar':['Pending deliveries','Ожидаемые поставки','Очікувані постачання','Очекувани испораки'],'Amortisman ve defter değeri':['Depreciation and book value','Амортизация и балансовая стоимость','Амортизація та балансова вартість','Амортизација и книговодствена вредност'],
       'Özel varlık raporu':['Custom asset report','Пользовательский отчёт по активам','Власний звіт про активи','Прилагоден извештај за средства'],'Rapor tasarımı':['Report setup','Настройка отчёта','Налаштування звіту','Поставување извештај']
     });
+    Object.assign(localeRows, {
+      'Şirket kapsamındaki tüm kayıtlar':['All company records','Все записи компании','Усі записи компанії','Сите записи во компанијата'],'Çalışanlara zimmetli':['Assigned to employees','Выдано сотрудникам','Закріплено за працівниками','Задолжено на вработени'],
+      'Dağıtıma hazır':['Ready to deploy','Готово к выдаче','Готове до видачі','Подготвено за доделување'],'İşlem gerektiriyor':['Requires attention','Требует внимания','Потребує уваги','Потребува внимание'],
+      'Henüz raporlanacak varlık kaydı yok.':['No asset records to report yet.','Пока нет активов для отчёта.','Ще немає активів для звіту.','Сè уште нема средства за извештај.'],'Varlıkları aç →':['Open assets →','Открыть активы →','Відкрити активи →','Отвори средства →'],
+      'Hiçbir varlıkta alış bedeli kaydedilmemiş.':['No asset has a recorded purchase cost.','Стоимость покупки не указана ни для одного актива.','Вартість придбання не вказана для жодного активу.','Нема евидентирана куповна цена за ниту едно средство.'],
+      'varlıkta alış bedeli girilmiş; {count} varlıkta bedel boş. Tutarlar para birimine göre ayrı tutulur, çevrilmez ve muhasebe defter değeri olarak yorumlanmamalıdır.':['Purchase cost is recorded for {count} assets; it is missing for {without}. Amounts remain separate by currency, are not converted, and are not accounting book values.','Стоимость покупки указана для {count} активов, для {without} она отсутствует. Суммы разделены по валютам, не конвертируются и не являются бухгалтерской балансовой стоимостью.','Вартість придбання вказана для {count} активів, для {without} її немає. Суми розділені за валютами, не конвертуються й не є бухгалтерською балансовою вартістю.','Куповната цена е внесена за {count} средства, а недостасува за {without}. Износите се одделни по валута, не се конвертираат и не се сметководствена книговодствена вредност.'],
+      'Henüz kategori bazında raporlanacak varlık yok.':['No assets to report by category yet.','Пока нет активов для отчёта по категориям.','Ще немає активів для звіту за категоріями.','Сè уште нема средства за извештај по категории.'],'İncele →':['Review →','Просмотреть →','Переглянути →','Прегледај →'],
+      'Alış tarihi filtresi: {from} – {to}. Alış tarihi boş kayıtlar kapsam dışı.':['Purchase date filter: {from} – {to}. Records without a purchase date are excluded.','Фильтр по дате покупки: {from} – {to}. Записи без даты покупки исключены.','Фільтр за датою придбання: {from} – {to}. Записи без дати придбання виключені.','Филтер за датум на купување: {from} – {to}. Записите без датум се исклучени.'],
+      'Alış tarihi girilmiş veya boş olan tüm varlıklar.':['All assets, with or without a purchase date.','Все активы, с датой покупки или без неё.','Усі активи, з датою придбання або без неї.','Сите средства, со или без датум на купување.'],
+      'Bu arama veya tarih aralığında alış kaydı bulunamadı.':['No purchase records match this search or date range.','Поиск или период не дал записей о покупках.','За цим пошуком або періодом записів про придбання не знайдено.','Нема записи за купување за ова пребарување или период.'],'Henüz varlık alış kaydı yok.':['No asset purchase records yet.','Записей о покупках активов пока нет.','Записів про придбання активів ще немає.','Сè уште нема записи за купување средства.'],'Bedel girilmemiş':['Cost not recorded','Стоимость не указана','Вартість не вказана','Цената не е внесена'],
+      '{count} kayıt':['{count} records','{count} записей','{count} записів','{count} записи'],'Kayıt yok':['No records','Нет записей','Немає записів','Нема записи'],'Sayfa {page} / {pages} · {count} kayıt':['Page {page} / {pages} · {count} records','Страница {page} / {pages} · {count} записей','Сторінка {page} / {pages} · {count} записів','Страница {page} / {pages} · {count} записи'],
+      'Rapor tarihi {date}; iptal edilmiş siparişler ve teslim alınmış kalemler kapsam dışıdır.':['Report date: {date}; cancelled orders and received items are excluded.','Дата отчёта: {date}; отменённые заказы и полученные позиции исключены.','Дата звіту: {date}; скасовані замовлення та отримані позиції виключені.','Датум на извештајот: {date}; откажаните нарачки и примените ставки се исклучени.'],
+      'Gecikmiş sipariş':['Overdue orders','Просроченные заказы','Прострочені замовлення','Задоцнети нарачки'],'Tarihi belirtilmemiş':['Undated','Без даты','Без дати','Без датум'],'Beklenen kalan adet':['Units remaining','Остаток единиц','Залишок одиниць','Преостанати единици'],'{count} açık kalem':['{count} open lines','{count} открытых позиций','{count} відкритих позицій','{count} отворени ставки'],'teslim tarihi girilmemiş kalem':['lines without a delivery date','позиции без даты поставки','позиції без дати постачання','ставки без датум на испорака'],'tüm açık siparişlerde':['across all open orders','во всех открытых заказах','за всіма відкритими замовленнями','во сите отворени нарачки'],
+      'Bu filtrelerde bekleyen teslimat bulunamadı.':['No pending deliveries match these filters.','Нет ожидаемых поставок по этим фильтрам.','Немає очікуваних постачань за цими фільтрами.','Нема очекувани испораки за овие филтри.'],'Bekleyen sipariş teslimatı yok.':['No pending order deliveries.','Нет ожидающих поставок по заказам.','Немає очікуваних постачань за замовленнями.','Нема очекувани испораки од нарачки.'],'Tarih belirtilmemiş':['Not dated','Дата не указана','Дату не вказано','Нема датум'],'Sipariş verildi':['Ordered','Заказано','Замовлено','Нарачано'],'Kısmi teslim alındı':['Partially received','Получено частично','Отримано частково','Делумно примено'],'{count} kalem · Sayfa {page} / {pages}':['{count} lines · Page {page} / {pages}','{count} позиций · Страница {page} / {pages}','{count} позицій · Сторінка {page} / {pages}','{count} ставки · Страница {page} / {pages}'],
+      '{count} uygun varlık':['{count} eligible assets','{count} подходящих активов','{count} відповідних активів','{count} соодветни средства'],'{date} tarihi itibarıyla; modele amortisman politikası tanımlanmış varlıklar.':['As of {date}; assets whose model has a depreciation policy.','По состоянию на {date}; активы с политикой амортизации модели.','Станом на {date}; активи з політикою амортизації моделі.','На {date}; средства со политика за амортизација на моделот.'],
+      'Amortisman politikası, alış tarihi ve alış bedeli olan varlık bulunamadı.':['No assets have a depreciation policy, purchase date, and purchase cost.','Не найдено активов с политикой амортизации, датой и стоимостью покупки.','Не знайдено активів із політикою амортизації, датою та вартістю придбання.','Не се пронајдени средства со политика за амортизација, датум и куповна цена.'],'Bu aramayla eşleşen amortisman kaydı yok.':['No depreciation records match this search.','Поиск не дал записей об амортизации.','За цим пошуком записів про амортизацію не знайдено.','Нема записи за амортизација за ова пребарување.'],'Amortisman politikası tanımlı uygun varlık yok.':['No eligible assets with a depreciation policy.','Нет подходящих активов с политикой амортизации.','Немає відповідних активів із політикою амортизації.','Нема соодветни средства со политика за амортизација.'],'Yarım yıl · satın alma dönemine göre':['Half-year · based on purchase period','Полугодовой · по периоду покупки','Піврічний · за періодом придбання','Половина година · според периодот на купување'],
+      'Bileşen kaydı':['Component records','Записи компонентов','Записи компонентів','Записи на компоненти'],'Şirket kapsamındaki ürün çeşidi':['Product types in this company','Типы товаров в компании','Типи товарів у компанії','Видови производи во компанијата'],'Kaydedilmiş toplam stok':['Recorded total stock','Учтённый запас','Облікований запас','Евидентирана вкупна залиха'],'Varlıklarda kullanımda':['In use in assets','Используется в активах','Використовується в активах','Се користи во средствата'],'{count} düşük stok kaydı':['{count} low-stock records','{count} записей с низким запасом','{count} записів із низьким запасом','{count} записи со ниска залиха'],'{count} kategori; düşük stok, kullanılabilir adedin minimum miktara eşit veya altında olduğu bileşen kayıtlarını sayar.':['{count} categories; low stock counts components at or below their minimum available quantity.','{count} категорий; низкий запас — компоненты, доступное количество которых не превышает минимум.','{count} категорій; низький запас — компоненти, доступна кількість яких не перевищує мінімум.','{count} категории; ниска залиха се компоненти со достапна количина еднаква или помала од минимумот.'],'Henüz raporlanacak bileşen stoğu yok.':['No component stock to report yet.','Пока нет запасов компонентов для отчёта.','Ще немає запасів компонентів для звіту.','Сè уште нема залиха на компоненти за извештај.'],
+      'Tamamlanan fiziksel denetim':['Completed physical audits','Завершённые физические проверки','Завершені фізичні аудити','Завршени физички проверки'],'Seçili tarih ve arama filtrelerine göre':['Based on selected date and search filters','По выбранным датам и поиску','За вибраними датами та пошуком','Според избраните датуми и пребарување'],'{count} denetim bulundu; kayıtlar en yeniden eskiye sıralandı.':['{count} audits found; newest records are shown first.','Найдено проверок: {count}; сначала показаны последние.','Знайдено аудитів: {count}; спочатку показано найновіші.','Пронајдени проверки: {count}; најновите се прикажани први.'],'Seçili ölçütlerle tamamlanmış denetim bulunamadı.':['No completed audits match the selected criteria.','По выбранным критериям завершённых проверок нет.','За вибраними критеріями завершених аудитів немає.','Нема завршени проверки според избраните критериуми.'],'Seçili filtrelerde fiziksel denetim kaydı yok.':['No physical audit records match the selected filters.','Нет записей физической проверки по выбранным фильтрам.','Немає записів фізичного аудиту за вибраними фільтрами.','Нема записи за физичка проверка според избраните филтри.'],'Silinmiş varlık':['Deleted asset','Удалённый актив','Видалений актив','Избришано средство'],'Sayfa {page} / {pages} · {count} kayıt':['Page {page} / {pages} · {count} records','Страница {page} / {pages} · {count} записей','Сторінка {page} / {pages} · {count} записів','Страница {page} / {pages} · {count} записи'],
+      'Başlangıç tarihi: {from} – {to}. Planlı işler değil, başlamış bakımlar sayılır.':['Start date: {from} – {to}. Started maintenance is counted; scheduled work is not.','Дата начала: {from} – {to}. Учитывается начатое обслуживание, но не запланированное.','Дата початку: {from} – {to}. Враховано розпочате обслуговування, а не заплановане.','Датум на почеток: {from} – {to}. Се брои започнато, не планирано одржување.'],'Tüm şirket bakım kayıtları; yalnızca başlamış veya tamamlanmış işler rapora girer.':['All company maintenance records; only started or completed work is included.','Все записи обслуживания компании; учитываются только начатые и завершённые работы.','Усі записи обслуговування компанії; враховано лише розпочаті або завершені роботи.','Сите записи за одржување; се вклучени само започнати или завршени работи.'],'Toplam bakım':['Total maintenance','Всего работ','Усього робіт','Вкупно одржување'],'Seçili tarih aralığında':['In selected date range','За выбранный период','За вибраний період','Во избраниот период'],'Devam eden':['In progress','В процессе','Триває','Во тек'],'Henüz tamamlanmamış':['Not yet completed','Ещё не завершено','Ще не завершено','Сè уште не е завршено'],'Tamamlanan':['Completed','Завершено','Завершено','Завршено'],'Kapanış kaydı bulunan':['With a completion record','С записью о завершении','Із записом про завершення','Со запис за завршување'],'Seçili aralıkta bakım kaydı yok.':['No maintenance records in the selected range.','За выбранный период записей обслуживания нет.','За вибраний період записів про обслуговування немає.','Нема записи за одржување во избраниот период.'],'Bakım maliyeti kaydı yok.':['No maintenance cost records.','Нет записей о стоимости обслуживания.','Немає записів про вартість обслуговування.','Нема записи за трошоци за одржување.'],'Seçili filtrelerde fiziksel denetim kaydı yok.':['No physical audits match the selected filters.','Нет физических проверок по выбранным фильтрам.','Немає фізичних аудитів за вибраними фільтрами.','Нема физички проверки според избраните филтри.'],
+      'yaklaşan garanti bitişleri':['upcoming warranty expirations','ближайшее окончание гарантии','найближче завершення гарантії','претстојно истекување на гаранција'],'süresi dolmuş garantiler':['expired warranties','истёкшие гарантии','гарантії, строк яких минув','истечени гаранции'],'seçili dönemin sonrasındaki garantiler':['warranties expiring after the selected period','гарантии после выбранного периода','гарантії після вибраного періоду','гаранции по избраниот период'],'garanti tarihi girilmemiş varlıklar':['assets without a warranty date','активы без даты гарантии','активи без дати гарантії','средства без датум на гаранција'],'tüm garanti tarihleri':['all warranty dates','все даты гарантии','усі дати гарантії','сите датуми на гаранција'],'garanti kayıtları':['warranty records','записи о гарантии','записи про гарантію','записи за гаранција'],'Arşivlenmiş varlıklar kapsam dışıdır.':['Archived assets are excluded.','Архивные активы исключены.','Архівні активи виключені.','Архивираните средства се исклучени.'],'Süresi dolan':['Expired','Истекло','Строк минув','Истечено'],'Bugünden önce biten':['Expired before today','Истекло до сегодняшнего дня','Минуло до сьогодні','Истечено пред денес'],'Yaklaşan':['Upcoming','Скоро истекает','Наближається','Претстои'],'Seçili dönem içinde':['Within selected period','В выбранный период','У вибраному періоді','Во избраниот период'],'Tarihi olmayan':['No date','Без даты','Без дати','Без датум'],'Garanti tarihi girilmemiş':['Warranty date not entered','Дата гарантии не указана','Дату гарантії не вказано','Не е внесен датум на гаранција'],'Bu filtrelerle eşleşen varlık bulunamadı.':['No assets match these filters.','Нет активов по этим фильтрам.','Немає активів за цими фільтрами.','Нема средства според овие филтри.'],
+      'yaklaşan lisans bitişleri':['upcoming license expirations','ближайшее окончание лицензий','найближче завершення ліцензій','претстојно истекување на лиценци'],'süresi dolmuş lisanslar':['expired licenses','истёкшие лицензии','ліцензії, строк яких минув','истечени лиценци'],'seçili dönemin sonrasındaki lisanslar':['licenses expiring after the selected period','лицензии после выбранного периода','ліцензії після вибраного періоду','лиценци по избраниот период'],'bitiş tarihi girilmemiş lisanslar':['licenses without an expiration date','лицензии без даты окончания','ліцензії без дати завершення','лиценци без датум на истекување'],'tüm lisanslar':['all licenses','все лицензии','усі ліцензії','сите лиценци'],'lisanslar':['licenses','лицензии','ліцензії','лиценци'],'Sayılar şirket kapsamındadır.':['Counts are scoped to this company.','Показатели относятся к этой компании.','Показники стосуються цієї компанії.','Бројките се во опсегот на компанијата.'],'Bu filtrelerle eşleşen lisans bulunamadı.':['No licenses match these filters.','Нет лицензий по этим фильтрам.','Немає ліцензій за цими фільтрами.','Нема лиценци според овие филтри.'],'Süre belirtilmemiş':['No expiration date','Срок не указан','Строк не вказано','Нема наведен рок'],'Abonelik':['Subscription','Подписка','Підписка','Претплата'],'Süresiz':['Perpetual','Бессрочная','Безстрокова','Неограничена'],'Cihaz':['Device','Устройство','Пристрій','Уред'],'Kurumsal':['Site','Корпоративная','Корпоративна','Корпоративна'],'Deneme':['Trial','Пробная','Пробна','Пробна'],'Diğer':['Other','Другое','Інше','Друго'],'{count} boş':['{count} available','{count} свободно','{count} вільно','{count} слободни'],'Evet':['Yes','Да','Так','Да'],'Hayır':['No','Нет','Ні','Не']
+    });
+    Object.assign(localeRows, {
+      '{priced} varlıkta alış bedeli girilmiş; {missing} varlıkta bedel boş. Tutarlar para birimine göre ayrı tutulur, çevrilmez ve muhasebe defter değeri olarak yorumlanmamalıdır.':['Purchase cost is recorded for {priced} assets and missing for {missing}. Amounts stay separate by currency, are not converted, and are not accounting book values.','Стоимость покупки указана для {priced} активов и отсутствует для {missing}. Суммы разделены по валютам, не конвертируются и не являются бухгалтерской балансовой стоимостью.','Вартість придбання вказана для {priced} активів і відсутня для {missing}. Суми розділені за валютами, не конвертуються й не є бухгалтерською балансовою вартістю.','Куповната цена е внесена за {priced} средства и недостасува за {missing}. Износите се одделни по валута, не се конвертираат и не се сметководствена книговодствена вредност.'],
+      'en eski':['earliest','самая ранняя дата','найраніша дата','најран датум'],'en yeni':['latest','самая поздняя дата','найпізніша дата','најдоцен датум'],
+      '{page}. sayfa · {start}–{end} / {total}':['Page {page} · {start}–{end} / {total}','Страница {page} · {start}–{end} / {total}','Сторінка {page} · {start}–{end} / {total}','Страница {page} · {start}–{end} / {total}'],
+      'kalem':['line','позиция','позиція','ставка'],'varlık':['asset','актив','актив','средство'],'siparişini aç':['open order','открыть заказ','відкрити замовлення','отвори нарачка'],
+      'Alış tarihi: {from} – {to}; tarihi olmayan kayıtlar dahil edilmez.':['Purchase dates: {from} – {to}; records without a date are excluded.','Дата покупки: {from} – {to}; записи без даты исключены.','Дата придбання: {from} – {to}; записи без дати виключені.','Датум на купување: {from} – {to}; записите без датум се исклучени.'],
+      '{date} tarihi itibarıyla; modele amortisman politikası tanımlanmış varlıklar.':['As of {date}; assets whose model has a depreciation policy.','По состоянию на {date}; активы с политикой амортизации модели.','Станом на {date}; активи з політикою амортизації моделі.','На {date}; средства со политика за амортизација на моделот.'],
+      '{count} varlık · Sayfa {page} / {pages}':['{count} assets · Page {page} / {pages}','{count} активов · Страница {page} / {pages}','{count} активів · Сторінка {page} / {pages}','{count} средства · Страница {page} / {pages}'],
+      '{from} – {to} dönemi; {state}. Arşivlenmiş varlıklar kapsam dışıdır.':['Period {from} – {to}; {state}. Archived assets are excluded.','Период {from} – {to}; {state}. Архивные активы исключены.','Період {from} – {to}; {state}. Архівні активи виключені.','Период {from} – {to}; {state}. Архивираните средства се исклучени.'],
+      '{from} – {to}; {state}. Sayılar şirket kapsamındadır.':['{from} – {to}; {state}. Counts are scoped to this company.','{from} – {to}; {state}. Показатели относятся к этой компании.','{from} – {to}; {state}. Показники стосуються цієї компанії.','{from} – {to}; {state}. Бројките се во опсегот на компанијата.'],
+      'Başlangıç tarihi bitiş tarihinden sonra olamaz.':['Start date cannot be after end date.','Дата начала не может быть позже даты окончания.','Дата початку не може бути пізніше дати завершення.','Датумот на почеток не може да биде по датумот на завршување.']
+    });
+    Object.assign(localeRows, {
+      'Filtre':['Filter','Фильтр','Фільтр','Филтер'],'Tümü':['All','Все','Усі','Сите'],'Özet':['Summary','Сводка','Підсумок','Резиме'],'Bölüm':['Section','Раздел','Розділ','Дел'],'Kayıt':['Record','Запись','Запис','Запис'],'Atanmış':['Assigned','Выдано','Призначено','Задолжено'],'Kullanılabilir':['Available','Доступно','Доступно','Достапно'],'Bakımda':['In maintenance','На обслуживании','На обслуговуванні','На одржување'],'Alış Bedeli':['Purchase Cost','Стоимость покупки','Вартість придбання','Куповна цена'],'Para Birimi':['Currency','Валюта','Валюта','Валута'],'Alış tarihi başlangıcı':['Purchase date from','Дата покупки с','Дата придбання від','Датум на купување од'],'Alış tarihi bitişi':['Purchase date to','Дата покупки по','Дата придбання до','Датум на купување до'],
+      'Toplam varlık':['Total assets','Всего активов','Усього активів','Вкупно средства'],'Alış bedeli kayıtlı varlık':['Assets with purchase cost','Активы с указанной стоимостью покупки','Активи із зазначеною вартістю придбання','Средства со внесена куповна цена'],'Alış bedeli girilmemiş varlık':['Assets without purchase cost','Активы без стоимости покупки','Активи без вартості придбання','Средства без куповна цена'],'Durum':['Status','Статус','Стан','Статус'],'Kategori':['Category','Категория','Категорія','Категорија'],'Kaydı olan varlık':['Assets with a recorded cost','Активы с указанной стоимостью','Активи із зафіксованою вартістю','Средства со евидентирана цена'],
+      'Tarih filtresi kapalı; tüm varlıklar gösteriliyor.':['Date filter is off; all assets are shown.','Фильтр по дате отключён; показаны все активы.','Фільтр за датою вимкнено; показано всі активи.','Филтерот за датум е исклучен; прикажани се сите средства.'],
+      'Önce güncel rapor verilerini yükleyin.':['Load the latest report data first.','Сначала загрузите актуальные данные отчёта.','Спочатку завантажте актуальні дані звіту.','Прво вчитајте ги најновите податоци за извештајот.'],'Güncel rapor Excel uyumlu CSV olarak indirildi. Para birimleri ayrı satırlardadır.':['The current report was downloaded as Excel-compatible CSV. Currencies are listed on separate rows.','Актуальный отчёт загружен в формате CSV для Excel. Валюты указаны отдельными строками.','Поточний звіт завантажено у форматі CSV для Excel. Валюти наведені в окремих рядках.','Тековниот извештај е преземен како Excel-компатибилен CSV. Валутите се во одделни редови.'],
+      'Bölüm':['Section','Раздел','Розділ','Дел'],'Para Birimi':['Currency','Валюта','Валюта','Валута'],'Alış bedeli kayıtlı varlık':['Assets with purchase cost','Активы с указанной стоимостью покупки','Активи із зазначеною вартістю придбання','Средства со внесена куповна цена']
+    });
     const localeIndexes = { en: 0, ru: 1, uk: 2, mk: 3 };
-    function translateUiText(text) { const key = String(text ?? ''), index = localeIndexes[appearanceLanguage.value]; return index === undefined ? key : (localeRows[key]?.[index] || key); }
+    function translateUiText(text) {
+      const key = String(text ?? ''), index = localeIndexes[appearanceLanguage.value];
+      if (index === undefined) return key;
+      if (localeRows[key]?.[index]) return localeRows[key][index];
+      for (const [template, translations] of Object.entries(localeRows)) {
+        if (!template.includes('{') || !translations?.[index]) continue;
+        const names = [...template.matchAll(/\{([^}]+)\}/g)].map(match => match[1]);
+        const pattern = '^' + template.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\{[^}]+\}/g, '([\\s\\S]*?)') + '$';
+        const match = key.match(new RegExp(pattern));
+        if (!match) continue;
+        return names.reduce((result, name, position) => result.replaceAll(`{${name}}`, match[position + 1]), translations[index]);
+      }
+      return key;
+    }
     const localeTextNodes = new WeakMap();
     function applyShellLanguage(language) {
       const index = localeIndexes[language];
@@ -3028,8 +3082,9 @@
     }
     function reportEmpty(host, columnCount, message) {
       const row = document.createElement('tr'), cell = document.createElement('td');
-      cell.colSpan = columnCount; cell.textContent = message; row.append(cell); host.append(row);
+      cell.colSpan = columnCount; cell.textContent = translateUiText(message); row.append(cell); host.append(row);
     }
+    function reportTemplate(template, values) { return Object.entries(values).reduce((result, [name, value]) => result.replaceAll(`{${name}}`, String(value)), translateUiText(template)); }
     function formatRecordedCurrency(amount, currency) {
       const [whole = '0', fraction = ''] = String(amount ?? '0').split('.');
       const groupedWhole = new Intl.NumberFormat(selectedLocale, { maximumFractionDigits: 0 }).format(BigInt(whole || '0'));
@@ -3046,21 +3101,22 @@
       return `"${safe.replaceAll('"', '""')}"`;
     }
     function exportAssetReportCsv() {
-      if (!latestAssetReport) { notify('Önce güncel rapor verilerini yükleyin.'); return; }
-      const rows = [['Bölüm','Kayıt','Toplam','Atanmış','Kullanılabilir','Bakımda','Alış Bedeli','Para Birimi']];
-      rows.push(['Filtre', 'Alış tarihi başlangıcı', latestAssetReport.purchaseDateFrom || 'Tümü', '', '', '', '', '']);
-      rows.push(['Filtre', 'Alış tarihi bitişi', latestAssetReport.purchaseDateTo || 'Tümü', '', '', '', '', '']);
-      rows.push(['Özet','Toplam varlık', latestAssetReport.totalAssets, '', '', '', '', '']);
-      rows.push(['Özet','Alış bedeli kayıtlı varlık', latestAssetReport.pricedAssetCount, '', '', '', '', '']);
-      rows.push(['Özet','Alış bedeli girilmemiş varlık', latestAssetReport.withoutPurchaseCostCount, '', '', '', '', '']);
-      for (const item of latestAssetReport.statusCounts || []) rows.push(['Durum', statusLabel(item.status), item.count, '', '', '', '', '']);
-      for (const item of latestAssetReport.categories || []) rows.push(['Kategori', item.name, item.assetCount, item.assignedCount, item.availableCount, item.maintenanceCount, '', '']);
-      for (const item of latestAssetReport.purchaseCostByCurrency || []) rows.push(['Alış bedeli', 'Kaydı olan varlık', item.recordedAssetCount, '', '', '', String(item.recordedPurchaseCostExact ?? item.recordedPurchaseCost).replace('.', ','), item.currency]);
+      if (!latestAssetReport) { notify(translateUiText('Önce güncel rapor verilerini yükleyin.')); return; }
+      const t = translateUiText;
+      const rows = [['Bölüm','Kayıt','Toplam','Atanmış','Kullanılabilir','Bakımda','Alış Bedeli','Para Birimi'].map(t)];
+      rows.push([t('Filtre'), t('Alış tarihi başlangıcı'), latestAssetReport.purchaseDateFrom || t('Tümü'), '', '', '', '', '']);
+      rows.push([t('Filtre'), t('Alış tarihi bitişi'), latestAssetReport.purchaseDateTo || t('Tümü'), '', '', '', '', '']);
+      rows.push([t('Özet'),t('Toplam varlık'), latestAssetReport.totalAssets, '', '', '', '', '']);
+      rows.push([t('Özet'),t('Alış bedeli kayıtlı varlık'), latestAssetReport.pricedAssetCount, '', '', '', '', '']);
+      rows.push([t('Özet'),t('Alış bedeli girilmemiş varlık'), latestAssetReport.withoutPurchaseCostCount, '', '', '', '', '']);
+      for (const item of latestAssetReport.statusCounts || []) rows.push([t('Durum'), t(statusLabel(item.status)), item.count, '', '', '', '', '']);
+      for (const item of latestAssetReport.categories || []) rows.push([t('Kategori'), item.name, item.assetCount, item.assignedCount, item.availableCount, item.maintenanceCount, '', '']);
+      for (const item of latestAssetReport.purchaseCostByCurrency || []) rows.push([t('Alış bedeli'), t('Kaydı olan varlık'), item.recordedAssetCount, '', '', '', String(item.recordedPurchaseCostExact ?? item.recordedPurchaseCost).replace('.', ','), item.currency]);
       const csv = '\uFEFF' + rows.map(row => row.map(reportCsvCell).join(';')).join('\r\n');
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
       const dateSuffix = latestAssetReport.purchaseDateFrom || latestAssetReport.purchaseDateTo ? `-${latestAssetReport.purchaseDateFrom || 'baslangic'}-${latestAssetReport.purchaseDateTo || 'bugun'}` : '';
       const link = document.createElement('a'); link.href = url; link.download = `envantertr-envanter-raporu${dateSuffix}-${new Date().toISOString().slice(0,10)}.csv`; link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000); notify('Güncel rapor Excel uyumlu CSV olarak indirildi. Para birimleri ayrı satırlardadır.');
+      setTimeout(() => URL.revokeObjectURL(url), 1000); notify(translateUiText('Güncel rapor Excel uyumlu CSV olarak indirildi. Para birimleri ayrı satırlardadır.'));
     }
     async function loadAssetReports() {
       latestAssetReport = null; $('#reportExport').disabled = true;
@@ -3070,8 +3126,8 @@
       const result = await api(`/api/reports/assets${params.size ? `?${params}` : ''}`);
       latestAssetReport = result; $('#reportExport').disabled = false;
       $('#reportDateNote').textContent = result.purchaseDateFrom || result.purchaseDateTo
-        ? `Alış tarihi filtresi: ${result.purchaseDateFrom || 'en eski'} – ${result.purchaseDateTo || 'en yeni'}. Alış tarihi boş kayıtlar kapsam dışı.`
-        : 'Tarih filtresi kapalı; tüm varlıklar gösteriliyor.';
+        ? reportTemplate('Alış tarihi filtresi: {from} – {to}. Alış tarihi boş kayıtlar kapsam dışı.', { from: result.purchaseDateFrom || translateUiText('en eski'), to: result.purchaseDateTo || translateUiText('en yeni') })
+        : translateUiText('Tarih filtresi kapalı; tüm varlıklar gösteriliyor.');
       const statusMap = Object.fromEntries((result.statusCounts || []).map(item => [item.status, item.count]));
       const tiles = $('#reportSummary'); tiles.replaceChildren();
       for (const [label, value, note] of [
@@ -3081,9 +3137,9 @@
         ['Bakımda', statusMap.Maintenance || 0, 'İşlem gerektiriyor']
       ]) {
         const card = document.createElement('article'); card.className = 'stat';
-        const caption = document.createElement('div'); caption.className = 'stat-top'; caption.textContent = label;
+        const caption = document.createElement('div'); caption.className = 'stat-top'; caption.textContent = translateUiText(label);
         const number = document.createElement('strong'); number.textContent = fmt.format(value || 0);
-        const hint = document.createElement('small'); hint.textContent = note; card.append(caption, number, hint); tiles.append(card);
+        const hint = document.createElement('small'); hint.textContent = translateUiText(note); card.append(caption, number, hint); tiles.append(card);
       }
 
       const statusRows = $('#reportStatusRows'); statusRows.replaceChildren();
@@ -3091,7 +3147,7 @@
       for (const item of result.statusCounts || []) {
         const row = document.createElement('tr'), stateCell = document.createElement('td'), count = document.createElement('td'), action = document.createElement('td');
         const pill = document.createElement('span'); pill.className = `pill ${item.status === 'Maintenance' ? 'warn' : item.status === 'Available' ? 'blue' : ''}`; pill.textContent = statusLabel(item.status); stateCell.append(pill); count.textContent = fmt.format(item.count);
-        const link = document.createElement('button'); link.type = 'button'; link.className = 'text-link'; link.textContent = 'Varlıkları aç →';
+        const link = document.createElement('button'); link.type = 'button'; link.className = 'text-link'; link.textContent = translateUiText('Varlıkları aç →');
         link.addEventListener('click', () => { $('#assetStatusFilter').value = item.status; $('#assetCategoryFilter').value = ''; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = ''; assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = ''; updateAssetRelationFilter(); $('[data-page="Varlıklar"]').click(); });
         action.append(link); row.append(stateCell, count, action); statusRows.append(row);
       }
@@ -3103,7 +3159,7 @@
         for (const value of [item.currency, fmt.format(item.recordedAssetCount), formatRecordedCurrency(item.recordedPurchaseCostExact ?? item.recordedPurchaseCost, item.currency)]) { const cell = document.createElement('td'); cell.textContent = value; row.append(cell); }
         costRows.append(row);
       }
-      $('#reportCostNote').textContent = `${fmt.format(result.pricedAssetCount || 0)} varlıkta alış bedeli girilmiş; ${fmt.format(result.withoutPurchaseCostCount || 0)} varlıkta bedel boş. Tutarlar para birimine göre ayrı tutulur, çevrilmez ve muhasebe defter değeri olarak yorumlanmamalıdır.`;
+      $('#reportCostNote').textContent = reportTemplate('{priced} varlıkta alış bedeli girilmiş; {missing} varlıkta bedel boş. Tutarlar para birimine göre ayrı tutulur, çevrilmez ve muhasebe defter değeri olarak yorumlanmamalıdır.', { priced: fmt.format(result.pricedAssetCount || 0), missing: fmt.format(result.withoutPurchaseCostCount || 0) });
 
       const categoryRows = $('#reportCategoryRows'); categoryRows.replaceChildren();
       if (!(result.categories || []).length) reportEmpty(categoryRows, 6, 'Henüz kategori bazında raporlanacak varlık yok.');
@@ -3113,7 +3169,7 @@
         const openAssets = () => { $('#assetStatusFilter').value = ''; $('#assetCategoryFilter').value = item.categoryId; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = ''; assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = ''; updateAssetRelationFilter(); $('[data-page="Varlıklar"]').click(); };
         category.addEventListener('click', openAssets); name.append(category); row.append(name);
         for (const value of [item.assetCount, item.assignedCount, item.availableCount, item.maintenanceCount]) { const cell = document.createElement('td'); cell.textContent = fmt.format(value); row.append(cell); }
-        const action = document.createElement('td'), open = document.createElement('button'); open.type = 'button'; open.className = 'btn small'; open.textContent = 'İncele →'; open.addEventListener('click', openAssets); action.append(open); row.append(action); categoryRows.append(row);
+        const action = document.createElement('td'), open = document.createElement('button'); open.type = 'button'; open.className = 'btn small'; open.textContent = translateUiText('İncele →'); open.addEventListener('click', openAssets); action.append(open); row.append(action); categoryRows.append(row);
       }
       await loadAssetPurchaseReport(1);
     }
@@ -3126,26 +3182,26 @@
       const result = await api(`/api/reports/assets/purchases?${params}`);
       if (requestId !== assetPurchaseReportRequestId) return;
       assetPurchaseReportTotal = result.total;
-      $('#assetPurchaseReportNote').textContent = from || to ? `Alış tarihi: ${from || 'en eski'} – ${to || 'en yeni'}; tarihi olmayan kayıtlar dahil edilmez.` : 'Alış tarihi girilmiş veya boş olan tüm varlıklar.';
+      $('#assetPurchaseReportNote').textContent = from || to ? reportTemplate('Alış tarihi: {from} – {to}; tarihi olmayan kayıtlar dahil edilmez.', { from: from || translateUiText('en eski'), to: to || translateUiText('en yeni') }) : translateUiText('Alış tarihi girilmiş veya boş olan tüm varlıklar.');
       const rows = $('#assetPurchaseReportRows'); rows.replaceChildren();
       if (!result.items.length) reportEmpty(rows, 8, q || from || to ? 'Bu arama veya tarih aralığında alış kaydı bulunamadı.' : 'Henüz varlık alış kaydı yok.');
       for (const item of result.items) {
         const row = document.createElement('tr');
-        for (const value of [item.purchaseDate || '—', null, item.name, item.serialNumber || '—', item.category || '—', statusLabel(item.status), item.purchaseCost == null ? 'Bedel girilmemiş' : formatRecordedCurrency(item.purchaseCost, item.currency), item.location || '—']) {
+        for (const value of [item.purchaseDate || '—', null, item.name, item.serialNumber || '—', item.category || '—', translateUiText(statusLabel(item.status)), item.purchaseCost == null ? translateUiText('Bedel girilmemiş') : formatRecordedCurrency(item.purchaseCost, item.currency), item.location || '—']) {
           const cell = document.createElement('td'); if (value !== null) cell.textContent = value; row.append(cell);
         }
         const tagCell = row.children[1], tag = document.createElement('button'); tag.type = 'button'; tag.className = 'text-link'; tag.textContent = item.assetTag; tag.setAttribute('aria-label', `${item.assetTag}, varlık ayrıntısını aç`); tag.addEventListener('click', () => openAsset(item.id).catch(error => notify(error.message))); tagCell.append(tag);
         rows.append(row);
       }
-      $('#assetPurchaseReportCount').textContent = `${fmt.format(assetPurchaseReportTotal)} kayıt`;
-      $('#assetPurchaseReportPageInfo').textContent = assetPurchaseReportTotal ? `${assetPurchaseReportPage}. sayfa · ${Math.min((assetPurchaseReportPage - 1) * 50 + 1, assetPurchaseReportTotal)}–${Math.min(assetPurchaseReportPage * 50, assetPurchaseReportTotal)} / ${fmt.format(assetPurchaseReportTotal)}` : 'Kayıt yok';
+      $('#assetPurchaseReportCount').textContent = reportTemplate('{count} kayıt', { count: fmt.format(assetPurchaseReportTotal) });
+      $('#assetPurchaseReportPageInfo').textContent = assetPurchaseReportTotal ? reportTemplate('{page}. sayfa · {start}–{end} / {total}', { page: fmt.format(assetPurchaseReportPage), start: fmt.format(Math.min((assetPurchaseReportPage - 1) * 50 + 1, assetPurchaseReportTotal)), end: fmt.format(Math.min(assetPurchaseReportPage * 50, assetPurchaseReportTotal)), total: fmt.format(assetPurchaseReportTotal) }) : translateUiText('Kayıt yok');
       $('#assetPurchaseReportPrev').disabled = assetPurchaseReportPage <= 1;
       $('#assetPurchaseReportNext').disabled = assetPurchaseReportPage * 50 >= assetPurchaseReportTotal;
     }
     function exportAssetPurchaseReport() {
       const params = new URLSearchParams(), q = $('#assetPurchaseReportSearch').value.trim(), from = $('#reportDateFrom').value, to = $('#reportDateTo').value;
       if (q) params.set('q', q); if (from) params.set('from', from); if (to) params.set('to', to);
-      if (from && to && from > to) { notify('Başlangıç tarihi bitiş tarihinden sonra olamaz.'); return; }
+      if (from && to && from > to) { notify(translateUiText('Başlangıç tarihi bitiş tarihinden sonra olamaz.')); return; }
       window.location.href = `/api/reports/assets/purchases/export.csv?${params}`;
     }
     function pendingDeliveryParams(includePage=true) {
@@ -3160,31 +3216,31 @@
       const result = await api(`/api/reports/pending-deliveries?${params}`);
       if (requestId !== pendingDeliveryRequestId) return;
       pendingDeliveryPage = result.page || 1;
-      $('#pendingDeliveryNote').textContent = `Rapor tarihi ${formatDate(result.asOf)}; iptal edilmiş siparişler ve teslim alınmış kalemler kapsam dışıdır.`;
-      $('#pendingDeliveryCount').textContent = `${fmt.format(result.total || 0)} kalem`;
+      $('#pendingDeliveryNote').textContent = reportTemplate('Rapor tarihi {date}; iptal edilmiş siparişler ve teslim alınmış kalemler kapsam dışıdır.', { date: formatDate(result.asOf) });
+      $('#pendingDeliveryCount').textContent = `${fmt.format(result.total || 0)} ${translateUiText('kalem')}`;
       const summary = $('#pendingDeliverySummary'); summary.replaceChildren();
       for (const [label,value,note] of [
         ['Gecikmiş sipariş',result.summary?.overdueOrders||0,`${fmt.format(result.summary?.overdueLines||0)} açık kalem`],
         ['Tarihi belirtilmemiş',result.summary?.undatedLines||0,'teslim tarihi girilmemiş kalem'],
         ['Beklenen kalan adet',result.summary?.remainingUnits||0,'tüm açık siparişlerde']
-      ]) { const card=document.createElement('article');card.className='stat';const caption=document.createElement('div');caption.className='stat-top';caption.textContent=label;const number=document.createElement('strong');number.textContent=fmt.format(value);const hint=document.createElement('small');hint.textContent=note;card.append(caption,number,hint);summary.append(card); }
+      ]) { const card=document.createElement('article');card.className='stat';const caption=document.createElement('div');caption.className='stat-top';caption.textContent=translateUiText(label);const number=document.createElement('strong');number.textContent=fmt.format(value);const hint=document.createElement('small');hint.textContent=label==='Gecikmiş sipariş'?reportTemplate('{count} açık kalem',{count:fmt.format(result.summary?.overdueLines||0)}):translateUiText(note);card.append(caption,number,hint);summary.append(card); }
       const rows=$('#pendingDeliveryRows');rows.replaceChildren();
       if (!(result.items||[]).length) reportEmpty(rows,9,$('#pendingDeliverySearch').value.trim()||$('#pendingDeliveryState').value!=='all'?'Bu filtrelerde bekleyen teslimat bulunamadı.':'Bekleyen sipariş teslimatı yok.');
       for (const item of result.items||[]) {
         const row=document.createElement('tr');
-        const expected=document.createElement('td');expected.textContent=item.expectedOn?formatDate(item.expectedOn):'Tarih belirtilmemiş';
+        const expected=document.createElement('td');expected.textContent=item.expectedOn?formatDate(item.expectedOn):translateUiText('Tarih belirtilmemiş');
         if(item.expectedOn&&item.expectedOn<result.asOf) expected.className='pill warn';
-        const type=document.createElement('td');type.textContent=item.orderType;
-        const orderCell=document.createElement('td'),order=document.createElement('button');order.type='button';order.className='text-link';order.textContent=item.orderNumber;order.setAttribute('aria-label',`${item.orderNumber} siparişini aç`);order.addEventListener('click',()=>openPendingDeliveryOrder(item).catch(error=>notify(error.message)));orderCell.append(order);
+        const type=document.createElement('td');type.textContent=translateUiText(item.orderType);
+        const orderCell=document.createElement('td'),order=document.createElement('button');order.type='button';order.className='text-link';order.textContent=item.orderNumber;order.setAttribute('aria-label',`${item.orderNumber} ${translateUiText('siparişini aç')}`);order.addEventListener('click',()=>openPendingDeliveryOrder(item).catch(error=>notify(error.message)));orderCell.append(order);
         const supplier=document.createElement('td');supplier.textContent=item.supplier;
         const name=document.createElement('td');name.textContent=item.itemName;
         const quantity=document.createElement('td');quantity.textContent=fmt.format(item.quantity);
         const received=document.createElement('td');received.textContent=fmt.format(item.quantityReceived);
         const remaining=document.createElement('td');remaining.textContent=fmt.format(item.remaining);
-        const status=document.createElement('td');status.textContent=item.status==='PartiallyReceived'?'Kısmi teslim alındı':'Sipariş verildi';
+        const status=document.createElement('td');status.textContent=translateUiText(item.status==='PartiallyReceived'?'Kısmi teslim alındı':'Sipariş verildi');
         row.append(expected,type,orderCell,supplier,name,quantity,received,remaining,status);rows.append(row);
       }
-      $('#pendingDeliveryPageInfo').textContent=`${fmt.format(result.total||0)} kalem · Sayfa ${result.page||1} / ${result.pageCount||1}`;
+      $('#pendingDeliveryPageInfo').textContent=reportTemplate('{count} kalem · Sayfa {page} / {pages}',{count:fmt.format(result.total||0),page:fmt.format(result.page||1),pages:fmt.format(result.pageCount||1)});
       $('#pendingDeliveryPrev').disabled=(result.page||1)<=1;$('#pendingDeliveryNext').disabled=(result.page||1)>=(result.pageCount||1);
     }
     async function openPendingDeliveryOrder(item) {
@@ -3202,16 +3258,16 @@
     async function loadDepreciationReport(page=depreciationReportPage) {
       depreciationReportPage=Math.max(1,page);const requestId=++depreciationReportRequestId,params=depreciationReportParams();
       const result=await api(`/api/reports/depreciation?${params}`);if(requestId!==depreciationReportRequestId)return;
-      depreciationReportPage=result.page||1;$('#depreciationReportCount').textContent=`${fmt.format(result.total||0)} uygun varlık`;
-      $('#depreciationReportNote').textContent=`${formatDate(result.asOf)} tarihi itibarıyla; modele amortisman politikası tanımlanmış varlıklar.`;
+      depreciationReportPage=result.page||1;$('#depreciationReportCount').textContent=reportTemplate('{count} uygun varlık',{count:fmt.format(result.total||0)});
+      $('#depreciationReportNote').textContent=reportTemplate('{date} tarihi itibarıyla; modele amortisman politikası tanımlanmış varlıklar.',{date:formatDate(result.asOf)});
       const summary=$('#depreciationReportSummary');summary.replaceChildren();
-      if(!(result.totalsByCurrency||[]).length){const empty=document.createElement('p');empty.className='muted';empty.textContent='Amortisman politikası, alış tarihi ve alış bedeli olan varlık bulunamadı.';summary.append(empty);}
-      for(const total of result.totalsByCurrency||[])for(const [label,value] of [['Alış bedeli',total.acquisitionCost],['Aylık amortisman',total.monthlyDepreciation],['Birikmiş amortisman',total.accumulatedDepreciation],['Defter değeri',total.bookValue]]){const card=document.createElement('article');card.className='stat';const caption=document.createElement('div');caption.className='stat-top';caption.textContent=`${label} · ${total.currency}`;const amount=document.createElement('strong');amount.textContent=formatRecordedCurrency(value,total.currency);const hint=document.createElement('small');hint.textContent=`${fmt.format(total.assetCount)} varlık`;card.append(caption,amount,hint);summary.append(card);}
+      if(!(result.totalsByCurrency||[]).length){const empty=document.createElement('p');empty.className='muted';empty.textContent=translateUiText('Amortisman politikası, alış tarihi ve alış bedeli olan varlık bulunamadı.');summary.append(empty);}
+      for(const total of result.totalsByCurrency||[])for(const [label,value] of [['Alış bedeli',total.acquisitionCost],['Aylık amortisman',total.monthlyDepreciation],['Birikmiş amortisman',total.accumulatedDepreciation],['Defter değeri',total.bookValue]]){const card=document.createElement('article');card.className='stat';const caption=document.createElement('div');caption.className='stat-top';caption.textContent=`${translateUiText(label)} · ${total.currency}`;const amount=document.createElement('strong');amount.textContent=formatRecordedCurrency(value,total.currency);const hint=document.createElement('small');hint.textContent=`${fmt.format(total.assetCount)} ${translateUiText('varlık')}`;card.append(caption,amount,hint);summary.append(card);}
       const rows=$('#depreciationReportRows');rows.replaceChildren();
       if(!(result.items||[]).length)reportEmpty(rows,10,$('#depreciationReportSearch').value.trim()?'Bu aramayla eşleşen amortisman kaydı yok.':'Amortisman politikası tanımlı uygun varlık yok.');
       const methodLabel={linear:'Doğrusal',half_1:'Yarım yıl · ilk dönem',half_2:'Yarım yıl · satın alma dönemine göre'};
-      for(const item of result.items||[]){const row=document.createElement('tr');const tagCell=document.createElement('td'),tag=document.createElement('button');tag.type='button';tag.className='text-link';tag.textContent=`${item.assetTag} · ${item.name}`;tag.addEventListener('click',()=>openAsset(item.id).catch(error=>notify(error.message)));tagCell.append(tag);const model=document.createElement('td');model.textContent=item.model||'—';row.append(tagCell,model);for(const value of [formatDate(item.purchaseDate),formatDate(item.endOfLife),formatRecordedCurrency(item.purchaseCost,item.currency),formatRecordedCurrency(item.monthlyDepreciation,item.currency),formatRecordedCurrency(item.accumulatedDepreciation,item.currency),formatRecordedCurrency(item.bookValue,item.currency),fmt.format(item.remainingMonths),methodLabel[item.method]||item.method]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}rows.append(row);}
-      $('#depreciationReportPageInfo').textContent=`${fmt.format(result.total||0)} varlık · Sayfa ${result.page||1} / ${result.pageCount||1}`;$('#depreciationReportPrev').disabled=(result.page||1)<=1;$('#depreciationReportNext').disabled=(result.page||1)>=(result.pageCount||1);
+      for(const item of result.items||[]){const row=document.createElement('tr');const tagCell=document.createElement('td'),tag=document.createElement('button');tag.type='button';tag.className='text-link';tag.textContent=`${item.assetTag} · ${item.name}`;tag.addEventListener('click',()=>openAsset(item.id).catch(error=>notify(error.message)));tagCell.append(tag);const model=document.createElement('td');model.textContent=item.model||'—';row.append(tagCell,model);for(const value of [formatDate(item.purchaseDate),formatDate(item.endOfLife),formatRecordedCurrency(item.purchaseCost,item.currency),formatRecordedCurrency(item.monthlyDepreciation,item.currency),formatRecordedCurrency(item.accumulatedDepreciation,item.currency),formatRecordedCurrency(item.bookValue,item.currency),fmt.format(item.remainingMonths),translateUiText(methodLabel[item.method]||item.method)]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}rows.append(row);}
+      $('#depreciationReportPageInfo').textContent=reportTemplate('{count} varlık · Sayfa {page} / {pages}',{count:fmt.format(result.total||0),page:fmt.format(result.page||1),pages:fmt.format(result.pageCount||1)});$('#depreciationReportPrev').disabled=(result.page||1)<=1;$('#depreciationReportNext').disabled=(result.page||1)>=(result.pageCount||1);
     }
     function exportDepreciationReport(){window.location.href=`/api/reports/depreciation/export.csv?${depreciationReportParams(false)}`;}
     async function loadComponentReport() {
@@ -3221,14 +3277,14 @@
         ['Bileşen kaydı', result.componentCount, 'Şirket kapsamındaki ürün çeşidi'],
         ['Toplam adet', result.totalQuantity, 'Kaydedilmiş toplam stok'],
         ['Atanmış adet', result.allocatedQuantity, 'Varlıklarda kullanımda'],
-        ['Kullanılabilir adet', result.availableQuantity, `${fmt.format(result.lowStockCount)} düşük stok kaydı`]
+        ['Kullanılabilir adet', result.availableQuantity, '{count} düşük stok kaydı']
       ]) {
         const card = document.createElement('article'); card.className = 'stat';
-        const caption = document.createElement('div'); caption.className = 'stat-top'; caption.textContent = label;
+        const caption = document.createElement('div'); caption.className = 'stat-top'; caption.textContent = translateUiText(label);
         const number = document.createElement('strong'); number.textContent = fmt.format(value || 0);
-        const hint = document.createElement('small'); hint.textContent = note; card.append(caption, number, hint); summary.append(card);
+        const hint = document.createElement('small'); hint.textContent = note.includes('{count}') ? reportTemplate(note,{count:fmt.format(result.lowStockCount||0)}) : translateUiText(note); card.append(caption, number, hint); summary.append(card);
       }
-      $('#componentReportNote').textContent = `${fmt.format(result.categoryCount || 0)} kategori; düşük stok, kullanılabilir adedin minimum miktara eşit veya altında olduğu bileşen kayıtlarını sayar.`;
+      $('#componentReportNote').textContent = reportTemplate('{count} kategori; düşük stok, kullanılabilir adedin minimum miktara eşit veya altında olduğu bileşen kayıtlarını sayar.',{count:fmt.format(result.categoryCount||0)});
       const rows = $('#componentReportRows'); rows.replaceChildren();
       if (!(result.categories || []).length) reportEmpty(rows, 6, 'Henüz raporlanacak bileşen stoğu yok.');
       for (const item of result.categories || []) {
@@ -3248,23 +3304,23 @@
       const result = await api(`/api/reports/audits?${params}`); auditReportPage = result.page;
       const summary = $('#auditReportSummary'); summary.replaceChildren();
       const card = document.createElement('article'); card.className = 'stat';
-      const caption = document.createElement('div'); caption.className = 'stat-top'; caption.textContent = 'Tamamlanan fiziksel denetim';
+      const caption = document.createElement('div'); caption.className = 'stat-top'; caption.textContent = translateUiText('Tamamlanan fiziksel denetim');
       const number = document.createElement('strong'); number.textContent = fmt.format(result.total || 0);
-      const hint = document.createElement('small'); hint.textContent = 'Seçili tarih ve arama filtrelerine göre'; card.append(caption, number, hint); summary.append(card);
-      $('#auditReportNote').textContent = result.total ? `${fmt.format(result.total)} denetim bulundu; kayıtlar en yeniden eskiye sıralandı.` : 'Seçili ölçütlerle tamamlanmış denetim bulunamadı.';
+      const hint = document.createElement('small'); hint.textContent = translateUiText('Seçili tarih ve arama filtrelerine göre'); card.append(caption, number, hint); summary.append(card);
+      $('#auditReportNote').textContent = result.total ? reportTemplate('{count} denetim bulundu; kayıtlar en yeniden eskiye sıralandı.',{count:fmt.format(result.total)}) : translateUiText('Seçili ölçütlerle tamamlanmış denetim bulunamadı.');
       const rows = $('#auditReportRows'); rows.replaceChildren();
       if (!result.items.length) reportEmpty(rows, 6, 'Seçili filtrelerde fiziksel denetim kaydı yok.');
       for (const item of result.items) {
         const row = document.createElement('tr');
         const date = document.createElement('td'); date.textContent = new Intl.DateTimeFormat(selectedLocale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.occurredAt)); row.append(date);
-        const tag = document.createElement('td'), open = document.createElement('button'); open.type = 'button'; open.className = 'employee-profile-link'; open.textContent = item.assetTag || 'Silinmiş varlık';
+        const tag = document.createElement('td'), open = document.createElement('button'); open.type = 'button'; open.className = 'employee-profile-link'; open.textContent = item.assetTag || translateUiText('Silinmiş varlık');
         if (item.assetId) open.addEventListener('click', () => openAsset(item.assetId).catch(error => notify(error.message))); else open.disabled = true;
         tag.append(open); row.append(tag);
         for (const value of [item.assetName, item.location, item.actorName, item.details]) { const cell = document.createElement('td'); cell.textContent = value || '—'; row.append(cell); }
         rows.append(row);
       }
       const pageCount = result.pageCount || 1;
-      $('#auditReportPageInfo').textContent = `Sayfa ${result.page} / ${pageCount} · ${fmt.format(result.total)} kayıt`;
+      $('#auditReportPageInfo').textContent = reportTemplate('Sayfa {page} / {pages} · {count} kayıt',{page:fmt.format(result.page),pages:fmt.format(pageCount),count:fmt.format(result.total)});
       $('#auditReportPrev').disabled = result.page <= 1; $('#auditReportNext').disabled = result.page >= pageCount;
     }
     function auditReportQuery() {
@@ -3280,8 +3336,8 @@
       if ($('#maintenanceReportTo').value) params.set('to', $('#maintenanceReportTo').value);
       const result = await api(`/api/reports/maintenances${params.size ? `?${params}` : ''}`);
       $('#maintenanceReportNote').textContent = result.dateFrom || result.dateTo
-        ? `Başlangıç tarihi: ${result.dateFrom || 'en eski'} – ${result.dateTo || 'en yeni'}. Planlı işler değil, başlamış bakımlar sayılır.`
-        : 'Tüm şirket bakım kayıtları; yalnızca başlamış veya tamamlanmış işler rapora girer.';
+        ? reportTemplate('Başlangıç tarihi: {from} – {to}. Planlı işler değil, başlamış bakımlar sayılır.',{from:result.dateFrom||translateUiText('en eski'),to:result.dateTo||translateUiText('en yeni')})
+        : translateUiText('Tüm şirket bakım kayıtları; yalnızca başlamış veya tamamlanmış işler rapora girer.');
       const summary = $('#maintenanceReportSummary'); summary.replaceChildren();
       for (const [label, value, note] of [
         ['Toplam bakım', result.total, 'Seçili tarih aralığında'],
@@ -3289,9 +3345,9 @@
         ['Tamamlanan', result.completed, 'Kapanış kaydı bulunan']
       ]) {
         const card = document.createElement('article'); card.className = 'stat';
-        const caption = document.createElement('div'); caption.className = 'stat-top'; caption.textContent = label;
+        const caption = document.createElement('div'); caption.className = 'stat-top'; caption.textContent = translateUiText(label);
         const number = document.createElement('strong'); number.textContent = fmt.format(value || 0);
-        const hint = document.createElement('small'); hint.textContent = note; card.append(caption, number, hint); summary.append(card);
+        const hint = document.createElement('small'); hint.textContent = translateUiText(note); card.append(caption, number, hint); summary.append(card);
       }
       const types = $('#maintenanceReportTypes'); types.replaceChildren();
       if (!(result.byType || []).length) reportEmpty(types, 2, 'Seçili aralıkta bakım kaydı yok.');
@@ -3323,13 +3379,13 @@
       if (requestId !== warrantyReportRequestId) return;
       const formatDate = value => value ? new Intl.DateTimeFormat(selectedLocale, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`)) : '—';
       const stateLabels = { upcoming: 'yaklaşan garanti bitişleri', expired: 'süresi dolmuş garantiler', later: 'seçili dönemin sonrasındaki garantiler', missing: 'garanti tarihi girilmemiş varlıklar', all: 'tüm garanti tarihleri' };
-      $('#warrantyReportNote').textContent = `${formatDate(result.today)} – ${formatDate(result.through)} dönemi; ${stateLabels[result.state] || 'garanti kayıtları'}. Arşivlenmiş varlıklar kapsam dışıdır.`;
+      $('#warrantyReportNote').textContent = reportTemplate('{from} – {to} dönemi; {state}. Arşivlenmiş varlıklar kapsam dışıdır.',{from:formatDate(result.today),to:formatDate(result.through),state:translateUiText(stateLabels[result.state]||'garanti kayıtları')});
       const summary = $('#warrantyReportSummary'); summary.replaceChildren();
       for (const [label, value, note] of [['Süresi dolan', result.expired, 'Bugünden önce biten'], ['Yaklaşan', result.upcoming, 'Seçili dönem içinde'], ['Tarihi olmayan', result.withoutDate, 'Garanti tarihi girilmemiş']]) {
         const card = document.createElement('article'); card.className = 'stat';
-        const caption = document.createElement('div'); caption.className = 'stat-top'; caption.textContent = label;
+        const caption = document.createElement('div'); caption.className = 'stat-top'; caption.textContent = translateUiText(label);
         const number = document.createElement('strong'); number.textContent = fmt.format(value || 0);
-        const hint = document.createElement('small'); hint.textContent = note; card.append(caption, number, hint); summary.append(card);
+        const hint = document.createElement('small'); hint.textContent = translateUiText(note); card.append(caption, number, hint); summary.append(card);
       }
       const rows = $('#warrantyReportRows'); rows.replaceChildren();
       if (!(result.items || []).length) reportEmpty(rows, 6, 'Bu filtrelerle eşleşen varlık bulunamadı.');
@@ -3338,13 +3394,13 @@
         const date = document.createElement('td'); date.textContent = formatDate(item.warrantyExpiresAt);
         const tag = document.createElement('td'), open = document.createElement('button'); open.type = 'button'; open.className = 'text-link'; open.textContent = item.assetTag; open.addEventListener('click', () => openAsset(item.id).catch(error => notify(error.message))); tag.append(open);
         const name = document.createElement('td'); name.textContent = item.name;
-        const state = document.createElement('td'), pill = document.createElement('span'); pill.className = `pill ${item.status === 'Maintenance' ? 'warn' : item.status === 'Available' ? 'blue' : ''}`; pill.textContent = statusLabel(item.status); state.append(pill);
+        const state = document.createElement('td'), pill = document.createElement('span'); pill.className = `pill ${item.status === 'Maintenance' ? 'warn' : item.status === 'Available' ? 'blue' : ''}`; pill.textContent = translateUiText(statusLabel(item.status)); state.append(pill);
         const location = document.createElement('td'); location.textContent = item.location || '—';
         const employee = document.createElement('td'); employee.textContent = item.employeeName || '—';
         row.append(date, tag, name, state, location, employee); rows.append(row);
       }
       warrantyReportPage = result.page || 1;
-      $('#warrantyReportPageInfo').textContent = `${fmt.format(result.total || 0)} kayıt · Sayfa ${result.page || 1} / ${result.pageCount || 1}`;
+      $('#warrantyReportPageInfo').textContent = reportTemplate('Sayfa {page} / {pages} · {count} kayıt',{page:fmt.format(result.page||1),pages:fmt.format(result.pageCount||1),count:fmt.format(result.total||0)});
       $('#warrantyReportPrev').disabled = warrantyReportPage <= 1;
       $('#warrantyReportNext').disabled = warrantyReportPage >= (result.pageCount || 1);
     }
@@ -3364,15 +3420,15 @@
       const requestId = ++licenseReportRequestId, params = licenseReportParams();
       const result = await api(`/api/reports/software-licenses?${params}`);
       if (requestId !== licenseReportRequestId) return;
-      const formatDate = value => value ? new Intl.DateTimeFormat(selectedLocale, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`)) : 'Süre belirtilmemiş';
+      const formatDate = value => value ? new Intl.DateTimeFormat(selectedLocale, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`)) : translateUiText('Süre belirtilmemiş');
       const stateLabels = { upcoming: 'yaklaşan lisans bitişleri', expired: 'süresi dolmuş lisanslar', later: 'seçili dönemin sonrasındaki lisanslar', missing: 'bitiş tarihi girilmemiş lisanslar', all: 'tüm lisanslar' };
-      $('#licenseReportNote').textContent = `${formatDate(result.today)} – ${formatDate(result.through)}; ${stateLabels[result.state] || 'lisanslar'}. Sayılar şirket kapsamındadır.`;
+      $('#licenseReportNote').textContent = reportTemplate('{from} – {to}; {state}. Sayılar şirket kapsamındadır.',{from:formatDate(result.today),to:formatDate(result.through),state:translateUiText(stateLabels[result.state]||'lisanslar')});
       const summary = $('#licenseReportSummary'); summary.replaceChildren();
       for (const [label, value, note] of [['Süresi dolan', result.expired, 'Bugünden önce biten'], ['Yaklaşan', result.upcoming, 'Seçili dönem içinde'], ['Tarihi olmayan', result.withoutDate, 'Bitiş tarihi girilmemiş']]) {
         const card = document.createElement('article'); card.className = 'stat';
-        const caption = document.createElement('div'); caption.className = 'stat-top'; caption.textContent = label;
+        const caption = document.createElement('div'); caption.className = 'stat-top'; caption.textContent = translateUiText(label);
         const number = document.createElement('strong'); number.textContent = fmt.format(value || 0);
-        const hint = document.createElement('small'); hint.textContent = note; card.append(caption, number, hint); summary.append(card);
+        const hint = document.createElement('small'); hint.textContent = translateUiText(note); card.append(caption, number, hint); summary.append(card);
       }
       const rows = $('#licenseReportRows'); rows.replaceChildren();
       if (!(result.items || []).length) reportEmpty(rows, 7, 'Bu filtrelerle eşleşen lisans bulunamadı.');
@@ -3385,14 +3441,14 @@
         const nameCell = document.createElement('td'), open = document.createElement('button'); open.type = 'button'; open.className = 'text-link'; open.textContent = item.name;
         open.addEventListener('click', () => openLicense(item.id).catch(error => notify(error.message))); nameCell.append(open);
         const publisher = document.createElement('td'); publisher.textContent = [item.publisher, item.productVersion].filter(Boolean).join(' · ') || '—';
-        const type = document.createElement('td'); type.textContent = typeLabels[item.licenseType] || item.licenseType || '—';
-        const seats = document.createElement('td'); seats.textContent = `${fmt.format(item.assigned || 0)} / ${fmt.format(item.seats || 0)} · ${fmt.format(item.available || 0)} boş`;
-        const renew = document.createElement('td'); renew.textContent = item.autoRenew ? 'Evet' : 'Hayır';
+        const type = document.createElement('td'); type.textContent = translateUiText(typeLabels[item.licenseType] || item.licenseType || '—');
+        const seats = document.createElement('td'); seats.textContent = `${fmt.format(item.assigned || 0)} / ${fmt.format(item.seats || 0)} · ${reportTemplate('{count} boş',{count:fmt.format(item.available||0)})}`;
+        const renew = document.createElement('td'); renew.textContent = translateUiText(item.autoRenew ? 'Evet' : 'Hayır');
         const supplier = document.createElement('td'); supplier.textContent = item.supplier || '—';
         row.append(date, nameCell, publisher, type, seats, renew, supplier); rows.append(row);
       }
       licenseReportPage = result.page || 1;
-      $('#licenseReportPageInfo').textContent = `${fmt.format(result.total || 0)} kayıt · Sayfa ${result.page || 1} / ${result.pageCount || 1}`;
+      $('#licenseReportPageInfo').textContent = reportTemplate('Sayfa {page} / {pages} · {count} kayıt',{page:fmt.format(result.page||1),pages:fmt.format(result.pageCount||1),count:fmt.format(result.total||0)});
       $('#licenseReportPrev').disabled = licenseReportPage <= 1;
       $('#licenseReportNext').disabled = licenseReportPage >= (result.pageCount || 1);
     }
