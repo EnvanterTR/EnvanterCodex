@@ -2249,6 +2249,13 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Family")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("assets");
+
                     b.Property<string>("MappingJson")
                         .IsRequired()
                         .HasMaxLength(8192)
@@ -2274,7 +2281,7 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.HasIndex("CompanyId", "UserId", "NormalizedName")
+                    b.HasIndex("CompanyId", "UserId", "Family", "NormalizedName")
                         .IsUnique();
 
                     b.ToTable("SavedAssetImportMappings");

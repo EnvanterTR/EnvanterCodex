@@ -238,6 +238,7 @@ public sealed class SavedAssetImportMapping
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid CompanyId { get; set; }
     public Guid UserId { get; set; }
+    public required string Family { get; set; }
     public required string Name { get; set; }
     public required string NormalizedName { get; set; }
     public required string MappingJson { get; set; }

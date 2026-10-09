@@ -261,6 +261,29 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var created = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
         var profileId = created.RootElement.GetProperty("id").GetGuid();
 
+        var accessoryMap = new Dictionary<string, string>
+        {
+            ["Item Description"] = "name", ["Quantity On Hand"] = "totalQuantity", ["Do Not Import"] = "ignore"
+        };
+        using var accessoryCreate = await SendAsUserAsync(HttpMethod.Post, "/api/accessories/import-mappings", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Vendor A", mappings = accessoryMap }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, accessoryCreate.StatusCode);
+        using var accessoryCreated = JsonDocument.Parse(await accessoryCreate.Content.ReadAsStringAsync());
+        var accessoryProfileId = accessoryCreated.RootElement.GetProperty("id").GetGuid();
+
+        var accessoryCsv = new StringContent("Item Description,Quantity On Hand,Do Not Import\nAcceptance Widget,3,private note\n",
+            System.Text.Encoding.UTF8, "text/csv");
+        var accessoryHeader = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(accessoryMap)));
+        using (var accessoryPreview = await SendAsRoleWithHeadersAsync(HttpMethod.Post, "/api/accessories/import/preview.csv", "admin",
+            accessoryCsv, requestToken, antiforgeryCookie, new Dictionary<string, string> { ["X-Accessory-Import-Mapping"] = accessoryHeader }))
+        {
+            Assert.True(accessoryPreview.StatusCode == HttpStatusCode.OK,
+                $"Accessory mapped preview failed: {(int)accessoryPreview.StatusCode} {await accessoryPreview.Content.ReadAsStringAsync()}");
+            using var previewPayload = JsonDocument.Parse(await accessoryPreview.Content.ReadAsStringAsync());
+            Assert.True(previewPayload.RootElement.GetProperty("isValid").GetBoolean());
+            Assert.Equal(1, previewPayload.RootElement.GetProperty("rowCount").GetInt32());
+        }
+
         using (var invalid = await SendAsUserAsync(HttpMethod.Post, "/api/assets/import-mappings", _userId, _companyId,
             System.Net.Http.Json.JsonContent.Create(new { name = "Bad", mappings = new Dictionary<string, string> { ["Secret"] = "custom:otherTenantOnly" } }), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
@@ -269,9 +292,17 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var own = JsonDocument.Parse(await ownList.Content.ReadAsStringAsync()))
             Assert.Equal(profileId, Assert.Single(own.RootElement.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
 
+        using (var ownAccessoryList = await SendAsUserAsync(HttpMethod.Get, "/api/accessories/import-mappings", _userId, _companyId))
+        using (var ownAccessory = JsonDocument.Parse(await ownAccessoryList.Content.ReadAsStringAsync()))
+            Assert.Equal(accessoryProfileId, Assert.Single(ownAccessory.RootElement.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
+
         using (var otherUserList = await SendAsUserAsync(HttpMethod.Get, "/api/assets/import-mappings", _sameCompanyOtherUserId, _companyId))
         using (var other = JsonDocument.Parse(await otherUserList.Content.ReadAsStringAsync()))
             Assert.Empty(other.RootElement.GetProperty("items").EnumerateArray());
+
+        using (var otherUserAccessoryList = await SendAsUserAsync(HttpMethod.Get, "/api/accessories/import-mappings", _sameCompanyOtherUserId, _companyId))
+        using (var otherAccessory = JsonDocument.Parse(await otherUserAccessoryList.Content.ReadAsStringAsync()))
+            Assert.Empty(otherAccessory.RootElement.GetProperty("items").EnumerateArray());
 
         using (var crossCompanyList = await SendAsUserAsync(HttpMethod.Get, "/api/assets/import-mappings", _userId, _otherCompanyId))
             Assert.Equal(HttpStatusCode.Unauthorized, crossCompanyList.StatusCode);
@@ -286,6 +317,9 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var delete = await SendAsUserAsync(HttpMethod.Delete, $"/api/assets/import-mappings/{profileId}", _userId, _companyId,
             requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
             Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+        using (var deleteAccessory = await SendAsUserAsync(HttpMethod.Delete, $"/api/accessories/import-mappings/{accessoryProfileId}", _userId, _companyId,
+            requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NoContent, deleteAccessory.StatusCode);
     }
 
     [Fact]

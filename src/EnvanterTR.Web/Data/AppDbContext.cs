@@ -187,8 +187,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 
         modelBuilder.Entity<SavedAssetImportMapping>().Property(x => x.Name).HasMaxLength(60).IsRequired();
         modelBuilder.Entity<SavedAssetImportMapping>().Property(x => x.NormalizedName).HasMaxLength(60).IsRequired();
+        modelBuilder.Entity<SavedAssetImportMapping>().Property(x => x.Family).HasMaxLength(32).HasDefaultValue("assets").IsRequired();
         modelBuilder.Entity<SavedAssetImportMapping>().Property(x => x.MappingJson).HasMaxLength(8192).IsRequired();
-        modelBuilder.Entity<SavedAssetImportMapping>().HasIndex(x => new { x.CompanyId, x.UserId, x.NormalizedName }).IsUnique();
+        modelBuilder.Entity<SavedAssetImportMapping>().HasIndex(x => new { x.CompanyId, x.UserId, x.Family, x.NormalizedName }).IsUnique();
         modelBuilder.Entity<SavedAssetImportMapping>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<SavedAssetImportMapping>().HasOne<EnvanterUser>().WithMany()

@@ -17,7 +17,7 @@ public static class SavedAssetImportMappingEndpoints
         {
             if (!TryIdentity(user, out var companyId, out var userId)) return Results.Forbid();
             var rows = await db.SavedAssetImportMappings.AsNoTracking()
-                .Where(x => x.CompanyId == companyId && x.UserId == userId)
+                .Where(x => x.CompanyId == companyId && x.UserId == userId && x.Family == "assets")
                 .OrderBy(x => x.Name).ToListAsync(cancellationToken);
             var items = rows.Select(row => new
             {
@@ -42,14 +42,14 @@ public static class SavedAssetImportMappingEndpoints
 
             var normalizedName = name.ToUpperInvariant();
             var row = await db.SavedAssetImportMappings.SingleOrDefaultAsync(x =>
-                x.CompanyId == companyId && x.UserId == userId && x.NormalizedName == normalizedName, cancellationToken);
+                x.CompanyId == companyId && x.UserId == userId && x.Family == "assets" && x.NormalizedName == normalizedName, cancellationToken);
             if (row is null)
             {
-                if (await db.SavedAssetImportMappings.CountAsync(x => x.CompanyId == companyId && x.UserId == userId, cancellationToken) >= 25)
+                if (await db.SavedAssetImportMappings.CountAsync(x => x.CompanyId == companyId && x.UserId == userId && x.Family == "assets", cancellationToken) >= 25)
                     return Results.Conflict(new { message = "En fazla 25 eşleme profili saklanabilir. Önce bir profili silin." });
                 row = new SavedAssetImportMapping
                 {
-                    CompanyId = companyId, UserId = userId, Name = name, NormalizedName = normalizedName, MappingJson = "{}"
+                    CompanyId = companyId, UserId = userId, Family = "assets", Name = name, NormalizedName = normalizedName, MappingJson = "{}"
                 };
                 db.SavedAssetImportMappings.Add(row);
             }
@@ -69,7 +69,7 @@ public static class SavedAssetImportMappingEndpoints
         {
             if (!TryIdentity(user, out var companyId, out var userId)) return Results.Forbid();
             var row = await db.SavedAssetImportMappings.SingleOrDefaultAsync(x =>
-                x.Id == id && x.CompanyId == companyId && x.UserId == userId, cancellationToken);
+                x.Id == id && x.CompanyId == companyId && x.UserId == userId && x.Family == "assets", cancellationToken);
             if (row is null) return Results.NotFound();
             db.SavedAssetImportMappings.Remove(row);
             await db.SaveChangesAsync(cancellationToken);

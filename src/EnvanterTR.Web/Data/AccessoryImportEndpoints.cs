@@ -2,6 +2,7 @@ using System.Data;
 using System.Globalization;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,7 @@ public static class AccessoryImportEndpoints
 
     public static RouteGroupBuilder MapAccessoryImportEndpoints(this RouteGroupBuilder api)
     {
+        api.MapAccessoryImportMappingProfileEndpoints();
         api.MapPost("/accessories/import/preview.csv", (HttpContext c, AppDbContext db, IAntiforgery a, CancellationToken ct) => Import(c, db, a, false, ct))
             .RequireAuthorization("asset.write").WithMetadata(new RequestSizeLimitAttribute(MaxBytes));
         api.MapPost("/accessories/import/preview.xlsx", (HttpContext c, AppDbContext db, IAntiforgery a, CancellationToken ct) => Import(c, db, a, false, ct))
@@ -30,6 +32,16 @@ public static class AccessoryImportEndpoints
     {
         if (!Guid.TryParse(c.User.FindFirstValue("company_id"), out var companyId) || !Guid.TryParse(c.User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
         try { await antiforgery.ValidateRequestAsync(c); } catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
+        Dictionary<string, string>? explicitMappings = null;
+        var encodedMapping = c.Request.Headers["X-Accessory-Import-Mapping"].ToString();
+        if (encodedMapping.Length > 0)
+        {
+            try { explicitMappings = JsonSerializer.Deserialize<Dictionary<string, string>>(Convert.FromBase64String(encodedMapping)); }
+            catch (Exception exception) when (exception is FormatException or JsonException)
+            { return Results.ValidationProblem(new Dictionary<string, string[]> { ["mappings"] = ["Sütun eşlemesi okunamadı; dosyayı yeniden doğrulayın."] }); }
+            if (!AccessoryCsvImportMapping.ValidateExplicitMappings(explicitMappings, out var mappingError))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["mappings"] = [mappingError] });
+        }
         var isXlsx = DataExportEndpoints.IsXlsxRequest(c.Request);
         if (!isXlsx && c.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true) return Results.StatusCode(415);
         if (c.Request.ContentLength > MaxBytes) return Results.StatusCode(413);
@@ -45,9 +57,11 @@ public static class AccessoryImportEndpoints
         catch (FormatException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV tırnak veya ayraç biçimi bozuk." } }); }
         catch (Exception exception) when (isXlsx && exception is InvalidDataException or InvalidOperationException or System.Xml.XmlException or OverflowException)
         { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { exception.Message } }); }
-        rows = AccessoryCsvImportMapping.Normalize(rows, out var unsupportedColumns);
+        rows = AccessoryCsvImportMapping.Normalize(rows, out var unsupportedColumns, explicitMappings);
         if (unsupportedColumns.Length > 0)
-            return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Bu dosyada henüz eşlenmeyen ve dolu veri içeren sütunlar var: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu." } });
+            return Results.UnprocessableEntity(new { isValid = false,
+                errors = new[] { $"Dosyadaki sütunları eşleyin veya açıkça yoksayın: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu." },
+                unmappedColumns = unsupportedColumns, mappingTargets = AccessoryCsvImportMapping.MappingTargets() });
         string[] header = ["Aksesuar", "Kategori", "Model", "Ürün no", "Tedarikçi", "Konum", "Toplam", "Minimum", "Birim maliyeti", "Para birimi", "Alış tarihi", "İstek yapılabilir", "Notlar"];
         if (rows.Count is < 2 || rows.Count > MaxRows + 1 || !rows[0].SequenceEqual(header, StringComparer.OrdinalIgnoreCase))
             return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Şablon başlığı ve en fazla {MaxRows:N0} aksesuar satırı kullanın." } });
@@ -59,7 +73,8 @@ public static class AccessoryImportEndpoints
             var name = r[0].Trim(); var itemNo = Clean(3); var supplier = Clean(4);
             if (name.Length is 0 or > 200) AddError(errors, $"{line}. satırdaki aksesuar adı boş veya 200 karakterden uzun.");
             if (!int.TryParse(r[6], NumberStyles.None, CultureInfo.InvariantCulture, out var total) || total is < 0 or > 100000) AddError(errors, $"{line}. satırdaki toplam 0–100.000 arasında tam sayı olmalıdır.");
-            if (!int.TryParse(r[7], NumberStyles.None, CultureInfo.InvariantCulture, out var minimum) || minimum is < 0 or > 100000) AddError(errors, $"{line}. satırdaki minimum 0–100.000 arasında tam sayı olmalıdır.");
+            var minimumText = string.IsNullOrWhiteSpace(r[7]) ? "0" : r[7].Trim();
+            if (!int.TryParse(minimumText, NumberStyles.None, CultureInfo.InvariantCulture, out var minimum) || minimum is < 0 or > 100000) AddError(errors, $"{line}. satırdaki minimum 0–100.000 arasında tam sayı olmalıdır.");
             decimal? cost = null; if (!string.IsNullOrWhiteSpace(r[8])) { if (!decimal.TryParse(r[8], NumberStyles.Number, CultureInfo.InvariantCulture, out var value) || value is < 0 or > 9999999999999999.99m) AddError(errors, $"{line}. satırdaki birim maliyeti geçersiz."); else cost = value; }
             var currency = r[9].Trim().ToUpperInvariant(); if (currency.Length != 3 || !currency.All(char.IsAsciiLetter)) AddError(errors, $"{line}. satırdaki para birimi üç harfli kod olmalıdır.");
             DateOnly? date = null; if (!string.IsNullOrWhiteSpace(r[10])) { if (DateOnly.TryParseExact(r[10], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)) date = d; else AddError(errors, $"{line}. satırdaki alış tarihi yyyy-AA-gg olmalıdır."); }
