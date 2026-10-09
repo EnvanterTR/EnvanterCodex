@@ -566,7 +566,8 @@
       const name = prompt('Bu arama için kısa bir ad yazın (en fazla 60 karakter):');
       if (name === null) return;
       const trimmedName = name.trim(); if (!trimmedName || trimmedName.length > 60) return notify('Arama adı 1–60 karakter olmalıdır.');
-      const filters = { q: $('#globalSearch').value.trim(), status: $('#assetStatusFilter').value, warranty: $('#assetWarrantyFilter').value, categoryId: $('#assetCategoryFilter').value || null, brandId: $('#assetBrandFilter').value || null, modelId: $('#assetModelFilter').value || null, employeeId: assetEmployeeFilterId || null, employeeName: assetEmployeeFilterName, location: assetLocationFilter, sortBy: assetSortBy, sortDirection: assetSortDirection };
+      const custom = readAssetCustomFieldFilter(); if (custom.error) return notify(custom.error);
+      const filters = { q: $('#globalSearch').value.trim(), status: $('#assetStatusFilter').value, warranty: $('#assetWarrantyFilter').value, categoryId: $('#assetCategoryFilter').value || null, brandId: $('#assetBrandFilter').value || null, modelId: $('#assetModelFilter').value || null, employeeId: assetEmployeeFilterId || null, employeeName: assetEmployeeFilterName, location: assetLocationFilter, sortBy: assetSortBy, sortDirection: assetSortDirection, customFieldKey: custom.key, customFieldValue: custom.value, customFieldMode: custom.mode };
       const existing = savedAssetSearches.find(item => item.name.localeCompare(trimmedName, 'tr', { sensitivity: 'base' }) === 0);
       if (existing && !confirm('Aynı adlı kayıtlı arama güncellensin mi?')) return;
       try {
@@ -582,6 +583,10 @@
       const isGuid = value => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
       $('#assetCategoryFilter').value = isGuid(f.categoryId) ? f.categoryId : ''; $('#assetBrandFilter').value = isGuid(f.brandId) ? f.brandId : ''; populateAssetModelFilter(); $('#assetModelFilter').value = isGuid(f.modelId) ? f.modelId : '';
       assetEmployeeFilterId = isGuid(f.employeeId) ? f.employeeId : ''; assetEmployeeFilterName = typeof f.employeeName === 'string' ? f.employeeName.slice(0, 200) : ''; assetLocationFilter = typeof f.location === 'string' ? f.location.slice(0, 160) : '';
+      $('#assetCustomFieldFilter').value = typeof f.customFieldKey === 'string' ? f.customFieldKey : '';
+      $('#assetCustomFieldMode').value = f.customFieldMode === 'empty' ? 'empty' : 'equals';
+      $('#assetCustomFieldValue').value = typeof f.customFieldValue === 'string' ? f.customFieldValue.slice(0, 2000) : '';
+      $('#assetCustomFieldValue').disabled = $('#assetCustomFieldMode').value === 'empty';
       if (['tag','name','category','brand','employee','location','status','warranty','updated'].includes(f.sortBy)) assetSortBy = f.sortBy;
       if (['asc','desc'].includes(f.sortDirection)) assetSortDirection = f.sortDirection;
       updateAssetSortIndicators(); updateAssetRelationFilter(); saveAssetSortPreference();
@@ -700,6 +705,11 @@
       if (assetEmployeeFilterId) filters.push({ key: 'employee', label: `Çalışan: ${assetEmployeeFilterName}` });
       if (assetLocationFilter) filters.push({ key: 'location', label: `Konum: ${assetLocationFilter}` });
       if ($('#assetWarrantyFilter').value) filters.push({ key: 'warranty', label: `Garanti: ${$('#assetWarrantyFilter').selectedOptions[0]?.textContent || ''}` });
+      const customFieldFilter = readAssetCustomFieldFilter();
+      if (customFieldFilter.key && !customFieldFilter.error) {
+        const fieldName = (assetCustomFieldDefinitions || []).find(field => field.key === customFieldFilter.key)?.name || customFieldFilter.key;
+        filters.push({ key: 'customField', label: `${fieldName}: ${customFieldFilter.mode === 'empty' ? 'boş' : customFieldFilter.value}` });
+      }
       const info = $('#assetRelationFilter'); info.replaceChildren();
       for (const filter of filters) {
         const chip = document.createElement('button'); chip.type = 'button'; chip.className = 'filter-chip';
@@ -711,6 +721,7 @@
           if (filter.key === 'employee') { assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; }
           if (filter.key === 'location') assetLocationFilter = '';
           if (filter.key === 'warranty') $('#assetWarrantyFilter').value = '';
+          if (filter.key === 'customField') { $('#assetCustomFieldFilter').value = ''; $('#assetCustomFieldMode').value = 'equals'; $('#assetCustomFieldValue').value = ''; $('#assetCustomFieldValue').disabled = false; }
           updateAssetRelationFilter(); loadDashboard($('#globalSearch').value.trim(), 1).catch(error => notify(error.message));
         });
         info.append(chip);
@@ -720,6 +731,7 @@
     function clearAssetRelationshipFilters() {
       $('#assetCategoryFilter').value = ''; $('#assetBrandFilter').value = ''; $('#assetModelFilter').value = '';
       assetEmployeeFilterId = ''; assetEmployeeFilterName = ''; assetLocationFilter = '';
+      $('#assetCustomFieldFilter').value = ''; $('#assetCustomFieldMode').value = 'equals'; $('#assetCustomFieldValue').value = ''; $('#assetCustomFieldValue').disabled = false;
       updateAssetRelationFilter(); loadDashboard($('#globalSearch').value.trim(), 1).catch(error => notify(error.message));
     }
     function updateAssetSortIndicators() {
@@ -1117,6 +1129,7 @@
       try { const result = await api('/api/dashboard/preferences'); applyDashboardPreferences(result.visibleWidgets, result.widgetOrder, result.customCharts); }
       catch (error) { console.warn('Pano tercihleri yüklenemedi; varsayılan görünüm kullanılıyor.', error); applyDashboardPreferences(); }
     }    async function loadDashboard(query = $('#globalSearch').value.trim(), requestedPage = assetPage) {
+      if (assetCustomFieldDefinitions === null) await loadAssetCustomFieldDefinitions();
       const requestId = ++assetDashboardRequestId;
       assetPage = Math.max(1, requestedPage);
       const inventoryMode = $('#overview').classList.contains('inventory-mode');
@@ -1130,6 +1143,13 @@
       if (assetEmployeeFilterId) filters.set('employeeId', assetEmployeeFilterId);
       if (assetLocationFilter) filters.set('location', assetLocationFilter);
       if ($('#assetWarrantyFilter').value) filters.set('warranty', $('#assetWarrantyFilter').value);
+      const customFieldFilter = readAssetCustomFieldFilter();
+      if (customFieldFilter.error) { notify(customFieldFilter.error); return; }
+      if (customFieldFilter.key) {
+        filters.set('customFieldKey', customFieldFilter.key);
+        filters.set('customFieldMode', customFieldFilter.mode);
+        if (customFieldFilter.value) filters.set('customFieldValue', customFieldFilter.value);
+      }
       filters.set('sortBy', assetSortBy); filters.set('sortDirection', assetSortDirection);
       let results;
       try {
@@ -1161,7 +1181,7 @@
       }
       loadedAssets = assets.items || []; assetTotal = assets.total || 0;
       $('#assetRows').replaceChildren();
-      if (!loadedAssets.length) setEmptyRow(query || $('#assetStatusFilter').value || $('#assetWarrantyFilter').value || $('#assetCategoryFilter').value || $('#assetBrandFilter').value || $('#assetModelFilter').value || assetEmployeeFilterId || assetLocationFilter ? 'Seçtiğiniz arama ve filtrelere uygun varlık bulunamadı.' : 'Henüz varlık kaydı yok. İlk kaydı “Yeni varlık” düğmesinden ekleyin.');
+      if (!loadedAssets.length) setEmptyRow(query || $('#assetStatusFilter').value || $('#assetWarrantyFilter').value || $('#assetCategoryFilter').value || $('#assetBrandFilter').value || $('#assetModelFilter').value || assetEmployeeFilterId || assetLocationFilter || customFieldFilter.key ? 'Seçtiğiniz arama ve filtrelere uygun varlık bulunamadı.' : 'Henüz varlık kaydı yok. İlk kaydı “Yeni varlık” düğmesinden ekleyin.');
       else loadedAssets.forEach(addAssetRow);
       applyAssetColumnVisibility();
       updateBulkAssetSelection();
@@ -4448,9 +4468,40 @@
       finally { button.disabled = false; }
     });
     let assetCustomFieldDefinitions = null;
+    function ensureAssetCustomFieldFilter() {
+      if ($('#assetCustomFieldFilterDetails')) return;
+      const details = document.createElement('details'); details.id = 'assetCustomFieldFilterDetails'; details.className = 'column-picker';
+      details.innerHTML = `<summary class="btn small">Özel alan filtresi</summary><fieldset><legend>Özel alan filtresi</legend><label>Alan<select id="assetCustomFieldFilter"><option value="">Özel alan seçin</option></select></label><label>Koşul<select id="assetCustomFieldMode"><option value="equals">Değeri eşit</option><option value="empty">Değer girilmemiş</option></select></label><label>Değer<input id="assetCustomFieldValue" maxlength="2000" autocomplete="off" placeholder="Alan değerini girin"></label><button class="btn small" id="applyAssetCustomFieldFilter" type="button">Filtrele</button> <button class="btn small" id="clearAssetCustomFieldFilter" type="button">Temizle</button></fieldset>`;
+      $('#assetWarrantyFilter').insertAdjacentElement('afterend', details);
+      $('#assetCustomFieldMode').addEventListener('change', event => { $('#assetCustomFieldValue').disabled = event.target.value === 'empty'; });
+      $('#applyAssetCustomFieldFilter').addEventListener('click', () => {
+        const filter = readAssetCustomFieldFilter(); if (filter.error) return notify(filter.error);
+        updateAssetRelationFilter(); loadDashboard($('#globalSearch').value.trim(), 1).catch(error => notify(error.message));
+      });
+      $('#clearAssetCustomFieldFilter').addEventListener('click', () => {
+        $('#assetCustomFieldFilter').value = ''; $('#assetCustomFieldMode').value = 'equals';
+        $('#assetCustomFieldValue').value = ''; $('#assetCustomFieldValue').disabled = false;
+        updateAssetRelationFilter(); loadDashboard($('#globalSearch').value.trim(), 1).catch(error => notify(error.message));
+      });
+    }
+    function renderAssetCustomFieldFilterOptions() {
+      const select = $('#assetCustomFieldFilter'); if (!select) return;
+      const selected = select.value; select.replaceChildren(new Option('Özel alan seçin', ''));
+      for (const field of (assetCustomFieldDefinitions || []).filter(item => item.isActive)) select.add(new Option(field.name, field.key));
+      if ([...select.options].some(option => option.value === selected)) select.value = selected;
+    }
+    function readAssetCustomFieldFilter() {
+      const key = $('#assetCustomFieldFilter')?.value || '';
+      if (!key) return { key: null, value: null, mode: null, error: '' };
+      const mode = $('#assetCustomFieldMode').value, value = $('#assetCustomFieldValue').value.trim();
+      if (mode === 'empty') return { key, value: null, mode, error: '' };
+      if (!value) return { key, value, mode, error: 'Özel alan filtresi için bir değer girin veya “Değer girilmemiş” koşulunu seçin.' };
+      return { key, value, mode, error: '' };
+    }
     async function loadAssetCustomFieldDefinitions(force = false) {
       if (assetCustomFieldDefinitions && !force) return assetCustomFieldDefinitions;
       assetCustomFieldDefinitions = await api('/api/assets/custom-fields');
+      ensureAssetCustomFieldFilter(); renderAssetCustomFieldFilterOptions();
       renderAssetCustomFieldTable();
       return assetCustomFieldDefinitions;
     }
@@ -5117,7 +5168,7 @@
     updateAssetSortIndicators();
     $('#employeeDepartmentFilter').addEventListener('input', () => { clearTimeout(employeeQueryTimer); employeeQueryTimer = setTimeout(() => loadEmployees(1).catch(error => notify(error.message)), 250); });
     $('#clearEmployeeDepartmentFilter').addEventListener('click', () => { $('#employeeDepartmentFilter').value = ''; loadEmployees(1).catch(error => notify(error.message)); });
-    $('#exportButton').addEventListener('click', async () => { const button = $('#exportButton'); button.disabled = true; const params = new URLSearchParams(); const q = $('#globalSearch').value.trim(); if (q) params.set('q', q); if ($('#assetStatusFilter').value) params.set('status', $('#assetStatusFilter').value); if ($('#assetCategoryFilter').value) params.set('categoryId', $('#assetCategoryFilter').value); if ($('#assetBrandFilter').value) params.set('brandId', $('#assetBrandFilter').value); if ($('#assetModelFilter').value) params.set('modelId', $('#assetModelFilter').value); if (assetEmployeeFilterId) params.set('employeeId', assetEmployeeFilterId); if (assetLocationFilter) params.set('location', assetLocationFilter); if ($('#assetWarrantyFilter').value) params.set('warranty', $('#assetWarrantyFilter').value); params.set('sortBy', assetSortBy); params.set('sortDirection', assetSortDirection); try { const response = await api(`/api/assets/export-all.csv?${params}`); const blob = await response.blob(); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `envantertr-varliklar-${new Date().toISOString().slice(0,10)}.csv`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); const count = response.headers.get('X-Total-Count'); notify(count ? `${fmt.format(Number(count))} varlık kaydı dışa aktarıldı.` : 'Varlık dışa aktarımı tamamlandı.'); } catch (error) { notify(error.message); } finally { button.disabled = false; } });
+    $('#exportButton').addEventListener('click', async () => { const button = $('#exportButton'); button.disabled = true; const params = new URLSearchParams(); const q = $('#globalSearch').value.trim(); if (q) params.set('q', q); if ($('#assetStatusFilter').value) params.set('status', $('#assetStatusFilter').value); if ($('#assetCategoryFilter').value) params.set('categoryId', $('#assetCategoryFilter').value); if ($('#assetBrandFilter').value) params.set('brandId', $('#assetBrandFilter').value); if ($('#assetModelFilter').value) params.set('modelId', $('#assetModelFilter').value); if (assetEmployeeFilterId) params.set('employeeId', assetEmployeeFilterId); if (assetLocationFilter) params.set('location', assetLocationFilter); if ($('#assetWarrantyFilter').value) params.set('warranty', $('#assetWarrantyFilter').value); const custom = readAssetCustomFieldFilter(); if (custom.error) { notify(custom.error); button.disabled = false; return; } if (custom.key) { params.set('customFieldKey', custom.key); params.set('customFieldMode', custom.mode); if (custom.value) params.set('customFieldValue', custom.value); } params.set('sortBy', assetSortBy); params.set('sortDirection', assetSortDirection); try { const response = await api(`/api/assets/export-all.csv?${params}`); const blob = await response.blob(); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `envantertr-varliklar-${new Date().toISOString().slice(0,10)}.csv`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); const count = response.headers.get('X-Total-Count'); notify(count ? `${fmt.format(Number(count))} varlık kaydı dışa aktarıldı.` : 'Varlık dışa aktarımı tamamlandı.'); } catch (error) { notify(error.message); } finally { button.disabled = false; } });
     $("#exportBackupButton").addEventListener("click", async () => { const button = $("#exportBackupButton"); button.disabled = true; try { const response = await api("/api/company/export.json"); const blob = await response.blob(); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `envantertr-sirket-verisi-${new Date().toISOString().slice(0,10)}.json`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); notify("Şirket JSON verisi indirildi. Fotoğraf ve belgeler için medya arşivini ayrıca indirin."); } catch (error) { notify(error.message); } finally { button.disabled = false; } });
     const importPreviewDialog = $('#importPreviewDialog');
     $('#importPreviewButton').addEventListener('click', () => { $('#importPreviewResult').textContent = ''; $('#importPreviewForm').reset(); $('#applyCsvImport').hidden = true; $('#applyCompanyImport').hidden = true; $('#applyCsvImport').disabled = false; $('#applyCompanyImport').disabled = false; $('#runImportPreview').disabled = false; importPreviewDialog.showModal(); });

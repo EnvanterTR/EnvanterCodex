@@ -163,6 +163,15 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     [Fact]
     public async Task Saved_asset_searches_are_private_to_user_and_company_and_require_csrf_for_changes()
     {
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.AssetCustomFieldDefinitions.Add(new AssetCustomFieldDefinition
+            {
+                CompanyId = _companyId, Key = "asset_code", Name = "Asset code", FieldType = "text"
+            });
+            await db.SaveChangesAsync();
+        }
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
         Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
         using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
@@ -179,6 +188,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             q = "laptop", status = "Available", warranty = "active", categoryId = (Guid?)null,
             brandId = (Guid?)null, modelId = (Guid?)null, employeeId = (Guid?)null,
+            customFieldKey = "asset_code", customFieldValue = "TR-001", customFieldMode = "equals",
             employeeName = "", location = "Merkez", sortBy = "name", sortDirection = "desc"
         };
         using var createResponse = await SendAsUserAsync(HttpMethod.Post, "/api/assets/saved-searches", _userId, _companyId,
@@ -187,6 +197,13 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var created = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
         var searchId = created.RootElement.GetProperty("id").GetGuid();
         Assert.Equal("Available", created.RootElement.GetProperty("filters").GetProperty("status").GetString());
+        Assert.Equal("asset_code", created.RootElement.GetProperty("filters").GetProperty("customFieldKey").GetString());
+        Assert.Equal("TR-001", created.RootElement.GetProperty("filters").GetProperty("customFieldValue").GetString());
+
+        using (var invalidTenantField = await SendAsUserAsync(HttpMethod.Post, "/api/assets/saved-searches", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Invalid custom field", filters = new { customFieldKey = "other_code", customFieldMode = "empty" } }),
+            requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidTenantField.StatusCode);
 
         using (var updateResponse = await SendAsUserAsync(HttpMethod.Post, "/api/assets/saved-searches", _userId, _companyId,
             System.Net.Http.Json.JsonContent.Create(new { name = "LAPTOP", filters = new { q = "notebook", sortBy = "tag", sortDirection = "asc" } }),
@@ -532,6 +549,57 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                    "/api/assets/export-all.csv?columns=custom:otherTenantOnly", "viewer"))
             Assert.Equal(HttpStatusCode.BadRequest, otherTenantColumn.StatusCode);
 
+    }
+
+    [Fact]
+    public async Task Asset_custom_field_filter_is_tenant_scoped_and_applies_to_csv()
+    {
+        const string fieldKey = "asset_code";
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var categoryId = await db.AssetCategories.Where(x => x.CompanyId == _companyId).Select(x => x.Id).SingleAsync();
+            db.AssetCustomFieldDefinitions.AddRange(
+                new AssetCustomFieldDefinition { CompanyId = _companyId, Key = fieldKey, Name = "Asset code", FieldType = "text" },
+                new AssetCustomFieldDefinition { CompanyId = _otherCompanyId, Key = "other_code", Name = "Other code", FieldType = "text" });
+            var ownAsset = await db.Assets.SingleAsync(x => x.Id == _ownAssetId);
+            ownAsset.CustomFieldsJson = "{\"asset_code\":\"TR-001\"}";
+            db.Assets.Add(new Asset { Id = _ownSecondAssetId, CompanyId = _companyId, AssetTag = "OWN-2",
+                Name = "Uncoded asset", CategoryId = categoryId, CustomFieldsJson = "{}" });
+            await db.SaveChangesAsync();
+        }
+
+        using (var matching = await SendAsRoleAsync(HttpMethod.Get,
+                   $"/api/assets?customFieldKey={fieldKey}&customFieldMode=equals&customFieldValue=TR-001", "viewer"))
+        {
+            Assert.Equal(HttpStatusCode.OK, matching.StatusCode);
+            using var payload = JsonDocument.Parse(await matching.Content.ReadAsStringAsync());
+            Assert.Equal(1, payload.RootElement.GetProperty("total").GetInt32());
+            Assert.Equal(_ownAssetId, payload.RootElement.GetProperty("items")[0].GetProperty("id").GetGuid());
+        }
+
+        using (var empty = await SendAsRoleAsync(HttpMethod.Get,
+                   $"/api/assets?customFieldKey={fieldKey}&customFieldMode=empty", "viewer"))
+        {
+            Assert.Equal(HttpStatusCode.OK, empty.StatusCode);
+            using var payload = JsonDocument.Parse(await empty.Content.ReadAsStringAsync());
+            Assert.Equal(1, payload.RootElement.GetProperty("total").GetInt32());
+            Assert.Equal(_ownSecondAssetId, payload.RootElement.GetProperty("items")[0].GetProperty("id").GetGuid());
+        }
+
+        using (var otherTenantField = await SendAsRoleAsync(HttpMethod.Get,
+                   "/api/assets?customFieldKey=other_code&customFieldMode=empty", "viewer"))
+            Assert.Equal(HttpStatusCode.BadRequest, otherTenantField.StatusCode);
+
+        using (var export = await SendAsRoleAsync(HttpMethod.Get,
+                   $"/api/assets/export-all.csv?customFieldKey={fieldKey}&customFieldMode=equals&customFieldValue=TR-001", "viewer"))
+        {
+            Assert.Equal(HttpStatusCode.OK, export.StatusCode);
+            Assert.Equal("1", export.Headers.GetValues("X-Total-Count").Single());
+            var csv = await export.Content.ReadAsStringAsync();
+            Assert.Contains("OWN-1", csv, StringComparison.Ordinal);
+            Assert.DoesNotContain("OWN-2", csv, StringComparison.Ordinal);
+        }
     }
 
     [Fact]

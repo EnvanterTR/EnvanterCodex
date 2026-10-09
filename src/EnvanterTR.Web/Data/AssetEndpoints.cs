@@ -63,6 +63,7 @@ public static class AssetEndpoints
             [FromQuery] Guid? categoryId, [FromQuery] Guid? brandId, [FromQuery] Guid? modelId,
             [FromQuery] Guid? employeeId, [FromQuery] string? location, [FromQuery] string? warranty,
             [FromQuery] string? sortBy, [FromQuery] string? sortDirection,
+            [FromQuery] string? customFieldKey, [FromQuery] string? customFieldValue, [FromQuery] string? customFieldMode,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken,
             [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {
@@ -84,6 +85,11 @@ public static class AssetEndpoints
             if (!TryApplyWarrantyFilter(query, warranty, out var warrantyFiltered))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["warranty"] = ["Garanti filtresi expired, expiring, active veya unspecified olmalıdır."] });
             query = warrantyFiltered;
+            var customFieldFilter = await AssetCustomFieldFilter.ApplyAsync(query, companyId, customFieldKey,
+                customFieldValue, customFieldMode, db, cancellationToken);
+            if (customFieldFilter.Error is not null)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["customField"] = [customFieldFilter.Error] });
+            query = customFieldFilter.Query;
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
@@ -2536,6 +2542,7 @@ public static class AssetEndpoints
             [FromQuery] Guid? categoryId, [FromQuery] Guid? brandId, [FromQuery] Guid? modelId,
             [FromQuery] Guid? employeeId, [FromQuery] string? location, [FromQuery] string? warranty,
             [FromQuery] string? sortBy, [FromQuery] string? sortDirection, [FromQuery] string? columns,
+            [FromQuery] string? customFieldKey, [FromQuery] string? customFieldValue, [FromQuery] string? customFieldMode,
             HttpContext context, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId))
@@ -2573,6 +2580,14 @@ public static class AssetEndpoints
                 return;
             }
             query = warrantyFiltered;
+            var customFieldFilter = await AssetCustomFieldFilter.ApplyAsync(query, companyId, customFieldKey,
+                customFieldValue, customFieldMode, db, cancellationToken);
+            if (customFieldFilter.Error is not null)
+            {
+                await Results.ValidationProblem(new Dictionary<string, string[]> { ["customField"] = [customFieldFilter.Error] }).ExecuteAsync(context);
+                return;
+            }
+            query = customFieldFilter.Query;
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
