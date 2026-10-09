@@ -3397,6 +3397,55 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Concurrent_asset_checkouts_assign_one_asset_to_only_one_employee()
+    {
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Employees.Add(new Employee
+            {
+                Id = _ownSecondEmployeeId,
+                CompanyId = _companyId,
+                EmployeeNumber = $"OWN-SECOND-{_userId:N}",
+                DisplayName = $"OWN-SECOND-SECURITY-EMPLOYEE-{_userId:N}"
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var path = $"/api/assets/{_ownAssetId}/assign";
+        var firstRequest = SendAsRoleAsync(HttpMethod.Post, path, "admin",
+            System.Net.Http.Json.JsonContent.Create(new { employeeId = _ownEmployeeId, note = "parallel asset checkout A" }), requestToken, antiforgeryCookie);
+        var secondRequest = SendAsRoleAsync(HttpMethod.Post, path, "admin",
+            System.Net.Http.Json.JsonContent.Create(new { employeeId = _ownSecondEmployeeId, note = "parallel asset checkout B" }), requestToken, antiforgeryCookie);
+
+        using var firstResponse = await firstRequest;
+        using var secondResponse = await secondRequest;
+
+        var responseDetails = $"first={(int)firstResponse.StatusCode} {await firstResponse.Content.ReadAsStringAsync()}; " +
+            $"second={(int)secondResponse.StatusCode} {await secondResponse.Content.ReadAsStringAsync()}";
+        Assert.True(new[] { firstResponse.StatusCode, secondResponse.StatusCode }.Contains(HttpStatusCode.OK), responseDetails);
+        Assert.Equal(1, new[] { firstResponse.StatusCode, secondResponse.StatusCode }
+            .Count(status => status == HttpStatusCode.OK));
+        Assert.Equal(1, new[] { firstResponse.StatusCode, secondResponse.StatusCode }
+            .Count(status => status == HttpStatusCode.Conflict));
+
+        await using var verificationScope = _factory!.Services.CreateAsyncScope();
+        var verificationDb = verificationScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var asset = await verificationDb.Assets.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownAssetId);
+        Assert.Contains(asset.AssignedEmployeeId, new Guid?[] { _ownEmployeeId, _ownSecondEmployeeId });
+        Assert.Equal(AssetStatuses.Deployed, asset.Status);
+        Assert.Single(await verificationDb.AssetEvents.Where(x => x.CompanyId == _companyId && x.AssetId == _ownAssetId && x.EventType == "Assigned").ToListAsync());
+    }
+
+    [Fact]
     public async Task Concurrent_component_checkouts_cannot_allocate_the_same_remaining_stock_twice()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
