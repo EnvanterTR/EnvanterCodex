@@ -1383,6 +1383,17 @@
       'Önce güncel rapor verilerini yükleyin.':['Load the latest report data first.','Сначала загрузите актуальные данные отчёта.','Спочатку завантажте актуальні дані звіту.','Прво вчитајте ги најновите податоци за извештајот.'],'Güncel rapor Excel uyumlu CSV olarak indirildi. Para birimleri ayrı satırlardadır.':['The current report was downloaded as Excel-compatible CSV. Currencies are listed on separate rows.','Актуальный отчёт загружен в формате CSV для Excel. Валюты указаны отдельными строками.','Поточний звіт завантажено у форматі CSV для Excel. Валюти наведені в окремих рядках.','Тековниот извештај е преземен како Excel-компатибилен CSV. Валутите се во одделни редови.'],
       'Bölüm':['Section','Раздел','Розділ','Дел'],'Para Birimi':['Currency','Валюта','Валюта','Валута'],'Alış bedeli kayıtlı varlık':['Assets with purchase cost','Активы с указанной стоимостью покупки','Активи із зазначеною вартістю придбання','Средства со внесена куповна цена']
     });
+    Object.assign(localeRows, {
+      'Sunucuya bağlanılamadı. Uygulamanın çalıştığını ve ağ bağlantınızı kontrol edip yeniden deneyin.':['Could not connect to the server. Check that the application is running and your network connection, then try again.','Не удалось подключиться к серверу. Проверьте, что приложение запущено и подключение к сети, затем повторите попытку.','Не вдалося підключитися до сервера. Перевірте, чи запущено програму та чи є підключення до мережі, і повторіть спробу.','Не може да се поврзе со серверот. Проверете дали апликацијата работи и мрежната врска, па обидете се повторно.'],
+      'Oturum açmanız gerekiyor.':['You need to sign in.','Необходимо войти в систему.','Потрібно увійти в систему.','Треба да се најавите.'],
+      'İstek başarısız ({status}).':['Request failed ({status}).','Не удалось выполнить запрос ({status}).','Не вдалося виконати запит ({status}).','Барањето не успеа ({status}).'],
+      'İsteğiniz doğrulanamadı. Sayfayı yenileyip yeniden deneyin.':['Your request could not be verified. Refresh the page and try again.','Не удалось проверить запрос. Обновите страницу и повторите попытку.','Не вдалося перевірити запит. Оновіть сторінку та повторіть спробу.','Барањето не може да се потврди. Освежете ја страницата и обидете се повторно.'],
+      'Bu işlem için yetkiniz yok.':['You are not authorized to perform this action.','У вас нет прав для выполнения этого действия.','У вас немає прав для виконання цієї дії.','Немате овластување за ова дејство.'],
+      'Kayıt bulunamadı.':['Record not found.','Запись не найдена.','Запис не знайдено.','Записот не е пронајден.'],
+      'İşlem mevcut kayıtlarla çakışıyor. Bilgileri yenileyip yeniden deneyin.':['This action conflicts with existing records. Refresh the information and try again.','Действие конфликтует с существующими записями. Обновите данные и повторите попытку.','Дія конфліктує з наявними записами. Оновіть дані та повторіть спробу.','Дејството е во судир со постојните записи. Освежете ги податоците и обидете се повторно.'],
+      'İstek sınırı aşıldı. Daha sonra yeniden deneyin.':['Request limit exceeded. Try again later.','Превышен лимит запросов. Повторите попытку позже.','Перевищено ліміт запитів. Спробуйте пізніше.','Ограничувањето на барања е надминато. Обидете се подоцна.'],
+      'İstek gövdesi izin verilen boyutu aşıyor.':['The request body exceeds the allowed size.','Размер запроса превышает допустимый.','Розмір запиту перевищує дозволений.','Големината на барањето го надминува дозволеното.']
+    });
     const localeIndexes = { en: 0, ru: 1, uk: 2, mk: 3 };
     function translateUiText(text) {
       const key = String(text ?? ''), index = localeIndexes[appearanceLanguage.value];
@@ -1531,13 +1542,15 @@
       let response;
       try { response = await fetch(path, { credentials: 'same-origin', ...options, headers }); }
       catch (error) {
-        if (error instanceof TypeError) throw new Error('Sunucuya bağlanılamadı. Uygulamanın çalıştığını ve ağ bağlantınızı kontrol edip yeniden deneyin.');
+        if (error instanceof TypeError) throw new Error(translateUiText('Sunucuya bağlanılamadı. Uygulamanın çalıştığını ve ağ bağlantınızı kontrol edip yeniden deneyin.'));
         throw error;
       }
-      if (response.status === 401 && path !== '/api/session/login') { showLogin(); throw new Error('Oturum açmanız gerekiyor.'); }
+      if (response.status === 401 && path !== '/api/session/login') { showLogin(); throw new Error(translateUiText('Oturum açmanız gerekiyor.')); }
       if (!response.ok) {
-        let message = `İstek başarısız (${response.status}).`, payload = null;
+        const fallbackKey = ({ 400: 'İsteğiniz doğrulanamadı. Sayfayı yenileyip yeniden deneyin.', 403: 'Bu işlem için yetkiniz yok.', 404: 'Kayıt bulunamadı.', 409: 'İşlem mevcut kayıtlarla çakışıyor. Bilgileri yenileyip yeniden deneyin.', 413: 'İstek gövdesi izin verilen boyutu aşıyor.', 429: 'İstek sınırı aşıldı. Daha sonra yeniden deneyin.' })[response.status] || 'İstek başarısız ({status}).';
+        let message = translateUiText(fallbackKey).replace('{status}', response.status), payload = null;
         try { payload = await response.json(); const details = Array.isArray(payload.errors) ? payload.errors : Object.values(payload.errors || {}).flat(); message = [payload.message, ...details].filter(Boolean).join('\n') || message; } catch {}
+        message = message.split('\n').map(line => translateUiText(line)).join('\n');
         const error = new Error(message); error.status = response.status; error.payload = payload; throw error;
       }
       if (response.status === 204) return null;
