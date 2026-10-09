@@ -10,7 +10,7 @@ if (-not $Commit) {
     $Commit = (& git -C $repoRoot rev-parse --verify HEAD).Trim()
     if ($LASTEXITCODE -ne 0) { throw "Could not determine the source commit for this Windows package." }
 }
-if ($Commit -notmatch '^[0-9a-fA-F]{7,64}$') { throw "Commit must be a hexadecimal Git commit ID." }
+if ($Commit -notmatch '^[0-9a-fA-F]{12,64}$') { throw "Commit must be a hexadecimal Git commit ID with at least 12 characters." }
 
 $package = (Resolve-Path -LiteralPath $PackagePath).Path
 $output = [System.IO.Path]::GetFullPath($OutputDirectory)

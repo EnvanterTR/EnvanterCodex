@@ -35,6 +35,12 @@ try {
     if (-not $checksumRejected) { throw "Release verification accepted an altered SHA-256 sidecar." }
     Set-Content -LiteralPath $checksum -Value $validSidecar -NoNewline
 
+    $shortCommitRejected = $false
+    try {
+        & (Join-Path $PSScriptRoot "..\package-release.ps1") -PackagePath $fixture -OutputDirectory (Join-Path $scratchRoot "short-commit") -Commit "0123456"
+    } catch { $shortCommitRejected = $true }
+    if (-not $shortCommitRejected) { throw "Release packaging accepted a commit ID too short for its 12-character package name." }
+
     $secretPath = Join-Path $fixture "nested"
     New-Item -ItemType Directory -Path $secretPath -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $secretPath ".env.production") -Value "should not ship" -NoNewline
