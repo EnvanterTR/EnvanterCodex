@@ -1645,7 +1645,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
 
         await SetCompanyRoleAsync("admin");
         using var approved = await SendAsRoleAsync(HttpMethod.Post, $"/api/reservations/{reservationId}/decision", "admin",
-            System.Net.Http.Json.JsonContent.Create(new { approve = true, note = "Approved in acceptance" }), requestToken, antiforgeryCookie);
+            System.Net.Http.Json.JsonContent.Create(new { approve = true, note = "=1+1" }), requestToken, antiforgeryCookie);
         Assert.Equal(HttpStatusCode.OK, approved.StatusCode);
         using var approvedPayload = JsonDocument.Parse(await approved.Content.ReadAsStringAsync());
         Assert.Equal("Approved", approvedPayload.RootElement.GetProperty("status").GetString());
@@ -1699,6 +1699,17 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var row = Assert.Single(historyPayload.RootElement.GetProperty("items").EnumerateArray());
         Assert.Equal(reservationId, row.GetProperty("id").GetGuid());
         Assert.Equal(_ownEmployeeId, row.GetProperty("employeeId").GetGuid());
+
+        using (var export = await SendAsAdminAsync($"/api/reservations/export.csv?status=Approved&q=OWN-1&from={startsOn:yyyy-MM-dd}&to={endsOn:yyyy-MM-dd}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, export.StatusCode);
+            Assert.Contains("text/csv", export.Content.Headers.ContentType?.ToString());
+            var csv = await export.Content.ReadAsStringAsync();
+            Assert.Contains("OWN-1", csv);
+            Assert.Contains("'=1+1", csv);
+            Assert.DoesNotContain("FOREIGN-RES", csv);
+            Assert.Equal(2, csv.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length);
+        }
 
         using var crossTenant = await SendAsAdminAsync("/api/reservations", _otherCompanyId);
         Assert.Equal(HttpStatusCode.Unauthorized, crossTenant.StatusCode);

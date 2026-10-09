@@ -1,5 +1,7 @@
 # Proje ilerleme raporu
 
+- **9 Ekim rezervasyon dışa aktarımı:** Rezervasyon ekranına mevcut arama/durum/tarih filtrelerini koruyan CSV indirme eklendi. API listeyle aynı şirket ve talep sahibi/yetkili görünürlük kurallarını uygular, 50.000 satırla sınırlar ve Excel formül enjeksiyonunu etkisizleştirir. PostgreSQL kabul senaryosuna CSV kapsam/filtre/formül koruması eklendi. Release Docker derlemesi başarılı; yerel web konteyneri güncellendi, `/health` 200 ve `/api/status` `ready`. Bu turda kabul paketi çalıştırılmadı.
+
 - **9 Ekim çalışan belgesi kiracı erişimi:** Çalışan fotoğrafı/belge güvenlik kabuline yabancı tenant çalışanına belge yükleme ve silme girişimleri eklendi. HR dosya yetkisine sahip şirket yöneticisi için iki istek de `404` ile reddedildi; yabancı belgenin disk kopyası ve DB kaydı korundu. İzole PostgreSQL güvenlik/kabul paketi **57/57 geçti**; geçici Compose kaynakları kaldırıldı, yerel geliştirme veritabanı kullanılmadı.
 
 - **9 Ekim varlık eki erişim denetimi:** Çalışan fotoğraf/belge kabul senaryosuna yabancı şirkete ait varlık eklerini indirme, yükleme ve silme denemeleri eklendi. Her istek `404` ile reddedildi; yabancı şirket dosyası ve veritabanı eki korundu. İzole geçici PostgreSQL güvenlik/kabul paketi **57/57 geçti**; uygulama ve test veritabanı konteynerleri temizlendi. Yerel geliştirme veritabanı kullanılmadı.

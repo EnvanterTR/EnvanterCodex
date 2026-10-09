@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Globalization;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,6 +29,56 @@ public static class AssetReservationEndpoints
             var assetItems = await assets.OrderBy(x => x.AssetTag).Take(200)
                 .Select(x => new { x.Id, x.AssetTag, x.Name, x.Location }).ToListAsync(ct);
             return Results.Ok(new { employees = employeeItems, assets = assetItems });
+        }).RequireAuthorization("asset.read");
+
+        api.MapGet("/reservations/export.csv", async ([FromQuery] string? q, [FromQuery] string? status,
+            [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, ClaimsPrincipal user,
+            AppDbContext db, CancellationToken ct) =>
+        {
+            if (!Tenant(user, out var companyId) || UserId(user) is not Guid userId) return Results.Forbid();
+            if (!ValidStatus(status)) return Results.ValidationProblem(new Dictionary<string, string[]> { ["status"] = ["Rezervasyon durumu geçerli değil."] });
+            if (from > to) return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Başlangıç tarihi bitiş tarihinden sonra olamaz."] });
+            if (q?.Trim().Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
+
+            var query = db.AssetReservations.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (!CanReview(user)) query = query.Where(x => x.RequestedByUserId == userId);
+            if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.Status == status.Trim());
+            if (from is DateOnly starts) query = query.Where(x => x.EndsOn >= starts);
+            if (to is DateOnly ends) query = query.Where(x => x.StartsOn <= ends);
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                query = query.Where(x => db.Assets.Any(a => a.CompanyId == companyId && a.Id == x.AssetId &&
+                    (a.AssetTag.Contains(term) || a.Name.Contains(term))) ||
+                    db.Employees.Any(e => e.CompanyId == companyId && e.Id == x.EmployeeId &&
+                        (e.DisplayName.Contains(term) || e.EmployeeNumber.Contains(term))) ||
+                    (x.RequestNote != null && x.RequestNote.Contains(term)) ||
+                    (x.ReviewNote != null && x.ReviewNote.Contains(term)));
+            }
+            var rows = await query.OrderByDescending(x => x.StartsOn).ThenBy(x => x.Id).Take(50_001).Select(x => new
+            {
+                x.StartsOn, x.EndsOn, x.Status, x.RequestNote, x.ReviewNote, x.CreatedAt, x.ReviewedAt,
+                assetTag = db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.AssetTag).FirstOrDefault(),
+                assetName = db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.Name).FirstOrDefault(),
+                employeeName = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
+                employeeNumber = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault(),
+                requestedBy = db.Users.Where(u => u.Id == x.RequestedByUserId).Select(u => u.DisplayName).FirstOrDefault(),
+                reviewedBy = db.Users.Where(u => u.Id == x.ReviewedByUserId).Select(u => u.DisplayName).FirstOrDefault()
+            }).ToListAsync(ct);
+            if (rows.Count > 50_000) return Results.Problem("CSV dışa aktarımı tek seferde en fazla 50.000 rezervasyonla sınırlıdır. Tarih veya arama filtresi ekleyin.", statusCode: StatusCodes.Status413PayloadTooLarge);
+
+            var csv = new StringBuilder("\uFEFF");
+            csv.AppendLine("Başlangıç;Bitiş;Durum;Varlık etiketi;Varlık adı;Çalışan;Çalışan no;Talep eden;Kararı veren;Talep notu;Karar notu;Oluşturulma;Karar tarihi");
+            foreach (var row in rows)
+                csv.AppendLine(string.Join(';', new[]
+                {
+                    Cell(row.StartsOn.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)), Cell(row.EndsOn.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
+                    Cell(StatusLabel(row.Status)), Cell(row.assetTag), Cell(row.assetName), Cell(row.employeeName), Cell(row.employeeNumber),
+                    Cell(row.requestedBy), Cell(row.reviewedBy), Cell(row.RequestNote), Cell(row.ReviewNote),
+                    Cell(row.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss 'UTC'", CultureInfo.InvariantCulture)),
+                    Cell(row.ReviewedAt?.ToString("yyyy-MM-dd HH:mm:ss 'UTC'", CultureInfo.InvariantCulture))
+                }));
+            return Results.File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv; charset=utf-8", $"envantertr-rezervasyonlar-{DateTime.UtcNow:yyyyMMdd}.csv");
         }).RequireAuthorization("asset.read");
 
         api.MapGet("/reservations", async ([FromQuery] string? q, [FromQuery] string? status,
@@ -177,6 +229,17 @@ public static class AssetReservationEndpoints
 
     private static bool ValidStatus(string? status) => string.IsNullOrWhiteSpace(status) ||
         status.Trim() is "Pending" or "Approved" or "Rejected" or "Cancelled" or "Completed";
+    private static string StatusLabel(string status) => status switch
+    {
+        "Pending" => "Onay bekliyor", "Approved" => "Onaylandı", "Rejected" => "Reddedildi",
+        "Cancelled" => "İptal edildi", "Completed" => "Tamamlandı", _ => status
+    };
+    private static string Cell(string? value)
+    {
+        var safe = value?.Trim() ?? "";
+        if (safe.Length > 0 && safe[0] is '=' or '+' or '-' or '@' or '\t' or '\r') safe = "'" + safe;
+        return "\"" + safe.Replace("\"", "\"\"") + "\"";
+    }
     private static bool Tenant(ClaimsPrincipal user, out Guid companyId) => Guid.TryParse(user.FindFirstValue("company_id"), out companyId);
     private static Guid? UserId(ClaimsPrincipal user) => Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
     private static bool CanReview(ClaimsPrincipal user) => user.FindFirstValue("company_role") is "owner" or "admin" or "asset_manager" or "asset_operator";
