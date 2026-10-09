@@ -43,6 +43,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AssetPurchaseOrderLine> AssetPurchaseOrderLines => Set<AssetPurchaseOrderLine>();
     public DbSet<AssetPurchaseOrderAttachment> AssetPurchaseOrderAttachments => Set<AssetPurchaseOrderAttachment>();
     public DbSet<StockPurchaseOrderAttachment> StockPurchaseOrderAttachments => Set<StockPurchaseOrderAttachment>();
+    public DbSet<AccessoryPurchaseOrderAttachment> AccessoryPurchaseOrderAttachments => Set<AccessoryPurchaseOrderAttachment>();
     public DbSet<Consumable> Consumables => Set<Consumable>();
     public DbSet<ConsumableMovement> ConsumableMovements => Set<ConsumableMovement>();
     public DbSet<InventoryRequest> InventoryRequests => Set<InventoryRequest>();
@@ -729,6 +730,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<StockPurchaseOrderAttachment>().HasOne<StockPurchaseOrder>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.PurchaseOrderId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<StockPurchaseOrderAttachment>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<AccessoryPurchaseOrderAttachment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<AccessoryPurchaseOrderAttachment>().Property(x => x.OriginalFileName).HasMaxLength(255).IsRequired();
+        modelBuilder.Entity<AccessoryPurchaseOrderAttachment>().Property(x => x.StorageFileName).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<AccessoryPurchaseOrderAttachment>().Property(x => x.ContentType).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<AccessoryPurchaseOrderAttachment>().HasIndex(x => new { x.CompanyId, x.PurchaseOrderId, x.CreatedAt });
+        modelBuilder.Entity<AccessoryPurchaseOrderAttachment>().ToTable("AccessoryPurchaseOrderAttachments", table =>
+            table.HasCheckConstraint("CK_AccessoryPurchaseOrderAttachments_Length", "\"Length\" BETWEEN 1 AND 10485760"));
+        modelBuilder.Entity<AccessoryPurchaseOrderAttachment>().HasOne<AccessoryPurchaseOrder>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.PurchaseOrderId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AccessoryPurchaseOrderAttachment>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<Asset>().HasQueryFilter(x => x.DeletedAt == null);

@@ -390,6 +390,56 @@ namespace EnvanterTR.Web.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryPurchaseOrderAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Length")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<Guid>("PurchaseOrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("StorageFileName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid?>("UploadedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("CompanyId", "Id");
+
+                    b.HasIndex("UploadedByUserId");
+
+                    b.HasIndex("CompanyId", "PurchaseOrderId", "CreatedAt");
+
+                    b.ToTable("AccessoryPurchaseOrderAttachments", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_AccessoryPurchaseOrderAttachments_Length", "\"Length\" BETWEEN 1 AND 10485760");
+                        });
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryPurchaseOrderLine", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3395,6 +3445,21 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId", "SupplierId")
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryPurchaseOrderAttachment", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("EnvanterTR.Web.Data.AccessoryPurchaseOrder", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "PurchaseOrderId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryPurchaseOrderLine", b =>

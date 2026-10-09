@@ -3021,6 +3021,43 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Created, accessoryOrderCreate.StatusCode);
         using var accessoryOrderCreated = JsonDocument.Parse(await accessoryOrderCreate.Content.ReadAsStringAsync());
         var accessoryOrderId = accessoryOrderCreated.RootElement.GetProperty("id").GetGuid();
+        using var invalidAccessoryAttachmentContent = new MultipartFormDataContent();
+        var spoofedAccessoryPdf = new ByteArrayContent("not a pdf"u8.ToArray());
+        spoofedAccessoryPdf.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
+        invalidAccessoryAttachmentContent.Add(spoofedAccessoryPdf, "file", "invoice.pdf");
+        using var rejectedAccessoryAttachment = await SendAsRoleAsync(HttpMethod.Post,
+            $"/api/accessory-orders/{accessoryOrderId}/attachments", "admin", invalidAccessoryAttachmentContent, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.BadRequest, rejectedAccessoryAttachment.StatusCode);
+
+        using var accessoryAttachmentContent = new MultipartFormDataContent();
+        var accessoryInvoice = new ByteArrayContent("%PDF-1.7\naccessory invoice"u8.ToArray());
+        accessoryInvoice.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
+        accessoryAttachmentContent.Add(accessoryInvoice, "file", "accessory-invoice.pdf");
+        using var accessoryAttachmentResponse = await SendAsRoleAsync(HttpMethod.Post,
+            $"/api/accessory-orders/{accessoryOrderId}/attachments", "admin", accessoryAttachmentContent, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, accessoryAttachmentResponse.StatusCode);
+        using var accessoryAttachmentPayload = JsonDocument.Parse(await accessoryAttachmentResponse.Content.ReadAsStringAsync());
+        var accessoryAttachmentId = accessoryAttachmentPayload.RootElement.GetProperty("id").GetGuid();
+        using var accessoryAttachmentList = await SendAsAdminAsync($"/api/accessory-orders/{accessoryOrderId}/attachments");
+        Assert.Equal(HttpStatusCode.OK, accessoryAttachmentList.StatusCode);
+        using var accessoryAttachmentListPayload = JsonDocument.Parse(await accessoryAttachmentList.Content.ReadAsStringAsync());
+        Assert.Equal(accessoryAttachmentId, Assert.Single(accessoryAttachmentListPayload.RootElement.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
+        using var accessoryAttachmentDownload = await SendAsAdminAsync($"/api/accessory-orders/{accessoryOrderId}/attachments/{accessoryAttachmentId}/file");
+        Assert.Equal(HttpStatusCode.OK, accessoryAttachmentDownload.StatusCode);
+        Assert.Equal("%PDF-1.7\naccessory invoice", await accessoryAttachmentDownload.Content.ReadAsStringAsync());
+        using var crossTenantAccessoryAttachmentList = await SendAsAdminAsync($"/api/accessory-orders/{accessoryOrderId}/attachments", _otherCompanyId);
+        Assert.Equal(HttpStatusCode.Unauthorized, crossTenantAccessoryAttachmentList.StatusCode);
+        using var accessoryCompanyArchiveResponse = await SendAsAdminAsync("/api/company/export.zip");
+        Assert.Equal(HttpStatusCode.OK, accessoryCompanyArchiveResponse.StatusCode);
+        using (var accessoryCompanyArchive = new ZipArchive(await accessoryCompanyArchiveResponse.Content.ReadAsStreamAsync(), ZipArchiveMode.Read, leaveOpen: true))
+        {
+            var archivedAccessoryInvoice = Assert.Single(accessoryCompanyArchive.Entries,
+                entry => entry.FullName == $"media/accessory-purchase-orders/{accessoryOrderId:N}/attachments/{accessoryAttachmentId:N}.pdf");
+            await using var archivedAccessoryInvoiceStream = archivedAccessoryInvoice.Open();
+            using var archivedAccessoryInvoiceBytes = new MemoryStream();
+            await archivedAccessoryInvoiceStream.CopyToAsync(archivedAccessoryInvoiceBytes);
+            Assert.Equal("%PDF-1.7\naccessory invoice"u8.ToArray(), archivedAccessoryInvoiceBytes.ToArray());
+        }
         using var accessoryOrderDetailResponse = await SendAsAdminAsync($"/api/accessory-orders/{accessoryOrderId}");
         Assert.Equal(HttpStatusCode.OK, accessoryOrderDetailResponse.StatusCode);
         using var accessoryOrderDetail = JsonDocument.Parse(await accessoryOrderDetailResponse.Content.ReadAsStringAsync());
@@ -3043,6 +3080,11 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             accessoryReceiptPayload, requestToken, antiforgeryCookie);
         Assert.Equal(HttpStatusCode.OK, accessoryReceipt.StatusCode);
         Assert.Equal(21.13m, await db.Accessories.Where(x => x.CompanyId == _companyId && x.Id == _ownAccessoryId).Select(x => x.UnitCost).SingleAsync());
+        Assert.Equal(1, await db.AccessoryPurchaseOrderAttachments.CountAsync(x => x.CompanyId == _companyId && x.PurchaseOrderId == accessoryOrderId));
+        using var deleteAccessoryAttachment = await SendAsRoleAsync(HttpMethod.Delete,
+            $"/api/accessory-orders/{accessoryOrderId}/attachments/{accessoryAttachmentId}", "admin", null, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.NoContent, deleteAccessoryAttachment.StatusCode);
+        Assert.Equal(0, await db.AccessoryPurchaseOrderAttachments.CountAsync(x => x.CompanyId == _companyId && x.PurchaseOrderId == accessoryOrderId));
     }
 
     [Fact]
