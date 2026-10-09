@@ -964,6 +964,9 @@ public static class OperationalEndpoints
             if (asset is null) return Results.NotFound();
             if (asset.AssignedEmployeeId is not null || asset.Status != AssetStatuses.Available)
                 return Results.Conflict(new { message = "Yalnızca boşta ve kullanılabilir varlık zimmetlenebilir." });
+            var reservationConflict = await CheckReservationForAssignmentAsync(db, companyId, asset.Id, request.EmployeeId,
+                actorId, request.ExpectedReturnOn, cancellationToken);
+            if (reservationConflict is not null) return Results.Conflict(new { message = reservationConflict });
             asset.AssignedEmployeeId = request.EmployeeId;
             asset.ExpectedReturnOn = request.ExpectedReturnOn;
             asset.Status = AssetStatuses.Deployed;
@@ -1223,6 +1226,10 @@ public static class OperationalEndpoints
             var note = Clean(request.Note);
             foreach (var asset in assets)
             {
+                var reservationConflict = await CheckReservationForAssignmentAsync(db, companyId, asset.Id, employee.Id,
+                    actorId, request.ExpectedReturnOn, cancellationToken);
+                if (reservationConflict is not null)
+                    return Results.Conflict(new { message = $"{asset.AssetTag}: {reservationConflict} Toplu işlem uygulanmadı." });
                 asset.AssignedEmployeeId = employee.Id;
                 asset.ExpectedReturnOn = request.ExpectedReturnOn;
                 asset.Status = AssetStatuses.Deployed;
@@ -1733,6 +1740,40 @@ public static class OperationalEndpoints
         if (date is null) return true;
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         return date >= today && date <= today.AddYears(10);
+    }
+
+    private static async Task<string?> CheckReservationForAssignmentAsync(AppDbContext db, Guid companyId, Guid assetId,
+        Guid employeeId, Guid actorId, DateOnly? expectedReturnOn, CancellationToken cancellationToken)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var checkoutEndsOn = expectedReturnOn ?? DateOnly.MaxValue;
+        var reservations = await db.AssetReservations.Where(x => x.CompanyId == companyId && x.AssetId == assetId &&
+                (x.Status == "Pending" || x.Status == "Approved") && x.EndsOn >= today && x.StartsOn <= checkoutEndsOn)
+            .OrderBy(x => x.StartsOn).ToListAsync(cancellationToken);
+        var fulfilledReservation = reservations.FirstOrDefault(x => x.Status == "Approved" && x.EmployeeId == employeeId &&
+            x.StartsOn <= today && x.EndsOn >= today);
+
+        var conflicts = reservations.Where(x => x.Id != fulfilledReservation?.Id).ToArray();
+        if (conflicts.Length > 0)
+            return "Varlığın bekleyen veya onaylanmış rezervasyon tarihleri bu zimmetle çakışıyor.";
+        if (fulfilledReservation is null) return null;
+        if (expectedReturnOn is DateOnly returnDate && returnDate > fulfilledReservation.EndsOn)
+            return "Zimmetin beklenen iade tarihi onaylı rezervasyonun bitişinden sonra olamaz.";
+
+        var now = DateTimeOffset.UtcNow;
+        fulfilledReservation.Status = "Completed";
+        fulfilledReservation.ReviewedByUserId = actorId;
+        fulfilledReservation.ReviewedAt = fulfilledReservation.UpdatedAt = now;
+        db.AuditEntries.Add(new AuditEntry
+        {
+            CompanyId = companyId,
+            ActorUserId = actorId,
+            TargetType = "AssetReservation",
+            TargetId = fulfilledReservation.Id,
+            Action = "ReservationCompleted",
+            Details = $"Zimmetle karşılandı · {fulfilledReservation.StartsOn:yyyy-MM-dd} – {fulfilledReservation.EndsOn:yyyy-MM-dd}"
+        });
+        return null;
     }
 
     private static string? AssignmentDetails(string? note, DateOnly? expectedReturnOn)

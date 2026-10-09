@@ -16,6 +16,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AssetBrand> AssetBrands => Set<AssetBrand>();
     public DbSet<AssetModel> AssetModels => Set<AssetModel>();
     public DbSet<Asset> Assets => Set<Asset>();
+    public DbSet<AssetReservation> AssetReservations => Set<AssetReservation>();
     public DbSet<AssetCustomFieldDefinition> AssetCustomFieldDefinitions => Set<AssetCustomFieldDefinition>();
     public DbSet<SavedAssetSearch> SavedAssetSearches => Set<SavedAssetSearch>();
     public DbSet<SavedAssetImportMapping> SavedAssetImportMappings => Set<SavedAssetImportMapping>();
@@ -244,6 +245,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetBrand>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AssetModel>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<Asset>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<AssetReservation>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AssetAttachment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<EmployeeDocument>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<Accessory>().HasAlternateKey(x => new { x.CompanyId, x.Id });
@@ -746,6 +748,26 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Asset>().HasOne<CompanyLocation>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.LocationCatalogId })
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<AssetReservation>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssetReservation>().HasOne<Asset>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.AssetId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AssetReservation>().HasOne<Employee>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.EmployeeId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AssetReservation>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.RequestedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AssetReservation>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.ReviewedByUserId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<AssetReservation>().Property(x => x.Status).HasMaxLength(16).IsRequired();
+        modelBuilder.Entity<AssetReservation>().Property(x => x.RequestNote).HasMaxLength(1000);
+        modelBuilder.Entity<AssetReservation>().Property(x => x.ReviewNote).HasMaxLength(1000);
+        modelBuilder.Entity<AssetReservation>().HasIndex(x => new { x.CompanyId, x.Status, x.StartsOn });
+        modelBuilder.Entity<AssetReservation>().HasIndex(x => new { x.CompanyId, x.AssetId, x.StartsOn, x.EndsOn });
+        modelBuilder.Entity<AssetReservation>().ToTable(table =>
+        {
+            table.HasCheckConstraint("CK_AssetReservations_Dates", "\"EndsOn\" >= \"StartsOn\"");
+            table.HasCheckConstraint("CK_AssetReservations_Status", "\"Status\" IN ('Pending', 'Approved', 'Rejected', 'Cancelled', 'Completed')");
+        });
         modelBuilder.Entity<Accessory>().HasIndex(x => new { x.CompanyId, x.LocationCatalogId });
         modelBuilder.Entity<Accessory>().HasOne<CompanyLocation>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.LocationCatalogId })

@@ -1549,6 +1549,95 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Asset_reservations_reject_date_overlaps_require_review_permissions_and_stay_in_tenant()
+    {
+        await using (var setupScope = _factory!.Services.CreateAsyncScope())
+        {
+            var setupDb = setupScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var categoryId = await setupDb.AssetCategories.Where(x => x.CompanyId == _companyId).Select(x => x.Id).SingleAsync();
+            setupDb.Assets.Add(new Asset { Id = _ownSecondAssetId, CompanyId = _companyId, AssetTag = "OWN-RES-2",
+                Name = "Reservation fulfillment asset", CategoryId = categoryId });
+            await setupDb.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var startsOn = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(7);
+        var endsOn = startsOn.AddDays(3);
+        var reservationBody = System.Net.Http.Json.JsonContent.Create(new
+        {
+            assetId = _ownAssetId, employeeId = _ownEmployeeId, startsOn, endsOn, requestNote = "Acceptance reservation"
+        });
+
+        using var created = await SendAsRoleAsync(HttpMethod.Post, "/api/reservations", "admin", reservationBody, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        using var createdPayload = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
+        var reservationId = createdPayload.RootElement.GetProperty("id").GetGuid();
+        Assert.Equal("Pending", createdPayload.RootElement.GetProperty("status").GetString());
+
+        using var overlapping = await SendAsRoleAsync(HttpMethod.Post, "/api/reservations", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { assetId = _ownAssetId, employeeId = _ownEmployeeId, startsOn = startsOn.AddDays(1), endsOn, requestNote = "Overlap" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Conflict, overlapping.StatusCode);
+
+        await SetCompanyRoleAsync("viewer");
+        using var unauthorizedDecision = await SendAsRoleAsync(HttpMethod.Post, $"/api/reservations/{reservationId}/decision", "viewer",
+            System.Net.Http.Json.JsonContent.Create(new { approve = true, note = (string?)null }), requestToken, antiforgeryCookie);
+        Assert.True(unauthorizedDecision.StatusCode == HttpStatusCode.Forbidden,
+            $"Read-only reviewer unexpectedly received {(int)unauthorizedDecision.StatusCode}: {await unauthorizedDecision.Content.ReadAsStringAsync()}");
+
+        await SetCompanyRoleAsync("admin");
+        using var approved = await SendAsRoleAsync(HttpMethod.Post, $"/api/reservations/{reservationId}/decision", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { approve = true, note = "Approved in acceptance" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, approved.StatusCode);
+        using var approvedPayload = JsonDocument.Parse(await approved.Content.ReadAsStringAsync());
+        Assert.Equal("Approved", approvedPayload.RootElement.GetProperty("status").GetString());
+
+        using (var overlappingAssignment = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_ownAssetId}/assign", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { employeeId = _ownEmployeeId, expectedReturnOn = endsOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, overlappingAssignment.StatusCode);
+        using (var beforeReservation = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_ownAssetId}/assign", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { employeeId = _ownEmployeeId, expectedReturnOn = startsOn.AddDays(-1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, beforeReservation.StatusCode);
+        using (var returned = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_ownAssetId}/return", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { note = "Returned before reserved window" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, returned.StatusCode);
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var immediateEndsOn = today.AddDays(3);
+        using var immediateReservation = await SendAsRoleAsync(HttpMethod.Post, "/api/reservations", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { assetId = _ownSecondAssetId, employeeId = _ownEmployeeId, startsOn = today, endsOn = immediateEndsOn }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, immediateReservation.StatusCode);
+        using var immediatePayload = JsonDocument.Parse(await immediateReservation.Content.ReadAsStringAsync());
+        var immediateReservationId = immediatePayload.RootElement.GetProperty("id").GetGuid();
+        using (var approveImmediate = await SendAsRoleAsync(HttpMethod.Post, $"/api/reservations/{immediateReservationId}/decision", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { approve = true, note = (string?)null }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, approveImmediate.StatusCode);
+        using (var fulfillReservation = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_ownSecondAssetId}/assign", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { employeeId = _ownEmployeeId, expectedReturnOn = immediateEndsOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, fulfillReservation.StatusCode);
+
+        using var history = await SendAsAdminAsync("/api/reservations?status=Approved&q=OWN-1");
+        Assert.Equal(HttpStatusCode.OK, history.StatusCode);
+        using var historyPayload = JsonDocument.Parse(await history.Content.ReadAsStringAsync());
+        var row = Assert.Single(historyPayload.RootElement.GetProperty("items").EnumerateArray());
+        Assert.Equal(reservationId, row.GetProperty("id").GetGuid());
+        Assert.Equal(_ownEmployeeId, row.GetProperty("employeeId").GetGuid());
+
+        using var crossTenant = await SendAsAdminAsync("/api/reservations", _otherCompanyId);
+        Assert.Equal(HttpStatusCode.Unauthorized, crossTenant.StatusCode);
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(1, await db.AssetReservations.CountAsync(x => x.CompanyId == _companyId && x.AssetId == _ownAssetId));
+        Assert.Equal("Completed", await db.AssetReservations.Where(x => x.Id == immediateReservationId).Select(x => x.Status).SingleAsync());
+        Assert.Equal(0, await db.AssetReservations.CountAsync(x => x.CompanyId == _otherCompanyId));
+    }
+
+    [Fact]
     public async Task Operational_notification_preferences_and_read_dismiss_states_are_private_to_each_user_and_company()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");

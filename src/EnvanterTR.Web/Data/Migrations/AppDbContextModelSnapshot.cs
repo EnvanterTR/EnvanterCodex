@@ -1168,6 +1168,77 @@ namespace EnvanterTR.Web.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.AssetReservation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AssetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("EndsOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("RequestNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("RequestedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("StartsOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("CompanyId", "Id");
+
+                    b.HasIndex("RequestedByUserId");
+
+                    b.HasIndex("ReviewedByUserId");
+
+                    b.HasIndex("CompanyId", "EmployeeId");
+
+                    b.HasIndex("CompanyId", "Status", "StartsOn");
+
+                    b.HasIndex("CompanyId", "AssetId", "StartsOn", "EndsOn");
+
+                    b.ToTable("AssetReservations", t =>
+                        {
+                            t.HasCheckConstraint("CK_AssetReservations_Dates", "\"EndsOn\" >= \"StartsOn\"");
+
+                            t.HasCheckConstraint("CK_AssetReservations_Status", "\"Status\" IN ('Pending', 'Approved', 'Rejected', 'Cancelled', 'Completed')");
+                        });
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.AuditEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3570,6 +3641,40 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId", "PurchaseOrderId")
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.AssetReservation", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("RequestedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("EnvanterTR.Web.Data.Asset", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "AssetId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "EmployeeId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

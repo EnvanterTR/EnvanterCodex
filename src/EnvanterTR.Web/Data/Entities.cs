@@ -223,6 +223,24 @@ public sealed class Asset
     public Guid? DeletedByUserId { get; set; }
 }
 
+public sealed class AssetReservation
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid AssetId { get; set; }
+    public Guid EmployeeId { get; set; }
+    public Guid RequestedByUserId { get; set; }
+    public DateOnly StartsOn { get; set; }
+    public DateOnly EndsOn { get; set; }
+    public string Status { get; set; } = "Pending";
+    public string? RequestNote { get; set; }
+    public string? ReviewNote { get; set; }
+    public Guid? ReviewedByUserId { get; set; }
+    public DateTimeOffset? ReviewedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class SavedAssetSearch
 {
     public Guid Id { get; set; } = Guid.NewGuid();
