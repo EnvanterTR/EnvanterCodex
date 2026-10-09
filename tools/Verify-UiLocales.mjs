@@ -52,6 +52,17 @@ const requiredAccessoryLabels = [
   'aksesuarını toplu işlem için seç', 'Sayfadakileri seç', 'Sayfa seçildi', 'Seçimi temizle',
   'Seçilenleri teslim et', 'Seçilen stokları düzelt', 'aksesuar seçildi (en fazla 100)'
 ];
+const requiredEmployeeLabels = [
+  'Çalışan kayıtları', 'Departmana ve yöneticiye göre ilişki kurun; profilden doğrudan raporlayanları ve zimmetlerini görüntüleyin.',
+  '↓ CSV dışa aktar', '＋ Çalışan ekle', 'Ad, personel no, e-posta, departman, görev veya konum ara',
+  'Departman filtresi', 'Departmanı temizle', 'Yönetici adı veya personel no ara', 'Tüm yöneticiler',
+  'Tüm çalışanlar', 'Aktif çalışanlar', 'Pasif çalışanlar', 'İşe başlama (başlangıç)',
+  'İşe başlama (bitiş)', 'Tarihleri temizle', 'Şirket çalışan kayıtları', 'Çalışan',
+  'Personel no', 'Görev unvanı', 'İşe başlama', 'Durum', 'İşlem', 'Çalışanlar yükleniyor…',
+  'Seçtiğiniz arama, departman, yönetici, işe başlama tarihi ve durum ölçütlerine uygun çalışan bulunamadı.',
+  'Bu listede çalışan kaydı yok.', 'çalışan profilini aç', 'Pasife al', 'Etkinleştir',
+  'çalışan', 'sayfa'
+];
 
 const invalidRows = Object.entries(sandbox.localeRows)
   .filter(([key, values]) => !key.trim() || !Array.isArray(values) || values.length !== 4 || values.some(value => typeof value !== 'string' || !value.trim()))
@@ -59,12 +70,14 @@ const invalidRows = Object.entries(sandbox.localeRows)
 const missingAssetLabels = requiredAssetLabels.filter(key => !sandbox.localeRows[key]);
 const missingReservationLabels = requiredReservationLabels.filter(key => !sandbox.localeRows[key]);
 const missingAccessoryLabels = requiredAccessoryLabels.filter(key => !sandbox.localeRows[key]);
+const missingEmployeeLabels = requiredEmployeeLabels.filter(key => !sandbox.localeRows[key]);
 
-if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingAccessoryLabels.length) {
+if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length) {
   if (invalidRows.length) console.error(`Invalid 4-language locale entries: ${invalidRows.join(', ')}`);
   if (missingAssetLabels.length) console.error(`Missing asset-list locale entries: ${missingAssetLabels.join(', ')}`);
   if (missingReservationLabels.length) console.error(`Missing reservation-page locale entries: ${missingReservationLabels.join(', ')}`);
   if (missingAccessoryLabels.length) console.error(`Missing accessory-page locale entries: ${missingAccessoryLabels.join(', ')}`);
+  if (missingEmployeeLabels.length) console.error(`Missing employee-page locale entries: ${missingEmployeeLabels.join(', ')}`);
   process.exitCode = 1;
 } else {
   console.log(`Verified ${Object.keys(sandbox.localeRows).length} locale entries in Turkish, English, Russian, Ukrainian, and Macedonian.`);
