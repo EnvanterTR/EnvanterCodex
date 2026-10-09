@@ -1,5 +1,7 @@
 # Proje ilerleme raporu
 
+- **9 Ekim çalışan oluşturma/düzenleme yerelleştirmesi:** İki personel formunun başlıkları, alan etiketleri, yönetici seçimi, düğmeleri, erişilebilir kapatma adları ve başarı geri bildirimleri beş dile bağlandı. Açık pencereler dil değişiminde sabit metinleri yeniler. `tools/Verify-UiLocales.mjs` bu zorunlu form etiketlerini denetliyor; doğrulama **381** sözlük girdisini kapsadı. Çalışan CSV başlıkları/içe aktarma akışı ve görsel kabul açık.
+
 - **9 Ekim çakışan rezervasyon yarışı kabulü:** Aynı varlık ve kesişen tarih aralıkları için iki eşzamanlı HTTP talebinin yalnızca birinin oluşturulup diğerinin `409 Conflict` alması; tek bekleyen rezervasyon, tek denetim olayı ve tenant sınırı izole PostgreSQL'de doğrulandı. Tam güvenlik/kabul paketi **58/58 geçti**. Gerçek SMTP sağlayıcısı ve Windows Server/Ubuntu işletim kabulü açık kalır.
 
 - **9 Ekim çalışan kayıtları listesi yerelleştirmesi:** Çalışan listesinin beş dilde başlık/açıklama, arama, departman/yönetici/aktiflik/işe başlama filtreleri, erişilebilir metinleri, tablo başlıkları, boş/yükleniyor durumu, aktif/pasif rozeti, profil ve yönetim düğmeleri eklendi. Dil değişince açık liste ve yönetici filtresi yenileniyor; kişi/katalog adları özgün kalıp profil bağlantısı olarak çalışıyor. Çeviri denetimi 287 sözlük girdisini ve zorunlu çalışan ekranı anahtarlarını doğruladı; iki inline JavaScript bloğu ayrıştırıldı. Çalışan profil ayrıntısı, zimmet formu, CSV çıktısı ve onay diyalogları hâlâ çevrilmeyi bekliyor.
