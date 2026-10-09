@@ -468,6 +468,110 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Approved_stock_imports_create_tenant_scoped_suppliers_only_after_preview()
+    {
+        using var csrfResponse = await SendAsUserAsync(HttpMethod.Get, "/api/session/csrf", _userId, _companyId);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var token = Guid.NewGuid().ToString("N");
+        static string NormalizeSupplier(string name) => name.Trim().Normalize(System.Text.NormalizationForm.FormKC).ToUpperInvariant();
+        var duplicatedVendor = $"Import Vendor {token}";
+        var otherTenantVendor = $"Other Tenant Vendor {token}";
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SupplierCatalogEntries.Add(new SupplierCatalogEntry
+            {
+                CompanyId = _otherCompanyId, Name = otherTenantVendor,
+                NormalizedName = NormalizeSupplier(otherTenantVendor)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var cases = new[]
+        {
+            ("/api/accessories/import/preview.csv", "/api/accessories/import.csv",
+                "Aksesuar,Kategori,Model,Ürün no,Tedarikçi,Konum,Toplam,Minimum,Birim maliyeti,Para birimi,Alış tarihi,İstek yapılabilir,Notlar\n" +
+                $"Accessory {token},, ,ACC-{token},{duplicatedVendor},,3,0,,TRY,,,\n" +
+                $"Accessory extra {token},,,ACCX-{token},{duplicatedVendor.ToUpperInvariant()},,1,0,,TRY,,,\n", duplicatedVendor, "accessory"),
+            ("/api/consumables/import/preview.csv", "/api/consumables/import.csv",
+                "Malzeme,Kategori,Model,Ürün no,Tedarikçi,Konum,Toplam,Minimum,Birim maliyeti,Para birimi,Alış tarihi,İstek yapılabilir,Notlar\n" +
+                $"Consumable {token},,,CON-{token},Consumable Vendor {token},,5,0,,TRY,,false,\n", $"Consumable Vendor {token}", "consumable"),
+            ("/api/components/import/preview.csv", "/api/components/import.csv",
+                "Bileşen,Kategori,Model,Ürün no,Seri no,Tedarikçi,Konum,Toplam,Minimum,Birim maliyeti,Para birimi,Alış tarihi,Notlar\n" +
+                $"Component {token},,,CMP-{token},,Component Vendor {token},,2,0,,TRY,,\n", $"Component Vendor {token}", "component"),
+            ("/api/software-licenses/import/preview.csv", "/api/software-licenses/import.csv",
+                "Lisans,Yayıncı,Ürün sürümü,Tür,Tedarikçi,Koltuk,Birim maliyeti,Para birimi,Alış tarihi,Bitiş tarihi,Otomatik yenileme,Notlar\n" +
+                $"License {token},Publisher,1,Subscription,License Vendor {token},3,,TRY,,,false,\n", $"License Vendor {token}", "license")
+        };
+
+        foreach (var (previewPath, importPath, csv, supplierName, family) in cases)
+        {
+            var normalizedSupplier = NormalizeSupplier(supplierName);
+            using (var preview = await SendAsRoleWithHeadersAsync(HttpMethod.Post, previewPath, "admin",
+                new StringContent(csv, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie,
+                new Dictionary<string, string>()))
+            {
+                Assert.True(preview.StatusCode == HttpStatusCode.OK,
+                    $"{family} supplier preview failed: {(int)preview.StatusCode} {await preview.Content.ReadAsStringAsync()}");
+                using var payload = JsonDocument.Parse(await preview.Content.ReadAsStringAsync());
+                Assert.True(payload.RootElement.GetProperty("isValid").GetBoolean());
+                Assert.Contains(supplierName, payload.RootElement.GetProperty("suppliersToCreate")
+                    .EnumerateArray().Select(value => value.GetString()));
+            }
+
+            await using (var scope = _factory!.Services.CreateAsyncScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                Assert.False(await db.SupplierCatalogEntries.AnyAsync(x => x.CompanyId == _companyId && x.NormalizedName == normalizedSupplier));
+            }
+
+            using (var imported = await SendAsRoleWithHeadersAsync(HttpMethod.Post, importPath, "admin",
+                new StringContent(csv, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie,
+                new Dictionary<string, string>()))
+            {
+                Assert.True(imported.StatusCode == HttpStatusCode.OK,
+                    $"{family} supplier import failed: {(int)imported.StatusCode} {await imported.Content.ReadAsStringAsync()}");
+                using var payload = JsonDocument.Parse(await imported.Content.ReadAsStringAsync());
+                Assert.Equal(1, payload.RootElement.GetProperty("suppliersCreated").GetInt32());
+            }
+
+            await using (var scope = _factory!.Services.CreateAsyncScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var supplier = await db.SupplierCatalogEntries.SingleAsync(x => x.CompanyId == _companyId &&
+                    x.NormalizedName == normalizedSupplier);
+                Assert.True(await db.AuditEntries.AnyAsync(x => x.CompanyId == _companyId && x.TargetType == "Supplier" &&
+                    x.TargetId == supplier.Id && x.Action == "supplier.created.import"));
+                if (family == "accessory")
+                {
+                    var linked = await db.Accessories.Where(x => x.CompanyId == _companyId && x.Name.Contains(token)).ToListAsync();
+                    Assert.Equal(2, linked.Count);
+                    Assert.All(linked, item => Assert.Equal(supplier.Id, item.SupplierId));
+                }
+                else if (family == "consumable")
+                    Assert.Equal(supplier.Id, await db.Consumables.Where(x => x.CompanyId == _companyId && x.Name == $"Consumable {token}").Select(x => x.SupplierId).SingleAsync());
+                else if (family == "component")
+                    Assert.Equal(supplier.Id, await db.InventoryComponents.Where(x => x.CompanyId == _companyId && x.Name == $"Component {token}").Select(x => x.SupplierId).SingleAsync());
+                else
+                    Assert.Equal(supplier.Id, await db.SoftwareLicenses.Where(x => x.CompanyId == _companyId && x.Name == $"License {token}").Select(x => x.SupplierId).SingleAsync());
+            }
+        }
+
+        await using var tenantScope = _factory!.Services.CreateAsyncScope();
+        var tenantDb = tenantScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var normalizedOtherTenantVendor = NormalizeSupplier(otherTenantVendor);
+        Assert.False(await tenantDb.SupplierCatalogEntries.AnyAsync(x => x.CompanyId == _companyId &&
+            x.NormalizedName == normalizedOtherTenantVendor));
+        Assert.True(await tenantDb.SupplierCatalogEntries.AnyAsync(x => x.CompanyId == _otherCompanyId &&
+            x.NormalizedName == normalizedOtherTenantVendor));
+    }
+
+    [Fact]
     public async Task Custom_asset_reports_sync_across_sessions_but_remain_private_to_their_owner()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");

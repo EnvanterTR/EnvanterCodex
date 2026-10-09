@@ -47,7 +47,7 @@ Bu belge EnvanterTR'nin kurumsal envanter yönetiminde beklenen ana işlevleri n
 
 ## CSV/Excel aktarım eşlemeleri
 
-Varlık, aksesuar ve çalışan CSV/XLSX aktarımlarında tanınmayan sütunlar hedef alanlara bağlanabilir veya açıkça yoksayılabilir; eşlemeler önizleme ve içe aktarmada sunucuda yeniden doğrulanır. Eşleme profilleri kullanıcı ve şirket kapsamında aktarım ailesi başına 25'e kadar saklanır. Çalışan aktarımı Türkçe/İngilizce alan adlarını otomatik tanır; personel numarası, ad-soyad zorunludur; aktiflik ve yönetici personel numarası alanları varsa mevcut doğrulama/bağlama kuralları korunur. Sarf, bileşen ve lisans aktarımlarında tanınmayan dolu sütunlar veri kaybını önlemek için reddedilir; bu ailelere eşleme editörü ve kayıtlı profil akışı eklenmesi açık iştir.
+Altı aktarım ailesinin (varlık, çalışan, aksesuar, sarf, bileşen ve yazılım lisansı) CSV/XLSX akışlarında tanınmayan sütunlar hedef alana bağlanabilir veya açıkça yoksayılabilir; eşlemeler önizleme ve içe aktarmada sunucuda yeniden doğrulanır. Eşleme profilleri kullanıcı ve şirket kapsamında aktarım ailesi başına 25'e kadar saklanır. Çalışan aktarımı Türkçe/İngilizce alan adlarını otomatik tanır; personel numarası, ad-soyad zorunludur; aktiflik ve yönetici personel numarası alanları varsa mevcut doğrulama/bağlama kuralları korunur. Aksesuar, sarf, bileşen ve lisans aktarımlarında katalogda bulunmayan tedarikçiler salt okunur önizlemede adlarıyla gösterilir; yalnızca onaylı atomik aktarımda aynı şirket kataloğuna eklenip satırlara bağlanır. Varlık aktarımı mevcut kategori/marka/model/çalışan kayıtlarıyla eşleşme gerektirir; diğer katalog tipleri için alan eşleme veya kontrollü oluşturma kapsamı ayrıca genişletilecektir.
 
 ## Öncelik ve tamamlanma ölçütü
 
