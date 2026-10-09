@@ -7,6 +7,7 @@ Bu kapsam, tanıtım/marketing ana sayfası hariç oturum açılan tüm Envanter
 ## Kullanıcı kabul durumu
 
 - 2026-10-09: Kullanıcı mevcut tema seçeneklerinin, dashboard düzeninin ve menü ikonlarının beğenilmediğini; arayüzün karmaşık göründüğünü belirtti. Mevcut görsel tur kabul edilmiş sayılmaz. Görsel cilayı şimdilik ertele; ürün işlevleri ilerledikten sonra tüm uygulama için tutarlı, daha sade ve profesyonel bir tasarımı yeniden ele al. Yeni görsel değişiklikleri kabul edilmiş tasarım gibi tanıtma.
+- 2026-10-09: Giriş formunda `.auth-card label { display:block }` kuralı `hidden` nitelikli MFA ve şirket seçimi alanlarının görünmesini engelliyordu. Gizli etiketlere açık `display:none` kuralı eklendi. İlk açılışta bu hesap için şirket seçme alanı ve MFA kodu görünmez; kimlik bilgileri doğrulandıktan sonra yalnız birden fazla etkin üyeliği olan hesap için sunucunun döndürdüğü şirketler gösterilir. Şirket seçimi API'si de yalnız hesaba ait etkin üyelikleri döndürür; ayrıntı ve PostgreSQL kabul kontrolleri `docs/PRODUCT-COVERAGE.md` içindedir.
 
 ## Temalar
 
