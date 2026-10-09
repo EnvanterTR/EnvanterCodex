@@ -1517,6 +1517,38 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Asset_transfers_are_tenant_scoped_and_appear_in_the_transfer_history_filter()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        const string targetLocation = "Acceptance transfer destination";
+        using var transfer = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_ownAssetId}/transfer", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { targetLocation, notes = "Transfer history acceptance" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.NoContent, transfer.StatusCode);
+
+        using var history = await SendAsAdminAsync($"/api/activity?eventType=Transferred&q={Uri.EscapeDataString("OWN-1")}");
+        Assert.Equal(HttpStatusCode.OK, history.StatusCode);
+        using var historyPayload = JsonDocument.Parse(await history.Content.ReadAsStringAsync());
+        var entry = Assert.Single(historyPayload.RootElement.GetProperty("entries").EnumerateArray());
+        Assert.Equal(_ownAssetId, entry.GetProperty("assetId").GetGuid());
+        Assert.Contains(targetLocation, entry.GetProperty("details").GetString(), StringComparison.Ordinal);
+
+        using var crossTenantHistory = await SendAsAdminAsync($"/api/activity?eventType=Transferred&q={Uri.EscapeDataString("OWN-1")}", _otherCompanyId);
+        Assert.Equal(HttpStatusCode.Unauthorized, crossTenantHistory.StatusCode);
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(targetLocation, await db.Assets.Where(x => x.CompanyId == _companyId && x.Id == _ownAssetId)
+            .Select(x => x.Location).SingleAsync());
+    }
+
+    [Fact]
     public async Task Operational_notification_preferences_and_read_dismiss_states_are_private_to_each_user_and_company()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
