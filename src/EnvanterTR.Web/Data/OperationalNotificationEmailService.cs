@@ -234,23 +234,30 @@ public sealed class OperationalNotificationEmailService(
             // recorded purchase date. Calculate month arithmetic in .NET to preserve
             // end-of-month behavior consistently with the depreciation report.
             var earliestPurchaseDate = rangeStart.AddMonths(-3600);
-            var rows = await (from asset in db.Assets.AsNoTracking()
-                              join model in db.AssetModels.AsNoTracking() on new { asset.CompanyId, Id = asset.ModelId } equals new { model.CompanyId, Id = (Guid?)model.Id }
-                              where asset.CompanyId == companyId && asset.DeletedAt == null && asset.Status != AssetStatuses.Archived &&
-                                    asset.PurchaseDate >= earliestPurchaseDate && asset.PurchaseDate <= rangeEnd && model.DepreciationMonths != null
-                              orderby asset.PurchaseDate, asset.AssetTag
-                              select new { asset.PurchaseDate, asset.AssetTag, asset.Name, ModelName = model.Name, Months = model.DepreciationMonths!.Value })
-                .ToListAsync(cancellationToken);
-            items.AddRange(rows.Select(row => new
+            var earliestLifetimeItems = new SortedSet<OperationalReminderItem>(Comparer<OperationalReminderItem>.Create((left, right) =>
+            {
+                var comparison = left.Date.CompareTo(right.Date);
+                if (comparison == 0) comparison = StringComparer.Ordinal.Compare(left.Title, right.Title);
+                if (comparison == 0) comparison = StringComparer.Ordinal.Compare(left.Detail, right.Detail);
+                return comparison;
+            }));
+            var rows = from asset in db.Assets.AsNoTracking()
+                       join model in db.AssetModels.AsNoTracking() on new { asset.CompanyId, Id = asset.ModelId } equals new { model.CompanyId, Id = (Guid?)model.Id }
+                       where asset.CompanyId == companyId && asset.DeletedAt == null && asset.Status != AssetStatuses.Archived &&
+                             asset.PurchaseDate >= earliestPurchaseDate && asset.PurchaseDate <= rangeEnd && model.DepreciationMonths != null
+                       orderby asset.PurchaseDate, asset.AssetTag
+                       select new { asset.PurchaseDate, asset.AssetTag, asset.Name, ModelName = model.Name, Months = model.DepreciationMonths!.Value };
+            await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
+            {
+                var date = row.PurchaseDate!.Value.AddMonths(row.Months);
+                if (date >= rangeStart && date <= rangeEnd)
                 {
-                    Date = row.PurchaseDate!.Value.AddMonths(row.Months),
-                    row.AssetTag,
-                    row.Name,
-                    row.ModelName
-                })
-                .Where(row => row.Date >= rangeStart && row.Date <= rangeEnd)
-                .Select(row => new OperationalReminderItem("asset-life", row.Date,
-                    row.AssetTag + " · " + row.Name, "Model: " + row.ModelName)));
+                    earliestLifetimeItems.Add(new OperationalReminderItem("asset-life", date,
+                        row.AssetTag + " · " + row.Name, "Model: " + row.ModelName));
+                    if (earliestLifetimeItems.Count > 500) earliestLifetimeItems.Remove(earliestLifetimeItems.Max!);
+                }
+            }
+            items.AddRange(earliestLifetimeItems);
         }
         // Reserve digest space for every selected kind before filling the remaining
         // capacity by date, so busy categories cannot starve less frequent reminders.
