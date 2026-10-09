@@ -15,6 +15,7 @@ public static class ComponentEndpoints
 
     public static RouteGroupBuilder MapComponentEndpoints(this RouteGroupBuilder api)
     {
+        api.MapComponentImportMappingProfileEndpoints();
         api.MapPost("/components/import/preview.csv", (HttpContext context, AppDbContext db, IAntiforgery antiforgery, CancellationToken ct) =>
             ImportCsvAsync(context, db, antiforgery, false, ct)).RequireAuthorization("asset.write")
             .WithMetadata(new RequestSizeLimitAttribute(CsvImportMaxBytes));
@@ -193,6 +194,17 @@ public static class ComponentEndpoints
         if (!Tenant(context.User, out var companyId) || UserId(context.User) is not { } actorId) return Results.Forbid();
         try { await antiforgery.ValidateRequestAsync(context); }
         catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
+        Dictionary<string, string>? explicitMappings = null;
+        var encodedMapping = context.Request.Headers["X-Component-Import-Mapping"].ToString();
+        if (encodedMapping.Length > 0)
+        {
+            if (encodedMapping.Length > 24 * 1024) return Results.BadRequest(new { message = "Sütun eşlemesi sınırı aşıyor." });
+            try { explicitMappings = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(Convert.FromBase64String(encodedMapping)); }
+            catch (Exception exception) when (exception is FormatException or System.Text.Json.JsonException)
+            { return Results.ValidationProblem(new Dictionary<string, string[]> { ["mappings"] = ["Sütun eşlemesi okunamadı; dosyayı yeniden doğrulayın."] }); }
+            if (!ComponentCsvImportMapping.ValidateExplicitMappings(explicitMappings, out var mappingError))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["mappings"] = [mappingError] });
+        }
         var isXlsx = DataExportEndpoints.IsXlsxRequest(context.Request);
         if (!isXlsx && context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true) return Results.StatusCode(415);
         if (context.Request.ContentLength > CsvImportMaxBytes) return Results.StatusCode(413);
@@ -208,9 +220,9 @@ public static class ComponentEndpoints
         catch (FormatException) { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV tırnak veya ayraç biçimi bozuk." } }); }
         catch (Exception exception) when (isXlsx && exception is InvalidDataException or InvalidOperationException or System.Xml.XmlException or OverflowException)
         { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { exception.Message } }); }
-        rows = ComponentCsvImportMapping.Normalize(rows, out var unsupportedColumns);
+        rows = ComponentCsvImportMapping.Normalize(rows, out var unsupportedColumns, explicitMappings);
         if (unsupportedColumns.Length > 0)
-            return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Bu dosyada henüz eşlenmeyen ve dolu veri içeren sütunlar var: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu." } });
+            return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Dosyadaki sütunları eşleyin veya açıkça yoksayın: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu." }, unmappedColumns = unsupportedColumns, mappingTargets = ComponentCsvImportMapping.MappingTargets() });
         string[] header = ["Bileşen", "Kategori", "Model", "Ürün no", "Seri no", "Tedarikçi", "Konum", "Toplam", "Minimum", "Birim maliyeti", "Para birimi", "Alış tarihi", "Notlar"];
         if (rows.Count is < 2 || rows.Count > CsvImportMaxRows + 1 || !rows[0].SequenceEqual(header, StringComparer.OrdinalIgnoreCase))
             return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Şablon başlığı ve en fazla {CsvImportMaxRows:N0} bileşen satırı kullanın." } });

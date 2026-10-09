@@ -309,6 +309,31 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(1, previewPayload.RootElement.GetProperty("rowCount").GetInt32());
         }
 
+        var componentMap = new Dictionary<string, string>
+        {
+            ["Part Description"] = "name", ["Available Units"] = "totalQuantity", ["Ignore Extra"] = "ignore"
+        };
+        using (var componentNoCsrf = await SendAsUserAsync(HttpMethod.Post, "/api/components/import-mappings", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Vendor A", mappings = componentMap })))
+            Assert.Equal(HttpStatusCode.BadRequest, componentNoCsrf.StatusCode);
+        using var componentCreate = await SendAsUserAsync(HttpMethod.Post, "/api/components/import-mappings", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Vendor A", mappings = componentMap }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, componentCreate.StatusCode);
+        using var componentCreated = JsonDocument.Parse(await componentCreate.Content.ReadAsStringAsync());
+        var componentProfileId = componentCreated.RootElement.GetProperty("id").GetGuid();
+        var componentCsv = new StringContent("Part Description,Available Units,Ignore Extra\nSSD 512,4,private note\n",
+            System.Text.Encoding.UTF8, "text/csv");
+        var componentHeader = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(componentMap)));
+        using (var componentPreview = await SendAsRoleWithHeadersAsync(HttpMethod.Post, "/api/components/import/preview.csv", "admin",
+            componentCsv, requestToken, antiforgeryCookie, new Dictionary<string, string> { ["X-Component-Import-Mapping"] = componentHeader }))
+        {
+            Assert.True(componentPreview.StatusCode == HttpStatusCode.OK,
+                $"Component mapped preview failed: {(int)componentPreview.StatusCode} {await componentPreview.Content.ReadAsStringAsync()}");
+            using var previewPayload = JsonDocument.Parse(await componentPreview.Content.ReadAsStringAsync());
+            Assert.True(previewPayload.RootElement.GetProperty("isValid").GetBoolean());
+            Assert.Equal(1, previewPayload.RootElement.GetProperty("rowCount").GetInt32());
+        }
+
         var employeeMap = new Dictionary<string, string>
         {
             ["Staff Code"] = "employeeNumber", ["Full Name"] = "displayName", ["Business Unit"] = "department", ["Do Not Import"] = "ignore"
@@ -355,6 +380,10 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var ownConsumable = JsonDocument.Parse(await ownConsumableList.Content.ReadAsStringAsync()))
             Assert.Equal(consumableProfileId, Assert.Single(ownConsumable.RootElement.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
 
+        using (var ownComponentList = await SendAsUserAsync(HttpMethod.Get, "/api/components/import-mappings", _userId, _companyId))
+        using (var ownComponent = JsonDocument.Parse(await ownComponentList.Content.ReadAsStringAsync()))
+            Assert.Equal(componentProfileId, Assert.Single(ownComponent.RootElement.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
+
         using (var otherUserList = await SendAsUserAsync(HttpMethod.Get, "/api/assets/import-mappings", _sameCompanyOtherUserId, _companyId))
         using (var other = JsonDocument.Parse(await otherUserList.Content.ReadAsStringAsync()))
             Assert.Empty(other.RootElement.GetProperty("items").EnumerateArray());
@@ -370,6 +399,10 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var otherUserConsumableList = await SendAsUserAsync(HttpMethod.Get, "/api/consumables/import-mappings", _sameCompanyOtherUserId, _companyId))
         using (var otherConsumable = JsonDocument.Parse(await otherUserConsumableList.Content.ReadAsStringAsync()))
             Assert.Empty(otherConsumable.RootElement.GetProperty("items").EnumerateArray());
+
+        using (var otherUserComponentList = await SendAsUserAsync(HttpMethod.Get, "/api/components/import-mappings", _sameCompanyOtherUserId, _companyId))
+        using (var otherComponent = JsonDocument.Parse(await otherUserComponentList.Content.ReadAsStringAsync()))
+            Assert.Empty(otherComponent.RootElement.GetProperty("items").EnumerateArray());
 
         using (var crossCompanyList = await SendAsUserAsync(HttpMethod.Get, "/api/assets/import-mappings", _userId, _otherCompanyId))
             Assert.Equal(HttpStatusCode.Unauthorized, crossCompanyList.StatusCode);
@@ -393,6 +426,9 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var deleteConsumable = await SendAsUserAsync(HttpMethod.Delete, $"/api/consumables/import-mappings/{consumableProfileId}", _userId, _companyId,
             requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
             Assert.Equal(HttpStatusCode.NoContent, deleteConsumable.StatusCode);
+        using (var deleteComponent = await SendAsUserAsync(HttpMethod.Delete, $"/api/components/import-mappings/{componentProfileId}", _userId, _companyId,
+            requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NoContent, deleteComponent.StatusCode);
     }
 
     [Fact]
