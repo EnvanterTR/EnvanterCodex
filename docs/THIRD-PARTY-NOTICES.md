@@ -20,5 +20,11 @@ components are retained beside the file as `BWIP-JS-LICENSE*`.
 `Microsoft.EntityFrameworkCore.Design` is used by the Entity Framework CLI for
 development and migration generation. It is marked `PrivateAssets=all` and is
 excluded from Release deployment output together with its MSBuild and Roslyn
-tooling dependencies. The complete runtime and development dependency license
-inventory still requires release review.
+tooling dependencies. A resolved-version snapshot of all 40 direct and
+transitive NuGet packages in the web project, including each package's license
+expression and NuGet license URL, is recorded in
+[`THIRD-PARTY-DEPENDENCIES.csv`](THIRD-PARTY-DEPENDENCIES.csv). The snapshot
+uses package `.nuspec` metadata; it is an inventory aid, not a legal review or
+a replacement for notices shipped by each dependency. Recheck it whenever
+package versions change and distinguish build-only packages from files in each
+platform's published output.
