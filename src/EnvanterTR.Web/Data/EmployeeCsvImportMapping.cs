@@ -4,18 +4,18 @@ internal static class EmployeeCsvImportMapping
 {
     private static readonly string[][] Aliases =
     [
-        ["Personel No", "Personel Numarası", "Çalışan No", "Employee Number", "Employee No", "Employee ID", "Staff ID", "Personnel Number"],
-        ["Ad Soyad", "Adı Soyadı", "Ad", "Çalışan Adı", "Name", "Full Name", "Employee Name", "Display Name"],
-        ["E-posta", "Eposta", "E-mail", "Email", "Email Address"],
-        ["Departman", "Bölüm", "Department", "Division"],
-        ["Görev Unvanı", "Görev", "Unvan", "Job Title", "Title", "Position"],
+        ["Personel No", "Personel Numarası", "Çalışan No", "Employee Number", "Employee No", "Employee ID", "Staff ID", "Personnel Number", "Табельный номер", "Табельний номер", "Број на вработен"],
+        ["Ad Soyad", "Adı Soyadı", "Ad", "Çalışan Adı", "Name", "Full Name", "Employee Name", "Display Name", "Имя и фамилия", "Ім’я та прізвище", "Име и презиме"],
+        ["E-posta", "Eposta", "E-mail", "Email", "Email Address", "Электронная почта", "Електронна пошта"],
+        ["Departman", "Bölüm", "Department", "Division", "Отдел", "Відділ", "Оддел"],
+        ["Görev Unvanı", "Görev", "Unvan", "Job Title", "Title", "Position", "Должность", "Посада", "Работно место"],
         ["Telefon", "Phone", "Phone Number", "Telephone"],
-        ["Konum", "Lokasyon", "Location", "Office", "Office Location"],
-        ["İşe Başlama Tarihi", "İşe Giriş Tarihi", "Başlangıç Tarihi", "Start Date", "Hire Date", "Date Started"],
-        ["Yönetici", "Manager", "Manager Name"],
-        ["Durum", "Active", "Status", "Employment Status"],
-        ["Kayıt Tarihi", "Created At", "Creation Date"],
-        ["Yönetici Personel No", "Yönetici No", "Manager Employee Number", "Manager Employee No", "Manager ID"]
+        ["Konum", "Lokasyon", "Location", "Office", "Office Location", "Местоположение", "Місце", "Локација"],
+        ["İşe Başlama Tarihi", "İşe Giriş Tarihi", "Başlangıç Tarihi", "Start Date", "Hire Date", "Date Started", "Дата начала работы", "Дата початку роботи", "Датум на започнување"],
+        ["Yönetici", "Manager", "Manager Name", "Руководитель", "Керівник", "Менаџер"],
+        ["Durum", "Active", "Status", "Employment Status", "Статус"],
+        ["Kayıt Tarihi", "Created At", "Creation Date", "Дата создания", "Дата створення", "Датум на создавање"],
+        ["Yönetici Personel No", "Yönetici No", "Manager Employee Number", "Manager Employee No", "Manager ID", "Табельный номер руководителя", "Табельний номер керівника", "Број на вработен на менаџер"]
     ];
 
     private static readonly string[] Headers =
@@ -25,6 +25,27 @@ internal static class EmployeeCsvImportMapping
     private static readonly string[] Keys =
         ["employeeNumber", "displayName", "email", "department", "jobTitle", "phone", "location", "startedOn",
          "managerName", "active", "createdAt", "managerEmployeeNumber"];
+
+    private static readonly string[][] LocalizedHeaders =
+    [
+        ["Personel No", "Ad Soyad", "E-posta", "Departman", "Görev Unvanı", "Telefon", "Konum", "İşe Başlama Tarihi", "Yönetici", "Durum", "Kayıt Tarihi", "Yönetici Personel No"],
+        ["Employee No", "Full Name", "Email", "Department", "Job Title", "Phone", "Location", "Start Date", "Manager", "Status", "Created At", "Manager Employee No"],
+        ["Табельный номер", "Имя и фамилия", "Электронная почта", "Отдел", "Должность", "Телефон", "Местоположение", "Дата начала работы", "Руководитель", "Статус", "Дата создания", "Табельный номер руководителя"],
+        ["Табельний номер", "Ім’я та прізвище", "Електронна пошта", "Відділ", "Посада", "Телефон", "Місце", "Дата початку роботи", "Керівник", "Статус", "Дата створення", "Табельний номер керівника"],
+        ["Број на вработен", "Име и презиме", "Е-пошта", "Оддел", "Работно место", "Телефон", "Локација", "Датум на започнување", "Менаџер", "Статус", "Датум на создавање", "Број на вработен на менаџер"]
+    ];
+
+    public static string[] ExportHeaders(string language) =>
+        LocalizedHeaders[language switch { "en" => 1, "ru" => 2, "uk" => 3, "mk" => 4, _ => 0 }];
+
+    public static string ExportStatus(bool isActive, string language) => language switch
+    {
+        "en" => isActive ? "Active" : "Inactive",
+        "ru" => isActive ? "Активен" : "Неактивен",
+        "uk" => isActive ? "Активний" : "Неактивний",
+        "mk" => isActive ? "Активен" : "Неактивен",
+        _ => isActive ? "Etkin" : "Pasif"
+    };
 
     public static object[] MappingTargets() => Keys.Select((key, index) => new { key, label = Headers[index] })
         .Append(new { key = "ignore", label = "Bu sütunu yoksay" }).Cast<object>().ToArray();
@@ -130,8 +151,8 @@ internal static class EmployeeCsvImportMapping
 
     private static string NormalizeStatus(string value) => value.Trim().ToLowerInvariant() switch
     {
-        "" or "active" or "enabled" or "true" or "1" or "etkin" or "aktif" => "Etkin",
-        "inactive" or "disabled" or "false" or "0" or "pasif" => "Pasif",
+        "" or "active" or "enabled" or "true" or "1" or "etkin" or "aktif" or "активен" or "активна" or "активно" or "активний" => "Etkin",
+        "inactive" or "disabled" or "false" or "0" or "pasif" or "неактивен" or "неактивна" or "неактивно" or "неактивний" => "Pasif",
         _ => value.Trim()
     };
 

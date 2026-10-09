@@ -385,6 +385,20 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(1, previewPayload.RootElement.GetProperty("rowCount").GetInt32());
         }
 
+        var localizedEmployeeCsv = new StringContent(
+            "Табельный номер,Имя и фамилия,Электронная почта,Отдел,Должность,Телефон,Местоположение,Дата начала работы,Руководитель,Статус,Дата создания,Табельный номер руководителя\n" +
+            "MAP-101,Test Russian Import,,,,,,, ,Активен,2026-10-09T12:00:00Z,\n",
+            System.Text.Encoding.UTF8, "text/csv");
+        using (var localizedEmployeePreview = await SendAsRoleAsync(HttpMethod.Post, "/api/employees/import/preview.csv", "admin",
+            localizedEmployeeCsv, requestToken, antiforgeryCookie))
+        {
+            Assert.True(localizedEmployeePreview.StatusCode == HttpStatusCode.OK,
+                $"Localized employee CSV preview failed: {(int)localizedEmployeePreview.StatusCode} {await localizedEmployeePreview.Content.ReadAsStringAsync()}");
+            using var previewPayload = JsonDocument.Parse(await localizedEmployeePreview.Content.ReadAsStringAsync());
+            Assert.True(previewPayload.RootElement.GetProperty("isValid").GetBoolean());
+            Assert.Equal(1, previewPayload.RootElement.GetProperty("rowCount").GetInt32());
+        }
+
         using (var invalid = await SendAsUserAsync(HttpMethod.Post, "/api/assets/import-mappings", _userId, _companyId,
             System.Net.Http.Json.JsonContent.Create(new { name = "Bad", mappings = new Dictionary<string, string> { ["Secret"] = "custom:otherTenantOnly" } }), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
@@ -2341,8 +2355,19 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var exportResponse = await SendAsAdminAsync("/api/employees/export.csv");
         Assert.Equal(HttpStatusCode.OK, exportResponse.StatusCode);
         var csv = await exportResponse.Content.ReadAsStringAsync();
+        Assert.Contains("\"Personel No\",\"Ad Soyad\"", csv, StringComparison.Ordinal);
         Assert.Contains($"OWN-SECURITY-EMPLOYEE-{_userId:N}", csv, StringComparison.Ordinal);
         Assert.False(csv.Contains($"OTHER-SECURITY-EMPLOYEE-{_userId:N}", StringComparison.Ordinal));
+
+        using var localizedExportResponse = await SendAsAdminAsync("/api/employees/export.csv?language=ru");
+        Assert.Equal(HttpStatusCode.OK, localizedExportResponse.StatusCode);
+        var localizedCsv = await localizedExportResponse.Content.ReadAsStringAsync();
+        Assert.Contains("\"Табельный номер\",\"Имя и фамилия\"", localizedCsv, StringComparison.Ordinal);
+        Assert.Contains("\"Активен\"", localizedCsv, StringComparison.Ordinal);
+        Assert.False(localizedCsv.Contains($"OTHER-SECURITY-EMPLOYEE-{_userId:N}", StringComparison.Ordinal));
+
+        using var invalidLanguageResponse = await SendAsAdminAsync("/api/employees/export.csv?language=de");
+        Assert.Equal(HttpStatusCode.BadRequest, invalidLanguageResponse.StatusCode);
     }
 
     [Fact]

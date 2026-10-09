@@ -5774,6 +5774,7 @@
     $('#exportEmployeesButton').addEventListener('click', async () => {
       const button = $('#exportEmployeesButton'); button.disabled = true;
       const params = new URLSearchParams();
+      params.set('language', appearanceLanguage.value);
       const q = $('#employeeSearch').value.trim(), department = $('#employeeDepartmentFilter').value.trim();
       if (q) params.set('q', q); if (department) params.set('department', department);
       const managerId = $('#employeeManagerFilter').value; if (managerId) params.set('managerId', managerId);

@@ -252,10 +252,13 @@ public static class OperationalEndpoints
 
         api.MapGet("/employees/export.csv", async ([FromQuery] string? q, [FromQuery] string? department,
             [FromQuery] Guid? managerId, [FromQuery] bool? active,
-            [FromQuery] DateOnly? startedFrom, [FromQuery] DateOnly? startedTo, HttpContext context,
+            [FromQuery] DateOnly? startedFrom, [FromQuery] DateOnly? startedTo, [FromQuery] string? language, HttpContext context,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
+            var exportLanguage = (language ?? "tr").Trim().ToLowerInvariant();
+            if (exportLanguage is not ("tr" or "en" or "ru" or "uk" or "mk"))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["language"] = ["Dil tr, en, ru, uk veya mk olmalıdır."] });
             if (q?.Trim().Length > 160 || department?.Trim().Length > 160)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["filter"] = ["Arama ve departman filtresi 160 karakteri aşamaz."] });
 
@@ -302,11 +305,11 @@ public static class OperationalEndpoints
                 var safe = trimmed.Length > 0 && trimmed[0] is '=' or '+' or '-' or '@' or '\t' or '\r' ? "'" + value : value;
                 return "\"" + safe.Replace("\"", "\"\"") + "\"";
             }
-            var csv = new StringBuilder("\uFEFF\"Personel No\",\"Ad Soyad\",\"E-posta\",\"Departman\",\"Görev Unvanı\",\"Telefon\",\"Konum\",\"İşe Başlama Tarihi\",\"Yönetici\",\"Durum\",\"Kayıt Tarihi\",\"Yönetici Personel No\"\r\n");
+            var csv = new StringBuilder("\uFEFF" + string.Join(',', EmployeeCsvImportMapping.ExportHeaders(exportLanguage).Select(Cell)) + "\r\n");
             foreach (var row in rows)
                 csv.AppendJoin(',', new[] { Cell(row.EmployeeNumber), Cell(row.DisplayName), Cell(row.Email),
                     Cell(row.Department), Cell(row.JobTitle), Cell(row.Phone), Cell(row.Location),
-                    Cell(row.StartedOn?.ToString("yyyy-MM-dd")), Cell(row.ManagerName), Cell(row.IsActive ? "Etkin" : "Pasif"),
+                    Cell(row.StartedOn?.ToString("yyyy-MM-dd")), Cell(row.ManagerName), Cell(EmployeeCsvImportMapping.ExportStatus(row.IsActive, exportLanguage)),
                     Cell(row.CreatedAt.ToString("O")), Cell(row.ManagerEmployeeNumber) }).Append("\r\n");
             context.Response.Headers["X-Total-Count"] = total.ToString(System.Globalization.CultureInfo.InvariantCulture);
             var bytes = Encoding.UTF8.GetBytes(csv.ToString());
