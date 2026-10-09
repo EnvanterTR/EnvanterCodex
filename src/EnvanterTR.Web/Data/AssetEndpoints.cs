@@ -126,7 +126,9 @@ public static class AssetEndpoints
                     x.AssignedEmployeeId, x.WarrantyExpiresAt, x.UpdatedAt,
                     db.AssetAttachments.Where(photo => photo.CompanyId == companyId && photo.AssetId == x.Id && photo.ContentType.StartsWith("image/"))
                         .OrderByDescending(photo => photo.CreatedAt).Select(photo => (Guid?)photo.Id).FirstOrDefault(),
-                    x.LocationCatalogId, x.IsByod, x.ExpectedReturnOn)).ToListAsync(cancellationToken);
+                    x.LocationCatalogId, x.IsByod, x.ExpectedReturnOn,
+                    db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId && m.PhotoFileName != null)
+                        .Select(m => $"/api/models/{m.Id}/photo").FirstOrDefault())).ToListAsync(cancellationToken);
             return Results.Ok(new { items, page, pageSize, total });
         }).RequireAuthorization("asset.read");
 
@@ -416,7 +418,9 @@ public static class AssetEndpoints
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
             if (request.Quantity == 0 || Math.Abs((long)request.Quantity) > 100000 || request.Notes?.Length > 2000)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["quantity"] = ["Stok hareketi 0 olamaz, 100.000 adedi aşamaz ve not 2.000 karakterden uzun olamaz."] });
-            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            // All stock mutations lock this accessory row first; ReadCommitted lets a waiting mutation
+            // recalculate against the checkout/adjustment that just committed.
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, cancellationToken);
             var item = await db.Accessories.FromSqlInterpolated(
                     $"SELECT * FROM \"Accessories\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
                 .SingleOrDefaultAsync(cancellationToken);

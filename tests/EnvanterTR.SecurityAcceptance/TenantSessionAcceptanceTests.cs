@@ -3606,6 +3606,40 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Concurrent_accessory_checkout_and_stock_reduction_keep_stock_above_assignments()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var checkout = SendAsRoleAsync(HttpMethod.Post, $"/api/accessories/{_ownAccessoryId}/checkout", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { targetType = "location", location = "Concurrent checkout", quantity = 2 }), requestToken, antiforgeryCookie);
+        var stockReduction = SendAsRoleAsync(HttpMethod.Post, $"/api/accessories/{_ownAccessoryId}/stock", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { quantity = -2, notes = "Concurrent stock reduction" }), requestToken, antiforgeryCookie);
+
+        using var checkoutResponse = await checkout;
+        using var stockResponse = await stockReduction;
+        var responseDetails = $"checkout={(int)checkoutResponse.StatusCode} {await checkoutResponse.Content.ReadAsStringAsync()}; " +
+            $"stock={(int)stockResponse.StatusCode} {await stockResponse.Content.ReadAsStringAsync()}";
+        var validOutcome =
+            (checkoutResponse.StatusCode == HttpStatusCode.Created && stockResponse.StatusCode == HttpStatusCode.Conflict) ||
+            (checkoutResponse.StatusCode == HttpStatusCode.Conflict && stockResponse.StatusCode == HttpStatusCode.OK);
+        Assert.True(validOutcome, responseDetails);
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var item = await db.Accessories.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownAccessoryId);
+        var outstanding = await db.AccessoryAssignments.Where(x => x.CompanyId == _companyId && x.AccessoryId == _ownAccessoryId)
+            .SumAsync(x => x.Quantity - x.ReturnedQuantity);
+        Assert.Equal(1, item.TotalQuantity - outstanding);
+        Assert.Contains(item.TotalQuantity, new[] { 3, 5 });
+    }
+
+    [Fact]
     public async Task Password_recovery_does_not_disclose_account_existence_and_reset_tokens_are_single_use()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");

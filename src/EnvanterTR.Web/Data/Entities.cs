@@ -24,6 +24,7 @@ public sealed class SupplierCatalogEntry
     public string? Phone { get; set; }
     public string? Website { get; set; }
     public string? Notes { get; set; }
+    public string? LogoFileName { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;

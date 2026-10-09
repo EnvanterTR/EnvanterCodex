@@ -27,6 +27,23 @@ public static class CatalogImageEndpoints
                 db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "AssetBrand", TargetId = id, Action = "LogoRemoved", Details = "Marka logosu kaldırıldı." });
                 await db.SaveChangesAsync(ct); return previous;
             });
+        MapImage(api, "suppliers", "logo", (db, companyId, id, ct) => db.SupplierCatalogEntries
+            .Where(x => x.CompanyId == companyId && x.Id == id).Select(x => x.LogoFileName).SingleOrDefaultAsync(ct),
+            async (db, companyId, id, fileName, actorId, ct) =>
+            {
+                var row = await db.SupplierCatalogEntries.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
+                if (row is null) return null;
+                var previous = row.LogoFileName; row.LogoFileName = fileName;
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Supplier", TargetId = id, Action = "LogoUpdated", Details = "Tedarikçi logosu güncellendi." });
+                await db.SaveChangesAsync(ct); return previous;
+            }, async (db, companyId, id, actorId, ct) =>
+            {
+                var row = await db.SupplierCatalogEntries.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
+                if (row is null || row.LogoFileName is null) return null;
+                var previous = row.LogoFileName; row.LogoFileName = null;
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Supplier", TargetId = id, Action = "LogoRemoved", Details = "Tedarikçi logosu kaldırıldı." });
+                await db.SaveChangesAsync(ct); return previous;
+            });
         MapImage(api, "models", "photo", (db, companyId, id, ct) => db.AssetModels
             .Where(x => x.CompanyId == companyId && x.Id == id).Select(x => x.PhotoFileName).SingleOrDefaultAsync(ct),
             async (db, companyId, id, fileName, actorId, ct) =>

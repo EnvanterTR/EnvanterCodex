@@ -25,6 +25,7 @@ public static class SupplierCatalogEndpoints
             var items = await query.OrderBy(x => x.Name).Take(500).Select(x => new
             {
                 x.Id, x.Name, x.ContactName, x.Email, x.Phone, x.Website, x.Notes, x.IsActive, x.CreatedAt, x.UpdatedAt,
+                logoUrl = x.LogoFileName == null ? null : $"/api/suppliers/{x.Id}/logo",
                 orderCount = db.AccessoryPurchaseOrders.Count(o => o.CompanyId == companyId && o.SupplierId == x.Id) +
                     db.StockPurchaseOrders.Count(o => o.CompanyId == companyId && o.SupplierId == x.Id) +
                     db.AssetPurchaseOrders.Count(o => o.CompanyId == companyId && o.SupplierId == x.Id),
@@ -41,7 +42,8 @@ public static class SupplierCatalogEndpoints
         {
             if (!Scope(user, out var companyId)) return Results.Forbid();
             var entry = await db.SupplierCatalogEntries.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
-                .Select(x => new { x.Id, x.Name, x.ContactName, x.Email, x.Phone, x.Website, x.Notes, x.IsActive, x.CreatedAt, x.UpdatedAt }).SingleOrDefaultAsync(ct);
+                .Select(x => new { x.Id, x.Name, x.ContactName, x.Email, x.Phone, x.Website, x.Notes, x.IsActive, x.CreatedAt, x.UpdatedAt,
+                    logoUrl = x.LogoFileName == null ? null : $"/api/suppliers/{x.Id}/logo" }).SingleOrDefaultAsync(ct);
             return entry is null ? Results.NotFound() : Results.Ok(entry);
         }).RequireAuthorization("asset.read");
 

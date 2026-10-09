@@ -112,4 +112,5 @@ public sealed record AssetListItem(
     Guid? PhotoAttachmentId = null,
     Guid? LocationCatalogId = null,
     bool IsByod = false,
-    DateOnly? ExpectedReturnOn = null);
+    DateOnly? ExpectedReturnOn = null,
+    string? ModelPhotoUrl = null);

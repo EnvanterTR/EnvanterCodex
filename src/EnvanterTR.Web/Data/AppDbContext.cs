@@ -290,6 +290,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<SupplierCatalogEntry>().Property(x => x.Phone).HasMaxLength(50);
         modelBuilder.Entity<SupplierCatalogEntry>().Property(x => x.Website).HasMaxLength(500);
         modelBuilder.Entity<SupplierCatalogEntry>().Property(x => x.Notes).HasMaxLength(2000);
+        modelBuilder.Entity<SupplierCatalogEntry>().Property(x => x.LogoFileName).HasMaxLength(40);
         modelBuilder.Entity<SupplierCatalogEntry>().HasIndex(x => new { x.CompanyId, x.NormalizedName }).IsUnique();
         modelBuilder.Entity<SupplierCatalogEntry>().HasIndex(x => new { x.CompanyId, x.IsActive, x.Name });
         modelBuilder.Entity<SupplierCatalogEntry>().ToTable("SupplierCatalogEntries");

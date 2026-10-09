@@ -3161,6 +3161,10 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("LogoFileName")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
                     b.Property<string>("ContactName")
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
