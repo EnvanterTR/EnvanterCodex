@@ -284,6 +284,32 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(1, previewPayload.RootElement.GetProperty("rowCount").GetInt32());
         }
 
+        var employeeMap = new Dictionary<string, string>
+        {
+            ["Staff Code"] = "employeeNumber", ["Full Name"] = "displayName", ["Business Unit"] = "department", ["Do Not Import"] = "ignore"
+        };
+        using (var employeeNoCsrf = await SendAsUserAsync(HttpMethod.Post, "/api/employees/import-mappings", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "HR export", mappings = employeeMap })))
+            Assert.Equal(HttpStatusCode.BadRequest, employeeNoCsrf.StatusCode);
+        using var employeeCreate = await SendAsUserAsync(HttpMethod.Post, "/api/employees/import-mappings", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "HR export", mappings = employeeMap }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, employeeCreate.StatusCode);
+        using var employeeCreated = JsonDocument.Parse(await employeeCreate.Content.ReadAsStringAsync());
+        var employeeProfileId = employeeCreated.RootElement.GetProperty("id").GetGuid();
+
+        var employeeCsv = new StringContent("Staff Code,Full Name,Business Unit,Do Not Import\nMAP-100,Test Employee,Operations,private note\n",
+            System.Text.Encoding.UTF8, "text/csv");
+        var employeeHeader = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(employeeMap)));
+        using (var employeePreview = await SendAsRoleWithHeadersAsync(HttpMethod.Post, "/api/employees/import/preview.csv", "admin",
+            employeeCsv, requestToken, antiforgeryCookie, new Dictionary<string, string> { ["X-Employee-Import-Mapping"] = employeeHeader }))
+        {
+            Assert.True(employeePreview.StatusCode == HttpStatusCode.OK,
+                $"Employee mapped preview failed: {(int)employeePreview.StatusCode} {await employeePreview.Content.ReadAsStringAsync()}");
+            using var previewPayload = JsonDocument.Parse(await employeePreview.Content.ReadAsStringAsync());
+            Assert.True(previewPayload.RootElement.GetProperty("isValid").GetBoolean());
+            Assert.Equal(1, previewPayload.RootElement.GetProperty("rowCount").GetInt32());
+        }
+
         using (var invalid = await SendAsUserAsync(HttpMethod.Post, "/api/assets/import-mappings", _userId, _companyId,
             System.Net.Http.Json.JsonContent.Create(new { name = "Bad", mappings = new Dictionary<string, string> { ["Secret"] = "custom:otherTenantOnly" } }), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
@@ -296,6 +322,10 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var ownAccessory = JsonDocument.Parse(await ownAccessoryList.Content.ReadAsStringAsync()))
             Assert.Equal(accessoryProfileId, Assert.Single(ownAccessory.RootElement.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
 
+        using (var ownEmployeeList = await SendAsUserAsync(HttpMethod.Get, "/api/employees/import-mappings", _userId, _companyId))
+        using (var ownEmployee = JsonDocument.Parse(await ownEmployeeList.Content.ReadAsStringAsync()))
+            Assert.Equal(employeeProfileId, Assert.Single(ownEmployee.RootElement.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
+
         using (var otherUserList = await SendAsUserAsync(HttpMethod.Get, "/api/assets/import-mappings", _sameCompanyOtherUserId, _companyId))
         using (var other = JsonDocument.Parse(await otherUserList.Content.ReadAsStringAsync()))
             Assert.Empty(other.RootElement.GetProperty("items").EnumerateArray());
@@ -303,6 +333,10 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var otherUserAccessoryList = await SendAsUserAsync(HttpMethod.Get, "/api/accessories/import-mappings", _sameCompanyOtherUserId, _companyId))
         using (var otherAccessory = JsonDocument.Parse(await otherUserAccessoryList.Content.ReadAsStringAsync()))
             Assert.Empty(otherAccessory.RootElement.GetProperty("items").EnumerateArray());
+
+        using (var otherUserEmployeeList = await SendAsUserAsync(HttpMethod.Get, "/api/employees/import-mappings", _sameCompanyOtherUserId, _companyId))
+        using (var otherEmployee = JsonDocument.Parse(await otherUserEmployeeList.Content.ReadAsStringAsync()))
+            Assert.Empty(otherEmployee.RootElement.GetProperty("items").EnumerateArray());
 
         using (var crossCompanyList = await SendAsUserAsync(HttpMethod.Get, "/api/assets/import-mappings", _userId, _otherCompanyId))
             Assert.Equal(HttpStatusCode.Unauthorized, crossCompanyList.StatusCode);
@@ -320,6 +354,9 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var deleteAccessory = await SendAsUserAsync(HttpMethod.Delete, $"/api/accessories/import-mappings/{accessoryProfileId}", _userId, _companyId,
             requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
             Assert.Equal(HttpStatusCode.NoContent, deleteAccessory.StatusCode);
+        using (var deleteEmployee = await SendAsUserAsync(HttpMethod.Delete, $"/api/employees/import-mappings/{employeeProfileId}", _userId, _companyId,
+            requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NoContent, deleteEmployee.StatusCode);
     }
 
     [Fact]

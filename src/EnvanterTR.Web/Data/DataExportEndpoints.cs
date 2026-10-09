@@ -19,6 +19,7 @@ public static class DataExportEndpoints
     private const int PreviewMaxRows = 250_000;
     private const int CsvImportMaxRows = 5_000;
     private const string AssetImportMappingHeader = "X-Asset-Import-Mapping";
+    private const string EmployeeImportMappingHeader = "X-Employee-Import-Mapping";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public static IEndpointRouteBuilder MapDataExportEndpoints(this IEndpointRouteBuilder endpoints)
@@ -61,6 +62,7 @@ public static class DataExportEndpoints
             IAntiforgery antiforgery, CancellationToken cancellationToken) => ImportEmployeeCsvAsync(context, db, antiforgery, true, cancellationToken))
             .RequireAuthorization("people.manage")
             .WithMetadata(new RequestSizeLimitAttribute(PreviewMaxBytes));
+        endpoints.MapEmployeeImportMappingProfileEndpoints();
         return endpoints;
     }
 
@@ -104,6 +106,13 @@ public static class DataExportEndpoints
         { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV tırnak/ayraç biçimi bozuk." } }); }
         catch (Exception exception) when (isXlsx && exception is InvalidDataException or InvalidOperationException or System.Xml.XmlException or OverflowException)
         { return Results.UnprocessableEntity(new { isValid = false, errors = new[] { exception.Message } }); }
+        if (!TryReadEmployeeImportMappings(context.Request, out var explicitMappings))
+            return Results.BadRequest(new { message = "Çalışan sütun eşleme bilgisi bozuk veya izin verilen boyutu aşıyor. Eşlemeyi yeniden seçin." });
+        rows = EmployeeCsvImportMapping.Normalize(rows, explicitMappings, out var unmappedColumns);
+        if (unmappedColumns.Length > 0)
+            return Results.UnprocessableEntity(new { isValid = false,
+                errors = new[] { $"Dosyadaki sütunları eşleyin veya açıkça yoksayın: {string.Join(", ", unmappedColumns)}. Veri kaybını önlemek için aktarım durduruldu." },
+                unmappedColumns, mappingTargets = EmployeeCsvImportMapping.MappingTargets() });
         string[] baseHeader = ["Personel No", "Ad Soyad", "E-posta", "Departman", "Görev Unvanı", "Telefon", "Konum", "İşe Başlama Tarihi"];
         string[] legacyExportHeader = [.. baseHeader, "Yönetici", "Durum", "Kayıt Tarihi"];
         string[] exportHeader = [.. legacyExportHeader, "Yönetici Personel No"];
@@ -479,6 +488,27 @@ public static class DataExportEndpoints
                     !mappings.TryAdd(source.Trim(), target.Trim())) return false;
             }
             return true;
+        }
+        catch (FormatException) { return false; }
+        catch (JsonException) { return false; }
+    }
+
+    private static bool TryReadEmployeeImportMappings(HttpRequest request, out Dictionary<string, string> mappings)
+    {
+        mappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var encoded = request.Headers[EmployeeImportMappingHeader].ToString();
+        if (string.IsNullOrWhiteSpace(encoded)) return true;
+        if (encoded.Length > 16_384) return false;
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<Dictionary<string, string>>(Convert.FromBase64String(encoded), JsonOptions);
+            if (parsed is null || parsed.Count > 20) return false;
+            foreach (var (source, target) in parsed)
+            {
+                if (string.IsNullOrWhiteSpace(source) || source.Trim().Length > 160 || string.IsNullOrWhiteSpace(target) || target.Length > 100 ||
+                    !mappings.TryAdd(source.Trim(), target.Trim())) return false;
+            }
+            return EmployeeCsvImportMapping.ValidateExplicitMappings(mappings, out _);
         }
         catch (FormatException) { return false; }
         catch (JsonException) { return false; }
