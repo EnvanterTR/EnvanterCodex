@@ -219,6 +219,19 @@ const requiredLicenseImportLabels = [
   '{count} yeni lisans doğrulandı; {supplierCount} yeni tedarikçi yalnızca aktarımı onaylarsanız kataloğa eklenecek. Önizleme kayıt eklemedi.',
   '{count} lisans ve denetim geçmişi eklendi; {supplierCount} yeni tedarikçi kataloğa bağlandı.'
 ];
+const requiredApiErrorLabels = [
+  'İstek doğrulaması başarısız.',
+  'Arama metni 120 karakteri aşamaz.',
+  'Arama 120 karakteri aşamaz.',
+  'Başlangıç tarihi bitiş tarihinden sonra olamaz.',
+  'Profil adı 1–60 karakter olmalıdır.',
+  'Aynı adlı profil eşzamanlı olarak kaydedildi. Listeyi yenileyip tekrar deneyin.',
+  'Yalnızca gerçek PDF, PNG, JPEG veya WebP dosyaları yüklenebilir.',
+  '1 ile 100 arasında, tekrarsız varlık seçin.',
+  'Sütun eşlemesi okunamadı; dosyayı yeniden doğrulayın.',
+  'Rapor tarihi 2000 ile 2100 arasında olmalıdır.',
+  'Etkin çalışan bu şirkette bulunamadı.'
+];
 
 const invalidRows = Object.entries(sandbox.localeRows)
   .filter(([key, values]) => !key.trim() || !Array.isArray(values) || values.length !== 4 || values.some(value => typeof value !== 'string' || !value.trim()))
@@ -230,8 +243,9 @@ const missingEmployeeLabels = requiredEmployeeLabels.filter(key => !sandbox.loca
 const missingInventoryMovementLabels = requiredInventoryMovementLabels.filter(key => !sandbox.localeRows[key]);
 const missingLicenseListLabels = requiredLicenseListLabels.filter(key => !sandbox.localeRows[key]);
 const missingLicenseImportLabels = requiredLicenseImportLabels.filter(key => !sandbox.localeRows[key]);
+const missingApiErrorLabels = requiredApiErrorLabels.filter(key => !sandbox.localeRows[key]);
 
-if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length) {
+if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingApiErrorLabels.length) {
   if (invalidRows.length) console.error(`Invalid 4-language locale entries: ${invalidRows.join(', ')}`);
   if (missingAssetLabels.length) console.error(`Missing asset-list locale entries: ${missingAssetLabels.join(', ')}`);
   if (missingReservationLabels.length) console.error(`Missing reservation-page locale entries: ${missingReservationLabels.join(', ')}`);
@@ -240,6 +254,7 @@ if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.
   if (missingInventoryMovementLabels.length) console.error(`Missing inventory-movement locale entries: ${missingInventoryMovementLabels.join(', ')}`);
   if (missingLicenseListLabels.length) console.error(`Missing license-list locale entries: ${missingLicenseListLabels.join(', ')}`);
   if (missingLicenseImportLabels.length) console.error(`Missing license-import locale entries: ${missingLicenseImportLabels.join(', ')}`);
+  if (missingApiErrorLabels.length) console.error(`Missing common API-error locale entries: ${missingApiErrorLabels.join(', ')}`);
   process.exitCode = 1;
 } else {
   console.log(`Verified ${Object.keys(sandbox.localeRows).length} locale entries in Turkish, English, Russian, Ukrainian, and Macedonian.`);
