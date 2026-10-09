@@ -34,3 +34,5 @@ appsettings.Development.json
 __pycache__/
 Thumbs.db
 desktop.ini
+
+/artifacts/windows/release/
