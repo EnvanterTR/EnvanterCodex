@@ -18,6 +18,7 @@ public static class DataExportEndpoints
     private const int PreviewMaxBytes = 32 * 1024 * 1024;
     private const int PreviewMaxRows = 250_000;
     private const int CsvImportMaxRows = 5_000;
+    private const string AssetImportMappingHeader = "X-Asset-Import-Mapping";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public static IEndpointRouteBuilder MapDataExportEndpoints(this IEndpointRouteBuilder endpoints)
@@ -258,6 +259,8 @@ public static class DataExportEndpoints
             return Results.Forbid();
         try { await antiforgery.ValidateRequestAsync(context); }
         catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
+        if (!TryReadAssetImportMappings(context.Request, out var explicitMappings))
+            return Results.BadRequest(new { message = "Sütun eşleme bilgisi bozuk veya izin verilen boyutu aşıyor. Eşlemeyi yeniden seçin." });
         var isXlsx = IsXlsxRequest(context.Request);
         if (!isXlsx && context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true)
             return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
@@ -289,9 +292,9 @@ public static class DataExportEndpoints
         { return Results.UnprocessableEntity(new { message = exception.Message }); }
         var customFields = await db.AssetCustomFieldDefinitions.AsNoTracking().Where(x => x.CompanyId == companyId && x.IsActive)
             .OrderBy(x => x.SortOrder).ThenBy(x => x.Name).ToListAsync(cancellationToken);
-        rows = AssetCsvImportMapping.Normalize(rows, customFields, out var unsupportedColumns);
+        rows = AssetCsvImportMapping.Normalize(rows, customFields, out var unsupportedColumns, explicitMappings);
         if (unsupportedColumns.Length > 0)
-            return Results.UnprocessableEntity(new { message = $"Bu dosyada henüz eşlenmeyen ve dolu veri içeren sütunlar var: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu; önce bu sütunları eşleyin veya boş olduklarını doğrulayın." });
+            return Results.UnprocessableEntity(new { message = $"Dosyada aktarım dışında kalacak ya da çakışan sütunlar var: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu.", unmappedColumns = unsupportedColumns, mappingTargets = AssetCsvImportMapping.MappingTargets(customFields) });
         string[] legacyHeader = ["Etiket", "Ad", "Durum", "Kategori", "Marka", "Model", "Seri No", "Konum", "Personel No", "Çalışan", "Alış Tarihi", "Alış Bedeli", "Para Birimi"];
         string[] warrantyHeader = ["Etiket", "Ad", "Durum", "Kategori", "Marka", "Model", "Seri No", "Konum", "Personel No", "Çalışan", "Alış Tarihi", "Garanti Bitiş Tarihi", "Alış Bedeli", "Para Birimi"];
         var legacyWithParent = legacyHeader.Append("Üst Varlık Etiketi").ToArray();
@@ -460,6 +463,27 @@ public static class DataExportEndpoints
 
     private static string? CleanCsv(string value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    private static bool TryReadAssetImportMappings(HttpRequest request, out Dictionary<string, string> mappings)
+    {
+        mappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var encoded = request.Headers[AssetImportMappingHeader].ToString();
+        if (string.IsNullOrWhiteSpace(encoded)) return true;
+        if (encoded.Length > 16_384) return false;
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<Dictionary<string, string>>(Convert.FromBase64String(encoded), JsonOptions);
+            if (parsed is null || parsed.Count > 20) return false;
+            foreach (var (source, target) in parsed)
+            {
+                if (string.IsNullOrWhiteSpace(source) || source.Trim().Length > 160 || string.IsNullOrWhiteSpace(target) || target.Length > 100 ||
+                    !mappings.TryAdd(source.Trim(), target.Trim())) return false;
+            }
+            return true;
+        }
+        catch (FormatException) { return false; }
+        catch (JsonException) { return false; }
+    }
+
     internal static bool IsXlsxRequest(HttpRequest request) =>
         request.ContentType?.StartsWith("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", StringComparison.OrdinalIgnoreCase) == true;
 
@@ -481,6 +505,8 @@ public static class DataExportEndpoints
         if (!activeMembership) return Results.Forbid();
         try { await antiforgery.ValidateRequestAsync(context); }
         catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
+        if (!TryReadAssetImportMappings(context.Request, out var explicitMappings))
+            return Results.BadRequest(new { message = "Sütun eşleme bilgisi bozuk veya izin verilen boyutu aşıyor. Eşlemeyi yeniden seçin." });
         var isXlsx = IsXlsxRequest(context.Request);
         if (!isXlsx && context.Request.ContentType?.StartsWith("text/csv", StringComparison.OrdinalIgnoreCase) != true)
             return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
@@ -514,9 +540,11 @@ public static class DataExportEndpoints
         var customFields = await db.AssetCustomFieldDefinitions.AsNoTracking()
             .Where(x => x.CompanyId == companyId && x.IsActive).OrderBy(x => x.SortOrder).ThenBy(x => x.Name)
             .ToListAsync(cancellationToken);
-        records = AssetCsvImportMapping.Normalize(records, customFields, out var unsupportedColumns);
+        records = AssetCsvImportMapping.Normalize(records, customFields, out var unsupportedColumns, explicitMappings);
         if (unsupportedColumns.Length > 0)
-            return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"Bu dosyada henüz eşlenmeyen ve dolu veri içeren sütunlar var: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu; önce bu sütunları eşleyin veya boş olduklarını doğrulayın." } });
+            return Results.UnprocessableEntity(new { isValid = false,
+                errors = new[] { $"Dosyada aktarım dışında kalacak ya da çakışan sütunlar var: {string.Join(", ", unsupportedColumns)}. Veri kaybını önlemek için aktarım durduruldu." },
+                unmappedColumns = unsupportedColumns, mappingTargets = AssetCsvImportMapping.MappingTargets(customFields) });
         if (records.Count is < 2 || records.Count > CsvImportMaxRows + 1)
             return Results.UnprocessableEntity(new { isValid = false, errors = new[] { $"CSV başlık ve en fazla {CsvImportMaxRows:N0} varlık satırı içermelidir." } });
 

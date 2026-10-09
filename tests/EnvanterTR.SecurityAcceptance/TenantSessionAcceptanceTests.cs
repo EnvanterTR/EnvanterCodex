@@ -1331,6 +1331,85 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Asset_csv_import_accepts_explicit_user_column_mapping_for_preview_and_apply()
+    {
+        string categoryName;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var categoryId = await db.Assets.Where(x => x.CompanyId == _companyId && x.Id == _ownAssetId)
+                .Select(x => x.CategoryId).SingleAsync();
+            categoryName = await db.AssetCategories.Where(x => x.CompanyId == _companyId && x.Id == categoryId)
+                .Select(x => x.Name).SingleAsync();
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var tag = $"MAPPED-{_userId:N}".ToUpperInvariant();
+        const string csv = "Inventory Code,Description,Class\r\n";
+        var content = csv + $"{tag},Mapped workstation,{categoryName}";
+        var mappings = new Dictionary<string, string>
+        {
+            ["Inventory Code"] = "assetTag",
+            ["Description"] = "name",
+            ["Class"] = "category"
+        };
+        var mappingHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(mappings)));
+
+        using (var missingMapping = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import/preview.csv", "admin",
+                   new StringContent(content, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, missingMapping.StatusCode);
+            using var payload = JsonDocument.Parse(await missingMapping.Content.ReadAsStringAsync());
+            Assert.Equal(3, payload.RootElement.GetProperty("unmappedColumns").GetArrayLength());
+            Assert.True(payload.RootElement.GetProperty("mappingTargets").GetArrayLength() >= 16);
+        }
+
+        using (var preview = await SendAsRoleWithHeadersAsync(HttpMethod.Post, "/api/assets/import/preview.csv", "admin",
+                   new StringContent(content, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie,
+                   new Dictionary<string, string> { ["X-Asset-Import-Mapping"] = mappingHeader }))
+        {
+            Assert.Equal(HttpStatusCode.OK, preview.StatusCode);
+            using var payload = JsonDocument.Parse(await preview.Content.ReadAsStringAsync());
+            Assert.True(payload.RootElement.GetProperty("isValid").GetBoolean());
+        }
+
+        using (var imported = await SendAsRoleWithHeadersAsync(HttpMethod.Post, "/api/assets/import.csv", "admin",
+                   new StringContent(content, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie,
+                   new Dictionary<string, string> { ["X-Asset-Import-Mapping"] = mappingHeader }))
+            Assert.Equal(HttpStatusCode.OK, imported.StatusCode);
+
+        await using var verifyScope = _factory!.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var asset = await verifyDb.Assets.SingleAsync(x => x.CompanyId == _companyId && x.AssetTag == tag);
+        Assert.Equal("Mapped workstation", asset.Name);
+        Assert.Equal(categoryName, await verifyDb.AssetCategories.Where(x => x.Id == asset.CategoryId).Select(x => x.Name).SingleAsync());
+
+        var conflictingCsv = $"Etiket,Ad,Kategori,Inventory Label\r\nCONFLICT-{_userId:N},Existing name,{categoryName},also a label";
+        var conflictingMapping = Convert.ToBase64String(Encoding.UTF8.GetBytes(
+            JsonSerializer.Serialize(new Dictionary<string, string> { ["Inventory Label"] = "assetTag" })));
+        using (var conflict = await SendAsRoleWithHeadersAsync(HttpMethod.Post, "/api/assets/import/preview.csv", "admin",
+                   new StringContent(conflictingCsv, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie,
+                   new Dictionary<string, string> { ["X-Asset-Import-Mapping"] = conflictingMapping }))
+        {
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, conflict.StatusCode);
+            using var payload = JsonDocument.Parse(await conflict.Content.ReadAsStringAsync());
+            Assert.Contains(payload.RootElement.GetProperty("unmappedColumns").EnumerateArray(),
+                column => column.GetString() == "Inventory Label");
+        }
+
+        using var malformedMapping = await SendAsRoleWithHeadersAsync(HttpMethod.Post, "/api/assets/import/preview.csv", "admin",
+            new StringContent(content, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie,
+            new Dictionary<string, string> { ["X-Asset-Import-Mapping"] = "not-base64!" });
+        Assert.Equal(HttpStatusCode.BadRequest, malformedMapping.StatusCode);
+    }
+
+    [Fact]
     public async Task Software_license_can_be_assigned_to_same_company_asset_and_is_visible_in_both_details()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
@@ -2833,6 +2912,19 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         request.Headers.Add("X-Acceptance-Role", role);
         if (!string.IsNullOrWhiteSpace(requestToken)) request.Headers.Add("X-CSRF-TOKEN", requestToken);
         if (!string.IsNullOrWhiteSpace(antiforgeryCookie)) request.Headers.Add("Cookie", antiforgeryCookie);
+        return await _client!.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> SendAsRoleWithHeadersAsync(HttpMethod method, string path, string role,
+        HttpContent? content, string? requestToken, string? antiforgeryCookie, IReadOnlyDictionary<string, string> headers)
+    {
+        using var request = new HttpRequestMessage(method, path) { Content = content };
+        request.Headers.Add("X-Acceptance-User", _userId.ToString());
+        request.Headers.Add("X-Acceptance-Company", _companyId.ToString());
+        request.Headers.Add("X-Acceptance-Role", role);
+        if (!string.IsNullOrWhiteSpace(requestToken)) request.Headers.Add("X-CSRF-TOKEN", requestToken);
+        if (!string.IsNullOrWhiteSpace(antiforgeryCookie)) request.Headers.Add("Cookie", antiforgeryCookie);
+        foreach (var (name, value) in headers) request.Headers.Add(name, value);
         return await _client!.SendAsync(request);
     }
 

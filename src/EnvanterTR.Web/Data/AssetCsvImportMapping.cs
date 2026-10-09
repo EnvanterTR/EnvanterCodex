@@ -24,8 +24,22 @@ internal static class AssetCsvImportMapping
     private static readonly string[] CanonicalBaseHeaders =
         ["Etiket", "Ad", "Durum", "Kategori", "Marka", "Model", "Seri No", "Konum", "Personel No", "Çalışan", "Alış Tarihi"];
 
+    private static readonly string[] TargetKeys =
+        ["assetTag", "name", "status", "category", "brand", "model", "serialNumber", "location", "employeeNumber", "employeeName", "purchaseDate", "warrantyExpiration", "purchaseCost", "currency", "parentAssetTag"];
+
+    public static object[] MappingTargets(IReadOnlyCollection<AssetCustomFieldDefinition>? customFields) =>
+        TargetKeys.Select((key, index) => new { key, label = index < CanonicalBaseHeaders.Length ? CanonicalBaseHeaders[index] : index switch
+        {
+            11 => "Garanti Bitiş Tarihi", 12 => "Alış Bedeli", 13 => "Para Birimi", _ => "Üst Varlık Etiketi"
+        } })
+        .Concat((customFields ?? []).OrderBy(field => field.SortOrder).ThenBy(field => field.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(field => new { key = $"custom:{field.Key}", label = $"Özel alan: {field.Name}" }))
+        .Append(new { key = "ignore", label = "Bu sütunu yoksay" })
+        .Cast<object>().ToArray();
+
     public static List<List<string>> Normalize(List<List<string>> records,
-        IReadOnlyCollection<AssetCustomFieldDefinition>? customFields, out string[] unsupportedColumns)
+        IReadOnlyCollection<AssetCustomFieldDefinition>? customFields, out string[] unsupportedColumns,
+        IReadOnlyDictionary<string, string>? explicitMappings = null)
     {
         unsupportedColumns = [];
         if (records.Count == 0) return records;
@@ -35,23 +49,23 @@ internal static class AssetCsvImportMapping
         Array.Fill(sourceIndexes, -1);
         var customIndexes = new Dictionary<string, int>(StringComparer.Ordinal);
         var matchedIndexes = new HashSet<int>();
+        var mappingErrors = new List<string>();
         for (var sourceIndex = 0; sourceIndex < sourceHeader.Count; sourceIndex++)
         {
             var normalized = NormalizeHeader(sourceHeader[sourceIndex]);
+            if (explicitMappings?.Keys.Any(key => NormalizeHeader(key) == normalized) == true) continue;
             var baseMatches = HeaderAliases.Select((aliases, index) => (aliases, index))
                 .Where(item => item.aliases.Any(alias => NormalizeHeader(alias) == normalized)).ToArray();
             if (baseMatches.Length > 1)
             {
-                unsupportedColumns = [sourceHeader[sourceIndex].Trim()];
-                return records;
+                continue;
             }
             if (baseMatches.Length == 1)
             {
                 var targetIndex = baseMatches[0].index;
                 if (sourceIndexes[targetIndex] >= 0)
                 {
-                    unsupportedColumns = [sourceHeader[sourceIndex].Trim()];
-                    return records;
+                    continue;
                 }
                 sourceIndexes[targetIndex] = sourceIndex;
                 matchedIndexes.Add(sourceIndex);
@@ -62,16 +76,14 @@ internal static class AssetCsvImportMapping
                     .Any(alias => NormalizeHeader(alias) == normalized)).ToArray();
             if (customMatches.Length > 1)
             {
-                unsupportedColumns = [sourceHeader[sourceIndex].Trim()];
-                return records;
+                continue;
             }
             if (customMatches.Length == 1)
             {
                 var key = customMatches[0].Key;
                 if (customIndexes.ContainsKey(key))
                 {
-                    unsupportedColumns = [sourceHeader[sourceIndex].Trim()];
-                    return records;
+                    continue;
                 }
                 customIndexes[key] = sourceIndex;
                 matchedIndexes.Add(sourceIndex);
@@ -79,8 +91,62 @@ internal static class AssetCsvImportMapping
             }
         }
 
-        if (sourceIndexes[0] < 0 || sourceIndexes[1] < 0 || sourceIndexes[3] < 0)
+        foreach (var (sourceName, targetKey) in explicitMappings ?? new Dictionary<string, string>())
+        {
+            var candidates = sourceHeader.Select((header, index) => (header, index))
+                .Where(item => NormalizeHeader(item.header) == NormalizeHeader(sourceName)).Select(item => item.index).ToArray();
+            if (candidates.Length != 1)
+            {
+                mappingErrors.Add(sourceName);
+                continue;
+            }
+            var sourceIndex = candidates[0];
+            if (matchedIndexes.Contains(sourceIndex))
+            {
+                mappingErrors.Add(sourceName);
+                continue;
+            }
+            if (targetKey == "ignore")
+            {
+                matchedIndexes.Add(sourceIndex);
+                continue;
+            }
+            var targetIndex = Array.IndexOf(TargetKeys, targetKey);
+            if (targetIndex >= 0)
+            {
+                if (sourceIndexesForTarget(targetIndex) >= 0)
+                {
+                    mappingErrors.Add(sourceName);
+                    continue;
+                }
+                sourceIndexes[targetIndex] = sourceIndex;
+                matchedIndexes.Add(sourceIndex);
+                continue;
+            }
+            if (targetKey.StartsWith("custom:", StringComparison.Ordinal) &&
+                (customFields ?? []).Any(field => field.Key == targetKey[7..]) && !customIndexes.ContainsKey(targetKey[7..]))
+            {
+                customIndexes[targetKey[7..]] = sourceIndex;
+                matchedIndexes.Add(sourceIndex);
+                continue;
+            }
+            mappingErrors.Add(sourceName);
+        }
+        if (mappingErrors.Count > 0)
+        {
+            unsupportedColumns = mappingErrors.Take(20).ToArray();
             return records;
+        }
+
+        int sourceIndexesForTarget(int index) => sourceIndexes[index];
+
+        if (sourceIndexes[0] < 0 || sourceIndexes[1] < 0 || sourceIndexes[3] < 0)
+        {
+            unsupportedColumns = sourceHeader.Select((header, index) => (header, index))
+                .Where(item => !matchedIndexes.Contains(item.index)).Select(item => item.header.Trim())
+                .Where(header => header.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).Take(20).ToArray();
+            return records;
+        }
 
         var hasWarranty = sourceIndexes[11] >= 0;
         var hasParent = sourceIndexes[14] >= 0;
