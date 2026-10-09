@@ -4,6 +4,10 @@
 
 Bu kapsam, tanıtım/marketing ana sayfası hariç oturum açılan tüm EnvanterTR uygulamasını kapsar: şirket ve platform yönetimi, tablolar, formlar, ayrıntı ekranları, raporlar, bildirimler, yardım ve kurulum akışları. Her modül aynı modern tasarım sistemini kullanmalı; kullanıcıya göre izin verilen veriyi ve işe yarayan eylemleri öne çıkaran, masaüstü/tablet/telefon uyumlu panolar sunmalıdır. Referans ekranlardaki bilgi yoğunluğu korunurken hiyerarşi, boşluk, okunabilirlik, grafikler ve klavye/dokunmatik erişilebilirliği iyileştirilir.
 
+## Kullanıcı kabul durumu
+
+- 2026-10-09: Kullanıcı mevcut tema seçeneklerinin, dashboard düzeninin ve menü ikonlarının beğenilmediğini; arayüzün karmaşık göründüğünü belirtti. Mevcut görsel tur kabul edilmiş sayılmaz. Görsel cilayı şimdilik ertele; ürün işlevleri ilerledikten sonra tüm uygulama için tutarlı, daha sade ve profesyonel bir tasarımı yeniden ele al. Yeni görsel değişiklikleri kabul edilmiş tasarım gibi tanıtma.
+
 ## Temalar
 
 - En az Açık, Koyu ve Sistem görünümü; uygulamadaki bütün sayfalar, diyaloglar, açılır listeler, grafikler, tablolar, giriş/kurulum ve hata durumları aynı tema tercihini izler.
