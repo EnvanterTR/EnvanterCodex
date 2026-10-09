@@ -424,6 +424,7 @@ public sealed class Accessory
     public decimal? UnitCost { get; set; }
     public string Currency { get; set; } = "TRY";
     public DateOnly? PurchaseDate { get; set; }
+    public DateOnly? WarrantyExpiresAt { get; set; }
     public string? Notes { get; set; }
     public bool IsRequestable { get; set; }
     public string? PhotoFileName { get; set; }

@@ -559,6 +559,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             table.HasCheckConstraint("CK_Accessories_Quantities", "\"MinimumQuantity\" >= 0 AND \"TotalQuantity\" >= 0");
             table.HasCheckConstraint("CK_Accessories_Cost", "\"UnitCost\" IS NULL OR \"UnitCost\" >= 0");
             table.HasCheckConstraint("CK_Accessories_Currency", "char_length(\"Currency\") = 3");
+            table.HasCheckConstraint("CK_Accessories_WarrantyAfterPurchase", "\"WarrantyExpiresAt\" IS NULL OR \"PurchaseDate\" IS NULL OR \"WarrantyExpiresAt\" >= \"PurchaseDate\"");
         });
         modelBuilder.Entity<AccessoryAssignment>().Property(x => x.Notes).HasMaxLength(2000);
         modelBuilder.Entity<AccessoryAssignment>().Property(x => x.TargetType).HasMaxLength(16).HasDefaultValue("Employee").IsRequired();

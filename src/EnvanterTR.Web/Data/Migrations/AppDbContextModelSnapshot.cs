@@ -86,6 +86,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateOnly?>("PurchaseDate")
                         .HasColumnType("date");
 
+                    b.Property<DateOnly?>("WarrantyExpiresAt")
+                        .HasColumnType("date");
+
                     b.Property<string>("Supplier")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
@@ -122,6 +125,8 @@ namespace EnvanterTR.Web.Data.Migrations
                             t.HasCheckConstraint("CK_Accessories_Cost", "\"UnitCost\" IS NULL OR \"UnitCost\" >= 0");
 
                             t.HasCheckConstraint("CK_Accessories_Currency", "char_length(\"Currency\") = 3");
+
+                            t.HasCheckConstraint("CK_Accessories_WarrantyAfterPurchase", "\"WarrantyExpiresAt\" IS NULL OR \"PurchaseDate\" IS NULL OR \"WarrantyExpiresAt\" >= \"PurchaseDate\"");
 
                             t.HasCheckConstraint("CK_Accessories_Quantities", "\"MinimumQuantity\" >= 0 AND \"TotalQuantity\" >= 0");
                         });

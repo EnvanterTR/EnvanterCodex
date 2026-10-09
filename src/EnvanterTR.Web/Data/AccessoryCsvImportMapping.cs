@@ -15,15 +15,16 @@ internal static class AccessoryCsvImportMapping
         ["Birim maliyeti", "Birim maliyet", "Unit Cost", "Purchase Cost"],
         ["Para birimi", "Currency"],
         ["Alış tarihi", "Alis tarihi", "Purchase Date"],
+        ["Garanti bitiş tarihi", "Garanti tarihi", "Warranty Expiration Date", "Warranty Expires At"],
         ["İstek yapılabilir", "Istek yapilabilir", "Requestable", "Is Requestable"],
         ["Notlar", "Notes"]
     ];
 
     private static readonly string[] Canonical =
-        ["Aksesuar", "Kategori", "Model", "Ürün no", "Tedarikçi", "Konum", "Toplam", "Minimum", "Birim maliyeti", "Para birimi", "Alış tarihi", "İstek yapılabilir", "Notlar"];
+        ["Aksesuar", "Kategori", "Model", "Ürün no", "Tedarikçi", "Konum", "Toplam", "Minimum", "Birim maliyeti", "Para birimi", "Alış tarihi", "Garanti bitiş tarihi", "İstek yapılabilir", "Notlar"];
 
     private static readonly string[] TargetKeys =
-        ["name", "category", "modelNumber", "itemNumber", "supplier", "location", "totalQuantity", "minimumQuantity", "unitCost", "currency", "purchaseDate", "requestable", "notes"];
+        ["name", "category", "modelNumber", "itemNumber", "supplier", "location", "totalQuantity", "minimumQuantity", "unitCost", "currency", "purchaseDate", "warrantyExpiresAt", "requestable", "notes"];
 
     public static object[] MappingTargets() => TargetKeys.Select((key, index) => new { key, label = Canonical[index] })
         .Append(new { key = "ignore", label = "Bu sütunu yoksay" }).Cast<object>().ToArray();
@@ -121,6 +122,7 @@ internal static class AccessoryCsvImportMapping
             output[8] = NormalizeDecimal(output[8]);
             output[9] = string.IsNullOrWhiteSpace(output[9]) ? "TRY" : output[9];
             output[10] = NormalizeDate(output[10]);
+            output[11] = NormalizeDate(output[11]);
             mapped.Add(output);
         }
         return mapped;

@@ -197,7 +197,7 @@ public static class AssetEndpoints
                     x.MinimumQuantity, x.TotalQuantity,
                     photoUrl = x.PhotoFileName == null ? null : $"/api/accessories/{x.Id}/photo",
                     checkedOut = db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0,
-                    x.UnitCost, x.Currency, x.PurchaseDate, x.IsRequestable, x.UpdatedAt
+                    x.UnitCost, x.Currency, x.PurchaseDate, x.WarrantyExpiresAt, x.IsRequestable, x.UpdatedAt
                 }).ToListAsync(cancellationToken);
             return Results.Ok(new { items, page, pageSize, total });
         }).RequireAuthorization("asset.read");
@@ -268,14 +268,14 @@ public static class AssetEndpoints
             context.Response.Headers["Cache-Control"] = "no-store";
             context.Response.Headers["X-Total-Count"] = total.ToString(CultureInfo.InvariantCulture);
             await using var writer = new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
-            await writer.WriteLineAsync("Ad;Kategori;Model No;Ürün No;Tedarikçi;Konum;Toplam;Zimmetli;Kalan;Minimum;Birim Maliyeti;Para Birimi;Alış Tarihi;İstek Açık".AsMemory(), cancellationToken);
+            await writer.WriteLineAsync("Ad;Kategori;Model No;Ürün No;Tedarikçi;Konum;Toplam;Zimmetli;Kalan;Minimum;Birim Maliyeti;Para Birimi;Alış Tarihi;Garanti Bitiş Tarihi;İstek Açık".AsMemory(), cancellationToken);
             var rows = ordered.ThenBy(x => x.Id).Select(x => new
             {
                 x.Name, x.Category, x.ModelNumber, x.ItemNumber, x.Supplier, x.Location,
                 x.TotalQuantity,
                 CheckedOut = db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id)
                     .Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0,
-                x.MinimumQuantity, x.UnitCost, x.Currency, x.PurchaseDate, x.IsRequestable
+                x.MinimumQuantity, x.UnitCost, x.Currency, x.PurchaseDate, x.WarrantyExpiresAt, x.IsRequestable
             });
             var written = 0;
             await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
@@ -289,6 +289,7 @@ public static class AssetEndpoints
                     CsvCell(row.MinimumQuantity.ToString(CultureInfo.InvariantCulture)),
                     CsvCell(row.UnitCost?.ToString("0.00", CultureInfo.InvariantCulture)), CsvCell(row.Currency),
                     CsvCell(row.PurchaseDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
+                    CsvCell(row.WarrantyExpiresAt?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
                     CsvCell(row.IsRequestable ? "Evet" : "Hayır") });
                 await writer.WriteLineAsync(line.AsMemory(), cancellationToken);
                 if (++written % 500 == 0) await writer.FlushAsync(cancellationToken);
@@ -311,7 +312,7 @@ public static class AssetEndpoints
                     x.MinimumQuantity, x.TotalQuantity,
                     photoUrl = x.PhotoFileName == null ? null : $"/api/accessories/{x.Id}/photo",
                     checkedOut = db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0,
-                    x.UnitCost, x.Currency, x.PurchaseDate, x.Notes, x.IsRequestable, x.CreatedAt, x.UpdatedAt
+                    x.UnitCost, x.Currency, x.PurchaseDate, x.WarrantyExpiresAt, x.Notes, x.IsRequestable, x.CreatedAt, x.UpdatedAt
                 }).FirstOrDefaultAsync(cancellationToken);
             if (item is null) return Results.NotFound();
             var assignments = await db.AccessoryAssignments.AsNoTracking().Where(x => x.CompanyId == companyId && x.AccessoryId == id && x.Quantity > x.ReturnedQuantity)
@@ -356,6 +357,8 @@ public static class AssetEndpoints
             var errors = ValidateAccessory(request.Name, request.MinimumQuantity, request.Quantity,
                 request.UnitCost, request.Currency, request.Category, request.ModelNumber, request.ItemNumber,
                 request.Supplier, request.Location, request.Notes);
+            if (request.WarrantyExpiresAt is DateOnly createWarranty && request.PurchaseDate is DateOnly createPurchase && createWarranty < createPurchase)
+                errors["warrantyExpiresAt"] = ["Garanti bitiş tarihi alış tarihinden önce olamaz."];
             if (request.BrandId is Guid accessoryBrandId && !await db.AssetBrands.AnyAsync(x => x.CompanyId == companyId && x.Id == accessoryBrandId, cancellationToken))
                 errors["brandId"] = ["Marka bu şirkette bulunamadı."];
             var selectedAccessoryModel = request.ModelId is Guid accessoryModelId ? await db.AccessoryModels.AsNoTracking().SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == accessoryModelId, cancellationToken) : null;
@@ -372,7 +375,8 @@ public static class AssetEndpoints
                 LocationCatalogId = await ResolveLocationCatalogIdAsync(db, companyId, location, cancellationToken),
                 MinimumQuantity = request.MinimumQuantity, TotalQuantity = request.Quantity,
                 UnitCost = request.UnitCost, Currency = request.Currency.Trim().ToUpperInvariant(),
-                PurchaseDate = request.PurchaseDate, Notes = Clean(request.Notes), IsRequestable = request.IsRequestable
+                PurchaseDate = request.PurchaseDate, WarrantyExpiresAt = request.WarrantyExpiresAt,
+                Notes = Clean(request.Notes), IsRequestable = request.IsRequestable
             };
             db.Accessories.Add(item);
             if (item.TotalQuantity > 0) db.AccessoryMovements.Add(new AccessoryMovement
@@ -394,6 +398,8 @@ public static class AssetEndpoints
             var errors = ValidateAccessory(request.Name, request.MinimumQuantity, item.TotalQuantity,
                 request.UnitCost, request.Currency, request.Category, request.ModelNumber, request.ItemNumber,
                 request.Supplier, request.Location, request.Notes);
+            if (request.WarrantyExpiresAt is DateOnly updateWarranty && request.PurchaseDate is DateOnly updatePurchase && updateWarranty < updatePurchase)
+                errors["warrantyExpiresAt"] = ["Garanti bitiş tarihi alış tarihinden önce olamaz."];
             if (request.BrandId is Guid accessoryBrandId && !await db.AssetBrands.AnyAsync(x => x.CompanyId == companyId && x.Id == accessoryBrandId, cancellationToken))
                 errors["brandId"] = ["Marka bu şirkette bulunamadı."];
             var selectedAccessoryModel = request.ModelId is Guid accessoryModelId ? await db.AccessoryModels.AsNoTracking().SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == accessoryModelId, cancellationToken) : null;
@@ -406,6 +412,7 @@ public static class AssetEndpoints
             item.LocationCatalogId = await ResolveLocationCatalogIdAsync(db, companyId, request.Location, cancellationToken);
             item.MinimumQuantity = request.MinimumQuantity; item.UnitCost = request.UnitCost;
             item.Currency = request.Currency.Trim().ToUpperInvariant(); item.PurchaseDate = request.PurchaseDate;
+            item.WarrantyExpiresAt = request.WarrantyExpiresAt;
             item.Notes = Clean(request.Notes); item.IsRequestable = request.IsRequestable; item.UpdatedAt = DateTimeOffset.UtcNow;
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = CurrentUserId(user), TargetType = "Accessory", TargetId = item.Id, Action = "updated", Details = "Aksesuar temel bilgileri güncellendi." });
             await db.SaveChangesAsync(cancellationToken);
@@ -3086,10 +3093,12 @@ public static class AssetEndpoints
 
     public sealed record CreateAccessoryRequest(string Name, string? Category, string? ModelNumber, string? ItemNumber,
         string? Supplier, string? Location, int MinimumQuantity, int Quantity, decimal? UnitCost,
-        string Currency, DateOnly? PurchaseDate, string? Notes, bool IsRequestable, Guid? BrandId = null, Guid? ModelId = null);
+        string Currency, DateOnly? PurchaseDate, string? Notes, bool IsRequestable, Guid? BrandId = null, Guid? ModelId = null,
+        DateOnly? WarrantyExpiresAt = null);
     public sealed record UpdateAccessoryRequest(string Name, string? Category, string? ModelNumber, string? ItemNumber,
         string? Supplier, string? Location, int MinimumQuantity, decimal? UnitCost,
-        string Currency, DateOnly? PurchaseDate, string? Notes, bool IsRequestable, Guid? BrandId = null, Guid? ModelId = null);
+        string Currency, DateOnly? PurchaseDate, string? Notes, bool IsRequestable, Guid? BrandId = null, Guid? ModelId = null,
+        DateOnly? WarrantyExpiresAt = null);
     public sealed record AccessoryStockRequest(int Quantity, string? Notes);
     public sealed record AccessoryCheckoutRequest(string TargetType, Guid? EmployeeId, Guid? AssetId, string? Location, int Quantity, string? Notes);
     public sealed record BulkAccessoryCheckoutRequest(string? TargetType, Guid? EmployeeId, Guid? AssetId, string? Location,
