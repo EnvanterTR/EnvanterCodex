@@ -7,6 +7,8 @@ $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $project = Join-Path $repoRoot "src\EnvanterTR.Web\EnvanterTR.Web.csproj"
 $output = [System.IO.Path]::GetFullPath($OutputPath)
+$dockerRepoRoot = $repoRoot.Replace('\', '/')
+$dockerOutput = $output.Replace('\', '/')
 $dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
 $docker = Get-Command docker -ErrorAction SilentlyContinue
 
@@ -28,8 +30,8 @@ if ($dotnet) {
 } else {
     $dockerArguments = @(
         "run", "--rm",
-        "--mount", "type=bind,source=$repoRoot,target=/source",
-        "--mount", "type=bind,source=$output,target=/package",
+        "--mount", "type=bind,source=$dockerRepoRoot,target=/source",
+        "--mount", "type=bind,source=$dockerOutput,target=/package",
         "--workdir", "/source", $SdkContainerImage, "dotnet"
     ) + $publishArguments
     & $docker.Source @dockerArguments

@@ -22,6 +22,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 - Web yanıtlarında `nosniff`, iframe engeli ve sınırlı referrer/izin politikaları; API yanıtlarında önbelleği kapatma; şirket logo yüklemesinde istek gövdesi boyut sınırı.
 - Platform yönetici ekranı ve tanıtım sayfası için metin/paket taslakları.
 - Windows makinede Docker ile çalışan **geliştirici önizlemesi**: `http://localhost:8080/`. Bu kurulum müşteri kurucusu değildir ve başka bilgisayarlara ağ erişimi açmaz.
+- Windows x64 self-contained yayın betiğinin Docker SDK geri dönüş yolu Windows disk yollarını konteyner mount'ları için `/` biçimine normalize eder. Bu makinede yayın başarıyla üretildi; yayımlanmış uygulama LocalMachine DPAPI veritabanı ve SMTP sırlarını açarak `/api/status` verdi. `deploy/windows/tests/publish-path-check.ps1` bu yolu regresyona karşı denetler ve Windows CI kapısında çalışır; gerçek Windows Server kabulünün yerini tutmaz.
 
 ## Öncelikli tamamlanmamış işler
 

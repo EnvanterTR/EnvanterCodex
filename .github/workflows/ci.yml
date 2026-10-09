@@ -150,6 +150,10 @@ jobs:
         shell: pwsh
         run: ./deploy/windows/tests/install-safety-check.ps1
 
+      - name: Validate Windows Docker SDK mount paths
+        shell: pwsh
+        run: ./deploy/windows/tests/publish-path-check.ps1
+
       - name: Validate Windows DPAPI database secret storage
         shell: pwsh
         run: ./deploy/windows/tests/windows-secrets-check.ps1

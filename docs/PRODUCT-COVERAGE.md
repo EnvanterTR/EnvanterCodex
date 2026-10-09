@@ -9,6 +9,10 @@ Bu belge EnvanterTR'nin kurumsal envanter yönetiminde beklenen ana işlevleri n
 - **Yok:** Uygulanmış müşteri akışı yok.
 - **Karar gerekli:** Kaynakta özellik var; ürün gereksinimi, güvenlik veya müşteri ihtiyacı açısından dahil edilip edilmeyeceği kararlaştırılmalı.
 
+## Dağıtım doğrulama notu — 9 Ekim 2026
+
+Windows x64 paketinin Docker SDK geri dönüşü Windows `C:\` yollarını Docker Linux konteynerinin kabul ettiği mount biçimine normalize eder. Bu geliştirici bilgisayarında güncel kaynakla self-contained yayın başarıyla oluşturuldu; yayımlanmış uygulamanın LocalMachine DPAPI ile korunan veritabanı ve SMTP sırlarını açıp `/api/status` yanıtı vermesi doğrulandı. `deploy/windows/tests/publish-path-check.ps1` bu davranışı CI'da korur. Bu kanıt Windows Server hizmeti, gerçek PostgreSQL veya üretim güncelleme/kurtarma kabulü değildir.
+
 ## Envanter yönetimi işlev aileleri
 
 | İşlev ailesi | EnvanterTR durumu | Kapsam / eksik iş |
