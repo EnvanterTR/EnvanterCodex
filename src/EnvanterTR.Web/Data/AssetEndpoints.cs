@@ -471,7 +471,9 @@ public static class AssetEndpoints
             }
             else targetErrors["targetType"] = ["Teslim hedefi çalışan, varlık veya konum olmalı."];
             if (targetErrors.Count > 0) return Results.ValidationProblem(targetErrors);
-            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            // The accessory row lock serializes checkouts; ReadCommitted lets the waiting request see the prior commit
+            // when it recalculates available stock instead of failing with a PostgreSQL serialization error.
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, cancellationToken);
             var item = await db.Accessories.FromSqlInterpolated(
                     $"SELECT * FROM \"Accessories\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
                 .SingleOrDefaultAsync(cancellationToken);

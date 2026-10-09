@@ -3570,6 +3570,42 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Concurrent_accessory_checkouts_cannot_allocate_the_same_remaining_stock_twice()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var path = $"/api/accessories/{_ownAccessoryId}/checkout";
+        var firstRequest = SendAsRoleAsync(HttpMethod.Post, path, "admin",
+            System.Net.Http.Json.JsonContent.Create(new { targetType = "location", location = "Concurrent checkout A", quantity = 2 }), requestToken, antiforgeryCookie);
+        var secondRequest = SendAsRoleAsync(HttpMethod.Post, path, "admin",
+            System.Net.Http.Json.JsonContent.Create(new { targetType = "location", location = "Concurrent checkout B", quantity = 2 }), requestToken, antiforgeryCookie);
+
+        using var firstResponse = await firstRequest;
+        using var secondResponse = await secondRequest;
+
+        var responseDetails = $"first={(int)firstResponse.StatusCode} {await firstResponse.Content.ReadAsStringAsync()}; " +
+            $"second={(int)secondResponse.StatusCode} {await secondResponse.Content.ReadAsStringAsync()}";
+        Assert.True(new[] { firstResponse.StatusCode, secondResponse.StatusCode }.Contains(HttpStatusCode.Created), responseDetails);
+        Assert.Equal(1, new[] { firstResponse.StatusCode, secondResponse.StatusCode }
+            .Count(status => status == HttpStatusCode.Created));
+        Assert.Equal(1, new[] { firstResponse.StatusCode, secondResponse.StatusCode }
+            .Count(status => status == HttpStatusCode.Conflict));
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var outstanding = await db.AccessoryAssignments.Where(x => x.CompanyId == _companyId && x.AccessoryId == _ownAccessoryId)
+            .SumAsync(x => x.Quantity - x.ReturnedQuantity);
+        Assert.Equal(4, outstanding);
+        Assert.Single(await db.AccessoryMovements.Where(x => x.CompanyId == _companyId && x.AccessoryId == _ownAccessoryId && x.MovementType == "Checkout").ToListAsync());
+    }
+
+    [Fact]
     public async Task Password_recovery_does_not_disclose_account_existence_and_reset_tokens_are_single_use()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");

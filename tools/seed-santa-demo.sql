@@ -67,7 +67,7 @@ INSERT INTO _cat ("Key","Name") VALUES ('laptop','Dizüstü Bilgisayar'),('deskt
 INSERT INTO "AssetCategories" ("Id","CompanyId","Name") SELECT c."Id",s."Id",c."Name" FROM _cat c CROSS JOIN _santa s;
 
 CREATE TEMP TABLE _brand ("Key" text PRIMARY KEY,"Id" uuid NOT NULL DEFAULT gen_random_uuid(),"Name" text NOT NULL) ON COMMIT DROP;
-INSERT INTO _brand ("Key","Name") VALUES ('lenovo','Lenovo'),('dell','Dell'),('hp','HP'),('cisco','Cisco'),('fortinet','Fortinet'),('samsung','Samsung'),('brother','Brother'),('yealink','Yealink'),('eaton','Eaton'),('ubiquiti','Ubiquiti');
+INSERT INTO _brand ("Key","Name") VALUES ('lenovo','Lenovo'),('dell','Dell'),('hp','HP'),('cisco','Cisco'),('fortinet','Fortinet'),('samsung','Samsung'),('brother','Brother'),('yealink','Yealink'),('eaton','Eaton'),('ubiquiti','Ubiquiti'),('logitech','Logitech'),('samsonite','Samsonite');
 INSERT INTO "AssetBrands" ("Id","CompanyId","Name") SELECT b."Id",s."Id",b."Name" FROM _brand b CROSS JOIN _santa s;
 
 CREATE TEMP TABLE _model ("N" int PRIMARY KEY,"Id" uuid NOT NULL DEFAULT gen_random_uuid(),"Name" text NOT NULL,"CatKey" text NOT NULL,"BrandKey" text NOT NULL,"LocationKey" text NOT NULL,"AssignedGroup" int NOT NULL) ON COMMIT DROP;
@@ -108,9 +108,20 @@ INSERT INTO _accessory_seed ("N","Name","Category","Model","Qty","MinQty","Cost"
 (5,'Cat6 Patch Kablo 1 m','Ağ Kablosu','Cat6 UTP 1m',40,10,85),(6,'Cat6 Patch Kablo 3 m','Ağ Kablosu','Cat6 UTP 3m',25,8,140),
 (7,'HDMI Kablo 2 m','Görüntü Kablosu','HDMI 2.0 2m',16,5,190),(8,'DisplayPort Kablo 2 m','Görüntü Kablosu','DP 1.4 2m',10,3,260),
 (9,'Kablosuz Optik Fare','Fare','Logitech M185',20,6,490),(10,'Yedek Laptop Adaptörü 65 W','Güç Adaptörü','USB-C 65W',9,3,1250);
-INSERT INTO "Accessories" ("Id","CompanyId","Name","Category","ModelNumber","ItemNumber","Supplier","Location","LocationCatalogId","MinimumQuantity","TotalQuantity","UnitCost","Currency","PurchaseDate","Notes","IsRequestable","CreatedAt","UpdatedAt")
-SELECT a."Id",s."Id",a."Name",a."Category",a."Model",'SNT-ACC-'||lpad(a."N"::text,3,'0'),'Santa Bilgi Teknolojileri Tedarik','Merkez Bina / Kat 1 / Bilgi İşlem Deposu',l."Id",a."MinQty",a."Qty",a."Cost",'TRY',date '2026-01-15','Örnek demo stoğu; miktar düzenlenebilir.',TRUE,now(),now()
-FROM _accessory_seed a CROSS JOIN _santa s JOIN _loc l ON l."Key"='store';
+CREATE TEMP TABLE _accessory_model ("N" int PRIMARY KEY,"BrandKey" text,"Name" text NOT NULL) ON COMMIT DROP;
+INSERT INTO _accessory_model ("N","BrandKey","Name") VALUES
+(1,'logitech','MK540 Kablosuz Klavye ve Fare Seti'),(2,'lenovo','USB-C 7-in-1 Hub'),(3,'dell','WD19S USB-C Dock'),
+(4,'samsonite','GuardIT 2.0 15.6 inç Sırt Çantası'),(5,NULL,'Cat6 UTP 1 m'),(6,NULL,'Cat6 UTP 3 m'),
+(7,NULL,'HDMI 2.0 2 m'),(8,NULL,'DisplayPort 1.4 2 m'),(9,'logitech','M185 Kablosuz Fare'),(10,NULL,'USB-C 65 W Laptop Adaptörü');
+INSERT INTO "AccessoryModels" ("Id","CompanyId","BrandId","Name")
+SELECT gen_random_uuid(),s."Id",b."Id",m."Name" FROM _accessory_model m CROSS JOIN _santa s
+LEFT JOIN _brand b ON b."Key"=m."BrandKey";
+INSERT INTO "Accessories" ("Id","CompanyId","Name","Category","BrandId","ModelId","ModelNumber","ItemNumber","Supplier","Location","LocationCatalogId","MinimumQuantity","TotalQuantity","UnitCost","Currency","PurchaseDate","Notes","IsRequestable","CreatedAt","UpdatedAt")
+SELECT a."Id",s."Id",a."Name",a."Category",b."Id",am."Id",a."Model",'SNT-ACC-'||lpad(a."N"::text,3,'0'),'Santa Bilgi Teknolojileri Tedar','Merkez Bina / Kat 1 / Bilgi İşlem Deposu',l."Id",a."MinQty",a."Qty",a."Cost",'TRY',date '2026-01-15','Örnek demo stoğu; miktar düzenlenebilir.',TRUE,now(),now()
+FROM _accessory_seed a CROSS JOIN _santa s JOIN _loc l ON l."Key"='store'
+JOIN _accessory_model seed ON seed."N"=a."N"
+LEFT JOIN _brand b ON b."Key"=seed."BrandKey"
+JOIN "AccessoryModels" am ON am."CompanyId"=s."Id" AND am."BrandId" IS NOT DISTINCT FROM b."Id" AND am."Name"=seed."Name";
 UPDATE "Accessories" SET "PhotoFileName"='4c6d0102a36d452ea183013191f04f72.jpg'
 WHERE "CompanyId"=(SELECT "Id" FROM _santa) AND "ItemNumber"='SNT-ACC-004';
 INSERT INTO "AccessoryMovements" ("Id","CompanyId","AccessoryId","ActorUserId","MovementType","Quantity","Notes","OccurredAt")
