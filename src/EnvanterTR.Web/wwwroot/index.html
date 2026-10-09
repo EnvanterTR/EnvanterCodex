@@ -52,7 +52,7 @@
     :root[data-theme="dark"] .appearance-dialog-body select,:root[data-theme="dark"] .appearance-note{background:#101a29;color:#d2deed;border-color:#34445c}
   </style>
   <style>
-    img:not([data-no-zoom]){cursor:zoom-in}.image-viewer{width:min(94vw,1200px);max-width:none;max-height:94vh;padding:12px;border:1px solid #ffffff24;border-radius:15px;background:#101827;box-shadow:0 25px 90px #0009}.image-viewer::backdrop{background:#07101edb;backdrop-filter:blur(5px)}.image-viewer img{display:block;max-width:calc(94vw - 24px);max-height:calc(94vh - 24px);width:auto;height:auto;object-fit:contain;margin:auto;border-radius:8px}.image-viewer-close{position:absolute;top:8px;right:8px;width:36px;height:36px;border:1px solid #ffffff45;border-radius:50%;color:white;background:#111827cc;font-size:1.25rem;z-index:1}
+    img{cursor:zoom-in}.image-viewer{width:min(94vw,1200px);max-width:none;max-height:94vh;padding:12px;border:1px solid #ffffff24;border-radius:15px;background:#101827;box-shadow:0 25px 90px #0009}.image-viewer::backdrop{background:#07101edb;backdrop-filter:blur(5px)}.image-viewer img{display:block;max-width:calc(94vw - 24px);max-height:calc(94vh - 24px);width:auto;height:auto;object-fit:contain;margin:auto;border-radius:8px;cursor:default}.image-viewer-close{position:absolute;top:8px;right:8px;width:36px;height:36px;border:1px solid #ffffff45;border-radius:50%;color:white;background:#111827cc;font-size:1.25rem;z-index:1}
   </style>
   <style id="workspaceDesignPolish">
     /* A calmer, more deliberate visual system for every company workspace. */
@@ -6291,12 +6291,14 @@
     $('#assetTrashPrev').addEventListener('click', () => loadAssetTrash(assetTrashPage - 1).catch(error => notify(error.message)));
     $('#assetTrashNext').addEventListener('click', () => loadAssetTrash(assetTrashPage + 1).catch(error => notify(error.message)));
     document.addEventListener('click', event => {
-      const image = event.target.closest('img:not([data-no-zoom])');
+      const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+      const image = target?.closest('img');
       if (!image || !image.currentSrc || image.closest('#imageViewer')) return;
+      event.preventDefault();
       const viewer = $('#imageViewer'), preview = $('#imageViewerPhoto');
       preview.alt = image.alt || 'Büyütülmüş görsel'; preview.src = image.currentSrc;
       if (!viewer.open) viewer.showModal();
-    });
+    }, true);
     $('#imageViewerClose').addEventListener('click', () => $('#imageViewer').close());
     $('#imageViewer').addEventListener('click', event => { if (event.target === event.currentTarget) event.currentTarget.close(); });
     $('#imageViewer').addEventListener('close', () => { $('#imageViewerPhoto').removeAttribute('src'); });
