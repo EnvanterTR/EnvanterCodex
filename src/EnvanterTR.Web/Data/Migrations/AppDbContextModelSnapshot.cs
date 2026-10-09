@@ -28,6 +28,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("BrandId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Category")
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
@@ -59,6 +62,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<int>("MinimumQuantity")
                         .HasColumnType("integer");
+
+                    b.Property<Guid?>("ModelId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("ModelNumber")
                         .HasMaxLength(120)
@@ -99,7 +105,11 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId", "BrandId");
+
                     b.HasIndex("CompanyId", "LocationCatalogId");
+
+                    b.HasIndex("CompanyId", "ModelId");
 
                     b.HasIndex("CompanyId", "Name");
 
@@ -248,6 +258,35 @@ namespace EnvanterTR.Web.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_AccessoryKitLines_Quantity", "\"Quantity\" > 0");
                         });
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryModel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("BrandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("PhotoFileName")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "BrandId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("AccessoryModels");
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryMovement", b =>
@@ -3362,9 +3401,21 @@ namespace EnvanterTR.Web.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("EnvanterTR.Web.Data.AssetBrand", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "BrandId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("EnvanterTR.Web.Data.CompanyLocation", null)
                         .WithMany()
                         .HasForeignKey("CompanyId", "LocationCatalogId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EnvanterTR.Web.Data.AccessoryModel", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "ModelId")
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Restrict);
 
@@ -3433,6 +3484,21 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryModel", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.AssetBrand", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "BrandId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryMovement", b =>

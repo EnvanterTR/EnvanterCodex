@@ -187,7 +187,11 @@ public static class AssetEndpoints
             var items = await ordered.ThenBy(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(x => new
                 {
-                    x.Id, x.Name, x.Category, x.ModelNumber, x.ItemNumber, x.Supplier, x.Location,
+                    x.Id, x.Name, x.Category, x.ModelNumber, x.BrandId, x.ModelId,
+                    brandName = db.AssetBrands.Where(b => b.CompanyId == companyId && b.Id == x.BrandId).Select(b => b.Name).FirstOrDefault(),
+                    modelName = db.AccessoryModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.Name).FirstOrDefault(),
+                    modelPhotoUrl = db.AccessoryModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId && m.PhotoFileName != null).Select(m => $"/api/accessory-models/{m.Id}/photo").FirstOrDefault(),
+                    x.ItemNumber, x.Supplier, x.Location,
                     x.MinimumQuantity, x.TotalQuantity,
                     photoUrl = x.PhotoFileName == null ? null : $"/api/accessories/{x.Id}/photo",
                     checkedOut = db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0,
@@ -297,7 +301,11 @@ public static class AssetEndpoints
             var item = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
                 .Select(x => new
                 {
-                    x.Id, x.Name, x.Category, x.ModelNumber, x.ItemNumber, x.Supplier, x.Location,
+                    x.Id, x.Name, x.Category, x.ModelNumber, x.BrandId, x.ModelId,
+                    brandName = db.AssetBrands.Where(b => b.CompanyId == companyId && b.Id == x.BrandId).Select(b => b.Name).FirstOrDefault(),
+                    modelName = db.AccessoryModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.Name).FirstOrDefault(),
+                    modelPhotoUrl = db.AccessoryModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId && m.PhotoFileName != null).Select(m => $"/api/accessory-models/{m.Id}/photo").FirstOrDefault(),
+                    x.ItemNumber, x.Supplier, x.Location,
                     x.MinimumQuantity, x.TotalQuantity,
                     photoUrl = x.PhotoFileName == null ? null : $"/api/accessories/{x.Id}/photo",
                     checkedOut = db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0,
@@ -346,12 +354,18 @@ public static class AssetEndpoints
             var errors = ValidateAccessory(request.Name, request.MinimumQuantity, request.Quantity,
                 request.UnitCost, request.Currency, request.Category, request.ModelNumber, request.ItemNumber,
                 request.Supplier, request.Location, request.Notes);
+            if (request.BrandId is Guid accessoryBrandId && !await db.AssetBrands.AnyAsync(x => x.CompanyId == companyId && x.Id == accessoryBrandId, cancellationToken))
+                errors["brandId"] = ["Marka bu şirkette bulunamadı."];
+            var selectedAccessoryModel = request.ModelId is Guid accessoryModelId ? await db.AccessoryModels.AsNoTracking().SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == accessoryModelId, cancellationToken) : null;
+            if (request.ModelId is not null && (selectedAccessoryModel is null || selectedAccessoryModel.BrandId != request.BrandId))
+                errors["modelId"] = ["Model seçilen marka ve şirketle eşleşmiyor."];
             if (errors.Count > 0) return Results.ValidationProblem(errors);
             var location = Clean(request.Location) ?? await GetDefaultLocationPathAsync(db, companyId, cancellationToken);
             var item = new Accessory
             {
                 CompanyId = companyId, Name = request.Name.Trim(), Category = Clean(request.Category),
-                ModelNumber = Clean(request.ModelNumber), ItemNumber = Clean(request.ItemNumber),
+                ModelNumber = selectedAccessoryModel?.Name ?? Clean(request.ModelNumber), BrandId = selectedAccessoryModel?.BrandId ?? request.BrandId,
+                ModelId = selectedAccessoryModel?.Id, ItemNumber = Clean(request.ItemNumber),
                 Supplier = Clean(request.Supplier), SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, cancellationToken), Location = location,
                 LocationCatalogId = await ResolveLocationCatalogIdAsync(db, companyId, location, cancellationToken),
                 MinimumQuantity = request.MinimumQuantity, TotalQuantity = request.Quantity,
@@ -378,8 +392,14 @@ public static class AssetEndpoints
             var errors = ValidateAccessory(request.Name, request.MinimumQuantity, item.TotalQuantity,
                 request.UnitCost, request.Currency, request.Category, request.ModelNumber, request.ItemNumber,
                 request.Supplier, request.Location, request.Notes);
+            if (request.BrandId is Guid accessoryBrandId && !await db.AssetBrands.AnyAsync(x => x.CompanyId == companyId && x.Id == accessoryBrandId, cancellationToken))
+                errors["brandId"] = ["Marka bu şirkette bulunamadı."];
+            var selectedAccessoryModel = request.ModelId is Guid accessoryModelId ? await db.AccessoryModels.AsNoTracking().SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == accessoryModelId, cancellationToken) : null;
+            if (request.ModelId is not null && (selectedAccessoryModel is null || selectedAccessoryModel.BrandId != request.BrandId))
+                errors["modelId"] = ["Model seçilen marka ve şirketle eşleşmiyor."];
             if (errors.Count > 0) return Results.ValidationProblem(errors);
-            item.Name = request.Name.Trim(); item.Category = Clean(request.Category); item.ModelNumber = Clean(request.ModelNumber);
+            item.Name = request.Name.Trim(); item.Category = Clean(request.Category); item.ModelNumber = selectedAccessoryModel?.Name ?? Clean(request.ModelNumber);
+            item.BrandId = selectedAccessoryModel?.BrandId ?? request.BrandId; item.ModelId = selectedAccessoryModel?.Id;
             item.ItemNumber = Clean(request.ItemNumber); item.Supplier = Clean(request.Supplier); item.SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, cancellationToken); item.Location = Clean(request.Location);
             item.LocationCatalogId = await ResolveLocationCatalogIdAsync(db, companyId, request.Location, cancellationToken);
             item.MinimumQuantity = request.MinimumQuantity; item.UnitCost = request.UnitCost;
@@ -2461,7 +2481,7 @@ public static class AssetEndpoints
                             x.Website, x.SupportUrl, x.WarrantyUrl, x.SupportPhone, x.SupportEmail,
                             HasLogo = x.LogoFileName != null,
                             AssetCount = db.Assets.Count(a => a.CompanyId == companyId && a.BrandId == x.Id),
-                            ModelCount = db.AssetModels.Count(m => m.CompanyId == companyId && m.BrandId == x.Id) }).ToListAsync(cancellationToken));
+                            ModelCount = db.AssetModels.Count(m => m.CompanyId == companyId && m.BrandId == x.Id) + db.AccessoryModels.Count(m => m.CompanyId == companyId && m.BrandId == x.Id) }).ToListAsync(cancellationToken));
                 case "models":
                     return Results.Ok((object)await db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId)
                         .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name, x.BrandId,
@@ -2470,6 +2490,12 @@ public static class AssetEndpoints
                             HasPhoto = x.PhotoFileName != null,
                             x.DepreciationMonths, x.DepreciationMinimum, x.DepreciationMinimumType, x.DepreciationMethod,
                             AssetCount = db.Assets.Count(a => a.CompanyId == companyId && a.ModelId == x.Id) }).ToListAsync(cancellationToken));
+                case "accessory-models":
+                    return Results.Ok((object)await db.AccessoryModels.AsNoTracking().Where(x => x.CompanyId == companyId)
+                        .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name, x.BrandId,
+                            BrandName = db.AssetBrands.Where(b => b.CompanyId == companyId && b.Id == x.BrandId).Select(b => b.Name).FirstOrDefault(),
+                            HasPhoto = x.PhotoFileName != null,
+                            AccessoryCount = db.Accessories.Count(a => a.CompanyId == companyId && a.ModelId == x.Id) }).ToListAsync(cancellationToken));
                 default:
                     return Results.NotFound();
             }
@@ -2487,6 +2513,8 @@ public static class AssetEndpoints
                     .Select(x => new { x.Id, x.Name, x.Website, x.SupportUrl, x.WarrantyUrl, x.SupportPhone, x.SupportEmail, HasLogo = x.LogoFileName != null }).SingleOrDefaultAsync(cancellationToken),
                 "models" => await db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
                     .Select(x => new { x.Id, x.Name, x.BrandId, x.CategoryId, HasPhoto = x.PhotoFileName != null, x.DepreciationMonths, x.DepreciationMinimum, x.DepreciationMinimumType, x.DepreciationMethod }).SingleOrDefaultAsync(cancellationToken),
+                "accessory-models" => await db.AccessoryModels.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
+                    .Select(x => new { x.Id, x.Name, x.BrandId, HasPhoto = x.PhotoFileName != null }).SingleOrDefaultAsync(cancellationToken),
                 _ => null
             };
             return item is null ? Results.NotFound() : Results.Ok(item);
@@ -2503,6 +2531,8 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["brandId"] = ["Marka bu şirkette bulunamadı."] });
             if (request.CategoryId is Guid categoryId && !await db.AssetCategories.AnyAsync(x => x.CompanyId == companyId && x.Id == categoryId, cancellationToken))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["categoryId"] = ["Kategori bu şirkette bulunamadı."] });
+            if (kind.Equals("accessory-models", StringComparison.OrdinalIgnoreCase) && request.BrandId is null)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["brandId"] = ["Aksesuar modeli için marka seçilmelidir."] });
             if (kind.Equals("brands", StringComparison.OrdinalIgnoreCase) &&
                 new[] { request.Website, request.SupportUrl, request.WarrantyUrl, request.SupportPhone, request.SupportEmail }.Any(value => value?.Length > 300))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["brand"] = ["Marka iletişim alanlarından biri izin verilen uzunluğu aşıyor."] });
@@ -2517,6 +2547,7 @@ public static class AssetEndpoints
                 "brands" => AddBrand(db, companyId, name, request),
                 "models" => AddModel(db, companyId, name, request.BrandId, request.CategoryId,
                     request.DepreciationMonths, request.DepreciationMinimum, request.DepreciationMinimumType, request.DepreciationMethod),
+                "accessory-models" => AddAccessoryModel(db, companyId, name, request.BrandId.GetValueOrDefault()),
                 _ => null
             };
             if (created is null) return Results.NotFound();
@@ -2583,6 +2614,11 @@ public static class AssetEndpoints
                     if (model is null) return Results.NotFound();
                     if (await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.Id != id && x.BrandId == model.BrandId && x.Name.ToUpper() == name.ToUpper(), cancellationToken)) return Results.Conflict(new { message = "Bu marka altında aynı isimde model zaten var." });
                     previous = model.Name; model.Name = name; break;
+                case "accessory-models":
+                    var accessoryModel = await db.AccessoryModels.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+                    if (accessoryModel is null) return Results.NotFound();
+                    if (await db.AccessoryModels.AnyAsync(x => x.CompanyId == companyId && x.Id != id && x.BrandId == accessoryModel.BrandId && x.Name.ToUpper() == name.ToUpper(), cancellationToken)) return Results.Conflict(new { message = "Bu marka altında aynı isimde aksesuar modeli zaten var." });
+                    previous = accessoryModel.Name; accessoryModel.Name = name; break;
                 default: return Results.NotFound();
             }
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId,
@@ -2609,13 +2645,18 @@ public static class AssetEndpoints
                 case "brands":
                     var brand = await db.AssetBrands.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
                     if (brand is null) return Results.NotFound();
-                    if (await db.Assets.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken) || await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken)) return Results.Conflict(new { message = "Bu marka varlıklarda veya modellerde kullanılıyor; önce ilişkili kayıtları düzenleyin." });
+                    if (await db.Assets.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken) || await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken) || await db.Accessories.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken) || await db.AccessoryModels.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken)) return Results.Conflict(new { message = "Bu marka varlıklarda veya modellerde kullanılıyor; önce ilişkili kayıtları düzenleyin." });
                     deletedName = brand.Name; db.AssetBrands.Remove(brand); break;
                 case "models":
                     var model = await db.AssetModels.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
                     if (model is null) return Results.NotFound();
                     if (await db.Assets.AnyAsync(x => x.CompanyId == companyId && x.ModelId == id, cancellationToken)) return Results.Conflict(new { message = "Bu model varlıklarda kullanılıyor; silinemez." });
                     deletedName = model.Name; db.AssetModels.Remove(model); break;
+                case "accessory-models":
+                    var accessoryModel = await db.AccessoryModels.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+                    if (accessoryModel is null) return Results.NotFound();
+                    if (await db.Accessories.AnyAsync(x => x.CompanyId == companyId && x.ModelId == id, cancellationToken)) return Results.Conflict(new { message = "Bu aksesuar modeli kullanımda; silinemez." });
+                    deletedName = accessoryModel.Name; db.AccessoryModels.Remove(accessoryModel); break;
                 default: return Results.NotFound();
             }
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId,
@@ -2859,6 +2900,13 @@ public static class AssetEndpoints
             row.DepreciationMinimumType, row.DepreciationMethod };
     }
 
+    private static object AddAccessoryModel(AppDbContext db, Guid companyId, string name, Guid brandId)
+    {
+        var row = new AccessoryModel { CompanyId = companyId, Name = name, BrandId = brandId };
+        db.AccessoryModels.Add(row);
+        return new { row.Id, row.Name, row.BrandId };
+    }
+
     private static string? CleanLookupField(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static bool ValidateDepreciation(int? months, decimal? minimum, string? minimumType, string? method,
@@ -3003,10 +3051,10 @@ public static class AssetEndpoints
 
     public sealed record CreateAccessoryRequest(string Name, string? Category, string? ModelNumber, string? ItemNumber,
         string? Supplier, string? Location, int MinimumQuantity, int Quantity, decimal? UnitCost,
-        string Currency, DateOnly? PurchaseDate, string? Notes, bool IsRequestable);
+        string Currency, DateOnly? PurchaseDate, string? Notes, bool IsRequestable, Guid? BrandId = null, Guid? ModelId = null);
     public sealed record UpdateAccessoryRequest(string Name, string? Category, string? ModelNumber, string? ItemNumber,
         string? Supplier, string? Location, int MinimumQuantity, decimal? UnitCost,
-        string Currency, DateOnly? PurchaseDate, string? Notes, bool IsRequestable);
+        string Currency, DateOnly? PurchaseDate, string? Notes, bool IsRequestable, Guid? BrandId = null, Guid? ModelId = null);
     public sealed record AccessoryStockRequest(int Quantity, string? Notes);
     public sealed record AccessoryCheckoutRequest(string TargetType, Guid? EmployeeId, Guid? AssetId, string? Location, int Quantity, string? Notes);
     public sealed record BulkAccessoryCheckoutRequest(string? TargetType, Guid? EmployeeId, Guid? AssetId, string? Location,

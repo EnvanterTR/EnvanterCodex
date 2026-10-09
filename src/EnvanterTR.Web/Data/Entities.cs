@@ -409,6 +409,8 @@ public sealed class Accessory
     public required string Name { get; set; }
     public string? Category { get; set; }
     public string? ModelNumber { get; set; }
+    public Guid? BrandId { get; set; }
+    public Guid? ModelId { get; set; }
     public string? ItemNumber { get; set; }
     public string? Supplier { get; set; }
     public Guid? SupplierId { get; set; }
@@ -424,6 +426,15 @@ public sealed class Accessory
     public string? PhotoFileName { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class AccessoryModel
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid? BrandId { get; set; }
+    public required string Name { get; set; }
+    public string? PhotoFileName { get; set; }
 }
 
 public sealed class AccessoryAssignment

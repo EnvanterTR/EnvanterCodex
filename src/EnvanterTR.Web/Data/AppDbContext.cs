@@ -31,6 +31,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AssetMaintenance> AssetMaintenances => Set<AssetMaintenance>();
     public DbSet<AssetMaintenanceAttachment> AssetMaintenanceAttachments => Set<AssetMaintenanceAttachment>();
     public DbSet<Accessory> Accessories => Set<Accessory>();
+    public DbSet<AccessoryModel> AccessoryModels => Set<AccessoryModel>();
     public DbSet<AccessoryAssignment> AccessoryAssignments => Set<AccessoryAssignment>();
     public DbSet<AccessoryMovement> AccessoryMovements => Set<AccessoryMovement>();
     public DbSet<AccessoryKit> AccessoryKits => Set<AccessoryKit>();
@@ -260,6 +261,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetAttachment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<EmployeeDocument>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<Accessory>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<AccessoryModel>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AccessoryAssignment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AccessoryKit>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AccessoryKitLine>().HasAlternateKey(x => new { x.CompanyId, x.Id });
@@ -273,6 +275,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Employee>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<SupplierCatalogEntry>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<Accessory>().HasOne<SupplierCatalogEntry>().WithMany().HasForeignKey(x => new { x.CompanyId, x.SupplierId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AccessoryModel>().HasOne<AssetBrand>().WithMany().HasForeignKey(x => new { x.CompanyId, x.BrandId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<Accessory>().HasOne<AssetBrand>().WithMany().HasForeignKey(x => new { x.CompanyId, x.BrandId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<Accessory>().HasOne<AccessoryModel>().WithMany().HasForeignKey(x => new { x.CompanyId, x.ModelId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<Consumable>().HasOne<SupplierCatalogEntry>().WithMany().HasForeignKey(x => new { x.CompanyId, x.SupplierId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<InventoryComponent>().HasOne<SupplierCatalogEntry>().WithMany().HasForeignKey(x => new { x.CompanyId, x.SupplierId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<SoftwareLicense>().HasOne<SupplierCatalogEntry>().WithMany().HasForeignKey(x => new { x.CompanyId, x.SupplierId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict);
@@ -326,6 +331,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetModel>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<Asset>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<Accessory>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AccessoryModel>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AccessoryAssignment>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AccessoryMovement>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AccessoryKit>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
@@ -541,6 +547,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Accessory>().Property(x => x.UnitCost).HasPrecision(18, 2);
         modelBuilder.Entity<Accessory>().Property(x => x.Notes).HasMaxLength(2000);
         modelBuilder.Entity<Accessory>().HasIndex(x => new { x.CompanyId, x.Name });
+        modelBuilder.Entity<AccessoryModel>().Property(x => x.Name).HasMaxLength(120).IsRequired();
+        modelBuilder.Entity<AccessoryModel>().Property(x => x.PhotoFileName).HasMaxLength(40);
+        modelBuilder.Entity<AccessoryModel>().HasIndex(x => new { x.CompanyId, x.BrandId, x.Name }).IsUnique();
+        modelBuilder.Entity<Accessory>().HasIndex(x => new { x.CompanyId, x.ModelId });
+        modelBuilder.Entity<Accessory>().HasIndex(x => new { x.CompanyId, x.BrandId });
         modelBuilder.Entity<Accessory>().HasIndex(x => new { x.CompanyId, x.Category, x.Location });
         modelBuilder.Entity<Accessory>().ToTable("Accessories", table =>
         {

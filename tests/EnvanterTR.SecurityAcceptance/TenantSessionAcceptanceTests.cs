@@ -3443,6 +3443,46 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, modelPhoto.StatusCode);
         using var brandLogo = await SendAsAdminAsync($"/api/brands/{brandId}/logo");
         Assert.Equal(HttpStatusCode.OK, brandLogo.StatusCode);
+
+        using var accessoryModelResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/lookups/accessory-models", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = $"ACCESSORY-MODEL-{_userId:N}", brandId }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, accessoryModelResponse.StatusCode);
+        using var accessoryModelPayload = JsonDocument.Parse(await accessoryModelResponse.Content.ReadAsStringAsync());
+        var accessoryModelId = accessoryModelPayload.RootElement.GetProperty("id").GetGuid();
+        using var accessoryModelPhotoForm = new MultipartFormDataContent();
+        var accessoryModelPhotoContent = new ByteArrayContent(png); accessoryModelPhotoContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+        accessoryModelPhotoForm.Add(accessoryModelPhotoContent, "file", "accessory-model.png");
+        using var accessoryModelPhotoResponse = await SendAsRoleAsync(HttpMethod.Post, $"/api/accessory-models/{accessoryModelId}/photo", "admin", accessoryModelPhotoForm, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, accessoryModelPhotoResponse.StatusCode);
+
+        using var accessoryResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/accessories", "admin",
+            System.Net.Http.Json.JsonContent.Create(new
+            {
+                name = $"ACCESSORY-{_userId:N}", category = "Klavye", brandId, modelId = accessoryModelId,
+                itemNumber = $"ITEM-{_userId:N}", supplier = "Test Supplier", location = "Test Location",
+                minimumQuantity = 0, quantity = 2, unitCost = 100m, currency = "TRY",
+                purchaseDate = (DateOnly?)null, notes = "Brand/model catalog acceptance", isRequestable = false
+            }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, accessoryResponse.StatusCode);
+        using var accessoryPayload = JsonDocument.Parse(await accessoryResponse.Content.ReadAsStringAsync());
+        var accessoryId = accessoryPayload.RootElement.GetProperty("id").GetGuid();
+        using var accessoryDetail = await SendAsAdminAsync($"/api/accessories/{accessoryId}");
+        Assert.Equal(HttpStatusCode.OK, accessoryDetail.StatusCode);
+        using var accessoryDetailPayload = JsonDocument.Parse(await accessoryDetail.Content.ReadAsStringAsync());
+        var accessoryItem = accessoryDetailPayload.RootElement.GetProperty("item");
+        Assert.Equal(brandId, accessoryItem.GetProperty("brandId").GetGuid());
+        Assert.Equal(accessoryModelId, accessoryItem.GetProperty("modelId").GetGuid());
+        Assert.Equal("ACCESSORY-MODEL-" + _userId.ToString("N"), accessoryItem.GetProperty("modelName").GetString());
+        Assert.NotNull(accessoryItem.GetProperty("modelPhotoUrl").GetString());
+        using var secondAccessoryResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/accessories", "admin",
+            System.Net.Http.Json.JsonContent.Create(new
+            {
+                name = $"ACCESSORY-SECOND-{_userId:N}", category = "Klavye", brandId, modelId = accessoryModelId,
+                itemNumber = $"ITEM-SECOND-{_userId:N}", supplier = "Test Supplier", location = "Test Location",
+                minimumQuantity = 0, quantity = 1, unitCost = 100m, currency = "TRY",
+                purchaseDate = (DateOnly?)null, notes = "Same reusable accessory model", isRequestable = false
+            }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, secondAccessoryResponse.StatusCode);
     }
 
     [Fact]

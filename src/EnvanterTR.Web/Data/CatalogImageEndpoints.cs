@@ -44,6 +44,23 @@ public static class CatalogImageEndpoints
                 db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "AssetModel", TargetId = id, Action = "PhotoRemoved", Details = "Model görseli kaldırıldı." });
                 await db.SaveChangesAsync(ct); return previous;
             });
+        MapImage(api, "accessory-models", "photo", (db, companyId, id, ct) => db.AccessoryModels
+            .Where(x => x.CompanyId == companyId && x.Id == id).Select(x => x.PhotoFileName).SingleOrDefaultAsync(ct),
+            async (db, companyId, id, fileName, actorId, ct) =>
+            {
+                var row = await db.AccessoryModels.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
+                if (row is null) return null;
+                var previous = row.PhotoFileName; row.PhotoFileName = fileName;
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "AccessoryModel", TargetId = id, Action = "PhotoUpdated", Details = "Aksesuar modeli görseli güncellendi." });
+                await db.SaveChangesAsync(ct); return previous;
+            }, async (db, companyId, id, actorId, ct) =>
+            {
+                var row = await db.AccessoryModels.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
+                if (row is null || row.PhotoFileName is null) return null;
+                var previous = row.PhotoFileName; row.PhotoFileName = null;
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "AccessoryModel", TargetId = id, Action = "PhotoRemoved", Details = "Aksesuar modeli görseli kaldırıldı." });
+                await db.SaveChangesAsync(ct); return previous;
+            });
         return api;
     }
 
