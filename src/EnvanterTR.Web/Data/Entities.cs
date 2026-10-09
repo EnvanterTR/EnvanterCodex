@@ -253,6 +253,25 @@ public sealed class DashboardPreference
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class OperationalNotificationPreference
+{
+    public Guid CompanyId { get; set; }
+    public Guid UserId { get; set; }
+    public required string EnabledKindsJson { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class OperationalNotificationState
+{
+    public Guid CompanyId { get; set; }
+    public Guid UserId { get; set; }
+    public required string Kind { get; set; }
+    public Guid RecordId { get; set; }
+    public DateTimeOffset? ReadAt { get; set; }
+    public DateTimeOffset? DismissedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class AssetEvent
 {
     public Guid Id { get; set; } = Guid.NewGuid();

@@ -911,6 +911,17 @@ namespace EnvanterTR.Web.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("BrandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DepreciationMethod")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<decimal?>("DepreciationMinimum")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -923,17 +934,6 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<int?>("DepreciationMonths")
                         .HasColumnType("integer");
 
-                    b.Property<string>("DepreciationMethod")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
-                    b.Property<Guid?>("BrandId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(120)
@@ -944,12 +944,15 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasIndex("CompanyId", "BrandId", "Name")
                         .IsUnique();
 
-                    b.ToTable("AssetModels", t =>
+                    b.ToTable("AssetModels", null, t =>
                         {
-                            t.HasCheckConstraint("CK_AssetModels_DepreciationMonths", "\"DepreciationMonths\" IS NULL OR \"DepreciationMonths\" BETWEEN 1 AND 3600");
-                            t.HasCheckConstraint("CK_AssetModels_DepreciationMinimum", "\"DepreciationMinimum\" IS NULL OR \"DepreciationMinimum\" >= 0");
-                            t.HasCheckConstraint("CK_AssetModels_DepreciationMinimumType", "\"DepreciationMinimumType\" IN ('amount', 'percent')");
                             t.HasCheckConstraint("CK_AssetModels_DepreciationMethod", "\"DepreciationMethod\" IN ('linear', 'half_1', 'half_2')");
+
+                            t.HasCheckConstraint("CK_AssetModels_DepreciationMinimum", "\"DepreciationMinimum\" IS NULL OR \"DepreciationMinimum\" >= 0");
+
+                            t.HasCheckConstraint("CK_AssetModels_DepreciationMinimumType", "\"DepreciationMinimumType\" IN ('amount', 'percent')");
+
+                            t.HasCheckConstraint("CK_AssetModels_DepreciationMonths", "\"DepreciationMonths\" IS NULL OR \"DepreciationMonths\" BETWEEN 1 AND 3600");
                         });
                 });
 
@@ -2082,6 +2085,62 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasIndex("PlanId");
 
                     b.ToTable("LocalLicenseGrants");
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.OperationalNotificationPreference", b =>
+                {
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EnabledKindsJson")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("CompanyId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("OperationalNotificationPreferences");
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.OperationalNotificationState", b =>
+                {
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Kind")
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<Guid>("RecordId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("DismissedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("CompanyId", "UserId", "Kind", "RecordId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("CompanyId", "UserId", "DismissedAt");
+
+                    b.ToTable("OperationalNotificationStates");
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.PlatformAdministrator", b =>
@@ -3705,6 +3764,36 @@ namespace EnvanterTR.Web.Data.Migrations
                         .WithMany()
                         .HasForeignKey("PlanId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.OperationalNotificationPreference", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.OperationalNotificationState", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

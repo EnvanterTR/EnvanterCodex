@@ -150,6 +150,9 @@ Konum listesi `isDefault`, `managerEmployeeId` ve `managerName` alanlarını iç
 - `PATCH /api/assets/{id}/status`
 - `POST /api/assets/{id}/restore` (`asset.write`; yalnızca arşivlenmiş varlığı satır kilidi altında kullanılabilir duruma döndürür; zimmet/açık bakım doğrular, isteğe bağlı notla hareket ve denetim kaydı yazar)
 - `GET /api/calendar?from=&to=&kind=&limit=200` (şirket kapsamlı planlı bakım, lisans ve garanti bitiş tarihleri; `kind=maintenance|license|warranty`, en çok 366 takvim günü ve 500 kayıt)
+- `GET /api/notifications/preferences` ve `PUT /api/notifications/preferences` (oturumdaki şirket/kullanıcı kapsamı; `enabledKinds` yalnızca `maintenance`, `audit`, `license`, `warranty` değerlerini alır; seçim yalnız üst menü bildirimlerini filtreler)
+- `GET /api/notifications/states?key=license:<recordId>&key=...` (istek başına en çok 500 `kind:recordId`; yalnız oturumdaki kullanıcıya ait okundu/gizlendi tarihlerini döndürür)
+- `PUT /api/notifications/states` (`{ "kind": "license", "recordId": "...", "action": "read|unread|dismiss|restore" }`; kayıt önce etkin şirket içinde doğrulanır; durum kullanıcı ve şirket bazında kalıcıdır)
 - `GET /api/maintenances?q=&status=&from=&to=&page=1&pageSize=50` (şirket kapsamlı arama ve filtreleme; varlık/etiket/servis/not, planlandı/devam/tamamlandı/iptal durumu ve planlanan/başlangıç tarihine göre; sayfa boyutu en fazla 100)
 - `GET /api/maintenances/export.csv?q=&status=&from=&to=` (aynı filtrelere uyan tüm şirket bakım kayıtları; akış halinde UTF-8 CSV, hücre formül enjeksiyonuna karşı kaçış uygulanır)
 - `GET /api/reports/maintenances?from=&to=` (başlayan bakım kayıtlarını tarih aralığına göre toplam, devam/tamamlandı sayısı, en sık 25 bakım türü ve para birimi bazında maliyet olarak özetler; para birimlerini birleştirmez)

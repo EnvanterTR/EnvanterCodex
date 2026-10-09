@@ -94,6 +94,7 @@
   </style>
   <style>
     .notification-wrap{position:relative;flex:none}.notification-panel{position:absolute;top:calc(100% + 10px);right:0;z-index:18;width:min(390px,calc(100vw - 24px));max-height:min(70vh,480px);overflow:auto;border:1px solid #dce4ee;border-radius:12px;background:#fff;box-shadow:0 18px 48px #10213a24}.notification-panel[hidden]{display:none}.notification-panel-head{display:grid;gap:4px;padding:15px 16px 12px;border-bottom:1px solid #edf0f5}.notification-panel-head strong{color:#24334b;font-size:.84rem}.notification-panel-head span{color:#8491a3;font-size:.68rem}.notification-panel ul{display:grid;gap:0;margin:0;padding:0;list-style:none}.notification-panel li{border-bottom:1px solid #f0f2f6}.notification-panel li:last-child{border-bottom:0}.notification-entry{display:grid;width:100%;gap:4px;padding:11px 15px;border:0;color:#40516a;background:white;text-align:left}.notification-entry:hover,.notification-entry:focus-visible{outline:0;background:#f4f8ff}.notification-entry-top{display:flex;align-items:center;gap:7px;color:#77869b;font-size:.64rem}.notification-entry-top .pill{padding:3px 7px}.notification-entry strong{overflow:hidden;color:#2a3b55;font-size:.73rem;text-overflow:ellipsis;white-space:nowrap}.notification-entry small{overflow:hidden;color:#8491a3;font-size:.65rem;text-overflow:ellipsis;white-space:nowrap}.notification-empty{padding:16px;color:#8491a3;font-size:.71rem}.notification-calendar-link{width:100%;padding:11px 15px;border:0;border-top:1px solid #edf0f5;color:#1769df;background:#fbfcfe;text-align:left;font-size:.71rem;font-weight:750}.notification-calendar-link:hover{background:#f4f8ff}@media(max-width:520px){.notification-panel{position:fixed;top:66px;right:12px}}
+    .notification-controls{display:flex;gap:8px;padding:9px 12px;border-bottom:1px solid #edf0f5}.notification-control{border:0;padding:4px 0;color:#1769df;background:transparent;font-size:.68rem;font-weight:700}.notification-preferences{display:grid;gap:8px;padding:12px 15px;background:#f8faff;border-bottom:1px solid #edf0f5}.notification-preferences[hidden]{display:none}.notification-preferences strong{font-size:.7rem;color:#40516a}.notification-preferences label{display:flex;align-items:center;gap:8px;color:#52637b;font-size:.68rem}.notification-preferences input{accent-color:#1769df}.notification-preferences button{justify-self:start;border:0;border-radius:7px;padding:6px 10px;color:white;background:#1769df;font-size:.68rem;font-weight:700}.notification-item{display:flex;align-items:stretch}.notification-item .notification-entry{min-width:0;flex:1}.notification-item.is-unread .notification-entry strong:before{content:"•";margin-right:6px;color:#1769df}.notification-dismiss{align-self:center;margin:0 10px 0 0;padding:5px 7px;border:1px solid #e3e9f2;border-radius:6px;color:#77869b;background:#fff;font-size:.62rem}.notification-dismiss:hover{color:#1769df;border-color:#b9cff3}@media(max-width:520px){.notification-item{align-items:flex-start}.notification-dismiss{margin-top:12px}}
   </style>
 <style>.bulk-asset-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:10px 13px;border-bottom:1px solid #edf0f5;background:#f8faff}.bulk-asset-toolbar[hidden]{display:none}.bulk-asset-toolbar label{display:flex;align-items:center;gap:7px;color:#526178;font-size:.72rem}.bulk-asset-toolbar>span{margin-right:auto;color:#526178;font-size:.72rem;font-weight:700}.bulk-asset-toolbar select{min-height:32px;padding:0 9px;border:1px solid #dce4ee;border-radius:7px;background:white;color:#33445e;font-size:.72rem}.asset-select-column{width:38px}.asset-select-cell{text-align:center}.asset-select-cell input{width:15px;height:15px;accent-color:#1769df}.stats .stat-actionable{cursor:pointer;transition:box-shadow .15s,transform .15s}.stats .stat-actionable:hover{transform:translateY(-2px);box-shadow:0 8px 20px #10213a14}.stats .stat-actionable:focus-visible{outline:2px solid #1769df;outline-offset:2px}</style>
 <style>.dashboard-status{display:grid;grid-template-columns:minmax(112px,150px) minmax(0,1fr);align-items:center;gap:18px;padding:16px}.dashboard-donut{position:relative;display:grid;place-items:center;width:min(100%,150px);aspect-ratio:1;border-radius:50%;background:#eef2f8}.dashboard-donut:after{position:absolute;inset:19%;border-radius:50%;background:#fff;content:""}.dashboard-donut-center{z-index:1;text-align:center}.dashboard-donut-center strong{display:block;color:#26364d;font-size:1.2rem}.dashboard-donut-center small{color:#8793a6;font-size:.62rem}.dashboard-status-legend{display:grid;gap:4px}.dashboard-status-item{display:flex;align-items:center;gap:8px;width:100%;padding:7px 8px;border:0;border-radius:7px;color:#56657a;background:transparent;text-align:left;font-size:.68rem;cursor:pointer}.dashboard-status-item:hover,.dashboard-status-item:focus-visible{outline:2px solid #cfe0fa;background:#f4f8ff}.dashboard-status-item .legend-dot{width:8px;height:8px;flex:none;border-radius:50%}.dashboard-status-item .legend-count{margin-left:auto;color:#26364d;font-weight:700}.dashboard-status-note{padding:0 16px 12px;color:#8793a6;font-size:.63rem}@media(max-width:420px){.dashboard-status{grid-template-columns:108px minmax(0,1fr);gap:10px;padding:13px}.dashboard-status-item{padding:7px 4px;font-size:.64rem}}</style><style>.label-preview-card{box-sizing:border-box;max-width:none;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto 1fr auto;align-items:center;gap:4px;border:1px dashed #8494a8;border-radius:6px;background:#fff;box-shadow:0 5px 20px #182d491f;overflow:hidden}.label-preview-brand{grid-column:1/-1;color:#52637a;font-size:8px;font-weight:800;letter-spacing:.08em}.label-preview-copy{min-width:0;display:grid;gap:4px;overflow:hidden}.label-preview-copy strong{font-size:10px}.label-preview-copy b{font-size:17px;overflow-wrap:anywhere}.label-preview-copy small{font-size:8px;color:#667085}.label-preview-2d{width:25mm;height:25mm;object-fit:contain}.label-preview-1d{grid-column:1/-1;width:100%;height:auto;max-height:10mm;object-fit:fill}.label-preview-1d[src^="data:"]{image-rendering:auto}#labelPreviewCanvas{overflow:auto;padding:4px 0 12px}#labelSettingsForm .form-grid{margin-bottom:8px}@media(max-width:720px){#labelSettingsPage .grid{grid-template-columns:1fr!important}}</style></head>
@@ -2688,38 +2689,89 @@
     }
     function calendarKindLabel(kind) { return kind === 'maintenance' ? 'Bakım planı' : kind === 'audit' ? 'Fiziksel denetim' : kind === 'warranty' ? 'Garanti bitişi' : 'Lisans bitişi'; }
     let operationalAlertItems = [], operationalAlertRequestId = 0, operationalAlertTimer = 0;
+    let operationalAlertKinds = ['maintenance', 'audit', 'license', 'warranty'], showDismissedOperationalAlerts = false;
+    function ensureOperationalNotificationControls() {
+      const panel = $('#notificationPanel'), list = $('#notificationList');
+      if ($('#notificationSettingsToggle')) return;
+      const controls = document.createElement('div'); controls.className = 'notification-controls';
+      const settings = document.createElement('button'); settings.type = 'button'; settings.id = 'notificationSettingsToggle'; settings.className = 'notification-control'; settings.textContent = 'Bildirim tercihleri';
+      const dismissed = document.createElement('button'); dismissed.type = 'button'; dismissed.id = 'notificationDismissedToggle'; dismissed.className = 'notification-control'; dismissed.textContent = 'Gizlenenleri göster';
+      controls.append(settings, dismissed);
+      const form = document.createElement('form'); form.id = 'notificationPreferencesForm'; form.className = 'notification-preferences'; form.hidden = true;
+      const title = document.createElement('strong'); title.textContent = 'Gösterilecek iş türleri'; form.append(title);
+      for (const [kind, label] of [['maintenance', 'Bakım planları'], ['audit', 'Fiziksel denetimler'], ['license', 'Lisans bitişleri'], ['warranty', 'Garanti bitişleri']]) {
+        const wrapper = document.createElement('label'), checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = 'kind'; checkbox.value = kind; wrapper.append(checkbox, document.createTextNode(label)); form.append(wrapper);
+      }
+      const save = document.createElement('button'); save.type = 'submit'; save.textContent = 'Tercihleri kaydet'; form.append(save);
+      panel.insertBefore(controls, list); panel.insertBefore(form, list);
+      settings.addEventListener('click', async () => {
+        form.hidden = !form.hidden;
+        if (!form.hidden) {
+          try {
+            const preferences = await api('/api/notifications/preferences'); operationalAlertKinds = preferences.enabledKinds || [];
+            form.querySelectorAll('input[name="kind"]').forEach(input => { input.checked = operationalAlertKinds.includes(input.value); });
+          } catch (error) { notify(error.message); form.hidden = true; }
+        }
+      });
+      dismissed.addEventListener('click', () => { showDismissedOperationalAlerts = !showDismissedOperationalAlerts; dismissed.textContent = showDismissedOperationalAlerts ? 'Etkin bildirimleri göster' : 'Gizlenenleri göster'; void loadOperationalAlerts(); });
+      form.addEventListener('submit', async event => {
+        event.preventDefault(); const button = $('button[type="submit"]', form); button.disabled = true;
+        try {
+          const enabledKinds = [...form.querySelectorAll('input[name="kind"]:checked')].map(input => input.value);
+          const response = await api('/api/notifications/preferences', { method: 'PUT', body: JSON.stringify({ enabledKinds }) });
+          operationalAlertKinds = response.enabledKinds || []; form.hidden = true; showDismissedOperationalAlerts = false;
+          dismissed.textContent = 'Gizlenenleri göster'; notify('Bildirim tercihleri kaydedildi.'); await loadOperationalAlerts();
+        } catch (error) { notify(error.message); }
+        finally { button.disabled = false; }
+      });
+    }
     async function loadOperationalAlerts() {
       if (!canReadAssets()) return;
+      ensureOperationalNotificationControls();
       const requestId = ++operationalAlertRequestId, today = new Date();
       const from = dateInputValue(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7, 12));
       const to = dateInputValue(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30, 12));
       try {
         const params = new URLSearchParams({ from, to, limit: '500' });
-        const result = await api(`/api/calendar?${params}`);
+        const [result, preferences] = await Promise.all([api(`/api/calendar?${params}`), api('/api/notifications/preferences')]);
         if (requestId !== operationalAlertRequestId) return;
-        operationalAlertItems = Array.isArray(result.items) ? result.items : [];
+        operationalAlertKinds = preferences.enabledKinds || [];
+        const calendarItems = Array.isArray(result.items) ? result.items : [];
+        const stateParams = new URLSearchParams();
+        for (const item of calendarItems) stateParams.append('key', `${item.kind}:${item.recordId}`);
+        const states = calendarItems.length ? await api(`/api/notifications/states?${stateParams}`) : { items: [] };
+        if (requestId !== operationalAlertRequestId) return;
+        const stateByKey = new Map((states.items || []).map(state => [`${state.kind}:${state.recordId}`, state]));
+        const preferenceFilteredItems = calendarItems.filter(item => operationalAlertKinds.includes(item.kind)).map(item => {
+          const state = stateByKey.get(`${item.kind}:${item.recordId}`);
+          return { ...item, isRead: Boolean(state?.readAt), isDismissed: Boolean(state?.dismissedAt) };
+        });
+        operationalAlertItems = preferenceFilteredItems.filter(item => showDismissedOperationalAlerts ? item.isDismissed : !item.isDismissed);
+        const unreadCount = preferenceFilteredItems.filter(item => !item.isRead && !item.isDismissed).length;
         const count = $('#notificationCount'), summary = $('#notificationSummary'), list = $('#notificationList');
-        count.textContent = result.total > 500 ? '500+' : fmt.format(result.total || 0);
-        count.hidden = !result.total;
-        $('#notificationButton').setAttribute('aria-label', result.total ? `Yaklaşan işler: ${fmt.format(result.total)} kayıt` : 'Yaklaşan işler: kayıt yok');
-        summary.textContent = result.total ? `${fmt.format(result.total)} takvim kaydı · son 7 gün ve gelecek 30 gün` : 'Son 7 gün ve gelecek 30 gün';
+        count.textContent = unreadCount > 500 ? '500+' : fmt.format(unreadCount);
+        count.hidden = !unreadCount;
+        $('#notificationButton').setAttribute('aria-label', unreadCount ? `Yaklaşan işler: ${fmt.format(unreadCount)} okunmamış bildirim` : 'Yaklaşan işler: okunmamış bildirim yok');
+        summary.textContent = `${fmt.format(unreadCount)} okunmamış · ${showDismissedOperationalAlerts ? 'gizlenen' : 'etkin'} kayıtlar · son 7 gün ve gelecek 30 gün`;
         list.replaceChildren();
         if (!operationalAlertItems.length) {
           const empty = document.createElement('li'); empty.className = 'notification-empty';
-          empty.textContent = result.total ? 'Kayıtlar listelenemedi. Ayrıntılar için takvimi açın.' : 'Bu dönemde yaklaşan bakım, denetim, lisans veya garanti işi yok.';
+          empty.textContent = showDismissedOperationalAlerts ? 'Bu dönemde gizlenmiş bir bildirim yok.' : preferenceFilteredItems.length ? 'Etkin bildirim yok; okunanları gizlenenler bölümünden açabilirsiniz.' : 'Seçtiğiniz türlerde bu dönemde yaklaşan iş yok.';
           list.append(empty); return;
         }
         for (const [index, item] of operationalAlertItems.slice(0, 8).entries()) {
-          const row = document.createElement('li'), button = document.createElement('button'), meta = document.createElement('span'), kind = document.createElement('span'), date = document.createElement('span'), title = document.createElement('strong'), subtitle = document.createElement('small');
+          const row = document.createElement('li'), itemWrap = document.createElement('div'), button = document.createElement('button'), meta = document.createElement('span'), kind = document.createElement('span'), date = document.createElement('span'), title = document.createElement('strong'), subtitle = document.createElement('small'), action = document.createElement('button');
+          itemWrap.className = `notification-item${item.isRead ? '' : ' is-unread'}`;
           button.type = 'button'; button.className = 'notification-entry'; button.dataset.notificationIndex = String(index);
           meta.className = 'notification-entry-top'; kind.className = `pill ${item.date < dateInputValue(today) || item.kind === 'maintenance' ? 'warn' : item.kind === 'audit' ? '' : 'blue'}`;
           kind.textContent = calendarKindLabel(item.kind); date.textContent = maintenanceDate(item.date); meta.append(kind, date);
           title.textContent = item.title || 'Takvim kaydı'; subtitle.textContent = item.subtitle || 'Ayrıntı belirtilmemiş';
-          button.append(meta, title, subtitle); row.append(button); list.append(row);
+          button.append(meta, title, subtitle); action.type = 'button'; action.className = 'notification-dismiss'; action.dataset.notificationDismiss = String(index); action.textContent = showDismissedOperationalAlerts ? 'Geri al' : 'Gizle'; action.setAttribute('aria-label', `${showDismissedOperationalAlerts ? 'Gizlenen bildirimi geri al' : 'Bildirimi gizle'}: ${item.title}`);
+          itemWrap.append(button, action); row.append(itemWrap); list.append(row);
         }
-        if (result.total > operationalAlertItems.length) {
+        if (result.total > calendarItems.length) {
           const more = document.createElement('li'); more.className = 'notification-empty';
-          more.textContent = `İlk ${fmt.format(operationalAlertItems.length)} kayıt gösteriliyor; tümünü takvimde açın.`; list.append(more);
+          more.textContent = `Takvimde ${fmt.format(result.total)} kayıt var; ilk ${fmt.format(calendarItems.length)} kayıt inceleniyor. Ayrıntılar için takvimi açın.`; list.append(more);
         }
       } catch (error) {
         if (requestId !== operationalAlertRequestId) return;
@@ -5239,9 +5291,24 @@
       if (open) await loadOperationalAlerts();
     });
     $('#notificationList').addEventListener('click', event => {
+      const dismiss = event.target.closest('[data-notification-dismiss]');
+      if (dismiss) {
+        const item = operationalAlertItems[Number(dismiss.dataset.notificationDismiss)]; if (!item) return;
+        const action = showDismissedOperationalAlerts ? 'restore' : 'dismiss'; dismiss.disabled = true;
+        void api('/api/notifications/states', { method: 'PUT', body: JSON.stringify({ kind: item.kind, recordId: item.recordId, action }) })
+          .then(() => loadOperationalAlerts()).catch(error => { notify(error.message); dismiss.disabled = false; });
+        return;
+      }
       const button = event.target.closest('[data-notification-index]'); if (!button) return;
       const item = operationalAlertItems[Number(button.dataset.notificationIndex)]; if (!item) return;
-      closeOperationalAlerts(); openCalendarEvent(item);
+      const open = async () => {
+        if (!item.isRead && !item.isDismissed) {
+          try { await api('/api/notifications/states', { method: 'PUT', body: JSON.stringify({ kind: item.kind, recordId: item.recordId, action: 'read' }) }); }
+          catch (error) { notify(error.message); return; }
+        }
+        closeOperationalAlerts(); void loadOperationalAlerts(); openCalendarEvent(item);
+      };
+      void open();
     });
     $('#openNotificationCalendar').addEventListener('click', () => { closeOperationalAlerts(); document.querySelector('[data-page="Takvim"]')?.click(); });
     document.addEventListener('click', event => { if (!event.target.closest('.notification-wrap')) closeOperationalAlerts(); });

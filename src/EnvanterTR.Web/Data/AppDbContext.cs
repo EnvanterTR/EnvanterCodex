@@ -20,6 +20,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<SavedAssetSearch> SavedAssetSearches => Set<SavedAssetSearch>();
     public DbSet<CustomAssetReport> CustomAssetReports => Set<CustomAssetReport>();
     public DbSet<DashboardPreference> DashboardPreferences => Set<DashboardPreference>();
+    public DbSet<OperationalNotificationPreference> OperationalNotificationPreferences => Set<OperationalNotificationPreference>();
+    public DbSet<OperationalNotificationState> OperationalNotificationStates => Set<OperationalNotificationState>();
     public DbSet<AssetEvent> AssetEvents => Set<AssetEvent>();
     public DbSet<AssetAttachment> AssetAttachments => Set<AssetAttachment>();
     public DbSet<EmployeeDocument> EmployeeDocuments => Set<EmployeeDocument>();
@@ -196,6 +198,21 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<DashboardPreference>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<DashboardPreference>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<OperationalNotificationPreference>().HasKey(x => new { x.CompanyId, x.UserId });
+        modelBuilder.Entity<OperationalNotificationPreference>().Property(x => x.EnabledKindsJson).HasMaxLength(256).IsRequired();
+        modelBuilder.Entity<OperationalNotificationPreference>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<OperationalNotificationPreference>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<OperationalNotificationState>().HasKey(x => new { x.CompanyId, x.UserId, x.Kind, x.RecordId });
+        modelBuilder.Entity<OperationalNotificationState>().Property(x => x.Kind).HasMaxLength(24).IsRequired();
+        modelBuilder.Entity<OperationalNotificationState>().HasIndex(x => new { x.CompanyId, x.UserId, x.DismissedAt });
+        modelBuilder.Entity<OperationalNotificationState>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<OperationalNotificationState>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Employee>().HasAlternateKey(x => new { x.CompanyId, x.Id });

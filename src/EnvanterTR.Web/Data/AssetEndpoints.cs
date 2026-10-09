@@ -56,6 +56,7 @@ public static class AssetEndpoints
         api.MapSavedAssetSearchEndpoints();
         api.MapCustomAssetReportEndpoints();
         api.MapDashboardPreferenceEndpoints();
+        api.MapOperationalNotificationEndpoints();
         api.MapAssetCustomFieldEndpoints();
 
         api.MapGet("/assets", async ([FromQuery] string? q, [FromQuery] string? status,

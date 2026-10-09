@@ -990,6 +990,78 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Operational_notification_preferences_and_read_dismiss_states_are_private_to_each_user_and_company()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using (var defaultPreferences = await SendAsRoleAsync(HttpMethod.Get, "/api/notifications/preferences", "viewer"))
+        {
+            Assert.Equal(HttpStatusCode.OK, defaultPreferences.StatusCode);
+            using var payload = JsonDocument.Parse(await defaultPreferences.Content.ReadAsStringAsync());
+            Assert.Equal(new[] { "maintenance", "audit", "license", "warranty" },
+                payload.RootElement.GetProperty("enabledKinds").EnumerateArray().Select(x => x.GetString()).ToArray());
+        }
+        using (var savedPreferences = await SendAsRoleAsync(HttpMethod.Put, "/api/notifications/preferences", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { enabledKinds = new[] { "LICENSE", "warranty" } }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, savedPreferences.StatusCode);
+        using (var savedPreferences = await SendAsRoleAsync(HttpMethod.Get, "/api/notifications/preferences", "viewer"))
+        {
+            using var payload = JsonDocument.Parse(await savedPreferences.Content.ReadAsStringAsync());
+            Assert.Equal(new[] { "license", "warranty" },
+                payload.RootElement.GetProperty("enabledKinds").EnumerateArray().Select(x => x.GetString()).ToArray());
+        }
+        using (var otherUserPreferences = await SendAsUserAsync(HttpMethod.Get, "/api/notifications/preferences",
+                   _sameCompanyOtherUserId, _companyId))
+        {
+            using var payload = JsonDocument.Parse(await otherUserPreferences.Content.ReadAsStringAsync());
+            Assert.Equal(4, payload.RootElement.GetProperty("enabledKinds").GetArrayLength());
+        }
+        using (var invalidPreference = await SendAsRoleAsync(HttpMethod.Put, "/api/notifications/preferences", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { enabledKinds = new[] { "payroll" } }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidPreference.StatusCode);
+
+        var key = $"license:{_ownLicenseId:D}";
+        using (var emptyState = await SendAsRoleAsync(HttpMethod.Get, $"/api/notifications/states?key={Uri.EscapeDataString(key)}", "viewer"))
+        {
+            using var payload = JsonDocument.Parse(await emptyState.Content.ReadAsStringAsync());
+            Assert.Empty(payload.RootElement.GetProperty("items").EnumerateArray());
+        }
+        using (var dismiss = await SendAsRoleAsync(HttpMethod.Put, "/api/notifications/states", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { kind = "license", recordId = _ownLicenseId, action = "dismiss" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, dismiss.StatusCode);
+        using (var savedState = await SendAsRoleAsync(HttpMethod.Get, $"/api/notifications/states?key={Uri.EscapeDataString(key)}", "viewer"))
+        {
+            using var payload = JsonDocument.Parse(await savedState.Content.ReadAsStringAsync());
+            var state = Assert.Single(payload.RootElement.GetProperty("items").EnumerateArray());
+            Assert.False(state.GetProperty("readAt").ValueKind == JsonValueKind.Null);
+            Assert.False(state.GetProperty("dismissedAt").ValueKind == JsonValueKind.Null);
+        }
+        using (var otherUserState = await SendAsUserAsync(HttpMethod.Get, $"/api/notifications/states?key={Uri.EscapeDataString(key)}",
+                   _sameCompanyOtherUserId, _companyId))
+        {
+            using var payload = JsonDocument.Parse(await otherUserState.Content.ReadAsStringAsync());
+            Assert.Empty(payload.RootElement.GetProperty("items").EnumerateArray());
+        }
+        using (var crossTenantState = await SendAsRoleAsync(HttpMethod.Put, "/api/notifications/states", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { kind = "license", recordId = _otherCompanyLicenseId, action = "dismiss" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenantState.StatusCode);
+        using (var restore = await SendAsRoleAsync(HttpMethod.Put, "/api/notifications/states", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { kind = "license", recordId = _ownLicenseId, action = "restore" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, restore.StatusCode);
+        using (var restoredState = await SendAsRoleAsync(HttpMethod.Get, $"/api/notifications/states?key={Uri.EscapeDataString(key)}", "viewer"))
+        {
+            using var payload = JsonDocument.Parse(await restoredState.Content.ReadAsStringAsync());
+            Assert.Null(Assert.Single(payload.RootElement.GetProperty("items").EnumerateArray()).GetProperty("dismissedAt").GetString());
+        }
+    }
+
+    [Fact]
     public async Task Asset_hierarchy_is_tenant_scoped_and_rejects_cycles()
     {
         await using (var scope = _factory!.Services.CreateAsyncScope())
