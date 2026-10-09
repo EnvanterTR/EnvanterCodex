@@ -11,7 +11,7 @@ public sealed class OperationalNotificationEmailService(
     IConfiguration configuration,
     ILogger<OperationalNotificationEmailService> logger)
 {
-    private static readonly string[] AllowedKinds = ["maintenance", "audit", "license", "warranty", "return", "assignment"];
+    private static readonly string[] AllowedKinds = ["maintenance", "audit", "license", "warranty", "return", "assignment", "asset-life"];
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly TimeSpan StaleClaimAge = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan RetryDelay = TimeSpan.FromHours(1);
@@ -228,7 +228,40 @@ public sealed class OperationalNotificationEmailService(
                 DateOnly.FromDateTime(row.OccurredAt.UtcDateTime), row.AssetTag + " · " + row.Name,
                 "Zimmetlenen çalışan · " + row.EmployeeName)));
         }
-        return items.OrderBy(x => x.Date).ThenBy(x => x.Kind, StringComparer.Ordinal).Take(500).ToList();
+        if (kinds.Contains("asset-life", StringComparer.Ordinal))
+        {
+            // Depreciation months are the configured service-life estimate from the
+            // recorded purchase date. Calculate month arithmetic in .NET to preserve
+            // end-of-month behavior consistently with the depreciation report.
+            var earliestPurchaseDate = rangeStart.AddMonths(-3600);
+            var rows = await (from asset in db.Assets.AsNoTracking()
+                              join model in db.AssetModels.AsNoTracking() on new { asset.CompanyId, Id = asset.ModelId } equals new { model.CompanyId, Id = (Guid?)model.Id }
+                              where asset.CompanyId == companyId && asset.DeletedAt == null && asset.Status != AssetStatuses.Archived &&
+                                    asset.PurchaseDate >= earliestPurchaseDate && asset.PurchaseDate <= rangeEnd && model.DepreciationMonths != null
+                              orderby asset.PurchaseDate, asset.AssetTag
+                              select new { asset.PurchaseDate, asset.AssetTag, asset.Name, ModelName = model.Name, Months = model.DepreciationMonths!.Value })
+                .Take(5000).ToListAsync(cancellationToken);
+            items.AddRange(rows.Select(row => new
+                {
+                    Date = row.PurchaseDate!.Value.AddMonths(row.Months),
+                    row.AssetTag,
+                    row.Name,
+                    row.ModelName
+                })
+                .Where(row => row.Date >= rangeStart && row.Date <= rangeEnd)
+                .Select(row => new OperationalReminderItem("asset-life", row.Date,
+                    row.AssetTag + " · " + row.Name, "Model: " + row.ModelName)));
+        }
+        // Reserve digest space for every selected kind before filling the remaining
+        // capacity by date, so busy categories cannot starve less frequent reminders.
+        var selected = items.GroupBy(item => item.Kind, StringComparer.Ordinal)
+            .SelectMany(group => group.OrderBy(item => item.Date).ThenBy(item => item.Title, StringComparer.Ordinal).Take(70))
+            .Concat(items.OrderBy(item => item.Date).ThenBy(item => item.Kind, StringComparer.Ordinal).ThenBy(item => item.Title, StringComparer.Ordinal))
+            .Distinct()
+            .Take(500)
+            .OrderBy(item => item.Date).ThenBy(item => item.Kind, StringComparer.Ordinal).ThenBy(item => item.Title, StringComparer.Ordinal)
+            .ToList();
+        return selected;
     }
 
     private MailMessage BuildMessage(MailAddress recipient, string fromAddress, string fromName,
@@ -244,7 +277,7 @@ public sealed class OperationalNotificationEmailService(
                 .Append(WebUtility.HtmlEncode(item.Detail ?? "")).Append("</td></tr>");
         }
         var link = WebUtility.HtmlEncode(new Uri(publicBaseUri, "/").AbsoluteUri);
-        var body = $"<div style=\"font-family:Arial,sans-serif;color:#25334a;max-width:760px;margin:auto\"><h2>EnvanterTR operasyon özeti</h2><p>Son 7 gün ve gelecek 30 gün içinde seçtiğiniz bakım, denetim, lisans, garanti, iade ve yeni zimmet kayıtları:</p><table style=\"width:100%;border-collapse:collapse;text-align:left\"><thead><tr><th style=\"padding:8px\">Tür</th><th style=\"padding:8px\">Tarih</th><th style=\"padding:8px\">Kayıt</th><th style=\"padding:8px\">Açıklama</th></tr></thead><tbody>{rows}</tbody></table><p><a href=\"{link}\">EnvanterTR uygulamasını aç</a></p><p style=\"color:#738197;font-size:12px\">Bu özeti bildirim tercihlerinde e-posta hatırlatmalarını seçtiğiniz için aldınız.</p></div>";
+        var body = $"<div style=\"font-family:Arial,sans-serif;color:#25334a;max-width:760px;margin:auto\"><h2>EnvanterTR operasyon özeti</h2><p>Son 7 gün ve gelecek 30 gün içinde seçtiğiniz bakım, denetim, lisans, garanti, iade, yeni zimmet ve kullanım ömrü sonu kayıtları:</p><table style=\"width:100%;border-collapse:collapse;text-align:left\"><thead><tr><th style=\"padding:8px\">Tür</th><th style=\"padding:8px\">Tarih</th><th style=\"padding:8px\">Kayıt</th><th style=\"padding:8px\">Açıklama</th></tr></thead><tbody>{rows}</tbody></table><p><a href=\"{link}\">EnvanterTR uygulamasını aç</a></p><p style=\"color:#738197;font-size:12px\">Bu özeti bildirim tercihlerinde e-posta hatırlatmalarını seçtiğiniz için aldınız.</p></div>";
         var message = new MailMessage(new MailAddress(fromAddress, fromName), recipient)
         {
             Subject = "EnvanterTR · yaklaşan işler özeti",
@@ -297,6 +330,7 @@ public sealed class OperationalNotificationEmailService(
         "warranty" => "Garanti bitişi",
         "return" => "Varlık iadesi",
         "assignment" => "Yeni zimmet",
+        "asset-life" => "Kullanım ömrü sonu",
         _ => "İş"
     };
 

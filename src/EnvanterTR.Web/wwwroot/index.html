@@ -2727,7 +2727,7 @@
       }
       const emailTitle = document.createElement('strong'); emailTitle.textContent = 'E-posta özeti (isteğe bağlı)'; form.append(emailTitle);
       const emailHint = document.createElement('small'); emailHint.textContent = 'Sunucu e-posta (SMTP) ayarı etkinse seçtikleriniz günde en fazla bir kez, hesabınızın doğrulanmış e-posta adresine gönderilir.'; form.append(emailHint);
-      for (const [kind, label] of [['maintenance', 'Bakım planları için e-posta'], ['audit', 'Fiziksel denetimler için e-posta'], ['license', 'Lisans bitişleri için e-posta'], ['warranty', 'Garanti bitişleri için e-posta'], ['return', 'Beklenen varlık iadeleri için e-posta'], ['assignment', 'Yeni zimmetler için e-posta (son 7 gün)']]) {
+      for (const [kind, label] of [['maintenance', 'Bakım planları için e-posta'], ['audit', 'Fiziksel denetimler için e-posta'], ['license', 'Lisans bitişleri için e-posta'], ['warranty', 'Garanti bitişleri için e-posta'], ['return', 'Beklenen varlık iadeleri için e-posta'], ['assignment', 'Yeni zimmetler için e-posta (son 7 gün)'], ['asset-life', 'Kullanım ömrü dolan varlıklar için e-posta']]) {
         const wrapper = document.createElement('label'), checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = 'emailKind'; checkbox.value = kind; wrapper.append(checkbox, document.createTextNode(label)); form.append(wrapper);
       }
       const save = document.createElement('button'); save.type = 'submit'; save.textContent = 'Tercihleri kaydet'; form.append(save);

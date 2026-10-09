@@ -1535,20 +1535,25 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 payload.RootElement.GetProperty("enabledKinds").EnumerateArray().Select(x => x.GetString()).ToArray());
         }
         using (var savedPreferences = await SendAsRoleAsync(HttpMethod.Put, "/api/notifications/preferences", "viewer",
-                   System.Net.Http.Json.JsonContent.Create(new { enabledKinds = new[] { "LICENSE", "warranty" }, emailEnabledKinds = new[] { "LICENSE", "assignment" } }), requestToken, antiforgeryCookie))
+                   System.Net.Http.Json.JsonContent.Create(new { enabledKinds = new[] { "LICENSE", "warranty" }, emailEnabledKinds = new[] { "LICENSE", "assignment", "asset-life" } }), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.OK, savedPreferences.StatusCode);
         using (var savedPreferences = await SendAsRoleAsync(HttpMethod.Get, "/api/notifications/preferences", "viewer"))
         {
             using var payload = JsonDocument.Parse(await savedPreferences.Content.ReadAsStringAsync());
             Assert.Equal(new[] { "license", "warranty" },
                 payload.RootElement.GetProperty("enabledKinds").EnumerateArray().Select(x => x.GetString()).ToArray());
-            Assert.Equal(new[] { "license", "assignment" },
+            Assert.Equal(new[] { "license", "assignment", "asset-life" },
                 payload.RootElement.GetProperty("emailEnabledKinds").EnumerateArray().Select(x => x.GetString()).ToArray());
         }
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var emailService = scope.ServiceProvider.GetRequiredService<OperationalNotificationEmailService>();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var model = new AssetModel { CompanyId = _companyId, Name = "OWN-SERVICE-LIFE", DepreciationMonths = 24 };
+            db.AssetModels.Add(model);
+            var assetForLifetime = await db.Assets.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownAssetId);
+            assetForLifetime.ModelId = model.Id;
+            assetForLifetime.PurchaseDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(10).AddMonths(-24);
             db.AssetEvents.Add(new AssetEvent { CompanyId = _companyId, AssetId = _ownAssetId, EmployeeId = _ownEmployeeId,
                 ActorUserId = _userId, EventType = "Assigned", Details = "assignment-digest-fixture", OccurredAt = DateTimeOffset.UtcNow });
             await db.SaveChangesAsync();
@@ -1559,6 +1564,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Contains("Yeni zimmet", digestBody, StringComparison.Ordinal);
             Assert.Contains("OWN-1", digestBody, StringComparison.Ordinal);
             Assert.Contains("OWN-SECURITY-EMPLOYEE", digestBody, StringComparison.Ordinal);
+            Assert.Contains(WebUtility.HtmlEncode("Kullanım ömrü sonu"), digestBody, StringComparison.Ordinal);
+            Assert.Contains("OWN-SERVICE-LIFE", digestBody, StringComparison.Ordinal);
             Assert.DoesNotContain("OTHER-SECURITY-LICENSE", deliveredDigest, StringComparison.Ordinal);
             await emailService.RunOnceAsync(CancellationToken.None);
             Assert.Single(_smtpCapture.Messages);
@@ -3289,9 +3296,26 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.True(bodySeparator >= 0, "The captured SMTP message must contain a MIME body.");
         var headers = message[..bodySeparator];
         var encodedBody = message[(bodySeparator + 2)..].Replace("\r", "", StringComparison.Ordinal).Trim();
-        return headers.Contains("Content-Transfer-Encoding: base64", StringComparison.OrdinalIgnoreCase)
-            ? Encoding.UTF8.GetString(Convert.FromBase64String(string.Concat(encodedBody.Where(character => !char.IsWhiteSpace(character)))))
-            : encodedBody;
+        if (headers.Contains("Content-Transfer-Encoding: base64", StringComparison.OrdinalIgnoreCase))
+            return Encoding.UTF8.GetString(Convert.FromBase64String(string.Concat(encodedBody.Where(character => !char.IsWhiteSpace(character)))));
+        if (!headers.Contains("Content-Transfer-Encoding: quoted-printable", StringComparison.OrdinalIgnoreCase)) return encodedBody;
+
+        using var decoded = new MemoryStream();
+        for (var index = 0; index < encodedBody.Length; index++)
+        {
+            var character = encodedBody[index];
+            if (character == '=' && index + 1 < encodedBody.Length && encodedBody[index + 1] == '\n') { index++; continue; }
+            if (character == '=' && index + 2 < encodedBody.Length &&
+                byte.TryParse(encodedBody.AsSpan(index + 1, 2), System.Globalization.NumberStyles.HexNumber,
+                    System.Globalization.CultureInfo.InvariantCulture, out var value))
+            {
+                decoded.WriteByte(value);
+                index += 2;
+                continue;
+            }
+            decoded.Write(Encoding.UTF8.GetBytes([character]));
+        }
+        return Encoding.UTF8.GetString(decoded.ToArray());
     }
 
     private async Task<HttpResponseMessage> SendProfilePhotoUploadAsync(byte[] bytes, string requestToken, string antiforgeryCookie)
