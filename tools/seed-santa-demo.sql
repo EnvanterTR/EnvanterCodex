@@ -1,5 +1,6 @@
 -- One-time, additive local demo seed. Keeps every existing tenant untouched.
 -- Run with: psql -v owner_user_id=<existing-owner-guid> -f tools/seed-santa-demo.sql
+-- Then run tools/install-santa-demo-media.ps1 to install and verify the referenced photo files.
 \set ON_ERROR_STOP on
 BEGIN;
 
