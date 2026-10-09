@@ -433,7 +433,7 @@
     </section>
     <section class="workspace-page" id="maintenancePage" hidden>
       <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / BAKIM</div><h1>Bakım kayıtları</h1><p>Planları ve servis işlemlerini şirket genelinde izleyin; planlı işleri buradan başlatın veya iptal edin.</p></div><div class="head-actions"><button class="btn" id="maintenanceExport" type="button">⇩ CSV indir</button><button class="btn" id="maintenanceRefresh" type="button">↻ Yenile</button></div></div>
-      <section class="panel"><div class="table-tools"><input id="maintenanceSearch" placeholder="Varlık, etiket, servis veya bakım notu ara" aria-label="Bakım kayıtlarında ara"><select id="maintenanceStatus"><option value="">Tüm durumlar</option><option value="Scheduled">Planlandı</option><option value="InProgress">Devam ediyor</option><option value="Completed">Tamamlandı</option><option value="Cancelled">İptal edildi</option></select><label class="muted">Planlanan / başlangıç <input id="maintenanceFrom" type="date"></label><label class="muted">Bitiş <input id="maintenanceTo" type="date"></label><button class="btn small" id="applyMaintenanceFilters" type="button">Filtrele</button><button class="btn small" id="clearMaintenanceFilters" type="button">Temizle</button><small id="maintenanceCount" role="status" aria-live="polite">—</small></div><div class="table-wrap"><table><caption class="sr-only">Şirket bakım kayıtları</caption><thead><tr><th>Varlık</th><th>Bakım türü</th><th>Servis</th><th>Durum</th><th>Planlanan / başlangıç</th><th>Tamamlanma</th><th>Maliyet</th><th>İşlemi yapan</th><th>Notlar</th><th>İşlemler</th></tr></thead><tbody id="maintenanceRows"><tr><td colspan="10">Bakım kayıtları yükleniyor…</td></tr></tbody></table></div><div class="pager"><button id="maintenancePrev" type="button">← Önceki</button><span id="maintenancePageInfo">Sayfa —</span><button id="maintenanceNext" type="button">Sonraki →</button></div></section>
+      <section class="panel"><div class="table-tools"><input id="maintenanceSearch" data-locale-placeholder="Varlık, etiket, servis veya bakım notu ara" data-locale-aria="Bakım kayıtlarında ara" placeholder="Varlık, etiket, servis veya bakım notu ara" aria-label="Bakım kayıtlarında ara"><select id="maintenanceStatus"><option value="">Tüm durumlar</option><option value="Scheduled">Planlandı</option><option value="InProgress">Devam ediyor</option><option value="Completed">Tamamlandı</option><option value="Cancelled">İptal edildi</option></select><label class="muted">Planlanan / başlangıç <input id="maintenanceFrom" type="date"></label><label class="muted">Bitiş <input id="maintenanceTo" type="date"></label><button class="btn small" id="applyMaintenanceFilters" type="button">Filtrele</button><button class="btn small" id="clearMaintenanceFilters" type="button">Temizle</button><small id="maintenanceCount" role="status" aria-live="polite">—</small></div><div class="table-wrap"><table><caption class="sr-only">Şirket bakım kayıtları</caption><thead><tr><th>Varlık</th><th>Bakım türü</th><th>Servis</th><th>Durum</th><th>Planlanan / başlangıç</th><th>Tamamlanma</th><th>Maliyet</th><th>İşlemi yapan</th><th>Notlar</th><th>İşlemler</th></tr></thead><tbody id="maintenanceRows"><tr><td colspan="10">Bakım kayıtları yükleniyor…</td></tr></tbody></table></div><div class="pager"><button id="maintenancePrev" type="button">← Önceki</button><span id="maintenancePageInfo">Sayfa —</span><button id="maintenanceNext" type="button">Sonraki →</button></div></section>
     </section>
     <section class="workspace-page" id="calendarPage" hidden>
       <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / TAKVİM</div><h1 id="calendarPageTitle">Takvim</h1><p id="calendarDescription">Yaklaşan bakım planlarını, lisans ve garanti bitişlerini birlikte izleyin.</p></div><div class="head-actions"><button class="btn" id="calendarExport" type="button">⇩ CSV indir</button><button class="btn" id="calendarRefresh" type="button">↻ Yenile</button></div></div>
@@ -1227,6 +1227,35 @@
       '{count} yeni lisans doğrulandı; {supplierCount} yeni tedarikçi yalnızca aktarımı onaylarsanız kataloğa eklenecek. Önizleme kayıt eklemedi.':['{count} new licenses validated; {supplierCount} new suppliers will be added to the catalog only if you confirm import. Preview added no records.','Проверено новых лицензий: {count}; новых поставщиков: {supplierCount}. Они попадут в каталог только после подтверждения импорта. Предпросмотр не добавил записей.','Перевірено нових ліцензій: {count}; нових постачальників: {supplierCount}. Їх буде додано до каталогу лише після підтвердження імпорту. Попередній перегляд не створив записів.','Потврдени се {count} нови лиценци; {supplierCount} добавувачи ќе се додадат во каталогот само по потврда на увозот. Прегледот не додаде записи.'],
       '{count} lisans ve denetim geçmişi eklendi; {supplierCount} yeni tedarikçi kataloğa bağlandı.':['{count} licenses and audit history added; {supplierCount} new suppliers linked to the catalog.','Добавлено лицензий: {count}, а также история аудита; поставщиков добавлено в каталог: {supplierCount}.','Додано ліцензій: {count} та історію аудиту; нових постачальників пов’язано з каталогом: {supplierCount}.','Додадени се {count} лиценци и ревизорска историја; поврзани добавувачи со каталогот: {supplierCount}.']
     });
+    Object.assign(localeRows, {
+      'Bakım kayıtları':['Maintenance records','Записи об обслуживании','Записи про обслуговування','Записи за одржување'],
+      'Planları ve servis işlemlerini şirket genelinde izleyin; planlı işleri buradan başlatın veya iptal edin.':['Track maintenance plans and service work across the company; start or cancel scheduled work here.','Отслеживайте планы и обслуживание по всей компании; здесь можно запускать или отменять запланированные работы.','Відстежуйте плани й обслуговування в компанії; тут можна запускати або скасовувати заплановані роботи.','Следете ги плановите и сервисните работи во компанијата; тука започнете или откажете планирани работи.'],
+      '⇩ CSV indir':['⇩ Download CSV','⇩ Скачать CSV','⇩ Завантажити CSV','⇩ Преземи CSV'],'↻ Yenile':['↻ Refresh','↻ Обновить','↻ Оновити','↻ Освежи'],
+      'Varlık, etiket, servis veya bakım notu ara':['Search asset, tag, service, or maintenance notes','Поиск по активу, метке, сервису или примечанию к обслуживанию','Пошук за активом, міткою, сервісом або приміткою до обслуговування','Пребарај средство, ознака, сервис или забелешка за одржување'],
+      'Bakım kayıtlarında ara':['Search maintenance records','Поиск записей об обслуживании','Пошук записів про обслуговування','Пребарај записи за одржување'],
+      'Tüm durumlar':['All statuses','Все статусы','Усі стани','Сите статуси'],'Planlandı':['Scheduled','Запланировано','Заплановано','Закажано'],
+      'Devam ediyor':['In progress','Выполняется','Виконується','Во тек'],'Tamamlandı':['Completed','Завершено','Завершено','Завршено'],'İptal edildi':['Cancelled','Отменено','Скасовано','Откажано'],
+      'Planlanan / başlangıç':['Scheduled / started','Запланировано / начато','Заплановано / розпочато','Закажано / започнато'],
+      'Filtrele':['Filter','Фильтр','Фільтр','Филтрирај'],'Temizle':['Clear','Очистить','Очистити','Исчисти'],
+      'Bakım kayıtları yükleniyor…':['Loading maintenance records…','Загрузка записей об обслуживании…','Завантаження записів про обслуговування…','Се вчитуваат записите за одржување…'],
+      'Varlık':['Asset','Актив','Актив','Средство'],'Bakım türü':['Maintenance type','Вид обслуживания','Тип обслуговування','Тип на одржување'],'Servis':['Service provider','Сервис','Сервіс','Сервис'],
+      'Durum':['Status','Статус','Стан','Статус'],'Tamamlanma':['Completion','Завершение','Завершення','Завршување'],'Maliyet':['Cost','Стоимость','Вартість','Трошок'],
+      'İşlemi yapan':['Performed by','Исполнитель','Виконавець','Извршил'],'Notlar':['Notes','Примечания','Примітки','Забелешки'],'İşlemler':['Actions','Действия','Дії','Дејства'],
+      'Filtrelerle eşleşen bakım kaydı bulunamadı.':['No maintenance records match these filters.','Нет записей об обслуживании по заданным фильтрам.','За цими фільтрами записів про обслуговування не знайдено.','Нема записи за одржување што одговараат на филтрите.'],
+      'Başlat':['Start','Начать','Почати','Започни'],'İptal':['Cancel','Отменить','Скасувати','Откажи'],'Dosyalar':['Files','Файлы','Файли','Датотеки'],
+      'Varlık ayrıntısı':['Asset details','Данные актива','Дані активу','Детали за средството'],'Önceki':['Previous','Назад','Назад','Претходно'],'← Önceki':['← Previous','← Назад','← Назад','← Претходно'],'Sonraki →':['Next →','Далее →','Далі →','Следно →'],
+      'Sayfa {page} / {pages}':['Page {page} / {pages}','Страница {page} / {pages}','Сторінка {page} / {pages}','Страница {page} / {pages}'],'{count} bakım kaydı':['{count} maintenance records','Записей об обслуживании: {count}','Записів про обслуговування: {count}','Записи за одржување: {count}'],
+      'Bakım kayıtları güncellendi.':['Maintenance records refreshed.','Записи об обслуживании обновлены.','Записи про обслуговування оновлено.','Записите за одржување се освежени.'],
+      'Menü, pano, varlık, çalışan, aksesuar, lisans, katalog ve bakım kayıtları ekranları seçilen dile çevrildi; diğer ekranlar sırayla ekleniyor.':['The menu, dashboard, assets, employees, accessories, licenses, catalogs, and maintenance records screens use the selected language; other screens are being translated.','Меню, панель, активы, сотрудники, аксессуары, лицензии, каталоги и записи об обслуживании отображаются на выбранном языке; остальные экраны переводятся.','Меню, панель, активи, працівники, аксесуари, ліцензії, каталоги та записи про обслуговування відображаються вибраною мовою; решта екранів перекладається.','Менито, контролната табла, средствата, вработените, додатоците, лиценците, каталозите и записите за одржување се на избраниот јазик; другите екрани се преведуваат.'],
+      'Bu bakım planını iptal etmek istiyor musunuz?':['Cancel this maintenance plan?','Отменить этот план обслуживания?','Скасувати цей план обслуговування?','Да се откаже овој план за одржување?'],
+      'Planlı bakım başladı; varlık bakım durumuna alındı.':['Scheduled maintenance started; the asset is now in maintenance.','Запланированное обслуживание начато; актив переведён в статус обслуживания.','Планове обслуговування розпочато; актив переведено у стан обслуговування.','Закажаното одржување започна; средството е во статус на одржување.'],
+      'Bakım planı iptal edildi.':['Maintenance plan cancelled.','План обслуживания отменён.','План обслуговування скасовано.','Планот за одржување е откажан.'],
+      'ŞİRKET ALANI / BAKIM':['COMPANY WORKSPACE / MAINTENANCE','РАБОЧАЯ ОБЛАСТЬ КОМПАНИИ / ОБСЛУЖИВАНИЕ','РОБОЧИЙ ПРОСТІР КОМПАНІЇ / ОБСЛУГОВУВАННЯ','РАБОТЕН ПРОСТОР НА КОМПАНИЈАТА / ОДРЖУВАЊЕ'],
+      '{tag} varlığındaki planlı bakımı başlat':['Start scheduled maintenance for asset {tag}','Начать запланированное обслуживание актива {tag}','Почати заплановане обслуговування активу {tag}','Започни закажано одржување на средството {tag}'],
+      '{tag} varlığındaki bakım planını iptal et':['Cancel the maintenance plan for asset {tag}','Отменить план обслуживания актива {tag}','Скасувати план обслуговування активу {tag}','Откажи го планот за одржување на средството {tag}'],
+      '{tag} {type} bakım eklerini aç':['Open attachments for {tag} {type} maintenance','Открыть вложения обслуживания {tag} ({type})','Відкрити вкладення обслуговування {tag} ({type})','Отвори прилози за одржувањето {tag} ({type})'],
+      '{tag} varlık ayrıntısını aç':['Open asset {tag} details','Открыть данные актива {tag}','Відкрити дані активу {tag}','Отвори детали за средството {tag}']
+    });
     const localeIndexes = { en: 0, ru: 1, uk: 2, mk: 3 };
     function translateUiText(text) { const key = String(text ?? ''), index = localeIndexes[appearanceLanguage.value]; return index === undefined ? key : (localeRows[key]?.[index] || key); }
     const localeTextNodes = new WeakMap();
@@ -1235,7 +1264,7 @@
       selectedLocale = localeTags[language] || 'tr-TR';
       fmt = new Intl.NumberFormat(selectedLocale);
       document.documentElement.lang = language === 'tr' ? 'tr' : language;
-      const roots = [$('#sidebar'), $('.topbar'), $('#overview'), $('#reservationsPage'), $('#accessoriesPage'), $('#accessoryFormDialog'), $('#accessoryCheckoutDialog'), $('#employeesPage'), $('#employeeDialog'), $('#newEmployeeDialog'), $('#editEmployeeDialog'), $('#employeeImportDialog'), $('#catalogPage'), $('#inventoryMovementsPage'), $('#licensesPage'), $('#licenseAssignmentsPage'), $('#licenseDialog'), $('#licenseFormDialog'), $('#licenseAssignDialog'), $('#licenseImportDialog'), appearanceDialog];
+      const roots = [$('#sidebar'), $('.topbar'), $('#overview'), $('#reservationsPage'), $('#accessoriesPage'), $('#accessoryFormDialog'), $('#accessoryCheckoutDialog'), $('#employeesPage'), $('#employeeDialog'), $('#newEmployeeDialog'), $('#editEmployeeDialog'), $('#employeeImportDialog'), $('#catalogPage'), $('#inventoryMovementsPage'), $('#licensesPage'), $('#licenseAssignmentsPage'), $('#licenseDialog'), $('#licenseFormDialog'), $('#licenseAssignDialog'), $('#licenseImportDialog'), $('#maintenancePage'), appearanceDialog];
       for (const root of roots) {
         if (!root) continue;
         const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -1272,6 +1301,7 @@
       }
       if ($('#licensesPage') && !$('#licensesPage').hidden) loadLicenses(licensePage).catch(error => notify(error.message));
       if ($('#licenseAssignmentsPage') && !$('#licenseAssignmentsPage').hidden) loadLicenseAssignments(licenseAssignmentPage).catch(error => notify(error.message));
+      if ($('#maintenancePage') && !$('#maintenancePage').hidden) loadCompanyMaintenances(maintenancePageNumber).catch(error => notify(error.message));
       if ($('#licenseDialog')?.open && currentLicense) openLicense(currentLicense.id).catch(error => notify(error.message));
       if ($('#licenseAssignDialog')?.open && currentLicense) $('#licenseAssignContext').textContent = translateUiText('{name} · kalan {count} koltuk').replace('{name}',currentLicense.name).replace('{count}',fmt.format(currentLicense.seats-currentLicense.assigned));
     }
@@ -1305,7 +1335,7 @@
     $('#appearanceButton').addEventListener('click', () => {
       const language = appearanceLanguage.value;
       syncThemeChoices();
-      $('#languageCoverageNote').textContent = translateUiText(language === 'tr' ? 'Türkçe arayüz seçili.' : 'Menü, pano, varlık, çalışan listesi/profili ve zimmet formu ile aksesuar listesi ve oluşturma/düzenleme formu seçilen dile çevrildi. Diğer modüller sırayla ekleniyor.');
+      $('#languageCoverageNote').textContent = translateUiText(language === 'tr' ? 'Türkçe arayüz seçili.' : 'Menü, pano, varlık, çalışan, aksesuar, lisans, katalog ve bakım kayıtları ekranları seçilen dile çevrildi; diğer ekranlar sırayla ekleniyor.');
       appearanceDialog.showModal();
     });
     $('#appearanceClose').addEventListener('click', () => appearanceDialog.close());
@@ -4158,17 +4188,17 @@
       const result = await api(`/api/maintenances?${params}`);
       maintenancePageNumber = result.page;
       const body = $('#maintenanceRows'); body.replaceChildren();
-      $('#maintenanceCount').textContent = `${fmt.format(result.total)} bakım kaydı`;
-      $('#maintenancePageInfo').textContent = `Sayfa ${fmt.format(result.page)} / ${fmt.format(Math.max(1, result.pageCount))}`;
+      $('#maintenanceCount').textContent = translateUiText('{count} bakım kaydı').replace('{count}', fmt.format(result.total));
+      $('#maintenancePageInfo').textContent = translateUiText('Sayfa {page} / {pages}').replace('{page}', fmt.format(result.page)).replace('{pages}', fmt.format(Math.max(1, result.pageCount)));
       $('#maintenancePrev').disabled = result.page <= 1; $('#maintenanceNext').disabled = result.page >= result.pageCount;
-      if (!result.rows.length) { const row = document.createElement('tr'), cell = document.createElement('td'); cell.colSpan = 10; cell.textContent = 'Filtrelerle eşleşen bakım kaydı bulunamadı.'; row.append(cell); body.append(row); return; }
+      if (!result.rows.length) { const row = document.createElement('tr'), cell = document.createElement('td'); cell.colSpan = 10; cell.textContent = translateUiText('Filtrelerle eşleşen bakım kaydı bulunamadı.'); row.append(cell); body.append(row); return; }
       for (const item of result.rows) {
         const row = document.createElement('tr'); row.tabIndex = 0; row.setAttribute('role', 'button'); row.setAttribute('aria-label', `Varlık ${item.assetTag} ayrıntısını aç`);
         const asset = document.createElement('td'), link = document.createElement('button'); link.type = 'button'; link.className = 'row-open-link asset-name'; link.textContent = item.assetName;
         const tag = document.createElement('small'); tag.className = 'asset-tag'; tag.textContent = item.assetTag; asset.append(link, tag);
         const type = document.createElement('td'); type.textContent = item.maintenanceType;
         const supplier = document.createElement('td'); supplier.textContent = item.supplier || '—';
-        const state = document.createElement('td'), pill = document.createElement('span'); pill.className = item.status === 'InProgress' ? 'pill warn' : item.status === 'Scheduled' ? 'pill blue' : 'pill'; pill.textContent = ({ Scheduled: 'Planlandı', InProgress: 'Devam ediyor', Completed: 'Tamamlandı', Cancelled: 'İptal edildi' })[item.status] || item.status; state.append(pill);
+        const state = document.createElement('td'), pill = document.createElement('span'); pill.className = item.status === 'InProgress' ? 'pill warn' : item.status === 'Scheduled' ? 'pill blue' : 'pill'; pill.textContent = translateUiText(({ Scheduled: 'Planlandı', InProgress: 'Devam ediyor', Completed: 'Tamamlandı', Cancelled: 'İptal edildi' })[item.status] || item.status); state.append(pill);
         const started = document.createElement('td'); started.textContent = item.status === 'Scheduled' || item.status === 'Cancelled' ? maintenanceDate(item.plannedOn) : maintenanceDate(item.startedOn);
         const completed = document.createElement('td'); completed.textContent = maintenanceDate(item.completedOn);
         const cost = document.createElement('td'); cost.textContent = item.cost == null ? '—' : `${fmt.format(item.cost)} ${item.currency}`;
@@ -4176,15 +4206,15 @@
         const notes = document.createElement('td'); notes.textContent = item.completionNotes || item.notes || item.description || '—'; notes.title = notes.textContent;
         const actions = document.createElement('td'), actionGroup = document.createElement('div'); actions.className = 'maintenance-row-actions'; actionGroup.className = 'row-actions';
         if (item.status === 'Scheduled' && canWriteAssets()) {
-          const start = document.createElement('button'); start.type = 'button'; start.className = 'btn small primary'; start.textContent = 'Başlat'; start.setAttribute('aria-label', `${item.assetTag} varlığındaki planlı bakımı başlat`);
+          const start = document.createElement('button'); start.type = 'button'; start.className = 'btn small primary'; start.textContent = translateUiText('Başlat'); start.setAttribute('aria-label', translateUiText('{tag} varlığındaki planlı bakımı başlat').replace('{tag}', item.assetTag));
           start.addEventListener('click', event => { event.stopPropagation(); updateCompanyMaintenancePlan(item.assetId, item.id, 'start'); });
-          const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'btn small'; cancel.textContent = 'İptal'; cancel.setAttribute('aria-label', `${item.assetTag} varlığındaki bakım planını iptal et`);
+          const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'btn small'; cancel.textContent = translateUiText('İptal'); cancel.setAttribute('aria-label', translateUiText('{tag} varlığındaki bakım planını iptal et').replace('{tag}', item.assetTag));
           cancel.addEventListener('click', event => { event.stopPropagation(); updateCompanyMaintenancePlan(item.assetId, item.id, 'cancel'); });
           actionGroup.append(start, cancel);
         }
-        const attachments = document.createElement('button'); attachments.type = 'button'; attachments.className = 'btn small'; attachments.textContent = 'Dosyalar'; attachments.setAttribute('aria-label', `${item.assetTag} ${item.maintenanceType} bakım eklerini aç`);
+        const attachments = document.createElement('button'); attachments.type = 'button'; attachments.className = 'btn small'; attachments.textContent = translateUiText('Dosyalar'); attachments.setAttribute('aria-label', translateUiText('{tag} {type} bakım eklerini aç').replace('{tag}', item.assetTag).replace('{type}', item.maintenanceType));
         attachments.addEventListener('click', event => { event.stopPropagation(); openMaintenanceAttachments(item.id, `${item.assetTag} · ${item.maintenanceType}`); });
-        const details = document.createElement('button'); details.type = 'button'; details.className = 'btn small'; details.textContent = 'Varlık ayrıntısı'; details.setAttribute('aria-label', `${item.assetTag} varlık ayrıntısını aç`);
+        const details = document.createElement('button'); details.type = 'button'; details.className = 'btn small'; details.textContent = translateUiText('Varlık ayrıntısı'); details.setAttribute('aria-label', translateUiText('{tag} varlık ayrıntısını aç').replace('{tag}', item.assetTag));
         details.addEventListener('click', event => { event.stopPropagation(); openAsset(item.assetId).then(() => selectAssetTab('maintenance')).catch(error => notify(error.message)); });
         actionGroup.append(attachments, details); actions.append(actionGroup);
         row.append(asset, type, supplier, state, started, completed, cost, actor, notes, actions);
@@ -4208,17 +4238,17 @@
       try {
         await api(`/api/assets/${assetId}/maintenances/${maintenanceId}/${action}`, { method: 'POST' });
         $('#assetDialog').close(); await loadDashboard($('#globalSearch').value.trim()); await openAsset(assetId); selectAssetTab('maintenance');
-        notify(action === 'start' ? 'Planlı bakım başladı; varlık bakım durumuna alındı.' : 'Bakım planı iptal edildi.');
+      notify(translateUiText(action === 'start' ? 'Planlı bakım başladı; varlık bakım durumuna alındı.' : 'Bakım planı iptal edildi.'));
       } catch (error) { notify(error.message); }
     }
     async function updateCompanyMaintenancePlan(assetId, maintenanceId, action) {
-      if (action === 'cancel' && !confirm('Bu bakım planını iptal etmek istiyor musunuz?')) return;
+      if (action === 'cancel' && !confirm(translateUiText('Bu bakım planını iptal etmek istiyor musunuz?'))) return;
       try {
         await api(`/api/assets/${assetId}/maintenances/${maintenanceId}/${action}`, { method: 'POST' });
         if (!$('#maintenancePage').hidden) await loadCompanyMaintenances(maintenancePageNumber);
         if (!$('#calendarPage').hidden) await loadOperationalCalendar();
         await loadDashboard($('#globalSearch').value.trim());
-        notify(action === 'start' ? 'Planlı bakım başladı; varlık bakım durumuna alındı.' : 'Bakım planı iptal edildi.');
+        notify(translateUiText(action === 'start' ? 'Planlı bakım başladı; varlık bakım durumuna alındı.' : 'Bakım planı iptal edildi.'));
       } catch (error) { notify(error.message); }
     }
     async function loadAssetMaintenances(assetId) {
@@ -5527,7 +5557,7 @@
       else if (page === 'Rezervasyonlar') { $('#reservationsPage').hidden = false; $('#pageTitle').textContent = translateUiText(page); Promise.all([loadReservationOptions(), loadReservations(1)]).catch(error => notify(error.message)); }
       else if (page === 'Transferler') { $('#activityPage').hidden = false; $('#pageTitle').textContent = page; $('#activityHeading').textContent = 'Varlık transferleri'; $('#activityDescription').textContent = 'Şirket içindeki konum transferlerini arayın; kayıtlar varlık ve işlem geçmişinden açılır.'; $('#activityType').value = 'Transferred'; loadActivity(1).catch(error => notify(error.message)); }
       else if (page === 'Hareket geçmişi') { $('#activityPage').hidden = false; $('#pageTitle').textContent = page; $('#activityHeading').textContent = page; $('#activityDescription').textContent = 'Varlıklara yapılan oluşturma, zimmet, iade ve durum değişikliklerini izleyin.'; $('#activityType').value = ''; loadActivity(1).catch(error => notify(error.message)); }
-      else if (page === 'Bakım kayıtları') { $('#maintenancePage').hidden = false; $('#pageTitle').textContent = page; loadCompanyMaintenances(1).catch(error => notify(error.message)); }
+      else if (page === 'Bakım kayıtları') { $('#maintenancePage').hidden = false; $('#pageTitle').textContent = translateUiText(page); loadCompanyMaintenances(1).catch(error => notify(error.message)); }
       else if (page === 'Takvim' || page === 'Bakım planları') {
         $('#calendarPage').hidden = false;
         const plansOnly = page === 'Bakım planları';
