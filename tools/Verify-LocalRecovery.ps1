@@ -10,13 +10,24 @@ $backupScript = Join-Path $projectRoot 'deploy/local/run-backup.ps1'
 $restorePreviewScript = Join-Path $projectRoot 'deploy/local/restore-preview.ps1'
 $backupToolProject = Join-Path $projectRoot 'tools/EnvanterTR.Backup/EnvanterTR.Backup.csproj'
 $privateAclModule = Join-Path $projectRoot 'deploy/local/PrivateAcl.psm1'
+$composeFile = Join-Path $projectRoot 'deploy/local/compose.yaml'
+$environmentFile = Join-Path $projectRoot 'deploy/local/.env'
 $drillCompleted = $false
 
-if (-not (Test-Path -LiteralPath (Join-Path $projectRoot 'deploy/local/.env') -PathType Leaf)) {
+if (-not (Test-Path -LiteralPath $environmentFile -PathType Leaf)) {
     throw 'Yerel Compose gizli ayar dosyası bulunamadı; önce deploy/local yönergeleriyle geliştirme ortamını kurun.'
 }
-foreach ($path in @($backupScript, $restorePreviewScript, $backupToolProject, $privateAclModule)) {
+foreach ($path in @($backupScript, $restorePreviewScript, $backupToolProject, $privateAclModule, $composeFile)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Kurtarma provası dosyası bulunamadı: $path" }
+}
+
+function Get-LocalRecordCounts {
+    $query = 'SELECT (SELECT count(*) FROM "Companies"),(SELECT count(*) FROM "Employees"),(SELECT count(*) FROM "Assets"),(SELECT count(*) FROM "AssetModels"),(SELECT count(*) FROM "AssetBrands"),(SELECT count(*) FROM "Accessories"),(SELECT count(*) FROM "AccessoryModels"),(SELECT count(*) FROM "SupplierCatalogEntries"),(SELECT count(*) FROM "AssetEvents");'
+    $output = & docker compose --env-file $environmentFile -f $composeFile exec -T database sh -c 'psql -X -A -t -F "|" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "$1"' sh $query 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "Yerel Compose kayıt sayıları okunamadı: $($output -join ' ')" }
+    $line = @($output | Where-Object { $_ -match '^\d+\|\d+\|\d+\|\d+\|\d+\|\d+\|\d+\|\d+\|\d+$' } | Select-Object -Last 1)
+    if ($line.Count -ne 1) { throw 'Yerel Compose kayıt sayıları beklenen biçimde dönmedi.' }
+    return @($line[0].Split('|') | ForEach-Object { [long]$_ })
 }
 
 New-Item -ItemType Directory -Path $drillRoot | Out-Null
@@ -27,6 +38,8 @@ try {
     [IO.File]::WriteAllText($passphrasePath, $passphrase, [Text.UTF8Encoding]::new($false))
     $passphrase = $null
     Set-EnvanterTRPrivateAcl -Path $passphrasePath -Kind File
+
+    $sourceRecordCounts = @(Get-LocalRecordCounts)
 
     & $backupScript -PassphraseFile $passphrasePath -OutputDirectory $backupRoot -RetentionDays 1
     if ($LASTEXITCODE -ne 0) { throw 'Şifreli yerel yedek oluşturma/doğrulama başarısız oldu.' }
@@ -47,7 +60,14 @@ try {
     if ($summary -notmatch 'Migration kaydı: ([1-9]\d*); medya dosyası: ([1-9]\d*);') {
         throw 'İzole geri yükleme PostgreSQL şemasını ve medya dosyalarını doğrulamadı.'
     }
+    $countsMatch = [regex]::Match($summary, 'Kayıt sayıları: Companies=(\d+), Employees=(\d+), Assets=(\d+), AssetModels=(\d+), AssetBrands=(\d+), Accessories=(\d+), AccessoryModels=(\d+), Suppliers=(\d+), AssetEvents=(\d+)\.')
+    if (-not $countsMatch.Success) { throw 'İzole veritabanı kayıt sayıları prova çıktısında bulunamadı.' }
+    $restoredRecordCounts = @(1..9 | ForEach-Object { [long]$countsMatch.Groups[$_].Value })
+    if (-not [System.Linq.Enumerable]::SequenceEqual([long[]]$sourceRecordCounts, [long[]]$restoredRecordCounts)) {
+        throw 'İzole geri yükleme kaynak PostgreSQL kayıt adetlerini korumadı.'
+    }
 
+    Write-Output ('Kaynak ve izole geri yükleme kayıt adetleri eşleşti: Companies={0}, Employees={1}, Assets={2}, AssetModels={3}, AssetBrands={4}, Accessories={5}, AccessoryModels={6}, Suppliers={7}, AssetEvents={8}.' -f $restoredRecordCounts)
     Write-Output ("Şifreli arşiv bayt sayısı: {0}. Yedek, açma, PostgreSQL ve medya provası başarılı." -f $archive[0].Length)
     $drillCompleted = $true
 }

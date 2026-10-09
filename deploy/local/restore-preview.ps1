@@ -54,6 +54,25 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Migration geçmişi okunamadı.' }
     }
 
+    $recordCountsSql = @'
+SELECT
+ (SELECT count(*) FROM "Companies"),
+ (SELECT count(*) FROM "Employees"),
+ (SELECT count(*) FROM "Assets"),
+ (SELECT count(*) FROM "AssetModels"),
+ (SELECT count(*) FROM "AssetBrands"),
+ (SELECT count(*) FROM "Accessories"),
+ (SELECT count(*) FROM "AccessoryModels"),
+ (SELECT count(*) FROM "SupplierCatalogEntries"),
+ (SELECT count(*) FROM "AssetEvents");
+'@
+    $recordCountsLine = (& docker exec $containerName psql -X -A -t -F '|' -U postgres -d postgres -c $recordCountsSql | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0) { throw 'Geri yüklenen veritabanındaki kayıt sayıları okunamadı.' }
+    $recordCounts = @($recordCountsLine -split '\|')
+    if ($recordCounts.Count -ne 9 -or @($recordCounts | Where-Object { $_ -notmatch '^\d+$' }).Count -gt 0) {
+        throw 'Geri yüklenen veritabanındaki kayıt sayıları beklenen biçimde değil.'
+    }
+
     $mediaEntries = @(& docker exec $containerName tar -tzf /tmp/company-media.tar.gz)
     if ($LASTEXITCODE -ne 0) { throw 'Medya arşivinin dizini okunamadı.' }
     foreach ($entry in $mediaEntries) {
@@ -85,6 +104,7 @@ try {
 
     Write-Output 'Kurtarma önizlemesi başarılı: PostgreSQL, medya ve varsa Data Protection anahtar arşivi izole konteynere açıldı.'
     Write-Output "Migration kaydı: $migrationCount; medya dosyası: $mediaFileCount; anahtar dosyası: $keysFileCount."
+    Write-Output ("Kayıt sayıları: Companies={0}, Employees={1}, Assets={2}, AssetModels={3}, AssetBrands={4}, Accessories={5}, AccessoryModels={6}, Suppliers={7}, AssetEvents={8}." -f $recordCounts)
     Write-Output "Üretim/yerel uygulama veritabanına veya kalıcı Docker volume'una dokunulmadı."
 }
 finally {
