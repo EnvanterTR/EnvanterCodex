@@ -52,5 +52,48 @@ expect_failure 'invalid maximum-age setting is rejected' run_check 0
 
 rm -- "$BACKUP_PATH.sha256"
 expect_failure 'missing SHA-256 sidecar is rejected' run_check
+(cd -- "$BACKUP_ROOT" && sha256sum -- "$BACKUP_NAME") > "$BACKUP_PATH.sha256"
+
+printf 'BACKUP_SFTP_TARGET=backup@example.invalid\nBACKUP_SFTP_DIRECTORY=/envantertr\nBACKUP_SFTP_KEY_FILE=%s/key\nBACKUP_SFTP_KNOWN_HOSTS_FILE=%s/known_hosts\n' \
+  "$WORK_DIR" "$WORK_DIR" >> "$CONFIG_FILE"
+printf 'test private key\n' > "$WORK_DIR/key"
+printf 'backup.example.invalid ssh-ed25519 AAAATEST\n' > "$WORK_DIR/known_hosts"
+chmod 0600 "$WORK_DIR/key" "$WORK_DIR/known_hosts"
+mkdir -m 0700 "$WORK_DIR/bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'set -Eeuo pipefail' \
+  'batch=""' \
+  'while (($#)); do if [[ "$1" == "-b" ]]; then shift; batch="$1"; break; fi; shift; done' \
+  '[[ -n "$batch" && -f "$batch" ]] || exit 2' \
+  'grep -q "^ls -1 envantertr-server-\\*" "$batch" || exit 3' \
+  '[[ "${ENVT_TEST_SFTP_FAIL:-0}" != "1" ]] || exit 4' \
+  'local_dir="$(awk '\''$1 == "lcd" {gsub(/"/, "", $2); print $2}'\'' "$batch")"' \
+  'remote_name="$(awk '\''$1 == "get" {gsub(/"/, "", $3); print $3}'\'' "$batch")"' \
+  '[[ -n "$local_dir" && -n "$remote_name" && -f "${ENVT_TEST_REMOTE_SHA256:-}" ]] || exit 5' \
+  'cp -- "$ENVT_TEST_REMOTE_SHA256" "$local_dir/$remote_name"' \
+  'printf "%s\\n" "${ENVT_TEST_SFTP_LISTING:-}"' > "$WORK_DIR/bin/sftp"
+chmod 0700 "$WORK_DIR/bin/sftp"
+export PATH="$WORK_DIR/bin:$PATH"
+export ENVT_TEST_SFTP_LISTING="sftp> cd /envantertr
+sftp> ls -1 envantertr-server-*
+$BACKUP_NAME
+$BACKUP_NAME.sha256"
+export ENVT_TEST_REMOTE_SHA256="$BACKUP_PATH.sha256"
+run_check || { cat "$WORK_DIR/output.log" >&2; exit 1; }
+grep -q 'remote=latest-copy-present' "$WORK_DIR/output.log"
+echo 'PASS: latest remote backup and checksum are reachable'
+
+export ENVT_TEST_SFTP_LISTING="$BACKUP_NAME.sha256"
+expect_failure 'remote checksum without its archive is rejected' run_check
+export ENVT_TEST_SFTP_LISTING="$BACKUP_NAME"
+expect_failure 'remote archive without its checksum is rejected' run_check
+export ENVT_TEST_SFTP_LISTING="$BACKUP_NAME $BACKUP_NAME.sha256"
+printf '0%.0s' {1..64} > "$WORK_DIR/remote-mismatch.sha256"
+export ENVT_TEST_REMOTE_SHA256="$WORK_DIR/remote-mismatch.sha256"
+expect_failure 'remote checksum mismatch is rejected' run_check
+export ENVT_TEST_REMOTE_SHA256="$BACKUP_PATH.sha256"
+export ENVT_TEST_SFTP_FAIL=1
+expect_failure 'unavailable remote SFTP target is rejected' run_check
 
 echo 'Linux backup health acceptance passed.'
