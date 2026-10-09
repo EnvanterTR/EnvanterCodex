@@ -2818,6 +2818,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var pdfBytes = System.Text.Encoding.ASCII.GetBytes("%PDF-1.4\n%%EOF");
         var ownAssetAttachmentId = Guid.NewGuid();
         var otherCompanyAssetAttachmentId = Guid.NewGuid();
+        var ownAssetEventId = Guid.NewGuid();
+        var otherCompanyAssetEventId = Guid.NewGuid();
         var assetPdfBytes = System.Text.Encoding.ASCII.GetBytes("%PDF-1.7\nasset attachment\n%%EOF");
         var ownPhotoDirectory = Path.Combine(_mediaPath, _companyId.ToString("N"), "employees", _ownEmployeeId.ToString("N"));
         Directory.CreateDirectory(ownPhotoDirectory);
@@ -2845,9 +2847,14 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                     OriginalFileName = "other.pdf", StorageFileName = $"{otherCompanyDocumentId:N}.pdf", ContentType = "application/pdf", Length = pdfBytes.Length });
             db.AssetAttachments.AddRange(
                 new AssetAttachment { Id = ownAssetAttachmentId, CompanyId = _companyId, AssetId = _ownAssetId,
-                    OriginalFileName = "asset-own.pdf", StorageFileName = $"{ownAssetAttachmentId:N}.pdf", ContentType = "application/pdf", Length = assetPdfBytes.Length },
+                    AssetEventId = ownAssetEventId, OriginalFileName = "asset-own.pdf", StorageFileName = $"{ownAssetAttachmentId:N}.pdf", ContentType = "application/pdf", Length = assetPdfBytes.Length },
                 new AssetAttachment { Id = otherCompanyAssetAttachmentId, CompanyId = _otherCompanyId, AssetId = _otherCompanyAssetId,
                     OriginalFileName = "asset-other.pdf", StorageFileName = $"{otherCompanyAssetAttachmentId:N}.pdf", ContentType = "application/pdf", Length = assetPdfBytes.Length });
+            db.AssetEvents.AddRange(
+                new AssetEvent { Id = ownAssetEventId, CompanyId = _companyId, AssetId = _ownAssetId,
+                    EventType = "Assigned", Details = "Acceptance assignment" },
+                new AssetEvent { Id = otherCompanyAssetEventId, CompanyId = _otherCompanyId, AssetId = _otherCompanyAssetId,
+                    EventType = "Assigned", Details = "Other company assignment" });
             await db.SaveChangesAsync();
         }
 
@@ -2881,6 +2888,16 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         }
         using (var crossCompanyAssetFileResponse = await SendAsAdminAsync($"/api/assets/{_otherCompanyAssetId}/attachments/{otherCompanyAssetAttachmentId}/file"))
             Assert.Equal(HttpStatusCode.NotFound, crossCompanyAssetFileResponse.StatusCode);
+        using (var ownAssetDetail = await SendAsAdminAsync($"/api/assets/{_ownAssetId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, ownAssetDetail.StatusCode);
+            using var payload = JsonDocument.Parse(await ownAssetDetail.Content.ReadAsStringAsync());
+            var movement = payload.RootElement.GetProperty("history").EnumerateArray()
+                .Single(item => item.GetProperty("id").GetGuid() == ownAssetEventId);
+            Assert.Equal(1, movement.GetProperty("attachmentCount").GetInt32());
+            Assert.Equal(ownAssetEventId, payload.RootElement.GetProperty("attachments").EnumerateArray()
+                .Single(item => item.GetProperty("id").GetGuid() == ownAssetAttachmentId).GetProperty("assetEventId").GetGuid());
+        }
 
         using var assetCsrfResponse = await SendAsAdminAsync("/api/session/csrf");
         Assert.Equal(HttpStatusCode.OK, assetCsrfResponse.StatusCode);
@@ -2889,6 +2906,23 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var assetAntiforgeryCookie = assetCsrfResponse.Headers.GetValues("Set-Cookie")
             .Select(value => value.Split(';', 2)[0])
             .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        using (var upload = await SendAssetAttachmentUploadAsync(_ownAssetId, assetPdfBytes,
+            "signed-assignment.pdf", assetRequestToken, assetAntiforgeryCookie, ownAssetEventId))
+        {
+            Assert.Equal(HttpStatusCode.Created, upload.StatusCode);
+            using var uploadPayload = JsonDocument.Parse(await upload.Content.ReadAsStringAsync());
+            var uploadedId = uploadPayload.RootElement.GetProperty("id").GetGuid();
+            using var detail = await SendAsAdminAsync($"/api/assets/{_ownAssetId}");
+            using var detailPayload = JsonDocument.Parse(await detail.Content.ReadAsStringAsync());
+            var movement = detailPayload.RootElement.GetProperty("history").EnumerateArray()
+                .Single(item => item.GetProperty("id").GetGuid() == ownAssetEventId);
+            Assert.Equal(2, movement.GetProperty("attachmentCount").GetInt32());
+            Assert.Equal(ownAssetEventId, detailPayload.RootElement.GetProperty("attachments").EnumerateArray()
+                .Single(item => item.GetProperty("id").GetGuid() == uploadedId).GetProperty("assetEventId").GetGuid());
+        }
+        using (var foreignMovement = await SendAssetAttachmentUploadAsync(_ownAssetId, assetPdfBytes,
+            "wrong-movement.pdf", assetRequestToken, assetAntiforgeryCookie, otherCompanyAssetEventId))
+            Assert.Equal(HttpStatusCode.BadRequest, foreignMovement.StatusCode);
         using (var crossCompanyEmployeeUpload = await SendEmployeeDocumentUploadAsync(_otherCompanyEmployeeId, pdfBytes,
             "intrusion.pdf", assetRequestToken, assetAntiforgeryCookie))
             Assert.Equal(HttpStatusCode.NotFound, crossCompanyEmployeeUpload.StatusCode);
@@ -4481,10 +4515,11 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     private async Task<HttpResponseMessage> SendAssetAttachmentUploadAsync(Guid assetId, byte[] bytes, string fileName,
-        string requestToken, string antiforgeryCookie)
+        string requestToken, string antiforgeryCookie, Guid? assetEventId = null)
     {
         using var multipart = new MultipartFormDataContent();
         multipart.Add(new ByteArrayContent(bytes), "file", fileName);
+        if (assetEventId is Guid eventId) multipart.Add(new StringContent(eventId.ToString()), "assetEventId");
         return await SendAsUserAsync(HttpMethod.Post, $"/api/assets/{assetId}/attachments", _userId, _companyId,
             multipart, requestToken, antiforgeryCookie);
     }

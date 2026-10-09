@@ -673,6 +673,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("AssetEventId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("AssetId")
                         .HasColumnType("uuid");
 
@@ -708,6 +711,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasAlternateKey("CompanyId", "Id");
 
                     b.HasIndex("UploadedByUserId");
+
+                    b.HasIndex("CompanyId", "AssetId", "AssetEventId");
 
                     b.HasIndex("CompanyId", "AssetId", "CreatedAt");
 
@@ -3161,10 +3166,6 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("LogoFileName")
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
-
                     b.Property<string>("ContactName")
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
@@ -3178,6 +3179,10 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("LogoFileName")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -3643,6 +3648,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.AssetEvent", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "AssetId", "AssetEventId")
+                        .HasPrincipalKey("CompanyId", "AssetId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.AssetBrand", b =>

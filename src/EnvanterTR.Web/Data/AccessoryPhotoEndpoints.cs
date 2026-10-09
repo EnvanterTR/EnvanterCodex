@@ -125,7 +125,7 @@ public static class AccessoryPhotoEndpoints
     }
 
     private static bool IsSafePhotoName(string? fileName) => fileName is not null &&
-        Regex.IsMatch(fileName, "^[a-fA-F0-9]{32}\\.(png|jpg|webp)$", RegexOptions.CultureInvariant);
+        Regex.IsMatch(fileName, "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}\\.(png|jpg|webp)$", RegexOptions.CultureInvariant);
 
     private static void DeletePhotoIfSafe(IConfiguration configuration, Guid companyId, Guid accessoryId, string? fileName)
     {

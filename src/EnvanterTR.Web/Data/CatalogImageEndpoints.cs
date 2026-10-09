@@ -151,7 +151,10 @@ public static class CatalogImageEndpoints
         if (!company.StartsWith(root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, comparison) || !directory.StartsWith(company.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, comparison)) return true;
         return new[] { company, Path.Combine(company, "catalog"), Path.Combine(company, "catalog", kind), directory }.Any(path => Directory.Exists(path) && (System.IO.File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0);
     }
-    private static bool SafeName(string? name) => name is not null && Regex.IsMatch(name, "^[a-fA-F0-9]{32}\\.(png|jpg|webp)$", RegexOptions.CultureInvariant);
+    // Existing catalog/demo imports use descriptive names such as "catalog-prodesk.png".
+    // Keep serving those while rejecting separators and every character that could escape the item folder.
+    private static bool SafeName(string? name) => name is not null &&
+        Regex.IsMatch(name, "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}\\.(png|jpg|webp)$", RegexOptions.CultureInvariant);
     private static void DeleteIfSafe(IConfiguration config, Guid companyId, string kind, Guid id, string? name)
     {
         if (!SafeName(name) || HasReparsePoint(config, companyId, kind, id)) return;

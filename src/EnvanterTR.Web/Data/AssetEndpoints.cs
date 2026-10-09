@@ -1542,6 +1542,8 @@ public static class AssetEndpoints
                     x.EventType,
                     x.Details,
                     x.EmployeeId,
+                    attachmentCount = db.AssetAttachments.Count(attachment => attachment.CompanyId == companyId &&
+                        attachment.AssetId == id && attachment.AssetEventId == x.Id),
                     actorName = db.Users
                         .Where(actor => actor.Id == x.ActorUserId)
                         .Select(actor => actor.DisplayName)
@@ -1557,6 +1559,11 @@ public static class AssetEndpoints
                 .Where(x => x.CompanyId == companyId && x.AssetId == id)
                 .OrderByDescending(x => x.CreatedAt)
                 .Select(x => new { x.Id, x.OriginalFileName, x.ContentType, x.Length, x.CreatedAt,
+                    x.AssetEventId,
+                    assetEventType = db.AssetEvents.Where(eventItem => eventItem.CompanyId == companyId && eventItem.Id == x.AssetEventId)
+                        .Select(eventItem => eventItem.EventType).FirstOrDefault(),
+                    assetEventOccurredAt = db.AssetEvents.Where(eventItem => eventItem.CompanyId == companyId && eventItem.Id == x.AssetEventId)
+                        .Select(eventItem => eventItem.OccurredAt).FirstOrDefault(),
                     uploadedBy = db.Users.Where(actor => actor.Id == x.UploadedByUserId).Select(actor => actor.DisplayName).FirstOrDefault() })
                 .ToListAsync(cancellationToken);
             Dictionary<string, string> customFields;
@@ -1653,11 +1660,15 @@ public static class AssetEndpoints
             var attachmentId = Guid.NewGuid();
             var storageFileName = $"{attachmentId:N}.{detected.Value.Extension}";
             var directory = AssetAttachmentDirectory(configuration, companyId, id);
-            Directory.CreateDirectory(directory);
             var destination = Path.Combine(directory, storageFileName);
             var attachment = new AssetAttachment { Id = attachmentId, CompanyId = companyId, AssetId = id,
+                AssetEventId = Guid.TryParse(form["assetEventId"], out var eventId) ? eventId : null,
                 UploadedByUserId = actorId, OriginalFileName = originalName, StorageFileName = storageFileName,
                 ContentType = detected.Value.ContentType, Length = bytes.LongLength };
+            if (attachment.AssetEventId is Guid linkedEventId && !await db.AssetEvents.AnyAsync(x =>
+                    x.CompanyId == companyId && x.AssetId == id && x.Id == linkedEventId, cancellationToken))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["assetEventId"] = ["Seçilen hareket bu varlıkta bulunamadı."] });
+            Directory.CreateDirectory(directory);
             try
             {
                 await System.IO.File.WriteAllBytesAsync(destination, bytes, cancellationToken);

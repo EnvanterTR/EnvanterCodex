@@ -848,6 +848,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
 
         modelBuilder.Entity<AssetEvent>().HasIndex(x => new { x.CompanyId, x.AssetId, x.OccurredAt });
+        modelBuilder.Entity<AssetEvent>().HasAlternateKey(x => new { x.CompanyId, x.AssetId, x.Id });
         modelBuilder.Entity<AssetEvent>().Property(x => x.EventType).HasMaxLength(60).IsRequired();
         modelBuilder.Entity<AssetEvent>().Property(x => x.Details).HasMaxLength(2000);
         modelBuilder.Entity<AssetEvent>().HasOne<EnvanterUser>().WithMany()
@@ -873,6 +874,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetAttachment>().HasOne<Asset>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.AssetId })
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssetAttachment>().HasOne<AssetEvent>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.AssetId, x.AssetEventId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.AssetId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<AssetAttachment>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.SetNull);
 

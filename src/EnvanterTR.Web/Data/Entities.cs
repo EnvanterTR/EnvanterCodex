@@ -347,6 +347,7 @@ public sealed class AssetAttachment
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid CompanyId { get; set; }
     public Guid AssetId { get; set; }
+    public Guid? AssetEventId { get; set; }
     public Guid? UploadedByUserId { get; set; }
     public required string OriginalFileName { get; set; }
     public required string StorageFileName { get; set; }
