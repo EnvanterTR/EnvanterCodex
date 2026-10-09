@@ -284,6 +284,31 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(1, previewPayload.RootElement.GetProperty("rowCount").GetInt32());
         }
 
+        var consumableMap = new Dictionary<string, string>
+        {
+            ["Material Description"] = "name", ["Quantity On Hand"] = "totalQuantity", ["Do Not Import"] = "ignore"
+        };
+        using (var consumableNoCsrf = await SendAsUserAsync(HttpMethod.Post, "/api/consumables/import-mappings", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Vendor A", mappings = consumableMap })))
+            Assert.Equal(HttpStatusCode.BadRequest, consumableNoCsrf.StatusCode);
+        using var consumableCreate = await SendAsUserAsync(HttpMethod.Post, "/api/consumables/import-mappings", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Vendor A", mappings = consumableMap }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, consumableCreate.StatusCode);
+        using var consumableCreated = JsonDocument.Parse(await consumableCreate.Content.ReadAsStringAsync());
+        var consumableProfileId = consumableCreated.RootElement.GetProperty("id").GetGuid();
+        var consumableCsv = new StringContent("Material Description,Quantity On Hand,Do Not Import\nPrinter Paper,12,private note\n",
+            System.Text.Encoding.UTF8, "text/csv");
+        var consumableHeader = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(consumableMap)));
+        using (var consumablePreview = await SendAsRoleWithHeadersAsync(HttpMethod.Post, "/api/consumables/import/preview.csv", "admin",
+            consumableCsv, requestToken, antiforgeryCookie, new Dictionary<string, string> { ["X-Consumable-Import-Mapping"] = consumableHeader }))
+        {
+            Assert.True(consumablePreview.StatusCode == HttpStatusCode.OK,
+                $"Consumable mapped preview failed: {(int)consumablePreview.StatusCode} {await consumablePreview.Content.ReadAsStringAsync()}");
+            using var previewPayload = JsonDocument.Parse(await consumablePreview.Content.ReadAsStringAsync());
+            Assert.True(previewPayload.RootElement.GetProperty("isValid").GetBoolean());
+            Assert.Equal(1, previewPayload.RootElement.GetProperty("rowCount").GetInt32());
+        }
+
         var employeeMap = new Dictionary<string, string>
         {
             ["Staff Code"] = "employeeNumber", ["Full Name"] = "displayName", ["Business Unit"] = "department", ["Do Not Import"] = "ignore"
@@ -326,6 +351,10 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var ownEmployee = JsonDocument.Parse(await ownEmployeeList.Content.ReadAsStringAsync()))
             Assert.Equal(employeeProfileId, Assert.Single(ownEmployee.RootElement.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
 
+        using (var ownConsumableList = await SendAsUserAsync(HttpMethod.Get, "/api/consumables/import-mappings", _userId, _companyId))
+        using (var ownConsumable = JsonDocument.Parse(await ownConsumableList.Content.ReadAsStringAsync()))
+            Assert.Equal(consumableProfileId, Assert.Single(ownConsumable.RootElement.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
+
         using (var otherUserList = await SendAsUserAsync(HttpMethod.Get, "/api/assets/import-mappings", _sameCompanyOtherUserId, _companyId))
         using (var other = JsonDocument.Parse(await otherUserList.Content.ReadAsStringAsync()))
             Assert.Empty(other.RootElement.GetProperty("items").EnumerateArray());
@@ -337,6 +366,10 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var otherUserEmployeeList = await SendAsUserAsync(HttpMethod.Get, "/api/employees/import-mappings", _sameCompanyOtherUserId, _companyId))
         using (var otherEmployee = JsonDocument.Parse(await otherUserEmployeeList.Content.ReadAsStringAsync()))
             Assert.Empty(otherEmployee.RootElement.GetProperty("items").EnumerateArray());
+
+        using (var otherUserConsumableList = await SendAsUserAsync(HttpMethod.Get, "/api/consumables/import-mappings", _sameCompanyOtherUserId, _companyId))
+        using (var otherConsumable = JsonDocument.Parse(await otherUserConsumableList.Content.ReadAsStringAsync()))
+            Assert.Empty(otherConsumable.RootElement.GetProperty("items").EnumerateArray());
 
         using (var crossCompanyList = await SendAsUserAsync(HttpMethod.Get, "/api/assets/import-mappings", _userId, _otherCompanyId))
             Assert.Equal(HttpStatusCode.Unauthorized, crossCompanyList.StatusCode);
@@ -357,6 +390,9 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var deleteEmployee = await SendAsUserAsync(HttpMethod.Delete, $"/api/employees/import-mappings/{employeeProfileId}", _userId, _companyId,
             requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
             Assert.Equal(HttpStatusCode.NoContent, deleteEmployee.StatusCode);
+        using (var deleteConsumable = await SendAsUserAsync(HttpMethod.Delete, $"/api/consumables/import-mappings/{consumableProfileId}", _userId, _companyId,
+            requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NoContent, deleteConsumable.StatusCode);
     }
 
     [Fact]
