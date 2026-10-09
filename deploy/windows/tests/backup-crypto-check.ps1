@@ -14,27 +14,33 @@ $work = Join-Path ([IO.Path]::GetTempPath()) ("envantertr-crypto-check-" + [guid
 New-Item -ItemType Directory -Path $work | Out-Null
 $source = Join-Path $work "source.zip"
 $fixture = Join-Path $work "fixture"
+$mediaSource = Join-Path $fixture "media-source"
+$keysSource = Join-Path $fixture "keys-source"
+$payload = Join-Path $work "payload"
 $encrypted = Join-Path $work "backup.etbackup"
 $decrypted = Join-Path $work "decrypted.zip"
 $tampered = Join-Path $work "tampered.etbackup"
 $cipher = Join-Path $work "cipher.bin"
 $magic = [byte[]](0x45,0x54,0x42,0x4B,0x01)
 $password = "crypto-check-passphrase-2026"
-$mediaRoot = Join-Path $fixture "company-media/1"
+$mediaRoot = Join-Path $mediaSource "1"
 $userPhoto = Join-Path $mediaRoot "users/42/profile.png"
 $assetPhoto = Join-Path $mediaRoot "assets/PRN-004/photo.jpg"
-$keyFile = Join-Path $fixture "data-protection-keys/key-2026.xml"
-New-Item -ItemType Directory -Path (Split-Path $userPhoto), (Split-Path $assetPhoto), (Split-Path $keyFile) -Force | Out-Null
+$keyFile = Join-Path $keysSource "key-2026.xml"
+New-Item -ItemType Directory -Path (Split-Path $userPhoto), (Split-Path $assetPhoto), (Split-Path $keyFile), $payload -Force | Out-Null
 [IO.File]::WriteAllBytes($userPhoto,[byte[]](0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A,0x70,0x72,0x6F,0x66,0x69,0x6C,0x65))
 [IO.File]::WriteAllBytes($assetPhoto,[byte[]](0xFF,0xD8,0xFF,0xE0,0x61,0x73,0x73,0x65,0x74,0xFF,0xD9))
 Set-Content -LiteralPath $keyFile -Value '<key id="fixture">data-protection-key</key>' -Encoding UTF8
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
+# Exercise the same recursive copy calls used by deploy/windows/backup.ps1.
+Copy-Item -LiteralPath $mediaSource -Destination (Join-Path $payload "company-media") -Recurse
+Copy-Item -LiteralPath $keysSource -Destination (Join-Path $payload "data-protection-keys") -Recurse
 $zipFile = [IO.File]::Create($source)
 $archive = [IO.Compression.ZipArchive]::new($zipFile,[IO.Compression.ZipArchiveMode]::Create)
 try {
-    foreach ($file in Get-ChildItem -LiteralPath $fixture -File -Recurse) {
-        $entryName = $file.FullName.Substring($fixture.Length + 1).Replace('\','/')
+    foreach ($file in Get-ChildItem -LiteralPath $payload -File -Recurse) {
+        $entryName = $file.FullName.Substring($payload.Length + 1).Replace('\','/')
         $entry = $archive.CreateEntry($entryName,[IO.Compression.CompressionLevel]::Optimal)
         $input = [IO.File]::OpenRead($file.FullName)
         $output = $entry.Open()
