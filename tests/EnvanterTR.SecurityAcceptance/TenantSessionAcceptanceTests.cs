@@ -155,6 +155,61 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         }
     }
 
+    [Fact]
+    public async Task Every_api_route_policy_matches_the_company_and_platform_role_matrix()
+    {
+        var rolesByPolicy = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal)
+        {
+            ["asset.read"] = new(["owner", "admin", "asset_manager", "asset_operator", "auditor", "viewer"]),
+            ["asset.write"] = new(["owner", "admin", "asset_manager", "asset_operator"]),
+            ["settings.manage"] = new(["owner", "admin"]),
+            ["people.read"] = new(["owner", "admin", "asset_manager", "asset_operator", "auditor", "hr_operator"]),
+            ["people.manage"] = new(["owner", "admin", "asset_manager", "hr_operator"]),
+            ["people.files.read"] = new(["owner", "admin", "hr_operator"]),
+            ["people.files.manage"] = new(["owner", "admin", "hr_operator"]),
+            ["company.member"] = new(["owner", "admin", "asset_manager", "asset_operator", "auditor", "viewer", "hr_operator"]),
+            ["platform.admin"] = new(["platform_admin"])
+        };
+        var roles = rolesByPolicy.Values.SelectMany(roles => roles).Distinct(StringComparer.Ordinal).ToArray();
+        var endpoints = _factory!.Services.GetServices<EndpointDataSource>()
+            .SelectMany(source => source.Endpoints)
+            .OfType<RouteEndpoint>()
+            .Where(endpoint => endpoint.RoutePattern.RawText?.StartsWith("/api", StringComparison.OrdinalIgnoreCase) == true &&
+                               endpoint.Metadata.GetMetadata<IAllowAnonymous>() is null)
+            .ToArray();
+        Assert.True(endpoints.Length >= 300, $"Expected at least 300 protected API endpoints, found {endpoints.Length}.");
+
+        var authorization = _factory.Services.GetRequiredService<IAuthorizationService>();
+        var policyProvider = _factory.Services.GetRequiredService<IAuthorizationPolicyProvider>();
+        foreach (var endpoint in endpoints)
+        {
+            var authorizationData = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>();
+            var policies = authorizationData
+                .Select(data => data.Policy)
+                .Where(policy => !string.IsNullOrWhiteSpace(policy))
+                .Select(policy => policy!)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            var combinedPolicy = await AuthorizationPolicy.CombineAsync(policyProvider, authorizationData);
+            Assert.NotNull(combinedPolicy);
+            foreach (var role in roles)
+            {
+                var claims = new List<Claim>
+                {
+                    new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString("D")),
+                    new Claim("company_role", role),
+                    new Claim("company_id", Guid.NewGuid().ToString("D")),
+                };
+                if (role == "platform_admin") claims.Add(new Claim("platform_admin", "true"));
+                var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "RoutePolicyAcceptance"));
+                var expected = policies.All(policy => rolesByPolicy.TryGetValue(policy, out var allowedRoles) && allowedRoles.Contains(role));
+                var result = await authorization.AuthorizeAsync(user, resource: null, combinedPolicy!);
+                Assert.True(expected == result.Succeeded,
+                    $"Policy matrix mismatch for role '{role}' at {DescribeEndpoint(endpoint)}: expected {expected}, received {result.Succeeded}.");
+            }
+        }
+    }
+
     private static string BuildSampleRoutePath(RouteEndpoint endpoint)
     {
         var rawPath = endpoint.RoutePattern.RawText!;
