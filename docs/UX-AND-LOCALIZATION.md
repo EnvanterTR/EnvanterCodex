@@ -18,7 +18,7 @@ Arayüz dilleri: Türkçe (`tr-TR`), İngilizce (`en`), Rusça (`ru`), Ukraynaca
 
 Çeviri yalnız menü başlıklarını değil; her modüldeki buton, form etiketi, tablo sütunu, filtre, durum, boş/yükleniyor/hata durumu, doğrulama metni, onay penceresi, toast, e-posta özeti, rapor başlığı, CSV dışa aktarım etiketi, erişilebilirlik metni ve kurulum/kurtarma akışını kapsar. Tarih, saat, sayı, para birimi, çoğul ve sıralama kuralları seçilen yerel ayara göre biçimlenir. Kaynak dil anahtarları kodda tutulur; kullanıcı girdisi ve API kodları çevrilmez. Bir çeviri eksikse ham anahtar kullanıcıya gösterilmez; güvenli İngilizce yedeği ve geliştirme denetimi kullanılır.
 
-Görünüm paneli beş dil için tercih kaydını başlattı; henüz dil seçimine göre tüm modül metinlerini değiştirmiyor. Eksik çeviri kapsamı kullanıcıya açıkça bildiriliyor. Tam çeviri, tarih/sayı biçimleme ve şirketler arası/cihazlar arası senkronizasyon tamamlanmayı bekliyor.
+Görünüm paneli beş dil için tercih kaydını başlattı. Türkçe, İngilizce, Rusça, Ukraynaca ve Makedonca seçimi menüyü, üst çubuğu, ana pano metinlerini ve görünüm panelini değiştirir; diğer modül metinleri çevrilme sırasını bekliyor. Eksik çeviri kapsamı kullanıcıya açıkça bildiriliyor. Tercih şimdilik tarayıcıda saklanıyor; tarih/sayı biçimleme ve şirketler arası/cihazlar arası senkronizasyon tamamlanmayı bekliyor.
 
 ## Teslim ve kabul kapıları
 
