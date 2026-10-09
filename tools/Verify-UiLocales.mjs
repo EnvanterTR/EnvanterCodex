@@ -59,7 +59,20 @@ const requiredAccessoryLabels = [
   'Çalışan isteğine aç', 'İlk adet miktarı ilk stok girişi olarak geçmişe kaydedilir.', 'Kaydet', 'Kapat',
   'Marka adı:', 'Aksesuar model adı:', 'Önce bir marka seçin.',
   'Marka oluşturuldu. Logo ve üretici bilgilerini Markalar kataloğunda ekleyebilirsiniz.',
-  'Aksesuar modeli oluşturuldu ve seçildi.', 'Aksesuar kaydı eklemek için yazma yetkiniz bulunmuyor.'
+  'Aksesuar modeli oluşturuldu ve seçildi.', 'Aksesuar kaydı eklemek için yazma yetkiniz bulunmuyor.',
+  'ŞİRKET STOK KAYDI', 'Aksesuar ayrıntısı', 'Satın alma siparişleri', 'Tüm siparişleri aç', 'Sipariş no',
+  'Tedarikçi / tarih', 'Açık zimmetler', 'Stok ve zimmet geçmişi', 'Stok ekle / düzelt', 'Çalışana teslim et',
+  'Yeni sipariş', 'Bu aksesuar için henüz sipariş yok.', 'Açık zimmet bulunmuyor.', 'Henüz stok hareketi yok.',
+  'Ürün fotoğrafı', 'PNG, JPEG veya WebP · en fazla 2 MiB. Şirket medya yedeğine eklenir.',
+  'Fotoğraf seçin', 'Fotoğrafı yükle', 'Fotoğrafı kaldır', 'Aksesuar fotoğrafı kaldırılsın mı?',
+  'Aksesuar fotoğrafı güncellendi.', 'Aksesuar fotoğrafı kaldırıldı.', 'AKSESUAR ZİMMETİ',
+  'TOPLU AKSESUAR ZİMMETİ', 'Teslim hedefi seçin', 'Nereye teslim ediliyor?', 'Aktif çalışan *',
+  'Varlık *', 'Konum *', 'Adet *', 'Tam kit adedi *', 'Teslim notu', 'Çalışan seçin',
+  'Etkin çalışan bulunmuyor', 'Varlık seçin', 'Varlık bulunmuyor', 'Teslimi kaydet',
+  'Toplu teslimi kaydet', 'Seçilen aksesuarları teslim et', 'açık zimmet seçildi (en fazla 100)',
+  'Aksesuar iadesi kaydedildi; stok ve hareket geçmişi güncellendi.',
+  'Aksesuar teslimi kaydedildi ve zimmet geçmişine işlendi.', 'adet kullanılabilir', 'Teslim adedi',
+  'Teslim hedefi bulunamadı', 'Employee', 'Asset'
 ];
 const requiredEmployeeLabels = [
   'Çalışan kayıtları', 'Departmana ve yöneticiye göre ilişki kurun; profilden doğrudan raporlayanları ve zimmetlerini görüntüleyin.',
