@@ -4174,17 +4174,19 @@
         const cost = document.createElement('td'); cost.textContent = item.cost == null ? '—' : `${fmt.format(item.cost)} ${item.currency}`;
         const actor = document.createElement('td'); actor.textContent = item.actorName || '—';
         const notes = document.createElement('td'); notes.textContent = item.completionNotes || item.notes || item.description || '—'; notes.title = notes.textContent;
-        const actions = document.createElement('td');
+        const actions = document.createElement('td'), actionGroup = document.createElement('div'); actions.className = 'maintenance-row-actions'; actionGroup.className = 'row-actions';
         if (item.status === 'Scheduled' && canWriteAssets()) {
           const start = document.createElement('button'); start.type = 'button'; start.className = 'btn small primary'; start.textContent = 'Başlat'; start.setAttribute('aria-label', `${item.assetTag} varlığındaki planlı bakımı başlat`);
           start.addEventListener('click', event => { event.stopPropagation(); updateCompanyMaintenancePlan(item.assetId, item.id, 'start'); });
-          const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'btn small'; cancel.textContent = 'İptal'; cancel.style.marginLeft = '5px'; cancel.setAttribute('aria-label', `${item.assetTag} varlığındaki bakım planını iptal et`);
+          const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'btn small'; cancel.textContent = 'İptal'; cancel.setAttribute('aria-label', `${item.assetTag} varlığındaki bakım planını iptal et`);
           cancel.addEventListener('click', event => { event.stopPropagation(); updateCompanyMaintenancePlan(item.assetId, item.id, 'cancel'); });
-          actions.append(start, cancel);
-        } else actions.textContent = '—';
+          actionGroup.append(start, cancel);
+        }
         const attachments = document.createElement('button'); attachments.type = 'button'; attachments.className = 'btn small'; attachments.textContent = 'Dosyalar'; attachments.setAttribute('aria-label', `${item.assetTag} ${item.maintenanceType} bakım eklerini aç`);
         attachments.addEventListener('click', event => { event.stopPropagation(); openMaintenanceAttachments(item.id, `${item.assetTag} · ${item.maintenanceType}`); });
-        actions.append(attachments);
+        const details = document.createElement('button'); details.type = 'button'; details.className = 'btn small'; details.textContent = 'Varlık ayrıntısı'; details.setAttribute('aria-label', `${item.assetTag} varlık ayrıntısını aç`);
+        details.addEventListener('click', event => { event.stopPropagation(); openAsset(item.assetId).then(() => selectAssetTab('maintenance')).catch(error => notify(error.message)); });
+        actionGroup.append(attachments, details); actions.append(actionGroup);
         row.append(asset, type, supplier, state, started, completed, cost, actor, notes, actions);
         const open = () => openAsset(item.assetId).then(() => selectAssetTab('maintenance')).catch(error => notify(error.message));
         row.addEventListener('click', event => { if (event.target !== link) open(); });
