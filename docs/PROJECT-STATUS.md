@@ -241,3 +241,9 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 - Varlıkta isteğe bağlı beklenen iade tarihi tekli/toplu zimmette doğrulanır; iade alınırken açık alan temizlenip tarih hareket geçmişinde korunur. Şirket kapsamlı takvim, varlık ayrıntısı, yaklaşan işler paneli ve kullanıcı tercihlerine bağlı günlük e-posta özeti tarihi gösterir; gecikmiş iadeler e-posta özetine dahildir.
 - PostgreSQL güvenlik/kabul paketi 45/45; zimmet → tarihli iade uçtan uca testi 1/1 geçti. Yerel Release Docker uygulaması `ready`, migration 58/0; değişiklikler `2460020` ve `cb74b7b` ile GitHub `main` dalında.
 - Kurtarma önizlemesi `backups/envantertr-20261009-050627-5c3da4a8` yedeğini doğrulayıp izole PostgreSQL'e açtı. Bu eski yedekte migration sayısı 57, medya ve Data Protection arşivleri boştu; dolayısıyla fotoğraf kurtarma veya gerçek Windows Server/Ubuntu canlı geri yükleme kabulü sayılmaz.
+
+## 2026-10-09 Santa demo verisi ve departman/konum hiyerarşisi
+
+- Ayrı Santa şirket alanına uygulamanın gerçek kayıt tablolarıyla 30 sentetik personel, 50 envanter, 10 aksesuar stoğu; altı ana departman ve 12 alt departman eklendi. Sunucu Odası ve Kabin 1/2 dahil kat/oda/kabin konum zinciri altı seviyeye kadar kullanılabilir. Örnek sunucu ve aksesuar görselleri şirket medya volume'unda saklanıp gerçek kayıtlara bağlandı. Geri alınabilir ön yedek `backups/pre-santa-demo-20261009.dump` alındı.
+- Departman oluşturma/düzenleme; üst birim ve kat seçimi, kat filtresinde tam departman yolu, döngü/derinlik doğrulaması ve çalışan bölüm adının yeniden adlandırılmasıyla tutarlı güncelleme içeriyor. İlgili PostgreSQL kabul senaryosu ve tam güvenlik/kabul paketi **51/51 geçti**. Önce kat filtresinin üst birimi yüklememesi yakalandı ve düzeltildi.
+- Docker yerel uygulaması `ready`, 61 migration uygulanmış ve bekleyen migration 0. GitHub `main` değişikliği `e6ae0ad` olarak içeriyor.
