@@ -82,7 +82,19 @@ const requiredEmployeeLabels = [
   'Varlıklar eksik yüklendi ({loaded}/{total}).',
   'Aksesuar zimmetleri eksik yüklendi ({loaded}/{total}); eksik form basılmadı.',
   'Yönetici listesi yüklenemedi: {error}', 'varlık detayını aç', 'kayıt', 'kişi',
-  'açık zimmet', 'etkin lisans', 'hareket', 'son'
+  'açık zimmet', 'etkin lisans', 'hareket', 'son',
+  'ÇALIŞAN KAYITLARI / DOSYA AKTARIMI', 'Çalışanları içe aktar',
+  'Şablon başlıkları: Personel No, Ad Soyad, E-posta, Departman, Görev Unvanı, Telefon, Konum, İşe Başlama Tarihi. Tarih biçimi yyyy-AA-gg olmalıdır. En fazla 5.000 satır ve 32 MB.',
+  'Uygulamadan dışa aktarılan çalışan CSV dosyası da yeniden içe alınabilir; etkinlik durumu ve Yönetici Personel No ilişkileri korunur. Var olan personel numaraları ve yönetici döngüleri reddedilir. Önizleme kayıt oluşturmaz.',
+  'Şablonu indir', 'CSV veya Excel dosyası seç', 'Henüz dosya seçilmedi.', 'Dosyayı doğrula',
+  'Doğrulanmış kayıtları ekle', 'Kayıtlı sütun eşlemesi', 'Profil adı', 'Eşlemeyi kaydet',
+  'Profili sil', 'Sütunları eşleyin', 'Eşlemeyi kullan ve yeniden doğrula',
+  'Dosya değişti. Önce yeniden doğrulayın.',
+  'Doğrulanan yeni çalışan kayıtları bu şirkete eklensin mi? Bu işlem mevcut kayıtları güncellemez.',
+  'Çalışanlar ekleniyor…', 'Dosya doğrulanıyor; kayıt eklenmiyor…',
+  'Dosya 32 MB sınırını aşıyor.', 'Yalnızca .csv veya .xlsx çalışan dosyaları desteklenir.',
+  'Doğrulanan yeni çalışan kayıtları bu şirkete eklensin mi? Bu işlem mevcut kayıtları güncellemez.',
+  '{count} satır incelendi.'
 ];
 
 const invalidRows = Object.entries(sandbox.localeRows)
