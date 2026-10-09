@@ -13,6 +13,8 @@ Bu belge EnvanterTR'nin kurumsal envanter yönetiminde beklenen ana işlevleri n
 
 İzole PostgreSQL güvenlik/kabul paketi 9 Ekim'de **57/57 geçti**. Bakım, varlık ve çalışan belgesi senaryoları yabancı şirkete ait kayda dosya yükleme/silme girişimlerinin reddini ve yabancı ekin veritabanı kaydıyla diskteki dosyasının korunduğunu doğrular. Bu kanıt bu üç dosya ailesiyle sınırlıdır; diğer modüllerdeki tüm dosya uçlarının her rol/tenant birleşimi için kabul edildiği anlamına gelmez.
 
+Rezervasyon CSV kabulü de yabancı şirket için gerçek bir kayıt ekleyip filtresiz yönetici dışa aktarımında bu kaydın bulunmadığını doğrular; şirketler arası CSV sızıntısına karşı somut testtir.
+
 Windows x64 paketinin Docker SDK geri dönüşü Windows `C:\` yollarını Docker Linux konteynerinin kabul ettiği mount biçimine normalize eder. Bu geliştirici bilgisayarında güncel kaynakla self-contained yayın başarıyla oluşturuldu; yayımlanmış uygulamanın LocalMachine DPAPI ile korunan veritabanı ve SMTP sırlarını açıp `/api/status` yanıtı vermesi doğrulandı. `deploy/windows/tests/publish-path-check.ps1` bu davranışı CI'da korur. Bu kanıt Windows Server hizmeti, gerçek PostgreSQL veya üretim güncelleme/kurtarma kabulü değildir.
 
 Bu Windows geliştirici bilgisayarında Linux CI dağıtım kapıları da geçici Ubuntu 24.04 Docker konteynerinde çalıştırıldı: shell sözdizimi, 7 arşiv doğrulama testi, yedek sağlık, restore/update güvenlik sırası, ilk kurulumun güvenli devamı ve Linux kaynak paketi/checksum üretimi/doğrulaması geçti. Gerçek Ubuntu/systemd sunucu tatbikatı hâlâ yapılmadı.

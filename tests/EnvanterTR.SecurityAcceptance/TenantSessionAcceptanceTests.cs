@@ -1707,10 +1707,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             var csv = await export.Content.ReadAsStringAsync();
             Assert.Contains("OWN-1", csv);
             Assert.Contains("'=1+1", csv);
-            Assert.DoesNotContain("FOREIGN-RES", csv);
             Assert.Equal(2, csv.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length);
         }
-
         using var crossTenant = await SendAsAdminAsync("/api/reservations", _otherCompanyId);
         Assert.Equal(HttpStatusCode.Unauthorized, crossTenant.StatusCode);
         await using var scope = _factory!.Services.CreateAsyncScope();
@@ -1723,6 +1721,14 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             AssetId = _otherCompanyAssetId, EmployeeId = _otherCompanyEmployeeId, RequestedByUserId = _userId,
             StartsOn = today, EndsOn = today.AddDays(1), Status = "Approved" });
         await db.SaveChangesAsync();
+        using (var allReservationsExport = await SendAsAdminAsync("/api/reservations/export.csv"))
+        {
+            Assert.Equal(HttpStatusCode.OK, allReservationsExport.StatusCode);
+            var csv = await allReservationsExport.Content.ReadAsStringAsync();
+            Assert.Contains("OWN-1", csv);
+            Assert.DoesNotContain("OTHER-1", csv);
+            Assert.DoesNotContain("FOREIGN-RES", csv);
+        }
         using (var foreignNotification = await SendAsRoleAsync(HttpMethod.Put, "/api/notifications/states", "admin",
                    System.Net.Http.Json.JsonContent.Create(new { kind = "reservation", recordId = foreignReservationId, action = "dismiss" }), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.NotFound, foreignNotification.StatusCode);
