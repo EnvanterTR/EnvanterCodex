@@ -3601,12 +3601,68 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             entry.Details.Contains(rotatedRecoveryCode, StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Login_company_choices_are_limited_to_the_accounts_active_memberships()
+    {
+        const string password = "Acceptance-tenant-choice-Password-43!";
+        var email = $"acceptance-{_userId:N}@example.invalid";
+        var additionalCompanyId = Guid.NewGuid();
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var services = scope.ServiceProvider;
+            var users = services.GetRequiredService<UserManager<EnvanterUser>>();
+            var user = await users.FindByIdAsync(_userId.ToString());
+            Assert.NotNull(user);
+            var passwordResult = await users.AddPasswordAsync(user, password);
+            Assert.True(passwordResult.Succeeded, string.Join("; ", passwordResult.Errors.Select(error => error.Description)));
+
+            var db = services.GetRequiredService<AppDbContext>();
+            db.Companies.Add(new Company { Id = additionalCompanyId, Name = "Authorized second company", IsActive = true });
+            db.CompanyMemberships.Add(new CompanyMembership { CompanyId = additionalCompanyId, UserId = _userId, RoleKey = "owner" });
+            await db.SaveChangesAsync();
+        }
+
+        using var loginClient = _factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        using var csrfResponse = await loginClient.GetAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using (var chooserResponse = await SendAnonymousLoginAsync(loginClient, email, password, null,
+            requestToken, antiforgeryCookie, companyId: null))
+        using (var chooser = JsonDocument.Parse(await chooserResponse.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, chooserResponse.StatusCode);
+            var companies = chooser.RootElement.GetProperty("companies").EnumerateArray().ToArray();
+            Assert.Equal(2, companies.Length);
+            Assert.Contains(companies, company => company.GetProperty("id").GetGuid() == _companyId);
+            Assert.Contains(companies, company => company.GetProperty("id").GetGuid() == additionalCompanyId);
+            Assert.DoesNotContain(companies, company => company.GetProperty("id").GetGuid() == _otherCompanyId);
+            Assert.DoesNotContain(companies, company => company.GetProperty("name").GetString() == "Other security acceptance company");
+        }
+
+        using (var authorizedChoice = await SendAnonymousLoginAsync(loginClient, email, password, null,
+            requestToken, antiforgeryCookie, companyId: additionalCompanyId))
+        using (var session = JsonDocument.Parse(await authorizedChoice.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, authorizedChoice.StatusCode);
+            Assert.Equal(additionalCompanyId, session.RootElement.GetProperty("companyId").GetGuid());
+        }
+
+        using var unrelatedChoice = await SendAnonymousLoginAsync(loginClient, email, password, null,
+            requestToken, antiforgeryCookie, companyId: _otherCompanyId);
+        Assert.Equal(HttpStatusCode.Forbidden, unrelatedChoice.StatusCode);
+    }
+
     private async Task<HttpResponseMessage> SendAnonymousLoginAsync(HttpClient client, string email, string password, string? twoFactorCode,
-        string requestToken, string antiforgeryCookie)
+        string requestToken, string antiforgeryCookie, Guid? companyId = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/session/login")
         {
-            Content = System.Net.Http.Json.JsonContent.Create(new { email, password, companyId = _companyId, rememberMe = true, twoFactorCode })
+            Content = System.Net.Http.Json.JsonContent.Create(new { email, password, companyId, rememberMe = true, twoFactorCode })
         };
         request.Headers.Add("X-CSRF-TOKEN", requestToken);
         request.Headers.Add("Cookie", antiforgeryCookie);
