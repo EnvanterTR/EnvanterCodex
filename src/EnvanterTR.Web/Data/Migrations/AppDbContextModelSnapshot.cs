@@ -2090,6 +2090,49 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("LocalLicenseGrants");
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.OperationalNotificationEmailDigest", b =>
+                {
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("DeliveryDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<DateTimeOffset?>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("CompanyId", "UserId", "DeliveryDate");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("OperationalNotificationEmailDigests", t =>
+                        {
+                            t.HasCheckConstraint("CK_OperationalNotificationEmailDigests_Status", "\"Status\" IN ('Sending', 'Sent', 'Failed')");
+                        });
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.OperationalNotificationPreference", b =>
                 {
                     b.Property<Guid>("CompanyId")
@@ -2097,6 +2140,11 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("EmailEnabledKindsJson")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("EnabledKindsJson")
                         .IsRequired()
@@ -3817,6 +3865,21 @@ namespace EnvanterTR.Web.Data.Migrations
                         .WithMany()
                         .HasForeignKey("PlanId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.OperationalNotificationEmailDigest", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

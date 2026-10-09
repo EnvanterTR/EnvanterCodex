@@ -272,7 +272,21 @@ public sealed class OperationalNotificationPreference
     public Guid CompanyId { get; set; }
     public Guid UserId { get; set; }
     public required string EnabledKindsJson { get; set; }
+    public required string EmailEnabledKindsJson { get; set; }
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class OperationalNotificationEmailDigest
+{
+    public Guid CompanyId { get; set; }
+    public Guid UserId { get; set; }
+    public DateOnly DeliveryDate { get; set; }
+    public required string Status { get; set; }
+    public DateTimeOffset StartedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? SentAt { get; set; }
+    public int AttemptCount { get; set; }
+    public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
+    public string? LastError { get; set; }
 }
 
 public sealed class OperationalNotificationState

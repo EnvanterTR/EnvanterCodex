@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EnvanterTR.Web.Data;
 
-public sealed record UpdateOperationalNotificationPreferencesRequest(string[]? EnabledKinds);
+public sealed record UpdateOperationalNotificationPreferencesRequest(string[]? EnabledKinds, string[]? EmailEnabledKinds = null);
 public sealed record UpdateOperationalNotificationStateRequest(string? Kind, Guid RecordId, string? Action);
 
 public static class OperationalNotificationEndpoints
@@ -18,10 +18,10 @@ public static class OperationalNotificationEndpoints
         api.MapGet("/notifications/preferences", async (ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!TryIdentity(user, out var companyId, out var userId)) return Results.Forbid();
-            var json = await db.OperationalNotificationPreferences.AsNoTracking()
+            var row = await db.OperationalNotificationPreferences.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && x.UserId == userId)
-                .Select(x => x.EnabledKindsJson).SingleOrDefaultAsync(ct);
-            return Results.Ok(new { enabledKinds = ParseKinds(json) });
+                .Select(x => new { x.EnabledKindsJson, x.EmailEnabledKindsJson }).SingleOrDefaultAsync(ct);
+            return Results.Ok(new { enabledKinds = ParseKinds(row?.EnabledKindsJson), emailEnabledKinds = ParseEmailKinds(row?.EmailEnabledKindsJson) });
         }).RequireAuthorization("asset.read");
 
         api.MapPut("/notifications/preferences", async ([FromBody] UpdateOperationalNotificationPreferencesRequest request,
@@ -34,19 +34,28 @@ public static class OperationalNotificationEndpoints
                 requestedKinds.Distinct(StringComparer.Ordinal).Count() != requestedKinds.Length)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["enabledKinds"] = ["Bildirim türü seçimi geçersiz."] });
 
+            var requestedEmailKinds = request.EmailEnabledKinds?.Select(kind => kind?.Trim().ToLowerInvariant()).ToArray() ?? [];
+            if (requestedEmailKinds.Length > AllowedKinds.Length ||
+                requestedEmailKinds.Any(kind => kind is null || !AllowedKinds.Contains(kind, StringComparer.Ordinal)) ||
+                requestedEmailKinds.Distinct(StringComparer.Ordinal).Count() != requestedEmailKinds.Length)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["emailEnabledKinds"] = ["E-posta bildirim türü seçimi geçersiz."] });
+
             var kinds = AllowedKinds.Where(requestedKinds.Contains).ToArray();
+            var emailKinds = AllowedKinds.Where(requestedEmailKinds.Contains).ToArray();
             var row = await db.OperationalNotificationPreferences.SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.UserId == userId, ct);
             if (row is null)
             {
-                row = new OperationalNotificationPreference { CompanyId = companyId, UserId = userId, EnabledKindsJson = "[]" };
+                row = new OperationalNotificationPreference { CompanyId = companyId, UserId = userId,
+                    EnabledKindsJson = "[]", EmailEnabledKindsJson = "[]" };
                 db.OperationalNotificationPreferences.Add(row);
             }
             row.EnabledKindsJson = JsonSerializer.Serialize(kinds, JsonOptions);
+            row.EmailEnabledKindsJson = JsonSerializer.Serialize(emailKinds, JsonOptions);
             row.UpdatedAt = DateTimeOffset.UtcNow;
             try { await db.SaveChangesAsync(ct); }
             catch (DbUpdateException) { return Results.Conflict(new { message = "Bildirim tercihleri eşzamanlı olarak değiştirildi. Yenileyip tekrar deneyin." }); }
-            return Results.Ok(new { enabledKinds = kinds, row.UpdatedAt });
+            return Results.Ok(new { enabledKinds = kinds, emailEnabledKinds = emailKinds, row.UpdatedAt });
         }).RequireAuthorization("asset.read");
 
         api.MapGet("/notifications/states", async (string[]? key, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
@@ -126,6 +135,19 @@ public static class OperationalNotificationEndpoints
             return AllowedKinds.Where(kinds.Contains).ToArray();
         }
         catch (JsonException) { return AllowedKinds; }
+    }
+
+    private static string[] ParseEmailKinds(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        try
+        {
+            var kinds = JsonSerializer.Deserialize<string[]>(json, JsonOptions);
+            if (kinds is null || kinds.Length > AllowedKinds.Length || kinds.Any(x => !AllowedKinds.Contains(x, StringComparer.Ordinal)) ||
+                kinds.Distinct(StringComparer.Ordinal).Count() != kinds.Length) return [];
+            return AllowedKinds.Where(kinds.Contains).ToArray();
+        }
+        catch (JsonException) { return []; }
     }
 
     private static bool TryIdentity(ClaimsPrincipal user, out Guid companyId, out Guid userId)

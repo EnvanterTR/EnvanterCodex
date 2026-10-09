@@ -22,6 +22,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<CustomAssetReport> CustomAssetReports => Set<CustomAssetReport>();
     public DbSet<DashboardPreference> DashboardPreferences => Set<DashboardPreference>();
     public DbSet<OperationalNotificationPreference> OperationalNotificationPreferences => Set<OperationalNotificationPreference>();
+    public DbSet<OperationalNotificationEmailDigest> OperationalNotificationEmailDigests => Set<OperationalNotificationEmailDigest>();
     public DbSet<OperationalNotificationState> OperationalNotificationStates => Set<OperationalNotificationState>();
     public DbSet<AssetEvent> AssetEvents => Set<AssetEvent>();
     public DbSet<AssetAttachment> AssetAttachments => Set<AssetAttachment>();
@@ -213,9 +214,21 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 
         modelBuilder.Entity<OperationalNotificationPreference>().HasKey(x => new { x.CompanyId, x.UserId });
         modelBuilder.Entity<OperationalNotificationPreference>().Property(x => x.EnabledKindsJson).HasMaxLength(256).IsRequired();
+        modelBuilder.Entity<OperationalNotificationPreference>().Property(x => x.EmailEnabledKindsJson).HasMaxLength(256).IsRequired();
         modelBuilder.Entity<OperationalNotificationPreference>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<OperationalNotificationPreference>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<OperationalNotificationEmailDigest>().HasKey(x => new { x.CompanyId, x.UserId, x.DeliveryDate });
+        modelBuilder.Entity<OperationalNotificationEmailDigest>().Property(x => x.Status).HasMaxLength(16).IsRequired();
+        modelBuilder.Entity<OperationalNotificationEmailDigest>().Property(x => x.ConcurrencyToken).IsConcurrencyToken();
+        modelBuilder.Entity<OperationalNotificationEmailDigest>().Property(x => x.LastError).HasMaxLength(80);
+        modelBuilder.Entity<OperationalNotificationEmailDigest>().ToTable(table =>
+            table.HasCheckConstraint("CK_OperationalNotificationEmailDigests_Status", "\"Status\" IN ('Sending', 'Sent', 'Failed')"));
+        modelBuilder.Entity<OperationalNotificationEmailDigest>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<OperationalNotificationEmailDigest>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<OperationalNotificationState>().HasKey(x => new { x.CompanyId, x.UserId, x.Kind, x.RecordId });

@@ -2725,6 +2725,11 @@
       for (const [kind, label] of [['maintenance', 'Bakım planları'], ['audit', 'Fiziksel denetimler'], ['license', 'Lisans bitişleri'], ['warranty', 'Garanti bitişleri']]) {
         const wrapper = document.createElement('label'), checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = 'kind'; checkbox.value = kind; wrapper.append(checkbox, document.createTextNode(label)); form.append(wrapper);
       }
+      const emailTitle = document.createElement('strong'); emailTitle.textContent = 'E-posta özeti (isteğe bağlı)'; form.append(emailTitle);
+      const emailHint = document.createElement('small'); emailHint.textContent = 'Sunucu e-posta (SMTP) ayarı etkinse seçtikleriniz günde en fazla bir kez, hesabınızın doğrulanmış e-posta adresine gönderilir.'; form.append(emailHint);
+      for (const [kind, label] of [['maintenance', 'Bakım planları için e-posta'], ['audit', 'Fiziksel denetimler için e-posta'], ['license', 'Lisans bitişleri için e-posta'], ['warranty', 'Garanti bitişleri için e-posta']]) {
+        const wrapper = document.createElement('label'), checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = 'emailKind'; checkbox.value = kind; wrapper.append(checkbox, document.createTextNode(label)); form.append(wrapper);
+      }
       const save = document.createElement('button'); save.type = 'submit'; save.textContent = 'Tercihleri kaydet'; form.append(save);
       panel.insertBefore(controls, list); panel.insertBefore(form, list);
       settings.addEventListener('click', async () => {
@@ -2733,6 +2738,8 @@
           try {
             const preferences = await api('/api/notifications/preferences'); operationalAlertKinds = preferences.enabledKinds || [];
             form.querySelectorAll('input[name="kind"]').forEach(input => { input.checked = operationalAlertKinds.includes(input.value); });
+            const emailKinds = preferences.emailEnabledKinds || [];
+            form.querySelectorAll('input[name="emailKind"]').forEach(input => { input.checked = emailKinds.includes(input.value); });
           } catch (error) { notify(error.message); form.hidden = true; }
         }
       });
@@ -2741,7 +2748,8 @@
         event.preventDefault(); const button = $('button[type="submit"]', form); button.disabled = true;
         try {
           const enabledKinds = [...form.querySelectorAll('input[name="kind"]:checked')].map(input => input.value);
-          const response = await api('/api/notifications/preferences', { method: 'PUT', body: JSON.stringify({ enabledKinds }) });
+          const emailEnabledKinds = [...form.querySelectorAll('input[name="emailKind"]:checked')].map(input => input.value);
+          const response = await api('/api/notifications/preferences', { method: 'PUT', body: JSON.stringify({ enabledKinds, emailEnabledKinds }) });
           operationalAlertKinds = response.enabledKinds || []; form.hidden = true; showDismissedOperationalAlerts = false;
           dismissed.textContent = 'Gizlenenleri göster'; notify('Bildirim tercihleri kaydedildi.'); await loadOperationalAlerts();
         } catch (error) { notify(error.message); }

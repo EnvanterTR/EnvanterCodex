@@ -1474,19 +1474,32 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 payload.RootElement.GetProperty("enabledKinds").EnumerateArray().Select(x => x.GetString()).ToArray());
         }
         using (var savedPreferences = await SendAsRoleAsync(HttpMethod.Put, "/api/notifications/preferences", "viewer",
-                   System.Net.Http.Json.JsonContent.Create(new { enabledKinds = new[] { "LICENSE", "warranty" } }), requestToken, antiforgeryCookie))
+                   System.Net.Http.Json.JsonContent.Create(new { enabledKinds = new[] { "LICENSE", "warranty" }, emailEnabledKinds = new[] { "LICENSE" } }), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.OK, savedPreferences.StatusCode);
         using (var savedPreferences = await SendAsRoleAsync(HttpMethod.Get, "/api/notifications/preferences", "viewer"))
         {
             using var payload = JsonDocument.Parse(await savedPreferences.Content.ReadAsStringAsync());
             Assert.Equal(new[] { "license", "warranty" },
                 payload.RootElement.GetProperty("enabledKinds").EnumerateArray().Select(x => x.GetString()).ToArray());
+            Assert.Equal(new[] { "license" },
+                payload.RootElement.GetProperty("emailEnabledKinds").EnumerateArray().Select(x => x.GetString()).ToArray());
+        }
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var emailService = scope.ServiceProvider.GetRequiredService<OperationalNotificationEmailService>();
+            await emailService.RunOnceAsync(CancellationToken.None);
+            var deliveredDigest = Assert.Single(_smtpCapture.Messages);
+            Assert.Contains($"To: acceptance-{_userId:N}@example.invalid", deliveredDigest, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("OTHER-SECURITY-LICENSE", deliveredDigest, StringComparison.Ordinal);
+            await emailService.RunOnceAsync(CancellationToken.None);
+            Assert.Single(_smtpCapture.Messages);
         }
         using (var otherUserPreferences = await SendAsUserAsync(HttpMethod.Get, "/api/notifications/preferences",
                    _sameCompanyOtherUserId, _companyId))
         {
             using var payload = JsonDocument.Parse(await otherUserPreferences.Content.ReadAsStringAsync());
             Assert.Equal(4, payload.RootElement.GetProperty("enabledKinds").GetArrayLength());
+            Assert.Empty(payload.RootElement.GetProperty("emailEnabledKinds").EnumerateArray());
         }
         using (var invalidPreference = await SendAsRoleAsync(HttpMethod.Put, "/api/notifications/preferences", "viewer",
                    System.Net.Http.Json.JsonContent.Create(new { enabledKinds = new[] { "payroll" } }), requestToken, antiforgeryCookie))
