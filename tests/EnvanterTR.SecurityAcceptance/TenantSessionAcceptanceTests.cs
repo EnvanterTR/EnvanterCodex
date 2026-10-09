@@ -3427,6 +3427,33 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(categoryId, modelPayload.RootElement.GetProperty("categoryId").GetGuid());
 
         var png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jNioAAAAASUVORK5CYII=");
+        var ownSupplierId = Guid.NewGuid();
+        var foreignSupplierId = Guid.NewGuid();
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SupplierCatalogEntries.AddRange(
+                new SupplierCatalogEntry { Id = ownSupplierId, CompanyId = _companyId, Name = $"OWN-SUPPLIER-{_userId:N}", NormalizedName = $"OWN-SUPPLIER-{_userId:N}".ToUpperInvariant() },
+                new SupplierCatalogEntry { Id = foreignSupplierId, CompanyId = _otherCompanyId, Name = $"OTHER-SUPPLIER-{_userId:N}", NormalizedName = $"OTHER-SUPPLIER-{_userId:N}".ToUpperInvariant() });
+            db.CompanyMemberships.Add(new CompanyMembership { CompanyId = _otherCompanyId, UserId = _userId, RoleKey = "admin" });
+            await db.SaveChangesAsync();
+        }
+
+        using var supplierLogoForm = new MultipartFormDataContent();
+        supplierLogoForm.Add(new ByteArrayContent(png), "file", "supplier.png");
+        using var supplierLogoUpload = await SendAsRoleAsync(HttpMethod.Post, $"/api/suppliers/{ownSupplierId}/logo", "admin",
+            supplierLogoForm, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, supplierLogoUpload.StatusCode);
+        using (var supplierLogo = await SendAsAdminAsync($"/api/suppliers/{ownSupplierId}/logo"))
+        {
+            Assert.Equal(HttpStatusCode.OK, supplierLogo.StatusCode);
+            Assert.Equal("image/png", supplierLogo.Content.Headers.ContentType?.MediaType);
+            Assert.Equal(png, await supplierLogo.Content.ReadAsByteArrayAsync());
+        }
+        using (var crossTenantSupplierLogo = await SendAsAdminAsync($"/api/suppliers/{ownSupplierId}/logo", _otherCompanyId))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenantSupplierLogo.StatusCode);
+        using (var crossTenantSupplierRecord = await SendAsAdminAsync($"/api/suppliers/{foreignSupplierId}/logo"))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenantSupplierRecord.StatusCode);
         using var logoForm = new MultipartFormDataContent();
         var logoContent = new ByteArrayContent(png); logoContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
         logoForm.Add(logoContent, "file", "logo.png");
