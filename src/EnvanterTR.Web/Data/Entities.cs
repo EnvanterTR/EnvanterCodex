@@ -33,6 +33,8 @@ public sealed class CompanyDepartment
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid CompanyId { get; set; }
+    public Guid? ParentDepartmentId { get; set; }
+    public Guid? LocationCatalogId { get; set; }
     public required string Name { get; set; }
     public required string NormalizedName { get; set; }
     public bool IsActive { get; set; } = true;

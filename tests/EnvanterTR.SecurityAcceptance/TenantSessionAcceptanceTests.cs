@@ -105,8 +105,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             new SoftwareLicense { Id = _ownLicenseId, CompanyId = _companyId, Name = $"OWN-SECURITY-LICENSE-{_userId:N}", Seats = 4, Currency = "USD", ExpirationDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30) },
             new SoftwareLicense { Id = _otherCompanyLicenseId, CompanyId = _otherCompanyId, Name = $"OTHER-SECURITY-LICENSE-{_userId:N}", Seats = 8, Currency = "USD", ExpirationDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30) });
         db.Accessories.AddRange(
-            new Accessory { Id = _ownAccessoryId, CompanyId = _companyId, Name = $"OWN-SECURITY-ACCESSORY-{_userId:N}", TotalQuantity = 5 },
-            new Accessory { Id = _otherCompanyAccessoryId, CompanyId = _otherCompanyId, Name = $"OTHER-SECURITY-ACCESSORY-{_userId:N}", TotalQuantity = 7 });
+            new Accessory { Id = _ownAccessoryId, CompanyId = _companyId, Name = $"OWN-SECURITY-ACCESSORY-{_userId:N}", Category = "Klavye", Location = "İstanbul Ofis", TotalQuantity = 5 },
+            new Accessory { Id = _otherCompanyAccessoryId, CompanyId = _otherCompanyId, Name = $"OTHER-SECURITY-ACCESSORY-{_userId:N}", Category = "Gizli kategori", Location = "Gizli konum", TotalQuantity = 7 });
         db.Consumables.AddRange(
             new Consumable { Id = _ownConsumableId, CompanyId = _companyId, Name = $"OWN-SECURITY-CONSUMABLE-{_userId:N}", TotalQuantity = 5 },
             new Consumable { Id = _otherCompanyConsumableId, CompanyId = _otherCompanyId, Name = $"OTHER-SECURITY-CONSUMABLE-{_userId:N}", TotalQuantity = 7 });
@@ -2607,6 +2607,86 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Accessory_filter_options_and_filters_are_company_scoped()
+    {
+        using var optionsResponse = await SendAsAdminAsync("/api/accessories/filter-options");
+        Assert.Equal(HttpStatusCode.OK, optionsResponse.StatusCode);
+        using var options = JsonDocument.Parse(await optionsResponse.Content.ReadAsStringAsync());
+        var categories = options.RootElement.GetProperty("categories").EnumerateArray().Select(item => item.GetString()).ToArray();
+        var locations = options.RootElement.GetProperty("locations").EnumerateArray().Select(item => item.GetString()).ToArray();
+        Assert.Contains("Klavye", categories);
+        Assert.DoesNotContain("Gizli kategori", categories);
+        Assert.Contains("İstanbul Ofis", locations);
+        Assert.DoesNotContain("Gizli konum", locations);
+
+        using var matching = await SendAsAdminAsync("/api/accessories?category=Klavye&location=%C4%B0stanbul%20Ofis&page=1&pageSize=20");
+        Assert.Equal(HttpStatusCode.OK, matching.StatusCode);
+        using var matchingJson = JsonDocument.Parse(await matching.Content.ReadAsStringAsync());
+        Assert.Equal(1, matchingJson.RootElement.GetProperty("total").GetInt32());
+        Assert.Equal(_ownAccessoryId, matchingJson.RootElement.GetProperty("items")[0].GetProperty("id").GetGuid());
+
+        using var otherTenant = await SendAsAdminAsync("/api/accessories?category=Gizli%20kategori&page=1&pageSize=20");
+        Assert.Equal(HttpStatusCode.OK, otherTenant.StatusCode);
+        using var otherJson = JsonDocument.Parse(await otherTenant.Content.ReadAsStringAsync());
+        Assert.Equal(0, otherJson.RootElement.GetProperty("total").GetInt32());
+    }
+
+    [Fact]
+    public async Task Department_hierarchy_can_be_created_moved_and_filtered_by_floor()
+    {
+        var floorOne = new CompanyLocation { Id = Guid.NewGuid(), CompanyId = _companyId, Name = "Acceptance floor 1", NormalizedName = "ACCEPTANCE FLOOR 1" };
+        var floorTwo = new CompanyLocation { Id = Guid.NewGuid(), CompanyId = _companyId, Name = "Acceptance floor 2", NormalizedName = "ACCEPTANCE FLOOR 2" };
+        var parentOne = new CompanyDepartment { Id = Guid.NewGuid(), CompanyId = _companyId, Name = "Acceptance parent one", NormalizedName = "ACCEPTANCE PARENT ONE" };
+        var parentTwo = new CompanyDepartment { Id = Guid.NewGuid(), CompanyId = _companyId, Name = "Acceptance parent two", NormalizedName = "ACCEPTANCE PARENT TWO", LocationCatalogId = floorTwo.Id };
+        var child = new CompanyDepartment { Id = Guid.NewGuid(), CompanyId = _companyId, Name = "Acceptance child", NormalizedName = "ACCEPTANCE CHILD", ParentDepartmentId = parentOne.Id, LocationCatalogId = floorOne.Id };
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.CompanyLocations.AddRange(floorOne, floorTwo);
+            db.CompanyDepartments.AddRange(parentOne, parentTwo, child);
+            await db.SaveChangesAsync();
+        }
+
+        using (var floorResponse = await SendAsAdminAsync($"/api/departments?locationId={floorOne.Id}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, floorResponse.StatusCode);
+            using var floorJson = JsonDocument.Parse(await floorResponse.Content.ReadAsStringAsync());
+            var item = Assert.Single(floorJson.RootElement.GetProperty("items").EnumerateArray());
+            Assert.Equal(child.Id, item.GetProperty("departmentId").GetGuid());
+            Assert.Equal("Acceptance parent one / Acceptance child", item.GetProperty("departmentPath").GetString());
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using var createResponse = await SendAsUserAsync(HttpMethod.Post, "/api/departments", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Acceptance new child", parentDepartmentId = parentOne.Id, locationCatalogId = floorOne.Id }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        using var createdPayload = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var createdId = createdPayload.RootElement.GetProperty("id").GetGuid();
+
+        using var updateResponse = await SendAsUserAsync(HttpMethod.Put, $"/api/departments/{createdId}", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Acceptance moved child", parentDepartmentId = parentTwo.Id, locationCatalogId = floorTwo.Id }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+        using (var floorResponse = await SendAsAdminAsync($"/api/departments?locationId={floorTwo.Id}"))
+        {
+            using var floorJson = JsonDocument.Parse(await floorResponse.Content.ReadAsStringAsync());
+            Assert.Contains(floorJson.RootElement.GetProperty("items").EnumerateArray(), item =>
+                item.GetProperty("departmentId").GetGuid() == createdId &&
+                item.GetProperty("departmentPath").GetString() == "Acceptance parent two / Acceptance moved child");
+        }
+
+        using var cycleResponse = await SendAsUserAsync(HttpMethod.Put, $"/api/departments/{parentTwo.Id}", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = parentTwo.Name, parentDepartmentId = createdId, locationCatalogId = floorTwo.Id }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.BadRequest, cycleResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task Company_roles_follow_the_asset_stock_employee_and_settings_policy_matrix()
     {
         var roleMatrix = new[]
@@ -2638,6 +2718,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             var stockReadPaths = new[]
             {
                 "/api/accessories?page=1&pageSize=20",
+                "/api/accessories/filter-options",
                 "/api/consumables?page=1&pageSize=20",
                 "/api/components?page=1&pageSize=20",
                 "/api/software-licenses?page=1&pageSize=20"

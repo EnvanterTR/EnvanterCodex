@@ -1379,9 +1379,9 @@ public static class DataExportEndpoints
                 }
                 names.Add(parentLocation.Name);
                 parentId = parentLocation.ParentId;
-                if (names.Count > 3)
+                if (names.Count > 6)
                 {
-                    AddError(errors, "Konum kataloğu bina, kat ve oda olmak üzere en fazla üç seviyeli olabilir.");
+                    AddError(errors, "Konum kataloğu en fazla altı seviyeli olabilir.");
                     break;
                 }
             }

@@ -772,7 +772,12 @@ public static class AssetEndpoints
                 if (selectedIndex >= 0) items[selectedIndex] = catalogEntry; else items.Add(catalogEntry);
             }
             items = items.OrderBy(x => x.Name, StringComparer.Create(CultureInfo.GetCultureInfo("tr-TR"), true)).ToList();
-            return Results.Ok(new { items, total = items.Count });
+            var departmentCounts = await db.CompanyDepartments.AsNoTracking()
+                .Where(x => x.CompanyId == companyId && x.LocationCatalogId != null)
+                .GroupBy(x => x.LocationCatalogId!.Value)
+                .Select(group => new { locationId = group.Key, count = group.Count() })
+                .ToDictionaryAsync(x => x.locationId.ToString(), x => x.count, cancellationToken);
+            return Results.Ok(new { items, total = items.Count, departmentCounts });
         }).RequireAuthorization("asset.read");
 
         api.MapPost("/locations/catalog", async ([FromBody] LocationCatalogRequest request,
@@ -794,7 +799,7 @@ public static class AssetEndpoints
                 if (parent is null || !parent.IsActive) return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentLocationId"] = ["Etkin üst konum bu şirkette bulunamadı."] });
                 var chain = await GetLocationChainAsync(db, companyId, parent, cancellationToken);
                 depth = chain.Count;
-                if (depth >= 3) return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentLocationId"] = ["Hiyerarşi en fazla bina, kat ve oda olmak üzere üç seviyedir."] });
+                if (depth >= 6) return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentLocationId"] = ["Konum ağacı en fazla altı seviyeye kadar açılabilir."] });
                 path = string.Join(" / ", chain.Select(x => x.Name).Append(name));
             }
             if (path.Length > 160) return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Tam konum yolu 160 karakteri aşamaz; adları kısaltın."] });

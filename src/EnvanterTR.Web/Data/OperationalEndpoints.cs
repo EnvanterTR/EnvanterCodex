@@ -818,9 +818,11 @@ public static class OperationalEndpoints
 
         // Employee values remain backward-compatible free text while this catalog lets a
         // company maintain departments before they have employees assigned.
-        api.MapGet("/departments", async (ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        api.MapGet("/departments", async ([FromQuery] Guid? locationId, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
+            if (locationId is Guid selectedLocation && !await db.CompanyLocations.AnyAsync(x =>
+                x.CompanyId == companyId && x.Id == selectedLocation && x.IsActive, cancellationToken)) return Results.NotFound();
             var departments = await db.Employees.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && x.Department != null && x.Department.Trim() != "")
                 .GroupBy(x => x.Department!.Trim().ToLower())
@@ -833,14 +835,18 @@ public static class OperationalEndpoints
                     inactiveEmployeeCount = group.Count(employee => !employee.IsActive)
                 })
                 .ToListAsync(cancellationToken);
-            var catalog = await db.CompanyDepartments.AsNoTracking().Where(x => x.CompanyId == companyId)
+            var allCatalog = await db.CompanyDepartments.AsNoTracking().Where(x => x.CompanyId == companyId)
                 .OrderBy(x => x.Name).ToListAsync(cancellationToken);
+            var catalog = locationId is Guid departmentLocationId
+                ? allCatalog.Where(x => x.LocationCatalogId == departmentLocationId).ToList()
+                : allCatalog;
             var catalogNames = catalog.Select(x => x.NormalizedName).ToHashSet(StringComparer.Ordinal);
             var items = new Dictionary<string, (string name, int employeeCount, int activeEmployeeCount,
                 int inactiveEmployeeCount, bool isCatalogEntry, bool isActive)>(StringComparer.Ordinal);
             foreach (var department in departments)
             {
                 var key = NormalizeDepartmentName(department.name!);
+                if (locationId is not null && !catalogNames.Contains(key)) continue;
                 if (items.TryGetValue(key, out var current))
                     items[key] = (current.name, current.employeeCount + department.employeeCount,
                         current.activeEmployeeCount + department.activeEmployeeCount,
@@ -857,10 +863,26 @@ public static class OperationalEndpoints
                         current.inactiveEmployeeCount, true, entry.IsActive);
                 else items[key] = (entry.Name, 0, 0, 0, true, entry.IsActive);
             }
+            var parents = allCatalog.ToDictionary(x => x.Id);
+            var locations = await db.CompanyLocations.AsNoTracking().Where(x => x.CompanyId == companyId)
+                .ToDictionaryAsync(x => x.Id, x => x.Name, cancellationToken);
+            string DepartmentPath(CompanyDepartment entry)
+            {
+                if (entry.ParentDepartmentId is not Guid parentId || !parents.TryGetValue(parentId, out var parent)) return entry.Name;
+                return $"{DepartmentPath(parent)} / {entry.Name}";
+            }
+            var catalogItems = catalog.ToDictionary(x => x.NormalizedName, StringComparer.Ordinal);
             var result = items.Values.OrderBy(x => x.name, StringComparer.CurrentCultureIgnoreCase)
                 .Select(x => new { name = x.name, employeeCount = x.employeeCount,
                     activeEmployeeCount = x.activeEmployeeCount, inactiveEmployeeCount = x.inactiveEmployeeCount,
-                    isCatalogEntry = x.isCatalogEntry, isActive = x.isActive }).ToArray();
+                    isCatalogEntry = x.isCatalogEntry, isActive = x.isActive,
+                    departmentId = catalogItems.TryGetValue(NormalizeDepartmentName(x.name), out var departmentEntry) ? departmentEntry.Id : (Guid?)null,
+                    parentDepartmentId = catalogItems.TryGetValue(NormalizeDepartmentName(x.name), out var entry) ? entry.ParentDepartmentId : (Guid?)null,
+                    parentDepartmentName = entry?.ParentDepartmentId is Guid parentId && parents.TryGetValue(parentId, out var parent) ? DepartmentPath(parent) : null,
+                    departmentPath = entry is null ? x.name : DepartmentPath(entry),
+                    locationCatalogId = entry?.LocationCatalogId,
+                    locationName = entry?.LocationCatalogId is Guid selectedId && locations.TryGetValue(selectedId, out var locationName) ? locationName : null
+                }).ToArray();
             return Results.Ok(new { items = result, total = result.Length });
         }).RequireAuthorization("people.read");
 
@@ -878,7 +900,26 @@ public static class OperationalEndpoints
                     .Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal)), cancellationToken);
             if (existsInCatalog || existsOnEmployee)
                 return Results.Conflict(new { message = "Bu departman adı bu şirkette zaten kayıtlı." });
-            var entry = new CompanyDepartment { CompanyId = companyId, Name = name, NormalizedName = normalized };
+            if (request.ParentDepartmentId is Guid parentId && !await db.CompanyDepartments.AnyAsync(x =>
+                x.CompanyId == companyId && x.Id == parentId && x.IsActive, cancellationToken))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentDepartmentId"] = ["Üst departman aynı şirket içinde etkin olmalıdır."] });
+            if (request.LocationCatalogId is Guid departmentLocation && !await db.CompanyLocations.AnyAsync(x =>
+                x.CompanyId == companyId && x.Id == departmentLocation && x.IsActive, cancellationToken))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["locationCatalogId"] = ["Departman konumu aynı şirkette etkin bir konum olmalıdır."] });
+            if (request.ParentDepartmentId is Guid parentDepartmentId)
+            {
+                var seen = new HashSet<Guid>(); var cursor = parentDepartmentId; var depth = 1;
+                while (seen.Add(cursor))
+                {
+                    var ancestor = await db.CompanyDepartments.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == cursor)
+                        .Select(x => new { x.ParentDepartmentId }).SingleOrDefaultAsync(cancellationToken);
+                    if (ancestor is null || ancestor.ParentDepartmentId is not Guid next) break;
+                    cursor = next; depth++;
+                }
+                if (depth >= 6) return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentDepartmentId"] = ["Departman ağacı en fazla altı seviyeye kadar açılabilir."] });
+            }
+            var entry = new CompanyDepartment { CompanyId = companyId, Name = name, NormalizedName = normalized,
+                ParentDepartmentId = request.ParentDepartmentId, LocationCatalogId = request.LocationCatalogId };
             db.CompanyDepartments.Add(entry);
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
                 TargetType = "Department", TargetId = entry.Id, Action = "Created", Details = $"Departman kataloğa eklendi: {name}." });
@@ -888,7 +929,85 @@ public static class OperationalEndpoints
             {
                 return Results.Conflict(new { message = "Bu departman adı eşzamanlı olarak başka bir işlemde kaydedildi." });
             }
-            return Results.Created("/api/departments", new { entry.Id, entry.Name, entry.IsActive, employeeCount = 0 });
+            return Results.Created("/api/departments", new { entry.Id, entry.Name, entry.ParentDepartmentId, entry.LocationCatalogId, entry.IsActive, employeeCount = 0 });
+        }).RequireAuthorization("people.manage");
+
+        api.MapPut("/departments/{id:guid}", async (Guid id, [FromBody] UpdateDepartmentRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            var name = request.Name?.Trim();
+            if (string.IsNullOrWhiteSpace(name) || name.Length > 160 || name.Any(char.IsControl))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Departman adı 1–160 karakter olmalı ve kontrol karakteri içermemelidir."] });
+            var entry = await db.CompanyDepartments.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (entry is null) return Results.NotFound();
+            var normalized = NormalizeDepartmentName(name);
+            var newNamePattern = name.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal);
+            var currentNamePattern = entry.Name.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal);
+            if (await db.CompanyDepartments.AnyAsync(x => x.CompanyId == companyId && x.Id != id && x.NormalizedName == normalized, cancellationToken) ||
+                await db.Employees.AnyAsync(x => x.CompanyId == companyId && x.Department != null &&
+                    EF.Functions.ILike(x.Department.Trim(), newNamePattern) &&
+                    !EF.Functions.ILike(x.Department.Trim(), currentNamePattern), cancellationToken))
+                return Results.Conflict(new { message = "Bu adla başka bir departman var." });
+            if (request.LocationCatalogId is Guid locationId && !await db.CompanyLocations.AnyAsync(x =>
+                x.CompanyId == companyId && x.Id == locationId && x.IsActive, cancellationToken))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["locationCatalogId"] = ["Departman konumu aynı şirkette etkin bir konum olmalıdır."] });
+
+            var tree = await db.CompanyDepartments.AsNoTracking().Where(x => x.CompanyId == companyId).ToListAsync(cancellationToken);
+            var byId = tree.ToDictionary(x => x.Id);
+            var children = tree.Where(x => x.ParentDepartmentId is not null)
+                .GroupBy(x => x.ParentDepartmentId!.Value).ToDictionary(group => group.Key, group => group.Select(x => x.Id).ToArray());
+            var subtree = new HashSet<Guid>();
+            var pending = new Stack<Guid>(); pending.Push(id);
+            while (pending.TryPop(out var current))
+            {
+                if (!subtree.Add(current)) continue;
+                if (children.TryGetValue(current, out var descendants)) foreach (var descendant in descendants) pending.Push(descendant);
+            }
+            int Depth(Guid departmentId)
+            {
+                var seen = new HashSet<Guid>(); var depth = 0; var cursor = departmentId;
+                while (byId.TryGetValue(cursor, out var current))
+                {
+                    if (!seen.Add(cursor)) return 7;
+                    depth++;
+                    if (current.ParentDepartmentId is not Guid parentId) break;
+                    cursor = parentId;
+                }
+                return depth;
+            }
+            var subtreeHeight = subtree.Max(Depth) - Depth(id) + 1;
+            if (request.ParentDepartmentId is Guid parentId)
+            {
+                if (!byId.TryGetValue(parentId, out var parent) || !parent.IsActive)
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentDepartmentId"] = ["Üst departman aynı şirkette etkin olmalıdır."] });
+                if (subtree.Contains(parentId))
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentDepartmentId"] = ["Departman kendisinin veya alt ekibinin üstüne taşınamaz."] });
+                if (Depth(parentId) + 1 + subtreeHeight - 1 > 6)
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentDepartmentId"] = ["Departman ağacı en fazla altı seviyeye kadar açılabilir."] });
+            }
+            else if (subtreeHeight > 6)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentDepartmentId"] = ["Departman ağacı en fazla altı seviyeye kadar açılabilir."] });
+
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            var previousName = entry.Name;
+            entry.Name = name; entry.NormalizedName = normalized;
+            entry.ParentDepartmentId = request.ParentDepartmentId; entry.LocationCatalogId = request.LocationCatalogId;
+            entry.UpdatedAt = DateTimeOffset.UtcNow;
+            var employeeCount = 0;
+            if (!string.Equals(previousName, name, StringComparison.Ordinal))
+                employeeCount = await db.Employees.Where(x => x.CompanyId == companyId && x.Department != null &&
+                        EF.Functions.ILike(x.Department.Trim(), currentNamePattern))
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.Department, name), cancellationToken);
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                TargetType = "Department", TargetId = id, Action = "Updated",
+                Details = $"Departman güncellendi: {previousName} → {name}; üst ekip ve konum doğrulandı." });
+            try { await db.SaveChangesAsync(cancellationToken); }
+            catch (DbUpdateException exception) when (exception.InnerException is PostgresException
+                { SqlState: PostgresErrorCodes.UniqueViolation or PostgresErrorCodes.SerializationFailure })
+            { return Results.Conflict(new { message = "Departman başka bir işlemle aynı anda güncellendi; yenileyip tekrar deneyin." }); }
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { entry.Id, entry.Name, entry.ParentDepartmentId, entry.LocationCatalogId, employeeCount });
         }).RequireAuthorization("people.manage");
 
         api.MapPatch("/departments/rename", async ([FromBody] RenameDirectoryEntryRequest request,
@@ -1684,7 +1803,8 @@ public static class OperationalEndpoints
 
     private sealed record ExportRow(string AssetTag, string Name, string Status, string? SerialNumber,
         string? Location, string? EmployeeNumber, DateOnly? PurchaseDate, DateOnly? WarrantyExpiresAt, decimal? PurchaseCost, string Currency, string? CustomFieldsJson);
-    private sealed record CreateDepartmentRequest(string? Name);
+    private sealed record CreateDepartmentRequest(string? Name, Guid? ParentDepartmentId = null, Guid? LocationCatalogId = null);
+    private sealed record UpdateDepartmentRequest(string? Name, Guid? ParentDepartmentId = null, Guid? LocationCatalogId = null);
     private sealed record UpdateCompanyProfileRequest(string? Name, string? ContactEmail, string? BrandPrimaryColor);
     public sealed record LabelPrintSettingsRequest(string? Barcode1d, string? Barcode2d, decimal WidthMm,
         decimal HeightMm, decimal OffsetXmm, decimal OffsetYmm, decimal PaddingMm, decimal CodeSizeMm,

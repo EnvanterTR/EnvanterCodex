@@ -466,9 +466,9 @@
   <dialog class="detail-dialog" id="accessoryCheckoutDialog"><form id="accessoryCheckoutForm"><div class="dialog-head"><div><div class="eyebrow">AKSESUAR ZİMMETİ</div><h2>Teslim hedefi seçin</h2></div><button class="close" type="button" data-close-checkout aria-label="Kapat">✕</button></div><div class="dialog-body"><fieldset class="detail-field" style="border:0;padding:0"><legend class="muted">Nereye teslim ediliyor?</legend><label><input type="radio" name="targetType" value="Employee" checked> Çalışan</label> <label><input type="radio" name="targetType" value="Asset"> Varlık</label> <label><input type="radio" name="targetType" value="Location"> Konum</label></fieldset><label class="detail-field" id="accessoryCheckoutEmployeeField" style="display:block;margin-top:10px"><small>Aktif çalışan *</small><select name="employeeId" style="width:100%;margin-top:7px"></select></label><label class="detail-field" id="accessoryCheckoutAssetField" style="display:block;margin-top:10px" hidden><small>Varlık *</small><select name="assetId" style="width:100%;margin-top:7px"></select></label><label class="detail-field" id="accessoryCheckoutLocationField" style="display:block;margin-top:10px" hidden><small>Konum *</small><input name="location" maxlength="160" style="width:100%;margin-top:7px"></label><label class="detail-field" style="display:block;margin-top:10px"><small>Adet *</small><input name="quantity" type="number" min="1" required value="1" style="width:100%;margin-top:7px"></label><label class="detail-field" id="accessoryKitSetsLabel" style="display:block;margin-top:10px" hidden><small>Tam kit adedi *</small><input id="accessoryKitSets" type="number" min="1" max="1" value="1" required style="width:100%;margin-top:7px"><small id="accessoryKitSetsHint" class="muted"></small></label><label class="detail-field" style="display:block;margin-top:10px"><small>Teslim notu</small><input name="notes" maxlength="2000" style="width:100%;margin-top:7px"></label><div class="dialog-actions"><button class="btn" type="button" data-close-checkout>Vazgeç</button><button class="btn primary" type="submit">Teslimi kaydet</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="scanAssetDialog"><div class="dialog-head"><div><div class="eyebrow">HIZLI VARLIK BULMA</div><h2>Barkod veya QR okut</h2></div><button class="close" id="closeAssetScanner" type="button" aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="muted">Kamerayla okutun veya USB barkod okuyucuyu kullanıp kodu alana girin. Kamera görüntüsü bu cihazda işlenir; yalnızca okunan kodla şirket envanterinde arama yapılır.</p><video id="scanAssetVideo" muted autoplay playsinline hidden style="width:100%;max-height:42vh;object-fit:cover;border-radius:9px;background:#101828"></video><div class="dialog-actions"><button class="btn" id="startAssetCamera" type="button">Kamerayı başlat</button></div><label class="field" id="scanAssetActionWrap">Okutma işlemi<select id="scanAssetAction"><option value="view">Varlık ayrıntısını aç</option><option value="assign">Uygunsa zimmet formunu aç</option><option value="return">Zimmetliyse iade onayını göster</option></select></label><form id="scanAssetForm"><label class="field">Varlık etiketi veya QR içeriği<input id="scanAssetCode" name="code" autocomplete="off" autofocus required maxlength="500" placeholder="Etiketi okutun veya yazın"></label><div class="dialog-actions"><button class="btn primary" type="submit">Varlığı bul</button></div></form><p id="scanAssetFeedback" class="muted" role="status" aria-live="polite">Kamera desteklenmiyorsa USB okuyucu ya da klavyeyle kod girebilirsiniz.</p></div></dialog>
   <div class="toast" id="toast" role="status"></div>
-  <dialog class="detail-dialog" id="directoryRenameDialog"><form id="directoryRenameForm"><div class="dialog-head"><div><div class="eyebrow" id="directoryRenameEyebrow">ŞİRKET ALANI / KAYITLAR</div><h2 id="directoryRenameTitle">Adı değiştir</h2></div><button class="close" type="button" id="closeDirectoryRename" aria-label="Kapat">✕</button></div><div class="dialog-body"><input name="kind" type="hidden"><input name="currentName" type="hidden"><input name="locationId" type="hidden"><p class="muted" id="directoryRenameDescription"></p><label>Yeni ad<input name="newName" maxlength="160" required autocomplete="off"></label><p class="muted" id="directoryRenameFeedback" role="status" aria-live="polite"></p><div class="dialog-actions"><button class="btn" type="button" id="cancelDirectoryRename">Vazgeç</button><button class="btn primary" type="submit" id="saveDirectoryRename">Değişiklikleri kaydet</button></div></div></form></dialog>
-  <dialog class="detail-dialog" id="createDepartmentDialog"><form id="createDepartmentForm"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ALANI / EKİP</div><h2>Departman ekle</h2></div><button class="close" type="button" id="closeCreateDepartment" aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="muted">Departmanı çalışan atanmadan önce kataloğa ekleyebilirsiniz. Yeni çalışan kaydında da öneri olarak görünür.</p><label>Departman adı *<input name="name" maxlength="160" required autocomplete="off"></label><p class="muted" id="createDepartmentFeedback" role="status" aria-live="polite"></p><div class="dialog-actions"><button class="btn" type="button" id="cancelCreateDepartment">Vazgeç</button><button class="btn primary" id="saveDepartment" type="submit">Departmanı kaydet</button></div></div></form></dialog>
-  <dialog class="detail-dialog" id="createLocationDialog"><form id="createLocationForm"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ALANI / KONUM</div><h2>Konum ekle</h2></div><button class="close" type="button" id="closeCreateLocation" aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="muted">Bina, kat ve oda düzeyinde en fazla üç seviyeli şirket konumu tanımlayın. Mevcut serbest metinli kayıtlar korunur; bu adlar formlarda önerilir.</p><div class="form-grid"><label>Üst konum<select name="parentLocationId"><option value="">Üst seviye · bina</option></select></label><label>Konum adı *<input name="name" maxlength="120" required autocomplete="off" placeholder="Örn. Merkez Ofis"></label></div><p class="muted" id="createLocationPreview"></p><p class="muted" id="createLocationFeedback" role="status" aria-live="polite"></p><div class="dialog-actions"><button class="btn" type="button" id="cancelCreateLocation">Vazgeç</button><button class="btn primary" id="saveLocation" type="submit">Konumu kaydet</button></div></div></form></dialog>
+  <dialog class="detail-dialog" id="directoryRenameDialog"><form id="directoryRenameForm"><div class="dialog-head"><div><div class="eyebrow" id="directoryRenameEyebrow">ŞİRKET ALANI / KAYITLAR</div><h2 id="directoryRenameTitle">Adı değiştir</h2></div><button class="close" type="button" id="closeDirectoryRename" aria-label="Kapat">✕</button></div><div class="dialog-body"><input name="kind" type="hidden"><input name="currentName" type="hidden"><input name="locationId" type="hidden"><input name="departmentId" type="hidden"><p class="muted" id="directoryRenameDescription"></p><label>Yeni ad<input name="newName" maxlength="160" required autocomplete="off"></label><div class="form-grid" id="departmentRelationEditor" hidden style="margin-top:10px"><label>Üst departman<select name="parentDepartmentId"><option value="">Ana departman</option></select></label><label>Kat / konum<select name="locationCatalogId"><option value="">Konum seçilmedi</option></select></label></div><p class="muted" id="directoryRenameFeedback" role="status" aria-live="polite"></p><div class="dialog-actions"><button class="btn" type="button" id="cancelDirectoryRename">Vazgeç</button><button class="btn primary" type="submit" id="saveDirectoryRename">Değişiklikleri kaydet</button></div></div></form></dialog>
+  <dialog class="detail-dialog" id="createDepartmentDialog"><form id="createDepartmentForm"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ALANI / EKİP</div><h2>Departman ekle</h2></div><button class="close" type="button" id="closeCreateDepartment" aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="muted">Departmanı üst ekibe ve çalıştığı kata bağlayabilirsiniz. Hiyerarşi çalışan kaydından bağımsız yönetilir.</p><label>Departman adı *<input name="name" maxlength="160" required autocomplete="off"></label><div class="form-grid" style="margin-top:10px"><label>Üst departman<select name="parentDepartmentId"><option value="">Ana departman</option></select></label><label>Kat / konum<select name="locationCatalogId"><option value="">Konum seçilmedi</option></select></label></div><p class="muted" id="createDepartmentFeedback" role="status" aria-live="polite"></p><div class="dialog-actions"><button class="btn" type="button" id="cancelCreateDepartment">Vazgeç</button><button class="btn primary" id="saveDepartment" type="submit">Departmanı kaydet</button></div></div></form></dialog>
+  <dialog class="detail-dialog" id="createLocationDialog"><form id="createLocationForm"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ALANI / KONUM</div><h2>Konum ekle</h2></div><button class="close" type="button" id="closeCreateLocation" aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="muted">Kat, alan, sunucu odası ve kabinleri alt alta konum olarak ekleyin. Konum ağacı en fazla altı seviyeyi destekler.</p><div class="form-grid"><label>Üst konum<select name="parentLocationId"><option value="">Üst seviye · kat veya bina</option></select></label><label>Konum adı *<input name="name" maxlength="120" required autocomplete="off" placeholder="Örn. Sunucu Odası / Kabin 1"></label></div><p class="muted" id="createLocationPreview"></p><p class="muted" id="createLocationFeedback" role="status" aria-live="polite"></p><div class="dialog-actions"><button class="btn" type="button" id="cancelCreateLocation">Vazgeç</button><button class="btn primary" id="saveLocation" type="submit">Konumu kaydet</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="locationManagerDialog"><form id="locationManagerForm"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ALANI / KONUM</div><h2>Konum sorumlusu ata</h2></div><button class="close" type="button" id="closeLocationManager" aria-label="Kapat">✕</button></div><div class="dialog-body"><input name="locationId" type="hidden"><p class="muted" id="locationManagerContext"></p><label>Çalışan ara<input id="locationManagerSearch" type="search" maxlength="120" placeholder="Ad veya personel numarası"></label><label>Aktif çalışan<select id="locationManagerEmployee" name="employeeId"><option value="">Sorumlu atanmamış</option></select></label><p class="muted" id="locationManagerFeedback" role="status" aria-live="polite"></p><div class="dialog-actions"><button class="btn" type="button" id="cancelLocationManager">Vazgeç</button><button class="btn primary" type="submit" id="saveLocationManager">Sorumluyu kaydet</button></div></div></form></dialog>
   <datalist id="departmentSuggestions"></datalist><datalist id="locationSuggestions"></datalist>
   <script src="/vendor/qrcodegen.js"></script>
@@ -479,7 +479,7 @@
 <dialog class="detail-dialog" id="assetTrashDialog"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ENVANTERİ / KURTARMA</div><h2>Çöp kutusu</h2><p>Silinen varlık kayıtları ve geçmişleri burada korunur.</p></div><button class="close" id="closeAssetTrash" type="button" aria-label="Kapat">✕</button></div><div class="table-wrap"><table><thead><tr><th>Etiket</th><th>Varlık</th><th>Seri numarası</th><th>Taşınma zamanı</th><th>İşlem</th></tr></thead><tbody id="assetTrashRows"><tr><td colspan="5">Kayıtlar yükleniyor…</td></tr></tbody></table></div><div class="pager"><button id="assetTrashPrev" type="button">← Önceki</button><span id="assetTrashPageInfo">Sayfa 1</span><button id="assetTrashNext" type="button">Sonraki →</button></div></dialog>
   <script>
       const toast = document.getElementById('toast');
-    let toastTimer, requestToken = '', lookupCache = { categories: [], brands: [], models: [] }, loadedAssets = [], selectedAssetIds = new Set(), selectedAssetRows = new Map(), currentAsset = null, currentEmployeeId = null, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, calendarRequestId = 0, calendarCursorDate = '', sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, auditRequestId = 0, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, latestCalendarEvents = [], latestCalendarFrom = '', latestCalendarTo = '', assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', savedAssetSearchesLegacyKey = '', savedAssetSearches = [], assetRowDensity = 'comfortable', visibleAssetColumns = Array(8).fill(true), labelSettingsKey = '', bwipLoadPromise = null, assetScanStream = null, assetScanFrame = 0, assetScanner = null, assetScanBusy = false;
+    let toastTimer, requestToken = '', lookupCache = { categories: [], brands: [], models: [] }, loadedAssets = [], selectedAssetIds = new Set(), selectedAssetRows = new Map(), currentAsset = null, currentEmployeeId = null, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, calendarRequestId = 0, calendarCursorDate = '', sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], directoryDepartmentCounts = {}, directoryFilterLocationId = '', moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, auditRequestId = 0, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, latestCalendarEvents = [], latestCalendarFrom = '', latestCalendarTo = '', assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', savedAssetSearchesLegacyKey = '', savedAssetSearches = [], assetRowDensity = 'comfortable', visibleAssetColumns = Array(8).fill(true), labelSettingsKey = '', bwipLoadPromise = null, assetScanStream = null, assetScanFrame = 0, assetScanner = null, assetScanBusy = false;
     let warrantyReportPage = 1, warrantyReportRequestId = 0, warrantyReportSearchTimer;
     let licenseReportPage = 1, licenseReportRequestId = 0, licenseReportSearchTimer;
     let pendingDeliveryPage = 1, pendingDeliveryRequestId = 0, pendingDeliverySearchTimer;
@@ -1657,17 +1657,19 @@
     }
     function renderDirectoryRows() {
       const search = $('#directorySearch').value.trim().toLocaleLowerCase('tr-TR');
-      const entries = directoryEntries.filter(item => !search || `${item.name} ${item.managerName || ''}`.toLocaleLowerCase('tr-TR').includes(search));
+      const entries = directoryEntries.filter(item => !search || `${item.name} ${item.departmentPath || ''} ${item.parentDepartmentName || ''} ${item.locationName || ''} ${item.managerName || ''}`.toLocaleLowerCase('tr-TR').includes(search));
       const rows = $('#directoryRows'); rows.replaceChildren();
       if (!entries.length) {
         const row = document.createElement('tr'), cell = document.createElement('td');
-        cell.colSpan = directoryKind === 'departments' ? 5 : 12;
+        cell.colSpan = directoryKind === 'departments' ? 6 : 12;
         cell.textContent = $('#directorySearch').value.trim() ? 'Aramayla eşleşen kayıt bulunamadı.' : 'Bu şirket için henüz kayıtlı departman veya konum yok.';
         row.append(cell); rows.append(row);
       }
       for (const item of entries) {
         const row = document.createElement('tr'), name = document.createElement('td'), link = document.createElement('button');
-        link.type = 'button'; link.className = 'employee-profile-link'; link.textContent = item.isActive === false ? `${item.name} · Arşivlendi` : item.name;
+        link.type = 'button'; link.className = 'employee-profile-link';
+        const directoryName = directoryKind === 'departments' ? (item.departmentPath || item.name) : item.name;
+        link.textContent = item.isActive === false ? `${directoryName} · Arşivlendi` : directoryName;
         link.addEventListener('click', () => {
           if (directoryKind === 'departments') {
             $('#employeeDepartmentFilter').value = item.name;
@@ -1678,9 +1680,9 @@
         });
         name.append(link); row.append(name);
         const values = directoryKind === 'departments'
-          ? [item.employeeCount, item.activeEmployeeCount, item.inactiveEmployeeCount]
+          ? [item.locationName || '—', item.employeeCount, item.activeEmployeeCount, item.inactiveEmployeeCount]
           : [item.assetCount, item.assignedCount, item.availableCount, item.maintenanceCount, item.accessoryCount, item.accessoryAssignmentCount, item.consumableCount, item.componentCount];
-        for (const value of values) { const cell = document.createElement('td'); cell.textContent = fmt.format(value); row.append(cell); }
+        for (const value of values) { const cell = document.createElement('td'); cell.textContent = typeof value === 'number' ? fmt.format(value) : value; row.append(cell); }
         if (directoryKind === 'locations') {
           const defaultCell = document.createElement('td'), managerCell = document.createElement('td');
           defaultCell.textContent = item.isCatalogEntry && item.isDefault ? 'Varsayılan' : '—';
@@ -1691,6 +1693,10 @@
         if (directoryKind === 'departments') {
           const open = document.createElement('button'); open.type = 'button'; open.className = 'btn small'; open.textContent = 'Ekibi gör →';
           open.addEventListener('click', () => link.click()); action.append(open);
+          if (item.isCatalogEntry && canManagePeople()) {
+            const addChild = document.createElement('button'); addChild.type = 'button'; addChild.className = 'btn small'; addChild.textContent = 'Alt departman ekle';
+            addChild.addEventListener('click', async () => { await openCreateDepartment(item); }); action.append(addChild);
+          }
         } else {
           const destinations = [
             { key: 'assets', count: item.assetCount, label: 'Varlık' },
@@ -1705,6 +1711,13 @@
             open.textContent = `${destination.label} ${fmt.format(destination.count)}`;
             open.setAttribute('aria-label', `${destination.label} kayıtları: ${fmt.format(destination.count)} · ${item.name}`);
             open.addEventListener('click', () => openDirectoryLocation(item, destination.key)); action.append(open);
+          }
+          const departmentCount = directoryDepartmentCounts[item.locationId] || 0;
+          if (item.isCatalogEntry && departmentCount > 0) {
+            const departments = document.createElement('button'); departments.type = 'button'; departments.className = 'btn small';
+            departments.textContent = `Departmanlar ${fmt.format(departmentCount)}`;
+            departments.addEventListener('click', () => loadDirectory('departments', `Departmanlar · ${item.name}`, item.locationId).catch(error => notify(error.message)));
+            action.append(departments);
           }
           if (!item.isCatalogEntry && canWriteAssets()) {
             const register = document.createElement('button'); register.type = 'button'; register.className = 'btn small';
@@ -1748,37 +1761,39 @@
         }
         if (directoryKind === 'departments' ? canManagePeople() : canWriteAssets()) {
           const rename = document.createElement('button'); rename.type = 'button'; rename.className = 'btn small'; rename.textContent = 'Adı düzenle';
-          rename.addEventListener('click', () => openDirectoryRename(item)); action.append(rename);
+          rename.addEventListener('click', () => openDirectoryRename(item).catch(error => notify(error.message))); action.append(rename);
         }
         row.append(action); rows.append(row);
       }
       $('#directoryCount').textContent = `${fmt.format(entries.length)} kayıt`;
     }
-    async function loadDirectory(kind, titleOverride = '') {
+    async function loadDirectory(kind, titleOverride = '', locationId = '') {
       directoryKind = kind;
+      directoryFilterLocationId = kind === 'departments' ? locationId : '';
       const departments = kind === 'departments';
       $('#directoryEyebrow').textContent = departments ? 'ŞİRKET ALANI / EKİP' : 'ŞİRKET ALANI / KONUM';
       $('#directoryTitle').textContent = titleOverride || (departments ? 'Departmanlar' : 'Lokasyonlar');
-      $('#directoryDescription').textContent = departments ? 'Departman kataloğunu ve çalışan sayılarını yönetin; ekipleri çalışan atanmadan önce tanımlayın.' : 'Şirket konumlarını bina, kat ve oda düzeyinde hiyerarşik yönetin.';
+      $('#directoryDescription').textContent = departments ? (locationId ? 'Seçilen kattaki departmanları ve bağlı ekipleri görüntülüyorsunuz.' : 'Departmanları alt departmanlara ve çalıştıkları katlara bağlayın; seçili bir katın ekiplerine konum listesinden ulaşın.') : 'Kat, alan, oda ve kabinleri hiyerarşik konum olarak yönetin.';
       $('#addDepartmentButton').hidden = !departments || !canManagePeople();
       $('#addLocationButton').hidden = departments || !canWriteAssets();
       $('#directorySearch').value = '';
       $('#directoryHead').innerHTML = departments
-        ? '<tr><th>Departman</th><th>Çalışan</th><th>Aktif</th><th>Pasif</th><th>İşlem</th></tr>'
+        ? '<tr><th>Departman</th><th>Kat / konum</th><th>Çalışan</th><th>Aktif</th><th>Pasif</th><th>İşlem</th></tr>'
         : '<tr><th>Konum</th><th>Varlık</th><th>Atanmış</th><th>Kullanılabilir</th><th>Bakımda</th><th>Aksesuar stoğu</th><th>Aksesuar teslim kaydı</th><th>Sarf</th><th>Bileşen</th><th>Varsayılan</th><th>Konum sorumlusu</th><th>İşlem</th></tr>';
-      $('#directoryRows').innerHTML = `<tr><td colspan="${departments ? 5 : 12}">Kayıtlar yükleniyor…</td></tr>`;
-      const result = await api(`/api/${kind}`);
+      $('#directoryRows').innerHTML = `<tr><td colspan="${departments ? 6 : 12}">Kayıtlar yükleniyor…</td></tr>`;
+      const result = await api(`/api/${kind}${departments && locationId ? `?locationId=${encodeURIComponent(locationId)}` : ''}`);
       directoryEntries = result.items || [];
+      directoryDepartmentCounts = kind === 'locations' ? (result.departmentCounts || {}) : directoryDepartmentCounts;
       $('#directoryNotice').textContent = departments
-        ? 'Katalogdaki ve çalışan kayıtlarında kullanılan departmanlar birlikte listelenir. Yeni bir departman ekleyebilir, adı değiştirirken çalışan kayıtlarını tek işlemde güncelleyebilirsiniz.'
-        : 'Konumları bina / kat / oda biçiminde hiyerarşik yönetin, aktif bir konumu şirket varsayılanı seçin ve aktif çalışan sorumlu atayın. Varsayılan konum, yeni varlık, çalışan ve stok kayıtlarında otomatik doldurulur. Kataloğa bağlı ad değişiklikleri kayıtlarla birlikte güncellenir; eski serbest metinli kayıtlar korunur.';
+        ? (locationId ? 'Bu kattaki departman kayıtları listelenir. Üst departman, kat bilgisi ve çalışan bağlarını düzenleyebilirsiniz.' : 'Departman kataloğunu ve çalışan kayıtlarını birlikte yönetin. Bir departmanın alt ekiplerini ekleyin; kat sütunundan bağlı konumunu görün.')
+        : 'Kat, oda ve kabinleri alt alta konum olarak düzenleyin. Departman bulunan katlarda “Departmanlar” kısayolu ekibi doğrudan açar; varlık ve stok konumları bu ağaçta tutulur.';
       renderDirectoryRows();
     }
     function rebuildLocationParentOptions() {
       const select = $('#createLocationForm').elements.parentLocationId;
       const options = [new Option('Üst seviye · bina', '')];
-      for (const item of directoryEntries.filter(x => x.isCatalogEntry && x.isActive && x.depth < 2)) {
-        const option = new Option(`${item.name} · ${item.depth === 0 ? 'kat ekle' : 'oda ekle'}`, item.locationId);
+      for (const item of directoryEntries.filter(x => x.isCatalogEntry && x.isActive && x.depth < 6)) {
+        const option = new Option(`${item.name} · alt konum ekle`, item.locationId);
         options.push(option);
       }
       select.replaceChildren(...options);
@@ -1856,31 +1871,66 @@
       } catch (error) { $('#locationManagerFeedback').textContent = error.message; }
       finally { button.disabled = false; }
     });
-    $('#addDepartmentButton').addEventListener('click', () => {
+    async function openCreateDepartment(parent = null) {
       if (!canManagePeople()) return;
-      $('#createDepartmentForm').reset(); $('#createDepartmentFeedback').textContent = '';
-      $('#createDepartmentDialog').showModal(); $('#createDepartmentForm').elements.name.focus();
-    });
+      const form = $('#createDepartmentForm'); form.reset(); $('#createDepartmentFeedback').textContent = '';
+      const [departmentResult, locationResult] = await Promise.all([api('/api/departments'), api('/api/locations')]);
+      const parentSelect = form.elements.parentDepartmentId, locationSelect = form.elements.locationCatalogId;
+      parentSelect.replaceChildren(new Option('Ana departman', ''));
+      for (const item of departmentResult.items || []) {
+        if (!item.isCatalogEntry || !item.isActive || !item.departmentId) continue;
+        parentSelect.add(new Option(item.departmentPath || item.name, item.departmentId));
+      }
+      locationSelect.replaceChildren(new Option('Konum seçilmedi', ''));
+      for (const item of locationResult.items || []) {
+        if (!item.isCatalogEntry || !item.isActive || !item.locationId) continue;
+        locationSelect.add(new Option(item.name, item.locationId));
+      }
+      if (parent?.departmentId) parentSelect.value = parent.departmentId;
+      if (parent?.locationCatalogId) locationSelect.value = parent.locationCatalogId;
+      $('#createDepartmentDialog').showModal(); form.elements.name.focus();
+    }
+    $('#addDepartmentButton').addEventListener('click', () => openCreateDepartment().catch(error => notify(error.message)));
     $('#closeCreateDepartment').addEventListener('click', () => $('#createDepartmentDialog').close());
     $('#cancelCreateDepartment').addEventListener('click', () => $('#createDepartmentDialog').close());
     $('#createDepartmentForm').addEventListener('submit', async event => {
       event.preventDefault();
-      const button = $('#saveDepartment'), name = event.currentTarget.elements.name.value.trim();
+      const form = event.currentTarget, button = $('#saveDepartment'), name = form.elements.name.value.trim();
       if (!name) return;
       button.disabled = true; $('#createDepartmentFeedback').textContent = 'Departman kaydediliyor…';
       try {
-        await api('/api/departments', { method: 'POST', body: JSON.stringify({ name }) });
-        $('#createDepartmentDialog').close(); await loadDirectory('departments'); await refreshDirectorySuggestions();
+        await api('/api/departments', { method: 'POST', body: JSON.stringify({ name,
+          parentDepartmentId: form.elements.parentDepartmentId.value || null,
+          locationCatalogId: form.elements.locationCatalogId.value || null }) });
+        $('#createDepartmentDialog').close(); await loadDirectory('departments', '', directoryFilterLocationId); await refreshDirectorySuggestions();
         notify(`“${name}” departmanı kataloğa eklendi.`);
       } catch (error) { $('#createDepartmentFeedback').textContent = error.message; }
       finally { button.disabled = false; }
     });
-    function openDirectoryRename(item) {
+    async function openDirectoryRename(item) {
       const departments = directoryKind === 'departments', form = $('#directoryRenameForm');
       form.elements.kind.value = directoryKind; form.elements.currentName.value = item.name;
-      form.elements.locationId.value = item.isCatalogEntry ? item.locationId : '';
+      form.elements.locationId.value = !departments && item.isCatalogEntry ? item.locationId : '';
+      form.elements.departmentId.value = departments && item.isCatalogEntry ? (item.departmentId || '') : '';
       form.elements.newName.maxLength = directoryKind === 'locations' && item.isCatalogEntry ? 120 : 160;
       form.elements.newName.value = item.isCatalogEntry && directoryKind === 'locations' ? item.name.split(' / ').at(-1) : item.name;
+      const relationEditor = $('#departmentRelationEditor');
+      relationEditor.hidden = !departments || !item.isCatalogEntry;
+      if (departments && item.isCatalogEntry) {
+        const [departmentResult, locationResult] = await Promise.all([api('/api/departments'), api('/api/locations')]);
+        const parents = form.elements.parentDepartmentId, locations = form.elements.locationCatalogId;
+        parents.replaceChildren(new Option('Ana departman', ''));
+        for (const candidate of departmentResult.items || []) {
+          if (!candidate.isCatalogEntry || !candidate.isActive || !candidate.departmentId || candidate.departmentId === item.departmentId) continue;
+          parents.add(new Option(candidate.departmentPath || candidate.name, candidate.departmentId));
+        }
+        locations.replaceChildren(new Option('Konum seçilmedi', ''));
+        for (const location of locationResult.items || []) {
+          if (location.isCatalogEntry && location.isActive && location.locationId) locations.add(new Option(location.name, location.locationId));
+        }
+        parents.value = item.parentDepartmentId || '';
+        locations.value = item.locationCatalogId || '';
+      }
       $('#directoryRenameEyebrow').textContent = departments ? 'ŞİRKET ALANI / EKİP' : 'ŞİRKET ALANI / KONUM';
       $('#directoryRenameTitle').textContent = departments ? 'Departman adını değiştir' : item.isCatalogEntry ? 'Konum düğümünü düzenle' : 'Konum adını değiştir';
       $('#directoryRenameDescription').textContent = departments
@@ -1902,11 +1952,16 @@
       const normalizeName = value => value.toLocaleLowerCase('tr-TR');
       const currentKey = normalizeName(currentName), newKey = normalizeName(newName);
       const locationId = form.elements.locationId.value;
-      const merge = !locationId && currentKey !== newKey && directoryEntries.some(item => normalizeName(item.name) === newKey);
+      const departmentId = form.elements.departmentId.value;
+      const merge = !departmentId && !locationId && currentKey !== newKey && directoryEntries.some(item => normalizeName(item.name) === newKey);
       if (merge && !window.confirm(`“${currentName}” adındaki kayıtları mevcut “${newName}” grubuyla birleştirmek istiyor musunuz? Kayıtların geçmişi korunur.`)) return;
       button.disabled = true; $('#directoryRenameFeedback').textContent = 'Şirket kayıtları güncelleniyor…';
       try {
-        const submitRename = allowMerge => kind === 'locations' && locationId
+        const submitRename = allowMerge => departmentId
+          ? api(`/api/departments/${departmentId}`, { method: 'PUT', body: JSON.stringify({ name: newName,
+              parentDepartmentId: form.elements.parentDepartmentId.value || null,
+              locationCatalogId: form.elements.locationCatalogId.value || null }) })
+          : kind === 'locations' && locationId
           ? api(`/api/locations/catalog/${locationId}`, { method: 'PATCH', body: JSON.stringify({ name: newName }) })
           : api(`/api/${kind}/rename`, { method: 'PATCH', body: JSON.stringify({ currentName, newName, merge: allowMerge }) });
         let result;
@@ -1924,11 +1979,11 @@
         if (kind === 'departments' && $('#employeeDepartmentFilter').value === currentName) $('#employeeDepartmentFilter').value = result.name;
         const count = kind === 'departments' ? result.employeeCount : result.updatedCount;
         try {
-          await loadDirectory(kind);
+          await loadDirectory(kind, '', kind === 'departments' ? directoryFilterLocationId : '');
           await refreshDirectorySuggestions();
-        notify(locationId ? 'Katalog konumu güncellendi.' : `“${currentName}” adı “${result.name}” olarak değiştirildi; ${fmt.format(count)} kayıt güncellendi.`);
+        notify(departmentId ? 'Departmanın adı, üst ekibi ve konumu güncellendi.' : locationId ? 'Katalog konumu güncellendi.' : `“${currentName}” adı “${result.name}” olarak değiştirildi; ${fmt.format(count)} kayıt güncellendi.`);
         } catch {
-          notify(locationId ? 'Katalog konumu güncellendi; listeyi yenilemek için Yenile’yi seçin.' : `“${currentName}” adı değiştirildi ve ${fmt.format(count)} kayıt güncellendi; listeyi yenilemek için Yenile'yi seçin.`);
+          notify(departmentId ? 'Departman güncellendi; listeyi yenilemek için Yenile’yi seçin.' : locationId ? 'Katalog konumu güncellendi; listeyi yenilemek için Yenile’yi seçin.' : `“${currentName}” adı değiştirildi ve ${fmt.format(count)} kayıt güncellendi; listeyi yenilemek için Yenile'yi seçin.`);
         }
       } catch (error) {
         $('#directoryRenameFeedback').textContent = error.message;

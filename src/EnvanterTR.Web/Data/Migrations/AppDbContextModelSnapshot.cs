@@ -1392,6 +1392,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("LocationCatalogId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(160)
@@ -1402,15 +1405,20 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
 
+                    b.Property<Guid?>("ParentDepartmentId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.HasAlternateKey("CompanyId", "Id");
+                    b.HasIndex("CompanyId", "LocationCatalogId");
 
                     b.HasIndex("CompanyId", "NormalizedName")
                         .IsUnique();
+
+                    b.HasIndex("CompanyId", "ParentDepartmentId");
 
                     b.ToTable("CompanyDepartments", (string)null);
                 });
@@ -3764,6 +3772,18 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.CompanyLocation", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "LocationCatalogId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EnvanterTR.Web.Data.CompanyDepartment", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "ParentDepartmentId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.CompanyLocation", b =>
