@@ -54,6 +54,7 @@ const requiredAccessoryLabels = [
 ];
 const requiredEmployeeLabels = [
   'Çalışan kayıtları', 'Departmana ve yöneticiye göre ilişki kurun; profilden doğrudan raporlayanları ve zimmetlerini görüntüleyin.',
+  'Menü, pano, varlık, çalışan listesi/profili ve zimmet formu ile aksesuar listeleri seçilen dile çevrildi. Diğer modüller sırayla ekleniyor.',
   '↓ CSV dışa aktar', '＋ Çalışan ekle', 'Ad, personel no, e-posta, departman, görev veya konum ara',
   'Departman filtresi', 'Departmanı temizle', 'Yönetici adı veya personel no ara', 'Tüm yöneticiler',
   'Tüm çalışanlar', 'Aktif çalışanlar', 'Pasif çalışanlar', 'İşe başlama (başlangıç)',
@@ -61,7 +62,22 @@ const requiredEmployeeLabels = [
   'Personel no', 'Görev unvanı', 'İşe başlama', 'Durum', 'İşlem', 'Çalışanlar yükleniyor…',
   'Seçtiğiniz arama, departman, yönetici, işe başlama tarihi ve durum ölçütlerine uygun çalışan bulunamadı.',
   'Bu listede çalışan kaydı yok.', 'çalışan profilini aç', 'Pasife al', 'Etkinleştir',
-  'çalışan', 'sayfa'
+  'çalışan', 'sayfa', 'ŞİRKET EKİBİ / ÇALIŞAN PROFİLİ', 'Çalışan ayrıntısı',
+  'Zimmet formunu yazdır', 'Kapat', 'Yönetici seç', 'Personel numarası', 'İşe başlama tarihi', 'YÖNETİCİ',
+  'Doğrudan raporlayanlar', 'Zimmetli varlıklar', 'Aksesuar zimmetleri', 'Aktif lisanslar',
+  'Sarf tüketim geçmişi', 'Yayıncı / sürüm', 'Atandığı tarih', 'Süresiz',
+  'Çalışan profil fotoğrafı', 'Fotoğraf yükle', 'Fotoğrafı kaldır', 'Çalışan belgeleri',
+  'Özel İK notları', 'Belge ekle', 'Zimmetli envanterler',
+  'Bu çalışana doğrudan bağlı çalışan bulunmuyor.', 'Bu çalışana zimmetli varlık yok.',
+  'Açık aksesuar zimmeti yok.', 'Etkin lisans ataması yok.', 'Sarf tüketim kaydı yok.',
+  'Envanter teslim ve zimmet formu', 'Belge tarihi', 'Kontrol / imza', 'Kalan adet',
+  'Teslim tarihi', 'ZİMMET BELGESİ', 'Teslim eden yetkili',
+  'Bu form, düzenlendiği tarihte şirket kayıtlarında çalışana bağlı görünen envanter ve açık aksesuar zimmetlerini listeler.',
+  'Zimmet formu hazırlanıyor…', 'Zimmet formu hazırlanamadı: {error}',
+  'Varlıklar eksik yüklendi ({loaded}/{total}).',
+  'Aksesuar zimmetleri eksik yüklendi ({loaded}/{total}); eksik form basılmadı.',
+  'Yönetici listesi yüklenemedi: {error}', 'varlık detayını aç', 'kayıt', 'kişi',
+  'açık zimmet', 'etkin lisans', 'hareket', 'son'
 ];
 
 const invalidRows = Object.entries(sandbox.localeRows)
