@@ -1,4 +1,6 @@
 # Proje ilerleme raporu
+- **11 Ekim canlı şema kontrolü:** `https://envantertr.com/api/status` HTTP 200 döndü; uygulama `migration-required`, toplam 72 migration ve 2 bekleyen migration bildirdi. Kaynakta bekleyenler `20261010200000_AddCompanyApiTokens` ve `20261010210000_AddAssetModelAttachments`; ikisi yeni tablo ve kısıt/index ekliyor, mevcut tabloları silmiyor veya değiştirmiyor. Uygulama normal açılışta şemayı değiştirmez; yalnızca açık `--migrate` komutuyla uygular. Canlı veritabanında yedek alma/migration henüz yapılmadı; yedek doğrulaması ve açık işletme onayı bekleniyor. Bu durum canlı uygulama sağlığının `ready` olduğu anlamına gelmez.
+
 - **11 Ekim toplu çalışan durumu ve kabulü:** En fazla 100 çalışan seçilerek tek işlemde etkinleştirilebilir/pasife alınabilir. Pasife alma öncesi açık varlık, aksesuar teslimi, lisans ve doğrudan raporlayan özeti gösterilir. Şirket sınırı, rol/CSRF, atomik değişiklik ve çalışan başına denetim kaydı izole PostgreSQL 17 kabulinde doğrulandı; tam paket **72/72 geçti**. Beş dilde **1.339** arayüz girdisi doğrulandı. Bu, uygulama işlevi kabulidir; müşteri sunucusu kurulumu ve kurulum paketlerinin yayımlanması hâlâ açık.
 
 
