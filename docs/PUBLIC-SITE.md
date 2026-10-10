@@ -8,15 +8,15 @@ Ana sayfanın açılış alanı, kullanıcının paylaştığı incident-managem
 
 ## Etkileşimli demo menüsü (10 Ekim 2026)
 
-`/demo/` ekranı Genel Bakış, Varlıklar, Zimmetler, Aksesuarlar, Lisanslar, Sarf malzemeleri, Bileşenler, Kişiler, Konumlar, Bakım ve denetim, Kataloglar ve Raporlar modüllerini sunar. Liste ekranlarında arama, uygun filtreler, örnek kayıt ayrıntıları ve CSV indirme bulunur; ekranlar sentetik veridir ve yazma işlemi yapmaz. Menüler masaüstünde kaydırılır, mobilde yatay gezinir. TR/EN/RU/UK/MK arayüz dili, beş renk paleti (mavi/yeşil/mor/kehribar/turkuaz) ve açık-koyu görünüm seçimi tarayıcıda saklanır.
+`/demo/` ekranı Genel Bakış, Envanter (varlıklar, satın alma siparişleri, modeller, markalar, kategoriler, durum etiketleri, QR/barkodlar), Zimmet ve hareketler, Lisans ve yazılım, Kişiler ve konumlar, Operasyon ve raporlar gruplarını gösterir. Aksesuar, sarf, bileşen ve katalog ekranları da menüde yer alır. Liste ekranlarında arama, uygun filtreler, örnek kayıt ayrıntıları ve CSV indirme bulunur; ekranlar sentetik veridir ve yazma işlemi yapmaz. Menü masaüstünde kaydırılır; mobilde açılır çekmece olarak kullanılabilir. Şirket alanı kartı yalnızca örnek depolama göstergesidir, gerçek kota değildir. TR/EN/RU/UK/MK arayüz dili, beş renk paleti (mavi/yeşil/mor/kehribar/turkuaz) ve açık-koyu görünüm seçimi tarayıcıda saklanır.
 
 10 Ekim'de canlı `https://envantertr.com/#deploy` sayfası tarayıcıdan okundu. Canlı sayfadaki Windows 11 tek tık kurulum, Active Directory, Hetzner bulut IP'si, Debian paketi, nginx ve lisans/fiyat taahhütleri güncel kaynakta kanıtlanmadığından yerel ürün açıklamalarına kopyalanmadı. Yerel Kurulum bölümü doğrulanabilir kapsamı kullanır: Windows x64 self-contained paket, Ubuntu Docker Compose/Caddy dağıtımı, şirket verisi ayrımı ve doğrulanmış şifreli yedek/geri yükleme araçları; hedef müşteri sunucusu kabulinin ayrıca gerektiğini açıkça belirtir.
 
-## 10 Ekim 2026 canlı alan adı kontrolü
+## 10 Ekim 2026 canlı yayın durumu
 
-- `https://envantertr.com/` ve `https://www.envantertr.com/` HTTP 200 döndürüyor; yanıt başlığı ve gövdesi Next.js ile üretilen ayrı bir site olduğunu gösteriyor. Bu Next.js kaynak kodu, dağıtım tanımı ve yayın kimlik bilgileri bu repoda veya çalışma alanı ortamında bulunamadı.
-- Canlı ana sayfa 14 günlük ücretsiz deneme ve sabit aylık fiyatlar gibi bu repodaki ürün durumuyla doğrulanmamış taahhütler içeriyor. `https://envantertr.com/demo/` ve `https://tes.envantertr.com/` de bu kontrolde ürün uygulaması yerine aynı Next.js tanıtım sayfasını döndürdü.
-- Bu repodaki yeni ürün tanıtım sayfası ve etkileşimli salt-okunur örnek demo `localhost:8081` üzerindedir; `envantertr.com` yayınına bağlı değildir. Yerel dosyayı değiştirmek canlı Next.js sitesini güncellemez. Canlı güncelleme için gerçek Next.js kaynak deposu ve o sitenin onaylı dağıtım yöntemi gerekir.
+- `https://envantertr.com/` ve `https://www.envantertr.com/` bu repo dışındaki tanıtım sitesini sunar. Bu Next.js kaynak kodu ve dağıtım tanımı bu repoda bulunmuyor.
+- Canlı ana sayfa 14 günlük ücretsiz deneme ve sabit aylık fiyatlar gibi bu repodaki ürün durumuyla doğrulanmamış taahhütler içeriyor.
+- `https://envantertr.com/demo/` bu repodaki salt okunur demo dosyasını Coolify üzerinden sunar. Son doğrulanan kaynak `ef28083` (`Fix localized asset navigation label`); Coolify dağıtımı başarılı, HTTPS yanıtı HTTP 200 ve canlı arayüzde `Varlıklar` etiketi doğru görünür. Demo ve ana sayfa ayrı teslimatlardır: demo bu GitHub deposundaki koddan Coolify webhook dağıtımıyla güncellenir; ana sayfa ayrı Next.js kaynağında kalır.
 
 ## Platform yönetiminden gelen veriler
 
@@ -24,6 +24,6 @@ Ana sayfanın açılış alanı, kullanıcının paylaştığı incident-managem
 - `/api/site-content`, yayımlanmış metin bloklarını döndürür. Ana sayfa şu anahtarları metin olarak uygular: `home.hero`, `home.features`, `home.pricing`, `home.deployment`, `home.demo`. Her bloğun `title` alanı başlığı, `body` alanı açıklama metnini değiştirir. İçerik HTML olarak çalıştırılmaz.
 - Medya dosyası yükleme ve görsel yönetimi henüz yoktur. `mediaPath` alanı kaydedilse de dosyayı yüklemez veya tanıtım sayfasına yerleştirmez.
 
-## Yerel yayın sınırı
+## Yerel önizleme ve canlı yayın sınırı
 
-8081 adresi yalnızca yerel önizlemedir; genel erişime açık canlı alan adı değildir. Metin ve plan yönetim arayüzü içerik kataloglarına bağlanmıştır fakat satın alma/tahsilat ve demo rezervasyonu henüz tamamlanmamıştır. Canlı Next.js yayını ve EnvanterTR uygulama deposu ayrı teslimat kanallarıdır.
+8081 adresi yalnızca yerel ana sayfa önizlemesidir. `/demo/` Coolify üzerinden genel erişime açık canlı yayındır. Metin ve plan yönetim arayüzü içerik kataloglarına bağlanmıştır fakat satın alma/tahsilat ve demo rezervasyonu henüz tamamlanmamıştır. Canlı Next.js ana sayfası ve EnvanterTR ürün deposu ayrı teslimat kanallarıdır.
