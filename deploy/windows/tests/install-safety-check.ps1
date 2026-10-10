@@ -27,6 +27,7 @@ Assert-Pattern 'setup tokens are not shown until HTTPS API and PostgreSQL connec
 Assert-Pattern 'database credentials use LocalMachine DPAPI protection' '(?s)ProtectedData\]::Protect\(\s*\$connectionBytes,\$null,\[Security\.Cryptography\.DataProtectionScope\]::LocalMachine\)'
 Assert-Pattern 'production settings store the protected secret path instead of the plaintext connection string' 'WindowsSecrets = @\{ ConnectionStringPath = \$connectionSecretPath \}'
 Assert-Pattern 'the Windows service can read only the protected secret directory' '(?s)\$secretsPath /inheritance:r /grant:r "SYSTEM:\(OI\)\(CI\)F" "Administrators:\(OI\)\(CI\)F" "NT AUTHORITY\\LOCAL SERVICE:\(OI\)\(CI\)RX'
+Assert-Pattern 'the temporary setup-resume secret remains administrator-only after data-root ACL setup' '(?s)foreach \(\$pendingSetupFile in @\("setup-pending\.dpapi","setup-pending\.json"\)\).*?\$pendingSetupPath /inheritance:r /grant:r "SYSTEM:F" "Administrators:F".*?Could not restrict pending first-install file permissions'
 if ($source -match '(?s)ConnectionStrings\s*=\s*@\{\s*EnvanterTR\s*=\s*\$connectionString') { throw 'FAIL: database credentials must not be written in appsettings.' }
 
 if ($setupSource -notmatch '(?s)Read-PendingConnection.*?DataProtectionScope\]::LocalMachine') { throw 'FAIL: interrupted Windows setup must resume from a machine-protected connection secret.' }

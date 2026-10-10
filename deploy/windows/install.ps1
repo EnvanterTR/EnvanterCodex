@@ -96,6 +96,13 @@ try {
     }
     & icacls.exe $secretsPath /inheritance:r /grant:r "SYSTEM:(OI)(CI)F" "Administrators:(OI)(CI)F" "NT AUTHORITY\LOCAL SERVICE:(OI)(CI)RX" /T /C | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "Could not restrict protected secret directory permissions." }
+    foreach ($pendingSetupFile in @("setup-pending.dpapi","setup-pending.json")) {
+        $pendingSetupPath = Join-Path $secretsPath $pendingSetupFile
+        if (Test-Path -LiteralPath $pendingSetupPath -PathType Leaf) {
+            & icacls.exe $pendingSetupPath /inheritance:r /grant:r "SYSTEM:F" "Administrators:F" /C | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "Could not restrict pending first-install file permissions: $pendingSetupFile" }
+        }
+    }
 
 $tokenBytes = New-Object byte[] 32
 $random = [Security.Cryptography.RandomNumberGenerator]::Create()
