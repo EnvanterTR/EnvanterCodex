@@ -1,5 +1,7 @@
 # EnvanterTR ürün durumu ve öncelik sırası
 
+- **10 Ekim Windows Server ilk kurulum yardımcısı:** Yayın ZIP'ine `Setup.cmd` ve `setup.ps1` eklendi. Windows Server 2019/2022, DNS/TLS sertifikası ve PostgreSQL 17 önkoşullarını kontrol eder; onaydan sonra yeni DB/rol, servis ve ilk şema adımlarını yönlendirir. Var olan DB/servis üzerine yazmaz; PostgreSQL, sertifika, DNS veya firewall kurulumunu otomatik yapmaz. Yerel testler geçti. Windows 11 kişisel EXE'si, gerçek Windows Server kabulü, imzalı müşteri paketi ve Linux tarafının daha basit/tek-komut kabulü açık kalır.
+
 Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Yerel geliştirme önizlemesi, müşteri kullanıma hazır ürün anlamına gelmez. **Hazır** yazan maddeler yalnızca mevcut kod kapsamını belirtir; tüm uçtan uca kabul ve güvenlik doğrulamaları tamamlanmış sayılmaz.
 
 - **10 Ekim 2026 yönetim ve Cloud hedefi:** Platform yöneticisi arayüzünün temeli (`/platform-admin.html`) firma, plan kataloğu, tanıtım metni ve yönetici işlem kaydı bölümlerini sunuyor; şirket sahibi/yöneticisi ekip üyelerini davet edip yedi şirket rolünden birini atayabiliyor. Sıradaki kapsam, şirket yöneticisi için kolay kullanıcı/rol ekranı ve uygulama içi erişim açıklamaları; rol-modül izin matrisinin kalan uçlarda tamamlanması; Cloud kendi kendine kayıt, plan/koltuk seçimi, güvenli ödeme, fatura, yenileme ve abonelik değişikliği akışlarıdır. Bunlar tamamlanıp hedef barındırma, ödeme sağlayıcısı ve müşteri kabulü yapılmadan Cloud satış/ödeme özelliği hazır ilan edilmemelidir.

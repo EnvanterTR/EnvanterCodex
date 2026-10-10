@@ -3,7 +3,10 @@ param(
     [string]$InstallRoot = "$env:ProgramFiles\EnvanterTR",
     [string]$DataRoot = "$env:ProgramData\EnvanterTR",
     [string]$ServiceName = "EnvanterTR",
-    [int]$HttpsPort = 8443
+    [int]$HttpsPort = 8443,
+    [string]$CertificateSubject = "",
+    [string]$CertificateThumbprint = "",
+    [Security.SecureString]$DatabaseConnectionStringSecure = $null
 )
 
 $ErrorActionPreference = "Stop"
@@ -30,18 +33,24 @@ foreach ($rootPath in @($InstallRoot,$DataRoot)) {
 $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 if ($service) { throw "Service '$ServiceName' already exists. Use update.ps1 for updates; this installer never overwrites an installation." }
 
-$subject = (Read-Host "HTTPS certificate subject as shown in Local Computer > Personal (example: CN=inventory.example.com)").Trim()
+$subject = $CertificateSubject.Trim()
+if ([string]::IsNullOrWhiteSpace($subject)) {
+    $subject = (Read-Host "HTTPS certificate subject as shown in Local Computer > Personal (example: CN=inventory.example.com)").Trim()
+}
 if ([string]::IsNullOrWhiteSpace($subject)) { throw "A certificate subject is required." }
 $store = [System.Security.Cryptography.X509Certificates.X509Store]::new("My", "LocalMachine")
 $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadOnly)
 try {
     $matches = @($store.Certificates | Where-Object {
-        $_.Subject -eq $subject -and $_.HasPrivateKey -and $_.NotBefore -lt (Get-Date) -and $_.NotAfter -gt (Get-Date)
+        $subjectMatches = $_.Subject -eq $subject
+        $thumbprintMatches = [string]::IsNullOrWhiteSpace($CertificateThumbprint) -or $_.Thumbprint -eq $CertificateThumbprint
+        $subjectMatches -and $thumbprintMatches -and $_.HasPrivateKey -and $_.NotBefore -lt (Get-Date) -and $_.NotAfter -gt (Get-Date)
     })
     if ($matches.Count -ne 1) { throw "Expected exactly one valid LocalMachine\My certificate with a private key and subject '$subject'; found $($matches.Count)." }
 } finally { $store.Close() }
 
-$connectionSecure = Read-Host "PostgreSQL connection string for EnvanterTR (input hidden)" -AsSecureString
+$connectionSecure = $DatabaseConnectionStringSecure
+if (-not $connectionSecure) { $connectionSecure = Read-Host "PostgreSQL connection string for EnvanterTR (input hidden)" -AsSecureString }
 $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($connectionSecure)
 try { $connectionString = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) }
 finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr); $connectionSecure.Dispose() }

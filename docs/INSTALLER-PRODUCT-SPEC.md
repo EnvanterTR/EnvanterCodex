@@ -25,7 +25,7 @@ Kurulumu müşteri IT sorumlusu kaynak kodu, SQL veya uzun teknik kurulum kılav
 ## Mevcut teslimat durumu
 
 - **Windows 11 kişisel:** Uygulama/veritabanını aynı bilgisayara kuran müşteri `Setup.exe` paketi yayımlanmadı. Mevcut Windows yayın paketi self-contained uygulama ve bakım betiklerini içeren ZIP'tir; imzalı sihirbaz değildir.
-- **Windows Server ekip:** x64 uygulama ZIP'i ve servis/yedek/güncelleme/geri yükleme betikleri vardır. `preflight.ps1` Windows sürümü, yükseltilmiş oturum, paket, yollar/disk, portlar ve yerel TLS sertifikasını değişiklik yapmadan kontrol eder. Mevcut kurulumda PostgreSQL ve TLS sertifikası önceden hazırlanır; gerçek Windows Server ilk kurulum ve kurtarma kabulü tamamlanmamıştır.
+- **Windows Server ekip:** x64 uygulama ZIP'i ve `Setup.cmd` ile başlatılan yönlendirmeli kurulum akışı vardır. Windows Server 2019/2022, DNS, TLS sertifikası ve PostgreSQL 17 önceden hazırlanır; yardımcı koşulları kontrol eder, yeni boş DB/rol oluşturur, Windows servisini kurar ve ilk şemayı açık onayla başlatır. DNS, güvenlik duvarı ve PostgreSQL kurulumu otomatik değildir. Gerçek Windows Server ilk kurulum ve kurtarma kabulü tamamlanmamıştır.
 - **Ubuntu ekip:** Docker Compose `install.sh`, `update.sh`, `backup.sh` ve `restore.sh` vardır. İzole Linux kurulum/geri yükleme kabulleri geçmiştir. Hedef makinede DNS/TLS ve dolu müşteri medya verisiyle kurtarma kabulü, imzalı/sürümlü müşteri teslimatı hâlâ gereklidir.
 
 İlk müşteri sürümünden önce üç yol için de paket/kurulum kapsamı, yedekten kurtarma, hata halinde veri koruma, sürüm yükseltme ve hedef işletim sistemi kabulü ayrı ayrı tamamlanmalıdır. Kod imzalama sertifikası veya gerçek Windows hedefi sağlanmadıkça Windows imza/host kabulini tamamlanmış saymayın.

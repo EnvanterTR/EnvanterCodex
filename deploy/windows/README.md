@@ -1,12 +1,13 @@
-# Windows Server dağıtım taslağı
+# Windows dağıtım paketi
 
-Bu klasör Windows x64 self-contained yayın, servis kurma ve uygulama güncelleme betiklerini içerir. Bu, henüz müşteri kurulum sihirbazı veya onaylanmış üretim dağıtımı değildir. Betikler gerçek Windows Server ortamında uçtan uca doğrulanmadan üretim kullanımı için değerlendirilmemelidir.
+Bu klasör Windows x64 self-contained yayın, etkileşimli ilk kurulum yardımcısı, servis kurma ve uygulama güncelleme betiklerini içerir. İndirilen ZIP açıldıktan sonra `Setup.cmd` başlatılır; yükseltilmiş bir PowerShell penceresi açarak adımları yönlendirir. Yardımcı mevcut bir veritabanı/servis kurulumunun üzerine yazmaz. Gerçek müşteri Windows Server kabulü tamamlanmadan paket üretime hazır sayılmaz.
 
 Sunucu veya disk kaybı için çevrim dışı parola/anahtar saklama ve iki platformlu kurtarma adımları: [`docs/DISASTER-RECOVERY.md`](../../docs/DISASTER-RECOVERY.md).
 
 ## Gereksinimler ve sınırlar
 
 - Windows Server 2019 veya 2022 x64, yönetici PowerShell'i ve paket derlemesi için .NET 10 SDK'sı ya da çalışan Docker Desktop (resmî .NET 10 SDK imajıyla) bulunan derleme makinesi.
+- `Setup.cmd` kurulum akışı Windows Server içindir. Tek bilgisayarda Windows 11 üzerinde kişisel kurulum ayrı ürün paketi olarak hazırlanmalıdır; bu paket Windows 11'i desteklediğini iddia etmez.
 - PostgreSQL 17 ayrıca kurulmuş ve çalışıyor olmalı. `prepare-postgresql.ps1` yalnızca yerel PostgreSQL'e bağlanarak yeni, sınırlı yetkili uygulama rolü ve UTF-8 veritabanı hazırlar; PostgreSQL yazılımını kurmaz. `migrate.ps1` açık onaydan sonra uygulama şemasını oluşturur/günceller.
 - TLS sertifikası `Local Computer > Personal (My)` deposunda olmalı; betik tam subject eşleşmesini ve özel anahtarı doğrular. `LocalService` hesabına sertifikanın özel anahtarını okuma izni Windows Sertifikalar MMC'sinden verilmelidir.
 - Şirket görselleri, Data Protection anahtarları ve DPAPI ile LocalMachine kapsamında şifrelenmiş PostgreSQL bağlantı sırrı `C:\ProgramData\EnvanterTR` altında tutulur. Production ayar dosyasında yalnızca şifreli sır dosyasının yolu bulunur; sır klasöründe SYSTEM ve Administrators tam yetkili, LocalService salt okunur erişimlidir. Uygulama ve bakım betikleri sırrı yalnız aynı Windows makinesinde açabilir; dosya başka makineye taşınırsa açılamaz. Zamanlanmış yedek parolası ve isteğe bağlı HTTPS bildirim adresi de DPAPI ile makineye bağlı şifrelenir. Çevrim dışı parola kasası/kurtarma kaydı zorunludur.
@@ -23,7 +24,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 Betik önce yerel .NET SDK'sını kullanır; SDK yoksa çalışan Docker Desktop üzerinden resmî .NET 10 SDK imajını çağırır. İlk Docker derlemesi imajı indirebilir. Özel çıktı dizini için `-OutputPath` verilebilir.
 
-`main` dalındaki GitHub Actions Windows doğrulama işi başarılı tamamlanırsa, aynı işin **Artifacts** bölümünde `envantertr-windows-x64-<commit-sha>` adlı indirme 14 gün boyunca saklanır. GitHub'da **Actions → EnvanterTR CI → başarılı çalıştırma → Artifacts** yolunu izleyin. İndirme içinde `envantertr-windows-x64-<12-karakter-commit>.zip`, `.zip.sha256` yan dosyası ve `verify-release.ps1` doğrulama aracı bulunur. Bu, CI kontrollerinden geçmiş imzasız x64 pakettir; kurulum sihirbazı veya gerçek Windows Server kabulü değildir.
+`main` dalındaki GitHub Actions Windows doğrulama işi başarılı tamamlanırsa, aynı işin **Artifacts** bölümünde `envantertr-windows-x64-<commit-sha>` adlı indirme 14 gün boyunca saklanır. GitHub'da **Actions → EnvanterTR CI → başarılı çalıştırma → Artifacts** yolunu izleyin. İndirme içinde `envantertr-windows-x64-<12-karakter-commit>.zip`, `.zip.sha256` yan dosyası ve `verify-release.ps1` doğrulama aracı bulunur. Bu imzasız x64 pakette `Setup.cmd` ilk kurulum yardımcısı vardır; başarılı CI veya yerel paket testi gerçek Windows Server kabulü anlamına gelmez.
 
 Arşivi açmadan önce SHA-256 değerini doğrulayın:
 
@@ -36,7 +37,11 @@ Expand-Archive -LiteralPath $archive.FullName -DestinationPath C:\Staging\publis
 
 SHA-256 aktarım bozulmasını saptar; dosyanın yayıncı kimliğini kanıtlamaz. Paketi sunucuya aktarmadan önce artifact'i doğru GitHub çalıştırmasından indirdiğinizi ve çalıştırmanın beklediğiniz commit'e ait olduğunu doğrulayın. Üretim paketi kod imzalama ve hedef sunucu kabulünden sonra ayrıca yayımlanmalıdır.
 
-`artifacts/windows/publish` dizinini sunucuya güvenli biçimde aktarın. Sunucuda yönetici PowerShell açın:
+`artifacts/windows/publish` dizinini sunucuya güvenli biçimde aktarın. Önkoşulları (PostgreSQL 17, TLS sertifikası ve DNS) tamamladıktan sonra paketi ayrı bir klasöre çıkarıp `Setup.cmd` dosyasına çift tıklayın. Yardımcı yönetici izni ister; DNS adını, HTTPS/DB portlarını ve kullanılacak TLS sertifikasını sorar. Ön kontroller geçtikten sonra devam etmek için `INSTALL` yazılır. `prepare-postgresql.ps1` uygulama parolasını üretir ve kurulum sırasında gizli biçimde aktarır; ekrana bağlantı parolası yazmaz. Veritabanı şeması için ayrıca `MIGRATE` onayı gerekir.
+
+Sihirbaz PostgreSQL yazılımını kurmaz, DNS veya Windows Güvenlik Duvarı'nı değiştirmez ve TLS sertifikası edinmez. Kurum IT'si bu hazırlıkları yapmalıdır. Önkoşul hatalarında sihirbaz açıklama verir; düzeltme sonrası yeniden çalıştırılabilir. Kurulum sırasında oluşturulan ilk şirket ve platform yöneticisi anahtarları bir kez gösterilir; güvenli kasaya kaydedin, ilk hesaplar açıldıktan sonra `disable-bootstrap.ps1` çalıştırın.
+
+Elle denetim veya sorun giderme için ön kontrolü doğrudan yönetici PowerShell'den çalıştırın:
 
 ```powershell
 ./preflight.ps1 -PostgreSqlHost 127.0.0.1 -DnsName envanter.sirketiniz.com -CertificateSubject "CN=envanter.sirketiniz.com"

@@ -3,7 +3,8 @@ param(
     [ValidateRange(1,65535)][int]$Port = 5432,
     [ValidatePattern('^[A-Za-z][A-Za-z0-9_]{0,62}$')][string]$AdminUser = "postgres",
     [ValidatePattern('^[A-Za-z][A-Za-z0-9_]{0,62}$')][string]$AppRole = "envantertr_app",
-    [ValidatePattern('^[A-Za-z][A-Za-z0-9_]{0,62}$')][string]$DatabaseName = "envantertr"
+    [ValidatePattern('^[A-Za-z][A-Za-z0-9_]{0,62}$')][string]$DatabaseName = "envantertr",
+    [switch]$ReturnConnectionStringSecure
 )
 
 $ErrorActionPreference = "Stop"
@@ -72,10 +73,15 @@ try {
     [void](Invoke-LocalPsql "CREATE ROLE `"$AppRole`" LOGIN PASSWORD '$appPassword' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION;" $environment)
     $roleCreated = $true
     [void](Invoke-LocalPsql "CREATE DATABASE `"$DatabaseName`" OWNER `"$AppRole`" TEMPLATE template0 ENCODING 'UTF8';" $environment)
-    Write-Output "Created an empty UTF-8 database '$DatabaseName' and least-privilege login role '$AppRole' on 127.0.0.1:$Port."
-    Write-Output "Use this connection string at the EnvanterTR install.ps1 prompt (copy it directly; do not save it in a file):"
-    Write-Output "Host=127.0.0.1;Port=$Port;Database=$DatabaseName;Username=$AppRole;Password=$appPassword;SSL Mode=Disable;Timeout=15;Command Timeout=30"
-    Write-Warning "The generated database password is shown once and cannot be recovered. Keep the installer prompt and this PowerShell session private."
+    $connectionString = "Host=127.0.0.1;Port=$Port;Database=$DatabaseName;Username=$AppRole;Password=$appPassword;SSL Mode=Disable;Timeout=15;Command Timeout=30"
+    if ($ReturnConnectionStringSecure) {
+        [pscustomobject]@{ ConnectionStringSecure = (ConvertTo-SecureString -String $connectionString -AsPlainText -Force) }
+    } else {
+        Write-Output "Created an empty UTF-8 database '$DatabaseName' and least-privilege login role '$AppRole' on 127.0.0.1:$Port."
+        Write-Output "Use this connection string at the EnvanterTR install.ps1 prompt (copy it directly; do not save it in a file):"
+        Write-Output $connectionString
+        Write-Warning "The generated database password is shown once and cannot be recovered. Keep the installer prompt and this PowerShell session private."
+    }
 } catch {
     if ($roleCreated) {
         try { [void](Invoke-LocalPsql "DROP ROLE `"$AppRole`";" $environment) }
@@ -86,5 +92,6 @@ try {
     if ($environment.ContainsKey('PGPASSWORD')) { $environment['PGPASSWORD'] = $null }
     if ($adminPassword) { [Array]::Clear($adminPassword.ToCharArray(),0,$adminPassword.Length); $adminPassword = $null }
     if ($appPassword) { [Array]::Clear($appPassword.ToCharArray(),0,$appPassword.Length); $appPassword = $null }
+    $connectionString = $null
     Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
 }
