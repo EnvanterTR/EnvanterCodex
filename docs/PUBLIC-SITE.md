@@ -4,7 +4,7 @@ Statik ürün ana sayfası `src/EnvanterTR.PublicSite/index.html` içinde tutulu
 
 ## Yerel ana sayfa tasarımı (10 Ekim 2026)
 
-Ana sayfanın açılış alanı, kullanıcının paylaştığı incident-management ve engineering-platform örneklerindeki koyu teknoloji görsel yönüne göre yenilendi. Nane yeşili/vurgulu palet, ürün arayüzünü HTML/CSS ile çizen dashboard, yüzen garanti ve zimmet bilgi kartları, kaydırma ilerleme çizgisi, bölümlerde görünür olma hareketleri, hover durumları ve hareket azaltma tercihi uygulanır. Ana içerik, modül kapsamı, gerçek demo sınırı, iletişim ve fiyat açıklamaları korunur. Bu değişiklik yalnızca repodaki yerel önizlemeyi etkiler; canlı Next.js sitesine aktarım değildir.
+Ana sayfanın açılış alanı, kullanıcının paylaştığı incident-management ve engineering-platform örneklerindeki koyu teknoloji görsel yönüne göre yenilendi. Nane yeşili/vurgulu palet, HTML/CSS ile oluşturulmuş etkileşimli ürün arayüzü, yüzen garanti ve zimmet bilgi kartları, kaydırma ilerleme çizgisi, bölümlerde görünür olma hareketleri ve responsive düzen bulunur. Ürün arayüzündeki Genel Bakış, Varlıklar, Kişiler, Aksesuarlar, Konumlar ve Raporlar menüleri tıklanarak sentetik kayıtlarla farklı ekranlar gösterir; hareket akışı animasyonludur ve kullanıcı etkileşiminde durur. Ekrandaki bağlantılar salt okunur yerel demo rotasına gider. Hareket azaltma tercihi desteklenir. SSS'de çalışan erişimi, demo verisi ve kurulum hakkındaki yanıtlar geçici ürün açıklamalarıdır; paket/fiyat taahhüdü değildir. Ana içerikte modül kapsamı, demo sınırı, iletişim ve fiyat açıklamaları korunur. Bu değişiklik yalnızca repodaki yerel önizlemeyi etkiler; canlı Next.js sitesine aktarım değildir.
 
 ## 10 Ekim 2026 canlı alan adı kontrolü
 
