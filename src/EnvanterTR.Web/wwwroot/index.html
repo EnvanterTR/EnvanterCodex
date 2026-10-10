@@ -2642,7 +2642,9 @@
           const row = document.createElement('div'); row.className = 'activity-row';
           const icon = document.createElement('span'); icon.className = 'activity-icon'; icon.textContent = entry.eventType === 'Created' ? '＋' : entry.eventType === 'Assigned' ? '↗' : '↻';
           const copy = document.createElement('div'); copy.className = 'activity-copy';
-          const title = document.createElement('strong'); title.textContent = `${entry.assetTag || 'Varlık'} · ${entry.details || entry.eventType}`;
+          const titleText = `${entry.assetTag || 'Varlık'} · ${entry.details || entry.eventType}`;
+          const title = document.createElement(entry.assetId && canReadAssets() ? 'button' : 'strong'); title.textContent = titleText;
+          if (title.tagName === 'BUTTON') { title.type = 'button'; title.className = 'text-link'; title.style.cssText = 'display:block;max-width:100%;overflow:hidden;text-align:left;text-overflow:ellipsis;white-space:nowrap'; title.setAttribute('aria-label', `${entry.assetTag || 'Varlık'} ayrıntısını aç`); title.addEventListener('click', () => openAsset(entry.assetId)); }
           const sub = document.createElement('small'); sub.textContent = entry.employeeName || entry.actorName || 'Şirket hareketi';
           copy.append(title, sub); const time = document.createElement('span'); time.className = 'activity-time'; time.textContent = new Intl.DateTimeFormat(selectedLocale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(entry.occurredAt));
           row.append(icon, copy, time); activityHost.append(row);
