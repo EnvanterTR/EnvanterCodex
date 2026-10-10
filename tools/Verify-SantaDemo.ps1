@@ -16,7 +16,14 @@ SELECT c."Id",
  (SELECT coalesce(sum(a."TotalQuantity"),0) FROM "Accessories" a WHERE a."CompanyId"=c."Id"),
  (SELECT count(*) FROM "AssetBrands" b WHERE b."CompanyId"=c."Id" AND b."LogoFileName" IS NOT NULL),
  (SELECT count(*) FROM "AccessoryModels" m WHERE m."CompanyId"=c."Id" AND m."PhotoFileName" IS NOT NULL),
- (SELECT count(*) FROM "SupplierCatalogEntries" s WHERE s."CompanyId"=c."Id" AND s."LogoFileName" IS NOT NULL)
+ (SELECT count(*) FROM "SupplierCatalogEntries" s WHERE s."CompanyId"=c."Id" AND s."LogoFileName" IS NOT NULL),
+ (SELECT count(*) FROM "AssetEvents" e WHERE e."CompanyId"=c."Id" AND e."Details" IN ('Santa demo · örnek başlangıç kaydı','Santa demo · örnek çalışan zimmeti')),
+ (SELECT count(*) FROM "Assets" a JOIN "AssetModels" m ON m."CompanyId"=a."CompanyId" AND m."Id"=a."ModelId"
+  WHERE a."CompanyId"=c."Id" AND a."DeletedAt" IS NULL AND a."PurchaseDate" IS NOT NULL
+    AND a."PurchaseCost" IS NOT NULL AND m."DepreciationMonths" IS NOT NULL),
+ (SELECT coalesce(sum(l."Quantity"-l."QuantityReceived"),0) FROM "AccessoryPurchaseOrders" p
+  JOIN "AccessoryPurchaseOrderLines" l ON l."CompanyId"=p."CompanyId" AND l."PurchaseOrderId"=p."Id"
+  WHERE p."CompanyId"=c."Id" AND p."OrderNumber"='SNT-DEMO-ACC-PO-001' AND p."Status"<>'Cancelled')
 FROM "Companies" c WHERE c."Slug"='santa-demo';
 '@
 
@@ -25,7 +32,7 @@ if ($LASTEXITCODE -ne 0) { throw "Could not read the Santa demo records: $($reco
 $recordLine = @($recordOutput | Where-Object { $_ -match '^[0-9a-fA-F-]{36}\|' } | Select-Object -Last 1)
 if ($recordLine.Count -ne 1) { throw 'The Santa demo company is missing or the company query returned an unexpected result.' }
 $fields = $recordLine[0].Split('|')
-if ($fields.Count -ne 11) { throw 'The Santa demo database returned an unexpected number of count fields.' }
+if ($fields.Count -ne 14) { throw 'The Santa demo database returned an unexpected number of count fields.' }
 $companyKey = $fields[0].Replace('-', '')
 if ($companyKey -notmatch '^[0-9a-fA-F]{32}$') { throw 'The Santa demo company identifier is invalid.' }
 
@@ -56,6 +63,9 @@ $actual = [ordered]@{
     BrandsWithLogos = [int]$fields[8]
     AccessoryModelsWithPhotos = [int]$fields[9]
     SuppliersWithLogos = [int]$fields[10]
+    DemoActivityEntries = [int]$fields[11]
+    DepreciationEligibleAssets = [int]$fields[12]
+    PendingAccessoryDeliveryUnits = [int]$fields[13]
     EmployeePhotoFiles = $mediaCounts['employee_photos']
     AssetModelPhotoFiles = $mediaCounts['asset_model_photos']
     BrandLogoFiles = $mediaCounts['brand_logos']
@@ -65,7 +75,8 @@ $actual = [ordered]@{
 $expected = @{
     ActiveEmployees = 30; ActiveAssets = 50; AssetCategories = 10; UsedAssetModels = 20
     ModelsWithPhotos = 20; AccessoryRecords = 10; AccessoryUnits = 172; BrandsWithLogos = 12
-    AccessoryModelsWithPhotos = 10; SuppliersWithLogos = 8; EmployeePhotoFiles = 30
+    AccessoryModelsWithPhotos = 10; SuppliersWithLogos = 8; DemoActivityEntries = 50
+    DepreciationEligibleAssets = 50; PendingAccessoryDeliveryUnits = 9; EmployeePhotoFiles = 30
     BrandLogoFiles = 12; SupplierLogoFiles = 8
 }
 $minimum = @{ AssetModelPhotoFiles = 20; AccessoryModelPhotoFiles = 10 }
