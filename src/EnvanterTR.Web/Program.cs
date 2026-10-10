@@ -1,6 +1,7 @@
 using EnvanterTR.Web.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -82,10 +83,20 @@ if (!string.IsNullOrWhiteSpace(protectedSmtpPasswordPath))
     }
 }
 
-// The Linux production profile exposes the app only to Caddy on its private
-// Compose network. Caddy's rightmost X-Forwarded-For entry is the client IP.
-// Keep this opt-in: never trust caller-supplied forwarding headers on a public app port.
+// The Linux deployment enables this only for the web container on its private
+// Compose network; the web service has no published host port. Keep proxy trust
+// opt-in so forwarded headers are never accepted on a directly public app port.
 var trustProxyForwardedFor = builder.Configuration.GetValue<bool>("ForwardedHeaders:Enabled");
+if (trustProxyForwardedFor)
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedProto;
+        options.KnownNetworks.Clear();
+        options.KnownProxies.Clear();
+        options.ForwardLimit = 1;
+    });
+}
 
 var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
 if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
@@ -211,6 +222,10 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 }
 
 var app = builder.Build();
+if (trustProxyForwardedFor)
+{
+    app.UseForwardedHeaders();
+}
 
 // Apply browser protections to both static pages and API responses. API responses
 // can contain private records or set session cookies, so the browser must not cache them.
