@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## Güncel güvenlik kabul kanıtı — 10 Ekim 2026
+
+`74c1422` kaynak ağacında tam izole PostgreSQL 17 HTTP güvenlik/tenant paketi `deploy/testing/run-security-acceptance.ps1` ile tekrar çalıştırıldı: **71/71 geçti**. Testler endpoint kimlik sınırı ve rol politikası matrisi, şirketler arası kayıt/dosya izolasyonu, üyelik/rol değişikliğinin anında uygulanması, MFA/parola kurtarma, CSV/XLSX aktarımı, dosya yedek kapsamı ve stok/zimmet/rezervasyon/sipariş eşzamanlılığı gibi başlıkları kapsar. Geçici uygulama, veritabanı, volume ve ağ test sonunda kaldırıldı. Bu kanıt hedef müşteri sunucusundaki işletimsel kabul, gerçek SMTP teslimi veya tarayıcıda tüm rollerin görsel kabulini içermez.
+
 Bu belge EnvanterTR'nin kurumsal envanter yönetiminde beklenen ana işlevleri ne ölçüde karşıladığını izler. Amaç, her düğmeyi körü körüne kopyalamak değil; aynı işi yapan kurumsal envanter akışlarını, izinleri ve kayıt ilişkilerini eksiltmeden ürün kararlarıyla tamamlamaktır. Ürün gereksinimi olan bir satır, uygulama ve kabul kontrolü yapılana kadar tamamlanmış sayılmaz.
 
 ## Durum anahtarı
