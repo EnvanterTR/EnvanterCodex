@@ -100,15 +100,37 @@ public static class AccessoryImportEndpoints
             if (item.Location is not null && locationPaths.TryGetValue(item.Location, out var locationCatalogId)) item.LocationCatalogId = locationCatalogId;
         }
         var suppliersToCreate = await SupplierImportCatalog.FindMissingNamesAsync(db, companyId, items.Select(x => x.Supplier), ct);
-        if (!commit) return Results.Ok(new { isValid = true, rowCount = items.Count, defaultLocationApplied, suppliersToCreate, errors = Array.Empty<string>(), message = $"{items.Count:N0} yeni aksesuar doğrulandı. Varsayılan konum {defaultLocationApplied:N0} boş satıra uygulanacak; {suppliersToCreate.Length:N0} yeni tedarikçi yalnızca aktarımı onaylarsanız kataloğa eklenecek. Önizleme kayıt eklemedi." });
+        var allCategories = await db.AccessoryCategories.AsNoTracking().Where(x => x.CompanyId == companyId).ToListAsync(ct);
+        var requestedCategories = items.Select(x => x.Category).Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x!.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var archivedNames = allCategories.Where(x => x.IsArchived).Select(x => x.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var archivedRequested = requestedCategories.Where(archivedNames.Contains).ToArray();
+        if (archivedRequested.Length > 0)
+            return Results.UnprocessableEntity(new { isValid = false, rowCount = items.Count,
+                errors = new[] { $"Arşivlenmiş aksesuar kategorileri yeniden etkinleştirin: {string.Join(", ", archivedRequested)}." } });
+        var activeCategoryNames = allCategories.Where(x => !x.IsArchived).Select(x => x.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var accessoryCategoriesToCreate = requestedCategories.Where(x => !activeCategoryNames.Contains(x)).ToArray();
+        if (!commit) return Results.Ok(new { isValid = true, rowCount = items.Count, defaultLocationApplied, suppliersToCreate, accessoryCategoriesToCreate, errors = Array.Empty<string>(), message = $"{items.Count:N0} yeni aksesuar doğrulandı. {accessoryCategoriesToCreate.Length:N0} yeni aksesuar kategorisi ve {suppliersToCreate.Length:N0} yeni tedarikçi yalnızca aktarımı onaylarsanız kataloğa eklenecek. Önizleme kayıt eklemedi." });
         await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         var current = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && (upperNames.Contains(x.Name.ToUpper()) || x.ItemNumber != null && upperNos.Contains(x.ItemNumber.ToUpper()))).Select(x => new { x.Name, x.ItemNumber }).ToListAsync(ct);
         if (current.Any(x => items.Any(y => string.Equals(x.Name, y.Name, StringComparison.OrdinalIgnoreCase) || y.ItemNumber != null && string.Equals(x.ItemNumber, y.ItemNumber, StringComparison.OrdinalIgnoreCase)))) return Results.Conflict(new { message = "Önizlemeden sonra aynı aksesuar eklendi. Hiçbir kayıt aktarılmadı; önizlemeyi yenileyin." });
         var suppliersCreated = await SupplierImportCatalog.LinkAndCreateAsync(db, companyId, actorId, items.Select(item => (item.Supplier, (Action<Guid>)(id => item.SupplierId = id))), ct);
+        var categories = await db.AccessoryCategories.Where(x => x.CompanyId == companyId).ToListAsync(ct);
+        var categoryMap = categories.Where(x => !x.IsArchived).ToDictionary(x => x.Name, StringComparer.OrdinalIgnoreCase);
+        var categoriesCreated = 0;
+        foreach (var name in accessoryCategoriesToCreate)
+        {
+            if (categoryMap.ContainsKey(name)) continue;
+            var category = new AccessoryCategory { CompanyId = companyId, Name = name };
+            db.AccessoryCategories.Add(category); categoryMap.Add(name, category); categoriesCreated++;
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "AccessoryCategory", TargetId = category.Id, Action = "AccessoryCategoryCreated", Details = $"CSV içe aktarımından: {name}" });
+        }
+        foreach (var item in items)
+            if (item.Category is not null && categoryMap.TryGetValue(item.Category, out var category)) item.CategoryId = category.Id;
         foreach (var item in items) { db.Accessories.Add(item); if (item.TotalQuantity > 0) db.AccessoryMovements.Add(new AccessoryMovement { CompanyId = companyId, AccessoryId = item.Id, ActorUserId = actorId, MovementType = "Received", Quantity = item.TotalQuantity, Notes = $"{(isXlsx ? "Excel" : "CSV")} içe aktarımındaki başlangıç stoku" }); db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Accessory", TargetId = item.Id, Action = "accessory.created", Details = item.Name + $"; {(isXlsx ? "Excel" : "CSV")} içe aktarımı." }); }
         db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Accessory", Action = isXlsx ? "XlsxImported" : "CsvImported", Details = $"{(isXlsx ? "Excel" : "CSV")} dosyasından {items.Count} aksesuar içe aktarıldı." });
         try { await db.SaveChangesAsync(ct); await tx.CommitAsync(ct); } catch (DbUpdateException) { await tx.RollbackAsync(ct); return Results.Conflict(new { message = "CSV aktarılmadı; bir kayıt çakıştı. Önizlemeyi yenileyip tekrar deneyin." }); }
-        return Results.Ok(new { imported = items.Count, suppliersCreated, defaultLocationApplied, message = $"{items.Count:N0} aksesuar ve başlangıç stok hareketleri eklendi; {suppliersCreated:N0} yeni tedarikçi kataloğa bağlandı; varsayılan konum {defaultLocationApplied:N0} kayda uygulandı." });
+        return Results.Ok(new { imported = items.Count, suppliersCreated, accessoryCategoriesCreated = categoriesCreated, defaultLocationApplied, message = $"{items.Count:N0} aksesuar ve başlangıç stok hareketleri eklendi; {categoriesCreated:N0} yeni aksesuar kategorisi, {suppliersCreated:N0} yeni tedarikçi kataloğa bağlandı; varsayılan konum {defaultLocationApplied:N0} kayda uygulandı." });
     }
 
     private static void AddError(List<string> errors, string message) { if (errors.Count < 100) errors.Add(message); }

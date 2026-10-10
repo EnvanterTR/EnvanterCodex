@@ -41,6 +41,7 @@ public static class AssetEndpoints
         api.MapSoftwareLicenseEndpoints();
         api.MapMaintenanceAttachmentEndpoints();
         api.MapAccessoryPhotoEndpoints();
+        api.MapAccessoryCategoryEndpoints();
         api.MapCatalogImageEndpoints();
         api.MapComponentEndpoints();
         api.MapAccessoryImportEndpoints();
@@ -193,14 +194,16 @@ public static class AssetEndpoints
         api.MapGet("/accessories/filter-options", async (ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
-            var categories = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && x.Category != null && x.Category.Trim() != "")
-                .Select(x => x.Category!.Trim()).Distinct().OrderBy(x => x).Take(500).ToListAsync(cancellationToken);
+            var categories = await db.AccessoryCategories.AsNoTracking().Where(x => x.CompanyId == companyId && !x.IsArchived)
+                .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).Take(500).ToListAsync(cancellationToken);
+            var archivedCategories = await db.AccessoryCategories.AsNoTracking().Where(x => x.CompanyId == companyId && x.IsArchived)
+                .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).Take(500).ToListAsync(cancellationToken);
             var locations = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() != "")
                 .Select(x => x.Location!.Trim()).Distinct().OrderBy(x => x).Take(500).ToListAsync(cancellationToken);
-            return Results.Ok(new { categories, locations });
+            return Results.Ok(new { categories, archivedCategories, locations });
         }).RequireAuthorization("asset.read");
 
-        api.MapGet("/accessories", async ([FromQuery] string? q, [FromQuery] string? category,
+        api.MapGet("/accessories", async ([FromQuery] string? q, [FromQuery] Guid? categoryId, [FromQuery] string? category,
             [FromQuery] string? location, [FromQuery] string? stock, [FromQuery] string? sortBy,
             [FromQuery] string? sortDirection, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken,
             [FromQuery] int page = 1, [FromQuery] int pageSize = 25) =>
@@ -219,7 +222,8 @@ public static class AssetEndpoints
                     db.AccessoryAssignments.Any(a => a.CompanyId == companyId && a.AccessoryId == x.Id &&
                         a.TargetType == "Location" && a.Quantity > a.ReturnedQuantity && a.Location != null && a.Location.Contains(term)));
             }
-            if (!string.IsNullOrWhiteSpace(category)) query = query.Where(x => x.Category != null && x.Category.Trim() == category.Trim());
+            if (categoryId is Guid selectedCategory) query = query.Where(x => x.CategoryId == selectedCategory);
+            else if (!string.IsNullOrWhiteSpace(category)) query = query.Where(x => x.Category != null && x.Category.Trim() == category.Trim());
             if (!string.IsNullOrWhiteSpace(location)) query = query.Where(x => x.Location != null && x.Location.Trim() == location.Trim());
             if (stock == "low") query = query.Where(x => x.TotalQuantity - (db.AccessoryAssignments
                 .Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id)
@@ -247,7 +251,9 @@ public static class AssetEndpoints
             var items = await ordered.ThenBy(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(x => new
                 {
-                    x.Id, x.Name, x.Category, x.ModelNumber, x.BrandId, x.ModelId,
+                    x.Id, x.Name, categoryId = x.CategoryId,
+                    category = db.AccessoryCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault() ?? x.Category,
+                    x.ModelNumber, x.BrandId, x.ModelId,
                     brandName = db.AssetBrands.Where(b => b.CompanyId == companyId && b.Id == x.BrandId).Select(b => b.Name).FirstOrDefault(),
                     modelName = db.AccessoryModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.Name).FirstOrDefault(),
                     modelPhotoUrl = db.AccessoryModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId && m.PhotoFileName != null).Select(m => $"/api/accessory-models/{m.Id}/photo").FirstOrDefault(),
@@ -260,7 +266,7 @@ public static class AssetEndpoints
             return Results.Ok(new { items, page, pageSize, total });
         }).RequireAuthorization("asset.read");
 
-        api.MapGet("/accessories/export.csv", async ([FromQuery] string? q, [FromQuery] string? category,
+        api.MapGet("/accessories/export.csv", async ([FromQuery] string? q, [FromQuery] Guid? categoryId, [FromQuery] string? category,
             [FromQuery] string? location, [FromQuery] string? stock, [FromQuery] string? sortBy,
             [FromQuery] string? sortDirection, HttpContext context, ClaimsPrincipal user,
             AppDbContext db, CancellationToken cancellationToken) =>
@@ -291,7 +297,8 @@ public static class AssetEndpoints
                     db.AccessoryAssignments.Any(a => a.CompanyId == companyId && a.AccessoryId == x.Id &&
                         a.TargetType == "Location" && a.Quantity > a.ReturnedQuantity && a.Location != null && a.Location.Contains(term)));
             }
-            if (!string.IsNullOrWhiteSpace(category)) query = query.Where(x => x.Category != null && x.Category.Trim() == category.Trim());
+            if (categoryId is Guid selectedCategory) query = query.Where(x => x.CategoryId == selectedCategory);
+            else if (!string.IsNullOrWhiteSpace(category)) query = query.Where(x => x.Category != null && x.Category.Trim() == category.Trim());
             if (!string.IsNullOrWhiteSpace(location)) query = query.Where(x => x.Location != null && x.Location.Trim() == location.Trim());
             if (stock == "low") query = query.Where(x => x.TotalQuantity - (db.AccessoryAssignments
                 .Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id)
@@ -329,7 +336,8 @@ public static class AssetEndpoints
             await writer.WriteLineAsync("Ad;Kategori;Model No;Ürün No;Tedarikçi;Konum;Toplam;Zimmetli;Kalan;Minimum;Birim Maliyeti;Para Birimi;Alış Tarihi;Garanti Bitiş Tarihi;İstek Açık".AsMemory(), cancellationToken);
             var rows = ordered.ThenBy(x => x.Id).Select(x => new
             {
-                x.Name, x.Category, x.ModelNumber, x.ItemNumber, x.Supplier, x.Location,
+                x.Name, Category = db.AccessoryCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault() ?? x.Category,
+                x.ModelNumber, x.ItemNumber, x.Supplier, x.Location,
                 x.TotalQuantity,
                 CheckedOut = db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id)
                     .Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0,
@@ -362,7 +370,9 @@ public static class AssetEndpoints
             var item = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
                 .Select(x => new
                 {
-                    x.Id, x.Name, x.Category, x.ModelNumber, x.BrandId, x.ModelId,
+                    x.Id, x.Name, categoryId = x.CategoryId,
+                    category = db.AccessoryCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault() ?? x.Category,
+                    x.ModelNumber, x.BrandId, x.ModelId,
                     brandName = db.AssetBrands.Where(b => b.CompanyId == companyId && b.Id == x.BrandId).Select(b => b.Name).FirstOrDefault(),
                     modelName = db.AccessoryModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.Name).FirstOrDefault(),
                     modelPhotoUrl = db.AccessoryModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId && m.PhotoFileName != null).Select(m => $"/api/accessory-models/{m.Id}/photo").FirstOrDefault(),
@@ -423,10 +433,13 @@ public static class AssetEndpoints
             if (request.ModelId is not null && (selectedAccessoryModel is null || selectedAccessoryModel.BrandId != request.BrandId))
                 errors["modelId"] = ["Model seçilen marka ve şirketle eşleşmiyor."];
             if (errors.Count > 0) return Results.ValidationProblem(errors);
+            var selectedCategory = await AccessoryCategoryEndpoints.ResolveAsync(db, companyId, request.CategoryId, request.Category, cancellationToken);
+            if ((request.CategoryId is not null || !string.IsNullOrWhiteSpace(request.Category)) && selectedCategory is null)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["categoryId"] = ["Aktif aksesuar kategorisini seçin veya önce kategoriyi oluşturun."] });
             var location = Clean(request.Location) ?? await GetDefaultLocationPathAsync(db, companyId, cancellationToken);
             var item = new Accessory
             {
-                CompanyId = companyId, Name = request.Name.Trim(), Category = Clean(request.Category),
+                CompanyId = companyId, Name = request.Name.Trim(), CategoryId = selectedCategory?.Id, Category = selectedCategory?.Name,
                 ModelNumber = selectedAccessoryModel?.Name ?? Clean(request.ModelNumber), BrandId = selectedAccessoryModel?.BrandId ?? request.BrandId,
                 ModelId = selectedAccessoryModel?.Id, ItemNumber = Clean(request.ItemNumber),
                 Supplier = Clean(request.Supplier), SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, cancellationToken), Location = location,
@@ -464,7 +477,10 @@ public static class AssetEndpoints
             if (request.ModelId is not null && (selectedAccessoryModel is null || selectedAccessoryModel.BrandId != request.BrandId))
                 errors["modelId"] = ["Model seçilen marka ve şirketle eşleşmiyor."];
             if (errors.Count > 0) return Results.ValidationProblem(errors);
-            item.Name = request.Name.Trim(); item.Category = Clean(request.Category); item.ModelNumber = selectedAccessoryModel?.Name ?? Clean(request.ModelNumber);
+            var selectedCategory = await AccessoryCategoryEndpoints.ResolveAsync(db, companyId, request.CategoryId, request.Category, cancellationToken);
+            if ((request.CategoryId is not null || !string.IsNullOrWhiteSpace(request.Category)) && selectedCategory is null)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["categoryId"] = ["Aktif aksesuar kategorisini seçin veya önce kategoriyi oluşturun."] });
+            item.Name = request.Name.Trim(); item.CategoryId = selectedCategory?.Id; item.Category = selectedCategory?.Name; item.ModelNumber = selectedAccessoryModel?.Name ?? Clean(request.ModelNumber);
             item.BrandId = selectedAccessoryModel?.BrandId ?? request.BrandId; item.ModelId = selectedAccessoryModel?.Id;
             item.ItemNumber = Clean(request.ItemNumber); item.Supplier = Clean(request.Supplier); item.SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, cancellationToken); item.Location = Clean(request.Location);
             item.LocationCatalogId = await ResolveLocationCatalogIdAsync(db, companyId, request.Location, cancellationToken);
@@ -3152,11 +3168,11 @@ public static class AssetEndpoints
     public sealed record CreateAccessoryRequest(string Name, string? Category, string? ModelNumber, string? ItemNumber,
         string? Supplier, string? Location, int MinimumQuantity, int Quantity, decimal? UnitCost,
         string Currency, DateOnly? PurchaseDate, string? Notes, bool IsRequestable, Guid? BrandId = null, Guid? ModelId = null,
-        DateOnly? WarrantyExpiresAt = null);
+        DateOnly? WarrantyExpiresAt = null, Guid? CategoryId = null);
     public sealed record UpdateAccessoryRequest(string Name, string? Category, string? ModelNumber, string? ItemNumber,
         string? Supplier, string? Location, int MinimumQuantity, decimal? UnitCost,
         string Currency, DateOnly? PurchaseDate, string? Notes, bool IsRequestable, Guid? BrandId = null, Guid? ModelId = null,
-        DateOnly? WarrantyExpiresAt = null);
+        DateOnly? WarrantyExpiresAt = null, Guid? CategoryId = null);
     public sealed record AccessoryStockRequest(int Quantity, string? Notes);
     public sealed record AccessoryCheckoutRequest(string TargetType, Guid? EmployeeId, Guid? AssetId, string? Location, int Quantity, string? Notes);
     public sealed record BulkAccessoryCheckoutRequest(string? TargetType, Guid? EmployeeId, Guid? AssetId, string? Location,

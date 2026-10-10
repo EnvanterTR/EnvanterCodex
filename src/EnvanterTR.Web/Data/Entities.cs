@@ -411,6 +411,7 @@ public sealed class Accessory
     public Guid CompanyId { get; set; }
     public required string Name { get; set; }
     public string? Category { get; set; }
+    public Guid? CategoryId { get; set; }
     public string? ModelNumber { get; set; }
     public Guid? BrandId { get; set; }
     public Guid? ModelId { get; set; }
@@ -439,6 +440,15 @@ public sealed class AccessoryModel
     public Guid? BrandId { get; set; }
     public required string Name { get; set; }
     public string? PhotoFileName { get; set; }
+}
+
+public sealed class AccessoryCategory
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public required string Name { get; set; }
+    public bool IsArchived { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
 public sealed class AccessoryAssignment

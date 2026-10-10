@@ -310,9 +310,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         db.SoftwareLicenses.AddRange(
             new SoftwareLicense { Id = _ownLicenseId, CompanyId = _companyId, Name = $"OWN-SECURITY-LICENSE-{_userId:N}", Seats = 4, Currency = "USD", ExpirationDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30) },
             new SoftwareLicense { Id = _otherCompanyLicenseId, CompanyId = _otherCompanyId, Name = $"OTHER-SECURITY-LICENSE-{_userId:N}", Seats = 8, Currency = "USD", ExpirationDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30) });
+        var ownAccessoryCategory = new AccessoryCategory { CompanyId = _companyId, Name = "Klavye" };
+        var otherAccessoryCategory = new AccessoryCategory { CompanyId = _otherCompanyId, Name = "Gizli kategori" };
+        db.AccessoryCategories.AddRange(ownAccessoryCategory, otherAccessoryCategory);
         db.Accessories.AddRange(
-            new Accessory { Id = _ownAccessoryId, CompanyId = _companyId, Name = $"OWN-SECURITY-ACCESSORY-{_userId:N}", Category = "Klavye", Location = "İstanbul Ofis", TotalQuantity = 5 },
-            new Accessory { Id = _otherCompanyAccessoryId, CompanyId = _otherCompanyId, Name = $"OTHER-SECURITY-ACCESSORY-{_userId:N}", Category = "Gizli kategori", Location = "Gizli konum", TotalQuantity = 7 });
+            new Accessory { Id = _ownAccessoryId, CompanyId = _companyId, Name = $"OWN-SECURITY-ACCESSORY-{_userId:N}", CategoryId = ownAccessoryCategory.Id, Category = "Klavye", Location = "İstanbul Ofis", TotalQuantity = 5 },
+            new Accessory { Id = _otherCompanyAccessoryId, CompanyId = _otherCompanyId, Name = $"OTHER-SECURITY-ACCESSORY-{_userId:N}", CategoryId = otherAccessoryCategory.Id, Category = "Gizli kategori", Location = "Gizli konum", TotalQuantity = 7 });
         db.Consumables.AddRange(
             new Consumable { Id = _ownConsumableId, CompanyId = _companyId, Name = $"OWN-SECURITY-CONSUMABLE-{_userId:N}", TotalQuantity = 5 },
             new Consumable { Id = _otherCompanyConsumableId, CompanyId = _otherCompanyId, Name = $"OTHER-SECURITY-CONSUMABLE-{_userId:N}", TotalQuantity = 7 });
@@ -3072,7 +3075,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var optionsResponse = await SendAsAdminAsync("/api/accessories/filter-options");
         Assert.Equal(HttpStatusCode.OK, optionsResponse.StatusCode);
         using var options = JsonDocument.Parse(await optionsResponse.Content.ReadAsStringAsync());
-        var categories = options.RootElement.GetProperty("categories").EnumerateArray().Select(item => item.GetString()).ToArray();
+        var categories = options.RootElement.GetProperty("categories").EnumerateArray().Select(item => item.GetProperty("name").GetString()).ToArray();
         var locations = options.RootElement.GetProperty("locations").EnumerateArray().Select(item => item.GetString()).ToArray();
         Assert.Contains("Klavye", categories);
         Assert.DoesNotContain("Gizli kategori", categories);
@@ -4178,10 +4181,16 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(HttpStatusCode.NotFound, crossTenantUpload.StatusCode);
         }
 
+        using var accessoryCategoryResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/accessory-categories", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = $"KEYBOARD-{_userId:N}" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, accessoryCategoryResponse.StatusCode);
+        using var accessoryCategoryPayload = JsonDocument.Parse(await accessoryCategoryResponse.Content.ReadAsStringAsync());
+        var accessoryCategoryId = accessoryCategoryPayload.RootElement.GetProperty("id").GetGuid();
+
         using var accessoryResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/accessories", "admin",
             System.Net.Http.Json.JsonContent.Create(new
             {
-                name = $"ACCESSORY-{_userId:N}", category = "Klavye", brandId, modelId = accessoryModelId,
+                name = $"ACCESSORY-{_userId:N}", categoryId = accessoryCategoryId, brandId, modelId = accessoryModelId,
                 itemNumber = $"ITEM-{_userId:N}", supplier = "Test Supplier", location = "Test Location",
                 minimumQuantity = 0, quantity = 2, unitCost = 100m, currency = "TRY",
                 purchaseDate = (DateOnly?)null, notes = "Brand/model catalog acceptance", isRequestable = false
@@ -4200,12 +4209,78 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var secondAccessoryResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/accessories", "admin",
             System.Net.Http.Json.JsonContent.Create(new
             {
-                name = $"ACCESSORY-SECOND-{_userId:N}", category = "Klavye", brandId, modelId = accessoryModelId,
+                name = $"ACCESSORY-SECOND-{_userId:N}", categoryId = accessoryCategoryId, brandId, modelId = accessoryModelId,
                 itemNumber = $"ITEM-SECOND-{_userId:N}", supplier = "Test Supplier", location = "Test Location",
                 minimumQuantity = 0, quantity = 1, unitCost = 100m, currency = "TRY",
                 purchaseDate = (DateOnly?)null, notes = "Same reusable accessory model", isRequestable = false
             }), requestToken, antiforgeryCookie);
         Assert.Equal(HttpStatusCode.Created, secondAccessoryResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task Accessory_categories_are_tenant_scoped_and_keep_linked_accessories_when_archived()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var categoryName = $"SECURITY-CATEGORY-{_userId:N}";
+
+        using var categoryResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/accessory-categories", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = categoryName }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, categoryResponse.StatusCode);
+        using var categoryPayload = JsonDocument.Parse(await categoryResponse.Content.ReadAsStringAsync());
+        var categoryId = categoryPayload.RootElement.GetProperty("id").GetGuid();
+
+        var foreignCategoryId = Guid.NewGuid();
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.AccessoryCategories.Add(new AccessoryCategory { Id = foreignCategoryId, CompanyId = _otherCompanyId, Name = $"FOREIGN-{_userId:N}" });
+            await db.SaveChangesAsync();
+        }
+        using var crossTenantRename = await SendAsUserAsync(HttpMethod.Patch, $"/api/accessory-categories/{foreignCategoryId}", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Cross tenant" }), requestToken, antiforgeryCookie, role: "admin");
+        Assert.Equal(HttpStatusCode.NotFound, crossTenantRename.StatusCode);
+
+        using var createAccessory = await SendAsRoleAsync(HttpMethod.Post, "/api/accessories", "admin",
+            System.Net.Http.Json.JsonContent.Create(new
+            {
+                name = $"CATEGORY-LINKED-{_userId:N}", categoryId, minimumQuantity = 0, quantity = 1,
+                currency = "TRY", isRequestable = false
+            }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, createAccessory.StatusCode);
+        using var itemPayload = JsonDocument.Parse(await createAccessory.Content.ReadAsStringAsync());
+        var accessoryId = itemPayload.RootElement.GetProperty("id").GetGuid();
+
+        using var categoryFilter = await SendAsAdminAsync($"/api/accessories?categoryId={categoryId}");
+        Assert.Equal(HttpStatusCode.OK, categoryFilter.StatusCode);
+        using var filteredPayload = JsonDocument.Parse(await categoryFilter.Content.ReadAsStringAsync());
+        var filteredItem = Assert.Single(filteredPayload.RootElement.GetProperty("items").EnumerateArray());
+        Assert.Equal(categoryName, filteredItem.GetProperty("category").GetString());
+
+        var renamedCategory = categoryName + "-RENAMED";
+        using var renameResponse = await SendAsRoleAsync(HttpMethod.Patch, $"/api/accessory-categories/{categoryId}", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = renamedCategory }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, renameResponse.StatusCode);
+
+        using var archiveResponse = await SendAsRoleAsync(HttpMethod.Post, $"/api/accessory-categories/{categoryId}/archive", "admin",
+            new StringContent("{}", Encoding.UTF8, "application/json"), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, archiveResponse.StatusCode);
+        using var archivedFilterOptions = await SendAsAdminAsync("/api/accessories/filter-options");
+        using var archivedFilterPayload = JsonDocument.Parse(await archivedFilterOptions.Content.ReadAsStringAsync());
+        Assert.DoesNotContain(archivedFilterPayload.RootElement.GetProperty("categories").EnumerateArray(),
+            item => item.GetProperty("id").GetGuid() == categoryId);
+        Assert.Contains(archivedFilterPayload.RootElement.GetProperty("archivedCategories").EnumerateArray(),
+            item => item.GetProperty("id").GetGuid() == categoryId);
+
+        using var retainedAccessory = await SendAsAdminAsync($"/api/accessories/{accessoryId}");
+        Assert.Equal(HttpStatusCode.OK, retainedAccessory.StatusCode);
+        using var retainedPayload = JsonDocument.Parse(await retainedAccessory.Content.ReadAsStringAsync());
+        Assert.Equal(renamedCategory, retainedPayload.RootElement.GetProperty("item").GetProperty("category").GetString());
     }
 
     [Fact]

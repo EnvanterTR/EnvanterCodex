@@ -31,6 +31,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AssetMaintenance> AssetMaintenances => Set<AssetMaintenance>();
     public DbSet<AssetMaintenanceAttachment> AssetMaintenanceAttachments => Set<AssetMaintenanceAttachment>();
     public DbSet<Accessory> Accessories => Set<Accessory>();
+    public DbSet<AccessoryCategory> AccessoryCategories => Set<AccessoryCategory>();
     public DbSet<AccessoryModel> AccessoryModels => Set<AccessoryModel>();
     public DbSet<AccessoryAssignment> AccessoryAssignments => Set<AccessoryAssignment>();
     public DbSet<AccessoryMovement> AccessoryMovements => Set<AccessoryMovement>();
@@ -540,6 +541,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetModel>().HasIndex(x => new { x.CompanyId, x.CategoryId });
 
         modelBuilder.Entity<Accessory>().Property(x => x.Name).HasMaxLength(200).IsRequired();
+        modelBuilder.Entity<AccessoryCategory>().Property(x => x.Name).HasMaxLength(120).IsRequired();
+        modelBuilder.Entity<AccessoryCategory>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<AccessoryCategory>().HasIndex(x => new { x.CompanyId, x.Name }).IsUnique();
+        modelBuilder.Entity<AccessoryCategory>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<Accessory>().Property(x => x.Category).HasMaxLength(120);
         modelBuilder.Entity<Accessory>().Property(x => x.ModelNumber).HasMaxLength(120);
         modelBuilder.Entity<Accessory>().Property(x => x.ItemNumber).HasMaxLength(120);
@@ -555,7 +560,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AccessoryModel>().HasIndex(x => new { x.CompanyId, x.BrandId, x.Name }).IsUnique();
         modelBuilder.Entity<Accessory>().HasIndex(x => new { x.CompanyId, x.ModelId });
         modelBuilder.Entity<Accessory>().HasIndex(x => new { x.CompanyId, x.BrandId });
-        modelBuilder.Entity<Accessory>().HasIndex(x => new { x.CompanyId, x.Category, x.Location });
+        modelBuilder.Entity<Accessory>().HasIndex(x => new { x.CompanyId, x.CategoryId, x.Location });
+        modelBuilder.Entity<Accessory>().HasOne<AccessoryCategory>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.CategoryId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<Accessory>().ToTable("Accessories", table =>
         {
             table.HasCheckConstraint("CK_Accessories_Quantities", "\"MinimumQuantity\" >= 0 AND \"TotalQuantity\" >= 0");

@@ -35,6 +35,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
 
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
@@ -86,9 +89,6 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateOnly?>("PurchaseDate")
                         .HasColumnType("date");
 
-                    b.Property<DateOnly?>("WarrantyExpiresAt")
-                        .HasColumnType("date");
-
                     b.Property<string>("Supplier")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
@@ -106,6 +106,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateOnly?>("WarrantyExpiresAt")
+                        .HasColumnType("date");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId", "BrandId");
@@ -118,7 +121,7 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("CompanyId", "SupplierId");
 
-                    b.HasIndex("CompanyId", "Category", "Location");
+                    b.HasIndex("CompanyId", "CategoryId", "Location");
 
                     b.ToTable("Accessories", null, t =>
                         {
@@ -126,9 +129,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                             t.HasCheckConstraint("CK_Accessories_Currency", "char_length(\"Currency\") = 3");
 
-                            t.HasCheckConstraint("CK_Accessories_WarrantyAfterPurchase", "\"WarrantyExpiresAt\" IS NULL OR \"PurchaseDate\" IS NULL OR \"WarrantyExpiresAt\" >= \"PurchaseDate\"");
-
                             t.HasCheckConstraint("CK_Accessories_Quantities", "\"MinimumQuantity\" >= 0 AND \"TotalQuantity\" >= 0");
+
+                            t.HasCheckConstraint("CK_Accessories_WarrantyAfterPurchase", "\"WarrantyExpiresAt\" IS NULL OR \"PurchaseDate\" IS NULL OR \"WarrantyExpiresAt\" >= \"PurchaseDate\"");
                         });
                 });
 
@@ -191,6 +194,34 @@ namespace EnvanterTR.Web.Data.Migrations
 
                             t.HasCheckConstraint("CK_AccessoryAssignments_Target", "(\"TargetType\" = 'Employee' AND \"EmployeeId\" IS NOT NULL AND \"AssetId\" IS NULL AND \"Location\" IS NULL) OR (\"TargetType\" = 'Asset' AND \"AssetId\" IS NOT NULL AND \"EmployeeId\" IS NULL AND \"Location\" IS NULL) OR (\"TargetType\" = 'Location' AND \"Location\" IS NOT NULL AND \"EmployeeId\" IS NULL AND \"AssetId\" IS NULL)");
                         });
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("AccessoryCategories");
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryKit", b =>
@@ -1755,9 +1786,6 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateOnly?>("PurchaseDate")
                         .HasColumnType("date");
 
-                    b.Property<DateOnly?>("WarrantyExpiresAt")
-                        .HasColumnType("date");
-
                     b.Property<string>("Supplier")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
@@ -1775,6 +1803,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateOnly?>("WarrantyExpiresAt")
+                        .HasColumnType("date");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId", "LocationCatalogId");
@@ -1791,9 +1822,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                             t.HasCheckConstraint("CK_Consumables_Currency", "char_length(\"Currency\") = 3");
 
-                            t.HasCheckConstraint("CK_Consumables_WarrantyAfterPurchase", "\"WarrantyExpiresAt\" IS NULL OR \"PurchaseDate\" IS NULL OR \"WarrantyExpiresAt\" >= \"PurchaseDate\"");
-
                             t.HasCheckConstraint("CK_Consumables_Quantities", "\"MinimumQuantity\" >= 0 AND \"TotalQuantity\" >= 0");
+
+                            t.HasCheckConstraint("CK_Consumables_WarrantyAfterPurchase", "\"WarrantyExpiresAt\" IS NULL OR \"PurchaseDate\" IS NULL OR \"WarrantyExpiresAt\" >= \"PurchaseDate\"");
                         });
                 });
 
@@ -2158,9 +2189,6 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateOnly?>("PurchaseDate")
                         .HasColumnType("date");
 
-                    b.Property<DateOnly?>("WarrantyExpiresAt")
-                        .HasColumnType("date");
-
                     b.Property<string>("SerialNumber")
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
@@ -2182,6 +2210,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateOnly?>("WarrantyExpiresAt")
+                        .HasColumnType("date");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId", "LocationCatalogId");
@@ -2198,9 +2229,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                             t.HasCheckConstraint("CK_InventoryComponents_Currency", "char_length(\"Currency\") = 3");
 
-                            t.HasCheckConstraint("CK_InventoryComponents_WarrantyAfterPurchase", "\"WarrantyExpiresAt\" IS NULL OR \"PurchaseDate\" IS NULL OR \"WarrantyExpiresAt\" >= \"PurchaseDate\"");
-
                             t.HasCheckConstraint("CK_InventoryComponents_Quantities", "\"MinimumQuantity\" >= 0 AND \"TotalQuantity\" >= 0");
+
+                            t.HasCheckConstraint("CK_InventoryComponents_WarrantyAfterPurchase", "\"WarrantyExpiresAt\" IS NULL OR \"PurchaseDate\" IS NULL OR \"WarrantyExpiresAt\" >= \"PurchaseDate\"");
                         });
                 });
 
@@ -3436,6 +3467,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("EnvanterTR.Web.Data.AccessoryCategory", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "CategoryId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("EnvanterTR.Web.Data.CompanyLocation", null)
                         .WithMany()
                         .HasForeignKey("CompanyId", "LocationCatalogId")
@@ -3481,6 +3518,15 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId", "EmployeeId")
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryCategory", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryKit", b =>
