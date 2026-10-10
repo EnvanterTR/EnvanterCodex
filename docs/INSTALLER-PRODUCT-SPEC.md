@@ -28,4 +28,11 @@ Kurulumu müşteri IT sorumlusu kaynak kodu, SQL veya uzun teknik kurulum kılav
 - **Windows Server ekip:** x64 uygulama ZIP'i ve `Setup.cmd` ile başlatılan yönlendirmeli kurulum akışı vardır. Windows Server 2019/2022, DNS ve TLS sertifikası gerekir. PostgreSQL 17 yoksa ayrı onaydan sonra sabitlenmiş resmi EDB PostgreSQL 17.11 x64 yükleyicisi HTTPS ile indirilir, EDB Authenticode imzası doğrulanır ve etkileşimli sihirbaz açılır; kullanıcı PostgreSQL yönetici parolasını yükleyicide belirler. EnvanterTR parolayı komut satırına veya günlüğe yazmaz; ardından bu parolayı gizli istemle alıp yeni, sınırlı yetkili uygulama rolü/veritabanı hazırlar. Önceden kurulu PostgreSQL 17 kullanılabilir; var olan sürüm/veritabanı üzerine kurulum yapılmaz. DNS, firewall ve TLS sertifikasının sağlanması kurum görevidir. Yeni DB bağlantı sırrı LocalMachine DPAPI ile geçici devam dosyasına kaydedilir; servis veya migration kesilirse aynı DNS/port/sertifika ile yeniden çalıştırma güvenli devam eder. Gerçek Windows Server ilk kurulum ve kurtarma kabulü tamamlanmamıştır.
 - **Ubuntu ekip:** Docker Compose `install.sh`, `update.sh`, `backup.sh` ve `restore.sh` vardır. İzole Linux kurulum/geri yükleme kabulleri geçmiştir. Hedef makinede DNS/TLS ve dolu müşteri medya verisiyle kurtarma kabulü, imzalı/sürümlü müşteri teslimatı hâlâ gereklidir.
 
+## Müşteri kitapçığı taslakları (10 Ekim 2026)
+
+- Windows Server: [`INSTALL-WINDOWS-SERVER-GUIDE.md`](INSTALL-WINDOWS-SERVER-GUIDE.md)
+- Ubuntu Server: [`INSTALL-UBUNTU-SERVER-GUIDE.md`](INSTALL-UBUNTU-SERVER-GUIDE.md)
+
+Bu taslaklar kurulum öncesi DNS/TLS/ağ hazırlığı, mevcut ilk kurulum sihirbazı, ilk hesaplar, yedek ve hata halinde veri/sır korumasını müşteri IT'sinin takip edebileceği sıraya koyar. Müşteriye dağıtılmadan önce her ekran ve komut gerçek desteklenen Windows Server/Ubuntu hostunda baştan sona uygulanıp geri yükleme kabulinden geçirilmelidir. Windows 11 için ayrı sihirbaz/kitapçık henüz yoktur.
+
 İlk müşteri sürümünden önce üç yol için de paket/kurulum kapsamı, yedekten kurtarma, hata halinde veri koruma, sürüm yükseltme ve hedef işletim sistemi kabulü ayrı ayrı tamamlanmalıdır. Kod imzalama sertifikası veya gerçek Windows hedefi sağlanmadıkça Windows imza/host kabulini tamamlanmış saymayın.
