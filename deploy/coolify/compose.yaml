@@ -64,5 +64,8 @@ networks:
 
 volumes:
   database_data:
+    name: envantertr-v1-postgres-data
   company_media_data:
+    name: envantertr-v1-company-media
   data_protection_keys_data:
+    name: envantertr-v1-data-protection-keys
