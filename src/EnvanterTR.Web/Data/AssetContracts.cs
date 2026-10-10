@@ -88,6 +88,7 @@ public sealed record BulkTransferAssetsRequest(Guid[] AssetIds, string TargetLoc
 public sealed record BulkRecordAssetAuditRequest(Guid[] AssetIds, DateOnly AuditDate, string? Notes, DateOnly? NextAuditOn = null);
 public sealed record SetAssetAuditScheduleRequest(DateOnly? NextAuditOn);
 public sealed record SetAssetParentRequest(Guid? ParentAssetId, DateTimeOffset ExpectedUpdatedAt);
+public sealed record AddAssetNoteRequest(string? Note);
 public sealed record SelectedAssetExportRequest(Guid[] AssetIds);
 public sealed record SetEmployeeActiveRequest(bool IsActive);
 public sealed record UpdateEmployeePrivateNotesRequest(string? Notes);

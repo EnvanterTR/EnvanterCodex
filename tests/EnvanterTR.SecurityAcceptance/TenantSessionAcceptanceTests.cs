@@ -1795,6 +1795,62 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Asset_notes_require_write_access_and_are_audited_in_the_tenant_history()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var path = $"/api/assets/{_ownAssetId}/notes";
+
+        using (var missingCsrf = await SendAsUserAsync(HttpMethod.Post, path, _userId, _companyId,
+                   System.Net.Http.Json.JsonContent.Create(new { note = "CSRF must be required" })))
+            Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+
+        const string note = "Dock 3 portu test edildi; bağlantı sabit.";
+        using (var create = await SendAsUserAsync(HttpMethod.Post, path, _userId, _companyId,
+                   System.Net.Http.Json.JsonContent.Create(new { note }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+
+        using (var empty = await SendAsUserAsync(HttpMethod.Post, path, _userId, _companyId,
+                   System.Net.Http.Json.JsonContent.Create(new { note = "  " }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, empty.StatusCode);
+
+        using (var crossTenant = await SendAsUserAsync(HttpMethod.Post, $"/api/assets/{_otherCompanyAssetId}/notes", _userId, _companyId,
+                   System.Net.Http.Json.JsonContent.Create(new { note }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
+
+        await using (var roleScope = _factory!.Services.CreateAsyncScope())
+        {
+            var roleDb = roleScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var membership = await roleDb.CompanyMemberships.SingleAsync(x => x.CompanyId == _companyId && x.UserId == _userId);
+            membership.RoleKey = "viewer";
+            await roleDb.SaveChangesAsync();
+        }
+        using (var viewer = await SendAsRoleAsync(HttpMethod.Post, path, "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { note = "Viewer cannot write" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, viewer.StatusCode);
+
+        using var detail = await SendAsAdminAsync($"/api/assets/{_ownAssetId}");
+        Assert.Equal(HttpStatusCode.OK, detail.StatusCode);
+        using var payload = JsonDocument.Parse(await detail.Content.ReadAsStringAsync());
+        var savedNote = Assert.Single(payload.RootElement.GetProperty("history").EnumerateArray(),
+            item => item.GetProperty("eventType").GetString() == "NoteAdded");
+        Assert.Equal(note, savedNote.GetProperty("details").GetString());
+        Assert.Equal("Security Acceptance User", savedNote.GetProperty("actorName").GetString());
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.True(await db.AuditEntries.AnyAsync(entry => entry.CompanyId == _companyId &&
+            entry.TargetType == "Asset" && entry.TargetId == _ownAssetId && entry.Action == "NoteAdded"));
+        Assert.False(await db.AssetEvents.IgnoreQueryFilters().AnyAsync(item => item.CompanyId == _otherCompanyId &&
+            item.AssetId == _otherCompanyAssetId && item.EventType == "NoteAdded"));
+    }
+
+    [Fact]
     public async Task Asset_trash_is_tenant_scoped_blocks_live_relations_and_restores_with_audit_history()
     {
         var trashAssetId = Guid.NewGuid();

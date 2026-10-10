@@ -1816,6 +1816,45 @@ public static class AssetEndpoints
             return Results.NoContent();
         }).RequireAuthorization("asset.write");
 
+        api.MapPost("/assets/{id:guid}/notes", async (Guid id, [FromBody] AddAssetNoteRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
+                return Results.Forbid();
+            var note = request.Note?.Trim();
+            if (string.IsNullOrWhiteSpace(note) || note.Length > 2000)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["note"] = ["Not 1 ile 2000 karakter arasında olmalıdır."]
+                });
+
+            var asset = await db.Assets.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (asset is null) return Results.NotFound();
+
+            var now = DateTimeOffset.UtcNow;
+            var assetEvent = new AssetEvent
+            {
+                CompanyId = companyId,
+                AssetId = id,
+                ActorUserId = actorId,
+                EventType = "NoteAdded",
+                Details = note,
+                OccurredAt = now
+            };
+            db.AssetEvents.Add(assetEvent);
+            db.AuditEntries.Add(new AuditEntry
+            {
+                CompanyId = companyId,
+                ActorUserId = actorId,
+                TargetType = "Asset",
+                TargetId = id,
+                Action = "NoteAdded",
+                Details = "Varlık hareket geçmişine not eklendi."
+            });
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.Created($"/api/assets/{id}", new { id = assetEvent.Id, assetId = id, note, occurredAt = now });
+        }).RequireAuthorization("asset.write");
+
         api.MapPost("/assets/labels/selected", async ([FromBody] SelectedAssetLabelsRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
