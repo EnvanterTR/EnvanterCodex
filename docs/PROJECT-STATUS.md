@@ -332,5 +332,10 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 ## 2026-10-10 Dağıtım kapıları ve teslimat paketleri
 
 - Windows x64 self-contained paket ve Linux sunucu kaynak paketi aynı kaynak sürümünden yerelde üretildi. Windows paketi DPAPI korumalı veritabanı/SMTP sırlarıyla açılıp `/api/status` verdi; Windows dağıtım/yedek güvenlik betiklerinin 11'i geçti. Linux için geçici Ubuntu 24.04 konteynerinde shell sözdizimi, 7 arşiv doğrulama testi, yedek sağlık, restore/update/kurulum devamı güvenlik senaryoları ve 12 yayımlanmış NuGet bağımlılığının lisans envanteri eşleşmesi geçti. Linux imajında GSSAPI kitaplığı ayrıca doğrulandı.
-- Linux CI adımındaki Docker `ENTRYPOINT` kullanımı düzeltildi; önceden `sh -c` uygulamanın argümanı oluyor ve kitaplık kontrolü kabuğa ulaşmıyordu. CI artık `--entrypoint sh` kullanıyor. CI düzenlemesi ve Linux release klasörünün git dışında tutulması sonraki commit'te kaydedilecek.
+- Linux CI adımındaki Docker `ENTRYPOINT` kullanımı `ae19474` commit'inde düzeltildi; önceden `sh -c` uygulamanın argümanı oluyor ve kitaplık kontrolü kabuğa ulaşmıyordu. CI artık `--entrypoint sh` kullanıyor. Bu GitHub Actions koşusu henüz uzak CI'da gözlenmedi.
 - Yerel Windows ve izole Linux kabulü gerçek Windows Server/Ubuntu kurulumu, canlı güncelleme/geri yükleme, gerçek SMTP veya imzalı müşteri paketi kabulü değildir. Bu işletimsel kabul işleri açık kalır.
+
+## 2026-10-10 Güncel commit teslimatları
+
+- `0434864` commit'inin Windows x64 self-contained paketi yeniden üretildi: `artifacts/windows/release/envantertr-windows-x64-04348645b9de.zip`, SHA-256 `1be2bb82ef7918f8c2f543f75bc9447fe16e042f48e968512bfe57d40fb21c9f`. Paket arşivi ve checksum `verify-release.ps1` ile doğrulandı; yayımlanmış uygulama LocalMachine DPAPI veritabanı/SMTP sırlarını açarak durum API'sini sundu.
+- Aynı commit'in Linux sunucu kaynak paketi `artifacts/linux/release/envantertr-linux-server-04348645b9de.tar.gz`, SHA-256 `16c55b0b9316ca3d090474cc068ff11fa5318b0ff800e2953c7963c584edb03f`; Ubuntu 24.04 konteynerinde kaynak arşivi ve SHA-256 doğrulandı. Her iki platform paketi imzasızdır; Linux paketi kaynak/Compose dağıtımıdır, self-contained binary değildir.
