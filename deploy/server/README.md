@@ -36,6 +36,14 @@ Komutu yalnızca sahibi olduğunuz veya yönetmeye yetkili olduğunuz sunucuda, 
 
 Bu yönlendirmeli yardımcı kaynak paketinin parçasıdır; imzalı, sürümlü müşteri kurulum arşivi ve tek başına uygulanabilecek son müşteri kitapçığı henüz yayımlanmış sayılmaz. Gerçek Ubuntu sunucusunda ilk kurulum, yerel ağ erişimi, HTTPS, yedek ve geri yükleme kabulü tamamlanmadan kurulum müşteriye hazır olarak sunulmamalıdır.
 
+Yönlendirme akışının kabul senaryoları yalnızca geliştirme amaçlı, ağ bağlantısı kapalı Ubuntu 24.04 x64 Docker konteynerinde çalıştırılır. Test apt/Docker komutlarını taklit eder; gerçek paket kurmaz veya müşteri sunucusuna dokunmaz:
+
+```bash
+repo="$(pwd -P)"
+docker run --rm --network none --mount "type=bind,source=$repo,target=/repo,readonly" ubuntu:24.04 \
+  bash -lc 'bash -n /repo/deploy/server/install-guided.sh /repo/deploy/server/tests/install-guided-acceptance.sh && bash /repo/deploy/server/tests/install-guided-acceptance.sh /repo/deploy/server/install-guided.sh'
+```
+
 ## İlk kurulum
 
 İlk kurulum Docker, migration, TLS/HTTPS veya sağlık kontrolünde kesilirse yapılandırma, ilk sürüm ve oluşturulmuş volume'lar korunur. Hata nedenini düzelttikten sonra aynı kaynak ağacından aynı alan adıyla `sudo bash deploy/server/install.sh envanter.sirketiniz.com` komutunu yeniden çalıştırın. Betik yalnızca root sahipli `chmod 600` yapılandırmayı, onun ilk sürümünü ve yedek parolasını doğrulayınca aynı kimlik bilgileriyle devam eder; ilk şirket/platform kurulum anahtarlarını veya PostgreSQL parolasını yenilemez. Farklı alan adı ya da değiştirilmiş/eksik sırlarla devam etmez. Başarılı kurulumdan sonra `current` sürüm bağlantısı oluştuğunda yeni kurulum yerine `update.sh` kullanılır.

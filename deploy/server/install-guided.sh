@@ -100,10 +100,12 @@ Signed-By: $keyring_file"
   apt-get update
   apt-get install -y ca-certificates curl
   install -d -m 0755 "$keyring_dir"
+  curl --fail --silent --show-error --location https://download.docker.com/linux/ubuntu/gpg -o "$temp_dir/docker.asc"
+  grep -q '^-----BEGIN PGP PUBLIC KEY BLOCK-----$' "$temp_dir/docker.asc" || fail 'Docker imza anahtarı beklenen biçimde değil; apt kaynağı eklenmedi.'
   if [[ ! -e "$keyring_file" ]]; then
-    curl --fail --silent --show-error --location https://download.docker.com/linux/ubuntu/gpg -o "$temp_dir/docker.asc"
-    grep -q '^-----BEGIN PGP PUBLIC KEY BLOCK-----$' "$temp_dir/docker.asc" || fail 'Docker imza anahtarı beklenen biçimde değil; apt kaynağı eklenmedi.'
     install -m 0644 "$temp_dir/docker.asc" "$keyring_file"
+  elif ! cmp -s "$temp_dir/docker.asc" "$keyring_file"; then
+    fail "$keyring_file resmi Docker anahtarıyla eşleşmiyor; üzerine yazmadım. Anahtarı yöneticiyle inceleyin."
   fi
   if [[ ! -e "$source_file" ]]; then install -m 0644 "$temp_dir/docker.sources" "$source_file"; fi
   apt-get update
