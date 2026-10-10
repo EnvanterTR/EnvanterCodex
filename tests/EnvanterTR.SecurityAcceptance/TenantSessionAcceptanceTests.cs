@@ -4093,6 +4093,11 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             CompanyId = _companyId, AssetTag = $"OWN-AUDIT-LATER-{_userId:N}", Name = "Audit due later",
             CategoryId = categoryId, NextAuditOn = through.AddDays(1)
         };
+        var unscheduledAsset = new Asset
+        {
+            CompanyId = _companyId, AssetTag = $"OWN-AUDIT-NONE-{_userId:N}", Name = "Audit plan missing",
+            CategoryId = categoryId
+        };
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -4100,7 +4105,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             overdueAsset.NextAuditOn = today.AddDays(-1);
             var otherTenantAsset = await db.Assets.SingleAsync(x => x.CompanyId == _otherCompanyId && x.Id == _otherCompanyAssetId);
             otherTenantAsset.NextAuditOn = today.AddDays(1);
-            db.Assets.AddRange(dueAsset, laterAsset);
+            db.Assets.AddRange(dueAsset, laterAsset, unscheduledAsset);
             await db.SaveChangesAsync();
         }
 
@@ -4142,6 +4147,16 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(HttpStatusCode.OK, search.StatusCode);
             Assert.Equal(1, searchPayload.RootElement.GetProperty("total").GetInt32());
             Assert.Equal(dueAsset.Id, searchPayload.RootElement.GetProperty("items")[0].GetProperty("id").GetGuid());
+        }
+
+        using (var unscheduled = await SendAsAdminAsync($"/api/assets/audit-schedule?through={through:yyyy-MM-dd}&state=unscheduled"))
+        using (var unscheduledPayload = JsonDocument.Parse(await unscheduled.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, unscheduled.StatusCode);
+            Assert.Equal(1, unscheduledPayload.RootElement.GetProperty("unscheduled").GetInt32());
+            Assert.Equal(1, unscheduledPayload.RootElement.GetProperty("total").GetInt32());
+            Assert.Equal(unscheduledAsset.Id, unscheduledPayload.RootElement.GetProperty("items")[0].GetProperty("id").GetGuid());
+            Assert.DoesNotContain(unscheduledPayload.RootElement.GetProperty("items").EnumerateArray(), item => item.GetProperty("id").GetGuid() == _otherCompanyAssetId);
         }
 
         using (var invalidState = await SendAsAdminAsync($"/api/assets/audit-schedule?through={through:yyyy-MM-dd}&state=other"))

@@ -1668,12 +1668,15 @@ public static class AssetEndpoints
             if (q?.Trim().Length > 120)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
             state = string.IsNullOrWhiteSpace(state) ? "all" : state.Trim().ToLowerInvariant();
-            if (state is not ("all" or "overdue" or "upcoming"))
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["state"] = ["Durum all, overdue veya upcoming olmalıdır."] });
-            var query = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.NextAuditOn != null && x.Status != AssetStatuses.Archived);
+            if (state is not ("all" or "overdue" or "upcoming" or "unscheduled"))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["state"] = ["Durum all, overdue, upcoming veya unscheduled olmalıdır."] });
+            var companyAssets = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.DeletedAt == null && x.Status != AssetStatuses.Archived);
+            var query = companyAssets.Where(x => x.NextAuditOn != null);
             var overdue = await query.CountAsync(x => x.NextAuditOn < today, cancellationToken);
             var dueSoon = await query.CountAsync(x => x.NextAuditOn >= today && x.NextAuditOn <= end, cancellationToken);
-            var filtered = state == "overdue" ? query.Where(x => x.NextAuditOn < today) :
+            var unscheduled = await companyAssets.CountAsync(x => x.NextAuditOn == null, cancellationToken);
+            var filtered = state == "unscheduled" ? companyAssets.Where(x => x.NextAuditOn == null) :
+                state == "overdue" ? query.Where(x => x.NextAuditOn < today) :
                 state == "upcoming" ? query.Where(x => x.NextAuditOn >= today && x.NextAuditOn <= end) : query.Where(x => x.NextAuditOn <= end);
             if (!string.IsNullOrWhiteSpace(q))
             {
@@ -1683,12 +1686,14 @@ public static class AssetEndpoints
                     db.Employees.Any(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId && e.DisplayName.Contains(term)));
             }
             var total = await filtered.CountAsync(cancellationToken);
-            var items = await filtered
-                .OrderBy(x => x.NextAuditOn).ThenBy(x => x.AssetTag).Take(250)
+            var ordered = state == "unscheduled"
+                ? filtered.OrderBy(x => x.CreatedAt).ThenBy(x => x.AssetTag)
+                : filtered.OrderBy(x => x.NextAuditOn).ThenBy(x => x.AssetTag);
+            var items = await ordered.Take(250)
                 .Select(x => new { x.Id, x.AssetTag, x.Name, x.NextAuditOn, x.Status, x.Location,
                     employeeName = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.DisplayName).FirstOrDefault() })
                 .ToListAsync(cancellationToken);
-            return Results.Ok(new { today, through = end, overdue, dueSoon, total, items });
+            return Results.Ok(new { today, through = end, overdue, dueSoon, unscheduled, total, items });
         }).RequireAuthorization("asset.read");
 
         api.MapPut("/assets/{id:guid}/audit-schedule", async (Guid id, [FromBody] SetAssetAuditScheduleRequest request,
