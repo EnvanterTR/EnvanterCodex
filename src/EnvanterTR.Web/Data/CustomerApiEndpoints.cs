@@ -113,6 +113,7 @@ public static class CustomerApiEndpoints
         {
             name = "EnvanterTR Customer API", version = "1", authentication = "Authorization: Bearer <token>",
             endpoints = new[] { "GET /api/v1/assets", "GET /api/v1/accessories", "GET /api/v1/employees" },
+            openApi = "/openapi/customer-api-v1.json",
             pagination = new { page = 1, pageSize = 50, maximumPageSize = 100 }
         })).AllowAnonymous().RequireRateLimiting("customer-api");
 

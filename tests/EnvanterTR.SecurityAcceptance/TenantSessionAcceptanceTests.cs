@@ -1896,6 +1896,34 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     [Fact]
     public async Task Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable()
     {
+        using (var apiInfoResponse = await _client!.GetAsync("/api/v1"))
+        {
+            Assert.Equal(HttpStatusCode.OK, apiInfoResponse.StatusCode);
+            using var apiInfo = JsonDocument.Parse(await apiInfoResponse.Content.ReadAsStringAsync());
+            var openApiPath = apiInfo.RootElement.GetProperty("openApi").GetString();
+            Assert.Equal("/openapi/customer-api-v1.json", openApiPath);
+            using var specificationResponse = await _client.GetAsync(openApiPath);
+            Assert.Equal(HttpStatusCode.OK, specificationResponse.StatusCode);
+            using var specification = JsonDocument.Parse(await specificationResponse.Content.ReadAsStringAsync());
+            var root = specification.RootElement;
+            Assert.Equal("3.1.2", root.GetProperty("openapi").GetString());
+            var paths = root.GetProperty("paths");
+            foreach (var resource in new[] { "assets", "accessories", "employees" })
+            {
+                var operation = paths.GetProperty($"/api/v1/{resource}").GetProperty("get");
+                Assert.Equal($"list{char.ToUpperInvariant(resource[0])}{resource[1..]}", operation.GetProperty("operationId").GetString());
+                Assert.True(operation.GetProperty("responses").TryGetProperty("200", out _));
+                Assert.True(operation.GetProperty("responses").TryGetProperty("401", out _));
+                Assert.True(operation.GetProperty("responses").TryGetProperty("403", out _));
+                Assert.True(operation.GetProperty("responses").TryGetProperty("429", out _));
+                Assert.Contains(operation.GetProperty("parameters").EnumerateArray(), parameter =>
+                    parameter.GetProperty("$ref").GetString() == "#/components/parameters/PageSize");
+            }
+            var bearer = root.GetProperty("components").GetProperty("securitySchemes").GetProperty("CustomerBearer");
+            Assert.Equal("http", bearer.GetProperty("type").GetString());
+            Assert.Equal("bearer", bearer.GetProperty("scheme").GetString());
+        }
+
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
         Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
         using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());

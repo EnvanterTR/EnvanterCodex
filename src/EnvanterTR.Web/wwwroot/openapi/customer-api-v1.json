@@ -1,0 +1,114 @@
+{
+  "openapi": "3.1.2",
+  "info": {
+    "title": "EnvanterTR Customer API",
+    "version": "1.0.0",
+    "description": "Tenant-scoped, read-only endpoints for company assets, accessories and employees. API tokens are user-owned and limited to the selected read scopes."
+  },
+  "servers": [{ "url": "/" }],
+  "security": [{ "CustomerBearer": [] }],
+  "paths": {
+    "/api/v1/assets": {
+      "get": {
+        "operationId": "listAssets",
+        "summary": "List company assets",
+        "description": "Returns non-deleted assets belonging to the token's active company. Purchase cost and custom fields are omitted.",
+        "parameters": [{ "$ref": "#/components/parameters/Search" }, { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PageSize" }],
+        "responses": {
+          "200": { "description": "Page of company assets.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AssetPage" } } } },
+          "400": { "$ref": "#/components/responses/InvalidRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/api/v1/accessories": {
+      "get": {
+        "operationId": "listAccessories",
+        "summary": "List company accessories",
+        "description": "Returns accessory catalog and stock quantities for the token's active company. Notes and costs are omitted.",
+        "parameters": [{ "$ref": "#/components/parameters/Search" }, { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PageSize" }],
+        "responses": {
+          "200": { "description": "Page of company accessories.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AccessoryPage" } } } },
+          "400": { "$ref": "#/components/responses/InvalidRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/api/v1/employees": {
+      "get": {
+        "operationId": "listEmployees",
+        "summary": "List company employees",
+        "description": "Returns employee records for the token's active company. Private HR notes and documents are omitted.",
+        "parameters": [{ "$ref": "#/components/parameters/Search" }, { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PageSize" }],
+        "responses": {
+          "200": { "description": "Page of company employees.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EmployeePage" } } } },
+          "400": { "$ref": "#/components/responses/InvalidRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "CustomerBearer": { "type": "http", "scheme": "bearer", "bearerFormat": "etr_live_<secret>", "description": "Create and manage keys in the signed-in EnvanterTR account. The raw secret is shown once." }
+    },
+    "parameters": {
+      "Search": { "name": "q", "in": "query", "required": false, "description": "Search within fields supported by this resource; maximum 120 characters.", "schema": { "type": "string", "maxLength": 120 } },
+      "Page": { "name": "page", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "default": 1 } },
+      "PageSize": { "name": "pageSize", "in": "query", "required": false, "description": "Requested page size is clamped to the supported range.", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 50 } }
+    },
+    "responses": {
+      "InvalidRequest": { "description": "A query parameter is invalid." },
+      "Unauthorized": { "description": "The bearer token is missing, invalid, expired, revoked, or no longer has an active company membership." },
+      "Forbidden": { "description": "The token does not include the read scope required for this resource." },
+      "RateLimited": { "description": "The request limit for the client IP was exceeded." }
+    },
+    "schemas": {
+      "PageMetadata": {
+        "type": "object",
+        "required": ["total", "page", "pageSize"],
+        "properties": { "total": { "type": "integer", "minimum": 0 }, "page": { "type": "integer", "minimum": 1 }, "pageSize": { "type": "integer", "minimum": 1, "maximum": 100 } }
+      },
+      "Asset": {
+        "type": "object",
+        "required": ["id", "assetTag", "name", "status"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" }, "assetTag": { "type": "string" }, "name": { "type": "string" },
+          "serialNumber": { "type": ["string", "null"] }, "status": { "type": "string" }, "location": { "type": ["string", "null"] },
+          "purchaseDate": { "type": ["string", "null"], "format": "date" }, "warrantyExpiresAt": { "type": ["string", "null"], "format": "date" },
+          "category": { "type": ["string", "null"] }, "model": { "type": ["string", "null"] }, "brand": { "type": ["string", "null"] },
+          "assignedEmployee": { "type": ["string", "null"] }
+        }
+      },
+      "Accessory": {
+        "type": "object",
+        "required": ["id", "name", "minimumQuantity", "totalQuantity", "checkedOutQuantity"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" }, "name": { "type": "string" }, "category": { "type": ["string", "null"] },
+          "modelNumber": { "type": ["string", "null"] }, "itemNumber": { "type": ["string", "null"] }, "location": { "type": ["string", "null"] },
+          "minimumQuantity": { "type": "integer" }, "totalQuantity": { "type": "integer" }, "checkedOutQuantity": { "type": "integer" },
+          "purchaseDate": { "type": ["string", "null"], "format": "date" }, "warrantyExpiresAt": { "type": ["string", "null"], "format": "date" }
+        }
+      },
+      "Employee": {
+        "type": "object",
+        "required": ["id", "employeeNumber", "displayName", "isActive"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" }, "employeeNumber": { "type": "string" }, "displayName": { "type": "string" },
+          "email": { "type": ["string", "null"], "format": "email" }, "department": { "type": ["string", "null"] },
+          "jobTitle": { "type": ["string", "null"] }, "location": { "type": ["string", "null"] },
+          "startedOn": { "type": ["string", "null"], "format": "date" }, "isActive": { "type": "boolean" }
+        }
+      },
+      "AssetPage": { "$ref": "#/components/schemas/PageMetadata", "allOf": [{ "type": "object", "required": ["items"], "properties": { "items": { "type": "array", "items": { "$ref": "#/components/schemas/Asset" } } } }] },
+      "AccessoryPage": { "$ref": "#/components/schemas/PageMetadata", "allOf": [{ "type": "object", "required": ["items"], "properties": { "items": { "type": "array", "items": { "$ref": "#/components/schemas/Accessory" } } } }] },
+      "EmployeePage": { "$ref": "#/components/schemas/PageMetadata", "allOf": [{ "type": "object", "required": ["items"], "properties": { "items": { "type": "array", "items": { "$ref": "#/components/schemas/Employee" } } } }] }
+    }
+  }
+}

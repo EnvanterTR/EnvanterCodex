@@ -2,6 +2,8 @@
 
 API anahtarları kullanıcı ve etkin şirket üyeliğine bağlıdır. Şirket sahibi veya yöneticisi olmayan kullanıcı da kendi hesabı için anahtar oluşturabilir; yalnızca rolünün okuyabildiği kaynaklara ait salt okunur yetkileri seçebilir. Anahtar 32 rastgele bayttan üretilir, oluşturma yanıtında bir kez gösterilir ve veritabanına yalnız SHA-256 özeti yazılır. Kullanıcı kendi anahtarlarını listeleyebilir ve iptal edebilir. İptal, üyeliğin kaldırılması, şirketin kapatılması veya kullanıcının kilitlenmesi sonraki API çağrısını reddeder.
 
+Makinece okunabilir OpenAPI 3.1.2 tanımı: [`/openapi/customer-api-v1.json`](../src/EnvanterTR.Web/wwwroot/openapi/customer-api-v1.json). `/api/v1` keşif yanıtı da bu tanıma bağlantı verir.
+
 ## Kimlik doğrulama
 
 ```http
@@ -24,6 +26,7 @@ Her istekte kullanıcının güncel şirket rolü tekrar denetlenir. Erişim yal
 - `GET /api/v1/assets`
 - `GET /api/v1/accessories`
 - `GET /api/v1/employees`
+- `GET /openapi/customer-api-v1.json` — bearer şeması, arama/sayfalama parametreleri, yanıt alanları ve hata durumları.
 - Oturum içi anahtar yönetimi: `GET/POST /api/integrations/tokens`, `POST /api/integrations/tokens/{id}/revoke` (değişikliklerde CSRF doğrulaması).
 
 `401` geçersiz, sona ermiş veya iptal edilmiş anahtar; `403` geçerli anahtarın kapsamı dışındaki endpoint; `429` hız sınırı yanıtıdır. Tüm şirket verileri sunucuda etkin şirket kimliğiyle filtrelenir.
