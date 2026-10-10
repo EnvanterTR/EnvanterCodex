@@ -367,6 +367,23 @@ const requiredApiFeedbackLabels = [
   'Kendi rolünüzü bu ekrandan değiştiremezsiniz; şirket erişiminizin kesilmesi önleniyor.',
   'Şirket sahibi rolü normal rol düzenlemesiyle değiştirilemez.',
   'Bu çalışan başka bir giriş hesabına bağlı. Önce mevcut bağlantıyı kaldırın.',
+  'Tedarikçi zorunludur ve 200 karakteri aşamaz.',
+  'Sipariş numarası 80 karakteri aşamaz.',
+  'Üç harfli para birimi girin (TRY, EUR, USD).',
+  'Sipariş tarihi zorunludur; beklenen tarih daha önce olamaz.',
+  'Vergi oranı %0 ile %100 arasında olmalıdır.',
+  'İskonto 0 ile 1.000.000.000.000.000 arasında olmalıdır.',
+  'Nakliye 0 ile 1.000.000.000.000.000 arasında olmalıdır.',
+  '1–100 satır girin. Her satırda ad, kategori, 1–1.000 adet ve geçerli maliyet olmalı; toplam en fazla 5.000 varlık olabilir.',
+  'Sipariş ara toplamı 1.000.000.000.000.000 tutarını aşamaz.',
+  'İskonto sipariş ara toplamından fazla olamaz.',
+  'Kategorilerden biri bu şirkete ait değil.',
+  'Markalardan biri bu şirkete ait değil.',
+  'Modellerden biri bu şirkete ait değil.',
+  'Model ve marka eşleşmiyor.',
+  'Etkin tedarikçi kataloğundan bir tedarikçi seçin.',
+  'Teslim tarihi ve en fazla 100 farklı satır için 1–1.000 arası adet girin.',
+  'Teslim tarihi sipariş tarihinden önce olamaz.',
 ];
 
 const invalidRows = Object.entries(sandbox.localeRows)
