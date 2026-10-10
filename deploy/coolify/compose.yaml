@@ -1,0 +1,68 @@
+name: envantertr-coolify
+
+services:
+  database:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: envantertr
+      POSTGRES_USER: envantertr
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_64_POSTGRES}
+    volumes:
+      - database_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    networks: [internal]
+
+  web:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: 8080
+      ForwardedHeaders__Enabled: "true"
+      DataProtection__KeysPath: /var/lib/envantertr/data-protection-keys
+      ConnectionStrings__EnvanterTR: "Host=database;Port=5432;Database=envantertr;Username=envantertr;Password=${SERVICE_PASSWORD_64_POSTGRES}"
+      Setup__BootstrapToken: ${SERVICE_PASSWORD_64_SETUP}
+      Setup__PlatformBootstrapToken: ${SETUP_PLATFORM_BOOTSTRAP_TOKEN:-}
+      Email__Smtp__Host: ${EMAIL_SMTP_HOST:-}
+      Email__Smtp__Port: ${EMAIL_SMTP_PORT:-587}
+      Email__Smtp__EnableSsl: ${EMAIL_SMTP_ENABLE_SSL:-true}
+      Email__Smtp__Username: ${EMAIL_SMTP_USERNAME:-}
+      Email__Smtp__Password: ${EMAIL_SMTP_PASSWORD:-}
+      Email__FromAddress: ${EMAIL_FROM_ADDRESS:-}
+      Email__FromName: ${EMAIL_FROM_NAME:-EnvanterTR}
+      Email__PublicBaseUrl: ${EMAIL_PUBLIC_BASE_URL:-}
+    depends_on:
+      database:
+        condition: service_healthy
+    volumes:
+      - company_media_data:/var/lib/envantertr/company-media
+      - data_protection_keys_data:/var/lib/envantertr/data-protection-keys
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    security_opt:
+      - no-new-privileges:true
+    networks: [internal]
+
+  public-site:
+    build:
+      context: ../..
+      dockerfile: deploy/coolify/Dockerfile.public-site
+    restart: unless-stopped
+    depends_on: [web]
+
+networks:
+  internal: {}
+
+volumes:
+  database_data:
+  company_media_data:
+  data_protection_keys_data:
