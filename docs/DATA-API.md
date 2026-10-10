@@ -54,6 +54,10 @@ Konum listesi `isDefault`, `managerEmployeeId` ve `managerName` alanlarını iç
 - `POST /api/assets/{id}/attachments` (`multipart/form-data`, `file`; PNG/JPEG/WebP/PDF, dosya başına 10 MiB, varlık başına 30 dosya; içerik imzası denetlenir; `asset.write`)
 - `GET /api/assets/{id}/attachments/{attachmentId}/file[?download=true]` (şirket ve varlık kapsamında yetki denetimli görsel önizleme veya ek indirme; `asset.read`)
 - `DELETE /api/assets/{id}/attachments/{attachmentId}` (dosya kaydını ve özel medya dosyasını kaldırır; olay ve denetim izi yazar; `asset.write`)
+- `GET /api/models/{id}/attachments` (`asset.read`; aynı şirketteki varlık modeline bağlı teknik ek metaverileri; model başına en fazla 30)
+- `POST /api/models/{id}/attachments` (`multipart/form-data`, `file`; PDF/PNG/JPEG/WebP, dosya başına en fazla 10 MiB; gerçek içerik imzası doğrulanır; `asset.write`, model satır kilidi ve şirket medya deposu kullanılır)
+- `GET /api/models/{id}/attachments/{attachmentId}/file[?download=true]` (şirket/model kapsamlı önizleme veya indirme; `asset.read`)
+- `DELETE /api/models/{id}/attachments/{attachmentId}` (dosya metaverisini ve özel medya dosyasını kaldırır; denetim izi yazar; `asset.write`; ekleri bulunan model silinemez)
 - `GET /api/employees?q=&department=&managerId=&active=true&page=1&pageSize=50`
 - `GET /api/departments` (şirket çalışan kayıtlarındaki departman metinlerini ve aktif/pasif çalışan sayılarını özetler; `people.read`)
 - `PATCH /api/departments/rename` (`{ currentName, newName, merge? }`; eşleşen şirket çalışan departmanlarını tek transaction'da değiştirir; hedef departman varsa yalnızca `merge: true` ile birleştirir, aksi hâlde `409`; kayıt yoksa `404`; denetim izi yazar; `people.manage`)
