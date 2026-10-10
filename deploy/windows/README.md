@@ -39,6 +39,14 @@ SHA-256 aktarım bozulmasını saptar; dosyanın yayıncı kimliğini kanıtlama
 `artifacts/windows/publish` dizinini sunucuya güvenli biçimde aktarın. Sunucuda yönetici PowerShell açın:
 
 ```powershell
+./preflight.ps1 -PostgreSqlHost 127.0.0.1 -DnsName envanter.sirketiniz.com -CertificateSubject "CN=envanter.sirketiniz.com"
+```
+
+Ön kontrol yalnızca okuma yapar: işletim sistemi/sürüm, yönetici oturumu, paket, hedef yollar, boş disk, HTTPS portu, PostgreSQL TCP erişimi ve LocalMachine sertifikasının geçerliliğini/SAN alan adını inceler. Başarısız maddelerin yanında düzeltme önerisi verir. PostgreSQL sürümünü ayrıca doğrulayın. Sertifika özel anahtarına `LocalService` erişimi, DNS ve kurum güvenlik duvarı elle onaylanır; bu kontrol bunları değiştirmez.
+
+Ön kontroldeki FAIL maddelerini giderdikten sonra aynı yönetici PowerShell oturumunda:
+
+```powershell
 ./install.ps1 -PackagePath C:\Staging\publish
 ```
 

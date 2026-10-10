@@ -20,7 +20,7 @@ if ($package -eq $output -or $output.StartsWith($package + [System.IO.Path]::Dir
 }
 
 $requiredFiles = @(
-    "EnvanterTR.Web.exe", "install.ps1", "protect-connection-string.ps1", "configure-email.ps1", "prepare-postgresql.ps1",
+    "EnvanterTR.Web.exe", "install.ps1", "preflight.ps1", "protect-connection-string.ps1", "configure-email.ps1", "prepare-postgresql.ps1",
     "migrate.ps1", "disable-bootstrap.ps1", "backup.ps1", "BackupFormat.psm1", "WindowsSecrets.psm1",
     "restore.ps1", "run-scheduled-backup.ps1", "send-backup-alert.ps1", "configure-backup-schedule.ps1",
     "check-backup-health.ps1", "update.ps1", "README.md"

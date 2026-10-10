@@ -41,6 +41,7 @@ if ($LASTEXITCODE -ne 0) { throw "Windows x64 dotnet publish failed with exit co
 $exe = Join-Path $output "EnvanterTR.Web.exe"
 if (-not (Test-Path $exe)) { throw "Publish completed without expected executable: $exe" }
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "install.ps1") -Destination $output -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot "preflight.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "protect-connection-string.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "configure-email.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "prepare-postgresql.ps1") -Destination $output -Force
