@@ -22,11 +22,25 @@ Arşivi açıp `deploy/server/install.sh` adımlarını izleyin. Bu paket kaynak
 - Sunucuya yönlenen gerçek bir DNS adı. Caddy otomatik TLS sertifikası için alan adının genel DNS'te çözülmesi ve internetten TCP 80/443 erişimi gerekir. Güvenlik duvarını kurulum betiği değiştirmez; TCP 80/443 ve UDP 443'ü ağ politikanıza göre açın.
 - İlk kurulum sırasında Docker Hub ve .NET imaj depolarına erişim.
 
+## Yönlendirmeli ilk kurulum (Ubuntu Server 24.04 x64)
+
+Kaynak ağacının içindeyken şu komutu çalıştırın; alan adını komutta verebilir veya sorulduğunda yazabilirsiniz:
+
+```bash
+sudo bash deploy/server/install-guided.sh envanter.sirketiniz.com
+```
+
+Yardımcı, Ubuntu sürümünü ve x64 mimarisini, DNS yanıtını ve mevcut EnvanterTR kurulumunu kontrol eder. Docker Engine/Compose v2 yoksa önce mevcut paketleri kaldırmadan durur ve onayınızı ister; onay verirseniz yalnızca Docker’ın resmi Ubuntu apt deposunu ekler ve resmi Docker paketlerini kurar. Güvenlik duvarını değiştirmez. Docker zaten çalışıyorsa uygulama kurulumuna geçer. Sonrasında mevcut `install.sh` akışı yapılandırma sırlarını üretir, veritabanı migration'larını uygular ve HTTPS sağlık kontrolü yapar.
+
+Komutu yalnızca sahibi olduğunuz veya yönetmeye yetkili olduğunuz sunucuda, yönetici hesabıyla çalıştırın. Başlamadan önce alan adının bu sunucunun genel IP adresine yönlendiğini ve dış ağdan TCP 80/443 erişiminin hazır olduğunu doğrulayın. Docker'ın yayımladığı portlar bazı UFW/firewalld kurallarını atlayabilir; bu nedenle `install-guided.sh` güvenlik duvarı açmaz ve ağ erişim politikasını kuruma bırakır. İptal edilen onay adımı, önceden var olan EnvanterTR kurulumu veya çakışan Docker paketleri varsa yardımcı kurulum yapmadan durur.
+
+Bu yönlendirmeli yardımcı kaynak paketinin parçasıdır; imzalı, sürümlü müşteri kurulum arşivi ve tek başına uygulanabilecek son müşteri kitapçığı henüz yayımlanmış sayılmaz. Gerçek Ubuntu sunucusunda ilk kurulum, yerel ağ erişimi, HTTPS, yedek ve geri yükleme kabulü tamamlanmadan kurulum müşteriye hazır olarak sunulmamalıdır.
+
 ## İlk kurulum
 
 İlk kurulum Docker, migration, TLS/HTTPS veya sağlık kontrolünde kesilirse yapılandırma, ilk sürüm ve oluşturulmuş volume'lar korunur. Hata nedenini düzelttikten sonra aynı kaynak ağacından aynı alan adıyla `sudo bash deploy/server/install.sh envanter.sirketiniz.com` komutunu yeniden çalıştırın. Betik yalnızca root sahipli `chmod 600` yapılandırmayı, onun ilk sürümünü ve yedek parolasını doğrulayınca aynı kimlik bilgileriyle devam eder; ilk şirket/platform kurulum anahtarlarını veya PostgreSQL parolasını yenilemez. Farklı alan adı ya da değiştirilmiş/eksik sırlarla devam etmez. Başarılı kurulumdan sonra `current` sürüm bağlantısı oluştuğunda yeni kurulum yerine `update.sh` kullanılır.
 
-Kaynak arşivini sunucuya aktarın ve komutu kaynak ağacının içinden çalıştırın:
+İleri seviye/elle kurulum için kaynak arşivini sunucuya aktarın ve komutu kaynak ağacının içinden çalıştırın:
 
 ```bash
 sudo bash deploy/server/install.sh envanter.sirketiniz.com
