@@ -21,7 +21,7 @@ Rezervasyon CSV kabulü de yabancı şirket için gerçek bir kayıt ekleyip fil
 
 Windows x64 paketinin Docker SDK geri dönüşü Windows `C:\` yollarını Docker Linux konteynerinin kabul ettiği mount biçimine normalize eder. 10 Ekim `d59cc72` commit'inden self-contained x64 yayın yeniden oluşturuldu; yayımlanmış uygulama LocalMachine DPAPI ile korunan veritabanı ve SMTP sırlarını açıp `/api/status` yanıtı verdi. CI'daki 11 Windows dağıtım/yedek güvenlik betiği de bu kaynakta geçti. `artifacts/windows/release/envantertr-windows-x64-d59cc7270be4.zip` ve SHA-256 yan dosyası yerel olarak paketlenip doğrulandı. Paket imzasızdır; bu kanıt Windows Server hizmeti, gerçek PostgreSQL veya üretim güncelleme/kurtarma kabulü değildir.
 
-Bu Windows geliştirici bilgisayarında Linux CI dağıtım kapıları da geçici Ubuntu 24.04 Docker konteynerinde çalıştırıldı: shell sözdizimi, 7 arşiv doğrulama testi, yedek sağlık, restore/update güvenlik sırası, ilk kurulumun güvenli devamı ve Linux kaynak paketi/checksum üretimi/doğrulaması geçti. Gerçek Ubuntu/systemd sunucu tatbikatı hâlâ yapılmadı.
+Bu Windows geliştirici bilgisayarında Linux CI dağıtım kapıları da geçici Ubuntu 24.04 Docker konteynerinde çalıştırıldı: shell sözdizimi, 7 arşiv doğrulama testi, yedek sağlık, restore/update güvenlik sırası, ilk kurulumun güvenli devamı, Linux kaynak paketi/checksum ve 12 yayımlanmış NuGet bağımlılığının envanter eşleşmesi geçti. Linux imajındaki GSSAPI kitaplığı doğrulandı. Bu sırada CI'da Docker `ENTRYPOINT` nedeniyle kabuk kontrolünün hiç çalışmaması düzeltildi. Gerçek Ubuntu/systemd sunucu tatbikatı hâlâ yapılmadı.
 
 ## Envanter yönetimi işlev aileleri
 

@@ -44,7 +44,7 @@ jobs:
         run: |
           set -euo pipefail
           docker build --tag envantertr-web-ci --file Dockerfile .
-          docker run --rm envantertr-web-ci sh -c 'ldconfig -p | grep -q "libgssapi_krb5.so.2"'
+          docker run --rm --entrypoint sh envantertr-web-ci -c 'ldconfig -p | grep -q "libgssapi_krb5.so.2"'
           container_id="$(docker create envantertr-web-ci)"
           trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
           docker cp "$container_id:/app/EnvanterTR.Web.deps.json" "$RUNNER_TEMP/EnvanterTR.Web.deps.json"
