@@ -58,6 +58,7 @@ services:
       dockerfile: deploy/coolify/Dockerfile.public-site
     restart: unless-stopped
     depends_on: [web]
+    networks: [internal]
 
 networks:
   internal: {}
