@@ -91,6 +91,7 @@ public sealed record SetAssetParentRequest(Guid? ParentAssetId, DateTimeOffset E
 public sealed record AddAssetNoteRequest(string? Note);
 public sealed record SelectedAssetExportRequest(Guid[] AssetIds);
 public sealed record SetEmployeeActiveRequest(bool IsActive);
+public sealed record BulkSetEmployeeActiveRequest(Guid[]? EmployeeIds, bool IsActive);
 public sealed record UpdateEmployeePrivateNotesRequest(string? Notes);
 
 public sealed record AssetListItem(

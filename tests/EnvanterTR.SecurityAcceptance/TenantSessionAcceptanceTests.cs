@@ -49,6 +49,62 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     private readonly Guid _ownEmployeeId = Guid.NewGuid();
     private readonly Guid _ownSecondEmployeeId = Guid.NewGuid();
     private readonly Guid _otherCompanyEmployeeId = Guid.NewGuid();
+
+    [Fact]
+    public async Task Bulk_employee_status_changes_are_company_scoped_atomic_and_audited()
+    {
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Employees.Add(new Employee { Id = _ownSecondEmployeeId, CompanyId = _companyId,
+                EmployeeNumber = $"OWN-SECOND-{_userId:N}", DisplayName = "Second own employee" });
+            await db.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var employeeIds = new[] { _ownEmployeeId, _ownSecondEmployeeId };
+
+        using (var missingCsrf = await SendAsRoleAsync(HttpMethod.Post, "/api/employees/bulk-active", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { employeeIds, isActive = false })))
+            Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+        using (var duplicateIds = await SendAsRoleAsync(HttpMethod.Post, "/api/employees/bulk-active", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { employeeIds = new[] { _ownEmployeeId, _ownEmployeeId }, isActive = false }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, duplicateIds.StatusCode);
+        using (var crossTenant = await SendAsRoleAsync(HttpMethod.Post, "/api/employees/bulk-active", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { employeeIds = new[] { _ownEmployeeId, _otherCompanyEmployeeId }, isActive = false }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
+        await SetCompanyRoleAsync("viewer");
+        using (var viewerWrite = await SendAsRoleAsync(HttpMethod.Post, "/api/employees/bulk-active", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { employeeIds, isActive = false }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, viewerWrite.StatusCode);
+        await SetCompanyRoleAsync("admin");
+
+        using (var summary = await SendAsRoleAsync(HttpMethod.Post, "/api/employees/bulk-offboarding-summary", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { employeeIds, isActive = false }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, summary.StatusCode);
+            using var payload = JsonDocument.Parse(await summary.Content.ReadAsStringAsync());
+            Assert.Equal(2, payload.RootElement.GetProperty("items").GetArrayLength());
+        }
+        using (var update = await SendAsRoleAsync(HttpMethod.Post, "/api/employees/bulk-active", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { employeeIds, isActive = false }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+            using var payload = JsonDocument.Parse(await update.Content.ReadAsStringAsync());
+            Assert.Equal(2, payload.RootElement.GetProperty("changed").GetInt32());
+        }
+
+        await using var auditScope = _factory!.Services.CreateAsyncScope();
+        var auditDb = auditScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.All(await auditDb.Employees.AsNoTracking().Where(x => employeeIds.Contains(x.Id)).ToListAsync(), employee => Assert.False(employee.IsActive));
+        Assert.Equal(2, await auditDb.AuditEntries.CountAsync(entry => entry.CompanyId == _companyId &&
+            entry.TargetId.HasValue && employeeIds.Contains(entry.TargetId.Value) && entry.Action == "Deactivated"));
+    }
     private string? _previousConnectionString;
     private string? _previousForwardedHeadersSetting;
     private readonly SmtpCaptureServer _smtpCapture = new();

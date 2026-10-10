@@ -824,6 +824,82 @@ public static class OperationalEndpoints
             return Results.Ok(new { employee.Id, employee.IsActive });
         }).RequireAuthorization("people.manage");
 
+        api.MapPost("/employees/bulk-offboarding-summary", async ([FromBody] BulkSetEmployeeActiveRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
+            var ids = request.EmployeeIds;
+            if (ids is null || ids.Length is < 1 or > 100 || ids.Any(id => id == Guid.Empty) || ids.Distinct().Count() != ids.Length)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeIds"] = ["1 ile 100 arasında, yinelenmeyen çalışan seçin."] });
+            var employees = await db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId && ids.Contains(x.Id))
+                .Select(x => new { x.Id, x.DisplayName, x.EmployeeNumber }).ToListAsync(cancellationToken);
+            if (employees.Count != ids.Length) return Results.NotFound();
+            var assets = await db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId &&
+                    x.AssignedEmployeeId != null && ids.Contains(x.AssignedEmployeeId.Value))
+                .GroupBy(x => x.AssignedEmployeeId!.Value).Select(group => new { EmployeeId = group.Key, Count = group.Count() })
+                .ToDictionaryAsync(x => x.EmployeeId, x => x.Count, cancellationToken);
+            var accessories = await db.AccessoryAssignments.AsNoTracking().Where(x => x.CompanyId == companyId &&
+                    x.EmployeeId != null && ids.Contains(x.EmployeeId.Value) && x.ReturnedQuantity < x.Quantity)
+                .GroupBy(x => x.EmployeeId!.Value).Select(group => new { EmployeeId = group.Key, Count = group.Count() })
+                .ToDictionaryAsync(x => x.EmployeeId, x => x.Count, cancellationToken);
+            var licenses = await db.SoftwareLicenseAssignments.AsNoTracking().Where(x => x.CompanyId == companyId &&
+                    x.EmployeeId != null && ids.Contains(x.EmployeeId.Value) && x.RevokedAt == null)
+                .GroupBy(x => x.EmployeeId!.Value).Select(group => new { EmployeeId = group.Key, Count = group.Count() })
+                .ToDictionaryAsync(x => x.EmployeeId, x => x.Count, cancellationToken);
+            var reports = await db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId && x.IsActive &&
+                    x.ManagerEmployeeId != null && ids.Contains(x.ManagerEmployeeId.Value))
+                .GroupBy(x => x.ManagerEmployeeId!.Value).Select(group => new { EmployeeId = group.Key, Count = group.Count() })
+                .ToDictionaryAsync(x => x.EmployeeId, x => x.Count, cancellationToken);
+            var items = employees.Select(employee => new
+            {
+                employee.Id, employee.DisplayName, employee.EmployeeNumber,
+                AssetCount = assets.GetValueOrDefault(employee.Id),
+                AccessoryCount = accessories.GetValueOrDefault(employee.Id),
+                ActiveLicenseCount = licenses.GetValueOrDefault(employee.Id),
+                ActiveDirectReportCount = reports.GetValueOrDefault(employee.Id)
+            }).ToArray();
+            return Results.Ok(new
+            {
+                items,
+                totals = new
+                {
+                    assetCount = items.Sum(item => item.AssetCount),
+                    accessoryCount = items.Sum(item => item.AccessoryCount),
+                    activeLicenseCount = items.Sum(item => item.ActiveLicenseCount),
+                    activeDirectReportCount = items.Sum(item => item.ActiveDirectReportCount)
+                }
+            });
+        }).RequireAuthorization("people.manage");
+
+        api.MapPost("/employees/bulk-active", async ([FromBody] BulkSetEmployeeActiveRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            var ids = request.EmployeeIds;
+            if (ids is null || ids.Length is < 1 or > 100 || ids.Any(id => id == Guid.Empty) || ids.Distinct().Count() != ids.Length)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeIds"] = ["1 ile 100 arasında, yinelenmeyen çalışan seçin."] });
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+            var employees = await db.Employees.Where(x => x.CompanyId == companyId && ids.Contains(x.Id))
+                .OrderBy(x => x.Id).ToListAsync(cancellationToken);
+            if (employees.Count != ids.Length) return Results.NotFound();
+            var changed = employees.Where(employee => employee.IsActive != request.IsActive).ToArray();
+            foreach (var employee in changed)
+            {
+                employee.IsActive = request.IsActive;
+                db.AuditEntries.Add(new AuditEntry
+                {
+                    CompanyId = companyId, ActorUserId = actorId, TargetType = "Employee", TargetId = employee.Id,
+                    Action = request.IsActive ? "Reactivated" : "Deactivated",
+                    Details = request.IsActive ? "Toplu işlemle çalışan kaydı yeniden etkinleştirildi." :
+                        "Toplu işlemle çalışan kaydı pasife alındı; geçmiş ve zimmet bağlantıları korundu."
+                });
+            }
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { requested = ids.Length, changed = changed.Length, isActive = request.IsActive,
+                employeeIds = changed.Select(employee => employee.Id) });
+        }).RequireAuthorization("people.manage");
+
         api.MapGet("/employees/{id:guid}/offboarding-summary", async (Guid id, ClaimsPrincipal user,
             AppDbContext db, CancellationToken cancellationToken) =>
         {

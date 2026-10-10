@@ -338,7 +338,7 @@
           <section class="panel" data-dashboard-widget="activity"><div class="panel-head"><h2>Son hareketler</h2><button class="text-link" data-page="Hareket geçmişi">Tümünü gör →</button></div><div class="activity" id="activityRows"><div class="activity-row activity-empty"><div class="activity-copy"><strong>Hareket verileri yükleniyor…</strong></div></div></div></section></div>
         <div class="lower dashboard-legacy-lower"><section class="panel" data-dashboard-widget="upcoming"><div class="panel-head"><h2>Yaklaşan işlemler</h2><button class="text-link" data-page="Takvim">Takvimi aç →</button></div><div class="attention" id="upcomingEvents" aria-live="polite"><div class="attention-row"><span>Şirket takvimi yükleniyor…</span></div></div><div class="dashboard-status-note" id="upcomingEventsNote">Bakım planları ve lisans bitiş tarihleri</div></section><section class="panel" data-dashboard-widget="status"><div class="panel-head"><h2>Varlık durumu</h2><button class="text-link" data-page="Hazır raporlar">Raporu aç →</button></div><div class="dashboard-status"><div id="dashboardStatusChart" class="dashboard-donut" role="img" aria-label="Varlık durum dağılımı yükleniyor"><div class="dashboard-donut-center"><strong id="dashboardStatusTotal">—</strong><small>varlık</small></div></div><div id="dashboardStatusLegend" class="dashboard-status-legend"><span class="muted">Durum özeti yükleniyor…</span></div></div><div id="dashboardStatusNote" class="dashboard-status-note">Şirket envanterinizdeki güncel durumlar</div></section></div>
       </section>
-      <section class="workspace-page" id="employeesPage" hidden><div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / EKİP</div><h1>Çalışan kayıtları</h1><p>Departmana ve yöneticiye göre ilişki kurun; profilden doğrudan raporlayanları ve zimmetlerini görüntüleyin.</p></div><div class="head-actions"><button class="btn" id="exportEmployeesButton" type="button">↓ CSV dışa aktar</button><button class="btn" id="employeeImportOpen" type="button" hidden>↑ CSV içe aktar</button><button class="btn primary" id="newEmployeeButton">＋ Çalışan ekle</button></div></div><section class="panel"><div class="table-tools"><input id="employeeSearch" placeholder="Ad, personel no, e-posta, departman, görev veya konum ara" aria-label="Çalışan kayıtlarında ara" data-locale-placeholder="Ad, personel no, e-posta, departman, görev veya konum ara" data-locale-aria="Çalışan kayıtlarında ara"><input id="employeeDepartmentFilter" maxlength="160" placeholder="Departman filtresi" aria-label="Departmana göre filtrele" data-locale-placeholder="Departman filtresi" data-locale-aria="Departmana göre filtrele"><button class="btn small" id="clearEmployeeDepartmentFilter" type="button" hidden>Departmanı temizle</button><input id="employeeManagerFilterSearch" placeholder="Yönetici adı veya personel no ara" aria-label="Yönetici ara" data-locale-placeholder="Yönetici adı veya personel no ara" data-locale-aria="Yönetici ara"><select id="employeeManagerFilter" aria-label="Yöneticiye göre filtrele" data-locale-aria="Yöneticiye göre filtrele"><option value="">Tüm yöneticiler</option></select><button class="btn small" id="clearEmployeeManagerFilter" type="button" hidden>Yöneticiyi temizle</button><select id="employeeState" aria-label="Çalışan durumuna göre filtrele" data-locale-aria="Çalışan durumuna göre filtrele"><option value="">Tüm çalışanlar</option><option value="true" selected>Aktif çalışanlar</option><option value="false">Pasif çalışanlar</option></select><label class="employee-date-filter">İşe başlama (başlangıç)<input id="employeeStartedFrom" type="date" aria-label="İşe başlama başlangıç tarihi" data-locale-aria="İşe başlama başlangıç tarihi"></label><label class="employee-date-filter">İşe başlama (bitiş)<input id="employeeStartedTo" type="date" aria-label="İşe başlama bitiş tarihi" data-locale-aria="İşe başlama bitiş tarihi"></label><button class="btn small" id="clearEmployeeStartedDateFilter" type="button" hidden>Tarihleri temizle</button><small id="employeeCount" role="status" aria-live="polite" aria-atomic="true">—</small></div><div class="table-wrap"><table><caption class="sr-only">Şirket çalışan kayıtları</caption><thead><tr><th>Çalışan</th><th>Personel no</th><th>E-posta</th><th>Görev unvanı</th><th>Departman</th><th>Konum</th><th>İşe başlama</th><th>Yönetici</th><th>Durum</th><th>İşlem</th></tr></thead><tbody id="employeeRows"><tr><td colspan="10">Çalışanlar yükleniyor…</td></tr></tbody></table></div><div class="pager"><button id="employeePrev">← Önceki</button><span id="employeePageInfo">Sayfa —</span><button id="employeeNext">Sonraki →</button></div></section></section>
+      <section class="workspace-page" id="employeesPage" hidden><div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / EKİP</div><h1>Çalışan kayıtları</h1><p>Departmana ve yöneticiye göre ilişki kurun; profilden doğrudan raporlayanları ve zimmetlerini görüntüleyin.</p></div><div class="head-actions"><button class="btn" id="exportEmployeesButton" type="button">↓ CSV dışa aktar</button><button class="btn" id="employeeImportOpen" type="button" hidden>↑ CSV içe aktar</button><button class="btn primary" id="newEmployeeButton">＋ Çalışan ekle</button></div></div><section class="panel"><div class="table-tools"><input id="employeeSearch" placeholder="Ad, personel no, e-posta, departman, görev veya konum ara" aria-label="Çalışan kayıtlarında ara" data-locale-placeholder="Ad, personel no, e-posta, departman, görev veya konum ara" data-locale-aria="Çalışan kayıtlarında ara"><input id="employeeDepartmentFilter" maxlength="160" placeholder="Departman filtresi" aria-label="Departmana göre filtrele" data-locale-placeholder="Departman filtresi" data-locale-aria="Departmana göre filtrele"><button class="btn small" id="clearEmployeeDepartmentFilter" type="button" hidden>Departmanı temizle</button><input id="employeeManagerFilterSearch" placeholder="Yönetici adı veya personel no ara" aria-label="Yönetici ara" data-locale-placeholder="Yönetici adı veya personel no ara" data-locale-aria="Yönetici ara"><select id="employeeManagerFilter" aria-label="Yöneticiye göre filtrele" data-locale-aria="Yöneticiye göre filtrele"><option value="">Tüm yöneticiler</option></select><button class="btn small" id="clearEmployeeManagerFilter" type="button" hidden>Yöneticiyi temizle</button><select id="employeeState" aria-label="Çalışan durumuna göre filtrele" data-locale-aria="Çalışan durumuna göre filtrele"><option value="">Tüm çalışanlar</option><option value="true" selected>Aktif çalışanlar</option><option value="false">Pasif çalışanlar</option></select><label class="employee-date-filter">İşe başlama (başlangıç)<input id="employeeStartedFrom" type="date" aria-label="İşe başlama başlangıç tarihi" data-locale-aria="İşe başlama başlangıç tarihi"></label><label class="employee-date-filter">İşe başlama (bitiş)<input id="employeeStartedTo" type="date" aria-label="İşe başlama bitiş tarihi" data-locale-aria="İşe başlama bitiş tarihi"></label><button class="btn small" id="clearEmployeeStartedDateFilter" type="button" hidden>Tarihleri temizle</button><button class="btn small" id="selectEmployeesOnPage" type="button" hidden>Sayfadakileri seç</button><select id="employeeBulkActive" aria-label="Seçilen çalışanların yeni durumu" hidden><option value="false">Pasife al</option><option value="true">Etkinleştir</option></select><button class="btn small" id="applyEmployeeBulkActive" type="button" hidden disabled>Seçilenleri güncelle</button><small id="employeeBulkCount" hidden></small><small id="employeeCount" role="status" aria-live="polite" aria-atomic="true">—</small></div><div class="table-wrap"><table><caption class="sr-only">Şirket çalışan kayıtları</caption><thead><tr><th>Çalışan</th><th>Personel no</th><th>E-posta</th><th>Görev unvanı</th><th>Departman</th><th>Konum</th><th>İşe başlama</th><th>Yönetici</th><th>Durum</th><th>İşlem</th></tr></thead><tbody id="employeeRows"><tr><td colspan="10">Çalışanlar yükleniyor…</td></tr></tbody></table></div><div class="pager"><button id="employeePrev">← Önceki</button><span id="employeePageInfo">Sayfa —</span><button id="employeeNext">Sonraki →</button></div></section></section>
       <section class="workspace-page" id="directoryPage" hidden><div class="page-head"><div><div class="eyebrow" id="directoryEyebrow">ŞİRKET ALANI / KAYITLAR</div><h1 id="directoryTitle">Şirket kayıtları</h1><p id="directoryDescription">Şirket kayıtlarından güncel özet.</p></div><div class="page-actions"><button class="btn primary" id="addDepartmentButton" type="button" hidden>+ Departman ekle</button><button class="btn primary" id="addLocationButton" type="button" hidden>+ Konum ekle</button><button class="btn" id="directoryRefresh" type="button">↻ Yenile</button></div></div><section class="panel"><div class="table-tools"><input id="directorySearch" placeholder="Listede ara" aria-label="Liste kayıtlarında ara"><small id="directoryCount">—</small></div><div class="table-wrap"><table><thead id="directoryHead"></thead><tbody id="directoryRows"><tr><td>Yükleniyor…</td></tr></tbody></table></div><div class="notice" id="directoryNotice" style="margin:12px">Liste, şirketinizdeki gerçek kayıtlardan oluşturulur. Departman ve konum adları şimdilik ilgili kayıtlardaki metinlerden derlenir.</div></section></section>
       <section class="workspace-page" id="moduleStatusPage" hidden><div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / ÜRÜN DURUMU</div><h1 id="moduleStatusTitle">Modül</h1><p id="moduleStatusSummary">Bu modülün kullanılabilirliği hakkında bilgi.</p></div><span class="pill warn">Geliştirme aşamasında</span></div><section class="panel"><div class="dialog-body"><h2 id="moduleStatusHeading">Bu bölüm henüz kayıt işlemi yapmıyor</h2><p id="moduleStatusDetail" class="muted">Henüz etkin olmayan bir ekrana yönlendirildiniz.</p><div class="dialog-actions"><button class="btn primary" id="moduleGoAssets" type="button">Varlıkları aç</button><button class="btn" id="moduleGoPeople" type="button">Çalışanları aç</button></div></div></section></section>
       <section class="workspace-page" id="accessoriesPage" hidden>
@@ -582,7 +582,7 @@
     document.getElementById('closeImagePreview').addEventListener('click', () => imagePreviewDialog.close());
     imagePreviewDialog.addEventListener('click', event => { if (event.target === imagePreviewDialog) imagePreviewDialog.close(); });
     imagePreview.addEventListener('click', () => imagePreviewDialog.close());
-    let toastTimer, requestToken = '', lookupCache = { categories: [], brands: [], models: [] }, loadedAssets = [], selectedAssetIds = new Set(), selectedAssetRows = new Map(), currentAsset = null, currentEmployeeId = null, currentEmployeeProfile = null, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, calendarRequestId = 0, calendarCursorDate = '', sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], directoryDepartmentCounts = {}, directoryFilterLocationId = '', moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, auditRequestId = 0, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, latestCalendarEvents = [], latestCalendarFrom = '', latestCalendarTo = '', assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', savedAssetSearchesLegacyKey = '', savedAssetSearches = [], assetRowDensity = 'comfortable', visibleAssetColumns = Array(8).fill(true), labelSettingsKey = '', bwipLoadPromise = null, assetScanStream = null, assetScanFrame = 0, assetScanner = null, assetScanBusy = false;
+    let toastTimer, requestToken = '', lookupCache = { categories: [], brands: [], models: [] }, loadedAssets = [], selectedEmployeeIds = new Set(), selectedAssetIds = new Set(), selectedAssetRows = new Map(), currentAsset = null, currentEmployeeId = null, currentEmployeeProfile = null, managerOptionRequest = {}, assetDashboardRequestId = 0, employeeListRequestId = 0, calendarRequestId = 0, calendarCursorDate = '', sessionRole = '', catalogKind = 'categories', catalogRows = [], directoryKind = '', directoryEntries = [], directoryDepartmentCounts = {}, directoryFilterLocationId = '', moduleAssetTarget = 'Varlıklar', modulePeopleTarget = 'Çalışan kayıtları', assetPage = 1, employeePage = 1, activityPage = 1, auditPage = 1, auditRequestId = 0, employeeTotal = 0, assetTotal = 0, activityTotal = 0, auditTotal = 0, employeeQueryTimer, employeeManagerSearchTimer, assetQueryTimer, activityQueryTimer, auditQueryTimer, assetEmployeeFilterId = '', assetEmployeeFilterName = '', assetLocationFilter = '', assetSortBy = 'tag', assetSortDirection = 'asc', assetPageSize = 50, latestAssetReport = null, latestCalendarEvents = [], latestCalendarFrom = '', latestCalendarTo = '', assetColumnPreferenceKey = '', assetSortPreferenceKey = '', assetDensityPreferenceKey = '', savedAssetSearchesLegacyKey = '', savedAssetSearches = [], assetRowDensity = 'comfortable', visibleAssetColumns = Array(8).fill(true), labelSettingsKey = '', bwipLoadPromise = null, assetScanStream = null, assetScanFrame = 0, assetScanner = null, assetScanBusy = false;
     let assignmentPage = 1, returnsPage = 1, assignmentSearchTimer, returnsSearchTimer;
     let warrantyReportPage = 1, warrantyReportRequestId = 0, warrantyReportSearchTimer;
     let licenseReportPage = 1, licenseReportRequestId = 0, licenseReportSearchTimer;
@@ -1739,6 +1739,23 @@
       'Talep iptal edildi.':['Request cancelled.','Запрос отменен.','Запит скасовано.','Барањето е откажано.'],
       'Talep listeleri yenilendi.':['Request lists refreshed.','Списки запросов обновлены.','Списки запитів оновлено.','Листите со барања се освежени.'],
       'Stok talebi gönderildi.':['Stock request submitted.','Запрос запасов отправлен.','Запит запасів надіслано.','Барањето за залиха е испратено.']
+    });
+
+    Object.assign(localeRows, {
+      'Sayfa seçimini kaldır':['Deselect page','Снять выбор со страницы','Зняти вибір зі сторінки','Отштиклирај ја страницата'],
+      'Çalışanı seç':['Select employee','Выбрать сотрудника','Вибрати працівника','Избери вработен'],
+      '{count} çalışan seçildi':['{count} employees selected','Выбрано сотрудников: {count}','Вибрано працівників: {count}','Избрани вработени: {count}'],
+      'Seçilen çalışanların yeni durumu':['New status for selected employees','Новый статус выбранных сотрудников','Новий статус вибраних працівників','Нова состојба на избраните вработени'],
+      'Pasife al':['Deactivate','Деактивировать','Деактивувати','Деактивирај'],
+      'Etkinleştir':['Activate','Активировать','Активувати','Активирај'],
+      'Seçilenleri güncelle':['Update selected','Обновить выбранных','Оновити вибраних','Ажурирај ги избраните'],
+      '{count} çalışanı pasife almak istiyor musunuz?':['Deactivate {count} employees?','Деактивировать сотрудников: {count}?','Деактивувати працівників: {count}?','Да се деактивираат вработените: {count}?'],
+      'Bağlı açık kayıtlar korunur: {items}.':['Open linked records will remain: {items}.','Открытые связанные записи сохранятся: {items}.','Відкриті пов’язані записи залишаться: {items}.','Отворените поврзани записи ќе останат: {items}.'],
+      'Geçmiş kayıtlar korunur.':['History will be preserved.','История будет сохранена.','Історію буде збережено.','Историјата ќе се зачува.'],
+      '{count} çalışanı yeniden etkinleştirmek istiyor musunuz?':['Reactivate {count} employees?','Повторно активировать сотрудников: {count}?','Повторно активувати працівників: {count}?','Повторно да се активираат вработените: {count}?'],
+      '{count} çalışan {action}.':['{count} employees {action}.','Сотрудников: {count}, {action}.','Працівників: {count}, {action}.','Вработени: {count}, {action}.'],
+      'etkinleştirildi':['activated','активировано','активовано','активирани'],
+      'pasife alındı':['deactivated','деактивировано','деактивовано','деактивирани']
     });
 
     function translateUiText(text) {
@@ -2988,6 +3005,21 @@
       }
       from.max = to.value || ''; to.min = from.value || '';
     }
+    function updateEmployeeBulkControls() {
+      const canManage = canManagePeople();
+      const selectedCount = selectedEmployeeIds.size;
+      $('#selectEmployeesOnPage').hidden = !canManage;
+      $('#employeeBulkActive').hidden = !canManage;
+      $('#applyEmployeeBulkActive').hidden = !canManage;
+      $('#employeeBulkCount').hidden = !canManage;
+      $('#employeeBulkCount').textContent = translateUiText('{count} çalışan seçildi').replace('{count}', fmt.format(selectedCount));
+      $('#applyEmployeeBulkActive').disabled = selectedCount < 1 || selectedCount > 100;
+      $('#selectEmployeesOnPage').disabled = !document.querySelector('#employeeRows input[data-employee-id]');
+      const pageBoxes = [...document.querySelectorAll('#employeeRows input[data-employee-id]')];
+      const allSelected = pageBoxes.length > 0 && pageBoxes.every(box => box.checked);
+      $('#selectEmployeesOnPage').textContent = translateUiText(allSelected ? 'Sayfa seçimini kaldır' : 'Sayfadakileri seç');
+    }
+
     async function loadEmployees(page = employeePage) {
       const managerSelect = $('#employeeManagerFilter');
       if (!managerSelect.dataset.initialized) {
@@ -3018,6 +3050,7 @@
         const row = document.createElement('tr');
         const person = document.createElement('td'), personWrap = document.createElement('div'), avatar = document.createElement('span'), initials = document.createElement('span'), photo = document.createElement('img'), personLink = document.createElement('button');
         personWrap.style.cssText = 'display:flex;align-items:center;gap:9px;min-width:0';
+        const employeeSelectBox = document.createElement('input'); employeeSelectBox.type = 'checkbox'; employeeSelectBox.checked = selectedEmployeeIds.has(employee.id); employeeSelectBox.dataset.employeeId = employee.id; employeeSelectBox.setAttribute('aria-label', `${translateUiText('Çalışanı seç')}: ${employee.displayName}`); employeeSelectBox.addEventListener('click', event => event.stopPropagation()); employeeSelectBox.addEventListener('change', () => { if (employeeSelectBox.checked) selectedEmployeeIds.add(employee.id); else selectedEmployeeIds.delete(employee.id); updateEmployeeBulkControls(); });
         avatar.style.cssText = 'position:relative;display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;border-radius:50%;overflow:hidden;background:#e9f0ff;color:#356ac3;font-size:.66rem;font-weight:800';
         initials.textContent = employee.displayName.split(/\s+/).filter(Boolean).slice(0,2).map(part => part[0]).join('').toLocaleUpperCase('tr-TR');
         photo.alt = ''; photo.setAttribute('aria-hidden','true'); photo.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover';
@@ -3025,7 +3058,7 @@
         photo.addEventListener('error', () => { photo.hidden = true; });
         photo.src = `/api/employees/${employee.id}/photo?v=${encodeURIComponent(employee.id)}`;
         avatar.append(initials, photo); personLink.type = 'button'; personLink.className = 'employee-profile-link'; personLink.textContent = employee.displayName;
-         personLink.setAttribute('aria-label', `${employee.displayName}, ${translateUiText('çalışan profilini aç')}`); personLink.addEventListener('click', event => { event.stopPropagation(); openEmployee(employee.id); }); personWrap.append(avatar, personLink); person.append(personWrap);
+         personLink.setAttribute('aria-label', `${employee.displayName}, ${translateUiText('çalışan profilini aç')}`); personLink.addEventListener('click', event => { event.stopPropagation(); openEmployee(employee.id); }); if (canManagePeople()) personWrap.append(employeeSelectBox); personWrap.append(avatar, personLink); person.append(personWrap);
         const number = document.createElement('td'); number.textContent = employee.employeeNumber;
         const email = document.createElement('td'); email.textContent = employee.email || '—';
         const jobTitle = document.createElement('td'); jobTitle.textContent = employee.jobTitle || '—';
@@ -3042,6 +3075,7 @@
         row.addEventListener('click', () => openEmployee(employee.id));
         row.append(person, number, email, jobTitle, dept, location, startedOn, manager, state, action); rows.append(row);
       }
+      updateEmployeeBulkControls();
       $('#employeeCount').textContent = `${fmt.format(employeeTotal)} ${translateUiText('çalışan')}`;
       $('#employeePageInfo').textContent = employeeTotal ? `${employeePage}. ${translateUiText('sayfa')} · ${Math.min((employeePage - 1) * pageSize + 1, employeeTotal)}–${Math.min(employeePage * pageSize, employeeTotal)} / ${fmt.format(employeeTotal)}` : translateUiText('Kayıt yok');
       $('#employeePrev').disabled = employeePage <= 1; $('#employeeNext').disabled = employeePage * pageSize >= employeeTotal;
@@ -7275,6 +7309,33 @@
         notify(`${fmt.format(Number(response.headers.get('X-Total-Count') || 0))} çalışan CSV dosyasına aktarıldı.`);
       } catch (error) { notify(error.message); }
       finally { button.disabled = false; }
+    });
+    $('#selectEmployeesOnPage').addEventListener('click', () => {
+      const boxes = [...document.querySelectorAll('#employeeRows input[data-employee-id]')];
+      const deselect = boxes.length > 0 && boxes.every(box => box.checked);
+      for (const box of boxes) { box.checked = !deselect; if (deselect) selectedEmployeeIds.delete(box.dataset.employeeId); else selectedEmployeeIds.add(box.dataset.employeeId); }
+      updateEmployeeBulkControls();
+    });
+    $('#applyEmployeeBulkActive').addEventListener('click', async () => {
+      const employeeIds = [...selectedEmployeeIds].slice(0, 100), isActive = $('#employeeBulkActive').value === 'true';
+      if (!employeeIds.length) return;
+      if (!isActive) {
+        try {
+          const summary = await api('/api/employees/bulk-offboarding-summary', { method: 'POST', body: JSON.stringify({ employeeIds, isActive: false }) });
+          const totals = summary.totals || {}, outstanding = [];
+          if (totals.assetCount) outstanding.push(`${fmt.format(totals.assetCount)} varlık`);
+          if (totals.accessoryCount) outstanding.push(`${fmt.format(totals.accessoryCount)} açık aksesuar teslimi`);
+          if (totals.activeLicenseCount) outstanding.push(`${fmt.format(totals.activeLicenseCount)} aktif lisans`);
+          if (totals.activeDirectReportCount) outstanding.push(`${fmt.format(totals.activeDirectReportCount)} aktif doğrudan raporlayan kişi`);
+          const warning = outstanding.length ? ` ${translateUiText('Bağlı açık kayıtlar korunur: {items}.').replace('{items}', outstanding.join(', '))}` : ` ${translateUiText('Geçmiş kayıtlar korunur.')}`;
+          if (!confirm(`${translateUiText('{count} çalışanı pasife almak istiyor musunuz?').replace('{count}', fmt.format(employeeIds.length))}${warning}`)) return;
+        } catch (error) { notify(error.message); return; }
+      } else if (!confirm(translateUiText('{count} çalışanı yeniden etkinleştirmek istiyor musunuz?').replace('{count}', fmt.format(employeeIds.length)))) return;
+      try {
+        const result = await api('/api/employees/bulk-active', { method: 'POST', body: JSON.stringify({ employeeIds, isActive }) });
+        selectedEmployeeIds.clear(); await loadEmployees();
+        notify(translateUiText('{count} çalışan {action}.').replace('{count}', fmt.format(result.changed)).replace('{action}', translateUiText(isActive ? 'etkinleştirildi' : 'pasife alındı')));
+      } catch (error) { notify(error.message); }
     });
     $('#employeeState').addEventListener('change', () => loadEmployees(1).catch(error => notify(error.message)));
     $('#employeeStartedFrom').addEventListener('change', () => { syncEmployeeStartedDateRange('employeeStartedFrom'); loadEmployees(1).catch(error => notify(error.message)); });
