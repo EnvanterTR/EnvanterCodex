@@ -8,9 +8,22 @@ namespace EnvanterTR.Web.Data;
 public static class PendingDeliveryReportEndpoints
 {
     private const int MaximumExportRows = 50_000;
-    private sealed record PendingDeliveryRow(string OrderType, Guid OrderId, string OrderNumber, string Supplier,
-        string Status, DateOnly OrderDate, DateOnly? ExpectedOn, string Currency, string ItemName,
-        int Quantity, int QuantityReceived, int Remaining, decimal UnitCost);
+    private sealed class PendingDeliveryRow
+    {
+        public string OrderType { get; init; } = string.Empty;
+        public Guid OrderId { get; init; }
+        public string OrderNumber { get; init; } = string.Empty;
+        public string Supplier { get; init; } = string.Empty;
+        public string Status { get; init; } = string.Empty;
+        public DateOnly OrderDate { get; init; }
+        public DateOnly? ExpectedOn { get; init; }
+        public string Currency { get; init; } = string.Empty;
+        public string ItemName { get; init; } = string.Empty;
+        public int Quantity { get; init; }
+        public int QuantityReceived { get; init; }
+        public int Remaining { get; init; }
+        public decimal UnitCost { get; init; }
+    }
 
     public static void MapPendingDeliveryReportEndpoints(this RouteGroupBuilder api)
     {
@@ -85,9 +98,12 @@ public static class PendingDeliveryReportEndpoints
                      join line in db.AssetPurchaseOrderLines.AsNoTracking()
                          on new { order.CompanyId, Id = order.Id } equals new { line.CompanyId, Id = line.PurchaseOrderId }
                      where order.CompanyId == companyId && order.Status != "Cancelled" && line.Quantity > line.QuantityReceived
-                     select new PendingDeliveryRow("Varlık", order.Id, order.OrderNumber, order.Supplier, order.Status,
-                         order.OrderDate, order.ExpectedOn, order.Currency, line.Name, line.Quantity, line.QuantityReceived,
-                         line.Quantity - line.QuantityReceived, line.UnitCost);
+                     select new
+                     {
+                         OrderType = "Varlık", OrderId = order.Id, order.OrderNumber, order.Supplier, order.Status,
+                         order.OrderDate, order.ExpectedOn, order.Currency, ItemName = line.Name, line.Quantity,
+                         line.QuantityReceived, Remaining = line.Quantity - line.QuantityReceived, line.UnitCost
+                     };
 
         var accessories = from order in db.AccessoryPurchaseOrders.AsNoTracking()
                           join line in db.AccessoryPurchaseOrderLines.AsNoTracking()
@@ -95,9 +111,12 @@ public static class PendingDeliveryReportEndpoints
                           join accessory in db.Accessories.AsNoTracking()
                               on new { line.CompanyId, Id = line.AccessoryId } equals new { accessory.CompanyId, Id = accessory.Id }
                           where order.CompanyId == companyId && order.Status != "Cancelled" && line.Quantity > line.QuantityReceived
-                          select new PendingDeliveryRow("Aksesuar", order.Id, order.OrderNumber, order.Supplier, order.Status,
-                              order.OrderDate, order.ExpectedOn, order.Currency, accessory.Name, line.Quantity, line.QuantityReceived,
-                              line.Quantity - line.QuantityReceived, line.UnitCost);
+                          select new
+                          {
+                              OrderType = "Aksesuar", OrderId = order.Id, order.OrderNumber, order.Supplier, order.Status,
+                              order.OrderDate, order.ExpectedOn, order.Currency, ItemName = accessory.Name, line.Quantity,
+                              line.QuantityReceived, Remaining = line.Quantity - line.QuantityReceived, line.UnitCost
+                          };
 
         var stocks = from order in db.StockPurchaseOrders.AsNoTracking()
                      join line in db.StockPurchaseOrderLines.AsNoTracking()
@@ -109,12 +128,44 @@ public static class PendingDeliveryReportEndpoints
                          on new { line.CompanyId, Id = line.ComponentId } equals new { component.CompanyId, Id = (Guid?)component.Id } into components
                      from component in components.DefaultIfEmpty()
                      where order.CompanyId == companyId && order.Status != "Cancelled" && line.Quantity > line.QuantityReceived
-                     select new PendingDeliveryRow(line.ConsumableId.HasValue ? "Sarf" : "Bileşen", order.Id, order.OrderNumber,
-                         order.Supplier, order.Status, order.OrderDate, order.ExpectedOn, order.Currency,
-                         line.ConsumableId.HasValue ? consumable != null ? consumable.Name : "Silinmiş sarf malzemesi" : component != null ? component.Name : "Silinmiş bileşen",
-                         line.Quantity, line.QuantityReceived, line.Quantity - line.QuantityReceived, line.UnitCost);
+                     select new
+                     {
+                         OrderType = line.ConsumableId.HasValue ? "Sarf" : "Bileşen",
+                         OrderId = order.Id,
+                         order.OrderNumber,
+                         order.Supplier,
+                         order.Status,
+                         order.OrderDate,
+                         order.ExpectedOn,
+                         order.Currency,
+                         ItemName = line.ConsumableId.HasValue
+                             ? consumable != null ? consumable.Name : "Silinmiş sarf malzemesi"
+                             : component != null ? component.Name : "Silinmiş bileşen",
+                         line.Quantity,
+                         line.QuantityReceived,
+                         Remaining = line.Quantity - line.QuantityReceived,
+                         line.UnitCost
+                     };
 
-        return assets.Concat(accessories).Concat(stocks);
+        // Keep each UNION input as a server-translatable anonymous projection. EF Core
+        // needs the set operation before the presentation DTO member initialization.
+        return assets.Concat(accessories).Concat(stocks)
+            .Select(x => new PendingDeliveryRow
+            {
+                OrderType = x.OrderType,
+                OrderId = x.OrderId,
+                OrderNumber = x.OrderNumber,
+                Supplier = x.Supplier,
+                Status = x.Status,
+                OrderDate = x.OrderDate,
+                ExpectedOn = x.ExpectedOn,
+                Currency = x.Currency,
+                ItemName = x.ItemName,
+                Quantity = x.Quantity,
+                QuantityReceived = x.QuantityReceived,
+                Remaining = x.Remaining,
+                UnitCost = x.UnitCost
+            });
     }
 
     private static IQueryable<PendingDeliveryRow> ApplyFilters(IQueryable<PendingDeliveryRow> query, string? q,

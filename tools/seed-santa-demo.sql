@@ -100,6 +100,14 @@ INSERT INTO "AssetAttachments" ("Id","CompanyId","AssetId","UploadedByUserId","O
 SELECT '9f31a1c1-e39e-4f36-ab12-34cd56ef7890'::uuid, s."Id", a."Id", :'owner_user_id'::uuid,
        'Santa-sunucu-ornek.jpg','9f31a1c1e39e4f36ab1234cd56ef7890.jpg','image/jpeg',29526,now()
 FROM _santa s JOIN "Assets" a ON a."CompanyId"=s."Id" AND a."AssetTag"='SNT-SERVER-013';
+INSERT INTO "AssetEvents" ("Id","CompanyId","AssetId","ActorUserId","EventType","Details","EmployeeId","OccurredAt")
+SELECT gen_random_uuid(),a."CompanyId",a."Id",:'owner_user_id'::uuid,
+       CASE WHEN a."AssignedEmployeeId" IS NULL THEN 'Created' ELSE 'Assigned' END,
+       CASE WHEN a."AssignedEmployeeId" IS NULL THEN 'Santa demo · örnek başlangıç kaydı' ELSE 'Santa demo · örnek çalışan zimmeti' END,
+       a."AssignedEmployeeId",
+       a."CreatedAt" - ((row_number() OVER (ORDER BY a."AssetTag")::int % 21) * interval '1 day')
+FROM "Assets" a CROSS JOIN _santa s
+WHERE a."CompanyId"=s."Id" AND a."AssetTag" LIKE 'SNT-%';
 
 CREATE TEMP TABLE _accessory_seed ("N" int PRIMARY KEY,"Id" uuid NOT NULL DEFAULT gen_random_uuid(),"Name" text NOT NULL,"Category" text NOT NULL,"Model" text NOT NULL,"Qty" int NOT NULL,"MinQty" int NOT NULL,"Cost" numeric NOT NULL) ON COMMIT DROP;
 INSERT INTO _accessory_seed ("N","Name","Category","Model","Qty","MinQty","Cost") VALUES

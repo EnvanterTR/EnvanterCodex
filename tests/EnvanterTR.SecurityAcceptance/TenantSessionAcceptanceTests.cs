@@ -3787,6 +3787,50 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Pending_delivery_report_unions_order_types_and_keeps_rows_company_scoped()
+    {
+        var order = new AccessoryPurchaseOrder
+        {
+            CompanyId = _companyId,
+            OrderNumber = $"PENDING-{_userId:N}",
+            Supplier = "Own supplier",
+            Status = "PartiallyReceived",
+            OrderDate = new DateOnly(2026, 10, 1),
+            ExpectedOn = new DateOnly(2026, 10, 20),
+            Currency = "TRY",
+            CreatedByUserId = _userId
+        };
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.AccessoryPurchaseOrders.Add(order);
+            db.AccessoryPurchaseOrderLines.Add(new AccessoryPurchaseOrderLine
+            {
+                CompanyId = _companyId, PurchaseOrderId = order.Id, AccessoryId = _ownAccessoryId,
+                Quantity = 8, QuantityReceived = 3, UnitCost = 125m
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using var response = await SendAsAdminAsync("/api/reports/pending-deliveries?state=all&asOf=2026-10-10&page=1&pageSize=50");
+        var responseBody = await response.Content.ReadAsStringAsync();
+        Assert.True(response.StatusCode == HttpStatusCode.OK, $"Expected 200 but got {(int)response.StatusCode}: {responseBody}");
+        using var payload = JsonDocument.Parse(responseBody);
+        Assert.Equal(1, payload.RootElement.GetProperty("total").GetInt32());
+        var item = payload.RootElement.GetProperty("items")[0];
+        Assert.Equal("Aksesuar", item.GetProperty("orderType").GetString());
+        Assert.Equal(order.OrderNumber, item.GetProperty("orderNumber").GetString());
+        Assert.Equal(5, item.GetProperty("remaining").GetInt32());
+        Assert.Equal("OWN-SECURITY-ACCESSORY-" + _userId.ToString("N"), item.GetProperty("itemName").GetString());
+
+        using var export = await SendAsAdminAsync($"/api/reports/pending-deliveries/export.csv?q={order.OrderNumber}&asOf=2026-10-10");
+        Assert.Equal(HttpStatusCode.OK, export.StatusCode);
+        var csv = await export.Content.ReadAsStringAsync();
+        Assert.Contains(order.OrderNumber, csv, StringComparison.Ordinal);
+        Assert.Contains("Own supplier", csv, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Depreciation_report_matches_half_year_boundaries_and_does_not_apply_linear_floor()
     {
         var categoryId = await GetOwnCategoryIdAsync();

@@ -21,4 +21,42 @@ UPDATE "Accessories" a SET "SupplierId"=s."Id", "Supplier"=s."Name", "UpdatedAt"
 FROM "SupplierCatalogEntries" s
 WHERE s."CompanyId"=a."CompanyId" AND a."CompanyId"=(SELECT "Id" FROM "Companies" WHERE "Slug"='santa-demo')
   AND a."Supplier"='Santa Bilgi Teknolojileri Tedarik';
+DO $$
+DECLARE
+    company_id uuid := (SELECT "Id" FROM "Companies" WHERE "Slug"='santa-demo');
+    actor_id uuid;
+    supplier_id uuid;
+    accessory_id uuid;
+    order_id uuid;
+BEGIN
+    SELECT "UserId" INTO actor_id FROM "CompanyMemberships"
+      WHERE "CompanyId"=company_id AND "RoleKey"='owner' LIMIT 1;
+    SELECT "Id" INTO supplier_id FROM "SupplierCatalogEntries"
+      WHERE "CompanyId"=company_id AND "NormalizedName"='PENTA TEKNOLOJİ' AND "IsActive" LIMIT 1;
+    SELECT "Id" INTO accessory_id FROM "Accessories"
+      WHERE "CompanyId"=company_id AND "ItemNumber"='SNT-ACC-002';
+
+    IF company_id IS NULL OR accessory_id IS NULL THEN
+        RAISE EXCEPTION 'Santa demo company and accessory catalog must be seeded first';
+    END IF;
+
+    INSERT INTO "AccessoryPurchaseOrders" (
+        "Id","CompanyId","OrderNumber","Supplier","SupplierId","Status","OrderDate","ExpectedOn","Currency",
+        "TaxRatePercent","DiscountAmount","FreightAmount","Notes","CreatedByUserId","CreatedAt","UpdatedAt")
+    VALUES (gen_random_uuid(),company_id,'SNT-DEMO-ACC-PO-001','Penta Teknoloji',supplier_id,'PartiallyReceived',
+            current_date-2,current_date+7,'TRY',20,0,0,
+            'Santa demo · bekleyen teslimat raporu örneği; sevk veya stok girişi yapılmadı.',actor_id,now(),now())
+    ON CONFLICT ("CompanyId","OrderNumber") DO NOTHING;
+
+    SELECT "Id" INTO order_id FROM "AccessoryPurchaseOrders"
+      WHERE "CompanyId"=company_id AND "OrderNumber"='SNT-DEMO-ACC-PO-001';
+    INSERT INTO "AccessoryPurchaseOrderLines" (
+        "Id","CompanyId","PurchaseOrderId","AccessoryId","Quantity","QuantityReceived","UnitCost","Notes","CreatedAt")
+    SELECT gen_random_uuid(),company_id,order_id,accessory_id,12,3,2100,
+           'Santa demo · 3 adet örnek teslim alındı; 9 adet bekliyor.',now()
+    WHERE NOT EXISTS (
+        SELECT 1 FROM "AccessoryPurchaseOrderLines" l
+        WHERE l."CompanyId"=company_id AND l."PurchaseOrderId"=order_id AND l."AccessoryId"=accessory_id
+    );
+END $$;
 COMMIT;
