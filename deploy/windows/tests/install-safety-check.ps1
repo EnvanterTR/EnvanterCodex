@@ -2,6 +2,7 @@ $ErrorActionPreference = 'Stop'
 $installPath = Join-Path $PSScriptRoot '..\install.ps1'
 $setupPath = Join-Path $PSScriptRoot '..\setup.ps1'
 $postgresPath = Join-Path $PSScriptRoot '..\prepare-postgresql.ps1'
+$postgresInstallerPath = Join-Path $PSScriptRoot '..\install-postgresql.ps1'
 $tokens = $null
 $parseErrors = $null
 [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $installPath),[ref]$tokens,[ref]$parseErrors) | Out-Null
@@ -9,6 +10,12 @@ if ($parseErrors.Count -gt 0) { throw "install.ps1 has PowerShell parse errors: 
 $source = Get-Content -LiteralPath $installPath -Raw
 $setupSource = Get-Content -LiteralPath $setupPath -Raw
 $postgresSource = Get-Content -LiteralPath $postgresPath -Raw
+$postgresInstallerSource = Get-Content -LiteralPath $postgresInstallerPath -Raw
+
+$tokens = $null
+$parseErrors = $null
+[System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $postgresInstallerPath),[ref]$tokens,[ref]$parseErrors) | Out-Null
+if ($parseErrors.Count -gt 0) { throw "install-postgresql.ps1 has PowerShell parse errors: $($parseErrors.Message -join '; ')" }
 
 function Assert-Pattern([string]$Name,[string]$Pattern) {
     if ($source -notmatch $Pattern) { throw "FAIL: $Name" }
@@ -34,7 +41,14 @@ if ($setupSource -notmatch '(?s)Read-PendingConnection.*?DataProtectionScope\]::
 if ($setupSource -notmatch '(?s)if \(\$existingService -and \$pendingSecretExists\).*?migrate\.ps1.*?Remove-PendingSetup') { throw 'FAIL: a service installed before migration failure must resume migration without reinstalling.' }
 if ($setupSource -notmatch '(?s)PostgreSqlPort.*?CertificateThumbprint.*?Yarım kurulum farklı DNS, port veya TLS sertifikasıyla sürdürülemez') { throw 'FAIL: resumed setup must reject changed database, HTTPS, DNS, or certificate settings.' }
 if ($postgresSource -notmatch '(?s)PendingConnectionPath.*?ProtectedData\]::Protect.*?LocalMachine.*?DROP DATABASE.*?DROP ROLE') { throw 'FAIL: PostgreSQL setup must persist the DPAPI secret before returning and roll back a newly created database/role on failure.' }
+if ($setupSource -notmatch '(?s)AllowMissingPostgreSql.*?INSTALL POSTGRESQL.*?install-postgresql\.ps1.*?prepare-postgresql\.ps1') { throw 'FAIL: guided server setup must separately confirm and run PostgreSQL installation before creating the EnvanterTR database.' }
+if ($postgresInstallerSource -notmatch 'https://get\.enterprisedb\.com/postgresql/postgresql-17\.11-1-windows-x64\.exe') { throw 'FAIL: PostgreSQL installer must use the pinned official EDB HTTPS release URL.' }
+if ($postgresInstallerSource -notmatch 'SignatureStatus\]::Valid' -or $postgresInstallerSource -notmatch "\`$expectedPublisher\s*=\s*'EnterpriseDB Corporation'") { throw 'FAIL: PostgreSQL installer must have a valid Authenticode signature from EDB.' }
+if ($postgresInstallerSource -notmatch '(?s)--mode qt.*?Start-Process.*?-Wait') { throw 'FAIL: PostgreSQL installation must stay interactive so its administrator password is entered in the signed installer UI.' }
+if ($postgresInstallerSource -match '(?i)--superpassword|--servicepassword|PGPASSWORD') { throw 'FAIL: PostgreSQL administrator passwords must not be passed on a process command line or stored in environment variables.' }
+if ($postgresInstallerSource -notmatch '(?s)A PostgreSQL 17 installation or service already exists.*?will not upgrade, repair, or replace') { throw 'FAIL: PostgreSQL helper must not replace an existing installation.' }
 Write-Output 'PASS: Windows initial setup can resume without losing its protected database secret.'
+Write-Output 'PASS: PostgreSQL prerequisite uses a pinned, Authenticode-verified EDB installer without passing passwords to the process command line.'
 
 $apiReadyIndex = $source.IndexOf('if ($status.product -eq "EnvanterTR"')
 $companyTokenIndex = $source.IndexOf('One-time company setup token')

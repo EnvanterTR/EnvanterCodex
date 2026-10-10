@@ -5,6 +5,7 @@ param(
     [ValidateRange(1,65535)][int]$HttpsPort = 8443,
     [string]$DnsName = "",
     [string]$CertificateSubject = "",
+    [switch]$AllowMissingPostgreSql,
     [string]$InstallRoot = "$env:ProgramFiles\EnvanterTR",
     [string]$DataRoot = "$env:ProgramData\EnvanterTR",
     [ValidateRange(1,1000)][int]$MinimumFreeGB = 10
@@ -149,6 +150,8 @@ foreach ($port in @(@{ Name="PostgreSQL TCP"; Host=$PostgreSqlHost; Port=$Postgr
         $listener = Get-NetTCPConnection -State Listen -LocalPort $port.Port -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($listener) { Add-Check $port.Name FAIL "Port $($port.Port) is already in use by process id $($listener.OwningProcess)." }
         else { Add-Check $port.Name PASS "TCP port $($port.Port) is available." }
+    } elseif ($port.Name -eq "PostgreSQL TCP" -and $AllowMissingPostgreSql) {
+        Add-Check $port.Name WARN "PostgreSQL is not required for the remaining read-only checks. The guided setup can offer the signed PostgreSQL 17.11 installer after a separate confirmation."
     } elseif (Test-TcpEndpoint $port.Host $port.Port) {
         Add-Check $port.Name PASS "PostgreSQL responds at $($port.Host):$($port.Port). Confirm it is PostgreSQL 17 before installation."
     } else { Add-Check $port.Name FAIL "Cannot connect to PostgreSQL at $($port.Host):$($port.Port). Start PostgreSQL or correct the host and port." }

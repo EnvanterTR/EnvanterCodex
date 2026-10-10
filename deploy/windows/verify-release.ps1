@@ -17,7 +17,7 @@ $actualHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowe
 if ($Matches.hash.ToLowerInvariant() -ne $actualHash) { throw "Windows release SHA-256 verification failed." }
 
 $requiredFiles = @(
-    "EnvanterTR.Web.exe", "Setup.cmd", "setup.ps1", "preflight.ps1", "install.ps1", "protect-connection-string.ps1", "prepare-postgresql.ps1",
+    "EnvanterTR.Web.exe", "Setup.cmd", "setup.ps1", "preflight.ps1", "install-postgresql.ps1", "install.ps1", "protect-connection-string.ps1", "prepare-postgresql.ps1",
     "migrate.ps1", "disable-bootstrap.ps1", "backup.ps1", "BackupFormat.psm1", "WindowsSecrets.psm1",
     "restore.ps1", "run-scheduled-backup.ps1", "send-backup-alert.ps1", "configure-backup-schedule.ps1",
     "check-backup-health.ps1", "update.ps1", "README.md"

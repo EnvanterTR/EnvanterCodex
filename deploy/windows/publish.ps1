@@ -44,6 +44,7 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot "install.ps1") -Destination $out
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "setup.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "Setup.cmd") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "preflight.ps1") -Destination $output -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot "install-postgresql.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "protect-connection-string.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "configure-email.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "prepare-postgresql.ps1") -Destination $output -Force

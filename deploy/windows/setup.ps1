@@ -59,7 +59,7 @@ try {
         Fail "Desteklenen sistem Windows Server 2019/2022 x64. Bulunan: $($os.Caption)."
     }
     $packagePath = (Resolve-Path -LiteralPath $PSScriptRoot).Path
-    foreach ($file in @('EnvanterTR.Web.exe','preflight.ps1','prepare-postgresql.ps1','install.ps1','migrate.ps1')) {
+    foreach ($file in @('EnvanterTR.Web.exe','preflight.ps1','install-postgresql.ps1','prepare-postgresql.ps1','install.ps1','migrate.ps1')) {
         if (-not (Test-Path -LiteralPath (Join-Path $packagePath $file) -PathType Leaf)) {
             Fail "Paket eksik: $file. Doğrulanmış Windows ZIP'ini yeniden açın."
         }
@@ -152,12 +152,30 @@ try {
         '-PackagePath',$packagePath,'-PostgreSqlHost','127.0.0.1','-PostgreSqlPort',[string]$pgPort,
         '-HttpsPort',[string]$httpsPort,'-DnsName',$dnsName,'-CertificateSubject',$selectedCertificate.Subject
     )
+    $postgresBinDirectory = Join-Path "$env:ProgramFiles\PostgreSQL\17" 'bin'
+    $postgresqlMissing = -not (Test-Path -LiteralPath (Join-Path $postgresBinDirectory 'psql.exe') -PathType Leaf)
+    if ($postgresqlMissing) { $preflightArgs += '-AllowMissingPostgreSql' }
     & $ps51.Source @preflightArgs
     if ($LASTEXITCODE -ne 0) { Fail "Önkoşul kontrolü başarısız. Kırmızı maddeleri giderip Setup.cmd dosyasını yeniden çalıştırın." }
 
-    $psql = Join-Path "$env:ProgramFiles\PostgreSQL\17\bin" 'psql.exe'
-    if (-not (Test-Path -LiteralPath $psql -PathType Leaf)) {
-        Fail "PostgreSQL 17 sunucu yazılımı bulunamadı. Resmî PostgreSQL 17 x64 sunucu kurulumunu yapın, ardından Setup.cmd dosyasını yeniden başlatın."
+    $psql = Join-Path $postgresBinDirectory 'psql.exe'
+    if ($postgresqlMissing) {
+        Write-Step "PostgreSQL 17 sunucu önkoşulu"
+        Write-Host "PostgreSQL bu sunucuda kurulu değil. Kurulum yardımcısı resmi EDB imzalı PostgreSQL 17.11 yükleyicisini (yaklaşık 360 MB) indirecek, imzasını doğrulayacak ve etkileşimli yükleyiciyi açacak." -ForegroundColor Yellow
+        Write-Host "Yükleyicide PostgreSQL yönetici parolasını sen belirleyeceksin. EnvanterTR bu parolayı kaydetmez; uygulama için ayrıca sınırlı yetkili bir rol oluşturur."
+        $postgresConfirmation = Read-Host "İndirmeye ve yükleyiciyi açmaya izin vermek için INSTALL POSTGRESQL yazın"
+        if ($postgresConfirmation -cne 'INSTALL POSTGRESQL') { Write-Host "PostgreSQL yüklemesi başlatılmadı; EnvanterTR kurulumu yapılmadı." -ForegroundColor Yellow; return }
+        & (Join-Path $packagePath 'install-postgresql.ps1') -Port $pgPort
+        if (-not (Test-Path -LiteralPath $psql -PathType Leaf)) { Fail "PostgreSQL 17 doğrulanamadı: $psql bulunamadı. EnvanterTR veritabanı oluşturulmadı." }
+
+        Write-Step "PostgreSQL sonrası önkoşul kontrolü"
+        $preflightArgs = @(
+            '-NoProfile','-ExecutionPolicy','Bypass','-File',$preflight,
+            '-PackagePath',$packagePath,'-PostgreSqlHost','127.0.0.1','-PostgreSqlPort',[string]$pgPort,
+            '-HttpsPort',[string]$httpsPort,'-DnsName',$dnsName,'-CertificateSubject',$selectedCertificate.Subject
+        )
+        & $ps51.Source @preflightArgs
+        if ($LASTEXITCODE -ne 0) { Fail "PostgreSQL yüklemesinden sonraki önkoşul kontrolü başarısız. Kırmızı maddeleri giderip Setup.cmd dosyasını yeniden çalıştırın." }
     }
 
     Write-Host "`nKurulum şu işlemleri yapacak:" -ForegroundColor Yellow
