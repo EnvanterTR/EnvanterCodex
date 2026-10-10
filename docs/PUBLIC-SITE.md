@@ -30,3 +30,7 @@ Ana sayfanın açılış alanı, kullanıcının paylaştığı incident-managem
 ## Yerel önizleme ve canlı yayın sınırı
 
 8081 adresi yalnızca yerel ana sayfa önizlemesidir. `/demo/` Coolify üzerinden genel erişime açık canlı yayındır. Metin ve plan yönetim arayüzü içerik kataloglarına bağlanmıştır fakat satın alma/tahsilat ve demo rezervasyonu henüz tamamlanmamıştır. Canlı Next.js ana sayfası ve EnvanterTR ürün deposu ayrı teslimat kanallarıdır.
+
+## 10 Ekim müşteri kurulum anlatımı
+
+Kurulum bölümündeki Türkçe metin sadeleştirildi: Windows 11 başlığı `Windows 11 · Tek Bilgisayar`; yalnızca aynı bilgisayardaki kişisel kullanıma uygun olduğu ve Wi-Fi üzerinden diğer cihazlara hizmet vermediği açıkça söylenir. Ekip erişimi Windows Server veya Ubuntu sunucusundan, çalışan cihazlarına uygulama kurmadan tarayıcıyla yapılır. Windows Server Windows hizmeti/PostgreSQL kullanır; Ubuntu Docker Compose ve Caddy kullanır; gereksinimler ve farkları günlük dille özetlenir. Kurulum durumu kısa tutulur ve gerçek müşteri paketleri, kılavuzlar ile hedef sunucu kabulü tamamlanmadan indirilebilir veya sıfır destekle kurulabilir gibi sunulmaz. Bulut paket adları `Başlangıç`, `Genişleyen ekip`, `Kurumsal` olarak güncellendi.
