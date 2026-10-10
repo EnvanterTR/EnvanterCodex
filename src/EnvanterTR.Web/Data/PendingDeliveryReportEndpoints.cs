@@ -28,8 +28,8 @@ public static class PendingDeliveryReportEndpoints
     public static void MapPendingDeliveryReportEndpoints(this RouteGroupBuilder api)
     {
         api.MapGet("/reports/pending-deliveries", async ([FromQuery] string? q, [FromQuery] string? state,
-            [FromQuery] DateOnly? asOf, [FromQuery] int page, [FromQuery] int pageSize,
-            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+            [FromQuery] DateOnly? asOf, ClaimsPrincipal user, AppDbContext db, CancellationToken ct,
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {
             if (!TryCompany(user, out var companyId)) return Results.Forbid();
             if (!Validate(q, state, out var errors)) return Results.ValidationProblem(errors);

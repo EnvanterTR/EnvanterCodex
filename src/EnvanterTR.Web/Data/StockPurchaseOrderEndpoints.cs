@@ -89,7 +89,8 @@ public static class StockPurchaseOrderEndpoints
 
         api.MapGet("/stock-orders", async ([FromQuery] string? q, [FromQuery] string? status, [FromQuery] string? itemType,
             [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] bool? overdueOnly,
-            [FromQuery] int page, [FromQuery] int pageSize, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+            ClaimsPrincipal user, AppDbContext db, CancellationToken ct,
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 25) =>
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
             if (from is not null && to is not null && from > to)

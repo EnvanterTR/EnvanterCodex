@@ -19,7 +19,8 @@ public static class DepreciationReportEndpoints
     public static void MapDepreciationReportEndpoints(this RouteGroupBuilder api)
     {
         api.MapGet("/reports/depreciation", async ([FromQuery] string? q, [FromQuery] DateOnly? asOf,
-            [FromQuery] int page, [FromQuery] int pageSize, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+            ClaimsPrincipal user, AppDbContext db, CancellationToken ct,
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {
             if (!TryCompany(user, out var companyId)) return Results.Forbid();
             if (q?.Trim().Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama 120 karakteri aşamaz."] });

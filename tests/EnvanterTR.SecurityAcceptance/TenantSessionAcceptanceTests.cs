@@ -1141,8 +1141,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             ("/api/audit", HttpStatusCode.OK),
             ("/api/inventory/movements", HttpStatusCode.OK),
             ("/api/accessory-orders", HttpStatusCode.OK),
+            ("/api/asset-orders", HttpStatusCode.OK),
+            ("/api/stock-orders", HttpStatusCode.OK),
             ("/api/requests", HttpStatusCode.OK),
             ("/api/reports/warranties", HttpStatusCode.OK),
+            ("/api/reports/pending-deliveries", HttpStatusCode.OK),
+            ("/api/reports/depreciation", HttpStatusCode.OK),
             ("/api/assets/export.csv", HttpStatusCode.OK)
         };
 
@@ -1153,6 +1157,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.True(response.StatusCode == expectedStatus,
                 $"{path} should respond with {(int)expectedStatus} when paging and optional filters are omitted, but returned {(int)response.StatusCode}: {detail}");
         }
+
+        using var activityResponse = await SendAsAdminAsync("/api/activity");
+        using var activity = JsonDocument.Parse(await activityResponse.Content.ReadAsStringAsync());
+        Assert.True(activity.RootElement.GetProperty("total").GetInt32() > 0,
+            "The active company's seeded activity should appear in the dashboard history.");
+        Assert.NotEmpty(activity.RootElement.GetProperty("entries").EnumerateArray());
     }
 
     [Fact]

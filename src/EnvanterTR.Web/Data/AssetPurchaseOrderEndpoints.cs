@@ -68,8 +68,9 @@ public static class AssetPurchaseOrderEndpoints
         }).RequireAuthorization("asset.read");
 
         api.MapGet("/asset-orders", async ([FromQuery] string? q, [FromQuery] string? status,
-            [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] int page, [FromQuery] int pageSize,
-            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+            [FromQuery] DateOnly? from, [FromQuery] DateOnly? to,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken ct,
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 25) =>
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
             if (from is not null && to is not null && from > to)
