@@ -384,6 +384,22 @@ const requiredApiFeedbackLabels = [
   'Etkin tedarikçi kataloğundan bir tedarikçi seçin.',
   'Teslim tarihi ve en fazla 100 farklı satır için 1–1.000 arası adet girin.',
   'Teslim tarihi sipariş tarihinden önce olamaz.',
+  'Tedarikçi zorunludur ve en fazla 200 karakter olabilir.',
+  'Sipariş numarası en fazla 80 karakter olabilir.',
+  'Üç harfli para birimi girin; ör. TRY, EUR veya USD.',
+  'Sipariş tarihi zorunludur.',
+  'Beklenen teslim tarihi sipariş tarihinden önce olamaz.',
+  '1–100 farklı aksesuar seçin; adet 1–100.000, birim fiyat 0–1.000.000.000 aralığında olmalı.',
+  'Aksesuarlardan biri bu şirkette bulunamadı.',
+  '1–100 farklı sipariş satırı seçin; her teslim alınan miktar 1–100.000 arasında olmalı.',
+  'Teslim alma tarihi zorunludur; not en fazla 1.000 karakter olabilir.',
+  'Teslim alma tarihi sipariş tarihinden önce olamaz.',
+  'Kalem türü Sarf veya Bileşen olmalıdır.',
+  '1–100 farklı sarf/bileşen seçin; adet 1–100.000, birim maliyet 0–1.000.000.000 aralığında olmalı.',
+  'Sarf kalemlerinden biri bu şirkette bulunamadı.',
+  'Bileşen kalemlerinden biri bu şirkette bulunamadı.',
+  '1–100 farklı sipariş satırı ve her satır için 1–100.000 arası miktar girin.',
+  'Teslim tarihi zorunludur; not en fazla 1.000 karakter olabilir.',
 ];
 
 const invalidRows = Object.entries(sandbox.localeRows)
