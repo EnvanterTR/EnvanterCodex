@@ -1576,6 +1576,20 @@
       'Rapor verileri yüklenemedi. Yenile düğmesini kullanın.':['Report data could not be loaded. Use Refresh to try again.','Не удалось загрузить отчет. Нажмите «Обновить», чтобы повторить попытку.','Не вдалося завантажити звіт. Натисніть «Оновити», щоб повторити спробу.','Извештајот не се вчита. Притиснете „Освежи“ за повторен обид.'],
       'Hareket geçmişi yüklenemedi. Yenile düğmesini kullanın.':['Activity history could not be loaded. Use Refresh to try again.','Не удалось загрузить журнал действий. Нажмите «Обновить», чтобы повторить попытку.','Не вдалося завантажити історію подій. Натисніть «Оновити», щоб повторити спробу.','Историјата на активности не се вчита. Притиснете „Освежи“ за повторен обид.']
     });
+    Object.assign(localeRows, {
+      'Satın alma siparişi teslim alındı':['Purchase order received','Получен заказ на покупку','Отримано замовлення на закупівлю','Нарачката за набавка е примена'],
+      'Zimmetlendi':['Assigned','Назначено','Призначено','Доделено'],
+      'Durum değişti':['Status changed','Статус изменен','Статус змінено','Статусот е променет'],
+      'Denetim tamamlandı':['Audit completed','Аудит завершен','Аудит завершено','Ревизијата е завршена'],
+      'Denetim planlandı':['Audit scheduled','Аудит запланирован','Аудит заплановано','Ревизијата е закажана'],
+      'Denetim planı kaldırıldı':['Audit schedule cleared','Расписание аудита удалено','Розклад аудиту скасовано','Распоредот за ревизија е отстранет'],
+      'Üst varlık bağlantısı değişti':['Parent asset changed','Родительский актив изменен','Батьківський актив змінено','Родителското средство е сменето'],
+      'Konum transferi':['Location transferred','Перемещение местоположения','Перемещение до другого места','Пренос на локација'],
+      'Bakım planlandı':['Maintenance scheduled','Обслуживание запланировано','Технічне обслуговування заплановано','Одржувањето е закажано'],
+      'Bakım planı iptal edildi':['Maintenance schedule cancelled','График обслуживания отменен','Розклад техобслуговування скасовано','Распоредот за одржување е откажан'],
+      'Bakım başladı':['Maintenance started','Обслуживание начато','Технічне обслуговування розпочато','Одржувањето започна'],
+      'Bakım tamamlandı':['Maintenance completed','Обслуживание завершено','Технічне обслуговування завершено','Одржувањето е завршено']
+    });
     const localeIndexes = { en: 0, ru: 1, uk: 2, mk: 3 };
     function translateUiText(text) {
       const key = String(text ?? ''), index = localeIndexes[appearanceLanguage.value];

@@ -219,6 +219,9 @@ const requiredLicenseImportLabels = [
   '{count} yeni lisans doğrulandı; {supplierCount} yeni tedarikçi yalnızca aktarımı onaylarsanız kataloğa eklenecek. Önizleme kayıt eklemedi.',
   '{count} lisans ve denetim geçmişi eklendi; {supplierCount} yeni tedarikçi kataloğa bağlandı.'
 ];
+const eventLabelsMatch = source.match(/const eventLabels\s*=\s*(\{[^\n]+\});/);
+if (!eventLabelsMatch) throw new Error(`Could not locate asset event labels in ${sourcePath}`);
+const requiredAssetEventLabels = Object.values(vm.runInNewContext(`(${eventLabelsMatch[1]})`, {}, { timeout: 1000 }));
 const requiredApiFeedbackLabels = [
   'İstek doğrulaması başarısız.',
   'Arama metni 120 karakteri aşamaz.',
@@ -376,9 +379,10 @@ const missingEmployeeLabels = requiredEmployeeLabels.filter(key => !sandbox.loca
 const missingInventoryMovementLabels = requiredInventoryMovementLabels.filter(key => !sandbox.localeRows[key]);
 const missingLicenseListLabels = requiredLicenseListLabels.filter(key => !sandbox.localeRows[key]);
 const missingLicenseImportLabels = requiredLicenseImportLabels.filter(key => !sandbox.localeRows[key]);
+const missingAssetEventLabels = requiredAssetEventLabels.filter(key => !sandbox.localeRows[key]);
 const missingApiFeedbackLabels = requiredApiFeedbackLabels.filter(key => !sandbox.localeRows[key]);
 
-if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingApiFeedbackLabels.length) {
+if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length) {
   if (invalidRows.length) console.error(`Invalid 4-language locale entries: ${invalidRows.join(', ')}`);
   if (missingAssetLabels.length) console.error(`Missing asset-list locale entries: ${missingAssetLabels.join(', ')}`);
   if (missingReservationLabels.length) console.error(`Missing reservation-page locale entries: ${missingReservationLabels.join(', ')}`);
@@ -387,6 +391,7 @@ if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.
   if (missingInventoryMovementLabels.length) console.error(`Missing inventory-movement locale entries: ${missingInventoryMovementLabels.join(', ')}`);
   if (missingLicenseListLabels.length) console.error(`Missing license-list locale entries: ${missingLicenseListLabels.join(', ')}`);
   if (missingLicenseImportLabels.length) console.error(`Missing license-import locale entries: ${missingLicenseImportLabels.join(', ')}`);
+  if (missingAssetEventLabels.length) console.error(`Missing asset-event locale entries: ${missingAssetEventLabels.join(', ')}`);
   if (missingApiFeedbackLabels.length) console.error(`Missing asset/operations API-feedback locale entries: ${missingApiFeedbackLabels.join(', ')}`);
   process.exitCode = 1;
 } else {

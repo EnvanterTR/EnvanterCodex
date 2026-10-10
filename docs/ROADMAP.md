@@ -5,6 +5,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 ## Şu an kullanılabilir geliştirme parçaları
 
 - Pano “Son hareketler” boş durumu, 3 sütunlu satır ızgarasında yalnızca 28 px genişliğindeki simge sütununa düşüyordu. Boş durum artık kart genişliğini kullanıyor. Yetkili kullanıcılar hareketlerdeki varlık etiketine klavyeyle erişilebilir bağlantıdan ilgili varlık ayrıntısını açabilir. Yerel Docker web uygulaması yeniden oluşturulup `/api/status` ile hazır olduğu doğrulandı; güncel HTML istemci kodu HTTP yanıtında doğrulandı. Yerel Santa demo şirketinde `AssetEvents` tablosunda 50 hareket kaydı var.
+- Varlık hareket geçmişindeki sipariş, zimmet, iade, durum, denetim, konum transferi ve bakım olay etiketleri beş dilde sözlükleştirildi. `Verify-UiLocales.mjs`, doğrudan `eventLabels` eşlemesindeki tüm görünen etiketlerin çevirisini doğrular; böylece yeni olay türü eklenince çeviri denetimi de otomatik genişler.
 
 - Rezervasyon yarış kabulü: aynı varlık için kesişen dönemlerdeki paralel isteklerde PostgreSQL HTTP testi tek oluşturma (`201`), tek çakışma (`409`), bir bekleyen kayıt ve bir denetim olayı doğrular. Diğer eşzamanlılık akışları ve gerçek üretim ortamı kabulü ayrı açık işlerdir.
 
