@@ -91,7 +91,11 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             "POST /api/session/password/forgot",
             "POST /api/session/password/reset",
             "GET /api/plans",
-            "GET /api/site-content"
+            "GET /api/site-content",
+            "GET /api/v1",
+            "GET /api/v1/accessories",
+            "GET /api/v1/assets",
+            "GET /api/v1/employees"
         };
         Assert.True(expectedPublicRoutes.SetEquals(actualPublicRoutes),
             "Review anonymous API route changes. Unexpected: " +
@@ -1887,6 +1891,96 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(_ownAssetId, entry.GetProperty("assetId").GetGuid());
         Assert.Contains("OWN-AUDIT-REPORT", entry.GetProperty("details").GetString(), StringComparison.Ordinal);
         Assert.DoesNotContain("OTHER-AUDIT-REPORT", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Customer_api_tokens_are_hashed_scoped_tenant_bound_and_revocable()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using var createResponse = await SendAsUserAsync(HttpMethod.Post, "/api/integrations/tokens", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Read-only integration", scopes = new[] { "assets:read" }, expiresAt = (DateTimeOffset?)null }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        using var created = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var tokenId = created.RootElement.GetProperty("id").GetGuid();
+        var secret = created.RootElement.GetProperty("secret").GetString()!;
+        Assert.StartsWith("etr_live_", secret, StringComparison.Ordinal);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var employee = await db.Employees.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownEmployeeId);
+            employee.PrivateNotes = "PRIVATE-HR-SENTINEL";
+            await db.SaveChangesAsync();
+        }
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var storedHash = await db.CompanyApiTokens.Where(x => x.Id == tokenId).Select(x => x.TokenHash).SingleAsync();
+            Assert.NotEqual(secret, storedHash);
+            Assert.Equal(64, storedHash.Length);
+        }
+
+        using (var assetsRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/assets?page=1&pageSize=20"))
+        {
+            assetsRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", secret);
+            assetsRequest.Headers.Add("X-Company-Id", _otherCompanyId.ToString());
+            using var assetsResponse = await _client!.SendAsync(assetsRequest);
+            Assert.Equal(HttpStatusCode.OK, assetsResponse.StatusCode);
+            using var assets = JsonDocument.Parse(await assetsResponse.Content.ReadAsStringAsync());
+            Assert.Equal(1, assets.RootElement.GetProperty("total").GetInt32());
+            Assert.Equal(_ownAssetId, assets.RootElement.GetProperty("items")[0].GetProperty("id").GetGuid());
+            Assert.DoesNotContain(_otherCompanyAssetId, assets.RootElement.GetProperty("items").EnumerateArray()
+                .Select(x => x.GetProperty("id").GetGuid()));
+        }
+
+        using (var wrongScopeRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/accessories"))
+        {
+            wrongScopeRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", secret);
+            using var wrongScopeResponse = await _client!.SendAsync(wrongScopeRequest);
+            Assert.Equal(HttpStatusCode.Forbidden, wrongScopeResponse.StatusCode);
+        }
+
+        using var expandedScopeResponse = await SendAsUserAsync(HttpMethod.Post, "/api/integrations/tokens", _userId, _companyId,
+            System.Net.Http.Json.JsonContent.Create(new { name = "Inventory and people", scopes = new[] { "accessories:read", "people:read" }, expiresAt = (DateTimeOffset?)null }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, expandedScopeResponse.StatusCode);
+        using var expandedScopePayload = JsonDocument.Parse(await expandedScopeResponse.Content.ReadAsStringAsync());
+        var expandedSecret = expandedScopePayload.RootElement.GetProperty("secret").GetString()!;
+        using (var accessoriesRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/accessories"))
+        {
+            accessoriesRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", expandedSecret);
+            using var accessoriesResponse = await _client!.SendAsync(accessoriesRequest);
+            Assert.Equal(HttpStatusCode.OK, accessoriesResponse.StatusCode);
+            using var accessories = JsonDocument.Parse(await accessoriesResponse.Content.ReadAsStringAsync());
+            Assert.Equal(1, accessories.RootElement.GetProperty("total").GetInt32());
+            Assert.Equal(_ownAccessoryId, accessories.RootElement.GetProperty("items")[0].GetProperty("id").GetGuid());
+        }
+        using (var employeesRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/employees"))
+        {
+            employeesRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", expandedSecret);
+            using var employeesResponse = await _client!.SendAsync(employeesRequest);
+            Assert.Equal(HttpStatusCode.OK, employeesResponse.StatusCode);
+            var employeesJson = await employeesResponse.Content.ReadAsStringAsync();
+            Assert.DoesNotContain("PRIVATE-HR-SENTINEL", employeesJson, StringComparison.Ordinal);
+            using var employees = JsonDocument.Parse(employeesJson);
+            Assert.Equal(1, employees.RootElement.GetProperty("total").GetInt32());
+            Assert.Equal(_ownEmployeeId, employees.RootElement.GetProperty("items")[0].GetProperty("id").GetGuid());
+        }
+
+        using var revokeResponse = await SendAsUserAsync(HttpMethod.Post, $"/api/integrations/tokens/{tokenId}/revoke", _userId, _companyId,
+            new StringContent("{}", System.Text.Encoding.UTF8, "application/json"), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.NoContent, revokeResponse.StatusCode);
+        using var revokedRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v1/assets");
+        revokedRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", secret);
+        using var revokedResponse = await _client!.SendAsync(revokedRequest);
+        Assert.Equal(HttpStatusCode.Unauthorized, revokedResponse.StatusCode);
     }
 
     [Fact]

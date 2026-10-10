@@ -129,6 +129,20 @@ builder.Services.AddRateLimiter(options =>
                 AutoReplenishment = true
             });
     });
+    options.AddPolicy("customer-api", context =>
+    {
+        var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        if (trustProxyForwardedFor)
+        {
+            var forwarded = context.Request.Headers["X-Forwarded-For"].ToString()
+                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+            if (System.Net.IPAddress.TryParse(forwarded, out var parsedForwardedIp)) clientIp = parsedForwardedIp.ToString();
+        }
+        return RateLimitPartition.GetFixedWindowLimiter(clientIp, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 120, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true
+        });
+    });
     options.OnRejected = (context, _) =>
     {
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
@@ -384,6 +398,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     app.MapDataExportEndpoints();
     app.MapOperationalEndpoints();
     app.MapPlatformEndpoints();
+    app.MapCustomerApiEndpoints();
 }
 else
 {

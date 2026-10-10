@@ -8,6 +8,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     : IdentityDbContext<EnvanterUser, IdentityRole<Guid>, Guid>(options)
 {
     public DbSet<Company> Companies => Set<Company>();
+    public DbSet<CompanyApiToken> CompanyApiTokens => Set<CompanyApiToken>();
     public DbSet<SupplierCatalogEntry> SupplierCatalogEntries => Set<SupplierCatalogEntry>();
     public DbSet<CompanyDepartment> CompanyDepartments => Set<CompanyDepartment>();
     public DbSet<CompanyLocation> CompanyLocations => Set<CompanyLocation>();
@@ -71,6 +72,20 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Company>().HasKey(x => x.Id);
         modelBuilder.Entity<Company>().Property(x => x.Name).HasMaxLength(200).IsRequired();
         modelBuilder.Entity<Company>().HasIndex(x => x.Slug).IsUnique().HasFilter("\"Slug\" IS NOT NULL");
+        modelBuilder.Entity<CompanyApiToken>().HasKey(x => x.Id);
+        modelBuilder.Entity<CompanyApiToken>().Property(x => x.Name).HasMaxLength(100).IsRequired();
+        modelBuilder.Entity<CompanyApiToken>().Property(x => x.TokenPrefix).HasMaxLength(24).IsRequired();
+        modelBuilder.Entity<CompanyApiToken>().Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
+        modelBuilder.Entity<CompanyApiToken>().Property(x => x.ScopesJson).HasMaxLength(300).IsRequired();
+        modelBuilder.Entity<CompanyApiToken>().HasIndex(x => x.TokenHash).IsUnique();
+        modelBuilder.Entity<CompanyApiToken>().HasIndex(x => new { x.CompanyId, x.UserId, x.CreatedAt });
+        modelBuilder.Entity<CompanyApiToken>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CompanyApiToken>().HasOne<CompanyMembership>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.UserId }).HasPrincipalKey(x => new { x.CompanyId, x.UserId })
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CompanyApiToken>().ToTable("CompanyApiTokens", table =>
+            table.HasCheckConstraint("CK_CompanyApiTokens_Expiry", "\"ExpiresAt\" IS NULL OR \"ExpiresAt\" > \"CreatedAt\""));
         modelBuilder.Entity<Company>().Property(x => x.Slug).HasMaxLength(80);
         modelBuilder.Entity<Company>().Property(x => x.ContactEmail).HasMaxLength(256);
         modelBuilder.Entity<Company>().Property(x => x.BrandLogoPath).HasMaxLength(500);

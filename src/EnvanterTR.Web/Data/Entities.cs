@@ -13,6 +13,21 @@ public sealed class Company
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class CompanyApiToken
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid UserId { get; set; }
+    public required string Name { get; set; }
+    public required string TokenPrefix { get; set; }
+    public required string TokenHash { get; set; }
+    public required string ScopesJson { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? ExpiresAt { get; set; }
+    public DateTimeOffset? LastUsedAt { get; set; }
+    public DateTimeOffset? RevokedAt { get; set; }
+}
+
 public sealed class SupplierCatalogEntry
 {
     public Guid Id { get; set; } = Guid.NewGuid();
