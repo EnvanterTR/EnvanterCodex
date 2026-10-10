@@ -1617,6 +1617,44 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Employee_profile_lists_only_company_maintenance_assigned_to_that_employee()
+    {
+        var startedOn = DateOnly.FromDateTime(DateTime.UtcNow);
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.AssetMaintenances.AddRange(
+                new AssetMaintenance
+                {
+                    CompanyId = _companyId, AssetId = _ownAssetId, ResponsibleEmployeeId = _ownEmployeeId,
+                    MaintenanceType = "OWN-EMPLOYEE-MAINTENANCE", Status = "InProgress", StartedOn = startedOn
+                },
+                new AssetMaintenance
+                {
+                    CompanyId = _otherCompanyId, AssetId = _otherCompanyAssetId, ResponsibleEmployeeId = _otherCompanyEmployeeId,
+                    MaintenanceType = "OTHER-EMPLOYEE-MAINTENANCE", Status = "InProgress", StartedOn = startedOn
+                });
+            await db.SaveChangesAsync();
+        }
+
+        using var adminResponse = await SendAsAdminAsync($"/api/employees/{_ownEmployeeId}");
+        Assert.Equal(HttpStatusCode.OK, adminResponse.StatusCode);
+        using var adminPayload = JsonDocument.Parse(await adminResponse.Content.ReadAsStringAsync());
+        var ownMaintenance = Assert.Single(adminPayload.RootElement.GetProperty("responsibleMaintenances").EnumerateArray());
+        Assert.Equal("OWN-EMPLOYEE-MAINTENANCE", ownMaintenance.GetProperty("maintenanceType").GetString());
+        Assert.Equal(1, adminPayload.RootElement.GetProperty("responsibleMaintenanceCount").GetInt32());
+        Assert.Equal(_ownAssetId, ownMaintenance.GetProperty("assetId").GetGuid());
+
+        using var viewerResponse = await SendAsRoleAsync(HttpMethod.Get, $"/api/employees/{_ownEmployeeId}", "viewer");
+        Assert.Equal(HttpStatusCode.OK, viewerResponse.StatusCode);
+        using var viewerPayload = JsonDocument.Parse(await viewerResponse.Content.ReadAsStringAsync());
+        Assert.Equal("OWN-EMPLOYEE-MAINTENANCE", Assert.Single(viewerPayload.RootElement.GetProperty("responsibleMaintenances").EnumerateArray()).GetProperty("maintenanceType").GetString());
+
+        using var otherCompanyResponse = await SendAsUserAsync(HttpMethod.Get, $"/api/employees/{_otherCompanyEmployeeId}", _userId, _companyId, role: "admin");
+        Assert.Equal(HttpStatusCode.NotFound, otherCompanyResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task Asset_checkout_queue_is_company_scoped_searchable_and_filters_expected_returns()
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);

@@ -6,6 +6,12 @@ Statik ürün ana sayfası `src/EnvanterTR.PublicSite/index.html` içinde tutulu
 
 Ana sayfanın açılış alanı, kullanıcının paylaştığı incident-management ve engineering-platform örneklerindeki koyu teknoloji görsel yönüne göre yenilendi. Nane yeşili/vurgulu palet, HTML/CSS ile oluşturulmuş etkileşimli ürün arayüzü, yüzen garanti ve zimmet bilgi kartları, kaydırma ilerleme çizgisi, bölümlerde görünür olma hareketleri ve responsive düzen bulunur. Ürün arayüzündeki Genel Bakış, Varlıklar, Kişiler, Aksesuarlar, Konumlar ve Raporlar menüleri tıklanarak sentetik kayıtlarla farklı ekranlar gösterir; hareket akışı animasyonludur ve kullanıcı etkileşiminde durur. Ekrandaki bağlantılar salt okunur yerel demo rotasına gider. Hareket azaltma tercihi desteklenir. SSS'de çalışan erişimi, demo verisi ve kurulum hakkındaki yanıtlar geçici ürün açıklamalarıdır; paket/fiyat taahhüdü değildir. Ana içerikte modül kapsamı, demo sınırı, iletişim ve fiyat açıklamaları korunur. Bu değişiklik yalnızca repodaki yerel önizlemeyi etkiler; canlı Next.js sitesine aktarım değildir.
 
+## Etkileşimli demo menüsü (10 Ekim 2026)
+
+`/demo/` ekranı Genel Bakış, Varlıklar, Zimmetler, Aksesuarlar, Lisanslar, Sarf malzemeleri, Bileşenler, Kişiler, Konumlar, Bakım ve denetim, Kataloglar ve Raporlar modüllerini sunar. Liste ekranlarında arama, uygun filtreler, örnek kayıt ayrıntıları ve CSV indirme bulunur; ekranlar sentetik veridir ve yazma işlemi yapmaz. Menüler masaüstünde kaydırılır, mobilde yatay gezinir. TR/EN/RU/UK/MK arayüz dili, beş renk paleti (mavi/yeşil/mor/kehribar/turkuaz) ve açık-koyu görünüm seçimi tarayıcıda saklanır.
+
+10 Ekim'de canlı `https://envantertr.com/#deploy` sayfası tarayıcıdan okundu. Canlı sayfadaki Windows 11 tek tık kurulum, Active Directory, Hetzner bulut IP'si, Debian paketi, nginx ve lisans/fiyat taahhütleri güncel kaynakta kanıtlanmadığından yerel ürün açıklamalarına kopyalanmadı. Yerel Kurulum bölümü doğrulanabilir kapsamı kullanır: Windows x64 self-contained paket, Ubuntu Docker Compose/Caddy dağıtımı, şirket verisi ayrımı ve doğrulanmış şifreli yedek/geri yükleme araçları; hedef müşteri sunucusu kabulinin ayrıca gerektiğini açıkça belirtir.
+
 ## 10 Ekim 2026 canlı alan adı kontrolü
 
 - `https://envantertr.com/` ve `https://www.envantertr.com/` HTTP 200 döndürüyor; yanıt başlığı ve gövdesi Next.js ile üretilen ayrı bir site olduğunu gösteriyor. Bu Next.js kaynak kodu, dağıtım tanımı ve yayın kimlik bilgileri bu repoda veya çalışma alanı ortamında bulunamadı.

@@ -467,6 +467,29 @@ public static class OperationalEndpoints
             var consumableCheckoutCount = await consumableQuery.CountAsync(cancellationToken);
             var consumableCheckouts = await consumableQuery.Take(100).ToListAsync(cancellationToken);
 
+            var maintenanceQuery = from maintenance in db.AssetMaintenances.AsNoTracking()
+                                   join asset in db.Assets.AsNoTracking()
+                                       on new { maintenance.CompanyId, Id = maintenance.AssetId }
+                                       equals new { asset.CompanyId, Id = asset.Id }
+                                   where canReadAssetData && maintenance.CompanyId == companyId &&
+                                         maintenance.ResponsibleEmployeeId == id
+                                   orderby maintenance.UpdatedAt descending, maintenance.Id
+                                   select new
+                                   {
+                                       maintenance.Id,
+                                       assetId = asset.Id,
+                                       asset.AssetTag,
+                                       assetName = asset.Name,
+                                       maintenance.MaintenanceType,
+                                       maintenance.Status,
+                                       maintenance.PlannedOn,
+                                       maintenance.StartedOn,
+                                       maintenance.CompletedOn,
+                                       maintenance.Supplier
+                                   };
+            var responsibleMaintenanceCount = await maintenanceQuery.CountAsync(cancellationToken);
+            var responsibleMaintenances = await maintenanceQuery.Take(100).ToListAsync(cancellationToken);
+
             var reportsQuery = db.Employees.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && x.ManagerEmployeeId == id);
             var directReportCount = await reportsQuery.CountAsync(cancellationToken);
@@ -482,6 +505,7 @@ public static class OperationalEndpoints
                 assignedAccessories, assignedAccessoryCount,
                 activeLicenses, activeLicenseCount,
                 consumableCheckouts, consumableCheckoutCount,
+                responsibleMaintenances, responsibleMaintenanceCount,
                 directReports, directReportCount, assetsVisible = canReadAssetData, page, pageSize
             });
         }).RequireAuthorization("people.read");
