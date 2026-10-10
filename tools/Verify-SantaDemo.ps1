@@ -17,7 +17,7 @@ SELECT c."Id",
  (SELECT count(*) FROM "AssetBrands" b WHERE b."CompanyId"=c."Id" AND b."LogoFileName" IS NOT NULL),
  (SELECT count(*) FROM "AccessoryModels" m WHERE m."CompanyId"=c."Id" AND m."PhotoFileName" IS NOT NULL),
  (SELECT count(*) FROM "SupplierCatalogEntries" s WHERE s."CompanyId"=c."Id" AND s."LogoFileName" IS NOT NULL),
- (SELECT count(*) FROM "AssetEvents" e WHERE e."CompanyId"=c."Id" AND e."Details" IN ('Santa demo · örnek başlangıç kaydı','Santa demo · örnek çalışan zimmeti')),
+ (SELECT count(*) FROM "AssetEvents" e WHERE e."CompanyId"=c."Id" AND e."Details" LIKE 'Santa demo%'),
  (SELECT count(*) FROM "Assets" a JOIN "AssetModels" m ON m."CompanyId"=a."CompanyId" AND m."Id"=a."ModelId"
   WHERE a."CompanyId"=c."Id" AND a."DeletedAt" IS NULL AND a."PurchaseDate" IS NOT NULL
     AND a."PurchaseCost" IS NOT NULL AND m."DepreciationMonths" IS NOT NULL),
@@ -27,7 +27,7 @@ SELECT c."Id",
 FROM "Companies" c WHERE c."Slug"='santa-demo';
 '@
 
-$recordOutput = & docker compose -f $composePath exec -T database psql -U envantertr -d envantertr -v ON_ERROR_STOP=1 -t -A -F '|' -c $query 2>&1
+$recordOutput = $query | & docker compose -f $composePath exec -T database psql -U envantertr -d envantertr -v ON_ERROR_STOP=1 -t -A -F '|' -f - 2>&1
 if ($LASTEXITCODE -ne 0) { throw "Could not read the Santa demo records: $($recordOutput -join ' ')" }
 $recordLine = @($recordOutput | Where-Object { $_ -match '^[0-9a-fA-F-]{36}\|' } | Select-Object -Last 1)
 if ($recordLine.Count -ne 1) { throw 'The Santa demo company is missing or the company query returned an unexpected result.' }
