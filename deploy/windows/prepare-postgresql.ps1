@@ -4,7 +4,8 @@ param(
     [ValidatePattern('^[A-Za-z][A-Za-z0-9_]{0,62}$')][string]$AdminUser = "postgres",
     [ValidatePattern('^[A-Za-z][A-Za-z0-9_]{0,62}$')][string]$AppRole = "envantertr_app",
     [ValidatePattern('^[A-Za-z][A-Za-z0-9_]{0,62}$')][string]$DatabaseName = "envantertr",
-    [switch]$ReturnConnectionStringSecure
+    [switch]$ReturnConnectionStringSecure,
+    [string]$PendingConnectionPath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -56,6 +57,7 @@ $databaseSql = $DatabaseName.Replace("'","''")
 $roleExists = $false
 $databaseExists = $false
 $roleCreated = $false
+$databaseCreated = $false
 $appPassword = $null
 try {
     $existing = Invoke-LocalPsql "SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='$roleSql'), EXISTS(SELECT 1 FROM pg_database WHERE datname='$databaseSql');" $environment
@@ -73,7 +75,20 @@ try {
     [void](Invoke-LocalPsql "CREATE ROLE `"$AppRole`" LOGIN PASSWORD '$appPassword' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION;" $environment)
     $roleCreated = $true
     [void](Invoke-LocalPsql "CREATE DATABASE `"$DatabaseName`" OWNER `"$AppRole`" TEMPLATE template0 ENCODING 'UTF8';" $environment)
+    $databaseCreated = $true
     $connectionString = "Host=127.0.0.1;Port=$Port;Database=$DatabaseName;Username=$AppRole;Password=$appPassword;SSL Mode=Disable;Timeout=15;Command Timeout=30"
+    if ($PendingConnectionPath) {
+        $connectionBytes = [Text.Encoding]::UTF8.GetBytes($connectionString)
+        $protectedBytes = $null
+        try {
+            $protectedBytes = [Security.Cryptography.ProtectedData]::Protect(
+                $connectionBytes,$null,[Security.Cryptography.DataProtectionScope]::LocalMachine)
+            [IO.File]::WriteAllBytes($PendingConnectionPath,$protectedBytes)
+        } finally {
+            [Array]::Clear($connectionBytes,0,$connectionBytes.Length)
+            if ($protectedBytes) { [Array]::Clear($protectedBytes,0,$protectedBytes.Length) }
+        }
+    }
     if ($ReturnConnectionStringSecure) {
         [pscustomobject]@{ ConnectionStringSecure = (ConvertTo-SecureString -String $connectionString -AsPlainText -Force) }
     } else {
@@ -83,6 +98,10 @@ try {
         Write-Warning "The generated database password is shown once and cannot be recovered. Keep the installer prompt and this PowerShell session private."
     }
 } catch {
+    if ($databaseCreated) {
+        try { [void](Invoke-LocalPsql "DROP DATABASE `"$DatabaseName`";" $environment) }
+        catch { Write-Warning "Could not remove the newly created empty database '$DatabaseName'; inspect PostgreSQL manually. $($_.Exception.Message)" }
+    }
     if ($roleCreated) {
         try { [void](Invoke-LocalPsql "DROP ROLE `"$AppRole`";" $environment) }
         catch { Write-Warning "Could not remove the newly created role '$AppRole'; inspect PostgreSQL manually. $($_.Exception.Message)" }

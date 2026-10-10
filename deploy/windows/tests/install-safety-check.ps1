@@ -1,10 +1,14 @@
 $ErrorActionPreference = 'Stop'
 $installPath = Join-Path $PSScriptRoot '..\install.ps1'
+$setupPath = Join-Path $PSScriptRoot '..\setup.ps1'
+$postgresPath = Join-Path $PSScriptRoot '..\prepare-postgresql.ps1'
 $tokens = $null
 $parseErrors = $null
 [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $installPath),[ref]$tokens,[ref]$parseErrors) | Out-Null
 if ($parseErrors.Count -gt 0) { throw "install.ps1 has PowerShell parse errors: $($parseErrors.Message -join '; ')" }
 $source = Get-Content -LiteralPath $installPath -Raw
+$setupSource = Get-Content -LiteralPath $setupPath -Raw
+$postgresSource = Get-Content -LiteralPath $postgresPath -Raw
 
 function Assert-Pattern([string]$Name,[string]$Pattern) {
     if ($source -notmatch $Pattern) { throw "FAIL: $Name" }
@@ -24,6 +28,12 @@ Assert-Pattern 'database credentials use LocalMachine DPAPI protection' '(?s)Pro
 Assert-Pattern 'production settings store the protected secret path instead of the plaintext connection string' 'WindowsSecrets = @\{ ConnectionStringPath = \$connectionSecretPath \}'
 Assert-Pattern 'the Windows service can read only the protected secret directory' '(?s)\$secretsPath /inheritance:r /grant:r "SYSTEM:\(OI\)\(CI\)F" "Administrators:\(OI\)\(CI\)F" "NT AUTHORITY\\LOCAL SERVICE:\(OI\)\(CI\)RX'
 if ($source -match '(?s)ConnectionStrings\s*=\s*@\{\s*EnvanterTR\s*=\s*\$connectionString') { throw 'FAIL: database credentials must not be written in appsettings.' }
+
+if ($setupSource -notmatch '(?s)Read-PendingConnection.*?DataProtectionScope\]::LocalMachine') { throw 'FAIL: interrupted Windows setup must resume from a machine-protected connection secret.' }
+if ($setupSource -notmatch '(?s)if \(\$existingService -and \$pendingSecretExists\).*?migrate\.ps1.*?Remove-PendingSetup') { throw 'FAIL: a service installed before migration failure must resume migration without reinstalling.' }
+if ($setupSource -notmatch '(?s)PostgreSqlPort.*?CertificateThumbprint.*?Yarım kurulum farklı DNS, port veya TLS sertifikasıyla sürdürülemez') { throw 'FAIL: resumed setup must reject changed database, HTTPS, DNS, or certificate settings.' }
+if ($postgresSource -notmatch '(?s)PendingConnectionPath.*?ProtectedData\]::Protect.*?LocalMachine.*?DROP DATABASE.*?DROP ROLE') { throw 'FAIL: PostgreSQL setup must persist the DPAPI secret before returning and roll back a newly created database/role on failure.' }
+Write-Output 'PASS: Windows initial setup can resume without losing its protected database secret.'
 
 $apiReadyIndex = $source.IndexOf('if ($status.product -eq "EnvanterTR"')
 $companyTokenIndex = $source.IndexOf('One-time company setup token')

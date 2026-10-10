@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 10 Ekim 2026 Windows kurulum devamı ve dağıtım anlatımı
+
+`Setup.cmd` yarım ilk kurulum için DPAPI LocalMachine bağlantı sırrıyla devam desteği ekledi. PostgreSQL hazırlığı sır dosyasını dönmeden önce yazar; sır kaydı başarısız olursa yeni oluşturulmuş boş DB ve rol geri alınmaya çalışılır. Servis kurulduktan sonra migration başarısızsa Setup.cmd yeniden çağrısı servis/veriyi tekrar kurmadan migration adımını sürdürür. İlk kurulum ayarları DNS/HTTPS/DB portu ve TLS sertifikası eşleşmesini korur. Parser, Windows installer safety kontrolleri, ZIP fixture kontrolü ve 1.327 yerelleştirme girdisi geçti; gerçek Windows Server kabul testi yapılmadı. Ana sayfa metni bireysel Windows 11, ofis Windows Server ve ofis Ubuntu senaryolarını ayırır; kolay kurulum paketlerinin yayımlanmadığını açıkça bildirir.
+
 ## Güncel güvenlik kabul kanıtı — 10 Ekim 2026
 
 `74c1422` kaynak ağacında tam izole PostgreSQL 17 HTTP güvenlik/tenant paketi `deploy/testing/run-security-acceptance.ps1` ile tekrar çalıştırıldı: **71/71 geçti**. Testler endpoint kimlik sınırı ve rol politikası matrisi, şirketler arası kayıt/dosya izolasyonu, üyelik/rol değişikliğinin anında uygulanması, MFA/parola kurtarma, CSV/XLSX aktarımı, dosya yedek kapsamı ve stok/zimmet/rezervasyon/sipariş eşzamanlılığı gibi başlıkları kapsar. Geçici uygulama, veritabanı, volume ve ağ test sonunda kaldırıldı. Bu kanıt hedef müşteri sunucusundaki işletimsel kabul, gerçek SMTP teslimi veya tarayıcıda tüm rollerin görsel kabulini içermez.

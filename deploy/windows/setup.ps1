@@ -2,6 +2,42 @@ $ErrorActionPreference = "Stop"
 
 function Write-Step([string]$Text) { Write-Host "`n=== $Text ===" -ForegroundColor Cyan }
 function Fail([string]$Text) { throw $Text }
+function Read-PendingConnection([string]$Path) {
+    $protectedBytes = [IO.File]::ReadAllBytes($Path)
+    $clearBytes = $null
+    $plain = $null
+    try {
+        $clearBytes = [Security.Cryptography.ProtectedData]::Unprotect(
+            $protectedBytes,$null,[Security.Cryptography.DataProtectionScope]::LocalMachine)
+        $plain = [Text.Encoding]::UTF8.GetString($clearBytes)
+        return ConvertTo-SecureString -String $plain -AsPlainText -Force
+    } finally {
+        [Array]::Clear($protectedBytes,0,$protectedBytes.Length)
+        if ($clearBytes) { [Array]::Clear($clearBytes,0,$clearBytes.Length) }
+        $plain = $null
+    }
+}
+function Remove-PendingSetup([string]$Directory) {
+    Remove-Item -LiteralPath (Join-Path $Directory 'setup-pending.dpapi'),(Join-Path $Directory 'setup-pending.json') -Force -ErrorAction SilentlyContinue
+}
+function Wait-ForReadyStatus([int]$Port) {
+    $deadline = (Get-Date).AddMinutes(2)
+    do {
+        try {
+            if ($PSVersionTable.PSVersion.Major -ge 7) {
+                $status = Invoke-RestMethod -Uri "https://localhost:$Port/api/status" -TimeoutSec 5 -SkipCertificateCheck -ErrorAction Stop
+            } else {
+                $previousCallback = [Net.ServicePointManager]::ServerCertificateValidationCallback
+                [Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+                try { $status = Invoke-RestMethod -Uri "https://localhost:$Port/api/status" -TimeoutSec 5 -ErrorAction Stop }
+                finally { [Net.ServicePointManager]::ServerCertificateValidationCallback = $previousCallback }
+            }
+            if ($status.product -eq 'EnvanterTR' -and $status.status -eq 'ready') { return $true }
+        } catch { }
+        Start-Sleep -Seconds 3
+    } while ((Get-Date) -lt $deadline)
+    return $false
+}
 
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = [Security.Principal.WindowsPrincipal]::new($identity)
@@ -27,6 +63,35 @@ try {
         if (-not (Test-Path -LiteralPath (Join-Path $packagePath $file) -PathType Leaf)) {
             Fail "Paket eksik: $file. Doğrulanmış Windows ZIP'ini yeniden açın."
         }
+    }
+
+    $pendingDirectory = Join-Path "$env:ProgramData\EnvanterTR" 'secrets'
+    $pendingSecretPath = Join-Path $pendingDirectory 'setup-pending.dpapi'
+    $pendingMetadataPath = Join-Path $pendingDirectory 'setup-pending.json'
+    $pendingSecretExists = Test-Path -LiteralPath $pendingSecretPath -PathType Leaf
+    $existingService = Get-Service -Name 'EnvanterTR' -ErrorAction SilentlyContinue
+    if ($existingService -and -not $pendingSecretExists) {
+        Fail "EnvanterTR servisi zaten kurulu. Mevcut veriyi korumak için ilk kurulum burada durduruldu; güncellemede update.ps1 kullanın."
+    }
+    if ($existingService -and $pendingSecretExists) {
+        if (-not (Test-Path -LiteralPath $pendingMetadataPath -PathType Leaf)) {
+            Fail "Yarım kurulum işareti eksik. Mevcut servis ve veriler korundu; destek için $pendingDirectory klasörünü saklayın."
+        }
+        $pendingMetadata = Get-Content -LiteralPath $pendingMetadataPath -Raw | ConvertFrom-Json
+        if (-not $pendingMetadata.DnsName -or -not $pendingMetadata.HttpsPort) {
+            Fail "Yarım kurulum ayarları eksik. Mevcut servis ve veriler korundu; destek için $pendingDirectory klasörünü saklayın."
+        }
+        $httpsPort = [int]$pendingMetadata.HttpsPort
+        Write-Step "Yarım ilk kurulumdan güvenli devam"
+        Write-Host "Mevcut EnvanterTR veritabanı ve servisi korunacak; ilk şema adımı yeniden deneniyor."
+        & (Join-Path $packagePath 'migrate.ps1') -InitialSetup
+        if (-not (Wait-ForReadyStatus -Port $httpsPort)) {
+            Fail "Migration komutu bitti ancak API ready durumuna geçmedi. Yarım kurulum sırrı korundu; sorunu giderdikten sonra Setup.cmd dosyasını yeniden çalıştırın."
+        }
+        Remove-PendingSetup -Directory $pendingDirectory
+        Write-Host "İlk kurulum tamamlandı. Adres: https://$($pendingMetadata.DnsName):$httpsPort" -ForegroundColor Green
+        Write-Host "İlk yönetici anahtarları ilk kurulum denemesinde gösterildi; güvenli kayıtlı anahtarları kullanın."
+        return
     }
 
     Write-Step "Sunucu adresi"
@@ -104,21 +169,50 @@ try {
     if ($confirmation -cne 'INSTALL') { Write-Host "Kurulum iptal edildi; hiçbir veritabanı oluşturulmadı." -ForegroundColor Yellow; return }
 
     $databaseSetup = $null
+    $resumeConnectionSecure = $null
     try {
-        Write-Step "Yeni EnvanterTR veritabanı"
-        $databaseSetup = & (Join-Path $packagePath 'prepare-postgresql.ps1') -Port $pgPort -ReturnConnectionStringSecure
-        if (-not $databaseSetup -or -not $databaseSetup.ConnectionStringSecure) { Fail "PostgreSQL kurulum aracı güvenli bağlantı bilgisini üretemedi." }
+        if ($pendingSecretExists) {
+            Write-Step "Önceki kurulumdan güvenli devam"
+            Write-Host "Bu makinede oluşturulmuş şifreli kurulum sırrı bulundu. Yeni veritabanı oluşturulmayacak."
+            $resumeConnectionSecure = Read-PendingConnection -Path $pendingSecretPath
+            $pendingMetadata = Get-Content -LiteralPath $pendingMetadataPath -Raw | ConvertFrom-Json
+            if (-not $pendingMetadata.DnsName -or -not $pendingMetadata.HttpsPort -or
+                -not $pendingMetadata.PostgreSqlPort -or -not $pendingMetadata.CertificateThumbprint) {
+                Fail "Yarım kurulum ayarları eksik. Şifreli sır korundu; $pendingDirectory klasörünü saklayıp destek alın."
+            }
+            if ([int]$pendingMetadata.HttpsPort -ne $httpsPort -or [int]$pendingMetadata.PostgreSqlPort -ne $pgPort -or
+                $pendingMetadata.DnsName -ine $dnsName -or $pendingMetadata.CertificateThumbprint -ne $selectedCertificate.Thumbprint) {
+                Fail "Yarım kurulum farklı DNS, port veya TLS sertifikasıyla sürdürülemez. İlk denemede kullanılan ayarları seçin."
+            }
+        } else {
+            Write-Step "Yeni EnvanterTR veritabanı"
+            New-Item -ItemType Directory -Path $pendingDirectory -Force | Out-Null
+            & icacls.exe $pendingDirectory /inheritance:r /grant:r "SYSTEM:(OI)(CI)F" "Administrators:(OI)(CI)F" /C | Out-Null
+            if ($LASTEXITCODE -ne 0) { Fail "Kurulum devam sırrı için güvenli klasör izinleri ayarlanamadı." }
+            $pendingMetadata = [ordered]@{ DnsName=$dnsName; HttpsPort=$httpsPort; PostgreSqlPort=$pgPort; CertificateThumbprint=$selectedCertificate.Thumbprint; CreatedAt=(Get-Date).ToUniversalTime().ToString('o') }
+            $metadataJson = $pendingMetadata | ConvertTo-Json -Depth 4
+            Set-Content -LiteralPath $pendingMetadataPath -Value $metadataJson -Encoding UTF8
+            $databaseSetup = & (Join-Path $packagePath 'prepare-postgresql.ps1') -Port $pgPort -ReturnConnectionStringSecure -PendingConnectionPath $pendingSecretPath
+            if (-not $databaseSetup -or -not $databaseSetup.ConnectionStringSecure) { Fail "PostgreSQL kurulum aracı güvenli bağlantı bilgisini üretemedi." }
+            $resumeConnectionSecure = $databaseSetup.ConnectionStringSecure
+        }
 
         Write-Step "Windows servisini kurma"
         & (Join-Path $packagePath 'install.ps1') -PackagePath $packagePath -HttpsPort $httpsPort `
             -CertificateSubject $selectedCertificate.Subject -CertificateThumbprint $selectedCertificate.Thumbprint `
-            -DatabaseConnectionStringSecure $databaseSetup.ConnectionStringSecure
+            -DatabaseConnectionStringSecure $resumeConnectionSecure
+        if ($resumeConnectionSecure) { $resumeConnectionSecure.Dispose(); $resumeConnectionSecure = $null }
     } finally {
         if ($databaseSetup -and $databaseSetup.ConnectionStringSecure) { $databaseSetup.ConnectionStringSecure.Dispose() }
+        if ($resumeConnectionSecure) { $resumeConnectionSecure.Dispose() }
     }
 
     Write-Step "İlk veritabanı şemasını oluşturma"
     & (Join-Path $packagePath 'migrate.ps1') -InitialSetup
+    if (-not (Wait-ForReadyStatus -Port $httpsPort)) {
+        Fail "Veritabanı migration'ı çalıştı ancak API iki dakika içinde ready olmadı. Şifreli devam bilgisi saklandı; nedeni giderip Setup.cmd'yi yeniden çalıştırın."
+    }
+    Remove-PendingSetup -Directory $pendingDirectory
 
     Write-Host "`nKurulum adımları tamamlandı." -ForegroundColor Green
     Write-Host "HTTPS adresi: https://$dnsName`:$httpsPort"
