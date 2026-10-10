@@ -58,7 +58,7 @@
   </style>
   <style>
     img{cursor:zoom-in}.image-viewer{width:min(94vw,1200px);max-width:none;max-height:94vh;padding:12px;border:1px solid #ffffff24;border-radius:15px;background:#101827;box-shadow:0 25px 90px #0009}.image-viewer::backdrop{background:#07101edb;backdrop-filter:blur(5px)}.image-viewer img{display:block;max-width:calc(94vw - 24px);max-height:calc(94vh - 24px);width:auto;height:auto;object-fit:contain;margin:auto;border-radius:8px;cursor:default}.image-viewer-close{position:absolute;top:8px;right:8px;width:36px;height:36px;border:1px solid #ffffff45;border-radius:50%;color:white;background:#111827cc;font-size:1.25rem;z-index:1}
-    .activity{display:flex;flex-direction:column;min-width:0;width:100%}#activityRows>.activity-empty-message{display:block;align-self:stretch;flex:none;width:auto;max-width:none;min-width:0;margin:10px 0;padding:12px 13px;border:1px dashed var(--workspace-line,#dce4ee);border-radius:9px;color:var(--workspace-muted,#68778d);font-size:.76rem;line-height:1.5;white-space:normal;overflow-wrap:anywhere}
+    .activity{display:flex;flex-direction:column;min-width:0;width:100%}#activityRows>.activity-empty-message{display:block;align-self:stretch;flex:0 0 100%;width:100%;max-width:100%;min-width:0;margin:10px 0;padding:12px 13px;border:1px dashed var(--workspace-line,#dce4ee);border-radius:9px;color:var(--workspace-muted,#68778d);font-size:.76rem;line-height:1.5;white-space:normal;overflow-wrap:anywhere}
     body.auth-required .app{visibility:hidden}
   </style>
   <style id="workspaceDesignPolish">
@@ -1648,6 +1648,9 @@
       '1–100 farklı sipariş satırı ve her satır için 1–100.000 arası miktar girin.':['Enter 1–100 distinct order lines and a quantity from 1 to 100,000 for each.','Введите 1–100 разных строк заказа и количество от 1 до 100 000 для каждой.','Введіть 1–100 різних рядків замовлення та кількість від 1 до 100 000 для кожного.','Внесете 1–100 различни ставки од нарачката и количина од 1 до 100.000 за секоја.'],
       'Teslim tarihi zorunludur; not en fazla 1.000 karakter olabilir.':['The receipt date is required; notes must be 1,000 characters or fewer.','Дата получения обязательна; примечание — не более 1 000 символов.','Дата отримання обов’язкова; примітка — не більше 1 000 символів.','Датумот на прием е задолжителен; белешката мора да има најмногу 1.000 знаци.']
     });
+    Object.assign(localeRows, {
+      'Sunucu yanıtı {seconds} saniye içinde gelmedi. Bağlantıyı kontrol edip Yenile düğmesini kullanın.':['The server did not respond within {seconds} seconds. Check the connection and use Refresh to try again.','Сервер не ответил за {seconds} с. Проверьте подключение и нажмите «Обновить».','Сервер не відповів за {seconds} с. Перевірте з’єднання та натисніть «Оновити».','Серверот не одговори за {seconds} сек. Проверете ја врската и притиснете „Освежи“.']
+    });
     const localeIndexes = { en: 0, ru: 1, uk: 2, mk: 3 };
     Object.assign(localeRows, {
       'ŞİRKET ALANI / TALEP YÖNETİMİ':['COMPANY / STOCK REQUESTS','КОМПАНИЯ / ЗАПРОСЫ ЗАПАСОВ','КОМПАНІЯ / ЗАПИТИ ЗАПАСІВ','КОМПАНИЈА / БАРАЊА ЗА ЗАЛИХИ'],
@@ -1847,11 +1850,13 @@
       if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
       if (options.method && options.method !== 'GET' && requestToken) headers.set('X-CSRF-TOKEN', requestToken);
       let response;
+      const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(1000, options.timeoutMs) : 30000;
+      const { timeoutMs: _timeoutMs, ...requestOptions } = options;
       const timeoutController = new AbortController();
-      const timeoutId = setTimeout(() => timeoutController.abort(), 30000);
-      try { response = await fetch(path, { credentials: 'same-origin', ...options, headers, signal: options.signal || timeoutController.signal }); }
+      const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs);
+      try { response = await fetch(path, { credentials: 'same-origin', ...requestOptions, headers, signal: requestOptions.signal || timeoutController.signal }); }
       catch (error) {
-        if (error?.name === 'AbortError') throw new Error(translateUiText('Sunucu yanıtı 30 saniye içinde gelmedi. Bağlantıyı kontrol edip Yenile düğmesini kullanın.'));
+        if (error?.name === 'AbortError') throw new Error(translateUiText('Sunucu yanıtı {seconds} saniye içinde gelmedi. Bağlantıyı kontrol edip Yenile düğmesini kullanın.').replace('{seconds}', String(Math.ceil(timeoutMs / 1000))));
         if (error instanceof TypeError) throw new Error(translateUiText('Sunucuya bağlanılamadı. Uygulamanın çalıştığını ve ağ bağlantınızı kontrol edip yeniden deneyin.'));
         throw error;
       } finally { clearTimeout(timeoutId); }
@@ -3569,7 +3574,7 @@
       pendingDeliveryPage = Math.max(1, page);
       const requestId = ++pendingDeliveryRequestId, params = pendingDeliveryParams();
       try {
-      const result = await api(`/api/reports/pending-deliveries?${params}`);
+      const result = await api(`/api/reports/pending-deliveries?${params}`, { timeoutMs: 15000 });
       if (requestId !== pendingDeliveryRequestId) return;
       pendingDeliveryPage = result.page || 1;
       $('#pendingDeliveryNote').textContent = reportTemplate('Rapor tarihi {date}; iptal edilmiş siparişler ve teslim alınmış kalemler kapsam dışıdır.', { date: formatDate(result.asOf) });
@@ -3618,7 +3623,7 @@
     async function loadDepreciationReport(page=depreciationReportPage) {
       depreciationReportPage=Math.max(1,page);const requestId=++depreciationReportRequestId,params=depreciationReportParams();
       try {
-      const result=await api(`/api/reports/depreciation?${params}`);if(requestId!==depreciationReportRequestId)return;
+      const result=await api(`/api/reports/depreciation?${params}`, { timeoutMs: 15000 });if(requestId!==depreciationReportRequestId)return;
       depreciationReportPage=result.page||1;$('#depreciationReportCount').textContent=reportTemplate('{count} uygun varlık',{count:fmt.format(result.total||0)});
       $('#depreciationReportNote').textContent=reportTemplate('{date} tarihi itibarıyla; modele amortisman politikası tanımlanmış varlıklar.',{date:formatDate(result.asOf)});
       const summary=$('#depreciationReportSummary');summary.replaceChildren();
