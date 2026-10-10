@@ -58,7 +58,7 @@
   </style>
   <style>
     img{cursor:zoom-in}.image-viewer{width:min(94vw,1200px);max-width:none;max-height:94vh;padding:12px;border:1px solid #ffffff24;border-radius:15px;background:#101827;box-shadow:0 25px 90px #0009}.image-viewer::backdrop{background:#07101edb;backdrop-filter:blur(5px)}.image-viewer img{display:block;max-width:calc(94vw - 24px);max-height:calc(94vh - 24px);width:auto;height:auto;object-fit:contain;margin:auto;border-radius:8px;cursor:default}.image-viewer-close{position:absolute;top:8px;right:8px;width:36px;height:36px;border:1px solid #ffffff45;border-radius:50%;color:white;background:#111827cc;font-size:1.25rem;z-index:1}
-    .activity-empty .activity-copy{grid-column:1 / -1}
+    .activity-row.activity-empty{display:block}.activity-empty .activity-copy{width:100%;white-space:normal;overflow-wrap:anywhere}
     body.auth-required .app{visibility:hidden}
   </style>
   <style id="workspaceDesignPolish">
@@ -1722,11 +1722,14 @@
       if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
       if (options.method && options.method !== 'GET' && requestToken) headers.set('X-CSRF-TOKEN', requestToken);
       let response;
-      try { response = await fetch(path, { credentials: 'same-origin', ...options, headers }); }
+      const timeoutController = new AbortController();
+      const timeoutId = setTimeout(() => timeoutController.abort(), 30000);
+      try { response = await fetch(path, { credentials: 'same-origin', ...options, headers, signal: options.signal || timeoutController.signal }); }
       catch (error) {
+        if (error?.name === 'AbortError') throw new Error(translateUiText('Sunucu yanıtı 30 saniye içinde gelmedi. Bağlantıyı kontrol edip Yenile düğmesini kullanın.'));
         if (error instanceof TypeError) throw new Error(translateUiText('Sunucuya bağlanılamadı. Uygulamanın çalıştığını ve ağ bağlantınızı kontrol edip yeniden deneyin.'));
         throw error;
-      }
+      } finally { clearTimeout(timeoutId); }
       if (response.status === 401 && path !== '/api/session/login') { showLogin(); throw new Error(translateUiText('Oturum açmanız gerekiyor.')); }
       if (!response.ok) {
         const fallbackKey = ({ 400: 'İsteğiniz doğrulanamadı. Sayfayı yenileyip yeniden deneyin.', 403: 'Bu işlem için yetkiniz yok.', 404: 'Kayıt bulunamadı.', 409: 'İşlem mevcut kayıtlarla çakışıyor. Bilgileri yenileyip yeniden deneyin.', 413: 'İstek gövdesi izin verilen boyutu aşıyor.', 429: 'İstek sınırı aşıldı. Daha sonra yeniden deneyin.' })[response.status] || 'İstek başarısız ({status}).';
@@ -3286,9 +3289,9 @@
       const row = document.createElement('tr'), cell = document.createElement('td');
       cell.colSpan = columnCount; cell.textContent = translateUiText(message); row.append(cell); host.append(row);
     }
-    function reportLoadFailed(rows, columnCount, count, pageInfo, previous, next) {
+    function reportLoadFailed(rows, columnCount, count, pageInfo, previous, next, message = 'Rapor verileri yüklenemedi.') {
       rows.replaceChildren();
-      reportEmpty(rows, columnCount, 'Rapor verileri yüklenemedi. Yenile düğmesini kullanın.');
+      reportEmpty(rows, columnCount, `${message} Yenile düğmesini kullanın.`);
       count.textContent = '—'; pageInfo.textContent = '—'; previous.disabled = true; next.disabled = true;
     }
     function reportTemplate(template, values) { return Object.entries(values).reduce((result, [name, value]) => result.replaceAll(`{${name}}`, String(value)), translateUiText(template)); }
@@ -3458,7 +3461,7 @@
       $('#pendingDeliveryPageInfo').textContent=reportTemplate('{count} kalem · Sayfa {page} / {pages}',{count:fmt.format(result.total||0),page:fmt.format(result.page||1),pages:fmt.format(result.pageCount||1)});
       $('#pendingDeliveryPrev').disabled=(result.page||1)<=1;$('#pendingDeliveryNext').disabled=(result.page||1)>=(result.pageCount||1);
       } catch (error) {
-        if (requestId === pendingDeliveryRequestId) reportLoadFailed($('#pendingDeliveryRows'), 9, $('#pendingDeliveryCount'), $('#pendingDeliveryPageInfo'), $('#pendingDeliveryPrev'), $('#pendingDeliveryNext'));
+        if (requestId === pendingDeliveryRequestId) reportLoadFailed($('#pendingDeliveryRows'), 9, $('#pendingDeliveryCount'), $('#pendingDeliveryPageInfo'), $('#pendingDeliveryPrev'), $('#pendingDeliveryNext'), error.message);
         throw error;
       }
     }
@@ -3489,7 +3492,7 @@
       for(const item of result.items||[]){const row=document.createElement('tr');const tagCell=document.createElement('td'),tag=document.createElement('button');tag.type='button';tag.className='text-link';tag.textContent=`${item.assetTag} · ${item.name}`;tag.addEventListener('click',()=>openAsset(item.id).catch(error=>notify(error.message)));tagCell.append(tag);const model=document.createElement('td');model.textContent=item.model||'—';row.append(tagCell,model);for(const value of [formatDate(item.purchaseDate),formatDate(item.endOfLife),formatRecordedCurrency(item.purchaseCost,item.currency),formatRecordedCurrency(item.monthlyDepreciation,item.currency),formatRecordedCurrency(item.accumulatedDepreciation,item.currency),formatRecordedCurrency(item.bookValue,item.currency),fmt.format(item.remainingMonths),translateUiText(methodLabel[item.method]||item.method)]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}rows.append(row);}
       $('#depreciationReportPageInfo').textContent=reportTemplate('{count} varlık · Sayfa {page} / {pages}',{count:fmt.format(result.total||0),page:fmt.format(result.page||1),pages:fmt.format(result.pageCount||1)});$('#depreciationReportPrev').disabled=(result.page||1)<=1;$('#depreciationReportNext').disabled=(result.page||1)>=(result.pageCount||1);
       } catch (error) {
-        if (requestId === depreciationReportRequestId) reportLoadFailed($('#depreciationReportRows'), 10, $('#depreciationReportCount'), $('#depreciationReportPageInfo'), $('#depreciationReportPrev'), $('#depreciationReportNext'));
+        if (requestId === depreciationReportRequestId) reportLoadFailed($('#depreciationReportRows'), 10, $('#depreciationReportCount'), $('#depreciationReportPageInfo'), $('#depreciationReportPrev'), $('#depreciationReportNext'), error.message);
         throw error;
       }
     }
