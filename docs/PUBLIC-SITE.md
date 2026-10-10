@@ -16,7 +16,7 @@ Ana sayfanın açılış alanı, kullanıcının paylaştığı incident-managem
 
 - `https://envantertr.com/` ve `https://www.envantertr.com/` bu repo dışındaki tanıtım sitesini sunar. Bu Next.js kaynak kodu ve dağıtım tanımı bu repoda bulunmuyor.
 - Canlı ana sayfa 14 günlük ücretsiz deneme ve sabit aylık fiyatlar gibi bu repodaki ürün durumuyla doğrulanmamış taahhütler içeriyor.
-- `https://envantertr.com/demo/` bu repodaki salt okunur demo dosyasını Coolify üzerinden sunar. Son doğrulanan kaynak `ef28083` (`Fix localized asset navigation label`); Coolify dağıtımı başarılı, HTTPS yanıtı HTTP 200 ve canlı arayüzde `Varlıklar` etiketi doğru görünür. Demo ve ana sayfa ayrı teslimatlardır: demo bu GitHub deposundaki koddan Coolify webhook dağıtımıyla güncellenir; ana sayfa ayrı Next.js kaynağında kalır.
+- `https://envantertr.com/demo/` bu repodaki salt okunur demo dosyasını Coolify üzerinden sunar. 10 Ekim 2026'da `bd60bba` (`Clarify demo limitations in sidebar`) dağıtımı HTTPS üzerinden HTTP 200 ile doğrulandı; canlı HTML'de güncel demo açıklaması görünüyor. Demo ve ana sayfa ayrı teslimatlardır: demo bu GitHub deposundaki koddan Coolify webhook dağıtımıyla güncellenir; ana sayfa ayrı Next.js kaynağında kalır.
 
 ## Platform yönetiminden gelen veriler
 
