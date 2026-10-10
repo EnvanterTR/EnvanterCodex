@@ -132,6 +132,64 @@ public static class AssetEndpoints
             return Results.Ok(new { items, page, pageSize, total });
         }).RequireAuthorization("asset.read");
 
+        api.MapGet("/assets/checkouts", async ([FromQuery] string? q, [FromQuery] string? state,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken ct,
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
+        {
+            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (q?.Trim().Length > 120)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
+            var returnState = (state ?? "all").Trim().ToLowerInvariant();
+            if (returnState is not ("all" or "overdue" or "due30" or "undated" or "later"))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["state"] = ["İade filtresi all, overdue, due30, undated veya later olmalıdır."] });
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var through = today.AddDays(30);
+            var query = from asset in db.Assets.AsNoTracking()
+                        join employee in db.Employees.AsNoTracking()
+                            on new { asset.CompanyId, Id = asset.AssignedEmployeeId!.Value }
+                            equals new { employee.CompanyId, Id = employee.Id }
+                        where asset.CompanyId == companyId && asset.DeletedAt == null &&
+                              asset.AssignedEmployeeId != null && asset.Status == AssetStatuses.Deployed
+                        select new { asset, employee };
+            if (returnState == "overdue") query = query.Where(x => x.asset.ExpectedReturnOn != null && x.asset.ExpectedReturnOn < today);
+            else if (returnState == "due30") query = query.Where(x => x.asset.ExpectedReturnOn >= today && x.asset.ExpectedReturnOn <= through);
+            else if (returnState == "undated") query = query.Where(x => x.asset.ExpectedReturnOn == null);
+            else if (returnState == "later") query = query.Where(x => x.asset.ExpectedReturnOn > through);
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                query = query.Where(x => x.asset.AssetTag.Contains(term) || x.asset.Name.Contains(term) ||
+                    (x.asset.SerialNumber != null && x.asset.SerialNumber.Contains(term)) ||
+                    (x.asset.Location != null && x.asset.Location.Contains(term)) ||
+                    x.employee.DisplayName.Contains(term) || x.employee.EmployeeNumber.Contains(term) ||
+                    (x.employee.Department != null && x.employee.Department.Contains(term)) ||
+                    db.AssetModels.Any(m => m.CompanyId == companyId && m.Id == x.asset.ModelId && m.Name.Contains(term)));
+            }
+            var total = await query.CountAsync(ct);
+            page = Math.Max(1, page);
+            pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
+            var pageCount = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
+            page = Math.Min(page, pageCount);
+            var items = await query.OrderBy(x => x.asset.ExpectedReturnOn ?? DateOnly.MaxValue)
+                .ThenBy(x => x.employee.DisplayName).ThenBy(x => x.asset.AssetTag)
+                .Skip((page - 1) * pageSize).Take(pageSize)
+                .Select(x => new
+                {
+                    id = x.asset.Id, x.asset.AssetTag, x.asset.Name, x.asset.SerialNumber,
+                    x.asset.Status, x.asset.Location, x.asset.ExpectedReturnOn,
+                    employeeId = x.employee.Id, employeeName = x.employee.DisplayName,
+                    employeeNumber = x.employee.EmployeeNumber, x.employee.Department,
+                    model = db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.asset.ModelId).Select(m => m.Name).FirstOrDefault(),
+                    photoAttachmentId = db.AssetAttachments.Where(photo => photo.CompanyId == companyId && photo.AssetId == x.asset.Id && photo.ContentType.StartsWith("image/"))
+                        .OrderByDescending(photo => photo.CreatedAt).Select(photo => (Guid?)photo.Id).FirstOrDefault(),
+                    modelPhotoUrl = db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.asset.ModelId && m.PhotoFileName != null)
+                        .Select(m => $"/api/models/{m.Id}/photo").FirstOrDefault(),
+                    assignedAt = db.AssetEvents.Where(e => e.CompanyId == companyId && e.AssetId == x.asset.Id && e.EventType == "Assigned")
+                        .Max(e => (DateTimeOffset?)e.OccurredAt)
+                }).ToListAsync(ct);
+            return Results.Ok(new { items, total, page, pageSize, pageCount, asOf = today });
+        }).RequireAuthorization("asset.read");
+
         api.MapGet("/accessories/filter-options", async (ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();

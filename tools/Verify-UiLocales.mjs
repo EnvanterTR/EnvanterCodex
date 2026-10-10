@@ -41,6 +41,13 @@ const requiredReservationLabels = [
   'Bu rezervasyon isteği iptal edilsin mi?', 'Rezervasyon isteği gönderildi; varlık yöneticisinin onayı bekleniyor.',
   'Rezervasyonlar yenilendi.', 'Başlangıç', 'Bitiş', 'Sayfa', 'Kayıt yok'
 ];
+const requiredCheckoutLabels = [
+  'Zimmet tarihi', 'Beklenen iade', 'Zimmetlerde ara', 'İade tarihine göre filtrele',
+  'Geciken iadeler', 'Önümüzdeki 30 gün', 'Tarihi belirtilmemiş', 'Daha ileri tarih',
+  'Tüm zimmetler', 'İadelerde ara', 'İade al', 'Varlık iade alındı; hareket geçmişi güncellendi.',
+  'Bu varlığı çalışandan iade almak istiyor musunuz?', 'İade listesi yenilendi.',
+  'Zimmet listesi yüklenemedi.', 'Aktif varlık zimmeti yok.', 'Bu filtrelerle eşleşen zimmet bulunamadı.'
+];
 const requiredAccessoryLabels = [
   'Aksesuarlar', 'Aksesuar stoklarını, teslimleri, iadeleri ve satın alma geçmişini yönetin.',
   'Aksesuar ekle', 'CSV indir', 'Aksesuarlarda ara', 'Stok durumuna göre filtrele',
@@ -407,6 +414,7 @@ const invalidRows = Object.entries(sandbox.localeRows)
   .map(([key]) => key || '<empty key>');
 const missingAssetLabels = requiredAssetLabels.filter(key => !sandbox.localeRows[key]);
 const missingReservationLabels = requiredReservationLabels.filter(key => !sandbox.localeRows[key]);
+const missingCheckoutLabels = requiredCheckoutLabels.filter(key => !sandbox.localeRows[key]);
 const missingAccessoryLabels = requiredAccessoryLabels.filter(key => !sandbox.localeRows[key]);
 const missingEmployeeLabels = requiredEmployeeLabels.filter(key => !sandbox.localeRows[key]);
 const missingInventoryMovementLabels = requiredInventoryMovementLabels.filter(key => !sandbox.localeRows[key]);
@@ -415,10 +423,11 @@ const missingLicenseImportLabels = requiredLicenseImportLabels.filter(key => !sa
 const missingAssetEventLabels = requiredAssetEventLabels.filter(key => !sandbox.localeRows[key]);
 const missingApiFeedbackLabels = requiredApiFeedbackLabels.filter(key => !sandbox.localeRows[key]);
 
-if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length) {
+if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingCheckoutLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length) {
   if (invalidRows.length) console.error(`Invalid 4-language locale entries: ${invalidRows.join(', ')}`);
   if (missingAssetLabels.length) console.error(`Missing asset-list locale entries: ${missingAssetLabels.join(', ')}`);
   if (missingReservationLabels.length) console.error(`Missing reservation-page locale entries: ${missingReservationLabels.join(', ')}`);
+  if (missingCheckoutLabels.length) console.error(`Missing assignment/return locale entries: ${missingCheckoutLabels.join(', ')}`);
   if (missingAccessoryLabels.length) console.error(`Missing accessory-page locale entries: ${missingAccessoryLabels.join(', ')}`);
   if (missingEmployeeLabels.length) console.error(`Missing employee-page locale entries: ${missingEmployeeLabels.join(', ')}`);
   if (missingInventoryMovementLabels.length) console.error(`Missing inventory-movement locale entries: ${missingInventoryMovementLabels.join(', ')}`);
