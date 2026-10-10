@@ -43,6 +43,7 @@ public static class AssetEndpoints
         api.MapAccessoryPhotoEndpoints();
         api.MapAccessoryCategoryEndpoints();
         api.MapCatalogImageEndpoints();
+        api.MapAssetModelAttachmentEndpoints();
         api.MapComponentEndpoints();
         api.MapAccessoryImportEndpoints();
         api.MapInventoryMovementEndpoints();
@@ -2649,6 +2650,7 @@ public static class AssetEndpoints
                             BrandName = db.AssetBrands.Where(b => b.CompanyId == companyId && b.Id == x.BrandId).Select(b => b.Name).FirstOrDefault(),
                             x.CategoryId, CategoryName = db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault(),
                             HasPhoto = x.PhotoFileName != null,
+                            AttachmentCount = db.AssetModelAttachments.Count(a => a.CompanyId == companyId && a.ModelId == x.Id),
                             x.DepreciationMonths, x.DepreciationMinimum, x.DepreciationMinimumType, x.DepreciationMethod,
                             AssetCount = db.Assets.Count(a => a.CompanyId == companyId && a.ModelId == x.Id) }).ToListAsync(cancellationToken));
                 case "accessory-models":
@@ -2812,6 +2814,7 @@ public static class AssetEndpoints
                     var model = await db.AssetModels.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
                     if (model is null) return Results.NotFound();
                     if (await db.Assets.AnyAsync(x => x.CompanyId == companyId && x.ModelId == id, cancellationToken)) return Results.Conflict(new { message = "Bu model varlıklarda kullanılıyor; silinemez." });
+                    if (await db.AssetModelAttachments.AnyAsync(x => x.CompanyId == companyId && x.ModelId == id, cancellationToken)) return Results.Conflict(new { message = "Bu modelde teknik dosyalar var; önce dosyaları kaldırın." });
                     deletedName = model.Name; db.AssetModels.Remove(model); break;
                 case "accessory-models":
                     var accessoryModel = await db.AccessoryModels.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);

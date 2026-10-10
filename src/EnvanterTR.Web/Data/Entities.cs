@@ -204,6 +204,19 @@ public sealed class AssetModel
     public string DepreciationMethod { get; set; } = "linear";
 }
 
+public sealed class AssetModelAttachment
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid ModelId { get; set; }
+    public Guid? UploadedByUserId { get; set; }
+    public required string OriginalFileName { get; set; }
+    public required string StorageFileName { get; set; }
+    public required string ContentType { get; set; }
+    public long Length { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class AssetCustomFieldDefinition
 {
     public Guid Id { get; set; } = Guid.NewGuid();

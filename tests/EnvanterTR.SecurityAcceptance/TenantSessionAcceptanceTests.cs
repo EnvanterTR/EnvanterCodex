@@ -4448,6 +4448,51 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var modelPhotoResponse = await SendAsRoleAsync(HttpMethod.Post, $"/api/models/{modelId}/photo", "admin", modelPhotoForm, requestToken, antiforgeryCookie);
         Assert.Equal(HttpStatusCode.OK, modelPhotoResponse.StatusCode);
 
+        var modelPdf = Encoding.ASCII.GetBytes("%PDF-1.4\nmodel specification\n%%EOF");
+        using var modelAttachmentForm = new MultipartFormDataContent();
+        modelAttachmentForm.Add(new ByteArrayContent(modelPdf), "file", "specification.pdf");
+        using var modelAttachmentUpload = await SendAsRoleAsync(HttpMethod.Post, $"/api/models/{modelId}/attachments", "admin",
+            modelAttachmentForm, requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, modelAttachmentUpload.StatusCode);
+        using var modelAttachmentPayload = JsonDocument.Parse(await modelAttachmentUpload.Content.ReadAsStringAsync());
+        var modelAttachmentId = modelAttachmentPayload.RootElement.GetProperty("id").GetGuid();
+        using (var modelAttachmentList = await SendAsAdminAsync($"/api/models/{modelId}/attachments"))
+        {
+            Assert.Equal(HttpStatusCode.OK, modelAttachmentList.StatusCode);
+            using var listPayload = JsonDocument.Parse(await modelAttachmentList.Content.ReadAsStringAsync());
+            var modelAttachment = Assert.Single(listPayload.RootElement.GetProperty("items").EnumerateArray());
+            Assert.Equal("specification.pdf", modelAttachment.GetProperty("originalFileName").GetString());
+            Assert.Equal("application/pdf", modelAttachment.GetProperty("contentType").GetString());
+        }
+        using (var modelAttachmentFile = await SendAsAdminAsync($"/api/models/{modelId}/attachments/{modelAttachmentId}/file?download=true"))
+        {
+            Assert.Equal(HttpStatusCode.OK, modelAttachmentFile.StatusCode);
+            Assert.Equal("application/pdf", modelAttachmentFile.Content.Headers.ContentType?.MediaType);
+            Assert.Equal(modelPdf, await modelAttachmentFile.Content.ReadAsByteArrayAsync());
+        }
+        using (var foreignModelAttachmentList = await SendAsAdminAsync($"/api/models/{modelId}/attachments", _otherCompanyId))
+            Assert.Equal(HttpStatusCode.NotFound, foreignModelAttachmentList.StatusCode);
+        using (var foreignModelAttachmentFile = await SendAsAdminAsync($"/api/models/{modelId}/attachments/{modelAttachmentId}/file", _otherCompanyId))
+            Assert.Equal(HttpStatusCode.NotFound, foreignModelAttachmentFile.StatusCode);
+        using (var foreignModelAttachmentDelete = await SendAsUserAsync(HttpMethod.Delete,
+            $"/api/models/{modelId}/attachments/{modelAttachmentId}", _userId, _otherCompanyId,
+            requestToken: requestToken, antiforgeryCookie: antiforgeryCookie, role: "admin"))
+            Assert.Equal(HttpStatusCode.NotFound, foreignModelAttachmentDelete.StatusCode);
+        using var invalidModelAttachmentForm = new MultipartFormDataContent();
+        invalidModelAttachmentForm.Add(new ByteArrayContent(Encoding.ASCII.GetBytes("not a PDF")), "file", "fake.pdf");
+        using (var invalidModelAttachment = await SendAsRoleAsync(HttpMethod.Post, $"/api/models/{modelId}/attachments", "admin",
+            invalidModelAttachmentForm, requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidModelAttachment.StatusCode);
+        using (var removeModelAttachment = await SendAsRoleAsync(HttpMethod.Delete,
+            $"/api/models/{modelId}/attachments/{modelAttachmentId}", "admin", new StringContent(string.Empty), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NoContent, removeModelAttachment.StatusCode);
+        await using (var verifyModelAttachmentAuditScope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = verifyModelAttachmentAuditScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.Equal(2, await db.AuditEntries.CountAsync(x => x.CompanyId == _companyId && x.TargetType == "AssetModel" &&
+                x.TargetId == modelId && (x.Action == "AttachmentAdded" || x.Action == "AttachmentRemoved")));
+        }
+
         using var modelPhoto = await SendAsAdminAsync($"/api/models/{modelId}/photo");
         Assert.Equal(HttpStatusCode.OK, modelPhoto.StatusCode);
         using var brandLogo = await SendAsAdminAsync($"/api/brands/{brandId}/logo");

@@ -16,6 +16,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AssetCategory> AssetCategories => Set<AssetCategory>();
     public DbSet<AssetBrand> AssetBrands => Set<AssetBrand>();
     public DbSet<AssetModel> AssetModels => Set<AssetModel>();
+    public DbSet<AssetModelAttachment> AssetModelAttachments => Set<AssetModelAttachment>();
     public DbSet<Asset> Assets => Set<Asset>();
     public DbSet<AssetReservation> AssetReservations => Set<AssetReservation>();
     public DbSet<AssetCustomFieldDefinition> AssetCustomFieldDefinitions => Set<AssetCustomFieldDefinition>();
@@ -270,6 +271,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetCategory>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AssetBrand>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AssetModel>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<AssetModelAttachment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AssetModel>().HasOne<AssetCategory>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.CategoryId })
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
@@ -891,6 +893,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetEvent>().HasOne<Asset>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.AssetId })
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AssetModelAttachment>().Property(x => x.OriginalFileName).HasMaxLength(255).IsRequired();
+        modelBuilder.Entity<AssetModelAttachment>().Property(x => x.StorageFileName).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<AssetModelAttachment>().Property(x => x.ContentType).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<AssetModelAttachment>().HasIndex(x => new { x.CompanyId, x.ModelId, x.CreatedAt });
+        modelBuilder.Entity<AssetModelAttachment>().ToTable("AssetModelAttachments", table =>
+            table.HasCheckConstraint("CK_AssetModelAttachments_Length", "\"Length\" BETWEEN 1 AND 10485760"));
+        modelBuilder.Entity<AssetModelAttachment>().HasOne<AssetModel>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ModelId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AssetModelAttachment>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<AssetAttachment>().Property(x => x.OriginalFileName).HasMaxLength(255).IsRequired();
         modelBuilder.Entity<AssetAttachment>().Property(x => x.StorageFileName).HasMaxLength(80).IsRequired();
