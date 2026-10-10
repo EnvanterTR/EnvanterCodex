@@ -55,7 +55,8 @@
     :root[data-theme="dark"] .appearance-dialog{color:#e5edf8;background:#151f30;border-color:#34445c}
     :root[data-theme="dark"] .appearance-dialog-head p,:root[data-theme="dark"] .appearance-dialog-body label{color:#aebbd0}
     :root[data-theme="dark"] .appearance-dialog-body select,:root[data-theme="dark"] .appearance-note{background:#101a29;color:#d2deed;border-color:#34445c}
-  </style>
+    .status-label-settings{display:grid;gap:10px;padding:16px}.status-label-setting-row{display:grid;grid-template-columns:minmax(120px,.7fr) minmax(180px,1.3fr);align-items:center;gap:14px;padding:12px;border:1px solid var(--line,#dce4ee);border-radius:10px}.status-label-setting-row strong{font-size:.88rem}.status-label-setting-row input{width:100%;min-height:38px;padding:0 10px;border:1px solid var(--line,#cbd5e1);border-radius:8px;background:var(--surface,#fff);color:inherit}.status-label-actions{display:flex;align-items:center;gap:12px;padding:0 16px 16px}.status-label-actions button{min-width:130px}@media(max-width:620px){.status-label-setting-row{grid-template-columns:1fr;gap:7px}}
+    </style>
   <style>
     img{cursor:zoom-in}.image-viewer{width:min(94vw,1200px);max-width:none;max-height:94vh;padding:12px;border:1px solid #ffffff24;border-radius:15px;background:#101827;box-shadow:0 25px 90px #0009}.image-viewer::backdrop{background:#07101edb;backdrop-filter:blur(5px)}.image-viewer img{display:block;max-width:calc(94vw - 24px);max-height:calc(94vh - 24px);width:auto;height:auto;object-fit:contain;margin:auto;border-radius:8px;cursor:default}.image-viewer-close{position:absolute;top:8px;right:8px;width:36px;height:36px;border:1px solid #ffffff45;border-radius:50%;color:white;background:#111827cc;font-size:1.25rem;z-index:1}
     .activity{display:flex;flex-direction:column;align-items:stretch;min-width:0;width:100%}#activityRows{display:flex;flex-direction:column;align-items:stretch;min-width:0;width:100%}#activityRows>.activity-empty-message,#activityRows>.activity-empty{box-sizing:border-box;display:block;align-self:stretch;flex:0 0 auto;grid-column:1/-1;width:100%;max-width:100%;min-width:0;margin:10px 0;padding:12px 13px;border:1px dashed var(--workspace-line,#dce4ee);border-radius:9px;color:var(--workspace-muted,#68778d);font-size:.76rem;line-height:1.5;white-space:normal;overflow-wrap:anywhere}#activityRows>.activity-empty .activity-copy{display:block;width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere}
@@ -403,6 +404,12 @@
           <section class="panel"><div class="panel-head"><h2>Canlı etiket önizlemesi</h2></div><div class="dialog-body"><div id="labelPreviewCanvas" aria-live="polite"></div><p id="labelPreviewMessage" class="muted" role="status" style="margin-top:12px">Örnek etiket hazırlanıyor…</p></div></section>
         </div>
         <section class="panel" style="margin-top:15px"><div class="dialog-body"><h2 style="margin:0 0 7px;font-size:.9rem">Varlık etiketlerini yazdır</h2><p class="muted">Ayarları kaydettikten sonra varlık listesinden bir kaydı açın ve “Etiket kartını yazdır” düğmesine basın. Yazdırma ekranında kağıt boyutunu etiket ölçüsüne göre seçin; gerçek yazıcıda ilk olarak tek deneme etiketi alın.</p><div class="dialog-actions"><button class="btn primary" id="labelSettingsGoAssets" type="button">Varlık listesini aç</button></div></div></section>
+      </section>
+      <section class="workspace-page" id="assetStatusLabelsPage" hidden>
+        <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / ENVANTER</div><h1 id="assetStatusLabelsTitle">Durum etiketleri</h1><p id="assetStatusLabelsIntro">Varlık durumlarının şirketinizde gösterilen adlarını belirleyin.</p></div></div>
+        <section class="panel"><div class="panel-head"><div><h2 id="assetStatusLabelsHeading">Görünen durum adları</h2><p id="assetStatusLabelsHelp" class="muted">Bu adlar listelerde ve ayrıntılarda kullanılır. Durum geçiş kuralları ve içe/dışa aktarma kodları aynı kalır.</p></div></div>
+          <form id="assetStatusLabelsForm"><div id="assetStatusLabelRows" class="status-label-settings"></div><div class="status-label-actions"><button class="btn primary" id="assetStatusLabelsSave" type="submit">Değişiklikleri kaydet</button><span id="assetStatusLabelsFeedback" class="muted" role="status" aria-live="polite"></span></div></form>
+        </section>
       </section>
       <section class="workspace-page" id="membersPage" hidden><div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / ERİŞİM</div><h1>Uygulama kullanıcıları</h1><p>Giriş hesaplarını, şirket rollerini yönetin ve çalışan profilleriyle güvenli şekilde eşleştirin.</p></div><div class="head-actions"><button class="btn" id="membersRefresh">↻ Yenile</button><button class="btn primary" id="inviteMemberButton">＋ Kullanıcı davet et</button></div></div><section class="panel"><div class="table-tools"><small id="membersCount">—</small><span class="muted">Davet edilen kişiye güvenli parola belirleme bağlantısı e-postalanır. Planın giriş hesabı sınırı uygulanır. Hesap-çalışan bağlantısı self-servis taleplerde doğru çalışanı kullanır.</span></div><div class="table-wrap"><table><thead><tr><th>Kullanıcı</th><th>E-posta</th><th>Çalışan profili</th><th>Rol</th><th>Üyelik tarihi</th><th>İşlem</th></tr></thead><tbody id="membersRows"><tr><td colspan="6">Kullanıcılar yükleniyor…</td></tr></tbody></table></div></section></section>
       <section class="workspace-page" id="catalogPage" hidden>
@@ -2342,7 +2349,55 @@
       else loadDashboard($('#globalSearch').value.trim(), 1).catch(error => notify(error.message));
     });
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]); }
-    function statusLabel(status) { return ({ Available: 'Kullanılabilir', Deployed: 'Atanmış', Pending: 'Beklemede', Maintenance: 'Bakımda', Unusable: 'Kullanılamaz', Archived: 'Arşiv' })[status] || status || 'Bilinmiyor'; }
+    const defaultAssetStatusLabels = { Available: 'Kullanılabilir', Deployed: 'Atanmış', Pending: 'Beklemede', Maintenance: 'Bakımda', Unusable: 'Kullanılamaz', Archived: 'Arşiv' };
+    let assetStatusLabelRows = Object.entries(defaultAssetStatusLabels).map(([status, defaultLabel]) => ({ status, defaultLabel, label: defaultLabel }));
+    let assetStatusLabelMap = { ...defaultAssetStatusLabels };
+    function statusLabel(status) { return assetStatusLabelMap[status] || defaultAssetStatusLabels[status] || status || 'Bilinmiyor'; }
+    async function loadAssetStatusLabels() {
+      assetStatusLabelRows = await api('/api/assets/status-labels');
+      assetStatusLabelMap = Object.fromEntries(assetStatusLabelRows.map(item => [item.status, item.label]));
+      document.querySelectorAll('#assetStatusLabelsPage h1, #assetStatusLabelsPage h2, #assetStatusLabelsPage p, #assetStatusLabelsPage button[type="submit"]').forEach(node => { node.textContent = translateUiText(node.textContent); });
+      document.querySelectorAll('option').forEach(option => { if (Object.hasOwn(defaultAssetStatusLabels, option.value)) option.textContent = translateUiText(statusLabel(option.value)); });
+      renderAssetStatusLabels();
+      return assetStatusLabelRows;
+    }
+    function renderAssetStatusLabels() {
+      const host = $('#assetStatusLabelRows'); if (!host) return;
+      host.replaceChildren();
+      for (const item of assetStatusLabelRows) {
+        const row = document.createElement('div'); row.className = 'status-label-setting-row';
+        const canonical = document.createElement('strong'); canonical.textContent = translateUiText(item.defaultLabel);
+        const label = document.createElement('label'), caption = document.createElement('small'), input = document.createElement('input');
+        caption.textContent = translateUiText('Görünen ad'); input.type = 'text'; input.maxLength = 40; input.required = true; input.value = item.label;
+        input.disabled = !canManageSettings(); input.dataset.status = item.status; input.setAttribute('aria-label', `${caption.textContent}: ${canonical.textContent}`);
+        label.append(caption, input); row.append(canonical, label); host.append(row);
+      }
+      $('#assetStatusLabelsSave').hidden = !canManageSettings();
+    }
+    $('#assetStatusLabelsForm').addEventListener('submit', async event => {
+      event.preventDefault(); if (!canManageSettings()) return;
+      const labels = [...$('#assetStatusLabelRows').querySelectorAll('input[data-status]')].map(input => ({ status: input.dataset.status, label: input.value.trim() }));
+      const button = $('#assetStatusLabelsSave'), feedback = $('#assetStatusLabelsFeedback'); button.disabled = true; feedback.textContent = translateUiText('Kaydediliyor…');
+      try {
+        assetStatusLabelRows = await api('/api/assets/status-labels', { method: 'PUT', body: JSON.stringify({ labels }) });
+        assetStatusLabelMap = Object.fromEntries(assetStatusLabelRows.map(item => [item.status, item.label]));
+        renderAssetStatusLabels(); feedback.textContent = translateUiText('Durum etiketleri kaydedildi.');
+        if (canReadAssets()) await loadDashboard($('#globalSearch').value.trim(), 1);
+        notify(translateUiText('Durum etiketleri şirketiniz için kaydedildi.'));
+      } catch (error) { feedback.textContent = error.message; }
+      finally { button.disabled = false; }
+    });
+    Object.assign(localeRows, {
+      'Durum etiketleri':['Status labels','Метки статуса','Мітки стану','Ознаки за статус'],
+      'Varlık durumlarının şirketinizde gösterilen adlarını belirleyin.':['Set the names shown for asset statuses in your company.','Задайте названия статусов активов, отображаемые в вашей компании.','Задайте назви статусів активів, які відображаються у вашій компанії.','Поставете ги имињата на статусите на средствата што се прикажуваат во вашата компанија.'],
+      'Görünen durum adları':['Displayed status names','Отображаемые названия статусов','Відображувані назви станів','Прикажани имиња на статусите'],
+      'Bu adlar listelerde ve ayrıntılarda kullanılır. Durum geçiş kuralları ve içe/dışa aktarma kodları aynı kalır.':['These names appear in lists and details. Status transition rules and import/export codes stay the same.','Эти названия отображаются в списках и карточках. Правила переходов и коды импорта/экспорта не меняются.','Ці назви відображаються у списках і картках. Правила переходів і коди імпорту/експорту не змінюються.','Овие имиња се прикажуваат во листите и деталите. Правилата за промена и кодовите за увоз/извоз остануваат исти.'],
+      'Değişiklikleri kaydet':['Save changes','Сохранить изменения','Зберегти зміни','Зачувај промени'],
+      'Görünen ad':['Display name','Отображаемое название','Відображувана назва','Име што се прикажува'],
+      'Kaydediliyor…':['Saving…','Сохранение…','Збереження…','Се зачувува…'],
+      'Durum etiketleri kaydedildi.':['Status labels saved.','Метки статуса сохранены.','Мітки стану збережено.','Ознаките за статус се зачувани.'],
+      'Durum etiketleri şirketiniz için kaydedildi.':['Status labels saved for your company.','Метки статуса сохранены для вашей компании.','Мітки стану збережено для вашої компанії.','Ознаките за статус се зачувани за вашата компанија.']
+    });
     async function loadLabelSettings(companyId) {
       labelSettingsKey = `envantertr:label-settings:${companyId}`;
       labelPrintSettings = { ...defaultLabelPrintSettings };
@@ -6253,7 +6308,7 @@
       document.querySelectorAll('.nav-item,.sub-item').forEach(item => item.classList.remove('active','selected'));
       if (button.classList.contains('nav-item')) button.classList.add('active'); else button.classList.add('selected');
       setMobileSidebarOpen(false);
-      for (const id of ['overview','employeesPage','directoryPage','moduleStatusPage','assignmentsPage','returnsPage','accessoriesPage','accessoryOrdersPage','stockOrdersPage','assetOrdersPage','accessoryKitsPage','consumablesPage','inventoryRequestsPage','licensesPage','licenseAssignmentsPage','componentsPage','inventoryMovementsPage','labelSettingsPage','maintenancePage','calendarPage','reportPage','customReportPage','membersPage','activityPage','reservationsPage','auditPage','dataToolsPage','companySettingsPage','catalogPage']) $(`#${id}`).hidden = true;
+      for (const id of ['overview','employeesPage','directoryPage','moduleStatusPage','assignmentsPage','returnsPage','accessoriesPage','accessoryOrdersPage','stockOrdersPage','assetOrdersPage','accessoryKitsPage','consumablesPage','inventoryRequestsPage','licensesPage','licenseAssignmentsPage','componentsPage','inventoryMovementsPage','labelSettingsPage','assetStatusLabelsPage','maintenancePage','calendarPage','reportPage','customReportPage','membersPage','activityPage','reservationsPage','auditPage','dataToolsPage','companySettingsPage','catalogPage']) $(`#${id}`).hidden = true;
       if (page === 'Aksesuarlar') { if (!canReadAssets()) { notify('Aksesuar stoklarını görüntüleme yetkiniz bulunmuyor.'); return; } $('#accessoriesPage').hidden = false; $('#pageTitle').textContent = page; $('#newAccessoryButton').hidden = !canWriteAssets(); $('#manageAccessoryCategories').hidden = !canWriteAssets(); $('#accessoryImportOpen').hidden = !canWriteAssets(); loadAccessoryFilterOptions().then(() => loadAccessories(1)).catch(error => notify(error.message)); }
       else if (page === 'Siparişler') { $('#accessoryOrdersPage').hidden = false; $('#pageTitle').textContent = 'Satın alma siparişleri'; $('#newAccessoryOrderButton').hidden = !canWriteAssets(); $('#supplierCatalogButton').hidden = !canWriteAssets(); loadAccessoryOrders(1).catch(error => notify(error.message)); }
       else if (page === 'Varlık siparişleri') { $('#assetOrdersPage').hidden = false; $('#pageTitle').textContent = page; $('#newAssetOrderButton').hidden = !canWriteAssets(); $('#assetOrdersSupplierCatalog').hidden = !canWriteAssets(); loadAssetOrders(1).catch(error => notify(error.message)); }
@@ -6266,6 +6321,7 @@
       else if (page === 'Stok hareketleri') { if (!canReadAssets()) { notify('Stok hareketlerini görüntüleme yetkiniz bulunmuyor.'); return; } $('#inventoryMovementsPage').hidden = false; $('#pageTitle').textContent = translateUiText(page); loadInventoryMovements(1).catch(error => notify(error.message)); }
       else if (page === 'Çalışan kayıtları') { $('#employeesPage').hidden = false; $('#pageTitle').textContent = translateUiText(page); loadEmployees().catch(error => notify(error.message)); }
       else if (page === 'QR ve barkodlar') { if (!canReadAssets()) { notify('Bu hesabın varlık kayıtlarını görme yetkisi yok.'); return; } $('#labelSettingsPage').hidden = false; $('#pageTitle').textContent = page; $('#labelSettingsSave').hidden = !canManageSettings(); $('#labelSettingsReset').hidden = !canManageSettings(); populateLabelSettingsForm(); renderLabelPreview().catch(error => { $('#labelPreviewMessage').textContent = error.message; }); }
+      else if (page === 'Durum etiketleri') { if (!canReadAssets()) { notify('Bu hesabın varlık durumlarını görüntüleme yetkisi yok.'); return; } $('#assetStatusLabelsPage').hidden = false; $('#pageTitle').textContent = translateUiText(page); loadAssetStatusLabels().catch(error => notify(error.message)); }
       else if (page === 'Departmanlar' || page === 'Lokasyonlar' || page === 'Binalar ve odalar') { $('#directoryPage').hidden = false; $('#pageTitle').textContent = page; loadDirectory(page === 'Departmanlar' ? 'departments' : 'locations', page === 'Binalar ve odalar' ? page : '').catch(error => notify(error.message)); }
       else if (page === 'Uygulama kullanıcıları') { $('#membersPage').hidden = false; $('#pageTitle').textContent = page; loadMembers().catch(error => notify(error.message)); }
       else if (page === 'Zimmetler') { if (!canReadAssets()) { notify('Zimmet kayıtlarını görüntüleme yetkiniz bulunmuyor.'); return; } $('#assignmentsPage').hidden = false; $('#pageTitle').textContent = page; loadAssetCheckouts('assignments', 1).catch(error => notify(error.message)); }
@@ -7791,7 +7847,7 @@
       $('#newAssetButton').hidden = !canWriteAssets(); $('#scanAssetButton').hidden = !canReadAssets(); $('#newEmployeeButton').hidden = !canManagePeople(); $('#employeeImportOpen').hidden = !canManagePeople(); $('#exportButton').hidden = !canReadAssets(); $('#exportBackupButton').hidden = !canManageSettings(); $('#importPreviewButton').hidden = !canWriteAssets(); $('#globalSearch').disabled = !canReadAssets();
       $('#overview').hidden = !canReadAssets();
       if (canReadAssets() || canReadPeople()) await refreshDirectorySuggestions();
-      if (canReadAssets()) { try { await loadDashboardPreferences(); await loadLookups(); restoreAssetRelationshipFiltersFromUrl(); const relationQuery = new URL(location.href).searchParams; if (['categoryId','brandId','modelId','location'].some(key => relationQuery.has(key))) document.querySelector('.sub-item[data-page="Varlıklar"]')?.click(); else await loadDashboard(); } catch (error) { $('#dataStatus').textContent = 'Veriler yüklenemedi'; notify(`Şirket verileri alınamadı: ${error.message}`); } void loadOperationalAlerts(); if (!operationalAlertTimer) operationalAlertTimer = window.setInterval(() => { if (!document.hidden) void loadOperationalAlerts(); }, 15 * 60 * 1000); }
+      if (canReadAssets()) { try { try { await loadAssetStatusLabels(); } catch (error) { console.warn('Varlık durum adları yüklenemedi.', error); } await loadDashboardPreferences(); await loadLookups(); restoreAssetRelationshipFiltersFromUrl(); const relationQuery = new URL(location.href).searchParams; if (['categoryId','brandId','modelId','location'].some(key => relationQuery.has(key))) document.querySelector('.sub-item[data-page="Varlıklar"]')?.click(); else await loadDashboard(); } catch (error) { $('#dataStatus').textContent = 'Veriler yüklenemedi'; notify(`Şirket verileri alınamadı: ${error.message}`); } void loadOperationalAlerts(); if (!operationalAlertTimer) operationalAlertTimer = window.setInterval(() => { if (!document.hidden) void loadOperationalAlerts(); }, 15 * 60 * 1000); }
       else if (canReadPeople()) { $('#employeesPage').hidden = false; await loadEmployees(1); }
       else { showLogin('Bu hesapta şirket envanteri veya çalışan kayıtlarına erişim rolü bulunmuyor. Şirket yöneticinizden rol atamasını isteyin.'); }
       const linkedAssetId = new URL(location.href).searchParams.get('assetId');

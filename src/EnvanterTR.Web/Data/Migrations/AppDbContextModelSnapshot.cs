@@ -1454,6 +1454,10 @@ namespace EnvanterTR.Web.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AssetStatusLabelsJson")
+                        .HasMaxLength(3000)
+                        .HasColumnType("character varying(3000)");
+
                     b.Property<string>("BrandLogoPath")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");

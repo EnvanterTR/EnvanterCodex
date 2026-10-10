@@ -89,6 +89,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Company>().Property(x => x.Slug).HasMaxLength(80);
         modelBuilder.Entity<Company>().Property(x => x.ContactEmail).HasMaxLength(256);
         modelBuilder.Entity<Company>().Property(x => x.BrandLogoPath).HasMaxLength(500);
+        modelBuilder.Entity<Company>().Property(x => x.AssetStatusLabelsJson).HasMaxLength(3000);
         modelBuilder.Entity<Company>().Property(x => x.BrandPrimaryColor).HasMaxLength(7).IsRequired();
         modelBuilder.Entity<Company>().Property(x => x.LabelPrintSettingsJson).HasMaxLength(4096);
         modelBuilder.Entity<SubscriptionPlan>().HasIndex(x => x.Code).IsUnique();

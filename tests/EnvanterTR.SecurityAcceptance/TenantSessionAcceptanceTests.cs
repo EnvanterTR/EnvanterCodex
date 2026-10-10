@@ -374,6 +374,88 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Asset_status_display_labels_are_company_scoped_audited_and_manager_only()
+    {
+        var defaults = new[]
+        {
+            new { status = AssetStatuses.Available, label = "Dağıtıma hazır" },
+            new { status = AssetStatuses.Deployed, label = "Zimmetli" },
+            new { status = AssetStatuses.Pending, label = "Onay bekliyor" },
+            new { status = AssetStatuses.Maintenance, label = "Serviste" },
+            new { status = AssetStatuses.Unusable, label = "Kullanılamaz" },
+            new { status = AssetStatuses.Archived, label = "Arşiv" }
+        };
+
+        using (var initial = await SendAsUserAsync(HttpMethod.Get, "/api/assets/status-labels", _userId, _companyId))
+        {
+            Assert.Equal(HttpStatusCode.OK, initial.StatusCode);
+            using var payload = JsonDocument.Parse(await initial.Content.ReadAsStringAsync());
+            Assert.Equal(6, payload.RootElement.GetArrayLength());
+            Assert.Equal("Kullanılabilir", payload.RootElement[0].GetProperty("label").GetString());
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using (var missingCsrf = await SendAsUserAsync(HttpMethod.Put, "/api/assets/status-labels", _userId, _companyId,
+                   System.Net.Http.Json.JsonContent.Create(new { labels = defaults })))
+            Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+
+        var changed = defaults.Select(item => item.status == AssetStatuses.Available
+            ? new { item.status, label = "Dağıtıma hazır" }
+            : item).ToArray();
+        using (var save = await SendAsUserAsync(HttpMethod.Put, "/api/assets/status-labels", _userId, _companyId,
+                   System.Net.Http.Json.JsonContent.Create(new { labels = changed }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, save.StatusCode);
+            using var payload = JsonDocument.Parse(await save.Content.ReadAsStringAsync());
+            Assert.Equal("Dağıtıma hazır", payload.RootElement[0].GetProperty("label").GetString());
+        }
+
+        using (var otherMember = await SendAsUserAsync(HttpMethod.Get, "/api/assets/status-labels", _sameCompanyOtherUserId, _companyId))
+        {
+            Assert.Equal(HttpStatusCode.OK, otherMember.StatusCode);
+            using var payload = JsonDocument.Parse(await otherMember.Content.ReadAsStringAsync());
+            Assert.Equal("Dağıtıma hazır", payload.RootElement[0].GetProperty("label").GetString());
+        }
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.CompanyMemberships.Add(new CompanyMembership { CompanyId = _otherCompanyId, UserId = _sameCompanyOtherUserId, RoleKey = "admin" });
+            await db.SaveChangesAsync();
+        }
+        using (var otherCompany = await SendAsUserAsync(HttpMethod.Get, "/api/assets/status-labels", _sameCompanyOtherUserId, _otherCompanyId))
+        {
+            Assert.Equal(HttpStatusCode.OK, otherCompany.StatusCode);
+            using var payload = JsonDocument.Parse(await otherCompany.Content.ReadAsStringAsync());
+            Assert.Equal("Kullanılabilir", payload.RootElement[0].GetProperty("label").GetString());
+        }
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var membership = await db.CompanyMemberships.SingleAsync(x =>
+                x.CompanyId == _companyId && x.UserId == _sameCompanyOtherUserId);
+            membership.RoleKey = "viewer";
+            await db.SaveChangesAsync();
+        }
+        using (var viewerWrite = await SendAsUserAsync(HttpMethod.Put, "/api/assets/status-labels",
+                   _sameCompanyOtherUserId, _companyId, System.Net.Http.Json.JsonContent.Create(new { labels = defaults }),
+                   requestToken, antiforgeryCookie, role: "viewer"))
+            Assert.Equal(HttpStatusCode.Forbidden, viewerWrite.StatusCode);
+
+        await using var auditScope = _factory!.Services.CreateAsyncScope();
+        var auditDb = auditScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Contains(await auditDb.AuditEntries.AsNoTracking().Where(x => x.CompanyId == _companyId).ToListAsync(),
+            entry => entry.Action == "AssetStatusLabelsUpdated" && entry.TargetId == _companyId);
+    }
+
+    [Fact]
     public async Task Saved_asset_searches_are_private_to_user_and_company_and_require_csrf_for_changes()
     {
         await using (var scope = _factory!.Services.CreateAsyncScope())
