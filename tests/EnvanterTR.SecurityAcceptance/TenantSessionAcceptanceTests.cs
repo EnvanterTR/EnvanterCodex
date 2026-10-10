@@ -3915,6 +3915,79 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Asset_audit_schedule_is_tenant_scoped_and_filters_overdue_upcoming_and_search()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var through = today.AddDays(30);
+        var categoryId = await GetOwnCategoryIdAsync();
+        var dueAsset = new Asset
+        {
+            CompanyId = _companyId, AssetTag = $"OWN-AUDIT-DUE-{_userId:N}", Name = "Audit due next week",
+            CategoryId = categoryId, Location = "North office", NextAuditOn = today.AddDays(7)
+        };
+        var laterAsset = new Asset
+        {
+            CompanyId = _companyId, AssetTag = $"OWN-AUDIT-LATER-{_userId:N}", Name = "Audit due later",
+            CategoryId = categoryId, NextAuditOn = through.AddDays(1)
+        };
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var overdueAsset = await db.Assets.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownAssetId);
+            overdueAsset.NextAuditOn = today.AddDays(-1);
+            var otherTenantAsset = await db.Assets.SingleAsync(x => x.CompanyId == _otherCompanyId && x.Id == _otherCompanyAssetId);
+            otherTenantAsset.NextAuditOn = today.AddDays(1);
+            db.Assets.AddRange(dueAsset, laterAsset);
+            await db.SaveChangesAsync();
+        }
+
+        using (var response = await SendAsAdminAsync($"/api/assets/audit-schedule?through={through:yyyy-MM-dd}&state=all"))
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            Assert.True(response.StatusCode == HttpStatusCode.OK, $"Expected 200 but got {(int)response.StatusCode}: {body}");
+            using var payload = JsonDocument.Parse(body);
+            Assert.Equal(2, payload.RootElement.GetProperty("total").GetInt32());
+            Assert.Equal(1, payload.RootElement.GetProperty("overdue").GetInt32());
+            Assert.Equal(1, payload.RootElement.GetProperty("dueSoon").GetInt32());
+            var items = payload.RootElement.GetProperty("items").EnumerateArray().ToArray();
+            Assert.Contains(items, item => item.GetProperty("id").GetGuid() == _ownAssetId);
+            Assert.Contains(items, item => item.GetProperty("id").GetGuid() == dueAsset.Id);
+            Assert.DoesNotContain(items, item => item.GetProperty("id").GetGuid() == laterAsset.Id);
+            Assert.DoesNotContain(items, item => item.GetProperty("id").GetGuid() == _otherCompanyAssetId);
+            Assert.DoesNotContain("OTHER-1", body, StringComparison.Ordinal);
+        }
+
+        using (var overdue = await SendAsAdminAsync($"/api/assets/audit-schedule?through={through:yyyy-MM-dd}&state=overdue"))
+        using (var overduePayload = JsonDocument.Parse(await overdue.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, overdue.StatusCode);
+            Assert.Equal(1, overduePayload.RootElement.GetProperty("total").GetInt32());
+            Assert.Equal(_ownAssetId, overduePayload.RootElement.GetProperty("items")[0].GetProperty("id").GetGuid());
+        }
+
+        using (var upcoming = await SendAsAdminAsync($"/api/assets/audit-schedule?through={through:yyyy-MM-dd}&state=upcoming"))
+        using (var upcomingPayload = JsonDocument.Parse(await upcoming.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, upcoming.StatusCode);
+            Assert.Equal(1, upcomingPayload.RootElement.GetProperty("total").GetInt32());
+            Assert.Equal(dueAsset.Id, upcomingPayload.RootElement.GetProperty("items")[0].GetProperty("id").GetGuid());
+        }
+
+        using (var search = await SendAsAdminAsync($"/api/assets/audit-schedule?through={through:yyyy-MM-dd}&state=all&q={Uri.EscapeDataString("due next week")}"))
+        using (var searchPayload = JsonDocument.Parse(await search.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, search.StatusCode);
+            Assert.Equal(1, searchPayload.RootElement.GetProperty("total").GetInt32());
+            Assert.Equal(dueAsset.Id, searchPayload.RootElement.GetProperty("items")[0].GetProperty("id").GetGuid());
+        }
+
+        using (var invalidState = await SendAsAdminAsync($"/api/assets/audit-schedule?through={through:yyyy-MM-dd}&state=other"))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidState.StatusCode);
+        using (var invalidRange = await SendAsAdminAsync($"/api/assets/audit-schedule?through={today.AddDays(367):yyyy-MM-dd}"))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidRange.StatusCode);
+    }
+
+    [Fact]
     public async Task Depreciation_report_matches_half_year_boundaries_and_does_not_apply_linear_floor()
     {
         var categoryId = await GetOwnCategoryIdAsync();
