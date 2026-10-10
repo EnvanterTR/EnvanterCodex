@@ -147,6 +147,31 @@ const requiredInventoryMovementLabels = [
   'Hareket sayısı: {count}', 'Sayfa', '← Önceki', 'Sonraki →', 'Silinmiş kayıt',
   'Stok çıkışı / atama', 'Çalışana teslim', 'İade alındı'
 ];
+const requiredInventoryRequestLabels = [
+  'ŞİRKET ALANI / TALEP YÖNETİMİ', 'Stok talepleri',
+  'Talebe açık varlık, aksesuar ve sarf kalemlerini çalışanlar adına isteyin; yetkili kullanıcılar talepleri onaylayıp zimmet veya teslimi kaydeder.',
+  '↓ Filtrelenmiş CSV', '↻ Yenile', 'Talep edilebilir stok', 'Kalem veya kategori ara',
+  'Talep edilebilir stoklarda ara', 'Kalem', 'Tür', 'Konum', 'Kalan',
+  'Stoklar yükleniyor…', 'Talepler', 'Talep durumuna göre filtrele', 'Tüm durumlar',
+  'Bekliyor', 'Onaylandı', 'Reddedildi', 'İptal edildi', 'Çalışan veya kalem ara',
+  'Taleplerde ara', 'Talepler yükleniyor…', 'Çalışan / talep eden', 'Adet', 'Durum',
+  'İşlem', '← Önceki', 'Sayfa —', 'Sonraki →', 'STOK TALEBİ', 'Kalem talep et',
+  'Çalışan seçin', 'Ad veya çalışan numarası ara', 'İhtiyaç veya teslim bilgisi',
+  'Talep şirket içindeki etkin bir çalışan adına açılır. Hesabınız çalışan profiline bağlandıysa talep yalnızca kendi adınıza oluşturulur. Onaylanan varlık talebi zimmete, aksesuar ve sarf talepleri stok teslimine dönüşür.',
+  'Talep şirket içindeki etkin bir çalışan adına açılır. Hesabınız çalışan profiline bağlandıysa talep yalnızca kendi adınıza oluşturulur. Onaylanan talepler stok hareketine dönüşür.',
+  'Talep eden hesap yok', 'Çalışan kaydı yok', 'Kalem arşivlenmiş', 'Karar: {name}',
+  'Talep et', 'Hesap eşleştirmesi gerekli',
+  'Bu hesaba bağlı çalışan profili pasif. Stok talebi açabilmek için şirket yöneticisinden çalışan kaydını etkinleştirmesini veya doğru çalışanla yeniden eşleştirmesini isteyin.',
+  'Bu giriş hesabı çalışan profiline bağlıdır. Talep yalnızca kendi adınıza açılır; varlık istekleri zimmete, aksesuar ve sarf istekleri stok teslimine dönüşür.',
+  'Stok talebi açabilmek için şirket yöneticisinin giriş hesabınızı çalışan profiline bağlaması gerekir.',
+  'Seçili çalışan', 'Talebe açık ve stokta kalem bulunamadı. Stok kaydında “Talep edilebilir” seçeneğini etkinleştirin.',
+  'Bu filtrede talep yok.', '{count} kalem', '{count} talep', 'Sayfa {page} / {pages}',
+  '{name} talebi', 'Onay notu (isteğe bağlı):', 'Red nedeni (isteğe bağlı):',
+  'Talep onaylandı; teslim veya zimmet hareket geçmişine işlendi.', 'Talep reddedildi.',
+  'Bekleyen stok talebini iptal etmek istiyor musunuz?', 'Talep iptal edildi.',
+  'Stok talebi gönderildi.', 'Talep listeleri yenilendi.',
+  'Bu kalem artık talep edilebilir değil. Listeyi yenileyip yeniden deneyin.'
+];
 const requiredLicenseListLabels = [
   'ŞİRKET ALANI / YAZILIM', 'Yazılım lisansları',
   'Lisans türünü, koltuk kullanımını, atamaları ve yenileme tarihlerini yönetin.',
@@ -418,12 +443,13 @@ const missingCheckoutLabels = requiredCheckoutLabels.filter(key => !sandbox.loca
 const missingAccessoryLabels = requiredAccessoryLabels.filter(key => !sandbox.localeRows[key]);
 const missingEmployeeLabels = requiredEmployeeLabels.filter(key => !sandbox.localeRows[key]);
 const missingInventoryMovementLabels = requiredInventoryMovementLabels.filter(key => !sandbox.localeRows[key]);
+const missingInventoryRequestLabels = requiredInventoryRequestLabels.filter(key => !sandbox.localeRows[key]);
 const missingLicenseListLabels = requiredLicenseListLabels.filter(key => !sandbox.localeRows[key]);
 const missingLicenseImportLabels = requiredLicenseImportLabels.filter(key => !sandbox.localeRows[key]);
 const missingAssetEventLabels = requiredAssetEventLabels.filter(key => !sandbox.localeRows[key]);
 const missingApiFeedbackLabels = requiredApiFeedbackLabels.filter(key => !sandbox.localeRows[key]);
 
-if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingCheckoutLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length) {
+if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingCheckoutLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingInventoryRequestLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length) {
   if (invalidRows.length) console.error(`Invalid 4-language locale entries: ${invalidRows.join(', ')}`);
   if (missingAssetLabels.length) console.error(`Missing asset-list locale entries: ${missingAssetLabels.join(', ')}`);
   if (missingReservationLabels.length) console.error(`Missing reservation-page locale entries: ${missingReservationLabels.join(', ')}`);
@@ -431,6 +457,7 @@ if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.
   if (missingAccessoryLabels.length) console.error(`Missing accessory-page locale entries: ${missingAccessoryLabels.join(', ')}`);
   if (missingEmployeeLabels.length) console.error(`Missing employee-page locale entries: ${missingEmployeeLabels.join(', ')}`);
   if (missingInventoryMovementLabels.length) console.error(`Missing inventory-movement locale entries: ${missingInventoryMovementLabels.join(', ')}`);
+  if (missingInventoryRequestLabels.length) console.error(`Missing inventory-request locale entries: ${missingInventoryRequestLabels.join(', ')}`);
   if (missingLicenseListLabels.length) console.error(`Missing license-list locale entries: ${missingLicenseListLabels.join(', ')}`);
   if (missingLicenseImportLabels.length) console.error(`Missing license-import locale entries: ${missingLicenseImportLabels.join(', ')}`);
   if (missingAssetEventLabels.length) console.error(`Missing asset-event locale entries: ${missingAssetEventLabels.join(', ')}`);
