@@ -2,6 +2,10 @@
 
 Statik ürün ana sayfası `src/EnvanterTR.PublicSite/index.html` içinde tutulur. Yerel Docker Compose, bunu Nginx üzerinden yalnızca bu bilgisayara bağlı `http://localhost:8081/` adresinde sunar. `http://localhost:8081/giris` müşteri uygulamasına geçiş sağlar; uygulama `http://localhost:8080/` adresinde de doğrudan açıktır.
 
+## Yerel ana sayfa tasarımı (10 Ekim 2026)
+
+Ana sayfanın açılış alanı, kullanıcının paylaştığı incident-management ve engineering-platform örneklerindeki koyu teknoloji görsel yönüne göre yenilendi. Nane yeşili/vurgulu palet, ürün arayüzünü HTML/CSS ile çizen dashboard, yüzen garanti ve zimmet bilgi kartları, kaydırma ilerleme çizgisi, bölümlerde görünür olma hareketleri, hover durumları ve hareket azaltma tercihi uygulanır. Ana içerik, modül kapsamı, gerçek demo sınırı, iletişim ve fiyat açıklamaları korunur. Bu değişiklik yalnızca repodaki yerel önizlemeyi etkiler; canlı Next.js sitesine aktarım değildir.
+
 ## 10 Ekim 2026 canlı alan adı kontrolü
 
 - `https://envantertr.com/` ve `https://www.envantertr.com/` HTTP 200 döndürüyor; yanıt başlığı ve gövdesi Next.js ile üretilen ayrı bir site olduğunu gösteriyor. Bu Next.js kaynak kodu, dağıtım tanımı ve yayın kimlik bilgileri bu repoda veya çalışma alanı ortamında bulunamadı.
