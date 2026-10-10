@@ -20,7 +20,7 @@ services:
 
   web:
     build:
-      context: ../..
+      context: .
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
@@ -54,7 +54,7 @@ services:
 
   public-site:
     build:
-      context: ../..
+      context: .
       dockerfile: deploy/coolify/Dockerfile.public-site
     restart: unless-stopped
     depends_on: [web]
