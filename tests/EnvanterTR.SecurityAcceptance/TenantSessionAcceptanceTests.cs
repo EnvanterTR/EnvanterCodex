@@ -1822,6 +1822,21 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Activity_history_lists_only_events_from_the_active_company()
+    {
+        using var response = await SendAsAdminAsync("/api/activity?page=1&pageSize=50");
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.True(response.StatusCode == HttpStatusCode.OK,
+            $"Expected 200 but got {(int)response.StatusCode}: {body}");
+        using var payload = JsonDocument.Parse(body);
+        Assert.Equal(1, payload.RootElement.GetProperty("total").GetInt32());
+        var entry = Assert.Single(payload.RootElement.GetProperty("entries").EnumerateArray());
+        Assert.Equal(_ownAssetId, entry.GetProperty("assetId").GetGuid());
+        Assert.Contains("OWN-AUDIT-REPORT", entry.GetProperty("details").GetString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("OTHER-AUDIT-REPORT", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Asset_reservations_reject_date_overlaps_require_review_permissions_and_stay_in_tenant()
     {
         await using (var setupScope = _factory!.Services.CreateAsyncScope())
@@ -3800,14 +3815,29 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Currency = "TRY",
             CreatedByUserId = _userId
         };
+        var otherOrder = new AccessoryPurchaseOrder
+        {
+            CompanyId = _otherCompanyId,
+            OrderNumber = $"OTHER-PENDING-{_userId:N}",
+            Supplier = "Other tenant supplier",
+            Status = "PartiallyReceived",
+            OrderDate = new DateOnly(2026, 10, 1),
+            ExpectedOn = new DateOnly(2026, 10, 20),
+            Currency = "TRY",
+            CreatedByUserId = _userId
+        };
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            db.AccessoryPurchaseOrders.Add(order);
-            db.AccessoryPurchaseOrderLines.Add(new AccessoryPurchaseOrderLine
+            db.AccessoryPurchaseOrders.AddRange(order, otherOrder);
+            db.AccessoryPurchaseOrderLines.AddRange(new AccessoryPurchaseOrderLine
             {
                 CompanyId = _companyId, PurchaseOrderId = order.Id, AccessoryId = _ownAccessoryId,
                 Quantity = 8, QuantityReceived = 3, UnitCost = 125m
+            }, new AccessoryPurchaseOrderLine
+            {
+                CompanyId = _otherCompanyId, PurchaseOrderId = otherOrder.Id, AccessoryId = _otherCompanyAccessoryId,
+                Quantity = 9, QuantityReceived = 2, UnitCost = 200m
             });
             await db.SaveChangesAsync();
         }
@@ -3822,12 +3852,16 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(order.OrderNumber, item.GetProperty("orderNumber").GetString());
         Assert.Equal(5, item.GetProperty("remaining").GetInt32());
         Assert.Equal("OWN-SECURITY-ACCESSORY-" + _userId.ToString("N"), item.GetProperty("itemName").GetString());
+        Assert.DoesNotContain(otherOrder.OrderNumber, responseBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("Other tenant supplier", responseBody, StringComparison.Ordinal);
 
         using var export = await SendAsAdminAsync($"/api/reports/pending-deliveries/export.csv?q={order.OrderNumber}&asOf=2026-10-10");
         Assert.Equal(HttpStatusCode.OK, export.StatusCode);
         var csv = await export.Content.ReadAsStringAsync();
         Assert.Contains(order.OrderNumber, csv, StringComparison.Ordinal);
         Assert.Contains("Own supplier", csv, StringComparison.Ordinal);
+        Assert.DoesNotContain(otherOrder.OrderNumber, csv, StringComparison.Ordinal);
+        Assert.DoesNotContain("Other tenant supplier", csv, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -3854,6 +3888,14 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.AssetModels.AddRange(floorModel, juneBoundaryModel);
+            var otherCategoryId = await db.AssetCategories.Where(x => x.CompanyId == _otherCompanyId)
+                .Select(x => x.Id).SingleAsync();
+            var otherModel = new AssetModel
+            {
+                CompanyId = _otherCompanyId, Name = $"Other tenant depreciation model {_userId:N}",
+                DepreciationMonths = 24, DepreciationMethod = "linear"
+            };
+            db.AssetModels.Add(otherModel);
             db.Assets.AddRange(
                 new Asset
                 {
@@ -3866,6 +3908,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                     CompanyId = _companyId, AssetTag = $"DEP-JUNE-{_userId:N}", Name = "June first day asset",
                     CategoryId = categoryId, ModelId = juneBoundaryModel.Id, PurchaseDate = new DateOnly(2026, 6, 1),
                     PurchaseCost = 1000m, Currency = "TRY"
+                },
+                new Asset
+                {
+                    CompanyId = _otherCompanyId, AssetTag = $"OTHER-DEP-{_userId:N}", Name = "Other tenant depreciation asset",
+                    CategoryId = otherCategoryId, ModelId = otherModel.Id, PurchaseDate = new DateOnly(2024, 1, 1),
+                    PurchaseCost = 5000m, Currency = "TRY"
                 });
             await db.SaveChangesAsync();
         }
@@ -3882,6 +3930,13 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(33.33m, halfYearAsset.GetProperty("monthlyDepreciation").GetDecimal());
         var juneBoundaryAsset = items.Single(item => item.GetProperty("name").GetString() == "June first day asset");
         Assert.Equal(1000m, juneBoundaryAsset.GetProperty("bookValue").GetDecimal());
+        Assert.DoesNotContain(items, item => item.GetProperty("name").GetString() == "Other tenant depreciation asset");
+
+        using var export = await SendAsAdminAsync("/api/reports/depreciation/export.csv?asOf=2026-06-02");
+        Assert.Equal(HttpStatusCode.OK, export.StatusCode);
+        var csv = await export.Content.ReadAsStringAsync();
+        Assert.Contains("Half-year floor asset", csv, StringComparison.Ordinal);
+        Assert.DoesNotContain("Other tenant depreciation asset", csv, StringComparison.Ordinal);
     }
 
     [Fact]
