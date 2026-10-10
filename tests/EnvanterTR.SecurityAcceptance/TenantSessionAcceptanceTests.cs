@@ -1610,6 +1610,46 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Asset_checkout_queue_is_company_scoped_searchable_and_filters_expected_returns()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var own = await db.Assets.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownAssetId);
+            own.Status = AssetStatuses.Deployed;
+            own.AssignedEmployeeId = _ownEmployeeId;
+            own.ExpectedReturnOn = today;
+            var other = await db.Assets.IgnoreQueryFilters().SingleAsync(x => x.CompanyId == _otherCompanyId && x.Id == _otherCompanyAssetId);
+            other.Status = AssetStatuses.Deployed;
+            other.AssignedEmployeeId = _otherCompanyEmployeeId;
+            other.ExpectedReturnOn = today;
+            await db.SaveChangesAsync();
+        }
+
+        using (var response = await SendAsAdminAsync("/api/assets/checkouts?state=due30&page=1&pageSize=10"))
+        {
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var item = Assert.Single(payload.RootElement.GetProperty("items").EnumerateArray());
+            Assert.Equal(_ownAssetId, item.GetProperty("id").GetGuid());
+            Assert.Equal(_ownEmployeeId, item.GetProperty("employeeId").GetGuid());
+            Assert.Equal("OWN-1", item.GetProperty("assetTag").GetString());
+        }
+
+        using (var response = await SendAsAdminAsync("/api/assets/checkouts?q=OTHER-1"))
+        {
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.Empty(payload.RootElement.GetProperty("items").EnumerateArray());
+            Assert.Equal(0, payload.RootElement.GetProperty("total").GetInt32());
+        }
+
+        using var invalidState = await SendAsAdminAsync("/api/assets/checkouts?state=all-tenants");
+        Assert.Equal(HttpStatusCode.BadRequest, invalidState.StatusCode);
+    }
+
+    [Fact]
     public async Task Asset_detail_shows_open_accessory_and_component_relations_only_for_its_company()
     {
         using var response = await SendAsAdminAsync($"/api/assets/{_ownAssetId}");
