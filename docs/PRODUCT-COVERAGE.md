@@ -1,6 +1,6 @@
 # Ürün kapsamı ve özellik durumu
 
-10 Ekim güncel kaynak commit'i `d5ec63b39c97` üzerinde izole PostgreSQL 17 HTTP güvenlik/tenant paketi `deploy/testing/run-security-acceptance.ps1` ile tekrar çalıştırıldı: **71/71 geçti** (4 dk 56 sn). Beş dilli sözlük denetimi **1.327** girdiyi doğruladı. İzole test konteynerleri ve geçici veritabanı test sonunda kaldırıldı; müşteri Windows Server/Ubuntu kurulumu, gerçek SMTP ve girişli tarayıcı görsel kabulini kanıtlamaz.
+10 Ekim güncel kaynak commit'i `9d2722da6bc1` üzerinde izole PostgreSQL 17 HTTP güvenlik/tenant paketi `deploy/testing/run-security-acceptance.ps1` ile tekrar çalıştırıldı: **71/71 geçti** (4 dk 27 sn, yerel Docker). .NET 10'da kullanımdan kaldırılan forwarded-header `KnownNetworks` ayarı `KnownIPNetworks` API'sine taşındı; bu derlemede ilgili ASP.NET deprecation uyarısı görülmedi. İzole test konteynerleri ve geçici veritabanı test sonunda kaldırıldı; müşteri Windows Server/Ubuntu kurulumu, gerçek SMTP ve girişli tarayıcı görsel kabulini kanıtlamaz.
 
 ## 10 Ekim 2026 Windows kurulum devamı ve dağıtım anlatımı
 
