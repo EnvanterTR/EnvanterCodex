@@ -59,6 +59,7 @@
   <style>
     img{cursor:zoom-in}.image-viewer{width:min(94vw,1200px);max-width:none;max-height:94vh;padding:12px;border:1px solid #ffffff24;border-radius:15px;background:#101827;box-shadow:0 25px 90px #0009}.image-viewer::backdrop{background:#07101edb;backdrop-filter:blur(5px)}.image-viewer img{display:block;max-width:calc(94vw - 24px);max-height:calc(94vh - 24px);width:auto;height:auto;object-fit:contain;margin:auto;border-radius:8px;cursor:default}.image-viewer-close{position:absolute;top:8px;right:8px;width:36px;height:36px;border:1px solid #ffffff45;border-radius:50%;color:white;background:#111827cc;font-size:1.25rem;z-index:1}
     .activity-empty .activity-copy{grid-column:1 / -1}
+    body.auth-required .app{visibility:hidden}
   </style>
   <style id="workspaceDesignPolish">
     /* A calmer, more deliberate visual system for every company workspace. */
@@ -1740,7 +1741,7 @@
     async function refreshCsrf() { const result = await api('/api/session/csrf'); requestToken = result.requestToken; }
     async function readImportFile(file) { const isXlsx = /\.xlsx$/i.test(file.name); return { body: isXlsx ? await file.arrayBuffer() : await file.text(), contentType: isXlsx ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/csv; charset=utf-8', format: isXlsx ? 'xlsx' : 'csv' }; }
     function importPreviewMessage(result) { const names = Array.isArray(result?.suppliersToCreate) ? result.suppliersToCreate : []; return `${result?.message || `${fmt.format(result?.rowCount || 0)} satır incelendi.`}${names.length ? ` Yeni tedarikçi adları: ${names.join(', ')}.` : ''}`; }
-    function showLogin(message = '') { $('#authLayer').classList.add('show'); $('#authError').textContent = message; $('#retryApiButton').hidden = true; }
+    function showLogin(message = '') { document.body.classList.add('auth-required'); $('#authLayer').classList.add('show'); $('#authError').textContent = message; $('#retryApiButton').hidden = true; }
     function showApiUnavailable(message = 'Uygulama API’sine ulaşılamıyor. Sunucu ve veritabanı bağlantısını kontrol edin.') {
       showLogin(message); $('#retryApiButton').hidden = false;
     }
@@ -1836,7 +1837,7 @@
       finally { $('#chooseAccountPhoto').disabled = false; event.currentTarget.value = ''; }
     });
     $('#removeAccountPhoto').addEventListener('click', async () => { $('#removeAccountPhoto').disabled = true; try { await api('/api/session/photo', { method: 'DELETE' }); setAccountPhoto(null); $('#accountPhotoFeedback').textContent = 'Profil fotoğrafı kaldırıldı.'; } catch (error) { $('#accountPhotoFeedback').textContent = error.message; } finally { $('#removeAccountPhoto').disabled = false; } });
-    function hideLogin() { $('#authLayer').classList.remove('show'); $('#authError').textContent = ''; $('#retryApiButton').hidden = true; }
+    function hideLogin() { document.body.classList.remove('auth-required'); $('#authLayer').classList.remove('show'); $('#authError').textContent = ''; $('#retryApiButton').hidden = true; }
     function setEmptyRow(message) { const row = document.createElement('tr'), cell = document.createElement('td'); row.className = 'asset-empty-row'; cell.colSpan = visibleAssetColumns.filter(Boolean).length + 2; cell.textContent = message; $('#assetRows').replaceChildren(row); row.append(cell); }
     function applyAssetColumnVisibility() {
       const table = $('#assetRows').closest('table');
