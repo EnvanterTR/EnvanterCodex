@@ -14,7 +14,7 @@
 - Yerel Compose kurtarma provası: şifreli arşiv/HMAC, 74 migration, dokuz temel tablo sayısı, bir medya dosyası ve iki Data Protection anahtar arşiv girdisi doğrulandı; geçici dosyaların içerik hash'leri geri yüklenen arşivlerle eşleşti. Prova konteyneri, parola, arşiv ve geçici volume dosyaları temizlendi. Bu, gerçek Windows Server/Ubuntu host kabulü değildir.
 - GitHub senkronu/ücret kontrolü: yerel main ve origin/main bu çalışmanın başında 42d32aa düzeyinde eşitti. Varlık yaşı/değeri özelliği, kabul testi ve durum belgeleri 836e5d5 [skip ci] commit olarak GitHub main dalına başarıyla gönderildi. Hosted workflow tetiklenmedi; doğrulama yerel Docker/.NET ortamında yapıldı.
 - Canlı `https://envantertr.com/api/status`: bu kontrolde `migration-required`, 72 migration, 2 bekleyen olarak yanıt verdi. Son iki kaynak migration'ı mevcut varlıklara isteğe bağlı varsayılan konum bağlantısı/model numarası ve varlık notu alanı ekliyor. Güncelleme betikleri geçişten önce şifreli yedek ve izole geri yükleme provası ister; canlı veritabanı yedeğinin sunucuda doğrulandığına dair erişilebilir kanıt olmadan canlı migration çalıştırılmayacak.
-- Yerel giriş kanıtı (önceki kontrol, 74 migration): yönetici login/logout API kabulü HTTP 200 ile geçmiş, yerel recovery yöntemi docs/ACCOUNT-RECOVERY.md içinde belgelenmişti. Bu turda kullanıcı parolası elimde olmadığından giriş akışını tekrar etmedim; güncel uygulama şeması yukarıdaki satırda 75/0 olarak doğrulandı.
+- Yerel giriş kanıtı (11 Ekim 2026): parola kurtarma aracından sonra CSRF korumalı login API HTTP 200 döndü; oturum sorgusu HTTP 200 ile etkin şirket bağlamını doğruladı; oturumdan çıkış için giriş sonrası yenilenmiş CSRF belirteci kullanıldığında HTTP 204 alındı. İlk çıkış isteğinde giriş öncesi belirteç 400 döndürdü; bu beklenen kimlik-bağlı antiforgery davranışıdır. Bu kanıt yerel Docker içindir; tarayıcı UI ve canlı/müşteri sunucu kabulü değildir.
 - Demo menü kontrolü: yerel demoda 50 hedef tarandı; 11 desteklenen örnek ekran ve 39 açık “yakında” ekranı doğrulandı. Boş ekranlarda genel bakış kartları, ilgisiz kayıtlar, arama/dışa aktarma ve varlığa özgü işlemler görünmüyor; Varlıklar ekranına dönünce araçlar geri geliyor. Boş durum metni beş dilde örnek bir menüde, menülerin tamamı Türkçe'de tarayıcıda kontrol edildi. Bu kanıt misafir demo ile sınırlı; kimlik doğrulamalı ürün ekranlarının tam kabulü değildir.
 
 Durum işaretleri: ✅ Var · 🟡 Kısmen var (eksik) · ❌ Hiç yok · ⚠️ Riskli/karar gerekiyor
@@ -80,7 +80,7 @@ C1. Kayıt ve liste
  C1.7 Sütun seçimi + sayfa başına satır (12/25/50/100) ✅
  C1.8 Kayıtlı aramalar (en fazla 25, cihazlar arası eşitlenir) ✅
  C1.9 CSV dışa aktarma (tam/sayfalı/filtreli/seçili) ✅
- C1.10 Yazdırılabilir liste / tam ekran görünüm 🟡
+ C1.10 Yazdırılabilir liste / tam ekran görünüm 🟡 (tam ekran ve geçerli sayfayı yazdırma eklendi; tüm filtreli sonuçları tek çıktıda alma açık)
  C1.11 Excel (.xlsx) dışa aktarma ✅
  C1.12 Toplu işlem: en fazla 100 kayıtta durum değiştirme / zimmet / iade / transfer / denetim ✅
  C1.13 Satır sonu hızlı eylem ikonları (detay, zimmet, iade, denetim, etiket, kopyala, düzenle, arşiv) ✅

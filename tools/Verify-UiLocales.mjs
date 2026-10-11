@@ -30,7 +30,10 @@ const requiredAssetLabels = [
   'Varlığı arşive taşı',
   'Görsel yok',
   'Görsel açılamadı',
-  'Kişisel cihaz'
+  'Kişisel cihaz',
+  'Varlık listesinin geçerli sayfasını yazdır',
+  'Varlık listesini tam ekranda aç',
+  'Varlık listesini tam ekrandan çıkar'
 ];
 const requiredReservationLabels = [
   'Varlık rezervasyonları', 'Rezervasyon isteği oluştur', 'Şirket kapsamlı', 'Talep notu',
