@@ -436,6 +436,14 @@ const requiredApiFeedbackLabels = [
   'Teslim tarihi zorunludur; not en fazla 1.000 karakter olabilir.',
 ];
 
+const requiredRoleLabels = [
+  'Yetki rolleri', 'ŞİRKET ALANI / ERİŞİM', 'Şirket hesabındaki yerleşik rollerin erişebildiği alanları özetler.',
+  'Yerleşik şirket rolleri sunucu politikalarıyla uygulanır. Kullanıcıya rol atamasını Uygulama kullanıcıları bölümünden yapın. Platform yöneticisi ayrı sistem yetkisidir.',
+  'Şirket rol ve erişim matrisi', 'Rol', 'Varlıkları görüntüleme', 'Varlık oluşturma ve düzenleme',
+  'Çalışan kayıtlarını görüntüleme', 'Çalışan kayıtlarını yönetme', 'Çalışan belgelerini görüntüleme ve yönetme',
+  'Şirket ayarları, kullanıcılar ve denetim kayıtları', 'İzin verilir', 'İzin verilmez', 'Şirket sahibi',
+  'Envanter yöneticisi', 'Envanter operatörü', 'Denetçi', 'Salt okunur', 'İK operatörü'
+];
 const invalidRows = Object.entries(sandbox.localeRows)
   .filter(([key, values]) => !key.trim() || !Array.isArray(values) || values.length !== 4 || values.some(value => typeof value !== 'string' || !value.trim()))
   .map(([key]) => key || '<empty key>');
@@ -450,8 +458,9 @@ const missingLicenseListLabels = requiredLicenseListLabels.filter(key => !sandbo
 const missingLicenseImportLabels = requiredLicenseImportLabels.filter(key => !sandbox.localeRows[key]);
 const missingAssetEventLabels = requiredAssetEventLabels.filter(key => !sandbox.localeRows[key]);
 const missingApiFeedbackLabels = requiredApiFeedbackLabels.filter(key => !sandbox.localeRows[key]);
+const missingRoleLabels = requiredRoleLabels.filter(key => !sandbox.localeRows[key]);
 
-if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingCheckoutLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingInventoryRequestLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length) {
+if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingCheckoutLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingInventoryRequestLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length || missingRoleLabels.length) {
   if (invalidRows.length) console.error(`Invalid 4-language locale entries: ${invalidRows.join(', ')}`);
   if (missingAssetLabels.length) console.error(`Missing asset-list locale entries: ${missingAssetLabels.join(', ')}`);
   if (missingReservationLabels.length) console.error(`Missing reservation-page locale entries: ${missingReservationLabels.join(', ')}`);
@@ -464,6 +473,7 @@ if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.
   if (missingLicenseImportLabels.length) console.error(`Missing license-import locale entries: ${missingLicenseImportLabels.join(', ')}`);
   if (missingAssetEventLabels.length) console.error(`Missing asset-event locale entries: ${missingAssetEventLabels.join(', ')}`);
   if (missingApiFeedbackLabels.length) console.error(`Missing asset/operations API-feedback locale entries: ${missingApiFeedbackLabels.join(', ')}`);
+  if (missingRoleLabels.length) console.error(`Missing role-matrix locale entries: ${missingRoleLabels.join(', ')}`);
   process.exitCode = 1;
 } else {
   console.log(`Verified ${Object.keys(sandbox.localeRows).length} locale entries in Turkish, English, Russian, Ukrainian, and Macedonian.`);
