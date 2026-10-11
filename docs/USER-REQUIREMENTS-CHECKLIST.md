@@ -7,8 +7,8 @@
 - Docker Desktop Engine çalışıyor. `envantertr-product-dev` altında `web` (`localhost:8080`), `public-site` (`localhost:8081`) ve sağlıklı PostgreSQL 17 servisi ayakta.
 - Yerel `/api/status`: `ready`, 74 migration, 0 bekleyen; `localhost:8081/demo/`: HTTP 200.
 - Güvenlik/tenant kabul paketi: 72/72 geçti; beş arayüz dilinde 1.372 çeviri girdisi doğrulandı.
-- Git yerel `main` ve son bilinen `origin/main` `e708b8a` üzerinde aynı; GitHub'a güncel fetch denemesi DNS (`github.com` çözümlenemedi) nedeniyle başarısız. Bu nedenle uzak dal ve Actions'ın bugünkü durumu henüz doğrulanamadı.
-- Çalışma ağacında varlık alanları, CSV eşlemesi, ekran, test ve iki yeni migration için yerel değişiklikler bulunuyor; bunlar henüz GitHub'a gönderilmedi.
+- GitHub fetch/push tamamlandı; yerel ve uzak `main` şu anda `ad74a4d` commit'inde eşit. Varlık alanları, CSV eşlemesi, ekran, testler ve iki migration gönderildi.
+- GitHub Actions çalışma durumu bu ortamda kimlik doğrulaması olmadan okunamadı (özel depo REST çağrısı 404 döndürdü). Bu commit, kullanıcının tekrarlayan Actions e-postalarını artırmamak için `[skip ci]` ile gönderildi; aynı commit'in Docker tabanlı yerel kabul testi 72/72 geçti.
 - Canlı `https://envantertr.com/api/status`: `migration-required`, 72 migration, 2 bekleyen. Canlı veritabanı yedeği doğrulanmadan canlı şema güncellenmeyecek.
 
 Durum işaretleri: ✅ Var · 🟡 Kısmen var (eksik) · ❌ Hiç yok · ⚠️ Riskli/karar gerekiyor
