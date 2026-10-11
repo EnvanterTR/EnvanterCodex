@@ -7,10 +7,10 @@
 - Docker Desktop Engine çalışıyor. `envantertr-product-dev` altında `web` (`localhost:8080`), `public-site` (`localhost:8081`) ve sağlıklı PostgreSQL 17 servisi ayakta.
 - Yerel `/api/status`: `ready`, 74 migration, 0 bekleyen; `localhost:8081/demo/`: HTTP 200.
 - Güvenlik/tenant kabul paketi: 72/72 geçti; beş arayüz dilinde 1.372 çeviri girdisi doğrulandı.
-- GitHub fetch/push tamamlandı; yerel ve uzak `main` şu anda `ad74a4d` commit'inde eşit. Varlık alanları, CSV eşlemesi, ekran, testler ve iki migration gönderildi.
+- GitHub fetch/push tamamlandı; yerel ve uzak `main` şu anda `b90d127` commit'inde eşit. GitHub Actions geçmişi özel depo erişimi olmadığı için okunamadı; commit `[skip ci]` ile gönderildi.
 - GitHub Actions çalışma durumu bu ortamda kimlik doğrulaması olmadan okunamadı (özel depo REST çağrısı 404 döndürdü). Bu commit, kullanıcının tekrarlayan Actions e-postalarını artırmamak için `[skip ci]` ile gönderildi; aynı commit'in Docker tabanlı yerel kabul testi 72/72 geçti.
 - Canlı `https://envantertr.com/api/status`: `migration-required`, 72 migration, 2 bekleyen. Canlı veritabanı yedeği doğrulanmadan canlı şema güncellenmeyecek.
-- Yerel giriş incelemesi: dmin@envantertr.com kullanıcısı bulunmuyor ve henüz şirket kurulmadı. Giriş ekranı artık ilk kurulum gerektiğini açıkça belirtiyor; web imajı başarıyla oluşturulup yeniden başlatıldı. /api/status=ready, /api/setup/status.setupRequired=true; veritabanındaki mevcut veriye dokunulmadı.
+- Yerel giriş incelemesi: başlangıçta admin@envantertr.com hesabı ve şirket yoktu. Giriş ekranına ilk kurulum açıklaması eklendi; yerel EnvanterTR şirketi ve owner hesabı kuruldu. Yeni parola Windows panosuna kopyalandı, sohbete yazılmadı. Login API ve şirket oturumu doğrulandı; /api/status=ready, setupRequired=false. Yalnızca yerel veritabanı değişti.
 
 Durum işaretleri: ✅ Var · 🟡 Kısmen var (eksik) · ❌ Hiç yok · ⚠️ Riskli/karar gerekiyor
 
