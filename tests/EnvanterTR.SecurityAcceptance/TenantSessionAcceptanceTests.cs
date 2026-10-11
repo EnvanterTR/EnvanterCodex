@@ -5397,6 +5397,58 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Login_refreshes_antiforgery_token_for_authenticated_session_requests()
+    {
+        const string password = "Acceptance-login-csrf-Password-43!";
+        var email = $"acceptance-{_userId:N}@example.invalid";
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<EnvanterUser>>();
+            var user = await users.FindByIdAsync(_userId.ToString());
+            Assert.NotNull(user);
+            var passwordResult = await users.AddPasswordAsync(user, password);
+            Assert.True(passwordResult.Succeeded, string.Join("; ", passwordResult.Errors.Select(error => error.Description)));
+        }
+
+        using var cookieFactory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Development");
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["ConnectionStrings:EnvanterTR"] = Environment.GetEnvironmentVariable("ENVANTERTR_SECURITY_TEST_CONNECTION"),
+                    ["Storage:CompanyMediaPath"] = _mediaPath
+                }));
+        });
+        using var loginClient = cookieFactory.CreateClient();
+        using var anonymousCsrfResponse = await loginClient.GetAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, anonymousCsrfResponse.StatusCode);
+        using var anonymousCsrfPayload = JsonDocument.Parse(await anonymousCsrfResponse.Content.ReadAsStringAsync());
+        var anonymousRequestToken = anonymousCsrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+
+        using var loginRequest = new HttpRequestMessage(HttpMethod.Post, "/api/session/login")
+        {
+            Content = System.Net.Http.Json.JsonContent.Create(new { email, password, companyId = _companyId, rememberMe = true })
+        };
+        loginRequest.Headers.Add("X-CSRF-TOKEN", anonymousRequestToken);
+        using var loginResponse = await loginClient.SendAsync(loginRequest);
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+
+        using var sessionResponse = await loginClient.GetAsync("/api/session");
+        Assert.Equal(HttpStatusCode.OK, sessionResponse.StatusCode);
+
+        using var authenticatedCsrfResponse = await loginClient.GetAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, authenticatedCsrfResponse.StatusCode);
+        using var authenticatedCsrfPayload = JsonDocument.Parse(await authenticatedCsrfResponse.Content.ReadAsStringAsync());
+        var authenticatedRequestToken = authenticatedCsrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+
+        using var logoutRequest = new HttpRequestMessage(HttpMethod.Post, "/api/session/logout");
+        logoutRequest.Headers.Add("X-CSRF-TOKEN", authenticatedRequestToken);
+        using var logoutResponse = await loginClient.SendAsync(logoutRequest);
+        Assert.Equal(HttpStatusCode.NoContent, logoutResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task Authenticator_two_factor_requires_second_step_and_recovery_codes_are_single_use()
     {
         const string password = "Acceptance-2fa-Password-43!";

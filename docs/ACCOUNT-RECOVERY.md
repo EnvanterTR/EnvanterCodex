@@ -1,6 +1,6 @@
 # Yerel hesap parolası kurtarma
 
-Parola kurtarma e-postası SMTP ayarı gerektirir. Sunucuya erişimi olan işletmeci, e-posta gönderimi çalışmıyorsa `EnvanterTR.AccountRecovery` aracını sunucu konsolunda kullanabilir. Araç web API'si açmaz ve parola değerini komut satırından, dosyadan veya ortam değişkeninden almaz.
+Parola kurtarma e-postası SMTP ayarı gerektirir. Sunucuya erişimi olan işletmeci, e-posta gönderimi çalışmıyorsa `EnvanterTR.AccountRecovery` aracını sunucu konsolunda kullanabilir. Araç web API'si açmaz; özel parola yalnızca etkileşimli terminalde gizli olarak girilir, komut satırı argümanı, dosya veya ortam değişkeninden alınmaz.
 
 ## Güvenlik davranışı
 
@@ -8,7 +8,10 @@ Parola kurtarma e-postası SMTP ayarı gerektirir. Sunucuya erişimi olan işlet
 - Yalnızca e-postası doğrulanmış ve en az bir şirket veya platform erişimi olan mevcut hesabı kurtarır.
 - 28 karakterli kriptografik rastgele geçici parola üretir; Identity parola kurallarını uygular.
 - Parolayı ekrana yalnızca başarılı işlemden sonra bir kez yazar. Ekranı kapatmadan önce güvenli parola yöneticisine kaydedin.
-- Başarısız giriş sayacını ve kilidi temizler, güvenlik damgasını yeniler ve şirket/platform denetim kaydı oluşturur. 2FA ayarını değiştirmez.
+- `reset-password` başarısız giriş sayacını ve kilidi temizler, parolayı yeniler, güvenlik damgasını değiştirerek diğer oturumları kapatır.
+- `set-password` işletmecinin belirlediği yeni parolayı terminalde iki kez gizli ister; parolayı ekrana yazdırmaz, kilidi temizler ve diğer oturumları kapatır.
+- `unlock` yalnızca başarısız giriş sayacını ve kilidi temizler; mevcut parola ve oturumlar değişmez.
+- Her işlem şirket/platform denetim kaydı oluşturur. 2FA ayarı değiştirilmez.
 - Veritabanı güncellemeleri tek transaction içindedir; hata olursa geri alınır. Hata çıktısında bağlantı dizesi veya parola gösterilmez.
 - Araç çalıştırmak için uygulama sunucusuna işletim sistemi düzeyinde erişim ve veritabanı bağlantısı gerekir. Bu yetkiye sahip kişilere karşı uygulama içi kimlik doğrulaması sağlamaz.
 
@@ -34,10 +37,12 @@ docker run --rm `
 $container = 'envantertr-product-dev-web-1'
 docker exec $container mkdir -p /tmp/envantertr-account-recovery
 docker cp "$publish\." "${container}:/tmp/envantertr-account-recovery"
-docker exec -it $container dotnet /tmp/envantertr-account-recovery/EnvanterTR.AccountRecovery.dll reset-password
+docker exec -it $container dotnet /tmp/envantertr-account-recovery/EnvanterTR.AccountRecovery.dll set-password
 ```
 
-Ekranda üretilen geçici parolayla `http://localhost:8080/` adresine giriş yapın. Ardından **Hesap ayarları → Parolayı değiştir** bölümünden kendi parolanızı belirleyin. Kurtarma çıktısını kaydettikten sonra konteynerdeki geçici kopyayı silin:
+Komut e-postayı ve onayını ister; özel parolayı iki kez gizli olarak girin. Parolayı değiştirmeden yalnızca kilidi açmak için komutta `set-password` yerine `unlock` kullanın. Rastgele geçici parola üretmek için `reset-password` seçeneği kullanılabilir.
+
+`unlock` sonrasında mevcut parolanızla; `set-password` sonrasında yeni belirlediğiniz parolayla `http://localhost:8080/` adresine giriş yapın. `reset-password` seçeneğinde araç geçici bir parola üretir; giriş yaptıktan sonra **Hesap ayarları → Parolayı değiştir** bölümünden kendi parolanızı belirleyin. Kurtarma işlemi bittikten sonra konteynerdeki geçici kopyayı silin:
 
 ```powershell
 docker exec $container rm -rf /tmp/envantertr-account-recovery

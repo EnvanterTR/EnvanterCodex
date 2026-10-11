@@ -7,11 +7,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-if (args.Length != 1 || !string.Equals(args[0], "reset-password", StringComparison.Ordinal))
+if (args.Length != 1 || (args[0] != "reset-password" && args[0] != "set-password" && args[0] != "unlock"))
 {
-    Console.Error.WriteLine("Kullanım: dotnet EnvanterTR.AccountRecovery.dll reset-password");
+    Console.Error.WriteLine("Kullanım: dotnet EnvanterTR.AccountRecovery.dll <reset-password|set-password|unlock>");
     return 2;
 }
+var resetPassword = args[0] == "reset-password";
+var setPassword = args[0] == "set-password";
+var changesPassword = resetPassword || setPassword;
 
 if (Console.IsInputRedirected || Console.IsOutputRedirected)
 {
@@ -86,29 +89,36 @@ try
         return 2;
     }
 
-    var temporaryPassword = GenerateTemporaryPassword();
-    foreach (var validator in userManager.PasswordValidators)
-    {
-        var validation = await validator.ValidateAsync(userManager, user, temporaryPassword);
-        if (!validation.Succeeded)
-            throw new InvalidOperationException("Üretilen parola sistem politikasını karşılamadı; yeniden deneyin.");
-    }
-
+    string? temporaryPassword = null;
     await using var transaction = await db.Database.BeginTransactionAsync();
-    if (!string.IsNullOrEmpty(user.PasswordHash))
+    if (changesPassword)
     {
-        var removeResult = await userManager.RemovePasswordAsync(user);
-        if (!removeResult.Succeeded)
-            throw new InvalidOperationException("Mevcut parola güvenli biçimde kaldırılamadı.");
-    }
+        temporaryPassword = resetPassword
+            ? GenerateTemporaryPassword()
+            : ReadAndConfirmPassword();
+        foreach (var validator in userManager.PasswordValidators)
+        {
+            var validation = await validator.ValidateAsync(userManager, user, temporaryPassword);
+            if (!validation.Succeeded)
+                throw new InvalidOperationException("Üretilen parola sistem politikasını karşılamadı; yeniden deneyin.");
+        }
 
-    var addResult = await userManager.AddPasswordAsync(user, temporaryPassword);
-    if (!addResult.Succeeded)
-        throw new InvalidOperationException("Yeni parola Identity doğrulamasından geçmedi.");
+        if (!string.IsNullOrEmpty(user.PasswordHash))
+        {
+            var removeResult = await userManager.RemovePasswordAsync(user);
+            if (!removeResult.Succeeded)
+                throw new InvalidOperationException("Mevcut parola güvenli biçimde kaldırılamadı.");
+        }
+
+        var addResult = await userManager.AddPasswordAsync(user, temporaryPassword);
+        if (!addResult.Succeeded)
+            throw new InvalidOperationException("Yeni parola Identity doğrulamasından geçmedi.");
+    }
 
     await userManager.ResetAccessFailedCountAsync(user);
     await userManager.SetLockoutEndDateAsync(user, null);
-    await userManager.UpdateSecurityStampAsync(user);
+    if (changesPassword)
+        await userManager.UpdateSecurityStampAsync(user);
 
     foreach (var companyId in companyIds)
     {
@@ -118,8 +128,10 @@ try
             ActorUserId = null,
             TargetType = "Account",
             TargetId = user.Id,
-            Action = "LocalConsolePasswordRecovery",
-            Details = "Yerel sunucu operatörü konsoldan parola kurtardı; başarısız giriş sayacı sıfırlandı ve diğer oturumlar geçersiz kılındı. Uygulama operatör kimliğini doğrulayamaz."
+            Action = changesPassword ? "LocalConsolePasswordRecovery" : "LocalConsoleUnlock",
+            Details = changesPassword
+                ? "Yerel sunucu operatörü konsoldan parolayı yeniledi; başarısız giriş sayacı sıfırlandı ve diğer oturumlar geçersiz kılındı. Uygulama operatör kimliğini doğrulayamaz."
+                : "Yerel sunucu operatörü konsoldan hesap kilidini açtı ve başarısız giriş sayacını sıfırladı. Parola değiştirilmedi. Uygulama operatör kimliğini doğrulayamaz."
         });
     }
     if (isPlatformAdministrator)
@@ -130,18 +142,31 @@ try
             CompanyId = companyIds.Count == 1 ? companyIds[0] : null,
             TargetType = "Account",
             TargetId = user.Id,
-            Action = "LocalConsolePasswordRecovery",
-            Details = "Yerel sunucu operatörü konsoldan parola kurtardı; başarısız giriş sayacı sıfırlandı ve diğer oturumlar geçersiz kılındı. Uygulama operatör kimliğini doğrulayamaz."
+            Action = changesPassword ? "LocalConsolePasswordRecovery" : "LocalConsoleUnlock",
+            Details = changesPassword
+                ? "Yerel sunucu operatörü konsoldan parolayı yeniledi; başarısız giriş sayacı sıfırlandı ve diğer oturumlar geçersiz kılındı. Uygulama operatör kimliğini doğrulayamaz."
+                : "Yerel sunucu operatörü konsoldan hesap kilidini açtı ve başarısız giriş sayacını sıfırladı. Parola değiştirilmedi. Uygulama operatör kimliğini doğrulayamaz."
         });
     }
 
     await db.SaveChangesAsync();
     await transaction.CommitAsync();
 
-    Console.WriteLine();
-    Console.WriteLine("Parola yenilendi. Bu geçici parolayı şimdi saklayın; araç tekrar gösteremez.");
-    Console.WriteLine(temporaryPassword);
-    Console.WriteLine("Giriş yaptıktan sonra Hesap ayarları > Parolayı değiştir bölümünden kendi parolanızı belirleyin.");
+    if (resetPassword)
+    {
+        Console.WriteLine();
+        Console.WriteLine("Parola yenilendi. Bu geçici parolayı şimdi saklayın; araç tekrar gösteremez.");
+        Console.WriteLine(temporaryPassword);
+        Console.WriteLine("Giriş yaptıktan sonra Hesap ayarları > Parolayı değiştir bölümünden kendi parolanızı belirleyin.");
+    }
+    else if (setPassword)
+    {
+        Console.WriteLine("Parola yenilendi. Yeni parola ekrana yazdırılmadı; giriş yapabilirsiniz.");
+    }
+    else
+    {
+        Console.WriteLine("Hesap kilidi açıldı. Mevcut parola değiştirilmedi.");
+    }
     return 0;
 }
 catch (Exception exception)
@@ -176,4 +201,37 @@ static string GenerateTemporaryPassword()
     var password = new string(characters);
     Array.Clear(characters);
     return password;
+}
+
+static string ReadAndConfirmPassword()
+{
+    var password = ReadHidden("Yeni parola: ");
+    var confirmation = ReadHidden("Yeni parola (tekrar): ");
+    if (!string.Equals(password, confirmation, StringComparison.Ordinal))
+        throw new InvalidOperationException("Parola onayı eşleşmedi; hiçbir değişiklik yapılmadı.");
+    return password;
+}
+
+static string ReadHidden(string prompt)
+{
+    Console.Write(prompt);
+    var characters = new List<char>();
+    while (true)
+    {
+        var key = Console.ReadKey(intercept: true);
+        if (key.Key == ConsoleKey.Enter)
+        {
+            Console.WriteLine();
+            break;
+        }
+        if (key.Key == ConsoleKey.Backspace)
+        {
+            if (characters.Count > 0)
+                characters.RemoveAt(characters.Count - 1);
+            continue;
+        }
+        if (!char.IsControl(key.KeyChar))
+            characters.Add(key.KeyChar);
+    }
+    return new string(characters.ToArray());
 }
