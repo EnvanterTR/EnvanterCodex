@@ -31,7 +31,15 @@ const requiredAssetLabels = [
   'Görsel yok',
   'Görsel açılamadı',
   'Kişisel cihaz',
-  'Varlık listesinin geçerli sayfasını yazdır',
+  'Filtreli varlık listesini yazdır',
+  'Varlık listesi yazdırmaya hazırlanıyor…',
+  'Yazdırılan sayfa {page} / {pages} · {count} / {total} varlık',
+  'Yazdırmaya hazır: {count} varlık',
+  'Yazdırma penceresi açılamadı. Açılır pencere iznini kontrol edin.',
+  'Yazdırılacak sütun seçili değil.',
+  'Varlık sayısı yazdırma sırasında değişti. Listeyi yenileyip tekrar deneyin.',
+  'Aynı varlık iki kez yazdırılmak üzere geldi. Listeyi yenileyip tekrar deneyin.',
+  'Varlıklar yazdırma için yüklenemedi.',
   'Varlık listesini tam ekranda aç',
   'Varlık listesini tam ekrandan çıkar'
 ];

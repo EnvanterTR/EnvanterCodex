@@ -80,7 +80,7 @@ C1. Kayıt ve liste
  C1.7 Sütun seçimi + sayfa başına satır (12/25/50/100) ✅
  C1.8 Kayıtlı aramalar (en fazla 25, cihazlar arası eşitlenir) ✅
  C1.9 CSV dışa aktarma (tam/sayfalı/filtreli/seçili) ✅
- C1.10 Yazdırılabilir liste / tam ekran görünüm 🟡 (tam ekran ve geçerli sayfayı yazdırma eklendi; tüm filtreli sonuçları tek çıktıda alma açık)
+ C1.10 Yazdırılabilir liste / tam ekran görünüm 🟡 (tam ekran, seçili sütunlar ve tüm filtreli sayfalar yazdırılıyor; gerçek tarayıcı görsel kabulü açık)
  C1.11 Excel (.xlsx) dışa aktarma ✅
  C1.12 Toplu işlem: en fazla 100 kayıtta durum değiştirme / zimmet / iade / transfer / denetim ✅
  C1.13 Satır sonu hızlı eylem ikonları (detay, zimmet, iade, denetim, etiket, kopyala, düzenle, arşiv) ✅

@@ -357,7 +357,7 @@
         <div class="welcome"><div><strong id="welcomeName">Şirket envanterinize hoş geldiniz</strong><span id="welcomeCompany">Güncel şirket verileriniz yükleniyor.</span></div><span class="period" id="dataStatus" role="status" aria-live="polite">Sunucu bağlantısı kontrol ediliyor</span></div>
         <div id="dashboardLayout" class="dashboard-layout" aria-label="Pano bölümleri"></div><section id="dashboardCustomCharts" class="dashboard-chart-gallery" hidden><div class="panel-head"><div><h2>Özel grafikler</h2><p class="muted">Seçtiğiniz ölçütlere göre şirket varlıklarının canlı dağılımı.</p></div></div><div id="dashboardCustomChartGrid" class="dashboard-custom-chart-grid"></div></section>
         <div class="stats dashboard-legacy-widget" data-dashboard-widget="stats"><article class="stat"><div class="stat-top"><span>Toplam varlık</span><span class="stat-icon">▣</span></div><strong id="totalAssets">—</strong><small>Şirket kayıtları</small></article><article class="stat"><div class="stat-top"><span>Atanmış</span><span class="stat-icon">♙</span></div><strong id="assignedAssets">—</strong><small>Çalışanlara zimmetli</small></article><article class="stat"><div class="stat-top"><span>Kullanılabilir</span><span class="stat-icon">⬡</span></div><strong id="availableAssets">—</strong><small>Dağıtıma hazır</small></article><article class="stat"><div class="stat-top"><span>Bakımda</span><span class="stat-icon">⚒</span></div><strong id="maintenanceAssets">—</strong><small>İşlem gerektiriyor</small></article><article class="stat" data-dashboard-page="Yazılım lisansları"><div class="stat-top"><span>Lisanslar</span><span class="stat-icon">▤</span></div><strong id="softwareLicenses">—</strong><small>Şirket lisans kayıtları</small></article><article class="stat" data-dashboard-page="Aksesuarlar"><div class="stat-top"><span>Aksesuarlar</span><span class="stat-icon">⌨</span></div><strong id="dashboardAccessoryCount">—</strong><small>Şirket aksesuar kataloğu</small></article><article class="stat" data-dashboard-page="Sarf malzemeleri"><div class="stat-top"><span>Sarf malzemeleri</span><span class="stat-icon">◉</span></div><strong id="dashboardConsumableCount">—</strong><small>Şirket sarf kataloğu</small></article><article class="stat" data-dashboard-page="Bileşenler"><div class="stat-top"><span>Bileşenler</span><span class="stat-icon">▣</span></div><strong id="dashboardComponentCount">—</strong><small>Şirket bileşen kataloğu</small></article><article class="stat" data-dashboard-page="Çalışan kayıtları"><div class="stat-top"><span>Aktif çalışanlar</span><span class="stat-icon">♙</span></div><strong id="dashboardEmployeeCount">—</strong><small>Şirket ekip kayıtları</small></article></div>
-        <div class="grid dashboard-legacy-grid"><section class="panel asset-list-panel" id="assetListPanel" data-dashboard-widget="assets"><div class="panel-head"><h2 id="assetListHeading">Son eklenen ve güncellenen varlıklar</h2><small id="assetPrintPageInfo" class="asset-print-page-info" aria-hidden="true"></small><button class="text-link inventory-open-link" data-page="Varlıklar">Tüm varlıkları gör →</button></div><div class="table-tools"><input id="assetListSearch" placeholder="Etiket, çalışan, model, seri no, konum veya özel alan ara" aria-label="Varlık listesini ara"><select id="assetPageSize" aria-label="Sayfa başına kayıt"><option value="25">25 kayıt</option><option value="50" selected>50 kayıt</option><option value="100">100 kayıt</option><option value="200">200 kayıt</option></select><select id="assetStatusFilter" aria-label="Duruma göre filtrele"><option value="">Tüm durumlar</option><option value="Available">Kullanılabilir</option><option value="Deployed">Atanmış</option><option value="Pending">Beklemede</option><option value="Maintenance">Bakımda</option><option value="Unusable">Kullanılamaz</option><option value="Archived">Arşiv</option></select><select id="assetByodFilter" aria-label="Kişisel cihaz filtresi"><option value="">Şirket ve kişisel cihazlar</option><option value="true">Kişisel cihazlar (BYOD)</option><option value="false">Şirket cihazları</option></select><select id="assetWarrantyFilter" aria-label="Garanti durumuna göre filtrele"><option value="">Tüm garanti durumları</option><option value="expired">Süresi dolmuş</option><option value="expiring">30 gün içinde dolacak</option><option value="active">30 günden uzun süre aktif</option><option value="unspecified">Bitiş tarihi girilmemiş</option></select><select id="assetCategoryFilter" aria-label="Kategoriye göre filtrele"><option value="">Tüm kategoriler</option></select><select id="assetBrandFilter" aria-label="Markaya göre filtrele"><option value="">Tüm markalar</option></select><select id="assetModelFilter" aria-label="Modele göre filtrele"><option value="">Tüm modeller</option></select><select id="savedAssetSearch" aria-label="Kaydedilmiş varlık aramaları"><option value="">Kayıtlı aramalar</option></select><button class="btn small" id="saveAssetSearch" type="button">Aramayı kaydet</button><button class="btn small" id="deleteAssetSearch" type="button" disabled>Kaydı sil</button><div class="filter-chips" id="assetRelationFilter" role="group" aria-label="Etkin ilişki ve garanti filtreleri" hidden></div><button class="btn small" id="clearAssetRelationFilter" type="button" hidden>İlişki ve garanti filtrelerini temizle</button><details class="column-picker" id="assetColumnPicker"><summary class="btn small">Sütunlar</summary><fieldset><legend>Görüntülenecek sütunlar</legend><label><input type="checkbox" data-asset-column="0" checked> Kimlik</label><label><input type="checkbox" data-asset-column="1" checked> Şirket</label><label><input type="checkbox" data-asset-column="2" checked> Demirbaş Adı</label><label><input type="checkbox" data-asset-column="3" checked> Cihaz resmi</label><label><input type="checkbox" data-asset-column="4" checked> Demirbaş Etiketi</label><label><input type="checkbox" data-asset-column="5" checked> Seri No</label><label><input type="checkbox" data-asset-column="6" checked> Model</label><label><input type="checkbox" data-asset-column="7" checked> Model No.</label><label><input type="checkbox" data-asset-column="8" checked> Kategori</label><label><input type="checkbox" data-asset-column="9" checked> Durum</label><label><input type="checkbox" data-asset-column="10" checked> Çıkış Yapılmış Olan Kişi</label><label><input type="checkbox" data-asset-column="11" checked> Çalışan Numarası</label><label><input type="checkbox" data-asset-column="12" checked> Konum</label><label><input type="checkbox" data-asset-column="13" checked> Varsayılan Konum</label><label><input type="checkbox" data-asset-column="14" checked> Üretici</label><label><input type="checkbox" data-asset-column="15" checked> Satın Alma Maliyeti</label><label><input type="checkbox" data-asset-column="16" checked> Mevcut Değer</label><label><input type="checkbox" data-asset-column="17" checked> Giriş/Çıkış</label><button class="btn small" id="resetAssetColumns" type="button">Varsayılan sütunlar</button></fieldset></details><button class="btn small asset-list-view-action" id="assetPrintButton" type="button" data-locale-aria="Varlık listesinin geçerli sayfasını yazdır" aria-label="Varlık listesinin geçerli sayfasını yazdır">▧</button><button class="btn small asset-list-view-action" id="assetFullscreenButton" type="button" data-locale-aria="Varlık listesini tam ekranda aç" aria-label="Varlık listesini tam ekranda aç" aria-pressed="false">⛶</button><select id="assetRowDensity" aria-label="Tablo satır yoğunluğu"><option value="comfortable">Rahat satırlar</option><option value="compact">Sık satırlar</option></select><small id="assetCount" role="status" aria-live="polite" aria-atomic="true">—</small></div><div id="bulkAssetToolbar" class="bulk-asset-toolbar" hidden><label><input id="selectAllAssets" type="checkbox" aria-label="Bu sayfadaki seçilebilir varlıkları seç"> Sayfadakileri seç</label><span id="selectedAssetCount" role="status" aria-live="polite">0 varlık seçildi</span><select id="bulkAssetStatus" aria-label="Seçili varlıklara uygulanacak durum"><option value="">Yeni durumu seçin</option><option value="Available">Kullanılabilir</option><option value="Pending">Beklemede</option><option value="Maintenance">Bakımda</option><option value="Unusable">Kullanılamaz</option><option value="Archived">Arşiv</option></select><button id="applyBulkAssetStatus" class="btn primary small" type="button" disabled>Durumu uygula</button><button id="exportSelectedAssets" class="btn small" type="button" disabled>Seçileni CSV indir</button><button id="clearSelectedAssets" class="btn small" type="button">Seçimi temizle</button></div><div class="table-wrap"><table class="asset-table"><caption class="sr-only">Şirket envanterindeki varlık kayıtları</caption><thead><tr><th class="asset-select-column"><input id="selectAllAssetsHeader" type="checkbox" aria-label="Bu sayfadaki seçilebilir varlıkları seç"></th><th aria-sort="none">Kimlik</th><th aria-sort="none">Şirket</th><th aria-sort="none">Demirbaş Adı</th><th aria-sort="none">Cihaz resmi</th><th aria-sort="ascending"><button class="table-sort" type="button" data-sort-by="tag" data-sort-label="Demirbaş Etiketi">Demirbaş Etiketi</button></th><th aria-sort="none">Seri No</th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="model" data-sort-label="Model">Model</button></th><th aria-sort="none">Model No.</th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="category" data-sort-label="Kategori">Kategori</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="status" data-sort-label="Durum">Durum</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="employee" data-sort-label="Çıkış Yapılmış Olan Kişi">Çıkış Yapılmış Olan Kişi</button></th><th aria-sort="none">Çalışan Numarası</th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="location" data-sort-label="Konum">Konum</button></th><th aria-sort="none">Varsayılan Konum</th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="brand" data-sort-label="Üretici">Üretici</button></th><th aria-sort="none">Satın Alma Maliyeti</th><th aria-sort="none">Mevcut Değer</th><th aria-sort="none">Giriş/Çıkış</th><th class="asset-actions-heading">Eylemler</th></tr></thead><tbody id="assetRows"><tr><td colspan="10">Oturum açıldıktan sonra şirket kayıtları gösterilir.</td></tr></tbody></table></div><div class="pager"><button id="assetPrev">← Önceki</button><span id="assetPageInfo">Sayfa —</span><button id="assetNext">Sonraki →</button></div></section>
+        <div class="grid dashboard-legacy-grid"><section class="panel asset-list-panel" id="assetListPanel" data-dashboard-widget="assets"><div class="panel-head"><h2 id="assetListHeading">Son eklenen ve güncellenen varlıklar</h2><small id="assetPrintPageInfo" class="asset-print-page-info" aria-hidden="true"></small><button class="text-link inventory-open-link" data-page="Varlıklar">Tüm varlıkları gör →</button></div><div class="table-tools"><input id="assetListSearch" placeholder="Etiket, çalışan, model, seri no, konum veya özel alan ara" aria-label="Varlık listesini ara"><select id="assetPageSize" aria-label="Sayfa başına kayıt"><option value="25">25 kayıt</option><option value="50" selected>50 kayıt</option><option value="100">100 kayıt</option><option value="200">200 kayıt</option></select><select id="assetStatusFilter" aria-label="Duruma göre filtrele"><option value="">Tüm durumlar</option><option value="Available">Kullanılabilir</option><option value="Deployed">Atanmış</option><option value="Pending">Beklemede</option><option value="Maintenance">Bakımda</option><option value="Unusable">Kullanılamaz</option><option value="Archived">Arşiv</option></select><select id="assetByodFilter" aria-label="Kişisel cihaz filtresi"><option value="">Şirket ve kişisel cihazlar</option><option value="true">Kişisel cihazlar (BYOD)</option><option value="false">Şirket cihazları</option></select><select id="assetWarrantyFilter" aria-label="Garanti durumuna göre filtrele"><option value="">Tüm garanti durumları</option><option value="expired">Süresi dolmuş</option><option value="expiring">30 gün içinde dolacak</option><option value="active">30 günden uzun süre aktif</option><option value="unspecified">Bitiş tarihi girilmemiş</option></select><select id="assetCategoryFilter" aria-label="Kategoriye göre filtrele"><option value="">Tüm kategoriler</option></select><select id="assetBrandFilter" aria-label="Markaya göre filtrele"><option value="">Tüm markalar</option></select><select id="assetModelFilter" aria-label="Modele göre filtrele"><option value="">Tüm modeller</option></select><select id="savedAssetSearch" aria-label="Kaydedilmiş varlık aramaları"><option value="">Kayıtlı aramalar</option></select><button class="btn small" id="saveAssetSearch" type="button">Aramayı kaydet</button><button class="btn small" id="deleteAssetSearch" type="button" disabled>Kaydı sil</button><div class="filter-chips" id="assetRelationFilter" role="group" aria-label="Etkin ilişki ve garanti filtreleri" hidden></div><button class="btn small" id="clearAssetRelationFilter" type="button" hidden>İlişki ve garanti filtrelerini temizle</button><details class="column-picker" id="assetColumnPicker"><summary class="btn small">Sütunlar</summary><fieldset><legend>Görüntülenecek sütunlar</legend><label><input type="checkbox" data-asset-column="0" checked> Kimlik</label><label><input type="checkbox" data-asset-column="1" checked> Şirket</label><label><input type="checkbox" data-asset-column="2" checked> Demirbaş Adı</label><label><input type="checkbox" data-asset-column="3" checked> Cihaz resmi</label><label><input type="checkbox" data-asset-column="4" checked> Demirbaş Etiketi</label><label><input type="checkbox" data-asset-column="5" checked> Seri No</label><label><input type="checkbox" data-asset-column="6" checked> Model</label><label><input type="checkbox" data-asset-column="7" checked> Model No.</label><label><input type="checkbox" data-asset-column="8" checked> Kategori</label><label><input type="checkbox" data-asset-column="9" checked> Durum</label><label><input type="checkbox" data-asset-column="10" checked> Çıkış Yapılmış Olan Kişi</label><label><input type="checkbox" data-asset-column="11" checked> Çalışan Numarası</label><label><input type="checkbox" data-asset-column="12" checked> Konum</label><label><input type="checkbox" data-asset-column="13" checked> Varsayılan Konum</label><label><input type="checkbox" data-asset-column="14" checked> Üretici</label><label><input type="checkbox" data-asset-column="15" checked> Satın Alma Maliyeti</label><label><input type="checkbox" data-asset-column="16" checked> Mevcut Değer</label><label><input type="checkbox" data-asset-column="17" checked> Giriş/Çıkış</label><button class="btn small" id="resetAssetColumns" type="button">Varsayılan sütunlar</button></fieldset></details><button class="btn small asset-list-view-action" id="assetPrintButton" type="button" data-locale-aria="Filtreli varlık listesini yazdır" aria-label="Filtreli varlık listesini yazdır">▧</button><button class="btn small asset-list-view-action" id="assetFullscreenButton" type="button" data-locale-aria="Varlık listesini tam ekranda aç" aria-label="Varlık listesini tam ekranda aç" aria-pressed="false">⛶</button><select id="assetRowDensity" aria-label="Tablo satır yoğunluğu"><option value="comfortable">Rahat satırlar</option><option value="compact">Sık satırlar</option></select><small id="assetCount" role="status" aria-live="polite" aria-atomic="true">—</small></div><div id="bulkAssetToolbar" class="bulk-asset-toolbar" hidden><label><input id="selectAllAssets" type="checkbox" aria-label="Bu sayfadaki seçilebilir varlıkları seç"> Sayfadakileri seç</label><span id="selectedAssetCount" role="status" aria-live="polite">0 varlık seçildi</span><select id="bulkAssetStatus" aria-label="Seçili varlıklara uygulanacak durum"><option value="">Yeni durumu seçin</option><option value="Available">Kullanılabilir</option><option value="Pending">Beklemede</option><option value="Maintenance">Bakımda</option><option value="Unusable">Kullanılamaz</option><option value="Archived">Arşiv</option></select><button id="applyBulkAssetStatus" class="btn primary small" type="button" disabled>Durumu uygula</button><button id="exportSelectedAssets" class="btn small" type="button" disabled>Seçileni CSV indir</button><button id="clearSelectedAssets" class="btn small" type="button">Seçimi temizle</button></div><div class="table-wrap"><table class="asset-table"><caption class="sr-only">Şirket envanterindeki varlık kayıtları</caption><thead><tr><th class="asset-select-column"><input id="selectAllAssetsHeader" type="checkbox" aria-label="Bu sayfadaki seçilebilir varlıkları seç"></th><th aria-sort="none">Kimlik</th><th aria-sort="none">Şirket</th><th aria-sort="none">Demirbaş Adı</th><th aria-sort="none">Cihaz resmi</th><th aria-sort="ascending"><button class="table-sort" type="button" data-sort-by="tag" data-sort-label="Demirbaş Etiketi">Demirbaş Etiketi</button></th><th aria-sort="none">Seri No</th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="model" data-sort-label="Model">Model</button></th><th aria-sort="none">Model No.</th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="category" data-sort-label="Kategori">Kategori</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="status" data-sort-label="Durum">Durum</button></th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="employee" data-sort-label="Çıkış Yapılmış Olan Kişi">Çıkış Yapılmış Olan Kişi</button></th><th aria-sort="none">Çalışan Numarası</th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="location" data-sort-label="Konum">Konum</button></th><th aria-sort="none">Varsayılan Konum</th><th aria-sort="none"><button class="table-sort" type="button" data-sort-by="brand" data-sort-label="Üretici">Üretici</button></th><th aria-sort="none">Satın Alma Maliyeti</th><th aria-sort="none">Mevcut Değer</th><th aria-sort="none">Giriş/Çıkış</th><th class="asset-actions-heading">Eylemler</th></tr></thead><tbody id="assetRows"><tr><td colspan="10">Oturum açıldıktan sonra şirket kayıtları gösterilir.</td></tr></tbody></table></div><div class="pager"><button id="assetPrev">← Önceki</button><span id="assetPageInfo">Sayfa —</span><button id="assetNext">Sonraki →</button></div></section>
           <section class="panel" data-dashboard-widget="activity"><div class="panel-head"><h2>Son hareketler</h2><button class="text-link" data-page="Hareket geçmişi">Tümünü gör →</button></div><div class="activity" id="activityRows"><div class="activity-row activity-empty"><div class="activity-copy"><strong>Hareket verileri yükleniyor…</strong></div></div></div></section></div>
         <div class="lower dashboard-legacy-lower"><section class="panel" data-dashboard-widget="upcoming"><div class="panel-head"><h2>Yaklaşan işlemler</h2><button class="text-link" data-page="Takvim">Takvimi aç →</button></div><div class="attention" id="upcomingEvents" aria-live="polite"><div class="attention-row"><span>Şirket takvimi yükleniyor…</span></div></div><div class="dashboard-status-note" id="upcomingEventsNote">Bakım planları ve lisans bitiş tarihleri</div></section><section class="panel" data-dashboard-widget="status"><div class="panel-head"><h2>Varlık durumu</h2><button class="text-link" data-page="Hazır raporlar">Raporu aç →</button></div><div class="dashboard-status"><div id="dashboardStatusChart" class="dashboard-donut" role="img" aria-label="Varlık durum dağılımı yükleniyor"><div class="dashboard-donut-center"><strong id="dashboardStatusTotal">—</strong><small>varlık</small></div></div><div id="dashboardStatusLegend" class="dashboard-status-legend"><span class="muted">Durum özeti yükleniyor…</span></div></div><div id="dashboardStatusNote" class="dashboard-status-note">Şirket envanterinizdeki güncel durumlar</div></section></div>
       </section>
@@ -1926,7 +1926,15 @@
       'Sözleşme güncellendi.':['Contract updated.','Договор обновлен.','Договір оновлено.','Договорот е ажуриран.'],
       'Sözleşme oluşturuldu.':['Contract created.','Договор создан.','Договір створено.','Договорот е создаден.'],
       'Dosya 10 MiB sınırını aşıyor.':['File exceeds the 10 MiB limit.','Файл превышает лимит 10 МиБ.','Файл перевищує обмеження 10 МіБ.','Датотеката го надминува лимитот од 10 MiB.'],
-      'Varlık listesinin geçerli sayfasını yazdır':['Print the current asset page','Печать текущей страницы активов','Друк поточної сторінки активів','Печати ја тековната страница со средства'],
+      'Filtreli varlık listesini yazdır':['Print the filtered asset list','Печать отфильтрованного списка активов','Друк відфільтрованого списку активів','Печати го филтрираниот список со средства'],
+      'Varlık listesi yazdırmaya hazırlanıyor…':['Preparing the asset list for printing…','Подготовка списка активов к печати…','Підготовка списку активів до друку…','Се подготвува списокот со средства за печатење…'],
+      'Yazdırılan sayfa {page} / {pages} · {count} / {total} varlık':['Printing page {page} / {pages} · {count} / {total} assets','Печать страницы {page} / {pages} · {count} / {total} активов','Друк сторінки {page} / {pages} · {count} / {total} активів','Печатење страница {page} / {pages} · {count} / {total} средства'],
+      'Yazdırmaya hazır: {count} varlık':['Ready to print: {count} assets','Готово к печати: активов — {count}','Готово до друку: активів — {count}','Подготвени за печатење: {count} средства'],
+      'Yazdırma penceresi açılamadı. Açılır pencere iznini kontrol edin.':['The print window could not open. Check popup permissions.','Не удалось открыть окно печати. Проверьте разрешение всплывающих окон.','Не вдалося відкрити вікно друку. Перевірте дозвіл на спливаючі вікна.','Прозорецот за печатење не се отвори. Проверете ја дозволата за скокачки прозорци.'],
+      'Yazdırılacak sütun seçili değil.':['No columns are selected for printing.','Не выбраны столбцы для печати.','Не вибрано стовпці для друку.','Нема избрани колони за печатење.'],
+      'Varlık sayısı yazdırma sırasında değişti. Listeyi yenileyip tekrar deneyin.':['The asset count changed while preparing the printout. Refresh the list and try again.','Количество активов изменилось при подготовке печати. Обновите список и повторите попытку.','Кількість активів змінилася під час підготовки до друку. Оновіть список і спробуйте ще раз.','Бројот на средства се смени при подготовката за печатење. Освежете го списокот и обидете се повторно.'],
+      'Aynı varlık iki kez yazdırılmak üzere geldi. Listeyi yenileyip tekrar deneyin.':['The same asset appeared twice while preparing the printout. Refresh the list and try again.','Один и тот же актив повторился при подготовке печати. Обновите список и повторите попытку.','Той самий актив повторився під час підготовки до друку. Оновіть список і спробуйте ще раз.','Истото средство се појави двапати при подготовката за печатење. Освежете го списокот и обидете се повторно.'],
+      'Varlıklar yazdırma için yüklenemedi.':['Assets could not be loaded for printing.','Не удалось загрузить активы для печати.','Не вдалося завантажити активи для друку.','Средствата не можеа да се вчитаат за печатење.'],
       'Varlık listesini tam ekranda aç':['Open the asset list in full screen','Открыть список активов на весь экран','Відкрити список активів на весь екран','Отвори го списокот со средства на цел екран'],
       'Varlık listesini tam ekrandan çıkar':['Exit full screen asset list','Выйти из полноэкранного списка активов','Вийти зі списку активів на весь екран','Излези од списокот со средства на цел екран']
     });
@@ -2955,13 +2963,10 @@
         try { localStorage.setItem(appearanceKey, JSON.stringify({ theme, language })); } catch {}
       }
       catch (error) { console.warn('Pano tercihleri yüklenemedi; varsayılan görünüm kullanılıyor.', error); applyDashboardPreferences(); }
-    }    async function loadDashboard(query = $('#globalSearch').value.trim(), requestedPage = assetPage) {
-      if (assetCustomFieldDefinitions === null) await loadAssetCustomFieldDefinitions();
-      const requestId = ++assetDashboardRequestId;
-      assetPage = Math.max(1, requestedPage);
-      const inventoryMode = $('#overview').classList.contains('inventory-mode');
-      const currentPageSize = inventoryMode ? assetPageSize : pageSize;
-      const filters = new URLSearchParams({ page: assetPage, pageSize: currentPageSize });
+    }
+
+    function buildAssetListFilters(query, page, pageSize) {
+      const filters = new URLSearchParams({ page, pageSize });
       if (query) filters.set('q', query);
       if ($('#assetStatusFilter').value) filters.set('status', $('#assetStatusFilter').value);
       if ($('#assetByodFilter').value) filters.set('byod', $('#assetByodFilter').value);
@@ -2972,13 +2977,171 @@
       if (assetLocationFilter) filters.set('location', assetLocationFilter);
       if ($('#assetWarrantyFilter').value) filters.set('warranty', $('#assetWarrantyFilter').value);
       const customFieldFilter = readAssetCustomFieldFilter();
-      if (customFieldFilter.error) { notify(customFieldFilter.error); return; }
       if (customFieldFilter.key) {
         filters.set('customFieldKey', customFieldFilter.key);
         filters.set('customFieldMode', customFieldFilter.mode);
         if (customFieldFilter.value) filters.set('customFieldValue', customFieldFilter.value);
       }
-      filters.set('sortBy', assetSortBy); filters.set('sortDirection', assetSortDirection);
+      filters.set('sortBy', assetSortBy);
+      filters.set('sortDirection', assetSortDirection);
+      return { filters, customFieldFilter };
+    }
+
+    async function printAllFilteredAssets() {
+      const button = $('#assetPrintButton');
+      if (button.disabled) return;
+      button.disabled = true;
+      button.setAttribute('aria-busy', 'true');
+      let popup = null;
+      let printStatus = null;
+      try {
+        popup = window.open('', '_blank');
+        if (!popup) throw new Error(translateUiText('Yazdırma penceresi açılamadı. Açılır pencere iznini kontrol edin.'));
+        popup.opener = null;
+        popup.document.open();
+        popup.document.write('<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Varlık listesi</title><style>@page{size:landscape;margin:10mm}*{box-sizing:border-box}body{margin:0;color:#111;font:10pt Arial,sans-serif}main{max-width:1500px;margin:auto;padding:16px}h1{margin:0 0 6px;font-size:16pt}.print-status{margin:0 0 10px;color:#526178;font-size:9pt}.print-status.error{color:#b42318}table{width:100%;border-collapse:collapse;table-layout:auto}thead{display:table-header-group}tr{break-inside:avoid}th,td{padding:4px;border:1px solid #777;text-align:left;vertical-align:top;font-size:7.5pt;white-space:normal;overflow-wrap:anywhere}th{background:#e8edf3;color:#111;font-weight:bold}td img{display:block;width:42px;height:32px;object-fit:contain}@media screen{body{background:#eef2f7}main{margin:18px auto;background:#fff;box-shadow:0 2px 12px #17253c22}.print-status{position:sticky;top:0;background:#fff;padding:7px 0}}@media print{.print-status{display:none!important}main{padding:0}}</style></head><body><main><h1 id="printTitle"></h1><p class="print-status" id="printStatus" role="status"></p><table hidden><thead><tr></tr></thead><tbody></tbody></table></main></body></html>');
+        popup.document.close();
+        const printDocument = popup.document;
+        printStatus = printDocument.querySelector('#printStatus');
+        printStatus.textContent = translateUiText('Varlık listesi yazdırmaya hazırlanıyor…');
+        const title = $('#assetListHeading').textContent.trim() || translateUiText('Varlıklar');
+        printDocument.title = title;
+        printDocument.querySelector('#printTitle').textContent = title;
+        const sourceHeaders = Array.from($('#assetRows').closest('table').querySelectorAll('thead th')).slice(1, -1);
+        const columnValues = [
+          asset => asset.id,
+          asset => asset.companyName,
+          asset => asset.name,
+          null,
+          asset => asset.assetTag,
+          asset => asset.serialNumber,
+          asset => asset.modelName,
+          asset => asset.modelNumber,
+          asset => asset.categoryName,
+          asset => translateUiText(statusLabel(asset.status)),
+          asset => asset.assignedEmployeeName,
+          asset => asset.employeeNumber,
+          asset => asset.location,
+          asset => asset.defaultLocation,
+          asset => asset.brandName,
+          asset => asset.purchaseCost == null ? null : formatRecordedCurrency(asset.purchaseCost, asset.currency),
+          asset => asset.currentValue == null ? null : formatRecordedCurrency(asset.currentValue, asset.currency),
+          asset => translateUiText(asset.assignedEmployeeId ? 'Giriş' : 'Çıkış')
+        ];
+        if (sourceHeaders.length !== columnValues.length) throw new Error('Varlık listesi yazdırma alanları güncel başlıklarla eşleşmiyor.');
+        const visibleColumns = new Set(Array.from($('#assetColumnPicker').querySelectorAll('[data-asset-column]:checked'), input => Number(input.dataset.assetColumn)));
+        const columns = sourceHeaders.map((header, index) => ({
+          index,
+          label: header.querySelector('.table-sort')?.textContent.trim() || header.textContent.trim()
+        })).filter(column => visibleColumns.has(column.index));
+        if (!columns.length) throw new Error(translateUiText('Yazdırılacak sütun seçili değil.'));
+        const printTable = printDocument.querySelector('table');
+        const printHead = printDocument.querySelector('thead tr');
+        const printBody = printDocument.querySelector('tbody');
+        for (const column of columns) {
+          const th = printDocument.createElement('th');
+          th.scope = 'col';
+          th.textContent = column.label;
+          printHead.append(th);
+        }
+        const query = $('#globalSearch').value.trim();
+        const { filters, customFieldFilter } = buildAssetListFilters(query, 1, 200);
+        if (customFieldFilter.error) throw new Error(customFieldFilter.error);
+        const firstPage = await api('/api/assets?' + filters.toString());
+        const total = Number(firstPage.total) || 0;
+        const pageSize = Math.max(1, Number(firstPage.pageSize) || 200);
+        const pageCount = Math.ceil(total / pageSize);
+        let rendered = 0;
+        const printedAssetIds = new Set();
+        const addPrintRow = asset => {
+          if (printedAssetIds.has(asset.id)) throw new Error(translateUiText('Aynı varlık iki kez yazdırılmak üzere geldi. Listeyi yenileyip tekrar deneyin.'));
+          printedAssetIds.add(asset.id);
+          const row = printDocument.createElement('tr');
+          const values = columnValues.map(getValue => getValue ? getValue(asset) : null);
+          for (const column of columns) {
+            const cell = printDocument.createElement('td');
+            if (column.index === 3) {
+              const urls = [...new Set([
+                asset.photoAttachmentId ? '/api/assets/' + encodeURIComponent(asset.id) + '/attachments/' + encodeURIComponent(asset.photoAttachmentId) + '/file' : null,
+                asset.modelPhotoUrl || null
+              ].filter(Boolean))];
+              if (urls.length) {
+                const image = printDocument.createElement('img');
+                image.alt = asset.name + ' envanter görseli';
+                image.loading = 'eager';
+                image.decoding = 'async';
+                const loadNextImage = () => {
+                  const url = urls.shift();
+                  if (url) image.src = new URL(url, window.location.origin).href;
+                  else image.alt = translateUiText('Görsel yok');
+                };
+                image.addEventListener('error', loadNextImage);
+                loadNextImage();
+                cell.append(image);
+              } else {
+                cell.textContent = '—';
+              }
+            } else {
+              const value = values[column.index];
+              cell.textContent = value == null || value === '' ? '—' : String(value);
+            }
+            row.append(cell);
+          }
+          printBody.append(row);
+          rendered++;
+        };
+        for (let page = 1; page <= pageCount; page++) {
+          if (popup.closed) return;
+          let result = firstPage;
+          if (page > 1) {
+            const pageFilters = new URLSearchParams(filters);
+            pageFilters.set('page', String(page));
+            result = await api('/api/assets?' + pageFilters.toString());
+          }
+          const items = Array.isArray(result.items) ? result.items : [];
+          const expected = Math.min(pageSize, Math.max(0, total - ((page - 1) * pageSize)));
+          if (Number(result.total) !== total || Number(result.page) !== page || Number(result.pageSize) !== pageSize || items.length !== expected) {
+            throw new Error(translateUiText('Varlık sayısı yazdırma sırasında değişti. Listeyi yenileyip tekrar deneyin.'));
+          }
+          items.forEach(addPrintRow);
+          printStatus.textContent = translateUiText('Yazdırılan sayfa {page} / {pages} · {count} / {total} varlık')
+            .replaceAll('{page}', fmt.format(page))
+            .replaceAll('{pages}', fmt.format(pageCount))
+            .replaceAll('{count}', fmt.format(rendered))
+            .replaceAll('{total}', fmt.format(total));
+        }
+        if (rendered !== total) throw new Error(translateUiText('Varlık sayısı yazdırma sırasında değişti. Listeyi yenileyip tekrar deneyin.'));
+        printStatus.textContent = translateUiText('Yazdırmaya hazır: {count} varlık').replace('{count}', fmt.format(rendered));
+        printStatus.className = 'print-status ready';
+        printTable.hidden = false;
+        if (printDocument.fonts?.ready) await printDocument.fonts.ready;
+        await Promise.all(Array.from(printDocument.images, image => new Promise(resolve => {
+          if (image.complete) { resolve(); return; }
+          const finish = () => resolve();
+          image.addEventListener('load', finish, { once: true });
+          image.addEventListener('error', finish, { once: true });
+          setTimeout(finish, 5000);
+        })));
+        if (!popup.closed) { popup.focus(); popup.print(); }
+      } catch (error) {
+        if (printStatus && popup && !popup.closed) {
+          printStatus.textContent = error.message || translateUiText('Varlıklar yazdırma için yüklenemedi.');
+          printStatus.className = 'print-status error';
+        }
+        throw error;
+      } finally {
+        button.disabled = false;
+        button.removeAttribute('aria-busy');
+      }
+    }
+async function loadDashboard(query = $('#globalSearch').value.trim(), requestedPage = assetPage) {
+      if (assetCustomFieldDefinitions === null) await loadAssetCustomFieldDefinitions();
+      const requestId = ++assetDashboardRequestId;
+      assetPage = Math.max(1, requestedPage);
+      const inventoryMode = $('#overview').classList.contains('inventory-mode');
+      const currentPageSize = inventoryMode ? assetPageSize : pageSize;
+      const { filters, customFieldFilter } = buildAssetListFilters(query, assetPage, currentPageSize);
+      if (customFieldFilter.error) { notify(customFieldFilter.error); return; }
       let results;
       try {
         results = await Promise.all([
@@ -7852,7 +8015,7 @@
     $('#savedAssetSearch').addEventListener('change', event => { const id = event.target.value; if (id) applySavedAssetSearch(id); $('#deleteAssetSearch').disabled = !id; });
     $('#deleteAssetSearch').addEventListener('click', deleteSelectedAssetSearch);
     $('#assetPageSize').addEventListener('change', event => { assetPageSize = Math.min(200, Math.max(1, Number.parseInt(event.target.value, 10) || 50)); loadDashboard($('#globalSearch').value.trim(), 1).catch(error => notify(error.message)); });
-    $('#assetPrintButton').addEventListener('click', () => window.print());
+    $('#assetPrintButton').addEventListener('click', () => printAllFilteredAssets().catch(error => notify(translateUiText(error.message))));
     $('#assetFullscreenButton').addEventListener('click', async () => {
       const panel = $('#assetListPanel');
       try { if (document.fullscreenElement === panel) await document.exitFullscreen(); else await panel.requestFullscreen(); }
