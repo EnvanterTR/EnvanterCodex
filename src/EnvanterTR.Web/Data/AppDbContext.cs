@@ -170,6 +170,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetBrand>().Property(x => x.SupportEmail).HasMaxLength(254);
         modelBuilder.Entity<AssetBrand>().Property(x => x.LogoFileName).HasMaxLength(40);
         modelBuilder.Entity<AssetModel>().Property(x => x.Name).HasMaxLength(120).IsRequired();
+        modelBuilder.Entity<AssetModel>().Property(x => x.ModelNumber).HasMaxLength(120);
         modelBuilder.Entity<AssetModel>().Property(x => x.PhotoFileName).HasMaxLength(40);
         modelBuilder.Entity<AssetModel>().Property(x => x.DepreciationMinimum).HasPrecision(18, 2);
         modelBuilder.Entity<AssetModel>().Property(x => x.DepreciationMinimumType).HasMaxLength(12).IsRequired();
@@ -191,6 +192,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetCustomFieldDefinition>().ToTable("AssetCustomFieldDefinitions", table =>
             table.HasCheckConstraint("CK_AssetCustomFieldDefinitions_Type", "\"FieldType\" IN ('text', 'number', 'date', 'checkbox', 'select')"));
         modelBuilder.Entity<Asset>().Property(x => x.CustomFieldsJson).HasMaxLength(16000);
+        modelBuilder.Entity<Asset>().Property(x => x.Notes).HasMaxLength(4000);
         modelBuilder.Entity<EnvanterUser>().Property(x => x.DisplayName).HasMaxLength(160).IsRequired();
         modelBuilder.Entity<CompanyMembership>().HasKey(x => new { x.CompanyId, x.UserId });
         modelBuilder.Entity<CompanyMembership>().Property(x => x.RoleKey).HasMaxLength(40).IsRequired();
@@ -813,6 +815,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.ExpectedReturnOn });
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.Location });
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.LocationCatalogId });
+        modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.DefaultLocationCatalogId });
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.ParentAssetId });
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.PurchaseOrderId });
         modelBuilder.Entity<Asset>().HasOne<AssetPurchaseOrder>().WithMany()
@@ -820,6 +823,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<Asset>().HasOne<CompanyLocation>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.LocationCatalogId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<Asset>().HasOne<CompanyLocation>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.DefaultLocationCatalogId })
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<AssetReservation>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);

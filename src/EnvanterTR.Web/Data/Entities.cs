@@ -197,6 +197,7 @@ public sealed class AssetModel
     public Guid? BrandId { get; set; }
     public Guid? CategoryId { get; set; }
     public required string Name { get; set; }
+    public string? ModelNumber { get; set; }
     public string? PhotoFileName { get; set; }
     public int? DepreciationMonths { get; set; }
     public decimal? DepreciationMinimum { get; set; }
@@ -246,6 +247,7 @@ public sealed class Asset
     public string? SerialNumber { get; set; }
     public string? Location { get; set; }
     public Guid? LocationCatalogId { get; set; }
+    public Guid? DefaultLocationCatalogId { get; set; }
     public Guid? AssignedEmployeeId { get; set; }
     public DateOnly? ExpectedReturnOn { get; set; }
     public Guid? PurchaseOrderId { get; set; }
@@ -258,6 +260,7 @@ public sealed class Asset
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
     public bool IsRequestable { get; set; }
     public bool IsByod { get; set; }
+    public string? Notes { get; set; }
     public string? CustomFieldsJson { get; set; }
     public DateTimeOffset? DeletedAt { get; set; }
     public Guid? DeletedByUserId { get; set; }

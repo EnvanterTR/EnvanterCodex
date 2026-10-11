@@ -312,23 +312,36 @@ public static class DataExportEndpoints
         var hasParentColumn = HeaderStartsWith(legacyWithParent.Append("BYOD").ToArray()) || HeaderStartsWith(warrantyWithParent.Append("BYOD").ToArray());
         var hasWarrantyColumn = HeaderStartsWith(warrantyHeader.Append("BYOD").ToArray()) || HeaderStartsWith(warrantyWithParent.Append("BYOD").ToArray());
         var parentBaseCount = hasParentColumn ? (hasWarrantyColumn ? warrantyWithParent.Length : legacyWithParent.Length) : (hasWarrantyColumn ? warrantyHeader.Length : legacyHeader.Length);
-        var columnCount = parentBaseCount + 1;
+        var dataColumnCount = parentBaseCount + 1;
         var parentIndex = hasParentColumn ? parentBaseCount - 1 : -1;
-        var byodIndex = columnCount - 1;
+        var byodIndex = dataColumnCount - 1;
         var costIndex = hasWarrantyColumn ? 12 : 11;
         var currencyIndex = hasWarrantyColumn ? 13 : 12;
-        var expectedBaseHeader = (hasParentColumn ? (hasWarrantyColumn ? warrantyWithParent : legacyWithParent) : (hasWarrantyColumn ? warrantyHeader : legacyHeader)).Append("BYOD").ToArray();
+        var hasModelNumberColumn = rows[0].Contains("Model Numarası", StringComparer.OrdinalIgnoreCase);
+        var hasDefaultLocationColumn = rows[0].Contains("Varsayılan Konum", StringComparer.OrdinalIgnoreCase);
+        var hasSourceCompanyColumn = rows[0].Contains("Kaynak Şirket", StringComparer.OrdinalIgnoreCase);
+        var modelNumberIndex = hasModelNumberColumn ? dataColumnCount++ : -1;
+        var defaultLocationIndex = hasDefaultLocationColumn ? dataColumnCount++ : -1;
+        var sourceCompanyIndex = hasSourceCompanyColumn ? dataColumnCount++ : -1;
+        var hasNotesColumn = rows[0].Contains("Notlar", StringComparer.OrdinalIgnoreCase);
+        var notesIndex = hasNotesColumn ? dataColumnCount++ : -1;
+        var expectedBaseHeader = (hasParentColumn ? (hasWarrantyColumn ? warrantyWithParent : legacyWithParent) : (hasWarrantyColumn ? warrantyHeader : legacyHeader)).Append("BYOD").ToList();
+        if (hasModelNumberColumn) expectedBaseHeader.Add("Model Numarası");
+        if (hasDefaultLocationColumn) expectedBaseHeader.Add("Varsayılan Konum");
+        if (hasSourceCompanyColumn) expectedBaseHeader.Add("Kaynak Şirket");
+        if (hasNotesColumn) expectedBaseHeader.Add("Notlar");
         var expectedHeader = expectedBaseHeader.Concat(customFields.Select(field => $"Özel alan: {field.Key}")).ToArray();
         if (rows.Count is < 2 || rows.Count > CsvImportMaxRows + 1 || !rows[0].SequenceEqual(expectedHeader, StringComparer.OrdinalIgnoreCase))
             return Results.UnprocessableEntity(new { message = $"EnvanterTR başlıklarıyla {CsvImportMaxRows:N0} veya daha az satır içeren bir CSV yükleyin." });
 
+        var targetCompanyName = await db.Companies.AsNoTracking().Where(x => x.Id == companyId).Select(x => x.Name).SingleAsync(cancellationToken);
         var errors = new List<string>();
         var tags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var customFieldsByRow = new Dictionary<int, string>();
         foreach (var (row, index) in rows.Skip(1).Select((row, index) => (row, index)))
         {
             if (row.Count != expectedHeader.Length) { AddError(errors, $"{index + 2}. satırda {expectedHeader.Length} sütun olmalıdır."); continue; }
-            var submittedCustomFields = customFields.Select((field, fieldIndex) => (field.Key, Value: row[columnCount + fieldIndex].Trim()))
+            var submittedCustomFields = customFields.Select((field, fieldIndex) => (field.Key, Value: row[dataColumnCount + fieldIndex].Trim()))
                 .ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal);
             var normalizedCustomFields = AssetCustomFieldEndpoints.NormalizeValues(customFields, submittedCustomFields);
             if (normalizedCustomFields.Error is not null) AddError(errors, $"{index + 2}. satır: {normalizedCustomFields.Error}");
@@ -338,10 +351,18 @@ public static class DataExportEndpoints
             if (string.IsNullOrWhiteSpace(row[1].Trim()) || row[1].Trim().Length > 240) AddError(errors, $"{index + 2}. satırda varlık adı boş veya çok uzun.");
             if (row[2] is not (AssetStatuses.Available or AssetStatuses.Deployed or AssetStatuses.Pending or AssetStatuses.Maintenance or AssetStatuses.Unusable or AssetStatuses.Archived)) AddError(errors, $"{index + 2}. satırdaki durum desteklenmiyor.");
             if ((row[2] == AssetStatuses.Deployed) != !string.IsNullOrWhiteSpace(row[8])) AddError(errors, $"{index + 2}. satırda durum ve personel numarası eşleşmiyor.");
+            if (string.IsNullOrWhiteSpace(row[8]) && !string.IsNullOrWhiteSpace(row[9])) AddError(errors, $"{index + 2}. satırdaki zimmetli çalışan eşleştirilemedi. Personel numarasıyla eşleyin veya bu sütunu yoksayın.");
             if (string.IsNullOrWhiteSpace(row[3]) || row[3].Length > 120 || row[4].Length > 120 || row[5].Length > 120 || row[6].Length > 160 || row[7].Length > 160 || row[8].Length > 80 || row[9].Length > 200 || row[currencyIndex].Length != 3 || !row[currencyIndex].All(char.IsAsciiLetter))
                 AddError(errors, $"{index + 2}. satırda alan uzunluğu, kategori veya para birimi geçersiz.");
             if (hasParentColumn && row[parentIndex].Length > 80) AddError(errors, $"{index + 2}. satırdaki üst varlık etiketi 80 karakteri aşamaz.");
             if (row[byodIndex] is not ("true" or "false")) AddError(errors, $"{index + 2}. satırdaki BYOD alanı true/false olmalıdır.");
+            if (hasModelNumberColumn && row[modelNumberIndex].Length > 120) AddError(errors, $"{index + 2}. satırdaki model numarası 120 karakteri aşamaz.");
+            if (hasDefaultLocationColumn && row[defaultLocationIndex].Length > 160) AddError(errors, $"{index + 2}. satırdaki varsayılan konum 160 karakteri aşamaz.");
+            if (hasSourceCompanyColumn && row[sourceCompanyIndex].Length > 200) AddError(errors, $"{index + 2}. satırdaki kaynak şirket adı 200 karakteri aşamaz.");
+            if (hasNotesColumn && row[notesIndex].Length > 4000) AddError(errors, $"{index + 2}. satırdaki varlık notu 4.000 karakteri aşamaz.");
+            if (hasSourceCompanyColumn && !string.IsNullOrWhiteSpace(row[sourceCompanyIndex]) &&
+                !string.Equals(row[sourceCompanyIndex].Trim(), targetCompanyName, StringComparison.OrdinalIgnoreCase))
+                AddError(errors, $"{index + 2}. satır başka bir şirkete ait. Dosyadaki şirket, oturumdaki şirketle aynı olmalıdır.");
             if (!string.IsNullOrWhiteSpace(row[10]) && !DateOnly.TryParseExact(row[10], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
                 AddError(errors, $"{index + 2}. satırdaki alış tarihi yyyy-AA-gg biçiminde olmalı.");
             if (hasWarrantyColumn && !string.IsNullOrWhiteSpace(row[11]) && !DateOnly.TryParseExact(row[11], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
@@ -380,9 +401,19 @@ public static class DataExportEndpoints
             }
             if (!string.IsNullOrWhiteSpace(row[5]))
             {
-                if (brandId is null || !modelLookup.TryGetValue((brandId, row[5].Trim()), out var modelMatches) || modelMatches.Length != 1)
+                var modelNumber = hasModelNumberColumn ? CleanCsv(row[modelNumberIndex]) : null;
+                if (brandId is null || !modelLookup.TryGetValue((brandId, row[5].Trim()), out var modelMatches) || modelMatches.Length != 1 ||
+                    (modelNumber is not null && !string.Equals(modelMatches[0].ModelNumber?.Trim(), modelNumber, StringComparison.OrdinalIgnoreCase)))
                     AddError(errors, $"{index + 2}. satırdaki model seçilen markayla mevcut şirkette bulunamadı.");
                 else modelId = modelMatches[0].Id;
+            }
+            else if (hasModelNumberColumn && !string.IsNullOrWhiteSpace(row[modelNumberIndex]))
+            {
+                var modelNumber = row[modelNumberIndex].Trim();
+                var numberMatches = brandId is null ? [] : models.Where(model => model.BrandId == brandId &&
+                    string.Equals(model.ModelNumber?.Trim(), modelNumber, StringComparison.OrdinalIgnoreCase)).ToArray();
+                if (numberMatches.Length != 1) AddError(errors, $"{index + 2}. satırdaki model numarası seçilen markayla eşleşmiyor.");
+                else modelId = numberMatches[0].Id;
             }
             Guid? employeeId = null;
             if (!string.IsNullOrWhiteSpace(row[8]))
@@ -405,12 +436,19 @@ public static class DataExportEndpoints
                 var location = CleanCsv(row[7]) ?? defaultAssetLocation;
                 var locationCatalogId = location is not null && locationCatalogPaths.TryGetValue(location, out var catalogLocationId)
                     ? catalogLocationId : (Guid?)null;
+                var defaultLocation = hasDefaultLocationColumn ? CleanCsv(row[defaultLocationIndex]) : null;
+                var defaultLocationCatalogId = defaultLocation is null ? (Guid?)null :
+                    locationCatalogPaths.TryGetValue(defaultLocation, out var defaultCatalogId) ? defaultCatalogId : null;
+                if (defaultLocation is not null && defaultLocationCatalogId is null)
+                    AddError(errors, $"{index + 2}. satırdaki varsayılan konum mevcut şirkette bulunamadı.");
                 importRows.Add((new Asset
                 {
                     CompanyId = companyId, AssetTag = row[0].Trim().ToUpperInvariant(), Name = row[1].Trim(), Status = row[2],
                     CategoryId = categoryMatches[0].Id, BrandId = brandId, ModelId = modelId, SerialNumber = CleanCsv(row[6]),
-                    Location = location, LocationCatalogId = locationCatalogId, AssignedEmployeeId = employeeId, PurchaseDate = purchaseDate, WarrantyExpiresAt = warrantyExpiresAt,
+                    Location = location, LocationCatalogId = locationCatalogId, DefaultLocationCatalogId = defaultLocationCatalogId,
+                    AssignedEmployeeId = employeeId, PurchaseDate = purchaseDate, WarrantyExpiresAt = warrantyExpiresAt,
                     PurchaseCost = purchaseCost, Currency = row[currencyIndex].Trim().ToUpperInvariant(), IsByod = row[byodIndex] == "true",
+                    Notes = hasNotesColumn ? CleanCsv(row[notesIndex]) : null,
                     CustomFieldsJson = customFieldsByRow.GetValueOrDefault(index, "{}")
                 }, employeeId, parentTag));
             }
@@ -588,15 +626,25 @@ public static class DataExportEndpoints
         var hasParentColumn = records[0].Take(legacyWithParent.Length + 1).SequenceEqual(legacyWithParent.Append("BYOD"), StringComparer.OrdinalIgnoreCase) || records[0].Take(warrantyWithParent.Length + 1).SequenceEqual(warrantyWithParent.Append("BYOD"), StringComparer.OrdinalIgnoreCase);
         var hasWarrantyColumn = records[0].Take(warrantyHeader.Length + 1).SequenceEqual(warrantyHeader.Append("BYOD"), StringComparer.OrdinalIgnoreCase) || records[0].Take(warrantyWithParent.Length + 1).SequenceEqual(warrantyWithParent.Append("BYOD"), StringComparer.OrdinalIgnoreCase);
         var baseColumnCount = (hasParentColumn ? (hasWarrantyColumn ? warrantyWithParent.Length : legacyWithParent.Length) : (hasWarrantyColumn ? warrantyHeader.Length : legacyHeader.Length)) + 1;
-        var columnCount = baseColumnCount + customFields.Count;
         var parentIndex = hasParentColumn ? baseColumnCount - 2 : -1;
         var byodIndex = baseColumnCount - 1;
         var costIndex = hasWarrantyColumn ? 12 : 11;
         var currencyIndex = hasWarrantyColumn ? 13 : 12;
+        var hasModelNumberColumn = records[0].Skip(baseColumnCount).FirstOrDefault() == "Model Numarası";
+        var modelNumberIndex = hasModelNumberColumn ? baseColumnCount++ : -1;
+        var hasDefaultLocationColumn = records[0].Skip(baseColumnCount).FirstOrDefault() == "Varsayılan Konum";
+        var defaultLocationIndex = hasDefaultLocationColumn ? baseColumnCount++ : -1;
+        var hasSourceCompanyColumn = records[0].Skip(baseColumnCount).FirstOrDefault() == "Kaynak Şirket";
+        var sourceCompanyIndex = hasSourceCompanyColumn ? baseColumnCount++ : -1;
+        var hasNotesColumn = records[0].Skip(baseColumnCount).FirstOrDefault() == "Notlar";
+        var notesIndex = hasNotesColumn ? baseColumnCount++ : -1;
+        var columnCount = baseColumnCount + customFields.Count;
         var expectedHeader = records[0].Take(baseColumnCount).Concat(customFields.Select(field => $"Özel alan: {field.Key}")).ToArray();
         if (!records[0].SequenceEqual(expectedHeader, StringComparer.OrdinalIgnoreCase))
             return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "CSV sütun başlıkları EnvanterTR varlık dışa aktarımıyla eşleşmiyor." } });
 
+        var targetName = await db.Companies.AsNoTracking().Where(c => c.Id == companyId).Select(c => c.Name).SingleAsync(cancellationToken);
+        var locationCatalogPaths = await AssetEndpoints.GetActiveLocationPathMapAsync(db, companyId, cancellationToken);
         var errors = new List<string>();
         var tags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (row, index) in records.Skip(1).Select((row, index) => (row, index)))
@@ -608,9 +656,20 @@ public static class DataExportEndpoints
             if (string.IsNullOrWhiteSpace(row[1].Trim()) || row[1].Trim().Length > 240) AddError(errors, $"{index + 2}. satırda varlık adı boş veya 240 karakterden uzun.");
             if (row[2] is not (AssetStatuses.Available or AssetStatuses.Deployed or AssetStatuses.Pending or AssetStatuses.Maintenance or AssetStatuses.Unusable or AssetStatuses.Archived)) AddError(errors, $"{index + 2}. satırdaki durum desteklenmiyor.");
             if ((row[2] == AssetStatuses.Deployed) != !string.IsNullOrWhiteSpace(row[8])) AddError(errors, $"{index + 2}. satırda atanmış durumuyla personel bilgisi eşleşmiyor.");
+            if (string.IsNullOrWhiteSpace(row[8]) && !string.IsNullOrWhiteSpace(row[9])) AddError(errors, $"{index + 2}. satırdaki zimmetli çalışan eşleştirilemedi. Personel numarasıyla eşleyin veya bu sütunu yoksayın.");
             if (row[3].Length > 120 || row[4].Length > 120 || row[5].Length > 120 || row[6].Length > 160 || row[7].Length > 160 || row[8].Length > 80 || row[9].Length > 200 || row[currencyIndex].Length != 3 || !row[currencyIndex].All(char.IsAsciiLetter))
                 AddError(errors, $"{index + 2}. satırda alan uzunluğu veya para birimi biçimi geçersiz.");
             if (hasParentColumn && row[parentIndex].Length > 80) AddError(errors, $"{index + 2}. satırdaki üst varlık etiketi 80 karakteri aşamaz.");
+            if (hasModelNumberColumn && row[modelNumberIndex].Length > 120) AddError(errors, $"{index + 2}. satırdaki model numarası 120 karakteri aşamaz.");
+            if (hasDefaultLocationColumn && row[defaultLocationIndex].Length > 160) AddError(errors, $"{index + 2}. satırdaki varsayılan konum 160 karakteri aşamaz.");
+            if (hasSourceCompanyColumn && row[sourceCompanyIndex].Length > 200) AddError(errors, $"{index + 2}. satırdaki kaynak şirket adı 200 karakteri aşamaz.");
+            if (hasNotesColumn && row[notesIndex].Length > 4000) AddError(errors, $"{index + 2}. satırdaki varlık notu 4.000 karakteri aşamaz.");
+            if (hasSourceCompanyColumn && !string.IsNullOrWhiteSpace(row[sourceCompanyIndex]) &&
+                !string.Equals(row[sourceCompanyIndex].Trim(), targetName, StringComparison.OrdinalIgnoreCase))
+                AddError(errors, $"{index + 2}. satır başka bir şirkete ait. Dosyadaki şirket, oturumdaki şirketle aynı olmalıdır.");
+            if (hasDefaultLocationColumn && !string.IsNullOrWhiteSpace(row[defaultLocationIndex]) &&
+                !locationCatalogPaths.ContainsKey(row[defaultLocationIndex].Trim()))
+                AddError(errors, $"{index + 2}. satırdaki varsayılan konum bu şirkette bulunamadı.");
             if (!string.IsNullOrWhiteSpace(row[10]) && !DateOnly.TryParseExact(row[10], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
                 AddError(errors, $"{index + 2}. satırdaki alış tarihi yyyy-AA-gg biçiminde olmalı.");
             if (hasWarrantyColumn && !string.IsNullOrWhiteSpace(row[11]) && !DateOnly.TryParseExact(row[11], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
@@ -634,8 +693,10 @@ public static class DataExportEndpoints
             .Select(item => item.Name).ToListAsync(cancellationToken);
         var matchedBrandIds = await db.AssetBrands.AsNoTracking().Where(item => item.CompanyId == companyId && brandNames.Contains(item.Name.ToUpper()))
             .Select(item => new { item.Id, item.Name }).ToListAsync(cancellationToken);
-        var matchedModels = await db.AssetModels.AsNoTracking().Where(item => item.CompanyId == companyId && modelNames.Contains(item.Name.ToUpper()))
-            .Select(item => new { item.BrandId, item.Name }).ToListAsync(cancellationToken);
+        var modelNumberValues = hasModelNumberColumn ? validRows.Select(item => item.row[modelNumberIndex].Trim()).Where(value => value.Length > 0).Select(value => value.ToUpperInvariant()).Distinct().ToArray() : [];
+        var matchedModels = await db.AssetModels.AsNoTracking().Where(item => item.CompanyId == companyId &&
+                (modelNames.Contains(item.Name.ToUpper()) || (hasModelNumberColumn && item.ModelNumber != null && modelNumberValues.Contains(item.ModelNumber.ToUpper())))
+            ).Select(item => new { item.BrandId, item.Name, item.ModelNumber }).ToListAsync(cancellationToken);
         var matchedEmployees = await db.Employees.AsNoTracking().Where(item => item.CompanyId == companyId && employeeNumbers.Contains(item.EmployeeNumber.ToUpper()))
             .Select(item => new { item.EmployeeNumber, item.DisplayName }).ToListAsync(cancellationToken);
         var uploadedAssets = validRows.GroupBy(item => item.row[0].Trim(), StringComparer.OrdinalIgnoreCase)
@@ -664,8 +725,19 @@ public static class DataExportEndpoints
                     AddError(errors, $"{index + 2}. satırdaki marka bu şirkette tekil olarak bulunamadı.");
                 else brandId = ids[0];
             }
-            if (!string.IsNullOrWhiteSpace(row[5]) && (brandId is null || !modelLookup.Contains((brandId, row[5].Trim()))))
-                AddError(errors, $"{index + 2}. satırdaki model seçilen marka altında bulunamadı.");
+            var submittedModelNumber = hasModelNumberColumn ? row[modelNumberIndex].Trim() : "";
+            if (!string.IsNullOrWhiteSpace(row[5]))
+            {
+                var modelMatches = matchedModels.Where(item => item.BrandId == brandId &&
+                    string.Equals(item.Name.Trim(), row[5].Trim(), StringComparison.OrdinalIgnoreCase)).ToArray();
+                if (brandId is null || !modelLookup.Contains((brandId, row[5].Trim())) ||
+                    (submittedModelNumber.Length > 0 && (modelMatches.Length != 1 ||
+                        !string.Equals(modelMatches[0].ModelNumber?.Trim(), submittedModelNumber, StringComparison.OrdinalIgnoreCase))))
+                    AddError(errors, $"{index + 2}. satırdaki model ve model numarası seçilen marka altında bulunamadı.");
+            }
+            else if (submittedModelNumber.Length > 0 && (brandId is null || matchedModels.Count(item => item.BrandId == brandId &&
+                         string.Equals(item.ModelNumber?.Trim(), submittedModelNumber, StringComparison.OrdinalIgnoreCase)) != 1))
+                AddError(errors, $"{index + 2}. satırdaki model numarası seçilen marka altında bulunamadı.");
             if (!string.IsNullOrWhiteSpace(row[8]) && (!employeeLookup.TryGetValue(row[8].Trim(), out var names) ||
                 names.Length != 1 || !string.Equals(names[0], row[9].Trim(), StringComparison.OrdinalIgnoreCase)))
                 AddError(errors, $"{index + 2}. satırdaki çalışan numarası ve adı bu şirkette eşleşmiyor.");
@@ -697,7 +769,6 @@ public static class DataExportEndpoints
         foreach (var batch in normalizedTags.Chunk(500))
             existingMatches += await db.Assets.AsNoTracking()
                 .CountAsync(asset => asset.CompanyId == companyId && batch.Contains(asset.AssetTag.ToUpper()), cancellationToken);
-        var targetName = await db.Companies.AsNoTracking().Where(c => c.Id == companyId).Select(c => c.Name).SingleAsync(cancellationToken);
         var defaultAssetLocation = await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, cancellationToken);
         var defaultLocationApplied = defaultAssetLocation is null ? 0 : validRows.Count(item => string.IsNullOrWhiteSpace(item.row[7]));
         return Results.Ok(new

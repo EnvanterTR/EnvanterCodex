@@ -2714,11 +2714,64 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var turkishAsset = await verifyDb.Assets.SingleAsync(x => x.CompanyId == _companyId && x.AssetTag == turkishTag);
         Assert.Equal(125.50m, turkishAsset.PurchaseCost);
 
-        var unsafeCsv = $"{headers},Asset Notes\r\n{row},must not be discarded";
+        var snipeTag = $"SNIPE-{_userId:N}".ToUpperInvariant();
+        var companyName = await verifyDb.Companies.Where(x => x.Id == _companyId).Select(x => x.Name).SingleAsync();
+        const string snipeNotes = "Rack 2, port 18; warranty checked";
+        var snipeCsv = "Asset Tag,Name,Status Label,Category,Manufacturer,Model,Model Number,Serial Number,Location,Default Location,Purchase Date,Purchase Cost,Company,Asset Notes\r\n" +
+            $"{snipeTag},Snipe imported device,Ready to Deploy,\"{categoryName}\",,,,SN-SNIPE-001,Lab,,10/8/2026,125.50,\"{companyName}\",\"{snipeNotes}\"";
+        using (var snipePreview = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import/preview.csv", "admin",
+                   new StringContent(snipeCsv, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, snipePreview.StatusCode);
+            var previewJson = await snipePreview.Content.ReadAsStringAsync();
+            using var payload = JsonDocument.Parse(previewJson);
+            Assert.True(payload.RootElement.GetProperty("isValid").GetBoolean(), previewJson);
+        }
+        using (var snipeImport = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import.csv", "admin",
+                   new StringContent(snipeCsv, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, snipeImport.StatusCode);
+        var snipeAsset = await verifyDb.Assets.SingleAsync(x => x.CompanyId == _companyId && x.AssetTag == snipeTag);
+        Assert.Equal("SN-SNIPE-001", snipeAsset.SerialNumber);
+        Assert.Equal("Lab", snipeAsset.Location);
+        Assert.Equal(snipeNotes, snipeAsset.Notes);
+        Assert.Equal(AssetStatuses.Available, snipeAsset.Status);
+        using (var export = await SendAsAdminAsync("/api/assets/export-all.csv?columns=tag,modelNumber,defaultLocation,sourceCompany,notes"))
+        {
+            Assert.Equal(HttpStatusCode.OK, export.StatusCode);
+            var csv = await export.Content.ReadAsStringAsync();
+            Assert.Contains("\"Etiket\";\"Model Numarası\";\"Varsayılan Konum\";\"Kaynak Şirket\";\"Notlar\"", csv, StringComparison.Ordinal);
+            Assert.Contains(companyName, csv, StringComparison.Ordinal);
+            Assert.Contains(snipeNotes, csv, StringComparison.Ordinal);
+        }
+
+        var crossCompanyCsv = snipeCsv.Replace($"\"{companyName}\"", "\"Başka şirket\"", StringComparison.Ordinal);
+        using (var crossCompanyPreview = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import/preview.csv", "admin",
+                   new StringContent(crossCompanyCsv, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, crossCompanyPreview.StatusCode);
+            using var payload = JsonDocument.Parse(await crossCompanyPreview.Content.ReadAsStringAsync());
+            Assert.False(payload.RootElement.GetProperty("isValid").GetBoolean());
+            Assert.Contains(payload.RootElement.GetProperty("errors").EnumerateArray(), error =>
+                error.GetString()!.Contains("başka bir şirkete", StringComparison.OrdinalIgnoreCase));
+        }
+
+        var unresolvedAssignmentCsv = "Asset Tag,Name,Category,Checked Out To\r\n" +
+            $"UNRESOLVED-{_userId:N},Assigned Snipe asset,\"{categoryName}\",Imported person";
+        using (var unresolvedAssignmentPreview = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import/preview.csv", "admin",
+                   new StringContent(unresolvedAssignmentCsv, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, unresolvedAssignmentPreview.StatusCode);
+            using var payload = JsonDocument.Parse(await unresolvedAssignmentPreview.Content.ReadAsStringAsync());
+            Assert.False(payload.RootElement.GetProperty("isValid").GetBoolean());
+            Assert.Contains(payload.RootElement.GetProperty("errors").EnumerateArray(), error =>
+                error.GetString()!.Contains("zimmetli çalışan eşleştirilemedi", StringComparison.OrdinalIgnoreCase));
+        }
+
+        var unsafeCsv = $"{headers},Unsupported private field\r\n{row},must not be discarded";
         using var unsafePreview = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import/preview.csv", "admin",
             new StringContent(unsafeCsv, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie);
         Assert.Equal(HttpStatusCode.UnprocessableEntity, unsafePreview.StatusCode);
-        Assert.Contains("Asset Notes", await unsafePreview.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Contains("Unsupported private field", await unsafePreview.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
     [Fact]

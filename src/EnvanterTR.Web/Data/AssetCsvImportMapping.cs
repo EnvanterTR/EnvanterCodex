@@ -6,32 +6,37 @@ internal static class AssetCsvImportMapping
     [
         ["Etiket", "Asset Tag", "asset_tag", "Tag"],
         ["Ad", "Name", "Item Name", "Asset Name"],
-        ["Durum", "Status", "Asset Status"],
+        ["Durum", "Status", "Asset Status", "Status Label"],
         ["Kategori", "Category", "Category Name", "Asset Category"],
         ["Marka", "Manufacturer", "Manufacturer Name", "Brand", "Asset Manufacturer"],
         ["Model", "Model Name", "Asset Model"],
         ["Seri No", "Serial Number", "Serial No", "Serial", "Asset Serial", "Asset Serial Number"],
         ["Konum", "Location", "Asset Location"],
-        ["Personel No", "Employee Number", "Employee No", "Employee #"],
-        ["Çalışan", "Employee Name", "Full Name"],
+        ["Personel No", "Employee Number", "Employee No", "Employee #", "Checked Out To: Username", "Checked Out To: Email"],
+        ["Çalışan", "Employee Name", "Full Name", "Checkout to", "Checked Out To", "Assigned To"],
         ["Alış Tarihi", "Purchase Date", "Asset Purchase Date"],
         ["Garanti Bitiş Tarihi", "Warranty Expiration", "Warranty Expiration Date", "Asset Warranty"],
         ["Alış Bedeli", "Purchase Cost", "Asset Purchase Cost"],
         ["Para Birimi", "Currency"],
         ["Üst Varlık Etiketi", "Parent Asset Tag", "Parent Tag"],
-        ["BYOD", "Kişisel Cihaz", "Personal Device", "Bring Your Own Device"]
+        ["BYOD", "Kişisel Cihaz", "Personal Device", "Bring Your Own Device"],
+        ["Model No", "Model No.", "Model Number", "Manufacturer Part Number"],
+        ["Varsayılan Konum", "Default Location", "Default Location Name", "RTD Location"],
+        ["Şirket", "Company", "Company Name"],
+        ["Notlar", "Notes", "Asset Notes", "Asset Note"]
     ];
 
     private static readonly string[] CanonicalBaseHeaders =
         ["Etiket", "Ad", "Durum", "Kategori", "Marka", "Model", "Seri No", "Konum", "Personel No", "Çalışan", "Alış Tarihi"];
 
     private static readonly string[] TargetKeys =
-        ["assetTag", "name", "status", "category", "brand", "model", "serialNumber", "location", "employeeNumber", "employeeName", "purchaseDate", "warrantyExpiration", "purchaseCost", "currency", "parentAssetTag", "isByod"];
+        ["assetTag", "name", "status", "category", "brand", "model", "serialNumber", "location", "employeeNumber", "employeeName", "purchaseDate", "warrantyExpiration", "purchaseCost", "currency", "parentAssetTag", "isByod", "modelNumber", "defaultLocation", "sourceCompany", "notes"];
 
     public static object[] MappingTargets(IReadOnlyCollection<AssetCustomFieldDefinition>? customFields) =>
         TargetKeys.Select((key, index) => new { key, label = index < CanonicalBaseHeaders.Length ? CanonicalBaseHeaders[index] : index switch
         {
-            11 => "Garanti Bitiş Tarihi", 12 => "Alış Bedeli", 13 => "Para Birimi", 14 => "Üst Varlık Etiketi", _ => "BYOD"
+            11 => "Garanti Bitiş Tarihi", 12 => "Alış Bedeli", 13 => "Para Birimi", 14 => "Üst Varlık Etiketi", 15 => "BYOD",
+            16 => "Model Numarası", 17 => "Varsayılan Konum", 18 => "Kaynak Şirket", _ => "Notlar"
         } })
         .Concat((customFields ?? []).OrderBy(field => field.SortOrder).ThenBy(field => field.Name, StringComparer.OrdinalIgnoreCase)
             .Select(field => new { key = $"custom:{field.Key}", label = $"Özel alan: {field.Name}" }))
@@ -126,6 +131,17 @@ internal static class AssetCsvImportMapping
             }
         }
 
+        var employeeFirstNameIndex = Array.FindIndex(sourceHeader.ToArray(), header =>
+            NormalizeHeader(header) is "checkedouttofirstname" or "firstname");
+        var employeeLastNameIndex = Array.FindIndex(sourceHeader.ToArray(), header =>
+            NormalizeHeader(header) is "checkedouttolastname" or "lastname");
+        var combineEmployeeName = sourceIndexes[9] < 0 && employeeFirstNameIndex >= 0 && employeeLastNameIndex >= 0;
+        if (combineEmployeeName)
+        {
+            matchedIndexes.Add(employeeFirstNameIndex);
+            matchedIndexes.Add(employeeLastNameIndex);
+        }
+
         foreach (var (sourceName, targetKey) in explicitMappings ?? new Dictionary<string, string>())
         {
             var candidates = sourceHeader.Select((header, index) => (header, index))
@@ -188,12 +204,20 @@ internal static class AssetCsvImportMapping
         var hasWarranty = sourceIndexes[11] >= 0;
         var hasParent = sourceIndexes[14] >= 0;
         var hasByod = sourceIndexes[15] >= 0;
+        var hasModelNumber = sourceIndexes[16] >= 0;
+        var hasDefaultLocation = sourceIndexes[17] >= 0;
+        var hasSourceCompany = sourceIndexes[18] >= 0;
+        var hasNotes = sourceIndexes[19] >= 0;
         var targetHeaders = new List<string>(CanonicalBaseHeaders);
         if (hasWarranty) targetHeaders.Add("Garanti Bitiş Tarihi");
         targetHeaders.Add("Alış Bedeli");
         targetHeaders.Add("Para Birimi");
         if (hasParent) targetHeaders.Add("Üst Varlık Etiketi");
         targetHeaders.Add("BYOD");
+        if (hasModelNumber) targetHeaders.Add("Model Numarası");
+        if (hasDefaultLocation) targetHeaders.Add("Varsayılan Konum");
+        if (hasSourceCompany) targetHeaders.Add("Kaynak Şirket");
+        if (hasNotes) targetHeaders.Add("Notlar");
         foreach (var field in (customFields ?? []).OrderBy(field => field.SortOrder).ThenBy(field => field.Name, StringComparer.OrdinalIgnoreCase))
             targetHeaders.Add($"Özel alan: {field.Key}");
 
@@ -220,6 +244,9 @@ internal static class AssetCsvImportMapping
             var mapped = new List<string>(targetHeaders.Count);
             for (var i = 0; i < CanonicalBaseHeaders.Length; i++)
                 mapped.Add(Read(row, sourceIndexes[i]));
+            if (combineEmployeeName)
+                mapped[9] = string.Join(' ', new[] { Read(row, employeeFirstNameIndex), Read(row, employeeLastNameIndex) }
+                    .Where(value => value.Length > 0));
             if (sourceIndexes[2] < 0) mapped[2] = AssetStatuses.Available;
             else mapped[2] = NormalizeStatus(mapped[2]);
             mapped[10] = NormalizeDate(mapped[10]);
@@ -228,6 +255,10 @@ internal static class AssetCsvImportMapping
             mapped.Add(string.IsNullOrWhiteSpace(Read(row, sourceIndexes[13])) ? "TRY" : Read(row, sourceIndexes[13]));
             if (hasParent) mapped.Add(Read(row, sourceIndexes[14]));
             mapped.Add(hasByod ? NormalizeBoolean(Read(row, sourceIndexes[15])) : "false");
+            if (hasModelNumber) mapped.Add(Read(row, sourceIndexes[16]));
+            if (hasDefaultLocation) mapped.Add(Read(row, sourceIndexes[17]));
+            if (hasSourceCompany) mapped.Add(Read(row, sourceIndexes[18]));
+            if (hasNotes) mapped.Add(Read(row, sourceIndexes[19]));
             foreach (var field in (customFields ?? []).OrderBy(field => field.SortOrder).ThenBy(field => field.Name, StringComparer.OrdinalIgnoreCase))
                 mapped.Add(customIndexes.TryGetValue(field.Key, out var customIndex) ? Read(row, customIndex) : "");
             result.Add(mapped);

@@ -138,6 +138,15 @@ public static class DepreciationReportEndpoints
             Math.Round(source.PurchaseCost - book, 2, MidpointRounding.AwayFromZero));
     }
 
+    internal static decimal? CalculateListValue(DateOnly? purchaseDate, decimal? purchaseCost, int? months,
+        decimal? minimum, string? minimumType, string? method, DateOnly asOf)
+    {
+        if (purchaseDate is null || purchaseCost is null || months is null || months <= 0) return null;
+        var source = new SourceRow(Guid.Empty, "", "", null, "", null, null, "", purchaseDate.Value,
+            purchaseCost.Value, "TRY", months.Value, minimum, minimumType ?? "amount", method ?? "linear");
+        return Calculate(source, asOf).BookValue;
+    }
+
     private static int MonthsBetween(DateOnly start, DateOnly end)
     {
         if (end < start) return 0;

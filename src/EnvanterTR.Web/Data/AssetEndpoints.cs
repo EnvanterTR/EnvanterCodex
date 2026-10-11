@@ -107,6 +107,7 @@ public static class AssetEndpoints
                     (x.SerialNumber != null && x.SerialNumber.Contains(term)) ||
                     (x.CustomFieldsJson != null && (x.CustomFieldsJson.Contains(term) || x.CustomFieldsJson.Contains(escapedCustomFieldTerm))) ||
                     (x.Location != null && x.Location.Contains(term)) ||
+                    db.AssetModels.Any(m => m.CompanyId == companyId && m.Id == x.ModelId && m.ModelNumber != null && m.ModelNumber.Contains(term)) ||
                     db.Employees.Any(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId &&
                         (e.DisplayName.Contains(term) || e.EmployeeNumber.Contains(term))) ||
                     db.AssetCategories.Any(c => c.CompanyId == companyId && c.Id == x.CategoryId && c.Name.Contains(term)) ||
@@ -117,8 +118,9 @@ public static class AssetEndpoints
             var ordered = OrderAssets(query, db, companyId, sortBy, sortDirection);
             if (ordered is null) return Results.ValidationProblem(new Dictionary<string, string[]> { ["sortBy"] = ["Sıralama alanı veya yönü desteklenmiyor."] });
             var total = await query.CountAsync(cancellationToken);
-            var items = await ordered.Skip((page - 1) * pageSize).Take(pageSize)
-                .Select(x => new AssetListItem(x.Id, x.AssetTag, x.Name, x.Status, x.SerialNumber,
+            var asOf = DateOnly.FromDateTime(DateTime.UtcNow);
+            var rows = await ordered.Skip((page - 1) * pageSize).Take(pageSize)
+                .Select(x => new { Item = new AssetListItem(x.Id, x.AssetTag, x.Name, x.Status, x.SerialNumber,
                     x.Location, x.CategoryId,
                     db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault() ?? "",
                     x.BrandId,
@@ -131,7 +133,20 @@ public static class AssetEndpoints
                         .OrderByDescending(photo => photo.CreatedAt).Select(photo => (Guid?)photo.Id).FirstOrDefault(),
                     x.LocationCatalogId, x.IsByod, x.ExpectedReturnOn,
                     db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId && m.PhotoFileName != null)
-                        .Select(m => $"/api/models/{m.Id}/photo").FirstOrDefault())).ToListAsync(cancellationToken);
+                        .Select(m => $"/api/models/{m.Id}/photo").FirstOrDefault(),
+                    db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.ModelNumber).FirstOrDefault(),
+                    db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault(),
+                    db.CompanyLocations.Where(l => l.CompanyId == companyId && l.Id == x.DefaultLocationCatalogId).Select(l => l.Name).FirstOrDefault(),
+                    db.Companies.Where(c => c.Id == companyId).Select(c => c.Name).FirstOrDefault()),
+                    x.PurchaseDate, x.PurchaseCost, x.Currency,
+                    DepreciationMonths = db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.DepreciationMonths).FirstOrDefault(),
+                    DepreciationMinimum = db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.DepreciationMinimum).FirstOrDefault(),
+                    DepreciationMinimumType = db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.DepreciationMinimumType).FirstOrDefault(),
+                    DepreciationMethod = db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.DepreciationMethod).FirstOrDefault() })
+                .ToListAsync(cancellationToken);
+            var items = rows.Select(row => row.Item with { PurchaseCost = row.PurchaseCost, Currency = row.Currency,
+                CurrentValue = DepreciationReportEndpoints.CalculateListValue(row.PurchaseDate, row.PurchaseCost,
+                    row.DepreciationMonths, row.DepreciationMinimum, row.DepreciationMinimumType, row.DepreciationMethod, asOf) }).ToList();
             return Results.Ok(new { items, page, pageSize, total });
         }).RequireAuthorization("asset.read");
 
@@ -1544,11 +1559,11 @@ public static class AssetEndpoints
                 .Select(x => new
                 {
                     x.Id, x.AssetTag, x.Name, x.Status, x.SerialNumber, x.Location,
-                    x.LocationCatalogId,
+                    x.LocationCatalogId, x.DefaultLocationCatalogId,
                     x.CategoryId, x.BrandId, x.ModelId, x.ParentAssetId, x.AssignedEmployeeId,
                     x.PurchaseOrderId,
                     x.PurchaseDate, x.WarrantyExpiresAt, x.NextAuditOn, x.ExpectedReturnOn, x.PurchaseCost, x.Currency, x.IsRequestable, x.CreatedAt, x.UpdatedAt,
-                    x.CustomFieldsJson
+                    x.CustomFieldsJson, x.Notes
                 }).SingleOrDefaultAsync(cancellationToken);
             if (asset is null) return Results.NotFound();
             var relatedAssets = await db.Assets.AsNoTracking()
@@ -1561,7 +1576,10 @@ public static class AssetEndpoints
                 category = await db.AssetCategories.Where(x => x.CompanyId == companyId && x.Id == asset.CategoryId).Select(x => x.Name).SingleOrDefaultAsync(cancellationToken),
                 brand = await db.AssetBrands.Where(x => x.CompanyId == companyId && x.Id == asset.BrandId).Select(x => x.Name).SingleOrDefaultAsync(cancellationToken),
                 model = await db.AssetModels.Where(x => x.CompanyId == companyId && x.Id == asset.ModelId).Select(x => x.Name).SingleOrDefaultAsync(cancellationToken),
-                employee = await db.Employees.Where(x => x.CompanyId == companyId && x.Id == asset.AssignedEmployeeId).Select(x => x.DisplayName).SingleOrDefaultAsync(cancellationToken)
+                modelNumber = await db.AssetModels.Where(x => x.CompanyId == companyId && x.Id == asset.ModelId).Select(x => x.ModelNumber).SingleOrDefaultAsync(cancellationToken),
+                employee = await db.Employees.Where(x => x.CompanyId == companyId && x.Id == asset.AssignedEmployeeId).Select(x => x.DisplayName).SingleOrDefaultAsync(cancellationToken),
+                employeeNumber = await db.Employees.Where(x => x.CompanyId == companyId && x.Id == asset.AssignedEmployeeId).Select(x => x.EmployeeNumber).SingleOrDefaultAsync(cancellationToken),
+                defaultLocation = await db.CompanyLocations.Where(x => x.CompanyId == companyId && x.Id == asset.DefaultLocationCatalogId).Select(x => x.Name).SingleOrDefaultAsync(cancellationToken)
             };
             var purchaseOrder = asset.PurchaseOrderId is Guid orderId
                 ? await db.AssetPurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == orderId)
@@ -1889,6 +1907,7 @@ public static class AssetEndpoints
             var name = request.Name.Trim();
             var serial = Clean(request.SerialNumber);
             var location = Clean(request.Location) ?? await GetDefaultLocationPathAsync(db, companyId, cancellationToken);
+            var notes = Clean(request.Notes);
             if (tag.Length > 80 || name.Length > 240 || request.CategoryId == Guid.Empty)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
@@ -1896,6 +1915,8 @@ public static class AssetEndpoints
                 });
             if (serial?.Length > 160 || location?.Length > 160)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["asset"] = ["Seri numarası ve konum en fazla 160 karakter olabilir."] });
+            if (notes?.Length > 4000)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["notes"] = ["Varlık notu en fazla 4.000 karakter olabilir."] });
             if (request.PurchaseCost is decimal purchaseCost &&
                 (purchaseCost < 0 || purchaseCost > 9999999999999999.99m))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["purchaseCost"] = ["Alış bedeli 0 ile 9.999.999.999.999.999,99 arasında olmalıdır."] });
@@ -1910,6 +1931,9 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["brandId"] = ["Marka bu şirkette bulunamadı."] });
             if (request.ModelId is Guid modelId && !await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.Id == modelId && x.BrandId == request.BrandId && (x.CategoryId == null || x.CategoryId == request.CategoryId), cancellationToken))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["modelId"] = ["Model seçilen marka ve şirketle eşleşmiyor."] });
+            if (request.DefaultLocationCatalogId is Guid createDefaultLocationId &&
+                !await db.CompanyLocations.AnyAsync(x => x.CompanyId == companyId && x.Id == createDefaultLocationId, cancellationToken))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["defaultLocationCatalogId"] = ["Varsayılan konum bu şirkette bulunamadı."] });
 
             var customFields = await AssetCustomFieldEndpoints.NormalizeValuesAsync(db, companyId,
                 request.CustomFields, null, preserveWhenMissing: false, cancellationToken);
@@ -1922,9 +1946,10 @@ public static class AssetEndpoints
                 CompanyId = companyId, AssetTag = tag, Name = name, CategoryId = request.CategoryId,
                 BrandId = request.BrandId, ModelId = request.ModelId,
                 SerialNumber = serial, Location = location, LocationCatalogId = locationCatalogId,
+                DefaultLocationCatalogId = request.DefaultLocationCatalogId,
                 PurchaseDate = request.PurchaseDate, WarrantyExpiresAt = request.WarrantyExpiresAt, PurchaseCost = request.PurchaseCost,
                 Currency = currency, IsRequestable = request.IsRequestable == true, IsByod = request.IsByod == true,
-                CustomFieldsJson = customFields.Json
+                Notes = notes, CustomFieldsJson = customFields.Json
             };
             db.Assets.Add(asset);
             db.AssetEvents.Add(new AssetEvent
@@ -1949,7 +1974,10 @@ public static class AssetEndpoints
                 asset.BrandId is Guid savedBrand ? await db.AssetBrands.Where(x => x.CompanyId == companyId && x.Id == savedBrand).Select(x => x.Name).SingleAsync(cancellationToken) : null,
                 asset.ModelId,
                 asset.ModelId is Guid savedModel ? await db.AssetModels.Where(x => x.CompanyId == companyId && x.Id == savedModel).Select(x => x.Name).SingleAsync(cancellationToken) : null,
-                null, asset.AssignedEmployeeId, asset.WarrantyExpiresAt, asset.UpdatedAt, null, asset.LocationCatalogId, asset.IsByod, asset.ExpectedReturnOn));
+                null, asset.AssignedEmployeeId, asset.WarrantyExpiresAt, asset.UpdatedAt, null, asset.LocationCatalogId, asset.IsByod, asset.ExpectedReturnOn,
+                null, asset.ModelId is Guid newAssetModelId ? await db.AssetModels.Where(x => x.CompanyId == companyId && x.Id == newAssetModelId).Select(x => x.ModelNumber).SingleOrDefaultAsync(cancellationToken) : null,
+                null, asset.DefaultLocationCatalogId is Guid newDefaultLocationId ? await db.CompanyLocations.Where(x => x.CompanyId == companyId && x.Id == newDefaultLocationId).Select(x => x.Name).SingleOrDefaultAsync(cancellationToken) : null,
+                await db.Companies.Where(x => x.Id == companyId).Select(x => x.Name).SingleAsync(cancellationToken)));
         }).RequireAuthorization("asset.write");
 
         api.MapPatch("/assets/{id:guid}", async (Guid id, [FromBody] UpdateAssetRequest request,
@@ -1960,11 +1988,14 @@ public static class AssetEndpoints
             var name = request.Name?.Trim();
             var serial = Clean(request.SerialNumber);
             var location = Clean(request.Location);
+            var notes = Clean(request.Notes);
             var currency = string.IsNullOrWhiteSpace(request.Currency) ? "TRY" : request.Currency.Trim().ToUpperInvariant();
             if (string.IsNullOrWhiteSpace(tag) || tag.Length > 80 || string.IsNullOrWhiteSpace(name) || name.Length > 240 || request.CategoryId == Guid.Empty)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["asset"] = ["Etiket (en fazla 80 karakter), ad ve kategori zorunludur."] });
             if (serial?.Length > 160 || location?.Length > 160)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["asset"] = ["Seri numarası ve konum en fazla 160 karakter olabilir."] });
+            if (notes?.Length > 4000)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["notes"] = ["Varlık notu en fazla 4.000 karakter olabilir."] });
             if (request.PurchaseCost is decimal cost && (cost < 0 || cost > 9999999999999999.99m))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["purchaseCost"] = ["Alış bedeli 0 ile 9.999.999.999.999.999,99 arasında olmalıdır."] });
             if (currency.Length != 3)
@@ -1984,6 +2015,9 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["brandId"] = ["Marka bu şirkette bulunamadı."] });
             if (request.ModelId is Guid modelId && !await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.Id == modelId && x.BrandId == request.BrandId && (x.CategoryId == null || x.CategoryId == request.CategoryId), cancellationToken))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["modelId"] = ["Model seçilen marka ve şirketle eşleşmiyor."] });
+            if (request.DefaultLocationCatalogId is Guid updateDefaultLocationId &&
+                !await db.CompanyLocations.AnyAsync(x => x.CompanyId == companyId && x.Id == updateDefaultLocationId, cancellationToken))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["defaultLocationCatalogId"] = ["Varsayılan konum bu şirkette bulunamadı."] });
 
             var customFields = await AssetCustomFieldEndpoints.NormalizeValuesAsync(db, companyId,
                 request.CustomFields, current.CustomFieldsJson, preserveWhenMissing: true, cancellationToken);
@@ -2000,11 +2034,13 @@ public static class AssetEndpoints
             if (current.SerialNumber != serial) changed.Add("seri numarası");
             if (current.Location != location) changed.Add("konum");
             if (current.LocationCatalogId != locationCatalogId) changed.Add("konum kataloğu bağlantısı");
+            if (current.DefaultLocationCatalogId != request.DefaultLocationCatalogId) changed.Add("varsayılan konum");
             if (current.PurchaseDate != request.PurchaseDate) changed.Add("alış tarihi");
             if (current.WarrantyExpiresAt != request.WarrantyExpiresAt) changed.Add("garanti bitiş tarihi");
             if (current.PurchaseCost != request.PurchaseCost || current.Currency != currency) changed.Add("alış bedeli");
             if (current.IsRequestable != isRequestable) changed.Add("talep edilebilir durumu");
             if (current.IsByod != isByod) changed.Add("kişisel cihaz (BYOD) durumu");
+            if (current.Notes != notes) changed.Add("notlar");
             if (current.CustomFieldsJson != customFields.Json) changed.Add("özel alanlar");
             if (changed.Count == 0) return Results.Ok(new { id, updatedAt = current.UpdatedAt, changed = false });
 
@@ -2022,12 +2058,14 @@ public static class AssetEndpoints
                         .SetProperty(x => x.SerialNumber, serial)
                         .SetProperty(x => x.Location, location)
                         .SetProperty(x => x.LocationCatalogId, locationCatalogId)
+                        .SetProperty(x => x.DefaultLocationCatalogId, request.DefaultLocationCatalogId)
                         .SetProperty(x => x.PurchaseDate, request.PurchaseDate)
                         .SetProperty(x => x.WarrantyExpiresAt, request.WarrantyExpiresAt)
                         .SetProperty(x => x.PurchaseCost, request.PurchaseCost)
                         .SetProperty(x => x.Currency, currency)
                         .SetProperty(x => x.IsRequestable, isRequestable)
                         .SetProperty(x => x.IsByod, isByod)
+                        .SetProperty(x => x.Notes, notes)
                         .SetProperty(x => x.CustomFieldsJson, customFields.Json)
                         .SetProperty(x => x.UpdatedAt, now), cancellationToken);
                 if (affected == 0)
@@ -2646,7 +2684,7 @@ public static class AssetEndpoints
                             ModelCount = db.AssetModels.Count(m => m.CompanyId == companyId && m.BrandId == x.Id) + db.AccessoryModels.Count(m => m.CompanyId == companyId && m.BrandId == x.Id) }).ToListAsync(cancellationToken));
                 case "models":
                     return Results.Ok((object)await db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId)
-                        .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name, x.BrandId,
+                        .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name, x.ModelNumber, x.BrandId,
                             BrandName = db.AssetBrands.Where(b => b.CompanyId == companyId && b.Id == x.BrandId).Select(b => b.Name).FirstOrDefault(),
                             x.CategoryId, CategoryName = db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault(),
                             HasPhoto = x.PhotoFileName != null,
@@ -2709,7 +2747,7 @@ public static class AssetEndpoints
                 "categories" => AddCategory(db, companyId, name),
                 "brands" => AddBrand(db, companyId, name, request),
                 "models" => AddModel(db, companyId, name, request.BrandId, request.CategoryId,
-                    request.DepreciationMonths, request.DepreciationMinimum, request.DepreciationMinimumType, request.DepreciationMethod),
+                    request.DepreciationMonths, request.DepreciationMinimum, request.DepreciationMinimumType, request.DepreciationMethod, request.ModelNumber),
                 "accessory-models" => AddAccessoryModel(db, companyId, name, request.BrandId.GetValueOrDefault()),
                 _ => null
             };
@@ -2776,7 +2814,8 @@ public static class AssetEndpoints
                     var model = await db.AssetModels.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
                     if (model is null) return Results.NotFound();
                     if (await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.Id != id && x.BrandId == model.BrandId && x.Name.ToUpper() == name.ToUpper(), cancellationToken)) return Results.Conflict(new { message = "Bu marka altında aynı isimde model zaten var." });
-                    previous = model.Name; model.Name = name; break;
+                    if (request.ModelNumber?.Trim().Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["modelNumber"] = ["Model numarası en fazla 120 karakter olabilir."] });
+                    previous = model.Name; model.Name = name; model.ModelNumber = Clean(request.ModelNumber); break;
                 case "accessory-models":
                     var accessoryModel = await db.AccessoryModels.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
                     if (accessoryModel is null) return Results.NotFound();
@@ -2920,7 +2959,8 @@ public static class AssetEndpoints
                 ("brand", "Marka"), ("model", "Model"), ("serial", "Seri No"), ("location", "Konum"),
                 ("employeeNumber", "Personel No"), ("employeeName", "Çalışan"), ("purchaseDate", "Alış Tarihi"),
                 ("warrantyExpiresAt", "Garanti Bitiş Tarihi"), ("purchaseCost", "Alış Bedeli"),
-                ("currency", "Para Birimi"), ("parentAssetTag", "Üst Varlık Etiketi"), ("isByod", "BYOD")
+                ("currency", "Para Birimi"), ("parentAssetTag", "Üst Varlık Etiketi"), ("isByod", "BYOD"),
+                ("modelNumber", "Model Numarası"), ("defaultLocation", "Varsayılan Konum"), ("sourceCompany", "Kaynak Şirket"), ("notes", "Notlar")
             }.Concat(customFields.Select(field => (Key: $"custom:{field.Key}", Header: $"Özel alan: {field.Key}"))).ToArray();
             var columnsByKey = availableColumns.ToDictionary(column => column.Key, column => column, StringComparer.Ordinal);
             var selectedKeys = string.IsNullOrWhiteSpace(columns)
@@ -2943,6 +2983,10 @@ public static class AssetEndpoints
             context.Response.Headers["X-Total-Count"] = total.ToString(System.Globalization.CultureInfo.InvariantCulture);
             await using var writer = new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
             await writer.WriteLineAsync(string.Join(';', selectedColumns.Select(column => CsvCell(column.Header))).AsMemory(), cancellationToken);
+            var sourceCompanyName = await db.Companies.AsNoTracking().Where(company => company.Id == companyId)
+                .Select(company => company.Name).SingleAsync(cancellationToken);
+            var defaultLocationPaths = (await GetActiveLocationPathMapAsync(db, companyId, cancellationToken))
+                .ToDictionary(item => item.Value, item => item.Key);
             var rows = ordered.Select(x => new AssetExportRow(
                 x.AssetTag, x.Name, x.Status,
                 db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault(),
@@ -2955,7 +2999,10 @@ public static class AssetEndpoints
                     .Select(e => e.EmployeeNumber).FirstOrDefault(),
                 db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId)
                     .Select(e => e.DisplayName).FirstOrDefault(),
-                x.PurchaseDate, x.WarrantyExpiresAt, x.PurchaseCost, x.Currency, x.CustomFieldsJson, x.IsByod));
+                x.PurchaseDate, x.WarrantyExpiresAt, x.PurchaseCost, x.Currency, x.CustomFieldsJson, x.IsByod,
+                db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.ModelNumber).FirstOrDefault(),
+                x.DefaultLocationCatalogId,
+                sourceCompanyName, x.Notes));
             var written = 0;
             await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
             {
@@ -2973,6 +3020,10 @@ public static class AssetEndpoints
                     "purchaseCost" => row.PurchaseCost?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
                     "currency" => row.Currency, "parentAssetTag" => row.ParentAssetTag,
                     "isByod" => row.IsByod ? "Evet" : "Hayır",
+                    "modelNumber" => row.ModelNumber,
+                    "defaultLocation" => defaultLocationPaths.GetValueOrDefault(row.DefaultLocationCatalogId ?? Guid.Empty),
+                    "sourceCompany" => row.SourceCompany,
+                    "notes" => row.Notes,
                     _ when column.Key.StartsWith("custom:", StringComparison.Ordinal) => customValuesByKey.GetValueOrDefault(column.Key[7..]),
                     _ => ""
                 })));
@@ -3053,14 +3104,15 @@ public static class AssetEndpoints
     }
 
     private static object AddModel(AppDbContext db, Guid companyId, string name, Guid? brandId, Guid? categoryId, int? depreciationMonths,
-        decimal? depreciationMinimum, string? depreciationMinimumType, string? depreciationMethod)
+        decimal? depreciationMinimum, string? depreciationMinimumType, string? depreciationMethod, string? modelNumber)
     {
         var row = new AssetModel { CompanyId = companyId, Name = name, BrandId = brandId, CategoryId = categoryId,
+            ModelNumber = Clean(modelNumber),
             DepreciationMonths = depreciationMonths, DepreciationMinimum = depreciationMonths is null ? null : depreciationMinimum,
             DepreciationMinimumType = depreciationMinimumType is "percent" ? "percent" : "amount",
             DepreciationMethod = depreciationMethod ?? "linear" };
         db.AssetModels.Add(row);
-        return new { row.Id, row.Name, row.BrandId, row.CategoryId, row.DepreciationMonths, row.DepreciationMinimum,
+        return new { row.Id, row.Name, row.ModelNumber, row.BrandId, row.CategoryId, row.DepreciationMonths, row.DepreciationMinimum,
             row.DepreciationMinimumType, row.DepreciationMethod };
     }
 
@@ -3248,7 +3300,8 @@ public static class AssetEndpoints
 
     private sealed record AssetExportRow(string AssetTag, string Name, string Status, string? Category,
         string? Brand, string? Model, string? SerialNumber, string? Location, string? ParentAssetTag, string? EmployeeNumber,
-        string? EmployeeName, DateOnly? PurchaseDate, DateOnly? WarrantyExpiresAt, decimal? PurchaseCost, string Currency, string? CustomFieldsJson, bool IsByod);
+        string? EmployeeName, DateOnly? PurchaseDate, DateOnly? WarrantyExpiresAt, decimal? PurchaseCost, string Currency,
+        string? CustomFieldsJson, bool IsByod, string? ModelNumber, Guid? DefaultLocationCatalogId, string SourceCompany, string? Notes);
 
     private static string CsvCell(string? value)
     {
