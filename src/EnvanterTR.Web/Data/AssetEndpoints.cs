@@ -2138,6 +2138,131 @@ public static class AssetEndpoints
             return Results.NoContent();
         }).RequireAuthorization("asset.write");
 
+        api.MapPost("/assets/bulk-update", async ([FromBody] BulkUpdateAssetsRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId) ||
+                !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+
+            var versions = request.Assets ?? [];
+            var ids = versions.Select(version => version.Id).ToArray();
+            if (versions.Length is < 1 or > 100 || ids.Any(id => id == Guid.Empty) ||
+                ids.Distinct().Count() != ids.Length || versions.Any(version => version.UpdatedAt == default))
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                    { ["assets"] = ["Güncel sürüm bilgisiyle 1 ile 100 arasında, tekrarsız varlık seçin."] });
+
+            var allowedFields = new HashSet<string>(StringComparer.Ordinal)
+                { "name", "categoryId", "brandId", "modelId", "defaultLocationCatalogId", "purchaseDate", "warrantyExpiresAt", "purchaseCost", "isRequestable", "isByod" };
+            var fields = request.Fields ?? [];
+            if (fields.Length is < 1 or > 10 || fields.Distinct(StringComparer.Ordinal).Count() != fields.Length ||
+                fields.Any(field => !allowedFields.Contains(field)))
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                    { ["fields"] = ["Uygulanacak en az bir geçerli varlık alanı seçin."] });
+
+            var selected = fields.ToHashSet(StringComparer.Ordinal);
+            var name = selected.Contains("name") ? request.Name?.Trim() : null;
+            if (selected.Contains("name") && (string.IsNullOrWhiteSpace(name) || name.Length > 240))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Varlık adı zorunludur ve 240 karakteri aşamaz."] });
+            if (selected.Contains("categoryId") && (!request.CategoryId.HasValue || request.CategoryId.Value == Guid.Empty))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["categoryId"] = ["Kategori seçimi zorunludur."] });
+            if (selected.Contains("isRequestable") && request.IsRequestable is null ||
+                selected.Contains("isByod") && request.IsByod is null)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["fields"] = ["Talep ve BYOD alanları için evet veya hayır seçin."] });
+            if (selected.Contains("purchaseCost") && request.PurchaseCost is decimal cost &&
+                (cost < 0 || cost > 9999999999999999.99m))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["purchaseCost"] = ["Alış bedeli 0 ile 9.999.999.999.999.999,99 arasında olmalıdır."] });
+            var currency = selected.Contains("purchaseCost") ? request.Currency?.Trim().ToUpperInvariant() : null;
+            if (selected.Contains("purchaseCost") && (string.IsNullOrWhiteSpace(currency) || currency.Length != 3 || currency.Any(character => !char.IsAsciiLetter(character))))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["currency"] = ["Alış bedeliyle birlikte üç harfli para birimi kodu seçin."] });
+            if (request.Note?.Length > 1900)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["İşlem notu en fazla 1.900 karakter olabilir."] });
+
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            var assets = await db.Assets.FromSqlInterpolated(
+                    $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) AND \"DeletedAt\" IS NULL ORDER BY \"Id\" FOR UPDATE")
+                .IgnoreQueryFilters().ToListAsync(cancellationToken);
+            if (assets.Count != versions.Length)
+                return Results.NotFound(new { message = "Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil. Hiçbir kayıt değiştirilmedi." });
+            var versionById = versions.ToDictionary(version => version.Id, version => version.UpdatedAt);
+            if (assets.Any(asset => asset.UpdatedAt != versionById[asset.Id]))
+                return Results.Conflict(new { message = "Seçilen varlıklardan biri yenilendikten sonra değişti. Listeyi yenileyip seçimi tekrar yapın; hiçbir kayıt değiştirilmedi." });
+
+            if (selected.Contains("categoryId") && !await db.AssetCategories.AnyAsync(
+                    item => item.CompanyId == companyId && item.Id == request.CategoryId, cancellationToken))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["categoryId"] = ["Kategori bu şirkette bulunamadı."] });
+            if (selected.Contains("brandId") && request.BrandId is Guid requestedBrandId &&
+                !await db.AssetBrands.AnyAsync(item => item.CompanyId == companyId && item.Id == requestedBrandId, cancellationToken))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["brandId"] = ["Marka bu şirkette bulunamadı."] });
+            if (selected.Contains("defaultLocationCatalogId") && request.DefaultLocationCatalogId is Guid requestedLocationId &&
+                !await db.CompanyLocations.AnyAsync(item => item.CompanyId == companyId && item.Id == requestedLocationId, cancellationToken))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["defaultLocationCatalogId"] = ["Varsayılan konum bu şirkette bulunamadı."] });
+
+            if (selected.Overlaps(["categoryId", "brandId", "modelId"]))
+            {
+                var targetCategoryByAsset = assets.ToDictionary(asset => asset.Id,
+                    asset => selected.Contains("categoryId") ? request.CategoryId!.Value : asset.CategoryId);
+                var targetBrandByAsset = assets.ToDictionary(asset => asset.Id,
+                    asset => selected.Contains("brandId") ? request.BrandId : asset.BrandId);
+                var targetModelByAsset = assets.ToDictionary(asset => asset.Id,
+                    asset => selected.Contains("modelId") ? request.ModelId : asset.ModelId);
+                var targetModelIds = targetModelByAsset.Values.Where(id => id is not null).Select(id => id!.Value).Distinct().ToArray();
+                var models = targetModelIds.Length == 0
+                    ? new Dictionary<Guid, (Guid? BrandId, Guid? CategoryId)>()
+                    : await db.AssetModels.AsNoTracking().Where(model => model.CompanyId == companyId && targetModelIds.Contains(model.Id))
+                        .Select(model => new { model.Id, model.BrandId, model.CategoryId })
+                        .ToDictionaryAsync(model => model.Id, model => (model.BrandId, model.CategoryId), cancellationToken);
+                if (models.Count != targetModelIds.Length)
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["modelId"] = ["Seçilen model bu şirkette bulunamadı."] });
+                foreach (var asset in assets)
+                {
+                    var modelId = targetModelByAsset[asset.Id];
+                    if (modelId is not Guid id) continue;
+                    var model = models[id];
+                    if (model.BrandId != targetBrandByAsset[asset.Id] ||
+                        model.CategoryId is Guid modelCategory && modelCategory != targetCategoryByAsset[asset.Id])
+                        return Results.ValidationProblem(new Dictionary<string, string[]>
+                            { ["modelId"] = ["Marka veya kategori değişikliği seçili modelle eşleşmiyor. İlişkili alanları birlikte güncelleyin."] });
+                }
+            }
+
+            var note = request.Note?.Trim();
+            var now = DateTimeOffset.UtcNow;
+            var updated = 0;
+            foreach (var asset in assets)
+            {
+                var changed = new List<string>();
+                if (selected.Contains("name") && asset.Name != name) { asset.Name = name!; changed.Add("ad"); }
+                if (selected.Contains("categoryId") && asset.CategoryId != request.CategoryId) { asset.CategoryId = request.CategoryId!.Value; changed.Add("kategori"); }
+                if (selected.Contains("brandId") && asset.BrandId != request.BrandId) { asset.BrandId = request.BrandId; changed.Add("marka"); }
+                if (selected.Contains("modelId") && asset.ModelId != request.ModelId) { asset.ModelId = request.ModelId; changed.Add("model"); }
+                if (selected.Contains("defaultLocationCatalogId") && asset.DefaultLocationCatalogId != request.DefaultLocationCatalogId)
+                { asset.DefaultLocationCatalogId = request.DefaultLocationCatalogId; changed.Add("varsayılan konum"); }
+                if (selected.Contains("purchaseDate") && asset.PurchaseDate != request.PurchaseDate) { asset.PurchaseDate = request.PurchaseDate; changed.Add("alış tarihi"); }
+                if (selected.Contains("warrantyExpiresAt") && asset.WarrantyExpiresAt != request.WarrantyExpiresAt) { asset.WarrantyExpiresAt = request.WarrantyExpiresAt; changed.Add("garanti bitiş tarihi"); }
+                if (selected.Contains("purchaseCost") && (asset.PurchaseCost != request.PurchaseCost || asset.Currency != currency))
+                { asset.PurchaseCost = request.PurchaseCost; asset.Currency = currency!; changed.Add("alış bedeli"); }
+                if (selected.Contains("isRequestable") && asset.IsRequestable != request.IsRequestable)
+                { asset.IsRequestable = request.IsRequestable!.Value; changed.Add("talep edilebilir durumu"); }
+                if (selected.Contains("isByod") && asset.IsByod != request.IsByod)
+                { asset.IsByod = request.IsByod!.Value; changed.Add("kişisel cihaz (BYOD)"); }
+                if (changed.Count == 0) continue;
+
+                asset.UpdatedAt = now;
+                var details = $"Toplu varlık düzenleme: {string.Join(", ", changed)}.";
+                if (!string.IsNullOrWhiteSpace(note)) details += $" {note}";
+                db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = asset.Id,
+                    ActorUserId = actorId, EventType = "Updated", Details = details });
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                    TargetType = "Asset", TargetId = asset.Id, Action = "BulkUpdated",
+                    Details = details });
+                updated++;
+            }
+
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { updated, unchanged = assets.Count - updated, fields });
+        }).RequireAuthorization("asset.write");
+
         api.MapPost("/assets/bulk-audit", async ([FromBody] BulkRecordAssetAuditRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {

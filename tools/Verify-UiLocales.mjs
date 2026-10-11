@@ -41,7 +41,23 @@ const requiredAssetLabels = [
   'Aynı varlık iki kez yazdırılmak üzere geldi. Listeyi yenileyip tekrar deneyin.',
   'Varlıklar yazdırma için yüklenemedi.',
   'Varlık listesini tam ekranda aç',
-  'Varlık listesini tam ekrandan çıkar'
+  'Varlık listesini tam ekrandan çıkar',
+  'Toplu düzenle', 'TOPLU VARLIK DÜZENLEME', 'Seçili varlıkları düzenle',
+  'Sadece işaretlediğiniz alanlar güncellenir. İşaretlenmeyen alanlar korunur.',
+  'Boş bırakılan seçili alanlar temizlenir.', 'Varlık adını değiştir',
+  'Boş bırakılırsa alış bedeli temizlenir', 'Toplu düzenleme için güncel sürüm bilgisi olan en fazla 100 varlık seçin.',
+  '{count} varlık seçildi', 'Varsayılan konum', 'Alış tarihi', 'Garanti bitiş tarihi',
+  'Marka seçin (boş bırakın: temizle)', 'Model seçin (boş bırakın: temizle)',
+  'Varsayılan konum seçin (boş bırakın: temizle)', 'Alış bedeli ve para birimi',
+  'Çalışan talebine açık', 'Kişisel cihaz (BYOD)', 'Değişiklik yok',
+  'İşlem notu (güncellenen varlıkların geçmişine eklenir)', 'En az bir alan seçin.',
+  'Varlık adı girin.', 'Kategori seçin.',
+  'Seçili varlıklardan biri güncel değil. Listeyi yenileyip seçimi tekrar yapın.',
+  'Toplu düzenleme tamamlandı: {updated} güncellendi, {unchanged} değişmedi.',
+  'Toplu varlık düzenleme',
+  'Seçimin tamamı kullanılabilir: toplu zimmet, konum aktarımı, durum değişikliği, denetim ve düzenleme uygun.',
+  'Seçimin tamamı zimmetli: toplu iade ve denetim uygun; önce iade almadan durum veya konum değiştiremezsiniz.',
+  'Seçimde farklı durumlar var: toplu düzenleme, denetim, CSV ve etiket işlemleri seçimin tamamında kullanılabilir. Zimmet, iade ve konum aktarımı için uygun durum gerekir.'
 ];
 const requiredReservationLabels = [
   'Varlık rezervasyonları', 'Rezervasyon isteği oluştur', 'Şirket kapsamlı', 'Talep notu',

@@ -91,6 +91,22 @@ public sealed record BulkAssignAssetsRequest(Guid[] AssetIds, Guid EmployeeId, s
 public sealed record BulkReturnAssetsRequest(Guid[] AssetIds, string? Note);
 public sealed record BulkTransferAssetsRequest(Guid[] AssetIds, string TargetLocation, string? Notes);
 public sealed record BulkRecordAssetAuditRequest(Guid[] AssetIds, DateOnly AuditDate, string? Notes, DateOnly? NextAuditOn = null);
+public sealed record BulkAssetVersion(Guid Id, DateTimeOffset UpdatedAt);
+public sealed record BulkUpdateAssetsRequest(
+    BulkAssetVersion[]? Assets,
+    string[]? Fields,
+    string? Name = null,
+    Guid? CategoryId = null,
+    Guid? BrandId = null,
+    Guid? ModelId = null,
+    Guid? DefaultLocationCatalogId = null,
+    DateOnly? PurchaseDate = null,
+    DateOnly? WarrantyExpiresAt = null,
+    decimal? PurchaseCost = null,
+    string? Currency = null,
+    bool? IsRequestable = null,
+    bool? IsByod = null,
+    string? Note = null);
 public sealed record SetAssetAuditScheduleRequest(DateOnly? NextAuditOn);
 public sealed record SetAssetParentRequest(Guid? ParentAssetId, DateTimeOffset ExpectedUpdatedAt);
 public sealed record AddAssetNoteRequest(string? Note);

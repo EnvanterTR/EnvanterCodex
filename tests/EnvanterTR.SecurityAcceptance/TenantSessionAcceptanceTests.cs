@@ -58,6 +58,178 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     private readonly Guid _otherCompanyEmployeeId = Guid.NewGuid();
 
     [Fact]
+    public async Task Bulk_asset_edits_are_atomic_company_scoped_version_checked_and_audited()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var secondAssetId = _ownSecondAssetId;
+        var targetCategoryId = Guid.NewGuid();
+        Guid ownCategoryId;
+        Guid brandId;
+        Guid modelId;
+        List<BulkAssetVersion> versions;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var ownAsset = await db.Assets.SingleAsync(asset => asset.CompanyId == _companyId && asset.Id == _ownAssetId);
+            ownCategoryId = ownAsset.CategoryId;
+            var brand = new AssetBrand { CompanyId = _companyId, Name = $"Bulk brand {_userId:N}" };
+            var model = new AssetModel { CompanyId = _companyId, BrandId = brand.Id, CategoryId = ownCategoryId, Name = $"Bulk model {_userId:N}" };
+            brandId = brand.Id;
+            modelId = model.Id;
+            db.AssetBrands.Add(brand);
+            db.AssetModels.Add(model);
+            db.AssetCategories.Add(new AssetCategory { Id = targetCategoryId, CompanyId = _companyId, Name = $"Bulk target {_userId:N}" });
+            ownAsset.BrandId = brandId;
+            ownAsset.ModelId = modelId;
+            ownAsset.Notes = "Keep the first asset note";
+            ownAsset.PurchaseDate = new DateOnly(2025, 1, 2);
+            ownAsset.WarrantyExpiresAt = new DateOnly(2027, 1, 2);
+            ownAsset.PurchaseCost = 10m;
+            ownAsset.Currency = "TRY";
+            db.Assets.Add(new Asset
+            {
+                Id = secondAssetId, CompanyId = _companyId, AssetTag = $"BULK-{_userId:N}",
+                Name = "Second bulk asset", CategoryId = ownCategoryId, BrandId = brandId, ModelId = modelId,
+                Notes = "Keep the second asset note", PurchaseDate = new DateOnly(2024, 3, 4),
+                WarrantyExpiresAt = new DateOnly(2026, 3, 4), PurchaseCost = 20m, Currency = "TRY"
+            });
+            await db.SaveChangesAsync();
+            versions = await db.Assets.AsNoTracking().Where(asset => asset.CompanyId == _companyId &&
+                    (asset.Id == _ownAssetId || asset.Id == secondAssetId))
+                .Select(asset => new BulkAssetVersion(asset.Id, asset.UpdatedAt)).ToListAsync();
+            Assert.Equal(2, versions.Count);
+        }
+
+        var successPayload = new
+        {
+            assets = versions,
+            fields = new[] { "name", "purchaseCost", "warrantyExpiresAt", "isRequestable" },
+            name = "Bulk refreshed assets", purchaseCost = 1234.50m, currency = "EUR",
+            warrantyExpiresAt = (DateOnly?)null, isRequestable = false, note = "October inventory review"
+        };
+        using (var response = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-update", "admin",
+                   System.Net.Http.Json.JsonContent.Create(successPayload), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.Equal(2, payload.RootElement.GetProperty("updated").GetInt32());
+            Assert.Equal(0, payload.RootElement.GetProperty("unchanged").GetInt32());
+        }
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var saved = await db.Assets.AsNoTracking().Where(asset => asset.CompanyId == _companyId &&
+                (asset.Id == _ownAssetId || asset.Id == secondAssetId)).ToListAsync();
+            Assert.Equal(2, saved.Count);
+            Assert.All(saved, asset =>
+            {
+                Assert.Equal("Bulk refreshed assets", asset.Name);
+                Assert.Equal(1234.50m, asset.PurchaseCost);
+                Assert.Equal("EUR", asset.Currency);
+                Assert.Null(asset.WarrantyExpiresAt);
+                Assert.False(asset.IsRequestable);
+                Assert.Equal(ownCategoryId, asset.CategoryId);
+                Assert.Equal(brandId, asset.BrandId);
+                Assert.Equal(modelId, asset.ModelId);
+                Assert.Equal(AssetStatuses.Available, asset.Status);
+            });
+            Assert.Equal("Keep the first asset note", saved.Single(asset => asset.Id == _ownAssetId).Notes);
+            Assert.Equal("Keep the second asset note", saved.Single(asset => asset.Id == secondAssetId).Notes);
+            var events = await db.AssetEvents.AsNoTracking().Where(entry => entry.CompanyId == _companyId &&
+                (entry.AssetId == _ownAssetId || entry.AssetId == secondAssetId) && entry.Details!.Contains("October inventory review"))
+                .ToListAsync();
+            Assert.Equal(2, events.Count);
+            Assert.All(events, entry => Assert.Contains("Toplu varlık düzenleme:", entry.Details));
+            Assert.Equal(2, await db.AuditEntries.CountAsync(entry => entry.CompanyId == _companyId &&
+                (entry.TargetId == _ownAssetId || entry.TargetId == secondAssetId) && entry.Action == "BulkUpdated"));
+            versions = await db.Assets.AsNoTracking().Where(asset => asset.CompanyId == _companyId &&
+                    (asset.Id == _ownAssetId || asset.Id == secondAssetId))
+                .Select(asset => new BulkAssetVersion(asset.Id, asset.UpdatedAt)).ToListAsync();
+        }
+
+        using (var incompatibleCategory = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-update", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       assets = versions, fields = new[] { "categoryId" }, categoryId = targetCategoryId
+                   }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, incompatibleCategory.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var legacyModel = new AssetModel { CompanyId = _companyId, BrandId = brandId,
+                CategoryId = targetCategoryId, Name = $"Legacy mismatch {_userId:N}" };
+            db.AssetModels.Add(legacyModel);
+            var asset = await db.Assets.SingleAsync(item => item.CompanyId == _companyId && item.Id == _ownAssetId);
+            asset.ModelId = legacyModel.Id;
+            asset.UpdatedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync();
+            versions = await db.Assets.AsNoTracking().Where(item => item.CompanyId == _companyId &&
+                    (item.Id == _ownAssetId || item.Id == secondAssetId))
+                .Select(item => new BulkAssetVersion(item.Id, item.UpdatedAt)).ToListAsync();
+        }
+        using (var unrelatedFieldEdit = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-update", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       assets = versions, fields = new[] { "name" }, name = "Name only edit"
+                   }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, unrelatedFieldEdit.StatusCode);
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            versions = await db.Assets.AsNoTracking().Where(item => item.CompanyId == _companyId &&
+                    (item.Id == _ownAssetId || item.Id == secondAssetId))
+                .Select(item => new BulkAssetVersion(item.Id, item.UpdatedAt)).ToListAsync();
+        }
+
+        var staleVersions = versions.Select((version, index) => index == 0
+            ? version with { UpdatedAt = version.UpdatedAt.AddSeconds(-1) }
+            : version).ToArray();
+        using (var stale = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-update", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       assets = staleVersions, fields = new[] { "name" }, name = "Must not partially save"
+                   }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
+
+        BulkAssetVersion foreignVersion;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            foreignVersion = await db.Assets.AsNoTracking().Where(asset => asset.Id == _otherCompanyAssetId)
+                .Select(asset => new BulkAssetVersion(asset.Id, asset.UpdatedAt)).SingleAsync();
+        }
+        using (var crossTenant = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-update", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       assets = new[] { versions[0], foreignVersion }, fields = new[] { "name" }, name = "Cross tenant write"
+                   }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
+
+        await SetCompanyRoleAsync("viewer");
+        using (var forbidden = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-update", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       assets = versions, fields = new[] { "name" }, name = "Viewer cannot bulk edit"
+                   }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.Equal(2, await db.Assets.CountAsync(asset => asset.CompanyId == _companyId &&
+                (asset.Id == _ownAssetId || asset.Id == secondAssetId) && asset.Name == "Name only edit"));
+        }
+    }
+
+    [Fact]
     public async Task Asset_contracts_are_company_scoped_audited_and_support_safe_attachments()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");

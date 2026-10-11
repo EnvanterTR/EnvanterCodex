@@ -91,7 +91,7 @@ C1. Kayıt ve liste
  C1.18 Model/kategori bazlı alan grupları ❌
  C1.19 Varlık durumu etiketlerinin adını şirket özelleştirebilsin ✅
  C1.20 Yeni durum türleri ve durum geçiş kuralları ❌
- C1.21 Kapsamlı toplu yönetim (çoklu alan güncelleme) 🟡
+ C1.21 Kapsamlı toplu yönetim (çoklu alan güncelleme) 🟡 — en fazla 100 kayıtta temel katalog, varsayılan konum, alış/garanti, maliyet/para birimi, talep ve BYOD alanları atomik güncellenir; seri no, varlık notu ve özel alanlar toplu kapsama henüz ekli değil.
 C2. Varlık detay
  C2.1 Genel bakış + kategori/marka/model/çalışan/konum bağlantıları ✅
  C2.2 Üst/alt varlık hiyerarşisi (döngü engelli) ✅

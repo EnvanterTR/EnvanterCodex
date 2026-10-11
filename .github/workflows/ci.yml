@@ -33,6 +33,10 @@ jobs:
         shell: bash
         run: node tools/Verify-AppNavigation.mjs
 
+      - name: Verify public demo full-width asset tables
+        shell: bash
+        run: node tools/Verify-PublicDemoLayout.mjs
+
       - name: Run isolated PostgreSQL acceptance suite
         shell: bash
         run: |

@@ -59,6 +59,10 @@ if (!source.includes('id="tasksPage"') || !/page === 'Görevler'\) \{[^}]*loadCo
   failures.push('Görevler must have a dedicated screen and load company-scoped task data.');
 }
 
+if (!source.includes("bulkEditButton.id = 'bulkEditSelectedAssets'") || !source.includes("bulkEditAssetDialog.id = 'bulkEditAssetDialog'") || !source.includes("api('/api/assets/bulk-update'")) {
+  failures.push('Selected assets must expose the bulk-edit dialog and submit to the company-scoped bulk-update API.');
+}
+
 if (failures.length) {
   console.error(failures.map(failure => `FAIL ${failure}`).join('\n'));
   process.exitCode = 1;

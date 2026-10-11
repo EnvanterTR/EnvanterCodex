@@ -2070,7 +2070,7 @@ public static class OperationalEndpoints
         "Created" or "created" => "Oluşturuldu", "Updated" or "updated" => "Güncellendi", "Renamed" => "Adı değiştirildi",
         "Deleted" => "Silindi", "Reactivated" => "Yeniden etkinleştirildi", "Deactivated" => "Pasife alındı",
         "BulkStatusChanged" => "Toplu durum değişikliği", "BulkAssigned" => "Toplu zimmet", "BulkReturned" => "Toplu iade",
-        "BulkAudited" => "Toplu denetim", "BulkTransferred" => "Toplu konum transferi", "ProfileUpdated" => "Profil güncellendi",
+        "BulkAudited" => "Toplu denetim", "BulkTransferred" => "Toplu konum transferi", "BulkUpdated" => "Toplu varlık düzenleme", "ProfileUpdated" => "Profil güncellendi",
         "BrandLogoUpdated" => "Şirket logosu güncellendi", "LabelSettingsUpdated" => "Etiket ayarları güncellendi",
         "LabelTemplatesUpdated" => "Yazıcı ve etiket şablonları güncellendi",
         "Invited" => "Kullanıcı davet edildi", "RoleChanged" => "Kullanıcı rolü değiştirildi", "ManagerChanged" => "Yönetici bağlantısı değiştirildi",
