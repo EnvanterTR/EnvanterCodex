@@ -1,3 +1,5 @@
+param([switch]$PersonalSinglePc)
+
 $ErrorActionPreference = "Stop"
 
 function Write-Step([string]$Text) { Write-Host "`n=== $Text ===" -ForegroundColor Cyan }
@@ -43,23 +45,34 @@ $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = [Security.Principal.WindowsPrincipal]::new($identity)
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     $scriptPath = $MyInvocation.MyCommand.Path.Replace("'", "''")
-    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes("& '$scriptPath'"))
+    $invocation = if ($PersonalSinglePc) { "& '$scriptPath' -PersonalSinglePc" } else { "& '$scriptPath'" }
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($invocation))
     $hostExe = (Get-Process -Id $PID).Path
     Start-Process -FilePath $hostExe -Verb RunAs -ArgumentList "-NoProfile -NoExit -ExecutionPolicy Bypass -EncodedCommand $encoded"
     exit
 }
 
 try {
-    Write-Host "EnvanterTR Windows Server kurulum yardimcisi" -ForegroundColor Green
-    Write-Host "Bu paket ofis ekibi sunucusu içindir. Windows 11 tek bilgisayar kurulumu bu pakette yoktur."
+    if ($PersonalSinglePc) {
+        Write-Host "EnvanterTR Windows 11 tek bilgisayar kurulum temeli" -ForegroundColor Green
+        Write-Host "Bu mod yalnızca bu bilgisayardan erişim içindir; başka cihazlara ağ hizmeti açmaz."
+    } else {
+        Write-Host "EnvanterTR Windows Server kurulum yardimcisi" -ForegroundColor Green
+        Write-Host "Bu paket ofis ekibi sunucusu içindir. Kişisel bilgisayar modu için Setup-Personal.cmd dosyasını çalıştırın."
+    }
     Write-Host "Bu akış yeni bir yerel PostgreSQL veritabanı hazırlar; var olan veritabanını değiştirmez."
 
     $os = Get-CimInstance Win32_OperatingSystem
-    if ($os.Caption -notmatch 'Windows Server 2019|Windows Server 2022') {
-        Fail "Desteklenen sistem Windows Server 2019/2022 x64. Bulunan: $($os.Caption)."
+    $isX64 = [string]$os.OSArchitecture -match '^64[- ]?bit$'
+    if ($PersonalSinglePc) {
+        if ($os.Caption -notmatch 'Windows 11' -or -not $isX64 -or $os.ProductType -ne 1) {
+            Fail "Kişisel kurulum yalnızca Windows 11 x64 iş istasyonunda desteklenir. Bulunan: $($os.Caption), $($os.OSArchitecture)."
+        }
+    } elseif ($os.Caption -notmatch 'Windows Server 2019|Windows Server 2022' -or -not $isX64) {
+        Fail "Sunucu kurulumu Windows Server 2019/2022 x64 gerektirir. Bulunan: $($os.Caption), $($os.OSArchitecture)."
     }
     $packagePath = (Resolve-Path -LiteralPath $PSScriptRoot).Path
-    foreach ($file in @('EnvanterTR.Web.exe','preflight.ps1','install-postgresql.ps1','prepare-postgresql.ps1','install.ps1','migrate.ps1')) {
+    foreach ($file in @('EnvanterTR.Web.exe','preflight.ps1','install-postgresql.ps1','prepare-postgresql.ps1','install.ps1','migrate.ps1','ensure-localhost-certificate.ps1')) {
         if (-not (Test-Path -LiteralPath (Join-Path $packagePath $file) -PathType Leaf)) {
             Fail "Paket eksik: $file. Doğrulanmış Windows ZIP'ini yeniden açın."
         }
@@ -81,6 +94,9 @@ try {
         if (-not $pendingMetadata.DnsName -or -not $pendingMetadata.HttpsPort) {
             Fail "Yarım kurulum ayarları eksik. Mevcut servis ve veriler korundu; destek için $pendingDirectory klasörünü saklayın."
         }
+        if ([bool]$pendingMetadata.PersonalSinglePc -ne [bool]$PersonalSinglePc) {
+            Fail "Yarım kurulum farklı Windows kullanım modu ile sürdürülemez. İlk denemede kullanılan Setup.cmd veya Setup-Personal.cmd dosyasını çalıştırın."
+        }
         $httpsPort = [int]$pendingMetadata.HttpsPort
         Write-Step "Yarım ilk kurulumdan güvenli devam"
         Write-Host "Mevcut EnvanterTR veritabanı ve servisi korunacak; ilk şema adımı yeniden deneniyor."
@@ -94,17 +110,23 @@ try {
         return
     }
 
-    Write-Step "Sunucu adresi"
-    do {
-        $dnsName = (Read-Host "Çalışanların tarayıcıda kullanacağı DNS adı (ör. envanter.sirketiniz.com)").Trim().TrimEnd('.')
-        $parsedIpAddress = $null
-        $isIpAddress = [Net.IPAddress]::TryParse($dnsName,[ref]$parsedIpAddress)
-        $validDns = $dnsName -match '^(?=.{1,253}$)([A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$'
-        if ($dnsName -ieq 'localhost' -or $isIpAddress -or -not $validDns) {
-            Write-Host "Bir DNS adı girin. localhost veya IP adresi, ekip HTTPS sertifikası için uygun değildir." -ForegroundColor Yellow
-            $dnsName = ''
-        }
-    } while ([string]::IsNullOrWhiteSpace($dnsName))
+    if ($PersonalSinglePc) {
+        Write-Step "Yerel bilgisayar adresi"
+        $dnsName = 'localhost'
+        Write-Host "Adres sabit: https://localhost. Bu kurulum diğer bilgisayarlardan erişilemez."
+    } else {
+        Write-Step "Sunucu adresi"
+        do {
+            $dnsName = (Read-Host "Çalışanların tarayıcıda kullanacağı DNS adı (ör. envanter.sirketiniz.com)").Trim().TrimEnd('.')
+            $parsedIpAddress = $null
+            $isIpAddress = [Net.IPAddress]::TryParse($dnsName,[ref]$parsedIpAddress)
+            $validDns = $dnsName -match '^(?=.{1,253}$)([A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$'
+            if ($dnsName -ieq 'localhost' -or $isIpAddress -or -not $validDns) {
+                Write-Host "Bir DNS adı girin. localhost veya IP adresi, ekip HTTPS sertifikası için uygun değildir." -ForegroundColor Yellow
+                $dnsName = ''
+            }
+        } while ([string]::IsNullOrWhiteSpace($dnsName))
+    }
 
     $pgPortInput = Read-Host "Yerel PostgreSQL 17 portu [5432]"
     $pgPort = 5432
@@ -117,31 +139,33 @@ try {
         Fail "HTTPS portu 1–65535 arasında bir sayı olmalıdır."
     }
 
-    Write-Step "TLS sertifikası"
-    $store = [Security.Cryptography.X509Certificates.X509Store]::new('My','LocalMachine')
-    $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadOnly)
-    try {
-        $now = Get-Date
-        $certificates = @($store.Certificates | Where-Object {
-            $candidate = $_
-            $eku = $candidate.Extensions | Where-Object { $_.Oid.Value -eq '2.5.29.37' } | Select-Object -First 1
-            $validEku = (-not $eku) -or (@($eku.EnhancedKeyUsages | Where-Object { $_.Value -eq '1.3.6.1.5.5.7.3.1' }).Count -gt 0)
-            $candidate.HasPrivateKey -and $candidate.NotBefore -lt $now -and $candidate.NotAfter -gt $now -and $validEku
-        } | Sort-Object NotAfter -Descending)
-        if ($certificates.Count -eq 0) {
-            Fail "Local Computer > Personal deposunda geçerli ve özel anahtarlı sunucu TLS sertifikası yok. Sertifikayı önce bu depoya yükleyin."
-        }
-        for ($index=0; $index -lt $certificates.Count; $index++) {
-            $certificate = $certificates[$index]
-            Write-Host ("[{0}] {1} | bitiş {2:yyyy-MM-dd} | {3}" -f ($index+1),$certificate.Subject,$certificate.NotAfter,$certificate.Thumbprint)
-        }
-        $selectionText = Read-Host "Kullanılacak sertifika numarası"
-        $selection = 0
-        if (-not [int]::TryParse($selectionText,[ref]$selection) -or $selection -lt 1 -or $selection -gt $certificates.Count) {
-            Fail "Sertifika numarası geçerli değil."
-        }
-        $selectedCertificate = $certificates[$selection-1]
-    } finally { $store.Close() }
+    if (-not $PersonalSinglePc) {
+        Write-Step "TLS sertifikası"
+        $store = [Security.Cryptography.X509Certificates.X509Store]::new('My','LocalMachine')
+        $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadOnly)
+        try {
+            $now = Get-Date
+            $certificates = @($store.Certificates | Where-Object {
+                $candidate = $_
+                $eku = $candidate.Extensions | Where-Object { $_.Oid.Value -eq '2.5.29.37' } | Select-Object -First 1
+                $validEku = (-not $eku) -or (@($eku.EnhancedKeyUsages | Where-Object { $_.Value -eq '1.3.6.1.5.5.7.3.1' }).Count -gt 0)
+                $candidate.HasPrivateKey -and $candidate.NotBefore -lt $now -and $candidate.NotAfter -gt $now -and $validEku
+            } | Sort-Object NotAfter -Descending)
+            if ($certificates.Count -eq 0) {
+                Fail "Local Computer > Personal deposunda geçerli ve özel anahtarlı sunucu TLS sertifikası yok. Sertifikayı önce bu depoya yükleyin."
+            }
+            for ($index=0; $index -lt $certificates.Count; $index++) {
+                $certificate = $certificates[$index]
+                Write-Host ("[{0}] {1} | bitiş {2:yyyy-MM-dd} | {3}" -f ($index+1),$certificate.Subject,$certificate.NotAfter,$certificate.Thumbprint)
+            }
+            $selectionText = Read-Host "Kullanılacak sertifika numarası"
+            $selection = 0
+            if (-not [int]::TryParse($selectionText,[ref]$selection) -or $selection -lt 1 -or $selection -gt $certificates.Count) {
+                Fail "Sertifika numarası geçerli değil."
+            }
+            $selectedCertificate = $certificates[$selection-1]
+        } finally { $store.Close() }
+    }
 
     Write-Step "Önkoşul kontrolü"
     $ps51 = Get-Command powershell.exe -ErrorAction SilentlyContinue
@@ -150,8 +174,10 @@ try {
     $preflightArgs = @(
         '-NoProfile','-ExecutionPolicy','Bypass','-File',$preflight,
         '-PackagePath',$packagePath,'-PostgreSqlHost','127.0.0.1','-PostgreSqlPort',[string]$pgPort,
-        '-HttpsPort',[string]$httpsPort,'-DnsName',$dnsName,'-CertificateSubject',$selectedCertificate.Subject
+        '-HttpsPort',[string]$httpsPort,'-DnsName',$dnsName
     )
+    if ($PersonalSinglePc) { $preflightArgs += @('-PersonalSinglePc','-CertificateSubject','CN=EnvanterTR Localhost','-AllowMissingCertificate') }
+    else { $preflightArgs += @('-CertificateSubject',$selectedCertificate.Subject) }
     $postgresBinDirectory = Join-Path "$env:ProgramFiles\PostgreSQL\17" 'bin'
     $postgresqlMissing = -not (Test-Path -LiteralPath (Join-Path $postgresBinDirectory 'psql.exe') -PathType Leaf)
     if ($postgresqlMissing) { $preflightArgs += '-AllowMissingPostgreSql' }
@@ -172,8 +198,10 @@ try {
         $preflightArgs = @(
             '-NoProfile','-ExecutionPolicy','Bypass','-File',$preflight,
             '-PackagePath',$packagePath,'-PostgreSqlHost','127.0.0.1','-PostgreSqlPort',[string]$pgPort,
-            '-HttpsPort',[string]$httpsPort,'-DnsName',$dnsName,'-CertificateSubject',$selectedCertificate.Subject
+            '-HttpsPort',[string]$httpsPort,'-DnsName',$dnsName
         )
+        if ($PersonalSinglePc) { $preflightArgs += @('-PersonalSinglePc','-CertificateSubject','CN=EnvanterTR Localhost','-AllowMissingCertificate') }
+        else { $preflightArgs += @('-CertificateSubject',$selectedCertificate.Subject) }
         & $ps51.Source @preflightArgs
         if ($LASTEXITCODE -ne 0) { Fail "PostgreSQL yüklemesinden sonraki önkoşul kontrolü başarısız. Kırmızı maddeleri giderip Setup.cmd dosyasını yeniden çalıştırın." }
     }
@@ -182,9 +210,34 @@ try {
     Write-Host "• Yeni envantertr veritabanı ve envantertr_app rolü oluşturacak."
     Write-Host "• EnvanterTR servis dosyalarını yükleyip HTTPS sağlık kontrolü yapacak."
     Write-Host "• Yeni veritabanı şemasını başlatacak. Var olan veritabanı/rol üzerine yazmaz."
-    Write-Host "• Windows Güvenlik Duvarı veya DNS ayarlarını değiştirmeyecek."
+    if ($PersonalSinglePc) {
+        Write-Host "• localhost için makinede TLS sertifikası oluşturup yalnızca bu bilgisayarda güvenilir yapacak."
+        Write-Host "• Uygulamayı yalnızca localhost üzerinde açacak; başka cihazlara erişim vermez."
+    } else {
+        Write-Host "• Windows Güvenlik Duvarı veya DNS ayarlarını değiştirmeyecek."
+    }
     $confirmation = Read-Host "Devam etmek için INSTALL yazın"
     if ($confirmation -cne 'INSTALL') { Write-Host "Kurulum iptal edildi; hiçbir veritabanı oluşturulmadı." -ForegroundColor Yellow; return }
+
+    if ($PersonalSinglePc) {
+        Write-Step "Yerel HTTPS sertifikası"
+        $certificateThumbprint = (& (Join-Path $packagePath 'ensure-localhost-certificate.ps1')).Trim()
+        if ($certificateThumbprint -notmatch '^[0-9A-Fa-f]{40,64}$') { Fail "Yerel HTTPS sertifikası hazırlanamadı veya parmak izi alınamadı." }
+        $store = [Security.Cryptography.X509Certificates.X509Store]::new('My','LocalMachine')
+        $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadOnly)
+        try { $selectedCertificate = $store.Certificates | Where-Object Thumbprint -eq $certificateThumbprint | Select-Object -First 1 }
+        finally { $store.Close() }
+        if (-not $selectedCertificate -or -not $selectedCertificate.HasPrivateKey) { Fail "Yerel HTTPS sertifikasının özel anahtarı doğrulanamadı." }
+
+        $finalPreflightArgs = @(
+            '-NoProfile','-ExecutionPolicy','Bypass','-File',$preflight,
+            '-PackagePath',$packagePath,'-PostgreSqlHost','127.0.0.1','-PostgreSqlPort',[string]$pgPort,
+            '-HttpsPort',[string]$httpsPort,'-DnsName','localhost','-CertificateSubject',$selectedCertificate.Subject,
+            '-CertificateThumbprint',$selectedCertificate.Thumbprint,'-PersonalSinglePc'
+        )
+        & $ps51.Source @finalPreflightArgs
+        if ($LASTEXITCODE -ne 0) { Fail "Yerel HTTPS sertifikası veya son önkoşul kontrolü başarısız. Sistem verileri korunuyor; Setup-Personal.cmd ile yeniden deneyin." }
+    }
 
     $databaseSetup = $null
     $resumeConnectionSecure = $null
@@ -198,6 +251,9 @@ try {
                 -not $pendingMetadata.PostgreSqlPort -or -not $pendingMetadata.CertificateThumbprint) {
                 Fail "Yarım kurulum ayarları eksik. Şifreli sır korundu; $pendingDirectory klasörünü saklayıp destek alın."
             }
+            if ([bool]$pendingMetadata.PersonalSinglePc -ne [bool]$PersonalSinglePc) {
+                Fail "Yarım kurulum farklı Windows kullanım modu ile sürdürülemez. İlk denemede kullanılan Setup.cmd veya Setup-Personal.cmd dosyasını çalıştırın."
+            }
             if ([int]$pendingMetadata.HttpsPort -ne $httpsPort -or [int]$pendingMetadata.PostgreSqlPort -ne $pgPort -or
                 $pendingMetadata.DnsName -ine $dnsName -or $pendingMetadata.CertificateThumbprint -ne $selectedCertificate.Thumbprint) {
                 Fail "Yarım kurulum farklı DNS, port veya TLS sertifikasıyla sürdürülemez. İlk denemede kullanılan ayarları seçin."
@@ -207,7 +263,7 @@ try {
             New-Item -ItemType Directory -Path $pendingDirectory -Force | Out-Null
             & icacls.exe $pendingDirectory /inheritance:r /grant:r "SYSTEM:(OI)(CI)F" "Administrators:(OI)(CI)F" /C | Out-Null
             if ($LASTEXITCODE -ne 0) { Fail "Kurulum devam sırrı için güvenli klasör izinleri ayarlanamadı." }
-            $pendingMetadata = [ordered]@{ DnsName=$dnsName; HttpsPort=$httpsPort; PostgreSqlPort=$pgPort; CertificateThumbprint=$selectedCertificate.Thumbprint; CreatedAt=(Get-Date).ToUniversalTime().ToString('o') }
+            $pendingMetadata = [ordered]@{ DnsName=$dnsName; HttpsPort=$httpsPort; PostgreSqlPort=$pgPort; CertificateThumbprint=$selectedCertificate.Thumbprint; PersonalSinglePc=[bool]$PersonalSinglePc; CreatedAt=(Get-Date).ToUniversalTime().ToString('o') }
             $metadataJson = $pendingMetadata | ConvertTo-Json -Depth 4
             Set-Content -LiteralPath $pendingMetadataPath -Value $metadataJson -Encoding UTF8
             $databaseSetup = & (Join-Path $packagePath 'prepare-postgresql.ps1') -Port $pgPort -ReturnConnectionStringSecure -PendingConnectionPath $pendingSecretPath
@@ -216,9 +272,15 @@ try {
         }
 
         Write-Step "Windows servisini kurma"
-        & (Join-Path $packagePath 'install.ps1') -PackagePath $packagePath -HttpsPort $httpsPort `
-            -CertificateSubject $selectedCertificate.Subject -CertificateThumbprint $selectedCertificate.Thumbprint `
-            -DatabaseConnectionStringSecure $resumeConnectionSecure
+        $installArguments = @{
+            PackagePath = $packagePath
+            HttpsPort = $httpsPort
+            CertificateSubject = $selectedCertificate.Subject
+            CertificateThumbprint = $selectedCertificate.Thumbprint
+            DatabaseConnectionStringSecure = $resumeConnectionSecure
+        }
+        if ($PersonalSinglePc) { $installArguments.LoopbackOnly = $true }
+        & (Join-Path $packagePath 'install.ps1') @installArguments
         if ($resumeConnectionSecure) { $resumeConnectionSecure.Dispose(); $resumeConnectionSecure = $null }
     } finally {
         if ($databaseSetup -and $databaseSetup.ConnectionStringSecure) { $databaseSetup.ConnectionStringSecure.Dispose() }
@@ -236,7 +298,8 @@ try {
     Write-Host "HTTPS adresi: https://$dnsName`:$httpsPort"
     Write-Host "İlk şirket sahibi için /setup.html, platform yöneticisi için /platform-setup.html sayfasını açın."
     Write-Host "Kurulum sırasında gösterilen iki başlangıç anahtarını kullanın. Hesaplar oluşturulduktan sonra disable-bootstrap.ps1 çalıştırın."
-    Write-Host "İstemcilerin erişimi için TCP $httpsPort güvenlik duvarı ve DNS kaydını kurum politikanıza göre tamamlayın."
+    if ($PersonalSinglePc) { Write-Host "Bu kişisel kurulum yalnızca bu bilgisayarda kullanılabilir; ekip erişimi için sunucu kurulum paketi gerekir." }
+    else { Write-Host "İstemcilerin erişimi için TCP $httpsPort güvenlik duvarı ve DNS kaydını kurum politikanıza göre tamamlayın." }
 } catch {
     Write-Host "`nKurulum tamamlanamadı: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "Mevcut EnvanterTR verileri otomatik silinmedi. Sorunu giderdikten sonra aynı Setup.cmd akışını yeniden başlatabilirsiniz." -ForegroundColor Yellow

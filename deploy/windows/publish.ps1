@@ -43,7 +43,9 @@ if (-not (Test-Path $exe)) { throw "Publish completed without expected executabl
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "install.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "setup.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "Setup.cmd") -Destination $output -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot "Setup-Personal.cmd") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "preflight.ps1") -Destination $output -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot "ensure-localhost-certificate.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "install-postgresql.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "protect-connection-string.ps1") -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot "configure-email.ps1") -Destination $output -Force

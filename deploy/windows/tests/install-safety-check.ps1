@@ -1,6 +1,8 @@
 $ErrorActionPreference = 'Stop'
 $installPath = Join-Path $PSScriptRoot '..\install.ps1'
 $setupPath = Join-Path $PSScriptRoot '..\setup.ps1'
+$preflightPath = Join-Path $PSScriptRoot '..\preflight.ps1'
+$localhostCertificatePath = Join-Path $PSScriptRoot '..\ensure-localhost-certificate.ps1'
 $postgresPath = Join-Path $PSScriptRoot '..\prepare-postgresql.ps1'
 $postgresInstallerPath = Join-Path $PSScriptRoot '..\install-postgresql.ps1'
 $tokens = $null
@@ -9,6 +11,8 @@ $parseErrors = $null
 if ($parseErrors.Count -gt 0) { throw "install.ps1 has PowerShell parse errors: $($parseErrors.Message -join '; ')" }
 $source = Get-Content -LiteralPath $installPath -Raw
 $setupSource = Get-Content -LiteralPath $setupPath -Raw
+$preflightSource = Get-Content -LiteralPath $preflightPath -Raw
+$localhostCertificateSource = Get-Content -LiteralPath $localhostCertificatePath -Raw
 $postgresSource = Get-Content -LiteralPath $postgresPath -Raw
 $postgresInstallerSource = Get-Content -LiteralPath $postgresInstallerPath -Raw
 
@@ -42,6 +46,16 @@ if ($source -match '(?s)ConnectionStrings\s*=\s*@\{\s*EnvanterTR\s*=\s*\$connect
 if ($setupSource -notmatch '(?s)Read-PendingConnection.*?DataProtectionScope\]::LocalMachine') { throw 'FAIL: interrupted Windows setup must resume from a machine-protected connection secret.' }
 if ($setupSource -notmatch '(?s)if \(\$existingService -and \$pendingSecretExists\).*?migrate\.ps1.*?Remove-PendingSetup') { throw 'FAIL: a service installed before migration failure must resume migration without reinstalling.' }
 if ($setupSource -notmatch '(?s)PostgreSqlPort.*?CertificateThumbprint.*?Yarım kurulum farklı DNS, port veya TLS sertifikasıyla sürdürülemez') { throw 'FAIL: resumed setup must reject changed database, HTTPS, DNS, or certificate settings.' }
+if ($setupSource -notmatch '(?s)param\(\[switch\]\$PersonalSinglePc\).*?Windows 11 x64 iş istasyonunda.*?DnsName = ''localhost''.*?Read-Host "Devam etmek için INSTALL yazın".*?ensure-localhost-certificate\.ps1.*?LoopbackOnly') { throw 'FAIL: personal setup must be Windows 11-only, require explicit install confirmation before certificate trust changes, and bind to loopback.' }
+if ($setupSource -notmatch '(?s)\$isX64\s*=\s*\[string\]\$os\.OSArchitecture -match ''\^64\[- \]\?bit\$''.*?if \(\$PersonalSinglePc\).*?ProductType -ne 1.*?PersonalSinglePc\s*=\s*\[bool\]\$PersonalSinglePc') { throw 'FAIL: personal setup must normalize Windows x64 reporting, reject server OS builds, and persist its mode for safe resume.' }
+if ($preflightSource -notmatch '(?s)\[switch\]\$PersonalSinglePc.*?\$isX64\s*=\s*\[string\]\$os\.OSArchitecture -match ''\^64\[- \]\?bit\$''.*?Windows 11.*?ProductType -eq 1.*?Local TLS trust.*?Network exposure') { throw 'FAIL: personal preflight must normalize x64 reporting and validate Windows 11, local TLS trust, and localhost-only exposure.' }
+if ($localhostCertificateSource -notmatch '(?s)New-SelfSignedCertificate -DnsName ''localhost''.*?Cert:\\LocalMachine\\My.*?NonExportable.*?NT AUTHORITY\\LOCAL SERVICE:R.*?rootStore\.Add') { throw 'FAIL: personal certificate setup must create a non-exportable localhost certificate, grant LocalService read access, and trust its public certificate locally.' }
+foreach ($scriptPath in @($setupPath,$preflightPath,$localhostCertificatePath)) {
+    $tokens = $null
+    $parseErrors = $null
+    [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $scriptPath),[ref]$tokens,[ref]$parseErrors) | Out-Null
+    if ($parseErrors.Count -gt 0) { throw "FAIL: $([IO.Path]::GetFileName($scriptPath)) has PowerShell parse errors: $($parseErrors.Message -join '; ')" }
+}
 if ($postgresSource -notmatch '(?s)PendingConnectionPath.*?ProtectedData\]::Protect.*?LocalMachine.*?DROP DATABASE.*?DROP ROLE') { throw 'FAIL: PostgreSQL setup must persist the DPAPI secret before returning and roll back a newly created database/role on failure.' }
 if ($setupSource -notmatch '(?s)AllowMissingPostgreSql.*?INSTALL POSTGRESQL.*?install-postgresql\.ps1.*?prepare-postgresql\.ps1') { throw 'FAIL: guided server setup must separately confirm and run PostgreSQL installation before creating the EnvanterTR database.' }
 if ($postgresInstallerSource -notmatch 'https://get\.enterprisedb\.com/postgresql/postgresql-17\.11-1-windows-x64\.exe') { throw 'FAIL: PostgreSQL installer must use the pinned official EDB HTTPS release URL.' }

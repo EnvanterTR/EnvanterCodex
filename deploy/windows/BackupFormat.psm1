@@ -120,7 +120,7 @@ function Verify-And-Decrypt([string]$Source, [string]$Destination, [string]$Pass
             try { $crypto.CopyTo($plainOut) } finally { $crypto.Dispose(); $plainOut.Dispose(); $aes.Dispose() }
         } finally {
             if ($hmac) { $hmac.Dispose() }
-            if ($cipherOut -and -not $cipherOut.SafeFileHandle.IsClosed) { $cipherOut.Dispose() }
+            if ($cipherOut) { $cipherOut.Dispose() }
             if ($keys) { [Array]::Clear($keys,0,$keys.Length) }
         }
     } finally { $file.Dispose() }

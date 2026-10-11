@@ -20,7 +20,7 @@ if ($package -eq $output -or $output.StartsWith($package + [System.IO.Path]::Dir
 }
 
 $requiredFiles = @(
-    "EnvanterTR.Web.exe", "Setup.cmd", "setup.ps1", "install.ps1", "preflight.ps1", "install-postgresql.ps1", "protect-connection-string.ps1", "configure-email.ps1", "prepare-postgresql.ps1",
+    "EnvanterTR.Web.exe", "Setup.cmd", "Setup-Personal.cmd", "setup.ps1", "install.ps1", "preflight.ps1", "ensure-localhost-certificate.ps1", "install-postgresql.ps1", "protect-connection-string.ps1", "configure-email.ps1", "prepare-postgresql.ps1",
     "migrate.ps1", "disable-bootstrap.ps1", "backup.ps1", "BackupFormat.psm1", "WindowsSecrets.psm1",
     "restore.ps1", "run-scheduled-backup.ps1", "send-backup-alert.ps1", "configure-backup-schedule.ps1",
     "check-backup-health.ps1", "update.ps1", "README.md"
@@ -41,7 +41,7 @@ $shortCommit = $Commit.Substring(0, 12).ToLowerInvariant()
 $archiveName = "envantertr-windows-x64-$shortCommit.zip"
 $archivePath = Join-Path $output $archiveName
 $checksumPath = "$archivePath.sha256"
-$temporaryArchive = "$archivePath.tmp-$([guid]::NewGuid().ToString('N'))"
+$temporaryArchive = "$archivePath.tmp-$([guid]::NewGuid().ToString('N')).zip"
 $temporaryChecksum = "$checksumPath.tmp-$([guid]::NewGuid().ToString('N'))"
 
 try {

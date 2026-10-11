@@ -5,7 +5,10 @@ param(
     [ValidateRange(1,65535)][int]$HttpsPort = 8443,
     [string]$DnsName = "",
     [string]$CertificateSubject = "",
+    [string]$CertificateThumbprint = "",
     [switch]$AllowMissingPostgreSql,
+    [switch]$AllowMissingCertificate,
+    [switch]$PersonalSinglePc,
     [string]$InstallRoot = "$env:ProgramFiles\EnvanterTR",
     [string]$DataRoot = "$env:ProgramData\EnvanterTR",
     [ValidateRange(1,1000)][int]$MinimumFreeGB = 10
@@ -103,12 +106,21 @@ function Test-SafeDirectory([string]$Path,[string]$OtherPath) {
 
 try {
     if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
-        Add-Check "Operating system" FAIL "This package requires Windows Server 2019 or 2022 x64."
+        Add-Check "Operating system" FAIL "This package requires a supported Windows x64 installation."
     } else {
         $os = Get-CimInstance Win32_OperatingSystem
-        $supported = $os.Caption -match 'Windows Server 2019|Windows Server 2022'
-        if ($supported) { Add-Check "Operating system" PASS "$($os.Caption), build $($os.BuildNumber)." }
-        else { Add-Check "Operating system" FAIL "$($os.Caption) is not supported by the current Windows Server package. Windows 11 personal use needs its separate installer, which is not released yet." }
+        $isX64 = [string]$os.OSArchitecture -match '^64[- ]?bit$'
+        if ($PersonalSinglePc) {
+            $supported = $os.Caption -match 'Windows 11' -and $isX64 -and $os.ProductType -eq 1
+            if ($supported) { Add-Check "Operating system" PASS "$($os.Caption), $($os.OSArchitecture), build $($os.BuildNumber); single-PC mode." }
+            else { Add-Check "Operating system" FAIL "$($os.Caption), $($os.OSArchitecture) is not supported by Windows 11 x64 single-PC mode." }
+            if ($DnsName -ine 'localhost') { Add-Check "Local address" FAIL "Personal single-PC mode only supports -DnsName localhost." }
+            else { Add-Check "Local address" PASS "The application address is fixed to localhost." }
+        } else {
+            $supported = $os.Caption -match 'Windows Server 2019|Windows Server 2022' -and $isX64
+            if ($supported) { Add-Check "Operating system" PASS "$($os.Caption), $($os.OSArchitecture), build $($os.BuildNumber)." }
+            else { Add-Check "Operating system" FAIL "$($os.Caption), $($os.OSArchitecture) is not supported by the Windows Server package. For a team, use a supported Windows Server or Ubuntu host." }
+        }
     }
 } catch { Add-Check "Operating system" FAIL "Could not identify Windows version: $($_.Exception.Message)" }
 
@@ -163,8 +175,12 @@ try {
     try {
         $now = Get-Date
         $candidates = @($store.Certificates | Where-Object {
+            $eku = $_.Extensions | Where-Object { $_.Oid.Value -eq "2.5.29.37" } | Select-Object -First 1
+            $validEku = (-not $eku) -or @($eku.EnhancedKeyUsages | Where-Object { $_.Value -eq "1.3.6.1.5.5.7.3.1" }).Count -gt 0
             $_.HasPrivateKey -and $_.NotBefore -lt $now -and $_.NotAfter -gt $now -and
-            ([string]::IsNullOrWhiteSpace($CertificateSubject) -or $_.Subject -eq $CertificateSubject)
+            $validEku -and
+            ([string]::IsNullOrWhiteSpace($CertificateSubject) -or $_.Subject -eq $CertificateSubject) -and
+            ([string]::IsNullOrWhiteSpace($CertificateThumbprint) -or $_.Thumbprint -eq $CertificateThumbprint)
         })
         if (-not [string]::IsNullOrWhiteSpace($DnsName)) {
             $candidates = @($candidates | Where-Object {
@@ -183,17 +199,40 @@ try {
             else { Add-Check "TLS hostname" PASS "Certificate name matches $DnsName." }
         } elseif ($candidates.Count -eq 0) {
             $nameHint = if ([string]::IsNullOrWhiteSpace($DnsName)) { "" } else { " and DNS name '$DnsName'" }
-            Add-Check "HTTPS certificate" FAIL "No unexpired certificate with a private key matched LocalMachine\My$nameHint. Provide -CertificateSubject and -DnsName as appropriate."
+            if ($AllowMissingCertificate -and $PersonalSinglePc) {
+                Add-Check "HTTPS certificate" WARN "A suitable localhost certificate will be created or repaired after the explicit INSTALL confirmation."
+            } else {
+                Add-Check "HTTPS certificate" FAIL "No unexpired certificate with a private key matched LocalMachine\My$nameHint. Provide -CertificateSubject and -DnsName as appropriate."
+            }
         } else {
-            Add-Check "HTTPS certificate" FAIL "$($candidates.Count) certificates matched. Re-run with -CertificateSubject to select one exact subject."
+            if ($AllowMissingCertificate -and $PersonalSinglePc) {
+                Add-Check "HTTPS certificate" WARN "$($candidates.Count) localhost certificates matched; the guided setup will select or create its fixed certificate after the explicit INSTALL confirmation."
+            } else {
+                Add-Check "HTTPS certificate" FAIL "$($candidates.Count) certificates matched. Re-run with -CertificateSubject to select one exact subject."
+            }
+        }
+        if ($PersonalSinglePc -and $candidates.Count -eq 1) {
+            $rootStore = [Security.Cryptography.X509Certificates.X509Store]::new("Root","LocalMachine")
+            $rootStore.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadOnly)
+            try {
+                $trusted = @($rootStore.Certificates | Where-Object Thumbprint -eq $candidates[0].Thumbprint).Count -gt 0
+                if ($trusted) { Add-Check "Local TLS trust" PASS "The localhost certificate is trusted by this computer." }
+                elseif ($AllowMissingCertificate) { Add-Check "Local TLS trust" WARN "Local trust will be added after the explicit INSTALL confirmation." }
+                else { Add-Check "Local TLS trust" FAIL "The localhost certificate is not trusted by this computer." }
+            } finally { $rootStore.Close() }
         }
     } finally { $store.Close() }
 } catch { Add-Check "HTTPS certificate" FAIL "Could not inspect LocalMachine\My: $($_.Exception.Message)" }
 
 Add-Check "Certificate service access" WARN "The installer must be granted read access to the certificate private key for NT AUTHORITY\LocalService. Verify this before opening network access."
-Add-Check "Firewall and DNS" WARN "This check does not change Windows Firewall or DNS. Confirm the chosen server name resolves for clients and permit HTTPS TCP $HttpsPort only through your network policy."
+if ($PersonalSinglePc) {
+    Add-Check "Network exposure" PASS "The app will bind only to localhost; Windows Firewall and DNS will not be changed."
+} else {
+    Add-Check "Firewall and DNS" WARN "This check does not change Windows Firewall or DNS. Confirm the chosen server name resolves for clients and permit HTTPS TCP $HttpsPort only through your network policy."
+}
 
-Write-Output "EnvanterTR Windows Server installation preflight (read-only)"
+if ($PersonalSinglePc) { Write-Output "EnvanterTR Windows 11 single-PC installation preflight (read-only)" }
+else { Write-Output "EnvanterTR Windows Server installation preflight (read-only)" }
 Write-Output ""
 foreach ($check in $checks) {
     $line = "[{0}] {1}: {2}" -f $check.Result,$check.Name,$check.Detail

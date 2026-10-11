@@ -2,7 +2,7 @@
 
 ## Kişisel Windows 11 kurulumu için servis kapsamı
 
-`install.ps1 -LoopbackOnly`, uygulama servisini yalnızca `https://localhost:<port>` üzerinde dinletir. Sunucu kurulumunda varsayılan dinleme tüm ağ arabirimleridir; mevcut `Setup.cmd` bu varsayılanı değiştirmez. Loopback seçeneği kişisel kurulumun temelidir, ancak tek başına Windows 11 kurulum ürünü değildir. Bu yol için ön kontrol, güvenilir yerel TLS sertifikası, PostgreSQL/uygulama sihirbazı, kaldırma/yükseltme ve imzalı `Setup.exe` kabulü tamamlanana kadar müşteri kurulumunda kullanmayın.
+`Setup-Personal.cmd` Windows 11 x64 için tek bilgisayarlı PowerShell kurulum temelini başlatır. Kurulum adresini `localhost` ile sınırlar; ayrı onaydan sonra yerel HTTPS sertifikası oluşturup bu bilgisayara güvenir ve Windows servisine özel anahtarı okuma izni verir. PostgreSQL yoksa aynı EDB imza doğrulamalı, etkileşimli yükleme adımı kullanılabilir. `install.ps1 -LoopbackOnly` ile uygulama yalnızca bu makinede dinler; başka cihazlara erişim açılmaz. Bu akış hâlâ imzasız ve metin tabanlıdır; gerçek temiz Windows 11 kurulumu, kaldırma/yükseltme kabulü ve imzalı `Setup.exe` tamamlanmadan müşteriye dağıtılmamalıdır.
 
 Bu klasör Windows x64 self-contained yayın, etkileşimli ilk kurulum yardımcısı, servis kurma ve uygulama güncelleme betiklerini içerir. İndirilen ZIP açıldıktan sonra `Setup.cmd` başlatılır; yükseltilmiş bir PowerShell penceresi açarak adımları yönlendirir. Yardımcı mevcut bir veritabanı/servis kurulumunun üzerine yazmaz. Gerçek müşteri Windows Server kabulü tamamlanmadan paket üretime hazır sayılmaz.
 
@@ -10,10 +10,10 @@ Sunucu veya disk kaybı için çevrim dışı parola/anahtar saklama ve iki plat
 
 ## Gereksinimler ve sınırlar
 
-- Windows Server 2019 veya 2022 x64, yönetici PowerShell'i ve paket derlemesi için .NET 10 SDK'sı ya da çalışan Docker Desktop (resmî .NET 10 SDK imajıyla) bulunan derleme makinesi.
-- `Setup.cmd` kurulum akışı Windows Server içindir. Tek bilgisayarda Windows 11 üzerinde kişisel kurulum ayrı ürün paketi olarak hazırlanmalıdır; bu paket Windows 11'i desteklediğini iddia etmez. Kişisel PC, ofis Windows Server'ı ve ofis Ubuntu sunucusu üç ayrı müşteri kullanım biçimidir; sunucu seçeneğinde çalışanların bilgisayarına istemci kurulmaz.
+- Sunucu kurulumu için Windows Server 2019/2022 x64; kişisel tek-PC kurulum temeli için Windows 11 x64 gerekir. Paket derleme makinesinde .NET 10 SDK'sı veya çalışan Docker Desktop (resmî .NET 10 SDK imajıyla) bulunmalıdır.
+- `Setup.cmd` ofis sunucusu kurulumudur; `Setup-Personal.cmd` Windows 11 x64 tek bilgisayar geliştirme temelidir. Kişisel modda DNS alanı localhost olarak sabittir ve ağdan erişim sağlamaz. Kişisel PC, ofis Windows Server'ı ve ofis Ubuntu sunucusu ayrı kullanım biçimleridir; sunucu seçeneğinde çalışanların bilgisayarına istemci kurulmaz.
 - PostgreSQL 17 zaten kurulu olmalı veya `Setup.cmd` içindeki isteğe bağlı yükleyici onayını vermelisiniz. PostgreSQL yoksa yardımcı resmi EDB PostgreSQL 17.11 x64 yükleyicisini indirir, Authenticode imzasını ve EDB yayıncı adını doğrular, sonra etkileşimli kurulum sihirbazını açar. Parolayı EDB ekranında siz belirlersiniz; bu parola komut satırına, ortama veya EnvanterTR günlüklerine aktarılmaz. Yardımcı daha sonra PostgreSQL yönetici parolasını gizli biçimde alıp yeni, sınırlı yetkili EnvanterTR rolü ve UTF-8 veritabanı oluşturur. Var olan PostgreSQL servisini yükseltmez veya üzerine yazmaz. `migrate.ps1` açık onaydan sonra uygulama şemasını oluşturur/günceller.
-- TLS sertifikası `Local Computer > Personal (My)` deposunda olmalı; betik tam subject eşleşmesini ve özel anahtarı doğrular. `LocalService` hesabına sertifikanın özel anahtarını okuma izni Windows Sertifikalar MMC'sinden verilmelidir.
+- Sunucu TLS sertifikası `Local Computer > Personal (My)` deposunda olmalı; betik subject ve DNS adını doğrular. `LocalService` hesabına özel anahtarı okuma izni verilmelidir. Kişisel Windows 11 modu ayrı bir localhost sertifikası oluşturup sadece makinenin Trusted Root deposuna ekler.
 - Şirket görselleri, Data Protection anahtarları ve DPAPI ile LocalMachine kapsamında şifrelenmiş PostgreSQL bağlantı sırrı `C:\ProgramData\EnvanterTR` altında tutulur. Production ayar dosyasında yalnızca şifreli sır dosyasının yolu bulunur; sır klasöründe SYSTEM ve Administrators tam yetkili, LocalService salt okunur erişimlidir. Uygulama ve bakım betikleri sırrı yalnız aynı Windows makinesinde açabilir; dosya başka makineye taşınırsa açılamaz. Zamanlanmış yedek parolası ve isteğe bağlı HTTPS bildirim adresi de DPAPI ile makineye bağlı şifrelenir. Çevrim dışı parola kasası/kurtarma kaydı zorunludur.
 - Kurulum Windows Güvenlik Duvarı'nı değiştirmez. HTTPS 8443 varsayılandır; kurumun ağ ve sertifika politikasına göre erişimi ayrıca ayarlayın.
 
@@ -28,7 +28,7 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 Betik önce yerel .NET SDK'sını kullanır; SDK yoksa çalışan Docker Desktop üzerinden resmî .NET 10 SDK imajını çağırır. İlk Docker derlemesi imajı indirebilir. Özel çıktı dizini için `-OutputPath` verilebilir.
 
-`main` dalındaki GitHub Actions Windows doğrulama işi başarılı tamamlanırsa, aynı işin **Artifacts** bölümünde `envantertr-windows-x64-<commit-sha>` adlı indirme 14 gün boyunca saklanır. GitHub'da **Actions → EnvanterTR CI → başarılı çalıştırma → Artifacts** yolunu izleyin. İndirme içinde `envantertr-windows-x64-<12-karakter-commit>.zip`, `.zip.sha256` yan dosyası ve `verify-release.ps1` doğrulama aracı bulunur. Bu imzasız x64 pakette `Setup.cmd` ilk kurulum yardımcısı vardır; başarılı CI veya yerel paket testi gerçek Windows Server kabulü anlamına gelmez.
+`main` dalındaki GitHub Actions Windows doğrulama işi başarılı tamamlanırsa, aynı işin **Artifacts** bölümünde `envantertr-windows-x64-<commit-sha>` adlı indirme 14 gün boyunca saklanır. GitHub'da **Actions → EnvanterTR CI → başarılı çalıştırma → Artifacts** yolunu izleyin. İndirme içinde `envantertr-windows-x64-<12-karakter-commit>.zip`, `.zip.sha256` yan dosyası ve `verify-release.ps1` doğrulama aracı bulunur. Bu imzasız x64 pakette `Setup.cmd` ve `Setup-Personal.cmd` ilk kurulum yardımcıları vardır; başarılı CI veya yerel paket testi gerçek Windows Server/Windows 11 kabulü anlamına gelmez.
 
 Arşivi açmadan önce SHA-256 değerini doğrulayın:
 
@@ -43,6 +43,8 @@ SHA-256 aktarım bozulmasını saptar; dosyanın yayıncı kimliğini kanıtlama
 
 `artifacts/windows/publish` dizinini sunucuya güvenli biçimde aktarın. DNS kaydını ve TLS sertifikasını önceden hazırlayın; PostgreSQL 17'yi daha önce kurabilir veya `Setup.cmd` içindeki PostgreSQL yükleme adımını kullanabilirsiniz. Paketi ayrı bir klasöre çıkarıp `Setup.cmd` dosyasına çift tıklayın. Yardımcı yönetici izni ister; DNS adını, HTTPS/DB portlarını ve kullanılacak TLS sertifikasını sorar. PostgreSQL yoksa indirme ve yükleyiciyi açma için ayrıca `INSTALL POSTGRESQL` onayı ister. EDB sihirbazında PostgreSQL yönetici parolasını belirleyin. Dönüşte PostgreSQL ve diğer önkoşullar yeniden kontrol edilir; EnvanterTR kurulumu için devam etmeden önce `INSTALL` yazmanız istenir. `prepare-postgresql.ps1` uygulama parolasını üretir ve yönetici parolasını gizli ister; ekrana bağlantı parolası yazmaz. Veritabanı şeması için ayrıca `MIGRATE` onayı gerekir.
 
+Kişisel PC kurulum temelini doğrulamak için Windows 11 x64 makinede ZIP'i açıp `Setup-Personal.cmd` dosyasına çift tıklayın. Önkoşul raporu salt okunurdur; PostgreSQL indirilecekse `INSTALL POSTGRESQL`, EnvanterTR kurulumu için `INSTALL` onayı gerekir. Son onaydan sonra yalnızca localhost TLS sertifikası güvenilir depoya eklenir ve uygulama `https://localhost:8443` adresinde açılır. Bu akış henüz imzalı/GUI `Setup.exe` değildir ve gerçek Windows 11 hedef bilgisayarda kabul edilene kadar ürün indirme sayfasında yayımlanamaz.
+
 Sihirbaz PostgreSQL 17 yoksa resmi EDB yükleyicisini imzasını doğruladıktan ve ayrıca onay aldıktan sonra açar. DNS veya Windows Güvenlik Duvarı'nı değiştirmez ve TLS sertifikası edinmez; kurum IT'si bu hazırlıkları yapmalıdır. Önkoşul hatalarında sihirbaz açıklama verir; düzeltme sonrası yeniden çalıştırılabilir. Yeni DB/rol oluşturulduktan sonra servis veya migration adımı başarısız olursa, bağlantı sırrı C:\ProgramData\EnvanterTR\secrets altında LocalMachine DPAPI ile korunur ve devam dosyasının ACL erişimi yalnızca SYSTEM ile Administrators grubuna verilir; aynı ayarlar ve sertifika ile yeniden çalıştırıldığında ilk kurulum kaldığı adımdan sürer. Başarısız secret kaydında yeni oluşturulan boş DB/rol geri alınmaya çalışılır. Mevcut veritabanı ve servis üzerine yazılmaz. Kurulum sırasında oluşturulan ilk şirket ve platform yöneticisi anahtarları bir kez gösterilir; güvenli kasaya kaydedin, ilk hesaplar açıldıktan sonra `disable-bootstrap.ps1` çalıştırın.
 
 Elle denetim veya sorun giderme için ön kontrolü doğrudan yönetici PowerShell'den çalıştırın:
@@ -50,6 +52,8 @@ Elle denetim veya sorun giderme için ön kontrolü doğrudan yönetici PowerShe
 ```powershell
 ./preflight.ps1 -PostgreSqlHost 127.0.0.1 -DnsName envanter.sirketiniz.com -CertificateSubject "CN=envanter.sirketiniz.com"
 ```
+
+Windows 11 kişisel ön kontrolü, yayımlanmış paket klasöründe yönetici PowerShell ile `./preflight.ps1 -PersonalSinglePc -DnsName localhost -AllowMissingCertificate -AllowMissingPostgreSql` şeklinde çalıştırılabilir. Bu kip salt okunurdur; eksik sertifikayı oluşturmadan ve PostgreSQL kurmadan yalnızca gerekli makine kontrollerini raporlar.
 
 Ön kontrol yalnızca okuma yapar: işletim sistemi/sürüm, yönetici oturumu, paket, hedef yollar, boş disk, HTTPS portu, PostgreSQL TCP erişimi ve LocalMachine sertifikasının geçerliliğini/SAN alan adını inceler. Başarısız maddelerin yanında düzeltme önerisi verir. PostgreSQL sürümünü ayrıca doğrulayın. Sertifika özel anahtarına `LocalService` erişimi, DNS ve kurum güvenlik duvarı elle onaylanır; bu kontrol bunları değiştirmez.
 
