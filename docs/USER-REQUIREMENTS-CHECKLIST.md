@@ -6,11 +6,11 @@
 
 - Docker Desktop Engine çalışıyor. `envantertr-product-dev` altında `web` (`localhost:8080`), `public-site` (`localhost:8081`) ve sağlıklı PostgreSQL 17 servisi ayakta.
 - Yerel `/api/status`: `ready`, 74 migration, 0 bekleyen; `localhost:8081/demo/`: HTTP 200.
-- Güvenlik/tenant kabul paketi: 72/72 geçti; beş arayüz dilinde 1.372 çeviri girdisi doğrulandı.
-- GitHub fetch/push tamamlandı; yerel ve uzak `main` şu anda `b90d127` commit'inde eşit. GitHub Actions geçmişi özel depo erişimi olmadığı için okunamadı; commit `[skip ci]` ile gönderildi.
-- GitHub Actions çalışma durumu bu ortamda kimlik doğrulaması olmadan okunamadı (özel depo REST çağrısı 404 döndürdü). Bu commit, kullanıcının tekrarlayan Actions e-postalarını artırmamak için `[skip ci]` ile gönderildi; aynı commit'in Docker tabanlı yerel kabul testi 72/72 geçti.
-- Canlı `https://envantertr.com/api/status`: `migration-required`, 72 migration, 2 bekleyen. Canlı veritabanı yedeği doğrulanmadan canlı şema güncellenmeyecek.
-- Yerel giriş incelemesi: başlangıçta admin@envantertr.com hesabı ve şirket yoktu. Giriş ekranına ilk kurulum açıklaması eklendi; yerel EnvanterTR şirketi ve owner hesabı kuruldu. Yeni parola Windows panosuna kopyalandı, sohbete yazılmadı. Login API ve şirket oturumu doğrulandı; /api/status=ready, setupRequired=false. Yalnızca yerel veritabanı değişti.
+- `node tools/Verify-UiLocales.mjs`: beş arayüz dilinde 1.372 çeviri girdisini doğruladı. İzole PostgreSQL 17 güvenlik/tenant kabul paketi 72/72 geçti (4 dk 12 sn); geçici veritabanı ve konteynerler test bitince kaldırıldı.
+- Git başlangıç durumu: yerel `main` ve `origin/main` aynı `09f624b` commit'indeydi. Demo menü düzeltmesi bu kontrol sonunda commit edilip gönderilecek; GitHub Actions durumu henüz doğrulanmadı.
+- Canlı `https://envantertr.com/api/status`: önceki kayda göre `migration-required`, 72 migration, 2 bekleyen. Canlı veritabanı yedeği doğrulanmadan canlı şema güncellenmeyecek.
+- Yerel giriş kontrolü: `/api/status` ve kurulum durumu hazır. `admin@envantertr.com` hesabı mevcut, e-postası doğrulanmış, kilitli değil, 2FA kapalı ve bir şirkete üyeliği var. Bu oturumda parola denenmedi/sıfırlanmadı; ekrandaki genel 401 mesajının parola uyuşmazlığından kaynaklanması muhtemel. Yerel Docker'da SMTP ayarı yok; parola kurtarma e-postası gönderilemez.
+- Demo menü kontrolü: desteklenmeyen alt menüler artık ilgisiz örnek varlıkları göstermiyor; kendi boş durum başlığını gösteriyor, arama/dışa aktarma ve varlık işlemleri saklanıyor. Desteklenen Varlıklar ekranına dönünce liste ve araçlar geri geliyor. Türkçe ve İngilizce tarayıcı akışında kontrol edildi.
 
 Durum işaretleri: ✅ Var · 🟡 Kısmen var (eksik) · ❌ Hiç yok · ⚠️ Riskli/karar gerekiyor
 
