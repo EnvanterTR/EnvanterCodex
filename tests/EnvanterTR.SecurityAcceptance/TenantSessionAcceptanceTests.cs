@@ -58,6 +58,141 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     private readonly Guid _otherCompanyEmployeeId = Guid.NewGuid();
 
     [Fact]
+    public async Task Asset_contracts_are_company_scoped_audited_and_support_safe_attachments()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var contractPath = "/api/contracts";
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var licenseDb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var license = await licenseDb.SoftwareLicenses.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownLicenseId);
+            license.LicenseReference = "DO-NOT-EXPORT-LICENSE-REFERENCE";
+            await licenseDb.SaveChangesAsync();
+        }
+
+        using (var crossTenantLink = await SendAsRoleAsync(HttpMethod.Post, contractPath, "admin",
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       name = "Invalid tenant contract", currency = "TRY",
+                       assetIds = new[] { _ownAssetId, _otherCompanyAssetId }
+                   }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, crossTenantLink.StatusCode);
+
+        using var create = await SendAsRoleAsync(HttpMethod.Post, contractPath, "admin",
+            System.Net.Http.Json.JsonContent.Create(new
+            {
+                name = "Annual hardware support", contractNumber = "SUP-2026-01", contractType = "Support",
+                startDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1),
+                endDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(10), cost = 1200m, currency = "USD",
+                notes = "=HYPERLINK(\"https://invalid.example\")", assetIds = new[] { _ownAssetId },
+                licenseIds = new[] { _ownLicenseId }
+            }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        using var created = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
+        var contractId = created.RootElement.GetProperty("id").GetGuid();
+
+        await SetCompanyRoleAsync("viewer");
+        using (var forbidden = await SendAsRoleAsync(HttpMethod.Post, contractPath, "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { name = "Viewer cannot create", currency = "TRY" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+        await SetCompanyRoleAsync("admin");
+        using (var detail = await SendAsAdminAsync($"/api/contracts/{contractId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, detail.StatusCode);
+            using var payload = JsonDocument.Parse(await detail.Content.ReadAsStringAsync());
+            Assert.Equal("expiring", payload.RootElement.GetProperty("contract").GetProperty("status").GetString());
+            Assert.Equal(_ownAssetId, payload.RootElement.GetProperty("assets")[0].GetProperty("id").GetGuid());
+            Assert.Equal(_ownLicenseId, payload.RootElement.GetProperty("licenses")[0].GetProperty("id").GetGuid());
+        }
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var tenantDb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            tenantDb.CompanyMemberships.Add(new CompanyMembership
+                { CompanyId = _otherCompanyId, UserId = _sameCompanyOtherUserId, RoleKey = "admin" });
+            await tenantDb.SaveChangesAsync();
+        }
+        using (var otherTenant = await SendAsUserAsync(HttpMethod.Get, $"/api/contracts/{contractId}",
+                   _sameCompanyOtherUserId, _otherCompanyId, role: "admin"))
+            Assert.Equal(HttpStatusCode.NotFound, otherTenant.StatusCode);
+
+        using (var invalidUpload = new MultipartFormDataContent())
+        {
+            invalidUpload.Add(new ByteArrayContent("not a pdf"u8.ToArray()), "file", "contract.pdf");
+            using var response = await SendAsRoleAsync(HttpMethod.Post, $"/api/contracts/{contractId}/attachments", "admin",
+                invalidUpload, requestToken, antiforgeryCookie);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+        using (var validUpload = new MultipartFormDataContent())
+        {
+            validUpload.Add(new ByteArrayContent("%PDF-1.7\ncontract"u8.ToArray()), "file", "support.pdf");
+            using var response = await SendAsRoleAsync(HttpMethod.Post, $"/api/contracts/{contractId}/attachments", "admin",
+                validUpload, requestToken, antiforgeryCookie);
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+            using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var attachmentId = payload.RootElement.GetProperty("id").GetGuid();
+            using var download = await SendAsAdminAsync($"/api/contracts/{contractId}/attachments/{attachmentId}/file");
+            Assert.Equal(HttpStatusCode.OK, download.StatusCode);
+            Assert.Equal("%PDF-1.7\ncontract"u8.ToArray(), await download.Content.ReadAsByteArrayAsync());
+
+            using var companyExport = await SendAsAdminAsync("/api/company/export.json");
+            Assert.Equal(HttpStatusCode.OK, companyExport.StatusCode);
+            using var exportJson = JsonDocument.Parse(await companyExport.Content.ReadAsStringAsync());
+            Assert.Contains(exportJson.RootElement.GetProperty("assetContracts").EnumerateArray(),
+                item => item.GetProperty("id").GetGuid() == contractId);
+            Assert.Contains(exportJson.RootElement.GetProperty("assetContractAssets").EnumerateArray(),
+                item => item.GetProperty("contractId").GetGuid() == contractId && item.GetProperty("assetId").GetGuid() == _ownAssetId);
+            Assert.Contains(exportJson.RootElement.GetProperty("assetContractLicenses").EnumerateArray(),
+                item => item.GetProperty("contractId").GetGuid() == contractId && item.GetProperty("licenseId").GetGuid() == _ownLicenseId);
+            var exportedLicense = Assert.Single(exportJson.RootElement.GetProperty("softwareLicenses").EnumerateArray(),
+                item => item.GetProperty("id").GetGuid() == _ownLicenseId);
+            Assert.Equal(JsonValueKind.Null, exportedLicense.GetProperty("licenseReference").ValueKind);
+
+            using var archiveResponse = await SendAsAdminAsync("/api/company/export.zip");
+            Assert.Equal(HttpStatusCode.OK, archiveResponse.StatusCode);
+            using var archive = new ZipArchive(new MemoryStream(await archiveResponse.Content.ReadAsByteArrayAsync()), ZipArchiveMode.Read);
+            Assert.Contains(archive.Entries, entry => entry.FullName ==
+                $"media/contracts/{contractId:N}/attachments/{attachmentId:N}.pdf");
+        }
+        using (var files = await SendAsAdminAsync($"/api/contracts/{contractId}/attachments"))
+        {
+            using var payload = JsonDocument.Parse(await files.Content.ReadAsStringAsync());
+            Assert.Equal("support.pdf", payload.RootElement.GetProperty("items")[0].GetProperty("originalFileName").GetString());
+        }
+
+        using (var export = await SendAsAdminAsync("/api/contracts/export.csv"))
+        {
+            var csv = await export.Content.ReadAsStringAsync();
+            Assert.Contains("'=" , csv, StringComparison.Ordinal);
+        }
+        await SetCompanyRoleAsync("admin");
+        using (var archive = await SendAsRoleAsync(HttpMethod.Post, $"/api/contracts/{contractId}/archive", "admin",
+                   content: null, requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NoContent, archive.StatusCode);
+        using (var archivedCsv = await SendAsAdminAsync("/api/contracts/export.csv"))
+        {
+            Assert.Equal(HttpStatusCode.OK, archivedCsv.StatusCode);
+            var csv = await archivedCsv.Content.ReadAsStringAsync();
+            Assert.Contains("Annual hardware support", csv, StringComparison.Ordinal);
+            Assert.Contains("Arşiv", csv, StringComparison.Ordinal);
+        }
+        using (var restore = await SendAsRoleAsync(HttpMethod.Post, $"/api/contracts/{contractId}/restore", "admin",
+                   content: null, requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NoContent, restore.StatusCode);
+
+        await using var auditScope = _factory!.Services.CreateAsyncScope();
+        var db = auditScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Contains(await db.AuditEntries.Where(x => x.CompanyId == _companyId && x.TargetId == contractId).ToListAsync(),
+            item => item.Action == "contract.created");
+        Assert.Equal(1, await db.AssetContractAssets.CountAsync(x => x.CompanyId == _companyId && x.ContractId == contractId));
+        Assert.Equal(1, await db.AssetContractLicenses.CountAsync(x => x.CompanyId == _companyId && x.ContractId == contractId));
+    }
+
+    [Fact]
     public async Task Bulk_employee_status_changes_are_company_scoped_atomic_and_audited()
     {
         await using (var scope = _factory!.Services.CreateAsyncScope())

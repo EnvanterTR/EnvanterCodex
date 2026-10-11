@@ -907,6 +907,10 @@ public static class DataExportEndpoints
             var assetPurchaseOrders = root.TryGetProperty("assetPurchaseOrders", out _) ? ReadRows(root, "assetPurchaseOrders", sourceCompanyId, errors, counts) : [];
             var assetPurchaseOrderLines = root.TryGetProperty("assetPurchaseOrderLines", out _) ? ReadRows(root, "assetPurchaseOrderLines", sourceCompanyId, errors, counts) : [];
             var assetPurchaseOrderAttachments = root.TryGetProperty("assetPurchaseOrderAttachments", out _) ? ReadRows(root, "assetPurchaseOrderAttachments", sourceCompanyId, errors, counts) : [];
+            var assetContracts = ReadOptionalRows(root, "assetContracts", errors, counts);
+            var assetContractAssets = ReadOptionalRows(root, "assetContractAssets", errors, counts);
+            var assetContractLicenses = ReadOptionalRows(root, "assetContractLicenses", errors, counts);
+            var softwareLicenses = ReadOptionalRows(root, "softwareLicenses", errors, counts);
             counts.TryAdd("assetPurchaseOrders", 0);
             counts.TryAdd("assetPurchaseOrderLines", 0);
             counts.TryAdd("assetPurchaseOrderAttachments", 0);
@@ -1078,6 +1082,77 @@ public static class DataExportEndpoints
                     AddError(errors, "Bir bakım kaydının metin alanı izin verilen uzunluğu aşıyor.");
             }
 
+            var softwareLicenseIds = new HashSet<Guid>();
+            foreach (var license in softwareLicenses)
+            {
+                if (license.ValueKind != JsonValueKind.Object || !TryGuid(license, "id", out var licenseId) || !softwareLicenseIds.Add(licenseId) ||
+                    !TryGuid(license, "companyId", out var licenseCompanyId) || licenseCompanyId != sourceCompanyId)
+                { AddError(errors, "Yazılım lisansı kimliği veya şirket bağlantısı geçersiz."); continue; }
+                if (string.IsNullOrWhiteSpace(ReadString(license, "name")) || ReadString(license, "name")!.Length > 200 ||
+                    ReadString(license, "licenseType") is not ("Subscription" or "Perpetual" or "Device" or "Site" or "Trial" or "Other"))
+                    AddError(errors, "Yazılım lisansı adı veya türü geçersiz.");
+                if (!license.TryGetProperty("seats", out var seats) || !seats.TryGetInt32(out var seatCount) || seatCount < 0)
+                    AddError(errors, "Yazılım lisansı koltuk sayısı geçersiz.");
+                if (ReadString(license, "currency") is not { Length: 3 } ||
+                    license.TryGetProperty("unitCost", out var unitCost) && unitCost.ValueKind != JsonValueKind.Null &&
+                    (unitCost.ValueKind != JsonValueKind.Number || !unitCost.TryGetDecimal(out var licenseCost) || licenseCost < 0))
+                    AddError(errors, "Yazılım lisansı para birimi veya maliyeti geçersiz.");
+                if (!IsValidDateOnly(license, "purchaseDate") || !IsValidDateOnly(license, "expirationDate") ||
+                    OptionalTextExceeds(license, "publisher", 200) || OptionalTextExceeds(license, "productVersion", 120) ||
+                    OptionalTextExceeds(license, "licenseReference", 160) || OptionalTextExceeds(license, "supplier", 200) ||
+                    OptionalTextExceeds(license, "notes", 2000))
+                    AddError(errors, "Yazılım lisansının tarih veya metin alanı geçersiz.");
+                if (TryGuid(license, "supplierId", out var licenseSupplierId) && !suppliers.Contains(licenseSupplierId))
+                    AddError(errors, "Bir yazılım lisansının tedarikçisi dosyada bulunamadı.");
+            }
+
+            var contractIds = new HashSet<Guid>();
+            var contractRowIds = new HashSet<Guid>();
+            foreach (var contract in EnumerateRows(root, "assetContracts"))
+            {
+                if (contract.ValueKind != JsonValueKind.Object) continue;
+                if (!TryGuid(contract, "id", out var contractId) || !contractIds.Add(contractId) || !contractRowIds.Add(contractId) ||
+                    !TryGuid(contract, "companyId", out var contractCompanyId) || contractCompanyId != sourceCompanyId)
+                    AddError(errors, "Bir sözleşmenin kimliği geçersiz, yineleniyor veya kaynak şirketle uyuşmuyor.");
+                if (string.IsNullOrWhiteSpace(ReadString(contract, "name")) || ReadString(contract, "name")!.Length > 200)
+                    AddError(errors, "Sözleşme adı boş olamaz ve 200 karakteri aşamaz.");
+                if (OptionalTextExceeds(contract, "contractNumber", 120) || OptionalTextExceeds(contract, "contractType", 120) ||
+                    OptionalTextExceeds(contract, "supplier", 200) || OptionalTextExceeds(contract, "notes", 4000))
+                    AddError(errors, "Bir sözleşmenin metin alanı izin verilen uzunluğu aşıyor.");
+                if (!IsValidDateOnly(contract, "startDate") || !IsValidDateOnly(contract, "endDate"))
+                    AddError(errors, "Bir sözleşmenin tarihi yyyy-AA-gg biçiminde olmalı.");
+                var startDate = ReadDateOnly(contract, "startDate");
+                var endDate = ReadDateOnly(contract, "endDate");
+                if (startDate is not null && endDate is not null && endDate < startDate)
+                    AddError(errors, "Sözleşme bitiş tarihi başlangıç tarihinden önce olamaz.");
+                if (ReadString(contract, "currency") is not { Length: 3 })
+                    AddError(errors, "Bir sözleşmenin para birimi 3 harfli kod olmalı.");
+                if (contract.TryGetProperty("cost", out var cost) && cost.ValueKind != JsonValueKind.Null &&
+                    (cost.ValueKind != JsonValueKind.Number || !cost.TryGetDecimal(out var amount) || amount < 0))
+                    AddError(errors, "Bir sözleşmenin maliyeti geçersiz veya negatif.");
+                if (TryGuid(contract, "supplierId", out var contractSupplierId) && !suppliers.Contains(contractSupplierId))
+                    AddError(errors, "Bir sözleşmenin tedarikçisi dosyada bulunamadı.");
+            }
+            var contractAssetRowIds = new HashSet<Guid>();
+            foreach (var link in EnumerateRows(root, "assetContractAssets"))
+            {
+                if (link.ValueKind != JsonValueKind.Object) continue;
+                if (!TryGuid(link, "id", out var linkId) || !contractAssetRowIds.Add(linkId) ||
+                    !TryGuid(link, "companyId", out var linkCompanyId) || linkCompanyId != sourceCompanyId ||
+                    !TryGuid(link, "contractId", out var contractId) || !contractIds.Contains(contractId) ||
+                    !TryGuid(link, "assetId", out var assetId) || !assets.Contains(assetId))
+                    AddError(errors, "Bir sözleşme-varlık bağlantısının kayıtları dosyada bulunamadı.");
+            }
+            var contractLicenseRowIds = new HashSet<Guid>();
+            foreach (var link in EnumerateRows(root, "assetContractLicenses"))
+            {
+                if (link.ValueKind != JsonValueKind.Object || !TryGuid(link, "id", out var linkId) || !contractLicenseRowIds.Add(linkId) ||
+                    !TryGuid(link, "companyId", out var linkCompanyId) || linkCompanyId != sourceCompanyId ||
+                    !TryGuid(link, "contractId", out var contractId) || !contractIds.Contains(contractId) ||
+                    !TryGuid(link, "licenseId", out var licenseId) || !softwareLicenseIds.Contains(licenseId))
+                    AddError(errors, "Bir sözleşme-lisans bağlantısının sözleşmesi veya lisansı dosyada bulunamadı.");
+            }
+
             var assetPurchaseOrderIds = new HashSet<Guid>();
             foreach (var order in EnumerateRows(root, "assetPurchaseOrders"))
             {
@@ -1217,6 +1292,10 @@ public static class DataExportEndpoints
             var assetPurchaseOrders = DeserializeRows<AssetPurchaseOrder>(root, "assetPurchaseOrders");
             var assetPurchaseOrderLines = DeserializeRows<AssetPurchaseOrderLine>(root, "assetPurchaseOrderLines");
             var assetPurchaseOrderAttachments = DeserializeRows<AssetPurchaseOrderAttachment>(root, "assetPurchaseOrderAttachments");
+            var assetContracts = DeserializeRows<AssetContract>(root, "assetContracts");
+            var assetContractAssets = DeserializeRows<AssetContractAsset>(root, "assetContractAssets");
+            var assetContractLicenses = DeserializeRows<AssetContractLicense>(root, "assetContractLicenses");
+            var softwareLicenses = DeserializeRows<SoftwareLicense>(root, "softwareLicenses");
             var maintenances = DeserializeRows<AssetMaintenance>(root, "assetMaintenances");
             var events = DeserializeRows<AssetEvent>(root, "assetEvents");
             var audits = DeserializeRows<AuditEntry>(root, "auditEntries");
@@ -1225,7 +1304,8 @@ public static class DataExportEndpoints
 
             var ids = new Dictionary<Guid, Guid>();
             var sourceIds = new object[] { departments, locations, employees, categories, brands, suppliers, models, assets,
-                requests, maintenances, events, audits, assetPurchaseOrders, assetPurchaseOrderLines, assetPurchaseOrderAttachments }.SelectMany(rows => ((System.Collections.IEnumerable)rows)
+                requests, maintenances, events, audits, assetPurchaseOrders, assetPurchaseOrderLines, assetPurchaseOrderAttachments,
+                assetContracts, assetContractAssets, assetContractLicenses, softwareLicenses }.SelectMany(rows => ((System.Collections.IEnumerable)rows)
                 .Cast<object>().Select(row => (Guid)row.GetType().GetProperty("Id")!.GetValue(row)!)).ToArray();
             if (sourceIds.Distinct().Count() != sourceIds.Length)
                 return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "Dosyada tablo aileleri arasında yinelenen kayıt kimliği var; hiçbir kayıt aktarılmadı." } });
@@ -1241,6 +1321,8 @@ public static class DataExportEndpoints
             RemapIds(brands); RemapIds(suppliers); RemapIds(models); RemapIds(assets); RemapIds(requests); RemapIds(maintenances); RemapIds(events); RemapIds(audits);
             RemapIds(assetPurchaseOrders); RemapIds(assetPurchaseOrderLines);
             RemapIds(assetPurchaseOrderAttachments);
+            RemapIds(assetContracts); RemapIds(assetContractAssets); RemapIds(assetContractLicenses);
+            RemapIds(softwareLicenses);
             Guid? Map(Guid? source) => source is Guid id && ids.TryGetValue(id, out var mapped) ? mapped : null;
             void CompanyScope<T>(IEnumerable<T> rows) where T : class
             {
@@ -1252,6 +1334,8 @@ public static class DataExportEndpoints
             CompanyScope(maintenances); CompanyScope(events); CompanyScope(audits);
             CompanyScope(assetPurchaseOrders); CompanyScope(assetPurchaseOrderLines);
             CompanyScope(assetPurchaseOrderAttachments);
+            CompanyScope(assetContracts); CompanyScope(assetContractAssets); CompanyScope(assetContractLicenses);
+            CompanyScope(softwareLicenses);
             foreach (var item in locations) { item.ParentLocationId = Map(item.ParentLocationId); item.ManagerEmployeeId = Map(item.ManagerEmployeeId); }
             foreach (var item in employees) { item.LocationCatalogId = Map(item.LocationCatalogId); item.ManagerEmployeeId = Map(item.ManagerEmployeeId); }
             foreach (var item in suppliers)
@@ -1283,6 +1367,10 @@ public static class DataExportEndpoints
                 item.BrandId = Map(item.BrandId); item.ModelId = Map(item.ModelId);
             }
             foreach (var item in assetPurchaseOrderAttachments) { item.PurchaseOrderId = Map(item.PurchaseOrderId) ?? Guid.Empty; item.UploadedByUserId = null; }
+            foreach (var item in assetContracts) { item.SupplierId = Map(item.SupplierId); item.CreatedByUserId = null; }
+            foreach (var item in assetContractAssets) { item.ContractId = Map(item.ContractId) ?? Guid.Empty; item.AssetId = Map(item.AssetId) ?? Guid.Empty; }
+            foreach (var item in assetContractLicenses) { item.ContractId = Map(item.ContractId) ?? Guid.Empty; item.LicenseId = Map(item.LicenseId) ?? Guid.Empty; }
+            foreach (var item in softwareLicenses) item.SupplierId = Map(item.SupplierId);
 
             db.CompanyDepartments.AddRange(departments); db.CompanyLocations.AddRange(locations);
             db.Employees.AddRange(employees); db.AssetCategories.AddRange(categories); db.AssetBrands.AddRange(brands);
@@ -1291,6 +1379,9 @@ public static class DataExportEndpoints
             db.AssetMaintenances.AddRange(maintenances); db.AssetEvents.AddRange(events); db.AuditEntries.AddRange(audits);
             db.AssetPurchaseOrders.AddRange(assetPurchaseOrders); db.AssetPurchaseOrderLines.AddRange(assetPurchaseOrderLines);
             db.AssetPurchaseOrderAttachments.AddRange(assetPurchaseOrderAttachments);
+            db.AssetContracts.AddRange(assetContracts); db.AssetContractAssets.AddRange(assetContractAssets);
+            db.AssetContractLicenses.AddRange(assetContractLicenses);
+            db.SoftwareLicenses.AddRange(softwareLicenses);
             db.AuditEntries.Add(new AuditEntry { CompanyId = targetCompanyId, ActorUserId = userId,
                 TargetType = "Company", TargetId = targetCompanyId, Action = "CompanyDataImported",
                 Details = "Şirket JSON arşivindeki kataloglar, çalışanlar, varlıklar ve ilişkili kayıtlar yeni kimliklerle geri yüklendi." });
@@ -1327,6 +1418,10 @@ public static class DataExportEndpoints
         await db.AssetEvents.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
         await db.AssetPurchaseOrders.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
         await db.AssetPurchaseOrderLines.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.AssetContracts.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.AssetContractAssets.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.AssetContractLicenses.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
+        await db.AssetContractAttachments.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
         await db.AssetMaintenances.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
         await db.InventoryRequests.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
         await db.SupplierCatalogEntries.AnyAsync(x => x.CompanyId == companyId, cancellationToken) ||
@@ -1734,7 +1829,7 @@ public static class DataExportEndpoints
                 var readme = archive.CreateEntry("README.txt", CompressionLevel.Fastest);
                 await using var readmeStream = readme.Open();
                 await using var readmeWriter = new StreamWriter(readmeStream, new UTF8Encoding(false));
-                await readmeWriter.WriteAsync("EnvanterTR şirket veri arşivi\r\ncompany-data.json şirket kayıtlarının bir bölümünü; tedarikçi, marka ve model kataloglarını, departman ve konum kataloglarını içerir. media/ klasörü şirket logolarını (tedarikçi logoları dahil), varlık ve stok satın alma sipariş belgelerini, varlık dosyalarını, aksesuar fotoğraflarını, lisans ve bakım eklerini, çalışan fotoğraflarını/belgelerini ve bu şirkete üye hesapların profil fotoğraflarını içerir. Bu arşiv tam sistem yedeği veya doğrudan geri yükleme paketi değildir; JSON içe aktarma medya dosyalarını uygulamaz. Kimlik bilgileri ve oturumlar dahil edilmez.\r\n");
+                await readmeWriter.WriteAsync("EnvanterTR şirket veri arşivi\r\ncompany-data.json şirket kayıtlarının bir bölümünü; tedarikçi, marka ve model kataloglarını, departman ve konum kataloglarını içerir. media/ klasörü şirket logolarını (tedarikçi logoları dahil), varlık ve stok satın alma sipariş belgelerini, sözleşme eklerini, varlık dosyalarını, aksesuar fotoğraflarını, lisans ve bakım eklerini, çalışan fotoğraflarını/belgelerini ve bu şirkete üye hesapların profil fotoğraflarını içerir. Bu arşiv tam sistem yedeği veya doğrudan geri yükleme paketi değildir; JSON içe aktarma medya dosyalarını uygulamaz. Kimlik bilgileri ve oturumlar dahil edilmez.\r\n");
             }
             await archiveFile.FlushAsync(cancellationToken);
             archiveFile.Position = 0;
@@ -1783,6 +1878,16 @@ public static class DataExportEndpoints
         await WritePagedAsync(writer, "assetPurchaseOrders", db.AssetPurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
         await WritePagedAsync(writer, "assetPurchaseOrderLines", db.AssetPurchaseOrderLines.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
         await WritePagedAsync(writer, "assetPurchaseOrderAttachments", db.AssetPurchaseOrderAttachments.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
+        await WritePagedAsync(writer, "assetContracts", db.AssetContracts.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
+        await WritePagedAsync(writer, "assetContractAssets", db.AssetContractAssets.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
+        await WritePagedAsync(writer, "assetContractLicenses", db.AssetContractLicenses.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
+        await WritePagedAsync(writer, "softwareLicenses", db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id)
+            .Select(x => new SoftwareLicense { Id = x.Id, CompanyId = x.CompanyId, Name = x.Name, Publisher = x.Publisher,
+                ProductVersion = x.ProductVersion, LicenseType = x.LicenseType, LicenseReference = null, Supplier = x.Supplier,
+                SupplierId = x.SupplierId, Seats = x.Seats, UnitCost = x.UnitCost, Currency = x.Currency,
+                PurchaseDate = x.PurchaseDate, ExpirationDate = x.ExpirationDate, AutoRenew = x.AutoRenew,
+                RequiresEulaAcceptance = x.RequiresEulaAcceptance, Notes = x.Notes, CreatedAt = x.CreatedAt, UpdatedAt = x.UpdatedAt }),
+            cancellationToken, responseWriter);
         await WritePagedAsync(writer, "auditEntries", db.AuditEntries.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
         var members = from membership in db.CompanyMemberships.AsNoTracking().Where(x => x.CompanyId == companyId)
                       join user in db.Users.AsNoTracking() on membership.UserId equals user.Id

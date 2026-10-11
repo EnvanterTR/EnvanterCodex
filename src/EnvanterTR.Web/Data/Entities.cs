@@ -46,6 +46,58 @@ public sealed class SupplierCatalogEntry
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class AssetContract
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public required string Name { get; set; }
+    public string? ContractNumber { get; set; }
+    public string? ContractType { get; set; }
+    public string? Supplier { get; set; }
+    public Guid? SupplierId { get; set; }
+    public DateOnly? StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
+    public decimal? Cost { get; set; }
+    public string Currency { get; set; } = "TRY";
+    public string? Notes { get; set; }
+    public bool IsActive { get; set; } = true;
+    public Guid? CreatedByUserId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class AssetContractAsset
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid ContractId { get; set; }
+    public Guid AssetId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class AssetContractLicense
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid ContractId { get; set; }
+    public Guid LicenseId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class AssetContractAttachment
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid ContractId { get; set; }
+    public Guid? UploadedByUserId { get; set; }
+    public required string OriginalFileName { get; set; }
+    public required string StorageFileName { get; set; }
+    public required string ContentType { get; set; }
+    public long Length { get; set; }
+    public string? Sha256 { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class CompanyDepartment
 {
     public Guid Id { get; set; } = Guid.NewGuid();

@@ -10,6 +10,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<CompanyApiToken> CompanyApiTokens => Set<CompanyApiToken>();
     public DbSet<SupplierCatalogEntry> SupplierCatalogEntries => Set<SupplierCatalogEntry>();
+    public DbSet<AssetContract> AssetContracts => Set<AssetContract>();
+    public DbSet<AssetContractAsset> AssetContractAssets => Set<AssetContractAsset>();
+    public DbSet<AssetContractLicense> AssetContractLicenses => Set<AssetContractLicense>();
+    public DbSet<AssetContractAttachment> AssetContractAttachments => Set<AssetContractAttachment>();
     public DbSet<CompanyDepartment> CompanyDepartments => Set<CompanyDepartment>();
     public DbSet<CompanyLocation> CompanyLocations => Set<CompanyLocation>();
     public DbSet<Employee> Employees => Set<Employee>();
@@ -295,6 +299,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 
         modelBuilder.Entity<Employee>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<SupplierCatalogEntry>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<AssetContract>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<AssetContractAsset>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<AssetContractLicense>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<AssetContractAttachment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<Accessory>().HasOne<SupplierCatalogEntry>().WithMany().HasForeignKey(x => new { x.CompanyId, x.SupplierId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<AccessoryModel>().HasOne<AssetBrand>().WithMany().HasForeignKey(x => new { x.CompanyId, x.BrandId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<Accessory>().HasOne<AssetBrand>().WithMany().HasForeignKey(x => new { x.CompanyId, x.BrandId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
@@ -316,6 +324,58 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<SupplierCatalogEntry>().HasIndex(x => new { x.CompanyId, x.IsActive, x.Name });
         modelBuilder.Entity<SupplierCatalogEntry>().ToTable("SupplierCatalogEntries");
         modelBuilder.Entity<SupplierCatalogEntry>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+
+        modelBuilder.Entity<AssetContract>().Property(x => x.Name).HasMaxLength(200).IsRequired();
+        modelBuilder.Entity<AssetContract>().Property(x => x.ContractNumber).HasMaxLength(120);
+        modelBuilder.Entity<AssetContract>().Property(x => x.ContractType).HasMaxLength(120);
+        modelBuilder.Entity<AssetContract>().Property(x => x.Supplier).HasMaxLength(200);
+        modelBuilder.Entity<AssetContract>().Property(x => x.Cost).HasPrecision(18, 2);
+        modelBuilder.Entity<AssetContract>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
+        modelBuilder.Entity<AssetContract>().Property(x => x.Notes).HasMaxLength(4000);
+        modelBuilder.Entity<AssetContract>().HasIndex(x => new { x.CompanyId, x.IsActive, x.EndDate, x.Name });
+        modelBuilder.Entity<AssetContract>().HasIndex(x => new { x.CompanyId, x.ContractNumber });
+        modelBuilder.Entity<AssetContract>().ToTable("AssetContracts", table =>
+        {
+            table.HasCheckConstraint("CK_AssetContracts_Dates", "\"StartDate\" IS NULL OR \"EndDate\" IS NULL OR \"EndDate\" >= \"StartDate\"");
+            table.HasCheckConstraint("CK_AssetContracts_Cost", "\"Cost\" IS NULL OR \"Cost\" >= 0");
+            table.HasCheckConstraint("CK_AssetContracts_Currency", "char_length(\"Currency\") = 3");
+        });
+        modelBuilder.Entity<AssetContract>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssetContract>().HasOne<SupplierCatalogEntry>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.SupplierId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<AssetContract>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<AssetContractAsset>().HasIndex(x => new { x.CompanyId, x.ContractId, x.AssetId }).IsUnique();
+        modelBuilder.Entity<AssetContractAsset>().HasOne<AssetContract>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ContractId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssetContractAsset>().HasOne<Asset>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.AssetId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AssetContractLicense>().HasIndex(x => new { x.CompanyId, x.ContractId, x.LicenseId }).IsUnique();
+        modelBuilder.Entity<AssetContractLicense>().HasOne<AssetContract>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ContractId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssetContractLicense>().HasOne<SoftwareLicense>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.LicenseId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AssetContractAttachment>().Property(x => x.OriginalFileName).HasMaxLength(255).IsRequired();
+        modelBuilder.Entity<AssetContractAttachment>().Property(x => x.StorageFileName).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<AssetContractAttachment>().Property(x => x.ContentType).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<AssetContractAttachment>().Property(x => x.Sha256).HasMaxLength(64);
+        modelBuilder.Entity<AssetContractAttachment>().HasIndex(x => new { x.CompanyId, x.ContractId, x.CreatedAt });
+        modelBuilder.Entity<AssetContractAttachment>().ToTable("AssetContractAttachments", table =>
+            table.HasCheckConstraint("CK_AssetContractAttachments_Length", "\"Length\" BETWEEN 1 AND 10485760"));
+        modelBuilder.Entity<AssetContractAttachment>().HasOne<AssetContract>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ContractId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssetContractAttachment>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<CompanyDepartment>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<CompanyDepartment>().Property(x => x.Name).HasMaxLength(160).IsRequired();

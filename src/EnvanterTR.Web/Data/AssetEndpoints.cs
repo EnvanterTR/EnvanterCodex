@@ -56,6 +56,8 @@ public static class AssetEndpoints
         api.MapPendingDeliveryReportEndpoints();
         api.MapDepreciationReportEndpoints();
         api.MapSupplierCatalogEndpoints();
+        api.MapAssetContractEndpoints();
+        api.MapAssetContractAttachmentEndpoints();
         api.MapAccessoryKitEndpoints();
         api.MapSavedAssetSearchEndpoints();
         api.MapSavedAssetImportMappingEndpoints();
