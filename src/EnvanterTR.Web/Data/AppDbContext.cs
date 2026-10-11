@@ -55,6 +55,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Consumable> Consumables => Set<Consumable>();
     public DbSet<ConsumableMovement> ConsumableMovements => Set<ConsumableMovement>();
     public DbSet<InventoryRequest> InventoryRequests => Set<InventoryRequest>();
+    public DbSet<CompanyTask> CompanyTasks => Set<CompanyTask>();
     public DbSet<SoftwareLicense> SoftwareLicenses => Set<SoftwareLicense>();
     public DbSet<SoftwareLicenseAttachment> SoftwareLicenseAttachments => Set<SoftwareLicenseAttachment>();
     public DbSet<SoftwareLicenseAssignment> SoftwareLicenseAssignments => Set<SoftwareLicenseAssignment>();
@@ -477,6 +478,26 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasForeignKey(x => x.RequestedByUserId).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<InventoryRequest>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.ReviewedByUserId).OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<CompanyTask>().Property(x => x.Title).HasMaxLength(160).IsRequired();
+        modelBuilder.Entity<CompanyTask>().Property(x => x.Description).HasMaxLength(4000);
+        modelBuilder.Entity<CompanyTask>().Property(x => x.Status).HasMaxLength(24).IsRequired();
+        modelBuilder.Entity<CompanyTask>().Property(x => x.Priority).HasMaxLength(24).IsRequired();
+        modelBuilder.Entity<CompanyTask>().HasIndex(x => new { x.CompanyId, x.Status, x.DueAt });
+        modelBuilder.Entity<CompanyTask>().HasIndex(x => new { x.CompanyId, x.AssignedEmployeeId, x.Status });
+        modelBuilder.Entity<CompanyTask>().ToTable("CompanyTasks", table =>
+        {
+            table.HasCheckConstraint("CK_CompanyTasks_Status", "\"Status\" IN ('Open', 'InProgress', 'Completed', 'Cancelled')");
+            table.HasCheckConstraint("CK_CompanyTasks_Priority", "\"Priority\" IN ('Low', 'Normal', 'High', 'Urgent')");
+            table.HasCheckConstraint("CK_CompanyTasks_CompletedAt", "(\"Status\" = 'Completed' AND \"CompletedAt\" IS NOT NULL) OR (\"Status\" <> 'Completed' AND \"CompletedAt\" IS NULL)");
+        });
+        modelBuilder.Entity<CompanyTask>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CompanyTask>().HasOne<Employee>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.AssignedEmployeeId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<CompanyTask>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.Name).HasMaxLength(200).IsRequired();
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.Publisher).HasMaxLength(160);

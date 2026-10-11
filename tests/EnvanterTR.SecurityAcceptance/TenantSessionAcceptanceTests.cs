@@ -193,6 +193,94 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Company_tasks_are_company_scoped_audited_and_enforce_assigned_employee_transitions()
+    {
+        await using (var fixtureScope = _factory!.Services.CreateAsyncScope())
+        {
+            var fixtureDb = fixtureScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var membership = await fixtureDb.CompanyMemberships.SingleAsync(item =>
+                item.CompanyId == _companyId && item.UserId == _userId);
+            membership.EmployeeId = _ownEmployeeId;
+            await fixtureDb.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var title = $"OWN-TASK-{Guid.NewGuid():N}";
+        var assignedPayload = System.Net.Http.Json.JsonContent.Create(new
+        {
+            title,
+            description = "Tenant-scoped acceptance task",
+            priority = "High",
+            assignedEmployeeId = _ownEmployeeId,
+            dueAt = (DateTimeOffset?)null
+        });
+        using (var missingCsrf = await SendAsRoleAsync(HttpMethod.Post, "/api/tasks", "admin", assignedPayload))
+            Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+
+        using var createResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/tasks", "admin",
+            System.Net.Http.Json.JsonContent.Create(new
+            {
+                title,
+                description = "Tenant-scoped acceptance task",
+                priority = "High",
+                assignedEmployeeId = _ownEmployeeId,
+                dueAt = (DateTimeOffset?)null
+            }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        using var created = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var taskId = created.RootElement.GetProperty("id").GetGuid();
+
+        using (var unassignedResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/tasks", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       title = $"OWN-UNASSIGNED-{Guid.NewGuid():N}",
+                       description = (string?)null,
+                       priority = "Normal",
+                       assignedEmployeeId = (Guid?)null,
+                       dueAt = (DateTimeOffset?)null
+                   }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Created, unassignedResponse.StatusCode);
+
+        await SetCompanyRoleAsync("viewer");
+        using (var memberList = await SendAsRoleAsync(HttpMethod.Get, "/api/tasks", "viewer"))
+        {
+            Assert.Equal(HttpStatusCode.OK, memberList.StatusCode);
+            using var payload = JsonDocument.Parse(await memberList.Content.ReadAsStringAsync());
+            Assert.False(payload.RootElement.GetProperty("canManage").GetBoolean());
+            Assert.Equal(1, payload.RootElement.GetProperty("total").GetInt32());
+            Assert.Equal(1, payload.RootElement.GetProperty("summary").GetProperty("open").GetInt32());
+            Assert.Equal(taskId, payload.RootElement.GetProperty("items")[0].GetProperty("id").GetGuid());
+        }
+        using (var forbiddenCreate = await SendAsRoleAsync(HttpMethod.Post, "/api/tasks", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { title = "Not allowed", priority = "Low" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, forbiddenCreate.StatusCode);
+        using (var invalidTransition = await SendAsRoleAsync(HttpMethod.Patch, $"/api/tasks/{taskId}/status", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { status = "Completed" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, invalidTransition.StatusCode);
+        using (var start = await SendAsRoleAsync(HttpMethod.Patch, $"/api/tasks/{taskId}/status", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { status = "InProgress" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, start.StatusCode);
+        using (var complete = await SendAsRoleAsync(HttpMethod.Patch, $"/api/tasks/{taskId}/status", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { status = "Completed" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, complete.StatusCode);
+        using (var reopen = await SendAsRoleAsync(HttpMethod.Patch, $"/api/tasks/{taskId}/status", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { status = "InProgress" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, reopen.StatusCode);
+
+        await using var auditScope = _factory!.Services.CreateAsyncScope();
+        var auditDb = auditScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal("Completed", await auditDb.CompanyTasks.Where(task => task.CompanyId == _companyId && task.Id == taskId)
+            .Select(task => task.Status).SingleAsync());
+        Assert.Equal(3, await auditDb.AuditEntries.CountAsync(entry => entry.CompanyId == _companyId &&
+            entry.TargetType == "CompanyTask" && entry.TargetId == taskId));
+    }
+
+    [Fact]
     public async Task Bulk_employee_status_changes_are_company_scoped_atomic_and_audited()
     {
         await using (var scope = _factory!.Services.CreateAsyncScope())

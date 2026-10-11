@@ -412,6 +412,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     app.MapAssetEndpoints();
     app.MapDataExportEndpoints();
     app.MapOperationalEndpoints();
+    app.MapCompanyTaskEndpoints();
     app.MapPlatformEndpoints();
     app.MapCustomerApiEndpoints();
 }

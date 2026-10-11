@@ -782,6 +782,22 @@ public sealed class InventoryRequest
     public DateTimeOffset? ReviewedAt { get; set; }
 }
 
+public sealed class CompanyTask
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public required string Title { get; set; }
+    public string? Description { get; set; }
+    public string Status { get; set; } = "Open";
+    public string Priority { get; set; } = "Normal";
+    public Guid? AssignedEmployeeId { get; set; }
+    public Guid? CreatedByUserId { get; set; }
+    public DateTimeOffset? DueAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? CompletedAt { get; set; }
+}
+
 public sealed class SoftwareLicense
 {
     public Guid Id { get; set; } = Guid.NewGuid();

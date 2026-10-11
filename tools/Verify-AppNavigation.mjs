@@ -40,11 +40,15 @@ if (notReadyStart < 0 || notReadyEnd < 0) {
   failures.push('The not-ready destination copy map is missing.');
 } else {
   const notReady = routeHandler.slice(notReadyStart, notReadyEnd);
-  for (const label of ['Görevler', 'Destek', 'Entegrasyonlar', 'Şirket birimleri']) {
+  for (const label of ['Destek', 'Entegrasyonlar', 'Şirket birimleri']) {
     if (!new RegExp(`['"]${label}['"]\\s*:\\s*['"]`).test(notReady)) {
       failures.push(`Not-ready menu "${label}" has no explicit explanation.`);
     }
   }
+}
+
+if (!source.includes('id="tasksPage"') || !/page === 'Görevler'\) \{[^}]*loadCompanyTasks\(/.test(routeHandler) || !source.includes("api(`/api/tasks?${params}`)")) {
+  failures.push('Görevler must have a dedicated screen and load company-scoped task data.');
 }
 
 if (failures.length) {

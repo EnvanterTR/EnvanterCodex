@@ -316,7 +316,7 @@
     .notification-wrap{position:relative;flex:none}.notification-panel{position:absolute;top:calc(100% + 10px);right:0;z-index:18;width:min(390px,calc(100vw - 24px));max-height:min(70vh,480px);overflow:auto;border:1px solid #dce4ee;border-radius:12px;background:#fff;box-shadow:0 18px 48px #10213a24}.notification-panel[hidden]{display:none}.notification-panel-head{display:grid;gap:4px;padding:15px 16px 12px;border-bottom:1px solid #edf0f5}.notification-panel-head strong{color:#24334b;font-size:.84rem}.notification-panel-head span{color:#8491a3;font-size:.68rem}.notification-panel ul{display:grid;gap:0;margin:0;padding:0;list-style:none}.notification-panel li{border-bottom:1px solid #f0f2f6}.notification-panel li:last-child{border-bottom:0}.notification-entry{display:grid;width:100%;gap:4px;padding:11px 15px;border:0;color:#40516a;background:white;text-align:left}.notification-entry:hover,.notification-entry:focus-visible{outline:0;background:#f4f8ff}.notification-entry-top{display:flex;align-items:center;gap:7px;color:#77869b;font-size:.64rem}.notification-entry-top .pill{padding:3px 7px}.notification-entry strong{overflow:hidden;color:#2a3b55;font-size:.73rem;text-overflow:ellipsis;white-space:nowrap}.notification-entry small{overflow:hidden;color:#8491a3;font-size:.65rem;text-overflow:ellipsis;white-space:nowrap}.notification-empty{padding:16px;color:#8491a3;font-size:.71rem}.notification-calendar-link{width:100%;padding:11px 15px;border:0;border-top:1px solid #edf0f5;color:#1769df;background:#fbfcfe;text-align:left;font-size:.71rem;font-weight:750}.notification-calendar-link:hover{background:#f4f8ff}@media(max-width:520px){.notification-panel{position:fixed;top:66px;right:12px}}
     .notification-controls{display:flex;gap:8px;padding:9px 12px;border-bottom:1px solid #edf0f5}.notification-control{border:0;padding:4px 0;color:#1769df;background:transparent;font-size:.68rem;font-weight:700}.notification-preferences{display:grid;gap:8px;padding:12px 15px;background:#f8faff;border-bottom:1px solid #edf0f5}.notification-preferences[hidden]{display:none}.notification-preferences strong{font-size:.7rem;color:#40516a}.notification-preferences label{display:flex;align-items:center;gap:8px;color:#52637b;font-size:.68rem}.notification-preferences input{accent-color:#1769df}.notification-preferences button{justify-self:start;border:0;border-radius:7px;padding:6px 10px;color:white;background:#1769df;font-size:.68rem;font-weight:700}.notification-item{display:flex;align-items:stretch}.notification-item .notification-entry{min-width:0;flex:1}.notification-item.is-unread .notification-entry strong:before{content:"•";margin-right:6px;color:#1769df}.notification-dismiss{align-self:center;margin:0 10px 0 0;padding:5px 7px;border:1px solid #e3e9f2;border-radius:6px;color:#77869b;background:#fff;font-size:.62rem}.notification-dismiss:hover{color:#1769df;border-color:#b9cff3}@media(max-width:520px){.notification-item{align-items:flex-start}.notification-dismiss{margin-top:12px}}
   </style>
-<style>.bulk-asset-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:10px 13px;border-bottom:1px solid #edf0f5;background:#f8faff}.bulk-asset-toolbar[hidden]{display:none}.bulk-asset-toolbar label{display:flex;align-items:center;gap:7px;color:#526178;font-size:.72rem}.bulk-asset-toolbar>span{margin-right:auto;color:#526178;font-size:.72rem;font-weight:700}.bulk-asset-toolbar select{min-height:32px;padding:0 9px;border:1px solid #dce4ee;border-radius:7px;background:white;color:#33445e;font-size:.72rem}.asset-select-column{width:38px}.asset-select-cell{text-align:center}.asset-select-cell input{width:15px;height:15px;accent-color:#1769df}.stats .stat-actionable{cursor:pointer;transition:box-shadow .15s,transform .15s}.stats .stat-actionable:hover{transform:translateY(-2px);box-shadow:0 8px 20px #10213a14}.stats .stat-actionable:focus-visible{outline:2px solid #1769df;outline-offset:2px}</style>
+<style>.btn[hidden]{display:none!important}.task-status-select{min-height:32px;padding:5px 8px;border:1px solid #dce4ee;border-radius:7px;background:#fff;color:#33445e;font-size:.72rem}.bulk-asset-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:10px 13px;border-bottom:1px solid #edf0f5;background:#f8faff}.bulk-asset-toolbar[hidden]{display:none}.bulk-asset-toolbar label{display:flex;align-items:center;gap:7px;color:#526178;font-size:.72rem}.bulk-asset-toolbar>span{margin-right:auto;color:#526178;font-size:.72rem;font-weight:700}.bulk-asset-toolbar select{min-height:32px;padding:0 9px;border:1px solid #dce4ee;border-radius:7px;background:white;color:#33445e;font-size:.72rem}.asset-select-column{width:38px}.asset-select-cell{text-align:center}.asset-select-cell input{width:15px;height:15px;accent-color:#1769df}.stats .stat-actionable{cursor:pointer;transition:box-shadow .15s,transform .15s}.stats .stat-actionable:hover{transform:translateY(-2px);box-shadow:0 8px 20px #10213a14}.stats .stat-actionable:focus-visible{outline:2px solid #1769df;outline-offset:2px}</style>
 <style>.dashboard-status{display:grid;grid-template-columns:minmax(112px,150px) minmax(0,1fr);align-items:center;gap:18px;padding:16px}.dashboard-donut{position:relative;display:grid;place-items:center;width:min(100%,150px);aspect-ratio:1;border-radius:50%;background:#eef2f8}.dashboard-donut:after{position:absolute;inset:19%;border-radius:50%;background:#fff;content:""}.dashboard-donut-center{z-index:1;text-align:center}.dashboard-donut-center strong{display:block;color:#26364d;font-size:1.2rem}.dashboard-donut-center small{color:#8793a6;font-size:.62rem}.dashboard-status-legend{display:grid;gap:4px}.dashboard-status-item{display:flex;align-items:center;gap:8px;width:100%;padding:7px 8px;border:0;border-radius:7px;color:#56657a;background:transparent;text-align:left;font-size:.68rem;cursor:pointer}.dashboard-status-item:hover,.dashboard-status-item:focus-visible{outline:2px solid #cfe0fa;background:#f4f8ff}.dashboard-status-item .legend-dot{width:8px;height:8px;flex:none;border-radius:50%}.dashboard-status-item .legend-count{margin-left:auto;color:#26364d;font-weight:700}.dashboard-status-note{padding:0 16px 12px;color:#8793a6;font-size:.63rem}@media(max-width:420px){.dashboard-status{grid-template-columns:108px minmax(0,1fr);gap:10px;padding:13px}.dashboard-status-item{padding:7px 4px;font-size:.64rem}}</style><style>.label-preview-card{box-sizing:border-box;max-width:none;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto 1fr auto;align-items:center;gap:4px;border:1px dashed #8494a8;border-radius:6px;background:#fff;box-shadow:0 5px 20px #182d491f;overflow:hidden}.label-preview-brand{grid-column:1/-1;color:#52637a;font-size:8px;font-weight:800;letter-spacing:.08em}.label-preview-copy{min-width:0;display:grid;gap:4px;overflow:hidden}.label-preview-copy strong{font-size:10px}.label-preview-copy b{font-size:17px;overflow-wrap:anywhere}.label-preview-copy small{font-size:8px;color:#667085}.label-preview-2d{width:25mm;height:25mm;object-fit:contain}.label-preview-1d{grid-column:1/-1;width:100%;height:auto;max-height:10mm;object-fit:fill}.label-preview-1d[src^="data:"]{image-rendering:auto}#labelPreviewCanvas{overflow:auto;padding:4px 0 12px}#labelSettingsForm .form-grid{margin-bottom:8px}@media(max-width:720px){#labelSettingsPage .grid{grid-template-columns:1fr!important}}</style></head>
 <body class="auth-required">
 <style>body.auth-required #authLayer{display:grid;visibility:visible}</style>
@@ -484,6 +484,12 @@
     <section class="workspace-page" id="contractsPage" hidden>
       <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / LİSANS VE SÖZLEŞMELER</div><h1>Sözleşmeler</h1><p>Destek, bakım ve lisans sözleşmelerini; sürelerini, maliyetlerini, bağlı varlıkları ve lisansları şirket kapsamında izleyin.</p></div><div class="head-actions"><button class="btn" id="exportContractsButton" type="button">↓ CSV dışa aktar</button><button class="btn" id="refreshContractsButton" type="button">↻ Yenile</button><button class="btn primary" id="newContractButton" type="button">＋ Sözleşme ekle</button></div></div>
       <section class="panel"><div class="table-tools"><input id="contractSearch" maxlength="120" placeholder="Ad, sözleşme no, tür, tedarikçi veya not ara" data-locale-placeholder="Ad, sözleşme no, tür, tedarikçi veya not ara" aria-label="Sözleşmelerde ara" data-locale-aria="Sözleşmelerde ara"><select id="contractStatus"><option value="">Etkin ve arşiv kayıtları</option><option value="active">Etkin</option><option value="expiring">30 gün içinde bitecek</option><option value="expired">Süresi dolmuş</option><option value="archived">Arşiv</option></select><small id="contractCount" role="status" aria-live="polite">—</small></div><div class="table-wrap"><table><caption class="sr-only">Şirket sözleşmeleri</caption><thead><tr><th>Sözleşme</th><th>Sözleşme no. / tür</th><th>Tedarikçi</th><th>Başlangıç</th><th>Bitiş</th><th>Maliyet</th><th>Durum</th><th>Bağlantılar</th><th>İşlemler</th></tr></thead><tbody id="contractRows"><tr><td colspan="9">Sözleşmeler yükleniyor…</td></tr></tbody></table></div><div class="pager"><button id="contractPrev" type="button">← Önceki</button><span id="contractPageInfo">Sayfa —</span><button id="contractNext" type="button">Sonraki →</button></div></section>
+    </section>
+    <section class="workspace-page" id="tasksPage" hidden>
+      <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / İŞ TAKİBİ</div><h1>Görevler</h1><p>Şirketteki işleri sorumlu, öncelik, durum ve son tarihle takip edin.</p></div><div class="head-actions"><button class="btn" id="tasksRefresh" type="button">↻ Yenile</button><button class="btn primary" id="taskNewButton" type="button">＋ Görev oluştur</button></div></div>
+      <div class="stats" id="taskSummary" aria-live="polite" style="margin-bottom:15px"></div>
+      <section class="panel" id="taskEditorPanel" hidden style="margin-bottom:15px"><div class="panel-head"><div><h2 id="taskEditorHeading">Yeni görev</h2><small>Kaydettiğinizde işlem geçmişine eklenir.</small></div><button class="btn small" id="taskEditorClose" type="button">Kapat</button></div><div class="dialog-body"><form id="taskForm" class="form-grid"><input name="id" type="hidden"><label class="wide">Görev başlığı *<input name="title" maxlength="160" required autocomplete="off"></label><label class="wide">Açıklama<textarea name="description" rows="3" maxlength="4000"></textarea></label><label>Öncelik<select name="priority"><option value="Low">Düşük</option><option value="Normal" selected>Normal</option><option value="High">Yüksek</option><option value="Urgent">Acil</option></select></label><label>Sorumlu çalışan<select name="assignedEmployeeId"><option value="">Atanmamış</option></select></label><label>Son tarih<input name="dueAt" type="date"></label><div class="dialog-actions wide"><button class="btn primary" type="submit" id="taskSaveButton">Görevi kaydet</button><button class="btn" type="button" id="taskEditorCancel">Vazgeç</button></div></form></div></section>
+      <section class="panel"><div class="table-tools"><input id="taskSearch" maxlength="120" placeholder="Görev, açıklama veya çalışan ara" aria-label="Görevlerde ara"><select id="taskStatusFilter" aria-label="Görev durumu"><option value="">Tüm durumlar</option><option value="Open">Açık</option><option value="InProgress">Devam ediyor</option><option value="Completed">Tamamlandı</option><option value="Cancelled">İptal edildi</option></select><select id="taskPriorityFilter" aria-label="Görev önceliği"><option value="">Tüm öncelikler</option><option value="Low">Düşük</option><option value="Normal">Normal</option><option value="High">Yüksek</option><option value="Urgent">Acil</option></select><small id="taskCount" role="status" aria-live="polite">—</small></div><div class="table-wrap"><table><caption class="sr-only">Şirket görevleri</caption><thead><tr><th>Görev</th><th>Sorumlu</th><th>Öncelik</th><th>Son tarih</th><th>Durum</th><th>Oluşturan</th><th>İşlemler</th></tr></thead><tbody id="taskRows"><tr><td colspan="7">Görevler yükleniyor…</td></tr></tbody></table></div><div class="pager"><button id="taskPrev" type="button">← Önceki</button><span id="taskPageInfo">Sayfa —</span><button id="taskNext" type="button">Sonraki →</button></div></section>
     </section>
     <section class="workspace-page" id="featureStatusPage" hidden>
       <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / ÜRÜN DURUMU</div><h1 id="featureStatusTitle">Bu bölüm</h1><p id="featureStatusDescription">Bu menü için mevcut ürün durumu.</p></div></div>
@@ -1956,6 +1962,153 @@
       }
       return key;
     }
+    let companyTaskPage = 1, companyTaskTotal = 0, companyTaskRows = [], companyTaskEmployees = [], companyTaskCanManage = false, companyTaskSearchTimer = 0;
+    const companyTaskStatusLabels = { Open: 'Açık', InProgress: 'Devam ediyor', Completed: 'Tamamlandı', Cancelled: 'İptal edildi' };
+    const companyTaskPriorityLabels = { Low: 'Düşük', Normal: 'Normal', High: 'Yüksek', Urgent: 'Acil' };
+    function companyTaskDate(value) {
+      if (!value) return '—';
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString(selectedLocale);
+    }
+    function companyTaskDateInput(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+      return date.toISOString().slice(0, 10);
+    }
+    function renderCompanyTaskSummary(summary = {}) {
+      const entries = [['Açık', summary.open || 0], ['Devam ediyor', summary.inProgress || 0], ['Tamamlandı', summary.completed || 0], ['İptal edildi', summary.cancelled || 0]];
+      $('#taskSummary').replaceChildren(...entries.map(([label, value]) => {
+        const card = document.createElement('article'); card.className = 'stat';
+        const heading = document.createElement('div'); heading.className = 'stat-top'; heading.textContent = label;
+        const count = document.createElement('strong'); count.textContent = fmt.format(value);
+        card.append(heading, count); return card;
+      }));
+    }
+    function renderCompanyTaskEmployees() {
+      const select = $('#taskForm').elements.assignedEmployeeId, selected = select.value;
+      select.replaceChildren(new Option('Atanmamış', ''));
+      for (const employee of companyTaskEmployees) {
+        const option = new Option(`${employee.displayName} · ${employee.employeeNumber}`, employee.id);
+        select.add(option);
+      }
+      if ([...select.options].some(option => option.value === selected)) select.value = selected;
+    }
+    function renderCompanyTasks() {
+      const body = $('#taskRows'); body.replaceChildren();
+      if (!companyTaskRows.length) {
+        const row = body.insertRow(), cell = row.insertCell(); cell.colSpan = 7; cell.className = 'muted';
+        cell.textContent = 'Bu filtrelerle eşleşen görev yok.';
+      }
+      for (const task of companyTaskRows) {
+        const row = body.insertRow();
+        const title = row.insertCell(), titleText = document.createElement('strong'); titleText.textContent = task.title;
+        title.append(titleText);
+        if (task.description) { const note = document.createElement('small'); note.className = 'muted'; note.style.display = 'block'; note.textContent = task.description; title.append(note); }
+        row.insertCell().textContent = task.employeeName ? `${task.employeeName}${task.employeeNumber ? ` · ${task.employeeNumber}` : ''}` : 'Atanmamış';
+        row.insertCell().textContent = companyTaskPriorityLabels[task.priority] || task.priority;
+        row.insertCell().textContent = companyTaskDate(task.dueAt);
+        const statusCell = row.insertCell();
+        if (companyTaskCanManage) {
+          const select = document.createElement('select'); select.className = 'task-status-select';
+          select.setAttribute('aria-label', `${task.title} görev durumu`);
+          for (const [value, label] of Object.entries(companyTaskStatusLabels)) select.add(new Option(label, value));
+          select.value = task.status;
+          select.addEventListener('change', async () => {
+            select.disabled = true;
+            try { await api(`/api/tasks/${task.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: select.value }) }); await loadCompanyTasks(companyTaskPage); }
+            catch (error) { notify(error.message); select.value = task.status; select.disabled = false; }
+          });
+          statusCell.append(select);
+        } else {
+          const badge = document.createElement('span'); badge.className = `pill ${task.status === 'Completed' ? 'good' : task.status === 'Cancelled' ? 'warn' : 'blue'}`;
+          badge.textContent = companyTaskStatusLabels[task.status] || task.status; statusCell.append(badge);
+        }
+        row.insertCell().textContent = task.createdBy || '—';
+        const actions = row.insertCell(), actionWrap = document.createElement('div'); actionWrap.className = 'row-actions';
+        if (companyTaskCanManage) {
+          const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'btn small'; edit.textContent = 'Düzenle';
+          edit.addEventListener('click', () => openCompanyTaskEditor(task)); actionWrap.append(edit);
+        } else if (task.status === 'Open' || task.status === 'InProgress') {
+          const nextStatus = task.status === 'Open' ? 'InProgress' : 'Completed';
+          const advance = document.createElement('button'); advance.type = 'button'; advance.className = 'btn small primary';
+          advance.textContent = nextStatus === 'InProgress' ? 'Başlat' : 'Tamamla';
+          advance.addEventListener('click', async () => {
+            advance.disabled = true;
+            try { await api(`/api/tasks/${task.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: nextStatus }) }); await loadCompanyTasks(companyTaskPage); }
+            catch (error) { notify(error.message); advance.disabled = false; }
+          }); actionWrap.append(advance);
+        }
+        actions.append(actionWrap);
+      }
+      $('#taskCount').textContent = `${fmt.format(companyTaskTotal)} görev`;
+      $('#taskPageInfo').textContent = `Sayfa ${companyTaskPage} / ${Math.max(1, Math.ceil(companyTaskTotal / 25))}`;
+      $('#taskPrev').disabled = companyTaskPage <= 1;
+      $('#taskNext').disabled = companyTaskPage * 25 >= companyTaskTotal;
+    }
+    async function loadCompanyTasks(page = companyTaskPage) {
+      const params = new URLSearchParams({ page: String(Math.max(1, page)), pageSize: '25' });
+      const q = $('#taskSearch').value.trim(), status = $('#taskStatusFilter').value, priority = $('#taskPriorityFilter').value;
+      if (q) params.set('q', q); if (status) params.set('status', status); if (priority) params.set('priority', priority);
+      $('#taskRows').innerHTML = '<tr><td colspan="7">Görevler yükleniyor…</td></tr>';
+      const result = await api(`/api/tasks?${params}`);
+      companyTaskPage = result.page; companyTaskTotal = result.total; companyTaskRows = result.items || [];
+      companyTaskEmployees = result.employees || []; companyTaskCanManage = result.canManage === true;
+      $('#taskNewButton').hidden = !companyTaskCanManage; $('#taskEditorPanel').hidden = true;
+      renderCompanyTaskEmployees(); renderCompanyTaskSummary(result.summary); renderCompanyTasks();
+    }
+    function openCompanyTaskEditor(task = null) {
+      if (!companyTaskCanManage) return;
+      const form = $('#taskForm'); form.reset(); form.elements.id.value = task?.id || '';
+      $('#taskEditorHeading').textContent = task ? 'Görevi düzenle' : 'Yeni görev';
+      form.elements.title.value = task?.title || ''; form.elements.description.value = task?.description || '';
+      form.elements.priority.value = task?.priority || 'Normal'; form.elements.assignedEmployeeId.value = task?.assignedEmployeeId || '';
+      form.elements.dueAt.value = companyTaskDateInput(task?.dueAt);
+      $('#taskEditorPanel').hidden = false; form.elements.title.focus();
+    }
+    $('#taskNewButton').addEventListener('click', () => openCompanyTaskEditor());
+    $('#taskEditorClose').addEventListener('click', () => { $('#taskEditorPanel').hidden = true; });
+    $('#taskEditorCancel').addEventListener('click', () => { $('#taskEditorPanel').hidden = true; });
+    $('#taskForm').addEventListener('submit', async event => {
+      event.preventDefault(); const form = event.currentTarget, button = $('#taskSaveButton'); button.disabled = true;
+      const dueDate = form.elements.dueAt.value;
+      const payload = { title: form.elements.title.value, description: form.elements.description.value || null,
+        priority: form.elements.priority.value, assignedEmployeeId: form.elements.assignedEmployeeId.value || null,
+        dueAt: dueDate ? new Date(`${dueDate}T12:00:00`).toISOString() : null };
+      const id = form.elements.id.value;
+      try {
+        await api(id ? `/api/tasks/${id}` : '/api/tasks', { method: id ? 'PUT' : 'POST', body: JSON.stringify(payload) });
+        $('#taskEditorPanel').hidden = true; await loadCompanyTasks(id ? companyTaskPage : 1); notify(id ? 'Görev güncellendi.' : 'Görev oluşturuldu.');
+      } catch (error) { notify(error.message); }
+      finally { button.disabled = false; }
+    });
+    $('#tasksRefresh').addEventListener('click', () => loadCompanyTasks(companyTaskPage).catch(error => notify(error.message)));
+    $('#taskStatusFilter').addEventListener('change', () => loadCompanyTasks(1).catch(error => notify(error.message)));
+    $('#taskPriorityFilter').addEventListener('change', () => loadCompanyTasks(1).catch(error => notify(error.message)));
+    $('#taskSearch').addEventListener('input', () => { clearTimeout(companyTaskSearchTimer); companyTaskSearchTimer = setTimeout(() => loadCompanyTasks(1).catch(error => notify(error.message)), 250); });
+    $('#taskPrev').addEventListener('click', () => loadCompanyTasks(companyTaskPage - 1).catch(error => notify(error.message)));
+    $('#taskNext').addEventListener('click', () => loadCompanyTasks(companyTaskPage + 1).catch(error => notify(error.message)));
+    Object.assign(localeRows, {
+      'ŞİRKET ALANI / İŞ TAKİBİ':['COMPANY / WORK TRACKING','КОМПАНИЯ / ЗАДАЧИ','КОМПАНІЯ / РОБОЧІ ЗАВДАННЯ','КОМПАНИЈА / РАБОТНИ ЗАДАЧИ'],
+      'Şirketteki işleri sorumlu, öncelik, durum ve son tarihle takip edin.':['Track company work by assignee, priority, status, and due date.','Отслеживайте задачи компании по исполнителю, приоритету, статусу и сроку.','Відстежуйте роботу компанії за відповідальним, пріоритетом, станом і строком.','Следете ја работата по одговорно лице, приоритет, статус и рок.'],
+      'Görev oluştur':['Create task','Создать задачу','Створити завдання','Создај задача'],'Görev oluşturuldu.':['Task created.','Задача создана.','Завдання створено.','Задачата е создадена.'],
+      'Görev güncellendi.':['Task updated.','Задача обновлена.','Завдання оновлено.','Задачата е ажурирана.'],'Görevler':['Tasks','Задачи','Завдання','Задачи'],
+      'Görev başlığı *':['Task title *','Название задачи *','Назва завдання *','Наслов на задачата *'],'Açıklama':['Description','Описание','Опис','Опис'],
+      'Öncelik':['Priority','Приоритет','Пріоритет','Приоритет'],'Sorumlu çalışan':['Assignee','Исполнитель','Відповідальний','Одговорно лице'],
+      'Son tarih':['Due date','Срок','Термін','Рок'],'Görevi kaydet':['Save task','Сохранить задачу','Зберегти завдання','Зачувај задача'],
+      'Yeni görev':['New task','Новая задача','Нове завдання','Нова задача'],'Görevi düzenle':['Edit task','Изменить задачу','Редагувати завдання','Уреди задача'],
+      'Atanmamış':['Unassigned','Не назначено','Не призначено','Нераспределено'],'Düşük':['Low','Низкий','Низький','Низок'],
+      'Yüksek':['High','Высокий','Високий','Висок'], 'Acil':['Urgent','Срочно','Терміново','Итно'],
+      'Devam ediyor':['In progress','В работе','У роботі','Во тек'],'Tamamlandı':['Completed','Завершено','Завершено','Завршено'],
+      'İptal edildi':['Cancelled','Отменено','Скасовано','Откажано'],'Açık':['Open','Открыта','Відкрите','Отворена'],
+      'Düzenle':['Edit','Изменить','Редагувати','Уреди'],'Başlat':['Start','Начать','Почати','Започни'],'Tamamla':['Complete','Завершить','Завершити','Заврши'],
+      'Görev durumu':['Task status','Статус задачи','Стан завдання','Статус на задача'],'Görevlerde ara':['Search tasks','Поиск задач','Пошук завдань','Пребарај задачи'],
+      'Görev, açıklama veya çalışan ara':['Search task, description, or employee','Поиск задачи, описания или сотрудника','Пошук завдання, опису або працівника','Пребарај задача, опис или вработен'],
+      'Tüm öncelikler':['All priorities','Все приоритеты','Усі пріоритети','Сите приоритети'],'Tüm durumlar':['All statuses','Все статусы','Усі стани','Сите статуси'],
+      'görev':['task','задач','завдань','задач'],'Görevler yükleniyor…':['Loading tasks…','Загрузка задач…','Завантаження завдань…','Се вчитуваат задачите…'],
+      'Bu filtrelerle eşleşen görev yok.':['No tasks match these filters.','Нет задач, соответствующих фильтрам.','Немає завдань за цими фільтрами.','Нема задачи што одговараат на филтрите.']
+    });
     const localeTextNodes = new WeakMap();
     function applyShellLanguage(language) {
       const index = localeIndexes[language];
@@ -1963,7 +2116,7 @@
       fmt = new Intl.NumberFormat(selectedLocale);
       document.documentElement.lang = language === 'tr' ? 'tr' : language;
       appearanceLanguage.value = language;
-       const roots = [$('#sidebar'), $('.topbar'), $('#overview'), $('#reservationsPage'), $('#accessoriesPage'), $('#accessoryFormDialog'), $('#accessoryCheckoutDialog'), $('#employeesPage'), $('#employeeDialog'), $('#newEmployeeDialog'), $('#editEmployeeDialog'), $('#employeeImportDialog'), $('#catalogPage'), $('#inventoryMovementsPage'), $('#licensesPage'), $('#licenseAssignmentsPage'), $('#contractsPage'), $('#contractFormDialog'), $('#contractDetailDialog'), $('#licenseDialog'), $('#licenseFormDialog'), $('#licenseAssignDialog'), $('#licenseImportDialog'), $('#inventoryRequestsPage'), $('#inventoryRequestDialog'), $('#maintenancePage'), $('#maintenanceAttachmentDialog'), $('#maintenanceStartDialog'), $('#maintenanceCompleteDialog'), $('#calendarPage'), $('#notificationPanel'), $('#reportPage'), $('#customReportPage'), appearanceDialog];
+       const roots = [$('#sidebar'), $('.topbar'), $('#overview'), $('#reservationsPage'), $('#accessoriesPage'), $('#accessoryFormDialog'), $('#accessoryCheckoutDialog'), $('#employeesPage'), $('#employeeDialog'), $('#newEmployeeDialog'), $('#editEmployeeDialog'), $('#employeeImportDialog'), $('#catalogPage'), $('#inventoryMovementsPage'), $('#licensesPage'), $('#licenseAssignmentsPage'), $('#contractsPage'), $('#contractFormDialog'), $('#contractDetailDialog'), $('#licenseDialog'), $('#licenseFormDialog'), $('#licenseAssignDialog'), $('#licenseImportDialog'), $('#inventoryRequestsPage'), $('#inventoryRequestDialog'), $('#maintenancePage'), $('#maintenanceAttachmentDialog'), $('#maintenanceStartDialog'), $('#maintenanceCompleteDialog'), $('#calendarPage'), $('#tasksPage'), $('#notificationPanel'), $('#reportPage'), $('#customReportPage'), appearanceDialog];
       for (const root of roots) {
         if (!root) continue;
         const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -6863,7 +7016,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       const selectedNav = button.matches('.nav-item,.sub-item') ? button : document.querySelector(`#sidebar [data-page="${CSS.escape(page)}"]`);
       if (selectedNav?.classList.contains('nav-item')) selectedNav.classList.add('active'); else selectedNav?.classList.add('selected');
       setMobileSidebarOpen(false);
-      for (const id of ['overview','employeesPage','directoryPage','moduleStatusPage','assignmentsPage','returnsPage','accessoriesPage','accessoryOrdersPage','stockOrdersPage','assetOrdersPage','accessoryKitsPage','consumablesPage','inventoryRequestsPage','licensesPage','licenseAssignmentsPage','contractsPage','componentsPage','inventoryMovementsPage','labelSettingsPage','assetStatusLabelsPage','maintenancePage','calendarPage','reportPage','customReportPage','membersPage','rolesPage','activityPage','reservationsPage','auditPage','dataToolsPage','featureStatusPage','companySettingsPage','catalogPage']) $(`#${id}`).hidden = true;
+      for (const id of ['overview','employeesPage','directoryPage','moduleStatusPage','assignmentsPage','returnsPage','accessoriesPage','accessoryOrdersPage','stockOrdersPage','assetOrdersPage','accessoryKitsPage','consumablesPage','inventoryRequestsPage','licensesPage','licenseAssignmentsPage','contractsPage','componentsPage','inventoryMovementsPage','labelSettingsPage','assetStatusLabelsPage','maintenancePage','calendarPage','tasksPage','reportPage','customReportPage','membersPage','rolesPage','activityPage','reservationsPage','auditPage','dataToolsPage','featureStatusPage','companySettingsPage','catalogPage']) $(`#${id}`).hidden = true;
       if (page === 'Aksesuarlar') { if (!canReadAssets()) { notify('Aksesuar stoklarını görüntüleme yetkiniz bulunmuyor.'); return; } $('#accessoriesPage').hidden = false; $('#pageTitle').textContent = page; $('#newAccessoryButton').hidden = !canWriteAssets(); $('#manageAccessoryCategories').hidden = !canWriteAssets(); $('#accessoryImportOpen').hidden = !canWriteAssets(); loadAccessoryFilterOptions().then(() => loadAccessories(1)).catch(error => notify(error.message)); }
       else if (page === 'Siparişler') { $('#accessoryOrdersPage').hidden = false; $('#pageTitle').textContent = 'Satın alma siparişleri'; $('#newAccessoryOrderButton').hidden = !canWriteAssets(); $('#supplierCatalogButton').hidden = !canWriteAssets(); loadAccessoryOrders(1).catch(error => notify(error.message)); }
       else if (page === 'Varlık siparişleri') { $('#assetOrdersPage').hidden = false; $('#pageTitle').textContent = page; $('#newAssetOrderButton').hidden = !canWriteAssets(); $('#assetOrdersSupplierCatalog').hidden = !canWriteAssets(); loadAssetOrders(1).catch(error => notify(error.message)); }
@@ -6898,6 +7051,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         if (!$('#calendarTo').value) $('#calendarTo').value = dateInputValue(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 90, 12));
         loadOperationalCalendar().catch(error => notify(error.message));
       }
+      else if (page === 'Görevler') { $('#tasksPage').hidden = false; $('#pageTitle').textContent = translateUiText(page); $('#taskNewButton').hidden = !canManagePeople(); loadCompanyTasks(1).catch(error => notify(error.message)); }
       else if (page === 'Denetimler' || page === 'Denetim kayıtları') { $('#auditPage').hidden = false; $('#pageTitle').textContent = page; $('#auditPageTitle').textContent = page; $('#auditPageDescription').textContent = page === 'Denetimler' ? 'Varlıkların geciken, yaklaşan ve planı olmayan fiziksel denetimlerini izleyin.' : 'Yönetim işlemlerini yapan kişi, zaman ve işlem ayrıntısıyla inceleyin.'; $('#auditLogPanel').hidden = page === 'Denetimler'; loadAuditSchedule().catch(error => notify(error.message)); if (page === 'Denetim kayıtları') loadAuditActions().then(() => loadAudit(1)).catch(error => notify(error.message)); }
        else if (page === 'Hazır raporlar') { $('#reportPage').hidden = false; $('#pageTitle').textContent = translateUiText('Envanter raporları'); [...$('#reportPage').children].forEach(child => { child.hidden = false; }); loadAssetReports().catch(error => notify(error.message)); loadComponentReport().catch(error => notify(error.message)); loadAuditReport(1).catch(error => notify(error.message)); loadMaintenanceReport().catch(error => notify(error.message)); loadWarrantyReport(1).catch(error => notify(error.message)); loadLicenseExpiryReport(1).catch(error => notify(error.message)); loadPendingDeliveryReport(1).catch(error => notify(error.message)); loadDepreciationReport(1).catch(error => notify(error.message)); }
        else if (page === 'Garanti takibi') { if (!canReadAssets()) { notify('Garanti kayıtlarını görüntüleme yetkiniz yok.'); return; } $('#reportPage').hidden = false; $('#pageTitle').textContent = page; [...$('#reportPage').children].forEach(child => { child.hidden = child.id !== 'warrantyReportPanel' && !child.classList.contains('page-head'); }); loadWarrantyReport(1).catch(error => notify(error.message)); }
@@ -6935,7 +7089,6 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       else if (page === 'Yetki rolleri') { $('#rolesPage').hidden = false; $('#pageTitle').textContent = translateUiText(page); renderRoleAccessMatrix(); }
       else if (!['Genel Bakış','Varlıklar'].includes(page)) {
         const notReady = {
-          'Görevler': 'Atanabilir görev, sorumlu ve tamamlanma akışı henüz hazır değil. Bakım ve denetim planlarını Takvim bölümünden izleyebilirsiniz.',
           'Destek': 'Uygulama içi destek talebi ve yanıt takibi henüz hazır değil.',
           'Entegrasyonlar': 'Harici sistem bağlantısı ve webhook yönetimi henüz hazır değil. Bu menüde çalışır bir bağlantı tanımlı değildir.',
           'Şirket birimleri': 'Şube ve tüzel kişilik bazlı varlık ayrımı henüz hazır değil. Şirket verileri mevcut şirket alanında birlikte tutulur.',
