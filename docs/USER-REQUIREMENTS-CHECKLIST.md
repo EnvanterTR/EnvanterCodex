@@ -91,7 +91,7 @@ C1. Kayıt ve liste
  C1.18 Model/kategori bazlı alan grupları ❌
  C1.19 Varlık durumu etiketlerinin adını şirket özelleştirebilsin ✅
  C1.20 Yeni durum türleri ve durum geçiş kuralları ❌
- C1.21 Kapsamlı toplu yönetim (çoklu alan güncelleme) 🟡 — en fazla 100 kayıtta temel katalog, varsayılan konum, alış/garanti, maliyet/para birimi, talep ve BYOD alanları atomik güncellenir; seri no, varlık notu ve özel alanlar toplu kapsama henüz ekli değil.
+ C1.21 Kapsamlı toplu yönetim (çoklu alan güncelleme) ✅ — en fazla 100 varlıkta temel katalog, varsayılan konum, alış/garanti, maliyet/para birimi, talep, BYOD, seri no, kalıcı varlık notu ve seçilen özel alanlar atomik güncellenir. Seçilmeyen alanlar korunur; özel alan tipi, şirket kapsamı ve zorunluluk denetlenir; isteğe bağlı boş değer temizlenebilir. Sürüm, tenant, rol, bütünlük ve denetim kabul testleri `deploy/testing/run-security-acceptance.ps1` içindedir.
 C2. Varlık detay
  C2.1 Genel bakış + kategori/marka/model/çalışan/konum bağlantıları ✅
  C2.2 Üst/alt varlık hiyerarşisi (döngü engelli) ✅

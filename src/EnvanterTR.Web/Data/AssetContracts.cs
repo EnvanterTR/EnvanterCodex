@@ -106,7 +106,10 @@ public sealed record BulkUpdateAssetsRequest(
     string? Currency = null,
     bool? IsRequestable = null,
     bool? IsByod = null,
-    string? Note = null);
+    string? Note = null,
+    string? SerialNumber = null,
+    string? Notes = null,
+    Dictionary<string, string?>? CustomFields = null);
 public sealed record SetAssetAuditScheduleRequest(DateOnly? NextAuditOn);
 public sealed record SetAssetParentRequest(Guid? ParentAssetId, DateTimeOffset ExpectedUpdatedAt);
 public sealed record AddAssetNoteRequest(string? Note);

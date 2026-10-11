@@ -140,6 +140,59 @@ public static partial class AssetCustomFieldEndpoints
             : (serialized, null);
     }
 
+    public static (string? Json, string? Error) NormalizeSelectedValues(
+        IReadOnlyCollection<AssetCustomFieldDefinition> fields, Dictionary<string, string?> submitted, string? existingJson)
+    {
+        var definitions = fields.Where(field => field.IsActive).ToDictionary(field => field.Key, StringComparer.Ordinal);
+        if (submitted.Count is < 1 or > 100)
+            return (null, "Toplu özel alan güncellemesi 1 ile 100 alan içermelidir.");
+        foreach (var key in submitted.Keys)
+            if (!definitions.ContainsKey(key)) return (null, $"'{key}' bu şirkette etkin bir özel alan değil.");
+
+        Dictionary<string, string?> values;
+        try
+        {
+            values = string.IsNullOrWhiteSpace(existingJson)
+                ? new(StringComparer.Ordinal)
+                : JsonSerializer.Deserialize<Dictionary<string, string?>>(existingJson) ?? new(StringComparer.Ordinal);
+        }
+        catch (JsonException)
+        {
+            return (null, "Varlığın özel alan verisi okunamadığı için hiçbir kayıt değiştirilmedi.");
+        }
+
+        foreach (var (key, rawValue) in submitted)
+        {
+            var field = definitions[key];
+            var value = rawValue?.Trim();
+            if (string.IsNullOrEmpty(value))
+            {
+                if (field.IsRequired) return (null, $"'{field.Name}' alanı zorunludur ve boşaltılamaz.");
+                values.Remove(key);
+                continue;
+            }
+            if (value.Length > 2000) return (null, $"'{field.Name}' alanı 2.000 karakteri aşamaz.");
+            var valid = field.FieldType switch
+            {
+                "text" => true,
+                "number" => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out _),
+                "date" => DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _),
+                "checkbox" => bool.TryParse(value, out _),
+                "select" => ParseOptions(field.OptionsJson).Contains(value, StringComparer.Ordinal),
+                _ => false
+            };
+            if (!valid) return (null, $"'{field.Name}' alanı {field.FieldType} türüyle eşleşmiyor.");
+            values[key] = value;
+        }
+
+        foreach (var key in values.Where(pair => pair.Value is null).Select(pair => pair.Key).ToArray()) values.Remove(key);
+        if (values.Count == 0) return (null, null);
+        var serialized = JsonSerializer.Serialize(values);
+        return serialized.Length > 16000
+            ? (null, "Varlık özel alanlarının toplam boyutu 16.000 karakteri aşamaz.")
+            : (serialized, null);
+    }
+
     public static string[] ExportValues(string? json, IReadOnlyCollection<AssetCustomFieldDefinition> fields)
     {
         Dictionary<string, string> values;

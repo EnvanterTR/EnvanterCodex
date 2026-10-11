@@ -62,6 +62,15 @@ if (!source.includes('id="tasksPage"') || !/page === 'Görevler'\) \{[^}]*loadCo
 if (!source.includes("bulkEditButton.id = 'bulkEditSelectedAssets'") || !source.includes("bulkEditAssetDialog.id = 'bulkEditAssetDialog'") || !source.includes("api('/api/assets/bulk-update'")) {
   failures.push('Selected assets must expose the bulk-edit dialog and submit to the company-scoped bulk-update API.');
 }
+for (const field of ['serialNumber', 'notes', 'customFields']) {
+  if (!source.includes(`data-bulk-field-enable="${field}"`) &&
+      !(field === 'customFields' && source.includes('data-bulk-custom-field-enable'))) {
+    failures.push(`Bulk asset editing is missing its ${field} selection control.`);
+  }
+  if (!source.includes(`fields.includes('${field}')`)) {
+    failures.push(`Bulk asset editing does not include ${field} in the submitted payload.`);
+  }
+}
 
 if (failures.length) {
   console.error(failures.map(failure => `FAIL ${failure}`).join('\n'));

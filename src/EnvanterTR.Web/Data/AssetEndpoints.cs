@@ -2152,19 +2152,30 @@ public static class AssetEndpoints
                     { ["assets"] = ["Güncel sürüm bilgisiyle 1 ile 100 arasında, tekrarsız varlık seçin."] });
 
             var allowedFields = new HashSet<string>(StringComparer.Ordinal)
-                { "name", "categoryId", "brandId", "modelId", "defaultLocationCatalogId", "purchaseDate", "warrantyExpiresAt", "purchaseCost", "isRequestable", "isByod" };
+                { "name", "categoryId", "brandId", "modelId", "defaultLocationCatalogId", "purchaseDate", "warrantyExpiresAt", "purchaseCost", "isRequestable", "isByod", "serialNumber", "notes", "customFields" };
             var fields = request.Fields ?? [];
-            if (fields.Length is < 1 or > 10 || fields.Distinct(StringComparer.Ordinal).Count() != fields.Length ||
+            if (fields.Length is < 1 or > 13 || fields.Distinct(StringComparer.Ordinal).Count() != fields.Length ||
                 fields.Any(field => !allowedFields.Contains(field)))
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                     { ["fields"] = ["Uygulanacak en az bir geçerli varlık alanı seçin."] });
 
             var selected = fields.ToHashSet(StringComparer.Ordinal);
             var name = selected.Contains("name") ? request.Name?.Trim() : null;
+            var serialNumber = selected.Contains("serialNumber") ? Clean(request.SerialNumber) : null;
+            var notes = selected.Contains("notes") ? Clean(request.Notes) : null;
             if (selected.Contains("name") && (string.IsNullOrWhiteSpace(name) || name.Length > 240))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Varlık adı zorunludur ve 240 karakteri aşamaz."] });
+            if (serialNumber?.Length > 160)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["serialNumber"] = ["Seri numarası en fazla 160 karakter olabilir."] });
+            if (notes?.Length > 4000)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["notes"] = ["Varlık notu en fazla 4.000 karakter olabilir."] });
             if (selected.Contains("categoryId") && (!request.CategoryId.HasValue || request.CategoryId.Value == Guid.Empty))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["categoryId"] = ["Kategori seçimi zorunludur."] });
+            var hasCustomFieldsSelection = request.CustomFields is not null;
+            var customFieldCount = request.CustomFields?.Count ?? -1;
+            if (selected.Contains("customFields") != hasCustomFieldsSelection ||
+                selected.Contains("customFields") && customFieldCount is (< 1 or > 100))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["customFields"] = ["Özel alanları değiştirmek için 1 ile 100 arasında alan seçin."] });
             if (selected.Contains("isRequestable") && request.IsRequestable is null ||
                 selected.Contains("isByod") && request.IsByod is null)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["fields"] = ["Talep ve BYOD alanları için evet veya hayır seçin."] });
@@ -2225,6 +2236,20 @@ public static class AssetEndpoints
                 }
             }
 
+            var normalizedCustomFieldsByAsset = new Dictionary<Guid, string?>();
+            if (selected.Contains("customFields"))
+            {
+                var definitions = await db.AssetCustomFieldDefinitions.AsNoTracking()
+                    .Where(field => field.CompanyId == companyId).ToListAsync(cancellationToken);
+                foreach (var asset in assets)
+                {
+                    var normalized = AssetCustomFieldEndpoints.NormalizeSelectedValues(definitions, request.CustomFields!, asset.CustomFieldsJson);
+                    if (normalized.Error is not null)
+                        return Results.ValidationProblem(new Dictionary<string, string[]> { ["customFields"] = [normalized.Error] });
+                    normalizedCustomFieldsByAsset[asset.Id] = normalized.Json;
+                }
+            }
+
             var note = request.Note?.Trim();
             var now = DateTimeOffset.UtcNow;
             var updated = 0;
@@ -2232,6 +2257,10 @@ public static class AssetEndpoints
             {
                 var changed = new List<string>();
                 if (selected.Contains("name") && asset.Name != name) { asset.Name = name!; changed.Add("ad"); }
+                if (selected.Contains("serialNumber") && asset.SerialNumber != serialNumber) { asset.SerialNumber = serialNumber; changed.Add("seri numarası"); }
+                if (selected.Contains("notes") && asset.Notes != notes) { asset.Notes = notes; changed.Add("varlık notları"); }
+                if (selected.Contains("customFields") && asset.CustomFieldsJson != normalizedCustomFieldsByAsset[asset.Id])
+                { asset.CustomFieldsJson = normalizedCustomFieldsByAsset[asset.Id]; changed.Add("özel alanlar"); }
                 if (selected.Contains("categoryId") && asset.CategoryId != request.CategoryId) { asset.CategoryId = request.CategoryId!.Value; changed.Add("kategori"); }
                 if (selected.Contains("brandId") && asset.BrandId != request.BrandId) { asset.BrandId = request.BrandId; changed.Add("marka"); }
                 if (selected.Contains("modelId") && asset.ModelId != request.ModelId) { asset.ModelId = request.ModelId; changed.Add("model"); }

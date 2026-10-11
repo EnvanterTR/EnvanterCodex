@@ -1,5 +1,11 @@
 # Ürün kapsamı ve özellik durumu
 
+## 12 Ekim 2026 — varlık listesi toplu düzenleme tamamlandı
+
+Envanter listesinden yönetici/yazma rolüyle en çok 100 varlık seçilip işaretlenen alanlar tek atomik, şirket kapsamlı işlemde düzenlenebilir: ad, kategori, marka, model, varsayılan konum, alış/garanti tarihi, alış maliyeti/para birimi, çalışan talebine açıklık, BYOD, seri numarası, varlığın kalıcı notu ve seçilmiş özel alanlar. İşaretlenmeyen alanlar korunur; açıkça seçilen isteğe bağlı boş değerler temizlenir. Özel alan türü/değeri ve aktif şirket tanımı sunucuda doğrulanır; seçilmeyen eski zorunlu özel alanlar eski kayıtlarda engel oluşturmaz. Bozuk JSON, pasif/bilinmeyen alan, eksik zorunlu değer, başka şirket varlığı, eski sürüm veya yetersiz rol durumunda hiçbir varlık kısmen güncellenmez. Değişen satırların her birine hareket geçmişi ve denetim kaydı eklenir.
+
+Bu sürüm yerel Docker geliştirme uygulamasına kuruldu. İzole PostgreSQL 17 kabul paketi **79/79** geçti; özellikle seri no/not/özel alan güncellemesi, seçilmeyen eski zorunlu alanın korunması, isteğe bağlı özel alanın temizlenmesi, pasif/zorunlu alan reddi, mevcut sürüm kontrolü ve tenant/rol sınırları doğrulandı. `Verify-AppNavigation.mjs` 50 hedef/10 açılır menüyü; `Verify-UiLocales.mjs` beş dilde 1.573 arayüz metnini doğruladı. `localhost:8080`, `/api/status`, kurulum durumu ve demo `localhost:8081/demo/` HTTP 200 döndü; veritabanı 76 migration ve 0 bekleyen migration ile hazırdı. Üretim sitesi yayımlanmadı.
+
 ## 12 Ekim 2026 — giriş ve menü kabulü
 
 Yerel Docker web imajı güncel kaynakla yeniden derlendi. `http://localhost:8080/` ve `/api/status` HTTP 200 döndü; veritabanı hazır, 76 migration uygulanmış ve bekleyen migration yok. `/api/setup/status` HTTP 200 ve ilk kurulumun tamamlandığını bildirdi. Gerçek yerel şirket hesabıyla CSRF korumalı giriş HTTP 200, `/api/session` HTTP 200 (Santa / owner), giriş sonrası yenilenen CSRF HTTP 200 ve çıkış HTTP 204 verdi. Giriş ekranındaki “Sunucu bağlantısını test et” düğmesi sunulan HTML'de görünür; düğmenin kullandığı sağlık ve kurulum uçları da HTTP 200 döndü. Bu localhost HTTP kabulidir; Windows tarayıcı tıklaması ve canlı site dağıtımı yapılmadı.

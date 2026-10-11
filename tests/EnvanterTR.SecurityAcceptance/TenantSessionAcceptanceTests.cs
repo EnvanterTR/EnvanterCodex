@@ -72,6 +72,9 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Guid ownCategoryId;
         Guid brandId;
         Guid modelId;
+        const string bulkCustomFieldKey = "bulk_reference";
+        const string requiredCustomFieldKey = "legacy_required";
+        const string inactiveCustomFieldKey = "inactive_value";
         List<BulkAssetVersion> versions;
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
@@ -87,7 +90,10 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             db.AssetCategories.Add(new AssetCategory { Id = targetCategoryId, CompanyId = _companyId, Name = $"Bulk target {_userId:N}" });
             ownAsset.BrandId = brandId;
             ownAsset.ModelId = modelId;
+            ownAsset.SerialNumber = "OWN-SERIAL-OLD";
             ownAsset.Notes = "Keep the first asset note";
+            ownAsset.CustomFieldsJson = JsonSerializer.Serialize(new Dictionary<string, string>
+                { [bulkCustomFieldKey] = "old-first", ["preserve_me"] = "first-value" });
             ownAsset.PurchaseDate = new DateOnly(2025, 1, 2);
             ownAsset.WarrantyExpiresAt = new DateOnly(2027, 1, 2);
             ownAsset.PurchaseCost = 10m;
@@ -96,9 +102,19 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             {
                 Id = secondAssetId, CompanyId = _companyId, AssetTag = $"BULK-{_userId:N}",
                 Name = "Second bulk asset", CategoryId = ownCategoryId, BrandId = brandId, ModelId = modelId,
+                SerialNumber = "SECOND-SERIAL-OLD",
                 Notes = "Keep the second asset note", PurchaseDate = new DateOnly(2024, 3, 4),
-                WarrantyExpiresAt = new DateOnly(2026, 3, 4), PurchaseCost = 20m, Currency = "TRY"
+                WarrantyExpiresAt = new DateOnly(2026, 3, 4), PurchaseCost = 20m, Currency = "TRY",
+                CustomFieldsJson = JsonSerializer.Serialize(new Dictionary<string, string>
+                    { [bulkCustomFieldKey] = "old-second", ["preserve_me"] = "second-value" })
             });
+            db.AssetCustomFieldDefinitions.AddRange(
+                new AssetCustomFieldDefinition { CompanyId = _companyId, Key = bulkCustomFieldKey,
+                    Name = "Bulk reference", FieldType = "text", IsRequired = false },
+                new AssetCustomFieldDefinition { CompanyId = _companyId, Key = requiredCustomFieldKey,
+                    Name = "Legacy required field", FieldType = "text", IsRequired = true },
+                new AssetCustomFieldDefinition { CompanyId = _companyId, Key = inactiveCustomFieldKey,
+                    Name = "Inactive field", FieldType = "text", IsActive = false });
             await db.SaveChangesAsync();
             versions = await db.Assets.AsNoTracking().Where(asset => asset.CompanyId == _companyId &&
                     (asset.Id == _ownAssetId || asset.Id == secondAssetId))
@@ -109,9 +125,11 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var successPayload = new
         {
             assets = versions,
-            fields = new[] { "name", "purchaseCost", "warrantyExpiresAt", "isRequestable" },
+            fields = new[] { "name", "purchaseCost", "warrantyExpiresAt", "isRequestable", "serialNumber", "notes", "customFields" },
             name = "Bulk refreshed assets", purchaseCost = 1234.50m, currency = "EUR",
-            warrantyExpiresAt = (DateOnly?)null, isRequestable = false, note = "October inventory review"
+            warrantyExpiresAt = (DateOnly?)null, isRequestable = false, serialNumber = "BULK-SERIAL-2026",
+            notes = "Reviewed during October inventory", customFields = new Dictionary<string, string?> { [bulkCustomFieldKey] = "reviewed" },
+            note = "October inventory review"
         };
         using (var response = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-update", "admin",
                    System.Net.Http.Json.JsonContent.Create(successPayload), requestToken, antiforgeryCookie))
@@ -140,8 +158,16 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 Assert.Equal(modelId, asset.ModelId);
                 Assert.Equal(AssetStatuses.Available, asset.Status);
             });
-            Assert.Equal("Keep the first asset note", saved.Single(asset => asset.Id == _ownAssetId).Notes);
-            Assert.Equal("Keep the second asset note", saved.Single(asset => asset.Id == secondAssetId).Notes);
+            Assert.All(saved, asset =>
+            {
+                Assert.Equal("BULK-SERIAL-2026", asset.SerialNumber);
+                Assert.Equal("Reviewed during October inventory", asset.Notes);
+                using var customValues = JsonDocument.Parse(asset.CustomFieldsJson!);
+                Assert.Equal("reviewed", customValues.RootElement.GetProperty(bulkCustomFieldKey).GetString());
+                Assert.Equal(asset.Id == _ownAssetId ? "first-value" : "second-value",
+                    customValues.RootElement.GetProperty("preserve_me").GetString());
+                Assert.False(customValues.RootElement.TryGetProperty(requiredCustomFieldKey, out _));
+            });
             var events = await db.AssetEvents.AsNoTracking().Where(entry => entry.CompanyId == _companyId &&
                 (entry.AssetId == _ownAssetId || entry.AssetId == secondAssetId) && entry.Details!.Contains("October inventory review"))
                 .ToListAsync();
@@ -152,6 +178,55 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             versions = await db.Assets.AsNoTracking().Where(asset => asset.CompanyId == _companyId &&
                     (asset.Id == _ownAssetId || asset.Id == secondAssetId))
                 .Select(asset => new BulkAssetVersion(asset.Id, asset.UpdatedAt)).ToListAsync();
+        }
+
+        using (var clearOptionalCustomValue = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-update", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       assets = versions, fields = new[] { "customFields" },
+                       customFields = new Dictionary<string, string?> { [bulkCustomFieldKey] = "" }
+                   }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, clearOptionalCustomValue.StatusCode);
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            foreach (var asset in await db.Assets.AsNoTracking().Where(item => item.CompanyId == _companyId &&
+                         (item.Id == _ownAssetId || item.Id == secondAssetId)).ToListAsync())
+            {
+                using var customValues = JsonDocument.Parse(asset.CustomFieldsJson!);
+                Assert.False(customValues.RootElement.TryGetProperty(bulkCustomFieldKey, out _));
+                Assert.Equal(asset.Id == _ownAssetId ? "first-value" : "second-value",
+                    customValues.RootElement.GetProperty("preserve_me").GetString());
+            }
+            versions = await db.Assets.AsNoTracking().Where(item => item.CompanyId == _companyId &&
+                    (item.Id == _ownAssetId || item.Id == secondAssetId))
+                .Select(item => new BulkAssetVersion(item.Id, item.UpdatedAt)).ToListAsync();
+        }
+
+        using (var clearRequiredCustomValue = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-update", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       assets = versions, fields = new[] { "customFields" },
+                       customFields = new Dictionary<string, string?> { [requiredCustomFieldKey] = "" }
+                   }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, clearRequiredCustomValue.StatusCode);
+        using (var editInactiveCustomValue = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-update", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       assets = versions, fields = new[] { "customFields" },
+                       customFields = new Dictionary<string, string?> { [inactiveCustomFieldKey] = "blocked" }
+                   }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, editInactiveCustomValue.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.Equal(2, await db.Assets.CountAsync(asset => asset.CompanyId == _companyId &&
+                (asset.Id == _ownAssetId || asset.Id == secondAssetId) && asset.SerialNumber == "BULK-SERIAL-2026" &&
+                asset.Notes == "Reviewed during October inventory"));
+            versions = await db.Assets.AsNoTracking().Where(item => item.CompanyId == _companyId &&
+                    (item.Id == _ownAssetId || item.Id == secondAssetId))
+                .Select(item => new BulkAssetVersion(item.Id, item.UpdatedAt)).ToListAsync();
         }
 
         using (var incompatibleCategory = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-update", "admin",
