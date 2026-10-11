@@ -1573,15 +1573,38 @@ public static class AssetEndpoints
                 .OrderBy(x => x.AssetTag)
                 .Select(x => new { x.Id, x.AssetTag, x.Name, x.Status, relationship = x.Id == asset.ParentAssetId ? "Parent" : "Child" })
                 .ToListAsync(cancellationToken);
+            var model = asset.ModelId is Guid modelId
+                ? await db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == modelId)
+                    .Select(x => new { x.Name, x.ModelNumber, x.DepreciationMonths, x.DepreciationMinimum,
+                        x.DepreciationMinimumType, x.DepreciationMethod }).SingleOrDefaultAsync(cancellationToken)
+                : null;
             var references = new
             {
                 category = await db.AssetCategories.Where(x => x.CompanyId == companyId && x.Id == asset.CategoryId).Select(x => x.Name).SingleOrDefaultAsync(cancellationToken),
                 brand = await db.AssetBrands.Where(x => x.CompanyId == companyId && x.Id == asset.BrandId).Select(x => x.Name).SingleOrDefaultAsync(cancellationToken),
-                model = await db.AssetModels.Where(x => x.CompanyId == companyId && x.Id == asset.ModelId).Select(x => x.Name).SingleOrDefaultAsync(cancellationToken),
-                modelNumber = await db.AssetModels.Where(x => x.CompanyId == companyId && x.Id == asset.ModelId).Select(x => x.ModelNumber).SingleOrDefaultAsync(cancellationToken),
+                model = model?.Name,
+                modelNumber = model?.ModelNumber,
+                depreciationMonths = model?.DepreciationMonths,
+                depreciationMinimum = model?.DepreciationMinimum,
+                depreciationMinimumType = model?.DepreciationMinimumType,
+                depreciationMethod = model?.DepreciationMethod,
                 employee = await db.Employees.Where(x => x.CompanyId == companyId && x.Id == asset.AssignedEmployeeId).Select(x => x.DisplayName).SingleOrDefaultAsync(cancellationToken),
                 employeeNumber = await db.Employees.Where(x => x.CompanyId == companyId && x.Id == asset.AssignedEmployeeId).Select(x => x.EmployeeNumber).SingleOrDefaultAsync(cancellationToken),
                 defaultLocation = await db.CompanyLocations.Where(x => x.CompanyId == companyId && x.Id == asset.DefaultLocationCatalogId).Select(x => x.Name).SingleOrDefaultAsync(cancellationToken)
+            };
+            var asOf = DateOnly.FromDateTime(DateTime.UtcNow);
+            var ageMonths = DepreciationReportEndpoints.CalculateElapsedMonths(asset.PurchaseDate, asOf);
+            var remainingMonths = ageMonths is int elapsedMonths && references.depreciationMonths is int usefulLifeMonths
+                ? Math.Max(0, usefulLifeMonths - elapsedMonths)
+                : (int?)null;
+            var valuation = new
+            {
+                ageMonths,
+                depreciationMonths = references.depreciationMonths,
+                remainingMonths,
+                currentValue = DepreciationReportEndpoints.CalculateListValue(asset.PurchaseDate, asset.PurchaseCost,
+                    references.depreciationMonths, references.depreciationMinimum, references.depreciationMinimumType,
+                    references.depreciationMethod, asOf)
             };
             var purchaseOrder = asset.PurchaseOrderId is Guid orderId
                 ? await db.AssetPurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == orderId)
@@ -1675,7 +1698,7 @@ public static class AssetEndpoints
             return Results.Ok(new { asset = new { asset.Id, asset.AssetTag, asset.Name, asset.Status, asset.SerialNumber, asset.Location,
                 asset.LocationCatalogId, asset.CategoryId, asset.BrandId, asset.ModelId, asset.ParentAssetId, asset.AssignedEmployeeId, asset.PurchaseOrderId,
                 asset.PurchaseDate, asset.WarrantyExpiresAt, asset.NextAuditOn, asset.ExpectedReturnOn, asset.PurchaseCost, asset.Currency, asset.IsRequestable,
-                asset.CreatedAt, asset.UpdatedAt, customFields }, references, purchaseOrder, relatedAssets, accessories = accessoryAssignments,
+                asset.CreatedAt, asset.UpdatedAt, customFields }, references, valuation, purchaseOrder, relatedAssets, accessories = accessoryAssignments,
                 components = componentAllocations, softwareLicenses, history, attachments });
         }).RequireAuthorization("asset.read");
 

@@ -3609,10 +3609,36 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         }
         using (var crossCompanyAssetFileResponse = await SendAsAdminAsync($"/api/assets/{_otherCompanyAssetId}/attachments/{otherCompanyAssetAttachmentId}/file"))
             Assert.Equal(HttpStatusCode.NotFound, crossCompanyAssetFileResponse.StatusCode);
+        await using (var valuationScope = _factory!.Services.CreateAsyncScope())
+        {
+            var valuationDb = valuationScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var valuationAsset = await valuationDb.Assets.SingleAsync(x => x.Id == _ownAssetId);
+            var valuationModel = new AssetModel
+            {
+                CompanyId = _companyId,
+                CategoryId = valuationAsset.CategoryId,
+                Name = $"VALUATION-{_userId:N}",
+                DepreciationMonths = 36,
+                DepreciationMinimum = 0m,
+                DepreciationMinimumType = "amount",
+                DepreciationMethod = "linear"
+            };
+            valuationDb.AssetModels.Add(valuationModel);
+            valuationAsset.ModelId = valuationModel.Id;
+            valuationAsset.PurchaseDate = DateOnly.FromDateTime(DateTime.UtcNow).AddMonths(-12);
+            valuationAsset.PurchaseCost = 1200m;
+            valuationAsset.Currency = "USD";
+            await valuationDb.SaveChangesAsync();
+        }
         using (var ownAssetDetail = await SendAsAdminAsync($"/api/assets/{_ownAssetId}"))
         {
             Assert.Equal(HttpStatusCode.OK, ownAssetDetail.StatusCode);
             using var payload = JsonDocument.Parse(await ownAssetDetail.Content.ReadAsStringAsync());
+            var valuation = payload.RootElement.GetProperty("valuation");
+            Assert.Equal(12, valuation.GetProperty("ageMonths").GetInt32());
+            Assert.Equal(36, valuation.GetProperty("depreciationMonths").GetInt32());
+            Assert.Equal(24, valuation.GetProperty("remainingMonths").GetInt32());
+            Assert.Equal(800m, valuation.GetProperty("currentValue").GetDecimal());
             var movement = payload.RootElement.GetProperty("history").EnumerateArray()
                 .Single(item => item.GetProperty("id").GetGuid() == ownAssetEventId);
             Assert.Equal(1, movement.GetProperty("attachmentCount").GetInt32());

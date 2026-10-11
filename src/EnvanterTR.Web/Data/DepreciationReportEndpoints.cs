@@ -147,6 +147,9 @@ public static class DepreciationReportEndpoints
         return Calculate(source, asOf).BookValue;
     }
 
+    internal static int? CalculateElapsedMonths(DateOnly? startDate, DateOnly asOf) =>
+        startDate is DateOnly start ? MonthsBetween(start, asOf) : null;
+
     private static int MonthsBetween(DateOnly start, DateOnly end)
     {
         if (end < start) return 0;
