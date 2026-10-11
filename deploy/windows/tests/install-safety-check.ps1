@@ -22,6 +22,8 @@ function Assert-Pattern([string]$Name,[string]$Pattern) {
     Write-Output "PASS: $Name"
 }
 
+Assert-Pattern 'personal installs bind only to localhost while team server installs keep the network binding' '(?s)\[switch\]\$LoopbackOnly.*?\$listenHost\s*=\s*if\s*\(\$LoopbackOnly\)\s*\{\s*"localhost"\s*\}\s*else\s*\{\s*"0\.0\.0\.0"\s*\}.*?Url\s*=\s*"https://\$\{listenHost\}:\$HttpsPort"'
+
 Assert-Pattern 'nested install and data roots are rejected' '(?s)InstallRoot and DataRoot must be separate, non-nested directories'
 Assert-Pattern 'install and data roots cannot be reparse points' '(?s)foreach \(\$rootPath in @\(\$InstallRoot,\$DataRoot\)\).*?cannot be reparse points'
 Assert-Pattern 'a pre-existing app path must be empty and cannot be a reparse point before installation' '(?s)if\s*\(\$appPathWasPresent\).*?ReparsePoint.*?Install directory is not empty'

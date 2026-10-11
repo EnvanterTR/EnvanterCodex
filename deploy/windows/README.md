@@ -1,5 +1,9 @@
 # Windows dağıtım paketi
 
+## Kişisel Windows 11 kurulumu için servis kapsamı
+
+`install.ps1 -LoopbackOnly`, uygulama servisini yalnızca `https://localhost:<port>` üzerinde dinletir. Sunucu kurulumunda varsayılan dinleme tüm ağ arabirimleridir; mevcut `Setup.cmd` bu varsayılanı değiştirmez. Loopback seçeneği kişisel kurulumun temelidir, ancak tek başına Windows 11 kurulum ürünü değildir. Bu yol için ön kontrol, güvenilir yerel TLS sertifikası, PostgreSQL/uygulama sihirbazı, kaldırma/yükseltme ve imzalı `Setup.exe` kabulü tamamlanana kadar müşteri kurulumunda kullanmayın.
+
 Bu klasör Windows x64 self-contained yayın, etkileşimli ilk kurulum yardımcısı, servis kurma ve uygulama güncelleme betiklerini içerir. İndirilen ZIP açıldıktan sonra `Setup.cmd` başlatılır; yükseltilmiş bir PowerShell penceresi açarak adımları yönlendirir. Yardımcı mevcut bir veritabanı/servis kurulumunun üzerine yazmaz. Gerçek müşteri Windows Server kabulü tamamlanmadan paket üretime hazır sayılmaz.
 
 Sunucu veya disk kaybı için çevrim dışı parola/anahtar saklama ve iki platformlu kurtarma adımları: [`docs/DISASTER-RECOVERY.md`](../../docs/DISASTER-RECOVERY.md).

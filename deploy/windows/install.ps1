@@ -6,6 +6,7 @@ param(
     [int]$HttpsPort = 8443,
     [string]$CertificateSubject = "",
     [string]$CertificateThumbprint = "",
+    [switch]$LoopbackOnly,
     [Security.SecureString]$DatabaseConnectionStringSecure = $null
 )
 
@@ -112,6 +113,7 @@ $tokenBytes = New-Object byte[] 32
 $random = [Security.Cryptography.RandomNumberGenerator]::Create()
 try { $random.GetBytes($tokenBytes) } finally { $random.Dispose() }
 $platformBootstrapToken = [Convert]::ToBase64String($tokenBytes)
+$listenHost = if ($LoopbackOnly) { "localhost" } else { "0.0.0.0" }
 
 $config = [ordered]@{
     WindowsSecrets = @{ ConnectionStringPath = $connectionSecretPath }
@@ -122,7 +124,7 @@ $config = [ordered]@{
         PlatformBootstrapToken = $platformBootstrapToken
     }
     Kestrel = @{ Endpoints = @{ Https = @{
-        Url = "https://0.0.0.0:$HttpsPort"
+        Url = "https://${listenHost}:$HttpsPort"
         Certificate = @{ Subject = $subject; Store = "My"; Location = "LocalMachine"; AllowInvalid = $false }
     } } }
 }
@@ -167,12 +169,13 @@ $config | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $configPath -Encodi
     } while ((Get-Date) -lt $deadline)
     if (-not $apiReady) { throw "The HTTPS service did not become reachable with a working PostgreSQL connection within two minutes." }
 
-    Write-Output "Installed and started $ServiceName. HTTPS listens on port $HttpsPort; the installer did not change Windows Firewall rules."
+    $listenScope = if ($LoopbackOnly) { "localhost only" } else { "all network interfaces" }
+    Write-Output "Installed and started $ServiceName. HTTPS listens on $listenScope, port $HttpsPort; the installer did not change Windows Firewall rules."
     Write-Output "For a new empty database, run .\migrate.ps1 -InitialSetup from this package, then check /api/status."
     Write-Output "One-time company setup token (save securely): $($config.Setup.BootstrapToken)"
     Write-Output "One-time platform setup token (save securely): $($config.Setup.PlatformBootstrapToken)"
     Write-Warning "After creating both initial accounts, run .\disable-bootstrap.ps1 to remove these tokens from the live configuration."
-    Write-Warning "Grant the LocalService account read access to the certificate's private key in certlm.msc. Verify /api/status from a client before opening the firewall port."
+    if (-not $LoopbackOnly) { Write-Warning "Grant the LocalService account read access to the certificate's private key in certlm.msc. Verify /api/status from a client before opening the firewall port." }
 } catch {
     $installFailure = $_
     $serviceRemovalConfirmed = -not $serviceCreated
