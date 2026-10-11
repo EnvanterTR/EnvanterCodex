@@ -19,6 +19,10 @@ const groupKeys = [...nav.matchAll(/data-group="([^"]+)"/g)].map(match => match[
 const submenuKeys = [...nav.matchAll(/id="sub-([^"]+)"/g)].map(match => match[1]);
 const failures = [];
 
+if (!source.includes('id="retryApiButton"') || !/function showLogin\([^)]*\)\s*\{[^}]*\$\('#retryApiButton'\)\.hidden\s*=\s*false/.test(source)) {
+  failures.push('The login screen must keep the server connection check visible whenever login is shown.');
+}
+
 if (pageLabels.length === 0) failures.push('The sidebar has no page destinations.');
 for (const label of new Set(pageLabels)) {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
