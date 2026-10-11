@@ -495,6 +495,13 @@
       <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / ÜRÜN DURUMU</div><h1 id="featureStatusTitle">Bu bölüm</h1><p id="featureStatusDescription">Bu menü için mevcut ürün durumu.</p></div></div>
       <section class="panel"><div class="panel-head"><h2 id="featureStatusHeading">Yakında</h2><span class="pill warn" id="featureStatusBadge">Henüz kullanıma açık değil</span></div><div class="dialog-body"><p id="featureStatusMessage">Bu bölüm henüz kullanılabilir bir işlem sunmuyor.</p><div class="dialog-actions"><button class="btn" id="featureStatusNotificationButton" type="button" hidden>Bildirim tercihlerini aç</button><button class="btn" id="featureStatusDepartmentsButton" type="button" hidden>Departmanları aç</button><button class="btn" type="button" data-page="Genel Bakış">Genel bakışa dön</button></div></div></section>
     </section>
+    <section class="workspace-page" id="integrationsPage" hidden>
+      <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / ENTEGRASYONLAR</div><h1 id="integrationsTitle">Entegrasyonlar</h1><p>Şirket verilerine salt okunur erişim için API anahtarlarını yönetin.</p></div><button class="btn" id="integrationsRefresh" type="button">↻ Yenile</button></div>
+      <section class="panel"><div class="panel-head"><div><h2>Müşteri API v1</h2><p>Varlık, aksesuar ve çalışan listelerine kullanıcı ve şirket kapsamlı erişim.</p></div><a class="btn small" href="/openapi/customer-api-v1.json" target="_blank" rel="noopener noreferrer">OpenAPI şemasını görüntüle ↗</a></div><div class="dialog-body"><p>API anahtarları yalnızca seçtiğiniz salt okunur yetkilere erişir. Gizli anahtar oluşturma yanıtında bir kez gösterilir; veritabanında yalnızca özeti saklanır. Anahtarı URL'ye veya istemci koduna koymayın.</p><div class="muted">API tabanı: <code>/api/v1</code> · Kullanıcı başına en fazla 10 etkin anahtar</div></div></section>
+      <section class="panel" style="margin-top:15px"><div class="panel-head"><div><h2>Yeni API anahtarı</h2><p>Anahtar bu kullanıcı hesabına ve açık şirkete bağlanır.</p></div></div><p class="notice" id="integrationTokenPermissionNotice" hidden>Bu hesap API anahtarı oluşturmak için gerekli okuma yetkilerine sahip değil.</p><form id="integrationTokenForm" class="form-grid" style="padding:16px"><label class="wide">Anahtar adı *<input name="name" required minlength="2" maxlength="100" autocomplete="off" data-locale-placeholder="Örn. Raporlama servisi" placeholder="Örn. Raporlama servisi"></label><fieldset class="wide" style="display:flex;flex-wrap:wrap;gap:14px;border:0;padding:0;margin:0"><legend style="margin-bottom:8px">Salt okunur yetkiler *</legend><label class="check" id="integrationAssetsScopeLabel"><input name="scope" type="checkbox" value="assets:read"> Varlıkları oku</label><label class="check" id="integrationAccessoriesScopeLabel"><input name="scope" type="checkbox" value="accessories:read"> Aksesuarları oku</label><label class="check" id="integrationPeopleScopeLabel"><input name="scope" type="checkbox" value="people:read"> Çalışanları oku</label></fieldset><label>Son kullanma<select name="expiresInDays"><option value="">Süresiz</option><option value="30">30 gün</option><option value="90">90 gün</option><option value="365">365 gün</option></select></label><div class="wide"><button class="btn primary" id="createIntegrationToken" type="submit">API anahtarı oluştur</button><span class="muted" id="integrationTokenFeedback" role="status" aria-live="polite" style="margin-left:10px"></span></div></form></section>
+      <section class="panel" style="margin-top:15px"><div class="panel-head"><div><h2>API anahtarlarım</h2><p>Bu listede yalnızca kendi kullanıcı hesabınızın anahtarları görünür.</p></div><small id="integrationTokenCount" role="status" aria-live="polite">—</small></div><div class="table-wrap"><table><caption class="sr-only">Kullanıcı API anahtarları</caption><thead><tr><th>Ad</th><th>Önek</th><th>Yetkiler</th><th>Oluşturulma</th><th>Son kullanım</th><th>Son kullanma</th><th>Durum</th><th>İşlemler</th></tr></thead><tbody id="integrationTokenRows"><tr><td colspan="8">API anahtarları yükleniyor…</td></tr></tbody></table></div></section>
+    </section>
+    <dialog class="detail-dialog" id="integrationSecretDialog"><div class="dialog-head"><div><div class="eyebrow">API / GİZLİ ANAHTAR</div><h2>API anahtarı oluşturuldu</h2></div><button class="close" id="closeIntegrationSecret" type="button" aria-label="Kapat">✕</button></div><div class="dialog-body"><p>Bu gizli değeri şimdi güvenli bir yere kaydedin. Bu pencereden kapatınca tekrar gösterilemez.</p><label class="field">Gizli anahtar<input id="integrationSecretValue" type="password" readonly autocomplete="new-password" spellcheck="false"></label><div class="dialog-actions"><button class="btn" id="toggleIntegrationSecret" type="button">Göster</button><button class="btn" id="copyIntegrationSecret" type="button">Anahtarı kopyala</button><button class="btn primary" id="dismissIntegrationSecret" type="button">Kapat</button></div></div></dialog>
     <section class="workspace-page" id="maintenancePage" hidden>
       <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / BAKIM</div><h1>Bakım kayıtları</h1><p>Planları ve servis işlemlerini şirket genelinde izleyin; planlı işleri buradan başlatın veya iptal edin.</p></div><div class="head-actions"><button class="btn" id="maintenanceExport" type="button">⇩ CSV indir</button><button class="btn" id="maintenanceRefresh" type="button">↻ Yenile</button></div></div>
       <section class="panel"><div class="table-tools"><input id="maintenanceSearch" data-locale-placeholder="Varlık, çalışan, etiket, servis veya bakım notu ara" data-locale-aria="Bakım kayıtlarında ara" placeholder="Varlık, çalışan, etiket, servis veya bakım notu ara" aria-label="Bakım kayıtlarında ara"><select id="maintenanceStatus"><option value="">Tüm durumlar</option><option value="Scheduled">Planlandı</option><option value="InProgress">Devam ediyor</option><option value="Completed">Tamamlandı</option><option value="Cancelled">İptal edildi</option></select><label class="muted">Planlanan / başlangıç <input id="maintenanceFrom" type="date"></label><label class="muted">Bitiş <input id="maintenanceTo" type="date"></label><button class="btn small" id="applyMaintenanceFilters" type="button">Filtrele</button><button class="btn small" id="clearMaintenanceFilters" type="button">Temizle</button><small id="maintenanceCount" role="status" aria-live="polite">—</small></div><div class="table-wrap"><table><caption class="sr-only">Şirket bakım kayıtları</caption><thead><tr><th>Varlık</th><th>Bakım türü</th><th>Servis</th><th>Durum</th><th>Planlanan / başlangıç</th><th>Tamamlanma</th><th>Maliyet</th><th>Sorumlu çalışan</th><th>İşlemi yapan</th><th>Notlar</th><th>İşlemler</th></tr></thead><tbody id="maintenanceRows"><tr><td colspan="11">Bakım kayıtları yükleniyor…</td></tr></tbody></table></div><div class="pager"><button id="maintenancePrev" type="button">← Önceki</button><span id="maintenancePageInfo">Sayfa —</span><button id="maintenanceNext" type="button">Sonraki →</button></div></section>
@@ -1948,6 +1955,28 @@
       'Varlık listesini tam ekrandan çıkar':['Exit full screen asset list','Выйти из полноэкранного списка активов','Вийти зі списку активів на весь екран','Излези од списокот со средства на цел екран']
     });
 
+    Object.assign(localeRows, {
+      'ŞİRKET ALANI / ENTEGRASYONLAR':['COMPANY WORKSPACE / INTEGRATIONS','РАБОЧАЯ ОБЛАСТЬ КОМПАНИИ / ИНТЕГРАЦИИ','РОБОЧИЙ ПРОСТІР КОМПАНІЇ / ІНТЕГРАЦІЇ','РАБОТЕН ПРОСТОР НА КОМПАНИЈАТА / ИНТЕГРАЦИИ'],
+      'Şirket verilerine salt okunur erişim için API anahtarlarını yönetin.':['Manage API keys for read-only access to company data.','Управляйте API-ключами для доступа к данным компании только на чтение.','Керуйте API-ключами для доступу до даних компанії лише для читання.','Управувајте со API клучеви за пристап до податоците на компанијата само за читање.'],
+      '↻ Yenile':['↻ Refresh','↻ Обновить','↻ Оновити','↻ Освежи'],'Müşteri API v1':['Customer API v1','Клиентский API v1','Клієнтський API v1','Кориснички API v1'],
+      'Varlık, aksesuar ve çalışan listelerine kullanıcı ve şirket kapsamlı erişim.':['User- and company-scoped access to asset, accessory, and employee lists.','Доступ к спискам активов, аксессуаров и сотрудников в пределах пользователя и компании.','Доступ до списків активів, аксесуарів і працівників у межах користувача та компанії.','Пристап до списоците на средства, додатоци и вработени во рамките на корисникот и компанијата.'],
+      'OpenAPI şemasını görüntüle ↗':['View OpenAPI schema ↗','Открыть схему OpenAPI ↗','Переглянути схему OpenAPI ↗','Прикажи OpenAPI шема ↗'],
+      "API anahtarları yalnızca seçtiğiniz salt okunur yetkilere erişir. Gizli anahtar oluşturma yanıtında bir kez gösterilir; veritabanında yalnızca özeti saklanır. Anahtarı URL'ye veya istemci koduna koymayın.":['API keys receive only the read-only permissions you select. A secret is shown once when created; only its hash is stored in the database. Do not put the key in a URL or client-side code.','API-ключи получают только выбранные разрешения на чтение. Секрет показывается один раз при создании; в базе хранится только его хеш. Не помещайте ключ в URL или клиентский код.','API-ключі отримують лише вибрані дозволи на читання. Секрет показується один раз під час створення; у базі зберігається лише його хеш. Не додавайте ключ до URL або клієнтського коду.','API клучевите ги добиваат само избраните дозволи за читање. Тајната се прикажува еднаш при создавање; во базата се чува само нејзиниот хеш. Не ставајте го клучот во URL или клиентски код.'],
+      'API tabanı: ':['API base: ','Базовый URL API: ','Базова адреса API: ','API основа: '],' · Kullanıcı başına en fazla 10 etkin anahtar':[' · Up to 10 active keys per user',' · Не более 10 активных ключей на пользователя',' · До 10 активних ключів на користувача',' · До 10 активни клучеви по корисник'],
+      'Yeni API anahtarı':['New API key','Новый API-ключ','Новий API-ключ','Нов API клуч'],'Anahtar bu kullanıcı hesabına ve açık şirkete bağlanır.':['The key is scoped to this user account and the active company.','Ключ привязан к этой учетной записи и активной компании.','Ключ прив’язаний до цього облікового запису та активної компанії.','Клучот е поврзан со оваа корисничка сметка и активната компанија.'],
+      'Anahtar adı *':['Key name *','Название ключа *','Назва ключа *','Име на клуч *'],'Örn. Raporlama servisi':['e.g. Reporting service','например, сервис отчетности','наприклад, сервіс звітності','на пр. сервис за извештаи'],'Salt okunur yetkiler *':['Read-only scopes *','Разрешения только для чтения *','Дозволи лише для читання *','Дозволи само за читање *'],'Varlıkları oku':['Read assets','Читать активы','Читати активи','Читај средства'],'Aksesuarları oku':['Read accessories','Читать аксессуары','Читати аксесуари','Читај додатоци'],'Çalışanları oku':['Read employees','Читать сотрудников','Читати працівників','Читај вработени'],'Son kullanma':['Expiration','Срок действия','Термін дії','Истекување'],'Süresiz':['Never','Без срока','Безстроково','Без рок'],'30 gün':['30 days','30 дней','30 днів','30 дена'],'90 gün':['90 days','90 дней','90 днів','90 дена'],'365 gün':['365 days','365 дней','365 днів','365 дена'],
+      'Bu hesap API anahtarı oluşturmak için gerekli okuma yetkilerine sahip değil.':['This account does not have the read permissions required to create API keys.','У этой учетной записи нет прав на чтение, необходимых для создания API-ключей.','Цей обліковий запис не має дозволів на читання, потрібних для створення API-ключів.','Оваа сметка ги нема потребните дозволи за читање за создавање API клучеви.'],
+      'API anahtarı oluştur':['Create API key','Создать API-ключ','Створити API-ключ','Создај API клуч'],'API anahtarı oluşturuluyor…':['Creating API key…','Создание API-ключа…','Створення API-ключа…','Се создава API клуч…'],'API anahtarı oluşturuldu. Gizli değer yalnızca bir kez gösteriliyor.':['API key created. The secret is shown only once.','API-ключ создан. Секрет показывается только один раз.','API-ключ створено. Секрет показується лише один раз.','API клучот е создаден. Тајната се прикажува само еднаш.'],
+      'API anahtarlarım':['My API keys','Мои API-ключи','Мої API-ключі','Мои API клучеви'],'Bu listede yalnızca kendi kullanıcı hesabınızın anahtarları görünür.':['Only keys belonging to your user account appear here.','Здесь отображаются только ключи вашей учетной записи.','Тут відображаються лише ключі вашого облікового запису.','Тука се прикажуваат само клучевите од вашата корисничка сметка.'],'Ad':['Name','Название','Назва','Име'],'Önek':['Prefix','Префикс','Префікс','Префикс'],'Yetkiler':['Scopes','Разрешения','Дозволи','Дозволи'],'Oluşturulma':['Created','Создан','Створено','Создадено'],'Son kullanım':['Last used','Последнее использование','Останнє використання','Последно користење'],'Durum':['Status','Статус','Статус','Статус'],'İşlemler':['Actions','Действия','Дії','Дејства'],'API anahtarları yükleniyor…':['Loading API keys…','Загрузка API-ключей…','Завантаження API-ключів…','Се вчитуваат API клучеви…'],'API anahtarları yüklenemedi.':['Could not load API keys.','Не удалось загрузить API-ключи.','Не вдалося завантажити API-ключі.','API клучевите не можеа да се вчитаат.'],'Henüz API anahtarı oluşturulmadı.':['No API keys have been created yet.','API-ключи еще не созданы.','API-ключі ще не створено.','Сè уште нема создадено API клучеви.'],'{count} anahtar · {active} etkin':['{count} keys · {active} active','{count} ключей · {active} активных','{count} ключів · {active} активних','{count} клучеви · {active} активни'],'İptal edildi':['Revoked','Отозван','Відкликано','Отповикан'],'Süresi doldu':['Expired','Истек','Термін дії минув','Истечен'],'Etkin':['Active','Активен','Активний','Активен'],'İptal et':['Revoke','Отозвать','Відкликати','Отповикај'],'“{name}” API anahtarı iptal edilsin mi?':['Revoke API key “{name}”?','Отозвать API-ключ «{name}»?','Відкликати API-ключ «{name}»?','Да се отповика API клучот „{name}“?'],'Anahtar iptal edildi.':['Key revoked.','Ключ отозван.','Ключ відкликано.','Клучот е отповикан.'],'API anahtarları yenilendi.':['API keys refreshed.','API-ключи обновлены.','API-ключі оновлено.','API клучевите се освежени.'],'En az bir salt okunur yetki seçin.':['Select at least one read-only scope.','Выберите хотя бы одно разрешение на чтение.','Виберіть принаймні один дозвіл на читання.','Изберете барем едно дозвола за читање.'],'Gizli değeri şimdi güvenli bir yere kaydedin. Bu pencereden kapatınca tekrar gösterilemez.':['Save the secret somewhere secure now. It cannot be shown again after you close this dialog.','Сохраните секрет в безопасном месте. После закрытия окна его нельзя будет показать снова.','Збережіть секрет у безпечному місці. Після закриття вікна його не можна буде показати знову.','Зачувајте ја тајната на безбедно место. По затворање на прозорецот нема да може повторно да се прикаже.'],'Gizli anahtar':['Secret key','Секретный ключ','Секретний ключ','Таен клуч'],'Göster':['Show','Показать','Показати','Прикажи'],'Gizle':['Hide','Скрыть','Сховати','Сокриј'],'Anahtarı kopyala':['Copy key','Копировать ключ','Копіювати ключ','Копирај клуч'],'Kopyalandı':['Copied','Скопировано','Скопійовано','Копирано'],'Seçildi; kopyalayın':['Selected; copy it','Выделено; скопируйте','Виділено; скопіюйте','Избрано; копирајте'],'API anahtarı oluşturuldu':['API key created','API-ключ создан','API-ключ створено','API клучот е создаден'],'Kapat':['Close','Закрыть','Закрити','Затвори']
+    });
+    Object.assign(localeRows, {
+      'API / GİZLİ ANAHTAR':['API / SECRET KEY','API / СЕКРЕТНЫЙ КЛЮЧ','API / СЕКРЕТНИЙ КЛЮЧ','API / ТАЕН КЛУЧ'],
+      'Bu gizli değeri şimdi güvenli bir yere kaydedin. Bu pencereden kapatınca tekrar gösterilemez.':['Save this secret somewhere secure now. It cannot be shown again after you close this dialog.','Сохраните этот секрет в безопасном месте. После закрытия окна его нельзя будет показать снова.','Збережіть цей секрет у безпечному місці. Після закриття вікна його не можна буде показати знову.','Зачувајте ја оваа тајна на безбедно место. По затворање на прозорецот нема да може повторно да се прикаже.'],
+      'Bu hesap API anahtarı oluşturmak için gerekli okuma yetkilerine sahip değil.':['This account does not have the read permissions required to create API keys.','У этой учетной записи нет прав на чтение, необходимых для создания API-ключей.','Цей обліковий запис не має дозволів на читання, потрібних для створення API-ключів.','Оваа сметка ги нема потребните дозволи за читање за создавање API клучеви.'],
+      'Örn. Raporlama servisi':['e.g. Reporting service','например, сервис отчетности','наприклад, сервіс звітності','на пр. сервис за извештаи'],
+      'API tabanı:':['API base:','Базовый URL API:','Базова адреса API:','API основа:'],
+      '· Kullanıcı başına en fazla 10 etkin anahtar':['· Up to 10 active keys per user','· Не более 10 активных ключей на пользователя','· До 10 активних ключів на користувача','· До 10 активни клучеви по корисник']
+    });
     function translateUiText(text) {
       const key = String(text ?? ''), index = localeIndexes[appearanceLanguage.value];
       if (index === undefined) return key;
@@ -2119,7 +2148,7 @@
       fmt = new Intl.NumberFormat(selectedLocale);
       document.documentElement.lang = language === 'tr' ? 'tr' : language;
       appearanceLanguage.value = language;
-       const roots = [$('#sidebar'), $('.topbar'), $('#overview'), $('#reservationsPage'), $('#accessoriesPage'), $('#accessoryFormDialog'), $('#accessoryCheckoutDialog'), $('#employeesPage'), $('#employeeDialog'), $('#newEmployeeDialog'), $('#editEmployeeDialog'), $('#employeeImportDialog'), $('#catalogPage'), $('#inventoryMovementsPage'), $('#licensesPage'), $('#licenseAssignmentsPage'), $('#contractsPage'), $('#contractFormDialog'), $('#contractDetailDialog'), $('#licenseDialog'), $('#licenseFormDialog'), $('#licenseAssignDialog'), $('#licenseImportDialog'), $('#inventoryRequestsPage'), $('#inventoryRequestDialog'), $('#maintenancePage'), $('#maintenanceAttachmentDialog'), $('#maintenanceStartDialog'), $('#maintenanceCompleteDialog'), $('#calendarPage'), $('#tasksPage'), $('#notificationPanel'), $('#reportPage'), $('#customReportPage'), appearanceDialog];
+       const roots = [$('#sidebar'), $('.topbar'), $('#overview'), $('#reservationsPage'), $('#accessoriesPage'), $('#accessoryFormDialog'), $('#accessoryCheckoutDialog'), $('#employeesPage'), $('#employeeDialog'), $('#newEmployeeDialog'), $('#editEmployeeDialog'), $('#employeeImportDialog'), $('#catalogPage'), $('#inventoryMovementsPage'), $('#licensesPage'), $('#licenseAssignmentsPage'), $('#contractsPage'), $('#contractFormDialog'), $('#contractDetailDialog'), $('#licenseDialog'), $('#licenseFormDialog'), $('#licenseAssignDialog'), $('#licenseImportDialog'), $('#inventoryRequestsPage'), $('#inventoryRequestDialog'), $('#maintenancePage'), $('#maintenanceAttachmentDialog'), $('#maintenanceStartDialog'), $('#maintenanceCompleteDialog'), $('#calendarPage'), $('#tasksPage'), $('#notificationPanel'), $('#reportPage'), $('#customReportPage'), $('#integrationsPage'), $('#integrationSecretDialog'), appearanceDialog];
       for (const root of roots) {
         if (!root) continue;
         const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -2213,6 +2242,7 @@
         const saved = await api('/api/appearance/preferences', { method: 'PUT', body: JSON.stringify(prefs) });
         try { localStorage.setItem(appearanceKey, JSON.stringify(saved)); } catch {}
         applyThemePreference(saved.theme); applyShellLanguage(saved.language);
+        if (!$('#integrationsPage').hidden) applyIntegrationPageLanguage();
         if (!$('#reservationsPage').hidden) $('#pageTitle').textContent = translateUiText('Varlık rezervasyonları');
         void loadDashboard($('#globalSearch').value.trim(), assetPage).catch(error => console.warn('Varlık tablosu yeni dil tercihiyle yenilenemedi.', error));
         if (!$('#reservationsPage').hidden) void Promise.all([loadReservations(1), loadReservationOptions()]).catch(error => notify(error.message));
@@ -7004,6 +7034,81 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     $('#returnsRefresh').addEventListener('click', () => loadAssetCheckouts('returns', returnsPage).then(() => notify('İade listesi yenilendi.')).catch(error => notify(error.message)));
     $('#returnsPrev').addEventListener('click', () => loadAssetCheckouts('returns', returnsPage - 1).catch(error => notify(error.message)));
     $('#returnsNext').addEventListener('click', () => loadAssetCheckouts('returns', returnsPage + 1).catch(error => notify(error.message)));
+    let integrationTokens = [];
+    function applyIntegrationPageLanguage() {
+      applyShellLanguage(appearanceLanguage.value);
+      const assets = canReadAssets(), people = canReadPeople();
+      $('#integrationAssetsScopeLabel').hidden = !assets;
+      $('#integrationAccessoriesScopeLabel').hidden = !assets;
+      $('#integrationPeopleScopeLabel').hidden = !people;
+      if (!assets) { $('input[value="assets:read"]', $('#integrationTokenForm')).checked = false; $('input[value="accessories:read"]', $('#integrationTokenForm')).checked = false; }
+      if (!people) $('input[value="people:read"]', $('#integrationTokenForm')).checked = false;
+      $('#integrationTokenForm').hidden = !assets && !people;
+      $('#integrationTokenPermissionNotice').hidden = assets || people;
+      renderIntegrationTokens();
+    }
+    function integrationTokenStatus(token) {
+      if (token.revokedAt) return translateUiText('İptal edildi');
+      if (token.isExpired) return translateUiText('Süresi doldu');
+      return translateUiText('Etkin');
+    }
+    function formatIntegrationDate(value) {
+      return value ? new Intl.DateTimeFormat(selectedLocale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
+    }
+    function renderIntegrationTokens() {
+      const rows = $('#integrationTokenRows'); rows.replaceChildren();
+      const activeCount = integrationTokens.filter(token => !token.revokedAt && !token.isExpired).length;
+      $('#integrationTokenCount').textContent = translateUiText('{count} anahtar · {active} etkin').replace('{count}', fmt.format(integrationTokens.length)).replace('{active}', fmt.format(activeCount));
+      $('#createIntegrationToken').disabled = activeCount >= 10;
+      if (!integrationTokens.length) {
+        const row = document.createElement('tr'), cell = document.createElement('td'); cell.colSpan = 8; cell.textContent = translateUiText('Henüz API anahtarı oluşturulmadı.'); row.append(cell); rows.append(row); return;
+      }
+      for (const token of integrationTokens) {
+        const row = document.createElement('tr');
+        const values = [token.name, token.tokenPrefix, (token.scopes || []).join(', '), formatIntegrationDate(token.createdAt), formatIntegrationDate(token.lastUsedAt), formatIntegrationDate(token.expiresAt), integrationTokenStatus(token)];
+        for (const value of values) { const cell = document.createElement('td'); cell.textContent = value || '—'; row.append(cell); }
+        const actionCell = document.createElement('td');
+        if (!token.revokedAt && !token.isExpired) {
+          const revoke = document.createElement('button'); revoke.type = 'button'; revoke.className = 'btn small danger'; revoke.textContent = translateUiText('İptal et'); revoke.addEventListener('click', async () => {
+            if (!window.confirm(translateUiText('“{name}” API anahtarı iptal edilsin mi?').replace('{name}', token.name))) return;
+            revoke.disabled = true;
+            try { await api(`/api/integrations/tokens/${encodeURIComponent(token.id)}/revoke`, { method: 'POST', body: '{}' }); $('#integrationTokenFeedback').textContent = translateUiText('Anahtar iptal edildi.'); await loadIntegrationTokens(); }
+            catch (error) { revoke.disabled = false; $('#integrationTokenFeedback').textContent = error.message; }
+          }); actionCell.append(revoke);
+        } else actionCell.textContent = '—';
+        row.append(actionCell); rows.append(row);
+      }
+    }
+    async function loadIntegrationTokens() {
+      $('#integrationTokenRows').innerHTML = `<tr><td colspan="8">${escapeHtml(translateUiText('API anahtarları yükleniyor…'))}</td></tr>`;
+      try { integrationTokens = await api('/api/integrations/tokens'); renderIntegrationTokens(); }
+      catch (error) { integrationTokens = []; renderIntegrationTokens(); $('#integrationTokenRows').replaceChildren(); reportEmpty($('#integrationTokenRows'), 8, `${translateUiText('API anahtarları yüklenemedi.')}: ${error.message}`); throw error; }
+    }
+    $('#integrationsRefresh').addEventListener('click', () => loadIntegrationTokens().then(() => { $('#integrationTokenFeedback').textContent = translateUiText('API anahtarları yenilendi.'); }).catch(error => { $('#integrationTokenFeedback').textContent = error.message; }));
+    $('#integrationTokenForm').addEventListener('submit', async event => {
+      event.preventDefault(); const form = event.currentTarget, button = $('#createIntegrationToken'), data = new FormData(form);
+      const scopes = data.getAll('scope').map(value => String(value));
+      if (!scopes.length) { $('#integrationTokenFeedback').textContent = translateUiText('En az bir salt okunur yetki seçin.'); return; }
+      const days = Number(data.get('expiresInDays') || 0), expiresAt = days ? new Date(Date.now() + days * 86400000).toISOString() : null;
+      button.disabled = true; $('#integrationTokenFeedback').textContent = translateUiText('API anahtarı oluşturuluyor…');
+      try {
+        const result = await api('/api/integrations/tokens', { method: 'POST', body: JSON.stringify({ name: data.get('name'), scopes, expiresAt }) });
+        form.reset(); $('#integrationTokenFeedback').textContent = translateUiText('API anahtarı oluşturuldu. Gizli değer yalnızca bir kez gösteriliyor.');
+        $('#integrationSecretValue').value = result.secret || ''; $('#integrationSecretValue').type = 'password'; $('#toggleIntegrationSecret').textContent = translateUiText('Göster'); $('#integrationSecretDialog').showModal();
+        await loadIntegrationTokens();
+      } catch (error) { $('#integrationTokenFeedback').textContent = error.message; }
+      finally { button.disabled = integrationTokens.filter(token => !token.revokedAt && !token.isExpired).length >= 10; }
+    });
+    $('#toggleIntegrationSecret').addEventListener('click', () => { const input = $('#integrationSecretValue'); input.type = input.type === 'password' ? 'text' : 'password'; $('#toggleIntegrationSecret').textContent = translateUiText(input.type === 'password' ? 'Göster' : 'Gizle'); });
+    $('#copyIntegrationSecret').addEventListener('click', async () => {
+      const input = $('#integrationSecretValue');
+      try { await navigator.clipboard.writeText(input.value); $('#copyIntegrationSecret').textContent = translateUiText('Kopyalandı'); }
+      catch { input.type = 'text'; input.focus(); input.select(); $('#copyIntegrationSecret').textContent = translateUiText('Seçildi; kopyalayın'); }
+    });
+    function clearIntegrationSecret() { $('#integrationSecretValue').value = ''; $('#integrationSecretValue').type = 'password'; $('#toggleIntegrationSecret').textContent = translateUiText('Göster'); $('#copyIntegrationSecret').textContent = translateUiText('Anahtarı kopyala'); }
+    $('#closeIntegrationSecret').addEventListener('click', () => $('#integrationSecretDialog').close());
+    $('#dismissIntegrationSecret').addEventListener('click', () => $('#integrationSecretDialog').close());
+    $('#integrationSecretDialog').addEventListener('close', clearIntegrationSecret);
     document.querySelectorAll('[data-page]').forEach(button => button.addEventListener('click', () => {
       const page = button.dataset.page;
       $('#featureStatusDepartmentsButton').hidden = true;
@@ -7019,7 +7124,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       const selectedNav = button.matches('.nav-item,.sub-item') ? button : document.querySelector(`#sidebar [data-page="${CSS.escape(page)}"]`);
       if (selectedNav?.classList.contains('nav-item')) selectedNav.classList.add('active'); else selectedNav?.classList.add('selected');
       setMobileSidebarOpen(false);
-      for (const id of ['overview','employeesPage','directoryPage','moduleStatusPage','assignmentsPage','returnsPage','accessoriesPage','accessoryOrdersPage','stockOrdersPage','assetOrdersPage','accessoryKitsPage','consumablesPage','inventoryRequestsPage','licensesPage','licenseAssignmentsPage','contractsPage','componentsPage','inventoryMovementsPage','labelSettingsPage','assetStatusLabelsPage','maintenancePage','calendarPage','tasksPage','reportPage','customReportPage','membersPage','rolesPage','activityPage','reservationsPage','auditPage','dataToolsPage','featureStatusPage','companySettingsPage','catalogPage']) $(`#${id}`).hidden = true;
+      for (const id of ['overview','employeesPage','directoryPage','moduleStatusPage','assignmentsPage','returnsPage','accessoriesPage','accessoryOrdersPage','stockOrdersPage','assetOrdersPage','accessoryKitsPage','consumablesPage','inventoryRequestsPage','licensesPage','licenseAssignmentsPage','contractsPage','componentsPage','inventoryMovementsPage','labelSettingsPage','assetStatusLabelsPage','maintenancePage','calendarPage','tasksPage','reportPage','customReportPage','membersPage','rolesPage','activityPage','reservationsPage','auditPage','dataToolsPage','featureStatusPage','companySettingsPage','integrationsPage','catalogPage']) $(`#${id}`).hidden = true;
       if (page === 'Aksesuarlar') { if (!canReadAssets()) { notify('Aksesuar stoklarını görüntüleme yetkiniz bulunmuyor.'); return; } $('#accessoriesPage').hidden = false; $('#pageTitle').textContent = page; $('#newAccessoryButton').hidden = !canWriteAssets(); $('#manageAccessoryCategories').hidden = !canWriteAssets(); $('#accessoryImportOpen').hidden = !canWriteAssets(); loadAccessoryFilterOptions().then(() => loadAccessories(1)).catch(error => notify(error.message)); }
       else if (page === 'Siparişler') { $('#accessoryOrdersPage').hidden = false; $('#pageTitle').textContent = 'Satın alma siparişleri'; $('#newAccessoryOrderButton').hidden = !canWriteAssets(); $('#supplierCatalogButton').hidden = !canWriteAssets(); loadAccessoryOrders(1).catch(error => notify(error.message)); }
       else if (page === 'Varlık siparişleri') { $('#assetOrdersPage').hidden = false; $('#pageTitle').textContent = page; $('#newAssetOrderButton').hidden = !canWriteAssets(); $('#assetOrdersSupplierCatalog').hidden = !canWriteAssets(); loadAssetOrders(1).catch(error => notify(error.message)); }
@@ -7072,6 +7177,13 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         $('#dataRestorePanel').hidden = page !== 'Geri yükle';
         $('#dataToolsDescription').textContent = page === 'Geri yükle' ? 'Şirket arşivini doğrulayın; bu ekrandan canlı sisteme geri yükleme başlatılmaz.' : page === 'Yedekleme geçmişi' ? 'Sunucu yedeklerinin konumu ve bu ekranın kapsamı.' : page === 'Tablodan içe aktar' ? 'CSV ve Excel aktarımını ilgili modülün güvenli önizleme akışından başlatın.' : 'Şirket kayıtlarını taşınabilir dosyalar olarak indirin.';
       }
+      else if (page === 'Entegrasyonlar') {
+        $('#integrationsPage').hidden = false; $('#pageTitle').textContent = translateUiText(page);
+        applyIntegrationPageLanguage();
+        $('#integrationPeopleScopeLabel').hidden = !canReadPeople();
+        if (!canReadPeople()) $('input[value="people:read"]', $('#integrationTokenForm')).checked = false;
+        loadIntegrationTokens().catch(error => { $('#integrationTokenFeedback').textContent = translateUiText(error.message); });
+      }
       else if (page === 'Bildirimler') {
         $('#featureStatusPage').hidden = false; $('#pageTitle').textContent = page;
         $('#featureStatusTitle').textContent = page; $('#featureStatusDescription').textContent = translateUiText('Bildirimler üst menüdeki zil simgesinden yönetilir.');
@@ -7093,7 +7205,6 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       else if (!['Genel Bakış','Varlıklar'].includes(page)) {
         const notReady = {
           'Destek': 'Uygulama içi destek talebi ve yanıt takibi henüz hazır değil.',
-          'Entegrasyonlar': 'Harici sistem bağlantısı ve webhook yönetimi henüz hazır değil. Bu menüde çalışır bir bağlantı tanımlı değildir.',
           'Şirket birimleri': 'Şube ve tüzel kişilik bazlı varlık ayrımı henüz hazır değil. Şirket verileri mevcut şirket alanında birlikte tutulur.',
           'Yetki rolleri': 'Roller ve izinler için yönetim ekranı henüz hazır değil. Mevcut roller ve izin sınırları sunucu tarafından uygulanır.'
         };

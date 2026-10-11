@@ -458,6 +458,19 @@ const requiredRoleLabels = [
 const requiredAuthLabels = [
   'Giriş bilgileri adres satırından alınmadı. Güvenlik için URL temizlendi; e-posta ve parolanızı bu forma yazın.'
 ];
+const requiredIntegrationLabels = [
+  'Entegrasyonlar', 'ŞİRKET ALANI / ENTEGRASYONLAR', 'Şirket verilerine salt okunur erişim için API anahtarlarını yönetin.',
+  'Müşteri API v1', 'Varlık, aksesuar ve çalışan listelerine kullanıcı ve şirket kapsamlı erişim.',
+  'OpenAPI şemasını görüntüle ↗', 'Yeni API anahtarı', 'Anahtar bu kullanıcı hesabına ve açık şirkete bağlanır.',
+  'Anahtar adı *', 'Salt okunur yetkiler *', 'Varlıkları oku', 'Aksesuarları oku', 'Çalışanları oku',
+  'Son kullanma', 'API anahtarı oluştur', 'API anahtarlarım', 'Bu listede yalnızca kendi kullanıcı hesabınızın anahtarları görünür.',
+  'Önek', 'Yetkiler', 'Oluşturulma', 'Son kullanım', 'Son kullanma', 'Durum', 'İşlemler',
+  'API anahtarları yükleniyor…', 'API anahtarları yüklenemedi.', 'Henüz API anahtarı oluşturulmadı.',
+  'Etkin', 'Süresi doldu', 'İptal edildi', 'İptal et', 'Göster', 'Gizle', 'Anahtarı kopyala', 'Kapat',
+  'API / GİZLİ ANAHTAR', 'API anahtarı oluşturuldu',
+  'Bu gizli değeri şimdi güvenli bir yere kaydedin. Bu pencereden kapatınca tekrar gösterilemez.',
+  'API anahtarları yalnızca seçtiğiniz salt okunur yetkilere erişir. Gizli anahtar oluşturma yanıtında bir kez gösterilir; veritabanında yalnızca özeti saklanır. Anahtarı URL\'ye veya istemci koduna koymayın.'
+];
 const invalidRows = Object.entries(sandbox.localeRows)
   .filter(([key, values]) => !key.trim() || !Array.isArray(values) || values.length !== 4 || values.some(value => typeof value !== 'string' || !value.trim()))
   .map(([key]) => key || '<empty key>');
@@ -474,8 +487,9 @@ const missingAssetEventLabels = requiredAssetEventLabels.filter(key => !sandbox.
 const missingApiFeedbackLabels = requiredApiFeedbackLabels.filter(key => !sandbox.localeRows[key]);
 const missingRoleLabels = requiredRoleLabels.filter(key => !sandbox.localeRows[key]);
 const missingAuthLabels = requiredAuthLabels.filter(key => !sandbox.localeRows[key]);
+const missingIntegrationLabels = requiredIntegrationLabels.filter(key => !sandbox.localeRows[key]);
 
-if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingCheckoutLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingInventoryRequestLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length || missingRoleLabels.length || missingAuthLabels.length) {
+if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingCheckoutLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingInventoryRequestLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length || missingRoleLabels.length || missingAuthLabels.length || missingIntegrationLabels.length) {
   if (invalidRows.length) console.error(`Invalid 4-language locale entries: ${invalidRows.join(', ')}`);
   if (missingAssetLabels.length) console.error(`Missing asset-list locale entries: ${missingAssetLabels.join(', ')}`);
   if (missingReservationLabels.length) console.error(`Missing reservation-page locale entries: ${missingReservationLabels.join(', ')}`);
@@ -490,6 +504,7 @@ if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.
   if (missingApiFeedbackLabels.length) console.error(`Missing asset/operations API-feedback locale entries: ${missingApiFeedbackLabels.join(', ')}`);
   if (missingRoleLabels.length) console.error(`Missing role-matrix locale entries: ${missingRoleLabels.join(', ')}`);
   if (missingAuthLabels.length) console.error(`Missing login-security locale entries: ${missingAuthLabels.join(', ')}`);
+  if (missingIntegrationLabels.length) console.error(`Missing integration-page locale entries: ${missingIntegrationLabels.join(', ')}`);
   process.exitCode = 1;
 } else {
   console.log(`Verified ${Object.keys(sandbox.localeRows).length} locale entries in Turkish, English, Russian, Ukrainian, and Macedonian.`);
