@@ -475,7 +475,13 @@ const requiredRoleLabels = [
   'Envanter yöneticisi', 'Envanter operatörü', 'Denetçi', 'Salt okunur', 'İK operatörü'
 ];
 const requiredAuthLabels = [
-  'Giriş bilgileri adres satırından alınmadı. Güvenlik için URL temizlendi; e-posta ve parolanızı bu forma yazın.'
+  'Giriş bilgileri adres satırından alınmadı. Güvenlik için URL temizlendi; e-posta ve parolanızı bu forma yazın.',
+  'Giriş bilgileri geçersiz veya hesap geçici olarak kullanılamıyor.',
+  'Davet e-postasındaki bağlantıdan parolanızı belirleyerek hesabınızı etkinleştirin.',
+  'Devam etmek için çalışacağınız şirketi seçin.',
+  'Authenticator uygulamanızdaki 6 haneli kodu veya tek kullanımlık kurtarma kodunu girin.',
+  'Doğrulama kodu geçersiz veya kullanılmış. Yeniden deneyin.',
+  'Çok sayıda hatalı doğrulama kodu. Bir süre sonra tekrar deneyin.'
 ];
 const requiredIntegrationLabels = [
   'Entegrasyonlar', 'ŞİRKET ALANI / ENTEGRASYONLAR', 'Şirket verilerine salt okunur erişim için API anahtarlarını yönetin.',

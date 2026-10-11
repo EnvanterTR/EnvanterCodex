@@ -6,6 +6,7 @@ Bu kapsam, tanıtım/marketing ana sayfası hariç oturum açılan tüm Envanter
 
 ## Kullanıcı kabul durumu
 
+- 2026-10-12: Oturum açma API'sinden dönen geçersiz/etkin olmayan hesap, davetle etkinleştirme, şirket seçimi ve MFA hataları beş dilde gösterilir. `Verify-UiLocales.mjs` bu yedi kimlik doğrulama iletisini dört hedef dile sahip olmaları için zorunlu denetler. Bu, hesabın kendisinin geçerli olduğunu veya parola sorununu çözdüğünü kanıtlamaz; kimlik doğrulama kabulü ayrı yapılır.
 - 2026-10-11: “Yetki rolleri” sayfası yerleşik şirket rollerinin erişim tablosunu ve rol atama yolunu beş dilde gösterir. Rol adı, tablo başlıkları ve izin durumları ortak sözlük üzerinden çizilir; dil değiştirildiğinde tablo yeniden kurulur. Arayüzdeki rol görünürlük kontrolleri ile tablo aynı istemci rol kataloğunu kullanır; API sunucu tarafında kendi izin politikalarını uygular.
 
 - 2026-10-10: Stok talepleri ekranı ve talep penceresinin başlık/açıklama, arama ve durum filtreleri, boş/yükleniyor durumları, çalışan hesabı eşleştirme açıklamaları, ürün türleri, durum rozetleri, satır eylemleri, onay/red/iptal istemleri ve yenileme bildirimi İngilizce, Rusça, Ukraynaca ve Makedoncaya çevrildi. Dil değişince açık talep listesi, stok kataloğu ve çalışan seçenekleri seçili dilde yeniden yüklenir. `Verify-UiLocales.mjs` bu modülün gerekli statik/dinamik metinlerini dört çeviriyle zorunlu denetler; sunucu kaynaklı her alan doğrulamasının çevirisi ve oturum açılmış gerçek tarayıcıda görsel kabul hâlâ açık.
