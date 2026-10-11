@@ -519,6 +519,50 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Asset_table_model_and_manufacturer_sort_use_their_own_catalog_fields()
+    {
+        var token = _userId.ToString("N");
+        Guid alphaAssetId;
+        Guid zetaAssetId;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var categoryId = await db.AssetCategories.Where(x => x.CompanyId == _companyId).Select(x => x.Id).FirstAsync();
+            var alphaManufacturer = new AssetBrand { CompanyId = _companyId, Name = $"ZebraSort-{token}" };
+            var zetaManufacturer = new AssetBrand { CompanyId = _companyId, Name = $"AcerSort-{token}" };
+            var alphaModel = new AssetModel { CompanyId = _companyId, Name = $"AlphaModel-{token}", BrandId = alphaManufacturer.Id };
+            var zetaModel = new AssetModel { CompanyId = _companyId, Name = $"ZetaModel-{token}", BrandId = zetaManufacturer.Id };
+            alphaAssetId = Guid.NewGuid();
+            zetaAssetId = Guid.NewGuid();
+            db.AssetBrands.AddRange(alphaManufacturer, zetaManufacturer);
+            db.AssetModels.AddRange(alphaModel, zetaModel);
+            db.Assets.AddRange(
+                new Asset { Id = alphaAssetId, CompanyId = _companyId, AssetTag = $"MODEL-SORT-{token}-A", Name = "Alpha model asset", CategoryId = categoryId, BrandId = alphaManufacturer.Id, ModelId = alphaModel.Id },
+                new Asset { Id = zetaAssetId, CompanyId = _companyId, AssetTag = $"MODEL-SORT-{token}-Z", Name = "Zeta model asset", CategoryId = categoryId, BrandId = zetaManufacturer.Id, ModelId = zetaModel.Id });
+            await db.SaveChangesAsync();
+        }
+
+        var query = $"q=MODEL-SORT-{token}&pageSize=20&sortDirection=asc";
+        using (var modelResponse = await SendAsAdminAsync($"/api/assets?{query}&sortBy=model"))
+        using (var payload = JsonDocument.Parse(await modelResponse.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, modelResponse.StatusCode);
+            var ids = payload.RootElement.GetProperty("items").EnumerateArray()
+                .Select(item => item.GetProperty("id").GetGuid()).ToArray();
+            Assert.Equal(new[] { alphaAssetId, zetaAssetId }, ids);
+        }
+
+        using (var manufacturerResponse = await SendAsAdminAsync($"/api/assets?{query}&sortBy=brand"))
+        using (var payload = JsonDocument.Parse(await manufacturerResponse.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, manufacturerResponse.StatusCode);
+            var ids = payload.RootElement.GetProperty("items").EnumerateArray()
+                .Select(item => item.GetProperty("id").GetGuid()).ToArray();
+            Assert.Equal(new[] { zetaAssetId, alphaAssetId }, ids);
+        }
+    }
+
+    [Fact]
     public async Task Saved_asset_searches_are_private_to_user_and_company_and_require_csrf_for_changes()
     {
         await using (var scope = _factory!.Services.CreateAsyncScope())
@@ -547,7 +591,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             q = "laptop", status = "Available", warranty = "active", categoryId = (Guid?)null,
             brandId = (Guid?)null, modelId = (Guid?)null, employeeId = (Guid?)null,
             customFieldKey = "asset_code", customFieldValue = "TR-", customFieldMode = "contains",
-            employeeName = "", location = "Merkez", sortBy = "name", sortDirection = "desc"
+            employeeName = "", location = "Merkez", sortBy = "model", sortDirection = "desc"
         };
         using var createResponse = await SendAsUserAsync(HttpMethod.Post, "/api/assets/saved-searches", _userId, _companyId,
             System.Net.Http.Json.JsonContent.Create(new { name = "Laptop", filters }), requestToken, antiforgeryCookie);
@@ -558,6 +602,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal("asset_code", created.RootElement.GetProperty("filters").GetProperty("customFieldKey").GetString());
         Assert.Equal("TR-", created.RootElement.GetProperty("filters").GetProperty("customFieldValue").GetString());
         Assert.Equal("contains", created.RootElement.GetProperty("filters").GetProperty("customFieldMode").GetString());
+        Assert.Equal("model", created.RootElement.GetProperty("filters").GetProperty("sortBy").GetString());
 
         using (var invalidTenantField = await SendAsUserAsync(HttpMethod.Post, "/api/assets/saved-searches", _userId, _companyId,
             System.Net.Http.Json.JsonContent.Create(new { name = "Invalid custom field", filters = new { customFieldKey = "other_code", customFieldMode = "empty" } }),

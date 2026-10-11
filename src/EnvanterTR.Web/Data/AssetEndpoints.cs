@@ -3049,6 +3049,8 @@ public static class AssetEndpoints
             ("tag", true) => query.OrderByDescending(x => x.AssetTag),
             ("name", false) => query.OrderBy(x => x.Name),
             ("name", true) => query.OrderByDescending(x => x.Name),
+            ("model", false) => query.OrderBy(x => db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.Name).FirstOrDefault()),
+            ("model", true) => query.OrderByDescending(x => db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.Name).FirstOrDefault()),
             ("category", false) => query.OrderBy(x => db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault()),
             ("category", true) => query.OrderByDescending(x => db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault()),
             ("brand", false) => query.OrderBy(x => db.AssetBrands.Where(b => b.CompanyId == companyId && b.Id == x.BrandId).Select(b => b.Name).FirstOrDefault()).ThenBy(x => db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.Name).FirstOrDefault()),

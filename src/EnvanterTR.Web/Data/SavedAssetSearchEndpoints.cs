@@ -18,7 +18,7 @@ public static class SavedAssetSearchEndpoints
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly string[] Statuses = ["Available", "Deployed", "Pending", "Maintenance", "Unusable", "Archived"];
     private static readonly string[] Warranties = ["expired", "expiring", "active", "unspecified"];
-    private static readonly string[] SortFields = ["tag", "name", "category", "brand", "employee", "location", "status", "warranty", "updated"];
+    private static readonly string[] SortFields = ["tag", "name", "model", "category", "brand", "employee", "location", "status", "warranty", "updated"];
 
     public static void MapSavedAssetSearchEndpoints(this RouteGroupBuilder api)
     {
