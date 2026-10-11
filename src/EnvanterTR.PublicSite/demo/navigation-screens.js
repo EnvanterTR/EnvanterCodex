@@ -5,39 +5,34 @@
   ]);
   const messages = {
     tr: {
-      title: 'Bu demo ekranında örnek kayıt yok',
-      description: 'Bu alt menü için örnek kayıtlar henüz eklenmedi. Bu ekranın kendi verileri hazırlanıyor.',
-      hint: 'Bu başlık altında başka bir modülün kayıtları gösterilmez.',
-      column: 'Ekran durumu', status: 'Demo içeriği hazırlanıyor', count: '0 kayıt',
-      cards: [['Ekran', 'Alt menü'], ['İçerik', 'Henüz eklenmedi'], ['Veri', 'Örnek'], ['İşlemler', 'Salt okunur']]
+      title: 'Demo ekranı yakında',
+      description: 'Bu alt menüye ait örnek ekran henüz hazırlanmadı.',
+      hint: 'Yakında: Bu menüye özel demo ekranı hazırlanıyor. Hazır olana kadar başka bir modülün kayıtları gösterilmez.',
+      column: 'Ekran durumu', status: 'Yakında', count: '0 örnek kayıt'
     },
     en: {
-      title: 'No sample records for this demo screen',
-      description: 'Sample records for this submenu have not been added yet. Its own screen data is being prepared.',
-      hint: 'Records from another module are not shown under this heading.',
-      column: 'Screen status', status: 'Demo content is being prepared', count: '0 records',
-      cards: [['Screen', 'Submenu'], ['Content', 'Not added'], ['Data', 'Sample'], ['Actions', 'Read-only']]
+      title: 'Demo screen coming soon',
+      description: 'A sample screen for this submenu is not ready yet.',
+      hint: 'Coming soon: this submenu’s demo screen is being prepared. Until then, records from another module will not be shown.',
+      column: 'Screen status', status: 'Coming soon', count: '0 sample records'
     },
     ru: {
-      title: 'В демо-экране нет примеров записей',
-      description: 'Примеры записей для этого подменю ещё не добавлены. Данные для этого экрана готовятся.',
-      hint: 'Под этим заголовком не показываются записи другого модуля.',
-      column: 'Состояние экрана', status: 'Демо-данные готовятся', count: '0 записей',
-      cards: [['Экран', 'Подменю'], ['Содержимое', 'Не добавлено'], ['Данные', 'Пример'], ['Действия', 'Только чтение']]
+      title: 'Демо-экран скоро появится',
+      description: 'Пример экрана для этого подраздела ещё не готов.',
+      hint: 'Скоро: готовится демо-экран для этого подраздела. До его появления здесь не будут показываться записи другого модуля.',
+      column: 'Состояние экрана', status: 'Скоро', count: '0 примеров записей'
     },
     uk: {
-      title: 'У цьому демо-екрані немає прикладів записів',
-      description: 'Приклади записів для цього підменю ще не додано. Дані для цього екрана готуються.',
-      hint: 'Під цим заголовком не відображаються записи іншого модуля.',
-      column: 'Стан екрана', status: 'Демо-вміст готується', count: '0 записів',
-      cards: [['Екран', 'Підменю'], ['Вміст', 'Не додано'], ['Дані', 'Приклад'], ['Дії', 'Лише читання']]
+      title: 'Демоекран незабаром з’явиться',
+      description: 'Приклад екрана для цього підменю ще не готовий.',
+      hint: 'Незабаром: готується демоекран для цього підменю. Поки він не готовий, записи інших модулів тут не відображатимуться.',
+      column: 'Стан екрана', status: 'Незабаром', count: '0 прикладів записів'
     },
     mk: {
-      title: 'Нема примерни записи за овој демо-екран',
-      description: 'Примерните записи за ова подмени сè уште не се додадени. Податоците за екранот се подготвуваат.',
-      hint: 'Под овој наслов не се прикажуваат записи од друг модул.',
-      column: 'Статус на екранот', status: 'Демо-содржината се подготвува', count: '0 записи',
-      cards: [['Екран', 'Подмени'], ['Содржина', 'Не е додадена'], ['Податоци', 'Пример'], ['Дејства', 'Само за читање']]
+      title: 'Демо-екранот наскоро',
+      description: 'Примерниот екран за ова подмени сè уште не е подготвен.',
+      hint: 'Наскоро: се подготвува демо-екран за ова подмени. Дотогаш, тука нема да се прикажуваат записи од друг модул.',
+      column: 'Статус на екранот', status: 'Наскоро', count: '0 примерни записи'
     }
   };
 
@@ -80,6 +75,15 @@
     });
   }
 
+  function restoreScreen() {
+    emptyScreenKey = null;
+    delete document.body.dataset.demoEmptyNav;
+    const stats = document.querySelector('#stats');
+    if (stats) stats.hidden = false;
+    setControlsDisabled(false);
+    setContextualSectionsHidden(false);
+  }
+
   function copyForCurrentLanguage() {
     const language = document.querySelector('#languageSelect')?.value || document.documentElement.lang || 'tr';
     return messages[language] || messages.tr;
@@ -115,18 +119,8 @@
     document.querySelector('#detailBackdrop')?.classList.remove('open');
     document.querySelector('#imageBackdrop')?.classList.remove('open');
     const stats = document.querySelector('#stats');
-    stats.replaceChildren(...copy.cards.map(([label, value]) => {
-      const card = document.createElement('article');
-      card.className = 'stat';
-      const heading = document.createElement('label');
-      const content = document.createElement('strong');
-      const note = document.createElement('small');
-      heading.textContent = label;
-      content.textContent = value;
-      note.textContent = copy.status;
-      card.append(heading, content, note);
-      return card;
-    }));
+    stats.replaceChildren();
+    stats.hidden = true;
     setControlsDisabled(true);
     setContextualSectionsHidden(true);
     document.querySelector('.sidebar')?.classList.remove('mobile-open');
@@ -139,10 +133,7 @@
     if (!button) return;
     const key = button.dataset.navExtra || button.dataset.navItem || button.dataset.view;
     if (supportedScreens.has(key)) {
-      emptyScreenKey = null;
-      delete document.body.dataset.demoEmptyNav;
-      setControlsDisabled(false);
-      setContextualSectionsHidden(false);
+      restoreScreen();
       return;
     }
     event.preventDefault();
@@ -152,10 +143,7 @@
 
   document.addEventListener('click', event => {
     if (!emptyScreenKey || !event.target.closest('[data-view-link]')) return;
-    emptyScreenKey = null;
-    delete document.body.dataset.demoEmptyNav;
-    setControlsDisabled(false);
-    setContextualSectionsHidden(false);
+    restoreScreen();
   }, true);
 
   document.querySelector('#languageSelect')?.addEventListener('change', () => {
