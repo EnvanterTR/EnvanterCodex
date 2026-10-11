@@ -1,5 +1,13 @@
 # Third-party notices
 
+## Inter typeface
+
+The web application and public site bundle the Inter 4.1 variable WOFF2 font,
+from the official <https://github.com/rsms/inter/releases/tag/v4.1> release.
+The SIL Open Font License 1.1 text is retained beside each deployed font as
+`Inter-OFL.txt` under both `src/EnvanterTR.Web/wwwroot/assets/fonts/` and
+`src/EnvanterTR.PublicSite/assets/fonts/`.
+
 ## QR Code generator library
 
 The files `src/EnvanterTR.Web/wwwroot/vendor/qrcodegen.ts` and

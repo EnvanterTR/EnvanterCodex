@@ -25,7 +25,7 @@ Nasıl kullanacaksın: Her satırın solundaki kutuyu işaretle → "bunu istiyo
  0.5 Mobil uygulama (iOS + Android) — ⚠️ Şu an kapsam dışı, ayrı proje. Karar senin.
 A. TASARIM, MARKA VE DİL
 A1. Şikayet ettiğin konular (öncelikli düzeltme)
- A1.1 Tarayıcı sekme başlığı hâlâ "localhost" → "EnvanterTR" olacak ❌
+ A1.1 Tarayıcı sekme başlığı "EnvanterTR" ✅ (`localhost:8080/` yanıtı ve uygulama HTML başlığı doğrulandı)
  A1.2 Uygulama ile envantertr.com/demo/ birebir aynı görünmeli (kabuk, renk, tipografi, boşluk) 🟡
  A1.3 Snipe-IT'ten gelen terimler temizlenecek (Varlıklar, Aksesuarlar, Sarf malzemeleri → senin terminolojin) 🟡
  A1.4 Snipe-IT'ten tek satır kod/isim/görsel kalmayacak ⚠️ Diskte 5 kopya var, temizlik kararı gerekiyor
@@ -34,8 +34,8 @@ A1. Şikayet ettiğin konular (öncelikli düzeltme)
 A2. Tasarım tercihlerin (eski notlarından)
  A2.1 Kırmızı ana marka rengi #DC2626 🟡
  A2.2 Koyu temada vurgu mavi #3B82F6 (altın değil) ✅ demoda var
- A2.3 Font Inter, serif (Fraunces) kesinlikle yok 🟡
- A2.4 Inter fontu kendi sunucumuzdan yüklenmeli (Google'a bağımlı olmasın) ❌
+ A2.3 Font Inter, serif (Fraunces) kesinlikle yok ✅
+ A2.4 Inter fontu kendi sunucumuzdan yüklenmeli (Google'a bağımlı olmasın) ✅ (Inter 4.1 değişken WOFF2, uygulama ve public-site statik dosyalarından yükleniyor)
  A2.5 Saten/parlak yüzeyler, pastel renk yok 🟡
  A2.6 iPhone gibi yumuşak tema geçişi (ani renk atlaması yok) 🟡
  A2.7 Abartılı büyük punto yok (72px hero kötüydü) 🟡
