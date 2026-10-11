@@ -4,6 +4,9 @@
 
 ## 11 Ekim 2026 — şu anki kontrol fotoğrafı
 
+- Hedef bu konuşmada **aktif** durumda. Kullanıcının giriş hatası, önceki Snipe-IT ekran/notlarından türetilen kabul ölçütleri, menü/arka plan/buton denetimi ve v1'e kadar sürdürme isteği tek ürün hedefinin kapsamındadır; ara ekrandaki eski “durakladı” görüntüsü mevcut hedef durumunu değiştirmez.
+- Windows 11 için tek dosyalı `Setup.exe` önizlemesi yerel olarak derlendi ve gömülü 65 dosya `--verify` ile doğrulandı. Paket imzasız; kurulum çalıştırılmadı ve temiz Windows 11 hedef kabulü yok. Bu nedenle ürün indirme sayfasında yayımlanmamalı.
+
 - Docker Desktop Engine çalışıyor. `envantertr-product-dev` altında `web` (`localhost:8080`), `public-site` (`localhost:8081`) ve sağlıklı PostgreSQL 17 servisi ayakta.
 - Yerel `/api/status`: `ready`, 75 migration, 0 bekleyen; web uygulaması `localhost:8080` ve `localhost:8081/demo/` HTTP 200.
 - `9cb4349` sürümünde Release Docker web imajı derlendi; tam izole PostgreSQL 17 güvenlik/tenant paketi **76/76** geçti (4 dk 30 sn). Beş dilde 1.420 UI metni ve iki gömülü JavaScript bölümü doğrulandı. Sözleşme uç noktası oturum olmadan HTTP 401 döndürüyor; app shell içinde sözleşme ekranı mevcut. Yerel migration `20261011132002_AddAssetContracts` uygulanmadan önce yeni veritabanı/medya/Data Protection yedeği `backups/envantertr-20261011-141657-efb840c7` içine alındı. Model/Üretici sıralaması ve varlık tablosu alanları önceki kabulden korunuyor.

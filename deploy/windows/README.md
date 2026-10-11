@@ -2,7 +2,17 @@
 
 ## Kişisel Windows 11 kurulumu için servis kapsamı
 
-`Setup-Personal.cmd` Windows 11 x64 için tek bilgisayarlı PowerShell kurulum temelini başlatır. Kurulum adresini `localhost` ile sınırlar; ayrı onaydan sonra yerel HTTPS sertifikası oluşturup bu bilgisayara güvenir ve Windows servisine özel anahtarı okuma izni verir. PostgreSQL yoksa aynı EDB imza doğrulamalı, etkileşimli yükleme adımı kullanılabilir. `install.ps1 -LoopbackOnly` ile uygulama yalnızca bu makinede dinler; başka cihazlara erişim açılmaz. Bu akış hâlâ imzasız ve metin tabanlıdır; gerçek temiz Windows 11 kurulumu, kaldırma/yükseltme kabulü ve imzalı `Setup.exe` tamamlanmadan müşteriye dağıtılmamalıdır.
+`Setup-Personal.cmd` Windows 11 x64 için tek bilgisayarlı PowerShell kurulum temelini başlatır. Kurulum adresini `localhost` ile sınırlar; ayrı onaydan sonra yerel HTTPS sertifikası oluşturup bu bilgisayara güvenir ve Windows servisine özel anahtarı okuma izni verir. PostgreSQL yoksa aynı EDB imza doğrulamalı, etkileşimli yükleme adımı kullanılabilir. `install.ps1 -LoopbackOnly` ile uygulama yalnızca bu makinede dinler; başka cihazlara erişim açılmaz. Tek dosyalı `Setup.exe` teknik önizlemesi `build-installer.ps1` ile oluşturulabilir; gömülü 65 dosyalı paketin bütünlük kontrolü geçmiştir. Bu önizleme imzasızdır ve gerçek Windows 11 temiz kurulum, kaldırma/yükseltme kabulü yapılmamıştır; müşteriye dağıtılmamalıdır.
+
+Windows x64 uygulama ZIP'ini oluşturduktan sonra .NET 10 SDK veya çalışan Docker Desktop ile tek dosyalı başlatıcıyı derleyip yalnızca paket içeriğini denetleyin:
+
+```powershell
+./deploy/windows/publish.ps1 -OutputPath "$env:TEMP\envantertr-windows-publish"
+./deploy/windows/build-installer.ps1 -PackagePath "$env:TEMP\envantertr-windows-publish"
+./deploy/windows/tests/installer-bootstrapper-check.ps1 -InstallerPath ./artifacts/windows/installer/Setup.exe
+```
+
+İlk komut imzasız `Setup.exe` ve SHA-256 yan dosyasını `artifacts/windows/installer/` altına yazar. `Setup.exe --verify` kurulum başlatmaz; paketteki gerekli dosyaları, sır/config bulunmadığını, arşiv yollarını ve açılmış içeriği doğrular. Gerçek kurulumu denemek için `Setup.exe` çalıştırılır ve yönetici izni istenir; bu adım desteklenen temiz Windows 11 hedefinde ayrıca kabul edilene kadar ürün yayını sayılmaz.
 
 Bu klasör Windows x64 self-contained yayın, etkileşimli ilk kurulum yardımcısı, servis kurma ve uygulama güncelleme betiklerini içerir. İndirilen ZIP açıldıktan sonra `Setup.cmd` başlatılır; yükseltilmiş bir PowerShell penceresi açarak adımları yönlendirir. Yardımcı mevcut bir veritabanı/servis kurulumunun üzerine yazmaz. Gerçek müşteri Windows Server kabulü tamamlanmadan paket üretime hazır sayılmaz.
 
