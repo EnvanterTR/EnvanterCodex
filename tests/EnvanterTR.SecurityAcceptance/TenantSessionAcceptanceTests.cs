@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Sockets;
 using System.IO.Compression;
 using System.Globalization;
 using System.Security.Claims;
@@ -10,10 +11,16 @@ using System.Text.Json;
 using EnvanterTR.Web.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -3131,6 +3138,51 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var requestLimit = endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.Http.Metadata.IRequestSizeLimitMetadata>();
         Assert.NotNull(requestLimit);
         Assert.Equal(10 * 1024 * 1024 + 65_536, requestLimit.MaxRequestBodySize);
+    }
+
+    [Fact]
+    public async Task Kestrel_rejects_a_request_exceeding_the_maintenance_attachment_limit()
+    {
+        var endpoint = _factory!.Services.GetServices<EndpointDataSource>()
+            .SelectMany(source => source.Endpoints)
+            .OfType<RouteEndpoint>()
+            .Single(route => route.RoutePattern.RawText == "/api/maintenances/{id:guid}/attachments" &&
+                route.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods.Contains("POST", StringComparer.OrdinalIgnoreCase) == true);
+        var requestLimit = endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.Http.Metadata.IRequestSizeLimitMetadata>();
+        var maxRequestBodySize = requestLimit?.MaxRequestBodySize
+            ?? throw new InvalidOperationException("Maintenance attachment endpoint has no request body limit.");
+
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.ConfigureKestrel(options => options.Listen(System.Net.IPAddress.Loopback, 0));
+        await using var kestrel = builder.Build();
+        kestrel.MapPost("/body-limit-probe", async (HttpRequest request, CancellationToken ct) =>
+        {
+            await request.Body.CopyToAsync(Stream.Null, ct);
+            return Results.Ok();
+        }).WithMetadata(requestLimit!);
+
+        await kestrel.StartAsync();
+        try
+        {
+            var address = kestrel.Services.GetRequiredService<IServer>()
+                .Features.Get<IServerAddressesFeature>()?.Addresses.Single()
+                ?? throw new InvalidOperationException("Kestrel did not publish its loopback address.");
+            using var client = new TcpClient(AddressFamily.InterNetwork);
+            await client.ConnectAsync(System.Net.IPAddress.Loopback, new Uri(address).Port);
+            await using var stream = client.GetStream();
+            var requestHeaders = Encoding.ASCII.GetBytes(
+                $"POST /body-limit-probe HTTP/1.1\r\nHost: localhost\r\nContent-Length: {maxRequestBodySize + 1}\r\nConnection: close\r\n\r\n");
+            await stream.WriteAsync(requestHeaders);
+            await stream.FlushAsync();
+            using var reader = new StreamReader(stream, Encoding.ASCII, detectEncodingFromByteOrderMarks: false, leaveOpen: true);
+            var statusLine = await reader.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(5));
+
+            Assert.StartsWith("HTTP/1.1 413 ", statusLine, StringComparison.Ordinal);
+        }
+        finally
+        {
+            await kestrel.StopAsync();
+        }
     }
 
     [Fact]
