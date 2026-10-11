@@ -3120,6 +3120,20 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public void Maintenance_attachment_upload_enforces_request_body_limit()
+    {
+        var endpoint = _factory!.Services.GetServices<EndpointDataSource>()
+            .SelectMany(source => source.Endpoints)
+            .OfType<RouteEndpoint>()
+            .Single(route => route.RoutePattern.RawText == "/api/maintenances/{id:guid}/attachments" &&
+                route.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods.Contains("POST", StringComparer.OrdinalIgnoreCase) == true);
+
+        var requestLimit = endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.Http.Metadata.IRequestSizeLimitMetadata>();
+        Assert.NotNull(requestLimit);
+        Assert.Equal(10 * 1024 * 1024 + 65_536, requestLimit.MaxRequestBodySize);
+    }
+
+    [Fact]
     public async Task Maintenance_attachments_are_validated_audited_and_included_in_company_archive()
     {
         var maintenanceId = Guid.NewGuid();

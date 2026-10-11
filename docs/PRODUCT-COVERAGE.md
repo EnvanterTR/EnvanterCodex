@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 11 Ekim 2026 — güncel kaynak kabul tekrarı
+
+`7332565` üstündeki güncel çalışma ağacı için `deploy/testing/run-security-acceptance.ps1`, izole PostgreSQL 17 üzerinde **73/73** senaryoyla geçti (4 dk 09,15 sn). Bakım kaydı dosyalarının yükleme, indirme, silme, içerik doğrulama, denetim izi, şirket arşivine eklenmesi, çapraz şirket erişim reddi ve 10 MiB + 64 KiB upload istek sınırı metadata regresyonu da doğrulandı. Geçici Compose konteynerleri/volume'ları kaldırıldı. TestServer gerçek Kestrel `413` davranışını uygulamaz; bu uçtan uca kontrol açık. Bu yerel kaynak kabulidir; GitHub Actions `[skip ci]` nedeniyle çalışmadı, canlı Windows Server/Ubuntu kurulumu veya üretim veritabanı geçişini kanıtlamaz.
+
 11 Ekim 2026: Yerel Compose şifreli yedeği veritabanı ve şirket medyasına ek olarak ASP.NET Data Protection anahtar volume'unu da içerir; manifest her üç arşiv girdisinin SHA-256 değerini doğrular. `tools/Verify-LocalRecovery.ps1` gerçek geliştirme verisini değiştirmeden benzersiz geçici medya/anahtar dosyalarının hash'ini izole geri açımda karşılaştırır; PostgreSQL şeması ve dokuz temel tablo adedini de doğrular. Bu yerel prova geçti; hedef Windows Server/Ubuntu kurtarma kabulinin yerine geçmez.
 
 ## 11 Ekim 2026 — yerel hesap kurtarma kabulü

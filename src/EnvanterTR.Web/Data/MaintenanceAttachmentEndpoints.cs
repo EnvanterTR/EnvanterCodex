@@ -80,7 +80,7 @@ public static class MaintenanceAttachmentEndpoints
             }
             return Results.Created($"/api/maintenances/{id}/attachments/{attachmentId}/file", new
             { attachment.Id, attachment.OriginalFileName, attachment.ContentType, attachment.Length, attachment.CreatedAt });
-        }).RequireAuthorization("asset.write");
+        }).RequireAuthorization("asset.write").WithMetadata(new RequestSizeLimitAttribute(MaxBytes + 65_536));
 
         api.MapGet("/maintenances/{id:guid}/attachments/{attachmentId:guid}/file", async (Guid id, Guid attachmentId,
             ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken ct) =>
