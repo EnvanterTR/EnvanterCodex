@@ -102,7 +102,7 @@ Yeni makineye eski TLS sertifikası taşınamıyorsa alan adı için yeni sertif
 - Yedek/sağlık zamanlayıcısı ve server dışı hedef tekrar yapılandırılır; yeni yedek alınır ve hedefte yeniden hash doğrulanır.
 - Eski veritabanı/volume/klasör, kaynak arşiv ve kurtarma günlükleri saklama politikasına göre gözden geçirilmeden silinmez.
 
-Yerel Compose geliştirme verisinde parola ile şifreleme, HMAC/ZIP doğrulaması, güvenli açma ve PostgreSQL + medya izole restore provasını tekrarlamak için depo kökünden `./tools/Verify-LocalRecovery.ps1` çalıştırılabilir. Betik yedek öncesi dokuz temel tablonun kayıt adetlerini okur, izole geri yükleme sonrası aynı adetlerle karşılaştırır ve yalnızca geçici klasör/parola ile kalıcı volume'suz prova konteyneri kullanır; sonunda hepsini temizler. Bu geliştirme kabulü gerçek Windows Server/Ubuntu veya uzak hedef kurtarma tatbikatı değildir.
+Yerel Compose geliştirme verisinde şifreli arşiv, HMAC/ZIP doğrulaması, güvenli açma ve izole PostgreSQL + medya + Data Protection anahtar geri yükleme provasını tekrarlamak için depo kökünden `./tools/Verify-LocalRecovery.ps1` çalıştırılabilir. Betik yedek öncesi dokuz temel tablonun kayıt adetlerini alır; medya ve anahtar volume'larına benzersiz geçici dosyalar koyar; izole geri yüklemeden sonra kayıt adetlerini ve iki dosyanın SHA-256 değerini karşılaştırır. Yalnızca geçici parola/klasör ve kalıcı volume bağlamayan prova konteyneri kullanır; `finally` temizliği geçici volume dosyalarını, parolayı, açılmış arşivi ve konteyneri kaldırır. 11 Ekim 2026'da bu bilgisayarda 74 migration, medya ve anahtar dosyası, veritabanı adetleri ve şifreli arşiv doğrulandı. Bu geliştirme kabulü gerçek Windows Server/Ubuntu veya uzak hedef kurtarma tatbikatı değildir.
 
 ## Açık doğrulama
 

@@ -27,8 +27,10 @@ $helperName = "envantertr-backup-$suffix"
 $databaseContainer = $null
 $webContainer = $null
 $mediaVolume = $null
+$keysVolume = $null
 $dumpPath = Join-Path $backupDirectory $dumpName
 $mediaPath = Join-Path $backupDirectory 'company-media.tar.gz'
+$keysPath = Join-Path $backupDirectory 'data-protection-keys.tar.gz'
 $helperCreated = $false
 $dumpInContainer = $false
 $backupCompleted = $false
@@ -55,6 +57,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Veritabanı hazır değil: $ready" }
     $mediaVolume = (& docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/lib/envantertr/company-media"}}{{.Name}}{{end}}{{end}}' $webContainer | Out-String).Trim()
     if ([string]::IsNullOrWhiteSpace($mediaVolume)) { throw 'Şirket medya volume adı belirlenemedi; yedek eksik kalmaması için işlem durduruldu.' }
+    $keysVolume = (& docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/lib/envantertr/data-protection-keys"}}{{.Name}}{{end}}{{end}}' $webContainer | Out-String).Trim()
+    if ([string]::IsNullOrWhiteSpace($keysVolume)) { throw 'Data Protection anahtar volume adı belirlenemedi; yedek eksik kalmaması için işlem durduruldu.' }
 
     $dumpContainerPath = "/tmp/$dumpName"
     $dumpInContainer = $true
@@ -63,10 +67,11 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'PostgreSQL yedeği okunamadı; kopya tamamlanmış sayılmadı.' }
     Invoke-Docker @('cp', "${databaseContainer}:$dumpContainerPath", $dumpPath)
 
-    Invoke-Docker @('create', '--name', $helperName, '--volume', "${mediaVolume}:/source:ro", 'postgres:17-alpine', 'sh', '-c', 'tar -czf /tmp/company-media.tar.gz -C /source . && tar -tzf /tmp/company-media.tar.gz >/dev/null')
+    Invoke-Docker @('create', '--name', $helperName, '--volume', "${mediaVolume}:/source:ro", '--volume', "${keysVolume}:/keys:ro", 'postgres:17-alpine', 'sh', '-c', 'tar -czf /tmp/company-media.tar.gz -C /source . && tar -tzf /tmp/company-media.tar.gz >/dev/null && tar -czf /tmp/data-protection-keys.tar.gz -C /keys . && tar -tzf /tmp/data-protection-keys.tar.gz >/dev/null')
     $helperCreated = $true
     Invoke-Docker @('start', '-a', $helperName)
     Invoke-Docker @('cp', "${helperName}:/tmp/company-media.tar.gz", $mediaPath)
+    Invoke-Docker @('cp', "${helperName}:/tmp/data-protection-keys.tar.gz", $keysPath)
 
     $manifest = [ordered]@{
         format = 'envantertr-local-backup'
@@ -75,18 +80,20 @@ try {
         scope = 'local-compose-instance'
         databaseDump = $dumpName
         companyMediaArchive = 'company-media.tar.gz'
+        dataProtectionKeysArchive = 'data-protection-keys.tar.gz'
         sha256 = [ordered]@{
             databaseDump = (Get-FileHash -LiteralPath $dumpPath -Algorithm SHA256).Hash.ToLowerInvariant()
             companyMediaArchive = (Get-FileHash -LiteralPath $mediaPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            dataProtectionKeysArchive = (Get-FileHash -LiteralPath $keysPath -Algorithm SHA256).Hash.ToLowerInvariant()
         }
-        verification = [ordered]@{ databaseDumpReadable = $true; companyMediaArchiveReadable = $true }
+        verification = [ordered]@{ databaseDumpReadable = $true; companyMediaArchiveReadable = $true; dataProtectionKeysArchiveReadable = $true }
         encryption = 'none'
         restoreSupportedByApplication = $false
     }
     $manifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $backupDirectory 'manifest.json') -Encoding utf8
     $backupCompleted = $true
     Write-Output "Yedek oluşturuldu: $backupDirectory"
-    Write-Output 'Kapsam: yerel Compose veritabanı ve şirket medya volume dosyaları. Dosyaları yetkisiz erişime kapalı, ayrı bir depoda saklayın.'
+    Write-Output 'Kapsam: yerel Compose veritabanı, şirket medya volume dosyaları ve Data Protection anahtar volume dosyaları. Dosyaları yetkisiz erişime kapalı, ayrı bir depoda saklayın.'
     Write-Output 'Bu yedek şifrelenmemiştir; uygulama içinden geri yükleme henüz desteklenmez.'
 }
 finally {
