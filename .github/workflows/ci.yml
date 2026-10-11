@@ -109,6 +109,10 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Build the local account recovery utility
+        shell: pwsh
+        run: dotnet publish tools/EnvanterTR.AccountRecovery/EnvanterTR.AccountRecovery.csproj -c Release -o "$env:RUNNER_TEMP\envantertr-account-recovery"
+
       - name: Rebuild the third-party dependency inventory
         shell: pwsh
         run: |
