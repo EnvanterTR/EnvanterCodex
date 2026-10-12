@@ -22,6 +22,12 @@ const failures = [];
 if (!source.includes('id="retryApiButton"') || !/function showLogin\([^)]*\)\s*\{[^}]*\$\('#retryApiButton'\)\.hidden\s*=\s*false/.test(source)) {
   failures.push('The login screen must keep the server connection check visible whenever login is shown.');
 }
+const loginSubmitStart = source.indexOf("$('#loginForm').addEventListener('submit'");
+const loginSubmitEnd = source.indexOf("$('#retryApiButton').addEventListener('click'", loginSubmitStart);
+const loginSubmitHandler = loginSubmitStart < 0 || loginSubmitEnd < 0 ? '' : source.slice(loginSubmitStart, loginSubmitEnd);
+if (!/catch\s*\(error\)\s*\{[\s\S]*?\$\('#retryApiButton'\)\.hidden\s*=\s*false/.test(loginSubmitHandler)) {
+  failures.push('The server connection check must remain visible after rejected login credentials.');
+}
 
 if (pageLabels.length === 0) failures.push('The sidebar has no page destinations.');
 for (const label of new Set(pageLabels)) {

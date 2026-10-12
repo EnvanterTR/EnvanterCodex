@@ -8986,6 +8986,9 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         await refreshCsrf();
         hideLogin(); await startApp();
       } catch (error) {
+        // The initial session check can hide the retry control after it has already opened the login form.
+        // Keep the connectivity diagnostic available for credential failures too, without mislabeling them.
+        $('#retryApiButton').hidden = false;
         if (error.payload?.twoFactorRequired) {
           $('#loginTwoFactorField').hidden = false;
           $('input[name="twoFactorCode"]', $('#loginForm')).focus();
