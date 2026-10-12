@@ -798,6 +798,29 @@ public sealed class CompanyTask
     public DateTimeOffset? CompletedAt { get; set; }
 }
 
+public sealed class SupportTicket
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid CreatedByUserId { get; set; }
+    public required string Subject { get; set; }
+    public required string Category { get; set; }
+    public string Status { get; set; } = "Open";
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class SupportTicketMessage
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid TicketId { get; set; }
+    public Guid? AuthorUserId { get; set; }
+    public bool IsSupportReply { get; set; }
+    public required string Body { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class SoftwareLicense
 {
     public Guid Id { get; set; } = Guid.NewGuid();

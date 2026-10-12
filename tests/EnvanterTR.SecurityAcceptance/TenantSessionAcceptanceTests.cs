@@ -528,6 +528,89 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Support_tickets_enforce_tenant_ownership_csrf_platform_replies_and_audit()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var subject = $"SUPPORT-{Guid.NewGuid():N}";
+
+        using (var missingCsrf = await SendAsRoleAsync(HttpMethod.Post, "/api/support/tickets", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { subject, category = "Access", message = "Sign-in assistance" })))
+            Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+
+        using var create = await SendAsRoleAsync(HttpMethod.Post, "/api/support/tickets", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { subject, category = "Access", message = "Sign-in assistance" }),
+            requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        using var created = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
+        var ticketId = created.RootElement.GetProperty("id").GetGuid();
+
+        using (var managerList = await SendAsRoleAsync(HttpMethod.Get, "/api/support/tickets", "admin"))
+        using (var payload = JsonDocument.Parse(await managerList.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, managerList.StatusCode);
+            Assert.Contains(payload.RootElement.GetProperty("items").EnumerateArray(), item => item.GetProperty("id").GetGuid() == ticketId);
+            Assert.True(payload.RootElement.GetProperty("canViewAll").GetBoolean());
+        }
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var secondMember = await db.CompanyMemberships.SingleAsync(x => x.CompanyId == _companyId && x.UserId == _sameCompanyOtherUserId);
+            secondMember.RoleKey = "viewer";
+            db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            await db.SaveChangesAsync();
+        }
+        using (var otherMemberList = await SendAsUserAsync(HttpMethod.Get, "/api/support/tickets", _sameCompanyOtherUserId, _companyId, role: "viewer"))
+        using (var payload = JsonDocument.Parse(await otherMemberList.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, otherMemberList.StatusCode);
+            Assert.Empty(payload.RootElement.GetProperty("items").EnumerateArray());
+            Assert.False(payload.RootElement.GetProperty("canViewAll").GetBoolean());
+        }
+        using (var otherMemberDetail = await SendAsUserAsync(HttpMethod.Get, $"/api/support/tickets/{ticketId}", _sameCompanyOtherUserId, _companyId, role: "viewer"))
+            Assert.Equal(HttpStatusCode.NotFound, otherMemberDetail.StatusCode);
+        using (var wrongTenant = await SendAsUserAsync(HttpMethod.Get, $"/api/support/tickets/{ticketId}", _sameCompanyOtherUserId, _otherCompanyId))
+            Assert.True(wrongTenant.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized,
+                $"Cross-tenant access must fail closed; received {(int)wrongTenant.StatusCode}.");
+
+        using var platformCsrfResponse = await SendAsPlatformAdminRequestAsync(HttpMethod.Get, "/api/session/csrf");
+        using var platformCsrfPayload = JsonDocument.Parse(await platformCsrfResponse.Content.ReadAsStringAsync());
+        var platformRequestToken = platformCsrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var platformAntiforgeryCookie = antiforgeryCookie;
+        using (var platformReply = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, $"/api/platform/support/tickets/{ticketId}/messages",
+                   System.Net.Http.Json.JsonContent.Create(new { body = "We are checking your account access." }), platformRequestToken, platformAntiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Created, platformReply.StatusCode);
+        using (var statusAfterReply = await SendAsRoleAsync(HttpMethod.Get, $"/api/support/tickets/{ticketId}", "admin"))
+        using (var payload = JsonDocument.Parse(await statusAfterReply.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("AwaitingCustomer", payload.RootElement.GetProperty("ticket").GetProperty("status").GetString());
+            Assert.Contains(payload.RootElement.GetProperty("messages").EnumerateArray(), message => message.GetProperty("isSupportReply").GetBoolean());
+        }
+
+        using (var customerReply = await SendAsRoleAsync(HttpMethod.Post, $"/api/support/tickets/{ticketId}/messages", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { body = "Thank you; this is resolved." }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Created, customerReply.StatusCode);
+        using (var close = await SendAsRoleAsync(HttpMethod.Post, $"/api/support/tickets/{ticketId}/close", "admin",
+                   requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, close.StatusCode);
+        using (var replyToClosed = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, $"/api/platform/support/tickets/{ticketId}/messages",
+                   System.Net.Http.Json.JsonContent.Create(new { body = "A closed ticket cannot receive a reply." }), platformRequestToken, platformAntiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, replyToClosed.StatusCode);
+
+        await using var auditScope = _factory!.Services.CreateAsyncScope();
+        var auditDb = auditScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(3, await auditDb.AuditEntries.CountAsync(entry => entry.CompanyId == _companyId &&
+            entry.TargetType == "SupportTicket" && entry.TargetId == ticketId));
+        Assert.Equal(1, await auditDb.PlatformAuditEntries.CountAsync(entry => entry.CompanyId == _companyId &&
+            entry.TargetType == "SupportTicket" && entry.TargetId == ticketId));
+    }
+
+    [Fact]
     public async Task Bulk_employee_status_changes_are_company_scoped_atomic_and_audited()
     {
         await using (var scope = _factory!.Services.CreateAsyncScope())
@@ -5988,6 +6071,17 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
         request.Headers.Add("X-Acceptance-User", _userId.ToString());
         request.Headers.Add("X-Acceptance-Platform-Admin", "true");
+        return await _client!.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> SendAsPlatformAdminRequestAsync(HttpMethod method, string path,
+        HttpContent? content = null, string? requestToken = null, string? antiforgeryCookie = null)
+    {
+        using var request = new HttpRequestMessage(method, path) { Content = content };
+        request.Headers.Add("X-Acceptance-User", _userId.ToString());
+        request.Headers.Add("X-Acceptance-Platform-Admin", "true");
+        if (!string.IsNullOrWhiteSpace(requestToken)) request.Headers.Add("X-CSRF-TOKEN", requestToken);
+        if (!string.IsNullOrWhiteSpace(antiforgeryCookie)) request.Headers.Add("Cookie", antiforgeryCookie);
         return await _client!.SendAsync(request);
     }
 

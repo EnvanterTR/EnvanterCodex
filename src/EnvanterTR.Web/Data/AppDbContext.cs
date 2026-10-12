@@ -56,6 +56,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<ConsumableMovement> ConsumableMovements => Set<ConsumableMovement>();
     public DbSet<InventoryRequest> InventoryRequests => Set<InventoryRequest>();
     public DbSet<CompanyTask> CompanyTasks => Set<CompanyTask>();
+    public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>();
+    public DbSet<SupportTicketMessage> SupportTicketMessages => Set<SupportTicketMessage>();
     public DbSet<SoftwareLicense> SoftwareLicenses => Set<SoftwareLicense>();
     public DbSet<SoftwareLicenseAttachment> SoftwareLicenseAttachments => Set<SoftwareLicenseAttachment>();
     public DbSet<SoftwareLicenseAssignment> SoftwareLicenseAssignments => Set<SoftwareLicenseAssignment>();
@@ -498,6 +500,30 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<CompanyTask>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<SupportTicket>().Property(x => x.Subject).HasMaxLength(160).IsRequired();
+        modelBuilder.Entity<SupportTicket>().Property(x => x.Category).HasMaxLength(32).IsRequired();
+        modelBuilder.Entity<SupportTicket>().Property(x => x.Status).HasMaxLength(32).IsRequired();
+        modelBuilder.Entity<SupportTicket>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<SupportTicket>().HasIndex(x => new { x.CompanyId, x.Status, x.UpdatedAt });
+        modelBuilder.Entity<SupportTicket>().HasIndex(x => new { x.CompanyId, x.CreatedByUserId, x.UpdatedAt });
+        modelBuilder.Entity<SupportTicket>().ToTable("SupportTickets", table =>
+        {
+            table.HasCheckConstraint("CK_SupportTickets_Category", "\"Category\" IN ('Access', 'Inventory', 'Data', 'Other')");
+            table.HasCheckConstraint("CK_SupportTickets_Status", "\"Status\" IN ('Open', 'InProgress', 'AwaitingCustomer', 'Resolved', 'Closed')");
+        });
+        modelBuilder.Entity<SupportTicket>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SupportTicket>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<SupportTicketMessage>().Property(x => x.Body).HasMaxLength(8000).IsRequired();
+        modelBuilder.Entity<SupportTicketMessage>().HasIndex(x => new { x.CompanyId, x.TicketId, x.CreatedAt });
+        modelBuilder.Entity<SupportTicketMessage>().HasOne<SupportTicket>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.TicketId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SupportTicketMessage>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.AuthorUserId).OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.Name).HasMaxLength(200).IsRequired();
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.Publisher).HasMaxLength(160);

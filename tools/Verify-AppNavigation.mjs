@@ -44,11 +44,21 @@ if (notReadyStart < 0 || notReadyEnd < 0) {
   failures.push('The not-ready destination copy map is missing.');
 } else {
   const notReady = routeHandler.slice(notReadyStart, notReadyEnd);
-  for (const label of ['Destek', 'Şirket birimleri']) {
+  for (const label of ['Şirket birimleri']) {
     if (!new RegExp(`['"]${label}['"]\\s*:\\s*['"]`).test(notReady)) {
       failures.push(`Not-ready menu "${label}" has no explicit explanation.`);
     }
   }
+}
+
+if (!source.includes('id="supportPage"') || !/page === 'Destek'\) \{[^}]*loadSupportTickets\(/.test(routeHandler) ||
+    !source.includes("api('/api/support/tickets'") || !source.includes("/api/support/tickets/${encodeURIComponent(currentSupportTicketId)}/messages")) {
+  failures.push('Destek must expose a company-scoped ticket list, request form, and reply workflow.');
+}
+const platformAdmin = readFileSync(resolve('src/EnvanterTR.Web/wwwroot/platform-admin.html'), 'utf8');
+if (!platformAdmin.includes('data-view="support"') || !platformAdmin.includes("/api/platform/support/tickets") ||
+    !platformAdmin.includes('id="supportAdminReply"')) {
+  failures.push('Platform administration must expose a support queue and reply/status workflow.');
 }
 
 if (!source.includes('id="integrationsPage"') || !/page === 'Entegrasyonlar'[\s\S]*?loadIntegrationTokens\(/.test(routeHandler)) {
