@@ -297,6 +297,9 @@ const eventLabelsMatch = source.match(/const eventLabels\s*=\s*(\{[^\n]+\});/);
 if (!eventLabelsMatch) throw new Error(`Could not locate asset event labels in ${sourcePath}`);
 const requiredAssetEventLabels = Object.values(vm.runInNewContext(`(${eventLabelsMatch[1]})`, {}, { timeout: 1000 }));
 const requiredApiFeedbackLabels = [
+  'Arama en fazla 120 karakter olabilir.',
+  'Durum active, expired, expiring, archived veya all olmalıdır.',
+  'Arşivlenmiş sözleşmeyi değiştirmeden önce geri yükleyin.',
   'Sözleşme arama veya durum filtresi geçersiz.',
   'Sözleşme adı zorunludur ve en fazla 200 karakter olabilir.',
   'Sözleşme numarası en fazla 120 karakter olabilir.',

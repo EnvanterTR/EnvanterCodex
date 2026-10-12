@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 12 Ekim 2026 — sözleşmelerde çok dilli doğrulama geri bildirimi
+
+Sözleşmeler listesi/formunun temel metinleri ve sözleşme/ek uçlarının arama-durum filtresi, alan sınırları, tenant ilişkileri, dosya sınırı, güvenli depo ve bütünlük hata iletileri için EN/RU/UK/MK çevirileri zorunlu sözlük denetimine alındı. Eksik üç geri bildirim çevirisi eklendi. `node tools/Verify-UiLocales.mjs` **1.652** girdiyi ve bu sözleşme etiketlerini doğrular. Bu statik kaynak kontrolüdür; rol bazlı tarayıcı görsel kabulinin yerine geçmez.
+
 ## 12 Ekim 2026 — hesap cihazları ve uzaktan oturum kapatma
 
 Şirket hesabı ayarlarında kullanıcı etkin oturumlarını tarayıcı/cihaz, IP adresi ve son etkinlik zamanı ile görebilir; başka bir oturumu CSRF korumalı eylemle kapatabilir. Her oturum açılışında rastgele oturum kimliği veritabanına kaydedilir ve Identity çerezine bağlanır. Kimlik doğrulamalı şirket isteğinde kayıt yoksa, süresi dolmuşsa veya iptal edilmişse istek reddedilir. Çıkış, parola değişikliği ve parola sıfırlama ilgili oturum kayıtlarını iptal eder. Kendi oturumunu kapatma çerezi de temizler. Arayüz metinleri TR/EN/RU/UK/MK dillerinde doğrulandı. İzole PostgreSQL kabul paketinde giriş, iki ayrı çerezli oturum, listeleme, uzaktan iptal ve iptal edilmiş çerezin reddi doğrulandı; tüm paket **83/83 geçti**. Yerel migration yedek doğrulaması sonrası uygulandı (80 migration/0 bekleyen); web imajı yeniden kuruldu, `/api/status` hazır ve giriş/demo HTTP 200. Yerel gerçek hesapla ek CSRF’li HTTP kabulinde login ve session `200`, cihaz listesi tek güncel oturum, logout `204` ve logout sonrası session `401` verdi; geçici test oturumu kapatıldı. Belgeler kaynakla beraber GitHub `main` dalında güncel.
