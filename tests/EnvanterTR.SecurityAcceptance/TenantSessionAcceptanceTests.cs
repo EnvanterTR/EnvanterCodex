@@ -6563,6 +6563,22 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
 
         using var sessionResponse = await loginClient.GetAsync("/api/session");
         Assert.Equal(HttpStatusCode.OK, sessionResponse.StatusCode);
+        using (var refreshedSession = JsonDocument.Parse(await sessionResponse.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(_companyId.ToString(), refreshedSession.RootElement.GetProperty("companyId").GetString());
+            Assert.Equal("Security acceptance company", refreshedSession.RootElement.GetProperty("companyName").GetString());
+            Assert.Equal("admin", refreshedSession.RootElement.GetProperty("role").GetString());
+        }
+
+        using var refreshedCompanyAssets = await loginClient.GetAsync("/api/assets?page=1&pageSize=50");
+        Assert.Equal(HttpStatusCode.OK, refreshedCompanyAssets.StatusCode);
+        using (var refreshedAssets = JsonDocument.Parse(await refreshedCompanyAssets.Content.ReadAsStringAsync()))
+        {
+            var refreshedAssetTags = refreshedAssets.RootElement.GetProperty("items").EnumerateArray()
+                .Select(asset => asset.GetProperty("assetTag").GetString()).ToArray();
+            Assert.Contains("OWN-1", refreshedAssetTags);
+            Assert.DoesNotContain("OTHER-1", refreshedAssetTags);
+        }
 
         using var firstDeviceListResponse = await loginClient.GetAsync("/api/session/devices");
         Assert.Equal(HttpStatusCode.OK, firstDeviceListResponse.StatusCode);

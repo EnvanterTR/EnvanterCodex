@@ -36,6 +36,17 @@ if (!source.includes('id="featureStatusAccountSecurityButton"') ||
 if (!/function showLogin\([^)]*\)\s*\{[^}]*document\.querySelectorAll\('dialog\[open\]'\)\.forEach\(dialog\s*=>\s*dialog\.close\(\)\)/.test(source)) {
   failures.push('Expired sessions must close top-layer dialogs so they cannot cover the login screen.');
 }
+const apiStart = source.indexOf('async function api(path, options = {})');
+const apiEnd = source.indexOf('async function refreshCsrf()', apiStart);
+const apiHandler = apiStart < 0 || apiEnd < 0 ? '' : source.slice(apiStart, apiEnd);
+const authRequiredBranch = apiHandler.indexOf("if (response.status === 401 && path !== '/api/session/login')");
+const httpFailureBranch = apiHandler.indexOf('if (!response.ok)', authRequiredBranch);
+if (authRequiredBranch < 0 || httpFailureBranch < 0 || authRequiredBranch >= httpFailureBranch ||
+    !apiHandler.slice(authRequiredBranch, httpFailureBranch).includes('showLogin()') ||
+    !apiHandler.slice(authRequiredBranch, httpFailureBranch).includes("error.status = 401") ||
+    !apiHandler.slice(httpFailureBranch).includes('403:')) {
+  failures.push('HTTP 401 must close dialogs and reveal login; HTTP 403 must remain a permission error instead of logging out the user.');
+}
 const locationLookupStart = source.indexOf("const locationResult = await api('/api/locations');");
 const locationLookupEnd = source.indexOf("fillSelectControl($('#newAssetForm').elements.categoryId", locationLookupStart);
 const locationLookup = locationLookupStart < 0 || locationLookupEnd < 0 ? '' : source.slice(locationLookupStart, locationLookupEnd);
