@@ -18,6 +18,16 @@ if (!source.includes('class="content"') || !source.includes('class="table-wrap"'
   failures.push('The public demo must keep its content and responsive table containers.');
 }
 
+const assetHeaders = source.match(/const head=kind==='assets'\?\[([^\]]+)\]/)?.[1] || '';
+const assetHeaderLabels = [...assetHeaders.matchAll(/'([^']*)'/g)].map(match => match[1]);
+if (assetHeaderLabels.length !== 19 || new Set(assetHeaderLabels).size !== assetHeaderLabels.length || !assetHeaderLabels.includes('Eylemler')) {
+  failures.push(`The public demo asset list must keep its 19 distinct shared columns and action column; found ${assetHeaderLabels.length}.`);
+}
+
+if (!/<style[^>]*>[\s\S]*?@media\(min-width:701px\)\{\.table-wrap th:last-child,\.table-wrap td:last-child\{position:sticky;right:0;/.test(source)) {
+  failures.push('The public demo action column must stay visible at the right edge while the wide asset table scrolls.');
+}
+
 if (!layoutStyle.includes('@media(max-width:700px){')
   || !layoutStyle.includes('body{min-width:0}')
   || !layoutStyle.includes('.topbar{display:grid;grid-template-columns:auto minmax(0,1fr);')
@@ -40,5 +50,5 @@ if (failures.length) {
   console.error(failures.map(failure => `FAIL ${failure}`).join('\n'));
   process.exitCode = 1;
 } else {
-  console.log('Verified full-width public demo content, responsive table overflow, mobile header wrapping, and demo HTML revalidation.');
+  console.log('Verified full-width public demo content, 19 distinct asset columns, sticky actions, responsive table overflow, mobile header wrapping, and demo HTML revalidation.');
 }
