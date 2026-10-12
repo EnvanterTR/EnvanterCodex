@@ -508,7 +508,7 @@
     </section>
     <section class="workspace-page" id="featureStatusPage" hidden>
       <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / ÜRÜN DURUMU</div><h1 id="featureStatusTitle">Bu bölüm</h1><p id="featureStatusDescription">Bu menü için mevcut ürün durumu.</p></div></div>
-      <section class="panel"><div class="panel-head"><h2 id="featureStatusHeading">Yakında</h2><span class="pill warn" id="featureStatusBadge">Henüz kullanıma açık değil</span></div><div class="dialog-body"><p id="featureStatusMessage">Bu bölüm henüz kullanılabilir bir işlem sunmuyor.</p><div class="dialog-actions"><button class="btn" id="featureStatusNotificationButton" type="button" hidden>Bildirim tercihlerini aç</button><button class="btn" id="featureStatusDepartmentsButton" type="button" hidden>Departmanları aç</button><button class="btn" type="button" data-page="Genel Bakış">Genel bakışa dön</button></div></div></section>
+      <section class="panel"><div class="panel-head"><h2 id="featureStatusHeading">Yakında</h2><span class="pill warn" id="featureStatusBadge">Henüz kullanıma açık değil</span></div><div class="dialog-body"><p id="featureStatusMessage">Bu bölüm henüz kullanılabilir bir işlem sunmuyor.</p><div class="dialog-actions"><button class="btn" id="featureStatusNotificationButton" type="button" hidden>Bildirim tercihlerini aç</button><button class="btn" id="featureStatusAccountSecurityButton" type="button" hidden>Kendi hesap güvenliğini aç</button><button class="btn" id="featureStatusDepartmentsButton" type="button" hidden>Departmanları aç</button><button class="btn" type="button" data-page="Genel Bakış">Genel bakışa dön</button></div></div></section>
     </section>
     <section class="workspace-page" id="integrationsPage" hidden>
       <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / ENTEGRASYONLAR</div><h1 id="integrationsTitle">Entegrasyonlar</h1><p>Şirket verilerine salt okunur erişim için API anahtarlarını yönetin.</p></div><button class="btn" id="integrationsRefresh" type="button">↻ Yenile</button></div>
@@ -799,6 +799,7 @@
       'Yakında':['Coming soon','Скоро','Незабаром','Наскоро'],
       'Henüz kullanıma açık değil':['Not available yet','Пока недоступно','Поки недоступно','Сè уште не е достапно'],
       'Kullanılabilir':['Available','Доступно','Доступно','Достапно'],
+      'Kendi hesap güvenliğini aç':['Open your account security','Открыть безопасность своей учетной записи','Відкрити безпеку свого облікового запису','Отвори ја безбедноста на сопствената сметка'],
       'Kısmen kullanılabilir':['Partially available','Доступно частично','Частково доступно','Делумно достапно'],
       'Hesap güvenliği özellikleri kullanılabilir; merkezi şirket güvenlik yönetimi henüz hazır değil.':['Account security features are available; centralized company security management is not ready yet.','Функции безопасности учетной записи доступны; централизованное управление безопасностью компании пока не готово.','Функції безпеки облікового запису доступні; централізоване керування безпекою компанії ще не готове.','Функциите за безбедност на сметката се достапни; централното управување со безбедноста на компанијата сè уште не е подготвено.'],
       'Parola değiştirme, Authenticator tabanlı iki aşamalı doğrulama ve tek kullanımlık kurtarma kodları hesap ayarlarında kullanılabilir. Merkezi parola politikası ile LDAP/Active Directory/SSO yönetimi bu menüde henüz sunulmuyor.':['Password changes, authenticator-based two-step verification, and one-time recovery codes are available in account settings. Central password policy and LDAP/Active Directory/SSO management are not available in this menu yet.','Смена пароля, двухэтапная проверка через приложение-аутентификатор и одноразовые коды восстановления доступны в настройках учетной записи. Централизованная политика паролей и управление LDAP/Active Directory/SSO пока недоступны в этом меню.','Зміна пароля, двоетапна перевірка через застосунок-автентифікатор і одноразові коди відновлення доступні в налаштуваннях облікового запису. Централізована політика паролів і керування LDAP/Active Directory/SSO у цьому меню поки недоступні.','Промена на лозинка, двофакторска проверка со апликација за автентикација и еднократни кодови за обновување се достапни во поставките на сметката. Централната политика за лозинки и управувањето со LDAP/Active Directory/SSO сè уште не се достапни во ова мени.'],
@@ -7638,6 +7639,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     document.querySelectorAll('[data-page]').forEach(button => button.addEventListener('click', () => {
       const page = button.dataset.page;
       $('#featureStatusDepartmentsButton').hidden = true;
+      $('#featureStatusAccountSecurityButton').hidden = true;
       document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
       const dataPages = ['Tablodan içe aktar','Verileri dışa aktar','Dışa aktarımlar','Yedekleme geçmişi','Geri yükle'];
       if (dataPages.includes(page) && !canManageSettings()) { notify('Şirket verisi aktarma işlemleri yalnızca şirket sahibi ve yöneticilerine açıktır.'); return; }
@@ -7723,6 +7725,8 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       else if (page === 'Güvenlik') {
         $('#featureStatusPage').hidden = false; $('#pageTitle').textContent = page;
         $('#featureStatusNotificationButton').hidden = true;
+        $('#featureStatusAccountSecurityButton').hidden = false;
+        $('#featureStatusAccountSecurityButton').textContent = translateUiText('Kendi hesap güvenliğini aç');
         $('#featureStatusTitle').textContent = `${translateUiText(page)} · ${translateUiText('Kısmen kullanılabilir')}`;
         $('#featureStatusDescription').textContent = translateUiText('Hesap güvenliği özellikleri kullanılabilir; merkezi şirket güvenlik yönetimi henüz hazır değil.');
         $('#featureStatusHeading').textContent = translateUiText('Kısmen kullanılabilir');
@@ -9168,6 +9172,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       ensureOperationalNotificationControls();
       $('#notificationSettingsToggle')?.click();
     });
+    $('#featureStatusAccountSecurityButton').addEventListener('click', () => $('#userAvatar').click());
     $('#notificationButton').addEventListener('click', async () => {
       const panel = $('#notificationPanel'), open = panel.hidden;
       panel.hidden = !open; $('#notificationButton').setAttribute('aria-expanded', String(open));

@@ -27,6 +27,12 @@ if (!/\bmethod=\"post\"/i.test(loginForm)) {
 if (!source.includes('id="retryApiButton"') || !/function showLogin\([^)]*\)\s*\{[^}]*\$\('#retryApiButton'\)\.hidden\s*=\s*false/.test(source)) {
   failures.push('The login screen must keep the server connection check visible whenever login is shown.');
 }
+if (!source.includes('id="featureStatusAccountSecurityButton"') ||
+    !/page === 'Güvenlik'[\s\S]*?featureStatusAccountSecurityButton'\)\.hidden = false/.test(source) ||
+    !source.includes("$('#featureStatusAccountSecurityButton').addEventListener('click', () => $('#userAvatar').click())") ||
+    !source.includes("'Kendi hesap güvenliğini aç':['Open your account security'")) {
+  failures.push('The Security menu must link to existing account security/session controls and localize the action.');
+}
 if (!/function showLogin\([^)]*\)\s*\{[^}]*document\.querySelectorAll\('dialog\[open\]'\)\.forEach\(dialog\s*=>\s*dialog\.close\(\)\)/.test(source)) {
   failures.push('Expired sessions must close top-layer dialogs so they cannot cover the login screen.');
 }

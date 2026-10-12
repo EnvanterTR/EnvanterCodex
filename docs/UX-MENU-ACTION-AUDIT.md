@@ -3,6 +3,8 @@
 Tarih: 12 Ekim 2026  
 Durum: 12 Ekim'de 50/50 menü hedefi canlı oturumda açıldı; varlık detay penceresindeki beş sekme ve altı işlem formu salt okunur şekilde incelendi. Tam işlev yüzdesi henüz hesaplanamaz: kayıt/indirme/yükleme/yetki/yeniden yükleme sonuçları tüm hedeflerde kabul edilmedi. 12 Ekim'de Şirket birimleri modülü uçtan uca API kabulünden geçti.
 
+12 Ekim 2026 devamı: **Güvenlik** hedefindeki mevcut/kısmi işlev şimdi ayrı bir **Kendi hesap güvenliğini aç** eylemiyle bağlandı. Eylem var olan hesap ayarları paneline, MFA ve oturum açan cihazlar bölümüne gider; merkezi şirket parola politikası ve SSO özelliklerinin hazır olmadığı açıklaması korunur. Beş dil eklendi ve kaynak/olay bağlama denetiminden geçti. Oturumlu tarayıcıda eylemin açtığı panel henüz kabul edilmedi; bu yüzden menü işlev sayacına tam çalışan hedef olarak eklenmedi.
+
 ## Ölçüm kapsamı
 
 - Yan menü: 10 açılır grup ve Genel Bakış/Destek dâhil 50 hedef. `tools/Verify-AppNavigation.mjs` menü hedeflerinin ve grupların kaynağa bağlı olduğunu doğruluyor; tek başına işlevlerin doğru çalıştığını kanıtlamıyor.
