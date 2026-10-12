@@ -38,6 +38,8 @@ Görüntülerde beş sekme var: Genel bakış, İlişkiler, Bakım kayıtları, 
 
 Ekran görüntüleri kontrollerin mevcut olduğunu gösteriyor; kaydetme, sunucu yanıtı ve kayıt geçmişi sonucu gösterilmediğinden bunlar çalışıyor olarak puanlanmadı. Dosya seçme/yükleme, çöp kutusu ve durum değiştirme gibi veri değiştiren adımlar da denetim amaçlı canlı şirket kayıtlarında tetiklenmedi.
 
+12 Ekim 2026: Gönderilen koyu tema görüntüsündeki beyaz sekme/alt işlem çubukları, dosya seçici ve boş dosya alanı kaynak CSS'inde doğrulandı. Bunlara koyu tema renkleri, dosya kartı/boş durum renkleri ve küçük ekran için dikey form düzeni eklendi; `Verify-AppNavigation.mjs` bu seçicileri ve sarılmayı denetliyor. Release Docker web servisi yeniden oluşturuldu; API `ready`, bekleyen migration 0, demo `200`. Mevcut tarayıcı oturumu giriş ekranında olduğundan bu modal bu turda oturumlu tarayıcıda görüntülenmedi. Sekme gezinmesi, sekiz ana eylem ve dosya ekle/indir/sil sonuçları için canlı kabul hâlâ açık; bu düzeltme çalışma yüzdesine tamamlanmış eylem olarak eklenmedi.
+
 ## Kısayolların doğrulama durumu
 
 Ana ekran/varlık listesinde erişilebilir ağaçta arama, yeni varlık, barkod okuma, bildirim, profil/yardım/görünüm, liste filtreleri, kayıtlı arama, sütun seçimi, yazdırma/tam ekran, satır yoğunluğu ve sayfalama bulundu. Satır başına ayrıntı, zimmet/iade, denetim, etiket yazdırma, kopyalama, düzenleme ve arşive taşıma eylemleri de var. Bunların yalnızca görünmesi sonuçlarının doğrulandığı anlamına gelmez. Form açma, doğrulama mesajı, iptal, başarı/hata ve son verinin yeniden yüklenmesi sırasıyla kontrol edilmelidir.

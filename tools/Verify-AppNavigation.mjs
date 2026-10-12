@@ -97,6 +97,23 @@ if (!source.includes('id="companyUnitsPage"') ||
   failures.push('Şirket birimleri must provide tenant-scoped hierarchical list/create/update/archive workflows with read/manage permissions.');
 }
 
+for (const selector of [
+  ':root[data-theme="dark"] .asset-tabs',
+  ':root[data-theme="dark"] .asset-actions',
+  ':root[data-theme="dark"] .asset-attachment-upload',
+  ':root[data-theme="dark"] .asset-attachment-card',
+  ':root[data-theme="dark"] .asset-empty',
+  ':root[data-theme="dark"] .asset-attachment-upload input[type="file"]::file-selector-button'
+]) {
+  if (!source.includes(selector)) failures.push(`Dark theme is missing an asset detail surface style: ${selector}`);
+}
+if (!source.includes('.asset-attachment-upload{display:flex;align-items:end;gap:10px;flex-wrap:wrap;')) {
+  failures.push('Asset detail attachment controls must wrap on narrow dialogs instead of forcing horizontal overflow.');
+}
+if (!source.includes('@media(max-width:720px){.asset-attachment-upload{align-items:stretch;flex-direction:column}')) {
+  failures.push('Asset detail attachment controls must stack on mobile-width dialogs.');
+}
+
 if (!source.includes('id="supportPage"') || !/page === 'Destek'\) \{[^}]*loadSupportTickets\(/.test(routeHandler) ||
     !source.includes("api('/api/support/tickets'") || !source.includes("/api/support/tickets/${encodeURIComponent(currentSupportTicketId)}/messages")) {
   failures.push('Destek must expose a company-scoped ticket list, request form, and reply workflow.');
@@ -132,5 +149,5 @@ if (failures.length) {
   console.error(failures.map(failure => `FAIL ${failure}`).join('\n'));
   process.exitCode = 1;
 } else {
-  console.log(`Verified ${new Set(pageLabels).size} sidebar destinations and ${groupKeys.length} expandable groups, login diagnostics, the asset locations API contract, and company-unit hierarchy workflows; unfinished modules have explicit status copy.`);
+  console.log(`Verified ${new Set(pageLabels).size} sidebar destinations and ${groupKeys.length} expandable groups, login diagnostics, asset location and detail theme contracts, and company-unit hierarchy workflows; unfinished modules have explicit status copy.`);
 }
