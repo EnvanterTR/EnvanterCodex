@@ -73,11 +73,28 @@ if (notReadyStart < 0 || notReadyEnd < 0) {
   failures.push('The not-ready destination copy map is missing.');
 } else {
   const notReady = routeHandler.slice(notReadyStart, notReadyEnd);
-  for (const label of ['Şirket birimleri']) {
+  for (const label of ['Yetki rolleri']) {
     if (!new RegExp(`['"]${label}['"]\\s*:\\s*['"]`).test(notReady)) {
       failures.push(`Not-ready menu "${label}" has no explicit explanation.`);
     }
   }
+}
+
+const companyUnitsApi = readFileSync(resolve('src/EnvanterTR.Web/Data/OperationalEndpoints.cs'), 'utf8');
+const companyUnitsEndpointsStart = companyUnitsApi.indexOf('api.MapGet("/company-units"');
+const companyUnitsEndpointsEnd = companyUnitsApi.indexOf('api.MapGet("/departments"', companyUnitsEndpointsStart);
+const companyUnitsEndpoints = companyUnitsEndpointsStart < 0 || companyUnitsEndpointsEnd < 0
+  ? '' : companyUnitsApi.slice(companyUnitsEndpointsStart, companyUnitsEndpointsEnd);
+if (!source.includes('id="companyUnitsPage"') ||
+    !/page === 'Şirket birimleri'\) \{[^}]*loadCompanyUnits\(/.test(routeHandler) ||
+    !source.includes("api(`/api/company-units${query}`)") ||
+    !source.includes("api(id ? `/api/company-units/${id}` : '/api/company-units'") ||
+    !source.includes("api(`/api/company-units/${item.id}/active`") ||
+    !companyUnitsEndpoints.includes('[FromQuery] bool includeInactive = false') ||
+    !companyUnitsEndpoints.includes('RequireAuthorization("people.read")') ||
+    !companyUnitsEndpoints.includes('RequireAuthorization("settings.manage")') ||
+    !companyUnitsEndpoints.includes('ParentCompanyUnitId')) {
+  failures.push('Şirket birimleri must provide tenant-scoped hierarchical list/create/update/archive workflows with read/manage permissions.');
 }
 
 if (!source.includes('id="supportPage"') || !/page === 'Destek'\) \{[^}]*loadSupportTickets\(/.test(routeHandler) ||
@@ -115,5 +132,5 @@ if (failures.length) {
   console.error(failures.map(failure => `FAIL ${failure}`).join('\n'));
   process.exitCode = 1;
 } else {
-  console.log(`Verified ${new Set(pageLabels).size} sidebar destinations and ${groupKeys.length} expandable groups, login diagnostics, and the asset locations API contract; unfinished modules have explicit status copy.`);
+  console.log(`Verified ${new Set(pageLabels).size} sidebar destinations and ${groupKeys.length} expandable groups, login diagnostics, the asset locations API contract, and company-unit hierarchy workflows; unfinished modules have explicit status copy.`);
 }

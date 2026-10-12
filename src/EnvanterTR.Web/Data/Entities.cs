@@ -111,6 +111,19 @@ public sealed class CompanyDepartment
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class CompanyUnit
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid? ParentCompanyUnitId { get; set; }
+    public required string Name { get; set; }
+    public required string NormalizedName { get; set; }
+    public string? Code { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class CompanyLocation
 {
     public Guid Id { get; set; } = Guid.NewGuid();

@@ -921,6 +921,136 @@ public static class OperationalEndpoints
 
         // Employee values remain backward-compatible free text while this catalog lets a
         // company maintain departments before they have employees assigned.
+        api.MapGet("/company-units", async (ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken,
+            [FromQuery] bool includeInactive = false) =>
+        {
+            if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
+            var units = await db.CompanyUnits.AsNoTracking().Where(x => x.CompanyId == companyId && (includeInactive || x.IsActive))
+                .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name, x.Code, x.ParentCompanyUnitId, x.IsActive, x.CreatedAt, x.UpdatedAt })
+                .ToListAsync(cancellationToken);
+            var byId = units.ToDictionary(x => x.Id);
+            string UnitPath(Guid id)
+            {
+                var item = byId[id];
+                return item.ParentCompanyUnitId is Guid parentId && byId.ContainsKey(parentId)
+                    ? $"{UnitPath(parentId)} / {item.Name}" : item.Name;
+            }
+            return Results.Ok(new { items = units.Select(x => new { x.Id, x.Name, x.Code, x.ParentCompanyUnitId,
+                parentName = x.ParentCompanyUnitId is Guid parentId && byId.TryGetValue(parentId, out var parent) ? parent.Name : null,
+                path = UnitPath(x.Id), x.IsActive, x.CreatedAt, x.UpdatedAt }), total = units.Count });
+        }).RequireAuthorization("people.read");
+
+        api.MapPost("/company-units", async ([FromBody] CompanyUnitRequest request, ClaimsPrincipal user,
+            AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            var name = request.Name?.Trim();
+            var code = string.IsNullOrWhiteSpace(request.Code) ? null : request.Code.Trim().ToUpperInvariant();
+            if (string.IsNullOrWhiteSpace(name) || name.Length > 160 || name.Any(char.IsControl))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Birim adı 1–160 karakter olmalı ve kontrol karakteri içermemelidir."] });
+            if (code is { Length: > 40 } || code?.Any(char.IsControl) == true)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["code"] = ["Birim kodu en fazla 40 karakter olabilir ve kontrol karakteri içeremez."] });
+            var normalized = NormalizeDepartmentName(name);
+            if (await db.CompanyUnits.AnyAsync(x => x.CompanyId == companyId && x.NormalizedName == normalized, cancellationToken))
+                return Results.Conflict(new { message = "Bu şirket birimi adı zaten kayıtlı." });
+            if (code is not null && await db.CompanyUnits.AnyAsync(x => x.CompanyId == companyId && x.Code == code, cancellationToken))
+                return Results.Conflict(new { message = "Bu şirket birimi kodu zaten kayıtlı." });
+            if (request.ParentCompanyUnitId is Guid parentId)
+            {
+                if (!await db.CompanyUnits.AnyAsync(x => x.CompanyId == companyId && x.Id == parentId && x.IsActive, cancellationToken))
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentCompanyUnitId"] = ["Üst birim aynı şirket içinde etkin olmalıdır."] });
+                var cursor = parentId; var depth = 2; var visited = new HashSet<Guid>();
+                while (true)
+                {
+                    if (!visited.Add(cursor)) return Results.Conflict(new { message = "Mevcut birim hiyerarşisinde döngü var; yeni birim eklenemedi." });
+                    var ancestorId = await db.CompanyUnits.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == cursor)
+                        .Select(x => x.ParentCompanyUnitId).SingleOrDefaultAsync(cancellationToken);
+                    if (ancestorId is not Guid next) break;
+                    cursor = next; depth++;
+                }
+                if (depth > 6) return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentCompanyUnitId"] = ["Birim hiyerarşisi en fazla altı seviyeye kadar açılabilir."] });
+            }
+            var entry = new CompanyUnit { CompanyId = companyId, Name = name, NormalizedName = normalized,
+                Code = code, ParentCompanyUnitId = request.ParentCompanyUnitId };
+            db.CompanyUnits.Add(entry);
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                TargetType = "CompanyUnit", TargetId = entry.Id, Action = "Created", Details = $"Şirket birimi oluşturuldu: {name}." });
+            try { await db.SaveChangesAsync(cancellationToken); }
+            catch (DbUpdateException exception) when (exception.InnerException is PostgresException
+                { SqlState: PostgresErrorCodes.UniqueViolation or PostgresErrorCodes.SerializationFailure })
+            { return Results.Conflict(new { message = "Bu şirket birimi eşzamanlı olarak başka bir işlemde kaydedildi." }); }
+            return Results.Created("/api/company-units", new { entry.Id, entry.Name, entry.Code, entry.ParentCompanyUnitId, entry.IsActive });
+        }).RequireAuthorization("settings.manage");
+
+        api.MapPut("/company-units/{id:guid}", async (Guid id, [FromBody] CompanyUnitRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            var name = request.Name?.Trim();
+            var code = string.IsNullOrWhiteSpace(request.Code) ? null : request.Code.Trim().ToUpperInvariant();
+            if (string.IsNullOrWhiteSpace(name) || name.Length > 160 || name.Any(char.IsControl))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Birim adı 1–160 karakter olmalı ve kontrol karakteri içermemelidir."] });
+            if (code is { Length: > 40 } || code?.Any(char.IsControl) == true)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["code"] = ["Birim kodu en fazla 40 karakter olabilir ve kontrol karakteri içeremez."] });
+            var entry = await db.CompanyUnits.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (entry is null) return Results.NotFound();
+            if (request.ParentCompanyUnitId == id) return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentCompanyUnitId"] = ["Birim kendisinin üst birimi olamaz."] });
+            if (request.ParentCompanyUnitId is Guid parentId)
+            {
+                var parent = await db.CompanyUnits.AsNoTracking().SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == parentId && x.IsActive, cancellationToken);
+                if (parent is null) return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentCompanyUnitId"] = ["Üst birim aynı şirket içinde etkin olmalıdır."] });
+            }
+            var parentByUnit = await db.CompanyUnits.AsNoTracking().Where(x => x.CompanyId == companyId)
+                .ToDictionaryAsync(x => x.Id, x => x.ParentCompanyUnitId, cancellationToken);
+            parentByUnit[id] = request.ParentCompanyUnitId;
+            foreach (var unitId in parentByUnit.Keys)
+            {
+                var visited = new HashSet<Guid>(); var cursor = unitId; var depth = 0;
+                while (true)
+                {
+                    if (!visited.Add(cursor)) return Results.Conflict(new { message = "Mevcut birim hiyerarşisinde döngü var; kayıt değiştirilmedi." });
+                    if (!parentByUnit.TryGetValue(cursor, out var parentUnitId) || parentUnitId is not Guid next) break;
+                    cursor = next; depth++;
+                    if (depth >= 6) return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentCompanyUnitId"] = ["Düzenleme, birim ağacını altı seviyeden derin yapamaz."] });
+                }
+            }
+            var normalized = NormalizeDepartmentName(name);
+            if (await db.CompanyUnits.AnyAsync(x => x.CompanyId == companyId && x.Id != id && x.NormalizedName == normalized, cancellationToken))
+                return Results.Conflict(new { message = "Bu adla başka bir şirket birimi var." });
+            if (code is not null && await db.CompanyUnits.AnyAsync(x => x.CompanyId == companyId && x.Id != id && x.Code == code, cancellationToken))
+                return Results.Conflict(new { message = "Bu kodla başka bir şirket birimi var." });
+            var previousName = entry.Name;
+            entry.Name = name; entry.NormalizedName = normalized; entry.Code = code;
+            entry.ParentCompanyUnitId = request.ParentCompanyUnitId; entry.UpdatedAt = DateTimeOffset.UtcNow;
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                TargetType = "CompanyUnit", TargetId = entry.Id, Action = "Updated", Details = $"Şirket birimi güncellendi: {previousName} → {name}." });
+            try { await db.SaveChangesAsync(cancellationToken); }
+            catch (DbUpdateException exception) when (exception.InnerException is PostgresException
+                { SqlState: PostgresErrorCodes.UniqueViolation or PostgresErrorCodes.SerializationFailure })
+            { return Results.Conflict(new { message = "Birim başka bir işlemle aynı anda güncellendi; yenileyip tekrar deneyin." }); }
+            return Results.Ok(new { entry.Id, entry.Name, entry.Code, entry.ParentCompanyUnitId, entry.IsActive, entry.UpdatedAt });
+        }).RequireAuthorization("settings.manage");
+
+        api.MapPatch("/company-units/{id:guid}/active", async (Guid id, [FromBody] CompanyUnitActiveRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            var entry = await db.CompanyUnits.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
+            if (entry is null) return Results.NotFound();
+            if (entry.IsActive == request.IsActive) return Results.Ok(new { entry.Id, entry.IsActive });
+            if (request.IsActive && entry.ParentCompanyUnitId is Guid parentId &&
+                !await db.CompanyUnits.AnyAsync(x => x.CompanyId == companyId && x.Id == parentId && x.IsActive, cancellationToken))
+                return Results.Conflict(new { message = "Önce bu birimin arşivlenmiş üst birimini geri yükleyin." });
+            if (!request.IsActive && await db.CompanyUnits.AnyAsync(x => x.CompanyId == companyId && x.ParentCompanyUnitId == id && x.IsActive, cancellationToken))
+                return Results.Conflict(new { message = "Etkin alt birimler arşivlenmeden bu birim arşivlenemez." });
+            entry.IsActive = request.IsActive; entry.UpdatedAt = DateTimeOffset.UtcNow;
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                TargetType = "CompanyUnit", TargetId = entry.Id, Action = request.IsActive ? "Restored" : "Archived",
+                Details = $"Şirket birimi {(request.IsActive ? "etkinleştirildi" : "arşivlendi")}: {entry.Name}." });
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.Ok(new { entry.Id, entry.IsActive, entry.UpdatedAt });
+        }).RequireAuthorization("settings.manage");
+
         api.MapGet("/departments", async ([FromQuery] Guid? locationId, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
@@ -1908,6 +2038,8 @@ public static class OperationalEndpoints
         string? Location, string? EmployeeNumber, DateOnly? PurchaseDate, DateOnly? WarrantyExpiresAt, decimal? PurchaseCost, string Currency, string? CustomFieldsJson);
     private sealed record CreateDepartmentRequest(string? Name, Guid? ParentDepartmentId = null, Guid? LocationCatalogId = null);
     private sealed record UpdateDepartmentRequest(string? Name, Guid? ParentDepartmentId = null, Guid? LocationCatalogId = null);
+    private sealed record CompanyUnitRequest(string? Name, string? Code, Guid? ParentCompanyUnitId = null);
+    private sealed record CompanyUnitActiveRequest(bool IsActive);
     private sealed record UpdateCompanyProfileRequest(string? Name, string? ContactEmail, string? BrandPrimaryColor);
     public sealed record LabelPrintSettingsRequest(string? Barcode1d, string? Barcode2d, decimal WidthMm,
         decimal HeightMm, decimal OffsetXmm, decimal OffsetYmm, decimal PaddingMm, decimal CodeSizeMm,

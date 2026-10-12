@@ -15,6 +15,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AssetContractLicense> AssetContractLicenses => Set<AssetContractLicense>();
     public DbSet<AssetContractAttachment> AssetContractAttachments => Set<AssetContractAttachment>();
     public DbSet<CompanyDepartment> CompanyDepartments => Set<CompanyDepartment>();
+    public DbSet<CompanyUnit> CompanyUnits => Set<CompanyUnit>();
     public DbSet<CompanyLocation> CompanyLocations => Set<CompanyLocation>();
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<AssetCategory> AssetCategories => Set<AssetCategory>();
@@ -405,6 +406,19 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<CompanyDepartment>().HasIndex(x => new { x.CompanyId, x.ParentDepartmentId });
         modelBuilder.Entity<CompanyDepartment>().HasIndex(x => new { x.CompanyId, x.LocationCatalogId });
+        modelBuilder.Entity<CompanyUnit>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CompanyUnit>().Property(x => x.Name).HasMaxLength(160).IsRequired();
+        modelBuilder.Entity<CompanyUnit>().Property(x => x.NormalizedName).HasMaxLength(160).IsRequired();
+        modelBuilder.Entity<CompanyUnit>().Property(x => x.Code).HasMaxLength(40);
+        modelBuilder.Entity<CompanyUnit>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<CompanyUnit>().HasIndex(x => new { x.CompanyId, x.NormalizedName }).IsUnique();
+        modelBuilder.Entity<CompanyUnit>().HasIndex(x => new { x.CompanyId, x.Code }).IsUnique().HasFilter("\"Code\" IS NOT NULL");
+        modelBuilder.Entity<CompanyUnit>().HasIndex(x => new { x.CompanyId, x.ParentCompanyUnitId });
+        modelBuilder.Entity<CompanyUnit>().HasOne<CompanyUnit>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ParentCompanyUnitId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<CompanyUnit>().ToTable("CompanyUnits");
         modelBuilder.Entity<CompanyLocation>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<CompanyLocation>().Property(x => x.Name).HasMaxLength(120).IsRequired();

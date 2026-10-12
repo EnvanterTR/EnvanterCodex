@@ -777,6 +777,112 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Company_units_are_hierarchical_tenant_scoped_and_archived_without_hard_deletes()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var suffix = _userId.ToString("N");
+        var rootName = $"Org root {suffix}";
+        var childName = $"Org child {suffix}";
+        var otherUnitId = Guid.NewGuid();
+        var auditorId = Guid.NewGuid();
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.CompanyUnits.Add(new CompanyUnit { Id = otherUnitId, CompanyId = _otherCompanyId,
+                Name = $"Private company unit {suffix}", NormalizedName = $"PRIVATE COMPANY UNIT {suffix}" });
+            db.CompanyMemberships.Add(new CompanyMembership { CompanyId = _otherCompanyId,
+                UserId = _sameCompanyOtherUserId, RoleKey = "admin" });
+            db.Users.Add(new EnvanterUser { Id = auditorId, UserName = $"company-units-auditor-{auditorId:N}",
+                NormalizedUserName = $"COMPANY-UNITS-AUDITOR-{auditorId:N}".ToUpperInvariant(),
+                Email = $"company-units-auditor-{auditorId:N}@example.invalid",
+                NormalizedEmail = $"COMPANY-UNITS-AUDITOR-{auditorId:N}@EXAMPLE.INVALID".ToUpperInvariant(),
+                EmailConfirmed = true, SecurityStamp = Guid.NewGuid().ToString("N"),
+                ConcurrencyStamp = Guid.NewGuid().ToString("N"), DisplayName = "Company unit auditor" });
+            db.CompanyMemberships.Add(new CompanyMembership { CompanyId = _companyId,
+                UserId = auditorId, RoleKey = "auditor" });
+            await db.SaveChangesAsync();
+        }
+
+        using (var readOnlyRole = await SendAsUserAsync(HttpMethod.Get, "/api/company-units", auditorId, _companyId, role: "auditor"))
+            Assert.Equal(HttpStatusCode.OK, readOnlyRole.StatusCode);
+        using (var readOnlyWrite = await SendAsUserAsync(HttpMethod.Post, "/api/company-units", auditorId, _companyId,
+                   System.Net.Http.Json.JsonContent.Create(new { name = $"Denied {suffix}" }), requestToken, antiforgeryCookie, role: "auditor"))
+            Assert.Equal(HttpStatusCode.Forbidden, readOnlyWrite.StatusCode);
+
+        Guid rootId;
+        using (var createRoot = await SendAsRoleAsync(HttpMethod.Post, "/api/company-units", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { name = rootName, code = $"ROOT-{suffix}" }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.Created, createRoot.StatusCode);
+            using var payload = JsonDocument.Parse(await createRoot.Content.ReadAsStringAsync());
+            rootId = payload.RootElement.GetProperty("id").GetGuid();
+        }
+        Guid childId;
+        using (var createChild = await SendAsRoleAsync(HttpMethod.Post, "/api/company-units", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { name = childName, parentCompanyUnitId = rootId }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.Created, createChild.StatusCode);
+            using var payload = JsonDocument.Parse(await createChild.Content.ReadAsStringAsync());
+            childId = payload.RootElement.GetProperty("id").GetGuid();
+        }
+        using (var duplicate = await SendAsRoleAsync(HttpMethod.Post, "/api/company-units", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { name = rootName }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+        using (var foreignParent = await SendAsRoleAsync(HttpMethod.Post, "/api/company-units", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { name = $"Foreign parent {suffix}", parentCompanyUnitId = otherUnitId }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, foreignParent.StatusCode);
+        using (var cycle = await SendAsRoleAsync(HttpMethod.Put, $"/api/company-units/{rootId}", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { name = rootName, code = $"ROOT-{suffix}", parentCompanyUnitId = childId }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, cycle.StatusCode);
+        using (var archiveParentWithChild = await SendAsRoleAsync(HttpMethod.Patch, $"/api/company-units/{rootId}/active", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { isActive = false }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, archiveParentWithChild.StatusCode);
+
+        using (var crossTenant = await SendAsUserAsync(HttpMethod.Get, "/api/company-units", _sameCompanyOtherUserId, _otherCompanyId))
+        {
+            Assert.Equal(HttpStatusCode.OK, crossTenant.StatusCode);
+            using var payload = JsonDocument.Parse(await crossTenant.Content.ReadAsStringAsync());
+            var names = payload.RootElement.GetProperty("items").EnumerateArray()
+                .Select(item => item.GetProperty("name").GetString()).ToArray();
+            Assert.Contains($"Private company unit {suffix}", names);
+            Assert.DoesNotContain(rootName, names);
+        }
+        using (var archiveChild = await SendAsRoleAsync(HttpMethod.Patch, $"/api/company-units/{childId}/active", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { isActive = false }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, archiveChild.StatusCode);
+        using (var archiveRoot = await SendAsRoleAsync(HttpMethod.Patch, $"/api/company-units/{rootId}/active", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { isActive = false }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, archiveRoot.StatusCode);
+        using (var defaultList = await SendAsRoleAsync(HttpMethod.Get, "/api/company-units", "admin"))
+        {
+            Assert.Equal(HttpStatusCode.OK, defaultList.StatusCode);
+            using var payload = JsonDocument.Parse(await defaultList.Content.ReadAsStringAsync());
+            Assert.DoesNotContain(payload.RootElement.GetProperty("items").EnumerateArray(), item =>
+                item.GetProperty("id").GetGuid() == rootId || item.GetProperty("id").GetGuid() == childId);
+        }
+        using (var includingArchived = await SendAsRoleAsync(HttpMethod.Get, "/api/company-units?includeInactive=true", "admin"))
+        {
+            Assert.Equal(HttpStatusCode.OK, includingArchived.StatusCode);
+            using var payload = JsonDocument.Parse(await includingArchived.Content.ReadAsStringAsync());
+            Assert.Contains(payload.RootElement.GetProperty("items").EnumerateArray(), item => item.GetProperty("id").GetGuid() == rootId);
+        }
+        using (var restoreChildTooEarly = await SendAsRoleAsync(HttpMethod.Patch, $"/api/company-units/{childId}/active", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { isActive = true }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, restoreChildTooEarly.StatusCode);
+        using (var restoreRoot = await SendAsRoleAsync(HttpMethod.Patch, $"/api/company-units/{rootId}/active", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { isActive = true }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, restoreRoot.StatusCode);
+        using (var restoreChild = await SendAsRoleAsync(HttpMethod.Patch, $"/api/company-units/{childId}/active", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { isActive = true }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, restoreChild.StatusCode);
+    }
+
+    [Fact]
     public async Task Anonymous_http_requests_are_rejected_by_every_protected_api_route()
     {
         var protectedRoutes = _factory!.Services.GetServices<EndpointDataSource>()
