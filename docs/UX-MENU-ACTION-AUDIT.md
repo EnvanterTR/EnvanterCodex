@@ -23,7 +23,7 @@ Bu liste kaynakta bulunan 50 hedefi gösterir. “Canlı doğrulama” sütunu, 
 | Zimmet ve hareketler | Zimmetler; İadeler; Transferler; Rezervasyonlar; Hareket geçmişi | Bekliyor |
 | Lisans ve yazılım | Yazılım lisansları; Lisans atamaları; Sözleşmeler; Garanti takibi | Bekliyor |
 | Aksesuar ve stok | Aksesuarlar; Satın alma siparişleri; Sarf malzemeleri; Stok talepleri; Bileşenler; Hazır kitler; Stok hareketleri | Bekliyor |
-| Kişiler ve ekipler | Çalışan kayıtları; Uygulama kullanıcıları; Departmanlar; Yetki rolleri | Bekliyor |
+| Kişiler ve ekipler | Çalışan kayıtları; Uygulama kullanıcıları; Departmanlar; Yetki rolleri | Çalışanlar/departmanlar bekliyor; Yetki rolleri kısmi: yerleşik rol matrisi görüntüleniyor, yetkili yöneticilerden kullanıcı rol atamalarına doğrudan geçiş var; tarayıcıda eylem kabulü bekliyor |
 | Konumlar | Lokasyonlar; Binalar ve odalar; Şirket birimleri | Lokasyonlar ve binalar bekliyor; şirket birimi hiyerarşi CRUD/tenant-yetki API kabulü geçti; tarayıcı görsel kabulü bekliyor |
 | Bakım ve denetim | Bakım kayıtları; Bakım planları; Denetimler; Takvim; Görevler | Görevler kaynak ve API bağlantısı mevcut; tarayıcıda rol bazlı sonuç kabulü bekliyor. Diğerleri bekliyor |
 | Raporlar | Hazır raporlar; Özel rapor oluştur; Dışa aktarımlar | Bekliyor |
@@ -31,7 +31,7 @@ Bu liste kaynakta bulunan 50 hedefi gösterir. “Canlı doğrulama” sütunu, 
 | Şirket ayarları | Firma profili; Logo ve tema; Bildirimler; Entegrasyonlar; Güvenlik; Denetim kayıtları | Bekliyor |
 | Genel | Destek | Bekliyor |
 
-Kaynakta açıkça kısmi/henüz hazır değil olarak işaretlenen yüzeyler: merkezi şirket güvenlik yönetimi (Güvenlik), şube/tüzel kişilik bazında varlık ayrımı (Şirket birimleri kapsamının dışında), rol-yetki düzenleme ekranı (Yetki rolleri), harici bağlantı/webhook yönetimi (Entegrasyonlar). Şirket birimleri artık şirket içi hiyerarşik katalog CRUD akışıdır; tüzel kişilik veya varlık erişim sınırı oluşturmaz. Görevler için şirket kapsamlı liste, arama/filtre/sayfalama, oluşturma/düzenleme, çalışan atama, durum geçişleri ve denetim izi kapsam defterinde mevcut; kaynak/API bağlantısı kontrol edildi ancak rol bazlı tarayıcı sonucu bekliyor. Bu tespitler kaynak metin ve kapsam defterine dayanır; UI davranış kabul testi değildir.
+Kaynakta açıkça kısmi/henüz hazır değil olarak işaretlenen yüzeyler: merkezi şirket güvenlik yönetimi (Güvenlik), şube/tüzel kişilik bazında varlık ayrımı (Şirket birimleri kapsamının dışında), özel rol ve izin düzenleme (Yetki rolleri), harici bağlantı/webhook yönetimi (Entegrasyonlar). Yetki rolleri sayfası yerleşik rollerin erişim matrisini gösterir; yetkili şirket yöneticileri buradan Uygulama kullanıcıları ekranına geçerek üyeye rol atayabilir. Yeni rol veya özel izin tanımı yapılamaz. Şirket birimleri artık şirket içi hiyerarşik katalog CRUD akışıdır; tüzel kişilik veya varlık erişim sınırı oluşturmaz. Görevler için şirket kapsamlı liste, arama/filtre/sayfalama, oluşturma/düzenleme, çalışan atama, durum geçişleri ve denetim izi kapsam defterinde mevcut; kaynak/API bağlantısı kontrol edildi ancak rol bazlı tarayıcı sonucu bekliyor. Bu tespitler kaynak metin ve kapsam defterine dayanır; UI davranış kabul testi değildir.
 
 ## Ekran görüntülerindeki varlık detay penceresi
 

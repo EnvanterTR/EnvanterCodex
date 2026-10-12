@@ -568,7 +568,7 @@
       </section>
     </section>
       <section class="workspace-page" id="rolesPage" hidden>
-        <div class="page-head"><div><div class="eyebrow" id="rolesPageEyebrow"></div><h1 id="rolesPageTitle"></h1><p id="rolesPageIntro"></p></div></div>
+        <div class="page-head"><div><div class="eyebrow" id="rolesPageEyebrow"></div><h1 id="rolesPageTitle"></h1><p id="rolesPageIntro"></p></div><div class="head-actions"><button class="btn" id="rolesManageMembersButton" type="button">Uygulama kullanıcıları</button></div></div>
         <section class="panel"><div class="dialog-body"><p class="notice" id="roleAccessNote"></p></div><div class="table-wrap"><table><caption class="sr-only" id="roleAccessCaption"></caption><thead><tr id="roleAccessHeader"></tr></thead><tbody id="roleAccessRows"></tbody></table></div></section>
       </section>
   </main>
@@ -3953,6 +3953,10 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       $('#rolesPageTitle').textContent = translateUiText('Yetki rolleri');
       $('#rolesPageIntro').textContent = translateUiText('Şirket hesabındaki yerleşik rollerin erişebildiği alanları özetler.');
       $('#roleAccessNote').textContent = translateUiText('Yerleşik şirket rolleri sunucu politikalarıyla uygulanır. Kullanıcıya rol atamasını Uygulama kullanıcıları bölümünden yapın. Platform yöneticisi ayrı sistem yetkisidir.');
+      const memberManagementButton = $('#rolesManageMembersButton');
+      memberManagementButton.textContent = translateUiText('Uygulama kullanıcıları');
+      memberManagementButton.hidden = !canManageSettings();
+      memberManagementButton.onclick = () => document.querySelector('[data-page="Uygulama kullanıcıları"]')?.click();
       $('#roleAccessCaption').textContent = translateUiText('Şirket rol ve erişim matrisi');
       const header = $('#roleAccessHeader'); header.replaceChildren();
       for (const label of ['Rol', ...rolePermissionColumns.map(column => column.label)]) {
@@ -7728,9 +7732,6 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       }
       else if (page === 'Yetki rolleri') { $('#rolesPage').hidden = false; $('#pageTitle').textContent = translateUiText(page); renderRoleAccessMatrix(); }
       else if (!['Genel Bakış','Varlıklar'].includes(page)) {
-        const notReady = {
-          'Yetki rolleri': 'Roller ve izinler için yönetim ekranı henüz hazır değil. Mevcut roller ve izin sınırları sunucu tarafından uygulanır.'
-        };
         $('#featureStatusPage').hidden = false;
         $('#featureStatusNotificationButton').hidden = true;
         $('#pageTitle').textContent = translateUiText(page);
@@ -7755,8 +7756,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         $('#moduleStatusPage').hidden = false; $('#pageTitle').textContent = page; $('#moduleStatusTitle').textContent = page;
         const guidance = {
           'QR ve barkodlar': ['Etiket biçimi, ölçüsü ve yazıcı hizalaması ayarlanabilir.', 'Varlık etiketleri QR, PDF417 veya Data Matrix ile birlikte C128, C39, EAN5, EAN13, UPC-A ya da UPC-E olarak basılabilir.', 'Varlık kayıtlarını aç'],
-          'Binalar ve odalar': ['Bina/kat/oda hiyerarşisi kullanılabilir.', 'Şirket konum kataloğunu bu menüden açıp bina, kat ve oda ekleyebilir, yeniden adlandırabilir, arşivleyebilir ve varsayılan konum ile sorumlu çalışanı yönetebilirsiniz.', 'Lokasyonları aç'],
-          'Yetki rolleri': ['Yetki matrisi düzenleme ekranı henüz hazır değil.', 'Mevcut roller, kullanıcı davetinde ve Uygulama kullanıcıları ekranında uygulanır.', 'Çalışanları aç']
+          'Binalar ve odalar': ['Bina/kat/oda hiyerarşisi kullanılabilir.', 'Şirket konum kataloğunu bu menüden açıp bina, kat ve oda ekleyebilir, yeniden adlandırabilir, arşivleyebilir ve varsayılan konum ile sorumlu çalışanı yönetebilirsiniz.', 'Lokasyonları aç']
         };
         const [summary, detail, shortcut] = guidance[page] || ['Bu menüdeki iş akışı henüz tamamlanmadı.', 'Bu önizlemede bu bölüm kayıt oluşturmaz veya değiştirmez. Hazır modüller gerçek şirket verileriyle çalışır; sıradaki kapsam ürün yol haritasında izleniyor.', 'Çalışanları aç'];
         $('#moduleStatusSummary').textContent = summary; $('#moduleStatusDetail').textContent = detail;

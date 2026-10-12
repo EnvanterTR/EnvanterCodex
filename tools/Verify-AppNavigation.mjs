@@ -67,17 +67,15 @@ for (const key of submenuKeys) {
   if (!groupKeys.includes(key)) failures.push(`Submenu "sub-${key}" has no matching data-group control.`);
 }
 
-const notReadyStart = routeHandler.indexOf('const notReady = {');
-const notReadyEnd = notReadyStart < 0 ? -1 : routeHandler.indexOf('\n        };', notReadyStart);
-if (notReadyStart < 0 || notReadyEnd < 0) {
-  failures.push('The not-ready destination copy map is missing.');
-} else {
-  const notReady = routeHandler.slice(notReadyStart, notReadyEnd);
-  for (const label of ['Yetki rolleri']) {
-    if (!new RegExp(`['"]${label}['"]\\s*:\\s*['"]`).test(notReady)) {
-      failures.push(`Not-ready menu "${label}" has no explicit explanation.`);
-    }
-  }
+const roleRendererStart = source.indexOf('function renderRoleAccessMatrix()');
+const roleRendererEnd = source.indexOf('async function loadTenantBranding()', roleRendererStart);
+const roleRenderer = roleRendererStart < 0 || roleRendererEnd < 0 ? '' : source.slice(roleRendererStart, roleRendererEnd);
+if (!routeHandler.includes("page === 'Yetki rolleri'") ||
+    !source.includes('id="rolesManageMembersButton"') ||
+    !roleRenderer.includes('memberManagementButton.hidden = !canManageSettings()') ||
+    !roleRenderer.includes("document.querySelector('[data-page=\"Uygulama kullanıcıları\"]')?.click()") ||
+    !roleRenderer.includes('for (const role of companyRoleCatalog)')) {
+  failures.push('Yetki rolleri must show the built-in access matrix and offer settings managers a direct link to member-role assignment.');
 }
 
 const companyUnitsApi = readFileSync(resolve('src/EnvanterTR.Web/Data/OperationalEndpoints.cs'), 'utf8');
