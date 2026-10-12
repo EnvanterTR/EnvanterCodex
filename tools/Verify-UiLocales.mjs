@@ -4,6 +4,16 @@ import vm from 'node:vm';
 
 const sourcePath = resolve(process.argv[2] || 'src/EnvanterTR.Web/wwwroot/index.html');
 const source = readFileSync(sourcePath, 'utf8');
+const loginConnectionButton = source.match(/<button\b[^>]*\bid="retryApiButton"[^>]*>([\s\S]*?)<\/button>/);
+const loginConnectionDiagnosticsMissing = [
+  !loginConnectionButton || /\bhidden\b/.test(loginConnectionButton[0]) || !loginConnectionButton[1].includes('Sunucu bağlantısını test et'),
+  !source.includes("$('#retryApiButton').addEventListener('click'"),
+  !source.includes("api('/api/status'"),
+  !source.includes("api('/api/setup/status'")
+].filter(Boolean).length;
+if (loginConnectionDiagnosticsMissing) {
+  console.error('Login connection diagnostics must render a visible server-test button wired to readiness and setup checks.');
+}
 const baseMatch = source.match(/const localeRows\s*=\s*(\{[\s\S]*?\n\s{4}\});/);
 const additionsMatches = [...source.matchAll(/Object\.assign\(localeRows,\s*(\{[\s\S]*?\n\s{4}\})\);/g)];
 
@@ -528,7 +538,7 @@ const missingAuthLabels = requiredAuthLabels.filter(key => !sandbox.localeRows[k
 const missingIntegrationLabels = requiredIntegrationLabels.filter(key => !sandbox.localeRows[key]);
 const missingSupportLabels = requiredSupportLabels.filter(key => !sandbox.localeRows[key]);
 
-if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingCheckoutLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingInventoryRequestLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length || missingRoleLabels.length || missingAuthLabels.length || missingIntegrationLabels.length || missingSupportLabels.length) {
+if (loginConnectionDiagnosticsMissing || invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingCheckoutLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingInventoryRequestLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length || missingRoleLabels.length || missingAuthLabels.length || missingIntegrationLabels.length || missingSupportLabels.length) {
   if (invalidRows.length) console.error(`Invalid 4-language locale entries: ${invalidRows.join(', ')}`);
   if (missingAssetLabels.length) console.error(`Missing asset-list locale entries: ${missingAssetLabels.join(', ')}`);
   if (missingReservationLabels.length) console.error(`Missing reservation-page locale entries: ${missingReservationLabels.join(', ')}`);
