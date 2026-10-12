@@ -47,6 +47,10 @@ const loginSubmitHandler = loginSubmitStart < 0 || loginSubmitEnd < 0 ? '' : sou
 if (!/catch\s*\(error\)\s*\{[\s\S]*?\$\('#retryApiButton'\)\.hidden\s*=\s*false/.test(loginSubmitHandler)) {
   failures.push('The server connection check must remain visible after rejected login credentials.');
 }
+if (!/else\s*\{\s*\$\('#authError'\)\.textContent\s*=\s*error\.message\s*;\s*void checkLoginConnection\(\)\s*;/.test(loginSubmitHandler) ||
+    !/async function checkLoginConnection\(\)[\s\S]*?api\('\/api\/status'[\s\S]*?api\('\/api\/setup\/status'[\s\S]*?status\.hidden\s*=\s*false/.test(source)) {
+  failures.push('Rejected login responses must automatically show a separate, live server/setup diagnostic without replacing the credential error.');
+}
 
 if (pageLabels.length === 0) failures.push('The sidebar has no page destinations.');
 for (const label of new Set(pageLabels)) {

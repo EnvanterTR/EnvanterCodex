@@ -9100,6 +9100,34 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     let searchTimer; $('#globalSearch').addEventListener('input', event => { $('#assetListSearch').value = event.target.value; clearTimeout(searchTimer); searchTimer = setTimeout(() => loadDashboard(event.target.value.trim(), 1).catch(error => notify(error.message)), 250); });
     const loginCompanyField = $('#loginCompanyField'), loginCompanySelect = $('#loginCompanyId');
     const loginCompanyButton = $('button[type="submit"]', $('#loginForm'));
+    async function checkLoginConnection() {
+      const button = $('#retryApiButton'), status = $('#loginConnectionStatus');
+      button.disabled = true; button.textContent = translateUiText('Bağlantı kontrol ediliyor…'); status.hidden = true;
+      try {
+        await refreshCsrf();
+        const readiness = await api('/api/status', { timeoutMs: 10000 });
+        if (readiness.status !== 'ready') throw new Error(readiness.message || 'Uygulama veritabanı hazır değil.');
+        const setup = await api('/api/setup/status', { timeoutMs: 10000 });
+        if (setup.setupRequired) {
+          $('#firstRunSetupNotice').hidden = false;
+          $('#loginForm button[type="submit"]').disabled = true;
+          $('#forgotPasswordButton').disabled = true;
+          status.textContent = translateUiText('Sunucu ve veritabanı hazır; önce ilk şirket kurulumunu tamamlayın.');
+        } else {
+          $('#firstRunSetupNotice').hidden = true;
+          $('#loginForm button[type="submit"]').disabled = false;
+          $('#forgotPasswordButton').disabled = false;
+          status.textContent = translateUiText('Sunucu ve veritabanı hazır. Bu giriş hatası bağlantıdan kaynaklanmıyor.');
+        }
+        status.hidden = false;
+      } catch (error) {
+        status.textContent = error.message || translateUiText('Sunucuya bağlanılamadı. Uygulamanın çalıştığını ve ağ bağlantınızı kontrol edip yeniden deneyin.');
+        status.hidden = false;
+      } finally {
+        button.disabled = false;
+        button.textContent = translateUiText('Sunucu bağlantısını test et');
+      }
+    }
     $('#loginForm').addEventListener('submit', async event => {
       event.preventDefault();
       const form = new FormData(event.currentTarget);
@@ -9131,7 +9159,10 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
           loginCompanyField.hidden = true; loginCompanySelect.value = ''; loginCompanyButton.textContent = 'Giriş yap';
           showApiUnavailable(error.message || 'Sunucuya bağlanılamadı. Bağlantıyı kontrol edip yeniden deneyin.');
         }
-        else {  $('#authError').textContent = error.message; }
+        else {
+          $('#authError').textContent = error.message;
+          void checkLoginConnection();
+        }
       } finally { loginCompanyButton.disabled = false; }
     });
     $('input[name="email"]', $('#loginForm')).addEventListener('input', () => {
@@ -9139,34 +9170,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       $('#loginTwoFactorField').hidden = true; $('input[name="twoFactorCode"]', $('#loginForm')).value = '';
     });
     $('input[name="password"]', $('#loginForm')).addEventListener('input', () => { $('#loginTwoFactorField').hidden = true; $('input[name="twoFactorCode"]', $('#loginForm')).value = ''; });
-    $('#retryApiButton').addEventListener('click', async () => {
-      const button = $('#retryApiButton'), status = $('#loginConnectionStatus');
-      button.disabled = true; button.textContent = translateUiText('Bağlantı kontrol ediliyor…'); status.hidden = true;
-      try {
-        await refreshCsrf();
-        const readiness = await api('/api/status', { timeoutMs: 10000 });
-        if (readiness.status !== 'ready') throw new Error(readiness.message || 'Uygulama veritabanı hazır değil.');
-        const setup = await api('/api/setup/status', { timeoutMs: 10000 });
-        if (setup.setupRequired) {
-          $('#firstRunSetupNotice').hidden = false;
-          $('#loginForm button[type="submit"]').disabled = true;
-          $('#forgotPasswordButton').disabled = true;
-          status.textContent = translateUiText('Sunucu ve veritabanı hazır; önce ilk şirket kurulumunu tamamlayın.');
-        } else {
-          $('#firstRunSetupNotice').hidden = true;
-          $('#loginForm button[type="submit"]').disabled = false;
-          $('#forgotPasswordButton').disabled = false;
-          status.textContent = translateUiText('Sunucu ve veritabanı hazır. Bu giriş hatası bağlantıdan kaynaklanmıyor.');
-        }
-        status.hidden = false;
-      } catch (error) {
-        status.hidden = true;
-        $('#authError').textContent = error.message || translateUiText('Sunucuya bağlanılamadı. Uygulamanın çalıştığını ve ağ bağlantınızı kontrol edip yeniden deneyin.');
-      } finally {
-        button.disabled = false;
-        button.textContent = translateUiText('Sunucu bağlantısını test et');
-      }
-    });
+    $('#retryApiButton').addEventListener('click', () => { void checkLoginConnection(); });
     $('#forgotPasswordButton').addEventListener('click', () => { $('#forgotFeedback').textContent = ''; $('#forgotPasswordDialog').showModal(); });
     $('#closeForgotPassword').addEventListener('click', () => $('#forgotPasswordDialog').close());
     document.querySelector('[data-close-forgot]').addEventListener('click', () => $('#forgotPasswordDialog').close());
