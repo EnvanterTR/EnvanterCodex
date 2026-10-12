@@ -297,6 +297,23 @@ const eventLabelsMatch = source.match(/const eventLabels\s*=\s*(\{[^\n]+\});/);
 if (!eventLabelsMatch) throw new Error(`Could not locate asset event labels in ${sourcePath}`);
 const requiredAssetEventLabels = Object.values(vm.runInNewContext(`(${eventLabelsMatch[1]})`, {}, { timeout: 1000 }));
 const requiredApiFeedbackLabels = [
+  'Sözleşme arama veya durum filtresi geçersiz.',
+  'Sözleşme adı zorunludur ve en fazla 200 karakter olabilir.',
+  'Sözleşme numarası en fazla 120 karakter olabilir.',
+  'Sözleşme türü en fazla 120 karakter olabilir.',
+  'Tedarikçi en fazla 200 karakter olabilir.',
+  'Notlar en fazla 4.000 karakter olabilir.',
+  'Maliyet 0 ile 1.000.000.000 arasında olmalıdır.',
+  'Bitiş tarihi başlangıç tarihinden önce olamaz.',
+  'Seçilen tedarikçi bu şirkette bulunamadı.',
+  'En fazla 2.000 farklı varlık bağlanabilir.',
+  'Seçilen varlıklardan biri bu şirkette yok, arşivlenmiş veya silinmiş.',
+  'En fazla 2.000 farklı lisans bağlanabilir.',
+  'Seçilen lisanslardan biri bu şirkette bulunamadı.',
+  'Sözleşme eki 1 bayt ile 10 MiB arasında olmalıdır.',
+  'Bir sözleşmeye en fazla 30 dosya eklenebilir.',
+  'Sözleşme eki deposu güvenli bir dizin olmalıdır.',
+  'Sözleşme dosyası bütünlük denetimini geçemedi.',
   'İstek doğrulaması başarısız.',
   'Arama metni 120 karakteri aşamaz.',
   'Arama 120 karakteri aşamaz.',
@@ -475,6 +492,24 @@ const requiredApiFeedbackLabels = [
   '1–100 farklı sipariş satırı ve her satır için 1–100.000 arası miktar girin.',
   'Teslim tarihi zorunludur; not en fazla 1.000 karakter olabilir.',
 ];
+const requiredContractLabels = [
+  'ŞİRKET ALANI / LİSANS VE SÖZLEŞMELER',
+  'Destek, bakım ve lisans sözleşmelerini; sürelerini, maliyetlerini, bağlı varlıkları ve lisansları şirket kapsamında izleyin.',
+  '＋ Sözleşme ekle', 'Sözleşme no. / tür', 'Bağlantılar', 'Etkin ve arşiv kayıtları',
+  '30 gün içinde bitecek', 'Sözleşmelerde ara', 'Sözleşme bulunamadı.', 'ŞİRKET ALANI / SÖZLEŞME',
+  'Yeni sözleşme', 'Sözleşmeyi düzenle', 'Sözleşme adı *', 'Sözleşme numarası', 'Sözleşme türü',
+  'Tedarikçi adı', 'Elle girilen tedarikçi', 'Bağlı kayıt ara', 'Bağlı varlıklar', 'Bağlı yazılım lisansları',
+  'Sözleşmeye bağlı varlıklar', 'Sözleşmeye bağlı yazılım lisansları',
+  'Bağlantı araması 100 sonucu gösterir; seçtiğiniz varlık ve lisanslar arama değişse de korunur. Tedarikçi seçerseniz şirket kataloğundaki ad kullanılır.',
+  'Bağlı varlık veya lisans bulunmuyor.', 'Sözleşme dosyaları', '＋ Dosya ekle',
+  'PDF, PNG, JPEG veya WebP · en fazla 10 MiB · 30 dosya.', 'Henüz dosya eklenmedi.',
+  'Sözleşme dosyası eklendi.', 'Sözleşme dosyası silindi.', 'Sözleşmeler yükleniyor…', 'Sözleşme',
+  'Sözleşme no.', 'Sözleşme no. yok', 'Tür belirtilmemiş', 'varlık', 'lisans', 'dosya', 'sözleşme',
+  'bayt', 'Bağlı varlıklar ve lisanslar', 'Varlık', 'Lisans', 'Bakım, destek, abonelik…',
+  'Varlık etiketi, ad veya lisans adı', 'Sözleşme arşivlensin mi? Kayıt ve dosyaları korunur.',
+  'Bu sözleşme dosyası silinsin mi?', 'Sözleşme arşivlendi.', 'Sözleşme geri yüklendi.',
+  'Sözleşme güncellendi.', 'Sözleşme oluşturuldu.', 'Dosya 10 MiB sınırını aşıyor.'
+];
 
 const requiredRoleLabels = [
   'Yetki rolleri', 'ŞİRKET ALANI / ERİŞİM', 'Şirket hesabındaki yerleşik rollerin erişebildiği alanları özetler.',
@@ -533,12 +568,13 @@ const missingLicenseListLabels = requiredLicenseListLabels.filter(key => !sandbo
 const missingLicenseImportLabels = requiredLicenseImportLabels.filter(key => !sandbox.localeRows[key]);
 const missingAssetEventLabels = requiredAssetEventLabels.filter(key => !sandbox.localeRows[key]);
 const missingApiFeedbackLabels = requiredApiFeedbackLabels.filter(key => !sandbox.localeRows[key]);
+const missingContractLabels = requiredContractLabels.filter(key => !sandbox.localeRows[key]);
 const missingRoleLabels = requiredRoleLabels.filter(key => !sandbox.localeRows[key]);
 const missingAuthLabels = requiredAuthLabels.filter(key => !sandbox.localeRows[key]);
 const missingIntegrationLabels = requiredIntegrationLabels.filter(key => !sandbox.localeRows[key]);
 const missingSupportLabels = requiredSupportLabels.filter(key => !sandbox.localeRows[key]);
 
-if (loginConnectionDiagnosticsMissing || invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingCheckoutLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingInventoryRequestLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length || missingRoleLabels.length || missingAuthLabels.length || missingIntegrationLabels.length || missingSupportLabels.length) {
+if (loginConnectionDiagnosticsMissing || invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingCheckoutLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingInventoryRequestLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length || missingContractLabels.length || missingRoleLabels.length || missingAuthLabels.length || missingIntegrationLabels.length || missingSupportLabels.length) {
   if (invalidRows.length) console.error(`Invalid 4-language locale entries: ${invalidRows.join(', ')}`);
   if (missingAssetLabels.length) console.error(`Missing asset-list locale entries: ${missingAssetLabels.join(', ')}`);
   if (missingReservationLabels.length) console.error(`Missing reservation-page locale entries: ${missingReservationLabels.join(', ')}`);
@@ -551,6 +587,7 @@ if (loginConnectionDiagnosticsMissing || invalidRows.length || missingAssetLabel
   if (missingLicenseImportLabels.length) console.error(`Missing license-import locale entries: ${missingLicenseImportLabels.join(', ')}`);
   if (missingAssetEventLabels.length) console.error(`Missing asset-event locale entries: ${missingAssetEventLabels.join(', ')}`);
   if (missingApiFeedbackLabels.length) console.error(`Missing asset/operations API-feedback locale entries: ${missingApiFeedbackLabels.join(', ')}`);
+  if (missingContractLabels.length) console.error(`Missing contract-page locale entries: ${missingContractLabels.join(', ')}`);
   if (missingRoleLabels.length) console.error(`Missing role-matrix locale entries: ${missingRoleLabels.join(', ')}`);
   if (missingAuthLabels.length) console.error(`Missing login-security locale entries: ${missingAuthLabels.join(', ')}`);
   if (missingIntegrationLabels.length) console.error(`Missing integration-page locale entries: ${missingIntegrationLabels.join(', ')}`);
