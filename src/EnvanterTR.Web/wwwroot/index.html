@@ -2716,7 +2716,7 @@
     }
     function renderBulkEditCustomFields(definitions) {
       const root = $('#bulkEditCustomFields'); root.replaceChildren();
-      const activeFields = (definitions || []).filter(field => field.isActive);
+      const activeFields = (definitions || []).filter(field => field.isActive && (field.fieldType !== 'sensitive' || canAccessSensitiveAssetFields()));
       if (!activeFields.length) { root.hidden = true; return; }
       const heading = document.createElement('strong'); heading.textContent = translateUiText('Özel alanlar'); root.append(heading);
       const hint = document.createElement('p'); hint.className = 'muted'; hint.textContent = translateUiText('Seçilen değer tüm işaretli varlıklara uygulanır; boş bırakılan isteğe bağlı alan temizlenir.'); root.append(hint);
@@ -3090,6 +3090,13 @@
       'Kaydediliyor…':['Saving…','Сохранение…','Збереження…','Се зачувува…'],
       'Durum etiketleri kaydedildi.':['Status labels saved.','Метки статуса сохранены.','Мітки стану збережено.','Ознаките за статус се зачувани.'],
       'Durum etiketleri şirketiniz için kaydedildi.':['Status labels saved for your company.','Метки статуса сохранены для вашей компании.','Мітки стану збережено для вашої компанії.','Ознаките за статус се зачувани за вашата компанија.']
+    });
+    Object.assign(localeRows, {
+      'Hassas (şifreli)':['Sensitive (encrypted)','Конфиденциальное (зашифровано)','Конфіденційне (зашифровано)','Чувствително (шифрирано)'],
+      'Hassas özel alanlar veritabanında şifrelenir; değerleri yalnızca şirket sahibi ve yöneticileri görebilir. CSV dışa aktarımı, filtreleme ve özel raporlar bu değerleri içermez.':['Sensitive custom fields are encrypted in the database. Only company owners and administrators can view their values. CSV exports, filters, and custom reports omit them.','Конфиденциальные пользовательские поля шифруются в базе данных. Их значения видны только владельцам и администраторам компании. Экспорт CSV, фильтры и пользовательские отчёты их не включают.','Конфіденційні спеціальні поля шифруються в базі даних. Їхні значення бачать лише власники й адміністратори компанії. Експорт CSV, фільтри та власні звіти їх не містять.','Чувствителните прилагодени полиња се шифрираат во базата. Нивните вредности ги гледаат само сопствениците и администраторите на компанијата. CSV извозите, филтрите и сопствените извештаи не ги вклучуваат.'],
+      'Mevcut hassas değeri temizle':['Clear the current sensitive value','Очистить текущее конфиденциальное значение','Очистити поточне конфіденційне значення','Исчисти ја тековната чувствителна вредност'],
+      'Hassas özel alanlar gizlilik için filtrelenemez.':['Sensitive custom fields cannot be filtered for privacy.','Конфиденциальные пользовательские поля нельзя фильтровать.','Конфіденційні спеціальні поля не можна фільтрувати.','Чувствителните прилагодени полиња не може да се филтрираат.'],
+      'Hassas özel alanlar özel raporlara eklenemez.':['Sensitive custom fields cannot be added to custom reports.','Конфиденциальные пользовательские поля нельзя добавлять в пользовательские отчёты.','Конфіденційні спеціальні поля не можна додавати до власних звітів.','Чувствителните прилагодени полиња не може да се додаваат во сопствени извештаи.']
     });
     async function loadLabelSettings(companyId) {
       labelSettingsKey = `envantertr:label-settings:${companyId}`;
@@ -4319,7 +4326,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     async function loadCustomReportFields() {
       if (customReportFieldsLoaded) return;
       const fields = await api('/api/assets/custom-fields'), host = $('#customReportColumns');
-      for (const field of fields.filter(item => item.isActive)) {
+      for (const field of fields.filter(item => item.isActive && item.fieldType !== 'sensitive')) {
         const label = document.createElement('label'), input = document.createElement('input');
         input.type = 'checkbox'; input.value = `custom:${field.key}`;
         label.append(input, document.createTextNode(` ${field.name} · özel alan`)); host.append(label);
@@ -7869,7 +7876,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     function renderAssetCustomFieldFilterOptions() {
       const select = $('#assetCustomFieldFilter'); if (!select) return;
       const selected = select.value; select.replaceChildren(new Option('Özel alan seçin', ''));
-      for (const field of (assetCustomFieldDefinitions || []).filter(item => item.isActive)) { const option = new Option(field.name, field.key); option.dataset.fieldType = field.fieldType; select.add(option); }
+      for (const field of (assetCustomFieldDefinitions || []).filter(item => item.isActive && item.fieldType !== 'sensitive')) { const option = new Option(field.name, field.key); option.dataset.fieldType = field.fieldType; select.add(option); }
       if ([...select.options].some(option => option.value === selected)) select.value = selected;
       syncAssetCustomFieldModeOptions();
     }
@@ -7905,29 +7912,41 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         for (const option of field.options || []) control.add(new Option(option, option));
       } else {
         control = document.createElement('input');
-        control.type = ({ text: 'text', number: 'number', date: 'date', checkbox: 'checkbox' })[field.fieldType] || 'text';
+        control.type = ({ text: 'text', number: 'number', date: 'date', checkbox: 'checkbox', sensitive: 'password' })[field.fieldType] || 'text';
+        if (field.fieldType === 'sensitive') control.autocomplete = 'new-password';
         if (field.fieldType === 'number') { control.step = 'any'; control.inputMode = 'decimal'; }
       }
       control.name = `customField:${field.key}`; control.dataset.customFieldKey = field.key;
       control.required = field.isRequired;
       if (field.fieldType === 'checkbox') control.checked = value === 'true'; else control.value = value || '';
-      label.append(control); return label;
+      label.append(control);
+      if (field.fieldType === 'sensitive') {
+        const clearLabel = document.createElement('small'), clear = document.createElement('input');
+        clear.type = 'checkbox'; clear.dataset.clearSensitiveField = field.key; clear.style.width = 'auto'; clear.style.marginInlineEnd = '6px';
+        clearLabel.append(clear, document.createTextNode(translateUiText('Mevcut hassas değeri temizle'))); label.append(clearLabel);
+      }
+      return label;
     }
     function renderAssetCustomFieldInputs(form, values = {}) {
       let root = form.querySelector('[data-asset-custom-fields]');
       if (!root) { root = document.createElement('div'); root.dataset.assetCustomFields = ''; root.className = 'detail-grid'; root.style.gridColumn = '1 / -1'; form.querySelector('.detail-grid, .form-grid')?.append(root); }
       root.replaceChildren();
-      for (const field of (assetCustomFieldDefinitions || []).filter(x => x.isActive)) root.append(customFieldControl(field, values[field.key] || ''));
+      for (const field of (assetCustomFieldDefinitions || []).filter(x => x.isActive && (x.fieldType !== 'sensitive' || canAccessSensitiveAssetFields()))) root.append(customFieldControl(field, values[field.key] || ''));
       root.hidden = root.childElementCount === 0;
     }
     function collectAssetCustomFieldValues(form) {
       const values = {};
       for (const field of (assetCustomFieldDefinitions || []).filter(x => x.isActive)) {
         const input = form.querySelector(`[data-custom-field-key="${CSS.escape(field.key)}"]`);
-        if (input) values[field.key] = field.fieldType === 'checkbox' ? String(input.checked) : input.value.trim();
+        if (input) {
+          const value = field.fieldType === 'checkbox' ? String(input.checked) : input.value.trim();
+          const clearSensitive = form.querySelector(`[data-clear-sensitive-field="${CSS.escape(field.key)}"]`)?.checked === true;
+          if (field.fieldType !== 'sensitive' || value !== '' || clearSensitive) values[field.key] = value;
+        }
       }
       return values;
     }
+    function canAccessSensitiveAssetFields() { return sessionRole === 'owner' || sessionRole === 'admin'; }
     function renderAssetCustomFieldDetail(asset) {
       const overview = $('#assetTabOverview'); let section = overview.querySelector('[data-asset-custom-field-detail]');
       if (!section) { section = document.createElement('section'); section.dataset.assetCustomFieldDetail = ''; section.className = 'asset-detail-grid'; overview.querySelector('.asset-detail-grid')?.after(section); }
@@ -7948,8 +7967,10 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     }
     function ensureAssetCustomFieldSettings() {
       if ($('#assetCustomFieldSettings')) return;
-      $('#companySettingsPage').insertAdjacentHTML('beforeend', `<section class="panel" id="assetCustomFieldSettings" style="margin-top:15px"><div class="panel-head"><h2>Varlık özel alanları</h2><span class="pill blue">Şirket kapsamı</span></div><div class="dialog-body"><p class="muted">Varlık kayıtlarına şirketinize özel metin, sayı, tarih, onay kutusu ve seçim alanları ekleyin. Alanlar yalnızca bu şirkette görünür ve doğrulanır.</p><form id="assetCustomFieldForm" class="form-grid"><label>Anahtar *<input name="key" required maxlength="40" pattern="[a-z][a-z0-9_]{1,39}" placeholder="ornek_kod"></label><label>Alan adı *<input name="name" required maxlength="100" placeholder="Satın alma referansı"></label><label>Tür<select name="fieldType"><option value="text">Metin</option><option value="number">Sayı</option><option value="date">Tarih</option><option value="checkbox">Onay kutusu</option><option value="select">Seçim listesi</option></select></label><label>Seçenekler<textarea name="options" rows="2" placeholder="Yalnızca seçim listesinde; her satıra bir seçenek"></textarea></label><label class="check"><input name="isRequired" type="checkbox"> Zorunlu alan</label><label>Sıra<input name="sortOrder" type="number" value="0" min="-10000" max="10000"></label><div class="wide"><button class="btn primary" type="submit">Özel alan ekle</button><span id="assetCustomFieldFeedback" class="muted" role="status" style="margin-left:10px"></span></div></form><div class="table-wrap"><table><thead><tr><th>Alan</th><th>Anahtar</th><th>Tür</th><th>Zorunlu</th><th>Durum</th><th>İşlem</th></tr></thead><tbody id="assetCustomFieldRows"><tr><td colspan="6">Alanlar yükleniyor…</td></tr></tbody></table></div></div></section>`);
-      $('#assetCustomFieldForm').elements.fieldType.addEventListener('change', event => { $('#assetCustomFieldForm').elements.options.disabled = event.target.value !== 'select'; });
+      $('#companySettingsPage').insertAdjacentHTML('beforeend', `<section class="panel" id="assetCustomFieldSettings" style="margin-top:15px"><div class="panel-head"><h2>Varlık özel alanları</h2><span class="pill blue">Şirket kapsamı</span></div><div class="dialog-body"><p class="muted">Varlık kayıtlarına şirketinize özel metin, sayı, tarih, onay kutusu, seçim ve şifreli hassas alanlar ekleyin. Hassas değerler yalnızca şirket sahibi ve yöneticilerine gösterilir; dışa aktarıma katılmaz.</p><form id="assetCustomFieldForm" class="form-grid"><label>Anahtar *<input name="key" required maxlength="40" pattern="[a-z][a-z0-9_]{1,39}" placeholder="ornek_kod"></label><label>Alan adı *<input name="name" required maxlength="100" placeholder="Satın alma referansı"></label><label>Tür<select name="fieldType"><option value="text">Metin</option><option value="number">Sayı</option><option value="date">Tarih</option><option value="checkbox">Onay kutusu</option><option value="select">Seçim listesi</option><option value="sensitive">Hassas (şifreli)</option></select></label><label>Seçenekler<textarea name="options" rows="2" placeholder="Yalnızca seçim listesinde; her satıra bir seçenek"></textarea></label><label class="check"><input name="isRequired" type="checkbox"> Zorunlu alan</label><label>Sıra<input name="sortOrder" type="number" value="0" min="-10000" max="10000"></label><div class="wide"><button class="btn primary" type="submit">Özel alan ekle</button><span id="assetCustomFieldFeedback" class="muted" role="status" style="margin-left:10px"></span></div></form><div class="table-wrap"><table><thead><tr><th>Alan</th><th>Anahtar</th><th>Tür</th><th>Zorunlu</th><th>Durum</th><th>İşlem</th></tr></thead><tbody id="assetCustomFieldRows"><tr><td colspan="6">Alanlar yükleniyor…</td></tr></tbody></table></div></div></section>`);
+      $('#assetCustomFieldForm [value="sensitive"]').textContent = translateUiText('Hassas (şifreli)');
+      $('#assetCustomFieldSettings .dialog-body > .muted').textContent = translateUiText('Hassas özel alanlar veritabanında şifrelenir; değerleri yalnızca şirket sahibi ve yöneticileri görebilir. CSV dışa aktarımı, filtreleme ve özel raporlar bu değerleri içermez.');
+      $('#assetCustomFieldForm').elements.fieldType.addEventListener('change', event => { const sensitive = event.target.value === 'sensitive'; $('#assetCustomFieldForm').elements.options.disabled = event.target.value !== 'select'; $('#assetCustomFieldForm').elements.isRequired.disabled = sensitive; if (sensitive) $('#assetCustomFieldForm').elements.isRequired.checked = false; });
       $('#assetCustomFieldForm').elements.options.disabled = true;
       $('#assetCustomFieldForm').addEventListener('submit', async event => {
         event.preventDefault(); const form = event.currentTarget, data = new FormData(form), optionsText = String(data.get('options') || '');
@@ -7978,7 +7999,8 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       if (!assetCustomFieldDefinitions.length) { body.innerHTML = '<tr><td colspan="6">Henüz özel alan tanımlanmadı.</td></tr>'; return; }
       for (const field of assetCustomFieldDefinitions) {
         const row = document.createElement('tr');
-        row.innerHTML = `<td>${escapeHtml(field.name)}</td><td><code>${escapeHtml(field.key)}</code></td><td>${escapeHtml(field.fieldType)}${field.options?.length ? `<small class="muted"> · ${field.options.length} seçenek</small>` : ''}</td><td>${field.isRequired ? 'Evet' : 'Hayır'}</td><td>${field.isActive ? 'Etkin' : 'Pasif'}</td><td><button class="btn small" type="button" data-custom-field-edit data-id="${field.id}">Adı düzenle</button> <button class="btn small" type="button" data-custom-field-toggle data-id="${field.id}" data-active="${field.isActive}">${field.isActive ? 'Pasifleştir' : 'Etkinleştir'}</button></td>`;
+        const typeName = field.fieldType === 'sensitive' ? translateUiText('Hassas (şifreli)') : translateUiText(field.fieldType);
+        row.innerHTML = `<td>${escapeHtml(field.name)}</td><td><code>${escapeHtml(field.key)}</code></td><td>${escapeHtml(typeName)}${field.options?.length ? `<small class="muted"> · ${field.options.length} seçenek</small>` : ''}</td><td>${field.isRequired ? 'Evet' : 'Hayır'}</td><td>${field.isActive ? 'Etkin' : 'Pasif'}</td><td><button class="btn small" type="button" data-custom-field-edit data-id="${field.id}">Adı düzenle</button> <button class="btn small" type="button" data-custom-field-toggle data-id="${field.id}" data-active="${field.isActive}">${field.isActive ? 'Pasifleştir' : 'Etkinleştir'}</button></td>`;
         body.append(row);
       }
     }

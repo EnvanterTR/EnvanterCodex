@@ -1553,6 +1553,7 @@ public static class AssetEndpoints
         }).RequireAuthorization("asset.write");
 
         api.MapGet("/assets/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db,
+            AssetCustomFieldProtection customFieldProtection,
             CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
@@ -1692,9 +1693,10 @@ public static class AssetEndpoints
                         .Select(eventItem => eventItem.OccurredAt).FirstOrDefault(),
                     uploadedBy = db.Users.Where(actor => actor.Id == x.UploadedByUserId).Select(actor => actor.DisplayName).FirstOrDefault() })
                 .ToListAsync(cancellationToken);
-            Dictionary<string, string> customFields;
-            try { customFields = JsonSerializer.Deserialize<Dictionary<string, string>>(asset.CustomFieldsJson ?? "{}") ?? new(StringComparer.Ordinal); }
-            catch (JsonException) { customFields = new(StringComparer.Ordinal); }
+            var fieldDefinitions = await db.AssetCustomFieldDefinitions.AsNoTracking()
+                .Where(field => field.CompanyId == companyId).ToListAsync(cancellationToken);
+            var customFields = customFieldProtection.Read(asset.CustomFieldsJson, fieldDefinitions,
+                companyId, AssetCustomFieldEndpoints.CanReadSensitive(user));
             return Results.Ok(new { asset = new { asset.Id, asset.AssetTag, asset.Name, asset.Status, asset.SerialNumber, asset.Location,
                 asset.LocationCatalogId, asset.CategoryId, asset.BrandId, asset.ModelId, asset.ParentAssetId, asset.AssignedEmployeeId, asset.PurchaseOrderId,
                 asset.PurchaseDate, asset.WarrantyExpiresAt, asset.NextAuditOn, asset.ExpectedReturnOn, asset.PurchaseCost, asset.Currency, asset.IsRequestable,
@@ -1920,9 +1922,13 @@ public static class AssetEndpoints
         }).RequireAuthorization("asset.read");
 
         api.MapPost("/assets", async ([FromBody] CreateAssetRequest request, ClaimsPrincipal user,
-            AppDbContext db, CancellationToken cancellationToken) =>
+            AppDbContext db, AssetCustomFieldProtection customFieldProtection, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (!AssetCustomFieldEndpoints.CanReadSensitive(user) && request.CustomFields is not null &&
+                await db.AssetCustomFieldDefinitions.AsNoTracking().AnyAsync(field => field.CompanyId == companyId &&
+                    field.FieldType == "sensitive" && request.CustomFields.Keys.Contains(field.Key), cancellationToken))
+                return Results.Forbid();
             if (string.IsNullOrWhiteSpace(request.AssetTag) || string.IsNullOrWhiteSpace(request.Name))
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
@@ -1961,7 +1967,7 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["defaultLocationCatalogId"] = ["Varsayılan konum bu şirkette bulunamadı."] });
 
             var customFields = await AssetCustomFieldEndpoints.NormalizeValuesAsync(db, companyId,
-                request.CustomFields, null, preserveWhenMissing: false, cancellationToken);
+                request.CustomFields, null, preserveWhenMissing: false, protection: customFieldProtection, ct: cancellationToken);
             if (customFields.Error is not null)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["customFields"] = [customFields.Error] });
 
@@ -2006,7 +2012,7 @@ public static class AssetEndpoints
         }).RequireAuthorization("asset.write");
 
         api.MapPatch("/assets/{id:guid}", async (Guid id, [FromBody] UpdateAssetRequest request,
-            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+            ClaimsPrincipal user, AppDbContext db, AssetCustomFieldProtection customFieldProtection, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
             var tag = request.AssetTag?.Trim().ToUpperInvariant();
@@ -2028,6 +2034,10 @@ public static class AssetEndpoints
 
             var current = await db.Assets.AsNoTracking().SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
             if (current is null) return Results.NotFound();
+            if (!AssetCustomFieldEndpoints.CanReadSensitive(user) && request.CustomFields is not null &&
+                await db.AssetCustomFieldDefinitions.AsNoTracking().AnyAsync(field => field.CompanyId == companyId &&
+                    field.FieldType == "sensitive" && request.CustomFields.Keys.Contains(field.Key), cancellationToken))
+                return Results.Forbid();
             var isRequestable = request.IsRequestable ?? current.IsRequestable;
             var isByod = request.IsByod ?? current.IsByod;
             if (current.UpdatedAt != request.ExpectedUpdatedAt)
@@ -2045,7 +2055,7 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["defaultLocationCatalogId"] = ["Varsayılan konum bu şirkette bulunamadı."] });
 
             var customFields = await AssetCustomFieldEndpoints.NormalizeValuesAsync(db, companyId,
-                request.CustomFields, current.CustomFieldsJson, preserveWhenMissing: true, cancellationToken);
+                request.CustomFields, current.CustomFieldsJson, preserveWhenMissing: true, protection: customFieldProtection, ct: cancellationToken);
             if (customFields.Error is not null)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["customFields"] = [customFields.Error] });
 
@@ -2139,7 +2149,7 @@ public static class AssetEndpoints
         }).RequireAuthorization("asset.write");
 
         api.MapPost("/assets/bulk-update", async ([FromBody] BulkUpdateAssetsRequest request,
-            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+            ClaimsPrincipal user, AppDbContext db, AssetCustomFieldProtection customFieldProtection, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId) ||
                 !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
@@ -2241,12 +2251,19 @@ public static class AssetEndpoints
             {
                 var definitions = await db.AssetCustomFieldDefinitions.AsNoTracking()
                     .Where(field => field.CompanyId == companyId).ToListAsync(cancellationToken);
+                if (!AssetCustomFieldEndpoints.CanReadSensitive(user) &&
+                    AssetCustomFieldEndpoints.HasSensitiveInput(definitions, request.CustomFields!.Keys))
+                    return Results.Forbid();
                 foreach (var asset in assets)
                 {
-                    var normalized = AssetCustomFieldEndpoints.NormalizeSelectedValues(definitions, request.CustomFields!, asset.CustomFieldsJson);
+                    var existingValues = JsonSerializer.Serialize(customFieldProtection.Read(asset.CustomFieldsJson, definitions, companyId, revealSensitive: true));
+                    var normalized = AssetCustomFieldEndpoints.NormalizeSelectedValues(definitions, request.CustomFields!, existingValues);
                     if (normalized.Error is not null)
                         return Results.ValidationProblem(new Dictionary<string, string[]> { ["customFields"] = [normalized.Error] });
-                    normalizedCustomFieldsByAsset[asset.Id] = normalized.Json;
+                    var protectedValues = customFieldProtection.Protect(normalized.Json, asset.CustomFieldsJson, companyId, definitions);
+                    if (protectedValues.Error is not null)
+                        return Results.ValidationProblem(new Dictionary<string, string[]> { ["customFields"] = [protectedValues.Error] });
+                    normalizedCustomFieldsByAsset[asset.Id] = protectedValues.Json;
                 }
             }
 

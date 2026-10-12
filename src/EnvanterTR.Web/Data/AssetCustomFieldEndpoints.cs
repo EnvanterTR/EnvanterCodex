@@ -9,7 +9,7 @@ namespace EnvanterTR.Web.Data;
 
 public static partial class AssetCustomFieldEndpoints
 {
-    private static readonly HashSet<string> SupportedTypes = ["text", "number", "date", "checkbox", "select"];
+    private static readonly HashSet<string> SupportedTypes = ["text", "number", "date", "checkbox", "select", "sensitive"];
 
     public static IEndpointRouteBuilder MapAssetCustomFieldEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -31,6 +31,7 @@ public static partial class AssetCustomFieldEndpoints
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
             if (!TryNormalizeDefinition(request, out var key, out var name, out var type, out var options, out var error))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["field"] = [error!] });
+            if (type == "sensitive" && !CanReadSensitive(user)) return Results.Forbid();
             if (await db.AssetCustomFieldDefinitions.AnyAsync(x => x.CompanyId == companyId && x.Key == key, ct))
                 return Results.Conflict(new { message = "Bu şirket içinde özel alan anahtarı zaten kullanılıyor." });
             var field = new AssetCustomFieldDefinition { CompanyId = companyId, Key = key!, Name = name!,
@@ -48,8 +49,10 @@ public static partial class AssetCustomFieldEndpoints
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
             if (!TryNormalizeDefinition(request, out var key, out var name, out var type, out var options, out var error))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["field"] = [error!] });
+            if ((type == "sensitive" || request.FieldType == "sensitive") && !CanReadSensitive(user)) return Results.Forbid();
             var field = await db.AssetCustomFieldDefinitions.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
             if (field is null) return Results.NotFound();
+            if (field.FieldType == "sensitive" && !CanReadSensitive(user)) return Results.Forbid();
             if (!string.Equals(field.Key, key, StringComparison.Ordinal) &&
                 await db.AssetCustomFieldDefinitions.AnyAsync(x => x.CompanyId == companyId && x.Id != id && x.Key == key, ct))
                 return Results.Conflict(new { message = "Bu şirket içinde özel alan anahtarı zaten kullanılıyor." });
@@ -88,11 +91,18 @@ public static partial class AssetCustomFieldEndpoints
     }
 
     public static async Task<(string? Json, string? Error)> NormalizeValuesAsync(AppDbContext db, Guid companyId,
-        Dictionary<string, string>? submitted, string? existingJson, bool preserveWhenMissing, CancellationToken ct)
+        Dictionary<string, string>? submitted, string? existingJson, bool preserveWhenMissing,
+        AssetCustomFieldProtection protection, CancellationToken ct)
     {
         var fields = await db.AssetCustomFieldDefinitions.AsNoTracking()
             .Where(x => x.CompanyId == companyId && x.IsActive).ToListAsync(ct);
-        return NormalizeValues(fields, submitted, existingJson, preserveWhenMissing);
+        var existingValues = preserveWhenMissing
+            ? JsonSerializer.Serialize(protection.Read(existingJson, fields, companyId, revealSensitive: true))
+            : existingJson;
+        var normalized = NormalizeValues(fields, submitted, existingValues, preserveWhenMissing);
+        return normalized.Error is not null
+            ? normalized
+            : protection.Protect(normalized.Json, existingJson, companyId, fields);
     }
 
     public static (string? Json, string? Error) NormalizeValues(IReadOnlyCollection<AssetCustomFieldDefinition> fields,
@@ -113,6 +123,7 @@ public static partial class AssetCustomFieldEndpoints
         catch (JsonException) { values = new(StringComparer.Ordinal); }
         foreach (var field in fields)
         {
+            if (preserveWhenMissing && !input.ContainsKey(field.Key)) continue;
             input.TryGetValue(field.Key, out var raw);
             var value = raw?.Trim() ?? string.Empty;
             if (value.Length == 0)
@@ -124,7 +135,7 @@ public static partial class AssetCustomFieldEndpoints
             if (value.Length > 2000) return (null, $"'{field.Name}' alanı 2.000 karakteri aşamaz.");
             var valid = field.FieldType switch
             {
-                "text" => true,
+                "text" or "sensitive" => true,
                 "number" => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out _),
                 "date" => DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _),
                 "checkbox" => bool.TryParse(value, out _),
@@ -174,7 +185,7 @@ public static partial class AssetCustomFieldEndpoints
             if (value.Length > 2000) return (null, $"'{field.Name}' alanı 2.000 karakteri aşamaz.");
             var valid = field.FieldType switch
             {
-                "text" => true,
+                "text" or "sensitive" => true,
                 "number" => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out _),
                 "date" => DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _),
                 "checkbox" => bool.TryParse(value, out _),
@@ -199,7 +210,7 @@ public static partial class AssetCustomFieldEndpoints
         try { values = JsonSerializer.Deserialize<Dictionary<string, string>>(json ?? "{}") ?? new(StringComparer.Ordinal); }
         catch (JsonException) { values = new(StringComparer.Ordinal); }
         return fields.OrderBy(x => x.SortOrder).ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(field => values.GetValueOrDefault(field.Key, "")).ToArray();
+            .Select(field => field.FieldType == "sensitive" ? "" : values.GetValueOrDefault(field.Key, "")).ToArray();
     }
 
     private static bool TryNormalizeDefinition(AssetCustomFieldDefinitionRequest request, out string? key,
@@ -209,7 +220,8 @@ public static partial class AssetCustomFieldEndpoints
         type = request.FieldType?.Trim().ToLowerInvariant(); optionsJson = null; error = null;
         if (key is null || !FieldKeyRegex().IsMatch(key)) error = "Anahtar 2–40 karakter olmalı; küçük harf, rakam ve alt çizgi kullanın ve harfle başlayın.";
         else if (string.IsNullOrWhiteSpace(name) || name.Length > 100) error = "Alan adı zorunludur ve 100 karakteri aşamaz.";
-        else if (type is null || !SupportedTypes.Contains(type)) error = "Alan türü text, number, date, checkbox veya select olmalıdır.";
+        else if (type is null || !SupportedTypes.Contains(type)) error = "Alan türü text, number, date, checkbox, select veya sensitive olmalıdır.";
+        else if (type == "sensitive" && request.IsRequired) error = "Hassas alanlar zorunlu olamaz; erişimi olmayan kullanıcılar kaydı tamamlayabilmelidir.";
         else
         {
             var options = (request.Options ?? []).Select(x => x?.Trim()).Where(x => !string.IsNullOrWhiteSpace(x))
@@ -230,6 +242,11 @@ public static partial class AssetCustomFieldEndpoints
     }
     private static bool TryCompanyId(ClaimsPrincipal user, out Guid companyId) =>
         Guid.TryParse(user.FindFirstValue("company_id"), out companyId);
+    public static bool CanReadSensitive(ClaimsPrincipal user) =>
+        user.HasClaim("company_role", "owner") || user.HasClaim("company_role", "admin");
+    public static bool HasSensitiveInput(IReadOnlyCollection<AssetCustomFieldDefinition> fields,
+        IEnumerable<string>? submittedKeys) => submittedKeys is not null &&
+        fields.Any(field => field.FieldType == "sensitive" && submittedKeys.Contains(field.Key, StringComparer.Ordinal));
     private static void AddAudit(AppDbContext db, ClaimsPrincipal user, Guid companyId, Guid fieldId, string action, string details) =>
         db.AuditEntries.Add(new AuditEntry { CompanyId = companyId,
             ActorUserId = Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actor) ? actor : null,

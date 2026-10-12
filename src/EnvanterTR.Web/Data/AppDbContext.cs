@@ -198,7 +198,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetCustomFieldDefinition>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AssetCustomFieldDefinition>().ToTable("AssetCustomFieldDefinitions", table =>
-            table.HasCheckConstraint("CK_AssetCustomFieldDefinitions_Type", "\"FieldType\" IN ('text', 'number', 'date', 'checkbox', 'select')"));
+            table.HasCheckConstraint("CK_AssetCustomFieldDefinitions_Type", "\"FieldType\" IN ('text', 'number', 'date', 'checkbox', 'select', 'sensitive')"));
         modelBuilder.Entity<Asset>().Property(x => x.CustomFieldsJson).HasMaxLength(16000);
         modelBuilder.Entity<Asset>().Property(x => x.Notes).HasMaxLength(4000);
         modelBuilder.Entity<EnvanterUser>().Property(x => x.DisplayName).HasMaxLength(160).IsRequired();

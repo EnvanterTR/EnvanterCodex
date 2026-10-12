@@ -1079,7 +1079,7 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.ToTable("AssetCustomFieldDefinitions", null, t =>
                         {
-                            t.HasCheckConstraint("CK_AssetCustomFieldDefinitions_Type", "\"FieldType\" IN ('text', 'number', 'date', 'checkbox', 'select')");
+                            t.HasCheckConstraint("CK_AssetCustomFieldDefinitions_Type", "\"FieldType\" IN ('text', 'number', 'date', 'checkbox', 'select', 'sensitive')");
                         });
                 });
 

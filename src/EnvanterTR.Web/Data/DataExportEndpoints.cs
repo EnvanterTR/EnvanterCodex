@@ -257,7 +257,7 @@ public static class DataExportEndpoints
     }
 
     private static async Task<IResult> ImportAssetCsvAsync(HttpContext context, AppDbContext db,
-        IAntiforgery antiforgery, CancellationToken cancellationToken)
+        IAntiforgery antiforgery, AssetCustomFieldProtection customFieldProtection, CancellationToken cancellationToken)
     {
         if (!Guid.TryParse(context.User.FindFirstValue("company_id"), out var companyId) ||
             !Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
@@ -343,9 +343,17 @@ public static class DataExportEndpoints
             if (row.Count != expectedHeader.Length) { AddError(errors, $"{index + 2}. satırda {expectedHeader.Length} sütun olmalıdır."); continue; }
             var submittedCustomFields = customFields.Select((field, fieldIndex) => (field.Key, Value: row[dataColumnCount + fieldIndex].Trim()))
                 .ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal);
+            if (!AssetCustomFieldEndpoints.CanReadSensitive(context.User) && customFields.Any(field =>
+                    field.FieldType == "sensitive" && !string.IsNullOrWhiteSpace(submittedCustomFields.GetValueOrDefault(field.Key))))
+                return Results.Forbid();
             var normalizedCustomFields = AssetCustomFieldEndpoints.NormalizeValues(customFields, submittedCustomFields);
             if (normalizedCustomFields.Error is not null) AddError(errors, $"{index + 2}. satır: {normalizedCustomFields.Error}");
-            else customFieldsByRow[index] = normalizedCustomFields.Json ?? "{}";
+            else
+            {
+                var protectedValues = customFieldProtection.Protect(normalizedCustomFields.Json, null, companyId, customFields);
+                if (protectedValues.Error is not null) AddError(errors, $"{index + 2}. satır: {protectedValues.Error}");
+                else customFieldsByRow[index] = protectedValues.Json ?? "{}";
+            }
             var tag = row[0].Trim();
             if (string.IsNullOrWhiteSpace(tag) || tag.Length > 80 || !tags.Add(tag)) AddError(errors, $"{index + 2}. satırda varlık etiketi boş, uzun veya yineleniyor.");
             if (string.IsNullOrWhiteSpace(row[1].Trim()) || row[1].Trim().Length > 240) AddError(errors, $"{index + 2}. satırda varlık adı boş veya çok uzun.");

@@ -104,6 +104,7 @@ if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
     Directory.CreateDirectory(dataProtectionKeysPath);
     builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
 }
+builder.Services.AddSingleton<AssetCustomFieldProtection>();
 
 builder.Services.AddHealthChecks();
 builder.Services.AddAntiforgery(options =>

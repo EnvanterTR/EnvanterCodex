@@ -40,6 +40,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     private const string TestScheme = "SecurityAcceptance";
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _sameCompanyOtherUserId = Guid.NewGuid();
+    private readonly Guid _viewerUserId = Guid.NewGuid();
     private readonly Guid _companyId = Guid.NewGuid();
     private readonly Guid _otherCompanyId = Guid.NewGuid();
     private readonly Guid _ownAssetId = Guid.NewGuid();
@@ -1026,6 +1027,19 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             DisplayName = "Second Security Acceptance User"
         });
         db.CompanyMemberships.Add(new CompanyMembership { CompanyId = _companyId, UserId = _sameCompanyOtherUserId, RoleKey = "admin" });
+        db.Users.Add(new EnvanterUser
+        {
+            Id = _viewerUserId,
+            UserName = $"acceptance-viewer-{_viewerUserId:N}",
+            NormalizedUserName = $"ACCEPTANCE-VIEWER-{_viewerUserId:N}".ToUpperInvariant(),
+            Email = $"acceptance-viewer-{_viewerUserId:N}@example.invalid",
+            NormalizedEmail = $"ACCEPTANCE-VIEWER-{_viewerUserId:N}@EXAMPLE.INVALID".ToUpperInvariant(),
+            EmailConfirmed = true,
+            SecurityStamp = Guid.NewGuid().ToString("N"),
+            ConcurrencyStamp = Guid.NewGuid().ToString("N"),
+            DisplayName = "Security Acceptance Viewer"
+        });
+        db.CompanyMemberships.Add(new CompanyMembership { CompanyId = _companyId, UserId = _viewerUserId, RoleKey = "viewer" });
         await db.SaveChangesAsync();
     }
 
@@ -2071,6 +2085,59 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Contains("OWN-3", csv, StringComparison.Ordinal);
             Assert.DoesNotContain("OWN-1", csv, StringComparison.Ordinal);
         }
+    }
+
+    [Fact]
+    public async Task Sensitive_asset_fields_are_hidden_from_members_and_excluded_from_exports_and_filters()
+    {
+        const string fieldKey = "recovery_code";
+        const string secretValue = "sensitive-acceptance-value-91a2";
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var definition = new AssetCustomFieldDefinition
+            {
+                CompanyId = _companyId, Key = fieldKey, Name = "Recovery code", FieldType = "sensitive"
+            };
+            db.AssetCustomFieldDefinitions.Add(definition);
+            var protection = scope.ServiceProvider.GetRequiredService<AssetCustomFieldProtection>();
+            var protectedValues = protection.Protect(JsonSerializer.Serialize(new Dictionary<string, string>
+                { [fieldKey] = secretValue }), null, _companyId, [definition]);
+            Assert.Null(protectedValues.Error);
+            var asset = await db.Assets.SingleAsync(item => item.CompanyId == _companyId && item.Id == _ownAssetId);
+            asset.CustomFieldsJson = protectedValues.Json;
+            await db.SaveChangesAsync();
+            Assert.DoesNotContain(secretValue, asset.CustomFieldsJson, StringComparison.Ordinal);
+        }
+
+        using (var adminDetail = await SendAsRoleAsync(HttpMethod.Get, $"/api/assets/{_ownAssetId}", "admin"))
+        {
+            Assert.Equal(HttpStatusCode.OK, adminDetail.StatusCode);
+            using var payload = JsonDocument.Parse(await adminDetail.Content.ReadAsStringAsync());
+            Assert.Equal(secretValue, payload.RootElement.GetProperty("asset").GetProperty("customFields")
+                .GetProperty(fieldKey).GetString());
+        }
+        using (var viewerDetail = await SendAsUserAsync(HttpMethod.Get, $"/api/assets/{_ownAssetId}", _viewerUserId, _companyId, role: "viewer"))
+        {
+            Assert.Equal(HttpStatusCode.OK, viewerDetail.StatusCode);
+            using var payload = JsonDocument.Parse(await viewerDetail.Content.ReadAsStringAsync());
+            Assert.False(payload.RootElement.GetProperty("asset").GetProperty("customFields").TryGetProperty(fieldKey, out _));
+            Assert.DoesNotContain(secretValue, payload.RootElement.GetRawText(), StringComparison.Ordinal);
+        }
+        using (var export = await SendAsUserAsync(HttpMethod.Get,
+                   $"/api/assets/export-all.csv?columns=tag,custom:{fieldKey}", _viewerUserId, _companyId, role: "viewer"))
+        {
+            Assert.Equal(HttpStatusCode.OK, export.StatusCode);
+            var csv = await export.Content.ReadAsStringAsync();
+            Assert.Contains($"\"Özel alan: {fieldKey}\"", csv, StringComparison.Ordinal);
+            Assert.DoesNotContain(secretValue, csv, StringComparison.Ordinal);
+        }
+        using (var filter = await SendAsRoleAsync(HttpMethod.Get,
+                   $"/api/assets?customFieldKey={fieldKey}&customFieldMode=equals&customFieldValue={Uri.EscapeDataString(secretValue)}", "admin"))
+            Assert.Equal(HttpStatusCode.BadRequest, filter.StatusCode);
+        using (var report = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/custom-reports", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { name = "Sensitive report", columns = new[] { "tag", $"custom:{fieldKey}" } })))
+            Assert.Equal(HttpStatusCode.BadRequest, report.StatusCode);
     }
 
     [Fact]

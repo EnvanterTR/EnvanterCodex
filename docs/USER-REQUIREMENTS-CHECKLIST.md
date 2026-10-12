@@ -87,7 +87,7 @@ C1. Kayıt ve liste
  C1.14 BYOD (kendi cihazını getir) ayrı alan ✅
  C1.15 İstenebilir (requestable) varlık işaretleme ✅
  C1.16 Özel alanlar: metin, sayı, tarih, onay kutusu, seçenek listesi ✅
- C1.17 Özel alanlarda şifreli/hassas alan türü ❌
+ C1.17 Özel alanlarda şifreli/hassas alan türü ✅ — ASP.NET Data Protection ile alan ve şirket kapsamlı şifreleme; yalnız şirket sahibi/yöneticisi okuyabilir ve değiştirebilir. Liste/ayrıntı, CSV/XLSX aktarım, toplu işlem, filtre ve özel rapor sınırları doğrulanır; hassas değerler dışa aktarımlara yazılmaz. Anahtar volume yedek kapsamındadır.
  C1.18 Model/kategori bazlı alan grupları ❌
  C1.19 Varlık durumu etiketlerinin adını şirket özelleştirebilsin ✅
  C1.20 Yeni durum türleri ve durum geçiş kuralları ❌

@@ -109,11 +109,13 @@ public static class CustomAssetReportEndpoints
         var customKeys = customColumns.Select(x => x[7..]).ToArray();
         if (customColumns.Length != customKeys.Length || customKeys.Any(x => string.IsNullOrWhiteSpace(x) || x.Length > 40))
             return (null, null, Results.ValidationProblem(new Dictionary<string, string[]> { ["columns"] = ["Özel alan sütun anahtarı geçersiz."] }));
-        var availableCustomKeys = await db.AssetCustomFieldDefinitions.AsNoTracking()
-            .Where(x => x.CompanyId == companyId && x.IsActive).Select(x => x.Key).ToListAsync(ct);
+        var availableCustomFields = await db.AssetCustomFieldDefinitions.AsNoTracking()
+            .Where(x => x.CompanyId == companyId && x.IsActive).Select(x => new { x.Key, x.FieldType }).ToListAsync(ct);
         if (columns.Any(column => !BuiltInColumns.Contains(column, StringComparer.Ordinal) &&
-            (!column.StartsWith("custom:", StringComparison.Ordinal) || !availableCustomKeys.Contains(column[7..], StringComparer.Ordinal))))
+            (!column.StartsWith("custom:", StringComparison.Ordinal) || !availableCustomFields.Any(field => field.Key == column[7..]))))
             return (null, null, Results.ValidationProblem(new Dictionary<string, string[]> { ["columns"] = ["Rapor sütunları etkin varlık alanlarından seçilmelidir."] }));
+        if (customKeys.Any(key => availableCustomFields.Any(field => field.Key == key && field.FieldType == "sensitive")))
+            return (null, null, Results.ValidationProblem(new Dictionary<string, string[]> { ["columns"] = ["Hassas özel alanlar özel raporlara eklenemez."] }));
 
         var definition = new { columns, q = request.Q?.Trim() ?? "", status = request.Status ?? "",
             warranty = request.Warranty ?? "", sortBy = request.SortBy ?? "tag", sortDirection = request.SortDirection ?? "asc" };

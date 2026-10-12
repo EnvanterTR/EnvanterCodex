@@ -24,6 +24,8 @@ public static class AssetCustomFieldFilter
             .SingleOrDefaultAsync(cancellationToken);
         if (fieldType is null)
             return (query, "Filtrelenen özel alan bu şirkette etkin değil.");
+        if (fieldType == "sensitive")
+            return (query, "Hassas özel alanlar gizlilik için filtrelenemez.");
 
         var keyPrefix = JsonSerializer.Serialize(key) + ":";
         if (mode == "empty")
