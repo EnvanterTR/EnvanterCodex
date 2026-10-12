@@ -2226,6 +2226,72 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Accessory_kit_requests_are_company_scoped_and_approve_all_stock_lines_atomically()
+    {
+        var kitId = Guid.NewGuid();
+        var otherKitId = Guid.NewGuid();
+        var kitName = $"OWN-REQUEST-KIT-{_userId:N}";
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var accessory = await db.Accessories.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownAccessoryId);
+            accessory.IsRequestable = true;
+            db.AccessoryKits.AddRange(
+                new AccessoryKit { Id = kitId, CompanyId = _companyId, Name = kitName },
+                new AccessoryKit { Id = otherKitId, CompanyId = _otherCompanyId, Name = "OTHER-REQUEST-KIT" });
+            db.AccessoryKitLines.AddRange(
+                new AccessoryKitLine { CompanyId = _companyId, AccessoryKitId = kitId, AccessoryId = _ownAccessoryId, Quantity = 1 },
+                new AccessoryKitLine { CompanyId = _otherCompanyId, AccessoryKitId = otherKitId, AccessoryId = _otherCompanyAccessoryId, Quantity = 1 });
+            await db.SaveChangesAsync();
+        }
+
+        using var catalogResponse = await SendAsAdminAsync("/api/requests/catalog");
+        Assert.Equal(HttpStatusCode.OK, catalogResponse.StatusCode);
+        using var catalog = JsonDocument.Parse(await catalogResponse.Content.ReadAsStringAsync());
+        var kit = Assert.Single(catalog.RootElement.GetProperty("items").EnumerateArray(),
+            item => item.GetProperty("type").GetString() == "AccessoryKit" && item.GetProperty("id").GetGuid() == kitId);
+        Assert.Equal(3, kit.GetProperty("available").GetInt32());
+        Assert.DoesNotContain(catalog.RootElement.GetProperty("items").EnumerateArray(), item => item.GetProperty("id").GetGuid() == otherKitId);
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        using (var foreignRequest = await SendAsRoleAsync(HttpMethod.Post, "/api/requests", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { employeeId = _ownEmployeeId, itemType = "AccessoryKit", itemId = otherKitId, quantity = 1, note = "tenant boundary" }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, foreignRequest.StatusCode);
+        using var createResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/requests", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { employeeId = _ownEmployeeId, itemType = "AccessoryKit", itemId = kitId, quantity = 2, note = "two complete kits" }),
+            requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        using var createPayload = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var requestId = createPayload.RootElement.GetProperty("id").GetGuid();
+        using var decisionResponse = await SendAsRoleAsync(HttpMethod.Post, $"/api/requests/{requestId}/decision", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { approve = true, note = "kit approved" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, decisionResponse.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var assignment = Assert.Single(await db.AccessoryAssignments.Where(x => x.CompanyId == _companyId && x.AccessoryId == _ownAccessoryId && x.EmployeeId == _ownEmployeeId && x.Notes!.Contains($"[KIT:{kitId}]" )).ToListAsync());
+            Assert.Equal(2, assignment.Quantity);
+            Assert.Contains(await db.AccessoryMovements.Where(x => x.CompanyId == _companyId && x.AccessoryId == _ownAccessoryId && x.AssignmentId == assignment.Id).ToListAsync(),
+                movement => movement.MovementType == "Checkout" && movement.Quantity == 2 && movement.ActorUserId == _userId);
+            Assert.Equal("Approved", (await db.InventoryRequests.SingleAsync(x => x.CompanyId == _companyId && x.Id == requestId)).Status);
+        }
+
+        using var searchResponse = await SendAsAdminAsync($"/api/requests?q={Uri.EscapeDataString(kitName)}");
+        using var searchPayload = JsonDocument.Parse(await searchResponse.Content.ReadAsStringAsync());
+        Assert.Contains(searchPayload.RootElement.GetProperty("items").EnumerateArray(), item => item.GetProperty("id").GetGuid() == requestId && item.GetProperty("item").GetString() == kitName);
+        using var exportResponse = await SendAsAdminAsync($"/api/requests/export.csv?q={Uri.EscapeDataString(kitName)}");
+        var csv = await exportResponse.Content.ReadAsStringAsync();
+        Assert.Contains(kitName, csv);
+        Assert.Contains("Hazır kit", csv);
+    }
+
+    [Fact]
     public async Task Requesting_an_asset_rejects_invalid_scope_and_approval_assigns_it_atomically()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");

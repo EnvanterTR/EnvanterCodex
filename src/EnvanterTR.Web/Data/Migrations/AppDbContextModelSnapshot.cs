@@ -2677,7 +2677,7 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.ToTable("InventoryRequests", null, t =>
                         {
-                            t.HasCheckConstraint("CK_InventoryRequests_ItemType", "\"ItemType\" IN ('Accessory', 'Consumable', 'Asset')");
+                            t.HasCheckConstraint("CK_InventoryRequests_ItemType", "\"ItemType\" IN ('Accessory', 'Consumable', 'Asset', 'AccessoryKit')");
 
                             t.HasCheckConstraint("CK_InventoryRequests_Quantity", "\"Quantity\" BETWEEN 1 AND 100000");
 
@@ -3902,7 +3902,7 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("UserId", "RevokedAt", "ExpiresAt");
 
-                    b.ToTable("UserSessions", t =>
+                    b.ToTable("UserSessions", null, t =>
                         {
                             t.HasCheckConstraint("CK_UserSessions_Expiry", "\"ExpiresAt\" > \"CreatedAt\"");
                         });

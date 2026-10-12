@@ -163,6 +163,9 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 
 ### P1 — Envanter iş akışlarının kapsamı
 
+- **Hazır kit talepleri:** Aksesuar kitleri için çalışan adına tam set talebi, mevcut stok hesabı, şirket kapsamı, atomik çok satırlı onay ve zimmet/hareket geçmişi eklendi. Varlık, sarf ve bileşen içeren karma kitler bu teslimin dışında ve açık kalıyor.
+
+
 - BYOD (kişisel cihaz) ayrı şirket kapsamlı varlık alanı olarak uygulanıp yeni/düzenleme formuna, listede filtresine ve işaretine, kayıtlı aramalara, tam CSV dışa/içe aktarımına bağlandı. Eski CSV şablonları varsayılanı şirket cihazı kabul ederek geriye uyumlu kalır; PostgreSQL kabul testi tenant sınırını ve BYOD CSV çıktısını denetler.
 
 - Varlık, aksesuar ve sarf/bileşen satın alma siparişleri vergi oranı, iskonto ve nakliye alanlarını destekler; hesaplanan tutarlar form, API liste/detayı ve CSV'de gösterilir. Detayda fatura birim fiyatı ve paylaştırılmış edinim birim fiyatı ayrı görünür. Teslim alınırken tutarlar satırlara paylaştırılır; aksesuar/stok kartı birim maliyetine ve üretilen varlıkların edinim bedeline işlenir; PostgreSQL kabul paketi 34/34 ile toplamları ve teslim maliyetlerini doğrular. Onay ve bütçe iş akışı ayrıca tamamlanacak.
