@@ -162,7 +162,7 @@ F. LİSANSLAR VE YAZILIM
  F.7 Lisans belgeleri (30 dosya) ✅
  F.8 EULA zorunluluğu + sürüm + SHA-256 + kabul kaydı ✅
  F.9 Ürün anahtarı saklanmıyor (bilinçli karar) ✅ ⚠️ İstersen şifreli saklama eklenebilir
- F.10 Sözleşmeler modülü (contract) ❌ menüde var, arkası boş
+ F.10 Sözleşmeler modülü ✅ — şirket kapsamlı sözleşme listesi/arama/durum filtresi, oluşturma/düzenleme, tedarikçi seçimi, varlık ve yazılım lisansı bağlantıları, ayrıntı, CSV, arşiv/geri alma ve güvenli ek dosyası uçları/arayüzü mevcut. İzole HTTP kabulinde tenant/rol/CSRF, bağlar, CSV, gerçek dosya imzası, dosya bütünlüğü, arşivleme ve denetim izi doğrulanıyor; tam rol bazlı tarayıcı görsel kabul ayrıca sürüyor.
  F.11 Garanti takibi modülü ✅ (rapor olarak)
  F.12 Lisans ↔ tedarikçi/sipariş bağlantısı 🟡
  F.13 Yazılım envanteri (kurulu uygulamaları cihazdan toplama) ❌ ⚠️ Ajan gerekir
@@ -252,7 +252,7 @@ M. ŞİRKET AYARLARI VE GÖRÜNÜM
  M.2 Logo + ana renk ✅
  M.3 Tema seçimi (açık/koyu) + renk paleti ✅ (demoda)
  M.4 Bildirim tercihleri (tür bazında e-posta) ✅
- M.5 Entegrasyonlar (webhook, dış sistem) ❌ menüde var, arkası boş
+ M.5 Entegrasyonlar (webhook, dış sistem) 🟡 — şirket kapsamlı salt okunur API anahtarı yönetimi var; webhook teslimatı ve harici sistem bağlayıcıları eksik.
  M.6 Güvenlik ayarları (parola politikası, oturum süresi, MFA zorunluluğu) 🟡
  M.7 Denetim kayıtları (kim ne zaman ne yaptı, filtrelenebilir + CSV) ✅
  M.8 Yerel ayar: tarih/saat biçimi, para birimi, sayı biçimi ✅
