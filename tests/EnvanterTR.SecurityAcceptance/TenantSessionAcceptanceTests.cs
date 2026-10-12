@@ -59,6 +59,20 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     private readonly Guid _otherCompanyEmployeeId = Guid.NewGuid();
 
     [Fact]
+    public async Task Credential_query_strings_are_removed_before_a_page_is_served()
+    {
+        using var client = _factory!.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        using var response = await client.GetAsync("/?email=admin%40example.test&password=secret-value&twoFactorCode=123456&companyId=private-id&view=assets");
+
+        Assert.Equal(HttpStatusCode.SeeOther, response.StatusCode);
+        Assert.Equal("/?view=assets", response.Headers.Location?.OriginalString);
+        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+        Assert.Equal("no-referrer", response.Headers.GetValues("Referrer-Policy").Single());
+        Assert.DoesNotContain("secret-value", response.Headers.Location?.OriginalString ?? "", StringComparison.Ordinal);
+        Assert.DoesNotContain("admin%40example.test", response.Headers.Location?.OriginalString ?? "", StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Bulk_asset_edits_are_atomic_company_scoped_version_checked_and_audited()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
@@ -5477,6 +5491,124 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(HttpStatusCode.BadRequest, invalidState.StatusCode);
         using (var invalidRange = await SendAsAdminAsync($"/api/assets/audit-schedule?through={today.AddDays(367):yyyy-MM-dd}"))
             Assert.Equal(HttpStatusCode.BadRequest, invalidRange.StatusCode);
+    }
+
+    [Fact]
+    public async Task Asset_physical_audit_submission_is_authorized_validated_tenant_scoped_and_written_to_history()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var nextAuditOn = today.AddDays(21);
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var validRequest = new { auditDate = today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+            notes = "Physical condition checked", nextAuditOn = nextAuditOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) };
+
+        using (var missingCsrf = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_ownAssetId}/audit", "admin",
+                   System.Net.Http.Json.JsonContent.Create(validRequest)))
+            Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+        await SetCompanyRoleAsync("viewer");
+        using (var readOnly = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_ownAssetId}/audit", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(validRequest), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, readOnly.StatusCode);
+        await SetCompanyRoleAsync("admin");
+        using (var crossTenant = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_otherCompanyAssetId}/audit", "admin",
+                   System.Net.Http.Json.JsonContent.Create(validRequest), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
+        using (var futureAudit = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_ownAssetId}/audit", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { auditDate = today.AddDays(3).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), notes = "Future" }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, futureAudit.StatusCode);
+        using (var pastSchedule = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_ownAssetId}/audit", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { auditDate = today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                       nextAuditOn = today.AddDays(-1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, pastSchedule.StatusCode);
+        using (var oversizedNotes = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_ownAssetId}/audit", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { auditDate = today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), notes = new string('x', 1901) }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, oversizedNotes.StatusCode);
+
+        using (var recorded = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_ownAssetId}/audit", "admin",
+                   System.Net.Http.Json.JsonContent.Create(validRequest), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NoContent, recorded.StatusCode);
+
+        using (var detail = await SendAsAdminAsync($"/api/assets/{_ownAssetId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, detail.StatusCode);
+            using var payload = JsonDocument.Parse(await detail.Content.ReadAsStringAsync());
+            Assert.Equal(nextAuditOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                payload.RootElement.GetProperty("asset").GetProperty("nextAuditOn").GetString());
+            Assert.Contains(payload.RootElement.GetProperty("history").EnumerateArray(), item =>
+                item.GetProperty("eventType").GetString() == "Audited" &&
+                item.GetProperty("details").GetString()!.Contains("Physical condition checked", StringComparison.Ordinal));
+        }
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Contains(await db.AssetEvents.AsNoTracking().Where(item => item.CompanyId == _companyId && item.AssetId == _ownAssetId).ToListAsync(),
+            item => item.EventType == "Audited" && item.ActorUserId == _userId && item.Details!.Contains("Physical condition checked", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Asset_audit_schedule_can_be_set_or_cleared_only_by_authorized_company_members()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var scheduledOn = today.AddDays(45);
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using (var missingCsrf = await SendAsRoleAsync(HttpMethod.Put, $"/api/assets/{_ownAssetId}/audit-schedule", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { nextAuditOn = scheduledOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) })))
+            Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+
+        await SetCompanyRoleAsync("viewer");
+        using (var readOnly = await SendAsRoleAsync(HttpMethod.Put, $"/api/assets/{_ownAssetId}/audit-schedule", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { nextAuditOn = scheduledOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, readOnly.StatusCode);
+        await SetCompanyRoleAsync("admin");
+
+        using (var crossTenant = await SendAsRoleAsync(HttpMethod.Put, $"/api/assets/{_otherCompanyAssetId}/audit-schedule", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { nextAuditOn = scheduledOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
+        using (var pastDate = await SendAsRoleAsync(HttpMethod.Put, $"/api/assets/{_ownAssetId}/audit-schedule", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { nextAuditOn = today.AddDays(-1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, pastDate.StatusCode);
+        using (var tooFar = await SendAsRoleAsync(HttpMethod.Put, $"/api/assets/{_ownAssetId}/audit-schedule", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { nextAuditOn = today.AddYears(10).AddDays(1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, tooFar.StatusCode);
+
+        using (var scheduled = await SendAsRoleAsync(HttpMethod.Put, $"/api/assets/{_ownAssetId}/audit-schedule", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { nextAuditOn = scheduledOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, scheduled.StatusCode);
+            using var payload = JsonDocument.Parse(await scheduled.Content.ReadAsStringAsync());
+            Assert.Equal(scheduledOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), payload.RootElement.GetProperty("nextAuditOn").GetString());
+        }
+
+        using (var cleared = await SendAsRoleAsync(HttpMethod.Put, $"/api/assets/{_ownAssetId}/audit-schedule", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { nextAuditOn = (string?)null }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, cleared.StatusCode);
+            using var payload = JsonDocument.Parse(await cleared.Content.ReadAsStringAsync());
+            Assert.Equal(JsonValueKind.Null, payload.RootElement.GetProperty("nextAuditOn").ValueKind);
+        }
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var asset = await db.Assets.AsNoTracking().SingleAsync(item => item.CompanyId == _companyId && item.Id == _ownAssetId);
+        Assert.Null(asset.NextAuditOn);
+        var events = await db.AssetEvents.AsNoTracking().Where(item => item.CompanyId == _companyId && item.AssetId == _ownAssetId).ToListAsync();
+        Assert.Contains(events, item => item.EventType == "AuditScheduled" && item.ActorUserId == _userId);
+        Assert.Contains(events, item => item.EventType == "AuditScheduleCleared" && item.ActorUserId == _userId);
     }
 
     [Fact]

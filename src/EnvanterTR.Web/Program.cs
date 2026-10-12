@@ -248,6 +248,28 @@ app.Use(async (context, next) =>
     await next();
 });
 
+// Older/manual login links may contain credentials in the query string. Strip them
+// before serving any page so the browser replaces the address and does not keep
+// the secret in its current history entry or expose it through a later referrer.
+var sensitiveQueryKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+{
+    "email", "password", "pass", "passwd", "twoFactorCode", "companyId", "token", "access_token", "refresh_token", "code"
+};
+app.Use(async (context, next) =>
+{
+    if (HttpMethods.IsGet(context.Request.Method) && context.Request.Query.Keys.Any(sensitiveQueryKeys.Contains))
+    {
+        var safeQuery = context.Request.Query.Where(parameter => !sensitiveQueryKeys.Contains(parameter.Key)).ToArray();
+        context.Response.StatusCode = StatusCodes.Status303SeeOther;
+        context.Response.Headers.Location = context.Request.PathBase + context.Request.Path + QueryString.Create(safeQuery);
+        context.Response.Headers.CacheControl = "no-store";
+        context.Response.Headers["Referrer-Policy"] = "no-referrer";
+        return;
+    }
+
+    await next();
+});
+
 // Schema changes are deliberately opt-in so a normal app start never mutates customer data.
 if (args.Contains("--migrate", StringComparer.OrdinalIgnoreCase))
 {
