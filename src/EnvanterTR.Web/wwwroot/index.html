@@ -2056,7 +2056,13 @@
       'Etkin':['Active','Активно','Активний','Активно'],'Arşivde':['Archived','В архиве','В архіві','Архивирано'],'Arşivle':['Archive','Архивировать','Архівувати','Архивирај'],'Geri yükle':['Restore','Восстановить','Відновити','Врати'],'Görüntüleme yetkisi':['View only','Только просмотр','Лише перегляд','Само преглед'],
       'Şirket birimi ekle':['Add company unit','Добавить подразделение компании','Додати підрозділ компанії','Додај единица на компанијата'],'Şirket birimini düzenle':['Edit company unit','Изменить подразделение компании','Редагувати підрозділ компанії','Уреди единица на компанијата'],'Alt birim seçmek, şirket içinde hiyerarşi kurar.':['Choose a parent unit to create a company hierarchy.','Выберите родительское подразделение, чтобы создать иерархию компании.','Виберіть батьківський підрозділ, щоб створити ієрархію компанії.','Изберете надредена единица за да создадете хиерархија во компанијата.'],'Birim adı *':['Unit name *','Название подразделения *','Назва підрозділу *','Име на единицата *'],'Birim kodu':['Unit code','Код подразделения','Код підрозділу','Код на единицата'],'Üst birim yok':['No parent unit','Нет родительского подразделения','Немає батьківського підрозділу','Нема надредена единица'],'Kaydet':['Save','Сохранить','Зберегти','Зачувај'],'İptal':['Cancel','Отмена','Скасувати','Откажи'],'birim':['units','подразделений','підрозділів','единици'],
       'Şirket birimi arşivlensin mi? Etkin alt birimleri varsa işlem reddedilir.':['Archive this company unit? The operation is rejected if it has active child units.','Архивировать это подразделение? Операция будет отклонена, если у него есть активные дочерние подразделения.','Архівувати цей підрозділ? Якщо є активні дочірні підрозділи, операцію буде відхилено.','Да се архивира оваа единица? Операцијата ќе биде одбиена ако има активни подредени единици.'],'Şirket birimi geri yüklensin mi?':['Restore this company unit?','Восстановить это подразделение?','Відновити цей підрозділ?','Да се врати оваа единица?'],'Şirket birimi kaydedildi.':['Company unit saved.','Подразделение компании сохранено.','Підрозділ компанії збережено.','Единицата на компанијата е зачувана.'],'Şirket birimi arşivlendi.':['Company unit archived.','Подразделение компании архивировано.','Підрозділ компанії архівовано.','Единицата на компанијата е архивирана.'],'Şirket birimi geri yüklendi.':['Company unit restored.','Подразделение компании восстановлено.','Підрозділ компанії відновлено.','Единицата на компанијата е вратена.']
-    });    function translateUiText(text) {
+    });
+    Object.assign(localeRows, {
+      '“{assetTag}” varlığını çöp kutusuna taşımak istiyor musunuz?':['Move asset “{assetTag}” to the trash?','Переместить актив “{assetTag}” в корзину?','Перемістити актив “{assetTag}” до кошика?','Да се премести средството „{assetTag}“ во корпата?'],
+      'Çöp kutusu notu (isteğe bağlı):':['Trash note (optional):','Примечание к перемещению в корзину (необязательно):','Примітка до переміщення в кошик (необов’язково):','Забелешка за корпата (изборно):'],
+      'Varlık çöp kutusuna taşındı.':['Asset moved to the trash.','Актив перемещен в корзину.','Актив переміщено до кошика.','Средството е преместено во корпата.']
+    });
+    function translateUiText(text) {
       const key = String(text ?? ''), index = localeIndexes[appearanceLanguage.value];
       if (index === undefined) return key;
       if (localeRows[key]?.[index]) return localeRows[key][index];
@@ -6181,6 +6187,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         $('#assignAssetButton').hidden = !canWriteAssets() || asset.assignedEmployeeId || asset.status !== 'Available';
         $('#returnAssetButton').hidden = !canWriteAssets() || !asset.assignedEmployeeId;
         $('#assetStatusAction').hidden = !canWriteAssets() || !!asset.assignedEmployeeId || asset.status === 'Archived' || asset.status === 'Maintenance';
+        $('#trashAssetButton').hidden = !canWriteAssets();
         $('#restoreAssetButton').hidden = !canWriteAssets() || asset.status !== 'Archived';
 
         $('#assetDialog').showModal();
@@ -8509,6 +8516,21 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       finally { submit.disabled = false; }
     });
     $('#returnAssetButton').addEventListener('click', async () => { if (!currentAsset || !confirm(`${currentAsset.assetTag} varlığını iade alıp kullanılabilir duruma geçirmek istiyor musunuz?`)) return; const note = prompt('İade notu (isteğe bağlı):') || null; try { await api(`/api/assets/${currentAsset.id}/return`, { method: 'POST', body: JSON.stringify({ note }) }); $('#assetDialog').close(); await loadDashboard(); notify('Varlık iade alındı; işlem geçmişine kaydedildi.'); } catch (error) { notify(error.message); } });
+    $('#trashAssetButton').addEventListener('click', async () => {
+      if (!currentAsset || !canWriteAssets()) return;
+      const asset = currentAsset;
+      if (!confirm(translateUiText('“{assetTag}” varlığını çöp kutusuna taşımak istiyor musunuz?').replace('{assetTag}', asset.assetTag))) return;
+      const note = prompt(translateUiText('Çöp kutusu notu (isteğe bağlı):'));
+      if (note === null) return;
+      const button = $('#trashAssetButton'); button.disabled = true;
+      try {
+        await api(`/api/assets/${asset.id}/trash`, { method: 'POST', body: JSON.stringify({ note: note.trim() || null }) });
+        $('#assetDialog').close();
+        await loadDashboard($('#globalSearch').value.trim());
+        notify(translateUiText('Varlık çöp kutusuna taşındı.'));
+      } catch (error) { notify(error.message); }
+      finally { button.disabled = false; }
+    });
     $('#assetStatusAction').addEventListener('change', async event => { const status = event.target.value; if (!status || !currentAsset) return; if (!confirm(`${currentAsset.assetTag} durumunu “${statusLabel(status)}” olarak değiştirmek istiyor musunuz?`)) { event.target.value = ''; return; } const note = prompt('Durum değişikliği notu (isteğe bağlı):') || null; try { await api(`/api/assets/${currentAsset.id}/status`, { method: 'PATCH', body: JSON.stringify({ status, note }) }); $('#assetDialog').close(); await loadDashboard(); notify('Varlık durumu güncellendi ve denetim geçmişine yazıldı.'); } catch (error) { notify(error.message); } finally { event.target.value = ''; } });
     $('#restoreAssetButton').addEventListener('click', async () => { if (!currentAsset || currentAsset.status !== 'Archived') return; if (!confirm(`${currentAsset.assetTag} arşivden geri alınarak kullanılabilir duruma getirilsin mi?`)) return; const note = prompt('Geri alma notu (isteğe bağlı):'); if (note === null) return; const assetId = currentAsset.id; $('#restoreAssetButton').disabled = true; try { await api(`/api/assets/${assetId}/restore`, { method: 'POST', body: JSON.stringify({ status: 'Available', note: note.trim() || null }) }); await loadDashboard(); await openAsset(assetId); notify('Varlık arşivden geri alındı ve kullanılabilir duruma getirildi.'); } catch (error) { notify(error.message); } finally { $('#restoreAssetButton').disabled = false; } });
     $('#newEmployeeButton').addEventListener('click', () => {
