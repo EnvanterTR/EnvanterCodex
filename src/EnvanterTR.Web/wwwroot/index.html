@@ -2,6 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8">
+  <style id="asset-label-preview-styles">.asset-label-preview-dialog{width:min(1100px,calc(100% - 24px));height:min(90vh,900px);max-width:none;max-height:90vh;padding:0;border:1px solid var(--line,#dce4ee);border-radius:14px;background:var(--surface,#fff);color:var(--text,#223148);box-shadow:0 24px 80px #091a3280}.asset-label-preview-dialog::backdrop{background:#101b2dcc;backdrop-filter:blur(4px)}.asset-label-preview-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line,#dce4ee)}.asset-label-preview-head h2{margin:0;font-size:1rem}.asset-label-preview-head p{margin:4px 0 0;color:var(--muted,#718096);font-size:.75rem}.asset-label-preview-actions{display:flex;align-items:center;gap:8px}.asset-label-preview-frame{display:block;width:100%;height:calc(100% - 72px);border:0;background:#eef2f7}@media(max-width:600px){.asset-label-preview-dialog{width:calc(100% - 12px);height:94vh;max-height:94vh}.asset-label-preview-head{align-items:flex-start;padding:10px}.asset-label-preview-head h2{font-size:.87rem}.asset-label-preview-actions{flex-direction:column;align-items:stretch}.asset-label-preview-frame{height:calc(100% - 100px)}}</style>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#10213a">
   <title>EnvanterTR — Şirket Alanı</title>
@@ -638,6 +639,7 @@
 <dialog class="detail-dialog" id="assetTrashDialog"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ENVANTERİ / KURTARMA</div><h2>Çöp kutusu</h2><p>Silinen varlık kayıtları ve geçmişleri burada korunur.</p></div><button class="close" id="closeAssetTrash" type="button" aria-label="Kapat">✕</button></div><div class="table-wrap"><table><thead><tr><th>Etiket</th><th>Varlık</th><th>Seri numarası</th><th>Taşınma zamanı</th><th>İşlem</th></tr></thead><tbody id="assetTrashRows"><tr><td colspan="5">Kayıtlar yükleniyor…</td></tr></tbody></table></div><div class="pager"><button id="assetTrashPrev" type="button">← Önceki</button><span id="assetTrashPageInfo">Sayfa 1</span><button id="assetTrashNext" type="button">Sonraki →</button></div></dialog>
   <dialog class="image-preview-dialog" id="imagePreviewDialog" aria-label="Görsel önizleme"><div class="dialog-head"><strong id="imagePreviewTitle">Görsel</strong><button class="close" type="button" id="closeImagePreview" aria-label="Kapat">✕</button></div><div class="image-preview-stage"><img id="imagePreview" alt="Büyütülmüş görsel"></div></dialog>
   <dialog class="detail-dialog" id="modelAttachmentsDialog"><div class="dialog-head"><div><div class="eyebrow">VARLIK MODELİ / TEKNİK DOSYALAR</div><h2 id="modelAttachmentsTitle">Model teknik dosyaları</h2></div><button class="close" type="button" id="closeModelAttachments" aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="muted" id="modelAttachmentsFeedback" role="status" aria-live="polite"></p><form id="modelAttachmentForm" class="asset-attachment-upload" hidden><label class="field">PDF, PNG, JPEG veya WebP · dosya başına en fazla 10 MiB<input id="modelAttachmentFile" name="file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp" required></label><button class="btn primary" id="uploadModelAttachment" type="submit">Teknik dosya ekle</button></form><div class="table-wrap"><table><thead><tr><th>Dosya</th><th>Tür</th><th>Boyut</th><th>Yüklenme</th><th>İşlem</th></tr></thead><tbody id="modelAttachmentRows"><tr><td colspan="5">Dosyalar yükleniyor…</td></tr></tbody></table></div></div></dialog>
+  <dialog class="asset-label-preview-dialog" id="assetLabelPreviewDialog" aria-labelledby="assetLabelPreviewHeading"><div class="asset-label-preview-head"><div><h2 id="assetLabelPreviewHeading">Varlık etiketi önizlemesi</h2><p id="assetLabelPreviewTitle">Önizleme hazırlanıyor…</p></div><div class="asset-label-preview-actions"><button class="btn primary" id="assetLabelPreviewPrint" type="button" disabled>Yazdır</button><button class="btn" id="assetLabelPreviewClose" type="button">Kapat</button></div></div><iframe class="asset-label-preview-frame" id="assetLabelPreviewFrame" title="Varlık etiketi yazdırma önizlemesi"></iframe></dialog>
   <script>
       const toast = document.getElementById('toast');
     const imagePreview = document.getElementById('imagePreview'), imagePreviewDialog = document.getElementById('imagePreviewDialog');
@@ -3016,16 +3018,26 @@
       const reload = { accessorySearch: () => loadAccessories(1), consumableSearch: () => loadConsumables(1), componentSearch: () => loadComponents(1) }[input.id];
       if (reload) reload().catch(error => notify(error.message));
     });
+    function composeAssetLabelCard(asset, images, settings, index = 0, count = 1) {
+      const title = escapeHtml(asset.assetTag);
+      const meta = [settings.showSerial && asset.serialNumber && `Seri no: ${asset.serialNumber}`, settings.showModel && asset.modelName && `Model: ${asset.modelName}`, settings.showLocation && asset.locationName && `Konum: ${asset.locationName}`, settings.showStatus && `Durum: ${statusLabel(asset.status)}`].filter(Boolean).map(escapeHtml).join(' · ');
+      return `<article class="label"><div class="brand">ENVANTERTR · VARLIK KARTI</div><div class="copy">${settings.showName ? `<div class="name">${escapeHtml(asset.name)}</div>` : ''}<div class="tag">${title}</div><div class="meta">${meta}</div></div>${images.twoD ? `<img class="two-d" alt="2D barkod" src="${images.twoD}">` : ''}${images.oneD ? `<img class="one-d" alt="1D barkod" src="${images.oneD}">` : ''}<div class="hint">${index + 1} / ${count} · ${settings.qrTarget === 'asset-url' ? 'Varlık ayrıntısı bağlantısı' : 'Varlık etiketi'} · Ölçek: %100</div></article>`;
+    }
+    function openAssetLabelPreview(cards, settings, sheetSettings = defaultLabelSheetSettings) {
+      const layout = composeSelectedLabelPrint(cards, settings, sheetSettings), dialog = $('#assetLabelPreviewDialog'), frame = $('#assetLabelPreviewFrame'), printButton = $('#assetLabelPreviewPrint');
+      $('#assetLabelPreviewTitle').textContent = layout.title;
+      printButton.disabled = true;
+      frame.onload = () => { printButton.disabled = false; };
+      frame.srcdoc = `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EnvanterTR · ${escapeHtml(layout.title)}</title><style>*{box-sizing:border-box}${layout.style}</style></head><body>${layout.markup}</body></html>`;
+      dialog.showModal();
+      return layout;
+    }
     async function printSingleAssetLabel(asset) {
-      const popup = window.open('', '_blank', 'width=520,height=440');
-      if (!popup) { notify('Yazdırma penceresi açılamadı. Tarayıcı açılır pencere iznini kontrol edin.'); return; }
-      popup.document.write('<!doctype html><html lang="tr"><meta charset="utf-8"><title>Etiket hazırlanıyor</title><body style="font:16px Arial;padding:24px">Varlık etiketi hazırlanıyor…</body></html>');
       try {
-        const settings = labelPrintSettings, images = await labelCodeImages(asset, settings), title = escapeHtml(asset.assetTag);
-        const meta = [settings.showSerial && asset.serialNumber && `Seri no: ${asset.serialNumber}`, settings.showModel && asset.modelName && `Model: ${asset.modelName}`, settings.showLocation && asset.locationName && `Konum: ${asset.locationName}`, settings.showStatus && `Durum: ${statusLabel(asset.status)}`].filter(Boolean).map(escapeHtml).join(' · ');
-        const codeSize = Math.max(0, Math.min(settings.codeSizeMm, settings.heightMm - settings.paddingMm * 2));
-        popup.document.open(); popup.document.write(`<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>${title} · Envanter etiketi</title><style>*{box-sizing:border-box}@page{size:${settings.widthMm}mm ${settings.heightMm}mm;margin:0}body{margin:0;font-family:Arial,sans-serif;color:#111}.label{width:${settings.widthMm}mm;height:${settings.heightMm}mm;padding:${settings.paddingMm}mm;margin:${settings.offsetYmm}mm 0 0 ${settings.offsetXmm}mm;display:grid;grid-template-columns:minmax(0,1fr) ${images.twoD?codeSize:0}mm;grid-template-rows:auto 1fr auto;gap:2mm;align-items:center;overflow:hidden}.brand{grid-column:1/-1;color:#52637a;font-size:7pt;font-weight:700;letter-spacing:.08em}.copy{min-width:0;overflow:hidden}.name{font-size:10pt;font-weight:700;overflow-wrap:anywhere}.tag{margin:2mm 0;font-size:17pt;font-weight:800;letter-spacing:.4px;overflow-wrap:anywhere}.meta{color:#5b6573;font-size:7pt;overflow-wrap:anywhere}.two-d{width:${images.twoD?codeSize:0}mm;height:${images.twoD?codeSize:0}mm;object-fit:contain}.one-d{grid-column:1/-1;width:100%;max-height:10mm;justify-self:center;object-fit:contain}.hint{grid-column:1/-1;color:#667085;font-size:6pt}@media screen{body{padding:12px}.label{border:1px dashed #718096;box-shadow:0 5px 20px #182d491f}}</style></head><body><article class="label"><div class="brand">ENVANTERTR · VARLIK KARTI</div><div class="copy">${settings.showName?`<div class="name">${escapeHtml(asset.name)}</div>`:''}<div class="tag">${title}</div><div class="meta">${meta}</div></div>${images.twoD?`<img class="two-d" alt="2D barkod" src="${images.twoD}">`:''}${images.oneD?`<img class="one-d" alt="1D barkod" src="${images.oneD}">`:''}<div class="hint">${settings.qrTarget==='asset-url'?'Varlık ayrıntısı bağlantısı':'Varlık etiketi'} · Ölçek: %100</div></article><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));<\/script></body></html>`); popup.document.close(); popup.focus();
-      } catch (error) { popup.close(); notify(`Etiket hazırlanamadı: ${error.message}`); }
+        const settings = labelPrintSettings, images = await labelCodeImages(asset, settings);
+        const layout = openAssetLabelPreview([composeAssetLabelCard(asset, images, settings)], settings, { layout: 'single' });
+        notify(`Etiket önizlemesi açıldı · ${layout.title}. Yazdırmak için önizlemedeki düğmeyi kullanın.`);
+      } catch (error) { notify(`Etiket hazırlanamadı: ${error.message}`); }
     }
     function addAssetRow(asset) {
       const row = document.createElement('tr'); row.dataset.id = asset.id; row.dataset.asset = asset.assetTag;
@@ -7876,39 +7888,23 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     $('#printSelectedAssetLabels').addEventListener('click', async () => {
       const ids = [...selectedAssetIds], button = $('#printSelectedAssetLabels');
       if (!ids.length || ids.length > 100) return;
-      const popup = window.open('', '_blank', 'width=700,height=700');
-      if (!popup) { notify('Yazdırma penceresi açılamadı. Tarayıcı açılır pencere iznini kontrol edin.'); return; }
-      button.disabled = true; popup.document.write('<!doctype html><html lang="tr"><meta charset="utf-8"><title>Etiketler hazırlanıyor</title><body style="font:16px Segoe UI,Arial;padding:24px">Seçili varlık etiketleri hazırlanıyor…</body></html>');
+      button.disabled = true;
       try {
         const assets = await api('/api/assets/labels/selected', { method: 'POST', body: JSON.stringify({ assetIds: ids }) });
         const settings = labelPrintSettings, cards = [];
         for (let index = 0; index < assets.length; index++) {
           const asset = assets[index], images = await labelCodeImages(asset, settings);
-          const title = escapeHtml(asset.assetTag), meta = [settings.showSerial && asset.serialNumber && `Seri no: ${asset.serialNumber}`, settings.showModel && asset.modelName && `Model: ${asset.modelName}`, settings.showLocation && asset.locationName && `Konum: ${asset.locationName}`, settings.showStatus && `Durum: ${statusLabel(asset.status)}`].filter(Boolean).map(escapeHtml).join(' · ');
-          cards.push(`<article class="label"><div class="brand">ENVANTERTR · VARLIK KARTI</div><div class="copy">${settings.showName ? `<div class="name">${escapeHtml(asset.name)}</div>` : ''}<div class="tag">${title}</div><div class="meta">${meta}</div></div>${images.twoD ? `<img class="two-d" alt="2D barkod" src="${images.twoD}">` : ''}${images.oneD ? `<img class="one-d" alt="1D barkod" src="${images.oneD}">` : ''}<div class="hint">${index + 1} / ${assets.length} · ${settings.qrTarget === 'asset-url' ? 'Varlık ayrıntısı' : 'Varlık etiketi'}</div></article>`);
+          cards.push(composeAssetLabelCard(asset, images, settings, index, assets.length));
         }
-        const printLayout = composeSelectedLabelPrint(cards, settings, labelSheetSettings);
-        popup.document.open();
-        popup.document.write(`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${assets.length} EnvanterTR etiketi</title><style>*{box-sizing:border-box}${printLayout.style}</style></head><body>${printLayout.markup}<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),200));<\/script>
-</body></html>`);
-        popup.document.close(); popup.focus(); notify(`${fmt.format(assets.length)} etiket için ${printLayout.title} önizlemesi açıldı.`);
-      } catch (error) { popup.close(); notify(`Etiketler hazırlanamadı: ${error.message}`); }
+        const printLayout = openAssetLabelPreview(cards, settings, labelSheetSettings);
+        notify(`${fmt.format(assets.length)} etiket için ${printLayout.title} önizlemesi açıldı.`);
+      } catch (error) { notify(`Etiketler hazırlanamadı: ${error.message}`); }
       finally { updateBulkAssetSelection(); }
     });
-    $('#printAssetLabel').addEventListener('click', async () => {
-      if (!currentAsset) return;
-      const popup = window.open('', '_blank', 'width=520,height=440');
-      if (!popup) { notify('Yazdırma penceresi açılamadı. Tarayıcı açılır pencere iznini kontrol edin.'); return; }
-      try {
-        const settings = labelPrintSettings, images = await labelCodeImages(currentAsset, settings), title = escapeHtml(currentAsset.assetTag);
-        const cardWidth = settings.widthMm, cardHeight = settings.heightMm, codeSize = Math.max(0, Math.min(settings.codeSizeMm, cardHeight - settings.paddingMm * 2));
-        const metaLines = [settings.showSerial && currentAsset.serialNumber && `Seri no: ${currentAsset.serialNumber}`, settings.showModel && currentAsset.modelName && `Model: ${currentAsset.modelName}`, settings.showLocation && currentAsset.locationName && `Konum: ${currentAsset.locationName}`, settings.showStatus && `Durum: ${statusLabel(currentAsset.status)}`].filter(Boolean).map(escapeHtml).join(' · ');
-        popup.document.open();
-        popup.document.write(`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · Envanter etiketi</title><style>*{box-sizing:border-box}@page{size:${cardWidth}mm ${cardHeight}mm;margin:0}body{margin:0;font-family:Arial,sans-serif;color:#111}.label{width:${cardWidth}mm;height:${cardHeight}mm;padding:${settings.paddingMm}mm;margin:${settings.offsetYmm}mm 0 0 ${settings.offsetXmm}mm;display:grid;grid-template-columns:minmax(0,1fr) ${images.twoD ? codeSize : 0}mm;grid-template-rows:auto 1fr auto;gap:2mm;align-items:center;overflow:hidden}.brand{grid-column:1/-1;color:#52637a;font-size:7pt;font-weight:700;letter-spacing:.08em}.copy{min-width:0;overflow:hidden}.name{font-size:10pt;font-weight:700;overflow-wrap:anywhere}.tag{margin:2mm 0;font-size:17pt;font-weight:800;letter-spacing:.4px;overflow-wrap:anywhere}.meta{color:#5b6573;font-size:7pt;overflow-wrap:anywhere}.two-d{width:${images.twoD ? codeSize : 0}mm;height:${images.twoD ? codeSize : 0}mm;object-fit:contain}.one-d{grid-column:1/-1;width:100%;height:auto;max-height:10mm;justify-self:center;object-fit:contain}.hint{grid-column:1/-1;color:#667085;font-size:6pt}@media screen{body{padding:12px}.label{border:1px dashed #718096;box-shadow:0 5px 20px #182d491f}}</style><style>.order-line-editor{display:grid;gap:9px;margin:8px 0}.order-line-row{display:grid;grid-template-columns:minmax(180px,1fr) 85px 125px auto;align-items:end;gap:9px;padding:10px;border:1px solid #e7edf4;border-radius:9px;background:#fafcff}.order-line-row label,.order-receive-row{display:grid;gap:5px;color:#758299;font-size:.68rem}.order-line-row input,.order-line-row select,.order-receive-row input{width:100%;min-height:36px;padding:7px 9px;border:1px solid #dce4ee;border-radius:7px;background:#fff;color:#33445e;font-size:.76rem}.order-receive-row{grid-template-columns:minmax(0,1fr) 110px;align-items:center;padding:10px 0;border-bottom:1px solid #edf0f5;color:#34445c;font-size:.75rem}.order-receive-row small{display:block;margin-top:4px;color:#8490a2;font-size:.67rem}.order-line-remove{min-height:36px}.row-actions{display:flex;flex-wrap:wrap;gap:5px}.row-actions .btn{min-height:31px;padding-inline:8px;font-size:.66rem}@media(max-width:680px){.order-line-row{grid-template-columns:minmax(0,1fr) 74px 100px}.order-line-product{grid-column:1/-1}.order-line-remove{grid-column:1/-1}}</style></head><body><article class="label"><div class="brand">ENVANTERTR · VARLIK KARTI</div><div class="copy">${settings.showName ? `<div class="name">${escapeHtml(currentAsset.name)}</div>` : ''}<div class="tag">${title}</div><div class="meta">${metaLines}</div></div>${images.twoD ? `<img class="two-d" alt="2D barkod" src="${images.twoD}">` : ''}${images.oneD ? `<img class="one-d" alt="1D barkod" src="${images.oneD}">` : ''}<div class="hint">2D içeriği: ${settings.qrTarget === 'asset-url' ? 'varlık ayrıntısı bağlantısı' : 'varlık etiketi'} · Ölçek: %100</div></article><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));<\/script>
-</body></html>`);
-        popup.document.close(); popup.focus();
-      } catch (error) { popup.close(); notify(`Bu varlık seçili barkod türüne uymuyor: ${error.message}`); }
-    });
+    $('#printAssetLabel').addEventListener('click', () => { if (currentAsset) void printSingleAssetLabel(currentAsset); });
+    $('#assetLabelPreviewPrint').addEventListener('click', () => { const frame = $('#assetLabelPreviewFrame'); if (!$('#assetLabelPreviewPrint').disabled) frame.contentWindow?.print(); });
+    $('#assetLabelPreviewClose').addEventListener('click', () => $('#assetLabelPreviewDialog').close());
+    $('#assetLabelPreviewDialog').addEventListener('close', () => { const frame = $('#assetLabelPreviewFrame'); frame.onload = null; frame.srcdoc = ''; $('#assetLabelPreviewPrint').disabled = true; });
     $('#dataDownloadCompany').addEventListener('click', () => $('#exportBackupButton').click());
     $('#dataDownloadCompanyArchive').addEventListener('click', async () => { const button = $('#dataDownloadCompanyArchive'); button.disabled = true; try { const response = await api('/api/company/export.zip'); const blob = await response.blob(); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `envantertr-sirket-arsivi-${new Date().toISOString().slice(0,10)}.zip`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); notify('Şirket kayıtları ve şirket medya dosyaları ZIP arşivine indirildi. Bu dosya geri yükleme aracı değildir.'); } catch (error) { notify(error.message); } finally { button.disabled = false; } });
     $('#dataDownloadAssets').addEventListener('click', () => $('#exportButton').click());

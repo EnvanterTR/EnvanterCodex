@@ -36,7 +36,7 @@ const actions = [
   ['assetStatusAction', "$('#assetStatusAction').addEventListener('change'", '/status`', 'PATCH'],
   ['uploadAssetAttachment', "$('#assetAttachmentForm').addEventListener('submit'", '/attachments`', '10 * 1024 * 1024'],
   ['copyAssetTag', "$('#copyAssetTag').addEventListener('click'", 'navigator.clipboard.writeText'],
-  ['printAssetLabel', "$('#printAssetLabel').addEventListener('click'", 'labelCodeImages(currentAsset'],
+  ['printAssetLabel', "$('#printAssetLabel').addEventListener('click'", 'printSingleAssetLabel(currentAsset)'],
 ];
 
 for (const [id, ...contracts] of actions) {
