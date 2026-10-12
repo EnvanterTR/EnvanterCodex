@@ -33,6 +33,10 @@ jobs:
         shell: bash
         run: node tools/Verify-AppNavigation.mjs
 
+      - name: Verify authentication error and dialog flows
+        shell: bash
+        run: node tools/Verify-AuthErrorFlows.mjs
+
       - name: Verify company app mobile layout
         shell: bash
         run: node tools/Verify-AppMobileLayout.mjs
