@@ -7,7 +7,8 @@ Durum: Ön envanter tamamlandı; tüm menü/alt işlem ve kısayol yollarının 
 
 - Yan menü: 10 açılır grup ve Genel Bakış/Destek dâhil 50 hedef. `tools/Verify-AppNavigation.mjs` menü hedeflerinin ve grupların kaynağa bağlı olduğunu doğruluyor; tek başına işlevlerin doğru çalıştığını kanıtlamıyor.
 - Kapsam defteri: `docs/PRODUCT-COVERAGE.md` içinde 37 ürün ailesi izleniyor. 2 aile “Var” (2/37 = %5,4), 28 “Kısmi” (28/37 = %75,7), kalan 7 aile temel akış, temel yaşam döngüsü, kit kapsamı veya prototip düzeyinde. Bu oran ürün ailesi olgunluğudur; 50 menünün veya tüm kısayolların çalışma yüzdesi değildir.
-- Yerel çalışma: Docker uygulama ve veritabanı sağlık kontrolü `ready`, bekleyen migration 0. Önceki oturum sonrası giriş ekranı yeniden geldi; giriş denemesinden sonra şirket oturumunun devam ettiği doğrulanamadı. Bu nedenle oturum gerektiren diğer sayfalara ait canlı tarayıcı kontrolleri tamamlanmış sayılmıyor.
+- Yerel çalışma: Docker uygulama ve veritabanı sağlık kontrolü `ready`, bekleyen migration 0. 12 Ekim'de sağlanan şirket hesabı loopback API üzerinden kabul edildi ve yalnızca bu teşhis için açılan oturum kapatıldı. Hesap durumu kilitli değil, e-posta doğrulanmış, MFA kapalı ve tek şirket üyeliği mevcut. Açık tarayıcıya oturum aktarılmadığından rol bazlı görsel kabul tamamlanmış sayılmıyor.
+- Canlı demo: `http://localhost:8081/demo/` DOM görünümünde 50 örnek varlık, 19 tablo sütunu ve satır eylem kontrolleri bulundu. `node tools/Verify-PublicDemoLayout.mjs` tam genişlik, içerik sınırında yatay kaydırma, mobil üst çubuk ve HTML önbellek yenileme kurallarını doğruladı. Bu kaynak/DOM kontrolü eylemlerin sonuç davranışını kabul etmez.
 
 ## Menü hedefleri
 
@@ -22,13 +23,13 @@ Bu liste kaynakta bulunan 50 hedefi gösterir. “Canlı doğrulama” sütunu, 
 | Aksesuar ve stok | Aksesuarlar; Satın alma siparişleri; Sarf malzemeleri; Stok talepleri; Bileşenler; Hazır kitler; Stok hareketleri | Bekliyor |
 | Kişiler ve ekipler | Çalışan kayıtları; Uygulama kullanıcıları; Departmanlar; Yetki rolleri | Bekliyor |
 | Konumlar | Lokasyonlar; Binalar ve odalar; Şirket birimleri | Bekliyor |
-| Bakım ve denetim | Bakım kayıtları; Bakım planları; Denetimler; Takvim; Görevler | Bekliyor |
+| Bakım ve denetim | Bakım kayıtları; Bakım planları; Denetimler; Takvim; Görevler | Görevler kaynak ve API bağlantısı mevcut; tarayıcıda rol bazlı sonuç kabulü bekliyor. Diğerleri bekliyor |
 | Raporlar | Hazır raporlar; Özel rapor oluştur; Dışa aktarımlar | Bekliyor |
 | Veri ve yedekler | Tablodan içe aktar; Verileri dışa aktar; Yedekleme geçmişi; Geri yükle | Bekliyor |
 | Şirket ayarları | Firma profili; Logo ve tema; Bildirimler; Entegrasyonlar; Güvenlik; Denetim kayıtları | Bekliyor |
 | Genel | Destek | Bekliyor |
 
-Kaynakta açıkça kısmi/henüz hazır değil olarak işaretlenen yüzeyler: merkezi şirket güvenlik yönetimi (Güvenlik), şube/tüzel kişilik bazında ayrım (Şirket birimleri), rol-yetki düzenleme ekranı (Yetki rolleri), görev atama ve tamamlama akışı (Görevler), harici bağlantı/webhook yönetimi (Entegrasyonlar). Bu tespitler kaynak metin ve kapsam defterine dayanır; UI davranış kabul testi değildir.
+Kaynakta açıkça kısmi/henüz hazır değil olarak işaretlenen yüzeyler: merkezi şirket güvenlik yönetimi (Güvenlik), şube/tüzel kişilik bazında ayrım (Şirket birimleri), rol-yetki düzenleme ekranı (Yetki rolleri), harici bağlantı/webhook yönetimi (Entegrasyonlar). Görevler için şirket kapsamlı liste, arama/filtre/sayfalama, oluşturma/düzenleme, çalışan atama, durum geçişleri ve denetim izi kapsam defterinde mevcut; kaynak/API bağlantısı kontrol edildi ancak rol bazlı tarayıcı sonucu bekliyor. Bu tespitler kaynak metin ve kapsam defterine dayanır; UI davranış kabul testi değildir.
 
 ## Ekran görüntülerindeki varlık detay penceresi
 
@@ -46,7 +47,7 @@ Bir hedef/işlem ancak liste ve detay, ilgili alt işlemler, geçerli/geçersiz 
 
 ## Dört doğrulama kontrolü
 
-1. Navigasyon: 10 grup/50 hedef kaynak kontrolünden geçti; canlı sayfa ziyaretleri tamamlanmadı.
-2. Veri ve servis: yerel `/api/status` ready, migration beklemiyor; oturumlu menü denetimi için oturum devamlılığı doğrulanmalı.
+1. Navigasyon: 10 grup/50 hedef kaynak kontrolünden geçti; canlı şirket menüsü ziyaretleri tamamlanmadı. Yerel demo 50 varlık/19 sütun DOM'u gösterdi; düzen doğrulayıcı geçti.
+2. Veri ve servis: yerel `/api/status` ready, migration beklemiyor; geçerli şirket hesabıyla yerel API girişi başarılı ve teşhis oturumu kapalı. Tarayıcıda açık oturum ve rol bazlı görsel kabul hâlâ yapılmadı.
 3. Kısayol/modal: görüntüdeki varlık modalı envanteri çıkarıldı; gönderim ve kayıt sonrası sonuçlar henüz kabul edilmedi.
 4. Kapsam/oran: 37 ürün ailesi için mevcut defter sayıldı; %5,4 oranı yalnızca “Var” durumundaki aileler içindir, menü çalışma oranı diye sunulamaz.
