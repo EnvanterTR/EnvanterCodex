@@ -1,5 +1,11 @@
 # Ürün kapsamı ve özellik durumu
 
+## 12 Ekim 2026 — yerel giriş arızası ve yeniden kabul
+
+Kullanıcı yerel giriş ekranında kimlik doğrulama hatası bildirdi. İncelemede sunucu/veritabanı bağlantısı hazır, şema güncel, hesap e-postası onaylı, şirket üyeliği mevcut, kilit yok ve 2FA kapalıydı; hata uygulama/DB erişilebilirliği değildi. Gün içindeki Identity denetim izi birden fazla parola kurtarma/değiştirme işlemi gösteriyor; kayıtlar konsol işlemini başlatan operatörü saklamadığı için ilk parola uyuşmazlığının hangi işlemden doğduğu belirlenemiyor. Kullanıcının açıkça belirttiği parola yerel, etkileşimli kurtarma aracıyla kalıcı Identity kaydına ayarlandı; işlem denetim kaydı bıraktı. Gizli parola URL/komut satırına yazılmadı. CSRF korumalı giriş HTTP 200 ve `/api/session` HTTP 200 ile (Santa / owner) doğrulandı.
+
+Yeniden kabul sonuçları: Compose web, PostgreSQL ve demo sitesi çalışıyor; 76 migration, 0 bekleyen; `/api/status`, `/api/setup/status`, `localhost:8080` ve `localhost:8081/demo/` HTTP 200. Ubuntu 24.04 yönlendirmeli kurulum 11/11, Linux geri yükleme/yükseltme emniyet sırası 16/16, Windows kurulum/geri alma 17/17; menü denetimi 50 hedef/10 grup, locale denetimi 1.576 girdi geçti. Kurtarma yalnızca yerel geliştirme hesabını etkiledi. Kaynak ve canlı site bu işlemde değiştirilmedi; Windows Server/Ubuntu hedef host kabulü, imzalı müşteri dağıtımı ve yetkili gerçek tarayıcıda tam rol/modül görsel kabulü v1 için hâlâ açık.
+
 ## 12 Ekim 2026 — varlık listesi toplu düzenleme tamamlandı
 
 Envanter listesinden yönetici/yazma rolüyle en çok 100 varlık seçilip işaretlenen alanlar tek atomik, şirket kapsamlı işlemde düzenlenebilir: ad, kategori, marka, model, varsayılan konum, alış/garanti tarihi, alış maliyeti/para birimi, çalışan talebine açıklık, BYOD, seri numarası, varlığın kalıcı notu ve seçilmiş özel alanlar. İşaretlenmeyen alanlar korunur; açıkça seçilen isteğe bağlı boş değerler temizlenir. Özel alan türü/değeri ve aktif şirket tanımı sunucuda doğrulanır; seçilmeyen eski zorunlu özel alanlar eski kayıtlarda engel oluşturmaz. Bozuk JSON, pasif/bilinmeyen alan, eksik zorunlu değer, başka şirket varlığı, eski sürüm veya yetersiz rol durumunda hiçbir varlık kısmen güncellenmez. Değişen satırların her birine hareket geçmişi ve denetim kaydı eklenir.
