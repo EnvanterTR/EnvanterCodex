@@ -11,6 +11,22 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+function Assert-NoReparsePointInPath([string]$Path) {
+    $fullPath = [IO.Path]::GetFullPath($Path)
+    $pathRoot = [IO.Path]::GetPathRoot($fullPath)
+    $currentPath = $pathRoot
+    $segments = $fullPath.Substring($pathRoot.Length).Split([char[]]@('\','/'),[StringSplitOptions]::RemoveEmptyEntries)
+    foreach ($segment in $segments) {
+        $currentPath = Join-Path $currentPath $segment
+        if (Test-Path -LiteralPath $currentPath) {
+            $item = Get-Item -LiteralPath $currentPath -Force
+            if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+                throw "Installation paths cannot contain symbolic links, junctions, or other reparse points: $currentPath"
+            }
+        }
+    }
+}
+
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
     [Security.Principal.WindowsBuiltInRole]::Administrator)) { throw "Run PowerShell as Administrator." }
 if ($PSVersionTable.PSVersion.Major -lt 5) { throw "Windows PowerShell 5.1 or PowerShell 7 is required." }
@@ -63,6 +79,9 @@ $appPath = Join-Path $InstallRoot "app"
 $mediaPath = Join-Path $DataRoot "company-media"
 $keysPath = Join-Path $DataRoot "data-protection-keys"
 $secretsPath = Join-Path $DataRoot "secrets"
+foreach ($guardedPath in @($InstallRoot,$DataRoot,$appPath,$mediaPath,$keysPath,$secretsPath)) {
+    Assert-NoReparsePointInPath -Path $guardedPath
+}
 $connectionSecretPath = Join-Path $secretsPath "database-connection.dpapi"
 $configPath = Join-Path $appPath "appsettings.Production.json"
 $connectionSecretCreated = $false
@@ -84,6 +103,9 @@ $serviceCreated = $false
 try {
     $appInstallStarted = $true
     New-Item -ItemType Directory -Path $appPath,$mediaPath,$keysPath,$secretsPath -Force | Out-Null
+    foreach ($guardedPath in @($InstallRoot,$DataRoot,$appPath,$mediaPath,$keysPath,$secretsPath)) {
+        Assert-NoReparsePointInPath -Path $guardedPath
+    }
     Copy-Item -Path (Join-Path $package "*") -Destination $appPath -Recurse -Force
 
     # Restrict configuration and the DPAPI secret location before saving installation secrets.

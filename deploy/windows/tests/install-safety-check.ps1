@@ -30,6 +30,8 @@ Assert-Pattern 'personal installs bind only to localhost while team server insta
 
 Assert-Pattern 'nested install and data roots are rejected' '(?s)InstallRoot and DataRoot must be separate, non-nested directories'
 Assert-Pattern 'install and data roots cannot be reparse points' '(?s)foreach \(\$rootPath in @\(\$InstallRoot,\$DataRoot\)\).*?cannot be reparse points'
+Assert-Pattern 'all existing ancestors of install and protected data paths reject reparse points before mutation' '(?s)function Assert-NoReparsePointInPath.*?GetPathRoot.*?FileAttributes\]::ReparsePoint.*?foreach \(\$guardedPath in @\(\$InstallRoot,\$DataRoot,\$appPath,\$mediaPath,\$keysPath,\$secretsPath\)\).*?Assert-NoReparsePointInPath -Path \$guardedPath.*?\$appInstallStarted\s*=\s*\$false'
+Assert-Pattern 'newly created install, media, key, and secret directories are checked before package files or secrets are written' '(?s)New-Item -ItemType Directory -Path \$appPath,\$mediaPath,\$keysPath,\$secretsPath -Force.*?foreach \(\$guardedPath in @\(\$InstallRoot,\$DataRoot,\$appPath,\$mediaPath,\$keysPath,\$secretsPath\)\).*?Assert-NoReparsePointInPath -Path \$guardedPath.*?Copy-Item'
 Assert-Pattern 'a pre-existing app path must be empty and cannot be a reparse point before installation' '(?s)if\s*\(\$appPathWasPresent\).*?ReparsePoint.*?Install directory is not empty'
 Assert-Pattern 'InstallRoot must not contain files that installer ACL updates would affect' '(?s)\$unrelatedInstallFiles\s*=.*?InstallRoot must be dedicated to EnvanterTR'
 Assert-Pattern 'installation mutations are inside a rollback boundary' '(?s)\$appInstallStarted\s*=\s*\$false.*?try\s*\{\s*\$appInstallStarted\s*=\s*\$true\s*New-Item'

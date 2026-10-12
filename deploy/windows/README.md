@@ -81,7 +81,7 @@ Betik HTTPS sertifika subject'ini ve PostgreSQL bağlantı dizesini gizli giriş
 ./migrate.ps1 -InitialSetup
 ```
 
-`InstallRoot` EnvanterTR'ye ayrılmış olmalı; `app` dışında dosya içermemelidir. `InstallRoot` ile `DataRoot` birbiri içine giremez veya junction/symlink olamaz. Bu koşullar kurulumun başka ürün dosyalarının ACL'lerini değiştirmesini ve hata rollback'inin başka bir dizine taşmasını önler.
+`InstallRoot` EnvanterTR'ye ayrılmış olmalı; `app` dışında dosya içermemelidir. `InstallRoot` ile `DataRoot` birbiri içine giremez. Kurucu, bu iki yolun mevcut üst dizinlerini ve `app`, `company-media`, `data-protection-keys`, `secrets` hedeflerini kurulumdan önce ve yeni klasörler oluşturduktan sonra junction/symlink/reparse point açısından denetler; dışarı yönlenen veya değiştirilen bir dizine dosya kopyalamadan, sır yazmadan ya da ACL uygulamadan kurulumu durdurur. Bu koşullar kurulumun başka ürün dosyalarının ACL'lerini değiştirmesini ve hata rollback'inin başka bir dizine taşmasını önler.
 
 ### SMTP e-posta ayarları
 

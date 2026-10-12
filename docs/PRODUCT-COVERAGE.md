@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 12 Ekim 2026 — Windows kurulum yollarında reparse point koruması
+
+Windows kurucusu `InstallRoot` ve `DataRoot` üst yollarını, ayrıca `app`, `company-media`, `data-protection-keys` ve `secrets` klasörlerini dosya kopyalama ve ACL değişikliklerinden önce; hedef klasörleri oluşturduktan sonra yeniden tarar. Herhangi bir üst bileşen veya hedef klasör junction/symlink/reparse point ise işlem durur. Böylece korumalı veriler, sırlar ve izin değişiklikleri hedeflenen EnvanterTR dizini dışına yönlendirilemez. `deploy/windows/tests/install-safety-check.ps1` bu ön/son kontrolleri regresyona bağlar. Bu kaynak/senaryo denetimi gerçek Windows Server ilk kurulum ve yükseltme tatbikatı değildir.
+
 ## 12 Ekim 2026 — güncel tenant/güvenlik kabul tekrarı
 
 Güncel `main` kaynak commit `7f5d435` için `pwsh -NoProfile -File deploy/testing/run-security-acceptance.ps1` izole PostgreSQL 17 üzerinde **83/83** geçti (5 dk 05 sn). Kapsamda gerçek Identity login/CSRF/session, tenant ve rol sınırları, sözleşme eki güvenliği, denetim izi, anonim API reddi ve eşzamanlı envanter/stok hareketleri vardır. Test yalnızca kendi geçici konteyner ve volume'larını kullandı; sonunda kaldırdı, yerel geliştirme DB'sini değiştirmedi. Bu, hedef sunucu dağıtım veya oturumlu görsel kabul kanıtı değildir.
