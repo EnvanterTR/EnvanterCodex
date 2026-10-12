@@ -44,4 +44,4 @@ Bu dosya, bu Codex görevi içindeki erişilebilir kullanıcı isteklerinin ve 1
 
 ## 12 Ekim doğrulama notu
 
-Güncel repo `main` dalında `ff38227 Link company security menu to account controls`; bu oturumda checklist, istek günlüğü, takip dosyası ve UX denetiminde değişiklik yapıldı. Commit/push yapılmadı; `origin/main` fetch sonrası mevcut HEAD ile aynıdır.
+Bu oturumdaki gereksinim ve UX denetimi güncellemeleri d7ab229 Record user requirements and audit remaining UX work commit'iyle main dalına gönderildi; son push kontrolünde çalışma ağacı origin/main ile eşitti.
