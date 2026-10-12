@@ -429,3 +429,10 @@ Bu raporun puanları `docs/PRODUCT-COVERAGE.md` kapsam tablosundan hesaplanmış
 - Güncel kaynak Release modunda Docker içinde derlendi; yalnızca yerel `web` servisi yenilendi. Yerel API `ready`, 74 migration, 0 bekleyen; `/demo/` HTTP 200. PostgreSQL volume'u korunmuştur.
 - Commit `ad74a4d24b92b90dfcbbe5220a1f314da9a14f1a` `main` dalına push edildi; yerel `main` ile `origin/main` eşit. `[skip ci]` kullanıldı; bu nedenle push yeni Actions çalıştırması/e-postası üretmedi. Özel repo Actions geçmişi bu oturumdan doğrulanamadı.
 - Canlı API hâlâ `migration-required`, 72 migration ve 2 bekleyen gösteriyor. Canlı DB yedeği/geri dönüşü doğrulanmadan migration uygulanmayacak. Canlı site dağıtımı ayrıca Coolify panelinden başlatılmalı; bu oturumda Coolify erişimi yok, dolayısıyla commit canlıya taşınmış değildir.
+
+# 12 Ekim 2026 — giriş akışı ve yerel doğrulama
+
+- Şirket giriş formu `method="post"` olarak sabitlendi; JavaScript çalışmadığında tarayıcı varsayılan GET gönderip parolayı URL sorgu parametresine ekleyemez.
+- Yerel Docker Compose web servisi yeniden derlenip başlatıldı; PostgreSQL hacimleri korundu. `/api/status` `ready`, 80 migration uygulanmış ve 0 bekleyen migration gösteriyor.
+- Sunulan giriş HTML'sinde “Sunucu bağlantısını test et” düğmesi doğrulandı; test sonucu sunucu/veritabanının hazır olduğunu gösteriyor. Kullanıcının yerel hesabıyla giriş API kabulü HTTP 200 ve şirket oturumu verdi.
+- Windows kurulum, geri yükleme, güncelleme ve sır güvenliği kontrolleri; beş dilde arayüz metni ve gezinme kontrolleri geçti. Gerçek Windows Server/Ubuntu müşteri kurulumu, imzalı paket ve rol bazlı görsel kabul v1 için hâlâ açık.
