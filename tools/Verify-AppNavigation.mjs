@@ -19,6 +19,11 @@ const groupKeys = [...nav.matchAll(/data-group="([^"]+)"/g)].map(match => match[
 const submenuKeys = [...nav.matchAll(/id="sub-([^"]+)"/g)].map(match => match[1]);
 const failures = [];
 
+const loginForm = source.match(/<form[^>]*id=\"loginForm\"[^>]*>/)?.[0] || '';
+if (!/\bmethod=\"post\"/i.test(loginForm)) {
+  failures.push('Login forms must use POST so a native browser fallback cannot place credentials in the URL.');
+}
+
 if (!source.includes('id="retryApiButton"') || !/function showLogin\([^)]*\)\s*\{[^}]*\$\('#retryApiButton'\)\.hidden\s*=\s*false/.test(source)) {
   failures.push('The login screen must keep the server connection check visible whenever login is shown.');
 }
