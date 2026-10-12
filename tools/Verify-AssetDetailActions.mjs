@@ -49,6 +49,9 @@ requireSource(api.includes('api.MapPost("/assets/{id:guid}/trash"'), 'The asset 
 requireSource(acceptance.includes('Asset_trash_is_tenant_scoped_blocks_live_relations_and_restores_with_audit_history'), 'No tenant/relationship/restore acceptance scenario covers asset trash.');
 requireSource(app.includes('async function removeAssetAttachment') && app.includes("method: 'DELETE'"), 'Attachment removal must use the delete API and refresh the detail list.');
 requireSource(app.includes("document.querySelectorAll('[data-asset-tab]')"), 'Asset-detail tabs must have a bound navigation handler.');
+requireSource(app.includes("panel.style.display = active ? 'block' : 'none'"), 'The selected asset-detail panel must be explicitly visible, with inactive panels hidden.');
+requireSource(app.includes('panel.setAttribute(\'aria-hidden\', String(!active))'), 'Asset-detail panel accessibility state must follow the active tab.');
+requireSource(app.includes('.asset-detail-dialog[open]{display:flex;flex-direction:column;') && !app.includes('.asset-detail-dialog{display:flex;') && app.includes('.asset-dialog-body{min-height:0;flex:1;max-height:none;'), 'Only an open asset-detail dialog may use the flex layout, with a scrollable panel between its header and actions.');
 for (const copy of [
   '“{assetTag}” varlığını çöp kutusuna taşımak istiyor musunuz?',
   'Çöp kutusu notu (isteğe bağlı):',
