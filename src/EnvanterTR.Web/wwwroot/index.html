@@ -607,7 +607,7 @@
   <dialog class="detail-dialog" id="componentStockDialog"><form id="componentStockForm"><div class="dialog-head"><h2>Stok ekle veya düzelt</h2><button class="close" type="button" data-close-component-stock>✕</button></div><div class="dialog-body"><p id="componentStockContext" class="muted"></p><label>Adet (+ giriş, − sayım düzeltmesi)<input name="quantity" type="number" min="-100000" max="100000" required></label><label>Not<input name="notes" maxlength="2000"></label><div class="dialog-actions"><button class="btn" type="button" data-close-component-stock>Vazgeç</button><button class="btn primary" type="submit">Kaydet</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="componentAllocateDialog"><form id="componentAllocateForm"><div class="dialog-head"><h2>Bileşeni varlığa tak</h2><button class="close" type="button" data-close-component-allocate>✕</button></div><div class="dialog-body"><p id="componentAllocateContext" class="muted"></p><label>Varlık *<select name="assetId" required><option value="">Varlık seçin</option></select></label><label>Miktar *<input name="quantity" type="number" min="1" required></label><label>Not<input name="notes" maxlength="2000"></label><div class="dialog-actions"><button class="btn" type="button" data-close-component-allocate>Vazgeç</button><button class="btn primary" type="submit">Atamayı kaydet</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="componentRemoveDialog"><form id="componentRemoveForm"><div class="dialog-head"><div><div class="eyebrow">BİLEŞEN İADESİ</div><h2>Varlıktan bileşen çıkar</h2></div><button class="close" type="button" data-close-component-remove aria-label="Kapat">✕</button></div><div class="dialog-body"><input name="allocationId" type="hidden"><p id="componentRemoveContext" class="muted"></p><label>Çıkarılacak miktar *<input name="quantity" type="number" min="1" required></label><label style="display:block;margin-top:10px">İşlem notu<input name="notes" maxlength="2000" style="width:100%;margin-top:6px"></label><div class="dialog-actions"><button class="btn" type="button" data-close-component-remove>Vazgeç</button><button class="btn primary" type="submit">Çıkarmayı kaydet</button></div></div></form></dialog>
-  <dialog class="detail-dialog" id="accessoryKitFormDialog"><form id="accessoryKitForm"><div class="dialog-head"><div><div class="eyebrow">HAZIR KİT</div><h2 id="accessoryKitFormTitle">Yeni kit oluştur</h2></div><button class="close" type="button" data-close-accessory-kit aria-label="Kapat">✕</button></div><div class="dialog-body"><input name="id" type="hidden"><div class="form-grid"><label>Kit adı *<input name="name" required maxlength="120" placeholder="Örn. Yeni çalışan başlangıç seti"></label><label>Açıklama<input name="description" maxlength="1000" placeholder="İçerik veya kullanım notu"></label></div><label class="detail-field" style="display:block;margin-top:12px"><small>Aksesuar kataloğunda ara</small><input id="accessoryKitItemSearch" type="search" maxlength="120" placeholder="Ad, model veya stok kodu" style="width:100%;margin-top:6px"></label><div class="panel-head" style="margin-top:16px"><h3>Kit içeriği</h3><button class="btn small" id="addAccessoryKitLine" type="button">＋ Aksesuar ekle</button></div><div id="accessoryKitLineEditor" class="form-grid" aria-live="polite"></div><p class="muted">En fazla 50 farklı aksesuar ekleyin. Uygun kit stoku en az bulunan parçaya göre hesaplanır. Teslim sırasında bütün parçalar tek atomik işlemle zimmetlenir.</p><div class="dialog-actions"><button class="btn" type="button" data-close-accessory-kit>Vazgeç</button><button class="btn primary" type="submit">Kiti kaydet</button></div></div></form></dialog>
+  <dialog class="detail-dialog" id="accessoryKitFormDialog"><form id="accessoryKitForm"><div class="dialog-head"><div><div class="eyebrow">HAZIR KİT</div><h2 id="accessoryKitFormTitle">Yeni kit oluştur</h2></div><button class="close" type="button" data-close-accessory-kit aria-label="Kapat">✕</button></div><div class="dialog-body"><input name="id" type="hidden"><div class="form-grid"><label>Kit adı *<input name="name" required maxlength="120" placeholder="Örn. Yeni çalışan başlangıç seti"></label><label>Açıklama<input name="description" maxlength="1000" placeholder="İçerik veya kullanım notu"></label></div><label class="detail-field" style="display:block;margin-top:12px"><small>Stok kataloğunda ara</small><input id="accessoryKitItemSearch" type="search" maxlength="120" placeholder="Ad, model veya stok kodu" style="width:100%;margin-top:6px"></label><div class="panel-head" style="margin-top:16px"><h3>Kit içeriği</h3><button class="btn small" id="addAccessoryKitLine" type="button">＋ Stok kalemi ekle</button></div><div id="accessoryKitLineEditor" class="form-grid" aria-live="polite"></div><p class="muted">En fazla 50 farklı stok kalemi ekleyin. Uygun kit stoku en az bulunan parçaya göre hesaplanır. Teslim sırasında bütün parçalar tek atomik işlemle zimmetlenir.</p><div class="dialog-actions"><button class="btn" type="button" data-close-accessory-kit>Vazgeç</button><button class="btn primary" type="submit">Kiti kaydet</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="accessoryKitHistoryDialog"><div class="dialog-head"><div><div class="eyebrow">HAZIR KİT / HAREKETLER</div><h2 id="accessoryKitHistoryTitle">Kit teslim geçmişi</h2></div><button class="close" type="button" id="closeAccessoryKitHistory" aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="muted">Her satır bir kit içindeki aksesuar zimmetini gösterir. Kalan miktar sıfır olduğunda ilgili parça tamamen iade edilmiştir.</p><div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Aksesuar</th><th>Teslim edilen</th><th>İade edilen</th><th>Kalan</th><th>Hedef</th><th>İşlemi yapan</th><th>Not</th></tr></thead><tbody id="accessoryKitHistoryRows"><tr><td colspan="8">Geçmiş yükleniyor…</td></tr></tbody></table></div><div class="dialog-actions"><button class="btn" type="button" id="closeAccessoryKitHistoryFooter">Kapat</button></div></div></dialog>
   <dialog class="detail-dialog" id="accessoryFormDialog"><form id="accessoryForm"><div class="dialog-head"><div><div class="eyebrow">AKSESUAR KAYDI</div><h2 id="accessoryFormTitle">Yeni aksesuar ekle</h2></div><button class="close" type="button" data-close-accessory-form aria-label="Kapat" data-locale-aria="Kapat">✕</button></div><div class="dialog-body"><input name="accessoryId" type="hidden"><div class="form-grid"><label>Ad *<input name="name" required maxlength="200"></label><label>Kategori<select name="categoryId"><option value="">Kategori seçin (isteğe bağlı)</option></select><button class="btn small" id="accessoryQuickCategory" type="button">＋ Kategori oluştur</button></label><label>Marka<select name="brandId"><option value="">Marka seçin (isteğe bağlı)</option></select><button class="btn small" id="accessoryQuickBrand" type="button">＋ Marka oluştur</button></label><label>Model<select name="modelId"><option value="">Model seçin (isteğe bağlı)</option></select><button class="btn small" id="accessoryQuickModel" type="button">＋ Model oluştur</button></label><label class="wide">Model görseli (PNG/JPEG/WebP, en fazla 2 MiB)<input name="modelPhoto" type="file" accept="image/png,image/jpeg,image/webp"></label><label>Model numarası<input name="modelNumber" maxlength="120"></label><label>Ürün numarası<input name="itemNumber" maxlength="120"></label><label>Tedarikçi<input name="supplier" maxlength="200"></label><label>Konum<input name="location" maxlength="160"></label><label>Minimum stok<input name="minimumQuantity" type="number" min="0" max="100000" value="0" required></label><label>İlk stok adedi<input name="quantity" type="number" min="0" max="100000" value="0"></label><label>Birim maliyeti<input name="unitCost" type="number" min="0" step="0.01"></label><label>Para birimi<select name="currency"><option value="TRY">TRY</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label><label>Alış tarihi<input name="purchaseDate" type="date"></label><label>Garanti bitiş tarihi<input name="warrantyExpiresAt" type="date"></label><label class="wide">Notlar<input name="notes" maxlength="2000"></label><label class="wide"><span><input name="isRequestable" type="checkbox" value="true"> Çalışan isteğine aç</span></label></div><p class="muted" id="accessoryFormStockNote">İlk adet miktarı ilk stok girişi olarak geçmişe kaydedilir.</p><div class="dialog-actions"><button class="btn" type="button" data-close-accessory-form>Vazgeç</button><button class="btn primary" type="submit">Kaydet</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="accessoryCategoryManagerDialog"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ALANI / STOK</div><h2>Aksesuar kategorileri</h2></div><button class="close" type="button" id="closeAccessoryCategoryManager" aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="muted">Kategoriler bu şirketin aksesuar kataloğuna aittir. Kullanılan kategoriler arşivlenebilir; geçmiş aksesuar kayıtları korunur.</p><div class="table-wrap"><table><thead><tr><th>Kategori</th><th>Aksesuar</th><th>Durum</th><th>İşlemler</th></tr></thead><tbody id="accessoryCategoryRows"><tr><td colspan="4">Yükleniyor…</td></tr></tbody></table></div><div class="dialog-actions"><button class="btn" type="button" id="cancelAccessoryCategoryManager">Kapat</button><button class="btn primary" type="button" id="addAccessoryCategory">＋ Kategori ekle</button></div></div></dialog>
@@ -771,6 +771,19 @@
       'Denetçi':['Auditor','Аудитор','Аудитор','Ревизор'],
       'Salt okunur':['Read only','Только чтение','Лише читання','Само за читање'],
       'İK operatörü':['HR operator','HR-оператор','Оператор з персоналу','Оператор за човечки ресурси']
+    });
+
+    Object.assign(localeRows, {
+      'Stok kalemi seçin':['Select an inventory item','Выберите складскую позицию','Виберіть позицію запасів','Изберете ставка од залиха'],
+      'Eşleşen stok kalemi yok':['No matching inventory items','Подходящих складских позиций нет','Відповідних позицій запасів немає','Нема соодветни ставки од залиха'],
+      'Kitte kayıtlı kalem':['Item saved in kit','Позиция сохранена в комплекте','Позиція збережена в наборі','Ставката е зачувана во комплетот'],
+      'Bir kite en fazla 50 farklı stok kalemi eklenebilir.':['A kit can contain at most 50 different inventory items.','В комплект можно добавить не более 50 разных позиций.','До набору можна додати не більше 50 різних позицій.','Во комплет може да се додадат најмногу 50 различни ставки.'],
+      'Varlıklar tekil kayıtlardır.':['Assets are individually tracked.','Активы учитываются поштучно.','Активи обліковуються поштучно.','Средствата се евидентираат поединечно.'],
+      'Talep oluştur':['Create request','Создать запрос','Створити запит','Создај барање'],
+      'Stok kalemi':['Inventory item','Складская позиция','Позиція запасів','Ставка од залиха'],
+      'Set başına':['Per kit','На комплект','На набір','По комплет'],
+      'Aksesuar':['Accessory','Аксессуар','Аксесуар','Додаток'],'Sarf':['Consumable','Расходный материал','Витратний матеріал','Потрошен материјал'],
+      'Varlık':['Asset','Актив','Актив','Средство'],'Bileşen':['Component','Компонент','Компонент','Компонента']
     });
 
     Object.assign(localeRows, {
@@ -6423,8 +6436,9 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       for (const kit of result.items) {
         accessoryKitMap.set(kit.id, kit);
         const row = document.createElement('tr');
-        const content = kit.items.map(item => `${item.accessoryName} × ${fmt.format(item.quantity)}`).join(' · ');
-        row.innerHTML = `<td><strong>${escapeHtml(kit.name)}</strong>${kit.isActive ? '' : '<span class="pill warn">Arşivde</span>'}${kit.description ? `<span class="asset-tag">${escapeHtml(kit.description)}</span>` : ''}</td><td>${escapeHtml(content)}</td><td>${fmt.format(kit.totalUnits)} adet · ${fmt.format(kit.itemCount)} kalem</td><td><span class="pill ${kit.availableKits > 0 ? 'blue' : 'warn'}">${fmt.format(kit.availableKits)} tam kit</span></td><td><div class="row-actions"><button class="btn small kit-checkout" type="button" data-id="${kit.id}" ${!kit.isActive || !canWriteAssets() || kit.availableKits < 1 ? 'disabled' : ''}>Teslim et</button><button class="btn small kit-history" type="button" data-id="${kit.id}">Geçmiş</button><button class="btn small kit-edit" type="button" data-id="${kit.id}" ${!kit.isActive || !canWriteAssets() ? 'disabled' : ''}>Düzenle</button>${kit.isActive ? `<button class="btn small kit-delete" type="button" data-id="${kit.id}" ${canWriteAssets() ? '' : 'disabled'}>Arşivle</button>` : `<button class="btn small kit-restore" type="button" data-id="${kit.id}" ${canWriteAssets() ? '' : 'disabled'}>Geri al</button>`}</div></td>`;
+        const accessoryOnly = kit.items.every(item => item.itemType === 'Accessory');
+        const content = kit.items.map(item => `${item.itemName} × ${fmt.format(item.quantity)}`).join(' · ');
+        row.innerHTML = `<td><strong>${escapeHtml(kit.name)}</strong>${kit.isActive ? '' : '<span class="pill warn">Arşivde</span>'}${kit.description ? `<span class="asset-tag">${escapeHtml(kit.description)}</span>` : ''}</td><td>${escapeHtml(content)}</td><td>${fmt.format(kit.totalUnits)} adet · ${fmt.format(kit.itemCount)} kalem</td><td><span class="pill ${kit.availableKits > 0 ? 'blue' : 'warn'}">${fmt.format(kit.availableKits)} tam kit</span></td><td><div class="row-actions"><button class="btn small kit-checkout" type="button" data-id="${kit.id}" ${!kit.isActive || !canWriteAssets() || kit.availableKits < 1 ? 'disabled' : ''}>${translateUiText(accessoryOnly ? 'Teslim et' : 'Talep oluştur')}</button><button class="btn small kit-history" type="button" data-id="${kit.id}">Geçmiş</button><button class="btn small kit-edit" type="button" data-id="${kit.id}" ${!kit.isActive || !canWriteAssets() ? 'disabled' : ''}>Düzenle</button>${kit.isActive ? `<button class="btn small kit-delete" type="button" data-id="${kit.id}" ${canWriteAssets() ? '' : 'disabled'}>Arşivle</button>` : `<button class="btn small kit-restore" type="button" data-id="${kit.id}" ${canWriteAssets() ? '' : 'disabled'}>Geri al</button>`}</div></td>`;
         body.append(row);
       }
       if (!result.items.length) body.innerHTML = `<tr><td colspan="5">${q ? 'Aramayla eşleşen kit yok.' : 'Henüz hazır kit tanımlanmamış. Oluşturduğunuz setler şirket hesabında saklanır.'}</td></tr>`;
@@ -6433,16 +6447,25 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     async function loadAccessoryKitCatalog(q = '') {
       const requestId = ++accessoryKitCatalogRequestId;
       const params = new URLSearchParams({ page: 1, pageSize: 200, sortBy: 'name', sortDirection: 'asc' }); if (q) params.set('q', q);
-      const result = await api(`/api/accessories?${params}`);
-      if (requestId === accessoryKitCatalogRequestId) accessoryKitCatalog = result.items;
+      const [accessories, consumables, components, assets] = await Promise.all([
+        api(`/api/accessories?${params}`), api(`/api/consumables?${params}`), api(`/api/components?${params}`), api(`/api/assets?${params}`)
+      ]);
+      if (requestId === accessoryKitCatalogRequestId) accessoryKitCatalog = [
+        ...accessories.items.map(x => ({ id: x.id, itemType: 'Accessory', name: x.name, remaining: Math.max(0, x.totalQuantity - x.checkedOut) })),
+        ...consumables.items.map(x => ({ id: x.id, itemType: 'Consumable', name: x.name, remaining: Math.max(0, x.totalQuantity - x.issued) })),
+        ...assets.items.map(x => ({ id: x.id, itemType: 'Asset', name: `${x.name} · ${x.assetTag}`, remaining: x.status === 'Available' && !x.assignedEmployeeId ? 1 : 0 })),
+        ...components.items.map(x => ({ id: x.id, itemType: 'Component', name: x.name, remaining: Math.max(0, x.totalQuantity - x.allocated) }))
+      ].filter(x => x.remaining > 0);
     }
     function fillAccessoryKitSelect(select, selectedId = '', selectedName = '') {
-      select.replaceChildren(new Option(accessoryKitCatalog.length ? 'Aksesuar seçin' : 'Eşleşen aksesuar yok', ''));
-      for (const accessory of accessoryKitCatalog) {
-        const option = new Option(`${accessory.name} · kalan ${fmt.format(accessory.remaining)}`, accessory.id);
-        option.dataset.name = accessory.name; option.dataset.remaining = accessory.remaining; select.add(option);
+      select.replaceChildren(new Option(translateUiText(accessoryKitCatalog.length ? 'Stok kalemi seçin' : 'Eşleşen stok kalemi yok'), ''));
+      for (const item of accessoryKitCatalog) {
+        const key = `${item.itemType}:${item.id}`;
+        const kind = translateUiText(item.itemType === 'Accessory' ? 'Aksesuar' : item.itemType === 'Consumable' ? 'Sarf' : item.itemType === 'Asset' ? 'Varlık' : 'Bileşen');
+        const option = new Option(`${kind} · ${item.name} · kalan ${fmt.format(item.remaining)}`, key);
+        option.dataset.name = item.name; option.dataset.remaining = item.remaining; select.add(option);
       }
-      if (selectedId && !accessoryKitCatalog.some(item => item.id === selectedId)) select.add(new Option(selectedName || 'Kitte kayıtlı aksesuar', selectedId));
+      if (selectedId && !accessoryKitCatalog.some(item => `${item.itemType}:${item.id}` === selectedId)) select.add(new Option(selectedName || translateUiText('Kitte kayıtlı kalem'), selectedId));
       select.value = selectedId;
     }
     function refreshAccessoryKitSelects() {
@@ -6453,14 +6476,20 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     }
     function addAccessoryKitLine(value = null) {
       const editor = $('#accessoryKitLineEditor');
-      if (editor.children.length >= 50) return notify('Bir kite en fazla 50 farklı aksesuar eklenebilir.');
+      if (editor.children.length >= 50) return notify(translateUiText('Bir kite en fazla 50 farklı stok kalemi eklenebilir.'));
       const row = document.createElement('div'); row.className = 'kit-line-row'; row.style.cssText = 'display:grid;grid-template-columns:minmax(180px,1fr) 100px auto;gap:8px;align-items:end';
-      const accessoryLabel = document.createElement('label'); accessoryLabel.textContent = 'Aksesuar';
+      const accessoryLabel = document.createElement('label'); accessoryLabel.textContent = translateUiText('Stok kalemi');
       const select = document.createElement('select'); select.dataset.kitAccessory = 'true'; select.required = true; select.style.cssText = 'display:block;width:100%;margin-top:6px';
-      fillAccessoryKitSelect(select, value?.accessoryId || '', value?.accessoryName || '');
+      const selectedKey = value ? `${value.itemType || 'Accessory'}:${value.itemId || value.accessoryId}` : '';
+      fillAccessoryKitSelect(select, selectedKey, value?.itemName || value?.accessoryName || '');
       accessoryLabel.append(select);
-      const quantityLabel = document.createElement('label'); quantityLabel.textContent = 'Set başına';
+      const quantityLabel = document.createElement('label'); quantityLabel.textContent = translateUiText('Set başına');
       const quantity = document.createElement('input'); quantity.type = 'number'; quantity.min = '1'; quantity.max = '100000'; quantity.required = true; quantity.value = String(value?.quantity || 1); quantity.dataset.kitQuantity = 'true'; quantity.style.cssText = 'display:block;width:100%;margin-top:6px';
+      if (value?.itemType === 'Asset') { quantity.value = '1'; quantity.readOnly = true; quantity.title = translateUiText('Varlıklar tekil kayıtlardır.'); }
+      select.addEventListener('change', () => {
+        const isAsset = select.value.startsWith('Asset:'); quantity.readOnly = isAsset;
+        if (isAsset) quantity.value = '1'; quantity.title = isAsset ? translateUiText('Varlıklar tekil kayıtlardır.') : '';
+      });
       quantityLabel.append(quantity);
       const remove = document.createElement('button'); remove.className = 'btn small'; remove.type = 'button'; remove.textContent = 'Kaldır'; remove.setAttribute('aria-label', 'Aksesuarı kit içeriğinden kaldır'); remove.addEventListener('click', () => row.remove());
       row.append(accessoryLabel, quantityLabel, remove); editor.append(row);
@@ -6479,6 +6508,12 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     async function checkoutAccessoryKit(id) {
       const kit = accessoryKitMap.get(id);
       if (!kit || kit.availableKits < 1) return notify('Kitin tüm parçaları için yeterli stok bulunmuyor. Stok girişlerinden sonra yeniden deneyin.');
+      if (kit.items.some(item => item.itemType !== 'Accessory')) {
+        document.querySelector('[data-page="Stok talepleri"]')?.click();
+        await loadRequestCatalog();
+        await openInventoryRequest('AccessoryKit', id);
+        return;
+      }
       selectedAccessories.clear();
       for (const item of kit.items) selectedAccessories.set(item.accessoryId, {
         id: item.accessoryId, name: item.accessoryName, remaining: item.remaining, checkoutQuantity: item.quantity
@@ -6499,7 +6534,8 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       for (const item of result.items) {
         const row = document.createElement('tr');
         const targetType = item.targetType === 'Employee' ? 'Çalışan' : item.targetType === 'Asset' ? 'Varlık' : 'Konum';
-        row.innerHTML = `<td>${escapeHtml(new Date(item.checkedOutAt).toLocaleString(selectedLocale))}</td><td>${escapeHtml(item.accessoryName)}</td><td>${fmt.format(item.quantity)}</td><td>${fmt.format(item.returnedQuantity)}</td><td><span class="pill ${item.remaining ? 'warn' : 'blue'}">${fmt.format(item.remaining)}</span></td><td>${targetType}: ${escapeHtml(item.target || 'Kayıt bulunamadı')}</td><td>${escapeHtml(item.actor || 'Kullanıcı kaydı yok')}</td><td>${escapeHtml(item.notes || '—')}</td>`;
+        const itemType = item.itemType === 'Accessory' ? 'Aksesuar' : item.itemType === 'Consumable' ? 'Sarf' : item.itemType === 'Asset' ? 'Varlık' : 'Bileşen';
+        row.innerHTML = `<td>${escapeHtml(new Date(item.checkedOutAt).toLocaleString(selectedLocale))}</td><td>${escapeHtml(item.itemName)}<span class="asset-tag">${itemType}</span></td><td>${fmt.format(item.quantity)}</td><td>${fmt.format(item.returnedQuantity)}</td><td><span class="pill ${item.remaining ? 'warn' : 'blue'}">${fmt.format(item.remaining)}</span></td><td>${targetType}: ${escapeHtml(item.target || 'Kayıt bulunamadı')}</td><td>${escapeHtml(item.actor || 'Kullanıcı kaydı yok')}</td><td>${escapeHtml(item.notes || '—')}</td>`;
         body.append(row);
       }
       if (!result.items.length) body.innerHTML = '<tr><td colspan="8">Bu kit için henüz teslim kaydı yok.</td></tr>';
@@ -6539,9 +6575,9 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     $('#accessoryKitForm').addEventListener('submit', async event => {
       event.preventDefault(); const form = event.currentTarget, data = new FormData(form), button = $('button[type="submit"]', form);
       const rows = [...$('#accessoryKitLineEditor').children];
-      const items = rows.map(row => ({ accessoryId: row.querySelector('[data-kit-accessory]').value, quantity: Number(row.querySelector('[data-kit-quantity]').value) }));
-      if (items.some(item => !item.accessoryId || !Number.isSafeInteger(item.quantity) || item.quantity < 1 || item.quantity > 100000)) return notify('Her kit kaleminde aksesuar ve 1–100.000 arasında tam adet seçin.');
-      if (new Set(items.map(item => item.accessoryId)).size !== items.length) return notify('Aynı aksesuarı iki satırda seçmeyin; adedi tek satırda artırın.');
+      const items = rows.map(row => { const [itemType, itemId] = row.querySelector('[data-kit-accessory]').value.split(':'); return { itemType, itemId, quantity: Number(row.querySelector('[data-kit-quantity]').value) }; });
+      if (items.some(item => !item.itemType || !item.itemId || !Number.isSafeInteger(item.quantity) || item.quantity < 1 || item.quantity > 100000 || (item.itemType === 'Asset' && item.quantity !== 1))) return notify('Her kit kaleminde tür, kayıt ve geçerli adet seçin. Varlık adedi 1 olmalıdır.');
+      if (new Set(items.map(item => `${item.itemType}:${item.itemId}`)).size !== items.length) return notify('Aynı stok kalemini iki satırda seçmeyin; adedi tek satırda artırın.');
       const payload = { name: data.get('name'), description: data.get('description') || null, items }, id = data.get('id');
       button.disabled = true;
       try {

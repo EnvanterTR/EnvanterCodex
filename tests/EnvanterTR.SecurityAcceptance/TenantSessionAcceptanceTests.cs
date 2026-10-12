@@ -2240,8 +2240,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 new AccessoryKit { Id = kitId, CompanyId = _companyId, Name = kitName },
                 new AccessoryKit { Id = otherKitId, CompanyId = _otherCompanyId, Name = "OTHER-REQUEST-KIT" });
             db.AccessoryKitLines.AddRange(
-                new AccessoryKitLine { CompanyId = _companyId, AccessoryKitId = kitId, AccessoryId = _ownAccessoryId, Quantity = 1 },
-                new AccessoryKitLine { CompanyId = _otherCompanyId, AccessoryKitId = otherKitId, AccessoryId = _otherCompanyAccessoryId, Quantity = 1 });
+                new AccessoryKitLine { CompanyId = _companyId, AccessoryKitId = kitId, ItemType = "Accessory", AccessoryId = _ownAccessoryId, Quantity = 1 },
+                new AccessoryKitLine { CompanyId = _otherCompanyId, AccessoryKitId = otherKitId, ItemType = "Accessory", AccessoryId = _otherCompanyAccessoryId, Quantity = 1 });
             await db.SaveChangesAsync();
         }
 
@@ -2289,6 +2289,80 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var csv = await exportResponse.Content.ReadAsStringAsync();
         Assert.Contains(kitName, csv);
         Assert.Contains("Hazır kit", csv);
+    }
+
+    [Fact]
+    public async Task Mixed_kits_validate_tenant_items_and_issue_all_four_types_as_one_request()
+    {
+        var kitId = Guid.NewGuid();
+        var kitName = $"OWN-MIXED-KIT-{_userId:N}";
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Accessories.Single(x => x.CompanyId == _companyId && x.Id == _ownAccessoryId).IsRequestable = true;
+            db.Consumables.Single(x => x.CompanyId == _companyId && x.Id == _ownConsumableId).IsRequestable = true;
+            db.AccessoryKits.Add(new AccessoryKit { Id = kitId, CompanyId = _companyId, Name = kitName });
+            db.AccessoryKitLines.AddRange(
+                new AccessoryKitLine { CompanyId = _companyId, AccessoryKitId = kitId, ItemType = "Accessory", AccessoryId = _ownAccessoryId, Quantity = 1 },
+                new AccessoryKitLine { CompanyId = _companyId, AccessoryKitId = kitId, ItemType = "Consumable", ConsumableId = _ownConsumableId, Quantity = 2 },
+                new AccessoryKitLine { CompanyId = _companyId, AccessoryKitId = kitId, ItemType = "Asset", AssetId = _ownAssetId, Quantity = 1 },
+                new AccessoryKitLine { CompanyId = _companyId, AccessoryKitId = kitId, ItemType = "Component", ComponentId = _ownComponentId, Quantity = 1 });
+            await db.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using (var foreignKit = await SendAsRoleAsync(HttpMethod.Post, "/api/accessory-kits", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       name = $"FOREIGN-MIXED-KIT-{_userId:N}", description = (string?)null,
+                       items = new[] { new { itemType = "Component", itemId = _otherCompanyComponentId, quantity = 1 },
+                           new { itemType = "Asset", itemId = _ownAssetId, quantity = 1 } }
+                   }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, foreignKit.StatusCode);
+
+        using var catalogResponse = await SendAsAdminAsync("/api/requests/catalog");
+        Assert.Equal(HttpStatusCode.OK, catalogResponse.StatusCode);
+        using var catalog = JsonDocument.Parse(await catalogResponse.Content.ReadAsStringAsync());
+        var kit = Assert.Single(catalog.RootElement.GetProperty("items").EnumerateArray(),
+            item => item.GetProperty("type").GetString() == "AccessoryKit" && item.GetProperty("id").GetGuid() == kitId);
+        Assert.Equal(1, kit.GetProperty("available").GetInt32());
+
+        using var createResponse = await SendAsRoleAsync(HttpMethod.Post, "/api/requests", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { employeeId = _ownEmployeeId, itemType = "AccessoryKit", itemId = kitId, quantity = 1, note = "mixed kit" }),
+            requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        using var createPayload = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var requestId = createPayload.RootElement.GetProperty("id").GetGuid();
+        using var decisionResponse = await SendAsRoleAsync(HttpMethod.Post, $"/api/requests/{requestId}/decision", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { approve = true, note = "mixed kit approved" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, decisionResponse.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var accessoryAssignment = Assert.Single(await db.AccessoryAssignments.Where(x => x.CompanyId == _companyId && x.AccessoryId == _ownAccessoryId && x.Notes!.Contains($"[KIT:{kitId}]" )).ToListAsync());
+            Assert.Equal(1, accessoryAssignment.Quantity);
+            Assert.Contains(await db.ConsumableMovements.Where(x => x.CompanyId == _companyId && x.ConsumableId == _ownConsumableId).ToListAsync(),
+                x => x.MovementType == "Checkout" && x.Quantity == 2 && x.Notes!.Contains($"[KIT:{kitId}]"));
+            var asset = await db.Assets.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownAssetId);
+            Assert.Equal(AssetStatuses.Deployed, asset.Status);
+            Assert.Equal(_ownEmployeeId, asset.AssignedEmployeeId);
+            Assert.Contains(await db.ComponentAllocations.Where(x => x.CompanyId == _companyId && x.ComponentId == _ownComponentId).ToListAsync(),
+                x => x.AssetId == _ownAssetId && x.Quantity == 1 && x.Notes!.Contains($"[KIT:{kitId}]"));
+            Assert.Equal("Approved", (await db.InventoryRequests.SingleAsync(x => x.CompanyId == _companyId && x.Id == requestId)).Status);
+        }
+
+        using var historyResponse = await SendAsAdminAsync($"/api/accessory-kits/{kitId}/history");
+        Assert.Equal(HttpStatusCode.OK, historyResponse.StatusCode);
+        using var historyPayload = JsonDocument.Parse(await historyResponse.Content.ReadAsStringAsync());
+        Assert.Equal(4, historyPayload.RootElement.GetProperty("items").GetArrayLength());
+        Assert.Equal(new[] { "Accessory", "Consumable", "Asset", "Component" }.OrderBy(x => x),
+            historyPayload.RootElement.GetProperty("items").EnumerateArray().Select(x => x.GetProperty("itemType").GetString()!).OrderBy(x => x));
     }
 
     [Fact]

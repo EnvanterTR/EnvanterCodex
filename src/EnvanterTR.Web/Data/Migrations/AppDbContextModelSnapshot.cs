@@ -267,14 +267,28 @@ namespace EnvanterTR.Web.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("AccessoryId")
+                    b.Property<Guid?>("AccessoryId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("AccessoryKitId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("AssetId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ComponentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ConsumableId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ItemType")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
@@ -287,11 +301,35 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("CompanyId", "AccessoryKitId");
 
+                    b.HasIndex("CompanyId", "AssetId");
+
+                    b.HasIndex("CompanyId", "ComponentId");
+
+                    b.HasIndex("CompanyId", "ConsumableId");
+
                     b.HasIndex("CompanyId", "AccessoryKitId", "AccessoryId")
                         .IsUnique();
 
+                    b.HasIndex("CompanyId", "AccessoryKitId", "AssetId")
+                        .IsUnique()
+                        .HasFilter("\"AssetId\" IS NOT NULL");
+
+                    b.HasIndex("CompanyId", "AccessoryKitId", "ComponentId")
+                        .IsUnique()
+                        .HasFilter("\"ComponentId\" IS NOT NULL");
+
+                    b.HasIndex("CompanyId", "AccessoryKitId", "ConsumableId")
+                        .IsUnique()
+                        .HasFilter("\"ConsumableId\" IS NOT NULL");
+
+                    b.HasIndex("CompanyId", "AccessoryKitId", "ItemType");
+
                     b.ToTable("AccessoryKitLines", null, t =>
                         {
+                            t.HasCheckConstraint("CK_AccessoryKitLines_ItemType", "(\"ItemType\" = 'Accessory' AND \"AccessoryId\" IS NOT NULL AND \"ConsumableId\" IS NULL AND \"AssetId\" IS NULL AND \"ComponentId\" IS NULL) OR (\"ItemType\" = 'Consumable' AND \"AccessoryId\" IS NULL AND \"ConsumableId\" IS NOT NULL AND \"AssetId\" IS NULL AND \"ComponentId\" IS NULL) OR (\"ItemType\" = 'Asset' AND \"AccessoryId\" IS NULL AND \"ConsumableId\" IS NULL AND \"AssetId\" IS NOT NULL AND \"ComponentId\" IS NULL) OR (\"ItemType\" = 'Component' AND \"AccessoryId\" IS NULL AND \"ConsumableId\" IS NULL AND \"AssetId\" IS NULL AND \"ComponentId\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_AccessoryKitLines_AssetQuantity", "\"ItemType\" <> 'Asset' OR \"Quantity\" = 1");
+
                             t.HasCheckConstraint("CK_AccessoryKitLines_Quantity", "\"Quantity\" > 0");
                         });
                 });
@@ -4135,8 +4173,7 @@ namespace EnvanterTR.Web.Data.Migrations
                         .WithMany()
                         .HasForeignKey("CompanyId", "AccessoryId")
                         .HasPrincipalKey("CompanyId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("EnvanterTR.Web.Data.AccessoryKit", null)
                         .WithMany()
@@ -4144,6 +4181,24 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.Asset", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "AssetId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EnvanterTR.Web.Data.InventoryComponent", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "ComponentId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EnvanterTR.Web.Data.Consumable", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "ConsumableId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.AccessoryModel", b =>

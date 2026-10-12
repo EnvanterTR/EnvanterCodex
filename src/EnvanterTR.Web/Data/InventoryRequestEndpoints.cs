@@ -286,19 +286,41 @@ public static class InventoryRequestEndpoints
     private static async Task<Dictionary<Guid, int>> AvailableKitsAsync(AppDbContext db, Guid companyId, Guid[] kitIds, CancellationToken ct)
     {
         if (kitIds.Length == 0) return [];
-        var lines = await (from line in db.AccessoryKitLines.AsNoTracking()
-                           join accessory in db.Accessories.AsNoTracking()
-                               on new { line.CompanyId, Id = line.AccessoryId } equals new { accessory.CompanyId, Id = accessory.Id }
-                           where line.CompanyId == companyId && kitIds.Contains(line.AccessoryKitId)
-                           select new { line.AccessoryKitId, line.AccessoryId, line.Quantity, accessory.TotalQuantity, accessory.IsRequestable })
-            .ToListAsync(ct);
-        var accessoryIds = lines.Select(x => x.AccessoryId).Distinct().ToArray();
-        var assigned = await db.AccessoryAssignments.AsNoTracking().Where(x => x.CompanyId == companyId && accessoryIds.Contains(x.AccessoryId))
-            .GroupBy(x => x.AccessoryId).Select(group => new { Id = group.Key, Quantity = group.Sum(x => x.Quantity - x.ReturnedQuantity) })
-            .ToDictionaryAsync(x => x.Id, x => x.Quantity, ct);
-        return lines.GroupBy(x => x.AccessoryKitId)
-            .Where(group => group.Any() && group.All(x => x.IsRequestable))
-            .ToDictionary(group => group.Key, group => group.Min(x => Math.Max(0, x.TotalQuantity - assigned.GetValueOrDefault(x.AccessoryId)) / x.Quantity));
+        var lines = await db.AccessoryKitLines.AsNoTracking()
+            .Where(x => x.CompanyId == companyId && kitIds.Contains(x.AccessoryKitId)).ToListAsync(ct);
+        var results = new Dictionary<Guid, int>();
+        foreach (var group in lines.GroupBy(x => x.AccessoryKitId))
+        {
+            if (group.Count() == 0 || group.Count() > 50) continue;
+            var available = new List<int>(group.Count());
+            foreach (var line in group)
+            {
+                var itemId = line.AccessoryId ?? line.ConsumableId ?? line.AssetId ?? line.ComponentId;
+                if (itemId is not Guid id) { available.Clear(); break; }
+                var remaining = line.ItemType switch
+                {
+                    "Accessory" => await AvailableAsync(db, companyId, "Accessory", id, ct),
+                    "Consumable" => await AvailableAsync(db, companyId, "Consumable", id, ct),
+                    "Asset" => await AvailableAsync(db, companyId, "Asset", id, ct),
+                    "Component" => await AvailableComponentAsync(db, companyId, id, ct),
+                    _ => null
+                };
+                if (remaining is null) { available.Clear(); break; }
+                available.Add(remaining.Value / line.Quantity);
+            }
+            if (available.Count == group.Count()) results[group.Key] = available.Min();
+        }
+        return results;
+    }
+
+    private static async Task<int?> AvailableComponentAsync(AppDbContext db, Guid companyId, Guid id, CancellationToken ct)
+    {
+        var total = await db.InventoryComponents.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
+            .Select(x => (int?)x.TotalQuantity).SingleOrDefaultAsync(ct);
+        if (total is null) return null;
+        var allocated = await db.ComponentAllocations.AsNoTracking().Where(x => x.CompanyId == companyId && x.ComponentId == id)
+            .SumAsync(x => (int?)(x.Quantity - x.RemovedQuantity), ct) ?? 0;
+        return Math.Max(0, total.Value - allocated);
     }
 
     private static async Task<int> ApproveAccessoryKitAsync(AppDbContext db, InventoryRequest request, Guid companyId, Guid actorId, string? note, CancellationToken ct)
@@ -306,36 +328,87 @@ public static class InventoryRequestEndpoints
         var kit = await db.AccessoryKits.FromSqlInterpolated(
             $"SELECT * FROM \"AccessoryKits\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {request.ItemId} FOR UPDATE").SingleOrDefaultAsync(ct);
         if (kit is null || !kit.IsActive) return -1;
+        var employee = await db.Employees.FromSqlInterpolated(
+            $"SELECT * FROM \"Employees\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {request.EmployeeId} FOR UPDATE").SingleOrDefaultAsync(ct);
+        if (employee is null || !employee.IsActive) return -1;
         var lines = await db.AccessoryKitLines.AsNoTracking().Where(x => x.CompanyId == companyId && x.AccessoryKitId == kit.Id)
-            .OrderBy(x => x.AccessoryId).ToListAsync(ct);
+            .OrderBy(x => x.ItemType).ThenBy(x => x.AccessoryId ?? x.ConsumableId ?? x.AssetId ?? x.ComponentId).ToListAsync(ct);
         if (lines.Count is < 1 or > 50) return -1;
+        if (lines.Any(x => x.ItemType == "Component") && lines.Count(x => x.ItemType == "Asset") != 1) return -1;
 
-        var lockedAccessories = new List<Accessory>(lines.Count);
+        var locked = new Dictionary<(string Type, Guid Id), object>();
         foreach (var line in lines)
         {
-            var accessory = await db.Accessories.FromSqlInterpolated(
-                $"SELECT * FROM \"Accessories\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {line.AccessoryId} FOR UPDATE").SingleOrDefaultAsync(ct);
-            if (accessory is null || !accessory.IsRequestable) return -1;
-            lockedAccessories.Add(accessory);
+            var itemId = line.AccessoryId ?? line.ConsumableId ?? line.AssetId ?? line.ComponentId;
+            if (itemId is not Guid id) return -1;
+            object? item = line.ItemType switch
+            {
+                "Accessory" => await db.Accessories.FromSqlInterpolated($"SELECT * FROM \"Accessories\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct),
+                "Consumable" => await db.Consumables.FromSqlInterpolated($"SELECT * FROM \"Consumables\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct),
+                "Asset" => await db.Assets.FromSqlInterpolated($"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} AND \"DeletedAt\" IS NULL FOR UPDATE").IgnoreQueryFilters().SingleOrDefaultAsync(ct),
+                "Component" => await db.InventoryComponents.FromSqlInterpolated($"SELECT * FROM \"InventoryComponents\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct),
+                _ => null
+            };
+            if (item is null) return -1;
+            locked[(line.ItemType, id)] = item;
         }
-
-        var checkedOut = await db.AccessoryAssignments.Where(x => x.CompanyId == companyId && lockedAccessories.Select(a => a.Id).Contains(x.AccessoryId))
-            .GroupBy(x => x.AccessoryId).Select(group => new { Id = group.Key, Quantity = group.Sum(x => x.Quantity - x.ReturnedQuantity) })
-            .ToDictionaryAsync(x => x.Id, x => x.Quantity, ct);
-        var available = lines.Min(line => Math.Max(0, lockedAccessories.Single(x => x.Id == line.AccessoryId).TotalQuantity - checkedOut.GetValueOrDefault(line.AccessoryId)) / line.Quantity);
+        var availablePerLine = new List<int>(lines.Count);
+        foreach (var line in lines)
+        {
+            var id = (line.AccessoryId ?? line.ConsumableId ?? line.AssetId ?? line.ComponentId)!.Value;
+            int? remaining = line.ItemType switch
+            {
+                "Accessory" when locked[(line.ItemType, id)] is Accessory item && item.IsRequestable =>
+                    Math.Max(0, item.TotalQuantity - (await db.AccessoryAssignments.Where(x => x.CompanyId == companyId && x.AccessoryId == id).SumAsync(x => (int?)(x.Quantity - x.ReturnedQuantity), ct) ?? 0)),
+                "Consumable" when locked[(line.ItemType, id)] is Consumable item && item.IsRequestable =>
+                    Math.Max(0, item.TotalQuantity - (await db.ConsumableMovements.Where(x => x.CompanyId == companyId && x.ConsumableId == id && x.MovementType == "Checkout").SumAsync(x => (int?)x.Quantity, ct) ?? 0)),
+                "Asset" when locked[(line.ItemType, id)] is Asset item && item.IsRequestable && item.Status == AssetStatuses.Available && item.AssignedEmployeeId is null => 1,
+                "Component" when locked[(line.ItemType, id)] is InventoryComponent item => await AvailableComponentAsync(db, companyId, id, ct),
+                _ => null
+            };
+            if (remaining is null) return -1;
+            availablePerLine.Add(remaining.Value / line.Quantity);
+        }
+        var available = availablePerLine.Min();
         if (request.Quantity > available) return available;
 
         var movementNote = Clean(note) ?? "Hazır kit talebi onayı";
+        var targetAsset = lines.Where(x => x.AssetId.HasValue).Select(x => x.AssetId).SingleOrDefault();
         foreach (var line in lines)
         {
             var quantity = checked(line.Quantity * request.Quantity);
-            var assignment = new AccessoryAssignment { CompanyId = companyId, AccessoryId = line.AccessoryId,
-                TargetType = "Employee", EmployeeId = request.EmployeeId, Quantity = quantity,
-                Notes = $"[KIT:{kit.Id}] {kit.Name} — {movementNote}" };
-            db.AccessoryAssignments.Add(assignment);
-            db.AccessoryMovements.Add(new AccessoryMovement { CompanyId = companyId, AccessoryId = line.AccessoryId,
-                AssignmentId = assignment.Id, EmployeeId = request.EmployeeId, ActorUserId = actorId,
-                MovementType = "Checkout", Quantity = quantity, Notes = $"{kit.Name} — {movementNote}" });
+            var markerNote = $"[KIT:{kit.Id}] {kit.Name} — {movementNote}";
+            var id = (line.AccessoryId ?? line.ConsumableId ?? line.AssetId ?? line.ComponentId)!.Value;
+            switch (line.ItemType)
+            {
+                case "Accessory":
+                    var assignment = new AccessoryAssignment { CompanyId = companyId, AccessoryId = id,
+                        TargetType = "Employee", EmployeeId = request.EmployeeId, Quantity = quantity, Notes = markerNote };
+                    db.AccessoryAssignments.Add(assignment);
+                    db.AccessoryMovements.Add(new AccessoryMovement { CompanyId = companyId, AccessoryId = id,
+                        AssignmentId = assignment.Id, EmployeeId = request.EmployeeId, ActorUserId = actorId,
+                        MovementType = "Checkout", Quantity = quantity, Notes = markerNote });
+                    break;
+                case "Consumable":
+                    db.ConsumableMovements.Add(new ConsumableMovement { CompanyId = companyId, ConsumableId = id,
+                        EmployeeId = request.EmployeeId, ActorUserId = actorId, MovementType = "Checkout", Quantity = quantity, Notes = markerNote });
+                    break;
+                case "Asset":
+                    var asset = (Asset)locked[(line.ItemType, id)];
+                    asset.AssignedEmployeeId = request.EmployeeId; asset.Status = AssetStatuses.Deployed; asset.UpdatedAt = DateTimeOffset.UtcNow;
+                    db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = id, ActorUserId = actorId,
+                        EmployeeId = request.EmployeeId, EventType = "Assigned", Details = markerNote });
+                    break;
+                case "Component":
+                    if (targetAsset is not Guid assetId) return -1;
+                    var allocation = new ComponentAllocation { CompanyId = companyId, ComponentId = id, AssetId = assetId,
+                        ActorUserId = actorId, Quantity = quantity, Notes = markerNote };
+                    db.ComponentAllocations.Add(allocation);
+                    db.ComponentMovements.Add(new ComponentMovement { CompanyId = companyId, ComponentId = id,
+                        AllocationId = allocation.Id, AssetId = assetId, ActorUserId = actorId,
+                        MovementType = "Checkout", Quantity = quantity, Notes = markerNote });
+                    break;
+            }
         }
         kit.UpdatedAt = DateTimeOffset.UtcNow;
         return available;

@@ -163,7 +163,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 
 ### P1 — Envanter iş akışlarının kapsamı
 
-- **Hazır kit talepleri:** Aksesuar kitleri için çalışan adına tam set talebi, mevcut stok hesabı, şirket kapsamı, atomik çok satırlı onay ve zimmet/hareket geçmişi eklendi. Varlık, sarf ve bileşen içeren karma kitler bu teslimin dışında ve açık kalıyor.
+- **Hazır kit talepleri:** Kit satırları aksesuar, sarf, tekil varlık ve bileşeni destekliyor; eski kitler migration ile aksesuar olarak korunuyor. Kalan stok üzerinden tam set kullanılabilirliği hesaplanıyor, bileşen içeren kit bir varlığa bağlanıyor ve onay tüm teslim/zimmet/tahsis hareketlerini tek transaction içinde yazıyor. Şirketler arası kalem reddi, ayrı karma kit uçtan uca testi ve 85/85 PostgreSQL güvenlik kabul paketi geçti. Satın alma siparişinden otomatik kit üretme ve karma kit iade/iptal akışı sonraki doğrulama işi.
 
 
 - BYOD (kişisel cihaz) ayrı şirket kapsamlı varlık alanı olarak uygulanıp yeni/düzenleme formuna, listede filtresine ve işaretine, kayıtlı aramalara, tam CSV dışa/içe aktarımına bağlandı. Eski CSV şablonları varsayılanı şirket cihazı kabul ederek geriye uyumlu kalır; PostgreSQL kabul testi tenant sınırını ve BYOD CSV çıktısını denetler.

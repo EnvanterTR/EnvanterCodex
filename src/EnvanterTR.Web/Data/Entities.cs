@@ -581,7 +581,11 @@ public sealed class AccessoryKitLine
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid CompanyId { get; set; }
     public Guid AccessoryKitId { get; set; }
-    public Guid AccessoryId { get; set; }
+    public required string ItemType { get; set; }
+    public Guid? AccessoryId { get; set; }
+    public Guid? ConsumableId { get; set; }
+    public Guid? AssetId { get; set; }
+    public Guid? ComponentId { get; set; }
     public int Quantity { get; set; }
 }
 

@@ -304,10 +304,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AccessoryKit>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AccessoryKitLine>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<Consumable>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<InventoryComponent>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<SoftwareLicense>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<SoftwareLicenseAttachment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<SoftwareLicenseAssignment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
-        modelBuilder.Entity<InventoryComponent>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<ComponentAllocation>().HasAlternateKey(x => new { x.CompanyId, x.Id });
 
         modelBuilder.Entity<Employee>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
@@ -767,19 +767,37 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 
         modelBuilder.Entity<AccessoryKit>().Property(x => x.Name).HasMaxLength(120).IsRequired();
         modelBuilder.Entity<AccessoryKit>().Property(x => x.Description).HasMaxLength(1000);
+        modelBuilder.Entity<AccessoryKitLine>().Property(x => x.ItemType).HasMaxLength(24).IsRequired();
         modelBuilder.Entity<AccessoryKit>().HasIndex(x => new { x.CompanyId, x.Name }).IsUnique();
         modelBuilder.Entity<AccessoryKit>().HasIndex(x => new { x.CompanyId, x.IsActive, x.Name });
         modelBuilder.Entity<AccessoryKitLine>().HasIndex(x => new { x.CompanyId, x.AccessoryKitId });
         modelBuilder.Entity<AccessoryKitLine>().HasIndex(x => new { x.CompanyId, x.AccessoryId });
         modelBuilder.Entity<AccessoryKitLine>().HasIndex(x => new { x.CompanyId, x.AccessoryKitId, x.AccessoryId }).IsUnique();
+        modelBuilder.Entity<AccessoryKitLine>().HasIndex(x => new { x.CompanyId, x.AccessoryKitId, x.ItemType });
+        modelBuilder.Entity<AccessoryKitLine>().HasIndex(x => new { x.CompanyId, x.AccessoryKitId, x.ConsumableId }).IsUnique().HasFilter("\"ConsumableId\" IS NOT NULL");
+        modelBuilder.Entity<AccessoryKitLine>().HasIndex(x => new { x.CompanyId, x.AccessoryKitId, x.AssetId }).IsUnique().HasFilter("\"AssetId\" IS NOT NULL");
+        modelBuilder.Entity<AccessoryKitLine>().HasIndex(x => new { x.CompanyId, x.AccessoryKitId, x.ComponentId }).IsUnique().HasFilter("\"ComponentId\" IS NOT NULL");
         modelBuilder.Entity<AccessoryKitLine>().ToTable("AccessoryKitLines", table =>
-            table.HasCheckConstraint("CK_AccessoryKitLines_Quantity", "\"Quantity\" > 0"));
+        {
+            table.HasCheckConstraint("CK_AccessoryKitLines_Quantity", "\"Quantity\" > 0");
+            table.HasCheckConstraint("CK_AccessoryKitLines_AssetQuantity", "\"ItemType\" <> 'Asset' OR \"Quantity\" = 1");
+            table.HasCheckConstraint("CK_AccessoryKitLines_ItemType", "(\"ItemType\" = 'Accessory' AND \"AccessoryId\" IS NOT NULL AND \"ConsumableId\" IS NULL AND \"AssetId\" IS NULL AND \"ComponentId\" IS NULL) OR (\"ItemType\" = 'Consumable' AND \"AccessoryId\" IS NULL AND \"ConsumableId\" IS NOT NULL AND \"AssetId\" IS NULL AND \"ComponentId\" IS NULL) OR (\"ItemType\" = 'Asset' AND \"AccessoryId\" IS NULL AND \"ConsumableId\" IS NULL AND \"AssetId\" IS NOT NULL AND \"ComponentId\" IS NULL) OR (\"ItemType\" = 'Component' AND \"AccessoryId\" IS NULL AND \"ConsumableId\" IS NULL AND \"AssetId\" IS NULL AND \"ComponentId\" IS NOT NULL)");
+        });
         modelBuilder.Entity<AccessoryKitLine>().HasOne<AccessoryKit>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.AccessoryKitId })
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AccessoryKitLine>().HasOne<Accessory>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.AccessoryId })
-            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict);
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<AccessoryKitLine>().HasOne<Consumable>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ConsumableId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<AccessoryKitLine>().HasOne<Asset>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.AssetId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<AccessoryKitLine>().HasOne<InventoryComponent>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ComponentId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
 
         modelBuilder.Entity<AccessoryPurchaseOrder>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AccessoryPurchaseOrder>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
