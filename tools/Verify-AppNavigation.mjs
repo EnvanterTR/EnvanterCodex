@@ -31,11 +31,18 @@ if (!/function showLogin\([^)]*\)\s*\{[^}]*document\.querySelectorAll\('dialog\[
   failures.push('Expired sessions must close top-layer dialogs so they cannot cover the login screen.');
 }
 const locationLookupStart = source.indexOf("const locationResult = await api('/api/locations');");
-const locationLookupEnd = source.indexOf("fillSelect('categoryId'", locationLookupStart);
+const locationLookupEnd = source.indexOf("fillSelectControl($('#newAssetForm').elements.categoryId", locationLookupStart);
 const locationLookup = locationLookupStart < 0 || locationLookupEnd < 0 ? '' : source.slice(locationLookupStart, locationLookupEnd);
 if (!locationLookup.includes('Array.isArray(locationResult.items)') ||
     !locationLookup.includes('locationResult.items.filter(')) {
   failures.push('Asset lookups must read and validate the items array returned by the locations API envelope.');
+}
+if (!source.includes("fillSelectControl($('#newAssetForm').elements.categoryId, lookupCache.categories") ||
+    !source.includes("fillSelectControl($('#newAssetForm').elements.brandId, lookupCache.brands") ||
+    !source.includes("fillSelectControl($('#catalogCreateForm').elements.categoryId, lookupCache.categories") ||
+    !source.includes("fillSelectControl($('#catalogCreateForm').elements.brandId, lookupCache.brands") ||
+    source.includes("function fillSelect(name, items")) {
+  failures.push('Duplicate catalog field names must be populated through their explicit forms so asset and model creation receive their lookups.');
 }
 const assetEndpoints = readFileSync(resolve('src/EnvanterTR.Web/Data/AssetEndpoints.cs'), 'utf8');
 const locationsEndpointStart = assetEndpoints.indexOf('api.MapGet("/locations"');

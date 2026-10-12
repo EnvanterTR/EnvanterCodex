@@ -3825,8 +3825,10 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       if (!Array.isArray(locationResult.items)) throw new Error(translateUiText('Sunucu konum listesini beklenmeyen bir biçimde döndürdü.'));
       lookupCache.locations = locationResult.items.filter(item => item.locationId && item.isCatalogEntry && item.isActive).map(item => ({id:item.locationId,name:item.name}));
       for (const form of [$('#newAssetForm'),$('#editAssetForm')]) if (form?.elements.defaultLocationCatalogId) fillSelectControl(form.elements.defaultLocationCatalogId,lookupCache.locations,'Varsayılan konum seçin');
-      fillSelect('categoryId', lookupCache.categories, 'Kategori seçin');
-      fillSelect('brandId', lookupCache.brands, 'Marka seçin');
+      fillSelectControl($('#newAssetForm').elements.categoryId, lookupCache.categories, 'Kategori seçin');
+      fillSelectControl($('#newAssetForm').elements.brandId, lookupCache.brands, 'Marka seçin');
+      fillSelectControl($('#catalogCreateForm').elements.categoryId, lookupCache.categories, 'Kategori seçin');
+      fillSelectControl($('#catalogCreateForm').elements.brandId, lookupCache.brands, 'Marka seçin (isteğe bağlı)');
       refreshModels();
       const filter = $('#assetCategoryFilter');
       const selected = filter.value; filter.replaceChildren(new Option('Tüm kategoriler', ''));
@@ -5431,9 +5433,6 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       } catch (error) { popup.close(); notify(t('Zimmet formu hazırlanamadı: {error}').replace('{error}', error.message)); } finally { button.disabled = false; }
     }
     $('#printEmployeeHandoff').addEventListener('click', printEmployeeHandoff);
-    function fillSelect(name, items, placeholder, selectedId = '') {
-      fillSelectControl($(`[name="${name}"]`), items, placeholder, selectedId);
-    }
     function fillSelectControl(select, items, placeholder, selectedId = '') {
       select.replaceChildren(new Option(placeholder, ''));
       for (const item of items) select.add(new Option(item.name, item.id, false, item.id === selectedId));
@@ -8245,8 +8244,8 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         const brandId = kind === 'models' ? $('[name="brandId"]').value || null : null;
         const created = await api(`/api/lookups/${kind}`, { method: 'POST', body: JSON.stringify({ name: name.trim(), brandId, modelNumber: modelNumber?.trim() || null }) });
         lookupCache[kind].push(created);
-        if (kind === 'categories') fillSelect('categoryId', lookupCache.categories, 'Kategori seçin', created.id);
-        else if (kind === 'brands') { fillSelect('brandId', lookupCache.brands, 'Marka seçin', created.id); refreshModels(); }
+        if (kind === 'categories') fillSelectControl($('#newAssetForm').elements.categoryId, lookupCache.categories, 'Kategori seçin', created.id);
+        else if (kind === 'brands') { fillSelectControl($('#newAssetForm').elements.brandId, lookupCache.brands, 'Marka seçin', created.id); refreshModels(); }
         else refreshModels(created.id);
         notify(`${label[0].toLocaleUpperCase('tr-TR')}${label.slice(1)} kaydedildi.`);
       } catch (error) { notify(error.message); }
