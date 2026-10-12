@@ -1,0 +1,31 @@
+ENVANTERTR — ERİŞİLEBİLİR İSTEKLERİN NOTEPAD ÖZETİ
+Güncelleme: 12 Ekim 2026
+
+Bu belge konuşmanın birebir/transkript kopyası değildir. Görev geçmişinde ve ekli kullanıcı metninde görülebilen istekleri sırayla, parola ve hassas giriş bilgilerini çıkartarak kaydeder. Asıl ~280 maddelik kontrol listesi: docs\USER-REQUEST-CHECKLIST-2026-10-11.md
+İş sırası ve doğrulama kaydı: docs\USER-REQUEST-TRACKER.md
+
+1. Ürünün envanter yazılımı olarak geliştirilmesi, bütün eski notların unutulmaması ve v1 tamamlanana kadar sürdürülmesi istendi.
+2. Menü, arka plan, buton ve çalışma mantığındaki alakasız/hatalı alanların incelenmesi; iki referans tablo görselindeki yinelenen başlıkları eklemeden ortak alanların tamamlanması istendi.
+3. Docker, localhost ve GitHub bağlantılarının ürün üzerinde çalışmadan önce denetlenmesi istendi. Docker gerekiyorsa kuruluma destek istendi; kullanıcı Docker Desktop'ı kurdu ve açtı.
+4. Docker Compose sonrası uygulamanın tekrar açılması, eskiden görülen envanter ürün geliştirme yığınının/container'ların kaybolma sebebinin bulunması ve kalıcı verinin korunması istendi.
+5. localhost:8080 giriş ekranında kullanıcının hesabıyla giriş yapamaması, giriş/parola sıfırlama ve sunucu bağlantı denetiminin çözülmesi istendi. Kimlik bilgisi bu notta tekrarlanmıyor.
+6. Demo ile müşteri girişli ana uygulamanın birbirine karıştırılmaması; kullanıcının referans ekranlarındaki tablo sütunları, boş alanlar ve gereksiz yatay kaydırmanın düzeltilmesi istendi.
+7. Ana sayfanın bazen login istemeden açılması, menülerin çalışmaması ve şirket verilerinin yüklenmemesi incelensin istendi.
+8. Son 10 saat/gün içindeki çalışmalar, nelerin değiştiği ve canlı sayfanın güncellenip güncellenmediği konusunda doğru özet istendi.
+9. Menü görsellerindeki tüm ana ve alt menülerin, alt fonksiyonlarının, arayüz kısayollarının ve açılan pencerelerin işlem sırasına göre denetlenmesi; çalışan oranının kanıtlı hesaplanması istendi.
+10. Ekteki yaklaşık 280 maddelik özellik listesi ve durum işaretlerinin dikkate alınması istendi. Liste bu projeye aslına uygun kopyalandı; işaretler 11 Ekim tarihli başlangıç beyanı olarak tutuluyor.
+11. Varlık ayrıntı penceresindeki Genel Bakış, İlişkiler, Bakım, Hareket geçmişi, Fotoğraflar/Dosyalar sekmeleri; dosya ekleme ve ilişkilendirme; düzenleme, denetim, bakım, transfer, zimmet, çöp kutusu ve durum değiştirme eylemleri kontrol edilsin istendi.
+12. Güvenlik menüsünün kendi hesap güvenliği/MFA/oturum cihazlarına ulaşması; merkezi parola/SSO özellikleri eksikse açıkça belirtilmesi istendi.
+13. Uygulama çalışmalarının kalıcı, gerçek, kaynak ve veri katmanında tutarlı olması; işin dört farklı açıdan tekrar kontrol edilmesi ve sadece tamamlanan/ölçülen işlerin tamamlandı diye bildirilmesi istendi.
+
+Ekran ve işletim bağlamı:
+- localhost:8080: müşteri girişli EnvanterTR uygulaması.
+- localhost:8081/demo/: salt örnek verili tanıtım demosu.
+- Docker Compose: Postgres kalıcı volume ile web ve public-site servisleri.
+- GitHub: EnvanterCodex/main; yerel dosya değişikliği, commit/push ve gerçek dağıtım birbirinden ayrı kanıtlanmalı.
+
+Ölçümde dürüstlük:
+- 50/50 menü rotasının açılması menülerin %100 işlevsel olduğu anlamına gelmez.
+- 12 Ekim kayıtlarında varlık detayında altı form açılıp iptal edilmiş; form gönderim sonucu 0/6. API güvenlik paketinin 93/93 geçmesi bu UI eylemlerinin tamamlandığı anlamına gelmez.
+- Kısayolların tam paydası toplanmadan ve başarılı kalıcı sonuç doğrulanmadan genel çalışma yüzdesi verilmez.
+- Kök sebebi kanıtlanmamış geçmiş giriş başarısızlıklarının nedeni uydurulmaz.
