@@ -61,7 +61,7 @@ public static class SupportEndpoints
         });
 
         customer.MapPost("/tickets", async ([FromBody] CreateSupportTicketRequest request,
-            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+            ClaimsPrincipal user, AppDbContext db, SupportTicketEmailService email, CancellationToken ct) =>
         {
             if (!TryCompanyScope(user, out var companyId, out var userId, out _)) return Results.Forbid();
             var errors = ValidateCreate(request);
@@ -90,6 +90,8 @@ public static class SupportEndpoints
             db.SupportTickets.Add(ticket);
             db.SupportTicketMessages.Add(message);
             AddCompanyAudit(db, companyId, userId, ticket.Id, "SupportTicketCreated", "Yeni destek talebi oluşturuldu.");
+            email.QueueSupportMailbox(db, ticket, message, "TicketCreated");
+            await email.QueueCustomerAsync(db, ticket, message, "TicketCreated", ticket.Status, ct);
             await db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
             return Results.Created($"/api/support/tickets/{ticket.Id}", new { ticket.Id, ticket.Subject, ticket.Category, ticket.Status, ticket.CreatedAt, ticket.UpdatedAt });
@@ -115,7 +117,7 @@ public static class SupportEndpoints
         });
 
         customer.MapPost("/tickets/{ticketId:guid}/messages", async (Guid ticketId, [FromBody] SupportTicketMessageRequest request,
-            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+            ClaimsPrincipal user, AppDbContext db, SupportTicketEmailService email, CancellationToken ct) =>
         {
             if (!TryCompanyScope(user, out var companyId, out var userId, out var role)) return Results.Forbid();
             var body = request.Body?.Trim();
@@ -133,11 +135,13 @@ public static class SupportEndpoints
             ticket.UpdatedAt = now;
             db.SupportTicketMessages.Add(message);
             AddCompanyAudit(db, companyId, userId, ticketId, "SupportTicketReplied", "Müşteri destek talebine yanıt verdi.");
+            email.QueueSupportMailbox(db, ticket, message, "CustomerReply");
             await db.SaveChangesAsync(ct);
             return Results.Created($"/api/support/tickets/{ticketId}", new { message.Id, message.Body, message.IsSupportReply, message.CreatedAt });
         });
 
-        customer.MapPost("/tickets/{ticketId:guid}/close", async (Guid ticketId, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        customer.MapPost("/tickets/{ticketId:guid}/close", async (Guid ticketId, ClaimsPrincipal user, AppDbContext db,
+            SupportTicketEmailService email, CancellationToken ct) =>
         {
             if (!TryCompanyScope(user, out var companyId, out var userId, out var role)) return Results.Forbid();
             var canViewAll = CanManageCompanySupport(role);
@@ -148,6 +152,7 @@ public static class SupportEndpoints
             ticket.Status = "Closed";
             ticket.UpdatedAt = DateTimeOffset.UtcNow;
             AddCompanyAudit(db, companyId, userId, ticketId, "SupportTicketClosed", "Şirket kullanıcısı destek talebini kapattı.");
+            email.QueueSupportMailbox(db, ticket, null, "StatusChanged", ticket.Status);
             await db.SaveChangesAsync(ct);
             return Results.Ok(new { ticket.Id, ticket.Status, ticket.UpdatedAt });
         });
@@ -203,7 +208,7 @@ public static class SupportEndpoints
         });
 
         staff.MapPost("/{ticketId:guid}/messages", async (Guid ticketId, [FromBody] SupportTicketMessageRequest request,
-            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+            ClaimsPrincipal user, AppDbContext db, SupportTicketEmailService email, CancellationToken ct) =>
         {
             if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
             var body = request.Body?.Trim();
@@ -221,12 +226,13 @@ public static class SupportEndpoints
             db.PlatformAuditEntries.Add(new PlatformAuditEntry { ActorUserId = userId, CompanyId = ticket.CompanyId,
                 TargetType = "SupportTicket", TargetId = ticket.Id, Action = "SupportTicketReplied",
                 Details = "Platform destek görevlisi talebe yanıt verdi." });
+            await email.QueueCustomerAsync(db, ticket, message, "StaffReply", ticket.Status, ct);
             await db.SaveChangesAsync(ct);
             return Results.Created($"/api/platform/support/tickets/{ticketId}", new { message.Id, message.IsSupportReply, message.CreatedAt });
         });
 
         staff.MapPatch("/{ticketId:guid}/status", async (Guid ticketId, [FromBody] SupportTicketStatusRequest request,
-            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+            ClaimsPrincipal user, AppDbContext db, SupportTicketEmailService email, CancellationToken ct) =>
         {
             if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
             if (!Statuses.Contains(request.Status, StringComparer.Ordinal))
@@ -234,11 +240,13 @@ public static class SupportEndpoints
             var ticket = await db.SupportTickets.SingleOrDefaultAsync(x => x.Id == ticketId, ct);
             if (ticket is null) return Results.NotFound();
             var previousStatus = ticket.Status;
+            if (previousStatus == request.Status) return Results.Ok(new { ticket.Id, ticket.Status, ticket.UpdatedAt });
             ticket.Status = request.Status;
             ticket.UpdatedAt = DateTimeOffset.UtcNow;
             db.PlatformAuditEntries.Add(new PlatformAuditEntry { ActorUserId = userId, CompanyId = ticket.CompanyId,
                 TargetType = "SupportTicket", TargetId = ticket.Id, Action = "SupportTicketStatusChanged",
                 Details = $"Destek durumu {previousStatus} → {ticket.Status} olarak değiştirildi." });
+            await email.QueueCustomerAsync(db, ticket, null, "StatusChanged", ticket.Status, ct);
             await db.SaveChangesAsync(ct);
             return Results.Ok(new { ticket.Id, ticket.Status, ticket.UpdatedAt });
         });

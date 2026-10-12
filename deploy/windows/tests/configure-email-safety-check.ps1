@@ -15,6 +15,7 @@ Assert-Pattern 'SMTP password is requested as hidden SecureString input' 'Read-H
 Assert-Pattern 'SMTP password is protected with machine-scoped DPAPI' '(?s)ProtectedData\]::Protect\(\s*\$passwordBytes,\$null,\[Security\.Cryptography\.DataProtectionScope\]::LocalMachine'
 Assert-Pattern 'only the DPAPI secret path is written to production settings' 'SmtpPasswordPath -Value \$newSecretPath'
 Assert-Pattern 'public email URL is restricted to HTTPS' '\$publicBaseUrl\.Scheme -ne "https"'
+Assert-Pattern 'optional support mailbox is validated and saved to the Support configuration section' '(?s)Support mailbox email \(optional\).*?supportMailAddress.*?\$production\.Support \| Add-Member -MemberType NoteProperty -Name Email -Value \$supportEmail'
 Assert-Pattern 'configuration changes use an atomic replace with rollback copy' '(?s)\[IO\.File\]::Replace\(\$temporaryConfig,\$configPath,\$backupConfig,\$true\).*?\[IO\.File\]::Replace\(\$backupConfig,\$configPath,\$null,\$true\)'
 Assert-Pattern 'running service readiness is checked before old settings are discarded' '(?s)if \(\$status\.status -eq "ready"\).*?Remove-Item -LiteralPath \$backupConfig'
 Assert-Pattern 'replacement secret is discarded if configuration fails' '(?s)catch \{\s*\$configurationFailure = \$_.*?Remove-Item -LiteralPath \$newSecretPath'

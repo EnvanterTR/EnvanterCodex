@@ -36,6 +36,7 @@ services:
       ConnectionStrings__EnvanterTR: "Host=database;Port=5432;Database=envantertr;Username=envantertr;Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
       Setup__BootstrapToken: ${SETUP_BOOTSTRAP_TOKEN:-}
       Setup__PlatformBootstrapToken: ${SETUP_PLATFORM_BOOTSTRAP_TOKEN:-}
+      Support__Email: ${SUPPORT_EMAIL:-}
       Email__Smtp__Host: ${EMAIL_SMTP_HOST:-}
       Email__Smtp__Port: ${EMAIL_SMTP_PORT:-587}
       Email__Smtp__EnableSsl: ${EMAIL_SMTP_ENABLE_SSL:-true}

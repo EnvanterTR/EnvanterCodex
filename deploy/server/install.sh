@@ -75,6 +75,7 @@ EMAIL_SMTP_PASSWORD=
 EMAIL_FROM_ADDRESS=
 EMAIL_FROM_NAME=EnvanterTR
 EMAIL_PUBLIC_BASE_URL=https://$DOMAIN
+SUPPORT_EMAIL=
 DATABASE_VOLUME_NAME=envantertr_server_database
 COMPANY_MEDIA_VOLUME_NAME=envantertr_server_company_media
 DATA_PROTECTION_KEYS_VOLUME_NAME=envantertr_server_data_protection_keys

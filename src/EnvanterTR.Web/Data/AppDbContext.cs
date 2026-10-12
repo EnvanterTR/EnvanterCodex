@@ -58,6 +58,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<CompanyTask> CompanyTasks => Set<CompanyTask>();
     public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>();
     public DbSet<SupportTicketMessage> SupportTicketMessages => Set<SupportTicketMessage>();
+    public DbSet<SupportTicketEmailOutbox> SupportTicketEmailOutbox => Set<SupportTicketEmailOutbox>();
     public DbSet<SoftwareLicense> SoftwareLicenses => Set<SoftwareLicense>();
     public DbSet<SoftwareLicenseAttachment> SoftwareLicenseAttachments => Set<SoftwareLicenseAttachment>();
     public DbSet<SoftwareLicenseAssignment> SoftwareLicenseAssignments => Set<SoftwareLicenseAssignment>();
@@ -524,6 +525,25 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<SupportTicketMessage>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.AuthorUserId).OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<SupportTicketEmailOutbox>().Property(x => x.RecipientEmail).HasMaxLength(256).IsRequired();
+        modelBuilder.Entity<SupportTicketEmailOutbox>().Property(x => x.IsSupportMailbox).IsRequired();
+        modelBuilder.Entity<SupportTicketEmailOutbox>().Property(x => x.EventType).HasMaxLength(32).IsRequired();
+        modelBuilder.Entity<SupportTicketEmailOutbox>().Property(x => x.StatusSnapshot).HasMaxLength(32);
+        modelBuilder.Entity<SupportTicketEmailOutbox>().Property(x => x.Status).HasMaxLength(16).IsRequired();
+        modelBuilder.Entity<SupportTicketEmailOutbox>().Property(x => x.LastErrorType).HasMaxLength(128);
+        modelBuilder.Entity<SupportTicketEmailOutbox>().HasIndex(x => new { x.Status, x.NextAttemptAt, x.CreatedAt });
+        modelBuilder.Entity<SupportTicketEmailOutbox>().HasIndex(x => new { x.CompanyId, x.TicketId, x.CreatedAt });
+        modelBuilder.Entity<SupportTicketEmailOutbox>().ToTable("SupportTicketEmailOutbox", table =>
+        {
+            table.HasCheckConstraint("CK_SupportTicketEmailOutbox_EventType", "\"EventType\" IN ('TicketCreated', 'CustomerReply', 'StaffReply', 'StatusChanged')");
+            table.HasCheckConstraint("CK_SupportTicketEmailOutbox_Status", "\"Status\" IN ('Pending', 'Sending', 'Sent')");
+            table.HasCheckConstraint("CK_SupportTicketEmailOutbox_AttemptCount", "\"AttemptCount\" >= 0");
+            table.HasCheckConstraint("CK_SupportTicketEmailOutbox_SentAt", "(\"Status\" = 'Sent' AND \"SentAt\" IS NOT NULL) OR (\"Status\" <> 'Sent' AND \"SentAt\" IS NULL)");
+        });
+        modelBuilder.Entity<SupportTicketEmailOutbox>().HasOne<SupportTicket>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.TicketId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.Name).HasMaxLength(200).IsRequired();
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.Publisher).HasMaxLength(160);

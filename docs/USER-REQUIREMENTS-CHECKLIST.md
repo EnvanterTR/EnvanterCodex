@@ -246,7 +246,7 @@ L. KULLANICILAR, ROLLER VE YETKİLER
  L.4 Rol bazlı ekran/görünürlük kontrolü ✅
  L.5 Her API ucunda yetki + tenant kontrolü 🟡
  L.6 Kullanıcı yönetimi ekranı (yönetici başka hesabı yönetir) 🟡
- L.7 Destek talebi modülü ❌ menüde var, arkası boş
+ L.7 Destek talebi modülü ✅ şirket talep akışı, platform kuyruğu ve kalıcı SMTP bildirim kuyruğu; SMTP/support kutusu yapılandırılmalı
 M. ŞİRKET AYARLARI VE GÖRÜNÜM
  M.1 Firma profili (ad, adres, iletişim, vergi bilgisi) 🟡
  M.2 Logo + ana renk ✅
@@ -281,7 +281,7 @@ O. PLATFORM YÖNETİMİ (Süper Admin — sadece sana ait)
  O.10 Tüm müşterilere duyuru gönderme 🟡
  O.11 Loglar: giriş, ödeme, hata, deploy geçmişi 🟡
  O.12 Dashboard: toplam müşteri, aylık gelir, yeni kayıtlar, başarısız ödemeler 🟡
- O.13 Destek talepleri yönetimi ❌
+ O.13 Destek talepleri yönetimi ✅ platform kuyruğu, yanıt ve durum yönetimi; gelişmiş SLA/raporlama ayrı kapsam
 P. TİCARİ AKIŞ (Satış / Abonelik)
  P.1 Self-servis kayıt (signup) 🟡 (sayfa var, arkası yok)
  P.2 Plan seçimi + ücretsiz deneme (14/30 gün) 🟡

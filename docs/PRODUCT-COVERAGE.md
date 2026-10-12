@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 12 Ekim 2026 — destek talebi e-posta kuyruğu
+
+Destek talebi oluşturma, müşteri yanıtı, platform yanıtı ve durum değişikliği bildirimleri aynı veritabanı işlemi içinde kalıcı outbox'a yazılır. Arka plan işçisi SMTP ayarları ve `Support:Email` destek kutusu tanımlıysa bildirimleri gönderir; geçici hatalarda artan aralıklarla yeniden dener ve yalnızca hata türünü kaydeder. Müşteriye giden bildirim yalnızca talebi açan hesabın e-postası doğrulanmışsa oluşturulur. Mail gövdesi kuyrukta çoğaltılmaz; mevcut, şirket ve talep kimliğiyle bağlı mesajdan gönderim anında okunur. Kuyruk veritabanı hazır değilse veya SMTP/support adresi yoksa worker güvenli biçimde bekler; dış mail sağlayıcı teslimi bu yerel testin kapsamı dışındadır.
+
 ## 12 Ekim 2026 — destek arayüzü yerelleştirme kabulü
 
 Destek ekranında talep listesi/durum etiketleri, talep sayısı ve sayfalama, bekleme/boş durumları, form ve düğme metinleri ile sunucu doğrulama geri bildirimleri beş dilde zorunlu sözlük kontrolüne eklendi. Dil değişiminde açık liste ve talep ayrıntısı seçili dile göre yenilenir; şirket uygulama menüsündeki eski “destek henüz hazır değil” metni kaldırıldı. `node tools/Verify-UiLocales.mjs` 1.612 girdiyi doğruladı; `Verify-AppNavigation.mjs` 50 hedef/10 grupta geçti. Bu, oturumlu tarayıcıda görsel/rol kabulinin yerini tutmaz.

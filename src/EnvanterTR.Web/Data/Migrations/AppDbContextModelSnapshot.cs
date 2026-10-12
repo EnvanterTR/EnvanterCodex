@@ -3701,6 +3701,80 @@ namespace EnvanterTR.Web.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.SupportTicketEmailOutbox", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<bool>("IsSupportMailbox")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("LastAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastErrorType")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid?>("MessageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RecipientEmail")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset?>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("StatusSnapshot")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "TicketId", "CreatedAt");
+
+                    b.HasIndex("Status", "NextAttemptAt", "CreatedAt");
+
+                    b.ToTable("SupportTicketEmailOutbox", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SupportTicketEmailOutbox_AttemptCount", "\"AttemptCount\" >= 0");
+
+                            t.HasCheckConstraint("CK_SupportTicketEmailOutbox_EventType", "\"EventType\" IN ('TicketCreated', 'CustomerReply', 'StaffReply', 'StatusChanged')");
+
+                            t.HasCheckConstraint("CK_SupportTicketEmailOutbox_SentAt", "(\"Status\" = 'Sent' AND \"SentAt\" IS NOT NULL) OR (\"Status\" <> 'Sent' AND \"SentAt\" IS NULL)");
+
+                            t.HasCheckConstraint("CK_SupportTicketEmailOutbox_Status", "\"Status\" IN ('Pending', 'Sending', 'Sent')");
+                        });
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.SupportTicketMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5137,6 +5211,16 @@ namespace EnvanterTR.Web.Data.Migrations
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.SupportTicketEmailOutbox", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.SupportTicket", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "TicketId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

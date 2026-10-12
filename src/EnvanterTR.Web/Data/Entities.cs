@@ -821,6 +821,25 @@ public sealed class SupportTicketMessage
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class SupportTicketEmailOutbox
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid TicketId { get; set; }
+    public Guid? MessageId { get; set; }
+    public required string RecipientEmail { get; set; }
+    public bool IsSupportMailbox { get; set; }
+    public required string EventType { get; set; }
+    public string? StatusSnapshot { get; set; }
+    public string Status { get; set; } = "Pending";
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset NextAttemptAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? LastAttemptAt { get; set; }
+    public DateTimeOffset? SentAt { get; set; }
+    public int AttemptCount { get; set; }
+    public string? LastErrorType { get; set; }
+}
+
 public sealed class SoftwareLicense
 {
     public Guid Id { get; set; } = Guid.NewGuid();

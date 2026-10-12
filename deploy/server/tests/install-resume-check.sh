@@ -63,6 +63,7 @@ BACKUP_PASSWORD_FILE="$WORK_DIR/etc/envantertr/backup.pass"
 [[ "$(stat -c '%a' "$CONFIG_FILE")" == '600' ]] || { echo 'FAIL: server environment must remain root-only.' >&2; exit 1; }
 grep -Fqx 'EMAIL_SMTP_PORT=587' "$CONFIG_FILE" || { echo 'FAIL: SMTP port default is missing.' >&2; exit 1; }
 grep -Fqx 'EMAIL_PUBLIC_BASE_URL=https://resume-test.example.invalid' "$CONFIG_FILE" || { echo 'FAIL: SMTP public URL must use the installed HTTPS domain.' >&2; exit 1; }
+grep -Fqx 'SUPPORT_EMAIL=' "$CONFIG_FILE" || { echo 'FAIL: support mailbox setting is missing.' >&2; exit 1; }
 cp -- "$CONFIG_FILE" "$WORK_DIR/server.env.before"
 cp -- "$BACKUP_PASSWORD_FILE" "$WORK_DIR/backup.pass.before"
 if PATH="$MOCK_BIN:$PATH" MOCK_CURL_MODE=succeed bash "$FIXTURE_SCRIPT" "other.$DOMAIN" > "$WORK_DIR/mismatched-domain.log" 2>&1; then
@@ -136,6 +137,7 @@ for setting in (
     "Email__Smtp__Password: ${EMAIL_SMTP_PASSWORD:-}",
     "Email__FromAddress: ${EMAIL_FROM_ADDRESS:-}",
     "Email__PublicBaseUrl: ${EMAIL_PUBLIC_BASE_URL:-}",
+    "Support__Email: ${SUPPORT_EMAIL:-}",
 ):
     if setting not in compose_source:
         raise SystemExit(f"FAIL: production Compose does not pass {setting.split(':', 1)[0]}")

@@ -549,6 +549,18 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var created = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
         var ticketId = created.RootElement.GetProperty("id").GetGuid();
 
+        await FlushSupportTicketEmailsAsync(ticketId, expectedSentCount: 2);
+        await using (var notificationScope = _factory!.Services.CreateAsyncScope())
+        {
+            var notificationDb = notificationScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var initialNotifications = await notificationDb.SupportTicketEmailOutbox.AsNoTracking()
+                .Where(item => item.CompanyId == _companyId && item.TicketId == ticketId).ToListAsync();
+            Assert.Equal(2, initialNotifications.Count);
+            Assert.All(initialNotifications, item => Assert.Equal("Sent", item.Status));
+            Assert.Contains(initialNotifications, item => item.RecipientEmail == "support@example.invalid" && item.EventType == "TicketCreated");
+            Assert.Contains(initialNotifications, item => item.RecipientEmail == $"acceptance-{_userId:N}@example.invalid" && item.EventType == "TicketCreated");
+        }
+
         using (var managerList = await SendAsRoleAsync(HttpMethod.Get, "/api/support/tickets", "admin"))
         using (var payload = JsonDocument.Parse(await managerList.Content.ReadAsStringAsync()))
         {
@@ -585,6 +597,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var platformReply = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, $"/api/platform/support/tickets/{ticketId}/messages",
                    System.Net.Http.Json.JsonContent.Create(new { body = "We are checking your account access." }), platformRequestToken, platformAntiforgeryCookie))
             Assert.Equal(HttpStatusCode.Created, platformReply.StatusCode);
+        await FlushSupportTicketEmailsAsync(ticketId, expectedSentCount: 3);
         using (var statusAfterReply = await SendAsRoleAsync(HttpMethod.Get, $"/api/support/tickets/{ticketId}", "admin"))
         using (var payload = JsonDocument.Parse(await statusAfterReply.Content.ReadAsStringAsync()))
         {
@@ -595,9 +608,11 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var customerReply = await SendAsRoleAsync(HttpMethod.Post, $"/api/support/tickets/{ticketId}/messages", "admin",
                    System.Net.Http.Json.JsonContent.Create(new { body = "Thank you; this is resolved." }), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.Created, customerReply.StatusCode);
+        await FlushSupportTicketEmailsAsync(ticketId, expectedSentCount: 4);
         using (var close = await SendAsRoleAsync(HttpMethod.Post, $"/api/support/tickets/{ticketId}/close", "admin",
                    requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
             Assert.Equal(HttpStatusCode.OK, close.StatusCode);
+        await FlushSupportTicketEmailsAsync(ticketId, expectedSentCount: 5);
         using (var replyToClosed = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, $"/api/platform/support/tickets/{ticketId}/messages",
                    System.Net.Http.Json.JsonContent.Create(new { body = "A closed ticket cannot receive a reply." }), platformRequestToken, platformAntiforgeryCookie))
             Assert.Equal(HttpStatusCode.Conflict, replyToClosed.StatusCode);
@@ -608,6 +623,30 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             entry.TargetType == "SupportTicket" && entry.TargetId == ticketId));
         Assert.Equal(1, await auditDb.PlatformAuditEntries.CountAsync(entry => entry.CompanyId == _companyId &&
             entry.TargetType == "SupportTicket" && entry.TargetId == ticketId));
+    }
+
+    private async Task FlushSupportTicketEmailsAsync(Guid ticketId, int expectedSentCount)
+    {
+        for (var attempt = 0; attempt < 40; attempt++)
+        {
+            await using (var scope = _factory!.Services.CreateAsyncScope())
+            {
+                var service = scope.ServiceProvider.GetRequiredService<SupportTicketEmailService>();
+                await service.RunOnceAsync(CancellationToken.None);
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var sentCount = await db.SupportTicketEmailOutbox.AsNoTracking()
+                    .CountAsync(item => item.TicketId == ticketId && item.Status == "Sent");
+                if (sentCount >= expectedSentCount) return;
+            }
+            await Task.Delay(250);
+        }
+
+        await using var finalScope = _factory!.Services.CreateAsyncScope();
+        var finalDb = finalScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var notifications = await finalDb.SupportTicketEmailOutbox.AsNoTracking()
+            .Where(item => item.TicketId == ticketId).Select(item => new { item.EventType, item.Status, item.LastErrorType }).ToListAsync();
+        Assert.True(notifications.Count(item => item.Status == "Sent") >= expectedSentCount,
+            $"Support email queue did not deliver {expectedSentCount} messages: {string.Join(", ", notifications.Select(item => $"{item.EventType}:{item.Status}:{item.LastErrorType}"))}");
     }
 
     [Fact]
@@ -901,7 +940,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                     ["Email:Smtp:Port"] = _smtpCapture.Port.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     ["Email:Smtp:EnableSsl"] = "false",
                     ["Email:FromAddress"] = "no-reply@example.invalid",
-                    ["Email:PublicBaseUrl"] = "https://portal.example.invalid"
+                    ["Email:PublicBaseUrl"] = "https://portal.example.invalid",
+                    ["Support:Email"] = "support@example.invalid"
                 }));
             builder.ConfigureTestServices(services => services.AddAuthentication(options =>
                 {
