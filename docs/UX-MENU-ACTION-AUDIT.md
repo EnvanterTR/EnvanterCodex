@@ -1,7 +1,7 @@
 # Menü, kısayol ve modal denetimi
 
 Tarih: 12 Ekim 2026  
-Durum: Ön envanter tamamlandı; tüm menü/alt işlem ve kısayol yollarının uçtan uca denetimi sürüyor. 12 Ekim'de Şirket birimleri modülü uçtan uca API kabulünden geçti; kalan hedefler henüz tarayıcıda tek tek doğrulanmadı.
+Durum: 12 Ekim'de 50/50 menü hedefi canlı oturumda açıldı; varlık detay penceresindeki beş sekme ve altı işlem formu salt okunur şekilde incelendi. Tam işlev yüzdesi henüz hesaplanamaz: kayıt/indirme/yükleme/yetki/yeniden yükleme sonuçları tüm hedeflerde kabul edilmedi. 12 Ekim'de Şirket birimleri modülü uçtan uca API kabulünden geçti.
 
 ## Ölçüm kapsamı
 
@@ -9,7 +9,7 @@ Durum: Ön envanter tamamlandı; tüm menü/alt işlem ve kısayol yollarının 
 - Kapsam defteri: `docs/PRODUCT-COVERAGE.md` içinde 37 ürün ailesi izleniyor. Şirket birimleri hiyerarşik CRUD, arşiv ve geri yükleme ile temel API kabulinden geçti. Bu oran ürün ailesi olgunluğudur; 50 menünün veya tüm kısayolların çalışma yüzdesi değildir.
 - Kabul kanıtı: 12 Ekim güncel kaynakta tam izole PostgreSQL güvenlik paketi 93/93 geçti; menü kaynağı denetimi 50 hedef/10 grup, locale denetimi 1.689 kayıt geçti. Bunlar oturumlu tarayıcıda her menü ve modal eyleminin görsel/işlevsel kabulü yerine geçmez.
 - 12 Ekim güncel kaynak: varlık detay modalının durum değiştir, tekil düzenle, ek dosya yükle/indir/sil ve bakım başlat/tamamla API akışları izole PostgreSQL kabulinde geçti ve aynı 93/93 tam pakete dahildi. CSRF, salt-okunur rol, yabancı şirket kaydı, doğrulama/çatışma yolları, kalıcı veri, geçmiş ve denetim izi kontrol edildi.
-- Yerel çalışma: Docker uygulama ve veritabanı sağlık kontrolü `ready`, bekleyen migration 0. 12 Ekim'de sağlanan şirket hesabı loopback API üzerinden kabul edildi ve yalnızca bu teşhis için açılan oturum kapatıldı. Hesap durumu kilitli değil, e-posta doğrulanmış, MFA kapalı ve tek şirket üyeliği mevcut. Açık tarayıcıya oturum aktarılmadığından rol bazlı görsel kabul tamamlanmış sayılmıyor.
+- Yerel çalışma: Docker uygulama ve veritabanı sağlık kontrolü `ready`, bekleyen migration 0. 12 Ekim'de kullanıcının açık localhost tarayıcısındaki mevcut form bilgileriyle şirket girişi başarılı oldu; Santa şirketi ve 50 varlıklı pano yüklendi. Tam sayfa yenilemesinden sonra da oturum açık kaldı. Üyeler, yerleşik roller ve destek sayfası oturum içinde açıldı. Önceki başarısız oturum denemelerinin tarihsel sebebi bu son başarılı denemeyle kanıtlanmış değildir.
 - Canlı demo: `http://localhost:8081/demo/` tarayıcı erişilebilirlik ağacında 50 örnek varlık, 19 farklı ortak tablo başlığı ve satır eylem kontrolleri bulundu; güncel HTTP yanıtı 200 ve tam genişlik kuralı mevcut. `node tools/Verify-PublicDemoLayout.mjs` artık 19 tekrar etmeyen sütun başlığını, masaüstünde sağda sabit kalan Eylemler sütununu, tam genişlik, içerik sınırında yatay kaydırma, mobil üst çubuk ve HTML önbellek yenileme kurallarını doğruluyor. Bu kaynak/DOM kontrolü eylemlerin sonuç davranışını kabul etmez.
 
 ## Menü hedefleri
@@ -18,20 +18,22 @@ Bu liste kaynakta bulunan 50 hedefi gösterir. “Canlı doğrulama” sütunu, 
 
 | Grup | Hedefler | Canlı doğrulama |
 |---|---|---|
-| Genel | Genel Bakış | Kısmi: gerçek şirket verisi ve sayaçlar görüntülendi |
-| Envanter | Varlıklar; Varlık satın alma siparişleri; Varlık modelleri; Markalar; Kategoriler; Durum etiketleri; QR ve barkodlar | Varlıklar kısmi; diğerleri bekliyor |
-| Zimmet ve hareketler | Zimmetler; İadeler; Transferler; Rezervasyonlar; Hareket geçmişi | Bekliyor |
-| Lisans ve yazılım | Yazılım lisansları; Lisans atamaları; Sözleşmeler; Garanti takibi | Bekliyor |
-| Aksesuar ve stok | Aksesuarlar; Satın alma siparişleri; Sarf malzemeleri; Stok talepleri; Bileşenler; Hazır kitler; Stok hareketleri | Bekliyor |
-| Kişiler ve ekipler | Çalışan kayıtları; Uygulama kullanıcıları; Departmanlar; Yetki rolleri | Çalışanlar/departmanlar bekliyor; Yetki rolleri kısmi: yerleşik rol matrisi görüntüleniyor, yetkili yöneticilerden kullanıcı rol atamalarına doğrudan geçiş var; tarayıcıda eylem kabulü bekliyor |
-| Konumlar | Lokasyonlar; Binalar ve odalar; Şirket birimleri | Lokasyonlar ve binalar bekliyor; şirket birimi hiyerarşi CRUD/tenant-yetki API kabulü geçti; tarayıcı görsel kabulü bekliyor |
-| Bakım ve denetim | Bakım kayıtları; Bakım planları; Denetimler; Takvim; Görevler | Görevler kaynak ve API bağlantısı mevcut; tarayıcıda rol bazlı sonuç kabulü bekliyor. Diğerleri bekliyor |
-| Raporlar | Hazır raporlar; Özel rapor oluştur; Dışa aktarımlar | Bekliyor |
-| Veri ve yedekler | Tablodan içe aktar; Verileri dışa aktar; Yedekleme geçmişi; Geri yükle | Bekliyor |
-| Şirket ayarları | Firma profili; Logo ve tema; Bildirimler; Entegrasyonlar; Güvenlik; Denetim kayıtları | Bekliyor |
-| Genel | Destek | Bekliyor |
+| Genel | Genel Bakış | Tarayıcı rota kontrolü geçti; Santa panosu ve sayaçlar yüklendi. Alt eylemler ayrıca sınanmadı |
+| Envanter | Varlıklar; Varlık satın alma siparişleri; Varlık modelleri; Markalar; Kategoriler; Durum etiketleri; QR ve barkodlar | 7/7 hedef doğru uygulama yüzeyine gitti; varlık/katalog tabloları yüklendi. Liste kısayolları ve kaydetme eylemleri ayrıca sınanmadı |
+| Zimmet ve hareketler | Zimmetler; İadeler; Transferler; Rezervasyonlar; Hareket geçmişi | 5/5 hedef açıldı; hareket ve rezervasyon listeleri yüklendi. Eylem sonuçları ayrıca sınanmadı |
+| Lisans ve yazılım | Yazılım lisansları; Lisans atamaları; Sözleşmeler; Garanti takibi | 4/4 hedef açıldı; sayfaların tabloları yüklendi. Alt işlemler ayrıca sınanmadı |
+| Aksesuar ve stok | Aksesuarlar; Satın alma siparişleri; Sarf malzemeleri; Stok talepleri; Bileşenler; Hazır kitler; Stok hareketleri | 7/7 hedef açıldı; aksesuar, sipariş, talep ve hareket tabloları yüklendi. Yazma eylemleri ayrıca sınanmadı |
+| Kişiler ve ekipler | Çalışan kayıtları; Uygulama kullanıcıları; Departmanlar; Yetki rolleri | 4/4 hedef açıldı; 7 yerleşik rol matrisi görüntülendi ve kullanıcı yönetimine bağlantı çalıştı. Rol kaydetme işlemi sınanmadı |
+| Konumlar | Lokasyonlar; Binalar ve odalar; Şirket birimleri | 3/3 hedef açıldı; lokasyon/bina tabloları ve birim sayfası yüklendi. Şirket birimi API kabulü daha önce geçti; form kaydetme burada sınanmadı |
+| Bakım ve denetim | Bakım kayıtları; Bakım planları; Denetimler; Takvim; Görevler | 5/5 hedef açıldı; takvim ve denetim tabloları yüklendi. Görev ve bakım yazma eylemleri sınanmadı |
+| Raporlar | Hazır raporlar; Özel rapor oluştur; Dışa aktarımlar | 3/3 hedef açıldı; rapor sayfası, özel rapor formu ve dışa aktarma yüzeyi yüklendi. Rapor üretme/indirme sınanmadı |
+| Veri ve yedekler | Tablodan içe aktar; Verileri dışa aktar; Yedekleme geçmişi; Geri yükle | 4/4 hedef veri araçları sayfasına gitti. İçe aktarma, dışa aktarma veya geri yükleme çalıştırılmadı |
+| Şirket ayarları | Firma profili; Logo ve tema; Bildirimler; Entegrasyonlar; Güvenlik; Denetim kayıtları | 6/6 hedef açıldı; firma profili, tema ve entegrasyon sayfaları yüklendi; Bildirimler ile Güvenlik açıkça hazır değil durum yüzeyini gösterdi; denetim tablosu yüklendi |
+| Genel | Destek | Tarayıcı rota kontrolü geçti; destek talepleri sayfası yüklendi |
 
 Kaynakta açıkça kısmi/henüz hazır değil olarak işaretlenen yüzeyler: merkezi şirket güvenlik yönetimi (Güvenlik), şube/tüzel kişilik bazında varlık ayrımı (Şirket birimleri kapsamının dışında), özel rol ve izin düzenleme (Yetki rolleri), harici bağlantı/webhook yönetimi (Entegrasyonlar). Yetki rolleri sayfası yerleşik rollerin erişim matrisini gösterir; yetkili şirket yöneticileri buradan Uygulama kullanıcıları ekranına geçerek üyeye rol atayabilir. Yeni rol veya özel izin tanımı yapılamaz. Şirket birimleri artık şirket içi hiyerarşik katalog CRUD akışıdır; tüzel kişilik veya varlık erişim sınırı oluşturmaz. Görevler için şirket kapsamlı liste, arama/filtre/sayfalama, oluşturma/düzenleme, çalışan atama, durum geçişleri ve denetim izi kapsam defterinde mevcut; kaynak/API bağlantısı kontrol edildi ancak rol bazlı tarayıcı sonucu bekliyor. Bu tespitler kaynak metin ve kapsam defterine dayanır; UI davranış kabul testi değildir.
+
+12 Ekim 2026: Kullanıcının mevcut tarayıcı oturumunda yan menüdeki **50/50 hedefin tamamı** sırayla açıldı; görünür başlık ve ilgili çalışma yüzeyi eşleşti. Menü rotası erişilebilirliği bu oturumda **%100** olarak ölçüldü. Genel Bakış'ta şirket panosu, varlıkta 50 kayıt, ürün kataloglarında listeler ve rol ekranında 7 rol görüntülendi. Bildirimler ve Güvenlik hedefleri “hazır değil” durum sayfasına gidiyor; bu rota hatası değil, eksik özellik durumudur. Bu ölçüm alt düğme/menü eylemlerinin işlev yüzdesi değildir. Dışa aktarma, içe aktarma, geri yükleme, oluşturma/düzenleme, silme/arşivleme ve modal içi kayıt eylemleri tetiklenmedi; sonraki aşamada ayrı kabul adımlarıyla kontrol edilecek.
 
 ## Ekran görüntülerindeki varlık detay penceresi
 
@@ -45,17 +47,19 @@ Ekran görüntüleri kontrollerin mevcut olduğunu gösteriyor; kaydetme, sunucu
 
 12 Ekim 2026: Varlık modalı için dört kapsamlı izole PostgreSQL HTTP kabul testi eklendi. Tekil düzenlemede geçersiz kategori, eski ExpectedUpdatedAt, tekrar oynatma, salt-okunur/yabancı tenant/CSRF ve başarılı geçmiş kaydı; ek dosyada bozuk PDF, yabancı tenant, salt-okunur rol, CSRF, yükleme/indirme/silme ve denetim izi; durum değiştirmede geçersiz değer, not sınırı, aynı durum ve geçmiş; bakımda gelecek tarih, yinelenen açık kayıt, erken/tekrarlı tamamlama, rol/CSRF/tenant sınırı ve başlangıç/tamamlanma geçmişi kontrol edildi. Güncel tam paket 93/93 geçti ve bu dört test pakete dahildir. Bu API kanıtı arayüz düğmelerinin DOM olay bağını ve sonuç mesajını kabul etmez.
 
+12 Ekim 2026 tarayıcı alt işlem kontrolü: Varlık detay penceresinin Genel bakış, İlişkiler, Bakım kayıtları, Hareket geçmişi ve Fotoğraf/dosyalar sekmeleri açıldı. Bilgileri düzenle, Denetimi kaydet, Denetim planla, Bakım başlat, Konum transferi ve Çalışana zimmetle formlarının tamamı açıldı; alanlar ve iptal düğmeleri göründü. Hiçbir form gönderilmedi ve kayıt değiştirilmedi. Durum seçenekleri okundu; durum seçilmedi. Dosya ilişkilendirme seçimi mevcut bir hareketi ve “Bir harekete bağlama” seçeneğini gösterdi; dosya seçilmedi/yüklenmedi. Bu nedenle form açılma/iptal için 6/6, kayıt sonucu için 0/6 doğrulanmıştır. Bir oturum süresi dolma durumunda modal arkada kalıp giriş ekranı görünür oldu; modal kapatıldıktan sonra mevcut form bilgileriyle giriş tekrar başarılı oldu. Süre sonu sırasında stale modalın arkada kalması UX kusuru olarak ayrıca izlenecek.
+
 ## Kısayolların doğrulama durumu
 
-Ana ekran/varlık listesinde erişilebilir ağaçta arama, yeni varlık, barkod okuma, bildirim, profil/yardım/görünüm, liste filtreleri, kayıtlı arama, sütun seçimi, yazdırma/tam ekran, satır yoğunluğu ve sayfalama bulundu. Satır başına ayrıntı, zimmet/iade, denetim, etiket yazdırma, kopyalama, düzenleme ve arşive taşıma eylemleri de var. Bunların yalnızca görünmesi sonuçlarının doğrulandığı anlamına gelmez. Form açma, doğrulama mesajı, iptal, başarı/hata ve son verinin yeniden yüklenmesi sırasıyla kontrol edilmelidir.
+Ana ekran/varlık listesinde erişilebilir ağaçta arama, yeni varlık, barkod okuma, bildirim, profil/yardım/görünüm, liste filtreleri, kayıtlı arama, sütun seçimi, yazdırma/tam ekran, satır yoğunluğu ve sayfalama bulundu. Satır başına ayrıntı, zimmet/iade, denetim, etiket yazdırma, kopyalama, düzenleme ve arşive taşıma eylemleri de var. “Daha fazla” menüsünde Pano düzenle, Varlık CSV indir, Çöp kutusu, Şirket verisini indir ve Aktarma dosyasını kontrol et seçenekleri bulundu. Pano düzenleme tercihler formu açılıp iptal edildi; Aktarma dosyasını kontrol et formu açıldı ve dosya yüklemeden kapatıldı. Diğer üç menü seçeneğinin işlemi başlatılmadı. Eylemin görünmesi sonuçlarının doğrulandığı anlamına gelmez. Form açma, doğrulama mesajı, iptal, başarı/hata ve son verinin yeniden yüklenmesi sırasıyla kontrol edilmelidir.
 
 ## Yüzdeyi doğru hesaplama kuralı
 
-Bir hedef/işlem ancak liste ve detay, ilgili alt işlemler, geçerli/geçersiz veri, iptal/hata yolu, yetki sınırı ve işlem sonrası kayıt/hareket doğrulaması tamamlanınca “tam çalışıyor” sayılacak. Her işlem için sonuç kaydedilecek: Tam, Kısmi, Çalışmıyor, Riskli/karar gerekli. Son raporda iki ayrı oran verilecek: 50 menü hedefinin tam çalışan oranı ve bulunan tüm kısayol/alt seçeneklerin tam çalışan oranı. Şu an ikincisi için doğrulanmış payda ve iki oran için de tamamlanmış canlı sonuç kümesi yok; sahte bir yüzde üretmek yerine açık bırakıldı.
+Bir hedef/işlem ancak liste ve detay, ilgili alt işlemler, geçerli/geçersiz veri, iptal/hata yolu, yetki sınırı ve işlem sonrası kayıt/hareket doğrulaması tamamlanınca “tam çalışıyor” sayılacak. Her işlem için sonuç kaydedilecek: Tam, Kısmi, Çalışmıyor, Riskli/karar gerekli. Son raporda iki ayrı oran verilecek: 50 menü hedefinin tam çalışan oranı ve bulunan tüm kısayol/alt seçeneklerin tam çalışan oranı. Şu an kısayol/alt seçenekler için doğrulanmış toplam payda ve iki oran için tamamlanmış canlı sonuç kümesi yok; sahte bir yüzde üretmek yerine açık bırakıldı. Ayrı ölçülebilen dar kapsam: menü rotası 50/50 (%100); varlık detay sekmeleri 5/5 açıldı; detay alt işlem formları 6/6 açıldı ve iptal edildi, ancak kayıt sonuçları 0/6; Pano düzenle/Aktarma kontrolü 2/2 açılıp iptal edildi.
 
 ## Dört doğrulama kontrolü
 
-1. Navigasyon: 10 grup/50 hedef kaynak kontrolünden geçti; canlı şirket menüsü ziyaretleri tamamlanmadı. Yerel demo 50 varlık/19 sütun DOM'u gösterdi; düzen doğrulayıcı geçti.
-2. Veri ve servis: önceki release kontrolünde yerel /api/status ready, migration beklemiyor; geçerli şirket hesabıyla yerel API girişi başarılı ve teşhis oturumu kapalı. Bu devam turunda tam izole PostgreSQL paketi 93/93 geçti. Tarayıcıda açık oturum ve rol bazlı görsel kabul hâlâ yapılmadı.
-3. Kısayol/modal: varlık modalı durum, tekil düzenleme, ek dosya ve bakım eylemlerinin API kabulü tam pakette 4/4; denetim eylemleri de pakette geçti. UI etkileşim ve başarı/hata mesajı kabulü bekliyor.
+1. Navigasyon: 10 grup/50 hedef kaynak kontrolünden ve bu oturumda canlı rota açılışından geçti. Menü erişimi 50/50 (%100); bu sadece sayfaya erişim oranıdır. Yerel demo 50 varlık/19 sütun DOM'u gösterdi; düzen doğrulayıcı geçti.
+2. Veri ve servis: önceki release kontrolünde yerel /api/status ready, migration beklemiyor; bu oturumda şirket girişi yapıldı, 50 varlık yüklendi ve kullanıcı oturumu açıkken menüler dolaşıldı. İzole PostgreSQL kabul paketi 93/93 geçti. Bu turda modal açığı nedeniyle oturum bir kez süresi dolmuş göründü; eski modal kapatılıp aynı mevcut form tekrar gönderilince giriş başarılı oldu.
+3. Kısayol/modal: API kabul kanıtı modal durum, düzenleme, ek dosya, bakım ve denetim akışları için pakette mevcut. Tarayıcıda beş sekme, altı yazma formu ve iki ek kısayol formu açılıp iptal edildi; bu adımlar yalnızca açılma/iptali doğrular. Kayıt, yükleme, dışa aktarma, geri yükleme, silme/arşiv, yazdırma/indirme ve başarı/hata mesajı kabulü yapılmadı.
 4. Kapsam/oran: 37 ürün ailesi için mevcut defter sayıldı; %5,4 oranı yalnızca “Var” durumundaki aileler içindir, menü çalışma oranı diye sunulamaz.

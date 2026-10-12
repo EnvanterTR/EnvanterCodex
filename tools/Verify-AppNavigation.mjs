@@ -27,6 +27,9 @@ if (!/\bmethod=\"post\"/i.test(loginForm)) {
 if (!source.includes('id="retryApiButton"') || !/function showLogin\([^)]*\)\s*\{[^}]*\$\('#retryApiButton'\)\.hidden\s*=\s*false/.test(source)) {
   failures.push('The login screen must keep the server connection check visible whenever login is shown.');
 }
+if (!/function showLogin\([^)]*\)\s*\{[^}]*document\.querySelectorAll\('dialog\[open\]'\)\.forEach\(dialog\s*=>\s*dialog\.close\(\)\)/.test(source)) {
+  failures.push('Expired sessions must close top-layer dialogs so they cannot cover the login screen.');
+}
 const locationLookupStart = source.indexOf("const locationResult = await api('/api/locations');");
 const locationLookupEnd = source.indexOf("fillSelect('categoryId'", locationLookupStart);
 const locationLookup = locationLookupStart < 0 || locationLookupEnd < 0 ? '' : source.slice(locationLookupStart, locationLookupEnd);
