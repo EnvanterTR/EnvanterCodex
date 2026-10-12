@@ -2363,6 +2363,30 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(4, historyPayload.RootElement.GetProperty("items").GetArrayLength());
         Assert.Equal(new[] { "Accessory", "Consumable", "Asset", "Component" }.OrderBy(x => x),
             historyPayload.RootElement.GetProperty("items").EnumerateArray().Select(x => x.GetProperty("itemType").GetString()!).OrderBy(x => x));
+
+        using var returnResponse = await SendAsRoleAsync(HttpMethod.Post, $"/api/requests/{requestId}/return-kit", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { note = "kit checked back in" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, returnResponse.StatusCode);
+        using (var duplicateReturn = await SendAsRoleAsync(HttpMethod.Post, $"/api/requests/{requestId}/return-kit", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { note = "duplicate" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, duplicateReturn.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var fulfillment = await db.InventoryRequestKitFulfillmentLines.Where(x => x.CompanyId == _companyId && x.InventoryRequestId == requestId).ToListAsync();
+            Assert.Equal(4, fulfillment.Count);
+            Assert.Equal(3, fulfillment.Count(x => x.ReturnedAt != null));
+            Assert.Null(fulfillment.Single(x => x.ItemType == "Consumable").ReturnedAt);
+            var request = await db.InventoryRequests.SingleAsync(x => x.CompanyId == _companyId && x.Id == requestId);
+            Assert.NotNull(request.KitReturnedAt);
+            Assert.Equal("kit checked back in", request.KitReturnNote);
+            var accessoryAssignment = await db.AccessoryAssignments.SingleAsync(x => x.CompanyId == _companyId && x.AccessoryId == _ownAccessoryId && x.Notes!.Contains($"[KIT:{kitId}]"));
+            Assert.Equal(accessoryAssignment.Quantity, accessoryAssignment.ReturnedQuantity);
+            Assert.Equal(AssetStatuses.Available, (await db.Assets.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownAssetId)).Status);
+            Assert.Contains(await db.ConsumableMovements.Where(x => x.CompanyId == _companyId && x.ConsumableId == _ownConsumableId).ToListAsync(),
+                x => x.MovementType == "Checkout" && x.Quantity == 2 && x.Notes!.Contains($"[KIT:{kitId}]"));
+        }
     }
 
     [Fact]

@@ -784,6 +784,22 @@ public sealed class InventoryRequest
     public string? ReviewNote { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? ReviewedAt { get; set; }
+    public DateTimeOffset? KitReturnedAt { get; set; }
+    public string? KitReturnNote { get; set; }
+}
+
+public sealed class InventoryRequestKitFulfillmentLine
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid InventoryRequestId { get; set; }
+    public required string ItemType { get; set; }
+    public Guid ItemId { get; set; }
+    public int Quantity { get; set; }
+    public Guid? AccessoryAssignmentId { get; set; }
+    public Guid? ComponentAllocationId { get; set; }
+    public Guid? AssetId { get; set; }
+    public DateTimeOffset? ReturnedAt { get; set; }
 }
 
 public sealed class CompanyTask

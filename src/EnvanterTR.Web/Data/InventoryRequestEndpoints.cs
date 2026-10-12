@@ -105,6 +105,7 @@ public static class InventoryRequestEndpoints
                 .Select(x => new
                 {
                     x.Id, x.ItemType, x.ItemId, x.Quantity, x.Status, x.RequestNote, x.ReviewNote, x.CreatedAt, x.ReviewedAt,
+                    x.KitReturnedAt, x.KitReturnNote,
                     x.RequestedByUserId, x.ReviewedByUserId,
                     employee = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
                     employeeNumber = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault(),
@@ -150,7 +151,7 @@ public static class InventoryRequestEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["export"] = ["Dışa aktarım en fazla 10.000 talep içerir; aramayı veya durumu daraltın."] });
             var rows = await query.OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id).Select(x => new
             {
-                x.ItemType, x.Quantity, x.Status, x.RequestNote, x.ReviewNote, x.CreatedAt, x.ReviewedAt,
+                x.ItemType, x.Quantity, x.Status, x.RequestNote, x.ReviewNote, x.CreatedAt, x.ReviewedAt, x.KitReturnedAt, x.KitReturnNote,
                 employee = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
                 employeeNumber = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault(),
                 item = x.ItemType == "Accessory"
@@ -250,6 +251,97 @@ public static class InventoryRequestEndpoints
                 Action = "request.cancelled", Details = $"{row.Quantity} adet talep iptal edildi." });
             await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); return Results.NoContent();
         }).RequireAuthorization("asset.read");
+
+        api.MapPost("/requests/{id:guid}/return-kit", async (Guid id, DecisionRequest request, ClaimsPrincipal user,
+            AppDbContext db, CancellationToken ct) =>
+        {
+            if (!Tenant(user, out var companyId) || UserId(user) is not Guid userId) return Results.Forbid();
+            if (request.Note?.Length > 1000)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["İade notu en fazla 1.000 karakter olabilir."] });
+
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+            var inventoryRequest = await db.InventoryRequests.FromSqlInterpolated(
+                $"SELECT * FROM \"InventoryRequests\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+                .SingleOrDefaultAsync(ct);
+            if (inventoryRequest is null) return Results.NotFound();
+            if (inventoryRequest.ItemType != "AccessoryKit" || inventoryRequest.Status != "Approved")
+                return Results.Conflict(new { message = "Yalnızca onaylanmış hazır kit talepleri iade alınabilir." });
+            if (inventoryRequest.KitReturnedAt is not null)
+                return Results.Conflict(new { message = "Bu hazır kit talebinin iadesi daha önce kaydedilmiş." });
+
+            var fulfillment = await db.InventoryRequestKitFulfillmentLines
+                .Where(x => x.CompanyId == companyId && x.InventoryRequestId == id).OrderBy(x => x.ItemType).ThenBy(x => x.ItemId).ToListAsync(ct);
+            if (fulfillment.Count == 0)
+                return Results.Conflict(new { message = "Bu eski kit talebinde güvenilir teslim bağlantısı yok; stok geçmişini incelemeden otomatik iade yapılamaz." });
+            var returnableLines = fulfillment.Where(x => x.ItemType is "Accessory" or "Asset" or "Component").ToList();
+            if (returnableLines.Count == 0)
+                return Results.Conflict(new { message = "Bu kit yalnızca tüketilen sarf malzemelerinden oluşuyor; geri alınabilir kalem yok." });
+
+            var now = DateTimeOffset.UtcNow;
+            foreach (var line in returnableLines)
+            {
+                if (line.ReturnedAt is not null) continue;
+                switch (line.ItemType)
+                {
+                    case "Accessory":
+                    {
+                        if (line.AccessoryAssignmentId is not Guid assignmentId) return Results.Conflict(new { message = "Aksesuar teslim bağlantısı eksik." });
+                        var assignment = await db.AccessoryAssignments.FromSqlInterpolated(
+                            $"SELECT * FROM \"AccessoryAssignments\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {assignmentId} FOR UPDATE").SingleOrDefaultAsync(ct);
+                        if (assignment is null || assignment.AccessoryId != line.ItemId || assignment.EmployeeId != inventoryRequest.EmployeeId || assignment.Quantity != line.Quantity)
+                            return Results.Conflict(new { message = "Kit aksesuarının güncel zimmet kaydı teslimle eşleşmiyor; otomatik iade durduruldu." });
+                        var remaining = assignment.Quantity - assignment.ReturnedQuantity;
+                        if (remaining > 0)
+                        {
+                            assignment.ReturnedQuantity += remaining; assignment.LastReturnedAt = now;
+                            db.AccessoryMovements.Add(new AccessoryMovement { CompanyId = companyId, AccessoryId = line.ItemId,
+                                AssignmentId = assignment.Id, EmployeeId = inventoryRequest.EmployeeId, ActorUserId = userId,
+                                MovementType = "Checkin", Quantity = remaining, Notes = Clean(request.Note) ?? "Hazır kit iadesi" });
+                        }
+                        break;
+                    }
+                    case "Component":
+                    {
+                        if (line.ComponentAllocationId is not Guid allocationId) return Results.Conflict(new { message = "Bileşen tahsis bağlantısı eksik." });
+                        var allocation = await db.ComponentAllocations.FromSqlInterpolated(
+                            $"SELECT * FROM \"ComponentAllocations\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {allocationId} FOR UPDATE").SingleOrDefaultAsync(ct);
+                        if (allocation is null || allocation.ComponentId != line.ItemId || allocation.AssetId != line.AssetId || allocation.Quantity != line.Quantity)
+                            return Results.Conflict(new { message = "Kit bileşeninin tahsis kaydı teslimle eşleşmiyor; otomatik iade durduruldu." });
+                        var remaining = allocation.Quantity - allocation.RemovedQuantity;
+                        if (remaining > 0)
+                        {
+                            allocation.RemovedQuantity += remaining; allocation.LastRemovedAt = now;
+                            db.ComponentMovements.Add(new ComponentMovement { CompanyId = companyId, ComponentId = line.ItemId,
+                                AllocationId = allocation.Id, AssetId = allocation.AssetId, ActorUserId = userId,
+                                MovementType = "Checkin", Quantity = remaining, Notes = Clean(request.Note) ?? "Hazır kit iadesi" });
+                        }
+                        break;
+                    }
+                    case "Asset":
+                    {
+                        if (line.AssetId is not Guid assetId || assetId != line.ItemId) return Results.Conflict(new { message = "Kit varlığı teslim bağlantısı eksik." });
+                        var asset = await db.Assets.FromSqlInterpolated(
+                            $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {assetId} AND \"DeletedAt\" IS NULL FOR UPDATE")
+                            .IgnoreQueryFilters().SingleOrDefaultAsync(ct);
+                        if (asset is null || asset.AssignedEmployeeId != inventoryRequest.EmployeeId || asset.Status != AssetStatuses.Deployed)
+                            return Results.Conflict(new { message = "Kit varlığının güncel zimmeti teslim kaydıyla eşleşmiyor; otomatik iade durduruldu." });
+                        asset.AssignedEmployeeId = null; asset.Status = AssetStatuses.Available; asset.UpdatedAt = now;
+                        db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = assetId, ActorUserId = userId,
+                            EmployeeId = inventoryRequest.EmployeeId, EventType = "Returned",
+                            Details = Clean(request.Note) ?? "Hazır kit iadesi", OccurredAt = now });
+                        break;
+                    }
+                }
+                line.ReturnedAt = now;
+            }
+
+            inventoryRequest.KitReturnedAt = now;
+            inventoryRequest.KitReturnNote = Clean(request.Note);
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = userId, TargetType = "InventoryRequest", TargetId = id,
+                Action = "request.kit-returned", Details = "Hazır kitin geri alınabilir kalemleri iade edildi; sarf malzemeleri tüketilmiş olarak kaldı." });
+            await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
+            return Results.Ok(new { inventoryRequest.Id, inventoryRequest.KitReturnedAt });
+        }).RequireAuthorization("asset.write");
 
         return api;
     }
@@ -374,6 +466,7 @@ public static class InventoryRequestEndpoints
 
         var movementNote = Clean(note) ?? "Hazır kit talebi onayı";
         var targetAsset = lines.Where(x => x.AssetId.HasValue).Select(x => x.AssetId).SingleOrDefault();
+        var fulfillmentLines = new List<InventoryRequestKitFulfillmentLine>(lines.Count);
         foreach (var line in lines)
         {
             var quantity = checked(line.Quantity * request.Quantity);
@@ -385,17 +478,23 @@ public static class InventoryRequestEndpoints
                     var assignment = new AccessoryAssignment { CompanyId = companyId, AccessoryId = id,
                         TargetType = "Employee", EmployeeId = request.EmployeeId, Quantity = quantity, Notes = markerNote };
                     db.AccessoryAssignments.Add(assignment);
+                    fulfillmentLines.Add(new InventoryRequestKitFulfillmentLine { CompanyId = companyId, InventoryRequestId = request.Id,
+                        ItemType = line.ItemType, ItemId = id, Quantity = quantity, AccessoryAssignmentId = assignment.Id });
                     db.AccessoryMovements.Add(new AccessoryMovement { CompanyId = companyId, AccessoryId = id,
                         AssignmentId = assignment.Id, EmployeeId = request.EmployeeId, ActorUserId = actorId,
                         MovementType = "Checkout", Quantity = quantity, Notes = markerNote });
                     break;
                 case "Consumable":
+                    fulfillmentLines.Add(new InventoryRequestKitFulfillmentLine { CompanyId = companyId, InventoryRequestId = request.Id,
+                        ItemType = line.ItemType, ItemId = id, Quantity = quantity });
                     db.ConsumableMovements.Add(new ConsumableMovement { CompanyId = companyId, ConsumableId = id,
                         EmployeeId = request.EmployeeId, ActorUserId = actorId, MovementType = "Checkout", Quantity = quantity, Notes = markerNote });
                     break;
                 case "Asset":
                     var asset = (Asset)locked[(line.ItemType, id)];
                     asset.AssignedEmployeeId = request.EmployeeId; asset.Status = AssetStatuses.Deployed; asset.UpdatedAt = DateTimeOffset.UtcNow;
+                    fulfillmentLines.Add(new InventoryRequestKitFulfillmentLine { CompanyId = companyId, InventoryRequestId = request.Id,
+                        ItemType = line.ItemType, ItemId = id, Quantity = quantity, AssetId = id });
                     db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = id, ActorUserId = actorId,
                         EmployeeId = request.EmployeeId, EventType = "Assigned", Details = markerNote });
                     break;
@@ -404,12 +503,15 @@ public static class InventoryRequestEndpoints
                     var allocation = new ComponentAllocation { CompanyId = companyId, ComponentId = id, AssetId = assetId,
                         ActorUserId = actorId, Quantity = quantity, Notes = markerNote };
                     db.ComponentAllocations.Add(allocation);
+                    fulfillmentLines.Add(new InventoryRequestKitFulfillmentLine { CompanyId = companyId, InventoryRequestId = request.Id,
+                        ItemType = line.ItemType, ItemId = id, Quantity = quantity, ComponentAllocationId = allocation.Id, AssetId = assetId });
                     db.ComponentMovements.Add(new ComponentMovement { CompanyId = companyId, ComponentId = id,
                         AllocationId = allocation.Id, AssetId = assetId, ActorUserId = actorId,
                         MovementType = "Checkout", Quantity = quantity, Notes = markerNote });
                     break;
             }
         }
+        db.InventoryRequestKitFulfillmentLines.AddRange(fulfillmentLines);
         kit.UpdatedAt = DateTimeOffset.UtcNow;
         return available;
     }

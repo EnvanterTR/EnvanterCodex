@@ -55,6 +55,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Consumable> Consumables => Set<Consumable>();
     public DbSet<ConsumableMovement> ConsumableMovements => Set<ConsumableMovement>();
     public DbSet<InventoryRequest> InventoryRequests => Set<InventoryRequest>();
+    public DbSet<InventoryRequestKitFulfillmentLine> InventoryRequestKitFulfillmentLines => Set<InventoryRequestKitFulfillmentLine>();
     public DbSet<CompanyTask> CompanyTasks => Set<CompanyTask>();
     public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>();
     public DbSet<SupportTicketMessage> SupportTicketMessages => Set<SupportTicketMessage>();
@@ -469,10 +470,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<ConsumableMovement>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
 
+        modelBuilder.Entity<InventoryRequest>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<InventoryRequest>().Property(x => x.ItemType).HasMaxLength(24).IsRequired();
         modelBuilder.Entity<InventoryRequest>().Property(x => x.Status).HasMaxLength(24).IsRequired();
         modelBuilder.Entity<InventoryRequest>().Property(x => x.RequestNote).HasMaxLength(1000);
         modelBuilder.Entity<InventoryRequest>().Property(x => x.ReviewNote).HasMaxLength(1000);
+        modelBuilder.Entity<InventoryRequest>().Property(x => x.KitReturnNote).HasMaxLength(1000);
         modelBuilder.Entity<InventoryRequest>().HasIndex(x => new { x.CompanyId, x.Status, x.CreatedAt });
         modelBuilder.Entity<InventoryRequest>().HasIndex(x => new { x.CompanyId, x.EmployeeId, x.CreatedAt });
         modelBuilder.Entity<InventoryRequest>().ToTable("InventoryRequests", table =>
@@ -481,6 +484,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             table.HasCheckConstraint("CK_InventoryRequests_Status", "\"Status\" IN ('Pending', 'Approved', 'Rejected', 'Cancelled')");
             table.HasCheckConstraint("CK_InventoryRequests_Quantity", "\"Quantity\" BETWEEN 1 AND 100000");
             table.HasCheckConstraint("CK_InventoryRequests_ReviewedAt", "(\"Status\" = 'Pending' AND \"ReviewedAt\" IS NULL) OR (\"Status\" <> 'Pending' AND \"ReviewedAt\" IS NOT NULL)");
+            table.HasCheckConstraint("CK_InventoryRequests_KitReturn", "\"KitReturnedAt\" IS NULL OR (\"ItemType\" = 'AccessoryKit' AND \"Status\" = 'Approved')");
         });
         modelBuilder.Entity<InventoryRequest>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
@@ -490,6 +494,28 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasForeignKey(x => x.RequestedByUserId).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<InventoryRequest>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.ReviewedByUserId).OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<InventoryRequestKitFulfillmentLine>().HasKey(x => x.Id);
+        modelBuilder.Entity<InventoryRequestKitFulfillmentLine>().Property(x => x.ItemType).HasMaxLength(24).IsRequired();
+        modelBuilder.Entity<InventoryRequestKitFulfillmentLine>().HasIndex(x => new { x.CompanyId, x.InventoryRequestId, x.ItemType, x.ItemId })
+            .HasDatabaseName("IX_InventoryRequestKitFulfillmentLines_RequestItem").IsUnique();
+        modelBuilder.Entity<InventoryRequestKitFulfillmentLine>().ToTable("InventoryRequestKitFulfillmentLines", table =>
+        {
+            table.HasCheckConstraint("CK_InventoryRequestKitFulfillmentLines_Type", "\"ItemType\" IN ('Accessory', 'Consumable', 'Asset', 'Component')");
+            table.HasCheckConstraint("CK_InventoryRequestKitFulfillmentLines_Quantity", "\"Quantity\" > 0");
+            table.HasCheckConstraint("CK_InventoryRequestKitFulfillmentLines_Link", "(\"ItemType\" = 'Accessory' AND \"AccessoryAssignmentId\" IS NOT NULL AND \"ComponentAllocationId\" IS NULL AND \"AssetId\" IS NULL) OR (\"ItemType\" = 'Consumable' AND \"AccessoryAssignmentId\" IS NULL AND \"ComponentAllocationId\" IS NULL AND \"AssetId\" IS NULL) OR (\"ItemType\" = 'Asset' AND \"AccessoryAssignmentId\" IS NULL AND \"ComponentAllocationId\" IS NULL AND \"AssetId\" = \"ItemId\") OR (\"ItemType\" = 'Component' AND \"AccessoryAssignmentId\" IS NULL AND \"ComponentAllocationId\" IS NOT NULL AND \"AssetId\" IS NOT NULL)");
+            table.HasCheckConstraint("CK_InventoryRequestKitFulfillmentLines_Returnable", "\"ReturnedAt\" IS NULL OR \"ItemType\" IN ('Accessory', 'Asset', 'Component')");
+        });
+        modelBuilder.Entity<InventoryRequestKitFulfillmentLine>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<InventoryRequestKitFulfillmentLine>().HasOne<InventoryRequest>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.InventoryRequestId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<InventoryRequestKitFulfillmentLine>().HasOne<AccessoryAssignment>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.AccessoryAssignmentId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<InventoryRequestKitFulfillmentLine>().HasOne<ComponentAllocation>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ComponentAllocationId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<InventoryRequestKitFulfillmentLine>().HasOne<Asset>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.AssetId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
 
         modelBuilder.Entity<CompanyTask>().Property(x => x.Title).HasMaxLength(160).IsRequired();
         modelBuilder.Entity<CompanyTask>().Property(x => x.Description).HasMaxLength(4000);
