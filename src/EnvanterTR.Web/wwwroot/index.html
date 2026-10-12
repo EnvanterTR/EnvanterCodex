@@ -773,7 +773,6 @@
       'Genel bakışa dön':['Back to overview','Вернуться к обзору','Повернутися до огляду','Назад кон прегледот'],
       'Varlıkları aç':['Open assets','Открыть активы','Відкрити активи','Отвори средства'],
       'Atanabilir görev, sorumlu ve tamamlanma akışı henüz hazır değil. Bakım ve denetim planlarını Takvim bölümünden izleyebilirsiniz.':['Task assignment, ownership, and completion are not ready yet. Maintenance and audit plans are available in Calendar.','Назначение задач, ответственные и завершение пока не готовы. Планы обслуживания и проверок доступны в календаре.','Призначення завдань, відповідальні та завершення ще не готові. Плани обслуговування й аудитів доступні в календарі.','Доделувањето задачи, одговорните и завршувањето сè уште не се подготвени. Плановите за одржување и ревизија се во Календар.'],
-      'Uygulama içi destek talebi ve yanıt takibi henüz hazır değil.':['In-app support requests and response tracking are not available yet.','Запросы поддержки и отслеживание ответов в приложении пока недоступны.','Запити підтримки та відстеження відповідей у застосунку ще недоступні.','Барањата за поддршка и следењето одговори во апликацијата сè уште не се достапни.'],
       'Harici sistem bağlantısı ve webhook yönetimi henüz hazır değil. Bu menüde çalışır bir bağlantı tanımlı değildir.':['External system connections and webhook management are not ready. No active connection is configured here.','Подключения к внешним системам и управление вебхуками пока не готовы. Здесь не настроено действующее подключение.','Підключення до зовнішніх систем і керування вебхуками ще не готові. Тут не налаштовано активного підключення.','Поврзувањата со надворешни системи и управувањето со webhook сè уште не се подготвени. Тука нема активно поврзување.'],
       'Şube ve tüzel kişilik bazlı varlık ayrımı henüz hazır değil. Şirket verileri mevcut şirket alanında birlikte tutulur.':['Branch and legal-entity asset separation is not ready. Company records currently remain together in this company workspace.','Разделение активов по филиалам и юридическим лицам пока не готово. Данные сейчас хранятся вместе в рабочей области компании.','Розподіл активів за філіями та юридичними особами ще не готовий. Дані зараз зберігаються разом у робочому просторі компанії.','Одделувањето средства по филијали и правни лица не е подготвено. Податоците засега се чуваат заедно во работниот простор на компанијата.'],
       'Roller ve izinler için yönetim ekranı henüz hazır değil. Mevcut roller ve izin sınırları sunucu tarafından uygulanır.':['The role and permission management screen is not ready. Existing roles and permission boundaries are enforced by the server.','Экран управления ролями и разрешениями пока не готов. Сервер применяет существующие роли и ограничения доступа.','Екран керування ролями й дозволами ще не готовий. Сервер застосовує наявні ролі та обмеження доступу.','Екранот за управување со улоги и дозволи не е подготвен. Серверот ги применува постојните улоги и ограничувања.'],
@@ -2185,11 +2184,11 @@
       const params = new URLSearchParams({ page: String(Math.max(1, page)), pageSize: '25' });
       const q = $('#supportSearch').value.trim(), status = $('#supportStatusFilter').value;
       if (q) params.set('q', q); if (status) params.set('status', status);
-      $('#supportRows').innerHTML = '<tr><td colspan="7">Talepler yükleniyor…</td></tr>';
+      $('#supportRows').innerHTML = `<tr><td colspan="7">${escapeHtml(translateUiText('Talepler yükleniyor…'))}</td></tr>`;
       const result = await api(`/api/support/tickets?${params}`);
       supportPageNumber = result.page; supportTotal = result.total;
-      $('#supportCount').textContent = `${fmt.format(supportTotal)} talep`;
-      $('#supportPageInfo').textContent = `Sayfa ${supportPageNumber} / ${Math.max(1, Math.ceil(supportTotal / result.pageSize))}`;
+      $('#supportCount').textContent = translateUiText('{count} talep').replace('{count}', fmt.format(supportTotal));
+      $('#supportPageInfo').textContent = translateUiText('Sayfa {page} / {pages}').replace('{page}', fmt.format(supportPageNumber)).replace('{pages}', fmt.format(Math.max(1, Math.ceil(supportTotal / result.pageSize))));
       $('#supportPrev').disabled = supportPageNumber <= 1; $('#supportNext').disabled = supportPageNumber * result.pageSize >= supportTotal;
       $('#supportNewButton').hidden = false;
       $('#supportRows').replaceChildren(...(result.items || []).map(item => {
@@ -2197,7 +2196,7 @@
         row.innerHTML = `<td>${escapeHtml(item.subject)}</td><td>${escapeHtml(supportCategoryLabel(item.category))}</td><td><span class="pill ${item.status === 'Closed' ? '' : item.status === 'Resolved' ? 'blue' : 'warn'}">${escapeHtml(supportStatusLabel(item.status))}</span></td><td>${escapeHtml(item.createdBy || '—')}</td><td>${escapeHtml(supportDate(item.updatedAt))}</td><td>${fmt.format(item.messageCount || 0)}</td><td><button class="btn small" type="button" data-support-open="${escapeHtml(item.id)}">${escapeHtml(translateUiText('Aç'))}</button></td>`;
         return row;
       }));
-      if (!result.items?.length) $('#supportRows').innerHTML = '<tr><td colspan="7">Filtreye uyan destek talebi yok.</td></tr>';
+      if (!result.items?.length) $('#supportRows').innerHTML = `<tr><td colspan="7">${escapeHtml(translateUiText('Filtreye uyan destek talebi yok.'))}</td></tr>`;
       $('#supportRows').querySelectorAll('[data-support-open]').forEach(button => button.addEventListener('click', () => loadSupportTicket(button.dataset.supportOpen).catch(error => notify(error.message))));
     }
     async function loadSupportTicket(ticketId) {
@@ -2222,35 +2221,60 @@
     $('#supportEditorClose').addEventListener('click', () => { $('#supportEditorPanel').hidden = true; });
     $('#supportDetailClose').addEventListener('click', () => { $('#supportDetailPanel').hidden = true; currentSupportTicketId = null; });
     $('#supportForm').addEventListener('submit', async event => {
-      event.preventDefault(); const form = event.currentTarget, button = $('#supportSaveButton'); button.disabled = true; $('#supportFormFeedback').textContent = 'Talep gönderiliyor…';
+      event.preventDefault(); const form = event.currentTarget, button = $('#supportSaveButton'); button.disabled = true; $('#supportFormFeedback').textContent = translateUiText('Talep gönderiliyor…');
       try {
         const created = await api('/api/support/tickets', { method: 'POST', body: JSON.stringify({ subject: form.elements.subject.value, category: form.elements.category.value, message: form.elements.message.value }) });
-        $('#supportEditorPanel').hidden = true; await loadSupportTickets(1); await loadSupportTicket(created.id); notify('Destek talebi oluşturuldu.');
-      } catch (error) { $('#supportFormFeedback').textContent = error.message; }
+        $('#supportEditorPanel').hidden = true; await loadSupportTickets(1); await loadSupportTicket(created.id); notify(translateUiText('Destek talebi oluşturuldu.'));
+      } catch (error) { $('#supportFormFeedback').textContent = translateUiText(error.message); }
       finally { button.disabled = false; }
     });
     $('#supportReplyForm').addEventListener('submit', async event => {
       event.preventDefault(); if (!currentSupportTicketId) return;
       const form = event.currentTarget, button = $('#supportReplyButton'); button.disabled = true;
       try { await api(`/api/support/tickets/${encodeURIComponent(currentSupportTicketId)}/messages`, { method: 'POST', body: JSON.stringify({ body: form.elements.body.value }) }); form.reset(); await loadSupportTicket(currentSupportTicketId); await loadSupportTickets(supportPageNumber); }
-      catch (error) { $('#supportReplyFeedback').textContent = error.message; }
+      catch (error) { $('#supportReplyFeedback').textContent = translateUiText(error.message); }
       finally { button.disabled = false; }
     });
     $('#supportCloseTicket').addEventListener('click', async () => {
       if (!currentSupportTicketId) return;
       const button = $('#supportCloseTicket'); button.disabled = true;
       try { await api(`/api/support/tickets/${encodeURIComponent(currentSupportTicketId)}/close`, { method: 'POST' }); await loadSupportTicket(currentSupportTicketId); await loadSupportTickets(supportPageNumber); }
-      catch (error) { notify(error.message); }
+      catch (error) { notify(translateUiText(error.message)); }
       finally { button.disabled = false; }
     });
-    $('#supportRefresh').addEventListener('click', () => loadSupportTickets(supportPageNumber).catch(error => notify(error.message)));
-    $('#supportStatusFilter').addEventListener('change', () => loadSupportTickets(1).catch(error => notify(error.message)));
-    $('#supportSearch').addEventListener('input', () => { clearTimeout(supportSearchTimer); supportSearchTimer = setTimeout(() => loadSupportTickets(1).catch(error => notify(error.message)), 250); });
-    $('#supportPrev').addEventListener('click', () => loadSupportTickets(supportPageNumber - 1).catch(error => notify(error.message)));
-    $('#supportNext').addEventListener('click', () => loadSupportTickets(supportPageNumber + 1).catch(error => notify(error.message)));
+    $('#supportRefresh').addEventListener('click', () => loadSupportTickets(supportPageNumber).catch(error => notify(translateUiText(error.message))));
+    $('#supportStatusFilter').addEventListener('change', () => loadSupportTickets(1).catch(error => notify(translateUiText(error.message))));
+    $('#supportSearch').addEventListener('input', () => { clearTimeout(supportSearchTimer); supportSearchTimer = setTimeout(() => loadSupportTickets(1).catch(error => notify(translateUiText(error.message))), 250); });
+    $('#supportPrev').addEventListener('click', () => loadSupportTickets(supportPageNumber - 1).catch(error => notify(translateUiText(error.message))));
+    $('#supportNext').addEventListener('click', () => loadSupportTickets(supportPageNumber + 1).catch(error => notify(translateUiText(error.message))));
     Object.assign(localeRows, {
       'ŞİRKET ALANI / YARDIM':['COMPANY / HELP','КОМПАНИЯ / ПОМОЩЬ','КОМПАНІЯ / ДОПОМОГА','КОМПАНИЈА / ПОМОШ'],
       'Destek talepleri':['Support tickets','Запросы в поддержку','Запити до підтримки','Барања за поддршка'],
+      'Yenile':['Refresh','Обновить','Оновити','Освежи'],
+      'Kapat':['Close','Закрыть','Закрити','Затвори'],
+      'Aç':['Open','Открыть','Відкрити','Отвори'],
+      'Talep oluşturuldu.':['Ticket created.','Запрос создан.','Запит створено.','Барањето е создадено.'],
+      'Talep gönderiliyor…':['Submitting ticket…','Отправка запроса…','Надсилання запиту…','Се испраќа барањето…'],
+      'Talep oluşturma başarısız.':['Ticket could not be created.','Не удалось создать запрос.','Не вдалося створити запит.','Барањето не може да се создаде.'],
+      'Destek talebi durumu geçerli değil.':['The support ticket status is invalid.','Недопустимый статус запроса.','Неприпустимий стан запиту.','Статусот на барањето е невалиден.'],
+      'Arama metni 120 karakteri aşamaz.':['Search text cannot exceed 120 characters.','Текст поиска не может превышать 120 символов.','Текст пошуку не може перевищувати 120 символів.','Текстот за пребарување не смее да надмине 120 знаци.'],
+      'Yanıt 1–8.000 karakter olmalıdır.':['The reply must contain 1–8,000 characters.','Ответ должен содержать от 1 до 8 000 символов.','Відповідь має містити від 1 до 8 000 символів.','Одговорот мора да содржи од 1 до 8.000 знаци.'],
+      'Konu 1–160 karakter olmalıdır.':['The subject must contain 1–160 characters.','Тема должна содержать от 1 до 160 символов.','Тема має містити від 1 до 160 символів.','Насловот мора да содржи од 1 до 160 знаци.'],
+      'Açıklama 1–8.000 karakter olmalıdır.':['The description must contain 1–8,000 characters.','Описание должно содержать от 1 до 8 000 символов.','Опис має містити від 1 до 8 000 символів.','Описот мора да содржи од 1 до 8.000 знаци.'],
+      'Destek kategorisi geçerli değil.':['The support category is invalid.','Недопустимая категория запроса.','Неприпустима категорія запиту.','Категоријата на барањето е невалидна.'],
+      'İstek doğrulaması başarısız.':['Request validation failed.','Проверка запроса не пройдена.','Перевірка запиту не пройдена.','Проверката на барањето не успеа.'],
+      'Kapatılan destek talebine yanıt eklenemez.':['A closed support ticket cannot receive a reply.','На закрытый запрос в поддержку нельзя ответить.','На закритий запит до підтримки не можна відповісти.','Не може да се одговори на затворено барање за поддршка.'],
+      'Destek talebi oluşturuldu.':['Support ticket created.','Запрос в поддержку создан.','Запит до підтримки створено.','Барањето за поддршка е создадено.'],
+      'Destek isteği oluşturun, yanıtları izleyin ve çözülen talepleri kapatın.':['Create a support request, follow replies, and close resolved requests.','Создавайте запросы в поддержку, следите за ответами и закрывайте решённые запросы.','Створюйте запити до підтримки, стежте за відповідями та закривайте вирішені запити.','Создавајте барања за поддршка, следете ги одговорите и затворајте ги решените барања.'],
+      'Talep, bu şirketteki destek yöneticileriyle paylaşılır.':['The ticket is shared with support managers at this company.','Запрос виден менеджерам поддержки этой компании.','Запит доступний менеджерам підтримки цієї компанії.','Барањето е достапно за менаџерите за поддршка во оваа компанија.'],
+      'Destek taleplerinde ara':['Search support tickets','Поиск по запросам поддержки','Пошук запитів підтримки','Пребарај барања за поддршка'],
+      'Destek talepleri':['Support tickets','Запросы в поддержку','Запити до підтримки','Барања за поддршка'],
+      'Destek talebi':['Support ticket','Запрос в поддержку','Запит до підтримки','Барање за поддршка'],
+      'ŞİRKET ALANI / YARDIM':['COMPANY / HELP','КОМПАНИЯ / ПОМОЩЬ','КОМПАНІЯ / ДОПОМОГА','КОМПАНИЈА / ПОМОШ'],
+      'Filtreye uyan destek talebi yok.':['No support tickets match these filters.','Нет запросов, соответствующих фильтрам.','Немає запитів за цими фільтрами.','Нема барања што одговараат на филтрите.'],
+      'Talepler yükleniyor…':['Loading tickets…','Загрузка запросов…','Завантаження запитів…','Се вчитуваат барањата…'],
+      'Sayfa {page} / {pages}':['Page {page} of {pages}','Страница {page} из {pages}','Сторінка {page} із {pages}','Страница {page} од {pages}'],
+      '{count} talep':['{count} tickets','{count} запросов','{count} запитів','{count} барања'],
       'Destek isteği oluşturun, yanıtları izleyin ve çözülen talepleri kapatın.':['Create a support request, follow replies, and close resolved requests.','Создавайте запросы в поддержку, следите за ответами и закрывайте решённые запросы.','Створюйте запити до підтримки, стежте за відповідями та закривайте вирішені запити.','Создавајте барања за поддршка, следете ги одговорите и затворајте ги решените барања.'],
       'Yeni destek talebi':['New support ticket','Новый запрос в поддержку','Новий запит до підтримки','Ново барање за поддршка'],
       'Talep, bu şirketteki destek yöneticileriyle paylaşılır.':['The ticket is shared with support managers at this company.','Запрос виден менеджерам поддержки этой компании.','Запит доступний менеджерам підтримки цієї компанії.','Барањето е достапно за менаџерите за поддршка во оваа компанија.'],
@@ -2327,6 +2351,10 @@
       if ($('#licensesPage') && !$('#licensesPage').hidden) loadLicenses(licensePage).catch(error => notify(error.message));
       if ($('#licenseAssignmentsPage') && !$('#licenseAssignmentsPage').hidden) loadLicenseAssignments(licenseAssignmentPage).catch(error => notify(error.message));
       if ($('#maintenancePage') && !$('#maintenancePage').hidden) loadCompanyMaintenances(maintenancePageNumber).catch(error => notify(error.message));
+      if ($('#supportPage') && !$('#supportPage').hidden) {
+        loadSupportTickets(supportPageNumber).catch(error => notify(translateUiText(error.message)));
+        if (currentSupportTicketId && !$('#supportDetailPanel').hidden) loadSupportTicket(currentSupportTicketId).catch(error => notify(translateUiText(error.message)));
+      }
       if ($('#calendarPage') && !$('#calendarPage').hidden) loadOperationalCalendar().catch(error => notify(error.message));
       // The shell language is applied before company-role constants initialize.
       // Also avoid authenticated alert requests until a company session exists.
@@ -7441,7 +7469,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         loadOperationalCalendar().catch(error => notify(error.message));
       }
       else if (page === 'Görevler') { $('#tasksPage').hidden = false; $('#pageTitle').textContent = translateUiText(page); $('#taskNewButton').hidden = !canManagePeople(); loadCompanyTasks(1).catch(error => notify(error.message)); }
-      else if (page === 'Destek') { $('#supportPage').hidden = false; $('#pageTitle').textContent = 'Destek talepleri'; $('#supportDetailPanel').hidden = true; $('#supportEditorPanel').hidden = true; loadSupportTickets(1).catch(error => notify(error.message)); }
+      else if (page === 'Destek') { $('#supportPage').hidden = false; $('#pageTitle').textContent = translateUiText('Destek talepleri'); $('#supportDetailPanel').hidden = true; $('#supportEditorPanel').hidden = true; loadSupportTickets(1).catch(error => notify(translateUiText(error.message))); }
       else if (page === 'Denetimler' || page === 'Denetim kayıtları') { $('#auditPage').hidden = false; $('#pageTitle').textContent = page; $('#auditPageTitle').textContent = page; $('#auditPageDescription').textContent = page === 'Denetimler' ? 'Varlıkların geciken, yaklaşan ve planı olmayan fiziksel denetimlerini izleyin.' : 'Yönetim işlemlerini yapan kişi, zaman ve işlem ayrıntısıyla inceleyin.'; $('#auditLogPanel').hidden = page === 'Denetimler'; loadAuditSchedule().catch(error => notify(error.message)); if (page === 'Denetim kayıtları') loadAuditActions().then(() => loadAudit(1)).catch(error => notify(error.message)); }
        else if (page === 'Hazır raporlar') { $('#reportPage').hidden = false; $('#pageTitle').textContent = translateUiText('Envanter raporları'); [...$('#reportPage').children].forEach(child => { child.hidden = false; }); loadAssetReports().catch(error => notify(error.message)); loadComponentReport().catch(error => notify(error.message)); loadAuditReport(1).catch(error => notify(error.message)); loadMaintenanceReport().catch(error => notify(error.message)); loadWarrantyReport(1).catch(error => notify(error.message)); loadLicenseExpiryReport(1).catch(error => notify(error.message)); loadPendingDeliveryReport(1).catch(error => notify(error.message)); loadDepreciationReport(1).catch(error => notify(error.message)); }
        else if (page === 'Garanti takibi') { if (!canReadAssets()) { notify('Garanti kayıtlarını görüntüleme yetkiniz yok.'); return; } $('#reportPage').hidden = false; $('#pageTitle').textContent = page; [...$('#reportPage').children].forEach(child => { child.hidden = child.id !== 'warrantyReportPanel' && !child.classList.contains('page-head'); }); loadWarrantyReport(1).catch(error => notify(error.message)); }
@@ -7486,7 +7514,6 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       else if (page === 'Yetki rolleri') { $('#rolesPage').hidden = false; $('#pageTitle').textContent = translateUiText(page); renderRoleAccessMatrix(); }
       else if (!['Genel Bakış','Varlıklar'].includes(page)) {
         const notReady = {
-          'Destek': 'Uygulama içi destek talebi ve yanıt takibi henüz hazır değil.',
           'Şirket birimleri': 'Şube ve tüzel kişilik bazlı varlık ayrımı henüz hazır değil. Şirket verileri mevcut şirket alanında birlikte tutulur.',
           'Yetki rolleri': 'Roller ve izinler için yönetim ekranı henüz hazır değil. Mevcut roller ve izin sınırları sunucu tarafından uygulanır.'
         };

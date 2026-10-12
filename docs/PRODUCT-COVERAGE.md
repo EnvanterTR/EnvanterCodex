@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 12 Ekim 2026 — destek arayüzü yerelleştirme kabulü
+
+Destek ekranında talep listesi/durum etiketleri, talep sayısı ve sayfalama, bekleme/boş durumları, form ve düğme metinleri ile sunucu doğrulama geri bildirimleri beş dilde zorunlu sözlük kontrolüne eklendi. Dil değişiminde açık liste ve talep ayrıntısı seçili dile göre yenilenir; şirket uygulama menüsündeki eski “destek henüz hazır değil” metni kaldırıldı. `node tools/Verify-UiLocales.mjs` 1.612 girdiyi doğruladı; `Verify-AppNavigation.mjs` 50 hedef/10 grupta geçti. Bu, oturumlu tarayıcıda görsel/rol kabulinin yerini tutmaz.
+
 ## 12 Ekim 2026 — destek talebi akışı (yerel kabul tamamlandı)
 
 Şirket uygulamasının Destek menüsünde oturum açmış kullanıcılar konu/kategori/açıklama ile talep oluşturabilir; taleplerini arayıp duruma göre filtreleyebilir, konuşmayı okuyup yanıt verebilir ve kapatabilir. Şirket sahibi/yöneticisi şirketin tüm taleplerini; diğer üyeler yalnızca kendi açtıklarını görür. Platform yönetiminde ayrı destek kuyruğu şirket, talep sahibi, kategori ve duruma göre listeler; platform yöneticisi yanıt verir ve durumu değiştirir. Her yazma CSRF ile korunur, şirket ve kayıt sahibi kapsamı sunucuda doğrulanır, mesaj gövdeleri uzunluk sınırına bağlıdır; şirket/platform denetim kayıtları üretilir ve ticket/mesaj bağında tenant bileşik FK bulunur. Migration ve her iki arayüz eklendi; izole PostgreSQL uçtan uca güvenlik kabul testi geçti. Tam güvenlik kabul paketi izole PostgreSQL üzerinde **80/80 geçti**. Yedek alındıktan sonra migration yerel Compose veritabanına uygulandı; web imajı yeniden derlendi. `/api/status` şema hazır, 0 bekleyen migration bildiriyor; web ve PostgreSQL konteynerleri çalışıyor, `localhost:8080/` ile public-site `localhost:8081/demo/` HTTP 200. E-posta bildirimi ve gerçek müşteri destek adresi bağlantısı ayrıca açık; canlı site değiştirilmedi.

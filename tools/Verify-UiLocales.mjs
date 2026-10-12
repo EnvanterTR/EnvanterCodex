@@ -496,6 +496,19 @@ const requiredIntegrationLabels = [
   'Bu gizli değeri şimdi güvenli bir yere kaydedin. Bu pencereden kapatınca tekrar gösterilemez.',
   'API anahtarları yalnızca seçtiğiniz salt okunur yetkilere erişir. Gizli anahtar oluşturma yanıtında bir kez gösterilir; veritabanında yalnızca özeti saklanır. Anahtarı URL\'ye veya istemci koduna koymayın.'
 ];
+const requiredSupportLabels = [
+  'ŞİRKET ALANI / YARDIM', 'Destek talepleri', 'Destek isteği oluşturun, yanıtları izleyin ve çözülen talepleri kapatın.',
+  'Yenile', 'Yeni destek talebi', 'Talep, bu şirketteki destek yöneticileriyle paylaşılır.', 'Kapat',
+  'Konu *', 'Kategori', 'Hesap ve erişim', 'Envanter', 'Veri ve aktarım', 'Diğer', 'Açıklama *', 'Talebi gönder',
+  'Konu ara', 'Destek taleplerinde ara', 'Talep durumu', 'Tüm durumlar', 'Açık', 'İşlemde',
+  'Yanıtınız bekleniyor', 'Çözüldü', 'Kapatıldı', 'Oluşturan', 'Son güncelleme', 'Mesaj', 'İşlem',
+  'Talepler yükleniyor…', 'Filtreye uyan destek talebi yok.', '← Önceki', 'Sayfa {page} / {pages}', 'Sonraki →',
+  'Destek talebi', 'Talebi kapat', 'Yanıtınız', 'Yanıt gönder', 'Destek ekibi', 'Şirket kullanıcısı',
+  'Talep gönderiliyor…', 'Destek talebi oluşturuldu.', 'Kapatılan talebe yanıt eklenemez; yeni bir talep oluşturun.', 'Kapatılan destek talebine yanıt eklenemez.',
+  '{count} talep', 'Destek talebi durumu geçerli değil.', 'Arama metni 120 karakteri aşamaz.',
+  'Yanıt 1–8.000 karakter olmalıdır.', 'Konu 1–160 karakter olmalıdır.',
+  'Açıklama 1–8.000 karakter olmalıdır.', 'Destek kategorisi geçerli değil.', 'İstek doğrulaması başarısız.'
+];
 const invalidRows = Object.entries(sandbox.localeRows)
   .filter(([key, values]) => !key.trim() || !Array.isArray(values) || values.length !== 4 || values.some(value => typeof value !== 'string' || !value.trim()))
   .map(([key]) => key || '<empty key>');
@@ -513,8 +526,9 @@ const missingApiFeedbackLabels = requiredApiFeedbackLabels.filter(key => !sandbo
 const missingRoleLabels = requiredRoleLabels.filter(key => !sandbox.localeRows[key]);
 const missingAuthLabels = requiredAuthLabels.filter(key => !sandbox.localeRows[key]);
 const missingIntegrationLabels = requiredIntegrationLabels.filter(key => !sandbox.localeRows[key]);
+const missingSupportLabels = requiredSupportLabels.filter(key => !sandbox.localeRows[key]);
 
-if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingCheckoutLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingInventoryRequestLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length || missingRoleLabels.length || missingAuthLabels.length || missingIntegrationLabels.length) {
+if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingCheckoutLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingInventoryRequestLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length || missingRoleLabels.length || missingAuthLabels.length || missingIntegrationLabels.length || missingSupportLabels.length) {
   if (invalidRows.length) console.error(`Invalid 4-language locale entries: ${invalidRows.join(', ')}`);
   if (missingAssetLabels.length) console.error(`Missing asset-list locale entries: ${missingAssetLabels.join(', ')}`);
   if (missingReservationLabels.length) console.error(`Missing reservation-page locale entries: ${missingReservationLabels.join(', ')}`);
@@ -530,6 +544,7 @@ if (invalidRows.length || missingAssetLabels.length || missingReservationLabels.
   if (missingRoleLabels.length) console.error(`Missing role-matrix locale entries: ${missingRoleLabels.join(', ')}`);
   if (missingAuthLabels.length) console.error(`Missing login-security locale entries: ${missingAuthLabels.join(', ')}`);
   if (missingIntegrationLabels.length) console.error(`Missing integration-page locale entries: ${missingIntegrationLabels.join(', ')}`);
+  if (missingSupportLabels.length) console.error(`Missing support-page locale entries: ${missingSupportLabels.join(', ')}`);
   process.exitCode = 1;
 } else {
   console.log(`Verified ${Object.keys(sandbox.localeRows).length} locale entries in Turkish, English, Russian, Ukrainian, and Macedonian.`);
