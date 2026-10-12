@@ -51,7 +51,8 @@ requireSource(app.includes('async function removeAssetAttachment') && app.includ
 requireSource(app.includes("document.querySelectorAll('[data-asset-tab]')"), 'Asset-detail tabs must have a bound navigation handler.');
 requireSource(app.includes("panel.style.display = active ? 'block' : 'none'"), 'The selected asset-detail panel must be explicitly visible, with inactive panels hidden.');
 requireSource(app.includes('panel.setAttribute(\'aria-hidden\', String(!active))'), 'Asset-detail panel accessibility state must follow the active tab.');
-requireSource(app.includes('.asset-detail-dialog[open]{display:flex;flex-direction:column;') && !app.includes('.asset-detail-dialog{display:flex;') && app.includes('.asset-dialog-body{min-height:0;flex:1;max-height:none;'), 'Only an open asset-detail dialog may use the flex layout, with a scrollable panel between its header and actions.');
+requireSource(app.includes('.asset-detail-dialog[open]{display:flex;flex-direction:column;') && !app.includes('.asset-detail-dialog{display:flex;') && app.includes('.asset-dialog-body{min-width:0;min-height:0;width:100%;flex:1;max-height:none;'), 'Only an open asset-detail dialog may use the flex layout, with a scrollable panel between its header and actions.');
+requireSource(app.includes('@media(max-width:430px){.asset-detail-dialog[open]{width:calc(100% - 16px)}') && app.includes('.asset-detail-grid{grid-template-columns:minmax(0,1fr);gap:7px}') && app.includes('.asset-dialog-body{overflow-x:hidden}'), 'Narrow asset-detail dialogs must use a single readable detail column without a second horizontal scrollbar.');
 for (const copy of [
   '“{assetTag}” varlığını çöp kutusuna taşımak istiyor musunuz?',
   'Çöp kutusu notu (isteğe bağlı):',
