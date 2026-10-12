@@ -183,7 +183,24 @@ if (!string.IsNullOrWhiteSpace(connectionString))
         options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
     }).AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders();
     builder.Services.Configure<SecurityStampValidatorOptions>(options =>
-        options.ValidationInterval = TimeSpan.FromMinutes(5));
+    {
+        options.ValidationInterval = TimeSpan.FromMinutes(5);
+        options.OnRefreshingPrincipal = context =>
+        {
+            if (context.CurrentPrincipal?.Identity is ClaimsIdentity currentIdentity &&
+                context.NewPrincipal?.Identity is ClaimsIdentity refreshedIdentity)
+            {
+                // Identity rebuilds the principal when it refreshes the security stamp.
+                // Carry only the claims owned by this application; the request middleware
+                // below revalidates the session, company membership, role, and admin status.
+                foreach (var claimType in new[] { "session_id", "company_id", "company_role", "platform_admin" })
+                    foreach (var claim in currentIdentity.FindAll(claimType))
+                        refreshedIdentity.AddClaim(claim);
+            }
+
+            return Task.CompletedTask;
+        };
+    });
     builder.Services.ConfigureApplicationCookie(options =>
     {
         options.Cookie.Name = "EnvanterTR.Session";

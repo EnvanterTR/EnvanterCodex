@@ -6544,6 +6544,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                     ["ConnectionStrings:EnvanterTR"] = Environment.GetEnvironmentVariable("ENVANTERTR_SECURITY_TEST_CONNECTION"),
                     ["Storage:CompanyMediaPath"] = _mediaPath
                 }));
+            builder.ConfigureTestServices(services => services.PostConfigure<SecurityStampValidatorOptions>(options =>
+                options.ValidationInterval = TimeSpan.Zero));
         });
         using var loginClient = cookieFactory.CreateClient();
         using var anonymousCsrfResponse = await loginClient.GetAsync("/api/session/csrf");
