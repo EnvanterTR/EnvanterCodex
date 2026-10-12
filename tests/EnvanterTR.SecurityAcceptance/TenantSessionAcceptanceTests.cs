@@ -5874,10 +5874,53 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var sessionResponse = await loginClient.GetAsync("/api/session");
         Assert.Equal(HttpStatusCode.OK, sessionResponse.StatusCode);
 
+        using var firstDeviceListResponse = await loginClient.GetAsync("/api/session/devices");
+        Assert.Equal(HttpStatusCode.OK, firstDeviceListResponse.StatusCode);
+        using (var firstDeviceList = JsonDocument.Parse(await firstDeviceListResponse.Content.ReadAsStringAsync()))
+        {
+            Assert.Single(firstDeviceList.RootElement.GetProperty("sessions").EnumerateArray());
+            Assert.True(firstDeviceList.RootElement.GetProperty("sessions")[0].GetProperty("current").GetBoolean());
+        }
+
+        using var secondClient = cookieFactory.CreateClient();
+        using var secondCsrfResponse = await secondClient.GetAsync("/api/session/csrf");
+        using var secondCsrfPayload = JsonDocument.Parse(await secondCsrfResponse.Content.ReadAsStringAsync());
+        var secondRequestToken = secondCsrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        using var secondLoginRequest = new HttpRequestMessage(HttpMethod.Post, "/api/session/login")
+        {
+            Content = System.Net.Http.Json.JsonContent.Create(new { email, password, companyId = _companyId, rememberMe = true })
+        };
+        secondLoginRequest.Headers.Add("X-CSRF-TOKEN", secondRequestToken);
+        using var secondLoginResponse = await secondClient.SendAsync(secondLoginRequest);
+        Assert.Equal(HttpStatusCode.OK, secondLoginResponse.StatusCode);
+
         using var authenticatedCsrfResponse = await loginClient.GetAsync("/api/session/csrf");
-        Assert.Equal(HttpStatusCode.OK, authenticatedCsrfResponse.StatusCode);
         using var authenticatedCsrfPayload = JsonDocument.Parse(await authenticatedCsrfResponse.Content.ReadAsStringAsync());
         var authenticatedRequestToken = authenticatedCsrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        using var devicesResponse = await loginClient.GetAsync("/api/session/devices");
+        Assert.Equal(HttpStatusCode.OK, devicesResponse.StatusCode);
+        Guid secondSessionId;
+        using (var devicesPayload = JsonDocument.Parse(await devicesResponse.Content.ReadAsStringAsync()))
+        {
+            var devices = devicesPayload.RootElement.GetProperty("sessions").EnumerateArray().ToArray();
+            Assert.Equal(2, devices.Length);
+            Assert.Single(devices, device => device.GetProperty("current").GetBoolean());
+            secondSessionId = devices.Single(device => !device.GetProperty("current").GetBoolean()).GetProperty("id").GetGuid();
+        }
+
+        using var revokeRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/session/devices/{secondSessionId:D}/revoke")
+        {
+            Content = System.Net.Http.Json.JsonContent.Create(new { })
+        };
+        revokeRequest.Headers.Add("X-CSRF-TOKEN", authenticatedRequestToken);
+        using var revokeResponse = await loginClient.SendAsync(revokeRequest);
+        Assert.Equal(HttpStatusCode.NoContent, revokeResponse.StatusCode);
+        using var revokedSessionResponse = await secondClient.GetAsync("/api/session");
+        Assert.Equal(HttpStatusCode.Unauthorized, revokedSessionResponse.StatusCode);
+
+        using var remainingDevicesResponse = await loginClient.GetAsync("/api/session/devices");
+        using (var remainingDevices = JsonDocument.Parse(await remainingDevicesResponse.Content.ReadAsStringAsync()))
+            Assert.Single(remainingDevices.RootElement.GetProperty("sessions").EnumerateArray());
 
         using var logoutRequest = new HttpRequestMessage(HttpMethod.Post, "/api/session/logout");
         logoutRequest.Headers.Add("X-CSRF-TOKEN", authenticatedRequestToken);

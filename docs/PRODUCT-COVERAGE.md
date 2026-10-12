@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 12 Ekim 2026 — hesap cihazları ve uzaktan oturum kapatma
+
+Şirket hesabı ayarlarında kullanıcı etkin oturumlarını tarayıcı/cihaz, IP adresi ve son etkinlik zamanı ile görebilir; başka bir oturumu CSRF korumalı eylemle kapatabilir. Her oturum açılışında rastgele oturum kimliği veritabanına kaydedilir ve Identity çerezine bağlanır. Kimlik doğrulamalı şirket isteğinde kayıt yoksa, süresi dolmuşsa veya iptal edilmişse istek reddedilir. Çıkış, parola değişikliği ve parola sıfırlama ilgili oturum kayıtlarını iptal eder. Kendi oturumunu kapatma çerezi de temizler. Arayüz metinleri TR/EN/RU/UK/MK dillerinde doğrulandı. İzole PostgreSQL kabul paketinde giriş, iki ayrı çerezli oturum, listeleme, uzaktan iptal ve iptal edilmiş çerezin reddi doğrulandı; tüm paket **83/83 geçti**. Yerel Compose migration ve GitHub senkronu bu kabul kaydından sonra uygulanacaktır.
+
 ## 12 Ekim 2026 — destek talebi e-posta kuyruğu
 
 Destek talebi oluşturma, müşteri yanıtı, platform yanıtı ve durum değişikliği bildirimleri aynı veritabanı işlemi içinde kalıcı outbox'a yazılır. Arka plan işçisi SMTP ayarları ve `Support:Email` destek kutusu tanımlıysa bildirimleri gönderir; geçici hatalarda artan aralıklarla yeniden dener ve yalnızca hata türünü kaydeder. Müşteriye giden bildirim yalnızca talebi açan hesabın e-postası doğrulanmışsa oluşturulur. Mail gövdesi kuyrukta çoğaltılmaz; mevcut, şirket ve talep kimliğiyle bağlı mesajdan gönderim anında okunur. Kuyruk veritabanı hazır değilse veya SMTP/support adresi yoksa worker güvenli biçimde bekler; dış mail sağlayıcı teslimi bu yerel testin kapsamı dışındadır.

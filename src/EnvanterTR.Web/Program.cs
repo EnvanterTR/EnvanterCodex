@@ -317,6 +317,22 @@ app.Use(async (context, next) =>
         return;
     }
 
+    if (string.Equals(principal.Identity?.AuthenticationType, IdentityConstants.ApplicationScheme, StringComparison.Ordinal))
+    {
+        var currentTime = DateTimeOffset.UtcNow;
+        if (!Guid.TryParse(principal.FindFirstValue("session_id"), out var sessionId) ||
+            !await db.UserSessions.AsNoTracking().AnyAsync(session => session.Id == sessionId && session.UserId == userId &&
+                session.RevokedAt == null && session.ExpiresAt > currentTime, context.RequestAborted))
+        {
+            await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+        await db.UserSessions.Where(session => session.Id == sessionId && session.UserId == userId && session.RevokedAt == null &&
+                session.LastSeenAt < currentTime.AddMinutes(-5))
+            .ExecuteUpdateAsync(update => update.SetProperty(session => session.LastSeenAt, currentTime), context.RequestAborted);
+    }
+
     var companyClaim = principal.FindFirst("company_id")?.Value;
     var roleClaim = principal.FindFirst("company_role")?.Value;
     string? currentRole = null;

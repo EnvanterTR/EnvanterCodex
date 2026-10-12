@@ -67,6 +67,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<ComponentAllocation> ComponentAllocations => Set<ComponentAllocation>();
     public DbSet<ComponentMovement> ComponentMovements => Set<ComponentMovement>();
     public DbSet<CompanyMembership> CompanyMemberships => Set<CompanyMembership>();
+    public DbSet<UserSession> UserSessions => Set<UserSession>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
     public DbSet<TenantSubscription> TenantSubscriptions => Set<TenantSubscription>();
@@ -202,6 +203,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Asset>().Property(x => x.CustomFieldsJson).HasMaxLength(16000);
         modelBuilder.Entity<Asset>().Property(x => x.Notes).HasMaxLength(4000);
         modelBuilder.Entity<EnvanterUser>().Property(x => x.DisplayName).HasMaxLength(160).IsRequired();
+        modelBuilder.Entity<UserSession>().HasKey(x => x.Id);
+        modelBuilder.Entity<UserSession>().Property(x => x.IpAddress).HasMaxLength(64);
+        modelBuilder.Entity<UserSession>().Property(x => x.UserAgent).HasMaxLength(512);
+        modelBuilder.Entity<UserSession>().HasIndex(x => new { x.UserId, x.RevokedAt, x.ExpiresAt });
+        modelBuilder.Entity<UserSession>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<UserSession>().ToTable("UserSessions", table =>
+            table.HasCheckConstraint("CK_UserSessions_Expiry", "\"ExpiresAt\" > \"CreatedAt\""));
         modelBuilder.Entity<CompanyMembership>().HasKey(x => new { x.CompanyId, x.UserId });
         modelBuilder.Entity<CompanyMembership>().Property(x => x.RoleKey).HasMaxLength(40).IsRequired();
         modelBuilder.Entity<CompanyMembership>().HasIndex(x => new { x.UserId, x.CompanyId }).IsUnique();

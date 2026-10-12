@@ -67,7 +67,7 @@ B. GİRİŞ, HESAP VE GÜVENLİK
  B.7 Şirket üyesi davet e-postası ✅
  B.8 Kendi profil fotoğrafı yükleme ✅
  B.9 LDAP / Active Directory / SSO ile giriş ❌
- B.10 Oturum açan cihazların listesi (nereden girildi) ❌
+ B.10 Oturum açan cihazların listesi (nereden girildi) ✅ — kullanıcı hesap ayarlarında etkin oturumları tarayıcı/cihaz, IP ve son etkinlik bilgisiyle görür; diğer oturumları CSRF korumalı uçtan kapatır. Kimlik doğrulamalı çerez her istekte etkin oturum kaydına bağlanır; çıkış, parola değişikliği ve parola sıfırlama oturum kayıtlarını iptal eder.
  B.11 Platform yöneticisi müşteri verisine varsayılan olarak erişemez (impersonate hariç) 🟡
 C. VARLIKLAR (Demirbaş) — Snipe-IT'in kalbi
 C1. Kayıt ve liste

@@ -252,11 +252,25 @@ public static class AccountEndpoints
                 db.PlatformAuditEntries.Add(new PlatformAuditEntry { ActorUserId = user.Id, Action = "LoginSucceeded",
                     TargetType = "PlatformAccount", TargetId = user.Id, Details = "Platform yönetici oturumu açıldı." });
             }
+            var now = DateTimeOffset.UtcNow;
+            var sessionRecord = new UserSession
+            {
+                UserId = user.Id,
+                CompanyId = membership?.CompanyId,
+                PlatformAdmin = isPlatformAdmin,
+                IpAddress = context.Connection.RemoteIpAddress?.ToString() is { Length: > 64 } ip ? ip[^64..] : context.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = context.Request.Headers.UserAgent.ToString() is { Length: > 512 } agent ? agent[..512] : context.Request.Headers.UserAgent.ToString(),
+                CreatedAt = now,
+                LastSeenAt = now,
+                ExpiresAt = now.AddDays(request.RememberMe ? 30 : 1)
+            };
+            db.UserSessions.Add(sessionRecord);
             await db.SaveChangesAsync(cancellationToken);
 
             var claims = new List<Claim>
             {
-                new(ClaimTypes.Name, user.DisplayName)
+                new(ClaimTypes.Name, user.DisplayName),
+                new("session_id", sessionRecord.Id.ToString("N"))
             };
             if (membership is not null)
             {
@@ -273,6 +287,54 @@ public static class AccountEndpoints
         {
             var user = await userManager.GetUserAsync(principal);
             return user is null ? Results.Unauthorized() : Results.Ok(new { enabled = user.TwoFactorEnabled });
+        }).RequireAuthorization();
+
+        endpoints.MapGet("/api/session/devices", async (ClaimsPrincipal principal, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Unauthorized();
+            var now = DateTimeOffset.UtcNow;
+            var currentSessionId = Guid.TryParse(principal.FindFirstValue("session_id"), out var parsedSessionId) ? parsedSessionId : (Guid?)null;
+            var activeSessions = db.UserSessions.AsNoTracking()
+                .Where(session => session.UserId == userId && session.RevokedAt == null && session.ExpiresAt > now);
+            var total = await activeSessions.CountAsync(cancellationToken);
+            var sessions = await activeSessions
+                .OrderByDescending(session => session.LastSeenAt)
+                .Take(100)
+                .Select(session => new
+                {
+                    id = session.Id,
+                    current = session.Id == currentSessionId,
+                    session.CompanyId,
+                    session.PlatformAdmin,
+                    session.IpAddress,
+                    session.UserAgent,
+                    session.CreatedAt,
+                    session.LastSeenAt,
+                    session.ExpiresAt
+                }).ToListAsync(cancellationToken);
+            return Results.Ok(new { sessions, truncated = total > sessions.Count });
+        }).RequireAuthorization();
+
+        endpoints.MapPost("/api/session/devices/{id:guid}/revoke", async (Guid id, ClaimsPrincipal principal,
+            HttpContext context, IAntiforgery antiforgery, AppDbContext db, SignInManager<EnvanterUser> signInManager,
+            CancellationToken cancellationToken) =>
+        {
+            if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
+            if (!Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Unauthorized();
+            var session = await db.UserSessions.SingleOrDefaultAsync(item => item.Id == id && item.UserId == userId && item.RevokedAt == null,
+                cancellationToken);
+            if (session is null) return Results.NotFound();
+            var currentSessionId = Guid.TryParse(principal.FindFirstValue("session_id"), out var parsedCurrentId) ? parsedCurrentId : (Guid?)null;
+            session.RevokedAt = DateTimeOffset.UtcNow;
+            if (Guid.TryParse(principal.FindFirstValue("company_id"), out var companyId))
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = userId, TargetType = "AccountSession",
+                    TargetId = id, Action = "SessionRevoked", Details = id == currentSessionId ? "Mevcut oturum kapatıldı." : "Hesabın oturumu uzaktan kapatıldı." });
+            else
+                db.PlatformAuditEntries.Add(new PlatformAuditEntry { ActorUserId = userId, TargetType = "AccountSession", TargetId = id,
+                    Action = "SessionRevoked", Details = "Hesabın oturumu uzaktan kapatıldı." });
+            await db.SaveChangesAsync(cancellationToken);
+            if (currentSessionId == id) await signInManager.SignOutAsync();
+            return Results.NoContent();
         }).RequireAuthorization();
 
         endpoints.MapPost("/api/session/password/change", async ([FromBody] ChangeOwnPasswordRequest request,
@@ -320,6 +382,9 @@ public static class AccountEndpoints
             else
                 db.PlatformAuditEntries.Add(new PlatformAuditEntry { ActorUserId = user.Id,
                     TargetType = "PlatformAccount", TargetId = user.Id, Action = "PasswordChanged", Details = "Platform hesabı parolası değiştirildi." });
+            if (Guid.TryParse(principal.FindFirstValue("session_id"), out var currentSessionId))
+                await db.UserSessions.Where(session => session.UserId == user.Id && session.Id != currentSessionId && session.RevokedAt == null)
+                    .ExecuteUpdateAsync(update => update.SetProperty(session => session.RevokedAt, DateTimeOffset.UtcNow), cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
             await signInManager.RefreshSignInAsync(user);
             return Results.Ok(new { message = "Parolanız değiştirildi. Diğer cihazlardaki oturumlar en geç 5 dakika içinde kapatılacak." });
@@ -473,6 +538,8 @@ public static class AccountEndpoints
             db.PlatformAuditEntries.Add(new PlatformAuditEntry { ActorUserId = user.Id,
                 CompanyId = companyIds.Count == 1 ? companyIds[0] : null, TargetType = "Account", TargetId = user.Id,
                 Action = "PasswordReset", Details = "E-posta doğrulamalı parola yenileme tamamlandı." });
+            await db.UserSessions.Where(session => session.UserId == user.Id && session.RevokedAt == null)
+                .ExecuteUpdateAsync(update => update.SetProperty(session => session.RevokedAt, DateTimeOffset.UtcNow), cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
             if (!user.EmailConfirmed)
             {
@@ -485,11 +552,14 @@ public static class AccountEndpoints
         }).AllowAnonymous().RequireRateLimiting("login");
 
         endpoints.MapPost("/api/session/logout", async (HttpContext context, IAntiforgery antiforgery,
-            SignInManager<EnvanterUser> signInManager, AppDbContext db) =>
+            SignInManager<EnvanterUser> signInManager, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
             if (Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
             {
+                if (Guid.TryParse(context.User.FindFirstValue("session_id"), out var sessionId))
+                    await db.UserSessions.Where(session => session.Id == sessionId && session.UserId == actorId && session.RevokedAt == null)
+                        .ExecuteUpdateAsync(update => update.SetProperty(session => session.RevokedAt, DateTimeOffset.UtcNow), cancellationToken);
                 if (Guid.TryParse(context.User.FindFirstValue("company_id"), out var companyId))
                     db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Account",
                         TargetId = actorId, Action = "Logout", Details = "Şirket oturumu kapatıldı." });
