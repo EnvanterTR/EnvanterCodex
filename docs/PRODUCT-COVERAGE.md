@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 12 Ekim 2026 — güncel tenant/güvenlik kabul tekrarı
+
+Güncel `main` kaynak commit `7f5d435` için `pwsh -NoProfile -File deploy/testing/run-security-acceptance.ps1` izole PostgreSQL 17 üzerinde **83/83** geçti (5 dk 05 sn). Kapsamda gerçek Identity login/CSRF/session, tenant ve rol sınırları, sözleşme eki güvenliği, denetim izi, anonim API reddi ve eşzamanlı envanter/stok hareketleri vardır. Test yalnızca kendi geçici konteyner ve volume'larını kullandı; sonunda kaldırdı, yerel geliştirme DB'sini değiştirmedi. Bu, hedef sunucu dağıtım veya oturumlu görsel kabul kanıtı değildir.
+
 ## 12 Ekim 2026 — sözleşmelerde çok dilli doğrulama geri bildirimi
 
 Sözleşmeler listesi/formunun temel metinleri ve sözleşme/ek uçlarının arama-durum filtresi, alan sınırları, tenant ilişkileri, dosya sınırı, güvenli depo ve bütünlük hata iletileri için EN/RU/UK/MK çevirileri zorunlu sözlük denetimine alındı. Eksik üç geri bildirim çevirisi eklendi. `node tools/Verify-UiLocales.mjs` **1.652** girdiyi ve bu sözleşme etiketlerini doğrular. Bu statik kaynak kontrolüdür; rol bazlı tarayıcı görsel kabulinin yerine geçmez.
