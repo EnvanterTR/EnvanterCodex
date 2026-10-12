@@ -194,7 +194,7 @@ H. BAKIM, DENETİM, TAKVİM, GÖREV
  H.6 Toplu denetim (100 varlık) + yeniden planlama ✅
  H.7 Denetim sonuç raporu ✅
  H.8 Takvim (liste/gün/hafta/ay, dönem gezinme, CSV) ✅
- H.9 Görevler modülü ❌ menüde var, arkası boş
+ H.9 Görevler modülü ✅ şirket kapsamlı liste/arama/filtre/sayfalama, oluşturma-düzenleme, çalışan atama, rol kontrollü durum akışı ve denetim izi mevcut; gerçek tarayıcıda rol bazlı görsel kabul açık (kanıt: `docs/PRODUCT-COVERAGE.md`, `docs/ROADMAP.md`)
  H.10 Otomatik e-posta hatırlatmaları (bakım/denetim/garanti/lisans) 🟡
  H.11 Denetim sonucu "kabul edilmeyen öğe" akışı ❌
 I. BARKOD, QR VE ETİKET
