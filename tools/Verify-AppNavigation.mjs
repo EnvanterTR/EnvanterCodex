@@ -27,6 +27,20 @@ if (!/\bmethod=\"post\"/i.test(loginForm)) {
 if (!source.includes('id="retryApiButton"') || !/function showLogin\([^)]*\)\s*\{[^}]*\$\('#retryApiButton'\)\.hidden\s*=\s*false/.test(source)) {
   failures.push('The login screen must keep the server connection check visible whenever login is shown.');
 }
+const locationLookupStart = source.indexOf("const locationResult = await api('/api/locations');");
+const locationLookupEnd = source.indexOf("fillSelect('categoryId'", locationLookupStart);
+const locationLookup = locationLookupStart < 0 || locationLookupEnd < 0 ? '' : source.slice(locationLookupStart, locationLookupEnd);
+if (!locationLookup.includes('Array.isArray(locationResult.items)') ||
+    !locationLookup.includes('locationResult.items.filter(')) {
+  failures.push('Asset lookups must read and validate the items array returned by the locations API envelope.');
+}
+const assetEndpoints = readFileSync(resolve('src/EnvanterTR.Web/Data/AssetEndpoints.cs'), 'utf8');
+const locationsEndpointStart = assetEndpoints.indexOf('api.MapGet("/locations"');
+const locationsEndpointEnd = assetEndpoints.indexOf('api.MapPost("/locations/catalog"', locationsEndpointStart);
+const locationsEndpoint = locationsEndpointStart < 0 || locationsEndpointEnd < 0 ? '' : assetEndpoints.slice(locationsEndpointStart, locationsEndpointEnd);
+if (!locationsEndpoint.includes('Results.Ok(new { items, total = items.Count, departmentCounts })')) {
+  failures.push('The locations API must keep its documented items/total/departmentCounts response envelope.');
+}
 const loginSubmitStart = source.indexOf("$('#loginForm').addEventListener('submit'");
 const loginSubmitEnd = source.indexOf("$('#retryApiButton').addEventListener('click'", loginSubmitStart);
 const loginSubmitHandler = loginSubmitStart < 0 || loginSubmitEnd < 0 ? '' : source.slice(loginSubmitStart, loginSubmitEnd);
@@ -97,5 +111,5 @@ if (failures.length) {
   console.error(failures.map(failure => `FAIL ${failure}`).join('\n'));
   process.exitCode = 1;
 } else {
-  console.log(`Verified ${new Set(pageLabels).size} sidebar destinations and ${groupKeys.length} expandable groups; unfinished modules have explicit status copy.`);
+  console.log(`Verified ${new Set(pageLabels).size} sidebar destinations and ${groupKeys.length} expandable groups, login diagnostics, and the asset locations API contract; unfinished modules have explicit status copy.`);
 }
