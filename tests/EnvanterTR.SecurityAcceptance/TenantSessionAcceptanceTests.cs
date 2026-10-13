@@ -1294,11 +1294,31 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 DeploymentKind = "cloud", IsActive = true, IsPublic = true
             };
             db.SubscriptionPlans.Add(plan);
-            db.TenantSubscriptions.Add(new TenantSubscription
+            var memberSubscription = new TenantSubscription
             {
                 CompanyId = _companyId, PlanId = plan.Id, Status = "Active", IsDemo = false,
                 StartsAt = earlierMembership, EndsAt = DateTimeOffset.UtcNow.AddDays(90),
                 PaymentReference = "member-directory-payment-reference"
+            };
+            db.TenantSubscriptions.Add(memberSubscription);
+            db.CompanyCheckoutOrders.Add(new CompanyCheckoutOrder
+            {
+                Id = Guid.NewGuid(), CompanyName = "Directory Acceptance Company", Slug = $"member-{userId:N}",
+                ContactEmail = $"{marker}@example.invalid", OwnerName = "Directory Acceptance Member",
+                OwnerEmail = $"{marker}@example.invalid", PlanId = plan.Id, TermDays = 365, Amount = 4200,
+                Currency = "TRY", Status = "Provisioned", PaymentReference = "member-directory-order-payment",
+                CheckoutTokenHash = "checkout-token-hash-must-not-leak",
+                CheckoutPageUrlProtected = "protected-checkout-url-must-not-leak",
+                CompanyId = _companyId, CreatedAt = earlierMembership.AddDays(-4),
+                PaidAt = earlierMembership.AddDays(-3), ExpiresAt = earlierMembership.AddDays(30)
+            });
+            db.PlatformDemoRequests.Add(new PlatformDemoRequest
+            {
+                CompanyName = "Directory Acceptance Company", ContactName = "Directory Acceptance Member",
+                Email = $"{marker}@example.invalid", Source = "acceptance", Status = "DemoGranted",
+                ConsentAt = earlierMembership.AddDays(-10), ConsentNoticeVersion = "acceptance-v1",
+                CreatedAt = earlierMembership.AddDays(-10), UpdatedAt = earlierMembership.AddDays(-8),
+                CompanyId = _companyId, DemoGrantedAt = earlierMembership.AddDays(-9)
             });
             db.Users.Add(new EnvanterUser
             {
@@ -1349,6 +1369,33 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.DoesNotContain("identity-password-hash-must-not-leak", profileBody, StringComparison.Ordinal);
         Assert.DoesNotContain("identity-security-stamp-must-not-leak", profileBody, StringComparison.Ordinal);
         Assert.DoesNotContain("identity-authenticator-key-must-not-leak", profileBody, StringComparison.Ordinal);
+
+        using (var tenantDenied = await SendAsAdminAsync($"/api/platform/members/{userId}/timeline"))
+            Assert.Equal(HttpStatusCode.Forbidden, tenantDenied.StatusCode);
+        var timeline = new List<string>();
+        var timelineBody = new List<string>();
+        var timelinePages = 0;
+        for (var page = 1; page <= 4; page++)
+        {
+            using var timelineResponse = await SendAsPlatformAdminAsync($"/api/platform/members/{userId}/timeline?page={page}&pageSize=4");
+            Assert.Equal(HttpStatusCode.OK, timelineResponse.StatusCode);
+            var pageBody = await timelineResponse.Content.ReadAsStringAsync();
+            timelineBody.Add(pageBody);
+            timelinePages++;
+            using var timelinePayload = JsonDocument.Parse(pageBody);
+            var timelineRoot = timelinePayload.RootElement;
+            timeline.AddRange(timelineRoot.GetProperty("items").EnumerateArray()
+                .Select(item => item.GetProperty("title").GetString()!));
+            if (!timelineRoot.GetProperty("hasMore").GetBoolean()) break;
+        }
+        Assert.Contains("Demo talebi alındı", timeline);
+        Assert.Contains("Satın alma kaydı oluşturuldu", timeline);
+        Assert.Contains("Ödeme doğrulandı", timeline);
+        Assert.Contains("Demo erişimi tanımlandı", timeline);
+        Assert.True(timelinePages > 1, "The member timeline should paginate when more than four events exist.");
+        var serializedTimeline = string.Join('\n', timelineBody);
+        Assert.DoesNotContain("checkout-token-hash-must-not-leak", serializedTimeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("protected-checkout-url-must-not-leak", serializedTimeline, StringComparison.Ordinal);
     }
 
     [Fact]

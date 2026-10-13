@@ -261,6 +261,146 @@ public static class PlatformEndpoints
             });
         });
 
+        admin.MapGet("/members/{userId:guid}/timeline", async (Guid userId, AppDbContext db,
+            CancellationToken cancellationToken, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
+        {
+            page = Math.Clamp(page, 1, 1_000);
+            pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 100);
+            var account = await db.Users.AsNoTracking().Where(x => x.Id == userId)
+                .Select(x => new { x.Id, x.Email }).SingleOrDefaultAsync(cancellationToken);
+            if (account is null) return Results.NotFound();
+
+            const int perSourceLimit = 500;
+            var events = new List<PlatformMemberTimelineEvent>();
+            var truncated = false;
+            var memberships = await (from membership in db.CompanyMemberships.AsNoTracking()
+                                     join company in db.Companies.AsNoTracking() on membership.CompanyId equals company.Id
+                                     where membership.UserId == userId
+                                     orderby membership.CreatedAt descending
+                                     select new { membership.CompanyId, company.Name, membership.RoleKey, membership.CreatedAt })
+                .Take(perSourceLimit + 1).ToListAsync(cancellationToken);
+            if (memberships.Count > perSourceLimit) { memberships.RemoveAt(memberships.Count - 1); truncated = true; }
+            var companyIds = memberships.Select(x => x.CompanyId).Distinct().ToArray();
+            foreach (var membership in memberships)
+                events.Add(new(membership.CreatedAt, "membership", "Şirket üyeliği başladı",
+                    $"Rol: {membership.RoleKey}", membership.Name));
+
+            var subscriptions = await (from subscription in db.TenantSubscriptions.AsNoTracking()
+                                       join plan in db.SubscriptionPlans.AsNoTracking() on subscription.PlanId equals plan.Id
+                                       join company in db.Companies.AsNoTracking() on subscription.CompanyId equals company.Id
+                                       where companyIds.Contains(subscription.CompanyId)
+                                       orderby subscription.CreatedAt descending
+                                       select new { subscription.CreatedAt, subscription.Status, subscription.IsDemo,
+                                           subscription.StartsAt, subscription.EndsAt, subscription.PaymentReference,
+                                           plan.Name, CompanyName = company.Name })
+                .Take(perSourceLimit + 1).ToListAsync(cancellationToken);
+            if (subscriptions.Count > perSourceLimit) { subscriptions.RemoveAt(subscriptions.Count - 1); truncated = true; }
+            foreach (var subscription in subscriptions)
+                events.Add(new(subscription.CreatedAt, subscription.IsDemo ? "demo" : "subscription",
+                    subscription.IsDemo ? "Demo aboneliği oluşturuldu" : "Abonelik oluşturuldu",
+                    $"{subscription.Name} · {subscription.Status} · {subscription.StartsAt:yyyy-MM-dd} – {subscription.EndsAt:yyyy-MM-dd}",
+                    subscription.CompanyName, subscription.PaymentReference));
+
+            var orders = await (from order in db.CompanyCheckoutOrders.AsNoTracking()
+                                join company in db.Companies.AsNoTracking() on order.CompanyId equals company.Id
+                                where order.CompanyId != null && companyIds.Contains(order.CompanyId.Value)
+                                orderby order.CreatedAt descending
+                                select new { order.CreatedAt, order.PaidAt, order.Status, order.Amount, order.Currency,
+                                    order.PaymentReference, order.TermDays, CompanyName = company.Name })
+                .Take(perSourceLimit + 1).ToListAsync(cancellationToken);
+            if (orders.Count > perSourceLimit) { orders.RemoveAt(orders.Count - 1); truncated = true; }
+            foreach (var order in orders)
+            {
+                events.Add(new(order.CreatedAt, "purchase", "Satın alma kaydı oluşturuldu",
+                    $"{(order.TermDays == 365 ? "Yıllık" : "Aylık")} dönem · {order.Status}", order.CompanyName,
+                    order.PaymentReference, order.Amount, order.Currency));
+                if (order.PaidAt is DateTimeOffset paidAt)
+                    events.Add(new(paidAt, "payment", "Ödeme doğrulandı", "Sağlayıcı ödemesi siparişle eşleşti.",
+                        order.CompanyName, order.PaymentReference, order.Amount, order.Currency));
+            }
+
+            var normalizedEmail = account.Email?.Trim().ToLowerInvariant();
+            var demoRequests = await db.PlatformDemoRequests.AsNoTracking()
+                .Where(request => (normalizedEmail != null && request.Email.ToLower() == normalizedEmail) ||
+                    (request.CompanyId != null && companyIds.Contains(request.CompanyId.Value)))
+                .OrderByDescending(request => request.CreatedAt)
+                .Select(request => new { request.Id, request.CompanyName, request.Status, request.CreatedAt,
+                    request.UpdatedAt, request.DemoGrantedAt, request.CompanyId })
+                .Take(perSourceLimit + 1).ToListAsync(cancellationToken);
+            if (demoRequests.Count > perSourceLimit) { demoRequests.RemoveAt(demoRequests.Count - 1); truncated = true; }
+            foreach (var request in demoRequests)
+            {
+                events.Add(new(request.CreatedAt, "demo-request", "Demo talebi alındı",
+                    $"Talep durumu: {request.Status}", request.CompanyName));
+                if (request.UpdatedAt > request.CreatedAt)
+                    events.Add(new(request.UpdatedAt, "demo-request", "Demo talebi güncellendi",
+                        $"Güncel durum: {request.Status}", request.CompanyName));
+                if (request.DemoGrantedAt is DateTimeOffset grantedAt)
+                    events.Add(new(grantedAt, "demo", "Demo erişimi tanımlandı", "Demo aboneliği başlatıldı.", request.CompanyName));
+            }
+
+            var demoRequestIds = demoRequests.Select(x => x.Id).ToArray();
+            var subscriptionIds = await db.TenantSubscriptions.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId)).OrderByDescending(x => x.CreatedAt)
+                .Select(x => x.Id).Take(perSourceLimit + 1).ToListAsync(cancellationToken);
+            if (subscriptionIds.Count > perSourceLimit) { subscriptionIds = subscriptionIds.Take(perSourceLimit).ToList(); truncated = true; }
+            var relevantActions = new[] { "LoginSucceeded", "LoginFailed", "PasswordChanged", "PasswordReset",
+                "MemberInvited", "MemberInvitationResent", "MemberInvitationEmailSent", "MemberInvitationEmailFailed",
+                "DemoGranted", "SubscriptionExtended", "SubscriptionManuallyAdjusted", "CompanySuspended",
+                "CompanyReactivated", "PaidCompanyProvisioned", "DemoRequestUpdated", "DemoRequestStatusChanged" };
+            var platformAudits = await (from audit in db.PlatformAuditEntries.AsNoTracking()
+                                        join actor in db.Users.AsNoTracking() on audit.ActorUserId equals actor.Id into actors
+                                        from actor in actors.DefaultIfEmpty()
+                                        where ((audit.TargetType == "Account" || audit.TargetType == "PlatformAccount" || audit.TargetType == "CompanyMembership") && audit.TargetId == userId) ||
+                                            (audit.TargetType == "TenantSubscription" && subscriptionIds.Contains(audit.TargetId ?? Guid.Empty)) ||
+                                            (audit.TargetType == "PlatformDemoRequest" && demoRequestIds.Contains(audit.TargetId ?? Guid.Empty)) ||
+                                            (audit.TargetType == "Company" && companyIds.Contains(audit.TargetId ?? Guid.Empty) && relevantActions.Contains(audit.Action))
+                                        orderby audit.OccurredAt descending
+                                        select new { audit.Action, audit.TargetType, audit.OccurredAt, audit.CompanyId,
+                                            ActorName = actor == null ? null : actor.DisplayName })
+                .Take(perSourceLimit + 1).ToListAsync(cancellationToken);
+            if (platformAudits.Count > perSourceLimit) { platformAudits.RemoveAt(platformAudits.Count - 1); truncated = true; }
+            var companyNames = await db.Companies.AsNoTracking().Where(x => companyIds.Contains(x.Id))
+                .Select(x => new { x.Id, x.Name }).ToDictionaryAsync(x => x.Id, x => x.Name, cancellationToken);
+            foreach (var audit in platformAudits)
+            {
+                var title = audit.Action switch
+                {
+                    "LoginSucceeded" => "Oturum açıldı", "LoginFailed" => "Başarısız giriş denemesi",
+                    "PasswordChanged" => "Parola değiştirildi", "PasswordReset" => "Parola kurtarma ile parola yenilendi",
+                    "MemberInvited" => "Üyelik daveti oluşturuldu", "MemberInvitationResent" => "Üyelik daveti yeniden gönderildi",
+                    "MemberInvitationEmailSent" => "Davet e-postası gönderildi", "MemberInvitationEmailFailed" => "Davet e-postası gönderilemedi",
+                    "DemoGranted" => "Demo erişimi tanımlandı", "SubscriptionExtended" => "Abonelik süresi uzatıldı",
+                    "SubscriptionManuallyAdjusted" => "Abonelik elle düzenlendi", "CompanySuspended" => "Şirket askıya alındı",
+                    "CompanyReactivated" => "Şirket yeniden etkinleştirildi", "PaidCompanyProvisioned" => "Ücretli şirket hesabı oluşturuldu",
+                    "DemoRequestUpdated" => "Demo talebi güncellendi", "DemoRequestStatusChanged" => "Demo talebi aşaması değişti",
+                    _ => audit.Action
+                };
+                var companyName = audit.CompanyId is Guid id ? companyNames.GetValueOrDefault(id) : null;
+                events.Add(new(audit.OccurredAt, "audit", title,
+                    audit.ActorName is null ? "Platform işlemi" : $"İşlemi yapan: {audit.ActorName}", companyName));
+            }
+
+            var membershipAudits = await (from audit in db.AuditEntries.AsNoTracking()
+                                          join company in db.Companies.AsNoTracking() on audit.CompanyId equals company.Id
+                                          where audit.TargetType == "CompanyMembership" && audit.TargetId == userId && companyIds.Contains(audit.CompanyId)
+                                          orderby audit.OccurredAt descending
+                                          select new { audit.Action, audit.OccurredAt, company.Name })
+                .Take(perSourceLimit + 1).ToListAsync(cancellationToken);
+            if (membershipAudits.Count > perSourceLimit) { membershipAudits.RemoveAt(membershipAudits.Count - 1); truncated = true; }
+            foreach (var audit in membershipAudits)
+                events.Add(new(audit.OccurredAt, "membership", audit.Action switch
+                {
+                    "MemberAdded" => "Şirket üyeliği eklendi", "MemberRemoved" => "Şirket üyeliği kaldırıldı",
+                    "EmployeeLinkChanged" => "Çalışan profili bağlantısı değiştirildi", _ => "Üyelik kaydı güncellendi"
+                }, "Şirket üyeliği işlemi", audit.Name));
+
+            var skip = (page - 1) * pageSize;
+            var pageItems = events.OrderByDescending(x => x.OccurredAt).ThenBy(x => x.EventType).ThenBy(x => x.Title)
+                .Skip(skip).Take(pageSize).ToArray();
+            return Results.Ok(new { items = pageItems, page, pageSize, hasMore = events.Count > skip + pageItems.Length, truncated });
+        });
+
         admin.MapPost("/members/invite", async ([FromBody] PlatformInviteMemberRequest request,
             ClaimsPrincipal user, AppDbContext db, UserManager<EnvanterUser> userManager,
             IConfiguration configuration, CancellationToken cancellationToken) =>
