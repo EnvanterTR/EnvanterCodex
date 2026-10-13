@@ -1127,8 +1127,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.MigrateAsync();
         db.Companies.AddRange(
-            new Company { Id = _companyId, Name = "Security acceptance company", IsActive = true },
-            new Company { Id = _otherCompanyId, Name = "Other security acceptance company", IsActive = true });
+            new Company { Id = _companyId, Name = "Security acceptance company", Slug = $"acceptance-{_companyId:N}", IsActive = true },
+            new Company { Id = _otherCompanyId, Name = "Other security acceptance company", Slug = $"other-{_otherCompanyId:N}", IsActive = true });
         var ownCategory = new AssetCategory { CompanyId = _companyId, Name = "Own category" };
         var otherCategory = new AssetCategory { CompanyId = _otherCompanyId, Name = "Other category" };
         db.AssetCategories.AddRange(ownCategory, otherCategory);
@@ -7875,7 +7875,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.True(passwordResult.Succeeded, string.Join("; ", passwordResult.Errors.Select(error => error.Description)));
 
             var db = services.GetRequiredService<AppDbContext>();
-            db.Companies.Add(new Company { Id = additionalCompanyId, Name = "Authorized second company", IsActive = true });
+            db.Companies.Add(new Company { Id = additionalCompanyId, Name = "Authorized second company", Slug = $"authorized-{additionalCompanyId:N}", IsActive = true });
             db.CompanyMemberships.Add(new CompanyMembership { CompanyId = additionalCompanyId, UserId = _userId, RoleKey = "owner" });
             await db.SaveChangesAsync();
         }
@@ -7913,10 +7913,89 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var unrelatedChoice = await SendAnonymousLoginAsync(loginClient, email, password, null,
             requestToken, antiforgeryCookie, companyId: _otherCompanyId);
         Assert.Equal(HttpStatusCode.Forbidden, unrelatedChoice.StatusCode);
+
+        using (var tenantLogin = await SendAnonymousLoginAsync(loginClient, email, password, null,
+            requestToken, antiforgeryCookie, companyId: null, host: $"acceptance-{_companyId:N}.envantertr.com"))
+        using (var session = JsonDocument.Parse(await tenantLogin.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, tenantLogin.StatusCode);
+            Assert.Equal(_companyId, session.RootElement.GetProperty("companyId").GetGuid());
+        }
+
+        using var wrongTenantChoice = await SendAnonymousLoginAsync(loginClient, email, password, null,
+            requestToken, antiforgeryCookie, companyId: additionalCompanyId, host: $"acceptance-{_companyId:N}.envantertr.com");
+        Assert.Equal(HttpStatusCode.Forbidden, wrongTenantChoice.StatusCode);
+    }
+
+    [Fact]
+    public async Task Existing_company_sessions_cannot_be_reused_on_another_tenant_subdomain()
+    {
+        using (var correctTenant = await SendAsUserAsync(HttpMethod.Get, "/api/assets?page=1&pageSize=5",
+            _userId, _companyId, host: $"acceptance-{_companyId:N}.envantertr.com"))
+            Assert.Equal(HttpStatusCode.OK, correctTenant.StatusCode);
+
+        using (var otherTenant = await SendAsUserAsync(HttpMethod.Get, "/api/assets?page=1&pageSize=5",
+            _userId, _companyId, host: $"other-{_otherCompanyId:N}.envantertr.com"))
+            Assert.Equal(HttpStatusCode.Unauthorized, otherTenant.StatusCode);
+
+        using (var unknownTenant = await SendAsUserAsync(HttpMethod.Get, "/api/assets?page=1&pageSize=5",
+            _userId, _companyId, host: "missing-company.envantertr.com"))
+            Assert.Equal(HttpStatusCode.Unauthorized, unknownTenant.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            await db.SaveChangesAsync();
+        }
+        using (var platformSession = await SendAsPlatformAdminRequestAsync(HttpMethod.Get, "/api/session",
+            host: $"acceptance-{_companyId:N}.envantertr.com"))
+            Assert.Equal(HttpStatusCode.Unauthorized, platformSession.StatusCode);
+    }
+
+    [Fact]
+    public async Task Company_profile_rejects_reserved_and_duplicate_tenant_slugs_and_persists_a_valid_slug()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var uniqueSlug = $"new-{Guid.NewGuid():N}";
+
+        using (var save = await SendAsRoleAsync(HttpMethod.Put, "/api/company/profile", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = "Security acceptance company", slug = uniqueSlug,
+                contactEmail = "security@example.invalid", brandPrimaryColor = "#1769E0" }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, save.StatusCode);
+            using var saved = JsonDocument.Parse(await save.Content.ReadAsStringAsync());
+            Assert.Equal(uniqueSlug, saved.RootElement.GetProperty("slug").GetString());
+        }
+
+        using (var reserved = await SendAsRoleAsync(HttpMethod.Put, "/api/company/profile", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = "Security acceptance company", slug = "www",
+                contactEmail = "security@example.invalid", brandPrimaryColor = "#1769E0" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, reserved.StatusCode);
+
+        using (var tooLong = await SendAsRoleAsync(HttpMethod.Put, "/api/company/profile", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = "Security acceptance company", slug = new string('a', 64),
+                contactEmail = "security@example.invalid", brandPrimaryColor = "#1769E0" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
+
+        using (var duplicate = await SendAsRoleAsync(HttpMethod.Put, "/api/company/profile", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = "Security acceptance company", slug = $"other-{_otherCompanyId:N}",
+                contactEmail = "security@example.invalid", brandPrimaryColor = "#1769E0" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(uniqueSlug, await db.Companies.Where(company => company.Id == _companyId)
+            .Select(company => company.Slug).SingleAsync());
     }
 
     private async Task<HttpResponseMessage> SendAnonymousLoginAsync(HttpClient client, string email, string password, string? twoFactorCode,
-        string requestToken, string antiforgeryCookie, Guid? companyId = null)
+        string requestToken, string antiforgeryCookie, Guid? companyId = null, string? host = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/session/login")
         {
@@ -7924,6 +8003,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         };
         request.Headers.Add("X-CSRF-TOKEN", requestToken);
         request.Headers.Add("Cookie", antiforgeryCookie);
+        if (!string.IsNullOrWhiteSpace(host)) request.Headers.Host = host;
         return await client.SendAsync(request);
     }
 
@@ -8127,23 +8207,25 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     private async Task<HttpResponseMessage> SendAsPlatformAdminRequestAsync(HttpMethod method, string path,
-        HttpContent? content = null, string? requestToken = null, string? antiforgeryCookie = null)
+        HttpContent? content = null, string? requestToken = null, string? antiforgeryCookie = null, string? host = null)
     {
         using var request = new HttpRequestMessage(method, path) { Content = content };
         request.Headers.Add("X-Acceptance-User", _userId.ToString());
         request.Headers.Add("X-Acceptance-Platform-Admin", "true");
+        if (!string.IsNullOrWhiteSpace(host)) request.Headers.Host = host;
         if (!string.IsNullOrWhiteSpace(requestToken)) request.Headers.Add("X-CSRF-TOKEN", requestToken);
         if (!string.IsNullOrWhiteSpace(antiforgeryCookie)) request.Headers.Add("Cookie", antiforgeryCookie);
         return await _client!.SendAsync(request);
     }
 
     private async Task<HttpResponseMessage> SendAsUserAsync(HttpMethod method, string path, Guid userId, Guid companyId,
-        HttpContent? content = null, string? requestToken = null, string? antiforgeryCookie = null, string? role = null)
+        HttpContent? content = null, string? requestToken = null, string? antiforgeryCookie = null, string? role = null, string? host = null)
     {
         using var request = new HttpRequestMessage(method, path) { Content = content };
         request.Headers.Add("X-Acceptance-User", userId.ToString());
         request.Headers.Add("X-Acceptance-Company", companyId.ToString());
         request.Headers.Add("X-Acceptance-Role", role ?? "admin");
+        if (!string.IsNullOrWhiteSpace(host)) request.Headers.Host = host;
         if (!string.IsNullOrWhiteSpace(requestToken)) request.Headers.Add("X-CSRF-TOKEN", requestToken);
         if (!string.IsNullOrWhiteSpace(antiforgeryCookie)) request.Headers.Add("Cookie", antiforgeryCookie);
         return await _client!.SendAsync(request);

@@ -459,11 +459,12 @@
         <div class="notice" style="margin-top:12px">Bir tanımı kullanan varlık varsa yanlışlıkla veri kaybını önlemek için bu tanım silinemez. Önce ilişkili varlıkları düzenleyin.</div>
       </section>
       <section class="workspace-page" id="companySettingsPage" hidden>
-        <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / MARKA VE PROFİL</div><h1>Şirket profili ve görünüm</h1><p>Şirket adını, iletişim adresini ve çalışma alanınızın ana rengini yönetin.</p></div></div>
+        <div class="page-head"><div><div class="eyebrow">ŞİRKET ALANI / MARKA VE PROFİL</div><h1>Şirket profili ve görünüm</h1><p>Şirket adını, SaaS alt alan adını, iletişim adresini ve çalışma alanınızın ana rengini yönetin.</p></div></div>
         <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(280px,.8fr)">
           <section class="panel"><div class="panel-head"><h2>Şirket bilgileri</h2><span class="pill blue">Yalnızca yöneticiler</span></div>
             <form id="companyProfileForm" class="form-grid">
               <label>Şirket adı *<input name="name" maxlength="200" required></label>
+              <label>SaaS alt alan adı *<input name="slug" maxlength="63" pattern="[A-Za-z0-9]{2,63}(?:-[A-Za-z0-9]+)*" autocomplete="off" spellcheck="false" required aria-describedby="tenantSlugHelp"><small id="tenantSlugHelp">Yalnızca harf, rakam ve tire kullanın; en fazla 63 karakter. Örnek: firma → https://firma.envantertr.com. Alt alan adı değişirse şirket üyelerinin bağlantısı da değişir.</small></label>
               <label>İletişim e-postası<input name="contactEmail" type="email" maxlength="256"></label>
               <label>Ana tema rengi<input name="brandPrimaryColor" type="color" value="#1769E0" style="height:40px;padding:4px"></label>
               <div class="dialog-actions wide"><button class="btn primary" type="submit">Değişiklikleri kaydet</button></div>
@@ -8259,6 +8260,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       const profile = await api('/api/company/profile');
       const form = $('#companyProfileForm');
       form.elements.name.value = profile.name || '';
+      form.elements.slug.value = profile.slug || '';
       form.elements.contactEmail.value = profile.contactEmail || '';
       form.elements.brandPrimaryColor.value = profile.brandPrimaryColor || '#1769E0';
       const preview = $('#companyLogoPreview');
@@ -8271,7 +8273,17 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     }
     $('#companyProfileForm').addEventListener('submit', async event => {
       event.preventDefault(); const form = event.currentTarget, button = $('button[type="submit"]', form); button.disabled = true;
-      try { const data = new FormData(form); await api('/api/company/profile', { method: 'PUT', body: JSON.stringify({ name: data.get('name'), contactEmail: data.get('contactEmail') || null, brandPrimaryColor: data.get('brandPrimaryColor') }) }); await loadCompanyProfile(); await loadTenantBranding(); notify('Şirket profili ve tema rengi kaydedildi.'); }
+      try {
+        const data = new FormData(form), previousSlug = String(data.get('slug') || '').trim().toLowerCase();
+        const saved = await api('/api/company/profile', { method: 'PUT', body: JSON.stringify({ name: data.get('name'), slug: data.get('slug') || null, contactEmail: data.get('contactEmail') || null, brandPrimaryColor: data.get('brandPrimaryColor') }) });
+        const tenantDomain = saved.tenantUrl?.match(/^https:\/\/[^/]+?\.([a-z0-9.-]+)$/i)?.[1];
+        if (tenantDomain && previousSlug && saved.slug !== previousSlug && location.hostname.toLowerCase() === `${previousSlug}.${tenantDomain}`) {
+          notify('Şirket alt alan adı güncellendi; yeni şirket adresine yönlendiriliyorsunuz.');
+          setTimeout(() => location.assign(saved.tenantUrl), 700);
+          return;
+        }
+        await loadCompanyProfile(); await loadTenantBranding(); notify('Şirket profili, alt alan adı ve tema rengi kaydedildi.');
+      }
       catch (error) { notify(error.message); } finally { button.disabled = false; }
     });
     $('#companyLogoForm').addEventListener('submit', async event => {

@@ -196,15 +196,35 @@ public static class AccountEndpoints
             if (!user.EmailConfirmed)
                 return Results.Json(new { message = "Davet e-postasındaki bağlantıdan parolanızı belirleyerek hesabınızı etkinleştirin." }, statusCode: StatusCodes.Status403Forbidden);
 
+            var tenantSlug = TenantHostResolver.ResolveSlug(context.Request, context.RequestServices
+                .GetRequiredService<IConfiguration>()["TenantRouting:RootDomain"]);
+            if (tenantSlug is { Length: 0 }) return Results.NotFound();
+            Guid? tenantCompanyId = null;
+            if (tenantSlug is not null)
+            {
+                tenantCompanyId = await db.Companies.AsNoTracking()
+                    .Where(company => company.IsActive && company.Slug == tenantSlug)
+                    .Select(company => (Guid?)company.Id)
+                    .SingleOrDefaultAsync(cancellationToken);
+                if (tenantCompanyId is null) return Results.NotFound();
+                if (request.CompanyId is Guid requestedCompanyId && requestedCompanyId != tenantCompanyId)
+                    return Results.Forbid();
+            }
+
             var isPlatformAdmin = await db.PlatformAdministrators.AsNoTracking().AnyAsync(x => x.UserId == user.Id, cancellationToken);
             var memberships = await db.CompanyMemberships.AsNoTracking().Where(x => x.UserId == user.Id &&
+                (tenantCompanyId == null || x.CompanyId == tenantCompanyId) &&
                 db.Companies.Any(company => company.Id == x.CompanyId && company.IsActive)).ToListAsync(cancellationToken);
-            var membership = request.CompanyId is Guid selected
+            var membership = tenantCompanyId is not null
+                ? memberships.SingleOrDefault(x => x.CompanyId == tenantCompanyId)
+                : request.CompanyId is Guid selected
                 ? memberships.SingleOrDefault(x => x.CompanyId == selected)
                 : memberships.Count == 1 ? memberships[0] : null;
             if (request.CompanyId is not null && membership is null)
                 return Results.Forbid();
-            if (memberships.Count > 1 && request.CompanyId is null)
+            if (tenantCompanyId is not null && membership is null)
+                return Results.Forbid();
+            if (tenantCompanyId is null && memberships.Count > 1 && request.CompanyId is null)
             {
                 var companyIds = memberships.Select(x => x.CompanyId).ToArray();
                 var companies = await db.Companies.AsNoTracking().Where(x => companyIds.Contains(x.Id))

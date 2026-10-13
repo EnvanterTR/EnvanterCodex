@@ -204,6 +204,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     builder.Services.ConfigureApplicationCookie(options =>
     {
         options.Cookie.Name = "EnvanterTR.Session";
+        options.Cookie.Domain = builder.Configuration["TenantRouting:CookieDomain"];
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Strict;
         options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
@@ -341,6 +342,19 @@ app.Use(async (context, next) =>
 app.UseAuthentication();
 app.Use(async (context, next) =>
 {
+    var tenantSlug = TenantHostResolver.ResolveSlug(context.Request,
+        context.RequestServices.GetRequiredService<IConfiguration>()["TenantRouting:RootDomain"]);
+    if (tenantSlug is { Length: 0 })
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+    if (tenantSlug is not null && context.Request.Path.StartsWithSegments("/api/platform"))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
     var principal = context.User;
     if (principal.Identity?.IsAuthenticated != true)
     {
@@ -386,7 +400,8 @@ app.Use(async (context, next) =>
 
         currentRole = await (from membership in db.CompanyMemberships.AsNoTracking()
             join company in db.Companies.AsNoTracking() on membership.CompanyId equals company.Id
-            where membership.CompanyId == companyId && membership.UserId == userId && company.IsActive
+            where membership.CompanyId == companyId && membership.UserId == userId && company.IsActive &&
+                (tenantSlug == null || company.Slug == tenantSlug)
             select membership.RoleKey).SingleOrDefaultAsync(context.RequestAborted);
         if (currentRole is null)
         {
@@ -405,6 +420,12 @@ app.Use(async (context, next) =>
     var platformAdminClaim = principal.HasClaim("platform_admin", "true");
     var isPlatformAdmin = platformAdminClaim && await db.PlatformAdministrators.AsNoTracking()
         .AnyAsync(x => x.UserId == userId, context.RequestAborted);
+    if (tenantSlug is not null && companyClaim is null)
+    {
+        await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return;
+    }
     if (companyClaim is null && !isPlatformAdmin)
     {
         await context.SignOutAsync(IdentityConstants.ApplicationScheme);

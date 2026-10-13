@@ -27,6 +27,8 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_HTTP_PORTS: 8080
       ForwardedHeaders__Enabled: "true"
+      TenantRouting__RootDomain: envantertr.com
+      TenantRouting__CookieDomain: .envantertr.com
       DataProtection__KeysPath: /var/lib/envantertr/data-protection-keys
       ConnectionStrings__EnvanterTR: "Host=database;Port=5432;Database=envantertr;Username=envantertr;Password=${SERVICE_PASSWORD_64_POSTGRES}"
       Setup__BootstrapToken: ${SERVICE_PASSWORD_64_SETUP}

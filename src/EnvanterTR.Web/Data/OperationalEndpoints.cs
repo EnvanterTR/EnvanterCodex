@@ -41,13 +41,17 @@ public static class OperationalEndpoints
             return await next(invocation);
         });
 
-        api.MapGet("/company/profile", async (ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        api.MapGet("/company/profile", async (ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
         {
             if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
             var company = await db.Companies.AsNoTracking().Where(x => x.Id == companyId)
-                .Select(x => new { x.Name, x.ContactEmail, x.BrandPrimaryColor, HasLogo = x.BrandLogoPath != null })
+                .Select(x => new { x.Name, x.Slug, x.ContactEmail, x.BrandPrimaryColor, HasLogo = x.BrandLogoPath != null })
                 .SingleOrDefaultAsync(cancellationToken);
-            return company is null ? Results.NotFound() : Results.Ok(company);
+            if (company is null) return Results.NotFound();
+            var rootDomain = configuration["TenantRouting:RootDomain"]?.Trim().Trim('.');
+            return Results.Ok(new { company.Name, company.Slug, company.ContactEmail, company.BrandPrimaryColor, company.HasLogo,
+                tenantUrl = string.IsNullOrWhiteSpace(rootDomain) || string.IsNullOrWhiteSpace(company.Slug)
+                    ? null : $"https://{company.Slug}.{rootDomain}" });
         }).RequireAuthorization("settings.manage");
 
         api.MapGet("/company/branding", async (ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
@@ -132,28 +136,42 @@ public static class OperationalEndpoints
         }).RequireAuthorization("settings.manage");
 
         api.MapPut("/company/profile", async ([FromBody] UpdateCompanyProfileRequest request,
-            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+            ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
         {
             if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
             var name = request.Name?.Trim();
             var email = request.ContactEmail?.Trim();
             var color = request.BrandPrimaryColor?.Trim();
+            var slug = string.IsNullOrWhiteSpace(request.Slug) ? null : request.Slug.Trim().ToLowerInvariant();
+            var tenantRoutingEnabled = !string.IsNullOrWhiteSpace(configuration["TenantRouting:RootDomain"]);
             if (string.IsNullOrWhiteSpace(name) || name.Length > 200 ||
                 (email is { Length: > 256 } || (!string.IsNullOrEmpty(email) && !MailAddress.TryCreate(email, out _))) ||
-                color is null || !Regex.IsMatch(color, "^#[0-9a-fA-F]{6}$", RegexOptions.CultureInvariant))
+                color is null || !Regex.IsMatch(color, "^#[0-9a-fA-F]{6}$", RegexOptions.CultureInvariant) ||
+                (tenantRoutingEnabled && slug is null) || (slug is not null && !TenantHostResolver.IsValidSlug(slug)))
                 return Results.ValidationProblem(new Dictionary<string, string[]> {
-                    ["profile"] = ["Şirket adı (en fazla 200), geçerli e-posta ve #RRGGBB biçiminde renk gereklidir."]
+                    ["profile"] = ["Şirket adı, geçerli e-posta, #RRGGBB rengi ve 2-63 karakterli uygun alt alan adı gereklidir."]
                 });
             var company = await db.Companies.SingleOrDefaultAsync(x => x.Id == companyId, cancellationToken);
             if (company is null) return Results.NotFound();
+            if (slug is not null && await db.Companies.AsNoTracking().AnyAsync(x => x.Id != companyId && x.Slug == slug, cancellationToken))
+                return Results.Conflict(new { message = "Bu alt alan adı başka bir şirket tarafından kullanılıyor." });
             company.Name = name;
+            if (slug is not null) company.Slug = slug;
             company.ContactEmail = string.IsNullOrWhiteSpace(email) ? null : email;
             company.BrandPrimaryColor = color.ToUpperInvariant();
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
                 TargetType = "Company", TargetId = companyId, Action = "ProfileUpdated",
                 Details = "Şirket adı, iletişim e-postası veya tema rengi güncellendi." });
-            await db.SaveChangesAsync(cancellationToken);
-            return Results.Ok(new { company.Name, company.ContactEmail, company.BrandPrimaryColor, HasLogo = company.BrandLogoPath is not null });
+            try { await db.SaveChangesAsync(cancellationToken); }
+            catch (DbUpdateException exception) when (exception.InnerException is PostgresException
+                { SqlState: PostgresErrorCodes.UniqueViolation })
+            {
+                return Results.Conflict(new { message = "Bu alt alan adı başka bir şirket tarafından kullanılıyor." });
+            }
+            var rootDomain = configuration["TenantRouting:RootDomain"]?.Trim().Trim('.');
+            return Results.Ok(new { company.Name, company.Slug, company.ContactEmail, company.BrandPrimaryColor,
+                HasLogo = company.BrandLogoPath is not null,
+                tenantUrl = string.IsNullOrWhiteSpace(rootDomain) ? null : $"https://{company.Slug}.{rootDomain}" });
         }).RequireAuthorization("settings.manage");
 
         api.MapPost("/company/branding/logo", async ([FromForm] IFormFile? logo, ClaimsPrincipal user,
@@ -2040,7 +2058,7 @@ public static class OperationalEndpoints
     private sealed record UpdateDepartmentRequest(string? Name, Guid? ParentDepartmentId = null, Guid? LocationCatalogId = null);
     private sealed record CompanyUnitRequest(string? Name, string? Code, Guid? ParentCompanyUnitId = null);
     private sealed record CompanyUnitActiveRequest(bool IsActive);
-    private sealed record UpdateCompanyProfileRequest(string? Name, string? ContactEmail, string? BrandPrimaryColor);
+    private sealed record UpdateCompanyProfileRequest(string? Name, string? ContactEmail, string? BrandPrimaryColor, string? Slug = null);
     public sealed record LabelPrintSettingsRequest(string? Barcode1d, string? Barcode2d, decimal WidthMm,
         decimal HeightMm, decimal OffsetXmm, decimal OffsetYmm, decimal PaddingMm, decimal CodeSizeMm,
         string? QrTarget, bool ShowName, bool ShowSerial, bool ShowModel, bool ShowLocation, bool ShowStatus);
