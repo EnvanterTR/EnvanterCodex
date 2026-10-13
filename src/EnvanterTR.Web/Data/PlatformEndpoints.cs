@@ -328,7 +328,7 @@ public static class PlatformEndpoints
                                        join plan in db.SubscriptionPlans.AsNoTracking() on subscription.PlanId equals plan.Id
                                        where subscription.CompanyId == companyId
                                        orderby subscription.StartsAt descending
-                                       select new { subscription.Id, plan.Name, plan.Code, subscription.Status,
+                                       select new { subscription.Id, subscription.PlanId, plan.Name, plan.Code, subscription.Status,
                                            subscription.IsDemo, subscription.StartsAt, subscription.EndsAt,
                                            subscription.PaymentReference, subscription.CreatedAt })
                 .Take(50).ToListAsync(cancellationToken);
@@ -415,6 +415,30 @@ public static class PlatformEndpoints
                 $"{request.Days} gün. {Clean(request.Note)}");
             await db.SaveChangesAsync(cancellationToken);
             return Results.Ok(new { subscription.Id, subscription.Status, subscription.EndsAt, subscription.IsDemo });
+        });
+
+        admin.MapPut("/companies/{companyId:guid}/subscriptions/{subscriptionId:guid}", async (Guid companyId, Guid subscriptionId,
+            [FromBody] EditSubscriptionRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (request is null) return Results.BadRequest(new { message = "Abonelik düzenleme bilgileri gereklidir." });
+            if (request.PlanId == Guid.Empty || request.StartsAt < new DateTimeOffset(2000, 1, 1, 0, 0, 0, TimeSpan.Zero) ||
+                request.EndsAt <= request.StartsAt || request.EndsAt > DateTimeOffset.UtcNow.AddYears(50) || request.Note is { Length: > 1000 })
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["subscription"] = ["Etkin plan seçin; başlangıç/bitiş tarihleri geçerli olmalı ve not 1000 karakteri aşmamalıdır."] });
+
+            var subscription = await db.TenantSubscriptions.SingleOrDefaultAsync(x => x.Id == subscriptionId && x.CompanyId == companyId, cancellationToken);
+            if (subscription is null) return Results.NotFound();
+            var plan = await db.SubscriptionPlans.SingleOrDefaultAsync(x => x.Id == request.PlanId && x.IsActive && x.DeploymentKind == "cloud", cancellationToken);
+            if (plan is null) return Results.ValidationProblem(new Dictionary<string, string[]> { ["planId"] = ["Etkin bir Cloud paketi seçilmelidir."] });
+
+            var previous = new { subscription.PlanId, subscription.StartsAt, subscription.EndsAt, subscription.Status, subscription.IsDemo };
+            subscription.PlanId = plan.Id;
+            subscription.StartsAt = request.StartsAt.ToUniversalTime();
+            subscription.EndsAt = request.EndsAt.ToUniversalTime();
+            var current = new { subscription.PlanId, subscription.StartsAt, subscription.EndsAt, subscription.Status, subscription.IsDemo };
+            var audit = JsonSerializer.Serialize(new { before = previous, after = current, note = Clean(request.Note) });
+            AddAudit(db, user, "SubscriptionManuallyAdjusted", "TenantSubscription", subscription.Id, companyId, audit);
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.Ok(new { subscription.Id, subscription.PlanId, subscription.StartsAt, subscription.EndsAt, subscription.Status, subscription.IsDemo });
         });
 
         admin.MapPatch("/companies/{companyId:guid}/active", async (Guid companyId,

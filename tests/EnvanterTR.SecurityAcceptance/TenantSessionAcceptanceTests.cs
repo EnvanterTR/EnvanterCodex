@@ -1279,6 +1279,81 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Platform_admin_can_adjust_subscription_plan_and_dates_with_validation_and_audit()
+    {
+        var originalPlan = new SubscriptionPlan
+        {
+            Code = $"sub-old-{_companyId:N}", Name = "Original Cloud", DeploymentKind = "cloud", IsActive = true
+        };
+        var upgradedPlan = new SubscriptionPlan
+        {
+            Code = $"sub-new-{_companyId:N}", Name = "Upgraded Cloud", DeploymentKind = "cloud", IsActive = true
+        };
+        var subscriptionId = Guid.NewGuid();
+        var now = DateTimeOffset.UtcNow;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SubscriptionPlans.AddRange(originalPlan, upgradedPlan);
+            db.TenantSubscriptions.Add(new TenantSubscription
+            {
+                Id = subscriptionId, CompanyId = _companyId, PlanId = originalPlan.Id, Status = "Active", IsDemo = false,
+                StartsAt = now.AddDays(-10), EndsAt = now.AddDays(20), PaymentReference = "preserved-payment-reference"
+            });
+            db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            await db.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsPlatformAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var invalidRangeRequest = new
+        {
+            planId = upgradedPlan.Id, startsAt = now.AddDays(25), endsAt = now.AddDays(20), note = "invalid range must be rejected"
+        };
+        using (var invalidRange = await SendAsPlatformAdminRequestAsync(HttpMethod.Put,
+                   $"/api/platform/companies/{_companyId}/subscriptions/{subscriptionId}",
+                   System.Net.Http.Json.JsonContent.Create(invalidRangeRequest), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidRange.StatusCode);
+
+        var editedStartsAt = now.AddDays(-2);
+        var editedEndsAt = now.AddDays(90);
+        var editRequest = new { planId = upgradedPlan.Id, startsAt = editedStartsAt, endsAt = editedEndsAt, note = "Customer success courtesy extension" };
+        using (var denied = await SendAsUserAsync(HttpMethod.Put,
+                   $"/api/platform/companies/{_companyId}/subscriptions/{subscriptionId}", _userId, _companyId,
+                   System.Net.Http.Json.JsonContent.Create(editRequest)))
+            Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        using (var saved = await SendAsPlatformAdminRequestAsync(HttpMethod.Put,
+                   $"/api/platform/companies/{_companyId}/subscriptions/{subscriptionId}",
+                   System.Net.Http.Json.JsonContent.Create(editRequest), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+            using var payload = JsonDocument.Parse(await saved.Content.ReadAsStringAsync());
+            Assert.Equal(upgradedPlan.Id, payload.RootElement.GetProperty("planId").GetGuid());
+            Assert.Equal(editedStartsAt.ToUniversalTime(), payload.RootElement.GetProperty("startsAt").GetDateTimeOffset());
+            Assert.Equal(editedEndsAt.ToUniversalTime(), payload.RootElement.GetProperty("endsAt").GetDateTimeOffset());
+        }
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var subscription = await db.TenantSubscriptions.SingleAsync(x => x.Id == subscriptionId);
+            Assert.Equal("Active", subscription.Status);
+            Assert.False(subscription.IsDemo);
+            Assert.Equal("preserved-payment-reference", subscription.PaymentReference);
+            var audit = await db.PlatformAuditEntries.SingleAsync(x => x.TargetId == subscriptionId && x.Action == "SubscriptionManuallyAdjusted");
+            Assert.Contains(originalPlan.Id.ToString(), audit.Details, StringComparison.Ordinal);
+            Assert.Contains(upgradedPlan.Id.ToString(), audit.Details, StringComparison.Ordinal);
+            Assert.Contains("Customer success courtesy extension", audit.Details, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public async Task Platform_can_provision_a_paid_cloud_company_owner_and_retryable_invitation()
     {
         var plan = new SubscriptionPlan
