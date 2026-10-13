@@ -333,6 +333,15 @@
   </style>
 <style>.btn[hidden]{display:none!important}.task-status-select{min-height:32px;padding:5px 8px;border:1px solid #dce4ee;border-radius:7px;background:#fff;color:#33445e;font-size:.72rem}.bulk-asset-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:10px 13px;border-bottom:1px solid #edf0f5;background:#f8faff}.bulk-asset-toolbar[hidden]{display:none}.bulk-asset-toolbar label{display:flex;align-items:center;gap:7px;color:#526178;font-size:.72rem}.bulk-asset-toolbar>span{margin-right:auto;color:#526178;font-size:.72rem;font-weight:700}.bulk-asset-toolbar select{min-height:32px;padding:0 9px;border:1px solid #dce4ee;border-radius:7px;background:white;color:#33445e;font-size:.72rem}.asset-select-column{width:38px}.asset-select-cell{text-align:center}.asset-select-cell input{width:15px;height:15px;accent-color:#1769df}.stats .stat-actionable{cursor:pointer;transition:box-shadow .15s,transform .15s}.stats .stat-actionable:hover{transform:translateY(-2px);box-shadow:0 8px 20px #10213a14}.stats .stat-actionable:focus-visible{outline:2px solid #1769df;outline-offset:2px}</style>
 <style>.dashboard-status{display:grid;grid-template-columns:minmax(112px,150px) minmax(0,1fr);align-items:center;gap:18px;padding:16px}.dashboard-donut{position:relative;display:grid;place-items:center;width:min(100%,150px);aspect-ratio:1;border-radius:50%;background:#eef2f8}.dashboard-donut:after{position:absolute;inset:19%;border-radius:50%;background:#fff;content:""}.dashboard-donut-center{z-index:1;text-align:center}.dashboard-donut-center strong{display:block;color:#26364d;font-size:1.2rem}.dashboard-donut-center small{color:#8793a6;font-size:.62rem}.dashboard-status-legend{display:grid;gap:4px}.dashboard-status-item{display:flex;align-items:center;gap:8px;width:100%;padding:7px 8px;border:0;border-radius:7px;color:#56657a;background:transparent;text-align:left;font-size:.68rem;cursor:pointer}.dashboard-status-item:hover,.dashboard-status-item:focus-visible{outline:2px solid #cfe0fa;background:#f4f8ff}.dashboard-status-item .legend-dot{width:8px;height:8px;flex:none;border-radius:50%}.dashboard-status-item .legend-count{margin-left:auto;color:#26364d;font-weight:700}.dashboard-status-note{padding:0 16px 12px;color:#8793a6;font-size:.63rem}@media(max-width:420px){.dashboard-status{grid-template-columns:108px minmax(0,1fr);gap:10px;padding:13px}.dashboard-status-item{padding:7px 4px;font-size:.64rem}}</style><style>.label-preview-card{box-sizing:border-box;max-width:none;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto 1fr auto;align-items:center;gap:4px;border:1px dashed #8494a8;border-radius:6px;background:#fff;box-shadow:0 5px 20px #182d491f;overflow:hidden}.label-preview-brand{grid-column:1/-1;color:#52637a;font-size:8px;font-weight:800;letter-spacing:.08em}.label-preview-copy{min-width:0;display:grid;gap:4px;overflow:hidden}.label-preview-copy strong{font-size:10px}.label-preview-copy b{font-size:17px;overflow-wrap:anywhere}.label-preview-copy small{font-size:8px;color:#667085}.label-preview-2d{width:25mm;height:25mm;object-fit:contain}.label-preview-1d{grid-column:1/-1;width:100%;height:auto;max-height:10mm;object-fit:fill}.label-preview-1d[src^="data:"]{image-rendering:auto}#labelPreviewCanvas{overflow:auto;padding:4px 0 12px}#labelSettingsForm .form-grid{margin-bottom:8px}@media(max-width:720px){#labelSettingsPage .grid{grid-template-columns:1fr!important}}</style><style id="mobile-topbar-layout">@media(max-width:720px){html,body{overflow-x:hidden}.topbar{display:grid;grid-template-columns:38px minmax(0,1fr) 32px 32px 32px auto;grid-template-areas:"menu spacer appearance help notifications profile" "search search search search search search";height:auto;min-height:64px;padding:8px 10px;gap:8px}.mobile-menu{grid-area:menu}.top-spacer{grid-area:spacer;min-width:0}.topbar #appearanceButton{grid-area:appearance}.topbar #helpButton{grid-area:help}.notification-wrap{grid-area:notifications}.profile{grid-area:profile;min-width:0;gap:6px}.profile-text{display:none}.topbar .icon-button{width:32px;height:32px}.search{grid-area:search;max-width:none;min-width:0;width:100%}.search input{width:100%;min-width:0;font-size:.74rem}}</style></head>
+<style>
+  .asset-context-menu{position:fixed;z-index:1000;min-width:220px;max-width:min(300px,calc(100vw - 16px));padding:5px;border:1px solid #d8e1ec;border-radius:9px;background:#fff;box-shadow:0 14px 38px #10213a35}
+  .asset-context-menu[hidden]{display:none!important}
+  .asset-context-menu button{display:flex;width:100%;min-height:36px;align-items:center;padding:7px 10px;border:0;border-radius:6px;color:#26364d;background:transparent;text-align:left;font-size:.75rem}
+  .asset-context-menu button:hover,.asset-context-menu button:focus-visible{outline:0;background:#edf4ff;color:#145dbd}
+  :root[data-theme="dark"] .asset-context-menu{border-color:#34455e;background:#172337;box-shadow:0 14px 38px #0008}
+  :root[data-theme="dark"] .asset-context-menu button{color:#e5edf8}
+  :root[data-theme="dark"] .asset-context-menu button:hover,:root[data-theme="dark"] .asset-context-menu button:focus-visible{background:#263956;color:#fff}
+</style>
 <body class="auth-required">
 <style>body.auth-required #authLayer{display:grid;visibility:visible}</style>
   <dialog class="detail-dialog" id="maintenanceAttachmentDialog"><div class="dialog-head"><div><div class="eyebrow">BAKIM KAYDI / DOSYALAR</div><h2 id="maintenanceAttachmentTitle">Bakım ekleri</h2></div><button class="close" id="maintenanceAttachmentClose" type="button" aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="muted">Servis formu, fatura ve bakım fotoğraflarını bu kayda ekleyin. PDF, PNG, JPEG veya WebP; dosya başına en fazla 10 MiB, kayıt başına 30 dosya.</p><form id="maintenanceAttachmentForm" class="form-grid" hidden><label class="wide">Dosya seçin *<input name="file" type="file" accept="application/pdf,image/png,image/jpeg,image/webp" required></label><div class="dialog-actions wide"><button class="btn primary" type="submit">Dosyayı yükle</button></div></form><div id="maintenanceAttachmentList" class="inventory-history" aria-live="polite" style="margin-top:12px"><p class="muted">Dosyalar yükleniyor…</p></div></div></dialog>
@@ -582,6 +591,7 @@
       </section>
     <dialog class="detail-dialog" id="licenseRevokeDialog" aria-labelledby="licenseRevokeTitle"><form id="licenseRevokeForm"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ALANI / LİSANS ATAMASI</div><h2 id="licenseRevokeTitle">Atamayı kaldır</h2></div><button class="close" id="licenseRevokeClose" type="button" aria-label="Kapat" data-locale-aria="Kapat">✕</button></div><div class="dialog-body"><p id="licenseRevokeSummary" class="muted"></p><p class="muted">Bu lisans atamasını geri almak istiyor musunuz?</p><div class="dialog-actions"><button class="btn" id="licenseRevokeCancel" type="button">Vazgeç</button><button class="btn danger" id="licenseRevokeSubmit" type="submit">Atamayı kaldır</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="licenseImportProfileDeleteDialog" aria-labelledby="licenseImportProfileDeleteTitle"><form id="licenseImportProfileDeleteForm"><div class="dialog-head"><div><div class="eyebrow">YAZILIM LİSANSI / DOSYA AKTARIMI</div><h2 id="licenseImportProfileDeleteTitle">Eşleme profilini sil</h2></div><button class="close" id="licenseImportProfileDeleteClose" type="button" aria-label="Kapat" data-locale-aria="Kapat">✕</button></div><div class="dialog-body"><p id="licenseImportProfileDeleteSummary" class="muted"></p><p>Bu işlem yalnızca kayıtlı lisans sütun eşlemesini siler.</p><div class="dialog-actions"><button class="btn" id="licenseImportProfileDeleteCancel" type="button">Vazgeç</button><button class="btn danger" id="licenseImportProfileDeleteSubmit" type="submit">Profili sil</button></div></div></form></dialog>
+  <div id="assetContextMenu" class="asset-context-menu" role="menu" aria-label="Varlık hızlı işlemleri" hidden></div>
   <dialog class="detail-dialog command-palette-dialog" id="commandPaletteDialog" aria-labelledby="commandPaletteTitle" aria-describedby="commandPaletteDescription">
     <div class="dialog-head"><div><div class="eyebrow">HIZLI ERİŞİM</div><h2 id="commandPaletteTitle">Komut paleti</h2></div><button class="close" id="commandPaletteClose" type="button" aria-label="Kapat">✕</button></div>
     <div class="command-palette-body"><label class="command-palette-search" for="commandPaletteSearch">Sayfa veya işlem ara<input id="commandPaletteSearch" type="search" autocomplete="off" aria-controls="commandPaletteResults" aria-keyshortcuts="Control+K"></label><div id="commandPaletteResults" class="command-palette-results" role="menu" aria-label="Sayfalar ve hızlı işlemler"></div><p id="commandPaletteDescription" class="command-palette-hint">↑ ↓ ile gezin, Enter ile aç, Esc ile kapat.</p></div>
@@ -654,6 +664,7 @@
   <datalist id="departmentSuggestions"></datalist><datalist id="locationSuggestions"></datalist>
   <dialog class="detail-dialog" id="quickLookupDialog"><form id="quickLookupForm"><div class="dialog-head"><div><div class="eyebrow">ENVANTER KATALOĞU</div><h2 id="quickLookupTitle">Katalog kaydı ekle</h2></div><button class="close" type="button" id="cancelQuickLookup" aria-label="Kapat">✕</button></div><div class="dialog-body"><label class="detail-field"><small id="quickLookupNameLabel">Ad *</small><input name="name" required maxlength="160" autocomplete="off"></label><label class="detail-field" id="quickLookupModelNumberField" hidden><small>Model numarası</small><input name="modelNumber" maxlength="120" autocomplete="off"></label><div class="dialog-actions"><button class="btn" type="button" id="cancelQuickLookupAction">Vazgeç</button><button class="btn primary" type="submit">Kaydet</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="returnAssetDialog"><form id="returnAssetForm"><div class="dialog-head"><div><div class="eyebrow">ZİMMET İŞLEMİ</div><h2 id="returnAssetTitle">Varlığı iade al</h2></div><button class="close" type="button" id="cancelAssetReturn" aria-label="Kapat">✕</button></div><div class="dialog-body"><p id="returnAssetDescription" class="muted"></p><label class="detail-field"><small>İade notu (isteğe bağlı)</small><textarea name="note" maxlength="1000" rows="3"></textarea></label><div class="dialog-actions"><button class="btn" type="button" id="cancelAssetReturnAction">Vazgeç</button><button class="btn primary" type="submit">İade al</button></div></div></form></dialog>
+  <dialog class="detail-dialog" id="assetTrashConfirmDialog" aria-labelledby="assetTrashConfirmTitle"><form id="assetTrashConfirmForm"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ENVANTERİ / KURTARMA</div><h2 id="assetTrashConfirmTitle">Çöp kutusuna taşı</h2></div><button class="close" id="closeAssetTrashConfirm" type="button" aria-label="Kapat">✕</button></div><div class="dialog-body"><p id="assetTrashConfirmSummary" class="muted"></p><label class="detail-field"><small>Çöp kutusu notu (isteğe bağlı):</small><textarea name="note" maxlength="1000" rows="3"></textarea></label><div class="dialog-actions"><button class="btn" id="cancelAssetTrashConfirm" type="button">Vazgeç</button><button class="btn danger" id="submitAssetTrashConfirm" type="submit">Varlığı çöp kutusuna taşı</button></div></div></form></dialog>
   <script src="/vendor/qrcodegen.js"></script>
   <dialog class="detail-dialog" id="supplierCatalogDialog"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET KATALOĞU</div><h2>Tedarikçiler</h2></div><button class="close" type="button" id="closeSupplierCatalog" aria-label="Kapat">✕</button></div><div class="dialog-body"><form id="supplierCatalogForm"><input name="id" type="hidden"><div class="form-grid"><label>Firma adı *<input name="name" maxlength="200" required></label><label>Yetkili kişi<input name="contactName" maxlength="160"></label><label>E-posta<input name="email" type="email" maxlength="254"></label><label>Telefon<input name="phone" maxlength="50"></label><label class="wide">Web sitesi<input name="website" type="url" maxlength="500" placeholder="https://ornek.com"></label><label class="wide">Notlar<textarea name="notes" maxlength="2000" rows="2"></textarea></label><label class="wide">Firma logosu<input name="logo" type="file" accept="image/png,image/jpeg,image/webp"><img id="supplierLogoPreview" alt="Tedarikçi logosu önizlemesi" hidden style="display:block;max-width:160px;max-height:90px;object-fit:contain;margin-top:8px"></label></div><div class="dialog-actions"><button class="btn" id="resetSupplierForm" type="button">Temizle</button><button class="btn primary" type="submit">Tedarikçiyi kaydet</button></div></form><div class="table-tools"><input id="supplierCatalogSearch" placeholder="Firma, yetkili, e-posta veya telefon ara" aria-label="Tedarikçilerde ara"><label><input id="showArchivedSuppliers" type="checkbox"> Arşivdekileri göster</label></div><div class="table-wrap"><table><thead><tr><th>Firma</th><th>Yetkili / iletişim</th><th>Bağlı kayıt</th><th>Durum</th><th>İşlemler</th></tr></thead><tbody id="supplierCatalogRows"><tr><td colspan="5">Tedarikçiler yükleniyor…</td></tr></tbody></table></div><p class="muted">Kayıt sayısı envanter, sarf, bileşen, lisans, bakım ve sipariş bağlantılarını gösterir. Siparişlerdeki tedarikçi adı geçmiş metni olarak korunur.</p></div></dialog>
   <dialog class="detail-dialog" id="accountPhotoDialog"><div class="dialog-head"><div><div class="eyebrow">HESAP AYARLARI</div><h2>Profil fotoğrafı</h2></div><button class="close" type="button" id="closeAccountPhoto" aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="muted">Bu fotoğraf yalnızca oturum açtığınız hesaba bağlıdır. PNG, JPEG veya WebP dosyası seçin (en fazla 2 MB).</p><div style="display:flex;align-items:center;gap:16px;margin:18px 0"><img id="accountPhotoPreview" alt="Profil fotoğrafı önizlemesi" hidden style="width:88px;height:88px;object-fit:cover;border-radius:50%;border:1px solid #e4eaf2"><span id="accountPhotoFallback" class="avatar" style="width:88px;height:88px;font-size:1.6rem">—</span><div style="display:flex;flex-wrap:wrap;gap:8px"><input id="accountPhotoInput" type="file" accept="image/png,image/jpeg,image/webp" hidden><button class="btn primary" type="button" id="chooseAccountPhoto">Fotoğraf seç</button><button class="btn" type="button" id="removeAccountPhoto" hidden>Fotoğrafı kaldır</button></div></div><p class="muted" style="margin:0;font-size:.76rem">PNG, JPEG veya WebP · en fazla 2 MB. Daha büyük fotoğraflar yüklenemez.</p><p id="accountPhotoFeedback" role="status" style="min-height:1.2em;color:#64748b;font-size:.76rem"></p><hr><section><h3>Parolayı değiştir</h3><p class="muted">Mevcut parolanızı doğrulayın. MFA açıksa Authenticator veya kurtarma kodu da gerekir; diğer cihazlardaki oturumlar geçersiz kılınır.</p><div class="form-grid"><label>Mevcut parola<input id="ownCurrentPassword" type="password" autocomplete="current-password" maxlength="256"></label><label>Yeni parola<input id="ownNewPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256"></label><label>Yeni parola tekrarı<input id="ownConfirmPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256"></label><label id="ownPasswordTwoFactorLabel" hidden>Authenticator / kurtarma kodu<input id="ownPasswordTwoFactorCode" inputmode="numeric" autocomplete="one-time-code" maxlength="32"></label></div><button class="btn primary" type="button" id="changeOwnPassword" style="margin-top:10px">Parolayı değiştir</button><p id="ownPasswordFeedback" role="status" aria-live="polite" class="muted"></p></section><hr><div class="panel-head"><div><h3>Hesap güvenliği</h3><p class="muted">İki aşamalı doğrulamayı yönet</p></div><button class="btn small" type="button" id="openAccountTwoFactor">Güvenlik ayarları</button></div><hr><section aria-labelledby="sessionDevicesHeading"><div class="panel-head"><div><h3 id="sessionDevicesHeading">Oturum açan cihazlar</h3><p class="muted">Hesabınızın açık oturumlarını ve yaklaşık bağlantı adreslerini görün; tanımadığınız oturumları kapatın.</p></div><button class="btn small" type="button" id="refreshAccountSessions">Yenile</button></div><div id="accountSessionsList" aria-live="polite" class="muted">Oturumlar yüklenmedi.</div></section></div></dialog>
@@ -832,6 +843,7 @@
       'Kullanılabilir':['Available','Доступно','Доступно','Достапно'],
       'Kendi hesap güvenliğini aç':['Open your account security','Открыть безопасность своей учетной записи','Відкрити безпеку свого облікового запису','Отвори ја безбедноста на сопствената сметка'],
       'Kısmen kullanılabilir':['Partially available','Доступно частично','Частково доступно','Делумно достапно'],
+      'Varlık hızlı işlemleri':['Asset quick actions','Быстрые действия с активом','Швидкі дії з активом','Брзи дејства за средството'],
       'Hesap güvenliği özellikleri kullanılabilir; merkezi şirket güvenlik yönetimi henüz hazır değil.':['Account security features are available; centralized company security management is not ready yet.','Функции безопасности учетной записи доступны; централизованное управление безопасностью компании пока не готово.','Функції безпеки облікового запису доступні; централізоване керування безпекою компанії ще не готове.','Функциите за безбедност на сметката се достапни; централното управување со безбедноста на компанијата сè уште не е подготвено.'],
       'Parola değiştirme, Authenticator tabanlı iki aşamalı doğrulama ve tek kullanımlık kurtarma kodları hesap ayarlarında kullanılabilir. Merkezi parola politikası ile LDAP/Active Directory/SSO yönetimi bu menüde henüz sunulmuyor.':['Password changes, authenticator-based two-step verification, and one-time recovery codes are available in account settings. Central password policy and LDAP/Active Directory/SSO management are not available in this menu yet.','Смена пароля, двухэтапная проверка через приложение-аутентификатор и одноразовые коды восстановления доступны в настройках учетной записи. Централизованная политика паролей и управление LDAP/Active Directory/SSO пока недоступны в этом меню.','Зміна пароля, двоетапна перевірка через застосунок-автентифікатор і одноразові коди відновлення доступні в налаштуваннях облікового запису. Централізована політика паролів і керування LDAP/Active Directory/SSO у цьому меню поки недоступні.','Промена на лозинка, двофакторска проверка со апликација за автентикација и еднократни кодови за обновување се достапни во поставките на сметката. Централната политика за лозинки и управувањето со LDAP/Active Directory/SSO сè уште не се достапни во ова мени.'],
       'Bildirimler üst menüdeki zil simgesinden yönetilir.':['Notifications are managed from the bell icon in the top bar.','Уведомления управляются через значок колокольчика в верхней панели.','Сповіщення керуються через значок дзвоника у верхній панелі.','Известувањата се управуваат преку иконата ѕвонче во горната лента.'],
@@ -2108,8 +2120,14 @@
     });
     Object.assign(localeRows, {
       '“{assetTag}” varlığını çöp kutusuna taşımak istiyor musunuz?':['Move asset “{assetTag}” to the trash?','Переместить актив “{assetTag}” в корзину?','Перемістити актив “{assetTag}” до кошика?','Да се премести средството „{assetTag}“ во корпата?'],
+      '“{assetTag}” varlığını çöp kutusundan geri almak istiyor musunuz?':['Restore asset “{assetTag}” from the trash?','Восстановить актив “{assetTag}” из корзины?','Відновити актив “{assetTag}” із кошика?','Да се врати средството „{assetTag}“ од корпата?'],
       'Çöp kutusu notu (isteğe bağlı):':['Trash note (optional):','Примечание к перемещению в корзину (необязательно):','Примітка до переміщення в кошик (необов’язково):','Забелешка за корпата (изборно):'],
-      'Varlık çöp kutusuna taşındı.':['Asset moved to the trash.','Актив перемещен в корзину.','Актив переміщено до кошика.','Средството е преместено во корпата.']
+      'Çöp kutusuna taşı':['Move to trash','Переместить в корзину','Перемістити до кошика','Премести во корпата'],
+      'Çöp kutusundan geri al':['Restore from trash','Восстановить из корзины','Відновити з кошика','Врати од корпата'],
+      'Varlığı çöp kutusuna taşı':['Move asset to trash','Переместить актив в корзину','Перемістити актив до кошика','Премести средство во корпата'],
+      'Geri al':['Restore','Восстановить','Відновити','Врати'],
+      'Varlık çöp kutusuna taşındı.':['Asset moved to the trash.','Актив перемещен в корзину.','Актив переміщено до кошика.','Средството е преместено во корпата.'],
+      'Varlık çöp kutusundan geri alındı.':['Asset restored from the trash.','Актив восстановлен из корзины.','Актив відновлено з кошика.','Средството е вратено од корпата.']
     });
     Object.assign(localeRows, {
       'BİLEŞEN İŞLEMİ':['COMPONENT ACTION','ДЕЙСТВИЕ С КОМПОНЕНТОМ','ДІЯ З КОМПОНЕНТОМ','ДЕЈСТВО ЗА КОМПОНЕНТА'],
@@ -3116,8 +3134,58 @@
         notify(`Etiket önizlemesi açıldı · ${layout.title}. Yazdırmak için önizlemedeki düğmeyi kullanın.`);
       } catch (error) { notify(`Etiket hazırlanamadı: ${error.message}`); }
     }
+    const assetContextMenu = $('#assetContextMenu');
+    let assetContextInvoker = null;
+    function closeAssetContextMenu(restoreFocus = false) {
+      if (assetContextMenu.hidden) return;
+      assetContextMenu.hidden = true;
+      assetContextMenu.replaceChildren();
+      const invoker = assetContextInvoker;
+      assetContextInvoker = null;
+      if (restoreFocus && invoker?.isConnected) invoker.focus();
+    }
+    function openAssetContextMenu(row, event) {
+      const actions = [...row.querySelectorAll('.asset-icon-action[data-asset-action]')];
+      if (!actions.length) return;
+      event.preventDefault();
+      closeAssetContextMenu();
+      assetContextInvoker = row;
+      assetContextMenu.setAttribute('aria-label', translateUiText('Varlık hızlı işlemleri'));
+      assetContextMenu.replaceChildren();
+      for (const source of actions) {
+        const item = document.createElement('button');
+        item.type = 'button'; item.setAttribute('role', 'menuitem');
+        item.textContent = source.title;
+        item.addEventListener('click', () => {
+          closeAssetContextMenu();
+          source.click();
+        });
+        assetContextMenu.append(item);
+      }
+      const point = event.clientX || event.clientY ? { x: event.clientX, y: event.clientY } : (() => { const bounds = row.getBoundingClientRect(); return { x: bounds.left + 24, y: bounds.top + Math.min(24, bounds.height / 2) }; })();
+      assetContextMenu.style.left = `${Math.max(8, Math.min(point.x, window.innerWidth - 228))}px`;
+      assetContextMenu.style.top = `${Math.max(8, Math.min(point.y, window.innerHeight - 44))}px`;
+      assetContextMenu.hidden = false;
+      const bounds = assetContextMenu.getBoundingClientRect();
+      assetContextMenu.style.left = `${Math.max(8, Math.min(point.x, window.innerWidth - bounds.width - 8))}px`;
+      assetContextMenu.style.top = `${Math.max(8, Math.min(point.y, window.innerHeight - bounds.height - 8))}px`;
+      assetContextMenu.querySelector('button')?.focus();
+    }
+    assetContextMenu.addEventListener('keydown', event => {
+      const items = [...assetContextMenu.querySelectorAll('[role="menuitem"]')];
+      const current = items.indexOf(document.activeElement);
+      if (event.key === 'Escape') { event.preventDefault(); closeAssetContextMenu(true); return; }
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Home' || event.key === 'End') {
+        event.preventDefault();
+        const index = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : (current + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+        items[index]?.focus();
+      }
+    });
+    document.addEventListener('pointerdown', event => { if (!assetContextMenu.hidden && !assetContextMenu.contains(event.target)) closeAssetContextMenu(); });
+    window.addEventListener('resize', () => closeAssetContextMenu());
+    window.addEventListener('scroll', () => closeAssetContextMenu(), true);
     function addAssetRow(asset) {
-      const row = document.createElement('tr'); row.dataset.id = asset.id; row.dataset.asset = asset.assetTag;
+      const row = document.createElement('tr'); row.dataset.id = asset.id; row.dataset.asset = asset.assetTag; row.tabIndex = 0; row.setAttribute('aria-haspopup', 'menu'); row.setAttribute('aria-label', `${asset.assetTag} · ${asset.name}`);
       const selectCell = document.createElement('td'); selectCell.className = 'asset-select-cell';
       const select = document.createElement('input'); select.type = 'checkbox'; select.className = 'asset-row-select'; select.checked = selectedAssetIds.has(asset.id);
       select.setAttribute('aria-label', asset.assetTag + ' ' + asset.name + ' ' + translateUiText('varlığını seç'));
@@ -3142,7 +3210,7 @@
       const actions = document.createElement('td'); actions.className = 'asset-row-actions'; const actionButton = (label, handler, primary = false) => { const button = document.createElement('button'); button.type = 'button'; button.className = primary ? 'btn small primary' : 'btn small'; button.textContent = label; button.addEventListener('click', event => { event.stopPropagation(); handler(); }); actions.append(button); };
       const actionGroup = document.createElement('div'); actionGroup.className = 'asset-action-group'; actions.replaceChildren(actionGroup);
       const icons = { view: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.4"></circle><path d="m16 16 4 4"></path></svg>', clone: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"></path></svg>', assign: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"></path></svg>', return: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14m6-6-6 6-6-6"></path></svg>', audit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8l3 3v13H5V4h3zM9 12l2 2 4-4M9 8h4"></path></svg>', label: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V4h16v4M4 16v4h16v-4M6 8h12v8H6zM9 11h6"></path></svg>', edit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16-.8 4.8L8 20l11-11-4-4L4 16zM13.5 6.5l4 4"></path></svg>', archive: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13M10 11v5m4-5v5"></path></svg>' };
-      const action = (title, icon, tone, callback) => { const button = document.createElement('button'); button.type = 'button'; button.className = `asset-icon-action ${tone}`; button.title = title; button.setAttribute('aria-label', `${asset.assetTag} · ${title}`); button.innerHTML = icons[icon]; button.addEventListener('click', event => { event.stopPropagation(); callback(); }); actionGroup.append(button); };
+       const action = (title, icon, tone, callback) => { const button = document.createElement('button'); button.type = 'button'; button.className = `asset-icon-action ${tone}`; button.dataset.assetAction = icon; button.title = title; button.setAttribute('aria-label', `${asset.assetTag} · ${title}`); button.innerHTML = icons[icon]; button.addEventListener('click', event => { event.stopPropagation(); callback(); }); actionGroup.append(button); };
       action(translateUiText('Ayrıntıyı aç'), 'view', 'view', () => openAsset(asset.id).catch(error => notify(error.message)));
       action(translateUiText(asset.assignedEmployeeId ? 'Zimmeti iade al' : 'Çalışana zimmetle'), asset.assignedEmployeeId ? 'return' : 'assign', 'assign', async () => { try { await openAsset(asset.id); const button = asset.assignedEmployeeId ? $('#returnAssetButton') : $('#assignAssetButton'); if (!button.hidden) button.click(); } catch (error) { notify(error.message); } });
       action(translateUiText('Fiziksel denetim kaydı aç'), 'audit', 'audit', async () => { try { await openAsset(asset.id); if (!$('#auditAssetButton').hidden) $('#auditAssetButton').click(); } catch (error) { notify(error.message); } });
@@ -3153,7 +3221,13 @@
         action(translateUiText('Varlığı arşive taşı'), 'archive', 'archive', async () => { try { await openAsset(asset.id); const button = $('#trashAssetButton'); if (!button.hidden) button.click(); } catch (error) { notify(error.message); } });
       }
       row.append(selectCell, idCell, companyCell, nameCell, imageCell, tagCell, serialCell, modelCell, modelNumberCell, categoryCell, statusCell, employeeCell, employeeNumberCell, locationCell, defaultLocationCell, manufacturerCell, purchaseCostCell, currentValueCell, checkoutCell, actions);
-      row.addEventListener('click', () => openAsset(asset.id).catch(error => notify(error.message))); $('#assetRows').append(row);
+       row.addEventListener('click', () => openAsset(asset.id).catch(error => notify(error.message)));
+       row.addEventListener('contextmenu', event => openAssetContextMenu(row, event));
+       row.addEventListener('keydown', event => {
+         if ((event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) && !event.target.closest('button,input,select,a')) { openAssetContextMenu(row, event); }
+         else if ((event.key === 'Enter' || event.key === ' ') && event.target === row) { event.preventDefault(); openAsset(asset.id).catch(error => notify(error.message)); }
+       });
+       $('#assetRows').append(row);
     }
     function updateAssetRelationFilter() {
       const filters = [];
@@ -8839,20 +8913,46 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       } catch (error) { notify(error.message); }
       finally { submit.disabled = false; }
     });
-    $('#trashAssetButton').addEventListener('click', async () => {
+    const assetTrashConfirmDialog = $('#assetTrashConfirmDialog');
+    const closeAssetTrashConfirm = () => { if (assetTrashConfirmDialog.open) assetTrashConfirmDialog.close(); };
+    let assetTrashTarget = null;
+    let assetTrashMode = 'trash';
+    function openAssetTrashAction(asset, mode) {
+      if (!asset || !canWriteAssets() || !['trash', 'restore'].includes(mode)) return;
+      assetTrashTarget = { id: asset.id, assetTag: asset.assetTag };
+      assetTrashMode = mode;
+      $('#assetTrashConfirmTitle').textContent = translateUiText(mode === 'trash' ? 'Çöp kutusuna taşı' : 'Çöp kutusundan geri al');
+      const promptKey = mode === 'trash' ? '“{assetTag}” varlığını çöp kutusuna taşımak istiyor musunuz?' : '“{assetTag}” varlığını çöp kutusundan geri almak istiyor musunuz?';
+      $('#assetTrashConfirmSummary').textContent = translateUiText(promptKey).replace('{assetTag}', assetTrashTarget.assetTag);
+      $('#submitAssetTrashConfirm').textContent = translateUiText(mode === 'trash' ? 'Varlığı çöp kutusuna taşı' : 'Geri al');
+      $('#assetTrashConfirmForm').reset();
+      assetTrashConfirmDialog.showModal();
+      assetTrashConfirmDialog.querySelector('textarea[name="note"]').focus();
+    }
+    $('#closeAssetTrashConfirm').addEventListener('click', closeAssetTrashConfirm);
+    $('#cancelAssetTrashConfirm').addEventListener('click', closeAssetTrashConfirm);
+    assetTrashConfirmDialog.addEventListener('click', event => { if (event.target === assetTrashConfirmDialog) closeAssetTrashConfirm(); });
+    assetTrashConfirmDialog.addEventListener('close', () => { $('#assetTrashConfirmForm').reset(); assetTrashTarget = null; assetTrashMode = 'trash'; });
+    $('#trashAssetButton').addEventListener('click', () => {
       if (!currentAsset || !canWriteAssets()) return;
-      const asset = currentAsset;
-      if (!confirm(translateUiText('“{assetTag}” varlığını çöp kutusuna taşımak istiyor musunuz?').replace('{assetTag}', asset.assetTag))) return;
-      const note = prompt(translateUiText('Çöp kutusu notu (isteğe bağlı):'));
-      if (note === null) return;
-      const button = $('#trashAssetButton'); button.disabled = true;
+      openAssetTrashAction(currentAsset, 'trash');
+    });
+    $('#assetTrashConfirmForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!assetTrashTarget || !canWriteAssets()) return;
+      const target = assetTrashTarget, mode = assetTrashMode;
+      const submit = $('#submitAssetTrashConfirm'); submit.disabled = true;
       try {
-        await api(`/api/assets/${asset.id}/trash`, { method: 'POST', body: JSON.stringify({ note: note.trim() || null }) });
-        $('#assetDialog').close();
+        const note = String(new FormData(event.currentTarget).get('note') || '').trim() || null;
+        const route = mode === 'trash' ? `/api/assets/${target.id}/trash` : `/api/assets/${target.id}/restore-from-trash`;
+        await api(route, { method: 'POST', body: JSON.stringify({ note }) });
+        closeAssetTrashConfirm();
+        if (mode === 'trash') $('#assetDialog').close();
+        else await loadAssetTrash();
         await loadDashboard($('#globalSearch').value.trim());
-        notify(translateUiText('Varlık çöp kutusuna taşındı.'));
+        notify(translateUiText(mode === 'trash' ? 'Varlık çöp kutusuna taşındı.' : 'Varlık çöp kutusundan geri alındı.'));
       } catch (error) { notify(error.message); }
-      finally { button.disabled = false; }
+      finally { submit.disabled = false; }
     });
     $('#assetStatusAction').addEventListener('change', async event => { const status = event.target.value; if (!status || !currentAsset) return; if (!confirm(`${currentAsset.assetTag} durumunu “${statusLabel(status)}” olarak değiştirmek istiyor musunuz?`)) { event.target.value = ''; return; } const note = prompt('Durum değişikliği notu (isteğe bağlı):') || null; try { await api(`/api/assets/${currentAsset.id}/status`, { method: 'PATCH', body: JSON.stringify({ status, note }) }); $('#assetDialog').close(); await loadDashboard(); notify('Varlık durumu güncellendi ve denetim geçmişine yazıldı.'); } catch (error) { notify(error.message); } finally { event.target.value = ''; } });
     $('#restoreAssetButton').addEventListener('click', async () => { if (!currentAsset || currentAsset.status !== 'Archived') return; if (!confirm(`${currentAsset.assetTag} arşivden geri alınarak kullanılabilir duruma getirilsin mi?`)) return; const note = prompt('Geri alma notu (isteğe bağlı):'); if (note === null) return; const assetId = currentAsset.id; $('#restoreAssetButton').disabled = true; try { await api(`/api/assets/${assetId}/restore`, { method: 'POST', body: JSON.stringify({ status: 'Available', note: note.trim() || null }) }); await loadDashboard(); await openAsset(assetId); notify('Varlık arşivden geri alındı ve kullanılabilir duruma getirildi.'); } catch (error) { notify(error.message); } finally { $('#restoreAssetButton').disabled = false; } });
@@ -9899,12 +9999,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         }
         const cell = document.createElement('td'), button = document.createElement('button');
         button.type = 'button'; button.className = 'btn small primary'; button.textContent = 'Geri al';
-        button.addEventListener('click', async () => {
-          const note = prompt(`${item.assetTag} kaydını geri alma notu (isteğe bağlı):`); if (note === null) return;
-          button.disabled = true;
-          try { await api(`/api/assets/${item.id}/restore-from-trash`, { method: 'POST', body: JSON.stringify({ note: note.trim() || null }) }); await loadAssetTrash(); await loadDashboard(); notify('Varlık çöp kutusundan geri alındı.'); }
-          catch (error) { notify(error.message); } finally { button.disabled = false; }
-        }); cell.append(button); row.append(cell); rows.append(row);
+        button.addEventListener('click', () => openAssetTrashAction(item, 'restore')); cell.append(button); row.append(cell);
       }
       $('#assetTrashPageInfo').textContent = `${assetTrashPage}. sayfa · ${assetTrashTotal} kayıt`;
       $('#assetTrashPrev').disabled = assetTrashPage <= 1;

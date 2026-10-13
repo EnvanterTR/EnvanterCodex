@@ -32,7 +32,7 @@ const actions = [
   ['assignAssetButton', "$('#assignAssetButton').addEventListener('click'", "$('#assignForm').addEventListener('submit'", '/assign`'],
   ['returnAssetButton', "$('#returnAssetButton').addEventListener('click'", '/return`', 'POST'],
   ['restoreAssetButton', "$('#restoreAssetButton').addEventListener('click'", '/restore`', 'POST'],
-  ['trashAssetButton', "$('#trashAssetButton').addEventListener('click'", '`/api/assets/${asset.id}/trash`', 'POST', "$('#trashAssetButton').hidden = !canWriteAssets()"],
+  ['trashAssetButton', "$('#trashAssetButton').addEventListener('click'", 'assetTrashConfirmDialog.showModal()', "$('#trashAssetButton').hidden = !canWriteAssets()"],
   ['assetStatusAction', "$('#assetStatusAction').addEventListener('change'", '/status`', 'PATCH'],
   ['uploadAssetAttachment', "$('#assetAttachmentForm').addEventListener('submit'", '/attachments`', '10 * 1024 * 1024'],
   ['copyAssetTag', "$('#copyAssetTag').addEventListener('click'", 'navigator.clipboard.writeText'],
@@ -44,17 +44,28 @@ for (const [id, ...contracts] of actions) {
   for (const contract of contracts) requireSource(app.includes(contract), `Asset-detail action ${id} is missing source contract: ${contract}.`);
 }
 
-requireSource(app.includes('`/api/assets/${asset.id}/trash`'), 'Trash action must call the company-scoped asset trash API.');
+requireSource(app.includes('`/api/assets/${target.id}/trash`'), 'Trash action must call the company-scoped asset trash API after explicit in-app confirmation.');
 requireSource(api.includes('api.MapPost("/assets/{id:guid}/trash"'), 'The asset trash API route is missing.');
 requireSource(acceptance.includes('Asset_trash_is_tenant_scoped_blocks_live_relations_and_restores_with_audit_history'), 'No tenant/relationship/restore acceptance scenario covers asset trash.');
 requireSource(app.includes('async function removeAssetAttachment') && app.includes("method: 'DELETE'"), 'Attachment removal must use the delete API and refresh the detail list.');
 requireSource(app.includes("document.querySelectorAll('[data-asset-tab]')"), 'Asset-detail tabs must have a bound navigation handler.');
 requireSource(app.includes('id="quickLookupDialog"') && app.includes("quickLookupDialog.showModal(); form.elements.name.focus();") && app.includes("api(`/api/lookups/${kind}`"), 'Category, brand, and model quick-add must use the in-app form and submit to the tenant lookup API.');
 requireSource(app.includes('id="returnAssetDialog"') && app.includes("returnAssetDialog.showModal();") && app.includes("api(`/api/assets/${currentAsset.id}/return`"), 'Asset return must use the in-app confirmation/note form and submit to the tenant return API.');
+requireSource(app.includes('id="assetTrashConfirmDialog" aria-labelledby="assetTrashConfirmTitle"') &&
+  app.includes('id="assetTrashConfirmForm"') && app.includes('id="assetTrashConfirmSummary"') &&
+  app.includes('name="note" maxlength="1000" rows="3"') &&
+  app.includes("assetTrashConfirmDialog.showModal();") &&
+  app.includes("assetTrashConfirmDialog.addEventListener('click', event => { if (event.target === assetTrashConfirmDialog) closeAssetTrashConfirm(); })"),
+  'Asset trash must use an accessible in-app confirmation/note dialog that can be cancelled or dismissed without submitting.');
 const quickLookupHandler = app.slice(app.indexOf("document.querySelectorAll('[data-quick-add]')"), app.indexOf("$('#newAssetForm').addEventListener('submit'"));
 const detailReturnHandler = app.slice(app.indexOf("$('#returnAssetButton').addEventListener('click'"), app.indexOf("$('#trashAssetButton').addEventListener('click'"));
 requireSource(quickLookupHandler.length > 0 && !quickLookupHandler.includes('window.prompt('), 'Asset quick-add must not depend on unsupported native prompt dialogs.');
 requireSource(detailReturnHandler.length > 0 && !detailReturnHandler.includes('confirm(') && !detailReturnHandler.includes('prompt('), 'Asset detail return must use its in-app confirmation/note form instead of native dialogs.');
+const trashButtonHandler = app.slice(app.indexOf("$('#trashAssetButton').addEventListener('click'"), app.indexOf("$('#assetStatusAction').addEventListener('change'"));
+const trashSubmitHandler = app.slice(app.indexOf("$('#assetTrashConfirmForm').addEventListener('submit'"), app.indexOf("$('#assetStatusAction').addEventListener('change'"));
+requireSource(trashButtonHandler.length > 0 && trashButtonHandler.includes("openAssetTrashAction(currentAsset, 'trash')") && !trashButtonHandler.includes('confirm(') && !trashButtonHandler.includes('prompt('), 'Opening asset trash confirmation must not trigger native browser dialogs or mutate data.');
+requireSource(app.includes("openAssetTrashAction(item, 'restore')") && app.includes("`/api/assets/${target.id}/restore-from-trash`") && !app.slice(app.indexOf('async function loadAssetTrash'), app.indexOf("$('#openAssetTrash').addEventListener")).includes('prompt('), 'Restore from trash must use the same accessible in-app note dialog and avoid native prompt dialogs.');
+requireSource(trashSubmitHandler.length > 0 && trashSubmitHandler.includes('if (!assetTrashTarget || !canWriteAssets()) return;') && trashSubmitHandler.includes('`/api/assets/${target.id}/trash`') && trashSubmitHandler.includes('method: \'POST\'') && trashSubmitHandler.includes('closeAssetTrashConfirm();') && trashSubmitHandler.includes('await loadDashboard('), 'Only explicit in-app confirmation may post the tenant-scoped trash action, and success must refresh the dashboard.');
 requireSource(app.includes("panel.style.display = active ? 'block' : 'none'"), 'The selected asset-detail panel must be explicitly visible, with inactive panels hidden.');
 requireSource(app.includes('panel.setAttribute(\'aria-hidden\', String(!active))'), 'Asset-detail panel accessibility state must follow the active tab.');
 requireSource(/button\.addEventListener\('click',\s*\(\)\s*=>\s*\{\s*\$\('#assetDialog'\)\.close\(\);\s*applyAssetRelationshipFilter\(type, value, label\);\s*\}\);/.test(app), 'Overview reference shortcuts must close the detail dialog and apply the matching company-scoped asset filter.');

@@ -37,6 +37,10 @@ jobs:
         shell: bash
         run: node tools/Verify-KeyboardShortcuts.mjs
 
+      - name: Verify asset row context menu and keyboard actions
+        shell: bash
+        run: node tools/Verify-AssetContextMenu.mjs
+
       - name: Verify asset status label editor and option refresh
         shell: bash
         run: node tools/Verify-StatusLabelsUi.mjs
