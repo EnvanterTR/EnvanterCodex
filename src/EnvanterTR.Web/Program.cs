@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -105,6 +106,16 @@ if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
     builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
 }
 builder.Services.AddSingleton<AssetCustomFieldProtection>();
+builder.Services.Configure<IyzipayOptions>(builder.Configuration.GetSection("Iyzipay"));
+builder.Services.AddHttpClient<IyzipayCheckoutClient>((services, client) =>
+{
+    var options = services.GetRequiredService<IOptions<IyzipayOptions>>().Value;
+    if (Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out var apiUri) &&
+        apiUri.Scheme == Uri.UriSchemeHttps && apiUri.UserInfo.Length == 0 && apiUri.AbsolutePath == "/" &&
+        apiUri.Host is "api.iyzipay.com" or "sandbox-api.iyzipay.com")
+        client.BaseAddress = apiUri;
+    client.Timeout = TimeSpan.FromSeconds(20);
+}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
 
 builder.Services.AddHealthChecks();
 builder.Services.AddAntiforgery(options =>
