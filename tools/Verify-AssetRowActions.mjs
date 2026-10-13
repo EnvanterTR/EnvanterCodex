@@ -7,7 +7,7 @@ const source = fs.readFileSync(path.join(root, 'src/EnvanterTR.Web/wwwroot/index
 const failures = [];
 const requireSource = (condition, message) => { if (!condition) failures.push(message); };
 
-const rowBuilder = source.match(/function addAssetRow\(asset\)\s*\{[\s\S]*?(?=\n\s*function |\n\s*async function )/)?.[0] ?? '';
+const rowBuilder = source.match(/function addAssetRow\(asset(?:,\s*rowNumber)?\)\s*\{[\s\S]*?(?=\n\s*function |\n\s*async function )/)?.[0] ?? '';
 requireSource(rowBuilder.length > 0, 'Asset row builder was not found.');
 requireSource(rowBuilder.includes("event.stopPropagation(); callback();"), 'Row action clicks must not also trigger the row detail click.');
 requireSource(rowBuilder.includes("row.addEventListener('click', () => openAsset(asset.id)"), 'Clicking a row must open the matching asset.');

@@ -5,11 +5,11 @@ const sourcePath = resolve(process.argv[2] || 'src/EnvanterTR.Web/wwwroot/index.
 const source = readFileSync(sourcePath, 'utf8');
 const failures = [];
 const requireSource = (condition, message) => { if (!condition) failures.push(message); };
-const rowStart = source.indexOf('function addAssetRow(asset)');
+const rowStart = source.search(/function addAssetRow\(asset(?:,\s*rowNumber)?\)/);
 const rowEnd = source.indexOf('function updateAssetRelationFilter()', rowStart);
 const row = rowStart < 0 || rowEnd < 0 ? '' : source.slice(rowStart, rowEnd);
 const menuStart = source.indexOf('function closeAssetContextMenu(');
-const menuEnd = source.indexOf('function addAssetRow(asset)', menuStart);
+const menuEnd = source.search(/function addAssetRow\(asset(?:,\s*rowNumber)?\)/);
 const menu = menuStart < 0 || menuEnd < 0 ? '' : source.slice(menuStart, menuEnd);
 const trashButtonStart = source.indexOf("$('#trashAssetButton').addEventListener('click'");
 const statusActionStart = source.indexOf("$('#assetStatusAction').addEventListener('change'", trashButtonStart);
