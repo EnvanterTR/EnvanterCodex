@@ -3,10 +3,11 @@ import { readFileSync } from 'node:fs';
 
 const nginx = readFileSync('deploy/coolify/nginx-public.conf', 'utf8');
 const readme = readFileSync('deploy/coolify/README.md', 'utf8');
-const marketing = nginx.match(/server\s*\{[\s\S]*?server_name _;[\s\S]*?\n\}/)?.[0];
+const marketing = nginx.match(/server\s*\{[\s\S]*?server_name envantertr\.com www\.envantertr\.com;[\s\S]*?\n\}/)?.[0];
 const wildcardStart = nginx.indexOf('server_name *.envantertr.com;');
 assert.ok(marketing, 'The default public marketing host must remain configured.');
 assert.ok(wildcardStart >= 0, 'Coolify Nginx must declare a wildcard tenant host.');
+assert.ok(nginx.indexOf('server_name envantertr.com www.envantertr.com;') < wildcardStart, 'Apex and www marketing hosts must take precedence over wildcard tenant hosts.');
 const wildcard = nginx.slice(nginx.lastIndexOf('server {', wildcardStart), nginx.indexOf('\n}', wildcardStart) + 2);
 assert.match(wildcard, /server_name\s+\*\.envantertr\.com;/, 'Tenant traffic must be limited to the configured wildcard domain.');
 assert.match(wildcard, /location\s+\/\s*\{[\s\S]*?proxy_pass\s+http:\/\/web:8080;/, 'Every tenant path must enter the company app.');
@@ -18,4 +19,4 @@ assert.match(readme, /`\*\.envantertr\.com`[\s\S]*?wildcard DNS[\s\S]*?TLS certi
 assert.match(readme, /wildcard host's TLS certificate, login page, `\/api\/status`, and a tenant-scoped authenticated request/i, 'Production acceptance must check the tenant app and authenticated scope.');
 assert.match(marketing, /try_files\s+\$uri\s+\$uri\/\s+\/index\.html;/, 'The marketing host must keep serving its public-site fallback.');
 
-console.log('Verified Coolify tenant wildcard host, app proxy and forwarded headers, upload limit, TLS/DNS setup guidance, production acceptance checklist, and unchanged marketing fallback.');
+console.log('Verified explicit apex/www marketing precedence, Coolify tenant wildcard host, app proxy and forwarded headers, upload limit, TLS/DNS setup guidance, production acceptance checklist, and marketing fallback.');
