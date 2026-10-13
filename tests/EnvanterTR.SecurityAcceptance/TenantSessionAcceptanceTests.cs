@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.IO.Compression;
 using System.Globalization;
@@ -25,6 +26,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -70,6 +72,136 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal("no-referrer", response.Headers.GetValues("Referrer-Policy").Single());
         Assert.DoesNotContain("secret-value", response.Headers.Location?.OriginalString ?? "", StringComparison.Ordinal);
         Assert.DoesNotContain("admin%40example.test", response.Headers.Location?.OriginalString ?? "", StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Public_checkout_requires_csrf_and_fails_closed_without_provider_configuration()
+    {
+        var request = new InitializeCompanyCheckoutRequest(Guid.NewGuid(), "Synthetic Checkout Ltd", "synthetic-checkout",
+            "owner@example.invalid", "Test", "Owner", "owner@example.invalid", "+905550000001", "10000000146",
+            "Test Street 1", "Istanbul", "Turkey", "34000", Guid.NewGuid(), "monthly");
+        using var missingCsrf = await _client!.PostAsJsonAsync("/api/checkout/initialize", request);
+        Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+
+        using var csrfResponse = await _client!.GetAsync("/api/session/csrf");
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        using var message = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/initialize")
+        {
+            Content = JsonContent.Create(request)
+        };
+        message.Headers.Add("X-CSRF-TOKEN", requestToken);
+        message.Headers.Add("Cookie", antiforgeryCookie);
+        using var unconfigured = await _client.SendAsync(message);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, unconfigured.StatusCode);
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.False(await db.CompanyCheckoutOrders.AnyAsync(x => x.Id == request.CheckoutId));
+    }
+
+    [Fact]
+    public async Task Public_checkout_uses_server_price_verifies_provider_and_provisions_once()
+    {
+        var checkoutId = Guid.NewGuid();
+        var plan = new SubscriptionPlan
+        {
+            Code = $"co-{checkoutId:N}", Name = "Synthetic Cloud", DeploymentKind = "cloud",
+            MonthlyPrice = 125.50m, AnnualPrice = 1200m, Currency = "TRY", IsActive = true, IsPublic = true
+        };
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SubscriptionPlans.Add(plan);
+            await db.SaveChangesAsync();
+        }
+
+        var provider = new SyntheticIyzipayHandler();
+        using var checkoutFactory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Development");
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:EnvanterTR"] = Environment.GetEnvironmentVariable("ENVANTERTR_SECURITY_TEST_CONNECTION"),
+                ["ForwardedHeaders:Enabled"] = "true",
+                ["Storage:CompanyMediaPath"] = _mediaPath,
+                ["Email:Smtp:Host"] = "127.0.0.1",
+                ["Email:Smtp:Port"] = _smtpCapture.Port.ToString(CultureInfo.InvariantCulture),
+                ["Email:Smtp:EnableSsl"] = "false",
+                ["Email:FromAddress"] = "no-reply@example.invalid",
+                ["Email:PublicBaseUrl"] = "https://portal.example.invalid",
+                ["Iyzipay:ApiKey"] = "synthetic-api-key",
+                ["Iyzipay:SecretKey"] = "synthetic-secret-key",
+                ["Iyzipay:BaseUrl"] = "https://sandbox-api.iyzipay.com",
+                ["Iyzipay:CallbackUrl"] = "https://envantertr.com/api/checkout/callback"
+            }));
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IyzipayCheckoutClient>();
+                services.AddSingleton(_ => new IyzipayCheckoutClient(
+                    new HttpClient(provider) { BaseAddress = new Uri("https://sandbox-api.iyzipay.com") },
+                    Options.Create(new IyzipayOptions
+                    {
+                        ApiKey = "synthetic-api-key", SecretKey = "synthetic-secret-key",
+                        BaseUrl = "https://sandbox-api.iyzipay.com",
+                        CallbackUrl = "https://envantertr.com/api/checkout/callback"
+                    })));
+            });
+        });
+        using var client = checkoutFactory.CreateClient();
+        using var csrfResponse = await client.GetAsync("/api/session/csrf");
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var request = new InitializeCompanyCheckoutRequest(checkoutId, "Synthetic Checkout Ltd", $"checkout-{checkoutId:N}"[..20],
+            "owner@example.invalid", "Test", "Owner", $"owner-{checkoutId:N}@example.invalid", "+905550000002", "10000000146",
+            "Synthetic Street 2", "Istanbul", "Turkey", "34000", plan.Id, "monthly");
+        using var message = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/initialize") { Content = JsonContent.Create(request) };
+        message.Headers.Add("X-CSRF-TOKEN", requestToken);
+        message.Headers.Add("Cookie", antiforgeryCookie);
+        using var initialized = await client.SendAsync(message);
+        Assert.Equal(HttpStatusCode.OK, initialized.StatusCode);
+        using var initializedPayload = JsonDocument.Parse(await initialized.Content.ReadAsStringAsync());
+        Assert.StartsWith("https://sandbox-api.iyzipay.com/checkoutform/", initializedPayload.RootElement.GetProperty("checkoutUrl").GetString());
+        Assert.Equal(125.50m, provider.InitializedAmount);
+
+        await using (var scope = checkoutFactory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var order = await db.CompanyCheckoutOrders.SingleAsync(x => x.Id == checkoutId);
+            Assert.Equal(125.50m, order.Amount);
+            Assert.Equal("PaymentStarted", order.Status);
+            Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes("synthetic-provider-token"))), order.CheckoutTokenHash);
+            Assert.DoesNotContain("https://sandbox-api", order.CheckoutPageUrlProtected, StringComparison.Ordinal);
+        }
+
+        using var callbackClient = checkoutFactory.CreateClient();
+        using var callback = await callbackClient.PostAsync("/api/checkout/callback",
+            new FormUrlEncodedContent(new Dictionary<string, string> { ["token"] = "synthetic-provider-token" }));
+        Assert.Equal(HttpStatusCode.OK, callback.StatusCode);
+        Assert.Contains("Ödeme alındı", await callback.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.Equal(1, provider.RetrieveCount);
+
+        using var replay = await callbackClient.PostAsync("/api/checkout/callback",
+            new FormUrlEncodedContent(new Dictionary<string, string> { ["token"] = "synthetic-provider-token" }));
+        Assert.Equal(HttpStatusCode.OK, replay.StatusCode);
+        Assert.Equal(1, provider.RetrieveCount);
+        await using (var scope = checkoutFactory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var order = await db.CompanyCheckoutOrders.SingleAsync(x => x.Id == checkoutId);
+            Assert.Equal("Provisioned", order.Status);
+            Assert.NotNull(order.CompanyId);
+            Assert.Equal(1, await db.Companies.CountAsync(x => x.Slug == request.Slug));
+            Assert.Equal(1, await db.TenantSubscriptions.CountAsync(x => x.CompanyId == order.CompanyId &&
+                x.Status == "Active" && !x.IsDemo && x.PlanId == plan.Id && x.PaymentReference == "synthetic-payment-id"));
+            Assert.Equal(1, await db.CompanyMemberships.CountAsync(x => x.CompanyId == order.CompanyId && x.RoleKey == "owner"));
+        }
     }
 
     [Fact]
@@ -810,6 +942,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             "POST /api/session/login",
             "POST /api/session/password/forgot",
             "POST /api/session/password/reset",
+            "POST /api/checkout/initialize",
+            "POST /api/checkout/callback",
             "GET /api/plans",
             "GET /api/site-content",
             "GET /api/v1",
@@ -1231,7 +1365,10 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                     ["Email:Smtp:EnableSsl"] = "false",
                     ["Email:FromAddress"] = "no-reply@example.invalid",
                     ["Email:PublicBaseUrl"] = "https://portal.example.invalid",
-                    ["Support:Email"] = "support@example.invalid"
+                    ["Support:Email"] = "support@example.invalid",
+                    ["Iyzipay:ApiKey"] = "",
+                    ["Iyzipay:SecretKey"] = "",
+                    ["Iyzipay:CallbackUrl"] = ""
                 }));
             builder.ConfigureTestServices(services => services.AddAuthentication(options =>
                 {
@@ -8558,6 +8695,47 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         request.Headers.Add("X-Forwarded-For", clientIp);
         request.Headers.Add("X-CSRF-TOKEN", requestToken);
         return _client!.SendAsync(request);
+    }
+
+    private sealed class SyntheticIyzipayHandler : HttpMessageHandler
+    {
+        private string? _conversationId;
+        public decimal InitializedAmount { get; private set; }
+        public int RetrieveCount { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken));
+            var root = body.RootElement;
+            if (request.RequestUri?.AbsolutePath == "/payment/iyzipos/checkoutform/initialize/auth/ecom")
+            {
+                InitializedAmount = root.GetProperty("price").GetDecimal();
+                _conversationId = root.GetProperty("conversationId").GetString();
+                return JsonResponse(new
+                {
+                    status = "success", conversationId = _conversationId, token = "synthetic-provider-token",
+                    paymentPageUrl = "https://sandbox-api.iyzipay.com/checkoutform/synthetic-session"
+                });
+            }
+            if (request.RequestUri?.AbsolutePath == "/payment/iyzipos/checkoutform/auth/ecom/detail")
+            {
+                RetrieveCount++;
+                Assert.Equal("synthetic-provider-token", root.GetProperty("token").GetString());
+                Assert.Equal(_conversationId, root.GetProperty("conversationId").GetString());
+                return JsonResponse(new
+                {
+                    status = "success", token = "synthetic-provider-token", conversationId = _conversationId,
+                    basketId = _conversationId, price = InitializedAmount, paidPrice = InitializedAmount,
+                    currency = "TRY", fraudStatus = 1, paymentStatus = "SUCCESS", paymentId = "synthetic-payment-id"
+                });
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+
+        private static HttpResponseMessage JsonResponse<T>(T payload) => new(HttpStatusCode.OK)
+        {
+            Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+        };
     }
 }
 

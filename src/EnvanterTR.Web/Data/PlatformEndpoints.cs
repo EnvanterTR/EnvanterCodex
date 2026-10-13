@@ -144,6 +144,9 @@ public static class PlatformEndpoints
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
             if (await db.Companies.AnyAsync(x => x.Slug == slug, cancellationToken))
                 return Results.Conflict(new { message = "Bu alt alan adı zaten kullanılıyor." });
+            var checkoutReservedStatuses = new[] { "Pending", "PaymentStarted", "PaymentReview", "ProvisioningFailed" };
+            if (await db.CompanyCheckoutOrders.AnyAsync(x => x.Slug == slug && checkoutReservedStatuses.Contains(x.Status), cancellationToken))
+                return Results.Conflict(new { message = "Bu alt alan adı tamamlanmamış bir Cloud satın alma işlemi için ayrılmış." });
 
             var owner = await userManager.FindByEmailAsync(ownerEmail);
             var wasConfirmed = owner?.EmailConfirmed == true;

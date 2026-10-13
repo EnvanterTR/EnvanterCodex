@@ -73,6 +73,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
     public DbSet<TenantSubscription> TenantSubscriptions => Set<TenantSubscription>();
+    public DbSet<CompanyCheckoutOrder> CompanyCheckoutOrders => Set<CompanyCheckoutOrder>();
     public DbSet<PlatformAdministrator> PlatformAdministrators => Set<PlatformAdministrator>();
     public DbSet<LocalLicenseGrant> LocalLicenseGrants => Set<LocalLicenseGrant>();
     public DbSet<PublicSiteContent> PublicSiteContents => Set<PublicSiteContent>();
@@ -137,6 +138,35 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             table.HasCheckConstraint("CK_TenantSubscriptions_Period", "\"EndsAt\" > \"StartsAt\"");
         });
         modelBuilder.Entity<TenantSubscription>().HasIndex(x => new { x.CompanyId, x.Status, x.EndsAt });
+        modelBuilder.Entity<CompanyCheckoutOrder>().HasKey(x => x.Id);
+        modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.CompanyName).HasMaxLength(200).IsRequired();
+        modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.Slug).HasMaxLength(63).IsRequired();
+        modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.ContactEmail).HasMaxLength(256).IsRequired();
+        modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.OwnerName).HasMaxLength(160).IsRequired();
+        modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.OwnerEmail).HasMaxLength(256).IsRequired();
+        modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
+        modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.Status).HasMaxLength(32).IsRequired();
+        modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.Amount).HasPrecision(18, 2);
+        modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.CheckoutTokenHash).HasMaxLength(64);
+        modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.CheckoutPageUrlProtected).HasMaxLength(4096);
+        modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.PaymentReference).HasMaxLength(180);
+        modelBuilder.Entity<CompanyCheckoutOrder>().HasIndex(x => x.CheckoutTokenHash).IsUnique()
+            .HasFilter("\"CheckoutTokenHash\" IS NOT NULL");
+        modelBuilder.Entity<CompanyCheckoutOrder>().HasIndex(x => x.PaymentReference).IsUnique()
+            .HasFilter("\"PaymentReference\" IS NOT NULL");
+        modelBuilder.Entity<CompanyCheckoutOrder>().HasIndex(x => x.Slug).IsUnique()
+            .HasFilter("\"Status\" IN ('Pending', 'PaymentStarted', 'PaymentReview', 'ProvisioningFailed')");
+        modelBuilder.Entity<CompanyCheckoutOrder>().HasOne<SubscriptionPlan>().WithMany()
+            .HasForeignKey(x => x.PlanId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<CompanyCheckoutOrder>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<CompanyCheckoutOrder>().ToTable("CompanyCheckoutOrders", table =>
+        {
+            table.HasCheckConstraint("CK_CompanyCheckoutOrders_Term", "\"TermDays\" IN (30, 365)");
+            table.HasCheckConstraint("CK_CompanyCheckoutOrders_Amount", "\"Amount\" > 0");
+            table.HasCheckConstraint("CK_CompanyCheckoutOrders_Period", "\"ExpiresAt\" > \"CreatedAt\"");
+            table.HasCheckConstraint("CK_CompanyCheckoutOrders_Status", "\"Status\" IN ('Pending', 'PaymentStarted', 'PaymentReview', 'PaymentFailed', 'Expired', 'Provisioned', 'ProvisioningFailed')");
+        });
         modelBuilder.Entity<PlatformAdministrator>().HasKey(x => x.UserId);
         modelBuilder.Entity<PlatformAdministrator>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);

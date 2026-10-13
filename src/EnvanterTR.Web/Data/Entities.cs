@@ -172,6 +172,28 @@ public sealed class TenantSubscription
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class CompanyCheckoutOrder
+{
+    public Guid Id { get; set; }
+    public required string CompanyName { get; set; }
+    public required string Slug { get; set; }
+    public required string ContactEmail { get; set; }
+    public required string OwnerName { get; set; }
+    public required string OwnerEmail { get; set; }
+    public Guid PlanId { get; set; }
+    public int TermDays { get; set; }
+    public decimal Amount { get; set; }
+    public required string Currency { get; set; }
+    public required string Status { get; set; }
+    public string? CheckoutTokenHash { get; set; }
+    public string? CheckoutPageUrlProtected { get; set; }
+    public string? PaymentReference { get; set; }
+    public Guid? CompanyId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset ExpiresAt { get; set; }
+    public DateTimeOffset? PaidAt { get; set; }
+}
+
 public sealed class PlatformAdministrator
 {
     public Guid UserId { get; set; }
