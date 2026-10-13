@@ -12,7 +12,7 @@ Application log review found no matching Windows `Application Error` or `Applica
 
 Current-user startup entries now launch the installed ChatGPT/Codex desktop app via its registered Windows app ID, GitHub Desktop, Docker Desktop, and a hidden process-exit monitor after the next user sign-in. The previous Codex startup value launched a command-line `codex.exe`, not the desktop app; this was corrected. The monitor tracks top-level ChatGPT, GitHub Desktop, Docker UI, and Docker backend processes and appends timestamp/PID/path observations to `%LOCALAPPDATA%\\EnvanterTRDiagnostics\\app-exits.jsonl`.
 
-The three applications are running now. Local Compose services are running, PostgreSQL is healthy, `/api/status` is `ready` with 84/84 migrations, and the main app and demo return HTTP 200. GitHub remote `main` is reachable and resolves to `1e3b24f1cfe97c0b78e181761202504dcec50593`.
+The three applications were running at the time of this check. Local Compose services were running, PostgreSQL was healthy, `/api/status` was `ready` with 84/84 migrations, and the main app and demo returned HTTP 200. The code under test was then at `1e3b24f1cfe97c0b78e181761202504dcec50593`; the diagnosis note was subsequently committed as `a1afdde` on `main`. Current SaaS routing work is tracked on `fix/coolify-tenant-wildcard`.
 
 ## Limits
 
