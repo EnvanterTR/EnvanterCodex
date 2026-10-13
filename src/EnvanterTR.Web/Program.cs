@@ -1,4 +1,5 @@
 using EnvanterTR.Web.Data;
+using EnvanterTR.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -268,6 +269,12 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 }
 
 var app = builder.Build();
+if (args.Contains("--recover-local-platform-admin", StringComparer.OrdinalIgnoreCase))
+{
+    Environment.ExitCode = await LocalPlatformAdminRecovery.RunAsync(app.Services, app.Environment.IsDevelopment(), connectionString);
+    return;
+}
+
 if (trustProxyForwardedFor)
 {
     app.UseForwardedHeaders();
