@@ -225,6 +225,30 @@ public sealed class PublicSiteContent
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class PlatformDemoRequest
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public required string CompanyName { get; set; }
+    public required string ContactName { get; set; }
+    public required string Email { get; set; }
+    public string? Phone { get; set; }
+    public string? JobTitle { get; set; }
+    public string? TeamSize { get; set; }
+    public string? AssetCount { get; set; }
+    public string? Message { get; set; }
+    public required string Source { get; set; }
+    public string Status { get; set; } = "New";
+    public DateTimeOffset ConsentAt { get; set; } = DateTimeOffset.UtcNow;
+    public required string ConsentNoticeVersion { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public Guid? AssignedAdminUserId { get; set; }
+    public DateTimeOffset? FollowUpAt { get; set; }
+    public DateTimeOffset? LastContactedAt { get; set; }
+    public Guid? CompanyId { get; set; }
+    public DateTimeOffset? DemoGrantedAt { get; set; }
+}
+
 public sealed class PlatformAuditEntry
 {
     public Guid Id { get; set; } = Guid.NewGuid();

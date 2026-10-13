@@ -946,6 +946,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             "POST /api/checkout/callback",
             "GET /api/plans",
             "GET /api/site-content",
+            "POST /api/demo-requests",
             "GET /api/v1",
             "GET /api/v1/accessories",
             "GET /api/v1/assets",
@@ -1445,6 +1446,174 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             message.Contains($"To: acceptance-{_userId:N}@example.invalid", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("Other security acceptance company", DecodeMimeBody(existingAccountMessage), StringComparison.Ordinal);
         Assert.DoesNotContain("token=", existingAccountMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Public_demo_requests_are_validated_deduplicated_and_visible_only_to_platform_admins()
+    {
+        var email = $"demo-request-{Guid.NewGuid():N}@example.invalid";
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            await db.SaveChangesAsync();
+        }
+
+        using var client = _factory.CreateClient();
+        var missingConsent = new
+        {
+            companyName = "Demo Request Acceptance", contactName = "Synthetic Contact", email,
+            phone = "+90 212 555 0000", jobTitle = "IT Manager", teamSize = "51-200",
+            assetCount = "251-1000", message = "Synthetic demo request", consent = false, website = ""
+        };
+        using (var rejected = await client.PostAsJsonAsync("/api/demo-requests", missingConsent))
+            Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+
+        var request = new
+        {
+            companyName = "Demo Request Acceptance", contactName = "Synthetic Contact", email = email.ToUpperInvariant(),
+            phone = "+90 212 555 0000", jobTitle = "IT Manager", teamSize = "51-200",
+            assetCount = "251-1000", message = "Synthetic demo request", consent = true, website = ""
+        };
+        using (var accepted = await client.PostAsJsonAsync("/api/demo-requests", request))
+            Assert.Equal(HttpStatusCode.Accepted, accepted.StatusCode);
+        using (var duplicate = await client.PostAsJsonAsync("/api/demo-requests", request))
+            Assert.Equal(HttpStatusCode.Accepted, duplicate.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var lead = await db.PlatformDemoRequests.SingleAsync(x => x.Email == email);
+            Assert.Equal("Demo Request Acceptance", lead.CompanyName);
+            Assert.Equal("Synthetic Contact", lead.ContactName);
+            Assert.Equal("New", lead.Status);
+            Assert.Equal("PublicWebsite", lead.Source);
+            Assert.Equal("demo-request-v1", lead.ConsentNoticeVersion);
+            Assert.Equal("Synthetic demo request", lead.Message);
+        }
+
+        using (var anonymous = await client.GetAsync("/api/platform/demo-requests"))
+            Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+        using (var tenant = await SendAsUserAsync(HttpMethod.Get, "/api/platform/demo-requests", _userId, _companyId))
+            Assert.Equal(HttpStatusCode.Forbidden, tenant.StatusCode);
+        using (var platform = await SendAsPlatformAdminAsync($"/api/platform/demo-requests?q={Uri.EscapeDataString(email)}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, platform.StatusCode);
+            using var payload = JsonDocument.Parse(await platform.Content.ReadAsStringAsync());
+            Assert.Equal(1, payload.RootElement.GetProperty("total").GetInt32());
+            Assert.Equal(email, payload.RootElement.GetProperty("items")[0].GetProperty("email").GetString());
+        }
+    }
+
+    [Fact]
+    public async Task Platform_demo_request_stages_require_real_demo_or_paid_company_subscription_and_are_audited()
+    {
+        var email = $"demo-stage-{Guid.NewGuid():N}@example.invalid";
+        var leadId = Guid.NewGuid();
+        var plan = new SubscriptionPlan
+        {
+            Code = $"demo-stage-{_companyId:N}"[..40], Name = "Demo lifecycle acceptance", DeploymentKind = "cloud", IsActive = true
+        };
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            db.SubscriptionPlans.Add(plan);
+            db.PlatformDemoRequests.Add(new PlatformDemoRequest
+            {
+                Id = leadId, CompanyName = "Lifecycle Company", ContactName = "Synthetic Contact", Email = email,
+                Source = "PublicWebsite", Status = "New", ConsentNoticeVersion = "demo-request-v1"
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsPlatformAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var demoStage = new { status = "DemoGranted", assignedAdminUserId = (Guid?)_userId, followUpAt = (DateTimeOffset?)null, companyId = (Guid?)_companyId, note = "Synthetic demo granted" };
+
+        using (var falseDemo = await SendAsPlatformAdminRequestAsync(HttpMethod.Patch, $"/api/platform/demo-requests/{leadId}",
+                   JsonContent.Create(demoStage), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, falseDemo.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.TenantSubscriptions.Add(new TenantSubscription
+            {
+                CompanyId = _companyId, PlanId = plan.Id, Status = "Trial", IsDemo = true,
+                StartsAt = DateTimeOffset.UtcNow.AddDays(-15), EndsAt = DateTimeOffset.UtcNow.AddDays(-1)
+            });
+            await db.SaveChangesAsync();
+        }
+        using (var expiredDemo = await SendAsPlatformAdminRequestAsync(HttpMethod.Patch, $"/api/platform/demo-requests/{leadId}",
+                   JsonContent.Create(demoStage), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, expiredDemo.StatusCode);
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var subscription = await db.TenantSubscriptions.SingleAsync(x => x.CompanyId == _companyId);
+            subscription.StartsAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            subscription.EndsAt = DateTimeOffset.UtcNow.AddDays(14);
+            await db.SaveChangesAsync();
+        }
+        using (var granted = await SendAsPlatformAdminRequestAsync(HttpMethod.Patch, $"/api/platform/demo-requests/{leadId}",
+                   JsonContent.Create(demoStage), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, granted.StatusCode);
+            using var payload = JsonDocument.Parse(await granted.Content.ReadAsStringAsync());
+            Assert.Equal("DemoGranted", payload.RootElement.GetProperty("status").GetString());
+            Assert.False(string.IsNullOrWhiteSpace(payload.RootElement.GetProperty("demoGrantedAt").GetString()));
+        }
+
+        var convertedStage = new { status = "Converted", assignedAdminUserId = (Guid?)_userId, followUpAt = (DateTimeOffset?)null, companyId = (Guid?)_companyId, note = "Synthetic conversion" };
+        using (var prematureConversion = await SendAsPlatformAdminRequestAsync(HttpMethod.Patch, $"/api/platform/demo-requests/{leadId}",
+                   JsonContent.Create(convertedStage), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, prematureConversion.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var subscription = await db.TenantSubscriptions.SingleAsync(x => x.CompanyId == _companyId);
+            subscription.IsDemo = false;
+            await db.SaveChangesAsync();
+        }
+        using (var unpaidTrial = await SendAsPlatformAdminRequestAsync(HttpMethod.Patch, $"/api/platform/demo-requests/{leadId}",
+                   JsonContent.Create(convertedStage), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, unpaidTrial.StatusCode);
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var subscription = await db.TenantSubscriptions.SingleAsync(x => x.CompanyId == _companyId);
+            subscription.Status = "Active";
+            await db.SaveChangesAsync();
+        }
+        using (var converted = await SendAsPlatformAdminRequestAsync(HttpMethod.Patch, $"/api/platform/demo-requests/{leadId}",
+                   JsonContent.Create(convertedStage), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, converted.StatusCode);
+            using var payload = JsonDocument.Parse(await converted.Content.ReadAsStringAsync());
+            Assert.Equal("Converted", payload.RootElement.GetProperty("status").GetString());
+        }
+        using (var detail = await SendAsPlatformAdminAsync($"/api/platform/demo-requests/{leadId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, detail.StatusCode);
+            using var payload = JsonDocument.Parse(await detail.Content.ReadAsStringAsync());
+            Assert.Equal("Lifecycle Company", payload.RootElement.GetProperty("lead").GetProperty("companyName").GetString());
+            Assert.True(payload.RootElement.GetProperty("history").GetArrayLength() >= 2);
+            Assert.Contains("Synthetic conversion", await detail.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        }
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var actions = await db.PlatformAuditEntries.AsNoTracking().Where(x => x.TargetType == "PlatformDemoRequest" && x.TargetId == leadId)
+                .Select(x => x.Action).ToListAsync();
+            Assert.Contains("DemoRequestStatusChanged", actions);
+        }
     }
 
     [Fact]

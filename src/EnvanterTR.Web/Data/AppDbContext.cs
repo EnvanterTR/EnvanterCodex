@@ -77,6 +77,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<PlatformAdministrator> PlatformAdministrators => Set<PlatformAdministrator>();
     public DbSet<LocalLicenseGrant> LocalLicenseGrants => Set<LocalLicenseGrant>();
     public DbSet<PublicSiteContent> PublicSiteContents => Set<PublicSiteContent>();
+    public DbSet<PlatformDemoRequest> PlatformDemoRequests => Set<PlatformDemoRequest>();
     public DbSet<PlatformAuditEntry> PlatformAuditEntries => Set<PlatformAuditEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -182,6 +183,26 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<PublicSiteContent>().Property(x => x.Title).HasMaxLength(200).IsRequired();
         modelBuilder.Entity<PublicSiteContent>().Property(x => x.Body).HasMaxLength(12000);
         modelBuilder.Entity<PublicSiteContent>().Property(x => x.MediaPath).HasMaxLength(500);
+        modelBuilder.Entity<PlatformDemoRequest>().HasKey(x => x.Id);
+        modelBuilder.Entity<PlatformDemoRequest>().Property(x => x.CompanyName).HasMaxLength(200).IsRequired();
+        modelBuilder.Entity<PlatformDemoRequest>().Property(x => x.ContactName).HasMaxLength(160).IsRequired();
+        modelBuilder.Entity<PlatformDemoRequest>().Property(x => x.Email).HasMaxLength(256).IsRequired();
+        modelBuilder.Entity<PlatformDemoRequest>().Property(x => x.Phone).HasMaxLength(40);
+        modelBuilder.Entity<PlatformDemoRequest>().Property(x => x.JobTitle).HasMaxLength(120);
+        modelBuilder.Entity<PlatformDemoRequest>().Property(x => x.TeamSize).HasMaxLength(40);
+        modelBuilder.Entity<PlatformDemoRequest>().Property(x => x.AssetCount).HasMaxLength(40);
+        modelBuilder.Entity<PlatformDemoRequest>().Property(x => x.Message).HasMaxLength(2000);
+        modelBuilder.Entity<PlatformDemoRequest>().Property(x => x.Source).HasMaxLength(60).IsRequired();
+        modelBuilder.Entity<PlatformDemoRequest>().Property(x => x.Status).HasMaxLength(30).IsRequired();
+        modelBuilder.Entity<PlatformDemoRequest>().Property(x => x.ConsentNoticeVersion).HasMaxLength(40).IsRequired();
+        modelBuilder.Entity<PlatformDemoRequest>().HasIndex(x => new { x.Status, x.CreatedAt });
+        modelBuilder.Entity<PlatformDemoRequest>().HasIndex(x => x.Email);
+        modelBuilder.Entity<PlatformDemoRequest>().ToTable(table =>
+            table.HasCheckConstraint("CK_PlatformDemoRequests_Status", "\"Status\" IN ('New', 'Contacted', 'Qualified', 'DemoScheduled', 'DemoGranted', 'Converted', 'Closed')"));
+        modelBuilder.Entity<PlatformDemoRequest>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.AssignedAdminUserId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<PlatformDemoRequest>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<PlatformAuditEntry>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<PlatformAuditEntry>().HasOne<Company>().WithMany()

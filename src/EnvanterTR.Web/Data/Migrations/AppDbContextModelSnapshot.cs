@@ -3156,6 +3156,102 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("PlatformAuditEntries");
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.PlatformDemoRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AssetCount")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid?>("AssignedAdminUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CompanyName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("ConsentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ConsentNoticeVersion")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("ContactName")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("DemoGrantedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset?>("FollowUpAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("JobTitle")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTimeOffset?>("LastContactedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("TeamSize")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedAdminUserId");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("Email");
+
+                    b.HasIndex("Status", "CreatedAt");
+
+                    b.ToTable("PlatformDemoRequests", t =>
+                        {
+                            t.HasCheckConstraint("CK_PlatformDemoRequests_Status", "\"Status\" IN ('New', 'Contacted', 'Qualified', 'DemoScheduled', 'DemoGranted', 'Converted', 'Closed')");
+                        });
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.PublicSiteContent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5368,6 +5464,19 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("ActorUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.PlatformDemoRequest", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("AssignedAdminUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("EnvanterTR.Web.Data.Company", null)
                         .WithMany()

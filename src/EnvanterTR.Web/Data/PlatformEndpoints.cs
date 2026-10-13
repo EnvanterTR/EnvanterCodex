@@ -34,7 +34,62 @@ public static class PlatformEndpoints
             return Results.Ok(blocks);
         }).AllowAnonymous();
 
+        endpoints.MapPost("/api/demo-requests", async ([FromBody] PublicDemoRequest request, AppDbContext db,
+            CancellationToken cancellationToken) =>
+        {
+            if (!string.IsNullOrWhiteSpace(request.Website))
+                return Results.Accepted(value: new { message = "Talebiniz alındı. Ekibimiz sizinle iletişime geçecek." });
+            var companyName = request.CompanyName?.Trim();
+            var contactName = request.ContactName?.Trim();
+            var emailValue = request.Email?.Trim();
+            if (companyName is null || companyName.Length is < 2 or > 200 || contactName is null ||
+                contactName.Length is < 2 or > 160 || emailValue is null || emailValue.Length > 256 ||
+                !MailAddress.TryCreate(emailValue, out var parsedEmail) ||
+                !string.Equals(parsedEmail.Address, emailValue, StringComparison.OrdinalIgnoreCase) || !request.Consent ||
+                request.Phone?.Trim().Length > 40 || request.JobTitle?.Trim().Length > 120 ||
+                request.TeamSize?.Trim().Length > 40 || request.AssetCount?.Trim().Length > 40 ||
+                request.Message?.Trim().Length > 2000)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["request"] = ["Şirket, yetkili kişi, geçerli e-posta ve aydınlatma/onay seçimi gereklidir; alan sınırlarını kontrol edin."]
+                });
+
+            var now = DateTimeOffset.UtcNow;
+            var normalizedEmail = parsedEmail.Address.ToLowerInvariant();
+            var duplicate = await db.PlatformDemoRequests.AsNoTracking().AnyAsync(x =>
+                x.Email == normalizedEmail && x.CompanyName == companyName && x.CreatedAt >= now.AddDays(-1) && x.Status != "Closed",
+                cancellationToken);
+            if (!duplicate)
+            {
+                db.PlatformDemoRequests.Add(new PlatformDemoRequest
+                {
+                    CompanyName = companyName,
+                    ContactName = contactName,
+                    Email = normalizedEmail,
+                    Phone = Clean(request.Phone),
+                    JobTitle = Clean(request.JobTitle),
+                    TeamSize = Clean(request.TeamSize),
+                    AssetCount = Clean(request.AssetCount),
+                    Message = Clean(request.Message),
+                    Source = "PublicWebsite",
+                    Status = "New",
+                    ConsentAt = now,
+                    ConsentNoticeVersion = "demo-request-v1",
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
+                await db.SaveChangesAsync(cancellationToken);
+            }
+            return Results.Accepted(value: new { message = "Talebiniz alındı. Ekibimiz sizinle iletişime geçecek." });
+        }).AllowAnonymous().RequireRateLimiting("login");
+
         var admin = endpoints.MapGroup("/api/platform").RequireAuthorization("platform.admin");
+        admin.MapGet("/admins", async (AppDbContext db, CancellationToken cancellationToken) =>
+            Results.Ok(await (from platformAdmin in db.PlatformAdministrators.AsNoTracking()
+                              join account in db.Users.AsNoTracking() on platformAdmin.UserId equals account.Id
+                              orderby account.DisplayName
+                              select new { id = account.Id, name = account.DisplayName, email = account.Email })
+                .ToListAsync(cancellationToken)));
         admin.AddEndpointFilter(async (invocation, next) =>
         {
             if (HttpMethods.IsGet(invocation.HttpContext.Request.Method) || HttpMethods.IsHead(invocation.HttpContext.Request.Method))
@@ -346,6 +401,117 @@ public static class PlatformEndpoints
             return resent
                 ? Results.Ok(new { invitationSent = emailSent, resent, userId = invitedUserId, message })
                 : Results.Created($"/api/platform/members/{invitedUserId}", new { invitationSent = emailSent, resent, userId = invitedUserId, message });
+        }).RequireRateLimiting("login");
+
+        admin.MapGet("/demo-requests", async (AppDbContext db, CancellationToken cancellationToken,
+            [FromQuery] string? q, [FromQuery] string? status, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
+        {
+            page = Math.Clamp(page, 1, 1_000_000);
+            pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
+            if (q is { Length: > 120 }) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama en fazla 120 karakter olabilir."] });
+            var allowedStatuses = new[] { "New", "Contacted", "Qualified", "DemoScheduled", "DemoGranted", "Converted", "Closed" };
+            if (!string.IsNullOrWhiteSpace(status) && !allowedStatuses.Contains(status, StringComparer.Ordinal))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["status"] = ["Durum filtresi desteklenmiyor."] });
+
+            var query = from lead in db.PlatformDemoRequests.AsNoTracking()
+                        join adminUser in db.Users.AsNoTracking() on lead.AssignedAdminUserId equals adminUser.Id into adminUsers
+                        from assignedUser in adminUsers.DefaultIfEmpty()
+                        join company in db.Companies.AsNoTracking() on lead.CompanyId equals company.Id into companies
+                        from linkedCompany in companies.DefaultIfEmpty()
+                        select new
+                        {
+                            lead.Id, lead.CompanyName, lead.ContactName, lead.Email, lead.Phone, lead.Source,
+                            lead.Status, lead.CreatedAt, lead.UpdatedAt, lead.FollowUpAt, lead.LastContactedAt,
+                            lead.DemoGrantedAt, lead.AssignedAdminUserId,
+                            AssignedAdminName = assignedUser == null ? null : assignedUser.DisplayName,
+                            lead.CompanyId, LinkedCompanyName = linkedCompany == null ? null : linkedCompany.Name
+                        };
+            if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.Status == status);
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                query = query.Where(x => x.CompanyName.Contains(term) || x.ContactName.Contains(term) ||
+                    x.Email.Contains(term) || (x.Phone != null && x.Phone.Contains(term)));
+            }
+            var total = await query.CountAsync(cancellationToken);
+            var items = await query.OrderBy(x => x.Status == "Closed" || x.Status == "Converted")
+                .ThenBy(x => x.FollowUpAt ?? DateTimeOffset.MaxValue).ThenByDescending(x => x.CreatedAt)
+                .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(cancellationToken);
+            return Results.Ok(new { page, pageSize, total, items });
+        });
+
+        admin.MapGet("/demo-requests/{requestId:guid}", async (Guid requestId, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            var lead = await db.PlatformDemoRequests.AsNoTracking().Where(x => x.Id == requestId)
+                .Select(x => new { x.Id, x.CompanyName, x.ContactName, x.Email, x.Phone, x.JobTitle, x.TeamSize,
+                    x.AssetCount, x.Message, x.Source, x.Status, x.ConsentAt, x.ConsentNoticeVersion, x.CreatedAt, x.UpdatedAt,
+                    x.AssignedAdminUserId, x.FollowUpAt, x.LastContactedAt, x.CompanyId, x.DemoGrantedAt,
+                    LinkedCompanyName = db.Companies.Where(company => company.Id == x.CompanyId).Select(company => company.Name).FirstOrDefault() })
+                .SingleOrDefaultAsync(cancellationToken);
+            if (lead is null) return Results.NotFound();
+            var history = await db.PlatformAuditEntries.AsNoTracking().Where(x => x.TargetType == "PlatformDemoRequest" && x.TargetId == requestId)
+                .OrderByDescending(x => x.OccurredAt).Take(100)
+                .Select(x => new { x.Action, x.Details, x.OccurredAt, Actor = db.Users.Where(u => u.Id == x.ActorUserId).Select(u => u.DisplayName).FirstOrDefault() })
+                .ToListAsync(cancellationToken);
+            return Results.Ok(new { lead, history });
+        });
+
+        admin.MapPatch("/demo-requests/{requestId:guid}", async (Guid requestId, [FromBody] UpdatePlatformDemoRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            var allowedStatuses = new[] { "New", "Contacted", "Qualified", "DemoScheduled", "DemoGranted", "Converted", "Closed" };
+            if (!allowedStatuses.Contains(request.Status, StringComparer.Ordinal) || request.Note?.Length > 1000)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["request"] = ["Desteklenmeyen durum veya fazla uzun yönetici notu."] });
+            var lead = await db.PlatformDemoRequests.SingleOrDefaultAsync(x => x.Id == requestId, cancellationToken);
+            if (lead is null) return Results.NotFound();
+            if (request.AssignedAdminUserId is Guid assignedId && !await db.PlatformAdministrators.AnyAsync(x => x.UserId == assignedId, cancellationToken))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["assignedAdminUserId"] = ["Atanan kullanıcı platform yöneticisi değil."] });
+            if (request.CompanyId is Guid companyId && !await db.Companies.AnyAsync(x => x.Id == companyId, cancellationToken))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["companyId"] = ["Bağlanacak şirket bulunamadı."] });
+            if ((request.Status is "DemoGranted" or "Converted") && request.CompanyId is null)
+                return Results.Conflict(new { message = "Demo/ücretli müşteri aşaması için önce firma hesabını bağlayın." });
+
+            DateTimeOffset? demoGrantedAt = lead.DemoGrantedAt;
+            if (request.Status == "DemoGranted")
+            {
+                var now = DateTimeOffset.UtcNow;
+                var demoSubscription = await db.TenantSubscriptions.AsNoTracking()
+                    .Where(x => x.CompanyId == request.CompanyId && x.IsDemo && x.Status == "Trial" &&
+                        x.StartsAt <= now && x.EndsAt > now)
+                    .OrderBy(x => x.StartsAt).Select(x => new { x.StartsAt }).FirstOrDefaultAsync(cancellationToken);
+                if (demoSubscription is null)
+                    return Results.Conflict(new { message = "Bağlı şirkette süresi devam eden demo bulunamadı. Önce panelden demo açın." });
+                demoGrantedAt = demoSubscription.StartsAt;
+            }
+            if (request.Status == "Converted" && !await db.TenantSubscriptions.AnyAsync(x =>
+                x.CompanyId == request.CompanyId && !x.IsDemo && x.Status == "Active" &&
+                x.StartsAt <= DateTimeOffset.UtcNow && x.EndsAt > DateTimeOffset.UtcNow, cancellationToken))
+                return Results.Conflict(new { message = "Dönüşüm aşaması için bağlı şirkette ücretli abonelik bulunmalıdır." });
+
+            var previousStatus = lead.Status;
+            var previousCompanyId = lead.CompanyId;
+            var previousAssigneeId = lead.AssignedAdminUserId;
+            var previousFollowUpAt = lead.FollowUpAt;
+            lead.Status = request.Status;
+            lead.AssignedAdminUserId = request.AssignedAdminUserId;
+            lead.FollowUpAt = request.FollowUpAt;
+            lead.CompanyId = request.CompanyId;
+            lead.DemoGrantedAt = demoGrantedAt;
+            lead.UpdatedAt = DateTimeOffset.UtcNow;
+            if (request.Status != previousStatus && (request.Status is "Contacted" or "Qualified" or "DemoScheduled"))
+                lead.LastContactedAt = lead.UpdatedAt;
+            var auditDetails = JsonSerializer.Serialize(new
+            {
+                previousStatus, currentStatus = lead.Status, previousCompanyId, currentCompanyId = lead.CompanyId,
+                previousAssigneeId, currentAssigneeId = lead.AssignedAdminUserId,
+                previousFollowUpAt, currentFollowUpAt = lead.FollowUpAt,
+                note = Clean(request.Note)
+            });
+            AddAudit(db, user, previousStatus == lead.Status ? "DemoRequestUpdated" : "DemoRequestStatusChanged",
+                "PlatformDemoRequest", lead.Id, lead.CompanyId, auditDetails);
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.Ok(new { lead.Id, lead.Status, lead.AssignedAdminUserId, lead.FollowUpAt,
+                lead.LastContactedAt, lead.CompanyId, lead.DemoGrantedAt, lead.UpdatedAt });
         }).RequireRateLimiting("login");
 
         admin.MapGet("/plans", async (AppDbContext db, CancellationToken cancellationToken) =>
