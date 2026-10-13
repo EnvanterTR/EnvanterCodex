@@ -40,6 +40,9 @@ jobs:
       - name: Verify asset row context menu and keyboard actions
         shell: bash
         run: node tools/Verify-AssetContextMenu.mjs
+      - name: Verify asset trash UI
+        shell: bash
+        run: node tools/Verify-AssetTrashUi.mjs
 
       - name: Verify asset status label editor and option refresh
         shell: bash

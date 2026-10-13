@@ -10000,6 +10000,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         const cell = document.createElement('td'), button = document.createElement('button');
         button.type = 'button'; button.className = 'btn small primary'; button.textContent = 'Geri al';
         button.addEventListener('click', () => openAssetTrashAction(item, 'restore')); cell.append(button); row.append(cell);
+        rows.append(row);
       }
       $('#assetTrashPageInfo').textContent = `${assetTrashPage}. sayfa · ${assetTrashTotal} kayıt`;
       $('#assetTrashPrev').disabled = assetTrashPage <= 1;
