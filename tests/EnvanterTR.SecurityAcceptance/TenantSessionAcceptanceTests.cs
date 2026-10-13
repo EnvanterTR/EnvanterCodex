@@ -7992,6 +7992,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         Assert.Equal(uniqueSlug, await db.Companies.Where(company => company.Id == _companyId)
             .Select(company => company.Slug).SingleAsync());
+
+        using var profileResponse = await SendAsAdminAsync("/api/company/profile");
+        Assert.Equal(HttpStatusCode.OK, profileResponse.StatusCode);
+        using var profilePayload = JsonDocument.Parse(await profileResponse.Content.ReadAsStringAsync());
+        Assert.Equal(uniqueSlug, profilePayload.RootElement.GetProperty("slug").GetString());
+        Assert.Null(profilePayload.RootElement.GetProperty("tenantDomain").GetString());
     }
 
     private async Task<HttpResponseMessage> SendAnonymousLoginAsync(HttpClient client, string email, string password, string? twoFactorCode,

@@ -464,7 +464,7 @@
           <section class="panel"><div class="panel-head"><h2>Şirket bilgileri</h2><span class="pill blue">Yalnızca yöneticiler</span></div>
             <form id="companyProfileForm" class="form-grid">
               <label>Şirket adı *<input name="name" maxlength="200" required></label>
-              <label>SaaS alt alan adı *<input name="slug" maxlength="63" pattern="[A-Za-z0-9]{2,63}(?:-[A-Za-z0-9]+)*" autocomplete="off" spellcheck="false" required aria-describedby="tenantSlugHelp"><small id="tenantSlugHelp">Yalnızca harf, rakam ve tire kullanın; en fazla 63 karakter. Örnek: firma → https://firma.envantertr.com. Alt alan adı değişirse şirket üyelerinin bağlantısı da değişir.</small></label>
+              <label>SaaS alt alan adı *<input name="slug" maxlength="63" pattern="[A-Za-z0-9]{2,63}(?:-[A-Za-z0-9]+)*" autocomplete="off" spellcheck="false" required aria-describedby="tenantSlugHelp"><small id="tenantSlugHelp">Yalnızca harf, rakam ve tire kullanın; en fazla 63 karakter. Şirket adresi: <a id="tenantUrlLink" target="_blank" rel="noopener noreferrer" hidden></a>. Alt alan adı değişirse şirket üyelerinin bağlantısı da değişir.</small></label>
               <label>İletişim e-postası<input name="contactEmail" type="email" maxlength="256"></label>
               <label>Ana tema rengi<input name="brandPrimaryColor" type="color" value="#1769E0" style="height:40px;padding:4px"></label>
               <div class="dialog-actions wide"><button class="btn primary" type="submit">Değişiklikleri kaydet</button></div>
@@ -8256,11 +8256,24 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     });
     $('#catalogSearch').addEventListener('input', renderCatalog);
     $('#catalogRefresh').addEventListener('click', () => loadCatalog().then(() => notify(translateUiText('Tanım listesi yenilendi.'))).catch(error => notify(error.message)));
+    function updateTenantUrlPreview() {
+      const form = $('#companyProfileForm'), link = $('#tenantUrlLink');
+      const domain = form.dataset.tenantDomain, slug = String(form.elements.slug.value || '').trim().toLowerCase();
+      if (!domain || slug.length < 2 || slug.length > 63 || !/^[a-z0-9](?:[a-z0-9-]{0,60}[a-z0-9])$/.test(slug) || ['www','api','admin','app','auth','billing','cdn','help','mail','platform','support'].includes(slug)) {
+        link.hidden = true; link.removeAttribute('href'); link.textContent = ''; return;
+      }
+      link.href = `https://${slug}.${domain}`;
+      link.textContent = link.href;
+      link.hidden = false;
+    }
+    $('#companyProfileForm').elements.slug.addEventListener('input', updateTenantUrlPreview);
     async function loadCompanyProfile() {
       const profile = await api('/api/company/profile');
       const form = $('#companyProfileForm');
       form.elements.name.value = profile.name || '';
       form.elements.slug.value = profile.slug || '';
+      form.dataset.tenantDomain = profile.tenantDomain || '';
+      updateTenantUrlPreview();
       form.elements.contactEmail.value = profile.contactEmail || '';
       form.elements.brandPrimaryColor.value = profile.brandPrimaryColor || '#1769E0';
       const preview = $('#companyLogoPreview');

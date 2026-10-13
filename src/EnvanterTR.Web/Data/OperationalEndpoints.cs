@@ -50,6 +50,7 @@ public static class OperationalEndpoints
             if (company is null) return Results.NotFound();
             var rootDomain = configuration["TenantRouting:RootDomain"]?.Trim().Trim('.');
             return Results.Ok(new { company.Name, company.Slug, company.ContactEmail, company.BrandPrimaryColor, company.HasLogo,
+                tenantDomain = string.IsNullOrWhiteSpace(rootDomain) ? null : rootDomain,
                 tenantUrl = string.IsNullOrWhiteSpace(rootDomain) || string.IsNullOrWhiteSpace(company.Slug)
                     ? null : $"https://{company.Slug}.{rootDomain}" });
         }).RequireAuthorization("settings.manage");
