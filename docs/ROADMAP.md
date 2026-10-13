@@ -193,6 +193,7 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 
 ### P1 — Barındırılan hizmet ve ticari akışlar
 
+- **V1 satış engeli (13 Ekim 2026 doğrulaması):** Herkese açık firma kaydı, ödeme/checkout, fatura ve mutabakat yok. İlk şirket bootstrap'ı yalnızca boş veritabanı ve gizli kurulum anahtarıyla çalışıyor; platform API'si yeni firma oluşturamıyor. Önce şirket + benzersiz alt alan adı + sahip üyeliği + seçilen Cloud planı/aboneliği için güvenli ve yinelenmeye dayanıklı onboarding tanımlanmalı; ardından seçilecek ödeme sağlayıcısının sandbox ve canlı akışları eklenmeli. Sağlayıcı seçimi ve e-posta teslimat/doğrulama yapılandırması tamamlanana kadar online satış hazır kabul edilmemeli. Kanıt: `docs/PRODUCT-COVERAGE.md` içindeki “Bulut SaaS müşteri açılışı için engel doğrulaması”.
 - Şirket alt alan adıyla ayrılmış müşteri portalları; şirket logosu/teması, kullanıcı rolleri, varlık ve giriş kullanıcı sınırlarının aboneliğe göre uygulanması.
 - Deneme açma, çevrim içi ödeme/tahsilat, fatura, yenileme/iptal, ödeme mutabakatı ve satın alma akışları. Mevcut platform plan ekranı tek başına satış veya ödeme sistemi değildir.
 - Lisans süresi, çevrim dışı tolerans ve yenileme uyarıları; cihaz saati ve yetkisiz değişikliğe dayanıklı lisans tasarımı.
