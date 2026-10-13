@@ -1281,6 +1281,106 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Existing_account_can_join_an_additional_company_with_its_own_role_and_access_notice()
+    {
+        const string password = "Acceptance-multi-company-Password-47!";
+        var plan = new SubscriptionPlan
+        {
+            Code = $"m-{_companyId:N}", Name = "Multi-company invite", DeploymentKind = "cloud",
+            MaxLoginUsers = 1, IsActive = true, IsPublic = true
+        };
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var services = scope.ServiceProvider;
+            var users = services.GetRequiredService<UserManager<EnvanterUser>>();
+            var existingUser = await users.FindByIdAsync(_userId.ToString());
+            Assert.NotNull(existingUser);
+            var passwordResult = await users.AddPasswordAsync(existingUser, password);
+            Assert.True(passwordResult.Succeeded, string.Join("; ", passwordResult.Errors.Select(error => error.Description)));
+
+            var db = services.GetRequiredService<AppDbContext>();
+            db.SubscriptionPlans.Add(plan);
+            db.TenantSubscriptions.Add(new TenantSubscription
+            {
+                CompanyId = _otherCompanyId, PlanId = plan.Id, Status = "Active",
+                StartsAt = DateTimeOffset.UtcNow.AddMinutes(-1), EndsAt = DateTimeOffset.UtcNow.AddDays(30)
+            });
+            db.CompanyMemberships.Add(new CompanyMembership
+            {
+                CompanyId = _otherCompanyId, UserId = _sameCompanyOtherUserId, RoleKey = "owner"
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsUserAsync(HttpMethod.Get, "/api/session/csrf", _sameCompanyOtherUserId, _otherCompanyId, role: "owner");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using (var invite = await SendAsUserAsync(HttpMethod.Post, "/api/members/invite", _sameCompanyOtherUserId, _otherCompanyId,
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       fullName = "Security Acceptance User",
+                       email = $"acceptance-{_userId:N}@example.invalid",
+                       roleKey = "viewer"
+                   }), requestToken, antiforgeryCookie, role: "owner"))
+        {
+            Assert.Equal(HttpStatusCode.Created, invite.StatusCode);
+            using var payload = JsonDocument.Parse(await invite.Content.ReadAsStringAsync());
+            Assert.True(payload.RootElement.GetProperty("invitationSent").GetBoolean());
+            Assert.Equal(_userId, payload.RootElement.GetProperty("userId").GetGuid());
+        }
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var sourceMembership = await db.CompanyMemberships.SingleAsync(x => x.CompanyId == _companyId && x.UserId == _userId);
+            var targetMembership = await db.CompanyMemberships.SingleAsync(x => x.CompanyId == _otherCompanyId && x.UserId == _userId);
+            Assert.Equal("admin", sourceMembership.RoleKey);
+            Assert.Equal("viewer", targetMembership.RoleKey);
+        }
+
+        var accessMessage = Assert.Single(_smtpCapture.Messages);
+        Assert.Contains($"To: acceptance-{_userId:N}@example.invalid", accessMessage, StringComparison.OrdinalIgnoreCase);
+        var accessBody = DecodeMimeBody(accessMessage);
+        Assert.Contains("Other security acceptance company", accessBody, StringComparison.Ordinal);
+        Assert.Contains("Görüntüleyici", accessBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("token=", accessMessage, StringComparison.OrdinalIgnoreCase);
+
+        using var loginClient = _factory!.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        using var loginCsrfResponse = await loginClient.GetAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, loginCsrfResponse.StatusCode);
+        using var loginCsrfPayload = JsonDocument.Parse(await loginCsrfResponse.Content.ReadAsStringAsync());
+        var loginRequestToken = loginCsrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var loginAntiforgeryCookie = loginCsrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using (var companyChooser = await SendAnonymousLoginAsync(loginClient, $"acceptance-{_userId:N}@example.invalid", password, null,
+                   loginRequestToken, loginAntiforgeryCookie))
+        using (var choices = JsonDocument.Parse(await companyChooser.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, companyChooser.StatusCode);
+            var companies = choices.RootElement.GetProperty("companies").EnumerateArray().ToArray();
+            Assert.Equal(2, companies.Length);
+            Assert.Contains(companies, company => company.GetProperty("id").GetGuid() == _companyId);
+            Assert.Contains(companies, company => company.GetProperty("id").GetGuid() == _otherCompanyId);
+        }
+
+        using (var selectedCompanyLogin = await SendAnonymousLoginAsync(loginClient, $"acceptance-{_userId:N}@example.invalid", password, null,
+                   loginRequestToken, loginAntiforgeryCookie, companyId: _otherCompanyId))
+        using (var selectedSession = JsonDocument.Parse(await selectedCompanyLogin.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, selectedCompanyLogin.StatusCode);
+            Assert.Equal(_otherCompanyId, selectedSession.RootElement.GetProperty("companyId").GetGuid());
+            Assert.Equal("viewer", selectedSession.RootElement.GetProperty("role").GetString());
+        }
+    }
+
+    [Fact]
     public async Task Asset_status_display_labels_are_company_scoped_audited_and_manager_only()
     {
         var defaults = new[]

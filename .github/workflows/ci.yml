@@ -48,6 +48,10 @@ jobs:
         shell: bash
         run: node tools/Verify-CloudUnlimitedUsers.mjs
 
+      - name: Verify multi-company user invitations
+        shell: bash
+        run: node tools/Verify-MultiCompanyInvites.mjs
+
       - name: Verify asset status label editor and option refresh
         shell: bash
         run: node tools/Verify-StatusLabelsUi.mjs

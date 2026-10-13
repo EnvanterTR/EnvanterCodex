@@ -71,6 +71,7 @@ Bu liste **senin kendi dokümanlarından** çıkarıldı. Kaynaklar:
 - [ ] **B.8** Kendi profil fotoğrafı yükleme ✅
 - [ ] **B.9** LDAP / Active Directory / SSO ile giriş ❌
 - [ ] **B.10** Oturum açan cihazların listesi (nereden girildi) ❌
+- [ ] **B.12** Mevcut hesabı ikinci şirket alanına ayrı rolüyle davet etme; şirket seçimi ve şirketler arası veri ayrımını doğrulama ✅
 - [ ] **B.11** Platform yöneticisi müşteri verisine **varsayılan olarak erişemez** (impersonate hariç) 🟡
 
 ---

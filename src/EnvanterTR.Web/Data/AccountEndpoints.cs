@@ -788,6 +788,53 @@ public static class AccountEndpoints
             $"Merhaba {WebUtility.HtmlEncode(displayName)}, EnvanterTR şirket alanına davet edildiniz. Giriş için parolanızı belirleyin.",
             "Parola belirle ve hesabı etkinleştir", configuration, cancellationToken);
 
+    public static async Task SendCompanyAccessAddedEmailAsync(string recipient, string displayName, string companyName,
+        string roleKey, IConfiguration configuration, CancellationToken cancellationToken)
+    {
+        var host = configuration["Email:Smtp:Host"];
+        var publicBaseUrl = configuration["Email:PublicBaseUrl"]?.TrimEnd('/');
+        var fromAddress = configuration["Email:FromAddress"];
+        if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(publicBaseUrl) ||
+            string.IsNullOrWhiteSpace(fromAddress))
+            throw new InvalidOperationException("Company access email configuration is incomplete.");
+        if (!Uri.TryCreate(publicBaseUrl, UriKind.Absolute, out var baseUri) || baseUri.Scheme is not ("https" or "http"))
+            throw new InvalidOperationException("Email:PublicBaseUrl must be an absolute HTTP(S) URL.");
+        if (baseUri.Scheme != Uri.UriSchemeHttps && !string.Equals(configuration["ASPNETCORE_ENVIRONMENT"], "Development", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Company access links must use HTTPS outside development.");
+        if (!int.TryParse(configuration["Email:Smtp:Port"], out var port) || port is < 1 or > 65535)
+            throw new InvalidOperationException("Email:Smtp:Port must be a valid TCP port.");
+
+        var roleName = roleKey switch
+        {
+            "admin" => "Yönetici",
+            "asset_manager" => "Varlık yöneticisi",
+            "asset_operator" => "Varlık sorumlusu",
+            "auditor" => "Denetçi",
+            "hr_operator" => "Ekip yöneticisi",
+            _ => "Görüntüleyici"
+        };
+        var loginUrl = WebUtility.HtmlEncode(new Uri(baseUri, "/").AbsoluteUri);
+        var from = new MailAddress(fromAddress, configuration["Email:FromName"] ?? "EnvanterTR");
+        using var message = new MailMessage(from, new MailAddress(recipient))
+        {
+            Subject = "EnvanterTR şirket erişimi eklendi",
+            SubjectEncoding = Encoding.UTF8,
+            BodyEncoding = Encoding.UTF8,
+            IsBodyHtml = true,
+            Body = $"<p>Merhaba {WebUtility.HtmlEncode(displayName)},</p><p>{WebUtility.HtmlEncode(companyName)} şirket alanına {roleName} rolüyle erişiminiz eklendi. Mevcut EnvanterTR hesabınızla giriş yapıp bu şirketi seçebilirsiniz.</p><p><a href=\"{loginUrl}\">EnvanterTR girişini aç</a></p>"
+        };
+        using var client = new SmtpClient(host, port)
+        {
+            EnableSsl = !string.Equals(configuration["Email:Smtp:EnableSsl"], "false", StringComparison.OrdinalIgnoreCase),
+            DeliveryMethod = SmtpDeliveryMethod.Network,
+            Timeout = 15000
+        };
+        var username = configuration["Email:Smtp:Username"];
+        var password = configuration["Email:Smtp:Password"];
+        if (!string.IsNullOrWhiteSpace(username)) client.Credentials = new NetworkCredential(username, password ?? string.Empty);
+        await client.SendMailAsync(message, cancellationToken);
+    }
+
     private static async Task SendAccountLinkEmailAsync(string recipient, string token, string subject,
         string intro, string? linkText, IConfiguration configuration, CancellationToken cancellationToken)
     {

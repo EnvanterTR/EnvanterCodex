@@ -1839,21 +1839,22 @@ public static class OperationalEndpoints
             {
                 var existingMembership = await db.CompanyMemberships.SingleOrDefaultAsync(
                     x => x.CompanyId == companyId && x.UserId == existingUser.Id, cancellationToken);
-                if (existingMembership is null)
-                    return Results.Conflict(new { message = "Bu e-posta için davet açılamadı. E-posta adresini doğrulayın veya şirket yöneticinizle iletişime geçin." });
-                if (existingUser.EmailConfirmed)
-                    return Results.Conflict(new { message = "Bu kullanıcı daveti zaten kabul etmiş. Rolünü kullanıcı listesinden değiştirebilirsiniz." });
-                if (existingMembership.RoleKey != roleKey)
-                    return Results.Conflict(new { message = "Bekleyen davetin rolünü önce kullanıcı listesinden güncelleyin." });
-                var resendToken = await userManager.GeneratePasswordResetTokenAsync(existingUser);
-                try
+                if (existingMembership is not null)
                 {
-                    await AccountEndpoints.SendAccountInvitationEmailAsync(email, name, resendToken, configuration, cancellationToken);
-                    return Results.Ok(new { invitationSent = true, resent = true, message = "Bekleyen davet yeniden gönderildi." });
-                }
-                catch (Exception exception) when (exception is not OperationCanceledException)
-                {
-                    return Results.Ok(new { invitationSent = false, resent = true, message = "Davet kaydı duruyor ancak e-posta gönderilemedi. E-posta ayarlarını kontrol edip yeniden deneyin." });
+                    if (existingUser.EmailConfirmed)
+                        return Results.Conflict(new { message = "Bu kullanıcı bu şirket alanının üyesi. Rolünü kullanıcı listesinden değiştirebilirsiniz." });
+                    if (existingMembership.RoleKey != roleKey)
+                        return Results.Conflict(new { message = "Bekleyen davetin rolünü önce kullanıcı listesinden güncelleyin." });
+                    var resendToken = await userManager.GeneratePasswordResetTokenAsync(existingUser);
+                    try
+                    {
+                        await AccountEndpoints.SendAccountInvitationEmailAsync(email, name, resendToken, configuration, cancellationToken);
+                        return Results.Ok(new { invitationSent = true, resent = true, message = "Bekleyen davet yeniden gönderildi." });
+                    }
+                    catch (Exception exception) when (exception is not OperationCanceledException)
+                    {
+                        return Results.Ok(new { invitationSent = false, resent = true, message = "Davet kaydı duruyor ancak e-posta gönderilemedi. E-posta ayarlarını kontrol edip yeniden deneyin." });
+                    }
                 }
             }
 
@@ -1873,16 +1874,20 @@ public static class OperationalEndpoints
             if (subscription.DeploymentKind != "cloud" && subscription.MaxLoginUsers is int seatLimit && memberCount >= seatLimit)
                 return Results.Conflict(new { message = $"Bu plan {seatLimit} giriş hesabıyla sınırlı. Kullanıcı eklemek için planı yükseltin." });
 
-            var temporaryPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) + "aA1!";
-            var invitedUser = new EnvanterUser
+            var invitedUser = existingUser;
+            if (invitedUser is null)
             {
-                UserName = email, Email = email, EmailConfirmed = false, DisplayName = name
-            };
-            var createResult = await userManager.CreateAsync(invitedUser, temporaryPassword);
-            if (!createResult.Succeeded)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return Results.Conflict(new { message = "Kullanıcı oluşturulamadı. E-posta daha önce kaydedilmiş olabilir." });
+                var temporaryPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) + "aA1!";
+                invitedUser = new EnvanterUser
+                {
+                    UserName = email, Email = email, EmailConfirmed = false, DisplayName = name
+                };
+                var createResult = await userManager.CreateAsync(invitedUser, temporaryPassword);
+                if (!createResult.Succeeded)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return Results.Conflict(new { message = "Kullanıcı oluşturulamadı. E-posta daha önce kaydedilmiş olabilir." });
+                }
             }
             db.CompanyMemberships.Add(new CompanyMembership { CompanyId = companyId, UserId = invitedUser.Id, RoleKey = roleKey });
             db.AuditEntries.Add(new AuditEntry
@@ -1899,6 +1904,22 @@ public static class OperationalEndpoints
             {
                 await transaction.RollbackAsync(cancellationToken);
                 return Results.Conflict(new { message = "Kullanıcı daveti çakıştı. Listeyi yenileyip tekrar deneyin." });
+            }
+
+            if (invitedUser.EmailConfirmed)
+            {
+                try
+                {
+                    await AccountEndpoints.SendCompanyAccessAddedEmailAsync(email, invitedUser.DisplayName ?? name,
+                        lockedCompany.Name, roleKey, configuration, cancellationToken);
+                    return Results.Created($"/api/members/{invitedUser.Id}", new { invitationSent = true, userId = invitedUser.Id,
+                        message = "Mevcut hesap şirket alanına eklendi; erişim bilgisi e-postayla gönderildi." });
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    return Results.Created($"/api/members/{invitedUser.Id}", new { invitationSent = false, userId = invitedUser.Id,
+                        message = "Mevcut hesap şirket alanına eklendi; e-posta gönderilemedi. Kullanıcı mevcut hesabıyla şirketi seçerek giriş yapabilir." });
+                }
             }
 
             var token = await userManager.GeneratePasswordResetTokenAsync(invitedUser);
