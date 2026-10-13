@@ -1,0 +1,30 @@
+import { readFile } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+
+const api = await readFile('src/EnvanterTR.Web/Data/PlatformEndpoints.cs', 'utf8');
+const page = await readFile('src/EnvanterTR.Web/wwwroot/platform-admin.html', 'utf8');
+const client = await readFile('src/EnvanterTR.Web/wwwroot/platform-admin-members.js', 'utf8');
+const acceptance = await readFile('tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs', 'utf8');
+
+assert.match(api, /MapGroup\("\/api\/platform"\)\.RequireAuthorization\("platform\.admin"\)/);
+assert.match(api, /admin\.MapGet\("\/members"/);
+assert.match(api, /admin\.MapGet\("\/members\/\{userId:guid\}"/);
+assert.match(api, /membership\.RoleKey, membership\.CreatedAt, company\.IsActive/);
+assert.match(api, /firstMembershipAt[\s\S]*?membershipCount/);
+assert.match(api, /pageSize = Math\.Clamp\(pageSize == 0 \? 50 : pageSize, 1, 200\)/);
+const projections = api.match(/admin\.MapGet\("\/members"[\s\S]*?admin\.MapGet\("\/plans"/);
+assert.ok(projections, 'member directory endpoints exist before plans endpoint');
+assert.doesNotMatch(projections[0], /PasswordHash|SecurityStamp|AuthenticatorKey|RecoveryCode|IpAddress|UserAgent/);
+assert.match(page, /data-view="members"[^>]*>[^<]*<i>♧<\/i><span>Üyeler \/ Hesaplar/);
+assert.match(page, /id="view-members"/);
+assert.match(page, /id="memberSearch"/);
+assert.match(page, /id="memberDetail"/);
+assert.match(page, /platform-admin-members\.js/);
+assert.match(client, /api\(`\/api\/platform\/members\?/);
+assert.match(client, /api\(`\/api\/platform\/members\/\$\{encodeURIComponent\(id\)\}`\)/);
+assert.match(client, /data-member-detail/);
+assert.match(client, /firstMembershipAt/);
+assert.match(client, /subscription\.paymentReference/);
+assert.match(client, /\.addEventListener\('keydown',[\s\S]*?event\.key === 'Enter'/);
+assert.match(acceptance, /Platform_member_directory_searches_cross_company_accounts_and_hides_identity_secrets/);
+console.log('Platform member directory source verification passed (19 assertions).');

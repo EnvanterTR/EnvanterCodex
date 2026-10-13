@@ -106,6 +106,106 @@ public static class PlatformEndpoints
             return Results.Ok(new { items, page, pageSize, total });
         });
 
+        admin.MapGet("/members", async (AppDbContext db, CancellationToken cancellationToken,
+            [FromQuery] string? q, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
+        {
+            page = Math.Clamp(page, 1, 1_000_000);
+            pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
+            if (q is { Length: > 120 })
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama en fazla 120 karakter olabilir."] });
+            var users = db.Users.AsNoTracking().AsQueryable();
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                users = users.Where(account => account.DisplayName.Contains(term) ||
+                    (account.Email != null && account.Email.Contains(term)) ||
+                    (account.PhoneNumber != null && account.PhoneNumber.Contains(term)) ||
+                    db.CompanyMemberships.Any(membership => membership.UserId == account.Id &&
+                        db.Companies.Any(company => company.Id == membership.CompanyId &&
+                            (company.Name.Contains(term) || (company.Slug != null && company.Slug.Contains(term))))));
+            }
+            var total = await users.CountAsync(cancellationToken);
+            var now = DateTimeOffset.UtcNow;
+            var accounts = await users.OrderBy(account => account.DisplayName).ThenBy(account => account.Email)
+                .Skip((page - 1) * pageSize).Take(pageSize)
+                .Select(account => new
+                {
+                    account.Id, account.DisplayName, account.Email, account.EmailConfirmed,
+                    account.PhoneNumber, account.TwoFactorEnabled, account.LockoutEnd,
+                    account.AccessFailedCount,
+                    firstMembershipAt = db.CompanyMemberships.Where(membership => membership.UserId == account.Id)
+                        .OrderBy(membership => membership.CreatedAt).Select(membership => (DateTimeOffset?)membership.CreatedAt).FirstOrDefault(),
+                    lastSeenAt = db.UserSessions.Where(session => session.UserId == account.Id)
+                        .OrderByDescending(session => session.LastSeenAt).Select(session => (DateTimeOffset?)session.LastSeenAt).FirstOrDefault(),
+                    membershipCount = db.CompanyMemberships.Count(membership => membership.UserId == account.Id)
+                }).ToListAsync(cancellationToken);
+            var userIds = accounts.Select(account => account.Id).ToArray();
+            var memberships = await (from membership in db.CompanyMemberships.AsNoTracking()
+                                     join company in db.Companies.AsNoTracking() on membership.CompanyId equals company.Id
+                                     where userIds.Contains(membership.UserId)
+                                     orderby company.Name, membership.RoleKey
+                                     select new { membership.UserId, company.Name, company.Slug, membership.RoleKey, membership.CreatedAt, company.IsActive })
+                .ToListAsync(cancellationToken);
+            var membershipsByUser = memberships.GroupBy(membership => membership.UserId)
+                .ToDictionary(group => group.Key, group => group.Select(membership => new
+                {
+                    membership.Name, membership.Slug, membership.RoleKey, membership.CreatedAt, membership.IsActive
+                }).ToArray());
+            var items = accounts.Select(account => new
+            {
+                account.Id, account.DisplayName, account.Email, account.EmailConfirmed, account.PhoneNumber,
+                account.TwoFactorEnabled, isLockedOut = account.LockoutEnd is DateTimeOffset lockoutEnd && lockoutEnd > now,
+                account.AccessFailedCount, account.firstMembershipAt, account.lastSeenAt, account.membershipCount,
+                memberships = membershipsByUser.GetValueOrDefault(account.Id) ?? []
+            });
+            return Results.Ok(new { items, page, pageSize, total });
+        });
+
+        admin.MapGet("/members/{userId:guid}", async (Guid userId, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            var now = DateTimeOffset.UtcNow;
+            var account = await db.Users.AsNoTracking().Where(user => user.Id == userId)
+                .Select(user => new
+                {
+                    user.Id, user.DisplayName, user.Email, user.EmailConfirmed, user.PhoneNumber,
+                    user.PhoneNumberConfirmed, user.TwoFactorEnabled, user.LockoutEnd, user.AccessFailedCount,
+                    user.LockoutEnabled,
+                    lastSeenAt = db.UserSessions.Where(session => session.UserId == user.Id)
+                        .OrderByDescending(session => session.LastSeenAt).Select(session => (DateTimeOffset?)session.LastSeenAt).FirstOrDefault()
+                }).SingleOrDefaultAsync(cancellationToken);
+            if (account is null) return Results.NotFound();
+            var memberships = await (from membership in db.CompanyMemberships.AsNoTracking()
+                                     join company in db.Companies.AsNoTracking() on membership.CompanyId equals company.Id
+                                     where membership.UserId == userId
+                                     orderby membership.CreatedAt descending
+                                     select new
+                                     {
+                                         company.Id, company.Name, company.Slug, company.IsActive,
+                                         membership.RoleKey, membership.CreatedAt,
+                                         subscription = (from subscription in db.TenantSubscriptions.AsNoTracking()
+                                                         join plan in db.SubscriptionPlans.AsNoTracking() on subscription.PlanId equals plan.Id
+                                                         where subscription.CompanyId == company.Id
+                                                         orderby subscription.StartsAt descending
+                                                         select new { plan.Name, plan.Code, subscription.Status, subscription.IsDemo,
+                                                             subscription.StartsAt, subscription.EndsAt, subscription.PaymentReference })
+                                             .FirstOrDefault()
+                                     }).Take(200).ToListAsync(cancellationToken);
+            var membershipCount = await db.CompanyMemberships.CountAsync(membership => membership.UserId == userId, cancellationToken);
+            return Results.Ok(new
+            {
+                account = new
+                {
+                    account.Id, account.DisplayName, account.Email, account.EmailConfirmed, account.PhoneNumber,
+                    account.PhoneNumberConfirmed, account.TwoFactorEnabled, account.LockoutEnabled,
+                    isLockedOut = account.LockoutEnd is DateTimeOffset lockoutEnd && lockoutEnd > now,
+                    account.AccessFailedCount, account.lastSeenAt,
+                    firstMembershipAt = await db.CompanyMemberships.Where(membership => membership.UserId == userId)
+                        .OrderBy(membership => membership.CreatedAt).Select(membership => (DateTimeOffset?)membership.CreatedAt).FirstOrDefaultAsync(cancellationToken)
+                },
+                memberships, membershipCount, membershipsTruncated = membershipCount > memberships.Count
+            });
+        });
+
         admin.MapGet("/plans", async (AppDbContext db, CancellationToken cancellationToken) =>
             Results.Ok(await db.SubscriptionPlans.AsNoTracking().OrderBy(x => x.SortOrder)
                 .Select(x => new { x.Id, x.Code, x.Name, x.Description, x.DeploymentKind,

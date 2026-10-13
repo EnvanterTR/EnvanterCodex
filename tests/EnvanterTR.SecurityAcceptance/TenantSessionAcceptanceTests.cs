@@ -1279,6 +1279,78 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Platform_member_directory_searches_cross_company_accounts_and_hides_identity_secrets()
+    {
+        var userId = Guid.NewGuid();
+        var marker = $"MEMBER-DIRECTORY-{userId:N}";
+        var earlierMembership = DateTimeOffset.UtcNow.AddDays(-90);
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var plan = new SubscriptionPlan
+            {
+                Code = $"member-{userId:N}", Name = "Member Directory Acceptance Cloud",
+                DeploymentKind = "cloud", IsActive = true, IsPublic = true
+            };
+            db.SubscriptionPlans.Add(plan);
+            db.TenantSubscriptions.Add(new TenantSubscription
+            {
+                CompanyId = _companyId, PlanId = plan.Id, Status = "Active", IsDemo = false,
+                StartsAt = earlierMembership, EndsAt = DateTimeOffset.UtcNow.AddDays(90),
+                PaymentReference = "member-directory-payment-reference"
+            });
+            db.Users.Add(new EnvanterUser
+            {
+                Id = userId, UserName = $"directory-{userId:N}", NormalizedUserName = $"DIRECTORY-{userId:N}",
+                Email = $"{marker}@example.invalid", NormalizedEmail = $"{marker}@EXAMPLE.INVALID",
+                EmailConfirmed = true, PhoneNumber = "+905551234567", PhoneNumberConfirmed = true,
+                TwoFactorEnabled = true, LockoutEnabled = true, AccessFailedCount = 2,
+                PasswordHash = "identity-password-hash-must-not-leak",
+                SecurityStamp = "identity-security-stamp-must-not-leak",
+                ConcurrencyStamp = Guid.NewGuid().ToString("N"),
+                DisplayName = "Directory Acceptance Member"
+            });
+            db.CompanyMemberships.AddRange(
+                new CompanyMembership { UserId = userId, CompanyId = _companyId, RoleKey = "owner", CreatedAt = earlierMembership },
+                new CompanyMembership { UserId = userId, CompanyId = _otherCompanyId, RoleKey = "viewer", CreatedAt = DateTimeOffset.UtcNow.AddDays(-20) });
+            db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            await db.SaveChangesAsync();
+        }
+
+        using (var denied = await SendAsAdminAsync($"/api/platform/members?q={Uri.EscapeDataString(marker)}"))
+            Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+
+        using var response = await SendAsPlatformAdminAsync($"/api/platform/members?q={Uri.EscapeDataString(marker)}&page=1&pageSize=1");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        using var payload = JsonDocument.Parse(body);
+        var root = payload.RootElement;
+        Assert.Equal(1, root.GetProperty("total").GetInt32());
+        var result = root.GetProperty("items")[0];
+        Assert.Equal(2, result.GetProperty("membershipCount").GetInt32());
+        Assert.True(result.GetProperty("twoFactorEnabled").GetBoolean());
+        Assert.Equal(2, result.GetProperty("memberships").GetArrayLength());
+        Assert.InRange((result.GetProperty("firstMembershipAt").GetDateTimeOffset() - earlierMembership).Duration(),
+            TimeSpan.Zero, TimeSpan.FromMilliseconds(1));
+        Assert.DoesNotContain("identity-password-hash-must-not-leak", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("identity-security-stamp-must-not-leak", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("identity-authenticator-key-must-not-leak", body, StringComparison.Ordinal);
+
+        using var profile = await SendAsPlatformAdminAsync($"/api/platform/members/{userId}");
+        Assert.Equal(HttpStatusCode.OK, profile.StatusCode);
+        var profileBody = await profile.Content.ReadAsStringAsync();
+        using var profileJson = JsonDocument.Parse(profileBody);
+        Assert.Equal(2, profileJson.RootElement.GetProperty("membershipCount").GetInt32());
+        Assert.Equal(2, profileJson.RootElement.GetProperty("memberships").GetArrayLength());
+        Assert.True(profileJson.RootElement.GetProperty("account").GetProperty("phoneNumberConfirmed").GetBoolean());
+        Assert.Contains("Member Directory Acceptance Cloud", profileBody, StringComparison.Ordinal);
+        Assert.Contains("member-directory-payment-reference", profileBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("identity-password-hash-must-not-leak", profileBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("identity-security-stamp-must-not-leak", profileBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("identity-authenticator-key-must-not-leak", profileBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Platform_admin_can_adjust_subscription_plan_and_dates_with_validation_and_audit()
     {
         var originalPlan = new SubscriptionPlan
