@@ -35,9 +35,9 @@
       $('#memberPage').textContent = `Sayfa ${result.page} · ${result.total} hesap`;
       $('#prevMembers').disabled = result.page <= 1;
       $('#nextMembers').disabled = result.page * result.pageSize >= result.total;
-      $('#membersTable').innerHTML = result.items.length ? `<div class="table-wrap"><table><thead><tr><th>Hesap</th><th>İletişim</th><th>Güvenlik</th><th>İlk şirket üyeliği</th><th>Şirketler</th><th>Son görülme</th><th></th></tr></thead><tbody>${result.items.map((account) => {
+      $('#membersTable').innerHTML = result.items.length ? `<div class="table-wrap"><table><thead><tr><th>Hesap</th><th>İletişim</th><th>Güvenlik</th><th>Hesap açılışı</th><th>İlk şirket üyeliği</th><th>Şirketler</th><th>Son görülme</th><th></th></tr></thead><tbody>${result.items.map((account) => {
         const companies = account.memberships.length ? account.memberships.map((membership) => `${esc(membership.name)} · ${esc(roleLabel(membership.roleKey))}${membership.isActive ? '' : ' · pasif'}`).join('<br>') : 'Şirket üyeliği yok';
-        return `<tr><td class="company-name">${esc(account.displayName)}<span class="sub">${esc(account.email || 'E-posta yok')} · ${account.emailConfirmed ? 'doğrulanmış' : 'doğrulanmamış'}</span></td><td>${esc(account.phoneNumber || '—')}</td><td>${account.twoFactorEnabled ? '<span class="pill">2FA açık</span>' : '<span class="pill warn">2FA kapalı</span>'}${account.isLockedOut ? '<span class="sub"><span class="pill red">Kilitli</span></span>' : ''}</td><td>${date(account.firstMembershipAt)}</td><td>${companies}<span class="sub">${account.membershipCount} üyelik</span></td><td>${date(account.lastSeenAt)}</td><td><button class="btn small" data-member-detail="${esc(account.id)}">Ayrıntı</button></td></tr>`;
+        return `<tr><td class="company-name">${esc(account.displayName)}<span class="sub">${esc(account.email || 'E-posta yok')} · ${account.emailConfirmed ? 'doğrulanmış' : 'doğrulanmamış'}</span></td><td>${esc(account.phoneNumber || '—')}</td><td>${account.twoFactorEnabled ? '<span class="pill">2FA açık</span>' : '<span class="pill warn">2FA kapalı</span>'}${account.isLockedOut ? '<span class="sub"><span class="pill red">Kilitli</span></span>' : ''}</td><td>${date(account.accountCreatedAt)}</td><td>${date(account.firstMembershipAt)}</td><td>${companies}<span class="sub">${account.membershipCount} üyelik</span></td><td>${date(account.lastSeenAt)}</td><td><button class="btn small" data-member-detail="${esc(account.id)}">Ayrıntı</button></td></tr>`;
       }).join('')}</tbody></table></div>` : '<div class="empty">Aramayla eşleşen hesap bulunamadı.</div>';
     } catch (error) {
       $('#memberCount').textContent = '—';
@@ -63,6 +63,7 @@
         ['İki aşamalı doğrulama', account.twoFactorEnabled ? 'Açık' : 'Kapalı'],
         ['Hesap kilidi', account.isLockedOut ? 'Kilitli' : 'Kilitli değil'],
         ['Başarısız giriş sayısı', account.accessFailedCount],
+        ['Hesap açılış tarihi', account.accountCreatedAt ? date(account.accountCreatedAt) : 'Eski hesapta kayıtlı değil'],
         ['Son görülme', date(account.lastSeenAt)],
         ['İlk şirket üyeliği', date(account.firstMembershipAt)]
       ];

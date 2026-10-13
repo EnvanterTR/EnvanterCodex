@@ -185,7 +185,7 @@ public static class PlatformEndpoints
                 .Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(account => new
                 {
-                    account.Id, account.DisplayName, account.Email, account.EmailConfirmed,
+                    account.Id, account.DisplayName, account.Email, account.EmailConfirmed, account.AccountCreatedAt,
                     account.PhoneNumber, account.TwoFactorEnabled, account.LockoutEnd,
                     account.AccessFailedCount,
                     firstMembershipAt = db.CompanyMemberships.Where(membership => membership.UserId == account.Id)
@@ -209,7 +209,7 @@ public static class PlatformEndpoints
             var items = accounts.Select(account => new
             {
                 account.Id, account.DisplayName, account.Email, account.EmailConfirmed, account.PhoneNumber,
-                account.TwoFactorEnabled, isLockedOut = account.LockoutEnd is DateTimeOffset lockoutEnd && lockoutEnd > now,
+                account.AccountCreatedAt, account.TwoFactorEnabled, isLockedOut = account.LockoutEnd is DateTimeOffset lockoutEnd && lockoutEnd > now,
                 account.AccessFailedCount, account.firstMembershipAt, account.lastSeenAt, account.membershipCount,
                 memberships = membershipsByUser.GetValueOrDefault(account.Id) ?? []
             });
@@ -224,7 +224,7 @@ public static class PlatformEndpoints
                 {
                     user.Id, user.DisplayName, user.Email, user.EmailConfirmed, user.PhoneNumber,
                     user.PhoneNumberConfirmed, user.TwoFactorEnabled, user.LockoutEnd, user.AccessFailedCount,
-                    user.LockoutEnabled,
+                    user.LockoutEnabled, user.AccountCreatedAt,
                     lastSeenAt = db.UserSessions.Where(session => session.UserId == user.Id)
                         .OrderByDescending(session => session.LastSeenAt).Select(session => (DateTimeOffset?)session.LastSeenAt).FirstOrDefault()
                 }).SingleOrDefaultAsync(cancellationToken);
@@ -251,7 +251,7 @@ public static class PlatformEndpoints
                 account = new
                 {
                     account.Id, account.DisplayName, account.Email, account.EmailConfirmed, account.PhoneNumber,
-                    account.PhoneNumberConfirmed, account.TwoFactorEnabled, account.LockoutEnabled,
+                    account.PhoneNumberConfirmed, account.TwoFactorEnabled, account.LockoutEnabled, account.AccountCreatedAt,
                     isLockedOut = account.LockoutEnd is DateTimeOffset lockoutEnd && lockoutEnd > now,
                     account.AccessFailedCount, account.lastSeenAt,
                     firstMembershipAt = await db.CompanyMemberships.Where(membership => membership.UserId == userId)
@@ -273,6 +273,10 @@ public static class PlatformEndpoints
             const int perSourceLimit = 500;
             var events = new List<PlatformMemberTimelineEvent>();
             var truncated = false;
+            var createdAt = await db.Users.AsNoTracking().Where(x => x.Id == userId)
+                .Select(x => x.AccountCreatedAt).SingleOrDefaultAsync(cancellationToken);
+            if (createdAt is DateTimeOffset accountCreatedAt)
+                events.Add(new(accountCreatedAt, "account", "Hesap oluşturuldu", "EnvanterTR kullanıcı hesabı açıldı.", null));
             var memberships = await (from membership in db.CompanyMemberships.AsNoTracking()
                                      join company in db.Companies.AsNoTracking() on membership.CompanyId equals company.Id
                                      where membership.UserId == userId

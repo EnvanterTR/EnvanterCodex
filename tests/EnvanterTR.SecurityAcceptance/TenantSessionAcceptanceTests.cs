@@ -1283,8 +1283,10 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     public async Task Platform_member_directory_searches_cross_company_accounts_and_hides_identity_secrets()
     {
         var userId = Guid.NewGuid();
+        var legacyUserId = Guid.NewGuid();
         var marker = $"MEMBER-DIRECTORY-{userId:N}";
         var earlierMembership = DateTimeOffset.UtcNow.AddDays(-90);
+        var accountCreatedAt = DateTimeOffset.UtcNow.AddDays(-95);
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -1329,7 +1331,15 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 PasswordHash = "identity-password-hash-must-not-leak",
                 SecurityStamp = "identity-security-stamp-must-not-leak",
                 ConcurrencyStamp = Guid.NewGuid().ToString("N"),
-                DisplayName = "Directory Acceptance Member"
+                DisplayName = "Directory Acceptance Member",
+                AccountCreatedAt = accountCreatedAt
+            });
+            db.Users.Add(new EnvanterUser
+            {
+                Id = legacyUserId, UserName = $"legacy-directory-{legacyUserId:N}",
+                NormalizedUserName = $"LEGACY-DIRECTORY-{legacyUserId:N}",
+                Email = $"legacy-{legacyUserId:N}@example.invalid", NormalizedEmail = $"LEGACY-{legacyUserId:N}@EXAMPLE.INVALID",
+                EmailConfirmed = true, DisplayName = "Legacy account without registration timestamp", AccountCreatedAt = null
             });
             db.CompanyMemberships.AddRange(
                 new CompanyMembership { UserId = userId, CompanyId = _companyId, RoleKey = "owner", CreatedAt = earlierMembership },
@@ -1355,6 +1365,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(1, root.GetProperty("total").GetInt32());
         var result = root.GetProperty("items")[0];
         Assert.Equal(2, result.GetProperty("membershipCount").GetInt32());
+        Assert.InRange((result.GetProperty("accountCreatedAt").GetDateTimeOffset() - accountCreatedAt).Duration(),
+            TimeSpan.Zero, TimeSpan.FromMilliseconds(1));
         Assert.True(result.GetProperty("twoFactorEnabled").GetBoolean());
         Assert.Equal(2, result.GetProperty("memberships").GetArrayLength());
         Assert.InRange((result.GetProperty("firstMembershipAt").GetDateTimeOffset() - earlierMembership).Duration(),
@@ -1368,6 +1380,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var profileBody = await profile.Content.ReadAsStringAsync();
         using var profileJson = JsonDocument.Parse(profileBody);
         Assert.Equal(2, profileJson.RootElement.GetProperty("membershipCount").GetInt32());
+        Assert.InRange((profileJson.RootElement.GetProperty("account").GetProperty("accountCreatedAt").GetDateTimeOffset() - accountCreatedAt).Duration(),
+            TimeSpan.Zero, TimeSpan.FromMilliseconds(1));
         Assert.Equal(2, profileJson.RootElement.GetProperty("memberships").GetArrayLength());
         Assert.True(profileJson.RootElement.GetProperty("account").GetProperty("phoneNumberConfirmed").GetBoolean());
         Assert.Contains("Member Directory Acceptance Cloud", profileBody, StringComparison.Ordinal);
@@ -1375,6 +1389,13 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.DoesNotContain("identity-password-hash-must-not-leak", profileBody, StringComparison.Ordinal);
         Assert.DoesNotContain("identity-security-stamp-must-not-leak", profileBody, StringComparison.Ordinal);
         Assert.DoesNotContain("identity-authenticator-key-must-not-leak", profileBody, StringComparison.Ordinal);
+
+        using (var legacyProfile = await SendAsPlatformAdminAsync($"/api/platform/members/{legacyUserId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, legacyProfile.StatusCode);
+            using var legacyPayload = JsonDocument.Parse(await legacyProfile.Content.ReadAsStringAsync());
+            Assert.Equal(JsonValueKind.Null, legacyPayload.RootElement.GetProperty("account").GetProperty("accountCreatedAt").ValueKind);
+        }
 
         using (var tenantDenied = await SendAsAdminAsync($"/api/platform/members/{userId}/timeline"))
             Assert.Equal(HttpStatusCode.Forbidden, tenantDenied.StatusCode);
@@ -1452,6 +1473,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             if (!timelineRoot.GetProperty("hasMore").GetBoolean()) break;
         }
         Assert.Contains("Demo talebi alındı", timeline);
+        Assert.Contains("Hesap oluşturuldu", timeline);
         Assert.Contains("Satın alma kaydı oluşturuldu", timeline);
         Assert.Contains("Ödeme doğrulandı", timeline);
         Assert.Contains("Demo erişimi tanımlandı", timeline);

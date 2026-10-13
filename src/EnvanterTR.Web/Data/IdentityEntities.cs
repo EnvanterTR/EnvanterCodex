@@ -6,6 +6,8 @@ public sealed class EnvanterUser : IdentityUser<Guid>
 {
     public EnvanterUser() => Id = Guid.NewGuid();
     public required string DisplayName { get; set; }
+    // Nullable for accounts created before this field existed; do not backfill an invented registration date.
+    public DateTimeOffset? AccountCreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
 public sealed class UserSession
