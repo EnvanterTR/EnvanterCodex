@@ -50,6 +50,8 @@ public static class PlatformEndpoints
             var activeCompanies = await db.Companies.AsNoTracking().CountAsync(x => x.IsActive, cancellationToken);
             var paidActive = await db.TenantSubscriptions.AsNoTracking()
                 .CountAsync(x => !x.IsDemo && x.Status == "Active" && x.EndsAt > now, cancellationToken);
+            var customerTrials = await db.TenantSubscriptions.AsNoTracking()
+                .CountAsync(x => !x.IsDemo && x.Status == "Trial" && x.EndsAt > now, cancellationToken);
             var demos = await db.TenantSubscriptions.AsNoTracking()
                 .CountAsync(x => x.IsDemo && x.Status == "Trial" && x.EndsAt > now, cancellationToken);
             var expired = await db.TenantSubscriptions.AsNoTracking()
@@ -60,7 +62,7 @@ public static class PlatformEndpoints
             {
                 generatedAt = now,
                 companies = new { total = companies, active = activeCompanies, suspended = companies - activeCompanies },
-                subscriptions = new { paidActive, demos, expired, renewalsDue },
+                subscriptions = new { paidActive, customerTrials, demos, expired, renewalsDue },
                 note = "Gelir metriği ödeme sağlayıcısı bağlanana ve tahsilatlar kaydedilene kadar gösterilmez."
             });
         });

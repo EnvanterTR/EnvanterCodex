@@ -1057,6 +1057,41 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Platform_overview_distinguishes_customer_trials_from_demo_subscriptions()
+    {
+        var plan = new SubscriptionPlan
+        {
+            Code = $"trial-{_companyId:N}", Name = "Subscription overview acceptance", DeploymentKind = "cloud",
+            IsActive = true, IsPublic = true
+        };
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SubscriptionPlans.Add(plan);
+            db.TenantSubscriptions.AddRange(
+                new TenantSubscription
+                {
+                    CompanyId = _companyId, PlanId = plan.Id, Status = "Trial", IsDemo = false,
+                    StartsAt = DateTimeOffset.UtcNow.AddMinutes(-1), EndsAt = DateTimeOffset.UtcNow.AddDays(14)
+                },
+                new TenantSubscription
+                {
+                    CompanyId = _otherCompanyId, PlanId = plan.Id, Status = "Trial", IsDemo = true,
+                    StartsAt = DateTimeOffset.UtcNow.AddMinutes(-1), EndsAt = DateTimeOffset.UtcNow.AddDays(14)
+                });
+            db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            await db.SaveChangesAsync();
+        }
+
+        using var response = await SendAsPlatformAdminAsync("/api/platform/overview");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var subscriptions = payload.RootElement.GetProperty("subscriptions");
+        Assert.True(subscriptions.GetProperty("customerTrials").GetInt32() >= 1);
+        Assert.True(subscriptions.GetProperty("demos").GetInt32() >= 1);
+    }
+
+    [Fact]
     public async Task Company_member_and_platform_admin_boundaries_are_enforced_over_http()
     {
         using (var companyMember = await SendAsRoleAsync(HttpMethod.Get, "/api/company/branding", "viewer"))
