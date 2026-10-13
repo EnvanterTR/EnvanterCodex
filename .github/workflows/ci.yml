@@ -33,6 +33,10 @@ jobs:
         shell: bash
         run: node tools/Verify-AppNavigation.mjs
 
+      - name: Verify keyboard shortcuts and command palette contracts
+        shell: bash
+        run: node tools/Verify-KeyboardShortcuts.mjs
+
       - name: Verify asset status label editor and option refresh
         shell: bash
         run: node tools/Verify-StatusLabelsUi.mjs

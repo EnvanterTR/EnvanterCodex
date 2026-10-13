@@ -96,6 +96,10 @@
     .activity{display:flex;flex-direction:column;align-items:stretch;min-width:0;width:100%}#activityRows{display:flex;flex-direction:column;align-items:stretch;min-width:0;width:100%}#activityRows>.activity-empty-message,#activityRows>.activity-empty{box-sizing:border-box;display:block;align-self:stretch;flex:0 0 auto;grid-column:1/-1;width:100%;max-width:100%;min-width:0;margin:10px 0;padding:12px 13px;border:1px dashed var(--workspace-line,#dce4ee);border-radius:9px;color:var(--workspace-muted,#68778d);font-size:.76rem;line-height:1.5;white-space:normal;overflow-wrap:anywhere}#activityRows>.activity-empty .activity-copy{display:block;width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere}
     body.auth-required .app{visibility:hidden}
   </style>
+  <style id="keyboard-shortcuts-styles">
+    .command-palette-dialog{width:min(640px,calc(100% - 24px));max-height:min(82vh,720px)}.command-palette-body{display:grid;gap:12px;padding:14px}.command-palette-search{display:grid;gap:6px;color:#526176;font-size:.75rem}.command-palette-search input{width:100%;min-height:44px;padding:0 12px;border:1px solid #cbd5e1;border-radius:9px;color:#19263b;background:#fff}.command-palette-results{display:grid;gap:4px;max-height:min(48vh,420px);overflow:auto}.command-option{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:10px 12px;border:1px solid transparent;border-radius:8px;color:#26364d;background:#fff;text-align:left}.command-option:hover,.command-option[aria-selected="true"]{border-color:#c8d9f5;background:#edf4ff}.command-option small{color:#718096;font-size:.68rem}.command-empty,.command-palette-hint{margin:0;padding:8px 3px;color:#718096;font-size:.73rem}.keyboard-shortcut-list{display:grid;grid-template-columns:1fr auto;gap:10px 18px;margin:0}.keyboard-shortcut-list dt{color:#334155}.keyboard-shortcut-list dd{margin:0;color:#526176;font-weight:700}.keyboard-shortcut-list kbd{padding:3px 7px;border:1px solid #cbd5e1;border-radius:5px;background:#f8fafc;font:inherit;font-size:.72rem}
+    @media(max-width:600px){.command-palette-dialog{width:calc(100% - 16px);max-height:90vh}.command-palette-body{padding:10px}.command-option{min-height:44px}}
+  </style>
   <style id="workspaceDesignPolish">
     /* A calmer, more deliberate visual system for every company workspace. */
     :root{--workspace-ink:#17243a;--workspace-muted:#68778d;--workspace-line:#e5eaf1;--workspace-surface:#fff;--workspace-canvas:#f4f6fa;--workspace-accent:#2468d8;--workspace-accent-soft:#edf3ff}
@@ -578,6 +582,14 @@
       </section>
     <dialog class="detail-dialog" id="licenseRevokeDialog" aria-labelledby="licenseRevokeTitle"><form id="licenseRevokeForm"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ALANI / LİSANS ATAMASI</div><h2 id="licenseRevokeTitle">Atamayı kaldır</h2></div><button class="close" id="licenseRevokeClose" type="button" aria-label="Kapat" data-locale-aria="Kapat">✕</button></div><div class="dialog-body"><p id="licenseRevokeSummary" class="muted"></p><p class="muted">Bu lisans atamasını geri almak istiyor musunuz?</p><div class="dialog-actions"><button class="btn" id="licenseRevokeCancel" type="button">Vazgeç</button><button class="btn danger" id="licenseRevokeSubmit" type="submit">Atamayı kaldır</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="licenseImportProfileDeleteDialog" aria-labelledby="licenseImportProfileDeleteTitle"><form id="licenseImportProfileDeleteForm"><div class="dialog-head"><div><div class="eyebrow">YAZILIM LİSANSI / DOSYA AKTARIMI</div><h2 id="licenseImportProfileDeleteTitle">Eşleme profilini sil</h2></div><button class="close" id="licenseImportProfileDeleteClose" type="button" aria-label="Kapat" data-locale-aria="Kapat">✕</button></div><div class="dialog-body"><p id="licenseImportProfileDeleteSummary" class="muted"></p><p>Bu işlem yalnızca kayıtlı lisans sütun eşlemesini siler.</p><div class="dialog-actions"><button class="btn" id="licenseImportProfileDeleteCancel" type="button">Vazgeç</button><button class="btn danger" id="licenseImportProfileDeleteSubmit" type="submit">Profili sil</button></div></div></form></dialog>
+  <dialog class="detail-dialog command-palette-dialog" id="commandPaletteDialog" aria-labelledby="commandPaletteTitle" aria-describedby="commandPaletteDescription">
+    <div class="dialog-head"><div><div class="eyebrow">HIZLI ERİŞİM</div><h2 id="commandPaletteTitle">Komut paleti</h2></div><button class="close" id="commandPaletteClose" type="button" aria-label="Kapat">✕</button></div>
+    <div class="command-palette-body"><label class="command-palette-search" for="commandPaletteSearch">Sayfa veya işlem ara<input id="commandPaletteSearch" type="search" autocomplete="off" aria-controls="commandPaletteResults" aria-keyshortcuts="Control+K"></label><div id="commandPaletteResults" class="command-palette-results" role="menu" aria-label="Sayfalar ve hızlı işlemler"></div><p id="commandPaletteDescription" class="command-palette-hint">↑ ↓ ile gezin, Enter ile aç, Esc ile kapat.</p></div>
+  </dialog>
+  <dialog class="detail-dialog" id="keyboardShortcutsDialog" aria-labelledby="keyboardShortcutsTitle">
+    <div class="dialog-head"><div><div class="eyebrow">KLAVYE</div><h2 id="keyboardShortcutsTitle">Klavye kısayolları</h2></div><button class="close" id="keyboardShortcutsClose" type="button" aria-label="Kapat">✕</button></div>
+    <div class="dialog-body"><dl class="keyboard-shortcut-list"><dt>Komut paletini aç</dt><dd><kbd>Ctrl</kbd> + <kbd>K</kbd></dd><dt>Varlık oluştur</dt><dd><kbd>Ctrl</kbd> + <kbd>N</kbd></dd><dt>Envanterde ara</dt><dd><kbd>/</kbd></dd><dt>Bu yardım penceresi</dt><dd><kbd>?</kbd></dd><dt>Açık pencereyi veya menüyü kapat</dt><dd><kbd>Esc</kbd></dd></dl></div>
+  </dialog>
   </main>
   <dialog class="detail-dialog" id="contractFormDialog"><form id="contractForm"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ALANI / SÖZLEŞME</div><h2 id="contractFormTitle">Yeni sözleşme</h2></div><button class="close" type="button" data-close-contract aria-label="Kapat">✕</button></div><div class="dialog-body"><input name="id" type="hidden"><div class="form-grid"><label>Sözleşme adı *<input name="name" required maxlength="200"></label><label>Sözleşme numarası<input name="contractNumber" maxlength="120"></label><label>Sözleşme türü<input name="contractType" maxlength="120" placeholder="Bakım, destek, abonelik…"></label><label>Tedarikçi<select name="supplierId"><option value="">Elle girilen tedarikçi</option></select></label><label id="contractSupplierTextLabel">Tedarikçi adı<input name="supplier" maxlength="200"></label><label>Başlangıç<input name="startDate" type="date"></label><label>Bitiş<input name="endDate" type="date"></label><label>Maliyet<input name="cost" type="number" min="0" step="0.01"></label><label>Para birimi<select name="currency"><option>TRY</option><option>USD</option><option>EUR</option></select></label><label class="wide">Bağlı kayıt ara<input id="contractLookupSearch" type="search" maxlength="120" placeholder="Varlık etiketi, ad veya lisans adı"></label><label class="wide">Bağlı varlıklar<select name="assetIds" id="contractAssetIds" multiple size="6" aria-label="Sözleşmeye bağlı varlıklar"></select></label><label class="wide">Bağlı yazılım lisansları<select name="licenseIds" id="contractLicenseIds" multiple size="5" aria-label="Sözleşmeye bağlı yazılım lisansları"></select></label><label class="wide">Notlar<textarea name="notes" maxlength="4000" rows="3"></textarea></label></div><p class="muted">Bağlantı araması 100 sonucu gösterir; seçtiğiniz varlık ve lisanslar arama değişse de korunur. Tedarikçi seçerseniz şirket kataloğundaki ad kullanılır.</p><div class="dialog-actions"><button class="btn" type="button" data-close-contract>Vazgeç</button><button class="btn primary" type="submit">Kaydet</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="contractDetailDialog"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ALANI / SÖZLEŞME</div><h2 id="contractDetailTitle">Sözleşme ayrıntısı</h2></div><button class="close" type="button" id="closeContractDetail" aria-label="Kapat">✕</button></div><div class="dialog-body"><div id="contractDetailFields" class="detail-grid"></div><h3>Bağlı varlıklar ve lisanslar</h3><div id="contractDetailLinks" class="muted"></div><div class="panel-head"><h3>Sözleşme dosyaları</h3><label class="btn small" id="contractUploadLabel">＋ Dosya ekle<input id="contractAttachmentFile" type="file" accept="application/pdf,image/png,image/jpeg,image/webp" hidden></label></div><p class="muted">PDF, PNG, JPEG veya WebP · en fazla 10 MiB · 30 dosya.</p><ul id="contractAttachmentRows"></ul><div class="dialog-actions"><button class="btn" type="button" id="closeContractDetailFooter">Kapat</button></div></div></dialog>
@@ -3290,6 +3302,24 @@
       'Mevcut hassas değeri temizle':['Clear the current sensitive value','Очистить текущее конфиденциальное значение','Очистити поточне конфіденційне значення','Исчисти ја тековната чувствителна вредност'],
       'Hassas özel alanlar gizlilik için filtrelenemez.':['Sensitive custom fields cannot be filtered for privacy.','Конфиденциальные пользовательские поля нельзя фильтровать.','Конфіденційні спеціальні поля не можна фільтрувати.','Чувствителните прилагодени полиња не може да се филтрираат.'],
       'Hassas özel alanlar özel raporlara eklenemez.':['Sensitive custom fields cannot be added to custom reports.','Конфиденциальные пользовательские поля нельзя добавлять в пользовательские отчёты.','Конфіденційні спеціальні поля не можна додавати до власних звітів.','Чувствителните прилагодени полиња не може да се додаваат во сопствени извештаи.']
+    });
+    Object.assign(localeRows, {
+      'HIZLI ERİŞİM':['QUICK ACCESS','БЫСТРЫЙ ДОСТУП','ШВИДКИЙ ДОСТУП','БРЗ ПРИСТАП'],
+      'Komut paleti':['Command palette','Палитра команд','Палітра команд','Палета со команди'],
+      'Sayfa veya işlem ara':['Search pages or actions','Поиск страниц и действий','Пошук сторінок і дій','Пребарај страници или дејства'],
+      'Sayfalar ve hızlı işlemler':['Pages and quick actions','Страницы и быстрые действия','Сторінки та швидкі дії','Страници и брзи дејства'],
+      '↑ ↓ ile gezin, Enter ile aç, Esc ile kapat.':['Use ↑ ↓ to navigate, Enter to open, Esc to close.','Навигация: ↑ ↓, открыть: Enter, закрыть: Esc.','Навігація: ↑ ↓, відкрити: Enter, закрити: Esc.','Движење: ↑ ↓, отвори: Enter, затвори: Esc.'],
+      'KLAVYE':['KEYBOARD','КЛАВИАТУРА','КЛАВІАТУРА','ТАСТАТУРА'],
+      'Klavye kısayolları':['Keyboard shortcuts','Сочетания клавиш','Комбінації клавіш','Кратенки на тастатура'],
+      'Komut paletini aç':['Open command palette','Открыть палитру команд','Відкрити палітру команд','Отвори ја палетата со команди'],
+      'Varlık oluştur':['Create an asset','Создать актив','Створити актив','Создај средство'],
+      'Envanterde ara':['Search inventory','Поиск по инвентарю','Пошук в інвентарі','Пребарај инвентар'],
+      'Bu yardım penceresi':['This help dialog','Это окно справки','Це вікно довідки','Овој прозорец за помош'],
+      'Açık pencereyi veya menüyü kapat':['Close the open dialog or menu','Закрыть открытое окно или меню','Закрити відкрите вікно або меню','Затвори го отворениот прозорец или мени'],
+      'Sayfa':['Page','Страница','Сторінка','Страница'],
+      'Hızlı işlem':['Quick action','Быстрое действие','Швидка дія','Брзо дејство'],
+      'Eşleşen sayfa veya işlem bulunamadı.':['No matching page or action found.','Страницы или действия не найдены.','Сторінок або дій не знайдено.','Не се пронајдени страници или дејства.'],
+      'Varlık oluşturma yetkiniz bulunmuyor.':['You do not have permission to create assets.','У вас нет прав на создание активов.','У вас немає дозволу створювати активи.','Немате дозвола да создавате средства.']
     });
     async function loadLabelSettings(companyId) {
       labelSettingsKey = `envantertr:label-settings:${companyId}`;
@@ -9565,7 +9595,55 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     $('#openNotificationCalendar').addEventListener('click', () => { closeOperationalAlerts(); document.querySelector('[data-page="Takvim"]')?.click(); });
     document.addEventListener('click', event => { if (!event.target.closest('.notification-wrap')) closeOperationalAlerts(); });
     $('#mobileMenu').addEventListener('click', () => setMobileSidebarOpen(!$('#sidebar').classList.contains('open')));
-    document.addEventListener('keydown', event => { if (event.key !== 'Escape') return; if (!$('#notificationPanel').hidden) { closeOperationalAlerts(); $('#notificationButton').focus(); } if ($('#sidebar').classList.contains('open')) setMobileSidebarOpen(false); if ($('#assetColumnPicker').open) { $('#assetColumnPicker').open = false; $('summary', $('#assetColumnPicker')).focus(); } });
+    const commandPaletteDialog = $('#commandPaletteDialog'), commandPaletteSearch = $('#commandPaletteSearch'), commandPaletteResults = $('#commandPaletteResults');
+    function commandPaletteEntries() {
+      const pages = [...new Map([...document.querySelectorAll('#sidebar [data-page]')].map(button => [button.dataset.page, { type: 'page', value: button.dataset.page, label: button.textContent.trim(), group: 'Sayfa' }])).values()];
+      const actions = [];
+      if (!$('#newAssetButton').hidden && canWriteAssets()) actions.push({ type: 'button', value: 'newAssetButton', label: 'Yeni varlık', group: 'Hızlı işlem' });
+      if (!$('#scanAssetButton').hidden) actions.push({ type: 'button', value: 'scanAssetButton', label: 'Barkod okut', group: 'Hızlı işlem' });
+      return [...actions, ...pages];
+    }
+    function runCommandPaletteEntry(entry) {
+      commandPaletteDialog.close();
+      if (entry.type === 'button') { document.getElementById(entry.value)?.click(); return; }
+      [...document.querySelectorAll('#sidebar [data-page]')].find(button => button.dataset.page === entry.value)?.click();
+    }
+    function renderCommandPalette() {
+      const locale = localeTags[appearanceLanguage.value] || 'tr-TR', query = commandPaletteSearch.value.trim().toLocaleLowerCase(locale);
+      const entries = commandPaletteEntries().filter(entry => `${entry.label} ${entry.group}`.toLocaleLowerCase(locale).includes(query));
+      commandPaletteResults.replaceChildren();
+      if (!entries.length) { const empty = document.createElement('p'); empty.className = 'command-empty'; empty.setAttribute('role', 'status'); empty.textContent = translateUiText('Eşleşen sayfa veya işlem bulunamadı.'); commandPaletteResults.append(empty); return; }
+      entries.forEach((entry, index) => { const option = document.createElement('button'); option.type = 'button'; option.className = 'command-option'; option.setAttribute('role', 'menuitem'); option.dataset.commandIndex = String(index); const label = document.createElement('span'); label.textContent = translateUiText(entry.label); const group = document.createElement('small'); group.textContent = translateUiText(entry.group); option.append(label, group); option.addEventListener('click', () => runCommandPaletteEntry(entry)); commandPaletteResults.append(option); });
+    }
+    function openCommandPalette() {
+      if (document.body.classList.contains('auth-required')) return;
+      renderCommandPalette(); commandPaletteDialog.showModal(); commandPaletteSearch.focus();
+    }
+    commandPaletteSearch.addEventListener('input', renderCommandPalette);
+    commandPaletteDialog.addEventListener('keydown', event => {
+      if (!['ArrowDown', 'ArrowUp'].includes(event.key)) { if (event.key === 'Enter' && event.target === commandPaletteSearch) { event.preventDefault(); commandPaletteResults.querySelector('.command-option')?.click(); } return; }
+      const options = [...commandPaletteResults.querySelectorAll('.command-option')]; if (!options.length) return; event.preventDefault();
+      const current = options.indexOf(document.activeElement); if (event.key === 'ArrowDown') options[Math.min(current + 1, options.length - 1)]?.focus(); else if (current <= 0) commandPaletteSearch.focus(); else options[current - 1]?.focus();
+    });
+    $('#commandPaletteClose').addEventListener('click', () => commandPaletteDialog.close());
+    commandPaletteDialog.addEventListener('click', event => { if (event.target === commandPaletteDialog) commandPaletteDialog.close(); });
+    $('#keyboardShortcutsClose').addEventListener('click', () => $('#keyboardShortcutsDialog').close());
+    $('#keyboardShortcutsDialog').addEventListener('click', event => { if (event.target === event.currentTarget) event.currentTarget.close(); });
+    $('#globalSearch').setAttribute('aria-keyshortcuts', '/'); $('#newAssetButton').setAttribute('aria-keyshortcuts', 'Control+N'); $('#helpButton').setAttribute('aria-keyshortcuts', '?');
+    function isTextEntryTarget(target) { return target instanceof HTMLElement && (target.isContentEditable || target.matches('input,textarea,select,[role="textbox"]')); }
+    document.addEventListener('keydown', event => {
+      const key = event.key.toLocaleLowerCase(), modified = event.ctrlKey || event.metaKey, typing = isTextEntryTarget(event.target);
+      if (!document.body.classList.contains('auth-required')) {
+        if (modified && key === 'k') { event.preventDefault(); if (!commandPaletteDialog.open) openCommandPalette(); return; }
+        if (modified && key === 'n' && !typing) { event.preventDefault(); if (canWriteAssets() && !$('#newAssetButton').hidden) $('#newAssetButton').click(); else notify(translateUiText('Varlık oluşturma yetkiniz bulunmuyor.')); return; }
+        if (!modified && !event.altKey && event.key === '/' && !typing) { event.preventDefault(); $('#globalSearch').focus(); $('#globalSearch').select(); return; }
+        if (!modified && !event.altKey && event.key === '?' && !typing) { event.preventDefault(); $('#keyboardShortcutsDialog').showModal(); return; }
+      }
+      if (event.key !== 'Escape') return;
+      if (!$('#notificationPanel').hidden) { closeOperationalAlerts(); $('#notificationButton').focus(); }
+      if ($('#sidebar').classList.contains('open')) setMobileSidebarOpen(false);
+      if ($('#assetColumnPicker').open) { $('#assetColumnPicker').open = false; $('summary', $('#assetColumnPicker')).focus(); }
+    });
     let searchTimer; $('#globalSearch').addEventListener('input', event => { $('#assetListSearch').value = event.target.value; clearTimeout(searchTimer); searchTimer = setTimeout(() => loadDashboard(event.target.value.trim(), 1).catch(error => notify(error.message)), 250); });
     const loginCompanyField = $('#loginCompanyField'), loginCompanySelect = $('#loginCompanyId');
     const loginCompanyButton = $('button[type="submit"]', $('#loginForm'));
