@@ -18,6 +18,7 @@ const handler = setupIndex < 0 || handlerIndex < 0 || handlerEnd < 0 ? '' : sour
 const palette = setupIndex < 0 ? '' : source.slice(setupIndex, handlerIndex);
 
 requireSource(handler.includes("modified && key === 'k'") && handler.includes('openCommandPalette()'), 'Ctrl/Command+K must open the command palette.');
+requireSource(handler.includes("const key = (event.key || '').toLocaleLowerCase()"), 'Keyboard shortcut handling must tolerate synthetic or incomplete key events without throwing.');
 requireSource(handler.includes("modified && key === 'n' && !typing") && handler.includes('canWriteAssets()') && handler.includes("$('#newAssetButton').click()"), 'Ctrl/Command+N must be ignored while typing and open asset creation only for authorized users.');
 requireSource(handler.includes("event.key === '/' && !typing") && handler.includes("$('#globalSearch').focus()") && handler.includes("$('#globalSearch').select()"), 'Slash must focus and select global search when the user is not editing text.');
 requireSource(handler.includes("event.key === '?' && !typing") && handler.includes("$('#keyboardShortcutsDialog').showModal()"), 'Question mark must open the keyboard-shortcut help dialog outside text fields.');

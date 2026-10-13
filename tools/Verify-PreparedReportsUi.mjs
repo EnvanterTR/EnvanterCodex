@@ -28,6 +28,11 @@ for (const id of ['auditReportApply', 'auditReportPrev', 'auditReportNext']) {
   assert.ok(html.includes(`$('#${id}').addEventListener(`), `${id} must be wired`);
 }
 
+const assetPurchaseReport = html.slice(html.indexOf('async function loadAssetPurchaseReport('), html.indexOf('function exportAssetPurchaseReport('));
+assert.ok(html.includes('assetPurchaseReportRequestId = 0'), 'asset purchase report request state must be initialized');
+assert.ok(assetPurchaseReport.includes('++assetPurchaseReportRequestId'), 'asset purchase report must advance its request version');
+assert.ok(assetPurchaseReport.includes('if (requestId !== assetPurchaseReportRequestId) return'), 'asset purchase report must ignore stale results');
+
 const maintenance = html.slice(html.indexOf('async function loadMaintenanceReport('), html.indexOf('function warrantyReportParams('));
 for (const id of ['maintenanceReportFrom', 'maintenanceReportTo']) {
   assert.ok(maintenance.includes(`$('#${id}').value`), `maintenance report must apply ${id}`);
@@ -36,7 +41,19 @@ for (const id of ['applyMaintenanceReportFilter', 'clearMaintenanceReportFilter'
   assert.ok(html.includes(`$('#${id}').addEventListener(`), `${id} must be wired`);
 }
 
+const reportDateFormatter = html.slice(html.indexOf('function formatReportDate('), html.indexOf('function pendingDeliveryParams('));
+assert.ok(reportDateFormatter.includes('new Date(`${String(value).slice(0, 10)}T12:00:00Z`)'), 'shared report date formatter must parse date-only values at UTC noon to avoid timezone day shifts');
+assert.ok(reportDateFormatter.includes('timeZone: \'UTC\''), 'shared report date formatter must display date-only values consistently across client timezones');
+assert.ok(reportDateFormatter.includes('if (!Number.isFinite(date.getTime())) return \'—\''), 'shared report date formatter must tolerate malformed or missing server values');
+for (const [name, body] of [
+  ['pending-delivery', html.slice(html.indexOf('async function loadPendingDeliveryReport('), html.indexOf('async function openPendingDeliveryOrder('))],
+  ['depreciation', html.slice(html.indexOf('async function loadDepreciationReport('), html.indexOf('function exportDepreciationReport('))]
+]) {
+  assert.ok(body.includes('formatReportDate('), `${name} report must use the shared date formatter`);
+  assert.ok(!/\bformatDate\s*\(/.test(body), `${name} report must not call an undefined local formatDate function`);
+}
+
 for (const id of ['applyReportDateFilter', 'clearReportDateFilter', 'reportRefresh']) {
   assert.ok(html.includes(`$('#${id}').addEventListener(`), `${id} must be wired`);
 }
-console.log('Verified prepared report request ordering, current-error handling, date/search filters, paging, refresh, and report API wiring.');
+console.log('Verified prepared report request ordering, shared timezone-safe date formatting, current-error handling, date/search filters, paging, refresh, and report API wiring.');

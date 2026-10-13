@@ -699,7 +699,7 @@
     let licenseReportPage = 1, licenseReportRequestId = 0, licenseReportSearchTimer;
     let pendingDeliveryPage = 1, pendingDeliveryRequestId = 0, pendingDeliverySearchTimer;
     let depreciationReportPage = 1, depreciationReportRequestId = 0, depreciationReportSearchTimer;
-    let assetPurchaseReportPage = 1, assetPurchaseReportTotal = 0, assetPurchaseReportSearchTimer;
+    let assetPurchaseReportPage = 1, assetPurchaseReportTotal = 0, assetPurchaseReportRequestId = 0, assetPurchaseReportSearchTimer;
     let employeeListManagerSearchTimer;
     const calendarStyle = document.createElement('style');
     calendarStyle.textContent = '.calendar-month-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px;padding:14px}.calendar-month{min-width:0}.calendar-month-title{margin:0 0 9px;color:#253650;font-size:.95rem}.calendar-weekdays,.calendar-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.calendar-weekday{padding:5px 2px;color:#8793a6;text-align:center;font-size:.65rem;font-weight:700}.calendar-day{min-width:0;min-height:92px;padding:5px;border:1px solid #e3eaf3;border-radius:8px;background:white;overflow:hidden}.calendar-day.is-outside{background:#f6f8fb;color:#b2bccb}.calendar-day.is-today{border-color:#3488f4;box-shadow:inset 0 0 0 1px #3488f433}.calendar-day-number{display:block;margin-bottom:4px;color:#52637a;font-size:.68rem;font-weight:700}.calendar-day.is-today .calendar-day-number{color:#1768cc}.calendar-day-event{display:block;width:100%;margin:2px 0;padding:3px 4px;border:0;border-radius:4px;color:#1659a8;background:#edf5ff;text-align:left;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;font-size:.59rem}.calendar-day-event.license{color:#7351a8;background:#f3efff}.calendar-day-event.overdue{color:#a23e39;background:#fff0ee}.calendar-day-more{color:#76849a;font-size:.58rem}.calendar-period-nav{display:flex;align-items:center;gap:8px;padding:0 14px 12px}.calendar-period-nav h2{flex:1;margin:0;text-align:center;color:#253650;font-size:.95rem}.calendar-week-view{overflow-x:auto;padding:0 14px 14px}.calendar-week-grid{display:grid;grid-template-columns:repeat(7,minmax(110px,1fr));gap:6px;min-width:790px}.calendar-week-day{min-height:170px;padding:8px;border:1px solid #e3eaf3;border-radius:8px;background:white}.calendar-week-day.is-outside{background:#f6f8fb;color:#aeb9c8}.calendar-agenda{padding:0 14px 18px}.calendar-agenda-day{margin-bottom:10px;padding:12px;border:1px solid #e3eaf3;border-radius:8px;background:white}.calendar-agenda-day h3{margin:0 0 8px;color:#253650;font-size:.9rem}.calendar-agenda-event{display:flex;gap:10px;align-items:flex-start;width:100%;margin-top:6px;padding:10px;border:1px solid #e1e8f2;border-radius:7px;background:#fff;text-align:left}.calendar-agenda-event.maintenance{border-left:4px solid #df9c23}.calendar-agenda-event.license{border-left:4px solid #8062c5}.calendar-agenda-event strong{display:block;color:#26374e}.calendar-agenda-event small{display:block;margin-top:3px;color:#76849a}.calendar-agenda-empty{color:#8793a6;font-size:.84rem}@media(max-width:600px){.calendar-day{min-height:74px;padding:3px}.calendar-weekday{font-size:.58rem}.calendar-day-event{font-size:.52rem;padding:2px}.calendar-period-nav{gap:4px;padding-right:8px;padding-left:8px}.calendar-period-nav .btn{padding:6px 8px;font-size:.7rem}}';
@@ -4953,6 +4953,12 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       if (from && to && from > to) { notify(translateUiText('Başlangıç tarihi bitiş tarihinden sonra olamaz.')); return; }
       window.location.href = `/api/reports/assets/purchases/export.csv?${params}`;
     }
+    function formatReportDate(value) {
+      if (!value) return '—';
+      const date = new Date(`${String(value).slice(0, 10)}T12:00:00Z`);
+      if (!Number.isFinite(date.getTime())) return '—';
+      return new Intl.DateTimeFormat(selectedLocale, { dateStyle: 'medium', timeZone: 'UTC' }).format(date);
+    }
     function pendingDeliveryParams(includePage=true) {
       const params = new URLSearchParams({ state: $('#pendingDeliveryState').value || 'all' });
       const q = $('#pendingDeliverySearch').value.trim(); if (q) params.set('q', q);
@@ -4966,7 +4972,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       const result = await api(`/api/reports/pending-deliveries?${params}`, { timeoutMs: 15000 });
       if (requestId !== pendingDeliveryRequestId) return;
       pendingDeliveryPage = result.page || 1;
-      $('#pendingDeliveryNote').textContent = reportTemplate('Rapor tarihi {date}; iptal edilmiş siparişler ve teslim alınmış kalemler kapsam dışıdır.', { date: formatDate(result.asOf) });
+      $('#pendingDeliveryNote').textContent = reportTemplate('Rapor tarihi {date}; iptal edilmiş siparişler ve teslim alınmış kalemler kapsam dışıdır.', { date: formatReportDate(result.asOf) });
       $('#pendingDeliveryCount').textContent = `${fmt.format(result.total || 0)} ${translateUiText('kalem')}`;
       const summary = $('#pendingDeliverySummary'); summary.replaceChildren();
       for (const [label,value,note] of [
@@ -4978,7 +4984,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       if (!(result.items||[]).length) reportEmpty(rows,9,$('#pendingDeliverySearch').value.trim()||$('#pendingDeliveryState').value!=='all'?'Bu filtrelerde bekleyen teslimat bulunamadı.':'Bekleyen sipariş teslimatı yok.');
       for (const item of result.items||[]) {
         const row=document.createElement('tr');
-        const expected=document.createElement('td');expected.textContent=item.expectedOn?formatDate(item.expectedOn):translateUiText('Tarih belirtilmemiş');
+        const expected=document.createElement('td');expected.textContent=item.expectedOn?formatReportDate(item.expectedOn):translateUiText('Tarih belirtilmemiş');
         if(item.expectedOn&&item.expectedOn<result.asOf) expected.className='pill warn';
         const type=document.createElement('td');type.textContent=translateUiText(item.orderType);
         const orderCell=document.createElement('td'),order=document.createElement('button');order.type='button';order.className='text-link';order.textContent=item.orderNumber;order.setAttribute('aria-label',`${item.orderNumber} ${translateUiText('siparişini aç')}`);order.addEventListener('click',()=>openPendingDeliveryOrder(item).catch(error=>notify(error.message)));orderCell.append(order);
@@ -5014,14 +5020,14 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       try {
       const result=await api(`/api/reports/depreciation?${params}`, { timeoutMs: 15000 });if(requestId!==depreciationReportRequestId)return;
       depreciationReportPage=result.page||1;$('#depreciationReportCount').textContent=reportTemplate('{count} uygun varlık',{count:fmt.format(result.total||0)});
-      $('#depreciationReportNote').textContent=reportTemplate('{date} tarihi itibarıyla; modele amortisman politikası tanımlanmış varlıklar.',{date:formatDate(result.asOf)});
+      $('#depreciationReportNote').textContent=reportTemplate('{date} tarihi itibarıyla; modele amortisman politikası tanımlanmış varlıklar.',{date:formatReportDate(result.asOf)});
       const summary=$('#depreciationReportSummary');summary.replaceChildren();
       if(!(result.totalsByCurrency||[]).length){const empty=document.createElement('p');empty.className='muted';empty.textContent=translateUiText('Amortisman politikası, alış tarihi ve alış bedeli olan varlık bulunamadı.');summary.append(empty);}
       for(const total of result.totalsByCurrency||[])for(const [label,value] of [['Alış bedeli',total.acquisitionCost],['Aylık amortisman',total.monthlyDepreciation],['Birikmiş amortisman',total.accumulatedDepreciation],['Defter değeri',total.bookValue]]){const card=document.createElement('article');card.className='stat';const caption=document.createElement('div');caption.className='stat-top';caption.textContent=`${translateUiText(label)} · ${total.currency}`;const amount=document.createElement('strong');amount.textContent=formatRecordedCurrency(value,total.currency);const hint=document.createElement('small');hint.textContent=`${fmt.format(total.assetCount)} ${translateUiText('varlık')}`;card.append(caption,amount,hint);summary.append(card);}
       const rows=$('#depreciationReportRows');rows.replaceChildren();
       if(!(result.items||[]).length)reportEmpty(rows,10,$('#depreciationReportSearch').value.trim()?'Bu aramayla eşleşen amortisman kaydı yok.':'Amortisman politikası tanımlı uygun varlık yok.');
       const methodLabel={linear:'Doğrusal',half_1:'Yarım yıl · ilk dönem',half_2:'Yarım yıl · satın alma dönemine göre'};
-      for(const item of result.items||[]){const row=document.createElement('tr');const tagCell=document.createElement('td'),tag=document.createElement('button');tag.type='button';tag.className='text-link';tag.textContent=`${item.assetTag} · ${item.name}`;tag.addEventListener('click',()=>openAsset(item.id).catch(error=>notify(error.message)));tagCell.append(tag);const model=document.createElement('td');model.textContent=item.model||'—';row.append(tagCell,model);for(const value of [formatDate(item.purchaseDate),formatDate(item.endOfLife),formatRecordedCurrency(item.purchaseCost,item.currency),formatRecordedCurrency(item.monthlyDepreciation,item.currency),formatRecordedCurrency(item.accumulatedDepreciation,item.currency),formatRecordedCurrency(item.bookValue,item.currency),fmt.format(item.remainingMonths),translateUiText(methodLabel[item.method]||item.method)]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}rows.append(row);}
+      for(const item of result.items||[]){const row=document.createElement('tr');const tagCell=document.createElement('td'),tag=document.createElement('button');tag.type='button';tag.className='text-link';tag.textContent=`${item.assetTag} · ${item.name}`;tag.addEventListener('click',()=>openAsset(item.id).catch(error=>notify(error.message)));tagCell.append(tag);const model=document.createElement('td');model.textContent=item.model||'—';row.append(tagCell,model);for(const value of [formatReportDate(item.purchaseDate),formatReportDate(item.endOfLife),formatRecordedCurrency(item.purchaseCost,item.currency),formatRecordedCurrency(item.monthlyDepreciation,item.currency),formatRecordedCurrency(item.accumulatedDepreciation,item.currency),formatRecordedCurrency(item.bookValue,item.currency),fmt.format(item.remainingMonths),translateUiText(methodLabel[item.method]||item.method)]){const cell=document.createElement('td');cell.textContent=value;row.append(cell);}rows.append(row);}
       $('#depreciationReportPageInfo').textContent=reportTemplate('{count} varlık · Sayfa {page} / {pages}',{count:fmt.format(result.total||0),page:fmt.format(result.page||1),pages:fmt.format(result.pageCount||1)});$('#depreciationReportPrev').disabled=(result.page||1)<=1;$('#depreciationReportNext').disabled=(result.page||1)>=(result.pageCount||1);
       } catch (error) {
         if (requestId === depreciationReportRequestId) reportLoadFailed($('#depreciationReportRows'), 10, $('#depreciationReportCount'), $('#depreciationReportPageInfo'), $('#depreciationReportPrev'), $('#depreciationReportNext'), error.message);
@@ -9732,7 +9738,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     $('#globalSearch').setAttribute('aria-keyshortcuts', '/'); $('#newAssetButton').setAttribute('aria-keyshortcuts', 'Control+N'); $('#helpButton').setAttribute('aria-keyshortcuts', '?');
     function isTextEntryTarget(target) { return target instanceof HTMLElement && (target.isContentEditable || target.matches('input,textarea,select,[role="textbox"]')); }
     document.addEventListener('keydown', event => {
-      const key = event.key.toLocaleLowerCase(), modified = event.ctrlKey || event.metaKey, typing = isTextEntryTarget(event.target);
+      const key = (event.key || '').toLocaleLowerCase(), modified = event.ctrlKey || event.metaKey, typing = isTextEntryTarget(event.target);
       if (!document.body.classList.contains('auth-required')) {
         if (modified && key === 'k') { event.preventDefault(); if (!commandPaletteDialog.open) openCommandPalette(); return; }
         if (modified && key === 'n' && !typing) { event.preventDefault(); if (canWriteAssets() && !$('#newAssetButton').hidden) $('#newAssetButton').click(); else notify(translateUiText('Varlık oluşturma yetkiniz bulunmuyor.')); return; }
