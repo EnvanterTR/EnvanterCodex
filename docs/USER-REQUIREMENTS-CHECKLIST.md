@@ -284,13 +284,13 @@ O. PLATFORM YÖNETİMİ (Süper Admin — sadece sana ait)
  O.12 Dashboard: toplam müşteri, aylık gelir, yeni kayıtlar, başarısız ödemeler 🟡
  O.13 Destek talepleri yönetimi ✅ platform kuyruğu, yanıt ve durum yönetimi; gelişmiş SLA/raporlama ayrı kapsam
 P. TİCARİ AKIŞ (Satış / Abonelik)
- P.1 Self-servis kayıt (signup) 🟡 (sayfa var, arkası yok)
+ P.1 Self-servis kayıt (signup) 🟡 (fiyat/teklif sayfası var; self-servis kayıt formu ve API akışı yok)
  P.2 Plan seçimi + ücretsiz deneme (14/30 gün) 🟡
  P.3 Kredi kartı ile ödeme (iyzico) ❌ ⚠️ Başvuru + API anahtarı gerekir
  P.4 Otomatik fatura üretimi ❌ ⚠️ e-Arşiv/e-Fatura entegratörü gerekir
  P.5 Abonelik yenileme / iptal / askıya alma 🟡
  P.6 Ödeme başarısızlığı bildirimi + kurtarma akışı ❌
- P.7 Kullanıcı kotası uygulama (plana göre koltuk sınırı) ❌
+ P.7 Kullanıcı kotası uygulama (plana göre koltuk sınırı) ❌ (Cloud için sonraki açık gereksinim sınırsız kullanıcıdır; bu kota Cloud'a uygulanmaz)
  P.8 Disk/kayıt kotası + aşım uyarısı 🟡
  P.9 Müşteri alt alan adı (firma.envantertr.com) otomatik açma + SSL 🟡
  P.10 Self-servis kurulum sihirbazı (ilk yönetici hesabı) ✅
