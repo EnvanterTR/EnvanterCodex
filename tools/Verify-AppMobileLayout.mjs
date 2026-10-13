@@ -28,10 +28,13 @@ if (!mobileStyle.includes('@media(max-width:720px){html,body{overflow-x:hidden}.
 if (!source.includes('.auth-layer{position:fixed;inset:0;') || !source.includes('.auth-card{width:min(440px,100%)')) {
   failures.push('The sign-in card must fit inside narrow viewports.');
 }
+if (!source.includes('<style id="mobile-dashboard-welcome-fix">@media(max-width:430px){.welcome{align-items:flex-start;flex-direction:column}.welcome>div{min-width:0;width:100%}.period{max-width:100%;white-space:normal;overflow-wrap:anywhere}}</style>')) {
+  failures.push('The dashboard status badge must wrap below the welcome text on narrow screens without clipping.');
+}
 
 if (failures.length) {
   console.error(failures.map(failure => `FAIL ${failure}`).join('\n'));
   process.exitCode = 1;
 } else {
-  console.log('Verified the mobile app shell, sign-in card, and two-row top bar fit narrow viewports.');
+  console.log('Verified the mobile app shell, sign-in card, two-row top bar, and dashboard welcome status fit narrow viewports.');
 }

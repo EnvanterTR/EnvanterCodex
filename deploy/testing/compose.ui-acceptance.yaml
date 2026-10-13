@@ -1,0 +1,51 @@
+name: envantertr-ui-acceptance
+
+# Disposable synthetic tenant for browser acceptance. Never connect this stack to the
+# development or customer database. `down --volumes` removes its isolated test data.
+services:
+  database:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: envantertr_ui_acceptance
+      POSTGRES_USER: envantertr_ui_test
+      POSTGRES_PASSWORD: ui-acceptance-only
+    volumes:
+      - ui_acceptance_database:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    networks:
+      ui_acceptance:
+        aliases: [database]
+
+  web:
+    image: envantertr-product-dev-web:latest
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__EnvanterTR: "Host=database;Port=5432;Database=envantertr_ui_acceptance;Username=envantertr_ui_test;Password=ui-acceptance-only"
+      Setup__BootstrapToken: ui-acceptance-bootstrap-only
+      Setup__PlatformBootstrapToken: ui-acceptance-platform-only
+      DataProtection__KeysPath: /var/lib/envantertr/data-protection-keys
+    depends_on:
+      database:
+        condition: service_healthy
+    volumes:
+      - ../../src/EnvanterTR.Web/wwwroot:/app/wwwroot:ro
+      - ui_acceptance_media:/var/lib/envantertr/company-media
+      - ui_acceptance_data_protection:/var/lib/envantertr/data-protection-keys
+    ports:
+      - "127.0.0.1:${UI_AUDIT_PORT:-18092}:8080"
+    networks:
+      ui_acceptance: {}
+
+networks:
+  ui_acceptance:
+    driver: bridge
+
+volumes:
+  ui_acceptance_database:
+  ui_acceptance_media:
+  ui_acceptance_data_protection:

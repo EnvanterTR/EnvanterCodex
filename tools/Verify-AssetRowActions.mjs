@@ -12,6 +12,10 @@ requireSource(rowBuilder.length > 0, 'Asset row builder was not found.');
 requireSource(rowBuilder.includes("event.stopPropagation(); callback();"), 'Row action clicks must not also trigger the row detail click.');
 requireSource(rowBuilder.includes("row.addEventListener('click', () => openAsset(asset.id)"), 'Clicking a row must open the matching asset.');
 requireSource(rowBuilder.includes('selectedAssetIds.size >= 100'), 'Bulk selection must retain the 100-asset safety limit.');
+requireSource(rowBuilder.includes("translateUiText('Görseli büyüt')") && rowBuilder.includes("translateUiText('Fotoğraf ve dosyaları aç')"), 'Image-present and image-missing shortcuts must describe their distinct destinations.');
+requireSource(rowBuilder.includes("const openAssetFiles = async () => { try { await openAsset(asset.id); selectAssetTab('attachments'); }"), 'An asset without a photo must open the attachments tab for file management.');
+requireSource(rowBuilder.includes("imageButton.addEventListener('click', event => { event.stopPropagation(); const visibleImage = imageButton.querySelector('img'); if (visibleImage?.currentSrc) showAssetImagePreview(visibleImage); else openAssetFiles(); });"), 'Keyboard activation must enlarge a present photo and fall back to files when unavailable.');
+requireSource(source.includes('function showAssetImagePreview(image)') && source.includes("showAssetImagePreview(image);"), 'Mouse and keyboard image preview must share the in-app viewer.');
 
 const actions = [
   ['detail', "action(translateUiText('Ayrıntıyı aç'), 'view'", 'openAsset(asset.id)'],
@@ -46,5 +50,5 @@ if (failures.length) {
   console.error(failures.map(message => `FAIL ${message}`).join('\n'));
   process.exitCode = 1;
 } else {
-  console.log(`Verified ${actions.length} asset-row shortcuts: each has a destination, write-only controls are role-gated, and row clicks remain separate from action clicks.`);
+  console.log(`Verified ${actions.length} asset-row shortcuts; present photos open the in-app viewer, missing photos open attachments, write-only controls are role-gated, and row clicks remain isolated.`);
 }

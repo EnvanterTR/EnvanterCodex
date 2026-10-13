@@ -19,6 +19,29 @@ const groupKeys = [...nav.matchAll(/data-group="([^"]+)"/g)].map(match => match[
 const submenuKeys = [...nav.matchAll(/id="sub-([^"]+)"/g)].map(match => match[1]);
 const failures = [];
 
+const mainStart = source.indexOf('<main');
+const mainEnd = mainStart < 0 ? -1 : source.indexOf('</main>', mainStart);
+if (mainStart < 0 || mainEnd < 0) {
+  failures.push('The application main element must have a matching closing tag.');
+} else {
+  const mainMarkup = source.slice(mainStart, mainEnd);
+  const sectionStack = [];
+  for (const match of mainMarkup.matchAll(/<section\b[^>]*>|<\/section\s*>/gi)) {
+    const tag = match[0];
+    if (/^<\//.test(tag)) {
+      if (sectionStack.length > 0) sectionStack.pop();
+      continue;
+    }
+    const id = tag.match(/\bid="([^"]+)"/)?.[1] || '';
+    const isWorkspacePage = /\bclass="[^"]*\bworkspace-page\b/.test(tag);
+    if (isWorkspacePage && sectionStack.some(section => section.isWorkspacePage)) {
+      failures.push(`Workspace page "${id}" is nested inside another workspace page; its hidden parent can make the destination blank.`);
+      break;
+    }
+    sectionStack.push({ id, isWorkspacePage });
+  }
+}
+
 const loginForm = source.match(/<form[^>]*id=\"loginForm\"[^>]*>/)?.[0] || '';
 if (!/\bmethod=\"post\"/i.test(loginForm)) {
   failures.push('Login forms must use POST so a native browser fallback cannot place credentials in the URL.');
@@ -26,6 +49,16 @@ if (!/\bmethod=\"post\"/i.test(loginForm)) {
 
 if (!source.includes('id="retryApiButton"') || !/function showLogin\([^)]*\)\s*\{[^}]*\$\('#retryApiButton'\)\.hidden\s*=\s*false/.test(source)) {
   failures.push('The login screen must keep the server connection check visible whenever login is shown.');
+}
+const notificationShortcutStart = source.indexOf("$('#featureStatusNotificationButton').addEventListener('click'");
+const notificationShortcutEnd = source.indexOf("$('#featureStatusAccountSecurityButton').addEventListener('click'", notificationShortcutStart);
+const notificationShortcut = notificationShortcutStart < 0 || notificationShortcutEnd < 0 ? '' : source.slice(notificationShortcutStart, notificationShortcutEnd);
+if (!notificationShortcut.includes('event.stopPropagation()') ||
+    !notificationShortcut.includes("panel.hidden = false") ||
+    !notificationShortcut.includes("trigger.setAttribute('aria-expanded', 'true')") ||
+    !notificationShortcut.includes("settings.click()") ||
+    !notificationShortcut.includes('void loadOperationalAlerts()')) {
+  failures.push('The Notifications menu shortcut must open the panel without its outside-click handler immediately closing it, then load preferences and alerts.');
 }
 if (!source.includes('id="featureStatusAccountSecurityButton"') ||
     !/page === 'Güvenlik'[\s\S]*?featureStatusAccountSecurityButton'\)\.hidden = false/.test(source) ||
@@ -168,6 +201,10 @@ for (const field of ['serialNumber', 'notes', 'customFields']) {
   if (!source.includes(`fields.includes('${field}')`)) {
     failures.push(`Bulk asset editing does not include ${field} in the submitted payload.`);
   }
+}
+
+if (!source.includes("$('#helpButton').addEventListener('click', () => { closeOperationalAlerts(); document.querySelector('#sidebar [data-page=\"Destek\"]')?.click(); });")) {
+  failures.push('The top-bar help shortcut must open the in-app support workspace.');
 }
 
 if (failures.length) {

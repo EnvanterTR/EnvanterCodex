@@ -9,13 +9,13 @@ public static class SupplierCatalogEndpoints
 {
     public static RouteGroupBuilder MapSupplierCatalogEndpoints(this RouteGroupBuilder api)
     {
-        api.MapGet("/suppliers", async ([FromQuery] string? q, [FromQuery] bool includeArchived,
+        api.MapGet("/suppliers", async ([FromQuery] string? q, [FromQuery] bool? includeArchived,
             ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Scope(user, out var companyId)) return Results.Forbid();
             if (q?.Trim().Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama en fazla 120 karakter olabilir."] });
             var query = db.SupplierCatalogEntries.AsNoTracking().Where(x => x.CompanyId == companyId);
-            if (!includeArchived) query = query.Where(x => x.IsActive);
+            if (includeArchived != true) query = query.Where(x => x.IsActive);
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();

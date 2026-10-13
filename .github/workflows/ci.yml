@@ -33,9 +33,121 @@ jobs:
         shell: bash
         run: node tools/Verify-AppNavigation.mjs
 
+      - name: Verify asset status label editor and option refresh
+        shell: bash
+        run: node tools/Verify-StatusLabelsUi.mjs
+
+      - name: Verify QR and barcode settings UI contracts
+        shell: bash
+        run: node tools/Verify-LabelSettingsUi.mjs
+
+      - name: Verify async form references and assignment date rendering
+        shell: bash
+        run: node tools/Verify-AsyncUiForms.mjs
+
+      - name: Verify reservation decision and cancellation dialogs
+        shell: bash
+        run: node tools/Verify-ReservationUi.mjs
+
+      - name: Verify activity history filters and shortcuts
+        shell: bash
+        run: node tools/Verify-ActivityHistoryUi.mjs
+
+      - name: Verify software license assignment revocation dialog
+        shell: bash
+        run: node tools/Verify-LicenseAssignmentUi.mjs
+
+      - name: Verify software license import profile deletion dialog
+        shell: bash
+        run: node tools/Verify-LicenseImportProfileUi.mjs
+
+      - name: Verify contract archive and attachment dialogs
+        shell: bash
+        run: node tools/Verify-ContractActionUi.mjs
+
+      - name: Verify warranty report menu actions
+        shell: bash
+        run: node tools/Verify-WarrantyReportUi.mjs
+
+      - name: Verify accessory inventory menu actions
+        shell: bash
+        run: node tools/Verify-AccessoryInventoryUi.mjs
+
+      - name: Verify accessory purchase order menu actions
+        shell: bash
+        run: node tools/Verify-AccessoryOrdersUi.mjs
+
+      - name: Verify consumable inventory menu actions
+        shell: bash
+        run: node tools/Verify-ConsumableInventoryUi.mjs
+
+      - name: Verify stock request menu actions
+        shell: bash
+        run: node tools/Verify-InventoryRequestsUi.mjs
+
+      - name: Verify component inventory menu actions
+        shell: bash
+        run: node tools/Verify-ComponentInventoryUi.mjs
+
+      - name: Verify ready-made kit menu actions
+        shell: bash
+        run: node tools/Verify-AccessoryKitsUi.mjs
+
+      - name: Verify inventory movement menu actions
+        shell: bash
+        run: node tools/Verify-InventoryMovementsUi.mjs
+
+      - name: Verify employee records menu actions
+        shell: bash
+        run: node tools/Verify-EmployeeRecordsUi.mjs
+
+      - name: Verify location catalog and building menu actions
+        shell: bash
+        run: node tools/Verify-LocationDirectoryUi.mjs
+
+      - name: Verify maintenance attachment menu actions
+        shell: bash
+        run: node tools/Verify-MaintenanceAttachmentsUi.mjs
+
+      - name: Verify maintenance plan menu actions
+        shell: bash
+        run: node tools/Verify-MaintenancePlanUi.mjs
+
+      - name: Verify physical audit queue and form actions
+        shell: bash
+        run: node tools/Verify-AuditScheduleUi.mjs
+
+      - name: Verify prepared reports request ordering and filters
+        shell: bash
+        run: node tools/Verify-PreparedReportsUi.mjs
+
+      - name: Verify custom asset report session and action flows
+        shell: bash
+        run: node tools/Verify-CustomAssetReportUi.mjs
+
+      - name: Verify company task menu actions
+        shell: bash
+        run: node tools/Verify-CompanyTasksUi.mjs
+
       - name: Verify authentication error and dialog flows
         shell: bash
         run: node tools/Verify-AuthErrorFlows.mjs
+
+      - name: Verify company JSON export download contract
+        shell: bash
+        run: node tools/Verify-CompanyDataExport.mjs
+
+      - name: Verify dashboard preferences remain drafts until saved
+        shell: bash
+        run: node tools/Verify-DashboardPreferences.mjs
+
+      - name: Verify asset import preview count and apply gate
+        shell: bash
+        run: node tools/Verify-AssetImportPreviewUi.mjs
+
+      - name: Verify company data restore UI
+        shell: bash
+        run: node tools/Verify-DataRestoreUi.mjs
 
       - name: Verify company app mobile layout
         shell: bash
@@ -44,6 +156,10 @@ jobs:
       - name: Verify public demo full-width asset tables
         shell: bash
         run: node tools/Verify-PublicDemoLayout.mjs
+
+      - name: Verify Coolify wildcard tenant routing
+        shell: bash
+        run: node tools/Verify-CoolifyTenantRouting.mjs
 
       - name: Run isolated PostgreSQL acceptance suite
         shell: bash

@@ -128,24 +128,27 @@ public static class DashboardPreferenceEndpoints
                 Dictionary<Guid, string> labels;
                 if (dimension == "category")
                 {
-                    groups = await assets.GroupBy(a => a.CategoryId).Select(g => new DashboardChartGroup(g.Key, g.Count()))
+                    var rows = await assets.GroupBy(a => a.CategoryId).Select(g => new { Id = g.Key, Count = g.Count() })
                         .OrderByDescending(g => g.Count).Take(10).ToListAsync(ct);
+                    groups = rows.Select(g => new DashboardChartGroup(g.Id, g.Count)).ToList();
                     var ids = groups.Where(g => g.Id.HasValue).Select(g => g.Id!.Value).ToArray();
                     labels = await db.AssetCategories.AsNoTracking().Where(c => c.CompanyId == companyId && ids.Contains(c.Id))
                         .ToDictionaryAsync(c => c.Id, c => c.Name, ct);
                 }
                 else if (dimension == "brand")
                 {
-                    groups = await assets.GroupBy(a => a.BrandId).Select(g => new DashboardChartGroup(g.Key, g.Count()))
+                    var rows = await assets.GroupBy(a => a.BrandId).Select(g => new { Id = g.Key, Count = g.Count() })
                         .OrderByDescending(g => g.Count).Take(10).ToListAsync(ct);
+                    groups = rows.Select(g => new DashboardChartGroup(g.Id, g.Count)).ToList();
                     var ids = groups.Where(g => g.Id.HasValue).Select(g => g.Id!.Value).ToArray();
                     labels = await db.AssetBrands.AsNoTracking().Where(b => b.CompanyId == companyId && ids.Contains(b.Id))
                         .ToDictionaryAsync(b => b.Id, b => b.Name, ct);
                 }
                 else
                 {
-                    groups = await assets.GroupBy(a => a.ModelId).Select(g => new DashboardChartGroup(g.Key, g.Count()))
+                    var rows = await assets.GroupBy(a => a.ModelId).Select(g => new { Id = g.Key, Count = g.Count() })
                         .OrderByDescending(g => g.Count).Take(10).ToListAsync(ct);
+                    groups = rows.Select(g => new DashboardChartGroup(g.Id, g.Count)).ToList();
                     var ids = groups.Where(g => g.Id.HasValue).Select(g => g.Id!.Value).ToArray();
                     labels = await db.AssetModels.AsNoTracking().Where(m => m.CompanyId == companyId && ids.Contains(m.Id))
                         .ToDictionaryAsync(m => m.Id, m => m.Name, ct);

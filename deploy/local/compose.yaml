@@ -43,6 +43,8 @@ services:
       database:
         condition: service_healthy
     volumes:
+      # Local UI source stays in sync without waiting for a full .NET image rebuild.
+      - ../../src/EnvanterTR.Web/wwwroot:/app/wwwroot:ro
       - envantertr_company_media:/var/lib/envantertr/company-media
       - envantertr_data_protection_keys:/var/lib/envantertr/data-protection-keys
     ports:

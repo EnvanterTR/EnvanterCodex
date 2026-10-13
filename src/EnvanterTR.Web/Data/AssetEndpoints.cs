@@ -2870,7 +2870,8 @@ public static class AssetEndpoints
                 case "categories":
                     return Results.Ok((object)await db.AssetCategories.AsNoTracking().Where(x => x.CompanyId == companyId)
                         .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name,
-                            AssetCount = db.Assets.Count(a => a.CompanyId == companyId && a.CategoryId == x.Id) }).ToListAsync(cancellationToken));
+                            AssetCount = db.Assets.Count(a => a.CompanyId == companyId && a.CategoryId == x.Id),
+                            ModelCount = db.AssetModels.Count(model => model.CompanyId == companyId && model.CategoryId == x.Id) }).ToListAsync(cancellationToken));
                 case "brands":
                     return Results.Ok((object)await db.AssetBrands.AsNoTracking().Where(x => x.CompanyId == companyId)
                         .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name,
@@ -3039,6 +3040,7 @@ public static class AssetEndpoints
                     var category = await db.AssetCategories.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
                     if (category is null) return Results.NotFound();
                     if (await db.Assets.AnyAsync(x => x.CompanyId == companyId && x.CategoryId == id, cancellationToken)) return Results.Conflict(new { message = "Bu kategori varlıklarda kullanılıyor; silinemez." });
+                    if (await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.CategoryId == id, cancellationToken)) return Results.Conflict(new { message = "Bu kategori modellerde kullanılıyor; önce ilişkili modelleri düzenleyin." });
                     deletedName = category.Name; db.AssetCategories.Remove(category); break;
                 case "brands":
                     var brand = await db.AssetBrands.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);

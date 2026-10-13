@@ -1,0 +1,17 @@
+# SaaS tenant-host check — 13 October 2026
+
+## Production observation
+
+Read-only requests to `https://firma.envantertr.com/` and `/api/status` returned HTTP 503 with body `no available server`. DNS resolves the hostname to Cloudflare addresses. The response is Cloudflare-served and marked dynamic; it is not an application health response. `https://envantertr.com/` returned HTTP 200 at the same time. This establishes that the tenant hostname reaches Cloudflare but has no responding upstream route at the edge. It does not identify whether the Coolify proxy, origin host, service health, or domain binding is the failing upstream component. No production credentials or origin address are available in this repository.
+
+## Repository cause and local fix
+
+The Coolify public Nginx configuration previously had only a catch-all marketing-site server. It had routes from the marketing domain into the app for `/giris` and `/api`, but no wildcard tenant server; a tenant root would therefore have used the public marketing fallback if Coolify routed it there. Added an explicit `*.envantertr.com` server that forwards tenant paths and the original `Host` to the private `web:8080` service. The marketing server's existing fallback remains intact. The Coolify guide now calls for attaching both the root and wildcard domains to `public-site`, setting wildcard DNS and a wildcard-covering TLS certificate, then checking login, app health, and authenticated tenant scope.
+
+`tools/Verify-CoolifyTenantRouting.mjs` checks the wildcard server, upstream, host/forwarded headers, upload limit, setup guidance, and preserved marketing fallback. It is wired into CI. The verifier passed, and the real `nginx:alpine` image accepted the configuration with `nginx -t` (a test-only `web` host entry satisfied Nginx's static upstream lookup).
+
+## Release boundary
+
+This source change is local and is not live. The actual `firma.envantertr.com` endpoint remains an external outage until the correct Coolify service/domain binding, wildcard DNS, TLS, and healthy origin are verified. No production host, Cloudflare record, or Coolify resource was changed. A GitHub deployment signal must not be treated as proof of a successful deployment.
+
+The user-designated `ENVANTERTR_MASTER_v4.md` is not present in the local workspace or the current GitHub `main` tree. The existing `docs/USER-REQUEST-CHECKLIST-2026-10-11.md` contains P.9 for the tenant subdomain, and `docs/ROADMAP.md` records the hosted-service gaps. Do not claim the requested 70-item master checklist has been audited until that file is available.

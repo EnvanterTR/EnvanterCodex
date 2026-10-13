@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const nginx = readFileSync('deploy/coolify/nginx-public.conf', 'utf8');
+const readme = readFileSync('deploy/coolify/README.md', 'utf8');
+const marketing = nginx.match(/server\s*\{[\s\S]*?server_name _;[\s\S]*?\n\}/)?.[0];
+const wildcardStart = nginx.indexOf('server_name *.envantertr.com;');
+assert.ok(marketing, 'The default public marketing host must remain configured.');
+assert.ok(wildcardStart >= 0, 'Coolify Nginx must declare a wildcard tenant host.');
+const wildcard = nginx.slice(nginx.lastIndexOf('server {', wildcardStart), nginx.indexOf('\n}', wildcardStart) + 2);
+assert.match(wildcard, /server_name\s+\*\.envantertr\.com;/, 'Tenant traffic must be limited to the configured wildcard domain.');
+assert.match(wildcard, /location\s+\/\s*\{[\s\S]*?proxy_pass\s+http:\/\/web:8080;/, 'Every tenant path must enter the company app.');
+assert.match(wildcard, /proxy_set_header\s+Host\s+\$host;/, 'The requested tenant host must reach the app.');
+assert.match(wildcard, /proxy_set_header\s+X-Forwarded-For\s+\$proxy_add_x_forwarded_for;/, 'Client forwarding metadata must be preserved.');
+assert.match(wildcard, /proxy_set_header\s+X-Forwarded-Proto\s+\$http_x_forwarded_proto;/, 'The TLS scheme from the Coolify proxy must be preserved.');
+assert.match(wildcard, /client_max_body_size\s+32m;/, 'SaaS upload requests must retain the documented size budget.');
+assert.match(readme, /`\*\.envantertr\.com`[\s\S]*?wildcard DNS[\s\S]*?TLS certificate/i, 'Coolify setup must document wildcard DNS and TLS requirements.');
+assert.match(readme, /wildcard host's TLS certificate, login page, `\/api\/status`, and a tenant-scoped authenticated request/i, 'Production acceptance must check the tenant app and authenticated scope.');
+assert.match(marketing, /try_files\s+\$uri\s+\$uri\/\s+\/index\.html;/, 'The marketing host must keep serving its public-site fallback.');
+
+console.log('Verified Coolify tenant wildcard host, app proxy and forwarded headers, upload limit, TLS/DNS setup guidance, production acceptance checklist, and unchanged marketing fallback.');
