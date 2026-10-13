@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 13 Ekim 2026 — canlı ve yerel sürüm/şema ayrımı
+
+Kimlik bilgisi göndermeden yapılan salt-okunur HTTP kontrolünde canlı `https://envantertr.com/api/status` `migration-required`, 85 toplam migration ve 15 bekleyen migration bildirdi. Canlı `/platform-admin.html` yanıt verdi ancak platform üye davet arayüzünü içermedi; bu nedenle GitHub `main`'deki `786cfa0` canlıya dağıtılmış değildir. Yerel Docker'daki `/api/status` `ready` ve çalışan imajına göre 84 migration/0 bekleyen migration bildirdi; depodaki kaynakta 85 migration tanımı var, dolayısıyla bu imaj da kaynak `main`'den geridedir. Canlı veya yerel hesap parolasıyla giriş denenmedi; `admin@envantertr.com` hesabının `platform.admin` yetkisi doğrulanmadı. Bu gözlem canlı veritabanına, hesaba veya deployment'a yazma yapmadı. Canlı şemayı güncellemeden önce yedek, migration ön incelemesi ve kontrollü dağıtım gerekir.
+
 ## 13 Ekim 2026 — platform yöneticisinden şirket hesabı üyeliği daveti
 
 Platform panelindeki `Üyeler / Hesaplar` görünümünden platform yöneticisi aktif şirket seçip sınırsız Cloud üyeliğine kullanıcı ekleyebilir; mevcut tenant hesabını şirkete bağlayabilir; desteklenen şirket rollerinden birini atayabilir. `owner` rolü platform davetinden verilemez. Yeni/doğrulanmamış kullanıcıya parola belirleme daveti, doğrulanmış mevcut kullanıcıya şirkete erişim bildirimi gönderilir. E-posta başarısız olsa bile üyelik kalıcıdır ve aynı bekleyen davet tekrar gönderilebilir. İşlem platform ve tenant audit kayıtlarına yazılır; şirket etkinliği, aktif dönem, yerel koltuk sınırı, CSRF ve istek hız sınırı sunucuda denetlenir. Davet ekranı şirket araması yapar ve hesap parolası almaz.
