@@ -1092,6 +1092,90 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Platform_can_provision_a_paid_cloud_company_owner_and_retryable_invitation()
+    {
+        var plan = new SubscriptionPlan
+        {
+            Code = $"sale-{_companyId:N}", Name = "Paid Cloud provisioning acceptance", DeploymentKind = "cloud",
+            IsActive = true, IsPublic = true
+        };
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SubscriptionPlans.Add(plan);
+            db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            await db.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsPlatformAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var email = $"paid-owner-{Guid.NewGuid():N}@example.invalid";
+        var slug = $"paid-{Guid.NewGuid():N}";
+        var requestBody = new
+        {
+            companyName = "Paid Cloud Acceptance Company", slug, contactEmail = email,
+            ownerName = "Paid Cloud Owner", ownerEmail = email, planId = plan.Id,
+            termDays = 365, paymentReference = $"acceptance-{Guid.NewGuid():N}", paymentVerified = true
+        };
+
+        using (var created = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/companies",
+                   System.Net.Http.Json.JsonContent.Create(requestBody), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+            using var payload = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
+            Assert.Equal(slug, payload.RootElement.GetProperty("slug").GetString());
+            Assert.Equal(365, (payload.RootElement.GetProperty("endsAt").GetDateTimeOffset() -
+                payload.RootElement.GetProperty("startsAt").GetDateTimeOffset()).Days);
+            Assert.True(payload.RootElement.GetProperty("invitationSent").GetBoolean());
+        }
+
+        Guid companyId;
+        Guid ownerId;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var company = await db.Companies.SingleAsync(x => x.Slug == slug);
+            companyId = company.Id;
+            var membership = await db.CompanyMemberships.SingleAsync(x => x.CompanyId == companyId);
+            ownerId = membership.UserId;
+            Assert.Equal("owner", membership.RoleKey);
+            var owner = await db.Users.SingleAsync(x => x.Id == ownerId);
+            Assert.Equal(email, owner.Email);
+            Assert.False(owner.EmailConfirmed);
+            var subscription = await db.TenantSubscriptions.SingleAsync(x => x.CompanyId == companyId);
+            Assert.Equal("Active", subscription.Status);
+            Assert.False(subscription.IsDemo);
+            Assert.Equal(requestBody.paymentReference, subscription.PaymentReference);
+        }
+
+        Assert.Contains(_smtpCapture.Messages, message => message.Contains(email, StringComparison.OrdinalIgnoreCase));
+        using (var resent = await SendAsPlatformAdminRequestAsync(HttpMethod.Post,
+                   $"/api/platform/companies/{companyId}/owner-invitation/resend", new StringContent("{}", Encoding.UTF8, "application/json"),
+                   requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, resent.StatusCode);
+            using var payload = JsonDocument.Parse(await resent.Content.ReadAsStringAsync());
+            Assert.True(payload.RootElement.GetProperty("invitationSent").GetBoolean());
+        }
+        using (var duplicateSlug = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/companies",
+                   System.Net.Http.Json.JsonContent.Create(requestBody), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, duplicateSlug.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.Equal(1, await db.Companies.CountAsync(x => x.Slug == slug));
+            Assert.Equal(1, await db.CompanyMemberships.CountAsync(x => x.CompanyId == companyId && x.UserId == ownerId));
+            Assert.Equal(1, await db.TenantSubscriptions.CountAsync(x => x.CompanyId == companyId));
+        }
+    }
+
+    [Fact]
     public async Task Company_member_and_platform_admin_boundaries_are_enforced_over_http()
     {
         using (var companyMember = await SendAsRoleAsync(HttpMethod.Get, "/api/company/branding", "viewer"))

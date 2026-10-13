@@ -1,7 +1,10 @@
 using System.Security.Claims;
 using System.Data;
+using System.Net.Mail;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -110,6 +113,135 @@ public static class PlatformEndpoints
             catch (DbUpdateException) { return Results.Conflict(new { message = "Plan güncellemesi başka bir işlemle çakıştı." }); }
             return Results.Ok(new { plan.Id, plan.Code, plan.Name, plan.IsActive });
         });
+
+        admin.MapPost("/companies", async ([FromBody] ProvisionCompanyRequest request, ClaimsPrincipal user,
+            AppDbContext db, UserManager<EnvanterUser> userManager, IConfiguration configuration,
+            CancellationToken cancellationToken) =>
+        {
+            var companyName = request.CompanyName?.Trim();
+            var slug = request.Slug?.Trim().ToLowerInvariant();
+            var contactEmail = string.IsNullOrWhiteSpace(request.ContactEmail) ? null : request.ContactEmail.Trim();
+            var ownerName = request.OwnerName?.Trim();
+            var ownerEmail = request.OwnerEmail?.Trim();
+            var paymentReference = request.PaymentReference?.Trim();
+            if (string.IsNullOrWhiteSpace(companyName) || companyName.Length > 200 ||
+                !TenantHostResolver.IsValidSlug(slug) ||
+                (contactEmail is { Length: > 256 } || (contactEmail is not null && !MailAddress.TryCreate(contactEmail, out _))) ||
+                string.IsNullOrWhiteSpace(ownerName) || ownerName.Length > 160 ||
+                string.IsNullOrWhiteSpace(ownerEmail) || ownerEmail.Length > 256 || !MailAddress.TryCreate(ownerEmail, out _) ||
+                request.TermDays is < 1 or > 1095 || string.IsNullOrWhiteSpace(paymentReference) || paymentReference.Length > 180 ||
+                !request.PaymentVerified)
+                return Results.ValidationProblem(new Dictionary<string, string[]> {
+                    ["company"] = ["Firma, geçerli alt alan adı, yetkili kişi ve doğrulanmış ödeme referansı gereklidir; abonelik süresi 1-1095 gün olmalıdır."]
+                });
+
+            var plan = await db.SubscriptionPlans.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.PlanId &&
+                x.IsActive && x.DeploymentKind == "cloud", cancellationToken);
+            if (plan is null) return Results.ValidationProblem(new Dictionary<string, string[]> {
+                ["planId"] = ["Etkin bir Cloud planı seçilmelidir."]
+            });
+
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+            if (await db.Companies.AnyAsync(x => x.Slug == slug, cancellationToken))
+                return Results.Conflict(new { message = "Bu alt alan adı zaten kullanılıyor." });
+
+            var owner = await userManager.FindByEmailAsync(ownerEmail);
+            var wasConfirmed = owner?.EmailConfirmed == true;
+            if (owner is null)
+            {
+                var temporaryPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) + "aA1!";
+                owner = new EnvanterUser { UserName = ownerEmail, Email = ownerEmail, EmailConfirmed = false, DisplayName = ownerName };
+                var created = await userManager.CreateAsync(owner, temporaryPassword);
+                if (!created.Succeeded)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return Results.Conflict(new { message = "Yetkili hesap oluşturulamadı; e-posta adresini ve hesap durumunu kontrol edin." });
+                }
+            }
+
+            var company = new Company { Name = companyName, Slug = slug, ContactEmail = contactEmail ?? ownerEmail };
+            var now = DateTimeOffset.UtcNow;
+            var subscription = new TenantSubscription {
+                CompanyId = company.Id, PlanId = plan.Id, Status = "Active", IsDemo = false,
+                StartsAt = now, EndsAt = now.AddDays(request.TermDays), PaymentReference = paymentReference
+            };
+            db.Companies.Add(company);
+            db.CompanyMemberships.Add(new CompanyMembership { CompanyId = company.Id, UserId = owner.Id, RoleKey = "owner" });
+            db.TenantSubscriptions.Add(subscription);
+            AddAudit(db, user, "PaidCompanyProvisioned", "Company", company.Id, company.Id,
+                $"{plan.Code} · {request.TermDays} gün · ödeme platform yöneticisi tarafından doğrulandı.");
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return Results.Conflict(new { message = "Şirket oluşturma çakıştı; şirket ve alt alan adı listesini yenileyin." });
+            }
+
+            var invitationSent = false;
+            try
+            {
+                if (wasConfirmed)
+                    await AccountEndpoints.SendCompanyAccessAddedEmailAsync(ownerEmail, owner.DisplayName ?? ownerName,
+                        companyName, "owner", configuration, cancellationToken);
+                else
+                {
+                    var token = await userManager.GeneratePasswordResetTokenAsync(owner);
+                    await AccountEndpoints.SendAccountInvitationEmailAsync(ownerEmail, ownerName, token, configuration, cancellationToken);
+                }
+                invitationSent = true;
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                // Company provisioning is committed; platform administrators can retry the owner notice.
+            }
+
+            var rootDomain = configuration["TenantRouting:RootDomain"]?.Trim().Trim('.');
+            var tenantUrl = string.IsNullOrWhiteSpace(rootDomain) ? null : $"https://{slug}.{rootDomain}";
+            return Results.Created($"/api/platform/companies/{company.Id}", new {
+                company.Id, company.Name, company.Slug, company.ContactEmail, ownerId = owner.Id,
+                plan = plan.Name, subscription.Status, subscription.StartsAt, subscription.EndsAt,
+                tenantUrl, invitationSent,
+                message = invitationSent ? "Şirket ve ücretli Cloud aboneliği oluşturuldu; yetkiliye erişim e-postası gönderildi." :
+                    "Şirket ve abonelik oluşturuldu; e-posta gönderilemedi. Yetkili davetini firma ayrıntılarından yeniden gönderebilirsiniz."
+            });
+        }).RequireRateLimiting("login");
+
+        admin.MapPost("/companies/{companyId:guid}/owner-invitation/resend", async (Guid companyId,
+            UserManager<EnvanterUser> userManager, AppDbContext db, IConfiguration configuration,
+            CancellationToken cancellationToken) =>
+        {
+            var owner = await (from membership in db.CompanyMemberships.AsNoTracking()
+                join ownerAccount in db.Users.AsNoTracking() on membership.UserId equals ownerAccount.Id
+                join company in db.Companies.AsNoTracking() on membership.CompanyId equals company.Id
+                where membership.CompanyId == companyId && membership.RoleKey == "owner"
+                select new { AccountId = ownerAccount.Id, ownerAccount.Email, ownerAccount.EmailConfirmed, ownerAccount.DisplayName, CompanyName = company.Name })
+                .SingleOrDefaultAsync(cancellationToken);
+            if (owner?.Email is null) return Results.NotFound();
+            var account = await userManager.FindByIdAsync(owner.AccountId.ToString());
+            if (account is null) return Results.NotFound();
+            try
+            {
+                if (owner.EmailConfirmed)
+                    await AccountEndpoints.SendCompanyAccessAddedEmailAsync(owner.Email, owner.DisplayName ?? owner.Email,
+                        owner.CompanyName, "owner", configuration, cancellationToken);
+                else
+                {
+                    var token = await userManager.GeneratePasswordResetTokenAsync(account);
+                    await AccountEndpoints.SendAccountInvitationEmailAsync(owner.Email, owner.DisplayName ?? owner.Email,
+                        token, configuration, cancellationToken);
+                }
+                return Results.Ok(new { invitationSent = true, message = "Yetkili erişim e-postası yeniden gönderildi." });
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                return Results.Problem("E-posta gönderilemedi. E-posta sunucusu ayarlarını kontrol edip yeniden deneyin.",
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+        }).RequireRateLimiting("login");
 
         admin.MapGet("/companies", async ([FromQuery] string? q, [FromQuery] bool? active,
             AppDbContext db, CancellationToken cancellationToken, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
