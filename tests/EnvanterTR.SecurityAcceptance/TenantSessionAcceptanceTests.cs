@@ -1214,6 +1214,73 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Cloud_company_invites_are_unlimited_even_for_legacy_capped_plans_while_local_caps_remain_enforced()
+    {
+        var plan = new SubscriptionPlan
+        {
+            Code = $"c-{_companyId:N}", Name = "Cloud invite regression", DeploymentKind = "cloud",
+            MaxLoginUsers = 1, IsActive = true, IsPublic = true
+        };
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SubscriptionPlans.Add(plan);
+            db.TenantSubscriptions.Add(new TenantSubscription
+            {
+                CompanyId = _companyId, PlanId = plan.Id, Status = "Active",
+                StartsAt = DateTimeOffset.UtcNow.AddMinutes(-1), EndsAt = DateTimeOffset.UtcNow.AddDays(30)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using (var publicPlans = await _client!.GetAsync("/api/plans"))
+        {
+            Assert.Equal(HttpStatusCode.OK, publicPlans.StatusCode);
+            using var plansPayload = JsonDocument.Parse(await publicPlans.Content.ReadAsStringAsync());
+            var cloudPlan = plansPayload.RootElement.EnumerateArray()
+                .Single(x => x.GetProperty("code").GetString() == plan.Code);
+            Assert.Equal("cloud", cloudPlan.GetProperty("deploymentKind").GetString());
+            Assert.Equal(JsonValueKind.Null, cloudPlan.GetProperty("maxLoginUsers").ValueKind);
+        }
+
+        var cloudInviteEmail = $"cloud-invite-{Guid.NewGuid():N}@example.invalid";
+        using (var cloudInvite = await SendAsUserAsync(HttpMethod.Post, "/api/members/invite", _userId, _companyId,
+                   System.Net.Http.Json.JsonContent.Create(new { fullName = "Cloud invite regression", email = cloudInviteEmail, roleKey = "viewer" }),
+                   requestToken, antiforgeryCookie, role: "admin"))
+            Assert.Equal(HttpStatusCode.Created, cloudInvite.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.True(await (from membership in db.CompanyMemberships
+                join invited in db.Users on membership.UserId equals invited.Id
+                where membership.CompanyId == _companyId && invited.Email == cloudInviteEmail
+                select membership).AnyAsync());
+            plan = await db.SubscriptionPlans.SingleAsync(x => x.Id == plan.Id);
+            plan.DeploymentKind = "local-windows";
+            await db.SaveChangesAsync();
+        }
+
+        var localInviteEmail = $"local-invite-{Guid.NewGuid():N}@example.invalid";
+        using (var localInvite = await SendAsUserAsync(HttpMethod.Post, "/api/members/invite", _userId, _companyId,
+                   System.Net.Http.Json.JsonContent.Create(new { fullName = "Local invite regression", email = localInviteEmail, roleKey = "viewer" }),
+                   requestToken, antiforgeryCookie, role: "admin"))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, localInvite.StatusCode);
+            var body = await localInvite.Content.ReadAsStringAsync();
+            Assert.Contains("1 giriş hesabıyla sınırlı", body, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public async Task Asset_status_display_labels_are_company_scoped_audited_and_manager_only()
     {
         var defaults = new[]

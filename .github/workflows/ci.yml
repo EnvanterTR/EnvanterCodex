@@ -44,6 +44,10 @@ jobs:
         shell: bash
         run: node tools/Verify-AssetTrashUi.mjs
 
+      - name: Verify unlimited Cloud company users
+        shell: bash
+        run: node tools/Verify-CloudUnlimitedUsers.mjs
+
       - name: Verify asset status label editor and option refresh
         shell: bash
         run: node tools/Verify-StatusLabelsUi.mjs

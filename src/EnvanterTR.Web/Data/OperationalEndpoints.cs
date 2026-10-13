@@ -1866,11 +1866,11 @@ public static class OperationalEndpoints
                 join plan in db.SubscriptionPlans.AsNoTracking() on item.PlanId equals plan.Id
                 where item.CompanyId == companyId && (item.Status == "Trial" || item.Status == "Active") &&
                     item.StartsAt <= now && item.EndsAt > now
-                select new { item.Id, plan.MaxLoginUsers }).SingleOrDefaultAsync(cancellationToken);
+                select new { item.Id, plan.DeploymentKind, plan.MaxLoginUsers }).SingleOrDefaultAsync(cancellationToken);
             if (subscription is null)
                 return Results.Conflict(new { message = "Şirketin etkin deneme veya aboneliği bulunamadı. Kullanıcı davetinden önce lisansı etkinleştirin." });
             var memberCount = await db.CompanyMemberships.CountAsync(x => x.CompanyId == companyId, cancellationToken);
-            if (subscription.MaxLoginUsers is int seatLimit && memberCount >= seatLimit)
+            if (subscription.DeploymentKind != "cloud" && subscription.MaxLoginUsers is int seatLimit && memberCount >= seatLimit)
                 return Results.Conflict(new { message = $"Bu plan {seatLimit} giriş hesabıyla sınırlı. Kullanıcı eklemek için planı yükseltin." });
 
             var temporaryPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) + "aA1!";
