@@ -4,7 +4,7 @@
   const state = { page: 1, pageSize: 50, total: 0, loading: false };
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
   const date = (value) => value ? new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
-  const roleLabel = (value) => ({ owner: 'Şirket sahibi', admin: 'Yönetici', manager: 'Envanter yöneticisi', auditor: 'Denetçi', viewer: 'Salt okunur' })[value] || value || '—';
+  const roleLabel = (value) => ({ owner: 'Şirket sahibi', admin: 'Yönetici', asset_manager: 'Envanter yöneticisi', asset_operator: 'Operatör', auditor: 'Denetçi', viewer: 'Salt okunur', hr_operator: 'İK operatörü' })[value] || value || '—';
   const api = async (url, options = {}) => {
     const response = await fetch(url, {
       ...options,
@@ -47,6 +47,7 @@
   }
 
   async function loadMemberDetail(id) {
+    $('#memberSearch').dataset.activeUserId = id;
     const body = $('#memberDetailBody');
     body.innerHTML = '<div class="empty">Hesap bilgileri yükleniyor…</div>';
     $('#memberDetail').hidden = false;
@@ -68,9 +69,12 @@
       const memberships = result.memberships.map((membership) => {
         const subscription = membership.subscription;
         const subscriptionInfo = subscription ? `${esc(subscription.name)} (${esc(subscription.code)}) · ${esc(subscription.status)}${subscription.isDemo ? ' · Demo' : ''}<span class="sub">${date(subscription.startsAt)} – ${date(subscription.endsAt)}</span><span class="sub">Ödeme referansı: ${esc(subscription.paymentReference || '—')}</span>` : 'Abonelik kaydı yok';
-        return `<tr><td class="company-name">${esc(membership.name)}<span class="sub">${esc(membership.slug || '')}${membership.isActive ? '' : ' · şirket pasif'}</span></td><td>${esc(roleLabel(membership.roleKey))}</td><td>${date(membership.createdAt)}</td><td>${subscriptionInfo}</td></tr>`;
+        const controls = membership.roleKey === 'owner'
+          ? '<span class="muted">Sahiplik devri ayrı işlem gerektirir.</span>'
+          : `<div class="actions"><button class="btn small" type="button" data-member-role="${esc(membership.id)}" data-role="${esc(membership.roleKey)}" data-company="${esc(membership.name)}">Rolü değiştir</button><button class="btn small danger" type="button" data-member-remove="${esc(membership.id)}" data-company="${esc(membership.name)}">Şirketten çıkar</button></div>`;
+        return `<tr><td class="company-name">${esc(membership.name)}<span class="sub">${esc(membership.slug || '')}${membership.isActive ? '' : ' · şirket pasif'}</span></td><td>${esc(roleLabel(membership.roleKey))}</td><td>${date(membership.createdAt)}</td><td>${subscriptionInfo}</td><td>${controls}</td></tr>`;
       }).join('');
-      body.innerHTML = `<div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin:0">${details.map(([label, value]) => `<div class="card"><div class="card-top">${esc(label)}</div><strong style="font-size:1rem">${esc(value)}</strong></div>`).join('')}</div><div><h3>Şirket üyelikleri</h3>${result.membershipsTruncated ? '<div class="notice warning">Güvenli görüntüleme sınırı nedeniyle üyeliklerin yalnızca ilk 200 kaydı gösteriliyor.</div>' : ''}${memberships ? `<div class="table-wrap"><table><thead><tr><th>Şirket</th><th>Rol</th><th>Üyelik tarihi</th><th>Plan ve dönem</th></tr></thead><tbody>${memberships}</tbody></table></div>` : '<div class="empty">Bu hesap herhangi bir şirkete üye değil.</div>'}</div><section class="panel" style="margin-top:18px"><div class="panel-head"><div><h3>Hesap yaşam çizelgesi</h3><p class="muted">Üyelik, demo, satın alma, ödeme ve güvenlik işlemleri</p></div></div><div id="memberTimeline"><div class="empty">Hesap hareketleri yükleniyor…</div></div></section>`;
+      body.innerHTML = `<div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin:0">${details.map(([label, value]) => `<div class="card"><div class="card-top">${esc(label)}</div><strong style="font-size:1rem">${esc(value)}</strong></div>`).join('')}</div><div><h3>Şirket üyelikleri</h3>${result.membershipsTruncated ? '<div class="notice warning">Güvenli görüntüleme sınırı nedeniyle üyeliklerin yalnızca ilk 200 kaydı gösteriliyor.</div>' : ''}${memberships ? `<div class="table-wrap"><table><thead><tr><th>Şirket</th><th>Rol</th><th>Üyelik tarihi</th><th>Plan ve dönem</th><th>Yönetim</th></tr></thead><tbody>${memberships}</tbody></table></div>` : '<div class="empty">Bu hesap herhangi bir şirkete üye değil.</div>'}</div><section class="panel" style="margin-top:18px"><div class="panel-head"><div><h3>Hesap yaşam çizelgesi</h3><p class="muted">Üyelik, demo, satın alma, ödeme ve güvenlik işlemleri</p></div></div><div id="memberTimeline"><div class="empty">Hesap hareketleri yükleniyor…</div></div></section>`;
       await loadMemberTimeline(id, 1, false);
       $('#memberDetail').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
@@ -107,6 +111,72 @@
   function money(value, currency) {
     try { return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency || 'TRY' }).format(value); }
     catch { return `${Number(value).toLocaleString('tr-TR')} ${esc(currency || 'TRY')}`; }
+  }
+
+  function openMembershipAction(userId, companyId, companyName, currentRole, action) {
+    const dialog = document.createElement('dialog');
+    dialog.className = 'dialog';
+    dialog.style.width = 'min(520px,calc(100% - 24px))';
+    const form = document.createElement('form');
+    const head = document.createElement('div');
+    head.className = 'dialog-head';
+    const title = document.createElement('h2');
+    title.textContent = action === 'remove' ? 'Şirket üyeliğini kaldır' : 'Üyelik rolünü değiştir';
+    const close = document.createElement('button');
+    close.type = 'button'; close.className = 'btn small'; close.textContent = '✕';
+    close.setAttribute('aria-label', 'Pencereyi kapat');
+    close.addEventListener('click', () => dialog.close());
+    head.append(title, close);
+    const body = document.createElement('div'); body.className = 'dialog-body';
+    const intro = document.createElement('p'); intro.className = 'muted';
+    intro.textContent = `${companyName} şirketindeki üyelik için işlem yapılıyor. Şirket sahibi üyelikleri bu ekrandan değiştirilemez.`;
+    body.append(intro);
+    if (action === 'remove') {
+      const warning = document.createElement('div'); warning.className = 'notice warning';
+      warning.textContent = 'Üyenin bu şirkete açık oturumları işlemle birlikte kapatılır. Kullanıcı hesabı ve diğer şirket üyelikleri korunur.';
+      body.append(warning);
+    } else {
+      const label = document.createElement('label'); label.className = 'field'; label.append(document.createTextNode('Yeni şirket rolü'));
+      const select = document.createElement('select'); select.name = 'roleKey'; select.required = true;
+      for (const [value, text] of Object.entries({ admin: 'Yönetici', asset_manager: 'Envanter yöneticisi', asset_operator: 'Operatör', auditor: 'Denetçi', viewer: 'Salt okunur', hr_operator: 'İK operatörü' })) {
+        const option = document.createElement('option'); option.value = value; option.textContent = text; option.selected = value === currentRole; select.append(option);
+      }
+      label.append(select); body.append(label);
+    }
+    const noteLabel = document.createElement('label'); noteLabel.className = 'field'; noteLabel.append(document.createTextNode('İşlem gerekçesi'));
+    const note = document.createElement('textarea'); note.name = 'note'; note.required = true; note.maxLength = 1000;
+    note.placeholder = 'Bu yönetim işleminin nedeni'; noteLabel.append(note); body.append(noteLabel);
+    const foot = document.createElement('div'); foot.className = 'dialog-foot';
+    const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'btn'; cancel.textContent = 'Vazgeç'; cancel.addEventListener('click', () => dialog.close());
+    const submit = document.createElement('button'); submit.type = 'submit'; submit.className = action === 'remove' ? 'btn danger' : 'btn primary'; submit.textContent = action === 'remove' ? 'Üyeliği kaldır' : 'Rolü kaydet';
+    foot.append(cancel, submit); form.append(head, body, foot); dialog.append(form); document.body.append(dialog);
+    dialog.addEventListener('close', () => dialog.remove(), { once: true });
+    dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+    form.addEventListener('submit', async event => {
+      event.preventDefault(); submit.disabled = true;
+      try {
+        const csrf = await api('/api/session/csrf');
+        const endpoint = `/api/platform/members/${encodeURIComponent(userId)}/memberships/${encodeURIComponent(companyId)}`;
+        const removing = action === 'remove';
+        await api(removing ? endpoint : `${endpoint}/role`, {
+          method: removing ? 'DELETE' : 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf.requestToken },
+          body: JSON.stringify(removing ? { note: note.value } : { roleKey: form.elements.roleKey.value, note: note.value })
+        });
+        dialog.close();
+        const searchPage = state.page;
+        $('#memberDetail').hidden = true;
+        await loadMembers(searchPage);
+        await loadMemberDetail(userId);
+        const toast = $('#toast'); toast.textContent = removing ? 'Şirket üyeliği kaldırıldı ve şirket oturumları kapatıldı.' : 'Şirket üyelik rolü güncellendi.';
+        toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3500);
+      } catch (error) {
+        const feedback = document.createElement('div'); feedback.className = 'notice error'; feedback.textContent = error.message;
+        form.querySelector('.notice.error')?.remove(); body.append(feedback);
+      } finally { submit.disabled = false; }
+    });
+    dialog.showModal();
+    (form.elements.roleKey || note).focus();
   }
 
   let companySearchRequest = 0;
@@ -157,6 +227,15 @@
   $('#membersTable').addEventListener('click', (event) => {
     const button = event.target.closest('[data-member-detail]');
     if (button) loadMemberDetail(button.dataset.memberDetail);
+  });
+  $('#memberDetailBody').addEventListener('click', (event) => {
+    const roleButton = event.target.closest('[data-member-role]');
+    const removeButton = event.target.closest('[data-member-remove]');
+    const button = roleButton || removeButton;
+    if (!button) return;
+    openMembershipAction($('#memberSearch').dataset.activeUserId,
+      button.dataset.memberRole || button.dataset.memberRemove, button.dataset.company,
+      button.dataset.role || '', removeButton ? 'remove' : 'role');
   });
   document.querySelectorAll('[data-go="members"]').forEach((button) => button.addEventListener('click', () => $('#nav [data-view="members"]').click()));
   $('#openMemberInvite').addEventListener('click', openMemberInvite);

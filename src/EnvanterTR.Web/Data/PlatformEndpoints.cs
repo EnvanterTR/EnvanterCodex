@@ -360,7 +360,9 @@ public static class PlatformEndpoints
                                             ActorName = actor == null ? null : actor.DisplayName })
                 .Take(perSourceLimit + 1).ToListAsync(cancellationToken);
             if (platformAudits.Count > perSourceLimit) { platformAudits.RemoveAt(platformAudits.Count - 1); truncated = true; }
-            var companyNames = await db.Companies.AsNoTracking().Where(x => companyIds.Contains(x.Id))
+            var auditCompanyIds = platformAudits.Where(x => x.CompanyId.HasValue).Select(x => x.CompanyId!.Value)
+                .Concat(companyIds).Distinct().ToArray();
+            var companyNames = await db.Companies.AsNoTracking().Where(x => auditCompanyIds.Contains(x.Id))
                 .Select(x => new { x.Id, x.Name }).ToDictionaryAsync(x => x.Id, x => x.Name, cancellationToken);
             foreach (var audit in platformAudits)
             {
@@ -374,6 +376,7 @@ public static class PlatformEndpoints
                     "SubscriptionManuallyAdjusted" => "Abonelik elle düzenlendi", "CompanySuspended" => "Şirket askıya alındı",
                     "CompanyReactivated" => "Şirket yeniden etkinleştirildi", "PaidCompanyProvisioned" => "Ücretli şirket hesabı oluşturuldu",
                     "DemoRequestUpdated" => "Demo talebi güncellendi", "DemoRequestStatusChanged" => "Demo talebi aşaması değişti",
+                    "MemberRoleChanged" => "Şirket üyelik rolü değiştirildi", "MemberRemoved" => "Şirket üyeliği kaldırıldı",
                     _ => audit.Action
                 };
                 var companyName = audit.CompanyId is Guid id ? companyNames.GetValueOrDefault(id) : null;
@@ -399,6 +402,82 @@ public static class PlatformEndpoints
             var pageItems = events.OrderByDescending(x => x.OccurredAt).ThenBy(x => x.EventType).ThenBy(x => x.Title)
                 .Skip(skip).Take(pageSize).ToArray();
             return Results.Ok(new { items = pageItems, page, pageSize, hasMore = events.Count > skip + pageItems.Length, truncated });
+        });
+
+        admin.MapPatch("/members/{userId:guid}/memberships/{companyId:guid}/role", async (Guid userId, Guid companyId,
+            [FromBody] UpdatePlatformMemberRoleRequest request, ClaimsPrincipal user, AppDbContext db,
+            CancellationToken cancellationToken) =>
+        {
+            var allowedRoles = new[] { "admin", "asset_manager", "asset_operator", "auditor", "viewer", "hr_operator" };
+            var roleKey = request?.RoleKey?.Trim();
+            var note = Clean(request?.Note);
+            if (request is null || roleKey is null || !allowedRoles.Contains(roleKey, StringComparer.Ordinal) ||
+                note is null || note.Length > 1000)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["membership"] = ["Desteklenen bir şirket rolü ve en fazla 1000 karakterlik işlem gerekçesi gereklidir. Şirket sahibi rolü bu ekrandan değiştirilemez."]
+                });
+
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+            var companyExists = await db.Companies.AsNoTracking().AnyAsync(x => x.Id == companyId, cancellationToken);
+            if (!companyExists) return Results.NotFound(new { message = "Şirket bulunamadı." });
+            var membership = await db.CompanyMemberships.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.UserId == userId, cancellationToken);
+            if (membership is null) return Results.NotFound(new { message = "Şirket üyeliği bulunamadı." });
+            if (membership.RoleKey == "owner")
+                return Results.Conflict(new { message = "Şirket sahibi rolü bu ekrandan değiştirilemez. Önce şirket sahipliğini ayrı bir akışla devredin." });
+            if (membership.RoleKey == roleKey)
+                return Results.Ok(new { changed = false, membership.RoleKey, membership.CompanyId, membership.UserId });
+
+            var before = membership.RoleKey;
+            membership.RoleKey = roleKey;
+            var details = JsonSerializer.Serialize(new { before = new { roleKey = before }, after = new { roleKey }, note });
+            db.AuditEntries.Add(new AuditEntry
+            {
+                CompanyId = companyId, TargetType = "CompanyMembership", TargetId = userId,
+                Action = "RoleChanged", Details = details
+            });
+            AddAudit(db, user, "MemberRoleChanged", "CompanyMembership", userId, companyId, details);
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { changed = true, membership.RoleKey, membership.CompanyId, membership.UserId });
+        });
+
+        admin.MapDelete("/members/{userId:guid}/memberships/{companyId:guid}", async (Guid userId, Guid companyId,
+            [FromBody] RemovePlatformMembershipRequest request, ClaimsPrincipal user, AppDbContext db,
+            CancellationToken cancellationToken) =>
+        {
+            var note = Clean(request?.Note);
+            if (request is null || note is null || note.Length > 1000)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["membership"] = ["Üyeliği kaldırmak için en fazla 1000 karakterlik işlem gerekçesi gereklidir."]
+                });
+
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+            var companyExists = await db.Companies.AsNoTracking().AnyAsync(x => x.Id == companyId, cancellationToken);
+            if (!companyExists) return Results.NotFound(new { message = "Şirket bulunamadı." });
+            var membership = await db.CompanyMemberships.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.UserId == userId, cancellationToken);
+            if (membership is null) return Results.NotFound(new { message = "Şirket üyeliği bulunamadı." });
+            if (membership.RoleKey == "owner")
+                return Results.Conflict(new { message = "Şirket sahibi üyeliği bu ekrandan kaldırılamaz. Önce şirket sahipliğini ayrı bir akışla devredin." });
+
+            var previousRole = membership.RoleKey;
+            var now = DateTimeOffset.UtcNow;
+            var activeSessions = await db.UserSessions.Where(x => x.UserId == userId && x.CompanyId == companyId &&
+                !x.PlatformAdmin && x.RevokedAt == null).ToListAsync(cancellationToken);
+            foreach (var session in activeSessions) session.RevokedAt = now;
+            db.CompanyMemberships.Remove(membership);
+            var details = JsonSerializer.Serialize(new { before = new { roleKey = previousRole }, after = (object?)null,
+                note, revokedCompanySessions = activeSessions.Count });
+            db.AuditEntries.Add(new AuditEntry
+            {
+                CompanyId = companyId, TargetType = "CompanyMembership", TargetId = userId,
+                Action = "MemberRemoved", Details = details
+            });
+            AddAudit(db, user, "MemberRemoved", "CompanyMembership", userId, companyId, details);
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { removed = true, companyId, userId, revokedSessions = activeSessions.Count });
         });
 
         admin.MapPost("/members/invite", async ([FromBody] PlatformInviteMemberRequest request,

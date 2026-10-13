@@ -1334,6 +1334,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             db.CompanyMemberships.AddRange(
                 new CompanyMembership { UserId = userId, CompanyId = _companyId, RoleKey = "owner", CreatedAt = earlierMembership },
                 new CompanyMembership { UserId = userId, CompanyId = _otherCompanyId, RoleKey = "viewer", CreatedAt = DateTimeOffset.UtcNow.AddDays(-20) });
+            db.UserSessions.Add(new UserSession
+            {
+                UserId = userId, CompanyId = _otherCompanyId, PlatformAdmin = false,
+                CreatedAt = DateTimeOffset.UtcNow, LastSeenAt = DateTimeOffset.UtcNow,
+                ExpiresAt = DateTimeOffset.UtcNow.AddHours(2)
+            });
             db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
             await db.SaveChangesAsync();
         }
@@ -1372,6 +1378,63 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
 
         using (var tenantDenied = await SendAsAdminAsync($"/api/platform/members/{userId}/timeline"))
             Assert.Equal(HttpStatusCode.Forbidden, tenantDenied.StatusCode);
+        using var csrfResponse = await SendAsPlatformAdminRequestAsync(HttpMethod.Get, "/api/session/csrf");
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var membershipPath = $"/api/platform/members/{userId}/memberships/{_otherCompanyId}";
+        using (var tenantRoleChange = await SendAsUserAsync(HttpMethod.Patch, membershipPath + "/role", _userId, _companyId,
+                   System.Net.Http.Json.JsonContent.Create(new { roleKey = "admin", note = "acceptance" })))
+            Assert.Equal(HttpStatusCode.Forbidden, tenantRoleChange.StatusCode);
+        using (var noCsrf = await SendAsPlatformAdminRequestAsync(HttpMethod.Patch, membershipPath + "/role",
+                   System.Net.Http.Json.JsonContent.Create(new { roleKey = "admin", note = "acceptance" })))
+            Assert.Equal(HttpStatusCode.BadRequest, noCsrf.StatusCode);
+        using (var protectedOwnerRole = await SendAsPlatformAdminRequestAsync(HttpMethod.Patch,
+                   $"/api/platform/members/{userId}/memberships/{_companyId}/role",
+                   System.Net.Http.Json.JsonContent.Create(new { roleKey = "admin", note = "acceptance" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, protectedOwnerRole.StatusCode);
+        using (var protectedOwnerRemoval = await SendAsPlatformAdminRequestAsync(HttpMethod.Delete,
+                   $"/api/platform/members/{userId}/memberships/{_companyId}",
+                   System.Net.Http.Json.JsonContent.Create(new { note = "acceptance" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, protectedOwnerRemoval.StatusCode);
+        using (var changedRole = await SendAsPlatformAdminRequestAsync(HttpMethod.Patch, membershipPath + "/role",
+                   System.Net.Http.Json.JsonContent.Create(new { roleKey = "admin", note = "Role reviewed by acceptance" }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, changedRole.StatusCode);
+            using var rolePayload = JsonDocument.Parse(await changedRole.Content.ReadAsStringAsync());
+            Assert.True(rolePayload.RootElement.GetProperty("changed").GetBoolean());
+            Assert.Equal("admin", rolePayload.RootElement.GetProperty("roleKey").GetString());
+        }
+        using (var sameRole = await SendAsPlatformAdminRequestAsync(HttpMethod.Patch, membershipPath + "/role",
+                   System.Net.Http.Json.JsonContent.Create(new { roleKey = "admin", note = "Repeated safe action" }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, sameRole.StatusCode);
+            using var sameRolePayload = JsonDocument.Parse(await sameRole.Content.ReadAsStringAsync());
+            Assert.False(sameRolePayload.RootElement.GetProperty("changed").GetBoolean());
+        }
+        using (var removedMembership = await SendAsPlatformAdminRequestAsync(HttpMethod.Delete, membershipPath,
+                   System.Net.Http.Json.JsonContent.Create(new { note = "Membership no longer needed" }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, removedMembership.StatusCode);
+            using var removalPayload = JsonDocument.Parse(await removedMembership.Content.ReadAsStringAsync());
+            Assert.Equal(1, removalPayload.RootElement.GetProperty("revokedSessions").GetInt32());
+        }
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.False(await db.CompanyMemberships.AnyAsync(x => x.UserId == userId && x.CompanyId == _otherCompanyId));
+            Assert.Equal("owner", await db.CompanyMemberships.Where(x => x.UserId == userId && x.CompanyId == _companyId)
+                .Select(x => x.RoleKey).SingleAsync());
+            Assert.NotNull(await db.UserSessions.Where(x => x.UserId == userId && x.CompanyId == _otherCompanyId)
+                .Select(x => x.RevokedAt).SingleAsync());
+            var roleAudit = await db.PlatformAuditEntries.SingleAsync(x => x.TargetType == "CompanyMembership" &&
+                x.TargetId == userId && x.CompanyId == _otherCompanyId && x.Action == "MemberRoleChanged");
+            Assert.Contains("Role reviewed by acceptance", roleAudit.Details, StringComparison.Ordinal);
+            Assert.True(await db.PlatformAuditEntries.AnyAsync(x => x.TargetType == "CompanyMembership" &&
+                x.TargetId == userId && x.CompanyId == _otherCompanyId && x.Action == "MemberRemoved"));
+        }
         var timeline = new List<string>();
         var timelineBody = new List<string>();
         var timelinePages = 0;
@@ -1392,6 +1455,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Contains("Satın alma kaydı oluşturuldu", timeline);
         Assert.Contains("Ödeme doğrulandı", timeline);
         Assert.Contains("Demo erişimi tanımlandı", timeline);
+        Assert.Contains("Şirket üyeliği kaldırıldı", timeline);
         Assert.True(timelinePages > 1, "The member timeline should paginate when more than four events exist.");
         var serializedTimeline = string.Join('\n', timelineBody);
         Assert.DoesNotContain("checkout-token-hash-must-not-leak", serializedTimeline, StringComparison.Ordinal);
