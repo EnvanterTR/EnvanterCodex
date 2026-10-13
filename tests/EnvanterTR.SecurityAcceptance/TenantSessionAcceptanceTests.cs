@@ -1226,6 +1226,59 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Platform_checkout_orders_are_searchable_paginated_and_hide_provider_secrets()
+    {
+        var plan = new SubscriptionPlan
+        {
+            Code = $"orders-{_companyId:N}", Name = "Checkout orders acceptance", DeploymentKind = "cloud",
+            IsActive = true, IsPublic = true
+        };
+        var marker = $"ORDER-ACCEPTANCE-{Guid.NewGuid():N}";
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SubscriptionPlans.Add(plan);
+            db.CompanyCheckoutOrders.AddRange(
+                new CompanyCheckoutOrder
+                {
+                    Id = Guid.NewGuid(), CompanyName = "Order Search Company", Slug = $"order-search-{_companyId:N}",
+                    ContactEmail = "contact@example.invalid", OwnerName = "Order Search Owner", OwnerEmail = "owner@example.invalid",
+                    PlanId = plan.Id, TermDays = 365, Amount = 12000, Currency = "TRY", Status = "Provisioned",
+                    PaymentReference = marker, CheckoutTokenHash = "provider-token-hash-must-not-leak",
+                    CheckoutPageUrlProtected = "protected-provider-url-must-not-leak", CompanyId = _companyId,
+                    CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-2), ExpiresAt = DateTimeOffset.UtcNow.AddDays(1),
+                    PaidAt = DateTimeOffset.UtcNow.AddMinutes(-1)
+                },
+                new CompanyCheckoutOrder
+                {
+                    Id = Guid.NewGuid(), CompanyName = "Unrelated Order Company", Slug = $"unrelated-{_companyId:N}",
+                    ContactEmail = "other@example.invalid", OwnerName = "Other Owner", OwnerEmail = "other-owner@example.invalid",
+                    PlanId = plan.Id, TermDays = 30, Amount = 1500, Currency = "TRY", Status = "PaymentFailed",
+                    CheckoutTokenHash = "second-secret", CheckoutPageUrlProtected = "second-protected-url",
+                    CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-1), ExpiresAt = DateTimeOffset.UtcNow.AddDays(1)
+                });
+            db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            await db.SaveChangesAsync();
+        }
+
+        using (var denied = await SendAsAdminAsync("/api/platform/checkout-orders"))
+            Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+
+        using var response = await SendAsPlatformAdminAsync($"/api/platform/checkout-orders?q={Uri.EscapeDataString(marker)}&status=Provisioned&page=1&pageSize=1");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        using var payload = JsonDocument.Parse(body);
+        var root = payload.RootElement;
+        Assert.Equal(1, root.GetProperty("total").GetInt32());
+        Assert.Equal(1, root.GetProperty("items").GetArrayLength());
+        Assert.Equal(marker, root.GetProperty("items")[0].GetProperty("paymentReference").GetString());
+        Assert.Contains("Checkout orders acceptance", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("provider-token-hash-must-not-leak", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("protected-provider-url-must-not-leak", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("second-secret", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Platform_can_provision_a_paid_cloud_company_owner_and_retryable_invitation()
     {
         var plan = new SubscriptionPlan

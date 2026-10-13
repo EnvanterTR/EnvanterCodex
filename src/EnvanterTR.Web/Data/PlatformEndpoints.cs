@@ -70,6 +70,42 @@ public static class PlatformEndpoints
             });
         });
 
+        admin.MapGet("/checkout-orders", async (AppDbContext db, CancellationToken cancellationToken,
+            [FromQuery] string? q, [FromQuery] string? status, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
+        {
+            page = Math.Clamp(page, 1, 1_000_000);
+            pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
+            if (q is { Length: > 120 })
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama en fazla 120 karakter olabilir."] });
+            var validStatuses = new[] { "Pending", "PaymentStarted", "PaymentReview", "PaymentFailed", "Expired", "Provisioned", "ProvisioningFailed" };
+            if (!string.IsNullOrWhiteSpace(status) && !validStatuses.Contains(status, StringComparer.Ordinal))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["status"] = ["Satın alma durumu geçersiz."] });
+
+            var query = from order in db.CompanyCheckoutOrders.AsNoTracking()
+                        join plan in db.SubscriptionPlans.AsNoTracking() on order.PlanId equals plan.Id
+                        select new { order, plan };
+            if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.order.Status == status);
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                query = query.Where(x => x.order.CompanyName.Contains(term) || x.order.Slug.Contains(term) ||
+                    x.order.ContactEmail.Contains(term) || x.order.OwnerName.Contains(term) || x.order.OwnerEmail.Contains(term) ||
+                    (x.order.PaymentReference != null && x.order.PaymentReference.Contains(term)));
+            }
+            var total = await query.CountAsync(cancellationToken);
+            var items = await query.OrderByDescending(x => x.order.CreatedAt)
+                .Skip((page - 1) * pageSize).Take(pageSize)
+                .Select(x => new
+                {
+                    x.order.Id, x.order.CompanyName, x.order.Slug, x.order.ContactEmail,
+                    x.order.OwnerName, x.order.OwnerEmail, x.order.Status, x.order.TermDays,
+                    x.order.Amount, x.order.Currency, x.order.PaymentReference, x.order.CompanyId,
+                    x.order.CreatedAt, x.order.ExpiresAt, x.order.PaidAt,
+                    planName = x.plan.Name, planCode = x.plan.Code
+                }).ToListAsync(cancellationToken);
+            return Results.Ok(new { items, page, pageSize, total });
+        });
+
         admin.MapGet("/plans", async (AppDbContext db, CancellationToken cancellationToken) =>
             Results.Ok(await db.SubscriptionPlans.AsNoTracking().OrderBy(x => x.SortOrder)
                 .Select(x => new { x.Id, x.Code, x.Name, x.Description, x.DeploymentKind,
