@@ -19,7 +19,7 @@ public static class PlatformEndpoints
         {
             var plans = await db.SubscriptionPlans.AsNoTracking()
                 .Where(x => x.IsActive && x.IsPublic).OrderBy(x => x.SortOrder)
-                .Select(x => new { x.Code, x.Name, x.Description, x.DeploymentKind,
+                .Select(x => new { x.Id, x.Code, x.Name, x.Description, x.DeploymentKind,
                     MaxLoginUsers = x.DeploymentKind == "cloud" ? (int?)null : x.MaxLoginUsers, x.MaxAssets,
                     x.MonthlyPrice, x.AnnualPrice, x.OneTimePrice, x.Currency, x.SupportsOfflineUse, x.OfflineGraceDays, x.FeatureFlagsJson })
                 .ToListAsync(cancellationToken);

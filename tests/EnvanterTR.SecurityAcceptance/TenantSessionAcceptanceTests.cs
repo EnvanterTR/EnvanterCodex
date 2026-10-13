@@ -79,7 +79,10 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     {
         var request = new InitializeCompanyCheckoutRequest(Guid.NewGuid(), "Synthetic Checkout Ltd", "synthetic-checkout",
             "owner@example.invalid", "Test", "Owner", "owner@example.invalid", "+905550000001", "10000000146",
-            "Test Street 1", "Istanbul", "Turkey", "34000", Guid.NewGuid(), "monthly");
+            "Test Street 1", "Istanbul", "Turkey", "34000", Guid.NewGuid(), "monthly", true, "cloud-checkout-data-v1");
+        using var statusResponse = await _client!.GetAsync("/api/checkout/status");
+        using var statusPayload = JsonDocument.Parse(await statusResponse.Content.ReadAsStringAsync());
+        Assert.False(statusPayload.RootElement.GetProperty("available").GetBoolean());
         using var missingCsrf = await _client!.PostAsJsonAsync("/api/checkout/initialize", request);
         Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
 
@@ -152,6 +155,9 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             });
         });
         using var client = checkoutFactory.CreateClient();
+        using var statusResponse = await client.GetAsync("/api/checkout/status");
+        using var statusPayload = JsonDocument.Parse(await statusResponse.Content.ReadAsStringAsync());
+        Assert.True(statusPayload.RootElement.GetProperty("available").GetBoolean());
         using var csrfResponse = await client.GetAsync("/api/session/csrf");
         using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
         var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
@@ -160,7 +166,17 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
         var request = new InitializeCompanyCheckoutRequest(checkoutId, "Synthetic Checkout Ltd", $"checkout-{checkoutId:N}"[..20],
             "owner@example.invalid", "Test", "Owner", $"owner-{checkoutId:N}@example.invalid", "+905550000002", "10000000146",
-            "Synthetic Street 2", "Istanbul", "Turkey", "34000", plan.Id, "monthly");
+            "Synthetic Street 2", "Istanbul", "Turkey", "34000", plan.Id, "monthly", true, "cloud-checkout-data-v1");
+        var publishedPlans = await client.GetFromJsonAsync<JsonElement>("/api/plans");
+        Assert.Contains(publishedPlans.EnumerateArray(), item => item.GetProperty("id").GetGuid() == plan.Id);
+        using (var unacknowledgedMessage = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/initialize")
+               { Content = JsonContent.Create(request with { DataProcessingAcknowledged = false }) })
+        {
+            unacknowledgedMessage.Headers.Add("X-CSRF-TOKEN", requestToken);
+            unacknowledgedMessage.Headers.Add("Cookie", antiforgeryCookie);
+            using var unacknowledged = await client.SendAsync(unacknowledgedMessage);
+            Assert.Equal(HttpStatusCode.BadRequest, unacknowledged.StatusCode);
+        }
         using var message = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/initialize") { Content = JsonContent.Create(request) };
         message.Headers.Add("X-CSRF-TOKEN", requestToken);
         message.Headers.Add("Cookie", antiforgeryCookie);
@@ -169,6 +185,17 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var initializedPayload = JsonDocument.Parse(await initialized.Content.ReadAsStringAsync());
         Assert.StartsWith("https://sandbox-api.iyzipay.com/checkoutform/", initializedPayload.RootElement.GetProperty("checkoutUrl").GetString());
         Assert.Equal(125.50m, provider.InitializedAmount);
+        Assert.Equal(1, provider.InitializeCount);
+        using (var retry = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/initialize") { Content = JsonContent.Create(request) })
+        {
+            retry.Headers.Add("X-CSRF-TOKEN", requestToken);
+            retry.Headers.Add("Cookie", antiforgeryCookie);
+            using var retried = await client.SendAsync(retry);
+            Assert.Equal(HttpStatusCode.OK, retried.StatusCode);
+            using var retryPayload = JsonDocument.Parse(await retried.Content.ReadAsStringAsync());
+            Assert.Equal(initializedPayload.RootElement.GetProperty("checkoutUrl").GetString(), retryPayload.RootElement.GetProperty("checkoutUrl").GetString());
+            Assert.Equal(1, provider.InitializeCount);
+        }
 
         await using (var scope = checkoutFactory.Services.CreateAsyncScope())
         {
@@ -176,6 +203,9 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             var order = await db.CompanyCheckoutOrders.SingleAsync(x => x.Id == checkoutId);
             Assert.Equal(125.50m, order.Amount);
             Assert.Equal("PaymentStarted", order.Status);
+            Assert.Equal("cloud-checkout-data-v1", order.DataProcessingNoticeVersion);
+            Assert.NotNull(order.DataProcessingAcknowledgedAt);
+            Assert.Null(order.InitializationLeaseUntil);
             Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes("synthetic-provider-token"))), order.CheckoutTokenHash);
             Assert.DoesNotContain("https://sandbox-api", order.CheckoutPageUrlProtected, StringComparison.Ordinal);
         }
@@ -944,6 +974,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             "POST /api/session/password/reset",
             "POST /api/checkout/initialize",
             "POST /api/checkout/callback",
+            "GET /api/checkout/status",
             "GET /api/plans",
             "GET /api/site-content",
             "POST /api/demo-requests",
@@ -9300,6 +9331,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     {
         private string? _conversationId;
         public decimal InitializedAmount { get; private set; }
+        public int InitializeCount { get; private set; }
         public int RetrieveCount { get; private set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -9308,6 +9340,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             var root = body.RootElement;
             if (request.RequestUri?.AbsolutePath == "/payment/iyzipos/checkoutform/initialize/auth/ecom")
             {
+                InitializeCount++;
                 InitializedAmount = root.GetProperty("price").GetDecimal();
                 _conversationId = root.GetProperty("conversationId").GetString();
                 return JsonResponse(new

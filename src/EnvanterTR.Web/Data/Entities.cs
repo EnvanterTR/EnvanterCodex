@@ -189,6 +189,9 @@ public sealed class CompanyCheckoutOrder
     public string? CheckoutPageUrlProtected { get; set; }
     public string? PaymentReference { get; set; }
     public Guid? CompanyId { get; set; }
+    public string? DataProcessingNoticeVersion { get; set; }
+    public DateTimeOffset? DataProcessingAcknowledgedAt { get; set; }
+    public DateTimeOffset? InitializationLeaseUntil { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset ExpiresAt { get; set; }
     public DateTimeOffset? PaidAt { get; set; }

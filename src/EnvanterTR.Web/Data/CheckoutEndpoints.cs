@@ -18,16 +18,28 @@ public sealed record InitializeCompanyCheckoutRequest(
     Guid CheckoutId, string CompanyName, string Slug, string? ContactEmail,
     string OwnerFirstName, string OwnerLastName, string OwnerEmail, string Phone,
     string IdentityNumber, string BillingAddress, string City, string Country, string? ZipCode,
-    Guid PlanId, string Term);
+    Guid PlanId, string Term, bool DataProcessingAcknowledged, string? DataProcessingNoticeVersion);
 
 public static class CheckoutEndpoints
 {
     private const string CheckoutStatusStarted = "PaymentStarted";
+    private const string CheckoutNoticeVersion = "cloud-checkout-data-v1";
     private static readonly Regex PhonePattern = new("^\\+[1-9][0-9]{7,14}$", RegexOptions.CultureInvariant);
     private static readonly Regex IdentityPattern = new("^[0-9]{11}$", RegexOptions.CultureInvariant);
 
     public static IEndpointRouteBuilder MapCheckoutEndpoints(this IEndpointRouteBuilder endpoints)
     {
+        endpoints.MapGet("/api/checkout/status", (IOptions<IyzipayOptions> configuredOptions) =>
+        {
+            var options = configuredOptions.Value;
+            var available = options.IsConfigured && IsTrustedCallbackUrl(options.CallbackUrl) && IsTrustedApiBase(options.BaseUrl);
+            return Results.Ok(new
+            {
+                available,
+                provider = available ? "iyzico" : null,
+                message = available ? null : "Çevrimiçi ödeme şu anda kullanılamıyor. Bilgileriniz gönderilmeden önce ödeme yapılandırmasının tamamlanması gerekiyor."
+            });
+        }).AllowAnonymous();
         endpoints.MapPost("/api/checkout/initialize", InitializeAsync)
             .AllowAnonymous().RequireRateLimiting("checkout");
         endpoints.MapPost("/api/checkout/callback", CallbackAsync)
@@ -74,9 +86,10 @@ public static class CheckoutEndpoints
             identityNumber is null || !IdentityPattern.IsMatch(identityNumber) || string.IsNullOrWhiteSpace(billingAddress) ||
             billingAddress.Length > 500 || string.IsNullOrWhiteSpace(city) || city.Length > 100 ||
             string.IsNullOrWhiteSpace(country) || country.Length > 100 || (zipCode?.Length > 24) ||
-            request.Term is not ("monthly" or "annual"))
+            request.Term is not ("monthly" or "annual") || !request.DataProcessingAcknowledged ||
+            request.DataProcessingNoticeVersion != CheckoutNoticeVersion)
             return Results.ValidationProblem(new Dictionary<string, string[]> {
-                ["checkout"] = ["Firma, alt alan adı, yetkili ve geçerli fatura bilgilerini kontrol edin."]
+                ["checkout"] = ["Firma, alt alan adı, yetkili, fatura bilgileri ve veri işleme bilgilendirmesi onayını kontrol edin."]
             });
 
         var plan = await db.SubscriptionPlans.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.PlanId &&
@@ -92,9 +105,11 @@ public static class CheckoutEndpoints
 
         var ownerName = $"{firstName} {lastName}";
         var existingOrder = await db.CompanyCheckoutOrders.SingleOrDefaultAsync(x => x.Id == request.CheckoutId, cancellationToken);
+        CompanyCheckoutOrder pending;
         if (existingOrder is not null)
         {
-            if (!SameRequest(existingOrder, companyName, slug!, contactEmail, ownerName, ownerEmail!, plan.Id, termDays, amount, currency))
+            if (!SameRequest(existingOrder, companyName, slug!, contactEmail, ownerName, ownerEmail!, plan.Id, termDays,
+                    amount, currency, CheckoutNoticeVersion))
                 return Results.Conflict(new { message = "Bu satın alma kimliği başka bilgilerle kullanılmış." });
             if (existingOrder.Status is CheckoutStatusStarted or "PaymentReview" &&
                 !string.IsNullOrWhiteSpace(existingOrder.CheckoutPageUrlProtected))
@@ -111,12 +126,24 @@ public static class CheckoutEndpoints
                         statusCode: StatusCodes.Status409Conflict);
                 }
             }
-            return Results.Conflict(new { message = "Bu satın alma daha önce başlatılmış veya sonuçlanmış. Sayfayı yenileyip yeni işlem oluşturun." });
-        }
+            if (existingOrder.Status != "Pending")
+                return Results.Conflict(new { message = "Bu satın alma tamamlanmış veya yeniden başlatılamaz durumda. Yeni bir ödeme denemesi oluşturun." });
 
-        CompanyCheckoutOrder pending;
-        await using (var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken))
+            var now = DateTimeOffset.UtcNow;
+            var leaseAcquired = await db.CompanyCheckoutOrders
+                .Where(x => x.Id == request.CheckoutId && x.Status == "Pending" && x.ExpiresAt > now &&
+                    (x.InitializationLeaseUntil == null || x.InitializationLeaseUntil <= now))
+                .ExecuteUpdateAsync(update => update.SetProperty(x => x.InitializationLeaseUntil, now.AddMinutes(2)), cancellationToken);
+            if (leaseAcquired != 1)
+            {
+                context.Response.Headers.RetryAfter = "10";
+                return Results.Conflict(new { message = "Ödeme oturumu hazırlanıyor. Aynı sayfadan birkaç saniye sonra tekrar deneyin." });
+            }
+            pending = existingOrder;
+        }
+        else
         {
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
             var reservedStatuses = new[] { "Pending", CheckoutStatusStarted, "PaymentReview", "ProvisioningFailed" };
             var now = DateTimeOffset.UtcNow;
             var abandoned = await db.CompanyCheckoutOrders.Where(x => x.Slug == slug &&
@@ -132,6 +159,9 @@ public static class CheckoutEndpoints
                 Id = request.CheckoutId, CompanyName = companyName, Slug = slug!, ContactEmail = contactEmail,
                 OwnerName = ownerName, OwnerEmail = ownerEmail!, PlanId = plan.Id, TermDays = termDays,
                 Amount = amount, Currency = currency, Status = "Pending",
+                DataProcessingNoticeVersion = CheckoutNoticeVersion,
+                DataProcessingAcknowledgedAt = now,
+                InitializationLeaseUntil = now.AddMinutes(2),
                 CreatedAt = now, ExpiresAt = now.AddDays(3)
             };
             db.CompanyCheckoutOrders.Add(pending);
@@ -187,6 +217,7 @@ public static class CheckoutEndpoints
             order.CheckoutPageUrlProtected = dataProtectionProvider.CreateProtector("EnvanterTR.Iyzico.CheckoutPage.v1")
                 .Protect(paymentUri.AbsoluteUri);
             order.Status = CheckoutStatusStarted;
+            order.InitializationLeaseUntil = null;
             await db.SaveChangesAsync(cancellationToken);
             return Results.Ok(new { checkoutUrl = paymentUri.AbsoluteUri, orderId = order.Id });
         }
@@ -373,10 +404,11 @@ public static class CheckoutEndpoints
     }
 
     private static bool SameRequest(CompanyCheckoutOrder order, string companyName, string slug, string contactEmail,
-        string ownerName, string ownerEmail, Guid planId, int termDays, decimal amount, string currency) =>
+        string ownerName, string ownerEmail, Guid planId, int termDays, decimal amount, string currency, string noticeVersion) =>
         order.CompanyName == companyName && order.Slug == slug && order.ContactEmail == contactEmail &&
         order.OwnerName == ownerName && order.OwnerEmail.Equals(ownerEmail, StringComparison.OrdinalIgnoreCase) &&
-        order.PlanId == planId && order.TermDays == termDays && order.Amount == amount && order.Currency == currency;
+        order.PlanId == planId && order.TermDays == termDays && order.Amount == amount && order.Currency == currency &&
+        order.DataProcessingAcknowledgedAt is not null && order.DataProcessingNoticeVersion == noticeVersion;
 
     private static async Task SetStatusAsync(AppDbContext db, Guid id, string status,
         CancellationToken cancellationToken, string? paymentReference = null)
@@ -384,6 +416,7 @@ public static class CheckoutEndpoints
         var order = await db.CompanyCheckoutOrders.SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (order is null || order.Status == "Provisioned") return;
         order.Status = status;
+        order.InitializationLeaseUntil = null;
         if (paymentReference is not null) order.PaymentReference = paymentReference;
         if (status == "PaymentFailed") order.PaidAt = null;
         await db.SaveChangesAsync(cancellationToken);
@@ -396,6 +429,7 @@ public static class CheckoutEndpoints
         var order = await db.CompanyCheckoutOrders.SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (order is null || order.Status == "Provisioned") return;
         order.Status = "ProvisioningFailed";
+        order.InitializationLeaseUntil = null;
         order.PaymentReference = paymentReference;
         order.PaidAt ??= DateTimeOffset.UtcNow;
         try { await db.SaveChangesAsync(cancellationToken); }

@@ -151,6 +151,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.CheckoutTokenHash).HasMaxLength(64);
         modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.CheckoutPageUrlProtected).HasMaxLength(4096);
         modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.PaymentReference).HasMaxLength(180);
+        modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.DataProcessingNoticeVersion).HasMaxLength(80);
         modelBuilder.Entity<CompanyCheckoutOrder>().HasIndex(x => x.CheckoutTokenHash).IsUnique()
             .HasFilter("\"CheckoutTokenHash\" IS NOT NULL");
         modelBuilder.Entity<CompanyCheckoutOrder>().HasIndex(x => x.PaymentReference).IsUnique()

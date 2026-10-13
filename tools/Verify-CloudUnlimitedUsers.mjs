@@ -29,7 +29,9 @@ if (!app.includes('Bulut şirketlerinde kullanıcı sayısı sınırsızdır; ye
   failures.push('Company user management must not imply a login-user cap on Cloud subscriptions.');
 }
 if (!publicSite.includes("const cloudPlans=publishedPlans.filter(item=>item.deploymentKind==='cloud');") ||
-    !publicSite.includes('const plan=cloudPlans[index];') ||
+    !publicSite.includes('const tiers=cloudPlans.length?cloudPlans:') ||
+    !publicSite.includes('tiers.forEach((plan,index)=>') ||
+    !publicSite.includes('const name=plan?.name||copy.tierNames[index]') ||
     !publicSite.includes('Sınırsız kullanıcı ve envanter kaydı') ||
     /(?:50–200|201–500|501–2[., ]?000)\s*(?:users|kullanıcı|пользователей|користувачів|корисници)/i.test(publicSite) ||
     /Cloud user packages|Cloud kullanıcı paketleri|Пакеты Cloud по числу пользователей|Пакети Cloud за кількістю користувачів/i.test(publicSite)) {

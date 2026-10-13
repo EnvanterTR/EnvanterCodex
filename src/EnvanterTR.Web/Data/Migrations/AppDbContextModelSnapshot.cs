@@ -1890,7 +1890,17 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(3)
                         .HasColumnType("character varying(3)");
 
+                    b.Property<DateTimeOffset?>("DataProcessingAcknowledgedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DataProcessingNoticeVersion")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
                     b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("InitializationLeaseUntil")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("OwnerEmail")
