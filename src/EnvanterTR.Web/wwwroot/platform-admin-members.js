@@ -5,8 +5,12 @@
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
   const date = (value) => value ? new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
   const roleLabel = (value) => ({ owner: 'Şirket sahibi', admin: 'Yönetici', manager: 'Envanter yöneticisi', auditor: 'Denetçi', viewer: 'Salt okunur' })[value] || value || '—';
-  const api = async (url) => {
-    const response = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+  const api = async (url, options = {}) => {
+    const response = await fetch(url, {
+      ...options,
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json', ...(options.headers || {}) }
+    });
     if (!response.ok) {
       let message = `İstek başarısız (${response.status}).`;
       try { const body = await response.json(); message = body.message || body.title || message; } catch { /* Keep generic status. */ }
@@ -73,6 +77,40 @@
     }
   }
 
+  let companySearchRequest = 0;
+  let companySearchTimer;
+  async function loadInviteCompanies(query = '') {
+    const request = ++companySearchRequest;
+    const select = $('#memberInviteCompany');
+    select.disabled = true;
+    select.innerHTML = '<option value="">Şirketler aranıyor…</option>';
+    try {
+      const params = new URLSearchParams({ active: 'true', page: '1', pageSize: '200' });
+      if (query.trim()) params.set('q', query.trim());
+      const result = await api(`/api/platform/companies?${params}`);
+      if (request !== companySearchRequest) return;
+      select.innerHTML = result.items.length
+        ? `<option value="">Şirket seçin</option>${result.items.map((company) => `<option value="${esc(company.id)}">${esc(company.name)}${company.slug ? ` · ${esc(company.slug)}` : ''}</option>`).join('')}`
+        : '<option value="">Eşleşen etkin şirket yok</option>';
+      if (result.total > result.items.length && !query.trim())
+        $('#memberInviteFeedback').textContent = `İlk ${result.items.length} şirket gösteriliyor. Arama alanıyla şirketi bulun.`;
+      select.disabled = result.items.length === 0;
+    } catch (error) {
+      if (request !== companySearchRequest) return;
+      select.innerHTML = '<option value="">Şirket listesi yüklenemedi</option>';
+      $('#memberInviteFeedback').textContent = error.message;
+    }
+  }
+
+  function openMemberInvite() {
+    const form = $('#memberInviteForm');
+    form.reset();
+    $('#memberInviteFeedback').textContent = '';
+    $('#memberInviteDialog').showModal();
+    loadInviteCompanies();
+    form.elements.fullName.focus();
+  }
+
   $('#nav').addEventListener('click', (event) => {
     if (event.target.closest('[data-view="members"]')) {
       loadMembers(1);
@@ -89,4 +127,40 @@
     if (button) loadMemberDetail(button.dataset.memberDetail);
   });
   document.querySelectorAll('[data-go="members"]').forEach((button) => button.addEventListener('click', () => $('#nav [data-view="members"]').click()));
+  $('#openMemberInvite').addEventListener('click', openMemberInvite);
+  $('#closeMemberInvite').addEventListener('click', () => $('#memberInviteDialog').close());
+  $('#cancelMemberInvite').addEventListener('click', () => $('#memberInviteDialog').close());
+  $('#memberInviteCompanySearch').addEventListener('input', () => {
+    clearTimeout(companySearchTimer);
+    companySearchTimer = setTimeout(() => loadInviteCompanies($('#memberInviteCompanySearch').value), 220);
+  });
+  $('#memberInviteForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const submit = $('#submitMemberInvite');
+    submit.disabled = true;
+    $('#memberInviteFeedback').textContent = 'Davet kaydediliyor…';
+    try {
+      const csrf = await api('/api/session/csrf');
+      const result = await api('/api/platform/members/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf.requestToken },
+        body: JSON.stringify({
+          companyId: form.elements.companyId.value,
+          fullName: form.elements.fullName.value,
+          email: form.elements.email.value,
+          roleKey: form.elements.roleKey.value
+        })
+      });
+      $('#memberInviteDialog').close();
+      $('#memberSearch').value = form.elements.email.value.trim();
+      await loadMembers(1);
+      const toast = $('#toast');
+      toast.textContent = result.message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3200);
+    } catch (error) {
+      $('#memberInviteFeedback').textContent = error.message;
+    } finally { submit.disabled = false; }
+  });
 })();

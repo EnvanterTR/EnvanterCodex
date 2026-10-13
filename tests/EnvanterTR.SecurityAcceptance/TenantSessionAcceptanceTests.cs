@@ -1351,6 +1351,103 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Platform_admin_can_invite_new_and_existing_members_with_company_scope_and_retryable_email()
+    {
+        var plan = new SubscriptionPlan
+        {
+            Code = $"member-invite-{_companyId:N}"[..40], Name = "Platform member invite acceptance",
+            DeploymentKind = "cloud", IsActive = true, IsPublic = true
+        };
+        var email = $"platform-invite-{Guid.NewGuid():N}@example.invalid";
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SubscriptionPlans.Add(plan);
+            db.TenantSubscriptions.AddRange(
+                new TenantSubscription { CompanyId = _companyId, PlanId = plan.Id, Status = "Active", EndsAt = DateTimeOffset.UtcNow.AddDays(60) },
+                new TenantSubscription { CompanyId = _otherCompanyId, PlanId = plan.Id, Status = "Active", EndsAt = DateTimeOffset.UtcNow.AddDays(60) });
+            db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            await db.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsPlatformAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var invite = new { companyId = _companyId, fullName = "New Platform Invite", email, roleKey = "viewer" };
+
+        using (var denied = await SendAsUserAsync(HttpMethod.Post, "/api/platform/members/invite", _userId, _companyId,
+                   System.Net.Http.Json.JsonContent.Create(invite)))
+            Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+
+        using (var invalidRole = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/members/invite",
+                   System.Net.Http.Json.JsonContent.Create(new { companyId = _companyId, fullName = "Invalid Role", email, roleKey = "owner" }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidRole.StatusCode);
+
+        Guid invitedUserId;
+        using (var created = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/members/invite",
+                   System.Net.Http.Json.JsonContent.Create(invite), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+            using var payload = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
+            Assert.True(payload.RootElement.GetProperty("invitationSent").GetBoolean());
+            Assert.False(payload.RootElement.GetProperty("resent").GetBoolean());
+            invitedUserId = payload.RootElement.GetProperty("userId").GetGuid();
+        }
+
+        using (var resent = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/members/invite",
+                   System.Net.Http.Json.JsonContent.Create(invite), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, resent.StatusCode);
+            using var payload = JsonDocument.Parse(await resent.Content.ReadAsStringAsync());
+            Assert.True(payload.RootElement.GetProperty("invitationSent").GetBoolean());
+            Assert.True(payload.RootElement.GetProperty("resent").GetBoolean());
+            Assert.Equal(invitedUserId, payload.RootElement.GetProperty("userId").GetGuid());
+        }
+
+        using (var existingAccount = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/members/invite",
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       companyId = _otherCompanyId, fullName = "Security Acceptance User",
+                       email = $"acceptance-{_userId:N}@example.invalid", roleKey = "asset_manager"
+                   }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.Created, existingAccount.StatusCode);
+            using var payload = JsonDocument.Parse(await existingAccount.Content.ReadAsStringAsync());
+            Assert.True(payload.RootElement.GetProperty("invitationSent").GetBoolean());
+            Assert.Equal(_userId, payload.RootElement.GetProperty("userId").GetGuid());
+        }
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var invited = await db.Users.SingleAsync(account => account.Id == invitedUserId);
+            Assert.Equal(email, invited.Email);
+            Assert.False(invited.EmailConfirmed);
+            Assert.Equal(1, await db.CompanyMemberships.CountAsync(membership => membership.CompanyId == _companyId && membership.UserId == invitedUserId));
+            Assert.Equal("viewer", await db.CompanyMemberships.Where(membership => membership.CompanyId == _companyId && membership.UserId == invitedUserId)
+                .Select(membership => membership.RoleKey).SingleAsync());
+            Assert.Equal("admin", await db.CompanyMemberships.Where(membership => membership.CompanyId == _companyId && membership.UserId == _userId)
+                .Select(membership => membership.RoleKey).SingleAsync());
+            Assert.Equal("asset_manager", await db.CompanyMemberships.Where(membership => membership.CompanyId == _otherCompanyId && membership.UserId == _userId)
+                .Select(membership => membership.RoleKey).SingleAsync());
+            Assert.Contains(await db.PlatformAuditEntries.AsNoTracking().Where(entry => entry.CompanyId == _otherCompanyId).Select(entry => entry.Action).ToListAsync(),
+                action => action == "MemberInvited");
+        }
+
+        Assert.Equal(3, _smtpCapture.Messages.Count);
+        Assert.Contains(_smtpCapture.Messages, message => message.Contains($"To: {email}", StringComparison.OrdinalIgnoreCase));
+        var existingAccountMessage = Assert.Single(_smtpCapture.Messages, message =>
+            message.Contains($"To: acceptance-{_userId:N}@example.invalid", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("Other security acceptance company", DecodeMimeBody(existingAccountMessage), StringComparison.Ordinal);
+        Assert.DoesNotContain("token=", existingAccountMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Platform_admin_can_adjust_subscription_plan_and_dates_with_validation_and_audit()
     {
         var originalPlan = new SubscriptionPlan

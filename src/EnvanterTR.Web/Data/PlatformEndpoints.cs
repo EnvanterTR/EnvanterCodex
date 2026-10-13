@@ -206,6 +206,148 @@ public static class PlatformEndpoints
             });
         });
 
+        admin.MapPost("/members/invite", async ([FromBody] PlatformInviteMemberRequest request,
+            ClaimsPrincipal user, AppDbContext db, UserManager<EnvanterUser> userManager,
+            IConfiguration configuration, CancellationToken cancellationToken) =>
+        {
+            var fullName = request.FullName?.Trim();
+            var email = request.Email?.Trim();
+            var roleKey = request.RoleKey?.Trim();
+            var allowedRoles = new[] { "admin", "asset_manager", "asset_operator", "auditor", "viewer", "hr_operator" };
+            if (request.CompanyId == Guid.Empty || string.IsNullOrWhiteSpace(fullName) || fullName.Length > 160 ||
+                string.IsNullOrWhiteSpace(email) || email.Length > 256 || !MailAddress.TryCreate(email, out _) ||
+                roleKey is null || !allowedRoles.Contains(roleKey, StringComparer.Ordinal))
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["invite"] = ["Etkin şirket, ad, geçerli e-posta ve desteklenen şirket rolü gereklidir."]
+                });
+            if (!Guid.TryParse(user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var actorId))
+                return Results.Forbid();
+
+            var emailSent = false;
+            var resent = false;
+            Guid invitedUserId;
+            string companyName;
+            string displayName;
+            bool emailConfirmed;
+            await using (var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken))
+            {
+                var company = await db.Companies.FromSqlInterpolated(
+                        $"SELECT * FROM \"Companies\" WHERE \"Id\" = {request.CompanyId} FOR UPDATE")
+                    .SingleOrDefaultAsync(cancellationToken);
+                if (company is null) return Results.NotFound(new { message = "Şirket bulunamadı." });
+                if (!company.IsActive) return Results.Conflict(new { message = "Pasif şirkete kullanıcı eklenemez." });
+                companyName = company.Name;
+
+                var now = DateTimeOffset.UtcNow;
+                var subscription = await (from item in db.TenantSubscriptions.AsNoTracking()
+                    join plan in db.SubscriptionPlans.AsNoTracking() on item.PlanId equals plan.Id
+                    where item.CompanyId == request.CompanyId && (item.Status == "Trial" || item.Status == "Active") &&
+                        item.StartsAt <= now && item.EndsAt > now
+                    select new { item.Id, plan.DeploymentKind, plan.MaxLoginUsers }).SingleOrDefaultAsync(cancellationToken);
+                if (subscription is null)
+                    return Results.Conflict(new { message = "Şirketin etkin deneme veya aboneliği bulunamadı. Kullanıcı davetinden önce lisansı etkinleştirin." });
+
+                var account = await userManager.FindByEmailAsync(email);
+                var membership = account is null ? null : await db.CompanyMemberships.SingleOrDefaultAsync(
+                    item => item.CompanyId == request.CompanyId && item.UserId == account.Id, cancellationToken);
+                if (membership is not null)
+                {
+                    if (account!.EmailConfirmed)
+                        return Results.Conflict(new { message = "Bu hesap şirketin zaten üyesi." });
+                    if (membership.RoleKey != roleKey)
+                        return Results.Conflict(new { message = "Bekleyen davetin rolü farklı. Önce üyelik rolünü güncelleyin." });
+                    resent = true;
+                    invitedUserId = account.Id;
+                    displayName = account.DisplayName;
+                    emailConfirmed = false;
+                    AddAudit(db, user, "MemberInvitationResent", "CompanyMembership", invitedUserId, request.CompanyId,
+                        $"{roleKey} rolündeki bekleyen üye daveti yeniden gönderim için istendi.");
+                    await db.SaveChangesAsync(cancellationToken);
+                    await transaction.CommitAsync(cancellationToken);
+                }
+                else
+                {
+                    var memberCount = await db.CompanyMemberships.CountAsync(item => item.CompanyId == request.CompanyId, cancellationToken);
+                    if (subscription.DeploymentKind != "cloud" && subscription.MaxLoginUsers is int seatLimit && memberCount >= seatLimit)
+                        return Results.Conflict(new { message = $"Bu plan {seatLimit} giriş hesabıyla sınırlı. Kullanıcı eklemek için planı yükseltin." });
+
+                    if (account is null)
+                    {
+                        account = new EnvanterUser
+                        {
+                            UserName = email,
+                            Email = email,
+                            EmailConfirmed = false,
+                            DisplayName = fullName
+                        };
+                        var temporaryPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) + "aA1!";
+                        var createResult = await userManager.CreateAsync(account, temporaryPassword);
+                        if (!createResult.Succeeded)
+                        {
+                            await transaction.RollbackAsync(cancellationToken);
+                            return Results.Conflict(new { message = "Kullanıcı oluşturulamadı. E-posta daha önce kaydedilmiş olabilir." });
+                        }
+                    }
+
+                    invitedUserId = account.Id;
+                    displayName = account.DisplayName;
+                    emailConfirmed = account.EmailConfirmed;
+                    db.CompanyMemberships.Add(new CompanyMembership
+                    {
+                        CompanyId = request.CompanyId, UserId = account.Id, RoleKey = roleKey
+                    });
+                    db.AuditEntries.Add(new AuditEntry
+                    {
+                        CompanyId = request.CompanyId, ActorUserId = actorId, TargetType = "CompanyMembership",
+                        TargetId = account.Id, Action = "Invited", Details = $"{roleKey} rolüyle platform yöneticisi tarafından eklendi."
+                    });
+                    AddAudit(db, user, "MemberInvited", "CompanyMembership", account.Id, request.CompanyId,
+                        $"{roleKey} rolüyle üyelik oluşturuldu; şirket yöneticisi platform işlemi.");
+                    try
+                    {
+                        await db.SaveChangesAsync(cancellationToken);
+                        await transaction.CommitAsync(cancellationToken);
+                    }
+                    catch (DbUpdateException)
+                    {
+                        await transaction.RollbackAsync(cancellationToken);
+                        return Results.Conflict(new { message = "Üyelik oluşturma çakıştı. Listeyi yenileyip tekrar deneyin." });
+                    }
+                }
+            }
+
+            try
+            {
+                if (emailConfirmed)
+                    await AccountEndpoints.SendCompanyAccessAddedEmailAsync(email, displayName, companyName, roleKey,
+                        configuration, cancellationToken);
+                else
+                {
+                    var account = await userManager.FindByIdAsync(invitedUserId.ToString());
+                    if (account is null) return Results.Problem("Üyelik kaydedildi ancak davet hesabı bulunamadı.", statusCode: StatusCodes.Status500InternalServerError);
+                    var token = await userManager.GeneratePasswordResetTokenAsync(account);
+                    await AccountEndpoints.SendAccountInvitationEmailAsync(email, displayName, token, configuration, cancellationToken);
+                }
+                emailSent = true;
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                // Membership is committed; the platform operator can repeat the same pending invitation.
+            }
+
+            AddAudit(db, user, emailSent ? "MemberInvitationEmailSent" : "MemberInvitationEmailFailed",
+                "CompanyMembership", invitedUserId, request.CompanyId,
+                emailConfirmed ? "Mevcut hesaba şirket erişim bildirimi gönderildi." : "Parola belirleme daveti " + (emailSent ? "gönderildi." : "gönderilemedi; yeniden denenebilir."));
+            await db.SaveChangesAsync(cancellationToken);
+            var message = emailSent
+                ? emailConfirmed ? "Mevcut hesap şirkete eklendi ve erişim bildirimi gönderildi." : resent ? "Bekleyen davet yeniden gönderildi." : "Üye eklendi; parola belirleme daveti gönderildi."
+                : resent ? "Davet kaydı duruyor ancak e-posta gönderilemedi. Aynı daveti yeniden deneyin." : "Üyelik kaydedildi ancak e-posta gönderilemedi. E-posta ayarlarını kontrol edip aynı daveti yeniden deneyin.";
+            return resent
+                ? Results.Ok(new { invitationSent = emailSent, resent, userId = invitedUserId, message })
+                : Results.Created($"/api/platform/members/{invitedUserId}", new { invitationSent = emailSent, resent, userId = invitedUserId, message });
+        }).RequireRateLimiting("login");
+
         admin.MapGet("/plans", async (AppDbContext db, CancellationToken cancellationToken) =>
             Results.Ok(await db.SubscriptionPlans.AsNoTracking().OrderBy(x => x.SortOrder)
                 .Select(x => new { x.Id, x.Code, x.Name, x.Description, x.DeploymentKind,

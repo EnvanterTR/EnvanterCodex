@@ -21,6 +21,7 @@ public sealed record SavePlanRequest(
 public sealed record GrantDemoRequest(Guid PlanId, int Days, string? Note);
 public sealed record ExtendSubscriptionRequest(int Days, string? Note);
 public sealed record EditSubscriptionRequest(Guid PlanId, DateTimeOffset StartsAt, DateTimeOffset EndsAt, string? Note);
+public sealed record PlatformInviteMemberRequest(Guid CompanyId, string FullName, string Email, string RoleKey);
 public sealed record ProvisionCompanyRequest(string CompanyName, string Slug, string? ContactEmail,
     string OwnerName, string OwnerEmail, Guid PlanId, int TermDays, string PaymentReference, bool PaymentVerified);
 public sealed record SetCompanyActiveRequest(bool IsActive, string? Note);
