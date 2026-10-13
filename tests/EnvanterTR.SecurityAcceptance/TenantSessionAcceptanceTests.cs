@@ -75,6 +75,68 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Expired_cloud_subscription_preserves_read_access_and_blocks_company_writes()
+    {
+        var cloudPlan = new SubscriptionPlan
+        {
+            Code = $"cloud-{_companyId.ToString("N")[..8]}", Name = "Expired cloud", DeploymentKind = "cloud",
+            IsActive = true, IsPublic = true
+        };
+        var localPlan = new SubscriptionPlan
+        {
+            Code = $"local-{_otherCompanyId.ToString("N")[..8]}", Name = "Local perpetual", DeploymentKind = "local-windows",
+            IsActive = true, IsPublic = true
+        };
+        var now = DateTimeOffset.UtcNow;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SubscriptionPlans.AddRange(cloudPlan, localPlan);
+            db.CompanyMemberships.Add(new CompanyMembership { CompanyId = _otherCompanyId, UserId = _userId, RoleKey = "admin" });
+            db.TenantSubscriptions.AddRange(
+                new TenantSubscription
+                {
+                    CompanyId = _companyId, PlanId = cloudPlan.Id, Status = "Active",
+                    StartsAt = now.AddDays(-30), EndsAt = now.AddMinutes(-1)
+                },
+                new TenantSubscription
+                {
+                    CompanyId = _otherCompanyId, PlanId = localPlan.Id, Status = "Expired",
+                    StartsAt = now.AddDays(-30), EndsAt = now.AddMinutes(-1)
+                });
+            await db.SaveChangesAsync();
+        }
+
+        using (var session = await SendAsAdminAsync("/api/session"))
+        {
+            Assert.Equal(HttpStatusCode.OK, session.StatusCode);
+            using var payload = JsonDocument.Parse(await session.Content.ReadAsStringAsync());
+            Assert.Equal("readOnly", payload.RootElement.GetProperty("subscriptionAccess").GetProperty("mode").GetString());
+        }
+        using (var read = await SendAsAdminAsync("/api/assets?page=1&pageSize=5"))
+            Assert.Equal(HttpStatusCode.OK, read.StatusCode);
+
+        using (var write = await SendAsUserAsync(HttpMethod.Post, "/api/assets", _userId, _companyId,
+            JsonContent.Create(new { name = "Must remain blocked" })))
+        {
+            Assert.Equal(HttpStatusCode.PaymentRequired, write.StatusCode);
+            using var payload = JsonDocument.Parse(await write.Content.ReadAsStringAsync());
+            Assert.Equal("subscription_read_only", payload.RootElement.GetProperty("code").GetString());
+        }
+        using (var sessionAction = await SendAsUserAsync(HttpMethod.Post, "/api/session/logout", _userId, _companyId,
+            JsonContent.Create(new { })))
+            Assert.NotEqual(HttpStatusCode.PaymentRequired, sessionAction.StatusCode);
+
+        using (var localWrite = await SendAsUserAsync(HttpMethod.Post, "/api/assets", _userId, _otherCompanyId,
+            JsonContent.Create(new { name = "Local subscription remains writable" })))
+            Assert.Equal(HttpStatusCode.BadRequest, localWrite.StatusCode);
+
+        await using var verificationScope = _factory.Services.CreateAsyncScope();
+        var verificationDb = verificationScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.False(await verificationDb.Assets.AnyAsync(asset => asset.CompanyId == _companyId && asset.Name == "Must remain blocked"));
+    }
+
+    [Fact]
     public async Task Public_checkout_requires_csrf_and_fails_closed_without_provider_configuration()
     {
         var request = new InitializeCompanyCheckoutRequest(Guid.NewGuid(), "Synthetic Checkout Ltd", "synthetic-checkout",

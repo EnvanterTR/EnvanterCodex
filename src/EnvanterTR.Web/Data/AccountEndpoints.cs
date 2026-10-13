@@ -601,11 +601,37 @@ public static class AccountEndpoints
                 ? await db.Companies.AsNoTracking().Where(x => x.Id == id && x.IsActive)
                     .Select(x => x.Name).SingleOrDefaultAsync(cancellationToken)
                 : null;
+            var now = DateTimeOffset.UtcNow;
+            var subscription = companyId is Guid subscriptionCompanyId
+                ? await (from item in db.TenantSubscriptions.AsNoTracking()
+                    join plan in db.SubscriptionPlans.AsNoTracking() on item.PlanId equals plan.Id
+                    where item.CompanyId == subscriptionCompanyId
+                    select new
+                    {
+                        plan.Name,
+                        plan.DeploymentKind,
+                        item.Status,
+                        item.IsDemo,
+                        item.StartsAt,
+                        item.EndsAt
+                    }).SingleOrDefaultAsync(cancellationToken)
+                : null;
             return Results.Ok(new
             {
                 userId,
                 companyId = companyId?.ToString(),
                 companyName,
+                subscriptionAccess = subscription is null ? null : new
+                {
+                    planName = subscription.Name,
+                    subscription.DeploymentKind,
+                    subscription.Status,
+                    subscription.IsDemo,
+                    subscription.StartsAt,
+                    subscription.EndsAt,
+                    mode = TenantSubscriptionAccess.IsReadOnly(subscription.DeploymentKind, subscription.Status,
+                        subscription.StartsAt, subscription.EndsAt, now) ? "readOnly" : "active"
+                },
                 role = user.FindFirstValue("company_role"),
                 platformAdmin = user.HasClaim("platform_admin", "true"),
                 name = user.Identity?.Name,

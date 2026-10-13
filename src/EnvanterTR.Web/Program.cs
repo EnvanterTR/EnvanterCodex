@@ -465,6 +465,31 @@ app.Use(async (context, next) =>
         return;
     }
 
+    var requestPath = context.Request.Path;
+    var isWriteRequest = HttpMethods.IsPost(context.Request.Method) || HttpMethods.IsPut(context.Request.Method) ||
+        HttpMethods.IsPatch(context.Request.Method) || HttpMethods.IsDelete(context.Request.Method);
+    var isAccountEndpoint = requestPath.StartsWithSegments("/api/session");
+    var isPlatformEndpoint = requestPath.StartsWithSegments("/api/platform");
+    if (companyClaim is not null && isWriteRequest && requestPath.StartsWithSegments("/api") &&
+        !isAccountEndpoint && !isPlatformEndpoint && Guid.TryParse(companyClaim, out var subscriptionCompanyId))
+    {
+        var subscription = await (from item in db.TenantSubscriptions.AsNoTracking()
+            join plan in db.SubscriptionPlans.AsNoTracking() on item.PlanId equals plan.Id
+            where item.CompanyId == subscriptionCompanyId
+            select new { plan.DeploymentKind, item.Status, item.StartsAt, item.EndsAt }).SingleOrDefaultAsync(context.RequestAborted);
+        if (subscription is not null && TenantSubscriptionAccess.IsReadOnly(subscription.DeploymentKind,
+                subscription.Status, subscription.StartsAt, subscription.EndsAt, DateTimeOffset.UtcNow))
+        {
+            context.Response.StatusCode = StatusCodes.Status402PaymentRequired;
+            await context.Response.WriteAsJsonAsync(new
+            {
+                code = "subscription_read_only",
+                message = "Şirket aboneliğinin süresi dolmuş veya duraklatılmış. Kayıtlarınız korunur ve görüntülenebilir; yazma işlemleri için platform yöneticinizden abonelik uzatması isteyin."
+            }, context.RequestAborted);
+            return;
+        }
+    }
+
     if (principal.Identity is ClaimsIdentity identity)
     {
         var changed = false;
