@@ -141,6 +141,12 @@ const server = createServer(async (request, response) => {
     asset.updatedAt = '2026-10-14T14:00:00Z';
     response.writeHead(204); response.end(); return;
   }
+  if (request.method === 'POST' && url.pathname === `/api/assets/${assetId}/transfer`) {
+    asset.location = body.targetLocation;
+    assetHistory.unshift({ id: '88888888-8888-4888-8888-888888888888', eventType: 'Transferred', occurredAt: '2026-10-14T15:00:00Z',
+      details: `Konum transferi: Head Office → ${asset.location}${body.notes ? ` · ${body.notes}` : ''}`, actorName: 'Synthetic Owner', attachmentCount: 0 });
+    response.writeHead(204); response.end(); return;
+  }
   response.writeHead(405, { 'content-type': 'application/json' });
   response.end(JSON.stringify({ message: 'Unexpected write in asset-detail browser acceptance.' }));
 });
@@ -325,8 +331,33 @@ try {
   assert.equal(completeWrite.path, `/api/assets/${assetId}/maintenances/${maintenanceId}/complete`);
   assert.deepEqual(completeWrite.body, { completedOn, notes: 'Synthetic completion note' });
   assert.equal(completeWrite.csrf, 'synthetic-asset-csrf');
+
+  const beforeTransferCancel = apiRequests.length;
+  await page.locator('#transferAssetButton').click();
+  const transferDialog = page.locator('#assetTransferDialog');
+  await transferDialog.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#transferSourceLocation').inputValue(), 'Head Office');
+  await page.locator('[data-close-asset-transfer]').first().click();
+  await transferDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, beforeTransferCancel, 'Canceling a location transfer must not write.');
+  await page.locator('#transferAssetButton').click();
+  await transferDialog.waitFor({ state: 'visible' });
+  const targetLocation = 'Synthetic QA Annex';
+  await page.locator('#assetTransferForm [name="targetLocation"]').fill(targetLocation);
+  await page.locator('#assetTransferForm [name="notes"]').fill('Synthetic transfer note');
+  await page.locator('#assetTransferForm button[type="submit"]').click();
+  await transferDialog.waitFor({ state: 'hidden' });
+  await page.waitForFunction(location => document.querySelector('#assetDialog')?.open && document.querySelector('#detailLocation')?.textContent === location, targetLocation);
+  assert.equal(asset.location, targetLocation);
+  const transferWrite = apiRequests.at(-1);
+  assert.equal(transferWrite.method, 'POST');
+  assert.equal(transferWrite.path, `/api/assets/${assetId}/transfer`);
+  assert.deepEqual(transferWrite.body, { targetLocation, notes: 'Synthetic transfer note' });
+  assert.equal(transferWrite.csrf, 'synthetic-asset-csrf');
+  await page.locator('#assetTabHistoryButton').click();
+  assert.match(await page.locator('#assetHistory').innerText(), /Synthetic QA Annex/);
   assert.deepEqual(pageErrors, [], `The asset detail UI must not throw: ${pageErrors.join(' | ')}`);
-  console.log('PASS: asset edit, audit schedule, physical audit, and maintenance schedule/start/complete flows; canceled forms send no writes; explicit tenant-scoped writes include CSRF; refreshed list/detail preserve outcomes; no browser exceptions.');
+  console.log('PASS: asset edit, audit schedule, physical audit, maintenance schedule/start/complete, and location transfer flows; canceled forms send no writes; explicit tenant-scoped writes include CSRF; refreshed list/detail/history preserve outcomes; no browser exceptions.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

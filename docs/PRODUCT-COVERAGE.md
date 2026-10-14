@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 14 Ekim 2026 — varlık konum transferi UI kabulü
+
+Gerçek ürün HTML'inde sentetik owner oturumuyla varlık ayrıntısındaki konum transferi formu Chromium'da doğrulandı. Formu iptal etmek yazma üretmedi; form kaynak konumu gösterdi. Hedef konum ve not tek `POST /api/assets/{id}/transfer` + CSRF başlığıyla kaydedildi; yeniden yüklenen detayda konum ve hareket geçmişi güncellendi. UI sunucusu mock/bellek içindedir. API tenant kapsamı ve transfer geçmişi kalıcılığı `Asset_transfers_are_tenant_scoped_and_appear_in_the_transfer_history_filter` izole PostgreSQL testindedir. Canlı/gerçek şirket kaydı kullanılmadı.
+
 ## 14 Ekim 2026 — varlık bakımı UI kabulü
 
 Varlık ayrıntısında bakım formu gerçek Chromium ve sentetik owner şirket oturumuyla çalıştırıldı. Formu kapatmak yazma yapmadı. Planlı bakım kaydı tür, servis sağlayıcı, tarih ve notla tek CSRF korumalı tenant `POST /api/assets/{id}/maintenances/schedule` isteği gönderdi; yenilenen bakım sekmesinde plan göründü. “Bakımı başlat” doğru bakım kimliğinin `/start` rotasına POST etti ve varlık durumu `Maintenance` oldu. Tamamlama formunu iptal etmek yazma yapmadı; tamamlamak tarih/notla `/complete` rotasına POST etti; yenilenen sekmede tamamlanma notu ve `Completed` durumu, varlıkta `Available` durumu gösterildi. UI kabul sunucusu mock/bellek içindedir. Veritabanı yetkisi, tenant sınırı, ilişki ve geçmiş kalıcılığı `Asset_maintenance_start_and_completion_preserve_authorization_state_and_history` izole PostgreSQL kabul testiyle doğrulanır. Gerçek tenant/canlı veriye dokunulmadı.
