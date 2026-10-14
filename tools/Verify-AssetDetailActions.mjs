@@ -57,6 +57,12 @@ requireSource(app.includes('id="assetTrashConfirmDialog" aria-labelledby="assetT
   app.includes("assetTrashConfirmDialog.showModal();") &&
   app.includes("assetTrashConfirmDialog.addEventListener('click', event => { if (event.target === assetTrashConfirmDialog) closeAssetTrashConfirm(); })"),
   'Asset trash must use an accessible in-app confirmation/note dialog that can be cancelled or dismissed without submitting.');
+requireSource(app.includes('id="assetStatusDialog" aria-labelledby="assetStatusDialogTitle"') &&
+  app.includes('id="assetStatusForm"') && app.includes('id="assetStatusSummary"') &&
+  app.includes('id="assetStatusFeedback" class="auth-error" role="alert" hidden') &&
+  app.includes('name="note" maxlength="1000" rows="3"') &&
+  app.includes("assetStatusDialog.addEventListener('click', event => { if (event.target === assetStatusDialog) closeAssetStatusDialog(); })"),
+  'Asset status changes must use an accessible, dismissible in-app confirmation and optional-note form with an error region.');
 const quickLookupHandler = app.slice(app.indexOf("document.querySelectorAll('[data-quick-add]')"), app.indexOf("$('#newAssetForm').addEventListener('submit'"));
 const detailReturnHandler = app.slice(app.indexOf("$('#returnAssetButton').addEventListener('click'"), app.indexOf("$('#trashAssetButton').addEventListener('click'"));
 requireSource(quickLookupHandler.length > 0 && !quickLookupHandler.includes('window.prompt('), 'Asset quick-add must not depend on unsupported native prompt dialogs.');
@@ -66,6 +72,10 @@ const trashSubmitHandler = app.slice(app.indexOf("$('#assetTrashConfirmForm').ad
 requireSource(trashButtonHandler.length > 0 && trashButtonHandler.includes("openAssetTrashAction(currentAsset, 'trash')") && !trashButtonHandler.includes('confirm(') && !trashButtonHandler.includes('prompt('), 'Opening asset trash confirmation must not trigger native browser dialogs or mutate data.');
 requireSource(app.includes("openAssetTrashAction(item, 'restore')") && app.includes("`/api/assets/${target.id}/restore-from-trash`") && !app.slice(app.indexOf('async function loadAssetTrash'), app.indexOf("$('#openAssetTrash').addEventListener")).includes('prompt('), 'Restore from trash must use the same accessible in-app note dialog and avoid native prompt dialogs.');
 requireSource(trashSubmitHandler.length > 0 && trashSubmitHandler.includes('if (!assetTrashTarget || !canWriteAssets()) return;') && trashSubmitHandler.includes('`/api/assets/${target.id}/trash`') && trashSubmitHandler.includes('method: \'POST\'') && trashSubmitHandler.includes('closeAssetTrashConfirm();') && trashSubmitHandler.includes('await loadDashboard('), 'Only explicit in-app confirmation may post the tenant-scoped trash action, and success must refresh the dashboard.');
+const statusActionHandler = app.slice(app.indexOf("$('#assetStatusAction').addEventListener('change'"), app.indexOf("$('#restoreAssetButton').addEventListener('click'"));
+const statusSubmitHandler = app.slice(app.indexOf("$('#assetStatusForm').addEventListener('submit'"), app.indexOf("$('#restoreAssetButton').addEventListener('click'"));
+requireSource(statusActionHandler.length > 0 && statusActionHandler.includes('canWriteAssets()') && statusActionHandler.includes('assetStatusDialog.showModal()') && !statusActionHandler.includes('confirm(') && !statusActionHandler.includes('prompt('), 'Opening an asset status action must only show the in-app form and must not use native browser dialogs or mutate data.');
+requireSource(statusSubmitHandler.length > 0 && statusSubmitHandler.includes('if (!assetStatusTarget || !canWriteAssets()) return;') && statusSubmitHandler.includes('`/api/assets/${target.id}/status`') && statusSubmitHandler.includes("method: 'PATCH'") && statusSubmitHandler.includes('closeAssetStatusDialog();') && statusSubmitHandler.includes('await loadDashboard();') && statusSubmitHandler.includes('feedback.hidden = false;'), 'Asset status changes may PATCH only after explicit in-app submission, refresh on success, and keep the dialog open with an error on failure.');
 requireSource(app.includes("panel.style.display = active ? 'block' : 'none'"), 'The selected asset-detail panel must be explicitly visible, with inactive panels hidden.');
 requireSource(app.includes('panel.setAttribute(\'aria-hidden\', String(!active))'), 'Asset-detail panel accessibility state must follow the active tab.');
 requireSource(/button\.addEventListener\('click',\s*\(\)\s*=>\s*\{\s*\$\('#assetDialog'\)\.close\(\);\s*applyAssetRelationshipFilter\(type, value, label\);\s*\}\);/.test(app), 'Overview reference shortcuts must close the detail dialog and apply the matching company-scoped asset filter.');
@@ -77,6 +87,11 @@ for (const copy of [
   'Çöp kutusu notu (isteğe bağlı):',
   'Varlık çöp kutusuna taşındı.',
 ]) requireSource(app.includes(copy), `Missing localized asset-trash UI copy: ${copy}`);
+for (const copy of [
+  'Durum değişikliğini onayla', 'Durum değişikliği notu (isteğe bağlı):', 'Durumu güncelle',
+  '“{assetTag}” varlığının durumu “{status}” olarak değiştirilsin mi?',
+  'Varlık durumu güncellendi ve denetim geçmişine yazıldı.', 'Durum güncellenemedi. Lütfen yeniden deneyin.'
+]) requireSource(app.includes(copy), `Missing localized asset-status UI copy: ${copy}`);
 
 if (failures.length) {
   console.error(failures.map(message => `FAIL ${message}`).join('\n'));
