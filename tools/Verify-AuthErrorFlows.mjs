@@ -98,6 +98,10 @@ assert.doesNotMatch(historyCalls[0][2], /private|not-a-real-secret|123456|secret
 const diagnosticStart = source.indexOf('async function checkLoginConnection()');
 const diagnosticEnd = source.indexOf("$('#loginForm').addEventListener('submit'", diagnosticStart);
 assert.ok(diagnosticStart >= 0 && diagnosticEnd > diagnosticStart, 'Could not find the login connection diagnostic.');
+assert.match(source, /<button class="btn small" id="retryApiButton" type="button"[^>]*>Sunucu bağlantısını test et<\/button>/,
+  'The login screen must keep a visible server-test action.');
+assert.match(source, /\$\('#retryApiButton'\)\.addEventListener\('click', \(\) => \{ void checkLoginConnection\(\); \}\);/,
+  'The server-test action must run the live readiness and setup diagnostic when clicked.');
 const successfulLoginStart = source.indexOf("hideLogin(); await startApp();", loginStart);
 assert.ok(successfulLoginStart >= 0, 'Could not find the successful login transition.');
 assert.match(source.slice(successfulLoginStart, successfulLoginStart + 420), /document\.querySelector\('#sidebar \[data-page="Genel Bakış"\]'\)\?\.click\(\)/,
@@ -152,4 +156,4 @@ await diagnosticContext.checkLoginConnection();
 assert.equal(diagnosticElements.get('#loginConnectionStatus').textContent, 'API bağlantısı kurulamadı.', 'Connection failures must be shown separately from invalid credentials.');
 assert.equal(diagnosticElements.get('#retryApiButton').disabled, false, 'The retry control must be restored after a failed check.');
 
-console.log('Verified authenticated 401 closes open dialogs and shows login; 403 stays a permission error; rejected login does not recurse; URL credentials are scrubbed; login auto-checks readiness and distinguishes ready, first-run, pending-migration, and unavailable states.');
+console.log('Verified authenticated 401 closes open dialogs and shows login; 403 stays a permission error; rejected login does not recurse; URL credentials are scrubbed; login exposes a wired server-test button; readiness distinguishes ready, first-run, pending-migration, and unavailable states.');
