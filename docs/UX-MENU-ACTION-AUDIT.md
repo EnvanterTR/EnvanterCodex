@@ -1,5 +1,8 @@
 # Menü, kısayol ve modal denetimi
 
+
+14 Ekim 2026 devamı: Kullanıcının ekran görüntüsündeki boş yan alanlar/tablo genişliği isteği için kaynak kuralı mevcut uygulama ve demo sunucularında doğrulandı: `.content` tam genişlikte (`width:100%`, `max-width:none`, `margin:0`), tablolar kendi kapsayıcısında yatay kayıyor ve eylem sütunu sabit kalıyor. `Verify-AssetTableLayout.mjs` artık uygulama içeriğinin max-width ile daraltılmamasını da regresyon olarak koruyor; şirket uygulaması ve public demo HTTP 200 verdi, iki tablo doğrulayıcısı geçti. Bu kaynak/yanıt kontrolüdür; kullanıcının ekran boyutunda piksel düzeyinde görsel kabul değildir.
+
 14 Ekim 2026 devam kabulü: 73 kaynak/UI sözleşme doğrulayıcısı ve izole PostgreSQL güvenlik kabul paketi 144/144 geçti. Login sayfasının istekle gelen parola/2FA URL parametrelerini HTML sunulmadan önce temizlemesi HTTP kabul testiyle doğrulandı. Bu API/tenant ve kaynak doğrulamasıdır; bütün menü, kısayol ve modal seçeneklerinin oturumlu tarayıcıda elle kabul edildiği anlamına gelmez. Canlı tenant alt alanı 503 olduğu için gerçek firma UI kabulü yapılamadı.
 
 14 Ekim 2026 devamı: Yinelenen konum/departman adları için hem önceden bulunan çakışma hem API yanıtından dönen yarış durumu uygulama içi onay dialog'una taşındı. Yalnız iki onaydan sonra `merge: true` ile mevcut API çağrılır. İkinci dialog'u iptal etmek API çağrısı yapmadan “kayıtlar değiştirilmedi” durumunu gösterir. Beş dil locale ve `Verify-DirectoryMergeDialogs.mjs` ile doğrulandı. `Directory_name_merge_requires_approval_and_preserves_company_scope` sentetik API testi onaysız/ onaylı çağrı, tenant kapsamı, DB kalıcılığı ve denetim kaydını geçti (1/1); kaynak doğrulayıcıları 71/71 geçti.
