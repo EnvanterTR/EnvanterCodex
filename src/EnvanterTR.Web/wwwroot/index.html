@@ -2132,6 +2132,10 @@
       'Şirket birimi arşivlensin mi? Etkin alt birimleri varsa işlem reddedilir.':['Archive this company unit? The operation is rejected if it has active child units.','Архивировать это подразделение? Операция будет отклонена, если у него есть активные дочерние подразделения.','Архівувати цей підрозділ? Якщо є активні дочірні підрозділи, операцію буде відхилено.','Да се архивира оваа единица? Операцијата ќе биде одбиена ако има активни подредени единици.'],'Şirket birimi geri yüklensin mi?':['Restore this company unit?','Восстановить это подразделение?','Відновити цей підрозділ?','Да се врати оваа единица?'],'Şirket birimi kaydedildi.':['Company unit saved.','Подразделение компании сохранено.','Підрозділ компанії збережено.','Единицата на компанијата е зачувана.'],'Şirket birimi arşivlendi.':['Company unit archived.','Подразделение компании архивировано.','Підрозділ компанії архівовано.','Единицата на компанијата е архивирана.'],'Şirket birimi geri yüklendi.':['Company unit restored.','Подразделение компании восстановлено.','Підрозділ компанії відновлено.','Единицата на компанијата е вратена.']
     });
     Object.assign(localeRows, {
+      'Geri yüklenen şirket birimi yeniden etkinleşir.':['The restored company unit becomes active again.','Восстановленное подразделение снова станет активным.','Відновлений підрозділ знову стане активним.','Вратената единица повторно станува активна.'],
+      'Arşivlenen şirket birimi ve geçmişi korunur. Etkin alt birimleri varsa işlem reddedilir.':['The archived company unit and its history are retained. The operation is rejected if it has active child units.','Архивированное подразделение и его история сохраняются. Операция будет отклонена, если есть активные дочерние подразделения.','Архівований підрозділ та його історія зберігаються. Якщо є активні дочірні підрозділи, операцію буде відхилено.','Архивираната единица и нејзината историја се зачувуваат. Операцијата ќе биде одбиена ако има активни подредени единици.'],
+    });
+    Object.assign(localeRows, {
       '“{assetTag}” varlığını çöp kutusuna taşımak istiyor musunuz?':['Move asset “{assetTag}” to the trash?','Переместить актив “{assetTag}” в корзину?','Перемістити актив “{assetTag}” до кошика?','Да се премести средството „{assetTag}“ во корпата?'],
       '“{assetTag}” varlığını çöp kutusundan geri almak istiyor musunuz?':['Restore asset “{assetTag}” from the trash?','Восстановить актив “{assetTag}” из корзины?','Відновити актив “{assetTag}” із кошика?','Да се врати средството „{assetTag}“ од корпата?'],
       'Çöp kutusu notu (isteğe bağlı):':['Trash note (optional):','Примечание к перемещению в корзину (необязательно):','Примітка до переміщення в кошик (необов’язково):','Забелешка за корпата (изборно):'],
@@ -4254,7 +4258,8 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       const item = companyUnitItems.find(value => value.id === activeButton.dataset.companyUnitActive);
       if (!item) return;
       const nextActive = activeButton.dataset.nextActive === 'true';
-      if (!confirm(translateUiText(nextActive ? 'Şirket birimi geri yüklensin mi?' : 'Şirket birimi arşivlensin mi? Etkin alt birimleri varsa işlem reddedilir.'))) return;
+      const actionSummary = nextActive ? 'Geri yüklenen şirket birimi yeniden etkinleşir.' : 'Arşivlenen şirket birimi ve geçmişi korunur. Etkin alt birimleri varsa işlem reddedilir.';
+      if (!await confirmEmployeeAction({ title: nextActive ? 'Şirket birimi geri yüklensin mi?' : 'Şirket birimi arşivlensin mi? Etkin alt birimleri varsa işlem reddedilir.', summary: actionSummary, confirmLabel: nextActive ? 'Geri yükle' : 'Arşivle', danger: !nextActive })) return;
       activeButton.disabled = true;
       try {
         await api(`/api/company-units/${item.id}/active`, { method: 'PATCH', body: JSON.stringify({ isActive: nextActive }) });

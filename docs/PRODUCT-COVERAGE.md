@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 14 Ekim 2026 — şirket birimi arşivleme ve geri yükleme
+
+Şirket birimindeki arşiv/geri yükle eylemleri iptal edilebilir uygulama onayı ister. Arşivleme geçmişi korur ve etkin çocuk birim varsa sunucu reddeder; geri yükleme birimi yeniden etkinleştirir. İstek yalnız onaydan sonra gönderilir. Beş dilde metin doğrulandı; tenant/rol/kalıcılık API kabul testi dahil tam izole regresyon 142/142 geçti.
+
 ## 14 Ekim 2026 — oturum ve API anahtarı güvenlik onayları
 
 Bu cihazı/uzak oturumu kapatma ve kullanıcıya ait API anahtarını iptal etme eylemleri uygulama içi açık onay kullanır; kapatma/iptal sonuçları ve hedef oturum/anahtar açıkça belirtilir. Vazgeçme API çağrısı yapmaz. Onay sonrası mevcut seçili ID'ye bağlı endpoint çağrılır. Beş dil locale kontrolü ve izole oturum/API token HTTP güvenlik kabul testleri (2/2) geçti.

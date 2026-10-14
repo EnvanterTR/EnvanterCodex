@@ -47,6 +47,15 @@ for (const token of [
   "$('#directorySearch').addEventListener('input', renderDirectoryRows)"
 ]) assert.ok(loader.includes(token) || html.includes(token), `location/building page must include ${token}`);
 
+const companyUnitStart = html.indexOf("$('#companyUnitRows').addEventListener('click'");
+const companyUnitEnd = html.indexOf("$('#companyUnitForm').addEventListener('submit'", companyUnitStart);
+assert.ok(companyUnitStart >= 0 && companyUnitEnd > companyUnitStart, 'company unit archive and restore actions must be present');
+const companyUnitActions = html.slice(companyUnitStart, companyUnitEnd);
+assert.match(companyUnitActions, /confirmEmployeeAction\(\{ title: nextActive \? 'Şirket birimi geri yüklensin mi\?' : 'Şirket birimi arşivlensin mi\? Etkin alt birimleri varsa işlem reddedilir\.', summary: actionSummary, confirmLabel: nextActive \? 'Geri yükle' : 'Arşivle', danger: !nextActive \}\)/,
+  'Company unit archive and restore must use a clear, cancellable in-app confirmation.');
+assert.doesNotMatch(companyUnitActions, /\bconfirm\s*\(/,
+  'Company unit state changes must not depend on browser-native confirmation.');
+
 for (const token of [
   'id="addLocationButton"',
   'id="locationManagerDialog"',
