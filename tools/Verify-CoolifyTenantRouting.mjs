@@ -17,6 +17,8 @@ assert.match(wildcard, /proxy_set_header\s+X-Forwarded-Proto\s+\$http_x_forwarde
 assert.match(wildcard, /client_max_body_size\s+32m;/, 'SaaS upload requests must retain the documented size budget.');
 assert.match(readme, /`\*\.envantertr\.com`[\s\S]*?wildcard DNS[\s\S]*?TLS certificate/i, 'Coolify setup must document wildcard DNS and TLS requirements.');
 assert.match(readme, /wildcard host's TLS certificate, login page, `\/api\/status`, and a tenant-scoped authenticated request/i, 'Production acceptance must check the tenant app and authenticated scope.');
+assert.match(readme, /`https:\/\/\*\.envantertr\.com`[\s\S]*?`public-site` service[\s\S]*?container port `80`[\s\S]*?redeploy/i, 'The wildcard host must be explicitly routed to the public-site Compose service on its internal port and redeployed.');
+assert.match(readme, /HTTP 503 with `no available server`[\s\S]*?no healthy matching upstream/i, 'The runbook must distinguish a Coolify proxy route failure from an application login failure.');
 assert.match(marketing, /try_files\s+\$uri\s+\$uri\/\s+\/index\.html;/, 'The marketing host must keep serving its public-site fallback.');
 
-console.log('Verified explicit apex/www marketing precedence, Coolify tenant wildcard host, app proxy and forwarded headers, upload limit, TLS/DNS setup guidance, production acceptance checklist, and marketing fallback.');
+console.log('Verified apex/www and tenant proxy rules, internal forwarding, wildcard Coolify service/port/redeploy setup, 503 proxy troubleshooting, TLS/DNS guidance, production acceptance checklist, and marketing fallback.');
