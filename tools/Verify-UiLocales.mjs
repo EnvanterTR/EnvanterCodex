@@ -80,7 +80,11 @@ const requiredAssetLabels = [
   'ZİMMET İŞLEMİ', 'Varlığı iade al', '{assetTag} · İade al',
   '“{assetTag}” varlığı çalışandan iade alınıp kullanılabilir duruma geçirilecek.',
   '“{assetTag}” varlığı {employeeName} çalışanından iade alınıp kullanılabilir duruma geçirilecek.',
-  'İade işlemi tamamlanamadı.'
+  'İade işlemi tamamlanamadı.', 'TOPLU VARLIK İŞLEMİ', 'Seçili varlıkları iade al',
+  'Varlıkları iade al', 'Seçili varlıkların durumunu değiştir', 'Durumu uygula',
+  'İade notu (isteğe bağlı)', 'Hareket geçmişine eklenecek açıklama (isteğe bağlı)',
+  '{count} seçili varlık zimmetli çalışanlarından iade alınıp kullanılabilir duruma geçirilecek. İşlem her varlık için geçmiş kaydı oluşturur.',
+  '{count} varlığın durumu “{status}” olarak değiştirilecek. Her değişiklik hareket geçmişine kaydedilir.'
 ];
 const requiredReservationLabels = [
   'Varlık rezervasyonları', 'Rezervasyon isteği oluştur', 'Şirket kapsamlı', 'Talep notu',

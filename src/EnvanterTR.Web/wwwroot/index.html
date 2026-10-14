@@ -2196,7 +2196,16 @@
       '“{assetTag}” varlığının durumu “{status}” olarak değiştirilsin mi?':['Change the status of asset “{assetTag}” to “{status}”?','Изменить статус актива «{assetTag}» на «{status}»?','Змінити стан активу «{assetTag}» на «{status}»?','Да се промени статусот на средството „{assetTag}“ во „{status}“?'],
       '“{assetTag}” varlığı arşivden geri alınarak kullanılabilir duruma getirilsin mi?':['Restore asset “{assetTag}” from archive and make it available?','Восстановить актив «{assetTag}» из архива и сделать доступным?','Відновити актив «{assetTag}» з архіву та зробити доступним?','Да се врати средството „{assetTag}“ од архивата и да стане достапно?'],
       'Varlık durumu güncellendi ve denetim geçmişine yazıldı.':['Asset status updated and recorded in audit history.','Статус актива обновлён и записан в журнал аудита.','Стан активу оновлено та записано до журналу аудиту.','Статусот на средството е ажуриран и запишан во историјата на ревизии.'],
-      'Durum güncellenemedi. Lütfen yeniden deneyin.':['The status could not be updated. Please try again.','Не удалось обновить статус. Повторите попытку.','Не вдалося оновити стан. Спробуйте ще раз.','Статусот не може да се ажурира. Обидете се повторно.']
+      'Durum güncellenemedi. Lütfen yeniden deneyin.':['The status could not be updated. Please try again.','Не удалось обновить статус. Повторите попытку.','Не вдалося оновити стан. Спробуйте ще раз.','Статусот не може да се ажурира. Обидете се повторно.'],
+      'TOPLU VARLIK İŞLEMİ':['BULK ASSET ACTION','МАССОВОЕ ДЕЙСТВИЕ С АКТИВАМИ','МАСОВА ДІЯ З АКТИВАМИ','МАСОВНО ДЕЈСТВО СО СРЕДСТВА'],
+      'Seçili varlıkları iade al':['Check in selected assets','Вернуть выбранные активы','Повернути вибрані активи','Вратете ги избраните средства'],
+      'Varlıkları iade al':['Check in assets','Вернуть активы','Повернути активи','Вратете средства'],
+      'Seçili varlıkların durumunu değiştir':['Change selected asset status','Изменить статус выбранных активов','Змінити стан вибраних активів','Променете го статусот на избраните средства'],
+      'Durumu uygula':['Apply status','Применить статус','Застосувати стан','Примени статус'],
+      'İade notu (isteğe bağlı)':['Check-in note (optional)','Примечание к возврату (необязательно)','Примітка до повернення (необов’язково)','Белешка за враќање (изборно)'],
+      'Hareket geçmişine eklenecek açıklama (isteğe bağlı)':['Note to add to the activity history (optional)','Примечание для истории действий (необязательно)','Примітка до історії руху (необов’язково)','Белешка за историјата на движења (изборно)'],
+      '{count} seçili varlık zimmetli çalışanlarından iade alınıp kullanılabilir duruma geçirilecek. İşlem her varlık için geçmiş kaydı oluşturur.':['{count} selected assets will be checked in from their assigned employees and made available. A history entry will be created for each asset.','{count} выбранных активов будут возвращены от назначенных сотрудников и станут доступными. Для каждого актива будет создана запись в истории.','{count} вибраних активів буде повернуто від призначених працівників і переведено в доступний стан. Для кожного активу буде створено запис в історії.','{count} избрани средства ќе бидат вратени од доделените вработени и ќе станат достапни. За секое средство ќе се создаде запис во историјата.'],
+      '{count} varlığın durumu “{status}” olarak değiştirilecek. Her değişiklik hareket geçmişine kaydedilir.':['The status of {count} assets will change to “{status}”. Each change is recorded in the activity history.','Статус {count} активов будет изменён на «{status}». Каждое изменение будет записано в историю действий.','Стан {count} активів буде змінено на «{status}». Кожну зміну буде записано до історії руху.','Статусот на {count} средства ќе се смени во „{status}“. Секоја промена ќе се запише во историјата на движења.']
     });
     function translateUiText(text) {
       const key = String(text ?? ''), index = localeIndexes[appearanceLanguage.value];
@@ -9519,14 +9528,39 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     };
     $('#selectAllAssets').addEventListener('change', event => selectVisibleAssets(event.target.checked));
     $('#selectAllAssetsHeader').addEventListener('change', event => selectVisibleAssets(event.target.checked));
+    const bulkAssetActionDialog = document.createElement('dialog');
+    bulkAssetActionDialog.className = 'detail-dialog';
+    bulkAssetActionDialog.setAttribute('aria-labelledby', 'bulkAssetActionTitle');
+    bulkAssetActionDialog.innerHTML = '<form id="bulkAssetActionForm"><div class="dialog-head"><div><div class="eyebrow" id="bulkAssetActionEyebrow"></div><h2 id="bulkAssetActionTitle"></h2></div><button class="close" id="closeBulkAssetAction" type="button" aria-label="Kapat">✕</button></div><div class="dialog-body"><p id="bulkAssetActionDescription" class="muted"></p><label class="detail-field"><small id="bulkAssetActionNoteLabel"></small><textarea name="note" maxlength="1000" rows="3"></textarea></label><p id="bulkAssetActionFeedback" class="auth-error" role="alert" hidden></p><div class="dialog-actions"><button class="btn" id="cancelBulkAssetAction" type="button">Vazgeç</button><button class="btn primary" id="submitBulkAssetAction" type="submit"></button></div></div></form>';
+    document.body.append(bulkAssetActionDialog);
+    const bulkAssetActionForm = $('#bulkAssetActionForm');
+    let finishBulkAssetAction;
+    const closeBulkAssetAction = value => { if (!bulkAssetActionDialog.open) return; bulkAssetActionDialog.close(); finishBulkAssetAction?.(value); finishBulkAssetAction = null; };
+    $('#closeBulkAssetAction').addEventListener('click', () => closeBulkAssetAction(null));
+    $('#cancelBulkAssetAction').addEventListener('click', () => closeBulkAssetAction(null));
+    bulkAssetActionDialog.addEventListener('cancel', event => { event.preventDefault(); closeBulkAssetAction(null); });
+    bulkAssetActionDialog.addEventListener('click', event => { if (event.target === bulkAssetActionDialog) closeBulkAssetAction(null); });
+    bulkAssetActionForm.addEventListener('submit', event => { event.preventDefault(); closeBulkAssetAction({ note: String(new FormData(bulkAssetActionForm).get('note') || '').trim() || null }); });
+    const requestBulkAssetAction = ({ title, description, noteLabel, submitLabel }) => {
+      $('#bulkAssetActionEyebrow').textContent = translateUiText('TOPLU VARLIK İŞLEMİ');
+      $('#bulkAssetActionTitle').textContent = translateUiText(title);
+      $('#bulkAssetActionDescription').textContent = translateUiText(description);
+      $('#bulkAssetActionNoteLabel').textContent = translateUiText(noteLabel);
+      $('#submitBulkAssetAction').textContent = translateUiText(submitLabel);
+      $('#bulkAssetActionFeedback').hidden = true;
+      bulkAssetActionForm.reset();
+      bulkAssetActionDialog.showModal();
+      return new Promise(resolve => { finishBulkAssetAction = resolve; });
+    };
     $('#bulkReturnSelectedAssets').addEventListener('click', async () => {
       const ids = [...selectedAssetIds], assets = ids.map(id => selectedAssetRows.get(id));
-      if (!ids.length || ids.length > 100 || assets.some(asset => !asset?.assignedEmployeeId)) return;
-      if (!confirm(`${ids.length} seçili varlığı zimmetli çalışanlarından iade alıp kullanılabilir duruma geçirmek istiyor musunuz?`)) return;
-      const note = prompt('İade notu (isteğe bağlı):'); if (note === null) return;
+      if (!canWriteAssets() || !ids.length || ids.length > 100 || assets.some(asset => !asset?.assignedEmployeeId)) return;
+      const submission = await requestBulkAssetAction({ title: 'Seçili varlıkları iade al', description: translateUiText('{count} seçili varlık zimmetli çalışanlarından iade alınıp kullanılabilir duruma geçirilecek. İşlem her varlık için geçmiş kaydı oluşturur.').replace('{count}', fmt.format(ids.length)), noteLabel: 'İade notu (isteğe bağlı)', submitLabel: 'Varlıkları iade al' });
+      if (!submission) return;
+      const note = submission.note;
       const button = $('#bulkReturnSelectedAssets'); button.disabled = true;
       try {
-        const result = await api('/api/assets/bulk-return', { method: 'POST', body: JSON.stringify({ assetIds: ids, note: note.trim() || null }) });
+        const result = await api('/api/assets/bulk-return', { method: 'POST', body: JSON.stringify({ assetIds: ids, note: note?.trim() || null }) });
         clearBulkAssetSelection(); await loadDashboard($('#globalSearch').value.trim(), assetPage);
         notify(`${fmt.format(result.updated)} varlık iade alındı; her kayıt için işlem geçmişi oluşturuldu.`);
       } catch (error) { notify(error.message); }
@@ -9549,13 +9583,13 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     });
     $('#applyBulkAssetStatus').addEventListener('click', async () => {
       const status = $('#bulkAssetStatus').value, ids = [...selectedAssetIds];
-      if (!status || ids.length < 1 || ids.length > 100) return;
-      if (!confirm(`${ids.length} varlığın durumunu “${statusLabel(status)}” olarak değiştirmek istiyor musunuz?`)) return;
-      const note = prompt('Hareket geçmişine eklenecek açıklama (isteğe bağlı):');
-      if (note === null) return;
+      if (!canWriteAssets() || !status || ids.length < 1 || ids.length > 100) return;
+      const submission = await requestBulkAssetAction({ title: 'Seçili varlıkların durumunu değiştir', description: translateUiText('{count} varlığın durumu “{status}” olarak değiştirilecek. Her değişiklik hareket geçmişine kaydedilir.').replace('{count}', fmt.format(ids.length)).replace('{status}', translateUiText(statusLabel(status))), noteLabel: 'Hareket geçmişine eklenecek açıklama (isteğe bağlı)', submitLabel: 'Durumu uygula' });
+      if (!submission) return;
+      const note = submission.note;
       const button = $('#applyBulkAssetStatus'); button.disabled = true;
       try {
-        const result = await api('/api/assets/bulk-status', { method: 'POST', body: JSON.stringify({ assetIds: ids, status, note: note.trim() || null }) });
+        const result = await api('/api/assets/bulk-status', { method: 'POST', body: JSON.stringify({ assetIds: ids, status, note: note?.trim() || null }) });
         clearBulkAssetSelection(); $('#bulkAssetStatus').value = '';
         await loadDashboard($('#globalSearch').value.trim(), assetPage);
         notify(`${fmt.format(result.updated)} varlığın durumu güncellendi${result.unchanged ? `; ${fmt.format(result.unchanged)} kayıt zaten bu durumdaydı` : ''}.`);
