@@ -1132,23 +1132,32 @@ public static class PlatformEndpoints
         {
             if (request is null) return Results.BadRequest(new { message = "Abonelik düzenleme bilgileri gereklidir." });
             if (request.PlanId == Guid.Empty || request.StartsAt < new DateTimeOffset(2000, 1, 1, 0, 0, 0, TimeSpan.Zero) ||
-                request.EndsAt <= request.StartsAt || request.EndsAt > DateTimeOffset.UtcNow.AddYears(50) || request.Note is { Length: > 1000 })
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["subscription"] = ["Etkin plan seçin; başlangıç/bitiş tarihleri geçerli olmalı ve not 1000 karakteri aşmamalıdır."] });
+                request.EndsAt <= request.StartsAt || request.EndsAt > DateTimeOffset.UtcNow.AddYears(50) ||
+                string.IsNullOrWhiteSpace(request.Note) || request.Note.Length > 1000)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["subscription"] = ["Etkin plan, geçerli başlangıç/bitiş tarihleri ve en fazla 1000 karakterlik işlem gerekçesi gereklidir."] });
 
             var subscription = await db.TenantSubscriptions.SingleOrDefaultAsync(x => x.Id == subscriptionId && x.CompanyId == companyId, cancellationToken);
             if (subscription is null) return Results.NotFound();
             var plan = await db.SubscriptionPlans.SingleOrDefaultAsync(x => x.Id == request.PlanId && x.IsActive && x.DeploymentKind == "cloud", cancellationToken);
             if (plan is null) return Results.ValidationProblem(new Dictionary<string, string[]> { ["planId"] = ["Etkin bir Cloud paketi seçilmelidir."] });
 
+            var normalizedStartsAt = NormalizePostgresTimestamp(request.StartsAt);
+            var normalizedEndsAt = NormalizePostgresTimestamp(request.EndsAt);
+            if (subscription.PlanId == plan.Id && NormalizePostgresTimestamp(subscription.StartsAt) == normalizedStartsAt &&
+                NormalizePostgresTimestamp(subscription.EndsAt) == normalizedEndsAt)
+                return Results.Ok(new { subscription.Id, subscription.PlanId, subscription.StartsAt, subscription.EndsAt,
+                    subscription.Status, subscription.IsDemo, unchanged = true });
+
             var previous = new { subscription.PlanId, subscription.StartsAt, subscription.EndsAt, subscription.Status, subscription.IsDemo };
             subscription.PlanId = plan.Id;
-            subscription.StartsAt = request.StartsAt.ToUniversalTime();
-            subscription.EndsAt = request.EndsAt.ToUniversalTime();
+            subscription.StartsAt = normalizedStartsAt;
+            subscription.EndsAt = normalizedEndsAt;
             var current = new { subscription.PlanId, subscription.StartsAt, subscription.EndsAt, subscription.Status, subscription.IsDemo };
             var audit = JsonSerializer.Serialize(new { before = previous, after = current, note = Clean(request.Note) });
             AddAudit(db, user, "SubscriptionManuallyAdjusted", "TenantSubscription", subscription.Id, companyId, audit);
             await db.SaveChangesAsync(cancellationToken);
-            return Results.Ok(new { subscription.Id, subscription.PlanId, subscription.StartsAt, subscription.EndsAt, subscription.Status, subscription.IsDemo });
+            return Results.Ok(new { subscription.Id, subscription.PlanId, subscription.StartsAt, subscription.EndsAt,
+                subscription.Status, subscription.IsDemo, unchanged = false });
         });
 
         admin.MapPatch("/companies/{companyId:guid}/active", async (Guid companyId,
@@ -1282,4 +1291,10 @@ public static class PlatformEndpoints
     }
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static DateTimeOffset NormalizePostgresTimestamp(DateTimeOffset value)
+    {
+        var utc = value.ToUniversalTime();
+        return utc.AddTicks(-(utc.Ticks % 10));
+    }
 }

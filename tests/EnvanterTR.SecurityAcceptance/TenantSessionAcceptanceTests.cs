@@ -2000,6 +2000,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                    System.Net.Http.Json.JsonContent.Create(invalidRangeRequest), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.BadRequest, invalidRange.StatusCode);
 
+        using (var missingReason = await SendAsPlatformAdminRequestAsync(HttpMethod.Put,
+                   $"/api/platform/companies/{_companyId}/subscriptions/{subscriptionId}",
+                   System.Net.Http.Json.JsonContent.Create(new { planId = upgradedPlan.Id, startsAt = now.AddDays(-2), endsAt = now.AddDays(90) }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, missingReason.StatusCode);
+
         var editedStartsAt = now.AddDays(-2);
         var editedEndsAt = now.AddDays(90);
         var editRequest = new { planId = upgradedPlan.Id, startsAt = editedStartsAt, endsAt = editedEndsAt, note = "Customer success courtesy extension" };
@@ -2013,9 +2019,19 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
             using var payload = JsonDocument.Parse(await saved.Content.ReadAsStringAsync());
+            Assert.False(payload.RootElement.GetProperty("unchanged").GetBoolean());
             Assert.Equal(upgradedPlan.Id, payload.RootElement.GetProperty("planId").GetGuid());
-            Assert.Equal(editedStartsAt.ToUniversalTime(), payload.RootElement.GetProperty("startsAt").GetDateTimeOffset());
-            Assert.Equal(editedEndsAt.ToUniversalTime(), payload.RootElement.GetProperty("endsAt").GetDateTimeOffset());
+            Assert.Equal(editedStartsAt.ToUniversalTime().Ticks / 10, payload.RootElement.GetProperty("startsAt").GetDateTimeOffset().Ticks / 10);
+            Assert.Equal(editedEndsAt.ToUniversalTime().Ticks / 10, payload.RootElement.GetProperty("endsAt").GetDateTimeOffset().Ticks / 10);
+        }
+
+        using (var retry = await SendAsPlatformAdminRequestAsync(HttpMethod.Put,
+                   $"/api/platform/companies/{_companyId}/subscriptions/{subscriptionId}",
+                   System.Net.Http.Json.JsonContent.Create(editRequest), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, retry.StatusCode);
+            using var payload = JsonDocument.Parse(await retry.Content.ReadAsStringAsync());
+            Assert.True(payload.RootElement.GetProperty("unchanged").GetBoolean());
         }
 
         await using (var scope = _factory!.Services.CreateAsyncScope())
@@ -2025,7 +2041,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal("Active", subscription.Status);
             Assert.False(subscription.IsDemo);
             Assert.Equal("preserved-payment-reference", subscription.PaymentReference);
-            var audit = await db.PlatformAuditEntries.SingleAsync(x => x.TargetId == subscriptionId && x.Action == "SubscriptionManuallyAdjusted");
+            var auditEntries = await db.PlatformAuditEntries.Where(x => x.TargetId == subscriptionId && x.Action == "SubscriptionManuallyAdjusted").ToListAsync();
+            var audit = Assert.Single(auditEntries);
             Assert.Contains(originalPlan.Id.ToString(), audit.Details, StringComparison.Ordinal);
             Assert.Contains(upgradedPlan.Id.ToString(), audit.Details, StringComparison.Ordinal);
             Assert.Contains("Customer success courtesy extension", audit.Details, StringComparison.Ordinal);

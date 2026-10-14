@@ -46,7 +46,7 @@ assert.match(page, /o\.amount,o\.currency/);
 assert.doesNotMatch(api.match(/admin\.MapGet\("\/companies\/\{companyId:guid\}"[\s\S]*?admin\.MapPatch\("\/companies\/\{companyId:guid\}\/lifecycle"/)?.[0] || '', /CheckoutTokenHash|CheckoutPageUrlProtected/);
 assert.match(subscriptions, /Plan \/ tarih düzenle/);
 assert.match(subscriptions, /method: 'PUT'/);
-assert.match(subscriptions, /Ücretsiz uzatma \/ plan değişikliği gerekçesi/);
+assert.match(subscriptions, /Zorunlu: ücretsiz uzatma \/ plan değişikliği gerekçesi/);
 assert.match(demos, /api\/platform\/demo-requests/);
 
 console.log('Platform admin premium skin, member/demo/purchase/subscription workflows, responsive/accessibility affordances, and two-factor sign-in verified.');

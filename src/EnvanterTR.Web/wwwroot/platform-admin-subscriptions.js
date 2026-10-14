@@ -87,12 +87,26 @@
     const note = document.createElement('input');
     note.name = 'note';
     note.maxLength = 1000;
-    note.placeholder = 'Ücretsiz uzatma / plan değişikliği gerekçesi';
+    note.required = true;
+    note.placeholder = 'Zorunlu: ücretsiz uzatma / plan değişikliği gerekçesi';
     body.append(field('Cloud planı', plan), field('Başlangıç tarihi ve saati', startsAt),
-      field('Bitiş tarihi ve saati', endsAt), field('Yönetici notu', note));
+      field('Bitiş tarihi ve saati', endsAt), field('İşlem gerekçesi (zorunlu)', note));
+    const preview = document.createElement('div');
+    preview.className = 'notice';
+    preview.setAttribute('aria-live', 'polite');
+    const formatDate = value => new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+    const refreshPreview = () => {
+      const selectedPlan = plans.find(item => item.id === plan.value);
+      const selectedName = selectedPlan ? `${selectedPlan.name} · ${selectedPlan.code}` : 'Seçilmedi';
+      const currentName = subscription.name ? `${subscription.name} · ${subscription.code || ''}` : 'Mevcut paket';
+      preview.textContent = `Önizleme: ${currentName} → ${selectedName}. Dönem ${startsAt.value ? formatDate(startsAt.value) : '—'} – ${endsAt.value ? formatDate(endsAt.value) : '—'}. ${subscription.isDemo ? 'Demo olarak kalır.' : 'Ücretli abonelik kaydı olarak kalır.'} Bu yönetici düzenlemesi tahsilat veya iade oluşturmaz, ödeme referansını değiştirmez.`;
+    };
+    for (const control of [plan, startsAt, endsAt]) control.addEventListener('change', refreshPreview);
+    refreshPreview();
+    body.append(preview);
     const notice = document.createElement('div');
     notice.className = 'notice warning';
-    notice.textContent = 'Bu işlem tahsilat yapmaz. Önceki plan ve dönem ile yeni değerler yönetici işlem kaydına yazılır. Firma erişimini durdurmak için firmayı askıya alın.';
+    notice.textContent = 'Gerekçe değiştirilemez yönetici denetim kaydına yazılır. Aynı plan ve tarihlerin tekrar gönderilmesi ikinci bir değişiklik veya audit kaydı oluşturmaz. Firma erişimini durdurmak için firmayı askıya alın.';
     body.append(notice);
 
     const foot = document.createElement('div');
