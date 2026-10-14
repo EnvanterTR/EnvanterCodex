@@ -25,6 +25,7 @@ requireSource(handler.includes("event.key === '/' && !typing") && handler.includ
 requireSource(handler.includes("event.key === '?' && !typing") && handler.includes("$('#keyboardShortcutsDialog').showModal()"), 'Question mark must open the keyboard-shortcut help dialog outside text fields.');
 requireSource(handler.includes("if (event.key !== 'Escape') return") && handler.includes('closeOperationalAlerts()') && handler.includes('setMobileSidebarOpen(false)'), 'Escape must preserve notification and mobile-sidebar dismissal behavior.');
 requireSource(palette.includes("document.querySelectorAll('#sidebar [data-page]')") && palette.includes("button.dataset.page === entry.value") && palette.includes("?.click()"), 'Command palette destinations must be derived from and activate the actual sidebar routes.');
+requireSource(palette.includes(".filter(button => !button.hidden)"), 'Command palette must omit navigation destinations hidden by the active role.');
 requireSource(palette.includes("commandPaletteSearch.addEventListener('input', renderCommandPalette)") && palette.includes('toLocaleLowerCase(locale)') && palette.includes('commandPaletteResults.replaceChildren()'), 'Command palette search must filter and refresh its result list.');
 requireSource(source.includes('id="commandPaletteResults" class="command-palette-results" role="menu"') && palette.includes("setAttribute('role', 'menuitem')"), 'Command palette results must expose accessible menu and menuitem semantics.');
 requireSource(palette.includes("event.key === 'Enter' && event.target === commandPaletteSearch") && palette.includes("['ArrowDown', 'ArrowUp']"), 'Command palette must support Enter and arrow-key navigation.');
@@ -45,7 +46,10 @@ if (entriesFunction) {
   const labels = new Map(languageCases.map(([language, , newAsset, barcode, quickAction, page]) =>
     [language, new Map([['Yeni varlık', newAsset], ['Barkod okut', barcode], ['Hızlı işlem', quickAction], ['Sayfa', page]])]));
   for (const [language, locale, expectedAsset, expectedBarcode] of languageCases) {
-    const buttons = [{ dataset: { page: 'Varlıklar' }, textContent: language === 'tr' ? 'Varlıklar' : labels.get(language).get('Sayfa') }];
+    const buttons = [
+      { dataset: { page: 'Varlıklar' }, textContent: language === 'tr' ? 'Varlıklar' : labels.get(language).get('Sayfa'), hidden: false },
+      { dataset: { page: 'Uygulama kullanıcıları' }, textContent: 'Uygulama kullanıcıları', hidden: true }
+    ];
     const context = {
       document: { querySelectorAll: () => buttons },
       $: selector => ({ hidden: false }),
@@ -54,6 +58,8 @@ if (entriesFunction) {
     };
     try {
       const entries = vm.runInNewContext(`(${entriesFunction})`, context, { timeout: 1000 })();
+      requireSource(!entries.some(entry => entry.value === 'Uygulama kullanıcıları'), `${language}: role-hidden member administration must not appear in the command palette.`);
+      requireSource(entries.some(entry => entry.value === 'Varlıklar'), `${language}: visible navigation destinations must remain searchable.`);
       const matches = query => entries.filter(entry => `${entry.label} ${entry.group}`.toLocaleLowerCase(locale).includes(query.toLocaleLowerCase(locale)));
       const assetHits = matches(expectedAsset);
       const barcodeHits = matches(expectedBarcode);
