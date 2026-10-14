@@ -1,0 +1,8 @@
+FROM mcr.microsoft.com/playwright:v1.64.0-noble
+
+WORKDIR /acceptance
+COPY deploy/testing/platform-mfa-browser/package.json deploy/testing/platform-mfa-browser/package-lock.json ./
+RUN npm ci --omit=dev
+COPY deploy/testing/platform-mfa-browser/platform-mfa-first-login.mjs ./
+
+CMD ["node", "platform-mfa-first-login.mjs"]

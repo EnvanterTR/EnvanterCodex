@@ -17,6 +17,8 @@ assert.match(page, /:where\(button,a,input,select,textarea\):focus-visible/);
 assert.match(page, /prefers-reduced-motion:reduce/);
 assert.match(page, /@media\(max-width:950px\)/);
 assert.match(page, /@media\(max-width:650px\)/);
+assert.match(page, /\.login-wrap\{[^}]*overflow-y:auto;place-items:safe center/,
+  'Platform login and MFA setup panels must remain scrollable on short viewports.');
 
 for (const view of ['overview', 'companies', 'members', 'demo-requests', 'orders', 'plans', 'support', 'audit']) {
   assert.match(page, new RegExp(`data-view="${view}"`), `${view} navigation remains available`);
@@ -61,6 +63,10 @@ assert.match(page, /platformMfaRecoveryCodes/);
 assert.match(page, /platformMfaSavedRecovery/);
 assert.match(page, /data\?\.code==='platform_mfa_required'[\s\S]*?showPlatformMfaSetup/);
 assert.match(page, /async function showApp\(name\)[\s\S]*?\/api\/session\/2fa[\s\S]*?if\(!security\.enabled\)\{showPlatformMfaSetup\(\);return\}/);
+assert.match(page, /if\(!s\.platformAdmin\)throw Error\('Bu hesapta platform yöneticisi yetkisi yok\.'\);await csrf\(\);await showApp\(s\.name\)/,
+  'Refresh the antiforgery token after login because the authenticated identity changed.');
+assert.match(page, /platformMfaSetupForm'\)\.addEventListener\('submit',async e=>\{e\.preventDefault\(\);const form=e\.currentTarget[\s\S]*?await api\('\/api\/session\/2fa\/setup'[\s\S]*?form\.elements\.currentPassword\.value=''/,
+  'Keep a stable form reference across the asynchronous MFA setup request.');
 assert.match(members, /loadMemberTimeline\(id, 1, false\)/);
 assert.match(api, /PlatformDemoRequests/);
 assert.match(api, /Satın alma kaydı oluşturuldu/);

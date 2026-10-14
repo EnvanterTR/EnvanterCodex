@@ -252,6 +252,10 @@ jobs:
         shell: bash
         run: node tools/Verify-PlatformAdminExperience.mjs
 
+      - name: Verify isolated platform MFA browser acceptance harness
+        shell: bash
+        run: node tools/Verify-PlatformMfaBrowserAcceptance.mjs
+
       - name: Verify platform member directory and account details
         shell: bash
         run: node tools/Verify-PlatformMemberDirectory.mjs

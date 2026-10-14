@@ -20,6 +20,17 @@ services:
       ui_acceptance:
         aliases: [database]
 
+  migrate:
+    image: envantertr-product-dev-web:latest
+    command: ["--migrate"]
+    environment:
+      ConnectionStrings__EnvanterTR: "Host=database;Port=5432;Database=envantertr_ui_acceptance;Username=envantertr_ui_test;Password=ui-acceptance-only"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      ui_acceptance: {}
+
   web:
     image: envantertr-product-dev-web:latest
     environment:
@@ -32,12 +43,29 @@ services:
     depends_on:
       database:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     volumes:
       - ../../src/EnvanterTR.Web/wwwroot:/app/wwwroot:ro
       - ui_acceptance_media:/var/lib/envantertr/company-media
       - ui_acceptance_data_protection:/var/lib/envantertr/data-protection-keys
     ports:
       - "127.0.0.1:${UI_AUDIT_PORT:-18092}:8080"
+    networks:
+      ui_acceptance: {}
+
+  platform-mfa-browser:
+    build:
+      context: ../..
+      dockerfile: deploy/testing/Dockerfile.platform-mfa-browser
+    image: envantertr-platform-mfa-browser-acceptance:local
+    profiles: [browser]
+    environment:
+      ACCEPTANCE_BASE_URL: http://web:8080
+      ACCEPTANCE_PLATFORM_SETUP_TOKEN: ui-acceptance-platform-only
+    depends_on:
+      web:
+        condition: service_started
     networks:
       ui_acceptance: {}
 

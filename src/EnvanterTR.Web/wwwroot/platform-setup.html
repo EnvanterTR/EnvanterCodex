@@ -19,7 +19,7 @@
       <label>Yönetici e-posta adresi<input name="email" type="email" required maxlength="256" autocomplete="email"></label>
       <label>Yeni parola<input name="password" type="password" required minlength="12" autocomplete="new-password"><span class="hint">En az 12 karakter; büyük/küçük harf, sayı ve özel karakter içermelidir.</span></label>
       <label>Platform kurulum anahtarı<input class="token" name="setupToken" type="password" required autocomplete="off"><span class="hint">Sunucudaki SETUP_PLATFORM_BOOTSTRAP_TOKEN değeri.</span></label>
-      <button class="button" type="submit">Platform yöneticisini oluştur</button>
+      <button class="button" type="submit" disabled>Platform yöneticisini oluştur</button>
     </form>
     <div id="message" class="message hidden" role="status" aria-live="polite"></div>
     <a class="back" href="/platform-admin.html">← Platform girişine dön</a>
@@ -28,7 +28,7 @@
     const form=document.querySelector('#setupForm'), message=document.querySelector('#message'); let csrfToken='';
     function show(text,kind=''){message.textContent=text;message.className=`message ${kind}`}
     async function request(path,options={}){const response=await fetch(path,{credentials:'same-origin',...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});const data=await response.json().catch(()=>({}));if(!response.ok)throw Error(data.message||Object.values(data.errors||{}).flat().join(' ')||`İşlem başarısız (${response.status}).`);return data}
-    (async()=>{try{const state=await request('/api/platform/bootstrap/status');if(!state.setupRequired){form.classList.add('hidden');show('Platform yöneticisi daha önce oluşturulmuş. Yeni hesap için mevcut platform sahibinizle iletişime geçin.');return}if(!state.setupTokenConfigured){form.classList.add('hidden');show('Sunucu kurulum anahtarı ayarlanmamış. Sunucu yöneticisi SETUP_PLATFORM_BOOTSTRAP_TOKEN değerini yapılandırdıktan sonra bu sayfayı yenileyin.','error');return}csrfToken=(await request('/api/session/csrf')).requestToken}catch(error){form.classList.add('hidden');show(error.message,'error')}})();
+    (async()=>{try{const state=await request('/api/platform/bootstrap/status');if(!state.setupRequired){form.classList.add('hidden');show('Platform yöneticisi daha önce oluşturulmuş. Yeni hesap için mevcut platform sahibinizle iletişime geçin.');return}if(!state.setupTokenConfigured){form.classList.add('hidden');show('Sunucu kurulum anahtarı ayarlanmamış. Sunucu yöneticisi SETUP_PLATFORM_BOOTSTRAP_TOKEN değerini yapılandırdıktan sonra bu sayfayı yenileyin.','error');return}csrfToken=(await request('/api/session/csrf')).requestToken;form.querySelector('button[type="submit"]').disabled=false}catch(error){form.classList.add('hidden');show(error.message,'error')}})();
     form.addEventListener('submit',async event=>{event.preventDefault();const button=form.querySelector('button');button.disabled=true;const data=Object.fromEntries(new FormData(form)),setupToken=data.setupToken;delete data.setupToken;try{await request('/api/platform/bootstrap',{method:'POST',headers:{'X-CSRF-TOKEN':csrfToken,'X-Platform-Setup-Token':setupToken},body:JSON.stringify(data)});form.reset();form.classList.add('hidden');show('Platform hesabı oluşturuldu. Kurulum anahtarını sunucu ayarlarından kaldırın; ardından platform giriş ekranından oturum açın.','success')}catch(error){show(error.message,'error')}finally{button.disabled=false}});
   </script>
 </body>

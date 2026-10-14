@@ -1,0 +1,40 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+
+const compose = await readFile('deploy/testing/compose.ui-acceptance.yaml', 'utf8');
+const dockerfile = await readFile('deploy/testing/Dockerfile.platform-mfa-browser', 'utf8');
+const setupPage = await readFile('src/EnvanterTR.Web/wwwroot/platform-setup.html', 'utf8');
+const adminPage = await readFile('src/EnvanterTR.Web/wwwroot/platform-admin.html', 'utf8');
+const packageJson = JSON.parse(await readFile('deploy/testing/platform-mfa-browser/package.json', 'utf8'));
+const packageLock = JSON.parse(await readFile('deploy/testing/platform-mfa-browser/package-lock.json', 'utf8'));
+const script = await readFile('deploy/testing/platform-mfa-browser/platform-mfa-first-login.mjs', 'utf8');
+const runner = await readFile('deploy/testing/run-platform-mfa-browser-acceptance.ps1', 'utf8');
+
+assert.match(compose, /platform-mfa-browser:[\s\S]*?profiles:\s*\[browser\][\s\S]*?ACCEPTANCE_BASE_URL:\s*http:\/\/web:8080/);
+assert.match(compose, /POSTGRES_DB:\s*envantertr_ui_acceptance/);
+assert.match(compose, /Setup__PlatformBootstrapToken:\s*ui-acceptance-platform-only/);
+assert.match(compose, /migrate:[\s\S]*?command:\s*\["--migrate"\][\s\S]*?web:[\s\S]*?condition:\s*service_completed_successfully/);
+assert.match(setupPage, /type="submit" disabled/);
+assert.match(setupPage, /csrfToken=\(await request\('\/api\/session\/csrf'\)\)\.requestToken;form\.querySelector\('button\[type="submit"\]'\)\.disabled=false/);
+assert.match(adminPage, /if\(!s\.platformAdmin\)throw Error\('Bu hesapta platform yöneticisi yetkisi yok\.'\);await csrf\(\);await showApp\(s\.name\)/);
+assert.match(adminPage, /\.login-wrap\{[^}]*overflow-y:auto;place-items:safe center/);
+assert.match(dockerfile, /^FROM mcr\.microsoft\.com\/playwright:v1\.64\.0-noble$/m);
+assert.equal(packageJson.dependencies.playwright, '1.64.0');
+assert.equal(packageLock.packages['node_modules/playwright'].version, packageJson.dependencies.playwright);
+assert.match(script, /@example\.invalid/);
+assert.match(script, /Synthetic-Platform-Password/);
+assert.match(script, /platform-setup\.html/);
+assert.match(script, /setup form must remain disabled while server readiness is loading/i);
+assert.match(script, /setup form must remain disabled until the CSRF token and cookie are ready/i);
+assert.match(script, /platform-admin\.html/);
+assert.match(script, /totp\(secret\)/);
+assert.match(script, /ten one-time recovery codes/);
+assert.match(script, /recovery-code replay/);
+assert.match(script, /page\.reload\(\)/);
+assert.match(script, /browserErrors\.length, 0/);
+assert.match(script, /serverErrors\.length, 0/);
+assert.match(script, /assert\.match\(new URL\(baseUrl\)\.hostname, \/\^\(web\|localhost\|127\\\.0\\\.0\\\.1\)\$\//);
+assert.match(runner, /\[Guid\]::NewGuid\(\)/);
+assert.match(runner, /down --volumes --remove-orphans/);
+
+console.log('PASS: isolated Playwright image and synthetic first-login MFA browser acceptance are version-aligned and disposable.');
