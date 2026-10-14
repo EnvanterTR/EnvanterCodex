@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 14 Ekim 2026 — satın alma siparişlerinde iptal ve ek dosya onayı
+
+Varlık, stok ve aksesuar siparişlerinin iptali ile sipariş eki kaldırma artık tarayıcı `confirm()` yerine iptal edilebilir, uygulama içi onay penceresi kullanır. İptal pencereleri önceden teslim alınan varlık/stok kayıtlarının korunacağını ve siparişin yeniden teslim alınamayacağını söyler; ek kaldırma penceresi sipariş ile teslimat geçmişinin korunacağını açıklar. API isteği yalnızca onaydan sonra gönderilir; başarıda ilgili sipariş listesi/ekleri yenilenir. Metinler beş dilde doğrulandı. Kaynak kontrolleri 66/66, izole PostgreSQL sipariş/ek API kabul testi 1/1 geçti.
+
 ## 14 Ekim 2026 — şirket birimi arşivleme ve geri yükleme
 
 Şirket birimindeki arşiv/geri yükle eylemleri iptal edilebilir uygulama onayı ister. Arşivleme geçmişi korur ve etkin çocuk birim varsa sunucu reddeder; geri yükleme birimi yeniden etkinleştirir. İstek yalnız onaydan sonra gönderilir. Beş dilde metin doğrulandı; tenant/rol/kalıcılık API kabul testi dahil tam izole regresyon 142/142 geçti.

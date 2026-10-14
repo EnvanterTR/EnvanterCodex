@@ -2134,6 +2134,13 @@
     Object.assign(localeRows, {
       'Geri yüklenen şirket birimi yeniden etkinleşir.':['The restored company unit becomes active again.','Восстановленное подразделение снова станет активным.','Відновлений підрозділ знову стане активним.','Вратената единица повторно станува активна.'],
       'Arşivlenen şirket birimi ve geçmişi korunur. Etkin alt birimleri varsa işlem reddedilir.':['The archived company unit and its history are retained. The operation is rejected if it has active child units.','Архивированное подразделение и его история сохраняются. Операция будет отклонена, если есть активные дочерние подразделения.','Архівований підрозділ та його історія зберігаються. Якщо є активні дочірні підрозділи, операцію буде відхилено.','Архивираната единица и нејзината историја се зачувуваат. Операцијата ќе биде одбиена ако има активни подредени единици.'],
+      'Sipariş iptal edilsin mi?':['Cancel this purchase order?','Отменить этот заказ на покупку?','Скасувати це замовлення на закупівлю?','Да се откаже оваа нарачка за набавка?'],
+      'İptal edilen sipariş yeniden teslim alınamaz. Daha önce teslim alınan varlıklar korunur.':['A cancelled order cannot be received again. Assets received earlier are retained.','Отмененный заказ нельзя будет принять снова. Ранее полученные активы сохраняются.','Скасоване замовлення не можна буде прийняти повторно. Раніше отримані активи зберігаються.','Откажана нарачка не може повторно да се прими. Претходно примените средства се зачувуваат.'],
+      'İptal edilen sipariş yeniden teslim alınamaz. Daha önce teslim alınmış stok korunur.':['A cancelled order cannot be received again. Stock received earlier is retained.','Отмененный заказ нельзя будет принять снова. Ранее полученные запасы сохраняются.','Скасоване замовлення не можна буде прийняти повторно. Раніше отримані запаси зберігаються.','Откажана нарачка не може повторно да се прими. Претходно примените залихи се зачувуваат.'],
+      'Sipariş belgesi kaldırılsın mı?':['Remove this purchase order attachment?','Удалить вложение этого заказа на покупку?','Видалити вкладення цього замовлення на закупівлю?','Да се отстрани прилогот од оваа нарачка за набавка?'],
+      'Bu işlem yalnız siparişe ekli dosyayı kaldırır; sipariş ve teslimat kayıtları korunur.':['This removes only the file attached to the order; the order and receipt records are retained.','Будет удален только файл, прикрепленный к заказу; заказ и записи о приемке сохраняются.','Буде видалено лише файл, прикріплений до замовлення; замовлення та записи про отримання зберігаються.','Ова ја отстранува само датотеката прикачена на нарачката; записите за нарачката и приемот се зачувуваат.'],
+      'Siparişi iptal et':['Cancel order','Отменить заказ','Скасувати замовлення','Откажи нарачка'],
+      'Belgeyi kaldır':['Remove attachment','Удалить вложение','Видалити вкладення','Отстрани прилог'],
     });
     Object.assign(localeRows, {
       '“{assetTag}” varlığını çöp kutusuna taşımak istiyor musunuz?':['Move asset “{assetTag}” to the trash?','Переместить актив “{assetTag}” в корзину?','Перемістити актив “{assetTag}” до кошика?','Да се премести средството „{assetTag}“ во корпата?'],
@@ -7736,7 +7743,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       host.append(list);
     }
     async function removeStockOrderAttachment(orderId, attachment) {
-      if (!confirm(`“${attachment.originalFileName}” belgesi siparişten kaldırılsın mı?`)) return;
+      if (!await confirmEmployeeAction({ title: 'Sipariş belgesi kaldırılsın mı?', summary: 'Bu işlem yalnız siparişe ekli dosyayı kaldırır; sipariş ve teslimat kayıtları korunur.', confirmLabel: 'Belgeyi kaldır', danger: true })) return;
       try { await api(`/api/stock-orders/${orderId}/attachments/${attachment.id}`, { method: 'DELETE' }); const data = await api(`/api/stock-orders/${orderId}`); renderStockOrderAttachments(orderId, data.attachments); notify('Sipariş belgesi kaldırıldı.'); }
       catch (error) { notify(error.message); }
     }
@@ -7804,7 +7811,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       const host = $('#assetOrderAttachments'), orderId = data.order.id;
       host.innerHTML = data.attachments.length ? data.attachments.map(item => `<div class="employee-document-row"><a href="/api/asset-orders/${orderId}/attachments/${item.id}/file" target="_blank" rel="noopener">${escapeHtml(item.originalFileName)}</a><small>${(item.length / 1024).toFixed(0)} KB · ${new Date(item.createdAt).toLocaleString(selectedLocale)}${item.uploadedBy ? ` · ${escapeHtml(item.uploadedBy)}` : ''}</small>${canWriteAssets() ? `<button class="btn danger small asset-order-attachment-remove" data-id="${item.id}" type="button">Sil</button>` : ''}</div>`).join('') : '<p class="muted">Bu siparişe henüz belge eklenmemiş.</p>';
       host.querySelectorAll('.asset-order-attachment-remove').forEach(button => button.addEventListener('click', async () => {
-        if (!confirm('Bu sipariş belgesi silinsin mi?')) return;
+        if (!await confirmEmployeeAction({ title: 'Sipariş belgesi kaldırılsın mı?', summary: 'Bu işlem yalnız siparişe ekli dosyayı kaldırır; sipariş ve teslimat kayıtları korunur.', confirmLabel: 'Belgeyi kaldır', danger: true })) return;
         try { await api(`/api/asset-orders/${orderId}/attachments/${button.dataset.id}`, { method: 'DELETE' }); const fresh = await api(`/api/asset-orders/${orderId}`); currentAssetOrder = fresh; renderAssetOrderAttachments(fresh); notify('Sipariş belgesi silindi.'); }
         catch (error) { notify(error.message); }
       }));
@@ -7838,7 +7845,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       const button = event.target.closest('button[data-id]'); if (!button) return;
       try { if (button.classList.contains('asset-order-open')) await openAssetOrder(button.dataset.id);
         else if (button.classList.contains('asset-order-receive')) await openAssetOrderReceive(button.dataset.id);
-        else if (button.classList.contains('asset-order-cancel')) { if (!confirm('Bu satın alma siparişi iptal edilsin mi? Teslim alınan varlıklar korunur.')) return; await api(`/api/asset-orders/${button.dataset.id}/cancel`, { method: 'POST' }); await loadAssetOrders(); notify('Sipariş iptal edildi; alınmış varlıklar korundu.'); }
+        else if (button.classList.contains('asset-order-cancel')) { if (!await confirmEmployeeAction({ title: 'Sipariş iptal edilsin mi?', summary: 'İptal edilen sipariş yeniden teslim alınamaz. Daha önce teslim alınan varlıklar korunur.', confirmLabel: 'Siparişi iptal et', danger: true })) return; await api(`/api/asset-orders/${button.dataset.id}/cancel`, { method: 'POST' }); await loadAssetOrders(); notify('Sipariş iptal edildi; alınmış varlıklar korundu.'); }
       } catch (error) { notify(error.message); }
     });
     $('#assetOrderReceivedAssets').addEventListener('click', event => { const button = event.target.closest('.openAssetFromPurchaseOrder'); if (!button) return; $('#assetOrderDetailDialog').close(); openAsset(button.dataset.assetId).catch(error => notify(error.message)); });
@@ -7896,7 +7903,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       const button = event.target.closest('button[data-id]'); if (!button) return;
       try { if (button.classList.contains('stock-order-open')) await openStockOrder(button.dataset.id);
         else if (button.classList.contains('stock-order-receive')) await openStockOrderReceive(button.dataset.id);
-        else if (button.classList.contains('stock-order-cancel')) { if (!confirm('Sipariş iptal edilsin mi? Önceden teslim alınan stok korunur.')) return; await api(`/api/stock-orders/${button.dataset.id}/cancel`, { method: 'POST' }); await loadStockOrders(); notify('Sipariş iptal edildi; teslim alınmış stok korundu.'); }
+        else if (button.classList.contains('stock-order-cancel')) { if (!await confirmEmployeeAction({ title: 'Sipariş iptal edilsin mi?', summary: 'İptal edilen sipariş yeniden teslim alınamaz. Daha önce teslim alınmış stok korunur.', confirmLabel: 'Siparişi iptal et', danger: true })) return; await api(`/api/stock-orders/${button.dataset.id}/cancel`, { method: 'POST' }); await loadStockOrders(); notify('Sipariş iptal edildi; teslim alınmış stok korundu.'); }
       } catch (error) { notify(error.message); }
     });
     $('#receiveStockOrderFromDetail').addEventListener('click', () => { if (currentStockOrder) openStockOrderReceive(currentStockOrder.order.id).catch(error => notify(error.message)); });
@@ -8004,7 +8011,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     });
     $('#accessoryOrderAttachments').addEventListener('click', async event => {
       const button = event.target.closest('.accessory-order-attachment-delete'); if (!button || !currentAccessoryOrder || !canWriteAssets()) return;
-      if (!confirm('Bu sipariş belgesi kaldırılsın mı?')) return;
+      if (!await confirmEmployeeAction({ title: 'Sipariş belgesi kaldırılsın mı?', summary: 'Bu işlem yalnız siparişe ekli dosyayı kaldırır; sipariş ve teslimat kayıtları korunur.', confirmLabel: 'Belgeyi kaldır', danger: true })) return;
       try { await api(`/api/accessory-orders/${currentAccessoryOrder.order.id}/attachments/${button.dataset.id}`, { method: 'DELETE' }); await loadAccessoryOrderAttachments(); notify('Sipariş belgesi kaldırıldı.'); }
       catch (error) { notify(error.message); }
     });
@@ -8041,7 +8048,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       try {
         if (button.classList.contains('accessory-order-open')) await openAccessoryOrder(button.dataset.id);
         else if (button.classList.contains('accessory-order-receive')) await openAccessoryOrderReceive(button.dataset.id);
-        else if (button.classList.contains('accessory-order-cancel')) { if (!confirm('Bu siparişi iptal edilsin mi? Daha önce teslim alınan stok korunur.')) return; await api(`/api/accessory-orders/${button.dataset.id}/cancel`, { method: 'POST' }); await loadAccessoryOrders(); notify('Sipariş iptal edildi; teslim alınmış stok değişmedi.'); }
+        else if (button.classList.contains('accessory-order-cancel')) { if (!await confirmEmployeeAction({ title: 'Sipariş iptal edilsin mi?', summary: 'İptal edilen sipariş yeniden teslim alınamaz. Daha önce teslim alınmış stok korunur.', confirmLabel: 'Siparişi iptal et', danger: true })) return; await api(`/api/accessory-orders/${button.dataset.id}/cancel`, { method: 'POST' }); await loadAccessoryOrders(); notify('Sipariş iptal edildi; teslim alınmış stok değişmedi.'); }
       } catch (error) { notify(error.message); }
     });
     $('#receiveAccessoryOrderFromDetail').addEventListener('click', () => { if (currentAccessoryOrder) openAccessoryOrderReceive(currentAccessoryOrder.order.id).catch(error => notify(error.message)); });
