@@ -124,13 +124,60 @@ public static class PlatformEndpoints
                 .CountAsync(x => x.Status == "PaymentFailed", cancellationToken);
             var provisioningFailed = await db.CompanyCheckoutOrders.AsNoTracking()
                 .CountAsync(x => x.Status == "ProvisioningFailed", cancellationToken);
+            var verifiedRecurringPayments = await (
+                from subscription in db.TenantSubscriptions.AsNoTracking()
+                join plan in db.SubscriptionPlans.AsNoTracking() on subscription.PlanId equals plan.Id
+                from order in db.CompanyCheckoutOrders.AsNoTracking().Where(order =>
+                    order.CompanyId == subscription.CompanyId && order.PlanId == subscription.PlanId &&
+                    order.Status == "Provisioned" && order.PaidAt != null && order.PaymentReference != null &&
+                    order.PaymentReference == subscription.PaymentReference && (order.TermDays == 30 || order.TermDays == 365))
+                where plan.DeploymentKind == "cloud" && !subscription.IsDemo &&
+                    (subscription.Status == "Active" || subscription.Status == "Cancelled") &&
+                    subscription.StartsAt <= now && subscription.EndsAt > now
+                select new
+                {
+                    subscription.CompanyId,
+                    subscription.StartsAt,
+                    subscription.EndsAt,
+                    order.PaidAt,
+                    order.TermDays,
+                    order.Amount,
+                    order.Currency,
+                    order.PaymentReference
+                }).ToListAsync(cancellationToken);
+            var verifiedContracts = verifiedRecurringPayments
+                .Where(x => x.PaidAt == x.StartsAt && x.PaidAt is DateTimeOffset paidAt &&
+                    x.EndsAt == paidAt.AddDays(x.TermDays))
+                .GroupBy(x => x.CompanyId)
+                .Select(group => group.OrderByDescending(x => x.PaidAt).First())
+                .ToArray();
+            var recurringRevenue = verifiedContracts
+                .GroupBy(x => x.Currency, StringComparer.OrdinalIgnoreCase)
+                .Select(group =>
+                {
+                    var monthlyRecurringRevenue = group.Sum(x => x.TermDays == 30 ? x.Amount : x.Amount / 12m);
+                    return new
+                    {
+                        currency = group.Key,
+                        monthlyRecurringRevenue,
+                        annualRunRate = monthlyRecurringRevenue * 12m,
+                        verifiedContracts = group.Count()
+                    };
+                })
+                .OrderBy(x => x.currency, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
             return Results.Ok(new
             {
                 generatedAt = now,
                 companies = new { total = companies, active = activeCompanies, suspended = companies - activeCompanies },
                 subscriptions = new { paidActive, customerTrials, demos, expired, renewalsDue },
                 checkout = new { paymentPending, paymentReview, paymentFailed, provisioningFailed },
-                note = "Gelir metriği ödeme sağlayıcısı bağlanana ve tahsilatlar kaydedilene kadar gösterilmez."
+                recurringRevenue = new
+                {
+                    basis = "provider-verified-current-cloud-subscriptions",
+                    currencies = recurringRevenue
+                },
+                note = "MRR ve ARR yalnızca ödeme sağlayıcısında doğrulanmış, devam eden Cloud aboneliklerinden ve değiştirilmemiş ücretli dönemlerden hesaplanır. Manuel ödeme beyanı, ücretsiz uzatma, demo ve farklı para birimleri birbirine karıştırılmaz."
             });
         });
 

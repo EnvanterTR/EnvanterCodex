@@ -1630,12 +1630,30 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var plan = new SubscriptionPlan
         {
             Code = $"trial-{_companyId:N}", Name = "Subscription overview acceptance", DeploymentKind = "cloud",
-            IsActive = true, IsPublic = true
+            MonthlyPrice = 1200m, AnnualPrice = 12000m, Currency = "TRY", IsActive = true, IsPublic = true
         };
+        var annualPlan = new SubscriptionPlan
+        {
+            Code = $"annual-{_companyId:N}", Name = "Annual subscription overview acceptance", DeploymentKind = "cloud",
+            MonthlyPrice = 2000m, AnnualPrice = 24000m, Currency = "USD", IsActive = true, IsPublic = true
+        };
+        var monthlyCompanyId = Guid.NewGuid();
+        var annualCompanyId = Guid.NewGuid();
+        var manuallyPaidCompanyId = Guid.NewGuid();
+        var extendedCompanyId = Guid.NewGuid();
+        var monthlyPaymentReference = $"monthly-{Guid.NewGuid():N}";
+        var annualPaymentReference = $"annual-{Guid.NewGuid():N}";
+        var extendedPaymentReference = $"extended-{Guid.NewGuid():N}";
+        var paidAt = DateTimeOffset.UtcNow.AddMinutes(-2);
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            db.SubscriptionPlans.Add(plan);
+            db.SubscriptionPlans.AddRange(plan, annualPlan);
+            db.Companies.AddRange(
+                new Company { Id = monthlyCompanyId, Name = "Verified monthly revenue", Slug = $"monthly-{monthlyCompanyId:N}" },
+                new Company { Id = annualCompanyId, Name = "Verified annual revenue", Slug = $"annual-{annualCompanyId:N}" },
+                new Company { Id = manuallyPaidCompanyId, Name = "Unverified manual revenue", Slug = $"manual-{manuallyPaidCompanyId:N}" },
+                new Company { Id = extendedCompanyId, Name = "Comped extension revenue", Slug = $"extended-{extendedCompanyId:N}" });
             db.TenantSubscriptions.AddRange(
                 new TenantSubscription
                 {
@@ -1646,6 +1664,26 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 {
                     CompanyId = _otherCompanyId, PlanId = plan.Id, Status = "Trial", IsDemo = true,
                     StartsAt = DateTimeOffset.UtcNow.AddMinutes(-1), EndsAt = DateTimeOffset.UtcNow.AddDays(14)
+                },
+                new TenantSubscription
+                {
+                    CompanyId = monthlyCompanyId, PlanId = plan.Id, Status = "Active", IsDemo = false,
+                    StartsAt = paidAt, EndsAt = paidAt.AddDays(30), PaymentReference = monthlyPaymentReference
+                },
+                new TenantSubscription
+                {
+                    CompanyId = annualCompanyId, PlanId = annualPlan.Id, Status = "Active", IsDemo = false,
+                    StartsAt = paidAt, EndsAt = paidAt.AddDays(365), PaymentReference = annualPaymentReference
+                },
+                new TenantSubscription
+                {
+                    CompanyId = manuallyPaidCompanyId, PlanId = plan.Id, Status = "Active", IsDemo = false,
+                    StartsAt = paidAt, EndsAt = paidAt.AddDays(30), PaymentReference = $"manual-{Guid.NewGuid():N}"
+                },
+                new TenantSubscription
+                {
+                    CompanyId = extendedCompanyId, PlanId = plan.Id, Status = "Active", IsDemo = false,
+                    StartsAt = paidAt, EndsAt = paidAt.AddDays(60), PaymentReference = extendedPaymentReference
                 });
             var checkoutStatuses = new[] { "Pending", "PaymentStarted", "PaymentReview", "PaymentFailed", "ProvisioningFailed" };
             db.CompanyCheckoutOrders.AddRange(checkoutStatuses.Select((status, index) => new CompanyCheckoutOrder
@@ -1654,6 +1692,27 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 ContactEmail = "billing@example.invalid", OwnerName = "Overview Owner", OwnerEmail = "overview@example.invalid",
                 PlanId = plan.Id, TermDays = 365, Amount = 100m, Currency = "TRY", Status = status,
                 CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-index), ExpiresAt = DateTimeOffset.UtcNow.AddDays(2)
+            }).Append(new CompanyCheckoutOrder
+            {
+                Id = Guid.NewGuid(), CompanyName = "Verified monthly revenue", Slug = $"monthly-{monthlyCompanyId:N}",
+                ContactEmail = "billing@example.invalid", OwnerName = "Monthly Owner", OwnerEmail = "monthly@example.invalid",
+                PlanId = plan.Id, TermDays = 30, Amount = 1200m, Currency = "TRY", Status = "Provisioned",
+                CompanyId = monthlyCompanyId, PaymentReference = monthlyPaymentReference, PaidAt = paidAt,
+                CreatedAt = paidAt, ExpiresAt = paidAt.AddDays(30)
+            }).Append(new CompanyCheckoutOrder
+            {
+                Id = Guid.NewGuid(), CompanyName = "Verified annual revenue", Slug = $"annual-{annualCompanyId:N}",
+                ContactEmail = "billing@example.invalid", OwnerName = "Annual Owner", OwnerEmail = "annual@example.invalid",
+                PlanId = annualPlan.Id, TermDays = 365, Amount = 24000m, Currency = "USD", Status = "Provisioned",
+                CompanyId = annualCompanyId, PaymentReference = annualPaymentReference, PaidAt = paidAt,
+                CreatedAt = paidAt, ExpiresAt = paidAt.AddDays(365)
+            }).Append(new CompanyCheckoutOrder
+            {
+                Id = Guid.NewGuid(), CompanyName = "Comped extension revenue", Slug = $"extended-{extendedCompanyId:N}",
+                ContactEmail = "billing@example.invalid", OwnerName = "Extended Owner", OwnerEmail = "extended@example.invalid",
+                PlanId = plan.Id, TermDays = 30, Amount = 1200m, Currency = "TRY", Status = "Provisioned",
+                CompanyId = extendedCompanyId, PaymentReference = extendedPaymentReference, PaidAt = paidAt,
+                CreatedAt = paidAt, ExpiresAt = paidAt.AddDays(30)
             }));
             db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
             await db.SaveChangesAsync();
@@ -1670,6 +1729,16 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.True(checkout.GetProperty("paymentReview").GetInt32() >= 1);
         Assert.True(checkout.GetProperty("paymentFailed").GetInt32() >= 1);
         Assert.True(checkout.GetProperty("provisioningFailed").GetInt32() >= 1);
+        var currencies = payload.RootElement.GetProperty("recurringRevenue").GetProperty("currencies");
+        Assert.Equal(2, currencies.GetArrayLength());
+        var tryRevenue = currencies.EnumerateArray().Single(x => x.GetProperty("currency").GetString() == "TRY");
+        Assert.Equal(1200m, tryRevenue.GetProperty("monthlyRecurringRevenue").GetDecimal());
+        Assert.Equal(14400m, tryRevenue.GetProperty("annualRunRate").GetDecimal());
+        Assert.Equal(1, tryRevenue.GetProperty("verifiedContracts").GetInt32());
+        var usdRevenue = currencies.EnumerateArray().Single(x => x.GetProperty("currency").GetString() == "USD");
+        Assert.Equal(2000m, usdRevenue.GetProperty("monthlyRecurringRevenue").GetDecimal());
+        Assert.Equal(24000m, usdRevenue.GetProperty("annualRunRate").GetDecimal());
+        Assert.Equal(1, usdRevenue.GetProperty("verifiedContracts").GetInt32());
     }
 
     [Fact]

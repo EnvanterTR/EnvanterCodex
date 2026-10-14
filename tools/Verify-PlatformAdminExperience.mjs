@@ -92,6 +92,14 @@ for (const alert of ['paymentPending', 'paymentReview', 'paymentFailed', 'provis
 }
 assert.match(api, /checkout = new \{ paymentPending, paymentReview, paymentFailed, provisioningFailed \}/);
 assert.match(page, /Ödeme bekliyor[\s\S]*?Ödeme incelemesi[\s\S]*?Başarısız ödeme[\s\S]*?Firma açılışı takıldı/);
+assert.match(api, /var verifiedRecurringPayments = await[\s\S]*?order\.Status == "Provisioned"[\s\S]*?order\.PaymentReference == subscription\.PaymentReference/);
+assert.match(api, /x\.PaidAt == x\.StartsAt[\s\S]*?x\.EndsAt == paidAt\.AddDays\(x\.TermDays\)/);
+assert.match(api, /group\.Sum\(x => x\.TermDays == 30 \? x\.Amount : x\.Amount \/ 12m\)/);
+assert.match(api, /basis = "provider-verified-current-cloud-subscriptions"/);
+assert.match(page, /MRR · \$\{item\.currency\}/);
+assert.match(page, /Doğrulanmış MRR/);
+assert.match(acceptance, /Assert\.Equal\(1200m, tryRevenue\.GetProperty\("monthlyRecurringRevenue"\)\.GetDecimal\(\)\)/);
+assert.match(acceptance, /Assert\.Equal\(2000m, usdRevenue\.GetProperty\("monthlyRecurringRevenue"\)\.GetDecimal\(\)\)/);
 assert.doesNotMatch(api.match(/admin\.MapGet\("\/companies\/\{companyId:guid\}"[\s\S]*?admin\.MapPatch\("\/companies\/\{companyId:guid\}\/lifecycle"/)?.[0] || '', /CheckoutTokenHash|CheckoutPageUrlProtected/);
 assert.match(subscriptions, /Plan \/ tarih düzenle/);
 assert.match(subscriptions, /method: 'PUT'/);
