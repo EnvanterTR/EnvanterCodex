@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 14 Ekim 2026 — yerel uygulama ve public-site rotalarının ayrımı
+
+Salt okunur çalışma zamanı kontrolü: `http://localhost:8080` müşteri uygulamasıdır; public-site ve satın alma ekranı ayrı servis olan `http://localhost:8081` üzerinden sunulur. `8081/checkout.html` ve `8081/checkout.js` HTTP 200 döndü; checkout API'si yanıt verdi. Mevcut yerel ortamda yayımlı Cloud plan listesi boş ve ödeme durumu `available: false`; plan kimliği olmayan checkout bağlantısı form alanlarını hiç göstermeden açık hata durumunu sunar. Bu yüzden yerel ortamda müşteri satın alımı başlatılamaz; ödeme bilgisi gönderilmedi. `8080/api/status` uygulama şeması için `ready`, 91 migration uygulanmış ve 0 bekleyen bildirdi. Bu kontrol kaynak/yerel geliştirme durumudur; canlıya giriş veya production kabulü değildir.
+
 ## 14 Ekim 2026 — iyzico imzalı Checkout Form webhook mutabakatı
 
 `POST /api/checkout/webhook`, iyzico Checkout Form V3 imzasını sabit zamanlı karşılaştırmayla doğrular; ham gövde 8 KiB ile sınırlıdır. Yalnız imzası geçerli `CHECKOUT_FORM_AUTH` başarı/başarısızlık olayları değerlendirilir. Token hash'i ve `paymentConversationId` siparişle eşleşmeli; sunucu retrieve sonucu ödeme kimliği ve durumuyla da uyuşmalıdır. Yetkisiz/bozuk imza hiçbir sipariş veya şirket kaydı değiştirmez; bilinmeyen imzalı olaylar idempotent şekilde onaylanır; sağlayıcı geçici olarak erişilemezse HTTP 503 ile tekrar denenmesine izin verilir. Tarayıcı callback'i aynı ortak idempotent provisioning yolunu kullanır. Sentetik uçtan uca test, yanlış imzada değişiklik olmamasını, geçerli imzayla tek şirket/abonelik oluşturmayı ve webhook/tarayıcı tekrarlarının yinelenen şirket açmamasını kapsar. Gerçek iyzico merchant anahtarı, sandbox/canlı tahsilat ve production webhook teslimatı bu pakette denenmedi.
