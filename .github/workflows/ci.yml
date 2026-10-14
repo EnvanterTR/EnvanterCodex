@@ -224,6 +224,10 @@ jobs:
         shell: bash
         run: node tools/Verify-PlatformDemoRequests.mjs
 
+      - name: Verify platform subscription plan catalog workflow
+        shell: bash
+        run: node tools/Verify-PlatformPlanManagement.mjs
+
       - name: Verify Coolify wildcard tenant routing
         shell: bash
         run: node tools/Verify-CoolifyTenantRouting.mjs
