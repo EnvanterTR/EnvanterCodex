@@ -1644,7 +1644,59 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var monthlyPaymentReference = $"monthly-{Guid.NewGuid():N}";
         var annualPaymentReference = $"annual-{Guid.NewGuid():N}";
         var extendedPaymentReference = $"extended-{Guid.NewGuid():N}";
+        var baselineCompanyId = Guid.NewGuid();
+        var baselinePlanId = Guid.NewGuid();
+        var baselinePaymentReference = $"baseline-{Guid.NewGuid():N}";
+        var baselinePaidAt = DateTimeOffset.UtcNow.AddMinutes(-3);
         var paidAt = DateTimeOffset.UtcNow.AddMinutes(-2);
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            db.SubscriptionPlans.Add(new SubscriptionPlan
+            {
+                Id = baselinePlanId, Code = $"base-{baselineCompanyId:N}", Name = "Prior verified revenue",
+                DeploymentKind = "cloud", MonthlyPrice = 125.50m, AnnualPrice = 1200m,
+                Currency = "TRY", IsActive = true, IsPublic = true
+            });
+            db.Companies.Add(new Company
+            {
+                Id = baselineCompanyId, Name = "Prior verified revenue", Slug = $"baseline-{baselineCompanyId:N}"
+            });
+            db.TenantSubscriptions.Add(new TenantSubscription
+            {
+                CompanyId = baselineCompanyId, PlanId = baselinePlanId, Status = "Active", IsDemo = false,
+                StartsAt = baselinePaidAt, EndsAt = baselinePaidAt.AddDays(30), PaymentReference = baselinePaymentReference
+            });
+            db.CompanyCheckoutOrders.Add(new CompanyCheckoutOrder
+            {
+                Id = Guid.NewGuid(), CompanyId = baselineCompanyId, CompanyName = "Prior verified revenue",
+                Slug = $"baseline-{baselineCompanyId:N}", ContactEmail = "billing@example.invalid",
+                OwnerName = "Prior verified revenue", OwnerEmail = $"baseline-{baselineCompanyId:N}@example.invalid",
+                PlanId = baselinePlanId, TermDays = 30, Amount = 125.50m, Currency = "TRY", Status = "Provisioned",
+                PaymentReference = baselinePaymentReference, PaidAt = baselinePaidAt,
+                CreatedAt = baselinePaidAt, ExpiresAt = baselinePaidAt.AddDays(30)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using var baselineResponse = await SendAsPlatformAdminAsync("/api/platform/overview");
+        Assert.Equal(HttpStatusCode.OK, baselineResponse.StatusCode);
+        using var baselinePayload = JsonDocument.Parse(await baselineResponse.Content.ReadAsStringAsync());
+        var baselineCurrencies = baselinePayload.RootElement.GetProperty("recurringRevenue").GetProperty("currencies");
+        static decimal RevenueMetric(JsonElement currencies, string currency, string metric)
+        {
+            var entry = currencies.EnumerateArray().FirstOrDefault(x =>
+                string.Equals(x.GetProperty("currency").GetString(), currency, StringComparison.Ordinal));
+            return entry.ValueKind == JsonValueKind.Undefined ? 0m : entry.GetProperty(metric).GetDecimal();
+        }
+        static int ContractCount(JsonElement currencies, string currency)
+        {
+            var entry = currencies.EnumerateArray().FirstOrDefault(x =>
+                string.Equals(x.GetProperty("currency").GetString(), currency, StringComparison.Ordinal));
+            return entry.ValueKind == JsonValueKind.Undefined ? 0 : entry.GetProperty("verifiedContracts").GetInt32();
+        }
+
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -1714,7 +1766,6 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 CompanyId = extendedCompanyId, PaymentReference = extendedPaymentReference, PaidAt = paidAt,
                 CreatedAt = paidAt, ExpiresAt = paidAt.AddDays(30)
             }));
-            db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
             await db.SaveChangesAsync();
         }
 
@@ -1730,15 +1781,18 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.True(checkout.GetProperty("paymentFailed").GetInt32() >= 1);
         Assert.True(checkout.GetProperty("provisioningFailed").GetInt32() >= 1);
         var currencies = payload.RootElement.GetProperty("recurringRevenue").GetProperty("currencies");
-        Assert.Equal(2, currencies.GetArrayLength());
-        var tryRevenue = currencies.EnumerateArray().Single(x => x.GetProperty("currency").GetString() == "TRY");
-        Assert.Equal(1200m, tryRevenue.GetProperty("monthlyRecurringRevenue").GetDecimal());
-        Assert.Equal(14400m, tryRevenue.GetProperty("annualRunRate").GetDecimal());
-        Assert.Equal(1, tryRevenue.GetProperty("verifiedContracts").GetInt32());
-        var usdRevenue = currencies.EnumerateArray().Single(x => x.GetProperty("currency").GetString() == "USD");
-        Assert.Equal(2000m, usdRevenue.GetProperty("monthlyRecurringRevenue").GetDecimal());
-        Assert.Equal(24000m, usdRevenue.GetProperty("annualRunRate").GetDecimal());
-        Assert.Equal(1, usdRevenue.GetProperty("verifiedContracts").GetInt32());
+        Assert.Equal(2, currencies.EnumerateArray().Count(x =>
+            x.GetProperty("currency").GetString() is "TRY" or "USD"));
+        Assert.Equal(RevenueMetric(baselineCurrencies, "TRY", "monthlyRecurringRevenue") + 1200m,
+            RevenueMetric(currencies, "TRY", "monthlyRecurringRevenue"));
+        Assert.Equal(RevenueMetric(baselineCurrencies, "TRY", "annualRunRate") + 14400m,
+            RevenueMetric(currencies, "TRY", "annualRunRate"));
+        Assert.Equal(ContractCount(baselineCurrencies, "TRY") + 1, ContractCount(currencies, "TRY"));
+        Assert.Equal(RevenueMetric(baselineCurrencies, "USD", "monthlyRecurringRevenue") + 2000m,
+            RevenueMetric(currencies, "USD", "monthlyRecurringRevenue"));
+        Assert.Equal(RevenueMetric(baselineCurrencies, "USD", "annualRunRate") + 24000m,
+            RevenueMetric(currencies, "USD", "annualRunRate"));
+        Assert.Equal(ContractCount(baselineCurrencies, "USD") + 1, ContractCount(currencies, "USD"));
     }
 
     [Fact]
