@@ -108,6 +108,37 @@ try {
   assert.ok(apiRequests.some(item => item.path === '/api/session' && item.method === 'GET'),
     'The app must initialize from the synthetic viewer session before checking its navigation.');
 
+  await page.setViewportSize({ width: 390, height: 844 });
+  const sidebar = page.locator('#sidebar'), mobileMenu = page.locator('#mobileMenu');
+  assert.equal(await mobileMenu.isVisible(), true, 'The mobile menu control must be available at phone width.');
+  const dispatchTouchSwipe = (target, fromX, fromY, toX, toY) => target.evaluate((element, coords) => {
+    const send = (type, x, y) => element.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType: 'touch', isPrimary: true, clientX: x, clientY: y }));
+    send('pointerdown', coords.fromX, coords.fromY);
+    send('pointerup', coords.toX, coords.toY);
+  }, { fromX, fromY, toX, toY });
+  await dispatchTouchSwipe(page.locator('body'), 3, 360, 112, 365);
+  await sidebar.waitFor({ state: 'visible' });
+  assert.equal(await sidebar.evaluate(element => element.classList.contains('open') && !element.inert), true,
+    'A right swipe from the left viewport edge must open the mobile sidebar and make its navigation available.');
+  assert.equal(await mobileMenu.getAttribute('aria-expanded'), 'true');
+  await dispatchTouchSwipe(sidebar, 190, 360, 92, 364);
+  assert.equal(await sidebar.evaluate(element => !element.classList.contains('open') && element.inert), true,
+    'A left swipe starting inside the open sidebar must close it and restore inert navigation.');
+  assert.equal(await mobileMenu.getAttribute('aria-expanded'), 'false');
+  await dispatchTouchSwipe(page.locator('body'), 3, 260, 110, 350);
+  assert.equal(await sidebar.evaluate(element => !element.classList.contains('open')), true,
+    'A primarily vertical gesture from the screen edge must not open navigation.');
+  const swipeBlockedDialog = page.locator('#keyboardShortcutsDialog');
+  await swipeBlockedDialog.evaluate(element => element.showModal());
+  await dispatchTouchSwipe(page.locator('body'), 3, 360, 112, 365);
+  assert.equal(await sidebar.evaluate(element => !element.classList.contains('open')), true,
+    'A swipe must not open navigation while a modal dialog is active.');
+  await swipeBlockedDialog.evaluate(element => element.close());
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await dispatchTouchSwipe(page.locator('body'), 3, 360, 112, 365);
+  assert.equal(await sidebar.evaluate(element => !element.classList.contains('open')), true,
+    'Touch swipes must not change sidebar state in desktop layout.');
+
   await page.locator('#pageTitle').click();
   await page.keyboard.press('/');
   const globalSearch = page.locator('#globalSearch');

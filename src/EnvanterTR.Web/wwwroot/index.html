@@ -2738,6 +2738,22 @@
       sidebar.inert = mobileSidebarMedia.matches && !open;
       button.setAttribute('aria-expanded', String(open)); button.setAttribute('aria-label', open ? 'Menüyü kapat' : 'Menüyü aç');
     }
+    let mobileSidebarTouchStart = null;
+    document.addEventListener('pointerdown', event => {
+      if (event.pointerType !== 'touch' || !mobileSidebarMedia.matches || event.isPrimary === false || document.querySelector('dialog[open]')) { mobileSidebarTouchStart = null; return; }
+      const sidebarOpen = $('#sidebar').classList.contains('open');
+      if ((!sidebarOpen && event.clientX <= 24) || (sidebarOpen && $('#sidebar').contains(event.target))) mobileSidebarTouchStart = { x: event.clientX, y: event.clientY, sidebarOpen };
+      else mobileSidebarTouchStart = null;
+    }, { passive: true });
+    document.addEventListener('pointerup', event => {
+      const start = mobileSidebarTouchStart; mobileSidebarTouchStart = null;
+      if (!start || event.pointerType !== 'touch' || !mobileSidebarMedia.matches || document.querySelector('dialog[open]')) return;
+      const dx = event.clientX - start.x, dy = event.clientY - start.y;
+      if (Math.abs(dx) < 72 || Math.abs(dx) <= Math.abs(dy) * 1.25) return;
+      if (!start.sidebarOpen && dx > 0) setMobileSidebarOpen(true);
+      else if (start.sidebarOpen && dx < 0) setMobileSidebarOpen(false);
+    }, { passive: true });
+    document.addEventListener('pointercancel', () => { mobileSidebarTouchStart = null; }, { passive: true });
     mobileSidebarMedia.addEventListener('change', event => setMobileSidebarOpen(false));
     setMobileSidebarOpen(false);
     function notify(message) { toast.textContent = message; toast.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('show'), 3200); }

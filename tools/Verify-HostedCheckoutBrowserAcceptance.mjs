@@ -18,6 +18,9 @@ assert.match(palette, /The page must not expose company member administration to
 assert.match(palette, /let subscriptionMode = 'full'/);
 assert.match(palette, /subscriptionMode = 'readOnly'/);
 assert.match(palette, /The expired-subscription notice must be translated into/);
+assert.match(palette, /A right swipe from the left viewport edge must open the mobile sidebar/);
+assert.match(palette, /A left swipe starting inside the open sidebar must close it/);
+assert.match(palette, /A primarily vertical gesture from the screen edge must not open navigation/);
 assert.match(palette, /page\.keyboard\.press\('\/'\)/);
 assert.match(palette, /Slash should focus global search when not typing/);
 assert.match(palette, /Slash typed in the search field must not steal focus/);
