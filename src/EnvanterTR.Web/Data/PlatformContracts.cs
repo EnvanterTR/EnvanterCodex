@@ -16,7 +16,8 @@ public sealed record SavePlanRequest(
     string? FeatureFlagsJson,
     bool IsPublic,
     bool IsActive,
-    int SortOrder);
+    int SortOrder,
+    string? ChangeReason);
 
 public sealed record GrantDemoRequest(Guid PlanId, int Days, string? Note);
 public sealed record ExtendSubscriptionRequest(DateTimeOffset EndsAt, string? Note);

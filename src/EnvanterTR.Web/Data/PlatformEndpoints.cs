@@ -866,7 +866,14 @@ public static class PlatformEndpoints
             };
             Apply(plan, request, code);
             db.SubscriptionPlans.Add(plan);
-            AddAudit(db, user, "PlanCreated", "SubscriptionPlan", plan.Id, null, code);
+            var creationDetails = JsonSerializer.Serialize(new
+            {
+                reason = Clean(request.ChangeReason),
+                after = new { plan.Code, plan.Name, plan.Description, plan.DeploymentKind, plan.MaxLoginUsers,
+                    plan.MaxAssets, plan.MonthlyPrice, plan.AnnualPrice, plan.OneTimePrice, plan.Currency,
+                    plan.SupportsOfflineUse, plan.OfflineGraceDays, plan.FeatureFlagsJson, plan.IsPublic, plan.IsActive, plan.SortOrder }
+            });
+            AddAudit(db, user, "PlanCreated", "SubscriptionPlan", plan.Id, null, creationDetails);
             try { await db.SaveChangesAsync(cancellationToken); }
             catch (DbUpdateException) { return Results.Conflict(new { message = "Paket kaydı çakıştı." }); }
             return Results.Created($"/api/platform/plans/{plan.Id}", new { plan.Id, plan.Code, plan.Name });
@@ -881,8 +888,15 @@ public static class PlatformEndpoints
             var code = request.Code.Trim().ToLowerInvariant();
             if (await db.SubscriptionPlans.AnyAsync(x => x.Id != id && x.Code == code, cancellationToken))
                 return Results.Conflict(new { message = "Paket kodu başka bir pakette kullanılıyor." });
+            var previous = new { plan.Code, plan.Name, plan.Description, plan.DeploymentKind, plan.MaxLoginUsers,
+                plan.MaxAssets, plan.MonthlyPrice, plan.AnnualPrice, plan.OneTimePrice, plan.Currency,
+                plan.SupportsOfflineUse, plan.OfflineGraceDays, plan.FeatureFlagsJson, plan.IsPublic, plan.IsActive, plan.SortOrder };
             Apply(plan, request, code);
-            AddAudit(db, user, "PlanUpdated", "SubscriptionPlan", plan.Id, null, code);
+            var current = new { plan.Code, plan.Name, plan.Description, plan.DeploymentKind, plan.MaxLoginUsers,
+                plan.MaxAssets, plan.MonthlyPrice, plan.AnnualPrice, plan.OneTimePrice, plan.Currency,
+                plan.SupportsOfflineUse, plan.OfflineGraceDays, plan.FeatureFlagsJson, plan.IsPublic, plan.IsActive, plan.SortOrder };
+            var updateDetails = JsonSerializer.Serialize(new { reason = Clean(request.ChangeReason), before = previous, after = current });
+            AddAudit(db, user, "PlanUpdated", "SubscriptionPlan", plan.Id, null, updateDetails);
             try { await db.SaveChangesAsync(cancellationToken); }
             catch (DbUpdateException) { return Results.Conflict(new { message = "Plan güncellemesi başka bir işlemle çakıştı." }); }
             return Results.Ok(new { plan.Id, plan.Code, plan.Name, plan.IsActive });
@@ -1323,6 +1337,8 @@ public static class PlatformEndpoints
     private static bool ValidatePlan(SavePlanRequest request, out Dictionary<string, string[]> errors)
     {
         errors = new Dictionary<string, string[]>();
+        if (string.IsNullOrWhiteSpace(request.ChangeReason) || request.ChangeReason.Trim().Length is < 8 or > 500)
+            errors["changeReason"] = ["Değişiklik gerekçesi 8-500 karakter arasında olmalıdır."];
         if (string.IsNullOrWhiteSpace(request.Code) || request.Code.Trim().Length > 40 ||
             !Regex.IsMatch(request.Code.Trim(), "^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$"))
             errors["code"] = ["Paket kodu harf/rakam ve tek tirelerden oluşmalı, 40 karakteri aşmamalıdır."];

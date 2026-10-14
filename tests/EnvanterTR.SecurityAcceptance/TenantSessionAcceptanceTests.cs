@@ -1560,6 +1560,100 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Platform_plan_catalog_requires_reason_and_audits_pricing_changes_before_publishing()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var code = $"cloud-{suffix}";
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            if (!await db.PlatformAdministrators.AnyAsync(x => x.UserId == _userId))
+                db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            await db.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsPlatformAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        SavePlanRequest Request(string reason, string planName = "Cloud acceptance package", decimal monthly = 1200m,
+            decimal annual = 12000m, bool isPublic = true, int? maxLoginUsers = null) => new(
+            code.ToUpperInvariant(), planName, "Sentetik kabul planı", "cloud", maxLoginUsers, 500,
+            monthly, annual, 0m, "TRY", false, 0, "{\"maintenance\":true}", isPublic, true, 10, reason);
+
+        using (var noCsrf = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/plans",
+                   JsonContent.Create(Request("Plan açılış gerekçesi"))))
+            Assert.Equal(HttpStatusCode.BadRequest, noCsrf.StatusCode);
+        using (var invalidCloudLimit = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/plans",
+                   JsonContent.Create(Request("Plan açılış gerekçesi", maxLoginUsers: 10)), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidCloudLimit.StatusCode);
+        using (var missingReason = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/plans",
+                   JsonContent.Create(Request("   ")), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, missingReason.StatusCode);
+        using (var companyAdminDenied = await SendAsUserAsync(HttpMethod.Post, "/api/platform/plans", _userId, _companyId,
+                   JsonContent.Create(Request("Plan açılış gerekçesi")), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, companyAdminDenied.StatusCode);
+
+        using var create = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/plans",
+            JsonContent.Create(Request("Cloud paket kataloğunu başlat")), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        using var createdPayload = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
+        var planId = createdPayload.RootElement.GetProperty("id").GetGuid();
+        Assert.Equal(code, createdPayload.RootElement.GetProperty("code").GetString());
+
+        using (var duplicate = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/plans",
+                   JsonContent.Create(Request("Yinelenen kodu doğrula")), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+        using (var publicPlans = await _client!.GetAsync("/api/plans"))
+        {
+            Assert.Equal(HttpStatusCode.OK, publicPlans.StatusCode);
+            using var payload = JsonDocument.Parse(await publicPlans.Content.ReadAsStringAsync());
+            var published = payload.RootElement.EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == planId);
+            Assert.Equal(1200m, published.GetProperty("monthlyPrice").GetDecimal());
+            Assert.Equal(JsonValueKind.Null, published.GetProperty("maxLoginUsers").ValueKind);
+        }
+
+        using (var tooShortReason = await SendAsPlatformAdminRequestAsync(HttpMethod.Put, $"/api/platform/plans/{planId}",
+                   JsonContent.Create(Request("kısa", monthly: 1800m)), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, tooShortReason.StatusCode);
+        using var update = await SendAsPlatformAdminRequestAsync(HttpMethod.Put, $"/api/platform/plans/{planId}",
+            JsonContent.Create(Request("Maliyet ve yıllık fiyatlandırma güncellendi", "Cloud package v2", 1800m, 18000m, isPublic: false)),
+            requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+        using (var publicPlans = await _client.GetAsync("/api/plans"))
+        {
+            using var payload = JsonDocument.Parse(await publicPlans.Content.ReadAsStringAsync());
+            Assert.DoesNotContain(payload.RootElement.EnumerateArray(), x => x.GetProperty("id").GetGuid() == planId);
+        }
+        using (var platformPlans = await SendAsPlatformAdminAsync("/api/platform/plans"))
+        {
+            using var payload = JsonDocument.Parse(await platformPlans.Content.ReadAsStringAsync());
+            var updated = payload.RootElement.EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == planId);
+            Assert.Equal("Cloud package v2", updated.GetProperty("name").GetString());
+            Assert.Equal(1800m, updated.GetProperty("monthlyPrice").GetDecimal());
+            Assert.False(updated.GetProperty("isPublic").GetBoolean());
+        }
+
+        await using var verifyScope = _factory.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var audit = await verifyDb.PlatformAuditEntries.AsNoTracking()
+            .Where(x => x.TargetId == planId && (x.Action == "PlanCreated" || x.Action == "PlanUpdated"))
+            .OrderBy(x => x.OccurredAt).ToListAsync();
+        Assert.Equal(2, audit.Count);
+        using var createDetails = JsonDocument.Parse(audit[0].Details!);
+        Assert.Equal("Cloud paket kataloğunu başlat", createDetails.RootElement.GetProperty("reason").GetString());
+        Assert.Equal(1200m, createDetails.RootElement.GetProperty("after").GetProperty("MonthlyPrice").GetDecimal());
+        using var updateDetails = JsonDocument.Parse(audit[1].Details!);
+        Assert.Equal("Maliyet ve yıllık fiyatlandırma güncellendi", updateDetails.RootElement.GetProperty("reason").GetString());
+        Assert.Equal(1200m, updateDetails.RootElement.GetProperty("before").GetProperty("MonthlyPrice").GetDecimal());
+        Assert.Equal(1800m, updateDetails.RootElement.GetProperty("after").GetProperty("MonthlyPrice").GetDecimal());
+    }
+
+    [Fact]
     public async Task Platform_checkout_orders_are_searchable_paginated_and_hide_provider_secrets()
     {
         var plan = new SubscriptionPlan
