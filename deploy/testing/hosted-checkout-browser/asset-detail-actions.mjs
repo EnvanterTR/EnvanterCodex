@@ -15,6 +15,7 @@ const asset = {
 const appHtml = await readFile('/checkout-site/company-app.html');
 const requests = [];
 const apiRequests = [];
+const assetHistory = [];
 const json = (response, status = 200) => {
   response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
   response.end(JSON.stringify(response.body));
@@ -64,7 +65,7 @@ const server = createServer(async (request, response) => {
     else if (url.pathname === '/api/assets') result = { items: [asset], total: 1, page: 1, pageSize: 50 };
     else if (url.pathname === `/api/assets/${assetId}`) result = {
       asset: { ...asset }, references: { model: null, modelNumber: null, employeeNumber: null, defaultLocation: 'Head Office' },
-      history: [], attachments: [], accessories: [], components: [], softwareLicenses: [], relatedAssets: [],
+      history: [...assetHistory], attachments: [], accessories: [], components: [], softwareLicenses: [], relatedAssets: [],
       valuation: {}, purchaseOrder: null
     };
     else if (url.pathname === `/api/assets/${assetId}/maintenances`) result = { items: [], total: 0 };
@@ -85,6 +86,17 @@ const server = createServer(async (request, response) => {
   if (request.method === 'PUT' && url.pathname === `/api/assets/${assetId}/audit-schedule`) {
     asset.nextAuditOn = body?.nextAuditOn || null;
     response.writeHead(200, { 'content-type': 'application/json' }); response.end(JSON.stringify({ nextAuditOn: asset.nextAuditOn }));
+    return;
+  }
+  if (request.method === 'POST' && url.pathname === `/api/assets/${assetId}/audit`) {
+    asset.nextAuditOn = body?.nextAuditOn || null;
+    asset.updatedAt = new Date().toISOString();
+    assetHistory.unshift({
+      id: '44444444-4444-4444-8444-444444444444', eventType: 'Audited', occurredAt: asset.updatedAt,
+      details: `Fiziksel denetim tamamlandı · ${body.auditDate}${body.notes ? ` · ${body.notes}` : ''}`,
+      actorName: 'Synthetic Owner', attachmentCount: 0
+    });
+    response.writeHead(204); response.end();
     return;
   }
   response.writeHead(405, { 'content-type': 'application/json' });
@@ -151,8 +163,37 @@ try {
   assert.deepEqual(apiRequests[0].body, { nextAuditOn });
   assert.equal(apiRequests[0].csrf, 'synthetic-asset-csrf');
   assert.equal(asset.nextAuditOn, nextAuditOn, 'Reopened detail must reflect the persisted server result.');
+
+  const beforeAuditCancel = apiRequests.length;
+  await page.locator('#auditAssetButton').click();
+  const auditDialog = page.locator('#assetAuditDialog');
+  await auditDialog.waitFor({ state: 'visible' });
+  await page.locator('[data-close-asset-audit]').first().click();
+  await auditDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, beforeAuditCancel, 'Canceling a physical audit must not send a write request.');
+
+  await page.locator('#auditAssetButton').click();
+  const auditDate = await page.evaluate(() => {
+    const date = new Date(); date.setMinutes(date.getMinutes() - date.getTimezoneOffset()); return date.toISOString().slice(0, 10);
+  });
+  const auditNotes = 'Synthetic audit saved from Chromium';
+  await page.locator('#assetAuditForm [name="auditDate"]').fill(auditDate);
+  await page.locator('#assetAuditForm [name="nextAuditOn"]').fill(nextAuditOn);
+  await page.locator('#assetAuditForm [name="notes"]').fill(auditNotes);
+  await page.locator('#assetAuditForm button[type="submit"]').click();
+  await auditDialog.waitFor({ state: 'hidden' });
+  await page.waitForFunction(() => document.querySelector('#assetDialog')?.open && document.querySelector('#assetHistory .asset-history-item')?.textContent.includes('Synthetic audit saved from Chromium'));
+  assert.equal(apiRequests.length, beforeAuditCancel + 1, 'Only the explicitly saved physical audit should write.');
+  const auditRequest = apiRequests.at(-1);
+  assert.equal(auditRequest.method, 'POST');
+  assert.equal(auditRequest.path, `/api/assets/${assetId}/audit`);
+  assert.deepEqual(auditRequest.body, { auditDate, nextAuditOn, notes: auditNotes });
+  assert.equal(auditRequest.csrf, 'synthetic-asset-csrf');
+  assert.equal(asset.nextAuditOn, nextAuditOn);
+  assert.equal(assetHistory[0].eventType, 'Audited');
+  assert.match(await page.locator('#assetHistory').innerText(), /Synthetic audit saved from Chromium/);
   assert.deepEqual(pageErrors, [], `The asset detail UI must not throw: ${pageErrors.join(' | ')}`);
-  console.log('PASS: asset detail opens from the inventory row; audit schedule cancellation performs no write; explicit save sends one tenant-route PUT with CSRF; refreshed details show the persisted date with no browser exceptions.');
+  console.log('PASS: asset detail opens from the inventory row; schedule and physical-audit cancellations perform no writes; explicit saves send one tenant-route PUT and POST with CSRF; refreshed details show the scheduled date and audit history with no browser exceptions.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));
