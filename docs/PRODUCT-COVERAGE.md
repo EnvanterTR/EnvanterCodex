@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 14 Ekim 2026 — aksesuar fotoğrafı kaldırma onayı
+
+Aksesuar ayrıntısındaki fotoğrafı kaldırma eylemi tarayıcı `confirm()` yerine iptal edilebilir uygulama onayı kullanır. Vazgeçme/Escape fotoğraf API'sine istek göndermez; açık onay yalnız görüntülenen aksesuarın şirket kapsamlı fotoğraf DELETE uç noktasını çağırır ve başarıda ayrıntı/listeleri yeniler. `Verify-AccessoryPhotoRemovalDialog.mjs` kaynak sözleşmesini denetler; `Accessory_photos_are_company_scoped_audited_and_included_in_company_archive` izole API kabul testi rol reddini, tenant kapsamını, silme ve kalıcı fotoğraf/denetim durumu doğrular. Yerel şirket verisindeki fotoğraf değiştirilmedi; canlı ortama dokunulmadı.
+
 ## 14 Ekim 2026 — katalog hızlı giriş formları
 
 Aksesuar formundan marka/kategori/model ekleme, kategori adını değiştirme ve model kataloğundan hızlı marka ekleme tarayıcı `prompt()` pencereleri yerine uygulama içi, klavye ile kapatılabilir metin formu kullanır. Boşluk girdisi yazma yapmaz; iptal/Escape API çağrısını durdurur. Kategori yeniden adlandırma mevcut adı forma koyar; hızlı eklenen kategori/marka/model, ilgili seçime bağlanır ve model için marka seçimi zorunludur. Ad uzunluğu istemcide 120 karakterle sınırlı, sunucu doğrulaması ve şirket kapsamı korunur. `Verify-AccessoryCatalogQuickEntry.mjs` CI'a eklendi; 68/68 `Verify-*.mjs`, beş dilde 1.848 locale girişi ve `git diff --check` geçti. `Brand_model_category_and_images_are_company_scoped_and_reusable` izole PostgreSQL API kabul testi 1/1 geçti. Gerçek oturumlu tarayıcı tıklaması ayrıca açık; canlıya ve gerçek şirket verisine dokunulmadı.
