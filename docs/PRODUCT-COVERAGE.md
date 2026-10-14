@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 14 Ekim 2026 — abonelik geçmişi bulunan şirketlerde etkin plan denetimi
+
+Cloud yazma isteği koruması, her tenant için eski `Expired` kayıtlarla yeni `Active` veya `Trial` kaydı birlikte bulunduğunda tüm abonelik satırlarını tek kayıt gibi okuyup 500 üretebiliyordu. Sorgu artık etkin/deneme planını önce, geçmiş kayıtları sonra seçiyor; bitiş zamanı gelmiş aktif plan yine salt okunur kalır. İzole PostgreSQL kabulinde geçmiş `Expired` + geçerli `Active` kayıtlarıyla varlık oluşturma ve kalıcılık senaryosu **1/1 geçti**; süresi dolmuş Cloud yazma engeli testi ayrıca **1/1 geçti**. `Verify-TenantSubscriptionAccess.mjs` (14 assertion) bu sorgu önceliğini ve kabulü denetliyor ve CI'a bağlandı. Süre sonu erişim sınırı dışında müşteri checkout/yenileme, faturalama/iade ve tüm gelir metrikleri ayrı açık kapsam olarak kalır.
+
 ## 14 Ekim 2026 — yinelenen konum/departman adlarını birleştirme onayı
 
 Konum/departman yeniden adlandırmada bilinen bir ad çakışması varsa kayıtları birleştirmeden önce uygulama dialog'u açık onay ister. İstekten sonra sunucunun eşzamanlı çakışma bulması halinde ikinci onay alınır; iptal, kayıtları değiştirmeden formda açıklama bırakır. Onay sonrası mevcut tenant uç noktası `merge` bayrağıyla çağrılır ve başarı akışı liste/filtre yenilemesini korur. Çeviriler beş dilde, `Verify-DirectoryMergeDialogs.mjs` CI'a eklendi. `Directory_name_merge_requires_approval_and_preserves_company_scope` API kabul testi onaysız 409 yanıtını, onaylı konum/departman birleştirmelerini, güncellenen kayıt sayısını, tenant sınırını ve iki audit kaydını kontrol etti (1/1); 71/71 kaynak denetimi ve 1.855 beş dil locale girdisi geçti. Canlı/şirket verisi kullanılmadı.

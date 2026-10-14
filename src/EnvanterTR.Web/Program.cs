@@ -540,7 +540,9 @@ app.Use(async (context, next) =>
         var subscription = await (from item in db.TenantSubscriptions.AsNoTracking()
             join plan in db.SubscriptionPlans.AsNoTracking() on item.PlanId equals plan.Id
             where item.CompanyId == subscriptionCompanyId
-            select new { plan.DeploymentKind, item.Status, item.StartsAt, item.EndsAt }).SingleOrDefaultAsync(context.RequestAborted);
+            orderby item.Status == "Active" || item.Status == "Trial" ? 0 : 1, item.StartsAt descending
+            select new { plan.DeploymentKind, item.Status, item.StartsAt, item.EndsAt })
+            .FirstOrDefaultAsync(context.RequestAborted);
         if (subscription is not null && TenantSubscriptionAccess.IsReadOnly(subscription.DeploymentKind,
                 subscription.Status, subscription.StartsAt, subscription.EndsAt, DateTimeOffset.UtcNow))
         {

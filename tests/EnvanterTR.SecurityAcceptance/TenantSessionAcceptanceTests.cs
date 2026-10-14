@@ -137,6 +137,58 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Current_cloud_subscription_is_selected_when_company_keeps_expired_subscription_history()
+    {
+        var plan = new SubscriptionPlan
+        {
+            Code = $"history-{_companyId.ToString("N")[..8]}", Name = "Cloud history", DeploymentKind = "cloud",
+            IsActive = true, IsPublic = true
+        };
+        var now = DateTimeOffset.UtcNow;
+        Guid categoryId;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            categoryId = await db.Assets.Where(asset => asset.Id == _ownAssetId)
+                .Select(asset => asset.CategoryId).SingleAsync();
+            db.SubscriptionPlans.Add(plan);
+            db.TenantSubscriptions.AddRange(
+                new TenantSubscription
+                {
+                    CompanyId = _companyId, PlanId = plan.Id, Status = "Expired",
+                    StartsAt = now.AddDays(-60), EndsAt = now.AddDays(-30)
+                },
+                new TenantSubscription
+                {
+                    CompanyId = _companyId, PlanId = plan.Id, Status = "Active",
+                    StartsAt = now.AddDays(-30), EndsAt = now.AddDays(30)
+                });
+            await db.SaveChangesAsync();
+        }
+
+        using var csrf = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrf.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrf.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrf.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        using (var write = await SendAsUserAsync(HttpMethod.Post, "/api/assets", _userId, _companyId,
+            JsonContent.Create(new { assetTag = "HISTORY-CURRENT-01", name = "Current plan remains writable", categoryId, currency = "TRY" }),
+            requestToken, antiforgeryCookie))
+        {
+            var responseBody = await write.Content.ReadAsStringAsync();
+            Assert.True(write.StatusCode == HttpStatusCode.Created,
+                $"Expected an active Cloud write to succeed, got {(int)write.StatusCode}: {responseBody}");
+        }
+
+        await using var verifyScope = _factory.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.True(await verifyDb.Assets.AnyAsync(asset => asset.CompanyId == _companyId &&
+            asset.AssetTag == "HISTORY-CURRENT-01" && asset.Name == "Current plan remains writable"));
+    }
+
+    [Fact]
     public async Task Asset_plan_quota_covers_manual_import_and_purchase_receipt_with_atomic_upgrade_behavior()
     {
         var plan = new SubscriptionPlan

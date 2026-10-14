@@ -216,6 +216,10 @@ jobs:
         shell: bash
         run: node tools/Verify-AppMobileLayout.mjs
 
+      - name: Verify Cloud subscription expiry access policy
+        shell: bash
+        run: node tools/Verify-TenantSubscriptionAccess.mjs
+
       - name: Verify public demo full-width asset tables
         shell: bash
         run: node tools/Verify-PublicDemoLayout.mjs
