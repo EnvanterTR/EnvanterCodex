@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 14 Ekim 2026 — varlık satırı bağlam menüsü UI kabulü
+
+Sentetik owner oturumunda gerçek EnvanterTR UI satırı sağ tıklamayla bağlam menüsünü açtı; menü öğeleri kaynak satırdaki kullanılabilir eylemlerle eşleşti ve 1280×900 viewport içinde kaldı. Ok tuşları ve Escape menüyü kapatıp odağı çağıran satıra geri verdi. Klavyeden `Shift+F10` menüyü açtı; “Varlığı düzenle” seçimi mevcut formu açtı ve iptal yazma yapmadı. Mock API/tenant dışında hiçbir yazma yapılmadı. Kaynak düzeyinde yetki ve klavye davranışları `Verify-AssetContextMenu.mjs` ile doğrulanır; bu tek sentetik UI akışı diğer bağlam menülerini kapsamıyor.
+
 ## 14 Ekim 2026 — varlık zimmet UI kabulü
 
 Varlık ayrıntısında zimmet formu gerçek Chromium'da sentetik owner oturumu ve sentetik aktif çalışanla açıldı. İptal yazma üretmedi. Kaydetme seçilen çalışanın kimliği, isteğe bağlı beklenen iade tarihi ve teslim notuyla tek `POST /api/assets/{id}/assign` + CSRF başlığı gönderdi. Liste satırı atanan çalışanı gösterdi; ayrıntı yeniden açılınca çalışan ve zimmet durumu ile geçmiş notu korundu. UI kabul sunucusu mock/bellek içindedir. Yetki/tenant, beklenen iade tarihi, iade temizliği ve geçmiş kalıcılığı `Asset_assignment_accepts_a_valid_expected_return_and_return_clears_it_with_history` izole PostgreSQL kabul testindedir. Gerçek şirket kaydı/canlı ortam kullanılmadı.

@@ -191,6 +191,32 @@ try {
     }));
     throw error;
   }
+  const assetRow = page.locator(`#assetRows tr[data-id="${assetId}"]`);
+  await assetRow.click({ button: 'right' });
+  const contextMenu = page.locator('#assetContextMenu');
+  await contextMenu.waitFor({ state: 'visible' });
+  const contextItems = await contextMenu.getByRole('menuitem').allTextContents();
+  assert.ok(contextItems.includes('Varlığı düzenle'));
+  assert.ok(contextItems.includes('Çalışana zimmetle'));
+  assert.ok(contextItems.includes('Varlığı kopyala'));
+  const menuBounds = await contextMenu.boundingBox();
+  assert.ok(menuBounds && menuBounds.x >= 0 && menuBounds.y >= 0 && menuBounds.x + menuBounds.width <= 1280 && menuBounds.y + menuBounds.height <= 900,
+    'Right-click menu must be positioned inside the viewport.');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Escape');
+  await contextMenu.waitFor({ state: 'hidden' });
+  assert.equal(await assetRow.evaluate(row => row === document.activeElement), true, 'Escape should restore focus to the invoking asset row.');
+  await assetRow.focus();
+  await page.keyboard.press('Shift+F10');
+  await contextMenu.waitFor({ state: 'visible' });
+  await contextMenu.getByRole('menuitem', { name: 'Varlığı düzenle' }).click();
+  const contextEditDialog = page.locator('#editAssetDialog');
+  await contextEditDialog.waitFor({ state: 'visible' });
+  await page.locator('[data-close-edit-asset]').first().click();
+  await contextEditDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, 0, 'Opening and canceling a context-menu edit must not write.');
+  await page.locator('#assetDialog').locator('#closeDialog').click();
+
   await page.locator('#assetRows .asset-name').filter({ hasText: asset.name }).click();
   const assetDialog = page.locator('#assetDialog');
   await assetDialog.waitFor({ state: 'visible' });
