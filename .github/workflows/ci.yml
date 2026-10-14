@@ -168,6 +168,10 @@ jobs:
         shell: bash
         run: node tools/Verify-AuthErrorFlows.mjs
 
+      - name: Verify session and API key revocation dialogs
+        shell: bash
+        run: node tools/Verify-SessionAndTokenDialogs.mjs
+
       - name: Verify company JSON export download contract
         shell: bash
         run: node tools/Verify-CompanyDataExport.mjs

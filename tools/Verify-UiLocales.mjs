@@ -547,7 +547,8 @@ const requiredAuthLabels = [
   'Devam etmek için çalışacağınız şirketi seçin.',
   'Authenticator uygulamanızdaki 6 haneli kodu veya tek kullanımlık kurtarma kodunu girin.',
   'Doğrulama kodu geçersiz veya kullanılmış. Yeniden deneyin.',
-  'Çok sayıda hatalı doğrulama kodu. Bir süre sonra tekrar deneyin.'
+  'Çok sayıda hatalı doğrulama kodu. Bir süre sonra tekrar deneyin.',
+  'OTURUM GÜVENLİĞİ', 'Bu işlem seçili oturumu hemen sonlandırır.'
 ];
 const requiredRestoreLabels = [
   'ŞİRKET VERİSİ GERİ YÜKLEME', 'Şirket arşivi geri yüklensin mi?',
@@ -564,6 +565,8 @@ const requiredIntegrationLabels = [
   'API anahtarları yükleniyor…', 'API anahtarları yüklenemedi.', 'Henüz API anahtarı oluşturulmadı.',
   'Etkin', 'Süresi doldu', 'İptal edildi', 'İptal et', 'Göster', 'Gizle', 'Anahtarı kopyala', 'Kapat',
   'API / GİZLİ ANAHTAR', 'API anahtarı oluşturuldu',
+  'API ANAHTARI GÜVENLİĞİ', 'API anahtarı iptal edilsin mi?',
+  '“{name}” API anahtarı iptal edilsin mi?', 'İptal edilen anahtar sonraki API isteklerinde kullanılamaz.', 'API anahtarını iptal et',
   'Bu gizli değeri şimdi güvenli bir yere kaydedin. Bu pencereden kapatınca tekrar gösterilemez.',
   'API anahtarları yalnızca seçtiğiniz salt okunur yetkilere erişir. Gizli anahtar oluşturma yanıtında bir kez gösterilir; veritabanında yalnızca özeti saklanır. Anahtarı URL\'ye veya istemci koduna koymayın.'
 ];

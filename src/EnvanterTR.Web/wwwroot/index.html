@@ -807,6 +807,8 @@
       'Oturumu kapat':['Sign out session','Завершить сеанс','Завершити сеанс','Одјави сесија'],
       'Bu cihazdaki oturumu kapatmak istiyor musunuz?':['Sign out from this device?','Завершить сеанс на этом устройстве?','Завершити сеанс на цьому пристрої?','Да се одјавите од овој уред?'],
       'Bu cihazdaki oturumu uzaktan kapatmak istiyor musunuz?':['Sign out this device remotely?','Удаленно завершить сеанс на этом устройстве?','Віддалено завершити сеанс на цьому пристрої?','Оддалеку да се одјави овој уред?'],
+      'OTURUM GÜVENLİĞİ':['SESSION SECURITY','БЕЗОПАСНОСТЬ СЕАНСА','БЕЗПЕКА СЕАНСУ','БЕЗБЕДНОСТ НА СЕСИЈА'],
+      'Bu işlem seçili oturumu hemen sonlandırır.':['This immediately ends the selected session.','Это немедленно завершит выбранный сеанс.','Це негайно завершить вибраний сеанс.','Ова веднаш ќе ја заврши избраната сесија.'],
       'Bu cihazdaki oturum kapatıldı.':['This device has been signed out.','Сеанс на этом устройстве завершен.','Сеанс на цьому пристрої завершено.','Сесијата на овој уред е затворена.'],
       'En yeni 100 oturum gösteriliyor.':['Showing the 100 most recent sessions.','Показаны 100 последних сеансов.','Показано 100 найновіших сеансів.','Се прикажуваат 100 најнови сесии.'],
       'ŞİRKET ALANI / ERİŞİM':['COMPANY SPACE / ACCESS','РАЗДЕЛ КОМПАНИИ / ДОСТУП','РОЗДІЛ КОМПАНІЇ / ДОСТУП','КОМПАНИСКИ ПРОСТОР / ПРИСТАП'],
@@ -2110,6 +2112,11 @@
       '· Kullanıcı başına en fazla 10 etkin anahtar':['· Up to 10 active keys per user','· Не более 10 активных ключей на пользователя','· До 10 активних ключів на користувача','· До 10 активни клучеви по корисник']
     });
     Object.assign(localeRows, {
+      'API ANAHTARI GÜVENLİĞİ':['API KEY SECURITY','БЕЗОПАСНОСТЬ API-КЛЮЧЕЙ','БЕЗПЕКА API-КЛЮЧІВ','БЕЗБЕДНОСТ НА API КЛУЧЕВИ'],
+      'API anahtarı iptal edilsin mi?':['Revoke this API key?','Отозвать этот API-ключ?','Відкликати цей API-ключ?','Да се отповика овој API клуч?'],
+      '“{name}” API anahtarı iptal edilsin mi?':['Revoke API key “{name}”?','Отозвать API-ключ «{name}»?','Відкликати API-ключ «{name}»?','Да се отповика API клучот „{name}“?'],
+      'İptal edilen anahtar sonraki API isteklerinde kullanılamaz.':['A revoked key cannot be used in future API requests.','Отозванный ключ нельзя будет использовать в будущих запросах API.','Відкликаний ключ не можна буде використовувати в майбутніх запитах API.','Отповиканиот клуч нема да може да се користи во идни API барања.'],
+      'API anahtarını iptal et':['Revoke API key','Отозвать API-ключ','Відкликати API-ключ','Отповикај API клуч'],
       'Şirket birimleri':['Company units','Подразделения компании','Підрозділи компанії','Единици на компанијата'],
       'Şirket içi birim ağacını yönetin. Bu kayıtlar tüzel kişilik veya varlık erişim sınırı oluşturmaz.':['Manage the company’s internal unit hierarchy. These records do not create legal entities or asset-access boundaries.','Управляйте внутренней иерархией подразделений компании. Эти записи не создают отдельные юридические лица или границы доступа к активам.','Керуйте внутрішньою ієрархією підрозділів компанії. Ці записи не створюють окремих юридичних осіб або меж доступу до активів.','Управувајте со внатрешната хиерархија на единиците во компанијата. Овие записи не создаваат посебни правни лица или граници за пристап до средствата.'],
       '＋ Birim ekle':['＋ Add unit','＋ Добавить подразделение','＋ Додати підрозділ','＋ Додај единица'],
@@ -2748,7 +2755,7 @@
           metadata.textContent = `${translateUiText('IP adresi')}: ${session.ipAddress || '—'} · ${translateUiText('Son etkinlik')}: ${new Date(session.lastSeenAt).toLocaleString()}`; details.append(metadata);
           const revoke = document.createElement('button'); revoke.type = 'button'; revoke.className = 'btn small'; revoke.textContent = translateUiText(session.current ? 'Bu oturumu kapat' : 'Oturumu kapat');
           revoke.addEventListener('click', async () => {
-            if (!window.confirm(translateUiText(session.current ? 'Bu cihazdaki oturumu kapatmak istiyor musunuz?' : 'Bu cihazdaki oturumu uzaktan kapatmak istiyor musunuz?'))) return;
+            if (!await confirmComponentAction({ eyebrow: 'OTURUM GÜVENLİĞİ', title: session.current ? 'Bu cihazdaki oturumu kapatmak istiyor musunuz?' : 'Bu cihazdaki oturumu uzaktan kapatmak istiyor musunuz?', summary: 'Bu işlem seçili oturumu hemen sonlandırır.', confirmLabel: session.current ? 'Bu oturumu kapat' : 'Oturumu kapat', danger: true })) return;
             revoke.disabled = true;
             try {
               await api(`/api/session/devices/${encodeURIComponent(session.id)}/revoke`, { method: 'POST', body: '{}' });
@@ -8116,7 +8123,8 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         const actionCell = document.createElement('td');
         if (!token.revokedAt && !token.isExpired) {
           const revoke = document.createElement('button'); revoke.type = 'button'; revoke.className = 'btn small danger'; revoke.textContent = translateUiText('İptal et'); revoke.addEventListener('click', async () => {
-            if (!window.confirm(translateUiText('“{name}” API anahtarı iptal edilsin mi?').replace('{name}', token.name))) return;
+            const summary = translateUiText('“{name}” API anahtarı iptal edilsin mi?').replace('{name}', token.name) + ' ' + translateUiText('İptal edilen anahtar sonraki API isteklerinde kullanılamaz.');
+            if (!await confirmComponentAction({ eyebrow: 'API ANAHTARI GÜVENLİĞİ', title: 'API anahtarı iptal edilsin mi?', summary, confirmLabel: 'API anahtarını iptal et', danger: true })) return;
             revoke.disabled = true;
             try { await api(`/api/integrations/tokens/${encodeURIComponent(token.id)}/revoke`, { method: 'POST', body: '{}' }); $('#integrationTokenFeedback').textContent = translateUiText('Anahtar iptal edildi.'); await loadIntegrationTokens(); }
             catch (error) { revoke.disabled = false; $('#integrationTokenFeedback').textContent = error.message; }

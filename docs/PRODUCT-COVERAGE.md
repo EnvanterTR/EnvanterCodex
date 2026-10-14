@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 14 Ekim 2026 — oturum ve API anahtarı güvenlik onayları
+
+Bu cihazı/uzak oturumu kapatma ve kullanıcıya ait API anahtarını iptal etme eylemleri uygulama içi açık onay kullanır; kapatma/iptal sonuçları ve hedef oturum/anahtar açıkça belirtilir. Vazgeçme API çağrısı yapmaz. Onay sonrası mevcut seçili ID'ye bağlı endpoint çağrılır. Beş dil locale kontrolü ve izole oturum/API token HTTP güvenlik kabul testleri (2/2) geçti.
+
 ## 14 Ekim 2026 — şirket arşivi geri yükleme onayı
 
 Şirket JSON geri yükleme, doğrulanmış salt-okunur önizlemeden sonra uygulama içi açık onay ister. Onay penceresi verilerin yeni kimliklerle ekleneceğini, hedef kataloğun/envanterin boş olması gerektiğini, fotoğraf ve belgelerin aktarılmadığını ve işlemin geri alınamayacağını açıkça söyler. Vazgeçme/Escape/backdrop API çağrısı yapmaz; sunucu tarafında `settings.manage`, CSRF ve boş hedef kontrolü korunur. Kaynak/locale doğrulaması ve izole API kabul testi (1/1) geçti; gerçek tarayıcı tıklama kabulü yapılmadı ve açık kalıyor.
