@@ -191,6 +191,15 @@ try {
     }));
     throw error;
   }
+  await page.locator('#pageTitle').click();
+  await page.keyboard.press('Control+n');
+  const newAssetDialog = page.locator('#newAssetDialog');
+  await newAssetDialog.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#newAssetButton').getAttribute('aria-keyshortcuts'), 'Control+N');
+  await page.keyboard.press('Escape');
+  await newAssetDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, 0, 'Opening then canceling owner Ctrl+N must not create an asset.');
+
   const assetRow = page.locator(`#assetRows tr[data-id="${assetId}"]`);
   await assetRow.click({ button: 'right' });
   const contextMenu = page.locator('#assetContextMenu');
@@ -430,7 +439,7 @@ try {
   await page.locator('#assetTabHistoryButton').click();
   assert.match(await page.locator('#assetHistory').innerText(), /Synthetic assignment note/);
   assert.deepEqual(pageErrors, [], `The asset detail UI must not throw: ${pageErrors.join(' | ')}`);
-  console.log('PASS: asset edit, audit schedule, physical audit, maintenance schedule/start/complete, location transfer, and assignment flows; canceled forms send no writes; explicit tenant-scoped writes include CSRF; refreshed list/detail/history preserve outcomes; no browser exceptions.');
+  console.log('PASS: owner Ctrl+N opens and cancels without writing; asset edit, audit schedule, physical audit, maintenance schedule/start/complete, location transfer, and assignment flows; explicit tenant-scoped writes include CSRF; refreshed UI preserves outcomes; no browser exceptions.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

@@ -108,8 +108,36 @@ try {
   assert.ok(apiRequests.some(item => item.path === '/api/session' && item.method === 'GET'),
     'The app must initialize from the synthetic viewer session before checking its navigation.');
 
+  await page.locator('#pageTitle').click();
+  await page.keyboard.press('/');
+  const globalSearch = page.locator('#globalSearch');
+  assert.equal(await globalSearch.evaluate(input => document.activeElement === input), true, 'Slash should focus global search when not typing.');
+  assert.equal(await globalSearch.getAttribute('aria-keyshortcuts'), '/');
+  await page.keyboard.press('/');
+  assert.equal(await globalSearch.evaluate(input => document.activeElement === input), true, 'Slash typed in the search field must not steal focus.');
+  assert.equal(await globalSearch.inputValue(), '/', 'Slash should remain ordinary text while a text field has focus.');
+  await globalSearch.fill('');
+
+  await page.locator('#pageTitle').click();
+  await page.keyboard.press('Control+n');
+  await page.waitForFunction(() => document.querySelector('#toast')?.textContent.includes('oluşturma yetkiniz bulunmuyor'));
+  assert.equal(await page.locator('#newAssetButton').isHidden(), true, 'Ctrl+N must not expose asset creation to a viewer.');
+
+  await page.keyboard.press('?');
+  const shortcutsDialog = page.locator('#keyboardShortcutsDialog');
+  await shortcutsDialog.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#helpButton').getAttribute('aria-keyshortcuts'), '?');
+  await page.keyboard.press('Escape');
+  await shortcutsDialog.waitFor({ state: 'hidden' });
+
   await page.keyboard.press('Control+k');
   const dialog = page.locator('#commandPaletteDialog');
+  await dialog.waitFor({ state: 'visible' });
+  await page.keyboard.press('Escape');
+  await dialog.waitFor({ state: 'hidden' });
+
+  await page.keyboard.press('Control+k');
+
   try { await dialog.waitFor({ state: 'visible', timeout: 5000 }); }
   catch (error) {
     console.error('COMMAND_PALETTE_SHORTCUT_STATE', JSON.stringify(await page.evaluate(() => ({
@@ -202,7 +230,7 @@ try {
   assert.equal(writes[0].method, 'PUT');
   assert.equal(writes[0].path, '/api/appearance/preferences');
   assert.deepEqual(writes[0].body, { theme: 'dark', language: 'en' });
-  console.log('PASS: synthetic viewer role visibility, Ctrl+K routing, notification dismissal, profile security reads, cancel/save of CSRF-protected appearance preferences, and five-language expired-subscription notice; no unrelated writes or browser errors.');
+  console.log('PASS: synthetic viewer role visibility; Ctrl+K, slash, question-mark, Escape, and role-denied Ctrl+N; notification dismissal; profile security reads; CSRF-protected appearance preferences; five-language expiry notice; no unrelated writes/browser errors.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

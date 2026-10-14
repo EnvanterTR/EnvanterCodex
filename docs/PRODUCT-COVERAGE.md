@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 15 Ekim 2026 — global klavye kısayolları UI kabulü
+
+Gerçek EnvanterTR HTML'inde sabit Chromium ile sentetik viewer/owner oturumları çalıştırıldı. `/` global aramayı odakladı; arama alanına yazarken kısayol yakalanmadı. `?` yardım penceresini açtı ve Escape kapattı; `Ctrl+K` komut paletini açtı ve Escape kapattı. `Ctrl+N` viewer için yetki uyarısı gösterip varlık oluşturmayı açmadı; owner için formu açtı ve Escape/iptal API yazısı olmadan kapattı. Bu UI testi role ve cancel davranışını kanıtlar, DB yazması iddiası taşımaz. Hosted runner'daki izin verilen tek sentetik mutasyon, ayrı kullanıcıya ait appearance tercih kaydıdır; şirket kayıtları değiştirilmedi.
+
 ## 14 Ekim 2026 — görünüm ve dil tercihleri UI kabulü
 
 Sentetik viewer tarayıcı kabulinde görünüm/dil dialog'u açıldı. İptal hiçbir istek göndermedi. Kaydetme `dark` tema ve `en` dilini tek `PUT /api/appearance/preferences` + CSRF ile gönderdi; sunucu yanıtı sonrası uygulama teması/dili ve yerel kullanıcı tercihi güncellendi. Başka yazma yalnız bu açık kullanıcı tercihi içindir; şirket verisi değişmedi. Sunucu tarafı CSRF, alan doğrulama ve kullanıcıya özel kalıcılık `Appearance_preferences_are_private_validated_csrf_protected_and_preserved_with_dashboard_updates` izole kabul testindedir.
