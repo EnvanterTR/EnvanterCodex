@@ -48,7 +48,7 @@ requireSource(app.includes('`/api/assets/${target.id}/trash`'), 'Trash action mu
 requireSource(api.includes('api.MapPost("/assets/{id:guid}/trash"'), 'The asset trash API route is missing.');
 requireSource(acceptance.includes('Asset_trash_is_tenant_scoped_blocks_live_relations_and_restores_with_audit_history'), 'No tenant/relationship/restore acceptance scenario covers asset trash.');
 requireSource(api.includes('api.MapPost("/assets/{id:guid}/restore"') && acceptance.includes('Asset_archive_restore_is_authorized_tenant_scoped_and_audited'), 'Archived asset restoration must have a tenant-scoped, role and audit acceptance scenario.');
-requireSource(app.includes('async function removeAssetAttachment') && app.includes("method: 'DELETE'"), 'Attachment removal must use the delete API and refresh the detail list.');
+requireSource(app.includes('function removeAssetAttachment(assetId, attachment)') && app.includes("remove.addEventListener('click', () => removeAssetAttachment(assetId, attachment))") && app.includes("method: 'DELETE'") && app.includes('renderAssetAttachments(target.assetId, result.attachments)'), 'Attachment removal must require a separate explicit confirmation, call the delete API, and refresh its detail list.');
 requireSource(app.includes("document.querySelectorAll('[data-asset-tab]')"), 'Asset-detail tabs must have a bound navigation handler.');
 requireSource(app.includes('id="quickLookupDialog"') && app.includes("quickLookupDialog.showModal(); form.elements.name.focus();") && app.includes("api(`/api/lookups/${kind}`"), 'Category, brand, and model quick-add must use the in-app form and submit to the tenant lookup API.');
 requireSource(app.includes('id="returnAssetDialog"') && app.includes("returnAssetDialog.showModal();") && app.includes("api(`/api/assets/${currentAsset.id}/return`"), 'Asset return must use the in-app confirmation/note form and submit to the tenant return API.');
@@ -64,6 +64,12 @@ requireSource(app.includes('id="assetStatusDialog" aria-labelledby="assetStatusD
   app.includes('name="note" maxlength="1000" rows="3"') &&
   app.includes("assetStatusDialog.addEventListener('click', event => { if (event.target === assetStatusDialog) closeAssetStatusDialog(); })"),
   'Asset status changes must use an accessible, dismissible in-app confirmation and optional-note form with an error region.');
+requireSource(app.includes('id="assetAttachmentRemoveDialog" aria-labelledby="assetAttachmentRemoveTitle"') &&
+  app.includes('id="assetAttachmentRemoveForm"') && app.includes('id="assetAttachmentRemoveSummary"') &&
+  app.includes('id="assetAttachmentRemoveFeedback" class="auth-error" role="alert" hidden') &&
+  app.includes("assetAttachmentRemoveDialog.addEventListener('click', event => { if (event.target === assetAttachmentRemoveDialog) closeAssetAttachmentRemove(); })"),
+  'Asset attachment removal must use an accessible, dismissible in-app confirmation with an error region.');
+requireSource(acceptance.includes('Asset_attachment_upload_download_and_delete_are_authorized_tenant_scoped_and_audited'), 'Asset attachment deletion lacks an isolated authorization, tenant, and audit acceptance scenario.');
 const quickLookupHandler = app.slice(app.indexOf("document.querySelectorAll('[data-quick-add]')"), app.indexOf("$('#newAssetForm').addEventListener('submit'"));
 const detailReturnHandler = app.slice(app.indexOf("$('#returnAssetButton').addEventListener('click'"), app.indexOf("$('#trashAssetButton').addEventListener('click'"));
 requireSource(quickLookupHandler.length > 0 && !quickLookupHandler.includes('window.prompt('), 'Asset quick-add must not depend on unsupported native prompt dialogs.');
@@ -80,6 +86,10 @@ requireSource(statusActionHandler.length > 0 && statusActionHandler.includes("op
 requireSource(statusSubmitHandler.length > 0 && statusSubmitHandler.includes('if (!assetStatusTarget || !canWriteAssets()) return;') && statusSubmitHandler.includes('`/api/assets/${target.id}/status`') && statusSubmitHandler.includes("restore ? 'POST' : 'PATCH'") && statusSubmitHandler.includes('closeAssetStatusDialog();') && statusSubmitHandler.includes('await loadDashboard();') && statusSubmitHandler.includes('feedback.hidden = false;'), 'Asset status changes may call the correct tenant API only after explicit in-app submission, refresh on success, and keep the dialog open with an error on failure.');
 const restoreAssetHandler = app.slice(app.indexOf("$('#restoreAssetButton').addEventListener('click'"), app.indexOf("$('#newEmployeeButton').addEventListener('click'"));
 requireSource(restoreAssetHandler.length > 0 && restoreAssetHandler.includes("openAssetStatusAction(currentAsset, 'restore')") && !restoreAssetHandler.includes('confirm(') && !restoreAssetHandler.includes('prompt(') && statusSubmitHandler.includes('`/api/assets/${target.id}/restore`') && statusSubmitHandler.includes("method: restore ? 'POST' : 'PATCH'"), 'Restoring an archived asset must use the same in-app note form and submit its tenant-scoped restore action only after explicit confirmation.');
+const attachmentRemoveHandler = app.slice(app.indexOf("$('#assetAttachmentRemoveForm').addEventListener('submit'"), app.indexOf('function maintenanceDate('));
+const attachmentOpenHandler = app.slice(app.indexOf('function removeAssetAttachment'), app.indexOf("$('#closeAssetAttachmentRemove').addEventListener('click'"));
+requireSource(attachmentOpenHandler.length > 0 && attachmentOpenHandler.includes("$('#assetAttachmentRemoveDialog').showModal()") && !attachmentOpenHandler.includes('confirm(') && !attachmentOpenHandler.includes('prompt('), 'Opening asset attachment removal must not use native dialogs or mutate data.');
+requireSource(attachmentRemoveHandler.length > 0 && attachmentRemoveHandler.includes('if (!assetAttachmentRemoveTarget || !canWriteAssets()) return;') && attachmentRemoveHandler.includes('`/api/assets/${target.assetId}/attachments/${target.attachmentId}`') && attachmentRemoveHandler.includes("method: 'DELETE'") && attachmentRemoveHandler.includes('closeAssetAttachmentRemove();') && attachmentRemoveHandler.includes('feedback.hidden = false;'), 'Asset attachment deletion may run only after in-app submission, and errors must stay visible without closing the form.');
 requireSource(app.includes("panel.style.display = active ? 'block' : 'none'"), 'The selected asset-detail panel must be explicitly visible, with inactive panels hidden.');
 requireSource(app.includes('panel.setAttribute(\'aria-hidden\', String(!active))'), 'Asset-detail panel accessibility state must follow the active tab.');
 requireSource(/button\.addEventListener\('click',\s*\(\)\s*=>\s*\{\s*\$\('#assetDialog'\)\.close\(\);\s*applyAssetRelationshipFilter\(type, value, label\);\s*\}\);/.test(app), 'Overview reference shortcuts must close the detail dialog and apply the matching company-scoped asset filter.');
@@ -98,6 +108,10 @@ for (const copy of [
   '“{assetTag}” varlığı arşivden geri alınarak kullanılabilir duruma getirilsin mi?',
   'Varlık durumu güncellendi ve denetim geçmişine yazıldı.', 'Durum güncellenemedi. Lütfen yeniden deneyin.'
 ]) requireSource(app.includes(copy), `Missing localized asset-status UI copy: ${copy}`);
+for (const copy of [
+  'Varlık dosyasını kaldır', 'Dosyayı kaldır', '“{fileName}” dosyası bu varlıktan kaldırılsın mı?',
+  'Dosya kaldırılamadı. Lütfen yeniden deneyin.', 'Dosya kaldırıldı, ancak ekler yenilenemedi. Varlık ayrıntısını yeniden açın.'
+]) requireSource(app.includes(copy), `Missing localized asset-attachment removal copy: ${copy}`);
 
 if (failures.length) {
   console.error(failures.map(message => `FAIL ${message}`).join('\n'));
