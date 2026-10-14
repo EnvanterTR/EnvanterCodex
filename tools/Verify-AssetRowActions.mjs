@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const source = fs.readFileSync(path.join(root, 'src/EnvanterTR.Web/wwwroot/index.html'), 'utf8');
+const assetEndpoints = fs.readFileSync(path.join(root, 'src/EnvanterTR.Web/Data/AssetEndpoints.cs'), 'utf8');
 const failures = [];
 const requireSource = (condition, message) => { if (!condition) failures.push(message); };
 
@@ -50,6 +51,8 @@ for (const id of ['assetLabelPreviewDialog', 'assetLabelPreviewTitle', 'assetLab
 
 const cloneFunction = source.match(/async function openAssetClone\(asset\)\s*\{[\s\S]*?(?=\n\s*document\.querySelectorAll\('\[data-close-new\]'\))/)?.[0] ?? '';
 requireSource(cloneFunction.includes('asset.defaultLocationCatalogId') && cloneFunction.includes('field.fieldType !== \'sensitive\''), 'Cloning must preserve the catalog location and ordinary custom fields without copying sensitive custom fields.');
+requireSource(cloneFunction.includes('api(`/api/assets/${asset.id}`)') && cloneFunction.includes('...detail.asset'), 'Cloning must load the full tenant-scoped asset detail before copying fields omitted from the inventory list.');
+requireSource(assetEndpoints.includes('asset.LocationCatalogId, asset.DefaultLocationCatalogId'), 'Asset detail must expose the default location catalog ID needed by clone forms.');
 if (cloneFunction) {
   const makeCloneContext = canWrite => {
     const names = ['assetName','assetTag','categoryId','brandId','modelId','serialNumber','location','defaultLocationCatalogId','purchaseDate','warrantyExpiresAt','purchaseCost','currency','notes'];
@@ -58,7 +61,7 @@ if (cloneFunction) {
     elements.isByod = { checked: false };
     const formHandlers = {};
     const form = { elements, customFieldValues: {}, reset() { for (const name of names) elements[name].value = ''; elements.isRequestable.checked = false; elements.isByod.checked = false; calls.resets++; }, addEventListener(type, handler) { formHandlers[type] = handler; } };
-    const calls = { lookups: 0, definitions: 0, rendered: null, modelId: null, opened: 0, closed: 0, resets: 0, formHandlers };
+    const calls = { lookups: 0, definitions: 0, detail: 0, rendered: null, modelId: null, opened: 0, closed: 0, resets: 0, formHandlers };
     const dialog = { showModal() { calls.opened++; }, close() { calls.closed++; } };
     const assetCustomFieldDefinitions = [
       { key: 'ownerTeam', fieldType: 'text', isActive: true },
@@ -70,6 +73,7 @@ if (cloneFunction) {
       canWriteAssets: () => canWrite,
       loadLookups: async () => { calls.lookups++; },
       loadAssetCustomFieldDefinitions: async () => { calls.definitions++; },
+      api: async url => { assert.equal(url, '/api/assets/source-asset'); calls.detail++; return { asset: { ...fullCloneAsset } }; },
       renderAssetCustomFieldInputs: (target, values) => { calls.rendered = values; target.customFieldValues = values; },
       refreshModels: (modelId, target) => { calls.modelId = modelId; target.elements.modelId.value = modelId; },
       assetCustomFieldDefinitions,
@@ -79,16 +83,17 @@ if (cloneFunction) {
   };
 
   const cloneAsset = {
-    name: 'U6 Pro', categoryId: 'category-1', brandId: 'brand-1', modelId: 'model-1',
-    serialNumber: 'source-serial', location: 'İstanbul / Kat 2', defaultLocationCatalogId: 'location-2',
-    purchaseDate: '2025-03-10', warrantyExpiresAt: '2028-03-10', purchaseCost: 12500, currency: 'TRY',
-    isRequestable: true, isByod: false,
-    customFields: { ownerTeam: 'Ağ Ekibi', assetSecret: 'must-not-copy', retiredCode: 'old' },
+    id: 'source-asset', name: 'U6 Pro', categoryId: 'category-1', brandId: 'brand-1', modelId: 'model-1',
+    serialNumber: 'source-serial', location: 'İstanbul / Kat 2', isRequestable: true, isByod: false,
   };
+  const fullCloneAsset = { ...cloneAsset, defaultLocationCatalogId: 'location-2',
+    purchaseDate: '2025-03-10', warrantyExpiresAt: '2028-03-10', purchaseCost: 12500, currency: 'TRY',
+    customFields: { ownerTeam: 'Ağ Ekibi', assetSecret: 'must-not-copy', retiredCode: 'old' } };
   const allowed = makeCloneContext(true);
   await allowed.functionValue(cloneAsset);
   assert.equal(allowed.calls.lookups, 1);
   assert.equal(allowed.calls.definitions, 1);
+  assert.equal(allowed.calls.detail, 1);
   assert.equal(allowed.calls.opened, 1);
   assert.equal(allowed.form.elements.assetName.value, 'U6 Pro');
   assert.equal(allowed.form.elements.categoryId.value, 'category-1');

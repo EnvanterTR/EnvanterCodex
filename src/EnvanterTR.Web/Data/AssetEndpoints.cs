@@ -1698,7 +1698,7 @@ public static class AssetEndpoints
             var customFields = customFieldProtection.Read(asset.CustomFieldsJson, fieldDefinitions,
                 companyId, AssetCustomFieldEndpoints.CanReadSensitive(user));
             return Results.Ok(new { asset = new { asset.Id, asset.AssetTag, asset.Name, asset.Status, asset.SerialNumber, asset.Location,
-                asset.LocationCatalogId, asset.CategoryId, asset.BrandId, asset.ModelId, asset.ParentAssetId, asset.AssignedEmployeeId, asset.PurchaseOrderId,
+                asset.LocationCatalogId, asset.DefaultLocationCatalogId, asset.CategoryId, asset.BrandId, asset.ModelId, asset.ParentAssetId, asset.AssignedEmployeeId, asset.PurchaseOrderId,
                 asset.PurchaseDate, asset.WarrantyExpiresAt, asset.NextAuditOn, asset.ExpectedReturnOn, asset.PurchaseCost, asset.Currency, asset.IsRequestable,
                 asset.CreatedAt, asset.UpdatedAt, customFields }, references, valuation, purchaseOrder, relatedAssets, accessories = accessoryAssignments,
                 components = componentAllocations, softwareLicenses, history, attachments });

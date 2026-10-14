@@ -8791,7 +8791,12 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     $('#newAssetButton').addEventListener('click', async () => { try { await Promise.all([loadLookups(), loadAssetCustomFieldDefinitions()]); renderAssetCustomFieldInputs($('#newAssetForm')); newAssetDialog.showModal(); } catch (error) { notify(error.message); } });
     async function openAssetClone(asset) {
       if (!asset || !canWriteAssets()) return;
-      await Promise.all([loadLookups(), loadAssetCustomFieldDefinitions()]);
+      const [detail] = await Promise.all([
+        api(`/api/assets/${asset.id}`),
+        loadLookups(),
+        loadAssetCustomFieldDefinitions()
+      ]);
+      asset = { ...asset, ...detail.asset };
       const form = $('#newAssetForm');
       form.reset();
       const sourceCustomFields = asset.customFields && typeof asset.customFields === 'object' ? asset.customFields : {};
