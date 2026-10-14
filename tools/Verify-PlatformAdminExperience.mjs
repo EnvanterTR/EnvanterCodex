@@ -63,6 +63,16 @@ assert.match(api, /order\.PaidAt/);
 assert.match(page, /Satın alma ve ödeme geçmişi/);
 assert.match(page, /o\.paidAt/);
 assert.match(page, /o\.amount,o\.currency/);
+assert.match(api, /\[FromQuery\] int membersPage = 1, \[FromQuery\] int membersPageSize = 50/);
+assert.match(api, /Skip\(\(membersPage - 1\) \* membersPageSize\)\.Take\(membersPageSize\)/);
+assert.match(api, /account\.AccountCreatedAt[\s\S]*?account\.EmailConfirmed[\s\S]*?account\.TwoFactorEnabled/);
+assert.match(api, /membersTotalPages, membersTruncated/);
+assert.match(page, /membersPage=\$\{encodeURIComponent\(requestedMembersPage\)\}&membersPageSize=50/);
+assert.match(page, /data-members-page=/);
+assert.match(page, /Hesap açılışı/);
+assert.match(page, /Şirkete katılım/);
+assert.match(page, /E-posta/);
+assert.match(page, />MFA<|MFA/);
 for (const alert of ['paymentPending', 'paymentReview', 'paymentFailed', 'provisioningFailed']) {
   assert.match(api, new RegExp(`var ${alert} = await db\\.CompanyCheckoutOrders[\\s\\S]*?Status ==`), `${alert} is counted from checkout state`);
   assert.match(page, new RegExp(`${alert}`), `${alert} is visible on the platform overview`);
@@ -75,4 +85,4 @@ assert.match(subscriptions, /method: 'PUT'/);
 assert.match(subscriptions, /Zorunlu: ücretsiz uzatma \/ plan değişikliği gerekçesi/);
 assert.match(demos, /api\/platform\/demo-requests/);
 
-console.log('Platform admin premium skin, member/demo/purchase/subscription workflows, responsive/accessibility affordances, and two-factor sign-in verified.');
+console.log('Platform admin premium skin, pageable member/account details, demo/purchase/subscription workflows, responsive/accessibility affordances, and two-factor sign-in verified.');

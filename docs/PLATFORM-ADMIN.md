@@ -8,7 +8,7 @@ Platform yönetim ekranı `src/EnvanterTR.Web/wwwroot/platform-admin.html` dosya
 
 - `GET /api/platform/overview`: firma toplamı, aktif/askıdaki firmalar, aktif ücretli abonelik, demo, süresi dolmuş abonelik ve 30 gün içinde yenilenecek abonelik sayısı. Ödeme verisi olmadığı için gelir uydurmaz.
 - `GET /api/platform/companies`: firma adı, alt alan adı adayı, iletişim e-postası, etkinlik, kayıt/oturum hesabı/varlık sayıları ve son abonelik. Arama, etkinlik filtresi ve sayfalama içerir.
-- `GET /api/platform/companies/{id}`: firma özeti, ilk 100 üyelik, son 50 abonelik hareketi, şirkete bağlanmış son 50 satın alma/ödeme siparişi ve son 20 müşteri yaşam döngüsü olayı.
+- `GET /api/platform/companies/{id}?membersPage=1&membersPageSize=50`: firma özeti, sayfalı şirket üyelikleri (sayfa boyutu 1–100; Cloud'daki sınırsız üye sayısı için son sayfaya kadar gezinme), son 50 abonelik hareketi, şirkete bağlanmış son 50 satın alma/ödeme siparişi ve son 20 müşteri yaşam döngüsü olayı. Üye satırları hesap açılış/şirkete katılım tarihini, doğrulanmış e-posta durumunu, MFA etkinliğini ve varsa çalışan kaydını gösterir. Ayrı owner varlığı bilgisi, owner başka sayfadaysa erişim e-postası eyleminin yanlışlıkla kapatılmasını önler.
 - `GET /api/platform/companies/renewals?days=30&page=1&pageSize=50`: firma adından bağımsız, bitiş tarihine göre sıralanmış yaklaşan abonelikler.
 - `GET /api/platform/demo-requests?followUp=overdue`: takip zamanı geçmiş ve hâlâ açık olan demo taleplerini listeler; `q`, `status` ve sayfalama filtreleriyle birlikte kullanılabilir. Kapalı veya müşteriye dönüşmüş talepler gecikmiş takip listesine girmez.
 - Firma ayrıntısındaki satın alma tablosu sipariş oluşturma tarihi, sağlayıcı tarafından kaydedilmiş ödeme tarihi, tutar, para birimi, durum ve ödeme referansını gösterir. Ödeme sayfasının gizli URL/token alanları yönetim cevabına dahil edilmez. Bu görünüm kayıt/izleme sağlar; ödeme alma, iade veya mutabakat işlemi yapmaz.
@@ -54,6 +54,7 @@ Platform yönetim ekranı `src/EnvanterTR.Web/wwwroot/platform-admin.html` dosya
 28. Formlar antiforgery token ile gönderilir; ekrandaki müşteri metinleri HTML olarak çalıştırılmaz.
 29. Plan yönetimi ekranda çevrimdışı lisans/paket sınırlarının henüz zorunlu tutulmadığı konusunda uyarır.
 30. Ekran dar pencerelerde tek sütun/taşabilir menü düzenine uyarlanır.
+31. Firma ayrıntısı, sınırsız Cloud üyelerini 50'şer satırlı ve kararlı sıralı sayfalarda gösterir; hesap/üyelik tarihleri, e-posta doğrulaması, MFA durumu ve varsa bağlı çalışan bilgisi sunulur.
 
 ## Henüz yapılmayanlar
 

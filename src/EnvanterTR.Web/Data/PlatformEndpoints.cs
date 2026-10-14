@@ -1067,8 +1067,11 @@ public static class PlatformEndpoints
             return Results.Ok(new { items = rows, page, pageSize, total });
         });
 
-        admin.MapGet("/companies/{companyId:guid}", async (Guid companyId, AppDbContext db, CancellationToken cancellationToken) =>
+        admin.MapGet("/companies/{companyId:guid}", async (Guid companyId, AppDbContext db, CancellationToken cancellationToken,
+            [FromQuery] int membersPage = 1, [FromQuery] int membersPageSize = 50) =>
         {
+            membersPage = Math.Max(membersPage, 1);
+            membersPageSize = Math.Clamp(membersPageSize == 0 ? 50 : membersPageSize, 1, 100);
             var company = await db.Companies.AsNoTracking().Where(x => x.Id == companyId)
                 .Select(x => new { x.Id, x.Name, x.Slug, x.ContactEmail, x.IsActive, x.CreatedAt,
                     x.BrandLogoPath, x.BrandPrimaryColor, lifecycleStage = x.CustomerLifecycleStage,
@@ -1078,12 +1081,23 @@ public static class PlatformEndpoints
                 .SingleOrDefaultAsync(cancellationToken);
             if (company is null) return Results.NotFound();
             var memberCount = await db.CompanyMemberships.CountAsync(x => x.CompanyId == companyId, cancellationToken);
+            var membersTotalPages = Math.Max(1, (int)Math.Ceiling(memberCount / (double)membersPageSize));
+            membersPage = Math.Min(membersPage, membersTotalPages);
+            var ownerMemberExists = await db.CompanyMemberships.AsNoTracking()
+                .AnyAsync(x => x.CompanyId == companyId && x.RoleKey == "owner", cancellationToken);
             var members = await (from membership in db.CompanyMemberships.AsNoTracking()
                                  join account in db.Users.AsNoTracking() on membership.UserId equals account.Id
                                  where membership.CompanyId == companyId
-                                 orderby membership.RoleKey, account.DisplayName
-                                 select new { account.Id, account.DisplayName, account.Email, membership.RoleKey, membership.CreatedAt })
-                .Take(100).ToListAsync(cancellationToken);
+                                 orderby membership.RoleKey, account.DisplayName, account.Id
+                                 select new
+                                 {
+                                     account.Id, account.DisplayName, account.Email, account.EmailConfirmed,
+                                     account.AccountCreatedAt, account.TwoFactorEnabled,
+                                     membership.RoleKey, membership.CreatedAt, membership.EmployeeId,
+                                     employeeName = db.Employees.Where(employee => employee.CompanyId == companyId && employee.Id == membership.EmployeeId)
+                                         .Select(employee => employee.DisplayName).FirstOrDefault()
+                                 })
+                .Skip((membersPage - 1) * membersPageSize).Take(membersPageSize).ToListAsync(cancellationToken);
             var subscriptions = await (from subscription in db.TenantSubscriptions.AsNoTracking()
                                        join plan in db.SubscriptionPlans.AsNoTracking() on subscription.PlanId equals plan.Id
                                        where subscription.CompanyId == companyId
@@ -1108,7 +1122,8 @@ public static class PlatformEndpoints
                 orderby audit.OccurredAt descending
                 select new { audit.OccurredAt, audit.Details, actorName = account.DisplayName })
                 .Take(20).ToListAsync(cancellationToken);
-            return Results.Ok(new { company, memberCount, members, membersTruncated = memberCount > members.Count,
+            return Results.Ok(new { company, memberCount, members, ownerMemberExists, membersPage, membersPageSize,
+                membersTotalPages, membersTruncated = membersPage < membersTotalPages,
                 subscriptions, checkoutOrders, lifecycleHistory });
         });
 

@@ -2732,6 +2732,72 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.True(payload.RootElement.GetProperty("companies").GetProperty("total").GetInt32() >= 2);
     }
 
+    [Fact]
+    public async Task Platform_company_member_details_are_pageable_beyond_one_hundred_and_include_account_state()
+    {
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            if (!await db.PlatformAdministrators.AnyAsync(x => x.UserId == _userId))
+                db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+
+            var runToken = Guid.NewGuid().ToString("N")[..8];
+            var accounts = Enumerable.Range(1, 120).Select(index => new EnvanterUser
+            {
+                UserName = $"platform-member-{runToken}-{index:D3}@acceptance.invalid",
+                NormalizedUserName = $"PLATFORM-MEMBER-{runToken}-{index:D3}@ACCEPTANCE.INVALID",
+                Email = $"platform-member-{runToken}-{index:D3}@acceptance.invalid",
+                NormalizedEmail = $"PLATFORM-MEMBER-{runToken}-{index:D3}@ACCEPTANCE.INVALID",
+                DisplayName = $"Pagination Member {index:D3}",
+                EmailConfirmed = index % 2 == 0,
+                TwoFactorEnabled = index % 3 == 0,
+                AccountCreatedAt = DateTimeOffset.UtcNow.AddDays(-index)
+            }).ToArray();
+            db.Users.AddRange(accounts);
+            db.CompanyMemberships.AddRange(accounts.Select((account, index) => new CompanyMembership
+            {
+                CompanyId = _companyId,
+                UserId = account.Id,
+                RoleKey = "viewer",
+                CreatedAt = DateTimeOffset.UtcNow.AddHours(-index)
+            }));
+            await db.SaveChangesAsync();
+        }
+
+        using var firstPage = await SendAsPlatformAdminAsync($"/api/platform/companies/{_companyId}?membersPage=1&membersPageSize=50");
+        Assert.Equal(HttpStatusCode.OK, firstPage.StatusCode);
+        using var firstPayload = JsonDocument.Parse(await firstPage.Content.ReadAsStringAsync());
+        var first = firstPayload.RootElement;
+        Assert.True(first.GetProperty("memberCount").GetInt32() >= 120);
+        Assert.Equal(1, first.GetProperty("membersPage").GetInt32());
+        Assert.Equal(50, first.GetProperty("membersPageSize").GetInt32());
+        Assert.True(first.GetProperty("membersTotalPages").GetInt32() >= 3);
+        Assert.True(first.GetProperty("membersTruncated").GetBoolean());
+        Assert.Equal(50, first.GetProperty("members").GetArrayLength());
+        var firstIds = first.GetProperty("members").EnumerateArray()
+            .Select(member => member.GetProperty("id").GetGuid()).ToHashSet();
+        var sample = first.GetProperty("members")[0];
+        Assert.True(sample.TryGetProperty("accountCreatedAt", out _));
+        Assert.True(sample.TryGetProperty("emailConfirmed", out _));
+        Assert.True(sample.TryGetProperty("twoFactorEnabled", out _));
+        Assert.True(sample.TryGetProperty("employeeId", out _));
+
+        using var secondPage = await SendAsPlatformAdminAsync($"/api/platform/companies/{_companyId}?membersPage=2&membersPageSize=50");
+        Assert.Equal(HttpStatusCode.OK, secondPage.StatusCode);
+        using var secondPayload = JsonDocument.Parse(await secondPage.Content.ReadAsStringAsync());
+        var second = secondPayload.RootElement;
+        Assert.Equal(2, second.GetProperty("membersPage").GetInt32());
+        Assert.Equal(50, second.GetProperty("members").GetArrayLength());
+        Assert.DoesNotContain(second.GetProperty("members").EnumerateArray()
+            .Select(member => member.GetProperty("id").GetGuid()), firstIds.Contains);
+
+        using var clampedPage = await SendAsPlatformAdminAsync($"/api/platform/companies/{_companyId}?membersPage=100000&membersPageSize=100");
+        Assert.Equal(HttpStatusCode.OK, clampedPage.StatusCode);
+        using var clampedPayload = JsonDocument.Parse(await clampedPage.Content.ReadAsStringAsync());
+        Assert.Equal(clampedPayload.RootElement.GetProperty("membersTotalPages").GetInt32(),
+            clampedPayload.RootElement.GetProperty("membersPage").GetInt32());
+    }
+
     private static string DescribeEndpoint(RouteEndpoint endpoint)
     {
         var methods = endpoint.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods;
