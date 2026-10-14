@@ -9,7 +9,7 @@ const assetId = '33333333-3333-4333-8333-333333333333';
 const asset = {
   id: assetId, companyId, companyName: 'Synthetic Asset Company', assetTag: 'QA-ASSET-001',
   name: 'Synthetic audit target', status: 'Available', serialNumber: 'QA-SERIAL-001',
-  location: 'Head Office', updatedAt: '2026-10-14T12:00:00Z', nextAuditOn: null,
+  categoryId: '55555555-5555-4555-8555-555555555555', location: 'Head Office', updatedAt: '2026-10-14T12:00:00Z', nextAuditOn: null,
   createdAt: '2026-10-01T12:00:00Z', purchaseCost: null, currency: 'TRY'
 };
 const appHtml = await readFile('/checkout-site/company-app.html');
@@ -70,6 +70,9 @@ const server = createServer(async (request, response) => {
     };
     else if (url.pathname === `/api/assets/${assetId}/maintenances`) result = { items: [], total: 0 };
     else if (url.pathname === '/api/assets/custom-fields') result = [];
+    else if (url.pathname === '/api/lookups/categories') result = [{ id: asset.categoryId, name: 'Synthetic equipment', assetCount: 1 }];
+    else if (url.pathname === '/api/lookups/brands' || url.pathname === '/api/lookups/models') result = [];
+    else if (url.pathname === '/api/locations') result = { items: [] };
     else if (url.pathname.startsWith('/api/assets/audit-schedule')) result = { items: [], total: 0, overdue: 0, dueSoon: 0 };
     else if (url.pathname === '/api/activity') result = { entries: [], total: 0 };
     else if (url.pathname === '/api/calendar') result = { items: [], total: 0 };
@@ -97,6 +100,22 @@ const server = createServer(async (request, response) => {
       actorName: 'Synthetic Owner', attachmentCount: 0
     });
     response.writeHead(204); response.end();
+    return;
+  }
+  if (request.method === 'PATCH' && url.pathname === `/api/assets/${assetId}`) {
+    if (body?.expectedUpdatedAt !== asset.updatedAt) {
+      response.writeHead(409, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ message: 'Asset changed since the form was opened.' })); return;
+    }
+    asset.assetTag = body.assetTag;
+    asset.name = body.name;
+    asset.categoryId = body.categoryId;
+    asset.serialNumber = body.serialNumber;
+    asset.location = body.location;
+    asset.updatedAt = '2026-10-14T13:00:00Z';
+    assetHistory.unshift({ id: '66666666-6666-4666-8666-666666666666', eventType: 'Updated', occurredAt: asset.updatedAt,
+      details: `Varlık bilgileri güncellendi · ${asset.name}`, actorName: 'Synthetic Owner', attachmentCount: 0 });
+    response.writeHead(200, { 'content-type': 'application/json' }); response.end(JSON.stringify({ changed: true }));
     return;
   }
   response.writeHead(405, { 'content-type': 'application/json' });
@@ -132,12 +151,43 @@ try {
   await assetDialog.waitFor({ state: 'visible' });
   assert.equal(await page.locator('#dialogTitle').innerText(), asset.name);
 
+  const editDialog = page.locator('#editAssetDialog');
+  await page.locator('#editAssetButton').click();
+  await editDialog.waitFor({ state: 'visible' });
+  const editForm = page.locator('#editAssetForm');
+  assert.equal(await editForm.locator('[name="assetName"]').inputValue(), 'Synthetic audit target');
+  assert.equal(await editForm.locator('[name="categoryId"]').inputValue(), asset.categoryId);
+  await page.locator('[data-close-edit-asset]').first().click();
+  await editDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, 0, 'Canceling asset edit must not write.');
+
+  const editedName = 'Synthetic asset edit persisted';
+  await page.locator('#editAssetButton').click();
+  await editDialog.waitFor({ state: 'visible' });
+  await editForm.locator('[name="assetName"]').fill(editedName);
+  assert.equal(await editForm.locator('[name="assetName"]').evaluate(input => input.checkValidity()), true);
+  await editForm.locator('button[type="submit"]').click();
+  await editDialog.waitFor({ state: 'hidden' });
+  await page.waitForFunction(name => document.querySelector('#assetDialog')?.open && document.querySelector('#dialogTitle')?.textContent === name, editedName);
+  assert.equal(apiRequests.length, 1, 'Only the explicit asset edit should write before the audit flows.');
+  assert.equal(apiRequests[0].method, 'PATCH');
+  assert.equal(apiRequests[0].path, `/api/assets/${assetId}`);
+  assert.equal(apiRequests[0].body.name, editedName);
+  assert.equal(apiRequests[0].body.expectedUpdatedAt, '2026-10-14T12:00:00Z');
+  assert.equal(apiRequests[0].csrf, 'synthetic-asset-csrf');
+  await page.locator('#assetDialog').locator('#closeDialog').click();
+  await page.locator('#assetRows .asset-name').filter({ hasText: editedName }).waitFor({ state: 'visible' });
+  await page.locator('#assetRows .asset-name').filter({ hasText: editedName }).click();
+  await page.waitForFunction(name => document.querySelector('#assetDialog')?.open && document.querySelector('#dialogTitle')?.textContent === name, editedName);
+  assert.equal(asset.name, editedName, 'Reloaded list and detail must reflect the persisted server result.');
+
   await page.locator('#scheduleAssetAuditButton').click();
   const scheduleDialog = page.locator('#assetAuditScheduleDialog');
   await scheduleDialog.waitFor({ state: 'visible' });
+  const beforeScheduleCancel = apiRequests.length;
   await page.locator('[data-close-audit-schedule]').first().click();
   await scheduleDialog.waitFor({ state: 'hidden' });
-  assert.equal(apiRequests.length, 0, 'Canceling the schedule must not send a write request.');
+  assert.equal(apiRequests.length, beforeScheduleCancel, 'Canceling the schedule must not send a write request.');
 
   await page.locator('#scheduleAssetAuditButton').click();
   const date = new Date(); date.setDate(date.getDate() + 7);
@@ -157,11 +207,11 @@ try {
   }
   await page.waitForFunction(expected => document.querySelector('#detailNextAuditOn')?.textContent !== 'Planlanmadı' && document.querySelector('#assetDialog')?.open, nextAuditOn);
 
-  assert.equal(apiRequests.length, 1, 'Only the explicitly saved schedule should write.');
-  assert.equal(apiRequests[0].method, 'PUT');
-  assert.equal(apiRequests[0].path, `/api/assets/${assetId}/audit-schedule`);
-  assert.deepEqual(apiRequests[0].body, { nextAuditOn });
-  assert.equal(apiRequests[0].csrf, 'synthetic-asset-csrf');
+  assert.equal(apiRequests.length, beforeScheduleCancel + 1, 'Only the explicit asset edit and schedule should write.');
+  assert.equal(apiRequests.at(-1).method, 'PUT');
+  assert.equal(apiRequests.at(-1).path, `/api/assets/${assetId}/audit-schedule`);
+  assert.deepEqual(apiRequests.at(-1).body, { nextAuditOn });
+  assert.equal(apiRequests.at(-1).csrf, 'synthetic-asset-csrf');
   assert.equal(asset.nextAuditOn, nextAuditOn, 'Reopened detail must reflect the persisted server result.');
 
   const beforeAuditCancel = apiRequests.length;
@@ -193,7 +243,7 @@ try {
   assert.equal(assetHistory[0].eventType, 'Audited');
   assert.match(await page.locator('#assetHistory').innerText(), /Synthetic audit saved from Chromium/);
   assert.deepEqual(pageErrors, [], `The asset detail UI must not throw: ${pageErrors.join(' | ')}`);
-  console.log('PASS: asset detail opens from the inventory row; schedule and physical-audit cancellations perform no writes; explicit saves send one tenant-route PUT and POST with CSRF; refreshed details show the scheduled date and audit history with no browser exceptions.');
+  console.log('PASS: asset edit, audit schedule, and physical audit cancel/save flows; one tenant-scoped PATCH/PUT/POST per explicit save with CSRF; refreshed list/detail preserve edited name, schedule, and audit history; no browser exceptions.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

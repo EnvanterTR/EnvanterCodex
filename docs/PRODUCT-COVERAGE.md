@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 14 Ekim 2026 — varlık bilgilerini düzenleme UI kabulü
+
+Sabit Playwright Chromium'da gerçek şirket uygulaması HTML'i sentetik `owner` oturumuyla çalıştırıldı. Varlık ayrıntısındaki düzenleme formu mevcut etiket/kategori değerleriyle açıldı; iptal hiçbir yazma isteği üretmedi. Düzenlenen varlık adı tek `PATCH /api/assets/{id}` ve sentetik CSRF başlığıyla gönderildi; liste ve detay kapatılıp yeniden açıldıktan sonra güncel ad gösterildi. Test sunucusu sentetik ve bellektedir; DB kalıcılığı iddiası değildir. Gerçek API kalıcılığı/tenant/yetki/CSRF/eşzamanlı sürüm kontrolü izole PostgreSQL testi `Asset_single_edit_is_tenant_scoped_version_checked_and_written_to_history` kapsamındadır. Checkout, Ctrl+K ve varlık ayrıntısı Chromium kabulleri birlikte geçti; gerçek tenant/canlı veriye yazılmadı.
+
 ## 14 Ekim 2026 — varlık detayında denetim planı UI kabulü
 
 Gerçek ürün HTML'i sürümü sabit Playwright Chromium'da sentetik `owner` oturumuyla açıldı. Varlıklar menüsünden sentetik satırın ayrıntısı açıldı; denetim planı formunu iptal etmenin hiçbir yazma isteği üretmediği ve tarihi kaydetmenin tek bir doğru tenant rotalı `PUT` + `X-CSRF-TOKEN` gönderdiği doğrulandı. Mock API yanıtından sonra ayrıntı yeniden yüklendi ve tarih gösterildi; JavaScript hatası yoktu. Bu tarayıcı kabulinde sunucu mock'tur ve gerçek DB kalıcılığı iddia etmez. Aynı Cloud DB şemasını kullanan izole PostgreSQL kabul testi `Asset_audit_schedule_can_be_set_or_cleared_only_by_authorized_company_members` CSRF'siz, salt okunur rol, başka tenant, geçmiş/çok ileri tarih reddini; yetkili yazmayı, plan kaldırmayı, son DB değerini ve audit olaylarını doğrular; tam izole paket bu turda **146/146** geçti. `node tools/Verify-AssetDetailActions.mjs` tarayıcı senaryosunun runner'a bağlılığını denetler. Canlı veya gerçek şirket verisi kullanılmadı.
