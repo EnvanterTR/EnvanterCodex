@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { checkProduction, inspectEndpoint } from './Check-CoolifyProduction.mjs';
+import { checkProduction, inspectCommercialReadiness, inspectEndpoint } from './Check-CoolifyProduction.mjs';
 
 function response(status, contentType, body) {
   return { status, ok: status >= 200 && status < 300, headers: { get: name => name === 'content-type' ? contentType : null }, text: async () => body };
@@ -19,6 +19,36 @@ assert.match(report.results[1].diagnosis, /no healthy upstream/i);
 
 const ready = await inspectEndpoint('https://ready.invalid/api/status', async () => response(200, 'application/json', JSON.stringify({ status: 'ready', migrationCount: 91, pendingMigrationCount: 0 })));
 assert.equal(ready.ready, true);
+
+const commercialUnavailable = await inspectCommercialReadiness('https://shop.invalid/path?token=must-not-be-sent', async url => {
+  assert.ok(!url.includes('token='), 'Commercial readiness must never forward query credentials or unrelated query data.');
+  return url.endsWith('/api/plans')
+    ? response(200, 'application/json', '[]')
+    : response(200, 'application/json', JSON.stringify({ available: false, message: 'private provider details are not diagnostic output' }));
+});
+assert.equal(commercialUnavailable[0].publicPlanCount, 0);
+assert.equal(commercialUnavailable[0].ready, false);
+assert.match(commercialUnavailable[0].diagnosis, /No published Cloud plans/);
+assert.equal(commercialUnavailable[1].checkoutAvailable, false);
+assert.equal(commercialUnavailable[1].ready, false);
+assert.match(commercialUnavailable[1].diagnosis, /provider keys.*callback/i);
+assert.doesNotMatch(JSON.stringify(commercialUnavailable), /private provider details/);
+
+const commercialReady = await inspectCommercialReadiness('https://shop.invalid', async url => url.endsWith('/api/plans')
+  ? response(200, 'application/json', JSON.stringify([{ id: 'synthetic-plan' }]))
+  : response(200, 'application/json', JSON.stringify({ available: true, provider: 'synthetic' })));
+assert.equal(commercialReady[0].publicPlanCount, 1);
+assert.equal(commercialReady[0].ready, true);
+assert.equal(commercialReady[1].checkoutAvailable, true);
+assert.equal(commercialReady[1].ready, true);
+
+let commercialInsecureRequestMade = false;
+const commercialInsecure = await inspectCommercialReadiness('http://shop.invalid', async () => {
+  commercialInsecureRequestMade = true;
+  return response(200, 'application/json', '[]');
+});
+assert.equal(commercialInsecureRequestMade, false, 'Commercial readiness must not make plain HTTP requests.');
+assert.ok(commercialInsecure.every(result => !result.ready));
 
 const malformed = await inspectEndpoint('https://malformed.invalid/api/status', async () => response(200, 'application/json', '{invalid'));
 assert.equal(malformed.ready, false);
@@ -48,4 +78,4 @@ assert.equal(insecureRequestMade, false, 'The production readiness checker must 
 assert.equal(insecure.ready, false);
 assert.doesNotMatch(JSON.stringify(insecure), /operator|password|private/i);
 
-console.log('Verified healthy readiness, pending migrations, Coolify wildcard 503, malformed health payloads, credential-safe diagnostics, and HTTPS-only requests.');
+console.log('Verified application and tenant health, migrations, wildcard 503, public plan availability, checkout provider readiness, malformed payloads, credential-safe diagnostics, and HTTPS-only requests.');
