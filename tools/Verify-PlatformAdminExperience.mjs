@@ -48,6 +48,11 @@ const account = await readFile('src/EnvanterTR.Web/Data/AccountEndpoints.cs', 'u
 assert.match(account, /MapPost\("\/api\/session\/platform-reauth"[\s\S]*?CheckPasswordAsync[\s\S]*?VerifyTwoFactorTokenAsync[\s\S]*?PlatformReauthenticated[\s\S]*?RequireRateLimiting\("step-up"\)/);
 assert.match(account, /platform_reauth_at/);
 assert.match(page, /id="platformMfaSetupWrap"/);
+assert.match(page, /id="platformMfaTitle">İlk giriş güvenlik kurulumu/);
+assert.match(page, /Google Authenticator, Microsoft Authenticator/);
+assert.match(page, /Mevcut parolanızı girip kurulumu başlatın/);
+assert.match(page, /Kurulum anahtarını gir/);
+assert.match(page, /Tek kullanımlık kurtarma kodlarını güvenli bir yere kaydedin/);
 assert.match(page, /\/api\/session\/2fa\/setup/);
 assert.match(page, /\/api\/session\/2fa\/enable/);
 assert.match(page, /platformMfaRecoveryCodes/);

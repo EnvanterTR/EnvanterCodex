@@ -111,15 +111,16 @@
   <div id="platformMfaSetupWrap" class="login-wrap login-hidden">
     <section class="login" aria-labelledby="platformMfaTitle">
       <div class="login-brand"><span class="mark">ET</span><span>Envanter<em style="color:#e33b45">TR</em></span></div>
-      <h1 id="platformMfaTitle">Yönetici hesabını güvene al</h1>
-      <p>Platform yönetim ekranını açmadan önce Authenticator tabanlı iki aşamalı doğrulamayı kurun. Bu adım şirket verilerinizi değiştirmez.</p>
-      <div id="platformMfaFeedback" class="notice warning" role="status" aria-live="polite">Authenticator uygulamanız hazır olsun.</div>
+      <h1 id="platformMfaTitle">İlk giriş güvenlik kurulumu</h1>
+      <p>Platform yönetici hesabı, parolaya ek olarak telefonunuzun ürettiği güvenlik koduyla korunur. Bu kurulumu ilk girişte bir kez yaparsınız; şirket envanterinizi veya ayarlarınızı değiştirmez.</p>
+      <div class="notice" aria-label="Güvenlik kurulumu adımları"><strong>Adımlar</strong><ol><li>Telefonunuzda Google Authenticator, Microsoft Authenticator veya uyumlu bir doğrulama uygulaması açın.</li><li>Mevcut parolanızı girip kurulumu başlatın.</li><li>Gösterilen kurulum anahtarını uygulamaya ekleyin ve üretilen güncel 6 haneli kodu doğrulayın.</li><li>Tek kullanımlık kurtarma kodlarını güvenli bir yere kaydedin.</li></ol></div>
+      <div id="platformMfaFeedback" class="notice warning" role="status" aria-live="polite">Başlamak için mevcut platform yönetici parolanız gerekir.</div>
       <form id="platformMfaSetupForm">
         <label class="field">Mevcut parola<input name="currentPassword" type="password" autocomplete="current-password" required></label>
         <button class="btn primary" type="submit" id="platformMfaStart">Kurulumu başlat</button>
       </form>
       <section id="platformMfaVerifyPanel" hidden>
-        <p>Authenticator uygulamasında hesabı ekleyin ve aşağıdaki anahtarı uygulamaya elle girin.</p>
+        <p>Telefonunuzdaki uygulamada <strong>Hesap ekle</strong> ve <strong>Kurulum anahtarını gir</strong> seçeneklerini açın. Aşağıdaki anahtarı elle ekleyin; ardından uygulamanın ürettiği güncel 6 haneli kodu yazın.</p>
         <label class="field">Kurulum anahtarı<input id="platformMfaSecret" readonly spellcheck="false" autocomplete="off"></label>
         <button class="btn small" type="button" id="platformMfaCopySecret">Anahtarı kopyala</button>
         <label class="field" style="margin-top:15px">Authenticator uygulamasındaki güncel 6 haneli kod<input id="platformMfaCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required></label>
