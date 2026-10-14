@@ -26,8 +26,18 @@ const server = createServer(async (request, response) => {
     return;
   }
   if (url.pathname.startsWith('/api/')) {
-    apiRequests.push({ method: request.method, path: url.pathname });
+    const record = { method: request.method, path: url.pathname, csrf: request.headers['x-csrf-token'] };
     if (request.method !== 'GET') {
+      let raw = ''; for await (const chunk of request) raw += chunk;
+      record.body = raw ? JSON.parse(raw) : null;
+    }
+    apiRequests.push(record);
+    if (request.method !== 'GET') {
+      if (request.method === 'PUT' && url.pathname === '/api/appearance/preferences' && record.csrf === 'synthetic-viewer-csrf') {
+        response.writeHead(200, { 'content-type': 'application/json' });
+        response.end(JSON.stringify(record.body));
+        return;
+      }
       response.writeHead(405, { 'content-type': 'application/json' });
       response.end(JSON.stringify({ message: 'Read-only browser acceptance mock.' }));
       return;
@@ -58,6 +68,8 @@ const server = createServer(async (request, response) => {
                   ? { enabled: false }
                   : url.pathname === '/api/session/devices'
                     ? { sessions: [], truncated: false }
+              : url.pathname === '/api/appearance/preferences'
+                ? { theme: 'system', language: 'tr' }
                 : { items: [], total: 0, page: 1, pageSize: 50 };
     response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
     response.end(JSON.stringify(data));
@@ -144,6 +156,25 @@ try {
   assert.ok(apiRequests.some(item => item.path === '/api/session/2fa' && item.method === 'GET'));
   await page.locator('#closeAccountPhoto').click();
   await accountDialog.waitFor({ state: 'hidden' });
+
+  const appearanceDialog = page.locator('#appearanceDialog');
+  await page.locator('#appearanceButton').click();
+  await appearanceDialog.waitFor({ state: 'visible' });
+  const beforeAppearanceCancel = apiRequests.filter(item => item.method !== 'GET').length;
+  await page.locator('#appearanceCancel').click();
+  await appearanceDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.filter(item => item.method !== 'GET').length, beforeAppearanceCancel, 'Canceling appearance settings must not write preferences.');
+  await page.locator('#appearanceButton').click();
+  await appearanceDialog.waitFor({ state: 'visible' });
+  await page.locator('#themePreference').selectOption('dark');
+  await page.locator('#languagePreference').selectOption('en');
+  await page.locator('#appearanceSave').click();
+  await appearanceDialog.waitFor({ state: 'hidden' });
+  await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+  const appearanceWrite = apiRequests.find(item => item.path === '/api/appearance/preferences' && item.method === 'PUT');
+  assert.deepEqual(appearanceWrite?.body, { theme: 'dark', language: 'en' });
+  assert.equal(appearanceWrite?.csrf, 'synthetic-viewer-csrf');
+  assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('envantertr.appearance'))), { theme: 'dark', language: 'en' });
   assert.deepEqual(pageErrors, [], 'The command palette and route navigation must not throw browser errors.');
 
   subscriptionMode = 'readOnly';
@@ -166,9 +197,12 @@ try {
       `The expired-subscription notice must be translated into ${language}.`);
   }
   assert.deepEqual(pageErrors, [], 'The app must not throw browser errors while switching languages and showing subscription access state.');
-  assert.equal(apiRequests.some(item => item.method !== 'GET'), false,
-    'The browser acceptance may not modify company data.');
-  console.log('PASS: synthetic viewer role visibility, Ctrl+K routing, notification load/outside-click dismissal, profile security dialog reads, and five-language expired-subscription notice; zero writes and browser errors.');
+  const writes = apiRequests.filter(item => item.method !== 'GET');
+  assert.equal(writes.length, 1, 'The only permitted write is the explicitly saved personal appearance preference.');
+  assert.equal(writes[0].method, 'PUT');
+  assert.equal(writes[0].path, '/api/appearance/preferences');
+  assert.deepEqual(writes[0].body, { theme: 'dark', language: 'en' });
+  console.log('PASS: synthetic viewer role visibility, Ctrl+K routing, notification dismissal, profile security reads, cancel/save of CSRF-protected appearance preferences, and five-language expired-subscription notice; no unrelated writes or browser errors.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

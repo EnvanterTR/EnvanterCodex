@@ -24,8 +24,16 @@ assert.match(palette, /apiRequests\.some\(item => item\.path === '\/api\/notific
 assert.match(palette, /userAvatar.*click/);
 assert.match(palette, /apiRequests\.some\(item => item\.path === '\/api\/session\/devices' && item\.method === 'GET'\)/);
 assert.match(palette, /apiRequests\.some\(item => item\.path === '\/api\/session\/2fa' && item\.method === 'GET'\)/);
-assert.match(palette, /notification load\/outside-click dismissal, profile security dialog reads/);
-assert.match(palette, /apiRequests\.some\(item => item\.method !== 'GET'\)/);
+assert.match(palette, /notification dismissal, profile security reads, cancel\/save of CSRF-protected appearance preferences/);
+assert.match(palette, /Canceling appearance settings must not write preferences/);
+assert.match(palette, /appearanceDialog\.waitFor\(\{ state: 'visible' \}\)/);
+assert.match(palette, /themePreference'\)\.selectOption\('dark'\)/);
+assert.match(palette, /languagePreference'\)\.selectOption\('en'\)/);
+assert.match(palette, /appearanceWrite\?\.csrf, 'synthetic-viewer-csrf'/);
+assert.match(palette, /The only permitted write is the explicitly saved personal appearance preference/);
+assert.match(palette, /apiRequests\.filter\(item => item\.method !== 'GET'\)/);
+assert.match(palette, /writes\[0\]\.path, '\/api\/appearance\/preferences'/);
+assert.match(palette, /writes\[0\]\.body, \{ theme: 'dark', language: 'en' \}/);
 assert.match(runner, /docker build[\s\S]*?docker run --rm --init/);
 assert.match(script, /paymentAvailable = false/);
 assert.match(script, /Personal and billing data must remain disabled/);
