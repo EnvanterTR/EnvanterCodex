@@ -14,6 +14,7 @@ public sealed class Company
     public string CustomerLifecycleStage { get; set; } = "Unclassified";
     public Guid? PlatformOwnerUserId { get; set; }
     public DateTimeOffset? PlatformNextFollowUpAt { get; set; }
+    public int AssetCount { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 

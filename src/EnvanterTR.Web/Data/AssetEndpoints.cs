@@ -1994,6 +1994,10 @@ public static class AssetEndpoints
             {
                 await db.SaveChangesAsync(cancellationToken);
             }
+            catch (DbUpdateException exception) when (AssetPlanQuota.IsExceeded(exception))
+            {
+                return AssetPlanQuota.ExceededResult();
+            }
             catch (DbUpdateException)
             {
                 return Results.Conflict(new { message = "Kayıt çakıştı. Etiket ve ilişkili kayıtları kontrol edin." });

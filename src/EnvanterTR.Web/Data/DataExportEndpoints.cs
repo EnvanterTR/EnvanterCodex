@@ -511,6 +511,11 @@ public static class DataExportEndpoints
             if (pendingParentAssignments.Count > 0) await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }
+        catch (DbUpdateException exception) when (AssetPlanQuota.IsExceeded(exception))
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return AssetPlanQuota.ExceededResult();
+        }
         catch (DbUpdateException)
         {
             await transaction.RollbackAsync(cancellationToken);
@@ -779,6 +784,10 @@ public static class DataExportEndpoints
                 .CountAsync(asset => asset.CompanyId == companyId && batch.Contains(asset.AssetTag.ToUpper()), cancellationToken);
         var defaultAssetLocation = await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, cancellationToken);
         var defaultLocationApplied = defaultAssetLocation is null ? 0 : validRows.Count(item => string.IsNullOrWhiteSpace(item.row[7]));
+        var maxAssets = await AssetPlanQuota.GetLimitAsync(db, companyId, cancellationToken);
+        var currentAssets = await AssetPlanQuota.GetUsageAsync(db, companyId, cancellationToken);
+        if (maxAssets is int limit && currentAssets + records.Count - 1 > limit)
+            AddError(errors, $"Bu aktarım {records.Count - 1:N0} varlık ekleyecek; mevcut {currentAssets:N0}/{limit:N0} plan sınırı aşılır. Planı yükseltin veya daha az satır seçin.");
         return Results.Ok(new
         {
             isValid = errors.Count == 0,
@@ -1400,6 +1409,10 @@ public static class DataExportEndpoints
                 .ToDictionary(property => property.Name, property => property.Value.GetInt32(), StringComparer.Ordinal);
             return Results.Ok(new { imported = true, counts = importedCounts,
                 message = "Katalog ve envanter kayıtları yeni kimliklerle geri yüklendi. Şirket profili/marka ayarları, kullanıcı hesapları, parolalar ve medya dosyaları JSON aktarımında uygulanmadı." });
+        }
+        catch (DbUpdateException exception) when (AssetPlanQuota.IsExceeded(exception))
+        {
+            return AssetPlanQuota.ExceededResult();
         }
         catch (DbUpdateException)
         {

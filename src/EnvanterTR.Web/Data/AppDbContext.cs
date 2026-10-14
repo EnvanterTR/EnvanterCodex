@@ -85,6 +85,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         base.OnModelCreating(modelBuilder);
         modelBuilder.Entity<Company>().HasKey(x => x.Id);
         modelBuilder.Entity<Company>().Property(x => x.Name).HasMaxLength(200).IsRequired();
+        modelBuilder.Entity<Company>().Property(x => x.AssetCount).HasDefaultValue(0);
+        modelBuilder.Entity<Company>().ToTable("Companies", table => table.HasCheckConstraint("CK_Companies_AssetCount", "\"AssetCount\" >= 0"));
         modelBuilder.Entity<Company>().Property(x => x.CustomerLifecycleStage).HasMaxLength(32).HasDefaultValue("Unclassified").IsRequired();
         modelBuilder.Entity<Company>().HasIndex(x => new { x.CustomerLifecycleStage, x.PlatformNextFollowUpAt });
         modelBuilder.Entity<Company>().HasIndex(x => x.PlatformOwnerUserId);

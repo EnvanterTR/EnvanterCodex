@@ -1753,6 +1753,11 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(3000)
                         .HasColumnType("character varying(3000)");
 
+                    b.Property<int>("AssetCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("BrandLogoPath")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -1808,7 +1813,10 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("CustomerLifecycleStage", "PlatformNextFollowUpAt");
 
-                    b.ToTable("Companies");
+                    b.ToTable("Companies", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Companies_AssetCount", "\"AssetCount\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.CompanyApiToken", b =>

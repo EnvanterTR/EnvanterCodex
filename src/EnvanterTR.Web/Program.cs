@@ -370,6 +370,16 @@ app.Use(async (context, next) =>
         context.Response.StatusCode = StatusCodes.Status409Conflict;
         await context.Response.WriteAsJsonAsync(new { message = "Kayıt eşzamanlı olarak değiştirildi; güncel durumu yenileyip yeniden deneyin." });
     }
+    catch (Exception exception) when (AssetPlanQuota.IsExceeded(exception) && !context.Response.HasStarted)
+    {
+        context.Response.Clear();
+        context.Response.StatusCode = StatusCodes.Status402PaymentRequired;
+        await context.Response.WriteAsJsonAsync(new
+        {
+            code = AssetPlanQuota.ErrorCode,
+            message = "Bu işlem planınızdaki varlık sınırını aşar. Planınızı yükseltin veya mevcut varlık kayıtlarını arşivleyin."
+        });
+    }
 });
 app.UseAuthentication();
 app.Use(async (context, next) =>

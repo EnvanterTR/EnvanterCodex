@@ -137,6 +137,160 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Asset_plan_quota_covers_manual_import_and_purchase_receipt_with_atomic_upgrade_behavior()
+    {
+        var plan = new SubscriptionPlan
+        {
+            Code = $"quota-{_companyId:N}"[..22], Name = "Quota acceptance", DeploymentKind = "cloud",
+            MaxAssets = 2, IsActive = true, IsPublic = true
+        };
+        var now = DateTimeOffset.UtcNow;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SubscriptionPlans.Add(plan);
+            db.TenantSubscriptions.Add(new TenantSubscription
+            {
+                CompanyId = _companyId, PlanId = plan.Id, Status = "Active",
+                StartsAt = now.AddDays(-1), EndsAt = now.AddDays(30)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        Guid categoryId;
+        string category;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            categoryId = await db.Assets.Where(asset => asset.Id == _ownAssetId).Select(asset => asset.CategoryId).SingleAsync();
+            category = await db.AssetCategories.Where(item => item.Id == categoryId).Select(item => item.Name).SingleAsync();
+        }
+        var directRequest = System.Net.Http.Json.JsonContent.Create(new
+        {
+            assetTag = $"QUOTA-{_userId:N}"[..20].ToUpperInvariant(), name = "Quota direct create",
+            categoryId, currency = "TRY"
+        });
+        using (var created = await SendAsRoleAsync(HttpMethod.Post, "/api/assets", "admin", directRequest, requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+
+        using (var listAtQuota = await SendAsAdminAsync("/api/assets?page=1&pageSize=10"))
+            Assert.Equal(HttpStatusCode.OK, listAtQuota.StatusCode);
+
+        using (var deniedManual = await SendAsRoleAsync(HttpMethod.Post, "/api/assets", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       assetTag = $"OVER-{_userId:N}"[..20].ToUpperInvariant(), name = "Must not exceed quota",
+                       categoryId, currency = "TRY"
+                   }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.PaymentRequired, deniedManual.StatusCode);
+            using var payload = JsonDocument.Parse(await deniedManual.Content.ReadAsStringAsync());
+            Assert.Equal("asset_quota_exceeded", payload.RootElement.GetProperty("code").GetString());
+        }
+
+        var importTag = $"QUOTA-CSV-{_userId:N}"[..24].ToUpperInvariant();
+        var csv = string.Join("\r\n", [
+            "Etiket;Ad;Durum;Kategori;Marka;Model;Seri No;Konum;Personel No;Çalışan;Alış Tarihi;Garanti Bitiş Tarihi;Alış Bedeli;Para Birimi;Üst Varlık Etiketi",
+            string.Join(';', [importTag, "Quota CSV asset", AssetStatuses.Available, category, "", "", "", "", "", "", "", "", "", "TRY", ""])
+        ]);
+        using (var preview = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import/preview.csv", "admin",
+                   new StringContent(csv, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, preview.StatusCode);
+            using var payload = JsonDocument.Parse(await preview.Content.ReadAsStringAsync());
+            Assert.False(payload.RootElement.GetProperty("isValid").GetBoolean());
+            Assert.Contains(payload.RootElement.GetProperty("errors").EnumerateArray(), error =>
+                error.GetString()!.Contains("plan sınırı", StringComparison.OrdinalIgnoreCase));
+        }
+        using (var deniedImport = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import.csv", "admin",
+                   new StringContent(csv, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.PaymentRequired, deniedImport.StatusCode);
+            using var payload = JsonDocument.Parse(await deniedImport.Content.ReadAsStringAsync());
+            Assert.Equal("asset_quota_exceeded", payload.RootElement.GetProperty("code").GetString());
+        }
+
+        Guid orderId;
+        Guid orderLineId;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var order = new AssetPurchaseOrder
+            {
+                CompanyId = _companyId, OrderNumber = $"Q-{_userId:N}"[..18], Supplier = "Quota acceptance supplier",
+                OrderDate = DateOnly.FromDateTime(DateTime.UtcNow), Currency = "TRY", CreatedByUserId = _userId
+            };
+            var line = new AssetPurchaseOrderLine
+            {
+                CompanyId = _companyId, PurchaseOrderId = order.Id, Name = "Quota receipt asset",
+                CategoryId = categoryId, Quantity = 1, UnitCost = 10m
+            };
+            db.AssetPurchaseOrders.Add(order);
+            db.AssetPurchaseOrderLines.Add(line);
+            await db.SaveChangesAsync();
+            orderId = order.Id;
+            orderLineId = line.Id;
+        }
+        using (var deniedReceipt = await SendAsRoleAsync(HttpMethod.Post, $"/api/asset-orders/{orderId}/receive", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       receivedOn = DateOnly.FromDateTime(DateTime.UtcNow), notes = "Quota test",
+                       items = new[] { new { lineId = orderLineId, quantity = 1 } }
+                   }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.PaymentRequired, deniedReceipt.StatusCode);
+            using var payload = JsonDocument.Parse(await deniedReceipt.Content.ReadAsStringAsync());
+            Assert.Equal("asset_quota_exceeded", payload.RootElement.GetProperty("code").GetString());
+        }
+
+        await using (var verifyScope = _factory.Services.CreateAsyncScope())
+        {
+            var db = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.Equal(2, await db.Assets.CountAsync(asset => asset.CompanyId == _companyId));
+            Assert.False(await db.Assets.AnyAsync(asset => asset.CompanyId == _companyId && asset.AssetTag == importTag));
+            var savedOrder = await db.AssetPurchaseOrders.SingleAsync(order => order.Id == orderId);
+            Assert.Equal("Ordered", savedOrder.Status);
+            Assert.Equal(0, await db.AssetPurchaseOrderLines.Where(line => line.Id == orderLineId).Select(line => line.QuantityReceived).SingleAsync());
+            var savedPlan = await db.SubscriptionPlans.SingleAsync(item => item.Id == plan.Id);
+            savedPlan.MaxAssets = 3;
+            await db.SaveChangesAsync();
+        }
+
+        using (var upgradedImport = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import.csv", "admin",
+                   new StringContent(csv, Encoding.UTF8, "text/csv"), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, upgradedImport.StatusCode);
+
+        await using (var verifyScope = _factory.Services.CreateAsyncScope())
+        {
+            var db = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.Equal(3, await db.Assets.CountAsync(asset => asset.CompanyId == _companyId));
+            var savedPlan = await db.SubscriptionPlans.SingleAsync(item => item.Id == plan.Id);
+            savedPlan.MaxAssets = null;
+            await db.SaveChangesAsync();
+        }
+
+        using (var unlimitedReceipt = await SendAsRoleAsync(HttpMethod.Post, $"/api/asset-orders/{orderId}/receive", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       receivedOn = DateOnly.FromDateTime(DateTime.UtcNow), notes = "Quota upgraded",
+                       items = new[] { new { lineId = orderLineId, quantity = 1 } }
+                   }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, unlimitedReceipt.StatusCode);
+
+        await using var finalScope = _factory.Services.CreateAsyncScope();
+        var finalDb = finalScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(4, await finalDb.Assets.CountAsync(asset => asset.CompanyId == _companyId));
+        Assert.Contains(await finalDb.AuditEntries.AsNoTracking().Where(entry => entry.CompanyId == _companyId)
+            .Select(entry => entry.Action).ToListAsync(), action => action == "asset-order.receipt");
+    }
+
+    [Fact]
     public async Task Public_checkout_requires_csrf_and_fails_closed_without_provider_configuration()
     {
         var request = new InitializeCompanyCheckoutRequest(Guid.NewGuid(), "Synthetic Checkout Ltd", "synthetic-checkout",
