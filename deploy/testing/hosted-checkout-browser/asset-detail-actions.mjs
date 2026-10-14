@@ -6,6 +6,7 @@ import { chromium } from 'playwright';
 const companyId = '11111111-1111-4111-8111-111111111111';
 const userId = '22222222-2222-4222-8222-222222222222';
 const assetId = '33333333-3333-4333-8333-333333333333';
+const employeeId = '99999999-9999-4999-8999-999999999999';
 const asset = {
   id: assetId, companyId, companyName: 'Synthetic Asset Company', assetTag: 'QA-ASSET-001',
   name: 'Synthetic audit target', status: 'Available', serialNumber: 'QA-SERIAL-001',
@@ -66,12 +67,16 @@ const server = createServer(async (request, response) => {
     };
     else if (url.pathname === '/api/assets') result = { items: [asset], total: 1, page: 1, pageSize: 50 };
     else if (url.pathname === `/api/assets/${assetId}`) result = {
-      asset: { ...asset }, references: { model: null, modelNumber: null, employeeNumber: null, defaultLocation: 'Head Office' },
+      asset: { ...asset }, references: { model: null, modelNumber: null, employee: asset.assignedEmployeeName || null,
+        employeeNumber: asset.assignedEmployeeId ? 'QA-001' : null, defaultLocation: 'Head Office' },
       history: [...assetHistory], attachments: [], accessories: [], components: [], softwareLicenses: [], relatedAssets: [],
       valuation: {}, purchaseOrder: null
     };
     else if (url.pathname === `/api/assets/${assetId}/maintenances`) result = maintenanceRows;
     else if (url.pathname === '/api/assets/custom-fields') result = [];
+    else if (url.pathname === '/api/employees' || url.pathname.startsWith('/api/employees?')) result = {
+      items: [{ id: employeeId, displayName: 'Synthetic QA Employee', employeeNumber: 'QA-001' }], total: 1, page: 1, pageSize: 200
+    };
     else if (url.pathname === '/api/lookups/categories') result = [{ id: asset.categoryId, name: 'Synthetic equipment', assetCount: 1 }];
     else if (url.pathname === '/api/lookups/brands' || url.pathname === '/api/lookups/models') result = [];
     else if (url.pathname === '/api/locations') result = { items: [] };
@@ -146,6 +151,17 @@ const server = createServer(async (request, response) => {
     assetHistory.unshift({ id: '88888888-8888-4888-8888-888888888888', eventType: 'Transferred', occurredAt: '2026-10-14T15:00:00Z',
       details: `Konum transferi: Head Office → ${asset.location}${body.notes ? ` · ${body.notes}` : ''}`, actorName: 'Synthetic Owner', attachmentCount: 0 });
     response.writeHead(204); response.end(); return;
+  }
+  if (request.method === 'POST' && url.pathname === `/api/assets/${assetId}/assign`) {
+    asset.assignedEmployeeId = body.employeeId;
+    asset.assignedEmployeeName = body.employeeId === employeeId ? 'Synthetic QA Employee' : 'Unknown synthetic employee';
+    asset.expectedReturnOn = body.expectedReturnOn;
+    asset.status = 'Deployed';
+    assetHistory.unshift({ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', eventType: 'Assigned', occurredAt: '2026-10-14T16:00:00Z',
+      details: `Varlık ${asset.assignedEmployeeName} çalışanına zimmetlendi${body.note ? ` · ${body.note}` : ''}`, actorName: 'Synthetic Owner', attachmentCount: 0 });
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ id: assetId, assetTag: asset.assetTag, status: asset.status, assignedEmployeeId: employeeId,
+      expectedReturnOn: asset.expectedReturnOn, updatedAt: '2026-10-14T16:00:00Z' })); return;
   }
   response.writeHead(405, { 'content-type': 'application/json' });
   response.end(JSON.stringify({ message: 'Unexpected write in asset-detail browser acceptance.' }));
@@ -356,8 +372,39 @@ try {
   assert.equal(transferWrite.csrf, 'synthetic-asset-csrf');
   await page.locator('#assetTabHistoryButton').click();
   assert.match(await page.locator('#assetHistory').innerText(), /Synthetic QA Annex/);
+
+  const beforeAssignCancel = apiRequests.length;
+  await page.locator('#assignAssetButton').click();
+  const assignDialog = page.locator('#assignDialog');
+  await assignDialog.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#assignForm [name="employeeId"] option').count(), 2, 'Assignment dialog must load the company active-employee choice.');
+  await page.locator('[data-close-assign]').first().click();
+  await assignDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, beforeAssignCancel, 'Canceling assignment must not write.');
+  await page.locator('#assignAssetButton').click();
+  await assignDialog.waitFor({ state: 'visible' });
+  const expectedReturnOn = await page.evaluate(() => {
+    const date = new Date(); date.setDate(date.getDate() + 30); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  });
+  await page.locator('#assignForm [name="employeeId"]').selectOption(employeeId);
+  await page.locator('#assignForm [name="expectedReturnOn"]').fill(expectedReturnOn);
+  await page.locator('#assignForm [name="note"]').fill('Synthetic assignment note');
+  await page.locator('#assignForm button[type="submit"]').click();
+  await assignDialog.waitFor({ state: 'hidden' });
+  await page.locator('#assetRows .asset-name').filter({ hasText: editedName }).waitFor({ state: 'visible' });
+  const assignmentWrite = apiRequests.at(-1);
+  assert.equal(assignmentWrite.method, 'POST');
+  assert.equal(assignmentWrite.path, `/api/assets/${assetId}/assign`);
+  assert.deepEqual(assignmentWrite.body, { employeeId, note: 'Synthetic assignment note', expectedReturnOn });
+  assert.equal(assignmentWrite.csrf, 'synthetic-asset-csrf');
+  assert.match(await page.locator('#assetRows').innerText(), /Synthetic QA Employee/);
+  await page.locator('#assetRows .asset-name').filter({ hasText: editedName }).click();
+  await page.waitForFunction(() => document.querySelector('#assetDialog')?.open && document.querySelector('#detailEmployee')?.textContent.includes('Synthetic QA Employee'));
+  assert.equal(asset.status, 'Deployed');
+  await page.locator('#assetTabHistoryButton').click();
+  assert.match(await page.locator('#assetHistory').innerText(), /Synthetic assignment note/);
   assert.deepEqual(pageErrors, [], `The asset detail UI must not throw: ${pageErrors.join(' | ')}`);
-  console.log('PASS: asset edit, audit schedule, physical audit, maintenance schedule/start/complete, and location transfer flows; canceled forms send no writes; explicit tenant-scoped writes include CSRF; refreshed list/detail/history preserve outcomes; no browser exceptions.');
+  console.log('PASS: asset edit, audit schedule, physical audit, maintenance schedule/start/complete, location transfer, and assignment flows; canceled forms send no writes; explicit tenant-scoped writes include CSRF; refreshed list/detail/history preserve outcomes; no browser exceptions.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

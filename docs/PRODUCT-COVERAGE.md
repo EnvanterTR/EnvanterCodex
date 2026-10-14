@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 14 Ekim 2026 — varlık zimmet UI kabulü
+
+Varlık ayrıntısında zimmet formu gerçek Chromium'da sentetik owner oturumu ve sentetik aktif çalışanla açıldı. İptal yazma üretmedi. Kaydetme seçilen çalışanın kimliği, isteğe bağlı beklenen iade tarihi ve teslim notuyla tek `POST /api/assets/{id}/assign` + CSRF başlığı gönderdi. Liste satırı atanan çalışanı gösterdi; ayrıntı yeniden açılınca çalışan ve zimmet durumu ile geçmiş notu korundu. UI kabul sunucusu mock/bellek içindedir. Yetki/tenant, beklenen iade tarihi, iade temizliği ve geçmiş kalıcılığı `Asset_assignment_accepts_a_valid_expected_return_and_return_clears_it_with_history` izole PostgreSQL kabul testindedir. Gerçek şirket kaydı/canlı ortam kullanılmadı.
+
 ## 14 Ekim 2026 — varlık konum transferi UI kabulü
 
 Gerçek ürün HTML'inde sentetik owner oturumuyla varlık ayrıntısındaki konum transferi formu Chromium'da doğrulandı. Formu iptal etmek yazma üretmedi; form kaynak konumu gösterdi. Hedef konum ve not tek `POST /api/assets/{id}/transfer` + CSRF başlığıyla kaydedildi; yeniden yüklenen detayda konum ve hareket geçmişi güncellendi. UI sunucusu mock/bellek içindedir. API tenant kapsamı ve transfer geçmişi kalıcılığı `Asset_transfers_are_tenant_scoped_and_appear_in_the_transfer_history_filter` izole PostgreSQL testindedir. Canlı/gerçek şirket kaydı kullanılmadı.
