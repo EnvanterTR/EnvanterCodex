@@ -2733,6 +2733,75 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Platform_company_suspend_and_reactivate_are_idempotent_and_audited_once_per_change()
+    {
+        int previousStatusEvents;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            if (!await db.PlatformAdministrators.AnyAsync(x => x.UserId == _userId))
+                db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            var company = await db.Companies.SingleAsync(x => x.Id == _companyId);
+            Assert.True(company.IsActive);
+            previousStatusEvents = await db.PlatformAuditEntries.CountAsync(x => x.CompanyId == _companyId &&
+                x.TargetId == _companyId && (x.Action == "CompanySuspended" || x.Action == "CompanyReactivated"));
+            await db.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsPlatformAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using (var missingReason = await SendAsPlatformAdminRequestAsync(HttpMethod.Patch,
+                   $"/api/platform/companies/{_companyId}/active",
+                   JsonContent.Create(new { isActive = false, note = "  " }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, missingReason.StatusCode);
+
+        using (var suspended = await SendAsPlatformAdminRequestAsync(HttpMethod.Patch,
+                   $"/api/platform/companies/{_companyId}/active",
+                   JsonContent.Create(new { isActive = false, note = "Synthetic acceptance suspension reason" }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, suspended.StatusCode);
+            using var payload = JsonDocument.Parse(await suspended.Content.ReadAsStringAsync());
+            Assert.False(payload.RootElement.GetProperty("isActive").GetBoolean());
+            Assert.False(payload.RootElement.TryGetProperty("unchanged", out _));
+        }
+
+        using (var repeated = await SendAsPlatformAdminRequestAsync(HttpMethod.Patch,
+                   $"/api/platform/companies/{_companyId}/active",
+                   JsonContent.Create(new { isActive = false, note = "Duplicate request must not add history" }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, repeated.StatusCode);
+            using var payload = JsonDocument.Parse(await repeated.Content.ReadAsStringAsync());
+            Assert.True(payload.RootElement.GetProperty("unchanged").GetBoolean());
+        }
+
+        using (var reactivated = await SendAsPlatformAdminRequestAsync(HttpMethod.Patch,
+                   $"/api/platform/companies/{_companyId}/active",
+                   JsonContent.Create(new { isActive = true, note = "Synthetic acceptance reactivation reason" }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, reactivated.StatusCode);
+            using var payload = JsonDocument.Parse(await reactivated.Content.ReadAsStringAsync());
+            Assert.True(payload.RootElement.GetProperty("isActive").GetBoolean());
+        }
+
+        await using (var verifyScope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.True(await db.Companies.Where(x => x.Id == _companyId).Select(x => x.IsActive).SingleAsync());
+            var statusEvents = await db.PlatformAuditEntries.AsNoTracking().Where(x => x.CompanyId == _companyId &&
+                x.TargetId == _companyId && (x.Action == "CompanySuspended" || x.Action == "CompanyReactivated")).ToListAsync();
+            Assert.Equal(previousStatusEvents + 2, statusEvents.Count);
+            Assert.Contains(statusEvents, x => x.Action == "CompanySuspended" && x.Details == "Synthetic acceptance suspension reason");
+            Assert.Contains(statusEvents, x => x.Action == "CompanyReactivated" && x.Details == "Synthetic acceptance reactivation reason");
+        }
+    }
+
+    [Fact]
     public async Task Platform_company_member_details_are_pageable_beyond_one_hundred_and_include_account_state()
     {
         await using (var scope = _factory!.Services.CreateAsyncScope())

@@ -1294,8 +1294,11 @@ public static class PlatformEndpoints
             if (request.Note is { Length: > 1000 }) return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Açıklama 1000 karakteri aşamaz."] });
             var company = await db.Companies.SingleOrDefaultAsync(x => x.Id == companyId, cancellationToken);
             if (company is null) return Results.NotFound();
+            if (company.IsActive == request.IsActive) return Results.Ok(new { company.Id, company.IsActive, unchanged = true });
+            if (string.IsNullOrWhiteSpace(request.Note) || request.Note.Trim().Length < 8)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Durum değişikliği için en az 8 karakterlik gerekçe gereklidir."] });
             company.IsActive = request.IsActive;
-            AddAudit(db, user, request.IsActive ? "CompanyReactivated" : "CompanySuspended", "Company", company.Id, company.Id, request.Note);
+            AddAudit(db, user, request.IsActive ? "CompanyReactivated" : "CompanySuspended", "Company", company.Id, company.Id, request.Note.Trim());
             await db.SaveChangesAsync(cancellationToken);
             return Results.Ok(new { company.Id, company.IsActive });
         });

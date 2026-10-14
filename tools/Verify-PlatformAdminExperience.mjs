@@ -84,5 +84,10 @@ assert.match(subscriptions, /Plan \/ tarih düzenle/);
 assert.match(subscriptions, /method: 'PUT'/);
 assert.match(subscriptions, /Zorunlu: ücretsiz uzatma \/ plan değişikliği gerekçesi/);
 assert.match(demos, /api\/platform\/demo-requests/);
+assert.match(page, /action==='toggle'[\s\S]*?openAction\(next\?'Firma erişimini yeniden aç':'Firma askıya al',id,'active'/);
+assert.doesNotMatch(page, /if\(!confirm\(next\?'Firma erişimi yeniden açılsın mı\?':'Firma askıya alınsın mı\?'\)\)/);
+assert.match(page, /if\(type==='active'\)[\s\S]*?name="note" minlength="8" maxlength="1000" rows="3" required/);
+assert.match(page, /if\(a\.type==='active'\)await api\(`\/api\/platform\/companies\/\$\{a\.id\}\/active`/);
+assert.match(api, /company\.IsActive == request\.IsActive[\s\S]*?unchanged = true[\s\S]*?request\.Note\.Trim\(\)\.Length < 8/);
 
-console.log('Platform admin premium skin, pageable member/account details, demo/purchase/subscription workflows, responsive/accessibility affordances, and two-factor sign-in verified.');
+console.log('Platform admin premium skin, pageable member/account details, reasoned idempotent company status workflow, demo/purchase/subscription workflows, responsive/accessibility affordances, and two-factor sign-in verified.');

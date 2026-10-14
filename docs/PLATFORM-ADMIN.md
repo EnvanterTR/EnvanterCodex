@@ -12,7 +12,7 @@ Platform yönetim ekranı `src/EnvanterTR.Web/wwwroot/platform-admin.html` dosya
 - `GET /api/platform/companies/renewals?days=30&page=1&pageSize=50`: firma adından bağımsız, bitiş tarihine göre sıralanmış yaklaşan abonelikler.
 - `GET /api/platform/demo-requests?followUp=overdue`: takip zamanı geçmiş ve hâlâ açık olan demo taleplerini listeler; `q`, `status` ve sayfalama filtreleriyle birlikte kullanılabilir. Kapalı veya müşteriye dönüşmüş talepler gecikmiş takip listesine girmez.
 - Firma ayrıntısındaki satın alma tablosu sipariş oluşturma tarihi, sağlayıcı tarafından kaydedilmiş ödeme tarihi, tutar, para birimi, durum ve ödeme referansını gösterir. Ödeme sayfasının gizli URL/token alanları yönetim cevabına dahil edilmez. Bu görünüm kayıt/izleme sağlar; ödeme alma, iade veya mutabakat işlemi yapmaz.
-- `PATCH /api/platform/companies/{id}/active`: firmayı askıya alır veya tekrar etkinleştirir. Askıdaki firma oturum açamaz; tenant API'leri de firmayı her istekte kontrol eder.
+- `PATCH /api/platform/companies/{id}/active`: firmayı askıya alır veya tekrar etkinleştirir. Gerçek durum değişikliği en az 8 karakterlik gerekçe ister ve bunu denetim kaydına yazar; tekrarlanan aynı durum isteği değişiklik veya ek denetim satırı üretmez. Askıdaki firma oturum açamaz; tenant API'leri de firmayı her istekte kontrol eder.
 - `GET/POST/PUT /api/platform/plans`: dağıtım türü, kullanıcı/varlık sınırı, aylık/yıllık/tek sefer fiyatı, para birimi, çevrimdışı kullanım parametreleri, özellik bayrakları ve yayımlama ayarları.
 - `POST /api/platform/companies/{id}/demo`: aktif aboneliği olmayan firmaya 1-60 günlük deneme tanımlar.
 - `PUT /api/platform/companies/{id}/subscription/extend`: yönetici yeni kesin bitiş tarihini ve gerekçeyi girer; tarih mevcut bitişten sonra ve en fazla 1095 gün ileride olmalıdır. Mutlak tarih kullandığı için aynı isteğin tekrar gönderilmesi süreyi ikinci kez uzatmaz ve ikinci denetim satırı oluşturmaz.
@@ -34,9 +34,9 @@ Platform yönetim ekranı `src/EnvanterTR.Web/wwwroot/platform-admin.html` dosya
 8. Firma liste sayfalaması üst sınırla taşma/çok büyük sorgu riskini sınırlar.
 9. Firma ayrıntısı ayrı ekranda açılır.
 10. Firma ayrıntısı kullanıcı adlarını ve şirket rollerini listeler.
-11. Üyelik listesi 100 kayıtla sınırlanır ve kesildiği belirtilir.
+11. Firma üyelikleri sunucu tarafında sıralanıp sayfalanır; büyük şirketlerde 100 kayıt sınırı nedeniyle üyeler kaybolmaz.
 12. Son 50 abonelik dönemi ve ödeme referansı firma geçmişinde gösterilir.
-13. Askıya alma/etkinleştirme durum değişmiyorsa gereksiz denetim satırı oluşturmaz.
+13. Askıya alma/etkinleştirme gerekçeli onay penceresiyle çalışır; iptal API çağrısı yapmaz, gerçek değişiklik gerekçe ile izlenir ve tekrar istek ek denetim satırı oluşturmaz.
 14. Demo yalnızca erişimi açık firmaya ve etkin plana verilebilir.
 15. Demo süresi 1-60 gün aralığında doğrulanır.
 16. Demo oluşturma seri transaction içinde yapılır; eşzamanlılık çakışması kullanıcıya 409 ile bildirilir.
