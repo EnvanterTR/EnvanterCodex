@@ -1390,6 +1390,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     {
         var userId = Guid.NewGuid();
         var legacyUserId = Guid.NewGuid();
+        var newOwnerId = Guid.NewGuid();
         var marker = $"MEMBER-DIRECTORY-{userId:N}";
         var earlierMembership = DateTimeOffset.UtcNow.AddDays(-90);
         var accountCreatedAt = DateTimeOffset.UtcNow.AddDays(-95);
@@ -1458,17 +1459,40 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 Email = $"legacy-{legacyUserId:N}@example.invalid", NormalizedEmail = $"LEGACY-{legacyUserId:N}@EXAMPLE.INVALID",
                 EmailConfirmed = true, DisplayName = "Legacy account without registration timestamp", AccountCreatedAt = null
             });
+            db.Users.Add(new EnvanterUser
+            {
+                Id = newOwnerId, UserName = $"new-owner-{newOwnerId:N}", NormalizedUserName = $"NEW-OWNER-{newOwnerId:N}".ToUpperInvariant(),
+                Email = $"new-owner-{newOwnerId:N}@example.invalid", NormalizedEmail = $"new-owner-{newOwnerId:N}@example.invalid".ToUpperInvariant(),
+                EmailConfirmed = true, DisplayName = "Verified New Company Owner", AccountCreatedAt = DateTimeOffset.UtcNow.AddDays(-15)
+            });
             db.CompanyMemberships.AddRange(
                 new CompanyMembership { UserId = userId, CompanyId = _companyId, RoleKey = "owner", CreatedAt = earlierMembership },
-                new CompanyMembership { UserId = userId, CompanyId = _otherCompanyId, RoleKey = "viewer", CreatedAt = DateTimeOffset.UtcNow.AddDays(-20) });
+                new CompanyMembership { UserId = userId, CompanyId = _otherCompanyId, RoleKey = "viewer", CreatedAt = DateTimeOffset.UtcNow.AddDays(-20) },
+                new CompanyMembership { UserId = newOwnerId, CompanyId = _companyId, RoleKey = "viewer", CreatedAt = DateTimeOffset.UtcNow.AddDays(-14) });
             db.UserSessions.Add(new UserSession
             {
                 UserId = userId, CompanyId = _otherCompanyId, PlatformAdmin = false,
                 CreatedAt = DateTimeOffset.UtcNow, LastSeenAt = DateTimeOffset.UtcNow,
                 ExpiresAt = DateTimeOffset.UtcNow.AddHours(2)
             });
+            db.UserSessions.Add(new UserSession
+            {
+                UserId = userId, CompanyId = _companyId, PlatformAdmin = false,
+                CreatedAt = DateTimeOffset.UtcNow, LastSeenAt = DateTimeOffset.UtcNow,
+                ExpiresAt = DateTimeOffset.UtcNow.AddHours(2)
+            });
             db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
             await db.SaveChangesAsync();
+        }
+
+        await using (var identityScope = _factory!.Services.CreateAsyncScope())
+        {
+            var userManager = identityScope.ServiceProvider.GetRequiredService<UserManager<EnvanterUser>>();
+            var target = await userManager.FindByEmailAsync($"new-owner-{newOwnerId:N}@example.invalid");
+            Assert.NotNull(target);
+            Assert.Equal(newOwnerId, target.Id);
+            Assert.True(target.EmailConfirmed);
+            Assert.Null(target.LockoutEnd);
         }
 
         using (var denied = await SendAsAdminAsync($"/api/platform/members?q={Uri.EscapeDataString(marker)}"))
@@ -1537,6 +1561,50 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                    $"/api/platform/members/{userId}/memberships/{_companyId}",
                    System.Net.Http.Json.JsonContent.Create(new { note = "acceptance" }), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.Conflict, protectedOwnerRemoval.StatusCode);
+        var ownerTransferPath = $"/api/platform/members/{userId}/memberships/{_companyId}/owner-transfer";
+        using (var tenantTransfer = await SendAsUserAsync(HttpMethod.Post, ownerTransferPath, userId, _companyId,
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       newOwnerEmail = $"new-owner-{newOwnerId:N}@example.invalid", formerOwnerRoleKey = "admin",
+                       note = "Unauthorized owner transfer", confirmTransfer = true
+                   })))
+            Assert.Equal(HttpStatusCode.Forbidden, tenantTransfer.StatusCode);
+        using (var transferWithoutCsrf = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, ownerTransferPath,
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       newOwnerEmail = $"new-owner-{newOwnerId:N}@example.invalid", formerOwnerRoleKey = "admin",
+                       note = "Owner transfer", confirmTransfer = true
+                   })))
+            Assert.Equal(HttpStatusCode.BadRequest, transferWithoutCsrf.StatusCode);
+        using (var transferToNonMember = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, ownerTransferPath,
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       newOwnerEmail = $"legacy-{legacyUserId:N}@example.invalid", formerOwnerRoleKey = "admin",
+                       note = "Owner transfer", confirmTransfer = true
+                   }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, transferToNonMember.StatusCode);
+        using (var unconfirmedTransfer = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, ownerTransferPath,
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       newOwnerEmail = $"new-owner-{newOwnerId:N}@example.invalid", formerOwnerRoleKey = "admin",
+                       note = "Owner transfer", confirmTransfer = false
+                   }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, unconfirmedTransfer.StatusCode);
+        using (var ownershipTransfer = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, ownerTransferPath,
+                   System.Net.Http.Json.JsonContent.Create(new
+                   {
+                       newOwnerEmail = $"new-owner-{newOwnerId:N}@example.invalid", formerOwnerRoleKey = "admin",
+                       note = "Company owner requested an audited transfer", confirmTransfer = true
+                   }), requestToken, antiforgeryCookie))
+        {
+            var transferBody = await ownershipTransfer.Content.ReadAsStringAsync();
+            Assert.True(ownershipTransfer.StatusCode == HttpStatusCode.OK, $"{ownershipTransfer.StatusCode}: {transferBody}");
+            using var transferPayload = JsonDocument.Parse(transferBody);
+            Assert.True(transferPayload.RootElement.GetProperty("transferred").GetBoolean());
+            Assert.Equal("admin", transferPayload.RootElement.GetProperty("formerOwnerRole").GetString());
+            Assert.Equal("owner", transferPayload.RootElement.GetProperty("newOwnerRole").GetString());
+            Assert.Equal(1, transferPayload.RootElement.GetProperty("revokedFormerOwnerSessions").GetInt32());
+        }
         using (var changedRole = await SendAsPlatformAdminRequestAsync(HttpMethod.Patch, membershipPath + "/role",
                    System.Net.Http.Json.JsonContent.Create(new { roleKey = "admin", note = "Role reviewed by acceptance" }), requestToken, antiforgeryCookie))
         {
@@ -1563,8 +1631,13 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             Assert.False(await db.CompanyMemberships.AnyAsync(x => x.UserId == userId && x.CompanyId == _otherCompanyId));
-            Assert.Equal("owner", await db.CompanyMemberships.Where(x => x.UserId == userId && x.CompanyId == _companyId)
+            Assert.Equal("admin", await db.CompanyMemberships.Where(x => x.UserId == userId && x.CompanyId == _companyId)
                 .Select(x => x.RoleKey).SingleAsync());
+            Assert.Equal("owner", await db.CompanyMemberships.Where(x => x.UserId == newOwnerId && x.CompanyId == _companyId)
+                .Select(x => x.RoleKey).SingleAsync());
+            Assert.Equal(1, await db.CompanyMemberships.CountAsync(x => x.CompanyId == _companyId && x.RoleKey == "owner"));
+            Assert.NotNull(await db.UserSessions.Where(x => x.UserId == userId && x.CompanyId == _companyId)
+                .Select(x => x.RevokedAt).SingleAsync());
             Assert.NotNull(await db.UserSessions.Where(x => x.UserId == userId && x.CompanyId == _otherCompanyId)
                 .Select(x => x.RevokedAt).SingleAsync());
             var roleAudit = await db.PlatformAuditEntries.SingleAsync(x => x.TargetType == "CompanyMembership" &&
@@ -1572,6 +1645,13 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Contains("Role reviewed by acceptance", roleAudit.Details, StringComparison.Ordinal);
             Assert.True(await db.PlatformAuditEntries.AnyAsync(x => x.TargetType == "CompanyMembership" &&
                 x.TargetId == userId && x.CompanyId == _otherCompanyId && x.Action == "MemberRemoved"));
+            var ownerTransferAudit = await db.PlatformAuditEntries.SingleAsync(x => x.TargetType == "Company" &&
+                x.TargetId == _companyId && x.CompanyId == _companyId && x.Action == "MemberOwnerTransferred");
+            Assert.Contains("Company owner requested an audited transfer", ownerTransferAudit.Details, StringComparison.Ordinal);
+            Assert.True(await db.AuditEntries.AnyAsync(x => x.TargetType == "CompanyMembership" &&
+                x.TargetId == userId && x.CompanyId == _companyId && x.Action == "OwnerTransferredOut"));
+            Assert.True(await db.AuditEntries.AnyAsync(x => x.TargetType == "CompanyMembership" &&
+                x.TargetId == newOwnerId && x.CompanyId == _companyId && x.Action == "OwnerTransferredIn"));
         }
         var timeline = new List<string>();
         var timelineBody = new List<string>();
@@ -1595,6 +1675,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Contains("Satın alma kaydı oluşturuldu", timeline);
         Assert.Contains("Demo erişimi tanımlandı", timeline);
         Assert.Contains("Şirket üyeliği kaldırıldı", timeline);
+        Assert.Contains("Şirket sahipliği devredildi", timeline);
         Assert.True(timelinePages > 1, "The member timeline should paginate when more than four events exist.");
         var serializedTimeline = string.Join('\n', timelineBody);
         Assert.Contains("pending-member-checkout-reference", serializedTimeline, StringComparison.Ordinal);

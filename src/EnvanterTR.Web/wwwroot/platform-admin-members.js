@@ -74,7 +74,7 @@
         const subscription = membership.subscription;
         const subscriptionInfo = subscription ? `${esc(subscription.name)} (${esc(subscription.code)}) · ${esc(subscription.status)}${subscription.isDemo ? ' · Demo' : ''}<span class="sub">${date(subscription.startsAt)} – ${date(subscription.endsAt)}</span><span class="sub">Ödeme referansı: ${esc(subscription.paymentReference || '—')}</span>` : 'Abonelik kaydı yok';
         const controls = membership.roleKey === 'owner'
-          ? '<span class="muted">Sahiplik devri ayrı işlem gerektirir.</span>'
+          ? `<div class="actions"><button class="btn small" type="button" data-member-transfer="${esc(membership.id)}" data-company="${esc(membership.name)}">Sahipliği devret</button></div>`
           : `<div class="actions"><button class="btn small" type="button" data-member-role="${esc(membership.id)}" data-role="${esc(membership.roleKey)}" data-company="${esc(membership.name)}">Rolü değiştir</button><button class="btn small danger" type="button" data-member-remove="${esc(membership.id)}" data-company="${esc(membership.name)}">Şirketten çıkar</button></div>`;
         return `<tr><td class="company-name">${esc(membership.name)}<span class="sub">${esc(membership.slug || '')}${membership.isActive ? '' : ' · şirket pasif'}</span></td><td>${esc(roleLabel(membership.roleKey))}</td><td>${date(membership.createdAt)}</td><td>${subscriptionInfo}</td><td>${controls}</td></tr>`;
       }).join('');
@@ -187,6 +187,65 @@
     (form.elements.roleKey || note).focus();
   }
 
+  function openOwnerTransfer(userId, companyId, companyName) {
+    const dialog = document.createElement('dialog');
+    dialog.className = 'dialog';
+    dialog.style.width = 'min(560px,calc(100% - 24px))';
+    const form = document.createElement('form');
+    const head = document.createElement('div'); head.className = 'dialog-head';
+    const title = document.createElement('h2'); title.textContent = 'Şirket sahipliğini devret';
+    const close = document.createElement('button'); close.type = 'button'; close.className = 'btn small';
+    close.textContent = '✕'; close.setAttribute('aria-label', 'Pencereyi kapat');
+    close.addEventListener('click', () => dialog.close()); head.append(title, close);
+    const body = document.createElement('div'); body.className = 'dialog-body';
+    const warning = document.createElement('div'); warning.className = 'notice warning';
+    warning.textContent = `${companyName}: sahiplik yalnızca bu şirkete zaten üye olan, e-postası doğrulanmış ve hesabı kilitli olmayan kullanıcıya devredilir. Eski sahibin şirket oturumları kapatılır; hesabı seçilen yeni rolde üye kalır.`;
+    body.append(warning);
+    const emailLabel = document.createElement('label'); emailLabel.className = 'field';
+    emailLabel.append(document.createTextNode('Yeni sahibin kayıtlı e-posta adresi'));
+    const email = document.createElement('input'); email.type = 'email'; email.name = 'newOwnerEmail'; email.required = true;
+    email.maxLength = 256; email.autocomplete = 'off'; emailLabel.append(email); body.append(emailLabel);
+    const roleLabel = document.createElement('label'); roleLabel.className = 'field'; roleLabel.append(document.createTextNode('Eski sahibin kalacağı rol'));
+    const role = document.createElement('select'); role.name = 'formerOwnerRoleKey'; role.required = true;
+    for (const [value, text] of Object.entries({ admin: 'Yönetici', asset_manager: 'Envanter yöneticisi', asset_operator: 'Operatör', auditor: 'Denetçi', viewer: 'Salt okunur', hr_operator: 'İK operatörü' })) {
+      const option = document.createElement('option'); option.value = value; option.textContent = text; option.selected = value === 'admin'; role.append(option);
+    }
+    roleLabel.append(role); body.append(roleLabel);
+    const noteLabel = document.createElement('label'); noteLabel.className = 'field'; noteLabel.append(document.createTextNode('İşlem gerekçesi'));
+    const note = document.createElement('textarea'); note.name = 'note'; note.required = true; note.maxLength = 1000;
+    note.placeholder = 'Sahiplik devrinin nedeni'; noteLabel.append(note); body.append(noteLabel);
+    const confirmLabel = document.createElement('label'); confirmLabel.className = 'field';
+    const confirm = document.createElement('input'); confirm.type = 'checkbox'; confirm.name = 'confirmTransfer'; confirm.required = true;
+    confirmLabel.append(confirm, document.createTextNode(' Bu şirkette sahipliği değiştirdiğimi ve eski sahibin şirket oturumlarının kapatılacağını onaylıyorum.'));
+    body.append(confirmLabel);
+    const foot = document.createElement('div'); foot.className = 'dialog-foot';
+    const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'btn'; cancel.textContent = 'Vazgeç';
+    cancel.addEventListener('click', () => dialog.close());
+    const submit = document.createElement('button'); submit.type = 'submit'; submit.className = 'btn primary'; submit.textContent = 'Sahipliği devret';
+    foot.append(cancel, submit); form.append(head, body, foot); dialog.append(form); document.body.append(dialog);
+    dialog.addEventListener('close', () => dialog.remove(), { once: true });
+    dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+    form.addEventListener('submit', async event => {
+      event.preventDefault(); submit.disabled = true;
+      try {
+        const csrf = await api('/api/session/csrf');
+        await api(`/api/platform/members/${encodeURIComponent(userId)}/memberships/${encodeURIComponent(companyId)}/owner-transfer`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf.requestToken },
+          body: JSON.stringify({ newOwnerEmail: email.value, formerOwnerRoleKey: role.value, note: note.value, confirmTransfer: confirm.checked })
+        });
+        dialog.close();
+        await loadMembers(state.page);
+        await loadMemberDetail(userId);
+        const toast = $('#toast'); toast.textContent = 'Şirket sahipliği devredildi; eski sahibin şirkete ait oturumları kapatıldı.';
+        toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3500);
+      } catch (error) {
+        const feedback = document.createElement('div'); feedback.className = 'notice error'; feedback.textContent = error.message;
+        form.querySelector('.notice.error')?.remove(); body.append(feedback);
+      } finally { submit.disabled = false; }
+    });
+    dialog.showModal(); email.focus();
+  }
+
   let companySearchRequest = 0;
   let companySearchTimer;
   async function loadInviteCompanies(query = '') {
@@ -237,6 +296,12 @@
     if (button) loadMemberDetail(button.dataset.memberDetail);
   });
   $('#memberDetailBody').addEventListener('click', (event) => {
+    const transferButton = event.target.closest('[data-member-transfer]');
+    if (transferButton) {
+      openOwnerTransfer($('#memberSearch').dataset.activeUserId,
+        transferButton.dataset.memberTransfer, transferButton.dataset.company);
+      return;
+    }
     const roleButton = event.target.closest('[data-member-role]');
     const removeButton = event.target.closest('[data-member-remove]');
     const button = roleButton || removeButton;

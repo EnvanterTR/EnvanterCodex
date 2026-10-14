@@ -360,7 +360,8 @@ public static class PlatformEndpoints
             var relevantActions = new[] { "LoginSucceeded", "LoginFailed", "PasswordChanged", "PasswordReset",
                 "MemberInvited", "MemberInvitationResent", "MemberInvitationEmailSent", "MemberInvitationEmailFailed",
                 "DemoGranted", "SubscriptionExtended", "SubscriptionManuallyAdjusted", "CompanySuspended",
-                "CompanyReactivated", "PaidCompanyProvisioned", "DemoRequestUpdated", "DemoRequestStatusChanged" };
+                "CompanyReactivated", "PaidCompanyProvisioned", "DemoRequestUpdated", "DemoRequestStatusChanged",
+                "MemberOwnerTransferred" };
             var platformAudits = await (from audit in db.PlatformAuditEntries.AsNoTracking()
                                         join actor in db.Users.AsNoTracking() on audit.ActorUserId equals actor.Id into actors
                                         from actor in actors.DefaultIfEmpty()
@@ -389,6 +390,7 @@ public static class PlatformEndpoints
                     "SubscriptionManuallyAdjusted" => "Abonelik elle düzenlendi", "CompanySuspended" => "Şirket askıya alındı",
                     "CompanyReactivated" => "Şirket yeniden etkinleştirildi", "PaidCompanyProvisioned" => "Ücretli şirket hesabı oluşturuldu",
                     "DemoRequestUpdated" => "Demo talebi güncellendi", "DemoRequestStatusChanged" => "Demo talebi aşaması değişti",
+                    "MemberOwnerTransferred" => "Şirket sahipliği devredildi",
                     "MemberRoleChanged" => "Şirket üyelik rolü değiştirildi", "MemberRemoved" => "Şirket üyeliği kaldırıldı",
                     _ => audit.Action
                 };
@@ -408,6 +410,8 @@ public static class PlatformEndpoints
                 events.Add(new(audit.OccurredAt, "membership", audit.Action switch
                 {
                     "MemberAdded" => "Şirket üyeliği eklendi", "MemberRemoved" => "Şirket üyeliği kaldırıldı",
+                    "OwnerTransferredOut" => "Şirket sahipliği başka üyeye devredildi",
+                    "OwnerTransferredIn" => "Şirket sahipliği bu üyeye devredildi",
                     "EmployeeLinkChanged" => "Çalışan profili bağlantısı değiştirildi", _ => "Üyelik kaydı güncellendi"
                 }, "Şirket üyeliği işlemi", audit.Name));
 
@@ -491,6 +495,91 @@ public static class PlatformEndpoints
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return Results.Ok(new { removed = true, companyId, userId, revokedSessions = activeSessions.Count });
+        });
+
+        admin.MapPost("/members/{userId:guid}/memberships/{companyId:guid}/owner-transfer", async (Guid userId, Guid companyId,
+            [FromBody] TransferCompanyOwnershipRequest request, ClaimsPrincipal user, AppDbContext db,
+            UserManager<EnvanterUser> userManager, CancellationToken cancellationToken) =>
+        {
+            var email = request?.NewOwnerEmail?.Trim();
+            var previousOwnerRole = request?.FormerOwnerRoleKey?.Trim();
+            var note = Clean(request?.Note);
+            var allowedRoles = new[] { "admin", "asset_manager", "asset_operator", "auditor", "viewer", "hr_operator" };
+            if (request is null || userId == Guid.Empty || companyId == Guid.Empty ||
+                string.IsNullOrWhiteSpace(email) || email.Length > 256 || !MailAddress.TryCreate(email, out _) ||
+                previousOwnerRole is null || !allowedRoles.Contains(previousOwnerRole, StringComparer.Ordinal) ||
+                note is null || note.Length > 1000 || !request.ConfirmTransfer)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["transfer"] = ["Mevcut şirketteki onaylı bir üyenin e-postası, eski sahibin yeni rolü ve en fazla 1000 karakterlik işlem gerekçesi gereklidir."]
+                });
+
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+            var company = await db.Companies.FromSqlInterpolated(
+                    $"SELECT * FROM \"Companies\" WHERE \"Id\" = {companyId} FOR UPDATE")
+                .SingleOrDefaultAsync(cancellationToken);
+            if (company is null) return Results.NotFound(new { message = "Şirket bulunamadı." });
+
+            var currentOwner = await db.CompanyMemberships.SingleOrDefaultAsync(
+                x => x.CompanyId == companyId && x.UserId == userId, cancellationToken);
+            if (currentOwner is null) return Results.NotFound(new { message = "Şirket üyeliği bulunamadı." });
+            if (currentOwner.RoleKey != "owner")
+                return Results.Conflict(new { message = "Sahiplik devri için seçilen üye şu anda şirket sahibi olmalıdır." });
+
+            var ownerCount = await db.CompanyMemberships.CountAsync(
+                x => x.CompanyId == companyId && x.RoleKey == "owner", cancellationToken);
+            if (ownerCount != 1)
+                return Results.Conflict(new { message = "Şirkette tam olarak bir sahip bulunmalıdır. Üyelik kayıtlarını inceleyip sonra tekrar deneyin." });
+
+            var newOwner = await userManager.FindByEmailAsync(email);
+            if (newOwner is null || newOwner.Id == userId || !newOwner.EmailConfirmed ||
+                (newOwner.LockoutEnd is DateTimeOffset lockoutEnd && lockoutEnd > DateTimeOffset.UtcNow))
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["newOwnerEmail"] = ["Yeni sahip, e-postası doğrulanmış ve hesabı kilitli olmayan mevcut bir şirket üyesi olmalıdır."]
+                });
+
+            var nextOwner = await db.CompanyMemberships.SingleOrDefaultAsync(
+                x => x.CompanyId == companyId && x.UserId == newOwner.Id, cancellationToken);
+            if (nextOwner is null)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["newOwnerEmail"] = ["Bu e-posta için seçilen şirkette etkin bir üyelik bulunamadı. Önce kullanıcıyı şirkete davet edin."]
+                });
+            if (nextOwner.RoleKey == "owner")
+                return Results.Conflict(new { message = "Seçilen kullanıcı zaten şirket sahibi." });
+
+            var now = DateTimeOffset.UtcNow;
+            var formerRole = currentOwner.RoleKey;
+            var targetPreviousRole = nextOwner.RoleKey;
+            currentOwner.RoleKey = previousOwnerRole;
+            nextOwner.RoleKey = "owner";
+            var revokedSessions = await db.UserSessions.Where(x => x.UserId == userId && x.CompanyId == companyId &&
+                !x.PlatformAdmin && x.RevokedAt == null).ToListAsync(cancellationToken);
+            foreach (var session in revokedSessions) session.RevokedAt = now;
+
+            var details = JsonSerializer.Serialize(new
+            {
+                companyId,
+                previousOwner = new { userId, roleBefore = formerRole, roleAfter = previousOwnerRole },
+                newOwner = new { userId = newOwner.Id, roleBefore = targetPreviousRole, roleAfter = "owner" },
+                note,
+                revokedFormerOwnerSessions = revokedSessions.Count
+            });
+            // Write a tenant audit entry for both affected member histories.
+            db.AuditEntries.AddRange(
+                new AuditEntry { CompanyId = companyId, TargetType = "CompanyMembership", TargetId = userId,
+                    ActorUserId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!), Action = "OwnerTransferredOut", Details = details },
+                new AuditEntry { CompanyId = companyId, TargetType = "CompanyMembership", TargetId = newOwner.Id,
+                    ActorUserId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!), Action = "OwnerTransferredIn", Details = details });
+            AddAudit(db, user, "MemberOwnerTransferred", "Company", companyId, companyId, details);
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new
+            {
+                transferred = true, companyId, formerOwnerUserId = userId, formerOwnerRole = previousOwnerRole,
+                newOwnerUserId = newOwner.Id, newOwnerRole = nextOwner.RoleKey, revokedFormerOwnerSessions = revokedSessions.Count
+            });
         });
 
         admin.MapPost("/members/invite", async ([FromBody] PlatformInviteMemberRequest request,
