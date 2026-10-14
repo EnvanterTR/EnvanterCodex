@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 14 Ekim 2026 — katalog hızlı giriş formları
+
+Aksesuar formundan marka/kategori/model ekleme, kategori adını değiştirme ve model kataloğundan hızlı marka ekleme tarayıcı `prompt()` pencereleri yerine uygulama içi, klavye ile kapatılabilir metin formu kullanır. Boşluk girdisi yazma yapmaz; iptal/Escape API çağrısını durdurur. Kategori yeniden adlandırma mevcut adı forma koyar; hızlı eklenen kategori/marka/model, ilgili seçime bağlanır ve model için marka seçimi zorunludur. Ad uzunluğu istemcide 120 karakterle sınırlı, sunucu doğrulaması ve şirket kapsamı korunur. `Verify-AccessoryCatalogQuickEntry.mjs` CI'a eklendi; 68/68 `Verify-*.mjs`, beş dilde 1.848 locale girişi ve `git diff --check` geçti. `Brand_model_category_and_images_are_company_scoped_and_reusable` izole PostgreSQL API kabul testi 1/1 geçti. Gerçek oturumlu tarayıcı tıklaması ayrıca açık; canlıya ve gerçek şirket verisine dokunulmadı.
+
 ## 14 Ekim 2026 — sarf ve aksesuar içe aktarma onayları
 
 Sarf/aksesuar içe aktarma eşleme profili silme ve doğrulanmış içe aktarmayı uygulama tarayıcı `confirm()` yerine iptal edilebilir uygulama dialog'u kullanır. İçe aktarma onayı yalnız önizleme geçerli ve dosya aynı kaldıktan sonra açılır; vazgeçme, gönderim düğmesini kapatmadan ve önizlemeyi temizlemeden işlemi durdurur. Onay sonrası yalnız hedeflenen profili veya içe aktarma API'sini çağırır. Sarf/aksesuar kapsamını açıklayan beş dil metni eklendi. Kaynak/locale ve UI doğrulamaları ile izole eşleme profili/önizleme API kabul testleri 2/2 geçti.

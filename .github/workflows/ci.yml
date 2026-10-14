@@ -104,6 +104,10 @@ jobs:
         shell: bash
         run: node tools/Verify-AccessoryInventoryUi.mjs
 
+      - name: Verify accessory catalog quick-entry dialogs
+        shell: bash
+        run: node tools/Verify-AccessoryCatalogQuickEntry.mjs
+
       - name: Verify accessory check-in and stock count dialogs
         shell: bash
         run: node tools/Verify-AccessoryCheckinDialog.mjs
