@@ -29,6 +29,8 @@ const membership = {
 };
 const companies = [{ id: companyId, name: 'Synthetic Demo Company', slug: 'synthetic-demo' }];
 const accounts = [member];
+const planId = '44444444-4444-4444-8444-444444444444';
+const plans = [];
 const writes = [];
 const browserErrors = [];
 let reauthenticated = false;
@@ -89,7 +91,7 @@ const server = createServer(async (request, response) => {
     ], page: 1, pageSize: 50, hasMore: false, truncated: false });
   }
 
-  if (request.headers['x-csrf-token'] !== csrfToken) return json(response, { message: 'Missing synthetic CSRF token.' }, 400);
+  if (request.method !== 'GET' && request.headers['x-csrf-token'] !== csrfToken) return json(response, { message: 'Missing synthetic CSRF token.' }, 400);
   if (path === '/api/session/platform-reauth' && request.method === 'POST') {
     reauthenticated = true;
     response.writeHead(204); response.end(); return;
@@ -110,12 +112,23 @@ const server = createServer(async (request, response) => {
     accounts.push(invited);
     return json(response, { message: 'Sentetik davet kaydedildi.' });
   }
+  if (path === '/api/platform/plans' && request.method === 'GET') return json(response, plans);
+  if (path === '/api/platform/plans' && request.method === 'POST') {
+    writes.push({ method: request.method, path, body, csrf: request.headers['x-csrf-token'] });
+    const plan = { ...body, id: planId };
+    plans.push(plan);
+    return json(response, { id: plan.id, code: plan.code, name: plan.name }, 201);
+  }
+  if (path === `/api/platform/plans/${planId}` && request.method === 'PUT') {
+    writes.push({ method: request.method, path, body, csrf: request.headers['x-csrf-token'] });
+    Object.assign(plans[0], body);
+    return json(response, { id: planId, code: plans[0].code, name: plans[0].name, isActive: plans[0].isActive });
+  }
   if (path === '/api/platform/site-content') return json(response, []);
   if (path === '/api/platform/demo-requests') return json(response, { items: [], total: 0, page: 1, pageSize: 25 });
   if (path === '/api/platform/checkout-orders') return json(response, { items: [], total: 0, page: 1, pageSize: 25 });
   if (path === '/api/platform/support/tickets') return json(response, { items: [], total: 0, page: 1, pageSize: 25 });
   if (path === '/api/platform/audit') return json(response, { entries: [], total: 0, page: 1, pageSize: 50 });
-  if (path === '/api/platform/plans') return json(response, { items: [], total: 0, page: 1, pageSize: 50 });
   response.writeHead(404); response.end('Unknown synthetic API route');
 });
 
@@ -202,8 +215,69 @@ try {
   assert.equal(writes.length, writeCountBeforeCancel + 2);
   assert.deepEqual(writes.at(-1), { method: 'POST', path: '/api/platform/members/invite',
     body: { companyId, fullName: 'Synthetic Invited Viewer', email: 'qa-invitee@example.invalid', roleKey: 'viewer' }, csrf: csrfToken });
+  const planListLoaded = page.waitForResponse(response => response.request().method() === 'GET'
+    && new URL(response.url()).pathname === '/api/platform/plans');
+  await page.locator('#nav [data-view="plans"]').click();
+  const planListResponse = await planListLoaded;
+  assert.equal(planListResponse.status(), 200, `Plan list GET returned ${planListResponse.status()}: ${await planListResponse.text()}`);
+  assert.deepEqual(await planListResponse.json(), []);
+  await page.locator('#plansTable').getByText('Henüz plan oluşturulmamış.').waitFor({ state: 'visible' });
+  await page.locator('#newPlan').click();
+  const planForm = page.locator('#planForm');
+  await planForm.locator('[name="changeReason"]').fill('Synthetic pricing approval');
+  await planForm.locator('[name="code"]').fill('synthetic-cloud-pro');
+  await planForm.locator('[name="name"]').fill('Synthetic Cloud Pro');
+  await planForm.locator('[name="deploymentKind"]').selectOption('cloud');
+  assert.equal(await planForm.locator('[name="maxLoginUsers"]').isDisabled(), true,
+    'Cloud plans must not receive a local login-user cap.');
+  await planForm.locator('[name="featureFlagsJson"]').fill('[]');
+  const writesBeforeInvalidPlan = writes.length;
+  await planForm.getByRole('button', { name: 'Planı Kaydet' }).click();
+  await page.getByText('Özellik bayrakları JSON nesnesi olmalı ve değerleri true/false olmalıdır.').waitFor({ state: 'visible' });
+  assert.equal(writes.length, writesBeforeInvalidPlan, 'An invalid feature-flags document must not write a plan.');
+  await page.locator('#clearPlan').click();
+  assert.equal(writes.length, writesBeforeInvalidPlan, 'Clearing a draft plan must not write.');
+  await planForm.locator('[name="changeReason"]').fill('Synthetic pricing approval');
+  await planForm.locator('[name="code"]').fill('synthetic-cloud-pro');
+  await planForm.locator('[name="name"]').fill('Synthetic Cloud Pro');
+  await planForm.locator('[name="deploymentKind"]').selectOption('cloud');
+  await planForm.locator('[name="currency"]').selectOption('TRY');
+  await planForm.locator('[name="monthlyPrice"]').fill('990');
+  await planForm.locator('[name="annualPrice"]').fill('9900');
+  await planForm.locator('[name="maxAssets"]').fill('500');
+  await planForm.locator('[name="featureFlagsJson"]').fill('{"reports":true,"api":false}');
+  const planCreated = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === '/api/platform/plans' && response.status() === 201);
+  await planForm.getByRole('button', { name: 'Planı Kaydet' }).click();
+  await planCreated;
+  await page.locator('#plansTable').getByText('Synthetic Cloud Pro').waitFor({ state: 'visible' });
+  assert.equal(writes.length, writeCountBeforeCancel + 3);
+  assert.deepEqual(writes.at(-1), { method: 'POST', path: '/api/platform/plans', csrf: csrfToken,
+    body: { changeReason: 'Synthetic pricing approval', code: 'synthetic-cloud-pro', name: 'Synthetic Cloud Pro', deploymentKind: 'cloud', currency: 'TRY', maxLoginUsers: null, maxAssets: 500, monthlyPrice: 990, annualPrice: 9900, oneTimePrice: 0, offlineGraceDays: 30, description: '', featureFlagsJson: '{"reports":true,"api":false}', supportsOfflineUse: false, isPublic: true, isActive: true, sortOrder: 0 } });
+
+  await page.locator(`#plansTable [data-edit-plan="${planId}"]`).click();
+  await planForm.locator('[name="changeReason"]').fill('Synthetic annual price correction');
+  await planForm.locator('[name="annualPrice"]').fill('8900');
+  await planForm.locator('[name="isPublic"]').uncheck();
+  const planUpdated = page.waitForResponse(response => response.request().method() === 'PUT'
+    && new URL(response.url()).pathname === `/api/platform/plans/${planId}` && response.status() === 200);
+  await planForm.getByRole('button', { name: 'Planı Kaydet' }).click();
+  await planUpdated;
+  assert.equal(writes.length, writeCountBeforeCancel + 4);
+  assert.equal(writes.at(-1).body.annualPrice, 8900);
+  assert.equal(writes.at(-1).body.isPublic, false);
+  assert.equal(writes.at(-1).body.changeReason, 'Synthetic annual price correction');
+  const hiddenPlanRow = page.locator('#plansTable tr').filter({ hasText: 'Synthetic Cloud Pro' });
+  await hiddenPlanRow.getByText('Gizli').waitFor({ state: 'visible' });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('#appShell').waitFor({ state: 'visible' });
+  await page.locator('#nav [data-view="plans"]').click();
+  const reloadedPlanRow = page.locator('#plansTable tr').filter({ hasText: 'Synthetic Cloud Pro' });
+  await reloadedPlanRow.getByText('Gizli').waitFor({ state: 'visible' });
+  assert.match(await reloadedPlanRow.innerText(), /8\.900,00/,
+    'The edited yearly price and publication state must be reloaded from the synthetic API after a page refresh.');
   assert.deepEqual(browserErrors, [], `Platform member UI threw: ${browserErrors.join(' | ')}`);
-  console.log('PASS: real Chromium account registration/security/membership/subscription/payment timeline; member search, cancel-without-write, reauthenticated role update, and synthetic member invitation.');
+  console.log('PASS: real Chromium account registration/security/membership/subscription/payment timeline; member search, cancel-without-write, reauthenticated role update, synthetic member invitation, and audited plan create/update/validation/publication reload UI.');
 } finally {
   await browser?.close();
   await new Promise(resolve => server.close(resolve));

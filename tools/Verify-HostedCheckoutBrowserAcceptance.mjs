@@ -53,6 +53,14 @@ assert.match(platformMembers, /account registration\/security\/membership\/subsc
 assert.match(platformMembers, /Canceling the membership-role dialog must not write/);
 assert.match(platformMembers, /Synthetic role review/);
 assert.match(platformMembers, /Synthetic Invited Viewer/);
+assert.match(platformMembers, /Özellik bayrakları JSON nesnesi olmalı ve değerleri true\/false olmalıdır\./);
+assert.match(platformMembers, /invalid feature-flags document must not write a plan/);
+assert.match(platformMembers, /Clearing a draft plan must not write/);
+assert.match(platformMembers, /planForm\.locator\('\[name="maxLoginUsers"\]'\)\.isDisabled\(\)/);
+assert.match(platformMembers, /method: 'POST', path: '\/api\/platform\/plans'/);
+assert.match(platformMembers, /path === `\/api\/platform\/plans\/\$\{planId\}` && request\.method === 'PUT'/);
+assert.match(platformMembers, /edited yearly price and publication state must be reloaded from the synthetic API after a page refresh/);
+assert.match(platformMembers, /plan create\/update\/validation\/publication reload UI/);
 assert.match(platformBootstrap, /existing-admin, missing-token, and first-setup states/);
 assert.match(platformBootstrap, /Only explicit valid bootstrap submission should create the first platform admin/);
 assert.match(platformBootstrap, /current-password/);
