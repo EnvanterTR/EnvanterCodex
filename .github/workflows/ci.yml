@@ -236,6 +236,16 @@ jobs:
         shell: bash
         run: node tools/Verify-HostedCheckoutUi.mjs
 
+      - name: Verify hosted checkout browser acceptance harness
+        shell: bash
+        run: node tools/Verify-HostedCheckoutBrowserAcceptance.mjs
+
+      - name: Run hosted Cloud checkout in Chromium
+        shell: bash
+        run: |
+          docker build --tag envantertr-hosted-checkout-browser-ci --file deploy/testing/Dockerfile.hosted-checkout-browser .
+          docker run --rm --init envantertr-hosted-checkout-browser-ci
+
       - name: Verify payment provider and checkout security contract
         shell: bash
         run: node tools/Verify-IyzipayCheckoutFlow.mjs

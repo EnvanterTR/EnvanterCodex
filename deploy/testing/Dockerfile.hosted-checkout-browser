@@ -1,0 +1,9 @@
+FROM mcr.microsoft.com/playwright:v1.64.0-noble
+
+WORKDIR /acceptance
+COPY deploy/testing/hosted-checkout-browser/package.json deploy/testing/hosted-checkout-browser/package-lock.json ./
+RUN npm ci --omit=dev
+COPY deploy/testing/hosted-checkout-browser/hosted-checkout.mjs ./
+COPY src/EnvanterTR.PublicSite/checkout.html src/EnvanterTR.PublicSite/checkout.js /checkout-site/
+
+CMD ["node", "hosted-checkout.mjs"]

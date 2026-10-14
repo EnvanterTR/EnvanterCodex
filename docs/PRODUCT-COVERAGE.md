@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 14 Ekim 2026 — Cloud checkout Chromium tarayıcı kabulü
+
+Herkese açık Cloud checkout sayfası CI'da ve yerelde sürümü sabitlenmiş Playwright Chromium konteynerinde açılır. Kabul iki durumu doğrular: ödeme yapılandırması kapalıyken kişisel/fatura alanları kilitli kalır ve API'ye form verisi gitmez; hazır durumda planın aylık/yıllık seçimi, firma slug'ı, zorunlu alanlar, CSRF, sürümlü veri işleme onayı, tarayıcıdan tutar gönderilmemesi, kart verisinin şirket formuna girmemesi ve iyzico sandbox adresine yönlendirme isteği çalışır. Test yalnız sentetik plan/veri ve mock HTTP yanıtları kullanır, gerçek ödeme sağlayıcısına bağlantıyı engeller. Harness (15 assertion), checkout UI/provider kaynak kontrolleri, Docker Chromium kabulü ve 75/75 kaynak doğrulayıcısı geçti. Yerel API 91 migration/0 bekleyen ile ready; demo HTTP 200. Bu sonuç gerçek iyzico işlemini, üretim hesabını, canlı deployment'ı veya canlı girişi doğrulamaz.
+
 ## 14 Ekim 2026 — abonelik geçmişi bulunan şirketlerde etkin plan denetimi
 
 Cloud yazma isteği koruması, her tenant için eski `Expired` kayıtlarla yeni `Active` veya `Trial` kaydı birlikte bulunduğunda tüm abonelik satırlarını tek kayıt gibi okuyup 500 üretebiliyordu. Sorgu artık etkin/deneme planını önce, geçmiş kayıtları sonra seçiyor; bitiş zamanı gelmiş aktif plan yine salt okunur kalır. İzole PostgreSQL kabulinde geçmiş `Expired` + geçerli `Active` kayıtlarıyla varlık oluşturma ve kalıcılık senaryosu **1/1 geçti**; süresi dolmuş Cloud yazma engeli testi ayrıca **1/1 geçti**. `Verify-TenantSubscriptionAccess.mjs` (14 assertion) bu sorgu önceliğini ve kabulü denetliyor ve CI'a bağlandı. Süre sonu erişim sınırı dışında müşteri checkout/yenileme, faturalama/iade ve tüm gelir metrikleri ayrı açık kapsam olarak kalır.
