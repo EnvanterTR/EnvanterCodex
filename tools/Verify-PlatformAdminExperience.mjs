@@ -7,6 +7,7 @@ const api = await readFile('src/EnvanterTR.Web/Data/PlatformEndpoints.cs', 'utf8
 const members = await readFile('src/EnvanterTR.Web/wwwroot/platform-admin-members.js', 'utf8');
 const subscriptions = await readFile('src/EnvanterTR.Web/wwwroot/platform-admin-subscriptions.js', 'utf8');
 const demos = await readFile('src/EnvanterTR.Web/wwwroot/platform-admin-demo-requests.js', 'utf8');
+const acceptance = await readFile('tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs', 'utf8');
 
 assert.match(page, /<style id="platform-luxe-skin">/);
 assert.match(page, /color-scheme:dark/);
@@ -48,6 +49,7 @@ const account = await readFile('src/EnvanterTR.Web/Data/AccountEndpoints.cs', 'u
 assert.match(account, /MapPost\("\/api\/session\/platform-reauth"[\s\S]*?CheckPasswordAsync[\s\S]*?VerifyTwoFactorTokenAsync[\s\S]*?PlatformReauthenticated[\s\S]*?RequireRateLimiting\("step-up"\)/);
 assert.match(account, /platform_reauth_at/);
 assert.match(page, /id="platformMfaSetupWrap"/);
+assert.match(acceptance, /Platform_admin_first_login_accepts_password_then_requires_mfa_setup_before_panel/);
 assert.match(page, /id="platformMfaTitle">İlk giriş güvenlik kurulumu/);
 assert.match(page, /Google Authenticator, Microsoft Authenticator/);
 assert.match(page, /Mevcut parolanızı girip kurulumu başlatın/);

@@ -10197,6 +10197,69 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Platform_admin_first_login_accepts_password_then_requires_mfa_setup_before_panel()
+    {
+        const string password = "Acceptance-first-platform-Password-43!";
+        var email = $"acceptance-{_userId:N}@example.invalid";
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<EnvanterUser>>();
+            var user = await users.FindByIdAsync(_userId.ToString());
+            Assert.NotNull(user);
+            var passwordResult = await users.AddPasswordAsync(user, password);
+            Assert.True(passwordResult.Succeeded, string.Join("; ", passwordResult.Errors.Select(error => error.Description)));
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            await db.SaveChangesAsync();
+        }
+
+        using var cookieFactory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Development");
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["ConnectionStrings:EnvanterTR"] = Environment.GetEnvironmentVariable("ENVANTERTR_SECURITY_TEST_CONNECTION"),
+                    ["Storage:CompanyMediaPath"] = _mediaPath
+                }));
+        });
+        using var loginClient = cookieFactory.CreateClient();
+        using var csrfResponse = await loginClient.GetAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        using var loginRequest = new HttpRequestMessage(HttpMethod.Post, "/api/session/login")
+        {
+            Content = System.Net.Http.Json.JsonContent.Create(new { email, password, companyId = _companyId, rememberMe = true })
+        };
+        loginRequest.Headers.Add("X-CSRF-TOKEN", requestToken);
+        using var loginResponse = await loginClient.SendAsync(loginRequest);
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+        using (var loginPayload = JsonDocument.Parse(await loginResponse.Content.ReadAsStringAsync()))
+        {
+            Assert.True(loginPayload.RootElement.GetProperty("authenticated").GetBoolean());
+            Assert.True(loginPayload.RootElement.GetProperty("platformAdmin").GetBoolean());
+            Assert.Equal(_companyId, loginPayload.RootElement.GetProperty("companyId").GetGuid());
+            Assert.False(loginPayload.RootElement.TryGetProperty("twoFactorRequired", out _));
+        }
+
+        using var sessionResponse = await loginClient.GetAsync("/api/session");
+        Assert.Equal(HttpStatusCode.OK, sessionResponse.StatusCode);
+        using (var sessionPayload = JsonDocument.Parse(await sessionResponse.Content.ReadAsStringAsync()))
+            Assert.True(sessionPayload.RootElement.GetProperty("platformAdmin").GetBoolean());
+
+        using var securityResponse = await loginClient.GetAsync("/api/session/2fa");
+        Assert.Equal(HttpStatusCode.OK, securityResponse.StatusCode);
+        using (var securityPayload = JsonDocument.Parse(await securityResponse.Content.ReadAsStringAsync()))
+            Assert.False(securityPayload.RootElement.GetProperty("enabled").GetBoolean());
+
+        using var panelResponse = await loginClient.GetAsync("/api/platform/overview");
+        Assert.Equal((HttpStatusCode)428, panelResponse.StatusCode);
+        using var panelPayload = JsonDocument.Parse(await panelResponse.Content.ReadAsStringAsync());
+        Assert.Equal("platform_mfa_required", panelPayload.RootElement.GetProperty("code").GetString());
+    }
+
+    [Fact]
     public async Task Login_company_choices_are_limited_to_the_accounts_active_memberships()
     {
         const string password = "Acceptance-tenant-choice-Password-43!";
