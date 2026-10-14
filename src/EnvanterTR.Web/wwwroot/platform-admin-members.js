@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const $ = (selector) => document.querySelector(selector);
-  const state = { page: 1, pageSize: 50, total: 0, loading: false };
+  const state = { page: 1, pageSize: 50, total: 0, memberRequest: 0, detailRequest: 0, timelineRequest: 0 };
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
   const date = (value) => value ? new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
   const roleLabel = (value) => ({ owner: 'Şirket sahibi', admin: 'Yönetici', asset_manager: 'Envanter yöneticisi', asset_operator: 'Operatör', auditor: 'Denetçi', viewer: 'Salt okunur', hr_operator: 'İK operatörü' })[value] || value || '—';
@@ -20,8 +20,7 @@
   };
 
   async function loadMembers(page = state.page) {
-    if (state.loading) return;
-    state.loading = true;
+    const request = ++state.memberRequest;
     const q = $('#memberSearch').value.trim();
     const params = new URLSearchParams({ page: String(Math.max(1, page)), pageSize: String(state.pageSize) });
     if (q) params.set('q', q);
@@ -29,6 +28,7 @@
     $('#memberDetail').hidden = true;
     try {
       const result = await api(`/api/platform/members?${params}`);
+      if (request !== state.memberRequest) return;
       state.page = result.page;
       state.total = result.total;
       $('#memberCount').textContent = `${result.total} hesap`;
@@ -40,19 +40,22 @@
         return `<tr><td class="company-name">${esc(account.displayName)}<span class="sub">${esc(account.email || 'E-posta yok')} · ${account.emailConfirmed ? 'doğrulanmış' : 'doğrulanmamış'}</span></td><td>${esc(account.phoneNumber || '—')}</td><td>${account.twoFactorEnabled ? '<span class="pill">2FA açık</span>' : '<span class="pill warn">2FA kapalı</span>'}${account.isLockedOut ? '<span class="sub"><span class="pill red">Kilitli</span></span>' : ''}</td><td>${date(account.accountCreatedAt)}</td><td>${date(account.firstMembershipAt)}</td><td>${companies}<span class="sub">${account.membershipCount} üyelik</span></td><td>${date(account.lastSeenAt)}</td><td><button class="btn small" data-member-detail="${esc(account.id)}">Ayrıntı</button></td></tr>`;
       }).join('')}</tbody></table></div>` : '<div class="empty">Aramayla eşleşen hesap bulunamadı.</div>';
     } catch (error) {
+      if (request !== state.memberRequest) return;
       $('#memberCount').textContent = '—';
       $('#memberPage').textContent = '';
       $('#membersTable').innerHTML = `<div class="empty">${esc(error.message)}</div>`;
-    } finally { state.loading = false; }
+    }
   }
 
   async function loadMemberDetail(id) {
+    const request = ++state.detailRequest;
     $('#memberSearch').dataset.activeUserId = id;
     const body = $('#memberDetailBody');
     body.innerHTML = '<div class="empty">Hesap bilgileri yükleniyor…</div>';
     $('#memberDetail').hidden = false;
     try {
       const result = await api(`/api/platform/members/${encodeURIComponent(id)}`);
+      if (request !== state.detailRequest || $('#memberSearch').dataset.activeUserId !== id) return;
       const account = result.account;
       $('#memberDetailTitle').textContent = account.displayName || account.email || 'Hesap ayrıntısı';
       $('#memberDetailMeta').textContent = `${account.email || 'E-posta yok'} · ${result.membershipCount} şirket üyeliği`;
@@ -79,11 +82,13 @@
       await loadMemberTimeline(id, 1, false);
       $('#memberDetail').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
+      if (request !== state.detailRequest || $('#memberSearch').dataset.activeUserId !== id) return;
       body.innerHTML = `<div class="empty">${esc(error.message)}</div>`;
     }
   }
 
   async function loadMemberTimeline(userId, page, append) {
+    const request = ++state.timelineRequest;
     const host = $('#memberTimeline');
     if (!host) return;
     if (!append) host.innerHTML = '<div class="empty">Hesap hareketleri yükleniyor…</div>';
@@ -91,6 +96,7 @@
     if (loadMore) loadMore.disabled = true;
     try {
       const result = await api(`/api/platform/members/${encodeURIComponent(userId)}/timeline?page=${page}&pageSize=50`);
+      if (request !== state.timelineRequest || $('#memberSearch').dataset.activeUserId !== userId || !host.isConnected) return;
       const rows = result.items.map((item) => {
         const amount = item.amount == null ? '' : ` · ${money(item.amount, item.currency)}`;
         const payment = item.paymentReference ? `<div class="sub">Ödeme referansı: ${esc(item.paymentReference)}</div>` : '';
@@ -105,6 +111,7 @@
       const more = host.querySelector('[data-load-more-timeline]');
       if (more) more.addEventListener('click', () => loadMemberTimeline(userId, page + 1, true), { once: true });
     } catch (error) {
+      if (request !== state.timelineRequest || $('#memberSearch').dataset.activeUserId !== userId || !host.isConnected) return;
       host.innerHTML = `<div class="empty">Hesap hareketleri yüklenemedi: ${esc(error.message)}</div>`;
     }
   }
