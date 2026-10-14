@@ -17,7 +17,7 @@
     <form id="setupForm" class="grid">
       <label>Ad soyad<input name="fullName" required maxlength="160" autocomplete="name"></label>
       <label>Yönetici e-posta adresi<input name="email" type="email" required maxlength="256" autocomplete="email"></label>
-      <label>Yeni parola<input name="password" type="password" required minlength="12" autocomplete="new-password"><span class="hint">En az 12 karakter; büyük/küçük harf, sayı ve özel karakter içermelidir.</span></label>
+      <label>Hesap parolası<input name="password" type="password" required minlength="12" autocomplete="current-password"><span class="hint">Bu e-posta mevcut bir EnvanterTR hesabına aitse o hesabın mevcut parolasını girin; yeni hesapta burada girdiğiniz parola oluşturulur. Yeni parola en az 12 karakter ve büyük/küçük harf, sayı ve özel karakter içermelidir.</span></label>
       <label>Platform kurulum anahtarı<input class="token" name="setupToken" type="password" required autocomplete="off"><span class="hint">Sunucudaki SETUP_PLATFORM_BOOTSTRAP_TOKEN değeri.</span></label>
       <button class="button" type="submit" disabled>Platform yöneticisini oluştur</button>
     </form>

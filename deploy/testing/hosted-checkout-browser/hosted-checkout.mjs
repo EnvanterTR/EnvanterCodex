@@ -134,3 +134,4 @@ try {
 await import('./command-palette.mjs');
 await import('./asset-detail-actions.mjs');
 await import('./platform-admin-members.mjs');
+await import('./platform-admin-bootstrap.mjs');

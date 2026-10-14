@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
 const page = await readFile('src/EnvanterTR.Web/wwwroot/platform-admin.html', 'utf8');
+const setupPage = await readFile('src/EnvanterTR.Web/wwwroot/platform-setup.html', 'utf8');
 const program = await readFile('src/EnvanterTR.Web/Program.cs', 'utf8');
 const api = await readFile('src/EnvanterTR.Web/Data/PlatformEndpoints.cs', 'utf8');
 const members = await readFile('src/EnvanterTR.Web/wwwroot/platform-admin-members.js', 'utf8');
@@ -27,6 +28,11 @@ for (const view of ['overview', 'companies', 'members', 'demo-requests', 'orders
 assert.match(page, /platform-admin-members\.js/);
 assert.match(page, /platform-admin-subscriptions\.js/);
 assert.match(page, /platform-admin-demo-requests\.js/);
+assert.ok(setupPage.includes("request('/api/platform/bootstrap/status')"));
+assert.match(setupPage, /setupRequired/);
+assert.match(setupPage, /setupTokenConfigured/);
+assert.ok(setupPage.includes('autocomplete="current-password"'));
+assert.match(setupPage, /mevcut parolasını girin; yeni hesapta burada girdiğiniz parola oluşturulur/);
 assert.match(page, /id="platformTwoFactorField" hidden/);
 assert.match(page, /\[hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/, 'hidden platform admin fields must stay hidden despite display rules on their classes');
 assert.match(page, /id="platformLoginReadiness"[^>]*role="status"/);

@@ -5,6 +5,7 @@ const script = await readFile('deploy/testing/hosted-checkout-browser/hosted-che
 const palette = await readFile('deploy/testing/hosted-checkout-browser/command-palette.mjs', 'utf8');
 const assetActions = await readFile('deploy/testing/hosted-checkout-browser/asset-detail-actions.mjs', 'utf8');
 const platformMembers = await readFile('deploy/testing/hosted-checkout-browser/platform-admin-members.mjs', 'utf8');
+const platformBootstrap = await readFile('deploy/testing/hosted-checkout-browser/platform-admin-bootstrap.mjs', 'utf8');
 const dockerfile = await readFile('deploy/testing/Dockerfile.hosted-checkout-browser', 'utf8');
 const runner = await readFile('deploy/testing/run-hosted-checkout-browser-acceptance.ps1', 'utf8');
 const workflow = await readFile('.github/workflows/ci.yml', 'utf8');
@@ -18,6 +19,7 @@ assert.match(dockerfile, /platform-admin\.html \/platform-site\/platform-admin\.
 assert.match(dockerfile, /platform-admin-members\.js src\/EnvanterTR\.Web\/wwwroot\/platform-admin-subscriptions\.js/);
 assert.match(script, /await import\('\.\/command-palette\.mjs'\)/);
 assert.match(script, /await import\('\.\/platform-admin-members\.mjs'\)/);
+assert.match(script, /await import\('\.\/platform-admin-bootstrap\.mjs'\)/);
 assert.match(palette, /role: 'viewer'/);
 assert.match(palette, /The page must not expose company member administration to a viewer role/);
 assert.match(palette, /let subscriptionMode = 'full'/);
@@ -50,6 +52,10 @@ assert.match(platformMembers, /account registration\/security\/membership\/subsc
 assert.match(platformMembers, /Canceling the membership-role dialog must not write/);
 assert.match(platformMembers, /Synthetic role review/);
 assert.match(platformMembers, /Synthetic Invited Viewer/);
+assert.match(platformBootstrap, /existing-admin, missing-token, and first-setup states/);
+assert.match(platformBootstrap, /Only explicit valid bootstrap submission should create the first platform admin/);
+assert.match(platformBootstrap, /current-password/);
+assert.match(dockerfile, /platform-setup\.html \/platform-site\/platform-setup\.html/);
 assert.match(platformMembers, /platformReauthDialog/);
 assert.match(platformMembers, /synthetic-provider-reference/);
 assert.match(palette, /page\.keyboard\.press\('\/'\)/);
