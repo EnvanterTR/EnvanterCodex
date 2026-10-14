@@ -2157,6 +2157,9 @@
       'Marka adı':['Brand name','Название бренда','Назва бренду','Име на бренд'],
       'Kategori adı':['Category name','Название категории','Назва категорії','Име на категорија'],
       'Aksesuar model adı':['Accessory model name','Название модели аксессуара','Назва моделі аксесуара','Име на моделот на додаток'],
+      'Özel alan adını düzenle':['Edit custom field name','Изменить название дополнительного поля','Змінити назву спеціального поля','Уреди го името на приспособеното поле'],
+      'Özel alan adı':['Custom field name','Название дополнительного поля','Назва спеціального поля','Име на приспособено поле'],
+      'Seçili eşleme profili silinsin mi?':['Delete the selected mapping profile?','Удалить выбранный профиль сопоставления?','Видалити вибраний профіль зіставлення?','Да се избрише избраниот профил за мапирање?'],
       'Kaydet':['Save','Сохранить','Зберегти','Зачувај'],
       'Bu alan zorunludur.':['This field is required.','Это поле обязательно.','Це поле обов’язкове.','Ова поле е задолжително.'],
     });
@@ -8526,13 +8529,14 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     });
     $('#modelAttachmentRows').addEventListener('click', async event => {
       const button = event.target.closest('[data-model-attachment-delete]');
-      if (!button || !activeModelAttachmentId) return;
-      if (!window.confirm(translateUiText('Bu model dosyası kaldırılsın mı?'))) return;
+      const modelId = activeModelAttachmentId, attachmentId = button?.dataset.modelAttachmentDelete;
+      if (!button || !modelId || !attachmentId) return;
+      if (!await confirmEmployeeAction({ title: 'İşlemi onayla', summary: translateUiText('Bu model dosyası kaldırılsın mı?'), confirmLabel: 'Kaldır', danger: true })) return;
       button.disabled = true;
       try {
-        await api(`/api/models/${activeModelAttachmentId}/attachments/${button.dataset.modelAttachmentDelete}`, { method: 'DELETE' });
+        await api(`/api/models/${modelId}/attachments/${attachmentId}`, { method: 'DELETE' });
         await loadCatalog();
-        await loadModelAttachments(activeModelAttachmentId);
+        await loadModelAttachments(modelId);
         notify(translateUiText('Model teknik dosyası kaldırıldı.'));
       } catch (error) { $('#modelAttachmentsFeedback').textContent = error.message; button.disabled = false; }
     });
@@ -8555,7 +8559,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       if (brandProfileId) { const value = selector => $(`[${selector}="${CSS.escape(brandProfileId)}"]`).value; const name = $(`[data-catalog-name="${CSS.escape(brandProfileId)}"]`).value; try { await api(`/api/lookups/brands/${brandProfileId}`, { method: 'PATCH', body: JSON.stringify({ name, website: value('data-brand-website'), supportUrl: value('data-brand-support'), warrantyUrl: value('data-brand-warranty'), supportPhone: value('data-brand-phone'), supportEmail: value('data-brand-email'), updateBrandDetails: true }) }); await loadCatalog(); await loadLookups(); notify(translateUiText('Marka bilgileri güncellendi.')); } catch (error) { notify(error.message); } }
       if (saveId) { const input = $(`[data-catalog-name="${CSS.escape(saveId)}"]`); const modelNumber = catalogKind === 'models' ? $(`[data-model-number="${CSS.escape(saveId)}"]`)?.value || null : null; try { await api(`/api/lookups/${catalogKind}/${saveId}`, { method: 'PATCH', body: JSON.stringify({ name: input.value, modelNumber }) }); await loadCatalog(); await loadLookups(); notify(translateUiText('Tanım güncellendi; bağlı varlık kayıtları korundu.')); } catch (error) { notify(error.message); } }
       if (depreciationId) { const value = selector => $(`[${selector}="${CSS.escape(depreciationId)}"]`); const months = value('data-dep-months').value; const minimum = value('data-dep-minimum').value; try { await api(`/api/lookups/models/${depreciationId}/depreciation`, { method: 'PATCH', body: JSON.stringify({ months: months ? Number(months) : null, minimum: minimum ? Number(minimum) : null, minimumType: value('data-dep-minimum-type').value, method: value('data-dep-method').value }) }); await loadCatalog(); notify(translateUiText('Model amortisman politikası kaydedildi.')); } catch (error) { notify(error.message); } }
-      if (deleteId) { const item = catalogRows.find(x => x.id === deleteId); if (!item || item.assetCount || item.modelCount || !window.confirm(translateUiText('“{name}” tanımı silinsin mi?').replace('{name}', item.name))) return; try { await api(`/api/lookups/${catalogKind}/${deleteId}`, { method: 'DELETE' }); await loadCatalog(); await loadLookups(); notify(translateUiText('Kullanılmayan tanım silindi.')); } catch (error) { notify(error.message); } }
+      if (deleteId) { const item = catalogRows.find(x => x.id === deleteId); if (!item || item.assetCount || item.modelCount || !await confirmEmployeeAction({ title: 'İşlemi onayla', summary: translateUiText('“{name}” tanımı silinsin mi?').replace('{name}', item.name), confirmLabel: 'Sil', danger: true })) return; try { await api(`/api/lookups/${catalogKind}/${deleteId}`, { method: 'DELETE' }); await loadCatalog(); await loadLookups(); notify(translateUiText('Kullanılmayan tanım silindi.')); } catch (error) { notify(error.message); } }
     });
     $('#catalogSearch').addEventListener('input', renderCatalog);
     $('#catalogRefresh').addEventListener('click', () => loadCatalog().then(() => notify(translateUiText('Tanım listesi yenilendi.'))).catch(error => notify(error.message)));
@@ -8758,7 +8762,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         const field = assetCustomFieldDefinitions.find(x => x.id === button.dataset.id); if (!field) return;
         try {
           if (button.hasAttribute('data-custom-field-edit')) {
-            const name = prompt('Özel alan adı', field.name); if (!name?.trim()) return;
+            const name = await requestTextValue({ title: 'Özel alan adını düzenle', label: 'Özel alan adı', initialValue: field.name, maxLength: 100 }); if (name === null || name === field.name) return;
             await api(`/api/assets/custom-fields/${field.id}`, { method: 'PUT', body: JSON.stringify({ key: field.key, name: name.trim(), fieldType: field.fieldType, options: field.options || [], isRequired: field.isRequired, sortOrder: field.sortOrder }) });
           } else {
             await api(`/api/assets/custom-fields/${field.id}/active`, { method: 'PATCH', body: JSON.stringify({ isActive: button.dataset.active !== 'true' }) });
@@ -9776,7 +9780,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     });
     $('#deleteAssetImportProfile').addEventListener('click', async () => {
       const id = $('#assetImportProfile').value;
-      if (!id || !confirm('Seçili eşleme profili silinsin mi?')) return;
+      if (!id || !await confirmEmployeeAction({ title: 'İşlemi onayla', summary: 'Seçili eşleme profili silinsin mi?', confirmLabel: 'Profili sil', danger: true })) return;
       try {
         await api(`/api/assets/import-mappings/${encodeURIComponent(id)}`, { method: 'DELETE' });
         assetImportMapping = {}; $('#assetImportProfileName').value = ''; await loadAssetImportProfiles();

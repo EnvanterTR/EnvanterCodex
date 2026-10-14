@@ -579,7 +579,8 @@ const requiredStockImportDialogLabels = [
 ];
 const requiredAccessoryQuickEntryLabels = [
   'Hızlı marka ekle', 'Kategori adını düzenle', 'Kategori ekle', 'Model ekle', 'Yeni marka ekle',
-  'Marka adı', 'Kategori adı', 'Aksesuar model adı', 'Bu alan zorunludur.'
+  'Marka adı', 'Kategori adı', 'Aksesuar model adı', 'Özel alan adını düzenle', 'Özel alan adı',
+  'Seçili eşleme profili silinsin mi?', 'Bu alan zorunludur.'
 ];
 const requiredIntegrationLabels = [
   'Entegrasyonlar', 'ŞİRKET ALANI / ENTEGRASYONLAR', 'Şirket verilerine salt okunur erişim için API anahtarlarını yönetin.',

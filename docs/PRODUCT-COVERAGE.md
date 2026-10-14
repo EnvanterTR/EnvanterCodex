@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 14 Ekim 2026 — katalog ve içe aktarma onay akışları
+
+Model eki kaldırma, kullanımda olmayan katalog tanımını silme ve varlık CSV eşleme profilini silme tarayıcı `confirm()` yerine uygulama onayı kullanır; iptal API çağrısı yapmaz. Model ve ek kimlikleri onay beklenirken sabitlenir. Varlık özel alanı yeniden adlandırma mevcut değeri yükleyen, 100 karakter sınırını uygulayan form kullanır; iptal/değişiklik yapmadan kaydetme API'ye gitmez. Beş dil çevirileri ve `Verify-CatalogAndCustomFieldDialogs.mjs` eklendi. `Saved_asset_import_mappings_are_validated_and_private_to_their_owner`, `Brand_model_category_and_images_are_company_scoped_and_reusable` ve `Asset_custom_field_name_update_preserves_key_and_writes_audit` izole tenant API kabul testleri geçti (3/3); 70/70 kaynak doğrulayıcısı ve beş dilde 1.851 locale kaydı geçti. Canlı/gerçek şirket verisi kullanılmadı.
+
 ## 14 Ekim 2026 — aksesuar fotoğrafı kaldırma onayı
 
 Aksesuar ayrıntısındaki fotoğrafı kaldırma eylemi tarayıcı `confirm()` yerine iptal edilebilir uygulama onayı kullanır. Vazgeçme/Escape fotoğraf API'sine istek göndermez; açık onay yalnız görüntülenen aksesuarın şirket kapsamlı fotoğraf DELETE uç noktasını çağırır ve başarıda ayrıntı/listeleri yeniler. `Verify-AccessoryPhotoRemovalDialog.mjs` kaynak sözleşmesini denetler; `Accessory_photos_are_company_scoped_audited_and_included_in_company_archive` izole API kabul testi rol reddini, tenant kapsamını, silme ve kalıcı fotoğraf/denetim durumu doğrular. Yerel şirket verisindeki fotoğraf değiştirilmedi; canlı ortama dokunulmadı.

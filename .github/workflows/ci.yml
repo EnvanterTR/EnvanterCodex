@@ -108,6 +108,10 @@ jobs:
         shell: bash
         run: node tools/Verify-AccessoryPhotoRemovalDialog.mjs
 
+      - name: Verify catalog and custom field dialogs
+        shell: bash
+        run: node tools/Verify-CatalogAndCustomFieldDialogs.mjs
+
       - name: Verify accessory catalog quick-entry dialogs
         shell: bash
         run: node tools/Verify-AccessoryCatalogQuickEntry.mjs

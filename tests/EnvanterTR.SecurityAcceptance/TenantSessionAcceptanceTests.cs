@@ -4307,6 +4307,41 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Asset_custom_field_name_update_preserves_key_and_writes_audit()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var key = $"rename_{Guid.NewGuid():N}";
+        using var create = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/custom-fields", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { key, name = "Old label", fieldType = "text", options = Array.Empty<string>(), isRequired = false }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        using var created = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
+        var id = created.RootElement.GetProperty("id").GetGuid();
+
+        using var update = await SendAsRoleAsync(HttpMethod.Put, $"/api/assets/custom-fields/{id}", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { key, name = "Updated label", fieldType = "text", options = Array.Empty<string>(), isRequired = false }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+        using var updated = JsonDocument.Parse(await update.Content.ReadAsStringAsync());
+        Assert.Equal(id, updated.RootElement.GetProperty("id").GetGuid());
+        Assert.Equal(key, updated.RootElement.GetProperty("key").GetString());
+        Assert.Equal("Updated label", updated.RootElement.GetProperty("name").GetString());
+
+        using (var tooLong = await SendAsRoleAsync(HttpMethod.Put, $"/api/assets/custom-fields/{id}", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { key, name = new string('x', 101), fieldType = "text", options = Array.Empty<string>(), isRequired = false }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal("Updated label", await db.AssetCustomFieldDefinitions.Where(x => x.CompanyId == _companyId && x.Id == id).Select(x => x.Name).SingleAsync());
+        Assert.Contains(await db.AuditEntries.Where(x => x.CompanyId == _companyId && x.TargetType == "AssetCustomField" && x.TargetId == id)
+            .Select(x => x.Action).ToListAsync(), action => action == "AssetCustomFieldUpdated");
+    }
+
+    [Fact]
     public async Task Asset_custom_field_filter_is_tenant_scoped_and_applies_to_csv()
     {
         const string fieldKey = "asset_code";
