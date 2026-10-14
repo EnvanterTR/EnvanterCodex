@@ -6225,7 +6225,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     }
     function calendarKindLabel(kind) { return translateUiText(kind === 'maintenance' ? 'Bakım planı' : kind === 'audit' ? 'Fiziksel denetim' : kind === 'warranty' ? 'Garanti bitişi' : kind === 'return' ? 'Varlık iadesi' : kind === 'reservation' ? 'Varlık rezervasyonu' : 'Lisans bitişi'); }
     let operationalAlertItems = [], operationalAlertRequestId = 0, operationalAlertTimer = 0;
-    let operationalAlertKinds = ['maintenance', 'audit', 'license', 'warranty', 'return', 'reservation'], showDismissedOperationalAlerts = false;
+    let operationalAlertKinds = ['maintenance', 'audit', 'license', 'warranty', 'return', 'reservation'], operationalAlertEmailKinds = [], showDismissedOperationalAlerts = false;
     function applyOperationalNotificationLanguage() {
       const t = translateUiText, settings = $('#notificationSettingsToggle'), dismissed = $('#notificationDismissedToggle'), form = $('#notificationPreferencesForm');
       if (settings) settings.textContent = t('Bildirim tercihleri');
@@ -6239,6 +6239,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       const hint = form.querySelector('small'); if (hint) hint.textContent = t('Sunucu e-posta (SMTP) ayarı etkinse seçtikleriniz günde en fazla bir kez, hesabınızın doğrulanmış e-posta adresine gönderilir.');
       for (const group of groups) for (const input of form.querySelectorAll(`input[name="${group.name}"]`)) { const label = input.closest('label'); if (label?.lastChild?.nodeType === Node.TEXT_NODE) label.lastChild.nodeValue = ` ${t(group.labels[input.value] || '')}`; }
       const save = form.querySelector('button[type="submit"]'); if (save) save.textContent = t('Tercihleri kaydet');
+      const cancel = form.querySelector('[data-notification-preferences-cancel]'); if (cancel) cancel.textContent = t('Vazgeç');
     }
     function ensureOperationalNotificationControls() {
       const panel = $('#notificationPanel'), list = $('#notificationList');
@@ -6257,7 +6258,10 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       for (const [kind, label] of [['maintenance', 'Bakım planları için e-posta'], ['audit', 'Fiziksel denetimler için e-posta'], ['license', 'Lisans bitişleri için e-posta'], ['warranty', 'Garanti bitişleri için e-posta'], ['return', 'Beklenen varlık iadeleri için e-posta'], ['reservation', 'Onaylı rezervasyonlar için e-posta'], ['assignment', 'Yeni zimmetler için e-posta (son 7 gün)'], ['asset-life', 'Kullanım ömrü dolan varlıklar için e-posta'], ['subscription', 'Abonelik bitişi için e-posta (30, 7 ve 1 gün önce)']]) {
         const wrapper = document.createElement('label'), checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.name = 'emailKind'; checkbox.value = kind; wrapper.append(checkbox, document.createTextNode(translateUiText(label))); form.append(wrapper);
       }
-      const save = document.createElement('button'); save.type = 'submit'; save.textContent = translateUiText('Tercihleri kaydet'); form.append(save);
+      const actions = document.createElement('div'); actions.className = 'dialog-actions';
+      const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'btn'; cancel.dataset.notificationPreferencesCancel = ''; cancel.textContent = translateUiText('Vazgeç');
+      const save = document.createElement('button'); save.type = 'submit'; save.className = 'btn primary'; save.textContent = translateUiText('Tercihleri kaydet');
+      actions.append(cancel, save); form.append(actions);
       panel.insertBefore(controls, list); panel.insertBefore(form, list);
       applyOperationalNotificationLanguage();
       settings.addEventListener('click', async () => {
@@ -6266,10 +6270,15 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
           try {
             const preferences = await api('/api/notifications/preferences'); operationalAlertKinds = preferences.enabledKinds || [];
             form.querySelectorAll('input[name="kind"]').forEach(input => { input.checked = operationalAlertKinds.includes(input.value); });
-            const emailKinds = preferences.emailEnabledKinds || [];
-            form.querySelectorAll('input[name="emailKind"]').forEach(input => { input.checked = emailKinds.includes(input.value); });
+            operationalAlertEmailKinds = preferences.emailEnabledKinds || [];
+            form.querySelectorAll('input[name="emailKind"]').forEach(input => { input.checked = operationalAlertEmailKinds.includes(input.value); });
           } catch (error) { notify(error.message); form.hidden = true; }
         }
+      });
+      cancel.addEventListener('click', () => {
+        form.querySelectorAll('input[name="kind"]').forEach(input => { input.checked = operationalAlertKinds.includes(input.value); });
+        form.querySelectorAll('input[name="emailKind"]').forEach(input => { input.checked = operationalAlertEmailKinds.includes(input.value); });
+        form.hidden = true;
       });
       dismissed.addEventListener('click', () => { showDismissedOperationalAlerts = !showDismissedOperationalAlerts; dismissed.textContent = translateUiText(showDismissedOperationalAlerts ? 'Etkin bildirimleri göster' : 'Gizlenenleri göster'); void loadOperationalAlerts(); });
       form.addEventListener('submit', async event => {
@@ -6278,7 +6287,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
           const enabledKinds = [...form.querySelectorAll('input[name="kind"]:checked')].map(input => input.value);
           const emailEnabledKinds = [...form.querySelectorAll('input[name="emailKind"]:checked')].map(input => input.value);
           const response = await api('/api/notifications/preferences', { method: 'PUT', body: JSON.stringify({ enabledKinds, emailEnabledKinds }) });
-          operationalAlertKinds = response.enabledKinds || []; form.hidden = true; showDismissedOperationalAlerts = false;
+          operationalAlertKinds = response.enabledKinds || []; operationalAlertEmailKinds = response.emailEnabledKinds || []; form.hidden = true; showDismissedOperationalAlerts = false;
           dismissed.textContent = translateUiText('Gizlenenleri göster'); notify(translateUiText('Bildirim tercihleri kaydedildi.')); await loadOperationalAlerts();
         } catch (error) { notify(error.message); }
         finally { button.disabled = false; }
@@ -6295,6 +6304,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         const [result, preferences] = await Promise.all([api(`/api/calendar?${params}`), api('/api/notifications/preferences')]);
         if (requestId !== operationalAlertRequestId) return;
         operationalAlertKinds = preferences.enabledKinds || [];
+        operationalAlertEmailKinds = preferences.emailEnabledKinds || [];
         const calendarItems = Array.isArray(result.items) ? result.items : [];
         const stateParams = new URLSearchParams();
         for (const item of calendarItems) stateParams.append('key', `${item.kind}:${item.recordId}`);

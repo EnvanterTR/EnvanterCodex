@@ -8,6 +8,7 @@ const syntheticUserId = '22222222-2222-4222-8222-222222222222';
 const appHtml = await readFile('/checkout-site/company-app.html');
 const apiRequests = [];
 let subscriptionMode = 'full';
+let notificationPreferences = { enabledKinds: ['maintenance', 'audit', 'license', 'warranty', 'return', 'reservation'], emailEnabledKinds: [] };
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || '/', 'http://127.0.0.1');
   if (request.method === 'GET' && url.pathname === '/') {
@@ -33,6 +34,15 @@ const server = createServer(async (request, response) => {
     }
     apiRequests.push(record);
     if (request.method !== 'GET') {
+      if (request.method === 'PUT' && url.pathname === '/api/notifications/preferences' && record.csrf === 'synthetic-viewer-csrf') {
+        notificationPreferences = {
+          enabledKinds: [...new Set((record.body?.enabledKinds || []).map(value => String(value).toLowerCase()))],
+          emailEnabledKinds: [...new Set((record.body?.emailEnabledKinds || []).map(value => String(value).toLowerCase()))]
+        };
+        response.writeHead(200, { 'content-type': 'application/json' });
+        response.end(JSON.stringify(notificationPreferences));
+        return;
+      }
       if (request.method === 'PUT' && url.pathname === '/api/appearance/preferences' && record.csrf === 'synthetic-viewer-csrf') {
         response.writeHead(200, { 'content-type': 'application/json' });
         response.end(JSON.stringify(record.body));
@@ -63,7 +73,7 @@ const server = createServer(async (request, response) => {
             : url.pathname === '/api/company/label-settings'
                 ? { isConfigured: false, settings: null }
               : url.pathname === '/api/notifications/preferences'
-                ? { enabledKinds: ['Maintenance', 'Audit', 'License', 'Warranty', 'Return'] }
+                ? notificationPreferences
                 : url.pathname === '/api/session/2fa'
                   ? { enabled: false }
                   : url.pathname === '/api/session/devices'
@@ -207,6 +217,48 @@ try {
   await notificationPanel.waitFor({ state: 'hidden' });
   assert.equal(await notificationButton.getAttribute('aria-expanded'), 'false', 'Outside click must close the notification panel and reset aria-expanded.');
 
+  await page.locator('#sidebar [data-group="settings"]').click();
+  const notificationsNav = page.locator('#sidebar [data-page="Bildirimler"]');
+  await notificationsNav.click();
+  await page.waitForFunction(() => document.querySelector('#pageTitle')?.textContent === 'Bildirimler');
+  const notificationShortcut = page.locator('#featureStatusNotificationButton');
+  assert.equal(await notificationShortcut.isVisible(), true, 'The Notifications menu must expose its working preferences shortcut.');
+  await notificationShortcut.click();
+  await notificationPanel.waitFor({ state: 'visible' });
+  const preferencesForm = page.locator('#notificationPreferencesForm');
+  await preferencesForm.waitFor({ state: 'visible' });
+  const auditPreference = preferencesForm.locator('input[name="kind"][value="audit"]');
+  const reservationPreference = preferencesForm.locator('input[name="kind"][value="reservation"]');
+  const warrantyEmailPreference = preferencesForm.locator('input[name="emailKind"][value="warranty"]');
+  await page.waitForFunction(() => document.querySelector('#notificationPreferencesForm input[name="kind"][value="reservation"]')?.checked === true);
+  assert.equal(await auditPreference.isChecked(), true, 'The form must load the current in-app notification preference.');
+  const preferenceWritesBeforeCancel = apiRequests.filter(item => item.path === '/api/notifications/preferences' && item.method === 'PUT').length;
+  await reservationPreference.uncheck();
+  await preferencesForm.getByRole('button', { name: 'Vazgeç' }).click();
+  await preferencesForm.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.filter(item => item.path === '/api/notifications/preferences' && item.method === 'PUT').length, preferenceWritesBeforeCancel,
+    'Canceling notification edits must not write preferences.');
+  await page.locator('#notificationSettingsToggle').click();
+  await preferencesForm.waitFor({ state: 'visible' });
+  await page.waitForFunction(() => document.querySelector('#notificationPreferencesForm input[name="kind"][value="reservation"]')?.checked === true);
+  assert.equal(await reservationPreference.isChecked(), true, 'Cancel must restore the persisted choices when the form is reopened.');
+  await auditPreference.uncheck();
+  await warrantyEmailPreference.check();
+  await preferencesForm.getByRole('button', { name: 'Tercihleri kaydet' }).click();
+  await preferencesForm.waitFor({ state: 'hidden' });
+  const notificationWrite = apiRequests.find(item => item.path === '/api/notifications/preferences' && item.method === 'PUT');
+  assert.deepEqual(notificationWrite?.body, {
+    enabledKinds: ['maintenance', 'license', 'warranty', 'return', 'reservation'],
+    emailEnabledKinds: ['warranty']
+  });
+  assert.equal(notificationWrite?.csrf, 'synthetic-viewer-csrf');
+  await page.locator('#notificationSettingsToggle').click();
+  await preferencesForm.waitFor({ state: 'visible' });
+  assert.equal(await auditPreference.isChecked(), false, 'Saved notification choices must reload from the API-backed synthetic preference record.');
+  assert.equal(await warrantyEmailPreference.isChecked(), true);
+  await page.locator('#sidebar [data-page="Genel Bakış"]').click();
+  await notificationPanel.waitFor({ state: 'hidden' });
+
   await page.locator('#userAvatar').click();
   const accountDialog = page.locator('#accountPhotoDialog');
   await accountDialog.waitFor({ state: 'visible' });
@@ -257,11 +309,10 @@ try {
   }
   assert.deepEqual(pageErrors, [], 'The app must not throw browser errors while switching languages and showing subscription access state.');
   const writes = apiRequests.filter(item => item.method !== 'GET');
-  assert.equal(writes.length, 1, 'The only permitted write is the explicitly saved personal appearance preference.');
-  assert.equal(writes[0].method, 'PUT');
-  assert.equal(writes[0].path, '/api/appearance/preferences');
-  assert.deepEqual(writes[0].body, { theme: 'dark', language: 'en' });
-  console.log('PASS: synthetic viewer role visibility; Ctrl+K, slash, question-mark, Escape, and role-denied Ctrl+N; notification dismissal; profile security reads; CSRF-protected appearance preferences; five-language expiry notice; no unrelated writes/browser errors.');
+  assert.equal(writes.length, 2, 'Only the explicitly saved synthetic user notification and appearance preferences may write.');
+  assert.deepEqual(writes.map(item => item.path).sort(), ['/api/appearance/preferences', '/api/notifications/preferences']);
+  assert.deepEqual(writes.find(item => item.path === '/api/appearance/preferences')?.body, { theme: 'dark', language: 'en' });
+  console.log('PASS: synthetic viewer role visibility; keyboard/sidebar navigation; notification menu shortcut, cancel, save and persistence; profile security reads; CSRF-protected appearance preferences; five-language expiry notice; no unrelated writes/browser errors.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));
