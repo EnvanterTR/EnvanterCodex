@@ -1654,6 +1654,58 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Platform_audit_search_filters_actor_action_target_and_date_with_stable_paging()
+    {
+        var marker = $"audit-search-{Guid.NewGuid():N}";
+        var now = DateTimeOffset.UtcNow;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            db.PlatformAuditEntries.AddRange(
+                new PlatformAuditEntry { ActorUserId = _userId, CompanyId = _companyId, Action = "PlanUpdated",
+                    TargetType = "SubscriptionPlan", TargetId = Guid.NewGuid(), Details = $"{marker} price reviewed", OccurredAt = now.AddHours(-2) },
+                new PlatformAuditEntry { ActorUserId = _userId, CompanyId = _companyId, Action = "CompanySuspended",
+                    TargetType = "Company", TargetId = _companyId, Details = $"{marker} status reviewed", OccurredAt = now.AddHours(-1) },
+                new PlatformAuditEntry { ActorUserId = _userId, CompanyId = _companyId, Action = "PlanUpdated",
+                    TargetType = "SubscriptionPlan", TargetId = Guid.NewGuid(), Details = $"{marker} older record", OccurredAt = now.AddHours(-5) });
+            await db.SaveChangesAsync();
+        }
+
+        using (var anonymous = await _factory.CreateClient().GetAsync("/api/platform/audit"))
+            Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+        using (var tenantUser = await SendAsUserAsync(HttpMethod.Get, "/api/platform/audit", _userId, _companyId))
+            Assert.Equal(HttpStatusCode.Forbidden, tenantUser.StatusCode);
+
+        var from = now.AddHours(-3).ToString("O", CultureInfo.InvariantCulture);
+        var to = now.AddMinutes(-30).ToString("O", CultureInfo.InvariantCulture);
+        using (var filtered = await SendAsPlatformAdminAsync($"/api/platform/audit?q={marker}&from={Uri.EscapeDataString(from)}&to={Uri.EscapeDataString(to)}&pageSize=1"))
+        {
+            Assert.Equal(HttpStatusCode.OK, filtered.StatusCode);
+            using var payload = JsonDocument.Parse(await filtered.Content.ReadAsStringAsync());
+            Assert.Equal(2, payload.RootElement.GetProperty("total").GetInt32());
+            Assert.Equal(1, payload.RootElement.GetProperty("entries").GetArrayLength());
+            Assert.Equal("Security Acceptance User", payload.RootElement.GetProperty("entries")[0].GetProperty("actorName").GetString());
+            Assert.Equal($"acceptance-{_userId:N}@example.invalid", payload.RootElement.GetProperty("entries")[0].GetProperty("actorEmail").GetString());
+        }
+
+        using (var exact = await SendAsPlatformAdminAsync($"/api/platform/audit?q={marker}&action=PlanUpdated&targetType=SubscriptionPlan&from={Uri.EscapeDataString(from)}&to={Uri.EscapeDataString(to)}"))
+        {
+            using var payload = JsonDocument.Parse(await exact.Content.ReadAsStringAsync());
+            Assert.Equal(1, payload.RootElement.GetProperty("total").GetInt32());
+            Assert.Equal("PlanUpdated", payload.RootElement.GetProperty("entries")[0].GetProperty("action").GetString());
+        }
+        using (var secondPage = await SendAsPlatformAdminAsync($"/api/platform/audit?q={marker}&from={Uri.EscapeDataString(from)}&to={Uri.EscapeDataString(to)}&page=2&pageSize=1"))
+        {
+            using var payload = JsonDocument.Parse(await secondPage.Content.ReadAsStringAsync());
+            Assert.Equal(2, payload.RootElement.GetProperty("total").GetInt32());
+            Assert.Equal("PlanUpdated", payload.RootElement.GetProperty("entries")[0].GetProperty("action").GetString());
+        }
+        using (var invalidRange = await SendAsPlatformAdminAsync("/api/platform/audit?from=2026-10-14T10%3A00%3A00Z&to=2026-10-14T09%3A00%3A00Z"))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidRange.StatusCode);
+    }
+
+    [Fact]
     public async Task Platform_checkout_orders_are_searchable_paginated_and_hide_provider_secrets()
     {
         var plan = new SubscriptionPlan
