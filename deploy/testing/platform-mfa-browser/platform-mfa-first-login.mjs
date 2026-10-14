@@ -13,6 +13,7 @@ const email = `platform-mfa-${randomUUID()}@example.invalid`;
 const password = 'Synthetic-Platform-Password-46!';
 const browserErrors = [];
 const serverErrors = [];
+const externalRequests = [];
 let browser;
 
 function base32Decode(value) {
@@ -61,6 +62,9 @@ try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   page.setDefaultTimeout(10_000);
   page.on('pageerror', error => browserErrors.push(error.message));
+  page.on('request', request => {
+    if (new URL(request.url()).origin !== new URL(baseUrl).origin) externalRequests.push(new URL(request.url()).origin);
+  });
   page.on('response', response => {
     if (response.status() >= 500) serverErrors.push(`${response.status()} ${new URL(response.url()).pathname}`);
   });
@@ -156,15 +160,35 @@ try {
   // Start setup, create a valid TOTP in memory, and enable MFA.
   await page.getByLabel('Mevcut parola').fill(password);
   const startMfaButton = page.getByRole('button', { name: 'Kurulumu başlat' });
+  const setupResponsePromise = page.waitForResponse(response => new URL(response.url()).pathname === '/api/session/2fa/setup');
   await startMfaButton.click();
+  const setupResponse = await setupResponsePromise;
+  assert.equal(setupResponse.status(), 200);
+  const setupPayload = await setupResponse.json();
   await page.waitForFunction(() => !document.querySelector('#platformMfaStart').disabled);
   assert.equal(await page.locator('#platformMfaFeedback').innerText(),
-    'Anahtarı Authenticator uygulamasına girin, ardından uygulamanın ürettiği güncel kodu doğrulayın.',
+    'QR kodunu tarayın veya kurulum anahtarını elle girin; ardından uygulamanın ürettiği güncel kodu doğrulayın.',
     `MFA setup UI response: ${(await page.locator('#platformMfaFeedback').innerText()).trim()}`);
   const secretInput = page.locator('#platformMfaSecret');
   await secretInput.waitFor({ state: 'visible' });
   const secret = await secretInput.inputValue();
   assert.match(secret, /^[A-Z2-7]+=*$/);
+  assert.equal(new URL(setupPayload.authenticatorUri).protocol, 'otpauth:');
+  assert.equal(new URL(setupPayload.authenticatorUri).searchParams.get('secret'), secret,
+    'The QR source must carry the same authenticator key as the manual fallback.');
+  const qrImage = page.locator('#platformMfaQr');
+  await qrImage.waitFor({ state: 'visible' });
+  const qrSource = await qrImage.getAttribute('src');
+  assert.match(qrSource, /^data:image\/svg\+xml;charset=utf-8,/,
+    'The QR must be generated locally as SVG instead of sent to an external QR service.');
+  const renderedSvg = decodeURIComponent(qrSource.slice(qrSource.indexOf(',') + 1));
+  const expectedSvg = await page.evaluate(uri => {
+    const qr = qrcodegen.QrCode.encodeText(uri, qrcodegen.QrCode.Ecc.MEDIUM), quietZone = 4, viewSize = qr.size + quietZone * 2;
+    let path = '';
+    for (let y = 0; y < qr.size; y++) for (let x = 0; x < qr.size; x++) if (qr.getModule(x, y)) path += `M${x + quietZone},${y + quietZone}h1v1h-1z`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${viewSize} ${viewSize}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="${path}" fill="#111"/></svg>`;
+  }, setupPayload.authenticatorUri);
+  assert.equal(renderedSvg, expectedSvg, 'The displayed QR matrix must encode the authenticator URI returned by the server.');
   await page.locator('#platformMfaCode').fill(totp(secret));
   await page.locator('#platformMfaEnable').click();
   const recoveryPanel = page.locator('#platformMfaRecoveryPanel');
@@ -204,8 +228,9 @@ try {
   await page.getByRole('heading', { name: 'Genel Bakış' }).waitFor();
   assert.equal(browserErrors.length, 0, `JavaScript exceptions: ${browserErrors.join(' | ')}`);
   assert.equal(serverErrors.length, 0, `Server errors: ${serverErrors.join(' | ')}`);
+  assert.equal(externalRequests.length, 0, `Authenticator setup must not send requests to external QR services: ${externalRequests.join(', ')}`);
 
-  console.log('PASS: synthetic platform bootstrap, first password login, MFA setup, recovery acknowledgement, session reload, one-time recovery, replay rejection, and TOTP login.');
+  console.log('PASS: synthetic platform bootstrap, local authenticator QR encoding, manual-key fallback, MFA setup, recovery acknowledgement, session reload, one-time recovery, replay rejection, and TOTP login with zero external requests.');
 } finally {
   await browser?.close();
 }

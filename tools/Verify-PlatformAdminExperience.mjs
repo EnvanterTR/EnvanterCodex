@@ -42,6 +42,17 @@ assert.match(page, /status\.status==='migration-required'[\s\S]*?pendingMigratio
 assert.match(page, /status\.status==='ready'[\s\S]*?submit\.disabled=false/);
 assert.match(page, /if\(!await checkPlatformLoginReadiness\(\)\)return/);
 assert.match(page, /name="twoFactorCode"[^>]*autocomplete="one-time-code"/);
+assert.match(page, /<script src="\/vendor\/qrcodegen\.js"><\/script>/,
+  'Platform MFA must use the locally hosted QR encoder, not an external image service.');
+assert.match(page, /Google Authenticator, Microsoft Authenticator veya uyumlu uygulamada[\s\S]*?yerel olarak üretilir; Google\/Microsoft hesabı veya ücretli doğrulama hizmeti gerekmez/,
+  'First-time MFA setup must explain compatible apps, local QR generation, and no third-party account or paid provider requirement.');
+assert.match(page, /function renderPlatformTotpQr\(authenticatorUri\)[\s\S]*?startsWith\('otpauth:\/\/totp\/'\)[\s\S]*?qrcodegen\.QrCode\.encodeText\(authenticatorUri/,
+  'The authenticator URI must be validated and encoded locally.');
+assert.match(page, /renderPlatformTotpQr\(result\.authenticatorUri\)/,
+  'The UI must generate the QR from the server-provided authenticator URI.');
+assert.match(page, /id="platformMfaQr" alt="Authenticator uygulaması için güvenlik kurulum QR kodu"/);
+assert.match(page, /QR kodunu tarayamıyorsanız aşağıdaki kurulum anahtarını uygulamaya elle girebilirsiniz/,
+  'Manual setup-key entry must remain available as a fallback.');
 assert.match(page, /twoFactorCode:f\.get\('twoFactorCode'\)\|\|null/);
 assert.match(page, /if\(x\.twoFactorRequired\)[\s\S]*?platformTwoFactorField\.hidden=false/);
 assert.match(page, /error\.twoFactorRequired=data\?\.twoFactorRequired===true/);
@@ -61,7 +72,7 @@ assert.match(acceptance, /Platform_admin_first_login_accepts_password_then_requi
 assert.match(page, /id="platformMfaTitle">İlk giriş güvenlik kurulumu/);
 assert.match(page, /Google Authenticator, Microsoft Authenticator/);
 assert.match(page, /Mevcut parolanızı girip kurulumu başlatın/);
-assert.match(page, /Kurulum anahtarını gir/);
+assert.match(page, /QR kodunu tarayamıyorsanız aşağıdaki kurulum anahtarını uygulamaya elle girebilirsiniz/);
 assert.match(page, /Tek kullanımlık kurtarma kodlarını güvenli bir yere kaydedin/);
 assert.match(page, /\/api\/session\/2fa\/setup/);
 assert.match(page, /\/api\/session\/2fa\/enable/);
