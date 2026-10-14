@@ -51,7 +51,7 @@ requireSource(api.includes('api.MapPost("/assets/{id:guid}/restore"') && accepta
 requireSource(app.includes('function removeAssetAttachment(assetId, attachment)') && app.includes("remove.addEventListener('click', () => removeAssetAttachment(assetId, attachment))") && app.includes("method: 'DELETE'") && app.includes('renderAssetAttachments(target.assetId, result.attachments)'), 'Attachment removal must require a separate explicit confirmation, call the delete API, and refresh its detail list.');
 requireSource(app.includes("document.querySelectorAll('[data-asset-tab]')"), 'Asset-detail tabs must have a bound navigation handler.');
 requireSource(app.includes('id="quickLookupDialog"') && app.includes("quickLookupDialog.showModal(); form.elements.name.focus();") && app.includes("api(`/api/lookups/${kind}`"), 'Category, brand, and model quick-add must use the in-app form and submit to the tenant lookup API.');
-requireSource(app.includes('id="returnAssetDialog"') && app.includes("returnAssetDialog.showModal();") && app.includes("api(`/api/assets/${currentAsset.id}/return`"), 'Asset return must use the in-app confirmation/note form and submit to the tenant return API.');
+requireSource(app.includes('id="returnAssetDialog" aria-labelledby="returnAssetTitle"') && app.includes("openAssetReturnAction(currentAsset, 'detail')") && app.includes("api(`/api/assets/${target.id}/return`"), 'Asset return must use the in-app confirmation/note form and submit to the tenant return API.');
 requireSource(app.includes('id="assetTrashConfirmDialog" aria-labelledby="assetTrashConfirmTitle"') &&
   app.includes('id="assetTrashConfirmForm"') && app.includes('id="assetTrashConfirmSummary"') &&
   app.includes('name="note" maxlength="1000" rows="3"') &&

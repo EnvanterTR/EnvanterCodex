@@ -664,7 +664,7 @@
   <dialog class="detail-dialog" id="locationManagerDialog"><form id="locationManagerForm"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ALANI / KONUM</div><h2>Konum sorumlusu ata</h2></div><button class="close" type="button" id="closeLocationManager" aria-label="Kapat">✕</button></div><div class="dialog-body"><input name="locationId" type="hidden"><p class="muted" id="locationManagerContext"></p><label>Çalışan ara<input id="locationManagerSearch" type="search" maxlength="120" placeholder="Ad veya personel numarası"></label><label>Aktif çalışan<select id="locationManagerEmployee" name="employeeId"><option value="">Sorumlu atanmamış</option></select></label><p class="muted" id="locationManagerFeedback" role="status" aria-live="polite"></p><div class="dialog-actions"><button class="btn" type="button" id="cancelLocationManager">Vazgeç</button><button class="btn primary" type="submit" id="saveLocationManager">Sorumluyu kaydet</button></div></div></form></dialog>
   <datalist id="departmentSuggestions"></datalist><datalist id="locationSuggestions"></datalist>
   <dialog class="detail-dialog" id="quickLookupDialog"><form id="quickLookupForm"><div class="dialog-head"><div><div class="eyebrow">ENVANTER KATALOĞU</div><h2 id="quickLookupTitle">Katalog kaydı ekle</h2></div><button class="close" type="button" id="cancelQuickLookup" aria-label="Kapat">✕</button></div><div class="dialog-body"><label class="detail-field"><small id="quickLookupNameLabel">Ad *</small><input name="name" required maxlength="160" autocomplete="off"></label><label class="detail-field" id="quickLookupModelNumberField" hidden><small>Model numarası</small><input name="modelNumber" maxlength="120" autocomplete="off"></label><div class="dialog-actions"><button class="btn" type="button" id="cancelQuickLookupAction">Vazgeç</button><button class="btn primary" type="submit">Kaydet</button></div></div></form></dialog>
-  <dialog class="detail-dialog" id="returnAssetDialog"><form id="returnAssetForm"><div class="dialog-head"><div><div class="eyebrow">ZİMMET İŞLEMİ</div><h2 id="returnAssetTitle">Varlığı iade al</h2></div><button class="close" type="button" id="cancelAssetReturn" aria-label="Kapat">✕</button></div><div class="dialog-body"><p id="returnAssetDescription" class="muted"></p><label class="detail-field"><small>İade notu (isteğe bağlı)</small><textarea name="note" maxlength="1000" rows="3"></textarea></label><div class="dialog-actions"><button class="btn" type="button" id="cancelAssetReturnAction">Vazgeç</button><button class="btn primary" type="submit">İade al</button></div></div></form></dialog>
+  <dialog class="detail-dialog" id="returnAssetDialog" aria-labelledby="returnAssetTitle"><form id="returnAssetForm"><div class="dialog-head"><div><div class="eyebrow">ZİMMET İŞLEMİ</div><h2 id="returnAssetTitle">Varlığı iade al</h2></div><button class="close" type="button" id="cancelAssetReturn" aria-label="Kapat">✕</button></div><div class="dialog-body"><p id="returnAssetDescription" class="muted"></p><label class="detail-field"><small>İade notu (isteğe bağlı)</small><textarea name="note" maxlength="1000" rows="3"></textarea></label><p id="returnAssetFeedback" class="auth-error" role="alert" hidden></p><div class="dialog-actions"><button class="btn" type="button" id="cancelAssetReturnAction">Vazgeç</button><button class="btn primary" id="submitAssetReturn" type="submit">İade al</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="assetTrashConfirmDialog" aria-labelledby="assetTrashConfirmTitle"><form id="assetTrashConfirmForm"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ENVANTERİ / KURTARMA</div><h2 id="assetTrashConfirmTitle">Çöp kutusuna taşı</h2></div><button class="close" id="closeAssetTrashConfirm" type="button" aria-label="Kapat">✕</button></div><div class="dialog-body"><p id="assetTrashConfirmSummary" class="muted"></p><label class="detail-field"><small>Çöp kutusu notu (isteğe bağlı):</small><textarea name="note" maxlength="1000" rows="3"></textarea></label><div class="dialog-actions"><button class="btn" id="cancelAssetTrashConfirm" type="button">Vazgeç</button><button class="btn danger" id="submitAssetTrashConfirm" type="submit">Varlığı çöp kutusuna taşı</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="assetStatusDialog" aria-labelledby="assetStatusDialogTitle"><form id="assetStatusForm"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ENVANTERİ / DURUM</div><h2 id="assetStatusDialogTitle">Durum değişikliğini onayla</h2></div><button class="close" id="closeAssetStatusDialog" type="button" aria-label="Kapat">✕</button></div><div class="dialog-body"><p id="assetStatusSummary" class="muted"></p><label class="detail-field"><small id="assetStatusNoteLabel">Durum değişikliği notu (isteğe bağlı):</small><textarea name="note" maxlength="1000" rows="3"></textarea></label><p id="assetStatusFeedback" class="auth-error" role="alert" hidden></p><div class="dialog-actions"><button class="btn" id="cancelAssetStatus" type="button">Vazgeç</button><button class="btn primary" id="submitAssetStatus" type="submit">Durumu güncelle</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="assetAttachmentRemoveDialog" aria-labelledby="assetAttachmentRemoveTitle"><form id="assetAttachmentRemoveForm"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ENVANTERİ / DOSYA</div><h2 id="assetAttachmentRemoveTitle">Varlık dosyasını kaldır</h2></div><button class="close" id="closeAssetAttachmentRemove" type="button" aria-label="Kapat">✕</button></div><div class="dialog-body"><p id="assetAttachmentRemoveSummary" class="muted"></p><p id="assetAttachmentRemoveFeedback" class="auth-error" role="alert" hidden></p><div class="dialog-actions"><button class="btn" id="cancelAssetAttachmentRemove" type="button">Vazgeç</button><button class="btn danger" id="submitAssetAttachmentRemove" type="submit">Dosyayı kaldır</button></div></div></form></dialog>
@@ -2181,6 +2181,12 @@
       'Kayıtlı arama işlemi tamamlanamadı.':['The saved search action could not be completed.','Не удалось выполнить действие с сохранённым поиском.','Не вдалося виконати дію зі збереженим пошуком.','Дејството со зачуваното пребарување не може да се заврши.'],
       'Kayıtlı arama silindi.':['Saved search deleted.','Сохранённый поиск удалён.','Збережений пошук видалено.','Зачуваното пребарување е избришано.'],
       'Varlık araması hesabınıza kaydedildi.':['Asset search saved to your account.','Поиск активов сохранён в вашей учётной записи.','Пошук активів збережено у вашому обліковому записі.','Пребарувањето на средства е зачувано на вашата сметка.'],
+      'ZİMMET İŞLEMİ':['ASSIGNMENT ACTION','ДЕЙСТВИЕ С ВЫДАЧЕЙ','ДІЯ З ВИДАЧЕЮ','ДЕЈСТВО ЗА ЗАДОЛЖУВАЊЕ'],
+      'Varlığı iade al':['Check in asset','Принять возврат актива','Прийняти повернення активу','Прими средство назад'],
+      '{assetTag} · İade al':['{assetTag} · Check in','{assetTag} · Принять возврат','{assetTag} · Прийняти повернення','{assetTag} · Прими назад'],
+      '“{assetTag}” varlığı çalışandan iade alınıp kullanılabilir duruma geçirilecek.':['Asset “{assetTag}” will be checked in from its assigned employee and made available.','Актив «{assetTag}» будет принят от сотрудника и переведён в доступное состояние.','Актив «{assetTag}» буде повернуто від працівника та переведено у доступний стан.','Средството „{assetTag}“ ќе биде вратено од вработениот и ќе стане достапно.'],
+      '“{assetTag}” varlığı {employeeName} çalışanından iade alınıp kullanılabilir duruma geçirilecek.':['Asset “{assetTag}” will be checked in from {employeeName} and made available.','Актив «{assetTag}» будет принят от сотрудника {employeeName} и переведён в доступное состояние.','Актив «{assetTag}» буде повернуто від працівника {employeeName} та переведено у доступний стан.','Средството „{assetTag}“ ќе биде вратено од вработениот {employeeName} и ќе стане достапно.'],
+      'İade işlemi tamamlanamadı.':['The check-in could not be completed.','Не удалось выполнить возврат.','Не вдалося виконати повернення.','Враќањето не може да се заврши.'],
       'Durum değişikliğini onayla':['Confirm status change','Подтвердите изменение статуса','Підтвердьте зміну стану','Потврдете ја промената на статусот'],
       'Arşivden geri almayı onayla':['Confirm restore from archive','Подтвердите восстановление из архива','Підтвердьте відновлення з архіву','Потврдете враќање од архивата'],
       'Durum değişikliği notu (isteğe bağlı):':['Status change note (optional):','Примечание к изменению статуса (необязательно):','Примітка до зміни стану (необов’язково):','Белешка за промена на статусот (изборно):'],
@@ -5460,7 +5466,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         const expected = document.createElement('td'); expected.textContent = item.expectedReturnOn ? formatCheckoutDate(item.expectedReturnOn) : translateUiText('Tarih belirtilmemiş'); if (item.expectedReturnOn && item.expectedReturnOn < result.asOf) expected.className = 'pill warn';
         const action = document.createElement('td'), actions = document.createElement('div'); actions.className = 'row-actions';
         const open = document.createElement('button'); open.type = 'button'; open.className = 'btn small'; open.textContent = translateUiText('Ayrıntıyı aç'); open.addEventListener('click', () => openAsset(item.id).catch(error => notify(error.message))); actions.append(open);
-        if (isReturns) { const checkin = document.createElement('button'); checkin.type = 'button'; checkin.className = 'btn small primary'; checkin.textContent = translateUiText('İade al'); checkin.disabled = !canWriteAssets(); checkin.addEventListener('click', async () => { if (!window.confirm(translateUiText('Bu varlığı çalışandan iade almak istiyor musunuz?'))) return; try { await api(`/api/assets/${item.id}/return`, { method: 'POST', body: JSON.stringify({ note: null }) }); notify(translateUiText('Varlık iade alındı; hareket geçmişi güncellendi.')); await loadAssetCheckouts('returns', returnsPage); } catch (error) { notify(error.message); } }); actions.append(checkin); }
+        if (isReturns) { const checkin = document.createElement('button'); checkin.type = 'button'; checkin.className = 'btn small primary'; checkin.textContent = translateUiText('İade al'); checkin.disabled = !canWriteAssets(); checkin.addEventListener('click', () => openAssetReturnAction(item, 'returns')); actions.append(checkin); }
         action.append(actions);
         if (isReturns) row.append(expected, asset, model, employee, department, location, action);
         else { const assigned = document.createElement('td'); assigned.textContent = item.assignedAt ? formatCheckoutDate(item.assignedAt) : '—'; row.append(asset, model, employee, department, location, assigned, expected, action); }
@@ -9008,22 +9014,35 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     });
     const returnAssetDialog = $('#returnAssetDialog');
     const closeAssetReturn = () => { if (returnAssetDialog.open) returnAssetDialog.close(); };
+    let assetReturnTarget = null;
     $('#cancelAssetReturn').addEventListener('click', closeAssetReturn);
     $('#cancelAssetReturnAction').addEventListener('click', closeAssetReturn);
+    returnAssetDialog.addEventListener('click', event => { if (event.target === returnAssetDialog) closeAssetReturn(); });
+    returnAssetDialog.addEventListener('close', () => { $('#returnAssetForm').reset(); $('#returnAssetFeedback').hidden = true; assetReturnTarget = null; });
+    function openAssetReturnAction(asset, source) {
+      if (!asset || !canWriteAssets() || !['detail', 'returns'].includes(source)) return;
+      assetReturnTarget = { id: asset.id, assetTag: asset.assetTag, name: asset.name || asset.assetName || '', employeeName: asset.employeeName || '', source };
+      $('#returnAssetTitle').textContent = translateUiText('{assetTag} · İade al').replace('{assetTag}', assetReturnTarget.assetTag);
+      $('#returnAssetDescription').textContent = translateUiText(source === 'returns' && assetReturnTarget.employeeName ? '“{assetTag}” varlığı {employeeName} çalışanından iade alınıp kullanılabilir duruma geçirilecek.' : '“{assetTag}” varlığı çalışandan iade alınıp kullanılabilir duruma geçirilecek.').replace('{assetTag}', assetReturnTarget.assetTag).replace('{employeeName}', assetReturnTarget.employeeName);
+      $('#returnAssetFeedback').hidden = true; $('#returnAssetFeedback').textContent = '';
+      $('#returnAssetForm').reset(); returnAssetDialog.showModal();
+      $('#returnAssetForm').elements.note.focus();
+    }
     $('#returnAssetButton').addEventListener('click', () => {
       if (!currentAsset) return;
-      $('#returnAssetTitle').textContent = `${currentAsset.assetTag} · İade al`;
-      $('#returnAssetDescription').textContent = `${currentAsset.name} varlığı çalışandan iade alınıp kullanılabilir duruma geçirilecek.`;
-      $('#returnAssetForm').reset(); returnAssetDialog.showModal();
+      openAssetReturnAction(currentAsset, 'detail');
     });
     $('#returnAssetForm').addEventListener('submit', async event => {
-      event.preventDefault(); if (!currentAsset) return;
-      const submit = event.currentTarget.querySelector('button[type="submit"]'); submit.disabled = true;
+      event.preventDefault(); if (!assetReturnTarget || !canWriteAssets()) return;
+      const target = assetReturnTarget, submit = $('#submitAssetReturn'), feedback = $('#returnAssetFeedback'); submit.disabled = true; feedback.hidden = true; feedback.textContent = '';
       try {
         const note = String(new FormData(event.currentTarget).get('note') || '').trim() || null;
-        await api(`/api/assets/${currentAsset.id}/return`, { method: 'POST', body: JSON.stringify({ note }) });
-        closeAssetReturn(); $('#assetDialog').close(); await loadDashboard(); notify('Varlık iade alındı; işlem geçmişine kaydedildi.');
-      } catch (error) { notify(error.message); }
+        await api(`/api/assets/${target.id}/return`, { method: 'POST', body: JSON.stringify({ note }) });
+        closeAssetReturn();
+        if (target.source === 'detail' && currentAsset?.id === target.id) $('#assetDialog').close();
+        await Promise.all([loadDashboard(), ...(target.source === 'returns' ? [loadAssetCheckouts('returns', returnsPage)] : [])]);
+        notify(translateUiText('Varlık iade alındı; hareket geçmişi güncellendi.'));
+      } catch (error) { feedback.textContent = error.message || translateUiText('İade işlemi tamamlanamadı.'); feedback.hidden = false; }
       finally { submit.disabled = false; }
     });
     const assetTrashConfirmDialog = $('#assetTrashConfirmDialog');

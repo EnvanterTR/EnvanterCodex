@@ -76,7 +76,11 @@ const requiredAssetLabels = [
   'Aramayı kaydet', 'Aramayı sil', 'Mevcut aramayı güncelle',
   'Aynı adla kayıtlı arama bulundu. Güncelleyerek mevcut filtreleri değiştirmek istiyor musunuz?',
   '“{name}” kayıtlı araması silinsin mi?', 'Arama adı 1–60 karakter olmalıdır.',
-  'Kayıtlı arama işlemi tamamlanamadı.', 'Kayıtlı arama silindi.', 'Varlık araması hesabınıza kaydedildi.'
+  'Kayıtlı arama işlemi tamamlanamadı.', 'Kayıtlı arama silindi.', 'Varlık araması hesabınıza kaydedildi.',
+  'ZİMMET İŞLEMİ', 'Varlığı iade al', '{assetTag} · İade al',
+  '“{assetTag}” varlığı çalışandan iade alınıp kullanılabilir duruma geçirilecek.',
+  '“{assetTag}” varlığı {employeeName} çalışanından iade alınıp kullanılabilir duruma geçirilecek.',
+  'İade işlemi tamamlanamadı.'
 ];
 const requiredReservationLabels = [
   'Varlık rezervasyonları', 'Rezervasyon isteği oluştur', 'Şirket kapsamlı', 'Talep notu',
