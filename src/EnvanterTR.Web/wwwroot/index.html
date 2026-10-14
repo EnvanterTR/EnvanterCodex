@@ -9192,7 +9192,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     $('#closeAssetTrashConfirm').addEventListener('click', closeAssetTrashConfirm);
     $('#cancelAssetTrashConfirm').addEventListener('click', closeAssetTrashConfirm);
     assetTrashConfirmDialog.addEventListener('click', event => { if (event.target === assetTrashConfirmDialog) closeAssetTrashConfirm(); });
-    assetTrashConfirmDialog.addEventListener('close', () => { $('#assetTrashConfirmForm').reset(); assetTrashTarget = null; assetTrashMode = 'trash'; });
+    assetTrashConfirmDialog.addEventListener('close', () => { if (assetTrashConfirmDialog.open) return; $('#assetTrashConfirmForm').reset(); assetTrashTarget = null; assetTrashMode = 'trash'; });
     $('#trashAssetButton').addEventListener('click', () => {
       if (!currentAsset || !canWriteAssets()) return;
       openAssetTrashAction(currentAsset, 'trash');
@@ -9240,7 +9240,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     $('#closeAssetStatusDialog').addEventListener('click', closeAssetStatusDialog);
     $('#cancelAssetStatus').addEventListener('click', closeAssetStatusDialog);
     assetStatusDialog.addEventListener('click', event => { if (event.target === assetStatusDialog) closeAssetStatusDialog(); });
-    assetStatusDialog.addEventListener('close', () => { $('#assetStatusForm').reset(); $('#assetStatusFeedback').hidden = true; assetStatusTarget = null; $('#assetStatusAction').value = ''; });
+    assetStatusDialog.addEventListener('close', () => { if (assetStatusDialog.open) return; $('#assetStatusForm').reset(); $('#assetStatusFeedback').hidden = true; assetStatusTarget = null; $('#assetStatusAction').value = ''; });
     $('#assetStatusForm').addEventListener('submit', async event => {
       event.preventDefault();
       if (!assetStatusTarget || !canWriteAssets()) return;

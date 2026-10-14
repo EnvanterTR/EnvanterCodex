@@ -99,7 +99,7 @@ const server = createServer(async (request, response) => {
       totalAssets: 1, assignedAssets: 0, availableAssets: 1, maintenanceAssets: 0,
       softwareLicenses: 0, accessories: 0, consumables: 0, components: 0, activeEmployees: 0
     };
-    else if (url.pathname === '/api/assets') result = { items: [asset], total: 1, page: 1, pageSize: 50 };
+    else if (url.pathname === '/api/assets') result = { items: asset.isDeleted ? [] : [asset], total: asset.isDeleted ? 0 : 1, page: 1, pageSize: 50 };
     else if (url.pathname === `/api/assets/${assetId}`) result = {
       asset: { ...asset }, references: { model: null, modelNumber: null, employee: asset.assignedEmployeeName || null,
         employeeNumber: asset.assignedEmployeeId ? 'QA-001' : null, defaultLocation: 'Head Office' },
@@ -210,6 +210,19 @@ const server = createServer(async (request, response) => {
     response.writeHead(200, { 'content-type': 'application/json' }); response.end(JSON.stringify({ changed: true }));
     return;
   }
+  if (request.method === 'PATCH' && url.pathname === `/api/assets/${assetId}/status`) {
+    asset.status = body.status;
+    asset.updatedAt = '2026-10-14T13:30:00Z';
+    assetHistory.unshift({ id: '55555555-5555-4555-8555-555555555555', eventType: 'StatusChanged', occurredAt: asset.updatedAt,
+      details: `Varlık durumu güncellendi · ${asset.status}${body.note ? ` · ${body.note}` : ''}`, actorName: 'Synthetic Owner', attachmentCount: 0 });
+    response.writeHead(204); response.end(); return;
+  }
+  if (request.method === 'POST' && url.pathname === `/api/assets/${assetId}/trash`) {
+    asset.isDeleted = true;
+    assetHistory.unshift({ id: '55555555-5555-4555-8555-555555555556', eventType: 'Trashed', occurredAt: '2026-10-14T13:45:00Z',
+      details: `Varlık çöp kutusuna taşındı${body.note ? ` · ${body.note}` : ''}`, actorName: 'Synthetic Owner', attachmentCount: 0 });
+    response.writeHead(204); response.end(); return;
+  }
   if (request.method === 'POST' && url.pathname === `/api/assets/${assetId}/maintenances/schedule`) {
     maintenanceRows.unshift({ id: maintenanceId, maintenanceType: body.maintenanceType, supplier: body.supplier,
       description: body.description, plannedOn: body.plannedOn, startedOn: body.plannedOn, status: 'Scheduled',
@@ -315,6 +328,40 @@ try {
   const assetDialog = page.locator('#assetDialog');
   await assetDialog.waitFor({ state: 'visible' });
   assert.equal(await page.locator('#dialogTitle').innerText(), asset.name);
+  const statusDialog = page.locator('#assetStatusDialog');
+  const beforeStatusCancel = apiRequests.length;
+  await page.locator('#assetStatusAction').selectOption('Unusable');
+  await statusDialog.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#assetStatusSummary').innerText(), /QA-ASSET-001[\s\S]*Kullanılamaz/);
+  await page.locator('#cancelAssetStatus').click();
+  await statusDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, beforeStatusCancel, 'Canceling an asset status change must not write.');
+  await page.locator('#assetStatusAction').selectOption('Unusable');
+  await statusDialog.waitFor({ state: 'visible' });
+  await page.locator('#assetStatusForm [name="note"]').fill('Synthetic status reason');
+  await page.locator('#submitAssetStatus').click();
+  await statusDialog.waitFor({ state: 'hidden' });
+  await page.locator('#assetRows .asset-name').filter({ hasText: asset.name }).waitFor({ state: 'visible' });
+  const statusWrite = apiRequests.at(-1);
+  assert.equal(statusWrite.method, 'PATCH');
+  assert.equal(statusWrite.path, `/api/assets/${assetId}/status`);
+  assert.deepEqual(statusWrite.body, { status: 'Unusable', note: 'Synthetic status reason' });
+  assert.equal(statusWrite.csrf, 'synthetic-asset-csrf');
+  assert.match(await page.locator('#assetRows').innerText(), /Kullanılamaz/);
+  assert.equal(asset.status, 'Unusable');
+  await page.locator('#assetRows .asset-name').filter({ hasText: asset.name }).click();
+  await assetDialog.waitFor({ state: 'visible' });
+  await page.locator('#assetStatusAction').selectOption('Available');
+  await statusDialog.waitFor({ state: 'visible' });
+  await page.locator('#assetStatusForm [name="note"]').fill('Reset synthetic test fixture');
+  await page.locator('#submitAssetStatus').click();
+  await statusDialog.waitFor({ state: 'hidden' });
+  await page.locator('#assetRows .asset-name').filter({ hasText: asset.name }).waitFor({ state: 'visible' });
+  assert.equal(apiRequests.at(-1).path, `/api/assets/${assetId}/status`);
+  assert.deepEqual(apiRequests.at(-1).body, { status: 'Available', note: 'Reset synthetic test fixture' });
+  assert.equal(asset.status, 'Available', 'The status action must allow an authorized return to Available.');
+  await page.locator('#assetRows .asset-name').filter({ hasText: asset.name }).click();
+  await assetDialog.waitFor({ state: 'visible' });
   const tabCases = [
     ['relations', '#assetTabRelations', /Bağlantılı kayıtlar/],
     ['maintenance', '#assetTabMaintenance', /Bakım kayıtları/],
@@ -335,6 +382,7 @@ try {
   assert.equal(await page.locator('#assetTabOverviewButton').getAttribute('aria-selected'), 'true', 'Home must select the first asset detail tab.');
 
   const editDialog = page.locator('#editAssetDialog');
+  const beforeEditCancel = apiRequests.length;
   await page.locator('#editAssetButton').click();
   await editDialog.waitFor({ state: 'visible' });
   const editForm = page.locator('#editAssetForm');
@@ -342,7 +390,7 @@ try {
   assert.equal(await editForm.locator('[name="categoryId"]').inputValue(), asset.categoryId);
   await page.locator('[data-close-edit-asset]').first().click();
   await editDialog.waitFor({ state: 'hidden' });
-  assert.equal(apiRequests.length, 0, 'Canceling asset edit must not write.');
+  assert.equal(apiRequests.length, beforeEditCancel, 'Canceling asset edit must not write.');
 
   const editedName = 'Synthetic asset edit persisted';
   await page.locator('#editAssetButton').click();
@@ -352,12 +400,13 @@ try {
   await editForm.locator('button[type="submit"]').click();
   await editDialog.waitFor({ state: 'hidden' });
   await page.waitForFunction(name => document.querySelector('#assetDialog')?.open && document.querySelector('#dialogTitle')?.textContent === name, editedName);
-  assert.equal(apiRequests.length, 1, 'Only the explicit asset edit should write before the audit flows.');
-  assert.equal(apiRequests[0].method, 'PATCH');
-  assert.equal(apiRequests[0].path, `/api/assets/${assetId}`);
-  assert.equal(apiRequests[0].body.name, editedName);
-  assert.equal(apiRequests[0].body.expectedUpdatedAt, '2026-10-14T12:00:00Z');
-  assert.equal(apiRequests[0].csrf, 'synthetic-asset-csrf');
+  assert.equal(apiRequests.length, beforeEditCancel + 1, 'Only the explicit asset edit should write before the audit flows.');
+  const editWrite = apiRequests.at(-1);
+  assert.equal(editWrite.method, 'PATCH');
+  assert.equal(editWrite.path, `/api/assets/${assetId}`);
+  assert.equal(editWrite.body.name, editedName);
+  assert.equal(editWrite.body.expectedUpdatedAt, '2026-10-14T13:30:00Z');
+  assert.equal(editWrite.csrf, 'synthetic-asset-csrf');
   await page.locator('#assetDialog').locator('#closeDialog').click();
   await page.locator('#assetRows .asset-name').filter({ hasText: editedName }).waitFor({ state: 'visible' });
   await page.locator('#assetRows .asset-name').filter({ hasText: editedName }).click();
@@ -711,6 +760,32 @@ try {
   assert.equal(contractWrites.at(-1).path, '/api/contracts/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee/restore');
   assert.equal(contractWrites.at(-1).csrf, 'synthetic-asset-csrf');
 
+  await page.locator('#sidebar button[data-page="Varlıklar"]').click();
+  await page.locator('#assetRows .asset-name').filter({ hasText: editedName }).waitFor({ state: 'visible' });
+  await page.locator('#assetRows .asset-name').filter({ hasText: editedName }).click();
+  await page.locator('#assetDialog').waitFor({ state: 'visible' });
+  const trashDialog = page.locator('#assetTrashConfirmDialog');
+  const beforeTrashCancel = apiRequests.length;
+  await page.locator('#trashAssetButton').click();
+  await trashDialog.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#assetTrashConfirmSummary').innerText(), /QA-ASSET-001/);
+  await page.locator('#cancelAssetTrashConfirm').click();
+  await trashDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, beforeTrashCancel, 'Canceling asset trash must not write.');
+  assert.equal(await page.locator('#assetRows .asset-name').filter({ hasText: asset.name }).isVisible(), true);
+  await page.locator('#trashAssetButton').click();
+  await trashDialog.waitFor({ state: 'visible' });
+  await page.locator('#assetTrashConfirmForm [name="note"]').fill('Synthetic archive reason');
+  await page.locator('#submitAssetTrashConfirm').click();
+  await trashDialog.waitFor({ state: 'hidden' });
+  await page.locator('#assetRows .asset-name').filter({ hasText: asset.name }).waitFor({ state: 'detached' });
+  const trashWrite = apiRequests.at(-1);
+  assert.equal(trashWrite.method, 'POST');
+  assert.equal(trashWrite.path, `/api/assets/${assetId}/trash`);
+  assert.deepEqual(trashWrite.body, { note: 'Synthetic archive reason' });
+  assert.equal(trashWrite.csrf, 'synthetic-asset-csrf');
+  assert.equal(asset.isDeleted, true, 'Only the explicitly confirmed action may move the synthetic asset to trash.');
+
   const sidebarGroups = page.locator('#sidebar [data-group]');
   for (const group of await sidebarGroups.all()) {
     if (await group.getAttribute('aria-expanded') !== 'true') await group.click();
@@ -742,7 +817,7 @@ try {
   assert.equal(visitedDestinations.size, destinationCount);
 
   assert.deepEqual(pageErrors, [], `The asset detail UI must not throw: ${pageErrors.join(' | ')}`);
-  console.log(`PASS: owner Ctrl+N; asset edit/audit/maintenance/transfer/assignment; company JSON restore preview and confirmations; company contract list/search/filter/detail/create/cancel/archive/restore with CSRF; all ${visitedDestinations.size} sidebar destinations render; ${placeholderDestinations.length} open the explicit feature/module status surface (${placeholderDestinations.join(', ')}); browser error-free completion.`);
+  console.log(`PASS: owner Ctrl+N; asset edit/status/trash/audit/maintenance/transfer/assignment; company JSON restore preview and confirmations; company contract list/search/filter/detail/create/cancel/archive/restore with CSRF; all ${visitedDestinations.size} sidebar destinations render; ${placeholderDestinations.length} open the explicit feature/module status surface (${placeholderDestinations.join(', ')}); browser error-free completion.`);
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));
