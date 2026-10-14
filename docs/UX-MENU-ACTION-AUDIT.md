@@ -1,5 +1,6 @@
 # Menü, kısayol ve modal denetimi
 
+14 Ekim 2026 güncel kabul özeti: Kullanıcı mevcut proje notlarıyla devam edilmesini seçti. Güncel `origin/main` tabanı `050e74a` üzerindeki 73 kaynak doğrulayıcısının tamamı geçti; bunlar statik/UI sözleşmesi kontrolleridir ve her menü eyleminin gerçek tarayıcı sonucu sayılmaz. Yerel servis hazır olsa da üretim firma alt alanı 503, apex veritabanı 21 migration geridedir. 50/50 menü rotası erişilebilirlik sonucu ile tam eylem başarı oranını ayrı tutuyorum; tüm hedeflerin alt eylemleri, yetki/iptal/hata yolları ve yenileme sonrası kalıcılık kabul edilmeden toplam yüzde hesaplanamaz. Ayrıntılı açık kapsam ve önceki kabul kanıtları aşağıdadır.
 
 14 Ekim 2026 devamı: Kullanıcının ekran görüntüsündeki boş yan alanların kök nedeni `.content` değil, onu saran `main{max-width:1500px;margin:auto}` kuralıydı; dolu içerik 1500 pikselde ortalanıyordu. Kural `width:100%;max-width:none;margin:0` olarak düzeltildi. `Verify-AssetTableLayout.mjs` artık hem `main` hem `.content` genişliğini, 19 tablo sütununu ve yatay kaydırma kapsayıcısını denetliyor; public demo doğrulayıcısı da geçti. Kaynağı bağlayan yerel `localhost:8080/` ve `localhost:8081/demo/` yanıtları HTTP 200; uygulama yanıtında daraltan eski kural yok. Kullanıcının ekran boyutunda piksel düzeyinde screenshot kabulü henüz yapılmadı.
 
