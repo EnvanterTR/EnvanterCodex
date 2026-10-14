@@ -5727,6 +5727,50 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Asset_archive_restore_is_authorized_tenant_scoped_and_audited()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        await SetCompanyRoleAsync("viewer");
+        using (var readOnly = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_ownAssetId}/restore", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { status = AssetStatuses.Available, note = "Restore attempt" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, readOnly.StatusCode);
+        await SetCompanyRoleAsync("admin");
+        using (var crossTenant = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_otherCompanyAssetId}/restore", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { status = AssetStatuses.Available, note = "Cross tenant" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
+        using (var archived = await SendAsRoleAsync(HttpMethod.Patch, $"/api/assets/{_ownAssetId}/status", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { status = AssetStatuses.Archived }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, archived.StatusCode);
+
+        using (var restored = await SendAsRoleAsync(HttpMethod.Post, $"/api/assets/{_ownAssetId}/restore", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { status = AssetStatuses.Available, note = "Archive restore acceptance" }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, restored.StatusCode);
+            using var payload = JsonDocument.Parse(await restored.Content.ReadAsStringAsync());
+            Assert.Equal(AssetStatuses.Available, payload.RootElement.GetProperty("status").GetString());
+        }
+
+        using var detail = await SendAsAdminAsync($"/api/assets/{_ownAssetId}");
+        Assert.Equal(HttpStatusCode.OK, detail.StatusCode);
+        using var detailPayload = JsonDocument.Parse(await detail.Content.ReadAsStringAsync());
+        Assert.Equal(AssetStatuses.Available, detailPayload.RootElement.GetProperty("asset").GetProperty("status").GetString());
+        Assert.Contains(detailPayload.RootElement.GetProperty("history").EnumerateArray(), item =>
+            item.GetProperty("eventType").GetString() == "StatusChanged" && item.GetProperty("details").GetString()!.Contains("Archive restore acceptance", StringComparison.Ordinal));
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Contains(await db.AuditEntries.AsNoTracking().Where(item => item.CompanyId == _companyId && item.TargetId == _ownAssetId).ToListAsync(),
+            item => item.Action == "Restored" && item.ActorUserId == _userId && item.Details!.Contains("Archive restore acceptance", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Asset_single_edit_is_tenant_scoped_version_checked_and_written_to_history()
     {
         Asset current;
