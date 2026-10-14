@@ -52,13 +52,14 @@ const cloneFunction = source.match(/async function openAssetClone\(asset\)\s*\{[
 requireSource(cloneFunction.includes('asset.defaultLocationCatalogId') && cloneFunction.includes('field.fieldType !== \'sensitive\''), 'Cloning must preserve the catalog location and ordinary custom fields without copying sensitive custom fields.');
 if (cloneFunction) {
   const makeCloneContext = canWrite => {
-    const names = ['assetName','assetTag','categoryId','brandId','modelId','serialNumber','location','defaultLocationCatalogId','purchaseDate','warrantyExpiresAt','purchaseCost','currency'];
+    const names = ['assetName','assetTag','categoryId','brandId','modelId','serialNumber','location','defaultLocationCatalogId','purchaseDate','warrantyExpiresAt','purchaseCost','currency','notes'];
     const elements = Object.fromEntries(names.map(name => [name, { value: `stale-${name}`, focus() {} }]));
     elements.isRequestable = { checked: false };
     elements.isByod = { checked: false };
-    const form = { elements, reset() { for (const name of names) elements[name].value = ''; elements.isRequestable.checked = false; elements.isByod.checked = false; } };
-    const calls = { lookups: 0, definitions: 0, rendered: null, modelId: null, opened: 0 };
-    const dialog = { showModal() { calls.opened++; } };
+    const formHandlers = {};
+    const form = { elements, customFieldValues: {}, reset() { for (const name of names) elements[name].value = ''; elements.isRequestable.checked = false; elements.isByod.checked = false; calls.resets++; }, addEventListener(type, handler) { formHandlers[type] = handler; } };
+    const calls = { lookups: 0, definitions: 0, rendered: null, modelId: null, opened: 0, closed: 0, resets: 0, formHandlers };
+    const dialog = { showModal() { calls.opened++; }, close() { calls.closed++; } };
     const assetCustomFieldDefinitions = [
       { key: 'ownerTeam', fieldType: 'text', isActive: true },
       { key: 'assetSecret', fieldType: 'sensitive', isActive: true },
@@ -69,7 +70,7 @@ if (cloneFunction) {
       canWriteAssets: () => canWrite,
       loadLookups: async () => { calls.lookups++; },
       loadAssetCustomFieldDefinitions: async () => { calls.definitions++; },
-      renderAssetCustomFieldInputs: (_form, values) => { calls.rendered = values; },
+      renderAssetCustomFieldInputs: (target, values) => { calls.rendered = values; target.customFieldValues = values; },
       refreshModels: (modelId, target) => { calls.modelId = modelId; target.elements.modelId.value = modelId; },
       assetCustomFieldDefinitions,
       newAssetDialog: dialog,
@@ -99,6 +100,77 @@ if (cloneFunction) {
   assert.equal(allowed.form.elements.assetTag.value, '');
   assert.equal(JSON.stringify(allowed.calls.rendered), JSON.stringify({ ownerTeam: 'Ağ Ekibi' }));
   assert.equal(allowed.form.elements.isRequestable.checked, true);
+
+  const submitStart = source.indexOf("$('#newAssetForm').addEventListener('submit'");
+  const submitEnd = source.indexOf("\n    $('#editAssetButton')", submitStart);
+  const submitRegistration = source.slice(submitStart, submitEnd);
+  requireSource(submitStart >= 0 && submitEnd > submitStart && submitRegistration.includes("api('/api/assets', { method: 'POST'"), 'The asset creation submit flow must be found and remain bound to the tenant-scoped creation API.');
+  const runSubmit = async (target, shouldFail) => {
+    const submit = { disabled: false };
+    let capturedRequest = null, dashboardLoads = 0, directoryRefreshes = 0, lastNotice = null;
+    const formDataValues = {
+      assetTag: () => target.elements.assetTag.value,
+      assetName: () => target.elements.assetName.value,
+      categoryId: () => target.elements.categoryId.value,
+      brandId: () => target.elements.brandId.value,
+      modelId: () => target.elements.modelId.value,
+      serialNumber: () => target.elements.serialNumber.value,
+      location: () => target.elements.location.value,
+      defaultLocationCatalogId: () => target.elements.defaultLocationCatalogId.value,
+      notes: () => target.elements.notes.value,
+      purchaseDate: () => target.elements.purchaseDate.value,
+      warrantyExpiresAt: () => target.elements.warrantyExpiresAt.value,
+      purchaseCost: () => target.elements.purchaseCost.value,
+      currency: () => target.elements.currency.value,
+      isRequestable: () => target.elements.isRequestable.checked ? 'true' : null,
+      isByod: () => target.elements.isByod.checked ? 'true' : null,
+    };
+    class MockFormData { constructor() {} get(name) { return formDataValues[name]?.() ?? null; } }
+    const submitContext = {
+      $: (selector, formArg) => selector === '#newAssetForm' ? target
+        : selector === 'button[type="submit"]' && formArg === target ? submit
+          : selector === '#globalSearch' ? { value: '' } : null,
+      FormData: MockFormData,
+      collectAssetCustomFieldValues: form => form.customFieldValues,
+      api: async (url, options) => { capturedRequest = { url, options }; if (shouldFail) throw new Error('synthetic API failure'); return { id: 'created-asset' }; },
+      newAssetDialog: { close() { target.calls.closed++; } },
+      loadDashboard: async () => { dashboardLoads++; },
+      refreshDirectorySuggestions: async () => { directoryRefreshes++; },
+      notify: message => { lastNotice = message; },
+    };
+    await vm.runInNewContext(`(async () => { ${submitRegistration} })()`, submitContext);
+    const handler = target.calls.formHandlers.submit;
+    assert.equal(typeof handler, 'function');
+    const resetBefore = target.calls.resets;
+    await handler({ preventDefault() {}, currentTarget: target });
+    assert.equal(submit.disabled, false);
+    return { submit, capturedRequest, dashboardLoads, directoryRefreshes, lastNotice, resetBefore };
+  };
+
+  allowed.form.calls = allowed.calls;
+  allowed.form.elements.assetTag.value = 'SYNTH-CLONE-002';
+  allowed.form.elements.notes.value = '';
+  const savedClone = await runSubmit(allowed.form, false);
+  const savedPayload = JSON.parse(savedClone.capturedRequest.options.body);
+  assert.equal(savedClone.capturedRequest.url, '/api/assets');
+  assert.equal(savedPayload.assetTag, 'SYNTH-CLONE-002');
+  assert.equal(savedPayload.name, 'U6 Pro');
+  assert.equal(savedPayload.defaultLocationCatalogId, 'location-2');
+  assert.equal(savedPayload.serialNumber, null);
+  assert.equal(JSON.stringify(savedPayload.customFields), JSON.stringify({ ownerTeam: 'Ağ Ekibi' }));
+  assert.equal(savedClone.dashboardLoads, 1);
+  assert.equal(savedClone.directoryRefreshes, 1);
+  assert.equal(allowed.calls.closed, 1);
+  assert.equal(allowed.calls.resets, savedClone.resetBefore + 1);
+
+  const failed = makeCloneContext(true);
+  await failed.functionValue(cloneAsset);
+  failed.form.calls = failed.calls;
+  const failedClone = await runSubmit(failed.form, true);
+  assert.equal(failed.calls.closed, 0);
+  assert.equal(failed.calls.resets, failedClone.resetBefore);
+  assert.equal(failedClone.dashboardLoads, 0);
+  assert.equal(failedClone.lastNotice, 'synthetic API failure');
   const denied = makeCloneContext(false);
   await denied.functionValue(cloneAsset);
   assert.equal(denied.calls.opened, 0);
