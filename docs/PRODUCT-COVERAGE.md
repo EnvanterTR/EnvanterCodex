@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 15 Ekim 2026 — Canlı ve yerel giriş hazırlığı yeniden kontrolü
+
+Yerel `http://localhost:8080/api/status` ve demo `http://localhost:8081/api/status` hazır: her ikisinde 91 migration uygulanmış, bekleyen migration 0. Docker Compose `deploy/local/compose.yaml` altında yerel DB sağlıklı; web ve public-site konteynerleri çalışıyor. Bu yalnızca servis/şema hazır olmasını kanıtlar, kullanıcının parolasının doğruluğunu veya canlı hesabı kanıtlamaz. Canlı `https://envantertr.com/api/status` HTTP 200 döndü ancak `migration-required` ve 21 bekleyen migration bildirdi; şirket giriş akışı bu durumda hazır kabul edilemez. `https://firma.envantertr.com/api/status` HTTP 503 / Coolify proxy `no healthy upstream` döndürdü. Canlı migration uygulamak için önce doğrulanmış yedek ve kontrollü operasyon gerekir; tenant proxy için Coolify `public-site:80` wildcard domain/servis sağlığı incelenmelidir. Bu kontrol sırasında canlıya, DB'ye veya müşteri hesabına yazılmadı.
+
 ## 15 Ekim 2026 — global klavye kısayolları UI kabulü
 
 Gerçek EnvanterTR HTML'inde sabit Chromium ile sentetik viewer/owner oturumları çalıştırıldı. `/` global aramayı odakladı; arama alanına yazarken kısayol yakalanmadı. `?` yardım penceresini açtı ve Escape kapattı; `Ctrl+K` komut paletini açtı ve Escape kapattı. `Ctrl+N` viewer için yetki uyarısı gösterip varlık oluşturmayı açmadı; owner için formu açtı ve Escape/iptal API yazısı olmadan kapattı. Bu UI testi role ve cancel davranışını kanıtlar, DB yazması iddiası taşımaz. Hosted runner'daki izin verilen tek sentetik mutasyon, ayrı kullanıcıya ait appearance tercih kaydıdır; şirket kayıtları değiştirilmedi.
