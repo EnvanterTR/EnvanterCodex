@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 15 Ekim 2026 — varlık ayrıntısı sekmeleri ve dosya ekleri UI kabulü
+
+Hosted Chromium senaryosu, varlık detayındaki beş sekmenin (genel bakış, ilişkiler, bakım, hareket geçmişi, fotoğraf/dosyalar) görünür panel ve seçili sekme durumunu; Home/End klavye gezinmesini doğrular. Hareket geçmişindeki “Bu harekete belge ekle” kısayolunun ekler sekmesini açıp doğru hareket kimliğini seçmesi; sentetik PNG'nin açık gönderim öncesi yüklenmemesi, multipart alanları, 10 MB ve tür kabul öznitelikleri, CSRF, önizleme/indirme bağlantısı, sayaç ve hareket kaydındaki ek sayısı doğrulanır. Dosya silme penceresini iptal etmek hiçbir API yazısı üretmez; açık onay yalnız doğru varlık dosyası DELETE isteğini yollar ve boş durumu yeniler. Sentetik mock API kullanıldı; gerçek şirket verisi/DB kullanılmadı. Ürün API'sinin gerçek dosya imza algılaması ve tenant sınırları bu tarayıcı senaryosunda doğrulanmaz; bunlar izole API kabul testlerinin kapsamındadır.
+
 ## 15 Ekim 2026 — production-baseline migration yükseltme provası
 
 İzole PostgreSQL kabul testi `20261010180000_AddAccessoryCategories` tabanından başlatıldı; bu sentetik tabanda 21 migration beklediği doğrulandı. Firma ve varlık kaydı taban şemaya yazıldı; 21 migration sonrasında kayıtların tekil kaldığı, varlığın korunduğu, `AssetCount=1` olduğu ve bekleyen migration kalmadığı doğrulandı. Test `MigrationUpgradeAcceptanceTests.Production_baseline_upgrades_to_current_schema_without_losing_company_assets` **1/1 geçti**. Test rastgele isimli geçici Compose ağı/veritabanı kullandı ve sonunda kaldırıldı; `envantertr-product-dev` veritabanına ve canlıya yazmadı. Canlı durum ucu yalnızca migration sayısını verdiğinden, canlı veritabanının gerçek son uygulanmış migration kimliği bu testle doğrulanmış değildir. Canlı DB yedeği/izole geri yükleme provası ve Coolify erişimi olmadan üretime migration veya deploy yapılmadı.

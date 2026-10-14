@@ -17,6 +17,9 @@ const appHtml = await readFile('/checkout-site/company-app.html');
 const requests = [];
 const apiRequests = [];
 const assetHistory = [];
+const assetAttachments = [];
+const attachmentId = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+const attachmentBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
 const maintenanceRows = [];
 const maintenanceId = '77777777-7777-4777-8777-777777777777';
 const restoreArchive = { formatVersion: 1, company: { name: 'Synthetic Restore Source' }, assets: [], employees: [] };
@@ -52,8 +55,27 @@ const server = createServer(async (request, response) => {
   }
 
   const body = request.method === 'GET' ? null : await new Promise(resolve => {
-    let raw = ''; request.setEncoding('utf8'); request.on('data', chunk => raw += chunk);
-    request.on('end', () => resolve(raw ? JSON.parse(raw) : null));
+    const chunks = []; request.on('data', chunk => chunks.push(Buffer.from(chunk)));
+    request.on('end', () => {
+      const raw = Buffer.concat(chunks), contentType = request.headers['content-type'] || '';
+      if (!raw.length) return resolve(null);
+      if (contentType.includes('application/json')) return resolve(JSON.parse(raw.toString('utf8')));
+      const text = raw.toString('latin1'), fields = {};
+      const boundary = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
+      const delimiter = boundary?.[1] || boundary?.[2]?.trim();
+      assert.ok(delimiter, 'Multipart upload must declare its boundary.');
+      for (const part of text.split(`--${delimiter}`).slice(1)) {
+        if (part.startsWith('--')) continue;
+        const normalized = part.replace(/^\r\n/, '').replace(/\r\n$/, '');
+        const [headers, ...content] = normalized.split('\r\n\r\n');
+        if (!headers || !content.length) continue;
+        const name = headers.match(/name="([^"]+)"/)?.[1];
+        const filename = headers.match(/filename="([^"]*)"/)?.[1];
+        const value = content.join('\r\n').replace(/\r\n$/, '');
+        if (name) fields[name] = filename === undefined ? value : { filename, contentType: headers.match(/Content-Type:\s*([^\r\n]+)/i)?.[1] || '', length: Buffer.byteLength(value, 'latin1') };
+      }
+      resolve({ contentType, ...fields });
+    });
   });
   const record = { method: request.method, path: url.pathname, query: Object.fromEntries(url.searchParams.entries()), body, csrf: request.headers['x-csrf-token'] };
   requests.push(record);
@@ -61,7 +83,10 @@ const server = createServer(async (request, response) => {
 
   if (request.method === 'GET') {
     let result;
-    if (url.pathname === '/api/status') result = { status: 'ready', migrationCount: 91, pendingMigrationCount: 0 };
+    if (url.pathname === `/api/assets/${assetId}/attachments/${attachmentId}/file`) {
+      response.writeHead(200, { 'content-type': 'image/png', 'content-length': attachmentBytes.length, 'cache-control': 'no-store' }); response.end(attachmentBytes); return;
+    }
+    else if (url.pathname === '/api/status') result = { status: 'ready', migrationCount: 91, pendingMigrationCount: 0 };
     else if (url.pathname === '/api/setup/status') result = { setupRequired: false };
     else if (url.pathname === '/api/session/csrf') result = { requestToken: 'synthetic-asset-csrf' };
     else if (url.pathname === '/api/session') result = {
@@ -78,7 +103,7 @@ const server = createServer(async (request, response) => {
     else if (url.pathname === `/api/assets/${assetId}`) result = {
       asset: { ...asset }, references: { model: null, modelNumber: null, employee: asset.assignedEmployeeName || null,
         employeeNumber: asset.assignedEmployeeId ? 'QA-001' : null, defaultLocation: 'Head Office' },
-      history: [...assetHistory], attachments: [], accessories: [], components: [], softwareLicenses: [], relatedAssets: [],
+      history: [...assetHistory], attachments: [...assetAttachments], accessories: [], components: [], softwareLicenses: [], relatedAssets: [],
       valuation: {}, purchaseOrder: null
     };
     else if (url.pathname === `/api/assets/${assetId}/maintenances`) result = maintenanceRows;
@@ -116,6 +141,19 @@ const server = createServer(async (request, response) => {
   if (request.headers['x-csrf-token'] !== 'synthetic-asset-csrf') {
     response.writeHead(400, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ message: 'Missing synthetic CSRF token.' })); return;
+  }
+  if (request.method === 'POST' && url.pathname === `/api/assets/${assetId}/attachments`) {
+    assert.ok(body?.file && body.file.filename === 'synthetic-proof.png', 'Upload must carry the selected file.');
+    assert.equal(body.assetEventId, assetHistory[0]?.id || '');
+    const item = { id: attachmentId, originalFileName: body.file.filename, contentType: 'image/png', length: attachmentBytes.length,
+      createdAt: '2026-10-15T12:00:00Z', uploadedBy: 'Synthetic Owner', assetEventType: assetHistory[0]?.eventType || null };
+    assetAttachments.push(item);
+    if (assetHistory[0]) assetHistory[0].attachmentCount = (assetHistory[0].attachmentCount || 0) + 1;
+    response.writeHead(201, { 'content-type': 'application/json' }); response.end(JSON.stringify({ ...item, id: attachmentId })); return;
+  }
+  if (request.method === 'DELETE' && url.pathname === `/api/assets/${assetId}/attachments/${attachmentId}`) {
+    assetAttachments.splice(0, assetAttachments.length);
+    response.writeHead(204); response.end(); return;
   }
   if (request.method === 'POST' && url.pathname === '/api/contracts') {
     const item = { ...body, id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', isActive: true, status: 'active', assetCount: body.assetIds?.length || 0, licenseCount: body.licenseIds?.length || 0, attachmentCount: 0 };
@@ -277,6 +315,24 @@ try {
   const assetDialog = page.locator('#assetDialog');
   await assetDialog.waitFor({ state: 'visible' });
   assert.equal(await page.locator('#dialogTitle').innerText(), asset.name);
+  const tabCases = [
+    ['relations', '#assetTabRelations', /Bağlantılı kayıtlar/],
+    ['maintenance', '#assetTabMaintenance', /Bakım kayıtları/],
+    ['history', '#assetTabHistory', /İşlem geçmişi/],
+    ['attachments', '#assetTabAttachments', /Fotoğraflar ve ek dosyalar/]
+  ];
+  for (const [tab, panel, heading] of tabCases) {
+    const tabButton = page.locator(`[data-asset-tab="${tab}"]`);
+    await tabButton.click();
+    assert.equal(await tabButton.getAttribute('aria-selected'), 'true', `${tab} tab must become selected.`);
+    assert.equal(await page.locator(panel).isVisible(), true, `${tab} panel must be visible.`);
+    assert.match(await page.locator(panel).innerText(), heading);
+  }
+  await page.locator('#assetTabOverviewButton').focus();
+  await page.keyboard.press('End');
+  assert.equal(await page.locator('#assetTabAttachmentsButton').getAttribute('aria-selected'), 'true', 'End must select the last asset detail tab.');
+  await page.keyboard.press('Home');
+  assert.equal(await page.locator('#assetTabOverviewButton').getAttribute('aria-selected'), 'true', 'Home must select the first asset detail tab.');
 
   const editDialog = page.locator('#editAssetDialog');
   await page.locator('#editAssetButton').click();
@@ -485,6 +541,49 @@ try {
   assert.equal(asset.status, 'Deployed');
   await page.locator('#assetTabHistoryButton').click();
   assert.match(await page.locator('#assetHistory').innerText(), /Synthetic assignment note/);
+
+  const latestEvent = assetHistory[0];
+  assert.ok(latestEvent?.id, 'Synthetic assignment must create a history event that can receive a document.');
+  await page.locator('#assetHistory .asset-history-item').first().getByRole('button', { name: /Bu harekete belge ekle/ }).click();
+  assert.equal(await page.locator('#assetTabAttachmentsButton').getAttribute('aria-selected'), 'true', 'History shortcut must navigate to attachments.');
+  assert.equal(await page.locator('#assetAttachmentEvent').inputValue(), latestEvent.id, 'History shortcut must bind upload to the selected event.');
+  const uploadForm = page.locator('#assetAttachmentForm');
+  assert.equal(await uploadForm.isVisible(), true);
+  assert.match(await page.locator('#assetAttachmentInput').getAttribute('accept'), /application\/pdf/);
+  const beforeUpload = apiRequests.length;
+  await page.locator('#assetAttachmentInput').setInputFiles({ name: 'synthetic-proof.png', mimeType: 'image/png', buffer: attachmentBytes });
+  assert.equal(apiRequests.length, beforeUpload, 'Selecting a file must not upload it before explicit submit.');
+  await page.locator('#uploadAssetAttachment').click();
+  await page.locator('#assetAttachmentGrid').getByText('synthetic-proof.png').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#assetAttachmentCount').innerText(), '(1)');
+  const uploadWrite = apiRequests.at(-1);
+  assert.equal(uploadWrite.method, 'POST');
+  assert.equal(uploadWrite.path, `/api/assets/${assetId}/attachments`);
+  assert.match(uploadWrite.body.contentType, /^multipart\/form-data; boundary=/);
+  assert.deepEqual(uploadWrite.body.file, { filename: 'synthetic-proof.png', contentType: 'image/png', length: attachmentBytes.length });
+  assert.equal(uploadWrite.body.assetEventId, latestEvent.id);
+  assert.equal(uploadWrite.csrf, 'synthetic-asset-csrf');
+  await page.locator('#assetAttachmentGrid img').waitFor({ state: 'visible' });
+  assert.match(await page.locator('#assetAttachmentGrid a').getAttribute('href'), /\/file\?download=true$/);
+  await page.waitForFunction(() => document.querySelector('#assetHistory .asset-history-item')?.textContent.includes('Belge ekle · 1'));
+
+  const beforeRemoveCancel = apiRequests.length;
+  await page.locator('#assetAttachmentGrid button').filter({ hasText: 'Sil' }).click();
+  const attachmentRemoveDialog = page.locator('#assetAttachmentRemoveDialog');
+  await attachmentRemoveDialog.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#assetAttachmentRemoveSummary').innerText(), /synthetic-proof\.png/);
+  await page.locator('#cancelAssetAttachmentRemove').click();
+  await attachmentRemoveDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, beforeRemoveCancel, 'Canceling attachment removal must not delete a file.');
+  assert.equal(await page.locator('#assetAttachmentGrid').getByText('synthetic-proof.png').isVisible(), true);
+  await page.locator('#assetAttachmentGrid button').filter({ hasText: 'Sil' }).click();
+  await page.locator('#submitAssetAttachmentRemove').click();
+  await attachmentRemoveDialog.waitFor({ state: 'hidden' });
+  await page.locator('#assetAttachmentGrid').getByText(/henüz fotoğraf veya dosya eklenmemiş/).waitFor({ state: 'visible' });
+  const deleteWrite = apiRequests.at(-1);
+  assert.equal(deleteWrite.method, 'DELETE');
+  assert.equal(deleteWrite.path, `/api/assets/${assetId}/attachments/${attachmentId}`);
+  assert.equal(deleteWrite.csrf, 'synthetic-asset-csrf');
 
   await page.locator('#closeDialog').click();
   await page.locator('[data-group="data"]').click();
