@@ -132,3 +132,4 @@ try {
 }
 
 await import('./command-palette.mjs');
+await import('./asset-detail-actions.mjs');

@@ -6,9 +6,15 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const appPath = path.join(root, 'src/EnvanterTR.Web/wwwroot/index.html');
 const apiPath = path.join(root, 'src/EnvanterTR.Web/Data/OperationalEndpoints.cs');
 const acceptancePath = path.join(root, 'tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs');
+const browserAcceptancePath = path.join(root, 'deploy/testing/hosted-checkout-browser/asset-detail-actions.mjs');
+const browserDockerPath = path.join(root, 'deploy/testing/Dockerfile.hosted-checkout-browser');
+const browserRunnerPath = path.join(root, 'deploy/testing/hosted-checkout-browser/hosted-checkout.mjs');
 const app = fs.readFileSync(appPath, 'utf8');
 const api = fs.readFileSync(apiPath, 'utf8');
 const acceptance = fs.readFileSync(acceptancePath, 'utf8');
+const browserAcceptance = fs.readFileSync(browserAcceptancePath, 'utf8');
+const browserDocker = fs.readFileSync(browserDockerPath, 'utf8');
+const browserRunner = fs.readFileSync(browserRunnerPath, 'utf8');
 const failures = [];
 
 function requireSource(condition, message) {
@@ -47,6 +53,10 @@ for (const [id, ...contracts] of actions) {
 requireSource(app.includes('`/api/assets/${target.id}/trash`'), 'Trash action must call the company-scoped asset trash API after explicit in-app confirmation.');
 requireSource(api.includes('api.MapPost("/assets/{id:guid}/trash"'), 'The asset trash API route is missing.');
 requireSource(acceptance.includes('Asset_trash_is_tenant_scoped_blocks_live_relations_and_restores_with_audit_history'), 'No tenant/relationship/restore acceptance scenario covers asset trash.');
+requireSource(browserAcceptance.includes("page.locator('[data-group=\"inventory\"]').click()") && browserAcceptance.includes("page.locator('#assetRows .asset-name')") && browserAcceptance.includes("page.locator('#scheduleAssetAuditButton').click()"), 'A real Chromium browser scenario must open the asset details and audit-schedule form from the visible UI.');
+requireSource(browserAcceptance.includes('assert.equal(apiRequests.length, 0') && browserAcceptance.includes("apiRequests[0].method, 'PUT'") && browserAcceptance.includes('assert.deepEqual(apiRequests[0].body, { nextAuditOn })') && browserAcceptance.includes("apiRequests[0].csrf, 'synthetic-asset-csrf'"), 'The browser scenario must prove cancel sends no writes and explicit save sends exactly one CSRF-protected tenant API request.');
+requireSource(browserAcceptance.includes('asset.nextAuditOn, nextAuditOn') && browserAcceptance.includes('assert.deepEqual(pageErrors, [],'), 'The browser scenario must verify refreshed server state and zero JavaScript exceptions.');
+requireSource(browserDocker.includes('COPY deploy/testing/hosted-checkout-browser/asset-detail-actions.mjs ./') && browserRunner.includes("await import('./asset-detail-actions.mjs')"), 'The asset-detail browser acceptance must remain wired into the repeatable browser acceptance runner.');
 requireSource(api.includes('api.MapPost("/assets/{id:guid}/restore"') && acceptance.includes('Asset_archive_restore_is_authorized_tenant_scoped_and_audited'), 'Archived asset restoration must have a tenant-scoped, role and audit acceptance scenario.');
 requireSource(app.includes('function removeAssetAttachment(assetId, attachment)') && app.includes("remove.addEventListener('click', () => removeAssetAttachment(assetId, attachment))") && app.includes("method: 'DELETE'") && app.includes('renderAssetAttachments(target.assetId, result.attachments)'), 'Attachment removal must require a separate explicit confirmation, call the delete API, and refresh its detail list.');
 requireSource(app.includes("document.querySelectorAll('[data-asset-tab]')"), 'Asset-detail tabs must have a bound navigation handler.');
