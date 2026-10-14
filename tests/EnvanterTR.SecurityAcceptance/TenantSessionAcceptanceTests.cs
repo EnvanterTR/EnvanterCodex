@@ -6270,12 +6270,19 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 !x.IsDemo && x.Status == "Active" && x.EndsAt > DateTimeOffset.UtcNow);
             if (activeSubscription is null)
             {
-                var plan = await db.SubscriptionPlans.FirstAsync(x => x.IsActive);
+                var plan = new SubscriptionPlan
+                {
+                    Code = $"notify-{_companyId:N}"[..24],
+                    Name = "Notification acceptance plan",
+                    DeploymentKind = "cloud",
+                    IsActive = true
+                };
+                db.SubscriptionPlans.Add(plan);
                 activeSubscription = new TenantSubscription { CompanyId = _companyId, PlanId = plan.Id,
                     Status = "Active", IsDemo = false, StartsAt = DateTimeOffset.UtcNow.AddDays(-30) };
                 db.TenantSubscriptions.Add(activeSubscription);
             }
-            activeSubscription.EndsAt = DateTimeOffset.UtcNow.AddDays(10);
+            activeSubscription.EndsAt = DateTimeOffset.UtcNow.AddDays(30);
             await db.SaveChangesAsync();
             await emailService.RunOnceAsync(CancellationToken.None);
             var deliveredDigest = Assert.Single(_smtpCapture.Messages);
@@ -6343,6 +6350,64 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             using var payload = JsonDocument.Parse(await restoredState.Content.ReadAsStringAsync());
             Assert.Null(Assert.Single(payload.RootElement.GetProperty("items").EnumerateArray()).GetProperty("dismissedAt").GetString());
         }
+    }
+
+    [Theory]
+    [InlineData(30, true)]
+    [InlineData(7, true)]
+    [InlineData(1, true)]
+    [InlineData(10, false)]
+    public async Task Subscription_expiry_email_is_sent_only_at_30_7_and_1_day_milestones_once_per_day(int daysRemaining, bool expected)
+    {
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var plan = new SubscriptionPlan
+        {
+            Code = $"renewal-{_companyId:N}"[..24],
+            Name = $"Renewal {daysRemaining}-day plan",
+            DeploymentKind = "cloud",
+            IsActive = true
+        };
+        db.SubscriptionPlans.Add(plan);
+        db.TenantSubscriptions.Add(new TenantSubscription
+        {
+            CompanyId = _companyId,
+            PlanId = plan.Id,
+            Status = "Active",
+            IsDemo = false,
+            StartsAt = DateTimeOffset.UtcNow.AddDays(-30),
+            EndsAt = today.AddDays(daysRemaining).ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc)
+        });
+        db.OperationalNotificationPreferences.Add(new OperationalNotificationPreference
+        {
+            CompanyId = _companyId,
+            UserId = _userId,
+            EnabledKindsJson = "[]",
+            EmailEnabledKindsJson = "[\"subscription\"]"
+        });
+        db.DashboardPreferences.Add(new DashboardPreference
+        {
+            CompanyId = _companyId,
+            UserId = _userId,
+            VisibleWidgetsJson = "{\"visibleWidgets\":[],\"widgetOrder\":[],\"language\":\"en\"}"
+        });
+        await db.SaveChangesAsync();
+
+        var emailService = scope.ServiceProvider.GetRequiredService<OperationalNotificationEmailService>();
+        var recipient = $"acceptance-{_userId:N}@example.invalid";
+        int TargetEmailCount() => _smtpCapture.Messages.Count(message => message.Contains($"To: {recipient}", StringComparison.OrdinalIgnoreCase));
+        await emailService.RunOnceAsync(CancellationToken.None);
+        Assert.Equal(expected ? 1 : 0, TargetEmailCount());
+        if (expected)
+        {
+            var digest = Assert.Single(_smtpCapture.Messages, message => message.Contains($"To: {recipient}", StringComparison.OrdinalIgnoreCase));
+            var digestBody = DecodeMimeBody(digest);
+            Assert.Contains("Subscription expiry", digestBody, StringComparison.Ordinal);
+            Assert.Contains($"Renewal {daysRemaining}-day plan", digestBody, StringComparison.Ordinal);
+        }
+        await emailService.RunOnceAsync(CancellationToken.None);
+        Assert.Equal(expected ? 1 : 0, TargetEmailCount());
     }
 
     [Fact]

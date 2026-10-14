@@ -106,6 +106,10 @@ Platform şirket listesindeki “Uzat” akışı artık gün eklemek yerine yö
 
 Kabul: `Platform_subscription_extension_uses_exact_end_date_and_safe_retries` ücretsiz ücretli-plan uzatmasını, aynı isteği ikinci kez gönderme durumunu, kısaltma reddini, tek audit kaydını, mevcut ödeme referansının korunmasını ve demo aboneliğinin `Trial` kalmasını gerçek izole PostgreSQL'de doğrular. Düzeltme sonrası platform kabul filtresi **13/13**, sekiz platform kaynak doğrulayıcısı ve panel inline-JavaScript sözdizim kontrolü geçti. İlk geniş koşu tekrar eşitliğinde PostgreSQL mikro-saniye hassasiyeti ile .NET'in 100 nanosaniye tick farkını yakaladı; API karşılaştırma öncesi tarihi DB hassasiyetine normalize edecek şekilde düzeltildi ve ardından tam platform filtresi geçti.
 
+## Abonelik sona erme e-posta hatırlatmaları
+
+Şirket kullanıcısı, Bildirim Tercihleri'nden abonelik e-postasını ayrıca açabilir; varsayılanı kapalıdır. Yalnız etkin ve demo olmayan şirket aboneliği için bitiş tarihinden 30, 7 ve 1 gün önce günlük özete eklenir. Ara günlerde yeni hatırlatma üretmez; gönderim aynı kullanıcı/şirket için günde bir kez idempotent olarak kilitlenir. Alıcı, o şirkette üyeliği bulunan ve e-postası doğrulanmış kullanıcıdır. Bu bildirim otomatik tahsilat veya yenileme yapmaz.
+
 ## 14 Ekim 2026 — abonelik varlık kotasının işlem anında uygulanması
 
 `MaxAssets` limiti PostgreSQL trigger'ı ve `Companies.AssetCount` sayacıyla veritabanı seviyesinde korunur. Sayaç mevcut kayıtlardan migration sırasında doldurulur; yeni kayıt, CSV/Excel içe aktarma, şirket arşivini geri yükleme, satın alma siparişi teslim alma ve tenant değişikliği aynı atomik sınırdan geçer. Eşzamanlı yazmalar aynı şirket satırındaki atomik artışla sıralanır; limit aşımında işlem transaction'ıyla geri alınır ve API `402 asset_quota_exceeded` döndürür. Varlık silinmesi sayacı azaltır. Sona ermiş/iptal edilmiş abonelik aktif plan kotası uygulamaz; geçerli Active/Trial döneminde plan kotası geçerlidir. `MaxAssets = null` sınırsız varlık demektir. Bulut kullanıcı sınırı bağımsızdır ve sınırsız kalır.
