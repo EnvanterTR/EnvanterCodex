@@ -11,7 +11,7 @@ public sealed record UpdateOperationalNotificationStateRequest(string? Kind, Gui
 public static class OperationalNotificationEndpoints
 {
     private static readonly string[] AllowedKinds = ["maintenance", "audit", "license", "warranty", "return", "reservation"];
-    private static readonly string[] AllowedEmailKinds = [.. AllowedKinds, "assignment", "asset-life"];
+    private static readonly string[] AllowedEmailKinds = [.. AllowedKinds, "assignment", "asset-life", "subscription"];
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public static void MapOperationalNotificationEndpoints(this RouteGroupBuilder api)

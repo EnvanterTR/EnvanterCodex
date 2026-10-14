@@ -12,7 +12,7 @@ public sealed class OperationalNotificationEmailService(
     IConfiguration configuration,
     ILogger<OperationalNotificationEmailService> logger)
 {
-    private static readonly string[] AllowedKinds = ["maintenance", "audit", "license", "warranty", "return", "reservation", "assignment", "asset-life"];
+    private static readonly string[] AllowedKinds = ["maintenance", "audit", "license", "warranty", "return", "reservation", "assignment", "asset-life", "subscription"];
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly TimeSpan StaleClaimAge = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan RetryDelay = TimeSpan.FromHours(1);
@@ -286,6 +286,20 @@ public sealed class OperationalNotificationEmailService(
             }
             items.AddRange(earliestLifetimeItems);
         }
+        if (kinds.Contains("subscription", StringComparer.Ordinal))
+        {
+            var rangeStartUtc = new DateTimeOffset(rangeStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+            var rangeEndExclusiveUtc = new DateTimeOffset(rangeEnd.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+            var rows = await (from subscription in db.TenantSubscriptions.AsNoTracking()
+                              join plan in db.SubscriptionPlans.AsNoTracking() on subscription.PlanId equals plan.Id
+                              where subscription.CompanyId == companyId && !subscription.IsDemo && subscription.Status == "Active" &&
+                                    subscription.EndsAt >= rangeStartUtc && subscription.EndsAt < rangeEndExclusiveUtc
+                              orderby subscription.EndsAt
+                              select new { subscription.EndsAt, PlanName = plan.Name })
+                .Take(20).ToListAsync(cancellationToken);
+            items.AddRange(rows.Select(row => new OperationalReminderItem("subscription",
+                DateOnly.FromDateTime(row.EndsAt.UtcDateTime), "EnvanterTR Cloud", row.PlanName)));
+        }
         // Reserve digest space for every selected kind before filling the remaining
         // capacity by date, so busy categories cannot starve less frequent reminders.
         var selected = items.GroupBy(item => item.Kind, StringComparer.Ordinal)
@@ -380,14 +394,14 @@ public sealed class OperationalNotificationEmailService(
     private sealed record EmailCopy(string CultureName, string Title, string Subject, string Intro,
         string Type, string Date, string Record, string Description, string OpenApp, string Footer,
         string Maintenance, string Audit, string License, string Warranty, string Return,
-        string Reservation, string Assignment, string AssetLife, string Work,
+        string Reservation, string Assignment, string AssetLife, string Subscription, string Work,
         string Late, string ExpectedReturn, string AssignedEmployee, string Model)
     {
         public string KindLabel(string kind) => kind switch
         {
             "maintenance" => Maintenance, "audit" => Audit, "license" => License,
             "warranty" => Warranty, "return" => Return, "reservation" => Reservation,
-            "assignment" => Assignment, "asset-life" => AssetLife, _ => Work
+            "assignment" => Assignment, "asset-life" => AssetLife, "subscription" => Subscription, _ => Work
         };
 
         public string? TranslateDetail(string? detail, CultureInfo culture)
@@ -417,27 +431,27 @@ public sealed class OperationalNotificationEmailService(
             "en" => new("en-US", "EnvanterTR operations summary", "EnvanterTR · upcoming operations summary",
                 "Selected maintenance, audit, license, warranty, return, reservation, new assignment, and end-of-life records from the past 7 days and next 30 days:",
                 "Type", "Date", "Record", "Details", "Open EnvanterTR", "You received this summary because email reminders are enabled in your notification preferences.",
-                "Maintenance", "Physical audit", "License expiry", "Warranty expiry", "Asset return", "Asset reservation", "New assignment", "End of service life", "Task",
+                "Maintenance", "Physical audit", "License expiry", "Warranty expiry", "Asset return", "Asset reservation", "New assignment", "End of service life", "Subscription expiry", "Task",
                 "Overdue · ", "Expected return · ", "Assigned employee · ", "Model: "),
             "ru" => new("ru-RU", "Сводка операций EnvanterTR", "EnvanterTR · сводка предстоящих задач",
                 "Выбранные записи о техобслуживании, проверках, лицензиях, гарантии, возвратах, резервациях, новых назначениях и окончании срока службы за последние 7 и следующие 30 дней:",
                 "Тип", "Дата", "Запись", "Описание", "Открыть EnvanterTR", "Вы получили эту сводку, потому что включили напоминания по электронной почте в настройках уведомлений.",
-                "Техобслуживание", "Физическая проверка", "Истечение лицензии", "Истечение гарантии", "Возврат актива", "Резервация актива", "Новое назначение", "Окончание срока службы", "Задача",
+                "Техобслуживание", "Физическая проверка", "Истечение лицензии", "Истечение гарантии", "Возврат актива", "Резервация актива", "Новое назначение", "Окончание срока службы", "Окончание подписки", "Задача",
                 "Просрочено · ", "Ожидаемый возврат · ", "Назначенный сотрудник · ", "Модель: "),
             "uk" => new("uk-UA", "Зведення операцій EnvanterTR", "EnvanterTR · зведення майбутніх справ",
                 "Вибрані записи про обслуговування, аудит, ліцензії, гарантії, повернення, резервування, нові призначення та завершення строку служби за останні 7 і наступні 30 днів:",
                 "Тип", "Дата", "Запис", "Опис", "Відкрити EnvanterTR", "Ви отримали це зведення, оскільки ввімкнули нагадування електронною поштою в налаштуваннях сповіщень.",
-                "Обслуговування", "Фізичний аудит", "Закінчення ліцензії", "Закінчення гарантії", "Повернення активу", "Резервування активу", "Нове призначення", "Завершення строку служби", "Завдання",
+                "Обслуговування", "Фізичний аудит", "Закінчення ліцензії", "Закінчення гарантії", "Повернення активу", "Резервування активу", "Нове призначення", "Завершення строку служби", "Завершення підписки", "Завдання",
                 "Прострочено · ", "Очікуване повернення · ", "Призначений працівник · ", "Модель: "),
             "mk" => new("mk-MK", "Преглед на операциите во EnvanterTR", "EnvanterTR · преглед на претстојни задачи",
                 "Избрани записи за одржување, ревизија, лиценци, гаранција, враќања, резервации, нови задолжувања и крај на работниот век во изминатите 7 и следните 30 дена:",
                 "Тип", "Датум", "Запис", "Опис", "Отвори EnvanterTR", "Овој преглед го добивте бидејќи сте вклучиле потсетници по е-пошта во поставките за известувања.",
-                "Одржување", "Физичка ревизија", "Истекување на лиценца", "Истекување на гаранција", "Враќање на опрема", "Резервација на опрема", "Ново задолжување", "Крај на работниот век", "Задача",
+                "Одржување", "Физичка ревизија", "Истекување на лиценца", "Истекување на гаранција", "Враќање на опрема", "Резервација на опрема", "Ново задолжување", "Крај на работниот век", "Истекување на претплатата", "Задача",
                 "Задоцнето · ", "Очекувано враќање · ", "Задолжен вработен · ", "Модел: "),
             _ => new("tr-TR", "EnvanterTR operasyon özeti", "EnvanterTR · yaklaşan işler özeti",
                 "Son 7 gün ve gelecek 30 gün içinde seçtiğiniz bakım, denetim, lisans, garanti, iade, rezervasyon, yeni zimmet ve kullanım ömrü sonu kayıtları:",
                 "Tür", "Tarih", "Kayıt", "Açıklama", "EnvanterTR uygulamasını aç", "Bu özeti bildirim tercihlerinde e-posta hatırlatmalarını seçtiğiniz için aldınız.",
-                "Bakım planı", "Fiziksel denetim", "Lisans bitişi", "Garanti bitişi", "Varlık iadesi", "Varlık rezervasyonu", "Yeni zimmet", "Kullanım ömrü sonu", "İş",
+                "Bakım planı", "Fiziksel denetim", "Lisans bitişi", "Garanti bitişi", "Varlık iadesi", "Varlık rezervasyonu", "Yeni zimmet", "Kullanım ömrü sonu", "Abonelik bitişi", "İş",
                 "Gecikti · ", "Beklenen iade · ", "Zimmetlenen çalışan · ", "Model: ")
         };
     }

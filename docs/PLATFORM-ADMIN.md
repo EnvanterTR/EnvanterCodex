@@ -62,7 +62,7 @@ Platform yönetim ekranı `src/EnvanterTR.Web/wwwroot/platform-admin.html` dosya
 - Firma alt alan adı için otomatik DNS/yönlendirme ve müşteri kendi kendine ilk kurulum akışının uçtan uca üretim işletimi.
 - Planlarda Cloud kullanıcıları sınırsızdır ve davet akışında bu sınır uygulanır.
 - Çevrimdışı lisans imzalama, doğrulama, iptal ve süre uzatma protokolü. `LocalLicenseGrant` şeması yalnızca veri modelidir; kullanılabilir lisans mekanizması sayılmaz.
-- E-posta daveti, parola kurtarma, demo talebi CRM'i ve destek talepleri için temel akışlar mevcuttur; otomatik takip/hatırlatma, teslimat izleme, şablon/tercih merkezi ve operasyon/gelir raporlarının tamamı eksiktir.
+- E-posta daveti, parola kurtarma, demo talebi CRM'i ve destek talepleri için temel akışlar mevcuttur. Şirket kullanıcıları doğrulanmış adreslerine günlük operasyona ek olarak abonelik bitişi e-postasını isteğe bağlı açabilir; bu özellik tahsilat veya otomatik yenileme yapmaz. SMTP teslimat izleme, demo/destek için otomatik takip, gelişmiş şablon/tercih merkezi ve operasyon/gelir raporlarının tamamı eksiktir.
 
 ## Güvenlik ve işletim notları
 

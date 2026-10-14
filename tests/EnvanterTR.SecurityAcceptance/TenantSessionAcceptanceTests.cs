@@ -6221,14 +6221,14 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 payload.RootElement.GetProperty("enabledKinds").EnumerateArray().Select(x => x.GetString()).ToArray());
         }
         using (var savedPreferences = await SendAsRoleAsync(HttpMethod.Put, "/api/notifications/preferences", "viewer",
-                   System.Net.Http.Json.JsonContent.Create(new { enabledKinds = new[] { "LICENSE", "warranty" }, emailEnabledKinds = new[] { "LICENSE", "assignment", "asset-life", "reservation" } }), requestToken, antiforgeryCookie))
+                   System.Net.Http.Json.JsonContent.Create(new { enabledKinds = new[] { "LICENSE", "warranty" }, emailEnabledKinds = new[] { "LICENSE", "assignment", "asset-life", "reservation", "subscription" } }), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.OK, savedPreferences.StatusCode);
         using (var savedPreferences = await SendAsRoleAsync(HttpMethod.Get, "/api/notifications/preferences", "viewer"))
         {
             using var payload = JsonDocument.Parse(await savedPreferences.Content.ReadAsStringAsync());
             Assert.Equal(new[] { "license", "warranty" },
                 payload.RootElement.GetProperty("enabledKinds").EnumerateArray().Select(x => x.GetString()).ToArray());
-            Assert.Equal(new[] { "license", "reservation", "assignment", "asset-life" },
+            Assert.Equal(new[] { "license", "reservation", "assignment", "asset-life", "subscription" },
                 payload.RootElement.GetProperty("emailEnabledKinds").EnumerateArray().Select(x => x.GetString()).ToArray());
         }
         await using (var scope = _factory!.Services.CreateAsyncScope())
@@ -6266,6 +6266,16 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             db.AssetReservations.Add(new AssetReservation { CompanyId = _companyId, AssetId = _ownAssetId,
                 EmployeeId = _ownEmployeeId, RequestedByUserId = _userId, StartsOn = reservationStart,
                 EndsOn = reservationStart.AddDays(2), Status = "Approved" });
+            var activeSubscription = await db.TenantSubscriptions.FirstOrDefaultAsync(x => x.CompanyId == _companyId &&
+                !x.IsDemo && x.Status == "Active" && x.EndsAt > DateTimeOffset.UtcNow);
+            if (activeSubscription is null)
+            {
+                var plan = await db.SubscriptionPlans.FirstAsync(x => x.IsActive);
+                activeSubscription = new TenantSubscription { CompanyId = _companyId, PlanId = plan.Id,
+                    Status = "Active", IsDemo = false, StartsAt = DateTimeOffset.UtcNow.AddDays(-30) };
+                db.TenantSubscriptions.Add(activeSubscription);
+            }
+            activeSubscription.EndsAt = DateTimeOffset.UtcNow.AddDays(10);
             await db.SaveChangesAsync();
             await emailService.RunOnceAsync(CancellationToken.None);
             var deliveredDigest = Assert.Single(_smtpCapture.Messages);
@@ -6276,6 +6286,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Contains("OWN-SECURITY-EMPLOYEE", digestBody, StringComparison.Ordinal);
             Assert.Contains("Asset reservation", digestBody, StringComparison.Ordinal);
             Assert.Contains("End of service life", digestBody, StringComparison.Ordinal);
+            Assert.Contains("Subscription expiry", digestBody, StringComparison.Ordinal);
+            Assert.Contains("EnvanterTR Cloud", digestBody, StringComparison.Ordinal);
             Assert.Contains("EnvanterTR operations summary", digestBody, StringComparison.Ordinal);
             Assert.Contains("Type", digestBody, StringComparison.Ordinal);
             Assert.Contains($"{reservationStartLabel} – {reservationEndLabel}", digestBody, StringComparison.Ordinal);
