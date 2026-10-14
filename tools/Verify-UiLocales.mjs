@@ -568,6 +568,15 @@ const requiredPurchaseOrderDialogLabels = [
   'Siparişi iptal et',
   'Belgeyi kaldır'
 ];
+const requiredStockImportDialogLabels = [
+  'Seçili sarf malzemesi eşleme profili silinsin mi?',
+  'Seçili aksesuar eşleme profili silinsin mi?',
+  'Doğrulanmış içe aktarma uygulansın mı?',
+  'Doğrulanmış yeni sarf kayıtları başlangıç stok hareketleriyle eklensin mi? Mevcut kayıtlar değiştirilmez.',
+  'Doğrulanmış aksesuarlar ve başlangıç stok hareketleri eklensin mi? Mevcut kayıtlar ve zimmetler değişmez.',
+  'İçe aktarmayı uygula',
+  'Profili sil'
+];
 const requiredIntegrationLabels = [
   'Entegrasyonlar', 'ŞİRKET ALANI / ENTEGRASYONLAR', 'Şirket verilerine salt okunur erişim için API anahtarlarını yönetin.',
   'Müşteri API v1', 'Varlık, aksesuar ve çalışan listelerine kullanıcı ve şirket kapsamlı erişim.',
@@ -616,10 +625,11 @@ const missingAuthLabels = requiredAuthLabels.filter(key => !sandbox.localeRows[k
 const missingRestoreLabels = requiredRestoreLabels.filter(key => !sandbox.localeRows[key]);
 const missingCompanyUnitActionLabels = requiredCompanyUnitActionLabels.filter(key => !sandbox.localeRows[key]);
 const missingPurchaseOrderDialogLabels = requiredPurchaseOrderDialogLabels.filter(key => !sandbox.localeRows[key]);
+const missingStockImportDialogLabels = requiredStockImportDialogLabels.filter(key => !sandbox.localeRows[key]);
 const missingIntegrationLabels = requiredIntegrationLabels.filter(key => !sandbox.localeRows[key]);
 const missingSupportLabels = requiredSupportLabels.filter(key => !sandbox.localeRows[key]);
 
-if (loginConnectionDiagnosticsMissing || invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingCheckoutLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingInventoryRequestLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length || missingContractLabels.length || missingRoleLabels.length || missingAuthLabels.length || missingRestoreLabels.length || missingCompanyUnitActionLabels.length || missingPurchaseOrderDialogLabels.length || missingIntegrationLabels.length || missingSupportLabels.length) {
+if (loginConnectionDiagnosticsMissing || invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingCheckoutLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingInventoryRequestLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length || missingContractLabels.length || missingRoleLabels.length || missingAuthLabels.length || missingRestoreLabels.length || missingCompanyUnitActionLabels.length || missingPurchaseOrderDialogLabels.length || missingStockImportDialogLabels.length || missingIntegrationLabels.length || missingSupportLabels.length) {
   if (invalidRows.length) console.error(`Invalid 4-language locale entries: ${invalidRows.join(', ')}`);
   if (missingAssetLabels.length) console.error(`Missing asset-list locale entries: ${missingAssetLabels.join(', ')}`);
   if (missingReservationLabels.length) console.error(`Missing reservation-page locale entries: ${missingReservationLabels.join(', ')}`);
@@ -638,6 +648,7 @@ if (loginConnectionDiagnosticsMissing || invalidRows.length || missingAssetLabel
   if (missingRestoreLabels.length) console.error(`Missing company-restore locale entries: ${missingRestoreLabels.join(', ')}`);
   if (missingCompanyUnitActionLabels.length) console.error(`Missing company-unit action locale entries: ${missingCompanyUnitActionLabels.join(', ')}`);
   if (missingPurchaseOrderDialogLabels.length) console.error(`Missing purchase-order dialog locale entries: ${missingPurchaseOrderDialogLabels.join(', ')}`);
+  if (missingStockImportDialogLabels.length) console.error(`Missing stock-import dialog locale entries: ${missingStockImportDialogLabels.join(', ')}`);
   if (missingIntegrationLabels.length) console.error(`Missing integration-page locale entries: ${missingIntegrationLabels.join(', ')}`);
   if (missingSupportLabels.length) console.error(`Missing support-page locale entries: ${missingSupportLabels.join(', ')}`);
   process.exitCode = 1;

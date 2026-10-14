@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 14 Ekim 2026 — sarf ve aksesuar içe aktarma onayları
+
+Sarf/aksesuar içe aktarma eşleme profili silme ve doğrulanmış içe aktarmayı uygulama tarayıcı `confirm()` yerine iptal edilebilir uygulama dialog'u kullanır. İçe aktarma onayı yalnız önizleme geçerli ve dosya aynı kaldıktan sonra açılır; vazgeçme, gönderim düğmesini kapatmadan ve önizlemeyi temizlemeden işlemi durdurur. Onay sonrası yalnız hedeflenen profili veya içe aktarma API'sini çağırır. Sarf/aksesuar kapsamını açıklayan beş dil metni eklendi. Kaynak/locale ve UI doğrulamaları ile izole eşleme profili/önizleme API kabul testleri 2/2 geçti.
+
 ## 14 Ekim 2026 — satın alma siparişlerinde iptal ve ek dosya onayı
 
 Varlık, stok ve aksesuar siparişlerinin iptali ile sipariş eki kaldırma artık tarayıcı `confirm()` yerine iptal edilebilir, uygulama içi onay penceresi kullanır. İptal pencereleri önceden teslim alınan varlık/stok kayıtlarının korunacağını ve siparişin yeniden teslim alınamayacağını söyler; ek kaldırma penceresi sipariş ile teslimat geçmişinin korunacağını açıklar. API isteği yalnızca onaydan sonra gönderilir; başarıda ilgili sipariş listesi/ekleri yenilenir. Metinler beş dilde doğrulandı. Kaynak kontrolleri 66/66, izole PostgreSQL sipariş/ek API kabul testi 1/1 geçti.
