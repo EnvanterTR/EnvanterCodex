@@ -1745,6 +1745,23 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(1, payload.RootElement.GetProperty("total").GetInt32());
             Assert.Equal(email, payload.RootElement.GetProperty("items")[0].GetProperty("email").GetString());
         }
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var lead = await db.PlatformDemoRequests.SingleAsync(x => x.Email == email);
+            lead.FollowUpAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            await db.SaveChangesAsync();
+        }
+        using (var overdue = await SendAsPlatformAdminAsync($"/api/platform/demo-requests?followUp=overdue&q={Uri.EscapeDataString(email)}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, overdue.StatusCode);
+            using var payload = JsonDocument.Parse(await overdue.Content.ReadAsStringAsync());
+            Assert.Equal(1, payload.RootElement.GetProperty("total").GetInt32());
+            Assert.Equal(email, payload.RootElement.GetProperty("items")[0].GetProperty("email").GetString());
+        }
+        using (var invalidFollowUp = await SendAsPlatformAdminAsync("/api/platform/demo-requests?followUp=tomorrow"))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidFollowUp.StatusCode);
     }
 
     [Fact]

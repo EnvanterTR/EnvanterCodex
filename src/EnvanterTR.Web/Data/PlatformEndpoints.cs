@@ -627,7 +627,8 @@ public static class PlatformEndpoints
         }).RequireRateLimiting("login");
 
         admin.MapGet("/demo-requests", async (AppDbContext db, CancellationToken cancellationToken,
-            [FromQuery] string? q, [FromQuery] string? status, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
+            [FromQuery] string? q, [FromQuery] string? status, [FromQuery] string? followUp,
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {
             page = Math.Clamp(page, 1, 1_000_000);
             pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
@@ -635,6 +636,8 @@ public static class PlatformEndpoints
             var allowedStatuses = new[] { "New", "Contacted", "Qualified", "DemoScheduled", "DemoGranted", "Converted", "Closed" };
             if (!string.IsNullOrWhiteSpace(status) && !allowedStatuses.Contains(status, StringComparer.Ordinal))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["status"] = ["Durum filtresi desteklenmiyor."] });
+            if (!string.IsNullOrWhiteSpace(followUp) && followUp != "overdue")
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["followUp"] = ["Takip filtresi desteklenmiyor."] });
 
             var query = from lead in db.PlatformDemoRequests.AsNoTracking()
                         join adminUser in db.Users.AsNoTracking() on lead.AssignedAdminUserId equals adminUser.Id into adminUsers
@@ -650,6 +653,12 @@ public static class PlatformEndpoints
                             lead.CompanyId, LinkedCompanyName = linkedCompany == null ? null : linkedCompany.Name
                         };
             if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.Status == status);
+            if (followUp == "overdue")
+            {
+                var now = DateTimeOffset.UtcNow;
+                query = query.Where(x => x.FollowUpAt != null && x.FollowUpAt <= now &&
+                    x.Status != "Closed" && x.Status != "Converted");
+            }
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();

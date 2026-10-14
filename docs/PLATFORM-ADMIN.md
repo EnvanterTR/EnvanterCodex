@@ -10,6 +10,7 @@ Platform yönetim ekranı `src/EnvanterTR.Web/wwwroot/platform-admin.html` dosya
 - `GET /api/platform/companies`: firma adı, alt alan adı adayı, iletişim e-postası, etkinlik, kayıt/oturum hesabı/varlık sayıları ve son abonelik. Arama, etkinlik filtresi ve sayfalama içerir.
 - `GET /api/platform/companies/{id}`: firma özeti, ilk 100 üyelik, son 50 abonelik hareketi, şirkete bağlanmış son 50 satın alma/ödeme siparişi ve son 20 müşteri yaşam döngüsü olayı.
 - `GET /api/platform/companies/renewals?days=30&page=1&pageSize=50`: firma adından bağımsız, bitiş tarihine göre sıralanmış yaklaşan abonelikler.
+- `GET /api/platform/demo-requests?followUp=overdue`: takip zamanı geçmiş ve hâlâ açık olan demo taleplerini listeler; `q`, `status` ve sayfalama filtreleriyle birlikte kullanılabilir. Kapalı veya müşteriye dönüşmüş talepler gecikmiş takip listesine girmez.
 - Firma ayrıntısındaki satın alma tablosu sipariş oluşturma tarihi, sağlayıcı tarafından kaydedilmiş ödeme tarihi, tutar, para birimi, durum ve ödeme referansını gösterir. Ödeme sayfasının gizli URL/token alanları yönetim cevabına dahil edilmez. Bu görünüm kayıt/izleme sağlar; ödeme alma, iade veya mutabakat işlemi yapmaz.
 - `PATCH /api/platform/companies/{id}/active`: firmayı askıya alır veya tekrar etkinleştirir. Askıdaki firma oturum açamaz; tenant API'leri de firmayı her istekte kontrol eder.
 - `GET/POST/PUT /api/platform/plans`: dağıtım türü, kullanıcı/varlık sınırı, aylık/yıllık/tek sefer fiyatı, para birimi, çevrimdışı kullanım parametreleri, özellik bayrakları ve yayımlama ayarları.

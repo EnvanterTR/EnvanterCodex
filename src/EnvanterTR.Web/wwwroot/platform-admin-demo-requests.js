@@ -33,8 +33,10 @@
     const params = new URLSearchParams({ page: String(Math.max(1, page)), pageSize: String(state.pageSize) });
     const q = $('#demoLeadSearch').value.trim();
     const status = $('#demoLeadStatus').value;
+    const followUp = $('#demoLeadFollowUp').value;
     if (q) params.set('q', q);
     if (status) params.set('status', status);
+    if (followUp) params.set('followUp', followUp);
     $('#demoLeadsTable').innerHTML = '<div class="empty">Demo talepleri yükleniyor…</div>';
     try {
       const result = await api(`/api/platform/demo-requests?${params}`);
@@ -124,6 +126,7 @@
   $('#refreshDemoLeads').addEventListener('click', () => loadLeads(state.page));
   $('#searchDemoLeads').addEventListener('click', () => loadLeads(1));
   $('#demoLeadStatus').addEventListener('change', () => loadLeads(1));
+  $('#demoLeadFollowUp').addEventListener('change', () => loadLeads(1));
   $('#demoLeadSearch').addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); loadLeads(1); } });
   $('#prevDemoLeads').addEventListener('click', () => loadLeads(state.page - 1));
   $('#nextDemoLeads').addEventListener('click', () => loadLeads(state.page + 1));
