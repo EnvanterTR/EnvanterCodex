@@ -19,6 +19,7 @@ const elements = new Map([
 ]);
 let response;
 let loginLayerShown = 0;
+let connectionChecks = 0;
 const requests = [];
 const context = {
   AbortController,
@@ -31,6 +32,7 @@ const context = {
   },
   fetch: async (path, options) => { requests.push({ path, options }); return response; },
   requestToken: '',
+  checkLoginConnection: async () => { connectionChecks++; },
   setTimeout,
   translateUiText: value => value,
   window: { __envanterCredentialsInUrl: false },
@@ -48,6 +50,7 @@ await assert.rejects(context.api('/api/assets/asset-id/audit', { method: 'POST',
   return true;
 });
 assert.equal(loginLayerShown, 1, 'An authenticated API 401 must show the login layer.');
+assert.equal(connectionChecks, 1, 'Showing the login screen must automatically check API readiness.');
 assert.deepEqual(dialogs.map(dialog => dialog.closed), [1, 1], 'An authenticated API 401 must close open dialogs.');
 assert.equal(elements.get('#retryApiButton').hidden, false, 'The server retry action must remain available.');
 assert.equal(requests.length, 1, 'A failed write must not be silently retried after its session expires.');
@@ -114,6 +117,7 @@ const diagnosticContext = {
   },
   api: async path => {
     if (diagnosticMode === 'unavailable') throw new Error('API bağlantısı kurulamadı.');
+    if (path === '/api/status' && diagnosticMode === 'migration') return { status: 'migration-required', pendingMigrationCount: 19 };
     if (path === '/api/status') return { status: 'ready' };
     if (path === '/api/setup/status') return { setupRequired: diagnosticMode === 'setup' };
     throw new Error(`Unexpected diagnostic request: ${path}`);
@@ -127,6 +131,17 @@ assert.equal(diagnosticElements.get('#loginConnectionStatus').hidden, false, 'A 
 assert.match(diagnosticElements.get('#loginConnectionStatus').textContent, /giriş hatası bağlantıdan kaynaklanmıyor/, 'A ready server must distinguish credential failure from connectivity failure.');
 assert.equal(diagnosticElements.get('#retryApiButton').disabled, false, 'The retry control must be restored after a successful check.');
 
+diagnosticMode = 'migration';
+await diagnosticContext.checkLoginConnection();
+assert.match(diagnosticElements.get('#loginConnectionStatus').textContent, /19 veritabanı güncellemesi bekliyor/, 'Pending migrations must be identified separately from bad credentials.');
+assert.equal(diagnosticElements.get('#loginForm button[type="submit"]').disabled, true, 'Sign-in must be disabled while production schema migrations are pending.');
+assert.equal(diagnosticElements.get('#forgotPasswordButton').disabled, true, 'Password reset must not imply a credential problem when the schema is not updated.');
+
+diagnosticMode = 'ready';
+await diagnosticContext.checkLoginConnection();
+assert.equal(diagnosticElements.get('#loginForm button[type="submit"]').disabled, false, 'A recovered ready server must re-enable sign-in.');
+assert.equal(diagnosticElements.get('#forgotPasswordButton').disabled, false, 'A recovered ready server must re-enable password reset.');
+
 diagnosticMode = 'setup';
 await diagnosticContext.checkLoginConnection();
 assert.equal(diagnosticElements.get('#firstRunSetupNotice').hidden, false, 'A first-run database must direct the user to company setup.');
@@ -137,4 +152,4 @@ await diagnosticContext.checkLoginConnection();
 assert.equal(diagnosticElements.get('#loginConnectionStatus').textContent, 'API bağlantısı kurulamadı.', 'Connection failures must be shown separately from invalid credentials.');
 assert.equal(diagnosticElements.get('#retryApiButton').disabled, false, 'The retry control must be restored after a failed check.');
 
-console.log('Verified authenticated 401 closes open dialogs and shows login; 403 stays a permission error; rejected login does not recurse; URL credentials are scrubbed; connection/setup diagnostics distinguish ready, first-run, and unavailable states.');
+console.log('Verified authenticated 401 closes open dialogs and shows login; 403 stays a permission error; rejected login does not recurse; URL credentials are scrubbed; login auto-checks readiness and distinguishes ready, first-run, pending-migration, and unavailable states.');

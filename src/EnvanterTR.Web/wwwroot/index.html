@@ -2180,6 +2180,7 @@
       'Sunucu bağlantısını test et':['Test server connection','Проверить подключение к серверу','Перевірити підключення до сервера','Тестирај ја врската со серверот'],
       'Sunucu konum listesini beklenmeyen bir biçimde döndürdü.':['The server returned the location list in an unexpected format.','Сервер вернул список местоположений в неожиданном формате.','Сервер повернув список місць у неочікуваному форматі.','Серверот ја врати листата на локации во неочекуван формат.'],
       'Bağlantı kontrol ediliyor…':['Checking connection…','Проверка подключения…','Перевірка підключення…','Се проверува врската…'],
+      'Giriş şu anda kapalı: {count} veritabanı güncellemesi bekliyor. Güncelleme güvenli biçimde uygulanana kadar kullanıcı adı ve parola ile giriş yapılamaz; parolanızı değiştirmeyin.':['Sign-in is unavailable: {count} database updates are pending. You cannot sign in until the updates are applied safely; do not change your password.','Вход недоступен: ожидается обновление базы данных ({count}). Войти можно будет после безопасного применения обновлений; не меняйте пароль.','Вхід недоступний: очікується оновлення бази даних ({count}). Увійти можна буде після безпечного застосування оновлень; не змінюйте пароль.','Најавувањето не е достапно: чекаат {count} ажурирања на базата. Најавата ќе работи откако безбедно ќе се применат ажурирањата; не ја менувајте лозинката.'],
       'Sunucu ve veritabanı hazır. Bu giriş hatası bağlantıdan kaynaklanmıyor.':['The server and database are ready. This sign-in error is not caused by connectivity.','Сервер и база данных готовы. Эта ошибка входа не связана с подключением.','Сервер і база даних готові. Ця помилка входу не пов’язана зі з’єднанням.','Серверот и базата на податоци се подготвени. Оваа грешка при најавувањето не е поради поврзувањето.'],
       'Sunucu ve veritabanı hazır; önce ilk şirket kurulumunu tamamlayın.':['The server and database are ready; complete the initial company setup first.','Сервер и база данных готовы; сначала завершите первоначальную настройку компании.','Сервер і база даних готові; спочатку завершіть початкове налаштування компанії.','Серверот и базата на податоци се подготвени; прво завршете го почетното поставување на компанијата.'],
       'Toplu düzenle':['Bulk edit','Массовое редактирование','Масове редагування','Групно уредување'],
@@ -2646,7 +2647,7 @@
     async function refreshCsrf() { const result = await api('/api/session/csrf'); requestToken = result.requestToken; }
     async function readImportFile(file) { const isXlsx = /\.xlsx$/i.test(file.name); return { body: isXlsx ? await file.arrayBuffer() : await file.text(), contentType: isXlsx ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/csv; charset=utf-8', format: isXlsx ? 'xlsx' : 'csv' }; }
     function importPreviewMessage(result) { const names = Array.isArray(result?.suppliersToCreate) ? result.suppliersToCreate : []; return `${result?.message || `${fmt.format(result?.rowCount || 0)} satır incelendi.`}${names.length ? ` Yeni tedarikçi adları: ${names.join(', ')}.` : ''}`; }
-    function showLogin(message = '') { document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close()); document.body.classList.add('auth-required'); $('#authLayer').classList.add('show'); $('#retryApiButton').hidden = false; $('#authError').textContent = message; const queryNotice = $('#loginQueryNotice'); queryNotice.hidden = !window.__envanterCredentialsInUrl; if (!queryNotice.hidden) queryNotice.textContent = translateUiText('Giriş bilgileri adres satırından alınmadı. Güvenlik için URL temizlendi; e-posta ve parolanızı bu forma yazın.');  }
+    function showLogin(message = '') { document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close()); document.body.classList.add('auth-required'); $('#authLayer').classList.add('show'); $('#retryApiButton').hidden = false; $('#authError').textContent = message; const queryNotice = $('#loginQueryNotice'); queryNotice.hidden = !window.__envanterCredentialsInUrl; if (!queryNotice.hidden) queryNotice.textContent = translateUiText('Giriş bilgileri adres satırından alınmadı. Güvenlik için URL temizlendi; e-posta ve parolanızı bu forma yazın.'); void checkLoginConnection(); }
     function showApiUnavailable(message = 'Uygulama API’sine ulaşılamıyor. Sunucu ve veritabanı bağlantısını kontrol edin.') {
       showLogin(message); $('#retryApiButton').hidden = false;
     }
@@ -9760,6 +9761,15 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       try {
         await refreshCsrf();
         const readiness = await api('/api/status', { timeoutMs: 10000 });
+        if (readiness.status === 'migration-required') {
+          $('#firstRunSetupNotice').hidden = true;
+          $('#loginForm button[type="submit"]').disabled = true;
+          $('#forgotPasswordButton').disabled = true;
+          const pendingCount = Number.isInteger(readiness.pendingMigrationCount) ? Math.max(1, readiness.pendingMigrationCount) : 1;
+          status.textContent = translateUiText('Giriş şu anda kapalı: {count} veritabanı güncellemesi bekliyor. Güncelleme güvenli biçimde uygulanana kadar kullanıcı adı ve parola ile giriş yapılamaz; parolanızı değiştirmeyin.').replace('{count}', String(pendingCount));
+          status.hidden = false;
+          return;
+        }
         if (readiness.status !== 'ready') throw new Error(readiness.message || 'Uygulama veritabanı hazır değil.');
         const setup = await api('/api/setup/status', { timeoutMs: 10000 });
         if (setup.setupRequired) {
