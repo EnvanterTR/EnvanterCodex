@@ -612,8 +612,38 @@ try {
   assert.equal(contractWrites.at(-1).path, '/api/contracts/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee/restore');
   assert.equal(contractWrites.at(-1).csrf, 'synthetic-asset-csrf');
 
+  const sidebarGroups = page.locator('#sidebar [data-group]');
+  for (const group of await sidebarGroups.all()) {
+    if (await group.getAttribute('aria-expanded') !== 'true') await group.click();
+  }
+  const sidebarDestinations = page.locator('#sidebar button[data-page]');
+  const destinationCount = await sidebarDestinations.count();
+  assert.equal(destinationCount, 50, 'The owner navigation smoke acceptance must cover all 50 documented sidebar destinations.');
+  const visitedDestinations = new Set();
+  const placeholderDestinations = [];
+  for (const destination of await sidebarDestinations.all()) {
+    const name = await destination.getAttribute('data-page');
+    assert.ok(name && !visitedDestinations.has(name), `Sidebar destination must be unique and named: ${name}`);
+    visitedDestinations.add(name);
+    await destination.click();
+    await page.waitForFunction(expected => {
+      const item = [...document.querySelectorAll('#sidebar .nav-item, #sidebar .sub-item')].find(element => element.dataset.page === expected);
+      return item?.classList.contains('active') || item?.classList.contains('selected');
+    }, name);
+    const routeState = await page.evaluate(() => ({
+      title: document.querySelector('#pageTitle')?.textContent?.trim() || '',
+      overviewVisible: document.querySelector('#overview')?.hidden === false,
+      workspaceVisible: [...document.querySelectorAll('.workspace-page')].some(element => !element.hidden),
+      placeholderVisible: ['moduleStatusPage', 'featureStatusPage'].some(id => document.querySelector(`#${id}`)?.hidden === false)
+    }));
+    assert.ok(routeState.title, `Selecting ${name} must render a page title.`);
+    assert.ok(routeState.overviewVisible || routeState.workspaceVisible, `Selecting ${name} must render a page surface.`);
+    if (routeState.placeholderVisible) placeholderDestinations.push(name);
+  }
+  assert.equal(visitedDestinations.size, destinationCount);
+
   assert.deepEqual(pageErrors, [], `The asset detail UI must not throw: ${pageErrors.join(' | ')}`);
-  console.log('PASS: owner Ctrl+N; asset edit/audit/maintenance/transfer/assignment; company JSON restore preview and confirmations; company contract list/search/filter/detail/create/cancel/archive/restore with CSRF; browser error-free completion.');
+  console.log(`PASS: owner Ctrl+N; asset edit/audit/maintenance/transfer/assignment; company JSON restore preview and confirmations; company contract list/search/filter/detail/create/cancel/archive/restore with CSRF; all ${visitedDestinations.size} sidebar destinations render; ${placeholderDestinations.length} open the explicit feature/module status surface (${placeholderDestinations.join(', ')}); browser error-free completion.`);
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));
