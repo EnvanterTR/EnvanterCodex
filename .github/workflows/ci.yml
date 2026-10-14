@@ -220,6 +220,10 @@ jobs:
         shell: bash
         run: node tools/Verify-PublicDemoLayout.mjs
 
+      - name: Verify public demo request and platform lead workflow
+        shell: bash
+        run: node tools/Verify-PlatformDemoRequests.mjs
+
       - name: Verify Coolify wildcard tenant routing
         shell: bash
         run: node tools/Verify-CoolifyTenantRouting.mjs
