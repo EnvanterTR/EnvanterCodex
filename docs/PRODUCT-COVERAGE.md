@@ -2,7 +2,7 @@
 
 ## 14 Ekim 2026 — komut paletinde yetki görünürlüğü
 
-Komut paleti artık rol nedeniyle sidebar'da gizlenmiş hedefleri aramaya eklemez; böylece kullanıcı gizli bir rotayı arama sonucundan tetikleyemez. Klavye kısa yol doğrulayıcısı gizli hedefi dışlayıp görünür hedefi koruduğunu beş dilde çalıştırır. Gerçek rol oturumuyla tarayıcı kabulü bu dar pakette yapılmadı.
+Komut paleti artık rol nedeniyle sidebar'da gizlenmiş hedefleri aramaya eklemez; böylece kullanıcı gizli bir rotayı arama sonucundan tetikleyemez. Klavye kısa yol doğrulayıcısı gizli hedefi dışlayıp görünür hedefi koruduğunu beş dilde çalıştırır. Sabit Playwright Chromium kabulinde uygulamanın kendi `/api/session` başlatması sentetik `viewer` rolü aldı; üye menüsü gizlendi, Ctrl+K bu hedefi aramada göstermedi, görünür Varlıklar hedefi sayfayı açtı. API yalnız GET mock yanıtları döndürdü, browser error ve yazma isteği 0. Gerçek müşteri oturumu/veritabanı kullanılmadı.
 
 ## 14 Ekim 2026 — Cloud checkout Chromium tarayıcı kabulü
 

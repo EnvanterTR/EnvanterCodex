@@ -130,3 +130,5 @@ try {
   await browser.close();
   await new Promise(resolve => server.close(resolve));
 }
+
+await import('./command-palette.mjs');

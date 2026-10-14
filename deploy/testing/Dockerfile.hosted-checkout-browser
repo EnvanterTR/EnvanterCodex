@@ -4,6 +4,8 @@ WORKDIR /acceptance
 COPY deploy/testing/hosted-checkout-browser/package.json deploy/testing/hosted-checkout-browser/package-lock.json ./
 RUN npm ci --omit=dev
 COPY deploy/testing/hosted-checkout-browser/hosted-checkout.mjs ./
+COPY deploy/testing/hosted-checkout-browser/command-palette.mjs ./
 COPY src/EnvanterTR.PublicSite/checkout.html src/EnvanterTR.PublicSite/checkout.js /checkout-site/
+COPY src/EnvanterTR.Web/wwwroot/index.html /checkout-site/company-app.html
 
 CMD ["node", "hosted-checkout.mjs"]
