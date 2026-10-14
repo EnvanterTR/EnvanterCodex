@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 15 Ekim 2026 — platform yönetici üye işlemlerinde MFA adım doğrulaması
+
+Üye/davet JavaScript modülünün ayrı HTTP istemcisi, kritik rol güncellemesindeki `428 platform_reauth_required` yanıtını yakalayıp yeniden doğrulama penceresini açmıyordu. Üye ve davet çağrıları şimdi ana platform API istemcisinden geçiyor; CSRF başlığı, parola+Authenticator yeniden doğrulaması ve güvenli tek seferlik tekrar aynı yerden uygulanıyor. Hosted gerçek Chromium kabulinde rol güncellemesi önce 428 ile durdu, sentetik MFA sonrası 204 ile tamamlandı; pencereyi iptal etme yazma yapmadı ve sentetik davet CSRF ile tamamlandı. Sentetik API kullanıldı; gerçek davet e-postası/şirket verisi etkilenmedi. `Verify-PlatformMemberDirectory.mjs` (93), `Verify-PlatformMemberInvites.mjs` (21), `Verify-PlatformAdminExperience.mjs` ve hosted Chromium akışı geçti. Canlıya henüz dağıtılmadı.
+
 ## 15 Ekim 2026 — şirket arşivi geri yükleme UI kabulü
 
 Sentetik owner oturumunda Chromium, Veri ve yedekler → Geri yükle gezinmesini, JSON-only dosya seçimini, varlık eşleme kontrollerinin gizlendiğini ve preview'de kaynak/hedef/kayıt sayılarını doğruladı. Önizleme apply yapmadı. Geri alınamazlık uyarısı üç iptal yolunda (Escape, vazgeç düğmesi, backdrop) sınandı; üçünde de apply isteği çıkmadı. Yalnız açık son onayda mock API'ye tek `POST /api/company/import/apply` sentetik CSRF ile gitti ve sonuç arayüzde gösterildi. Sentetik arşiv/mock API kullanıldı; gerçek şirket verisi veya veritabanına dokunulmadı. `deploy/testing/run-security-acceptance.ps1` tam izole PostgreSQL/HTTP güvenlik kabul paketi **146/146** ile geçti; dahil olan `Company_json_export_returns_a_valid_company_scoped_document` kaydı gerçek tenant sınırını, CSRF'yi, önizlemeyi, geçersiz arşiv reddini ve boş hedefe aktarılan kayıtları doğrular. Bu, yalnız bu restore UI akışının kanıtıdır; diğer menüler kapsanmış sayılmaz.

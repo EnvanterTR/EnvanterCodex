@@ -5,18 +5,9 @@
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
   const date = (value) => value ? new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—';
   const roleLabel = (value) => ({ owner: 'Şirket sahibi', admin: 'Yönetici', asset_manager: 'Envanter yöneticisi', asset_operator: 'Operatör', auditor: 'Denetçi', viewer: 'Salt okunur', hr_operator: 'İK operatörü' })[value] || value || '—';
-  const api = async (url, options = {}) => {
-    const response = await fetch(url, {
-      ...options,
-      credentials: 'same-origin',
-      headers: { Accept: 'application/json', ...(options.headers || {}) }
-    });
-    if (!response.ok) {
-      let message = `İstek başarısız (${response.status}).`;
-      try { const body = await response.json(); message = body.message || body.title || message; } catch { /* Keep generic status. */ }
-      throw new Error(message);
-    }
-    return response.json();
+  const api = (url, options = {}) => {
+    if (typeof window.platformAdminApi !== 'function') throw new Error('Platform API istemcisi başlatılmadı.');
+    return window.platformAdminApi(url, options);
   };
 
   async function loadMembers(page = state.page) {
