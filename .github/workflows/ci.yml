@@ -84,6 +84,10 @@ jobs:
         shell: bash
         run: node tools/Verify-LicenseAssignmentUi.mjs
 
+      - name: Verify software license action confirmation dialog
+        shell: bash
+        run: node tools/Verify-LicenseActionDialogs.mjs
+
       - name: Verify software license import profile deletion dialog
         shell: bash
         run: node tools/Verify-LicenseImportProfileUi.mjs
