@@ -9584,6 +9584,54 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Accessory_checkin_enforces_role_tenant_quantity_and_audits_the_return()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        Guid assignmentId;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            assignmentId = await db.AccessoryAssignments.Where(x => x.CompanyId == _companyId && x.AccessoryId == _ownAccessoryId)
+                .Select(x => x.Id).SingleAsync();
+        }
+
+        var request = new { assignmentId, quantity = 1, notes = "Acceptance accessory return" };
+        await SetCompanyRoleAsync("viewer");
+        using var viewer = await SendAsRoleAsync(HttpMethod.Post, $"/api/accessories/{_ownAccessoryId}/checkin", "viewer",
+            JsonContent.Create(request), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Forbidden, viewer.StatusCode);
+        await SetCompanyRoleAsync("admin");
+        using var foreignReturn = await SendAsRoleAsync(HttpMethod.Post, $"/api/accessories/{_otherCompanyAccessoryId}/checkin", "admin",
+            JsonContent.Create(request), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.NotFound, foreignReturn.StatusCode);
+        using var returned = await SendAsRoleAsync(HttpMethod.Post, $"/api/accessories/{_ownAccessoryId}/checkin", "admin",
+            JsonContent.Create(request), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, returned.StatusCode);
+        using var excessiveReturn = await SendAsRoleAsync(HttpMethod.Post, $"/api/accessories/{_ownAccessoryId}/checkin", "admin",
+            JsonContent.Create(new { assignmentId, quantity = 2, notes = "Must not persist" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Conflict, excessiveReturn.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var assignment = await db.AccessoryAssignments.SingleAsync(x => x.CompanyId == _companyId && x.Id == assignmentId);
+            Assert.Equal(2, assignment.ReturnedQuantity);
+            var movement = await db.AccessoryMovements.SingleAsync(x => x.CompanyId == _companyId && x.AccessoryId == _ownAccessoryId && x.AssignmentId == assignmentId && x.MovementType == "Checkin");
+            Assert.Equal(1, movement.Quantity);
+            Assert.Equal("Acceptance accessory return", movement.Notes);
+            Assert.Equal(_userId, movement.ActorUserId);
+            var audit = await db.AuditEntries.SingleAsync(x => x.CompanyId == _companyId && x.TargetType == "Accessory" && x.TargetId == _ownAccessoryId && x.Action == "checked_in");
+            Assert.Equal(_userId, audit.ActorUserId);
+        }
+    }
+
+    [Fact]
     public async Task Concurrent_accessory_checkouts_cannot_allocate_the_same_remaining_stock_twice()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");

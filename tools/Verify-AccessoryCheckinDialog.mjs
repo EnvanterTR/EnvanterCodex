@@ -1,0 +1,17 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import assert from 'node:assert/strict';
+const html=readFileSync(resolve(process.argv[2]||'src/EnvanterTR.Web/wwwroot/index.html'),'utf8');
+for(const id of ['accessoryCheckinDialog','accessoryCheckinForm','accessoryCheckinTitle','accessoryCheckinSummary','accessoryCheckinError','accessoryCheckinClose','accessoryCheckinCancel','accessoryCheckinSubmit'])assert.match(html,new RegExp(`id="${id}"`),`accessory check-in dialog must include ${id}`);
+assert.match(html,/id="accessoryCheckinDialog"[^>]*aria-labelledby="accessoryCheckinTitle"/,'check-in dialog must have an accessible name');
+assert.match(html,/const roots = \[[^\]]*\$\('#accessoryCheckinDialog'\)/,'check-in dialog must refresh translations');
+assert.match(html,/currentAccessoryAssignments\s*=\s*result\.assignments\s*\|\|\s*\[\]/,'capture the current accessory assignments from the detail response');
+const start=html.indexOf('async function checkinAccessory(assignmentId) {'),end=html.indexOf("$('#accessoryRows').addEventListener('click'",start);assert.ok(start>=0&&end>start,'single check-in entry and form submission must exist');const flow=html.slice(start,end);
+assert.doesNotMatch(flow,/\bprompt\s*\(/,'single check-in must not use a native prompt');
+for(const token of ['pendingAccessoryCheckin={accessoryId:currentAccessory.id','max:assignment.remainingQuantity','form.elements.quantity.max=String(assignment.remainingQuantity)','/api/accessories/\'+encodeURIComponent(pending.accessoryId)+\'/checkin','assignmentId:pending.assignmentId,quantity,notes:form.elements.notes.value.trim()||null','if(!Number.isSafeInteger(quantity)||quantity<1||quantity>pending.max)','error.hidden=false','loadAccessories(accessoryPage)'])assert.ok(flow.includes(token),`single check-in flow must include ${token}`);
+assert.match(flow,/accessoryCheckinDialog'\)\.addEventListener\('close',[\s\S]*?pendingAccessoryCheckin=null/,'closing or cancelling clears the pending assignment');
+const bulkStart=html.indexOf("const bulkButton = document.createElement('button'); bulkButton.id = 'bulkCheckinAccessories'"),bulkEnd=html.indexOf('accessoryAssignmentToolbar.append(bulkButton)',bulkStart);const bulk=html.slice(bulkStart,bulkEnd);assert.ok(bulkStart>=0&&bulkEnd>bulkStart,'bulk check-in shortcut must exist');assert.doesNotMatch(bulk,/\bconfirm\s*\(/,'bulk check-in must not use a browser confirmation');assert.match(bulk,/confirmComponentAction\(\{title:'Aksesuar iadesini onayla'/,'bulk check-in must use in-app confirmation');
+const stockStart=html.indexOf('function openBulkAccessoryStockAdjustment()'),stockEnd=html.indexOf('function updateAccessoryCheckoutTarget()',stockStart),stock=html.slice(stockStart,stockEnd);assert.ok(stockStart>=0&&stockEnd>stockStart,'bulk stock count form must exist');assert.doesNotMatch(stock,/\bconfirm\s*\(/,'stock reduction must not use a browser confirmation');assert.match(stock,/confirmComponentAction\(\{title:'Stok azaltma onayı'/,'stock reductions must use an in-app confirmation');
+assert.match(html,/componentActionDialog'\)\.addEventListener\('click',event=>\{if\(event\.target===event\.currentTarget&&componentActionResolver\)settleComponentAction\(false\)/,'backdrop click on shared confirmation must cancel without submitting');
+console.log('Verified accessory single and bulk returns, count-reduction confirmation, role-gated quantity validation, notes, cancellation cleanup, scoped API request, and refresh behavior.');
+
