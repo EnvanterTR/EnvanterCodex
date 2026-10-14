@@ -10023,10 +10023,10 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
     $('#mobileMenu').addEventListener('click', () => setMobileSidebarOpen(!$('#sidebar').classList.contains('open')));
     const commandPaletteDialog = $('#commandPaletteDialog'), commandPaletteSearch = $('#commandPaletteSearch'), commandPaletteResults = $('#commandPaletteResults');
     function commandPaletteEntries() {
-      const pages = [...new Map([...document.querySelectorAll('#sidebar [data-page]')].map(button => [button.dataset.page, { type: 'page', value: button.dataset.page, label: button.textContent.trim(), group: 'Sayfa' }])).values()];
+      const pages = [...new Map([...document.querySelectorAll('#sidebar [data-page]')].map(button => [button.dataset.page, { type: 'page', value: button.dataset.page, label: button.textContent.trim(), group: translateUiText('Sayfa') }])).values()];
       const actions = [];
-      if (!$('#newAssetButton').hidden && canWriteAssets()) actions.push({ type: 'button', value: 'newAssetButton', label: 'Yeni varlık', group: 'Hızlı işlem' });
-      if (!$('#scanAssetButton').hidden) actions.push({ type: 'button', value: 'scanAssetButton', label: 'Barkod okut', group: 'Hızlı işlem' });
+      if (!$('#newAssetButton').hidden && canWriteAssets()) actions.push({ type: 'button', value: 'newAssetButton', label: translateUiText('Yeni varlık'), group: translateUiText('Hızlı işlem') });
+      if (!$('#scanAssetButton').hidden) actions.push({ type: 'button', value: 'scanAssetButton', label: translateUiText('Barkod okut'), group: translateUiText('Hızlı işlem') });
       return [...actions, ...pages];
     }
     function runCommandPaletteEntry(entry) {

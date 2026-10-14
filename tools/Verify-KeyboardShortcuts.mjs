@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import vm from 'node:vm';
 
 const sourcePath = resolve(process.argv[2] || 'src/EnvanterTR.Web/wwwroot/index.html');
 const source = readFileSync(sourcePath, 'utf8');
@@ -29,7 +30,40 @@ requireSource(source.includes('id="commandPaletteResults" class="command-palette
 requireSource(palette.includes("event.key === 'Enter' && event.target === commandPaletteSearch") && palette.includes("['ArrowDown', 'ArrowUp']"), 'Command palette must support Enter and arrow-key navigation.');
 requireSource(palette.includes("event.target === commandPaletteDialog") && palette.includes("event.currentTarget.close()"), 'New dialogs must close from their close button, Escape, and outside click.');
 requireSource(source.includes('aria-keyshortcuts="Control+K"') && source.includes("setAttribute('aria-keyshortcuts', '/')") && source.includes("setAttribute('aria-keyshortcuts', 'Control+N')") && source.includes("setAttribute('aria-keyshortcuts', '?')") && source.includes('id="keyboardShortcutsDialog"'), 'Keyboard shortcut entry points must be discoverable to assistive technology and documented in the help dialog.');
-requireSource(source.includes("'Yeni varlık', group: 'Hızlı işlem'") && source.includes("'Barkod okut', group: 'Hızlı işlem'"), 'The command palette must include the existing quick asset and barcode actions.');
+requireSource(palette.includes("label: translateUiText('Yeni varlık'), group: translateUiText('Hızlı işlem')") && palette.includes("label: translateUiText('Barkod okut'), group: translateUiText('Hızlı işlem')") && palette.includes("group: translateUiText('Sayfa')"), 'Command palette labels and groups must be localized before rendering and filtering.');
+
+const entriesFunction = palette.match(/function commandPaletteEntries\(\) \{[\s\S]*?\n    \}/)?.[0];
+requireSource(Boolean(entriesFunction), 'Could not locate the command palette entry builder.');
+if (entriesFunction) {
+  const languageCases = [
+    ['tr', 'tr-TR', 'Yeni varlık', 'Barkod okut', 'Hızlı işlem', 'Sayfa'],
+    ['en', 'en-US', 'New asset', 'Scan barcode', 'Quick action', 'Page'],
+    ['ru', 'ru-RU', 'Новый актив', 'Сканировать штрихкод', 'Быстрое действие', 'Страница'],
+    ['uk', 'uk-UA', 'Новий актив', 'Сканувати штрихкод', 'Швидка дія', 'Сторінка'],
+    ['mk', 'mk-MK', 'Ново средство', 'Скенирај баркод', 'Брзо дејство', 'Страница']
+  ];
+  const labels = new Map(languageCases.map(([language, , newAsset, barcode, quickAction, page]) =>
+    [language, new Map([['Yeni varlık', newAsset], ['Barkod okut', barcode], ['Hızlı işlem', quickAction], ['Sayfa', page]])]));
+  for (const [language, locale, expectedAsset, expectedBarcode] of languageCases) {
+    const buttons = [{ dataset: { page: 'Varlıklar' }, textContent: language === 'tr' ? 'Varlıklar' : labels.get(language).get('Sayfa') }];
+    const context = {
+      document: { querySelectorAll: () => buttons },
+      $: selector => ({ hidden: false }),
+      canWriteAssets: () => true,
+      translateUiText: value => labels.get(language).get(value) || value
+    };
+    try {
+      const entries = vm.runInNewContext(`(${entriesFunction})`, context, { timeout: 1000 })();
+      const matches = query => entries.filter(entry => `${entry.label} ${entry.group}`.toLocaleLowerCase(locale).includes(query.toLocaleLowerCase(locale)));
+      const assetHits = matches(expectedAsset);
+      const barcodeHits = matches(expectedBarcode);
+      requireSource(assetHits.length === 1 && assetHits[0].value === 'newAssetButton', `${language}: localized asset command search must return the authorized quick action.`);
+      requireSource(barcodeHits.length === 1 && barcodeHits[0].value === 'scanAssetButton', `${language}: localized barcode search must return its quick action.`);
+    } catch (error) {
+      failures.push(`Could not execute localized command palette entries for ${language}: ${error.message}`);
+    }
+  }
+}
 
 if (failures.length) {
   console.error(failures.map(message => `FAIL ${message}`).join('\n'));
