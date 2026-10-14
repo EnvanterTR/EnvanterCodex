@@ -19,6 +19,8 @@ const apiRequests = [];
 const assetHistory = [];
 const maintenanceRows = [];
 const maintenanceId = '77777777-7777-4777-8777-777777777777';
+const restoreArchive = { formatVersion: 1, company: { name: 'Synthetic Restore Source' }, assets: [], employees: [] };
+const restoreApplyWrites = [];
 const json = (response, status = 200) => {
   response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
   response.end(JSON.stringify(response.body));
@@ -92,6 +94,17 @@ const server = createServer(async (request, response) => {
   if (request.headers['x-csrf-token'] !== 'synthetic-asset-csrf') {
     response.writeHead(400, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ message: 'Missing synthetic CSRF token.' })); return;
+  }
+  if (request.method === 'POST' && url.pathname === '/api/company/import/preview') {
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ isValid: true, restoreTargetEmpty: true, sourceCompany: 'Synthetic Restore Source', targetCompany: 'Synthetic Asset Company', counts: { assets: 2, employees: 1 }, existingMatches: {}, errors: [], warning: 'Synthetic preview only.' }));
+    return;
+  }
+  if (request.method === 'POST' && url.pathname === '/api/company/import/apply') {
+    restoreApplyWrites.push({ body, csrf: request.headers['x-csrf-token'] });
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ message: 'Synthetic company archive restored.', counts: { assets: 2, employees: 1 } }));
+    return;
   }
   if (request.method === 'PUT' && url.pathname === `/api/assets/${assetId}/audit-schedule`) {
     asset.nextAuditOn = body?.nextAuditOn || null;
@@ -438,8 +451,49 @@ try {
   assert.equal(asset.status, 'Deployed');
   await page.locator('#assetTabHistoryButton').click();
   assert.match(await page.locator('#assetHistory').innerText(), /Synthetic assignment note/);
+
+  await page.locator('#closeDialog').click();
+  await page.locator('[data-group="data"]').click();
+  await page.locator('[data-page="Geri yükle"]').click();
+  assert.equal(await page.locator('#dataRestorePanel').isVisible(), true, 'The company owner must be able to reach the company-restore page from the sidebar.');
+  await page.locator('#dataValidateFile').click();
+  const restoreDialog = page.locator('#importPreviewDialog');
+  await restoreDialog.waitFor({ state: 'visible' });
+  const restoreFile = page.locator('#importPreviewFile');
+  assert.match(await restoreFile.getAttribute('accept'), /\.json/);
+  assert.doesNotMatch(await restoreFile.getAttribute('accept'), /\.csv|\.xlsx/);
+  assert.equal(await page.locator('#assetImportProfile').evaluate(element => element.closest('.table-tools').hidden), true,
+    'Restore-only preview must hide asset-import mapping profiles.');
+  await restoreFile.setInputFiles({ name: 'synthetic-company.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(restoreArchive)) });
+  await page.locator('#runImportPreview').click();
+  await page.waitForFunction(() => document.querySelector('#applyCompanyImport')?.hidden === false);
+  assert.match(await page.locator('#importPreviewResult').innerText(), /Synthetic Restore Source/);
+  assert.match(await page.locator('#importPreviewResult').innerText(), /Varlıklar: 2/);
+  assert.equal(restoreApplyWrites.length, 0, 'Preview must not apply any company data.');
+
+  const restoreButton = page.locator('#applyCompanyImport');
+  for (const cancelMode of ['escape', 'button', 'backdrop']) {
+    await restoreButton.click();
+    const confirmDialog = page.locator('#componentActionDialog');
+    await confirmDialog.waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#componentActionTitle').innerText(), 'Şirket arşivi geri yüklensin mi?');
+    assert.match(await page.locator('#componentActionSummary').innerText(), /boş olmalıdır[\s\S]*Fotoğraf ve belgeler[\s\S]*geri alınamaz/);
+    if (cancelMode === 'escape') await page.keyboard.press('Escape');
+    else if (cancelMode === 'button') await page.locator('[data-close-component-action]').first().click();
+    else await page.mouse.click(2, 2);
+    await confirmDialog.waitFor({ state: 'hidden' });
+    assert.equal(restoreApplyWrites.length, 0, `Canceling restore confirmation via ${cancelMode} must not write company data.`);
+  }
+  await restoreButton.click();
+  await page.locator('#componentActionDialog').waitFor({ state: 'visible' });
+  await page.locator('#componentActionSubmit').click();
+  await page.waitForFunction(() => document.querySelector('#importPreviewResult')?.textContent.includes('Synthetic company archive restored.'));
+  assert.equal(restoreApplyWrites.length, 1, 'Only the explicit final confirmation may apply the synthetic company archive.');
+  assert.deepEqual(restoreApplyWrites[0].body, restoreArchive);
+  assert.equal(restoreApplyWrites[0].csrf, 'synthetic-asset-csrf');
+
   assert.deepEqual(pageErrors, [], `The asset detail UI must not throw: ${pageErrors.join(' | ')}`);
-  console.log('PASS: owner Ctrl+N opens and cancels without writing; asset edit, audit schedule, physical audit, maintenance schedule/start/complete, location transfer, and assignment flows; explicit tenant-scoped writes include CSRF; refreshed UI preserves outcomes; no browser exceptions.');
+  console.log('PASS: owner Ctrl+N opens and cancels without writing; asset edit/audit/maintenance/transfer/assignment flows; company JSON restore preview, JSON-only mode, hidden asset profiles, Escape/button/backdrop cancellation without writes, explicit CSRF-protected confirmation, and browser error-free completion.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

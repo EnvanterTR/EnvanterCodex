@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 const script = await readFile('deploy/testing/hosted-checkout-browser/hosted-checkout.mjs', 'utf8');
 const palette = await readFile('deploy/testing/hosted-checkout-browser/command-palette.mjs', 'utf8');
+const assetActions = await readFile('deploy/testing/hosted-checkout-browser/asset-detail-actions.mjs', 'utf8');
 const dockerfile = await readFile('deploy/testing/Dockerfile.hosted-checkout-browser', 'utf8');
 const runner = await readFile('deploy/testing/run-hosted-checkout-browser-acceptance.ps1', 'utf8');
 const workflow = await readFile('.github/workflows/ci.yml', 'utf8');
@@ -21,6 +22,10 @@ assert.match(palette, /The expired-subscription notice must be translated into/)
 assert.match(palette, /A right swipe from the left viewport edge must open the mobile sidebar/);
 assert.match(palette, /A left swipe starting inside the open sidebar must close it/);
 assert.match(palette, /A primarily vertical gesture from the screen edge must not open navigation/);
+assert.match(assetActions, /company JSON restore preview, JSON-only mode, hidden asset profiles/);
+assert.match(assetActions, /Canceling restore confirmation via \$\{cancelMode\} must not write company data/);
+assert.match(assetActions, /restoreApplyWrites\[0\]\.csrf, 'synthetic-asset-csrf'/);
+assert.match(assetActions, /Only the explicit final confirmation may apply the synthetic company archive/);
 assert.match(palette, /page\.keyboard\.press\('\/'\)/);
 assert.match(palette, /Slash should focus global search when not typing/);
 assert.match(palette, /Slash typed in the search field must not steal focus/);
