@@ -971,6 +971,16 @@ public static class PlatformEndpoints
                                            subscription.IsDemo, subscription.StartsAt, subscription.EndsAt,
                                            subscription.PaymentReference, subscription.CreatedAt })
                 .Take(50).ToListAsync(cancellationToken);
+            var checkoutOrders = await (from order in db.CompanyCheckoutOrders.AsNoTracking()
+                                         join plan in db.SubscriptionPlans.AsNoTracking() on order.PlanId equals plan.Id
+                                         where order.CompanyId == companyId
+                                         orderby order.CreatedAt descending
+                                         select new
+                                         {
+                                             order.Id, plan.Name, plan.Code, order.TermDays, order.Amount, order.Currency,
+                                             order.Status, order.PaymentReference, order.CreatedAt, order.PaidAt
+                                         })
+                .Take(50).ToListAsync(cancellationToken);
             var lifecycleHistory = await (from audit in db.PlatformAuditEntries.AsNoTracking()
                 join account in db.Users.AsNoTracking() on audit.ActorUserId equals account.Id
                 where audit.CompanyId == companyId && audit.Action == "CustomerLifecycleUpdated"
@@ -978,7 +988,7 @@ public static class PlatformEndpoints
                 select new { audit.OccurredAt, audit.Details, actorName = account.DisplayName })
                 .Take(20).ToListAsync(cancellationToken);
             return Results.Ok(new { company, memberCount, members, membersTruncated = memberCount > members.Count,
-                subscriptions, lifecycleHistory });
+                subscriptions, checkoutOrders, lifecycleHistory });
         });
 
         admin.MapPatch("/companies/{companyId:guid}/lifecycle", async (Guid companyId,

@@ -1918,6 +1918,22 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 Id = subscriptionId, CompanyId = _companyId, PlanId = originalPlan.Id, Status = "Active", IsDemo = false,
                 StartsAt = now.AddDays(-10), EndsAt = now.AddDays(20), PaymentReference = "preserved-payment-reference"
             });
+            db.CompanyCheckoutOrders.Add(new CompanyCheckoutOrder
+            {
+                Id = Guid.NewGuid(), CompanyName = "Acceptance Company", Slug = $"purchase-{_companyId:N}",
+                ContactEmail = "billing@example.invalid", OwnerName = "Acceptance Owner", OwnerEmail = "owner@example.invalid",
+                PlanId = originalPlan.Id, TermDays = 365, Amount = 1299.50m, Currency = "TRY", Status = "Provisioned",
+                PaymentReference = "verified-purchase-reference", CompanyId = _companyId,
+                CreatedAt = now.AddDays(-11), ExpiresAt = now.AddDays(-10), PaidAt = now.AddDays(-10)
+            });
+            db.CompanyCheckoutOrders.Add(new CompanyCheckoutOrder
+            {
+                Id = Guid.NewGuid(), CompanyName = "Other Acceptance Company", Slug = $"purchase-other-{_otherCompanyId:N}",
+                ContactEmail = "other-billing@example.invalid", OwnerName = "Other Acceptance Owner", OwnerEmail = "other-owner@example.invalid",
+                PlanId = originalPlan.Id, TermDays = 30, Amount = 9999m, Currency = "TRY", Status = "Provisioned",
+                PaymentReference = "another-company-payment-reference", CompanyId = _otherCompanyId,
+                CreatedAt = now.AddDays(-1), ExpiresAt = now, PaidAt = now
+            });
             db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
             await db.SaveChangesAsync();
         }
@@ -1929,6 +1945,18 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
             .Select(value => value.Split(';', 2)[0])
             .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using (var companyDetail = await SendAsPlatformAdminAsync($"/api/platform/companies/{_companyId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, companyDetail.StatusCode);
+            using var payload = JsonDocument.Parse(await companyDetail.Content.ReadAsStringAsync());
+            var order = Assert.Single(payload.RootElement.GetProperty("checkoutOrders").EnumerateArray());
+            Assert.Equal("Provisioned", order.GetProperty("status").GetString());
+            Assert.Equal("verified-purchase-reference", order.GetProperty("paymentReference").GetString());
+            Assert.Equal(1299.50m, order.GetProperty("amount").GetDecimal());
+            Assert.Equal(now.AddDays(-10).ToUnixTimeMilliseconds(), order.GetProperty("paidAt").GetDateTimeOffset().ToUnixTimeMilliseconds());
+            Assert.False(order.TryGetProperty("checkoutPageUrlProtected", out _));
+        }
 
         var invalidRangeRequest = new
         {

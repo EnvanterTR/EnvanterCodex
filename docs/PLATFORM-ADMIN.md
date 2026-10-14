@@ -8,8 +8,9 @@ Platform yönetim ekranı `src/EnvanterTR.Web/wwwroot/platform-admin.html` dosya
 
 - `GET /api/platform/overview`: firma toplamı, aktif/askıdaki firmalar, aktif ücretli abonelik, demo, süresi dolmuş abonelik ve 30 gün içinde yenilenecek abonelik sayısı. Ödeme verisi olmadığı için gelir uydurmaz.
 - `GET /api/platform/companies`: firma adı, alt alan adı adayı, iletişim e-postası, etkinlik, kayıt/oturum hesabı/varlık sayıları ve son abonelik. Arama, etkinlik filtresi ve sayfalama içerir.
-- `GET /api/platform/companies/{id}`: firma özeti, ilk 100 üyelik ve son 50 abonelik hareketi.
+- `GET /api/platform/companies/{id}`: firma özeti, ilk 100 üyelik, son 50 abonelik hareketi, şirkete bağlanmış son 50 satın alma/ödeme siparişi ve son 20 müşteri yaşam döngüsü olayı.
 - `GET /api/platform/companies/renewals?days=30&page=1&pageSize=50`: firma adından bağımsız, bitiş tarihine göre sıralanmış yaklaşan abonelikler.
+- Firma ayrıntısındaki satın alma tablosu sipariş oluşturma tarihi, sağlayıcı tarafından kaydedilmiş ödeme tarihi, tutar, para birimi, durum ve ödeme referansını gösterir. Ödeme sayfasının gizli URL/token alanları yönetim cevabına dahil edilmez. Bu görünüm kayıt/izleme sağlar; ödeme alma, iade veya mutabakat işlemi yapmaz.
 - `PATCH /api/platform/companies/{id}/active`: firmayı askıya alır veya tekrar etkinleştirir. Askıdaki firma oturum açamaz; tenant API'leri de firmayı her istekte kontrol eder.
 - `GET/POST/PUT /api/platform/plans`: dağıtım türü, kullanıcı/varlık sınırı, aylık/yıllık/tek sefer fiyatı, para birimi, çevrimdışı kullanım parametreleri, özellik bayrakları ve yayımlama ayarları.
 - `POST /api/platform/companies/{id}/demo`: aktif aboneliği olmayan firmaya 1-60 günlük deneme tanımlar.
@@ -55,13 +56,12 @@ Platform yönetim ekranı `src/EnvanterTR.Web/wwwroot/platform-admin.html` dosya
 
 ## Henüz yapılmayanlar
 
-- Müşteri çalışma alanı arayüzü ve platform sitesindeki ayrı profesyonel içerik/medya editörü.
-- Site görsel dosyası yükleme/depolama ve CDN/medya yönetimi.
-- Sipariş/ödeme sağlayıcısı, fatura, vergi, iade ve tahsilat mutabakatı. Dolayısıyla satış/gelir metrikleri henüz gerçek finans verisi değildir.
-- Self-servis satın alma, firma oluşturma, alt alan adı DNS/yönlendirmesi, e-posta daveti ve ilk kurulum akışı.
-- Kullanıcı koltuğu/varlık paket sınırlarını işlem anında uygulama; mevcut plan alanları yalnızca tanımlama düzeyindedir.
+- Müşteri çalışma alanının tümleşik kurulumu ve platform sitesinde medya dosyası yükleme/depolama/CDN yönetimi.
+- Tahsilat sağlayıcısının üretim hesabı/anahtarları, otomatik yenileme, başarısız ödeme tekrarları (dunning), fatura/vergi, iade/chargeback ve muhasebe mutabakatı. Checkout/sentetik sağlayıcı testleri canlı tahsilat veya gelir raporu kanıtı değildir.
+- Firma alt alan adı için otomatik DNS/yönlendirme ve müşteri kendi kendine ilk kurulum akışının uçtan uca üretim işletimi.
+- Planlarda Cloud kullanıcıları sınırsızdır ve davet akışında bu sınır uygulanır. `MaxAssets` dahil varlık kotasının işlem anında zorlanması henüz doğrulanmamıştır.
 - Çevrimdışı lisans imzalama, doğrulama, iptal ve süre uzatma protokolü. `LocalLicenseGrant` şeması yalnızca veri modelidir; kullanılabilir lisans mekanizması sayılmaz.
-- E-posta/WhatsApp bildirimleri, parola kurtarma, destek talebi, satış demo rezervasyonu ve operasyon raporları.
+- E-posta daveti, parola kurtarma, demo talebi CRM'i ve destek talepleri için temel akışlar mevcuttur; otomatik takip/hatırlatma, teslimat izleme, şablon/tercih merkezi ve operasyon/gelir raporlarının tamamı eksiktir.
 
 ## Güvenlik ve işletim notları
 
@@ -70,6 +70,10 @@ Platform yönetim ekranı `src/EnvanterTR.Web/wwwroot/platform-admin.html` dosya
 - Veritabanı migration'ı oluşturulup geri dönüş planı ve yedekli uygulama süreci eklenmeden üretim veritabanına bağlamayın.
 - Platform yöneticileri ortak hesap altyapısındaki Authenticator tabanlı MFA ve tek kullanımlık kurtarma kodlarını kullanabilir; platform giriş ekranı 2FA kodu/kurtarma kodu adımını gösterir. Platform yöneticilerine özgü MFA zorunluluğu ve kritik işlem öncesi yeniden kimlik doğrulama ayrıca uygulanmalıdır.
 - Yerel geliştirme sürümü Docker içindeki .NET SDK ile derlenip `localhost:8080` üzerinde açılmıştır. Bu, üretim dağıtımının veya müşteriye sunulabilir sürümün hazır olduğu anlamına gelmez; üretim güvenliği, MFA, TLS, yedekleme/geri yükleme ve gerçek satış akışları ayrıca tamamlanmalıdır.
+
+## 14 Ekim 2026 — firma ayrıntısında ödeme/sipariş geçmişi
+
+Firma ayrıntısı son 50 şirkete bağlı checkout siparişini plan/dönem, sipariş durumu ve tarihi, sağlayıcıca doğrulanmış ödeme tarihi, tutar/para birimi ve ödeme referansıyla gösterir. Gizli checkout sayfası URL'si ve token hash'i API cevabına dahil edilmez. `Platform_admin_can_adjust_subscription_plan_and_dates_with_validation_and_audit` sentetik siparişte alanları ve sırların dışarıda kalmasını doğrular. İlgili test tek başına **1/1**, bu değişiklikten sonraki tüm izole PostgreSQL kabul paketi **126/126** geçti; platform paneli ve üye dizini kaynak denetimleri de geçti. Bu ekran canlı tahsilat, iade veya muhasebe mutabakatını sağlamaz.
 
 ## 14 Ekim 2026 — yönetici 2FA girişi ve müşteri yaşam döngüsü
 
