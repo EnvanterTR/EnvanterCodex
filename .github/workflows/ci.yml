@@ -33,6 +33,10 @@ jobs:
         shell: bash
         run: node tools/Verify-AppNavigation.mjs
 
+      - name: Prevent browser-native blocking dialogs in application surfaces
+        shell: bash
+        run: node tools/Verify-NoNativeBrowserDialogs.mjs
+
       - name: Verify keyboard shortcuts and command palette contracts
         shell: bash
         run: node tools/Verify-KeyboardShortcuts.mjs
