@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 15 Ekim 2026 — platform ilk giriş ve abonelik uzatma güvenlik kabulü
+
+İzole PostgreSQL Compose kabulinde `Platform_admin_first_login_accepts_password_then_requires_mfa_setup_before_panel` ve `Platform_subscription_extension_uses_exact_end_date_and_safe_retries` testleri **2/2 geçti**. İlk senaryo platform yöneticisinin ilk parola girişi sonrasında MFA kurulmadan yönetim paneline erişemediğini; ikinci senaryo abonelik ücretsiz uzatmasının kesin bitiş tarihini koruduğunu ve güvenli tekrar isteklerinin tarihi kaydırmadığını denetler. Geçici test veritabanı/Compose ağı iş bitiminde kaldırıldı; yerel ürün veritabanına ve canlıya yazılmadı. Bu API/güvenlik kabulidir; canlı platform yöneticisi tarayıcı oturumu, canlı ödeme ve dağıtımı kanıtlamaz.
+
 ## 15 Ekim 2026 — varlık ayrıntısı sekmeleri ve dosya ekleri UI kabulü
 
 Hosted Chromium senaryosu, varlık detayındaki beş sekmenin (genel bakış, ilişkiler, bakım, hareket geçmişi, fotoğraf/dosyalar) görünür panel ve seçili sekme durumunu; Home/End klavye gezinmesini doğrular. Hareket geçmişindeki “Bu harekete belge ekle” kısayolunun ekler sekmesini açıp doğru hareket kimliğini seçmesi; sentetik PNG'nin açık gönderim öncesi yüklenmemesi, multipart alanları, 10 MB ve tür kabul öznitelikleri, CSRF, önizleme/indirme bağlantısı, sayaç ve hareket kaydındaki ek sayısı doğrulanır. Dosya silme penceresini iptal etmek hiçbir API yazısı üretmez; açık onay yalnız doğru varlık dosyası DELETE isteğini yollar ve boş durumu yeniler. Sentetik mock API kullanıldı; gerçek şirket verisi/DB kullanılmadı. Ürün API'sinin gerçek dosya imza algılaması ve tenant sınırları bu tarayıcı senaryosunda doğrulanmaz; bunlar izole API kabul testlerinin kapsamındadır.
