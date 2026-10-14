@@ -236,6 +236,38 @@ jobs:
         shell: bash
         run: node tools/Verify-IyzipayCheckoutFlow.mjs
 
+      - name: Verify platform company provisioning workflow
+        shell: bash
+        run: node tools/Verify-PlatformCompanyProvisioning.mjs
+
+      - name: Verify platform customer lifecycle workflow
+        shell: bash
+        run: node tools/Verify-PlatformCustomerLifecycle.mjs
+
+      - name: Verify platform subscription adjustment workflow
+        shell: bash
+        run: node tools/Verify-PlatformSubscriptionEditor.mjs
+
+      - name: Verify platform admin dashboard experience
+        shell: bash
+        run: node tools/Verify-PlatformAdminExperience.mjs
+
+      - name: Verify platform member directory and account details
+        shell: bash
+        run: node tools/Verify-PlatformMemberDirectory.mjs
+
+      - name: Verify platform member invitation workflow
+        shell: bash
+        run: node tools/Verify-PlatformMemberInvites.mjs
+
+      - name: Verify platform audit search workflow
+        shell: bash
+        run: node tools/Verify-PlatformAuditSearch.mjs
+
+      - name: Verify platform checkout order directory
+        shell: bash
+        run: node tools/Verify-PlatformCheckoutOrders.mjs
+
       - name: Verify Coolify wildcard tenant routing
         shell: bash
         run: node tools/Verify-CoolifyTenantRouting.mjs
