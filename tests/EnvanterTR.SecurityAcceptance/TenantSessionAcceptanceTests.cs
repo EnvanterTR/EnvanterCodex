@@ -1307,6 +1307,14 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                     CompanyId = _otherCompanyId, PlanId = plan.Id, Status = "Trial", IsDemo = true,
                     StartsAt = DateTimeOffset.UtcNow.AddMinutes(-1), EndsAt = DateTimeOffset.UtcNow.AddDays(14)
                 });
+            var checkoutStatuses = new[] { "Pending", "PaymentStarted", "PaymentReview", "PaymentFailed", "ProvisioningFailed" };
+            db.CompanyCheckoutOrders.AddRange(checkoutStatuses.Select((status, index) => new CompanyCheckoutOrder
+            {
+                Id = Guid.NewGuid(), CompanyName = $"Overview checkout {index}", Slug = $"overview-{index}-{_companyId:N}",
+                ContactEmail = "billing@example.invalid", OwnerName = "Overview Owner", OwnerEmail = "overview@example.invalid",
+                PlanId = plan.Id, TermDays = 365, Amount = 100m, Currency = "TRY", Status = status,
+                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-index), ExpiresAt = DateTimeOffset.UtcNow.AddDays(2)
+            }));
             db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
             await db.SaveChangesAsync();
         }
@@ -1317,6 +1325,11 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var subscriptions = payload.RootElement.GetProperty("subscriptions");
         Assert.True(subscriptions.GetProperty("customerTrials").GetInt32() >= 1);
         Assert.True(subscriptions.GetProperty("demos").GetInt32() >= 1);
+        var checkout = payload.RootElement.GetProperty("checkout");
+        Assert.True(checkout.GetProperty("paymentPending").GetInt32() >= 2);
+        Assert.True(checkout.GetProperty("paymentReview").GetInt32() >= 1);
+        Assert.True(checkout.GetProperty("paymentFailed").GetInt32() >= 1);
+        Assert.True(checkout.GetProperty("provisioningFailed").GetInt32() >= 1);
     }
 
     [Fact]

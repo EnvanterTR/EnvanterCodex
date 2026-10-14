@@ -43,6 +43,12 @@ assert.match(api, /order\.PaidAt/);
 assert.match(page, /Satın alma ve ödeme geçmişi/);
 assert.match(page, /o\.paidAt/);
 assert.match(page, /o\.amount,o\.currency/);
+for (const alert of ['paymentPending', 'paymentReview', 'paymentFailed', 'provisioningFailed']) {
+  assert.match(api, new RegExp(`var ${alert} = await db\\.CompanyCheckoutOrders[\\s\\S]*?Status ==`), `${alert} is counted from checkout state`);
+  assert.match(page, new RegExp(`${alert}`), `${alert} is visible on the platform overview`);
+}
+assert.match(api, /checkout = new \{ paymentPending, paymentReview, paymentFailed, provisioningFailed \}/);
+assert.match(page, /Ödeme bekliyor[\s\S]*?Ödeme incelemesi[\s\S]*?Başarısız ödeme[\s\S]*?Firma açılışı takıldı/);
 assert.doesNotMatch(api.match(/admin\.MapGet\("\/companies\/\{companyId:guid\}"[\s\S]*?admin\.MapPatch\("\/companies\/\{companyId:guid\}\/lifecycle"/)?.[0] || '', /CheckoutTokenHash|CheckoutPageUrlProtected/);
 assert.match(subscriptions, /Plan \/ tarih düzenle/);
 assert.match(subscriptions, /method: 'PUT'/);
