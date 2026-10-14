@@ -182,6 +182,17 @@ public static class AccountEndpoints
             SignInManager<EnvanterUser> signInManager, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
+            if (!db.Database.GetMigrations().Any())
+                return Results.Json(new { code = "schema_not_ready", message = "Giriş kapalı: uygulama veritabanı şeması henüz kurulmamış." },
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            var pendingMigrations = (await db.Database.GetPendingMigrationsAsync(cancellationToken)).ToArray();
+            if (pendingMigrations.Length > 0)
+                return Results.Json(new
+                {
+                    code = "schema_migration_required",
+                    message = $"Giriş geçici olarak kapalı: {pendingMigrations.Length} veritabanı güncellemesi bekliyor. Önce yedek alıp kontrollü güncelleme uygulayın.",
+                    pendingMigrationCount = pendingMigrations.Length
+                }, statusCode: StatusCodes.Status503ServiceUnavailable);
             if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrEmpty(request.Password))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["credentials"] = ["E-posta ve parola zorunludur."] });
 

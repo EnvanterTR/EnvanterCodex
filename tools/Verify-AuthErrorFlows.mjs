@@ -3,12 +3,18 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const source = readFileSync('src/EnvanterTR.Web/wwwroot/index.html', 'utf8');
+const accountApi = readFileSync('src/EnvanterTR.Web/Data/AccountEndpoints.cs', 'utf8');
 const apiStart = source.indexOf('async function api(path, options = {})');
 const apiEnd = source.indexOf('async function refreshCsrf()', apiStart);
 const loginStart = source.indexOf('function showLogin(message = \'\')');
 const loginEnd = source.indexOf('\n', loginStart);
 assert.ok(apiStart >= 0 && apiEnd > apiStart, 'Could not find the application API helper.');
 assert.ok(loginStart >= 0 && loginEnd > loginStart, 'Could not find the login-layer helper.');
+const loginEndpointStart = accountApi.indexOf('endpoints.MapPost("/api/session/login"');
+const credentialLookup = accountApi.indexOf('userManager.FindByEmailAsync(request.Email.Trim())', loginEndpointStart);
+assert.ok(loginEndpointStart >= 0 && credentialLookup > loginEndpointStart, 'Could not find the server-side login endpoint.');
+assert.match(accountApi.slice(loginEndpointStart, credentialLookup), /GetPendingMigrationsAsync\(cancellationToken\)[\s\S]*?schema_migration_required[\s\S]*?ServiceUnavailable/,
+  'Login must report the pending schema update before querying or incrementing credentials.');
 
 const dialogs = [{ closed: 0, close() { this.closed++; } }, { closed: 0, close() { this.closed++; } }];
 const elements = new Map([

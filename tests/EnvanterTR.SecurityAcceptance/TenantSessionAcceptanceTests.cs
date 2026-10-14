@@ -3860,6 +3860,64 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Login_explains_pending_schema_without_checking_credentials_or_incrementing_lockout()
+    {
+        string latestMigration;
+        string productVersion;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            latestMigration = db.Database.GetMigrations().Last();
+            await db.Database.OpenConnectionAsync();
+            await using var command = db.Database.GetDbConnection().CreateCommand();
+            command.CommandText = "SELECT \"ProductVersion\" FROM \"__EFMigrationsHistory\" WHERE \"MigrationId\" = @migrationId";
+            var migrationParameter = command.CreateParameter();
+            migrationParameter.ParameterName = "migrationId";
+            migrationParameter.Value = latestMigration;
+            command.Parameters.Add(migrationParameter);
+            productVersion = (string)(await command.ExecuteScalarAsync())!;
+            await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM \"__EFMigrationsHistory\" WHERE \"MigrationId\" = {latestMigration}");
+        }
+
+        try
+        {
+            using var csrfResponse = await _client!.GetAsync("/api/session/csrf");
+            Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+            using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+            var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+            var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+                .Select(value => value.Split(';', 2)[0])
+                .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/session/login")
+            {
+                Content = JsonContent.Create(new { email = "unknown-account@example.invalid", password = "synthetic-not-a-real-password" })
+            };
+            request.Headers.Add("X-CSRF-TOKEN", requestToken);
+            request.Headers.Add("Cookie", antiforgeryCookie);
+
+            using var response = await _client.SendAsync(request);
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+            using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.Equal("schema_migration_required", payload.RootElement.GetProperty("code").GetString());
+            Assert.Equal(1, payload.RootElement.GetProperty("pendingMigrationCount").GetInt32());
+            Assert.Contains("veritabanı güncellemesi bekliyor", payload.RootElement.GetProperty("message").GetString());
+        }
+        finally
+        {
+            await using var restoreScope = _factory!.Services.CreateAsyncScope();
+            var restoreDb = restoreScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await restoreDb.Database.ExecuteSqlInterpolatedAsync(
+                $"INSERT INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") VALUES ({latestMigration}, {productVersion}) ON CONFLICT (\"MigrationId\") DO NOTHING");
+        }
+
+        using var restoredStatus = await _client!.GetAsync("/api/status");
+        Assert.Equal(HttpStatusCode.OK, restoredStatus.StatusCode);
+        using var restoredPayload = JsonDocument.Parse(await restoredStatus.Content.ReadAsStringAsync());
+        Assert.Equal("ready", restoredPayload.RootElement.GetProperty("status").GetString());
+        Assert.Equal(0, restoredPayload.RootElement.GetProperty("pendingMigrationCount").GetInt32());
+    }
+
+    [Fact]
     public async Task Login_rate_limit_partitions_by_forwarded_client_ip()
     {
         using var csrfResponse = await _client!.GetAsync("/api/session/csrf");
