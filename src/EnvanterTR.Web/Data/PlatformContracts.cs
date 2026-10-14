@@ -33,4 +33,6 @@ public sealed record UpdatePlatformDemoRequest(string Status, Guid? AssignedAdmi
 public sealed record ProvisionCompanyRequest(string CompanyName, string Slug, string? ContactEmail,
     string OwnerName, string OwnerEmail, Guid PlanId, int TermDays, string PaymentReference, bool PaymentVerified);
 public sealed record SetCompanyActiveRequest(bool IsActive, string? Note);
+public sealed record UpdatePlatformCustomerLifecycleRequest(string Stage, Guid? AssignedAdminUserId,
+    DateTimeOffset? NextFollowUpAt, string? Note);
 public sealed record SaveSiteContentRequest(string Title, string? Body, string? MediaPath, bool IsPublished);

@@ -1843,6 +1843,60 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Platform_customer_lifecycle_is_validated_assigned_audited_and_persisted()
+    {
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            await db.SaveChangesAsync();
+        }
+
+        using (var denied = await SendAsUserAsync(HttpMethod.Patch, $"/api/platform/companies/{_companyId}/lifecycle",
+            _userId, _companyId, JsonContent.Create(new { stage = "Onboarding", assignedAdminUserId = _userId })))
+            Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using (var invalid = await SendAsPlatformAdminRequestAsync(HttpMethod.Patch,
+            $"/api/platform/companies/{_companyId}/lifecycle",
+            JsonContent.Create(new { stage = "MadeUp", assignedAdminUserId = _userId }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+
+        var followUpAt = DateTimeOffset.UtcNow.AddDays(3);
+        using (var update = await SendAsPlatformAdminRequestAsync(HttpMethod.Patch,
+            $"/api/platform/companies/{_companyId}/lifecycle",
+            JsonContent.Create(new { stage = "Onboarding", assignedAdminUserId = _userId,
+                nextFollowUpAt = followUpAt, note = "Kickoff completed; data import scheduled." }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+
+        using (var detail = await SendAsPlatformAdminAsync($"/api/platform/companies/{_companyId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, detail.StatusCode);
+            using var payload = JsonDocument.Parse(await detail.Content.ReadAsStringAsync());
+            var company = payload.RootElement.GetProperty("company");
+            Assert.Equal("Onboarding", company.GetProperty("lifecycleStage").GetString());
+            Assert.Equal(_userId.ToString(), company.GetProperty("lifecycleOwnerId").GetString());
+            Assert.Equal(1, payload.RootElement.GetProperty("lifecycleHistory").GetArrayLength());
+            Assert.Contains("Kickoff completed", payload.RootElement.GetProperty("lifecycleHistory")[0].GetProperty("details").GetString());
+        }
+
+        await using var verifyScope = _factory!.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var saved = await verifyDb.Companies.SingleAsync(x => x.Id == _companyId);
+        Assert.Equal("Onboarding", saved.CustomerLifecycleStage);
+        Assert.Equal(_userId, saved.PlatformOwnerUserId);
+        Assert.True(saved.PlatformNextFollowUpAt > DateTimeOffset.UtcNow.AddDays(2));
+        Assert.True(await verifyDb.PlatformAuditEntries.AnyAsync(x => x.CompanyId == _companyId &&
+            x.Action == "CustomerLifecycleUpdated" && x.Details!.Contains("Kickoff completed")));
+    }
+
+    [Fact]
     public async Task Platform_admin_can_adjust_subscription_plan_and_dates_with_validation_and_audit()
     {
         var originalPlan = new SubscriptionPlan

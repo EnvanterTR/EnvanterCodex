@@ -11,6 +11,9 @@ public sealed class Company
     public string? LabelPrintSettingsJson { get; set; }
     public string? AssetStatusLabelsJson { get; set; }
     public bool IsActive { get; set; } = true;
+    public string CustomerLifecycleStage { get; set; } = "Unclassified";
+    public Guid? PlatformOwnerUserId { get; set; }
+    public DateTimeOffset? PlatformNextFollowUpAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 

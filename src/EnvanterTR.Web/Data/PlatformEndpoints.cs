@@ -932,6 +932,11 @@ public static class PlatformEndpoints
                 .Select(x => new
                 {
                     x.Id, x.Name, x.Slug, x.ContactEmail, x.IsActive, x.CreatedAt,
+                    lifecycleStage = x.CustomerLifecycleStage,
+                    lifecycleOwnerId = x.PlatformOwnerUserId,
+                    lifecycleOwnerName = db.Users.Where(account => account.Id == x.PlatformOwnerUserId)
+                        .Select(account => account.DisplayName).FirstOrDefault(),
+                    nextFollowUpAt = x.PlatformNextFollowUpAt,
                     employeeRecords = db.Employees.Count(e => e.CompanyId == x.Id),
                     loginAccounts = db.CompanyMemberships.Count(m => m.CompanyId == x.Id),
                     assetRecords = db.Assets.Count(a => a.CompanyId == x.Id),
@@ -945,7 +950,10 @@ public static class PlatformEndpoints
         {
             var company = await db.Companies.AsNoTracking().Where(x => x.Id == companyId)
                 .Select(x => new { x.Id, x.Name, x.Slug, x.ContactEmail, x.IsActive, x.CreatedAt,
-                    x.BrandLogoPath, x.BrandPrimaryColor })
+                    x.BrandLogoPath, x.BrandPrimaryColor, lifecycleStage = x.CustomerLifecycleStage,
+                    lifecycleOwnerId = x.PlatformOwnerUserId, nextFollowUpAt = x.PlatformNextFollowUpAt,
+                    lifecycleOwnerName = db.Users.Where(account => account.Id == x.PlatformOwnerUserId)
+                        .Select(account => account.DisplayName).FirstOrDefault() })
                 .SingleOrDefaultAsync(cancellationToken);
             if (company is null) return Results.NotFound();
             var memberCount = await db.CompanyMemberships.CountAsync(x => x.CompanyId == companyId, cancellationToken);
@@ -963,7 +971,46 @@ public static class PlatformEndpoints
                                            subscription.IsDemo, subscription.StartsAt, subscription.EndsAt,
                                            subscription.PaymentReference, subscription.CreatedAt })
                 .Take(50).ToListAsync(cancellationToken);
-            return Results.Ok(new { company, memberCount, members, membersTruncated = memberCount > members.Count, subscriptions });
+            var lifecycleHistory = await (from audit in db.PlatformAuditEntries.AsNoTracking()
+                join account in db.Users.AsNoTracking() on audit.ActorUserId equals account.Id
+                where audit.CompanyId == companyId && audit.Action == "CustomerLifecycleUpdated"
+                orderby audit.OccurredAt descending
+                select new { audit.OccurredAt, audit.Details, actorName = account.DisplayName })
+                .Take(20).ToListAsync(cancellationToken);
+            return Results.Ok(new { company, memberCount, members, membersTruncated = memberCount > members.Count,
+                subscriptions, lifecycleHistory });
+        });
+
+        admin.MapPatch("/companies/{companyId:guid}/lifecycle", async (Guid companyId,
+            [FromBody] UpdatePlatformCustomerLifecycleRequest request, ClaimsPrincipal user,
+            AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (request is null) return Results.BadRequest(new { message = "Müşteri aşaması bilgisi gereklidir." });
+            var allowedStages = new[] { "Unclassified", "Onboarding", "Active", "RenewalDue", "AtRisk", "Churned" };
+            var errors = new Dictionary<string, string[]>();
+            if (!allowedStages.Contains(request.Stage, StringComparer.Ordinal))
+                errors["stage"] = ["Müşteri yaşam döngüsü aşaması geçersiz."];
+            if (request.Note is { Length: > 1000 }) errors["note"] = ["İç not en fazla 1000 karakter olabilir."];
+            if (request.NextFollowUpAt is DateTimeOffset followUp && followUp > DateTimeOffset.UtcNow.AddYears(5))
+                errors["nextFollowUpAt"] = ["Takip tarihi en fazla beş yıl ileri olabilir."];
+            if (request.AssignedAdminUserId is Guid assignedId && !await db.PlatformAdministrators.AsNoTracking()
+                .AnyAsync(x => x.UserId == assignedId, cancellationToken))
+                errors["assignedAdminUserId"] = ["Atanan kullanıcı platform yöneticisi değil."];
+            if (errors.Count > 0) return Results.ValidationProblem(errors);
+
+            var company = await db.Companies.SingleOrDefaultAsync(x => x.Id == companyId, cancellationToken);
+            if (company is null) return Results.NotFound();
+            var before = $"{company.CustomerLifecycleStage}|{company.PlatformOwnerUserId}|{company.PlatformNextFollowUpAt:O}";
+            company.CustomerLifecycleStage = request.Stage;
+            company.PlatformOwnerUserId = request.AssignedAdminUserId;
+            company.PlatformNextFollowUpAt = request.NextFollowUpAt?.ToUniversalTime();
+            var after = $"{company.CustomerLifecycleStage}|{company.PlatformOwnerUserId}|{company.PlatformNextFollowUpAt:O}";
+            var note = Clean(request.Note);
+            var details = $"before={before}; after={after}" + (note is null ? "" : $"; note={note}");
+            AddAudit(db, user, "CustomerLifecycleUpdated", "Company", company.Id, company.Id, details);
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.Ok(new { companyId, stage = company.CustomerLifecycleStage,
+                assignedAdminUserId = company.PlatformOwnerUserId, nextFollowUpAt = company.PlatformNextFollowUpAt });
         });
 
         admin.MapGet("/companies/renewals", async (AppDbContext db, CancellationToken cancellationToken,

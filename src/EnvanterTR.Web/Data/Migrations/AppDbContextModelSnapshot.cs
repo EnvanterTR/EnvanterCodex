@@ -1769,6 +1769,13 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("CustomerLifecycleStage")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("Unclassified");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -1781,15 +1788,25 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<DateTimeOffset?>("PlatformNextFollowUpAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("PlatformOwnerUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Slug")
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("PlatformOwnerUserId");
+
                     b.HasIndex("Slug")
                         .IsUnique()
                         .HasFilter("\"Slug\" IS NOT NULL");
+
+                    b.HasIndex("CustomerLifecycleStage", "PlatformNextFollowUpAt");
 
                     b.ToTable("Companies");
                 });
