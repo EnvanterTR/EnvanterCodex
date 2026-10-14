@@ -153,6 +153,28 @@ builder.Services.AddRateLimiter(options =>
                 AutoReplenishment = true
             });
     });
+    options.AddPolicy("step-up", context =>
+    {
+        var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        if (trustProxyForwardedFor)
+        {
+            var forwarded = context.Request.Headers["X-Forwarded-For"].ToString()
+                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .LastOrDefault();
+            if (System.Net.IPAddress.TryParse(forwarded, out var parsedForwardedIp))
+                clientIp = parsedForwardedIp.ToString();
+        }
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            clientIp,
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            });
+    });
     options.AddPolicy("customer-api", context =>
     {
         var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
@@ -219,7 +241,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
                 // Identity rebuilds the principal when it refreshes the security stamp.
                 // Carry only the claims owned by this application; the request middleware
                 // below revalidates the session, company membership, role, and admin status.
-                foreach (var claimType in new[] { "session_id", "company_id", "company_role", "platform_admin" })
+                foreach (var claimType in new[] { "session_id", "company_id", "company_role", "platform_admin", "platform_reauth_at" })
                     foreach (var claim in currentIdentity.FindAll(claimType))
                         refreshedIdentity.AddClaim(claim);
             }
@@ -495,6 +517,23 @@ app.Use(async (context, next) =>
         HttpMethods.IsPatch(context.Request.Method) || HttpMethods.IsDelete(context.Request.Method);
     var isAccountEndpoint = requestPath.StartsWithSegments("/api/session");
     var isPlatformEndpoint = requestPath.StartsWithSegments("/api/platform");
+    if (isPlatformAdmin && isPlatformEndpoint && isWriteRequest)
+    {
+        var reauthenticatedAtClaim = principal.FindFirstValue("platform_reauth_at");
+        var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var recentlyReauthenticated = long.TryParse(reauthenticatedAtClaim, out var reauthenticatedAtUnix) &&
+            reauthenticatedAtUnix <= nowUnix + 60 && reauthenticatedAtUnix >= nowUnix - 600;
+        if (!recentlyReauthenticated)
+        {
+            context.Response.StatusCode = StatusCodes.Status428PreconditionRequired;
+            await context.Response.WriteAsJsonAsync(new
+            {
+                code = "platform_reauth_required",
+                message = "Platform yönetimindeki değişiklikler için son 10 dakika içinde parolanızı ve Authenticator kodunuzu doğrulayın."
+            }, context.RequestAborted);
+            return;
+        }
+    }
     if (companyClaim is not null && isWriteRequest && requestPath.StartsWithSegments("/api") &&
         !isAccountEndpoint && !isPlatformEndpoint && Guid.TryParse(companyClaim, out var subscriptionCompanyId))
     {

@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Net;
 using System.Net.Mail;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -308,6 +309,55 @@ public static class AccountEndpoints
             var user = await userManager.GetUserAsync(principal);
             return user is null ? Results.Unauthorized() : Results.Ok(new { enabled = user.TwoFactorEnabled });
         }).RequireAuthorization();
+
+        endpoints.MapPost("/api/session/platform-reauth", async ([FromBody] PlatformReauthenticationRequest request,
+            ClaimsPrincipal principal, HttpContext context, IAntiforgery antiforgery,
+            UserManager<EnvanterUser> userManager, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!await HasValidCsrfAsync(context, antiforgery))
+                return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
+            if (!principal.HasClaim("platform_admin", "true") ||
+                !Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ||
+                !await db.PlatformAdministrators.AsNoTracking().AnyAsync(admin => admin.UserId == userId, cancellationToken))
+                return Results.Forbid();
+
+            var user = await userManager.FindByIdAsync(userId.ToString());
+            if (user is null || !user.TwoFactorEnabled)
+                return Results.Json(new { message = "Parola veya yönetici doğrulaması geçersiz." }, statusCode: StatusCodes.Status401Unauthorized);
+            if (string.IsNullOrWhiteSpace(request.Password) || !await userManager.CheckPasswordAsync(user, request.Password))
+            {
+                await userManager.AccessFailedAsync(user);
+                return Results.Json(new { message = "Parola veya yönetici doğrulaması geçersiz." }, statusCode: StatusCodes.Status401Unauthorized);
+            }
+
+            var code = request.Code?.Trim();
+            if (string.IsNullOrWhiteSpace(code) || code.Length > 32)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["code"] = ["Authenticator veya kullanılmamış kurtarma kodu gereklidir."] });
+            var normalizedCode = code.Replace(" ", "", StringComparison.Ordinal).Replace("-", "", StringComparison.Ordinal);
+            var verified = await userManager.VerifyTwoFactorTokenAsync(user, TokenOptions.DefaultAuthenticatorProvider, normalizedCode);
+            if (!verified) verified = (await userManager.RedeemTwoFactorRecoveryCodeAsync(user, code)).Succeeded;
+            if (!verified)
+            {
+                await userManager.AccessFailedAsync(user);
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["code"] = ["Doğrulama kodu geçersiz veya daha önce kullanılmış."] });
+            }
+            await userManager.ResetAccessFailedCountAsync(user);
+
+            var identity = principal.Identity as ClaimsIdentity;
+            if (identity is null) return Results.Unauthorized();
+            foreach (var oldClaim in identity.FindAll("platform_reauth_at").ToArray()) identity.RemoveClaim(oldClaim);
+            var now = DateTimeOffset.UtcNow;
+            identity.AddClaim(new Claim("platform_reauth_at", now.ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture)));
+            db.PlatformAuditEntries.Add(new PlatformAuditEntry
+            {
+                ActorUserId = userId, Action = "PlatformReauthenticated", TargetType = "PlatformAccount", TargetId = userId,
+                Details = "Platform yönetici işlemleri için parola ve ikinci aşama doğrulandı."
+            });
+            await db.SaveChangesAsync(cancellationToken);
+            var authResult = await context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+            await context.SignInAsync(IdentityConstants.ApplicationScheme, principal, authResult.Properties ?? new AuthenticationProperties());
+            return Results.Ok(new { reauthenticatedAt = now, validForSeconds = 600 });
+        }).RequireAuthorization().RequireRateLimiting("step-up");
 
         endpoints.MapGet("/api/session/devices", async (ClaimsPrincipal principal, AppDbContext db, CancellationToken cancellationToken) =>
         {

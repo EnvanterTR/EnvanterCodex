@@ -9473,6 +9473,39 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var platformAccessAfterMfa = await SendAsPlatformAdminAsync("/api/platform/overview"))
             Assert.Equal(HttpStatusCode.OK, platformAccessAfterMfa.StatusCode);
 
+        const string extensionPath = "/api/platform/companies/";
+        using (var deniedUntilStepUp = await SendAsPlatformAdminRequestAsync(HttpMethod.Put,
+                   $"{extensionPath}{_companyId}/subscription/extend",
+                   System.Net.Http.Json.JsonContent.Create(new { endsAt = "2099-01-01", reason = "" }),
+                   setupToken, setupCookie, freshReauthentication: false))
+        using (var deniedPayload = JsonDocument.Parse(await deniedUntilStepUp.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal((HttpStatusCode)428, deniedUntilStepUp.StatusCode);
+            Assert.Equal("platform_reauth_required", deniedPayload.RootElement.GetProperty("code").GetString());
+        }
+        using (var rejectedPassword = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/session/platform-reauth",
+                   System.Net.Http.Json.JsonContent.Create(new { password = password + "-wrong", code = GenerateAuthenticatorCode(secret) }), setupToken, setupCookie))
+            Assert.Equal(HttpStatusCode.Unauthorized, rejectedPassword.StatusCode);
+        using (var rejectedStepUp = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/session/platform-reauth",
+                   System.Net.Http.Json.JsonContent.Create(new { password, code = "000000" }), setupToken, setupCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, rejectedStepUp.StatusCode);
+        using (var acceptedStepUp = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/session/platform-reauth",
+                   System.Net.Http.Json.JsonContent.Create(new { password, code = GenerateAuthenticatorCode(secret) }), setupToken, setupCookie))
+            Assert.Equal(HttpStatusCode.OK, acceptedStepUp.StatusCode);
+        await using (var reauthScope = _factory.Services.CreateAsyncScope())
+        {
+            var reauthenticatedUser = await reauthScope.ServiceProvider.GetRequiredService<UserManager<EnvanterUser>>()
+                .FindByIdAsync(_userId.ToString());
+            Assert.NotNull(reauthenticatedUser);
+            Assert.Equal(0, await reauthScope.ServiceProvider.GetRequiredService<UserManager<EnvanterUser>>()
+                .GetAccessFailedCountAsync(reauthenticatedUser));
+        }
+        using (var rejectedEdit = await SendAsPlatformAdminRequestAsync(HttpMethod.Put,
+                   $"{extensionPath}{_companyId}/subscription/extend",
+                   System.Net.Http.Json.JsonContent.Create(new { endsAt = "2099-01-01", reason = "" }),
+                   setupToken, setupCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, rejectedEdit.StatusCode);
+
         using var loginClient = _factory!.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
         using var loginCsrfResponse = await loginClient.GetAsync("/api/session/csrf");
         using var loginCsrfPayload = JsonDocument.Parse(await loginCsrfResponse.Content.ReadAsStringAsync());
@@ -9537,6 +9570,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.DoesNotContain(accountEvents, entry => entry.Details!.Contains(secret, StringComparison.Ordinal) ||
             entry.Details.Contains(recoveryCode, StringComparison.Ordinal) ||
             entry.Details.Contains(rotatedRecoveryCode, StringComparison.Ordinal));
+        var platformReauthEvents = await auditDb.PlatformAuditEntries.AsNoTracking()
+            .Where(entry => entry.ActorUserId == _userId && entry.Action == "PlatformReauthenticated")
+            .Select(entry => entry.Details).ToListAsync();
+        Assert.Single(platformReauthEvents);
+        Assert.DoesNotContain(platformReauthEvents, details => details!.Contains(password, StringComparison.Ordinal) ||
+            details.Contains(secret, StringComparison.Ordinal) || details.Contains(recoveryCode, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -9894,12 +9933,15 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     private async Task<HttpResponseMessage> SendAsPlatformAdminRequestAsync(HttpMethod method, string path,
-        HttpContent? content = null, string? requestToken = null, string? antiforgeryCookie = null, string? host = null)
+        HttpContent? content = null, string? requestToken = null, string? antiforgeryCookie = null, string? host = null,
+        bool freshReauthentication = true)
     {
         await EnsurePlatformAdminMfaForAcceptanceAsync();
         using var request = new HttpRequestMessage(method, path) { Content = content };
         request.Headers.Add("X-Acceptance-User", _userId.ToString());
         request.Headers.Add("X-Acceptance-Platform-Admin", "true");
+        if (freshReauthentication)
+            request.Headers.Add("X-Acceptance-Platform-Reauth-At", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture));
         if (!string.IsNullOrWhiteSpace(host)) request.Headers.Host = host;
         if (!string.IsNullOrWhiteSpace(requestToken)) request.Headers.Add("X-CSRF-TOKEN", requestToken);
         if (!string.IsNullOrWhiteSpace(antiforgeryCookie)) request.Headers.Add("Cookie", antiforgeryCookie);
@@ -10037,6 +10079,8 @@ internal sealed class AcceptanceHeaderAuthenticationHandler(
         if (!string.IsNullOrWhiteSpace(role)) claims.Add(new Claim("company_role", role));
         if (string.Equals(Request.Headers["X-Acceptance-Platform-Admin"], "true", StringComparison.OrdinalIgnoreCase))
             claims.Add(new Claim("platform_admin", "true"));
+        var reauthAt = Request.Headers["X-Acceptance-Platform-Reauth-At"].ToString();
+        if (long.TryParse(reauthAt, out _)) claims.Add(new Claim("platform_reauth_at", reauthAt));
         var identity = new ClaimsIdentity(claims, Scheme.Name);
         var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name);
         return Task.FromResult(AuthenticateResult.Success(ticket));
