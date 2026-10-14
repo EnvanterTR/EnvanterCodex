@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 14 Ekim 2026 — şirket arşivi geri yükleme onayı
+
+Şirket JSON geri yükleme, doğrulanmış salt-okunur önizlemeden sonra uygulama içi açık onay ister. Onay penceresi verilerin yeni kimliklerle ekleneceğini, hedef kataloğun/envanterin boş olması gerektiğini, fotoğraf ve belgelerin aktarılmadığını ve işlemin geri alınamayacağını açıkça söyler. Vazgeçme/Escape/backdrop API çağrısı yapmaz; sunucu tarafında `settings.manage`, CSRF ve boş hedef kontrolü korunur. Kaynak/locale doğrulaması ve izole API kabul testi (1/1) geçti; gerçek tarayıcı tıklama kabulü yapılmadı ve açık kalıyor.
+
 ## 14 Ekim 2026 — aksesuar iadeleri ve toplu stok işlemleri
 
 Aksesuar ayrıntısındaki tekli iade, kalan miktarı gösteren ve miktar/not alanlarını doğrulayan uygulama formunu kullanır; tarayıcı `prompt()` kaldırıldı. Toplu iade ve stok azaltma işlemleri uygulama içi açık onay gerektirir; vazgeçme veya Escape API çağrısı göndermez. Rol/tenant sınırı, fazla iade reddi, kalıcı hareket ve denetim kaydı izole PostgreSQL kabul testiyle doğrulandı (1/1). Kaynak doğrulayıcılar 64/64 geçti. Tam regresyon koşusundaki tek başarısız test eski derlenmiş test fikstürünün rolü kalıcı olarak değiştirmemesinden kaynaklandı; düzeltilmiş yeni test ayrı koşuda geçti. Gerçek tarayıcı kabulü ve canlı şirket ortamı bu pakette değiştirilmedi.

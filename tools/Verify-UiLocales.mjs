@@ -549,6 +549,11 @@ const requiredAuthLabels = [
   'Doğrulama kodu geçersiz veya kullanılmış. Yeniden deneyin.',
   'Çok sayıda hatalı doğrulama kodu. Bir süre sonra tekrar deneyin.'
 ];
+const requiredRestoreLabels = [
+  'ŞİRKET VERİSİ GERİ YÜKLEME', 'Şirket arşivi geri yüklensin mi?',
+  'JSON arşivindeki kayıtlar bu şirkete yeni kimliklerle eklenecek. Şirket kataloğu ve envanter tabloları boş olmalıdır. Fotoğraf ve belgeler bu JSON işlemine dahil değildir. Bu işlem geri alınamaz.',
+  'Geri yüklemeyi uygula'
+];
 const requiredIntegrationLabels = [
   'Entegrasyonlar', 'ŞİRKET ALANI / ENTEGRASYONLAR', 'Şirket verilerine salt okunur erişim için API anahtarlarını yönetin.',
   'Müşteri API v1', 'Varlık, aksesuar ve çalışan listelerine kullanıcı ve şirket kapsamlı erişim.',
@@ -592,10 +597,11 @@ const missingApiFeedbackLabels = requiredApiFeedbackLabels.filter(key => !sandbo
 const missingContractLabels = requiredContractLabels.filter(key => !sandbox.localeRows[key]);
 const missingRoleLabels = requiredRoleLabels.filter(key => !sandbox.localeRows[key]);
 const missingAuthLabels = requiredAuthLabels.filter(key => !sandbox.localeRows[key]);
+const missingRestoreLabels = requiredRestoreLabels.filter(key => !sandbox.localeRows[key]);
 const missingIntegrationLabels = requiredIntegrationLabels.filter(key => !sandbox.localeRows[key]);
 const missingSupportLabels = requiredSupportLabels.filter(key => !sandbox.localeRows[key]);
 
-if (loginConnectionDiagnosticsMissing || invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingCheckoutLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingInventoryRequestLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length || missingContractLabels.length || missingRoleLabels.length || missingAuthLabels.length || missingIntegrationLabels.length || missingSupportLabels.length) {
+if (loginConnectionDiagnosticsMissing || invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingCheckoutLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingInventoryRequestLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length || missingContractLabels.length || missingRoleLabels.length || missingAuthLabels.length || missingRestoreLabels.length || missingIntegrationLabels.length || missingSupportLabels.length) {
   if (invalidRows.length) console.error(`Invalid 4-language locale entries: ${invalidRows.join(', ')}`);
   if (missingAssetLabels.length) console.error(`Missing asset-list locale entries: ${missingAssetLabels.join(', ')}`);
   if (missingReservationLabels.length) console.error(`Missing reservation-page locale entries: ${missingReservationLabels.join(', ')}`);
@@ -611,6 +617,7 @@ if (loginConnectionDiagnosticsMissing || invalidRows.length || missingAssetLabel
   if (missingContractLabels.length) console.error(`Missing contract-page locale entries: ${missingContractLabels.join(', ')}`);
   if (missingRoleLabels.length) console.error(`Missing role-matrix locale entries: ${missingRoleLabels.join(', ')}`);
   if (missingAuthLabels.length) console.error(`Missing login-security locale entries: ${missingAuthLabels.join(', ')}`);
+  if (missingRestoreLabels.length) console.error(`Missing company-restore locale entries: ${missingRestoreLabels.join(', ')}`);
   if (missingIntegrationLabels.length) console.error(`Missing integration-page locale entries: ${missingIntegrationLabels.join(', ')}`);
   if (missingSupportLabels.length) console.error(`Missing support-page locale entries: ${missingSupportLabels.join(', ')}`);
   process.exitCode = 1;

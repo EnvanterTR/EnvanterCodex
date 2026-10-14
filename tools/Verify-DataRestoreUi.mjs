@@ -17,9 +17,13 @@ assert.match(html, /file\.accept = companyRestoreOnly \? '\.json,application\/js
   'Restore-only mode must constrain the file picker to company JSON archives.');
 assert.match(html, /\$\('#applyCompanyImport'\)\.hidden = !\(lowerName\.endsWith\('\.json'\) && preview\.isValid && preview\.restoreTargetEmpty === true\)/,
   'Applying a restore must require a valid JSON preview and an empty target company.');
+assert.match(html, /if \(!await confirmComponentAction\(\{ eyebrow: 'ŞİRKET VERİSİ GERİ YÜKLEME', title: 'Şirket arşivi geri yüklensin mi\?', summary: '[^']*Bu işlem geri alınamaz\.', confirmLabel: 'Geri yüklemeyi uygula', danger: true \}\)\) return;/,
+  'Applying a company restore must require explicit confirmation in the cancellable in-app dialog and explain irreversibility.');
+assert.doesNotMatch(html, /if \(!confirm\('JSON arşivindeki kayıtlar/,
+  'Company restore must not depend on a browser-native confirmation.');
 assert.match(endpoints, /MapPost\("\/api\/company\/import\/preview", PreviewImportAsync\)\s*\.RequireAuthorization\("settings\.manage"\)/,
   'Company archive preview must be protected by company-management authorization.');
 assert.match(endpoints, /MapPost\("\/api\/company\/import\/apply", ApplyCompanyImportAsync\)\s*\.RequireAuthorization\("settings\.manage"\)/,
   'Company archive apply must be protected by company-management authorization.');
 
-console.log('Verified company restore shortcut, JSON-only mode, role-scoped asset controls, valid-preview gating, and server authorization.');
+console.log('Verified company restore shortcut, JSON-only mode, role-scoped asset controls, valid-preview gating, cancellable in-app confirmation, irreversibility copy, and server authorization.');
