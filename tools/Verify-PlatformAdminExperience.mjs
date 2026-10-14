@@ -23,6 +23,11 @@ for (const view of ['overview', 'companies', 'members', 'demo-requests', 'orders
 assert.match(page, /platform-admin-members\.js/);
 assert.match(page, /platform-admin-subscriptions\.js/);
 assert.match(page, /platform-admin-demo-requests\.js/);
+assert.match(page, /id="platformTwoFactorField" hidden/);
+assert.match(page, /name="twoFactorCode"[^>]*autocomplete="one-time-code"/);
+assert.match(page, /twoFactorCode:f\.get\('twoFactorCode'\)\|\|null/);
+assert.match(page, /if\(x\.twoFactorRequired\)[\s\S]*?platformTwoFactorField\.hidden=false/);
+assert.match(page, /error\.twoFactorRequired=data\?\.twoFactorRequired===true/);
 assert.match(members, /loadMemberTimeline\(id, 1, false\)/);
 assert.match(api, /PlatformDemoRequests/);
 assert.match(api, /Satın alma kaydı oluşturuldu/);
@@ -32,4 +37,4 @@ assert.match(subscriptions, /method: 'PUT'/);
 assert.match(subscriptions, /Ücretsiz uzatma \/ plan değişikliği gerekçesi/);
 assert.match(demos, /api\/platform\/demo-requests/);
 
-console.log('Platform admin premium skin, responsive/accessibility affordances, and member/demo/purchase/subscription workflows verified (34 assertions).');
+console.log('Platform admin premium skin, member/demo/purchase/subscription workflows, responsive/accessibility affordances, and two-factor sign-in verified.');

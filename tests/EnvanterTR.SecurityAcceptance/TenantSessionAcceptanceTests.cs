@@ -8947,6 +8947,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.NotNull(user);
             var passwordResult = await users.AddPasswordAsync(user, password);
             Assert.True(passwordResult.Succeeded, string.Join("; ", passwordResult.Errors.Select(error => error.Description)));
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            if (!await db.PlatformAdministrators.AnyAsync(entry => entry.UserId == _userId))
+            {
+                db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+                await db.SaveChangesAsync();
+            }
         }
 
         using var setupCsrfResponse = await SendAsAdminAsync("/api/session/csrf");
@@ -8993,7 +8999,11 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         }
 
         using (var authenticatorLogin = await SendAnonymousLoginAsync(loginClient, email, password, GenerateAuthenticatorCode(secret), loginToken, loginCookie))
+        using (var authenticatorPayload = JsonDocument.Parse(await authenticatorLogin.Content.ReadAsStringAsync()))
+        {
             Assert.Equal(HttpStatusCode.OK, authenticatorLogin.StatusCode);
+            Assert.True(authenticatorPayload.RootElement.GetProperty("platformAdmin").GetBoolean());
+        }
 
         using var rotateResponse = await SendAsUserAsync(HttpMethod.Post, "/api/session/2fa/recovery-codes", _userId, _companyId,
             System.Net.Http.Json.JsonContent.Create(new { currentPassword = password, code = GenerateAuthenticatorCode(secret) }), setupToken, setupCookie);

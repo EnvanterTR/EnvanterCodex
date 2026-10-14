@@ -68,5 +68,11 @@ Platform yönetim ekranı `src/EnvanterTR.Web/wwwroot/platform-admin.html` dosya
 - Abonelik uzatma API'si elle idari işlem yapar; ödeme kanıtı doğrulamaz. Ödeme bağlantısı kurulmadan müşteriye çevrimiçi tahsilat varmış gibi sunulmamalıdır.
 - Site içeriği API cevabını ön yüzde HTML olarak doğrudan çalıştırmayın; güvenli metin olarak gösterin veya uygun biçimde sanitize edin.
 - Veritabanı migration'ı oluşturulup geri dönüş planı ve yedekli uygulama süreci eklenmeden üretim veritabanına bağlamayın.
-- Platform yönetici hesabı için MFA, kurtarma kodları, oturum denetimi ve kritik işlem için yeniden kimlik doğrulama henüz eklenmedi.
+- Platform yöneticileri ortak hesap altyapısındaki Authenticator tabanlı MFA ve tek kullanımlık kurtarma kodlarını kullanabilir; platform giriş ekranı 2FA kodu/kurtarma kodu adımını gösterir. Platform yöneticilerine özgü MFA zorunluluğu ve kritik işlem öncesi yeniden kimlik doğrulama ayrıca uygulanmalıdır.
 - Yerel geliştirme sürümü Docker içindeki .NET SDK ile derlenip `localhost:8080` üzerinde açılmıştır. Bu, üretim dağıtımının veya müşteriye sunulabilir sürümün hazır olduğu anlamına gelmez; üretim güvenliği, MFA, TLS, yedekleme/geri yükleme ve gerçek satış akışları ayrıca tamamlanmalıdır.
+
+## 14 Ekim 2026 — yönetici 2FA girişi ve müşteri yaşam döngüsü
+
+Platform giriş ekranı Authenticator veya tek kullanımlık kurtarma kodunu ikinci adımda kabul eder; parola ve e-posta ilk adımda girilir. Yanlış/yeniden kullanılmış kod sunucunun `twoFactorRequired` cevabıyla aynı doğrulama adımında tekrar sorulur. `Authenticator_two_factor_requires_second_step_and_recovery_codes_are_single_use` sentetik hesapta MFA challenge ve platform yönetici yetkili giriş yanıtını doğrular; `Verify-PlatformAdminExperience.mjs` arayüz alanını ve challenge akışını kaynakta denetler.
+
+Firma yönetiminde müşteri aşaması, atanmış platform sorumlusu, takip tarihi ve değişiklik notu tutulur. Firma detayında son 20 yaşam döngüsü olayı görünür; her güncelleme platform denetim kaydına yazılır. Bu CRM alanları hatırlatma bildirimi veya ödeme/fatura kayıtlarının yerini tutmaz.
