@@ -25,6 +25,7 @@ assert.match(page, /platform-admin-members\.js/);
 assert.match(page, /platform-admin-subscriptions\.js/);
 assert.match(page, /platform-admin-demo-requests\.js/);
 assert.match(page, /id="platformTwoFactorField" hidden/);
+assert.match(page, /\[hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/, 'hidden platform admin fields must stay hidden despite display rules on their classes');
 assert.match(page, /id="platformLoginReadiness"[^>]*role="status"/);
 assert.match(page, /id="platformLoginSubmit"/);
 assert.match(page, /async function checkPlatformLoginReadiness\(\)/);
