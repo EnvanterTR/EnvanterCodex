@@ -37,6 +37,10 @@ jobs:
         shell: bash
         run: node tools/Verify-NoNativeBrowserDialogs.mjs
 
+      - name: Verify read-only Coolify production readiness diagnostics
+        shell: bash
+        run: node tools/Verify-CoolifyProductionReadiness.mjs
+
       - name: Verify keyboard shortcuts and command palette contracts
         shell: bash
         run: node tools/Verify-KeyboardShortcuts.mjs
