@@ -45,6 +45,9 @@ public static class CheckoutEndpoints
         endpoints.MapPost("/api/checkout/callback", CallbackAsync)
             .AllowAnonymous().RequireRateLimiting("customer-api")
             .WithMetadata(new RequestSizeLimitAttribute(8192));
+        endpoints.MapPost("/api/checkout/webhook", WebhookAsync)
+            .AllowAnonymous().RequireRateLimiting("customer-api")
+            .WithMetadata(new RequestSizeLimitAttribute(8192));
         return endpoints;
     }
 
@@ -241,13 +244,93 @@ public static class CheckoutEndpoints
         var token = form["token"].ToString();
         if (string.IsNullOrWhiteSpace(token) || token.Length > 256)
             return Results.BadRequest(new { message = "Ödeme bildirimi doğrulanamadı." });
+        return await ProcessCheckoutTokenAsync(token, null, null, context, db, iyzipay, userManager,
+            configuration, logger, cancellationToken);
+    }
+
+    private static async Task<IResult> WebhookAsync(
+        HttpContext context, AppDbContext db, IyzipayCheckoutClient iyzipay,
+        UserManager<EnvanterUser> userManager, IConfiguration configuration, IOptions<IyzipayOptions> configuredOptions,
+        ILogger<Program> logger, CancellationToken cancellationToken)
+    {
+        var options = configuredOptions.Value;
+        if (!options.IsConfigured) return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+        if (!context.Request.HasJsonContentType())
+            return Results.BadRequest(new { message = "Ödeme bildirimi biçimi geçersiz." });
+        if (context.Request.ContentLength is > 8192)
+            return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+        if (!context.Request.Headers.TryGetValue("X-IYZ-SIGNATURE-V3", out var signatureValues) ||
+            signatureValues.Count != 1 || string.IsNullOrWhiteSpace(signatureValues[0]))
+            return Results.Unauthorized();
+
+        byte[] body;
+        try { body = await ReadLimitedRequestBodyAsync(context.Request.Body, 8192, cancellationToken); }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (InvalidDataException) { return Results.StatusCode(StatusCodes.Status413PayloadTooLarge); }
+
+        using var payloadBytes = new SensitiveBuffer(body);
+        JsonDocument payload;
+        try { payload = JsonDocument.Parse(body, new JsonDocumentOptions { MaxDepth = 8 }); }
+        catch (JsonException) { return Results.BadRequest(new { message = "Ödeme bildirimi JSON biçimi geçersiz." }); }
+        using (payload)
+        {
+            var root = payload.RootElement;
+            if (root.ValueKind != JsonValueKind.Object) return Results.BadRequest();
+            var eventType = ReadString(root, "iyziEventType");
+            var paymentId = ReadString(root, "iyziPaymentId");
+            var token = ReadString(root, "token");
+            var conversationId = ReadString(root, "paymentConversationId");
+            var status = ReadString(root, "status");
+            if (string.IsNullOrWhiteSpace(eventType) || eventType.Length > 64 ||
+                string.IsNullOrWhiteSpace(paymentId) || paymentId.Length > 180 ||
+                string.IsNullOrWhiteSpace(token) || token.Length > 256 ||
+                string.IsNullOrWhiteSpace(conversationId) || conversationId.Length > 64 ||
+                string.IsNullOrWhiteSpace(status) || status.Length > 32)
+                return Results.BadRequest(new { message = "Ödeme bildirimi alanları geçersiz." });
+            if (!IyzipayWebhookSignature.Verify(options.SecretKey, eventType, paymentId, token,
+                    conversationId, status, signatureValues[0]!))
+                return Results.Unauthorized();
+
+            // Signed events that this integration does not handle are acknowledged without changing an order.
+            if (!string.Equals(eventType, "CHECKOUT_FORM_AUTH", StringComparison.Ordinal) ||
+                !(string.Equals(status, "SUCCESS", StringComparison.OrdinalIgnoreCase) ||
+                  string.Equals(status, "FAILURE", StringComparison.OrdinalIgnoreCase)))
+                return Results.Ok();
+
+            var order = await db.CompanyCheckoutOrders.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.CheckoutTokenHash == HashToken(token), cancellationToken);
+            if (order is null || !string.Equals(conversationId, order.Id.ToString("N"), StringComparison.Ordinal))
+            {
+                logger.LogWarning("Signed iyzico checkout webhook could not be correlated to an order.");
+                return Results.Ok();
+            }
+
+            var processingResult = await ProcessCheckoutTokenAsync(token, paymentId, status.ToUpperInvariant(), context, db,
+                iyzipay, userManager, configuration, logger, cancellationToken);
+            if (processingResult is IStatusCodeHttpResult httpResult && (httpResult.StatusCode ?? StatusCodes.Status200OK) is >= 200 and < 300)
+                return Results.Ok(new { received = true });
+            return processingResult;
+        }
+    }
+
+    private static async Task<IResult> ProcessCheckoutTokenAsync(string token, string? expectedPaymentId,
+        string? expectedPaymentStatus, HttpContext context, AppDbContext db, IyzipayCheckoutClient iyzipay,
+        UserManager<EnvanterUser> userManager, IConfiguration configuration, ILogger<Program> logger,
+        CancellationToken cancellationToken)
+    {
         var tokenHash = HashToken(token);
         var order = await db.CompanyCheckoutOrders.AsNoTracking()
             .SingleOrDefaultAsync(x => x.CheckoutTokenHash == tokenHash, cancellationToken);
         if (order is null)
             return Results.BadRequest(new { message = "Ödeme işlemi bulunamadı." });
-        if (order.Status == "Provisioned") return CheckoutResult("success");
-        if (order.Status == "PaymentFailed") return CheckoutResult("failed");
+        if (order.Status is "Provisioned" or "PaymentFailed")
+        {
+            var terminalPaymentStatus = order.Status == "Provisioned" ? "SUCCESS" : "FAILURE";
+            if (expectedPaymentId is not null && !string.Equals(order.PaymentReference, expectedPaymentId, StringComparison.Ordinal) ||
+                expectedPaymentStatus is not null && !string.Equals(terminalPaymentStatus, expectedPaymentStatus, StringComparison.Ordinal))
+                return Results.Conflict(new { message = "Ödeme bildirimi kayıtlı sağlayıcı sonucu ile eşleşmedi." });
+            return CheckoutResult(order.Status == "Provisioned" ? "success" : "failed");
+        }
         if (order.Status is not (CheckoutStatusStarted or "PaymentReview" or "ProvisioningFailed" or "Expired"))
             return Results.Conflict(new { message = "Ödeme henüz doğrulanabilir durumda değil." });
 
@@ -282,6 +365,12 @@ public static class CheckoutEndpoints
 
             var paymentStatus = ReadString(root, "paymentStatus");
             var paymentReference = ReadString(root, "paymentId");
+            if (expectedPaymentId is not null && !string.Equals(paymentReference, expectedPaymentId, StringComparison.Ordinal) ||
+                expectedPaymentStatus is not null && !string.Equals(paymentStatus, expectedPaymentStatus, StringComparison.OrdinalIgnoreCase))
+            {
+                logger.LogWarning("Signed iyzico checkout webhook did not match the retrieved payment result. Checkout {CheckoutId}", order.Id);
+                return Results.Conflict(new { message = "Ödeme bildirimi sağlayıcıdan doğrulanan sonuçla eşleşmedi." });
+            }
             if (!string.Equals(paymentStatus, "SUCCESS", StringComparison.OrdinalIgnoreCase) || fraudStatus == -1)
             {
                 await SetStatusAsync(db, order.Id, "PaymentFailed", cancellationToken, paymentReference);
@@ -465,6 +554,30 @@ public static class CheckoutEndpoints
     }
 
     private static string HashToken(string token) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+
+    private static async Task<byte[]> ReadLimitedRequestBodyAsync(Stream body, int limit, CancellationToken cancellationToken)
+    {
+        using var buffer = new MemoryStream();
+        var chunk = new byte[4096];
+        try
+        {
+            while (true)
+            {
+                var read = await body.ReadAsync(chunk, cancellationToken);
+                if (read == 0) break;
+                if (buffer.Length + read > limit) throw new InvalidDataException("Webhook body exceeds the allowed size.");
+                buffer.Write(chunk, 0, read);
+            }
+            return buffer.ToArray();
+        }
+        finally { CryptographicOperations.ZeroMemory(chunk); }
+    }
+
+    private sealed class SensitiveBuffer(byte[] bytes) : IDisposable
+    {
+        public void Dispose() => CryptographicOperations.ZeroMemory(bytes);
+    }
+
     private static string? ReadString(JsonElement root, string property) =>
         root.TryGetProperty(property, out var value) ? value.ValueKind == JsonValueKind.String ? value.GetString() : value.ToString() : null;
     private static bool TryReadDecimal(JsonElement root, string property, out decimal value) =>

@@ -427,16 +427,88 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         }
 
         using var callbackClient = checkoutFactory.CreateClient();
-        using var callback = await callbackClient.PostAsync("/api/checkout/callback",
-            new FormUrlEncodedContent(new Dictionary<string, string> { ["token"] = "synthetic-provider-token" }));
-        Assert.Equal(HttpStatusCode.OK, callback.StatusCode);
-        Assert.Contains("Ödeme alındı", await callback.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        var webhook = new
+        {
+            iyziEventType = "CHECKOUT_FORM_AUTH", iyziPaymentId = "synthetic-payment-id",
+            token = "synthetic-provider-token", paymentConversationId = checkoutId.ToString("N"), status = "SUCCESS"
+        };
+        static string SignWebhook(string secret, string eventType, string paymentId, string token,
+            string conversationId, string status) => Convert.ToHexStringLower(HMACSHA256.HashData(
+                Encoding.UTF8.GetBytes(secret),
+                Encoding.UTF8.GetBytes(string.Concat(secret, eventType, paymentId, token, conversationId, status))));
+        var webhookSignature = SignWebhook("synthetic-secret-key", webhook.iyziEventType, webhook.iyziPaymentId,
+            webhook.token, webhook.paymentConversationId, webhook.status);
+        using (var invalidWebhookRequest = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/webhook")
+               { Content = JsonContent.Create(webhook) })
+        {
+            invalidWebhookRequest.Headers.Add("X-IYZ-SIGNATURE-V3", new string('0', 64));
+            using var invalidWebhook = await callbackClient.SendAsync(invalidWebhookRequest);
+            Assert.Equal(HttpStatusCode.Unauthorized, invalidWebhook.StatusCode);
+        }
+        using (var oversizedWebhookRequest = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/webhook")
+               { Content = new StringContent("{\"payload\":\"" + new string('x', 8192) + "\"}", Encoding.UTF8, "application/json") })
+        {
+            using var oversizedWebhook = await callbackClient.SendAsync(oversizedWebhookRequest);
+            Assert.Equal(HttpStatusCode.RequestEntityTooLarge, oversizedWebhook.StatusCode);
+        }
+        var unsupportedWebhook = new
+        {
+            iyziEventType = "UNSUPPORTED_EVENT", webhook.iyziPaymentId, webhook.token,
+            webhook.paymentConversationId, webhook.status
+        };
+        using (var unsupportedWebhookRequest = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/webhook")
+               { Content = JsonContent.Create(unsupportedWebhook) })
+        {
+            unsupportedWebhookRequest.Headers.Add("X-IYZ-SIGNATURE-V3", SignWebhook("synthetic-secret-key",
+                unsupportedWebhook.iyziEventType, unsupportedWebhook.iyziPaymentId, unsupportedWebhook.token,
+                unsupportedWebhook.paymentConversationId, unsupportedWebhook.status));
+            using var ignoredEvent = await callbackClient.SendAsync(unsupportedWebhookRequest);
+            Assert.Equal(HttpStatusCode.OK, ignoredEvent.StatusCode);
+        }
+        var mismatchedWebhook = new
+        {
+            webhook.iyziEventType, iyziPaymentId = "different-synthetic-payment", webhook.token,
+            webhook.paymentConversationId, webhook.status
+        };
+        using (var mismatchedWebhookRequest = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/webhook")
+               { Content = JsonContent.Create(mismatchedWebhook) })
+        {
+            mismatchedWebhookRequest.Headers.Add("X-IYZ-SIGNATURE-V3", SignWebhook("synthetic-secret-key",
+                mismatchedWebhook.iyziEventType, mismatchedWebhook.iyziPaymentId, mismatchedWebhook.token,
+                mismatchedWebhook.paymentConversationId, mismatchedWebhook.status));
+            using var mismatchedWebhookResponse = await callbackClient.SendAsync(mismatchedWebhookRequest);
+            Assert.Equal(HttpStatusCode.Conflict, mismatchedWebhookResponse.StatusCode);
+        }
+        await using (var scope = checkoutFactory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.Equal("PaymentStarted", (await db.CompanyCheckoutOrders.SingleAsync(x => x.Id == checkoutId)).Status);
+            Assert.False(await db.Companies.AnyAsync(x => x.Slug == request.Slug));
+        }
         Assert.Equal(1, provider.RetrieveCount);
+        using (var webhookRequest = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/webhook")
+               { Content = JsonContent.Create(webhook) })
+        {
+            webhookRequest.Headers.Add("X-IYZ-SIGNATURE-V3", webhookSignature);
+            using var webhookResponse = await callbackClient.SendAsync(webhookRequest);
+            Assert.Equal(HttpStatusCode.OK, webhookResponse.StatusCode);
+            Assert.Equal("application/json", webhookResponse.Content.Headers.ContentType?.MediaType);
+            using var webhookAck = JsonDocument.Parse(await webhookResponse.Content.ReadAsStringAsync());
+            Assert.True(webhookAck.RootElement.GetProperty("received").GetBoolean());
+        }
+        Assert.Equal(2, provider.RetrieveCount);
 
-        using var replay = await callbackClient.PostAsync("/api/checkout/callback",
+        using (var webhookReplayRequest = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/webhook")
+               { Content = JsonContent.Create(webhook) })
+        {
+            webhookReplayRequest.Headers.Add("X-IYZ-SIGNATURE-V3", webhookSignature);
+            using var webhookReplay = await callbackClient.SendAsync(webhookReplayRequest);
+            Assert.Equal(HttpStatusCode.OK, webhookReplay.StatusCode);
+        }
+        using var browserCallback = await callbackClient.PostAsync("/api/checkout/callback",
             new FormUrlEncodedContent(new Dictionary<string, string> { ["token"] = "synthetic-provider-token" }));
-        Assert.Equal(HttpStatusCode.OK, replay.StatusCode);
-        Assert.Equal(1, provider.RetrieveCount);
+        Assert.Equal(HttpStatusCode.OK, browserCallback.StatusCode);
+        Assert.Equal(2, provider.RetrieveCount);
         await using (var scope = checkoutFactory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -1190,6 +1262,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             "POST /api/session/password/reset",
             "POST /api/checkout/initialize",
             "POST /api/checkout/callback",
+            "POST /api/checkout/webhook",
             "GET /api/checkout/status",
             "GET /api/plans",
             "GET /api/site-content",

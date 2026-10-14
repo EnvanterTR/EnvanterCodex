@@ -6,10 +6,12 @@ const program = readFileSync(new URL('../src/EnvanterTR.Web/Program.cs', import.
 const entity = readFileSync(new URL('../src/EnvanterTR.Web/Data/Entities.cs', import.meta.url), 'utf8');
 const acceptance = readFileSync(new URL('../tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs', import.meta.url), 'utf8');
 const plans = readFileSync(new URL('../src/EnvanterTR.Web/Data/PlatformEndpoints.cs', import.meta.url), 'utf8');
+const signature = readFileSync(new URL('../src/EnvanterTR.Web/Data/IyzipayWebhookSignature.cs', import.meta.url), 'utf8');
 const failures = [];
 
 for (const [label, condition] of [
-  ['public initialization and provider callback are mapped', endpoint.includes('/api/checkout/initialize') && endpoint.includes('/api/checkout/callback') && program.includes('app.MapCheckoutEndpoints()')],
+  ['public initialization, browser callback and signed webhook are mapped', endpoint.includes('/api/checkout/initialize') && endpoint.includes('/api/checkout/callback') && endpoint.includes('/api/checkout/webhook') && endpoint.includes('X-IYZ-SIGNATURE-V3') && program.includes('app.MapCheckoutEndpoints()')],
+  ['iyzico webhook V3 signature is canonical and compared in constant time', signature.includes('eventType') && signature.includes('paymentConversationId') && signature.includes('FixedTimeEquals') && endpoint.includes('IyzipayWebhookSignature.Verify')],
   ['public checkout readiness reports provider availability without exposing configuration', endpoint.includes('/api/checkout/status') && endpoint.includes('available') && endpoint.includes('IsTrustedCallbackUrl') && endpoint.includes('IsTrustedApiBase')],
   ['checkout initialization validates anti-forgery and has a dedicated rate limit', endpoint.includes('antiforgery.ValidateRequestAsync(context)') && endpoint.includes('RequireRateLimiting("checkout")') && program.includes('PermitLimit = 5, Window = TimeSpan.FromMinutes(10)')],
   ['price is selected from an active public Cloud plan on the server', endpoint.includes('x.IsActive && x.IsPublic && x.DeploymentKind == "cloud"') && endpoint.includes('request.Term == "annual" ? plan.AnnualPrice : plan.MonthlyPrice')],
@@ -20,7 +22,7 @@ for (const [label, condition] of [
   ['order token is stored only as a hash, not raw token or identity/address fields', db.includes('CheckoutTokenHash') && !entity.includes('IdentityNumber') && !entity.includes('BillingAddress') && !entity.includes('CheckoutToken {')],
   ['company and active paid subscription are created after verified payment', endpoint.includes('Status = "Active", IsDemo = false') && endpoint.includes('lockedOrder.Status = "Provisioned"')],
   ['synthetic fail-closed acceptance covers missing CSRF/provider configuration', acceptance.includes('Public_checkout_requires_csrf_and_fails_closed_without_provider_configuration')],
-  ['synthetic end-to-end acceptance covers public plan IDs, acknowledgement, idempotent initialization, provider verification, provisioning, and callback replay', acceptance.includes('Public_checkout_uses_server_price_verifies_provider_and_provisions_once') && acceptance.includes('SyntheticIyzipayHandler') && acceptance.includes('InitializeCount') && acceptance.includes('retried')]
+  ['synthetic end-to-end acceptance covers public plan IDs, acknowledgement, idempotent initialization, invalid webhook rejection, signed provisioning, replay and browser callback', acceptance.includes('Public_checkout_uses_server_price_verifies_provider_and_provisions_once') && acceptance.includes('SyntheticIyzipayHandler') && acceptance.includes('InitializeCount') && acceptance.includes('retried') && acceptance.includes('invalidWebhook') && acceptance.includes('webhookReplayRequest') && acceptance.includes('/api/checkout/webhook')]
 ]) {
   if (!condition) failures.push(label);
 }

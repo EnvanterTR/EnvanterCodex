@@ -1,5 +1,11 @@
 # İlk varlık veri dilimi
 
+## Cloud Checkout Form sağlayıcı dönüşleri
+
+- `POST /api/checkout/callback` iyzico barındırılan ödeme sayfasının tarayıcı dönüşünü kabul eder; gelen token tek başına başarı sayılmaz, sunucudan iyzico retrieve çağrısı yapılır.
+- `POST /api/checkout/webhook` iyzico `CHECKOUT_FORM_AUTH` olaylarını `X-IYZ-SIGNATURE-V3` başlığıyla doğrular. İmzalı token, ödeme kimliği ve konuşma kimliği yerel siparişle; ödeme durumu ve ödeme kimliği de iyzico retrieve sonucuyla eşleşmeden firma oluşturulmaz. Desteklenmeyen ama geçerli imzalı olaylar siparişi değiştirmeden HTTP 200 ile onaylanır; geçersiz imza reddedilir.
+- Ödeme onayında firma, owner üyeliği ve abonelik tek transaction içinde idempotent oluşturulur. Sağlayıcı retrieve erişilemezse webhook 503 döndürür; iyzico yeniden deneyebilir. İmza gizli anahtarı sunucu yapılandırmasındaki `Iyzipay__SecretKey` değeridir; hiçbir webhook değeri veya imza loglanmaz.
+
 ## Şu anki kapsam
 
 - PostgreSQL EF Core modeli: şirket, çalışan, varlık kategorisi, marka, model, varlıklar, varlık ekleri ve varlık olayları.
