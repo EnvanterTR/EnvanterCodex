@@ -15,6 +15,9 @@ assert.match(dockerfile, /index\.html \/checkout-site\/company-app\.html/);
 assert.match(script, /await import\('\.\/command-palette\.mjs'\)/);
 assert.match(palette, /role: 'viewer'/);
 assert.match(palette, /The page must not expose company member administration to a viewer role/);
+assert.match(palette, /let subscriptionMode = 'full'/);
+assert.match(palette, /subscriptionMode = 'readOnly'/);
+assert.match(palette, /The expired-subscription notice must be translated into/);
 assert.match(palette, /apiRequests\.some\(item => item\.method !== 'GET'\)/);
 assert.match(runner, /docker build[\s\S]*?docker run --rm --init/);
 assert.match(script, /paymentAvailable = false/);
@@ -29,4 +32,4 @@ assert.match(script, /pageErrors/);
 assert.match(workflow, /Verify-HostedCheckoutBrowserAcceptance\.mjs/);
 assert.match(workflow, /Run hosted Cloud checkout in Chromium[\s\S]*?docker run --rm --init envantertr-hosted-checkout-browser-ci/);
 
-console.log('Hosted checkout and command palette browser acceptance harness verification passed (21 assertions).');
+console.log('Hosted checkout, role-filtered command palette, and expired-subscription language browser harness verification passed (24 assertions).');

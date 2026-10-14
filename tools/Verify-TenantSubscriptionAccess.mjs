@@ -17,8 +17,11 @@ assert.match(program, /orderby item\.Status == "Active" \|\| item\.Status == "Tr
 assert.match(account, /subscriptionAccess = subscription is null \? null/);
 assert.match(account, /mode = TenantSubscriptionAccess\.IsReadOnly/);
 assert.match(page, /id="subscriptionExpiryNotice"[\s\S]*?şirket kayıtlarınız korunuyor/i);
+assert.match(page, /'Abonelik süresi doldu':\['Subscription expired','Срок подписки истёк','Термін підписки минув','Претплатата е истечена'\]/);
+assert.match(page, /'Şirket kayıtlarınız korunuyor\.[\s\S]*?Platform yöneticinizden süre uzatımı isteyin\.'\s*:\s*\['Your company records are safe\.[\s\S]*?Побарајте од администраторот на платформата да ја продолжи\.'\]/);
+assert.match(page, /const roots = \[[\s\S]*?\$\('#subscriptionExpiryNotice'\)/);
 assert.match(page, /session\.subscriptionAccess\?\.mode !== 'readOnly'/);
 assert.match(page, /402: 'Şirket aboneliği yazma işlemlerine kapalı/);
 assert.match(acceptance, /Expired_cloud_subscription_preserves_read_access_and_blocks_company_writes/);
 assert.match(acceptance, /Current_cloud_subscription_is_selected_when_company_keeps_expired_subscription_history/);
-console.log('Tenant subscription access verification passed (14 assertions).');
+console.log('Tenant subscription access verification passed (17 assertions).');

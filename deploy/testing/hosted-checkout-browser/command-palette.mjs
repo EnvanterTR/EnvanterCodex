@@ -7,6 +7,7 @@ const syntheticCompanyId = '11111111-1111-4111-8111-111111111111';
 const syntheticUserId = '22222222-2222-4222-8222-222222222222';
 const appHtml = await readFile('/checkout-site/company-app.html');
 const apiRequests = [];
+let subscriptionMode = 'full';
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || '/', 'http://127.0.0.1');
   if (request.method === 'GET' && url.pathname === '/') {
@@ -45,7 +46,7 @@ const server = createServer(async (request, response) => {
               name: 'Synthetic Viewer',
               role: 'viewer',
               hasPhoto: false,
-              subscriptionAccess: { mode: 'full' }
+              subscriptionAccess: { mode: subscriptionMode, status: subscriptionMode === 'readOnly' ? 'Expired' : 'Active', planName: 'Synthetic cloud plan' }
             }
             : url.pathname === '/api/company/branding'
               ? { name: 'Synthetic Viewer Company', brandPrimaryColor: '#2563EB', hasLogo: false }
@@ -91,7 +92,18 @@ try {
 
   await page.keyboard.press('Control+k');
   const dialog = page.locator('#commandPaletteDialog');
-  await dialog.waitFor({ state: 'visible' });
+  try { await dialog.waitFor({ state: 'visible', timeout: 5000 }); }
+  catch (error) {
+    console.error('COMMAND_PALETTE_SHORTCUT_STATE', JSON.stringify(await page.evaluate(() => ({
+      bodyClass: document.body.className,
+      activeElement: document.activeElement?.id || document.activeElement?.tagName,
+      dialogOpen: document.querySelector('#commandPaletteDialog')?.open,
+      dataStatus: document.querySelector('#dataStatus')?.textContent,
+      expiryNotice: document.querySelector('#subscriptionExpiryNotice')?.innerText,
+      language: document.querySelector('#languagePreference')?.value
+    }))));
+    throw error;
+  }
   const search = page.locator('#commandPaletteSearch');
   await search.fill('Uygulama kullanıcıları');
   assert.equal(await page.locator('#commandPaletteResults .command-option').count(), 0,
@@ -105,9 +117,30 @@ try {
   await dialog.waitFor({ state: 'hidden' });
   await page.waitForFunction(() => document.querySelector('#pageTitle')?.textContent === 'Varlık kayıtları');
   assert.deepEqual(pageErrors, [], 'The command palette and route navigation must not throw browser errors.');
+
+  subscriptionMode = 'readOnly';
+  const expiryTranslations = {
+    tr: ['Abonelik süresi doldu', 'Şirket kayıtlarınız korunuyor.'],
+    en: ['Subscription expired', 'Your company records are safe.'],
+    ru: ['Срок подписки истёк', 'Данные вашей компании сохранены.'],
+    uk: ['Термін підписки минув', 'Дані вашої компанії збережено.'],
+    mk: ['Претплатата е истечена', 'Податоците на вашата компанија се зачувани.']
+  };
+  for (const [language, [title, description]] of Object.entries(expiryTranslations)) {
+    await page.evaluate(languageCode => localStorage.setItem('envantertr.appearance', JSON.stringify({ language: languageCode })), language);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(expectedTitle => {
+      const notice = document.querySelector('#subscriptionExpiryNotice');
+      return notice?.hidden === false && notice.textContent.includes(expectedTitle);
+    }, title);
+    const noticeText = await page.locator('#subscriptionExpiryNotice').innerText();
+    assert.ok(noticeText.includes(title) && noticeText.includes(description),
+      `The expired-subscription notice must be translated into ${language}.`);
+  }
+  assert.deepEqual(pageErrors, [], 'The app must not throw browser errors while switching languages and showing subscription access state.');
   assert.equal(apiRequests.some(item => item.method !== 'GET'), false,
     'The browser acceptance may not modify company data.');
-  console.log('PASS: real EnvanterTR UI initialized a synthetic viewer role; Ctrl+K omitted the hidden member destination, retained Varlıklar, and opened its route without writes or browser errors.');
+  console.log('PASS: real EnvanterTR UI hid the member destination for a synthetic viewer, opened the visible asset route from Ctrl+K, and rendered the expired-subscription notice in all five supported languages for a read-only session, without writes or browser errors.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));
