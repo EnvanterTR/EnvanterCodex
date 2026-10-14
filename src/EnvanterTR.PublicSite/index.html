@@ -548,7 +548,7 @@ addText(card,'div','price-sub',copy.unlimited);
         const published=publishedPrice(plan,language);addText(card,'div','price-main',published?.amount||copy.quote);addText(card,'div','price-sub',published?.term||copy.quotePeriod);
         const list=document.createElement('ul');list.className='price-list';copy.features.forEach(item=>addText(list,'li','',item));card.append(list);addText(card,'small','price-tech',`${copy.technology}: ${copy.cloudTech}`);
         const link=document.createElement('a');link.className='button secondary';
-        if(plan?.id&&published){link.href=`/checkout.html?${new URLSearchParams({planId:plan.id})}`;link.textContent=cloudPurchaseLabels[language]||cloudPurchaseLabels.tr;}
+        if(plan?.id&&published&&(Number(plan.monthlyPrice)>0||Number(plan.annualPrice)>0)){link.href=`/checkout.html?${new URLSearchParams({planId:plan.id})}`;link.textContent=cloudPurchaseLabels[language]||cloudPurchaseLabels.tr;}
         else{link.href=`mailto:admin@envantertr.com?subject=${encodeURIComponent(`EnvanterTR Cloud · ${name}`)}`;link.textContent=copy.request;}
         link.title=`${name} · ${link.textContent}`;card.append(link);grid.append(card);
       });
