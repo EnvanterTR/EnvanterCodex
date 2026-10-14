@@ -70,7 +70,13 @@ const requiredAssetLabels = [
   'Toplu varlık düzenleme',
   'Seçimin tamamı kullanılabilir: toplu zimmet, konum aktarımı, durum değişikliği, denetim ve düzenleme uygun.',
   'Seçimin tamamı zimmetli: toplu iade ve denetim uygun; önce iade almadan durum veya konum değiştiremezsiniz.',
-  'Seçimde farklı durumlar var: toplu düzenleme, denetim, CSV ve etiket işlemleri seçimin tamamında kullanılabilir. Zimmet, iade ve konum aktarımı için uygun durum gerekir.'
+  'Seçimde farklı durumlar var: toplu düzenleme, denetim, CSV ve etiket işlemleri seçimin tamamında kullanılabilir. Zimmet, iade ve konum aktarımı için uygun durum gerekir.',
+  'ENVANTER / KAYITLI ARAMALAR', 'Varlık aramasını kaydet', 'Kayıtlı aramayı sil', 'Kayıtlı aramayı güncelle',
+  'Filtrelerinize daha sonra yeniden ulaşmak için bu aramaya bir ad verin.', 'Arama adı (en fazla 60 karakter)',
+  'Aramayı kaydet', 'Aramayı sil', 'Mevcut aramayı güncelle',
+  'Aynı adla kayıtlı arama bulundu. Güncelleyerek mevcut filtreleri değiştirmek istiyor musunuz?',
+  '“{name}” kayıtlı araması silinsin mi?', 'Arama adı 1–60 karakter olmalıdır.',
+  'Kayıtlı arama işlemi tamamlanamadı.', 'Kayıtlı arama silindi.', 'Varlık araması hesabınıza kaydedildi.'
 ];
 const requiredReservationLabels = [
   'Varlık rezervasyonları', 'Rezervasyon isteği oluştur', 'Şirket kapsamlı', 'Talep notu',

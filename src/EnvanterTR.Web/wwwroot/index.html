@@ -668,6 +668,7 @@
   <dialog class="detail-dialog" id="assetTrashConfirmDialog" aria-labelledby="assetTrashConfirmTitle"><form id="assetTrashConfirmForm"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ENVANTERİ / KURTARMA</div><h2 id="assetTrashConfirmTitle">Çöp kutusuna taşı</h2></div><button class="close" id="closeAssetTrashConfirm" type="button" aria-label="Kapat">✕</button></div><div class="dialog-body"><p id="assetTrashConfirmSummary" class="muted"></p><label class="detail-field"><small>Çöp kutusu notu (isteğe bağlı):</small><textarea name="note" maxlength="1000" rows="3"></textarea></label><div class="dialog-actions"><button class="btn" id="cancelAssetTrashConfirm" type="button">Vazgeç</button><button class="btn danger" id="submitAssetTrashConfirm" type="submit">Varlığı çöp kutusuna taşı</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="assetStatusDialog" aria-labelledby="assetStatusDialogTitle"><form id="assetStatusForm"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ENVANTERİ / DURUM</div><h2 id="assetStatusDialogTitle">Durum değişikliğini onayla</h2></div><button class="close" id="closeAssetStatusDialog" type="button" aria-label="Kapat">✕</button></div><div class="dialog-body"><p id="assetStatusSummary" class="muted"></p><label class="detail-field"><small id="assetStatusNoteLabel">Durum değişikliği notu (isteğe bağlı):</small><textarea name="note" maxlength="1000" rows="3"></textarea></label><p id="assetStatusFeedback" class="auth-error" role="alert" hidden></p><div class="dialog-actions"><button class="btn" id="cancelAssetStatus" type="button">Vazgeç</button><button class="btn primary" id="submitAssetStatus" type="submit">Durumu güncelle</button></div></div></form></dialog>
   <dialog class="detail-dialog" id="assetAttachmentRemoveDialog" aria-labelledby="assetAttachmentRemoveTitle"><form id="assetAttachmentRemoveForm"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET ENVANTERİ / DOSYA</div><h2 id="assetAttachmentRemoveTitle">Varlık dosyasını kaldır</h2></div><button class="close" id="closeAssetAttachmentRemove" type="button" aria-label="Kapat">✕</button></div><div class="dialog-body"><p id="assetAttachmentRemoveSummary" class="muted"></p><p id="assetAttachmentRemoveFeedback" class="auth-error" role="alert" hidden></p><div class="dialog-actions"><button class="btn" id="cancelAssetAttachmentRemove" type="button">Vazgeç</button><button class="btn danger" id="submitAssetAttachmentRemove" type="submit">Dosyayı kaldır</button></div></div></form></dialog>
+  <dialog class="detail-dialog" id="savedAssetSearchDialog" aria-labelledby="savedAssetSearchDialogTitle"><form id="savedAssetSearchForm"><div class="dialog-head"><div><div class="eyebrow">ENVANTER / KAYITLI ARAMALAR</div><h2 id="savedAssetSearchDialogTitle">Varlık aramasını kaydet</h2></div><button class="close" id="closeSavedAssetSearchDialog" type="button" aria-label="Kapat">✕</button></div><div class="dialog-body"><p id="savedAssetSearchSummary" class="muted"></p><label class="detail-field" id="savedAssetSearchNameField"><small>Arama adı (en fazla 60 karakter)</small><input name="name" maxlength="60" autocomplete="off"></label><p id="savedAssetSearchFeedback" class="auth-error" role="alert" hidden></p><div class="dialog-actions"><button class="btn" id="cancelSavedAssetSearch" type="button">Vazgeç</button><button class="btn primary" id="submitSavedAssetSearch" type="submit">Aramayı kaydet</button></div></div></form></dialog>
   <script src="/vendor/qrcodegen.js"></script>
   <dialog class="detail-dialog" id="supplierCatalogDialog"><div class="dialog-head"><div><div class="eyebrow">ŞİRKET KATALOĞU</div><h2>Tedarikçiler</h2></div><button class="close" type="button" id="closeSupplierCatalog" aria-label="Kapat">✕</button></div><div class="dialog-body"><form id="supplierCatalogForm"><input name="id" type="hidden"><div class="form-grid"><label>Firma adı *<input name="name" maxlength="200" required></label><label>Yetkili kişi<input name="contactName" maxlength="160"></label><label>E-posta<input name="email" type="email" maxlength="254"></label><label>Telefon<input name="phone" maxlength="50"></label><label class="wide">Web sitesi<input name="website" type="url" maxlength="500" placeholder="https://ornek.com"></label><label class="wide">Notlar<textarea name="notes" maxlength="2000" rows="2"></textarea></label><label class="wide">Firma logosu<input name="logo" type="file" accept="image/png,image/jpeg,image/webp"><img id="supplierLogoPreview" alt="Tedarikçi logosu önizlemesi" hidden style="display:block;max-width:160px;max-height:90px;object-fit:contain;margin-top:8px"></label></div><div class="dialog-actions"><button class="btn" id="resetSupplierForm" type="button">Temizle</button><button class="btn primary" type="submit">Tedarikçiyi kaydet</button></div></form><div class="table-tools"><input id="supplierCatalogSearch" placeholder="Firma, yetkili, e-posta veya telefon ara" aria-label="Tedarikçilerde ara"><label><input id="showArchivedSuppliers" type="checkbox"> Arşivdekileri göster</label></div><div class="table-wrap"><table><thead><tr><th>Firma</th><th>Yetkili / iletişim</th><th>Bağlı kayıt</th><th>Durum</th><th>İşlemler</th></tr></thead><tbody id="supplierCatalogRows"><tr><td colspan="5">Tedarikçiler yükleniyor…</td></tr></tbody></table></div><p class="muted">Kayıt sayısı envanter, sarf, bileşen, lisans, bakım ve sipariş bağlantılarını gösterir. Siparişlerdeki tedarikçi adı geçmiş metni olarak korunur.</p></div></dialog>
   <dialog class="detail-dialog" id="accountPhotoDialog"><div class="dialog-head"><div><div class="eyebrow">HESAP AYARLARI</div><h2>Profil fotoğrafı</h2></div><button class="close" type="button" id="closeAccountPhoto" aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="muted">Bu fotoğraf yalnızca oturum açtığınız hesaba bağlıdır. PNG, JPEG veya WebP dosyası seçin (en fazla 2 MB).</p><div style="display:flex;align-items:center;gap:16px;margin:18px 0"><img id="accountPhotoPreview" alt="Profil fotoğrafı önizlemesi" hidden style="width:88px;height:88px;object-fit:cover;border-radius:50%;border:1px solid #e4eaf2"><span id="accountPhotoFallback" class="avatar" style="width:88px;height:88px;font-size:1.6rem">—</span><div style="display:flex;flex-wrap:wrap;gap:8px"><input id="accountPhotoInput" type="file" accept="image/png,image/jpeg,image/webp" hidden><button class="btn primary" type="button" id="chooseAccountPhoto">Fotoğraf seç</button><button class="btn" type="button" id="removeAccountPhoto" hidden>Fotoğrafı kaldır</button></div></div><p class="muted" style="margin:0;font-size:.76rem">PNG, JPEG veya WebP · en fazla 2 MB. Daha büyük fotoğraflar yüklenemez.</p><p id="accountPhotoFeedback" role="status" style="min-height:1.2em;color:#64748b;font-size:.76rem"></p><hr><section><h3>Parolayı değiştir</h3><p class="muted">Mevcut parolanızı doğrulayın. MFA açıksa Authenticator veya kurtarma kodu da gerekir; diğer cihazlardaki oturumlar geçersiz kılınır.</p><div class="form-grid"><label>Mevcut parola<input id="ownCurrentPassword" type="password" autocomplete="current-password" maxlength="256"></label><label>Yeni parola<input id="ownNewPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256"></label><label>Yeni parola tekrarı<input id="ownConfirmPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256"></label><label id="ownPasswordTwoFactorLabel" hidden>Authenticator / kurtarma kodu<input id="ownPasswordTwoFactorCode" inputmode="numeric" autocomplete="one-time-code" maxlength="32"></label></div><button class="btn primary" type="button" id="changeOwnPassword" style="margin-top:10px">Parolayı değiştir</button><p id="ownPasswordFeedback" role="status" aria-live="polite" class="muted"></p></section><hr><div class="panel-head"><div><h3>Hesap güvenliği</h3><p class="muted">İki aşamalı doğrulamayı yönet</p></div><button class="btn small" type="button" id="openAccountTwoFactor">Güvenlik ayarları</button></div><hr><section aria-labelledby="sessionDevicesHeading"><div class="panel-head"><div><h3 id="sessionDevicesHeading">Oturum açan cihazlar</h3><p class="muted">Hesabınızın açık oturumlarını ve yaklaşık bağlantı adreslerini görün; tanımadığınız oturumları kapatın.</p></div><button class="btn small" type="button" id="refreshAccountSessions">Yenile</button></div><div id="accountSessionsList" aria-live="polite" class="muted">Oturumlar yüklenmedi.</div></section></div></dialog>
@@ -2165,6 +2166,21 @@
       '“{fileName}” dosyası bu varlıktan kaldırılsın mı?':['Remove file “{fileName}” from this asset?','Удалить файл «{fileName}» из этого актива?','Видалити файл «{fileName}» із цього активу?','Да се отстрани датотеката „{fileName}“ од ова средство?'],
       'Dosya kaldırılamadı. Lütfen yeniden deneyin.':['The file could not be removed. Please try again.','Не удалось удалить файл. Повторите попытку.','Не вдалося видалити файл. Спробуйте ще раз.','Датотеката не може да се отстрани. Обидете се повторно.'],
       'Dosya kaldırıldı, ancak ekler yenilenemedi. Varlık ayrıntısını yeniden açın.':['The file was removed, but attachments could not be refreshed. Reopen the asset details.','Файл удалён, но не удалось обновить вложения. Повторно откройте сведения об активе.','Файл видалено, але не вдалося оновити вкладення. Повторно відкрийте відомості про актив.','Датотеката е отстранета, но прилозите не може да се освежат. Повторно отворете ги деталите за средството.'],
+      'ENVANTER / KAYITLI ARAMALAR':['INVENTORY / SAVED SEARCHES','ИНВЕНТАРЬ / СОХРАНЁННЫЕ ПОИСКИ','ІНВЕНТАР / ЗБЕРЕЖЕНІ ПОШУКИ','ИНВЕНТАР / ЗАЧУВАНИ ПРЕБАРУВАЊА'],
+      'Varlık aramasını kaydet':['Save asset search','Сохранить поиск активов','Зберегти пошук активів','Зачувај пребарување на средства'],
+      'Kayıtlı aramayı sil':['Delete saved search','Удалить сохранённый поиск','Видалити збережений пошук','Избриши зачувано пребарување'],
+      'Kayıtlı aramayı güncelle':['Update saved search','Обновить сохранённый поиск','Оновити збережений пошук','Ажурирај зачувано пребарување'],
+      'Filtrelerinize daha sonra yeniden ulaşmak için bu aramaya bir ad verin.':['Name this search so you can return to these filters later.','Назовите поиск, чтобы позже вернуться к этим фильтрам.','Назвіть пошук, щоб пізніше повернутися до цих фільтрів.','Именувајте го пребарувањето за подоцна да се вратите на филтрите.'],
+      'Arama adı (en fazla 60 karakter)':['Search name (up to 60 characters)','Название поиска (до 60 символов)','Назва пошуку (до 60 символів)','Име на пребарување (до 60 знаци)'],
+      'Aramayı kaydet':['Save search','Сохранить поиск','Зберегти пошук','Зачувај пребарување'],
+      'Aramayı sil':['Delete search','Удалить поиск','Видалити пошук','Избриши пребарување'],
+      'Mevcut aramayı güncelle':['Update existing search','Обновить существующий поиск','Оновити наявний пошук','Ажурирај постоечко пребарување'],
+      'Aynı adla kayıtlı arama bulundu. Güncelleyerek mevcut filtreleri değiştirmek istiyor musunuz?':['A saved search with this name already exists. Update it and replace its filters?','Сохранённый поиск с таким названием уже существует. Обновить его фильтры?','Збережений пошук із такою назвою вже існує. Оновити його фільтри?','Веќе постои зачувано пребарување со ова име. Да се ажурираат неговите филтри?'],
+      '“{name}” kayıtlı araması silinsin mi?':['Delete saved search “{name}”?','Удалить сохранённый поиск «{name}»?','Видалити збережений пошук «{name}»?','Да се избрише зачуваното пребарување „{name}“?'],
+      'Arama adı 1–60 karakter olmalıdır.':['Search name must be 1–60 characters.','Название поиска должно содержать от 1 до 60 символов.','Назва пошуку має містити від 1 до 60 символів.','Името на пребарувањето мора да има 1–60 знаци.'],
+      'Kayıtlı arama işlemi tamamlanamadı.':['The saved search action could not be completed.','Не удалось выполнить действие с сохранённым поиском.','Не вдалося виконати дію зі збереженим пошуком.','Дејството со зачуваното пребарување не може да се заврши.'],
+      'Kayıtlı arama silindi.':['Saved search deleted.','Сохранённый поиск удалён.','Збережений пошук видалено.','Зачуваното пребарување е избришано.'],
+      'Varlık araması hesabınıza kaydedildi.':['Asset search saved to your account.','Поиск активов сохранён в вашей учётной записи.','Пошук активів збережено у вашому обліковому записі.','Пребарувањето на средства е зачувано на вашата сметка.'],
       'Durum değişikliğini onayla':['Confirm status change','Подтвердите изменение статуса','Підтвердьте зміну стану','Потврдете ја промената на статусот'],
       'Arşivden geri almayı onayla':['Confirm restore from archive','Подтвердите восстановление из архива','Підтвердьте відновлення з архіву','Потврдете враќање од архивата'],
       'Durum değişikliği notu (isteğe bağlı):':['Status change note (optional):','Примечание к изменению статуса (необязательно):','Примітка до зміни стану (необов’язково):','Белешка за промена на статусот (изборно):'],
@@ -2857,18 +2873,30 @@
       } catch (error) { savedAssetSearches = []; notify(`Kayıtlı aramalar yüklenemedi: ${error.message}`); }
       $('#deleteAssetSearch').disabled = true;
     }
-    async function saveCurrentAssetSearch() {
-      const name = prompt('Bu arama için kısa bir ad yazın (en fazla 60 karakter):');
-      if (name === null) return;
-      const trimmedName = name.trim(); if (!trimmedName || trimmedName.length > 60) return notify('Arama adı 1–60 karakter olmalıdır.');
+    const savedAssetSearchDialog = $('#savedAssetSearchDialog');
+    let savedAssetSearchDialogMode = 'save', savedAssetSearchDraft = null;
+    function closeSavedAssetSearchDialog() { if (savedAssetSearchDialog.open) savedAssetSearchDialog.close(); }
+    function configureSavedAssetSearchDialog(mode, draft = null) {
+      savedAssetSearchDialogMode = mode; savedAssetSearchDraft = draft;
+      const deleting = mode === 'delete';
+      $('#savedAssetSearchDialogTitle').textContent = translateUiText(deleting ? 'Kayıtlı aramayı sil' : mode === 'overwrite' ? 'Kayıtlı aramayı güncelle' : 'Varlık aramasını kaydet');
+      $('#savedAssetSearchSummary').textContent = translateUiText(deleting ? '“{name}” kayıtlı araması silinsin mi?' : mode === 'overwrite' ? 'Aynı adla kayıtlı arama bulundu. Güncelleyerek mevcut filtreleri değiştirmek istiyor musunuz?' : 'Filtrelerinize daha sonra yeniden ulaşmak için bu aramaya bir ad verin.').replace('{name}', draft?.name || '');
+      $('#savedAssetSearchNameField').hidden = deleting;
+      $('#savedAssetSearchForm').reset();
+      if (!deleting) $('#savedAssetSearchForm').elements.name.value = draft?.name || '';
+      $('#savedAssetSearchFeedback').hidden = true; $('#savedAssetSearchFeedback').textContent = '';
+      $('#submitSavedAssetSearch').textContent = translateUiText(deleting ? 'Aramayı sil' : mode === 'overwrite' ? 'Mevcut aramayı güncelle' : 'Aramayı kaydet');
+      $('#submitSavedAssetSearch').classList.toggle('danger', deleting);
+    }
+    function openSavedAssetSearchDialog(mode, draft = null) {
+      configureSavedAssetSearchDialog(mode, draft);
+      savedAssetSearchDialog.showModal();
+      if (deleting) $('#cancelSavedAssetSearch').focus(); else $('#savedAssetSearchForm').elements.name.focus();
+    }
+    function saveCurrentAssetSearch() {
       const custom = readAssetCustomFieldFilter(); if (custom.error) return notify(custom.error);
       const filters = { q: $('#globalSearch').value.trim(), status: $('#assetStatusFilter').value, byod: $('#assetByodFilter').value === '' ? null : $('#assetByodFilter').value === 'true', warranty: $('#assetWarrantyFilter').value, categoryId: $('#assetCategoryFilter').value || null, brandId: $('#assetBrandFilter').value || null, modelId: $('#assetModelFilter').value || null, employeeId: assetEmployeeFilterId || null, employeeName: assetEmployeeFilterName, location: assetLocationFilter, sortBy: assetSortBy, sortDirection: assetSortDirection, customFieldKey: custom.key, customFieldValue: custom.value, customFieldMode: custom.mode };
-      const existing = savedAssetSearches.find(item => item.name.localeCompare(trimmedName, 'tr', { sensitivity: 'base' }) === 0);
-      if (existing && !confirm('Aynı adlı kayıtlı arama güncellensin mi?')) return;
-      try {
-        const saved = await api('/api/assets/saved-searches', { method: 'POST', body: JSON.stringify({ name: trimmedName, filters }) });
-        await loadSavedAssetSearches(); $('#savedAssetSearch').value = saved.id; $('#deleteAssetSearch').disabled = false; notify('Varlık araması hesabınıza kaydedildi.');
-      } catch (error) { notify(error.message); }
+      openSavedAssetSearchDialog('save', { filters });
     }
     function applySavedAssetSearch(id) {
       const item = savedAssetSearches.find(search => search.id === id), f = item?.filters; if (!f) return;
@@ -2889,12 +2917,43 @@
       document.querySelector('.sub-item[data-page="Varlıklar"]')?.click(); loadDashboard($('#globalSearch').value.trim(), 1).catch(error => notify(error.message));
       $('#deleteAssetSearch').disabled = false;
     }
-    async function deleteSelectedAssetSearch() {
+    function deleteSelectedAssetSearch() {
       const id = $('#savedAssetSearch').value, item = savedAssetSearches.find(search => search.id === id); if (!item) return;
-      if (!confirm(`“${item.name}” kayıtlı araması silinsin mi?`)) return;
-      try { await api(`/api/assets/saved-searches/${encodeURIComponent(id)}`, { method: 'DELETE' }); await loadSavedAssetSearches(); notify('Kayıtlı arama silindi.'); }
-      catch (error) { notify(error.message); }
+      openSavedAssetSearchDialog('delete', { id, name: item.name });
     }
+    $('#closeSavedAssetSearchDialog').addEventListener('click', closeSavedAssetSearchDialog);
+    $('#cancelSavedAssetSearch').addEventListener('click', closeSavedAssetSearchDialog);
+    savedAssetSearchDialog.addEventListener('click', event => { if (event.target === savedAssetSearchDialog) closeSavedAssetSearchDialog(); });
+    savedAssetSearchDialog.addEventListener('close', () => { $('#savedAssetSearchForm').reset(); $('#savedAssetSearchFeedback').hidden = true; savedAssetSearchDialogMode = 'save'; savedAssetSearchDraft = null; });
+    $('#savedAssetSearchForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      const feedback = $('#savedAssetSearchFeedback'), submit = $('#submitSavedAssetSearch');
+      feedback.hidden = true; feedback.textContent = '';
+      try {
+        if (savedAssetSearchDialogMode === 'delete') {
+          if (!savedAssetSearchDraft?.id) return;
+          submit.disabled = true;
+          await api(`/api/assets/saved-searches/${encodeURIComponent(savedAssetSearchDraft.id)}`, { method: 'DELETE' });
+          closeSavedAssetSearchDialog(); await loadSavedAssetSearches(); notify(translateUiText('Kayıtlı arama silindi.'));
+          return;
+        }
+        const name = String(event.currentTarget.elements.name.value || '').trim();
+        if (!name || name.length > 60) { feedback.textContent = translateUiText('Arama adı 1–60 karakter olmalıdır.'); feedback.hidden = false; return; }
+        const draft = savedAssetSearchDraft;
+        if (!draft?.filters) return;
+        const existing = savedAssetSearches.find(item => item.name.localeCompare(name, 'tr', { sensitivity: 'base' }) === 0);
+        if (existing && savedAssetSearchDialogMode !== 'overwrite') {
+          configureSavedAssetSearchDialog('overwrite', { ...draft, id: existing.id, name });
+          $('#savedAssetSearchForm').elements.name.focus();
+          return;
+        }
+        submit.disabled = true;
+        const saved = await api('/api/assets/saved-searches', { method: 'POST', body: JSON.stringify({ name, filters: draft.filters }) });
+        closeSavedAssetSearchDialog(); await loadSavedAssetSearches(); $('#savedAssetSearch').value = saved.id; $('#deleteAssetSearch').disabled = false; notify(translateUiText('Varlık araması hesabınıza kaydedildi.'));
+      } catch (error) {
+        feedback.textContent = error.message || translateUiText('Kayıtlı arama işlemi tamamlanamadı.'); feedback.hidden = false;
+      } finally { submit.disabled = false; }
+    });
     function saveAssetRowDensity() {
       assetRowDensity = $('#assetRowDensity').value === 'compact' ? 'compact' : 'comfortable';
       $('#overview').classList.toggle('compact-rows', assetRowDensity === 'compact');
