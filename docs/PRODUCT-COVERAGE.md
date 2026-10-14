@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 14 Ekim 2026 — varlık bakımı UI kabulü
+
+Varlık ayrıntısında bakım formu gerçek Chromium ve sentetik owner şirket oturumuyla çalıştırıldı. Formu kapatmak yazma yapmadı. Planlı bakım kaydı tür, servis sağlayıcı, tarih ve notla tek CSRF korumalı tenant `POST /api/assets/{id}/maintenances/schedule` isteği gönderdi; yenilenen bakım sekmesinde plan göründü. “Bakımı başlat” doğru bakım kimliğinin `/start` rotasına POST etti ve varlık durumu `Maintenance` oldu. Tamamlama formunu iptal etmek yazma yapmadı; tamamlamak tarih/notla `/complete` rotasına POST etti; yenilenen sekmede tamamlanma notu ve `Completed` durumu, varlıkta `Available` durumu gösterildi. UI kabul sunucusu mock/bellek içindedir. Veritabanı yetkisi, tenant sınırı, ilişki ve geçmiş kalıcılığı `Asset_maintenance_start_and_completion_preserve_authorization_state_and_history` izole PostgreSQL kabul testiyle doğrulanır. Gerçek tenant/canlı veriye dokunulmadı.
+
 ## 14 Ekim 2026 — varlık bilgilerini düzenleme UI kabulü
 
 Sabit Playwright Chromium'da gerçek şirket uygulaması HTML'i sentetik `owner` oturumuyla çalıştırıldı. Varlık ayrıntısındaki düzenleme formu mevcut etiket/kategori değerleriyle açıldı; iptal hiçbir yazma isteği üretmedi. Düzenlenen varlık adı tek `PATCH /api/assets/{id}` ve sentetik CSRF başlığıyla gönderildi; liste ve detay kapatılıp yeniden açıldıktan sonra güncel ad gösterildi. Test sunucusu sentetik ve bellektedir; DB kalıcılığı iddiası değildir. Gerçek API kalıcılığı/tenant/yetki/CSRF/eşzamanlı sürüm kontrolü izole PostgreSQL testi `Asset_single_edit_is_tenant_scoped_version_checked_and_written_to_history` kapsamındadır. Checkout, Ctrl+K ve varlık ayrıntısı Chromium kabulleri birlikte geçti; gerçek tenant/canlı veriye yazılmadı.

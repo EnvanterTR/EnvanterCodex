@@ -16,6 +16,8 @@ const appHtml = await readFile('/checkout-site/company-app.html');
 const requests = [];
 const apiRequests = [];
 const assetHistory = [];
+const maintenanceRows = [];
+const maintenanceId = '77777777-7777-4777-8777-777777777777';
 const json = (response, status = 200) => {
   response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
   response.end(JSON.stringify(response.body));
@@ -68,7 +70,7 @@ const server = createServer(async (request, response) => {
       history: [...assetHistory], attachments: [], accessories: [], components: [], softwareLicenses: [], relatedAssets: [],
       valuation: {}, purchaseOrder: null
     };
-    else if (url.pathname === `/api/assets/${assetId}/maintenances`) result = { items: [], total: 0 };
+    else if (url.pathname === `/api/assets/${assetId}/maintenances`) result = maintenanceRows;
     else if (url.pathname === '/api/assets/custom-fields') result = [];
     else if (url.pathname === '/api/lookups/categories') result = [{ id: asset.categoryId, name: 'Synthetic equipment', assetCount: 1 }];
     else if (url.pathname === '/api/lookups/brands' || url.pathname === '/api/lookups/models') result = [];
@@ -117,6 +119,27 @@ const server = createServer(async (request, response) => {
       details: `Varlık bilgileri güncellendi · ${asset.name}`, actorName: 'Synthetic Owner', attachmentCount: 0 });
     response.writeHead(200, { 'content-type': 'application/json' }); response.end(JSON.stringify({ changed: true }));
     return;
+  }
+  if (request.method === 'POST' && url.pathname === `/api/assets/${assetId}/maintenances/schedule`) {
+    maintenanceRows.unshift({ id: maintenanceId, maintenanceType: body.maintenanceType, supplier: body.supplier,
+      description: body.description, plannedOn: body.plannedOn, startedOn: body.plannedOn, status: 'Scheduled',
+      cost: body.cost, currency: body.currency, notes: body.notes, actorName: 'Synthetic Owner' });
+    response.writeHead(201, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ id: maintenanceId, status: 'Scheduled', plannedOn: body.plannedOn })); return;
+  }
+  if (request.method === 'POST' && url.pathname === `/api/assets/${assetId}/maintenances/${maintenanceId}/start`) {
+    maintenanceRows[0].status = 'InProgress';
+    maintenanceRows[0].startedOn = new Date().toISOString().slice(0, 10);
+    asset.status = 'Maintenance';
+    response.writeHead(204); response.end(); return;
+  }
+  if (request.method === 'POST' && url.pathname === `/api/assets/${assetId}/maintenances/${maintenanceId}/complete`) {
+    maintenanceRows[0].status = 'Completed';
+    maintenanceRows[0].completedOn = body.completedOn;
+    maintenanceRows[0].completionNotes = body.notes;
+    asset.status = 'Available';
+    asset.updatedAt = '2026-10-14T14:00:00Z';
+    response.writeHead(204); response.end(); return;
   }
   response.writeHead(405, { 'content-type': 'application/json' });
   response.end(JSON.stringify({ message: 'Unexpected write in asset-detail browser acceptance.' }));
@@ -242,8 +265,68 @@ try {
   assert.equal(asset.nextAuditOn, nextAuditOn);
   assert.equal(assetHistory[0].eventType, 'Audited');
   assert.match(await page.locator('#assetHistory').innerText(), /Synthetic audit saved from Chromium/);
+
+  const beforeMaintenanceCancel = apiRequests.length;
+  await page.locator('#addMaintenanceButton').click();
+  const maintenanceDialog = page.locator('#maintenanceStartDialog');
+  await maintenanceDialog.waitFor({ state: 'visible' });
+  await page.locator('[data-close-maintenance-start]').first().click();
+  await maintenanceDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, beforeMaintenanceCancel, 'Canceling maintenance setup must not write.');
+
+  await page.locator('#addMaintenanceButton').click();
+  await maintenanceDialog.waitFor({ state: 'visible' });
+  const maintenanceForm = page.locator('#maintenanceStartForm');
+  await maintenanceForm.locator('[name="maintenanceType"]').fill('Synthetic scheduled inspection');
+  await maintenanceForm.locator('[name="supplier"]').fill('QA service partner');
+  await maintenanceForm.locator('[name="mode"]').selectOption('scheduled');
+  const plannedOn = await maintenanceForm.locator('[name="plannedOn"]').inputValue();
+  await maintenanceForm.locator('[name="notes"]').fill('Synthetic maintenance note');
+  assert.equal(await maintenanceForm.locator('[name="plannedOn"]').evaluate(input => input.checkValidity()), true);
+  await maintenanceForm.locator('button[type="submit"]').click();
+  await maintenanceDialog.waitFor({ state: 'hidden' });
+  await page.waitForFunction(() => document.querySelector('#assetDialog')?.open && document.querySelector('#assetTabMaintenance')?.hidden === false);
+  assert.equal(maintenanceRows[0].status, 'Scheduled');
+  assert.match(await page.locator('#assetMaintenanceRows').innerText(), /Synthetic scheduled inspection/);
+  assert.match(await page.locator('#assetMaintenanceRows').innerText(), /Planlandı/);
+  const scheduleWrite = apiRequests.at(-1);
+  assert.equal(scheduleWrite.method, 'POST');
+  assert.equal(scheduleWrite.path, `/api/assets/${assetId}/maintenances/schedule`);
+  assert.deepEqual(scheduleWrite.body, { maintenanceType: 'Synthetic scheduled inspection', supplier: 'QA service partner',
+    description: null, plannedOn, cost: null, currency: 'TRY', notes: 'Synthetic maintenance note', responsibleEmployeeId: null });
+  assert.equal(scheduleWrite.csrf, 'synthetic-asset-csrf');
+
+  await page.locator('#assetMaintenanceRows').getByRole('button', { name: 'Bakımı başlat' }).click();
+  await page.waitForFunction(() => document.querySelector('#assetDialog')?.open && document.querySelector('#assetMaintenanceRows')?.textContent.includes('Devam ediyor'));
+  assert.equal(asset.status, 'Maintenance');
+  const startWrite = apiRequests.at(-1);
+  assert.equal(startWrite.method, 'POST');
+  assert.equal(startWrite.path, `/api/assets/${assetId}/maintenances/${maintenanceId}/start`);
+  assert.equal(startWrite.csrf, 'synthetic-asset-csrf');
+
+  await page.locator('#assetMaintenanceRows').getByRole('button', { name: 'Bakımı tamamla' }).click();
+  const completeDialog = page.locator('#maintenanceCompleteDialog');
+  await completeDialog.waitFor({ state: 'visible' });
+  const beforeCompleteCancel = apiRequests.length;
+  await page.locator('[data-close-maintenance-complete]').first().click();
+  await completeDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, beforeCompleteCancel, 'Canceling maintenance completion must not write.');
+  await page.locator('#assetMaintenanceRows').getByRole('button', { name: 'Bakımı tamamla' }).click();
+  await completeDialog.waitFor({ state: 'visible' });
+  const completedOn = await page.locator('#maintenanceCompleteForm [name="completedOn"]').inputValue();
+  await page.locator('#maintenanceCompleteForm [name="notes"]').fill('Synthetic completion note');
+  await page.locator('#maintenanceCompleteForm button[type="submit"]').click();
+  await completeDialog.waitFor({ state: 'hidden' });
+  await page.waitForFunction(() => document.querySelector('#assetDialog')?.open && document.querySelector('#assetMaintenanceRows')?.textContent.includes('Tamamlandı'));
+  assert.equal(asset.status, 'Available');
+  assert.match(await page.locator('#assetMaintenanceRows').innerText(), /Synthetic completion note/);
+  const completeWrite = apiRequests.at(-1);
+  assert.equal(completeWrite.method, 'POST');
+  assert.equal(completeWrite.path, `/api/assets/${assetId}/maintenances/${maintenanceId}/complete`);
+  assert.deepEqual(completeWrite.body, { completedOn, notes: 'Synthetic completion note' });
+  assert.equal(completeWrite.csrf, 'synthetic-asset-csrf');
   assert.deepEqual(pageErrors, [], `The asset detail UI must not throw: ${pageErrors.join(' | ')}`);
-  console.log('PASS: asset edit, audit schedule, and physical audit cancel/save flows; one tenant-scoped PATCH/PUT/POST per explicit save with CSRF; refreshed list/detail preserve edited name, schedule, and audit history; no browser exceptions.');
+  console.log('PASS: asset edit, audit schedule, physical audit, and maintenance schedule/start/complete flows; canceled forms send no writes; explicit tenant-scoped writes include CSRF; refreshed list/detail preserve outcomes; no browser exceptions.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));
