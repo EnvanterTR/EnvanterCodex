@@ -98,8 +98,12 @@ assert.match(api, /group\.Sum\(x => x\.TermDays == 30 \? x\.Amount : x\.Amount \
 assert.match(api, /basis = "provider-verified-current-cloud-subscriptions"/);
 assert.match(page, /MRR · \$\{item\.currency\}/);
 assert.match(page, /Doğrulanmış MRR/);
-assert.match(acceptance, /Assert\.Equal\(1200m, tryRevenue\.GetProperty\("monthlyRecurringRevenue"\)\.GetDecimal\(\)\)/);
-assert.match(acceptance, /Assert\.Equal\(2000m, usdRevenue\.GetProperty\("monthlyRecurringRevenue"\)\.GetDecimal\(\)\)/);
+assert.match(acceptance, /var baselineCurrencies = baselinePayload\.RootElement\.GetProperty\("recurringRevenue"\)\.GetProperty\("currencies"\)/,
+  'Revenue acceptance must measure increments against the isolated database baseline.');
+assert.match(acceptance, /Assert\.Equal\(RevenueMetric\(baselineCurrencies, "TRY", "monthlyRecurringRevenue"\) \+ 1200m,[\s\S]*?RevenueMetric\(currencies, "TRY", "monthlyRecurringRevenue"\)\)/,
+  'Verified TRY revenue must increase by the expected amount without assuming a clean shared acceptance database.');
+assert.match(acceptance, /Assert\.Equal\(RevenueMetric\(baselineCurrencies, "USD", "monthlyRecurringRevenue"\) \+ 2000m,[\s\S]*?RevenueMetric\(currencies, "USD", "monthlyRecurringRevenue"\)\)/,
+  'Verified USD revenue must increase by the expected amount without assuming a clean shared acceptance database.');
 assert.doesNotMatch(api.match(/admin\.MapGet\("\/companies\/\{companyId:guid\}"[\s\S]*?admin\.MapPatch\("\/companies\/\{companyId:guid\}\/lifecycle"/)?.[0] || '', /CheckoutTokenHash|CheckoutPageUrlProtected/);
 assert.match(subscriptions, /Plan \/ tarih düzenle/);
 assert.match(subscriptions, /method: 'PUT'/);
