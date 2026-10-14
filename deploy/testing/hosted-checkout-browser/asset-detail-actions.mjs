@@ -813,6 +813,25 @@ try {
     assert.ok(routeState.title, `Selecting ${name} must render a page title.`);
     assert.ok(routeState.overviewVisible || routeState.workspaceVisible, `Selecting ${name} must render a page surface.`);
     if (routeState.placeholderVisible) placeholderDestinations.push(name);
+    if (name === 'Bildirimler') {
+      const beforeNotificationShortcut = apiRequests.length;
+      await page.locator('#featureStatusNotificationButton').click();
+      await page.locator('#notificationPanel').waitFor({ state: 'visible' });
+      await page.locator('#notificationPreferencesForm').waitFor({ state: 'visible' });
+      assert.equal(await page.locator('#notificationButton').getAttribute('aria-expanded'), 'true');
+      await page.mouse.click(1200, 800);
+      await page.locator('#notificationPanel').waitFor({ state: 'hidden' });
+      assert.equal(await page.locator('#notificationButton').getAttribute('aria-expanded'), 'false');
+      assert.equal(apiRequests.length, beforeNotificationShortcut, 'Opening and dismissing the notification shortcut must not write preferences.');
+    }
+    if (name === 'Güvenlik') {
+      const beforeSecurityShortcut = apiRequests.length;
+      await page.locator('#featureStatusAccountSecurityButton').click();
+      await page.locator('#accountPhotoDialog').waitFor({ state: 'visible' });
+      assert.equal(apiRequests.length, beforeSecurityShortcut, 'Opening account security must be read-only until a separate preference change is submitted.');
+      await page.locator('#closeAccountPhoto').click();
+      await page.locator('#accountPhotoDialog').waitFor({ state: 'hidden' });
+    }
   }
   assert.equal(visitedDestinations.size, destinationCount);
 
