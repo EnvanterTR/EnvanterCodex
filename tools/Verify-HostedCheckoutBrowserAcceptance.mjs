@@ -22,10 +22,17 @@ assert.match(palette, /The expired-subscription notice must be translated into/)
 assert.match(palette, /A right swipe from the left viewport edge must open the mobile sidebar/);
 assert.match(palette, /A left swipe starting inside the open sidebar must close it/);
 assert.match(palette, /A primarily vertical gesture from the screen edge must not open navigation/);
-assert.match(assetActions, /company JSON restore preview, JSON-only mode, hidden asset profiles/);
+assert.match(assetActions, /Restore-only preview must hide asset-import mapping profiles/);
 assert.match(assetActions, /Canceling restore confirmation via \$\{cancelMode\} must not write company data/);
 assert.match(assetActions, /restoreApplyWrites\[0\]\.csrf, 'synthetic-asset-csrf'/);
 assert.match(assetActions, /Only the explicit final confirmation may apply the synthetic company archive/);
+assert.match(assetActions, /company contract list\/search\/filter\/detail\/create\/cancel\/archive\/restore with CSRF/);
+assert.match(assetActions, /contractSearchResponse = page\.waitForResponse/);
+assert.match(assetActions, /Synthetic Cloud Support Agreement/);
+assert.match(assetActions, /contractDetailFields/);
+assert.match(assetActions, /Canceling a new contract must not write/);
+assert.match(assetActions, /Canceling contract archive must not write/);
+assert.match(assetActions, /contractCreateWrite\.method, 'POST'/);
 assert.match(palette, /page\.keyboard\.press\('\/'\)/);
 assert.match(palette, /Slash should focus global search when not typing/);
 assert.match(palette, /Slash typed in the search field must not steal focus/);

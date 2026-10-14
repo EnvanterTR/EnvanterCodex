@@ -21,6 +21,13 @@ const maintenanceRows = [];
 const maintenanceId = '77777777-7777-4777-8777-777777777777';
 const restoreArchive = { formatVersion: 1, company: { name: 'Synthetic Restore Source' }, assets: [], employees: [] };
 const restoreApplyWrites = [];
+const contractId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const contractAssetId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+const contractLicenseId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const contractRows = [{ id: contractId, name: 'Synthetic Cloud Support Agreement', contractNumber: 'QA-CONTRACT-001', contractType: 'Support', supplier: 'Synthetic Supplier', supplierId: null, startDate: '2026-10-01', endDate: '2027-10-01', cost: 1250, currency: 'TRY', notes: 'Synthetic contract note', isActive: true, status: 'active', assetCount: 1, licenseCount: 1, attachmentCount: 0 }];
+const contractWrites = [];
+const contractAsset = { id: contractAssetId, assetTag: 'QA-CONTRACT-ASSET', name: 'Synthetic Contract Device', serialNumber: 'QA-CONTRACT-SERIAL' };
+const contractLicense = { id: contractLicenseId, name: 'Synthetic Office License', licenseReference: 'QA-LICENSE-001', expirationDate: '2027-10-01' };
 const json = (response, status = 200) => {
   response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
   response.end(JSON.stringify(response.body));
@@ -48,7 +55,7 @@ const server = createServer(async (request, response) => {
     let raw = ''; request.setEncoding('utf8'); request.on('data', chunk => raw += chunk);
     request.on('end', () => resolve(raw ? JSON.parse(raw) : null));
   });
-  const record = { method: request.method, path: url.pathname, body, csrf: request.headers['x-csrf-token'] };
+  const record = { method: request.method, path: url.pathname, query: Object.fromEntries(url.searchParams.entries()), body, csrf: request.headers['x-csrf-token'] };
   requests.push(record);
   if (request.method !== 'GET') apiRequests.push(record);
 
@@ -75,6 +82,21 @@ const server = createServer(async (request, response) => {
       valuation: {}, purchaseOrder: null
     };
     else if (url.pathname === `/api/assets/${assetId}/maintenances`) result = maintenanceRows;
+    else if (url.pathname === '/api/contracts') {
+      const q = (url.searchParams.get('q') || '').toLocaleLowerCase();
+      const status = url.searchParams.get('status') || '';
+      let items = contractRows.filter(item => (!q || [item.name, item.contractNumber, item.contractType, item.supplier, item.notes].some(value => value?.toLocaleLowerCase().includes(q)))
+        && (!status || (status === 'archived' ? !item.isActive : status === 'active' ? item.isActive : true)));
+      const page = Number(url.searchParams.get('page') || 1), pageSize = Number(url.searchParams.get('pageSize') || 25);
+      const total = items.length; items = items.slice((page - 1) * pageSize, page * pageSize);
+      result = { items, total, page, pageSize };
+    }
+    else if (url.pathname === '/api/contracts/lookups') result = { assets: [contractAsset], licenses: [contractLicense], suppliers: [] };
+    else if (url.pathname === `/api/contracts/${contractId}` || contractRows.some(item => url.pathname === `/api/contracts/${item.id}`)) {
+      const id = url.pathname.split('/').at(-1), item = contractRows.find(contract => contract.id === id);
+      result = item ? { contract: { ...item }, assets: [contractAsset], licenses: [contractLicense] } : { message: 'Synthetic contract not found.' };
+    }
+    else if (url.pathname.startsWith('/api/contracts/') && url.pathname.endsWith('/attachments')) result = { items: [] };
     else if (url.pathname === '/api/assets/custom-fields') result = [];
     else if (url.pathname === '/api/employees' || url.pathname.startsWith('/api/employees?')) result = {
       items: [{ id: employeeId, displayName: 'Synthetic QA Employee', employeeNumber: 'QA-001' }], total: 1, page: 1, pageSize: 200
@@ -94,6 +116,18 @@ const server = createServer(async (request, response) => {
   if (request.headers['x-csrf-token'] !== 'synthetic-asset-csrf') {
     response.writeHead(400, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ message: 'Missing synthetic CSRF token.' })); return;
+  }
+  if (request.method === 'POST' && url.pathname === '/api/contracts') {
+    const item = { ...body, id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', isActive: true, status: 'active', assetCount: body.assetIds?.length || 0, licenseCount: body.licenseIds?.length || 0, attachmentCount: 0 };
+    contractRows.push(item); contractWrites.push({ method: request.method, path: url.pathname, body, csrf: request.headers['x-csrf-token'] });
+    response.writeHead(201, { 'content-type': 'application/json' }); response.end(JSON.stringify({ id: item.id, name: item.name })); return;
+  }
+  const contractArchiveMatch = url.pathname.match(/^\/api\/contracts\/([0-9a-f-]+)\/(archive|restore)$/i);
+  if (request.method === 'POST' && contractArchiveMatch) {
+    const item = contractRows.find(contract => contract.id === contractArchiveMatch[1]);
+    if (item) { item.isActive = contractArchiveMatch[2] === 'restore'; item.status = item.isActive ? 'active' : 'archived'; }
+    contractWrites.push({ method: request.method, path: url.pathname, body, csrf: request.headers['x-csrf-token'] });
+    response.writeHead(204); response.end(); return;
   }
   if (request.method === 'POST' && url.pathname === '/api/company/import/preview') {
     response.writeHead(200, { 'content-type': 'application/json' });
@@ -491,9 +525,95 @@ try {
   assert.equal(restoreApplyWrites.length, 1, 'Only the explicit final confirmation may apply the synthetic company archive.');
   assert.deepEqual(restoreApplyWrites[0].body, restoreArchive);
   assert.equal(restoreApplyWrites[0].csrf, 'synthetic-asset-csrf');
+  await page.locator('#closeImportPreview').click();
+  await restoreDialog.waitFor({ state: 'hidden' });
+
+  await page.locator('[data-group="software"]').click();
+  await page.locator('[data-page="Sözleşmeler"]').click();
+  const contractList = page.locator('#contractRows');
+  await contractList.locator('tr[data-id]').filter({ hasText: 'Synthetic Cloud Support Agreement' }).waitFor({ state: 'visible' });
+  assert.match(await contractList.innerText(), /Synthetic Supplier[\s\S]*1 varlık · 1 lisans · 0 dosya/);
+  const contractSearchResponse = page.waitForResponse(response => response.request().method() === 'GET'
+    && new URL(response.url()).pathname === '/api/contracts'
+    && new URL(response.url()).searchParams.get('q') === 'QA-CONTRACT-001');
+  await page.locator('#contractSearch').fill('QA-CONTRACT-001');
+  await contractSearchResponse;
+  await page.waitForFunction(() => document.querySelectorAll('#contractRows tr[data-id]').length === 1);
+  assert.ok(requests.some(item => item.path === '/api/contracts' && item.query.q === 'QA-CONTRACT-001'));
+  await page.locator('#contractSearch').fill('');
+  await page.locator('#contractStatus').selectOption('active');
+  await page.locator('#contractRows tr[data-id]').filter({ hasText: 'Synthetic Cloud Support Agreement' }).waitFor({ state: 'visible' });
+  await page.locator('#contractRows tr[data-id]').filter({ hasText: 'Synthetic Cloud Support Agreement' }).locator('.contract-open').first().click();
+  const contractDetail = page.locator('#contractDetailDialog');
+  await contractDetail.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#contractDetailFields').innerText(), /QA-CONTRACT-001[\s\S]*Synthetic Supplier[\s\S]*Synthetic contract note/);
+  assert.match(await page.locator('#contractDetailLinks').innerText(), /QA-CONTRACT-ASSET[\s\S]*Synthetic Office License/);
+  await page.locator('#closeContractDetail').click();
+  await contractDetail.waitFor({ state: 'hidden' });
+
+  const beforeContractCancel = contractWrites.length;
+  await page.locator('#newContractButton').click();
+  const contractFormDialog = page.locator('#contractFormDialog');
+  await contractFormDialog.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#contractForm [name="assetIds"] option').count(), 1);
+  assert.equal(await page.locator('#contractForm [name="licenseIds"] option').count(), 1);
+  await page.locator('[data-close-contract]').filter({ hasText: 'Vazgeç' }).click();
+  await contractFormDialog.waitFor({ state: 'hidden' });
+  assert.equal(contractWrites.length, beforeContractCancel, 'Canceling a new contract must not write.');
+
+  await page.locator('#newContractButton').click();
+  await contractFormDialog.waitFor({ state: 'visible' });
+  const createdContractName = 'Synthetic New Maintenance Contract';
+  await page.locator('#contractForm [name="name"]').fill(createdContractName);
+  await page.locator('#contractForm [name="contractNumber"]').fill('QA-CONTRACT-002');
+  await page.locator('#contractForm [name="contractType"]').fill('Maintenance');
+  await page.locator('#contractForm [name="supplier"]').fill('Synthetic New Supplier');
+  await page.locator('#contractForm [name="startDate"]').fill('2026-10-15');
+  await page.locator('#contractForm [name="endDate"]').fill('2027-10-15');
+  await page.locator('#contractForm [name="cost"]').fill('2400');
+  await page.locator('#contractForm [name="currency"]').selectOption('EUR');
+  await page.locator('#contractForm [name="notes"]').fill('Synthetic contract creation note');
+  await page.locator('#contractAssetIds').selectOption(contractAssetId);
+  await page.locator('#contractLicenseIds').selectOption(contractLicenseId);
+  await page.locator('#contractForm button[type="submit"]').click();
+  await contractFormDialog.waitFor({ state: 'hidden' });
+  await contractList.locator('tr[data-id]').filter({ hasText: createdContractName }).waitFor({ state: 'visible' });
+  const contractCreateWrite = contractWrites.at(-1);
+  assert.equal(contractCreateWrite.method, 'POST');
+  assert.equal(contractCreateWrite.path, '/api/contracts');
+  assert.deepEqual(contractCreateWrite.body, { name: createdContractName, contractNumber: 'QA-CONTRACT-002', contractType: 'Maintenance', supplierId: null,
+    supplier: 'Synthetic New Supplier', startDate: '2026-10-15', endDate: '2027-10-15', cost: 2400, currency: 'EUR', notes: 'Synthetic contract creation note',
+    assetIds: [contractAssetId], licenseIds: [contractLicenseId] });
+  assert.equal(contractCreateWrite.csrf, 'synthetic-asset-csrf');
+
+  const createdContractRow = contractList.locator('tr[data-id]').filter({ hasText: createdContractName });
+  const contractArchiveButton = createdContractRow.locator('.contract-toggle');
+  const beforeContractArchiveCancel = contractWrites.length;
+  await contractArchiveButton.click();
+  const contractActionDialog = page.locator('#contractActionDialog');
+  await contractActionDialog.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#contractActionTitle').innerText(), 'Sözleşmeyi arşivle');
+  assert.match(await page.locator('#contractActionMessage').innerText(), /[Kk]ayıt ve dosyaları korunur/);
+  await page.locator('#contractActionCancel').click();
+  await contractActionDialog.waitFor({ state: 'hidden' });
+  assert.equal(contractWrites.length, beforeContractArchiveCancel, 'Canceling contract archive must not write.');
+  await contractArchiveButton.click();
+  await contractActionDialog.waitFor({ state: 'visible' });
+  await page.locator('#contractActionSubmit').click();
+  await contractActionDialog.waitFor({ state: 'hidden' });
+  await createdContractRow.waitFor({ state: 'hidden' });
+  assert.equal(contractWrites.at(-1).path, '/api/contracts/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee/archive');
+  assert.equal(contractWrites.at(-1).csrf, 'synthetic-asset-csrf');
+  await page.locator('#contractStatus').selectOption('archived');
+  await contractList.locator('tr[data-id]').filter({ hasText: createdContractName }).waitFor({ state: 'visible' });
+  await contractList.locator('tr[data-id]').filter({ hasText: createdContractName }).locator('.contract-toggle').click();
+  await page.locator('#contractStatus').selectOption('active');
+  await contractList.locator('tr[data-id]').filter({ hasText: createdContractName }).waitFor({ state: 'visible' });
+  assert.equal(contractWrites.at(-1).path, '/api/contracts/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee/restore');
+  assert.equal(contractWrites.at(-1).csrf, 'synthetic-asset-csrf');
 
   assert.deepEqual(pageErrors, [], `The asset detail UI must not throw: ${pageErrors.join(' | ')}`);
-  console.log('PASS: owner Ctrl+N opens and cancels without writing; asset edit/audit/maintenance/transfer/assignment flows; company JSON restore preview, JSON-only mode, hidden asset profiles, Escape/button/backdrop cancellation without writes, explicit CSRF-protected confirmation, and browser error-free completion.');
+  console.log('PASS: owner Ctrl+N; asset edit/audit/maintenance/transfer/assignment; company JSON restore preview and confirmations; company contract list/search/filter/detail/create/cancel/archive/restore with CSRF; browser error-free completion.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));
