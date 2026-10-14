@@ -8794,13 +8794,18 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       await Promise.all([loadLookups(), loadAssetCustomFieldDefinitions()]);
       const form = $('#newAssetForm');
       form.reset();
-      renderAssetCustomFieldInputs(form);
+      const sourceCustomFields = asset.customFields && typeof asset.customFields === 'object' ? asset.customFields : {};
+      const cloneCustomFields = Object.fromEntries((assetCustomFieldDefinitions || [])
+        .filter(field => field.isActive && field.fieldType !== 'sensitive' && Object.prototype.hasOwnProperty.call(sourceCustomFields, field.key))
+        .map(field => [field.key, sourceCustomFields[field.key]]));
+      renderAssetCustomFieldInputs(form, cloneCustomFields);
       form.elements.assetName.value = asset.name || '';
       form.elements.categoryId.value = asset.categoryId || '';
       form.elements.brandId.value = asset.brandId || '';
       refreshModels(asset.modelId || '', form);
       form.elements.serialNumber.value = '';
       form.elements.location.value = asset.location || '';
+      if (form.elements.defaultLocationCatalogId) form.elements.defaultLocationCatalogId.value = asset.defaultLocationCatalogId || '';
       form.elements.purchaseDate.value = asset.purchaseDate || '';
       form.elements.warrantyExpiresAt.value = asset.warrantyExpiresAt || '';
       form.elements.purchaseCost.value = asset.purchaseCost ?? '';

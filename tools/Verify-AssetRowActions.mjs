@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -46,9 +48,66 @@ for (const id of ['assetLabelPreviewDialog', 'assetLabelPreviewTitle', 'assetLab
   requireSource(markupPosition >= 0 && mainScriptStart >= 0 && markupPosition < mainScriptStart, `Label preview element ${id} must exist in the DOM before handlers are registered.`);
 }
 
+const cloneFunction = source.match(/async function openAssetClone\(asset\)\s*\{[\s\S]*?(?=\n\s*document\.querySelectorAll\('\[data-close-new\]'\))/)?.[0] ?? '';
+requireSource(cloneFunction.includes('asset.defaultLocationCatalogId') && cloneFunction.includes('field.fieldType !== \'sensitive\''), 'Cloning must preserve the catalog location and ordinary custom fields without copying sensitive custom fields.');
+if (cloneFunction) {
+  const makeCloneContext = canWrite => {
+    const names = ['assetName','assetTag','categoryId','brandId','modelId','serialNumber','location','defaultLocationCatalogId','purchaseDate','warrantyExpiresAt','purchaseCost','currency'];
+    const elements = Object.fromEntries(names.map(name => [name, { value: `stale-${name}`, focus() {} }]));
+    elements.isRequestable = { checked: false };
+    elements.isByod = { checked: false };
+    const form = { elements, reset() { for (const name of names) elements[name].value = ''; elements.isRequestable.checked = false; elements.isByod.checked = false; } };
+    const calls = { lookups: 0, definitions: 0, rendered: null, modelId: null, opened: 0 };
+    const dialog = { showModal() { calls.opened++; } };
+    const assetCustomFieldDefinitions = [
+      { key: 'ownerTeam', fieldType: 'text', isActive: true },
+      { key: 'assetSecret', fieldType: 'sensitive', isActive: true },
+      { key: 'retiredCode', fieldType: 'text', isActive: false },
+    ];
+    const context = {
+      $: selector => selector === '#newAssetForm' ? form : null,
+      canWriteAssets: () => canWrite,
+      loadLookups: async () => { calls.lookups++; },
+      loadAssetCustomFieldDefinitions: async () => { calls.definitions++; },
+      renderAssetCustomFieldInputs: (_form, values) => { calls.rendered = values; },
+      refreshModels: (modelId, target) => { calls.modelId = modelId; target.elements.modelId.value = modelId; },
+      assetCustomFieldDefinitions,
+      newAssetDialog: dialog,
+    };
+    return { functionValue: vm.runInNewContext(`(${cloneFunction})`, context), form, calls };
+  };
+
+  const cloneAsset = {
+    name: 'U6 Pro', categoryId: 'category-1', brandId: 'brand-1', modelId: 'model-1',
+    serialNumber: 'source-serial', location: 'İstanbul / Kat 2', defaultLocationCatalogId: 'location-2',
+    purchaseDate: '2025-03-10', warrantyExpiresAt: '2028-03-10', purchaseCost: 12500, currency: 'TRY',
+    isRequestable: true, isByod: false,
+    customFields: { ownerTeam: 'Ağ Ekibi', assetSecret: 'must-not-copy', retiredCode: 'old' },
+  };
+  const allowed = makeCloneContext(true);
+  await allowed.functionValue(cloneAsset);
+  assert.equal(allowed.calls.lookups, 1);
+  assert.equal(allowed.calls.definitions, 1);
+  assert.equal(allowed.calls.opened, 1);
+  assert.equal(allowed.form.elements.assetName.value, 'U6 Pro');
+  assert.equal(allowed.form.elements.categoryId.value, 'category-1');
+  assert.equal(allowed.form.elements.brandId.value, 'brand-1');
+  assert.equal(allowed.form.elements.modelId.value, 'model-1');
+  assert.equal(allowed.calls.modelId, 'model-1');
+  assert.equal(allowed.form.elements.defaultLocationCatalogId.value, 'location-2');
+  assert.equal(allowed.form.elements.serialNumber.value, '');
+  assert.equal(allowed.form.elements.assetTag.value, '');
+  assert.equal(JSON.stringify(allowed.calls.rendered), JSON.stringify({ ownerTeam: 'Ağ Ekibi' }));
+  assert.equal(allowed.form.elements.isRequestable.checked, true);
+  const denied = makeCloneContext(false);
+  await denied.functionValue(cloneAsset);
+  assert.equal(denied.calls.opened, 0);
+  assert.equal(denied.calls.lookups, 0);
+}
+
 if (failures.length) {
   console.error(failures.map(message => `FAIL ${message}`).join('\n'));
   process.exitCode = 1;
 } else {
-  console.log(`Verified ${actions.length} asset-row shortcuts; present photos open the in-app viewer, missing photos open attachments, write-only controls are role-gated, and row clicks remain isolated.`);
+  console.log(`Verified ${actions.length} asset-row shortcuts; clone preserves catalog data and non-sensitive fields, clears unique identifiers, omits secrets, and stays permission-gated.`);
 }
