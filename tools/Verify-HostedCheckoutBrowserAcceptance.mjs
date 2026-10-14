@@ -18,6 +18,13 @@ assert.match(palette, /The page must not expose company member administration to
 assert.match(palette, /let subscriptionMode = 'full'/);
 assert.match(palette, /subscriptionMode = 'readOnly'/);
 assert.match(palette, /The expired-subscription notice must be translated into/);
+assert.match(palette, /notificationButton\.click\(\)/);
+assert.match(palette, /Outside click must close the notification panel and reset aria-expanded/);
+assert.match(palette, /apiRequests\.some\(item => item\.path === '\/api\/notifications\/preferences' && item\.method === 'GET'\)/);
+assert.match(palette, /userAvatar.*click/);
+assert.match(palette, /apiRequests\.some\(item => item\.path === '\/api\/session\/devices' && item\.method === 'GET'\)/);
+assert.match(palette, /apiRequests\.some\(item => item\.path === '\/api\/session\/2fa' && item\.method === 'GET'\)/);
+assert.match(palette, /notification load\/outside-click dismissal, profile security dialog reads/);
 assert.match(palette, /apiRequests\.some\(item => item\.method !== 'GET'\)/);
 assert.match(runner, /docker build[\s\S]*?docker run --rm --init/);
 assert.match(script, /paymentAvailable = false/);
@@ -32,4 +39,4 @@ assert.match(script, /pageErrors/);
 assert.match(workflow, /Verify-HostedCheckoutBrowserAcceptance\.mjs/);
 assert.match(workflow, /Run hosted Cloud checkout in Chromium[\s\S]*?docker run --rm --init envantertr-hosted-checkout-browser-ci/);
 
-console.log('Hosted checkout, role-filtered command palette, and expired-subscription language browser harness verification passed (24 assertions).');
+console.log('Hosted checkout, role-filtered command palette, notification dismissal, profile security reads, and expired-subscription language browser harness verification passed.');

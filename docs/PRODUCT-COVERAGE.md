@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 14 Ekim 2026 — üst çubuk profil ve bildirim UI kabulü
+
+Sentetik `viewer` Chromium oturumunda bildirim paneli şirket takvimi ve tercihlerini salt okunur yükledi; boş durum mesajı geldi, panel dışına tıklanınca kapandı ve `aria-expanded` sıfırlandı. Avatar, hesap güvenliği penceresini açtı ve cihaz oturumları/2FA durumunu GET ile yükledi; kapatıldıktan sonra browser error yoktu. Mutasyon isteği olmadı. Bu yalnızca dropdown/panel görünürlük ve boş-state kabulidir; bildirim işaretleme, gizleme, tercih değiştirme veya profil düzenlemenin kayıt akışı değildir.
+
 ## 14 Ekim 2026 — varlık satırı bağlam menüsü UI kabulü
 
 Sentetik owner oturumunda gerçek EnvanterTR UI satırı sağ tıklamayla bağlam menüsünü açtı; menü öğeleri kaynak satırdaki kullanılabilir eylemlerle eşleşti ve 1280×900 viewport içinde kaldı. Ok tuşları ve Escape menüyü kapatıp odağı çağıran satıra geri verdi. Klavyeden `Shift+F10` menüyü açtı; “Varlığı düzenle” seçimi mevcut formu açtı ve iptal yazma yapmadı. Mock API/tenant dışında hiçbir yazma yapılmadı. Kaynak düzeyinde yetki ve klavye davranışları `Verify-AssetContextMenu.mjs` ile doğrulanır; bu tek sentetik UI akışı diğer bağlam menülerini kapsamıyor.

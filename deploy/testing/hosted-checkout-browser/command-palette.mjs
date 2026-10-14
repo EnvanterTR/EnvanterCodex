@@ -50,8 +50,14 @@ const server = createServer(async (request, response) => {
             }
             : url.pathname === '/api/company/branding'
               ? { name: 'Synthetic Viewer Company', brandPrimaryColor: '#2563EB', hasLogo: false }
-              : url.pathname === '/api/company/label-settings'
+            : url.pathname === '/api/company/label-settings'
                 ? { isConfigured: false, settings: null }
+              : url.pathname === '/api/notifications/preferences'
+                ? { enabledKinds: ['Maintenance', 'Audit', 'License', 'Warranty', 'Return'] }
+                : url.pathname === '/api/session/2fa'
+                  ? { enabled: false }
+                  : url.pathname === '/api/session/devices'
+                    ? { sessions: [], truncated: false }
                 : { items: [], total: 0, page: 1, pageSize: 50 };
     response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
     response.end(JSON.stringify(data));
@@ -116,6 +122,28 @@ try {
   await assetDestination.click();
   await dialog.waitFor({ state: 'hidden' });
   await page.waitForFunction(() => document.querySelector('#pageTitle')?.textContent === 'Varlık kayıtları');
+
+  const notificationButton = page.locator('#notificationButton');
+  const notificationPanel = page.locator('#notificationPanel');
+  await notificationButton.click();
+  await notificationPanel.waitFor({ state: 'visible' });
+  await page.waitForFunction(() => document.querySelector('#notificationSummary')?.textContent.includes('0 okunmamış'));
+  assert.equal(await notificationButton.getAttribute('aria-expanded'), 'true');
+  assert.match(await page.locator('#notificationList').innerText(), /bu dönemde yaklaşan iş yok/i);
+  assert.ok(apiRequests.some(item => item.path === '/api/calendar' && item.method === 'GET'));
+  assert.ok(apiRequests.some(item => item.path === '/api/notifications/preferences' && item.method === 'GET'));
+  await page.locator('#pageTitle').click();
+  await notificationPanel.waitFor({ state: 'hidden' });
+  assert.equal(await notificationButton.getAttribute('aria-expanded'), 'false', 'Outside click must close the notification panel and reset aria-expanded.');
+
+  await page.locator('#userAvatar').click();
+  const accountDialog = page.locator('#accountPhotoDialog');
+  await accountDialog.waitFor({ state: 'visible' });
+  await page.waitForFunction(() => document.querySelector('#accountSessionsList')?.textContent.includes('Etkin oturum bulunamadı'));
+  assert.ok(apiRequests.some(item => item.path === '/api/session/devices' && item.method === 'GET'));
+  assert.ok(apiRequests.some(item => item.path === '/api/session/2fa' && item.method === 'GET'));
+  await page.locator('#closeAccountPhoto').click();
+  await accountDialog.waitFor({ state: 'hidden' });
   assert.deepEqual(pageErrors, [], 'The command palette and route navigation must not throw browser errors.');
 
   subscriptionMode = 'readOnly';
@@ -140,7 +168,7 @@ try {
   assert.deepEqual(pageErrors, [], 'The app must not throw browser errors while switching languages and showing subscription access state.');
   assert.equal(apiRequests.some(item => item.method !== 'GET'), false,
     'The browser acceptance may not modify company data.');
-  console.log('PASS: real EnvanterTR UI hid the member destination for a synthetic viewer, opened the visible asset route from Ctrl+K, and rendered the expired-subscription notice in all five supported languages for a read-only session, without writes or browser errors.');
+  console.log('PASS: synthetic viewer role visibility, Ctrl+K routing, notification load/outside-click dismissal, profile security dialog reads, and five-language expired-subscription notice; zero writes and browser errors.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));
