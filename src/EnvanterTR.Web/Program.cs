@@ -452,6 +452,21 @@ app.Use(async (context, next) =>
     var platformAdminClaim = principal.HasClaim("platform_admin", "true");
     var isPlatformAdmin = platformAdminClaim && await db.PlatformAdministrators.AsNoTracking()
         .AnyAsync(x => x.UserId == userId, context.RequestAborted);
+    if (isPlatformAdmin && context.Request.Path.StartsWithSegments("/api/platform"))
+    {
+        var platformMfaEnabled = await db.Users.AsNoTracking().Where(x => x.Id == userId)
+            .Select(x => (bool?)x.TwoFactorEnabled).SingleOrDefaultAsync(context.RequestAborted) == true;
+        if (!platformMfaEnabled)
+        {
+            context.Response.StatusCode = StatusCodes.Status428PreconditionRequired;
+            await context.Response.WriteAsJsonAsync(new
+            {
+                code = "platform_mfa_required",
+                message = "Platform yönetimine erişmek için Authenticator tabanlı iki aşamalı doğrulamayı kurun."
+            }, context.RequestAborted);
+            return;
+        }
+    }
     if (tenantSlug is not null && companyClaim is null)
     {
         await context.SignOutAsync(IdentityConstants.ApplicationScheme);

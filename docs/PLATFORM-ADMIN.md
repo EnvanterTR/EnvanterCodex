@@ -69,7 +69,7 @@ Platform yönetim ekranı `src/EnvanterTR.Web/wwwroot/platform-admin.html` dosya
 - Abonelik uzatma API'si elle idari işlem yapar; ödeme kanıtı doğrulamaz. Ödeme bağlantısı kurulmadan müşteriye çevrimiçi tahsilat varmış gibi sunulmamalıdır.
 - Site içeriği API cevabını ön yüzde HTML olarak doğrudan çalıştırmayın; güvenli metin olarak gösterin veya uygun biçimde sanitize edin.
 - Veritabanı migration'ı oluşturulup geri dönüş planı ve yedekli uygulama süreci eklenmeden üretim veritabanına bağlamayın.
-- Platform yöneticileri ortak hesap altyapısındaki Authenticator tabanlı MFA ve tek kullanımlık kurtarma kodlarını kullanabilir; platform giriş ekranı 2FA kodu/kurtarma kodu adımını gösterir. Platform yöneticilerine özgü MFA zorunluluğu ve kritik işlem öncesi yeniden kimlik doğrulama ayrıca uygulanmalıdır.
+- Platform yöneticilerinde Authenticator tabanlı MFA zorunludur: MFA'sı kapalı yönetici `/api/platform/*` API'lerinden `428 platform_mfa_required` alır; güvenli mevcut oturum, parola korumalı kurulum ve etkinleştirme uçları açık kalır. Platform paneli yönetici oturumu doğrulandıktan sonra MFA kurulum ekranını açar, etkinleştirmede tek kullanımlık kurtarma kodlarını bir kez gösterir ve kaydetme onayından sonra yönetim ekranına geçer. Kritik işlem öncesi parola/TOTP ile yeniden kimlik doğrulama ayrıca uygulanmalıdır.
 - Yerel geliştirme sürümü Docker içindeki .NET SDK ile derlenip `localhost:8080` üzerinde açılmıştır. Bu, üretim dağıtımının veya müşteriye sunulabilir sürümün hazır olduğu anlamına gelmez; üretim güvenliği, MFA, TLS, yedekleme/geri yükleme ve gerçek satış akışları ayrıca tamamlanmalıdır.
 
 ## 14 Ekim 2026 — firma ayrıntısında ödeme/sipariş geçmişi

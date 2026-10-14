@@ -9220,6 +9220,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var setupToken = setupCsrfPayload.RootElement.GetProperty("requestToken").GetString()!;
         var setupCookie = setupCsrfResponse.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])
             .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        using (var mfaRequired = await SendAsPlatformAdminWithoutMfaAsync("/api/platform/overview"))
+        using (var payload = JsonDocument.Parse(await mfaRequired.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal((HttpStatusCode)428, mfaRequired.StatusCode);
+            Assert.Equal("platform_mfa_required", payload.RootElement.GetProperty("code").GetString());
+        }
         using var setupResponse = await SendAsUserAsync(HttpMethod.Post, "/api/session/2fa/setup", _userId, _companyId,
             System.Net.Http.Json.JsonContent.Create(new { currentPassword = password }), setupToken, setupCookie);
         Assert.Equal(HttpStatusCode.OK, setupResponse.StatusCode);
@@ -9233,6 +9239,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var enablePayload = JsonDocument.Parse(await enableResponse.Content.ReadAsStringAsync());
         var recoveryCode = enablePayload.RootElement.GetProperty("recoveryCodes").EnumerateArray().First().GetString()!;
         Assert.Equal(10, enablePayload.RootElement.GetProperty("recoveryCodes").GetArrayLength());
+        using (var platformAccessAfterMfa = await SendAsPlatformAdminAsync("/api/platform/overview"))
+            Assert.Equal(HttpStatusCode.OK, platformAccessAfterMfa.StatusCode);
 
         using var loginClient = _factory!.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
         using var loginCsrfResponse = await loginClient.GetAsync("/api/session/csrf");
@@ -9277,6 +9285,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var disableResponse = await SendAsUserAsync(HttpMethod.Post, "/api/session/2fa/disable", _userId, _companyId,
             System.Net.Http.Json.JsonContent.Create(new { currentPassword = password, code = GenerateAuthenticatorCode(secret) }), setupToken, setupCookie);
         Assert.Equal(HttpStatusCode.OK, disableResponse.StatusCode);
+        using (var platformAccessAfterMfaDisabled = await SendAsPlatformAdminWithoutMfaAsync("/api/platform/overview"))
+            Assert.Equal((HttpStatusCode)428, platformAccessAfterMfaDisabled.StatusCode);
         using (var passwordOnlyLogin = await SendAnonymousLoginAsync(loginClient, email, password, null, loginToken, loginCookie))
             Assert.Equal(HttpStatusCode.OK, passwordOnlyLogin.StatusCode);
         using (var logoutResponse = await SendAsUserAsync(HttpMethod.Post, "/api/session/logout", _userId, _companyId,
@@ -9645,6 +9655,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
 
     private async Task<HttpResponseMessage> SendAsPlatformAdminAsync(string path)
     {
+        await EnsurePlatformAdminMfaForAcceptanceAsync();
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
         request.Headers.Add("X-Acceptance-User", _userId.ToString());
         request.Headers.Add("X-Acceptance-Platform-Admin", "true");
@@ -9654,12 +9665,29 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     private async Task<HttpResponseMessage> SendAsPlatformAdminRequestAsync(HttpMethod method, string path,
         HttpContent? content = null, string? requestToken = null, string? antiforgeryCookie = null, string? host = null)
     {
+        await EnsurePlatformAdminMfaForAcceptanceAsync();
         using var request = new HttpRequestMessage(method, path) { Content = content };
         request.Headers.Add("X-Acceptance-User", _userId.ToString());
         request.Headers.Add("X-Acceptance-Platform-Admin", "true");
         if (!string.IsNullOrWhiteSpace(host)) request.Headers.Host = host;
         if (!string.IsNullOrWhiteSpace(requestToken)) request.Headers.Add("X-CSRF-TOKEN", requestToken);
         if (!string.IsNullOrWhiteSpace(antiforgeryCookie)) request.Headers.Add("Cookie", antiforgeryCookie);
+        return await _client!.SendAsync(request);
+    }
+
+    private async Task EnsurePlatformAdminMfaForAcceptanceAsync()
+    {
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Users.Where(user => user.Id == _userId && db.PlatformAdministrators.Any(admin => admin.UserId == user.Id))
+            .ExecuteUpdateAsync(update => update.SetProperty(user => user.TwoFactorEnabled, true));
+    }
+
+    private async Task<HttpResponseMessage> SendAsPlatformAdminWithoutMfaAsync(string path)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("X-Acceptance-User", _userId.ToString());
+        request.Headers.Add("X-Acceptance-Platform-Admin", "true");
         return await _client!.SendAsync(request);
     }
 
