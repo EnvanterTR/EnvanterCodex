@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 15 Ekim 2026 — production-baseline migration yükseltme provası
+
+İzole PostgreSQL kabul testi `20261010180000_AddAccessoryCategories` tabanından başlatıldı; bu sentetik tabanda 21 migration beklediği doğrulandı. Firma ve varlık kaydı taban şemaya yazıldı; 21 migration sonrasında kayıtların tekil kaldığı, varlığın korunduğu, `AssetCount=1` olduğu ve bekleyen migration kalmadığı doğrulandı. Test `MigrationUpgradeAcceptanceTests.Production_baseline_upgrades_to_current_schema_without_losing_company_assets` **1/1 geçti**. Test rastgele isimli geçici Compose ağı/veritabanı kullandı ve sonunda kaldırıldı; `envantertr-product-dev` veritabanına ve canlıya yazmadı. Canlı durum ucu yalnızca migration sayısını verdiğinden, canlı veritabanının gerçek son uygulanmış migration kimliği bu testle doğrulanmış değildir. Canlı DB yedeği/izole geri yükleme provası ve Coolify erişimi olmadan üretime migration veya deploy yapılmadı.
+
 ## 15 Ekim 2026 — platform yönetici üye işlemlerinde MFA adım doğrulaması
 
 Üye/davet JavaScript modülünün ayrı HTTP istemcisi, kritik rol güncellemesindeki `428 platform_reauth_required` yanıtını yakalayıp yeniden doğrulama penceresini açmıyordu. Üye ve davet çağrıları şimdi ana platform API istemcisinden geçiyor; CSRF başlığı, parola+Authenticator yeniden doğrulaması ve güvenli tek seferlik tekrar aynı yerden uygulanıyor. Hosted gerçek Chromium kabulinde rol güncellemesi önce 428 ile durdu, sentetik MFA sonrası 204 ile tamamlandı; pencereyi iptal etme yazma yapmadı ve sentetik davet CSRF ile tamamlandı. Sentetik API kullanıldı; gerçek davet e-postası/şirket verisi etkilenmedi. `Verify-PlatformMemberDirectory.mjs` (93), `Verify-PlatformMemberInvites.mjs` (21), `Verify-PlatformAdminExperience.mjs` ve hosted Chromium akışı geçti. Canlıya henüz dağıtılmadı.
