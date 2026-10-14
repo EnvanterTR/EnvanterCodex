@@ -19,7 +19,7 @@ public sealed record SavePlanRequest(
     int SortOrder);
 
 public sealed record GrantDemoRequest(Guid PlanId, int Days, string? Note);
-public sealed record ExtendSubscriptionRequest(int Days, string? Note);
+public sealed record ExtendSubscriptionRequest(DateTimeOffset EndsAt, string? Note);
 public sealed record EditSubscriptionRequest(Guid PlanId, DateTimeOffset StartsAt, DateTimeOffset EndsAt, string? Note);
 public sealed record PlatformInviteMemberRequest(Guid CompanyId, string FullName, string Email, string RoleKey);
 public sealed record UpdatePlatformMemberRoleRequest(string RoleKey, string? Note);

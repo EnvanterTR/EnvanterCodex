@@ -8,6 +8,11 @@ const contracts = await readFile('src/EnvanterTR.Web/Data/PlatformContracts.cs',
 const acceptance = await readFile('tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs', 'utf8');
 
 assert.match(contracts, /record EditSubscriptionRequest\(Guid PlanId, DateTimeOffset StartsAt, DateTimeOffset EndsAt, string\? Note\)/);
+assert.match(contracts, /record ExtendSubscriptionRequest\(DateTimeOffset EndsAt, string\? Note\)/);
+assert.match(api, /MapPut\("\/companies\/\{companyId:guid\}\/subscription\/extend"/);
+assert.match(api, /requestedEnd == currentEnd/);
+assert.match(api, /request\.EndsAt\.ToUniversalTime\(\)/);
+assert.match(api, /auditDetails = JsonSerializer\.Serialize\(new \{ before = previous, after, note = Clean\(request\.Note\) \}\)/);
 assert.match(api, /MapPut\("\/companies\/\{companyId:guid\}\/subscriptions\/\{subscriptionId:guid\}"/);
 assert.match(api, /x\.Id == subscriptionId && x\.CompanyId == companyId/);
 assert.match(api, /x\.IsActive && x\.DeploymentKind == "cloud"/);
@@ -17,6 +22,9 @@ assert.match(api, /before = previous, after = current, note = Clean\(request\.No
 assert.match(api, /subscription\.PlanId = plan\.Id;[\s\S]*?subscription\.StartsAt = request\.StartsAt\.ToUniversalTime\(\);[\s\S]*?subscription\.EndsAt = request\.EndsAt\.ToUniversalTime\(\);/);
 assert.match(api, /select new \{ subscription\.Id, subscription\.PlanId, plan\.Name/);
 assert.match(page, /platform-admin-subscriptions\.js/);
+assert.match(page, /Yeni bitiş tarihi<input name="endsAt" type="datetime-local"/);
+assert.match(page, /subscription\/extend`,\{method:'PUT',body:JSON\.stringify\(\{endsAt:new Date\(f\.get\('endsAt'\)\)\.toISOString\(\),note:f\.get\('note'\)\}\)\}/);
+assert.match(page, /if\(submit\.disabled\)return;submit\.disabled=true/);
 assert.match(editor, /data-action="details"/);
 assert.match(editor, /Plan \/ tarih düzenle/);
 assert.match(editor, /startsAt.type = 'datetime-local'/);
@@ -24,4 +32,5 @@ assert.match(editor, /api\/platform\/companies\/\$\{companyId\}\/subscriptions\/
 assert.match(editor, /method: 'PUT'/);
 assert.match(editor, /refreshAudit/);
 assert.match(acceptance, /Platform_admin_can_adjust_subscription_plan_and_dates_with_validation_and_audit/);
-console.log('Platform subscription editor verification passed (17 assertions).');
+assert.match(acceptance, /Platform_subscription_extension_uses_exact_end_date_and_safe_retries/);
+console.log('Platform subscription editor and idempotent exact-date extension verification passed (25 assertions).');

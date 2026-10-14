@@ -1083,26 +1083,39 @@ public static class PlatformEndpoints
                 new { subscription.Id, subscription.Status, subscription.IsDemo, subscription.StartsAt, subscription.EndsAt, plan = plan.Name });
         });
 
-        admin.MapPost("/companies/{companyId:guid}/subscription/extend", async (Guid companyId,
+        admin.MapPut("/companies/{companyId:guid}/subscription/extend", async (Guid companyId,
             [FromBody] ExtendSubscriptionRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (request is null) return Results.BadRequest(new { message = "Uzatma bilgileri gereklidir." });
-            if (request.Days is < 1 or > 1095 || request.Note is { Length: > 1000 })
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["extension"] = ["Uzatma 1-1095 gün olmalı; açıklama en fazla 1000 karakter olabilir."] });
+            if (request.EndsAt == default || request.Note is { Length: > 1000 } || string.IsNullOrWhiteSpace(request.Note))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["extension"] = ["Yeni bitiş tarihi ve en fazla 1000 karakterlik işlem gerekçesi gereklidir."] });
             var subscription = await db.TenantSubscriptions.Where(x => x.CompanyId == companyId)
                 .OrderByDescending(x => x.StartsAt).FirstOrDefaultAsync(cancellationToken);
             if (subscription is null) return Results.NotFound();
             if (subscription.Status == "Cancelled")
                 return Results.Conflict(new { message = "İptal edilmiş abonelik uzatılamaz. Önce yeni bir sipariş/abonelik oluşturulmalıdır." });
             var now = DateTimeOffset.UtcNow;
+            var requestedEnd = request.EndsAt.ToUniversalTime();
+            // PostgreSQL stores timestamptz at microsecond precision; normalize .NET's 100ns ticks before retry comparison.
+            requestedEnd = requestedEnd.AddTicks(-(requestedEnd.Ticks % 10));
+            var currentEnd = subscription.EndsAt;
+            // PUT with an absolute end date makes retries safe. A repeated request has no extra effect or audit event.
+            if (requestedEnd == currentEnd)
+                return Results.Ok(new { subscription.Id, subscription.Status, subscription.EndsAt, subscription.IsDemo, unchanged = true });
+            var extensionBase = currentEnd > now ? currentEnd : now;
+            if (requestedEnd <= extensionBase || requestedEnd > extensionBase.AddDays(1095))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["endsAt"] = ["Yeni bitiş tarihi mevcut bitiş tarihinden sonra ve en fazla 1095 gün içinde olmalıdır."] });
+            var previous = new { subscription.StartsAt, subscription.EndsAt, subscription.Status, subscription.IsDemo };
             subscription.StartsAt = subscription.StartsAt > now ? subscription.StartsAt : now;
-            subscription.EndsAt = (subscription.EndsAt > now ? subscription.EndsAt : now).AddDays(request.Days);
+            subscription.EndsAt = requestedEnd;
             // Extending a demo must not silently turn it into a paid contract.
             subscription.Status = subscription.IsDemo ? "Trial" : "Active";
+            var after = new { subscription.StartsAt, subscription.EndsAt, subscription.Status, subscription.IsDemo };
+            var auditDetails = JsonSerializer.Serialize(new { before = previous, after, note = Clean(request.Note) });
             AddAudit(db, user, "SubscriptionExtended", "TenantSubscription", subscription.Id, companyId,
-                $"{request.Days} gün. {Clean(request.Note)}");
+                auditDetails);
             await db.SaveChangesAsync(cancellationToken);
-            return Results.Ok(new { subscription.Id, subscription.Status, subscription.EndsAt, subscription.IsDemo });
+            return Results.Ok(new { subscription.Id, subscription.Status, subscription.EndsAt, subscription.IsDemo, unchanged = false });
         });
 
         admin.MapPut("/companies/{companyId:guid}/subscriptions/{subscriptionId:guid}", async (Guid companyId, Guid subscriptionId,

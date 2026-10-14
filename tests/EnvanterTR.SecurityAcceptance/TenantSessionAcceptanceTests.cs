@@ -2016,6 +2016,94 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Platform_subscription_extension_uses_exact_end_date_and_safe_retries()
+    {
+        var plan = new SubscriptionPlan
+        {
+            Code = $"extend-{_companyId:N}", Name = "Extension retry acceptance", DeploymentKind = "cloud", IsActive = true
+        };
+        var subscriptionId = Guid.NewGuid();
+        var demoSubscriptionId = Guid.NewGuid();
+        var now = DateTimeOffset.UtcNow;
+        var currentEnd = now.AddDays(14);
+        var requestedEnd = now.AddDays(400);
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SubscriptionPlans.Add(plan);
+            db.TenantSubscriptions.Add(new TenantSubscription
+            {
+                Id = subscriptionId, CompanyId = _companyId, PlanId = plan.Id, Status = "Active", IsDemo = false,
+                StartsAt = now.AddDays(-10), EndsAt = currentEnd, PaymentReference = "already-verified-payment"
+            });
+            db.TenantSubscriptions.Add(new TenantSubscription
+            {
+                Id = demoSubscriptionId, CompanyId = _otherCompanyId, PlanId = plan.Id, Status = "Trial", IsDemo = true,
+                StartsAt = now.AddDays(-3), EndsAt = currentEnd
+            });
+            db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            await db.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsPlatformAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var request = new { endsAt = requestedEnd, note = "Approved complimentary renewal" };
+        var route = $"/api/platform/companies/{_companyId}/subscription/extend";
+
+        using (var first = await SendAsPlatformAdminRequestAsync(HttpMethod.Put, route,
+                   System.Net.Http.Json.JsonContent.Create(request), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+            using var payload = JsonDocument.Parse(await first.Content.ReadAsStringAsync());
+            Assert.False(payload.RootElement.GetProperty("unchanged").GetBoolean());
+            Assert.Equal(requestedEnd.ToUnixTimeMilliseconds(), payload.RootElement.GetProperty("endsAt").GetDateTimeOffset().ToUnixTimeMilliseconds());
+        }
+
+        using (var retry = await SendAsPlatformAdminRequestAsync(HttpMethod.Put, route,
+                   System.Net.Http.Json.JsonContent.Create(request), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, retry.StatusCode);
+            using var payload = JsonDocument.Parse(await retry.Content.ReadAsStringAsync());
+            Assert.True(payload.RootElement.GetProperty("unchanged").GetBoolean());
+            Assert.Equal(requestedEnd.ToUnixTimeMilliseconds(), payload.RootElement.GetProperty("endsAt").GetDateTimeOffset().ToUnixTimeMilliseconds());
+        }
+
+        using (var shortening = await SendAsPlatformAdminRequestAsync(HttpMethod.Put, route,
+                   System.Net.Http.Json.JsonContent.Create(new { endsAt = currentEnd, note = "Must not shorten" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, shortening.StatusCode);
+
+        using (var demoExtension = await SendAsPlatformAdminRequestAsync(HttpMethod.Put,
+                   $"/api/platform/companies/{_otherCompanyId}/subscription/extend",
+                   System.Net.Http.Json.JsonContent.Create(new { endsAt = requestedEnd, note = "Complimentary demo extension" }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, demoExtension.StatusCode);
+            using var payload = JsonDocument.Parse(await demoExtension.Content.ReadAsStringAsync());
+            Assert.True(payload.RootElement.GetProperty("isDemo").GetBoolean());
+            Assert.Equal("Trial", payload.RootElement.GetProperty("status").GetString());
+        }
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var saved = await db.TenantSubscriptions.SingleAsync(x => x.Id == subscriptionId);
+            Assert.Equal(requestedEnd.ToUnixTimeMilliseconds(), saved.EndsAt.ToUnixTimeMilliseconds());
+            Assert.Equal("already-verified-payment", saved.PaymentReference);
+            var audit = await db.PlatformAuditEntries.Where(x => x.TargetId == subscriptionId && x.Action == "SubscriptionExtended").ToListAsync();
+            var entry = Assert.Single(audit);
+            Assert.Contains("Approved complimentary renewal", entry.Details, StringComparison.Ordinal);
+            var demoSubscription = await db.TenantSubscriptions.SingleAsync(x => x.Id == demoSubscriptionId);
+            Assert.True(demoSubscription.IsDemo);
+            Assert.Equal("Trial", demoSubscription.Status);
+            Assert.Equal(requestedEnd.ToUnixTimeMilliseconds(), demoSubscription.EndsAt.ToUnixTimeMilliseconds());
+        }
+    }
+
+    [Fact]
     public async Task Platform_can_provision_a_paid_cloud_company_owner_and_retryable_invitation()
     {
         var plan = new SubscriptionPlan
