@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 14 Ekim 2026 — yinelenen konum/departman adlarını birleştirme onayı
+
+Konum/departman yeniden adlandırmada bilinen bir ad çakışması varsa kayıtları birleştirmeden önce uygulama dialog'u açık onay ister. İstekten sonra sunucunun eşzamanlı çakışma bulması halinde ikinci onay alınır; iptal, kayıtları değiştirmeden formda açıklama bırakır. Onay sonrası mevcut tenant uç noktası `merge` bayrağıyla çağrılır ve başarı akışı liste/filtre yenilemesini korur. Çeviriler beş dilde, `Verify-DirectoryMergeDialogs.mjs` CI'a eklendi. `Directory_name_merge_requires_approval_and_preserves_company_scope` API kabul testi onaysız 409 yanıtını, onaylı konum/departman birleştirmelerini, güncellenen kayıt sayısını, tenant sınırını ve iki audit kaydını kontrol etti (1/1); 71/71 kaynak denetimi ve 1.855 beş dil locale girdisi geçti. Canlı/şirket verisi kullanılmadı.
+
 ## 14 Ekim 2026 — katalog ve içe aktarma onay akışları
 
 Model eki kaldırma, kullanımda olmayan katalog tanımını silme ve varlık CSV eşleme profilini silme tarayıcı `confirm()` yerine uygulama onayı kullanır; iptal API çağrısı yapmaz. Model ve ek kimlikleri onay beklenirken sabitlenir. Varlık özel alanı yeniden adlandırma mevcut değeri yükleyen, 100 karakter sınırını uygulayan form kullanır; iptal/değişiklik yapmadan kaydetme API'ye gitmez. Beş dil çevirileri ve `Verify-CatalogAndCustomFieldDialogs.mjs` eklendi. `Saved_asset_import_mappings_are_validated_and_private_to_their_owner`, `Brand_model_category_and_images_are_company_scoped_and_reusable` ve `Asset_custom_field_name_update_preserves_key_and_writes_audit` izole tenant API kabul testleri geçti (3/3); 70/70 kaynak doğrulayıcısı ve beş dilde 1.851 locale kaydı geçti. Canlı/gerçek şirket verisi kullanılmadı.

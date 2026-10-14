@@ -2157,6 +2157,10 @@
       'Marka adı':['Brand name','Название бренда','Назва бренду','Име на бренд'],
       'Kategori adı':['Category name','Название категории','Назва категорії','Име на категорија'],
       'Aksesuar model adı':['Accessory model name','Название модели аксессуара','Назва моделі аксесуара','Име на моделот на додаток'],
+      'Birleştir':['Merge','Объединить','Об’єднати','Спој'],
+      'Birleştirme iptal edildi; kayıtlar değiştirilmedi.':['Merge cancelled; records were not changed.','Объединение отменено; записи не изменены.','Об’єднання скасовано; записи не змінено.','Спојувањето е откажано; записите не се променети.'],
+      '“{currentName}” adındaki kayıtları mevcut “{newName}” grubuyla birleştirmek istiyor musunuz? Kayıtların geçmişi korunur.':['Merge records named “{currentName}” into the existing “{newName}” group? Record history is preserved.','Объединить записи «{currentName}» с существующей группой «{newName}»? История записей сохраняется.','Об’єднати записи «{currentName}» з наявною групою «{newName}»? Історія записів зберігається.','Да се спојат записите „{currentName}“ со постоечката група „{newName}“? Историјата на записите се зачувува.'],
+      'Sunucu bu adla eşleşen kayıt buldu. “{currentName}” kayıtlarını “{newName}” ile birleştireyim mi?':['The server found a matching name. Merge “{currentName}” records into “{newName}”?','Сервер обнаружил совпадающее название. Объединить записи «{currentName}» с «{newName}»?','Сервер знайшов збіг назви. Об’єднати записи «{currentName}» з «{newName}»?','Серверот најде запис со исто име. Да се спојат записите „{currentName}“ со „{newName}“?'],
       'Özel alan adını düzenle':['Edit custom field name','Изменить название дополнительного поля','Змінити назву спеціального поля','Уреди го името на приспособеното поле'],
       'Özel alan adı':['Custom field name','Название дополнительного поля','Назва спеціального поля','Име на приспособено поле'],
       'Seçili eşleme profili silinsin mi?':['Delete the selected mapping profile?','Удалить выбранный профиль сопоставления?','Видалити вибраний профіль зіставлення?','Да се избрише избраниот профил за мапирање?'],
@@ -4826,7 +4830,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       const locationId = form.elements.locationId.value;
       const departmentId = form.elements.departmentId.value;
       const merge = !departmentId && !locationId && currentKey !== newKey && directoryEntries.some(item => normalizeName(item.name) === newKey);
-      if (merge && !window.confirm(`“${currentName}” adındaki kayıtları mevcut “${newName}” grubuyla birleştirmek istiyor musunuz? Kayıtların geçmişi korunur.`)) return;
+      if (merge && !await confirmEmployeeAction({ title: 'İşlemi onayla', summary: translateUiText('“{currentName}” adındaki kayıtları mevcut “{newName}” grubuyla birleştirmek istiyor musunuz? Kayıtların geçmişi korunur.').replace('{currentName}', currentName).replace('{newName}', newName), confirmLabel: 'Birleştir', danger: true })) return;
       button.disabled = true; $('#directoryRenameFeedback').textContent = 'Şirket kayıtları güncelleniyor…';
       try {
         const submitRename = allowMerge => departmentId
@@ -4840,8 +4844,8 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         try { result = await submitRename(merge); }
         catch (error) {
           if (merge || !error.message.includes('Birleştirme onayı gereklidir.')) throw error;
-          if (!window.confirm(`Sunucu bu adla eşleşen kayıt buldu. “${currentName}” kayıtlarını “${newName}” ile birleştireyim mi?`)) {
-            $('#directoryRenameFeedback').textContent = 'Birleştirme iptal edildi; kayıtlar değiştirilmedi.';
+          if (!await confirmEmployeeAction({ title: 'İşlemi onayla', summary: translateUiText('Sunucu bu adla eşleşen kayıt buldu. “{currentName}” kayıtlarını “{newName}” ile birleştireyim mi?').replace('{currentName}', currentName).replace('{newName}', newName), confirmLabel: 'Birleştir', danger: true })) {
+            $('#directoryRenameFeedback').textContent = translateUiText('Birleştirme iptal edildi; kayıtlar değiştirilmedi.');
             return;
           }
           result = await submitRename(true);

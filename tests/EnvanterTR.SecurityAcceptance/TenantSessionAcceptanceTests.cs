@@ -1296,6 +1296,67 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Directory_name_merge_requires_approval_and_preserves_company_scope()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var suffix = Guid.NewGuid().ToString("N");
+        var oldLocation = $"Old location {suffix}"; var targetLocation = $"Target location {suffix}";
+        var oldDepartment = $"Old department {suffix}"; var targetDepartment = $"Target department {suffix}";
+        Guid categoryId, ownOldAssetId = Guid.NewGuid(), ownTargetAssetId = Guid.NewGuid(), foreignAssetId = Guid.NewGuid();
+        var oldEmployeeId = Guid.NewGuid(); var targetEmployeeId = Guid.NewGuid(); var foreignEmployeeId = Guid.NewGuid();
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            categoryId = await db.Assets.Where(x => x.CompanyId == _companyId).Select(x => x.CategoryId).FirstAsync();
+            db.Assets.AddRange(
+                new Asset { Id = ownOldAssetId, CompanyId = _companyId, AssetTag = $"OLD-{suffix}", Name = "Old location asset", CategoryId = categoryId, Location = oldLocation },
+                new Asset { Id = ownTargetAssetId, CompanyId = _companyId, AssetTag = $"TARGET-{suffix}", Name = "Target location asset", CategoryId = categoryId, Location = targetLocation },
+                new Asset { Id = foreignAssetId, CompanyId = _otherCompanyId, AssetTag = $"FOREIGN-{suffix}", Name = "Foreign location asset", CategoryId = await db.Assets.Where(x => x.CompanyId == _otherCompanyId).Select(x => x.CategoryId).FirstAsync(), Location = oldLocation });
+            db.Employees.AddRange(
+                new Employee { Id = oldEmployeeId, CompanyId = _companyId, EmployeeNumber = $"OLD-{suffix}", DisplayName = "Old department employee", Department = oldDepartment },
+                new Employee { Id = targetEmployeeId, CompanyId = _companyId, EmployeeNumber = $"TARGET-{suffix}", DisplayName = "Target department employee", Department = targetDepartment },
+                new Employee { Id = foreignEmployeeId, CompanyId = _otherCompanyId, EmployeeNumber = $"FOREIGN-{suffix}", DisplayName = "Foreign department employee", Department = oldDepartment });
+            await db.SaveChangesAsync();
+        }
+
+        using (var unapprovedLocation = await SendAsRoleAsync(HttpMethod.Patch, "/api/locations/rename", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { currentName = oldLocation, newName = targetLocation, merge = false }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, unapprovedLocation.StatusCode);
+        using (var locationMerge = await SendAsRoleAsync(HttpMethod.Patch, "/api/locations/rename", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { currentName = oldLocation, newName = targetLocation, merge = true }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, locationMerge.StatusCode);
+            using var payload = JsonDocument.Parse(await locationMerge.Content.ReadAsStringAsync());
+            Assert.Equal(1, payload.RootElement.GetProperty("updatedCount").GetInt32());
+        }
+        using (var unapprovedDepartment = await SendAsRoleAsync(HttpMethod.Patch, "/api/departments/rename", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { currentName = oldDepartment, newName = targetDepartment, merge = false }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, unapprovedDepartment.StatusCode);
+        using (var departmentMerge = await SendAsRoleAsync(HttpMethod.Patch, "/api/departments/rename", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { currentName = oldDepartment, newName = targetDepartment, merge = true }), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, departmentMerge.StatusCode);
+            using var payload = JsonDocument.Parse(await departmentMerge.Content.ReadAsStringAsync());
+            Assert.Equal(1, payload.RootElement.GetProperty("employeeCount").GetInt32());
+        }
+
+        await using var verifyScope = _factory!.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(targetLocation, await verifyDb.Assets.Where(x => x.CompanyId == _companyId && x.Id == ownOldAssetId).Select(x => x.Location).SingleAsync());
+        Assert.Equal(oldLocation, await verifyDb.Assets.Where(x => x.CompanyId == _otherCompanyId && x.Id == foreignAssetId).Select(x => x.Location).SingleAsync());
+        Assert.Equal(targetDepartment, await verifyDb.Employees.Where(x => x.CompanyId == _companyId && x.Id == oldEmployeeId).Select(x => x.Department).SingleAsync());
+        Assert.Equal(oldDepartment, await verifyDb.Employees.Where(x => x.CompanyId == _otherCompanyId && x.Id == foreignEmployeeId).Select(x => x.Department).SingleAsync());
+        Assert.Equal(2, await verifyDb.AuditEntries.CountAsync(x => x.CompanyId == _companyId && x.Action == "Renamed" &&
+            (x.TargetType == "Location" || x.TargetType == "Department") && x.Details!.Contains(suffix)));
+    }
+
+    [Fact]
     public async Task Company_units_are_hierarchical_tenant_scoped_and_archived_without_hard_deletes()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");

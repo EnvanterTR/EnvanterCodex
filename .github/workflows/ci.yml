@@ -112,6 +112,10 @@ jobs:
         shell: bash
         run: node tools/Verify-CatalogAndCustomFieldDialogs.mjs
 
+      - name: Verify directory merge dialogs
+        shell: bash
+        run: node tools/Verify-DirectoryMergeDialogs.mjs
+
       - name: Verify accessory catalog quick-entry dialogs
         shell: bash
         run: node tools/Verify-AccessoryCatalogQuickEntry.mjs
