@@ -1,6 +1,6 @@
 # EnvanterTR v1 — Kullanıcı İstekleri ve İş Sırası
 
-Güncelleme: 13 Ekim 2026
+Güncelleme: 14 Ekim 2026
 
 ## Kapsam ve kaynak
 
@@ -24,7 +24,7 @@ Bu dosya, bu Codex görevi içindeki erişilebilir kullanıcı isteklerinin ve 1
 
 | Sıra | İş paketi | İstenen sonuç | Şu anki kanıt / açık kapı |
 |---|---|---|---|
-| 1 | Güvenli yerel giriş ve kalıcılık | localhost:8080 login doğru çalışsın; Docker kaldırma/yenileme veriyi kaybettirmesin; servis, API ve GitHub durumu anlaşılır olsun | Kimlik çerezi yenileme düzeltmesi ve izole PostgreSQL kabul paketi **94/94** geçti. Testte cookie login/yenileme, başka tarayıcı oturumunun uzaktan iptali ve iptal edilmiş cookie ile `/api/session` + `/api/assets` için 401 beklentileri dahil. İstemci doğrulayıcısı 401 sonrası açık dialogları kapatıp girişi gösterme, 403 izin hatası ve başarısız girişte yazma isteğini tekrar oynatmama kontrollerini içeriyor. Bu turda API `ready` (84/84 migration), ana uygulama/demo HTTP 200; bağlantı test düğmesi mevcut HTML'de bulundu. Gerçek Santa tarayıcı oturumunda zorla cookie iptaliyle görsel 401 kabulü ve kullanıcının belirttiği parolanın doğrulanması açık; aktif oturum/veriye dokunulmadı. Eski ekran görüntüsünün düğmesiz görünümünün tarihsel sebebi kanıtlanmadı. Docker yığınını `--volumes` ile silme. |
+| 1 | Güvenli yerel giriş ve kalıcılık | localhost:8080 login doğru çalışsın; Docker kaldırma/yenileme veriyi kaybettirmesin; servis, API ve GitHub durumu anlaşılır olsun | Önceki 94/94 izole HTTP kabuline ek olarak 14 Ekim'de sentetik hesapla gerçek Edge login kabulü geçti: yanlış parola reddedildi, doğru parola oturum açtı, genel bakış yüklendi ve yenileme sonrası oturum korundu; JS hatası 0. Yerel ürün API'si `ready` (91/0). Üretimde tenant host HTTP 503 `no available server`, apex API 21 migration geride; canlı login uygulamaya ulaşmıyor. Coolify panel/log erişimi olmadan wildcard upstream düzeltmesi ve kontrollü migration için üretim kabul kapısı açık. Kullanıcının gerçek parolası/hesabı denenmedi; Docker veri volume'ları korunuyor. |
 | 2 | V1 gereksinim eşlemesi | Yaklaşık 280 maddeyi kaynak/kanıt ve eksiklerle eşleştir | Başlangıç listesi eklendi; statüler eski. `PRODUCT-COVERAGE.md` 37 ürün ailesi, `ROADMAP.md` açık ürün/kurulum işleri içeriyor. Her satır kod veya kabul kanıtıyla güncellenmeli. |
 | 3 | Yan menü hedefleri ve işlevleri | Her menü, alt menü, form ve eylem kendi doğru şirkete/role bağlı gerçek işlemi yapsın | `Verify-AppNavigation.mjs`: 50 hedef/10 grup bağlama denetimi. 12 Ekim UI turunda 50/50 rota erişimi. Bildirim/Güvenlik kısmi; özel izinler, harici webhook/entegrasyon ve bazı işlevler eksik. Rota oranı işlev yüzdesi değildir. |
 | 4 | Varlık listesi ve ekran görüntüsü düzeni | Gereksiz boşlukları azalt, sütunları/eylemleri yatay kaydırmada kullanılabilir tut; modal sekmeleri ve hızlı işlemler doğru sonuç versin | Ana uygulamada 319 px ölçümünde sabit Eylemler sütununun Cihaz resmi hücresini örttüğü bulundu; 720 px altında sabitleme kaldırılıp yatay kaydırma korundu, son Release imajında çakışma olmadığı ölçüldü. Demo `localhost:8081` aynı genişlikte 50 örnek/19 sütunla yatay kayıyor ve örtüşmüyor. Görsel kısayolu gerçek tek önizlemeyi fare/klavyeyle açıyor. Üretim canlı sitesine dağıtılmadı. Diğer ekranlar açık.
