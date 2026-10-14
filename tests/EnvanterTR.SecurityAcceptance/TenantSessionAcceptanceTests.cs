@@ -1407,6 +1407,17 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 CompanyId = _companyId, CreatedAt = earlierMembership.AddDays(-4),
                 PaidAt = earlierMembership.AddDays(-3), ExpiresAt = earlierMembership.AddDays(30)
             });
+            db.CompanyCheckoutOrders.Add(new CompanyCheckoutOrder
+            {
+                Id = Guid.NewGuid(), CompanyName = "Unprovisioned Acceptance Company", Slug = $"pending-{userId:N}",
+                ContactEmail = "billing-contact@example.invalid", OwnerName = "Directory Acceptance Member",
+                OwnerEmail = $"{marker}@example.invalid", PlanId = plan.Id, TermDays = 30, Amount = 1200,
+                Currency = "TRY", Status = "PaymentStarted", PaymentReference = "pending-member-checkout-reference",
+                CheckoutTokenHash = "pending-member-token-hash-must-not-leak",
+                CheckoutPageUrlProtected = "pending-member-protected-url-must-not-leak",
+                CompanyId = null, CreatedAt = earlierMembership.AddDays(-6),
+                PaidAt = null, ExpiresAt = earlierMembership.AddDays(1)
+            });
             db.PlatformDemoRequests.Add(new PlatformDemoRequest
             {
                 CompanyName = "Directory Acceptance Company", ContactName = "Directory Acceptance Member",
@@ -1567,12 +1578,17 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         }
         Assert.Contains("Demo talebi alındı", timeline);
         Assert.Contains("Hesap oluşturuldu", timeline);
-        Assert.Contains("Satın alma kaydı oluşturuldu", timeline);
         Assert.Contains("Ödeme doğrulandı", timeline);
+        Assert.Contains("Satın alma kaydı oluşturuldu", timeline);
         Assert.Contains("Demo erişimi tanımlandı", timeline);
         Assert.Contains("Şirket üyeliği kaldırıldı", timeline);
         Assert.True(timelinePages > 1, "The member timeline should paginate when more than four events exist.");
         var serializedTimeline = string.Join('\n', timelineBody);
+        Assert.Contains("pending-member-checkout-reference", serializedTimeline, StringComparison.Ordinal);
+        Assert.Contains("Unprovisioned Acceptance Company", serializedTimeline, StringComparison.Ordinal);
+        Assert.Contains("1200", serializedTimeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("pending-member-token-hash-must-not-leak", serializedTimeline, StringComparison.Ordinal);
+        Assert.DoesNotContain("pending-member-protected-url-must-not-leak", serializedTimeline, StringComparison.Ordinal);
         Assert.DoesNotContain("checkout-token-hash-must-not-leak", serializedTimeline, StringComparison.Ordinal);
         Assert.DoesNotContain("protected-checkout-url-must-not-leak", serializedTimeline, StringComparison.Ordinal);
     }

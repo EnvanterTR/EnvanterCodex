@@ -305,12 +305,13 @@ public static class PlatformEndpoints
                     $"{subscription.Name} · {subscription.Status} · {subscription.StartsAt:yyyy-MM-dd} – {subscription.EndsAt:yyyy-MM-dd}",
                     subscription.CompanyName, subscription.PaymentReference));
 
-            var orders = await (from order in db.CompanyCheckoutOrders.AsNoTracking()
-                                join company in db.Companies.AsNoTracking() on order.CompanyId equals company.Id
-                                where order.CompanyId != null && companyIds.Contains(order.CompanyId.Value)
-                                orderby order.CreatedAt descending
-                                select new { order.CreatedAt, order.PaidAt, order.Status, order.Amount, order.Currency,
-                                    order.PaymentReference, order.TermDays, CompanyName = company.Name })
+            var normalizedEmail = account.Email?.Trim().ToLowerInvariant();
+            var orders = await db.CompanyCheckoutOrders.AsNoTracking()
+                .Where(order => (order.CompanyId != null && companyIds.Contains(order.CompanyId.Value)) ||
+                    (normalizedEmail != null && order.OwnerEmail.ToLower() == normalizedEmail))
+                .OrderByDescending(order => order.CreatedAt)
+                .Select(order => new { order.CreatedAt, order.PaidAt, order.Status, order.Amount, order.Currency,
+                    order.PaymentReference, order.TermDays, CompanyName = order.CompanyName })
                 .Take(perSourceLimit + 1).ToListAsync(cancellationToken);
             if (orders.Count > perSourceLimit) { orders.RemoveAt(orders.Count - 1); truncated = true; }
             foreach (var order in orders)
@@ -323,7 +324,6 @@ public static class PlatformEndpoints
                         order.CompanyName, order.PaymentReference, order.Amount, order.Currency));
             }
 
-            var normalizedEmail = account.Email?.Trim().ToLowerInvariant();
             var demoRequests = await db.PlatformDemoRequests.AsNoTracking()
                 .Where(request => (normalizedEmail != null && request.Email.ToLower() == normalizedEmail) ||
                     (request.CompanyId != null && companyIds.Contains(request.CompanyId.Value)))

@@ -15,6 +15,7 @@ EnvanterTR; şirketlerin donanım, yazılım, lisans, aksesuar, sarf malzemesi, 
 - Aynı kişi birden fazla şirkete üye olabilir; şirketler arası geçiş açık, anlaşılır ve veri sızdırmaz olmalıdır.
 - Platform yöneticisi rolü tenant rollerinden ayrıdır. Yalnızca açıkça yetkilendirilmiş platform yöneticileri müşteri dizinini, üyelikleri, planları ve satış operasyonlarını görür.
 - İlk platform yöneticisi güvenli, tek kullanımlık/yenilenebilir bootstrap süreciyle kurulur. Varsayılan parola, sohbet içeriği veya kaynak kod içine gömülmez. Kimlik bilgileri secret store/ortam ayarından sağlanır; ilk girişte parola değişimi ve MFA zorunlu hale getirilebilir.
+- Ürün sahibinin şirket hesabında kullanacağı e-posta ile platform yöneticisi girişi aynı hesap olabilir; bunun için hesaba ayrıca platform yöneticisi yetkisi açıkça verilmiş olmalıdır. Şirket yöneticiliği tek başına platform erişimi sağlamaz. Şirket girişi ve platform yönetim girişi ayrı ekran/oturum bağlamı kullanır; MFA, parola yenileme, kilit açma ve kurtarma akışları anlaşılır olmalı, parola URL'ye/loga yazılmamalı veya arayüzde tekrar gösterilmemelidir. Ürün sahibinin ilk yönetici hesabı kurulumda güvenli şekilde oluşturulur; e-posta/parola kod veya varsayılan veritabanı seed'i içine sabitlenmez.
 - Kullanıcı daveti ve parola sıfırlama süreli, tek kullanımlık, denetlenebilir bağlantılar kullanır. E-posta teslim edilemiyorsa güvenli yeniden deneme ve durum görünürlüğü sağlanır.
 - Yetki kontrolü yalnızca arayüzde değil her API ve veri sorgusunda uygulanır. Tenant kimliği istemcinin verdiği güvenilmeyen alandan alınmaz; oturum/host/izin bağlamından doğrulanır.
 
@@ -76,9 +77,11 @@ Platform paneli müşteri uygulamasından görsel ve yetki bakımından ayrılı
 - Paket kataloğu ve özellik entitlement'ları; değişikliklerin mevcut abonelere etkisi açıkça gösterilir.
 - Abonelik başlangıç/bitiş tarihi, paket, dönem, deneme/ücretli durumu, yenileme, iptal ve askıya alma.
 - Yetkili yönetici aboneliği elle uzatabilir, ücretsiz gün ekleyebilir, planı yükseltebilir/düşürebilir veya tarihi belirleyebilir. Önizleme/etki, gerekçe ve not alınır; ikinci bir onay kuralı yapılandırılabilir.
+- Manuel açma, yükseltme/düşürme, ücretsiz uzatma, tarih düzeltme, askıya alma ve iptal ayrı işlem türü ve kaynak bilgisiyle saklanır. Eski dönemler silinmez; önce/sonra değerleri, operatör, zaman ve zorunlu gerekçe değiştirilemez denetim geçmişinde kalır. Hata/tekrar durumunda aynı işlem iki kez uygulanmaz; tarih çakışmaları ve başlangıç/bitiş tutarsızlıkları sunucuda reddedilir.
 - Manuel müdahale tahsilat gibi gösterilmez. Ödeme doğrulaması ile yönetici tarafından kaydedilen harici satış ayrı etiketlenir.
 - Şirket başına tek güncel abonelik tutulsa dahi tüm geçmiş olayları zaman çizelgesinde korunur.
 - Sipariş ve ödeme mutabakatı; sağlayıcı işlem referansı, tutar/para birimi, plan, durum, zaman, iade ve hata bilgisi. Token, gizli URL veya anahtar gösterilmez.
+- Global SaaS işletim ihtiyaçları: fatura/vergilendirme ülke kurallarına göre, sağlayıcıya bağlı iade ve chargeback, başarısız ödeme tekrar denemeleri ve müşteri bildirimi, kupon/indirim ve deneme dönüşüm takibi, yenileme/iptal/churn raporu, e-posta teslim hatası, dışa aktarım ve veri silme talepleri. Bunlar gerçek sağlayıcı/ülke ayarları olmadan sahte tahsilat, fatura, gelir veya başarı metriği üretmez.
 - CSV/XLSX raporu rol denetimi, maskeleme ve audit ile dışa aktarılır.
 
 ### Denetim ve destek

@@ -43,6 +43,7 @@ const timeline = api.match(/admin\.MapGet\("\/members\/\{userId:guid\}\/timeline
 assert.ok(timeline, 'member timeline endpoint exists before member invite endpoint');
 assert.match(timeline[0], /platformAudits/);
 assert.match(timeline[0], /CompanyCheckoutOrders/);
+assert.match(timeline[0], /normalizedEmail != null && order\.OwnerEmail\.ToLower\(\) == normalizedEmail/);
 assert.match(timeline[0], /PlatformDemoRequests/);
 assert.match(timeline[0], /AuditEntries/);
 assert.match(timeline[0], /pageSize = Math\.Clamp\(pageSize == 0 \? 50 : pageSize, 1, 100\)/);
@@ -81,4 +82,7 @@ assert.match(acceptance, /Satın alma kaydı oluşturuldu/);
 assert.match(acceptance, /timelinePages > 1/);
 assert.match(acceptance, /checkout-token-hash-must-not-leak/);
 assert.match(acceptance, /protected-checkout-url-must-not-leak/);
-console.log('Platform member directory, registration timestamp, timeline, and membership management source verification passed (67 assertions).');
+assert.match(acceptance, /pending-member-checkout-reference/);
+assert.match(acceptance, /Unprovisioned Acceptance Company/);
+assert.match(acceptance, /pending-member-token-hash-must-not-leak/);
+console.log('Platform member directory, registration timestamp, timeline, and membership management source verification passed (71 assertions).');
