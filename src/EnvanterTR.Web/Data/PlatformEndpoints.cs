@@ -1321,6 +1321,7 @@ public static class PlatformEndpoints
         admin.MapGet("/audit", async (AppDbContext db, CancellationToken cancellationToken,
             [FromQuery] int page = 1, [FromQuery] int pageSize = 50, [FromQuery] string? q = null,
             [FromQuery] string? action = null, [FromQuery] string? targetType = null,
+            [FromQuery] string? source = null,
             [FromQuery] DateTimeOffset? from = null, [FromQuery] DateTimeOffset? to = null) =>
         {
             page = Math.Clamp(page, 1, 1_000_000);
@@ -1328,32 +1329,56 @@ public static class PlatformEndpoints
             q = q?.Trim();
             action = action?.Trim();
             targetType = targetType?.Trim();
+            source = source?.Trim().ToLowerInvariant();
             if (q?.Length > 120 || action?.Length > 80 || targetType?.Length > 80 ||
+                (source is not null and not ("platform" or "company")) ||
                 (from.HasValue && to.HasValue && from.Value >= to.Value))
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
-                    ["filters"] = ["Arama en fazla 120, işlem/hedef türü en fazla 80 karakter olmalı; tarih aralığının başlangıcı bitişinden önce olmalıdır."]
+                    ["filters"] = ["Arama en fazla 120, işlem/hedef türü en fazla 80 karakter olmalı; kaynak platform veya company olmalı ve tarih aralığının başlangıcı bitişinden önce olmalıdır."]
                 });
 
-            var query = from audit in db.PlatformAuditEntries.AsNoTracking()
-                        join actor in db.Users.AsNoTracking() on audit.ActorUserId equals actor.Id
-                        select new { audit, actor.DisplayName, actor.Email };
+            var platformQuery = db.PlatformAuditEntries.AsNoTracking().Select(audit => new
+            {
+                audit.Id, Source = "platform", ActorUserId = (Guid?)audit.ActorUserId,
+                ActorName = db.Users.Where(actor => actor.Id == audit.ActorUserId).Select(actor => actor.DisplayName).FirstOrDefault(),
+                ActorEmail = db.Users.Where(actor => actor.Id == audit.ActorUserId).Select(actor => actor.Email).FirstOrDefault(),
+                audit.CompanyId,
+                CompanyName = audit.CompanyId == null ? null : db.Companies.Where(company => company.Id == audit.CompanyId).Select(company => company.Name).FirstOrDefault(),
+                audit.Action, audit.TargetType, audit.TargetId, audit.Details, audit.OccurredAt
+            });
+            var companyQuery = db.AuditEntries.AsNoTracking().Select(audit => new
+            {
+                audit.Id, Source = "company", audit.ActorUserId,
+                ActorName = db.Users.Where(actor => actor.Id == audit.ActorUserId).Select(actor => actor.DisplayName).FirstOrDefault(),
+                ActorEmail = db.Users.Where(actor => actor.Id == audit.ActorUserId).Select(actor => actor.Email).FirstOrDefault(),
+                CompanyId = (Guid?)audit.CompanyId,
+                CompanyName = db.Companies.Where(company => company.Id == audit.CompanyId).Select(company => company.Name).FirstOrDefault(),
+                audit.Action, audit.TargetType, audit.TargetId, audit.Details, audit.OccurredAt
+            });
+            var query = source switch
+            {
+                "platform" => platformQuery,
+                "company" => companyQuery,
+                _ => platformQuery.Concat(companyQuery)
+            };
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.ToLowerInvariant();
-                query = query.Where(x => x.audit.Action.ToLower().Contains(term) ||
-                    x.audit.TargetType.ToLower().Contains(term) || (x.audit.Details ?? "").ToLower().Contains(term) ||
-                    x.DisplayName.ToLower().Contains(term) || (x.Email ?? "").ToLower().Contains(term));
+                query = query.Where(x => x.Action.ToLower().Contains(term) ||
+                    x.TargetType.ToLower().Contains(term) || (x.Details ?? "").ToLower().Contains(term) ||
+                    (x.ActorName ?? "").ToLower().Contains(term) || (x.ActorEmail ?? "").ToLower().Contains(term) ||
+                    (x.CompanyName ?? "").ToLower().Contains(term));
             }
-            if (!string.IsNullOrWhiteSpace(action)) query = query.Where(x => x.audit.Action == action);
-            if (!string.IsNullOrWhiteSpace(targetType)) query = query.Where(x => x.audit.TargetType == targetType);
-            if (from.HasValue) query = query.Where(x => x.audit.OccurredAt >= from.Value);
-            if (to.HasValue) query = query.Where(x => x.audit.OccurredAt < to.Value);
+            if (!string.IsNullOrWhiteSpace(action)) query = query.Where(x => x.Action == action);
+            if (!string.IsNullOrWhiteSpace(targetType)) query = query.Where(x => x.TargetType == targetType);
+            if (from.HasValue) query = query.Where(x => x.OccurredAt >= from.Value);
+            if (to.HasValue) query = query.Where(x => x.OccurredAt < to.Value);
             var total = await query.CountAsync(cancellationToken);
-            var entries = await query.OrderByDescending(x => x.audit.OccurredAt).ThenByDescending(x => x.audit.Id)
+            var entries = await query.OrderByDescending(x => x.OccurredAt).ThenByDescending(x => x.Id).ThenBy(x => x.Source)
                 .Skip((page - 1) * pageSize).Take(pageSize)
-                .Select(x => new { x.audit.Id, x.audit.ActorUserId, actorName = x.DisplayName, actorEmail = x.Email,
-                    x.audit.CompanyId, x.audit.Action, x.audit.TargetType, x.audit.TargetId, x.audit.Details, x.audit.OccurredAt })
+                .Select(x => new { x.Id, source = x.Source, x.ActorUserId, actorName = x.ActorName, actorEmail = x.ActorEmail,
+                    x.CompanyId, companyName = x.CompanyName, x.Action, x.TargetType, x.TargetId, x.Details, x.OccurredAt })
                 .ToListAsync(cancellationToken);
             return Results.Ok(new { entries, total, page, pageSize });
         });

@@ -41,7 +41,7 @@ public sealed class MigrationUpgradeAcceptanceTests
 
             await db.Database.MigrateAsync(ProductionBaselineMigration);
             var pendingAtBaseline = (await db.Database.GetPendingMigrationsAsync()).ToArray();
-            Assert.Equal(20, pendingAtBaseline.Length);
+            Assert.Equal(21, pendingAtBaseline.Length);
             Assert.Equal(ProductionBaselineMigration, await ReadLatestMigrationAsync(db));
 
             var companyId = Guid.NewGuid();

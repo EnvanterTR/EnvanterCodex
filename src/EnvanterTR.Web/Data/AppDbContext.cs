@@ -1144,6 +1144,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AuditEntry>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.ActorUserId).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<AuditEntry>().HasIndex(x => new { x.CompanyId, x.OccurredAt });
+        modelBuilder.Entity<AuditEntry>().HasIndex(x => x.OccurredAt);
         modelBuilder.Entity<AuditEntry>().Property(x => x.TargetType).HasMaxLength(80).IsRequired();
         modelBuilder.Entity<AuditEntry>().Property(x => x.Action).HasMaxLength(80).IsRequired();
         modelBuilder.Entity<AuditEntry>().Property(x => x.Details).HasMaxLength(2000);

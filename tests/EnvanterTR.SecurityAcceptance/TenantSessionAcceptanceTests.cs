@@ -1657,6 +1657,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     public async Task Platform_audit_search_filters_actor_action_target_and_date_with_stable_paging()
     {
         var marker = $"audit-search-{Guid.NewGuid():N}";
+        var tenantMarker = $"tenant-audit-search-{Guid.NewGuid():N}";
         var now = DateTimeOffset.UtcNow;
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
@@ -1669,6 +1670,9 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                     TargetType = "Company", TargetId = _companyId, Details = $"{marker} status reviewed", OccurredAt = now.AddHours(-1) },
                 new PlatformAuditEntry { ActorUserId = _userId, CompanyId = _companyId, Action = "PlanUpdated",
                     TargetType = "SubscriptionPlan", TargetId = Guid.NewGuid(), Details = $"{marker} older record", OccurredAt = now.AddHours(-5) });
+            db.AuditEntries.Add(new AuditEntry { CompanyId = _companyId, ActorUserId = _userId,
+                Action = "AssetUpdated", TargetType = "Asset", TargetId = Guid.NewGuid(),
+                Details = $"{tenantMarker} tenant activity", OccurredAt = now.AddMinutes(-10) });
             await db.SaveChangesAsync();
         }
 
@@ -1703,6 +1707,20 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         }
         using (var invalidRange = await SendAsPlatformAdminAsync("/api/platform/audit?from=2026-10-14T10%3A00%3A00Z&to=2026-10-14T09%3A00%3A00Z"))
             Assert.Equal(HttpStatusCode.BadRequest, invalidRange.StatusCode);
+
+        using (var tenantRecord = await SendAsPlatformAdminAsync($"/api/platform/audit?q={tenantMarker}&source=company"))
+        {
+            Assert.Equal(HttpStatusCode.OK, tenantRecord.StatusCode);
+            using var payload = JsonDocument.Parse(await tenantRecord.Content.ReadAsStringAsync());
+            var entry = Assert.Single(payload.RootElement.GetProperty("entries").EnumerateArray());
+            Assert.Equal("company", entry.GetProperty("source").GetString());
+            Assert.Equal("AssetUpdated", entry.GetProperty("action").GetString());
+            Assert.Equal(_companyId, entry.GetProperty("companyId").GetGuid());
+            Assert.False(string.IsNullOrWhiteSpace(entry.GetProperty("companyName").GetString()));
+            Assert.Equal("Security Acceptance User", entry.GetProperty("actorName").GetString());
+        }
+        using (var invalidSource = await SendAsPlatformAdminAsync("/api/platform/audit?source=unknown"))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidSource.StatusCode);
     }
 
     [Fact]

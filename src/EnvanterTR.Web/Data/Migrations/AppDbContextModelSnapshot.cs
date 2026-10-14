@@ -1740,6 +1740,8 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("CompanyId", "OccurredAt");
 
+                    b.HasIndex("OccurredAt");
+
                     b.ToTable("AuditEntries");
                 });
 
