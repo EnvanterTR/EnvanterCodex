@@ -7,10 +7,36 @@ const DEFAULT_URLS = [
 ];
 
 export async function inspectEndpoint(url, fetchImpl = fetch, timeoutMs = 10000) {
+  let safeUrl = null;
+  let displayUrl = 'invalid HTTPS endpoint';
+  try {
+    const parsed = new URL(url);
+    displayUrl = `${parsed.protocol}//${parsed.host}${parsed.pathname}`;
+    parsed.username = '';
+    parsed.password = '';
+    parsed.search = '';
+    parsed.hash = '';
+    safeUrl = parsed.toString();
+    if (parsed.protocol !== 'https:') safeUrl = null;
+  } catch {
+    // Never include an unparseable caller-supplied URL in diagnostics.
+  }
+  if (!safeUrl) {
+    return {
+      url: displayUrl,
+      httpStatus: null,
+      appStatus: null,
+      migrationCount: null,
+      pendingMigrationCount: null,
+      diagnosis: 'Endpoint must be a valid HTTPS URL.',
+      ready: false,
+    };
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetchImpl(url, {
+    const response = await fetchImpl(safeUrl, {
       method: 'GET',
       headers: { accept: 'application/json' },
       redirect: 'manual',
@@ -40,7 +66,7 @@ export async function inspectEndpoint(url, fetchImpl = fetch, timeoutMs = 10000)
     }
 
     return {
-      url,
+      url: displayUrl,
       httpStatus: response.status,
       appStatus: payload?.status ?? null,
       migrationCount: Number.isInteger(payload?.migrationCount) ? payload.migrationCount : null,
@@ -50,7 +76,7 @@ export async function inspectEndpoint(url, fetchImpl = fetch, timeoutMs = 10000)
     };
   } catch (error) {
     return {
-      url,
+      url: displayUrl,
       httpStatus: null,
       appStatus: null,
       migrationCount: null,

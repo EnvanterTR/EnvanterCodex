@@ -29,4 +29,23 @@ assert.equal(failed.ready, false);
 assert.match(failed.diagnosis, /DNS, TLS/i);
 assert.doesNotMatch(JSON.stringify(failed), /contains no credential/);
 
-console.log('Verified healthy readiness, pending migrations, Coolify wildcard 503, malformed health payloads, and credential-safe network errors.');
+let requestedUrl = null;
+const credentialBearingUrl = 'https://operator:password@tenant.invalid/api/status?password=secret&token=private#fragment';
+const sanitized = await inspectEndpoint(credentialBearingUrl, async url => {
+  requestedUrl = url;
+  return response(200, 'application/json', JSON.stringify({ status: 'ready', migrationCount: 91, pendingMigrationCount: 0 }));
+});
+assert.equal(requestedUrl, 'https://tenant.invalid/api/status', 'Credentials and query data must never be sent to the readiness endpoint.');
+assert.equal(sanitized.url, 'https://tenant.invalid/api/status');
+assert.doesNotMatch(JSON.stringify(sanitized), /operator|password|secret|private|fragment/i);
+
+let insecureRequestMade = false;
+const insecure = await inspectEndpoint('http://operator:password@tenant.invalid/api/status?token=private', async () => {
+  insecureRequestMade = true;
+  return response(200, 'application/json', '{}');
+});
+assert.equal(insecureRequestMade, false, 'The production readiness checker must not make plain HTTP requests.');
+assert.equal(insecure.ready, false);
+assert.doesNotMatch(JSON.stringify(insecure), /operator|password|private/i);
+
+console.log('Verified healthy readiness, pending migrations, Coolify wildcard 503, malformed health payloads, credential-safe diagnostics, and HTTPS-only requests.');
