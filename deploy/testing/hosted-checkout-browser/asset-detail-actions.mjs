@@ -33,6 +33,20 @@ const contractAssetId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const contractLicenseId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const contractRows = [{ id: contractId, name: 'Synthetic Cloud Support Agreement', contractNumber: 'QA-CONTRACT-001', contractType: 'Support', supplier: 'Synthetic Supplier', supplierId: null, startDate: '2026-10-01', endDate: '2027-10-01', cost: 1250, currency: 'TRY', notes: 'Synthetic contract note', isActive: true, status: 'active', assetCount: 1, licenseCount: 1, attachmentCount: 0 }];
 const contractWrites = [];
+const softwareLicenseId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+const softwareLicenseAttachmentId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+const softwareLicenseRows = [{
+  id: softwareLicenseId, name: 'Synthetic License Import Baseline', publisher: 'Synthetic Publisher', productVersion: '1',
+  licenseType: 'Subscription', licenseReference: 'QA-LICENSE-BASELINE', supplier: 'Synthetic Supplier', seats: 3, assigned: 0,
+  unitCost: null, currency: 'TRY', purchaseDate: null, expirationDate: null, autoRenew: false, requiresEulaAcceptance: false,
+  notes: null
+}];
+const softwareLicenseAttachments = [{ id: softwareLicenseAttachmentId, originalFileName: 'synthetic-eula.pdf', contentType: 'application/pdf',
+  length: 1024, createdAt: '2026-10-14T12:00:00Z', uploadedBy: 'Synthetic Owner', isEulaDocument: false }];
+const softwareLicenseWrites = [];
+const softwareLicensePreviewRequests = [];
+const softwareLicenseImportAttempts = [];
+let failNextSoftwareLicenseImport = true;
 const assetImportProfiles = [];
 const assetImportProfileWrites = [];
 const assetImportProfileDeleteWrites = [];
@@ -196,6 +210,17 @@ const server = createServer(async (request, response) => {
       const id = url.pathname.split('/').at(-1), item = contractRows.find(contract => contract.id === id);
       result = item ? { contract: { ...item }, assets: [contractAsset], licenses: [contractLicense] } : { message: 'Synthetic contract not found.' };
     }
+    else if (url.pathname === '/api/software-licenses') {
+      const q = (url.searchParams.get('q') || '').toLocaleLowerCase();
+      const items = softwareLicenseRows.filter(item => !q || [item.name, item.publisher, item.supplier, item.licenseReference]
+        .some(value => value?.toLocaleLowerCase().includes(q)));
+      result = { items, total: items.length, page: 1, pageSize: 25 };
+    }
+    else if (url.pathname === `/api/software-licenses/${softwareLicenseId}`) result = {
+      license: { ...softwareLicenseRows.find(item => item.id === softwareLicenseId) }, assignments: [], events: [],
+      attachments: softwareLicenseAttachments.map(item => ({ ...item })), currentEula: null
+    };
+    else if (url.pathname === '/api/software-licenses/import-mappings') result = { items: [] };
     else if (url.pathname.startsWith('/api/contracts/') && url.pathname.endsWith('/attachments')) result = { items: [] };
     else if (url.pathname === '/api/assets/import-mappings') result = { items: assetImportProfiles.map(profile => ({ ...profile, mappings: { ...profile.mappings } })) };
     else if (url.pathname === '/api/assets/custom-fields') result = [];
@@ -217,6 +242,40 @@ const server = createServer(async (request, response) => {
   if (request.headers['x-csrf-token'] !== 'synthetic-asset-csrf') {
     response.writeHead(400, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ message: 'Missing synthetic CSRF token.' })); return;
+  }
+  if (request.method === 'POST' && url.pathname === '/api/software-licenses/import/preview.csv') {
+    assert.equal(typeof body, 'string', 'The license preview must submit the selected CSV as text.');
+    assert.equal(body, 'Lisans,Yayıncı,Ürün sürümü,Tür,Tedarikçi,Koltuk,Birim maliyeti,Para birimi,Alış tarihi,Bitiş tarihi,Otomatik yenileme,Notlar\nSynthetic Imported License,Synthetic Publisher,2,Subscription,Synthetic Import Supplier,5,,TRY,,,false,Synthetic import note\n');
+    softwareLicensePreviewRequests.push({ path: url.pathname, body, csrf: request.headers['x-csrf-token'] });
+    json(response, 200, { isValid: true, rowCount: 1, counts: { licenses: 1 }, errors: [],
+      message: '1 yeni lisans doğrulandı; 1 yeni tedarikçi yalnızca aktarımı onaylarsanız kataloğa eklenecek. Önizleme kayıt eklemedi.' });
+    return;
+  }
+  if (request.method === 'POST' && url.pathname === '/api/software-licenses/import.csv') {
+    softwareLicenseImportAttempts.push({ path: url.pathname, body, csrf: request.headers['x-csrf-token'] });
+    if (failNextSoftwareLicenseImport) {
+      failNextSoftwareLicenseImport = false;
+      json(response, 503, { message: 'Synthetic supplier service unavailable.' });
+      return;
+    }
+    const created = {
+      id: '12121212-1212-4212-8212-121212121212', name: 'Synthetic Imported License', publisher: 'Synthetic Publisher',
+      productVersion: '2', licenseType: 'Subscription', licenseReference: null, supplier: 'Synthetic Import Supplier',
+      seats: 5, assigned: 0, unitCost: null, currency: 'TRY', purchaseDate: null, expirationDate: null,
+      autoRenew: false, requiresEulaAcceptance: false, notes: 'Synthetic import note'
+    };
+    softwareLicenseRows.push(created);
+    softwareLicenseWrites.push({ method: request.method, path: url.pathname, body, csrf: request.headers['x-csrf-token'], created });
+    json(response, 200, { message: '1 lisans ve denetim geçmişi eklendi; 1 yeni tedarikçi kataloğa bağlandı.' });
+    return;
+  }
+  const softwareLicenseAttachmentDelete = url.pathname.match(/^\/api\/software-licenses\/([0-9a-f-]+)\/attachments\/([0-9a-f-]+)$/i);
+  if (request.method === 'DELETE' && softwareLicenseAttachmentDelete) {
+    assert.equal(softwareLicenseAttachmentDelete[1], softwareLicenseId);
+    assert.equal(softwareLicenseAttachmentDelete[2], softwareLicenseAttachmentId);
+    softwareLicenseAttachments.splice(0, softwareLicenseAttachments.length);
+    softwareLicenseWrites.push({ method: request.method, path: url.pathname, csrf: request.headers['x-csrf-token'] });
+    response.writeHead(204); response.end(); return;
   }
   if (request.method === 'POST' && /^\/api\/assets\/import\/preview\.(csv|xlsx)$/.test(url.pathname)) {
     assetImportPreviewRequests.push({ path: url.pathname, headers: request.headers, body });
@@ -1182,6 +1241,100 @@ try {
   assert.equal(contractWrites.at(-1).path, '/api/contracts/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee/restore');
   assert.equal(contractWrites.at(-1).csrf, 'synthetic-asset-csrf');
 
+  await page.locator('#sidebar button[data-page="Yazılım lisansları"]').click();
+  const licenseList = page.locator('#licenseRows');
+  const baselineLicenseRow = licenseList.locator(`tr[data-id="${softwareLicenseId}"]`);
+  await baselineLicenseRow.waitFor({ state: 'visible' });
+  await baselineLicenseRow.locator('.license-open').first().click();
+  const licenseDetail = page.locator('#licenseDialog');
+  await licenseDetail.waitFor({ state: 'visible' });
+  const licenseActionDialog = page.locator('#licenseActionDialog');
+  const beforeLicenseAttachmentCancel = softwareLicenseWrites.length;
+  await page.locator('#licenseAttachments .license-attachment-remove').click();
+  await licenseActionDialog.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#licenseActionTitle').innerText(), 'Lisans dosyasını sil');
+  await page.locator('#licenseActionCancel').click();
+  await licenseActionDialog.waitFor({ state: 'hidden' });
+  assert.equal(softwareLicenseWrites.length, beforeLicenseAttachmentCancel, 'Canceling license attachment deletion must not write.');
+  assert.equal(softwareLicenseAttachments.length, 1, 'Canceling deletion must preserve the synthetic attachment.');
+  await page.locator('#licenseAttachments .license-attachment-remove').click();
+  await licenseActionDialog.waitFor({ state: 'visible' });
+  const licenseAttachmentDeleteResponse = page.waitForResponse(response => response.request().method() === 'DELETE'
+    && new URL(response.url()).pathname === `/api/software-licenses/${softwareLicenseId}/attachments/${softwareLicenseAttachmentId}`);
+  await page.locator('#licenseActionSubmit').click();
+  assert.equal((await licenseAttachmentDeleteResponse).status(), 204, 'Confirmed attachment deletion must call the scoped API.');
+  await page.locator('#licenseAttachments').getByText('Bu lisansa henüz dosya eklenmemiş.').waitFor({ state: 'visible' });
+  assert.equal(softwareLicenseAttachments.length, 0, 'The API-backed attachment deletion must persist in refreshed license detail.');
+  assert.deepEqual(softwareLicenseWrites.at(-1), { method: 'DELETE', path: `/api/software-licenses/${softwareLicenseId}/attachments/${softwareLicenseAttachmentId}`, csrf: 'synthetic-asset-csrf' });
+  await page.locator('#closeLicenseDetail').click();
+  await licenseDetail.waitFor({ state: 'hidden' });
+
+  await page.locator('#licenseImportOpen').click();
+  const licenseImportDialog = page.locator('#licenseImportDialog');
+  await licenseImportDialog.waitFor({ state: 'visible' });
+  const licenseCsv = { name: 'synthetic-license-import.csv', mimeType: 'text/csv', buffer: Buffer.from(
+    'Lisans,Yayıncı,Ürün sürümü,Tür,Tedarikçi,Koltuk,Birim maliyeti,Para birimi,Alış tarihi,Bitiş tarihi,Otomatik yenileme,Notlar\n' +
+    'Synthetic Imported License,Synthetic Publisher,2,Subscription,Synthetic Import Supplier,5,,TRY,,,false,Synthetic import note\n') };
+  await page.locator('#licenseImportFile').setInputFiles(licenseCsv);
+  const licensePreviewResponse = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === '/api/software-licenses/import/preview.csv');
+  await page.locator('#previewLicenseImport').click();
+  assert.equal((await licensePreviewResponse).status(), 200, 'License import must validate through the preview endpoint.');
+  await page.locator('#licenseImportFeedback').getByText('1 yeni lisans doğrulandı; 1 yeni tedarikçi yalnızca aktarımı onaylarsanız kataloğa eklenecek. Önizleme kayıt eklemedi.').waitFor({ state: 'visible' });
+  assert.equal(softwareLicensePreviewRequests.length, 1);
+  assert.equal(softwareLicensePreviewRequests[0].csrf, 'synthetic-asset-csrf');
+  assert.equal(softwareLicenseWrites.length, 1, 'Preview must not create the license or supplier.');
+  assert.equal(await licenseList.locator('tr[data-id]').count(), 1, 'Preview must leave the visible license list unchanged.');
+
+  await page.locator('#commitLicenseImport').click();
+  await licenseActionDialog.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#licenseActionTitle').innerText(), 'Lisans kayıtlarını ekle');
+  await page.locator('#licenseImportFile').setInputFiles({ name: 'replaced-license-import.csv', mimeType: 'text/csv', buffer: Buffer.from('replacement') });
+  await page.locator('#licenseActionSubmit').click();
+  await page.locator('#licenseActionError').getByText('Dosya değişti. Önce yeniden doğrulayın.').waitFor({ state: 'visible' });
+  assert.equal(softwareLicenseWrites.length, 1, 'Replacing the file after preview must block stale confirmation without an API write.');
+  await page.locator('#licenseActionCancel').click();
+  await licenseActionDialog.waitFor({ state: 'hidden' });
+  await page.locator('#licenseImportFile').setInputFiles(licenseCsv);
+  const retryPreviewResponse = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === '/api/software-licenses/import/preview.csv');
+  await page.locator('#previewLicenseImport').click();
+  assert.equal((await retryPreviewResponse).status(), 200);
+  const licenseWritesBeforeImportCancel = softwareLicenseWrites.length;
+  await page.locator('#commitLicenseImport').click();
+  await licenseActionDialog.waitFor({ state: 'visible' });
+  await page.locator('#licenseActionCancel').click();
+  await licenseActionDialog.waitFor({ state: 'hidden' });
+  assert.equal(softwareLicenseWrites.length, licenseWritesBeforeImportCancel, 'Canceling confirmed license import must not write.');
+  assert.equal(softwareLicenseRows.length, 1, 'Canceling import must preserve the original license list.');
+
+  await page.locator('#commitLicenseImport').click();
+  await licenseActionDialog.waitFor({ state: 'visible' });
+  const failedLicenseImportResponse = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === '/api/software-licenses/import.csv');
+  await page.locator('#licenseActionSubmit').click();
+  assert.equal((await failedLicenseImportResponse).status(), 503, 'The synthetic server failure must reach the dialog as an HTTP error.');
+  await page.locator('#licenseActionError').getByText('Synthetic supplier service unavailable.').waitFor({ state: 'visible' });
+  assert.equal(softwareLicenseWrites.length, licenseWritesBeforeImportCancel, 'A failed import response must not be reported as a successful write.');
+  assert.equal(await page.locator('#licenseActionSubmit').isEnabled(), true, 'A failed import must permit deliberate retry.');
+  const licenseImportResponse = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === '/api/software-licenses/import.csv');
+  await page.locator('#licenseActionSubmit').click();
+  assert.equal((await licenseImportResponse).status(), 200, 'Only an explicit successful confirmation may submit the import.');
+  await licenseActionDialog.waitFor({ state: 'hidden' });
+  await licenseList.locator('tr[data-id="12121212-1212-4212-8212-121212121212"]').waitFor({ state: 'visible' });
+  assert.equal(softwareLicenseWrites.length, licenseWritesBeforeImportCancel + 1, 'Confirmed import must make exactly one API write.');
+  assert.equal(softwareLicenseRows.length, 2, 'The imported license must remain visible after API list refresh.');
+  assert.equal(softwareLicenseWrites.at(-1).method, 'POST');
+  assert.equal(softwareLicenseWrites.at(-1).path, '/api/software-licenses/import.csv');
+  assert.equal(softwareLicenseWrites.at(-1).body, licenseCsv.buffer.toString('utf8'));
+  assert.equal(softwareLicenseWrites.at(-1).csrf, 'synthetic-asset-csrf');
+  assert.equal(softwareLicenseImportAttempts.length, 2, 'The failed attempt and deliberate retry must be the only import requests.');
+  assert.ok(softwareLicenseImportAttempts.every(attempt => attempt.path === '/api/software-licenses/import.csv'
+    && attempt.body === licenseCsv.buffer.toString('utf8') && attempt.csrf === 'synthetic-asset-csrf'));
+  await page.locator('#closeLicenseImport').click();
+  await licenseImportDialog.waitFor({ state: 'hidden' });
+
   await page.locator('#sidebar button[data-page="Varlıklar"]').click();
   await page.locator('#assetRows .asset-name').filter({ hasText: asset.name }).click();
   await page.locator('#assetDialog').waitFor({ state: 'visible' });
@@ -1317,7 +1470,7 @@ try {
   assert.equal(visitedDestinations.size, destinationCount);
 
   assert.deepEqual(pageErrors, [], `The asset detail UI must not throw: ${pageErrors.join(' | ')}`);
-  console.log(`PASS: owner Ctrl+N; asset edit/status/trash/audit/maintenance/transfer/assignment; expired-session dialog closure, deliberate re-login, and no stale-write replay; company JSON restore preview and confirmations; company contract list/search/filter/detail/create/cancel/archive/restore with CSRF; all ${visitedDestinations.size} sidebar destinations render; ${placeholderDestinations.length} open the explicit feature/module status surface (${placeholderDestinations.join(', ')}); browser error-free completion.`);
+  console.log(`PASS: owner Ctrl+N; asset edit/status/trash/audit/maintenance/transfer/assignment; expired-session dialog closure, deliberate re-login, and no stale-write replay; company JSON restore preview and confirmations; company contract list/search/filter/detail/create/cancel/archive/restore with CSRF; license attachment delete cancel/confirm persistence; license CSV preview, stale-file rejection, import cancel, error retry, confirmed CSRF apply and list persistence; all ${visitedDestinations.size} sidebar destinations render; ${placeholderDestinations.length} open the explicit feature/module status surface (${placeholderDestinations.join(', ')}); browser error-free completion.`);
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));
