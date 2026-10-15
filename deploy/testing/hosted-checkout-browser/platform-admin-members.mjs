@@ -59,7 +59,21 @@ const demoLead = {
   consentNoticeVersion: 'synthetic-v1', followUpAt: '2026-10-11T10:00:00Z', assignedAdminUserId: null, companyId: null,
   phone: '+905550000002', message: 'Synthetic request for a product demo.', teamSize: '25', assetCount: '120', jobTitle: 'IT Manager'
 };
+const newerDemoLeadId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const newerDemoLead = {
+  ...demoLead, id: newerDemoLeadId, companyName: 'Synthetic Newer Demo', contactName: 'Synthetic Newer Contact',
+  email: 'newer-lead@example.invalid', status: 'New', followUpAt: null, companyId: null
+};
+const slowCompanyId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const fastCompanyId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+const demoCompanyOptions = [
+  { id: companyId, name: 'Synthetic Demo Company', slug: 'synthetic-demo' },
+  { id: slowCompanyId, name: 'Slow Synthetic Company', slug: 'slow-synthetic' },
+  { id: fastCompanyId, name: 'Fast Synthetic Company', slug: 'fast-synthetic' }
+];
 const demoLeadHistory = [];
+const newerDemoLeadHistory = [];
+let delayOlderDemoDetail = false;
 const paymentFollowUpHistory = [];
 const browserErrors = [];
 let reauthenticated = false;
@@ -102,16 +116,38 @@ const server = createServer(async (request, response) => {
     });
     if (path === '/api/platform/companies/renewals') return json(response, { items: [], total: 0, page: 1, pageSize: 50 });
     if (path === '/api/platform/companies' && url.searchParams.get('followUp') === 'overdue') return json(response, { items: companies, total: companies.length, page: 1, pageSize: 50 });
-    if (path === '/api/platform/companies') return json(response, { items: companies, total: companies.length, page: 1, pageSize: 200 });
-    if (path === '/api/platform/demo-requests') return json(response, {
-      page: Number(url.searchParams.get('page') || 1), pageSize: Number(url.searchParams.get('pageSize') || 25), total: 1,
-      items: [{ ...demoLead, assignedAdminName: demoLead.assignedAdminUserId ? 'Synthetic Platform Admin' : null,
-        linkedCompanyName: demoLead.companyId ? 'Synthetic Demo Company' : null }]
-    });
-    if (path === `/api/platform/demo-requests/${demoLeadId}`) return json(response, { lead: { ...demoLead,
-      assignedAdminName: demoLead.assignedAdminUserId ? 'Synthetic Platform Admin' : null,
-      linkedCompanyName: demoLead.companyId ? 'Synthetic Demo Company' : null,
-      demoGrantedAt: demoLead.status === 'DemoGranted' ? '2026-10-12T10:00:00Z' : null }, history: [...demoLeadHistory] });
+    if (path === '/api/platform/companies') {
+      const q = (url.searchParams.get('q') || '').trim().toLowerCase();
+      if (q === 'slow') await new Promise(resolve => setTimeout(resolve, 450));
+      const items = q === 'slow' ? [demoCompanyOptions[1]] : q === 'fast' ? [demoCompanyOptions[2]] : demoCompanyOptions;
+      return json(response, { items, total: items.length, page: 1, pageSize: 200 });
+    }
+    if (path === '/api/platform/demo-requests') {
+      const q = (url.searchParams.get('q') || '').trim().toLowerCase();
+      if (url.searchParams.get('followUp') === 'overdue') return json(response, {
+        page: 1, pageSize: 50, total: 1,
+        items: [{ ...demoLead, assignedAdminName: demoLead.assignedAdminUserId ? 'Synthetic Platform Admin' : null,
+          linkedCompanyName: demoLead.companyId ? 'Synthetic Demo Company' : null }]
+      });
+      if (q === 'slow') await new Promise(resolve => setTimeout(resolve, 450));
+      const leads = q === 'slow' ? [demoLead] : q === 'fast' ? [newerDemoLead] : [demoLead, newerDemoLead];
+      return json(response, {
+        page: Number(url.searchParams.get('page') || 1), pageSize: Number(url.searchParams.get('pageSize') || 25), total: leads.length,
+        items: leads.map(lead => ({ ...lead, assignedAdminName: lead.assignedAdminUserId ? 'Synthetic Platform Admin' : null,
+          linkedCompanyName: lead.companyId ? 'Synthetic Demo Company' : null }))
+      });
+    }
+    if (path === `/api/platform/demo-requests/${demoLeadId}`) {
+      if (delayOlderDemoDetail) { delayOlderDemoDetail = false; await new Promise(resolve => setTimeout(resolve, 600)); }
+      return json(response, { lead: { ...demoLead,
+        assignedAdminName: demoLead.assignedAdminUserId ? 'Synthetic Platform Admin' : null,
+        linkedCompanyName: demoLead.companyId ? 'Synthetic Demo Company' : null,
+        demoGrantedAt: demoLead.status === 'DemoGranted' ? '2026-10-12T10:00:00Z' : null }, history: [...demoLeadHistory] });
+    }
+    if (path === `/api/platform/demo-requests/${newerDemoLeadId}`) return json(response, { lead: { ...newerDemoLead,
+      assignedAdminName: newerDemoLead.assignedAdminUserId ? 'Synthetic Platform Admin' : null,
+      linkedCompanyName: newerDemoLead.companyId ? 'Synthetic Demo Company' : null,
+      demoGrantedAt: newerDemoLead.status === 'DemoGranted' ? '2026-10-12T10:00:00Z' : null }, history: [...newerDemoLeadHistory] });
     if (path === '/api/platform/checkout-orders') return json(response, { items: [{
       id: failedOrderId, companyName: 'Synthetic Failed Payment', slug: 'synthetic-failed-payment',
       contactEmail: 'billing@example.invalid', ownerName: 'Synthetic Billing Owner', ownerEmail: 'billing@example.invalid',
@@ -196,6 +232,13 @@ const server = createServer(async (request, response) => {
     demoLeadHistory.unshift({ occurredAt: demoLead.updatedAt, actor: 'Synthetic Platform Admin', action: 'DemoRequestUpdated', details: body.note || '' });
     return json(response, { id: demoLeadId, status: demoLead.status, assignedAdminUserId: demoLead.assignedAdminUserId,
       followUpAt: demoLead.followUpAt, lastContactedAt: demoLead.lastContactedAt, companyId: demoLead.companyId, updatedAt: demoLead.updatedAt });
+  }
+  if (path === `/api/platform/demo-requests/${newerDemoLeadId}` && request.method === 'PATCH') {
+    writes.push({ method: request.method, path, body, csrf: request.headers['x-csrf-token'] });
+    Object.assign(newerDemoLead, body, { updatedAt: new Date().toISOString(), lastContactedAt: new Date().toISOString() });
+    newerDemoLeadHistory.unshift({ occurredAt: newerDemoLead.updatedAt, actor: 'Synthetic Platform Admin', action: 'DemoRequestUpdated', details: body.note || '' });
+    return json(response, { id: newerDemoLeadId, status: newerDemoLead.status, assignedAdminUserId: newerDemoLead.assignedAdminUserId,
+      followUpAt: newerDemoLead.followUpAt, lastContactedAt: newerDemoLead.lastContactedAt, companyId: newerDemoLead.companyId, updatedAt: newerDemoLead.updatedAt });
   }
   if (path === '/api/platform/site-content') return json(response, []);
   if (path === '/api/platform/demo-requests') return json(response, { items: [], total: 0, page: 1, pageSize: 25 });
@@ -285,6 +328,91 @@ try {
   assert.equal(demoLead.assignedAdminUserId, platformAdminId);
   assert.equal(demoLead.companyId, companyId);
   assert.equal(demoLeadHistory.length, 2, 'Each successful lead update must append visible history.');
+  await page.locator('#nav [data-view="demo-requests"]').click();
+  const demoLeadsTable = page.locator('#demoLeadsTable');
+  await demoLeadsTable.getByText('Synthetic Demo Lead').waitFor({ state: 'visible' });
+  await demoLeadsTable.getByText('Synthetic Newer Demo').waitFor({ state: 'visible' });
+  const demoSearch = page.locator('#demoLeadSearch');
+  const slowLeadRequest = page.waitForRequest(request => {
+    const requestUrl = new URL(request.url());
+    return requestUrl.pathname === '/api/platform/demo-requests' && requestUrl.searchParams.get('q') === 'slow';
+  });
+  const slowLeadResponse = page.waitForResponse(response => {
+    const requestUrl = new URL(response.url());
+    return requestUrl.pathname === '/api/platform/demo-requests' && requestUrl.searchParams.get('q') === 'slow';
+  });
+  await demoSearch.fill('slow'); await demoSearch.press('Enter'); await slowLeadRequest;
+  const fastLeadResponse = page.waitForResponse(response => {
+    const requestUrl = new URL(response.url());
+    return requestUrl.pathname === '/api/platform/demo-requests' && requestUrl.searchParams.get('q') === 'fast';
+  });
+  await demoSearch.fill('fast'); await demoSearch.press('Enter');
+  assert.equal((await fastLeadResponse).status(), 200);
+  await demoLeadsTable.getByText('Synthetic Newer Demo').waitFor({ state: 'visible' });
+  await slowLeadResponse;
+  assert.match(await demoLeadsTable.innerText(), /Synthetic Newer Demo/);
+  assert.doesNotMatch(await demoLeadsTable.innerText(), /Synthetic Demo Lead/,
+    'An older filtered list response must not replace the latest search result.');
+
+  const allLeadResponse = page.waitForResponse(response => {
+    const requestUrl = new URL(response.url());
+    return requestUrl.pathname === '/api/platform/demo-requests' && !requestUrl.searchParams.has('q');
+  });
+  await demoSearch.fill(''); await page.locator('#searchDemoLeads').click(); await allLeadResponse;
+  await demoLeadsTable.getByText('Synthetic Demo Lead').waitFor({ state: 'visible' });
+  delayOlderDemoDetail = true;
+  const olderDetailRequest = page.waitForRequest(request => new URL(request.url()).pathname === `/api/platform/demo-requests/${demoLeadId}`);
+  const olderDetailResponse = page.waitForResponse(response => new URL(response.url()).pathname === `/api/platform/demo-requests/${demoLeadId}`);
+  await demoLeadsTable.locator('tr').filter({ hasText: 'Synthetic Demo Lead' }).locator('[data-demo-lead-detail]').click();
+  await olderDetailRequest;
+  const newerDetailResponse = page.waitForResponse(response => new URL(response.url()).pathname === `/api/platform/demo-requests/${newerDemoLeadId}`);
+  await demoLeadsTable.locator('tr').filter({ hasText: 'Synthetic Newer Demo' }).locator('[data-demo-lead-detail]').click();
+  assert.equal((await newerDetailResponse).status(), 200);
+  await page.locator('#demoLeadDetailTitle').getByText('Synthetic Newer Demo').waitFor({ state: 'visible' });
+
+  const companySearch = page.locator('#demoLeadCompanySearch');
+  const slowCompanyRequest = page.waitForRequest(request => {
+    const requestUrl = new URL(request.url());
+    return requestUrl.pathname === '/api/platform/companies' && requestUrl.searchParams.get('q') === 'slow';
+  });
+  const slowCompanyResponse = page.waitForResponse(response => {
+    const requestUrl = new URL(response.url());
+    return requestUrl.pathname === '/api/platform/companies' && requestUrl.searchParams.get('q') === 'slow';
+  });
+  await companySearch.fill('slow');
+  await slowCompanyRequest;
+  const fastCompanyResponse = page.waitForResponse(response => {
+    const requestUrl = new URL(response.url());
+    return requestUrl.pathname === '/api/platform/companies' && requestUrl.searchParams.get('q') === 'fast';
+  });
+  await companySearch.fill('fast');
+  assert.equal((await fastCompanyResponse).status(), 200);
+  await slowCompanyResponse;
+  const companyOptions = await page.locator('#demoLeadCompany option').allTextContents();
+  assert.ok(companyOptions.some(option => option.includes('Fast Synthetic Company')));
+  assert.ok(!companyOptions.some(option => option.includes('Slow Synthetic Company')),
+    'An older company search response must not replace the latest company options.');
+
+  await olderDetailResponse;
+  assert.equal(await page.locator('#demoLeadDetailTitle').innerText(), 'Synthetic Newer Demo',
+    'A delayed older detail response must not replace the currently selected request.');
+  assert.equal(await page.locator('#demoLeadDetailBody [name="status"]').inputValue(), 'New',
+    'The form fields must belong to the newer selected request after the older response finishes.');
+  await page.locator('#demoLeadDetailBody [name="status"]').selectOption('Contacted');
+  await page.locator('#demoLeadDetailBody [name="companyId"]').selectOption(fastCompanyId);
+  await page.locator('#demoLeadDetailBody [name="note"]').fill('Synthetic newer request update');
+  const newerLeadWriteResponse = page.waitForResponse(response => response.request().method() === 'PATCH'
+    && new URL(response.url()).pathname === `/api/platform/demo-requests/${newerDemoLeadId}`);
+  await page.locator('#demoLeadDetailBody button[type="submit"]').click();
+  assert.equal((await newerLeadWriteResponse).status(), 200);
+  const newerLeadWrite = writes.find(item => item.path === `/api/platform/demo-requests/${newerDemoLeadId}`);
+  assert.equal(newerLeadWrite.body.status, 'Contacted');
+  assert.equal(newerLeadWrite.body.companyId, fastCompanyId);
+  assert.equal(newerLeadWrite.body.note, 'Synthetic newer request update');
+  assert.equal(newerDemoLead.status, 'Contacted');
+  assert.equal(newerDemoLead.companyId, fastCompanyId);
+  assert.equal(newerDemoLeadHistory.length, 1, 'Saving the current details after out-of-order responses must audit the selected lead only.');
+
   await page.locator('#nav [data-view="orders"]').click();
   const paymentRow = page.locator('#ordersTable tr').filter({ hasText: 'Synthetic Failed Payment' });
   await paymentRow.waitFor({ state: 'visible' });
@@ -586,7 +714,7 @@ try {
   assert.equal(writes.length, writesBeforeAuditRead, 'Audit filtering, paging, expansion and empty results must be read-only.');
 
   assert.deepEqual(browserErrors, [], `Platform member UI threw: ${browserErrors.join(' | ')}`);
-  console.log('PASS: real Chromium account/security/membership/payment timeline; demo lead status, assignment, follow-up, company link, CSRF write and history persistence; member search, cancel-without-write, reauthenticated role update, synthetic invitation, plan create/update/validation/publication reload and maintenance entitlement persistence; audited company subscription plan/date editing with cancel and persistence; platform audit text/source/action/target/date filters, exclusive end-date boundary, clear, paging, event detail, no-match, surfaced 503 and retry behavior without writes.');
+  console.log('PASS: real Chromium account/security/membership/payment timeline; demo CRM list/company-search/detail stale-response protection plus status, assignment, follow-up, company link, CSRF write and history persistence; member search, cancel-without-write, reauthenticated role update, synthetic invitation, plan create/update/validation/publication reload and maintenance entitlement persistence; audited company subscription plan/date editing with cancel and persistence; platform audit text/source/action/target/date filters, exclusive end-date boundary, clear, paging, event detail, no-match, surfaced 503 and retry behavior without writes.');
 } finally {
   await browser?.close();
   await new Promise(resolve => server.close(resolve));
