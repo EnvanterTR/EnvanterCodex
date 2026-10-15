@@ -364,6 +364,20 @@ try {
   await page.locator('#assetDialog #closeDialog').click();
   await page.locator('#assetDialog').waitFor({ state: 'hidden' });
 
+  await assetRow.locator('[data-asset-action="audit"]').click();
+  await page.locator('#assetDialog').waitFor({ state: 'visible' });
+  const rowAuditDialog = page.locator('#assetAuditDialog');
+  await rowAuditDialog.waitFor({ state: 'visible' });
+  assert.equal(await rowAuditDialog.getAttribute('data-bulk-mode'), 'false');
+  assert.equal(await page.locator('#assetAuditForm').evaluate(form => form.querySelector('input[name="auditDate"]')?.value?.length), 10,
+    'The row audit shortcut must prepare a valid single-asset audit date.');
+  const beforeRowAuditCancel = apiRequests.length;
+  await page.locator('[data-close-asset-audit]').first().click();
+  await rowAuditDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, beforeRowAuditCancel, 'Canceling the row audit shortcut must not record an audit.');
+  await page.locator('#assetDialog #closeDialog').click();
+  await page.locator('#assetDialog').waitFor({ state: 'hidden' });
+
   await assetRow.click({ button: 'right' });
   const contextMenu = page.locator('#assetContextMenu');
   await contextMenu.waitFor({ state: 'visible' });

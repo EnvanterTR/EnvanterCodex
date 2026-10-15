@@ -2,7 +2,7 @@
 
 Güncelleme: 14 Ekim 2026
 
-15 Ekim 2026 devamı — Varlık detayındaki “Etiketi kopyala” sentetik Chromium kabulinde panoya `QA-ASSET-001` yazdı. Satır bağlam menüsündeki “Varlığı kopyala” kaynak adını taşıdı, benzersiz etiket/seri no alanlarını boş bıraktı ve iptal POST üretmedi. Satırdaki zimmet kısayolu şirket çalışanlarını içeren formu açtı; iptal yazmadı. Atanmış kayıttaki satır iade kısayolu testinde iade açıklaması çalışan adını göstermedi; kök neden API referans çalışan adının `currentAsset` nesnesine alınmaması ve açıklamanın `returns` kaynağına gereksiz bağlanmasıydı. İki eşleme/koşul düzeltildi; UI artık doğru çalışan adını gösteriyor, iptal yazmıyor. Tam hosted browser kabul paketi geçti. Bu sonuçlar yalnız belirtilen eylemleri kapsar. 13 modal eyleminin ve 7 satır kısayolunun tamamı hâlâ tek tek kabul edilmedi; fiziksel yazdırma yapılmadı.
+15 Ekim 2026 devamı — Varlık detayındaki “Etiketi kopyala” sentetik Chromium kabulinde panoya `QA-ASSET-001` yazdı. Satır bağlam menüsündeki “Varlığı kopyala” kaynak adını taşıdı, benzersiz etiket/seri no alanlarını boş bıraktı ve iptal POST üretmedi. Satırdaki zimmet kısayolu şirket çalışanlarını içeren formu açtı; iptal yazmadı. Atanmış kayıttaki satır iade kısayolu testinde iade açıklaması çalışan adını göstermedi; API referans eşlemesi ve yalnız `returns` kaynağında isim gösteren koşul düzeltildi. Artık doğru çalışan adı gösteriliyor ve iptal yazmıyor. Fiziksel denetim satır kısayolu da tek-varlık denetim formunu geçerli tarihle açtı; iptal kayıt oluşturmadı. Tam hosted browser kabul paketi geçti. Bu sonuçlar yalnız belirtilen eylemleri kapsar. 13 modal eyleminin ve 7 satır kısayolunun tamamı hâlâ tek tek kabul edilmedi; fiziksel yazdırma yapılmadı.
 
 ## Kapsam ve kaynak
 
