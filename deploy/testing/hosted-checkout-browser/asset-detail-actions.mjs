@@ -34,6 +34,7 @@ const contractRows = [{ id: contractId, name: 'Synthetic Cloud Support Agreement
 const contractWrites = [];
 const assetImportProfiles = [];
 const assetImportProfileWrites = [];
+const assetImportProfileDeleteWrites = [];
 const assetImportPreviewRequests = [];
 const contractAsset = { id: contractAssetId, assetTag: 'QA-CONTRACT-ASSET', name: 'Synthetic Contract Device', serialNumber: 'QA-CONTRACT-SERIAL' };
 const contractLicense = { id: contractLicenseId, name: 'Synthetic Office License', licenseReference: 'QA-LICENSE-001', expirationDate: '2027-10-01' };
@@ -188,6 +189,12 @@ const server = createServer(async (request, response) => {
     assetImportProfileWrites.push({ method: request.method, path: url.pathname, body, csrf: request.headers['x-csrf-token'] });
     json(response, 201, profile);
     return;
+  }
+  const assetImportProfileDeleteMatch = url.pathname.match(/^\/api\/assets\/import-mappings\/([0-9a-f-]+)$/i);
+  if (request.method === 'DELETE' && assetImportProfileDeleteMatch) {
+    assetImportProfiles.splice(0, assetImportProfiles.length, ...assetImportProfiles.filter(profile => profile.id !== assetImportProfileDeleteMatch[1]));
+    assetImportProfileDeleteWrites.push({ method: request.method, path: url.pathname, csrf: request.headers['x-csrf-token'] });
+    response.writeHead(204); response.end(); return;
   }
   if (request.method === 'POST' && url.pathname === `/api/assets/${assetId}/attachments`) {
     assert.ok(body?.file && body.file.filename === 'synthetic-proof.png', 'Upload must carry the selected file.');
@@ -422,9 +429,23 @@ try {
     assetImportProfileWrites[0].body.mappings, 'Reloaded saved profile must send its exact field mapping to preview.');
   assert.equal(assetImportProfileWrites.length, 1, 'Reusing a profile must not create another saved profile.');
   assert.equal(assetImportProfileWrites.length + restoreApplyWrites.length, 1, 'The acceptance must not apply CSV or restore data.');
+  await page.locator('#deleteAssetImportProfile').click();
+  await page.locator('#employeeActionDialog').waitFor({ state: 'visible' });
+  assert.match(await page.locator('#employeeActionSummary').innerText(), /Seçili eşleme profili silinsin mi/);
+  await page.locator('[data-close-employee-action]').last().click();
+  await page.locator('#employeeActionDialog').waitFor({ state: 'hidden' });
+  assert.equal(assetImportProfileDeleteWrites.length, 0, 'Canceling profile deletion must not delete the saved mapping.');
+  assert.equal(await page.locator('#assetImportProfile').inputValue(), 'abababab-abab-4bab-8bab-abababababab', 'Cancel must retain the selected profile.');
+  await page.locator('#deleteAssetImportProfile').click();
+  await page.locator('#employeeActionDialog').waitFor({ state: 'visible' });
+  await page.locator('#employeeActionSubmit').click();
+  await page.locator('#employeeActionDialog').waitFor({ state: 'hidden' });
+  await page.waitForFunction(() => document.querySelector('#assetImportProfile')?.options.length === 1);
+  assert.deepEqual(assetImportProfileDeleteWrites, [{ method: 'DELETE', path: '/api/assets/import-mappings/abababab-abab-4bab-8bab-abababababab', csrf: 'synthetic-asset-csrf' }]);
+  assert.equal(await page.locator('#deleteAssetImportProfile').isDisabled(), true, 'Deleted profile must no longer be selected or deletable.');
   await page.locator('#closeImportPreview').click();
   await assetImportDialog.waitFor({ state: 'hidden' });
-  console.log('PASS: asset CSV mapping profile validates unknown columns, saves with CSRF, reloads after dialog reopen, and re-previews with the persisted mapping without importing rows.');
+  console.log('PASS: asset CSV mapping profile maps unknown columns, saves/reloads/reuses with CSRF, cancels deletion without writing, and deletes only after explicit confirmation; no CSV rows were imported.');
 
   await page.locator('#pageTitle').click();
   await page.keyboard.press('Control+n');
