@@ -24,6 +24,8 @@ Güncelleme: 14 Ekim 2026
 
 15 Ekim 2026 devamı — Ayarlar altında `Bildirimler` menüsü artık seçimde zil/tercih panelini, `Güvenlik` menüsü hesap güvenliği/MFA penceresini doğrudan açıyor; ikinci bir kısayol düğmesi adımı kaldırıldı. Bildirim dışarı-tıklama dinleyicisi menü açılış tıklamasını kapatma olarak yorumlamayacak şekilde düzeltildi. Hosted Chromium bildirim formunu ve güvenlik penceresini menüden açtı; salt okunur görüntüleme yazma oluşturmadı. `Verify-AppNavigation.mjs` ve tam hosted browser paketi geçti. Merkezi şirket güvenlik politikası/SSO hâlâ açık kapsamdır.
 
+15 Ekim 2026 devamı — `53f13f1` web imajı yerel `envantertr-product-dev` içindeki yalnızca `web` servisine oluşturulup yeniden başlatıldı; DB ve public-site servisleri/volume'ları değiştirilmedi. Sonrasında `localhost:8080/`, `/api/status`, `/api/setup/status` ve `localhost:8081/demo/` HTTP 200; API `ready`, setup gerekmiyor, DB healthy ve dal `origin/main` ile eşitti. Bildirim ve güvenlik menülerinin oturumlu UI akışı hosted Chromium kabulinde doğrulandı. Bu, yerel önizleme güncellemesidir; üretim canlı adreslerinin proxy sorunu çözülmedi.
+
 ## Kapsam ve kaynak
 
 Bu dosya, bu Codex görevi içindeki erişilebilir kullanıcı isteklerinin ve 11 Ekim tarihli ayrıntılı listenin proje iş planına dönüştürülmüş indeksidir. Birebir konuşma dökümü değildir. Ayrıntılı başlık ve durum listesi `docs/USER-REQUEST-CHECKLIST-2026-10-11.md` dosyasında özgün haliyle korunmuştur; bu listedeki ✅/🟡/❌ işaretleri kullanıcının 11 Ekim tarihli başlangıç beyanıdır, bugünkü kodun yeniden doğrulanmış sonucu değildir. Parola ve diğer kimlik bilgileri bu belgelere alınmaz.
