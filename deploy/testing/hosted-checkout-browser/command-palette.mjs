@@ -7,7 +7,9 @@ const syntheticCompanyId = '11111111-1111-4111-8111-111111111111';
 const syntheticUserId = '22222222-2222-4222-8222-222222222222';
 const appHtml = await readFile('/checkout-site/company-app.html');
 const apiRequests = [];
+const loginAttempts = [];
 let subscriptionMode = 'full';
+let loginMode = false;
 let notificationPreferences = { enabledKinds: ['maintenance', 'audit', 'license', 'warranty', 'return', 'reservation'], emailEnabledKinds: [] };
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || '/', 'http://127.0.0.1');
@@ -34,6 +36,12 @@ const server = createServer(async (request, response) => {
     }
     apiRequests.push(record);
     if (request.method !== 'GET') {
+      if (loginMode && request.method === 'POST' && url.pathname === '/api/session/login') {
+        loginAttempts.push(record);
+        response.writeHead(401, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+        response.end(JSON.stringify({ message: 'Giriş bilgileri geçersiz veya hesap geçici olarak kullanılamıyor.' }));
+        return;
+      }
       if (request.method === 'PUT' && url.pathname === '/api/notifications/preferences' && record.csrf === 'synthetic-viewer-csrf') {
         notificationPreferences = {
           enabledKinds: [...new Set((record.body?.enabledKinds || []).map(value => String(value).toLowerCase()))],
@@ -50,6 +58,11 @@ const server = createServer(async (request, response) => {
       }
       response.writeHead(405, { 'content-type': 'application/json' });
       response.end(JSON.stringify({ message: 'Read-only browser acceptance mock.' }));
+      return;
+    }
+    if (loginMode && url.pathname === '/api/session') {
+      response.writeHead(401, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      response.end(JSON.stringify({ message: 'Synthetic signed-out session.' }));
       return;
     }
     const data = url.pathname === '/api/status'
@@ -312,7 +325,34 @@ try {
   assert.equal(writes.length, 2, 'Only the explicitly saved synthetic user notification and appearance preferences may write.');
   assert.deepEqual(writes.map(item => item.path).sort(), ['/api/appearance/preferences', '/api/notifications/preferences']);
   assert.deepEqual(writes.find(item => item.path === '/api/appearance/preferences')?.body, { theme: 'dark', language: 'en' });
-  console.log('PASS: synthetic viewer role visibility; keyboard/sidebar navigation; notification menu shortcut, cancel, save and persistence; profile security reads; CSRF-protected appearance preferences; five-language expiry notice; no unrelated writes/browser errors.');
+
+  loginMode = true;
+  const loginPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  loginPage.setDefaultTimeout(10_000);
+  const loginPageErrors = [];
+  loginPage.on('pageerror', error => loginPageErrors.push(error.message));
+  await loginPage.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: 'domcontentloaded' });
+  await loginPage.locator('#loginConnectionStatus').getByText(/Sunucu ve veritabanı hazır/).waitFor({ state: 'visible' });
+  assert.equal(await loginPage.locator('#loginForm button[type="submit"]').isDisabled(), false,
+    'A ready database must leave the sign-in action available.');
+  await loginPage.locator('#loginForm [name="email"]').fill('qa-login@example.invalid');
+  await loginPage.locator('#loginForm [name="password"]').fill('Synthetic-only-password');
+  await loginPage.locator('#loginForm button[type="submit"]').click();
+  await loginPage.locator('#authError').getByText('Giriş bilgileri geçersiz veya hesap geçici olarak kullanılamıyor.').waitFor({ state: 'visible' });
+  await loginPage.locator('#loginConnectionStatus').getByText(/bu giriş hatası bağlantıdan kaynaklanmıyor/i).waitFor({ state: 'visible' });
+  assert.equal(await loginPage.locator('#loginForm button[type="submit"]').isDisabled(), false,
+    'A rejected synthetic login must allow a deliberate retry.');
+  assert.equal(loginAttempts.length, 1, 'A rejected login must not recurse or be silently retried.');
+  assert.equal(loginAttempts[0].method, 'POST');
+  assert.equal(loginAttempts[0].csrf, 'synthetic-viewer-csrf');
+  assert.deepEqual(loginAttempts[0].body, { email: 'qa-login@example.invalid', password: 'Synthetic-only-password', companyId: null, rememberMe: true, twoFactorCode: null });
+  assert.equal(new URL(loginPage.url()).search, '', 'Login details must not be sent in the URL.');
+  await loginPage.locator('#retryApiButton').click();
+  await loginPage.locator('#loginConnectionStatus').getByText(/bu giriş hatası bağlantıdan kaynaklanmıyor/i).waitFor({ state: 'visible' });
+  assert.equal(loginAttempts.length, 1, 'Retrying the server check must not resubmit login credentials.');
+  assert.deepEqual(loginPageErrors, [], `The signed-out login UI must not throw browser errors: ${loginPageErrors.join(' | ')}`);
+  await loginPage.close();
+  console.log('PASS: synthetic viewer role visibility; keyboard/sidebar navigation; notification cancel/save persistence; profile security and appearance preferences; five-language expiry notice; signed-out login shows credential rejection beside ready-server diagnosis, posts once with CSRF, keeps credentials out of the URL, and retries health without resubmitting.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

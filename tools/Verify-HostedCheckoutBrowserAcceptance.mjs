@@ -86,6 +86,10 @@ assert.match(palette, /apiRequests\.some\(item => item\.path === '\/api\/notific
 assert.match(palette, /sidebar \[data-group="settings"\]/);
 assert.match(palette, /featureStatusNotificationButton/);
 assert.match(palette, /notifications menu must expose its working preferences shortcut/i);
+assert.match(palette, /signed-out login shows credential rejection beside ready-server diagnosis/);
+assert.match(palette, /A rejected login must not recurse or be silently retried/);
+assert.match(palette, /Retrying the server check must not resubmit login credentials/);
+assert.match(palette, /Login details must not be sent in the URL/);
 assert.match(palette, /notificationWrite\?\.csrf, 'synthetic-viewer-csrf'/);
 assert.match(palette, /Saved notification choices must reload from the API-backed synthetic preference record/);
 assert.match(palette, /Canceling notification edits must not write preferences/);
@@ -96,7 +100,7 @@ assert.match(companyApp, /cancel\.textContent\s*=\s*t\('Vazgeç'\)/);
 assert.match(palette, /userAvatar.*click/);
 assert.match(palette, /apiRequests\.some\(item => item\.path === '\/api\/session\/devices' && item\.method === 'GET'\)/);
 assert.match(palette, /apiRequests\.some\(item => item\.path === '\/api\/session\/2fa' && item\.method === 'GET'\)/);
-assert.match(palette, /notification menu shortcut, cancel, save and persistence/);
+assert.match(palette, /notification cancel\/save persistence/);
 assert.match(palette, /Canceling appearance settings must not write preferences/);
 assert.match(palette, /appearanceDialog\.waitFor\(\{ state: 'visible' \}\)/);
 assert.match(palette, /themePreference'\)\.selectOption\('dark'\)/);
@@ -118,4 +122,4 @@ assert.match(script, /pageErrors/);
 assert.match(workflow, /Verify-HostedCheckoutBrowserAcceptance\.mjs/);
 assert.match(workflow, /Run hosted Cloud checkout in Chromium[\s\S]*?docker run --rm --init envantertr-hosted-checkout-browser-ci/);
 
-console.log('Hosted checkout, role-filtered command palette, notification preference menu/save persistence, profile security reads, and expired-subscription language browser harness verification passed.');
+console.log('Hosted checkout, role-filtered command palette, signed-out login diagnosis, notification preference menu/save persistence, profile security reads, and expired-subscription language browser harness verification passed.');
