@@ -2,6 +2,8 @@
 
 Güncelleme: 14 Ekim 2026
 
+15 Ekim 2026 devamı — Varlık detayındaki “Etiketi kopyala” eylemi izole sentetik Chromium kabulinde gerçek `navigator.clipboard.writeText` çağrısıyla sınandı; panoya `QA-ASSET-001` yazıldığı doğrulandı. Hosted checkout/asset browser kabul paketi bu eklemeyle geçti; bu sonuç yalnız pano eylemini kapsar. 13 modal eyleminin ve 7 satır kısayolunun uçtan uca tamamı hâlâ tek tek kabul edilmedi; tekli etiket önizlemesinin önceki yerel kabul kanıtı ayrıca mevcut, yazdırma tuşu fiziksel yazıcıya gönderilmedi.
+
 ## Kapsam ve kaynak
 
 Bu dosya, bu Codex görevi içindeki erişilebilir kullanıcı isteklerinin ve 11 Ekim tarihli ayrıntılı listenin proje iş planına dönüştürülmüş indeksidir. Birebir konuşma dökümü değildir. Ayrıntılı başlık ve durum listesi `docs/USER-REQUEST-CHECKLIST-2026-10-11.md` dosyasında özgün haliyle korunmuştur; bu listedeki ✅/🟡/❌ işaretleri kullanıcının 11 Ekim tarihli başlangıç beyanıdır, bugünkü kodun yeniden doğrulanmış sonucu değildir. Parola ve diğer kimlik bilgileri bu belgelere alınmaz.

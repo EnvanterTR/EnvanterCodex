@@ -293,6 +293,10 @@ const address = server.address();
 assert.ok(address && typeof address === 'object');
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+await page.addInitScript(() => {
+  window.__syntheticClipboard = '';
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async text => { window.__syntheticClipboard = String(text); } } });
+});
 const pageErrors = [];
 page.on('pageerror', error => pageErrors.push(error.message));
 
@@ -378,6 +382,9 @@ try {
   const assetDialog = page.locator('#assetDialog');
   await assetDialog.waitFor({ state: 'visible' });
   assert.equal(await page.locator('#dialogTitle').innerText(), asset.name);
+  await page.locator('#copyAssetTag').click();
+  await page.waitForFunction(() => window.__syntheticClipboard === 'QA-ASSET-001');
+  assert.equal(await page.evaluate(() => window.__syntheticClipboard), 'QA-ASSET-001', 'Copy-tag action must place the selected asset tag on the clipboard.');
   const statusDialog = page.locator('#assetStatusDialog');
   const beforeStatusCancel = apiRequests.length;
   await page.locator('#assetStatusAction').selectOption('Unusable');
