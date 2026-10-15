@@ -15,6 +15,7 @@ let loginMode = false;
 let loginPendingMigrationCount = 0;
 let notificationPreferences = { enabledKinds: ['maintenance', 'audit', 'license', 'warranty', 'return', 'reservation'], emailEnabledKinds: [] };
 let integrationTokens = [];
+let sessionDevices = [];
 const syntheticIntegrationSecret = 'etr_live_synthetic-one-time-secret';
 const syntheticAuthenticatorUri = 'otpauth://totp/EnvanterTR%3Asynthetic%40example.invalid?secret=JBSWY3DPEHPK3PXP&issuer=EnvanterTR&digits=6&period=30';
 let invalidAuthenticatorUri = false;
@@ -64,6 +65,13 @@ const server = createServer(async (request, response) => {
       if (request.method === 'POST' && url.pathname === '/api/session/2fa/setup' && record.csrf === 'synthetic-viewer-csrf') {
         response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
         response.end(JSON.stringify({ secret: 'JBSWY3DPEHPK3PXP', authenticatorUri: invalidAuthenticatorUri ? 'https://invalid.example/totp' : syntheticAuthenticatorUri }));
+        return;
+      }
+      const revokeSessionMatch = url.pathname.match(/^\/api\/session\/devices\/([0-9a-f-]+)\/revoke$/i);
+      if (request.method === 'POST' && revokeSessionMatch && record.csrf === 'synthetic-viewer-csrf') {
+        sessionDevices = sessionDevices.filter(session => session.id !== revokeSessionMatch[1]);
+        response.writeHead(204);
+        response.end();
         return;
       }
       const revokeTokenMatch = url.pathname.match(/^\/api\/integrations\/tokens\/([0-9a-f-]+)\/revoke$/i);
@@ -126,7 +134,7 @@ const server = createServer(async (request, response) => {
                 : url.pathname === '/api/session/2fa'
                   ? { enabled: false }
                   : url.pathname === '/api/session/devices'
-                    ? { sessions: [], truncated: false }
+                    ? { sessions: sessionDevices, truncated: false }
               : url.pathname === '/api/appearance/preferences'
                 ? { theme: 'system', language: 'tr' }
                 : { items: [], total: 0, page: 1, pageSize: 50 };
@@ -319,6 +327,50 @@ try {
   await accountDialog.waitFor({ state: 'hidden' });
   assert.equal(apiRequests.filter(item => item.method !== 'GET').length, writesBeforeAccountBackdrop,
     'Outside-click dismissal of the account/security window must not change security settings.');
+  const currentSessionId = '44444444-4444-4444-8444-444444444444';
+  const remoteSessionId = '55555555-5555-4555-8555-555555555555';
+  sessionDevices = [
+    { id: currentSessionId, current: true, userAgent: 'Synthetic current browser', ipAddress: '192.0.2.10', lastSeenAt: '2026-10-15T09:00:00Z' },
+    { id: remoteSessionId, current: false, userAgent: 'Synthetic remote browser', ipAddress: '198.51.100.23', lastSeenAt: '2026-10-15T08:45:00Z' }
+  ];
+  await page.locator('#userAvatar').click();
+  await accountDialog.waitFor({ state: 'visible' });
+  const sessionsList = page.locator('#accountSessionsList');
+  await sessionsList.getByText('Synthetic current browser').waitFor();
+  await sessionsList.getByText('Synthetic remote browser').waitFor();
+  await sessionsList.getByText('Bu cihaz (şu an)').waitFor();
+  await sessionsList.getByText('198.51.100.23').waitFor();
+  const remoteSessionCard = sessionsList.locator('article').filter({ hasText: 'Synthetic remote browser' });
+  const sessionRevokeDialog = page.locator('#componentActionDialog');
+  const sessionRevokesBeforeCancel = apiRequests.filter(item => /^\/api\/session\/devices\/.+\/revoke$/.test(item.path) && item.method === 'POST').length;
+  await remoteSessionCard.getByRole('button', { name: 'Oturumu kapat' }).click();
+  await sessionRevokeDialog.waitFor({ state: 'visible' });
+  assert.match(await sessionRevokeDialog.innerText(), /uzaktan kapatmak/);
+  await sessionRevokeDialog.locator('[data-close-component-action]').first().click();
+  await sessionRevokeDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.filter(item => /^\/api\/session\/devices\/.+\/revoke$/.test(item.path) && item.method === 'POST').length, sessionRevokesBeforeCancel,
+    'Canceling remote session revocation must not send a write request.');
+  assert.equal(sessionDevices.length, 2, 'Canceling must preserve both synthetic sessions.');
+  await remoteSessionCard.getByRole('button', { name: 'Oturumu kapat' }).click();
+  await sessionRevokeDialog.waitFor({ state: 'visible' });
+  await page.locator('#componentActionSubmit').click();
+  await sessionRevokeDialog.waitFor({ state: 'hidden' });
+  await sessionsList.getByText('Synthetic remote browser').waitFor({ state: 'detached' });
+  await sessionsList.getByText('Synthetic current browser').waitFor();
+  const remoteSessionRevoke = apiRequests.find(item => item.path === `/api/session/devices/${remoteSessionId}/revoke` && item.method === 'POST');
+  assert.equal(remoteSessionRevoke?.csrf, 'synthetic-viewer-csrf', 'Confirmed revocation must include CSRF protection.');
+  assert.equal(remoteSessionRevoke?.body && Object.keys(remoteSessionRevoke.body).length, 0);
+  assert.deepEqual(sessionDevices.map(session => session.id), [currentSessionId], 'The synthetic API state must retain the current session and revoke only the selected remote one.');
+  const sessionListReadsBeforeRefresh = apiRequests.filter(item => item.path === '/api/session/devices' && item.method === 'GET').length;
+  await page.locator('#refreshAccountSessions').click();
+  await sessionsList.getByText('Synthetic current browser').waitFor();
+  assert.equal(apiRequests.filter(item => item.path === '/api/session/devices' && item.method === 'GET').length, sessionListReadsBeforeRefresh + 1,
+    'The explicit refresh control must request the current session list again.');
+  assert.equal(await sessionsList.getByText('Synthetic remote browser').count(), 0);
+  await page.locator('#closeAccountPhoto').click();
+  await accountDialog.waitFor({ state: 'hidden' });
+  sessionDevices = [];
+  console.log('PASS: account session UI lists current and remote devices, preserves canceled revocation, confirms a CSRF-protected remote revoke, and refreshes the remaining session list.');
   await page.locator('#userAvatar').click();
   await accountDialog.waitFor({ state: 'visible' });
   await page.locator('#closeAccountPhoto').click();
@@ -429,7 +481,7 @@ try {
   await page.locator('#componentActionSubmit').click();
   await integrationRevokeDialog.waitFor({ state: 'hidden' });
   await integrationTokenRow.getByText('İptal edildi').waitFor();
-  const tokenRevokeWrite = apiRequests.find(item => item.path.endsWith('/revoke') && item.method === 'POST');
+  const tokenRevokeWrite = apiRequests.find(item => item.path.startsWith('/api/integrations/tokens/') && item.path.endsWith('/revoke') && item.method === 'POST');
   assert.equal(tokenRevokeWrite?.csrf, 'synthetic-viewer-csrf');
   assert.equal(integrationTokens[0].revokedAt === null, false, 'Confirmed revocation must persist in the synthetic API source.');
   await page.reload({ waitUntil: 'domcontentloaded' });
@@ -494,10 +546,11 @@ try {
   }
   assert.deepEqual(pageErrors, [], 'The app must not throw browser errors while switching languages and showing subscription access state.');
   const writes = apiRequests.filter(item => item.method !== 'GET');
-  assert.equal(writes.length, 6, 'Only explicit synthetic notification, API key create/revoke, TOTP setup, and appearance actions may write.');
+  assert.equal(writes.length, 7, 'Only explicit synthetic notification, API key create/revoke, remote session revoke, TOTP setup, and appearance actions may write.');
   assert.deepEqual(writes.map(item => item.path).sort(), [
     '/api/appearance/preferences', '/api/integrations/tokens', tokenRevokeWrite.path,
-    '/api/notifications/preferences', '/api/session/2fa/setup', '/api/session/2fa/setup'
+    '/api/notifications/preferences', '/api/session/2fa/setup', '/api/session/2fa/setup',
+    `/api/session/devices/${remoteSessionId}/revoke`
   ].sort());
   assert.ok(writes.filter(item => item.path === '/api/session/2fa/setup').every(item => item.csrf === 'synthetic-viewer-csrf'),
     'Each explicit TOTP enrollment request must include CSRF protection.');

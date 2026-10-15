@@ -70,7 +70,7 @@ Bu liste **senin kendi dokümanlarından** çıkarıldı. Kaynaklar:
 - [ ] **B.7** Şirket üyesi davet e-postası ✅
 - [ ] **B.8** Kendi profil fotoğrafı yükleme ✅
 - [ ] **B.9** LDAP / Active Directory / SSO ile giriş ❌
-- [ ] **B.10** Oturum açan cihazların listesi (nereden girildi) ❌
+- [x] **B.10** Oturum açan cihazların listesi (nereden girildi) ✅ — 15 Ekim hosted Chromium kabulinde sentetik mevcut/uzak oturum listesi, cihaz tarayıcısı/IP bilgisi, iptalden vazgeçince yazma olmaması, onaylı CSRF korumalı uzak oturum kapatma ve yenileme sonrası kalan listenin doğruluğu test edildi. Gerçek kullanıcı oturumuna yazılmadı.
 - [ ] **B.12** Mevcut hesabı ikinci şirket alanına ayrı rolüyle davet etme; şirket seçimi ve şirketler arası veri ayrımını doğrulama ✅
 - [ ] **B.11** Platform yöneticisi müşteri verisine **varsayılan olarak erişemez** (impersonate hariç) 🟡
 
