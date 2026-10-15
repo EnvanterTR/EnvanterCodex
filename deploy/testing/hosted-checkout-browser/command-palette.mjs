@@ -16,6 +16,8 @@ let loginPendingMigrationCount = 0;
 let notificationPreferences = { enabledKinds: ['maintenance', 'audit', 'license', 'warranty', 'return', 'reservation'], emailEnabledKinds: [] };
 let integrationTokens = [];
 const syntheticIntegrationSecret = 'etr_live_synthetic-one-time-secret';
+const syntheticAuthenticatorUri = 'otpauth://totp/EnvanterTR%3Asynthetic%40example.invalid?secret=JBSWY3DPEHPK3PXP&issuer=EnvanterTR&digits=6&period=30';
+let invalidAuthenticatorUri = false;
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || '/', 'http://127.0.0.1');
   if (request.method === 'GET' && url.pathname === '/') {
@@ -61,7 +63,7 @@ const server = createServer(async (request, response) => {
       }
       if (request.method === 'POST' && url.pathname === '/api/session/2fa/setup' && record.csrf === 'synthetic-viewer-csrf') {
         response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
-        response.end(JSON.stringify({ secret: 'JBSWY3DPEHPK3PXP', authenticatorUri: 'otpauth://totp/EnvanterTR%3Asynthetic%40example.invalid?secret=JBSWY3DPEHPK3PXP&issuer=EnvanterTR&digits=6&period=30' }));
+        response.end(JSON.stringify({ secret: 'JBSWY3DPEHPK3PXP', authenticatorUri: invalidAuthenticatorUri ? 'https://invalid.example/totp' : syntheticAuthenticatorUri }));
         return;
       }
       const revokeTokenMatch = url.pathname.match(/^\/api\/integrations\/tokens\/([0-9a-f-]+)\/revoke$/i);
@@ -338,6 +340,15 @@ try {
   assert.match(await page.locator('#twoFactorFeedback').textContent(), /QR kodunu tarayın veya kurulum anahtarını elle girin/);
   assert.match(decodeURIComponent((await twoFactorQr.getAttribute('src')).split(',')[1]), /<svg[\s\S]*<path d="M/,
     'The QR image must contain a generated SVG matrix, not a remote image or placeholder.');
+  const expectedQrDataUrl = await page.evaluate(uri => {
+    const qr = qrcodegen.QrCode.encodeText(uri, qrcodegen.QrCode.Ecc.MEDIUM), quietZone = 4, viewSize = qr.size + quietZone * 2;
+    let path = '';
+    for (let y = 0; y < qr.size; y++) for (let x = 0; x < qr.size; x++) if (qr.getModule(x, y)) path += `M${x + quietZone},${y + quietZone}h1v1h-1z`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${viewSize} ${viewSize}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="${path}" fill="#111"/></svg>`;
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  }, syntheticAuthenticatorUri);
+  assert.equal(await twoFactorQr.getAttribute('src'), expectedQrDataUrl,
+    'The QR matrix must encode the exact otpauth URI returned by the authenticated setup API.');
   assert.deepEqual(externalRequests, [], 'The MFA setup key and QR must not be sent to external services.');
   assert.ok(apiRequests.some(item => item.path === '/api/session/2fa/setup' && item.method === 'POST' && item.csrf === 'synthetic-viewer-csrf'));
   await page.locator('#closeAccountTwoFactor').click();
@@ -350,9 +361,15 @@ try {
   await page.locator('#openAccountTwoFactor').click();
   await accountTwoFactorDialog.waitFor({ state: 'visible' });
   await page.locator('#twoFactorCurrentPassword').fill('Synthetic-only-password');
+  invalidAuthenticatorUri = true;
   await page.locator('#startTwoFactorSetup').click();
   await page.waitForFunction(() => document.querySelector('#twoFactorSecret')?.textContent === 'JBSWY3DPEHPK3PXP');
+  assert.equal(await twoFactorQr.isVisible(), false, 'An invalid provisioning URI must not produce a QR image.');
+  assert.equal(await twoFactorQr.getAttribute('src'), null);
+  assert.match(await page.locator('#twoFactorFeedback').textContent(), /QR kod oluşturulamadı\. Kurulum anahtarını uygulamaya elle girin/,
+    'If local QR rendering fails, the UI must preserve and explain the manual-key recovery path.');
   await page.keyboard.press('Escape');
+  invalidAuthenticatorUri = false;
   await accountTwoFactorDialog.waitFor({ state: 'hidden' });
   assert.equal(await twoFactorSecret.textContent(), '', 'Escape must immediately erase the TOTP enrollment secret from the DOM.');
   assert.equal(await twoFactorQr.getAttribute('src'), null, 'Escape must remove the generated QR image containing the TOTP URI.');
