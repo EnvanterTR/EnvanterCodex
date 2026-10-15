@@ -7459,6 +7459,81 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Asset_xlsx_import_accepts_explicit_user_column_mapping_for_preview_and_apply()
+    {
+        string categoryName;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var categoryId = await db.Assets.Where(x => x.CompanyId == _companyId && x.Id == _ownAssetId)
+                .Select(x => x.CategoryId).SingleAsync();
+            categoryName = await db.AssetCategories.Where(x => x.CompanyId == _companyId && x.Id == categoryId)
+                .Select(x => x.Name).SingleAsync();
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var tag = $"XLSX-MAPPED-{_userId:N}".ToUpperInvariant();
+        var workbook = CreateEmployeeImportWorkbook(
+            ["Inventory Code", "Description", "Class"],
+            [tag, "Mapped Excel workstation", categoryName]);
+        HttpContent Content() => new ByteArrayContent(workbook)
+        {
+            Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") }
+        };
+        var mappings = new Dictionary<string, string>
+        {
+            ["Inventory Code"] = "assetTag",
+            ["Description"] = "name",
+            ["Class"] = "category"
+        };
+        var mappingHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(mappings)));
+
+        using (var missingMapping = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/import/preview.xlsx", "admin",
+                   Content(), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, missingMapping.StatusCode);
+            using var payload = JsonDocument.Parse(await missingMapping.Content.ReadAsStringAsync());
+            Assert.Equal(3, payload.RootElement.GetProperty("unmappedColumns").GetArrayLength());
+        }
+
+        using (var preview = await SendAsRoleWithHeadersAsync(HttpMethod.Post, "/api/assets/import/preview.xlsx", "admin",
+                   Content(), requestToken, antiforgeryCookie,
+                   new Dictionary<string, string> { ["X-Asset-Import-Mapping"] = mappingHeader }))
+        {
+            Assert.Equal(HttpStatusCode.OK, preview.StatusCode);
+            using var payload = JsonDocument.Parse(await preview.Content.ReadAsStringAsync());
+            Assert.True(payload.RootElement.GetProperty("isValid").GetBoolean());
+            Assert.Equal(1, payload.RootElement.GetProperty("counts").GetProperty("assets").GetInt32());
+        }
+
+        await using (var beforeApply = _factory!.Services.CreateAsyncScope())
+        {
+            var db = beforeApply.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.False(await db.Assets.AnyAsync(x => x.CompanyId == _companyId && x.AssetTag == tag),
+                "XLSX preview must not create company records.");
+        }
+
+        using (var imported = await SendAsRoleWithHeadersAsync(HttpMethod.Post, "/api/assets/import.xlsx", "admin",
+                   Content(), requestToken, antiforgeryCookie,
+                   new Dictionary<string, string> { ["X-Asset-Import-Mapping"] = mappingHeader }))
+            Assert.Equal(HttpStatusCode.OK, imported.StatusCode);
+
+        await using var verifyScope = _factory!.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var asset = await verifyDb.Assets.SingleAsync(x => x.CompanyId == _companyId && x.AssetTag == tag);
+        Assert.Equal("Mapped Excel workstation", asset.Name);
+        Assert.Equal(categoryName, await verifyDb.AssetCategories.Where(x => x.Id == asset.CategoryId).Select(x => x.Name).SingleAsync());
+        Assert.Equal(1, await verifyDb.AuditEntries.CountAsync(x => x.CompanyId == _companyId && x.TargetType == "Asset" &&
+            x.TargetId == null && x.Action == "XlsxImported"));
+    }
+
+    [Fact]
     public async Task Software_license_can_be_assigned_to_same_company_asset_and_is_visible_in_both_details()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
