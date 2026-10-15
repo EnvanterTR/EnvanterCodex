@@ -414,6 +414,18 @@ try {
   await newAssetDialog.waitFor({ state: 'hidden' });
   assert.equal(apiRequests.length, 0, 'Opening and canceling a row clone must not create an asset.');
 
+  await assetRow.locator('[data-asset-action="archive"]').click();
+  await page.locator('#assetDialog').waitFor({ state: 'visible' });
+  const rowArchiveDialog = page.locator('#assetTrashConfirmDialog');
+  await rowArchiveDialog.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#assetTrashConfirmSummary').innerText(), /QA-ASSET-001/,
+    'The row archive shortcut must require explicit confirmation for the selected asset.');
+  const beforeRowArchiveCancel = apiRequests.length;
+  await page.locator('#cancelAssetTrashConfirm').click();
+  await rowArchiveDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, beforeRowArchiveCancel, 'Canceling the row archive shortcut must not archive the asset.');
+  await page.locator('#assetDialog #closeDialog').click();
+
   await page.locator('#assetRows .asset-name').filter({ hasText: asset.name }).click();
   const assetDialog = page.locator('#assetDialog');
   await assetDialog.waitFor({ state: 'visible' });
