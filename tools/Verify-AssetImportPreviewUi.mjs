@@ -22,6 +22,14 @@ requireSource(hostedAssetAcceptance.includes("await page.locator('#applyCsvImpor
   hostedAssetAcceptance.includes("assetImportApplicationWrites[0].csrf, 'synthetic-asset-csrf'") &&
   hostedAssetAcceptance.includes("#assetRows tr[data-id=\"66666666-6666-4666-8666-666666666666\"]"),
   'Hosted Chromium must explicitly apply a valid CSV preview, verify CSRF and endpoint, then find the imported row in the reloaded table.');
+requireSource(hostedAssetAcceptance.includes("makeXlsx([") &&
+  hostedAssetAcceptance.includes("/api/assets/import/preview.xlsx") &&
+  hostedAssetAcceptance.includes("/api/assets/import.xlsx") &&
+  hostedAssetAcceptance.includes('XLSX preview must preserve the selected OOXML bytes.') &&
+  hostedAssetAcceptance.includes('XLSX apply must preserve binary workbook bytes.') &&
+  hostedAssetAcceptance.includes("assetImportApplicationWrites[1].csrf, 'synthetic-asset-csrf'") &&
+  hostedAssetAcceptance.includes("#assetRows tr[data-id=\"77777777-6666-4666-8666-666666666666\"]"),
+  'Hosted Chromium must upload a real synthetic OOXML workbook unchanged through the XLSX preview/apply routes with CSRF and verify the refreshed row.');
 
 if (failures.length) {
   console.error(failures.map(message => `FAIL ${message}`).join('\n'));

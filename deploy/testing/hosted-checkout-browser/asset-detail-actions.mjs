@@ -45,6 +45,50 @@ const json = (response, status = 200, body = null) => {
   response.end(JSON.stringify(body));
 };
 
+const makeXlsx = rows => {
+  const crc32 = bytes => {
+    let crc = 0xffffffff;
+    for (const byte of bytes) {
+      crc ^= byte;
+      for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  };
+  const xmlText = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+  const columnName = index => String.fromCharCode(65 + index);
+  const sheetRows = rows.map((row, rowIndex) => `<row r="${rowIndex + 1}">${row.map((value, columnIndex) =>
+    `<c r="${columnName(columnIndex)}${rowIndex + 1}" t="inlineStr"><is><t>${xmlText(value)}</t></is></c>`).join('')}</row>`).join('');
+  const entries = [
+    ['[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>'],
+    ['_rels/.rels', '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+    ['xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Assets" sheetId="1" r:id="rId1"/></sheets></workbook>'],
+    ['xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>'],
+    ['xl/worksheets/sheet1.xml', `<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${sheetRows}</sheetData></worksheet>`]
+  ].map(([name, text]) => ({ name: Buffer.from(name), data: Buffer.from(text) }));
+  const localParts = [], centralParts = [];
+  let offset = 0;
+  for (const entry of entries) {
+    const crc = crc32(entry.data), local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4); local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(entry.data.length, 18); local.writeUInt32LE(entry.data.length, 22); local.writeUInt16LE(entry.name.length, 26);
+    localParts.push(local, entry.name, entry.data);
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0); central.writeUInt16LE(20, 4); central.writeUInt16LE(20, 6);
+    central.writeUInt32LE(crc, 16); central.writeUInt32LE(entry.data.length, 20); central.writeUInt32LE(entry.data.length, 24);
+    central.writeUInt16LE(entry.name.length, 28); central.writeUInt32LE(offset, 42);
+    centralParts.push(central, entry.name);
+    offset += local.length + entry.name.length + entry.data.length;
+  }
+  const centralDirectory = Buffer.concat(centralParts), end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(entries.length, 8); end.writeUInt16LE(entries.length, 10);
+  end.writeUInt32LE(centralDirectory.length, 12); end.writeUInt32LE(offset, 16);
+  return Buffer.concat([...localParts, centralDirectory, end]);
+};
+const expectedAssetXlsx = makeXlsx([
+  ['VendorTag', 'VendorName', 'VendorCategory', 'VendorUnused'],
+  ['QA-XLSX-001', 'QA mapped XLSX asset', 'Synthetic equipment', 'ignore me']
+]);
+
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || '/', 'http://127.0.0.1');
   if (request.method === 'GET' && url.pathname === '/') {
@@ -69,6 +113,7 @@ const server = createServer(async (request, response) => {
       const raw = Buffer.concat(chunks), contentType = request.headers['content-type'] || '';
       if (!raw.length) return resolve(null);
       if (contentType.includes('application/json')) return resolve(JSON.parse(raw.toString('utf8')));
+        if (url.pathname.endsWith('.xlsx')) return resolve(raw);
       if (!contentType.includes('multipart/form-data')) return resolve(raw.toString('utf8'));
       const text = raw.toString('latin1'), fields = {};
       const boundary = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
@@ -89,7 +134,7 @@ const server = createServer(async (request, response) => {
   });
   const record = { method: request.method, path: url.pathname, query: Object.fromEntries(url.searchParams.entries()), body, csrf: request.headers['x-csrf-token'] };
   requests.push(record);
-  if (request.method !== 'GET' && !url.pathname.startsWith('/api/assets/import-mappings') && !url.pathname.includes('/import/preview.') && url.pathname !== '/api/assets/import.csv') apiRequests.push(record);
+  if (request.method !== 'GET' && !url.pathname.startsWith('/api/assets/import-mappings') && !url.pathname.includes('/import/preview.') && !/^\/api\/assets\/import\.(csv|xlsx)$/.test(url.pathname)) apiRequests.push(record);
 
   if (request.method === 'POST' && url.pathname === '/api/session/login') {
     expiryLoginAttempts.push(record);
@@ -173,8 +218,8 @@ const server = createServer(async (request, response) => {
     response.writeHead(400, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ message: 'Missing synthetic CSRF token.' })); return;
   }
-  if (request.method === 'POST' && url.pathname === '/api/assets/import/preview.csv') {
-    assetImportPreviewRequests.push({ headers: request.headers, body });
+  if (request.method === 'POST' && /^\/api\/assets\/import\/preview\.(csv|xlsx)$/.test(url.pathname)) {
+    assetImportPreviewRequests.push({ path: url.pathname, headers: request.headers, body });
     const encoded = request.headers['x-asset-import-mapping'];
     if (!encoded) {
       json(response, 400, { message: 'Unknown columns need mapping.', unmappedColumns: ['VendorTag', 'VendorName', 'VendorCategory', 'VendorUnused'],
@@ -184,13 +229,20 @@ const server = createServer(async (request, response) => {
     json(response, 200, { isValid: true, rowCount: 1, counts: { assets: 1 }, errors: [], message: 'Synthetic mapped asset preview.' });
     return;
   }
-  if (request.method === 'POST' && url.pathname === '/api/assets/import.csv') {
+  if (request.method === 'POST' && /^\/api\/assets\/import\.(csv|xlsx)$/.test(url.pathname)) {
+    const isXlsx = url.pathname.endsWith('.xlsx');
     const mappings = JSON.parse(Buffer.from(request.headers['x-asset-import-mapping'], 'base64').toString('utf8'));
     assert.deepEqual(mappings, { VendorTag: 'assetTag', VendorName: 'name', VendorCategory: 'category', VendorUnused: 'ignore' },
       'The real import action must reuse the persisted mapping with API-supported target keys.');
-    assert.equal(body, 'VendorTag,VendorName,VendorCategory,VendorUnused\nQA-NEW-001,QA mapped asset,Synthetic equipment,ignore me\n',
-      'The explicit apply action must submit the unchanged selected CSV file.');
-    const created = { ...asset, id: '66666666-6666-4666-8666-666666666666', assetTag: 'QA-NEW-001', name: 'QA mapped asset' };
+    if (isXlsx) {
+      assert.equal(Buffer.isBuffer(body), true, 'The explicit XLSX apply must preserve binary workbook bytes.');
+      assert.deepEqual(body, expectedAssetXlsx, 'The explicit XLSX apply action must submit the unchanged selected workbook.');
+      assert.match(request.headers['content-type'], /application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet/);
+    } else {
+      assert.equal(body, 'VendorTag,VendorName,VendorCategory,VendorUnused\nQA-NEW-001,QA mapped asset,Synthetic equipment,ignore me\n',
+        'The explicit apply action must submit the unchanged selected CSV file.');
+    }
+    const created = { ...asset, id: isXlsx ? '77777777-6666-4666-8666-666666666666' : '66666666-6666-4666-8666-666666666666', assetTag: isXlsx ? 'QA-XLSX-001' : 'QA-NEW-001', name: isXlsx ? 'QA mapped XLSX asset' : 'QA mapped asset' };
     importedAssets.push(created);
     assetImportApplicationWrites.push({ method: request.method, path: url.pathname, body, mappings, csrf: request.headers['x-csrf-token'], created });
     json(response, 200, { message: '1 synthetic asset imported.' });
@@ -453,6 +505,28 @@ try {
   assert.deepEqual(assetImportApplicationWrites[0].mappings, assetImportProfileWrites[0].body.mappings);
   assert.equal(assetImportApplicationWrites[0].csrf, 'synthetic-asset-csrf');
   assert.match(await page.locator('#assetRows tr[data-id="66666666-6666-4666-8666-666666666666"]').innerText(), /QA mapped asset[\s\S]*QA-NEW-001/);
+  const xlsxFile = { name: 'synthetic-vendor.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: expectedAssetXlsx };
+  await page.locator('#importPreviewFile').setInputFiles(xlsxFile);
+  await page.locator('#assetImportProfile').selectOption('');
+  const xlsxPreviewPromise = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === '/api/assets/import/preview.xlsx');
+  await page.locator('#assetImportProfile').selectOption('abababab-abab-4bab-8bab-abababababab');
+  const xlsxPreview = await xlsxPreviewPromise;
+  assert.equal(xlsxPreview.status(), 200, 'Selecting a saved mapping for XLSX must preview successfully.');
+  const xlsxPreviewWrite = assetImportPreviewRequests.at(-1);
+  assert.equal(xlsxPreviewWrite.path, '/api/assets/import/preview.xlsx');
+  assert.deepEqual(xlsxPreviewWrite.body, expectedAssetXlsx, 'XLSX preview must preserve the selected OOXML bytes.');
+  assert.match(xlsxPreviewWrite.headers['content-type'], /application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet/);
+  const xlsxApplyPromise = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === '/api/assets/import.xlsx');
+  await page.locator('#applyCsvImport').click();
+  const xlsxApply = await xlsxApplyPromise;
+  assert.equal(xlsxApply.status(), 200, 'Explicitly applying a valid XLSX preview must reach the XLSX endpoint.');
+  await page.locator('#assetRows tr[data-id="77777777-6666-4666-8666-666666666666"]').waitFor({ state: 'visible' });
+  assert.equal(assetImportApplicationWrites.length, 2, 'CSV and XLSX should each create exactly one synthetic row.');
+  assert.equal(assetImportApplicationWrites[1].path, '/api/assets/import.xlsx');
+  assert.equal(assetImportApplicationWrites[1].csrf, 'synthetic-asset-csrf');
+  assert.match(await page.locator('#assetRows tr[data-id="77777777-6666-4666-8666-666666666666"]').innerText(), /QA mapped XLSX asset[\s\S]*QA-XLSX-001/);
   await page.locator('#deleteAssetImportProfile').click();
   await page.locator('#employeeActionDialog').waitFor({ state: 'visible' });
   assert.match(await page.locator('#employeeActionSummary').innerText(), /Seçili eşleme profili silinsin mi/);
@@ -469,7 +543,7 @@ try {
   assert.equal(await page.locator('#deleteAssetImportProfile').isDisabled(), true, 'Deleted profile must no longer be selected or deletable.');
   await page.locator('#closeImportPreview').click();
   await assetImportDialog.waitFor({ state: 'hidden' });
-  console.log('PASS: asset CSV mapping profile maps unknown columns, saves/reloads/reuses with CSRF, explicitly imports one valid synthetic row into the refreshed list, and safely cancels/confirms profile deletion.');
+  console.log('PASS: asset CSV and XLSX map/profile/preview/apply routes preserve the selected files, use CSRF and refresh both synthetic rows; profile deletion cancel/confirm is safe.');
 
   await page.locator('#pageTitle').click();
   await page.keyboard.press('Control+n');
