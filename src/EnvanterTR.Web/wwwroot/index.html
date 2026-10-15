@@ -8238,8 +8238,10 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       catch { input.type = 'text'; input.focus(); input.select(); $('#copyIntegrationSecret').textContent = translateUiText('Seçildi; kopyalayın'); }
     });
     function clearIntegrationSecret() { $('#integrationSecretValue').value = ''; $('#integrationSecretValue').type = 'password'; $('#toggleIntegrationSecret').textContent = translateUiText('Göster'); $('#copyIntegrationSecret').textContent = translateUiText('Anahtarı kopyala'); }
-    $('#closeIntegrationSecret').addEventListener('click', () => $('#integrationSecretDialog').close());
-    $('#dismissIntegrationSecret').addEventListener('click', () => $('#integrationSecretDialog').close());
+    function closeIntegrationSecretDialog() { clearIntegrationSecret(); if ($('#integrationSecretDialog').open) $('#integrationSecretDialog').close(); }
+    $('#closeIntegrationSecret').addEventListener('click', closeIntegrationSecretDialog);
+    $('#dismissIntegrationSecret').addEventListener('click', closeIntegrationSecretDialog);
+    $('#integrationSecretDialog').addEventListener('cancel', clearIntegrationSecret);
     $('#integrationSecretDialog').addEventListener('close', clearIntegrationSecret);
     document.querySelectorAll('[data-page]').forEach(button => button.addEventListener('click', () => {
       const page = button.dataset.page;

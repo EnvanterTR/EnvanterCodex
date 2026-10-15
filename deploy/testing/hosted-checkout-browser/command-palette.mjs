@@ -12,6 +12,8 @@ let subscriptionMode = 'full';
 let loginMode = false;
 let loginPendingMigrationCount = 0;
 let notificationPreferences = { enabledKinds: ['maintenance', 'audit', 'license', 'warranty', 'return', 'reservation'], emailEnabledKinds: [] };
+let integrationTokens = [];
+const syntheticIntegrationSecret = 'etr_live_synthetic-one-time-secret';
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || '/', 'http://127.0.0.1');
   if (request.method === 'GET' && url.pathname === '/') {
@@ -41,6 +43,26 @@ const server = createServer(async (request, response) => {
         loginAttempts.push(record);
         response.writeHead(401, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
         response.end(JSON.stringify({ message: 'Giriş bilgileri geçersiz veya hesap geçici olarak kullanılamıyor.' }));
+        return;
+      }
+      if (request.method === 'POST' && url.pathname === '/api/integrations/tokens' && record.csrf === 'synthetic-viewer-csrf') {
+        const token = {
+          id: '33333333-3333-4333-8333-333333333333', name: record.body.name,
+          tokenPrefix: syntheticIntegrationSecret.slice(0, 16), scopes: record.body.scopes,
+          createdAt: new Date().toISOString(), expiresAt: record.body.expiresAt, lastUsedAt: null,
+          revokedAt: null, isExpired: false
+        };
+        integrationTokens = [token, ...integrationTokens.filter(item => item.id !== token.id)];
+        response.writeHead(201, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+        response.end(JSON.stringify({ ...token, secret: syntheticIntegrationSecret }));
+        return;
+      }
+      const revokeTokenMatch = url.pathname.match(/^\/api\/integrations\/tokens\/([0-9a-f-]+)\/revoke$/i);
+      if (request.method === 'POST' && revokeTokenMatch && record.csrf === 'synthetic-viewer-csrf') {
+        integrationTokens = integrationTokens.map(token => token.id === revokeTokenMatch[1]
+          ? { ...token, revokedAt: token.revokedAt || new Date().toISOString() } : token);
+        response.writeHead(204);
+        response.end();
         return;
       }
       if (request.method === 'PUT' && url.pathname === '/api/notifications/preferences' && record.csrf === 'synthetic-viewer-csrf') {
@@ -90,6 +112,8 @@ const server = createServer(async (request, response) => {
                 ? { isConfigured: false, settings: null }
               : url.pathname === '/api/notifications/preferences'
                 ? notificationPreferences
+              : url.pathname === '/api/integrations/tokens'
+                ? integrationTokens
                 : url.pathname === '/api/session/2fa'
                   ? { enabled: false }
                   : url.pathname === '/api/session/devices'
@@ -290,11 +314,79 @@ try {
   await page.locator('#closeAccountPhoto').click();
   await accountDialog.waitFor({ state: 'hidden' });
 
+  const settingsGroup = page.locator('#sidebar [data-group="settings"]');
+  const integrationsNav = page.locator('#sidebar [data-page="Entegrasyonlar"]');
+  if (!await integrationsNav.isVisible()) await settingsGroup.click();
+  await integrationsNav.waitFor({ state: 'visible' });
+  await integrationsNav.click();
+  await page.waitForFunction(() => document.querySelector('#pageTitle')?.textContent === 'Entegrasyonlar');
+  const integrationsForm = page.locator('#integrationTokenForm');
+  const apiTokenCreatesBeforeValidation = apiRequests.filter(item => item.path === '/api/integrations/tokens' && item.method === 'POST').length;
+  await integrationsForm.locator('[name="name"]').fill('Synthetic reporting integration');
+  await integrationsForm.locator('#createIntegrationToken').click();
+  await page.waitForFunction(() => document.querySelector('#integrationTokenFeedback')?.textContent.includes('En az bir salt okunur yetki seçin'));
+  assert.equal(apiRequests.filter(item => item.path === '/api/integrations/tokens' && item.method === 'POST').length, apiTokenCreatesBeforeValidation,
+    'The integration form must reject an empty scope selection without an API write.');
+  const integrationSecretDialog = page.locator('#integrationSecretDialog');
+  const secretField = page.locator('#integrationSecretValue');
+  await secretField.evaluate((input, secret) => { input.value = secret; input.closest('dialog').showModal(); }, syntheticIntegrationSecret);
+  await page.keyboard.press('Escape');
+  await integrationSecretDialog.waitFor({ state: 'hidden' });
+  assert.equal(await secretField.inputValue(), '', 'Escape must synchronously clear the one-time secret before the dialog fully closes.');
+  await integrationsForm.locator('input[name="scope"][value="assets:read"]').check();
+  await integrationsForm.locator('[name="expiresInDays"]').selectOption('30');
+  await integrationsForm.locator('#createIntegrationToken').click();
+  await integrationSecretDialog.waitFor({ state: 'visible' });
+  assert.equal(await secretField.getAttribute('type'), 'password', 'A newly created API secret must be masked by default.');
+  assert.equal(await secretField.inputValue(), syntheticIntegrationSecret);
+  await page.locator('#toggleIntegrationSecret').click();
+  assert.equal(await secretField.getAttribute('type'), 'text', 'The explicit Show action must reveal the one-time secret.');
+  await page.locator('#toggleIntegrationSecret').click();
+  assert.equal(await secretField.getAttribute('type'), 'password');
+  const tokenCreateWrite = apiRequests.find(item => item.path === '/api/integrations/tokens' && item.method === 'POST');
+  assert.equal(tokenCreateWrite?.csrf, 'synthetic-viewer-csrf');
+  assert.deepEqual(tokenCreateWrite?.body.scopes, ['assets:read']);
+  assert.ok(Date.parse(tokenCreateWrite.body.expiresAt) > Date.now() + 29 * 86400000,
+    'The selected 30-day lifetime must reach the API as an expiration date.');
+  await page.locator('#dismissIntegrationSecret').click();
+  await integrationSecretDialog.waitFor({ state: 'hidden' });
+  assert.equal(await secretField.inputValue(), '', 'Closing the one-time secret dialog must erase its value from the DOM.');
+  assert.equal(await integrationSecretDialog.isVisible(), false, 'A secret is not available again after its one-time dialog closes.');
+  await page.locator('#integrationTokenRows').getByText('Synthetic reporting integration').waitFor();
+  await page.locator('#integrationsRefresh').click();
+  await page.locator('#integrationTokenRows').getByText('Synthetic reporting integration').waitFor();
+  const integrationTokenRow = page.locator('#integrationTokenRows tr').filter({ hasText: 'Synthetic reporting integration' });
+  const integrationRevokesBeforeCancel = apiRequests.filter(item => item.path.endsWith('/revoke') && item.method === 'POST').length;
+  await integrationTokenRow.getByRole('button', { name: 'İptal et' }).click();
+  const integrationRevokeDialog = page.locator('#componentActionDialog');
+  await integrationRevokeDialog.waitFor({ state: 'visible' });
+  await integrationRevokeDialog.getByRole('button', { name: 'Vazgeç' }).click();
+  await integrationRevokeDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.filter(item => item.path.endsWith('/revoke') && item.method === 'POST').length, integrationRevokesBeforeCancel,
+    'Canceling API key revocation must not revoke the key.');
+  await integrationTokenRow.getByRole('button', { name: 'İptal et' }).click();
+  await integrationRevokeDialog.waitFor({ state: 'visible' });
+  await page.locator('#componentActionSubmit').click();
+  await integrationRevokeDialog.waitFor({ state: 'hidden' });
+  await integrationTokenRow.getByText('İptal edildi').waitFor();
+  const tokenRevokeWrite = apiRequests.find(item => item.path.endsWith('/revoke') && item.method === 'POST');
+  assert.equal(tokenRevokeWrite?.csrf, 'synthetic-viewer-csrf');
+  assert.equal(integrationTokens[0].revokedAt === null, false, 'Confirmed revocation must persist in the synthetic API source.');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('#membersNav').waitFor({ state: 'hidden' });
+  if (!await integrationsNav.isVisible()) await settingsGroup.click();
+  await integrationsNav.waitFor({ state: 'visible' });
+  await integrationsNav.click();
+  await page.locator('#integrationTokenRows').getByText('Synthetic reporting integration').waitFor();
+  await page.locator('#integrationTokenRows').getByText('İptal edildi').waitFor();
+  console.log('PASS: integration API key menu validates scopes, posts CSRF, masks and clears the one-time secret, preserves cancellation, confirms/reloads revocation, and persists the synthetic state.');
+
+  const writesBeforeSecurityNavigation = apiRequests.filter(item => item.method !== 'GET').length;
   const securityNav = page.locator('#sidebar [data-page="Güvenlik"]');
   await securityNav.click();
   await accountDialog.waitFor({ state: 'visible' });
   await page.waitForFunction(() => document.querySelector('#accountSessionsList')?.textContent.includes('Etkin oturum bulunamadı'));
-  assert.equal(apiRequests.filter(item => item.method !== 'GET').length, writesBeforeAccountBackdrop,
+  assert.equal(apiRequests.filter(item => item.method !== 'GET').length, writesBeforeSecurityNavigation,
     'Navigating to Security must open the account security window without changing security settings.');
   await page.locator('#closeAccountPhoto').click();
   await accountDialog.waitFor({ state: 'hidden' });
@@ -340,8 +432,10 @@ try {
   }
   assert.deepEqual(pageErrors, [], 'The app must not throw browser errors while switching languages and showing subscription access state.');
   const writes = apiRequests.filter(item => item.method !== 'GET');
-  assert.equal(writes.length, 2, 'Only the explicitly saved synthetic user notification and appearance preferences may write.');
-  assert.deepEqual(writes.map(item => item.path).sort(), ['/api/appearance/preferences', '/api/notifications/preferences']);
+  assert.equal(writes.length, 4, 'Only explicit synthetic notification, API key create/revoke, and appearance actions may write.');
+  assert.deepEqual(writes.map(item => item.path).sort(), [
+    '/api/appearance/preferences', '/api/integrations/tokens', tokenRevokeWrite.path, '/api/notifications/preferences'
+  ].sort());
   assert.deepEqual(writes.find(item => item.path === '/api/appearance/preferences')?.body, { theme: 'dark', language: 'en' });
 
   loginMode = true;
