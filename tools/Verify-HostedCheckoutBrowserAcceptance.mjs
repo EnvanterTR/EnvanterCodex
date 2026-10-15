@@ -85,7 +85,10 @@ assert.match(platformMembers, /Maintenance entitlement must persist after a full
 assert.match(platformMembers, /method: 'POST', path: '\/api\/platform\/plans'/);
 assert.match(platformMembers, /path === `\/api\/platform\/plans\/\$\{planId\}` && request\.method === 'PUT'/);
 assert.match(platformMembers, /edited yearly price and publication state must be reloaded from the synthetic API after a page refresh/);
-assert.match(platformMembers, /plan create\/update\/validation\/publication reload and maintenance entitlement persistence, plus audited company subscription plan\/date editing with cancel and persistence/);
+assert.match(platformMembers, /plan create\/update\/validation\/publication reload and maintenance entitlement persistence; audited company subscription plan\/date editing with cancel and persistence; platform audit text\/source\/action\/target\/date filters, exclusive end-date boundary, clear, paging, event detail, no-match, surfaced 503 and retry behavior without writes/);
+assert.match(platformMembers, /The filter panel must send every selected filter and an inclusive end date as an exclusive next-day boundary/);
+assert.match(platformMembers, /Audit filtering, paging, expansion and empty results must be read-only/);
+assert.match(platformMembers, /Refreshing after an audit error must retry the current filter/);
 assert.match(platformMembers, /exactly one working plan\/date action/);
 assert.match(platformMembers, /Canceling subscription editing must not write/);
 assert.match(platformMembers, /An invalid subscription date range must not write/);

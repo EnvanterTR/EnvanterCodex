@@ -245,3 +245,5 @@ Bu dosya, ürün kararlarını ve teslim edilmiş parçaları tek yerde tutar. Y
 ## 15 Ekim 2026 MFA kullanılabilirliği
 
 - Hesap MFA kurulumu sunucudan dönen standart TOTP URI'sinden QRCodeGen ile tarayıcı içinde QR üretir; QR isteği harici ağa gitmez, kurulum anahtarı elle girilebilir. Beş dilde sağlayıcı üyeliği gerekmediği/kurtarma kodu bilgisi yer alır. Dialog kapandığında QR, sır ve doğrulama alanları temizlenir. Merkezi şirket MFA/SSO politikası açık kapsamdır.
+
+- **15 Ekim 2026 — platform denetim paneli Chromium kabulü:** Gerçek `platform-admin.html` üzerinde sentetik API ile metin/kaynak/işlem/hedef türü/başlangıç-bitiş filtreleri, bitiş tarihinin ertesi gün dışlayıcı sınır olarak gönderilmesi, filtreyi temizleyip ilk sayfaya dönme, ikinci sayfaya ilerleme, JSON olay detayını açma ve eşleşmeyen arama, 503 hatasının gösterilmesi ve yenilemeyle aynı filtrenin tekrar denenmesi doğrulandı. Bu akışlar hiçbir yazma isteği üretmedi; `platform-admin-members.mjs` sentetik tarayıcı kabul paketine eklendi. Bu kanıt üretim veritabanı veya canlı yönetici oturumunu kapsamaz.

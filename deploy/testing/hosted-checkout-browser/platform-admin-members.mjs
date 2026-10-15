@@ -36,6 +36,18 @@ const accounts = [member];
 const planId = '44444444-4444-4444-8444-444444444444';
 const plans = [];
 const writes = [];
+const auditRequests = [];
+let auditErrorInjected = false;
+const auditEntries = Array.from({ length: 51 }, (_, index) => ({
+  id: `99999999-9999-4999-8999-${String(index + 1).padStart(12, '0')}`,
+  source: index === 0 ? 'platform' : 'company', actorUserId: platformAdminId,
+  actorName: index === 0 ? 'Synthetic Platform Admin' : 'Synthetic Company Actor',
+  actorEmail: index === 0 ? 'operator@example.invalid' : 'qa-owner@example.invalid',
+  companyId, companyName: 'Synthetic Demo Company', action: index === 0 ? 'PlanUpdated' : 'AssetUpdated',
+  targetType: index === 0 ? 'Plan' : 'Asset', targetId: `synthetic-target-${index + 1}`,
+  details: JSON.stringify({ note: index === 0 ? 'Unique audit filter marker' : `Synthetic audit row ${index + 1}` }),
+  occurredAt: new Date(Date.UTC(2026, 9, 15, 10, 0, index)).toISOString()
+}));
 const subscriptionId = '55555555-5555-4555-8555-555555555555';
 const companySubscription = {
   id: subscriptionId, planId, name: 'Cloud Pro', code: 'cloud-pro', status: 'Active', isDemo: false,
@@ -195,7 +207,25 @@ const server = createServer(async (request, response) => {
     return json(response, { orderId: failedOrderId, outcome: body.outcome, nextFollowUpAt: body.nextFollowUpAt, recordedAt: new Date().toISOString() });
   }
   if (path === '/api/platform/support/tickets') return json(response, { items: [], total: 0, page: 1, pageSize: 25 });
-  if (path === '/api/platform/audit') return json(response, { entries: [], total: 0, page: 1, pageSize: 50 });
+  if (path === '/api/platform/audit' && request.method === 'GET') {
+    const params = Object.fromEntries(url.searchParams.entries());
+    auditRequests.push(params);
+    if (params.q === 'synthetic audit service failure' && !auditErrorInjected) {
+      auditErrorInjected = true;
+      return json(response, { message: 'Synthetic audit service unavailable.' }, 503);
+    }
+    let filtered = [...auditEntries];
+    const q = (params.q || '').toLocaleLowerCase();
+    if (q) filtered = filtered.filter(x => `${x.action} ${x.targetType} ${x.details} ${x.actorName} ${x.actorEmail} ${x.companyName}`.toLocaleLowerCase().includes(q));
+    if (params.source) filtered = filtered.filter(x => x.source === params.source);
+    if (params.action) filtered = filtered.filter(x => x.action === params.action);
+    if (params.targetType) filtered = filtered.filter(x => x.targetType === params.targetType);
+    if (params.from) filtered = filtered.filter(x => Date.parse(x.occurredAt) >= Date.parse(params.from));
+    if (params.to) filtered = filtered.filter(x => Date.parse(x.occurredAt) < Date.parse(params.to));
+    filtered.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt) || b.id.localeCompare(a.id) || a.source.localeCompare(b.source));
+    const page = Number(params.page || 1), pageSize = Number(params.pageSize || 50), total = filtered.length;
+    return json(response, { entries: filtered.slice((page - 1) * pageSize, page * pageSize), total, page, pageSize });
+  }
   response.writeHead(404); response.end('Unknown synthetic API route');
 });
 
@@ -487,8 +517,76 @@ try {
   const persistedSubscription = page.locator('#companyDetailBody .panel').filter({ hasText: 'Abonelik geçmişi' }).locator('tbody tr');
   await persistedSubscription.getByText('Synthetic Cloud Pro').waitFor({ state: 'visible' });
   await persistedSubscription.getByText(/2028/).waitFor({ state: 'visible' });
+  await page.locator('#companyDetailDialog [data-detail-close]').first().click();
+  await page.locator('#companyDetailDialog').waitFor({ state: 'hidden' });
+
+  const writesBeforeAuditRead = writes.length;
+  await page.locator('#nav [data-view="audit"]').click();
+  await page.locator('#auditPage').getByText('Sayfa 1 · 51 kayıt').waitFor({ state: 'visible' });
+  await page.locator('#auditSearch').fill('Unique audit filter marker');
+  await page.locator('#auditSource').selectOption('platform');
+  await page.locator('#auditAction').fill('PlanUpdated');
+  await page.locator('#auditTargetType').fill('Plan');
+  await page.locator('#auditFrom').fill('2026-10-15');
+  await page.locator('#auditTo').fill('2026-10-15');
+  const filteredAuditResponse = page.waitForResponse(response => {
+    const requestUrl = new URL(response.url());
+    return requestUrl.pathname === '/api/platform/audit' && requestUrl.searchParams.get('q') === 'Unique audit filter marker';
+  });
+  await page.locator('#searchAudit').click();
+  assert.equal((await filteredAuditResponse).status(), 200, 'Applying platform audit filters must return successfully.');
+  const filteredAuditRequest = auditRequests.at(-1);
+  assert.deepEqual(filteredAuditRequest, {
+    page: '1', pageSize: '50', q: 'Unique audit filter marker', source: 'platform', action: 'PlanUpdated', targetType: 'Plan',
+    from: '2026-10-15T00:00:00.000Z', to: '2026-10-16T00:00:00.000Z'
+  }, 'The filter panel must send every selected filter and an inclusive end date as an exclusive next-day boundary.');
+  const auditTable = page.locator('#auditTable');
+  await auditTable.getByText('Synthetic Platform Admin').waitFor({ state: 'visible' });
+  await auditTable.getByText('PlanUpdated').waitFor({ state: 'visible' });
+  assert.equal(await auditTable.locator('tbody tr').count(), 1, 'The combined audit filters must narrow the result to one matching event.');
+  await auditTable.getByText('Detayı aç').click();
+  await auditTable.getByText('Unique audit filter marker').waitFor({ state: 'visible' });
+
+  await page.locator('#clearAudit').click();
+  await page.locator('#auditPage').getByText('Sayfa 1 · 51 kayıt').waitFor({ state: 'visible' });
+  assert.deepEqual(auditRequests.at(-1), { page: '1', pageSize: '50' }, 'Clearing audit filters must remove every filter and reset to page one.');
+  const nextAuditResponse = page.waitForResponse(response => {
+    const requestUrl = new URL(response.url());
+    return requestUrl.pathname === '/api/platform/audit' && requestUrl.searchParams.get('page') === '2';
+  });
+  await page.locator('#nextAudit').click();
+  assert.equal((await nextAuditResponse).status(), 200);
+  await page.locator('#auditPage').getByText('Sayfa 2 · 51 kayıt').waitFor({ state: 'visible' });
+  assert.equal(auditRequests.at(-1).page, '2', 'Next-page navigation must request the next audit page.');
+  assert.equal(await page.locator('#prevAudit').isEnabled(), true, 'Previous-page navigation must become available on page two.');
+  const emptyAuditResponse = page.waitForResponse(response => {
+    const requestUrl = new URL(response.url());
+    return requestUrl.pathname === '/api/platform/audit' && requestUrl.searchParams.get('q') === 'no matching synthetic event';
+  });
+  await page.locator('#auditSearch').fill('no matching synthetic event');
+  await page.locator('#searchAudit').click();
+  assert.equal((await emptyAuditResponse).status(), 200);
+  await page.locator('#auditTable').getByText('Filtrelerle eşleşen yönetici işlemi bulunamadı.').waitFor({ state: 'visible' });
+  const auditErrorResponse = page.waitForResponse(response => {
+    const requestUrl = new URL(response.url());
+    return requestUrl.pathname === '/api/platform/audit' && requestUrl.searchParams.get('q') === 'synthetic audit service failure';
+  });
+  await page.locator('#auditSearch').fill('synthetic audit service failure');
+  await page.locator('#searchAudit').click();
+  assert.equal((await auditErrorResponse).status(), 503, 'Audit service failures must be surfaced to the admin.');
+  await page.locator('#auditTable').getByText('Synthetic audit service unavailable.').waitFor({ state: 'visible' });
+  const auditRetryResponse = page.waitForResponse(response => {
+    const requestUrl = new URL(response.url());
+    return requestUrl.pathname === '/api/platform/audit' && requestUrl.searchParams.get('q') === 'synthetic audit service failure' && response.status() === 200;
+  });
+  await page.locator('#refreshAudit').click();
+  assert.equal((await auditRetryResponse).status(), 200, 'Refreshing after an audit error must retry the current filter.');
+  await page.locator('#auditTable').getByText('Filtrelerle eşleşen yönetici işlemi bulunamadı.').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#auditSearch').inputValue(), 'synthetic audit service failure', 'Retrying must preserve the selected filter.');
+  assert.equal(writes.length, writesBeforeAuditRead, 'Audit filtering, paging, expansion and empty results must be read-only.');
+
   assert.deepEqual(browserErrors, [], `Platform member UI threw: ${browserErrors.join(' | ')}`);
-  console.log('PASS: real Chromium account/security/membership/payment timeline; demo lead status, assignment, follow-up, company link, CSRF write and history persistence; member search, cancel-without-write, reauthenticated role update, synthetic invitation, plan create/update/validation/publication reload and maintenance entitlement persistence, plus audited company subscription plan/date editing with cancel and persistence.');
+  console.log('PASS: real Chromium account/security/membership/payment timeline; demo lead status, assignment, follow-up, company link, CSRF write and history persistence; member search, cancel-without-write, reauthenticated role update, synthetic invitation, plan create/update/validation/publication reload and maintenance entitlement persistence; audited company subscription plan/date editing with cancel and persistence; platform audit text/source/action/target/date filters, exclusive end-date boundary, clear, paging, event detail, no-match, surfaced 503 and retry behavior without writes.');
 } finally {
   await browser?.close();
   await new Promise(resolve => server.close(resolve));
