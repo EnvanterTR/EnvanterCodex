@@ -240,6 +240,13 @@ const server = createServer(async (request, response) => {
       details: `Varlık durumu güncellendi · ${asset.status}${body.note ? ` · ${body.note}` : ''}`, actorName: 'Synthetic Owner', attachmentCount: 0 });
     response.writeHead(204); response.end(); return;
   }
+  if (request.method === 'POST' && url.pathname === `/api/assets/${assetId}/restore`) {
+    assert.equal(asset.status, 'Archived', 'Synthetic restore must only restore an archived asset.');
+    asset.status = 'Available';
+    assetHistory.unshift({ id: '55555555-5555-4555-8555-555555555557', eventType: 'Restored', occurredAt: '2026-10-14T13:40:00Z',
+      details: `Varlık arşivden geri alındı${body.note ? ` · ${body.note}` : ''}`, actorName: 'Synthetic Owner', attachmentCount: 0 });
+    response.writeHead(204); response.end(); return;
+  }
   if (request.method === 'POST' && url.pathname === `/api/assets/${assetId}/trash`) {
     asset.isDeleted = true;
     assetHistory.unshift({ id: '55555555-5555-4555-8555-555555555556', eventType: 'Trashed', occurredAt: '2026-10-14T13:45:00Z',
@@ -283,6 +290,16 @@ const server = createServer(async (request, response) => {
     response.writeHead(200, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ id: assetId, assetTag: asset.assetTag, status: asset.status, assignedEmployeeId: employeeId,
       expectedReturnOn: asset.expectedReturnOn, updatedAt: '2026-10-14T16:00:00Z' })); return;
+  }
+  if (request.method === 'POST' && url.pathname === `/api/assets/${assetId}/return`) {
+    assert.equal(asset.assignedEmployeeId, employeeId, 'Synthetic return must only be accepted for the currently assigned employee.');
+    asset.status = 'Available';
+    delete asset.assignedEmployeeId;
+    delete asset.assignedEmployeeName;
+    delete asset.expectedReturnOn;
+    assetHistory.unshift({ id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', eventType: 'Returned', occurredAt: '2026-10-14T17:00:00Z',
+      details: `Varlık iade alındı${body.note ? ` · ${body.note}` : ''}`, actorName: 'Synthetic Owner', attachmentCount: 0 });
+    response.writeHead(204); response.end(); return;
   }
   response.writeHead(405, { 'content-type': 'application/json' });
   response.end(JSON.stringify({ message: 'Unexpected write in asset-detail browser acceptance.' }));
@@ -498,6 +515,28 @@ try {
   assert.equal(asset.status, 'Available', 'The status action must allow an authorized return to Available.');
   await page.locator('#assetRows .asset-name').filter({ hasText: asset.name }).click();
   await assetDialog.waitFor({ state: 'visible' });
+  await page.locator('#assetStatusAction').selectOption('Archived');
+  await statusDialog.waitFor({ state: 'visible' });
+  await page.locator('#assetStatusForm [name="note"]').fill('Synthetic archive before restore test');
+  await page.locator('#submitAssetStatus').click();
+  await statusDialog.waitFor({ state: 'hidden' });
+  assert.equal(asset.status, 'Archived');
+  await page.locator('#assetRows .asset-name').filter({ hasText: asset.name }).click();
+  await assetDialog.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#restoreAssetButton').isVisible(), true, 'The restore action must appear only on an archived asset.');
+  await page.locator('#restoreAssetButton').click();
+  await statusDialog.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#assetStatusSummary').innerText(), /QA-ASSET-001[\s\S]*arşiv/);
+  await page.locator('#assetStatusForm [name="note"]').fill('Synthetic restore verified');
+  await page.locator('#submitAssetStatus').click();
+  await statusDialog.waitFor({ state: 'hidden' });
+  await page.waitForFunction(() => document.querySelector('#assetDialog')?.open && document.querySelector('#detailStatus')?.textContent === 'Kullanılabilir');
+  const restoreWrite = apiRequests.at(-1);
+  assert.equal(restoreWrite.method, 'POST');
+  assert.equal(restoreWrite.path, `/api/assets/${assetId}/restore`);
+  assert.deepEqual(restoreWrite.body, { status: 'Available', note: 'Synthetic restore verified' });
+  assert.equal(restoreWrite.csrf, 'synthetic-asset-csrf');
+  assert.equal(asset.status, 'Available', 'Restoring the archived asset must persist the available state in the synthetic backend.');
   const tabCases = [
     ['relations', '#assetTabRelations', /Bağlantılı kayıtlar/],
     ['maintenance', '#assetTabMaintenance', /Bakım kayıtları/],
@@ -781,6 +820,23 @@ try {
   await page.locator('#cancelAssetReturnAction').click();
   await rowReturnDialog.waitFor({ state: 'hidden' });
   assert.equal(apiRequests.length, beforeRowReturnCancel, 'Canceling the row return shortcut must not return the asset.');
+  await page.locator('#returnAssetButton').click();
+  await rowReturnDialog.waitFor({ state: 'visible' });
+  await page.locator('#returnAssetForm [name="note"]').fill('Synthetic return condition checked');
+  await page.locator('#submitAssetReturn').click();
+  await rowReturnDialog.waitFor({ state: 'hidden' });
+  await page.locator('#assetDialog').waitFor({ state: 'hidden' });
+  const returnWrite = apiRequests.at(-1);
+  assert.equal(returnWrite.method, 'POST');
+  assert.equal(returnWrite.path, `/api/assets/${assetId}/return`);
+  assert.deepEqual(returnWrite.body, { note: 'Synthetic return condition checked' });
+  assert.equal(returnWrite.csrf, 'synthetic-asset-csrf');
+  assert.equal(asset.status, 'Available');
+  assert.equal(asset.assignedEmployeeId, undefined);
+  await page.locator('#assetRows .asset-name').filter({ hasText: editedName }).click();
+  await page.locator('#assetDialog').waitFor({ state: 'visible' });
+  assert.match(await page.locator('#detailEmployee').innerText(), /—|atanmamış/i,
+    'After a successful return, reopening the asset must not show the previous assignee.');
   await page.locator('#assetDialog #closeDialog').click();
 
   await page.locator('[data-group="data"]').click();
