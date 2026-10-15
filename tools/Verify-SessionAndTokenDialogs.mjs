@@ -20,8 +20,10 @@ assert.doesNotMatch(source, /window\.confirm\(translateUiText\('“\{name\}” A
   'API key revocation must not rely on browser-native confirmation.');
 assert.match(accountApi, /MapPost\("\/api\/session\/devices\/\{id:guid\}\/revoke"/,
   'Session revoke must remain implemented by the authenticated account API.');
-assert.match(integrationApi, /MapPost\("\/api\/integrations\/tokens\/\{id:guid\}\/revoke"/,
-  'API key revoke must remain implemented by the authenticated integration API.');
+assert.match(integrationApi, /MapGroup\("\/api\/integrations\/tokens"\)\.RequireAuthorization\("company\.member"\)/,
+  'API token routes must remain inside the authenticated company token-management route group.');
+assert.match(integrationApi, /tokenManagement\.MapPost\("\/\{id:guid\}\/revoke"/,
+  'API key revoke must remain implemented by the authenticated integration API under the token route group.');
 assert.match(source, /Google Authenticator, Microsoft Authenticator veya TOTP uyumlu başka bir uygulama kullanabilirsiniz\.[\s\S]*?Google\/Microsoft hesabı, abonelik, SMS ya da ayrıca bir hizmet satın almanız gerekmez/,
   'The account MFA UI must explain that TOTP does not require a vendor account, subscription, SMS, or separate service.');
 assert.match(source, /function clearTwoFactorDialogSecrets\(\)\s*\{[\s\S]*?\$\('#twoFactorSecret'\)\.textContent = '';[\s\S]*?\$\('#twoFactorRecoveryCodes'\)\.textContent = '';[\s\S]*?\$\('#twoFactorCurrentPassword'\)\.value = '';[\s\S]*?\$\('#twoFactorCode'\)\.value = '';/,
