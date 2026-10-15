@@ -6641,7 +6641,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       try {
         const result = await api(`/api/assets/${id}`), asset = result.asset;
         await loadAssetCustomFieldDefinitions();
-        currentAsset = { ...asset, modelName: result.references.model, modelNumber: result.references.modelNumber, employeeNumber: result.references.employeeNumber, defaultLocation: result.references.defaultLocation, locationName: asset.location, history: result.history };
+        currentAsset = { ...asset, modelName: result.references.model, modelNumber: result.references.modelNumber, employeeName: result.references.employee, employeeNumber: result.references.employeeNumber, defaultLocation: result.references.defaultLocation, locationName: asset.location, history: result.history };
         renderAssetCustomFieldDetail(asset);
         $('#addMaintenanceButton').textContent = translateUiText(asset.status === 'Deployed' ? 'Bakımı planla' : 'Bakım başlat');
         $('#dialogTitle').textContent = asset.name; $('#detailTag').textContent = asset.assetTag; $('#detailTagTop').textContent = asset.assetTag;
@@ -9151,7 +9151,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       if (!asset || !canWriteAssets() || !['detail', 'returns'].includes(source)) return;
       assetReturnTarget = { id: asset.id, assetTag: asset.assetTag, name: asset.name || asset.assetName || '', employeeName: asset.employeeName || '', source };
       $('#returnAssetTitle').textContent = translateUiText('{assetTag} · İade al').replace('{assetTag}', assetReturnTarget.assetTag);
-      $('#returnAssetDescription').textContent = translateUiText(source === 'returns' && assetReturnTarget.employeeName ? '“{assetTag}” varlığı {employeeName} çalışanından iade alınıp kullanılabilir duruma geçirilecek.' : '“{assetTag}” varlığı çalışandan iade alınıp kullanılabilir duruma geçirilecek.').replace('{assetTag}', assetReturnTarget.assetTag).replace('{employeeName}', assetReturnTarget.employeeName);
+      $('#returnAssetDescription').textContent = translateUiText(assetReturnTarget.employeeName ? '“{assetTag}” varlığı {employeeName} çalışanından iade alınıp kullanılabilir duruma geçirilecek.' : '“{assetTag}” varlığı çalışandan iade alınıp kullanılabilir duruma geçirilecek.').replace('{assetTag}', assetReturnTarget.assetTag).replace('{employeeName}', assetReturnTarget.employeeName);
       $('#returnAssetFeedback').hidden = true; $('#returnAssetFeedback').textContent = '';
       $('#returnAssetForm').reset(); returnAssetDialog.showModal();
       $('#returnAssetForm').elements.note.focus();

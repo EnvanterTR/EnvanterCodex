@@ -714,6 +714,18 @@ try {
   assert.equal(deleteWrite.csrf, 'synthetic-asset-csrf');
 
   await page.locator('#closeDialog').click();
+  await page.locator('#assetRows [data-asset-action="return"]').click();
+  await page.locator('#assetDialog').waitFor({ state: 'visible' });
+  const rowReturnDialog = page.locator('#returnAssetDialog');
+  await rowReturnDialog.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#returnAssetDescription').innerText(), /Synthetic QA Employee/,
+    'The assigned row shortcut must target the current synthetic assignee.');
+  const beforeRowReturnCancel = apiRequests.length;
+  await page.locator('#cancelAssetReturnAction').click();
+  await rowReturnDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, beforeRowReturnCancel, 'Canceling the row return shortcut must not return the asset.');
+  await page.locator('#assetDialog #closeDialog').click();
+
   await page.locator('[data-group="data"]').click();
   await page.locator('[data-page="Geri yükle"]').click();
   assert.equal(await page.locator('#dataRestorePanel').isVisible(), true, 'The company owner must be able to reach the company-restore page from the sidebar.');
