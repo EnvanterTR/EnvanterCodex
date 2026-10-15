@@ -29,6 +29,10 @@ public static class AssetEndpoints
             if (!await db.Companies.AsNoTracking().AnyAsync(x => x.Id == companyId && x.IsActive &&
                     db.CompanyMemberships.Any(m => m.CompanyId == companyId && m.UserId == userId && m.RoleKey == role),
                     invocation.HttpContext.RequestAborted)) return Results.Forbid();
+            if (TenantPlanFeatures.RequiresReports(invocation.HttpContext.Request.Path) &&
+                !await TenantPlanFeatures.IsEnabledAsync(companyId, TenantPlanFeatures.Reports, db,
+                    invocation.HttpContext.RequestAborted))
+                return TenantPlanFeatures.FeatureUnavailable(TenantPlanFeatures.Reports);
             if (HttpMethods.IsGet(invocation.HttpContext.Request.Method) || HttpMethods.IsHead(invocation.HttpContext.Request.Method))
                 return await next(invocation);
             var antiforgery = invocation.HttpContext.RequestServices.GetRequiredService<IAntiforgery>();

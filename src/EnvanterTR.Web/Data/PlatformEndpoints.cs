@@ -1491,9 +1491,9 @@ public static class PlatformEndpoints
             {
                 using var parsed = JsonDocument.Parse(request.FeatureFlagsJson);
                 if (parsed.RootElement.ValueKind != JsonValueKind.Object || parsed.RootElement.EnumerateObject()
-                    .Any(x => !Regex.IsMatch(x.Name, "^[A-Za-z][A-Za-z0-9_.-]{0,79}$") ||
+                    .Any(x => !TenantPlanFeatures.IsSupported(x.Name) ||
                         x.Value.ValueKind is not (JsonValueKind.True or JsonValueKind.False)))
-                    errors["features"] = ["Özellikler JSON nesnesi olmalı; anahtarlar adlandırılmış ve değerler true/false olmalıdır."];
+                    errors["features"] = ["Yalnız uygulanan `reports` anahtarı kullanılabilir; değer true/false olmalıdır."];
             }
             catch (JsonException) { errors["features"] = ["Özellik ayarları geçerli JSON olmalıdır."]; }
         }

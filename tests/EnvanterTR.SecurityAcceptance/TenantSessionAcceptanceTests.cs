@@ -75,6 +75,39 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Cloud_plan_report_entitlement_blocks_report_apis_without_blocking_inventory_reads()
+    {
+        var plan = new SubscriptionPlan
+        {
+            Code = $"reports-{_companyId.ToString("N")[..8]}", Name = "Cloud without reports", DeploymentKind = "cloud",
+            IsActive = true, IsPublic = true, FeatureFlagsJson = "{\"reports\":false}"
+        };
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SubscriptionPlans.Add(plan);
+            db.TenantSubscriptions.Add(new TenantSubscription
+            {
+                CompanyId = _companyId, PlanId = plan.Id, Status = "Active",
+                StartsAt = DateTimeOffset.UtcNow.AddDays(-1), EndsAt = DateTimeOffset.UtcNow.AddDays(30)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using (var read = await SendAsAdminAsync("/api/assets?page=1&pageSize=5"))
+            Assert.Equal(HttpStatusCode.OK, read.StatusCode);
+        using (var reports = await SendAsAdminAsync("/api/reports/assets"))
+        {
+            Assert.Equal(HttpStatusCode.PaymentRequired, reports.StatusCode);
+            using var payload = JsonDocument.Parse(await reports.Content.ReadAsStringAsync());
+            Assert.Equal("plan_feature_unavailable", payload.RootElement.GetProperty("code").GetString());
+            Assert.Equal("reports", payload.RootElement.GetProperty("feature").GetString());
+        }
+        using (var customReports = await SendAsAdminAsync("/api/assets/custom-reports"))
+            Assert.Equal(HttpStatusCode.PaymentRequired, customReports.StatusCode);
+    }
+
+    [Fact]
     public async Task Expired_cloud_subscription_preserves_read_access_and_blocks_company_writes()
     {
         var cloudPlan = new SubscriptionPlan
@@ -115,7 +148,6 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         }
         using (var read = await SendAsAdminAsync("/api/assets?page=1&pageSize=5"))
             Assert.Equal(HttpStatusCode.OK, read.StatusCode);
-
         using (var write = await SendAsUserAsync(HttpMethod.Post, "/api/assets", _userId, _companyId,
             JsonContent.Create(new { name = "Must remain blocked" })))
         {
