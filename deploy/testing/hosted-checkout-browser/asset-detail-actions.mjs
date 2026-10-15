@@ -447,6 +447,25 @@ const server = createServer(async (request, response) => {
     json(response, 200, { updated: targets.length });
     return;
   }
+  if (request.method === 'POST' && url.pathname === '/api/assets/bulk-assign') {
+    assert.equal(record.csrf, 'synthetic-asset-csrf');
+    assert.equal(body.employeeId, employeeId);
+    assert.equal(body.note, 'Quarterly device allocation');
+    assert.equal(body.expectedReturnOn, '2026-12-31');
+    const selected = new Set(body.assetIds);
+    const targets = bulkAssets.filter(item => selected.has(item.id));
+    assert.equal(targets.length, 2, 'The UI must send exactly the two selected synthetic assets.');
+    assert.ok(targets.every(item => item.status === 'Available' && !item.assignedEmployeeId));
+    for (const target of targets) {
+      target.status = 'Deployed';
+      target.updatedAt = '2026-10-15T10:30:00Z';
+      target.assignedEmployeeId = employeeId;
+      target.assignedEmployeeName = 'Synthetic QA Employee';
+      target.expectedReturnOn = body.expectedReturnOn;
+    }
+    json(response, 200, { updated: targets.length, employeeId, employeeName: 'Synthetic QA Employee' });
+    return;
+  }
   if (request.method === 'PATCH' && url.pathname === `/api/assets/${assetId}/status`) {
     asset.status = body.status;
     asset.updatedAt = '2026-10-14T13:30:00Z';
@@ -1048,14 +1067,13 @@ try {
 
   const beforeAssignCancel = apiRequests.length;
   await page.locator('#assignAssetButton').click();
-  const assignDialog = page.locator('#assignDialog');
-  await assignDialog.waitFor({ state: 'visible' });
+  await bulkAssignDialogRef.waitFor({ state: 'visible' });
   assert.equal(await page.locator('#assignForm [name="employeeId"] option').count(), 2, 'Assignment dialog must load the company active-employee choice.');
   await page.locator('[data-close-assign]').first().click();
-  await assignDialog.waitFor({ state: 'hidden' });
+  await bulkAssignDialogRef.waitFor({ state: 'hidden' });
   assert.equal(apiRequests.length, beforeAssignCancel, 'Canceling assignment must not write.');
   await page.locator('#assignAssetButton').click();
-  await assignDialog.waitFor({ state: 'visible' });
+  await bulkAssignDialogRef.waitFor({ state: 'visible' });
   const expectedReturnOn = await page.evaluate(() => {
     const date = new Date(); date.setDate(date.getDate() + 30); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   });
@@ -1063,7 +1081,7 @@ try {
   await page.locator('#assignForm [name="expectedReturnOn"]').fill(expectedReturnOn);
   await page.locator('#assignForm [name="note"]').fill('Synthetic assignment note');
   await page.locator('#assignForm button[type="submit"]').click();
-  await assignDialog.waitFor({ state: 'hidden' });
+  await bulkAssignDialogRef.waitFor({ state: 'hidden' });
   await page.locator('#assetRows .asset-name').filter({ hasText: editedName }).waitFor({ state: 'visible' });
   const assignmentWrite = apiRequests.at(-1);
   assert.equal(assignmentWrite.method, 'POST');
@@ -1587,6 +1605,42 @@ try {
     'Confirmed bulk return must clear both assignments and expected-return dates in synthetic state.');
   assert.equal(await bulkToolbar.isHidden(), true, 'A successful bulk return must clear the selection and hide the bulk toolbar.');
   console.log('PASS: bulk asset return preserves assignments on cancel, submits selected records with CSRF and note, and refreshes both returned rows.');
+
+  await firstBulkRow.locator('.asset-row-select').check();
+  await secondBulkRow.locator('.asset-row-select').check();
+  const bulkAssignButton = page.locator('#bulkAssignSelectedAssets');
+  assert.equal(await bulkAssignButton.isDisabled(), false, 'Bulk assignment must be enabled for all selected available assets.');
+  const bulkAssignWritesBeforeCancel = apiRequests.filter(item => item.path === '/api/assets/bulk-assign').length;
+  await bulkAssignButton.click();
+  const bulkAssignDialogRef = page.locator('#assignDialog');
+  await bulkAssignDialogRef.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#assignDialog h2').innerText(), /Seçili varlıkları zimmetle/);
+  await page.locator('[data-close-assign]').first().click();
+  await bulkAssignDialogRef.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.filter(item => item.path === '/api/assets/bulk-assign').length, bulkAssignWritesBeforeCancel,
+    'Closing bulk assignment must not write.');
+  assert.ok(bulkAssets.every(item => item.status === 'Available' && !item.assignedEmployeeId),
+    'Closing must leave every selected asset available and unassigned.');
+  assert.match(await page.locator('#selectedAssetCount').innerText(), /2 varlık seçildi/);
+  await bulkAssignButton.click();
+  await bulkAssignDialogRef.waitFor({ state: 'visible' });
+  const assignForm = page.locator('#assignForm');
+  await assignForm.locator('[name="employeeId"]').selectOption(employeeId);
+  await assignForm.locator('[name="expectedReturnOn"]').fill('2026-12-31');
+  await assignForm.locator('[name="note"]').fill('Quarterly device allocation');
+  await assignForm.locator('button[type="submit"]').click();
+  await bulkAssignDialogRef.waitFor({ state: 'hidden' });
+  await firstBulkRow.getByText('Synthetic QA Employee').waitFor();
+  await secondBulkRow.getByText('Synthetic QA Employee').waitFor();
+  const bulkAssignWrite = apiRequests.find(item => item.path === '/api/assets/bulk-assign');
+  assert.equal(bulkAssignWrite?.method, 'POST');
+  assert.deepEqual(bulkAssignWrite?.body, {
+    assetIds: bulkAssetIds, employeeId, note: 'Quarterly device allocation', expectedReturnOn: '2026-12-31'
+  });
+  assert.equal(bulkAssignWrite?.csrf, 'synthetic-asset-csrf');
+  assert.ok(bulkAssets.every(item => item.status === 'Deployed' && item.assignedEmployeeId === employeeId && item.expectedReturnOn === '2026-12-31'));
+  assert.equal(await bulkToolbar.isHidden(), true, 'A successful bulk assignment must clear the selection and hide the bulk toolbar.');
+  console.log('PASS: bulk asset assignment dialog cancellation writes nothing; confirmed assignment persists both rows with employee, due date, note, and CSRF.');
 
   const sidebarGroups = page.locator('#sidebar [data-group]');
   for (const group of await sidebarGroups.all()) {
