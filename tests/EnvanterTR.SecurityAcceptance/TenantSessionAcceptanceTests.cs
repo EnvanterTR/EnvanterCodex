@@ -453,7 +453,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             await db.SaveChangesAsync();
         }
 
-        var provider = new SyntheticIyzipayHandler();
+        var syntheticPaymentId = $"synthetic-payment-{checkoutId:N}";
+        var provider = new SyntheticIyzipayHandler(syntheticPaymentId);
         using var checkoutFactory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Development");
@@ -544,7 +545,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var callbackClient = checkoutFactory.CreateClient();
         var webhook = new
         {
-            iyziEventType = "CHECKOUT_FORM_AUTH", iyziPaymentId = "synthetic-payment-id",
+            iyziEventType = "CHECKOUT_FORM_AUTH", iyziPaymentId = syntheticPaymentId,
             token = "synthetic-provider-token", paymentConversationId = checkoutId.ToString("N"), status = "SUCCESS"
         };
         static string SignWebhook(string secret, string eventType, string paymentId, string token,
@@ -632,7 +633,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.NotNull(order.CompanyId);
             Assert.Equal(1, await db.Companies.CountAsync(x => x.Slug == request.Slug));
             Assert.Equal(1, await db.TenantSubscriptions.CountAsync(x => x.CompanyId == order.CompanyId &&
-                x.Status == "Active" && !x.IsDemo && x.PlanId == plan.Id && x.PaymentReference == "synthetic-payment-id"));
+                x.Status == "Active" && !x.IsDemo && x.PlanId == plan.Id && x.PaymentReference == syntheticPaymentId));
             Assert.Equal(1, await db.CompanyMemberships.CountAsync(x => x.CompanyId == order.CompanyId && x.RoleKey == "owner"));
         }
     }
@@ -2100,7 +2101,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             {
                 CompanyId = _companyId, PlanId = plan.Id, Status = "Active", IsDemo = false,
                 StartsAt = earlierMembership, EndsAt = DateTimeOffset.UtcNow.AddDays(90),
-                PaymentReference = "member-directory-payment-reference"
+                PaymentReference = $"member-directory-{_companyId:N}"
             };
             db.TenantSubscriptions.Add(memberSubscription);
             db.CompanyCheckoutOrders.Add(new CompanyCheckoutOrder
@@ -2108,7 +2109,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 Id = Guid.NewGuid(), CompanyName = "Directory Acceptance Company", Slug = $"member-{userId:N}",
                 ContactEmail = $"{marker}@example.invalid", OwnerName = "Directory Acceptance Member",
                 OwnerEmail = $"{marker}@example.invalid", PlanId = plan.Id, TermDays = 365, Amount = 4200,
-                Currency = "TRY", Status = "Provisioned", PaymentReference = "member-directory-order-payment",
+                Currency = "TRY", Status = "Provisioned", PaymentReference = $"member-directory-order-{_companyId:N}",
                 CheckoutTokenHash = "checkout-token-hash-must-not-leak",
                 CheckoutPageUrlProtected = "protected-checkout-url-must-not-leak",
                 CompanyId = _companyId, CreatedAt = earlierMembership.AddDays(-4),
@@ -2119,7 +2120,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 Id = Guid.NewGuid(), CompanyName = "Unprovisioned Acceptance Company", Slug = $"pending-{userId:N}",
                 ContactEmail = "billing-contact@example.invalid", OwnerName = "Directory Acceptance Member",
                 OwnerEmail = $"{marker}@example.invalid", PlanId = plan.Id, TermDays = 30, Amount = 1200,
-                Currency = "TRY", Status = "PaymentStarted", PaymentReference = "pending-member-checkout-reference",
+                Currency = "TRY", Status = "PaymentStarted", PaymentReference = $"pending-member-checkout-{_companyId:N}",
                 CheckoutTokenHash = "pending-member-token-hash-must-not-leak",
                 CheckoutPageUrlProtected = "pending-member-protected-url-must-not-leak",
                 CompanyId = null, CreatedAt = earlierMembership.AddDays(-6),
@@ -2219,7 +2220,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(2, profileJson.RootElement.GetProperty("memberships").GetArrayLength());
         Assert.True(profileJson.RootElement.GetProperty("account").GetProperty("phoneNumberConfirmed").GetBoolean());
         Assert.Contains("Member Directory Acceptance Cloud", profileBody, StringComparison.Ordinal);
-        Assert.Contains("member-directory-payment-reference", profileBody, StringComparison.Ordinal);
+        Assert.Contains($"member-directory-{_companyId:N}", profileBody, StringComparison.Ordinal);
         Assert.DoesNotContain("identity-password-hash-must-not-leak", profileBody, StringComparison.Ordinal);
         Assert.DoesNotContain("identity-security-stamp-must-not-leak", profileBody, StringComparison.Ordinal);
         Assert.DoesNotContain("identity-authenticator-key-must-not-leak", profileBody, StringComparison.Ordinal);
@@ -2371,7 +2372,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Contains("Şirket sahipliği devredildi", timeline);
         Assert.True(timelinePages > 1, "The member timeline should paginate when more than four events exist.");
         var serializedTimeline = string.Join('\n', timelineBody);
-        Assert.Contains("pending-member-checkout-reference", serializedTimeline, StringComparison.Ordinal);
+        Assert.Contains($"pending-member-checkout-{_companyId:N}", serializedTimeline, StringComparison.Ordinal);
         Assert.Contains("Unprovisioned Acceptance Company", serializedTimeline, StringComparison.Ordinal);
         Assert.Contains("1200", serializedTimeline, StringComparison.Ordinal);
         Assert.DoesNotContain("pending-member-token-hash-must-not-leak", serializedTimeline, StringComparison.Ordinal);
@@ -2749,14 +2750,14 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             db.TenantSubscriptions.Add(new TenantSubscription
             {
                 Id = subscriptionId, CompanyId = _companyId, PlanId = originalPlan.Id, Status = "Active", IsDemo = false,
-                StartsAt = now.AddDays(-10), EndsAt = now.AddDays(20), PaymentReference = "preserved-payment-reference"
+                StartsAt = now.AddDays(-10), EndsAt = now.AddDays(20), PaymentReference = $"preserved-payment-{_companyId:N}"
             });
             db.CompanyCheckoutOrders.Add(new CompanyCheckoutOrder
             {
                 Id = Guid.NewGuid(), CompanyName = "Acceptance Company", Slug = $"purchase-{_companyId:N}",
                 ContactEmail = "billing@example.invalid", OwnerName = "Acceptance Owner", OwnerEmail = "owner@example.invalid",
                 PlanId = originalPlan.Id, TermDays = 365, Amount = 1299.50m, Currency = "TRY", Status = "Provisioned",
-                PaymentReference = "verified-purchase-reference", CompanyId = _companyId,
+                PaymentReference = $"verified-purchase-{_companyId:N}", CompanyId = _companyId,
                 CreatedAt = now.AddDays(-11), ExpiresAt = now.AddDays(-10), PaidAt = now.AddDays(-10)
             });
             db.CompanyCheckoutOrders.Add(new CompanyCheckoutOrder
@@ -2764,7 +2765,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 Id = Guid.NewGuid(), CompanyName = "Other Acceptance Company", Slug = $"purchase-other-{_otherCompanyId:N}",
                 ContactEmail = "other-billing@example.invalid", OwnerName = "Other Acceptance Owner", OwnerEmail = "other-owner@example.invalid",
                 PlanId = originalPlan.Id, TermDays = 30, Amount = 9999m, Currency = "TRY", Status = "Provisioned",
-                PaymentReference = "another-company-payment-reference", CompanyId = _otherCompanyId,
+                PaymentReference = $"other-company-payment-{_otherCompanyId:N}", CompanyId = _otherCompanyId,
                 CreatedAt = now.AddDays(-1), ExpiresAt = now, PaidAt = now
             });
             db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
@@ -2785,7 +2786,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             using var payload = JsonDocument.Parse(await companyDetail.Content.ReadAsStringAsync());
             var order = Assert.Single(payload.RootElement.GetProperty("checkoutOrders").EnumerateArray());
             Assert.Equal("Provisioned", order.GetProperty("status").GetString());
-            Assert.Equal("verified-purchase-reference", order.GetProperty("paymentReference").GetString());
+            Assert.Equal($"verified-purchase-{_companyId:N}", order.GetProperty("paymentReference").GetString());
             Assert.Equal(1299.50m, order.GetProperty("amount").GetDecimal());
             Assert.Equal(now.AddDays(-10).ToUnixTimeMilliseconds(), order.GetProperty("paidAt").GetDateTimeOffset().ToUnixTimeMilliseconds());
             Assert.False(order.TryGetProperty("checkoutPageUrlProtected", out _));
@@ -2840,7 +2841,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             var subscription = await db.TenantSubscriptions.SingleAsync(x => x.Id == subscriptionId);
             Assert.Equal("Active", subscription.Status);
             Assert.False(subscription.IsDemo);
-            Assert.Equal("preserved-payment-reference", subscription.PaymentReference);
+            Assert.Equal($"preserved-payment-{_companyId:N}", subscription.PaymentReference);
             var auditEntries = await db.PlatformAuditEntries.Where(x => x.TargetId == subscriptionId && x.Action == "SubscriptionManuallyAdjusted").ToListAsync();
             var audit = Assert.Single(auditEntries);
             Assert.Contains(originalPlan.Id.ToString(), audit.Details, StringComparison.Ordinal);
@@ -2868,7 +2869,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             db.TenantSubscriptions.Add(new TenantSubscription
             {
                 Id = subscriptionId, CompanyId = _companyId, PlanId = plan.Id, Status = "Active", IsDemo = false,
-                StartsAt = now.AddDays(-10), EndsAt = currentEnd, PaymentReference = "already-verified-payment"
+                StartsAt = now.AddDays(-10), EndsAt = currentEnd, PaymentReference = $"already-verified-{_companyId:N}"
             });
             db.TenantSubscriptions.Add(new TenantSubscription
             {
@@ -2926,7 +2927,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var saved = await db.TenantSubscriptions.SingleAsync(x => x.Id == subscriptionId);
             Assert.Equal(requestedEnd.ToUnixTimeMilliseconds(), saved.EndsAt.ToUnixTimeMilliseconds());
-            Assert.Equal("already-verified-payment", saved.PaymentReference);
+            Assert.Equal($"already-verified-{_companyId:N}", saved.PaymentReference);
             var audit = await db.PlatformAuditEntries.Where(x => x.TargetId == subscriptionId && x.Action == "SubscriptionExtended").ToListAsync();
             var entry = Assert.Single(audit);
             Assert.Contains("Approved complimentary renewal", entry.Details, StringComparison.Ordinal);
@@ -11081,9 +11082,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     private sealed class SyntheticIyzipayHandler : HttpMessageHandler
     {
         private string? _conversationId;
+        private readonly string _paymentId;
         public decimal InitializedAmount { get; private set; }
         public int InitializeCount { get; private set; }
         public int RetrieveCount { get; private set; }
+
+        public SyntheticIyzipayHandler(string paymentId) => _paymentId = paymentId;
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -11109,7 +11113,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 {
                     status = "success", token = "synthetic-provider-token", conversationId = _conversationId,
                     basketId = _conversationId, price = InitializedAmount, paidPrice = InitializedAmount,
-                    currency = "TRY", fraudStatus = 1, paymentStatus = "SUCCESS", paymentId = "synthetic-payment-id"
+                    currency = "TRY", fraudStatus = 1, paymentStatus = "SUCCESS", paymentId = _paymentId
                 });
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
