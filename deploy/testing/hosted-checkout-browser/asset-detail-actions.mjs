@@ -430,6 +430,23 @@ const server = createServer(async (request, response) => {
     json(response, 200, { updated: targets.length, unchanged: 0 });
     return;
   }
+  if (request.method === 'POST' && url.pathname === '/api/assets/bulk-return') {
+    assert.equal(record.csrf, 'synthetic-asset-csrf');
+    assert.equal(body.note, 'Quarterly device return');
+    const selected = new Set(body.assetIds);
+    const targets = bulkAssets.filter(item => selected.has(item.id));
+    assert.equal(targets.length, 2, 'The UI must send exactly the two selected assigned synthetic assets.');
+    assert.ok(targets.every(item => item.assignedEmployeeId === employeeId && item.status === 'Deployed'));
+    for (const target of targets) {
+      target.status = 'Available';
+      target.updatedAt = '2026-10-15T10:15:00Z';
+      delete target.assignedEmployeeId;
+      delete target.assignedEmployeeName;
+      delete target.expectedReturnOn;
+    }
+    json(response, 200, { updated: targets.length });
+    return;
+  }
   if (request.method === 'PATCH' && url.pathname === `/api/assets/${assetId}/status`) {
     asset.status = body.status;
     asset.updatedAt = '2026-10-14T13:30:00Z';
@@ -1525,6 +1542,51 @@ try {
   assert.equal(await bulkToolbar.isHidden(), true, 'A successful bulk update must clear the selection and hide the bulk toolbar.');
   assert.equal(await page.locator('#bulkAssetStatus').inputValue(), '', 'A successful bulk update must reset the status selector.');
   console.log('PASS: bulk asset status change confirms two selected records, cancellation performs no write, confirmed CSRF submission persists both statuses and refreshes the list.');
+
+  for (const item of bulkAssets) {
+    item.status = 'Deployed';
+    item.assignedEmployeeId = employeeId;
+    item.assignedEmployeeName = 'Synthetic QA Employee';
+    item.expectedReturnOn = '2026-10-20';
+  }
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await firstBulkRow.waitFor({ state: 'visible' });
+  await secondBulkRow.waitFor({ state: 'visible' });
+  assert.match(await firstBulkRow.innerText(), /Synthetic QA Employee/);
+  assert.match(await secondBulkRow.innerText(), /Synthetic QA Employee/);
+  await firstBulkRow.locator('.asset-row-select').check();
+  await secondBulkRow.locator('.asset-row-select').check();
+  await bulkToolbar.waitFor({ state: 'visible' });
+  const bulkReturnButton = page.locator('#bulkReturnSelectedAssets');
+  assert.equal(await bulkReturnButton.isDisabled(), false, 'Bulk return must be enabled when every selected asset is assigned.');
+  const bulkReturnWritesBeforeCancel = apiRequests.filter(item => item.path === '/api/assets/bulk-return').length;
+  await bulkReturnButton.click();
+  await bulkActionDialog.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#bulkAssetActionDescription').innerText(), /2 seçili varlık/);
+  await page.locator('#cancelBulkAssetAction').click();
+  await bulkActionDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.filter(item => item.path === '/api/assets/bulk-return').length, bulkReturnWritesBeforeCancel,
+    'Canceling the bulk return dialog must not write.');
+  assert.match(await page.locator('#selectedAssetCount').innerText(), /2 varlık seçildi/);
+  assert.ok(bulkAssets.every(item => item.status === 'Deployed' && item.assignedEmployeeId === employeeId),
+    'Canceling must preserve every assignment and status.');
+  await bulkReturnButton.click();
+  await bulkActionDialog.waitFor({ state: 'visible' });
+  await page.locator('#bulkAssetActionForm [name="note"]').fill('Quarterly device return');
+  await page.locator('#submitBulkAssetAction').click();
+  await bulkActionDialog.waitFor({ state: 'hidden' });
+  await firstBulkRow.getByText('Kullanılabilir').waitFor();
+  await secondBulkRow.getByText('Kullanılabilir').waitFor();
+  assert.doesNotMatch(await firstBulkRow.innerText(), /Synthetic QA Employee/);
+  assert.doesNotMatch(await secondBulkRow.innerText(), /Synthetic QA Employee/);
+  const bulkReturnWrite = apiRequests.find(item => item.path === '/api/assets/bulk-return');
+  assert.equal(bulkReturnWrite?.method, 'POST');
+  assert.deepEqual(bulkReturnWrite?.body, { assetIds: bulkAssetIds, note: 'Quarterly device return' });
+  assert.equal(bulkReturnWrite?.csrf, 'synthetic-asset-csrf');
+  assert.ok(bulkAssets.every(item => item.status === 'Available' && !item.assignedEmployeeId && !item.expectedReturnOn),
+    'Confirmed bulk return must clear both assignments and expected-return dates in synthetic state.');
+  assert.equal(await bulkToolbar.isHidden(), true, 'A successful bulk return must clear the selection and hide the bulk toolbar.');
+  console.log('PASS: bulk asset return preserves assignments on cancel, submits selected records with CSRF and note, and refreshes both returned rows.');
 
   const sidebarGroups = page.locator('#sidebar [data-group]');
   for (const group of await sidebarGroups.all()) {

@@ -6568,6 +6568,112 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Bulk_asset_return_is_atomic_company_scoped_authorized_and_audited()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var secondAssetId = Guid.NewGuid();
+        await using (var setupScope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = setupScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var first = await db.Assets.SingleAsync(asset => asset.CompanyId == _companyId && asset.Id == _ownAssetId);
+            var categoryId = first.CategoryId;
+            first.AssignedEmployeeId = _ownEmployeeId;
+            first.ExpectedReturnOn = new DateOnly(2026, 10, 20);
+            first.Status = AssetStatuses.Deployed;
+            db.Assets.Add(new Asset
+            {
+                Id = secondAssetId, CompanyId = _companyId, AssetTag = $"BULK-RETURN-{_userId:N}",
+                Name = "Second bulk return asset", CategoryId = categoryId
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var requestPayload = new
+        {
+            assetIds = new[] { _ownAssetId, secondAssetId },
+            note = "Quarterly device return"
+        };
+        using (var missingCsrf = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-return", "admin",
+                   System.Net.Http.Json.JsonContent.Create(requestPayload)))
+            Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+        await SetCompanyRoleAsync("viewer");
+        using (var forbidden = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-return", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(requestPayload), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+        await SetCompanyRoleAsync("admin");
+        using (var duplicateIds = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-return", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { _ownAssetId, _ownAssetId }, note = "Duplicate" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, duplicateIds.StatusCode);
+        using (var crossTenant = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-return", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { _ownAssetId, _otherCompanyAssetId }, note = "Cross tenant" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
+
+        using (var unassignedConflict = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-return", "admin",
+                   System.Net.Http.Json.JsonContent.Create(requestPayload), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, unassignedConflict.StatusCode);
+        await using (var verifyAtomicConflict = _factory.Services.CreateAsyncScope())
+        {
+            var db = verifyAtomicConflict.ServiceProvider.GetRequiredService<AppDbContext>();
+            var assets = await db.Assets.AsNoTracking().Where(asset => asset.CompanyId == _companyId &&
+                (asset.Id == _ownAssetId || asset.Id == secondAssetId)).ToListAsync();
+            Assert.Equal(AssetStatuses.Deployed, assets.Single(asset => asset.Id == _ownAssetId).Status);
+            Assert.Equal(_ownEmployeeId, assets.Single(asset => asset.Id == _ownAssetId).AssignedEmployeeId);
+            Assert.Equal(AssetStatuses.Available, assets.Single(asset => asset.Id == secondAssetId).Status);
+            Assert.Null(assets.Single(asset => asset.Id == secondAssetId).AssignedEmployeeId);
+            Assert.Equal(0, await db.AssetEvents.CountAsync(item => item.CompanyId == _companyId &&
+                (item.AssetId == _ownAssetId || item.AssetId == secondAssetId) && item.EventType == "Returned"));
+        }
+
+        await using (var setupScope = _factory.Services.CreateAsyncScope())
+        {
+            var db = setupScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var second = await db.Assets.SingleAsync(asset => asset.CompanyId == _companyId && asset.Id == secondAssetId);
+            second.AssignedEmployeeId = _ownEmployeeId;
+            second.ExpectedReturnOn = new DateOnly(2026, 10, 22);
+            second.Status = AssetStatuses.Deployed;
+            await db.SaveChangesAsync();
+        }
+        using (var returned = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-return", "admin",
+                   System.Net.Http.Json.JsonContent.Create(requestPayload), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, returned.StatusCode);
+            using var payload = JsonDocument.Parse(await returned.Content.ReadAsStringAsync());
+            Assert.Equal(2, payload.RootElement.GetProperty("updated").GetInt32());
+        }
+        using (var repeatedReturn = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-return", "admin",
+                   System.Net.Http.Json.JsonContent.Create(requestPayload), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, repeatedReturn.StatusCode);
+
+        await using var verifyScope = _factory.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var saved = await verifyDb.Assets.AsNoTracking().Where(asset => asset.CompanyId == _companyId &&
+            (asset.Id == _ownAssetId || asset.Id == secondAssetId)).ToListAsync();
+        Assert.All(saved, item =>
+        {
+            Assert.Equal(AssetStatuses.Available, item.Status);
+            Assert.Null(item.AssignedEmployeeId);
+            Assert.Null(item.ExpectedReturnOn);
+        });
+        var events = await verifyDb.AssetEvents.AsNoTracking().Where(item => item.CompanyId == _companyId &&
+            (item.AssetId == _ownAssetId || item.AssetId == secondAssetId) && item.EventType == "Returned").ToListAsync();
+        Assert.Equal(2, events.Count);
+        Assert.All(events, item =>
+        {
+            Assert.Equal(_ownEmployeeId, item.EmployeeId);
+            Assert.Equal(_userId, item.ActorUserId);
+            Assert.Contains("Quarterly device return", item.Details, StringComparison.Ordinal);
+        });
+        Assert.Equal(2, await verifyDb.AuditEntries.CountAsync(item => item.CompanyId == _companyId &&
+            (item.TargetId == _ownAssetId || item.TargetId == secondAssetId) && item.Action == "BulkReturned"));
+    }
+
+    [Fact]
     public async Task Asset_archive_restore_is_authorized_tenant_scoped_and_audited()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
