@@ -87,7 +87,7 @@ assert.equal(loginLayerShown, 1, 'A rejected login attempt must keep the current
 assert.deepEqual(requests.map(request => request.path), ['/api/assets/asset-id/audit', '/api/assets', '/api/session/login'], 'The client must not replay the expired-session write while handling a rejected login.');
 
 const credentialScrubScript = source.match(/<script>([\s\S]*?)<\/script>/)?.[1] || '';
-assert.match(credentialScrubScript, /searchParams\.has\('password'\)/, 'The early page script must detect credentials in the URL.');
+assert.match(credentialScrubScript, /authParams=\['email','password','twoFactorCode','companyId'\]/, 'The early page script must detect every auth/account-scope parameter in the URL.');
 const historyCalls = [];
 const credentialUrlContext = {
   URL,
@@ -100,6 +100,17 @@ assert.equal(credentialUrlContext.window.__envanterCredentialsInUrl, true, 'The 
 assert.equal(historyCalls.length, 1, 'Credential URLs must be scrubbed from browser history immediately.');
 assert.equal(historyCalls[0][2], '/?keep=1#dashboard', 'URL cleanup must preserve unrelated query parameters and the current fragment.');
 assert.doesNotMatch(historyCalls[0][2], /private|not-a-real-secret|123456|secret-company/, 'Email, password, 2FA code, and company ID must not remain in browser history.');
+const emailOnlyHistoryCalls = [];
+const emailOnlyUrlContext = {
+  URL,
+  location: { href: 'http://localhost:8080/?email=private%40example.invalid&keep=1#dashboard' },
+  history: { state: null, replaceState(...args) { emailOnlyHistoryCalls.push(args); } },
+  window: {},
+};
+vm.runInNewContext(credentialScrubScript, emailOnlyUrlContext);
+assert.equal(emailOnlyUrlContext.window.__envanterCredentialsInUrl, true, 'An email-only login URL must also be identified as sensitive.');
+assert.equal(emailOnlyHistoryCalls.length, 1, 'An email-only login URL must be scrubbed immediately.');
+assert.equal(emailOnlyHistoryCalls[0][2], '/?keep=1#dashboard', 'Email-only cleanup must preserve unrelated URL state.');
 
 const diagnosticStart = source.indexOf('async function checkLoginConnection()');
 const diagnosticEnd = source.indexOf("$('#loginForm').addEventListener('submit'", diagnosticStart);
