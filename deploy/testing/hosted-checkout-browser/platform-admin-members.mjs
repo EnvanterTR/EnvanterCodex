@@ -205,6 +205,16 @@ try {
   await roleDialogAgain.getByRole('button', { name: 'Rolü kaydet' }).click();
   assert.equal((await roleRejectedUntilReauth).status(), 428, 'Role update must stop before recent MFA reauthentication.');
   await page.locator('#platformReauthDialog').waitFor({ state: 'visible' });
+  const writesBeforeStepUpCancel = writes.length;
+  await page.locator('#platformReauthCancel').click();
+  await page.locator('#platformReauthDialog').waitFor({ state: 'hidden' });
+  await roleDialogAgain.locator('.notice.error').filter({ hasText: 'Kritik işlem iptal edildi' }).waitFor({ state: 'visible' });
+  assert.equal(writes.length, writesBeforeStepUpCancel, 'Canceling step-up reauthentication must not replay the pending role change.');
+  const roleRejectedAfterStepUpCancel = page.waitForResponse(response => response.request().method() === 'PATCH'
+    && new URL(response.url()).pathname === `/api/platform/members/${accountId}/memberships/${companyId}/role`);
+  await roleDialogAgain.getByRole('button', { name: 'Rolü kaydet' }).click();
+  assert.equal((await roleRejectedAfterStepUpCancel).status(), 428, 'A fresh explicit submit is required after step-up cancellation.');
+  await page.locator('#platformReauthDialog').waitFor({ state: 'visible' });
   await page.locator('#platformReauthForm [name="password"]').fill('Synthetic-only-password');
   await page.locator('#platformReauthForm [name="code"]').fill('123456');
   const reauthResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/session/platform-reauth');

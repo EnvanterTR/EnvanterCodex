@@ -10351,6 +10351,16 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal((HttpStatusCode)428, deniedUntilStepUp.StatusCode);
             Assert.Equal("platform_reauth_required", deniedPayload.RootElement.GetProperty("code").GetString());
         }
+        using (var expiredStepUp = await SendAsPlatformAdminRequestAsync(HttpMethod.Put,
+                   $"{extensionPath}{_companyId}/subscription/extend",
+                   System.Net.Http.Json.JsonContent.Create(new { endsAt = "2099-01-01", reason = "" }),
+                   setupToken, setupCookie, reauthenticationAtUnix: DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 601))
+            Assert.Equal((HttpStatusCode)428, expiredStepUp.StatusCode);
+        using (var futureStepUp = await SendAsPlatformAdminRequestAsync(HttpMethod.Put,
+                   $"{extensionPath}{_companyId}/subscription/extend",
+                   System.Net.Http.Json.JsonContent.Create(new { endsAt = "2099-01-01", reason = "" }),
+                   setupToken, setupCookie, reauthenticationAtUnix: DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 61))
+            Assert.Equal((HttpStatusCode)428, futureStepUp.StatusCode);
         using (var rejectedPassword = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/session/platform-reauth",
                    System.Net.Http.Json.JsonContent.Create(new { password = password + "-wrong", code = GenerateAuthenticatorCode(secret) }), setupToken, setupCookie))
             Assert.Equal(HttpStatusCode.Unauthorized, rejectedPassword.StatusCode);
@@ -10899,14 +10909,14 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
 
     private async Task<HttpResponseMessage> SendAsPlatformAdminRequestAsync(HttpMethod method, string path,
         HttpContent? content = null, string? requestToken = null, string? antiforgeryCookie = null, string? host = null,
-        bool freshReauthentication = true)
+        bool freshReauthentication = true, long? reauthenticationAtUnix = null)
     {
         await EnsurePlatformAdminMfaForAcceptanceAsync();
         using var request = new HttpRequestMessage(method, path) { Content = content };
         request.Headers.Add("X-Acceptance-User", _userId.ToString());
         request.Headers.Add("X-Acceptance-Platform-Admin", "true");
         if (freshReauthentication)
-            request.Headers.Add("X-Acceptance-Platform-Reauth-At", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture));
+            request.Headers.Add("X-Acceptance-Platform-Reauth-At", (reauthenticationAtUnix ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds()).ToString(System.Globalization.CultureInfo.InvariantCulture));
         if (!string.IsNullOrWhiteSpace(host)) request.Headers.Host = host;
         if (!string.IsNullOrWhiteSpace(requestToken)) request.Headers.Add("X-CSRF-TOKEN", requestToken);
         if (!string.IsNullOrWhiteSpace(antiforgeryCookie)) request.Headers.Add("Cookie", antiforgeryCookie);
