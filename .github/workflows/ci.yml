@@ -352,6 +352,42 @@ jobs:
         shell: bash
         run: sudo -n bash deploy/server/tests/install-resume-check.sh
 
+      - name: Verify asset checkout and return workflows
+        shell: bash
+        run: node tools/Verify-AssetCheckoutReturnUi.mjs
+
+      - name: Verify asset detail actions
+        shell: bash
+        run: node tools/Verify-AssetDetailActions.mjs
+
+      - name: Verify asset plan quotas
+        shell: bash
+        run: node tools/Verify-AssetPlanQuota.mjs
+
+      - name: Verify bulk asset action workflows
+        shell: bash
+        run: node tools/Verify-BulkAssetActions.mjs
+
+      - name: Verify iyzico checkout client contracts
+        shell: bash
+        run: node tools/Verify-IyzipayCheckoutClient.mjs
+
+      - name: Verify purchase order dialogs
+        shell: bash
+        run: node tools/Verify-PurchaseOrderDialogs.mjs
+
+      - name: Verify role matrix contracts
+        shell: bash
+        run: node tools/Verify-RoleMatrix.mjs
+
+      - name: Verify saved asset search workflows
+        shell: bash
+        run: node tools/Verify-SavedAssetSearchUi.mjs
+
+      - name: Verify stock import dialogs
+        shell: bash
+        run: node tools/Verify-StockImportDialogs.mjs
+
       - name: Package the tested Linux server source release
         shell: bash
         run: bash deploy/server/package-release.sh "$RUNNER_TEMP/envantertr-linux-release"
