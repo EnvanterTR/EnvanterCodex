@@ -3287,6 +3287,10 @@
       bulkAssignButton.title = bulkAssignmentInvalid ? 'Toplu zimmet için seçimin tamamı boşta ve kullanılabilir olmalı.' : '';
       bulkTransferButton.title = bulkAssignmentInvalid ? 'Toplu konum aktarımı için seçimin tamamı boşta ve kullanılabilir olmalı.' : '';
       bulkReturnButton.title = bulkReturnInvalid ? 'Toplu iade için seçimin tamamı zimmetli olmalı.' : '';
+      document.querySelectorAll('.asset-row-select').forEach(input => {
+        const rowAsset = loadedAssets.find(asset => asset.id === input.closest('tr')?.dataset.id);
+        if (rowAsset) input.checked = selectedAssetIds.has(rowAsset.id);
+      });
       const selectable = loadedAssets;
       const allSelected = selectable.length > 0 && selectable.every(asset => selectedAssetIds.has(asset.id));
       for (const checkbox of [$('#selectAllAssets'), $('#selectAllAssetsHeader')]) { checkbox.checked = allSelected; checkbox.indeterminate = !allSelected && selectable.some(asset => selectedAssetIds.has(asset.id)); checkbox.disabled = selectable.length === 0; }

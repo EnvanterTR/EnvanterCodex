@@ -24,6 +24,7 @@ let syntheticSessionExpired = false;
 let companySwitchLoginFlow = false;
 let activeCompanyId = companyId;
 let expireNextAssetPatch = false;
+let failNextBulkAssetScan = true;
 const assetHistory = [];
 const assetAttachments = [];
 const attachmentId = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
@@ -62,6 +63,12 @@ const json = (response, status = 200, body = null) => {
   response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
   response.end(JSON.stringify(body));
 };
+async function expectScanFeedback(page, pattern) {
+  await page.waitForFunction(({ source, flags }) => {
+    const feedback = document.querySelector('#scanAssetFeedback');
+    return feedback && new RegExp(source, flags).test(feedback.textContent || '');
+  }, { source: pattern.source, flags: pattern.flags });
+}
 
 const makeXlsx = rows => {
   const crc32 = bytes => {
@@ -196,6 +203,11 @@ const server = createServer(async (request, response) => {
       json(response, 401, { message: 'Synthetic session expired.' });
       return;
     }
+    if (url.pathname === '/api/assets' && url.searchParams.get('q') === 'QA-BULK-1' && failNextBulkAssetScan) {
+      failNextBulkAssetScan = false;
+      json(response, 503, { message: 'Synthetic scan lookup unavailable.' });
+      return;
+    }
     let result;
     if (url.pathname === `/api/assets/${assetId}/attachments/${attachmentId}/file`) {
       response.writeHead(200, { 'content-type': 'image/png', 'content-length': attachmentBytes.length, 'cache-control': 'no-store' }); response.end(attachmentBytes); return;
@@ -215,13 +227,24 @@ const server = createServer(async (request, response) => {
       totalAssets: (asset.isDeleted ? 0 : 1) + importedAssets.length + bulkAssets.length, assignedAssets: 0, availableAssets: (asset.isDeleted ? 0 : 1) + importedAssets.length + bulkAssets.length, maintenanceAssets: 0,
       softwareLicenses: 0, accessories: 0, consumables: 0, components: 0, activeEmployees: 0
     };
-    else if (url.pathname === '/api/assets') { const items = [...(asset.isDeleted ? [] : [asset]), ...importedAssets, ...bulkAssets]; result = { items, total: items.length, page: 1, pageSize: 50 }; }
+    else if (url.pathname === '/api/assets') {
+      const query = (url.searchParams.get('q') || '').toLocaleLowerCase('tr-TR');
+      const allItems = [...(asset.isDeleted ? [] : [asset]), ...importedAssets, ...bulkAssets];
+      const items = allItems.filter(item => !query || [item.assetTag, item.serialNumber, item.name].some(value => value?.toLocaleLowerCase('tr-TR').includes(query)));
+      result = { items, total: items.length, page: Number(url.searchParams.get('page') || 1), pageSize: Number(url.searchParams.get('pageSize') || 50) };
+    }
     else if (url.pathname === `/api/assets/${assetId}`) result = {
       asset: { ...asset }, references: { model: null, modelNumber: null, employee: asset.assignedEmployeeName || null,
         employeeNumber: asset.assignedEmployeeId ? 'QA-001' : null, defaultLocation: 'Head Office' },
       history: [...assetHistory], attachments: [...assetAttachments], accessories: [], components: [], softwareLicenses: [], relatedAssets: [],
       valuation: {}, purchaseOrder: null
     };
+    else if (bulkAssets.some(item => url.pathname === `/api/assets/${item.id}`)) {
+      const scanned = bulkAssets.find(item => url.pathname === `/api/assets/${item.id}`);
+      result = { asset: { ...scanned }, references: { model: null, modelNumber: null, employee: scanned.assignedEmployeeName || null,
+        employeeNumber: scanned.assignedEmployeeId ? 'QA-001' : null, defaultLocation: scanned.location },
+        history: [], attachments: [], accessories: [], components: [], softwareLicenses: [], relatedAssets: [], valuation: {}, purchaseOrder: null };
+    }
     else if (url.pathname === `/api/assets/${assetId}/maintenances`) result = maintenanceRows;
     else if (url.pathname === '/api/contracts') {
       const q = (url.searchParams.get('q') || '').toLocaleLowerCase();
@@ -1553,7 +1576,7 @@ try {
 
   const bulkAssetIds = ['12121212-1212-4121-8121-121212121212', '13131313-1313-4131-8131-131313131313'];
   bulkAssets = bulkAssetIds.map((id, index) => ({
-    ...asset, id, assetTag: `QA-BULK-${index + 1}`, name: `Synthetic bulk status ${index + 1}`,
+    ...asset, companyId: activeCompanyId, id, assetTag: `QA-BULK-${index + 1}`, name: `Synthetic bulk status ${index + 1}`,
     status: 'Available', updatedAt: '2026-10-15T09:00:00Z', assignedEmployeeId: null, nextAuditOn: null
   }));
   await page.locator('#sidebar button[data-page="Varlıklar"]').click();
@@ -1561,8 +1584,56 @@ try {
   const secondBulkRow = page.locator(`#assetRows tr[data-id="${bulkAssetIds[1]}"]`);
   await firstBulkRow.waitFor({ state: 'visible' });
   await secondBulkRow.waitFor({ state: 'visible' });
-  await firstBulkRow.locator('.asset-row-select').check();
-  await secondBulkRow.locator('.asset-row-select').check();
+  await page.locator('#scanAssetButton').click();
+  const scannerDialog = page.locator('#scanAssetDialog');
+  await scannerDialog.waitFor({ state: 'visible' });
+  await page.locator('#scanAssetAction').selectOption('collect');
+  assert.equal(await page.locator('#finishAssetBatchScan').isVisible(), true,
+    'Multi-scan mode must expose an explicit finish action.');
+  assert.match(await page.locator('#scanAssetFeedback').innerText(), /sırayla okutun/i);
+  const scanForm = page.locator('#scanAssetForm');
+  const codeField = page.locator('#scanAssetCode');
+  await codeField.fill('QA-BULK');
+  await scanForm.locator('button[type="submit"]').click();
+  await expectScanFeedback(page, /Birden fazla kayıt eşleşti/);
+  assert.equal(await page.locator('#selectedAssetCount').isVisible(), false,
+    'An ambiguous code must not add any asset to the batch.');
+  await codeField.fill('QA-NOT-FOUND');
+  await scanForm.locator('button[type="submit"]').click();
+  await expectScanFeedback(page, /eşleşen varlık bulunamadı/i);
+  assert.equal(await page.locator('#selectedAssetCount').isVisible(), false,
+    'An unknown code must not add any asset to the batch.');
+  await codeField.fill('QA-BULK-1');
+  await scanForm.locator('button[type="submit"]').click();
+  await expectScanFeedback(page, /Synthetic scan lookup unavailable/);
+  assert.equal(await page.locator('#selectedAssetCount').isVisible(), false,
+    'A failed search request must leave selection unchanged.');
+  await codeField.fill('QA-BULK-1');
+  await scanForm.locator('button[type="submit"]').click();
+  await expectScanFeedback(page, /QA-BULK-1 .* seçime eklendi/);
+  assert.equal(await firstBulkRow.locator('.asset-row-select').isChecked(), true,
+    'A matched scanned asset must immediately become selected in the table.');
+  await codeField.fill('QA-BULK-1');
+  await scanForm.locator('button[type="submit"]').click();
+  await expectScanFeedback(page, /zaten tarandı/i);
+  assert.equal(await page.locator('#selectedAssetCount').innerText(), '1 varlık seçildi',
+    'Scanning the same code twice must not duplicate the selected asset.');
+  const qrAssetUrl = await page.evaluate(id => `${location.origin}/?assetId=${id}`, bulkAssetIds[0]);
+  await codeField.fill(qrAssetUrl);
+  await scanForm.locator('button[type="submit"]').click();
+  await expectScanFeedback(page, /zaten seçili/i);
+  assert.equal(await page.locator('#selectedAssetCount').innerText(), '1 varlık seçildi',
+    'A QR link to an already selected asset must not duplicate its selection.');
+  await codeField.fill('QA-BULK-2');
+  await scanForm.locator('button[type="submit"]').click();
+  await expectScanFeedback(page, /QA-BULK-2 .* seçime eklendi/);
+  assert.equal(await page.locator('#selectedAssetCount').innerText(), '2 varlık seçildi');
+  await page.locator('#finishAssetBatchScan').click();
+  await scannerDialog.waitFor({ state: 'hidden' });
+  assert.equal(await firstBulkRow.locator('.asset-row-select').isChecked(), true);
+  assert.equal(await secondBulkRow.locator('.asset-row-select').isChecked(), true);
+  console.log('PASS: multi-scan rejects ambiguous/missing codes, surfaces lookup failure and permits retry, de-duplicates repeated tag/QR scans, synchronizes row checks, and preserves selection after explicit completion.');
+
   const bulkToolbar = page.locator('#bulkAssetToolbar');
   await bulkToolbar.waitFor({ state: 'visible' });
   assert.match(await page.locator('#selectedAssetCount').innerText(), /2 varlık seçildi/);
