@@ -29,12 +29,20 @@ const reservationRows = [
   { id: 'a2000000-0000-4000-8000-000000000001', assetId: reservationAssets[0].id, assetTag: reservationAssets[0].assetTag, assetName: reservationAssets[0].name, employeeId, employeeName: 'Synthetic QA Employee', requestedByUserId: userId, requestedBy: 'Synthetic Owner', startsOn: '2026-10-22', endsOn: '2026-10-23', status: 'Pending', requestNote: 'Approve synthetic reservation', reviewNote: null },
   { id: 'a2000000-0000-4000-8000-000000000002', assetId: reservationAssets[1].id, assetTag: reservationAssets[1].assetTag, assetName: reservationAssets[1].name, employeeId, employeeName: 'Synthetic QA Employee', requestedByUserId: userId, requestedBy: 'Synthetic Owner', startsOn: '2026-10-24', endsOn: '2026-10-25', status: 'Pending', requestNote: 'Reject synthetic reservation', reviewNote: null }
 ];
+const activityEntries = Array.from({ length: 14 }, (_, index) => ({
+  id: `a3000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+  assetId, assetTag: index === 0 ? 'QA-TRANSFER-001' : `QA-ACTIVITY-${String(index + 1).padStart(3, '0')}`,
+  eventType: index === 0 ? 'Transferred' : 'Created', details: index === 0 ? 'Transferred to Synthetic West Wing' : `Synthetic activity event ${index + 1}`,
+  employeeId: index === 0 ? employeeId : null, employeeName: index === 0 ? 'Synthetic QA Employee' : null,
+  actorUserId: userId, actorName: 'Synthetic Owner', occurredAt: `2026-10-15T${String(14 - Math.floor(index / 6)).padStart(2, '0')}:${String(55 - (index % 6) * 8).padStart(2, '0')}:00Z`
+}));
 const expiryLoginAttempts = [];
 let syntheticSessionExpired = false;
 let companySwitchLoginFlow = false;
 let activeCompanyId = companyId;
 let expireNextAssetPatch = false;
 let failNextBulkAssetScan = true;
+let failNextActivityLoad = false;
 const assetHistory = [];
 const assetAttachments = [];
 const attachmentId = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
@@ -306,7 +314,23 @@ const server = createServer(async (request, response) => {
     else if (url.pathname === '/api/lookups/brands' || url.pathname === '/api/lookups/models') result = [];
     else if (url.pathname === '/api/locations') result = { items: [] };
     else if (url.pathname.startsWith('/api/assets/audit-schedule')) result = { items: [], total: 0, overdue: 0, dueSoon: 0 };
-    else if (url.pathname === '/api/activity') result = { entries: [], total: 0 };
+    else if (url.pathname === '/api/activity') {
+      if (failNextActivityLoad) {
+        failNextActivityLoad = false;
+        json(response, 503, { message: 'Synthetic activity service unavailable.' });
+        return;
+      }
+      const q = (url.searchParams.get('q') || '').toLocaleLowerCase('tr-TR');
+      const eventType = url.searchParams.get('eventType') || '';
+      const from = url.searchParams.get('from') || '', to = url.searchParams.get('to') || '';
+      let entries = activityEntries.filter(item => (!eventType || item.eventType === eventType)
+        && (!from || item.occurredAt >= from) && (!to || item.occurredAt <= to)
+        && (!q || [item.assetTag, item.details, item.employeeName, item.actorName].some(value => value?.toLocaleLowerCase('tr-TR').includes(q))));
+      entries.sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
+      const total = entries.length, pageNumber = Number(url.searchParams.get('page') || 1), pageSize = Number(url.searchParams.get('pageSize') || 50);
+      entries = entries.slice((pageNumber - 1) * pageSize, pageNumber * pageSize);
+      result = { entries, total, page: pageNumber, pageSize };
+    }
     else if (url.pathname === '/api/calendar') result = { items: [], total: 0 };
     else result = { items: [], total: 0, page: 1, pageSize: 50 };
     response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
@@ -1976,6 +2000,74 @@ try {
   await page.locator('#reservationRefresh').click();
   assert.equal(reservationWrites.length, reservationWritesBeforeRefresh, 'Refreshing reservations must remain read-only.');
   console.log('PASS: reservations reject invalid date ranges without writing; create with CSRF; approve/reject notes persist; approve/cancel dismissal writes nothing; confirmed cancellation uses CSRF and persists; status/search filters reload correctly; refresh is read-only.');
+
+  const writesBeforeActivityAcceptance = apiRequests.length;
+  await page.locator('#sidebar [data-page="Transferler"]').click();
+  await page.locator('#activityPage').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#activityHeading').innerText(), 'Varlık transferleri');
+  assert.equal(await page.locator('#activityType').inputValue(), 'Transferred');
+  await page.locator('#activityTableRows').getByText('QA-TRANSFER-001').waitFor();
+  assert.ok(requests.some(item => item.path === '/api/activity' && item.query.eventType === 'Transferred'),
+    'Transferler must query only transferred activity events.');
+
+  await page.locator('#sidebar [data-page="Hareket geçmişi"]').click();
+  assert.equal(await page.locator('#activityType').inputValue(), '', 'The general history route must clear the transfer-only filter.');
+  await page.locator('#activityTableRows').getByText('QA-ACTIVITY-002').waitFor();
+  const activitySearchRequest = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return url.pathname === '/api/activity' && url.searchParams.get('q') === 'QA-ACTIVITY-014';
+  });
+  await page.locator('#activitySearch').fill('QA-ACTIVITY-014');
+  await activitySearchRequest;
+  const activitySearchRow = page.locator('#activityTableRows tr').filter({ hasText: 'QA-ACTIVITY-014' });
+  await activitySearchRow.waitFor();
+  assert.ok(requests.some(item => item.path === '/api/activity' && item.query.q === 'QA-ACTIVITY-014'),
+    'Activity search must send its query to the API.');
+  await activitySearchRow.press('Enter');
+  await page.locator('#assetDialog').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#detailTagTop').innerText(), asset.assetTag, 'Keyboard activation must open the linked asset details.');
+  await page.locator('#closeDialog').click();
+  await page.locator('#assetDialog').waitFor({ state: 'hidden' });
+
+  const activityFromRequest = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return url.pathname === '/api/activity' && Boolean(url.searchParams.get('from'));
+  });
+  await page.locator('#activityFrom').fill('2026-10-15');
+  await activityFromRequest;
+  const activityToRequest = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return url.pathname === '/api/activity' && Boolean(url.searchParams.get('to'));
+  });
+  await page.locator('#activityTo').fill('2026-10-15');
+  await activityToRequest;
+  const dateRequest = requests.findLast(item => item.path === '/api/activity' && item.query.from && item.query.to);
+  assert.ok(dateRequest, 'Activity date controls must send both date boundaries.');
+  assert.match(dateRequest.query.from, /^2026-10-15T/);
+  assert.match(dateRequest.query.to, /^2026-10-15T/);
+
+  const resetSearchRequest = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return url.pathname === '/api/activity' && !url.searchParams.has('q');
+  });
+  await page.locator('#activitySearch').fill('');
+  await resetSearchRequest;
+  await page.locator('#activityNext').click();
+  await page.locator('#activityTableRows').getByText('QA-ACTIVITY-014').waitFor();
+  assert.ok(requests.some(item => item.path === '/api/activity' && item.query.page === '2'),
+    'Activity next-page control must request the second page.');
+  await page.locator('#activityPrev').click();
+  await page.locator('#activityTableRows').getByText('QA-ACTIVITY-002').waitFor();
+  const activityWritesBeforeRefresh = apiRequests.length;
+  failNextActivityLoad = true;
+  await page.locator('#activityRefresh').click();
+  await page.locator('#activityTableRows').getByText('Hareket geçmişi yüklenemedi').waitFor();
+  assert.equal(await page.locator('#activityNext').isDisabled(), true, 'An activity API error must disable paging on its empty error state.');
+  await page.locator('#activityRefresh').click();
+  await page.locator('#activityTableRows').getByText('QA-ACTIVITY-002').waitFor();
+  assert.equal(apiRequests.length, activityWritesBeforeRefresh, 'Filtering, paging, opening a linked asset and retrying history must not write data.');
+  assert.ok(requests.some(item => item.path === '/api/activity' && item.query.page === '1'), 'Activity retry must reload the current page.');
+  console.log('PASS: Transferler preset and general history routes; activity search/date/paging, keyboard-linked asset opening, empty/error recovery, retry, and read-only behavior.');
 
   const sidebarDestinations = page.locator('#sidebar button[data-page]');
   const destinationCount = await sidebarDestinations.count();

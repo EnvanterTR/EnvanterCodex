@@ -48,6 +48,9 @@ assert.match(assetActions, /reservations reject invalid date ranges without writ
 assert.match(assetActions, /const reservationWrites = \[\]/);
 assert.match(assetActions, /reservationActionDialog/);
 assert.match(assetActions, /reservationRows\[0\]\.reviewNote, 'Synthetic approval note'/);
+assert.match(assetActions, /Transferler preset and general history routes; activity search\/date\/paging, keyboard-linked asset opening, empty\/error recovery, retry, and read-only behavior/);
+assert.match(assetActions, /Keyboard activation must open the linked asset details/);
+assert.match(assetActions, /An activity API error must disable paging/);
 assert.match(assetActions, /contractSearchResponse = page\.waitForResponse/);
 assert.match(assetActions, /Synthetic Cloud Support Agreement/);
 assert.match(assetActions, /contractDetailFields/);
