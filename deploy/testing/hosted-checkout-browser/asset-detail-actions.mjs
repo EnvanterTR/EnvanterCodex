@@ -32,6 +32,9 @@ const contractAssetId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const contractLicenseId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const contractRows = [{ id: contractId, name: 'Synthetic Cloud Support Agreement', contractNumber: 'QA-CONTRACT-001', contractType: 'Support', supplier: 'Synthetic Supplier', supplierId: null, startDate: '2026-10-01', endDate: '2027-10-01', cost: 1250, currency: 'TRY', notes: 'Synthetic contract note', isActive: true, status: 'active', assetCount: 1, licenseCount: 1, attachmentCount: 0 }];
 const contractWrites = [];
+const assetImportProfiles = [];
+const assetImportProfileWrites = [];
+const assetImportPreviewRequests = [];
 const contractAsset = { id: contractAssetId, assetTag: 'QA-CONTRACT-ASSET', name: 'Synthetic Contract Device', serialNumber: 'QA-CONTRACT-SERIAL' };
 const contractLicense = { id: contractLicenseId, name: 'Synthetic Office License', licenseReference: 'QA-LICENSE-001', expirationDate: '2027-10-01' };
 const json = (response, status = 200, body = null) => {
@@ -63,6 +66,7 @@ const server = createServer(async (request, response) => {
       const raw = Buffer.concat(chunks), contentType = request.headers['content-type'] || '';
       if (!raw.length) return resolve(null);
       if (contentType.includes('application/json')) return resolve(JSON.parse(raw.toString('utf8')));
+      if (!contentType.includes('multipart/form-data')) return resolve(raw.toString('utf8'));
       const text = raw.toString('latin1'), fields = {};
       const boundary = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
       const delimiter = boundary?.[1] || boundary?.[2]?.trim();
@@ -82,7 +86,7 @@ const server = createServer(async (request, response) => {
   });
   const record = { method: request.method, path: url.pathname, query: Object.fromEntries(url.searchParams.entries()), body, csrf: request.headers['x-csrf-token'] };
   requests.push(record);
-  if (request.method !== 'GET') apiRequests.push(record);
+  if (request.method !== 'GET' && !url.pathname.startsWith('/api/assets/import-mappings') && !url.pathname.includes('/import/preview.')) apiRequests.push(record);
 
   if (request.method === 'POST' && url.pathname === '/api/session/login') {
     expiryLoginAttempts.push(record);
@@ -145,6 +149,7 @@ const server = createServer(async (request, response) => {
       result = item ? { contract: { ...item }, assets: [contractAsset], licenses: [contractLicense] } : { message: 'Synthetic contract not found.' };
     }
     else if (url.pathname.startsWith('/api/contracts/') && url.pathname.endsWith('/attachments')) result = { items: [] };
+    else if (url.pathname === '/api/assets/import-mappings') result = { items: assetImportProfiles.map(profile => ({ ...profile, mappings: { ...profile.mappings } })) };
     else if (url.pathname === '/api/assets/custom-fields') result = [];
     else if (url.pathname === '/api/employees' || url.pathname.startsWith('/api/employees?')) result = {
       items: [{ id: employeeId, displayName: 'Synthetic QA Employee', employeeNumber: 'QA-001' }], total: 1, page: 1, pageSize: 200
@@ -164,6 +169,25 @@ const server = createServer(async (request, response) => {
   if (request.headers['x-csrf-token'] !== 'synthetic-asset-csrf') {
     response.writeHead(400, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ message: 'Missing synthetic CSRF token.' })); return;
+  }
+  if (request.method === 'POST' && url.pathname === '/api/assets/import/preview.csv') {
+    assetImportPreviewRequests.push({ headers: request.headers, body });
+    const encoded = request.headers['x-asset-import-mapping'];
+    if (!encoded) {
+      json(response, 400, { message: 'Unknown columns need mapping.', unmappedColumns: ['VendorTag', 'VendorName', 'VendorCategory', 'VendorUnused'],
+        mappingTargets: [{ key: 'assetTag', label: 'Etiket' }, { key: 'name', label: 'Varlık adı' }, { key: 'categoryName', label: 'Kategori' }, { key: 'ignore', label: 'Bu sütunu yoksay' }] });
+      return;
+    }
+    json(response, 200, { isValid: true, rowCount: 1, counts: { assets: 1 }, errors: [], message: 'Synthetic mapped asset preview.' });
+    return;
+  }
+  if (request.method === 'POST' && url.pathname === '/api/assets/import-mappings') {
+    assert.equal(typeof body?.name, 'string');
+    const profile = { id: 'abababab-abab-4bab-8bab-abababababab', name: body.name, mappings: { ...body.mappings } };
+    assetImportProfiles.splice(0, assetImportProfiles.length, profile);
+    assetImportProfileWrites.push({ method: request.method, path: url.pathname, body, csrf: request.headers['x-csrf-token'] });
+    json(response, 201, profile);
+    return;
   }
   if (request.method === 'POST' && url.pathname === `/api/assets/${assetId}/attachments`) {
     assert.ok(body?.file && body.file.filename === 'synthetic-proof.png', 'Upload must carry the selected file.');
@@ -361,6 +385,47 @@ try {
   assert.equal(mobileOverflow.wrapperScrolls, true, 'The narrow asset table must remain horizontally scrollable without widening the page.');
   console.log(`PASS: inventory uses desktop width (left/right insets ${desktopTableLayout.leftInset}/${desktopTableLayout.rightInset}px); table scroll stays local at desktop and 390px mobile width.`);
   await page.setViewportSize({ width: 1280, height: 900 });
+  await page.locator('#sidebar button[data-page="Genel Bakış"]').click();
+
+  await page.locator('#overviewActions summary').click();
+  await page.locator('#importPreviewButton').click();
+  const assetImportDialog = page.locator('#importPreviewDialog');
+  await assetImportDialog.waitFor({ state: 'visible' });
+  const assetCsv = { name: 'synthetic-vendor.csv', mimeType: 'text/csv', buffer: Buffer.from('VendorTag,VendorName,VendorCategory,VendorUnused\nQA-NEW-001,QA mapped asset,Synthetic equipment,ignore me\n') };
+  await page.locator('#importPreviewFile').setInputFiles(assetCsv);
+  await page.locator('#runImportPreview').click();
+  await page.locator('#assetImportMappingPanel').waitFor({ state: 'visible' });
+  for (const [header, target] of Object.entries({ VendorTag: 'assetTag', VendorName: 'name', VendorCategory: 'categoryName', VendorUnused: 'ignore' })) {
+    await page.locator(`#assetImportMappingFields select[data-source-header="${header}"]`).selectOption(target);
+  }
+  await page.locator('#applyAssetImportMapping').click();
+  await page.waitForFunction(() => document.querySelector('#applyCsvImport')?.hidden === false);
+  assert.match(await page.locator('#importPreviewResult').innerText(), /Synthetic mapped asset preview/);
+  await page.locator('#assetImportProfileName').fill('Synthetic vendor map');
+  await page.locator('#saveAssetImportProfile').click();
+  await page.waitForFunction(() => document.querySelector('#assetImportProfile')?.value === 'abababab-abab-4bab-8bab-abababababab');
+  assert.equal(assetImportProfileWrites.length, 1, 'Saving the mapping must persist exactly one synthetic profile.');
+  assert.deepEqual(assetImportProfileWrites[0].body, { name: 'Synthetic vendor map', mappings: { VendorTag: 'assetTag', VendorName: 'name', VendorCategory: 'categoryName', VendorUnused: 'ignore' } });
+  assert.equal(assetImportProfileWrites[0].csrf, 'synthetic-asset-csrf');
+  const previewCountBeforeClose = assetImportPreviewRequests.length;
+  await page.locator('#closeImportPreview').click();
+  await assetImportDialog.waitFor({ state: 'hidden' });
+  assert.equal(assetImportPreviewRequests.length, previewCountBeforeClose, 'Closing after save must not start another preview or apply the import.');
+  await page.locator('#overviewActions summary').click();
+  await page.locator('#importPreviewButton').click();
+  await assetImportDialog.waitFor({ state: 'visible' });
+  await page.locator('#importPreviewFile').setInputFiles(assetCsv);
+  await page.locator('#assetImportProfile').selectOption('abababab-abab-4bab-8bab-abababababab');
+  await page.waitForFunction(() => document.querySelector('#applyCsvImport')?.hidden === false);
+  assert.equal(assetImportPreviewRequests.length, previewCountBeforeClose + 1, 'Selecting the saved mapping with a file must re-run preview, not import.');
+  assert.deepEqual(JSON.parse(Buffer.from(assetImportPreviewRequests.at(-1).headers['x-asset-import-mapping'], 'base64').toString('utf8')),
+    assetImportProfileWrites[0].body.mappings, 'Reloaded saved profile must send its exact field mapping to preview.');
+  assert.equal(assetImportProfileWrites.length, 1, 'Reusing a profile must not create another saved profile.');
+  assert.equal(assetImportProfileWrites.length + restoreApplyWrites.length, 1, 'The acceptance must not apply CSV or restore data.');
+  await page.locator('#closeImportPreview').click();
+  await assetImportDialog.waitFor({ state: 'hidden' });
+  console.log('PASS: asset CSV mapping profile validates unknown columns, saves with CSRF, reloads after dialog reopen, and re-previews with the persisted mapping without importing rows.');
+
   await page.locator('#pageTitle').click();
   await page.keyboard.press('Control+n');
   const newAssetDialog = page.locator('#newAssetDialog');
