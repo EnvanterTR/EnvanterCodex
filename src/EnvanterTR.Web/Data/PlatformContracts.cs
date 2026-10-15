@@ -33,6 +33,7 @@ public sealed record PublicDemoRequest(string CompanyName, string ContactName, s
     string? JobTitle, string? TeamSize, string? AssetCount, string? Message, bool Consent, string? Website);
 public sealed record UpdatePlatformDemoRequest(string Status, Guid? AssignedAdminUserId, DateTimeOffset? FollowUpAt,
     Guid? CompanyId, string? Note);
+public sealed record RecordCheckoutPaymentFollowUpRequest(string Outcome, DateTimeOffset? NextFollowUpAt, string Note);
 public sealed record ProvisionCompanyRequest(string CompanyName, string Slug, string? ContactEmail,
     string OwnerName, string OwnerEmail, Guid PlanId, int TermDays, string PaymentReference, bool PaymentVerified);
 public sealed record SetCompanyActiveRequest(bool IsActive, string? Note);

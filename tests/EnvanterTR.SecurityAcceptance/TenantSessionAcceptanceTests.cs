@@ -2080,6 +2080,103 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Platform_failed_checkout_follow_ups_are_csrf_protected_audited_and_read_only_to_payment_state()
+    {
+        var plan = new SubscriptionPlan
+        {
+            Code = $"followup-{_companyId:N}"[..40], Name = "Payment follow-up acceptance", DeploymentKind = "cloud", IsActive = true
+        };
+        var orderId = Guid.NewGuid();
+        var paidOrderId = Guid.NewGuid();
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SubscriptionPlans.Add(plan);
+            db.CompanyCheckoutOrders.Add(new CompanyCheckoutOrder
+            {
+                Id = orderId, CompanyName = "Failed Payment Acceptance", Slug = $"failed-{_companyId:N}",
+                ContactEmail = "billing@example.invalid", OwnerName = "Synthetic Billing Owner", OwnerEmail = "owner@example.invalid",
+                PlanId = plan.Id, TermDays = 30, Amount = 1500, Currency = "TRY", Status = "PaymentFailed",
+                CompanyId = _companyId, CreatedAt = DateTimeOffset.UtcNow.AddDays(-1), ExpiresAt = DateTimeOffset.UtcNow.AddDays(1)
+            });
+            db.CompanyCheckoutOrders.Add(new CompanyCheckoutOrder
+            {
+                Id = paidOrderId, CompanyName = "Already Paid Acceptance", Slug = $"paid-{_companyId:N}",
+                ContactEmail = "paid@example.invalid", OwnerName = "Synthetic Paid Owner", OwnerEmail = "paid@example.invalid",
+                PlanId = plan.Id, TermDays = 30, Amount = 1500, Currency = "TRY", Status = "Provisioned",
+                CompanyId = _otherCompanyId, PaymentReference = $"paid-order-{_companyId:N}", PaidAt = DateTimeOffset.UtcNow,
+                CreatedAt = DateTimeOffset.UtcNow.AddDays(-1), ExpiresAt = DateTimeOffset.UtcNow.AddDays(1)
+            });
+            db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            await db.SaveChangesAsync();
+        }
+
+        using (var tenantDenied = await SendAsUserAsync(HttpMethod.Get, $"/api/platform/checkout-orders/{orderId}/follow-ups", _userId, _companyId))
+            Assert.Equal(HttpStatusCode.Forbidden, tenantDenied.StatusCode);
+        using (var orderHistory = await SendAsPlatformAdminAsync($"/api/platform/checkout-orders/{orderId}/follow-ups"))
+            Assert.Equal(HttpStatusCode.OK, orderHistory.StatusCode);
+
+        var followUpAt = DateTimeOffset.UtcNow.AddDays(2);
+        var record = new RecordCheckoutPaymentFollowUpRequest("ReminderScheduled", followUpAt, "Sent billing follow-up through the approved company contact.");
+        using (var missingCsrf = await SendAsPlatformAdminRequestAsync(HttpMethod.Post,
+                   $"/api/platform/checkout-orders/{orderId}/follow-ups", JsonContent.Create(record)))
+            Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+
+        using var csrfResponse = await SendAsPlatformAdminAsync("/api/session/csrf");
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        using (var invalidReminder = await SendAsPlatformAdminRequestAsync(HttpMethod.Post,
+                   $"/api/platform/checkout-orders/{orderId}/follow-ups",
+                   JsonContent.Create(new RecordCheckoutPaymentFollowUpRequest("ReminderScheduled", DateTimeOffset.UtcNow.AddYears(2), "Out of bounds")),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidReminder.StatusCode);
+        using (var invalidOutcome = await SendAsPlatformAdminRequestAsync(HttpMethod.Post,
+                   $"/api/platform/checkout-orders/{orderId}/follow-ups",
+                   JsonContent.Create(new RecordCheckoutPaymentFollowUpRequest("Paid", null, "Must not mark an order paid")),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidOutcome.StatusCode);
+        using (var emptyNote = await SendAsPlatformAdminRequestAsync(HttpMethod.Post,
+                   $"/api/platform/checkout-orders/{orderId}/follow-ups",
+                   JsonContent.Create(new RecordCheckoutPaymentFollowUpRequest("Contacted", null, "  ")),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, emptyNote.StatusCode);
+
+        using (var paymentOk = await SendAsPlatformAdminRequestAsync(HttpMethod.Post,
+                   $"/api/platform/checkout-orders/{orderId}/follow-ups", JsonContent.Create(record), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, paymentOk.StatusCode);
+            using var payload = JsonDocument.Parse(await paymentOk.Content.ReadAsStringAsync());
+            Assert.Equal("ReminderScheduled", payload.RootElement.GetProperty("outcome").GetString());
+            Assert.Equal(followUpAt.ToUniversalTime().ToUnixTimeMilliseconds(),
+                payload.RootElement.GetProperty("nextFollowUpAt").GetDateTimeOffset().ToUnixTimeMilliseconds());
+        }
+        using (var paidOrderDenied = await SendAsPlatformAdminRequestAsync(HttpMethod.Post,
+                   $"/api/platform/checkout-orders/{paidOrderId}/follow-ups", JsonContent.Create(record), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, paidOrderDenied.StatusCode);
+
+        using (var history = await SendAsPlatformAdminAsync($"/api/platform/checkout-orders/{orderId}/follow-ups"))
+        {
+            Assert.Equal(HttpStatusCode.OK, history.StatusCode);
+            var body = await history.Content.ReadAsStringAsync();
+            using var payload = JsonDocument.Parse(body);
+            Assert.Equal("PaymentFailed", payload.RootElement.GetProperty("order").GetProperty("status").GetString());
+            Assert.Equal(1, payload.RootElement.GetProperty("history").GetArrayLength());
+            Assert.Contains("ReminderScheduled", body, StringComparison.Ordinal);
+            Assert.Contains("approved company contact", body, StringComparison.Ordinal);
+        }
+
+        await using var verifyScope = _factory!.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var savedOrder = await verifyDb.CompanyCheckoutOrders.SingleAsync(x => x.Id == orderId);
+        Assert.Equal("PaymentFailed", savedOrder.Status);
+        Assert.Null(savedOrder.PaidAt);
+        Assert.True(await verifyDb.PlatformAuditEntries.AnyAsync(x => x.TargetType == "CheckoutOrder" && x.TargetId == orderId &&
+            x.Action == "CheckoutPaymentFollowUpRecorded" && x.Details!.Contains("approved company contact")));
+    }
+
+    [Fact]
     public async Task Platform_member_directory_searches_cross_company_accounts_and_hides_identity_secrets()
     {
         var userId = Guid.NewGuid();

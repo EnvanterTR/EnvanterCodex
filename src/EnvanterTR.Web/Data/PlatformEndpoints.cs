@@ -217,6 +217,52 @@ public static class PlatformEndpoints
             return Results.Ok(new { items, page, pageSize, total });
         });
 
+        admin.MapGet("/checkout-orders/{orderId:guid}/follow-ups", async (Guid orderId, AppDbContext db,
+            CancellationToken cancellationToken) =>
+        {
+            var order = await db.CompanyCheckoutOrders.AsNoTracking()
+                .Where(x => x.Id == orderId)
+                .Select(x => new { x.Id, x.Status, x.CompanyName, x.OwnerName, x.OwnerEmail, x.Amount, x.Currency })
+                .SingleOrDefaultAsync(cancellationToken);
+            if (order is null) return Results.NotFound();
+            var history = await (from audit in db.PlatformAuditEntries.AsNoTracking()
+                                 join account in db.Users.AsNoTracking() on audit.ActorUserId equals account.Id into accounts
+                                 from actor in accounts.DefaultIfEmpty()
+                                 where audit.TargetType == "CheckoutOrder" && audit.TargetId == orderId &&
+                                       audit.Action == "CheckoutPaymentFollowUpRecorded"
+                                 orderby audit.OccurredAt descending
+                                 select new { audit.Id, audit.OccurredAt, audit.Details,
+                                     Actor = actor == null ? null : actor.DisplayName })
+                .Take(100).ToListAsync(cancellationToken);
+            return Results.Ok(new { order, history });
+        });
+
+        admin.MapPost("/checkout-orders/{orderId:guid}/follow-ups", async (Guid orderId,
+            [FromBody] RecordCheckoutPaymentFollowUpRequest request, ClaimsPrincipal user, AppDbContext db,
+            CancellationToken cancellationToken) =>
+        {
+            var outcomes = new[] { "Contacted", "NoResponse", "ReminderScheduled", "CustomerRequestedCallback", "Other" };
+            var note = Clean(request.Note);
+            var now = DateTimeOffset.UtcNow;
+            if (!outcomes.Contains(request.Outcome, StringComparer.Ordinal) || note is null || note.Length > 1000 ||
+                request.NextFollowUpAt is DateTimeOffset next && (next < now.AddDays(-90) || next > now.AddDays(365)) ||
+                request.Outcome == "ReminderScheduled" && request.NextFollowUpAt is null)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["request"] = ["Sonuç, en fazla 1000 karakterlik not ve -90/+365 gün sınırında takip tarihi girilmelidir; hatırlatma planlanıyorsa tarih zorunludur."]
+                });
+            var order = await db.CompanyCheckoutOrders.SingleOrDefaultAsync(x => x.Id == orderId, cancellationToken);
+            if (order is null) return Results.NotFound();
+            if (order.Status != "PaymentFailed")
+                return Results.Conflict(new { code = "payment_follow_up_not_applicable", message = "Takip kaydı yalnızca başarısız ödeme siparişleri için tutulabilir." });
+
+            var nextFollowUpAt = request.NextFollowUpAt?.ToUniversalTime();
+            var details = JsonSerializer.Serialize(new { outcome = request.Outcome, note, nextFollowUpAt });
+            AddAudit(db, user, "CheckoutPaymentFollowUpRecorded", "CheckoutOrder", order.Id, order.CompanyId, details);
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.Ok(new { orderId = order.Id, outcome = request.Outcome, nextFollowUpAt, recordedAt = now });
+        }).RequireRateLimiting("login");
+
         admin.MapGet("/members", async (AppDbContext db, CancellationToken cancellationToken,
             [FromQuery] string? q, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {

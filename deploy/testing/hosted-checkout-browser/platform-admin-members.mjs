@@ -7,7 +7,8 @@ const platformHtml = await readFile('/platform-site/platform-admin.html');
 const platformScripts = new Map([
   ['/platform-admin-members.js', await readFile('/platform-site/platform-admin-members.js')],
   ['/platform-admin-subscriptions.js', await readFile('/platform-site/platform-admin-subscriptions.js')],
-  ['/platform-admin-demo-requests.js', await readFile('/platform-site/platform-admin-demo-requests.js')]
+  ['/platform-admin-demo-requests.js', await readFile('/platform-site/platform-admin-demo-requests.js')],
+  ['/platform-admin-payment-follow-ups.js', await readFile('/platform-site/platform-admin-payment-follow-ups.js')]
 ]);
 const csrfToken = 'synthetic-platform-members-csrf';
 const accountId = '11111111-1111-4111-8111-111111111111';
@@ -15,6 +16,7 @@ const invitedAccountId = '22222222-2222-4222-8222-222222222222';
 const companyId = '33333333-3333-4333-8333-333333333333';
 const demoLeadId = '66666666-6666-4666-8666-666666666666';
 const platformAdminId = '77777777-7777-4777-8777-777777777777';
+const failedOrderId = '88888888-8888-4888-8888-888888888888';
 const member = {
   id: accountId, displayName: 'Synthetic SaaS Owner', email: 'qa-owner@example.invalid', emailConfirmed: true,
   phoneNumber: '+905550000001', phoneNumberConfirmed: true, twoFactorEnabled: true, isLockedOut: false,
@@ -46,6 +48,7 @@ const demoLead = {
   phone: '+905550000002', message: 'Synthetic request for a product demo.', teamSize: '25', assetCount: '120', jobTitle: 'IT Manager'
 };
 const demoLeadHistory = [];
+const paymentFollowUpHistory = [];
 const browserErrors = [];
 let reauthenticated = false;
 let browser;
@@ -97,6 +100,17 @@ const server = createServer(async (request, response) => {
       assignedAdminName: demoLead.assignedAdminUserId ? 'Synthetic Platform Admin' : null,
       linkedCompanyName: demoLead.companyId ? 'Synthetic Demo Company' : null,
       demoGrantedAt: demoLead.status === 'DemoGranted' ? '2026-10-12T10:00:00Z' : null }, history: [...demoLeadHistory] });
+    if (path === '/api/platform/checkout-orders') return json(response, { items: [{
+      id: failedOrderId, companyName: 'Synthetic Failed Payment', slug: 'synthetic-failed-payment',
+      contactEmail: 'billing@example.invalid', ownerName: 'Synthetic Billing Owner', ownerEmail: 'billing@example.invalid',
+      status: 'PaymentFailed', termDays: 30, amount: 1500, currency: 'TRY', paymentReference: 'synthetic-failed-payment-ref',
+      companyId: null, createdAt: '2026-10-13T10:00:00Z', expiresAt: '2026-10-20T10:00:00Z', paidAt: null,
+      planName: 'Cloud Pro', planCode: 'cloud-pro'
+    }], page: 1, pageSize: 25, total: 1 });
+    if (path === `/api/platform/checkout-orders/${failedOrderId}/follow-ups`) return json(response, {
+      order: { id: failedOrderId, status: 'PaymentFailed', companyName: 'Synthetic Failed Payment', ownerName: 'Synthetic Billing Owner', ownerEmail: 'billing@example.invalid', amount: 1500, currency: 'TRY' },
+      history: [...paymentFollowUpHistory]
+    });
     if (path === `/api/platform/companies/${companyId}`) return json(response, {
       company: { ...companies[0], isActive: true, createdAt: '2026-09-02T10:00:00Z', contactEmail: 'qa-owner@example.invalid', lifecycleStage: 'AtRisk', lifecycleOwnerId: null, nextFollowUpAt: '2026-10-10T10:00:00Z' },
       members: [{ displayName: member.displayName, email: member.email, roleKey: 'owner', employeeName: null,
@@ -173,7 +187,13 @@ const server = createServer(async (request, response) => {
   }
   if (path === '/api/platform/site-content') return json(response, []);
   if (path === '/api/platform/demo-requests') return json(response, { items: [], total: 0, page: 1, pageSize: 25 });
-  if (path === '/api/platform/checkout-orders') return json(response, { items: [], total: 0, page: 1, pageSize: 25 });
+  if (path === `/api/platform/checkout-orders/${failedOrderId}/follow-ups` && request.method === 'POST') {
+    writes.push({ method: request.method, path, body, csrf: request.headers['x-csrf-token'] });
+    paymentFollowUpHistory.unshift({ id: `synthetic-follow-up-${paymentFollowUpHistory.length + 1}`,
+      occurredAt: new Date().toISOString(), actor: 'Synthetic Platform Admin',
+      details: JSON.stringify(body) });
+    return json(response, { orderId: failedOrderId, outcome: body.outcome, nextFollowUpAt: body.nextFollowUpAt, recordedAt: new Date().toISOString() });
+  }
   if (path === '/api/platform/support/tickets') return json(response, { items: [], total: 0, page: 1, pageSize: 25 });
   if (path === '/api/platform/audit') return json(response, { entries: [], total: 0, page: 1, pageSize: 50 });
   response.writeHead(404); response.end('Unknown synthetic API route');
@@ -235,6 +255,37 @@ try {
   assert.equal(demoLead.assignedAdminUserId, platformAdminId);
   assert.equal(demoLead.companyId, companyId);
   assert.equal(demoLeadHistory.length, 2, 'Each successful lead update must append visible history.');
+  await page.locator('#nav [data-view="orders"]').click();
+  const paymentRow = page.locator('#ordersTable tr').filter({ hasText: 'Synthetic Failed Payment' });
+  await paymentRow.waitFor({ state: 'visible' });
+  const paymentWritesBeforeCancel = writes.length;
+  await paymentRow.locator('[data-payment-follow-up]').click();
+  const paymentDialog = page.locator('#paymentFollowUpDialog');
+  await paymentDialog.waitFor({ state: 'visible' });
+  await paymentDialog.locator('#paymentFollowUpHistory').getByText('Bu ödeme için henüz takip kaydı yok.').waitFor({ state: 'visible' });
+  await paymentDialog.locator('#cancelPaymentFollowUp').click();
+  await paymentDialog.waitFor({ state: 'hidden' });
+  assert.equal(writes.length, paymentWritesBeforeCancel, 'Canceling a payment follow-up must not write.');
+  await page.locator('#ordersTable [data-payment-follow-up]').click();
+  await paymentDialog.locator('[name="outcome"]').selectOption('ReminderScheduled');
+  await paymentDialog.locator('[name="nextFollowUpAt"]').fill('2026-10-20T14:15');
+  await paymentDialog.locator('[name="note"]').fill('Synthetic billing contact attempt.');
+  const paymentFollowUpSaved = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === `/api/platform/checkout-orders/${failedOrderId}/follow-ups`);
+  await paymentDialog.locator('button[type="submit"]').click();
+  assert.equal((await paymentFollowUpSaved).status(), 200, 'The payment follow-up should save to the platform API.');
+  await paymentDialog.getByText('Synthetic billing contact attempt.').waitFor({ state: 'visible' });
+  const paymentFollowUpWrite = writes.at(-1);
+  assert.equal(paymentFollowUpWrite.csrf, csrfToken);
+  assert.equal(paymentFollowUpWrite.body.outcome, 'ReminderScheduled');
+  assert.equal(paymentFollowUpWrite.body.nextFollowUpAt, new Date('2026-10-20T14:15').toISOString());
+  assert.equal(paymentFollowUpWrite.body.note, 'Synthetic billing contact attempt.');
+  await paymentDialog.locator('#closePaymentFollowUp').click();
+  await paymentDialog.waitFor({ state: 'hidden' });
+  await page.locator('#ordersTable [data-payment-follow-up]').click();
+  await paymentDialog.getByText('Synthetic billing contact attempt.').waitFor({ state: 'visible' });
+  assert.equal(paymentFollowUpHistory.length, 1, 'Payment follow-up history must persist after reopening the detail.');
+  await paymentDialog.locator('#cancelPaymentFollowUp').click();
   await page.locator('#nav [data-view="members"]').click();
   const memberRow = page.locator('#membersTable tr').filter({ hasText: 'qa-owner@example.invalid' });
   await memberRow.waitFor({ state: 'visible' });
