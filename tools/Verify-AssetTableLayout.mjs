@@ -16,6 +16,11 @@ if (!contentRules.some(rule => rule.includes('width:100%') && rule.includes('max
 if (!mainRules.some(rule => rule.includes('width:100%') && rule.includes('max-width:none') && rule.includes('margin:0'))) {
   failures.push('The main company workspace must not cap and center the asset table inside unused side gutters.');
 }
+if (!source.includes('<style id="full-width-inventory-workspace">') ||
+    !source.includes('main{padding:0}') ||
+    !source.includes('@media(min-width:1051px){.content{padding-left:16px;padding-right:16px}}')) {
+  failures.push('Desktop workspace padding must not compound around the asset table; use the available width and retain tighter widths only at responsive breakpoints.');
+}
 
 if (!tableRule.includes('width:max-content') || !tableRule.includes('min-width:100%') || !tableRule.includes('table-layout:auto')) {
   failures.push('The company asset table must size to its visible columns and fill the available width when narrower.');

@@ -10389,6 +10389,10 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
 
     (async () => { try { await refreshCsrf(); await startApp(); } catch (error) { if (error.code === 'AUTH_REQUIRED') showLogin(''); else showApiUnavailable(error.message || 'Uygulama API’sine ulaşılamıyor. Sunucu ve veritabanı bağlantısını kontrol edin.'); } })();
   </script>
+  <style id="full-width-inventory-workspace">
+    main{padding:0}
+    @media(min-width:1051px){.content{padding-left:16px;padding-right:16px}}
+  </style>
 
 </body>
 </html>

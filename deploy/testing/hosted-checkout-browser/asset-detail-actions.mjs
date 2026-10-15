@@ -289,6 +289,33 @@ try {
     }));
     throw error;
   }
+  await page.setViewportSize({ width: 1920, height: 1000 });
+  const desktopTableLayout = await page.evaluate(() => {
+    const main = document.querySelector('main');
+    const panel = document.querySelector('#assetListPanel');
+    const tableWrap = panel?.querySelector('.table-wrap');
+    const mainBounds = main?.getBoundingClientRect();
+    const panelBounds = panel?.getBoundingClientRect();
+    return {
+      leftInset: panelBounds && mainBounds ? panelBounds.left - mainBounds.left : Infinity,
+      rightInset: panelBounds && mainBounds ? mainBounds.right - panelBounds.right : Infinity,
+      tableScrollsInsideWrapper: !!tableWrap && tableWrap.scrollWidth > tableWrap.clientWidth && getComputedStyle(tableWrap).overflowX === 'auto'
+    };
+  });
+  assert.ok(desktopTableLayout.leftInset <= 20 && desktopTableLayout.rightInset <= 20,
+    `Desktop inventory should use the main content width without wide empty side gutters: ${JSON.stringify(desktopTableLayout)}`);
+  assert.equal(desktopTableLayout.tableScrollsInsideWrapper, true, 'The wide asset table must scroll inside its own wrapper.');
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileOverflow = await page.evaluate(() => ({
+    documentWidth: document.documentElement.scrollWidth,
+    viewportWidth: document.documentElement.clientWidth,
+    wrapperScrolls: (() => { const element = document.querySelector('#assetListPanel .table-wrap'); return !!element && getComputedStyle(element).overflowX === 'auto'; })()
+  }));
+  assert.ok(mobileOverflow.documentWidth <= mobileOverflow.viewportWidth,
+    `Narrow inventory should keep horizontal scrolling inside the table: ${JSON.stringify(mobileOverflow)}`);
+  assert.equal(mobileOverflow.wrapperScrolls, true, 'The narrow asset table must remain horizontally scrollable without widening the page.');
+  console.log(`PASS: inventory uses desktop width (left/right insets ${desktopTableLayout.leftInset}/${desktopTableLayout.rightInset}px); table scroll stays local at desktop and 390px mobile width.`);
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.locator('#pageTitle').click();
   await page.keyboard.press('Control+n');
   const newAssetDialog = page.locator('#newAssetDialog');
