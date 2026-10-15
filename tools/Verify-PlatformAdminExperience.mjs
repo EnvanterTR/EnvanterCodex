@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 const page = await readFile('src/EnvanterTR.Web/wwwroot/platform-admin.html', 'utf8');
 const setupPage = await readFile('src/EnvanterTR.Web/wwwroot/platform-setup.html', 'utf8');
 const program = await readFile('src/EnvanterTR.Web/Program.cs', 'utf8');
+const account = await readFile('src/EnvanterTR.Web/Data/AccountEndpoints.cs', 'utf8');
 const api = await readFile('src/EnvanterTR.Web/Data/PlatformEndpoints.cs', 'utf8');
 const members = await readFile('src/EnvanterTR.Web/wwwroot/platform-admin-members.js', 'utf8');
 const subscriptions = await readFile('src/EnvanterTR.Web/wwwroot/platform-admin-subscriptions.js', 'utf8');
@@ -54,8 +55,15 @@ assert.match(page, /id="platformMfaQr" alt="Authenticator uygulaması için güv
 assert.match(page, /QR kodunu tarayamıyorsanız aşağıdaki kurulum anahtarını uygulamaya elle girebilirsiniz/,
   'Manual setup-key entry must remain available as a fallback.');
 assert.match(page, /twoFactorCode:f\.get\('twoFactorCode'\)\|\|null/);
+assert.match(page, /platformAdminOnly:true/, 'Platform login must request an explicitly scoped platform session.');
 assert.match(page, /if\(x\.twoFactorRequired\)[\s\S]*?platformTwoFactorField\.hidden=false/);
 assert.match(page, /error\.twoFactorRequired=data\?\.twoFactorRequired===true/);
+assert.match(account, /request\.PlatformAdminOnly && \(tenantSlug is not null \|\| !isPlatformAdmin \|\| request\.CompanyId is not null\)/,
+  'Platform-only login must require a platform administrator and reject company-scoped hosts/IDs.');
+assert.match(account, /request\.PlatformAdminOnly\s*\?\s*new List<CompanyMembership>\(\)/,
+  'Platform-only login must not require choosing among company memberships.');
+assert.match(account, /!request\.PlatformAdminOnly && tenantCompanyId is null && memberships\.Count > 1/,
+  'Company login must preserve the company chooser for multi-company accounts.');
 assert.match(program, /isPlatformAdmin && context\.Request\.Path\.StartsWithSegments\("\/api\/platform"\)[\s\S]*?platformMfaEnabled[\s\S]*?Status428PreconditionRequired[\s\S]*?platform_mfa_required/);
 assert.match(page, /id="platformReauthDialog"/);
 assert.match(page, /abonelik gibi kritik platform değişiklikleri/);
@@ -64,7 +72,6 @@ assert.ok(page.includes("function requestPlatformReauthentication()") && page.in
 assert.match(program, /isPlatformAdmin && isPlatformEndpoint && isWriteRequest[\s\S]*?platform_reauth_at[\s\S]*?nowUnix - 600[\s\S]*?Status428PreconditionRequired[\s\S]*?platform_reauth_required/);
 assert.match(program, /AddPolicy\("step-up"[\s\S]*?PermitLimit = 5[\s\S]*?TimeSpan\.FromMinutes\(5\)/);
 assert.match(program, /"platform_reauth_at"/);
-const account = await readFile('src/EnvanterTR.Web/Data/AccountEndpoints.cs', 'utf8');
 assert.match(account, /MapPost\("\/api\/session\/platform-reauth"[\s\S]*?CheckPasswordAsync[\s\S]*?VerifyTwoFactorTokenAsync[\s\S]*?PlatformReauthenticated[\s\S]*?RequireRateLimiting\("step-up"\)/);
 assert.match(account, /platform_reauth_at/);
 assert.match(page, /id="platformMfaSetupWrap"/);

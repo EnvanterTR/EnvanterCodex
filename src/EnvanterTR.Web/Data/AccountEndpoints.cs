@@ -224,9 +224,13 @@ public static class AccountEndpoints
             }
 
             var isPlatformAdmin = await db.PlatformAdministrators.AsNoTracking().AnyAsync(x => x.UserId == user.Id, cancellationToken);
-            var memberships = await db.CompanyMemberships.AsNoTracking().Where(x => x.UserId == user.Id &&
-                (tenantCompanyId == null || x.CompanyId == tenantCompanyId) &&
-                db.Companies.Any(company => company.Id == x.CompanyId && company.IsActive)).ToListAsync(cancellationToken);
+            if (request.PlatformAdminOnly && (tenantSlug is not null || !isPlatformAdmin || request.CompanyId is not null))
+                return Results.Forbid();
+            var memberships = request.PlatformAdminOnly
+                ? new List<CompanyMembership>()
+                : await db.CompanyMemberships.AsNoTracking().Where(x => x.UserId == user.Id &&
+                    (tenantCompanyId == null || x.CompanyId == tenantCompanyId) &&
+                    db.Companies.Any(company => company.Id == x.CompanyId && company.IsActive)).ToListAsync(cancellationToken);
             var membership = tenantCompanyId is not null
                 ? memberships.SingleOrDefault(x => x.CompanyId == tenantCompanyId)
                 : request.CompanyId is Guid selected
@@ -236,14 +240,14 @@ public static class AccountEndpoints
                 return Results.Forbid();
             if (tenantCompanyId is not null && membership is null)
                 return Results.Forbid();
-            if (tenantCompanyId is null && memberships.Count > 1 && request.CompanyId is null)
+            if (!request.PlatformAdminOnly && tenantCompanyId is null && memberships.Count > 1 && request.CompanyId is null)
             {
                 var companyIds = memberships.Select(x => x.CompanyId).ToArray();
                 var companies = await db.Companies.AsNoTracking().Where(x => companyIds.Contains(x.Id))
                     .OrderBy(x => x.Name).Select(x => new { id = x.Id, name = x.Name }).ToListAsync(cancellationToken);
                 return Results.Conflict(new { message = "Devam etmek için çalışacağınız şirketi seçin.", companies });
             }
-            if (membership is null && !isPlatformAdmin)
+            if (membership is null && (!isPlatformAdmin || !request.PlatformAdminOnly))
                 return memberships.Count == 0
                     ? Results.Forbid()
                     : Results.ValidationProblem(new Dictionary<string, string[]> { ["companyId"] = ["Birden fazla şirket erişiminiz var; şirket seçin."] });

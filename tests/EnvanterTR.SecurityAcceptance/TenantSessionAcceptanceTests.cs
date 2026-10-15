@@ -10452,6 +10452,8 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             var db = services.GetRequiredService<AppDbContext>();
             db.Companies.Add(new Company { Id = additionalCompanyId, Name = "Authorized second company", Slug = $"authorized-{additionalCompanyId:N}", IsActive = true });
             db.CompanyMemberships.Add(new CompanyMembership { CompanyId = additionalCompanyId, UserId = _userId, RoleKey = "owner" });
+            if (!await db.PlatformAdministrators.AnyAsync(entry => entry.UserId == _userId))
+                db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
             await db.SaveChangesAsync();
         }
 
@@ -10488,6 +10490,37 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var unrelatedChoice = await SendAnonymousLoginAsync(loginClient, email, password, null,
             requestToken, antiforgeryCookie, companyId: _otherCompanyId);
         Assert.Equal(HttpStatusCode.Forbidden, unrelatedChoice.StatusCode);
+
+        using (var platformLogin = await SendAnonymousLoginAsync(loginClient, email, password, null,
+            requestToken, antiforgeryCookie, platformAdminOnly: true))
+        using (var platformSession = JsonDocument.Parse(await platformLogin.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, platformLogin.StatusCode);
+            Assert.True(platformSession.RootElement.GetProperty("platformAdmin").GetBoolean());
+            Assert.Equal(JsonValueKind.Null, platformSession.RootElement.GetProperty("companyId").ValueKind);
+            Assert.Equal(JsonValueKind.Null, platformSession.RootElement.GetProperty("role").ValueKind);
+        }
+
+        using var wrongScopePlatformLogin = await SendAnonymousLoginAsync(loginClient, email, password, null,
+            requestToken, antiforgeryCookie, platformAdminOnly: true,
+            host: $"acceptance-{_companyId:N}.envantertr.com");
+        Assert.Equal(HttpStatusCode.Forbidden, wrongScopePlatformLogin.StatusCode);
+
+        var nonAdminEmail = $"acceptance-non-admin-{Guid.NewGuid():N}@example.invalid";
+        await using (var nonAdminScope = _factory.Services.CreateAsyncScope())
+        {
+            var userManager = nonAdminScope.ServiceProvider.GetRequiredService<UserManager<EnvanterUser>>();
+            var nonAdmin = new EnvanterUser
+            {
+                UserName = nonAdminEmail, Email = nonAdminEmail, EmailConfirmed = true,
+                DisplayName = "Non-platform test user"
+            };
+            var create = await userManager.CreateAsync(nonAdmin, password);
+            Assert.True(create.Succeeded, string.Join("; ", create.Errors.Select(error => error.Description)));
+        }
+        using var unauthorizedPlatformScope = await SendAnonymousLoginAsync(loginClient, nonAdminEmail, password, null,
+            requestToken, antiforgeryCookie, platformAdminOnly: true);
+        Assert.Equal(HttpStatusCode.Forbidden, unauthorizedPlatformScope.StatusCode);
 
         using (var tenantLogin = await SendAnonymousLoginAsync(loginClient, email, password, null,
             requestToken, antiforgeryCookie, companyId: null, host: $"acceptance-{_companyId:N}.envantertr.com"))
@@ -10576,11 +10609,12 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     private async Task<HttpResponseMessage> SendAnonymousLoginAsync(HttpClient client, string email, string password, string? twoFactorCode,
-        string requestToken, string antiforgeryCookie, Guid? companyId = null, string? host = null)
+        string requestToken, string antiforgeryCookie, Guid? companyId = null, string? host = null,
+        bool platformAdminOnly = false)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/session/login")
         {
-            Content = System.Net.Http.Json.JsonContent.Create(new { email, password, companyId, rememberMe = true, twoFactorCode })
+            Content = System.Net.Http.Json.JsonContent.Create(new { email, password, companyId, rememberMe = true, twoFactorCode, platformAdminOnly })
         };
         request.Headers.Add("X-CSRF-TOKEN", requestToken);
         request.Headers.Add("Cookie", antiforgeryCookie);
