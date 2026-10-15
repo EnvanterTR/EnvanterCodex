@@ -12,6 +12,8 @@ Güncelleme: 14 Ekim 2026
 
 15 Ekim 2026 devamı — Ayrıntı penceresindeki “Etiket yazdır” düğmesi de satır kısayolundan ayrı olarak test edildi. Ürün etiketi önizlemesinde mevcut varlığın adı ve etiketi bulundu, önizleme kapandı ve API yazımı oluşmadı. QR/barkod üreticileri yalnız sentetik tarayıcıda sağlandı; gerçek yazdırma başlatılmadı. Tam hosted Chromium kabul paketi geçti.
 
+15 Ekim 2026 devamı — `Verify-AssetDetailActions.mjs`, listelenen 13 ayrıntı eyleminin her biri için hosted Chromium kabul dosyasında bir UI etkileşimi bulunmasını artık zorunlu kılıyor. Güncel tam hosted browser paketi bu yeni kapıyla geçti; eylem testleri sentetik şirket/oturum/API kullanır. Böylece 13 modal eyleminin UI etkileşim kapsamı otomatik korunuyor; canlı kullanıcı verisi veya fiziksel yazıcı testi anlamına gelmez.
+
 ## Kapsam ve kaynak
 
 Bu dosya, bu Codex görevi içindeki erişilebilir kullanıcı isteklerinin ve 11 Ekim tarihli ayrıntılı listenin proje iş planına dönüştürülmüş indeksidir. Birebir konuşma dökümü değildir. Ayrıntılı başlık ve durum listesi `docs/USER-REQUEST-CHECKLIST-2026-10-11.md` dosyasında özgün haliyle korunmuştur; bu listedeki ✅/🟡/❌ işaretleri kullanıcının 11 Ekim tarihli başlangıç beyanıdır, bugünkü kodun yeniden doğrulanmış sonucu değildir. Parola ve diğer kimlik bilgileri bu belgelere alınmaz.

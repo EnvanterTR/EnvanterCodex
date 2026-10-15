@@ -48,6 +48,7 @@ const actions = [
 for (const [id, ...contracts] of actions) {
   requireSource(assetDialog.includes(`id="${id}"`), `Asset-detail action ${id} is missing from the dialog.`);
   for (const contract of contracts) requireSource(app.includes(contract), `Asset-detail action ${id} is missing source contract: ${contract}.`);
+  requireSource(browserAcceptance.includes(`'#${id}'`), `Asset-detail action ${id} has no hosted Chromium interaction case.`);
 }
 
 requireSource(app.includes('`/api/assets/${target.id}/trash`'), 'Trash action must call the company-scoped asset trash API after explicit in-app confirmation.');
