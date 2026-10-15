@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
 const html = await readFile('/platform-site/platform-setup.html');
+const adminHtml = await readFile('/platform-site/platform-admin.html');
 const writes = [];
 const csrfToken = 'synthetic-platform-bootstrap-csrf';
 const setupToken = 'synthetic-platform-bootstrap-token';
@@ -20,12 +21,17 @@ const server = createServer(async (request, response) => {
   if (request.method === 'GET' && url.pathname === '/platform-setup.html') {
     response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }); response.end(html); return;
   }
+  if (request.method === 'GET' && url.pathname === '/platform-admin.html') {
+    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }); response.end(adminHtml); return;
+  }
   if (request.method === 'GET' && url.pathname.startsWith('/assets/fonts/')) {
     response.writeHead(200, { 'content-type': 'text/css; charset=utf-8' }); response.end(''); return;
   }
   if (request.method === 'GET' && url.pathname === '/api/platform/bootstrap/status') {
     return statusFailure ? json(response, { message: 'Veritabanı şeması hazır değil.' }, 503) : json(response, state);
   }
+  if (request.method === 'GET' && url.pathname === '/api/status') return json(response, { status: 'ready', pendingMigrationCount: 0 });
+  if (request.method === 'GET' && url.pathname === '/api/session') return json(response, { message: 'Synthetic unauthenticated.' }, 401);
   if (request.method === 'GET' && url.pathname === '/api/session/csrf') {
     return csrfFailure ? json(response, { message: 'Sentetik CSRF servisi kullanılamıyor.' }, 503) : json(response, { requestToken: csrfToken });
   }
@@ -100,8 +106,22 @@ try {
     csrf: csrfToken, token: setupToken
   });
   assert.equal(new URL(page.url()).search, '', 'Bootstrap must not put credentials in the URL.');
+
+  await page.goto(`http://127.0.0.1:${address.port}/platform-admin.html`, { waitUntil: 'domcontentloaded' });
+  const bootstrapLink = page.locator('#platformBootstrapLink');
+  await bootstrapLink.waitFor({ state: 'hidden' });
+  state = { setupRequired: true, setupTokenConfigured: false };
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await bootstrapLink.waitFor({ state: 'hidden' });
+  state = { setupRequired: true, setupTokenConfigured: true };
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await bootstrapLink.waitFor({ state: 'visible' });
+  statusFailure = true;
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await bootstrapLink.waitFor({ state: 'hidden' });
+  statusFailure = false;
   assert.deepEqual(pageErrors, [], 'Bootstrap status, disabled, and success states must not throw browser errors.');
-  console.log('PASS: platform bootstrap distinguishes existing-admin, missing-token, and first-setup states; binds an existing account with its current password; submits once with CSRF and setup token without URL secrets.');
+  console.log('PASS: platform bootstrap distinguishes existing-admin, missing-token, and first-setup states; hides the first-admin link unless setup is genuinely available; binds an existing account with its current password; submits once with CSRF and setup token without URL secrets.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

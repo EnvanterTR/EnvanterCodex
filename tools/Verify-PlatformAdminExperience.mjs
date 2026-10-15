@@ -39,6 +39,9 @@ assert.match(page, /\[hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/
 assert.match(page, /id="platformLoginReadiness"[^>]*role="status"/);
 assert.match(page, /id="platformLoginSubmit"/);
 assert.match(page, /async function checkPlatformLoginReadiness\(\)/);
+assert.match(page, /id="platformBootstrapLink"[^>]*hidden/, 'First-admin bootstrap must not be exposed by default.');
+assert.match(page, /async function checkPlatformBootstrapAvailability\(\)[\s\S]*?link\.hidden=true[\s\S]*?setupRequired===true&&status\.setupTokenConfigured===true/, 'Only a configured first setup may expose the bootstrap link; all failures fail closed.');
+assert.match(page, /checkPlatformBootstrapAvailability\(\)/);
 assert.match(page, /status\.status==='migration-required'[\s\S]*?pendingMigrationCount[\s\S]*?submit\.disabled=true/);
 assert.match(page, /status\.status==='ready'[\s\S]*?submit\.disabled=false/);
 assert.match(page, /if\(!await checkPlatformLoginReadiness\(\)\)return/);
