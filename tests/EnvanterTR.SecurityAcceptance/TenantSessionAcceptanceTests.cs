@@ -8353,6 +8353,105 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Software_license_create_update_and_read_are_tenant_scoped_audited_and_csrf_protected()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var licensePath = "/api/software-licenses";
+        var createBody = new
+        {
+            name = $"Acceptance license {_userId:N}", publisher = "Acceptance Publisher", productVersion = "4.1",
+            licenseType = "Subscription", licenseReference = $"ACCEPT-{_userId:N}", supplier = "Acceptance Supplier",
+            seats = 2, unitCost = 45.50m, currency = "USD", purchaseDate = "2026-10-15", expirationDate = "2027-10-15",
+            autoRenew = true, notes = "Acceptance create", requiresEulaAcceptance = false
+        };
+
+        using (var noCsrf = await SendAsUserAsync(HttpMethod.Post, licensePath, _userId, _companyId,
+                   System.Net.Http.Json.JsonContent.Create(createBody)))
+            Assert.Equal(HttpStatusCode.BadRequest, noCsrf.StatusCode);
+
+        using (var invalid = await SendAsRoleAsync(HttpMethod.Post, licensePath, "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { createBody.name, createBody.publisher, createBody.productVersion,
+                       createBody.licenseType, createBody.licenseReference, createBody.supplier, seats = 0, createBody.unitCost,
+                       createBody.currency, createBody.purchaseDate, createBody.expirationDate, createBody.autoRenew,
+                       createBody.notes, createBody.requiresEulaAcceptance }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+
+        await SetCompanyRoleAsync("viewer");
+        using (var denied = await SendAsRoleAsync(HttpMethod.Post, licensePath, "viewer",
+                   System.Net.Http.Json.JsonContent.Create(createBody), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        await SetCompanyRoleAsync("admin");
+
+        using var create = await SendAsRoleAsync(HttpMethod.Post, licensePath, "admin",
+            System.Net.Http.Json.JsonContent.Create(createBody), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        using var createdPayload = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
+        var licenseId = createdPayload.RootElement.GetProperty("id").GetGuid();
+
+        using (var ownDetail = await SendAsAdminAsync($"/api/software-licenses/{licenseId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, ownDetail.StatusCode);
+            using var payload = JsonDocument.Parse(await ownDetail.Content.ReadAsStringAsync());
+            var license = payload.RootElement.GetProperty("license");
+            Assert.Equal(createBody.name, license.GetProperty("name").GetString());
+            Assert.Equal(2, license.GetProperty("seats").GetInt32());
+            Assert.Equal(0, license.GetProperty("assigned").GetInt32());
+        }
+        await using (var membershipScope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = membershipScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.CompanyMemberships.Add(new CompanyMembership { CompanyId = _otherCompanyId, UserId = _userId, RoleKey = "admin" });
+            await db.SaveChangesAsync();
+        }
+        using (var crossTenantDetail = await SendAsUserAsync(HttpMethod.Get, $"/api/software-licenses/{licenseId}", _userId, _otherCompanyId))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenantDetail.StatusCode);
+
+        var updatePath = $"/api/software-licenses/{licenseId}";
+        await SetCompanyRoleAsync("viewer");
+        using (var deniedUpdate = await SendAsRoleAsync(HttpMethod.Put, updatePath, "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { createBody.name, createBody.publisher, createBody.productVersion,
+                       createBody.licenseType, createBody.licenseReference, createBody.supplier, seats = 3, createBody.unitCost,
+                       createBody.currency, createBody.purchaseDate, createBody.expirationDate, createBody.autoRenew,
+                       createBody.notes, createBody.requiresEulaAcceptance }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, deniedUpdate.StatusCode);
+        await SetCompanyRoleAsync("admin");
+
+        var updateBody = new
+        {
+            name = $"Updated acceptance license {_userId:N}", publisher = "Updated Publisher", productVersion = "4.2",
+            licenseType = "Perpetual", licenseReference = $"UPDATED-{_userId:N}", supplier = "Updated Supplier",
+            seats = 4, unitCost = 55.25m, currency = "EUR", purchaseDate = "2026-10-15", expirationDate = "2028-10-15",
+            autoRenew = false, notes = "Acceptance update", requiresEulaAcceptance = true
+        };
+        using var update = await SendAsRoleAsync(HttpMethod.Put, updatePath, "admin",
+            System.Net.Http.Json.JsonContent.Create(updateBody), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.NoContent, update.StatusCode);
+
+        using (var crossTenantUpdate = await SendAsUserAsync(HttpMethod.Put, updatePath, _userId, _otherCompanyId,
+                   System.Net.Http.Json.JsonContent.Create(updateBody), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenantUpdate.StatusCode);
+
+        await using var verifyScope = _factory!.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var stored = await verifyDb.SoftwareLicenses.SingleAsync(item => item.CompanyId == _companyId && item.Id == licenseId);
+        Assert.Equal(updateBody.name, stored.Name);
+        Assert.Equal(4, stored.Seats);
+        Assert.Equal("EUR", stored.Currency);
+        Assert.True(stored.RequiresEulaAcceptance);
+        Assert.Equal(0, await verifyDb.SoftwareLicenses.CountAsync(item => item.CompanyId == _otherCompanyId && item.Id == licenseId));
+        var events = await verifyDb.SoftwareLicenseEvents.Where(item => item.CompanyId == _companyId && item.LicenseId == licenseId)
+            .OrderBy(item => item.EventType).Select(item => item.EventType).ToListAsync();
+        Assert.Equal(new[] { "Created", "Updated" }, events);
+    }
+
+    [Fact]
     public async Task Software_license_can_be_assigned_to_same_company_asset_and_is_visible_in_both_details()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
