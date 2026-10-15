@@ -64,6 +64,7 @@ const softwareLicenseRows = [{
   unitCost: null, currency: 'TRY', purchaseDate: null, expirationDate: null, autoRenew: false, requiresEulaAcceptance: false,
   notes: null
 }];
+let softwareLicenseCurrentEula = null;
 const softwareLicenseAssignments = [];
 const softwareLicenseAssignmentWrites = [];
 const softwareLicenseAttachments = [{ id: softwareLicenseAttachmentId, originalFileName: 'synthetic-eula.pdf', contentType: 'application/pdf',
@@ -340,7 +341,8 @@ const server = createServer(async (request, response) => {
     else if (softwareLicenseRows.some(item => url.pathname === `/api/software-licenses/${item.id}`)) {
       const licenseId = url.pathname.split('/').at(-1), license = softwareLicenseRows.find(item => item.id === licenseId);
       result = { license: { ...license }, assignments: softwareLicenseAssignments.filter(item => item.licenseId === licenseId).map(item => ({ ...item })), events: [],
-        attachments: licenseId === softwareLicenseId ? softwareLicenseAttachments.map(item => ({ ...item })) : [], currentEula: null };
+        attachments: licenseId === softwareLicenseId ? softwareLicenseAttachments.map(item => ({ ...item })) : [],
+        currentEula: licenseId === softwareLicenseId && softwareLicenseCurrentEula ? { ...softwareLicenseCurrentEula } : null };
     }
     else if (url.pathname === '/api/software-license-assignments') {
       const q = (url.searchParams.get('q') || '').toLocaleLowerCase('tr-TR');
@@ -437,14 +439,19 @@ const server = createServer(async (request, response) => {
   if (request.method === 'POST' && url.pathname === `/api/software-licenses/${softwareLicenseId}/assign`) {
     assert.equal(body.employeeId, employeeId, 'The license must be assigned to the selected synthetic employee.');
     assert.equal(body.assetId, null, 'Employee assignment must not include an asset target.');
-    assert.equal(body.eulaAccepted, false);
+    assert.equal(body.eulaAccepted, softwareLicenseRows.find(item => item.id === softwareLicenseId).requiresEulaAcceptance,
+      'Assignment must reflect the configured EULA requirement.');
+    if (body.eulaAccepted) assert.ok(softwareLicenseCurrentEula, 'An EULA-required license must have a current EULA document.');
     assert.equal(softwareLicenseAssignments.some(item => item.licenseId === softwareLicenseId && item.employeeId === employeeId && !item.revokedAt), false,
       'The same active employee assignment must not be duplicated.');
     const license = softwareLicenseRows.find(item => item.id === softwareLicenseId);
-    const assigned = { id: 'e1000000-0000-4000-8000-000000000001', licenseId: softwareLicenseId,
+    const assigned = { id: `e1000000-0000-4000-8000-${String(softwareLicenseAssignments.length + 1).padStart(12, '0')}`, licenseId: softwareLicenseId,
       license: license.name, licenseType: license.licenseType, employeeId, employee: 'Synthetic QA Employee', employeeNumber: 'QA-001',
       assetId: null, assetTag: null, assetName: null, assignedAt: '2026-10-15T12:00:00Z', expirationDate: null,
-      revokedAt: null, eulaAttachmentId: null, eulaVersion: null, eulaAcceptedAt: null, eulaAcceptedBy: null, notes: body.notes };
+      revokedAt: null, eulaAttachmentId: body.eulaAccepted ? softwareLicenseCurrentEula.id : null,
+      eulaVersion: body.eulaAccepted ? softwareLicenseCurrentEula.eulaVersion : null,
+      eulaAcceptedAt: body.eulaAccepted ? '2026-10-15T14:05:00Z' : null,
+      eulaAcceptedBy: body.eulaAccepted ? 'Synthetic Owner' : null, notes: body.notes };
     softwareLicenseAssignments.push(assigned);
     license.assigned += 1;
     softwareLicenseAssignmentWrites.push(record);
@@ -487,6 +494,21 @@ const server = createServer(async (request, response) => {
     return;
   }
   const softwareLicenseAttachmentDelete = url.pathname.match(/^\/api\/software-licenses\/([0-9a-f-]+)\/attachments\/([0-9a-f-]+)$/i);
+  if (request.method === 'POST' && url.pathname === `/api/software-licenses/${softwareLicenseId}/attachments`) {
+    assert.equal(body?.file?.filename, 'synthetic-eula-v2.pdf');
+    assert.equal(body?.isEulaDocument, 'true');
+    assert.equal(body?.eulaVersion, '2.0');
+    const attachment = { id: 'abababab-abab-4bab-8bab-abababababab', originalFileName: body.file.filename,
+      contentType: 'application/pdf', length: body.file.length, createdAt: '2026-10-15T14:00:00Z',
+      uploadedBy: 'Synthetic Owner', isEulaDocument: true, isCurrentEula: true, eulaVersion: body.eulaVersion };
+    for (const old of softwareLicenseAttachments) { if (old.isCurrentEula) old.isCurrentEula = false; }
+    softwareLicenseAttachments.push(attachment);
+    softwareLicenseCurrentEula = { id: attachment.id, originalFileName: attachment.originalFileName, contentType: attachment.contentType, eulaVersion: attachment.eulaVersion };
+    softwareLicenseWrites.push(record);
+    json(response, 201, { id: attachment.id, originalFileName: attachment.originalFileName, contentType: attachment.contentType,
+      length: attachment.length, createdAt: attachment.createdAt, isEulaDocument: true, isCurrentEula: true, eulaVersion: attachment.eulaVersion });
+    return;
+  }
   if (request.method === 'DELETE' && softwareLicenseAttachmentDelete) {
     assert.equal(softwareLicenseAttachmentDelete[1], softwareLicenseId);
     assert.equal(softwareLicenseAttachmentDelete[2], softwareLicenseAttachmentId);
@@ -1700,6 +1722,72 @@ try {
   await page.locator('#licenseAssignmentRows').getByText('Synthetic QA Employee').waitFor();
   await page.locator('#licenseAssignmentRows').getByText('Geri alındı').waitFor();
   console.log('PASS: software license employee assignment updates seat usage and detail; assignment list search, cancel-safe and confirmed revocation, inactive history filter, and CSRF are verified.');
+
+  await page.locator('#sidebar button[data-page="Yazılım lisansları"]').click();
+  await licenseList.locator(`tr[data-id="${softwareLicenseId}"] .license-open`).first().click();
+  await licenseDetail.waitFor({ state: 'visible' });
+  await page.locator('#editLicenseButton').click();
+  const eulaLicenseFormDialog = page.locator('#licenseFormDialog');
+  await eulaLicenseFormDialog.waitFor({ state: 'visible' });
+  await page.locator('#licenseForm [name="requiresEulaAcceptance"]').check();
+  const requiredEulaUpdate = page.waitForResponse(response => response.request().method() === 'PUT'
+    && new URL(response.url()).pathname === `/api/software-licenses/${softwareLicenseId}`);
+  await page.locator('#licenseForm button[type="submit"]').click();
+  assert.equal((await requiredEulaUpdate).status(), 204);
+  await eulaLicenseFormDialog.waitFor({ state: 'hidden' });
+  assert.equal(softwareLicenseRows.find(item => item.id === softwareLicenseId).requiresEulaAcceptance, true,
+    'The license EULA requirement must persist after saving its settings.');
+
+  const eulaPdf = { name: 'synthetic-eula-v2.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7\nSynthetic EULA v2\n%%EOF') };
+  await page.locator('#licenseAttachmentForm [name="file"]').setInputFiles(eulaPdf);
+  await page.locator('#licenseAttachmentForm [name="isEulaDocument"]').check();
+  assert.equal(await page.locator('#licenseEulaVersionWrap').isVisible(), true,
+    'Marking an attachment as EULA must reveal its required version field.');
+  await page.locator('#licenseAttachmentForm [name="eulaVersion"]').fill('2.0');
+  const eulaUploadResponse = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === `/api/software-licenses/${softwareLicenseId}/attachments`);
+  await page.locator('#licenseAttachmentForm button[type="submit"]').click();
+  assert.equal((await eulaUploadResponse).status(), 201, 'A versioned EULA document must be saved through the company API.');
+  const currentEulaAttachment = page.locator('#licenseAttachments .employee-document-row').filter({ hasText: 'synthetic-eula-v2.pdf' });
+  await currentEulaAttachment.waitFor({ state: 'visible' });
+  assert.match(await currentEulaAttachment.innerText(), /EULA 2\.0 · Güncel sürüm/);
+  assert.equal(softwareLicenseCurrentEula?.id, 'abababab-abab-4bab-8bab-abababababab');
+  assert.equal(softwareLicenseWrites.at(-1).csrf, 'synthetic-asset-csrf');
+
+  await page.locator('#assignLicenseButton').click();
+  await licenseAssignmentDialog.waitFor({ state: 'visible' });
+  await page.waitForFunction(() => document.querySelector('#licenseAssignForm [name="employeeId"]')?.options.length > 1);
+  const eulaLink = page.locator('#licenseEulaDocumentLink');
+  assert.equal(await eulaLink.isVisible(), true, 'The assignment dialog must expose the current EULA before consent.');
+  assert.match(await eulaLink.innerText(), /synthetic-eula-v2\.pdf · 2\.0/);
+  assert.equal(await eulaLink.getAttribute('href'), `/api/software-licenses/${softwareLicenseId}/attachments/abababab-abab-4bab-8bab-abababababab/file`);
+  assert.equal(await page.locator('#licenseEulaAccepted').isVisible(), true);
+  assert.equal(await page.locator('#licenseEulaAccepted').isChecked(), false);
+  assert.equal(await page.locator('#licenseEulaAccepted').evaluate(input => input.required), true,
+    'The EULA confirmation must be a required form control for this license.');
+  await page.locator('#licenseAssignForm [name="employeeId"]').selectOption(employeeId);
+  const eulaAssignmentWritesBefore = softwareLicenseAssignmentWrites.length;
+  await page.locator('#licenseAssignForm button[type="submit"]').click();
+  assert.equal(await licenseAssignmentDialog.isVisible(), true, 'An unchecked EULA confirmation must keep the assignment form open.');
+  assert.equal(softwareLicenseAssignmentWrites.length, eulaAssignmentWritesBefore, 'An unchecked EULA must not create an assignment request.');
+  await page.locator('#licenseEulaAccepted').check();
+  const eulaAssignmentResponse = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === `/api/software-licenses/${softwareLicenseId}/assign`);
+  await page.locator('#licenseAssignForm button[type="submit"]').click();
+  assert.equal((await eulaAssignmentResponse).status(), 201, 'Explicit EULA consent must permit the assignment.');
+  await licenseAssignmentDialog.waitFor({ state: 'hidden' });
+  const acceptedEulaAssignment = softwareLicenseAssignments.at(-1);
+  assert.equal(acceptedEulaAssignment.eulaAttachmentId, softwareLicenseCurrentEula.id);
+  assert.equal(acceptedEulaAssignment.eulaVersion, '2.0');
+  assert.equal(acceptedEulaAssignment.eulaAcceptedBy, 'Synthetic Owner');
+  assert.match(await page.locator('#licenseAssignments').innerText(), /2\.0[\s\S]*Synthetic Owner/,
+    'The refreshed license detail must show the accepted EULA version and confirmer.');
+  assert.deepEqual(softwareLicenseAssignmentWrites.at(-1).body,
+    { employeeId, assetId: null, notes: null, eulaAccepted: true });
+  assert.equal(softwareLicenseAssignmentWrites.at(-1).csrf, 'synthetic-asset-csrf');
+  await page.locator('#closeLicenseDetail').click();
+  await licenseDetail.waitFor({ state: 'hidden' });
+  console.log('PASS: software license EULA settings, versioned document upload, required consent, cancel-safe rejection, accepted-version attribution, and CSRF are verified.');
 
   await page.locator('#sidebar button[data-page="Yazılım lisansları"]').click();
   const licenseFormDialog = page.locator('#licenseFormDialog');

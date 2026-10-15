@@ -54,7 +54,10 @@ assert.match(assetActions, /Warranty CSV export must preserve filters and horizo
 assert.match(assetActions, /Keyboard activation must open the linked asset details/);
 assert.match(assetActions, /An activity API error must disable paging/);
 assert.match(assetActions, /software license employee assignment updates seat usage and detail; assignment list search, cancel-safe and confirmed revocation, inactive history filter, and CSRF are verified/);
+assert.match(assetActions, /software license EULA settings, versioned document upload, required consent, cancel-safe rejection, accepted-version attribution, and CSRF are verified/);
 assert.match(assetActions, /software license create\/edit required-field validation, cancel-safe dialogs, CSRF-scoped writes, detail edit prefill, persisted list\/detail refresh, and search/);
+assert.match(assetActions, /An unchecked EULA must not create an assignment request/);
+assert.match(assetActions, /The refreshed license detail must show the accepted EULA version and confirmer/);
 assert.match(assetActions, /License updates must not lower total seats below active assignments/);
 assert.match(assetActions, /Canceling list revocation must not write/);
 assert.match(assetActions, /Confirmed list revocation must reach the scoped API/);
