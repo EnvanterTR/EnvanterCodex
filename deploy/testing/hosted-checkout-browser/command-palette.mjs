@@ -57,6 +57,11 @@ const server = createServer(async (request, response) => {
         response.end(JSON.stringify({ ...token, secret: syntheticIntegrationSecret }));
         return;
       }
+      if (request.method === 'POST' && url.pathname === '/api/session/2fa/setup' && record.csrf === 'synthetic-viewer-csrf') {
+        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+        response.end(JSON.stringify({ secret: 'SYNTHETIC-ONLY-TOTP-SETUP-SECRET' }));
+        return;
+      }
       const revokeTokenMatch = url.pathname.match(/^\/api\/integrations\/tokens\/([0-9a-f-]+)\/revoke$/i);
       if (request.method === 'POST' && revokeTokenMatch && record.csrf === 'synthetic-viewer-csrf') {
         integrationTokens = integrationTokens.map(token => token.id === revokeTokenMatch[1]
@@ -313,6 +318,32 @@ try {
   await accountDialog.waitFor({ state: 'visible' });
   await page.locator('#closeAccountPhoto').click();
   await accountDialog.waitFor({ state: 'hidden' });
+  await page.locator('#userAvatar').click();
+  await accountDialog.waitFor({ state: 'visible' });
+  await page.locator('#openAccountTwoFactor').click();
+  const accountTwoFactorDialog = page.locator('#accountTwoFactorDialog');
+  await accountTwoFactorDialog.waitFor({ state: 'visible' });
+  assert.match(await accountTwoFactorDialog.innerText(), /Google Authenticator, Microsoft Authenticator veya TOTP uyumlu başka bir uygulama/);
+  assert.match(await accountTwoFactorDialog.innerText(), /Google\/Microsoft hesabı, abonelik, SMS ya da ayrıca bir hizmet satın almanız gerekmez/);
+  await page.locator('#twoFactorCurrentPassword').fill('Synthetic-only-password');
+  await page.locator('#startTwoFactorSetup').click();
+  const twoFactorSecret = page.locator('#twoFactorSecret');
+  await page.waitForFunction(() => document.querySelector('#twoFactorSecret')?.textContent === 'SYNTHETIC-ONLY-TOTP-SETUP-SECRET');
+  assert.ok(apiRequests.some(item => item.path === '/api/session/2fa/setup' && item.method === 'POST' && item.csrf === 'synthetic-viewer-csrf'));
+  await page.locator('#closeAccountTwoFactor').click();
+  await accountTwoFactorDialog.waitFor({ state: 'hidden' });
+  assert.equal(await twoFactorSecret.textContent(), '', 'The close button must immediately erase the TOTP enrollment secret from the DOM.');
+  assert.equal(await page.locator('#twoFactorCurrentPassword').inputValue(), '');
+  await page.locator('#userAvatar').click();
+  await accountDialog.waitFor({ state: 'visible' });
+  await page.locator('#openAccountTwoFactor').click();
+  await accountTwoFactorDialog.waitFor({ state: 'visible' });
+  await page.locator('#twoFactorCurrentPassword').fill('Synthetic-only-password');
+  await page.locator('#startTwoFactorSetup').click();
+  await page.waitForFunction(() => document.querySelector('#twoFactorSecret')?.textContent === 'SYNTHETIC-ONLY-TOTP-SETUP-SECRET');
+  await page.keyboard.press('Escape');
+  await accountTwoFactorDialog.waitFor({ state: 'hidden' });
+  assert.equal(await twoFactorSecret.textContent(), '', 'Escape must immediately erase the TOTP enrollment secret from the DOM.');
 
   const settingsGroup = page.locator('#sidebar [data-group="settings"]');
   const integrationsNav = page.locator('#sidebar [data-page="Entegrasyonlar"]');
@@ -432,10 +463,13 @@ try {
   }
   assert.deepEqual(pageErrors, [], 'The app must not throw browser errors while switching languages and showing subscription access state.');
   const writes = apiRequests.filter(item => item.method !== 'GET');
-  assert.equal(writes.length, 4, 'Only explicit synthetic notification, API key create/revoke, and appearance actions may write.');
+  assert.equal(writes.length, 6, 'Only explicit synthetic notification, API key create/revoke, TOTP setup, and appearance actions may write.');
   assert.deepEqual(writes.map(item => item.path).sort(), [
-    '/api/appearance/preferences', '/api/integrations/tokens', tokenRevokeWrite.path, '/api/notifications/preferences'
+    '/api/appearance/preferences', '/api/integrations/tokens', tokenRevokeWrite.path,
+    '/api/notifications/preferences', '/api/session/2fa/setup', '/api/session/2fa/setup'
   ].sort());
+  assert.ok(writes.filter(item => item.path === '/api/session/2fa/setup').every(item => item.csrf === 'synthetic-viewer-csrf'),
+    'Each explicit TOTP enrollment request must include CSRF protection.');
   assert.deepEqual(writes.find(item => item.path === '/api/appearance/preferences')?.body, { theme: 'dark', language: 'en' });
 
   loginMode = true;

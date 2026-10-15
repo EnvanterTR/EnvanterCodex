@@ -22,5 +22,11 @@ assert.match(accountApi, /MapPost\("\/api\/session\/devices\/\{id:guid\}\/revoke
   'Session revoke must remain implemented by the authenticated account API.');
 assert.match(integrationApi, /MapPost\("\/api\/integrations\/tokens\/\{id:guid\}\/revoke"/,
   'API key revoke must remain implemented by the authenticated integration API.');
+assert.match(source, /Google Authenticator, Microsoft Authenticator veya TOTP uyumlu başka bir uygulama kullanabilirsiniz\.[\s\S]*?Google\/Microsoft hesabı, abonelik, SMS ya da ayrıca bir hizmet satın almanız gerekmez/,
+  'The account MFA UI must explain that TOTP does not require a vendor account, subscription, SMS, or separate service.');
+assert.match(source, /function clearTwoFactorDialogSecrets\(\)\s*\{[\s\S]*?\$\('#twoFactorSecret'\)\.textContent = '';[\s\S]*?\$\('#twoFactorRecoveryCodes'\)\.textContent = '';[\s\S]*?\$\('#twoFactorCurrentPassword'\)\.value = '';[\s\S]*?\$\('#twoFactorCode'\)\.value = '';/,
+  'Closing the account MFA dialog must clear the setup secret, recovery codes, password, and entered OTP from the DOM.');
+assert.match(source, /\$\('#accountTwoFactorDialog'\)\.addEventListener\('cancel', clearTwoFactorDialogSecrets\);[\s\S]*?\$\('#accountTwoFactorDialog'\)\.addEventListener\('close', clearTwoFactorDialogSecrets\);/,
+  'Escape and all dialog-close paths must synchronously clear sensitive MFA values.');
 
-console.log('Verified cancellable session and API-key revocation dialogs, selected-record scoping, and authenticated API routes.');
+console.log('Verified cancellable session/API-key revocation, authenticated routes, MFA provider guidance, and dialog-secret cleanup.');

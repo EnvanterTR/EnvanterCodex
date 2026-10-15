@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 15 Ekim 2026 — MFA kurulum açıklaması ve sır temizliği
+
+Hesap güvenliği penceresi artık TOTP'nin Google/Microsoft hesabı, ücretli abonelik, SMS veya ayrı bir servis gerektirmediğini; kodun Authenticator uygulamasında üretildiğini ve telefon kaybında tek kullanımlık kurtarma kodunun kullanılacağını Türkçe, İngilizce, Rusça, Ukraynaca ve Makedoncada açıklar. Kullanıcı kurulum anahtarını manuel girer; QR kurulumu henüz yoktur. Pencere düğmeyle, Escape ile veya diğer kapanışlarda kapandığında kurulum sırrı, kurtarma kodları, parola ve girilmiş kod DOM'dan temizlenir. Sentetik Chromium akışında CSRF'li kurulum, metin açıklaması ve düğme/Escape temizliği doğrulandı; gerçek hesapta MFA etkinleştirilmedi.
+
 ## 15 Ekim 2026 — Bildirimler ve Güvenlik menülerinden tek adımda açılış
 
 Şirket ayarlarındaki **Bildirimler** seçimi artık zil paneli ve tercih formunu doğrudan açar; genel dışarı tıklama dinleyicisi bu menü seçimini panel kapatma saymaz. **Güvenlik** seçimi hesap güvenliği penceresini doğrudan açarken merkezi şirket güvenlik politikası/SSO kapsamının eksik olduğu açıklamasını ve hesap penceresini kapatma yolunu sayfada tutar. Hosted Chromium, her iki menünün doğrudan hedefe erişimini ve salt okunur açılışta yazma oluşmadığını doğruladı. Tam paket geçti; güvenlikte merkezi şirket politikası hâlâ kısmi durumdur.
