@@ -82,6 +82,22 @@ public sealed class MigrationUpgradeAcceptanceTests
             Assert.Equal("UPGRADE-001", reader.GetString(1));
             Assert.Equal("Upgrade acceptance asset", reader.GetString(2));
             Assert.False(await reader.ReadAsync(), "The seeded asset must not be duplicated by upgrade.");
+            await reader.DisposeAsync();
+
+            await using var indexCommand = new NpgsqlCommand("""
+                SELECT indexState.indisvalid, indexState.indisready, pg_get_indexdef(indexClass.oid)
+                FROM pg_class indexClass
+                JOIN pg_namespace indexSchema ON indexSchema.oid = indexClass.relnamespace
+                JOIN pg_index indexState ON indexState.indexrelid = indexClass.oid
+                WHERE indexSchema.nspname = @schema AND indexClass.relname = 'IX_AuditEntries_OccurredAt'
+                """, verify);
+            indexCommand.Parameters.AddWithValue("schema", schema);
+            await using var indexReader = await indexCommand.ExecuteReaderAsync();
+            Assert.True(await indexReader.ReadAsync(), "The audit timeline index must exist after upgrade.");
+            Assert.True(indexReader.GetBoolean(0), "The concurrent audit index build must leave a valid index.");
+            Assert.True(indexReader.GetBoolean(1), "The audit index must be ready for queries and writes.");
+            Assert.Contains("(\"OccurredAt\")", indexReader.GetString(2), StringComparison.Ordinal);
+            Assert.False(await indexReader.ReadAsync(), "The audit timeline index name must be unique in the schema.");
         }
         finally
         {
