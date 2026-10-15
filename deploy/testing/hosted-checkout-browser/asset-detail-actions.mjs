@@ -826,6 +826,12 @@ try {
   await rowReturnDialog.waitFor({ state: 'visible' });
   assert.match(await page.locator('#returnAssetDescription').innerText(), /Synthetic QA Employee/,
     'The assigned row shortcut must target the current synthetic assignee.');
+  const beforeBackdropReturn = apiRequests.length;
+  await page.mouse.click(5, 5);
+  await rowReturnDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, beforeBackdropReturn, 'Clicking outside the return dialog must cancel without writing.');
+  await page.locator('#returnAssetButton').click();
+  await rowReturnDialog.waitFor({ state: 'visible' });
   const beforeRowReturnCancel = apiRequests.length;
   await page.locator('#cancelAssetReturnAction').click();
   await rowReturnDialog.waitFor({ state: 'hidden' });

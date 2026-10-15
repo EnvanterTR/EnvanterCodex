@@ -14,6 +14,8 @@ Güncelleme: 14 Ekim 2026
 
 15 Ekim 2026 devamı — `Verify-AssetDetailActions.mjs`, listelenen 13 ayrıntı eyleminin her biri için hosted Chromium kabul dosyasında bir UI etkileşimi bulunmasını artık zorunlu kılıyor. Güncel tam hosted browser paketi bu yeni kapıyla geçti; eylem testleri sentetik şirket/oturum/API kullanır. Böylece 13 modal eyleminin UI etkileşim kapsamı otomatik korunuyor; canlı kullanıcı verisi veya fiziksel yazıcı testi anlamına gelmez.
 
+15 Ekim 2026 devamı — Atanmış varlık iade formunda dışarı tıklama testi eklendi. Chromium’da backdrop tıklaması formu kapattı, iade işlemi yapılmadı ve API yazımı oluşmadı; form tekrar açılıp iptal ve başarılı sentetik iade akışları da geçti. Hosted tarayıcı paketi geçti. Bu, yalnız bu formun dışarı tıklama davranışını kapsar; diğer modal/backdrop davranışları ayrı ayrı kabul edilmelidir.
+
 ## Kapsam ve kaynak
 
 Bu dosya, bu Codex görevi içindeki erişilebilir kullanıcı isteklerinin ve 11 Ekim tarihli ayrıntılı listenin proje iş planına dönüştürülmüş indeksidir. Birebir konuşma dökümü değildir. Ayrıntılı başlık ve durum listesi `docs/USER-REQUEST-CHECKLIST-2026-10-11.md` dosyasında özgün haliyle korunmuştur; bu listedeki ✅/🟡/❌ işaretleri kullanıcının 11 Ekim tarihli başlangıç beyanıdır, bugünkü kodun yeniden doğrulanmış sonucu değildir. Parola ve diğer kimlik bilgileri bu belgelere alınmaz.
