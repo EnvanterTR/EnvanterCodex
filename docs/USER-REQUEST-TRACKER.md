@@ -2,7 +2,7 @@
 
 Güncelleme: 14 Ekim 2026
 
-15 Ekim 2026 devamı — Varlık detayındaki “Etiketi kopyala” eylemi izole sentetik Chromium kabulinde gerçek `navigator.clipboard.writeText` çağrısıyla sınandı; panoya `QA-ASSET-001` yazıldığı doğrulandı. Ardından satır bağlam menüsünden “Varlığı kopyala” açıldı; kaynak adı taşındı, benzersiz etiket/seri no boş bırakıldı, formdan vazgeçilince POST oluşmadı. Tam hosted browser kabul paketi her iki akışla geçti. Bu sonuçlar yalnız bu iki eylemi kapsar. 13 modal eyleminin ve 7 satır kısayolunun tamamı hâlâ tek tek kabul edilmedi; tekli etiket önizlemesinin önceki yerel kabul kanıtı ayrıca mevcut, yazdırma tuşu fiziksel yazıcıya gönderilmedi.
+15 Ekim 2026 devamı — Varlık detayındaki “Etiketi kopyala” sentetik Chromium kabulinde panoya `QA-ASSET-001` yazdı. Satır bağlam menüsündeki “Varlığı kopyala” kaynak adını taşıdı, benzersiz etiket/seri no alanlarını boş bıraktı ve iptal POST üretmedi. Ayrıca satırdaki zimmet kısayolu aynı şirketin çalışan seçeneklerini içeren zimmet formunu açtı; iptal API yazımı üretmedi. Tam hosted browser kabul paketi bu akışlarla geçti. Bu sonuçlar yalnız belirtilen eylemleri kapsar. 13 modal eyleminin ve 7 satır kısayolunun tamamı hâlâ tek tek kabul edilmedi; etiket önizlemesinin önceki yerel kabul kanıtı var, fiziksel yazdırma yapılmadı.
 
 ## Kapsam ve kaynak
 

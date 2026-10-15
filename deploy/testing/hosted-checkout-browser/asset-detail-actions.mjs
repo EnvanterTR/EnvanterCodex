@@ -353,6 +353,17 @@ try {
   assert.equal(apiRequests.length, 0, 'Opening then canceling owner Ctrl+N must not create an asset.');
 
   const assetRow = page.locator(`#assetRows tr[data-id="${assetId}"]`);
+  await assetRow.locator('[data-asset-action="assign"]').click();
+  await page.locator('#assetDialog').waitFor({ state: 'visible' });
+  const rowAssignmentDialog = page.locator('#assignDialog');
+  await rowAssignmentDialog.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#assignForm [name="employeeId"] option').count(), 2, 'The row assignment shortcut must open the same company-scoped employee choices as the detail action.');
+  await page.locator('[data-close-assign]').first().click();
+  await rowAssignmentDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, 0, 'Canceling row assignment must not write.');
+  await page.locator('#assetDialog #closeDialog').click();
+  await page.locator('#assetDialog').waitFor({ state: 'hidden' });
+
   await assetRow.click({ button: 'right' });
   const contextMenu = page.locator('#assetContextMenu');
   await contextMenu.waitFor({ state: 'visible' });
