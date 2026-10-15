@@ -377,6 +377,17 @@ try {
   await contextEditDialog.waitFor({ state: 'hidden' });
   assert.equal(apiRequests.length, 0, 'Opening and canceling a context-menu edit must not write.');
   await page.locator('#assetDialog').locator('#closeDialog').click();
+  await page.locator('#assetDialog').waitFor({ state: 'hidden' });
+  await assetRow.click({ button: 'right' });
+  await contextMenu.waitFor({ state: 'visible' });
+  await contextMenu.getByRole('menuitem', { name: 'Varlığı kopyala' }).click();
+  await newAssetDialog.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#newAssetForm [name="assetName"]').inputValue(), asset.name, 'The row clone shortcut must seed the source asset name.');
+  assert.equal(await page.locator('#newAssetForm [name="assetTag"]').inputValue(), '', 'A clone must not reuse the source unique asset tag.');
+  assert.equal(await page.locator('#newAssetForm [name="serialNumber"]').inputValue(), '', 'A clone must not reuse the source serial number.');
+  await page.locator('#newAssetDialog [data-close-new]').first().click();
+  await newAssetDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, 0, 'Opening and canceling a row clone must not create an asset.');
 
   await page.locator('#assetRows .asset-name').filter({ hasText: asset.name }).click();
   const assetDialog = page.locator('#assetDialog');
