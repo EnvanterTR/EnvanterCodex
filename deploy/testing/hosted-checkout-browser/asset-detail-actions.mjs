@@ -481,6 +481,16 @@ try {
   await page.locator('#copyAssetTag').click();
   await page.waitForFunction(() => window.__syntheticClipboard === 'QA-ASSET-001');
   assert.equal(await page.evaluate(() => window.__syntheticClipboard), 'QA-ASSET-001', 'Copy-tag action must place the selected asset tag on the clipboard.');
+  await page.locator('#printAssetLabel').click();
+  const detailLabelPreview = page.locator('#assetLabelPreviewDialog');
+  await detailLabelPreview.waitFor({ state: 'visible' });
+  await page.waitForFunction(() => !document.querySelector('#assetLabelPreviewPrint')?.disabled);
+  const detailLabelHtml = await page.locator('#assetLabelPreviewFrame').getAttribute('srcdoc');
+  assert.match(detailLabelHtml, /QA-ASSET-001/, 'Detail label action must print the selected asset tag.');
+  assert.match(detailLabelHtml, /Synthetic audit target/, 'Detail label action must print the selected asset name.');
+  await page.locator('#assetLabelPreviewClose').click();
+  await detailLabelPreview.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, 0, 'Detail label preview must not write to the API or start printing.');
   const statusDialog = page.locator('#assetStatusDialog');
   const beforeStatusCancel = apiRequests.length;
   await page.locator('#assetStatusAction').selectOption('Unusable');

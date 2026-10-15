@@ -10,6 +10,8 @@ Güncelleme: 14 Ekim 2026
 
 15 Ekim 2026 devamı — Varlık ayrıntısı iade akışı sentetik hosted Chromium’da gönderildi: zimmetli çalışanın adı doğrulandı, not CSRF ile `POST /api/assets/{id}/return` gövdesine gitti, sentetik sunucu 204 döndürdü; kaydı yeniden açınca çalışan ataması kalkmış ve durum Kullanılabilir geldi. Arşivden geri alma da `Available → Archived → Available` sırasıyla UI’dan çalıştırıldı; yalnız arşivli kayıtta görünen düğme, onay/not, CSRF’li `POST /api/assets/{id}/restore` ve yeniden açılan güncel ayrıntı doğrulandı. İki uçtan uca test de yalnız sentetik API verisi kullandı; gerçek DB/şirket kayıtlarına yazmadı. Tam hosted browser kabul paketi bu akışlarla geçti.
 
+15 Ekim 2026 devamı — Ayrıntı penceresindeki “Etiket yazdır” düğmesi de satır kısayolundan ayrı olarak test edildi. Ürün etiketi önizlemesinde mevcut varlığın adı ve etiketi bulundu, önizleme kapandı ve API yazımı oluşmadı. QR/barkod üreticileri yalnız sentetik tarayıcıda sağlandı; gerçek yazdırma başlatılmadı. Tam hosted Chromium kabul paketi geçti.
+
 ## Kapsam ve kaynak
 
 Bu dosya, bu Codex görevi içindeki erişilebilir kullanıcı isteklerinin ve 11 Ekim tarihli ayrıntılı listenin proje iş planına dönüştürülmüş indeksidir. Birebir konuşma dökümü değildir. Ayrıntılı başlık ve durum listesi `docs/USER-REQUEST-CHECKLIST-2026-10-11.md` dosyasında özgün haliyle korunmuştur; bu listedeki ✅/🟡/❌ işaretleri kullanıcının 11 Ekim tarihli başlangıç beyanıdır, bugünkü kodun yeniden doğrulanmış sonucu değildir. Parola ve diğer kimlik bilgileri bu belgelere alınmaz.
