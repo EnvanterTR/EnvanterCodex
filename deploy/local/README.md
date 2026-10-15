@@ -51,6 +51,19 @@ docker compose start
 
 Compose projesinin adı `envantertr-product-dev` olarak ayrılmıştır; eski test kurulumlarıyla aynı Docker projesini paylaşmaz. `stop`, `start` veya `docker compose down` veri volume'larını silmez. **`docker compose down --volumes` çalıştırmayın**: bu yerel geliştirme veritabanını, şirket medyasını ve oturum anahtarlarını kalıcı olarak siler. Uygulama güncellemesinde kaynak kodun değişmesi PostgreSQL volume'unu ezmez. Yeni migration uygulanmadan önce ayrıca yedek alınmalıdır; migration komutu şemayı değiştirir. Oturum anahtarları konteyner yeniden oluşturulduğunda korunur; volume'lar silinirse mevcut oturum çerezleri geçersiz olur.
 
+### Web kodunu güncel imajla çalıştırma
+
+`web` servisi derlenmiş .NET uygulamasını Docker imajında çalıştırır; yalnızca `wwwroot` klasörü ana makineden salt okunur bağlanır. Bu nedenle C#/.NET kaynak kodu değişiklikleri çalışan konteynere kendiliğinden geçmez. Uygulama klasöründe PowerShell açıp web servisini güncel kaynakla yeniden derleyin:
+
+```powershell
+Set-Location .\deploy\local
+docker compose up -d --build web
+docker compose ps web
+Invoke-RestMethod http://localhost:8080/api/status
+```
+
+Sağlık yanıtında `status: ready` ve `pendingMigrationCount: 0` bekleyin. Giriş hâlâ başarısızsa önce `docker compose ps web` ile konteynerin yeniden oluşturulduğunu ve sağlık uç noktasını kontrol edin; bu kontrol parola doğrulamasından ayrıdır. Bu güncelleme `--volumes` kullanmaz; PostgreSQL, medya ve oturum anahtarı volume'ları korunur. Üretim veritabanı veya canlı servis için bu yerel komutu kullanmayın.
+
 `deploy/local/.env` parolaları ve kurulum anahtarlarını içerir; paylaşmayın ve Git'e eklemeyin. `.env.example` yalnızca şablondur.
 
 ## Elle yerel yedek alma
