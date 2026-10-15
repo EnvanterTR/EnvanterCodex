@@ -43,6 +43,8 @@ assert.match(page, /status\.status==='migration-required'[\s\S]*?pendingMigratio
 assert.match(page, /status\.status==='ready'[\s\S]*?submit\.disabled=false/);
 assert.match(page, /if\(!await checkPlatformLoginReadiness\(\)\)return/);
 assert.match(page, /name="twoFactorCode"[^>]*autocomplete="one-time-code"/);
+assert.match(page, /id="platformTwoFactorHint"[^>]*>[^<]*Google Authenticator, Microsoft Authenticator ya da uyumlu uygulamanın[\s\S]*?EnvanterTR için Google\/Microsoft üyeliği ya da ücretli doğrulama hizmeti gerekmez/,
+  'The platform login must explain that an already-enrolled authenticator app produces the code and needs no paid Google/Microsoft integration.');
 assert.match(page, /<script src="\/vendor\/qrcodegen\.js"><\/script>/,
   'Platform MFA must use the locally hosted QR encoder, not an external image service.');
 assert.match(page, /Google Authenticator, Microsoft Authenticator veya uyumlu uygulamada[\s\S]*?yerel olarak üretilir; Google\/Microsoft hesabı veya ücretli doğrulama hizmeti gerekmez/,
