@@ -10,6 +10,7 @@ const apiRequests = [];
 const loginAttempts = [];
 let subscriptionMode = 'full';
 let loginMode = false;
+let loginPendingMigrationCount = 0;
 let notificationPreferences = { enabledKinds: ['maintenance', 'audit', 'license', 'warranty', 'return', 'reservation'], emailEnabledKinds: [] };
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || '/', 'http://127.0.0.1');
@@ -66,7 +67,9 @@ const server = createServer(async (request, response) => {
       return;
     }
     const data = url.pathname === '/api/status'
-      ? { status: 'ready', migrationCount: 91, pendingMigrationCount: 0 }
+      ? loginMode && loginPendingMigrationCount > 0
+        ? { status: 'migration-required', migrationCount: 91 + loginPendingMigrationCount, pendingMigrationCount: loginPendingMigrationCount }
+        : { status: 'ready', migrationCount: 91, pendingMigrationCount: 0 }
       : url.pathname === '/api/setup/status'
         ? { setupRequired: false }
         : url.pathname === '/api/session/csrf'
@@ -369,9 +372,24 @@ try {
   await loginPage.locator('#retryApiButton').click();
   await loginPage.locator('#loginConnectionStatus').getByText(/bu giriş hatası bağlantıdan kaynaklanmıyor/i).waitFor({ state: 'visible' });
   assert.equal(loginAttempts.length, 1, 'Retrying the server check must not resubmit login credentials.');
+  loginPendingMigrationCount = 21;
+  await loginPage.locator('#retryApiButton').click();
+  await loginPage.locator('#loginConnectionStatus').getByText(/21 veritabanı güncellemesi bekliyor/).waitFor({ state: 'visible' });
+  assert.equal(await loginPage.locator('#authError').innerText(), '', 'A migration block must clear the stale wrong-credentials message.');
+  assert.equal(await loginPage.locator('#loginForm button[type="submit"]').isDisabled(), true,
+    'The sign-in action must stay disabled until the pending production schema is updated.');
+  assert.equal(await loginPage.locator('#forgotPasswordButton').isDisabled(), true,
+    'Password recovery must not be offered as a credential fix while the schema is pending.');
+  assert.equal(loginAttempts.length, 1, 'A migration diagnosis must not resubmit login credentials.');
+  loginPendingMigrationCount = 0;
+  await loginPage.locator('#retryApiButton').click();
+  await loginPage.locator('#loginConnectionStatus').getByText(/bu giriş hatası bağlantıdan kaynaklanmıyor/i).waitFor({ state: 'visible' });
+  assert.equal(await loginPage.locator('#loginForm button[type="submit"]').isDisabled(), false,
+    'A healthy schema must restore the sign-in action.');
+  assert.equal(loginAttempts.length, 1, 'Recovering readiness must not silently retry credentials.');
   assert.deepEqual(loginPageErrors, [], `The signed-out login UI must not throw browser errors: ${loginPageErrors.join(' | ')}`);
   await loginPage.close();
-  console.log('PASS: synthetic viewer role visibility; keyboard/sidebar navigation; notification cancel/save persistence; profile security and appearance preferences; five-language expiry notice; signed-out login shows credential rejection beside ready-server diagnosis, posts once with CSRF, keeps credentials out of the URL, and retries health without resubmitting.');
+  console.log('PASS: synthetic viewer role visibility; keyboard/sidebar navigation; notification cancel/save persistence; profile security and appearance preferences; five-language expiry notice; signed-out login distinguishes credential rejection from schema lockout, clears stale errors, blocks login/recovery until ready, posts once with CSRF, and never silently retries.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

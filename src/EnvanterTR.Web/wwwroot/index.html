@@ -10133,6 +10133,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         await refreshCsrf();
         const readiness = await api('/api/status', { timeoutMs: 10000 });
         if (readiness.status === 'migration-required') {
+          $('#authError').textContent = '';
           $('#firstRunSetupNotice').hidden = true;
           $('#loginForm button[type="submit"]').disabled = true;
           $('#forgotPasswordButton').disabled = true;

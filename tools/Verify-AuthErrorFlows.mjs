@@ -15,6 +15,8 @@ const credentialLookup = accountApi.indexOf('userManager.FindByEmailAsync(reques
 assert.ok(loginEndpointStart >= 0 && credentialLookup > loginEndpointStart, 'Could not find the server-side login endpoint.');
 assert.match(accountApi.slice(loginEndpointStart, credentialLookup), /GetPendingMigrationsAsync\(cancellationToken\)[\s\S]*?schema_migration_required[\s\S]*?ServiceUnavailable/,
   'Login must report the pending schema update before querying or incrementing credentials.');
+assert.match(source, /if \(readiness\.status === 'migration-required'\) \{\s*\$\('#authError'\)\.textContent = '';/,
+  'A pending migration diagnosis must clear any stale bad-credentials message.');
 
 const dialogs = [{ closed: 0, close() { this.closed++; } }, { closed: 0, close() { this.closed++; } }];
 const elements = new Map([
@@ -126,6 +128,7 @@ assert.match(source.slice(successfulLoginStart, successfulLoginStart + 420), /do
 const diagnosticElements = new Map([
   ['#retryApiButton', { hidden: false, disabled: false, textContent: 'Sunucu bağlantısını test et' }],
   ['#loginConnectionStatus', { hidden: true, textContent: '' }],
+  ['#authError', { textContent: 'Önceki parola reddi' }],
   ['#firstRunSetupNotice', { hidden: true }],
   ['#loginForm button[type="submit"]', { disabled: false }],
   ['#forgotPasswordButton', { disabled: false }],
@@ -155,6 +158,7 @@ assert.equal(diagnosticElements.get('#retryApiButton').disabled, false, 'The ret
 diagnosticMode = 'migration';
 await diagnosticContext.checkLoginConnection();
 assert.match(diagnosticElements.get('#loginConnectionStatus').textContent, /19 veritabanı güncellemesi bekliyor/, 'Pending migrations must be identified separately from bad credentials.');
+assert.equal(diagnosticElements.get('#authError').textContent, '', 'A migration diagnosis must clear stale credential rejection.');
 assert.equal(diagnosticElements.get('#loginForm button[type="submit"]').disabled, true, 'Sign-in must be disabled while production schema migrations are pending.');
 assert.equal(diagnosticElements.get('#forgotPasswordButton').disabled, true, 'Password reset must not imply a credential problem when the schema is not updated.');
 

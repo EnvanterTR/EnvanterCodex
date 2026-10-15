@@ -100,7 +100,10 @@ assert.match(palette, /apiRequests\.some\(item => item\.path === '\/api\/notific
 assert.match(palette, /sidebar \[data-group="settings"\]/);
 assert.match(palette, /featureStatusNotificationButton/);
 assert.match(palette, /notifications menu must expose its working preferences shortcut/i);
-assert.match(palette, /signed-out login shows credential rejection beside ready-server diagnosis/);
+assert.match(palette, /signed-out login distinguishes credential rejection from schema lockout/);
+assert.match(palette, /A migration block must clear the stale wrong-credentials message/);
+assert.match(palette, /The sign-in action must stay disabled until the pending production schema is updated/);
+assert.match(palette, /Password recovery must not be offered as a credential fix while the schema is pending/);
 assert.match(palette, /A rejected login must not recurse or be silently retried/);
 assert.match(palette, /Retrying the server check must not resubmit login credentials/);
 assert.match(palette, /Login details must not be sent in the URL/);
