@@ -13,6 +13,7 @@ const asset = {
   categoryId: '55555555-5555-4555-8555-555555555555', location: 'Head Office', updatedAt: '2026-10-14T12:00:00Z', nextAuditOn: null,
   createdAt: '2026-10-01T12:00:00Z', purchaseCost: null, currency: 'TRY'
 };
+const importedAssets = [];
 const appHtml = await readFile('/checkout-site/company-app.html');
 const requests = [];
 const apiRequests = [];
@@ -36,6 +37,7 @@ const assetImportProfiles = [];
 const assetImportProfileWrites = [];
 const assetImportProfileDeleteWrites = [];
 const assetImportPreviewRequests = [];
+const assetImportApplicationWrites = [];
 const contractAsset = { id: contractAssetId, assetTag: 'QA-CONTRACT-ASSET', name: 'Synthetic Contract Device', serialNumber: 'QA-CONTRACT-SERIAL' };
 const contractLicense = { id: contractLicenseId, name: 'Synthetic Office License', licenseReference: 'QA-LICENSE-001', expirationDate: '2027-10-01' };
 const json = (response, status = 200, body = null) => {
@@ -87,7 +89,7 @@ const server = createServer(async (request, response) => {
   });
   const record = { method: request.method, path: url.pathname, query: Object.fromEntries(url.searchParams.entries()), body, csrf: request.headers['x-csrf-token'] };
   requests.push(record);
-  if (request.method !== 'GET' && !url.pathname.startsWith('/api/assets/import-mappings') && !url.pathname.includes('/import/preview.')) apiRequests.push(record);
+  if (request.method !== 'GET' && !url.pathname.startsWith('/api/assets/import-mappings') && !url.pathname.includes('/import/preview.') && url.pathname !== '/api/assets/import.csv') apiRequests.push(record);
 
   if (request.method === 'POST' && url.pathname === '/api/session/login') {
     expiryLoginAttempts.push(record);
@@ -124,10 +126,10 @@ const server = createServer(async (request, response) => {
     else if (url.pathname === '/api/company/branding') result = { name: 'Synthetic Asset Company', brandPrimaryColor: '#2563EB', hasLogo: false };
     else if (url.pathname === '/api/company/label-settings') result = { isConfigured: false, settings: null };
     else if (url.pathname === '/api/dashboard/summary') result = {
-      totalAssets: 1, assignedAssets: 0, availableAssets: 1, maintenanceAssets: 0,
+      totalAssets: asset.isDeleted ? importedAssets.length : importedAssets.length + 1, assignedAssets: 0, availableAssets: asset.isDeleted ? importedAssets.length : importedAssets.length + 1, maintenanceAssets: 0,
       softwareLicenses: 0, accessories: 0, consumables: 0, components: 0, activeEmployees: 0
     };
-    else if (url.pathname === '/api/assets') result = { items: asset.isDeleted ? [] : [asset], total: asset.isDeleted ? 0 : 1, page: 1, pageSize: 50 };
+    else if (url.pathname === '/api/assets') { const items = [...(asset.isDeleted ? [] : [asset]), ...importedAssets]; result = { items, total: items.length, page: 1, pageSize: 50 }; }
     else if (url.pathname === `/api/assets/${assetId}`) result = {
       asset: { ...asset }, references: { model: null, modelNumber: null, employee: asset.assignedEmployeeName || null,
         employeeNumber: asset.assignedEmployeeId ? 'QA-001' : null, defaultLocation: 'Head Office' },
@@ -176,10 +178,22 @@ const server = createServer(async (request, response) => {
     const encoded = request.headers['x-asset-import-mapping'];
     if (!encoded) {
       json(response, 400, { message: 'Unknown columns need mapping.', unmappedColumns: ['VendorTag', 'VendorName', 'VendorCategory', 'VendorUnused'],
-        mappingTargets: [{ key: 'assetTag', label: 'Etiket' }, { key: 'name', label: 'Varlık adı' }, { key: 'categoryName', label: 'Kategori' }, { key: 'ignore', label: 'Bu sütunu yoksay' }] });
+        mappingTargets: [{ key: 'assetTag', label: 'Etiket' }, { key: 'name', label: 'Varlık adı' }, { key: 'category', label: 'Kategori' }, { key: 'ignore', label: 'Bu sütunu yoksay' }] });
       return;
     }
     json(response, 200, { isValid: true, rowCount: 1, counts: { assets: 1 }, errors: [], message: 'Synthetic mapped asset preview.' });
+    return;
+  }
+  if (request.method === 'POST' && url.pathname === '/api/assets/import.csv') {
+    const mappings = JSON.parse(Buffer.from(request.headers['x-asset-import-mapping'], 'base64').toString('utf8'));
+    assert.deepEqual(mappings, { VendorTag: 'assetTag', VendorName: 'name', VendorCategory: 'category', VendorUnused: 'ignore' },
+      'The real import action must reuse the persisted mapping with API-supported target keys.');
+    assert.equal(body, 'VendorTag,VendorName,VendorCategory,VendorUnused\nQA-NEW-001,QA mapped asset,Synthetic equipment,ignore me\n',
+      'The explicit apply action must submit the unchanged selected CSV file.');
+    const created = { ...asset, id: '66666666-6666-4666-8666-666666666666', assetTag: 'QA-NEW-001', name: 'QA mapped asset' };
+    importedAssets.push(created);
+    assetImportApplicationWrites.push({ method: request.method, path: url.pathname, body, mappings, csrf: request.headers['x-csrf-token'], created });
+    json(response, 200, { message: '1 synthetic asset imported.' });
     return;
   }
   if (request.method === 'POST' && url.pathname === '/api/assets/import-mappings') {
@@ -402,7 +416,7 @@ try {
   await page.locator('#importPreviewFile').setInputFiles(assetCsv);
   await page.locator('#runImportPreview').click();
   await page.locator('#assetImportMappingPanel').waitFor({ state: 'visible' });
-  for (const [header, target] of Object.entries({ VendorTag: 'assetTag', VendorName: 'name', VendorCategory: 'categoryName', VendorUnused: 'ignore' })) {
+  for (const [header, target] of Object.entries({ VendorTag: 'assetTag', VendorName: 'name', VendorCategory: 'category', VendorUnused: 'ignore' })) {
     await page.locator(`#assetImportMappingFields select[data-source-header="${header}"]`).selectOption(target);
   }
   await page.locator('#applyAssetImportMapping').click();
@@ -412,7 +426,7 @@ try {
   await page.locator('#saveAssetImportProfile').click();
   await page.waitForFunction(() => document.querySelector('#assetImportProfile')?.value === 'abababab-abab-4bab-8bab-abababababab');
   assert.equal(assetImportProfileWrites.length, 1, 'Saving the mapping must persist exactly one synthetic profile.');
-  assert.deepEqual(assetImportProfileWrites[0].body, { name: 'Synthetic vendor map', mappings: { VendorTag: 'assetTag', VendorName: 'name', VendorCategory: 'categoryName', VendorUnused: 'ignore' } });
+  assert.deepEqual(assetImportProfileWrites[0].body, { name: 'Synthetic vendor map', mappings: { VendorTag: 'assetTag', VendorName: 'name', VendorCategory: 'category', VendorUnused: 'ignore' } });
   assert.equal(assetImportProfileWrites[0].csrf, 'synthetic-asset-csrf');
   const previewCountBeforeClose = assetImportPreviewRequests.length;
   await page.locator('#closeImportPreview').click();
@@ -429,6 +443,16 @@ try {
     assetImportProfileWrites[0].body.mappings, 'Reloaded saved profile must send its exact field mapping to preview.');
   assert.equal(assetImportProfileWrites.length, 1, 'Reusing a profile must not create another saved profile.');
   assert.equal(assetImportProfileWrites.length + restoreApplyWrites.length, 1, 'The acceptance must not apply CSV or restore data.');
+  const applyResponsePromise = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === '/api/assets/import.csv');
+  await page.locator('#applyCsvImport').click();
+  const applyResponse = await applyResponsePromise;
+  assert.equal(applyResponse.status(), 200, 'Explicitly applying a valid preview must call the CSV import endpoint successfully.');
+  await page.locator('#assetRows tr[data-id="66666666-6666-4666-8666-666666666666"]').waitFor({ state: 'visible' });
+  assert.equal(assetImportApplicationWrites.length, 1, 'The explicit apply action must create exactly one synthetic asset.');
+  assert.deepEqual(assetImportApplicationWrites[0].mappings, assetImportProfileWrites[0].body.mappings);
+  assert.equal(assetImportApplicationWrites[0].csrf, 'synthetic-asset-csrf');
+  assert.match(await page.locator('#assetRows tr[data-id="66666666-6666-4666-8666-666666666666"]').innerText(), /QA mapped asset[\s\S]*QA-NEW-001/);
   await page.locator('#deleteAssetImportProfile').click();
   await page.locator('#employeeActionDialog').waitFor({ state: 'visible' });
   assert.match(await page.locator('#employeeActionSummary').innerText(), /Seçili eşleme profili silinsin mi/);
@@ -445,7 +469,7 @@ try {
   assert.equal(await page.locator('#deleteAssetImportProfile').isDisabled(), true, 'Deleted profile must no longer be selected or deletable.');
   await page.locator('#closeImportPreview').click();
   await assetImportDialog.waitFor({ state: 'hidden' });
-  console.log('PASS: asset CSV mapping profile maps unknown columns, saves/reloads/reuses with CSRF, cancels deletion without writing, and deletes only after explicit confirmation; no CSV rows were imported.');
+  console.log('PASS: asset CSV mapping profile maps unknown columns, saves/reloads/reuses with CSRF, explicitly imports one valid synthetic row into the refreshed list, and safely cancels/confirms profile deletion.');
 
   await page.locator('#pageTitle').click();
   await page.keyboard.press('Control+n');
