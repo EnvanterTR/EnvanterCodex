@@ -79,10 +79,13 @@ assert.match(platformMembers, /Özellik bayrakları JSON nesnesi olmalı ve değ
 assert.match(platformMembers, /invalid feature-flags document must not write a plan/);
 assert.match(platformMembers, /Clearing a draft plan must not write/);
 assert.match(platformMembers, /planForm\.locator\('\[name="maxLoginUsers"\]'\)\.isDisabled\(\)/);
+assert.match(platformMembers, /New Cloud plans must include maintenance/);
+assert.match(platformMembers, /planForm\.locator\('#planMaintenanceEnabled'\)\.uncheck\(\)/);
+assert.match(platformMembers, /Maintenance entitlement must persist after a full page reload/);
 assert.match(platformMembers, /method: 'POST', path: '\/api\/platform\/plans'/);
 assert.match(platformMembers, /path === `\/api\/platform\/plans\/\$\{planId\}` && request\.method === 'PUT'/);
 assert.match(platformMembers, /edited yearly price and publication state must be reloaded from the synthetic API after a page refresh/);
-assert.match(platformMembers, /plan create\/update\/validation\/publication reload, and audited company subscription plan\/date editing with cancel and persistence/);
+assert.match(platformMembers, /plan create\/update\/validation\/publication reload and maintenance entitlement persistence, plus audited company subscription plan\/date editing with cancel and persistence/);
 assert.match(platformMembers, /exactly one working plan\/date action/);
 assert.match(platformMembers, /Canceling subscription editing must not write/);
 assert.match(platformMembers, /An invalid subscription date range must not write/);
