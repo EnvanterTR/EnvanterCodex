@@ -23,6 +23,8 @@ assert.match(script, /await import\('\.\/platform-admin-members\.mjs'\)/);
 assert.match(script, /await import\('\.\/platform-admin-bootstrap\.mjs'\)/);
 assert.match(palette, /role: 'viewer'/);
 assert.match(palette, /The page must not expose company member administration to a viewer role/);
+assert.match(palette, /email-only login URL must be scrubbed before app initialization/);
+assert.match(palette, /The email-only query value must not be copied into the login form/);
 assert.match(palette, /let subscriptionMode = 'full'/);
 assert.match(palette, /subscriptionMode = 'readOnly'/);
 assert.match(palette, /The expired-subscription notice must be translated into/);

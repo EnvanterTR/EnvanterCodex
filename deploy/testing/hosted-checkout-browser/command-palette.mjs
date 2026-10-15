@@ -331,7 +331,11 @@ try {
   loginPage.setDefaultTimeout(10_000);
   const loginPageErrors = [];
   loginPage.on('pageerror', error => loginPageErrors.push(error.message));
-  await loginPage.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: 'domcontentloaded' });
+  await loginPage.goto(`http://127.0.0.1:${address.port}/?email=qa-url-only%40example.invalid&keep=1#login`, { waitUntil: 'domcontentloaded' });
+  await loginPage.locator('#loginQueryNotice').waitFor({ state: 'visible' });
+  assert.equal(new URL(loginPage.url()).search, '?keep=1', 'An email-only login URL must be scrubbed before app initialization while unrelated query state remains.');
+  assert.equal(new URL(loginPage.url()).hash, '#login', 'Scrubbing login data must preserve the URL fragment.');
+  assert.equal(await loginPage.locator('#loginForm [name="email"]').inputValue(), '', 'The email-only query value must not be copied into the login form.');
   await loginPage.locator('#loginConnectionStatus').getByText(/Sunucu ve veritabanı hazır/).waitFor({ state: 'visible' });
   assert.equal(await loginPage.locator('#loginForm button[type="submit"]').isDisabled(), false,
     'A ready database must leave the sign-in action available.');
@@ -346,7 +350,7 @@ try {
   assert.equal(loginAttempts[0].method, 'POST');
   assert.equal(loginAttempts[0].csrf, 'synthetic-viewer-csrf');
   assert.deepEqual(loginAttempts[0].body, { email: 'qa-login@example.invalid', password: 'Synthetic-only-password', companyId: null, rememberMe: true, twoFactorCode: null });
-  assert.equal(new URL(loginPage.url()).search, '', 'Login details must not be sent in the URL.');
+  assert.equal(new URL(loginPage.url()).search, '?keep=1', 'Login details must not be sent in the URL, while unrelated query state stays intact.');
   await loginPage.locator('#retryApiButton').click();
   await loginPage.locator('#loginConnectionStatus').getByText(/bu giriş hatası bağlantıdan kaynaklanmıyor/i).waitFor({ state: 'visible' });
   assert.equal(loginAttempts.length, 1, 'Retrying the server check must not resubmit login credentials.');
