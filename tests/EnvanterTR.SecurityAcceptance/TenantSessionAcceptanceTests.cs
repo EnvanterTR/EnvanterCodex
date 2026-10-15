@@ -80,9 +80,9 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         var plan = new SubscriptionPlan
         {
             Code = $"features-{_companyId.ToString("N")[..8]}", Name = "Cloud limited features", DeploymentKind = "cloud",
-            IsActive = true, IsPublic = true, FeatureFlagsJson = "{\"reports\":false,\"api\":false}"
+            IsActive = true, IsPublic = true, FeatureFlagsJson = "{\"reports\":false,\"api\":false,\"maintenance\":false}"
         };
-        const string rawApiToken = "etr_live_feature_entitlement_acceptance_token";
+        var rawApiToken = $"etr_live_feature_entitlement_acceptance_{_companyId:N}";
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -124,6 +124,14 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         }
         using (var customReports = await SendAsAdminAsync("/api/assets/custom-reports"))
             Assert.Equal(HttpStatusCode.PaymentRequired, customReports.StatusCode);
+        using (var maintenances = await SendAsAdminAsync("/api/maintenances"))
+        {
+            Assert.Equal(HttpStatusCode.PaymentRequired, maintenances.StatusCode);
+            using var payload = JsonDocument.Parse(await maintenances.Content.ReadAsStringAsync());
+            Assert.Equal("maintenance", payload.RootElement.GetProperty("feature").GetString());
+        }
+        using (var assetMaintenances = await SendAsAdminAsync($"/api/assets/{_ownAssetId}/maintenances"))
+            Assert.Equal(HttpStatusCode.PaymentRequired, assetMaintenances.StatusCode);
         await using var verificationScope = _factory.Services.CreateAsyncScope();
         var verificationDb = verificationScope.ServiceProvider.GetRequiredService<AppDbContext>();
         Assert.Null(await verificationDb.CompanyApiTokens.Where(x => x.CompanyId == _companyId)
@@ -1874,7 +1882,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         SavePlanRequest Request(string reason, string planName = "Cloud acceptance package", decimal monthly = 1200m,
             decimal annual = 12000m, bool isPublic = true, int? maxLoginUsers = null) => new(
             code.ToUpperInvariant(), planName, "Sentetik kabul planı", "cloud", maxLoginUsers, 500,
-            monthly, annual, 0m, "TRY", false, 0, "{\"reports\":true,\"api\":true}", isPublic, true, 10, reason);
+            monthly, annual, 0m, "TRY", false, 0, "{\"reports\":true,\"api\":true,\"maintenance\":true}", isPublic, true, 10, reason);
 
         using (var noCsrf = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/plans",
                    JsonContent.Create(Request("Plan açılış gerekçesi"))))
@@ -1926,7 +1934,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             var updated = payload.RootElement.EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == planId);
             Assert.Equal("Cloud package v2", updated.GetProperty("name").GetString());
             Assert.Equal(1800m, updated.GetProperty("monthlyPrice").GetDecimal());
-            Assert.Equal("{\"reports\":true,\"api\":true}", updated.GetProperty("featureFlagsJson").GetString());
+            Assert.Equal("{\"reports\":true,\"api\":true,\"maintenance\":true}", updated.GetProperty("featureFlagsJson").GetString());
             Assert.False(updated.GetProperty("isPublic").GetBoolean());
         }
 
@@ -1939,7 +1947,7 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         using var createDetails = JsonDocument.Parse(audit[0].Details!);
         Assert.Equal("Cloud paket kataloğunu başlat", createDetails.RootElement.GetProperty("reason").GetString());
         Assert.Equal(1200m, createDetails.RootElement.GetProperty("after").GetProperty("MonthlyPrice").GetDecimal());
-        Assert.Equal("{\"reports\":true,\"api\":true}",
+        Assert.Equal("{\"reports\":true,\"api\":true,\"maintenance\":true}",
             createDetails.RootElement.GetProperty("after").GetProperty("FeatureFlagsJson").GetString());
         using var updateDetails = JsonDocument.Parse(audit[1].Details!);
         Assert.Equal("Maliyet ve yıllık fiyatlandırma güncellendi", updateDetails.RootElement.GetProperty("reason").GetString());

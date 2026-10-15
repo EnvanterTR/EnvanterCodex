@@ -8,9 +8,11 @@ public static class TenantPlanFeatures
 {
     public const string Reports = "reports";
     public const string CustomerApi = "api";
+    public const string Maintenance = "maintenance";
     public static bool IsSupported(string featureKey) =>
         string.Equals(featureKey, Reports, StringComparison.Ordinal) ||
-        string.Equals(featureKey, CustomerApi, StringComparison.Ordinal);
+        string.Equals(featureKey, CustomerApi, StringComparison.Ordinal) ||
+        string.Equals(featureKey, Maintenance, StringComparison.Ordinal);
 
     public static async Task<bool> IsEnabledAsync(Guid companyId, string featureKey,
         AppDbContext db, CancellationToken cancellationToken)
@@ -42,6 +44,18 @@ public static class TenantPlanFeatures
 
     public static bool RequiresReports(PathString path) =>
         path.StartsWithSegments("/api/reports") || path.StartsWithSegments("/api/assets/custom-reports");
+
+    public static bool RequiresMaintenance(PathString path)
+    {
+        if (path.StartsWithSegments("/api/maintenances") || path.StartsWithSegments("/api/reports/maintenances"))
+            return true;
+        var segments = path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return segments is { Length: >= 4 } &&
+               string.Equals(segments[0], "api", StringComparison.OrdinalIgnoreCase) &&
+               string.Equals(segments[1], "assets", StringComparison.OrdinalIgnoreCase) &&
+               Guid.TryParse(segments[2], out _) &&
+               string.Equals(segments[3], "maintenances", StringComparison.OrdinalIgnoreCase);
+    }
 
     public static IResult FeatureUnavailable(string featureKey) => Results.Json(new
     {

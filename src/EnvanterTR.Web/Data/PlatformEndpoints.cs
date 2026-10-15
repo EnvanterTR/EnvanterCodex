@@ -1493,7 +1493,7 @@ public static class PlatformEndpoints
                 if (parsed.RootElement.ValueKind != JsonValueKind.Object || parsed.RootElement.EnumerateObject()
                     .Any(x => !TenantPlanFeatures.IsSupported(x.Name) ||
                         x.Value.ValueKind is not (JsonValueKind.True or JsonValueKind.False)))
-                    errors["features"] = ["Yalnız uygulanan `reports` ve `api` anahtarları kullanılabilir; değer true/false olmalıdır."];
+                    errors["features"] = ["Yalnız uygulanan `reports`, `api` ve `maintenance` anahtarları kullanılabilir; değer true/false olmalıdır."];
             }
             catch (JsonException) { errors["features"] = ["Özellik ayarları geçerli JSON olmalıdır."]; }
         }

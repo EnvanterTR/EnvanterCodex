@@ -33,6 +33,10 @@ public static class AssetEndpoints
                 !await TenantPlanFeatures.IsEnabledAsync(companyId, TenantPlanFeatures.Reports, db,
                     invocation.HttpContext.RequestAborted))
                 return TenantPlanFeatures.FeatureUnavailable(TenantPlanFeatures.Reports);
+            if (TenantPlanFeatures.RequiresMaintenance(invocation.HttpContext.Request.Path) &&
+                !await TenantPlanFeatures.IsEnabledAsync(companyId, TenantPlanFeatures.Maintenance, db,
+                    invocation.HttpContext.RequestAborted))
+                return TenantPlanFeatures.FeatureUnavailable(TenantPlanFeatures.Maintenance);
             if (HttpMethods.IsGet(invocation.HttpContext.Request.Method) || HttpMethods.IsHead(invocation.HttpContext.Request.Method))
                 return await next(invocation);
             var antiforgery = invocation.HttpContext.RequestServices.GetRequiredService<IAntiforgery>();
