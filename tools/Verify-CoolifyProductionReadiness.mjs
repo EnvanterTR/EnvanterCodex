@@ -15,7 +15,8 @@ assert.equal(report.results[0].appStatus, 'migration-required');
 assert.equal(report.results[0].pendingMigrationCount, 21);
 assert.match(report.results[0].diagnosis, /Back up and verify/i);
 assert.equal(report.results[1].httpStatus, 503);
-assert.match(report.results[1].diagnosis, /no healthy upstream/i);
+assert.match(report.results[1].diagnosis, /public proxy\/edge reports no available upstream/i);
+assert.match(report.results[1].diagnosis, /DNS\/proxy, tunnel\/origin, and Coolify route\/health/i);
 
 const ready = await inspectEndpoint('https://ready.invalid/api/status', async () => response(200, 'application/json', JSON.stringify({ status: 'ready', migrationCount: 91, pendingMigrationCount: 0 })));
 assert.equal(ready.ready, true);

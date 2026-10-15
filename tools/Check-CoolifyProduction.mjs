@@ -51,7 +51,7 @@ export async function inspectEndpoint(url, fetchImpl = fetch, timeoutMs = 10000)
 
     let diagnosis;
     if (response.status === 503 && /no available server/i.test(text)) {
-      diagnosis = 'Coolify proxy has no healthy upstream for this host.';
+      diagnosis = 'Public proxy/edge reports no available upstream for this host; verify DNS/proxy, tunnel/origin, and Coolify route/health.';
     } else if (!response.ok) {
       diagnosis = `HTTP ${response.status}; inspect the route and service response.`;
     } else if (!payload || typeof payload.status !== 'string') {
