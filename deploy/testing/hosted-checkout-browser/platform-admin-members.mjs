@@ -14,6 +14,7 @@ const csrfToken = 'synthetic-platform-members-csrf';
 const accountId = '11111111-1111-4111-8111-111111111111';
 const invitedAccountId = '22222222-2222-4222-8222-222222222222';
 const companyId = '33333333-3333-4333-8333-333333333333';
+const secondCompanyId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaab';
 const demoLeadId = '66666666-6666-4666-8666-666666666666';
 const platformAdminId = '77777777-7777-4777-8777-777777777777';
 const failedOrderId = '88888888-8888-4888-8888-888888888888';
@@ -21,14 +22,24 @@ const member = {
   id: accountId, displayName: 'Synthetic SaaS Owner', email: 'qa-owner@example.invalid', emailConfirmed: true,
   phoneNumber: '+905550000001', phoneNumberConfirmed: true, twoFactorEnabled: true, isLockedOut: false,
   accessFailedCount: 0, accountCreatedAt: '2026-09-01T09:30:00Z', lastSeenAt: '2026-10-15T08:00:00Z',
-  firstMembershipAt: '2026-09-02T10:00:00Z', membershipCount: 1,
-  memberships: [{ id: companyId, name: 'Synthetic Demo Company', slug: 'synthetic-demo', roleKey: 'admin', isActive: true }]
+  firstMembershipAt: '2026-09-02T10:00:00Z', membershipCount: 2,
+  memberships: [
+    { id: companyId, name: 'Synthetic Demo Company', slug: 'synthetic-demo', roleKey: 'admin', isActive: true },
+    { id: secondCompanyId, name: 'Synthetic Second Company', slug: 'synthetic-second', roleKey: 'viewer', isActive: true }
+  ]
 };
 const membership = {
   id: companyId, name: 'Synthetic Demo Company', slug: 'synthetic-demo', isActive: true, roleKey: 'admin',
   createdAt: '2026-09-02T10:00:00Z', subscription: {
     name: 'Cloud Pro', code: 'cloud-pro', status: 'Active', isDemo: false,
     startsAt: '2026-09-02T10:00:00Z', endsAt: '2027-09-02T10:00:00Z', paymentReference: 'synthetic-provider-reference'
+  }
+};
+const secondMembership = {
+  id: secondCompanyId, name: 'Synthetic Second Company', slug: 'synthetic-second', isActive: true, roleKey: 'viewer',
+  createdAt: '2026-09-05T10:00:00Z', subscription: {
+    name: 'Cloud Starter', code: 'cloud-starter', status: 'Trial', isDemo: true,
+    startsAt: '2026-09-05T10:00:00Z', endsAt: '2026-10-05T10:00:00Z', paymentReference: null
   }
 };
 const companies = [{ id: companyId, name: 'Synthetic Demo Company', slug: 'synthetic-demo', lifecycleStage: 'AtRisk', lifecycleOwnerName: 'Synthetic Platform Admin', nextFollowUpAt: '2026-10-10T10:00:00Z' }];
@@ -183,7 +194,7 @@ const server = createServer(async (request, response) => {
     }
     if (path === `/api/platform/members/${accountId}` || path === `/api/platform/members/${invitedAccountId}`) {
       const account = accounts.find(item => item.id === path.split('/').at(-1));
-      return account ? json(response, { account, memberships: account.id === accountId ? [membership] : [], membershipsTruncated: false, membershipCount: account.membershipCount })
+      return account ? json(response, { account, memberships: account.id === accountId ? [membership, secondMembership] : [], membershipsTruncated: false, membershipCount: account.membershipCount })
         : json(response, { message: 'Synthetic account not found.' }, 404);
     }
     if (path.endsWith('/timeline')) return json(response, { items: [
@@ -201,8 +212,10 @@ const server = createServer(async (request, response) => {
   if (path.startsWith('/api/platform/members/') && request.method === 'PATCH' && path.endsWith('/role')) {
     if (!reauthenticated) return json(response, { code: 'platform_reauth_required', message: 'Synthetic reauthentication required.' }, 428);
     writes.push({ method: request.method, path, body, csrf: request.headers['x-csrf-token'] });
-    membership.roleKey = body.roleKey;
-    member.memberships[0].roleKey = body.roleKey;
+    const companyMembership = [membership, secondMembership].find(item => path === `/api/platform/members/${accountId}/memberships/${item.id}/role`);
+    if (!companyMembership) return json(response, { message: 'Synthetic membership not found.' }, 404);
+    companyMembership.roleKey = body.roleKey;
+    member.memberships.find(item => item.id === companyMembership.id).roleKey = body.roleKey;
     response.writeHead(204); response.end(); return;
   }
   if (path === '/api/platform/members/invite' && request.method === 'POST') {
@@ -479,23 +492,26 @@ try {
   await detail.getByText('synthetic-provider-reference').first().waitFor({ state: 'visible' });
   const detailText = await detail.innerText();
   assert.match(detailText, /Hesap açılış tarihi[\s\S]*İlk şirket üyeliği[\s\S]*Cloud Pro[\s\S]*synthetic-provider-reference/);
+  assert.match(detailText, /Synthetic Demo Company[\s\S]*Yönetici[\s\S]*Cloud Pro[\s\S]*Synthetic Second Company[\s\S]*Salt okunur[\s\S]*Cloud Starter[\s\S]*Demo/,
+    'The account detail must show each company membership, its separate role, and its plan state.');
+  assert.equal(await detail.locator('[data-member-role]').count(), 2, 'Each non-owner company membership must have its own role control.');
   assert.match(await page.locator('#memberTimeline').innerText(), /Demo talebi alındı[\s\S]*Ücretli plan satın alındı[\s\S]*1\.200,00/);
 
   const writeCountBeforeCancel = writes.length;
-  await detail.locator('[data-member-role]').click();
+  await detail.locator('[data-member-role]').nth(1).click();
   const roleDialog = page.locator('dialog.dialog').filter({ hasText: 'Üyelik rolünü değiştir' });
   await roleDialog.waitFor({ state: 'visible' });
   await roleDialog.getByRole('button', { name: 'Vazgeç' }).click();
   await roleDialog.waitFor({ state: 'detached' });
   assert.equal(writes.length, writeCountBeforeCancel, 'Canceling the membership-role dialog must not write.');
 
-  await detail.locator('[data-member-role]').click();
+  await detail.locator('[data-member-role]').nth(1).click();
   const roleDialogAgain = page.locator('dialog.dialog').filter({ hasText: 'Üyelik rolünü değiştir' });
   await roleDialogAgain.waitFor({ state: 'visible' });
   await roleDialogAgain.locator('[name="roleKey"]').selectOption('asset_manager');
   await roleDialogAgain.locator('[name="note"]').fill('Synthetic role review');
   const roleRejectedUntilReauth = page.waitForResponse(response => response.request().method() === 'PATCH'
-    && new URL(response.url()).pathname === `/api/platform/members/${accountId}/memberships/${companyId}/role`);
+    && new URL(response.url()).pathname === `/api/platform/members/${accountId}/memberships/${secondCompanyId}/role`);
   await roleDialogAgain.getByRole('button', { name: 'Rolü kaydet' }).click();
   assert.equal((await roleRejectedUntilReauth).status(), 428, 'Role update must stop before recent MFA reauthentication.');
   await page.locator('#platformReauthDialog').waitFor({ state: 'visible' });
@@ -505,7 +521,7 @@ try {
   await roleDialogAgain.locator('.notice.error').filter({ hasText: 'Kritik işlem iptal edildi' }).waitFor({ state: 'visible' });
   assert.equal(writes.length, writesBeforeStepUpCancel, 'Canceling step-up reauthentication must not replay the pending role change.');
   const roleRejectedAfterStepUpCancel = page.waitForResponse(response => response.request().method() === 'PATCH'
-    && new URL(response.url()).pathname === `/api/platform/members/${accountId}/memberships/${companyId}/role`);
+    && new URL(response.url()).pathname === `/api/platform/members/${accountId}/memberships/${secondCompanyId}/role`);
   await roleDialogAgain.getByRole('button', { name: 'Rolü kaydet' }).click();
   assert.equal((await roleRejectedAfterStepUpCancel).status(), 428, 'A fresh explicit submit is required after step-up cancellation.');
   await page.locator('#platformReauthDialog').waitFor({ state: 'visible' });
@@ -513,15 +529,17 @@ try {
   await page.locator('#platformReauthForm [name="code"]').fill('123456');
   const reauthResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/session/platform-reauth');
   const roleSaved = page.waitForResponse(response => response.request().method() === 'PATCH'
-    && new URL(response.url()).pathname === `/api/platform/members/${accountId}/memberships/${companyId}/role`
+    && new URL(response.url()).pathname === `/api/platform/members/${accountId}/memberships/${secondCompanyId}/role`
     && response.status() === 204);
   await page.locator('#platformReauthSubmit').click();
   assert.equal((await reauthResponse).status(), 204, 'Synthetic second-factor reauthentication must succeed.');
   await roleSaved;
   await page.locator('#platformReauthDialog').waitFor({ state: 'hidden' });
   await page.locator('#memberDetailBody').getByText('Envanter yöneticisi').waitFor({ state: 'visible' });
+  assert.equal(membership.roleKey, 'admin', 'Changing a second-company role must preserve the first company role.');
+  assert.equal(secondMembership.roleKey, 'asset_manager', 'The selected second-company membership must receive the role change.');
   assert.equal(writes.length, writeCountBeforeCancel + 1);
-  assert.deepEqual(writes[writeCountBeforeCancel], { method: 'PATCH', path: `/api/platform/members/${accountId}/memberships/${companyId}/role`,
+  assert.deepEqual(writes[writeCountBeforeCancel], { method: 'PATCH', path: `/api/platform/members/${accountId}/memberships/${secondCompanyId}/role`,
     body: { roleKey: 'asset_manager', note: 'Synthetic role review' }, csrf: csrfToken });
 
   await page.locator('#closeMemberDetail').click();
