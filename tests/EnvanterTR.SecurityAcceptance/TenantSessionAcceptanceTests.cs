@@ -10454,6 +10454,16 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Single(platformReauthEvents);
         Assert.DoesNotContain(platformReauthEvents, details => details!.Contains(password, StringComparison.Ordinal) ||
             details.Contains(secret, StringComparison.Ordinal) || details.Contains(recoveryCode, StringComparison.Ordinal));
+
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            using var permittedInvalidAttempt = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/session/platform-reauth",
+                System.Net.Http.Json.JsonContent.Create(new { password, code = "not-a-valid-code" }), setupToken, setupCookie);
+            Assert.Equal(HttpStatusCode.BadRequest, permittedInvalidAttempt.StatusCode);
+        }
+        using var rateLimitedStepUp = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/session/platform-reauth",
+            System.Net.Http.Json.JsonContent.Create(new { password, code = "not-a-valid-code" }), setupToken, setupCookie);
+        Assert.Equal(HttpStatusCode.TooManyRequests, rateLimitedStepUp.StatusCode);
     }
 
     [Fact]
