@@ -64,6 +64,8 @@ const softwareLicenseRows = [{
   unitCost: null, currency: 'TRY', purchaseDate: null, expirationDate: null, autoRenew: false, requiresEulaAcceptance: false,
   notes: null
 }];
+const softwareLicenseAssignments = [];
+const softwareLicenseAssignmentWrites = [];
 const softwareLicenseAttachments = [{ id: softwareLicenseAttachmentId, originalFileName: 'synthetic-eula.pdf', contentType: 'application/pdf',
   length: 1024, createdAt: '2026-10-14T12:00:00Z', uploadedBy: 'Synthetic Owner', isEulaDocument: false }];
 const softwareLicenseWrites = [];
@@ -300,16 +302,27 @@ const server = createServer(async (request, response) => {
       result = { items, total: items.length, page: 1, pageSize: 25 };
     }
     else if (url.pathname === `/api/software-licenses/${softwareLicenseId}`) result = {
-      license: { ...softwareLicenseRows.find(item => item.id === softwareLicenseId) }, assignments: [], events: [],
+      license: { ...softwareLicenseRows.find(item => item.id === softwareLicenseId) },
+      assignments: softwareLicenseAssignments.filter(item => item.licenseId === softwareLicenseId).map(item => ({ ...item })), events: [],
       attachments: softwareLicenseAttachments.map(item => ({ ...item })), currentEula: null
     };
+    else if (url.pathname === '/api/software-license-assignments') {
+      const q = (url.searchParams.get('q') || '').toLocaleLowerCase('tr-TR');
+      const active = url.searchParams.get('active') || '';
+      let items = softwareLicenseAssignments.filter(item => (!active || (active === 'true' ? !item.revokedAt : Boolean(item.revokedAt)))
+        && (!q || [item.license, item.employee, item.employeeNumber, item.assetTag, item.assetName].some(value => value?.toLocaleLowerCase('tr-TR').includes(q))));
+      const total = items.length, pageNumber = Number(url.searchParams.get('page') || 1), pageSize = Number(url.searchParams.get('pageSize') || 25);
+      items = items.slice((pageNumber - 1) * pageSize, pageNumber * pageSize);
+      result = { items, total, page: pageNumber, pageSize };
+    }
     else if (url.pathname === '/api/software-licenses/import-mappings') result = { items: [] };
     else if (url.pathname.startsWith('/api/contracts/') && url.pathname.endsWith('/attachments')) result = { items: [] };
     else if (url.pathname === '/api/assets/import-mappings') result = { items: assetImportProfiles.map(profile => ({ ...profile, mappings: { ...profile.mappings } })) };
     else if (url.pathname === '/api/assets/custom-fields') result = [];
-    else if (url.pathname === '/api/employees' || url.pathname.startsWith('/api/employees?')) result = {
-      items: [{ id: employeeId, displayName: 'Synthetic QA Employee', employeeNumber: 'QA-001' }], total: 1, page: 1, pageSize: 200
-    };
+    else if (url.pathname === '/api/employees' || url.pathname.startsWith('/api/employees?')) {
+      const items = [{ id: employeeId, displayName: 'Synthetic QA Employee', employeeNumber: 'QA-001' }];
+      result = { items, total: items.length, page: 1, pageSize: 200 };
+    }
     else if (url.pathname === '/api/lookups/categories') result = [{ id: asset.categoryId, name: 'Synthetic equipment', assetCount: 1 }];
     else if (url.pathname === '/api/lookups/brands' || url.pathname === '/api/lookups/models') result = [];
     else if (url.pathname === '/api/locations') result = { items: [] };
@@ -365,6 +378,32 @@ const server = createServer(async (request, response) => {
       row.reviewNote = body.note;
     } else row.status = 'Cancelled';
     json(response, 200, { id: row.id, status: row.status });
+    return;
+  }
+  if (request.method === 'POST' && url.pathname === `/api/software-licenses/${softwareLicenseId}/assign`) {
+    assert.equal(body.employeeId, employeeId, 'The license must be assigned to the selected synthetic employee.');
+    assert.equal(body.assetId, null, 'Employee assignment must not include an asset target.');
+    assert.equal(body.eulaAccepted, false);
+    assert.equal(softwareLicenseAssignments.some(item => item.licenseId === softwareLicenseId && item.employeeId === employeeId && !item.revokedAt), false,
+      'The same active employee assignment must not be duplicated.');
+    const license = softwareLicenseRows.find(item => item.id === softwareLicenseId);
+    const assigned = { id: 'e1000000-0000-4000-8000-000000000001', licenseId: softwareLicenseId,
+      license: license.name, licenseType: license.licenseType, employeeId, employee: 'Synthetic QA Employee', employeeNumber: 'QA-001',
+      assetId: null, assetTag: null, assetName: null, assignedAt: '2026-10-15T12:00:00Z', expirationDate: null,
+      revokedAt: null, eulaAttachmentId: null, eulaVersion: null, eulaAcceptedAt: null, eulaAcceptedBy: null, notes: body.notes };
+    softwareLicenseAssignments.push(assigned);
+    license.assigned += 1;
+    softwareLicenseAssignmentWrites.push(record);
+    json(response, 201, { id: assigned.id });
+    return;
+  }
+  if (request.method === 'POST' && url.pathname === `/api/software-licenses/${softwareLicenseId}/revoke`) {
+    const assignment = softwareLicenseAssignments.find(item => item.id === body.assignmentId && item.licenseId === softwareLicenseId && !item.revokedAt);
+    assert.ok(assignment, 'Only the active selected assignment may be revoked.');
+    assignment.revokedAt = '2026-10-15T13:00:00Z';
+    softwareLicenseRows.find(item => item.id === softwareLicenseId).assigned -= 1;
+    softwareLicenseAssignmentWrites.push(record);
+    response.writeHead(204); response.end();
     return;
   }
   if (request.method === 'POST' && url.pathname === '/api/software-licenses/import/preview.csv') {
@@ -1541,6 +1580,72 @@ try {
     && attempt.body === licenseCsv.buffer.toString('utf8') && attempt.csrf === 'synthetic-asset-csrf'));
   await page.locator('#closeLicenseImport').click();
   await licenseImportDialog.waitFor({ state: 'hidden' });
+
+  await licenseList.locator(`tr[data-id="${softwareLicenseId}"] .license-open`).first().click();
+  await licenseDetail.waitFor({ state: 'visible' });
+  const licenseAssignmentDialog = page.locator('#licenseAssignDialog');
+  await page.locator('#assignLicenseButton').click();
+  await licenseAssignmentDialog.waitFor({ state: 'visible' });
+  await page.waitForFunction(() => document.querySelector('#licenseAssignForm [name="employeeId"]')?.options.length > 1);
+  await page.locator('#licenseAssignForm [name="employeeId"]').selectOption(employeeId);
+  await page.locator('#licenseAssignForm [name="notes"]').fill('Synthetic assigned seat');
+  const licenseAssignmentWriteCountBeforeAssign = softwareLicenseAssignmentWrites.length;
+  await page.locator('#licenseAssignForm button[type="submit"]').click();
+  await licenseAssignmentDialog.waitFor({ state: 'hidden' });
+  await page.locator('#licenseAssignments').getByText('Synthetic QA Employee').waitFor();
+  const licenseAssignmentWrite = softwareLicenseAssignmentWrites.at(-1);
+  assert.equal(softwareLicenseAssignmentWrites.length, licenseAssignmentWriteCountBeforeAssign + 1);
+  assert.equal(licenseAssignmentWrite?.method, 'POST');
+  assert.equal(licenseAssignmentWrite?.path, `/api/software-licenses/${softwareLicenseId}/assign`);
+  assert.deepEqual(licenseAssignmentWrite?.body, { employeeId, assetId: null, notes: 'Synthetic assigned seat', eulaAccepted: false });
+  assert.equal(licenseAssignmentWrite?.csrf, 'synthetic-asset-csrf');
+  assert.equal(softwareLicenseRows.find(item => item.id === softwareLicenseId).assigned, 1,
+    'The refreshed license details must reflect its assigned seat.');
+  await page.locator('#closeLicenseDetail').click();
+  await licenseDetail.waitFor({ state: 'hidden' });
+
+  const softwareGroupToggle = page.locator('[data-group="software"]');
+  if (await softwareGroupToggle.getAttribute('aria-expanded') !== 'true') await softwareGroupToggle.click();
+  await page.locator('#sidebar [data-page="Lisans atamaları"]').click();
+  await page.locator('#licenseAssignmentsPage').waitFor({ state: 'visible' });
+  const activeLicenseAssignment = page.locator('#licenseAssignmentRows tr').filter({ hasText: 'Synthetic QA Employee' });
+  await activeLicenseAssignment.waitFor();
+  assert.match(await activeLicenseAssignment.innerText(), /Synthetic License Import Baseline[\s\S]*Aktif/);
+  const assignmentSearchRequest = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return url.pathname === '/api/software-license-assignments' && url.searchParams.get('q') === 'Synthetic QA Employee';
+  });
+  await page.locator('#licenseAssignmentSearch').fill('Synthetic QA Employee');
+  await assignmentSearchRequest;
+  assert.ok(requests.some(item => item.path === '/api/software-license-assignments' && item.query.q === 'Synthetic QA Employee'));
+  const revokeButton = activeLicenseAssignment.locator('.assignment-revoke');
+  const revokeDialog = page.locator('#licenseRevokeDialog');
+  const revokeWritesBeforeCancel = softwareLicenseAssignmentWrites.length;
+  await revokeButton.click();
+  await revokeDialog.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#licenseRevokeSummary').innerText(), /Synthetic License Import Baseline[\s\S]*Synthetic QA Employee/);
+  await page.locator('#licenseRevokeCancel').click();
+  await revokeDialog.waitFor({ state: 'hidden' });
+  assert.equal(softwareLicenseAssignmentWrites.length, revokeWritesBeforeCancel, 'Canceling list revocation must not write.');
+  assert.equal(softwareLicenseAssignments[0].revokedAt, null, 'Canceling must preserve the active license assignment.');
+  await activeLicenseAssignment.locator('.assignment-revoke').click();
+  const licenseRevocationResponse = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === `/api/software-licenses/${softwareLicenseId}/revoke`);
+  await page.locator('#licenseRevokeSubmit').click();
+  assert.equal((await licenseRevocationResponse).status(), 204, 'Confirmed list revocation must reach the scoped API.');
+  await revokeDialog.waitFor({ state: 'hidden' });
+  await page.locator('#licenseAssignmentRows').getByText('Henüz atama yok.').waitFor();
+  assert.equal(softwareLicenseAssignments[0].revokedAt, '2026-10-15T13:00:00Z', 'Confirmed revocation must persist in the synthetic server state.');
+  assert.equal(softwareLicenseRows.find(item => item.id === softwareLicenseId).assigned, 0);
+  const licenseRevocationWrite = softwareLicenseAssignmentWrites.at(-1);
+  assert.equal(licenseRevocationWrite?.method, 'POST');
+  assert.equal(licenseRevocationWrite?.path, `/api/software-licenses/${softwareLicenseId}/revoke`);
+  assert.deepEqual(licenseRevocationWrite?.body, { assignmentId: 'e1000000-0000-4000-8000-000000000001' });
+  assert.equal(licenseRevocationWrite?.csrf, 'synthetic-asset-csrf');
+  await page.locator('#licenseAssignmentState').selectOption('false');
+  await page.locator('#licenseAssignmentRows').getByText('Synthetic QA Employee').waitFor();
+  await page.locator('#licenseAssignmentRows').getByText('Geri alındı').waitFor();
+  console.log('PASS: software license employee assignment updates seat usage and detail; assignment list search, cancel-safe and confirmed revocation, inactive history filter, and CSRF are verified.');
 
   await page.locator('#sidebar button[data-page="Varlıklar"]').click();
   await page.locator('#assetRows .asset-name').filter({ hasText: asset.name }).click();

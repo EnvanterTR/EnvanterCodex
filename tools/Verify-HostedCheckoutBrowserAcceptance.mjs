@@ -51,6 +51,9 @@ assert.match(assetActions, /reservationRows\[0\]\.reviewNote, 'Synthetic approva
 assert.match(assetActions, /Transferler preset and general history routes; activity search\/date\/paging, keyboard-linked asset opening, empty\/error recovery, retry, and read-only behavior/);
 assert.match(assetActions, /Keyboard activation must open the linked asset details/);
 assert.match(assetActions, /An activity API error must disable paging/);
+assert.match(assetActions, /software license employee assignment updates seat usage and detail; assignment list search, cancel-safe and confirmed revocation, inactive history filter, and CSRF are verified/);
+assert.match(assetActions, /Canceling list revocation must not write/);
+assert.match(assetActions, /Confirmed list revocation must reach the scoped API/);
 assert.match(assetActions, /contractSearchResponse = page\.waitForResponse/);
 assert.match(assetActions, /Synthetic Cloud Support Agreement/);
 assert.match(assetActions, /contractDetailFields/);
