@@ -3484,6 +3484,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateOnly?>("ExpirationDate")
                         .HasColumnType("date");
 
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("LicenseReference")
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
@@ -3540,6 +3543,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasIndex("CompanyId", "Name");
 
                     b.HasIndex("CompanyId", "SupplierId");
+
+                    b.HasIndex("CompanyId", "IsArchived", "Name");
 
                     b.ToTable("SoftwareLicenses", null, t =>
                         {

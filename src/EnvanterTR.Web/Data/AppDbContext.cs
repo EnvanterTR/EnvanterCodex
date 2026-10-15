@@ -693,6 +693,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<SoftwareLicense>().HasIndex(x => new { x.CompanyId, x.Name });
         modelBuilder.Entity<SoftwareLicense>().HasIndex(x => new { x.CompanyId, x.ExpirationDate });
+        modelBuilder.Entity<SoftwareLicense>().HasIndex(x => new { x.CompanyId, x.IsArchived, x.Name });
         modelBuilder.Entity<SoftwareLicense>().ToTable("SoftwareLicenses", table =>
         {
             table.HasCheckConstraint("CK_SoftwareLicenses_Seats", "\"Seats\" >= 0");

@@ -1,3 +1,6 @@
+
+15 Ekim 2026 devamı — Yazılım lisanslarında soft archive/restore tamamlandı: aktif atama varsa arşivleme 409 ile reddedilir ve veri değişmez; arşivleme atama/dosya/geçmişi korur, olay ve audit izi yazar; geri yükleme aynı kaydı etkin listeye getirir. Etkin/arşiv/tümü filtreleri liste ve CSV'ye bağlandı; expiry raporu varsayılan olarak arşivlileri dışarıda bırakır. Arşivli kayıtta düzenleme, atama, dosya yükleme/silme UI ve API düzeyinde engellenir. Tam hosted Chromium paketi geçti; Software_license_archive_and_restore_preserve_history_and_enforce_active_state taze izole PostgreSQL'de 1/1 geçti (CSRF, viewer reddi, aktif atama engeli, rapor/liste filtreleri, audit ve geçmiş kalıcılığı). Tarayıcı testi hidden niteliğinin lisans upload formunda CSS tarafından etkisiz kaldığını da yakaladı; standart gizleme davranışı düzeltildi. Aynı paket warranty arama debounce/filtre yarışını yakaladı; filtre değişiminde bekleyen arama zamanlayıcısı iptal edildi. Test ortamı temizlendi; canlı DB/konteyner ve müşteri verisi kullanılmadı.
+
 # EnvanterTR v1 — Kullanıcı İstekleri ve İş Sırası
 
 Güncelleme: 15 Ekim 2026

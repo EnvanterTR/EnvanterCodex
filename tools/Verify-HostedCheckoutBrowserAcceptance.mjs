@@ -55,7 +55,7 @@ assert.match(assetActions, /Keyboard activation must open the linked asset detai
 assert.match(assetActions, /An activity API error must disable paging/);
 assert.match(assetActions, /software license employee assignment updates seat usage and detail; assignment list search, cancel-safe and confirmed revocation, inactive history filter, and CSRF are verified/);
 assert.match(assetActions, /software license EULA settings, versioned document upload, required consent, cancel-safe rejection, accepted-version attribution, and CSRF are verified/);
-assert.match(assetActions, /software license create\/edit required-field validation, cancel-safe dialogs, CSRF-scoped writes, detail edit prefill, persisted list\/detail refresh, and search/);
+assert.match(assetActions, /software license create\/edit required-field validation, cancel-safe dialogs, CSRF-scoped writes, detail edit prefill, archive\/restore confirmation, active\/archive filters, archived action locks, persisted list\/detail refresh, and search/);
 assert.match(assetActions, /An unchecked EULA must not create an assignment request/);
 assert.match(assetActions, /The refreshed license detail must show the accepted EULA version and confirmer/);
 assert.match(assetActions, /License updates must not lower total seats below active assignments/);
@@ -188,6 +188,9 @@ assert.match(script, /'amount' in lastInitialize\.body/);
 assert.match(script, /sandbox-api\.iyzipay\.com/);
 assert.match(script, /pageErrors/);
 assert.match(workflow, /Verify-HostedCheckoutBrowserAcceptance\.mjs/);
+assert.match(assetActions, /archive\/restore confirmation, active\/archive filters, archived action locks/);
+assert.match(assetActions, /Active assignments prevent archiving/);
+assert.match(assetActions, /licenseStateMatch/);
 assert.match(workflow, /Run hosted Cloud checkout in Chromium[\s\S]*?docker run --rm --init envantertr-hosted-checkout-browser-ci/);
 
-console.log('Hosted checkout, role-filtered command palette, signed-out login diagnosis, notification preferences, API key create/show/expire/revoke, profile security reads, and expired-subscription language browser harness verification passed.');
+console.log('Hosted checkout, role-filtered command palette, signed-out login diagnosis, notification preferences, API key create/show/expire/revoke, profile security reads, expired-subscription language, and software license archive/restore browser coverage verified.');

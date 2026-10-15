@@ -62,7 +62,7 @@ const softwareLicenseRows = [{
   id: softwareLicenseId, name: 'Synthetic License Import Baseline', publisher: 'Synthetic Publisher', productVersion: '1',
   licenseType: 'Subscription', licenseReference: 'QA-LICENSE-BASELINE', supplier: 'Synthetic Supplier', seats: 3, assigned: 0,
   unitCost: null, currency: 'TRY', purchaseDate: null, expirationDate: null, autoRenew: false, requiresEulaAcceptance: false,
-  notes: null
+  notes: null, isArchived: false
 }];
 let softwareLicenseCurrentEula = null;
 const softwareLicenseAssignments = [];
@@ -334,8 +334,9 @@ const server = createServer(async (request, response) => {
     }
     else if (url.pathname === '/api/software-licenses') {
       const q = (url.searchParams.get('q') || '').toLocaleLowerCase();
-      const items = softwareLicenseRows.filter(item => !q || [item.name, item.publisher, item.supplier, item.licenseReference]
-        .some(value => value?.toLocaleLowerCase().includes(q)));
+      const status = url.searchParams.get('status') || 'active';
+      const items = softwareLicenseRows.filter(item => (status === 'all' || (status === 'archived' ? item.isArchived : !item.isArchived))
+        && (!q || [item.name, item.publisher, item.supplier, item.licenseReference].some(value => value?.toLocaleLowerCase().includes(q))));
       result = { items, total: items.length, page: 1, pageSize: 25 };
     }
     else if (softwareLicenseRows.some(item => url.pathname === `/api/software-licenses/${item.id}`)) {
@@ -395,11 +396,22 @@ const server = createServer(async (request, response) => {
   }
   if (request.method === 'POST' && url.pathname === '/api/software-licenses') {
     assert.equal(typeof body?.name, 'string', 'A new license must submit its name.');
-    const created = { ...body, id: 'a5555555-5555-4555-8555-555555555555', assigned: 0 };
+    const created = { ...body, id: 'a5555555-5555-4555-8555-555555555555', assigned: 0, isArchived: false };
     softwareLicenseRows.push(created);
     softwareLicenseCrudWrites.push({ method: request.method, path: url.pathname, body, csrf: request.headers['x-csrf-token'] });
     json(response, 201, { id: created.id });
     return;
+  }
+  const licenseStateMatch = url.pathname.match(/^\/api\/software-licenses\/([0-9a-f-]+)\/(archive|restore)$/i);
+  if (request.method === 'POST' && licenseStateMatch) {
+    const license = softwareLicenseRows.find(item => item.id === licenseStateMatch[1]);
+    assert.ok(license, 'Archive and restore must target an existing synthetic license.');
+    if (licenseStateMatch[2] === 'archive' && license.assigned > 0) {
+      json(response, 409, { message: 'Active assignments prevent archiving.' }); return;
+    }
+    license.isArchived = licenseStateMatch[2] === 'archive';
+    softwareLicenseCrudWrites.push({ method: request.method, path: url.pathname, csrf: request.headers['x-csrf-token'] });
+    response.writeHead(204); response.end(); return;
   }
   const licenseUpdateMatch = url.pathname.match(/^\/api\/software-licenses\/([0-9a-f-]+)$/i);
   if (request.method === 'PUT' && licenseUpdateMatch) {
@@ -1687,12 +1699,12 @@ try {
   const activeLicenseAssignment = page.locator('#licenseAssignmentRows tr').filter({ hasText: 'Synthetic QA Employee' });
   await activeLicenseAssignment.waitFor();
   assert.match(await activeLicenseAssignment.innerText(), /Synthetic License Import Baseline[\s\S]*Aktif/);
-  const assignmentSearchRequest = page.waitForRequest(request => {
-    const url = new URL(request.url());
+  const assignmentSearchResponse = page.waitForResponse(response => {
+    const url = new URL(response.url());
     return url.pathname === '/api/software-license-assignments' && url.searchParams.get('q') === 'Synthetic QA Employee';
   });
   await page.locator('#licenseAssignmentSearch').fill('Synthetic QA Employee');
-  await assignmentSearchRequest;
+  await assignmentSearchResponse;
   assert.ok(requests.some(item => item.path === '/api/software-license-assignments' && item.query.q === 'Synthetic QA Employee'));
   const revokeButton = activeLicenseAssignment.locator('.assignment-revoke');
   const revokeDialog = page.locator('#licenseRevokeDialog');
@@ -1867,6 +1879,41 @@ try {
     unitCost: 45.5, currency: 'USD', purchaseDate: '2026-10-15', expirationDate: '2027-10-15', autoRenew: false,
     requiresEulaAcceptance: false, notes: 'Synthetic CRUD edit note' });
   assert.equal(licenseUpdateWrite.csrf, 'synthetic-asset-csrf');
+  await page.locator('.license-archive-toggle').click();
+  await licenseActionDialog.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#licenseActionSummary').textContent(), /etkin ataması varsa işlem reddedilir/i,
+    'The archive confirmation must explain the active-assignment constraint.');
+  await page.locator('#licenseActionCancel').click();
+  await licenseActionDialog.waitFor({ state: 'hidden' });
+  assert.equal(softwareLicenseRows.find(item => item.id === 'a5555555-5555-4555-8555-555555555555').isArchived, false,
+    'Canceling archive must leave the license active.');
+  await page.locator('.license-archive-toggle').click();
+  const licenseArchiveResponse = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === '/api/software-licenses/a5555555-5555-4555-8555-555555555555/archive');
+  await page.locator('#licenseActionSubmit').click();
+  assert.equal((await licenseArchiveResponse).status(), 204, 'Confirmed archive must reach the tenant-scoped archive endpoint.');
+  await page.locator('#closeLicenseDetail').click();
+  await licenseDetail.waitFor({ state: 'hidden' });
+  await page.locator('#licenseStatusFilter').selectOption('archived');
+  await createdLicenseRow.waitFor({ state: 'visible' });
+  assert.equal(softwareLicenseRows.find(item => item.id === 'a5555555-5555-4555-8555-555555555555').isArchived, true);
+  await createdLicenseRow.locator('.license-open').first().click();
+  await licenseDetail.waitFor({ state: 'visible' });
+  await page.locator('#licenseDetailFields').getByText('Arşivlendi').waitFor();
+  assert.equal(await page.locator('#editLicenseButton').isVisible(), false, 'Archived licenses must not expose edit.');
+  assert.equal(await page.locator('#assignLicenseButton').isVisible(), false, 'Archived licenses must not expose assignment.');
+  assert.equal(await page.locator('#licenseAttachmentForm').isVisible(), false, 'Archived licenses must not expose file upload.');
+  await page.locator('.license-archive-toggle').click();
+  await licenseActionDialog.waitFor({ state: 'visible' });
+  const licenseRestoreResponse = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === '/api/software-licenses/a5555555-5555-4555-8555-555555555555/restore');
+  await page.locator('#licenseActionSubmit').click();
+  assert.equal((await licenseRestoreResponse).status(), 204, 'Confirmed restore must reach the tenant-scoped restore endpoint.');
+  assert.equal(softwareLicenseRows.find(item => item.id === 'a5555555-5555-4555-8555-555555555555').isArchived, false);
+  await page.locator('#licenseStatusFilter').selectOption('active');
+  await createdLicenseRow.waitFor({ state: 'visible' });
+  assert.equal(softwareLicenseCrudWrites.filter(write => write.path?.includes('/archive') || write.path?.includes('/restore')).length, 2,
+    'Only the explicitly confirmed archive and restore actions may write.');
   await page.locator('#closeLicenseDetail').click();
   await licenseDetail.waitFor({ state: 'hidden' });
   const licenseSearchRequest = page.waitForRequest(request => {
@@ -1878,9 +1925,9 @@ try {
   await page.locator('#licenseRows').getByText(editedLicenseName).waitFor();
   assert.ok(requests.some(item => item.path === '/api/software-licenses' && item.query.q === 'QA-LICENSE-CRUD-001'),
     'The license list search must find the newly persisted record through the API.');
-  assert.equal(softwareLicenseCrudWrites.length, licenseCrudWriteCountBefore + 2,
-    'Only the explicitly confirmed license creation and update may write.');
-  console.log('PASS: software license create/edit required-field validation, cancel-safe dialogs, CSRF-scoped writes, detail edit prefill, persisted list/detail refresh, and search.');
+  assert.equal(softwareLicenseCrudWrites.length, licenseCrudWriteCountBefore + 4,
+    'Only the explicitly confirmed license creation, update, archive, and restore may write.');
+  console.log('PASS: software license create/edit required-field validation, cancel-safe dialogs, CSRF-scoped writes, detail edit prefill, archive/restore confirmation, active/archive filters, archived action locks, persisted list/detail refresh, and search.');
 
   await page.locator('#sidebar button[data-page="Varlıklar"]').click();
   await page.locator('#assetRows .asset-name').filter({ hasText: asset.name }).click();
@@ -2434,14 +2481,30 @@ try {
     'Warranty search must reach the report API.');
 
   await page.locator('#warrantyReportSearch').fill('');
+  const allWarrantiesResponse = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname === '/api/reports/warranties' && url.searchParams.get('state') === 'all'
+      && url.searchParams.get('page') === '1' && !url.searchParams.has('q');
+  });
   await page.locator('#warrantyReportState').selectOption('all');
+  await allWarrantiesResponse;
   await page.locator('#warrantyReportRows tr').filter({ hasText: 'QA-WARRANTY-001' }).waitFor();
   assert.equal(await page.locator('#warrantyReportNext').isDisabled(), false, 'The warranty report must enable paging when more than 50 records match.');
+  const warrantyNextPageResponse = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname === '/api/reports/warranties' && url.searchParams.get('state') === 'all' && url.searchParams.get('page') === '2';
+  });
   await page.locator('#warrantyReportNext').click();
+  await warrantyNextPageResponse;
   await page.locator('#warrantyReportRows').getByText('QA-WARRANTY-051').waitFor();
   assert.ok(requests.some(item => item.path === '/api/reports/warranties' && item.query.page === '2' && item.query.state === 'all'),
     'Warranty pagination must request the next page with current filters.');
+  const warrantyPreviousPageResponse = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname === '/api/reports/warranties' && url.searchParams.get('state') === 'all' && url.searchParams.get('page') === '1';
+  });
   await page.locator('#warrantyReportPrev').click();
+  await warrantyPreviousPageResponse;
   await page.locator('#warrantyReportRows').getByText('QA-WARRANTY-001').waitFor();
   await page.locator('#warrantyReportState').selectOption('later');
   await page.locator('#warrantyReportSearch').fill('QA-WARRANTY-LATER');

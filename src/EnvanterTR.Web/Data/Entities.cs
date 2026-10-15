@@ -956,6 +956,7 @@ public sealed class SoftwareLicense
     public DateOnly? ExpirationDate { get; set; }
     public bool AutoRenew { get; set; }
     public bool RequiresEulaAcceptance { get; set; }
+    public bool IsArchived { get; set; }
     public string? Notes { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;

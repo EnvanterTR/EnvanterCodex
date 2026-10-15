@@ -4604,6 +4604,118 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Software_license_archive_and_restore_preserve_history_and_enforce_active_state()
+    {
+        string licenseName;
+        Guid assignmentId;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var license = await db.SoftwareLicenses.SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownLicenseId);
+            licenseName = license.Name;
+            var assignment = new SoftwareLicenseAssignment
+            {
+                CompanyId = _companyId, LicenseId = license.Id, EmployeeId = _ownEmployeeId, ActorUserId = _userId
+            };
+            assignmentId = assignment.Id;
+            db.SoftwareLicenseAssignments.Add(assignment);
+            await db.SaveChangesAsync();
+        }
+
+        using var csrf = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrf.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrf.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrf.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var archivePath = $"/api/software-licenses/{_ownLicenseId}/archive";
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.CompanyMemberships.Add(new CompanyMembership { CompanyId = _otherCompanyId, UserId = _userId, RoleKey = "admin" });
+            await db.SaveChangesAsync();
+        }
+        using (var crossTenant = await SendAsUserAsync(HttpMethod.Post, archivePath, _userId, _otherCompanyId,
+                   requestToken: requestToken, antiforgeryCookie: antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
+        using (var blocked = await SendAsRoleAsync(HttpMethod.Post, archivePath, "admin", null, requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, blocked.StatusCode);
+            using var payload = JsonDocument.Parse(await blocked.Content.ReadAsStringAsync());
+            Assert.Equal(1, payload.RootElement.GetProperty("activeAssignments").GetInt32());
+        }
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.False((await db.SoftwareLicenses.SingleAsync(x => x.Id == _ownLicenseId)).IsArchived);
+            Assert.Equal(0, await db.SoftwareLicenseEvents.CountAsync(x => x.LicenseId == _ownLicenseId && x.EventType == "Archived"));
+        }
+        await SetCompanyRoleAsync("viewer");
+        using (var forbidden = await SendAsRoleAsync(HttpMethod.Post, archivePath, "viewer", null, requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+        await SetCompanyRoleAsync("admin");
+        using (var missingCsrf = await SendAsRoleAsync(HttpMethod.Post, archivePath, "admin", null))
+            Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var assignment = await db.SoftwareLicenseAssignments.SingleAsync(x => x.Id == assignmentId);
+            assignment.RevokedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync();
+        }
+        using (var archived = await SendAsRoleAsync(HttpMethod.Post, archivePath, "admin", null, requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NoContent, archived.StatusCode);
+
+        using (var activeList = await SendAsAdminAsync("/api/software-licenses?status=active"))
+        {
+            Assert.Equal(HttpStatusCode.OK, activeList.StatusCode);
+            using var payload = JsonDocument.Parse(await activeList.Content.ReadAsStringAsync());
+            Assert.DoesNotContain(payload.RootElement.GetProperty("items").EnumerateArray(), item => item.GetProperty("id").GetGuid() == _ownLicenseId);
+        }
+        using (var archiveList = await SendAsAdminAsync("/api/software-licenses?status=archived"))
+        {
+            Assert.Equal(HttpStatusCode.OK, archiveList.StatusCode);
+            using var payload = JsonDocument.Parse(await archiveList.Content.ReadAsStringAsync());
+            var item = Assert.Single(payload.RootElement.GetProperty("items").EnumerateArray());
+            Assert.Equal(_ownLicenseId, item.GetProperty("id").GetGuid());
+            Assert.True(item.GetProperty("isArchived").GetBoolean());
+        }
+        using (var report = await SendAsAdminAsync("/api/reports/software-licenses?state=all"))
+        {
+            using var payload = JsonDocument.Parse(await report.Content.ReadAsStringAsync());
+            Assert.DoesNotContain(payload.RootElement.GetProperty("items").EnumerateArray(), item => item.GetProperty("id").GetGuid() == _ownLicenseId);
+        }
+        using (var report = await SendAsAdminAsync("/api/reports/software-licenses?state=all&includeArchived=true"))
+        {
+            using var payload = JsonDocument.Parse(await report.Content.ReadAsStringAsync());
+            Assert.Contains(payload.RootElement.GetProperty("items").EnumerateArray(), item => item.GetProperty("id").GetGuid() == _ownLicenseId);
+        }
+        using (var edit = await SendAsRoleAsync(HttpMethod.Put, $"/api/software-licenses/{_ownLicenseId}", "admin",
+                   JsonContent.Create(new { name = licenseName, seats = 4, licenseType = "Subscription", currency = "USD" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, edit.StatusCode);
+        using (var assignment = await SendAsRoleAsync(HttpMethod.Post, $"/api/software-licenses/{_ownLicenseId}/assign", "admin",
+                   JsonContent.Create(new { employeeId = _ownEmployeeId, assetId = (Guid?)null, eulaAccepted = true }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, assignment.StatusCode);
+
+        using (var restored = await SendAsRoleAsync(HttpMethod.Post, $"/api/software-licenses/{_ownLicenseId}/restore", "admin", null, requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NoContent, restored.StatusCode);
+        using (var activeList = await SendAsAdminAsync("/api/software-licenses?status=active"))
+        {
+            using var payload = JsonDocument.Parse(await activeList.Content.ReadAsStringAsync());
+            Assert.Contains(payload.RootElement.GetProperty("items").EnumerateArray(), item => item.GetProperty("id").GetGuid() == _ownLicenseId);
+        }
+        await using var verifyScope = _factory!.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.False((await verifyDb.SoftwareLicenses.SingleAsync(x => x.Id == _ownLicenseId)).IsArchived);
+        Assert.True((await verifyDb.SoftwareLicenseAssignments.SingleAsync(x => x.Id == assignmentId)).RevokedAt.HasValue);
+        Assert.Equal(1, await verifyDb.SoftwareLicenseEvents.CountAsync(x => x.LicenseId == _ownLicenseId && x.EventType == "Archived"));
+        Assert.Equal(1, await verifyDb.SoftwareLicenseEvents.CountAsync(x => x.LicenseId == _ownLicenseId && x.EventType == "Restored"));
+        Assert.Contains(await verifyDb.AuditEntries.Where(x => x.TargetId == _ownLicenseId).Select(x => x.Action).ToListAsync(), action => action == "license.archived");
+        Assert.Contains(await verifyDb.AuditEntries.Where(x => x.TargetId == _ownLicenseId).Select(x => x.Action).ToListAsync(), action => action == "license.restored");
+    }
+
+    [Fact]
     public async Task License_expiry_report_list_detail_and_csv_are_scoped_to_the_active_company()
     {
         using (var reportResponse = await SendAsAdminAsync("/api/reports/software-licenses?state=all"))

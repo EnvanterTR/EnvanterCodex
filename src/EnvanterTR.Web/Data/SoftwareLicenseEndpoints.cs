@@ -17,26 +17,37 @@ public static class SoftwareLicenseEndpoints
     {
         api.MapSoftwareLicenseImportEndpoints();
         api.MapGet("/software-licenses", async ([FromQuery] string? q, ClaimsPrincipal user, AppDbContext db, CancellationToken ct,
-            [FromQuery] int page = 1, [FromQuery] int pageSize = 25) =>
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 25, [FromQuery] string? status = "active") =>
         {
             if (!Company(user, out var companyId)) return Results.Forbid();
+            status = string.IsNullOrWhiteSpace(status) ? "active" : status.Trim().ToLowerInvariant();
+            if (status is not ("active" or "archived" or "all"))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["status"] = ["Durum active, archived veya all olmalıdır."] });
             page = Math.Max(1, page); pageSize = Math.Clamp(pageSize == 0 ? 25 : pageSize, 1, 200);
             var query = db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (status == "active") query = query.Where(x => !x.IsArchived);
+            else if (status == "archived") query = query.Where(x => x.IsArchived);
             if (!string.IsNullOrWhiteSpace(q)) { var term = q.Trim(); if (term.Length > 120) return Results.ValidationProblem(new Dictionary<string,string[]> { ["q"]=["Arama metni 120 karakteri aşamaz."] }); query = query.Where(x => x.Name.Contains(term) || (x.Publisher != null && x.Publisher.Contains(term)) || (x.Supplier != null && x.Supplier.Contains(term)) || (x.LicenseReference != null && x.LicenseReference.Contains(term))); }
             var total = await query.CountAsync(ct);
             var items = await query.OrderBy(x => x.Name).ThenBy(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize).Select(x => new
             {
                 x.Id, x.Name, x.Publisher, x.ProductVersion, x.LicenseType, x.LicenseReference, x.Supplier, x.Seats,
-                x.UnitCost, x.Currency, x.PurchaseDate, x.ExpirationDate, x.AutoRenew, x.RequiresEulaAcceptance, x.UpdatedAt,
+                x.UnitCost, x.Currency, x.PurchaseDate, x.ExpirationDate, x.AutoRenew, x.RequiresEulaAcceptance, x.IsArchived, x.UpdatedAt,
                 assigned = db.SoftwareLicenseAssignments.Count(a => a.CompanyId == companyId && a.LicenseId == x.Id && a.RevokedAt == null)
             }).ToListAsync(ct);
             return Results.Ok(new { items, page, pageSize, total });
         }).RequireAuthorization("asset.read");
 
-        api.MapGet("/software-licenses/export.csv", async ([FromQuery] string? q, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        api.MapGet("/software-licenses/export.csv", async ([FromQuery] string? q, ClaimsPrincipal user, AppDbContext db, CancellationToken ct,
+            [FromQuery] string? status = "active") =>
         {
             if (!Company(user, out var companyId)) return Results.Forbid();
+            status = string.IsNullOrWhiteSpace(status) ? "active" : status.Trim().ToLowerInvariant();
+            if (status is not ("active" or "archived" or "all"))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["status"] = ["Durum active, archived veya all olmalıdır."] });
             var query = db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (status == "active") query = query.Where(x => !x.IsArchived);
+            else if (status == "archived") query = query.Where(x => x.IsArchived);
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
@@ -62,7 +73,7 @@ public static class SoftwareLicenseEndpoints
             return Results.File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv; charset=utf-8", $"envantertr-lisanslar-{DateTime.UtcNow:yyyyMMdd}.csv");
         }).RequireAuthorization("asset.read");
 
-        api.MapGet("/reports/software-licenses", async (DateOnly? through, string? state, string? q,
+        api.MapGet("/reports/software-licenses", async (DateOnly? through, string? state, string? q, bool? includeArchived,
             ClaimsPrincipal user, AppDbContext db, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {
             if (!Company(user, out var companyId)) return Results.Forbid();
@@ -70,6 +81,7 @@ public static class SoftwareLicenseEndpoints
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
             var companyLicenses = db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (includeArchived != true) companyLicenses = companyLicenses.Where(x => !x.IsArchived);
             var searchQuery = FilterLicenseReportSearch(companyLicenses, term);
             var expired = await searchQuery.CountAsync(x => x.ExpirationDate != null && x.ExpirationDate < today, ct);
             var upcoming = await searchQuery.CountAsync(x => x.ExpirationDate != null && x.ExpirationDate >= today && x.ExpirationDate <= end, ct);
@@ -95,7 +107,7 @@ public static class SoftwareLicenseEndpoints
                 total, page, pageSize, pageCount = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize)), items });
         }).RequireAuthorization("asset.read");
 
-        api.MapGet("/reports/software-licenses/export.csv", async (DateOnly? through, string? state, string? q,
+        api.MapGet("/reports/software-licenses/export.csv", async (DateOnly? through, string? state, string? q, bool? includeArchived,
             HttpContext context, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Company(user, out var companyId)) { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
@@ -104,8 +116,10 @@ public static class SoftwareLicenseEndpoints
                 await error!.ExecuteAsync(context);
                 return;
             }
+            var companyLicenses = db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (includeArchived != true) companyLicenses = companyLicenses.Where(x => !x.IsArchived);
             var query = FilterLicenseReportState(
-                FilterLicenseReportSearch(db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId), term),
+                FilterLicenseReportSearch(companyLicenses, term),
                 normalizedState, today, end);
             var total = await query.CountAsync(ct);
             if (total > 10000)
@@ -147,7 +161,7 @@ public static class SoftwareLicenseEndpoints
             var license = await db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id).Select(x => new
             {
                 x.Id, x.Name, x.Publisher, x.ProductVersion, x.LicenseType, x.LicenseReference, x.Supplier, x.Seats, x.UnitCost, x.Currency,
-                x.PurchaseDate, x.ExpirationDate, x.AutoRenew, x.RequiresEulaAcceptance, x.Notes, x.UpdatedAt,
+                x.PurchaseDate, x.ExpirationDate, x.AutoRenew, x.RequiresEulaAcceptance, x.IsArchived, x.Notes, x.UpdatedAt,
                 assigned = db.SoftwareLicenseAssignments.Count(a => a.CompanyId == companyId && a.LicenseId == x.Id && a.RevokedAt == null)
             }).SingleOrDefaultAsync(ct);
             if (license is null) return Results.NotFound();
@@ -195,6 +209,7 @@ public static class SoftwareLicenseEndpoints
             var license = await db.SoftwareLicenses.FromSqlInterpolated($"SELECT * FROM \"SoftwareLicenses\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
                 .SingleOrDefaultAsync(ct);
             if (license is null) return Results.NotFound();
+            if (license.IsArchived) return Results.Conflict(new { message = "Arşivlenmiş lisansa dosya eklemeden önce lisansı geri yükleyin." });
             if (await db.SoftwareLicenseAttachments.CountAsync(x => x.CompanyId == companyId && x.LicenseId == id, ct) >= 30)
                 return Results.Conflict(new { message = "Bir lisansa en fazla 30 dosya eklenebilir." });
             if (isEulaDocument)
@@ -252,6 +267,8 @@ public static class SoftwareLicenseEndpoints
             if (!Company(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
             var attachment = await db.SoftwareLicenseAttachments.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.LicenseId == id && x.Id == attachmentId, ct);
             if (attachment is null) return Results.NotFound();
+            if (await db.SoftwareLicenses.AnyAsync(x => x.CompanyId == companyId && x.Id == id && x.IsArchived, ct))
+                return Results.Conflict(new { message = "Arşivlenmiş lisansın geçmiş dosyaları korunur; silmek için önce lisansı geri yükleyin." });
             if (attachment.IsCurrentEula && await db.SoftwareLicenses.AnyAsync(x => x.CompanyId == companyId && x.Id == id && x.RequiresEulaAcceptance, ct))
                 return Results.Conflict(new { message = "Atamada zorunlu tutulan geçerli EULA silinemez. Önce yeni bir EULA sürümü yükleyin veya lisans ayarını kapatın." });
             if (await db.SoftwareLicenseAssignments.AnyAsync(x => x.CompanyId == companyId && x.LicenseId == id && x.EulaAttachmentId == attachmentId, ct))
@@ -282,7 +299,10 @@ public static class SoftwareLicenseEndpoints
         api.MapPut("/software-licenses/{id:guid}", async (Guid id, LicenseRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Company(user, out var companyId)) return Results.Forbid();
-            var item = await db.SoftwareLicenses.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct); if (item is null) return Results.NotFound();
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            var item = await db.SoftwareLicenses.FromSqlInterpolated($"SELECT * FROM \"SoftwareLicenses\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+                .SingleOrDefaultAsync(ct); if (item is null) return Results.NotFound();
+            if (item.IsArchived) return Results.Conflict(new { message = "Arşivlenmiş lisansı düzenlemeden önce geri yükleyin." });
             var errors = Validate(request); var active = await db.SoftwareLicenseAssignments.CountAsync(a => a.CompanyId == companyId && a.LicenseId == id && a.RevokedAt == null, ct);
             if (request.Seats < active) errors["seats"] = [$"Koltuk sayısı mevcut {active} atamadan düşük olamaz."];
             if (errors.Count > 0) return Results.ValidationProblem(errors);
@@ -290,7 +310,46 @@ public static class SoftwareLicenseEndpoints
             item.LicenseReference = Clean(request.LicenseReference); item.Supplier = Clean(request.Supplier); item.SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, ct); item.Seats = request.Seats; item.UnitCost = request.UnitCost;
             item.Currency = request.Currency.Trim().ToUpperInvariant(); item.PurchaseDate = request.PurchaseDate; item.ExpirationDate = request.ExpirationDate;
             item.AutoRenew = request.AutoRenew; item.RequiresEulaAcceptance = request.RequiresEulaAcceptance; item.Notes = Clean(request.Notes); item.UpdatedAt = DateTimeOffset.UtcNow;
-            AddEvent(db, item, user, "Updated", "Lisans bilgileri güncellendi."); await db.SaveChangesAsync(ct); return Results.NoContent();
+            AddEvent(db, item, user, "Updated", "Lisans bilgileri güncellendi."); await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); return Results.NoContent();
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/software-licenses/{id:guid}/archive", async (Guid id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!Company(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            var item = await db.SoftwareLicenses.FromSqlInterpolated($"SELECT * FROM \"SoftwareLicenses\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+                .SingleOrDefaultAsync(ct);
+            if (item is null) return Results.NotFound();
+            if (item.IsArchived) return Results.NoContent();
+            var activeAssignments = await db.SoftwareLicenseAssignments.CountAsync(a => a.CompanyId == companyId && a.LicenseId == id && a.RevokedAt == null, ct);
+            if (activeAssignments > 0)
+                return Results.Conflict(new { message = $"Lisansın {activeAssignments} etkin ataması var. Önce etkin atamaları kaldırın; hiçbir kayıt değiştirilmedi.", activeAssignments });
+            item.IsArchived = true;
+            item.UpdatedAt = DateTimeOffset.UtcNow;
+            AddEvent(db, item, user, "Archived", "Lisans kaydı arşivlendi; geçmiş ve dosyalar korundu.");
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "SoftwareLicense", TargetId = id,
+                Action = "license.archived", Details = item.Name });
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            return Results.NoContent();
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/software-licenses/{id:guid}/restore", async (Guid id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!Company(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            var item = await db.SoftwareLicenses.FromSqlInterpolated($"SELECT * FROM \"SoftwareLicenses\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
+                .SingleOrDefaultAsync(ct);
+            if (item is null) return Results.NotFound();
+            if (!item.IsArchived) return Results.NoContent();
+            item.IsArchived = false;
+            item.UpdatedAt = DateTimeOffset.UtcNow;
+            AddEvent(db, item, user, "Restored", "Lisans kaydı arşivden geri yüklendi.");
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "SoftwareLicense", TargetId = id,
+                Action = "license.restored", Details = item.Name });
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            return Results.NoContent();
         }).RequireAuthorization("asset.write");
 
         api.MapPost("/software-licenses/{id:guid}/assign", async (Guid id, AssignmentRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
@@ -299,6 +358,7 @@ public static class SoftwareLicenseEndpoints
             await using var tx = await db.Database.BeginTransactionAsync(ct);
             var item = await db.SoftwareLicenses.FromSqlInterpolated($"SELECT * FROM \"SoftwareLicenses\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
                 .SingleOrDefaultAsync(ct); if (item is null) return Results.NotFound();
+            if (item.IsArchived) return Results.Conflict(new { message = "Arşivlenmiş lisansa atama yapılamaz. Önce lisansı geri yükleyin." });
             if ((request.EmployeeId is null) == (request.AssetId is null))
                 return Results.ValidationProblem(new Dictionary<string,string[]> { ["target"]=["Tek bir çalışan veya varlık seçilmelidir."] });
             if (item.RequiresEulaAcceptance && !request.EulaAccepted)
@@ -343,6 +403,7 @@ public static class SoftwareLicenseEndpoints
             var item = await db.SoftwareLicenses.FromSqlInterpolated($"SELECT * FROM \"SoftwareLicenses\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
                 .SingleOrDefaultAsync(ct);
             if (item is null) return Results.NotFound();
+            if (item.IsArchived) return Results.Conflict(new { message = "Arşivlenmiş lisansa toplu atama yapılamaz. Önce lisansı geri yükleyin." });
             if (item.RequiresEulaAcceptance && !request.EulaAccepted)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["eulaAccepted"] = ["Bu lisans için her seçili kullanıcıdan EULA kabulü alındığını teyit etmelisiniz."] });
             var currentEula = item.RequiresEulaAcceptance
