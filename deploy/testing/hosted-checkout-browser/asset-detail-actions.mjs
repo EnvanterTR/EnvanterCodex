@@ -51,7 +51,7 @@ const server = createServer(async (request, response) => {
   }
   if (request.method === 'GET' && url.pathname === '/vendor/qrcodegen.js') {
     response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
-    response.end('window.qrcodegen = window.qrcodegen || {};'); return;
+    response.end('window.qrcodegen = window.qrcodegen || { QrCode: { Ecc: { MEDIUM: 0 }, encodeText: () => ({ size: 1, getModule: () => true }) } };'); return;
   }
   if (!url.pathname.startsWith('/api/')) {
     response.writeHead(404); response.end('Not found'); return;
@@ -296,6 +296,7 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 await page.addInitScript(() => {
   window.__syntheticClipboard = '';
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async text => { window.__syntheticClipboard = String(text); } } });
+  window.bwipjs = { toCanvas(canvas) { canvas.width = 120; canvas.height = 40; const context = canvas.getContext('2d'); if (context) { context.fillStyle = '#fff'; context.fillRect(0, 0, 120, 40); } } };
 });
 const pageErrors = [];
 page.on('pageerror', error => pageErrors.push(error.message));
@@ -353,6 +354,16 @@ try {
   assert.equal(apiRequests.length, 0, 'Opening then canceling owner Ctrl+N must not create an asset.');
 
   const assetRow = page.locator(`#assetRows tr[data-id="${assetId}"]`);
+  await assetRow.locator('[data-asset-action="label"]').click();
+  const rowLabelPreview = page.locator('#assetLabelPreviewDialog');
+  await rowLabelPreview.waitFor({ state: 'visible' });
+  await page.waitForFunction(() => !document.querySelector('#assetLabelPreviewPrint')?.disabled);
+  assert.match(await page.locator('#assetLabelPreviewFrame').getAttribute('srcdoc'), /QA-ASSET-001/,
+    'The row label shortcut must render the selected asset tag in its printable preview.');
+  await page.locator('#assetLabelPreviewClose').click();
+  await rowLabelPreview.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, 0, 'Previewing a row label must not write to the API or launch the printer.');
+
   await assetRow.locator('[data-asset-action="assign"]').click();
   await page.locator('#assetDialog').waitFor({ state: 'visible' });
   const rowAssignmentDialog = page.locator('#assignDialog');
