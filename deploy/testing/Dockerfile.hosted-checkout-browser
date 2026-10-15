@@ -8,7 +8,9 @@ COPY deploy/testing/hosted-checkout-browser/command-palette.mjs ./
 COPY deploy/testing/hosted-checkout-browser/asset-detail-actions.mjs ./
 COPY deploy/testing/hosted-checkout-browser/platform-admin-members.mjs ./
 COPY deploy/testing/hosted-checkout-browser/platform-admin-bootstrap.mjs ./
+COPY deploy/testing/hosted-checkout-browser/public-site-pricing.mjs ./
 COPY src/EnvanterTR.PublicSite/checkout.html src/EnvanterTR.PublicSite/checkout.js /checkout-site/
+COPY src/EnvanterTR.PublicSite/index.html /public-site/index.html
 COPY src/EnvanterTR.Web/wwwroot/index.html /checkout-site/company-app.html
 COPY src/EnvanterTR.Web/wwwroot/platform-admin.html /platform-site/platform-admin.html
 COPY src/EnvanterTR.Web/wwwroot/platform-setup.html /platform-site/platform-setup.html

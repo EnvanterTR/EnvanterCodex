@@ -6,6 +6,7 @@ const palette = await readFile('deploy/testing/hosted-checkout-browser/command-p
 const assetActions = await readFile('deploy/testing/hosted-checkout-browser/asset-detail-actions.mjs', 'utf8');
 const platformMembers = await readFile('deploy/testing/hosted-checkout-browser/platform-admin-members.mjs', 'utf8');
 const platformBootstrap = await readFile('deploy/testing/hosted-checkout-browser/platform-admin-bootstrap.mjs', 'utf8');
+const publicPricing = await readFile('deploy/testing/hosted-checkout-browser/public-site-pricing.mjs', 'utf8');
 const dockerfile = await readFile('deploy/testing/Dockerfile.hosted-checkout-browser', 'utf8');
 const runner = await readFile('deploy/testing/run-hosted-checkout-browser-acceptance.ps1', 'utf8');
 const workflow = await readFile('.github/workflows/ci.yml', 'utf8');
@@ -14,6 +15,8 @@ const companyApp = await readFile('src/EnvanterTR.Web/wwwroot/index.html', 'utf8
 assert.match(dockerfile, /mcr\.microsoft\.com\/playwright:v1\.64\.0-noble/);
 assert.match(dockerfile, /npm ci --omit=dev/);
 assert.match(dockerfile, /src\/EnvanterTR\.PublicSite\/checkout\.html src\/EnvanterTR\.PublicSite\/checkout\.js/);
+assert.match(dockerfile, /src\/EnvanterTR\.PublicSite\/index\.html \/public-site\/index\.html/);
+assert.match(dockerfile, /public-site-pricing\.mjs/);
 assert.match(dockerfile, /src\/EnvanterTR\.Web\/wwwroot\/index\.html/);
 assert.match(dockerfile, /index\.html \/checkout-site\/company-app\.html/);
 assert.match(dockerfile, /platform-admin\.html \/platform-site\/platform-admin\.html/);
@@ -21,6 +24,11 @@ assert.match(dockerfile, /platform-admin-members\.js src\/EnvanterTR\.Web\/wwwro
 assert.match(script, /await import\('\.\/command-palette\.mjs'\)/);
 assert.match(script, /await import\('\.\/platform-admin-members\.mjs'\)/);
 assert.match(script, /await import\('\.\/platform-admin-bootstrap\.mjs'\)/);
+assert.match(script, /await import\('\.\/public-site-pricing\.mjs'\)/);
+assert.match(publicPricing, /no published Cloud plans available for purchase/i);
+assert.match(publicPricing, /API failure must not fall back to sample Cloud offers/);
+assert.match(publicPricing, /all five languages/);
+assert.match(publicPricing, /Unpublished sample Cloud tiers must never be rendered/);
 assert.match(palette, /role: 'viewer'/);
 assert.match(palette, /The page must not expose company member administration to a viewer role/);
 assert.match(palette, /email-only login URL must be scrubbed before app initialization/);
