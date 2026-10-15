@@ -793,6 +793,23 @@ try {
   const sidebarDestinations = page.locator('#sidebar button[data-page]');
   const destinationCount = await sidebarDestinations.count();
   assert.equal(destinationCount, 50, 'The owner navigation smoke acceptance must cover all 50 documented sidebar destinations.');
+  const expectedSurfaceByDestination = {
+    'Genel Bakış': 'overview', 'Varlıklar': 'overview',
+    'Varlık siparişleri': 'assetOrdersPage', 'Varlık modelleri': 'catalogPage', 'Markalar': 'catalogPage', 'Kategoriler': 'catalogPage',
+    'Durum etiketleri': 'assetStatusLabelsPage', 'QR ve barkodlar': 'labelSettingsPage',
+    'Zimmetler': 'assignmentsPage', 'İadeler': 'returnsPage', 'Transferler': 'activityPage', 'Rezervasyonlar': 'reservationsPage', 'Hareket geçmişi': 'activityPage',
+    'Yazılım lisansları': 'licensesPage', 'Lisans atamaları': 'licenseAssignmentsPage', 'Sözleşmeler': 'contractsPage', 'Garanti takibi': 'reportPage',
+    'Aksesuarlar': 'accessoriesPage', 'Siparişler': 'accessoryOrdersPage', 'Sarf malzemeleri': 'consumablesPage', 'Stok talepleri': 'inventoryRequestsPage',
+    'Bileşenler': 'componentsPage', 'Hazır kitler': 'accessoryKitsPage', 'Stok hareketleri': 'inventoryMovementsPage',
+    'Çalışan kayıtları': 'employeesPage', 'Uygulama kullanıcıları': 'membersPage', 'Departmanlar': 'directoryPage', 'Yetki rolleri': 'rolesPage',
+    'Lokasyonlar': 'directoryPage', 'Binalar ve odalar': 'directoryPage', 'Şirket birimleri': 'companyUnitsPage',
+    'Bakım kayıtları': 'maintenancePage', 'Bakım planları': 'calendarPage', 'Denetimler': 'auditPage', 'Takvim': 'calendarPage', 'Görevler': 'tasksPage',
+    'Hazır raporlar': 'reportPage', 'Özel rapor oluştur': 'customReportPage', 'Dışa aktarımlar': 'dataToolsPage',
+    'Tablodan içe aktar': 'dataToolsPage', 'Verileri dışa aktar': 'dataToolsPage', 'Yedekleme geçmişi': 'dataToolsPage', 'Geri yükle': 'dataToolsPage',
+    'Firma profili': 'companySettingsPage', 'Logo ve tema': 'companySettingsPage', 'Bildirimler': 'featureStatusPage', 'Entegrasyonlar': 'integrationsPage',
+    'Güvenlik': 'featureStatusPage', 'Denetim kayıtları': 'auditPage', 'Destek': 'supportPage'
+  };
+  assert.equal(Object.keys(expectedSurfaceByDestination).length, destinationCount, 'Every documented sidebar destination must have an exact expected screen surface.');
   const visitedDestinations = new Set();
   const placeholderDestinations = [];
   for (const destination of await sidebarDestinations.all()) {
@@ -804,14 +821,16 @@ try {
       const item = [...document.querySelectorAll('#sidebar .nav-item, #sidebar .sub-item')].find(element => element.dataset.page === expected);
       return item?.classList.contains('active') || item?.classList.contains('selected');
     }, name);
+    const expectedSurface = expectedSurfaceByDestination[name];
+    assert.ok(expectedSurface, `Sidebar destination ${name} must have an explicit expected workspace mapping.`);
     const routeState = await page.evaluate(() => ({
       title: document.querySelector('#pageTitle')?.textContent?.trim() || '',
-      overviewVisible: document.querySelector('#overview')?.hidden === false,
-      workspaceVisible: [...document.querySelectorAll('.workspace-page')].some(element => !element.hidden),
+      visibleSurfaces: [...new Set([...document.querySelectorAll('#overview, .workspace-page')]
+        .filter(element => !element.hidden).map(element => element.id))],
       placeholderVisible: ['moduleStatusPage', 'featureStatusPage'].some(id => document.querySelector(`#${id}`)?.hidden === false)
     }));
     assert.ok(routeState.title, `Selecting ${name} must render a page title.`);
-    assert.ok(routeState.overviewVisible || routeState.workspaceVisible, `Selecting ${name} must render a page surface.`);
+    assert.deepEqual(routeState.visibleSurfaces, [expectedSurface], `Selecting ${name} must show only its expected ${expectedSurface} surface.`);
     if (routeState.placeholderVisible) placeholderDestinations.push(name);
     if (name === 'Bildirimler') {
       const beforeNotificationShortcut = apiRequests.length;

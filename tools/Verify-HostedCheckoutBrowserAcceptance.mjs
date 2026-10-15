@@ -49,7 +49,9 @@ assert.match(assetActions, /Selecting a file must not upload it before explicit 
 assert.match(assetActions, /Canceling attachment removal must not delete a file/);
 assert.match(assetActions, /synthetic-proof\.png/);
 assert.match(assetActions, /assetAttachmentRemoveDialog/);
-assert.match(assetActions, /Selecting \$\{name\} must render a page surface/);
+assert.match(assetActions, /expectedSurfaceByDestination/);
+assert.match(assetActions, /Every documented sidebar destination must have an exact expected screen surface/);
+assert.match(assetActions, /Selecting \$\{name\} must show only its expected \$\{expectedSurface\} surface/);
 assert.match(assetActions, /placeholderDestinations\.length/);
 assert.match(platformMembers, /account\/security\/membership\/payment timeline/);
 assert.match(platformMembers, /Canceling the membership-role dialog must not write/);
