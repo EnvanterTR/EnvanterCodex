@@ -1,5 +1,9 @@
 # Ürün kapsamı ve özellik durumu
 
+## 15 Ekim 2026 — Bildirimler ve Güvenlik menülerinden tek adımda açılış
+
+Şirket ayarlarındaki **Bildirimler** seçimi artık zil paneli ve tercih formunu doğrudan açar; genel dışarı tıklama dinleyicisi bu menü seçimini panel kapatma saymaz. **Güvenlik** seçimi hesap güvenliği penceresini doğrudan açarken merkezi şirket güvenlik politikası/SSO kapsamının eksik olduğu açıklamasını ve hesap penceresini kapatma yolunu sayfada tutar. Hosted Chromium, her iki menünün doğrudan hedefe erişimini ve salt okunur açılışta yazma oluşmadığını doğruladı. Tam paket geçti; güvenlikte merkezi şirket politikası hâlâ kısmi durumdur.
+
 ## 15 Ekim 2026 — açık modal sırasında oturum süresi sonu UI kabulü
 
 Hosted Chromium sentetik owner oturumunda varlık düzenleme formu değiştirilmiş haldeyken sunucu `PATCH` isteğine 401 döndürdü. Oturum katmanı hem form hem üst varlık ayrıntısı dialogunu kapattı. Sunucu kaydı değiştirmedi; tarayıcı eski formu tekrar göndermeden, tek bir bilerek gönderilen CSRF korumalı sentetik girişten sonra panoya döndü. Varlık editörü yeniden açıldığında korunmuş kayıt değerini gösterdi, silinmiş taslak değeri göstermedi. `Verify-HostedCheckoutBrowserAcceptance.mjs` bu senaryonun harness'te kalmasını doğrular; tam Chromium paketi geçti. Bu zamanlayıcı kontrollü 5+ dakika cookie yenileme, her dialog türü veya 403 davranışı kabulü değildir; canlı/gerçek hesap kullanılmadı.

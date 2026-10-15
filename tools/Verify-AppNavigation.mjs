@@ -57,11 +57,15 @@ if (!notificationShortcut.includes('event.stopPropagation()') ||
     !notificationShortcut.includes("panel.hidden = false") ||
     !notificationShortcut.includes("trigger.setAttribute('aria-expanded', 'true')") ||
     !notificationShortcut.includes("settings.click()") ||
-    !notificationShortcut.includes('void loadOperationalAlerts()')) {
+    !notificationShortcut.includes('void loadOperationalAlerts()') ||
+    !routeHandler.includes("page === 'Bildirimler'") ||
+    !routeHandler.includes("$('#featureStatusNotificationButton').click()") ||
+    !source.includes("!event.target.closest('#sidebar [data-page=\"Bildirimler\"]')")) {
   failures.push('The Notifications menu shortcut must open the panel without its outside-click handler immediately closing it, then load preferences and alerts.');
 }
 if (!source.includes('id="featureStatusAccountSecurityButton"') ||
     !/page === 'Güvenlik'[\s\S]*?featureStatusAccountSecurityButton'\)\.hidden = false/.test(source) ||
+    !routeHandler.includes("$('#featureStatusAccountSecurityButton').click()") ||
     !source.includes("$('#featureStatusAccountSecurityButton').addEventListener('click', () => $('#userAvatar').click())") ||
     !source.includes("'Kendi hesap güvenliğini aç':['Open your account security'")) {
   failures.push('The Security menu must link to existing account security/session controls and localize the action.');

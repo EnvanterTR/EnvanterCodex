@@ -8316,6 +8316,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         $('#featureStatusMessage').textContent = translateUiText('Yaklaşan iş bildirimlerini ve isteğe bağlı e-posta özetini açmak için aşağıdaki düğmeyi kullanın.');
         $('#featureStatusNotificationButton').hidden = false;
         $('[data-page="Genel Bakış"]')?.classList.remove('active');
+        $('#featureStatusNotificationButton').click();
       }
       else if (page === 'Güvenlik') {
         $('#featureStatusPage').hidden = false; $('#pageTitle').textContent = page;
@@ -8327,6 +8328,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         $('#featureStatusHeading').textContent = translateUiText('Kısmen kullanılabilir');
         $('#featureStatusBadge').textContent = translateUiText('Kısmen kullanılabilir');
         $('#featureStatusMessage').textContent = translateUiText('Parola değiştirme, Authenticator tabanlı iki aşamalı doğrulama ve tek kullanımlık kurtarma kodları hesap ayarlarında kullanılabilir. Merkezi parola politikası ile LDAP/Active Directory/SSO yönetimi bu menüde henüz sunulmuyor.');
+        $('#featureStatusAccountSecurityButton').click();
       }
       else if (page === 'Yetki rolleri') { $('#rolesPage').hidden = false; $('#pageTitle').textContent = translateUiText(page); renderRoleAccessMatrix(); }
       else if (!['Genel Bakış','Varlıklar'].includes(page)) {
@@ -10060,7 +10062,7 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       void open();
     });
     $('#openNotificationCalendar').addEventListener('click', () => { closeOperationalAlerts(); document.querySelector('[data-page="Takvim"]')?.click(); });
-    document.addEventListener('click', event => { if (!event.target.closest('.notification-wrap')) closeOperationalAlerts(); });
+    document.addEventListener('click', event => { if (!event.target.closest('.notification-wrap') && !event.target.closest('#sidebar [data-page="Bildirimler"]')) closeOperationalAlerts(); });
     $('#mobileMenu').addEventListener('click', () => setMobileSidebarOpen(!$('#sidebar').classList.contains('open')));
     const commandPaletteDialog = $('#commandPaletteDialog'), commandPaletteSearch = $('#commandPaletteSearch'), commandPaletteResults = $('#commandPaletteResults');
     function commandPaletteEntries() {

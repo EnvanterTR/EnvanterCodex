@@ -236,7 +236,6 @@ try {
   await page.waitForFunction(() => document.querySelector('#pageTitle')?.textContent === 'Bildirimler');
   const notificationShortcut = page.locator('#featureStatusNotificationButton');
   assert.equal(await notificationShortcut.isVisible(), true, 'The Notifications menu must expose its working preferences shortcut.');
-  await notificationShortcut.click();
   await notificationPanel.waitFor({ state: 'visible' });
   const preferencesForm = page.locator('#notificationPreferencesForm');
   await preferencesForm.waitFor({ state: 'visible' });
@@ -285,6 +284,15 @@ try {
     'Outside-click dismissal of the account/security window must not change security settings.');
   await page.locator('#userAvatar').click();
   await accountDialog.waitFor({ state: 'visible' });
+  await page.locator('#closeAccountPhoto').click();
+  await accountDialog.waitFor({ state: 'hidden' });
+
+  const securityNav = page.locator('#sidebar [data-page="Güvenlik"]');
+  await securityNav.click();
+  await accountDialog.waitFor({ state: 'visible' });
+  await page.waitForFunction(() => document.querySelector('#accountSessionsList')?.textContent.includes('Etkin oturum bulunamadı'));
+  assert.equal(apiRequests.filter(item => item.method !== 'GET').length, writesBeforeAccountBackdrop,
+    'Navigating to Security must open the account security window without changing security settings.');
   await page.locator('#closeAccountPhoto').click();
   await accountDialog.waitFor({ state: 'hidden' });
 

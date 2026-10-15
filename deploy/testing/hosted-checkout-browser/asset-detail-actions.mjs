@@ -1190,7 +1190,8 @@ try {
     }
     if (name === 'Güvenlik') {
       const beforeSecurityShortcut = apiRequests.length;
-      await page.locator('#featureStatusAccountSecurityButton').click();
+      assert.equal(await page.locator('#featureStatusAccountSecurityButton').isVisible(), true,
+        'The Security menu must keep the boundary explanation and account-security shortcut visible.');
       await page.locator('#accountPhotoDialog').waitFor({ state: 'visible' });
       assert.equal(apiRequests.length, beforeSecurityShortcut, 'Opening account security must be read-only until a separate preference change is submitted.');
       await page.locator('#closeAccountPhoto').click();
