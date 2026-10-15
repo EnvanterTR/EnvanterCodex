@@ -6452,6 +6452,122 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Bulk_asset_status_is_atomic_company_scoped_authorized_and_audited()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var secondAssetId = Guid.NewGuid();
+        await using (var setupScope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = setupScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var categoryId = await db.Assets.Where(asset => asset.CompanyId == _companyId && asset.Id == _ownAssetId)
+                .Select(asset => asset.CategoryId).SingleAsync();
+            db.Assets.Add(new Asset
+            {
+                Id = secondAssetId, CompanyId = _companyId, AssetTag = $"BULK-STATUS-{_userId:N}",
+                Name = "Second bulk status asset", CategoryId = categoryId
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var successPayload = new
+        {
+            assetIds = new[] { _ownAssetId, secondAssetId },
+            status = AssetStatuses.Maintenance,
+            note = "Quarterly bulk inspection"
+        };
+        using (var missingCsrf = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-status", "admin",
+                   System.Net.Http.Json.JsonContent.Create(successPayload)))
+            Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+
+        await SetCompanyRoleAsync("viewer");
+        using (var forbidden = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-status", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(successPayload), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+        await SetCompanyRoleAsync("admin");
+
+        using (var duplicateIds = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-status", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { _ownAssetId, _ownAssetId }, status = AssetStatuses.Maintenance }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, duplicateIds.StatusCode);
+        using (var invalidStatus = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-status", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { _ownAssetId }, status = AssetStatuses.Deployed }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidStatus.StatusCode);
+
+        using (var crossTenant = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-status", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { _ownAssetId, _otherCompanyAssetId }, status = AssetStatuses.Maintenance }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
+        await using (var verifyNoPartialWrite = _factory.Services.CreateAsyncScope())
+        {
+            var db = verifyNoPartialWrite.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.All(await db.Assets.AsNoTracking().Where(asset => asset.CompanyId == _companyId &&
+                    (asset.Id == _ownAssetId || asset.Id == secondAssetId)).ToListAsync(),
+                asset => Assert.Equal(AssetStatuses.Available, asset.Status));
+        }
+
+        await using (var setupScope = _factory.Services.CreateAsyncScope())
+        {
+            var db = setupScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var second = await db.Assets.SingleAsync(asset => asset.CompanyId == _companyId && asset.Id == secondAssetId);
+            second.AssignedEmployeeId = _ownEmployeeId;
+            second.Status = AssetStatuses.Deployed;
+            await db.SaveChangesAsync();
+        }
+        using (var assignedConflict = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-status", "admin",
+                   System.Net.Http.Json.JsonContent.Create(successPayload), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, assignedConflict.StatusCode);
+        await using (var verifyAtomicConflict = _factory.Services.CreateAsyncScope())
+        {
+            var db = verifyAtomicConflict.ServiceProvider.GetRequiredService<AppDbContext>();
+            var unchanged = await db.Assets.AsNoTracking().Where(asset => asset.CompanyId == _companyId &&
+                (asset.Id == _ownAssetId || asset.Id == secondAssetId)).ToListAsync();
+            Assert.Equal(AssetStatuses.Available, unchanged.Single(asset => asset.Id == _ownAssetId).Status);
+            Assert.Equal(AssetStatuses.Deployed, unchanged.Single(asset => asset.Id == secondAssetId).Status);
+            Assert.Equal(0, await db.AssetEvents.CountAsync(item => item.CompanyId == _companyId &&
+                (item.AssetId == _ownAssetId || item.AssetId == secondAssetId) && item.EventType == "StatusChanged"));
+            var second = await db.Assets.SingleAsync(asset => asset.CompanyId == _companyId && asset.Id == secondAssetId);
+            second.AssignedEmployeeId = null;
+            second.Status = AssetStatuses.Available;
+            await db.SaveChangesAsync();
+        }
+
+        using (var changed = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-status", "admin",
+                   System.Net.Http.Json.JsonContent.Create(successPayload), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, changed.StatusCode);
+            using var payload = JsonDocument.Parse(await changed.Content.ReadAsStringAsync());
+            Assert.Equal(2, payload.RootElement.GetProperty("updated").GetInt32());
+            Assert.Equal(0, payload.RootElement.GetProperty("unchanged").GetInt32());
+            Assert.Equal(AssetStatuses.Maintenance, payload.RootElement.GetProperty("status").GetString());
+        }
+        using (var unchanged = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-status", "admin",
+                   System.Net.Http.Json.JsonContent.Create(successPayload), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, unchanged.StatusCode);
+            using var payload = JsonDocument.Parse(await unchanged.Content.ReadAsStringAsync());
+            Assert.Equal(0, payload.RootElement.GetProperty("updated").GetInt32());
+            Assert.Equal(2, payload.RootElement.GetProperty("unchanged").GetInt32());
+        }
+
+        await using var verifyScope = _factory.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var saved = await verifyDb.Assets.AsNoTracking().Where(asset => asset.CompanyId == _companyId &&
+            (asset.Id == _ownAssetId || asset.Id == secondAssetId)).ToListAsync();
+        Assert.Equal(2, saved.Count);
+        Assert.All(saved, item => Assert.Equal(AssetStatuses.Maintenance, item.Status));
+        var events = await verifyDb.AssetEvents.AsNoTracking().Where(item => item.CompanyId == _companyId &&
+            (item.AssetId == _ownAssetId || item.AssetId == secondAssetId) && item.EventType == "StatusChanged").ToListAsync();
+        Assert.Equal(2, events.Count);
+        Assert.All(events, item => Assert.Contains("Quarterly bulk inspection", item.Details, StringComparison.Ordinal));
+        Assert.Equal(2, await verifyDb.AuditEntries.CountAsync(item => item.CompanyId == _companyId &&
+            (item.TargetId == _ownAssetId || item.TargetId == secondAssetId) && item.Action == "BulkStatusChanged"));
+    }
+
+    [Fact]
     public async Task Asset_archive_restore_is_authorized_tenant_scoped_and_audited()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");

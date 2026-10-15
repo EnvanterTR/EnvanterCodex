@@ -15,6 +15,7 @@ const asset = {
   createdAt: '2026-10-01T12:00:00Z', purchaseCost: null, currency: 'TRY'
 };
 const importedAssets = [];
+let bulkAssets = [];
 const appHtml = await readFile('/checkout-site/company-app.html');
 const requests = [];
 const apiRequests = [];
@@ -211,10 +212,10 @@ const server = createServer(async (request, response) => {
     else if (url.pathname === '/api/company/branding') result = { name: 'Synthetic Asset Company', brandPrimaryColor: '#2563EB', hasLogo: false };
     else if (url.pathname === '/api/company/label-settings') result = { isConfigured: false, settings: null };
     else if (url.pathname === '/api/dashboard/summary') result = {
-      totalAssets: asset.isDeleted ? importedAssets.length : importedAssets.length + 1, assignedAssets: 0, availableAssets: asset.isDeleted ? importedAssets.length : importedAssets.length + 1, maintenanceAssets: 0,
+      totalAssets: (asset.isDeleted ? 0 : 1) + importedAssets.length + bulkAssets.length, assignedAssets: 0, availableAssets: (asset.isDeleted ? 0 : 1) + importedAssets.length + bulkAssets.length, maintenanceAssets: 0,
       softwareLicenses: 0, accessories: 0, consumables: 0, components: 0, activeEmployees: 0
     };
-    else if (url.pathname === '/api/assets') { const items = [...(asset.isDeleted ? [] : [asset]), ...importedAssets]; result = { items, total: items.length, page: 1, pageSize: 50 }; }
+    else if (url.pathname === '/api/assets') { const items = [...(asset.isDeleted ? [] : [asset]), ...importedAssets, ...bulkAssets]; result = { items, total: items.length, page: 1, pageSize: 50 }; }
     else if (url.pathname === `/api/assets/${assetId}`) result = {
       asset: { ...asset }, references: { model: null, modelNumber: null, employee: asset.assignedEmployeeName || null,
         employeeNumber: asset.assignedEmployeeId ? 'QA-001' : null, defaultLocation: 'Head Office' },
@@ -413,6 +414,20 @@ const server = createServer(async (request, response) => {
     assetHistory.unshift({ id: '66666666-6666-4666-8666-666666666666', eventType: 'Updated', occurredAt: asset.updatedAt,
       details: `Varlık bilgileri güncellendi · ${asset.name}`, actorName: 'Synthetic Owner', attachmentCount: 0 });
     response.writeHead(200, { 'content-type': 'application/json' }); response.end(JSON.stringify({ changed: true }));
+    return;
+  }
+  if (request.method === 'POST' && url.pathname === '/api/assets/bulk-status') {
+    assert.equal(record.csrf, 'synthetic-asset-csrf');
+    assert.equal(body.status, 'Maintenance');
+    assert.equal(body.note, 'Quarterly bulk inspection');
+    const selected = new Set(body.assetIds);
+    const targets = bulkAssets.filter(item => selected.has(item.id));
+    assert.equal(targets.length, 2, 'The UI must send exactly the two selected synthetic assets.');
+    for (const target of targets) {
+      target.status = body.status;
+      target.updatedAt = '2026-10-15T10:00:00Z';
+    }
+    json(response, 200, { updated: targets.length, unchanged: 0 });
     return;
   }
   if (request.method === 'PATCH' && url.pathname === `/api/assets/${assetId}/status`) {
@@ -1466,6 +1481,50 @@ try {
   assert.deepEqual(trashWrite.body, { note: 'Synthetic archive reason' });
   assert.equal(trashWrite.csrf, 'synthetic-asset-csrf');
   assert.equal(asset.isDeleted, true, 'Only the explicitly confirmed action may move the synthetic asset to trash.');
+
+  const bulkAssetIds = ['12121212-1212-4121-8121-121212121212', '13131313-1313-4131-8131-131313131313'];
+  bulkAssets = bulkAssetIds.map((id, index) => ({
+    ...asset, id, assetTag: `QA-BULK-${index + 1}`, name: `Synthetic bulk status ${index + 1}`,
+    status: 'Available', updatedAt: '2026-10-15T09:00:00Z', assignedEmployeeId: null
+  }));
+  await page.locator('#sidebar button[data-page="Varlıklar"]').click();
+  const firstBulkRow = page.locator(`#assetRows tr[data-id="${bulkAssetIds[0]}"]`);
+  const secondBulkRow = page.locator(`#assetRows tr[data-id="${bulkAssetIds[1]}"]`);
+  await firstBulkRow.waitFor({ state: 'visible' });
+  await secondBulkRow.waitFor({ state: 'visible' });
+  await firstBulkRow.locator('.asset-row-select').check();
+  await secondBulkRow.locator('.asset-row-select').check();
+  const bulkToolbar = page.locator('#bulkAssetToolbar');
+  await bulkToolbar.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#selectedAssetCount').innerText(), /2 varlık seçildi/);
+  await page.locator('#bulkAssetStatus').selectOption('Maintenance');
+  const bulkActionDialog = page.locator('dialog[aria-labelledby="bulkAssetActionTitle"]');
+  const bulkStatusWritesBeforeCancel = apiRequests.filter(item => item.path === '/api/assets/bulk-status').length;
+  await page.locator('#applyBulkAssetStatus').click();
+  await bulkActionDialog.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#bulkAssetActionDescription').innerText(), /2 varlığın durumu/);
+  await page.locator('#cancelBulkAssetAction').click();
+  await bulkActionDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.filter(item => item.path === '/api/assets/bulk-status').length, bulkStatusWritesBeforeCancel,
+    'Canceling the bulk status dialog must not write.');
+  assert.ok(bulkAssets.every(item => item.status === 'Available'), 'Canceling must leave every selected asset unchanged.');
+  assert.match(await page.locator('#selectedAssetCount').innerText(), /2 varlık seçildi/,
+    'Canceling must preserve the selection so the user can deliberately retry.');
+  await page.locator('#applyBulkAssetStatus').click();
+  await bulkActionDialog.waitFor({ state: 'visible' });
+  await page.locator('#bulkAssetActionForm [name="note"]').fill('Quarterly bulk inspection');
+  await page.locator('#submitBulkAssetAction').click();
+  await bulkActionDialog.waitFor({ state: 'hidden' });
+  await firstBulkRow.getByText('Bakımda').waitFor();
+  await secondBulkRow.getByText('Bakımda').waitFor();
+  const bulkStatusWrite = apiRequests.find(item => item.path === '/api/assets/bulk-status');
+  assert.equal(bulkStatusWrite?.method, 'POST');
+  assert.deepEqual(bulkStatusWrite?.body, { assetIds: bulkAssetIds, status: 'Maintenance', note: 'Quarterly bulk inspection' });
+  assert.equal(bulkStatusWrite?.csrf, 'synthetic-asset-csrf');
+  assert.ok(bulkAssets.every(item => item.status === 'Maintenance'), 'The synthetic server state must persist the new status for both selected assets.');
+  assert.equal(await bulkToolbar.isHidden(), true, 'A successful bulk update must clear the selection and hide the bulk toolbar.');
+  assert.equal(await page.locator('#bulkAssetStatus').inputValue(), '', 'A successful bulk update must reset the status selector.');
+  console.log('PASS: bulk asset status change confirms two selected records, cancellation performs no write, confirmed CSRF submission persists both statuses and refreshes the list.');
 
   const sidebarGroups = page.locator('#sidebar [data-group]');
   for (const group of await sidebarGroups.all()) {
