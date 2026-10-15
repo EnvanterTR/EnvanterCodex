@@ -967,6 +967,24 @@ try {
   assert.equal(await page.locator('#assetAttachmentEvent').inputValue(), latestEvent.id, 'History shortcut must bind upload to the selected event.');
   const uploadForm = page.locator('#assetAttachmentForm');
   assert.equal(await uploadForm.isVisible(), true);
+  const darkAttachmentSurfaces = await page.evaluate(() => {
+    document.documentElement.dataset.theme = 'dark';
+    const color = selector => getComputedStyle(document.querySelector(selector)).backgroundColor;
+    return {
+      dialog: color('#assetDialog'), tabs: color('#assetDialog .asset-tabs'),
+      form: color('#assetAttachmentForm'), footer: color('#assetActions')
+    };
+  });
+  assert.deepEqual(darkAttachmentSurfaces, {
+    dialog: 'rgb(17, 27, 42)', tabs: 'rgb(21, 31, 48)', form: 'rgb(24, 38, 58)', footer: 'rgb(21, 31, 48)'
+  }, 'The full asset detail dialog, attachment uploader, tabs, and action footer must keep a consistent dark theme.');
+  const lightAttachmentSurfaces = await page.evaluate(() => {
+    document.documentElement.dataset.theme = 'light';
+    return ['#assetDialog .asset-tabs', '#assetAttachmentForm', '#assetActions']
+      .map(selector => getComputedStyle(document.querySelector(selector)).backgroundColor);
+  });
+  assert.deepEqual(lightAttachmentSurfaces, ['rgb(255, 255, 255)', 'rgb(255, 255, 255)', 'rgb(255, 255, 255)'],
+    'The attachment uploader, tabs, and action footer must retain their light theme.');
   assert.match(await page.locator('#assetAttachmentInput').getAttribute('accept'), /application\/pdf/);
   const beforeUpload = apiRequests.length;
   await page.locator('#assetAttachmentInput').setInputFiles({ name: 'synthetic-proof.png', mimeType: 'image/png', buffer: attachmentBytes });

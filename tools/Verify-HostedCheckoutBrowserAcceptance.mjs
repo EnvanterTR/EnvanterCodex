@@ -46,6 +46,8 @@ assert.match(assetActions, /destinationCount, 50/);
 assert.match(assetActions, /End must select the last asset detail tab/);
 assert.match(assetActions, /History shortcut must bind upload to the selected event/);
 assert.match(assetActions, /Selecting a file must not upload it before explicit submit/);
+assert.match(assetActions, /full asset detail dialog, attachment uploader, tabs, and action footer must keep a consistent dark theme/);
+assert.match(assetActions, /attachment uploader, tabs, and action footer must retain their light theme/);
 assert.match(assetActions, /Canceling attachment removal must not delete a file/);
 assert.match(assetActions, /synthetic-proof\.png/);
 assert.match(assetActions, /assetAttachmentRemoveDialog/);
