@@ -294,6 +294,7 @@ try {
   await planForm.locator('[name="maxAssets"]').fill('500');
   await planForm.locator('[name="featureFlagsJson"]').fill('{"reports":true}');
   await planForm.locator('#planReportsEnabled').uncheck();
+  await planForm.locator('#planApiEnabled').uncheck();
   const planCreated = page.waitForResponse(response => response.request().method() === 'POST'
     && new URL(response.url()).pathname === '/api/platform/plans' && response.status() === 201);
   await planForm.getByRole('button', { name: 'Planı Kaydet' }).click();
@@ -301,11 +302,13 @@ try {
   await page.locator('#plansTable').getByText('Synthetic Cloud Pro').waitFor({ state: 'visible' });
   assert.equal(writes.length, writeCountBeforeCancel + 3);
   assert.deepEqual(writes.at(-1), { method: 'POST', path: '/api/platform/plans', csrf: csrfToken,
-    body: { changeReason: 'Synthetic pricing approval', code: 'synthetic-cloud-pro', name: 'Synthetic Cloud Pro', deploymentKind: 'cloud', currency: 'TRY', maxLoginUsers: null, maxAssets: 500, monthlyPrice: 990, annualPrice: 9900, oneTimePrice: 0, offlineGraceDays: 30, description: '', featureFlagsJson: '{"reports":false}', supportsOfflineUse: false, isPublic: true, isActive: true, sortOrder: 0 } });
+    body: { changeReason: 'Synthetic pricing approval', code: 'synthetic-cloud-pro', name: 'Synthetic Cloud Pro', deploymentKind: 'cloud', currency: 'TRY', maxLoginUsers: null, maxAssets: 500, monthlyPrice: 990, annualPrice: 9900, oneTimePrice: 0, offlineGraceDays: 30, description: '', featureFlagsJson: '{"reports":false,"api":false}', supportsOfflineUse: false, isPublic: true, isActive: true, sortOrder: 0 } });
 
   await page.locator(`#plansTable [data-edit-plan="${planId}"]`).click();
   assert.equal(await planForm.locator('#planReportsEnabled').isChecked(), false,
     'Editing a plan must restore its saved reports entitlement.');
+  assert.equal(await planForm.locator('#planApiEnabled').isChecked(), false,
+    'Editing a plan must restore its saved customer API entitlement.');
   await planForm.locator('[name="changeReason"]').fill('Synthetic annual price correction');
   await planForm.locator('[name="annualPrice"]').fill('8900');
   await planForm.locator('[name="isPublic"]').uncheck();
@@ -317,8 +320,8 @@ try {
   assert.equal(writes.at(-1).body.annualPrice, 8900);
   assert.equal(writes.at(-1).body.isPublic, false);
   assert.equal(writes.at(-1).body.changeReason, 'Synthetic annual price correction');
-  assert.equal(writes.at(-1).body.featureFlagsJson, '{"reports":false}',
-    'Updating another plan field must preserve the saved reports entitlement.');
+  assert.equal(writes.at(-1).body.featureFlagsJson, '{"reports":false,"api":false}',
+    'Updating another plan field must preserve saved feature entitlements.');
   const hiddenPlanRow = page.locator('#plansTable tr').filter({ hasText: 'Synthetic Cloud Pro' });
   await hiddenPlanRow.getByText('Gizli').waitFor({ state: 'visible' });
   await page.reload({ waitUntil: 'domcontentloaded' });

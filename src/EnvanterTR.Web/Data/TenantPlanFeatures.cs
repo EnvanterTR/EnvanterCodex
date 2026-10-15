@@ -7,7 +7,10 @@ namespace EnvanterTR.Web.Data;
 public static class TenantPlanFeatures
 {
     public const string Reports = "reports";
-    public static bool IsSupported(string featureKey) => string.Equals(featureKey, Reports, StringComparison.Ordinal);
+    public const string CustomerApi = "api";
+    public static bool IsSupported(string featureKey) =>
+        string.Equals(featureKey, Reports, StringComparison.Ordinal) ||
+        string.Equals(featureKey, CustomerApi, StringComparison.Ordinal);
 
     public static async Task<bool> IsEnabledAsync(Guid companyId, string featureKey,
         AppDbContext db, CancellationToken cancellationToken)

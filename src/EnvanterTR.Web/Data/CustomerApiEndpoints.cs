@@ -19,7 +19,18 @@ public static class CustomerApiEndpoints
 
     public static void MapCustomerApiEndpoints(this WebApplication app)
     {
-        app.MapGet("/api/integrations/tokens", async (ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        var tokenManagement = app.MapGroup("/api/integrations/tokens").RequireAuthorization("company.member");
+        tokenManagement.AddEndpointFilter(async (invocation, next) =>
+        {
+            if (!TryIdentityScope(invocation.HttpContext.User, out var companyId)) return Results.Forbid();
+            var db = invocation.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+            if (!await TenantPlanFeatures.IsEnabledAsync(companyId, TenantPlanFeatures.CustomerApi, db,
+                    invocation.HttpContext.RequestAborted))
+                return TenantPlanFeatures.FeatureUnavailable(TenantPlanFeatures.CustomerApi);
+            return await next(invocation);
+        });
+
+        tokenManagement.MapGet("", async (ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!TryIdentityScope(user, out var companyId, out var userId)) return Results.Forbid();
             var tokens = await db.CompanyApiTokens.AsNoTracking()
@@ -33,9 +44,9 @@ public static class CustomerApiEndpoints
                 x.CreatedAt, x.ExpiresAt, x.LastUsedAt, x.RevokedAt,
                 IsExpired = x.ExpiresAt is DateTimeOffset expiry && expiry <= DateTimeOffset.UtcNow
             }));
-        }).RequireAuthorization("company.member");
+        });
 
-        app.MapPost("/api/integrations/tokens", async (CreateTokenRequest request, ClaimsPrincipal user, HttpContext context,
+        tokenManagement.MapPost("", async (CreateTokenRequest request, ClaimsPrincipal user, HttpContext context,
             AppDbContext db, IAntiforgery antiforgery, CancellationToken ct) =>
         {
             if (!TryIdentityScope(user, out var companyId, out var userId)) return Results.Forbid();
@@ -76,9 +87,9 @@ public static class CustomerApiEndpoints
                 token.Id, token.Name, token.TokenPrefix, Scopes = scopes, token.CreatedAt, token.ExpiresAt,
                 Secret = secret, SecretNotice = "Bu gizli anahtar yalnızca bu yanıt içinde gösterilir. Güvenli bir yerde saklayın."
             });
-        }).RequireAuthorization("company.member");
+        });
 
-        app.MapGet("/api/integrations/tokens/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        tokenManagement.MapGet("/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!TryIdentityScope(user, out var companyId, out var userId)) return Results.Forbid();
             var token = await db.CompanyApiTokens.AsNoTracking().SingleOrDefaultAsync(
@@ -90,9 +101,9 @@ public static class CustomerApiEndpoints
                 token.CreatedAt, token.ExpiresAt, token.LastUsedAt, token.RevokedAt,
                 IsExpired = token.ExpiresAt is DateTimeOffset expiry && expiry <= DateTimeOffset.UtcNow
             });
-        }).RequireAuthorization("company.member");
+        });
 
-        app.MapPost("/api/integrations/tokens/{id:guid}/revoke", async (Guid id, ClaimsPrincipal user, HttpContext context,
+        tokenManagement.MapPost("/{id:guid}/revoke", async (Guid id, ClaimsPrincipal user, HttpContext context,
             AppDbContext db, IAntiforgery antiforgery, CancellationToken ct) =>
         {
             if (!TryIdentityScope(user, out var companyId, out var userId)) return Results.Forbid();
@@ -107,7 +118,7 @@ public static class CustomerApiEndpoints
                 await db.SaveChangesAsync(ct);
             }
             return Results.NoContent();
-        }).RequireAuthorization("company.member");
+        });
 
         app.MapGet("/api/v1", () => Results.Ok(new
         {
@@ -223,6 +234,8 @@ public static class CustomerApiEndpoints
         var roleAllowed = scope == "people:read" ? membership is not null && PeopleReaders.Contains(membership) :
             membership is not null && AssetReaders.Contains(membership);
         if (!roleAllowed) return (null, Results.Unauthorized());
+        if (!await TenantPlanFeatures.IsEnabledAsync(token.CompanyId, TenantPlanFeatures.CustomerApi, db, ct))
+            return (null, TenantPlanFeatures.FeatureUnavailable(TenantPlanFeatures.CustomerApi));
         token.LastUsedAt = now;
         await db.SaveChangesAsync(ct);
         return (token, null);
@@ -238,6 +251,11 @@ public static class CustomerApiEndpoints
         userId = Guid.Empty;
         return Guid.TryParse(user.FindFirstValue("company_id"), out companyId) &&
             Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
+    }
+    private static bool TryIdentityScope(ClaimsPrincipal user, out Guid companyId)
+    {
+        companyId = Guid.Empty;
+        return Guid.TryParse(user.FindFirstValue("company_id"), out companyId);
     }
     private static async Task<bool> ValidateCsrfAsync(HttpContext context, IAntiforgery antiforgery)
     {

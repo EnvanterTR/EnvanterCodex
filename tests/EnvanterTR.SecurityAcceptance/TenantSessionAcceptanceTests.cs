@@ -75,13 +75,14 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Cloud_plan_report_entitlement_blocks_report_apis_without_blocking_inventory_reads()
+    public async Task Cloud_plan_entitlements_block_report_and_customer_api_without_blocking_inventory_reads()
     {
         var plan = new SubscriptionPlan
         {
-            Code = $"reports-{_companyId.ToString("N")[..8]}", Name = "Cloud without reports", DeploymentKind = "cloud",
-            IsActive = true, IsPublic = true, FeatureFlagsJson = "{\"reports\":false}"
+            Code = $"features-{_companyId.ToString("N")[..8]}", Name = "Cloud limited features", DeploymentKind = "cloud",
+            IsActive = true, IsPublic = true, FeatureFlagsJson = "{\"reports\":false,\"api\":false}"
         };
+        const string rawApiToken = "etr_live_feature_entitlement_acceptance_token";
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -91,11 +92,29 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
                 CompanyId = _companyId, PlanId = plan.Id, Status = "Active",
                 StartsAt = DateTimeOffset.UtcNow.AddDays(-1), EndsAt = DateTimeOffset.UtcNow.AddDays(30)
             });
+            db.CompanyApiTokens.Add(new CompanyApiToken
+            {
+                CompanyId = _companyId, UserId = _userId, Name = "Entitlement test token",
+                TokenPrefix = rawApiToken[..16],
+                TokenHash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(rawApiToken))),
+                ScopesJson = "[\"assets:read\"]"
+            });
             await db.SaveChangesAsync();
         }
 
         using (var read = await SendAsAdminAsync("/api/assets?page=1&pageSize=5"))
             Assert.Equal(HttpStatusCode.OK, read.StatusCode);
+        using (var managedTokens = await SendAsAdminAsync("/api/integrations/tokens"))
+            Assert.Equal(HttpStatusCode.PaymentRequired, managedTokens.StatusCode);
+        using (var customerApi = new HttpRequestMessage(HttpMethod.Get, "/api/v1/assets"))
+        {
+            customerApi.Headers.TryAddWithoutValidation("Authorization", $"Bearer {rawApiToken}");
+            using var apiResponse = await _client!.SendAsync(customerApi);
+            Assert.Equal(HttpStatusCode.PaymentRequired, apiResponse.StatusCode);
+            using var payload = JsonDocument.Parse(await apiResponse.Content.ReadAsStringAsync());
+            Assert.Equal("plan_feature_unavailable", payload.RootElement.GetProperty("code").GetString());
+            Assert.Equal("api", payload.RootElement.GetProperty("feature").GetString());
+        }
         using (var reports = await SendAsAdminAsync("/api/reports/assets"))
         {
             Assert.Equal(HttpStatusCode.PaymentRequired, reports.StatusCode);
@@ -105,6 +124,10 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         }
         using (var customReports = await SendAsAdminAsync("/api/assets/custom-reports"))
             Assert.Equal(HttpStatusCode.PaymentRequired, customReports.StatusCode);
+        await using var verificationScope = _factory.Services.CreateAsyncScope();
+        var verificationDb = verificationScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Null(await verificationDb.CompanyApiTokens.Where(x => x.CompanyId == _companyId)
+            .Select(x => x.LastUsedAt).SingleAsync());
     }
 
     [Fact]
