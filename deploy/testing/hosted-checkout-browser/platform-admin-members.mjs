@@ -14,6 +14,7 @@ const accountId = '11111111-1111-4111-8111-111111111111';
 const invitedAccountId = '22222222-2222-4222-8222-222222222222';
 const companyId = '33333333-3333-4333-8333-333333333333';
 const demoLeadId = '66666666-6666-4666-8666-666666666666';
+const platformAdminId = '77777777-7777-4777-8777-777777777777';
 const member = {
   id: accountId, displayName: 'Synthetic SaaS Owner', email: 'qa-owner@example.invalid', emailConfirmed: true,
   phoneNumber: '+905550000001', phoneNumberConfirmed: true, twoFactorEnabled: true, isLockedOut: false,
@@ -38,6 +39,13 @@ const companySubscription = {
   id: subscriptionId, planId, name: 'Cloud Pro', code: 'cloud-pro', status: 'Active', isDemo: false,
   startsAt: '2026-09-02T10:00:00Z', endsAt: '2027-09-02T10:00:00Z', paymentReference: 'synthetic-provider-reference'
 };
+const demoLead = {
+  id: demoLeadId, companyName: 'Synthetic Demo Lead', contactName: 'Synthetic Contact', email: 'lead@example.invalid',
+  status: 'Qualified', source: 'Synthetic acceptance', createdAt: '2026-10-08T10:00:00Z', consentAt: '2026-10-08T10:00:00Z',
+  consentNoticeVersion: 'synthetic-v1', followUpAt: '2026-10-11T10:00:00Z', assignedAdminUserId: null, companyId: null,
+  phone: '+905550000002', message: 'Synthetic request for a product demo.', teamSize: '25', assetCount: '120', jobTitle: 'IT Manager'
+};
+const demoLeadHistory = [];
 const browserErrors = [];
 let reauthenticated = false;
 let browser;
@@ -80,8 +88,15 @@ const server = createServer(async (request, response) => {
     if (path === '/api/platform/companies/renewals') return json(response, { items: [], total: 0, page: 1, pageSize: 50 });
     if (path === '/api/platform/companies' && url.searchParams.get('followUp') === 'overdue') return json(response, { items: companies, total: companies.length, page: 1, pageSize: 50 });
     if (path === '/api/platform/companies') return json(response, { items: companies, total: companies.length, page: 1, pageSize: 200 });
-    if (path === '/api/platform/demo-requests' && url.searchParams.get('followUp') === 'overdue') return json(response, { page: 1, pageSize: 50, total: 1, items: [{ id: demoLeadId, companyName: 'Synthetic Demo Lead', contactName: 'Synthetic Contact', email: 'lead@example.invalid', status: 'Qualified', assignedAdminName: 'Synthetic Platform Admin', followUpAt: '2026-10-11T10:00:00Z', createdAt: '2026-10-08T10:00:00Z' }] });
-    if (path === `/api/platform/demo-requests/${demoLeadId}`) return json(response, { lead: { id: demoLeadId, companyName: 'Synthetic Demo Lead', contactName: 'Synthetic Contact', email: 'lead@example.invalid', status: 'Qualified', source: 'Synthetic acceptance', createdAt: '2026-10-08T10:00:00Z', consentAt: '2026-10-08T10:00:00Z', consentNoticeVersion: 'synthetic-v1', followUpAt: '2026-10-11T10:00:00Z', assignedAdminUserId: null, companyId: null }, history: [] });
+    if (path === '/api/platform/demo-requests') return json(response, {
+      page: Number(url.searchParams.get('page') || 1), pageSize: Number(url.searchParams.get('pageSize') || 25), total: 1,
+      items: [{ ...demoLead, assignedAdminName: demoLead.assignedAdminUserId ? 'Synthetic Platform Admin' : null,
+        linkedCompanyName: demoLead.companyId ? 'Synthetic Demo Company' : null }]
+    });
+    if (path === `/api/platform/demo-requests/${demoLeadId}`) return json(response, { lead: { ...demoLead,
+      assignedAdminName: demoLead.assignedAdminUserId ? 'Synthetic Platform Admin' : null,
+      linkedCompanyName: demoLead.companyId ? 'Synthetic Demo Company' : null,
+      demoGrantedAt: demoLead.status === 'DemoGranted' ? '2026-10-12T10:00:00Z' : null }, history: [...demoLeadHistory] });
     if (path === `/api/platform/companies/${companyId}`) return json(response, {
       company: { ...companies[0], isActive: true, createdAt: '2026-09-02T10:00:00Z', contactEmail: 'qa-owner@example.invalid', lifecycleStage: 'AtRisk', lifecycleOwnerId: null, nextFollowUpAt: '2026-10-10T10:00:00Z' },
       members: [{ displayName: member.displayName, email: member.email, roleKey: 'owner', employeeName: null,
@@ -90,7 +105,7 @@ const server = createServer(async (request, response) => {
       subscriptions: [{ ...companySubscription, name: plans[0]?.name || companySubscription.name, code: plans[0]?.code || companySubscription.code }],
       checkoutOrders: [], lifecycleHistory: []
     });
-    if (path === '/api/platform/admins') return json(response, []);
+    if (path === '/api/platform/admins') return json(response, [{ id: platformAdminId, name: 'Synthetic Platform Admin', email: 'operator@example.invalid' }]);
     if (path === '/api/platform/members') {
       const q = (url.searchParams.get('q') || '').toLocaleLowerCase();
       const items = accounts.filter(item => !q || `${item.displayName} ${item.email}`.toLocaleLowerCase().includes(q));
@@ -149,6 +164,13 @@ const server = createServer(async (request, response) => {
     if (plan) { companySubscription.name = plan.name; companySubscription.code = plan.code; }
     return json(response, { id: subscriptionId, planId: companySubscription.planId, startsAt: companySubscription.startsAt, endsAt: companySubscription.endsAt });
   }
+  if (path === `/api/platform/demo-requests/${demoLeadId}` && request.method === 'PATCH') {
+    writes.push({ method: request.method, path, body, csrf: request.headers['x-csrf-token'] });
+    Object.assign(demoLead, body, { updatedAt: new Date().toISOString(), lastContactedAt: new Date().toISOString() });
+    demoLeadHistory.unshift({ occurredAt: demoLead.updatedAt, actor: 'Synthetic Platform Admin', action: 'DemoRequestUpdated', details: body.note || '' });
+    return json(response, { id: demoLeadId, status: demoLead.status, assignedAdminUserId: demoLead.assignedAdminUserId,
+      followUpAt: demoLead.followUpAt, lastContactedAt: demoLead.lastContactedAt, companyId: demoLead.companyId, updatedAt: demoLead.updatedAt });
+  }
   if (path === '/api/platform/site-content') return json(response, []);
   if (path === '/api/platform/demo-requests') return json(response, { items: [], total: 0, page: 1, pageSize: 25 });
   if (path === '/api/platform/checkout-orders') return json(response, { items: [], total: 0, page: 1, pageSize: 25 });
@@ -183,6 +205,36 @@ try {
   await followUpTable.locator('[data-follow-up-kind="lead"]').click();
   await page.locator('#demoLeadDetail').waitFor({ state: 'visible' });
   await page.locator('#demoLeadDetailTitle').getByText('Synthetic Demo Lead').waitFor({ state: 'visible' });
+  await page.locator('#demoLeadDetailBody [name="status"]').selectOption('Contacted');
+  await page.locator('#demoLeadDetailBody [name="assignedAdminUserId"]').selectOption(platformAdminId);
+  await page.locator('#demoLeadDetailBody [name="followUpAt"]').fill('2026-10-20T13:45');
+  await page.locator('#demoLeadDetailBody [name="companyId"]').selectOption(companyId);
+  await page.locator('#demoLeadDetailBody [name="note"]').fill('Synthetic browser QA follow-up');
+  const leadWriteStart = writes.length;
+  const leadSaveResponse = page.waitForResponse(response => response.request().method() === 'PATCH'
+    && new URL(response.url()).pathname === `/api/platform/demo-requests/${demoLeadId}`);
+  await page.locator('#demoLeadDetailBody button[type="submit"]').click();
+  assert.equal((await leadSaveResponse).status(), 200, 'Saving a demo lead must succeed before the panel reloads.');
+  const leadWrite = writes.slice(leadWriteStart).find(item => item.path === `/api/platform/demo-requests/${demoLeadId}`);
+  assert.ok(leadWrite, 'Saving a demo lead must issue an API write.');
+  assert.equal(leadWrite.method, 'PATCH');
+  assert.equal(leadWrite.csrf, csrfToken);
+  assert.equal(leadWrite.body.status, 'Contacted');
+  assert.equal(leadWrite.body.assignedAdminUserId, platformAdminId);
+  assert.equal(leadWrite.body.followUpAt, new Date('2026-10-20T13:45').toISOString());
+  assert.equal(leadWrite.body.companyId, companyId);
+  assert.equal(leadWrite.body.note, 'Synthetic browser QA follow-up');
+  await page.locator('#demoLeadDetailBody').getByText('Synthetic browser QA follow-up').waitFor({ state: 'visible' });
+  await page.locator('#demoLeadDetailBody [name="status"]').selectOption('Qualified');
+  const leadSecondSaveResponse = page.waitForResponse(response => response.request().method() === 'PATCH'
+    && new URL(response.url()).pathname === `/api/platform/demo-requests/${demoLeadId}`);
+  await page.locator('#demoLeadDetailBody button[type="submit"]').click();
+  assert.equal((await leadSecondSaveResponse).status(), 200);
+  await page.locator('#demoLeadDetailBody [name="status"]').waitFor({ state: 'visible' });
+  assert.equal(demoLead.status, 'Qualified', 'A subsequent edit must persist after the detail view reloads.');
+  assert.equal(demoLead.assignedAdminUserId, platformAdminId);
+  assert.equal(demoLead.companyId, companyId);
+  assert.equal(demoLeadHistory.length, 2, 'Each successful lead update must append visible history.');
   await page.locator('#nav [data-view="members"]').click();
   const memberRow = page.locator('#membersTable tr').filter({ hasText: 'qa-owner@example.invalid' });
   await memberRow.waitFor({ state: 'visible' });
@@ -243,7 +295,7 @@ try {
   await page.locator('#platformReauthDialog').waitFor({ state: 'hidden' });
   await page.locator('#memberDetailBody').getByText('Envanter yöneticisi').waitFor({ state: 'visible' });
   assert.equal(writes.length, writeCountBeforeCancel + 1);
-  assert.deepEqual(writes[0], { method: 'PATCH', path: `/api/platform/members/${accountId}/memberships/${companyId}/role`,
+  assert.deepEqual(writes[writeCountBeforeCancel], { method: 'PATCH', path: `/api/platform/members/${accountId}/memberships/${companyId}/role`,
     body: { roleKey: 'asset_manager', note: 'Synthetic role review' }, csrf: csrfToken });
 
   await page.locator('#closeMemberDetail').click();
@@ -385,7 +437,7 @@ try {
   await persistedSubscription.getByText('Synthetic Cloud Pro').waitFor({ state: 'visible' });
   await persistedSubscription.getByText(/2028/).waitFor({ state: 'visible' });
   assert.deepEqual(browserErrors, [], `Platform member UI threw: ${browserErrors.join(' | ')}`);
-  console.log('PASS: real Chromium account/security/membership/payment timeline; member search, cancel-without-write, reauthenticated role update, synthetic invitation, plan create/update/validation/publication reload and maintenance entitlement persistence, plus audited company subscription plan/date editing with cancel and persistence.');
+  console.log('PASS: real Chromium account/security/membership/payment timeline; demo lead status, assignment, follow-up, company link, CSRF write and history persistence; member search, cancel-without-write, reauthenticated role update, synthetic invitation, plan create/update/validation/publication reload and maintenance entitlement persistence, plus audited company subscription plan/date editing with cancel and persistence.');
 } finally {
   await browser?.close();
   await new Promise(resolve => server.close(resolve));
