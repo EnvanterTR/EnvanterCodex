@@ -6,6 +6,7 @@ const context = await readFile('src/EnvanterTR.Web/Data/AppDbContext.cs', 'utf8'
 const api = await readFile('src/EnvanterTR.Web/Data/PlatformEndpoints.cs', 'utf8');
 const page = await readFile('src/EnvanterTR.Web/wwwroot/platform-admin.html', 'utf8');
 const acceptance = await readFile('tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs', 'utf8');
+const browserAcceptance = await readFile('deploy/testing/hosted-checkout-browser/platform-admin-members.mjs', 'utf8');
 
 assert.match(entity, /CustomerLifecycleStage\s*\{\s*get;\s*set;\s*\}\s*=\s*"Unclassified"/);
 assert.match(entity, /Guid\? PlatformOwnerUserId/);
@@ -25,4 +26,15 @@ assert.match(page, /Sonraki takip zamanı/);
 assert.match(page, /yaşam döngüsü güncellemesi yok/);
 assert.match(page, /method:'PATCH'[\s\S]*nextFollowUpAt/);
 assert.match(acceptance, /Platform_customer_lifecycle_is_validated_assigned_audited_and_persisted/);
-console.log('Platform customer lifecycle verification passed (18 assertions).');
+assert.match(api, /MapGet\("\/companies"[\s\S]*?string\? followUp/);
+assert.match(api, /followUp != "overdue"/);
+assert.match(api, /PlatformNextFollowUpAt != null && x\.PlatformNextFollowUpAt <= now[\s\S]*CustomerLifecycleStage != "Churned"/);
+assert.match(acceptance, /followUp=tomorrow/);
+assert.match(acceptance, /followUp=overdue[\s\S]*GetDateTimeOffset/);
+assert.match(page, /id="followUpTable"/);
+assert.match(page, /api\('\/api\/platform\/companies\?followUp=overdue/);
+assert.match(page, /api\('\/api\/platform\/demo-requests\?followUp=overdue/);
+assert.match(page, /data-follow-up-kind/);
+assert.match(page, /platformDemoRequestsShow/);
+assert.match(browserAcceptance, /Synthetic Demo Company[\s\S]*Synthetic Demo Lead[\s\S]*data-follow-up-kind="company"[\s\S]*data-follow-up-kind="lead"/);
+console.log('Platform customer lifecycle and overdue follow-up queue verification passed (29 assertions).');

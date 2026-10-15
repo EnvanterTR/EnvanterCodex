@@ -102,6 +102,8 @@
     }
   }
 
+  window.platformDemoRequestsShow = showLead;
+
   async function saveLead(event) {
     event.preventDefault();
     const form = event.currentTarget;

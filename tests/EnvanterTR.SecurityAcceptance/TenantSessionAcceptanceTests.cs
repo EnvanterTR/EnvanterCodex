@@ -2648,6 +2648,19 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.True(saved.PlatformNextFollowUpAt > DateTimeOffset.UtcNow.AddDays(2));
         Assert.True(await verifyDb.PlatformAuditEntries.AnyAsync(x => x.CompanyId == _companyId &&
             x.Action == "CustomerLifecycleUpdated" && x.Details!.Contains("Kickoff completed")));
+
+        using (var invalidFilter = await SendAsPlatformAdminAsync("/api/platform/companies?followUp=tomorrow"))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidFilter.StatusCode);
+        saved.PlatformNextFollowUpAt = DateTimeOffset.UtcNow.AddHours(-2);
+        await verifyDb.SaveChangesAsync();
+        using (var overdue = await SendAsPlatformAdminAsync("/api/platform/companies?followUp=overdue&page=1&pageSize=10"))
+        {
+            Assert.Equal(HttpStatusCode.OK, overdue.StatusCode);
+            using var payload = JsonDocument.Parse(await overdue.Content.ReadAsStringAsync());
+            Assert.Contains(payload.RootElement.GetProperty("items").EnumerateArray(), item =>
+                item.GetProperty("id").GetGuid() == _companyId &&
+                item.GetProperty("nextFollowUpAt").GetDateTimeOffset() <= DateTimeOffset.UtcNow);
+        }
     }
 
     [Fact]

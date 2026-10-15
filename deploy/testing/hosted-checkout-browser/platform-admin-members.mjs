@@ -13,6 +13,7 @@ const csrfToken = 'synthetic-platform-members-csrf';
 const accountId = '11111111-1111-4111-8111-111111111111';
 const invitedAccountId = '22222222-2222-4222-8222-222222222222';
 const companyId = '33333333-3333-4333-8333-333333333333';
+const demoLeadId = '66666666-6666-4666-8666-666666666666';
 const member = {
   id: accountId, displayName: 'Synthetic SaaS Owner', email: 'qa-owner@example.invalid', emailConfirmed: true,
   phoneNumber: '+905550000001', phoneNumberConfirmed: true, twoFactorEnabled: true, isLockedOut: false,
@@ -27,7 +28,7 @@ const membership = {
     startsAt: '2026-09-02T10:00:00Z', endsAt: '2027-09-02T10:00:00Z', paymentReference: 'synthetic-provider-reference'
   }
 };
-const companies = [{ id: companyId, name: 'Synthetic Demo Company', slug: 'synthetic-demo' }];
+const companies = [{ id: companyId, name: 'Synthetic Demo Company', slug: 'synthetic-demo', lifecycleStage: 'AtRisk', lifecycleOwnerName: 'Synthetic Platform Admin', nextFollowUpAt: '2026-10-10T10:00:00Z' }];
 const accounts = [member];
 const planId = '44444444-4444-4444-8444-444444444444';
 const plans = [];
@@ -77,9 +78,12 @@ const server = createServer(async (request, response) => {
       checkout: { paymentPending: 0, paymentReview: 0, paymentFailed: 0, provisioningFailed: 0 }, recurringRevenue: { currencies: [] }
     });
     if (path === '/api/platform/companies/renewals') return json(response, { items: [], total: 0, page: 1, pageSize: 50 });
+    if (path === '/api/platform/companies' && url.searchParams.get('followUp') === 'overdue') return json(response, { items: companies, total: companies.length, page: 1, pageSize: 50 });
     if (path === '/api/platform/companies') return json(response, { items: companies, total: companies.length, page: 1, pageSize: 200 });
+    if (path === '/api/platform/demo-requests' && url.searchParams.get('followUp') === 'overdue') return json(response, { page: 1, pageSize: 50, total: 1, items: [{ id: demoLeadId, companyName: 'Synthetic Demo Lead', contactName: 'Synthetic Contact', email: 'lead@example.invalid', status: 'Qualified', assignedAdminName: 'Synthetic Platform Admin', followUpAt: '2026-10-11T10:00:00Z', createdAt: '2026-10-08T10:00:00Z' }] });
+    if (path === `/api/platform/demo-requests/${demoLeadId}`) return json(response, { lead: { id: demoLeadId, companyName: 'Synthetic Demo Lead', contactName: 'Synthetic Contact', email: 'lead@example.invalid', status: 'Qualified', source: 'Synthetic acceptance', createdAt: '2026-10-08T10:00:00Z', consentAt: '2026-10-08T10:00:00Z', consentNoticeVersion: 'synthetic-v1', followUpAt: '2026-10-11T10:00:00Z', assignedAdminUserId: null, companyId: null }, history: [] });
     if (path === `/api/platform/companies/${companyId}`) return json(response, {
-      company: { ...companies[0], isActive: true, createdAt: '2026-09-02T10:00:00Z', contactEmail: 'qa-owner@example.invalid', lifecycleStage: 'Active', lifecycleOwnerId: null, nextFollowUpAt: null },
+      company: { ...companies[0], isActive: true, createdAt: '2026-09-02T10:00:00Z', contactEmail: 'qa-owner@example.invalid', lifecycleStage: 'AtRisk', lifecycleOwnerId: null, nextFollowUpAt: '2026-10-10T10:00:00Z' },
       members: [{ displayName: member.displayName, email: member.email, roleKey: 'owner', employeeName: null,
         accountCreatedAt: member.accountCreatedAt, createdAt: '2026-09-02T10:00:00Z', emailConfirmed: true, twoFactorEnabled: true }],
       memberCount: 1, membersPage: 1, membersTotalPages: 1, ownerMemberExists: true,
@@ -167,6 +171,18 @@ try {
   const address = server.address();
   await page.goto(`http://127.0.0.1:${address.port}/platform-admin.html`);
   await page.locator('#appShell').waitFor({ state: 'visible' });
+  const followUpTable = page.locator('#followUpTable');
+  await followUpTable.getByText('Synthetic Demo Company').waitFor({ state: 'visible' });
+  await followUpTable.getByText('Synthetic Demo Lead').waitFor({ state: 'visible' });
+  assert.match(await followUpTable.innerText(), /Müşteri takip kuyruğu|Synthetic Demo Company[\s\S]*Synthetic Demo Lead/);
+  await followUpTable.locator('[data-follow-up-kind="company"]').click();
+  await page.locator('#companyDetailDialog').waitFor({ state: 'visible' });
+  await page.locator('#companyDetailDialog [data-detail-close]').first().click();
+  await page.locator('#nav [data-view="overview"]').click();
+  await followUpTable.getByText('Synthetic Demo Lead').waitFor({ state: 'visible' });
+  await followUpTable.locator('[data-follow-up-kind="lead"]').click();
+  await page.locator('#demoLeadDetail').waitFor({ state: 'visible' });
+  await page.locator('#demoLeadDetailTitle').getByText('Synthetic Demo Lead').waitFor({ state: 'visible' });
   await page.locator('#nav [data-view="members"]').click();
   const memberRow = page.locator('#membersTable tr').filter({ hasText: 'qa-owner@example.invalid' });
   await memberRow.waitFor({ state: 'visible' });

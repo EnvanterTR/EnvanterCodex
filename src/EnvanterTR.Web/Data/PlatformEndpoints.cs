@@ -1081,13 +1081,21 @@ public static class PlatformEndpoints
             }
         }).RequireRateLimiting("login");
 
-        admin.MapGet("/companies", async ([FromQuery] string? q, [FromQuery] bool? active,
+        admin.MapGet("/companies", async ([FromQuery] string? q, [FromQuery] bool? active, [FromQuery] string? followUp,
             AppDbContext db, CancellationToken cancellationToken, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {
             page = Math.Clamp(page, 1, 1_000_000);
             pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
+            if (!string.IsNullOrWhiteSpace(followUp) && followUp != "overdue")
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["followUp"] = ["Takip filtresi desteklenmiyor."] });
             var companies = db.Companies.AsNoTracking().AsQueryable();
             if (active is bool isActive) companies = companies.Where(x => x.IsActive == isActive);
+            if (followUp == "overdue")
+            {
+                var now = DateTimeOffset.UtcNow;
+                companies = companies.Where(x => x.PlatformNextFollowUpAt != null && x.PlatformNextFollowUpAt <= now &&
+                    x.CustomerLifecycleStage != "Churned");
+            }
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
@@ -1096,7 +1104,10 @@ public static class PlatformEndpoints
                     (x.ContactEmail != null && x.ContactEmail.Contains(term)));
             }
             var total = await companies.CountAsync(cancellationToken);
-            var rows = await companies.OrderBy(x => x.Name).Skip((page - 1) * pageSize).Take(pageSize)
+            var orderedCompanies = followUp == "overdue"
+                ? companies.OrderBy(x => x.PlatformNextFollowUpAt).ThenBy(x => x.Name)
+                : companies.OrderBy(x => x.Name);
+            var rows = await orderedCompanies.Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(x => new
                 {
                     x.Id, x.Name, x.Slug, x.ContactEmail, x.IsActive, x.CreatedAt,
