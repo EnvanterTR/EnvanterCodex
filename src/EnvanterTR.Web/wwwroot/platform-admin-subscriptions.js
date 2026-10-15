@@ -84,6 +84,15 @@
     endsAt.type = 'datetime-local';
     endsAt.required = true;
     endsAt.value = localDateTime(subscription.endsAt);
+    const validatePeriod = () => {
+      const invalid = startsAt.value && endsAt.value && new Date(endsAt.value) <= new Date(startsAt.value);
+      endsAt.setCustomValidity(invalid ? 'Bitiş tarihi başlangıçtan sonra olmalıdır.' : '');
+      return !invalid;
+    };
+    for (const control of [startsAt, endsAt]) {
+      control.addEventListener('input', validatePeriod);
+      control.addEventListener('change', validatePeriod);
+    }
     const note = document.createElement('input');
     note.name = 'note';
     note.maxLength = 1000;
@@ -127,12 +136,10 @@
     dialog.addEventListener('close', () => dialog.remove(), { once: true });
     form.addEventListener('submit', async event => {
       event.preventDefault();
-      if (new Date(endsAt.value) <= new Date(startsAt.value)) {
-        endsAt.setCustomValidity('Bitiş tarihi başlangıçtan sonra olmalıdır.');
+      if (!validatePeriod()) {
         endsAt.reportValidity();
         return;
       }
-      endsAt.setCustomValidity('');
       save.disabled = true;
       try {
         await request(`/api/platform/companies/${companyId}/subscriptions/${subscription.id}`, {

@@ -32,6 +32,10 @@ assert.match(page, /if\(submit\.disabled\)return;submit\.disabled=true/);
 assert.match(editor, /data-action="details"/);
 assert.match(editor, /Plan \/ tarih düzenle/);
 assert.match(editor, /startsAt.type = 'datetime-local'/);
+assert.match(editor, /const validatePeriod = \(\) =>/);
+assert.match(editor, /control\.addEventListener\('input', validatePeriod\)/);
+assert.match(editor, /endsAt\.setCustomValidity\(invalid \?/);
+assert.doesNotMatch(page, /data-edit-subscription=/);
 assert.match(editor, /api\/platform\/companies\/\$\{companyId\}\/subscriptions\/\$\{subscription\.id\}/);
 assert.match(editor, /method: 'PUT'/);
 assert.match(editor, /note\.required = true/);
@@ -43,4 +47,4 @@ assert.match(acceptance, /Platform_admin_can_adjust_subscription_plan_and_dates_
 assert.match(acceptance, /missingReason[\s\S]*?Assert\.Equal\(HttpStatusCode\.BadRequest, missingReason\.StatusCode\)/);
 assert.match(acceptance, /var retry = await SendAsPlatformAdminRequestAsync[\s\S]*?Assert\.True\(payload\.RootElement\.GetProperty\("unchanged"\)\.GetBoolean\(\)\)/);
 assert.match(acceptance, /Platform_subscription_extension_uses_exact_end_date_and_safe_retries/);
-console.log('Platform subscription editor, required adjustment rationale, impact preview, and safe retries verified (36 assertions).');
+console.log('Platform subscription editor, corrective date validation, single action, required adjustment rationale, impact preview, and safe retries verified (40 assertions).');

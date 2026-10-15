@@ -32,6 +32,11 @@ const accounts = [member];
 const planId = '44444444-4444-4444-8444-444444444444';
 const plans = [];
 const writes = [];
+const subscriptionId = '55555555-5555-4555-8555-555555555555';
+const companySubscription = {
+  id: subscriptionId, planId, name: 'Cloud Pro', code: 'cloud-pro', status: 'Active', isDemo: false,
+  startsAt: '2026-09-02T10:00:00Z', endsAt: '2027-09-02T10:00:00Z', paymentReference: 'synthetic-provider-reference'
+};
 const browserErrors = [];
 let reauthenticated = false;
 let browser;
@@ -73,6 +78,15 @@ const server = createServer(async (request, response) => {
     });
     if (path === '/api/platform/companies/renewals') return json(response, { items: [], total: 0, page: 1, pageSize: 50 });
     if (path === '/api/platform/companies') return json(response, { items: companies, total: companies.length, page: 1, pageSize: 200 });
+    if (path === `/api/platform/companies/${companyId}`) return json(response, {
+      company: { ...companies[0], isActive: true, createdAt: '2026-09-02T10:00:00Z', contactEmail: 'qa-owner@example.invalid', lifecycleStage: 'Active', lifecycleOwnerId: null, nextFollowUpAt: null },
+      members: [{ displayName: member.displayName, email: member.email, roleKey: 'owner', employeeName: null,
+        accountCreatedAt: member.accountCreatedAt, createdAt: '2026-09-02T10:00:00Z', emailConfirmed: true, twoFactorEnabled: true }],
+      memberCount: 1, membersPage: 1, membersTotalPages: 1, ownerMemberExists: true,
+      subscriptions: [{ ...companySubscription, name: plans[0]?.name || companySubscription.name, code: plans[0]?.code || companySubscription.code }],
+      checkoutOrders: [], lifecycleHistory: []
+    });
+    if (path === '/api/platform/admins') return json(response, []);
     if (path === '/api/platform/members') {
       const q = (url.searchParams.get('q') || '').toLocaleLowerCase();
       const items = accounts.filter(item => !q || `${item.displayName} ${item.email}`.toLocaleLowerCase().includes(q));
@@ -123,6 +137,13 @@ const server = createServer(async (request, response) => {
     writes.push({ method: request.method, path, body, csrf: request.headers['x-csrf-token'] });
     Object.assign(plans[0], body);
     return json(response, { id: planId, code: plans[0].code, name: plans[0].name, isActive: plans[0].isActive });
+  }
+  if (path === `/api/platform/companies/${companyId}/subscriptions/${subscriptionId}` && request.method === 'PUT') {
+    writes.push({ method: request.method, path, body, csrf: request.headers['x-csrf-token'] });
+    Object.assign(companySubscription, body);
+    const plan = plans.find(item => item.id === body.planId);
+    if (plan) { companySubscription.name = plan.name; companySubscription.code = plan.code; }
+    return json(response, { id: subscriptionId, planId: companySubscription.planId, startsAt: companySubscription.startsAt, endsAt: companySubscription.endsAt });
   }
   if (path === '/api/platform/site-content') return json(response, []);
   if (path === '/api/platform/demo-requests') return json(response, { items: [], total: 0, page: 1, pageSize: 25 });
@@ -276,8 +297,53 @@ try {
   await reloadedPlanRow.getByText('Gizli').waitFor({ state: 'visible' });
   assert.match(await reloadedPlanRow.innerText(), /8\.900,00/,
     'The edited yearly price and publication state must be reloaded from the synthetic API after a page refresh.');
+
+  await page.locator('#nav [data-view="companies"]').click();
+  const companyRow = page.locator('#companiesTable tr').filter({ hasText: 'Synthetic Demo Company' });
+  await companyRow.locator('[data-action="details"]').click();
+  const companyDialog = page.locator('#companyDetailDialog');
+  await companyDialog.waitFor({ state: 'visible' });
+  const listedSubscription = page.locator('#companyDetailBody .panel').filter({ hasText: 'Abonelik geçmişi' }).locator('tbody tr');
+  await listedSubscription.getByText('Synthetic Cloud Pro').waitFor({ state: 'visible' });
+  assert.equal(await listedSubscription.locator('[data-admin-edit-subscription]').count(), 1,
+    'A subscription must have exactly one working plan/date action.');
+  const writesBeforeSubscriptionCancel = writes.length;
+  await listedSubscription.locator('[data-admin-edit-subscription]').click();
+  const subscriptionDialog = page.locator('dialog.dialog').filter({ hasText: 'Abonelik planını ve tarihlerini düzenle' });
+  await subscriptionDialog.waitFor({ state: 'visible' });
+  await subscriptionDialog.getByRole('button', { name: 'Vazgeç' }).click();
+  await subscriptionDialog.waitFor({ state: 'detached' });
+  assert.equal(writes.length, writesBeforeSubscriptionCancel, 'Canceling subscription editing must not write.');
+
+  await listedSubscription.locator('[data-admin-edit-subscription]').click();
+  const subscriptionDialogAgain = page.locator('dialog.dialog').filter({ hasText: 'Abonelik planını ve tarihlerini düzenle' });
+  await subscriptionDialogAgain.locator('[name="planId"]').selectOption(planId);
+  await subscriptionDialogAgain.locator('[name="startsAt"]').fill('2026-11-15T10:00');
+  await subscriptionDialogAgain.locator('[name="endsAt"]').fill('2026-10-15T10:00');
+  await subscriptionDialogAgain.locator('[name="note"]').fill('Synthetic invalid date-range rejection');
+  await subscriptionDialogAgain.getByRole('button', { name: 'Değişiklikleri kaydet' }).click();
+  await subscriptionDialogAgain.locator('[name="endsAt"]').waitFor({ state: 'visible' });
+  assert.equal(writes.length, writesBeforeSubscriptionCancel, 'An invalid subscription date range must not write.');
+  await subscriptionDialogAgain.locator('[name="startsAt"]').fill('2026-10-15T10:00');
+  await subscriptionDialogAgain.locator('[name="endsAt"]').fill('2028-10-15T10:00');
+  await subscriptionDialogAgain.locator('[name="note"]').fill('Synthetic complimentary extension and plan review');
+  const subscriptionSaved = page.waitForResponse(response => response.request().method() === 'PUT'
+    && new URL(response.url()).pathname === `/api/platform/companies/${companyId}/subscriptions/${subscriptionId}`);
+  await subscriptionDialogAgain.getByRole('button', { name: 'Değişiklikleri kaydet' }).click();
+  assert.equal((await subscriptionSaved).status(), 200, 'Synthetic company subscription update must succeed.');
+  await page.getByText('Abonelik planı ve tarihleri güncellendi.').waitFor({ state: 'visible' });
+  assert.equal(writes.length, writesBeforeSubscriptionCancel + 1);
+  assert.deepEqual(writes.at(-1), { method: 'PUT', path: `/api/platform/companies/${companyId}/subscriptions/${subscriptionId}`,
+    csrf: csrfToken, body: { planId, startsAt: '2026-10-15T10:00:00.000Z', endsAt: '2028-10-15T10:00:00.000Z', note: 'Synthetic complimentary extension and plan review' } });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('#appShell').waitFor({ state: 'visible' });
+  await page.locator('#nav [data-view="companies"]').click();
+  await page.locator('#companiesTable tr').filter({ hasText: 'Synthetic Demo Company' }).locator('[data-action="details"]').click();
+  const persistedSubscription = page.locator('#companyDetailBody .panel').filter({ hasText: 'Abonelik geçmişi' }).locator('tbody tr');
+  await persistedSubscription.getByText('Synthetic Cloud Pro').waitFor({ state: 'visible' });
+  await persistedSubscription.getByText(/2028/).waitFor({ state: 'visible' });
   assert.deepEqual(browserErrors, [], `Platform member UI threw: ${browserErrors.join(' | ')}`);
-  console.log('PASS: real Chromium account registration/security/membership/subscription/payment timeline; member search, cancel-without-write, reauthenticated role update, synthetic member invitation, and audited plan create/update/validation/publication reload UI.');
+  console.log('PASS: real Chromium account/security/membership/payment timeline; member search, cancel-without-write, reauthenticated role update, synthetic invitation, plan create/update/validation/publication reload, and audited company subscription plan/date editing with cancel and persistence.');
 } finally {
   await browser?.close();
   await new Promise(resolve => server.close(resolve));
