@@ -61,6 +61,18 @@ public sealed class MigrationUpgradeAcceptanceTests
                 VALUES ({assetId}, {companyId}, 'UPGRADE-001', 'Upgrade acceptance asset', {categoryId}, 'Available', 'TRY', now(), now())
                 """);
 
+            // Simulate a prior process stopping after the new columns and FK were
+            // created but before the migration history row was committed. Up must retry cleanly.
+            await db.Database.ExecuteSqlRawAsync("""
+                ALTER TABLE "Assets" ADD COLUMN "DefaultLocationCatalogId" uuid NULL;
+                ALTER TABLE "AssetModels" ADD COLUMN "ModelNumber" character varying(120) NULL;
+                CREATE INDEX "IX_Assets_CompanyId_DefaultLocationCatalogId"
+                    ON "Assets" ("CompanyId", "DefaultLocationCatalogId");
+                ALTER TABLE "Assets" ADD CONSTRAINT "FK_Assets_CompanyLocations_CompanyId_DefaultLocationCatalogId"
+                    FOREIGN KEY ("CompanyId", "DefaultLocationCatalogId")
+                    REFERENCES "CompanyLocations" ("CompanyId", "Id") ON DELETE RESTRICT NOT VALID;
+                """);
+
             await db.Database.MigrateAsync();
 
             Assert.Empty(await db.Database.GetPendingMigrationsAsync());
@@ -98,6 +110,33 @@ public sealed class MigrationUpgradeAcceptanceTests
             Assert.True(indexReader.GetBoolean(1), "The audit index must be ready for queries and writes.");
             Assert.Contains("(\"OccurredAt\")", indexReader.GetString(2), StringComparison.Ordinal);
             Assert.False(await indexReader.ReadAsync(), "The audit timeline index name must be unique in the schema.");
+            await indexReader.DisposeAsync();
+
+            await using var locationIndexCommand = new NpgsqlCommand("""
+                SELECT indexState.indisvalid, indexState.indisready, pg_get_indexdef(indexClass.oid)
+                FROM pg_class indexClass
+                JOIN pg_namespace indexSchema ON indexSchema.oid = indexClass.relnamespace
+                JOIN pg_index indexState ON indexState.indexrelid = indexClass.oid
+                WHERE indexSchema.nspname = @schema AND indexClass.relname = 'IX_Assets_CompanyId_DefaultLocationCatalogId'
+                """, verify);
+            locationIndexCommand.Parameters.AddWithValue("schema", schema);
+            await using var locationIndexReader = await locationIndexCommand.ExecuteReaderAsync();
+            Assert.True(await locationIndexReader.ReadAsync(), "The asset default-location index must exist after upgrade.");
+            Assert.True(locationIndexReader.GetBoolean(0), "The concurrent asset index build must leave a valid index.");
+            Assert.True(locationIndexReader.GetBoolean(1), "The asset index must be ready for queries and writes.");
+            Assert.Contains("(\"CompanyId\", \"DefaultLocationCatalogId\")", locationIndexReader.GetString(2), StringComparison.Ordinal);
+            await locationIndexReader.DisposeAsync();
+
+            await using var foreignKeyCommand = new NpgsqlCommand("""
+                SELECT constraintRow.convalidated
+                FROM pg_constraint constraintRow
+                JOIN pg_namespace tableSchema ON tableSchema.oid = constraintRow.connamespace
+                WHERE tableSchema.nspname = @schema
+                  AND constraintRow.conname = 'FK_Assets_CompanyLocations_CompanyId_DefaultLocationCatalogId'
+                  AND constraintRow.contype = 'f'
+                """, verify);
+            foreignKeyCommand.Parameters.AddWithValue("schema", schema);
+            Assert.Equal(true, await foreignKeyCommand.ExecuteScalarAsync());
         }
         finally
         {

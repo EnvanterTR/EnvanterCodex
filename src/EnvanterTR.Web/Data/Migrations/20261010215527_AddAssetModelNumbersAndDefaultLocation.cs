@@ -11,51 +11,46 @@ namespace EnvanterTR.Web.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<Guid>(
-                name: "DefaultLocationCatalogId",
-                table: "Assets",
-                type: "uuid",
-                nullable: true);
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Assets\" ADD COLUMN IF NOT EXISTS \"DefaultLocationCatalogId\" uuid NULL");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"AssetModels\" ADD COLUMN IF NOT EXISTS \"ModelNumber\" character varying(120) NULL");
 
-            migrationBuilder.AddColumn<string>(
-                name: "ModelNumber",
-                table: "AssetModels",
-                type: "character varying(120)",
-                maxLength: 120,
-                nullable: true);
+            migrationBuilder.Sql(
+                "DROP INDEX CONCURRENTLY IF EXISTS \"IX_Assets_CompanyId_DefaultLocationCatalogId\"",
+                suppressTransaction: true);
+            migrationBuilder.Sql(
+                "CREATE INDEX CONCURRENTLY \"IX_Assets_CompanyId_DefaultLocationCatalogId\" ON \"Assets\" (\"CompanyId\", \"DefaultLocationCatalogId\")",
+                suppressTransaction: true);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Assets_CompanyId_DefaultLocationCatalogId",
-                table: "Assets",
-                columns: new[] { "CompanyId", "DefaultLocationCatalogId" });
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_Assets_CompanyLocations_CompanyId_DefaultLocationCatalogId",
-                table: "Assets",
-                columns: new[] { "CompanyId", "DefaultLocationCatalogId" },
-                principalTable: "CompanyLocations",
-                principalColumns: new[] { "CompanyId", "Id" },
-                onDelete: ReferentialAction.Restrict);
+            // Separate transactions ensure the short ADD CONSTRAINT lock is released
+            // before PostgreSQL scans the existing Assets rows to validate the FK.
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Assets\" DROP CONSTRAINT IF EXISTS \"FK_Assets_CompanyLocations_CompanyId_DefaultLocationCatalogId\"",
+                suppressTransaction: true);
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Assets\" ADD CONSTRAINT \"FK_Assets_CompanyLocations_CompanyId_DefaultLocationCatalogId\" FOREIGN KEY (\"CompanyId\", \"DefaultLocationCatalogId\") REFERENCES \"CompanyLocations\" (\"CompanyId\", \"Id\") ON DELETE RESTRICT NOT VALID",
+                suppressTransaction: true);
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Assets\" VALIDATE CONSTRAINT \"FK_Assets_CompanyLocations_CompanyId_DefaultLocationCatalogId\"",
+                suppressTransaction: true);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_Assets_CompanyLocations_CompanyId_DefaultLocationCatalogId",
-                table: "Assets");
-
-            migrationBuilder.DropIndex(
-                name: "IX_Assets_CompanyId_DefaultLocationCatalogId",
-                table: "Assets");
-
-            migrationBuilder.DropColumn(
-                name: "DefaultLocationCatalogId",
-                table: "Assets");
-
-            migrationBuilder.DropColumn(
-                name: "ModelNumber",
-                table: "AssetModels");
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Assets\" DROP CONSTRAINT IF EXISTS \"FK_Assets_CompanyLocations_CompanyId_DefaultLocationCatalogId\"",
+                suppressTransaction: true);
+            migrationBuilder.Sql(
+                "DROP INDEX CONCURRENTLY IF EXISTS \"IX_Assets_CompanyId_DefaultLocationCatalogId\"",
+                suppressTransaction: true);
+            migrationBuilder.Sql(
+                "ALTER TABLE \"Assets\" DROP COLUMN IF EXISTS \"DefaultLocationCatalogId\"",
+                suppressTransaction: true);
+            migrationBuilder.Sql(
+                "ALTER TABLE \"AssetModels\" DROP COLUMN IF EXISTS \"ModelNumber\"",
+                suppressTransaction: true);
         }
     }
 }

@@ -17,10 +17,15 @@ public sealed class EnforceAssetPlanQuota : Migration
             nullable: false,
             defaultValue: 0);
         migrationBuilder.Sql("""
+            WITH asset_counts AS (
+                SELECT "CompanyId", COUNT(*)::integer AS "AssetCount"
+                FROM "Assets"
+                GROUP BY "CompanyId"
+            )
             UPDATE "Companies" AS company
-            SET "AssetCount" = (
-                SELECT COUNT(*)::integer FROM "Assets" AS asset WHERE asset."CompanyId" = company."Id"
-            );
+            SET "AssetCount" = asset_counts."AssetCount"
+            FROM asset_counts
+            WHERE asset_counts."CompanyId" = company."Id";
             ALTER TABLE "Companies" ADD CONSTRAINT "CK_Companies_AssetCount" CHECK ("AssetCount" >= 0);
             """);
         migrationBuilder.Sql("""
