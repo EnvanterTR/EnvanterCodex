@@ -354,6 +354,26 @@ try {
   assert.equal(apiRequests.length, 0, 'Opening then canceling owner Ctrl+N must not create an asset.');
 
   const assetRow = page.locator(`#assetRows tr[data-id="${assetId}"]`);
+  await assetRow.locator('[data-asset-action="view"]').click();
+  await page.locator('#assetDialog').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#dialogTitle').innerText(), asset.name,
+    'The row detail shortcut must open the selected asset, not the surrounding row or a different record.');
+  await page.locator('#assetDialog #closeDialog').click();
+  await page.locator('#assetDialog').waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, 0, 'Opening and closing row detail must remain read-only.');
+
+  await assetRow.locator('[data-asset-action="edit"]').click();
+  await page.locator('#assetDialog').waitFor({ state: 'visible' });
+  const rowEditDialog = page.locator('#editAssetDialog');
+  await rowEditDialog.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#editAssetForm [name="assetName"]').inputValue(), asset.name,
+    'The row edit shortcut must load the selected asset data.');
+  await page.locator('[data-close-edit-asset]').first().click();
+  await rowEditDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.length, 0, 'Canceling row edit must not change the asset.');
+  await page.locator('#assetDialog #closeDialog').click();
+  await page.locator('#assetDialog').waitFor({ state: 'hidden' });
+
   await assetRow.locator('[data-asset-action="label"]').click();
   const rowLabelPreview = page.locator('#assetLabelPreviewDialog');
   await rowLabelPreview.waitFor({ state: 'visible' });
