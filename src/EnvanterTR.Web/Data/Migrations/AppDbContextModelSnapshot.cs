@@ -1738,9 +1738,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("ActorUserId");
 
-                    b.HasIndex("CompanyId", "OccurredAt");
-
                     b.HasIndex("OccurredAt");
+
+                    b.HasIndex("CompanyId", "OccurredAt");
 
                     b.ToTable("AuditEntries");
                 });
@@ -1751,14 +1751,14 @@ namespace EnvanterTR.Web.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("AssetStatusLabelsJson")
-                        .HasMaxLength(3000)
-                        .HasColumnType("character varying(3000)");
-
                     b.Property<int>("AssetCount")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(0);
+
+                    b.Property<string>("AssetStatusLabelsJson")
+                        .HasMaxLength(3000)
+                        .HasColumnType("character varying(3000)");
 
                     b.Property<string>("BrandLogoPath")
                         .HasMaxLength(500)
@@ -3289,6 +3289,44 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("PlatformDemoRequests", t =>
                         {
                             t.HasCheckConstraint("CK_PlatformDemoRequests_Status", "\"Status\" IN ('New', 'Contacted', 'Qualified', 'DemoScheduled', 'DemoGranted', 'Converted', 'Closed')");
+                        });
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.PlatformFollowUpEmailDigest", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("DeliveryDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<DateTimeOffset?>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("UserId", "DeliveryDate");
+
+                    b.ToTable("PlatformFollowUpEmailDigests", t =>
+                        {
+                            t.HasCheckConstraint("CK_PlatformFollowUpEmailDigests_Status", "\"Status\" IN ('Sending', 'Sent', 'Failed')");
                         });
                 });
 
@@ -5522,6 +5560,15 @@ namespace EnvanterTR.Web.Data.Migrations
                         .WithMany()
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.PlatformFollowUpEmailDigest", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.SavedAssetImportMapping", b =>

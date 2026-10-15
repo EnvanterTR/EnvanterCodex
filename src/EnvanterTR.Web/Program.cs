@@ -216,6 +216,8 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
     builder.Services.AddScoped<OperationalNotificationEmailService>();
     builder.Services.AddHostedService<OperationalNotificationEmailWorker>();
+    builder.Services.AddScoped<PlatformCrmFollowUpEmailService>();
+    builder.Services.AddHostedService<PlatformCrmFollowUpEmailWorker>();
     builder.Services.AddScoped<SupportTicketEmailService>();
     builder.Services.AddHostedService<SupportTicketEmailWorker>();
     builder.Services.AddIdentity<EnvanterUser, IdentityRole<Guid>>(options =>

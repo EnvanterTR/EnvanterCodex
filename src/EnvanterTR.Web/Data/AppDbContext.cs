@@ -31,6 +31,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<DashboardPreference> DashboardPreferences => Set<DashboardPreference>();
     public DbSet<OperationalNotificationPreference> OperationalNotificationPreferences => Set<OperationalNotificationPreference>();
     public DbSet<OperationalNotificationEmailDigest> OperationalNotificationEmailDigests => Set<OperationalNotificationEmailDigest>();
+    public DbSet<PlatformFollowUpEmailDigest> PlatformFollowUpEmailDigests => Set<PlatformFollowUpEmailDigest>();
     public DbSet<OperationalNotificationState> OperationalNotificationStates => Set<OperationalNotificationState>();
     public DbSet<AssetEvent> AssetEvents => Set<AssetEvent>();
     public DbSet<AssetAttachment> AssetAttachments => Set<AssetAttachment>();
@@ -335,6 +336,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<OperationalNotificationEmailDigest>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<OperationalNotificationEmailDigest>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PlatformFollowUpEmailDigest>().HasKey(x => new { x.UserId, x.DeliveryDate });
+        modelBuilder.Entity<PlatformFollowUpEmailDigest>().Property(x => x.Status).HasMaxLength(16).IsRequired();
+        modelBuilder.Entity<PlatformFollowUpEmailDigest>().Property(x => x.ConcurrencyToken).IsConcurrencyToken();
+        modelBuilder.Entity<PlatformFollowUpEmailDigest>().Property(x => x.LastError).HasMaxLength(80);
+        modelBuilder.Entity<PlatformFollowUpEmailDigest>().ToTable(table =>
+            table.HasCheckConstraint("CK_PlatformFollowUpEmailDigests_Status", "\"Status\" IN ('Sending', 'Sent', 'Failed')"));
+        modelBuilder.Entity<PlatformFollowUpEmailDigest>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<OperationalNotificationState>().HasKey(x => new { x.CompanyId, x.UserId, x.Kind, x.RecordId });

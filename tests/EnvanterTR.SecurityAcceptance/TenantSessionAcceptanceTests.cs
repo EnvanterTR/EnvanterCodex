@@ -2828,6 +2828,90 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Platform_CRM_follow_up_digest_is_opt_in_daily_deduplicated_and_minimizes_lead_data()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var leadEmail = $"private-lead-{Guid.NewGuid():N}@example.invalid";
+        var leadPhone = "+90-555-PRIVATE-CRM-DATA";
+        var leadMessage = "PRIVATE-CRM-FREE-TEXT-MUST-NOT-LEAK";
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            var company = await db.Companies.SingleAsync(x => x.Id == _companyId);
+            company.PlatformOwnerUserId = _userId;
+            company.CustomerLifecycleStage = "Onboarding";
+            company.PlatformNextFollowUpAt = now.AddHours(-2);
+            var churnedCompany = await db.Companies.SingleAsync(x => x.Id == _otherCompanyId);
+            churnedCompany.PlatformOwnerUserId = _userId;
+            churnedCompany.CustomerLifecycleStage = "Churned";
+            churnedCompany.PlatformNextFollowUpAt = now.AddHours(-1);
+            db.PlatformDemoRequests.Add(new PlatformDemoRequest
+            {
+                CompanyName = "CRM reminder demo company", ContactName = "Private contact", Email = leadEmail,
+                Phone = leadPhone, Message = leadMessage, Source = "security-acceptance", Status = "DemoScheduled",
+                ConsentNoticeVersion = "acceptance-v1", AssignedAdminUserId = _userId, FollowUpAt = now.AddHours(-1)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var configValues = new Dictionary<string, string?>
+        {
+            ["Email:Smtp:Host"] = "127.0.0.1",
+            ["Email:Smtp:Port"] = _smtpCapture.Port.ToString(CultureInfo.InvariantCulture),
+            ["Email:Smtp:EnableSsl"] = "false",
+            ["Email:FromAddress"] = "no-reply@example.invalid",
+            ["Email:PublicBaseUrl"] = "https://portal.example.invalid",
+            ["ASPNETCORE_ENVIRONMENT"] = "Development"
+        };
+        var disabledValues = new Dictionary<string, string?>(configValues)
+        {
+            ["Platform:CrmFollowUpEmailRemindersEnabled"] = "false"
+        };
+        var disabledConfiguration = new ConfigurationBuilder().AddInMemoryCollection(disabledValues).Build();
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var service = new PlatformCrmFollowUpEmailService(db, disabledConfiguration,
+                scope.ServiceProvider.GetRequiredService<ILogger<PlatformCrmFollowUpEmailService>>());
+            await service.RunOnceAsync(CancellationToken.None);
+            Assert.Empty(_smtpCapture.Messages);
+            Assert.Empty(await db.PlatformFollowUpEmailDigests.ToListAsync());
+        }
+
+        configValues["Platform:CrmFollowUpEmailRemindersEnabled"] = "true";
+        var enabledConfiguration = new ConfigurationBuilder().AddInMemoryCollection(configValues).Build();
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var service = new PlatformCrmFollowUpEmailService(db, enabledConfiguration,
+                scope.ServiceProvider.GetRequiredService<ILogger<PlatformCrmFollowUpEmailService>>());
+            await service.RunOnceAsync(CancellationToken.None);
+            Assert.Single(_smtpCapture.Messages);
+            await service.RunOnceAsync(CancellationToken.None);
+            Assert.Single(_smtpCapture.Messages);
+            var digest = await db.PlatformFollowUpEmailDigests.SingleAsync(x => x.UserId == _userId);
+            Assert.Equal("Sent", digest.Status);
+            Assert.Equal(1, digest.AttemptCount);
+        }
+
+        var delivered = Assert.Single(_smtpCapture.Messages);
+        Assert.Contains("Content-Transfer-Encoding: base64", delivered, StringComparison.OrdinalIgnoreCase);
+        var bodySeparator = delivered.IndexOf("\n\n", StringComparison.Ordinal);
+        Assert.True(bodySeparator >= 0, "Captured SMTP message must contain a MIME body separator.");
+        var encodedBody = delivered[(bodySeparator + 2)..].Replace("\r", "", StringComparison.Ordinal)
+            .Replace("\n", "", StringComparison.Ordinal);
+        var decodedBody = Encoding.UTF8.GetString(Convert.FromBase64String(encodedBody));
+        Assert.Contains("Security acceptance company", decodedBody, StringComparison.Ordinal);
+        Assert.Contains("CRM reminder demo company", decodedBody, StringComparison.Ordinal);
+        Assert.Contains("platform-admin.html", decodedBody, StringComparison.Ordinal);
+        Assert.DoesNotContain(leadEmail, decodedBody, StringComparison.Ordinal);
+        Assert.DoesNotContain(leadPhone, decodedBody, StringComparison.Ordinal);
+        Assert.DoesNotContain(leadMessage, decodedBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("Other security acceptance company", decodedBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Platform_admin_can_adjust_subscription_plan_and_dates_with_validation_and_audit()
     {
         var originalPlan = new SubscriptionPlan

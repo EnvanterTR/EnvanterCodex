@@ -469,6 +469,18 @@ public sealed class OperationalNotificationEmailDigest
     public string? LastError { get; set; }
 }
 
+public sealed class PlatformFollowUpEmailDigest
+{
+    public Guid UserId { get; set; }
+    public DateOnly DeliveryDate { get; set; }
+    public required string Status { get; set; }
+    public DateTimeOffset StartedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? SentAt { get; set; }
+    public int AttemptCount { get; set; }
+    public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
+    public string? LastError { get; set; }
+}
+
 public sealed class OperationalNotificationState
 {
     public Guid CompanyId { get; set; }
