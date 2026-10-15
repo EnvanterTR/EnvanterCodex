@@ -62,7 +62,7 @@ const demoLead = {
 const newerDemoLeadId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const newerDemoLead = {
   ...demoLead, id: newerDemoLeadId, companyName: 'Synthetic Newer Demo', contactName: 'Synthetic Newer Contact',
-  email: 'newer-lead@example.invalid', status: 'New', followUpAt: null, companyId: null
+  email: 'newer-lead@example.invalid', status: 'New', followUpAt: null, companyId
 };
 const slowCompanyId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const fastCompanyId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
@@ -74,6 +74,7 @@ const demoCompanyOptions = [
 const demoLeadHistory = [];
 const newerDemoLeadHistory = [];
 let delayOlderDemoDetail = false;
+let delayOlderDemoCompanyFallback = false;
 const paymentFollowUpHistory = [];
 const browserErrors = [];
 let reauthenticated = false;
@@ -159,14 +160,20 @@ const server = createServer(async (request, response) => {
       order: { id: failedOrderId, status: 'PaymentFailed', companyName: 'Synthetic Failed Payment', ownerName: 'Synthetic Billing Owner', ownerEmail: 'billing@example.invalid', amount: 1500, currency: 'TRY' },
       history: [...paymentFollowUpHistory]
     });
-    if (path === `/api/platform/companies/${companyId}`) return json(response, {
+    if (path === `/api/platform/companies/${companyId}`) {
+      if (delayOlderDemoCompanyFallback) {
+        delayOlderDemoCompanyFallback = false;
+        await new Promise(resolve => setTimeout(resolve, 700));
+      }
+      return json(response, {
       company: { ...companies[0], isActive: true, createdAt: '2026-09-02T10:00:00Z', contactEmail: 'qa-owner@example.invalid', lifecycleStage: 'AtRisk', lifecycleOwnerId: null, nextFollowUpAt: '2026-10-10T10:00:00Z' },
       members: [{ displayName: member.displayName, email: member.email, roleKey: 'owner', employeeName: null,
         accountCreatedAt: member.accountCreatedAt, createdAt: '2026-09-02T10:00:00Z', emailConfirmed: true, twoFactorEnabled: true }],
       memberCount: 1, membersPage: 1, membersTotalPages: 1, ownerMemberExists: true,
       subscriptions: [{ ...companySubscription, name: plans[0]?.name || companySubscription.name, code: plans[0]?.code || companySubscription.code }],
       checkoutOrders: [], lifecycleHistory: []
-    });
+      });
+    }
     if (path === '/api/platform/admins') return json(response, [{ id: platformAdminId, name: 'Synthetic Platform Admin', email: 'operator@example.invalid' }]);
     if (path === '/api/platform/members') {
       const q = (url.searchParams.get('q') || '').toLocaleLowerCase();
@@ -379,19 +386,29 @@ try {
     const requestUrl = new URL(response.url());
     return requestUrl.pathname === '/api/platform/companies' && requestUrl.searchParams.get('q') === 'slow';
   });
+  delayOlderDemoCompanyFallback = true;
+  const slowCompanyFallbackRequest = page.waitForRequest(request => new URL(request.url()).pathname === `/api/platform/companies/${companyId}`);
+  const slowCompanyFallbackResponse = page.waitForResponse(response => new URL(response.url()).pathname === `/api/platform/companies/${companyId}`);
   await companySearch.fill('slow');
   await slowCompanyRequest;
+  await slowCompanyFallbackRequest;
   const fastCompanyResponse = page.waitForResponse(response => {
     const requestUrl = new URL(response.url());
     return requestUrl.pathname === '/api/platform/companies' && requestUrl.searchParams.get('q') === 'fast';
   });
+  const fastCompanyFallbackResponse = page.waitForResponse(response => new URL(response.url()).pathname === `/api/platform/companies/${companyId}`);
   await companySearch.fill('fast');
   assert.equal((await fastCompanyResponse).status(), 200);
   await slowCompanyResponse;
+  assert.equal((await fastCompanyFallbackResponse).status(), 200);
   const companyOptions = await page.locator('#demoLeadCompany option').allTextContents();
   assert.ok(companyOptions.some(option => option.includes('Fast Synthetic Company')));
   assert.ok(!companyOptions.some(option => option.includes('Slow Synthetic Company')),
     'An older company search response must not replace the latest company options.');
+  await page.locator('#demoLeadCompany').selectOption(fastCompanyId);
+  await slowCompanyFallbackResponse;
+  assert.equal(await page.locator('#demoLeadCompany').inputValue(), fastCompanyId,
+    'A delayed selected-company fallback must not revert a newer company selection.');
 
   await olderDetailResponse;
   assert.equal(await page.locator('#demoLeadDetailTitle').innerText(), 'Synthetic Newer Demo',
@@ -714,7 +731,7 @@ try {
   assert.equal(writes.length, writesBeforeAuditRead, 'Audit filtering, paging, expansion and empty results must be read-only.');
 
   assert.deepEqual(browserErrors, [], `Platform member UI threw: ${browserErrors.join(' | ')}`);
-  console.log('PASS: real Chromium account/security/membership/payment timeline; demo CRM list/company-search/detail stale-response protection plus status, assignment, follow-up, company link, CSRF write and history persistence; member search, cancel-without-write, reauthenticated role update, synthetic invitation, plan create/update/validation/publication reload and maintenance entitlement persistence; audited company subscription plan/date editing with cancel and persistence; platform audit text/source/action/target/date filters, exclusive end-date boundary, clear, paging, event detail, no-match, surfaced 503 and retry behavior without writes.');
+  console.log('PASS: real Chromium account/security/membership/payment timeline; demo CRM list/company-search/detail and selected-company fallback stale-response protection plus status, assignment, follow-up, company link, CSRF write and history persistence; member search, cancel-without-write, reauthenticated role update, synthetic invitation, plan create/update/validation/publication reload and maintenance entitlement persistence; audited company subscription plan/date editing with cancel and persistence; platform audit text/source/action/target/date filters, exclusive end-date boundary, clear, paging, event detail, no-match, surfaced 503 and retry behavior without writes.');
 } finally {
   await browser?.close();
   await new Promise(resolve => server.close(resolve));

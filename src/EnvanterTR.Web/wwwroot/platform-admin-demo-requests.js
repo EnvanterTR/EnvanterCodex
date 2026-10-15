@@ -72,8 +72,10 @@
       select.innerHTML = `<option value="">Şirketle ilişkilendirme</option>${options}`;
       if (selectedId && !result.items.some((company) => company.id === selectedId)) {
         const current = await api(`/api/platform/companies/${encodeURIComponent(selectedId)}`);
+        if (requestVersion !== state.companyRequestVersion) return;
         select.insertAdjacentHTML('beforeend', `<option value="${esc(current.company.id)}">${esc(current.company.name)}</option>`);
       }
+      if (requestVersion !== state.companyRequestVersion) return;
       select.value = selectedId;
     } catch (error) {
       if (requestVersion !== state.companyRequestVersion) return;

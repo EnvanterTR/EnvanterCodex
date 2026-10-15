@@ -74,6 +74,12 @@ assert.match(adminClient, /demoLeadFollowUp/);
 assert.match(adminClient, /leadRequestVersion/);
 assert.match(adminClient, /companyRequestVersion/);
 assert.match(adminClient, /detailRequestVersion/);
+const companyLoader = adminClient.match(/async function loadCompanies\([\s\S]*?\n  }\n\n  async function showLead/)?.[0];
+assert.ok(companyLoader, 'demo company search loader exists');
+assert.match(companyLoader, /const current = await api\([\s\S]*?if \(requestVersion !== state\.companyRequestVersion\) return;/,
+  'the selected-company fallback response must be discarded after a newer search starts');
+assert.match(companyLoader, /if \(requestVersion !== state\.companyRequestVersion\) return;\s*select\.value = selectedId/,
+  'stale company search must not restore the prior selection');
 assert.match(adminClient, /params\.set\('followUp', followUp\)/);
 assert.match(adminClient, /companyId/);
 assert.match(adminClient, /history/);
@@ -81,4 +87,4 @@ assert.match(adminClient, /history/);
 assert.match(acceptance, /Public_demo_requests_are_validated_deduplicated_and_visible_only_to_platform_admins/);
 assert.match(acceptance, /Platform_demo_request_stages_require_real_demo_or_paid_company_subscription_and_are_audited/);
 assert.match(acceptance, /followUp=overdue/);
-console.log('Platform demo request and no-plan sales fallback source verification passed (52 assertions).');
+console.log('Platform demo request and no-plan sales fallback source verification passed (55 assertions).');
