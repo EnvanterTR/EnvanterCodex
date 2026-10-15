@@ -16,6 +16,8 @@ Güncelleme: 14 Ekim 2026
 
 15 Ekim 2026 devamı — Atanmış varlık iade formunda dışarı tıklama testi eklendi. Chromium’da backdrop tıklaması formu kapattı, iade işlemi yapılmadı ve API yazımı oluşmadı; form tekrar açılıp iptal ve başarılı sentetik iade akışları da geçti. Hosted tarayıcı paketi geçti. Bu, yalnız bu formun dışarı tıklama davranışını kapsar; diğer modal/backdrop davranışları ayrı ayrı kabul edilmelidir.
 
+15 Ekim 2026 devamı — Hesap/profil güvenlik penceresinde backdrop kapatma olayı eksikti. `accountPhotoDialog` yalnız pencerenin kendisine (içeriğine değil) tıklanınca kapanacak şekilde güncellendi. Hosted Chromium dışarı tıklayıp pencerenin kapandığını, güvenlik ayarlarına API yazılmadığını ve yeniden açma/X kapatma akışını doğruladı. Tam browser paketi geçti; bu sentetik oturum testidir.
+
 ## Kapsam ve kaynak
 
 Bu dosya, bu Codex görevi içindeki erişilebilir kullanıcı isteklerinin ve 11 Ekim tarihli ayrıntılı listenin proje iş planına dönüştürülmüş indeksidir. Birebir konuşma dökümü değildir. Ayrıntılı başlık ve durum listesi `docs/USER-REQUEST-CHECKLIST-2026-10-11.md` dosyasında özgün haliyle korunmuştur; bu listedeki ✅/🟡/❌ işaretleri kullanıcının 11 Ekim tarihli başlangıç beyanıdır, bugünkü kodun yeniden doğrulanmış sonucu değildir. Parola ve diğer kimlik bilgileri bu belgelere alınmaz.

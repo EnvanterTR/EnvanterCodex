@@ -2827,6 +2827,7 @@
     $('#userAvatar').addEventListener('click', async () => { $('#accountPhotoFeedback').textContent = ''; $('#ownPasswordFeedback').textContent = ''; $('#accountPhotoFallback').textContent = $('#userAvatar').textContent; $('#accountPhotoDialog').showModal(); loadAccountSessions(); try { const status = await api('/api/session/2fa'); $('#ownPasswordTwoFactorLabel').hidden = !status.enabled; } catch (error) { $('#ownPasswordFeedback').textContent = error.message; } });
     $('#refreshAccountSessions').addEventListener('click', loadAccountSessions);
     $('#closeAccountPhoto').addEventListener('click', () => $('#accountPhotoDialog').close());
+    $('#accountPhotoDialog').addEventListener('click', event => { if (event.target === $('#accountPhotoDialog')) $('#accountPhotoDialog').close(); });
     $('#changeOwnPassword').addEventListener('click', async () => {
       const button = $('#changeOwnPassword'), feedback = $('#ownPasswordFeedback');
       const currentPassword = $('#ownCurrentPassword').value, newPassword = $('#ownNewPassword').value, confirmPassword = $('#ownConfirmPassword').value;

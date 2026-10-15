@@ -278,6 +278,13 @@ try {
   await page.waitForFunction(() => document.querySelector('#accountSessionsList')?.textContent.includes('Etkin oturum bulunamadı'));
   assert.ok(apiRequests.some(item => item.path === '/api/session/devices' && item.method === 'GET'));
   assert.ok(apiRequests.some(item => item.path === '/api/session/2fa' && item.method === 'GET'));
+  const writesBeforeAccountBackdrop = apiRequests.filter(item => item.method !== 'GET').length;
+  await page.mouse.click(5, 5);
+  await accountDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.filter(item => item.method !== 'GET').length, writesBeforeAccountBackdrop,
+    'Outside-click dismissal of the account/security window must not change security settings.');
+  await page.locator('#userAvatar').click();
+  await accountDialog.waitFor({ state: 'visible' });
   await page.locator('#closeAccountPhoto').click();
   await accountDialog.waitFor({ state: 'hidden' });
 
