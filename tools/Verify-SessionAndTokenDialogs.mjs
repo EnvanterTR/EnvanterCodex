@@ -26,7 +26,11 @@ assert.match(source, /Google Authenticator, Microsoft Authenticator veya TOTP uy
   'The account MFA UI must explain that TOTP does not require a vendor account, subscription, SMS, or separate service.');
 assert.match(source, /function clearTwoFactorDialogSecrets\(\)\s*\{[\s\S]*?\$\('#twoFactorSecret'\)\.textContent = '';[\s\S]*?\$\('#twoFactorRecoveryCodes'\)\.textContent = '';[\s\S]*?\$\('#twoFactorCurrentPassword'\)\.value = '';[\s\S]*?\$\('#twoFactorCode'\)\.value = '';/,
   'Closing the account MFA dialog must clear the setup secret, recovery codes, password, and entered OTP from the DOM.');
+assert.match(source, /function renderAccountTotpQr\(authenticatorUri\)[\s\S]*?qrcodegen\.QrCode\.encodeText\(authenticatorUri[\s\S]*?data:image\/svg\+xml;charset=utf-8/,
+  'Company-account MFA QR codes must be generated locally from the server-provided TOTP URI.');
+assert.match(accountApi, /return Results\.Ok\(new \{ secret = key, authenticatorUri = uri \}\)/,
+  'The authenticated MFA setup API must provide its standards-based TOTP provisioning URI for the local QR renderer.');
 assert.match(source, /\$\('#accountTwoFactorDialog'\)\.addEventListener\('cancel', clearTwoFactorDialogSecrets\);[\s\S]*?\$\('#accountTwoFactorDialog'\)\.addEventListener\('close', clearTwoFactorDialogSecrets\);/,
   'Escape and all dialog-close paths must synchronously clear sensitive MFA values.');
 
-console.log('Verified cancellable session/API-key revocation, authenticated routes, MFA provider guidance, and dialog-secret cleanup.');
+console.log('Verified session/API-key revocation, MFA provider guidance, locally rendered TOTP QR, and dialog-secret cleanup.');

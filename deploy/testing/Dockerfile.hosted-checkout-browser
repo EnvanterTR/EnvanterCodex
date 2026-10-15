@@ -12,6 +12,7 @@ COPY deploy/testing/hosted-checkout-browser/public-site-pricing.mjs ./
 COPY src/EnvanterTR.PublicSite/checkout.html src/EnvanterTR.PublicSite/checkout.js /checkout-site/
 COPY src/EnvanterTR.PublicSite/index.html /public-site/index.html
 COPY src/EnvanterTR.Web/wwwroot/index.html /checkout-site/company-app.html
+COPY src/EnvanterTR.Web/wwwroot/vendor/qrcodegen.js /checkout-site/vendor/qrcodegen.js
 COPY src/EnvanterTR.Web/wwwroot/platform-admin.html /platform-site/platform-admin.html
 COPY src/EnvanterTR.Web/wwwroot/platform-setup.html /platform-site/platform-setup.html
 COPY src/EnvanterTR.Web/wwwroot/platform-admin-members.js src/EnvanterTR.Web/wwwroot/platform-admin-subscriptions.js src/EnvanterTR.Web/wwwroot/platform-admin-demo-requests.js /platform-site/

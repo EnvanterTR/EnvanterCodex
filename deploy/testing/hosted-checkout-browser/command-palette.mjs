@@ -6,7 +6,9 @@ import { chromium } from 'playwright';
 const syntheticCompanyId = '11111111-1111-4111-8111-111111111111';
 const syntheticUserId = '22222222-2222-4222-8222-222222222222';
 const appHtml = await readFile('/checkout-site/company-app.html');
+const qrCodeGenerator = await readFile('/checkout-site/vendor/qrcodegen.js', 'utf8');
 const apiRequests = [];
+const externalRequests = [];
 const loginAttempts = [];
 let subscriptionMode = 'full';
 let loginMode = false;
@@ -28,7 +30,7 @@ const server = createServer(async (request, response) => {
   }
   if (request.method === 'GET' && url.pathname === '/vendor/qrcodegen.js') {
     response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
-    response.end('window.qrcodegen = window.qrcodegen || {};');
+    response.end(qrCodeGenerator);
     return;
   }
   if (url.pathname.startsWith('/api/')) {
@@ -59,7 +61,7 @@ const server = createServer(async (request, response) => {
       }
       if (request.method === 'POST' && url.pathname === '/api/session/2fa/setup' && record.csrf === 'synthetic-viewer-csrf') {
         response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
-        response.end(JSON.stringify({ secret: 'SYNTHETIC-ONLY-TOTP-SETUP-SECRET' }));
+        response.end(JSON.stringify({ secret: 'JBSWY3DPEHPK3PXP', authenticatorUri: 'otpauth://totp/EnvanterTR%3Asynthetic%40example.invalid?secret=JBSWY3DPEHPK3PXP&issuer=EnvanterTR&digits=6&period=30' }));
         return;
       }
       const revokeTokenMatch = url.pathname.match(/^\/api\/integrations\/tokens\/([0-9a-f-]+)\/revoke$/i);
@@ -141,6 +143,7 @@ const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] }
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 const pageErrors = [];
 page.on('pageerror', error => pageErrors.push(error.message));
+page.on('request', request => { if (new URL(request.url()).origin !== `http://127.0.0.1:${address.port}`) externalRequests.push(request.url()); });
 page.on('console', message => { if (message.type() === 'error') console.error(`BROWSER ${message.text()}`); });
 
 try {
@@ -328,11 +331,19 @@ try {
   await page.locator('#twoFactorCurrentPassword').fill('Synthetic-only-password');
   await page.locator('#startTwoFactorSetup').click();
   const twoFactorSecret = page.locator('#twoFactorSecret');
-  await page.waitForFunction(() => document.querySelector('#twoFactorSecret')?.textContent === 'SYNTHETIC-ONLY-TOTP-SETUP-SECRET');
+  await page.waitForFunction(() => document.querySelector('#twoFactorSecret')?.textContent === 'JBSWY3DPEHPK3PXP');
+  const twoFactorQr = page.locator('#twoFactorQr');
+  assert.equal(await twoFactorQr.isVisible(), true, 'The account MFA setup must display a locally generated QR code.');
+  assert.equal(await twoFactorQr.getAttribute('alt'), 'Authenticator uygulamasıyla taranacak kurulum QR kodu');
+  assert.match(await page.locator('#twoFactorFeedback').textContent(), /QR kodunu tarayın veya kurulum anahtarını elle girin/);
+  assert.match(decodeURIComponent((await twoFactorQr.getAttribute('src')).split(',')[1]), /<svg[\s\S]*<path d="M/,
+    'The QR image must contain a generated SVG matrix, not a remote image or placeholder.');
+  assert.deepEqual(externalRequests, [], 'The MFA setup key and QR must not be sent to external services.');
   assert.ok(apiRequests.some(item => item.path === '/api/session/2fa/setup' && item.method === 'POST' && item.csrf === 'synthetic-viewer-csrf'));
   await page.locator('#closeAccountTwoFactor').click();
   await accountTwoFactorDialog.waitFor({ state: 'hidden' });
   assert.equal(await twoFactorSecret.textContent(), '', 'The close button must immediately erase the TOTP enrollment secret from the DOM.');
+  assert.equal(await twoFactorQr.getAttribute('src'), null, 'The close button must remove the generated QR image containing the TOTP URI.');
   assert.equal(await page.locator('#twoFactorCurrentPassword').inputValue(), '');
   await page.locator('#userAvatar').click();
   await accountDialog.waitFor({ state: 'visible' });
@@ -340,10 +351,11 @@ try {
   await accountTwoFactorDialog.waitFor({ state: 'visible' });
   await page.locator('#twoFactorCurrentPassword').fill('Synthetic-only-password');
   await page.locator('#startTwoFactorSetup').click();
-  await page.waitForFunction(() => document.querySelector('#twoFactorSecret')?.textContent === 'SYNTHETIC-ONLY-TOTP-SETUP-SECRET');
+  await page.waitForFunction(() => document.querySelector('#twoFactorSecret')?.textContent === 'JBSWY3DPEHPK3PXP');
   await page.keyboard.press('Escape');
   await accountTwoFactorDialog.waitFor({ state: 'hidden' });
   assert.equal(await twoFactorSecret.textContent(), '', 'Escape must immediately erase the TOTP enrollment secret from the DOM.');
+  assert.equal(await twoFactorQr.getAttribute('src'), null, 'Escape must remove the generated QR image containing the TOTP URI.');
 
   const settingsGroup = page.locator('#sidebar [data-group="settings"]');
   const integrationsNav = page.locator('#sidebar [data-page="Entegrasyonlar"]');
@@ -444,13 +456,13 @@ try {
 
   subscriptionMode = 'readOnly';
   const expiryTranslations = {
-    tr: ['Abonelik süresi doldu', 'Şirket kayıtlarınız korunuyor.'],
-    en: ['Subscription expired', 'Your company records are safe.'],
-    ru: ['Срок подписки истёк', 'Данные вашей компании сохранены.'],
-    uk: ['Термін підписки минув', 'Дані вашої компанії збережено.'],
-    mk: ['Претплатата е истечена', 'Податоците на вашата компанија се зачувани.']
+    tr: ['Abonelik süresi doldu', 'Şirket kayıtlarınız korunuyor.', 'Authenticator uygulamasıyla taranacak kurulum QR kodu'],
+    en: ['Subscription expired', 'Your company records are safe.', 'Setup QR code to scan with your authenticator app'],
+    ru: ['Срок подписки истёк', 'Данные вашей компании сохранены.', 'QR-код настройки для сканирования приложением-аутентификатором'],
+    uk: ['Термін підписки минув', 'Дані вашої компанії збережено.', 'QR-код налаштування для сканування застосунком-автентифікатором'],
+    mk: ['Претплатата е истечена', 'Податоците на вашата компанија се зачувани.', 'QR-код за поставување за скенирање со апликацијата за автентикација']
   };
-  for (const [language, [title, description]] of Object.entries(expiryTranslations)) {
+  for (const [language, [title, description, qrAlt]] of Object.entries(expiryTranslations)) {
     await page.evaluate(languageCode => localStorage.setItem('envantertr.appearance', JSON.stringify({ language: languageCode })), language);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForFunction(expectedTitle => {
@@ -460,6 +472,8 @@ try {
     const noticeText = await page.locator('#subscriptionExpiryNotice').innerText();
     assert.ok(noticeText.includes(title) && noticeText.includes(description),
       `The expired-subscription notice must be translated into ${language}.`);
+    assert.equal(await page.locator('#twoFactorQr').getAttribute('alt'), qrAlt,
+      `The MFA QR image alternative text must be translated into ${language}.`);
   }
   assert.deepEqual(pageErrors, [], 'The app must not throw browser errors while switching languages and showing subscription access state.');
   const writes = apiRequests.filter(item => item.method !== 'GET');

@@ -2,7 +2,7 @@
 
 ## 15 Ekim 2026 — MFA kurulum açıklaması ve sır temizliği
 
-Hesap güvenliği penceresi artık TOTP'nin Google/Microsoft hesabı, ücretli abonelik, SMS veya ayrı bir servis gerektirmediğini; kodun Authenticator uygulamasında üretildiğini ve telefon kaybında tek kullanımlık kurtarma kodunun kullanılacağını Türkçe, İngilizce, Rusça, Ukraynaca ve Makedoncada açıklar. Kullanıcı kurulum anahtarını manuel girer; QR kurulumu henüz yoktur. Pencere düğmeyle, Escape ile veya diğer kapanışlarda kapandığında kurulum sırrı, kurtarma kodları, parola ve girilmiş kod DOM'dan temizlenir. Sentetik Chromium akışında CSRF'li kurulum, metin açıklaması ve düğme/Escape temizliği doğrulandı; gerçek hesapta MFA etkinleştirilmedi.
+Hesap güvenliği penceresi TOTP'nin Google/Microsoft hesabı, ücretli abonelik, SMS veya ayrı bir servis gerektirmediğini; kodun Authenticator uygulamasında üretildiğini ve telefon kaybında tek kullanımlık kurtarma kodunun kullanılacağını Türkçe, İngilizce, Rusça, Ukraynaca ve Makedoncada açıklar. Şirket hesabı kurulumunda sunucunun standart `otpauth://` URI'si, depodaki QRCodeGen kütüphanesiyle aynı tarayıcıda SVG QR'a dönüştürülür; harici QR hizmetine istek çıkmaz ve manuel anahtar yedeği kalır. Pencere düğmeyle, Escape ile veya diğer kapanışlarda kapandığında kurulum sırrı, QR, kurtarma kodları, parola ve girilmiş kod DOM'dan temizlenir. Sentetik Chromium akışında CSRF'li kurulum, QR görüntüsü ve veri sızdırmayan ağ davranışı doğrulandı; gerçek hesapta MFA etkinleştirilmedi.
 
 ## 15 Ekim 2026 — Bildirimler ve Güvenlik menülerinden tek adımda açılış
 
