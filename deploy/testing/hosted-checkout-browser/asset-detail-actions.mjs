@@ -69,6 +69,7 @@ const softwareLicenseAssignmentWrites = [];
 const softwareLicenseAttachments = [{ id: softwareLicenseAttachmentId, originalFileName: 'synthetic-eula.pdf', contentType: 'application/pdf',
   length: 1024, createdAt: '2026-10-14T12:00:00Z', uploadedBy: 'Synthetic Owner', isEulaDocument: false }];
 const softwareLicenseWrites = [];
+const softwareLicenseCrudWrites = [];
 const softwareLicensePreviewRequests = [];
 const softwareLicenseImportAttempts = [];
 let failNextSoftwareLicenseImport = true;
@@ -336,11 +337,11 @@ const server = createServer(async (request, response) => {
         .some(value => value?.toLocaleLowerCase().includes(q)));
       result = { items, total: items.length, page: 1, pageSize: 25 };
     }
-    else if (url.pathname === `/api/software-licenses/${softwareLicenseId}`) result = {
-      license: { ...softwareLicenseRows.find(item => item.id === softwareLicenseId) },
-      assignments: softwareLicenseAssignments.filter(item => item.licenseId === softwareLicenseId).map(item => ({ ...item })), events: [],
-      attachments: softwareLicenseAttachments.map(item => ({ ...item })), currentEula: null
-    };
+    else if (softwareLicenseRows.some(item => url.pathname === `/api/software-licenses/${item.id}`)) {
+      const licenseId = url.pathname.split('/').at(-1), license = softwareLicenseRows.find(item => item.id === licenseId);
+      result = { license: { ...license }, assignments: softwareLicenseAssignments.filter(item => item.licenseId === licenseId).map(item => ({ ...item })), events: [],
+        attachments: licenseId === softwareLicenseId ? softwareLicenseAttachments.map(item => ({ ...item })) : [], currentEula: null };
+    }
     else if (url.pathname === '/api/software-license-assignments') {
       const q = (url.searchParams.get('q') || '').toLocaleLowerCase('tr-TR');
       const active = url.searchParams.get('active') || '';
@@ -389,6 +390,24 @@ const server = createServer(async (request, response) => {
   if (request.headers['x-csrf-token'] !== 'synthetic-asset-csrf') {
     response.writeHead(400, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ message: 'Missing synthetic CSRF token.' })); return;
+  }
+  if (request.method === 'POST' && url.pathname === '/api/software-licenses') {
+    assert.equal(typeof body?.name, 'string', 'A new license must submit its name.');
+    const created = { ...body, id: 'a5555555-5555-4555-8555-555555555555', assigned: 0 };
+    softwareLicenseRows.push(created);
+    softwareLicenseCrudWrites.push({ method: request.method, path: url.pathname, body, csrf: request.headers['x-csrf-token'] });
+    json(response, 201, { id: created.id });
+    return;
+  }
+  const licenseUpdateMatch = url.pathname.match(/^\/api\/software-licenses\/([0-9a-f-]+)$/i);
+  if (request.method === 'PUT' && licenseUpdateMatch) {
+    const license = softwareLicenseRows.find(item => item.id === licenseUpdateMatch[1]);
+    assert.ok(license, 'An update must target a synthetic company license.');
+    assert.ok(body.seats >= license.assigned, 'License updates must not lower total seats below active assignments.');
+    Object.assign(license, body);
+    softwareLicenseCrudWrites.push({ method: request.method, path: url.pathname, body, csrf: request.headers['x-csrf-token'] });
+    response.writeHead(204); response.end();
+    return;
   }
   if (request.method === 'POST' && url.pathname === '/api/reservations') {
     const selectedAsset = reservationAssets.find(item => item.id === body?.assetId);
@@ -1681,6 +1700,99 @@ try {
   await page.locator('#licenseAssignmentRows').getByText('Synthetic QA Employee').waitFor();
   await page.locator('#licenseAssignmentRows').getByText('Geri alındı').waitFor();
   console.log('PASS: software license employee assignment updates seat usage and detail; assignment list search, cancel-safe and confirmed revocation, inactive history filter, and CSRF are verified.');
+
+  await page.locator('#sidebar button[data-page="Yazılım lisansları"]').click();
+  const licenseFormDialog = page.locator('#licenseFormDialog');
+  const licenseCrudWriteCountBefore = softwareLicenseCrudWrites.length;
+  await page.locator('#newLicenseButton').click();
+  await licenseFormDialog.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#licenseForm [name="name"]').evaluate(input => input.required && !input.checkValidity()), true,
+    'A license cannot be submitted without its required name.');
+  await page.locator('#licenseForm [data-close-license]').filter({ hasText: 'Vazgeç' }).click();
+  await licenseFormDialog.waitFor({ state: 'hidden' });
+  assert.equal(softwareLicenseCrudWrites.length, licenseCrudWriteCountBefore, 'Canceling a new license must not write.');
+
+  await page.locator('#newLicenseButton').click();
+  await licenseFormDialog.waitFor({ state: 'visible' });
+  const createdLicenseName = 'Synthetic CRUD License';
+  await page.locator('#licenseForm [name="name"]').fill(createdLicenseName);
+  await page.locator('#licenseForm [name="publisher"]').fill('Synthetic QA Publisher');
+  await page.locator('#licenseForm [name="productVersion"]').fill('4.2');
+  await page.locator('#licenseForm [name="licenseType"]').selectOption('Subscription');
+  await page.locator('#licenseForm [name="licenseReference"]').fill('QA-LICENSE-CRUD-001');
+  await page.locator('#licenseForm [name="supplier"]').fill('Synthetic QA Supplier');
+  await page.locator('#licenseForm [name="seats"]').fill('2');
+  await page.locator('#licenseForm [name="unitCost"]').fill('45.5');
+  await page.locator('#licenseForm [name="currency"]').selectOption('USD');
+  await page.locator('#licenseForm [name="purchaseDate"]').fill('2026-10-15');
+  await page.locator('#licenseForm [name="expirationDate"]').fill('2027-10-15');
+  await page.locator('#licenseForm [name="autoRenew"]').check();
+  await page.locator('#licenseForm [name="notes"]').fill('Synthetic CRUD creation note');
+  const licenseCreateResponse = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === '/api/software-licenses');
+  await page.locator('#licenseForm button[type="submit"]').click();
+  assert.equal((await licenseCreateResponse).status(), 201, 'Creating a software license must reach the company API.');
+  await licenseFormDialog.waitFor({ state: 'hidden' });
+  const createdLicenseRow = licenseList.locator('tr[data-id="a5555555-5555-4555-8555-555555555555"]');
+  await createdLicenseRow.waitFor({ state: 'visible' });
+  const licenseCreateWrite = softwareLicenseCrudWrites.at(-1);
+  assert.deepEqual(licenseCreateWrite, { method: 'POST', path: '/api/software-licenses', body: {
+    name: createdLicenseName, publisher: 'Synthetic QA Publisher', productVersion: '4.2', licenseType: 'Subscription',
+    licenseReference: 'QA-LICENSE-CRUD-001', supplier: 'Synthetic QA Supplier', seats: 2, unitCost: 45.5, currency: 'USD',
+    purchaseDate: '2026-10-15', expirationDate: '2027-10-15', autoRenew: true, requiresEulaAcceptance: false, notes: 'Synthetic CRUD creation note'
+  }, csrf: 'synthetic-asset-csrf' });
+
+  await createdLicenseRow.locator('.license-open').first().click();
+  await licenseDetail.waitFor({ state: 'visible' });
+  await page.locator('#editLicenseButton').click();
+  await licenseFormDialog.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#licenseForm [name="name"]').inputValue(), createdLicenseName,
+    'The edit form must be populated from the selected license.');
+  const editedLicenseName = 'Synthetic CRUD License Updated';
+  await page.locator('#licenseForm [name="name"]').fill('Canceled Synthetic License Edit');
+  await page.locator('#licenseForm [data-close-license]').filter({ hasText: 'Vazgeç' }).click();
+  await licenseFormDialog.waitFor({ state: 'hidden' });
+  assert.equal(softwareLicenseCrudWrites.length, licenseCrudWriteCountBefore + 1, 'Canceling license edits must not write.');
+  assert.equal(softwareLicenseRows.find(item => item.id === 'a5555555-5555-4555-8555-555555555555').name, createdLicenseName,
+    'Canceling license edits must preserve the stored synthetic record.');
+
+  await createdLicenseRow.locator('.license-open').first().click();
+  await licenseDetail.waitFor({ state: 'visible' });
+  await page.locator('#editLicenseButton').click();
+  await licenseFormDialog.waitFor({ state: 'visible' });
+  await page.locator('#licenseForm [name="name"]').fill(editedLicenseName);
+  await page.locator('#licenseForm [name="seats"]').fill('3');
+  await page.locator('#licenseForm [name="autoRenew"]').uncheck();
+  await page.locator('#licenseForm [name="notes"]').fill('Synthetic CRUD edit note');
+  const licenseUpdateResponse = page.waitForResponse(response => response.request().method() === 'PUT'
+    && new URL(response.url()).pathname === '/api/software-licenses/a5555555-5555-4555-8555-555555555555');
+  await page.locator('#licenseForm button[type="submit"]').click();
+  assert.equal((await licenseUpdateResponse).status(), 204, 'Updating a software license must reach its company-scoped API.');
+  await licenseFormDialog.waitFor({ state: 'hidden' });
+  await page.locator('#licenseDetailFields').getByText('0 / 3').waitFor();
+  assert.equal(softwareLicenseRows.find(item => item.id === 'a5555555-5555-4555-8555-555555555555').name, editedLicenseName,
+    'The confirmed license edit must persist after the detail is reloaded from the synthetic API.');
+  const licenseUpdateWrite = softwareLicenseCrudWrites.at(-1);
+  assert.equal(licenseUpdateWrite.method, 'PUT');
+  assert.deepEqual(licenseUpdateWrite.body, { name: editedLicenseName, publisher: 'Synthetic QA Publisher', productVersion: '4.2',
+    licenseType: 'Subscription', licenseReference: 'QA-LICENSE-CRUD-001', supplier: 'Synthetic QA Supplier', seats: 3,
+    unitCost: 45.5, currency: 'USD', purchaseDate: '2026-10-15', expirationDate: '2027-10-15', autoRenew: false,
+    requiresEulaAcceptance: false, notes: 'Synthetic CRUD edit note' });
+  assert.equal(licenseUpdateWrite.csrf, 'synthetic-asset-csrf');
+  await page.locator('#closeLicenseDetail').click();
+  await licenseDetail.waitFor({ state: 'hidden' });
+  const licenseSearchRequest = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return url.pathname === '/api/software-licenses' && url.searchParams.get('q') === 'QA-LICENSE-CRUD-001';
+  });
+  await page.locator('#licenseSearch').fill('QA-LICENSE-CRUD-001');
+  await licenseSearchRequest;
+  await page.locator('#licenseRows').getByText(editedLicenseName).waitFor();
+  assert.ok(requests.some(item => item.path === '/api/software-licenses' && item.query.q === 'QA-LICENSE-CRUD-001'),
+    'The license list search must find the newly persisted record through the API.');
+  assert.equal(softwareLicenseCrudWrites.length, licenseCrudWriteCountBefore + 2,
+    'Only the explicitly confirmed license creation and update may write.');
+  console.log('PASS: software license create/edit required-field validation, cancel-safe dialogs, CSRF-scoped writes, detail edit prefill, persisted list/detail refresh, and search.');
 
   await page.locator('#sidebar button[data-page="Varlıklar"]').click();
   await page.locator('#assetRows .asset-name').filter({ hasText: asset.name }).click();
