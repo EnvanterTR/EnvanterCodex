@@ -466,6 +466,22 @@ const server = createServer(async (request, response) => {
     json(response, 200, { updated: targets.length, employeeId, employeeName: 'Synthetic QA Employee' });
     return;
   }
+  if (request.method === 'POST' && url.pathname === '/api/assets/bulk-transfer') {
+    assert.equal(record.csrf, 'synthetic-asset-csrf');
+    assert.equal(body.targetLocation, 'West Wing');
+    assert.equal(body.notes, 'Quarterly floor move');
+    const selected = new Set(body.assetIds);
+    const targets = bulkAssets.filter(item => selected.has(item.id));
+    assert.equal(targets.length, 2, 'The UI must send exactly the two selected synthetic assets.');
+    assert.ok(targets.every(item => item.status === 'Available' && !item.assignedEmployeeId));
+    assert.ok(targets.every(item => item.location !== body.targetLocation));
+    for (const target of targets) {
+      target.location = body.targetLocation;
+      target.updatedAt = '2026-10-15T10:45:00Z';
+    }
+    json(response, 200, { updated: targets.length, targetLocation: body.targetLocation });
+    return;
+  }
   if (request.method === 'PATCH' && url.pathname === `/api/assets/${assetId}/status`) {
     asset.status = body.status;
     asset.updatedAt = '2026-10-14T13:30:00Z';
@@ -1066,14 +1082,15 @@ try {
   assert.match(await page.locator('#assetHistory').innerText(), /Synthetic QA Annex/);
 
   const beforeAssignCancel = apiRequests.length;
+  const assignDialog = page.locator('#assignDialog');
   await page.locator('#assignAssetButton').click();
-  await bulkAssignDialogRef.waitFor({ state: 'visible' });
+  await assignDialog.waitFor({ state: 'visible' });
   assert.equal(await page.locator('#assignForm [name="employeeId"] option').count(), 2, 'Assignment dialog must load the company active-employee choice.');
   await page.locator('[data-close-assign]').first().click();
-  await bulkAssignDialogRef.waitFor({ state: 'hidden' });
+  await assignDialog.waitFor({ state: 'hidden' });
   assert.equal(apiRequests.length, beforeAssignCancel, 'Canceling assignment must not write.');
   await page.locator('#assignAssetButton').click();
-  await bulkAssignDialogRef.waitFor({ state: 'visible' });
+  await assignDialog.waitFor({ state: 'visible' });
   const expectedReturnOn = await page.evaluate(() => {
     const date = new Date(); date.setDate(date.getDate() + 30); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   });
@@ -1081,7 +1098,7 @@ try {
   await page.locator('#assignForm [name="expectedReturnOn"]').fill(expectedReturnOn);
   await page.locator('#assignForm [name="note"]').fill('Synthetic assignment note');
   await page.locator('#assignForm button[type="submit"]').click();
-  await bulkAssignDialogRef.waitFor({ state: 'hidden' });
+  await assignDialog.waitFor({ state: 'hidden' });
   await page.locator('#assetRows .asset-name').filter({ hasText: editedName }).waitFor({ state: 'visible' });
   const assignmentWrite = apiRequests.at(-1);
   assert.equal(assignmentWrite.method, 'POST');
@@ -1641,6 +1658,50 @@ try {
   assert.ok(bulkAssets.every(item => item.status === 'Deployed' && item.assignedEmployeeId === employeeId && item.expectedReturnOn === '2026-12-31'));
   assert.equal(await bulkToolbar.isHidden(), true, 'A successful bulk assignment must clear the selection and hide the bulk toolbar.');
   console.log('PASS: bulk asset assignment dialog cancellation writes nothing; confirmed assignment persists both rows with employee, due date, note, and CSRF.');
+
+  for (const item of bulkAssets) {
+    item.status = 'Available';
+    item.assignedEmployeeId = null;
+    item.assignedEmployeeName = null;
+    item.expectedReturnOn = null;
+    item.location = 'Head Office';
+  }
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await firstBulkRow.waitFor({ state: 'visible' });
+  await secondBulkRow.waitFor({ state: 'visible' });
+  await firstBulkRow.locator('.asset-row-select').check();
+  await secondBulkRow.locator('.asset-row-select').check();
+  await bulkToolbar.waitFor({ state: 'visible' });
+  const bulkTransferButton = page.locator('#bulkTransferSelectedAssets');
+  assert.equal(await bulkTransferButton.isDisabled(), false, 'Bulk transfer must be enabled for available unassigned assets.');
+  const bulkTransferWritesBeforeCancel = apiRequests.filter(item => item.path === '/api/assets/bulk-transfer').length;
+  await bulkTransferButton.click();
+  const bulkTransferDialog = page.locator('#assetTransferDialog');
+  await bulkTransferDialog.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#assetTransferDialog h2').innerText(), /Seçili varlıkları yeni konuma aktar/);
+  assert.equal(await page.locator('#transferSourceLocation').inputValue(), 'Seçili kayıtların kaynak konumları');
+  await page.locator('[data-close-asset-transfer]').first().click();
+  await bulkTransferDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.filter(item => item.path === '/api/assets/bulk-transfer').length, bulkTransferWritesBeforeCancel,
+    'Canceling bulk transfer must not write.');
+  assert.ok(bulkAssets.every(item => item.location === 'Head Office'), 'Canceling must leave locations unchanged.');
+  assert.match(await page.locator('#selectedAssetCount').innerText(), /2 varlık seçildi/);
+  await bulkTransferButton.click();
+  await bulkTransferDialog.waitFor({ state: 'visible' });
+  const transferForm = page.locator('#assetTransferForm');
+  await transferForm.locator('[name="targetLocation"]').fill('West Wing');
+  await transferForm.locator('[name="notes"]').fill('Quarterly floor move');
+  await transferForm.locator('button[type="submit"]').click();
+  await bulkTransferDialog.waitFor({ state: 'hidden' });
+  await firstBulkRow.getByText('West Wing').waitFor();
+  await secondBulkRow.getByText('West Wing').waitFor();
+  const bulkTransferWrite = apiRequests.find(item => item.path === '/api/assets/bulk-transfer');
+  assert.equal(bulkTransferWrite?.method, 'POST');
+  assert.deepEqual(bulkTransferWrite?.body, { assetIds: bulkAssetIds, targetLocation: 'West Wing', notes: 'Quarterly floor move' });
+  assert.equal(bulkTransferWrite?.csrf, 'synthetic-asset-csrf');
+  assert.ok(bulkAssets.every(item => item.location === 'West Wing'));
+  assert.equal(await bulkToolbar.isHidden(), true, 'A successful bulk transfer must clear the selection and hide the bulk toolbar.');
+  console.log('PASS: bulk asset transfer cancellation preserves locations; confirmed transfer moves both selected rows with note and CSRF.');
 
   const sidebarGroups = page.locator('#sidebar [data-group]');
   for (const group of await sidebarGroups.all()) {

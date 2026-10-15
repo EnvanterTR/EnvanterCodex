@@ -6789,6 +6789,131 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Bulk_asset_transfer_is_atomic_company_scoped_authorized_and_audited()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var secondAssetId = Guid.NewGuid();
+        var targetLocationId = Guid.NewGuid();
+        const string targetLocation = "Acceptance West Wing";
+        await using (var setupScope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = setupScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var first = await db.Assets.SingleAsync(asset => asset.CompanyId == _companyId && asset.Id == _ownAssetId);
+            var categoryId = first.CategoryId;
+            first.AssignedEmployeeId = null;
+            first.Status = AssetStatuses.Available;
+            first.Location = targetLocation;
+            first.LocationCatalogId = targetLocationId;
+            db.CompanyLocations.Add(new CompanyLocation
+            {
+                Id = targetLocationId, CompanyId = _companyId, Name = targetLocation,
+                NormalizedName = targetLocation.ToUpperInvariant(), IsDefault = false
+            });
+            db.Assets.Add(new Asset
+            {
+                Id = secondAssetId, CompanyId = _companyId, AssetTag = $"BULK-TRANSFER-{_userId:N}",
+                Name = "Second bulk transfer asset", CategoryId = categoryId, Location = "Acceptance East Wing"
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var successPayload = new
+        {
+            assetIds = new[] { _ownAssetId, secondAssetId },
+            targetLocation,
+            notes = "Quarterly floor move"
+        };
+        using (var missingCsrf = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-transfer", "admin",
+                   System.Net.Http.Json.JsonContent.Create(successPayload)))
+            Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+        await SetCompanyRoleAsync("viewer");
+        using (var forbidden = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-transfer", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(successPayload), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+        await SetCompanyRoleAsync("admin");
+        using (var duplicateIds = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-transfer", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { _ownAssetId, _ownAssetId }, targetLocation }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, duplicateIds.StatusCode);
+        using (var invalidTarget = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-transfer", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { _ownAssetId }, targetLocation = new string('x', 161) }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidTarget.StatusCode);
+        using (var crossTenant = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-transfer", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { _ownAssetId, _otherCompanyAssetId }, targetLocation }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
+        using (var alreadyThere = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-transfer", "admin",
+                   System.Net.Http.Json.JsonContent.Create(successPayload), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, alreadyThere.StatusCode);
+        await using (var verifyNoPartialWrite = _factory.Services.CreateAsyncScope())
+        {
+            var db = verifyNoPartialWrite.ServiceProvider.GetRequiredService<AppDbContext>();
+            var assets = await db.Assets.AsNoTracking().Where(asset => asset.CompanyId == _companyId &&
+                (asset.Id == _ownAssetId || asset.Id == secondAssetId)).ToListAsync();
+            Assert.Equal(targetLocation, assets.Single(asset => asset.Id == _ownAssetId).Location);
+            Assert.Equal("Acceptance East Wing", assets.Single(asset => asset.Id == secondAssetId).Location);
+            Assert.Equal(0, await db.AssetEvents.CountAsync(item => item.CompanyId == _companyId &&
+                (item.AssetId == _ownAssetId || item.AssetId == secondAssetId) && item.EventType == "Transferred"));
+        }
+
+        await using (var setupScope = _factory.Services.CreateAsyncScope())
+        {
+            var db = setupScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var first = await db.Assets.SingleAsync(asset => asset.CompanyId == _companyId && asset.Id == _ownAssetId);
+            first.Location = "Acceptance North Wing";
+            first.LocationCatalogId = null;
+            var second = await db.Assets.SingleAsync(asset => asset.CompanyId == _companyId && asset.Id == secondAssetId);
+            second.AssignedEmployeeId = _ownEmployeeId;
+            second.Status = AssetStatuses.Deployed;
+            await db.SaveChangesAsync();
+        }
+        using (var assignedConflict = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-transfer", "admin",
+                   System.Net.Http.Json.JsonContent.Create(successPayload), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, assignedConflict.StatusCode);
+        await using (var verifyAtomicConflict = _factory.Services.CreateAsyncScope())
+        {
+            var db = verifyAtomicConflict.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.Equal("Acceptance North Wing", await db.Assets.Where(asset => asset.CompanyId == _companyId && asset.Id == _ownAssetId).Select(asset => asset.Location).SingleAsync());
+            Assert.Equal("Acceptance East Wing", await db.Assets.Where(asset => asset.CompanyId == _companyId && asset.Id == secondAssetId).Select(asset => asset.Location).SingleAsync());
+            var second = await db.Assets.SingleAsync(asset => asset.CompanyId == _companyId && asset.Id == secondAssetId);
+            second.AssignedEmployeeId = null;
+            second.Status = AssetStatuses.Available;
+            await db.SaveChangesAsync();
+        }
+        using (var transferred = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-transfer", "admin",
+                   System.Net.Http.Json.JsonContent.Create(successPayload), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, transferred.StatusCode);
+            using var payload = JsonDocument.Parse(await transferred.Content.ReadAsStringAsync());
+            Assert.Equal(2, payload.RootElement.GetProperty("updated").GetInt32());
+            Assert.Equal(targetLocation, payload.RootElement.GetProperty("targetLocation").GetString());
+        }
+
+        await using var verifyScope = _factory.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var saved = await verifyDb.Assets.AsNoTracking().Where(asset => asset.CompanyId == _companyId &&
+            (asset.Id == _ownAssetId || asset.Id == secondAssetId)).ToListAsync();
+        Assert.All(saved, item => Assert.Equal(targetLocation, item.Location));
+        Assert.Equal(targetLocationId, saved.Single(asset => asset.Id == _ownAssetId).LocationCatalogId);
+        Assert.All(saved, item => Assert.Equal(AssetStatuses.Available, item.Status));
+        var events = await verifyDb.AssetEvents.AsNoTracking().Where(item => item.CompanyId == _companyId &&
+            (item.AssetId == _ownAssetId || item.AssetId == secondAssetId) && item.EventType == "Transferred").ToListAsync();
+        Assert.Equal(2, events.Count);
+        Assert.All(events, item =>
+        {
+            Assert.Equal(_userId, item.ActorUserId);
+            Assert.Contains(targetLocation, item.Details, StringComparison.Ordinal);
+            Assert.Contains("Quarterly floor move", item.Details, StringComparison.Ordinal);
+        });
+        Assert.Equal(2, await verifyDb.AuditEntries.CountAsync(item => item.CompanyId == _companyId &&
+            (item.TargetId == _ownAssetId || item.TargetId == secondAssetId) && item.Action == "BulkTransferred"));
+    }
+
+    [Fact]
     public async Task Asset_archive_restore_is_authorized_tenant_scoped_and_audited()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
