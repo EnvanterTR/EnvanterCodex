@@ -181,6 +181,12 @@ const server = createServer(async (request, response) => {
   requests.push(record);
   if (request.method !== 'GET' && !url.pathname.startsWith('/api/assets/import-mappings') && !url.pathname.includes('/import/preview.') && !/^\/api\/assets\/import\.(csv|xlsx)$/.test(url.pathname)) apiRequests.push(record);
 
+  if (request.method === 'GET' && url.pathname === '/api/reports/warranties/export.csv') {
+    response.writeHead(200, { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': 'attachment; filename=synthetic-warranties.csv', 'cache-control': 'no-store' });
+    response.end('Etiket;Varlık;Durum;Garanti bitişi;Konum;Zimmetli çalışan\r\nQA-WARRANTY-051;Synthetic warranty asset;Available;2027-04-15;QA Depot;\r\n');
+    return;
+  }
+
   if (request.method === 'POST' && url.pathname === '/api/session/login') {
     expiryLoginAttempts.push(record);
     assert.equal(record.csrf, 'synthetic-asset-csrf', 'Session re-entry must use a fresh CSRF token.');
@@ -261,6 +267,35 @@ const server = createServer(async (request, response) => {
       const total = items.length, pageNumber = Number(url.searchParams.get('page') || 1), pageSize = Number(url.searchParams.get('pageSize') || 25);
       items = items.slice((pageNumber - 1) * pageSize, pageNumber * pageSize);
       result = { items, total, page: pageNumber, pageSize, canReview: true, currentUserId: userId };
+    }
+    else if (url.pathname === '/api/reports/warranties') {
+      const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+      const through = url.searchParams.get('through') || new Date(today.getTime() + 90 * 86400000).toISOString().slice(0, 10);
+      const throughDate = new Date(`${through}T00:00:00Z`);
+      const isoDay = offset => new Date(today.getTime() + offset * 86400000).toISOString().slice(0, 10);
+      const warrantyItems = [
+        { id: assetId, assetTag: 'QA-WARRANTY-EXPIRED', name: 'Synthetic expired warranty', status: 'Available', warrantyExpiresAt: isoDay(-1), location: 'QA Depot', employeeName: null },
+        { id: assetId, assetTag: 'QA-WARRANTY-UPCOMING', name: 'Synthetic upcoming warranty', status: 'Maintenance', warrantyExpiresAt: isoDay(10), location: 'QA Floor 2', employeeName: 'Synthetic QA Employee' },
+        { id: assetId, assetTag: 'QA-WARRANTY-LATER', name: '<img src=x onerror=alert(1)>', status: 'Available', warrantyExpiresAt: isoDay(180), location: null, employeeName: null },
+        { id: assetId, assetTag: 'QA-WARRANTY-MISSING', name: 'Synthetic warranty date missing', status: 'Available', warrantyExpiresAt: null, location: null, employeeName: null },
+        ...Array.from({ length: 51 }, (_, index) => ({ id: assetId, assetTag: `QA-WARRANTY-${String(index + 1).padStart(3, '0')}`,
+          name: `Synthetic warranty page ${index + 1}`, status: 'Available', warrantyExpiresAt: isoDay(180), location: 'QA Depot', employeeName: null }))
+      ];
+      const state = url.searchParams.get('state') || 'upcoming', q = (url.searchParams.get('q') || '').toLocaleLowerCase('tr-TR');
+      let items = warrantyItems.filter(item => {
+        const expires = item.warrantyExpiresAt ? new Date(`${item.warrantyExpiresAt}T00:00:00Z`) : null;
+        const matchesState = state === 'all' || state === 'missing' ? state === 'all' || !expires
+          : state === 'expired' ? !!expires && expires < today
+          : state === 'later' ? !!expires && expires > throughDate
+          : !!expires && expires >= today && expires <= throughDate;
+        const matchesSearch = !q || [item.assetTag, item.name, item.location, item.employeeName].some(value => value?.toLocaleLowerCase('tr-TR').includes(q));
+        return matchesState && matchesSearch;
+      });
+      items.sort((left, right) => (left.warrantyExpiresAt || '9999-12-31').localeCompare(right.warrantyExpiresAt || '9999-12-31') || left.assetTag.localeCompare(right.assetTag));
+      const total = items.length, pageNumber = Number(url.searchParams.get('page') || 1), pageSize = Number(url.searchParams.get('pageSize') || 50);
+      items = items.slice((pageNumber - 1) * pageSize, pageNumber * pageSize);
+      result = { today: today.toISOString().slice(0, 10), through, state, expired: 1, upcoming: 1, withoutDate: 1,
+        items, total, page: pageNumber, pageSize, pageCount: Math.ceil(total / pageSize) };
     }
     else if (url.pathname === '/api/assets') {
       const query = (url.searchParams.get('q') || '').toLocaleLowerCase('tr-TR');
@@ -2173,6 +2208,68 @@ try {
   assert.equal(apiRequests.length, activityWritesBeforeRefresh, 'Filtering, paging, opening a linked asset and retrying history must not write data.');
   assert.ok(requests.some(item => item.path === '/api/activity' && item.query.page === '1'), 'Activity retry must reload the current page.');
   console.log('PASS: Transferler preset and general history routes; activity search/date/paging, keyboard-linked asset opening, empty/error recovery, retry, and read-only behavior.');
+
+  const writesBeforeWarrantyAcceptance = apiRequests.length;
+  await page.locator('#sidebar [data-page="Garanti takibi"]').click();
+  await page.locator('#warrantyReportRows tr').filter({ hasText: 'QA-WARRANTY-UPCOMING' }).waitFor();
+  assert.equal(await page.locator('#warrantyReportRows tr').count(), 1, 'The default warranty route must show only upcoming warranties in its default horizon.');
+  assert.equal(await page.locator('#warrantyReportNext').isDisabled(), true);
+  await page.locator('#warrantyReportState').selectOption('expired');
+  await page.locator('#warrantyReportRows tr').filter({ hasText: 'QA-WARRANTY-EXPIRED' }).waitFor();
+  assert.ok(requests.some(item => item.path === '/api/reports/warranties' && item.query.state === 'expired' && item.query.page === '1'),
+    'The expired warranty filter must reload page one through the company report API.');
+  await page.locator('#warrantyReportState').selectOption('upcoming');
+  await page.locator('#warrantyReportHorizon').selectOption('30');
+  const warrantyHorizonRequest = requests.findLast(item => item.path === '/api/reports/warranties' && item.query.state === 'upcoming' && item.query.through);
+  assert.ok(warrantyHorizonRequest && warrantyHorizonRequest.query.through === new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+    'Selecting 30 days must send a matching horizon to the API.');
+  const warrantySearchRequest = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return url.pathname === '/api/reports/warranties' && url.searchParams.get('q') === 'QA-WARRANTY-UPCOMING';
+  });
+  await page.locator('#warrantyReportSearch').fill('QA-WARRANTY-UPCOMING');
+  await warrantySearchRequest;
+  await page.locator('#warrantyReportRows').getByText('QA-WARRANTY-UPCOMING').waitFor();
+  assert.ok(requests.some(item => item.path === '/api/reports/warranties' && item.query.q === 'QA-WARRANTY-UPCOMING'),
+    'Warranty search must reach the report API.');
+
+  await page.locator('#warrantyReportSearch').fill('');
+  await page.locator('#warrantyReportState').selectOption('all');
+  await page.locator('#warrantyReportRows tr').filter({ hasText: 'QA-WARRANTY-001' }).waitFor();
+  assert.equal(await page.locator('#warrantyReportNext').isDisabled(), false, 'The warranty report must enable paging when more than 50 records match.');
+  await page.locator('#warrantyReportNext').click();
+  await page.locator('#warrantyReportRows').getByText('QA-WARRANTY-051').waitFor();
+  assert.ok(requests.some(item => item.path === '/api/reports/warranties' && item.query.page === '2' && item.query.state === 'all'),
+    'Warranty pagination must request the next page with current filters.');
+  await page.locator('#warrantyReportPrev').click();
+  await page.locator('#warrantyReportRows').getByText('QA-WARRANTY-001').waitFor();
+  await page.locator('#warrantyReportState').selectOption('later');
+  await page.locator('#warrantyReportSearch').fill('QA-WARRANTY-LATER');
+  await page.locator('#warrantyReportRows').getByText('QA-WARRANTY-LATER').waitFor();
+  assert.equal(await page.locator('#warrantyReportRows img').count(), 0, 'Warranty asset names must be rendered as text, not executable HTML.');
+  await page.locator('#warrantyReportState').selectOption('missing');
+  await page.locator('#warrantyReportSearch').fill('QA-WARRANTY-MISSING');
+  await page.locator('#warrantyReportRows').getByText('QA-WARRANTY-MISSING').waitFor();
+  await page.locator('#warrantyReportState').selectOption('expired');
+  await page.locator('#warrantyReportSearch').fill('QA-WARRANTY-EXPIRED');
+  const [warrantyDownload] = await Promise.all([
+    page.waitForEvent('download'), page.locator('#warrantyReportExport').click()
+  ]);
+  assert.equal(warrantyDownload.suggestedFilename(), 'synthetic-warranties.csv');
+  const warrantyExport = requests.findLast(item => item.path === '/api/reports/warranties/export.csv');
+  assert.ok(warrantyExport && warrantyExport.query.state === 'expired' && warrantyExport.query.q === 'QA-WARRANTY-EXPIRED' && warrantyExport.query.through,
+    'Warranty CSV export must preserve filters and horizon.');
+  assert.equal(warrantyExport.query.page, undefined, 'Warranty CSV export must not include pagination.');
+  await page.locator('#warrantyReportSearch').fill('');
+  await page.locator('#warrantyReportState').selectOption('upcoming');
+  await page.locator('#warrantyReportRows').getByText('QA-WARRANTY-UPCOMING').waitFor();
+  await page.locator('#warrantyReportRows').getByText('QA-WARRANTY-UPCOMING').click();
+  await page.locator('#assetDialog').waitFor({ state: 'visible' });
+  await page.locator('#closeDialog').click();
+  await page.locator('#assetDialog').waitFor({ state: 'hidden' });
+  await page.locator('#warrantyReportRefresh').click();
+  assert.equal(apiRequests.length, writesBeforeWarrantyAcceptance, 'Warranty filters, linked asset opening, CSV export, and refresh must not write company data.');
+  console.log('PASS: warranty route, default/state/horizon/search filters, 50-row pagination, safe text rendering, filtered CSV download, asset-detail shortcut, refresh, and read-only behavior.');
 
   const sidebarDestinations = page.locator('#sidebar button[data-page]');
   const destinationCount = await sidebarDestinations.count();

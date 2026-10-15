@@ -49,6 +49,8 @@ assert.match(assetActions, /const reservationWrites = \[\]/);
 assert.match(assetActions, /reservationActionDialog/);
 assert.match(assetActions, /reservationRows\[0\]\.reviewNote, 'Synthetic approval note'/);
 assert.match(assetActions, /Transferler preset and general history routes; activity search\/date\/paging, keyboard-linked asset opening, empty\/error recovery, retry, and read-only behavior/);
+assert.match(assetActions, /warranty route, default\/state\/horizon\/search filters, 50-row pagination, safe text rendering, filtered CSV download, asset-detail shortcut, refresh, and read-only behavior/);
+assert.match(assetActions, /Warranty CSV export must preserve filters and horizon/);
 assert.match(assetActions, /Keyboard activation must open the linked asset details/);
 assert.match(assetActions, /An activity API error must disable paging/);
 assert.match(assetActions, /software license employee assignment updates seat usage and detail; assignment list search, cancel-safe and confirmed revocation, inactive history filter, and CSRF are verified/);
