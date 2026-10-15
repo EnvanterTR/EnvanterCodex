@@ -657,11 +657,29 @@ public static class AccountEndpoints
             return Results.NoContent();
         }).RequireAuthorization();
 
-        endpoints.MapGet("/api/session", async (ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
+        endpoints.MapGet("/api/session", async (ClaimsPrincipal user, HttpContext context, AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
         {
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
             var companyId = Guid.TryParse(user.FindFirstValue("company_id"), out var parsedCompanyId)
                 ? parsedCompanyId : (Guid?)null;
+            var rootDomain = configuration["TenantRouting:RootDomain"]?.Trim().Trim('.');
+            IReadOnlyList<object> availableCompanies = Array.Empty<object>();
+            if (Guid.TryParse(userId, out var parsedUserId) && companyId is not null)
+            {
+                var memberships = await (from membership in db.CompanyMemberships.AsNoTracking()
+                                         join company in db.Companies.AsNoTracking() on membership.CompanyId equals company.Id
+                                         where membership.UserId == parsedUserId && company.IsActive
+                                         orderby company.Name
+                                         select new { id = company.Id, name = company.Name, role = membership.RoleKey, company.Slug })
+                    .ToListAsync(cancellationToken);
+                availableCompanies = memberships.Select(membership => (object)new
+                {
+                    id = membership.id,
+                    name = membership.name,
+                    role = membership.role,
+                    tenantUrl = string.IsNullOrWhiteSpace(rootDomain) ? null : $"https://{membership.Slug}.{rootDomain}/"
+                }).ToArray();
+            }
             var companyName = companyId is Guid id
                 ? await db.Companies.AsNoTracking().Where(x => x.Id == id && x.IsActive)
                     .Select(x => x.Name).SingleOrDefaultAsync(cancellationToken)
@@ -686,6 +704,7 @@ public static class AccountEndpoints
                 userId,
                 companyId = companyId?.ToString(),
                 companyName,
+                availableCompanies,
                 subscriptionAccess = subscription is null ? null : new
                 {
                     planName = subscription.Name,
@@ -700,8 +719,8 @@ public static class AccountEndpoints
                 role = user.FindFirstValue("company_role"),
                 platformAdmin = user.HasClaim("platform_admin", "true"),
                 name = user.Identity?.Name,
-                hasPhoto = Guid.TryParse(userId, out var parsedUserId) && new[] { "png", "jpg", "webp" }
-                    .Any(extension => System.IO.File.Exists(AccountPhotoPath(configuration, parsedUserId, extension)))
+                hasPhoto = Guid.TryParse(userId, out var photoUserId) && new[] { "png", "jpg", "webp" }
+                    .Any(extension => System.IO.File.Exists(AccountPhotoPath(configuration, photoUserId, extension)))
             });
         }).RequireAuthorization();
 

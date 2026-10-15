@@ -10835,12 +10835,53 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.DoesNotContain(companies, company => company.GetProperty("name").GetString() == "Other security acceptance company");
         }
 
-        using (var authorizedChoice = await SendAnonymousLoginAsync(loginClient, email, password, null,
-            requestToken, antiforgeryCookie, companyId: additionalCompanyId))
+        using var cookieFactory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Development");
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["ConnectionStrings:EnvanterTR"] = Environment.GetEnvironmentVariable("ENVANTERTR_SECURITY_TEST_CONNECTION"),
+                    ["Storage:CompanyMediaPath"] = _mediaPath,
+                    ["TenantRouting:RootDomain"] = "envantertr.com"
+                }));
+            builder.ConfigureTestServices(services => services.PostConfigure<SecurityStampValidatorOptions>(options =>
+                options.ValidationInterval = TimeSpan.Zero));
+        });
+        using var authenticatedClient = cookieFactory.CreateClient();
+        using var authenticatedCsrfResponse = await authenticatedClient.GetAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, authenticatedCsrfResponse.StatusCode);
+        using var authenticatedCsrfPayload = JsonDocument.Parse(await authenticatedCsrfResponse.Content.ReadAsStringAsync());
+        var authenticatedRequestToken = authenticatedCsrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var authenticatedAntiforgeryCookie = authenticatedCsrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        using (var authorizedChoice = await SendAnonymousLoginAsync(authenticatedClient, email, password, null,
+            authenticatedRequestToken, authenticatedAntiforgeryCookie, companyId: additionalCompanyId))
         using (var session = JsonDocument.Parse(await authorizedChoice.Content.ReadAsStringAsync()))
         {
             Assert.Equal(HttpStatusCode.OK, authorizedChoice.StatusCode);
             Assert.Equal(additionalCompanyId, session.RootElement.GetProperty("companyId").GetGuid());
+
+            using var activeSession = await authenticatedClient.GetAsync("/api/session");
+            Assert.Equal(HttpStatusCode.OK, activeSession.StatusCode);
+            using var activeSessionPayload = JsonDocument.Parse(await activeSession.Content.ReadAsStringAsync());
+            var accessibleCompanies = activeSessionPayload.RootElement.GetProperty("availableCompanies").EnumerateArray().ToArray();
+            Assert.Equal(2, accessibleCompanies.Length);
+            Assert.Contains(accessibleCompanies, company => company.GetProperty("id").GetGuid() == _companyId);
+            Assert.Contains(accessibleCompanies, company => company.GetProperty("id").GetGuid() == additionalCompanyId);
+            Assert.DoesNotContain(accessibleCompanies, company => company.GetProperty("id").GetGuid() == _otherCompanyId);
+
+            using var tenantSessionRequest = new HttpRequestMessage(HttpMethod.Get, "/api/session");
+            tenantSessionRequest.Headers.Host = $"authorized-{additionalCompanyId:N}.envantertr.com";
+            using var tenantSession = await authenticatedClient.SendAsync(tenantSessionRequest);
+            Assert.Equal(HttpStatusCode.OK, tenantSession.StatusCode);
+            using var tenantSessionPayload = JsonDocument.Parse(await tenantSession.Content.ReadAsStringAsync());
+            var tenantCompanies = tenantSessionPayload.RootElement.GetProperty("availableCompanies").EnumerateArray().ToArray();
+            Assert.Equal(2, tenantCompanies.Length);
+            Assert.Contains(tenantCompanies, company => company.GetProperty("id").GetGuid() == _companyId);
+            var selectedTenant = Assert.Single(tenantCompanies, company => company.GetProperty("id").GetGuid() == additionalCompanyId);
+            Assert.Equal($"https://authorized-{additionalCompanyId:N}.envantertr.com/", selectedTenant.GetProperty("tenantUrl").GetString());
         }
 
         using var unrelatedChoice = await SendAnonymousLoginAsync(loginClient, email, password, null,

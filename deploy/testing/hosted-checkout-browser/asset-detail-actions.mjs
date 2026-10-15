@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
 const companyId = '11111111-1111-4111-8111-111111111111';
+const secondCompanyId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaab';
 const userId = '22222222-2222-4222-8222-222222222222';
 const assetId = '33333333-3333-4333-8333-333333333333';
 const employeeId = '99999999-9999-4999-8999-999999999999';
@@ -19,6 +20,8 @@ const requests = [];
 const apiRequests = [];
 const expiryLoginAttempts = [];
 let syntheticSessionExpired = false;
+let companySwitchLoginFlow = false;
+let activeCompanyId = companyId;
 let expireNextAssetPatch = false;
 const assetHistory = [];
 const assetAttachments = [];
@@ -153,10 +156,31 @@ const server = createServer(async (request, response) => {
   if (request.method === 'POST' && url.pathname === '/api/session/login') {
     expiryLoginAttempts.push(record);
     assert.equal(record.csrf, 'synthetic-asset-csrf', 'Session re-entry must use a fresh CSRF token.');
-    assert.deepEqual(record.body, { email: 'qa-session@example.invalid', password: 'Synthetic-session-password', companyId: null, rememberMe: true, twoFactorCode: null });
+    assert.equal(record.body.email, 'qa-session@example.invalid');
+    assert.equal(record.body.password, 'Synthetic-session-password');
+    assert.equal(record.body.rememberMe, true);
+    assert.equal(record.body.twoFactorCode, null);
+    if (companySwitchLoginFlow && !record.body.companyId) {
+      json(response, 409, { message: 'Choose a company.', companies: [
+        { id: companyId, name: 'Synthetic Asset Company' }, { id: secondCompanyId, name: 'Synthetic Second Company' }
+      ] });
+      return;
+    }
+    if (companySwitchLoginFlow) {
+      assert.equal(record.body.companyId, secondCompanyId, 'The re-login must use the company explicitly chosen in the company picker.');
+      activeCompanyId = secondCompanyId;
+    } else {
+      assert.equal(record.body.companyId, null);
+    }
     syntheticSessionExpired = false;
-    json(response, 200, { companyId, companyName: 'Synthetic Asset Company', userId, name: 'Synthetic Owner', role: 'owner', hasPhoto: false,
+    json(response, 200, { companyId: activeCompanyId, companyName: activeCompanyId === companyId ? 'Synthetic Asset Company' : 'Synthetic Second Company', userId, name: 'Synthetic Owner', role: 'owner', hasPhoto: false,
       subscriptionAccess: { mode: 'active', status: 'Active', planName: 'Synthetic cloud plan' } });
+    return;
+  }
+  if (request.method === 'POST' && url.pathname === '/api/session/logout') {
+    companySwitchLoginFlow = true;
+    syntheticSessionExpired = true;
+    response.writeHead(204); response.end();
     return;
   }
   if (request.method === 'PATCH' && url.pathname === `/api/assets/${assetId}` && expireNextAssetPatch) {
@@ -179,7 +203,9 @@ const server = createServer(async (request, response) => {
     else if (url.pathname === '/api/setup/status') result = { setupRequired: false };
     else if (url.pathname === '/api/session/csrf') result = { requestToken: 'synthetic-asset-csrf' };
     else if (url.pathname === '/api/session') result = {
-      companyId, companyName: 'Synthetic Asset Company', userId, name: 'Synthetic Owner', role: 'owner',
+      companyId: activeCompanyId, companyName: activeCompanyId === companyId ? 'Synthetic Asset Company' : 'Synthetic Second Company',
+      availableCompanies: [{ id: companyId, name: 'Synthetic Asset Company', role: 'owner' }, { id: secondCompanyId, name: 'Synthetic Second Company', role: 'viewer' }],
+      userId, name: 'Synthetic Owner', role: 'owner',
       hasPhoto: false, subscriptionAccess: { mode: 'active', status: 'Active', planName: 'Synthetic cloud plan' }
     };
     else if (url.pathname === '/api/company/branding') result = { name: 'Synthetic Asset Company', brandPrimaryColor: '#2563EB', hasLogo: false };
@@ -1357,12 +1383,53 @@ try {
     'The session-expiry action must produce exactly one failed edit attempt.');
   await page.locator('#loginForm [name="email"]').fill('qa-session@example.invalid');
   await page.locator('#loginForm [name="password"]').fill('Synthetic-session-password');
+  await page.evaluate(() => {
+    window.__postLoginOverviewReady = false;
+    document.addEventListener('click', event => {
+      if (event.target.closest('#sidebar [data-page="Genel Bakış"]')) window.__postLoginOverviewReady = true;
+    }, { capture: true });
+  });
   await page.locator('#loginForm button[type="submit"]').click();
   await page.waitForFunction(() => !document.querySelector('#authLayer')?.classList.contains('show'));
+  await page.waitForFunction(() => window.__postLoginOverviewReady === true);
   assert.equal(expiryLoginAttempts.length, 1, 'The synthetic session must be restored only after one deliberate login submission.');
   assert.equal(asset.name, nameBeforeExpiry, 'Re-authentication must not silently apply the unsaved form data.');
   assert.equal(apiRequests.filter(item => item.path === `/api/assets/${assetId}` && item.method === 'PATCH').length, failedWritesBeforeExpiry + 1,
     'Re-authentication must not automatically retry the previously rejected write.');
+  assert.equal(await page.locator('#companySwitchButton').isVisible(), true,
+    'A user with multiple active company memberships must have a company-switch action.');
+  await page.locator('#companySwitchButton').click();
+  const companySwitchDialog = page.locator('#companySwitchDialog');
+  await companySwitchDialog.waitFor({ state: 'visible' });
+  assert.equal(await companySwitchDialog.evaluate(dialog => dialog.open), true, 'Opening the company picker must create a live native dialog.');
+  assert.equal(await page.locator('#companySwitchTarget option').count(), 1,
+    'The company picker must offer only another company from the authenticated membership list.');
+  assert.equal(await companySwitchDialog.evaluate(dialog => dialog.open), true, 'Reading company options must not dismiss the picker.');
+  assert.equal(await page.locator('#companySwitchTarget').inputValue(), secondCompanyId);
+  assert.equal(await companySwitchDialog.evaluate(dialog => dialog.open), true, 'Reading the selected company must not dismiss the picker.');
+  await page.locator('#confirmCompanySwitch').click();
+  await page.locator('#authLayer.show').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#loginForm [name="email"]').inputValue(), 'qa-session@example.invalid',
+    'Switching company should retain the account identifier so the next login can list its memberships.');
+  assert.equal(await page.locator('#loginForm [name="password"]').inputValue(), '',
+    'A company switch must clear the prior password and require re-entry.');
+  const logoutWrite = apiRequests.findLast(item => item.path === '/api/session/logout');
+  assert.equal(logoutWrite?.method, 'POST');
+  assert.equal(logoutWrite?.csrf, 'synthetic-asset-csrf', 'Company switch logout must use CSRF protection.');
+  await page.locator('#loginForm [name="password"]').fill('Synthetic-session-password');
+  await page.locator('#loginForm button[type="submit"]').click();
+  await page.locator('#loginCompanyField:not([hidden])').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#loginCompanyId option').count(), 3,
+    'The existing login flow must return both authorized memberships after credentials are re-entered.');
+  await page.locator('#loginCompanyId').selectOption(secondCompanyId);
+  await page.evaluate(() => { window.__postLoginOverviewReady = false; });
+  await page.locator('#loginForm button[type="submit"]').click();
+  await page.locator('#authLayer').waitFor({ state: 'hidden' });
+  await page.waitForFunction(() => window.__postLoginOverviewReady === true);
+  assert.equal(await page.locator('#companyName').innerText(), 'Synthetic Second Company',
+    'After re-authentication, the workspace header must show the selected company.');
+  assert.equal(expiryLoginAttempts.length, 3,
+    'The switch flow must use one deliberate company-list response and one explicit selected-company login.');
   await page.locator('#sidebar button[data-page="Varlıklar"]').click();
   await page.locator('#assetRows .asset-name').filter({ hasText: nameBeforeExpiry }).click();
   await page.locator('#assetDialog').waitFor({ state: 'visible' });
