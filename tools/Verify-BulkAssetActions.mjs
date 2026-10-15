@@ -23,10 +23,12 @@ requireSource(assignmentAction.includes('async function openBulkAssignDialog()')
   'Bulk assignment must reject ineligible selections and submit through its tenant API.');
 requireSource(transferAction.includes('async function openBulkAssetTransferDialog()') && transferAction.includes("'/api/assets/bulk-transfer'") && transferAction.includes('clearBulkAssetSelection()'),
   'Bulk transfer must reject ineligible selections, submit through its tenant API, and clear selection only after success.');
+requireSource(source.includes("bulkAuditButton.id = 'bulkAuditSelectedAssets'") && source.includes("'/api/assets/bulk-audit'"),
+  'Bulk audit must be exposed from the selection toolbar and submitted through its tenant API.');
 
 const browserAcceptance = fs.readFileSync(path.join(root, 'deploy/testing/hosted-checkout-browser/asset-detail-actions.mjs'), 'utf8');
 const apiAcceptance = fs.readFileSync(path.join(root, 'tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs'), 'utf8');
-for (const action of ['assignment', 'transfer']) {
+for (const action of ['assignment', 'transfer', 'audit']) {
   requireSource(browserAcceptance.includes(`PASS: bulk asset ${action}`), `Chromium acceptance must cover confirmed and canceled bulk ${action}.`);
   requireSource(apiAcceptance.includes(`Bulk_asset_${action}_is_atomic_company_scoped_authorized_and_audited`), `PostgreSQL acceptance must verify bulk ${action} authorization, scope, atomicity, and audit.`);
 }
@@ -35,5 +37,5 @@ if (failures.length) {
   console.error(failures.map(message => `FAIL ${message}`).join('\n'));
   process.exitCode = 1;
 } else {
-  console.log('Verified in-app cancellation and submission for bulk assignment, return, status change, and location transfer, with tenant API/PostgreSQL acceptance coverage.');
+  console.log('Verified in-app cancellation and submission for bulk assignment, return, status change, audit, and location transfer, with tenant API/PostgreSQL acceptance coverage.');
 }

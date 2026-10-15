@@ -6914,6 +6914,102 @@ public sealed class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Bulk_asset_audit_is_atomic_company_scoped_authorized_and_audited()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+        var secondAssetId = Guid.NewGuid();
+        var auditDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        var nextAuditOn = auditDate.AddDays(30);
+        await using (var setupScope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = setupScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var first = await db.Assets.SingleAsync(asset => asset.CompanyId == _companyId && asset.Id == _ownAssetId);
+            var categoryId = first.CategoryId;
+            first.NextAuditOn = null;
+            db.Assets.Add(new Asset
+            {
+                Id = secondAssetId, CompanyId = _companyId, AssetTag = $"BULK-AUDIT-{_userId:N}",
+                Name = "Second bulk audit asset", CategoryId = categoryId
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var successPayload = new
+        {
+            assetIds = new[] { _ownAssetId, secondAssetId },
+            auditDate,
+            nextAuditOn,
+            notes = "Quarterly physical audit"
+        };
+        using (var missingCsrf = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-audit", "admin",
+                   System.Net.Http.Json.JsonContent.Create(successPayload)))
+            Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+        await SetCompanyRoleAsync("viewer");
+        using (var forbidden = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-audit", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(successPayload), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+        await SetCompanyRoleAsync("admin");
+        using (var duplicateIds = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-audit", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { _ownAssetId, _ownAssetId }, auditDate }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, duplicateIds.StatusCode);
+        using (var invalidAuditDate = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-audit", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { _ownAssetId }, auditDate = auditDate.AddDays(2) }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidAuditDate.StatusCode);
+        using (var invalidNextAuditDate = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-audit", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { _ownAssetId }, auditDate, nextAuditOn = auditDate.AddDays(-1) }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidNextAuditDate.StatusCode);
+        using (var crossTenant = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-audit", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { _ownAssetId, _otherCompanyAssetId }, auditDate }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
+        await using (var verifyNoPartialWrite = _factory.Services.CreateAsyncScope())
+        {
+            var db = verifyNoPartialWrite.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.Null(await db.Assets.Where(asset => asset.CompanyId == _companyId && asset.Id == _ownAssetId)
+                .Select(asset => asset.NextAuditOn).SingleAsync());
+            Assert.Null(await db.Assets.Where(asset => asset.CompanyId == _companyId && asset.Id == secondAssetId)
+                .Select(asset => asset.NextAuditOn).SingleAsync());
+            Assert.Equal(0, await db.AssetEvents.CountAsync(item => item.CompanyId == _companyId &&
+                (item.AssetId == _ownAssetId || item.AssetId == secondAssetId) && item.EventType == "Audited" &&
+                EF.Functions.Like(item.Details!, "%Quarterly physical audit%")));
+        }
+
+        using (var recorded = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-audit", "admin",
+                   System.Net.Http.Json.JsonContent.Create(successPayload), requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, recorded.StatusCode);
+            using var payload = JsonDocument.Parse(await recorded.Content.ReadAsStringAsync());
+            Assert.Equal(2, payload.RootElement.GetProperty("recorded").GetInt32());
+            Assert.Equal(auditDate, DateOnly.Parse(payload.RootElement.GetProperty("auditDate").GetString()!));
+            Assert.Equal(nextAuditOn, DateOnly.Parse(payload.RootElement.GetProperty("nextAuditOn").GetString()!));
+        }
+
+        await using var verifyScope = _factory.Services.CreateAsyncScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var saved = await verifyDb.Assets.AsNoTracking().Where(asset => asset.CompanyId == _companyId &&
+            (asset.Id == _ownAssetId || asset.Id == secondAssetId)).ToListAsync();
+        Assert.All(saved, item => Assert.Equal(nextAuditOn, item.NextAuditOn));
+        var events = await verifyDb.AssetEvents.AsNoTracking().Where(item => item.CompanyId == _companyId &&
+            (item.AssetId == _ownAssetId || item.AssetId == secondAssetId) && item.EventType == "Audited" &&
+            EF.Functions.Like(item.Details!, "%Quarterly physical audit%")).ToListAsync();
+        Assert.Equal(2, events.Count);
+        Assert.All(events, item =>
+        {
+            Assert.Equal(_userId, item.ActorUserId);
+            Assert.Contains(auditDate.ToString("yyyy-MM-dd"), item.Details, StringComparison.Ordinal);
+            Assert.Contains("Quarterly physical audit", item.Details, StringComparison.Ordinal);
+            Assert.Contains(nextAuditOn.ToString("yyyy-MM-dd"), item.Details, StringComparison.Ordinal);
+        });
+        Assert.Equal(2, await verifyDb.AuditEntries.CountAsync(item => item.CompanyId == _companyId &&
+            (item.TargetId == _ownAssetId || item.TargetId == secondAssetId) && item.Action == "BulkAudited"));
+    }
+
+    [Fact]
     public async Task Asset_archive_restore_is_authorized_tenant_scoped_and_audited()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");

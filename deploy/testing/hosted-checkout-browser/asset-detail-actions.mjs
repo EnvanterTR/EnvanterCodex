@@ -482,6 +482,23 @@ const server = createServer(async (request, response) => {
     json(response, 200, { updated: targets.length, targetLocation: body.targetLocation });
     return;
   }
+  if (request.method === 'POST' && url.pathname === '/api/assets/bulk-audit') {
+    assert.equal(record.csrf, 'synthetic-asset-csrf');
+    assert.equal(body.notes, 'Quarterly physical audit');
+    assert.match(body.auditDate, /^\d{4}-\d{2}-\d{2}$/);
+    assert.match(body.nextAuditOn, /^\d{4}-\d{2}-\d{2}$/);
+    const selected = new Set(body.assetIds);
+    const targets = bulkAssets.filter(item => selected.has(item.id));
+    assert.equal(targets.length, 2, 'The UI must send exactly the two selected synthetic assets.');
+    const auditEvents = [];
+    for (const target of targets) {
+      target.nextAuditOn = body.nextAuditOn;
+      target.updatedAt = '2026-10-15T11:00:00Z';
+      auditEvents.push({ assetId: target.id, auditDate: body.auditDate, notes: body.notes });
+    }
+    json(response, 200, { recorded: targets.length, auditDate: body.auditDate, nextAuditOn: body.nextAuditOn, auditEvents });
+    return;
+  }
   if (request.method === 'PATCH' && url.pathname === `/api/assets/${assetId}/status`) {
     asset.status = body.status;
     asset.updatedAt = '2026-10-14T13:30:00Z';
@@ -1537,7 +1554,7 @@ try {
   const bulkAssetIds = ['12121212-1212-4121-8121-121212121212', '13131313-1313-4131-8131-131313131313'];
   bulkAssets = bulkAssetIds.map((id, index) => ({
     ...asset, id, assetTag: `QA-BULK-${index + 1}`, name: `Synthetic bulk status ${index + 1}`,
-    status: 'Available', updatedAt: '2026-10-15T09:00:00Z', assignedEmployeeId: null
+    status: 'Available', updatedAt: '2026-10-15T09:00:00Z', assignedEmployeeId: null, nextAuditOn: null
   }));
   await page.locator('#sidebar button[data-page="Varlıklar"]').click();
   const firstBulkRow = page.locator(`#assetRows tr[data-id="${bulkAssetIds[0]}"]`);
@@ -1702,6 +1719,45 @@ try {
   assert.ok(bulkAssets.every(item => item.location === 'West Wing'));
   assert.equal(await bulkToolbar.isHidden(), true, 'A successful bulk transfer must clear the selection and hide the bulk toolbar.');
   console.log('PASS: bulk asset transfer cancellation preserves locations; confirmed transfer moves both selected rows with note and CSRF.');
+
+  await firstBulkRow.locator('.asset-row-select').check();
+  await secondBulkRow.locator('.asset-row-select').check();
+  const bulkAuditButton = page.locator('#bulkAuditSelectedAssets');
+  assert.equal(await bulkAuditButton.isDisabled(), false, 'Bulk audit must be enabled for selected assets.');
+  const bulkAuditWritesBeforeCancel = apiRequests.filter(item => item.path === '/api/assets/bulk-audit').length;
+  await bulkAuditButton.click();
+  const bulkAuditDialog = page.locator('#assetAuditDialog');
+  await bulkAuditDialog.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#assetAuditDialog h2').innerText(), /Seçili varlıkları denetle/);
+  assert.equal(await page.locator('#assetAuditForm [name="auditDate"]').inputValue(),
+    await page.evaluate(() => { const date = new Date(); date.setMinutes(date.getMinutes() - date.getTimezoneOffset()); return date.toISOString().slice(0, 10); }));
+  await page.locator('[data-close-asset-audit]').first().click();
+  await bulkAuditDialog.waitFor({ state: 'hidden' });
+  assert.equal(apiRequests.filter(item => item.path === '/api/assets/bulk-audit').length, bulkAuditWritesBeforeCancel,
+    'Canceling bulk audit must not write.');
+  assert.ok(bulkAssets.every(item => !item.nextAuditOn), 'Canceling must not change the next-audit schedule.');
+  assert.match(await page.locator('#selectedAssetCount').innerText(), /2 varlık seçildi/);
+  await bulkAuditButton.click();
+  await bulkAuditDialog.waitFor({ state: 'visible' });
+  const bulkAuditDate = await page.locator('#assetAuditForm [name="auditDate"]').inputValue();
+  const bulkNextAuditOn = await page.evaluate(() => {
+    const date = new Date(); date.setDate(date.getDate() + 60); date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+    return date.toISOString().slice(0, 10);
+  });
+  await page.locator('#assetAuditForm [name="nextAuditOn"]').fill(bulkNextAuditOn);
+  await page.locator('#assetAuditForm [name="notes"]').fill('Quarterly physical audit');
+  await page.locator('#assetAuditForm button[type="submit"]').click();
+  await bulkAuditDialog.waitFor({ state: 'hidden' });
+  assert.ok(bulkAssets.every(item => item.nextAuditOn === bulkNextAuditOn),
+    'Confirmed bulk audit must persist next-audit schedules for all selected assets.');
+  const bulkAuditWrite = apiRequests.find(item => item.path === '/api/assets/bulk-audit');
+  assert.equal(bulkAuditWrite?.method, 'POST');
+  assert.deepEqual(bulkAuditWrite?.body, {
+    assetIds: bulkAssetIds, auditDate: bulkAuditDate, nextAuditOn: bulkNextAuditOn, notes: 'Quarterly physical audit'
+  });
+  assert.equal(bulkAuditWrite?.csrf, 'synthetic-asset-csrf');
+  assert.equal(await bulkToolbar.isHidden(), true, 'A successful bulk audit must clear the selection and hide the bulk toolbar.');
+  console.log('PASS: bulk asset audit cancellation writes nothing; confirmed audit records date/note and persists the next schedule for both selected assets.');
 
   const sidebarGroups = page.locator('#sidebar [data-group]');
   for (const group of await sidebarGroups.all()) {
