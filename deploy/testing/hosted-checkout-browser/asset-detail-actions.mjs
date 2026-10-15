@@ -16,6 +16,9 @@ const asset = {
 const appHtml = await readFile('/checkout-site/company-app.html');
 const requests = [];
 const apiRequests = [];
+const expiryLoginAttempts = [];
+let syntheticSessionExpired = false;
+let expireNextAssetPatch = false;
 const assetHistory = [];
 const assetAttachments = [];
 const attachmentId = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
@@ -31,9 +34,9 @@ const contractRows = [{ id: contractId, name: 'Synthetic Cloud Support Agreement
 const contractWrites = [];
 const contractAsset = { id: contractAssetId, assetTag: 'QA-CONTRACT-ASSET', name: 'Synthetic Contract Device', serialNumber: 'QA-CONTRACT-SERIAL' };
 const contractLicense = { id: contractLicenseId, name: 'Synthetic Office License', licenseReference: 'QA-LICENSE-001', expirationDate: '2027-10-01' };
-const json = (response, status = 200) => {
+const json = (response, status = 200, body = null) => {
   response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
-  response.end(JSON.stringify(response.body));
+  response.end(JSON.stringify(body));
 };
 
 const server = createServer(async (request, response) => {
@@ -81,7 +84,27 @@ const server = createServer(async (request, response) => {
   requests.push(record);
   if (request.method !== 'GET') apiRequests.push(record);
 
+  if (request.method === 'POST' && url.pathname === '/api/session/login') {
+    expiryLoginAttempts.push(record);
+    assert.equal(record.csrf, 'synthetic-asset-csrf', 'Session re-entry must use a fresh CSRF token.');
+    assert.deepEqual(record.body, { email: 'qa-session@example.invalid', password: 'Synthetic-session-password', companyId: null, rememberMe: true, twoFactorCode: null });
+    syntheticSessionExpired = false;
+    json(response, 200, { companyId, companyName: 'Synthetic Asset Company', userId, name: 'Synthetic Owner', role: 'owner', hasPhoto: false,
+      subscriptionAccess: { mode: 'active', status: 'Active', planName: 'Synthetic cloud plan' } });
+    return;
+  }
+  if (request.method === 'PATCH' && url.pathname === `/api/assets/${assetId}` && expireNextAssetPatch) {
+    expireNextAssetPatch = false;
+    syntheticSessionExpired = true;
+    json(response, 401, { message: 'Synthetic session expired.' });
+    return;
+  }
+
   if (request.method === 'GET') {
+    if (url.pathname === '/api/session' && syntheticSessionExpired) {
+      json(response, 401, { message: 'Synthetic session expired.' });
+      return;
+    }
     let result;
     if (url.pathname === `/api/assets/${assetId}/attachments/${attachmentId}/file`) {
       response.writeHead(200, { 'content-type': 'image/png', 'content-length': attachmentBytes.length, 'cache-control': 'no-store' }); response.end(attachmentBytes); return;
@@ -788,6 +811,45 @@ try {
   assert.equal(contractWrites.at(-1).csrf, 'synthetic-asset-csrf');
 
   await page.locator('#sidebar button[data-page="Varlıklar"]').click();
+  await page.locator('#assetRows .asset-name').filter({ hasText: asset.name }).click();
+  await page.locator('#assetDialog').waitFor({ state: 'visible' });
+  await page.locator('#editAssetButton').click();
+  const expiryEditDialog = page.locator('#editAssetDialog');
+  await expiryEditDialog.waitFor({ state: 'visible' });
+  const nameBeforeExpiry = asset.name;
+  const unsavedExpiryName = 'Must not submit after re-login';
+  await page.locator('#editAssetForm [name="assetName"]').fill(unsavedExpiryName);
+  expireNextAssetPatch = true;
+  const failedWritesBeforeExpiry = apiRequests.filter(item => item.path === `/api/assets/${assetId}` && item.method === 'PATCH').length;
+  await page.locator('#editAssetForm button[type="submit"]').click();
+  await page.locator('#authLayer.show').waitFor({ state: 'visible' });
+  assert.equal(await expiryEditDialog.evaluate(dialog => dialog.open), false,
+    'An expired session must close the open edit dialog instead of leaving it behind the login screen.');
+  assert.equal(await page.locator('#assetDialog').evaluate(dialog => dialog.open), false,
+    'An expired session must also close the parent asset detail dialog.');
+  assert.equal(asset.name, nameBeforeExpiry, 'The synthetic server must reject the expired-session edit without persisting it.');
+  assert.equal(apiRequests.filter(item => item.path === `/api/assets/${assetId}` && item.method === 'PATCH').length, failedWritesBeforeExpiry + 1,
+    'The session-expiry action must produce exactly one failed edit attempt.');
+  await page.locator('#loginForm [name="email"]').fill('qa-session@example.invalid');
+  await page.locator('#loginForm [name="password"]').fill('Synthetic-session-password');
+  await page.locator('#loginForm button[type="submit"]').click();
+  await page.waitForFunction(() => !document.querySelector('#authLayer')?.classList.contains('show'));
+  assert.equal(expiryLoginAttempts.length, 1, 'The synthetic session must be restored only after one deliberate login submission.');
+  assert.equal(asset.name, nameBeforeExpiry, 'Re-authentication must not silently apply the unsaved form data.');
+  assert.equal(apiRequests.filter(item => item.path === `/api/assets/${assetId}` && item.method === 'PATCH').length, failedWritesBeforeExpiry + 1,
+    'Re-authentication must not automatically retry the previously rejected write.');
+  await page.locator('#sidebar button[data-page="Varlıklar"]').click();
+  await page.locator('#assetRows .asset-name').filter({ hasText: nameBeforeExpiry }).click();
+  await page.locator('#assetDialog').waitFor({ state: 'visible' });
+  await page.locator('#editAssetButton').click();
+  await expiryEditDialog.waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#editAssetForm [name="assetName"]').inputValue(), nameBeforeExpiry,
+    'Reopening the editor must load the persisted asset, not the discarded session-expiry draft.');
+  await page.locator('[data-close-edit-asset]').first().click();
+  await expiryEditDialog.waitFor({ state: 'hidden' });
+  await page.locator('#assetDialog').locator('#closeDialog').click();
+
+  await page.locator('#sidebar button[data-page="Varlıklar"]').click();
   await page.locator('#assetRows .asset-name').filter({ hasText: editedName }).waitFor({ state: 'visible' });
   await page.locator('#assetRows .asset-name').filter({ hasText: editedName }).click();
   await page.locator('#assetDialog').waitFor({ state: 'visible' });
@@ -882,7 +944,7 @@ try {
   assert.equal(visitedDestinations.size, destinationCount);
 
   assert.deepEqual(pageErrors, [], `The asset detail UI must not throw: ${pageErrors.join(' | ')}`);
-  console.log(`PASS: owner Ctrl+N; asset edit/status/trash/audit/maintenance/transfer/assignment; company JSON restore preview and confirmations; company contract list/search/filter/detail/create/cancel/archive/restore with CSRF; all ${visitedDestinations.size} sidebar destinations render; ${placeholderDestinations.length} open the explicit feature/module status surface (${placeholderDestinations.join(', ')}); browser error-free completion.`);
+  console.log(`PASS: owner Ctrl+N; asset edit/status/trash/audit/maintenance/transfer/assignment; expired-session dialog closure, deliberate re-login, and no stale-write replay; company JSON restore preview and confirmations; company contract list/search/filter/detail/create/cancel/archive/restore with CSRF; all ${visitedDestinations.size} sidebar destinations render; ${placeholderDestinations.length} open the explicit feature/module status surface (${placeholderDestinations.join(', ')}); browser error-free completion.`);
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

@@ -42,9 +42,9 @@ Bu dosya, bu Codex görevi içindeki erişilebilir kullanıcı isteklerinin ve 1
 
 ## Sonraki uygulanabilir işler
 
-1. Oturum sona erdiğinde `showLogin()` açık dialogları kapatan korumayı içeriyor ve kaynak doğrulayıcı bunu denetliyor. Tarihsel UI gözlemiyle çeliştiği için kontrollü oturum süresi dolma kabulini yeniden yap; varsa modalın arkada kalma yolunu düzelt. Yeniden girişte eski form sessizce gönderilmemeli.
+1. **15 Ekim 2026 kabul edildi (sentetik Chromium):** Varlık düzenleme dialogu açıkken `PATCH` isteği 401 ile reddedildi; düzenleme ve üst varlık dialogu kapandı, sentetik kayıtta değişiklik olmadı. Tek ve bilerek yapılan yeniden girişten sonra PATCH otomatik tekrarlanmadı; düzenleyici yeniden açılınca sunucudaki kayıt yüklendi, atılan taslak dönmedi. `asset-detail-actions.mjs` aynı akışı hosted-browser kabuline bağlar. Zaman kontrollü 5+ dakika cookie yenilemesi, farklı dialog tiplerinde oturum sonu ve 403 davranışı henüz bu senaryonun kapsamı değildir; bunlar açık oturum güvenliği kapısıdır.
 2. Menü/kısayol denetim defterinde her alt eylem için tekil kimlik, beklenen sonuç, rol, kanıt ve sonuç alanını genişlet. Varlık detay modalının 5 sekmesi ve dar ekran/kapatma davranışı UI'da kabul edildi; 13 modal eyleminin yazma sonuçları ve 7 satır kısayolunun her biri UI'da henüz tam kabul edilmedi. Ardından diğer menülerin üst/alt eylemlerini aynı sırayla incele.
-3. Güvenli giriş/kalıcılık: sayfa yenileme kabulü geçti; sonraki kapı 5 dakikayı aşan cookie yenilemesi, açık modal sırasında oturum sonlanması ve 401/403 davranışları.
+3. Güvenli giriş/kalıcılık: sayfa yenileme ve açık varlık formu sırasında 401 kabulü geçti; sonraki kapı 5 dakikayı aşan cookie yenilemesi, diğer modal/form türlerinde oturum sonu ve 403 davranışları.
 4. Başlangıç gereksinimlerini `PRODUCT-COVERAGE.md` satırlarına çapraz bağla ve kanıtı bulunmayan durumları “doğrulanmadı” bırak.
 5. Her tamamlanan ürün işi için yerel Compose/DB sağlığı, migration, ana ekran/demo ve GitHub senkronunu kontrol et; canlıya dağıtım yalnız gerçek dağıtım kanıtı varsa “canlı” diye işaretlenir.
 

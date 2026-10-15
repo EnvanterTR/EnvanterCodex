@@ -49,6 +49,10 @@ assert.match(assetActions, /Selecting a file must not upload it before explicit 
 assert.match(assetActions, /Canceling attachment removal must not delete a file/);
 assert.match(assetActions, /synthetic-proof\.png/);
 assert.match(assetActions, /assetAttachmentRemoveDialog/);
+assert.match(assetActions, /An expired session must close the open edit dialog/);
+assert.match(assetActions, /Re-authentication must not automatically retry the previously rejected write/);
+assert.match(assetActions, /Reopening the editor must load the persisted asset, not the discarded session-expiry draft/);
+assert.match(assetActions, /expired-session dialog closure, deliberate re-login, and no stale-write replay/);
 assert.match(assetActions, /expectedSurfaceByDestination/);
 assert.match(assetActions, /Every documented sidebar destination must have an exact expected screen surface/);
 assert.match(assetActions, /Selecting \$\{name\} must show only its expected \$\{expectedSurface\} surface/);
