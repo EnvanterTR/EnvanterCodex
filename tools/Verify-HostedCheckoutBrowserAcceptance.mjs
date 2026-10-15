@@ -44,6 +44,10 @@ assert.match(assetActions, /Canceling restore confirmation via \$\{cancelMode\} 
 assert.match(assetActions, /restoreApplyWrites\[0\]\.csrf, 'synthetic-asset-csrf'/);
 assert.match(assetActions, /Only the explicit final confirmation may apply the synthetic company archive/);
 assert.match(assetActions, /company contract list\/search\/filter\/detail\/create\/cancel\/archive\/restore with CSRF/);
+assert.match(assetActions, /reservations reject invalid date ranges without writing; create with CSRF; approve\/reject notes persist; approve\/cancel dismissal writes nothing; confirmed cancellation uses CSRF and persists; status\/search filters reload correctly; refresh is read-only/);
+assert.match(assetActions, /const reservationWrites = \[\]/);
+assert.match(assetActions, /reservationActionDialog/);
+assert.match(assetActions, /reservationRows\[0\]\.reviewNote, 'Synthetic approval note'/);
 assert.match(assetActions, /contractSearchResponse = page\.waitForResponse/);
 assert.match(assetActions, /Synthetic Cloud Support Agreement/);
 assert.match(assetActions, /contractDetailFields/);

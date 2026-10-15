@@ -19,6 +19,16 @@ let bulkAssets = [];
 const appHtml = await readFile('/checkout-site/company-app.html');
 const requests = [];
 const apiRequests = [];
+const reservationWrites = [];
+const reservationAssets = [
+  { id: 'a1000000-0000-4000-8000-000000000001', assetTag: 'QA-RES-001', name: 'Synthetic reservation device 1', location: 'Head Office' },
+  { id: 'a1000000-0000-4000-8000-000000000002', assetTag: 'QA-RES-002', name: 'Synthetic reservation device 2', location: 'Head Office' },
+  { id: 'a1000000-0000-4000-8000-000000000003', assetTag: 'QA-RES-003', name: 'Synthetic reservation device 3', location: 'Head Office' }
+];
+const reservationRows = [
+  { id: 'a2000000-0000-4000-8000-000000000001', assetId: reservationAssets[0].id, assetTag: reservationAssets[0].assetTag, assetName: reservationAssets[0].name, employeeId, employeeName: 'Synthetic QA Employee', requestedByUserId: userId, requestedBy: 'Synthetic Owner', startsOn: '2026-10-22', endsOn: '2026-10-23', status: 'Pending', requestNote: 'Approve synthetic reservation', reviewNote: null },
+  { id: 'a2000000-0000-4000-8000-000000000002', assetId: reservationAssets[1].id, assetTag: reservationAssets[1].assetTag, assetName: reservationAssets[1].name, employeeId, employeeName: 'Synthetic QA Employee', requestedByUserId: userId, requestedBy: 'Synthetic Owner', startsOn: '2026-10-24', endsOn: '2026-10-25', status: 'Pending', requestNote: 'Reject synthetic reservation', reviewNote: null }
+];
 const expiryLoginAttempts = [];
 let syntheticSessionExpired = false;
 let companySwitchLoginFlow = false;
@@ -227,6 +237,21 @@ const server = createServer(async (request, response) => {
       totalAssets: (asset.isDeleted ? 0 : 1) + importedAssets.length + bulkAssets.length, assignedAssets: 0, availableAssets: (asset.isDeleted ? 0 : 1) + importedAssets.length + bulkAssets.length, maintenanceAssets: 0,
       softwareLicenses: 0, accessories: 0, consumables: 0, components: 0, activeEmployees: 0
     };
+    else if (url.pathname === '/api/reservations/options') result = {
+      employees: [{ id: employeeId, displayName: 'Synthetic QA Employee', employeeNumber: 'QA-001' }],
+      assets: reservationAssets
+    };
+    else if (url.pathname === '/api/reservations') {
+      const q = (url.searchParams.get('q') || '').toLocaleLowerCase('tr-TR');
+      const status = url.searchParams.get('status') || '';
+      const from = url.searchParams.get('from') || '', to = url.searchParams.get('to') || '';
+      let items = reservationRows.filter(item => (!status || item.status === status)
+        && (!from || item.endsOn >= from) && (!to || item.startsOn <= to)
+        && (!q || [item.assetTag, item.assetName, item.employeeName, item.requestNote, item.reviewNote].some(value => value?.toLocaleLowerCase('tr-TR').includes(q))));
+      const total = items.length, pageNumber = Number(url.searchParams.get('page') || 1), pageSize = Number(url.searchParams.get('pageSize') || 25);
+      items = items.slice((pageNumber - 1) * pageSize, pageNumber * pageSize);
+      result = { items, total, page: pageNumber, pageSize, canReview: true, currentUserId: userId };
+    }
     else if (url.pathname === '/api/assets') {
       const query = (url.searchParams.get('q') || '').toLocaleLowerCase('tr-TR');
       const allItems = [...(asset.isDeleted ? [] : [asset]), ...importedAssets, ...bulkAssets];
@@ -292,6 +317,31 @@ const server = createServer(async (request, response) => {
   if (request.headers['x-csrf-token'] !== 'synthetic-asset-csrf') {
     response.writeHead(400, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ message: 'Missing synthetic CSRF token.' })); return;
+  }
+  if (request.method === 'POST' && url.pathname === '/api/reservations') {
+    const selectedAsset = reservationAssets.find(item => item.id === body?.assetId);
+    assert.ok(selectedAsset, 'A reservation must reference one of the available synthetic assets.');
+    const created = { id: `a2000000-0000-4000-8000-${String(reservationRows.length + 1).padStart(12, '0')}`,
+      assetId: selectedAsset.id, assetTag: selectedAsset.assetTag, assetName: selectedAsset.name,
+      employeeId: body.employeeId, employeeName: 'Synthetic QA Employee', requestedByUserId: userId,
+      requestedBy: 'Synthetic Owner', startsOn: body.startsOn, endsOn: body.endsOn,
+      status: 'Pending', requestNote: body.requestNote || null, reviewNote: null };
+    reservationRows.push(created);
+    reservationWrites.push(record);
+    json(response, 201, { id: created.id, status: created.status });
+    return;
+  }
+  const reservationAction = url.pathname.match(/^\/api\/reservations\/([0-9a-f-]+)\/(decision|cancel)$/i);
+  if (request.method === 'POST' && reservationAction) {
+    const row = reservationRows.find(item => item.id === reservationAction[1]);
+    assert.ok(row, 'Reservation action must reference a synthetic reservation.');
+    reservationWrites.push(record);
+    if (reservationAction[2] === 'decision') {
+      row.status = body.approve ? 'Approved' : 'Rejected';
+      row.reviewNote = body.note;
+    } else row.status = 'Cancelled';
+    json(response, 200, { id: row.id, status: row.status });
+    return;
   }
   if (request.method === 'POST' && url.pathname === '/api/software-licenses/import/preview.csv') {
     assert.equal(typeof body, 'string', 'The license preview must submit the selected CSV as text.');
@@ -1834,6 +1884,99 @@ try {
   for (const group of await sidebarGroups.all()) {
     if (await group.getAttribute('aria-expanded') !== 'true') await group.click();
   }
+  const movementGroupToggle = page.locator('[data-group="movement"]');
+  if (await movementGroupToggle.getAttribute('aria-expanded') !== 'true') await movementGroupToggle.click();
+  await page.locator('#sidebar [data-page="Rezervasyonlar"]').click();
+  await page.locator('#reservationsPage').waitFor({ state: 'visible' });
+  await page.waitForFunction(() => document.querySelector('#reservationAsset')?.options.length > 1
+    && document.querySelector('#reservationEmployee')?.options.length > 1);
+  const reservationForm = page.locator('#reservationForm');
+  await reservationForm.locator('[name="assetId"]').selectOption(reservationAssets[2].id);
+  await reservationForm.locator('[name="employeeId"]').selectOption(employeeId);
+  await reservationForm.locator('[name="startsOn"]').fill('2026-10-27');
+  await reservationForm.locator('[name="endsOn"]').fill('2026-10-26');
+  await reservationForm.locator('[name="requestNote"]').fill('Synthetic date validation');
+  const reservationWritesBeforeInvalidDate = reservationWrites.length;
+  await reservationForm.locator('#reservationSubmit').click();
+  assert.equal(reservationWrites.length, reservationWritesBeforeInvalidDate, 'An end date before the start date must not create a reservation.');
+  await reservationForm.locator('[name="endsOn"]').fill('2026-10-28');
+  await reservationForm.locator('[name="requestNote"]').fill('Synthetic reservation request');
+  await reservationForm.locator('#reservationSubmit').click();
+  await page.locator('#reservationRows tr').filter({ hasText: 'QA-RES-003' }).waitFor();
+  const createdReservationWrite = reservationWrites.find(item => item.path === '/api/reservations' && item.body?.assetId === reservationAssets[2].id);
+  assert.equal(createdReservationWrite?.method, 'POST');
+  assert.deepEqual(createdReservationWrite?.body, {
+    assetId: reservationAssets[2].id, employeeId, startsOn: '2026-10-27', endsOn: '2026-10-28', requestNote: 'Synthetic reservation request'
+  });
+  assert.equal(createdReservationWrite?.csrf, 'synthetic-asset-csrf');
+  assert.equal(await reservationForm.locator('[name="assetId"]').inputValue(), '', 'Successful creation must reset the form.');
+
+  const approvedRow = page.locator('#reservationRows tr').filter({ hasText: 'QA-RES-001' });
+  await approvedRow.getByRole('button', { name: 'Onayla' }).click();
+  const reservationDialog = page.locator('#reservationActionDialog');
+  await reservationDialog.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#reservationActionSummary').innerText(), /QA-RES-001/);
+  await page.locator('#reservationActionCancel').click();
+  await reservationDialog.waitFor({ state: 'hidden' });
+  assert.equal(reservationWrites.filter(item => item.path.endsWith('/decision')).length, 0, 'Dismissing a decision dialog must not write.');
+  assert.equal(reservationRows[0].status, 'Pending', 'Dismissing the dialog must preserve the pending reservation.');
+  await approvedRow.getByRole('button', { name: 'Onayla' }).click();
+  await page.locator('#reservationReviewNote').fill('Synthetic approval note');
+  await page.locator('#reservationActionSubmit').click();
+  await reservationDialog.waitFor({ state: 'hidden' });
+  await approvedRow.getByText('Onaylandı').waitFor();
+  const approvalWrite = reservationWrites.find(item => item.path.endsWith('/decision') && item.body?.approve === true);
+  assert.equal(approvalWrite?.method, 'POST');
+  assert.deepEqual(approvalWrite?.body, { approve: true, note: 'Synthetic approval note' });
+  assert.equal(approvalWrite?.csrf, 'synthetic-asset-csrf');
+  assert.equal(reservationRows[0].reviewNote, 'Synthetic approval note', 'The decision note must remain in the refreshed row.');
+
+  const rejectedRow = page.locator('#reservationRows tr').filter({ hasText: 'QA-RES-002' });
+  await rejectedRow.getByRole('button', { name: 'Reddet' }).click();
+  await page.locator('#reservationReviewNote').fill('Synthetic rejection note');
+  await page.locator('#reservationActionSubmit').click();
+  await rejectedRow.getByText('Reddedildi').waitFor();
+  assert.equal(reservationRows[1].status, 'Rejected');
+  assert.equal(reservationRows[1].reviewNote, 'Synthetic rejection note');
+  const rejectionWrite = reservationWrites.find(item => item.path.endsWith('/decision') && item.body?.approve === false);
+  assert.equal(rejectionWrite?.csrf, 'synthetic-asset-csrf');
+
+  await page.locator('#reservationStatus').selectOption('');
+  const createdRow = page.locator('#reservationRows tr').filter({ hasText: 'QA-RES-003' });
+  await createdRow.waitFor();
+  const reservationCancelWritesBeforeDismiss = reservationWrites.filter(item => item.path.endsWith('/cancel')).length;
+  await createdRow.getByRole('button', { name: 'İptal et' }).click();
+  await reservationDialog.waitFor({ state: 'visible' });
+  await page.locator('#reservationActionCancel').click();
+  await reservationDialog.waitFor({ state: 'hidden' });
+  assert.equal(reservationWrites.filter(item => item.path.endsWith('/cancel')).length, reservationCancelWritesBeforeDismiss,
+    'Dismissing a reservation cancellation dialog must not write.');
+  await createdRow.getByRole('button', { name: 'İptal et' }).click();
+  await page.locator('#reservationActionSubmit').click();
+  await createdRow.getByText('İptal edildi').waitFor();
+  const cancellationWrite = reservationWrites.find(item => item.path.endsWith('/cancel'));
+  assert.equal(cancellationWrite?.method, 'POST');
+  assert.equal(cancellationWrite?.csrf, 'synthetic-asset-csrf');
+  assert.equal(reservationRows[2].status, 'Cancelled');
+
+  await page.locator('#reservationStatus').selectOption('Approved');
+  await page.locator('#reservationRows tr').filter({ hasText: 'QA-RES-001' }).waitFor();
+  assert.equal(await page.locator('#reservationRows tr').count(), 1, 'Status filtering must return only matching reservations.');
+  assert.ok(requests.some(item => item.path === '/api/reservations' && item.query.status === 'Approved' && item.query.page === '1'),
+    'Changing the status filter must reload page one with the selected status.');
+  const reservationSearchRequest = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return url.pathname === '/api/reservations' && url.searchParams.get('q') === 'QA-RES-001';
+  });
+  await page.locator('#reservationSearch').fill('QA-RES-001');
+  await reservationSearchRequest;
+  await page.waitForFunction(() => document.querySelector('#reservationRows')?.innerText.includes('QA-RES-001'));
+  assert.ok(requests.some(item => item.path === '/api/reservations' && item.query.q === 'QA-RES-001'), 'Reservation search must reach the API query.');
+  const reservationWritesBeforeRefresh = reservationWrites.length;
+  await page.locator('#reservationRefresh').click();
+  assert.equal(reservationWrites.length, reservationWritesBeforeRefresh, 'Refreshing reservations must remain read-only.');
+  console.log('PASS: reservations reject invalid date ranges without writing; create with CSRF; approve/reject notes persist; approve/cancel dismissal writes nothing; confirmed cancellation uses CSRF and persists; status/search filters reload correctly; refresh is read-only.');
+
   const sidebarDestinations = page.locator('#sidebar button[data-page]');
   const destinationCount = await sidebarDestinations.count();
   assert.equal(destinationCount, 50, 'The owner navigation smoke acceptance must cover all 50 documented sidebar destinations.');
