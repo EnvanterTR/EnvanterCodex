@@ -2617,6 +2617,7 @@ try {
   await page.locator('#assetParentSearch').fill('Synthetic QA Parent');
   assert.equal((await parentLookup).status(), 200, 'Same-company parent search must succeed.');
   const parentSelect = page.locator('#assetParentSelect');
+  await parentSelect.locator(`option[value="${hierarchyParentId}"]`).waitFor({ state: 'attached' });
   assert.equal(await parentSelect.locator('option').count(), 2, 'Only the empty option and matching same-company parent should be offered.');
   assert.equal(await parentSelect.locator('option').nth(1).textContent(), 'QA-PARENT-001 · Synthetic QA Parent');
   await parentSelect.selectOption(hierarchyParentId);
@@ -4133,21 +4134,18 @@ try {
   assert.ok(requests.some(item => item.path === '/api/reports/warranties' && item.query.state === 'expired' && item.query.page === '1'),
     'The expired warranty filter must reload page one through the company report API.');
   await page.locator('#warrantyReportState').selectOption('upcoming');
-  const warrantyHorizonResponse = page.waitForRequest(request => {
-    const url = new URL(request.url());
-    return url.pathname === '/api/reports/warranties' && url.searchParams.get('state') === 'upcoming'
-      && url.searchParams.get('through') !== null;
-  });
   const expectedWarrantyThrough = await page.evaluate(() => {
     const today = new Date();
     return new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 30)).toISOString().slice(0, 10);
   });
+  const warrantyHorizonResponse = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname === '/api/reports/warranties' && url.searchParams.get('state') === 'upcoming'
+      && url.searchParams.get('through') === expectedWarrantyThrough;
+  });
   await page.locator('#warrantyReportHorizon').selectOption('30');
-  const warrantyHorizonRequest = await warrantyHorizonResponse;
-  const warrantyThrough = new URL(warrantyHorizonRequest.url()).searchParams.get('through');
-  const expectedNextDay = new Date(`${expectedWarrantyThrough}T00:00:00Z`); expectedNextDay.setUTCDate(expectedNextDay.getUTCDate() + 1);
-  assert.ok(warrantyThrough === expectedWarrantyThrough || warrantyThrough === expectedNextDay.toISOString().slice(0, 10),
-    'Selecting 30 days must send a matching horizon to the API.');
+  assert.equal((await warrantyHorizonResponse).status(), 200,
+    'Selecting 30 days must successfully load the exact matching horizon from the API.');
   const warrantySearchRequest = page.waitForRequest(request => {
     const url = new URL(request.url());
     return url.pathname === '/api/reports/warranties' && url.searchParams.get('q') === 'QA-WARRANTY-UPCOMING';
