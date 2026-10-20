@@ -2375,12 +2375,12 @@ try {
   });
   await page.locator('#activityFrom').fill('2026-10-15');
   await activityFromRequest;
-  const activityToRequest = page.waitForRequest(request => {
-    const url = new URL(request.url());
-    return url.pathname === '/api/activity' && Boolean(url.searchParams.get('to'));
+  const activityDateResponse = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname === '/api/activity' && Boolean(url.searchParams.get('from')) && Boolean(url.searchParams.get('to'));
   });
   await page.locator('#activityTo').fill('2026-10-15');
-  await activityToRequest;
+  assert.equal((await activityDateResponse).status(), 200);
   const dateRequest = requests.findLast(item => item.path === '/api/activity' && item.query.from && item.query.to);
   assert.ok(dateRequest, 'Activity date controls must send both date boundaries.');
   assert.match(dateRequest.query.from, /^2026-10-15T/);
