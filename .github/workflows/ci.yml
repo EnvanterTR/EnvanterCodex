@@ -308,19 +308,6 @@ jobs:
         shell: bash
         run: node tools/Verify-TenantSlugProfile.mjs
 
-      - name: Run isolated PostgreSQL acceptance suite
-        shell: bash
-        run: |
-          set -euo pipefail
-          project_name="envantertr-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          compose_file="deploy/testing/compose.security-acceptance.yaml"
-          cleanup() {
-            docker compose --project-name "$project_name" --file "$compose_file" down --volumes --remove-orphans
-          }
-          trap cleanup EXIT
-          docker compose --project-name "$project_name" --file "$compose_file" up \
-            --build --abort-on-container-exit --exit-code-from acceptance
-
       - name: Build Linux application image and verify PostgreSQL native dependency
         shell: bash
         run: |
@@ -417,6 +404,27 @@ jobs:
           path: ${{ runner.temp }}/envantertr-linux-release
           if-no-files-found: error
           retention-days: 14
+
+  linux-postgresql-acceptance:
+    name: Linux PostgreSQL tenant acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Run isolated PostgreSQL acceptance suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_name="envantertr-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          compose_file="deploy/testing/compose.security-acceptance.yaml"
+          cleanup() {
+            docker compose --project-name "$project_name" --file "$compose_file" down --volumes --remove-orphans
+          }
+          trap cleanup EXIT
+          docker compose --project-name "$project_name" --file "$compose_file" up \
+            --build --abort-on-container-exit --exit-code-from acceptance
 
   windows-deployment-safety:
     name: Windows deployment and backup safety
