@@ -20,7 +20,9 @@ public sealed partial class TenantSessionAcceptanceTests
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
-            publishedBefore = await db.SubscriptionPlans.CountAsync(plan => plan.IsActive && plan.IsPublic && plan.DeploymentKind == "cloud");
+            // Isolate the catalog gate from unrelated fixture plans.
+            await db.SubscriptionPlans.ExecuteUpdateAsync(setters => setters.SetProperty(plan => plan.IsPublic, false));
+            publishedBefore = 0;
             db.SubscriptionPlans.Add(addedPlan);
             await db.SaveChangesAsync();
         }
@@ -58,7 +60,8 @@ public sealed partial class TenantSessionAcceptanceTests
             Assert.Equal(item.ApiValid, readiness.GetProperty("apiEndpointValid").GetBoolean());
             Assert.Equal(item.Environment, readiness.GetProperty("environment").GetString());
             Assert.Equal(publishedBefore + 1, readiness.GetProperty("publishedCloudPlans").GetInt32());
-            Assert.True(readiness.GetProperty("catalogReady").GetBoolean());
+            Assert.Equal(0, readiness.GetProperty("purchasableCloudPlans").GetInt32());
+            Assert.False(readiness.GetProperty("catalogReady").GetBoolean());
             using var publicResponse = await SendAsAdminAsync("/api/checkout/status");
             Assert.Equal(HttpStatusCode.OK, publicResponse.StatusCode);
             using var publicPayload = JsonDocument.Parse(await publicResponse.Content.ReadAsStringAsync());
@@ -66,6 +69,24 @@ public sealed partial class TenantSessionAcceptanceTests
             Assert.Equal(item.Key && item.CallbackValid && item.ApiValid, available);
             Assert.Equal(available, readiness.GetProperty("configurationReady").GetBoolean());
             Assert.False(publicPayload.RootElement.TryGetProperty("checkout", out _));
+        }
+        foreach (var priceCase in new[] { (Monthly: 49m, Annual: 0m, Currency: "TRY", Expected: 1),
+                     (Monthly: 0m, Annual: 490m, Currency: "eur", Expected: 1),
+                     (Monthly: 49m, Annual: 0m, Currency: "XYZ", Expected: 0),
+                     (Monthly: 0m, Annual: 0m, Currency: "TRY", Expected: 0) })
+        {
+            await using var scope = _factory!.Services.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await db.SubscriptionPlans.Where(plan => plan.Id == addedPlan.Id).ExecuteUpdateAsync(setters => setters
+                .SetProperty(plan => plan.MonthlyPrice, priceCase.Monthly).SetProperty(plan => plan.AnnualPrice, priceCase.Annual)
+                .SetProperty(plan => plan.Currency, priceCase.Currency));
+            using var response = await SendAsPlatformAdminAsync("/api/platform/system/health");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var readiness = payload.RootElement.GetProperty("integrations").GetProperty("checkout");
+            Assert.Equal(1, readiness.GetProperty("publishedCloudPlans").GetInt32());
+            Assert.Equal(priceCase.Expected, readiness.GetProperty("purchasableCloudPlans").GetInt32());
+            Assert.Equal(priceCase.Expected > 0, readiness.GetProperty("catalogReady").GetBoolean());
         }
     }
 }

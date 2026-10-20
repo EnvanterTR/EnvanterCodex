@@ -66,7 +66,7 @@ const companyListRequests = [];
 let auditErrorInjected = false;
 let systemHealthReads = 0;
 let checkoutReadiness = { configurationReady: false, credentialsConfigured: false, callbackValid: false,
-  apiEndpointValid: true, environment: 'sandbox', publishedCloudPlans: 0, catalogReady: false };
+  apiEndpointValid: true, environment: 'sandbox', publishedCloudPlans: 0, purchasableCloudPlans: 0, catalogReady: false };
 const auditEntries = Array.from({ length: 51 }, (_, index) => ({
   id: `99999999-9999-4999-8999-${String(index + 1).padStart(12, '0')}`,
   source: index === 0 ? 'platform' : 'company', actorUserId: platformAdminId,
@@ -422,7 +422,7 @@ try {
   assert.match(await checkoutHealthCard.innerText(), /Ödeme dönüş adresi geçersiz/);
   assert.match(await checkoutHealthCard.innerText(), /Yayımlanmış Cloud paketi yok/);
   checkoutReadiness = { configurationReady: true, credentialsConfigured: true, callbackValid: true,
-    apiEndpointValid: true, environment: 'sandbox', publishedCloudPlans: 1, catalogReady: true };
+    apiEndpointValid: true, environment: 'sandbox', publishedCloudPlans: 1, purchasableCloudPlans: 1, catalogReady: true };
   await page.locator('#refreshSystemHealth').click();
   await checkoutHealthCard.getByText('Test ortamı', { exact: true }).waitFor();
   assert.match(await checkoutHealthCard.innerText(), /Sandbox ile gerçek tahsilat yapılmaz/);
@@ -430,6 +430,10 @@ try {
   await page.locator('#refreshSystemHealth').click();
   await checkoutHealthCard.getByText('Ayarlar hazır', { exact: true }).waitFor();
   assert.match(await checkoutHealthCard.innerText(), /Sağlayıcı erişimi ve gerçek ödeme kabulü ayrıca doğrulanmalıdır/);
+  checkoutReadiness.purchasableCloudPlans = 0; checkoutReadiness.catalogReady = false;
+  await page.locator('#refreshSystemHealth').click();
+  await checkoutHealthCard.getByText('Eksikler var', { exact: true }).waitFor();
+  assert.match(await checkoutHealthCard.innerText(), /Ödeme alınabilir Cloud paketi yok; fiyat ve para birimini kontrol edin/);
   checkoutReadiness.publishedCloudPlans = null; checkoutReadiness.catalogReady = false;
   await page.locator('#refreshSystemHealth').click();
   await checkoutHealthCard.getByText('Eksikler var', { exact: true }).waitFor();

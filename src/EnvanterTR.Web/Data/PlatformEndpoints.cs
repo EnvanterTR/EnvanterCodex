@@ -111,6 +111,7 @@ public static class PlatformEndpoints
 
             long? databaseSizeBytes = null;
             int? publishedCloudPlans = null;
+            int? purchasableCloudPlans = null;
             var databaseStatus = "healthy";
             try
             {
@@ -119,6 +120,10 @@ public static class PlatformEndpoints
                     .SingleAsync(cancellationToken);
                 publishedCloudPlans = await db.SubscriptionPlans.AsNoTracking().CountAsync(
                     plan => plan.IsActive && plan.IsPublic && plan.DeploymentKind == "cloud", cancellationToken);
+                var checkoutCurrencies = CheckoutEndpoints.SupportedCurrencies;
+                purchasableCloudPlans = await db.SubscriptionPlans.AsNoTracking().CountAsync(
+                    plan => plan.IsActive && plan.IsPublic && plan.DeploymentKind == "cloud" &&
+                        (plan.MonthlyPrice > 0 || plan.AnnualPrice > 0) && checkoutCurrencies.Contains(plan.Currency.ToUpper()), cancellationToken);
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
@@ -184,7 +189,8 @@ public static class PlatformEndpoints
                         apiEndpointValid = checkoutConfiguration.ApiEndpointValid,
                         environment = checkoutConfiguration.Environment,
                         publishedCloudPlans,
-                        catalogReady = publishedCloudPlans > 0
+                        purchasableCloudPlans,
+                        catalogReady = purchasableCloudPlans > 0
                     }
                 },
                 note = "CPU/RAM ve disk ölçümleri bu web uygulama konteynerine aittir; Docker hostunun genel kaynaklarını göstermez. Disk kapasitesi uygulama konteyneri dosya sistemidir. Veritabanı boyutu PostgreSQL'den okunur. Entegrasyon durumu yalnızca yapılandırılmış olmayı gösterir; sağlayıcı erişimi sınanmaz."

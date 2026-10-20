@@ -23,6 +23,7 @@ public sealed record InitializeCompanyCheckoutRequest(
 
 public static class CheckoutEndpoints
 {
+    internal static readonly string[] SupportedCurrencies = ["TRY", "USD", "EUR", "GBP", "NOK", "CHF"];
     internal sealed record ConfigurationReadiness(bool CredentialsConfigured, bool CallbackValid, bool ApiEndpointValid, string Environment)
     {
         public bool Available => CredentialsConfigured && CallbackValid && ApiEndpointValid;
@@ -115,7 +116,7 @@ public static class CheckoutEndpoints
         var termDays = request.Term == "annual" ? 365 : 30;
         var amount = request.Term == "annual" ? plan.AnnualPrice : plan.MonthlyPrice;
         var currency = plan.Currency.ToUpperInvariant();
-        if (amount <= 0 || currency is not ("TRY" or "USD" or "EUR" or "GBP" or "NOK" or "CHF"))
+        if (amount <= 0 || !SupportedCurrencies.Contains(currency))
             return Results.Problem("Seçilen Cloud paketi için ödeme fiyatı veya para birimi kullanılamıyor.",
                 statusCode: StatusCodes.Status503ServiceUnavailable);
 
