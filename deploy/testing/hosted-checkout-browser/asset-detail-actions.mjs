@@ -2620,6 +2620,55 @@ try {
   await parentSelect.locator(`option[value="${hierarchyParentId}"]`).waitFor({ state: 'attached' });
   assert.equal(await parentSelect.locator('option').count(), 2, 'Only the empty option and matching same-company parent should be offered.');
   assert.equal(await parentSelect.locator('option').nth(1).textContent(), 'QA-PARENT-001 · Synthetic QA Parent');
+  for (const closeWhilePending of [false, true]) {
+    let releaseStaleLookup, markStaleLookupReady;
+    const staleLookupGate = new Promise(resolve => { releaseStaleLookup = resolve; });
+    const staleLookupReady = new Promise(resolve => { markStaleLookupReady = resolve; });
+    const delayStaleLookup = async route => {
+      if (new URL(route.request().url()).searchParams.get('q') !== 'Synthetic QA Child') return route.continue();
+      const response = await route.fetch();
+      markStaleLookupReady();
+      await staleLookupGate;
+      await route.fulfill({ response });
+    };
+    await page.route('**/api/assets?*', delayStaleLookup);
+    try {
+      const staleLookupDelivered = page.waitForResponse(response => {
+        const url = new URL(response.url());
+        return url.pathname === '/api/assets' && url.searchParams.get('q') === 'Synthetic QA Child';
+      });
+      await page.locator('#assetParentSearch').fill('Synthetic QA Child');
+      await staleLookupReady;
+      if (closeWhilePending) {
+        await page.locator('#closeDialog').click();
+        await page.locator('#assetRows .asset-name').filter({ hasText: editedName }).click();
+        await page.waitForFunction(() => document.querySelector('#assetDialog')?.open);
+        await page.locator('#assetTabRelationsButton').click();
+      } else {
+        const latestLookup = page.waitForResponse(response => {
+          const url = new URL(response.url());
+          return url.pathname === '/api/assets' && url.searchParams.get('q') === 'Synthetic QA Parent';
+        });
+        await page.locator('#assetParentSearch').fill('Synthetic QA Parent');
+        await latestLookup;
+        await parentSelect.locator(`option[value="${hierarchyParentId}"]`).waitFor({ state: 'attached' });
+      }
+      const expectedOptions = await parentSelect.locator('option').evaluateAll(options => options.map(option => ({ value: option.value, text: option.textContent })));
+      releaseStaleLookup();
+      await (await staleLookupDelivered).finished();
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      assert.deepEqual(await parentSelect.locator('option').evaluateAll(options => options.map(option => ({ value: option.value, text: option.textContent }))), expectedOptions,
+        closeWhilePending ? 'A lookup started before closing must not alter a reopened asset dialog.' : 'A late lookup must not replace newer parent search results.');
+    } finally {
+      releaseStaleLookup();
+      await page.unroute('**/api/assets?*', delayStaleLookup);
+    }
+  }
+  const parentReload = page.waitForResponse(response => new URL(response.url()).pathname === '/api/assets' && new URL(response.url()).searchParams.get('q') === 'Synthetic QA Parent');
+  await page.locator('#assetParentSearch').fill('Synthetic QA Parent');
+  await parentReload;
+  await parentSelect.locator(`option[value="${hierarchyParentId}"]`).waitFor({ state: 'attached' });
+  console.log('PASS: delayed parent searches cannot overwrite a newer query or a reopened asset dialog.');
   await parentSelect.selectOption(hierarchyParentId);
   const parentSave = page.waitForResponse(response => response.url().includes(`/api/assets/${assetId}/parent`));
   await page.locator('#saveAssetParent').click();
@@ -4851,8 +4900,37 @@ try {
       await page.locator('#directoryRows tr').filter({ hasText: createdLocationPaths[5] }).getByRole('button', { name: 'Varsayılan yap' }).waitFor();
 
       const managerRow = page.locator('#directoryRows tr').filter({ hasText: createdLocationPaths[5] });
-      await managerRow.getByRole('button', { name: 'Sorumlu ata' }).click();
-      await page.waitForFunction(id => [...document.querySelectorAll('#locationManagerEmployee option')].some(option => option.value === id), employeeId);
+      const openManagerWithDelayedCandidates = async (button, selectedId) => {
+        let releaseCandidates;
+        const candidateGate = new Promise(resolve => { releaseCandidates = resolve; });
+        const delayCandidates = async route => {
+          if (new URL(route.request().url()).searchParams.get('active') !== 'true') return route.continue();
+          const response = await route.fetch();
+          await candidateGate;
+          await route.fulfill({ response });
+        };
+        await page.route('**/api/employees?*', delayCandidates);
+        try {
+          const loadingRequest = page.waitForRequest(request => new URL(request.url()).pathname === '/api/employees' && new URL(request.url()).searchParams.get('active') === 'true');
+          const loadedResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/employees' && new URL(response.url()).searchParams.get('active') === 'true');
+          const writesBeforeLoading = locationManagerWrites.length;
+          await button.click();
+          await loadingRequest;
+          assert.equal(await page.locator('#locationManagerEmployee').isDisabled(), true, 'Loading employees must block selections that the response could overwrite.');
+          assert.equal(await page.locator('#saveLocationManager').isDisabled(), true, 'The manager cannot be saved before the employee list is ready.');
+          await page.locator('#locationManagerForm').evaluate(form => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+          await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
+          assert.equal(locationManagerWrites.length, writesBeforeLoading, 'Submitting while candidates are loading must not write a manager.');
+          releaseCandidates();
+          assert.equal((await loadedResponse).status(), 200);
+          await page.waitForFunction(() => !document.querySelector('#locationManagerEmployee').disabled && !document.querySelector('#saveLocationManager').disabled);
+          assert.equal(await page.locator('#locationManagerEmployee').inputValue(), selectedId, 'Loaded choices must preserve the current manager.');
+        } finally {
+          releaseCandidates();
+          await page.unroute('**/api/employees?*', delayCandidates);
+        }
+      };
+      await openManagerWithDelayedCandidates(managerRow.getByRole('button', { name: 'Sorumlu ata' }), '');
       await page.locator('#locationManagerEmployee').selectOption(employeeId);
       const assignManager = page.waitForResponse(response => response.request().method() === 'POST'
         && new URL(response.url()).pathname === `/api/locations/catalog/${createdLocationIds[5]}/manager`);
@@ -4863,7 +4941,7 @@ try {
       await page.locator('#locationManagerDialog').waitFor({ state: 'hidden' });
       await page.locator('#directoryRows tr').filter({ hasText: createdLocationPaths[5] }).getByRole('button', { name: 'Synthetic QA Employee' }).waitFor();
 
-      await page.locator('#directoryRows tr').filter({ hasText: createdLocationPaths[5] }).getByRole('button', { name: 'Synthetic QA Employee' }).click();
+      await openManagerWithDelayedCandidates(page.locator('#directoryRows tr').filter({ hasText: createdLocationPaths[5] }).getByRole('button', { name: 'Synthetic QA Employee' }), employeeId);
       await page.locator('#locationManagerEmployee').selectOption('');
       const clearManager = page.waitForResponse(response => response.request().method() === 'POST'
         && new URL(response.url()).pathname === `/api/locations/catalog/${createdLocationIds[5]}/manager`);

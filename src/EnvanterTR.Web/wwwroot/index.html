@@ -5974,41 +5974,57 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       } catch (error) { $('#createLocationFeedback').textContent = error.message; }
       finally { button.disabled = false; }
     });
-    let locationManagerSearchTimer;
+    let locationManagerSearchTimer, locationManagerCandidatesRequest = 0;
     async function loadLocationManagerCandidates(query = '', selectedId = '') {
-      const select = $('#locationManagerEmployee');
-      select.replaceChildren(new Option('Sorumlu atanmamış', ''));
-      const result = await api(`/api/employees?active=true&page=1&pageSize=100&q=${encodeURIComponent(query.trim())}`);
-      const employees = result.items || [];
-      for (const employee of employees) {
-        const label = `${employee.displayName} · ${employee.employeeNumber}`;
-        select.add(new Option(label, employee.id, false, employee.id === selectedId));
+      const requestId = ++locationManagerCandidatesRequest, locationId = $('#locationManagerForm').elements.locationId.value;
+      const sessionGeneration = authSessionGeneration, select = $('#locationManagerEmployee'), button = $('#saveLocationManager');
+      const isCurrentLookup = () => requestId === locationManagerCandidatesRequest && $('#locationManagerDialog').open
+        && $('#locationManagerForm').elements.locationId.value === locationId && sessionGeneration === authSessionGeneration;
+      select.disabled = true; button.disabled = true;
+      let loaded = false;
+      try {
+        const result = await api(`/api/employees?active=true&page=1&pageSize=100&q=${encodeURIComponent(query.trim())}`);
+        if (!isCurrentLookup()) return;
+        const employees = result.items || [];
+        select.replaceChildren(new Option('Sorumlu atanmamış', ''));
+        for (const employee of employees) {
+          const label = `${employee.displayName} · ${employee.employeeNumber}`;
+          select.add(new Option(label, employee.id, false, employee.id === selectedId));
+        }
+        if (selectedId && !employees.some(employee => employee.id === selectedId)) {
+          const existing = directoryEntries.find(item => item.managerEmployeeId === selectedId)?.managerName;
+          if (existing) select.add(new Option(existing, selectedId, true, true));
+        }
+        if (!employees.length) $('#locationManagerFeedback').textContent = query.trim() ? 'Aramayla eşleşen aktif çalışan bulunamadı.' : 'Atama yapılabilecek aktif çalışan bulunamadı.';
+        else $('#locationManagerFeedback').textContent = `${fmt.format(result.total ?? employees.length)} aktif çalışan bulundu.`;
+        loaded = true;
+      } catch (error) {
+        if (isCurrentLookup()) $('#locationManagerFeedback').textContent = error.message;
+      } finally {
+        if (isCurrentLookup()) { select.disabled = false; button.disabled = !loaded; }
       }
-      if (selectedId && !employees.some(employee => employee.id === selectedId)) {
-        const existing = directoryEntries.find(item => item.managerEmployeeId === selectedId)?.managerName;
-        if (existing) select.add(new Option(existing, selectedId, true, true));
-      }
-      if (!employees.length) $('#locationManagerFeedback').textContent = query.trim() ? 'Aramayla eşleşen aktif çalışan bulunamadı.' : 'Atama yapılabilecek aktif çalışan bulunamadı.';
-      else $('#locationManagerFeedback').textContent = `${fmt.format(result.total ?? employees.length)} aktif çalışan bulundu.`;
     }
     async function openLocationManager(item) {
       if (!canWriteAssets() || !item.isActive) return;
+      clearTimeout(locationManagerSearchTimer);
       const form = $('#locationManagerForm'); form.reset(); form.elements.locationId.value = item.locationId;
       $('#locationManagerContext').textContent = item.name;
       $('#locationManagerFeedback').textContent = 'Aktif çalışanlar yükleniyor…';
       $('#locationManagerDialog').showModal();
-      try { await loadLocationManagerCandidates('', item.managerEmployeeId || ''); }
-      catch (error) { $('#locationManagerFeedback').textContent = error.message; }
-      $('#locationManagerSearch').focus();
+      await loadLocationManagerCandidates('', item.managerEmployeeId || '');
+      if ($('#locationManagerDialog').open && form.elements.locationId.value === item.locationId) $('#locationManagerSearch').focus();
     }
     $('#locationManagerSearch').addEventListener('input', () => {
       clearTimeout(locationManagerSearchTimer);
-      locationManagerSearchTimer = setTimeout(() => loadLocationManagerCandidates($('#locationManagerSearch').value, $('#locationManagerEmployee').value).catch(error => { $('#locationManagerFeedback').textContent = error.message; }), 250);
+      ++locationManagerCandidatesRequest;
+      $('#locationManagerEmployee').disabled = true; $('#saveLocationManager').disabled = true;
+      locationManagerSearchTimer = setTimeout(() => loadLocationManagerCandidates($('#locationManagerSearch').value, $('#locationManagerEmployee').value), 250);
     });
+    $('#locationManagerDialog').addEventListener('close', () => { clearTimeout(locationManagerSearchTimer); ++locationManagerCandidatesRequest; });
     $('#closeLocationManager').addEventListener('click', () => $('#locationManagerDialog').close());
     $('#cancelLocationManager').addEventListener('click', () => $('#locationManagerDialog').close());
     $('#locationManagerForm').addEventListener('submit', async event => {
-      event.preventDefault(); if (!canWriteAssets()) return;
+      event.preventDefault(); if (!canWriteAssets() || $('#saveLocationManager').disabled) return;
       const form = event.currentTarget, button = $('#saveLocationManager'), locationId = form.elements.locationId.value;
       button.disabled = true; $('#locationManagerFeedback').textContent = 'Sorumlu kaydediliyor…';
       try {
@@ -7524,7 +7540,10 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
         body.append(row);
       }
     }
+    let assetParentLookupRequestId = 0;
     function renderAssetHierarchy(relatedAssets, asset) {
+      ++assetParentLookupRequestId;
+      $('#assetParentSearch').value = '';
       const select = $('#assetParentSelect'), body = $('#assetLinkedRows');
       select.replaceChildren(new Option('Üst varlık yok', ''));
       for (const related of relatedAssets || []) {
@@ -10651,17 +10670,23 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
       catch (error) { notify(error.message); } finally { button.disabled = false; }
     });
     $('#assetDialog').addEventListener('click', event => { if (event.target === $('#assetDialog')) $('#assetDialog').close(); });
+    $('#assetDialog').addEventListener('close', () => { ++assetParentLookupRequestId; });
     $('#assetParentSearch').addEventListener('input', async event => {
       const query = event.currentTarget.value.trim(), select = $('#assetParentSelect');
+      const assetId = currentAsset?.id, requestId = ++assetParentLookupRequestId, sessionGeneration = authSessionGeneration;
+      const isCurrentLookup = () => requestId === assetParentLookupRequestId && currentAsset?.id === assetId
+        && $('#assetDialog').open && $('#assetParentSearch').value.trim() === query && sessionGeneration === authSessionGeneration;
+      if (!assetId || !$('#assetDialog').open) return;
       try {
         const result = await api(`/api/assets?page=1&pageSize=50${query ? `&q=${encodeURIComponent(query)}` : ''}`);
+        if (!isCurrentLookup()) return;
         const currentParentId = select.value;
         select.replaceChildren(new Option('Üst varlık yok', ''));
         for (const asset of result.items || []) {
           if (asset.id === currentAsset?.id) continue;
           select.add(new Option(`${asset.assetTag} · ${asset.name}`, asset.id, false, asset.id === currentParentId));
         }
-      } catch (error) { notify(error.message); }
+      } catch (error) { if (isCurrentLookup()) notify(error.message); }
     });
     $('#saveAssetParent').addEventListener('click', async () => {
       if (!currentAsset) return;
