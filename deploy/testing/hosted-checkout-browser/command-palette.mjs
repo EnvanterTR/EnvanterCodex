@@ -688,10 +688,10 @@ try {
   await loginPage.locator('#loginForm [name="rememberMe"]').check();
   companyMfaEnrollmentMode = true;
   await loginPage.locator('#loginForm button[type="submit"]').click();
-  assert.equal(loginAttempts[1].body.rememberMe, true,
-    'The explicit device-session choice must be sent with the MFA enrollment challenge.');
   const companyMfaDialog = loginPage.locator('#companyMfaEnrollmentDialog');
   await companyMfaDialog.waitFor({ state: 'visible' });
+  assert.equal(loginAttempts[1].body.rememberMe, true,
+    'The explicit device-session choice must be sent with the MFA enrollment challenge.');
   assert.match(await loginPage.locator('#companyMfaEnrollmentQr').getAttribute('src'), /^data:image\/svg\+xml/);
   assert.equal(await loginPage.locator('#companyMfaEnrollmentSecret').innerText(), 'JBSWY3DPEHPK3PXP');
   assert.equal(apiRequests.find(item => item.path === '/api/session/company-mfa/setup')?.body?.ticket, 'synthetic-one-time-mfa-ticket');
