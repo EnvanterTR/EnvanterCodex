@@ -1,6 +1,6 @@
 # EnvanterTR statik arayüz envanteri
 
-Oluşturulma: 2026-10-20T06:10:54.074Z
+Oluşturulma: 2026-10-20T15:16:52.471Z
 
 > Bu dosya mevcut HTML kaynaklarında bulunan statik arayüz öğelerinin dökümüdür. Bir öğenin listelenmesi onun çalıştığını kanıtlamaz. JavaScript ile sonradan oluşturulan kontroller, API/DB davranışı, rol varyasyonları ve erişilebilirlik ayrıca uçtan uca kabul gerektirir. Kaynak değiştikçe `node tools/Generate-UiInventory.mjs` ile yeniden üretin; `node tools/Generate-UiInventory.mjs --check` güncel olup olmadığını doğrular.
 
@@ -13,13 +13,13 @@ Oluşturulma: 2026-10-20T06:10:54.074Z
 | Bağlantı | 52 |
 | Düğme | 941 |
 | Form | 110 |
-| Girdi alanı | 610 |
+| Girdi alanı | 611 |
 | Seçim alanı | 200 |
 | Metin alanı | 40 |
 | Modal | 107 |
 | Sekme | 5 |
 | Tablo | 79 |
-| **Toplam kayıt** | **2219** |
+| **Toplam kayıt** | **2220** |
 
 ## Tam döküm
 
@@ -1273,685 +1273,686 @@ Oluşturulma: 2026-10-20T06:10:54.074Z
 | 1244 | Girdi alanı | isByod | type=checkbox; name=isByod |
 | 1245 | Girdi alanı | email | type=email; name=email |
 | 1246 | Girdi alanı | password | type=password; name=password |
-| 1247 | Girdi alanı | twoFactorCode | name=twoFactorCode |
-| 1248 | Seçim alanı | companyId | id=loginCompanyId; name=companyId; seçenekler=(değer yok): Şirket seçin |
-| 1249 | Girdi alanı | widget | type=checkbox; name=widget |
+| 1247 | Girdi alanı | rememberMe | type=checkbox; name=rememberMe |
+| 1248 | Girdi alanı | twoFactorCode | name=twoFactorCode |
+| 1249 | Seçim alanı | companyId | id=loginCompanyId; name=companyId; seçenekler=(değer yok): Şirket seçin |
 | 1250 | Girdi alanı | widget | type=checkbox; name=widget |
 | 1251 | Girdi alanı | widget | type=checkbox; name=widget |
 | 1252 | Girdi alanı | widget | type=checkbox; name=widget |
 | 1253 | Girdi alanı | widget | type=checkbox; name=widget |
-| 1254 | Seçim alanı | category: Kategori, brand: Marka, model: Model, location: Konum, status: Durum | id=dashboardChartDimension; seçenekler=category: Kategori, brand: Marka, model: Model, location: Konum, status: Durum |
-| 1255 | Seçim alanı | bar: Yatay çubuk, donut: Halka grafik | id=dashboardChartType; seçenekler=bar: Yatay çubuk, donut: Halka grafik |
-| 1256 | Girdi alanı | email | type=email; name=email |
-| 1257 | Seçim alanı | Kayıtlı sütun eşlemesi | id=assetImportProfile; seçenekler=(değer yok): Profil seçin |
-| 1258 | Girdi alanı | assetImportProfileName | id=assetImportProfileName |
-| 1259 | Girdi alanı | importPreviewFile | id=importPreviewFile; type=file |
-| 1260 | Girdi alanı | quantity | type=number; name=quantity |
-| 1261 | Metin alanı | notes | name=notes |
-| 1262 | Metin alanı | accessoryOrderApprovalNote | id=accessoryOrderApprovalNote |
-| 1263 | Girdi alanı | file | type=file; name=file |
-| 1264 | Girdi alanı | orderNumber | name=orderNumber |
-| 1265 | Girdi alanı | supplier | name=supplier |
-| 1266 | Girdi alanı | orderDate | type=date; name=orderDate |
-| 1267 | Girdi alanı | expectedOn | type=date; name=expectedOn |
-| 1268 | Seçim alanı | currency | name=currency; seçenekler=TRY: TRY, USD: USD, EUR: EUR |
-| 1269 | Girdi alanı | taxRatePercent | type=number; name=taxRatePercent |
-| 1270 | Girdi alanı | discountAmount | type=number; name=discountAmount |
-| 1271 | Girdi alanı | freightAmount | type=number; name=freightAmount |
-| 1272 | Girdi alanı | notes | name=notes |
-| 1273 | Girdi alanı | orderNumber | name=orderNumber |
-| 1274 | Girdi alanı | supplier | name=supplier |
-| 1275 | Girdi alanı | orderDate | type=date; name=orderDate |
-| 1276 | Girdi alanı | expectedOn | type=date; name=expectedOn |
-| 1277 | Seçim alanı | currency | name=currency; seçenekler=TRY: TRY, USD: USD, EUR: EUR |
-| 1278 | Girdi alanı | taxRatePercent | type=number; name=taxRatePercent |
-| 1279 | Girdi alanı | discountAmount | type=number; name=discountAmount |
-| 1280 | Girdi alanı | freightAmount | type=number; name=freightAmount |
-| 1281 | Girdi alanı | notes | name=notes |
-| 1282 | Metin alanı | stockOrderApprovalNote | id=stockOrderApprovalNote |
-| 1283 | Girdi alanı | file | id=stockOrderAttachmentInput; type=file; name=file |
-| 1284 | Girdi alanı | receivedOn | type=date; name=receivedOn |
-| 1285 | Girdi alanı | notes | name=notes |
-| 1286 | Girdi alanı | name | name=name |
-| 1287 | Girdi alanı | description | name=description |
-| 1288 | Seçim alanı | assetId | name=assetId; seçenekler=(değer yok): Varlık seçin |
-| 1289 | Girdi alanı | year | type=number; name=year |
-| 1290 | Seçim alanı | currency | name=currency; seçenekler=(değer yok): TRY, (değer yok): USD, (değer yok): EUR |
-| 1291 | Girdi alanı | amount | type=number; name=amount |
-| 1292 | Girdi alanı | orderNumber | name=orderNumber |
-| 1293 | Girdi alanı | supplier | name=supplier |
-| 1294 | Girdi alanı | orderDate | type=date; name=orderDate |
-| 1295 | Girdi alanı | expectedOn | type=date; name=expectedOn |
-| 1296 | Seçim alanı | currency | name=currency; seçenekler=(değer yok): TRY, (değer yok): USD, (değer yok): EUR |
-| 1297 | Girdi alanı | taxRatePercent | type=number; name=taxRatePercent |
-| 1298 | Girdi alanı | discountAmount | type=number; name=discountAmount |
-| 1299 | Girdi alanı | freightAmount | type=number; name=freightAmount |
-| 1300 | Girdi alanı | notes | name=notes |
-| 1301 | Metin alanı | assetOrderApprovalNote | id=assetOrderApprovalNote |
-| 1302 | Girdi alanı | assetOrderAttachmentFiles | id=assetOrderAttachmentFiles; type=file |
-| 1303 | Girdi alanı | receivedOn | type=date; name=receivedOn |
-| 1304 | Girdi alanı | notes | name=notes |
-| 1305 | Girdi alanı | receivedOn | type=date; name=receivedOn |
-| 1306 | Girdi alanı | notes | name=notes |
-| 1307 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
-| 1308 | Girdi alanı | name | name=name |
-| 1309 | Girdi alanı | category | name=category |
-| 1310 | Girdi alanı | modelNumber | name=modelNumber |
-| 1311 | Girdi alanı | itemNumber | name=itemNumber |
-| 1312 | Girdi alanı | supplier | name=supplier |
-| 1313 | Girdi alanı | purchaseOrderReference | name=purchaseOrderReference |
-| 1314 | Girdi alanı | location | name=location |
-| 1315 | Girdi alanı | minimumQuantity | type=number; name=minimumQuantity |
-| 1316 | Girdi alanı | quantity | type=number; name=quantity |
-| 1317 | Girdi alanı | unitCost | type=number; name=unitCost |
-| 1318 | Seçim alanı | currency | name=currency; seçenekler=(değer yok): TRY, (değer yok): USD, (değer yok): EUR |
-| 1319 | Girdi alanı | purchaseDate | type=date; name=purchaseDate |
-| 1320 | Girdi alanı | warrantyExpiresAt | type=date; name=warrantyExpiresAt |
-| 1321 | Girdi alanı | notes | name=notes |
-| 1322 | Girdi alanı | isRequestable | type=checkbox; name=isRequestable |
-| 1323 | Girdi alanı | quantity | type=number; name=quantity |
-| 1324 | Girdi alanı | notes | name=notes |
-| 1325 | Seçim alanı | employeeId | name=employeeId; seçenekler=(değer yok): Çalışan seçin |
-| 1326 | Girdi alanı | quantity | type=number; name=quantity |
-| 1327 | Girdi alanı | notes | name=notes |
-| 1328 | Girdi alanı | file | type=file; name=file |
-| 1329 | Girdi alanı | isEulaDocument | type=checkbox; name=isEulaDocument |
-| 1330 | Girdi alanı | eulaVersion | name=eulaVersion |
-| 1331 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
-| 1332 | Seçim alanı | supplierId | name=supplierId; seçenekler=(değer yok): Tedarikçi seçin |
-| 1333 | Girdi alanı | orderNumber | name=orderNumber |
-| 1334 | Girdi alanı | orderDate | type=date; name=orderDate |
-| 1335 | Girdi alanı | seatsPurchased | type=number; name=seatsPurchased |
-| 1336 | Girdi alanı | unitCost | type=number; name=unitCost |
-| 1337 | Seçim alanı | currency | name=currency; seçenekler=(değer yok): TRY, (değer yok): USD, (değer yok): EUR |
-| 1338 | Metin alanı | notes | name=notes |
-| 1339 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
-| 1340 | Girdi alanı | name | name=name |
-| 1341 | Girdi alanı | publisher | name=publisher |
-| 1342 | Girdi alanı | productVersion | name=productVersion |
-| 1343 | Seçim alanı | licenseType | name=licenseType; seçenekler=Subscription: Abonelik, Perpetual: Süresiz, Device: Cihaz başına, Site: Şirket geneli, Trial: Deneme, Other: Diğer |
-| 1344 | Girdi alanı | licenseReference | name=licenseReference |
-| 1345 | Girdi alanı | supplier | name=supplier |
-| 1346 | Girdi alanı | purchaseOrderReference | name=purchaseOrderReference |
-| 1347 | Girdi alanı | seats | type=number; name=seats |
-| 1348 | Girdi alanı | unitCost | type=number; name=unitCost |
-| 1349 | Seçim alanı | currency | name=currency; seçenekler=(değer yok): TRY, (değer yok): USD, (değer yok): EUR |
-| 1350 | Girdi alanı | purchaseDate | type=date; name=purchaseDate |
-| 1351 | Girdi alanı | expirationDate | type=date; name=expirationDate |
-| 1352 | Girdi alanı | autoRenew | type=checkbox; name=autoRenew |
-| 1353 | Girdi alanı | requiresEulaAcceptance | type=checkbox; name=requiresEulaAcceptance |
-| 1354 | Girdi alanı | notes | name=notes |
-| 1355 | Girdi alanı | licenseImportFile | id=licenseImportFile; type=file; başlangıçta gizli |
-| 1356 | Seçim alanı | Lisans eşleme profili | id=licenseImportProfile; seçenekler=(değer yok): Profil seçin |
-| 1357 | Girdi alanı | licenseImportProfileName | id=licenseImportProfileName |
-| 1358 | Girdi alanı | eulaAccepted | id=licenseEulaAccepted; type=checkbox; name=eulaAccepted |
-| 1359 | Seçim alanı | targetType | name=targetType; seçenekler=employee: Çalışan, asset: Cihaz / varlık |
-| 1360 | Seçim alanı | employeeId | name=employeeId; seçenekler=(değer yok): Çalışan seçin |
-| 1361 | Girdi alanı | licenseBulkEmployeeMode | id=licenseBulkEmployeeMode; type=checkbox |
-| 1362 | Girdi alanı | licenseAssetSearch | id=licenseAssetSearch; type=search |
-| 1363 | Seçim alanı | assetId | name=assetId; seçenekler=(değer yok): Önce arama yapın |
-| 1364 | Girdi alanı | notes | name=notes |
-| 1365 | Girdi alanı | componentImportFile | id=componentImportFile; type=file; başlangıçta gizli |
-| 1366 | Seçim alanı | Bileşen eşleme profili | id=componentImportProfile; seçenekler=(değer yok): Profil seçin |
-| 1367 | Girdi alanı | componentImportProfileName | id=componentImportProfileName |
-| 1368 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
-| 1369 | Girdi alanı | name | name=name |
-| 1370 | Girdi alanı | category | name=category |
-| 1371 | Girdi alanı | modelNumber | name=modelNumber |
-| 1372 | Girdi alanı | itemNumber | name=itemNumber |
-| 1373 | Girdi alanı | serialNumber | name=serialNumber |
-| 1374 | Girdi alanı | supplier | name=supplier |
-| 1375 | Girdi alanı | purchaseOrderReference | name=purchaseOrderReference |
-| 1376 | Girdi alanı | location | name=location |
-| 1377 | Girdi alanı | minimumQuantity | type=number; name=minimumQuantity |
-| 1378 | Girdi alanı | quantity | type=number; name=quantity |
-| 1379 | Girdi alanı | unitCost | type=number; name=unitCost |
-| 1380 | Seçim alanı | currency | name=currency; seçenekler=(değer yok): TRY, (değer yok): USD, (değer yok): EUR |
-| 1381 | Girdi alanı | purchaseDate | type=date; name=purchaseDate |
-| 1382 | Girdi alanı | warrantyExpiresAt | type=date; name=warrantyExpiresAt |
-| 1383 | Girdi alanı | notes | name=notes |
-| 1384 | Girdi alanı | quantity | type=number; name=quantity |
-| 1385 | Girdi alanı | notes | name=notes |
-| 1386 | Seçim alanı | assetId | name=assetId; seçenekler=(değer yok): Varlık seçin |
-| 1387 | Girdi alanı | quantity | type=number; name=quantity |
-| 1388 | Girdi alanı | notes | name=notes |
-| 1389 | Girdi alanı | allocationId | type=hidden; name=allocationId; başlangıçta gizli |
-| 1390 | Girdi alanı | quantity | type=number; name=quantity |
-| 1391 | Girdi alanı | notes | name=notes |
-| 1392 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
-| 1393 | Girdi alanı | name | name=name |
-| 1394 | Girdi alanı | description | name=description |
-| 1395 | Girdi alanı | accessoryKitItemSearch | id=accessoryKitItemSearch; type=search |
-| 1396 | Girdi alanı | accessoryId | type=hidden; name=accessoryId; başlangıçta gizli |
-| 1397 | Girdi alanı | name | name=name |
-| 1398 | Seçim alanı | categoryId | name=categoryId; seçenekler=(değer yok): Kategori seçin (isteğe bağlı) |
-| 1399 | Seçim alanı | brandId | name=brandId; seçenekler=(değer yok): Marka seçin (isteğe bağlı) |
-| 1400 | Seçim alanı | modelId | name=modelId; seçenekler=(değer yok): Model seçin (isteğe bağlı) |
-| 1401 | Girdi alanı | modelPhoto | type=file; name=modelPhoto |
-| 1402 | Girdi alanı | modelNumber | name=modelNumber |
-| 1403 | Girdi alanı | itemNumber | name=itemNumber |
-| 1404 | Girdi alanı | supplier | name=supplier |
-| 1405 | Girdi alanı | purchaseOrderReference | name=purchaseOrderReference |
-| 1406 | Girdi alanı | location | name=location |
-| 1407 | Girdi alanı | minimumQuantity | type=number; name=minimumQuantity |
-| 1408 | Girdi alanı | quantity | type=number; name=quantity |
-| 1409 | Girdi alanı | unitCost | type=number; name=unitCost |
-| 1410 | Seçim alanı | currency | name=currency; seçenekler=TRY: TRY, USD: USD, EUR: EUR |
-| 1411 | Girdi alanı | purchaseDate | type=date; name=purchaseDate |
-| 1412 | Girdi alanı | warrantyExpiresAt | type=date; name=warrantyExpiresAt |
-| 1413 | Girdi alanı | notes | name=notes |
-| 1414 | Girdi alanı | isRequestable | type=checkbox; name=isRequestable |
-| 1415 | Girdi alanı | quantity | type=number; name=quantity |
-| 1416 | Girdi alanı | notes | name=notes |
-| 1417 | Girdi alanı | targetType | type=radio; name=targetType |
+| 1254 | Girdi alanı | widget | type=checkbox; name=widget |
+| 1255 | Seçim alanı | category: Kategori, brand: Marka, model: Model, location: Konum, status: Durum | id=dashboardChartDimension; seçenekler=category: Kategori, brand: Marka, model: Model, location: Konum, status: Durum |
+| 1256 | Seçim alanı | bar: Yatay çubuk, donut: Halka grafik | id=dashboardChartType; seçenekler=bar: Yatay çubuk, donut: Halka grafik |
+| 1257 | Girdi alanı | email | type=email; name=email |
+| 1258 | Seçim alanı | Kayıtlı sütun eşlemesi | id=assetImportProfile; seçenekler=(değer yok): Profil seçin |
+| 1259 | Girdi alanı | assetImportProfileName | id=assetImportProfileName |
+| 1260 | Girdi alanı | importPreviewFile | id=importPreviewFile; type=file |
+| 1261 | Girdi alanı | quantity | type=number; name=quantity |
+| 1262 | Metin alanı | notes | name=notes |
+| 1263 | Metin alanı | accessoryOrderApprovalNote | id=accessoryOrderApprovalNote |
+| 1264 | Girdi alanı | file | type=file; name=file |
+| 1265 | Girdi alanı | orderNumber | name=orderNumber |
+| 1266 | Girdi alanı | supplier | name=supplier |
+| 1267 | Girdi alanı | orderDate | type=date; name=orderDate |
+| 1268 | Girdi alanı | expectedOn | type=date; name=expectedOn |
+| 1269 | Seçim alanı | currency | name=currency; seçenekler=TRY: TRY, USD: USD, EUR: EUR |
+| 1270 | Girdi alanı | taxRatePercent | type=number; name=taxRatePercent |
+| 1271 | Girdi alanı | discountAmount | type=number; name=discountAmount |
+| 1272 | Girdi alanı | freightAmount | type=number; name=freightAmount |
+| 1273 | Girdi alanı | notes | name=notes |
+| 1274 | Girdi alanı | orderNumber | name=orderNumber |
+| 1275 | Girdi alanı | supplier | name=supplier |
+| 1276 | Girdi alanı | orderDate | type=date; name=orderDate |
+| 1277 | Girdi alanı | expectedOn | type=date; name=expectedOn |
+| 1278 | Seçim alanı | currency | name=currency; seçenekler=TRY: TRY, USD: USD, EUR: EUR |
+| 1279 | Girdi alanı | taxRatePercent | type=number; name=taxRatePercent |
+| 1280 | Girdi alanı | discountAmount | type=number; name=discountAmount |
+| 1281 | Girdi alanı | freightAmount | type=number; name=freightAmount |
+| 1282 | Girdi alanı | notes | name=notes |
+| 1283 | Metin alanı | stockOrderApprovalNote | id=stockOrderApprovalNote |
+| 1284 | Girdi alanı | file | id=stockOrderAttachmentInput; type=file; name=file |
+| 1285 | Girdi alanı | receivedOn | type=date; name=receivedOn |
+| 1286 | Girdi alanı | notes | name=notes |
+| 1287 | Girdi alanı | name | name=name |
+| 1288 | Girdi alanı | description | name=description |
+| 1289 | Seçim alanı | assetId | name=assetId; seçenekler=(değer yok): Varlık seçin |
+| 1290 | Girdi alanı | year | type=number; name=year |
+| 1291 | Seçim alanı | currency | name=currency; seçenekler=(değer yok): TRY, (değer yok): USD, (değer yok): EUR |
+| 1292 | Girdi alanı | amount | type=number; name=amount |
+| 1293 | Girdi alanı | orderNumber | name=orderNumber |
+| 1294 | Girdi alanı | supplier | name=supplier |
+| 1295 | Girdi alanı | orderDate | type=date; name=orderDate |
+| 1296 | Girdi alanı | expectedOn | type=date; name=expectedOn |
+| 1297 | Seçim alanı | currency | name=currency; seçenekler=(değer yok): TRY, (değer yok): USD, (değer yok): EUR |
+| 1298 | Girdi alanı | taxRatePercent | type=number; name=taxRatePercent |
+| 1299 | Girdi alanı | discountAmount | type=number; name=discountAmount |
+| 1300 | Girdi alanı | freightAmount | type=number; name=freightAmount |
+| 1301 | Girdi alanı | notes | name=notes |
+| 1302 | Metin alanı | assetOrderApprovalNote | id=assetOrderApprovalNote |
+| 1303 | Girdi alanı | assetOrderAttachmentFiles | id=assetOrderAttachmentFiles; type=file |
+| 1304 | Girdi alanı | receivedOn | type=date; name=receivedOn |
+| 1305 | Girdi alanı | notes | name=notes |
+| 1306 | Girdi alanı | receivedOn | type=date; name=receivedOn |
+| 1307 | Girdi alanı | notes | name=notes |
+| 1308 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
+| 1309 | Girdi alanı | name | name=name |
+| 1310 | Girdi alanı | category | name=category |
+| 1311 | Girdi alanı | modelNumber | name=modelNumber |
+| 1312 | Girdi alanı | itemNumber | name=itemNumber |
+| 1313 | Girdi alanı | supplier | name=supplier |
+| 1314 | Girdi alanı | purchaseOrderReference | name=purchaseOrderReference |
+| 1315 | Girdi alanı | location | name=location |
+| 1316 | Girdi alanı | minimumQuantity | type=number; name=minimumQuantity |
+| 1317 | Girdi alanı | quantity | type=number; name=quantity |
+| 1318 | Girdi alanı | unitCost | type=number; name=unitCost |
+| 1319 | Seçim alanı | currency | name=currency; seçenekler=(değer yok): TRY, (değer yok): USD, (değer yok): EUR |
+| 1320 | Girdi alanı | purchaseDate | type=date; name=purchaseDate |
+| 1321 | Girdi alanı | warrantyExpiresAt | type=date; name=warrantyExpiresAt |
+| 1322 | Girdi alanı | notes | name=notes |
+| 1323 | Girdi alanı | isRequestable | type=checkbox; name=isRequestable |
+| 1324 | Girdi alanı | quantity | type=number; name=quantity |
+| 1325 | Girdi alanı | notes | name=notes |
+| 1326 | Seçim alanı | employeeId | name=employeeId; seçenekler=(değer yok): Çalışan seçin |
+| 1327 | Girdi alanı | quantity | type=number; name=quantity |
+| 1328 | Girdi alanı | notes | name=notes |
+| 1329 | Girdi alanı | file | type=file; name=file |
+| 1330 | Girdi alanı | isEulaDocument | type=checkbox; name=isEulaDocument |
+| 1331 | Girdi alanı | eulaVersion | name=eulaVersion |
+| 1332 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
+| 1333 | Seçim alanı | supplierId | name=supplierId; seçenekler=(değer yok): Tedarikçi seçin |
+| 1334 | Girdi alanı | orderNumber | name=orderNumber |
+| 1335 | Girdi alanı | orderDate | type=date; name=orderDate |
+| 1336 | Girdi alanı | seatsPurchased | type=number; name=seatsPurchased |
+| 1337 | Girdi alanı | unitCost | type=number; name=unitCost |
+| 1338 | Seçim alanı | currency | name=currency; seçenekler=(değer yok): TRY, (değer yok): USD, (değer yok): EUR |
+| 1339 | Metin alanı | notes | name=notes |
+| 1340 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
+| 1341 | Girdi alanı | name | name=name |
+| 1342 | Girdi alanı | publisher | name=publisher |
+| 1343 | Girdi alanı | productVersion | name=productVersion |
+| 1344 | Seçim alanı | licenseType | name=licenseType; seçenekler=Subscription: Abonelik, Perpetual: Süresiz, Device: Cihaz başına, Site: Şirket geneli, Trial: Deneme, Other: Diğer |
+| 1345 | Girdi alanı | licenseReference | name=licenseReference |
+| 1346 | Girdi alanı | supplier | name=supplier |
+| 1347 | Girdi alanı | purchaseOrderReference | name=purchaseOrderReference |
+| 1348 | Girdi alanı | seats | type=number; name=seats |
+| 1349 | Girdi alanı | unitCost | type=number; name=unitCost |
+| 1350 | Seçim alanı | currency | name=currency; seçenekler=(değer yok): TRY, (değer yok): USD, (değer yok): EUR |
+| 1351 | Girdi alanı | purchaseDate | type=date; name=purchaseDate |
+| 1352 | Girdi alanı | expirationDate | type=date; name=expirationDate |
+| 1353 | Girdi alanı | autoRenew | type=checkbox; name=autoRenew |
+| 1354 | Girdi alanı | requiresEulaAcceptance | type=checkbox; name=requiresEulaAcceptance |
+| 1355 | Girdi alanı | notes | name=notes |
+| 1356 | Girdi alanı | licenseImportFile | id=licenseImportFile; type=file; başlangıçta gizli |
+| 1357 | Seçim alanı | Lisans eşleme profili | id=licenseImportProfile; seçenekler=(değer yok): Profil seçin |
+| 1358 | Girdi alanı | licenseImportProfileName | id=licenseImportProfileName |
+| 1359 | Girdi alanı | eulaAccepted | id=licenseEulaAccepted; type=checkbox; name=eulaAccepted |
+| 1360 | Seçim alanı | targetType | name=targetType; seçenekler=employee: Çalışan, asset: Cihaz / varlık |
+| 1361 | Seçim alanı | employeeId | name=employeeId; seçenekler=(değer yok): Çalışan seçin |
+| 1362 | Girdi alanı | licenseBulkEmployeeMode | id=licenseBulkEmployeeMode; type=checkbox |
+| 1363 | Girdi alanı | licenseAssetSearch | id=licenseAssetSearch; type=search |
+| 1364 | Seçim alanı | assetId | name=assetId; seçenekler=(değer yok): Önce arama yapın |
+| 1365 | Girdi alanı | notes | name=notes |
+| 1366 | Girdi alanı | componentImportFile | id=componentImportFile; type=file; başlangıçta gizli |
+| 1367 | Seçim alanı | Bileşen eşleme profili | id=componentImportProfile; seçenekler=(değer yok): Profil seçin |
+| 1368 | Girdi alanı | componentImportProfileName | id=componentImportProfileName |
+| 1369 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
+| 1370 | Girdi alanı | name | name=name |
+| 1371 | Girdi alanı | category | name=category |
+| 1372 | Girdi alanı | modelNumber | name=modelNumber |
+| 1373 | Girdi alanı | itemNumber | name=itemNumber |
+| 1374 | Girdi alanı | serialNumber | name=serialNumber |
+| 1375 | Girdi alanı | supplier | name=supplier |
+| 1376 | Girdi alanı | purchaseOrderReference | name=purchaseOrderReference |
+| 1377 | Girdi alanı | location | name=location |
+| 1378 | Girdi alanı | minimumQuantity | type=number; name=minimumQuantity |
+| 1379 | Girdi alanı | quantity | type=number; name=quantity |
+| 1380 | Girdi alanı | unitCost | type=number; name=unitCost |
+| 1381 | Seçim alanı | currency | name=currency; seçenekler=(değer yok): TRY, (değer yok): USD, (değer yok): EUR |
+| 1382 | Girdi alanı | purchaseDate | type=date; name=purchaseDate |
+| 1383 | Girdi alanı | warrantyExpiresAt | type=date; name=warrantyExpiresAt |
+| 1384 | Girdi alanı | notes | name=notes |
+| 1385 | Girdi alanı | quantity | type=number; name=quantity |
+| 1386 | Girdi alanı | notes | name=notes |
+| 1387 | Seçim alanı | assetId | name=assetId; seçenekler=(değer yok): Varlık seçin |
+| 1388 | Girdi alanı | quantity | type=number; name=quantity |
+| 1389 | Girdi alanı | notes | name=notes |
+| 1390 | Girdi alanı | allocationId | type=hidden; name=allocationId; başlangıçta gizli |
+| 1391 | Girdi alanı | quantity | type=number; name=quantity |
+| 1392 | Girdi alanı | notes | name=notes |
+| 1393 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
+| 1394 | Girdi alanı | name | name=name |
+| 1395 | Girdi alanı | description | name=description |
+| 1396 | Girdi alanı | accessoryKitItemSearch | id=accessoryKitItemSearch; type=search |
+| 1397 | Girdi alanı | accessoryId | type=hidden; name=accessoryId; başlangıçta gizli |
+| 1398 | Girdi alanı | name | name=name |
+| 1399 | Seçim alanı | categoryId | name=categoryId; seçenekler=(değer yok): Kategori seçin (isteğe bağlı) |
+| 1400 | Seçim alanı | brandId | name=brandId; seçenekler=(değer yok): Marka seçin (isteğe bağlı) |
+| 1401 | Seçim alanı | modelId | name=modelId; seçenekler=(değer yok): Model seçin (isteğe bağlı) |
+| 1402 | Girdi alanı | modelPhoto | type=file; name=modelPhoto |
+| 1403 | Girdi alanı | modelNumber | name=modelNumber |
+| 1404 | Girdi alanı | itemNumber | name=itemNumber |
+| 1405 | Girdi alanı | supplier | name=supplier |
+| 1406 | Girdi alanı | purchaseOrderReference | name=purchaseOrderReference |
+| 1407 | Girdi alanı | location | name=location |
+| 1408 | Girdi alanı | minimumQuantity | type=number; name=minimumQuantity |
+| 1409 | Girdi alanı | quantity | type=number; name=quantity |
+| 1410 | Girdi alanı | unitCost | type=number; name=unitCost |
+| 1411 | Seçim alanı | currency | name=currency; seçenekler=TRY: TRY, USD: USD, EUR: EUR |
+| 1412 | Girdi alanı | purchaseDate | type=date; name=purchaseDate |
+| 1413 | Girdi alanı | warrantyExpiresAt | type=date; name=warrantyExpiresAt |
+| 1414 | Girdi alanı | notes | name=notes |
+| 1415 | Girdi alanı | isRequestable | type=checkbox; name=isRequestable |
+| 1416 | Girdi alanı | quantity | type=number; name=quantity |
+| 1417 | Girdi alanı | notes | name=notes |
 | 1418 | Girdi alanı | targetType | type=radio; name=targetType |
 | 1419 | Girdi alanı | targetType | type=radio; name=targetType |
-| 1420 | Seçim alanı | employeeId | name=employeeId |
-| 1421 | Seçim alanı | assetId | name=assetId |
-| 1422 | Girdi alanı | location | name=location |
-| 1423 | Girdi alanı | quantity | type=number; name=quantity |
-| 1424 | Girdi alanı | accessoryKitSets | id=accessoryKitSets; type=number |
-| 1425 | Girdi alanı | notes | name=notes |
-| 1426 | Seçim alanı | view: Varlık ayrıntısını aç, assign: Uygunsa zimmet formunu aç, return: Zimmetliyse iade onayını göster | id=scanAssetAction; seçenekler=view: Varlık ayrıntısını aç, assign: Uygunsa zimmet formunu aç, return: Zimmetliyse iade onayını göster |
-| 1427 | Girdi alanı | code | id=scanAssetCode; name=code |
-| 1428 | Girdi alanı | kind | type=hidden; name=kind; başlangıçta gizli |
-| 1429 | Girdi alanı | currentName | type=hidden; name=currentName; başlangıçta gizli |
-| 1430 | Girdi alanı | locationId | type=hidden; name=locationId; başlangıçta gizli |
-| 1431 | Girdi alanı | departmentId | type=hidden; name=departmentId; başlangıçta gizli |
-| 1432 | Girdi alanı | newName | name=newName |
-| 1433 | Seçim alanı | parentDepartmentId | name=parentDepartmentId; seçenekler=(değer yok): Ana departman |
-| 1434 | Seçim alanı | locationCatalogId | name=locationCatalogId; seçenekler=(değer yok): Konum seçilmedi |
-| 1435 | Girdi alanı | name | name=name |
-| 1436 | Seçim alanı | parentDepartmentId | name=parentDepartmentId; seçenekler=(değer yok): Ana departman |
-| 1437 | Seçim alanı | locationCatalogId | name=locationCatalogId; seçenekler=(değer yok): Konum seçilmedi |
-| 1438 | Seçim alanı | targetDepartmentId | name=targetDepartmentId |
-| 1439 | Seçim alanı | parentLocationId | name=parentLocationId; seçenekler=(değer yok): Üst seviye · kat veya bina |
-| 1440 | Girdi alanı | name | name=name |
-| 1441 | Girdi alanı | locationId | type=hidden; name=locationId; başlangıçta gizli |
-| 1442 | Girdi alanı | locationManagerSearch | id=locationManagerSearch; type=search |
-| 1443 | Seçim alanı | employeeId | id=locationManagerEmployee; name=employeeId; seçenekler=(değer yok): Sorumlu atanmamış |
-| 1444 | Girdi alanı | departmentId | type=hidden; name=departmentId; başlangıçta gizli |
-| 1445 | Girdi alanı | departmentManagerSearch | id=departmentManagerSearch; type=search |
-| 1446 | Seçim alanı | employeeId | id=departmentManagerEmployee; name=employeeId; seçenekler=(değer yok): Yetkili atanmamış |
-| 1447 | Girdi alanı | name | name=name |
-| 1448 | Girdi alanı | modelNumber | name=modelNumber |
-| 1449 | Metin alanı | note | name=note |
+| 1420 | Girdi alanı | targetType | type=radio; name=targetType |
+| 1421 | Seçim alanı | employeeId | name=employeeId |
+| 1422 | Seçim alanı | assetId | name=assetId |
+| 1423 | Girdi alanı | location | name=location |
+| 1424 | Girdi alanı | quantity | type=number; name=quantity |
+| 1425 | Girdi alanı | accessoryKitSets | id=accessoryKitSets; type=number |
+| 1426 | Girdi alanı | notes | name=notes |
+| 1427 | Seçim alanı | view: Varlık ayrıntısını aç, assign: Uygunsa zimmet formunu aç, return: Zimmetliyse iade onayını göster | id=scanAssetAction; seçenekler=view: Varlık ayrıntısını aç, assign: Uygunsa zimmet formunu aç, return: Zimmetliyse iade onayını göster |
+| 1428 | Girdi alanı | code | id=scanAssetCode; name=code |
+| 1429 | Girdi alanı | kind | type=hidden; name=kind; başlangıçta gizli |
+| 1430 | Girdi alanı | currentName | type=hidden; name=currentName; başlangıçta gizli |
+| 1431 | Girdi alanı | locationId | type=hidden; name=locationId; başlangıçta gizli |
+| 1432 | Girdi alanı | departmentId | type=hidden; name=departmentId; başlangıçta gizli |
+| 1433 | Girdi alanı | newName | name=newName |
+| 1434 | Seçim alanı | parentDepartmentId | name=parentDepartmentId; seçenekler=(değer yok): Ana departman |
+| 1435 | Seçim alanı | locationCatalogId | name=locationCatalogId; seçenekler=(değer yok): Konum seçilmedi |
+| 1436 | Girdi alanı | name | name=name |
+| 1437 | Seçim alanı | parentDepartmentId | name=parentDepartmentId; seçenekler=(değer yok): Ana departman |
+| 1438 | Seçim alanı | locationCatalogId | name=locationCatalogId; seçenekler=(değer yok): Konum seçilmedi |
+| 1439 | Seçim alanı | targetDepartmentId | name=targetDepartmentId |
+| 1440 | Seçim alanı | parentLocationId | name=parentLocationId; seçenekler=(değer yok): Üst seviye · kat veya bina |
+| 1441 | Girdi alanı | name | name=name |
+| 1442 | Girdi alanı | locationId | type=hidden; name=locationId; başlangıçta gizli |
+| 1443 | Girdi alanı | locationManagerSearch | id=locationManagerSearch; type=search |
+| 1444 | Seçim alanı | employeeId | id=locationManagerEmployee; name=employeeId; seçenekler=(değer yok): Sorumlu atanmamış |
+| 1445 | Girdi alanı | departmentId | type=hidden; name=departmentId; başlangıçta gizli |
+| 1446 | Girdi alanı | departmentManagerSearch | id=departmentManagerSearch; type=search |
+| 1447 | Seçim alanı | employeeId | id=departmentManagerEmployee; name=employeeId; seçenekler=(değer yok): Yetkili atanmamış |
+| 1448 | Girdi alanı | name | name=name |
+| 1449 | Girdi alanı | modelNumber | name=modelNumber |
 | 1450 | Metin alanı | note | name=note |
 | 1451 | Metin alanı | note | name=note |
-| 1452 | Girdi alanı | name | name=name |
-| 1453 | Girdi alanı | code | name=code |
-| 1454 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
-| 1455 | Girdi alanı | name | name=name |
-| 1456 | Girdi alanı | contactName | name=contactName |
-| 1457 | Girdi alanı | email | type=email; name=email |
-| 1458 | Girdi alanı | phone | name=phone |
-| 1459 | Girdi alanı | website | type=url; name=website |
-| 1460 | Metin alanı | notes | name=notes |
-| 1461 | Girdi alanı | logo | type=file; name=logo |
-| 1462 | Girdi alanı | Tedarikçilerde ara | id=supplierCatalogSearch |
-| 1463 | Girdi alanı | showArchivedSuppliers | id=showArchivedSuppliers; type=checkbox |
-| 1464 | Seçim alanı | companySwitchTarget | id=companySwitchTarget |
-| 1465 | Girdi alanı | accountPhotoInput | id=accountPhotoInput; type=file; başlangıçta gizli |
-| 1466 | Girdi alanı | ownCurrentPassword | id=ownCurrentPassword; type=password |
-| 1467 | Girdi alanı | ownNewPassword | id=ownNewPassword; type=password |
-| 1468 | Girdi alanı | ownConfirmPassword | id=ownConfirmPassword; type=password |
-| 1469 | Girdi alanı | ownPasswordTwoFactorCode | id=ownPasswordTwoFactorCode |
-| 1470 | Girdi alanı | twoFactorCurrentPassword | id=twoFactorCurrentPassword; type=password |
-| 1471 | Girdi alanı | twoFactorCode | id=twoFactorCode |
-| 1472 | Girdi alanı | itemType | type=hidden; name=itemType; başlangıçta gizli |
-| 1473 | Girdi alanı | itemId | type=hidden; name=itemId; başlangıçta gizli |
-| 1474 | Girdi alanı | requestEmployeeSearch | id=requestEmployeeSearch |
-| 1475 | Seçim alanı | employeeId | id=requestEmployee; name=employeeId; seçenekler=(değer yok): Çalışan seçin |
-| 1476 | Girdi alanı | quantity | type=number; name=quantity |
-| 1477 | Metin alanı | note | name=note |
-| 1478 | Girdi alanı | file | id=modelAttachmentFile; type=file; name=file |
-| 1479 | Girdi alanı | returnedOn | type=date; name=returnedOn |
-| 1480 | Girdi alanı | reason | name=reason |
-| 1481 | Girdi alanı | notes | name=notes |
-| 1482 | Girdi alanı | (etiketsiz) | type=checkbox |
-| 1483 | Girdi alanı | name | name=name |
-| 1484 | Girdi alanı | (etiketsiz) | type=checkbox |
-| 1485 | Girdi alanı | serialNumber | name=serialNumber |
-| 1486 | Girdi alanı | (etiketsiz) | type=checkbox |
-| 1487 | Seçim alanı | categoryId | name=categoryId |
-| 1488 | Girdi alanı | (etiketsiz) | type=checkbox |
-| 1489 | Seçim alanı | brandId | name=brandId |
-| 1490 | Girdi alanı | (etiketsiz) | type=checkbox |
-| 1491 | Seçim alanı | modelId | name=modelId |
-| 1492 | Girdi alanı | (etiketsiz) | type=checkbox |
-| 1493 | Seçim alanı | defaultLocationCatalogId | name=defaultLocationCatalogId |
-| 1494 | Girdi alanı | (etiketsiz) | type=checkbox |
-| 1495 | Girdi alanı | purchaseDate | type=date; name=purchaseDate |
-| 1496 | Girdi alanı | (etiketsiz) | type=checkbox |
-| 1497 | Girdi alanı | warrantyExpiresAt | type=date; name=warrantyExpiresAt |
-| 1498 | Girdi alanı | (etiketsiz) | type=checkbox |
-| 1499 | Girdi alanı | insuranceProvider | name=insuranceProvider |
-| 1500 | Girdi alanı | (etiketsiz) | type=checkbox |
-| 1501 | Girdi alanı | insurancePolicyNumber | name=insurancePolicyNumber |
-| 1502 | Girdi alanı | (etiketsiz) | type=checkbox |
-| 1503 | Girdi alanı | insuranceExpiresAt | type=date; name=insuranceExpiresAt |
-| 1504 | Girdi alanı | (etiketsiz) | type=checkbox |
-| 1505 | Girdi alanı | purchaseCost | type=number; name=purchaseCost |
-| 1506 | Seçim alanı | currency | name=currency; seçenekler=TRY: TRY — Türk lirası, USD: USD — ABD doları, EUR: EUR — Euro |
-| 1507 | Seçim alanı | isRequestable | name=isRequestable; seçenekler=(değer yok): Değişiklik yok, true: Evet, false: Hayır |
-| 1508 | Seçim alanı | isByod | name=isByod; seçenekler=(değer yok): Değişiklik yok, true: Evet, false: Hayır |
-| 1509 | Girdi alanı | (etiketsiz) | type=checkbox |
-| 1510 | Metin alanı | notes | name=notes |
-| 1511 | Metin alanı | note | name=note |
-| 1512 | Seçim alanı | assetId | name=assetId |
-| 1513 | Girdi alanı | notes | name=notes |
+| 1452 | Metin alanı | note | name=note |
+| 1453 | Girdi alanı | name | name=name |
+| 1454 | Girdi alanı | code | name=code |
+| 1455 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
+| 1456 | Girdi alanı | name | name=name |
+| 1457 | Girdi alanı | contactName | name=contactName |
+| 1458 | Girdi alanı | email | type=email; name=email |
+| 1459 | Girdi alanı | phone | name=phone |
+| 1460 | Girdi alanı | website | type=url; name=website |
+| 1461 | Metin alanı | notes | name=notes |
+| 1462 | Girdi alanı | logo | type=file; name=logo |
+| 1463 | Girdi alanı | Tedarikçilerde ara | id=supplierCatalogSearch |
+| 1464 | Girdi alanı | showArchivedSuppliers | id=showArchivedSuppliers; type=checkbox |
+| 1465 | Seçim alanı | companySwitchTarget | id=companySwitchTarget |
+| 1466 | Girdi alanı | accountPhotoInput | id=accountPhotoInput; type=file; başlangıçta gizli |
+| 1467 | Girdi alanı | ownCurrentPassword | id=ownCurrentPassword; type=password |
+| 1468 | Girdi alanı | ownNewPassword | id=ownNewPassword; type=password |
+| 1469 | Girdi alanı | ownConfirmPassword | id=ownConfirmPassword; type=password |
+| 1470 | Girdi alanı | ownPasswordTwoFactorCode | id=ownPasswordTwoFactorCode |
+| 1471 | Girdi alanı | twoFactorCurrentPassword | id=twoFactorCurrentPassword; type=password |
+| 1472 | Girdi alanı | twoFactorCode | id=twoFactorCode |
+| 1473 | Girdi alanı | itemType | type=hidden; name=itemType; başlangıçta gizli |
+| 1474 | Girdi alanı | itemId | type=hidden; name=itemId; başlangıçta gizli |
+| 1475 | Girdi alanı | requestEmployeeSearch | id=requestEmployeeSearch |
+| 1476 | Seçim alanı | employeeId | id=requestEmployee; name=employeeId; seçenekler=(değer yok): Çalışan seçin |
+| 1477 | Girdi alanı | quantity | type=number; name=quantity |
+| 1478 | Metin alanı | note | name=note |
+| 1479 | Girdi alanı | file | id=modelAttachmentFile; type=file; name=file |
+| 1480 | Girdi alanı | returnedOn | type=date; name=returnedOn |
+| 1481 | Girdi alanı | reason | name=reason |
+| 1482 | Girdi alanı | notes | name=notes |
+| 1483 | Girdi alanı | (etiketsiz) | type=checkbox |
+| 1484 | Girdi alanı | name | name=name |
+| 1485 | Girdi alanı | (etiketsiz) | type=checkbox |
+| 1486 | Girdi alanı | serialNumber | name=serialNumber |
+| 1487 | Girdi alanı | (etiketsiz) | type=checkbox |
+| 1488 | Seçim alanı | categoryId | name=categoryId |
+| 1489 | Girdi alanı | (etiketsiz) | type=checkbox |
+| 1490 | Seçim alanı | brandId | name=brandId |
+| 1491 | Girdi alanı | (etiketsiz) | type=checkbox |
+| 1492 | Seçim alanı | modelId | name=modelId |
+| 1493 | Girdi alanı | (etiketsiz) | type=checkbox |
+| 1494 | Seçim alanı | defaultLocationCatalogId | name=defaultLocationCatalogId |
+| 1495 | Girdi alanı | (etiketsiz) | type=checkbox |
+| 1496 | Girdi alanı | purchaseDate | type=date; name=purchaseDate |
+| 1497 | Girdi alanı | (etiketsiz) | type=checkbox |
+| 1498 | Girdi alanı | warrantyExpiresAt | type=date; name=warrantyExpiresAt |
+| 1499 | Girdi alanı | (etiketsiz) | type=checkbox |
+| 1500 | Girdi alanı | insuranceProvider | name=insuranceProvider |
+| 1501 | Girdi alanı | (etiketsiz) | type=checkbox |
+| 1502 | Girdi alanı | insurancePolicyNumber | name=insurancePolicyNumber |
+| 1503 | Girdi alanı | (etiketsiz) | type=checkbox |
+| 1504 | Girdi alanı | insuranceExpiresAt | type=date; name=insuranceExpiresAt |
+| 1505 | Girdi alanı | (etiketsiz) | type=checkbox |
+| 1506 | Girdi alanı | purchaseCost | type=number; name=purchaseCost |
+| 1507 | Seçim alanı | currency | name=currency; seçenekler=TRY: TRY — Türk lirası, USD: USD — ABD doları, EUR: EUR — Euro |
+| 1508 | Seçim alanı | isRequestable | name=isRequestable; seçenekler=(değer yok): Değişiklik yok, true: Evet, false: Hayır |
+| 1509 | Seçim alanı | isByod | name=isByod; seçenekler=(değer yok): Değişiklik yok, true: Evet, false: Hayır |
+| 1510 | Girdi alanı | (etiketsiz) | type=checkbox |
+| 1511 | Metin alanı | notes | name=notes |
+| 1512 | Metin alanı | note | name=note |
+| 1513 | Seçim alanı | assetId | name=assetId |
 | 1514 | Girdi alanı | notes | name=notes |
-| 1515 | Girdi alanı | ${escapeHtml(assignment.targetName \|\| 'Açık zimmet')} iadesini seç | id=${assignment.id}; type=checkbox |
-| 1516 | Girdi alanı | ${escapeHtml(assignment.targetName \|\| 'Açık zimmet')} için toplu iade adedi | type=number |
-| 1517 | Girdi alanı | notes | name=notes |
-| 1518 | Girdi alanı | ${escapeHtml(asset.assetTag)} varlığını iade et | type=checkbox |
-| 1519 | Girdi alanı | ${escapeHtml(label \|\| 'Sipariş kalemi')} iade adedi | type=number |
-| 1520 | Seçim alanı | (değer yok): Kalem seçin, ${item.itemType}\|${item.id}: ${item.typeLabel} · ${escapeHtml(item.name)} · ${escapeHtml(item.itemNumber \|\| item.modelNumber \|\| 'Stok kodu yok')} · stok ${fmt.format(item.totalQuantity)} | seçenekler=(değer yok): Kalem seçin, ${item.itemType}\|${item.id}: ${item.typeLabel} · ${escapeHtml(item.name)} · ${escapeHtml(item.itemNumber \|\| item.modelNumber \|\| 'Stok kodu yok')} · stok ${fmt.format(item.totalQuantity)} |
-| 1521 | Girdi alanı | (etiketsiz) | type=number |
+| 1515 | Girdi alanı | notes | name=notes |
+| 1516 | Girdi alanı | ${escapeHtml(assignment.targetName \|\| 'Açık zimmet')} iadesini seç | id=${assignment.id}; type=checkbox |
+| 1517 | Girdi alanı | ${escapeHtml(assignment.targetName \|\| 'Açık zimmet')} için toplu iade adedi | type=number |
+| 1518 | Girdi alanı | notes | name=notes |
+| 1519 | Girdi alanı | ${escapeHtml(asset.assetTag)} varlığını iade et | type=checkbox |
+| 1520 | Girdi alanı | ${escapeHtml(label \|\| 'Sipariş kalemi')} iade adedi | type=number |
+| 1521 | Seçim alanı | (değer yok): Kalem seçin, ${item.itemType}\|${item.id}: ${item.typeLabel} · ${escapeHtml(item.name)} · ${escapeHtml(item.itemNumber \|\| item.modelNumber \|\| 'Stok kodu yok')} · stok ${fmt.format(item.totalQuantity)} | seçenekler=(değer yok): Kalem seçin, ${item.itemType}\|${item.id}: ${item.typeLabel} · ${escapeHtml(item.name)} · ${escapeHtml(item.itemNumber \|\| item.modelNumber \|\| 'Stok kodu yok')} · stok ${fmt.format(item.totalQuantity)} |
 | 1522 | Girdi alanı | (etiketsiz) | type=number |
-| 1523 | Girdi alanı | (etiketsiz) | type=checkbox |
-| 1524 | Girdi alanı | ${escapeHtml(quantityLabel)} | type=number |
-| 1525 | Girdi alanı | ${escapeHtml(line.itemName)} teslim adedi | type=number |
-| 1526 | Girdi alanı | (etiketsiz) |  |
-| 1527 | Seçim alanı | (etiketsiz) |  |
+| 1523 | Girdi alanı | (etiketsiz) | type=number |
+| 1524 | Girdi alanı | (etiketsiz) | type=checkbox |
+| 1525 | Girdi alanı | ${escapeHtml(quantityLabel)} | type=number |
+| 1526 | Girdi alanı | ${escapeHtml(line.itemName)} teslim adedi | type=number |
+| 1527 | Girdi alanı | (etiketsiz) |  |
 | 1528 | Seçim alanı | (etiketsiz) |  |
 | 1529 | Seçim alanı | (etiketsiz) |  |
 | 1530 | Seçim alanı | (etiketsiz) |  |
-| 1531 | Girdi alanı | (etiketsiz) | type=number |
+| 1531 | Seçim alanı | (etiketsiz) |  |
 | 1532 | Girdi alanı | (etiketsiz) | type=number |
-| 1533 | Girdi alanı | (etiketsiz) | type=date |
-| 1534 | Girdi alanı | ${escapeHtml(line.name)} teslim adedi | type=number |
-| 1535 | Seçim alanı | (değer yok): Aksesuar seçin, ${item.id}: ${escapeHtml(item.name)} · ${escapeHtml(item.itemNumber \|\| item.modelNumber \|\| 'Stok kodu yok')} · stok ${fmt.format(item.totalQuantity)} | seçenekler=(değer yok): Aksesuar seçin, ${item.id}: ${escapeHtml(item.name)} · ${escapeHtml(item.itemNumber \|\| item.modelNumber \|\| 'Stok kodu yok')} · stok ${fmt.format(item.totalQuantity)} |
-| 1536 | Girdi alanı | (etiketsiz) | type=number |
+| 1533 | Girdi alanı | (etiketsiz) | type=number |
+| 1534 | Girdi alanı | (etiketsiz) | type=date |
+| 1535 | Girdi alanı | ${escapeHtml(line.name)} teslim adedi | type=number |
+| 1536 | Seçim alanı | (değer yok): Aksesuar seçin, ${item.id}: ${escapeHtml(item.name)} · ${escapeHtml(item.itemNumber \|\| item.modelNumber \|\| 'Stok kodu yok')} · stok ${fmt.format(item.totalQuantity)} | seçenekler=(değer yok): Aksesuar seçin, ${item.id}: ${escapeHtml(item.name)} · ${escapeHtml(item.itemNumber \|\| item.modelNumber \|\| 'Stok kodu yok')} · stok ${fmt.format(item.totalQuantity)} |
 | 1537 | Girdi alanı | (etiketsiz) | type=number |
-| 1538 | Girdi alanı | ${escapeHtml(line.accessoryName)} teslim adedi | type=number |
-| 1539 | Girdi alanı | ${escapeHtml(item.name)} model numarası |  |
-| 1540 | Girdi alanı | (etiketsiz) | type=file |
-| 1541 | Girdi alanı | (etiketsiz) | type=number |
+| 1538 | Girdi alanı | (etiketsiz) | type=number |
+| 1539 | Girdi alanı | ${escapeHtml(line.accessoryName)} teslim adedi | type=number |
+| 1540 | Girdi alanı | ${escapeHtml(item.name)} model numarası |  |
+| 1541 | Girdi alanı | (etiketsiz) | type=file |
 | 1542 | Girdi alanı | (etiketsiz) | type=number |
-| 1543 | Seçim alanı | amount: ${translateUiText('Tutar')}, percent: ${translateUiText('Yüzde')} | type=${item.id}; seçenekler=amount: ${translateUiText('Tutar')}, percent: ${translateUiText('Yüzde')} |
-| 1544 | Seçim alanı | linear: ${translateUiText('Doğrusal')}, half_1: ${translateUiText('Yarım yıl · ilk dönem')}, half_2: ${translateUiText('Yarım yıl · satın alma dönemine göre')} | seçenekler=linear: ${translateUiText('Doğrusal')}, half_1: ${translateUiText('Yarım yıl · ilk dönem')}, half_2: ${translateUiText('Yarım yıl · satın alma dönemine göre')} |
-| 1545 | Girdi alanı | (etiketsiz) | type=url |
+| 1543 | Girdi alanı | (etiketsiz) | type=number |
+| 1544 | Seçim alanı | amount: ${translateUiText('Tutar')}, percent: ${translateUiText('Yüzde')} | type=${item.id}; seçenekler=amount: ${translateUiText('Tutar')}, percent: ${translateUiText('Yüzde')} |
+| 1545 | Seçim alanı | linear: ${translateUiText('Doğrusal')}, half_1: ${translateUiText('Yarım yıl · ilk dönem')}, half_2: ${translateUiText('Yarım yıl · satın alma dönemine göre')} | seçenekler=linear: ${translateUiText('Doğrusal')}, half_1: ${translateUiText('Yarım yıl · ilk dönem')}, half_2: ${translateUiText('Yarım yıl · satın alma dönemine göre')} |
 | 1546 | Girdi alanı | (etiketsiz) | type=url |
 | 1547 | Girdi alanı | (etiketsiz) | type=url |
-| 1548 | Girdi alanı | (etiketsiz) | type=tel |
-| 1549 | Girdi alanı | (etiketsiz) | type=email |
-| 1550 | Girdi alanı | (etiketsiz) | type=file |
-| 1551 | Girdi alanı | ${escapeHtml(item.name)} ${translateUiText('Kayıt adını düzenle')} | name=${item.id} |
-| 1552 | Seçim alanı | (değer yok): Özel alan seçin | id=assetCustomFieldFilter; seçenekler=(değer yok): Özel alan seçin |
-| 1553 | Seçim alanı | equals: Değeri eşit, contains: Metin içinde, empty: Değer girilmemiş | id=assetCustomFieldMode; seçenekler=equals: Değeri eşit, contains: Metin içinde, empty: Değer girilmemiş |
-| 1554 | Girdi alanı | assetCustomFieldValue | id=assetCustomFieldValue |
-| 1555 | Girdi alanı | key | name=key |
-| 1556 | Girdi alanı | name | name=name |
-| 1557 | Girdi alanı | groupName | name=groupName |
-| 1558 | Seçim alanı | categoryId | name=categoryId; seçenekler=(değer yok): Tüm kategoriler |
-| 1559 | Seçim alanı | modelId | name=modelId; seçenekler=(değer yok): Tüm modeller |
-| 1560 | Seçim alanı | fieldType | name=fieldType; seçenekler=text: Metin, number: Sayı, date: Tarih, checkbox: Onay kutusu, select: Seçim listesi, sensitive: Hassas (şifreli) |
-| 1561 | Metin alanı | options | name=options |
-| 1562 | Girdi alanı | isRequired | type=checkbox; name=isRequired |
-| 1563 | Girdi alanı | sortOrder | type=number; name=sortOrder |
-| 1564 | Girdi alanı | name | name=name |
-| 1565 | Girdi alanı | groupName | name=groupName |
-| 1566 | Seçim alanı | categoryId | name=categoryId; seçenekler=(değer yok): Tüm kategoriler |
-| 1567 | Seçim alanı | modelId | name=modelId; seçenekler=(değer yok): Tüm modeller |
-| 1568 | Seçim alanı | Çalışan eşleme profili | id=employeeImportProfile; seçenekler=(değer yok): Profil seçin |
-| 1569 | Girdi alanı | employeeImportProfileName | id=employeeImportProfileName |
-| 1570 | Metin alanı | note | name=note |
-| 1571 | Form | maintenanceAttachmentForm | id=maintenanceAttachmentForm; başlangıçta gizli |
-| 1572 | Form | companyUnitForm | id=companyUnitForm |
-| 1573 | Form | inventoryRequestActionForm | id=inventoryRequestActionForm |
-| 1574 | Form | companyNotificationPreferencesForm | id=companyNotificationPreferencesForm |
-| 1575 | Form | labelSettingsForm | id=labelSettingsForm |
-| 1576 | Form | assetStatusLabelsForm | id=assetStatusLabelsForm |
-| 1577 | Form | assetStatusConfigForm | id=assetStatusConfigForm |
-| 1578 | Form | catalogCreateForm | id=catalogCreateForm |
-| 1579 | Form | companyProfileForm | id=companyProfileForm |
-| 1580 | Form | companyLogoForm | id=companyLogoForm |
-| 1581 | Form | reservationForm | id=reservationForm |
-| 1582 | Form | reservationActionForm | id=reservationActionForm |
-| 1583 | Form | taskForm | id=taskForm |
-| 1584 | Form | supportForm | id=supportForm |
-| 1585 | Form | supportReplyForm | id=supportReplyForm |
-| 1586 | Form | companySecurityPolicyForm | id=companySecurityPolicyForm |
-| 1587 | Form | integrationTokenForm | id=integrationTokenForm |
-| 1588 | Form | companyRoleForm | id=companyRoleForm |
-| 1589 | Form | licenseRevokeForm | id=licenseRevokeForm |
-| 1590 | Form | licenseImportProfileDeleteForm | id=licenseImportProfileDeleteForm |
-| 1591 | Form | contractForm | id=contractForm |
-| 1592 | Form | contractActionForm | id=contractActionForm |
-| 1593 | Form | assetNoteForm | id=assetNoteForm; başlangıçta gizli |
-| 1594 | Form | assetAttachmentForm | id=assetAttachmentForm; başlangıçta gizli |
-| 1595 | Form | assetAuditForm | id=assetAuditForm |
-| 1596 | Form | assetAuditScheduleForm | id=assetAuditScheduleForm |
-| 1597 | Form | maintenanceStartForm | id=maintenanceStartForm |
-| 1598 | Form | maintenanceCompleteForm | id=maintenanceCompleteForm |
-| 1599 | Form | assetTransferForm | id=assetTransferForm |
-| 1600 | Form | editAssetForm | id=editAssetForm |
-| 1601 | Form | assignForm | id=assignForm |
-| 1602 | Form | newEmployeeForm | id=newEmployeeForm |
-| 1603 | Form | editEmployeeForm | id=editEmployeeForm |
-| 1604 | Form | employeeActionForm | id=employeeActionForm |
-| 1605 | Form | textEntryForm | id=textEntryForm |
-| 1606 | Form | inviteMemberForm | id=inviteMemberForm |
-| 1607 | Form | memberLocationAccessForm | id=memberLocationAccessForm |
-| 1608 | Form | newAssetForm | id=newAssetForm |
-| 1609 | Form | loginForm | id=loginForm |
-| 1610 | Form | dashboardCustomizeForm | id=dashboardCustomizeForm |
-| 1611 | Form | forgotPasswordForm | id=forgotPasswordForm |
-| 1612 | Form | importPreviewForm | id=importPreviewForm |
-| 1613 | Form | accessoryCheckinForm | id=accessoryCheckinForm |
-| 1614 | Form | accessoryOrderAttachmentForm | id=accessoryOrderAttachmentForm |
-| 1615 | Form | accessoryOrderCreateForm | id=accessoryOrderCreateForm |
-| 1616 | Form | stockOrderCreateForm | id=stockOrderCreateForm |
-| 1617 | Form | stockOrderAttachmentForm | id=stockOrderAttachmentForm; başlangıçta gizli |
-| 1618 | Form | stockOrderReceiveForm | id=stockOrderReceiveForm |
-| 1619 | Form | stockOrderKitTemplateForm | id=stockOrderKitTemplateForm |
-| 1620 | Form | assetOrderBudgetForm | id=assetOrderBudgetForm |
-| 1621 | Form | assetOrderCreateForm | id=assetOrderCreateForm |
-| 1622 | Form | assetOrderReceiveForm | id=assetOrderReceiveForm |
-| 1623 | Form | accessoryOrderReceiveForm | id=accessoryOrderReceiveForm |
-| 1624 | Form | consumableForm | id=consumableForm |
-| 1625 | Form | consumableStockForm | id=consumableStockForm |
-| 1626 | Form | consumableCheckoutForm | id=consumableCheckoutForm |
-| 1627 | Form | licenseAttachmentForm | id=licenseAttachmentForm |
-| 1628 | Form | licensePurchaseOrderForm | id=licensePurchaseOrderForm |
-| 1629 | Form | licenseForm | id=licenseForm |
-| 1630 | Form | licenseActionForm | id=licenseActionForm |
-| 1631 | Form | licenseAssignForm | id=licenseAssignForm |
-| 1632 | Form | componentActionForm | id=componentActionForm |
-| 1633 | Form | componentForm | id=componentForm |
-| 1634 | Form | componentStockForm | id=componentStockForm |
-| 1635 | Form | componentAllocateForm | id=componentAllocateForm |
-| 1636 | Form | componentRemoveForm | id=componentRemoveForm |
-| 1637 | Form | accessoryKitForm | id=accessoryKitForm |
-| 1638 | Form | accessoryKitActionForm | id=accessoryKitActionForm |
-| 1639 | Form | accessoryForm | id=accessoryForm |
-| 1640 | Form | accessoryStockForm | id=accessoryStockForm |
-| 1641 | Form | accessoryCheckoutForm | id=accessoryCheckoutForm |
-| 1642 | Form | scanAssetForm | id=scanAssetForm |
-| 1643 | Form | directoryRenameForm | id=directoryRenameForm |
-| 1644 | Form | createDepartmentForm | id=createDepartmentForm |
-| 1645 | Form | departmentMoveForm | id=departmentMoveForm |
-| 1646 | Form | createLocationForm | id=createLocationForm |
-| 1647 | Form | locationManagerForm | id=locationManagerForm |
-| 1648 | Form | departmentManagerForm | id=departmentManagerForm |
-| 1649 | Form | quickLookupForm | id=quickLookupForm |
-| 1650 | Form | returnAssetForm | id=returnAssetForm |
-| 1651 | Form | assetTrashConfirmForm | id=assetTrashConfirmForm |
-| 1652 | Form | assetStatusForm | id=assetStatusForm |
-| 1653 | Form | assetAttachmentRemoveForm | id=assetAttachmentRemoveForm |
-| 1654 | Form | savedAssetSearchForm | id=savedAssetSearchForm |
-| 1655 | Form | companyMfaEnrollmentForm | id=companyMfaEnrollmentForm |
-| 1656 | Form | supplierCatalogForm | id=supplierCatalogForm |
-| 1657 | Form | inventoryRequestForm | id=inventoryRequestForm |
-| 1658 | Form | modelAttachmentForm | id=modelAttachmentForm; başlangıçta gizli |
-| 1659 | Form | purchaseOrderReturnForm | id=purchaseOrderReturnForm |
-| 1660 | Form | bulkEditAssetForm | id=bulkEditAssetForm |
-| 1661 | Form | (etiketsiz) |  |
+| 1548 | Girdi alanı | (etiketsiz) | type=url |
+| 1549 | Girdi alanı | (etiketsiz) | type=tel |
+| 1550 | Girdi alanı | (etiketsiz) | type=email |
+| 1551 | Girdi alanı | (etiketsiz) | type=file |
+| 1552 | Girdi alanı | ${escapeHtml(item.name)} ${translateUiText('Kayıt adını düzenle')} | name=${item.id} |
+| 1553 | Seçim alanı | (değer yok): Özel alan seçin | id=assetCustomFieldFilter; seçenekler=(değer yok): Özel alan seçin |
+| 1554 | Seçim alanı | equals: Değeri eşit, contains: Metin içinde, empty: Değer girilmemiş | id=assetCustomFieldMode; seçenekler=equals: Değeri eşit, contains: Metin içinde, empty: Değer girilmemiş |
+| 1555 | Girdi alanı | assetCustomFieldValue | id=assetCustomFieldValue |
+| 1556 | Girdi alanı | key | name=key |
+| 1557 | Girdi alanı | name | name=name |
+| 1558 | Girdi alanı | groupName | name=groupName |
+| 1559 | Seçim alanı | categoryId | name=categoryId; seçenekler=(değer yok): Tüm kategoriler |
+| 1560 | Seçim alanı | modelId | name=modelId; seçenekler=(değer yok): Tüm modeller |
+| 1561 | Seçim alanı | fieldType | name=fieldType; seçenekler=text: Metin, number: Sayı, date: Tarih, checkbox: Onay kutusu, select: Seçim listesi, sensitive: Hassas (şifreli) |
+| 1562 | Metin alanı | options | name=options |
+| 1563 | Girdi alanı | isRequired | type=checkbox; name=isRequired |
+| 1564 | Girdi alanı | sortOrder | type=number; name=sortOrder |
+| 1565 | Girdi alanı | name | name=name |
+| 1566 | Girdi alanı | groupName | name=groupName |
+| 1567 | Seçim alanı | categoryId | name=categoryId; seçenekler=(değer yok): Tüm kategoriler |
+| 1568 | Seçim alanı | modelId | name=modelId; seçenekler=(değer yok): Tüm modeller |
+| 1569 | Seçim alanı | Çalışan eşleme profili | id=employeeImportProfile; seçenekler=(değer yok): Profil seçin |
+| 1570 | Girdi alanı | employeeImportProfileName | id=employeeImportProfileName |
+| 1571 | Metin alanı | note | name=note |
+| 1572 | Form | maintenanceAttachmentForm | id=maintenanceAttachmentForm; başlangıçta gizli |
+| 1573 | Form | companyUnitForm | id=companyUnitForm |
+| 1574 | Form | inventoryRequestActionForm | id=inventoryRequestActionForm |
+| 1575 | Form | companyNotificationPreferencesForm | id=companyNotificationPreferencesForm |
+| 1576 | Form | labelSettingsForm | id=labelSettingsForm |
+| 1577 | Form | assetStatusLabelsForm | id=assetStatusLabelsForm |
+| 1578 | Form | assetStatusConfigForm | id=assetStatusConfigForm |
+| 1579 | Form | catalogCreateForm | id=catalogCreateForm |
+| 1580 | Form | companyProfileForm | id=companyProfileForm |
+| 1581 | Form | companyLogoForm | id=companyLogoForm |
+| 1582 | Form | reservationForm | id=reservationForm |
+| 1583 | Form | reservationActionForm | id=reservationActionForm |
+| 1584 | Form | taskForm | id=taskForm |
+| 1585 | Form | supportForm | id=supportForm |
+| 1586 | Form | supportReplyForm | id=supportReplyForm |
+| 1587 | Form | companySecurityPolicyForm | id=companySecurityPolicyForm |
+| 1588 | Form | integrationTokenForm | id=integrationTokenForm |
+| 1589 | Form | companyRoleForm | id=companyRoleForm |
+| 1590 | Form | licenseRevokeForm | id=licenseRevokeForm |
+| 1591 | Form | licenseImportProfileDeleteForm | id=licenseImportProfileDeleteForm |
+| 1592 | Form | contractForm | id=contractForm |
+| 1593 | Form | contractActionForm | id=contractActionForm |
+| 1594 | Form | assetNoteForm | id=assetNoteForm; başlangıçta gizli |
+| 1595 | Form | assetAttachmentForm | id=assetAttachmentForm; başlangıçta gizli |
+| 1596 | Form | assetAuditForm | id=assetAuditForm |
+| 1597 | Form | assetAuditScheduleForm | id=assetAuditScheduleForm |
+| 1598 | Form | maintenanceStartForm | id=maintenanceStartForm |
+| 1599 | Form | maintenanceCompleteForm | id=maintenanceCompleteForm |
+| 1600 | Form | assetTransferForm | id=assetTransferForm |
+| 1601 | Form | editAssetForm | id=editAssetForm |
+| 1602 | Form | assignForm | id=assignForm |
+| 1603 | Form | newEmployeeForm | id=newEmployeeForm |
+| 1604 | Form | editEmployeeForm | id=editEmployeeForm |
+| 1605 | Form | employeeActionForm | id=employeeActionForm |
+| 1606 | Form | textEntryForm | id=textEntryForm |
+| 1607 | Form | inviteMemberForm | id=inviteMemberForm |
+| 1608 | Form | memberLocationAccessForm | id=memberLocationAccessForm |
+| 1609 | Form | newAssetForm | id=newAssetForm |
+| 1610 | Form | loginForm | id=loginForm |
+| 1611 | Form | dashboardCustomizeForm | id=dashboardCustomizeForm |
+| 1612 | Form | forgotPasswordForm | id=forgotPasswordForm |
+| 1613 | Form | importPreviewForm | id=importPreviewForm |
+| 1614 | Form | accessoryCheckinForm | id=accessoryCheckinForm |
+| 1615 | Form | accessoryOrderAttachmentForm | id=accessoryOrderAttachmentForm |
+| 1616 | Form | accessoryOrderCreateForm | id=accessoryOrderCreateForm |
+| 1617 | Form | stockOrderCreateForm | id=stockOrderCreateForm |
+| 1618 | Form | stockOrderAttachmentForm | id=stockOrderAttachmentForm; başlangıçta gizli |
+| 1619 | Form | stockOrderReceiveForm | id=stockOrderReceiveForm |
+| 1620 | Form | stockOrderKitTemplateForm | id=stockOrderKitTemplateForm |
+| 1621 | Form | assetOrderBudgetForm | id=assetOrderBudgetForm |
+| 1622 | Form | assetOrderCreateForm | id=assetOrderCreateForm |
+| 1623 | Form | assetOrderReceiveForm | id=assetOrderReceiveForm |
+| 1624 | Form | accessoryOrderReceiveForm | id=accessoryOrderReceiveForm |
+| 1625 | Form | consumableForm | id=consumableForm |
+| 1626 | Form | consumableStockForm | id=consumableStockForm |
+| 1627 | Form | consumableCheckoutForm | id=consumableCheckoutForm |
+| 1628 | Form | licenseAttachmentForm | id=licenseAttachmentForm |
+| 1629 | Form | licensePurchaseOrderForm | id=licensePurchaseOrderForm |
+| 1630 | Form | licenseForm | id=licenseForm |
+| 1631 | Form | licenseActionForm | id=licenseActionForm |
+| 1632 | Form | licenseAssignForm | id=licenseAssignForm |
+| 1633 | Form | componentActionForm | id=componentActionForm |
+| 1634 | Form | componentForm | id=componentForm |
+| 1635 | Form | componentStockForm | id=componentStockForm |
+| 1636 | Form | componentAllocateForm | id=componentAllocateForm |
+| 1637 | Form | componentRemoveForm | id=componentRemoveForm |
+| 1638 | Form | accessoryKitForm | id=accessoryKitForm |
+| 1639 | Form | accessoryKitActionForm | id=accessoryKitActionForm |
+| 1640 | Form | accessoryForm | id=accessoryForm |
+| 1641 | Form | accessoryStockForm | id=accessoryStockForm |
+| 1642 | Form | accessoryCheckoutForm | id=accessoryCheckoutForm |
+| 1643 | Form | scanAssetForm | id=scanAssetForm |
+| 1644 | Form | directoryRenameForm | id=directoryRenameForm |
+| 1645 | Form | createDepartmentForm | id=createDepartmentForm |
+| 1646 | Form | departmentMoveForm | id=departmentMoveForm |
+| 1647 | Form | createLocationForm | id=createLocationForm |
+| 1648 | Form | locationManagerForm | id=locationManagerForm |
+| 1649 | Form | departmentManagerForm | id=departmentManagerForm |
+| 1650 | Form | quickLookupForm | id=quickLookupForm |
+| 1651 | Form | returnAssetForm | id=returnAssetForm |
+| 1652 | Form | assetTrashConfirmForm | id=assetTrashConfirmForm |
+| 1653 | Form | assetStatusForm | id=assetStatusForm |
+| 1654 | Form | assetAttachmentRemoveForm | id=assetAttachmentRemoveForm |
+| 1655 | Form | savedAssetSearchForm | id=savedAssetSearchForm |
+| 1656 | Form | companyMfaEnrollmentForm | id=companyMfaEnrollmentForm |
+| 1657 | Form | supplierCatalogForm | id=supplierCatalogForm |
+| 1658 | Form | inventoryRequestForm | id=inventoryRequestForm |
+| 1659 | Form | modelAttachmentForm | id=modelAttachmentForm; başlangıçta gizli |
+| 1660 | Form | purchaseOrderReturnForm | id=purchaseOrderReturnForm |
+| 1661 | Form | bulkEditAssetForm | id=bulkEditAssetForm |
 | 1662 | Form | (etiketsiz) |  |
 | 1663 | Form | (etiketsiz) |  |
-| 1664 | Form | assetCustomFieldForm | id=assetCustomFieldForm |
-| 1665 | Form | editAssetCustomFieldForm | id=editAssetCustomFieldForm |
-| 1666 | Form | bulkAssetActionForm | id=bulkAssetActionForm |
-| 1667 | Modal | Kapat | id=employeeHandoverDialog; type=button; başlangıçta gizli |
-| 1668 | Modal | Kapat | id=maintenanceAttachmentDialog; type=button; name=file; başlangıçta gizli |
-| 1669 | Modal | Kapat | id=companyUnitDialog; type=button; name=id; başlangıçta gizli |
-| 1670 | Modal | Kapat | id=inventoryRequestActionDialog; type=button; name=note |
-| 1671 | Modal | Kapat | id=reservationActionDialog; type=button; name=note |
-| 1672 | Modal | Kapat | id=integrationSecretDialog; type=button |
-| 1673 | Modal | Kapat | id=companyRoleDialog; type=button; name=roleKey; başlangıçta gizli |
-| 1674 | Modal | Kapat | id=deactivateCompanyRoleDialog; type=button |
-| 1675 | Modal | Kapat | id=licenseRevokeDialog; type=button |
-| 1676 | Modal | Kapat | id=licenseImportProfileDeleteDialog; type=button |
-| 1677 | Modal | Kapat | id=commandPaletteDialog; type=button |
-| 1678 | Modal | Kapat | id=keyboardShortcutsDialog; type=button |
-| 1679 | Modal | Kapat | id=contractFormDialog; type=button; name=id; başlangıçta gizli |
-| 1680 | Modal | Kapat | id=contractDetailDialog; type=button; başlangıçta gizli |
-| 1681 | Modal | Kapat | id=contractActionDialog; type=button |
-| 1682 | Modal | Kapat | id=appearanceDialog; type=button |
-| 1683 | Modal | Kapat | id=assetDialog; type=button; name=note; başlangıçta gizli |
-| 1684 | Modal | Kapat | id=assetAuditDialog; type=button; name=auditDate; başlangıçta gizli |
-| 1685 | Modal | Kapat | id=assetAuditScheduleDialog; type=button; name=nextAuditOn |
-| 1686 | Modal | Kapat | id=maintenanceStartDialog; type=button; name=maintenanceType; başlangıçta gizli |
-| 1687 | Modal | Kapat | id=maintenanceCompleteDialog; type=button; name=completedOn |
-| 1688 | Modal | Kapat | id=assetTransferDialog; type=button; name=targetLocation |
-| 1689 | Modal | Kapat | id=editAssetDialog; type=button; name=expectedUpdatedAt; başlangıçta gizli |
-| 1690 | Modal | Kapat | id=assignDialog; type=button; name=employeeId |
-| 1691 | Modal | Kapat | id=newEmployeeDialog; type=button; name=displayName |
-| 1692 | Modal | Kapat | id=employeeImportDialog; type=button; başlangıçta gizli |
-| 1693 | Modal | Kapat | id=consumableImportDialog; type=button; başlangıçta gizli |
-| 1694 | Modal | Kapat | id=accessoryImportDialog; type=button; başlangıçta gizli |
-| 1695 | Modal | Kapat | id=editEmployeeDialog; type=button; name=displayName |
-| 1696 | Modal | Kapat | id=employeeActionDialog; type=button |
-| 1697 | Modal | Kapat | id=textEntryDialog; type=button; name=value |
-| 1698 | Modal | Kapat | id=employeeDialog; type=button; başlangıçta gizli |
-| 1699 | Modal | Kapat | id=inviteMemberDialog; type=button; name=fullName |
-| 1700 | Modal | Kapat | id=memberLocationAccessDialog; type=button; name=userId; başlangıçta gizli |
-| 1701 | Modal | Kapat | id=newAssetDialog; type=button; name=assetName |
-| 1702 | Modal | Kapat | id=dashboardCustomizeDialog; type=button; name=widget |
-| 1703 | Modal | Kapat | id=forgotPasswordDialog; type=button; name=email |
-| 1704 | Modal | Kapat | id=importPreviewDialog; type=button; başlangıçta gizli |
-| 1705 | Modal | Kapat | id=accessoryDialog; type=button |
-| 1706 | Modal | Kapat | id=accessoryCheckinDialog; type=button; name=quantity; başlangıçta gizli |
-| 1707 | Modal | Kapat | id=accessoryOrderDetailDialog; type=button; name=file; başlangıçta gizli |
-| 1708 | Modal | Kapat | id=accessoryOrderCreateDialog; type=button; name=orderNumber |
-| 1709 | Modal | Kapat | id=stockOrderCreateDialog; type=button; name=orderNumber |
-| 1710 | Modal | Kapat | id=stockOrderDetailDialog; type=button; name=file; başlangıçta gizli |
-| 1711 | Modal | Kapat | id=stockOrderReceiveDialog; type=button; name=receivedOn |
-| 1712 | Modal | Kapat | id=stockOrderKitTemplateDialog; type=button; name=name |
-| 1713 | Modal | Kapat | id=assetOrderBudgetDialog; type=button; name=year |
-| 1714 | Modal | Kapat | id=assetOrderCreateDialog; type=button; name=orderNumber |
-| 1715 | Modal | Kapat | id=assetOrderDetailDialog; type=button; başlangıçta gizli |
-| 1716 | Modal | Kapat | id=assetOrderReceiveDialog; type=button; name=receivedOn |
-| 1717 | Modal | Kapat | id=accessoryOrderReceiveDialog; type=button; name=receivedOn |
-| 1718 | Modal | Kapat | id=consumableDialog; type=button |
-| 1719 | Modal | Kapat | id=consumableFormDialog; type=button; name=id; başlangıçta gizli |
-| 1720 | Modal | Kapat | id=consumableStockDialog; type=button; name=quantity |
-| 1721 | Modal | Kapat | id=consumableCheckoutDialog; type=button; name=employeeId |
-| 1722 | Modal | Kapat | id=licenseDialog; type=button; name=file; başlangıçta gizli |
-| 1723 | Modal | Kapat | id=licensePurchaseOrderFormDialog; type=button; name=id; başlangıçta gizli |
-| 1724 | Modal | Kapat | id=licenseFormDialog; type=button; name=id; başlangıçta gizli |
-| 1725 | Modal | Kapat | id=licenseImportDialog; type=button; başlangıçta gizli |
-| 1726 | Modal | Kapat | id=licenseActionDialog; type=button; başlangıçta gizli |
-| 1727 | Modal | Kapat | id=licenseAssignDialog; type=button; name=eulaAccepted; başlangıçta gizli |
-| 1728 | Modal | Kapat | id=componentActionDialog; type=button |
-| 1729 | Modal | Kapat | id=componentDialog; type=button |
-| 1730 | Modal | Kapat | id=componentImportDialog; type=button; başlangıçta gizli |
-| 1731 | Modal | Kapat | id=componentFormDialog; type=button; name=id; başlangıçta gizli |
-| 1732 | Modal | quantity | id=componentStockDialog; type=button; name=quantity |
-| 1733 | Modal | assetId | id=componentAllocateDialog; type=button; name=assetId |
-| 1734 | Modal | Kapat | id=componentRemoveDialog; type=button; name=allocationId; başlangıçta gizli |
-| 1735 | Modal | Kapat | id=accessoryKitFormDialog; type=button; name=id; başlangıçta gizli |
-| 1736 | Modal | Kapat | id=accessoryKitHistoryDialog; type=button |
-| 1737 | Modal | Kapat | id=accessoryKitActionDialog; type=button |
-| 1738 | Modal | Kapat | id=accessoryFormDialog; type=button; name=accessoryId; başlangıçta gizli |
-| 1739 | Modal | Kapat | id=accessoryCategoryManagerDialog; type=button |
-| 1740 | Modal | Kapat | id=accessoryStockDialog; type=button; name=quantity |
-| 1741 | Modal | Kapat | id=accessoryCheckoutDialog; type=button; name=targetType; başlangıçta gizli |
-| 1742 | Modal | Kapat | id=scanAssetDialog; type=button; name=code; başlangıçta gizli |
-| 1743 | Modal | Kapat | id=directoryRenameDialog; type=button; name=kind; başlangıçta gizli |
-| 1744 | Modal | Kapat | id=createDepartmentDialog; type=button; name=name |
-| 1745 | Modal | Kapat | id=departmentMoveDialog; type=button; name=targetDepartmentId |
-| 1746 | Modal | Kapat | id=createLocationDialog; type=button; name=parentLocationId |
-| 1747 | Modal | Kapat | id=locationManagerDialog; type=button; name=locationId; başlangıçta gizli |
-| 1748 | Modal | Kapat | id=departmentManagerDialog; type=button; name=departmentId; başlangıçta gizli |
-| 1749 | Modal | Kapat | id=quickLookupDialog; type=button; name=name; başlangıçta gizli |
-| 1750 | Modal | Kapat | id=returnAssetDialog; type=button; name=note; başlangıçta gizli |
-| 1751 | Modal | Kapat | id=assetTrashConfirmDialog; type=button; name=note |
-| 1752 | Modal | Kapat | id=assetStatusDialog; type=button; name=note; başlangıçta gizli |
-| 1753 | Modal | Kapat | id=assetAttachmentRemoveDialog; type=button; başlangıçta gizli |
-| 1754 | Modal | Kapat | id=savedAssetSearchDialog; type=button; name=name; başlangıçta gizli |
-| 1755 | Modal | Kapat | id=companyMfaEnrollmentDialog; type=button; name=code; başlangıçta gizli |
-| 1756 | Modal | Kapat | id=supplierCatalogDialog; type=button; name=id; başlangıçta gizli |
-| 1757 | Modal | Kapat | id=companySwitchDialog; type=button |
-| 1758 | Modal | Kapat | id=accountPhotoDialog; type=button; hedef=/api/session/data-export; başlangıçta gizli |
-| 1759 | Modal | Kapat | id=accountTwoFactorDialog; type=button; başlangıçta gizli |
-| 1760 | Modal | Kapat | id=inventoryRequestDialog; type=button; name=itemType; başlangıçta gizli |
-| 1761 | Modal | Kapat | id=assetTrashDialog; type=button |
-| 1762 | Modal | Görsel önizleme | id=imagePreviewDialog; type=button |
-| 1763 | Modal | Kapat | id=modelDetailsDialog; type=button |
-| 1764 | Modal | Kapat | id=modelAttachmentsDialog; type=button; name=file; başlangıçta gizli |
-| 1765 | Modal | Varlık etiketi yazdırma önizlemesi | id=assetLabelPreviewDialog; type=button |
-| 1766 | Modal | Kapat | id=purchaseOrderReturnDialog; type=button; name=returnedOn |
-| 1767 | Modal | Kapat | id=editAssetCustomFieldDialog; type=button; name=name |
-| 1768 | Tablo | Bu sayfadaki seçilebilir varlıkları seç | id=selectAllAssetsHeader; type=checkbox |
-| 1769 | Tablo | Şirket çalışan kayıtları | id=employeeRows |
-| 1770 | Tablo | directoryHead | id=directoryHead |
-| 1771 | Tablo | Şirket birimleri | id=companyUnitRows |
-| 1772 | Tablo | Şirket aksesuar stokları | id=accessoryRows |
-| 1773 | Tablo | Aksesuar satın alma siparişleri | id=accessoryOrderRows |
-| 1774 | Tablo | Şirketin aksesuar hazır kitleri | id=accessoryKitRows |
-| 1775 | Tablo | Sarf malzemeleri ve kullanılabilir stok miktarları | id=consumableRows |
-| 1776 | Tablo | Kalem / Tür / Konum / Kalan / | id=requestCatalogRows |
-| 1777 | Tablo | Çalışan / talep eden / Kalem / Adet / Durum / İşlem | id=requestRows |
-| 1778 | Tablo | Lisans / Yayıncı / sürüm / Tür / Kullanılan koltuk / Bitiş tarihi / Yenileme / İşlem | id=licenseRows |
-| 1779 | Tablo | Lisans / Çalışan / varlık / Personel no / Atanma tarihi / Bitiş tarihi / Durum / İşlem | id=licenseAssignmentRows |
-| 1780 | Tablo | Seç / Bileşen / Kategori / model / Seri / ürün no / Toplam / Atanmış / Kullanılabilir / Minimum / Garanti bitişi / İşlem | id=componentRows |
-| 1781 | Tablo | Şirket stok hareketleri | id=inventoryMovementRows |
-| 1782 | Tablo | Kullanıcı / E-posta / Çalışan profili / Rol / Üyelik tarihi / İşlem | id=membersRows |
-| 1783 | Tablo | Ad / İlişki / Kullanım / İşlemler | id=catalogRelationHead |
-| 1784 | Tablo | Şirketin aktif varlık zimmetleri | id=assignmentRows |
-| 1785 | Tablo | Beklenen ve geciken varlık iadeleri | id=returnsRows |
-| 1786 | Tablo | Tarih / Varlık / İşlem / Çalışan / İşlemi yapan / Açıklama | id=activityTableRows |
-| 1787 | Tablo | Varlık / Çalışan / Kullanım dönemi / Durum / Talep eden / Not / karar / İşlemler | id=reservationRows |
-| 1788 | Tablo | Plan tarihi / Etiket / Varlık / Konum / Zimmetli çalışan / Durum / | id=auditScheduleDateHeading |
-| 1789 | Tablo | Tarih / İşlemi yapan / Kayıt türü / İşlem / Ayrıntı | id=auditRows |
-| 1790 | Tablo | Şirket sözleşmeleri | id=contractRows |
-| 1791 | Tablo | Şirket görevleri | id=taskRows |
-| 1792 | Tablo | Destek talepleri | id=supportRows |
-| 1793 | Tablo | Kullanıcı API anahtarları | id=integrationTokenRows |
-| 1794 | Tablo | Şirket bakım kayıtları | id=maintenanceRows |
-| 1795 | Tablo | Şirket bakım, denetim, lisans, garanti, iade ve rezervasyon takvimi | id=calendarRows |
-| 1796 | Tablo | Durum / Varlık / İşlem | id=reportStatusRows |
-| 1797 | Tablo | Para birimi / Kayıt / Toplam alış bedeli | id=reportCostRows |
-| 1798 | Tablo | Kategori / Toplam / Atanmış / Kullanılabilir / Bakımda / İşlem | id=reportCategoryRows |
-| 1799 | Tablo | Alış tarihi / Etiket / Varlık / Seri no / Kategori / Durum / Bedel / Konum | id=assetPurchaseReportRows |
-| 1800 | Tablo | Kategori / Bileşen / Toplam adet / Atanmış adet / Kullanılabilir adet / Düşük stok kaydı | id=componentReportRows |
-| 1801 | Tablo | Tarih / Sonuç / Etiket / Varlık / Konum / Denetimi yapan / Açıklama / bulgu | id=auditReportRows |
-| 1802 | Tablo | Garanti bitişi / Etiket / Varlık / Durum / Konum / Zimmetli çalışan | id=warrantyReportRows |
-| 1803 | Tablo | Tür / Kayıt | id=maintenanceReportTypes |
-| 1804 | Tablo | Para birimi / Kayıt / Toplam | id=maintenanceReportCosts |
-| 1805 | Tablo | Bitiş tarihi / Lisans / Yayıncı / sürüm / Tür / Koltuk kullanımı / Otomatik yenileme / Tedarikçi | id=licenseReportRows |
-| 1806 | Tablo | Şirketin bekleyen satın alma siparişi kalemleri | id=pendingDeliveryRows |
-| 1807 | Tablo | Varlıkların tahmini amortisman değerleri | id=depreciationReportRows |
-| 1808 | Tablo | Sarf ve bileşen satın alma siparişleri | id=stockOrderRows |
-| 1809 | Tablo | Tüm şirket satın alma kayıtları | id=purchaseOverviewRows |
-| 1810 | Tablo | Varlık satın alma siparişleri | id=assetOrderRows |
-| 1811 | Tablo | roleAccessCaption | id=roleAccessCaption |
-| 1812 | Tablo | Aksesuar / Kalan / verilen / Teslim / Not | id=assetAccessoryAssignments |
-| 1813 | Tablo | Bileşen / Kalan / verilen / Takılma / Not | id=assetComponentAllocations |
-| 1814 | Tablo | Lisans / Tür / Bitiş / Atanma / Not | id=assetLicenseAssignments |
-| 1815 | Tablo | İlişki / Etiket / Varlık / Durum | id=assetLinkedRows |
-| 1816 | Tablo | Çalışan / Departman / Zimmet | id=employeeDirectReports |
-| 1817 | Tablo | Varlık / Durum / Konum | id=employeeAssetRows |
-| 1818 | Tablo | Aksesuar / Verilen / İade / Kalan / Tarih | id=employeeAccessoryRows |
-| 1819 | Tablo | Lisans / Yayıncı / sürüm / Atandığı tarih / Bitiş | id=employeeLicenseRows |
-| 1820 | Tablo | Malzeme / Miktar / Tarih / Not | id=employeeConsumableRows |
-| 1821 | Tablo | Varlık / Bakım türü / Servis / Durum / Tarih | id=employeeMaintenanceRows |
-| 1822 | Tablo | Sipariş no / Tedarikçi / tarih / Adet / Durum | id=accessoryOrderHistoryRows |
-| 1823 | Tablo | Çalışan / Verilen / İade / Kalan / İşlem | id=accessoryAssignments |
-| 1824 | Tablo | Aksesuar / Sipariş / Teslim alınan / Kalan / Fatura birim bedeli / Edinim birim bedeli / Toplam | id=accessoryOrderDetailLines |
-| 1825 | Tablo | Kalem / Sipariş / Teslim alınan / Kalan / Fatura birim bedeli / Edinim birim bedeli / Toplam | id=stockOrderDetailLines |
-| 1826 | Tablo | Cihaz / Kategori / Hedef konum / Sipariş / Teslim alındı / Kalan / Fatura birim bedeli / Edinim birim bedeli | id=assetOrderDetailLines |
-| 1827 | Tablo | Etiket / cihaz / Durum / Seri numarası / Alış tarihi | id=assetOrderReceivedAssets |
-| 1828 | Tablo | Tarih / İşlem / Miktar / Çalışan / İşlemi yapan / Not | id=consumableMovements |
-| 1829 | Tablo | Tedarikçi / Sipariş no. / Tarih / Koltuk / Birim maliyeti / Durum / İşlemler | id=licensePurchaseOrderRows |
-| 1830 | Tablo | Çalışan / varlık / Personel no / Atanma / EULA sürümü / EULA teyit zamanı / Teyit eden / Durum / İşlem | id=licenseAssignments |
-| 1831 | Tablo | Varlık / Verilen / Çıkarılan / Kalan / Tarih / İşlem | id=componentAllocations |
-| 1832 | Tablo | Tarih / Kalem / Teslim edilen / İade edilen / Kalan / Hedef / İşlemi yapan / Not | id=accessoryKitHistoryRows |
-| 1833 | Tablo | Kategori / Aksesuar / Durum / İşlemler | id=accessoryCategoryRows |
-| 1834 | Tablo | Firma / Yetkili / iletişim / Bağlı kayıt / Durum / İşlemler | id=supplierCatalogRows |
-| 1835 | Tablo | Etiket / Varlık / Seri numarası / Taşınma zamanı / İşlem | id=assetTrashRows |
-| 1836 | Tablo | Etiket / Varlık / Durum / Seri no / Çalışan / konum | id=modelDetailsAssets |
-| 1837 | Tablo | Sipariş / Tedarikçi / Durum / Tarih / Adet / Teslim alınan | id=modelDetailsOrders |
-| 1838 | Tablo | Tarih / İşlem / Açıklama | id=modelDetailsHistory |
-| 1839 | Tablo | Dosya / Tür / Boyut / Yüklenme / İşlem | id=modelAttachmentRows |
-| 1840 | Tablo | (etiketsiz) | başlangıçta gizli |
-| 1841 | Tablo | Etiket / Varlık / Seri no / Durum / Konum |  |
-| 1842 | Tablo | Aksesuar / Model / Kalan adet / Teslim tarihi |  |
-| 1843 | Tablo | Lisans / EULA sürümü / Dosya / ek kimliği / Kabul eden / tarih / EULA SHA-256 / Durum |  |
-| 1844 | Tablo | ${escapeHtml(translateUiText('Uygulama'))} / ${escapeHtml(translateUiText('Yayıncı'))} / ${escapeHtml(translateUiText('Sürüm'))} / ${escapeHtml(translateUiText('Mimari'))} / ${escapeHtml(translateUiText('Kurulum tarihi'))} / ${escapeHtml(translateUiText('Son görülme'))} | id=assetSoftwareInventoryRows |
-| 1845 | Tablo | Alan / Anahtar / Grup / Kapsam / Tür / Zorunlu / Durum / İşlem | id=assetCustomFieldRows |
-| 1846 | Sekme | assetTabOverviewButton | id=assetTabOverviewButton; type=button |
-| 1847 | Sekme | assetTabRelationsButton | id=assetTabRelationsButton; type=button |
-| 1848 | Sekme | assetTabMaintenanceButton | id=assetTabMaintenanceButton; type=button |
-| 1849 | Sekme | assetTabHistoryButton | id=assetTabHistoryButton; type=button |
-| 1850 | Sekme | assetTabAttachmentsButton | id=assetTabAttachmentsButton; type=button |
-| 1851 | Sayfa rotası | Genel Bakış | hedef=Genel Bakış |
-| 1852 | Sayfa rotası | Varlıklar | hedef=Varlıklar |
-| 1853 | Sayfa rotası | Tüm satın almalar | hedef=Tüm satın almalar |
-| 1854 | Sayfa rotası | Varlık siparişleri | hedef=Varlık siparişleri |
-| 1855 | Sayfa rotası | Varlık modelleri | hedef=Varlık modelleri |
-| 1856 | Sayfa rotası | Markalar | hedef=Markalar |
-| 1857 | Sayfa rotası | Kategoriler | hedef=Kategoriler |
-| 1858 | Sayfa rotası | Durum etiketleri | hedef=Durum etiketleri |
-| 1859 | Sayfa rotası | QR ve barkodlar | hedef=QR ve barkodlar |
-| 1860 | Sayfa rotası | Zimmetler | hedef=Zimmetler |
-| 1861 | Sayfa rotası | İadeler | hedef=İadeler |
-| 1862 | Sayfa rotası | Transferler | hedef=Transferler |
-| 1863 | Sayfa rotası | Rezervasyonlar | hedef=Rezervasyonlar |
-| 1864 | Sayfa rotası | Hareket geçmişi | hedef=Hareket geçmişi |
-| 1865 | Sayfa rotası | Yazılım lisansları | hedef=Yazılım lisansları |
-| 1866 | Sayfa rotası | Lisans atamaları | hedef=Lisans atamaları |
-| 1867 | Sayfa rotası | Lisanslarım | hedef=Lisanslarım |
-| 1868 | Sayfa rotası | Sözleşmeler | hedef=Sözleşmeler |
-| 1869 | Sayfa rotası | Garanti takibi | hedef=Garanti takibi |
-| 1870 | Sayfa rotası | Aksesuarlar | hedef=Aksesuarlar |
-| 1871 | Sayfa rotası | Siparişler | hedef=Siparişler |
-| 1872 | Sayfa rotası | Sarf malzemeleri | hedef=Sarf malzemeleri |
-| 1873 | Sayfa rotası | Stok talepleri | hedef=Stok talepleri |
-| 1874 | Sayfa rotası | Bileşenler | hedef=Bileşenler |
-| 1875 | Sayfa rotası | Hazır kitler | hedef=Hazır kitler |
-| 1876 | Sayfa rotası | Stok hareketleri | hedef=Stok hareketleri |
-| 1877 | Sayfa rotası | Çalışan kayıtları | hedef=Çalışan kayıtları |
-| 1878 | Sayfa rotası | Uygulama kullanıcıları | id=membersNav; hedef=Uygulama kullanıcıları |
-| 1879 | Sayfa rotası | Departmanlar | hedef=Departmanlar |
-| 1880 | Sayfa rotası | Yetki rolleri | hedef=Yetki rolleri |
-| 1881 | Sayfa rotası | Lokasyonlar | hedef=Lokasyonlar |
-| 1882 | Sayfa rotası | Binalar ve odalar | hedef=Binalar ve odalar |
-| 1883 | Sayfa rotası | Şirket birimleri | hedef=Şirket birimleri |
-| 1884 | Sayfa rotası | Bakım kayıtları | hedef=Bakım kayıtları |
-| 1885 | Sayfa rotası | Bakım planları | hedef=Bakım planları |
-| 1886 | Sayfa rotası | Denetimler | hedef=Denetimler |
-| 1887 | Sayfa rotası | Takvim | hedef=Takvim |
-| 1888 | Sayfa rotası | Görevler | hedef=Görevler |
-| 1889 | Sayfa rotası | Hazır raporlar | hedef=Hazır raporlar |
-| 1890 | Sayfa rotası | Özel rapor oluştur | hedef=Özel rapor oluştur |
-| 1891 | Sayfa rotası | Dışa aktarımlar | hedef=Dışa aktarımlar |
-| 1892 | Sayfa rotası | Tablodan içe aktar | hedef=Tablodan içe aktar |
-| 1893 | Sayfa rotası | Verileri dışa aktar | hedef=Verileri dışa aktar |
-| 1894 | Sayfa rotası | Yedekleme geçmişi | hedef=Yedekleme geçmişi |
-| 1895 | Sayfa rotası | Geri yükle | hedef=Geri yükle |
-| 1896 | Sayfa rotası | Firma profili | hedef=Firma profili |
-| 1897 | Sayfa rotası | Logo ve tema | hedef=Logo ve tema |
-| 1898 | Sayfa rotası | Bildirimler | hedef=Bildirimler |
-| 1899 | Sayfa rotası | Entegrasyonlar | hedef=Entegrasyonlar |
-| 1900 | Sayfa rotası | Güvenlik | hedef=Güvenlik |
-| 1901 | Sayfa rotası | Denetim kayıtları | hedef=Denetim kayıtları |
-| 1902 | Sayfa rotası | Destek | hedef=Destek |
-| 1903 | Sayfa rotası | Varlıklar | hedef=Varlıklar |
-| 1904 | Sayfa rotası | Hareket geçmişi | hedef=Hareket geçmişi |
-| 1905 | Sayfa rotası | Takvim | hedef=Takvim |
-| 1906 | Sayfa rotası | Hazır raporlar | hedef=Hazır raporlar |
-| 1907 | Sayfa rotası | Yazılım lisansları | type=button; hedef=Yazılım lisansları |
-| 1908 | Sayfa rotası | Varlıklar | type=button; hedef=Varlıklar |
+| 1664 | Form | (etiketsiz) |  |
+| 1665 | Form | assetCustomFieldForm | id=assetCustomFieldForm |
+| 1666 | Form | editAssetCustomFieldForm | id=editAssetCustomFieldForm |
+| 1667 | Form | bulkAssetActionForm | id=bulkAssetActionForm |
+| 1668 | Modal | Kapat | id=employeeHandoverDialog; type=button; başlangıçta gizli |
+| 1669 | Modal | Kapat | id=maintenanceAttachmentDialog; type=button; name=file; başlangıçta gizli |
+| 1670 | Modal | Kapat | id=companyUnitDialog; type=button; name=id; başlangıçta gizli |
+| 1671 | Modal | Kapat | id=inventoryRequestActionDialog; type=button; name=note |
+| 1672 | Modal | Kapat | id=reservationActionDialog; type=button; name=note |
+| 1673 | Modal | Kapat | id=integrationSecretDialog; type=button |
+| 1674 | Modal | Kapat | id=companyRoleDialog; type=button; name=roleKey; başlangıçta gizli |
+| 1675 | Modal | Kapat | id=deactivateCompanyRoleDialog; type=button |
+| 1676 | Modal | Kapat | id=licenseRevokeDialog; type=button |
+| 1677 | Modal | Kapat | id=licenseImportProfileDeleteDialog; type=button |
+| 1678 | Modal | Kapat | id=commandPaletteDialog; type=button |
+| 1679 | Modal | Kapat | id=keyboardShortcutsDialog; type=button |
+| 1680 | Modal | Kapat | id=contractFormDialog; type=button; name=id; başlangıçta gizli |
+| 1681 | Modal | Kapat | id=contractDetailDialog; type=button; başlangıçta gizli |
+| 1682 | Modal | Kapat | id=contractActionDialog; type=button |
+| 1683 | Modal | Kapat | id=appearanceDialog; type=button |
+| 1684 | Modal | Kapat | id=assetDialog; type=button; name=note; başlangıçta gizli |
+| 1685 | Modal | Kapat | id=assetAuditDialog; type=button; name=auditDate; başlangıçta gizli |
+| 1686 | Modal | Kapat | id=assetAuditScheduleDialog; type=button; name=nextAuditOn |
+| 1687 | Modal | Kapat | id=maintenanceStartDialog; type=button; name=maintenanceType; başlangıçta gizli |
+| 1688 | Modal | Kapat | id=maintenanceCompleteDialog; type=button; name=completedOn |
+| 1689 | Modal | Kapat | id=assetTransferDialog; type=button; name=targetLocation |
+| 1690 | Modal | Kapat | id=editAssetDialog; type=button; name=expectedUpdatedAt; başlangıçta gizli |
+| 1691 | Modal | Kapat | id=assignDialog; type=button; name=employeeId |
+| 1692 | Modal | Kapat | id=newEmployeeDialog; type=button; name=displayName |
+| 1693 | Modal | Kapat | id=employeeImportDialog; type=button; başlangıçta gizli |
+| 1694 | Modal | Kapat | id=consumableImportDialog; type=button; başlangıçta gizli |
+| 1695 | Modal | Kapat | id=accessoryImportDialog; type=button; başlangıçta gizli |
+| 1696 | Modal | Kapat | id=editEmployeeDialog; type=button; name=displayName |
+| 1697 | Modal | Kapat | id=employeeActionDialog; type=button |
+| 1698 | Modal | Kapat | id=textEntryDialog; type=button; name=value |
+| 1699 | Modal | Kapat | id=employeeDialog; type=button; başlangıçta gizli |
+| 1700 | Modal | Kapat | id=inviteMemberDialog; type=button; name=fullName |
+| 1701 | Modal | Kapat | id=memberLocationAccessDialog; type=button; name=userId; başlangıçta gizli |
+| 1702 | Modal | Kapat | id=newAssetDialog; type=button; name=assetName |
+| 1703 | Modal | Kapat | id=dashboardCustomizeDialog; type=button; name=widget |
+| 1704 | Modal | Kapat | id=forgotPasswordDialog; type=button; name=email |
+| 1705 | Modal | Kapat | id=importPreviewDialog; type=button; başlangıçta gizli |
+| 1706 | Modal | Kapat | id=accessoryDialog; type=button |
+| 1707 | Modal | Kapat | id=accessoryCheckinDialog; type=button; name=quantity; başlangıçta gizli |
+| 1708 | Modal | Kapat | id=accessoryOrderDetailDialog; type=button; name=file; başlangıçta gizli |
+| 1709 | Modal | Kapat | id=accessoryOrderCreateDialog; type=button; name=orderNumber |
+| 1710 | Modal | Kapat | id=stockOrderCreateDialog; type=button; name=orderNumber |
+| 1711 | Modal | Kapat | id=stockOrderDetailDialog; type=button; name=file; başlangıçta gizli |
+| 1712 | Modal | Kapat | id=stockOrderReceiveDialog; type=button; name=receivedOn |
+| 1713 | Modal | Kapat | id=stockOrderKitTemplateDialog; type=button; name=name |
+| 1714 | Modal | Kapat | id=assetOrderBudgetDialog; type=button; name=year |
+| 1715 | Modal | Kapat | id=assetOrderCreateDialog; type=button; name=orderNumber |
+| 1716 | Modal | Kapat | id=assetOrderDetailDialog; type=button; başlangıçta gizli |
+| 1717 | Modal | Kapat | id=assetOrderReceiveDialog; type=button; name=receivedOn |
+| 1718 | Modal | Kapat | id=accessoryOrderReceiveDialog; type=button; name=receivedOn |
+| 1719 | Modal | Kapat | id=consumableDialog; type=button |
+| 1720 | Modal | Kapat | id=consumableFormDialog; type=button; name=id; başlangıçta gizli |
+| 1721 | Modal | Kapat | id=consumableStockDialog; type=button; name=quantity |
+| 1722 | Modal | Kapat | id=consumableCheckoutDialog; type=button; name=employeeId |
+| 1723 | Modal | Kapat | id=licenseDialog; type=button; name=file; başlangıçta gizli |
+| 1724 | Modal | Kapat | id=licensePurchaseOrderFormDialog; type=button; name=id; başlangıçta gizli |
+| 1725 | Modal | Kapat | id=licenseFormDialog; type=button; name=id; başlangıçta gizli |
+| 1726 | Modal | Kapat | id=licenseImportDialog; type=button; başlangıçta gizli |
+| 1727 | Modal | Kapat | id=licenseActionDialog; type=button; başlangıçta gizli |
+| 1728 | Modal | Kapat | id=licenseAssignDialog; type=button; name=eulaAccepted; başlangıçta gizli |
+| 1729 | Modal | Kapat | id=componentActionDialog; type=button |
+| 1730 | Modal | Kapat | id=componentDialog; type=button |
+| 1731 | Modal | Kapat | id=componentImportDialog; type=button; başlangıçta gizli |
+| 1732 | Modal | Kapat | id=componentFormDialog; type=button; name=id; başlangıçta gizli |
+| 1733 | Modal | quantity | id=componentStockDialog; type=button; name=quantity |
+| 1734 | Modal | assetId | id=componentAllocateDialog; type=button; name=assetId |
+| 1735 | Modal | Kapat | id=componentRemoveDialog; type=button; name=allocationId; başlangıçta gizli |
+| 1736 | Modal | Kapat | id=accessoryKitFormDialog; type=button; name=id; başlangıçta gizli |
+| 1737 | Modal | Kapat | id=accessoryKitHistoryDialog; type=button |
+| 1738 | Modal | Kapat | id=accessoryKitActionDialog; type=button |
+| 1739 | Modal | Kapat | id=accessoryFormDialog; type=button; name=accessoryId; başlangıçta gizli |
+| 1740 | Modal | Kapat | id=accessoryCategoryManagerDialog; type=button |
+| 1741 | Modal | Kapat | id=accessoryStockDialog; type=button; name=quantity |
+| 1742 | Modal | Kapat | id=accessoryCheckoutDialog; type=button; name=targetType; başlangıçta gizli |
+| 1743 | Modal | Kapat | id=scanAssetDialog; type=button; name=code; başlangıçta gizli |
+| 1744 | Modal | Kapat | id=directoryRenameDialog; type=button; name=kind; başlangıçta gizli |
+| 1745 | Modal | Kapat | id=createDepartmentDialog; type=button; name=name |
+| 1746 | Modal | Kapat | id=departmentMoveDialog; type=button; name=targetDepartmentId |
+| 1747 | Modal | Kapat | id=createLocationDialog; type=button; name=parentLocationId |
+| 1748 | Modal | Kapat | id=locationManagerDialog; type=button; name=locationId; başlangıçta gizli |
+| 1749 | Modal | Kapat | id=departmentManagerDialog; type=button; name=departmentId; başlangıçta gizli |
+| 1750 | Modal | Kapat | id=quickLookupDialog; type=button; name=name; başlangıçta gizli |
+| 1751 | Modal | Kapat | id=returnAssetDialog; type=button; name=note; başlangıçta gizli |
+| 1752 | Modal | Kapat | id=assetTrashConfirmDialog; type=button; name=note |
+| 1753 | Modal | Kapat | id=assetStatusDialog; type=button; name=note; başlangıçta gizli |
+| 1754 | Modal | Kapat | id=assetAttachmentRemoveDialog; type=button; başlangıçta gizli |
+| 1755 | Modal | Kapat | id=savedAssetSearchDialog; type=button; name=name; başlangıçta gizli |
+| 1756 | Modal | Kapat | id=companyMfaEnrollmentDialog; type=button; name=code; başlangıçta gizli |
+| 1757 | Modal | Kapat | id=supplierCatalogDialog; type=button; name=id; başlangıçta gizli |
+| 1758 | Modal | Kapat | id=companySwitchDialog; type=button |
+| 1759 | Modal | Kapat | id=accountPhotoDialog; type=button; hedef=/api/session/data-export; başlangıçta gizli |
+| 1760 | Modal | Kapat | id=accountTwoFactorDialog; type=button; başlangıçta gizli |
+| 1761 | Modal | Kapat | id=inventoryRequestDialog; type=button; name=itemType; başlangıçta gizli |
+| 1762 | Modal | Kapat | id=assetTrashDialog; type=button |
+| 1763 | Modal | Görsel önizleme | id=imagePreviewDialog; type=button |
+| 1764 | Modal | Kapat | id=modelDetailsDialog; type=button |
+| 1765 | Modal | Kapat | id=modelAttachmentsDialog; type=button; name=file; başlangıçta gizli |
+| 1766 | Modal | Varlık etiketi yazdırma önizlemesi | id=assetLabelPreviewDialog; type=button |
+| 1767 | Modal | Kapat | id=purchaseOrderReturnDialog; type=button; name=returnedOn |
+| 1768 | Modal | Kapat | id=editAssetCustomFieldDialog; type=button; name=name |
+| 1769 | Tablo | Bu sayfadaki seçilebilir varlıkları seç | id=selectAllAssetsHeader; type=checkbox |
+| 1770 | Tablo | Şirket çalışan kayıtları | id=employeeRows |
+| 1771 | Tablo | directoryHead | id=directoryHead |
+| 1772 | Tablo | Şirket birimleri | id=companyUnitRows |
+| 1773 | Tablo | Şirket aksesuar stokları | id=accessoryRows |
+| 1774 | Tablo | Aksesuar satın alma siparişleri | id=accessoryOrderRows |
+| 1775 | Tablo | Şirketin aksesuar hazır kitleri | id=accessoryKitRows |
+| 1776 | Tablo | Sarf malzemeleri ve kullanılabilir stok miktarları | id=consumableRows |
+| 1777 | Tablo | Kalem / Tür / Konum / Kalan / | id=requestCatalogRows |
+| 1778 | Tablo | Çalışan / talep eden / Kalem / Adet / Durum / İşlem | id=requestRows |
+| 1779 | Tablo | Lisans / Yayıncı / sürüm / Tür / Kullanılan koltuk / Bitiş tarihi / Yenileme / İşlem | id=licenseRows |
+| 1780 | Tablo | Lisans / Çalışan / varlık / Personel no / Atanma tarihi / Bitiş tarihi / Durum / İşlem | id=licenseAssignmentRows |
+| 1781 | Tablo | Seç / Bileşen / Kategori / model / Seri / ürün no / Toplam / Atanmış / Kullanılabilir / Minimum / Garanti bitişi / İşlem | id=componentRows |
+| 1782 | Tablo | Şirket stok hareketleri | id=inventoryMovementRows |
+| 1783 | Tablo | Kullanıcı / E-posta / Çalışan profili / Rol / Üyelik tarihi / İşlem | id=membersRows |
+| 1784 | Tablo | Ad / İlişki / Kullanım / İşlemler | id=catalogRelationHead |
+| 1785 | Tablo | Şirketin aktif varlık zimmetleri | id=assignmentRows |
+| 1786 | Tablo | Beklenen ve geciken varlık iadeleri | id=returnsRows |
+| 1787 | Tablo | Tarih / Varlık / İşlem / Çalışan / İşlemi yapan / Açıklama | id=activityTableRows |
+| 1788 | Tablo | Varlık / Çalışan / Kullanım dönemi / Durum / Talep eden / Not / karar / İşlemler | id=reservationRows |
+| 1789 | Tablo | Plan tarihi / Etiket / Varlık / Konum / Zimmetli çalışan / Durum / | id=auditScheduleDateHeading |
+| 1790 | Tablo | Tarih / İşlemi yapan / Kayıt türü / İşlem / Ayrıntı | id=auditRows |
+| 1791 | Tablo | Şirket sözleşmeleri | id=contractRows |
+| 1792 | Tablo | Şirket görevleri | id=taskRows |
+| 1793 | Tablo | Destek talepleri | id=supportRows |
+| 1794 | Tablo | Kullanıcı API anahtarları | id=integrationTokenRows |
+| 1795 | Tablo | Şirket bakım kayıtları | id=maintenanceRows |
+| 1796 | Tablo | Şirket bakım, denetim, lisans, garanti, iade ve rezervasyon takvimi | id=calendarRows |
+| 1797 | Tablo | Durum / Varlık / İşlem | id=reportStatusRows |
+| 1798 | Tablo | Para birimi / Kayıt / Toplam alış bedeli | id=reportCostRows |
+| 1799 | Tablo | Kategori / Toplam / Atanmış / Kullanılabilir / Bakımda / İşlem | id=reportCategoryRows |
+| 1800 | Tablo | Alış tarihi / Etiket / Varlık / Seri no / Kategori / Durum / Bedel / Konum | id=assetPurchaseReportRows |
+| 1801 | Tablo | Kategori / Bileşen / Toplam adet / Atanmış adet / Kullanılabilir adet / Düşük stok kaydı | id=componentReportRows |
+| 1802 | Tablo | Tarih / Sonuç / Etiket / Varlık / Konum / Denetimi yapan / Açıklama / bulgu | id=auditReportRows |
+| 1803 | Tablo | Garanti bitişi / Etiket / Varlık / Durum / Konum / Zimmetli çalışan | id=warrantyReportRows |
+| 1804 | Tablo | Tür / Kayıt | id=maintenanceReportTypes |
+| 1805 | Tablo | Para birimi / Kayıt / Toplam | id=maintenanceReportCosts |
+| 1806 | Tablo | Bitiş tarihi / Lisans / Yayıncı / sürüm / Tür / Koltuk kullanımı / Otomatik yenileme / Tedarikçi | id=licenseReportRows |
+| 1807 | Tablo | Şirketin bekleyen satın alma siparişi kalemleri | id=pendingDeliveryRows |
+| 1808 | Tablo | Varlıkların tahmini amortisman değerleri | id=depreciationReportRows |
+| 1809 | Tablo | Sarf ve bileşen satın alma siparişleri | id=stockOrderRows |
+| 1810 | Tablo | Tüm şirket satın alma kayıtları | id=purchaseOverviewRows |
+| 1811 | Tablo | Varlık satın alma siparişleri | id=assetOrderRows |
+| 1812 | Tablo | roleAccessCaption | id=roleAccessCaption |
+| 1813 | Tablo | Aksesuar / Kalan / verilen / Teslim / Not | id=assetAccessoryAssignments |
+| 1814 | Tablo | Bileşen / Kalan / verilen / Takılma / Not | id=assetComponentAllocations |
+| 1815 | Tablo | Lisans / Tür / Bitiş / Atanma / Not | id=assetLicenseAssignments |
+| 1816 | Tablo | İlişki / Etiket / Varlık / Durum | id=assetLinkedRows |
+| 1817 | Tablo | Çalışan / Departman / Zimmet | id=employeeDirectReports |
+| 1818 | Tablo | Varlık / Durum / Konum | id=employeeAssetRows |
+| 1819 | Tablo | Aksesuar / Verilen / İade / Kalan / Tarih | id=employeeAccessoryRows |
+| 1820 | Tablo | Lisans / Yayıncı / sürüm / Atandığı tarih / Bitiş | id=employeeLicenseRows |
+| 1821 | Tablo | Malzeme / Miktar / Tarih / Not | id=employeeConsumableRows |
+| 1822 | Tablo | Varlık / Bakım türü / Servis / Durum / Tarih | id=employeeMaintenanceRows |
+| 1823 | Tablo | Sipariş no / Tedarikçi / tarih / Adet / Durum | id=accessoryOrderHistoryRows |
+| 1824 | Tablo | Çalışan / Verilen / İade / Kalan / İşlem | id=accessoryAssignments |
+| 1825 | Tablo | Aksesuar / Sipariş / Teslim alınan / Kalan / Fatura birim bedeli / Edinim birim bedeli / Toplam | id=accessoryOrderDetailLines |
+| 1826 | Tablo | Kalem / Sipariş / Teslim alınan / Kalan / Fatura birim bedeli / Edinim birim bedeli / Toplam | id=stockOrderDetailLines |
+| 1827 | Tablo | Cihaz / Kategori / Hedef konum / Sipariş / Teslim alındı / Kalan / Fatura birim bedeli / Edinim birim bedeli | id=assetOrderDetailLines |
+| 1828 | Tablo | Etiket / cihaz / Durum / Seri numarası / Alış tarihi | id=assetOrderReceivedAssets |
+| 1829 | Tablo | Tarih / İşlem / Miktar / Çalışan / İşlemi yapan / Not | id=consumableMovements |
+| 1830 | Tablo | Tedarikçi / Sipariş no. / Tarih / Koltuk / Birim maliyeti / Durum / İşlemler | id=licensePurchaseOrderRows |
+| 1831 | Tablo | Çalışan / varlık / Personel no / Atanma / EULA sürümü / EULA teyit zamanı / Teyit eden / Durum / İşlem | id=licenseAssignments |
+| 1832 | Tablo | Varlık / Verilen / Çıkarılan / Kalan / Tarih / İşlem | id=componentAllocations |
+| 1833 | Tablo | Tarih / Kalem / Teslim edilen / İade edilen / Kalan / Hedef / İşlemi yapan / Not | id=accessoryKitHistoryRows |
+| 1834 | Tablo | Kategori / Aksesuar / Durum / İşlemler | id=accessoryCategoryRows |
+| 1835 | Tablo | Firma / Yetkili / iletişim / Bağlı kayıt / Durum / İşlemler | id=supplierCatalogRows |
+| 1836 | Tablo | Etiket / Varlık / Seri numarası / Taşınma zamanı / İşlem | id=assetTrashRows |
+| 1837 | Tablo | Etiket / Varlık / Durum / Seri no / Çalışan / konum | id=modelDetailsAssets |
+| 1838 | Tablo | Sipariş / Tedarikçi / Durum / Tarih / Adet / Teslim alınan | id=modelDetailsOrders |
+| 1839 | Tablo | Tarih / İşlem / Açıklama | id=modelDetailsHistory |
+| 1840 | Tablo | Dosya / Tür / Boyut / Yüklenme / İşlem | id=modelAttachmentRows |
+| 1841 | Tablo | (etiketsiz) | başlangıçta gizli |
+| 1842 | Tablo | Etiket / Varlık / Seri no / Durum / Konum |  |
+| 1843 | Tablo | Aksesuar / Model / Kalan adet / Teslim tarihi |  |
+| 1844 | Tablo | Lisans / EULA sürümü / Dosya / ek kimliği / Kabul eden / tarih / EULA SHA-256 / Durum |  |
+| 1845 | Tablo | ${escapeHtml(translateUiText('Uygulama'))} / ${escapeHtml(translateUiText('Yayıncı'))} / ${escapeHtml(translateUiText('Sürüm'))} / ${escapeHtml(translateUiText('Mimari'))} / ${escapeHtml(translateUiText('Kurulum tarihi'))} / ${escapeHtml(translateUiText('Son görülme'))} | id=assetSoftwareInventoryRows |
+| 1846 | Tablo | Alan / Anahtar / Grup / Kapsam / Tür / Zorunlu / Durum / İşlem | id=assetCustomFieldRows |
+| 1847 | Sekme | assetTabOverviewButton | id=assetTabOverviewButton; type=button |
+| 1848 | Sekme | assetTabRelationsButton | id=assetTabRelationsButton; type=button |
+| 1849 | Sekme | assetTabMaintenanceButton | id=assetTabMaintenanceButton; type=button |
+| 1850 | Sekme | assetTabHistoryButton | id=assetTabHistoryButton; type=button |
+| 1851 | Sekme | assetTabAttachmentsButton | id=assetTabAttachmentsButton; type=button |
+| 1852 | Sayfa rotası | Genel Bakış | hedef=Genel Bakış |
+| 1853 | Sayfa rotası | Varlıklar | hedef=Varlıklar |
+| 1854 | Sayfa rotası | Tüm satın almalar | hedef=Tüm satın almalar |
+| 1855 | Sayfa rotası | Varlık siparişleri | hedef=Varlık siparişleri |
+| 1856 | Sayfa rotası | Varlık modelleri | hedef=Varlık modelleri |
+| 1857 | Sayfa rotası | Markalar | hedef=Markalar |
+| 1858 | Sayfa rotası | Kategoriler | hedef=Kategoriler |
+| 1859 | Sayfa rotası | Durum etiketleri | hedef=Durum etiketleri |
+| 1860 | Sayfa rotası | QR ve barkodlar | hedef=QR ve barkodlar |
+| 1861 | Sayfa rotası | Zimmetler | hedef=Zimmetler |
+| 1862 | Sayfa rotası | İadeler | hedef=İadeler |
+| 1863 | Sayfa rotası | Transferler | hedef=Transferler |
+| 1864 | Sayfa rotası | Rezervasyonlar | hedef=Rezervasyonlar |
+| 1865 | Sayfa rotası | Hareket geçmişi | hedef=Hareket geçmişi |
+| 1866 | Sayfa rotası | Yazılım lisansları | hedef=Yazılım lisansları |
+| 1867 | Sayfa rotası | Lisans atamaları | hedef=Lisans atamaları |
+| 1868 | Sayfa rotası | Lisanslarım | hedef=Lisanslarım |
+| 1869 | Sayfa rotası | Sözleşmeler | hedef=Sözleşmeler |
+| 1870 | Sayfa rotası | Garanti takibi | hedef=Garanti takibi |
+| 1871 | Sayfa rotası | Aksesuarlar | hedef=Aksesuarlar |
+| 1872 | Sayfa rotası | Siparişler | hedef=Siparişler |
+| 1873 | Sayfa rotası | Sarf malzemeleri | hedef=Sarf malzemeleri |
+| 1874 | Sayfa rotası | Stok talepleri | hedef=Stok talepleri |
+| 1875 | Sayfa rotası | Bileşenler | hedef=Bileşenler |
+| 1876 | Sayfa rotası | Hazır kitler | hedef=Hazır kitler |
+| 1877 | Sayfa rotası | Stok hareketleri | hedef=Stok hareketleri |
+| 1878 | Sayfa rotası | Çalışan kayıtları | hedef=Çalışan kayıtları |
+| 1879 | Sayfa rotası | Uygulama kullanıcıları | id=membersNav; hedef=Uygulama kullanıcıları |
+| 1880 | Sayfa rotası | Departmanlar | hedef=Departmanlar |
+| 1881 | Sayfa rotası | Yetki rolleri | hedef=Yetki rolleri |
+| 1882 | Sayfa rotası | Lokasyonlar | hedef=Lokasyonlar |
+| 1883 | Sayfa rotası | Binalar ve odalar | hedef=Binalar ve odalar |
+| 1884 | Sayfa rotası | Şirket birimleri | hedef=Şirket birimleri |
+| 1885 | Sayfa rotası | Bakım kayıtları | hedef=Bakım kayıtları |
+| 1886 | Sayfa rotası | Bakım planları | hedef=Bakım planları |
+| 1887 | Sayfa rotası | Denetimler | hedef=Denetimler |
+| 1888 | Sayfa rotası | Takvim | hedef=Takvim |
+| 1889 | Sayfa rotası | Görevler | hedef=Görevler |
+| 1890 | Sayfa rotası | Hazır raporlar | hedef=Hazır raporlar |
+| 1891 | Sayfa rotası | Özel rapor oluştur | hedef=Özel rapor oluştur |
+| 1892 | Sayfa rotası | Dışa aktarımlar | hedef=Dışa aktarımlar |
+| 1893 | Sayfa rotası | Tablodan içe aktar | hedef=Tablodan içe aktar |
+| 1894 | Sayfa rotası | Verileri dışa aktar | hedef=Verileri dışa aktar |
+| 1895 | Sayfa rotası | Yedekleme geçmişi | hedef=Yedekleme geçmişi |
+| 1896 | Sayfa rotası | Geri yükle | hedef=Geri yükle |
+| 1897 | Sayfa rotası | Firma profili | hedef=Firma profili |
+| 1898 | Sayfa rotası | Logo ve tema | hedef=Logo ve tema |
+| 1899 | Sayfa rotası | Bildirimler | hedef=Bildirimler |
+| 1900 | Sayfa rotası | Entegrasyonlar | hedef=Entegrasyonlar |
+| 1901 | Sayfa rotası | Güvenlik | hedef=Güvenlik |
+| 1902 | Sayfa rotası | Denetim kayıtları | hedef=Denetim kayıtları |
+| 1903 | Sayfa rotası | Destek | hedef=Destek |
+| 1904 | Sayfa rotası | Varlıklar | hedef=Varlıklar |
+| 1905 | Sayfa rotası | Hareket geçmişi | hedef=Hareket geçmişi |
+| 1906 | Sayfa rotası | Takvim | hedef=Takvim |
+| 1907 | Sayfa rotası | Hazır raporlar | hedef=Hazır raporlar |
+| 1908 | Sayfa rotası | Yazılım lisansları | type=button; hedef=Yazılım lisansları |
 | 1909 | Sayfa rotası | Varlıklar | type=button; hedef=Varlıklar |
-| 1910 | Sayfa rotası | Çalışan kayıtları | type=button; hedef=Çalışan kayıtları |
-| 1911 | Sayfa rotası | Aksesuarlar | type=button; hedef=Aksesuarlar |
-| 1912 | Sayfa rotası | Sarf malzemeleri | type=button; hedef=Sarf malzemeleri |
-| 1913 | Sayfa rotası | Bileşenler | type=button; hedef=Bileşenler |
-| 1914 | Sayfa rotası | Yazılım lisansları | type=button; hedef=Yazılım lisansları |
-| 1915 | Sayfa rotası | Genel Bakış | type=button; hedef=Genel Bakış |
-| 1916 | Menü grubu | inventory | hedef=inventory |
-| 1917 | Menü grubu | movement | hedef=movement |
-| 1918 | Menü grubu | software | hedef=software |
-| 1919 | Menü grubu | supplies | hedef=supplies |
-| 1920 | Menü grubu | people | hedef=people |
-| 1921 | Menü grubu | places | hedef=places |
-| 1922 | Menü grubu | operations | hedef=operations |
-| 1923 | Menü grubu | reports | hedef=reports |
-| 1924 | Menü grubu | data | hedef=data |
-| 1925 | Menü grubu | settings | hedef=settings |
+| 1910 | Sayfa rotası | Varlıklar | type=button; hedef=Varlıklar |
+| 1911 | Sayfa rotası | Çalışan kayıtları | type=button; hedef=Çalışan kayıtları |
+| 1912 | Sayfa rotası | Aksesuarlar | type=button; hedef=Aksesuarlar |
+| 1913 | Sayfa rotası | Sarf malzemeleri | type=button; hedef=Sarf malzemeleri |
+| 1914 | Sayfa rotası | Bileşenler | type=button; hedef=Bileşenler |
+| 1915 | Sayfa rotası | Yazılım lisansları | type=button; hedef=Yazılım lisansları |
+| 1916 | Sayfa rotası | Genel Bakış | type=button; hedef=Genel Bakış |
+| 1917 | Menü grubu | inventory | hedef=inventory |
+| 1918 | Menü grubu | movement | hedef=movement |
+| 1919 | Menü grubu | software | hedef=software |
+| 1920 | Menü grubu | supplies | hedef=supplies |
+| 1921 | Menü grubu | people | hedef=people |
+| 1922 | Menü grubu | places | hedef=places |
+| 1923 | Menü grubu | operations | hedef=operations |
+| 1924 | Menü grubu | reports | hedef=reports |
+| 1925 | Menü grubu | data | hedef=data |
+| 1926 | Menü grubu | settings | hedef=settings |
 
 ### Platform yönetimi — `src/EnvanterTR.Web/wwwroot/platform-admin.html`
 

@@ -25,6 +25,10 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Verify the static UI inventory matches the source
+        shell: bash
+        run: node tools/Generate-UiInventory.mjs --check
+
       - name: Verify user interface locale dictionary coverage
         shell: bash
         run: node tools/Verify-UiLocales.mjs
