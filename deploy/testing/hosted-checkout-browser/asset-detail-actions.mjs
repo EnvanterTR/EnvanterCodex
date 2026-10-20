@@ -2419,10 +2419,18 @@ try {
   assert.ok(requests.some(item => item.path === '/api/reports/warranties' && item.query.state === 'expired' && item.query.page === '1'),
     'The expired warranty filter must reload page one through the company report API.');
   await page.locator('#warrantyReportState').selectOption('upcoming');
+  const expectedWarrantyThrough = await page.evaluate(() => {
+    const today = new Date();
+    return new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 30)).toISOString().slice(0, 10);
+  });
+  const warrantyHorizonResponse = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname === '/api/reports/warranties' && url.searchParams.get('state') === 'upcoming'
+      && url.searchParams.get('through') === expectedWarrantyThrough;
+  });
   await page.locator('#warrantyReportHorizon').selectOption('30');
-  const warrantyHorizonRequest = requests.findLast(item => item.path === '/api/reports/warranties' && item.query.state === 'upcoming' && item.query.through);
-  assert.ok(warrantyHorizonRequest && warrantyHorizonRequest.query.through === new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
-    'Selecting 30 days must send a matching horizon to the API.');
+  assert.equal((await warrantyHorizonResponse).status(), 200,
+    'Selecting 30 days must successfully load the exact matching horizon from the API.');
   const warrantySearchRequest = page.waitForRequest(request => {
     const url = new URL(request.url());
     return url.pathname === '/api/reports/warranties' && url.searchParams.get('q') === 'QA-WARRANTY-UPCOMING';
@@ -2434,14 +2442,30 @@ try {
     'Warranty search must reach the report API.');
 
   await page.locator('#warrantyReportSearch').fill('');
+  const allWarrantiesResponse = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname === '/api/reports/warranties' && url.searchParams.get('state') === 'all'
+      && url.searchParams.get('page') === '1' && !url.searchParams.has('q');
+  });
   await page.locator('#warrantyReportState').selectOption('all');
+  await allWarrantiesResponse;
   await page.locator('#warrantyReportRows tr').filter({ hasText: 'QA-WARRANTY-001' }).waitFor();
   assert.equal(await page.locator('#warrantyReportNext').isDisabled(), false, 'The warranty report must enable paging when more than 50 records match.');
+  const warrantyNextPageResponse = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname === '/api/reports/warranties' && url.searchParams.get('state') === 'all' && url.searchParams.get('page') === '2';
+  });
   await page.locator('#warrantyReportNext').click();
+  await warrantyNextPageResponse;
   await page.locator('#warrantyReportRows').getByText('QA-WARRANTY-051').waitFor();
   assert.ok(requests.some(item => item.path === '/api/reports/warranties' && item.query.page === '2' && item.query.state === 'all'),
     'Warranty pagination must request the next page with current filters.');
+  const warrantyPreviousPageResponse = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname === '/api/reports/warranties' && url.searchParams.get('state') === 'all' && url.searchParams.get('page') === '1';
+  });
   await page.locator('#warrantyReportPrev').click();
+  await warrantyPreviousPageResponse;
   await page.locator('#warrantyReportRows').getByText('QA-WARRANTY-001').waitFor();
   await page.locator('#warrantyReportState').selectOption('later');
   await page.locator('#warrantyReportSearch').fill('QA-WARRANTY-LATER');
