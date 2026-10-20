@@ -4,7 +4,8 @@ COPY global.json ./
 COPY src/EnvanterTR.Web/EnvanterTR.Web.csproj src/EnvanterTR.Web/
 RUN dotnet restore src/EnvanterTR.Web/EnvanterTR.Web.csproj
 COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
-RUN dotnet publish src/EnvanterTR.Web/EnvanterTR.Web.csproj -c Release --no-restore -o /out
+RUN dotnet publish src/EnvanterTR.Web/EnvanterTR.Web.csproj -c Release --no-restore -o /out \
+    && chmod -R a+rX /out
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app

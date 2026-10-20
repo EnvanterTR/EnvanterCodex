@@ -312,7 +312,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # A private checkout must not leave published files unreadable by APP_UID.
+          chmod 600 src/EnvanterTR.Web/wwwroot/vendor/qrcodegen.js
           docker build --tag envantertr-web-ci --file Dockerfile .
+          docker run --rm --entrypoint sh envantertr-web-ci -c 'test -r /app/wwwroot/vendor/qrcodegen.js'
           docker run --rm --entrypoint sh envantertr-web-ci -c 'ldconfig -p | grep -q "libgssapi_krb5.so.2"'
           container_id="$(docker create envantertr-web-ci)"
           trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
