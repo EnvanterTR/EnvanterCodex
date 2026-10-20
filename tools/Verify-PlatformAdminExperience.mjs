@@ -205,8 +205,12 @@ assert.match(browserAcceptance, /systemHealthReads[\s\S]*?\/api\/platform\/syste
 assert.match(api, /activeSince = now\.AddMinutes\(-5\)[\s\S]*?activeUserCount = await activeSessionsQuery\.Select\(x => x\.UserId\)\.Distinct\(\)\.CountAsync[\s\S]*?loginSince = now\.AddHours\(-24\)[\s\S]*?recentLoginQuery\.Select\(x => x\.UserId\)\.Distinct\(\)\.CountAsync[\s\S]*?session\.IpAddress[\s\S]*?\.Take\(10\)\.ToListAsync/,
   'Platform overview reports distinct active users, 24-hour logins, and only the ten newest session rows from stored sessions.');
 assert.match(page, /id="recentLoginTable"[\s\S]*?function renderRecentLogins\([\s\S]*?IP[\s\S]*?data-recent-login-email[\s\S]*?Aktif kullanıcı · 5 dk[\s\S]*?Giriş yapan hesap · 24 sa/);
-assert.match(acceptance, /Platform_overview_reports_active_users_24_hour_logins_and_last_ten_sessions[\s\S]*?baselineActiveUsers[\s\S]*?baselineLoginSessions[\s\S]*?GetProperty\("recentLogins"\)\.GetArrayLength\(\) <= 10/,
-  'Session metrics acceptance checks isolated-database baselines and the ten-row limit.');
+assert.match(api, /orderby session\.CreatedAt descending, session\.Id descending/,
+  'Recent sessions use a deterministic identifier tie-breaker for equal timestamps.');
+assert.match(acceptance, /Platform_overview_reports_active_users_24_hour_logins_and_last_ten_sessions[\s\S]*?Enumerable\.Range\(0, 6\)[\s\S]*?sessionSnapshot[\s\S]*?GetProperty\("generatedAt"\)[\s\S]*?expectedActive[\s\S]*?expectedLogins[\s\S]*?expectedRecent[\s\S]*?Assert\.Equal\(10, recentLogins\.Length\)/,
+  'Session metrics acceptance includes newer competing sessions, evaluates windows at the API timestamp, and checks all ten global results.');
+assert.match(acceptance, /ThenByDescending\(session => session\.Id\.ToString\("D"\), StringComparer\.Ordinal\)[\s\S]*?loginUsers\[expected\.UserId\]\.Email[\s\S]*?expected\.PlatformAdmin[\s\S]*?expected\.IpAddress[\s\S]*?expected\.CreatedAt[\s\S]*?expected\.RevokedAt/,
+  'Every returned recent-session projection is checked against the independent stored-session snapshot.');
 assert.match(browserAcceptance, /activeUsers: 3[\s\S]*?qa-owner@example\.invalid[\s\S]*?192\.0\.2\.10[\s\S]*?Hesabı aç[\s\S]*?memberSearch/,
   'Browser acceptance verifies rendered session metrics, IP, and opening an account from the recent-login table.');
 assert.match(api, /var recentPayments = await \(from order in db\.CompanyCheckoutOrders\.AsNoTracking\(\)[\s\S]*?join plan in db\.SubscriptionPlans\.AsNoTracking\(\)[\s\S]*?orderby \(order\.PaidAt \?\? order\.CreatedAt\) descending[\s\S]*?order\.Status[\s\S]*?\.Take\(10\)\.ToListAsync/,

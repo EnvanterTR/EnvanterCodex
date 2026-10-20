@@ -352,7 +352,7 @@ public static class PlatformEndpoints
                 join user in db.Users.AsNoTracking() on session.UserId equals user.Id
                 join sessionCompany in db.Companies.AsNoTracking() on session.CompanyId equals (Guid?)sessionCompany.Id into companiesForSession
                 from company in companiesForSession.DefaultIfEmpty()
-                orderby session.CreatedAt descending
+                orderby session.CreatedAt descending, session.Id descending
                 select new
                 {
                     user.DisplayName,

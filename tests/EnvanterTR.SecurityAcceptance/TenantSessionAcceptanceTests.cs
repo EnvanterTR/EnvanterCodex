@@ -4691,17 +4691,15 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
+            var contextTime = DateTimeOffset.UtcNow.AddSeconds(-30);
+            db.UserSessions.AddRange(Enumerable.Range(0, 6).Select(index => new UserSession
+            {
+                UserId = _userId, CompanyId = _companyId,
+                IpAddress = $"203.0.113.{50 + index}", UserAgent = $"Recent context browser {index}",
+                CreatedAt = contextTime, LastSeenAt = contextTime, ExpiresAt = contextTime.AddHours(1)
+            }));
             await db.SaveChangesAsync();
         }
-
-        using var baselineResponse = await SendAsPlatformAdminAsync("/api/platform/overview");
-        Assert.Equal(HttpStatusCode.OK, baselineResponse.StatusCode);
-        using var baselinePayload = JsonDocument.Parse(await baselineResponse.Content.ReadAsStringAsync());
-        var baselineActivity = baselinePayload.RootElement.GetProperty("activity");
-        var baselineActiveUsers = baselineActivity.GetProperty("activeUsers").GetInt32();
-        var baselineActiveSessions = baselineActivity.GetProperty("activeSessions").GetInt32();
-        var baselineLoginUsers = baselineActivity.GetProperty("loginUsers").GetInt32();
-        var baselineLoginSessions = baselineActivity.GetProperty("loginSessions").GetInt32();
 
         var trackedUserId = Guid.NewGuid();
         var trackedEmail = $"dashboard-activity-{trackedUserId:N}@example.invalid";
@@ -4711,6 +4709,9 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Code = $"dash-{Guid.NewGuid():N}", Name = "Dashboard payment acceptance", DeploymentKind = "cloud"
         };
         var now = DateTimeOffset.UtcNow;
+        UserSession[] sessionSnapshot = [];
+        Dictionary<Guid, EnvanterUser> loginUsers = [];
+        Dictionary<Guid, Company> loginCompanies = [];
         await using (var scope = _factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -4727,8 +4728,8 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                 ConcurrencyStamp = Guid.NewGuid().ToString("N"),
                 DisplayName = "Dashboard Activity Acceptance"
             });
-            // The API returns the latest ten sessions across all users; keep all five fixtures
-            // newer than unrelated seeded history so this test does not assume a global ordering slot.
+            // These five sessions contribute to counts but need not all fit into
+            // the latest ten: six newer context sessions were deliberately seeded.
             db.UserSessions.AddRange(
                 new UserSession
                 {
@@ -4774,6 +4775,9 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                 PaidAt = index == 0 ? paymentEventTime : null
             }));
             await db.SaveChangesAsync();
+            sessionSnapshot = await db.UserSessions.AsNoTracking().ToArrayAsync();
+            loginUsers = await db.Users.AsNoTracking().ToDictionaryAsync(user => user.Id);
+            loginCompanies = await db.Companies.AsNoTracking().ToDictionaryAsync(company => company.Id);
         }
 
         using var response = await SendAsPlatformAdminAsync("/api/platform/overview");
@@ -4785,17 +4789,40 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         var activity = payload.RootElement.GetProperty("activity");
         Assert.Equal(5, activity.GetProperty("windowMinutes").GetInt32());
         Assert.Equal(24, activity.GetProperty("loginWindowHours").GetInt32());
-        Assert.Equal(baselineActiveUsers + 1, activity.GetProperty("activeUsers").GetInt32());
-        Assert.Equal(baselineActiveSessions + 2, activity.GetProperty("activeSessions").GetInt32());
-        Assert.Equal(baselineLoginUsers + 1, activity.GetProperty("loginUsers").GetInt32());
-        Assert.Equal(baselineLoginSessions + 5, activity.GetProperty("loginSessions").GetInt32());
-        var recentLogins = activity.GetProperty("recentLogins").EnumerateArray()
-            .Where(item => item.GetProperty("email").GetString() == trackedEmail).ToArray();
-        Assert.Equal(5, recentLogins.Length);
-        Assert.Contains(recentLogins, item => item.GetProperty("ipAddress").GetString() == "203.0.113.41");
-        Assert.Contains(recentLogins, item => item.GetProperty("platformAdmin").GetBoolean());
-        Assert.Contains(recentLogins, item => item.GetProperty("revokedAt").ValueKind != JsonValueKind.Null);
-        Assert.True(activity.GetProperty("recentLogins").GetArrayLength() <= 10);
+        var generatedAt = payload.RootElement.GetProperty("generatedAt").GetDateTimeOffset();
+        var expectedActive = sessionSnapshot.Where(session => session.RevokedAt is null &&
+            session.ExpiresAt > generatedAt && session.LastSeenAt >= generatedAt.AddMinutes(-5)).ToArray();
+        var expectedLogins = sessionSnapshot.Where(session => session.CreatedAt >= generatedAt.AddHours(-24)
+            && session.CreatedAt <= generatedAt).ToArray();
+        Assert.Equal(2, expectedActive.Count(session => session.UserId == trackedUserId));
+        Assert.Equal(5, expectedLogins.Count(session => session.UserId == trackedUserId));
+        Assert.Equal(expectedActive.Select(session => session.UserId).Distinct().Count(), activity.GetProperty("activeUsers").GetInt32());
+        Assert.Equal(expectedActive.Length, activity.GetProperty("activeSessions").GetInt32());
+        Assert.Equal(expectedLogins.Select(session => session.UserId).Distinct().Count(), activity.GetProperty("loginUsers").GetInt32());
+        Assert.Equal(expectedLogins.Length, activity.GetProperty("loginSessions").GetInt32());
+        var expectedRecent = sessionSnapshot.OrderByDescending(session => session.CreatedAt)
+            .ThenByDescending(session => session.Id.ToString("D"), StringComparer.Ordinal).Take(10).ToArray();
+        var recentLogins = activity.GetProperty("recentLogins").EnumerateArray().ToArray();
+        Assert.Equal(10, recentLogins.Length);
+        Assert.Equal(expectedRecent.Count(session => session.UserId == trackedUserId),
+            recentLogins.Count(item => item.GetProperty("email").GetString() == trackedEmail));
+        for (var index = 0; index < expectedRecent.Length; index++)
+        {
+            var expected = expectedRecent[index];
+            var actual = recentLogins[index];
+            Assert.Equal(loginUsers[expected.UserId].Email, actual.GetProperty("email").GetString());
+            Assert.Equal(loginUsers[expected.UserId].DisplayName, actual.GetProperty("displayName").GetString());
+            Assert.Equal(expected.CompanyId is { } companyId ? loginCompanies.GetValueOrDefault(companyId)?.Name : null,
+                actual.GetProperty("companyName").GetString());
+            Assert.Equal(expected.PlatformAdmin, actual.GetProperty("platformAdmin").GetBoolean());
+            Assert.Equal(expected.IpAddress, actual.GetProperty("ipAddress").GetString());
+            Assert.Equal(expected.UserAgent, actual.GetProperty("userAgent").GetString());
+            Assert.Equal(expected.CreatedAt, actual.GetProperty("createdAt").GetDateTimeOffset());
+            Assert.Equal(expected.LastSeenAt, actual.GetProperty("lastSeenAt").GetDateTimeOffset());
+            Assert.Equal(expected.ExpiresAt, actual.GetProperty("expiresAt").GetDateTimeOffset());
+            Assert.Equal(expected.RevokedAt, actual.GetProperty("revokedAt").ValueKind == JsonValueKind.Null
+                ? (DateTimeOffset?)null : actual.GetProperty("revokedAt").GetDateTimeOffset());
+        }
         var recentPayments = payload.RootElement.GetProperty("recentPayments").EnumerateArray().ToArray();
         Assert.Equal(10, recentPayments.Length);
         Assert.Contains(paymentMarker + "-company-00", recentPayments[0].GetProperty("companyName").GetString());
