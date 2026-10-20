@@ -4955,6 +4955,9 @@ try {
       console.log('PASS: location default can be set/switched with a single company default; active employee can be assigned/removed as location manager with CSRF and refreshed rows.');
     }
     if (name === 'Durum etiketleri') {
+      await page.waitForFunction(() => assetStatusLabelsLoadPromise === null
+        && document.querySelectorAll('#assetStatusLabelRows input[data-status]').length === 6
+        && document.querySelector('#assetStatusTransitionMatrix table'));
       const concurrentStatusLabelReads = await page.evaluate(async () => {
         const originalFetch = window.fetch;
         let count = 0;
