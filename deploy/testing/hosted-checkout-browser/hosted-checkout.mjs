@@ -100,8 +100,24 @@ try {
   assert.equal(await page.locator('#annualTerm').getAttribute('aria-pressed'), 'false');
   await page.locator('#annualTerm').click();
 
+  const slugExamples = [
+    ['Farma A.Ş.', 'farma'],
+    ['Firma Farma A.Ş.', 'farma'],
+    ['Farma Firması', 'farma'],
+    ['Santa', 'santa'],
+    ['Celal', 'celal']
+  ];
+  for (const [companyName, expectedSlug] of slugExamples) {
+    await page.locator('[name="companyName"]').fill(companyName);
+    assert.equal(await page.locator('[name="slug"]').inputValue(), expectedSlug,
+      `${companyName} must suggest ${expectedSlug}.envantertr.com without a firma- prefix.`);
+  }
+  await page.locator('[name="slug"]').fill('custom-workspace');
+  await page.locator('[name="companyName"]').fill('Another Company');
+  assert.equal(await page.locator('[name="slug"]').inputValue(), 'custom-workspace',
+    'An explicitly edited company address must not be overwritten by later company-name edits.');
+  await page.locator('[name="slug"]').fill('synthetic-browser-company');
   await page.locator('[name="companyName"]').fill('Synthetic Browser Company');
-  assert.equal(await page.locator('[name="slug"]').inputValue(), 'synthetic-browser-company');
   await page.locator('[name="ownerFirstName"]').fill('Synthetic');
   await page.locator('[name="ownerLastName"]').fill('Owner');
   await page.locator('[name="ownerEmail"]').fill('synthetic-owner@example.invalid');
@@ -125,7 +141,7 @@ try {
   assert.equal('cardNumber' in lastInitialize.body, false, 'Card data must never enter the company checkout form.');
   assert.equal('checkoutId' in lastInitialize.body, true);
   assert.deepEqual(pageErrors, [], 'Checkout page must not throw browser JavaScript exceptions.');
-  console.log('PASS: real Chromium checkout UI fails closed when unavailable, supports term selection, validates company data, posts with CSRF and consent, and redirects only to the trusted iyzico host.');
+  console.log('PASS: real Chromium checkout UI fails closed when unavailable, suggests farma for Farma A.Ş./Firma Farma A.Ş./Farma Firması, santa for Santa, and celal for Celal without a firma- prefix, preserves manual slug edits, supports term selection, validates company data, posts with CSRF and consent, and redirects only to the trusted iyzico host.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));
