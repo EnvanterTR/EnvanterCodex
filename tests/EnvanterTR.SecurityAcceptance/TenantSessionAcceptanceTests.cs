@@ -2130,6 +2130,8 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             "POST /api/checkout/callback",
             "POST /api/checkout/webhook",
             "GET /api/checkout/status",
+            // Checkout quote is public so unauthenticated buyers can preview coupon-adjusted pricing.
+            "POST /api/checkout/quote",
             "GET /api/plans",
             "GET /api/site-content",
             "POST /api/demo-requests",
@@ -2885,7 +2887,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                 Id = Guid.NewGuid(), CompanyId = baselineCompanyId, CompanyName = "Prior verified revenue",
                 Slug = $"baseline-{baselineCompanyId:N}", ContactEmail = "billing@example.invalid",
                 OwnerName = "Prior verified revenue", OwnerEmail = $"baseline-{baselineCompanyId:N}@example.invalid",
-                PlanId = baselinePlanId, TermDays = 30, Amount = 125.50m, Currency = "TRY", Status = "Provisioned",
+                PlanId = baselinePlanId, TermDays = 30, SubtotalAmount = 125.50m, Amount = 125.50m, Currency = "TRY", Status = "Provisioned",
                 PaymentReference = baselinePaymentReference, PaidAt = baselinePaidAt,
                 CreatedAt = baselinePaidAt, ExpiresAt = baselinePaidAt.AddDays(30)
             });
@@ -2954,27 +2956,27 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             {
                 Id = Guid.NewGuid(), CompanyName = $"Overview checkout {index}", Slug = $"overview-{index}-{_companyId:N}",
                 ContactEmail = "billing@example.invalid", OwnerName = "Overview Owner", OwnerEmail = "overview@example.invalid",
-                PlanId = plan.Id, TermDays = 365, Amount = 100m, Currency = "TRY", Status = status,
+                PlanId = plan.Id, TermDays = 365, SubtotalAmount = 100m, Amount = 100m, Currency = "TRY", Status = status,
                 CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-index), ExpiresAt = DateTimeOffset.UtcNow.AddDays(2)
             }).Append(new CompanyCheckoutOrder
             {
                 Id = Guid.NewGuid(), CompanyName = "Verified monthly revenue", Slug = $"monthly-{monthlyCompanyId:N}",
                 ContactEmail = "billing@example.invalid", OwnerName = "Monthly Owner", OwnerEmail = "monthly@example.invalid",
-                PlanId = plan.Id, TermDays = 30, Amount = 1200m, Currency = "TRY", Status = "Provisioned",
+                PlanId = plan.Id, TermDays = 30, SubtotalAmount = 1200m, Amount = 1200m, Currency = "TRY", Status = "Provisioned",
                 CompanyId = monthlyCompanyId, PaymentReference = monthlyPaymentReference, PaidAt = paidAt,
                 CreatedAt = paidAt, ExpiresAt = paidAt.AddDays(30)
             }).Append(new CompanyCheckoutOrder
             {
                 Id = Guid.NewGuid(), CompanyName = "Verified annual revenue", Slug = $"annual-{annualCompanyId:N}",
                 ContactEmail = "billing@example.invalid", OwnerName = "Annual Owner", OwnerEmail = "annual@example.invalid",
-                PlanId = annualPlan.Id, TermDays = 365, Amount = 24000m, Currency = "USD", Status = "Provisioned",
+                PlanId = annualPlan.Id, TermDays = 365, SubtotalAmount = 24000m, Amount = 24000m, Currency = "USD", Status = "Provisioned",
                 CompanyId = annualCompanyId, PaymentReference = annualPaymentReference, PaidAt = paidAt,
                 CreatedAt = paidAt, ExpiresAt = paidAt.AddDays(365)
             }).Append(new CompanyCheckoutOrder
             {
                 Id = Guid.NewGuid(), CompanyName = "Comped extension revenue", Slug = $"extended-{extendedCompanyId:N}",
                 ContactEmail = "billing@example.invalid", OwnerName = "Extended Owner", OwnerEmail = "extended@example.invalid",
-                PlanId = plan.Id, TermDays = 30, Amount = 1200m, Currency = "TRY", Status = "Provisioned",
+                PlanId = plan.Id, TermDays = 30, SubtotalAmount = 1200m, Amount = 1200m, Currency = "TRY", Status = "Provisioned",
                 CompanyId = extendedCompanyId, PaymentReference = extendedPaymentReference, PaidAt = paidAt,
                 CreatedAt = paidAt, ExpiresAt = paidAt.AddDays(30)
             }));
@@ -3308,7 +3310,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                 {
                     Id = Guid.NewGuid(), CompanyName = "Order Search Company", Slug = $"order-search-{_companyId:N}",
                     ContactEmail = "contact@example.invalid", OwnerName = "Order Search Owner", OwnerEmail = "owner@example.invalid",
-                    PlanId = plan.Id, TermDays = 365, Amount = 12000, Currency = "TRY", Status = "Provisioned",
+                    PlanId = plan.Id, TermDays = 365, SubtotalAmount = 12000, Amount = 12000, Currency = "TRY", Status = "Provisioned",
                     PaymentReference = marker, CheckoutTokenHash = "provider-token-hash-must-not-leak",
                     CheckoutPageUrlProtected = "protected-provider-url-must-not-leak", CompanyId = _companyId,
                     CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-2), ExpiresAt = DateTimeOffset.UtcNow.AddDays(1),
@@ -3318,7 +3320,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                 {
                     Id = Guid.NewGuid(), CompanyName = "Unrelated Order Company", Slug = $"unrelated-{_companyId:N}",
                     ContactEmail = "other@example.invalid", OwnerName = "Other Owner", OwnerEmail = "other-owner@example.invalid",
-                    PlanId = plan.Id, TermDays = 30, Amount = 1500, Currency = "TRY", Status = "PaymentFailed",
+                    PlanId = plan.Id, TermDays = 30, SubtotalAmount = 1500, Amount = 1500, Currency = "TRY", Status = "PaymentFailed",
                     CheckoutTokenHash = "second-secret", CheckoutPageUrlProtected = "second-protected-url",
                     CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-1), ExpiresAt = DateTimeOffset.UtcNow.AddDays(1)
                 });
@@ -3360,14 +3362,14 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             {
                 Id = orderId, CompanyName = "Failed Payment Acceptance", Slug = $"failed-{_companyId:N}",
                 ContactEmail = "billing@example.invalid", OwnerName = "Synthetic Billing Owner", OwnerEmail = "owner@example.invalid",
-                PlanId = plan.Id, TermDays = 30, Amount = 1500, Currency = "TRY", Status = "PaymentFailed",
+                PlanId = plan.Id, TermDays = 30, SubtotalAmount = 1500, Amount = 1500, Currency = "TRY", Status = "PaymentFailed",
                 CompanyId = _companyId, CreatedAt = DateTimeOffset.UtcNow.AddDays(-1), ExpiresAt = DateTimeOffset.UtcNow.AddDays(1)
             });
             db.CompanyCheckoutOrders.Add(new CompanyCheckoutOrder
             {
                 Id = paidOrderId, CompanyName = "Already Paid Acceptance", Slug = $"paid-{_companyId:N}",
                 ContactEmail = "paid@example.invalid", OwnerName = "Synthetic Paid Owner", OwnerEmail = "paid@example.invalid",
-                PlanId = plan.Id, TermDays = 30, Amount = 1500, Currency = "TRY", Status = "Provisioned",
+                PlanId = plan.Id, TermDays = 30, SubtotalAmount = 1500, Amount = 1500, Currency = "TRY", Status = "Provisioned",
                 CompanyId = _otherCompanyId, PaymentReference = $"paid-order-{_companyId:N}", PaidAt = DateTimeOffset.UtcNow,
                 CreatedAt = DateTimeOffset.UtcNow.AddDays(-1), ExpiresAt = DateTimeOffset.UtcNow.AddDays(1)
             });
@@ -3571,7 +3573,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             {
                 Id = Guid.NewGuid(), CompanyName = "Directory Acceptance Company", Slug = $"member-{userId:N}",
                 ContactEmail = $"{marker}@example.invalid", OwnerName = "Directory Acceptance Member",
-                OwnerEmail = $"{marker}@example.invalid", PlanId = plan.Id, TermDays = 365, Amount = 4200,
+                OwnerEmail = $"{marker}@example.invalid", PlanId = plan.Id, TermDays = 365, SubtotalAmount = 4200, Amount = 4200,
                 Currency = "TRY", Status = "Provisioned", PaymentReference = $"member-directory-order-{_companyId:N}",
                 CheckoutTokenHash = "checkout-token-hash-must-not-leak",
                 CheckoutPageUrlProtected = "protected-checkout-url-must-not-leak",
@@ -3582,7 +3584,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             {
                 Id = Guid.NewGuid(), CompanyName = "Unprovisioned Acceptance Company", Slug = $"pending-{userId:N}",
                 ContactEmail = "billing-contact@example.invalid", OwnerName = "Directory Acceptance Member",
-                OwnerEmail = $"{marker}@example.invalid", PlanId = plan.Id, TermDays = 30, Amount = 1200,
+                OwnerEmail = $"{marker}@example.invalid", PlanId = plan.Id, TermDays = 30, SubtotalAmount = 1200, Amount = 1200,
                 Currency = "TRY", Status = "PaymentStarted", PaymentReference = $"pending-member-checkout-{_companyId:N}",
                 CheckoutTokenHash = "pending-member-token-hash-must-not-leak",
                 CheckoutPageUrlProtected = "pending-member-protected-url-must-not-leak",
@@ -4227,7 +4229,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             {
                 CompanyName = ownCompany.Name, Slug = ownCompany.Slug!, ContactEmail = ownCompany.ContactEmail!,
                 OwnerName = "CSV Owner", OwnerEmail = "csv-owner@example.invalid", PlanId = plan.Id,
-                TermDays = 365, Amount = 1200m, Currency = "TRY", Status = "Provisioned",
+                TermDays = 365, SubtotalAmount = 1200m, Amount = 1200m, Currency = "TRY", Status = "Provisioned",
                 PaymentReference = paymentReference, CompanyId = ownCompany.Id, PaidAt = paidAt,
                 ExpiresAt = paidAt.AddDays(365)
             });
@@ -4415,7 +4417,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             {
                 Id = Guid.NewGuid(), CompanyName = "Acceptance Company", Slug = $"purchase-{_companyId:N}",
                 ContactEmail = "billing@example.invalid", OwnerName = "Acceptance Owner", OwnerEmail = "owner@example.invalid",
-                PlanId = originalPlan.Id, TermDays = 365, Amount = 1299.50m, Currency = "TRY", Status = "Provisioned",
+                PlanId = originalPlan.Id, TermDays = 365, SubtotalAmount = 1299.50m, Amount = 1299.50m, Currency = "TRY", Status = "Provisioned",
                 PaymentReference = $"verified-purchase-{_companyId:N}", CompanyId = _companyId,
                 CreatedAt = now.AddDays(-11), ExpiresAt = now.AddDays(-10), PaidAt = now.AddDays(-10)
             });
@@ -4423,7 +4425,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             {
                 Id = Guid.NewGuid(), CompanyName = "Other Acceptance Company", Slug = $"purchase-other-{_otherCompanyId:N}",
                 ContactEmail = "other-billing@example.invalid", OwnerName = "Other Acceptance Owner", OwnerEmail = "other-owner@example.invalid",
-                PlanId = originalPlan.Id, TermDays = 30, Amount = 9999m, Currency = "TRY", Status = "Provisioned",
+                PlanId = originalPlan.Id, TermDays = 30, SubtotalAmount = 9999m, Amount = 9999m, Currency = "TRY", Status = "Provisioned",
                 PaymentReference = $"other-company-payment-{_otherCompanyId:N}", CompanyId = _otherCompanyId,
                 CreatedAt = now.AddDays(-1), ExpiresAt = now, PaidAt = now
             });
@@ -4821,7 +4823,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                 Id = Guid.NewGuid(), CompanyName = $"{paymentMarker}-company-{index:D2}",
                 Slug = $"dashboard-payment-{index:D2}-{trackedUserId:N}", ContactEmail = trackedEmail,
                 OwnerName = $"Dashboard Payment Owner {index:D2}", OwnerEmail = trackedEmail,
-                PlanId = paymentPlan.Id, TermDays = 30, Amount = 100m + index,
+                PlanId = paymentPlan.Id, TermDays = 30, SubtotalAmount = 100m + index, Amount = 100m + index,
                 Currency = index % 2 == 0 ? "TRY" : "USD",
                 Status = index == 0 ? "Provisioned" : index == 1 ? "PaymentFailed" : "PaymentReview",
                 PaymentReference = $"synthetic-payment-reference-{index:D2}",
