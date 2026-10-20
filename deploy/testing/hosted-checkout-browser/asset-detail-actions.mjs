@@ -4331,11 +4331,11 @@ try {
   assert.equal(await page.locator('#licenseReportPageInfo').innerText(), 'Sayfa 2 / 2 · 51 kayıt');
   await page.locator('#licenseReportPrev').click();
   await page.locator('#licenseReportRows').getByText('QA-LICENSE-PAGE-001').waitFor();
-  await page.locator('#licenseReportState').selectOption('expired');
   const expiredLicenseSearchResponse = page.waitForResponse(response => {
     const url = new URL(response.url());
     return url.pathname === '/api/reports/software-licenses' && url.searchParams.get('state') === 'expired' && url.searchParams.get('q') === 'QA-LICENSE-PAGE';
   });
+  await page.locator('#licenseReportState').selectOption('expired');
   await expiredLicenseSearchResponse;
   const expiredTagSearchResponse = page.waitForResponse(response => {
     const url = new URL(response.url());
