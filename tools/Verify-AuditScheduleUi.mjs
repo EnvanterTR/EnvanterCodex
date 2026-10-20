@@ -8,7 +8,9 @@ assert.ok(scheduleStart >= 0 && scheduleEnd > scheduleStart, 'physical audit que
 const schedule = html.slice(scheduleStart, scheduleEnd);
 assert.ok(schedule.includes('const requestId = ++auditScheduleRequestId'), 'queue loads must have a request ordering token');
 assert.ok(schedule.includes('if (requestId !== auditScheduleRequestId) return'), 'stale queue results must not replace current filters');
-assert.ok(schedule.includes('catch (error) { if (requestId !== auditScheduleRequestId) return; throw error; }'), 'stale queue errors must not surface as current errors');
+assert.match(schedule, /catch \(error\) \{\s*if \(requestId !== auditScheduleRequestId\) return;[\s\S]*?throw error;\s*\}/, 'stale queue errors must be discarded before rendering or throwing current errors');
+assert.ok(schedule.includes("showAuditScheduleStatus(translateUiText('Denetim kuyruğu yükleniyor…'))"), 'new queue requests must clear previous rows and expose loading');
+assert.ok(schedule.includes("showAuditScheduleStatus(`${translateUiText('Denetim kuyruğu yüklenemedi. Yenile ile tekrar deneyin.')} ${error.message}`, true)"), 'current queue errors must expose an inline retry explanation');
 assert.ok(schedule.includes('api(`/api/assets/audit-schedule?${params}`)'), 'queue must use the company-scoped audit schedule API');
 assert.ok(schedule.includes("$('#auditScheduleState').value"), 'queue must submit the selected state');
 assert.ok(schedule.includes("$('#auditScheduleSearch').value.trim()"), 'queue must submit the search text');
