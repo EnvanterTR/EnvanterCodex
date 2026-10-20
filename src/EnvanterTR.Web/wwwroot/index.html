@@ -2997,6 +2997,8 @@
       'Uygun':['Passed','Соответствует','Відповідає','Поминал'],
       'Uygun değil':['Unacceptable','Не соответствует','Не відповідає','Не поминал'],
       'Denetim tamamlanma aralığı':['Completed audit range','Период завершенных проверок','Період завершених перевірок','Опсег за завршени проверки'],
+      'Denetim kuyruğu yükleniyor…':['Loading audit queue…','Загрузка очереди проверок…','Завантаження черги перевірок…','Се вчитува редицата за проверки…'],
+      'Denetim kuyruğu yüklenemedi. Yenile ile tekrar deneyin.':['The audit queue could not be loaded. Select Refresh to try again.','Не удалось загрузить очередь проверок. Нажмите «Обновить» для повторной попытки.','Не вдалося завантажити чергу перевірок. Натисніть «Оновити», щоб повторити спробу.','Редицата за проверки не може да се вчита. Изберете Освежи за повторен обид.'],
       'Yaklaşan dönem':['Upcoming period','Предстоящий период','Майбутній період','Период што следи'],
       'Sonuç':['Outcome','Результат','Результат','Исход'],
       'Durum':['Status','Статус','Статус','Статус'],
@@ -7052,8 +7054,18 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       select.value = selected;
     }
     let auditScheduleQueryTimer;
+    function showAuditScheduleStatus(message, failed = false) {
+      const rows = $('#auditScheduleRows'), row = document.createElement('tr'), cell = document.createElement('td');
+      cell.colSpan = 7; cell.textContent = message; cell.setAttribute('role', failed ? 'alert' : 'status');
+      row.append(cell); rows.replaceChildren(row); rows.setAttribute('aria-busy', String(!failed));
+      $('#auditScheduleSummary').textContent = '—'; $('#auditScheduleCount').textContent = '—'; $('#auditSchedulePageInfo').textContent = '—';
+      $('#auditSchedulePrev').disabled = true; $('#auditScheduleNext').disabled = true;
+      $('#auditScheduleRefresh').disabled = !failed;
+    }
     async function loadAuditSchedule(page = auditSchedulePage) {
+      clearTimeout(auditScheduleQueryTimer);
       const requestId = ++auditScheduleRequestId;
+      showAuditScheduleStatus(translateUiText('Denetim kuyruğu yükleniyor…'));
       const requestedPage = Math.max(1, Number.parseInt(page, 10) || 1);
       const horizon = Math.min(Math.max(Number($('#auditScheduleHorizon').value) || 30, 1), 366);
       const today = new Date(); today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
@@ -7068,8 +7080,13 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       const query = $('#auditScheduleSearch').value.trim(); if (query) params.set('q', query);
       let result;
       try { result = await api(`/api/assets/audit-schedule?${params}`); }
-      catch (error) { if (requestId !== auditScheduleRequestId) return; throw error; }
+      catch (error) {
+        if (requestId !== auditScheduleRequestId) return;
+        showAuditScheduleStatus(`${translateUiText('Denetim kuyruğu yüklenemedi. Yenile ile tekrar deneyin.')} ${error.message}`, true);
+        throw error;
+      }
       if (requestId !== auditScheduleRequestId) return;
+      $('#auditScheduleRows').setAttribute('aria-busy', 'false'); $('#auditScheduleRefresh').disabled = false;
       auditSchedulePage = result.page || requestedPage;
       const rows = $('#auditScheduleRows'); rows.replaceChildren();
       $('#auditScheduleSummary').textContent = completedMode
@@ -11817,7 +11834,11 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
     $('#auditScheduleNext').addEventListener('click', () => loadAuditSchedule(auditSchedulePage + 1).catch(error => notify(error.message)));
     $('#auditScheduleHorizon').addEventListener('change', () => loadAuditSchedule(1).catch(error => notify(error.message)));
     $('#auditScheduleState').addEventListener('change', () => loadAuditSchedule(1).catch(error => notify(error.message)));
-    $('#auditScheduleSearch').addEventListener('input', () => { clearTimeout(auditScheduleQueryTimer); auditScheduleQueryTimer = setTimeout(() => loadAuditSchedule(1).catch(error => notify(error.message)), 250); });
+    $('#auditScheduleSearch').addEventListener('input', () => {
+      clearTimeout(auditScheduleQueryTimer); ++auditScheduleRequestId;
+      showAuditScheduleStatus(translateUiText('Denetim kuyruğu yükleniyor…'));
+      auditScheduleQueryTimer = setTimeout(() => loadAuditSchedule(1).catch(error => notify(error.message)), 250);
+    });
     $('#assetListSearch').addEventListener('input', event => { clearTimeout(assetQueryTimer); assetQueryTimer = setTimeout(() => { $('#globalSearch').value = event.target.value; loadDashboard(event.target.value.trim(), 1).catch(error => notify(error.message)); }, 250); });
     $('#saveAssetSearch').addEventListener('click', saveCurrentAssetSearch);
     $('#savedAssetSearch').addEventListener('change', event => { const id = event.target.value; if (id) applySavedAssetSearch(id); $('#deleteAssetSearch').disabled = !id; });
