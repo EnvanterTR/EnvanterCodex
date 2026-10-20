@@ -5418,8 +5418,27 @@ try {
 
   if (!await page.locator('[data-page="Tüm satın almalar"]').isVisible()) await page.locator('[data-group="inventory"]').click();
   const purchaseWritesBefore = apiRequests.length;
-  await page.locator('[data-page="Tüm satın almalar"]').click();
-  await page.locator('#purchaseOverviewRows tr').first().waitFor({ state: 'visible' });
+  let releasePurchaseOverview;
+  const purchaseOverviewGate = new Promise(resolve => { releasePurchaseOverview = resolve; });
+  const delayPurchaseOverview = async route => {
+    const response = await route.fetch();
+    await purchaseOverviewGate;
+    await route.fulfill({ response });
+  };
+  await page.route('**/api/purchasing/orders?*', delayPurchaseOverview);
+  try {
+    const initialPurchases = page.waitForResponse(response => new URL(response.url()).pathname === '/api/purchasing/orders');
+    await page.locator('[data-page="Tüm satın almalar"]').click();
+    await page.locator('#purchaseOverviewRows').getByText('Satın almalar yükleniyor…', { exact: true }).waitFor();
+    assert.equal(await page.locator('#purchaseOverviewRows tr').count(), 1, 'A delayed purchase response must show only the loading row.');
+    releasePurchaseOverview();
+    assert.equal((await initialPurchases).status(), 200, 'The unified purchase request must succeed.');
+    await page.waitForFunction(() => document.querySelectorAll('#purchaseOverviewRows tr').length === 25
+      && document.querySelector('#purchaseOverviewRows')?.textContent.includes('UPO-ASSET-001'));
+  } finally {
+    releasePurchaseOverview();
+    await page.unroute('**/api/purchasing/orders?*', delayPurchaseOverview);
+  }
   assert.equal(await page.locator('#purchaseOverviewRows tr').count(), 25, 'The unified purchasing list must show the first 25 of 28 fixture records.');
   const firstPageText = await page.locator('#purchaseOverviewRows').innerText();
   assert.match(firstPageText, /UPO-ASSET-001/); assert.match(firstPageText, /UPO-ACCESSORY-001/); assert.match(firstPageText, /UPO-STOCK-001/); assert.match(firstPageText, /UPO-LICENSE-001/);
@@ -5432,11 +5451,18 @@ try {
   await page.locator('#purchaseOverviewType').selectOption('accessory');
   await page.waitForFunction(() => document.querySelectorAll('#purchaseOverviewRows tr').length === 1 && document.querySelector('#purchaseOverviewRows')?.textContent.includes('UPO-ACCESSORY-001'));
   assert.equal(requests.findLast(item => item.path === '/api/purchasing/orders')?.query.type, 'accessory', 'Type selection must reach the API query.');
+  const unifiedPurchaseStatus = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname === '/api/purchasing/orders' && url.searchParams.get('type') === 'accessory'
+      && url.searchParams.get('status') === 'PartiallyReceived';
+  });
   await page.locator('#purchaseOverviewStatus').selectOption('PartiallyReceived');
+  assert.equal((await unifiedPurchaseStatus).status(), 200);
   await page.waitForFunction(() => document.querySelector('#purchaseOverviewRows')?.textContent.includes('UPO-ACCESSORY-001'));
   assert.equal(requests.findLast(item => item.path === '/api/purchasing/orders')?.query.status, 'PartiallyReceived');
   const unifiedPurchaseSearchResponse = page.waitForResponse(response => { const url = new URL(response.url()); return url.pathname === '/api/purchasing/orders' && url.searchParams.get('q') === 'Synthetic Beta'; });
-  await page.locator('#purchaseOverviewSearch').fill('Synthetic Beta'); await unifiedPurchaseSearchResponse;
+  await page.locator('#purchaseOverviewSearch').fill('Synthetic Beta');
+  assert.equal((await unifiedPurchaseSearchResponse).status(), 200);
   assert.equal(requests.findLast(item => item.path === '/api/purchasing/orders')?.query.q, 'Synthetic Beta');
   await page.locator('#purchaseOverviewClear').click();
   await page.waitForFunction(() => document.querySelector('#purchaseOverviewCount')?.textContent === '28 sipariş');
@@ -5448,10 +5474,17 @@ try {
   assert.equal(requests.findLast(item => item.path === '/api/purchasing/orders/export.csv')?.query.type, 'asset', 'CSV download must preserve the active type filter.');
   await page.locator('#purchaseOverviewClear').click();
   await page.waitForFunction(() => document.querySelector('#purchaseOverviewCount')?.textContent === '28 sipariş');
+  const unifiedLicenseFilter = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname === '/api/purchasing/orders' && url.searchParams.get('type') === 'license'
+      && url.searchParams.get('status') === 'Recorded' && url.searchParams.get('q') === 'UPO-LICENSE-001';
+  });
   await page.locator('#purchaseOverviewType').selectOption('license');
   await page.locator('#purchaseOverviewStatus').selectOption('Recorded');
   await page.locator('#purchaseOverviewSearch').fill('UPO-LICENSE-001');
-  await page.waitForFunction(() => document.querySelector('#purchaseOverviewRows')?.textContent.includes('UPO-LICENSE-001'));
+  assert.equal((await unifiedLicenseFilter).status(), 200);
+  await page.waitForFunction(() => document.querySelectorAll('#purchaseOverviewRows tr').length === 1
+    && document.querySelector('#purchaseOverviewRows')?.textContent.includes('UPO-LICENSE-001'));
   const [licensePurchaseDownload] = await Promise.all([page.waitForEvent('download'), page.locator('#purchaseOverviewExport').click()]);
   assert.equal(licensePurchaseDownload.suggestedFilename(), 'synthetic-purchasing.csv');
   const licenseExportRequest = requests.findLast(item => item.path === '/api/purchasing/orders/export.csv');
