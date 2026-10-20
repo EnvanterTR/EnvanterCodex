@@ -19,6 +19,7 @@ const plan = {
 let paymentAvailable = false;
 let initializeCalls = 0;
 let lastInitialize = null;
+let lastQuote = null;
 const html = await readFile('/checkout-site/checkout.html');
 const script = await readFile('/checkout-site/checkout.js');
 
@@ -46,6 +47,16 @@ const server = createServer(async (request, response) => {
       provider: paymentAvailable ? 'iyzico' : null,
       message: paymentAvailable ? null : 'Çevrimiçi ödeme şu anda kullanılamıyor. Bilgileriniz gönderilmeden önce ödeme yapılandırmasının tamamlanması gerekiyor.'
     }));
+    return;
+  }
+  if (request.method === 'POST' && url.pathname === '/api/checkout/quote') {
+    let body = '';
+    for await (const chunk of request) body += chunk;
+    lastQuote = JSON.parse(body);
+    const subtotal = lastQuote.term === 'annual' ? plan.annualPrice : plan.monthlyPrice;
+    const discount = lastQuote.couponCode?.toUpperCase() === 'SAVE15' ? Math.round(subtotal * 0.15 * 100) / 100 : 0;
+    response.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+    response.end(JSON.stringify({ couponCode: lastQuote.couponCode?.toUpperCase() || null, subtotal, discount, amount: subtotal - discount, currency: plan.currency }));
     return;
   }
   if (request.method === 'GET' && url.pathname === '/api/session/csrf') {
@@ -99,6 +110,14 @@ try {
   assert.equal(await page.locator('#monthlyTerm').getAttribute('aria-pressed'), 'true');
   assert.equal(await page.locator('#annualTerm').getAttribute('aria-pressed'), 'false');
   await page.locator('#annualTerm').click();
+  await page.locator('#couponCode').fill('save15');
+  await page.locator('#applyCoupon').click();
+  await page.locator('#couponFeedback').getByText(/Promo code applied/).waitFor();
+  assert.equal(lastQuote.planId, planId);
+  assert.equal(lastQuote.term, 'annual');
+  assert.equal(lastQuote.couponCode, 'SAVE15');
+  assert.match(await page.locator('#discountAmount').innerText(), /1,800\.00/);
+  assert.match(await page.locator('#price').innerText(), /10,200\.00/);
 
   const slugExamples = [
     ['Farma A.Ş.', 'farma'],
@@ -137,11 +156,12 @@ try {
   assert.equal(lastInitialize.body.term, 'annual');
   assert.equal(lastInitialize.body.dataProcessingAcknowledged, true);
   assert.equal(lastInitialize.body.dataProcessingNoticeVersion, 'cloud-checkout-data-v1');
+  assert.equal(lastInitialize.body.couponCode, 'SAVE15');
   assert.equal('amount' in lastInitialize.body, false, 'The browser must not supply payment amount.');
   assert.equal('cardNumber' in lastInitialize.body, false, 'Card data must never enter the company checkout form.');
   assert.equal('checkoutId' in lastInitialize.body, true);
   assert.deepEqual(pageErrors, [], 'Checkout page must not throw browser JavaScript exceptions.');
-  console.log('PASS: real Chromium checkout UI fails closed when unavailable, suggests farma for Farma A.Ş./Firma Farma A.Ş./Farma Firması, santa for Santa, and celal for Celal without a firma- prefix, preserves manual slug edits, supports term selection, validates company data, posts with CSRF and consent, and redirects only to the trusted iyzico host.');
+  console.log('PASS: real Chromium checkout UI fails closed when unavailable, applies a server-quoted coupon in the selected language/term, sends only the coupon code (never the amount), suggests correct company slugs, preserves manual edits, validates company data, posts with CSRF and consent, and redirects only to the trusted iyzico host.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));
