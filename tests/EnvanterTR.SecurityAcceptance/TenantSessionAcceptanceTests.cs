@@ -18878,11 +18878,33 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Contains(await db.AuditEntries.Where(entry => entry.CompanyId == _companyId).ToListAsync(),
                 entry => entry.Action == "MfaEnabledByCompanyPolicy");
         }
-        using (var secondLogin = await SendAnonymousLoginAsync(loginClient, email, password, null, token, cookie, _companyId))
-        using (var payload = JsonDocument.Parse(await secondLogin.Content.ReadAsStringAsync()))
+        // Model a genuinely separate device: a new client with its own antiforgery
+        // cookie must still complete the account's TOTP step on every new login.
+        using var secondDeviceClient = _factory.CreateClient(new WebApplicationFactoryClientOptions
         {
-            Assert.Equal(HttpStatusCode.Conflict, secondLogin.StatusCode);
+            HandleCookies = false,
+            AllowAutoRedirect = false
+        });
+        using var secondDeviceCsrf = await secondDeviceClient.GetAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, secondDeviceCsrf.StatusCode);
+        using var secondDeviceCsrfPayload = JsonDocument.Parse(await secondDeviceCsrf.Content.ReadAsStringAsync());
+        var secondDeviceToken = secondDeviceCsrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var secondDeviceCookie = secondDeviceCsrf.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using (var secondDeviceChallenge = await SendAnonymousLoginAsync(secondDeviceClient, email, password, null,
+                   secondDeviceToken, secondDeviceCookie, _companyId))
+        using (var payload = JsonDocument.Parse(await secondDeviceChallenge.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, secondDeviceChallenge.StatusCode);
             Assert.True(payload.RootElement.GetProperty("twoFactorRequired").GetBoolean());
+        }
+        using (var secondDeviceLogin = await SendAnonymousLoginAsync(secondDeviceClient, email, password,
+                   GenerateAuthenticatorCode(secret), secondDeviceToken, secondDeviceCookie, _companyId))
+        using (var payload = JsonDocument.Parse(await secondDeviceLogin.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, secondDeviceLogin.StatusCode);
+            Assert.Equal(_companyId, payload.RootElement.GetProperty("companyId").GetGuid());
         }
     }
 
