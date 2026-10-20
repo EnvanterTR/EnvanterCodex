@@ -131,7 +131,14 @@ const server = createServer(async (request, response) => {
         const q = (url.searchParams.get('q') || '').toLocaleLowerCase('tr-TR');
         return !q || `${item.displayName} ${item.employeeNumber} ${item.email || ''} ${item.department || ''} ${item.jobTitle || ''} ${item.location || ''} ${item.companyUnitName || ''}`.toLocaleLowerCase('tr-TR').includes(q);
       });
-      return json(response, 200, { items: filtered, total: filtered.length, page: Number(url.searchParams.get('page') || 1), pageSize: Number(url.searchParams.get('pageSize') || 50) });
+      const payload = { items: filtered, total: filtered.length, page: Number(url.searchParams.get('page') || 1), pageSize: Number(url.searchParams.get('pageSize') || 50) };
+      if (url.searchParams.get('active') === 'false') {
+        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+        response.flushHeaders();
+        setTimeout(() => response.end(JSON.stringify(payload)), 200);
+        return;
+      }
+      return json(response, 200, payload);
     }
     const profileMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)$/i);
     if (profileMatch) {
@@ -457,6 +464,16 @@ try {
     if (response.request().method() !== 'GET') return false;
     const url = new URL(response.url());
     return url.pathname === '/api/employees' && predicate(url.searchParams);
+  }).then(async response => {
+    assert.equal(response.status(), 200);
+    const payload = await response.json();
+    const expectedIds = payload.items.map(item => item.id).sort();
+    await page.waitForFunction(ids => {
+      const actual = [...document.querySelectorAll('#employeeRows input[data-employee-id]')]
+        .map(input => input.dataset.employeeId).sort();
+      return JSON.stringify(actual) === JSON.stringify(ids);
+    }, expectedIds);
+    return response;
   });
   assert.equal(await page.locator('#employeeRows tr').count(), 3, 'Default active filtering must include active employees and omit the passive record.');
   assert.match(await page.locator('#employeeRows').innerText(), /QA Main Unit/, 'The employee table must display the company unit derived from the linked location.');

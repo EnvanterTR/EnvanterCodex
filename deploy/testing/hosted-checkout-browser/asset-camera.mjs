@@ -57,6 +57,30 @@ try {
   assert.equal(await page.evaluate(() => window.mediaCalls), 3);
   console.log('PASS: camera permission denial, missing device and busy device each show an actionable status and unlock retry.');
 
+  await page.clock.install();
+  await page.evaluate(() => {
+    Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { configurable: true, value: () => {
+      window.mediaCalls++;
+      return new Promise(resolve => { window.resolveTimedOutCamera = resolve; });
+    } });
+  });
+  await page.locator('#open').click();
+  await page.locator('#startAssetCamera').click();
+  await page.waitForFunction(() => !!window.resolveTimedOutCamera);
+  await page.clock.runFor(20_001);
+  assert.match(await page.locator('#scanAssetFeedback').innerText(), /Kamera izni yanıtlanmadı/);
+  assert.equal(await page.locator('#startAssetCamera').isEnabled(), true);
+  await page.evaluate(() => {
+    const canvas = document.createElement('canvas'); canvas.width=320;canvas.height=240;
+    const stream = canvas.captureStream(10); window.timedOutTrack = stream.getTracks()[0];
+    window.resolveTimedOutCamera(stream);
+  });
+  await page.waitForFunction(() => window.timedOutTrack.readyState === 'ended');
+  assert.equal(await page.evaluate(() => document.querySelector('#scanAssetVideo').srcObject === null), true);
+  await page.locator('#close').click();
+  await page.clock.resume();
+  console.log('PASS: unanswered permission reaches a bounded deadline, unlocks retry and releases a stream granted after timeout.');
+
   await page.evaluate(() => {
     Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { configurable: true, value: () => {
       window.mediaCalls++;

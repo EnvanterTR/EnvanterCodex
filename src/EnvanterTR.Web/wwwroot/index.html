@@ -870,6 +870,7 @@
       'Kamera açılıyor…':['Starting camera…','Камера включается…','Камера вмикається…','Камерата се вклучува…'],
       'Kamera açık':['Camera on','Камера включена','Камеру ввімкнено','Камерата е вклучена'],
       'Kamera izni bekleniyor…':['Waiting for camera permission…','Ожидание разрешения на камеру…','Очікування дозволу на камеру…','Се чека дозвола за камера…'],
+      'Kamera izni yanıtlanmadı. Tarayıcının kamera iznini kontrol edip yeniden deneyin veya kodu elle girin.':['Camera permission was not answered. Check your browser camera permission and retry, or enter the code manually.','Нет ответа на запрос доступа к камере. Проверьте разрешение в браузере и повторите попытку или введите код вручную.','Немає відповіді на запит доступу до камери. Перевірте дозвіл у браузері та повторіть спробу або введіть код вручну.','Нема одговор на барањето за камера. Проверете ја дозволата во прелистувачот и обидете се повторно или внесете го кодот рачно.'],
       'Barkod okuyucu yüklenemedi. Bağlantıyı kontrol edip yeniden deneyin.':['Could not load the barcode reader. Check your connection and try again.','Не удалось загрузить сканер штрихкодов. Проверьте подключение и повторите попытку.','Не вдалося завантажити сканер штрихкодів. Перевірте з’єднання та повторіть спробу.','Читачот на баркодови не се вчита. Проверете ја врската и обидете се повторно.'],
       'Kamera için güvenli HTTPS bağlantısı gerekiyor. Siteyi HTTPS adresinden açın.':['The camera requires a secure HTTPS connection. Open the HTTPS site address.','Для камеры требуется защищенное соединение HTTPS. Откройте сайт по адресу HTTPS.','Для камери потрібне захищене з’єднання HTTPS. Відкрийте сайт за адресою HTTPS.','Камерата бара безбедна HTTPS врска. Отворете ја HTTPS адресата на страницата.'],
       'Bu tarayıcı kamera erişimini desteklemiyor. USB okuyucu veya klavyeyle kod girmeyi kullanın.':['This browser does not support camera access. Use a USB reader or type the code.','Этот браузер не поддерживает доступ к камере. Используйте USB-сканер или введите код.','Цей браузер не підтримує доступ до камери. Скористайтеся USB-сканером або введіть код.','Овој прелистувач не поддржува пристап до камера. Користете USB читач или внесете го кодот.'],
@@ -12232,7 +12233,23 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
       try {
         const decoder = await createAssetCameraDecoder();
         if (requestId !== assetCameraRequestId || !$('#scanAssetDialog').open) return;
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+        let permissionTimeout, permissionExpired = false;
+        const mediaRequest = navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+        // Browsers may leave permission requests pending indefinitely. Release
+        // streams granted after our deadline instead of opening an abandoned camera.
+        const guardedRequest = mediaRequest.then(stream => {
+          if (permissionExpired) for (const track of stream.getTracks()) track.stop();
+          return stream;
+        });
+        let stream;
+        try {
+          stream = await Promise.race([guardedRequest, new Promise((_, reject) => {
+            permissionTimeout = setTimeout(() => {
+              permissionExpired = true;
+              reject(new Error('Kamera izni yanıtlanmadı. Tarayıcının kamera iznini kontrol edip yeniden deneyin veya kodu elle girin.'));
+            }, 20000);
+          })]);
+        } finally { clearTimeout(permissionTimeout); }
         if (requestId !== assetCameraRequestId || !$('#scanAssetDialog').open) { for (const track of stream.getTracks()) track.stop(); return; }
         assetScanner = decoder; assetScanStream = stream; const video = $('#scanAssetVideo'); video.srcObject = assetScanStream; video.hidden = false;
         let playbackTimeout;
