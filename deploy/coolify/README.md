@@ -25,6 +25,15 @@ Before deploying these labels, configure the **existing proxy** with resolver `e
 
 Use `CF_DNS_API_TOKEN_FILE=/traefik/secrets/envantertr-cloudflare-dns-token`. Keep the token in a root-private directory with mode 0600, using the existing proxy mount; no token value belongs in Compose, source control, screenshots or logs. Scope its permissions to this zone's DNS Edit and Zone Read, and restrict source IPs to the actual server egress addresses. Back up the existing proxy configuration and ACME storage before restarting it. A separate ACME staging test must pass first; staging certificates must never replace trusted production certificates. Let Traefik renew the production certificate using the same private storage and DNS resolver.
 
+### Preserve proxy network attachments when recreating it
+
+Coolify may attach the proxy to an application's external Docker network at runtime. Such attachments are not necessarily present in the proxy Compose file and are lost when the proxy container is recreated. A healthy proxy alone therefore does not prove that customer requests reach the application.
+
+Before changing the proxy, record its actual Docker network names and the public-site service's network names using `docker inspect`. Preserve each existing required shared network in the proxy Compose service and declare it as an external network with its exact existing name. Do not create a replacement network, publish PostgreSQL, or attach unrelated services. On this resource the required external application network is `izrckbfan6xop8b6xgigduvt`.
+
+Back up the original configuration and a network-preserving rollback configuration. Validate Compose before applying it. After recreation, verify the network intersection again, validate apex and firma `/api/status` through the local origin with normal TLS verification, then load the public company login page through Cloudflare. If the application is unavailable, restore the network-preserving configuration; do not repeatedly recreate a healthy but disconnected proxy.
+
+On 20 October the first proxy recreation exposed this missing persistent attachment and caused a temporary 504. The existing application network was restored and then persisted alongside the DNS resolver. Both origin status endpoints returned ready with 117 migrations and zero pending, the wildcard certificate verified successfully, and the company login page opened through Cloudflare. The shared tenant router still requires its own release and acceptance; certificate success does not prove routing or tenant isolation.
 After the trusted origin certificate and tenant route are verified, check apex/www/firma and a new tenant-shaped host before enabling Cloudflare Full (strict). Keep certificate verification enabled. DNS, TLS and routing are shared infrastructure; new purchases create company/slug/membership/subscription records, rather than changing DNS for every company. SMTP, live payment/provider and complete real-account acceptance remain separate gates.
 
 ### Current production routing — 20 October 2026
