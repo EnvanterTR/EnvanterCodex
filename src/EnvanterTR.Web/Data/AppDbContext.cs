@@ -85,6 +85,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<UserSession> UserSessions => Set<UserSession>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
+    public DbSet<SubscriptionCoupon> SubscriptionCoupons => Set<SubscriptionCoupon>();
     public DbSet<TenantSubscription> TenantSubscriptions => Set<TenantSubscription>();
     public DbSet<CompanyCheckoutOrder> CompanyCheckoutOrders => Set<CompanyCheckoutOrder>();
     public DbSet<PlatformAdministrator> PlatformAdministrators => Set<PlatformAdministrator>();
@@ -159,6 +160,22 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             table.HasCheckConstraint("CK_SubscriptionPlans_Assets", "\"MaxAssets\" IS NULL OR \"MaxAssets\" > 0");
             table.HasCheckConstraint("CK_SubscriptionPlans_OfflineGrace", "\"OfflineGraceDays\" BETWEEN 0 AND 365");
         });
+        modelBuilder.Entity<SubscriptionCoupon>().HasIndex(x => x.Code).IsUnique();
+        modelBuilder.Entity<SubscriptionCoupon>().Property(x => x.Code).HasMaxLength(40).IsRequired();
+        modelBuilder.Entity<SubscriptionCoupon>().Property(x => x.DiscountType).HasMaxLength(12).IsRequired();
+        modelBuilder.Entity<SubscriptionCoupon>().Property(x => x.DiscountValue).HasPrecision(18, 2);
+        modelBuilder.Entity<SubscriptionCoupon>().Property(x => x.Currency).HasMaxLength(3);
+        modelBuilder.Entity<SubscriptionCoupon>().HasOne<SubscriptionPlan>().WithMany()
+            .HasForeignKey(x => x.PlanId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<SubscriptionCoupon>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<SubscriptionCoupon>().ToTable("SubscriptionCoupons", table =>
+        {
+            table.HasCheckConstraint("CK_SubscriptionCoupons_Type", "\"DiscountType\" IN ('Percent', 'Fixed')");
+            table.HasCheckConstraint("CK_SubscriptionCoupons_Value", "\"DiscountValue\" > 0 AND ((\"DiscountType\" = 'Percent' AND \"DiscountValue\" <= 100) OR (\"DiscountType\" = 'Fixed' AND \"Currency\" IS NOT NULL AND char_length(\"Currency\") = 3))");
+            table.HasCheckConstraint("CK_SubscriptionCoupons_Period", "\"EndsAt\" IS NULL OR \"StartsAt\" IS NULL OR \"EndsAt\" > \"StartsAt\"");
+            table.HasCheckConstraint("CK_SubscriptionCoupons_Limits", "(\"MaxRedemptions\" IS NULL OR \"MaxRedemptions\" > 0) AND (\"MaxRedemptionsPerCustomer\" IS NULL OR \"MaxRedemptionsPerCustomer\" > 0)");
+        });
         modelBuilder.Entity<TenantSubscription>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<TenantSubscription>().HasOne<SubscriptionPlan>().WithMany()
@@ -183,6 +200,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
         modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.Status).HasMaxLength(32).IsRequired();
         modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.Amount).HasPrecision(18, 2);
+        modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.SubtotalAmount).HasPrecision(18, 2);
+        modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.DiscountAmount).HasPrecision(18, 2);
+        modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.CouponCode).HasMaxLength(40);
         modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.CheckoutTokenHash).HasMaxLength(64);
         modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.CheckoutPageUrlProtected).HasMaxLength(4096);
         modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.PaymentReference).HasMaxLength(180);
@@ -195,12 +215,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasFilter("\"Status\" IN ('Pending', 'PaymentStarted', 'PaymentReview', 'ProvisioningFailed')");
         modelBuilder.Entity<CompanyCheckoutOrder>().HasOne<SubscriptionPlan>().WithMany()
             .HasForeignKey(x => x.PlanId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<CompanyCheckoutOrder>().HasOne<SubscriptionCoupon>().WithMany()
+            .HasForeignKey(x => x.CouponId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<CompanyCheckoutOrder>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<CompanyCheckoutOrder>().ToTable("CompanyCheckoutOrders", table =>
         {
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_Term", "\"TermDays\" IN (30, 365)");
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_Amount", "\"Amount\" > 0");
+            table.HasCheckConstraint("CK_CompanyCheckoutOrders_Pricing", "\"SubtotalAmount\" >= 0 AND \"DiscountAmount\" >= 0 AND \"Amount\" = \"SubtotalAmount\" - \"DiscountAmount\"");
+            table.HasCheckConstraint("CK_CompanyCheckoutOrders_CouponSnapshot", "(\"CouponId\" IS NULL AND \"CouponCode\" IS NULL AND \"DiscountAmount\" = 0) OR (\"CouponId\" IS NOT NULL AND \"CouponCode\" IS NOT NULL)");
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_Period", "\"ExpiresAt\" > \"CreatedAt\"");
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_Status", "\"Status\" IN ('Pending', 'PaymentStarted', 'PaymentReview', 'PaymentFailed', 'Expired', 'Provisioned', 'ProvisioningFailed')");
         });

@@ -2065,6 +2065,13 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<string>("CouponCode")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid?>("CouponId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -2079,6 +2086,10 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<string>("DataProcessingNoticeVersion")
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<DateTimeOffset>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");
@@ -2116,6 +2127,10 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<decimal>("SubtotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<int>("TermDays")
                         .HasColumnType("integer");
 
@@ -2126,6 +2141,8 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasFilter("\"CheckoutTokenHash\" IS NOT NULL");
 
                     b.HasIndex("CompanyId");
+
+                    b.HasIndex("CouponId");
 
                     b.HasIndex("PaymentReference")
                         .IsUnique()
@@ -2141,7 +2158,11 @@ namespace EnvanterTR.Web.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_CompanyCheckoutOrders_Amount", "\"Amount\" > 0");
 
+                            t.HasCheckConstraint("CK_CompanyCheckoutOrders_CouponSnapshot", "(\"CouponId\" IS NULL AND \"CouponCode\" IS NULL AND \"DiscountAmount\" = 0) OR (\"CouponId\" IS NOT NULL AND \"CouponCode\" IS NOT NULL)");
+
                             t.HasCheckConstraint("CK_CompanyCheckoutOrders_Period", "\"ExpiresAt\" > \"CreatedAt\"");
+
+                            t.HasCheckConstraint("CK_CompanyCheckoutOrders_Pricing", "\"SubtotalAmount\" >= 0 AND \"DiscountAmount\" >= 0 AND \"Amount\" = \"SubtotalAmount\" - \"DiscountAmount\"");
 
                             t.HasCheckConstraint("CK_CompanyCheckoutOrders_Status", "\"Status\" IN ('Pending', 'PaymentStarted', 'PaymentReview', 'PaymentFailed', 'Expired', 'Provisioned', 'ProvisioningFailed')");
 
@@ -4800,6 +4821,78 @@ namespace EnvanterTR.Web.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.SubscriptionCoupon", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Currency")
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("DiscountType")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)");
+
+                    b.Property<decimal>("DiscountValue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset?>("EndsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("MaxRedemptions")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("MaxRedemptionsPerCustomer")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("PlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("StartsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("PlanId");
+
+                    b.ToTable("SubscriptionCoupons", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SubscriptionCoupons_Limits", "(\"MaxRedemptions\" IS NULL OR \"MaxRedemptions\" > 0) AND (\"MaxRedemptionsPerCustomer\" IS NULL OR \"MaxRedemptionsPerCustomer\" > 0)");
+
+                            t.HasCheckConstraint("CK_SubscriptionCoupons_Period", "\"EndsAt\" IS NULL OR \"StartsAt\" IS NULL OR \"EndsAt\" > \"StartsAt\"");
+
+                            t.HasCheckConstraint("CK_SubscriptionCoupons_Type", "\"DiscountType\" IN ('Percent', 'Fixed')");
+
+                            t.HasCheckConstraint("CK_SubscriptionCoupons_Value", "\"DiscountValue\" > 0 AND ((\"DiscountType\" = 'Percent' AND \"DiscountValue\" <= 100) OR (\"DiscountType\" = 'Fixed' AND \"Currency\" IS NOT NULL AND char_length(\"Currency\") = 3))");
+                        });
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.SubscriptionPlan", b =>
                 {
                     b.Property<Guid>("Id")
@@ -6017,6 +6110,11 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("EnvanterTR.Web.Data.SubscriptionCoupon", null)
+                        .WithMany()
+                        .HasForeignKey("CouponId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("EnvanterTR.Web.Data.SubscriptionPlan", null)
                         .WithMany()
                         .HasForeignKey("PlanId")
@@ -6912,6 +7010,20 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.SubscriptionCoupon", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.SubscriptionPlan", null)
+                        .WithMany()
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.SupplierCatalogEntry", b =>

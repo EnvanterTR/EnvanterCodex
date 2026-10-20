@@ -190,6 +190,24 @@ public sealed class SubscriptionPlan
     public int SortOrder { get; set; }
 }
 
+public sealed class SubscriptionCoupon
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public required string Code { get; set; }
+    public required string DiscountType { get; set; }
+    public decimal DiscountValue { get; set; }
+    public string? Currency { get; set; }
+    public Guid? PlanId { get; set; }
+    public DateTimeOffset? StartsAt { get; set; }
+    public DateTimeOffset? EndsAt { get; set; }
+    public int? MaxRedemptions { get; set; }
+    public int? MaxRedemptionsPerCustomer { get; set; }
+    public bool IsActive { get; set; } = true;
+    public Guid CreatedByUserId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class TenantSubscription
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -213,8 +231,12 @@ public sealed class CompanyCheckoutOrder
     public required string OwnerEmail { get; set; }
     public Guid PlanId { get; set; }
     public int TermDays { get; set; }
+    public decimal SubtotalAmount { get; set; }
+    public decimal DiscountAmount { get; set; }
     public decimal Amount { get; set; }
     public required string Currency { get; set; }
+    public Guid? CouponId { get; set; }
+    public string? CouponCode { get; set; }
     public required string Status { get; set; }
     public string? CheckoutTokenHash { get; set; }
     public string? CheckoutPageUrlProtected { get; set; }

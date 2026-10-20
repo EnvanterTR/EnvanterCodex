@@ -135,6 +135,9 @@
   let term = 'monthly';
   let paymentAvailable = false;
   let slugWasEdited = false;
+  let couponCode = null;
+  let couponDiscount = 0;
+  let quoteRequestId = 0;
 
   document.documentElement.lang = translations[language] ? language : 'tr';
   document.querySelectorAll('[data-i18n]').forEach(element => {
@@ -192,9 +195,32 @@
     $('#annualTerm').hidden = !hasAnnual;
     $('#monthlyTerm').setAttribute('aria-pressed', String(term === 'monthly'));
     $('#annualTerm').setAttribute('aria-pressed', String(term === 'annual'));
-    const amount = selectedPrice();
+    const amount = Math.max(0, selectedPrice() - couponDiscount);
     $('#price').textContent = amount > 0 ? money(amount) : '—';
     $('#termCaption').textContent = term === 'annual' ? copy.annualPeriod : copy.monthlyPeriod;
+    $('#couponDiscount').classList.toggle('hidden', couponDiscount <= 0);
+    $('#discountAmount').textContent = couponDiscount > 0 ? `−${money(couponDiscount)}` : '';
+  }
+
+  async function quoteCoupon() {
+    if (!plan) return;
+    const id = ++quoteRequestId;
+    const input = $('#couponCode');
+    const feedback = $('#couponFeedback');
+    const code = input.value.trim().toUpperCase();
+    couponCode = null; couponDiscount = 0; refreshPrice(); feedback.textContent = '';
+    if (!code) { feedback.textContent = 'Kupon kodunu girin.'; return; }
+    const button = $('#applyCoupon'); button.disabled = true;
+    try {
+      const response = await fetch('/api/checkout/quote', { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, cache: 'no-store', body: JSON.stringify({ planId: plan.id, term, couponCode: code }) });
+      const result = await response.json();
+      if (id !== quoteRequestId) return;
+      if (!response.ok) throw new Error(result.message || result.detail || (result.errors ? Object.values(result.errors).flat().join(' ') : 'Kupon doğrulanamadı.'));
+      couponCode = result.couponCode; couponDiscount = Number(result.discount || 0);
+      feedback.textContent = couponDiscount > 0 ? `Kupon uygulandı: ${money(couponDiscount)} indirim.` : 'Bu kupon indirim sağlamıyor.';
+      refreshPrice();
+    } catch (error) { if (id === quoteRequestId) feedback.textContent = error.message || 'Kupon doğrulanamadı.'; }
+    finally { if (id === quoteRequestId) button.disabled = false; }
   }
 
   async function initialize() {
@@ -235,8 +261,9 @@
     }
   }
 
-  $('#monthlyTerm').addEventListener('click', () => { if (Number(plan?.monthlyPrice) > 0) { term = 'monthly'; refreshPrice(); } });
-  $('#annualTerm').addEventListener('click', () => { if (Number(plan?.annualPrice) > 0) { term = 'annual'; refreshPrice(); } });
+  $('#monthlyTerm').addEventListener('click', () => { if (Number(plan?.monthlyPrice) > 0) { term = 'monthly'; couponCode = null; couponDiscount = 0; refreshPrice(); if ($('#couponCode').value.trim()) quoteCoupon(); } });
+  $('#annualTerm').addEventListener('click', () => { if (Number(plan?.annualPrice) > 0) { term = 'annual'; couponCode = null; couponDiscount = 0; refreshPrice(); if ($('#couponCode').value.trim()) quoteCoupon(); } });
+  $('#applyCoupon').addEventListener('click', quoteCoupon);
   form.elements.companyName.addEventListener('input', event => {
     if (!slugWasEdited) form.elements.slug.value = slugify(event.currentTarget.value);
   });
@@ -275,7 +302,8 @@
       planId: plan.id,
       term,
       dataProcessingAcknowledged: data.get('dataProcessingAcknowledged') === 'on',
-      dataProcessingNoticeVersion: noticeVersion
+      dataProcessingNoticeVersion: noticeVersion,
+      couponCode
     };
 
     try {

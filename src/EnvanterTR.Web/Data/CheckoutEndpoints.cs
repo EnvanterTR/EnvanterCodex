@@ -19,7 +19,9 @@ public sealed record InitializeCompanyCheckoutRequest(
     Guid CheckoutId, string CompanyName, string Slug, string? ContactEmail,
     string OwnerFirstName, string OwnerLastName, string OwnerEmail, string Phone,
     string IdentityNumber, string BillingAddress, string City, string Country, string? ZipCode,
-    Guid PlanId, string Term, bool DataProcessingAcknowledged, string? DataProcessingNoticeVersion);
+    Guid PlanId, string Term, bool DataProcessingAcknowledged, string? DataProcessingNoticeVersion,
+    string? CouponCode = null);
+public sealed record CheckoutCouponQuoteRequest(Guid PlanId, string Term, string? CouponCode);
 
 public static class CheckoutEndpoints
 {
@@ -54,6 +56,8 @@ public static class CheckoutEndpoints
                 message = available ? null : "Çevrimiçi ödeme şu anda kullanılamıyor. Bilgileriniz gönderilmeden önce ödeme yapılandırmasının tamamlanması gerekiyor."
             });
         }).AllowAnonymous();
+        endpoints.MapPost("/api/checkout/quote", QuoteAsync)
+            .AllowAnonymous().RequireRateLimiting("checkout");
         endpoints.MapPost("/api/checkout/initialize", InitializeAsync)
             .AllowAnonymous().RequireRateLimiting("checkout");
         endpoints.MapPost("/api/checkout/callback", CallbackAsync)
@@ -63,6 +67,44 @@ public static class CheckoutEndpoints
             .AllowAnonymous().RequireRateLimiting("customer-api")
             .WithMetadata(new RequestSizeLimitAttribute(8192));
         return endpoints;
+    }
+
+    private static async Task<IResult> QuoteAsync([FromBody] CheckoutCouponQuoteRequest request,
+        AppDbContext db, CancellationToken cancellationToken)
+    {
+        if (request.Term is not ("monthly" or "annual"))
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["term"] = ["Faturalama dönemi geçersiz."] });
+        var plan = await db.SubscriptionPlans.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.PlanId &&
+            x.IsActive && x.IsPublic && x.DeploymentKind == "cloud", cancellationToken);
+        if (plan is null)
+            return Results.NotFound(new { message = "Satın alınabilir Cloud paketi bulunamadı." });
+        var subtotal = request.Term == "annual" ? plan.AnnualPrice : plan.MonthlyPrice;
+        var currency = plan.Currency.ToUpperInvariant();
+        if (subtotal <= 0 || !SupportedCurrencies.Contains(currency))
+            return Results.Problem("Seçilen Cloud paketi için ödeme fiyatı veya para birimi kullanılamıyor.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        if (string.IsNullOrWhiteSpace(request.CouponCode))
+            return Results.Ok(new { couponCode = (string?)null, subtotal, discount = 0m, amount = subtotal, currency });
+
+        var code = NormalizeCouponCode(request.CouponCode);
+        if (code is null)
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["couponCode"] = ["Kupon kodu biçimi geçersiz."] });
+        var coupon = await db.SubscriptionCoupons.AsNoTracking().SingleOrDefaultAsync(x => x.Code == code, cancellationToken);
+        if (coupon is null)
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["couponCode"] = ["Kupon bulunamadı veya kullanım koşullarını karşılamıyor."] });
+        var now = DateTimeOffset.UtcNow;
+        if (!TryCalculateCoupon(coupon, plan, subtotal, currency, now, out var discount, out var message))
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["couponCode"] = [message!] });
+        if (coupon.MaxRedemptions is int maxRedemptions)
+        {
+            var uses = await db.CompanyCheckoutOrders.CountAsync(x => x.CouponId == coupon.Id &&
+                (x.Status == "Provisioned" || x.Status == "ProvisioningFailed" || x.Status == "PaymentReview" ||
+                 ((x.Status == "Pending" || x.Status == CheckoutStatusStarted) && x.ExpiresAt > now)), cancellationToken);
+            if (uses >= maxRedemptions)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["couponCode"] = ["Bu kuponun kullanım sınırı doldu."] });
+        }
+        var amount = subtotal - discount;
+        return Results.Ok(new { couponCode = code, subtotal, discount, amount, currency });
     }
 
     private static async Task<IResult> InitializeAsync(
@@ -114,11 +156,22 @@ public static class CheckoutEndpoints
         if (plan is null)
             return Results.ValidationProblem(new Dictionary<string, string[]> { ["planId"] = ["Satın alınabilir Cloud paketi bulunamadı."] });
         var termDays = request.Term == "annual" ? 365 : 30;
-        var amount = request.Term == "annual" ? plan.AnnualPrice : plan.MonthlyPrice;
+        var subtotal = request.Term == "annual" ? plan.AnnualPrice : plan.MonthlyPrice;
         var currency = plan.Currency.ToUpperInvariant();
-        if (amount <= 0 || !SupportedCurrencies.Contains(currency))
+        if (subtotal <= 0 || !SupportedCurrencies.Contains(currency))
             return Results.Problem("Seçilen Cloud paketi için ödeme fiyatı veya para birimi kullanılamıyor.",
                 statusCode: StatusCodes.Status503ServiceUnavailable);
+        var normalizedCouponCode = string.IsNullOrWhiteSpace(request.CouponCode) ? null : NormalizeCouponCode(request.CouponCode);
+        if (!string.IsNullOrWhiteSpace(request.CouponCode) && normalizedCouponCode is null)
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["couponCode"] = ["Kupon kodu biçimi geçersiz."] });
+        var coupon = normalizedCouponCode is null ? null : await db.SubscriptionCoupons.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Code == normalizedCouponCode, cancellationToken);
+        if (normalizedCouponCode is not null && coupon is null)
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["couponCode"] = ["Kupon bulunamadı veya kullanım koşullarını karşılamıyor."] });
+        var nowUtc = DateTimeOffset.UtcNow;
+        if (!TryCalculateCoupon(coupon, plan, subtotal, currency, nowUtc, out var discount, out var couponError))
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["couponCode"] = [couponError!] });
+        var amount = subtotal - discount;
 
         var ownerName = $"{firstName} {lastName}";
         var existingOrder = await db.CompanyCheckoutOrders.SingleOrDefaultAsync(x => x.Id == request.CheckoutId, cancellationToken);
@@ -126,7 +179,7 @@ public static class CheckoutEndpoints
         if (existingOrder is not null)
         {
             if (!SameRequest(existingOrder, companyName, slug!, contactEmail, ownerName, ownerEmail!, plan.Id, termDays,
-                    amount, currency, CheckoutNoticeVersion))
+                    subtotal, discount, amount, currency, coupon?.Id, normalizedCouponCode, CheckoutNoticeVersion))
                 return Results.Conflict(new { message = "Bu satın alma kimliği başka bilgilerle kullanılmış." });
             if (existingOrder.Status is CheckoutStatusStarted or "PaymentReview" &&
                 !string.IsNullOrWhiteSpace(existingOrder.CheckoutPageUrlProtected))
@@ -171,11 +224,32 @@ public static class CheckoutEndpoints
                 await db.CompanyCheckoutOrders.AnyAsync(x => x.Slug == slug && reservedStatuses.Contains(x.Status), cancellationToken))
                 return Results.Conflict(new { message = "Bu şirket adresi zaten kullanılıyor veya başka bir ödeme işlemi için ayrılmış." });
 
+            if (coupon is not null)
+            {
+                var lockedCoupon = await db.SubscriptionCoupons.FromSqlInterpolated(
+                    $"SELECT * FROM \"SubscriptionCoupons\" WHERE \"Id\" = {coupon.Id} FOR UPDATE")
+                    .SingleOrDefaultAsync(cancellationToken);
+                if (!TryCalculateCoupon(lockedCoupon, plan, subtotal, currency, now, out discount, out couponError))
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["couponCode"] = [couponError!] });
+                var activeUses = await db.CompanyCheckoutOrders.CountAsync(x => x.CouponId == coupon.Id &&
+                    (x.Status == "Provisioned" || x.Status == "ProvisioningFailed" || x.Status == "PaymentReview" ||
+                     ((x.Status == "Pending" || x.Status == CheckoutStatusStarted) && x.ExpiresAt > now)), cancellationToken);
+                if (lockedCoupon!.MaxRedemptions is int maxRedemptions && activeUses >= maxRedemptions)
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["couponCode"] = ["Bu kuponun kullanım sınırı doldu."] });
+                var customerUses = await db.CompanyCheckoutOrders.CountAsync(x => x.CouponId == coupon.Id &&
+                    x.OwnerEmail.ToLower() == ownerEmail!.ToLower() &&
+                    (x.Status == "Provisioned" || x.Status == "ProvisioningFailed" || x.Status == "PaymentReview" ||
+                     ((x.Status == "Pending" || x.Status == CheckoutStatusStarted) && x.ExpiresAt > now)), cancellationToken);
+                if (lockedCoupon.MaxRedemptionsPerCustomer is int perCustomer && customerUses >= perCustomer)
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["couponCode"] = ["Bu e-posta kuponun izin verilen kullanım sayısına ulaştı."] });
+            }
+
             pending = new CompanyCheckoutOrder
             {
                 Id = request.CheckoutId, CompanyName = companyName, Slug = slug!, ContactEmail = contactEmail,
                 OwnerName = ownerName, OwnerEmail = ownerEmail!, PlanId = plan.Id, TermDays = termDays,
-                Amount = amount, Currency = currency, Status = "Pending",
+                SubtotalAmount = subtotal, DiscountAmount = discount, Amount = amount, Currency = currency,
+                CouponId = coupon?.Id, CouponCode = normalizedCouponCode, Status = "Pending",
                 DataProcessingNoticeVersion = CheckoutNoticeVersion,
                 DataProcessingAcknowledgedAt = now,
                 InitializationLeaseUntil = now.AddMinutes(2),
@@ -512,11 +586,53 @@ public static class CheckoutEndpoints
         }
     }
 
+    private static string? NormalizeCouponCode(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var code = value.Trim().ToUpperInvariant();
+        return code.Length <= 40 && Regex.IsMatch(code, "^[A-Z0-9]+(?:-[A-Z0-9]+)*$") ? code : null;
+    }
+
+    private static bool TryCalculateCoupon(SubscriptionCoupon? coupon, SubscriptionPlan plan, decimal subtotal,
+        string currency, DateTimeOffset now, out decimal discount, out string? error)
+    {
+        discount = 0m;
+        error = null;
+        if (coupon is null) return true;
+        if (!coupon.IsActive || (coupon.StartsAt is { } startsAt && startsAt > now) ||
+            (coupon.EndsAt is { } endsAt && endsAt <= now) || (coupon.PlanId is { } planId && planId != plan.Id))
+        {
+            error = "Kupon bulunamadı veya kullanım koşullarını karşılamıyor.";
+            return false;
+        }
+
+        if (coupon.DiscountType == "Percent")
+            discount = Math.Round(subtotal * coupon.DiscountValue / 100m, 2, MidpointRounding.AwayFromZero);
+        else if (coupon.DiscountType == "Fixed" && coupon.Currency == currency)
+            discount = coupon.DiscountValue;
+        else
+        {
+            error = "Kupon seçilen plan veya para birimi için geçerli değil.";
+            return false;
+        }
+
+        if (discount <= 0 || discount >= subtotal)
+        {
+            discount = 0m;
+            error = "Kupon indirimi seçilen dönem tutarından küçük olmalıdır.";
+            return false;
+        }
+        return true;
+    }
+
     private static bool SameRequest(CompanyCheckoutOrder order, string companyName, string slug, string contactEmail,
-        string ownerName, string ownerEmail, Guid planId, int termDays, decimal amount, string currency, string noticeVersion) =>
+        string ownerName, string ownerEmail, Guid planId, int termDays, decimal subtotal, decimal discount,
+        decimal amount, string currency, Guid? couponId, string? couponCode, string noticeVersion) =>
         order.CompanyName == companyName && order.Slug == slug && order.ContactEmail == contactEmail &&
         order.OwnerName == ownerName && order.OwnerEmail.Equals(ownerEmail, StringComparison.OrdinalIgnoreCase) &&
-        order.PlanId == planId && order.TermDays == termDays && order.Amount == amount && order.Currency == currency &&
+        order.PlanId == planId && order.TermDays == termDays && order.SubtotalAmount == subtotal &&
+        order.DiscountAmount == discount && order.Amount == amount && order.Currency == currency &&
+        order.CouponId == couponId && order.CouponCode == couponCode &&
         order.DataProcessingAcknowledgedAt is not null && order.DataProcessingNoticeVersion == noticeVersion;
 
     private static async Task SetStatusAsync(AppDbContext db, Guid id, string status,
