@@ -606,6 +606,7 @@ app.Use(async (context, next) =>
 });
 app.UseAuthorization();
 app.UseRateLimiter();
+app.MapGet("/giris", () => Results.Redirect("/")).AllowAnonymous();
 app.MapHealthChecks("/health");
 
 if (!string.IsNullOrWhiteSpace(connectionString))

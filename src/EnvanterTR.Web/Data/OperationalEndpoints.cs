@@ -64,6 +64,24 @@ public static class OperationalEndpoints
             return await next(invocation);
         });
 
+        api.MapGet("/company/storage-usage", (ClaimsPrincipal user, IConfiguration configuration,
+            ILoggerFactory loggerFactory, CancellationToken cancellationToken) =>
+        {
+            if (!TryScope(user, out var companyId, out _)) return Results.Forbid();
+            try
+            {
+                return Results.Ok(CompanyMediaUsage.Measure(configuration["Storage:CompanyMediaPath"] ??
+                    "/var/lib/envantertr/company-media", companyId, cancellationToken));
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or OverflowException)
+            {
+                loggerFactory.CreateLogger("CompanyMediaUsage").LogWarning(error,
+                    "Company media usage could not be measured for {CompanyId}", companyId);
+                return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable,
+                    title: "Şirket dosya kullanımı şu anda hesaplanamıyor.");
+            }
+        }).RequireAuthorization("settings.manage");
+
         api.MapGet("/company/profile", async (ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
         {
             if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();

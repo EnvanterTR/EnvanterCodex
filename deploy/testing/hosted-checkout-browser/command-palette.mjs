@@ -655,6 +655,8 @@ try {
     'A ready database must leave the sign-in action available.');
   await loginPage.locator('#loginForm [name="email"]').fill('qa-login@example.invalid');
   await loginPage.locator('#loginForm [name="password"]').fill('Synthetic-only-password');
+  assert.equal(await loginPage.locator('#loginForm [name="rememberMe"]').isChecked(), false,
+    'A new login must not opt into a long-lived session by default.');
   await loginPage.locator('#loginForm button[type="submit"]').click();
   await loginPage.locator('#authError').getByText('Giriş bilgileri geçersiz veya hesap geçici olarak kullanılamıyor.').waitFor({ state: 'visible' });
   await loginPage.locator('#loginConnectionStatus').getByText(/bu giriş hatası bağlantıdan kaynaklanmıyor/i).waitFor({ state: 'visible' });
@@ -663,7 +665,7 @@ try {
   assert.equal(loginAttempts.length, 1, 'A rejected login must not recurse or be silently retried.');
   assert.equal(loginAttempts[0].method, 'POST');
   assert.equal(loginAttempts[0].csrf, 'synthetic-viewer-csrf');
-  assert.deepEqual(loginAttempts[0].body, { email: 'qa-login@example.invalid', password: 'Synthetic-only-password', companyId: null, rememberMe: true, twoFactorCode: null });
+  assert.deepEqual(loginAttempts[0].body, { email: 'qa-login@example.invalid', password: 'Synthetic-only-password', companyId: null, rememberMe: false, twoFactorCode: null });
   assert.equal(new URL(loginPage.url()).search, '?keep=1', 'Login details must not be sent in the URL, while unrelated query state stays intact.');
   await loginPage.locator('#retryApiButton').click();
   await loginPage.locator('#loginConnectionStatus').getByText(/bu giriş hatası bağlantıdan kaynaklanmıyor/i).waitFor({ state: 'visible' });
@@ -683,10 +685,13 @@ try {
   assert.equal(await loginPage.locator('#loginForm button[type="submit"]').isDisabled(), false,
     'A healthy schema must restore the sign-in action.');
   assert.equal(loginAttempts.length, 1, 'Recovering readiness must not silently retry credentials.');
+  await loginPage.locator('#loginForm [name="rememberMe"]').check();
   companyMfaEnrollmentMode = true;
   await loginPage.locator('#loginForm button[type="submit"]').click();
   const companyMfaDialog = loginPage.locator('#companyMfaEnrollmentDialog');
   await companyMfaDialog.waitFor({ state: 'visible' });
+  assert.equal(loginAttempts[1].body.rememberMe, true,
+    'The explicit device-session choice must be sent with the MFA enrollment challenge.');
   assert.match(await loginPage.locator('#companyMfaEnrollmentQr').getAttribute('src'), /^data:image\/svg\+xml/);
   assert.equal(await loginPage.locator('#companyMfaEnrollmentSecret').innerText(), 'JBSWY3DPEHPK3PXP');
   assert.equal(apiRequests.find(item => item.path === '/api/session/company-mfa/setup')?.body?.ticket, 'synthetic-one-time-mfa-ticket');

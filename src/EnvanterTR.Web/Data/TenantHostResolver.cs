@@ -41,4 +41,18 @@ public static class TenantHostResolver
 
         return true;
     }
+
+    public static string BuildPortalUrl(string? slug, string? configuredRootDomain)
+    {
+        if (!IsValidSlug(slug))
+            throw new ArgumentException("A valid tenant slug is required.", nameof(slug));
+
+        var rootDomain = (configuredRootDomain ?? "envantertr.com").Trim().Trim('.').ToLowerInvariant();
+        if (rootDomain.Length == 0 || rootDomain.Contains('/') || rootDomain.Contains(':') ||
+            !Uri.TryCreate($"https://{rootDomain}/", UriKind.Absolute, out var rootUri) ||
+            rootUri.Host != rootDomain || rootUri.UserInfo.Length != 0)
+            throw new ArgumentException("A valid root domain is required.", nameof(configuredRootDomain));
+
+        return $"https://{slug!.ToLowerInvariant()}.{rootDomain}/";
+    }
 }

@@ -9,7 +9,7 @@
       loading: 'Plan ve ödeme durumu kontrol ediliyor…', summary: 'Sipariş özeti', monthly: 'Aylık', annual: 'Yıllık',
       users: 'Cloud kullanıcı sayısı', unlimited: 'Sınırsız', paymentNote: 'Tutar etkin plan fiyatından sunucuda hesaplanır. Kart bilgileri iyzico’nun güvenli ödeme ekranında girilir.',
       companyDetails: 'Şirket ve fatura bilgileri', formIntro: 'Şirket hesabının sahibi bu e-posta ile davet edilir. Burada parola veya kart bilgisi istenmez.',
-      companyName: 'Şirket adı', slug: 'Şirket web adresi', firstName: 'Yetkili adı', lastName: 'Yetkili soyadı', email: 'Hesap e-postası',
+      companyName: 'Şirket adı', slug: 'Şirket web adresi', slugHelp: 'Şirket adından önerilir: Farma A.Ş. → farma.envantertr.com. Adresi değiştirebilirsiniz.', firstName: 'Yetkili adı', lastName: 'Yetkili soyadı', email: 'Hesap e-postası',
       phone: 'Telefon · ülke koduyla', identity: 'T.C. kimlik numarası', zip: 'Posta kodu', address: 'Fatura adresi', city: 'Şehir', country: 'Ülke',
       noticeTitle: 'Ödeme ve hesap açılışı için veri kullanımı',
       noticeBody: 'Ödeme oturumunu oluşturmak için bu formdaki yetkili ve fatura bilgileri iyzico’ya iletilir. Ödeme kartı bilgilerini bu uygulama almaz. Ödeme sağlayıcı tarafından doğrulanınca şirket alanı, sahibi ve abonelik oluşturulur; sipariş durumu ve ödeme referansı sistemde tutulur.',
@@ -32,7 +32,7 @@
       loading: 'Checking plan and payment availability…', summary: 'Order summary', monthly: 'Monthly', annual: 'Annual',
       users: 'Cloud users', unlimited: 'Unlimited', paymentNote: 'The server calculates the amount from the active plan. Card details are entered on iyzico’s secure payment page.',
       companyDetails: 'Company and billing details', formIntro: 'The workspace owner will receive an invitation at this email. No password or card details are collected here.',
-      companyName: 'Company name', slug: 'Workspace web address', firstName: 'Contact first name', lastName: 'Contact last name', email: 'Account email',
+      companyName: 'Company name', slug: 'Workspace web address', slugHelp: 'Suggested from the company name: Farma A.Ş. → farma.envantertr.com. You can edit the address.', firstName: 'Contact first name', lastName: 'Contact last name', email: 'Account email',
       phone: 'Phone · include country code', identity: 'National identity number', zip: 'Postal code', address: 'Billing address', city: 'City', country: 'Country',
       noticeTitle: 'Data use for payment and workspace setup',
       noticeBody: 'The contact and billing details in this form are sent to iyzico to create a payment session. This app does not collect payment card details. After the provider verifies payment, the company workspace, owner account and subscription are created; order status and payment reference are retained.',
@@ -55,7 +55,7 @@
       loading: 'Проверка плана и доступности оплаты…', summary: 'Сводка заказа', monthly: 'Месяц', annual: 'Год',
       users: 'Пользователи Cloud', unlimited: 'Без ограничений', paymentNote: 'Сумма рассчитывается сервером по действующему плану. Данные карты вводятся на защищённой странице iyzico.',
       companyDetails: 'Данные компании и оплаты', formIntro: 'Владелец компании получит приглашение на этот адрес. Пароль и данные карты здесь не запрашиваются.',
-      companyName: 'Название компании', slug: 'Веб-адрес компании', firstName: 'Имя контактного лица', lastName: 'Фамилия контактного лица', email: 'Электронная почта аккаунта',
+      companyName: 'Название компании', slug: 'Веб-адрес компании', slugHelp: 'Предлагается по названию компании: Farma A.Ş. → farma.envantertr.com. Адрес можно изменить.', firstName: 'Имя контактного лица', lastName: 'Фамилия контактного лица', email: 'Электронная почта аккаунта',
       phone: 'Телефон · с кодом страны', identity: 'Идентификационный номер', zip: 'Почтовый индекс', address: 'Адрес для оплаты', city: 'Город', country: 'Страна',
       noticeTitle: 'Использование данных для оплаты и создания аккаунта',
       noticeBody: 'Контактные и платёжные сведения из формы передаются iyzico для создания платёжной сессии. Приложение не получает данные платёжной карты. После подтверждения оплаты создаются компания, владелец и подписка; статус заказа и ссылка на платёж сохраняются.',
@@ -78,7 +78,7 @@
       loading: 'Перевіряємо план і доступність оплати…', summary: 'Підсумок замовлення', monthly: 'Місяць', annual: 'Рік',
       users: 'Користувачі Cloud', unlimited: 'Без обмежень', paymentNote: 'Суму сервер обчислює за активним планом. Дані картки вводяться на захищеній сторінці iyzico.',
       companyDetails: 'Дані компанії та оплати', formIntro: 'Власник компанії отримає запрошення на цю адресу. Пароль і дані картки тут не збираються.',
-      companyName: 'Назва компанії', slug: 'Вебадреса компанії', firstName: 'Ім’я контактної особи', lastName: 'Прізвище контактної особи', email: 'Електронна пошта облікового запису',
+      companyName: 'Назва компанії', slug: 'Вебадреса компанії', slugHelp: 'Пропонується за назвою компанії: Farma A.Ş. → farma.envantertr.com. Адресу можна змінити.', firstName: 'Ім’я контактної особи', lastName: 'Прізвище контактної особи', email: 'Електронна пошта облікового запису',
       phone: 'Телефон · із кодом країни', identity: 'Ідентифікаційний номер', zip: 'Поштовий індекс', address: 'Платіжна адреса', city: 'Місто', country: 'Країна',
       noticeTitle: 'Використання даних для оплати та створення облікового запису',
       noticeBody: 'Контактні та платіжні дані з цієї форми передаються iyzico для створення платіжної сесії. Застосунок не отримує дані платіжної картки. Після підтвердження платежу створюються компанія, власник і підписка; статус замовлення та платіжний номер зберігаються.',
@@ -101,7 +101,7 @@
       loading: 'Се проверуваат пакетот и плаќањето…', summary: 'Преглед на нарачката', monthly: 'Месечно', annual: 'Годишно',
       users: 'Cloud корисници', unlimited: 'Неограничено', paymentNote: 'Серверот ја пресметува сумата од активниот пакет. Податоците за картичката се внесуваат на безбедната страница на iyzico.',
       companyDetails: 'Податоци за компанијата и наплатата', formIntro: 'Сопственикот ќе добие покана на оваа е-пошта. Тука не се бара лозинка или број на картичка.',
-      companyName: 'Име на компанијата', slug: 'Веб-адреса на компанијата', firstName: 'Име на контакт-лицето', lastName: 'Презиме на контакт-лицето', email: 'Е-пошта за сметката',
+      companyName: 'Име на компанијата', slug: 'Веб-адреса на компанијата', slugHelp: 'Се предлага според името на компанијата: Farma A.Ş. → farma.envantertr.com. Адресата може да се измени.', firstName: 'Име на контакт-лицето', lastName: 'Презиме на контакт-лицето', email: 'Е-пошта за сметката',
       phone: 'Телефон · со код на државата', identity: 'Идентификациски број', zip: 'Поштенски број', address: 'Адреса за наплата', city: 'Град', country: 'Држава',
       noticeTitle: 'Употреба на податоците за плаќање и отворање сметка',
       noticeBody: 'Контакт и платежните податоци од формуларот се испраќаат до iyzico за да се создаде платежна сесија. Апликацијата не ги прима податоците за платежната картичка. По потврдата се создаваат компанијата, сопственикот и претплатата; статусот на нарачката и референцата за плаќање се чуваат.',
@@ -152,9 +152,28 @@
     try { return new Intl.NumberFormat(language === 'tr' ? 'tr-TR' : language === 'mk' ? 'mk-MK' : `${language}-${language.toUpperCase()}`, { style: 'currency', currency: plan.currency || 'TRY' }).format(value); }
     catch { return `${Number(value).toLocaleString()} ${plan.currency || 'TRY'}`; }
   };
-  const slugify = value => value.trim().toLocaleLowerCase('tr-TR')
-    .replaceAll('ı', 'i').replaceAll('ğ', 'g').replaceAll('ü', 'u').replaceAll('ş', 's').replaceAll('ö', 'o').replaceAll('ç', 'c')
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63).replace(/-+$/g, '');
+  const slugify = value => {
+    const words = value.trim().toLocaleLowerCase('tr-TR')
+      .replaceAll('ı', 'i').replaceAll('ğ', 'g').replaceAll('ü', 'u').replaceAll('ş', 's').replaceAll('ö', 'o').replaceAll('ç', 'c')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '').match(/[a-z0-9]+/g) || [];
+    const legalSuffixes = [
+      ['anonim', 'sirketi'], ['anonim', 'sirket'], ['limited', 'sirketi'], ['limited', 'sirket'],
+      ['ltd', 'sti'], ['ltd', 'st'], ['a', 's'], ['as'], ['ltd'], ['sti'], ['limited'], ['anonim'], ['sirketi'], ['sirket'], ['firmasi'], ['firma']
+    ];
+    let removedSuffix;
+    do {
+      removedSuffix = false;
+      for (const suffix of legalSuffixes) {
+        if (suffix.every((word, index) => words[words.length - suffix.length + index] === word)) {
+          words.splice(-suffix.length);
+          removedSuffix = true;
+          break;
+        }
+      }
+    } while (removedSuffix);
+    if (words[0] === 'firma' || words[0] === 'sirket') words.shift();
+    return words.join('-').slice(0, 63).replace(/-+$/g, '');
+  };
   const attemptKey = `envantertr-checkout-attempt:${planId}`;
   const currentAttempt = () => {
     try {
