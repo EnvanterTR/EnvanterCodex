@@ -579,10 +579,17 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Code = $"co-{checkoutId:N}", Name = "Synthetic Cloud", DeploymentKind = "cloud",
             MonthlyPrice = 125.50m, AnnualPrice = 1200m, Currency = "TRY", IsActive = true, IsPublic = true
         };
+        var coupon = new SubscriptionCoupon
+        {
+            Code = $"SAVE{checkoutId.ToString("N")[..8]}".ToUpperInvariant(), DiscountType = "Percent",
+            DiscountValue = 10m, PlanId = plan.Id, IsActive = true, MaxRedemptions = 5,
+            MaxRedemptionsPerCustomer = 1, CreatedByUserId = _userId
+        };
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.SubscriptionPlans.Add(plan);
+            db.SubscriptionCoupons.Add(coupon);
             await db.SaveChangesAsync();
         }
 
@@ -631,9 +638,18 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
         var request = new InitializeCompanyCheckoutRequest(checkoutId, "Synthetic Checkout Ltd", $"checkout-{checkoutId:N}"[..20],
             "owner@example.invalid", "Test", "Owner", $"owner-{checkoutId:N}@example.invalid", "+905550000002", "10000000146",
-            "Synthetic Street 2", "Istanbul", "Turkey", "34000", plan.Id, "monthly", true, "cloud-checkout-data-v1");
+            "Synthetic Street 2", "Istanbul", "Turkey", "34000", plan.Id, "monthly", true, "cloud-checkout-data-v1", coupon.Code);
         var publishedPlans = await client.GetFromJsonAsync<JsonElement>("/api/plans");
         Assert.Contains(publishedPlans.EnumerateArray(), item => item.GetProperty("id").GetGuid() == plan.Id);
+        using (var quote = await client.PostAsJsonAsync("/api/checkout/quote", new CheckoutCouponQuoteRequest(plan.Id, "monthly", coupon.Code.ToLowerInvariant())))
+        {
+            Assert.Equal(HttpStatusCode.OK, quote.StatusCode);
+            using var quotePayload = JsonDocument.Parse(await quote.Content.ReadAsStringAsync());
+            Assert.Equal(125.50m, quotePayload.RootElement.GetProperty("subtotal").GetDecimal());
+            Assert.Equal(12.55m, quotePayload.RootElement.GetProperty("discount").GetDecimal());
+            Assert.Equal(112.95m, quotePayload.RootElement.GetProperty("amount").GetDecimal());
+            Assert.Equal(coupon.Code, quotePayload.RootElement.GetProperty("couponCode").GetString());
+        }
         using (var unacknowledgedMessage = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/initialize")
                { Content = JsonContent.Create(request with { DataProcessingAcknowledged = false }) })
         {
@@ -649,7 +665,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, initialized.StatusCode);
         using var initializedPayload = JsonDocument.Parse(await initialized.Content.ReadAsStringAsync());
         Assert.StartsWith("https://sandbox-api.iyzipay.com/checkoutform/", initializedPayload.RootElement.GetProperty("checkoutUrl").GetString());
-        Assert.Equal(125.50m, provider.InitializedAmount);
+        Assert.Equal(112.95m, provider.InitializedAmount);
         Assert.Equal(1, provider.InitializeCount);
         using (var retry = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/initialize") { Content = JsonContent.Create(request) })
         {
@@ -661,12 +677,31 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(initializedPayload.RootElement.GetProperty("checkoutUrl").GetString(), retryPayload.RootElement.GetProperty("checkoutUrl").GetString());
             Assert.Equal(1, provider.InitializeCount);
         }
+        var repeatCustomer = request with
+        {
+            CheckoutId = Guid.NewGuid(), CompanyName = "Second Synthetic Checkout Ltd",
+            Slug = $"second-{Guid.NewGuid():N}"[..20]
+        };
+        using (var repeatCustomerMessage = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/initialize")
+               { Content = JsonContent.Create(repeatCustomer) })
+        {
+            repeatCustomerMessage.Headers.Add("X-CSRF-TOKEN", requestToken);
+            repeatCustomerMessage.Headers.Add("Cookie", antiforgeryCookie);
+            using var deniedRepeat = await client.SendAsync(repeatCustomerMessage);
+            Assert.Equal(HttpStatusCode.BadRequest, deniedRepeat.StatusCode);
+            Assert.Contains("izin verilen kullanım sayısına ulaştı", await deniedRepeat.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        }
+        Assert.Equal(1, provider.InitializeCount);
 
         await using (var scope = checkoutFactory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var order = await db.CompanyCheckoutOrders.SingleAsync(x => x.Id == checkoutId);
-            Assert.Equal(125.50m, order.Amount);
+            Assert.Equal(125.50m, order.SubtotalAmount);
+            Assert.Equal(12.55m, order.DiscountAmount);
+            Assert.Equal(112.95m, order.Amount);
+            Assert.Equal(coupon.Id, order.CouponId);
+            Assert.Equal(coupon.Code, order.CouponCode);
             Assert.Equal("PaymentStarted", order.Status);
             Assert.Equal("cloud-checkout-data-v1", order.DataProcessingNoticeVersion);
             Assert.NotNull(order.DataProcessingAcknowledgedAt);
