@@ -2876,7 +2876,10 @@
     }
     $('#openAccountTwoFactor').addEventListener('click', async () => {
       $('#accountPhotoDialog').close(); $('#accountTwoFactorDialog').showModal();
+      const passwordInput = $('#twoFactorCurrentPassword'), setupButton = $('#startTwoFactorSetup');
+      passwordInput.disabled = true; setupButton.disabled = true;
       try { await loadAccountTwoFactorStatus(); } catch (error) { $('#twoFactorStatus').textContent = error.message; }
+      finally { passwordInput.disabled = false; setupButton.disabled = false; }
     });
     function clearTwoFactorDialogSecrets() {
       $('#twoFactorSecret').textContent = ''; $('#twoFactorSecret').hidden = true;

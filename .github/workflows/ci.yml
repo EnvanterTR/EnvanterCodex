@@ -417,6 +417,10 @@ jobs:
         shell: pwsh
         run: dotnet publish tools/EnvanterTR.AccountRecovery/EnvanterTR.AccountRecovery.csproj -c Release -o "$env:RUNNER_TEMP\envantertr-account-recovery"
 
+      - name: Verify deterministic dependency metadata across platforms
+        shell: pwsh
+        run: ./tools/tests/third-party-inventory-determinism.ps1
+
       - name: Rebuild the third-party dependency inventory
         shell: pwsh
         run: |
