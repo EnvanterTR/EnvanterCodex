@@ -19,6 +19,7 @@ COPY deploy/testing/hosted-checkout-browser/scheduled-reports.mjs ./
 COPY deploy/testing/hosted-checkout-browser/platform-admin-members.mjs ./
 COPY deploy/testing/hosted-checkout-browser/platform-admin-bootstrap.mjs ./
 COPY deploy/testing/hosted-checkout-browser/asset-camera.mjs ./
+COPY deploy/testing/hosted-checkout-browser/company-storage.mjs ./
 COPY deploy/testing/hosted-checkout-browser/platform-audit-retention.mjs ./
 COPY deploy/testing/hosted-checkout-browser/public-site-pricing.mjs ./
 COPY src/EnvanterTR.PublicSite/checkout.html src/EnvanterTR.PublicSite/checkout.js /checkout-site/

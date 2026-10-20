@@ -757,6 +757,14 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         using var browserCallback = await callbackClient.PostAsync("/api/checkout/callback",
             new FormUrlEncodedContent(new Dictionary<string, string> { ["token"] = "synthetic-provider-token" }));
         Assert.Equal(HttpStatusCode.OK, browserCallback.StatusCode);
+        var purchaseConfirmation = await browserCallback.Content.ReadAsStringAsync();
+        var purchaseConfirmationText = System.Net.WebUtility.HtmlDecode(purchaseConfirmation);
+        Assert.Contains($"https://{request.Slug}.envantertr.com/", purchaseConfirmation, StringComparison.Ordinal);
+        Assert.Contains("Erişim e-postası daha önce gönderilmiş olabilir", purchaseConfirmationText, StringComparison.Ordinal);
+        var invitation = Assert.Single(_smtpCapture.Messages, message =>
+            message.Contains($"To: {request.OwnerEmail}", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains($"To: {request.OwnerEmail}", invitation, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains($"https://{request.Slug}.envantertr.com/", DecodeMimeBody(invitation), StringComparison.Ordinal);
         Assert.Equal(2, provider.RetrieveCount);
         await using (var scope = checkoutFactory.Services.CreateAsyncScope())
         {
@@ -765,6 +773,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal("Provisioned", order.Status);
             Assert.NotNull(order.CompanyId);
             Assert.Equal(1, await db.Companies.CountAsync(x => x.Slug == request.Slug));
+            Assert.True((await db.Companies.SingleAsync(x => x.Slug == request.Slug)).SecurityRequireMfa);
             Assert.Equal(1, await db.TenantSubscriptions.CountAsync(x => x.CompanyId == order.CompanyId &&
                 x.Status == "Active" && !x.IsDemo && x.PlanId == plan.Id && x.PaymentReference == syntheticPaymentId));
             Assert.Equal(1, await db.CompanyMemberships.CountAsync(x => x.CompanyId == order.CompanyId && x.RoleKey == "owner"));

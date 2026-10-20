@@ -394,7 +394,7 @@
         <div class="sub-menu" id="sub-settings"><button class="sub-item" data-page="Firma profili">Firma profili</button><button class="sub-item" data-page="Logo ve tema">Logo ve tema</button><button class="sub-item" data-page="Bildirimler">Bildirimler</button><button class="sub-item" data-page="Entegrasyonlar">Entegrasyonlar</button><button class="sub-item" data-page="Güvenlik">Güvenlik</button><button class="sub-item" data-page="Denetim kayıtları">Denetim kayıtları</button></div>
         <button class="nav-item" data-page="Destek"><span class="nav-icon">◌</span><span class="nav-label">Destek</span></button>
       </nav>
-      <div class="sidebar-bottom"><div class="storage"><b>Şirket alanı</b><span id="companyStorage">Depolama kullanımı henüz hesaplanmıyor</span><div class="meter"><i style="width:0"></i></div></div>EnvanterTR · Şirket alanı</div>
+      <div class="sidebar-bottom"><div class="storage" id="companyStoragePanel" hidden><b>Şirket dosyaları</b><span id="companyStorage" role="status" aria-live="polite"></span></div>EnvanterTR · Şirket alanı</div>
     </aside>
     <main class="main">
       <header class="topbar"><button class="mobile-menu" id="mobileMenu" aria-label="Menüyü aç" aria-controls="sidebar" aria-expanded="false">☰</button><label class="search"><span>⌕</span><input id="globalSearch" placeholder="Varlık etiketi, çalışan, model veya konum ara…" aria-label="Envanterde ara"></label><div class="top-spacer"></div><button class="icon-button" id="appearanceButton" type="button" aria-label="Görünüm ayarları" title="Görünüm ve dil">◐</button><button class="icon-button" id="helpButton" aria-label="Yardım">?</button><div class="notification-wrap"><button class="icon-button" id="notificationButton" type="button" aria-label="Yaklaşan işler" aria-controls="notificationPanel" aria-expanded="false" title="Yaklaşan bakım, denetim, lisans, garanti ve iade işleri">♧<span class="badge" id="notificationCount" hidden></span></button><section class="notification-panel" id="notificationPanel" aria-label="Yaklaşan işler" hidden><div class="notification-panel-head"><strong>Yaklaşan işler</strong><span id="notificationSummary" role="status" aria-live="polite">Yükleniyor…</span></div><ul id="notificationList"><li class="notification-empty">Şirket takvimi yükleniyor…</li></ul><button class="notification-calendar-link" id="openNotificationCalendar" type="button">Şirket takvimini aç →</button></section></div><div class="profile"><button class="avatar" id="userAvatar" type="button" aria-label="Profil fotoğrafını yönet" style="border:0;padding:0">—</button><div class="profile-text" id="profileName">Oturum bilgisi bekleniyor<small id="profileRole">Şirket kullanıcısı</small></div><button class="text-link" id="logoutButton" type="button">Çıkış</button></div></header>
@@ -867,6 +867,10 @@
       'Tedarikçi iadesi':['Supplier return','Возврат поставщику','Повернення постачальнику','Враќање кон добавувач'],
       'Siparişten iade oluştur':['Create order return','Создать возврат по заказу','Створити повернення за замовленням','Креирај враќање од нарачка'],
       'Kamerayı başlat':['Start camera','Включить камеру','Увімкнути камеру','Вклучи камера'],
+      'Şirket dosyaları':['Company files','Файлы компании','Файли компанії','Датотеки на компанијата'],
+      'Dosya kullanımı hesaplanıyor…':['Calculating file usage…','Расчёт размера файлов…','Обчислення розміру файлів…','Се пресметува големината на датотеките…'],
+      'Dosya kullanımı alınamadı.':['File usage could not be loaded.','Не удалось загрузить размер файлов.','Не вдалося завантажити розмір файлів.','Не може да се вчита големината на датотеките.'],
+      'Hesap fotoğrafları hariç şirket dosyaları; depolama kotası tanımlı değil.':['Company files excluding account photos; no storage quota is defined.','Файлы компании без фотографий учётных записей; квота хранения не задана.','Файли компанії без фотографій облікових записів; квоту сховища не визначено.','Датотеки на компанијата без фотографии на сметки; нема дефинирана квота.'],
       'Kamera açılıyor…':['Starting camera…','Камера включается…','Камера вмикається…','Камерата се вклучува…'],
       'Kamera açık':['Camera on','Камера включена','Камеру ввімкнено','Камерата е вклучена'],
       'Kamera izni bekleniyor…':['Waiting for camera permission…','Ожидание разрешения на камеру…','Очікування дозволу на камеру…','Се чека дозвола за камера…'],
@@ -12222,6 +12226,22 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
         $('#scanAssetFeedback').textContent = 'Bu kodla eşleşen varlık bulunamadı. Kodu kontrol edip yeniden deneyin.'; $('#scanAssetCode').focus(); $('#scanAssetCode').select();
       } catch (error) { if (collecting) assetScanBatchSeenCodes.delete(codeKey); $('#scanAssetFeedback').textContent = error.message || 'Kod aranamadı. Yeniden deneyin.'; }
     }
+    async function loadCompanyStorageUsage() {
+      const panel = $('#companyStoragePanel'), output = $('#companyStorage');
+      panel.hidden = !canManageSettings();
+      if (panel.hidden) { output.textContent = ''; return; }
+      const requestedCompany = activeCompanyContextId;
+      output.textContent = translateUiText('Dosya kullanımı hesaplanıyor…');
+      output.title = translateUiText('Hesap fotoğrafları hariç şirket dosyaları; depolama kotası tanımlı değil.');
+      try {
+        const usage = await api('/api/company/storage-usage');
+        if (requestedCompany !== activeCompanyContextId) return;
+        output.textContent = `${new Intl.NumberFormat(selectedLocale).format(usage.bytes)} B`;
+      } catch (error) {
+        if (requestedCompany !== activeCompanyContextId) return;
+        output.textContent = translateUiText('Dosya kullanımı alınamadı.');
+      }
+    }
     async function startAssetCamera() {
       const feedback = $('#scanAssetFeedback');
       if (!window.isSecureContext) { feedback.textContent = 'Kamera için güvenli HTTPS bağlantısı gerekiyor. Siteyi HTTPS adresinden açın.'; return; }
@@ -12633,6 +12653,7 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
       hideLogin();
       await loadSupplierNameSuggestions();
       sessionRole = session.role || ''; requestCurrentUserId = session.userId || ''; $('#scanAssetActionWrap').hidden = !canWriteAssets();
+      void loadCompanyStorageUsage();
       $('#bulkAssetStatus').hidden = !canWriteAssets(); $('#applyBulkAssetStatus').hidden = !canWriteAssets();
       savedAssetSearchesLegacyKey = `envantertr:saved-asset-searches:${session.companyId}:${requestCurrentUserId}`;
        const nextCustomReportSettingsKey = `envantertr:custom-reports:${session.companyId}:${requestCurrentUserId}`;

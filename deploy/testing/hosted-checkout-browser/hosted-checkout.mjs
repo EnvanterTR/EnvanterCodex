@@ -133,6 +133,7 @@ try {
 
 await import('./command-palette.mjs');
 await import('./asset-camera.mjs');
+await import('./company-storage.mjs');
 await import('./asset-detail-actions.mjs');
 await import('./company-tasks.mjs');
 await import('./inventory-requests.mjs');

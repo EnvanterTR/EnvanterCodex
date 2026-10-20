@@ -1290,13 +1290,14 @@ public static class AccountEndpoints
             "EnvanterTR hesabınız için parola yenileme isteği alındı.", null, configuration, cancellationToken);
 
     public static Task SendAccountInvitationEmailAsync(string recipient, string displayName, string token,
-        IConfiguration configuration, CancellationToken cancellationToken) =>
+        IConfiguration configuration, CancellationToken cancellationToken, string? companySlug = null) =>
         SendAccountLinkEmailAsync(recipient, token, "EnvanterTR şirket alanı daveti",
             $"Merhaba {WebUtility.HtmlEncode(displayName)}, EnvanterTR şirket alanına davet edildiniz. Giriş için parolanızı belirleyin.",
-            "Parola belirle ve hesabı etkinleştir", configuration, cancellationToken);
+            "Parola belirle ve hesabı etkinleştir", configuration, cancellationToken,
+            companySlug is null ? null : TenantHostResolver.BuildPortalUrl(companySlug, configuration["TenantRouting:RootDomain"]));
 
     public static async Task SendCompanyAccessAddedEmailAsync(string recipient, string displayName, string companyName,
-        string roleKey, IConfiguration configuration, CancellationToken cancellationToken)
+        string roleKey, IConfiguration configuration, CancellationToken cancellationToken, string? companySlug = null)
     {
         var host = configuration["Email:Smtp:Host"];
         var publicBaseUrl = configuration["Email:PublicBaseUrl"]?.TrimEnd('/');
@@ -1320,7 +1321,9 @@ public static class AccountEndpoints
             "hr_operator" => "Ekip yöneticisi",
             _ => "Görüntüleyici"
         };
-        var loginUrl = WebUtility.HtmlEncode(new Uri(baseUri, "/").AbsoluteUri);
+        var loginUrl = WebUtility.HtmlEncode(companySlug is null
+            ? new Uri(baseUri, "/").AbsoluteUri
+            : TenantHostResolver.BuildPortalUrl(companySlug, configuration["TenantRouting:RootDomain"]));
         var from = new MailAddress(fromAddress, configuration["Email:FromName"] ?? "EnvanterTR");
         using var message = new MailMessage(from, new MailAddress(recipient))
         {
@@ -1328,7 +1331,7 @@ public static class AccountEndpoints
             SubjectEncoding = Encoding.UTF8,
             BodyEncoding = Encoding.UTF8,
             IsBodyHtml = true,
-            Body = $"<p>Merhaba {WebUtility.HtmlEncode(displayName)},</p><p>{WebUtility.HtmlEncode(companyName)} şirket alanına {roleName} rolüyle erişiminiz eklendi. Mevcut EnvanterTR hesabınızla giriş yapıp bu şirketi seçebilirsiniz.</p><p><a href=\"{loginUrl}\">EnvanterTR girişini aç</a></p>"
+            Body = $"<p>Merhaba {WebUtility.HtmlEncode(displayName)},</p><p>{WebUtility.HtmlEncode(companyName)} şirket alanına {roleName} rolüyle erişiminiz eklendi. Mevcut EnvanterTR hesabınızla giriş yapıp bu şirketi seçebilirsiniz.</p><p>Şirket portalınız: <a href=\"{loginUrl}\">{loginUrl}</a></p><p><a href=\"{loginUrl}\">Şirket portalını aç</a></p>"
         };
         using var client = new SmtpClient(host, port)
         {
@@ -1343,7 +1346,8 @@ public static class AccountEndpoints
     }
 
     private static async Task SendAccountLinkEmailAsync(string recipient, string token, string subject,
-        string intro, string? linkText, IConfiguration configuration, CancellationToken cancellationToken)
+        string intro, string? linkText, IConfiguration configuration, CancellationToken cancellationToken,
+        string? companyPortalUrl = null)
     {
         var host = configuration["Email:Smtp:Host"];
         var publicBaseUrl = configuration["Email:PublicBaseUrl"]?.TrimEnd('/');
@@ -1374,7 +1378,9 @@ public static class AccountEndpoints
             SubjectEncoding = Encoding.UTF8,
             BodyEncoding = Encoding.UTF8,
             IsBodyHtml = true,
-            Body = $"<p>{intro}</p><p><a href=\"{safeUrl}\">{WebUtility.HtmlEncode(linkText ?? "Yeni parola belirle")}</a></p><p>Bu isteği siz yapmadıysanız e-postayı yok sayabilirsiniz.</p>"
+            Body = $"<p>{intro}</p><p><a href=\"{safeUrl}\">{WebUtility.HtmlEncode(linkText ?? "Yeni parola belirle")}</a></p>" +
+                   (companyPortalUrl is null ? string.Empty : $"<p>Şirket portalınız: <a href=\"{WebUtility.HtmlEncode(companyPortalUrl)}\">{WebUtility.HtmlEncode(companyPortalUrl)}</a></p>") +
+                   "<p>Bu isteği siz yapmadıysanız e-postayı yok sayabilirsiniz.</p>"
         };
         using var client = new SmtpClient(host, port)
         {
@@ -1388,4 +1394,5 @@ public static class AccountEndpoints
             client.Credentials = new NetworkCredential(username, password ?? string.Empty);
         await client.SendMailAsync(message, cancellationToken);
     }
+
 }

@@ -1,5 +1,6 @@
 using System.Data;
 using System.Globalization;
+using System.Net;
 using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text;
@@ -329,7 +330,8 @@ public static class CheckoutEndpoints
             if (expectedPaymentId is not null && !string.Equals(order.PaymentReference, expectedPaymentId, StringComparison.Ordinal) ||
                 expectedPaymentStatus is not null && !string.Equals(terminalPaymentStatus, expectedPaymentStatus, StringComparison.Ordinal))
                 return Results.Conflict(new { message = "Ödeme bildirimi kayıtlı sağlayıcı sonucu ile eşleşmedi." });
-            return CheckoutResult(order.Status == "Provisioned" ? "success" : "failed");
+            return CheckoutResult(order.Status == "Provisioned" ? "success" : "failed",
+                order.Status == "Provisioned" ? order.Slug : null, configuration);
         }
         if (order.Status is not (CheckoutStatusStarted or "PaymentReview" or "ProvisioningFailed" or "Expired"))
             return Results.Conflict(new { message = "Ödeme henüz doğrulanabilir durumda değil." });
@@ -387,6 +389,7 @@ public static class CheckoutEndpoints
             string? invitationEmail = null;
             string? invitationName = null;
             string? companyName = null;
+            var invitationEmailSent = false;
             bool invitationNeeded = false;
             try
             {
@@ -397,7 +400,7 @@ public static class CheckoutEndpoints
                 if (lockedOrder.Status == "Provisioned")
                 {
                     await transaction.CommitAsync(cancellationToken);
-                    return CheckoutResult("success");
+                    return CheckoutResult("success", lockedOrder.Slug, configuration);
                 }
                 if (lockedOrder.Status == "PaymentFailed")
                 {
@@ -441,7 +444,7 @@ public static class CheckoutEndpoints
 
                 var now = DateTimeOffset.UtcNow;
                 var company = new Company { Name = lockedOrder.CompanyName, Slug = lockedOrder.Slug,
-                    ContactEmail = lockedOrder.ContactEmail };
+                    ContactEmail = lockedOrder.ContactEmail, SecurityRequireMfa = true };
                 db.Companies.Add(company);
                 db.CompanyMemberships.Add(new CompanyMembership { CompanyId = company.Id, UserId = owner.Id, RoleKey = "owner" });
                 db.TenantSubscriptions.Add(new TenantSubscription { CompanyId = company.Id, PlanId = plan.Id,
@@ -474,13 +477,17 @@ public static class CheckoutEndpoints
                 {
                     var owner = await userManager.FindByEmailAsync(invitationEmail);
                     if (owner?.EmailConfirmed == true)
+                    {
                         await AccountEndpoints.SendCompanyAccessAddedEmailAsync(invitationEmail, invitationName ?? invitationEmail,
-                            companyName ?? "şirket alanı", "owner", configuration, cancellationToken);
+                            companyName ?? "şirket alanı", "owner", configuration, cancellationToken, order.Slug);
+                        invitationEmailSent = true;
+                    }
                     else if (owner is not null)
                     {
                         var resetToken = await userManager.GeneratePasswordResetTokenAsync(owner);
                         await AccountEndpoints.SendAccountInvitationEmailAsync(invitationEmail, invitationName ?? invitationEmail,
-                            resetToken, configuration, cancellationToken);
+                            resetToken, configuration, cancellationToken, order.Slug);
+                        invitationEmailSent = true;
                     }
                 }
                 catch (Exception exception) when (exception is not OperationCanceledException)
@@ -488,7 +495,7 @@ public static class CheckoutEndpoints
                     logger.LogWarning("Paid company owner invitation could not be sent. Error type: {ErrorType}", exception.GetType().Name);
                 }
             }
-            return CheckoutResult("success");
+            return CheckoutResult("success", order.Slug, configuration, invitationEmailSent);
         }
     }
 
@@ -525,16 +532,24 @@ public static class CheckoutEndpoints
         catch (DbUpdateException) { db.ChangeTracker.Clear(); }
     }
 
-    private static IResult CheckoutResult(string state)
+    private static IResult CheckoutResult(string state, string? companySlug = null,
+        IConfiguration? configuration = null, bool invitationEmailSent = false)
     {
         var (title, message) = state switch
         {
-            "success" => ("Ödeme alındı", "Ödeme doğrulandı. Şirket alanı açıldı; hesap erişim bilgileri e-posta ile iletilecek."),
+            "success" => ("Ödeme alındı", invitationEmailSent
+                ? "Ödeme doğrulandı ve şirket alanınız açıldı. Parola belirleme veya şirket erişimi e-postası gönderildi. E-posta görünmüyorsa gereksiz klasörünü kontrol edin."
+                : "Ödeme doğrulandı ve şirket alanınız açıldı. Erişim e-postası daha önce gönderilmiş olabilir; gelen kutusu ve gereksiz klasörünü kontrol edin. Portalı açın; giriş bağlantısı yoksa parola yenileme seçeneğini kullanın."),
             "review" => ("Ödeme inceleniyor", "Ödeme sağlayıcının güvenlik incelemesinde. Sonuç kesinleşince şirket alanı açılacak."),
             "support" => ("İşlem doğrulandı", "Ödeme doğrulandı; şirket alanının açılması için destek ekibiyle iletişime geçin."),
             _ => ("Ödeme tamamlanmadı", "Ödeme doğrulanamadı. Ücret alındığını düşünüyorsanız destek ekibiyle iletişime geçin.")
         };
-        var html = $"<!doctype html><html lang=\"tr\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>{title} · EnvanterTR</title><body style=\"font:16px Segoe UI,Arial,sans-serif;background:#101c30;color:#18263b;display:grid;place-items:center;min-height:100vh;margin:0\"><main style=\"max-width:560px;margin:24px;padding:36px;border-radius:18px;background:white\"><h1>{title}</h1><p>{message}</p><a href=\"/\">EnvanterTR ana sayfasına dön</a></main></body></html>";
+        var portalUrl = state == "success" && companySlug is not null && configuration is not null
+            ? TenantHostResolver.BuildPortalUrl(companySlug, configuration["TenantRouting:RootDomain"])
+            : null;
+        var portalLink = portalUrl is null ? string.Empty
+            : $"<p>Şirket portalınız: <a href=\"{WebUtility.HtmlEncode(portalUrl)}\">{WebUtility.HtmlEncode(portalUrl)}</a></p>";
+        var html = $"<!doctype html><html lang=\"tr\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>{WebUtility.HtmlEncode(title)} · EnvanterTR</title><body style=\"font:16px Segoe UI,Arial,sans-serif;background:#101c30;color:#18263b;display:grid;place-items:center;min-height:100vh;margin:0\"><main style=\"max-width:560px;margin:24px;padding:36px;border-radius:18px;background:white\"><h1>{WebUtility.HtmlEncode(title)}</h1><p>{WebUtility.HtmlEncode(message)}</p>{portalLink}<a href=\"/\">EnvanterTR ana sayfasına dön</a></main></body></html>";
         return Results.Content(html, "text/html; charset=utf-8", Encoding.UTF8);
     }
 
