@@ -5380,8 +5380,27 @@ try {
 
   if (!await page.locator('[data-page="Varlık modelleri"]').isVisible()) await page.locator('[data-group="inventory"]').click();
   await page.locator('[data-page="Varlık modelleri"]').click();
-  await page.locator(`[data-model-details="${modelId}"]`).click();
-  await page.locator('#modelDetailsDialog').waitFor({ state: 'visible' });
+  let releaseModelDetails;
+  const modelDetailsGate = new Promise(resolve => { releaseModelDetails = resolve; });
+  const delayModelDetails = async route => {
+    const response = await route.fetch();
+    await modelDetailsGate;
+    await route.fulfill({ response });
+  };
+  await page.route(`**/api/models/${modelId}/details`, delayModelDetails);
+  try {
+    const modelDetailsResponse = page.waitForResponse(response => new URL(response.url()).pathname === `/api/models/${modelId}/details`);
+    await page.locator(`[data-model-details="${modelId}"]`).click();
+    await page.locator('#modelDetailsDialog').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('#modelDetailsSummary').innerText(), '', 'The model summary must not display stale fields while loading.');
+    assert.match(await page.locator('#modelDetailsFeedback').innerText(), /yükleniyor/i, 'A delayed model response must keep the loading status visible.');
+    releaseModelDetails();
+    assert.equal((await modelDetailsResponse).status(), 200, 'The matching model detail request must succeed.');
+    await page.locator('#modelDetailsSummary').getByText('MD-TEST', { exact: true }).waitFor();
+  } finally {
+    releaseModelDetails();
+    await page.unroute(`**/api/models/${modelId}/details`, delayModelDetails);
+  }
   assert.match(await page.locator('#modelDetailsSummary').innerText(), /MD-TEST/);
   assert.match(await page.locator('#modelDetailsSummary').innerText(), /Teknik dosyalar/);
   assert.match(await page.locator('#modelDetailsAssets').innerText(), /QA-ASSET-001/);
