@@ -36,6 +36,7 @@ const auditItems = [
   }))
 ];
 let failNextAuditAssetLoad = false;
+let auditQueueResponseGate = null;
 let sessionRole = 'admin';
 const completedAudits = Array.from({ length: 52 }, (_, index) => ({
   id: auditItems[0].id, auditEventId: `completed-${index}`, assetTag: `QA-COMPLETED-${String(index + 1).padStart(3, '0')}`,
@@ -119,6 +120,13 @@ const server = createServer(async (request, response) => {
     send(200, { items: filtered.map(ticket => ({ ...ticket })), total: filtered.length, page: Number(url.searchParams.get('page') || 1), pageSize: 25, canViewAll: true }); return;
   }
   if (url.pathname === '/api/assets/audit-schedule') {
+    if (auditQueueResponseGate) {
+      const gate = auditQueueResponseGate;
+      auditQueueResponseGate = null;
+      gate.started();
+      await gate.response;
+      if (gate.fail) { send(503, { message: 'Synthetic audit queue failure' }); return; }
+    }
     const state = url.searchParams.get('state') || 'all';
     const through = url.searchParams.get('through') || auditDay(30);
     const page = Math.max(1, Number(url.searchParams.get('page') || 1));
@@ -353,6 +361,25 @@ try {
   await page.locator('#auditScheduleRefresh').click();
   await completedRefresh;
   assert.equal(await page.locator('#auditScheduleSearch').inputValue(), 'audit-finding-marker');
+  let releaseQueue, queueStarted;
+  const queueRequestStarted = new Promise(resolve => { queueStarted = resolve; });
+  auditQueueResponseGate = { started: queueStarted, response: new Promise(resolve => { releaseQueue = resolve; }), fail: true };
+  await page.locator('#auditScheduleRefresh').click();
+  await queueRequestStarted;
+  try {
+    assert.equal(await page.locator('#auditScheduleRows button').count(), 0, 'Old audit actions must disappear while the replacement result is loading.');
+    assert.equal(await page.locator('#auditScheduleRows').getAttribute('aria-busy'), 'true');
+    assert.equal(await page.locator('#auditSchedulePrev').isDisabled(), true);
+    assert.equal(await page.locator('#auditScheduleNext').isDisabled(), true);
+  } finally { releaseQueue(); }
+  await page.locator('#auditScheduleRows').getByRole('alert').waitFor();
+  assert.match(await page.locator('#auditScheduleRows').innerText(), /Synthetic audit queue failure/);
+  assert.equal(await page.locator('#auditScheduleRows').getAttribute('aria-busy'), 'false');
+  assert.equal(await page.locator('#auditScheduleRows button').count(), 0, 'An unsuccessful refresh must not leave previous results actionable.');
+  assert.equal(await page.locator('#auditScheduleSearch').inputValue(), 'audit-finding-marker');
+  await page.locator('#auditScheduleRefresh').click();
+  await page.locator('#auditScheduleRows').getByText('QA-COMPLETED-001', { exact: true }).waitFor();
+  assert.equal(await page.locator('#auditScheduleRows').getByRole('button', { name: 'Varlığı aç', exact: true }).count(), 1);
   sessionRole = 'viewer';
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => !document.body.classList.contains('auth-required'));
