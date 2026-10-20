@@ -29,6 +29,10 @@ jobs:
         shell: bash
         run: node tools/Verify-UiLocales.mjs
 
+      - name: Verify shared tenant wildcard routing contract
+        shell: bash
+        run: node tools/Verify-TenantWildcardRouting.mjs
+
       - name: Verify sidebar navigation destinations and status copy
         shell: bash
         run: node tools/Verify-AppNavigation.mjs
