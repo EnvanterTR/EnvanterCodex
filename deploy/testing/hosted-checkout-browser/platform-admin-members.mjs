@@ -436,7 +436,7 @@ try {
   assert.match(await checkoutHealthCard.innerText(), /Ödeme alınabilir Cloud paketi yok; fiyat ve para birimini kontrol edin/);
   checkoutReadiness.publishedCloudPlans = null; checkoutReadiness.catalogReady = false;
   await page.locator('#refreshSystemHealth').click();
-  await checkoutHealthCard.getByText('Eksikler var', { exact: true }).waitFor();
+  await checkoutHealthCard.getByText('Paket kataloğu okunamadı', { exact: true }).waitFor();
   assert.match(await checkoutHealthCard.innerText(), /Paket kataloğu okunamadı/);
   const followUpTable = page.locator('#followUpTable');
   await followUpTable.getByText('Synthetic Demo Company').waitFor({ state: 'visible' });
