@@ -1324,6 +1324,7 @@ public static class AccountEndpoints
         var loginUrl = WebUtility.HtmlEncode(companySlug is null
             ? new Uri(baseUri, "/").AbsoluteUri
             : TenantHostResolver.BuildPortalUrl(companySlug, configuration["TenantRouting:RootDomain"]));
+        const string companyMfaInstructions = "<p>Giriş ekranı şirketin güvenlik ayarlarına göre Authenticator doğrulaması isteyebilir. Kurulum istenirse QR kodunu telefonunuzdaki uyumlu bir Authenticator uygulamasıyla tarayın, uygulamadaki güncel 6 haneli kodla doğrulayın ve kurtarma kodlarını güvenli yerde saklayın. MFA etkin olduğunda her yeni oturum açışta Authenticator kodu veya kullanılmamış bir kurtarma kodu gerekir; oturum açıkken sayfalar arasında gezerken yeniden kod sorulmaz. EnvanterTR için Google ya da Microsoft hesabı gerekmez.</p>";
         var from = new MailAddress(fromAddress, configuration["Email:FromName"] ?? "EnvanterTR");
         using var message = new MailMessage(from, new MailAddress(recipient))
         {
@@ -1331,7 +1332,7 @@ public static class AccountEndpoints
             SubjectEncoding = Encoding.UTF8,
             BodyEncoding = Encoding.UTF8,
             IsBodyHtml = true,
-            Body = $"<p>Merhaba {WebUtility.HtmlEncode(displayName)},</p><p>{WebUtility.HtmlEncode(companyName)} şirket alanına {roleName} rolüyle erişiminiz eklendi. Mevcut EnvanterTR hesabınızla giriş yapıp bu şirketi seçebilirsiniz.</p><p>Şirket portalınız: <a href=\"{loginUrl}\">{loginUrl}</a></p><p><a href=\"{loginUrl}\">Şirket portalını aç</a></p>"
+            Body = $"<p>Merhaba {WebUtility.HtmlEncode(displayName)},</p><p>{WebUtility.HtmlEncode(companyName)} şirket alanına {roleName} rolüyle erişiminiz eklendi. Mevcut EnvanterTR hesabınızla giriş yapıp bu şirketi seçebilirsiniz.</p><p>Şirket portalınız: <a href=\"{loginUrl}\">{loginUrl}</a></p><p><a href=\"{loginUrl}\">Şirket portalını aç</a></p>{companyMfaInstructions}"
         };
         using var client = new SmtpClient(host, port)
         {
@@ -1372,6 +1373,8 @@ public static class AccountEndpoints
             Fragment = $"email={Uri.EscapeDataString(recipient)}&token={Uri.EscapeDataString(token)}"
         };
         var safeUrl = WebUtility.HtmlEncode(builder.Uri.AbsoluteUri);
+        var companyMfaInstructions = companyPortalUrl is null ? string.Empty
+            : "<p>Bu şirket hesabında ilk girişte Authenticator güvenlik kurulumu istenir. QR kodunu telefonunuzdaki uyumlu bir Authenticator uygulamasıyla tarayın, güncel 6 haneli kodu doğrulayın ve kurtarma kodlarını güvenli yerde saklayın. Kurulumdan sonra her yeni oturum açışta Authenticator kodu veya kullanılmamış kurtarma kodu gerekir; oturum açıkken sayfalar arasında gezerken yeniden kod sorulmaz. EnvanterTR için Google ya da Microsoft hesabı gerekmez.</p>";
         using var message = new MailMessage(from, new MailAddress(recipient))
         {
             Subject = subject,
@@ -1379,7 +1382,7 @@ public static class AccountEndpoints
             BodyEncoding = Encoding.UTF8,
             IsBodyHtml = true,
             Body = $"<p>{intro}</p><p><a href=\"{safeUrl}\">{WebUtility.HtmlEncode(linkText ?? "Yeni parola belirle")}</a></p>" +
-                   (companyPortalUrl is null ? string.Empty : $"<p>Şirket portalınız: <a href=\"{WebUtility.HtmlEncode(companyPortalUrl)}\">{WebUtility.HtmlEncode(companyPortalUrl)}</a></p>") +
+                   (companyPortalUrl is null ? string.Empty : $"<p>Şirket portalınız: <a href=\"{WebUtility.HtmlEncode(companyPortalUrl)}\">{WebUtility.HtmlEncode(companyPortalUrl)}</a></p>") + companyMfaInstructions +
                    "<p>Bu isteği siz yapmadıysanız e-postayı yok sayabilirsiniz.</p>"
         };
         using var client = new SmtpClient(host, port)

@@ -20,6 +20,9 @@ Tarih: 20 Ekim 2026
 - Ödeme onay sayfası doğrudan tenant portal linkini gösteriyor; webhook önce, tarayıcı geri dönüşü sonra geldiğinde de tekrar işleme durumu doğru anlatılıyor.
 - Sayfa e-posta teslimini kesin varsaymıyor: aynı işlemde SMTP kabul edildiyse gönderildi diyor; idempotent geri dönüşte daha önce gönderilmiş olabileceğini belirtiyor ve parola yenileme yolunu gösteriyor.
 - E-posta gövdesinde tenant portal adresi bulunuyor.
+- Yeni davet e-postası ilk girişte QR/Authenticator kurulumunu, 6 haneli doğrulamayı, kurtarma kodlarını ve yeni oturumlarda MFA adımını açıkça anlatıyor; EnvanterTR için ayrıca Google/Microsoft hesap üyeliği gerekmediğini belirtiyor.
+- Mevcut hesaba şirket erişimi ekleme e-postası MFA bilgisini şirket politikasına bağlı ve doğru koşulla anlatıyor.
+- İki ayrı istemciyle yapılan giriş kabul testi, MFA etkin hesabın yeni cihazdan parola tek başına kullanarak oturum açamadığını; doğru kodla açabildiğini doğruluyor.
 
 ## Doğrulama
 
@@ -27,7 +30,8 @@ Tarih: 20 Ekim 2026
 - `Public_checkout_uses_server_price_verifies_provider_and_provisions_once`: ödeme sonrası şirket/abonelik/owner, zorunlu MFA, idempotent geri dönüş sayfası ve davet e-postasındaki portal URL'si doğrulandı.
 - Tenant portal URL testleri: güvenli slug/domain senaryoları geçti.
 - Web ve test derlemesi: 0 warning, 0 error.
+- E-posta açıklaması güncellemesinden sonra izole PostgreSQL/Docker kabul testi: **2/2 geçti** (`Public_checkout_uses_server_price_verifies_provider_and_provisions_once`, `Existing_account_can_join_an_additional_company_with_its_own_role_and_access_notice`). Güncel web ve test projeleri 0 warning, 0 error ile derlendi.
 
 ## Canlı sınır
 
-Portal/MFA onboarding değişikliği PR #5 içinde; GitHub CI sonucu bekleniyor ve canlıya alınmadı. Salt okunur canlı kontrolünde `/api/checkout/status` `available:false`, `/api/plans` boş liste döndürüyor. Bu nedenle örnek bir müşteri şu anda satın alma yapıp giriş başlatamaz. İyzico üretim ayarı, yayımlanmış planlar ve SMTP e-posta teslimi tamamlanıp kabul edilmeden canlı satış akışı çalışıyor denemez.
+Portal/MFA onboarding değişikliği ve e-posta yönergeleri PR #5 içinde; yeni e-posta metni için iki hedefli test yerelde geçti. Mevcut PR CI’sı önceki HEAD’de sürüyor; bu güncel e-posta değişikliğini içermiyor. Canlıya alınmadı. Salt okunur canlı kontrolünde `/api/checkout/status` `available:false`, `/api/plans` boş liste döndürüyor. Bu nedenle örnek bir müşteri şu anda satın alma yapıp giriş başlatamaz. İyzico üretim ayarı, yayımlanmış planlar ve SMTP e-posta teslimi tamamlanıp kabul edilmeden canlı satış akışı çalışıyor denemez.
