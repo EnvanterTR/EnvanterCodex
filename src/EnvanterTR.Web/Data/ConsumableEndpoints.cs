@@ -36,6 +36,8 @@ public static class ConsumableEndpoints
             if (!Tenant(user, out var companyId)) return Results.Forbid();
             page = Math.Max(1, page); pageSize = Math.Clamp(pageSize == 0 ? 25 : pageSize, 1, 200);
             var query = db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, UserId(user)!.Value, ct);
+            if (allowedLocations is not null) query = query.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
@@ -67,11 +69,13 @@ public static class ConsumableEndpoints
             return Results.Ok(new { items, page, pageSize, total });
         }).RequireAuthorization("asset.read");
 
-        api.MapGet("/consumables/export.csv", async ([FromQuery] string? q, [FromQuery] string? stock,
-            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        var exportConsumables = async Task<IResult> ([FromQuery] string? q, [FromQuery] string? stock,
+            HttpContext context, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
             var query = db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, UserId(user)!.Value, ct);
+            if (allowedLocations is not null) query = query.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim(); if (term.Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
@@ -87,6 +91,18 @@ public static class ConsumableEndpoints
                 x.Name, x.Category, x.ModelNumber, x.ItemNumber, x.Supplier, x.Location, x.TotalQuantity, x.MinimumQuantity, x.UnitCost, x.Currency, x.PurchaseDate, x.WarrantyExpiresAt,
                 Issued = db.ConsumableMovements.Where(m => m.CompanyId == companyId && m.ConsumableId == x.Id && m.MovementType == "Checkout").Sum(m => (int?)m.Quantity) ?? 0
             }).ToListAsync(ct);
+            if (context.Request.Path.Value?.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                using var workbook = new XlsxExportWriter(["Malzeme", "Kategori", "Model", "Ürün no", "Tedarikçi", "Konum", "Toplam", "Tüketilen", "Kalan", "Minimum", "Birim maliyeti", "Para birimi", "Alış tarihi", "Garanti bitiş tarihi"]);
+                foreach (var row in rows)
+                    workbook.WriteRow([row.Name, row.Category, row.ModelNumber, row.ItemNumber, row.Supplier, row.Location,
+                        row.TotalQuantity, row.Issued, row.TotalQuantity - row.Issued, row.MinimumQuantity,
+                        row.UnitCost, row.Currency, row.PurchaseDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                        row.WarrantyExpiresAt?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)]);
+                context.Response.Headers["X-Total-Count"] = rows.Count.ToString(CultureInfo.InvariantCulture);
+                await workbook.SendAsync(context, $"sarf-stoklari-{DateTime.UtcNow:yyyyMMdd}.xlsx", ct);
+                return Results.Empty;
+            }
             var csv = new StringBuilder("\uFEFF\"Malzeme\",\"Kategori\",\"Model\",\"Ürün no\",\"Tedarikçi\",\"Konum\",\"Toplam\",\"Tüketilen\",\"Kalan\",\"Minimum\",\"Birim maliyeti\",\"Para birimi\",\"Alış tarihi\",\"Garanti bitiş tarihi\"\r\n");
             foreach (var row in rows)
             {
@@ -97,21 +113,33 @@ public static class ConsumableEndpoints
                 csv.AppendJoin(',', cells.Select(CsvCell)).Append("\r\n");
             }
             return Results.File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv; charset=utf-8", $"sarf-stoklari-{DateTime.UtcNow:yyyyMMdd}.csv");
-        }).RequireAuthorization("asset.read");
+        };
+        api.MapGet("/consumables/export.csv", exportConsumables).RequireAuthorization("asset.read");
+        api.MapGet("/consumables/export.xlsx", exportConsumables).RequireAuthorization("asset.read");
 
         api.MapGet("/consumables/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
-            var item = await db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, UserId(user)!.Value, ct);
+            var allowedLocations = employeeScope.AllowedLocations;
+            var visibleEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(e => e.CompanyId == companyId));
+            var itemQuery = db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id);
+            if (allowedLocations is not null) itemQuery = itemQuery.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
+            var item = await itemQuery
                 .Select(x => new { x.Id, x.Name, x.Category, x.ModelNumber, x.ItemNumber, x.Supplier, x.Location,
                     x.MinimumQuantity, x.TotalQuantity, x.UnitCost, x.Currency, x.PurchaseDate, x.WarrantyExpiresAt, x.Notes, x.IsRequestable, x.UpdatedAt,
                     issued = db.ConsumableMovements.Where(m => m.CompanyId == companyId && m.ConsumableId == x.Id && m.MovementType == "Checkout").Sum(m => (int?)m.Quantity) ?? 0 })
                 .SingleOrDefaultAsync(ct);
             if (item is null) return Results.NotFound();
-            var movements = await db.ConsumableMovements.AsNoTracking().Where(m => m.CompanyId == companyId && m.ConsumableId == id)
-                .OrderByDescending(m => m.OccurredAt).Take(100).Select(m => new { m.Id, m.MovementType, m.Quantity, m.Notes, m.OccurredAt,
+            var movementsQuery = db.ConsumableMovements.AsNoTracking().Where(m => m.CompanyId == companyId && m.ConsumableId == id);
+            if (employeeScope.IsRestricted)
+                movementsQuery = movementsQuery.Where(m => !m.EmployeeId.HasValue || visibleEmployees.Any(e => e.Id == m.EmployeeId.Value));
+            var canDisplayActorNames = allowedLocations is null;
+            var movements = await movementsQuery
+                .OrderByDescending(m => m.OccurredAt).Take(100).Select(m => new { m.Id, m.MovementType, m.Quantity,
+                    Notes = canDisplayActorNames ? m.Notes : null, m.OccurredAt,
                     employee = db.Employees.Where(e => e.CompanyId == companyId && e.Id == m.EmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
-                    actor = db.Users.Where(u => u.Id == m.ActorUserId).Select(u => u.DisplayName).FirstOrDefault() }).ToListAsync(ct);
+                    actor = canDisplayActorNames ? db.Users.Where(u => u.Id == m.ActorUserId).Select(u => u.DisplayName).FirstOrDefault() : null }).ToListAsync(ct);
             return Results.Ok(new { item, movements });
         }).RequireAuthorization("asset.read");
 
@@ -124,6 +152,8 @@ public static class ConsumableEndpoints
                 errors["warrantyExpiresAt"] = ["Garanti bitiş tarihi alış tarihinden önce olamaz."];
             if (errors.Count > 0) return Results.ValidationProblem(errors);
             var location = Clean(request.Location) ?? await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, ct);
+            if (!await CompanyLocationAccess.CanAccessLocationPathAsync(db, companyId, UserId(user)!.Value, location, ct))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["location"] = ["Sarf kaydı için erişilebilir, etkin bir konum seçilmelidir."] });
             var item = new Consumable { CompanyId = companyId, Name = request.Name.Trim(), Category = Clean(request.Category),
                 ModelNumber = Clean(request.ModelNumber), ItemNumber = Clean(request.ItemNumber), Supplier = Clean(request.Supplier),
                 SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, ct),
@@ -141,13 +171,18 @@ public static class ConsumableEndpoints
         api.MapPut("/consumables/{id:guid}", async (Guid id, UpdateRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
-            var item = await db.Consumables.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, UserId(user)!.Value, ct);
+            var itemQuery = db.Consumables.Where(x => x.CompanyId == companyId && x.Id == id);
+            if (allowedLocations is not null) itemQuery = itemQuery.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
+            var item = await itemQuery.SingleOrDefaultAsync(ct);
             if (item is null) return Results.NotFound();
             var errors = Validate(request.Name, request.MinimumQuantity, item.TotalQuantity, request.UnitCost, request.Currency,
                 request.Category, request.ModelNumber, request.ItemNumber, request.Supplier, request.Location, request.Notes);
             if (request.WarrantyExpiresAt is { } warranty && request.PurchaseDate is { } purchase && warranty < purchase)
                 errors["warrantyExpiresAt"] = ["Garanti bitiş tarihi alış tarihinden önce olamaz."];
             if (errors.Count > 0) return Results.ValidationProblem(errors);
+            if (!await CompanyLocationAccess.CanAccessLocationPathAsync(db, companyId, UserId(user)!.Value, request.Location, ct))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["location"] = ["Sarf kaydı için erişilebilir, etkin bir konum seçilmelidir."] });
             item.Name = request.Name.Trim(); item.Category = Clean(request.Category); item.ModelNumber = Clean(request.ModelNumber);
             item.ItemNumber = Clean(request.ItemNumber); item.Supplier = Clean(request.Supplier); item.SupplierId = await SupplierCatalogEndpoints.ResolveSupplierIdAsync(db, companyId, request.Supplier, ct); item.Location = Clean(request.Location);
             item.LocationCatalogId = await AssetEndpoints.ResolveLocationCatalogIdAsync(db, companyId, request.Location, ct);
@@ -166,6 +201,7 @@ public static class ConsumableEndpoints
                     $"SELECT * FROM \"Consumables\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
                 .SingleOrDefaultAsync(ct);
             if (item is null) return Results.NotFound();
+            if (!await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, UserId(user)!.Value, item.LocationCatalogId, ct)) return Results.NotFound();
             var consumed = await db.ConsumableMovements.Where(m => m.CompanyId == companyId && m.ConsumableId == id && m.MovementType == "Checkout").SumAsync(m => (int?)m.Quantity, ct) ?? 0;
             var newTotal = item.TotalQuantity + request.Quantity;
             if (newTotal < consumed || newTotal > 100000) return Results.ValidationProblem(new Dictionary<string, string[]> { ["quantity"] = [$"Yeni toplam stok tüketilmiş miktardan ({consumed}) az veya 100.000'den fazla olamaz."] });
@@ -185,8 +221,14 @@ public static class ConsumableEndpoints
                     $"SELECT * FROM \"Consumables\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
                 .SingleOrDefaultAsync(ct);
             if (item is null) return Results.NotFound();
-            if (!await db.Employees.AnyAsync(e => e.CompanyId == companyId && e.Id == request.EmployeeId && e.IsActive, ct))
+            if (!await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, UserId(user)!.Value, item.LocationCatalogId, ct)) return Results.NotFound();
+            var employee = await db.Employees.AsNoTracking().Where(e => e.CompanyId == companyId && e.Id == request.EmployeeId && e.IsActive)
+                .Select(e => new { e.Id, e.LocationCatalogId, e.CompanyUnitId }).SingleOrDefaultAsync(ct);
+            if (employee is null)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeId"] = ["Aktif çalışan seçilmelidir."] });
+            if (!await CompanyLocationAccess.CanAccessEmployeeAsync(db, companyId, UserId(user)!.Value,
+                    employee.LocationCatalogId, employee.CompanyUnitId, ct))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeId"] = ["Çalışan için erişilebilir bir konum seçilmelidir."] });
             var consumed = await db.ConsumableMovements.Where(m => m.CompanyId == companyId && m.ConsumableId == id && m.MovementType == "Checkout").SumAsync(m => (int?)m.Quantity, ct) ?? 0;
             var remaining = item.TotalQuantity - consumed;
             if (request.Quantity > remaining) return Results.ValidationProblem(new Dictionary<string, string[]> { ["quantity"] = [$"Yeterli stok yok. Kullanılabilir miktar: {remaining}."] });
@@ -315,13 +357,28 @@ public static class ConsumableEndpoints
         if (existingMatches > 0)
             return Results.Conflict(new { isValid = false, existingMatches, errors = new[] { $"Şirkette aynı ad/ürün numarası bileşiminde {existingMatches} kayıt var. Yinelenen stok açılmaması için dosya reddedildi." } });
         var locationPaths = await AssetEndpoints.GetActiveLocationPathMapAsync(db, companyId, ct);
+        var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
         var defaultLocation = await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, ct);
         var defaultLocationApplied = defaultLocation is null ? 0 : parsed.Count(x => x.Location is null);
         foreach (var item in parsed)
         {
             item.Location ??= defaultLocation;
-            if (item.Location is not null && locationPaths.TryGetValue(item.Location, out var locationCatalogId)) item.LocationCatalogId = locationCatalogId;
+            if (item.Location is null)
+            {
+                if (allowedLocations is not null) AddCsvError(errors, "Konum erişimi sınırlı üyeler için içe aktarılan her sarf kaydına erişilebilir bir konum atanmalıdır.");
+                continue;
+            }
+            if (locationPaths.TryGetValue(item.Location, out var locationCatalogId))
+            {
+                item.LocationCatalogId = locationCatalogId;
+                if (allowedLocations is not null && !allowedLocations.Contains(locationCatalogId))
+                    AddCsvError(errors, $"\"{item.Location}\" konumu içe aktarımı yapan üye için erişilebilir değil.");
+            }
+            else if (allowedLocations is not null)
+                AddCsvError(errors, $"\"{item.Location}\" etkin şirket konum kataloğunda bulunamadı; kısıtlı üyeler serbest metin konuma aktarım yapamaz.");
         }
+        if (errors.Count > 0)
+            return Results.UnprocessableEntity(new { isValid = false, rowCount = parsed.Count, errors = errors.Distinct(StringComparer.Ordinal).Take(30), message = "Konum kapsamı doğrulanamadı. Hiçbir sarf kaydı eklenmedi." });
         var suppliersToCreate = await SupplierImportCatalog.FindMissingNamesAsync(db, companyId, parsed.Select(x => x.Supplier), ct);
         if (!commit) return Results.Ok(new { isValid = true, rowCount = parsed.Count, defaultLocationApplied, suppliersToCreate, errors = Array.Empty<string>(),
             message = $"{parsed.Count:N0} yeni sarf kaydı doğrulandı. Varsayılan konum {defaultLocationApplied:N0} boş satıra uygulanacak; {suppliersToCreate.Length:N0} yeni tedarikçi yalnızca aktarımı onaylarsanız kataloğa eklenecek. Önizleme hiçbir kayıt eklemedi." });

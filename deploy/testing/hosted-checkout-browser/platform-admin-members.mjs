@@ -42,13 +42,31 @@ const secondMembership = {
     startsAt: '2026-09-05T10:00:00Z', endsAt: '2026-10-05T10:00:00Z', paymentReference: null
   }
 };
-const companies = [{ id: companyId, name: 'Synthetic Demo Company', slug: 'synthetic-demo', lifecycleStage: 'AtRisk', lifecycleOwnerName: 'Synthetic Platform Admin', nextFollowUpAt: '2026-10-10T10:00:00Z' }];
+const subscriptionId = '55555555-5555-4555-8555-555555555555';
+const directoryCompany = {
+  id: companyId, name: 'Synthetic Demo Company', slug: 'synthetic-demo', contactEmail: 'demo@example.invalid', isActive: true,
+  createdAt: '2026-09-01T09:30:00Z', hasBrandLogo: true, brandPrimaryColor: '#1769df',
+  lifecycleStage: 'AtRisk', lifecycleOwnerName: 'Synthetic Platform Admin', nextFollowUpAt: '2026-10-10T10:00:00Z',
+  employeeRecords: 12, loginAccounts: 4, assetRecords: 28,
+  subscription: { id: subscriptionId, planName: 'Cloud Pro', status: 'Active', isDemo: false,
+    startsAt: '2026-09-02T10:00:00Z', endsAt: '2027-09-02T10:00:00Z' },
+  verifiedMonthlyRecurringRevenue: 100, verifiedMrrCurrency: 'TRY'
+};
+const companies = [directoryCompany];
 const accounts = [member];
 const planId = '44444444-4444-4444-8444-444444444444';
+const alternatePlanId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const alternatePlan = { id: alternatePlanId, code: 'synthetic-alternate', name: 'Synthetic Alternate Plan', deploymentKind: 'cloud', isActive: true };
 const plans = [];
+let includeAlternatePlanOption = false;
 const writes = [];
 const auditRequests = [];
+const companyExports = [];
+const companyListRequests = [];
 let auditErrorInjected = false;
+let systemHealthReads = 0;
+let checkoutReadiness = { configurationReady: false, credentialsConfigured: false, callbackValid: false,
+  apiEndpointValid: true, environment: 'sandbox', publishedCloudPlans: 0, purchasableCloudPlans: 0, catalogReady: false };
 const auditEntries = Array.from({ length: 51 }, (_, index) => ({
   id: `99999999-9999-4999-8999-${String(index + 1).padStart(12, '0')}`,
   source: index === 0 ? 'platform' : 'company', actorUserId: platformAdminId,
@@ -59,7 +77,6 @@ const auditEntries = Array.from({ length: 51 }, (_, index) => ({
   details: JSON.stringify({ note: index === 0 ? 'Unique audit filter marker' : `Synthetic audit row ${index + 1}` }),
   occurredAt: new Date(Date.UTC(2026, 9, 15, 10, 0, index)).toISOString()
 }));
-const subscriptionId = '55555555-5555-4555-8555-555555555555';
 const companySubscription = {
   id: subscriptionId, planId, name: 'Cloud Pro', code: 'cloud-pro', status: 'Active', isDemo: false,
   startsAt: '2026-09-02T10:00:00Z', endsAt: '2027-09-02T10:00:00Z', paymentReference: 'synthetic-provider-reference'
@@ -78,9 +95,9 @@ const newerDemoLead = {
 const slowCompanyId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const fastCompanyId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const demoCompanyOptions = [
-  { id: companyId, name: 'Synthetic Demo Company', slug: 'synthetic-demo' },
-  { id: slowCompanyId, name: 'Slow Synthetic Company', slug: 'slow-synthetic' },
-  { id: fastCompanyId, name: 'Fast Synthetic Company', slug: 'fast-synthetic' }
+  directoryCompany,
+  { id: slowCompanyId, name: 'Slow Synthetic Company', slug: 'slow-synthetic', isActive: true },
+  { id: fastCompanyId, name: 'Fast Synthetic Company', slug: 'fast-synthetic', isActive: true }
 ];
 const demoLeadHistory = [];
 const newerDemoLeadHistory = [];
@@ -118,17 +135,51 @@ const server = createServer(async (request, response) => {
   });
   const path = url.pathname;
   if (request.method === 'GET') {
+    if (path === `/api/platform/companies/${companyId}/logo`) {
+      response.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'no-store' });
+      response.end(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p1sAAAAASUVORK5CYII=', 'base64')); return;
+    }
     if (path === '/api/session/csrf') return json(response, { requestToken: csrfToken });
     if (path === '/api/session') return json(response, { platformAdmin: true, name: 'Synthetic Platform Admin' });
     if (path === '/api/session/2fa') return json(response, { enabled: true });
+    if (path === '/api/platform/system/health') {
+      systemHealthReads++;
+      return json(response, {
+        generatedAt: '2026-10-16T12:00:00Z',
+        application: { status: 'healthy', cpuPercent: 7.5, cpuSampleMilliseconds: 300, processorCount: 4,
+          workingSetBytes: 536870912, managedHeapBytes: 268435456, memoryLimitBytes: 2147483648,
+          memoryUsagePercent: 25, startedAt: '2026-10-16T10:00:00Z', uptimeSeconds: 7200 },
+        database: { status: 'healthy', sizeBytes: 10485760 },
+        disk: { scope: 'application-container-filesystem', root: '/', totalBytes: 10737418240,
+          availableBytes: 8589934592, usedPercent: 20 },
+        integrations: { smtpConfigured: true, iyzicoConfigured: checkoutReadiness.credentialsConfigured, checkout: checkoutReadiness },
+        note: 'Synthetic health note: application-container metrics only.'
+      });
+    }
     if (path === '/api/platform/overview') return json(response, {
       companies: { total: 1, active: 1, suspended: 0 },
       subscriptions: { paidActive: 1, customerTrials: 0, demos: 0, expired: 0, renewalsDue: 0 },
-      checkout: { paymentPending: 0, paymentReview: 0, paymentFailed: 0, provisioningFailed: 0 }, recurringRevenue: { currencies: [] }
+      checkout: { paymentPending: 0, paymentReview: 0, paymentFailed: 0, provisioningFailed: 0 }, recurringRevenue: { currencies: [] },
+      recentPayments: [
+        { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1', companyName: 'Synthetic Paid Company', ownerName: 'Synthetic Paid Owner', ownerEmail: 'paid@example.invalid', planName: 'Cloud Pro', termDays: 365, amount: 1500, currency: 'TRY', status: 'Provisioned', createdAt: new Date(Date.now() - 2 * 60 * 60_000).toISOString(), paidAt: new Date(Date.now() - 60 * 60_000).toISOString() },
+        { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb2', companyName: 'Synthetic Failed Company', ownerName: 'Synthetic Failed Owner', ownerEmail: 'failed@example.invalid', planName: 'Cloud Starter', termDays: 30, amount: 250, currency: 'USD', status: 'PaymentFailed', createdAt: new Date(Date.now() - 30 * 60_000).toISOString(), paidAt: null }
+      ],
+      activity: { activeUsers: 3, activeSessions: 4, loginUsers: 12, loginSessions: 17, recentLogins: [{
+        displayName: 'Synthetic SaaS Owner', email: 'qa-owner@example.invalid', companyName: 'Synthetic Demo Company',
+        platformAdmin: false, ipAddress: '192.0.2.10', userAgent: 'Synthetic Browser',
+        createdAt: new Date(Date.now() - 2 * 60_000).toISOString(), lastSeenAt: new Date(Date.now() - 60_000).toISOString(),
+        expiresAt: new Date(Date.now() + 60 * 60_000).toISOString(), revokedAt: null
+      }] }
     });
+    if (path === '/api/platform/companies/export.csv') {
+      companyExports.push(Object.fromEntries(['q','active','planId','createdFrom','createdTo','sortBy','sortDirection'].map(key => [key, url.searchParams.get(key)])));
+      response.writeHead(200, { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': 'attachment; filename="envantertr-firmalar-20261016.csv"' });
+      response.end('\uFEFF"Firma";"Durum"\r\n"\'=2+2;Injected";"Aktif"\r\n'); return;
+    }
     if (path === '/api/platform/companies/renewals') return json(response, { items: [], total: 0, page: 1, pageSize: 50 });
     if (path === '/api/platform/companies' && url.searchParams.get('followUp') === 'overdue') return json(response, { items: companies, total: companies.length, page: 1, pageSize: 50 });
     if (path === '/api/platform/companies') {
+      companyListRequests.push(Object.fromEntries(['q','active','planId','createdFrom','createdTo','sortBy','sortDirection','page','pageSize'].map(key => [key, url.searchParams.get(key)])));
       const q = (url.searchParams.get('q') || '').trim().toLowerCase();
       if (q === 'slow') await new Promise(resolve => setTimeout(resolve, 450));
       const items = q === 'slow' ? [demoCompanyOptions[1]] : q === 'fast' ? [demoCompanyOptions[2]] : demoCompanyOptions;
@@ -181,6 +232,10 @@ const server = createServer(async (request, response) => {
       members: [{ displayName: member.displayName, email: member.email, roleKey: 'owner', employeeName: null,
         accountCreatedAt: member.accountCreatedAt, createdAt: '2026-09-02T10:00:00Z', emailConfirmed: true, twoFactorEnabled: true }],
       memberCount: 1, membersPage: 1, membersTotalPages: 1, ownerMemberExists: true,
+      usage: { generatedAt: '2026-10-16T15:00:00Z', assets: 28, employees: 12, loginAccounts: 4,
+        licenses: 3, assignedLicenseSeats: 2, activeApiTokens: 1, planName: 'Cloud Pro', deploymentKind: 'cloud',
+        maxAssets: 500, maxLoginUsers: null, recordedAttachmentCount: 4, recordedAttachmentBytes: 1048576,
+        storageNote: 'Eklerin boyut toplamı yalnız veritabanında kayıtlı dosya eklerini kapsar; şirket logoları ve medya dizinindeki dosyalar dahil değildir. Planlarda dosya alanı sınırı tanımlı değildir.' },
       subscriptions: [{ ...companySubscription, name: plans[0]?.name || companySubscription.name, code: plans[0]?.code || companySubscription.code }],
       checkoutOrders: [], lifecycleHistory: []
       });
@@ -205,6 +260,18 @@ const server = createServer(async (request, response) => {
   }
 
   if (request.method !== 'GET' && request.headers['x-csrf-token'] !== csrfToken) return json(response, { message: 'Missing synthetic CSRF token.' }, 400);
+  if (path === '/api/platform/companies/bulk-status' && request.method === 'PATCH') {
+    writes.push({ method: request.method, path, body, csrf: request.headers['x-csrf-token'] });
+    return json(response, { updated: body.companyIds.length, unchanged: 0 });
+  }
+  if (path === '/api/platform/companies/bulk-plan' && request.method === 'PATCH') {
+    writes.push({ method: request.method, path, body, csrf: request.headers['x-csrf-token'] });
+    companySubscription.planId = body.planId;
+    companySubscription.name = alternatePlan.name;
+    directoryCompany.subscription.planId = body.planId;
+    directoryCompany.subscription.planName = alternatePlan.name;
+    return json(response, { updated: body.companyIds.length, unchanged: 0, planId: body.planId, planName: alternatePlan.name, billingChanged: false });
+  }
   if (path === '/api/session/platform-reauth' && request.method === 'POST') {
     reauthenticated = true;
     response.writeHead(204); response.end(); return;
@@ -218,6 +285,14 @@ const server = createServer(async (request, response) => {
     member.memberships.find(item => item.id === companyMembership.id).roleKey = body.roleKey;
     response.writeHead(204); response.end(); return;
   }
+  if (path === `/api/platform/members/${accountId}/security-actions` && request.method === 'POST') {
+    if (!reauthenticated) return json(response, { code: 'platform_reauth_required', message: 'Synthetic reauthentication required.' }, 428);
+    writes.push({ method: request.method, path, body, csrf: request.headers['x-csrf-token'] });
+    if (body.action === 'lock') member.isLockedOut = true;
+    if (body.action === 'unlock') member.isLockedOut = false;
+    const messages = { lock: 'Synthetic account locked.', unlock: 'Synthetic account unlocked.', revokeSessions: 'Synthetic sessions revoked.', sendPasswordReset: 'Synthetic reset email sent.' };
+    return json(response, { action: body.action, userId: accountId, message: messages[body.action], revokedSessions: body.action === 'lock' || body.action === 'revokeSessions' ? 2 : 0, isLockedOut: member.isLockedOut, accessFailedCount: 0 });
+  }
   if (path === '/api/platform/members/invite' && request.method === 'POST') {
     if (!reauthenticated) return json(response, { code: 'platform_reauth_required', message: 'Synthetic reauthentication required.' }, 428);
     writes.push({ method: request.method, path, body, csrf: request.headers['x-csrf-token'] });
@@ -227,7 +302,7 @@ const server = createServer(async (request, response) => {
     accounts.push(invited);
     return json(response, { message: 'Sentetik davet kaydedildi.' });
   }
-  if (path === '/api/platform/plans' && request.method === 'GET') return json(response, plans);
+  if (path === '/api/platform/plans' && request.method === 'GET') return json(response, includeAlternatePlanOption ? [...plans, alternatePlan] : plans);
   if (path === '/api/platform/plans' && request.method === 'POST') {
     writes.push({ method: request.method, path, body, csrf: request.headers['x-csrf-token'] });
     const plan = { ...body, id: planId };
@@ -306,6 +381,63 @@ try {
   const address = server.address();
   await page.goto(`http://127.0.0.1:${address.port}/platform-admin.html`);
   await page.locator('#appShell').waitFor({ state: 'visible' });
+  await page.locator('#systemHealthCards').getByText('7,5%', { exact: true }).waitFor({ state: 'visible' });
+  assert.equal(systemHealthReads, 1, 'Opening the platform overview must load system health.');
+  await page.locator('#systemHealthCards').getByText('PostgreSQL', { exact: true }).waitFor({ state: 'visible' });
+  await page.locator('#systemHealthCards').getByText('SMTP ayarı', { exact: true }).waitFor({ state: 'visible' });
+  assert.match(await page.locator('#systemHealthNote').innerText(), /application-container metrics only/);
+  await page.locator('#overviewCards').getByText('Aktif kullanıcı · 5 dk', { exact: true }).waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#overviewCards .card').filter({ hasText: 'Aktif kullanıcı · 5 dk' }).locator('strong').innerText(), '3');
+  assert.equal(await page.locator('#overviewCards .card').filter({ hasText: 'Etkin oturum · 5 dk' }).locator('strong').innerText(), '4');
+  assert.equal(await page.locator('#overviewCards .card').filter({ hasText: 'Giriş yapan hesap · 24 sa' }).locator('strong').innerText(), '12');
+  const recentPaymentsTable = page.locator('#recentPaymentsTable');
+  await recentPaymentsTable.getByText('Synthetic Paid Company').waitFor({ state: 'visible' });
+  await recentPaymentsTable.getByText('Synthetic Failed Company').waitFor({ state: 'visible' });
+  await recentPaymentsTable.getByText('Şirket açıldı', { exact: true }).waitFor({ state: 'visible' });
+  await recentPaymentsTable.getByText('Ödeme başarısız', { exact: true }).waitFor({ state: 'visible' });
+  await page.locator('#recentPaymentsPanel [data-go="orders"]').click();
+  await page.waitForFunction(() => document.querySelector('#view-orders')?.classList.contains('active'));
+  await page.locator('#nav [data-view="overview"]').click();
+  await page.locator('#recentPaymentsTable').getByText('Synthetic Paid Company').waitFor({ state: 'visible' });
+  const recentLoginTable = page.locator('#recentLoginTable');
+  await recentLoginTable.getByText('qa-owner@example.invalid').waitFor({ state: 'visible' });
+  await recentLoginTable.getByText('192.0.2.10').waitFor({ state: 'visible' });
+  await recentLoginTable.getByText('Etkin', { exact: true }).waitFor({ state: 'visible' });
+  await recentLoginTable.getByRole('button', { name: 'Hesabı aç' }).click();
+  await page.locator('#view-members').waitFor({ state: 'visible' });
+  await page.locator('#memberSearch').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#memberSearch').inputValue(), 'qa-owner@example.invalid');
+  await page.locator('#nav [data-view="overview"]').click();
+  await page.locator('#recentLoginTable').getByText('qa-owner@example.invalid').waitFor({ state: 'visible' });
+  const healthReadsBeforeManualRefresh = systemHealthReads;
+  const manualHealthRefresh = page.waitForResponse(response => response.request().method() === 'GET'
+    && new URL(response.url()).pathname === '/api/platform/system/health');
+  await page.locator('#refreshSystemHealth').click();
+  await manualHealthRefresh;
+  await page.waitForFunction(() => document.querySelector('#systemHealthCards')?.innerText.includes('PostgreSQL'));
+  assert.ok(systemHealthReads > healthReadsBeforeManualRefresh, 'The health refresh button must make a new read-only API request.');
+  const checkoutHealthCard = page.locator('#systemHealthCards .card').filter({ hasText: 'Çevrimiçi satış yapılandırması' });
+  await checkoutHealthCard.getByText('Eksikler var', { exact: true }).waitFor();
+  assert.match(await checkoutHealthCard.innerText(), /iyzico anahtarları eksik/);
+  assert.match(await checkoutHealthCard.innerText(), /Ödeme dönüş adresi geçersiz/);
+  assert.match(await checkoutHealthCard.innerText(), /Yayımlanmış Cloud paketi yok/);
+  checkoutReadiness = { configurationReady: true, credentialsConfigured: true, callbackValid: true,
+    apiEndpointValid: true, environment: 'sandbox', publishedCloudPlans: 1, purchasableCloudPlans: 1, catalogReady: true };
+  await page.locator('#refreshSystemHealth').click();
+  await checkoutHealthCard.getByText('Test ortamı', { exact: true }).waitFor();
+  assert.match(await checkoutHealthCard.innerText(), /Sandbox ile gerçek tahsilat yapılmaz/);
+  checkoutReadiness.environment = 'production';
+  await page.locator('#refreshSystemHealth').click();
+  await checkoutHealthCard.getByText('Ayarlar hazır', { exact: true }).waitFor();
+  assert.match(await checkoutHealthCard.innerText(), /Sağlayıcı erişimi ve gerçek ödeme kabulü ayrıca doğrulanmalıdır/);
+  checkoutReadiness.purchasableCloudPlans = 0; checkoutReadiness.catalogReady = false;
+  await page.locator('#refreshSystemHealth').click();
+  await checkoutHealthCard.getByText('Eksikler var', { exact: true }).waitFor();
+  assert.match(await checkoutHealthCard.innerText(), /Ödeme alınabilir Cloud paketi yok; fiyat ve para birimini kontrol edin/);
+  checkoutReadiness.publishedCloudPlans = null; checkoutReadiness.catalogReady = false;
+  await page.locator('#refreshSystemHealth').click();
+  await checkoutHealthCard.getByText('Paket kataloğu okunamadı', { exact: true }).waitFor();
+  assert.match(await checkoutHealthCard.innerText(), /Paket kataloğu okunamadı/);
   const followUpTable = page.locator('#followUpTable');
   await followUpTable.getByText('Synthetic Demo Company').waitFor({ state: 'visible' });
   await followUpTable.getByText('Synthetic Demo Lead').waitFor({ state: 'visible' });
@@ -542,6 +674,57 @@ try {
   assert.deepEqual(writes[writeCountBeforeCancel], { method: 'PATCH', path: `/api/platform/members/${accountId}/memberships/${secondCompanyId}/role`,
     body: { roleKey: 'asset_manager', note: 'Synthetic role review' }, csrf: csrfToken });
 
+  const securityWritesBeforeCancel = writes.length;
+  await detail.locator('[data-member-security="lock"]').click();
+  const securityDialog = page.locator('dialog.dialog').filter({ hasText: 'Hesabı geçici kilitle' });
+  await securityDialog.waitFor({ state: 'visible' });
+  assert.match(await securityDialog.innerText(), /mevcut oturumları da sonlandırılır/i);
+  await securityDialog.getByRole('button', { name: 'Vazgeç' }).click();
+  await securityDialog.waitFor({ state: 'detached' });
+  assert.equal(writes.length, securityWritesBeforeCancel, 'Canceling a security action must not write.');
+
+  await detail.locator('[data-member-security="lock"]').click();
+  const lockDialog = page.locator('dialog.dialog').filter({ hasText: 'Hesabı geçici kilitle' });
+  await lockDialog.locator('[name="lockoutDays"]').selectOption('7');
+  await lockDialog.locator('[name="note"]').fill('Synthetic suspicious sign-in response.');
+  const locked = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === `/api/platform/members/${accountId}/security-actions`);
+  await lockDialog.getByRole('button', { name: 'Hesabı geçici kilitle' }).click();
+  assert.equal((await locked).status(), 200);
+  await page.locator('[data-member-security="unlock"]').waitFor({ state: 'visible' });
+  assert.equal(member.isLockedOut, true);
+  assert.deepEqual(writes.at(-1), { method: 'POST', path: `/api/platform/members/${accountId}/security-actions`,
+    body: { action: 'lock', note: 'Synthetic suspicious sign-in response.', lockoutDays: 7 }, csrf: csrfToken });
+
+  await page.locator('[data-member-security="unlock"]').click();
+  const unlockDialog = page.locator('dialog.dialog').filter({ hasText: 'Hesap kilidini kaldır' });
+  await unlockDialog.locator('[name="note"]').fill('Synthetic identity verified.');
+  const unlocked = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === `/api/platform/members/${accountId}/security-actions`);
+  await unlockDialog.getByRole('button', { name: 'Hesap kilidini kaldır' }).click();
+  assert.equal((await unlocked).status(), 200);
+  await page.locator('[data-member-security="lock"]').waitFor({ state: 'visible' });
+  assert.equal(member.isLockedOut, false);
+
+  await page.locator('[data-member-security="revokeSessions"]').click();
+  const sessionsDialog = page.locator('dialog.dialog').filter({ hasText: 'Tüm oturumları sonlandır' });
+  await sessionsDialog.locator('[name="note"]').fill('Synthetic lost device report.');
+  const sessionsRevoked = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === `/api/platform/members/${accountId}/security-actions`);
+  await sessionsDialog.getByRole('button', { name: 'Tüm oturumları sonlandır' }).click();
+  assert.equal((await sessionsRevoked).status(), 200);
+
+  await page.locator('[data-member-security="sendPasswordReset"]').click();
+  const resetDialog = page.locator('dialog.dialog').filter({ hasText: 'Parola yenileme e-postası gönder' });
+  assert.match(await resetDialog.innerText(), /Parola değiştirilmez/);
+  await resetDialog.locator('[name="note"]').fill('Synthetic user-requested recovery.');
+  const resetSent = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === `/api/platform/members/${accountId}/security-actions`);
+  await resetDialog.getByRole('button', { name: 'Parola yenileme e-postası gönder' }).click();
+  assert.equal((await resetSent).status(), 200);
+  assert.deepEqual(writes.slice(-3).map(write => write.body.action), ['unlock', 'revokeSessions', 'sendPasswordReset']);
+  assert.ok(writes.slice(-4).every(write => write.csrf === csrfToken), 'Each account-security action must carry the CSRF token.');
+
   await page.locator('#closeMemberDetail').click();
   await page.locator('#openMemberInvite').click();
   const inviteDialog = page.locator('#memberInviteDialog');
@@ -555,7 +738,8 @@ try {
   await page.locator('#submitMemberInvite').click();
   await invitationSaved;
   await page.locator('#membersTable').getByText('qa-invitee@example.invalid').waitFor({ state: 'visible' });
-  assert.equal(writes.length, writeCountBeforeCancel + 2);
+  assert.equal(writes.length, securityWritesBeforeCancel + 5,
+    'Exactly four confirmed account-security actions plus the invitation must write after the canceled action.');
   assert.deepEqual(writes.at(-1), { method: 'POST', path: '/api/platform/members/invite',
     body: { companyId, fullName: 'Synthetic Invited Viewer', email: 'qa-invitee@example.invalid', roleKey: 'viewer' }, csrf: csrfToken });
   const planListLoaded = page.waitForResponse(response => response.request().method() === 'GET'
@@ -599,7 +783,7 @@ try {
   await planForm.getByRole('button', { name: 'Planı Kaydet' }).click();
   await planCreated;
   await page.locator('#plansTable').getByText('Synthetic Cloud Pro').waitFor({ state: 'visible' });
-  assert.equal(writes.length, writeCountBeforeCancel + 3);
+  assert.equal(writes.length, writesBeforeInvalidPlan + 1);
   assert.deepEqual(writes.at(-1), { method: 'POST', path: '/api/platform/plans', csrf: csrfToken,
     body: { changeReason: 'Synthetic pricing approval', code: 'synthetic-cloud-pro', name: 'Synthetic Cloud Pro', deploymentKind: 'cloud', currency: 'TRY', maxLoginUsers: null, maxAssets: 500, monthlyPrice: 990, annualPrice: 9900, oneTimePrice: 0, offlineGraceDays: 30, description: '', featureFlagsJson: '{"reports":false,"api":false,"maintenance":false}', supportsOfflineUse: false, isPublic: true, isActive: true, sortOrder: 0 } });
 
@@ -617,7 +801,7 @@ try {
     && new URL(response.url()).pathname === `/api/platform/plans/${planId}` && response.status() === 200);
   await planForm.getByRole('button', { name: 'Planı Kaydet' }).click();
   await planUpdated;
-  assert.equal(writes.length, writeCountBeforeCancel + 4);
+  assert.equal(writes.length, writesBeforeInvalidPlan + 2);
   assert.equal(writes.at(-1).body.annualPrice, 8900);
   assert.equal(writes.at(-1).body.isPublic, false);
   assert.equal(writes.at(-1).body.changeReason, 'Synthetic annual price correction');
@@ -638,9 +822,35 @@ try {
 
   await page.locator('#nav [data-view="companies"]').click();
   const companyRow = page.locator('#companiesTable tr').filter({ hasText: 'Synthetic Demo Company' });
+  let releaseOlderCompanyDetail;
+  const olderCompanyDetailGate = new Promise(resolve => { releaseOlderCompanyDetail = resolve; });
+  await page.route(`**/api/platform/companies/${companyId}?membersPage=*`, async route => {
+    const response = await route.fetch();
+    const data = await response.json();
+    data.company.name = 'STALE COMPANY RESPONSE';
+    await olderCompanyDetailGate;
+    await route.fulfill({ response, json: data });
+  }, { times: 1 });
+  const delayedCompanyRequest = page.waitForRequest(request => new URL(request.url()).pathname === `/api/platform/companies/${companyId}`);
+  await companyRow.locator('[data-action="details"]').click();
+  await delayedCompanyRequest;
+  await page.locator('#companyDetailDialog [data-detail-close]').first().click();
   await companyRow.locator('[data-action="details"]').click();
   const companyDialog = page.locator('#companyDetailDialog');
+  await companyDialog.locator('#companyDetailTitle').getByText('Synthetic Demo Company', { exact: true }).waitFor({ state: 'visible' });
+  const olderCompanyResponse = page.waitForResponse(response => new URL(response.url()).pathname === `/api/platform/companies/${companyId}`);
+  releaseOlderCompanyDetail();
+  await olderCompanyResponse;
+  await page.waitForLoadState('networkidle');
+  assert.equal(await companyDialog.locator('#companyDetailTitle').innerText(), 'Synthetic Demo Company',
+    'Closing and reopening company details must invalidate the older response.');
   await companyDialog.waitFor({ state: 'visible' });
+  const usagePanel = page.locator('#companyUsagePanel');
+  await usagePanel.getByText('Etkin varlık').waitFor({ state: 'visible' });
+  assert.match(await usagePanel.innerText(), /28\s*\/\s*500/, 'The company usage view must show asset usage against its active plan limit.');
+  assert.match(await usagePanel.innerText(), /4\s*\/\s*Sınırsız/, 'Cloud login-user quota must be reported as unlimited, not as an invented numeric cap.');
+  assert.match(await usagePanel.innerText(), /1\s*MB/, 'The usage view must show bytes recorded for attachments.');
+  assert.match(await usagePanel.innerText(), /şirket logoları ve medya dizinindeki dosyalar dahil değildir/i, 'The usage view must explain what recorded attachment storage excludes.');
   const listedSubscription = page.locator('#companyDetailBody .panel').filter({ hasText: 'Abonelik geçmişi' }).locator('tbody tr');
   await listedSubscription.getByText('Synthetic Cloud Pro').waitFor({ state: 'visible' });
   assert.equal(await listedSubscription.locator('[data-admin-edit-subscription]').count(), 1,
@@ -748,8 +958,86 @@ try {
   assert.equal(await page.locator('#auditSearch').inputValue(), 'synthetic audit service failure', 'Retrying must preserve the selected filter.');
   assert.equal(writes.length, writesBeforeAuditRead, 'Audit filtering, paging, expansion and empty results must be read-only.');
 
+  await page.locator('#nav [data-view="companies"]').click();
+  await page.locator('#companiesTable').getByText('Synthetic Demo Company').waitFor({ state: 'visible' });
+  const profileRow = page.locator('#companiesTable tr').filter({ hasText: 'Synthetic Demo Company' });
+  await profileRow.getByText('100,00').waitFor({ state: 'visible' });
+  assert.match(await profileRow.innerText(), /2026[\s\S]*Cloud Pro[\s\S]*100,00/,
+    'The company directory must show registration date, current plan, and only the supplied verified MRR.');
+  await profileRow.locator('[data-company-logo]').evaluate(image => new Promise((resolve, reject) => {
+    if (image.complete && image.naturalWidth > 0) return resolve();
+    image.addEventListener('load', resolve, { once: true }); image.addEventListener('error', reject, { once: true });
+  }));
+  assert.equal(await profileRow.locator('[data-company-logo]').evaluate(image => image.naturalWidth), 1,
+    'The company logo must load through the protected company logo endpoint.');
+  await page.locator('#companyPlan').locator('option').nth(1).waitFor({ state: 'attached', timeout: 1000 }).catch(() => {});
+  const planFilterOptions = await page.locator('#companyPlan option').count();
+  const selectedPlanFilter = planFilterOptions > 1 ? await page.locator('#companyPlan option').nth(1).getAttribute('value') : null;
+  if (selectedPlanFilter) await page.locator('#companyPlan').selectOption(selectedPlanFilter);
+  await page.locator('#companySearch').fill('=2+2');
+  await page.locator('#companyActive').selectOption('true');
+  await page.locator('#companyCreatedFrom').fill('2026-10-01');
+  await page.locator('#companyCreatedTo').fill('2026-10-16');
+  await page.locator('#companySort').selectOption('createdAt:desc');
+  await page.locator('#companyPageSize').selectOption('100');
+  const filteredCompanyList = page.waitForResponse(response => {
+    const requestUrl = new URL(response.url());
+    return requestUrl.pathname === '/api/platform/companies' && requestUrl.searchParams.get('q') === '=2+2' && requestUrl.searchParams.get('active') === 'true';
+  });
+  await page.locator('#searchCompanies').click();
+  assert.equal((await filteredCompanyList).status(), 200);
+  assert.deepEqual(companyListRequests.at(-1), { q: '=2+2', active: 'true', planId: selectedPlanFilter, createdFrom: '2026-10-01', createdTo: '2026-10-16', sortBy: 'createdAt', sortDirection: 'desc', page: '1', pageSize: '100' }, 'The directory request must carry date, sort, and page-size filters.');
+  const exportResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/platform/companies/export.csv');
+  const exportDownload = page.waitForEvent('download');
+  await page.locator('#exportCompanies').click();
+  const [csvResponse, download] = await Promise.all([exportResponse, exportDownload]);
+  assert.equal(csvResponse.status(), 200);
+  assert.equal(download.suggestedFilename(), 'envantertr-firmalar-20261016.csv');
+  assert.deepEqual(companyExports.at(-1), { q: '=2+2', active: 'true', planId: selectedPlanFilter, createdFrom: '2026-10-01', createdTo: '2026-10-16', sortBy: 'createdAt', sortDirection: 'desc' }, 'CSV export must preserve the complete selected company-directory filter and sort state.');
+  const downloadedCsvPath = await download.path();
+  assert.ok(downloadedCsvPath, 'The company export must produce a downloadable file.');
+  const downloadedCsv = await readFile(downloadedCsvPath, 'utf8');
+  assert.match(downloadedCsv, /"'=2\+2;Injected"/,
+    'The delivered spreadsheet row must neutralize formula execution and preserve a semicolon inside the quoted company cell.');
+
+  await page.locator('#companiesTable [data-company-select]').first().check();
+  await page.locator('#bulkSuspendCompanies').waitFor({ state: 'visible' });
+  await page.locator('#bulkSuspendCompanies').click();
+  await page.locator('#actionFields textarea[name=note]').fill('Synthetic bulk suspension reason');
+  const bulkStatusResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/platform/companies/bulk-status' && response.request().method() === 'PATCH');
+  await page.locator('#actionForm button[type=submit]').click();
+  assert.equal((await bulkStatusResponse).status(), 200);
+  assert.deepEqual(writes.at(-1), { method: 'PATCH', path: '/api/platform/companies/bulk-status', body: { companyIds: [companyId], isActive: false, note: 'Synthetic bulk suspension reason' }, csrf: csrfToken }, 'Bulk suspension must use the explicitly selected company, required reason, and CSRF token.');
+
+  includeAlternatePlanOption = true;
+  await page.locator('#companiesTable [data-company-select]').first().check();
+  await page.locator('#bulkChangeCompanyPlan').waitFor({ state: 'visible' });
+  await page.locator('#bulkChangeCompanyPlan').click();
+  const bulkPlanDialog = page.locator('#actionDialog');
+  await bulkPlanDialog.getByText('Bu işlem ödeme almaz; abonelik başlangıç/bitiş tarihini ve ödeme kaydını değiştirmez.').waitFor({ state: 'visible' });
+  const writesBeforeBulkPlanCancel = writes.length;
+  await bulkPlanDialog.getByRole('button', { name: 'Vazgeç' }).click();
+  await bulkPlanDialog.waitFor({ state: 'hidden' });
+  assert.equal(writes.length, writesBeforeBulkPlanCancel, 'Canceling a bulk plan change must not write.');
+  await page.locator('#bulkChangeCompanyPlan').click();
+  const confirmedBulkPlanDialog = page.locator('#actionDialog');
+  await confirmedBulkPlanDialog.locator('select[name="planId"]').selectOption(alternatePlanId);
+  await confirmedBulkPlanDialog.locator('textarea[name="note"]').fill('Synthetic approved bulk plan change');
+  const bulkPlanResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/platform/companies/bulk-plan' && response.request().method() === 'PATCH');
+  await confirmedBulkPlanDialog.getByRole('button', { name: 'Seçili planları değiştir' }).click();
+  assert.equal((await bulkPlanResponse).status(), 200);
+  assert.deepEqual(writes.at(-1), { method: 'PATCH', path: '/api/platform/companies/bulk-plan', body: { companyIds: [companyId], planId: alternatePlanId, note: 'Synthetic approved bulk plan change' }, csrf: csrfToken }, 'The bulk plan action must preserve the exact selected company, plan, reason and CSRF token.');
+  await page.locator('#companiesTable tr').filter({ hasText: 'Synthetic Demo Company' }).getByText('Synthetic Alternate Plan').waitFor({ state: 'visible' });
+
+  directoryCompany.subscription.status = 'Canceled';
+  await page.locator('#searchCompanies').click();
+  await page.locator('#companiesTable [data-company-select]').first().check();
+  await page.locator('#bulkChangeCompanyPlan').waitFor({ state: 'hidden' });
+  assert.equal(writes.filter(write => write.path === '/api/platform/companies/bulk-plan').length, 1,
+    'The bulk plan control must stay unavailable when a selected company has no current Active/Trial subscription.');
+
   assert.deepEqual(browserErrors, [], `Platform member UI threw: ${browserErrors.join(' | ')}`);
-  console.log('PASS: real Chromium account/security/membership/payment timeline; demo CRM list/company-search/detail and selected-company fallback stale-response protection plus status, assignment, follow-up, company link, CSRF write and history persistence; member search, cancel-without-write, reauthenticated role update, synthetic invitation, plan create/update/validation/publication reload and maintenance entitlement persistence; audited company subscription plan/date editing with cancel and persistence; platform audit text/source/action/target/date filters, exclusive end-date boundary, clear, paging, event detail, no-match, surfaced 503 and retry behavior without writes.');
+  console.log('PASS: real Chromium account/security/membership/payment timeline; company CSV download with active search/status filters and formula-safe delimited values; demo CRM list/company-search/detail and selected-company fallback stale-response protection plus status, assignment, follow-up, company link, CSRF write and history persistence; member search, cancel-without-write, reauthenticated role update, synthetic invitation, plan create/update/validation/publication reload and maintenance entitlement persistence; audited company subscription plan/date editing with cancel and persistence; platform audit text/source/action/target/date filters, exclusive end-date boundary, clear, paging, event detail, no-match, surfaced 503 and retry behavior without writes.');
 } finally {
   await browser?.close();
   await new Promise(resolve => server.close(resolve));

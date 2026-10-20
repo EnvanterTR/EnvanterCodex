@@ -41,7 +41,7 @@ public sealed class MigrationUpgradeAcceptanceTests
 
             await db.Database.MigrateAsync(ProductionBaselineMigration);
             var pendingAtBaseline = (await db.Database.GetPendingMigrationsAsync()).ToArray();
-            Assert.Equal(22, pendingAtBaseline.Length);
+            Assert.Equal(migrations.Length - Array.IndexOf(migrations, ProductionBaselineMigration) - 1, pendingAtBaseline.Length);
             Assert.Equal(ProductionBaselineMigration, await ReadLatestMigrationAsync(db));
 
             var companyId = Guid.NewGuid();
@@ -77,9 +77,37 @@ public sealed class MigrationUpgradeAcceptanceTests
 
             Assert.Empty(await db.Database.GetPendingMigrationsAsync());
             Assert.Equal(migrations.Length, (await db.Database.GetAppliedMigrationsAsync()).Count());
+            var upgradedCompany = await db.Companies.AsNoTracking().SingleAsync(company => company.Id == companyId);
+            Assert.Equal(12, upgradedCompany.SecurityPasswordMinimumLength);
+            Assert.Equal(720, upgradedCompany.SecuritySessionDurationHours);
+            Assert.False(upgradedCompany.SecurityRequireMfa);
 
             await using var verify = new NpgsqlConnection(isolatedBuilder.ConnectionString);
             await verify.OpenAsync();
+            await using (var insuranceColumnsCommand = new NpgsqlCommand("""
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = @schema AND table_name = 'Assets'
+                  AND column_name IN ('InsuranceProvider', 'InsurancePolicyNumber', 'InsuranceExpiresAt')
+                """, verify))
+            {
+                insuranceColumnsCommand.Parameters.AddWithValue("schema", schema);
+                Assert.Equal(3L, (long)(await insuranceColumnsCommand.ExecuteScalarAsync())!);
+            }
+
+            await using (var insuranceIndexCommand = new NpgsqlCommand("""
+                SELECT indexState.indisvalid AND indexState.indisready
+                FROM pg_class indexClass
+                JOIN pg_namespace indexSchema ON indexSchema.oid = indexClass.relnamespace
+                JOIN pg_index indexState ON indexState.indexrelid = indexClass.oid
+                WHERE indexSchema.nspname = @schema
+                  AND indexClass.relname = 'IX_Assets_CompanyId_InsuranceExpiresAt'
+                """, verify))
+            {
+                insuranceIndexCommand.Parameters.AddWithValue("schema", schema);
+                Assert.Equal(true, await insuranceIndexCommand.ExecuteScalarAsync());
+            }
+
             await using var verifyCommand = new NpgsqlCommand("""
                 SELECT company."AssetCount", asset."AssetTag", asset."Name"
                 FROM "Companies" company

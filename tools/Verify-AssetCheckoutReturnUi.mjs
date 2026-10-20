@@ -27,8 +27,17 @@ requireSource(submitReturn.includes('if (!assetReturnTarget || !canWriteAssets()
   submitReturn.includes("target.source === 'returns' ? [loadAssetCheckouts('returns', returnsPage)] : []") &&
   submitReturn.includes('feedback.hidden = false;'),
   'Asset return may write only after explicit submission, refresh its source list on success, and keep failures in the dialog.');
-requireSource(acceptance.includes('Asset_assignment_accepts_a_valid_expected_return_and_return_clears_it_with_history'),
-  'Asset check-in lacks isolated API and history acceptance coverage.');
+const returnsPage = app.slice(app.indexOf('async function loadAssetCheckouts'), app.indexOf('async function loadAudit('));
+requireSource(app.includes('id="returnsState"') && ['overdue', 'due30', 'undated', 'later', 'all'].every(state => app.includes(`value="${state}"`)),
+  'The returns queue must offer separate overdue, due, undated, later, and all-assignment filters.');
+requireSource(returnsPage.includes('returnsRequestId') && returnsPage.includes('requestId !== (isReturns ? returnsRequestId : assignmentRequestId)') &&
+  returnsPage.includes("params.set('q', search)") && returnsPage.includes("pageSize: '50'") &&
+  app.includes("$('#returnsPrev').addEventListener('click'") && app.includes("$('#returnsNext').addEventListener('click'"),
+  'Returns queue needs search, paging, and protection from stale list responses.');
+requireSource(acceptance.includes('Asset_checkout_queue_is_company_scoped_searchable_and_filters_expected_returns') &&
+  acceptance.includes('Return due at boundary') && acceptance.includes('state=overdue') && acceptance.includes('state=undated') &&
+  acceptance.includes('state=later') && acceptance.includes('page=2&pageSize=2'),
+  'Asset check-in lacks isolated API, date-boundary, pagination, and history acceptance coverage.');
 
 if (failures.length) {
   console.error(failures.map(message => `FAIL ${message}`).join('\n'));

@@ -9,7 +9,7 @@
       loading: 'Plan ve ödeme durumu kontrol ediliyor…', summary: 'Sipariş özeti', monthly: 'Aylık', annual: 'Yıllık',
       users: 'Cloud kullanıcı sayısı', unlimited: 'Sınırsız', paymentNote: 'Tutar etkin plan fiyatından sunucuda hesaplanır. Kart bilgileri iyzico’nun güvenli ödeme ekranında girilir.',
       companyDetails: 'Şirket ve fatura bilgileri', formIntro: 'Şirket hesabının sahibi bu e-posta ile davet edilir. Burada parola veya kart bilgisi istenmez.',
-      companyName: 'Şirket adı', slug: 'Şirket web adresi', firstName: 'Yetkili adı', lastName: 'Yetkili soyadı', email: 'Hesap e-postası',
+      companyName: 'Şirket adı', slug: 'Şirket web adresi', slugHelp: 'Şirket adından önerilir: Farma A.Ş. → farma.envantertr.com. Adresi değiştirebilirsiniz.', firstName: 'Yetkili adı', lastName: 'Yetkili soyadı', email: 'Hesap e-postası',
       phone: 'Telefon · ülke koduyla', identity: 'T.C. kimlik numarası', zip: 'Posta kodu', address: 'Fatura adresi', city: 'Şehir', country: 'Ülke',
       noticeTitle: 'Ödeme ve hesap açılışı için veri kullanımı',
       noticeBody: 'Ödeme oturumunu oluşturmak için bu formdaki yetkili ve fatura bilgileri iyzico’ya iletilir. Ödeme kartı bilgilerini bu uygulama almaz. Ödeme sağlayıcı tarafından doğrulanınca şirket alanı, sahibi ve abonelik oluşturulur; sipariş durumu ve ödeme referansı sistemde tutulur.',
@@ -20,6 +20,8 @@
       invalidPlan: 'Bu paket satın alınabilir Cloud planı olarak yayımlanmamış veya seçilen dönem için fiyatı yok.',
       loadError: 'Paket bilgileri yüklenemedi. Biraz sonra yeniden deneyin.', missingPlan: 'Satın alma bağlantısında geçerli bir Cloud paket seçilmemiş.',
       period: 'Faturalama dönemi', monthlyPeriod: 'Aylık abonelik', annualPeriod: 'Yıllık abonelik',
+      couponLabel: 'Promosyon kodu', applyCoupon: 'Uygula', discountLabel: 'İndirim', enterCoupon: 'Kupon kodunu girin.',
+      couponApplied: 'Kupon uygulandı', couponNoDiscount: 'Bu kupon indirim sağlamıyor.', couponInvalid: 'Kupon doğrulanamadı.',
       sameAttempt: 'Aynı ödeme isteği hazırlanıyor. Birkaç saniye sonra aynı düğmeyle yeniden deneyin.',
       freshAttemptReady: 'Önceki deneme kapandı. Aynı bilgilerle yeni bir güvenli ödeme denemesi başlatabilirsiniz.',
       unsafeUrl: 'Ödeme sağlayıcısından güvenli bir bağlantı alınamadı. Kart bilgileriniz gönderilmedi.',
@@ -32,7 +34,7 @@
       loading: 'Checking plan and payment availability…', summary: 'Order summary', monthly: 'Monthly', annual: 'Annual',
       users: 'Cloud users', unlimited: 'Unlimited', paymentNote: 'The server calculates the amount from the active plan. Card details are entered on iyzico’s secure payment page.',
       companyDetails: 'Company and billing details', formIntro: 'The workspace owner will receive an invitation at this email. No password or card details are collected here.',
-      companyName: 'Company name', slug: 'Workspace web address', firstName: 'Contact first name', lastName: 'Contact last name', email: 'Account email',
+      companyName: 'Company name', slug: 'Workspace web address', slugHelp: 'Suggested from the company name: Farma A.Ş. → farma.envantertr.com. You can edit the address.', firstName: 'Contact first name', lastName: 'Contact last name', email: 'Account email',
       phone: 'Phone · include country code', identity: 'National identity number', zip: 'Postal code', address: 'Billing address', city: 'City', country: 'Country',
       noticeTitle: 'Data use for payment and workspace setup',
       noticeBody: 'The contact and billing details in this form are sent to iyzico to create a payment session. This app does not collect payment card details. After the provider verifies payment, the company workspace, owner account and subscription are created; order status and payment reference are retained.',
@@ -43,6 +45,8 @@
       invalidPlan: 'This plan is not a published Cloud plan for purchase or has no price for the selected term.',
       loadError: 'Plan information could not be loaded. Please try again shortly.', missingPlan: 'Choose a valid Cloud plan from the purchase link.',
       period: 'Billing period', monthlyPeriod: 'Monthly subscription', annualPeriod: 'Annual subscription',
+      couponLabel: 'Promo code', applyCoupon: 'Apply', discountLabel: 'Discount', enterCoupon: 'Enter a promo code.',
+      couponApplied: 'Promo code applied', couponNoDiscount: 'This promo code has no discount.', couponInvalid: 'Could not validate the promo code.',
       sameAttempt: 'This payment request is still being prepared. Wait a few seconds, then retry with the same button.',
       freshAttemptReady: 'The previous attempt has ended. You can start a new secure payment attempt with the same details.',
       unsafeUrl: 'A secure payment link was not returned. Your card details were not submitted.',
@@ -55,7 +59,7 @@
       loading: 'Проверка плана и доступности оплаты…', summary: 'Сводка заказа', monthly: 'Месяц', annual: 'Год',
       users: 'Пользователи Cloud', unlimited: 'Без ограничений', paymentNote: 'Сумма рассчитывается сервером по действующему плану. Данные карты вводятся на защищённой странице iyzico.',
       companyDetails: 'Данные компании и оплаты', formIntro: 'Владелец компании получит приглашение на этот адрес. Пароль и данные карты здесь не запрашиваются.',
-      companyName: 'Название компании', slug: 'Веб-адрес компании', firstName: 'Имя контактного лица', lastName: 'Фамилия контактного лица', email: 'Электронная почта аккаунта',
+      companyName: 'Название компании', slug: 'Веб-адрес компании', slugHelp: 'Предлагается по названию компании: Farma A.Ş. → farma.envantertr.com. Адрес можно изменить.', firstName: 'Имя контактного лица', lastName: 'Фамилия контактного лица', email: 'Электронная почта аккаунта',
       phone: 'Телефон · с кодом страны', identity: 'Идентификационный номер', zip: 'Почтовый индекс', address: 'Адрес для оплаты', city: 'Город', country: 'Страна',
       noticeTitle: 'Использование данных для оплаты и создания аккаунта',
       noticeBody: 'Контактные и платёжные сведения из формы передаются iyzico для создания платёжной сессии. Приложение не получает данные платёжной карты. После подтверждения оплаты создаются компания, владелец и подписка; статус заказа и ссылка на платёж сохраняются.',
@@ -66,6 +70,8 @@
       invalidPlan: 'Этот план не опубликован для покупки в Cloud или для выбранного периода нет цены.',
       loadError: 'Не удалось загрузить план. Повторите попытку позже.', missingPlan: 'Выберите действующий план Cloud по ссылке покупки.',
       period: 'Период оплаты', monthlyPeriod: 'Подписка на месяц', annualPeriod: 'Подписка на год',
+      couponLabel: 'Промокод', applyCoupon: 'Применить', discountLabel: 'Скидка', enterCoupon: 'Введите промокод.',
+      couponApplied: 'Промокод применён', couponNoDiscount: 'Этот промокод не даёт скидку.', couponInvalid: 'Не удалось проверить промокод.',
       sameAttempt: 'Платёжный запрос готовится. Подождите несколько секунд и повторите попытку.',
       freshAttemptReady: 'Предыдущая попытка завершена. Можно начать новую безопасную оплату с теми же данными.',
       unsafeUrl: 'Не получена защищённая ссылка оплаты. Данные карты не отправлены.',
@@ -78,7 +84,7 @@
       loading: 'Перевіряємо план і доступність оплати…', summary: 'Підсумок замовлення', monthly: 'Місяць', annual: 'Рік',
       users: 'Користувачі Cloud', unlimited: 'Без обмежень', paymentNote: 'Суму сервер обчислює за активним планом. Дані картки вводяться на захищеній сторінці iyzico.',
       companyDetails: 'Дані компанії та оплати', formIntro: 'Власник компанії отримає запрошення на цю адресу. Пароль і дані картки тут не збираються.',
-      companyName: 'Назва компанії', slug: 'Вебадреса компанії', firstName: 'Ім’я контактної особи', lastName: 'Прізвище контактної особи', email: 'Електронна пошта облікового запису',
+      companyName: 'Назва компанії', slug: 'Вебадреса компанії', slugHelp: 'Пропонується за назвою компанії: Farma A.Ş. → farma.envantertr.com. Адресу можна змінити.', firstName: 'Ім’я контактної особи', lastName: 'Прізвище контактної особи', email: 'Електронна пошта облікового запису',
       phone: 'Телефон · із кодом країни', identity: 'Ідентифікаційний номер', zip: 'Поштовий індекс', address: 'Платіжна адреса', city: 'Місто', country: 'Країна',
       noticeTitle: 'Використання даних для оплати та створення облікового запису',
       noticeBody: 'Контактні та платіжні дані з цієї форми передаються iyzico для створення платіжної сесії. Застосунок не отримує дані платіжної картки. Після підтвердження платежу створюються компанія, власник і підписка; статус замовлення та платіжний номер зберігаються.',
@@ -89,6 +95,8 @@
       invalidPlan: 'Цей план не опубліковано для придбання Cloud або для вибраного періоду немає ціни.',
       loadError: 'Не вдалося завантажити план. Спробуйте трохи пізніше.', missingPlan: 'Виберіть дійсний план Cloud за посиланням придбання.',
       period: 'Період оплати', monthlyPeriod: 'Місячна підписка', annualPeriod: 'Річна підписка',
+      couponLabel: 'Промокод', applyCoupon: 'Застосувати', discountLabel: 'Знижка', enterCoupon: 'Введіть промокод.',
+      couponApplied: 'Промокод застосовано', couponNoDiscount: 'Цей промокод не надає знижки.', couponInvalid: 'Не вдалося перевірити промокод.',
       sameAttempt: 'Платіжний запит ще готується. Зачекайте кілька секунд і спробуйте ще раз.',
       freshAttemptReady: 'Попередню спробу завершено. Можна розпочати нову безпечну оплату з тими самими даними.',
       unsafeUrl: 'Не отримано безпечне посилання оплати. Дані картки не надіслано.',
@@ -101,7 +109,7 @@
       loading: 'Се проверуваат пакетот и плаќањето…', summary: 'Преглед на нарачката', monthly: 'Месечно', annual: 'Годишно',
       users: 'Cloud корисници', unlimited: 'Неограничено', paymentNote: 'Серверот ја пресметува сумата од активниот пакет. Податоците за картичката се внесуваат на безбедната страница на iyzico.',
       companyDetails: 'Податоци за компанијата и наплатата', formIntro: 'Сопственикот ќе добие покана на оваа е-пошта. Тука не се бара лозинка или број на картичка.',
-      companyName: 'Име на компанијата', slug: 'Веб-адреса на компанијата', firstName: 'Име на контакт-лицето', lastName: 'Презиме на контакт-лицето', email: 'Е-пошта за сметката',
+      companyName: 'Име на компанијата', slug: 'Веб-адреса на компанијата', slugHelp: 'Се предлага според името на компанијата: Farma A.Ş. → farma.envantertr.com. Адресата може да се измени.', firstName: 'Име на контакт-лицето', lastName: 'Презиме на контакт-лицето', email: 'Е-пошта за сметката',
       phone: 'Телефон · со код на државата', identity: 'Идентификациски број', zip: 'Поштенски број', address: 'Адреса за наплата', city: 'Град', country: 'Држава',
       noticeTitle: 'Употреба на податоците за плаќање и отворање сметка',
       noticeBody: 'Контакт и платежните податоци од формуларот се испраќаат до iyzico за да се создаде платежна сесија. Апликацијата не ги прима податоците за платежната картичка. По потврдата се создаваат компанијата, сопственикот и претплатата; статусот на нарачката и референцата за плаќање се чуваат.',
@@ -112,6 +120,8 @@
       invalidPlan: 'Овој Cloud пакет не е објавен за купување или нема цена за избраниот период.',
       loadError: 'Податоците за пакетот не можеа да се вчитаат. Обидете се повторно подоцна.', missingPlan: 'Изберете валиден Cloud пакет од врската за купување.',
       period: 'Период на наплата', monthlyPeriod: 'Месечна претплата', annualPeriod: 'Годишна претплата',
+      couponLabel: 'Промо-код', applyCoupon: 'Примени', discountLabel: 'Попуст', enterCoupon: 'Внесете промо-код.',
+      couponApplied: 'Промо-кодот е применет', couponNoDiscount: 'Овој промо-код не дава попуст.', couponInvalid: 'Промо-кодот не може да се потврди.',
       sameAttempt: 'Платежното барање сè уште се подготвува. Почекајте неколку секунди и обидете се повторно.',
       freshAttemptReady: 'Претходниот обид заврши. Можете да започнете ново безбедно плаќање со истите податоци.',
       unsafeUrl: 'Не е добиена безбедна врска за плаќање. Податоците за картичката не се испратени.',
@@ -135,6 +145,9 @@
   let term = 'monthly';
   let paymentAvailable = false;
   let slugWasEdited = false;
+  let couponCode = null;
+  let couponDiscount = 0;
+  let quoteRequestId = 0;
 
   document.documentElement.lang = translations[language] ? language : 'tr';
   document.querySelectorAll('[data-i18n]').forEach(element => {
@@ -152,9 +165,28 @@
     try { return new Intl.NumberFormat(language === 'tr' ? 'tr-TR' : language === 'mk' ? 'mk-MK' : `${language}-${language.toUpperCase()}`, { style: 'currency', currency: plan.currency || 'TRY' }).format(value); }
     catch { return `${Number(value).toLocaleString()} ${plan.currency || 'TRY'}`; }
   };
-  const slugify = value => value.trim().toLocaleLowerCase('tr-TR')
-    .replaceAll('ı', 'i').replaceAll('ğ', 'g').replaceAll('ü', 'u').replaceAll('ş', 's').replaceAll('ö', 'o').replaceAll('ç', 'c')
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63).replace(/-+$/g, '');
+  const slugify = value => {
+    const words = value.trim().toLocaleLowerCase('tr-TR')
+      .replaceAll('ı', 'i').replaceAll('ğ', 'g').replaceAll('ü', 'u').replaceAll('ş', 's').replaceAll('ö', 'o').replaceAll('ç', 'c')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '').match(/[a-z0-9]+/g) || [];
+    const legalSuffixes = [
+      ['anonim', 'sirketi'], ['anonim', 'sirket'], ['limited', 'sirketi'], ['limited', 'sirket'],
+      ['ltd', 'sti'], ['ltd', 'st'], ['a', 's'], ['as'], ['ltd'], ['sti'], ['limited'], ['anonim'], ['sirketi'], ['sirket'], ['firmasi'], ['firma']
+    ];
+    let removedSuffix;
+    do {
+      removedSuffix = false;
+      for (const suffix of legalSuffixes) {
+        if (suffix.every((word, index) => words[words.length - suffix.length + index] === word)) {
+          words.splice(-suffix.length);
+          removedSuffix = true;
+          break;
+        }
+      }
+    } while (removedSuffix);
+    if (words[0] === 'firma' || words[0] === 'sirket') words.shift();
+    return words.join('-').slice(0, 63).replace(/-+$/g, '');
+  };
   const attemptKey = `envantertr-checkout-attempt:${planId}`;
   const currentAttempt = () => {
     try {
@@ -173,9 +205,32 @@
     $('#annualTerm').hidden = !hasAnnual;
     $('#monthlyTerm').setAttribute('aria-pressed', String(term === 'monthly'));
     $('#annualTerm').setAttribute('aria-pressed', String(term === 'annual'));
-    const amount = selectedPrice();
+    const amount = Math.max(0, selectedPrice() - couponDiscount);
     $('#price').textContent = amount > 0 ? money(amount) : '—';
     $('#termCaption').textContent = term === 'annual' ? copy.annualPeriod : copy.monthlyPeriod;
+    $('#couponDiscount').classList.toggle('hidden', couponDiscount <= 0);
+    $('#discountAmount').textContent = couponDiscount > 0 ? `−${money(couponDiscount)}` : '';
+  }
+
+  async function quoteCoupon() {
+    if (!plan) return;
+    const id = ++quoteRequestId;
+    const input = $('#couponCode');
+    const feedback = $('#couponFeedback');
+    const code = input.value.trim().toUpperCase();
+    couponCode = null; couponDiscount = 0; refreshPrice(); feedback.textContent = '';
+    if (!code) { feedback.textContent = copy.enterCoupon; return; }
+    const button = $('#applyCoupon'); button.disabled = true;
+    try {
+      const response = await fetch('/api/checkout/quote', { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, cache: 'no-store', body: JSON.stringify({ planId: plan.id, term, couponCode: code }) });
+      const result = await response.json();
+      if (id !== quoteRequestId) return;
+      if (!response.ok) throw new Error(result.message || result.detail || (result.errors ? Object.values(result.errors).flat().join(' ') : 'Kupon doğrulanamadı.'));
+      couponCode = result.couponCode; couponDiscount = Number(result.discount || 0);
+      feedback.textContent = couponDiscount > 0 ? `${copy.couponApplied}: ${money(couponDiscount)}.` : copy.couponNoDiscount;
+      refreshPrice();
+    } catch (error) { if (id === quoteRequestId) feedback.textContent = error.message || copy.couponInvalid; }
+    finally { if (id === quoteRequestId) button.disabled = false; }
   }
 
   async function initialize() {
@@ -216,8 +271,9 @@
     }
   }
 
-  $('#monthlyTerm').addEventListener('click', () => { if (Number(plan?.monthlyPrice) > 0) { term = 'monthly'; refreshPrice(); } });
-  $('#annualTerm').addEventListener('click', () => { if (Number(plan?.annualPrice) > 0) { term = 'annual'; refreshPrice(); } });
+  $('#monthlyTerm').addEventListener('click', () => { if (Number(plan?.monthlyPrice) > 0) { term = 'monthly'; couponCode = null; couponDiscount = 0; refreshPrice(); if ($('#couponCode').value.trim()) quoteCoupon(); } });
+  $('#annualTerm').addEventListener('click', () => { if (Number(plan?.annualPrice) > 0) { term = 'annual'; couponCode = null; couponDiscount = 0; refreshPrice(); if ($('#couponCode').value.trim()) quoteCoupon(); } });
+  $('#applyCoupon').addEventListener('click', quoteCoupon);
   form.elements.companyName.addEventListener('input', event => {
     if (!slugWasEdited) form.elements.slug.value = slugify(event.currentTarget.value);
   });
@@ -256,7 +312,8 @@
       planId: plan.id,
       term,
       dataProcessingAcknowledged: data.get('dataProcessingAcknowledged') === 'on',
-      dataProcessingNoticeVersion: noticeVersion
+      dataProcessingNoticeVersion: noticeVersion,
+      couponCode
     };
 
     try {

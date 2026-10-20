@@ -19,6 +19,19 @@ const groupKeys = [...nav.matchAll(/data-group="([^"]+)"/g)].map(match => match[
 const submenuKeys = [...nav.matchAll(/id="sub-([^"]+)"/g)].map(match => match[1]);
 const failures = [];
 
+if (/\bnotReady\s*\[\s*page\s*\]/.test(routeHandler)) {
+  failures.push('The generic feature status route must not read an undeclared notReady map.');
+}
+
+if (!/<title>EnvanterTR\s*[—·-]\s*Şirket Alanı<\/title>/.test(source)) {
+  failures.push('The company application must use a product title instead of a localhost/default browser tab title.');
+}
+if (!source.includes('href="/assets/fonts/inter.css"') ||
+    !source.includes('href="/assets/fonts/InterVariable.woff2"') ||
+    /https?:\/\/fonts\.(?:googleapis|gstatic)\.com/i.test(source)) {
+  failures.push('The company application must load its Inter font from the local server without depending on Google Fonts.');
+}
+
 const mainStart = source.indexOf('<main');
 const mainEnd = mainStart < 0 ? -1 : source.indexOf('</main>', mainStart);
 if (mainStart < 0 || mainEnd < 0) {
@@ -50,25 +63,27 @@ if (!/\bmethod=\"post\"/i.test(loginForm)) {
 if (!source.includes('id="retryApiButton"') || !/function showLogin\([^)]*\)\s*\{[^}]*\$\('#retryApiButton'\)\.hidden\s*=\s*false/.test(source)) {
   failures.push('The login screen must keep the server connection check visible whenever login is shown.');
 }
-const notificationShortcutStart = source.indexOf("$('#featureStatusNotificationButton').addEventListener('click'");
-const notificationShortcutEnd = source.indexOf("$('#featureStatusAccountSecurityButton').addEventListener('click'", notificationShortcutStart);
-const notificationShortcut = notificationShortcutStart < 0 || notificationShortcutEnd < 0 ? '' : source.slice(notificationShortcutStart, notificationShortcutEnd);
-if (!notificationShortcut.includes('event.stopPropagation()') ||
-    !notificationShortcut.includes("panel.hidden = false") ||
-    !notificationShortcut.includes("trigger.setAttribute('aria-expanded', 'true')") ||
-    !notificationShortcut.includes("settings.click()") ||
-    !notificationShortcut.includes('void loadOperationalAlerts()') ||
+if (!source.includes('id="notificationPreferencesPage"') ||
+    !source.includes('id="companyNotificationPreferencesForm"') ||
     !routeHandler.includes("page === 'Bildirimler'") ||
-    !routeHandler.includes("$('#featureStatusNotificationButton').click()") ||
-    !source.includes("!event.target.closest('#sidebar [data-page=\"Bildirimler\"]')")) {
-  failures.push('The Notifications menu shortcut must open the panel without its outside-click handler immediately closing it, then load preferences and alerts.');
+    !routeHandler.includes('loadCompanyNotificationPreferences()') ||
+    !source.includes("api('/api/notifications/preferences', { method: 'PUT'") ||
+    !source.includes("api('/api/notifications/preferences')")) {
+  failures.push('The Notifications menu must open an API-backed page where per-user preferences can be loaded and saved.');
 }
 if (!source.includes('id="featureStatusAccountSecurityButton"') ||
     !/page === 'Güvenlik'[\s\S]*?featureStatusAccountSecurityButton'\)\.hidden = false/.test(source) ||
-    !routeHandler.includes("$('#featureStatusAccountSecurityButton').click()") ||
+    !/page === 'Güvenlik'[\s\S]*?void loadSecurityOverview\(\)/.test(routeHandler) ||
+    routeHandler.includes("$('#featureStatusAccountSecurityButton').click()") ||
+    !source.includes("api('/api/session/2fa')") || !source.includes("api('/api/session/devices')") ||
+    !source.includes('id="securityOverviewPanel"') ||
+    !source.includes('id="securitySessionsPanel"') || !source.includes('id="securitySessionsList"') ||
+    !source.includes("loadAccountSessions($('#securitySessionsList'))") ||
+    !source.includes("loadAccountSessions(host); if (host.id === 'securitySessionsList') void loadSecurityOverview()") ||
+    !source.includes("$('#featureStatusPage'),") ||
     !source.includes("$('#featureStatusAccountSecurityButton').addEventListener('click', () => $('#userAvatar').click())") ||
     !source.includes("'Kendi hesap güvenliğini aç':['Open your account security'")) {
-  failures.push('The Security menu must link to existing account security/session controls and localize the action.');
+  failures.push('The Security page must show MFA and active sessions, support session revocation and refresh without auto-opening the account dialog, and retain the explicit localized account-security action.');
 }
 if (!/function showLogin\([^)]*\)\s*\{[^}]*document\.querySelectorAll\('dialog\[open\]'\)\.forEach\(dialog\s*=>\s*dialog\.close\(\)\)/.test(source)) {
   failures.push('Expired sessions must close top-layer dialogs so they cannot cover the login screen.');
@@ -155,8 +170,16 @@ if (!source.includes('id="companyUnitsPage"') ||
     !companyUnitsEndpoints.includes('[FromQuery] bool includeInactive = false') ||
     !companyUnitsEndpoints.includes('RequireAuthorization("people.read")') ||
     !companyUnitsEndpoints.includes('RequireAuthorization("settings.manage")') ||
-    !companyUnitsEndpoints.includes('ParentCompanyUnitId')) {
-  failures.push('Şirket birimleri must provide tenant-scoped hierarchical list/create/update/archive workflows with read/manage permissions.');
+    !companyUnitsEndpoints.includes('ParentCompanyUnitId') ||
+    !companyUnitsEndpoints.includes('UnitType') ||
+    !source.includes('name="unitType"') ||
+    !source.includes('companyUnitTypeLabel(item.unitType)') ||
+    !companyUnitsApi.includes('Birim türü organizasyon, tüzel kişilik veya şube olmalıdır.')) {
+  failures.push('Şirket birimleri must provide tenant-scoped hierarchy, localized legal-entity/branch classification, and read/manage permissions.');
+}
+if (!source.includes("api('/api/locations/catalog/from-path', { method: 'POST', body: JSON.stringify({ path: item.name })") ||
+    !source.includes('Kataloğa al')) {
+  failures.push('Legacy location paths must be promoted through the path-aware catalog API instead of being submitted as a single slash-containing name.');
 }
 
 for (const selector of [

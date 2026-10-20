@@ -15,12 +15,24 @@ public static class StockPurchaseOrderAttachmentEndpoints
         api.MapGet("/stock-orders/{id:guid}/attachments", async (Guid id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!TryCompany(user, out var companyId)) return Results.Forbid();
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
+            if (!await PurchaseOrderLocationAccess.CanAccessStockOrderAsync(db, companyId, id, allowedLocations, ct)) return Results.NotFound();
             if (!await db.StockPurchaseOrders.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == id, ct)) return Results.NotFound();
-            var items = await db.StockPurchaseOrderAttachments.AsNoTracking().Where(x => x.CompanyId == companyId && x.PurchaseOrderId == id)
+            var rows = await db.StockPurchaseOrderAttachments.AsNoTracking().Where(x => x.CompanyId == companyId && x.PurchaseOrderId == id)
                 .OrderByDescending(x => x.CreatedAt)
                 .Select(x => new { x.Id, x.OriginalFileName, x.ContentType, x.Length, x.CreatedAt,
+                    x.UploadedByUserId,
                     uploadedBy = db.Users.Where(actor => actor.Id == x.UploadedByUserId).Select(actor => actor.DisplayName).FirstOrDefault() })
                 .ToListAsync(ct);
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
+            var hiddenActorIds = await EmployeeAccessIdentityScope.HiddenUserIdsAsync(db, companyId, employeeScope,
+                rows.Select(row => row.UploadedByUserId), ct);
+            var items = rows.Select(row => new
+            {
+                row.Id, row.OriginalFileName, row.ContentType, row.Length, row.CreatedAt,
+                uploadedBy = row.UploadedByUserId is Guid uploaderId && hiddenActorIds.Contains(uploaderId) ? null : row.uploadedBy
+            }).ToList();
             return Results.Ok(new { items, maxFileCount = MaxFiles, maxFileSizeBytes = MaxBytes });
         }).RequireAuthorization("asset.read");
 
@@ -28,6 +40,7 @@ public static class StockPurchaseOrderAttachmentEndpoints
             AppDbContext db, IConfiguration configuration, CancellationToken ct) =>
         {
             if (!TryCompany(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
             if (!request.HasFormContentType) return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
             var form = await request.ReadFormAsync(ct);
             var upload = form.Files.GetFile("file");
@@ -45,6 +58,7 @@ public static class StockPurchaseOrderAttachmentEndpoints
                     $"SELECT * FROM \"StockPurchaseOrders\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
                 .SingleOrDefaultAsync(ct);
             if (order is null) return Results.NotFound();
+            if (!await PurchaseOrderLocationAccess.CanAccessStockOrderAsync(db, companyId, id, allowedLocations, ct)) return Results.NotFound();
             if (await db.StockPurchaseOrderAttachments.CountAsync(x => x.CompanyId == companyId && x.PurchaseOrderId == id, ct) >= MaxFiles)
                 return Results.Conflict(new { message = "Bir siparişe en fazla 30 dosya eklenebilir." });
 
@@ -82,6 +96,9 @@ public static class StockPurchaseOrderAttachmentEndpoints
             ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken ct) =>
         {
             if (!TryCompany(user, out var companyId)) return Results.Forbid();
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
+            if (!await PurchaseOrderLocationAccess.CanAccessStockOrderAsync(db, companyId, id, allowedLocations, ct)) return Results.NotFound();
             var item = await db.StockPurchaseOrderAttachments.AsNoTracking().SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.PurchaseOrderId == id && x.Id == attachmentId, ct);
             if (item is null || !IsSafeStorageName(item.StorageFileName) || HasReparsePoint(configuration, companyId, id)) return Results.NotFound();
@@ -95,6 +112,8 @@ public static class StockPurchaseOrderAttachmentEndpoints
             ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken ct) =>
         {
             if (!TryCompany(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
+            if (!await PurchaseOrderLocationAccess.CanAccessStockOrderAsync(db, companyId, id, allowedLocations, ct)) return Results.NotFound();
             var item = await db.StockPurchaseOrderAttachments.SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.PurchaseOrderId == id && x.Id == attachmentId, ct);
             if (item is null) return Results.NotFound();

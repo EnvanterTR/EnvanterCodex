@@ -7,12 +7,19 @@ const syntheticCompanyId = '11111111-1111-4111-8111-111111111111';
 const syntheticUserId = '22222222-2222-4222-8222-222222222222';
 const appHtml = await readFile('/checkout-site/company-app.html');
 const qrCodeGenerator = await readFile('/checkout-site/vendor/qrcodegen.js', 'utf8');
+const appScripts = new Map(await Promise.all(['report-print.js', 'scheduled-reports.js'].map(async name => [
+  `/${name}`,
+  await readFile(`/checkout-site/${name}`, 'utf8')
+])));
 const apiRequests = [];
 const externalRequests = [];
 const loginAttempts = [];
 let subscriptionMode = 'full';
 let loginMode = false;
+let companyMfaEnrollmentMode = false;
 let loginPendingMigrationCount = 0;
+let companyRole = 'viewer';
+let companySecurityPolicy = { passwordMinimumLength: 12, sessionDurationHours: 720, requireMfa: false };
 let notificationPreferences = { enabledKinds: ['maintenance', 'audit', 'license', 'warranty', 'return', 'reservation'], emailEnabledKinds: [] };
 let integrationTokens = [];
 let sessionDevices = [];
@@ -36,6 +43,11 @@ const server = createServer(async (request, response) => {
     response.end(qrCodeGenerator);
     return;
   }
+  if (request.method === 'GET' && appScripts.has(url.pathname)) {
+    response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
+    response.end(appScripts.get(url.pathname));
+    return;
+  }
   if (url.pathname.startsWith('/api/')) {
     const record = { method: request.method, path: url.pathname, csrf: request.headers['x-csrf-token'] };
     if (request.method !== 'GET') {
@@ -46,8 +58,27 @@ const server = createServer(async (request, response) => {
     if (request.method !== 'GET') {
       if (loginMode && request.method === 'POST' && url.pathname === '/api/session/login') {
         loginAttempts.push(record);
-        response.writeHead(401, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
-        response.end(JSON.stringify({ message: 'Giriş bilgileri geçersiz veya hesap geçici olarak kullanılamıyor.' }));
+        response.writeHead(companyMfaEnrollmentMode ? 409 : 401, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+        response.end(JSON.stringify(companyMfaEnrollmentMode
+          ? { companyMfaSetupRequired: true, setupTicket: 'synthetic-one-time-mfa-ticket', companyName: 'Synthetic Viewer Company', message: 'Authenticator kurulumu gerekli.' }
+          : { message: 'Giriş bilgileri geçersiz veya hesap geçici olarak kullanılamıyor.' }));
+        return;
+      }
+      if (request.method === 'PUT' && url.pathname === '/api/company-security' && record.csrf === 'synthetic-viewer-csrf') {
+        companySecurityPolicy = { ...record.body };
+        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+        response.end(JSON.stringify(companySecurityPolicy));
+        return;
+      }
+      if (request.method === 'POST' && url.pathname === '/api/session/company-mfa/setup' && record.csrf === 'synthetic-viewer-csrf') {
+        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+        response.end(JSON.stringify({ secret: 'JBSWY3DPEHPK3PXP', authenticatorUri: syntheticAuthenticatorUri, companyName: 'Synthetic Viewer Company' }));
+        return;
+      }
+      if (request.method === 'POST' && url.pathname === '/api/session/company-mfa/verify' && record.csrf === 'synthetic-viewer-csrf') {
+        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+        response.end(JSON.stringify({ authenticated: true, companyId: syntheticCompanyId, role: 'admin', platformAdmin: false,
+          name: 'Synthetic Admin', recoveryCodes: Array.from({ length: 10 }, (_, index) => `SYNTHETIC-RECOVERY-${index + 1}`) }));
         return;
       }
       if (request.method === 'POST' && url.pathname === '/api/integrations/tokens' && record.csrf === 'synthetic-viewer-csrf') {
@@ -119,7 +150,7 @@ const server = createServer(async (request, response) => {
               companyName: 'Synthetic Viewer Company',
               userId: syntheticUserId,
               name: 'Synthetic Viewer',
-              role: 'viewer',
+              role: companyRole,
               hasPhoto: false,
               subscriptionAccess: { mode: subscriptionMode, status: subscriptionMode === 'readOnly' ? 'Expired' : 'Active', planName: 'Synthetic cloud plan' }
             }
@@ -129,12 +160,16 @@ const server = createServer(async (request, response) => {
                 ? { isConfigured: false, settings: null }
               : url.pathname === '/api/notifications/preferences'
                 ? notificationPreferences
+                : url.pathname === '/api/company-security'
+                  ? companySecurityPolicy
               : url.pathname === '/api/integrations/tokens'
                 ? integrationTokens
                 : url.pathname === '/api/session/2fa'
                   ? { enabled: false }
                   : url.pathname === '/api/session/devices'
                     ? { sessions: sessionDevices, truncated: false }
+              : url.pathname === '/api/assets/custom-fields'
+                ? []
               : url.pathname === '/api/appearance/preferences'
                 ? { theme: 'system', language: 'tr' }
                 : { items: [], total: 0, page: 1, pageSize: 50 };
@@ -218,8 +253,11 @@ try {
   await globalSearch.fill('');
 
   await page.locator('#pageTitle').click();
+  await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
   await page.keyboard.press('Control+n');
-  await page.waitForFunction(() => document.querySelector('#toast')?.textContent.includes('oluşturma yetkiniz bulunmuyor'));
+  const deniedShortcutToast = page.locator('#toast');
+  await deniedShortcutToast.waitFor({ state: 'visible' });
+  assert.match(await deniedShortcutToast.innerText(), /oluşturma yetkiniz bulunmuyor/i);
   assert.equal(await page.locator('#newAssetButton').isHidden(), true, 'Ctrl+N must not expose asset creation to a viewer.');
 
   await page.keyboard.press('?');
@@ -279,38 +317,32 @@ try {
   const notificationsNav = page.locator('#sidebar [data-page="Bildirimler"]');
   await notificationsNav.click();
   await page.waitForFunction(() => document.querySelector('#pageTitle')?.textContent === 'Bildirimler');
-  const notificationShortcut = page.locator('#featureStatusNotificationButton');
-  assert.equal(await notificationShortcut.isVisible(), true, 'The Notifications menu must expose its working preferences shortcut.');
-  await notificationPanel.waitFor({ state: 'visible' });
-  const preferencesForm = page.locator('#notificationPreferencesForm');
+  const preferencesForm = page.locator('#companyNotificationPreferencesForm');
   await preferencesForm.waitFor({ state: 'visible' });
+  await page.getByText('Bildirim tercihleri yüklendi.').waitFor();
   const auditPreference = preferencesForm.locator('input[name="kind"][value="audit"]');
   const reservationPreference = preferencesForm.locator('input[name="kind"][value="reservation"]');
   const warrantyEmailPreference = preferencesForm.locator('input[name="emailKind"][value="warranty"]');
-  await page.waitForFunction(() => document.querySelector('#notificationPreferencesForm input[name="kind"][value="reservation"]')?.checked === true);
+  await page.waitForFunction(() => document.querySelector('#companyNotificationPreferencesForm input[name="kind"][value="reservation"]')?.checked === true);
   assert.equal(await auditPreference.isChecked(), true, 'The form must load the current in-app notification preference.');
   const preferenceWritesBeforeCancel = apiRequests.filter(item => item.path === '/api/notifications/preferences' && item.method === 'PUT').length;
   await reservationPreference.uncheck();
-  await preferencesForm.getByRole('button', { name: 'Vazgeç' }).click();
-  await preferencesForm.waitFor({ state: 'hidden' });
+  await page.locator('#companyNotificationPreferencesReset').click();
   assert.equal(apiRequests.filter(item => item.path === '/api/notifications/preferences' && item.method === 'PUT').length, preferenceWritesBeforeCancel,
-    'Canceling notification edits must not write preferences.');
-  await page.locator('#notificationSettingsToggle').click();
-  await preferencesForm.waitFor({ state: 'visible' });
-  await page.waitForFunction(() => document.querySelector('#notificationPreferencesForm input[name="kind"][value="reservation"]')?.checked === true);
-  assert.equal(await reservationPreference.isChecked(), true, 'Cancel must restore the persisted choices when the form is reopened.');
+    'Discarding notification edits must not write preferences.');
+  await page.waitForFunction(() => document.querySelector('#companyNotificationPreferencesForm input[name="kind"][value="reservation"]')?.checked === true);
+  assert.equal(await reservationPreference.isChecked(), true, 'Reset must restore the persisted choices.');
   await auditPreference.uncheck();
   await warrantyEmailPreference.check();
-  await preferencesForm.getByRole('button', { name: 'Tercihleri kaydet' }).click();
-  await preferencesForm.waitFor({ state: 'hidden' });
+  await page.locator('#companyNotificationPreferencesSave').click();
+  await page.getByText('Bildirim tercihleri kaydedildi.').waitFor();
   const notificationWrite = apiRequests.find(item => item.path === '/api/notifications/preferences' && item.method === 'PUT');
   assert.deepEqual(notificationWrite?.body, {
     enabledKinds: ['maintenance', 'license', 'warranty', 'return', 'reservation'],
     emailEnabledKinds: ['warranty']
   });
   assert.equal(notificationWrite?.csrf, 'synthetic-viewer-csrf');
-  await page.locator('#notificationSettingsToggle').click();
-  await preferencesForm.waitFor({ state: 'visible' });
+  await page.locator('#companyNotificationPreferencesRefresh').click();
   assert.equal(await auditPreference.isChecked(), false, 'Saved notification choices must reload from the API-backed synthetic preference record.');
   assert.equal(await warrantyEmailPreference.isChecked(), true);
   await page.locator('#sidebar [data-page="Genel Bakış"]').click();
@@ -435,7 +467,19 @@ try {
   await page.locator('#twoFactorCurrentPassword').fill('Synthetic-only-password');
   invalidAuthenticatorUri = true;
   await page.locator('#startTwoFactorSetup').click();
-  await page.waitForFunction(() => document.querySelector('#twoFactorSecret')?.textContent === 'JBSWY3DPEHPK3PXP');
+  try {
+    await page.waitForFunction(() => document.querySelector('#twoFactorSecret')?.textContent === 'JBSWY3DPEHPK3PXP', null, { timeout: 15000 });
+  } catch (error) {
+    console.error(JSON.stringify({
+      recentTwoFactorRequests: apiRequests.filter(item => item.path.startsWith('/api/session/2fa')),
+      secretText: await page.locator('#twoFactorSecret').textContent(),
+      feedback: await page.locator('#twoFactorFeedback').textContent(),
+      setupButtonHidden: await page.locator('#startTwoFactorSetup').evaluate(element => element.hidden),
+      setupButtonDisabled: await page.locator('#startTwoFactorSetup').isDisabled(),
+      pageErrors
+    }));
+    throw error;
+  }
   assert.equal(await twoFactorQr.isVisible(), false, 'An invalid provisioning URI must not produce a QR image.');
   assert.equal(await twoFactorQr.getAttribute('src'), null);
   assert.match(await page.locator('#twoFactorFeedback').textContent(), /QR kod oluşturulamadı\. Kurulum anahtarını uygulamaya elle girin/,
@@ -456,7 +500,9 @@ try {
   const apiTokenCreatesBeforeValidation = apiRequests.filter(item => item.path === '/api/integrations/tokens' && item.method === 'POST').length;
   await integrationsForm.locator('[name="name"]').fill('Synthetic reporting integration');
   await integrationsForm.locator('#createIntegrationToken').click();
-  await page.waitForFunction(() => document.querySelector('#integrationTokenFeedback')?.textContent.includes('En az bir salt okunur yetki seçin'));
+  await page.waitForFunction(() => document.querySelector('#integrationTokenFeedback')?.textContent.includes('En az bir API yetkisi seçin'));
+  assert.equal(await page.locator('#integrationAssetWriteScopeLabel').isVisible(), false,
+    'A viewer must not see the asset write permission even if the form is inspected directly.');
   assert.equal(apiRequests.filter(item => item.path === '/api/integrations/tokens' && item.method === 'POST').length, apiTokenCreatesBeforeValidation,
     'The integration form must reject an empty scope selection without an API write.');
   const integrationSecretDialog = page.locator('#integrationSecretDialog');
@@ -513,16 +559,39 @@ try {
   await page.locator('#integrationTokenRows').getByText('İptal edildi').waitFor();
   console.log('PASS: integration API key menu validates scopes, posts CSRF, masks and clears the one-time secret, preserves cancellation, confirms/reloads revocation, and persists the synthetic state.');
 
+  companyRole = 'admin';
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('#sidebar [data-page="Genel Bakış"]').waitFor({ state: 'visible' });
   const writesBeforeSecurityNavigation = apiRequests.filter(item => item.method !== 'GET').length;
   const securityNav = page.locator('#sidebar [data-page="Güvenlik"]');
+  if (!await securityNav.isVisible()) await settingsGroup.click();
   await securityNav.click();
+  await page.locator('#companySecurityPolicyPanel').waitFor({ state: 'visible' });
+  await page.locator('#securityOverviewPanel').waitFor({ state: 'visible' });
+  await page.waitForFunction(() => document.querySelector('#securityOverviewMfa')?.textContent === 'Kapalı'
+    && document.querySelector('#securityOverviewSessions')?.textContent === '0');
+  assert.equal(await accountDialog.isVisible(), false,
+    'Navigating to Security must show its overview without automatically opening account settings.');
+  await page.locator('#featureStatusAccountSecurityButton').click();
   await accountDialog.waitFor({ state: 'visible' });
   await page.waitForFunction(() => document.querySelector('#accountSessionsList')?.textContent.includes('Etkin oturum bulunamadı'));
   assert.equal(apiRequests.filter(item => item.method !== 'GET').length, writesBeforeSecurityNavigation,
-    'Navigating to Security must open the account security window without changing security settings.');
+    'The security overview and deliberate account security action must not change security settings.');
   await page.locator('#closeAccountPhoto').click();
   await accountDialog.waitFor({ state: 'hidden' });
-
+  assert.deepEqual(companySecurityPolicy, { passwordMinimumLength: 12, sessionDurationHours: 720, requireMfa: false });
+  assert.equal(await page.locator('#companySecurityPolicyForm [name="passwordMinimumLength"]').inputValue(), '12');
+  await page.locator('#companySecurityPolicyForm [name="passwordMinimumLength"]').fill('16');
+  await page.locator('#companySecurityPolicyForm [name="sessionDurationHours"]').fill('48');
+  await page.locator('#companySecurityPolicyForm [name="requireMfa"]').check();
+  await page.locator('#companySecurityPolicySave').click();
+  await page.waitForTimeout(100);
+  assert.equal(await page.locator('#companySecurityPolicyFeedback').innerText(), 'Güvenlik politikası kaydedildi. Zorunlu MFA açıksa MFA kurmayan üyeler bir sonraki girişte kurulum yapar.',
+    `Company policy save feedback; requests: ${JSON.stringify(apiRequests.filter(item => item.path === '/api/company-security'))}`);
+  const companySecurityWrite = apiRequests.find(item => item.path === '/api/company-security' && item.method === 'PUT');
+  assert.deepEqual(companySecurityWrite?.body, { passwordMinimumLength: 16, sessionDurationHours: 48, requireMfa: true });
+  assert.equal(companySecurityWrite?.csrf, 'synthetic-viewer-csrf');
+  assert.deepEqual(companySecurityPolicy, companySecurityWrite.body, 'The company policy must persist in the synthetic API source.');
   const appearanceDialog = page.locator('#appearanceDialog');
   await page.locator('#appearanceButton').click();
   await appearanceDialog.waitFor({ state: 'visible' });
@@ -537,6 +606,9 @@ try {
   await page.locator('#appearanceSave').click();
   await appearanceDialog.waitFor({ state: 'hidden' });
   await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+  await page.waitForFunction(() => document.querySelector('#featureStatusAccountSecurityButton')?.textContent === 'Open your account security'
+    && document.querySelector('#securityOverviewMfa')?.textContent === 'Off'
+    && document.querySelector('#securityOverviewSessionsNote')?.textContent === 'Active sessions for this account.');
   const appearanceWrite = apiRequests.find(item => item.path === '/api/appearance/preferences' && item.method === 'PUT');
   assert.deepEqual(appearanceWrite?.body, { theme: 'dark', language: 'en' });
   assert.equal(appearanceWrite?.csrf, 'synthetic-viewer-csrf');
@@ -566,9 +638,9 @@ try {
   }
   assert.deepEqual(pageErrors, [], 'The app must not throw browser errors while switching languages and showing subscription access state.');
   const writes = apiRequests.filter(item => item.method !== 'GET');
-  assert.equal(writes.length, 7, 'Only explicit synthetic notification, API key create/revoke, remote session revoke, TOTP setup, and appearance actions may write.');
+  assert.equal(writes.length, 8, 'Only explicit synthetic notification, company security policy, API key create/revoke, remote session revoke, TOTP setup, and appearance actions may write.');
   assert.deepEqual(writes.map(item => item.path).sort(), [
-    '/api/appearance/preferences', '/api/integrations/tokens', tokenRevokeWrite.path,
+    '/api/appearance/preferences', '/api/company-security', '/api/integrations/tokens', tokenRevokeWrite.path,
     '/api/notifications/preferences', '/api/session/2fa/setup', '/api/session/2fa/setup',
     `/api/session/devices/${remoteSessionId}/revoke`
   ].sort());
@@ -591,6 +663,8 @@ try {
     'A ready database must leave the sign-in action available.');
   await loginPage.locator('#loginForm [name="email"]').fill('qa-login@example.invalid');
   await loginPage.locator('#loginForm [name="password"]').fill('Synthetic-only-password');
+  assert.equal(await loginPage.locator('#loginForm [name="rememberMe"]').isChecked(), false,
+    'A new login must not opt into a long-lived session by default.');
   await loginPage.locator('#loginForm button[type="submit"]').click();
   await loginPage.locator('#authError').getByText('Giriş bilgileri geçersiz veya hesap geçici olarak kullanılamıyor.').waitFor({ state: 'visible' });
   await loginPage.locator('#loginConnectionStatus').getByText(/bu giriş hatası bağlantıdan kaynaklanmıyor/i).waitFor({ state: 'visible' });
@@ -599,7 +673,7 @@ try {
   assert.equal(loginAttempts.length, 1, 'A rejected login must not recurse or be silently retried.');
   assert.equal(loginAttempts[0].method, 'POST');
   assert.equal(loginAttempts[0].csrf, 'synthetic-viewer-csrf');
-  assert.deepEqual(loginAttempts[0].body, { email: 'qa-login@example.invalid', password: 'Synthetic-only-password', companyId: null, rememberMe: true, twoFactorCode: null });
+  assert.deepEqual(loginAttempts[0].body, { email: 'qa-login@example.invalid', password: 'Synthetic-only-password', companyId: null, rememberMe: false, twoFactorCode: null });
   assert.equal(new URL(loginPage.url()).search, '?keep=1', 'Login details must not be sent in the URL, while unrelated query state stays intact.');
   await loginPage.locator('#retryApiButton').click();
   await loginPage.locator('#loginConnectionStatus').getByText(/bu giriş hatası bağlantıdan kaynaklanmıyor/i).waitFor({ state: 'visible' });
@@ -619,9 +693,28 @@ try {
   assert.equal(await loginPage.locator('#loginForm button[type="submit"]').isDisabled(), false,
     'A healthy schema must restore the sign-in action.');
   assert.equal(loginAttempts.length, 1, 'Recovering readiness must not silently retry credentials.');
+  await loginPage.locator('#loginForm [name="rememberMe"]').check();
+  companyMfaEnrollmentMode = true;
+  await loginPage.locator('#loginForm button[type="submit"]').click();
+  const companyMfaDialog = loginPage.locator('#companyMfaEnrollmentDialog');
+  await companyMfaDialog.waitFor({ state: 'visible' });
+  assert.equal(loginAttempts[1].body.rememberMe, true,
+    'The explicit device-session choice must be sent with the MFA enrollment challenge.');
+  assert.match(await loginPage.locator('#companyMfaEnrollmentQr').getAttribute('src'), /^data:image\/svg\+xml/);
+  assert.equal(await loginPage.locator('#companyMfaEnrollmentSecret').innerText(), 'JBSWY3DPEHPK3PXP');
+  assert.equal(apiRequests.find(item => item.path === '/api/session/company-mfa/setup')?.body?.ticket, 'synthetic-one-time-mfa-ticket');
+  await loginPage.locator('#companyMfaEnrollmentForm [name="code"]').fill('123456');
+  await loginPage.locator('#verifyCompanyMfaEnrollment').click();
+  await loginPage.locator('#companyMfaRecoveryPanel').waitFor({ state: 'visible' });
+  assert.equal((await loginPage.locator('#companyMfaRecoveryCodes').innerText()).split('\n').length, 10);
+  assert.equal(await loginPage.locator('#closeCompanyMfaEnrollment').isDisabled(), true,
+    'Recovery codes must remain visible until the user explicitly acknowledges saving them.');
+  assert.deepEqual(apiRequests.find(item => item.path === '/api/session/company-mfa/verify')?.body,
+    { ticket: 'synthetic-one-time-mfa-ticket', code: '123456' });
+  assert.equal(apiRequests.find(item => item.path === '/api/session/company-mfa/verify')?.csrf, 'synthetic-viewer-csrf');
   assert.deepEqual(loginPageErrors, [], `The signed-out login UI must not throw browser errors: ${loginPageErrors.join(' | ')}`);
   await loginPage.close();
-  console.log('PASS: synthetic viewer role visibility; keyboard/sidebar navigation; notification cancel/save persistence; profile security and appearance preferences; five-language expiry notice; signed-out login distinguishes credential rejection from schema lockout, clears stale errors, blocks login/recovery until ready, posts once with CSRF, and never silently retries.');
+  console.log('PASS: synthetic viewer/admin visibility; keyboard/sidebar navigation; company security policy load/save with CSRF and persistence; notification cancel/save persistence; profile security and appearance preferences; five-language expiry notice; signed-out login distinguishes credential rejection from schema lockout, clears stale errors, blocks login/recovery until ready, tests first-time company MFA QR/secret/verification/recovery codes, and never silently retries credentials.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

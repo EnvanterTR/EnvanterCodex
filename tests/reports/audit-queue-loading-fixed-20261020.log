@@ -1,0 +1,2 @@
+PASS: Chromium audit queues split scheduled/completed history, page/search/refresh safely, open the correct asset, cancel quick audits without writes, reject stale assets after load failure, and hide write actions from viewers.
+PASS: real Chromium support ticket create/reply/close, required form validation, category/status/search/refresh, CSRF write scope, and protection from stale list/detail responses.

@@ -19,6 +19,7 @@ public static class PendingDeliveryReportEndpoints
         public DateOnly? ExpectedOn { get; init; }
         public string Currency { get; init; } = string.Empty;
         public string ItemName { get; init; } = string.Empty;
+        public Guid? LocationCatalogId { get; init; }
         public int Quantity { get; init; }
         public int QuantityReceived { get; init; }
         public int Remaining { get; init; }
@@ -31,13 +32,16 @@ public static class PendingDeliveryReportEndpoints
             [FromQuery] DateOnly? asOf, ClaimsPrincipal user, AppDbContext db, CancellationToken ct,
             [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {
-            if (!TryCompany(user, out var companyId)) return Results.Forbid();
+            if (!TryCompany(user, out var companyId) || !TryUserId(user, out var userId)) return Results.Forbid();
             if (!Validate(q, state, out var errors)) return Results.ValidationProblem(errors);
             var effectiveDate = asOf ?? DateOnly.FromDateTime(DateTime.UtcNow);
             if (effectiveDate < new DateOnly(2000, 1, 1) || effectiveDate > new DateOnly(2100, 12, 31))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["asOf"] = ["Rapor tarihi 2000 ile 2100 arasında olmalıdır."] });
 
             var all = BuildQuery(db, companyId);
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, userId, ct);
+            if (allowedLocations is not null)
+                all = ApplyLocationScope(db, companyId, all, allowedLocations);
             var summary = new
             {
                 overdueOrders = await all.Where(x => x.ExpectedOn.HasValue && x.ExpectedOn.Value < effectiveDate)
@@ -60,12 +64,16 @@ public static class PendingDeliveryReportEndpoints
         api.MapGet("/reports/pending-deliveries/export.csv", async ([FromQuery] string? q, [FromQuery] string? state,
             [FromQuery] DateOnly? asOf, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
-            if (!TryCompany(user, out var companyId)) return Results.Forbid();
+            if (!TryCompany(user, out var companyId) || !TryUserId(user, out var userId)) return Results.Forbid();
             if (!Validate(q, state, out var errors)) return Results.ValidationProblem(errors);
             var effectiveDate = asOf ?? DateOnly.FromDateTime(DateTime.UtcNow);
             if (effectiveDate < new DateOnly(2000, 1, 1) || effectiveDate > new DateOnly(2100, 12, 31))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["asOf"] = ["Rapor tarihi 2000 ile 2100 arasında olmalıdır."] });
-            var query = ApplyFilters(BuildQuery(db, companyId), q, state, effectiveDate);
+            var query = BuildQuery(db, companyId);
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, userId, ct);
+            if (allowedLocations is not null)
+                query = ApplyLocationScope(db, companyId, query, allowedLocations);
+            query = ApplyFilters(query, q, state, effectiveDate);
             if (await query.CountAsync(ct) > MaximumExportRows)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["export"] = [$"Dışa aktarma en fazla {MaximumExportRows:N0} sipariş kalemini destekler."] });
             var rows = await query.OrderBy(x => x.ExpectedOn ?? DateOnly.MaxValue).ThenByDescending(x => x.OrderDate)
@@ -102,7 +110,8 @@ public static class PendingDeliveryReportEndpoints
                      {
                          OrderType = "Varlık", OrderId = order.Id, order.OrderNumber, order.Supplier, order.Status,
                          order.OrderDate, order.ExpectedOn, order.Currency, ItemName = line.Name, line.Quantity,
-                         line.QuantityReceived, Remaining = line.Quantity - line.QuantityReceived, line.UnitCost
+                         line.QuantityReceived, Remaining = line.Quantity - line.QuantityReceived, line.UnitCost,
+                         line.LocationCatalogId
                      };
 
         var accessories = from order in db.AccessoryPurchaseOrders.AsNoTracking()
@@ -115,7 +124,8 @@ public static class PendingDeliveryReportEndpoints
                           {
                               OrderType = "Aksesuar", OrderId = order.Id, order.OrderNumber, order.Supplier, order.Status,
                               order.OrderDate, order.ExpectedOn, order.Currency, ItemName = accessory.Name, line.Quantity,
-                              line.QuantityReceived, Remaining = line.Quantity - line.QuantityReceived, line.UnitCost
+                              line.QuantityReceived, Remaining = line.Quantity - line.QuantityReceived, line.UnitCost,
+                              LocationCatalogId = accessory.LocationCatalogId
                           };
 
         var stocks = from order in db.StockPurchaseOrders.AsNoTracking()
@@ -144,7 +154,8 @@ public static class PendingDeliveryReportEndpoints
                          line.Quantity,
                          line.QuantityReceived,
                          Remaining = line.Quantity - line.QuantityReceived,
-                         line.UnitCost
+                         line.UnitCost,
+                         LocationCatalogId = line.ConsumableId.HasValue ? consumable != null ? consumable.LocationCatalogId : null : component != null ? component.LocationCatalogId : null
                      };
 
         // Keep each UNION input as a server-translatable anonymous projection. EF Core
@@ -161,11 +172,50 @@ public static class PendingDeliveryReportEndpoints
                 ExpectedOn = x.ExpectedOn,
                 Currency = x.Currency,
                 ItemName = x.ItemName,
+                LocationCatalogId = x.LocationCatalogId,
                 Quantity = x.Quantity,
                 QuantityReceived = x.QuantityReceived,
                 Remaining = x.Remaining,
                 UnitCost = x.UnitCost
             });
+    }
+
+    private static IQueryable<PendingDeliveryRow> ApplyLocationScope(AppDbContext db, Guid companyId,
+        IQueryable<PendingDeliveryRow> rows, HashSet<Guid> allowedLocations)
+    {
+        // This is an order-level report: if any line belongs to an unavailable or
+        // legacy unlocated location, hide every line so the order's shared metadata
+        // (number, supplier, dates and totals) cannot reveal that mixed order.
+        var visibleAssetOrderIds = db.AssetPurchaseOrderLines.AsNoTracking()
+            .Where(line => line.CompanyId == companyId)
+            .GroupBy(line => line.PurchaseOrderId)
+            .Where(group => group.All(line => line.LocationCatalogId.HasValue &&
+                allowedLocations.Contains(line.LocationCatalogId.Value)))
+            .Select(group => group.Key);
+        var visibleAccessoryOrderIds = db.AccessoryPurchaseOrderLines.AsNoTracking()
+            .Where(line => line.CompanyId == companyId)
+            .GroupBy(line => line.PurchaseOrderId)
+            .Where(group => group.All(line => db.Accessories.Any(accessory => accessory.CompanyId == companyId &&
+                accessory.Id == line.AccessoryId && accessory.LocationCatalogId.HasValue &&
+                allowedLocations.Contains(accessory.LocationCatalogId.Value))))
+            .Select(group => group.Key);
+        var visibleStockOrderIds = db.StockPurchaseOrderLines.AsNoTracking()
+            .Where(line => line.CompanyId == companyId)
+            .GroupBy(line => line.PurchaseOrderId)
+            .Where(group => group.All(line =>
+                (line.ConsumableId.HasValue && !line.ComponentId.HasValue &&
+                    db.Consumables.Any(consumable => consumable.CompanyId == companyId &&
+                        consumable.Id == line.ConsumableId.Value && consumable.LocationCatalogId.HasValue &&
+                        allowedLocations.Contains(consumable.LocationCatalogId.Value))) ||
+                (line.ComponentId.HasValue && !line.ConsumableId.HasValue &&
+                    db.InventoryComponents.Any(component => component.CompanyId == companyId &&
+                        component.Id == line.ComponentId.Value && component.LocationCatalogId.HasValue &&
+                        allowedLocations.Contains(component.LocationCatalogId.Value)))))
+            .Select(group => group.Key);
+        return rows.Where(row =>
+            row.OrderType == "Varlık" && visibleAssetOrderIds.Contains(row.OrderId) ||
+            row.OrderType == "Aksesuar" && visibleAccessoryOrderIds.Contains(row.OrderId) ||
+            (row.OrderType == "Sarf" || row.OrderType == "Bileşen") && visibleStockOrderIds.Contains(row.OrderId));
     }
 
     private static IQueryable<PendingDeliveryRow> ApplyFilters(IQueryable<PendingDeliveryRow> query, string? q,
@@ -196,4 +246,6 @@ public static class PendingDeliveryReportEndpoints
 
     private static bool TryCompany(ClaimsPrincipal user, out Guid companyId) =>
         Guid.TryParse(user.FindFirstValue("company_id"), out companyId);
+    private static bool TryUserId(ClaimsPrincipal user, out Guid userId) =>
+        Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
 }

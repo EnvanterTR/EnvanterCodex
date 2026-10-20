@@ -1,0 +1,13 @@
+# Platform satış hazırlığı teşhisi — 20 Ekim 2026
+
+İlgili kapsam: hedef 9.10 sistem sağlığı, 9.12 ödeme ayarları ve 12.1 satın alma akışının yapılandırma önkoşulları. Bu çalışma ödeme sağlayıcısı kurulumu veya gerçek tahsilat kabulü değildir.
+
+- [TEST] Platform sistem sağlığında satın alma yapılandırmasının neden kapalı olduğunu ayırt etme.
+- [BEKLENEN] Ödeme anahtarı varlığı, dönüş adresi ve sağlayıcı API adresi geçerliliği, test/üretim ortamı ve yayımlanmış etkin Cloud paket sayısı birbirinden ayrılır. API anahtarları, secret veya yapılandırılmış URL'ler yanıt olarak dönmez.
+- [AKSİYON] Satın alma durumu ve initialize kapısı aynı `GetConfigurationReadiness` değerlendirmesine bağlandı. Yalnız platform yöneticisine açık sistem sağlığı bu değerlendirmenin boolean sonuçlarını ve paket sayısını döndürüyor. Sağlayıcı API adreslerinde özel port, query ve fragment reddediliyor.
+- [ARAYÜZ] Eksik anahtar, dönüş adresi, API adresi ve paket kataloğu eksikliği ayrı açıklanır. Sandbox açıkken gerçek tahsilat yapılmadığı; üretim ayarları varken sağlayıcı erişimi/ödeme kabulünün ayrıca doğrulanması gerektiği belirtilir. Katalog okunamadığında belirsizlik açıklanır.
+- [KANIT] `checkout-readiness-browser-20261020.log`: gerçek Chromium platform paneli paketi exit 0. Eksik ayarlar, sandbox, üretim ve katalog okunamaması senaryoları dahil. `checkout-readiness-api-20261020.log`: izole PostgreSQL kabulü 3/3 geçti; yeni hazırlık senaryosu, sistem sağlığı/rol sınırı ve mevcut sunucu fiyatlı/idempotent checkout-provisioning regresyonu. Web ve test projeleri 0 hata/0 uyarı ile derlendi; script exit 0 ve geçici DB/ağ temizliği tamamlandı.
+- Kaynak kontrolleri: iyzico checkout akışı, hosted checkout UI, platform admin deneyimi, JS syntax ve diff kontrolü geçti.
+- Devam düzeltmesi: yayımlı paket ile en az bir pozitif aylık/yıllık fiyatı ve checkout tarafından desteklenen para birimi bulunan paket ayrı sayılır. Sıfır fiyat veya desteklenmeyen para birimi katalog hazır sonucunu açmaz; desteklenen para birimi listesi initialize kontrolüyle ortaktır. Ek Chromium fiyat/katalog senaryosu `checkout-readiness-price-browser-20261020.log` içinde exit 0. Genişletilen PostgreSQL/API kabulü de 3/3 geçti: pozitif aylık/yıllık fiyat, küçük harfli desteklenen para birimi, sıfır fiyat ve desteklenmeyen para birimi ayrımı dahil. Kanıt `checkout-readiness-price-api-20261020.log`; web/test build 0 hata/0 uyarı, script exit 0 ve izole DB/ağ temizliği tamamlandı.
+
+Tarayıcı API'si sentetik, PostgreSQL kabulü izoledir. Gerçek müşteri verisi, üretim sağlayıcı ayarları, fiyatlar ve canlı dağıtım değiştirilmedi. Genel Web V1 kapısı ve oranı bu alt iş nedeniyle kapatılmaz/değiştirilmez.

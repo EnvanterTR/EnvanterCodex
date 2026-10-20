@@ -22,8 +22,8 @@ assert.match(registrationMigration, /name: "AccountCreatedAt"[\s\S]*?nullable: t
 assert.doesNotMatch(registrationMigration, /defaultValue|defaultValueSql/);
 assert.match(modelSnapshot, /Property<DateTimeOffset\?>\("AccountCreatedAt"\)/);
 assert.match(api, /pageSize = Math\.Clamp\(pageSize == 0 \? 50 : pageSize, 1, 200\)/);
-const projections = api.match(/admin\.MapGet\("\/members"[\s\S]*?admin\.MapGet\("\/plans"/);
-assert.ok(projections, 'member directory endpoints exist before plans endpoint');
+const projections = api.match(/admin\.MapGet\("\/members"[\s\S]*?admin\.MapPost\("\/members\/\{userId:guid\}\/security-actions"/);
+assert.ok(projections, 'member directory read endpoints exist before account security mutations');
 assert.doesNotMatch(projections[0], /PasswordHash|SecurityStamp|AuthenticatorKey|RecoveryCode|IpAddress|UserAgent/);
 assert.match(page, /data-view="members"[^>]*>[^<]*<i>♧<\/i><span>Üyeler \/ Hesaplar/);
 assert.match(page, /id="view-members"/);

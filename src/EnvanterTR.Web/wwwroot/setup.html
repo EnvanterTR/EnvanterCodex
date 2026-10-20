@@ -22,7 +22,7 @@
       <label>Yönetici adı soyadı<input name="fullName" required maxlength="160" autocomplete="name"></label>
       <label>Yönetici e-posta adresi<input name="email" type="email" required maxlength="256" autocomplete="email"></label>
       <label>Yönetici parolası<input name="password" type="password" required minlength="12" autocomplete="new-password"><span class="hint">En az 12 karakter; büyük/küçük harf, sayı ve özel karakter içermelidir.</span></label>
-      <label>Kurulum anahtarı<input class="token" name="setupToken" type="password" required autocomplete="off"><span class="hint">Sunucudaki kurulum yöneticisinin verdiği tek kullanımlık anahtar. Tarayıcıda saklanmaz.</span></label>
+      <label>Kurulum anahtarı<input class="token" name="setupToken" type="password" required autocomplete="off"><span class="hint">Bu, ilk şirket hesabını oluşturma izni veren sunucuya özel gizli anahtardır; e-posta parolanız veya Authenticator kodunuz değildir ve Google/Microsoft'tan alınmaz. Sunucu yöneticinizden alın. Değeri bilmiyorsanız rastgele denemeyin; sunucu yöneticisi güvenli dağıtım ayarlarında yeni bir anahtar belirleyip uygulamayı yeniden başlatabilir. Anahtarı sohbete göndermeyin. Bu alandaki noktalar, yazılmış değerin gizlendiğini gösterir.</span></label>
       <button class="button" type="submit">Şirketi ve yöneticiyi oluştur</button>
     </form>
     <div id="message" class="message hidden" role="status" aria-live="polite"></div>

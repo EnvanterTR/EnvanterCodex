@@ -16,7 +16,10 @@ public sealed record CreateAssetRequest(
     Dictionary<string, string>? CustomFields = null,
     bool? IsByod = null,
     Guid? DefaultLocationCatalogId = null,
-    string? Notes = null);
+    string? Notes = null,
+    string? InsuranceProvider = null,
+    string? InsurancePolicyNumber = null,
+    DateOnly? InsuranceExpiresAt = null);
 
 public sealed record UpdateAssetRequest(
     string AssetTag,
@@ -35,7 +38,10 @@ public sealed record UpdateAssetRequest(
     Dictionary<string, string>? CustomFields = null,
     bool? IsByod = null,
     Guid? DefaultLocationCatalogId = null,
-    string? Notes = null);
+    string? Notes = null,
+    string? InsuranceProvider = null,
+    string? InsurancePolicyNumber = null,
+    DateOnly? InsuranceExpiresAt = null);
 
 public sealed record AssetCustomFieldDefinitionRequest(
     string Key,
@@ -43,7 +49,10 @@ public sealed record AssetCustomFieldDefinitionRequest(
     string FieldType,
     string[]? Options,
     bool IsRequired,
-    int SortOrder = 0);
+    int SortOrder = 0,
+    string? GroupName = null,
+    Guid? CategoryId = null,
+    Guid? ModelId = null);
 
 public sealed record CreateLookupRequest(string Name, Guid? BrandId = null, int? DepreciationMonths = null,
     decimal? DepreciationMinimum = null, string? DepreciationMinimumType = null, string? DepreciationMethod = null,
@@ -54,7 +63,9 @@ public sealed record RenameLookupRequest(string Name, string? Website = null, st
     string? WarrantyUrl = null, string? SupportPhone = null, string? SupportEmail = null, bool UpdateBrandDetails = false,
     string? ModelNumber = null);
 public sealed record RenameDirectoryEntryRequest(string CurrentName, string NewName, bool Merge = false);
-public sealed record LocationCatalogRequest(string? Name, Guid? ParentLocationId = null);
+public sealed record LocationCatalogRequest(string? Name, Guid? ParentLocationId = null,
+    Guid? CompanyUnitId = null, bool ClearCompanyUnit = false);
+public sealed record LocationCatalogPathRequest(string? Path);
 public sealed record SetLocationDefaultRequest(bool IsDefault);
 public sealed record SetLocationManagerRequest(Guid? EmployeeId);
 
@@ -67,7 +78,8 @@ public sealed record CreateEmployeeRequest(
     string? JobTitle = null,
     string? Phone = null,
     string? Location = null,
-    DateOnly? StartedOn = null);
+    DateOnly? StartedOn = null,
+    Guid? CompanyUnitId = null);
 
 public sealed record UpdateEmployeeRequest(
     string EmployeeNumber,
@@ -77,7 +89,9 @@ public sealed record UpdateEmployeeRequest(
     string? JobTitle = null,
     string? Phone = null,
     string? Location = null,
-    DateOnly? StartedOn = null);
+    DateOnly? StartedOn = null,
+    Guid? CompanyUnitId = null,
+    bool ClearCompanyUnit = false);
 
 public sealed record SetEmployeeManagerRequest(Guid? ManagerEmployeeId);
 public sealed record LinkCompanyMemberEmployeeRequest(Guid? EmployeeId);
@@ -90,7 +104,8 @@ public sealed record BulkChangeAssetStatusRequest(Guid[] AssetIds, string Status
 public sealed record BulkAssignAssetsRequest(Guid[] AssetIds, Guid EmployeeId, string? Note, DateOnly? ExpectedReturnOn = null);
 public sealed record BulkReturnAssetsRequest(Guid[] AssetIds, string? Note);
 public sealed record BulkTransferAssetsRequest(Guid[] AssetIds, string TargetLocation, string? Notes);
-public sealed record BulkRecordAssetAuditRequest(Guid[] AssetIds, DateOnly AuditDate, string? Notes, DateOnly? NextAuditOn = null);
+public sealed record BulkRecordAssetAuditRequest(Guid[] AssetIds, DateOnly AuditDate, string? Notes,
+    DateOnly? NextAuditOn = null, string? Outcome = "Accepted", string? IssueDescription = null);
 public sealed record BulkAssetVersion(Guid Id, DateTimeOffset UpdatedAt);
 public sealed record BulkUpdateAssetsRequest(
     BulkAssetVersion[]? Assets,
@@ -109,7 +124,10 @@ public sealed record BulkUpdateAssetsRequest(
     string? Note = null,
     string? SerialNumber = null,
     string? Notes = null,
-    Dictionary<string, string?>? CustomFields = null);
+    Dictionary<string, string?>? CustomFields = null,
+    string? InsuranceProvider = null,
+    string? InsurancePolicyNumber = null,
+    DateOnly? InsuranceExpiresAt = null);
 public sealed record SetAssetAuditScheduleRequest(DateOnly? NextAuditOn);
 public sealed record SetAssetParentRequest(Guid? ParentAssetId, DateTimeOffset ExpectedUpdatedAt);
 public sealed record AddAssetNoteRequest(string? Note);
@@ -144,6 +162,10 @@ public sealed record AssetListItem(
     string? EmployeeNumber = null,
     string? DefaultLocation = null,
     string? CompanyName = null,
+    string? CompanyUnitName = null,
     decimal? PurchaseCost = null,
     string Currency = "TRY",
-    decimal? CurrentValue = null);
+    decimal? CurrentValue = null,
+    string? InsuranceProvider = null,
+    string? InsurancePolicyNumber = null,
+    DateOnly? InsuranceExpiresAt = null);

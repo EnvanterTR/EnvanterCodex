@@ -2,6 +2,15 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const nginx = readFileSync('deploy/coolify/nginx-public.conf', 'utf8');
+const localNginx = readFileSync('deploy/local/nginx-public.conf', 'utf8');
+for (const config of [nginx, localNginx]) {
+  const login = config.match(/location = \/giris \{[\s\S]*?\n    \}/)?.[0];
+  assert.match(login || '', /proxy_hide_header Permissions-Policy/);
+  assert.match(login || '', /camera=\(self\)/);
+  assert.match(login || '', /X-Content-Type-Options "nosniff"/);
+  assert.match(config, /location \^~ \/vendor\/ \{ proxy_pass http:\/\/web:8080;/);
+  assert.match(config, /platform-admin-\(members\|subscriptions\|demo-requests\|payment-follow-ups\)/);
+}
 const readme = readFileSync('deploy/coolify/README.md', 'utf8');
 const marketing = nginx.match(/server\s*\{[\s\S]*?server_name envantertr\.com www\.envantertr\.com;[\s\S]*?\n\}/)?.[0];
 const wildcardStart = nginx.indexOf('server_name *.envantertr.com;');

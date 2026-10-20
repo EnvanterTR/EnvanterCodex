@@ -11,10 +11,13 @@ public static class AccessoryCategoryEndpoints
         api.MapGet("/accessory-categories", async (ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!TryCompany(user, out var companyId)) return Results.Forbid();
+            var actorId = Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedActorId) ? parsedActorId : Guid.Empty;
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
             var items = await db.AccessoryCategories.AsNoTracking().Where(x => x.CompanyId == companyId)
                 .OrderBy(x => x.IsArchived).ThenBy(x => x.Name)
                 .Select(x => new { x.Id, x.Name, x.IsArchived,
-                    accessoryCount = db.Accessories.Count(a => a.CompanyId == companyId && a.CategoryId == x.Id) })
+                    accessoryCount = db.Accessories.Count(a => a.CompanyId == companyId && a.CategoryId == x.Id &&
+                        (allowedLocations == null || a.LocationCatalogId.HasValue && allowedLocations.Contains(a.LocationCatalogId.Value))) })
                 .ToListAsync(ct);
             return Results.Ok(new { items });
         }).RequireAuthorization("asset.read");
@@ -23,6 +26,7 @@ public static class AccessoryCategoryEndpoints
             ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!TryCompany(user, out var companyId)) return Results.Forbid();
+            if (await IsLocationScopeRestrictedAsync(user, db, companyId, ct)) return Results.Forbid();
             var name = NormalizeName(request.Name);
             if (name is null) return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Kategori adı zorunludur ve 120 karakteri aşamaz."] });
             if (await db.AccessoryCategories.AnyAsync(x => x.CompanyId == companyId && x.Name.ToUpper() == name.ToUpper(), ct))
@@ -39,6 +43,7 @@ public static class AccessoryCategoryEndpoints
             ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!TryCompany(user, out var companyId)) return Results.Forbid();
+            if (await IsLocationScopeRestrictedAsync(user, db, companyId, ct)) return Results.Forbid();
             var category = await db.AccessoryCategories.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
             if (category is null) return Results.NotFound();
             var name = NormalizeName(request.Name);
@@ -59,6 +64,7 @@ public static class AccessoryCategoryEndpoints
             AppDbContext db, CancellationToken ct) =>
         {
             if (!TryCompany(user, out var companyId)) return Results.Forbid();
+            if (await IsLocationScopeRestrictedAsync(user, db, companyId, ct)) return Results.Forbid();
             var category = await db.AccessoryCategories.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
             if (category is null) return Results.NotFound();
             category.IsArchived = !category.IsArchived;
@@ -94,6 +100,11 @@ public static class AccessoryCategoryEndpoints
 
     private static bool TryCompany(ClaimsPrincipal user, out Guid companyId) =>
         Guid.TryParse(user.FindFirstValue("company_id"), out companyId);
+
+    private static async Task<bool> IsLocationScopeRestrictedAsync(ClaimsPrincipal user, AppDbContext db,
+        Guid companyId, CancellationToken ct) =>
+        !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId) ||
+        await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct) is not null;
 
     public sealed record AccessoryCategoryRequest(string? Name);
 }

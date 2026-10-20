@@ -19,6 +19,16 @@ requireSource(rowBuilder.includes("translateUiText('Görseli büyüt')") && rowB
 requireSource(rowBuilder.includes("const openAssetFiles = async () => { try { await openAsset(asset.id); selectAssetTab('attachments'); }"), 'An asset without a photo must open the attachments tab for file management.');
 requireSource(rowBuilder.includes("imageButton.addEventListener('click', event => { event.stopPropagation(); const visibleImage = imageButton.querySelector('img'); if (visibleImage?.currentSrc) showAssetImagePreview(visibleImage); else openAssetFiles(); });"), 'Keyboard activation must enlarge a present photo and fall back to files when unavailable.');
 requireSource(source.includes('function showAssetImagePreview(image)') && source.includes("showAssetImagePreview(image);"), 'Mouse and keyboard image preview must share the in-app viewer.');
+requireSource(rowBuilder.includes('asset.companyUnitName'), 'The asset location cell must show its linked company unit without adding another wide table column.');
+requireSource(assetEndpoints.includes('CompanyUnitName = null'), 'Asset list API contracts must carry the optional linked company-unit name.');
+requireSource(assetEndpoints.includes('unit.Name.Contains(term)') && assetEndpoints.includes('unit.CompanyId == companyId'), 'Asset search must match unit names within the active company only.');
+requireSource(source.includes("$('#detailCompanyUnit').textContent = references.companyUnit"), 'Asset details must show the company unit returned by the tenant-scoped detail API.');
+requireSource(source.includes('.content{width:100%;max-width:none;margin:0;'), 'The main content area must use the available width instead of leaving a centered max-width gutter on desktop.');
+requireSource(source.includes('.workspace-page{width:100%;max-width:none;box-sizing:border-box;margin:0;'), 'Workspace pages must fill the main column so unused side space is not reserved by a page max-width.');
+requireSource(source.includes('@media(min-width:1051px){.content{padding-left:10px;padding-right:10px}}') && source.includes('.content .workspace-page{padding-left:10px;padding-right:10px}'), 'Desktop content and nested workspaces must keep compact side padding so the asset table gets the available width.');
+requireSource(source.includes('.table-wrap{overflow:auto}'), 'Wide asset tables must remain horizontally scrollable when their real columns exceed the viewport.');
+requireSource(source.includes('.asset-action-group{display:grid;grid-template-columns:repeat(4,28px);'), 'Asset shortcut buttons must wrap into a compact four-column grid rather than being clipped in one long row.');
+requireSource(source.includes('.asset-table .asset-actions-heading,.asset-table .asset-row-actions{box-sizing:border-box;width:138px;min-width:138px;'), 'The sticky asset actions column must reserve enough fixed width for the wrapped shortcut grid.');
 
 const actions = [
   ['detail', "action(translateUiText('Ayrıntıyı aç'), 'view'", 'openAsset(asset.id)'],
@@ -55,7 +65,7 @@ requireSource(cloneFunction.includes('api(`/api/assets/${asset.id}`)') && cloneF
 requireSource(assetEndpoints.includes('asset.LocationCatalogId, asset.DefaultLocationCatalogId'), 'Asset detail must expose the default location catalog ID needed by clone forms.');
 if (cloneFunction) {
   const makeCloneContext = canWrite => {
-    const names = ['assetName','assetTag','categoryId','brandId','modelId','serialNumber','location','defaultLocationCatalogId','purchaseDate','warrantyExpiresAt','purchaseCost','currency','notes'];
+    const names = ['assetName','assetTag','categoryId','brandId','modelId','serialNumber','location','defaultLocationCatalogId','purchaseDate','warrantyExpiresAt','insuranceProvider','insurancePolicyNumber','insuranceExpiresAt','purchaseCost','currency','notes'];
     const elements = Object.fromEntries(names.map(name => [name, { value: `stale-${name}`, focus() {} }]));
     elements.isRequestable = { checked: false };
     elements.isByod = { checked: false };
@@ -70,6 +80,7 @@ if (cloneFunction) {
     ];
     const context = {
       $: selector => selector === '#newAssetForm' ? form : null,
+      customFieldFormValues: new WeakMap(),
       canWriteAssets: () => canWrite,
       loadLookups: async () => { calls.lookups++; },
       loadAssetCustomFieldDefinitions: async () => { calls.definitions++; },
@@ -88,6 +99,7 @@ if (cloneFunction) {
   };
   const fullCloneAsset = { ...cloneAsset, defaultLocationCatalogId: 'location-2',
     purchaseDate: '2025-03-10', warrantyExpiresAt: '2028-03-10', purchaseCost: 12500, currency: 'TRY',
+    insuranceProvider: 'Example Insurance', insurancePolicyNumber: 'POL-123', insuranceExpiresAt: '2027-03-10',
     customFields: { ownerTeam: 'Ağ Ekibi', assetSecret: 'must-not-copy', retiredCode: 'old' } };
   const allowed = makeCloneContext(true);
   await allowed.functionValue(cloneAsset);
@@ -101,6 +113,9 @@ if (cloneFunction) {
   assert.equal(allowed.form.elements.modelId.value, 'model-1');
   assert.equal(allowed.calls.modelId, 'model-1');
   assert.equal(allowed.form.elements.defaultLocationCatalogId.value, 'location-2');
+  assert.equal(allowed.form.elements.insuranceProvider.value, '');
+  assert.equal(allowed.form.elements.insurancePolicyNumber.value, '');
+  assert.equal(allowed.form.elements.insuranceExpiresAt.value, '');
   assert.equal(allowed.form.elements.serialNumber.value, '');
   assert.equal(allowed.form.elements.assetTag.value, '');
   assert.equal(JSON.stringify(allowed.calls.rendered), JSON.stringify({ ownerTeam: 'Ağ Ekibi' }));
@@ -125,6 +140,9 @@ if (cloneFunction) {
       notes: () => target.elements.notes.value,
       purchaseDate: () => target.elements.purchaseDate.value,
       warrantyExpiresAt: () => target.elements.warrantyExpiresAt.value,
+      insuranceProvider: () => target.elements.insuranceProvider.value,
+      insurancePolicyNumber: () => target.elements.insurancePolicyNumber.value,
+      insuranceExpiresAt: () => target.elements.insuranceExpiresAt.value,
       purchaseCost: () => target.elements.purchaseCost.value,
       currency: () => target.elements.currency.value,
       isRequestable: () => target.elements.isRequestable.checked ? 'true' : null,
@@ -161,6 +179,9 @@ if (cloneFunction) {
   assert.equal(savedPayload.assetTag, 'SYNTH-CLONE-002');
   assert.equal(savedPayload.name, 'U6 Pro');
   assert.equal(savedPayload.defaultLocationCatalogId, 'location-2');
+  assert.equal(savedPayload.insuranceProvider, null);
+  assert.equal(savedPayload.insurancePolicyNumber, null);
+  assert.equal(savedPayload.insuranceExpiresAt, null);
   assert.equal(savedPayload.serialNumber, null);
   assert.equal(JSON.stringify(savedPayload.customFields), JSON.stringify({ ownerTeam: 'Ağ Ekibi' }));
   assert.equal(savedClone.dashboardLoads, 1);

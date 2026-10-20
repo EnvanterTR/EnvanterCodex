@@ -14,6 +14,7 @@ public static class AssetEndpoints
 {
     private const long AssetAttachmentMaxSizeBytes = 10_485_760;
     private const long AssetAttachmentRequestLimitBytes = 10_616_832;
+    private sealed record ScopedLocationRecord(Guid? LocationId);
 
     public static IEndpointRouteBuilder MapAssetEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -29,6 +30,29 @@ public static class AssetEndpoints
             if (!await db.Companies.AsNoTracking().AnyAsync(x => x.Id == companyId && x.IsActive &&
                     db.CompanyMemberships.Any(m => m.CompanyId == companyId && m.UserId == userId && m.RoleKey == role),
                     invocation.HttpContext.RequestAborted)) return Results.Forbid();
+            var requestPath = invocation.HttpContext.Request.Path;
+            if (Guid.TryParse(Convert.ToString(invocation.HttpContext.Request.RouteValues.GetValueOrDefault("id")), out var scopedRecordId) &&
+                (requestPath.StartsWithSegments("/api/assets") || requestPath.StartsWithSegments("/api/employees") ||
+                 requestPath.StartsWithSegments("/api/accessories") || requestPath.StartsWithSegments("/api/consumables") ||
+                 requestPath.StartsWithSegments("/api/components")))
+            {
+                var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, userId,
+                    invocation.HttpContext.RequestAborted);
+                if (allowedLocations is not null)
+                {
+                    var record = requestPath.StartsWithSegments("/api/assets")
+                        ? await db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == scopedRecordId).Select(x => new ScopedLocationRecord(x.LocationCatalogId)).SingleOrDefaultAsync(invocation.HttpContext.RequestAborted)
+                        : requestPath.StartsWithSegments("/api/employees")
+                            ? await db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == scopedRecordId).Select(x => new ScopedLocationRecord(x.LocationCatalogId)).SingleOrDefaultAsync(invocation.HttpContext.RequestAborted)
+                            : requestPath.StartsWithSegments("/api/accessories")
+                                ? await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == scopedRecordId).Select(x => new ScopedLocationRecord(x.LocationCatalogId)).SingleOrDefaultAsync(invocation.HttpContext.RequestAborted)
+                                : requestPath.StartsWithSegments("/api/consumables")
+                                    ? await db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == scopedRecordId).Select(x => new ScopedLocationRecord(x.LocationCatalogId)).SingleOrDefaultAsync(invocation.HttpContext.RequestAborted)
+                                    : await db.InventoryComponents.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == scopedRecordId).Select(x => new ScopedLocationRecord(x.LocationCatalogId)).SingleOrDefaultAsync(invocation.HttpContext.RequestAborted);
+                    if (record is not null && (record.LocationId is not Guid selectedLocation || !allowedLocations.Contains(selectedLocation)))
+                        return Results.NotFound();
+                }
+            }
             if (TenantPlanFeatures.RequiresReports(invocation.HttpContext.Request.Path) &&
                 !await TenantPlanFeatures.IsEnabledAsync(companyId, TenantPlanFeatures.Reports, db,
                     invocation.HttpContext.RequestAborted))
@@ -45,6 +69,7 @@ public static class AssetEndpoints
             return await next(invocation);
         });
         api.MapConsumableEndpoints();
+        api.MapSoftwareInventoryEndpoints();
         api.MapInventoryRequestEndpoints();
         api.MapSoftwareLicenseEndpoints();
         api.MapMaintenanceAttachmentEndpoints();
@@ -52,6 +77,7 @@ public static class AssetEndpoints
         api.MapAccessoryCategoryEndpoints();
         api.MapCatalogImageEndpoints();
         api.MapAssetModelAttachmentEndpoints();
+        api.MapAssetModelDetailEndpoints();
         api.MapComponentEndpoints();
         api.MapAccessoryImportEndpoints();
         api.MapInventoryMovementEndpoints();
@@ -60,6 +86,8 @@ public static class AssetEndpoints
         api.MapStockPurchaseOrderEndpoints();
         api.MapStockPurchaseOrderAttachmentEndpoints();
         api.MapAssetPurchaseOrderEndpoints();
+        api.MapPurchaseOrderReturnEndpoints();
+        api.MapPurchaseOverviewEndpoints();
         api.MapAssetPurchaseOrderAttachmentEndpoints();
         api.MapPendingDeliveryReportEndpoints();
         api.MapDepreciationReportEndpoints();
@@ -70,11 +98,13 @@ public static class AssetEndpoints
         api.MapSavedAssetSearchEndpoints();
         api.MapSavedAssetImportMappingEndpoints();
         api.MapCustomAssetReportEndpoints();
+        api.MapScheduledReportEndpoints();
         api.MapDashboardPreferenceEndpoints();
         api.MapOperationalNotificationEndpoints();
         api.MapAssetCustomFieldEndpoints();
         api.MapAssetStatusLabelEndpoints();
         api.MapAssetReservationEndpoints();
+        api.MapEmployeeHandoverEndpoints();
 
         api.MapGet("/assets", async ([FromQuery] string? q, [FromQuery] string? status,
             [FromQuery] Guid? categoryId, [FromQuery] Guid? brandId, [FromQuery] Guid? modelId,
@@ -85,15 +115,21 @@ public static class AssetEndpoints
             [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            var scopedEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
             page = Math.Max(page, 1);
             pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
             var query = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId,
+                CurrentUserId(user)!.Value, cancellationToken);
+            if (allowedLocations is not null)
+                query = query.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
             if (byod.HasValue) query = query.Where(x => x.IsByod == byod.Value);
             if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.Status == status.Trim());
             if (categoryId is Guid selectedCategory) query = query.Where(x => x.CategoryId == selectedCategory);
             if (brandId is Guid selectedBrand) query = query.Where(x => x.BrandId == selectedBrand);
             if (modelId is Guid selectedModel) query = query.Where(x => x.ModelId == selectedModel);
-            if (employeeId is Guid selectedEmployee) query = query.Where(x => x.AssignedEmployeeId == selectedEmployee);
+            if (employeeId is Guid selectedEmployee) query = query.Where(x => x.AssignedEmployeeId == selectedEmployee && scopedEmployees.Any(employee => employee.Id == selectedEmployee));
             if (!string.IsNullOrWhiteSpace(location))
             {
                 var selectedLocation = location.Trim();
@@ -117,15 +153,18 @@ public static class AssetEndpoints
                     (x.SerialNumber != null && x.SerialNumber.Contains(term)) ||
                     (x.CustomFieldsJson != null && (x.CustomFieldsJson.Contains(term) || x.CustomFieldsJson.Contains(escapedCustomFieldTerm))) ||
                     (x.Location != null && x.Location.Contains(term)) ||
+                    db.CompanyLocations.Any(location => location.CompanyId == companyId && location.Id == x.LocationCatalogId &&
+                        location.CompanyUnitId != null && db.CompanyUnits.Any(unit => unit.CompanyId == companyId &&
+                            unit.Id == location.CompanyUnitId && unit.Name.Contains(term))) ||
                     db.AssetModels.Any(m => m.CompanyId == companyId && m.Id == x.ModelId && m.ModelNumber != null && m.ModelNumber.Contains(term)) ||
-                    db.Employees.Any(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId &&
+                    scopedEmployees.Any(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId &&
                         (e.DisplayName.Contains(term) || e.EmployeeNumber.Contains(term))) ||
                     db.AssetCategories.Any(c => c.CompanyId == companyId && c.Id == x.CategoryId && c.Name.Contains(term)) ||
                     db.AssetBrands.Any(b => b.CompanyId == companyId && b.Id == x.BrandId && b.Name.Contains(term)) ||
                     db.AssetModels.Any(m => m.CompanyId == companyId && m.Id == x.ModelId && m.Name.Contains(term)));
             }
 
-            var ordered = OrderAssets(query, db, companyId, sortBy, sortDirection);
+            var ordered = OrderAssets(query, db, companyId, sortBy, sortDirection, scopedEmployees);
             if (ordered is null) return Results.ValidationProblem(new Dictionary<string, string[]> { ["sortBy"] = ["Sıralama alanı veya yönü desteklenmiyor."] });
             var total = await query.CountAsync(cancellationToken);
             var asOf = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -137,24 +176,29 @@ public static class AssetEndpoints
                     db.AssetBrands.Where(b => b.CompanyId == companyId && b.Id == x.BrandId).Select(b => b.Name).FirstOrDefault(),
                     x.ModelId,
                     db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.Name).FirstOrDefault(),
-                    db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
-                    x.AssignedEmployeeId, x.WarrantyExpiresAt, x.UpdatedAt,
+                    scopedEmployees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
+                    scopedEmployees.Where(employee => employee.Id == x.AssignedEmployeeId).Select(employee => (Guid?)employee.Id).FirstOrDefault(), x.WarrantyExpiresAt, x.UpdatedAt,
                     db.AssetAttachments.Where(photo => photo.CompanyId == companyId && photo.AssetId == x.Id && photo.ContentType.StartsWith("image/"))
                         .OrderByDescending(photo => photo.CreatedAt).Select(photo => (Guid?)photo.Id).FirstOrDefault(),
                     x.LocationCatalogId, x.IsByod, x.ExpectedReturnOn,
                     db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId && m.PhotoFileName != null)
                         .Select(m => $"/api/models/{m.Id}/photo").FirstOrDefault(),
                     db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.ModelNumber).FirstOrDefault(),
-                    db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault(),
+                    scopedEmployees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault(),
                     db.CompanyLocations.Where(l => l.CompanyId == companyId && l.Id == x.DefaultLocationCatalogId).Select(l => l.Name).FirstOrDefault(),
-                    db.Companies.Where(c => c.Id == companyId).Select(c => c.Name).FirstOrDefault()),
-                    x.PurchaseDate, x.PurchaseCost, x.Currency,
+                    db.Companies.Where(c => c.Id == companyId).Select(c => c.Name).FirstOrDefault(),
+                    db.CompanyLocations.Where(location => location.CompanyId == companyId && location.Id == x.LocationCatalogId)
+                        .Select(location => db.CompanyUnits.Where(unit => unit.CompanyId == companyId && unit.Id == location.CompanyUnitId)
+                            .Select(unit => unit.Name).FirstOrDefault()).FirstOrDefault()),
+                    x.PurchaseDate, x.PurchaseCost, x.Currency, x.InsuranceProvider, x.InsurancePolicyNumber, x.InsuranceExpiresAt,
                     DepreciationMonths = db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.DepreciationMonths).FirstOrDefault(),
                     DepreciationMinimum = db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.DepreciationMinimum).FirstOrDefault(),
                     DepreciationMinimumType = db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.DepreciationMinimumType).FirstOrDefault(),
                     DepreciationMethod = db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.DepreciationMethod).FirstOrDefault() })
                 .ToListAsync(cancellationToken);
             var items = rows.Select(row => row.Item with { PurchaseCost = row.PurchaseCost, Currency = row.Currency,
+                InsuranceProvider = row.InsuranceProvider, InsurancePolicyNumber = row.InsurancePolicyNumber,
+                InsuranceExpiresAt = row.InsuranceExpiresAt,
                 CurrentValue = DepreciationReportEndpoints.CalculateListValue(row.PurchaseDate, row.PurchaseCost,
                     row.DepreciationMonths, row.DepreciationMinimum, row.DepreciationMinimumType, row.DepreciationMethod, asOf) }).ToList();
             return Results.Ok(new { items, page, pageSize, total });
@@ -165,6 +209,9 @@ public static class AssetEndpoints
             [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, CurrentUserId(user)!.Value, ct);
+            var scopedEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
             if (q?.Trim().Length > 120)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
             var returnState = (state ?? "all").Trim().ToLowerInvariant();
@@ -173,12 +220,15 @@ public static class AssetEndpoints
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
             var through = today.AddDays(30);
             var query = from asset in db.Assets.AsNoTracking()
-                        join employee in db.Employees.AsNoTracking()
+                        join employee in scopedEmployees.AsNoTracking()
                             on new { asset.CompanyId, Id = asset.AssignedEmployeeId!.Value }
                             equals new { employee.CompanyId, Id = employee.Id }
                         where asset.CompanyId == companyId && asset.DeletedAt == null &&
                               asset.AssignedEmployeeId != null && asset.Status == AssetStatuses.Deployed
                         select new { asset, employee };
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
+            if (allowedLocations is not null)
+                query = query.Where(x => x.asset.LocationCatalogId.HasValue && allowedLocations.Contains(x.asset.LocationCatalogId.Value));
             if (returnState == "overdue") query = query.Where(x => x.asset.ExpectedReturnOn != null && x.asset.ExpectedReturnOn < today);
             else if (returnState == "due30") query = query.Where(x => x.asset.ExpectedReturnOn >= today && x.asset.ExpectedReturnOn <= through);
             else if (returnState == "undated") query = query.Where(x => x.asset.ExpectedReturnOn == null);
@@ -225,7 +275,10 @@ public static class AssetEndpoints
                 .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).Take(500).ToListAsync(cancellationToken);
             var archivedCategories = await db.AccessoryCategories.AsNoTracking().Where(x => x.CompanyId == companyId && x.IsArchived)
                 .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).Take(500).ToListAsync(cancellationToken);
-            var locations = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() != "")
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            var accessoryQuery = db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (allowedLocations is not null) accessoryQuery = accessoryQuery.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
+            var locations = await accessoryQuery.Where(x => x.Location != null && x.Location.Trim() != "")
                 .Select(x => x.Location!.Trim()).Distinct().OrderBy(x => x).Take(500).ToListAsync(cancellationToken);
             return Results.Ok(new { categories, archivedCategories, locations });
         }).RequireAuthorization("asset.read");
@@ -239,6 +292,8 @@ public static class AssetEndpoints
             page = Math.Max(page, 1);
             pageSize = Math.Clamp(pageSize == 0 ? 25 : pageSize, 1, 200);
             var query = db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            if (allowedLocations is not null) query = query.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
@@ -293,7 +348,7 @@ public static class AssetEndpoints
             return Results.Ok(new { items, page, pageSize, total });
         }).RequireAuthorization("asset.read");
 
-        api.MapGet("/accessories/export.csv", async ([FromQuery] string? q, [FromQuery] Guid? categoryId, [FromQuery] string? category,
+        var exportAccessories = async ([FromQuery] string? q, [FromQuery] Guid? categoryId, [FromQuery] string? category,
             [FromQuery] string? location, [FromQuery] string? stock, [FromQuery] string? sortBy,
             [FromQuery] string? sortDirection, HttpContext context, ClaimsPrincipal user,
             AppDbContext db, CancellationToken cancellationToken) =>
@@ -315,6 +370,8 @@ public static class AssetEndpoints
             }
 
             var query = db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            if (allowedLocations is not null) query = query.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
@@ -354,13 +411,24 @@ public static class AssetEndpoints
             };
 
             var total = await query.CountAsync(cancellationToken);
+            var isXlsx = context.Request.Path.Value?.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase) == true;
+            if (isXlsx && total > 50000)
+            {
+                await Results.ValidationProblem(new Dictionary<string, string[]> { ["export"] = ["Excel dışa aktarımı en fazla 50.000 kayıt içerir; arama veya stok filtresini daraltın."] }).ExecuteAsync(context);
+                return;
+            }
             context.Response.StatusCode = StatusCodes.Status200OK;
-            context.Response.ContentType = "text/csv; charset=utf-8";
-            context.Response.Headers["Content-Disposition"] = $"attachment; filename=envantertr-aksesuarlar-{DateTime.UtcNow:yyyyMMdd}.csv";
             context.Response.Headers["Cache-Control"] = "no-store";
             context.Response.Headers["X-Total-Count"] = total.ToString(CultureInfo.InvariantCulture);
-            await using var writer = new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
-            await writer.WriteLineAsync("Ad;Kategori;Model No;Ürün No;Tedarikçi;Konum;Toplam;Zimmetli;Kalan;Minimum;Birim Maliyeti;Para Birimi;Alış Tarihi;Garanti Bitiş Tarihi;İstek Açık".AsMemory(), cancellationToken);
+            const string exportHeaders = "Ad;Kategori;Model No;Ürün No;Tedarikçi;Konum;Toplam;Zimmetli;Kalan;Minimum;Birim Maliyeti;Para Birimi;Alış Tarihi;Garanti Bitiş Tarihi;İstek Açık";
+            using var workbook = isXlsx ? new XlsxExportWriter(exportHeaders.Split(';')) : null;
+            await using var writer = isXlsx ? null : new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
+            if (writer is not null)
+            {
+                context.Response.ContentType = "text/csv; charset=utf-8";
+                context.Response.Headers["Content-Disposition"] = $"attachment; filename=envantertr-aksesuarlar-{DateTime.UtcNow:yyyyMMdd}.csv";
+                await writer.WriteLineAsync(exportHeaders.AsMemory(), cancellationToken);
+            }
             var rows = ordered.ThenBy(x => x.Id).Select(x => new
             {
                 x.Name, Category = db.AccessoryCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault() ?? x.Category,
@@ -374,6 +442,14 @@ public static class AssetEndpoints
             await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
             {
                 var remaining = row.TotalQuantity - row.CheckedOut;
+                if (workbook is not null)
+                {
+                    workbook.WriteRow([row.Name, row.Category, row.ModelNumber, row.ItemNumber, row.Supplier, row.Location,
+                        row.TotalQuantity, row.CheckedOut, remaining, row.MinimumQuantity, row.UnitCost, row.Currency,
+                        row.PurchaseDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                        row.WarrantyExpiresAt?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), row.IsRequestable ? "Evet" : "Hayır"]);
+                    continue;
+                }
                 var line = string.Join(';', new[] { CsvCell(row.Name), CsvCell(row.Category), CsvCell(row.ModelNumber),
                     CsvCell(row.ItemNumber), CsvCell(row.Supplier), CsvCell(row.Location),
                     CsvCell(row.TotalQuantity.ToString(CultureInfo.InvariantCulture)),
@@ -384,17 +460,42 @@ public static class AssetEndpoints
                     CsvCell(row.PurchaseDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
                     CsvCell(row.WarrantyExpiresAt?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
                     CsvCell(row.IsRequestable ? "Evet" : "Hayır") });
-                await writer.WriteLineAsync(line.AsMemory(), cancellationToken);
+                await writer!.WriteLineAsync(line.AsMemory(), cancellationToken);
                 if (++written % 500 == 0) await writer.FlushAsync(cancellationToken);
             }
-            await writer.FlushAsync(cancellationToken);
-        }).RequireAuthorization("asset.read");
+            if (workbook is not null) await workbook.SendAsync(context, $"envantertr-aksesuarlar-{DateTime.UtcNow:yyyyMMdd}.xlsx", cancellationToken);
+            else if (writer is not null) await writer.FlushAsync(cancellationToken);
+        };
+        api.MapGet("/accessories/export.csv", exportAccessories).RequireAuthorization("asset.read");
+        api.MapGet("/accessories/export.xlsx", exportAccessories).RequireAuthorization("asset.read");
 
         api.MapGet("/accessories/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db,
             CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
-            var item = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            var scopedEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
+            if (CurrentUserId(user) is not Guid actorId) return Results.Forbid();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, cancellationToken);
+            var canReadFreeText = allowedLocations is null;
+            var allowedLocationNames = Array.Empty<string>();
+            if (allowedLocations is not null)
+            {
+                var locationPaths = await GetActiveLocationPathMapAsync(db, companyId, cancellationToken);
+                allowedLocationNames = locationPaths.Where(entry => allowedLocations.Contains(entry.Value)).Select(entry => entry.Key).ToArray();
+            }
+            var assignmentsQuery = db.AccessoryAssignments.AsNoTracking().Where(x => x.CompanyId == companyId && x.AccessoryId == id);
+            if (allowedLocations is not null)
+                assignmentsQuery = assignmentsQuery.Where(x =>
+                    (x.TargetType == "Employee" && x.EmployeeId.HasValue && scopedEmployees.Any(e => e.CompanyId == companyId &&
+                        e.Id == x.EmployeeId.Value)) ||
+                    (x.TargetType == "Asset" && x.AssetId.HasValue && db.Assets.Any(a => a.CompanyId == companyId &&
+                        a.Id == x.AssetId.Value && a.LocationCatalogId.HasValue && allowedLocations.Contains(a.LocationCatalogId.Value))) ||
+                    (x.TargetType == "Location" && x.Location != null && allowedLocationNames.Contains(x.Location)));
+            var accessoryQuery = db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id);
+            if (allowedLocations is not null)
+                accessoryQuery = accessoryQuery.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
+            var item = await accessoryQuery
                 .Select(x => new
                 {
                     x.Id, x.Name, categoryId = x.CategoryId,
@@ -406,34 +507,38 @@ public static class AssetEndpoints
                     x.ItemNumber, x.Supplier, x.Location,
                     x.MinimumQuantity, x.TotalQuantity,
                     photoUrl = x.PhotoFileName == null ? null : $"/api/accessories/{x.Id}/photo",
-                    checkedOut = db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0,
-                    x.UnitCost, x.Currency, x.PurchaseDate, x.WarrantyExpiresAt, x.Notes, x.IsRequestable, x.CreatedAt, x.UpdatedAt
+                    checkedOut = assignmentsQuery.Where(a => a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0,
+                    x.UnitCost, x.Currency, x.PurchaseDate, x.WarrantyExpiresAt,
+                    Notes = canReadFreeText ? x.Notes : null, x.IsRequestable, x.CreatedAt, x.UpdatedAt
                 }).FirstOrDefaultAsync(cancellationToken);
             if (item is null) return Results.NotFound();
-            var assignments = await db.AccessoryAssignments.AsNoTracking().Where(x => x.CompanyId == companyId && x.AccessoryId == id && x.Quantity > x.ReturnedQuantity)
+            var assignments = await assignmentsQuery.Where(x => x.Quantity > x.ReturnedQuantity)
                 .OrderByDescending(x => x.CheckedOutAt).Select(x => new
                 {
                     x.Id, x.TargetType, x.EmployeeId, x.AssetId, x.Location,
                     targetName = x.TargetType == "Employee"
-                        ? db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.DisplayName).FirstOrDefault()
+                        ? scopedEmployees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.DisplayName).FirstOrDefault()
                         : x.TargetType == "Asset"
                             ? db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.AssetTag + " · " + a.Name).FirstOrDefault()
                             : x.Location,
-                    x.Quantity, x.ReturnedQuantity, remainingQuantity = x.Quantity - x.ReturnedQuantity, x.Notes, x.CheckedOutAt
+                    x.Quantity, x.ReturnedQuantity, remainingQuantity = x.Quantity - x.ReturnedQuantity,
+                    Notes = canReadFreeText ? x.Notes : null, x.CheckedOutAt
                 }).ToListAsync(cancellationToken);
             var movements = await db.AccessoryMovements.AsNoTracking().Where(x => x.CompanyId == companyId && x.AccessoryId == id)
                 .OrderByDescending(x => x.OccurredAt).Take(50).Select(x => new
                 {
-                    x.Id, x.MovementType, x.Quantity, x.Notes, x.OccurredAt,
+                    x.Id, x.MovementType, x.Quantity, Notes = canReadFreeText ? x.Notes : null, x.OccurredAt,
                     targetName = db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.Id == x.AssignmentId)
                         .Select(a => a.TargetType == "Employee"
-                            ? db.Employees.Where(e => e.CompanyId == companyId && e.Id == a.EmployeeId).Select(e => e.DisplayName).FirstOrDefault()
+                            ? scopedEmployees.Where(e => e.CompanyId == companyId && e.Id == a.EmployeeId).Select(e => e.DisplayName).FirstOrDefault()
                             : a.TargetType == "Asset"
                                 ? db.Assets.Where(asset => asset.CompanyId == companyId && asset.Id == a.AssetId).Select(asset => asset.AssetTag + " · " + asset.Name).FirstOrDefault()
                                 : a.Location).FirstOrDefault()
                 }).ToListAsync(cancellationToken);
+            var scopedAccessoryOrders = db.AccessoryPurchaseOrders.AsNoTracking().Where(order => order.CompanyId == companyId)
+                .InLocationScope(db, companyId, allowedLocations);
             var orders = await (from line in db.AccessoryPurchaseOrderLines.AsNoTracking()
-                                join order in db.AccessoryPurchaseOrders.AsNoTracking()
+                                join order in scopedAccessoryOrders
                                     on new { line.CompanyId, Id = line.PurchaseOrderId } equals new { order.CompanyId, order.Id }
                                 where line.CompanyId == companyId && line.AccessoryId == id
                                 orderby order.OrderDate descending, order.CreatedAt descending
@@ -558,6 +663,8 @@ public static class AssetEndpoints
             if (request.Quantity is < 1 or > 100000 || request.Notes?.Length > 2000)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["quantity"] = ["Adet 1 ile 100.000 arasında olmalı; not en fazla 2.000 karakter olabilir."] });
             if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, userId, cancellationToken);
+            var scopedEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
             var targetType = request.TargetType?.Trim().ToLowerInvariant();
             var targetErrors = new Dictionary<string, string[]>();
             var normalizedLocation = Clean(request.Location);
@@ -565,19 +672,21 @@ public static class AssetEndpoints
             var assetId = request.AssetId;
             if (targetType == "employee")
             {
-                if (employeeId is not Guid selectedEmployee || !await db.Employees.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == selectedEmployee && x.IsActive, cancellationToken))
+                if (employeeId is not Guid selectedEmployee || !await scopedEmployees.AnyAsync(x => x.Id == selectedEmployee && x.IsActive, cancellationToken))
                     targetErrors["employeeId"] = ["Etkin çalışan bu şirkette bulunamadı."];
                 assetId = null; normalizedLocation = null;
             }
             else if (targetType == "asset")
             {
-                if (assetId is not Guid selectedAsset || !await db.Assets.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == selectedAsset, cancellationToken))
+                if (assetId is not Guid selectedAsset || !await db.Assets.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == selectedAsset &&
+                    (employeeScope.AllowedLocations == null || x.LocationCatalogId.HasValue && employeeScope.AllowedLocations.Contains(x.LocationCatalogId.Value)), cancellationToken))
                     targetErrors["assetId"] = ["Varlık bu şirkette bulunamadı."];
                 employeeId = null; normalizedLocation = null;
             }
             else if (targetType == "location")
             {
-                if (string.IsNullOrWhiteSpace(normalizedLocation) || normalizedLocation.Length > 160)
+                if (string.IsNullOrWhiteSpace(normalizedLocation) || normalizedLocation.Length > 160 ||
+                    !await CompanyLocationAccess.CanAccessLocationPathAsync(db, companyId, userId, normalizedLocation, cancellationToken))
                     targetErrors["location"] = ["Konum zorunludur ve 160 karakteri aşamaz."];
                 employeeId = null; assetId = null;
             }
@@ -590,6 +699,8 @@ public static class AssetEndpoints
                     $"SELECT * FROM \"Accessories\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
                 .SingleOrDefaultAsync(cancellationToken);
             if (item is null) return Results.NotFound();
+            if (employeeScope.AllowedLocations is not null && (item.LocationCatalogId is not Guid itemLocation || !employeeScope.AllowedLocations.Contains(itemLocation)))
+                return Results.NotFound();
             var outstanding = await db.AccessoryAssignments.Where(x => x.CompanyId == companyId && x.AccessoryId == id)
                 .SumAsync(x => (int?)(x.Quantity - x.ReturnedQuantity), cancellationToken) ?? 0;
             var available = item.TotalQuantity - outstanding;
@@ -623,6 +734,8 @@ public static class AssetEndpoints
             if (request.Notes?.Length > 2000)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["notes"] = ["Not en fazla 2.000 karakter olabilir."] });
 
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, userId, cancellationToken);
+            var scopedEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
             var targetType = request.TargetType?.Trim().ToLowerInvariant();
             var employeeId = request.EmployeeId;
             var assetId = request.AssetId;
@@ -630,19 +743,22 @@ public static class AssetEndpoints
             var targetErrors = new Dictionary<string, string[]>();
             if (targetType == "employee")
             {
-                if (employeeId is not Guid selectedEmployee || !await db.Employees.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == selectedEmployee && x.IsActive, cancellationToken))
+                if (employeeId is not Guid selectedEmployee || !await scopedEmployees.AnyAsync(x => x.Id == selectedEmployee && x.IsActive, cancellationToken))
                     targetErrors["employeeId"] = ["Etkin çalışan bu şirkette bulunamadı."];
                 assetId = null; location = null;
             }
             else if (targetType == "asset")
             {
-                if (assetId is not Guid selectedAsset || !await db.Assets.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == selectedAsset, cancellationToken))
+                if (assetId is not Guid selectedAsset || !await db.Assets.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == selectedAsset &&
+                    (employeeScope.AllowedLocations == null || x.LocationCatalogId.HasValue && employeeScope.AllowedLocations.Contains(x.LocationCatalogId.Value)), cancellationToken))
                     targetErrors["assetId"] = ["Varlık bu şirkette bulunamadı."];
                 employeeId = null; location = null;
             }
             else if (targetType == "location")
             {
-                if (string.IsNullOrWhiteSpace(location) || location.Length > 160) targetErrors["location"] = ["Konum zorunludur ve 160 karakteri aşamaz."];
+                if (string.IsNullOrWhiteSpace(location) || location.Length > 160 ||
+                    !await CompanyLocationAccess.CanAccessLocationPathAsync(db, companyId, userId, location, cancellationToken))
+                    targetErrors["location"] = ["Konum zorunludur, erişim kapsamınızda olmalıdır ve 160 karakteri aşamaz."];
                 employeeId = null; assetId = null;
             }
             else targetErrors["targetType"] = ["Teslim hedefi çalışan, varlık veya konum olmalı."];
@@ -654,6 +770,9 @@ public static class AssetEndpoints
                     $"SELECT * FROM \"Accessories\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({ids}) ORDER BY \"Id\" FOR UPDATE")
                 .ToListAsync(cancellationToken);
             if (accessories.Count != items.Length) return Results.NotFound(new { message = "Aksesuarlardan biri bu şirkette bulunamadı. Hiçbir teslim kaydedilmedi." });
+            if (employeeScope.AllowedLocations is not null && accessories.Any(accessory =>
+                    accessory.LocationCatalogId is not Guid itemLocation || !employeeScope.AllowedLocations.Contains(itemLocation)))
+                return Results.NotFound();
             var checkedOutById = await db.AccessoryAssignments.Where(x => x.CompanyId == companyId && ids.Contains(x.AccessoryId))
                 .GroupBy(x => x.AccessoryId).Select(group => new { AccessoryId = group.Key, Quantity = group.Sum(x => x.Quantity - x.ReturnedQuantity) })
                 .ToDictionaryAsync(x => x.AccessoryId, x => x.Quantity, cancellationToken);
@@ -771,6 +890,11 @@ public static class AssetEndpoints
                     $"SELECT * FROM \"AccessoryAssignments\" WHERE \"CompanyId\" = {companyId} AND \"AccessoryId\" = {id} AND \"Id\" = ANY ({assignmentIds}) ORDER BY \"Id\" FOR UPDATE")
                 .ToListAsync(cancellationToken);
             if (assignments.Count != items.Length) return Results.NotFound(new { message = "Açık zimmetlerden biri bulunamadı. Hiçbir iade kaydedilmedi." });
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, userId, cancellationToken);
+            var accessibleAssignments = await ScopeAccessoryAssignmentsAsync(db, companyId, employeeScope,
+                db.AccessoryAssignments.AsNoTracking().Where(assignment => assignment.CompanyId == companyId &&
+                    assignment.AccessoryId == id && assignmentIds.Contains(assignment.Id)), cancellationToken);
+            if (await accessibleAssignments.CountAsync(cancellationToken) != assignments.Count) return Results.NotFound();
             var quantitiesById = items.ToDictionary(x => x.AssignmentId, x => x.Quantity);
             var excessive = assignments.Where(x => quantitiesById[x.Id] > x.Quantity - x.ReturnedQuantity).ToArray();
             if (excessive.Length > 0)
@@ -814,6 +938,10 @@ public static class AssetEndpoints
             if (item is null) return Results.NotFound();
             var assignment = await db.AccessoryAssignments.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.AccessoryId == id && x.Id == request.AssignmentId, cancellationToken);
             if (assignment is null) return Results.NotFound();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, userId, cancellationToken);
+            var accessibleAssignments = await ScopeAccessoryAssignmentsAsync(db, companyId, employeeScope,
+                db.AccessoryAssignments.AsNoTracking().Where(candidate => candidate.CompanyId == companyId && candidate.Id == assignment.Id), cancellationToken);
+            if (!await accessibleAssignments.AnyAsync(cancellationToken)) return Results.NotFound();
             var outstanding = assignment.Quantity - assignment.ReturnedQuantity;
             if (request.Quantity > outstanding) return Results.Conflict(new { message = $"Bu zimmette yalnızca {outstanding} adet iade alınabilir." });
             assignment.ReturnedQuantity += request.Quantity; assignment.LastReturnedAt = DateTimeOffset.UtcNow;
@@ -834,6 +962,9 @@ public static class AssetEndpoints
         api.MapGet("/locations", async (ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            var scopedEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
             var locations = new Dictionary<string, (string Name, int Assets, int Assigned, int Available, int Maintenance, int Accessories, int AccessoryAssignments, int Consumables, int Components)>(StringComparer.OrdinalIgnoreCase);
             void AddLocation(string name, int assets = 0, int assigned = 0, int available = 0, int maintenance = 0,
                 int accessories = 0, int accessoryAssignments = 0, int consumables = 0, int components = 0)
@@ -848,8 +979,9 @@ public static class AssetEndpoints
                     current.Components + components);
             }
 
-            var assetLocations = await db.Assets.AsNoTracking()
-                .Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() != "")
+            var assetQuery = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (allowedLocations is not null) assetQuery = assetQuery.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
+            var assetLocations = await assetQuery.Where(x => x.Location != null && x.Location.Trim() != "")
                 .GroupBy(x => x.Location!.Trim())
                 .Select(group => new
                 {
@@ -862,29 +994,54 @@ public static class AssetEndpoints
                 .ToListAsync(cancellationToken);
             foreach (var row in assetLocations) AddLocation(row.name, assets: row.assets, assigned: row.assigned,
                 available: row.available, maintenance: row.maintenance);
-            var accessoryLocations = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() != "")
+            var accessoryQuery = db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (allowedLocations is not null) accessoryQuery = accessoryQuery.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
+            var accessoryLocations = await accessoryQuery.Where(x => x.Location != null && x.Location.Trim() != "")
                 .GroupBy(x => x.Location!.Trim()).Select(group => new { name = group.Key, count = group.Count() }).ToListAsync(cancellationToken);
             foreach (var row in accessoryLocations) AddLocation(row.name, accessories: row.count);
-            var accessoryAssignmentLocations = await db.AccessoryAssignments.AsNoTracking()
+            var accessoryAssignmentQuery = db.AccessoryAssignments.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && x.TargetType == "Location" && x.Location != null &&
-                    x.Location.Trim() != "" && x.Quantity > x.ReturnedQuantity)
-                .GroupBy(x => x.Location!.Trim())
+                    x.Location.Trim() != "" && x.Quantity > x.ReturnedQuantity);
+            if (allowedLocations is not null)
+            {
+                // Location-target assignments still store a legacy free-text path.
+                // Resolve only exact active catalog paths in the caller's effective scope;
+                // unknown, stale, or outside paths fail closed.
+                var activeLocationPaths = await GetActiveLocationPathMapAsync(db, companyId, cancellationToken);
+                var allowedLocationPaths = activeLocationPaths
+                    .Where(entry => allowedLocations.Contains(entry.Value))
+                    .Select(entry => entry.Key)
+                    .ToArray();
+                accessoryAssignmentQuery = accessoryAssignmentQuery.Where(x => allowedLocationPaths.Contains(x.Location!.Trim()));
+            }
+            var accessoryAssignmentLocations = await accessoryAssignmentQuery.GroupBy(x => x.Location!.Trim())
                 .Select(group => new { name = group.Key, count = group.Count() }).ToListAsync(cancellationToken);
             foreach (var row in accessoryAssignmentLocations) AddLocation(row.name, accessoryAssignments: row.count);
-            var consumableLocations = await db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() != "")
+            var consumableQuery = db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (allowedLocations is not null) consumableQuery = consumableQuery.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
+            var consumableLocations = await consumableQuery.Where(x => x.Location != null && x.Location.Trim() != "")
                 .GroupBy(x => x.Location!.Trim()).Select(group => new { name = group.Key, count = group.Count() }).ToListAsync(cancellationToken);
             foreach (var row in consumableLocations) AddLocation(row.name, consumables: row.count);
-            var componentLocations = await db.InventoryComponents.AsNoTracking().Where(x => x.CompanyId == companyId && x.Location != null && x.Location.Trim() != "")
+            var componentQuery = db.InventoryComponents.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (allowedLocations is not null) componentQuery = componentQuery.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
+            var componentLocations = await componentQuery.Where(x => x.Location != null && x.Location.Trim() != "")
                 .GroupBy(x => x.Location!.Trim()).Select(group => new { name = group.Key, count = group.Count() }).ToListAsync(cancellationToken);
             foreach (var row in componentLocations) AddLocation(row.name, components: row.count);
             var items = locations.Values.Select(x => new LocationDirectoryEntry(x.Name, x.Assets, x.Assigned,
                 x.Available, x.Maintenance, x.Accessories, x.AccessoryAssignments, x.Consumables, x.Components,
                 null, null, 0, false, true, false, null, null)).ToList();
-            var catalog = await db.CompanyLocations.AsNoTracking().Where(x => x.CompanyId == companyId)
+            var catalogQuery = db.CompanyLocations.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (allowedLocations is not null) catalogQuery = catalogQuery.Where(x => allowedLocations.Contains(x.Id));
+            var catalog = await catalogQuery
                 .OrderBy(x => x.Name).ToListAsync(cancellationToken);
             var byId = catalog.ToDictionary(x => x.Id);
+            var companyUnitIds = catalog.Where(x => x.CompanyUnitId.HasValue).Select(x => x.CompanyUnitId!.Value).Distinct().ToArray();
+            var companyUnitNames = companyUnitIds.Length == 0
+                ? new Dictionary<Guid, string>()
+                : await db.CompanyUnits.AsNoTracking().Where(x => x.CompanyId == companyId && companyUnitIds.Contains(x.Id))
+                    .ToDictionaryAsync(x => x.Id, x => x.Name, cancellationToken);
             var managerIds = catalog.Where(x => x.ManagerEmployeeId != null).Select(x => x.ManagerEmployeeId!.Value).Distinct().ToArray();
-            var managers = await db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId && managerIds.Contains(x.Id))
+            var managers = await scopedEmployees.AsNoTracking().Where(x => x.CompanyId == companyId && managerIds.Contains(x.Id))
                 .ToDictionaryAsync(x => x.Id, x => x.DisplayName, cancellationToken);
             (string Path, int Depth) GetPath(CompanyLocation location)
             {
@@ -902,13 +1059,18 @@ public static class AssetEndpoints
                 var selectedIndex = index;
                 var catalogEntry = entry with { LocationId = location.Id, ParentLocationId = location.ParentLocationId,
                     Depth = depth, IsCatalogEntry = true, IsActive = location.IsActive, IsDefault = location.IsDefault,
-                    ManagerEmployeeId = location.ManagerEmployeeId,
+                    CompanyUnitId = location.CompanyUnitId,
+                    CompanyUnitName = location.CompanyUnitId is Guid unitId && companyUnitNames.TryGetValue(unitId, out var companyUnitName) ? companyUnitName : null,
+                    ManagerEmployeeId = location.ManagerEmployeeId is Guid visibleManagerId && managers.ContainsKey(visibleManagerId) ? location.ManagerEmployeeId : null,
                     ManagerName = location.ManagerEmployeeId is Guid managerId && managers.TryGetValue(managerId, out var managerName) ? managerName : null };
                 if (selectedIndex >= 0) items[selectedIndex] = catalogEntry; else items.Add(catalogEntry);
             }
             items = items.OrderBy(x => x.Name, StringComparer.Create(CultureInfo.GetCultureInfo("tr-TR"), true)).ToList();
-            var departmentCounts = await db.CompanyDepartments.AsNoTracking()
-                .Where(x => x.CompanyId == companyId && x.LocationCatalogId != null)
+            var departmentQuery = db.CompanyDepartments.AsNoTracking()
+                .Where(x => x.CompanyId == companyId && x.LocationCatalogId != null);
+            if (allowedLocations is not null)
+                departmentQuery = departmentQuery.Where(x => allowedLocations.Contains(x.LocationCatalogId!.Value));
+            var departmentCounts = await departmentQuery
                 .GroupBy(x => x.LocationCatalogId!.Value)
                 .Select(group => new { locationId = group.Key, count = group.Count() })
                 .ToDictionaryAsync(x => x.locationId.ToString(), x => x.count, cancellationToken);
@@ -919,6 +1081,14 @@ public static class AssetEndpoints
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var accessScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, cancellationToken);
+            if (request.ParentLocationId is Guid requestedParent && accessScope.AllowedLocations is not null &&
+                !accessScope.AllowedLocations.Contains(requestedParent)) return Results.NotFound();
+            if (request.ParentLocationId is null && accessScope.RestrictLocations) return Results.Forbid();
+            if (accessScope.RestrictCompanyUnits &&
+                (request.CompanyUnitId is Guid requestedUnit
+                    ? accessScope.AllowedCompanyUnits is null || !accessScope.AllowedCompanyUnits.Contains(requestedUnit)
+                    : request.ParentLocationId is null)) return Results.Forbid();
             var name = request.Name?.Trim();
             if (string.IsNullOrWhiteSpace(name) || name.Length > 120 || name.Any(char.IsControl) || name.Contains('/') || name.Contains('\\'))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Konum adı 1–120 karakter olmalı; eğik çizgi ve kontrol karakteri içeremez."] });
@@ -937,13 +1107,19 @@ public static class AssetEndpoints
                 if (depth >= 6) return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentLocationId"] = ["Konum ağacı en fazla altı seviyeye kadar açılabilir."] });
                 path = string.Join(" / ", chain.Select(x => x.Name).Append(name));
             }
+            if (request.CompanyUnitId is Guid companyUnitId)
+            {
+                if (!user.HasClaim("company_permission", "settings.manage")) return Results.Forbid();
+                if (!await db.CompanyUnits.AnyAsync(x => x.CompanyId == companyId && x.Id == companyUnitId && x.IsActive, cancellationToken))
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["companyUnitId"] = ["Şirket birimi aynı şirkette etkin olmalıdır."] });
+            }
             if (path.Length > 160) return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Tam konum yolu 160 karakteri aşamaz; adları kısaltın."] });
             var normalized = NormalizeLocationName(name);
             var siblingExists = await db.CompanyLocations.AnyAsync(x => x.CompanyId == companyId && x.ParentLocationId == request.ParentLocationId &&
                 x.NormalizedName == normalized, cancellationToken);
             if (siblingExists) return Results.Conflict(new { message = "Aynı üst konum altında bu ad zaten kayıtlı." });
             var location = new CompanyLocation { CompanyId = companyId, ParentLocationId = parent?.Id,
-                Name = name, NormalizedName = normalized };
+                CompanyUnitId = request.CompanyUnitId, Name = name, NormalizedName = normalized };
             db.CompanyLocations.Add(location);
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
                 TargetType = "Location", TargetId = location.Id, Action = "CatalogCreated",
@@ -955,13 +1131,91 @@ public static class AssetEndpoints
                 return Results.Conflict(new { message = "Bu hiyerarşide aynı adlı konum zaten kaydedilmiş." });
             }
             return Results.Created("/api/locations/catalog", new { location.Id, location.ParentLocationId,
-                location.Name, displayPath = path, depth, location.IsActive });
+                location.CompanyUnitId, location.Name, displayPath = path, depth, location.IsActive });
+        }).RequireAuthorization("asset.write");
+
+        api.MapPost("/locations/catalog/from-path", async ([FromBody] LocationCatalogPathRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, cancellationToken);
+            var path = request.Path?.Trim();
+            var segments = path?.Split('/', StringSplitOptions.TrimEntries) ?? [];
+            if (segments.Length is < 1 or > 6 || segments.Any(segment => string.IsNullOrWhiteSpace(segment) || segment.Length > 120 ||
+                segment.Any(char.IsControl) || segment.Contains('\\')))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["path"] = ["Konum yolu bir ile altı arasında boş olmayan, en fazla 120 karakterlik bölüm içermelidir."] });
+            var normalizedPath = string.Join(" / ", segments);
+            if (normalizedPath.Length > 160)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["path"] = ["Tam konum yolu 160 karakteri aşamaz; adları kısaltın."] });
+
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            if (await db.Companies.FromSqlInterpolated($"SELECT * FROM \"Companies\" WHERE \"Id\" = {companyId} FOR UPDATE")
+                    .SingleOrDefaultAsync(cancellationToken) is null) return Results.Forbid();
+
+            HashSet<Guid>? accessibleLocations = allowedLocations is null ? null : new HashSet<Guid>(allowedLocations);
+            HashSet<Guid>? traversableLocations = allowedLocations is null ? null : new HashSet<Guid>(allowedLocations);
+            if (traversableLocations is not null)
+            {
+                var parents = await db.CompanyLocations.AsNoTracking().Where(location => location.CompanyId == companyId)
+                    .ToDictionaryAsync(location => location.Id, location => location.ParentLocationId, cancellationToken);
+                foreach (var allowedId in allowedLocations!)
+                {
+                    var cursor = allowedId;
+                    var visited = new HashSet<Guid> { cursor };
+                    while (parents.TryGetValue(cursor, out var parentId) && parentId is Guid nextParent && visited.Add(nextParent))
+                    {
+                        traversableLocations.Add(nextParent);
+                        cursor = nextParent;
+                    }
+                }
+            }
+            Guid? parentLocationId = null;
+            CompanyLocation? leaf = null;
+            var createdCount = 0;
+            foreach (var segment in segments)
+            {
+                var normalizedName = NormalizeLocationName(segment);
+                leaf = await db.CompanyLocations.SingleOrDefaultAsync(location => location.CompanyId == companyId &&
+                    location.ParentLocationId == parentLocationId && location.NormalizedName == normalizedName, cancellationToken);
+                if (leaf is not null)
+                {
+                    if (traversableLocations is not null && !traversableLocations.Contains(leaf.Id)) return Results.NotFound();
+                    if (!leaf.IsActive)
+                        return Results.Conflict(new { message = $"“{segment}” konum yolu bölümündeki kayıt arşivli. Önce katalogdan geri alın." });
+                }
+                else
+                {
+                    if (accessibleLocations is not null && (parentLocationId is not Guid scopedParent || !accessibleLocations.Contains(scopedParent)))
+                        return Results.Forbid();
+                    leaf = new CompanyLocation { CompanyId = companyId, ParentLocationId = parentLocationId,
+                        Name = segment, NormalizedName = normalizedName };
+                    db.CompanyLocations.Add(leaf);
+                    accessibleLocations?.Add(leaf.Id);
+                    createdCount++;
+                }
+                parentLocationId = leaf.Id;
+            }
+            if (accessibleLocations is not null && !accessibleLocations.Contains(leaf!.Id)) return Results.NotFound();
+
+            if (createdCount > 0)
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                    TargetType = "Location", TargetId = leaf!.Id, Action = "CatalogPromotedFromPath",
+                    Details = $"Eski konum yolu kataloğa alındı: {normalizedPath}. {createdCount} katalog öğesi oluşturuldu." });
+            try { await db.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken); }
+            catch (DbUpdateException)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return Results.Conflict(new { message = "Konum yolu eşzamanlı olarak değişti; listeyi yenileyip yeniden deneyin." });
+            }
+            return Results.Ok(new { leaf!.Id, leaf.ParentLocationId, leaf.Name, displayPath = normalizedPath, createdCount, leaf.IsActive });
         }).RequireAuthorization("asset.write");
 
         api.MapPost("/locations/catalog/{id:guid}/default", async (Guid id, [FromBody] SetLocationDefaultRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, cancellationToken);
+            if (allowedLocations is not null && !allowedLocations.Contains(id)) return Results.NotFound();
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             if (await db.Companies.FromSqlInterpolated($"SELECT * FROM \"Companies\" WHERE \"Id\" = {companyId} FOR UPDATE")
                     .SingleOrDefaultAsync(cancellationToken) is null) return Results.Forbid();
@@ -977,9 +1231,20 @@ public static class AssetEndpoints
                     return Results.ValidationProblem(new Dictionary<string, string[]> { ["location"] = ["Varsayılan konumun tam yolu 160 karakteri aşamaz."] });
             }
             if (request.IsDefault)
+            {
+                var clearedDefaults = await db.CompanyLocations.AsNoTracking()
+                    .Where(x => x.CompanyId == companyId && x.IsDefault && x.Id != id)
+                    .Select(x => new { x.Id, x.Name }).ToListAsync(cancellationToken);
+                if (allowedLocations is not null && clearedDefaults.Any(previous => !allowedLocations.Contains(previous.Id)))
+                    return Results.Forbid();
                 await db.CompanyLocations.Where(x => x.CompanyId == companyId && x.IsDefault && x.Id != id)
                     .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.IsDefault, false)
                         .SetProperty(x => x.UpdatedAt, DateTimeOffset.UtcNow), cancellationToken);
+                foreach (var cleared in clearedDefaults)
+                    db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
+                        TargetType = "Location", TargetId = cleared.Id, Action = "CatalogDefaultCleared",
+                        Details = $"Varsayılan konum kaldırıldı: {cleared.Name}; yeni varsayılan: {location.Name}." });
+            }
             if (location.IsDefault != request.IsDefault)
             {
                 location.IsDefault = request.IsDefault; location.UpdatedAt = DateTimeOffset.UtcNow;
@@ -996,6 +1261,9 @@ public static class AssetEndpoints
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, cancellationToken);
+            if (employeeScope.AllowedLocations is not null && !employeeScope.AllowedLocations.Contains(id)) return Results.NotFound();
+            var scopedEmployees = employeeScope.Apply(db.Employees.Where(employee => employee.CompanyId == companyId));
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             if (await db.Companies.FromSqlInterpolated($"SELECT * FROM \"Companies\" WHERE \"Id\" = {companyId} FOR UPDATE")
                     .SingleOrDefaultAsync(cancellationToken) is null) return Results.Forbid();
@@ -1005,7 +1273,7 @@ public static class AssetEndpoints
             Employee? manager = null;
             if (request.EmployeeId is Guid employeeId)
             {
-                manager = await db.Employees.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == employeeId && x.IsActive, cancellationToken);
+                manager = await scopedEmployees.SingleOrDefaultAsync(x => x.Id == employeeId && x.IsActive, cancellationToken);
                 if (manager is null) return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeId"] = ["Sorumlu, bu şirkette kayıtlı etkin bir çalışan olmalıdır."] });
             }
             if (location.ManagerEmployeeId == request.EmployeeId)
@@ -1014,7 +1282,7 @@ public static class AssetEndpoints
                 return Results.Ok(new { location.Id, location.ManagerEmployeeId, managerName = manager?.DisplayName });
             }
             var previousManager = location.ManagerEmployeeId is Guid previousId
-                ? await db.Employees.Where(x => x.CompanyId == companyId && x.Id == previousId).Select(x => x.DisplayName).SingleOrDefaultAsync(cancellationToken)
+                ? await scopedEmployees.Where(x => x.Id == previousId).Select(x => x.DisplayName).SingleOrDefaultAsync(cancellationToken)
                 : null;
             location.ManagerEmployeeId = request.EmployeeId; location.UpdatedAt = DateTimeOffset.UtcNow;
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
@@ -1028,6 +1296,8 @@ public static class AssetEndpoints
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, cancellationToken);
+            if (employeeScope.AllowedLocations is not null && !employeeScope.AllowedLocations.Contains(id)) return Results.NotFound();
             var name = request.Name?.Trim();
             if (string.IsNullOrWhiteSpace(name) || name.Length > 120 || name.Any(char.IsControl) || name.Contains('/') || name.Contains('\\'))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Konum adı 1–120 karakter olmalı; eğik çizgi ve kontrol karakteri içeremez."] });
@@ -1036,11 +1306,32 @@ public static class AssetEndpoints
                     .SingleOrDefaultAsync(cancellationToken) is null) return Results.Forbid();
             var location = await db.CompanyLocations.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
             if (location is null) return Results.NotFound();
+            if (request.CompanyUnitId is not null || request.ClearCompanyUnit)
+            {
+                if (!user.HasClaim("company_permission", "settings.manage")) return Results.Forbid();
+                if (employeeScope.RestrictCompanyUnits && (request.ClearCompanyUnit || request.CompanyUnitId is not Guid requestedUnit ||
+                    employeeScope.AllowedCompanyUnits is null || !employeeScope.AllowedCompanyUnits.Contains(requestedUnit))) return Results.Forbid();
+                if (request.CompanyUnitId is Guid companyUnitId &&
+                    !await db.CompanyUnits.AnyAsync(x => x.CompanyId == companyId && x.Id == companyUnitId && x.IsActive, cancellationToken))
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["companyUnitId"] = ["Şirket birimi aynı şirkette etkin olmalıdır."] });
+            }
             var normalized = NormalizeLocationName(name);
             if (await db.CompanyLocations.AnyAsync(x => x.CompanyId == companyId && x.ParentLocationId == location.ParentLocationId &&
                 x.NormalizedName == normalized && x.Id != id, cancellationToken))
                 return Results.Conflict(new { message = "Aynı üst konum altında bu ad zaten kayıtlı." });
             var allLocations = await db.CompanyLocations.AsNoTracking().Where(x => x.CompanyId == companyId).ToListAsync(cancellationToken);
+            var affectedLocationIds = new HashSet<Guid> { id };
+            var pendingLocations = new Queue<Guid>();
+            pendingLocations.Enqueue(id);
+            while (pendingLocations.TryDequeue(out var parentLocationId))
+                foreach (var child in allLocations.Where(candidate => candidate.ParentLocationId == parentLocationId))
+                    if (affectedLocationIds.Add(child.Id)) pendingLocations.Enqueue(child.Id);
+            if (employeeScope.AllowedLocations is not null && affectedLocationIds.Any(locationId => !employeeScope.AllowedLocations.Contains(locationId)))
+                return Results.Forbid();
+            var affectedEmployees = db.Employees.Where(employee => employee.CompanyId == companyId && employee.LocationCatalogId.HasValue &&
+                affectedLocationIds.Contains(employee.LocationCatalogId.Value));
+            var scopedEmployeeIds = employeeScope.Apply(affectedEmployees).Select(employee => employee.Id);
+            if (await affectedEmployees.AnyAsync(employee => !scopedEmployeeIds.Contains(employee.Id), cancellationToken)) return Results.Forbid();
             var parentChain = await GetLocationChainAsync(db, companyId, location, cancellationToken);
             var pathPrefix = string.Join(" / ", parentChain.Take(parentChain.Count - 1).Select(x => x.Name));
             bool DescendantPathsFit(Guid currentId, string prefix)
@@ -1054,7 +1345,10 @@ public static class AssetEndpoints
             if (!DescendantPathsFit(id, pathPrefix))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Bu ad, alt konumlarla birlikte 160 karakterlik konum yolu sınırını aşar."] });
             var oldName = location.Name;
+            var previousUnitId = location.CompanyUnitId;
             location.Name = name; location.NormalizedName = normalized; location.UpdatedAt = DateTimeOffset.UtcNow;
+            if (request.ClearCompanyUnit) location.CompanyUnitId = null;
+            else if (request.CompanyUnitId is Guid newUnitId) location.CompanyUnitId = newUnitId;
             var pathsById = allLocations.ToDictionary(x => x.Id);
             pathsById[id] = location;
             (string Path, int Depth) ResolvePath(Guid currentId)
@@ -1065,7 +1359,7 @@ public static class AssetEndpoints
                 var parentPath = ResolvePath(parentId);
                 return ($"{parentPath.Path} / {current.Name}", parentPath.Depth + 1);
             }
-            foreach (var catalogLocation in allLocations)
+            foreach (var catalogLocation in allLocations.Where(candidate => affectedLocationIds.Contains(candidate.Id)))
             {
                 var path = ResolvePath(catalogLocation.Id).Path;
                 await db.Assets.Where(x => x.CompanyId == companyId && x.LocationCatalogId == catalogLocation.Id && x.Location != path)
@@ -1084,15 +1378,21 @@ public static class AssetEndpoints
                         .SetProperty(x => x.UpdatedAt, DateTimeOffset.UtcNow), cancellationToken);
             }
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
-                TargetType = "Location", TargetId = id, Action = "CatalogRenamed", Details = $"Konum adı “{oldName}” → “{name}”." });
+                TargetType = "Location", TargetId = id,
+                Action = previousUnitId != location.CompanyUnitId ? "CatalogUpdated" : "CatalogRenamed",
+                Details = previousUnitId != location.CompanyUnitId
+                    ? $"Konum “{name}” şirket birimi ilişkilendirmesi değiştirildi: {previousUnitId?.ToString() ?? "yok"} → {location.CompanyUnitId?.ToString() ?? "yok"}."
+                    : $"Konum adı “{oldName}” → “{name}”." });
             await db.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken);
-            return Results.Ok(new { location.Id, location.Name, location.ParentLocationId, location.IsActive });
+            return Results.Ok(new { location.Id, location.Name, location.ParentLocationId, location.CompanyUnitId, location.IsActive });
         }).RequireAuthorization("asset.write");
 
         api.MapPatch("/locations/rename", async ([FromBody] RenameDirectoryEntryRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            if (await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, cancellationToken) is not null)
+                return Results.Forbid();
             var currentName = request.CurrentName?.Trim();
             var newName = request.NewName?.Trim();
             if (string.IsNullOrWhiteSpace(currentName) || currentName.Length > 160 || currentName.Any(char.IsControl) ||
@@ -1164,6 +1464,7 @@ public static class AssetEndpoints
             AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            if (!await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, actorId, id, cancellationToken)) return Results.NotFound();
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             if (await db.Companies.FromSqlInterpolated($"SELECT * FROM \"Companies\" WHERE \"Id\" = {companyId} FOR UPDATE")
                     .SingleOrDefaultAsync(cancellationToken) is null) return Results.Forbid();
@@ -1183,6 +1484,7 @@ public static class AssetEndpoints
             AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            if (!await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, actorId, id, cancellationToken)) return Results.NotFound();
             await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             if (await db.Companies.FromSqlInterpolated($"SELECT * FROM \"Companies\" WHERE \"Id\" = {companyId} FOR UPDATE")
                     .SingleOrDefaultAsync(cancellationToken) is null) return Results.Forbid();
@@ -1199,13 +1501,16 @@ public static class AssetEndpoints
             return Results.Ok(new { location.Id, location.IsActive });
         }).RequireAuthorization("asset.write");
 
-        api.MapGet("/reports/assets", async ([FromQuery] DateOnly? purchaseDateFrom, [FromQuery] DateOnly? purchaseDateTo,
-            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        var assetSummaryReport = async Task<IResult> ([FromQuery] DateOnly? purchaseDateFrom, [FromQuery] DateOnly? purchaseDateTo,
+            HttpContext context, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
             if (purchaseDateFrom is DateOnly from && purchaseDateTo is DateOnly to && from > to)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["purchaseDate"] = ["Başlangıç tarihi bitiş tarihinden sonra olamaz."] });
             var companyAssets = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            if (allowedLocations is not null)
+                companyAssets = companyAssets.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
             if (purchaseDateFrom is DateOnly startDate) companyAssets = companyAssets.Where(x => x.PurchaseDate >= startDate);
             if (purchaseDateTo is DateOnly endDate) companyAssets = companyAssets.Where(x => x.PurchaseDate <= endDate);
             var totalAssets = await companyAssets.CountAsync(cancellationToken);
@@ -1238,6 +1543,20 @@ public static class AssetEndpoints
                 })
                 .OrderBy(row => row.currency).ToListAsync(cancellationToken);
             var pricedAssetCount = costRows.Sum(row => row.recordedAssetCount);
+            if (context.Request.Path.Value?.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                using var workbook = new XlsxExportWriter(["Bölüm", "Kayıt", "Toplam", "Atanmış", "Kullanılabilir", "Bakımda", "Alış Bedeli", "Para Birimi"]);
+                workbook.WriteRow(["Filtre", "Alış tarihi başlangıcı", purchaseDateFrom?.ToString("yyyy-MM-dd") ?? "Tümü"]);
+                workbook.WriteRow(["Filtre", "Alış tarihi bitişi", purchaseDateTo?.ToString("yyyy-MM-dd") ?? "Tümü"]);
+                workbook.WriteRow(["Özet", "Toplam varlık", totalAssets]);
+                workbook.WriteRow(["Özet", "Alış bedeli kayıtlı varlık", pricedAssetCount]);
+                workbook.WriteRow(["Özet", "Alış bedeli girilmemiş varlık", totalAssets - pricedAssetCount]);
+                foreach (var row in statusCounts) workbook.WriteRow(["Durum", row.status, row.count]);
+                foreach (var row in categoryRows) workbook.WriteRow(["Kategori", row.name, row.assetCount, row.assignedCount, row.availableCount, row.maintenanceCount]);
+                foreach (var row in costRows) workbook.WriteRow(["Alış bedeli", "Kaydı olan varlık", row.recordedAssetCount, null, null, null, row.recordedPurchaseCost, row.currency]);
+                await workbook.SendAsync(context, $"envantertr-envanter-raporu-{DateTime.UtcNow:yyyyMMdd}.xlsx", cancellationToken);
+                return Results.Empty;
+            }
             var costRowsForResponse = costRows.Select(row => new
             {
                 row.currency,
@@ -1257,7 +1576,9 @@ public static class AssetEndpoints
                 categories = categoryRows,
                 purchaseCostByCurrency = costRowsForResponse
             });
-        }).RequireAuthorization("asset.read");
+        };
+        api.MapGet("/reports/assets", assetSummaryReport).RequireAuthorization("asset.read");
+        api.MapGet("/reports/assets/export.xlsx", assetSummaryReport).RequireAuthorization("asset.read");
 
         api.MapGet("/reports/assets/purchases", async ([FromQuery] string? q, [FromQuery] DateOnly? from,
             [FromQuery] DateOnly? to, ClaimsPrincipal user, AppDbContext db, CancellationToken ct,
@@ -1270,6 +1591,10 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama 120 karakteri aşamaz."] });
             page = Math.Max(1, page); pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
             var query = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId,
+                CurrentUserId(user)!.Value, ct);
+            if (allowedLocations is not null)
+                query = query.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
             if (from is DateOnly start) query = query.Where(x => x.PurchaseDate >= start);
             if (to is DateOnly end) query = query.Where(x => x.PurchaseDate <= end);
             if (!string.IsNullOrWhiteSpace(q))
@@ -1282,7 +1607,10 @@ public static class AssetEndpoints
             var total = await query.CountAsync(ct);
             var items = await query.OrderByDescending(x => x.PurchaseDate).ThenBy(x => x.AssetTag)
                 .Skip((page - 1) * pageSize).Take(pageSize)
-                .Select(x => new { x.Id, x.AssetTag, x.Name, x.SerialNumber, x.PurchaseDate, x.PurchaseCost, x.Currency, x.Status, x.Location,
+                .Select(x => new { x.Id, x.AssetTag, x.Name, x.SerialNumber, x.PurchaseDate, x.PurchaseCost, x.Currency, x.Status,
+                    location = allowedLocations == null ? x.Location : db.CompanyLocations
+                        .Where(location => location.CompanyId == companyId && location.Id == x.LocationCatalogId)
+                        .Select(location => location.Name).FirstOrDefault(),
                     category = db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault() })
                 .ToListAsync(ct);
             return Results.Ok(new { total, page, pageSize, pageCount = (int)Math.Ceiling(total / (double)pageSize), items });
@@ -1297,6 +1625,8 @@ public static class AssetEndpoints
             if (q?.Trim().Length > 120)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama 120 karakteri aşamaz."] });
             var query = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, CurrentUserId(user)!.Value, ct);
+            if (allowedLocations is not null) query = query.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
             if (from is DateOnly start) query = query.Where(x => x.PurchaseDate >= start);
             if (to is DateOnly end) query = query.Where(x => x.PurchaseDate <= end);
             if (!string.IsNullOrWhiteSpace(q))
@@ -1310,7 +1640,10 @@ public static class AssetEndpoints
             if (await query.CountAsync(ct) > exportLimit)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["export"] = [$"CSV en fazla {exportLimit:N0} varlık içerir. Arama veya tarih filtresini daraltın."] });
             var rows = await query.OrderByDescending(x => x.PurchaseDate).ThenBy(x => x.AssetTag)
-                .Select(x => new { x.AssetTag, x.Name, x.SerialNumber, x.PurchaseDate, x.PurchaseCost, x.Currency, x.Status, x.Location,
+                .Select(x => new { x.AssetTag, x.Name, x.SerialNumber, x.PurchaseDate, x.PurchaseCost, x.Currency, x.Status,
+                    Location = allowedLocations == null ? x.Location : db.CompanyLocations
+                        .Where(location => location.CompanyId == companyId && location.Id == x.LocationCatalogId)
+                        .Select(location => location.Name).FirstOrDefault(),
                     category = db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault() })
                 .ToListAsync(ct);
             static string Cell(string? value)
@@ -1332,13 +1665,20 @@ public static class AssetEndpoints
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken, int page = 1, int pageSize = 50) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            var scopedEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
             if (from is DateOnly start && to is DateOnly end && start > end)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Başlangıç tarihi bitiş tarihinden sonra olamaz."] });
             if (from is DateOnly rangeStart && to is DateOnly rangeEnd && rangeEnd.DayNumber - rangeStart.DayNumber > 366)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Denetim raporu tarih aralığı en fazla 366 gün olabilir."] });
             if (q?.Length > 120)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
-            var query = db.AssetEvents.AsNoTracking().Where(x => x.CompanyId == companyId && x.EventType == "Audited");
+            var query = db.AssetEvents.AsNoTracking().Where(x => x.CompanyId == companyId &&
+                (x.EventType == "Audited" || x.EventType == "AuditUnacceptable"));
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            if (allowedLocations is not null)
+                query = query.Where(x => db.Assets.Any(a => a.CompanyId == companyId && a.Id == x.AssetId &&
+                    a.LocationCatalogId.HasValue && allowedLocations.Contains(a.LocationCatalogId.Value)));
             if (from is DateOnly startDate)
             {
                 var lower = new DateTimeOffset(startDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
@@ -1352,30 +1692,47 @@ public static class AssetEndpoints
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
-                query = query.Where(x => x.Details != null && x.Details.Contains(term) ||
-                    db.Assets.Any(a => a.CompanyId == companyId && a.Id == x.AssetId &&
+                query = allowedLocations is null
+                    ? query.Where(x => x.Details != null && x.Details.Contains(term) ||
+                        db.Assets.Any(a => a.CompanyId == companyId && a.Id == x.AssetId &&
+                            (a.AssetTag.Contains(term) || a.Name.Contains(term))))
+                    : query.Where(x => db.Assets.Any(a => a.CompanyId == companyId && a.Id == x.AssetId &&
                         (a.AssetTag.Contains(term) || a.Name.Contains(term))));
             }
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
             var total = await query.CountAsync(cancellationToken);
+            var acceptedCount = await query.CountAsync(x => x.EventType == "Audited", cancellationToken);
+            var unacceptableCount = total - acceptedCount;
             var items = await query.OrderByDescending(x => x.OccurredAt).ThenByDescending(x => x.Id)
                 .Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(x => new
                 {
-                    x.Id, x.AssetId, x.OccurredAt, x.Details,
+                    x.Id, x.AssetId, x.OccurredAt, Details = allowedLocations == null ? x.Details : null,
+                    outcome = x.EventType == "AuditUnacceptable" ? "Unacceptable" : "Accepted",
                     assetTag = db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.AssetTag).FirstOrDefault(),
                     assetName = db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.Name).FirstOrDefault(),
-                    location = db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.Location).FirstOrDefault(),
-                    actorName = db.Users.Where(a => a.Id == x.ActorUserId).Select(a => a.DisplayName).FirstOrDefault()
+                    location = allowedLocations == null
+                        ? db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.Location).FirstOrDefault()
+                        : db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId)
+                            .Join(db.CompanyLocations, a => a.LocationCatalogId, l => (Guid?)l.Id,
+                                (a, l) => new { a, l }).Where(pair => pair.l.CompanyId == companyId)
+                            .Select(pair => pair.l.Name).FirstOrDefault(),
+                    actorName = allowedLocations == null || !db.CompanyMemberships.Any(membership =>
+                        membership.CompanyId == companyId && membership.UserId == x.ActorUserId && membership.EmployeeId.HasValue &&
+                        !scopedEmployees.Any(employee => employee.CompanyId == companyId && employee.Id == membership.EmployeeId))
+                        ? db.Users.Where(a => a.Id == x.ActorUserId).Select(a => a.DisplayName).FirstOrDefault()
+                        : null
                 }).ToListAsync(cancellationToken);
-            return Results.Ok(new { total, page, pageSize, pageCount = (int)Math.Ceiling(total / (double)pageSize), items });
+            return Results.Ok(new { total, acceptedCount, unacceptableCount, page, pageSize, pageCount = (int)Math.Ceiling(total / (double)pageSize), items });
         }).RequireAuthorization("asset.read");
 
         api.MapGet("/reports/audits/export.csv", async (DateOnly? from, DateOnly? to, string? q,
             HttpContext context, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            var scopedEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
             if (from is DateOnly start && to is DateOnly end && start > end ||
                 from is DateOnly rangeStart && to is DateOnly rangeEnd && rangeEnd.DayNumber - rangeStart.DayNumber > 366 || q?.Length > 120)
             {
@@ -1383,10 +1740,21 @@ public static class AssetEndpoints
                 await context.Response.WriteAsJsonAsync(new { message = "Denetim raporu filtrelerini kontrol edin; tarih aralığı 366 günü ve arama 120 karakteri aşamaz." }, cancellationToken);
                 return;
             }
-            var query = db.AssetEvents.AsNoTracking().Where(x => x.CompanyId == companyId && x.EventType == "Audited");
+            var query = db.AssetEvents.AsNoTracking().Where(x => x.CompanyId == companyId &&
+                (x.EventType == "Audited" || x.EventType == "AuditUnacceptable"));
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            if (allowedLocations is not null)
+                query = query.Where(x => db.Assets.Any(a => a.CompanyId == companyId && a.Id == x.AssetId &&
+                    a.LocationCatalogId.HasValue && allowedLocations.Contains(a.LocationCatalogId.Value)));
             if (from is DateOnly startDate) { var lower = new DateTimeOffset(startDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)); query = query.Where(x => x.OccurredAt >= lower); }
             if (to is DateOnly endDate) { var upper = new DateTimeOffset(endDate.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)); query = query.Where(x => x.OccurredAt < upper); }
-            if (!string.IsNullOrWhiteSpace(q)) { var term = q.Trim(); query = query.Where(x => x.Details != null && x.Details.Contains(term) || db.Assets.Any(a => a.CompanyId == companyId && a.Id == x.AssetId && (a.AssetTag.Contains(term) || a.Name.Contains(term)))); }
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                query = allowedLocations is null
+                    ? query.Where(x => x.Details != null && x.Details.Contains(term) || db.Assets.Any(a => a.CompanyId == companyId && a.Id == x.AssetId && (a.AssetTag.Contains(term) || a.Name.Contains(term))))
+                    : query.Where(x => db.Assets.Any(a => a.CompanyId == companyId && a.Id == x.AssetId && (a.AssetTag.Contains(term) || a.Name.Contains(term))));
+            }
             var total = await query.CountAsync(cancellationToken);
             if (total > 10000) { context.Response.StatusCode = StatusCodes.Status400BadRequest; await context.Response.WriteAsJsonAsync(new { message = "CSV en fazla 10.000 denetim içerir; tarih veya arama filtresini daraltın." }, cancellationToken); return; }
             context.Response.ContentType = "text/csv; charset=utf-8";
@@ -1394,17 +1762,26 @@ public static class AssetEndpoints
             context.Response.Headers["Cache-Control"] = "no-store";
             context.Response.Headers["X-Total-Count"] = total.ToString(CultureInfo.InvariantCulture);
             await using var writer = new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
-            await writer.WriteLineAsync("Tarih;Etiket;Varlık;Konum;Denetimi yapan;Açıklama".AsMemory(), cancellationToken);
+            await writer.WriteLineAsync("Tarih;Sonuç;Etiket;Varlık;Konum;Denetimi yapan;Açıklama".AsMemory(), cancellationToken);
             var rows = query.OrderByDescending(x => x.OccurredAt).ThenByDescending(x => x.Id).Select(x => new
             {
-                x.OccurredAt, x.Details,
+                x.OccurredAt, Details = allowedLocations == null ? x.Details : null, Outcome = x.EventType == "AuditUnacceptable" ? "Uygun değil" : "Uygun",
                 AssetTag = db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.AssetTag).FirstOrDefault(),
                 AssetName = db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.Name).FirstOrDefault(),
-                Location = db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.Location).FirstOrDefault(),
-                ActorName = db.Users.Where(a => a.Id == x.ActorUserId).Select(a => a.DisplayName).FirstOrDefault()
+                Location = allowedLocations == null
+                    ? db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.Location).FirstOrDefault()
+                    : db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId)
+                        .Join(db.CompanyLocations, a => a.LocationCatalogId, l => (Guid?)l.Id,
+                            (a, l) => new { a, l }).Where(pair => pair.l.CompanyId == companyId)
+                        .Select(pair => pair.l.Name).FirstOrDefault(),
+                ActorName = allowedLocations == null || !db.CompanyMemberships.Any(membership =>
+                    membership.CompanyId == companyId && membership.UserId == x.ActorUserId && membership.EmployeeId.HasValue &&
+                    !scopedEmployees.Any(employee => employee.CompanyId == companyId && employee.Id == membership.EmployeeId))
+                    ? db.Users.Where(a => a.Id == x.ActorUserId).Select(a => a.DisplayName).FirstOrDefault()
+                    : null
             });
             await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
-                await writer.WriteLineAsync(string.Join(';', new[] { CsvCell(row.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss 'UTC'", CultureInfo.InvariantCulture)), CsvCell(row.AssetTag), CsvCell(row.AssetName), CsvCell(row.Location), CsvCell(row.ActorName), CsvCell(row.Details) }).AsMemory(), cancellationToken);
+                await writer.WriteLineAsync(string.Join(';', new[] { CsvCell(row.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss 'UTC'", CultureInfo.InvariantCulture)), CsvCell(row.Outcome), CsvCell(row.AssetTag), CsvCell(row.AssetName), CsvCell(row.Location), CsvCell(row.ActorName), CsvCell(row.Details) }).AsMemory(), cancellationToken);
             await writer.FlushAsync(cancellationToken);
         }).RequireAuthorization("asset.read");
 
@@ -1412,19 +1789,29 @@ public static class AssetEndpoints
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken, int page = 1, int pageSize = 50) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            var scopedEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
             if (!TryGetWarrantyReportFilters(through, state, q, out var today, out var end, out var normalizedState, out var error)) return error!;
             page = Math.Max(1, page);
             pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
             var activeAssets = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.Status != AssetStatuses.Archived);
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            if (allowedLocations is not null)
+                activeAssets = activeAssets.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
             var expired = await activeAssets.CountAsync(x => x.WarrantyExpiresAt != null && x.WarrantyExpiresAt < today, cancellationToken);
             var upcoming = await activeAssets.CountAsync(x => x.WarrantyExpiresAt != null && x.WarrantyExpiresAt >= today && x.WarrantyExpiresAt <= end, cancellationToken);
             var withoutDate = await activeAssets.CountAsync(x => x.WarrantyExpiresAt == null, cancellationToken);
-            var query = FilterWarrantyReportAssets(db, companyId, normalizedState, today, end, q);
+            var query = FilterWarrantyReportAssets(db, companyId, normalizedState, today, end, q, allowedLocations, scopedEmployees);
+            if (allowedLocations is not null)
+                query = query.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
             var total = await query.CountAsync(cancellationToken);
             var items = await query.OrderBy(x => x.WarrantyExpiresAt).ThenBy(x => x.AssetTag)
                 .Skip((page - 1) * pageSize).Take(pageSize)
-                .Select(x => new { x.Id, x.AssetTag, x.Name, x.Status, x.WarrantyExpiresAt, x.Location,
-                    employeeName = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId)
+                .Select(x => new { x.Id, x.AssetTag, x.Name, x.Status, x.WarrantyExpiresAt,
+                    location = allowedLocations == null ? x.Location : db.CompanyLocations
+                        .Where(location => location.CompanyId == companyId && location.Id == x.LocationCatalogId)
+                        .Select(location => location.Name).FirstOrDefault(),
+                    employeeName = scopedEmployees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId)
                         .Select(e => e.DisplayName).FirstOrDefault() })
                 .ToListAsync(cancellationToken);
             return Results.Ok(new { today, through = end, state = normalizedState, expired, upcoming, withoutDate,
@@ -1435,12 +1822,17 @@ public static class AssetEndpoints
             HttpContext context, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) { context.Response.StatusCode = StatusCodes.Status403Forbidden; return; }
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            var scopedEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
             if (!TryGetWarrantyReportFilters(through, state, q, out var today, out var end, out var normalizedState, out var error))
             {
                 await error!.ExecuteAsync(context);
                 return;
             }
-            var query = FilterWarrantyReportAssets(db, companyId, normalizedState, today, end, q);
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            var query = FilterWarrantyReportAssets(db, companyId, normalizedState, today, end, q, allowedLocations, scopedEmployees);
+            if (allowedLocations is not null)
+                query = query.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
             var total = await query.CountAsync(cancellationToken);
             context.Response.StatusCode = StatusCodes.Status200OK;
             context.Response.ContentType = "text/csv; charset=utf-8";
@@ -1450,8 +1842,11 @@ public static class AssetEndpoints
             await using var writer = new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
             await writer.WriteLineAsync("Etiket;Varlık;Durum;Garanti bitişi;Konum;Zimmetli çalışan".AsMemory(), cancellationToken);
             var rows = query.OrderBy(x => x.WarrantyExpiresAt).ThenBy(x => x.AssetTag)
-                .Select(x => new { x.AssetTag, x.Name, x.Status, x.WarrantyExpiresAt, x.Location,
-                    EmployeeName = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId)
+                .Select(x => new { x.AssetTag, x.Name, x.Status, x.WarrantyExpiresAt,
+                    Location = allowedLocations == null ? x.Location : db.CompanyLocations
+                        .Where(location => location.CompanyId == companyId && location.Id == x.LocationCatalogId)
+                        .Select(location => location.Name).FirstOrDefault(),
+                    EmployeeName = scopedEmployees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId)
                         .Select(e => e.DisplayName).FirstOrDefault() });
             await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
             {
@@ -1469,7 +1864,10 @@ public static class AssetEndpoints
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
             if (from is DateOnly start && to is DateOnly end && start > end)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Başlangıç tarihi bitiş tarihinden sonra olamaz."] });
-            var query = db.AssetMaintenances.AsNoTracking().Where(x => x.CompanyId == companyId && (x.Status == "InProgress" || x.Status == "Completed"));
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            var query = db.AssetMaintenances.AsNoTracking()
+                .Where(x => x.CompanyId == companyId && (x.Status == "InProgress" || x.Status == "Completed"))
+                .InAssetReadScope(db, companyId, employeeScope);
             if (from is DateOnly fromDate) query = query.Where(x => x.StartedOn >= fromDate);
             if (to is DateOnly toDate) query = query.Where(x => x.StartedOn <= toDate);
 
@@ -1506,9 +1904,13 @@ public static class AssetEndpoints
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var actorId = CurrentUserId(user);
+            if (actorId is null) return Results.Forbid();
             var current = await db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
-                .Select(x => new { x.ParentAssetId, x.UpdatedAt }).SingleOrDefaultAsync(cancellationToken);
+                .Select(x => new { x.ParentAssetId, x.UpdatedAt, x.LocationCatalogId }).SingleOrDefaultAsync(cancellationToken);
             if (current is null) return Results.NotFound();
+            if (!await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, actorId.Value, current.LocationCatalogId, cancellationToken))
+                return Results.NotFound();
             if (current.UpdatedAt != request.ExpectedUpdatedAt)
                 return Results.Conflict(new { message = "Varlık başka bir kullanıcı tarafından güncellendi. Yenileyip tekrar deneyin." });
             if (current.ParentAssetId == request.ParentAssetId)
@@ -1518,7 +1920,9 @@ public static class AssetEndpoints
             string? parentTag = null;
             if (request.ParentAssetId is { } parentId)
             {
-                var parent = await db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == parentId)
+                var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId.Value, cancellationToken);
+                var parent = await db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == parentId &&
+                        (allowedLocations == null || x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value)))
                     .Select(x => new { x.AssetTag, x.Status, x.ParentAssetId }).SingleOrDefaultAsync(cancellationToken);
                 if (parent is null) return Results.ValidationProblem(new Dictionary<string, string[]> { ["parentAssetId"] = ["Üst varlık aynı şirkette bulunamadı."] });
                 if (parent.Status == AssetStatuses.Archived)
@@ -1547,7 +1951,7 @@ public static class AssetEndpoints
                     await transaction.RollbackAsync(cancellationToken);
                     return Results.Conflict(new { message = "Varlık başka bir kullanıcı tarafından güncellendi. Yenileyip tekrar deneyin." });
                 }
-                db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = id, ActorUserId = CurrentUserId(user),
+                db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = id, ActorUserId = actorId,
                     EventType = "ParentChanged", Details = parentTag is null ? "Üst varlık bağlantısı kaldırıldı." : $"Üst varlık {parentTag} olarak ayarlandı." });
                 await db.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
@@ -1565,6 +1969,8 @@ public static class AssetEndpoints
             CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            var scopedEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
             var asset = await db.Assets.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && x.Id == id)
                 .Select(x => new
@@ -1573,12 +1979,20 @@ public static class AssetEndpoints
                     x.LocationCatalogId, x.DefaultLocationCatalogId,
                     x.CategoryId, x.BrandId, x.ModelId, x.ParentAssetId, x.AssignedEmployeeId,
                     x.PurchaseOrderId,
-                    x.PurchaseDate, x.WarrantyExpiresAt, x.NextAuditOn, x.ExpectedReturnOn, x.PurchaseCost, x.Currency, x.IsRequestable, x.CreatedAt, x.UpdatedAt,
+                    x.PurchaseDate, x.WarrantyExpiresAt, x.InsuranceProvider, x.InsurancePolicyNumber, x.InsuranceExpiresAt,
+                    x.NextAuditOn, x.ExpectedReturnOn, x.PurchaseCost, x.Currency, x.IsRequestable, x.CreatedAt, x.UpdatedAt,
                     x.CustomFieldsJson, x.Notes
                 }).SingleOrDefaultAsync(cancellationToken);
             if (asset is null) return Results.NotFound();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId,
+                CurrentUserId(user)!.Value, cancellationToken);
+            if (!await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, CurrentUserId(user)!.Value,
+                    asset.LocationCatalogId, cancellationToken))
+                return Results.NotFound();
+            var allowedEmployeeIds = !employeeScope.IsRestricted ? null : await scopedEmployees.Select(employee => employee.Id).ToHashSetAsync(cancellationToken);
             var relatedAssets = await db.Assets.AsNoTracking()
-                .Where(x => x.CompanyId == companyId && (x.ParentAssetId == id || x.Id == asset.ParentAssetId))
+                .Where(x => x.CompanyId == companyId && (x.ParentAssetId == id || x.Id == asset.ParentAssetId) &&
+                    (allowedLocations == null || x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value)))
                 .OrderBy(x => x.AssetTag)
                 .Select(x => new { x.Id, x.AssetTag, x.Name, x.Status, relationship = x.Id == asset.ParentAssetId ? "Parent" : "Child" })
                 .ToListAsync(cancellationToken);
@@ -1597,9 +2011,18 @@ public static class AssetEndpoints
                 depreciationMinimum = model?.DepreciationMinimum,
                 depreciationMinimumType = model?.DepreciationMinimumType,
                 depreciationMethod = model?.DepreciationMethod,
-                employee = await db.Employees.Where(x => x.CompanyId == companyId && x.Id == asset.AssignedEmployeeId).Select(x => x.DisplayName).SingleOrDefaultAsync(cancellationToken),
-                employeeNumber = await db.Employees.Where(x => x.CompanyId == companyId && x.Id == asset.AssignedEmployeeId).Select(x => x.EmployeeNumber).SingleOrDefaultAsync(cancellationToken),
-                defaultLocation = await db.CompanyLocations.Where(x => x.CompanyId == companyId && x.Id == asset.DefaultLocationCatalogId).Select(x => x.Name).SingleOrDefaultAsync(cancellationToken)
+                employee = allowedEmployeeIds == null || asset.AssignedEmployeeId is Guid assignedEmployeeId && allowedEmployeeIds.Contains(assignedEmployeeId)
+                    ? await scopedEmployees.Where(x => x.CompanyId == companyId && x.Id == asset.AssignedEmployeeId).Select(x => x.DisplayName).SingleOrDefaultAsync(cancellationToken)
+                    : null,
+                employeeNumber = allowedEmployeeIds == null || asset.AssignedEmployeeId is Guid assignedEmployeeIdForNumber && allowedEmployeeIds.Contains(assignedEmployeeIdForNumber)
+                    ? await scopedEmployees.Where(x => x.CompanyId == companyId && x.Id == asset.AssignedEmployeeId).Select(x => x.EmployeeNumber).SingleOrDefaultAsync(cancellationToken)
+                    : null,
+                companyUnit = await db.CompanyLocations.Where(location => location.CompanyId == companyId &&
+                        location.Id == asset.LocationCatalogId && (allowedLocations == null || allowedLocations.Contains(location.Id)))
+                    .Select(location => db.CompanyUnits.Where(unit => unit.CompanyId == companyId && unit.Id == location.CompanyUnitId)
+                        .Select(unit => unit.Name).SingleOrDefault()).SingleOrDefaultAsync(cancellationToken),
+                defaultLocation = await db.CompanyLocations.Where(x => x.CompanyId == companyId && x.Id == asset.DefaultLocationCatalogId &&
+                    (allowedLocations == null || allowedLocations.Contains(x.Id))).Select(x => x.Name).SingleOrDefaultAsync(cancellationToken)
             };
             var asOf = DateOnly.FromDateTime(DateTime.UtcNow);
             var ageMonths = DepreciationReportEndpoints.CalculateElapsedMonths(asset.PurchaseDate, asOf);
@@ -1615,12 +2038,17 @@ public static class AssetEndpoints
                     references.depreciationMonths, references.depreciationMinimum, references.depreciationMinimumType,
                     references.depreciationMethod, asOf)
             };
+            var purchaseOrders = db.AssetPurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId)
+                .InLocationScope(db, companyId, allowedLocations);
             var purchaseOrder = asset.PurchaseOrderId is Guid orderId
-                ? await db.AssetPurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == orderId)
+                ? await purchaseOrders.Where(x => x.Id == orderId)
                     .Select(x => new { x.Id, x.OrderNumber, x.Supplier, x.OrderDate }).SingleOrDefaultAsync(cancellationToken)
                 : null;
             var accessoryAssignments = await db.AccessoryAssignments.AsNoTracking()
-                .Where(x => x.CompanyId == companyId && x.TargetType == "Asset" && x.AssetId == id && x.ReturnedQuantity < x.Quantity)
+                .Where(x => x.CompanyId == companyId && x.TargetType == "Asset" && x.AssetId == id && x.ReturnedQuantity < x.Quantity &&
+                    (allowedLocations == null || db.Accessories.Any(accessory => accessory.CompanyId == companyId &&
+                        accessory.Id == x.AccessoryId && accessory.LocationCatalogId.HasValue &&
+                        allowedLocations.Contains(accessory.LocationCatalogId.Value))))
                 .OrderByDescending(x => x.CheckedOutAt)
                 .Select(x => new
                 {
@@ -1636,7 +2064,10 @@ public static class AssetEndpoints
                 })
                 .ToListAsync(cancellationToken);
             var componentAllocations = await db.ComponentAllocations.AsNoTracking()
-                .Where(x => x.CompanyId == companyId && x.AssetId == id && x.RemovedQuantity < x.Quantity)
+                .Where(x => x.CompanyId == companyId && x.AssetId == id && x.RemovedQuantity < x.Quantity &&
+                    (allowedLocations == null || db.InventoryComponents.Any(component => component.CompanyId == companyId &&
+                        component.Id == x.ComponentId && component.LocationCatalogId.HasValue &&
+                        allowedLocations.Contains(component.LocationCatalogId.Value))))
                 .OrderByDescending(x => x.AllocatedAt)
                 .Select(x => new
                 {
@@ -1675,18 +2106,19 @@ public static class AssetEndpoints
                 {
                     x.Id,
                     x.EventType,
-                    x.Details,
-                    x.EmployeeId,
+                    Details = allowedLocations == null ? x.Details : null,
+                    EmployeeId = allowedEmployeeIds == null || x.EmployeeId == null || allowedEmployeeIds.Contains(x.EmployeeId.Value) ? x.EmployeeId : null,
                     attachmentCount = db.AssetAttachments.Count(attachment => attachment.CompanyId == companyId &&
                         attachment.AssetId == id && attachment.AssetEventId == x.Id),
-                    actorName = db.Users
-                        .Where(actor => actor.Id == x.ActorUserId)
-                        .Select(actor => actor.DisplayName)
-                        .FirstOrDefault(),
-                    employeeName = db.Employees
-                        .Where(employee => employee.CompanyId == companyId && employee.Id == x.EmployeeId)
-                        .Select(employee => employee.DisplayName)
-                        .FirstOrDefault(),
+                    actorName = allowedEmployeeIds == null || !db.CompanyMemberships.Any(membership => membership.CompanyId == companyId &&
+                        membership.UserId == x.ActorUserId && membership.EmployeeId.HasValue &&
+                        !allowedEmployeeIds.Contains(membership.EmployeeId.Value))
+                        ? db.Users.Where(actor => actor.Id == x.ActorUserId).Select(actor => actor.DisplayName).FirstOrDefault()
+                        : null,
+                    employeeName = allowedEmployeeIds == null || x.EmployeeId == null || allowedEmployeeIds.Contains(x.EmployeeId.Value)
+                        ? scopedEmployees.Where(employee => employee.CompanyId == companyId && employee.Id == x.EmployeeId)
+                            .Select(employee => employee.DisplayName).FirstOrDefault()
+                        : null,
                     x.OccurredAt
                 })
                 .ToListAsync(cancellationToken);
@@ -1699,23 +2131,31 @@ public static class AssetEndpoints
                         .Select(eventItem => eventItem.EventType).FirstOrDefault(),
                     assetEventOccurredAt = db.AssetEvents.Where(eventItem => eventItem.CompanyId == companyId && eventItem.Id == x.AssetEventId)
                         .Select(eventItem => eventItem.OccurredAt).FirstOrDefault(),
-                    uploadedBy = db.Users.Where(actor => actor.Id == x.UploadedByUserId).Select(actor => actor.DisplayName).FirstOrDefault() })
+                    uploadedBy = db.Users.Where(actor => actor.Id == x.UploadedByUserId &&
+                        (!employeeScope.IsRestricted || !db.CompanyMemberships.Any(membership => membership.CompanyId == companyId &&
+                            membership.UserId == actor.Id && membership.EmployeeId.HasValue && !scopedEmployees.Any(employee => employee.Id == membership.EmployeeId.Value))))
+                        .Select(actor => actor.DisplayName).FirstOrDefault() })
                 .ToListAsync(cancellationToken);
             var fieldDefinitions = await db.AssetCustomFieldDefinitions.AsNoTracking()
                 .Where(field => field.CompanyId == companyId).ToListAsync(cancellationToken);
             var customFields = customFieldProtection.Read(asset.CustomFieldsJson, fieldDefinitions,
                 companyId, AssetCustomFieldEndpoints.CanReadSensitive(user));
             return Results.Ok(new { asset = new { asset.Id, asset.AssetTag, asset.Name, asset.Status, asset.SerialNumber, asset.Location,
-                asset.LocationCatalogId, asset.DefaultLocationCatalogId, asset.CategoryId, asset.BrandId, asset.ModelId, asset.ParentAssetId, asset.AssignedEmployeeId, asset.PurchaseOrderId,
-                asset.PurchaseDate, asset.WarrantyExpiresAt, asset.NextAuditOn, asset.ExpectedReturnOn, asset.PurchaseCost, asset.Currency, asset.IsRequestable,
+                asset.LocationCatalogId, asset.DefaultLocationCatalogId, asset.CategoryId, asset.BrandId, asset.ModelId, asset.ParentAssetId, AssignedEmployeeId = allowedEmployeeIds == null || asset.AssignedEmployeeId is Guid visibleEmployeeId && allowedEmployeeIds.Contains(visibleEmployeeId) ? asset.AssignedEmployeeId : null, asset.PurchaseOrderId,
+                asset.PurchaseDate, asset.WarrantyExpiresAt, asset.InsuranceProvider, asset.InsurancePolicyNumber, asset.InsuranceExpiresAt,
+                asset.NextAuditOn, asset.ExpectedReturnOn, asset.PurchaseCost, asset.Currency, asset.IsRequestable,
                 asset.CreatedAt, asset.UpdatedAt, customFields }, references, valuation, purchaseOrder, relatedAssets, accessories = accessoryAssignments,
                 components = componentAllocations, softwareLicenses, history, attachments });
         }).RequireAuthorization("asset.read");
 
-        api.MapGet("/assets/audit-schedule", async (DateOnly? through, string? q, string? state, ClaimsPrincipal user,
+        api.MapGet("/assets/audit-schedule", async (DateOnly? through, DateOnly? since, string? q, string? state, int? page, int? pageSize, ClaimsPrincipal user,
             AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            var scopedEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId,
+                CurrentUserId(user)!.Value, cancellationToken);
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
             var end = through ?? today.AddDays(30);
             if (end < today || end > today.AddDays(366))
@@ -1723,9 +2163,47 @@ public static class AssetEndpoints
             if (q?.Trim().Length > 120)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
             state = string.IsNullOrWhiteSpace(state) ? "all" : state.Trim().ToLowerInvariant();
-            if (state is not ("all" or "overdue" or "upcoming" or "unscheduled"))
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["state"] = ["Durum all, overdue, upcoming veya unscheduled olmalıdır."] });
+            if (state is not ("all" or "overdue" or "upcoming" or "unscheduled" or "completed"))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["state"] = ["Durum all, overdue, upcoming, unscheduled veya completed olmalıdır."] });
+            var currentPageSize = Math.Clamp(pageSize ?? 50, 1, 100);
+            var currentPage = Math.Clamp(page ?? 1, 1, Math.Max(1, int.MaxValue / currentPageSize));
             var companyAssets = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.DeletedAt == null && x.Status != AssetStatuses.Archived);
+            if (allowedLocations is not null)
+                companyAssets = companyAssets.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
+            if (state == "completed")
+            {
+                var start = since ?? today.AddDays(-30);
+                if (start < today.AddDays(-366) || start > today || start > end)
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["since"] = ["Tamamlanan denetim aralığı bugünden geriye en fazla 366 gün olmalıdır."] });
+                var historicalAssets = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.DeletedAt == null);
+                if (allowedLocations is not null)
+                    historicalAssets = historicalAssets.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
+                var completed = from auditEvent in db.AssetEvents.AsNoTracking()
+                    join asset in historicalAssets on auditEvent.AssetId equals asset.Id
+                    where auditEvent.CompanyId == companyId && auditEvent.OccurredAt >= new DateTimeOffset(start.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)) &&
+                        auditEvent.OccurredAt < new DateTimeOffset(end.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)) &&
+                        (auditEvent.EventType == "Audited" || auditEvent.EventType == "AuditUnacceptable") &&
+                        (asset.AssignedEmployeeId == null || scopedEmployees.Any(employee => employee.CompanyId == companyId && employee.Id == asset.AssignedEmployeeId))
+                    select new { auditEvent.Id, auditEvent.AssetId, auditEvent.OccurredAt, auditEvent.EventType, auditEvent.Details,
+                        asset.AssetTag, asset.Name, asset.Location, asset.AssignedEmployeeId };
+                if (!string.IsNullOrWhiteSpace(q))
+                {
+                    var term = q.Trim();
+                    completed = completed.Where(x => x.AssetTag.Contains(term) || x.Name.Contains(term) ||
+                        (x.Location != null && x.Location.Contains(term)) || (x.Details != null && x.Details.Contains(term)) ||
+                        scopedEmployees.Any(employee => employee.CompanyId == companyId && employee.Id == x.AssignedEmployeeId && employee.DisplayName.Contains(term)));
+                }
+                var completedCount = await completed.CountAsync(cancellationToken);
+                var completedItems = await completed.OrderByDescending(x => x.OccurredAt).ThenBy(x => x.AssetTag).ThenBy(x => x.Id)
+                    .Skip((currentPage - 1) * currentPageSize).Take(currentPageSize)
+                    .Select(x => new { id = x.AssetId, auditEventId = x.Id, assetTag = x.AssetTag, name = x.Name,
+                        lastAuditedAt = x.OccurredAt, outcome = x.EventType == "Audited" ? "Passed" : "Unacceptable",
+                        details = x.Details, location = x.Location,
+                        employeeName = scopedEmployees.Where(employee => employee.CompanyId == companyId && employee.Id == x.AssignedEmployeeId)
+                            .Select(employee => employee.DisplayName).FirstOrDefault() }).ToListAsync(cancellationToken);
+                return Results.Ok(new { today, through = end, since = start, overdue = 0, dueSoon = 0, unscheduled = 0,
+                    completed = completedCount, total = completedCount, page = currentPage, pageSize = currentPageSize, items = completedItems });
+            }
             var query = companyAssets.Where(x => x.NextAuditOn != null);
             var overdue = await query.CountAsync(x => x.NextAuditOn < today, cancellationToken);
             var dueSoon = await query.CountAsync(x => x.NextAuditOn >= today && x.NextAuditOn <= end, cancellationToken);
@@ -1738,31 +2216,33 @@ public static class AssetEndpoints
                 var term = q.Trim();
                 filtered = filtered.Where(x => x.AssetTag.Contains(term) || x.Name.Contains(term) ||
                     (x.SerialNumber != null && x.SerialNumber.Contains(term)) || (x.Location != null && x.Location.Contains(term)) ||
-                    db.Employees.Any(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId && e.DisplayName.Contains(term)));
+                    scopedEmployees.Any(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId && e.DisplayName.Contains(term)));
             }
             var total = await filtered.CountAsync(cancellationToken);
             var ordered = state == "unscheduled"
                 ? filtered.OrderBy(x => x.CreatedAt).ThenBy(x => x.AssetTag)
                 : filtered.OrderBy(x => x.NextAuditOn).ThenBy(x => x.AssetTag);
-            var items = await ordered.Take(250)
+            var items = await ordered.Skip((currentPage - 1) * currentPageSize).Take(currentPageSize)
                 .Select(x => new { x.Id, x.AssetTag, x.Name, x.NextAuditOn, x.Status, x.Location,
-                    employeeName = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.DisplayName).FirstOrDefault() })
+                    employeeName = scopedEmployees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId)
+                        .Select(e => e.DisplayName).FirstOrDefault() })
                 .ToListAsync(cancellationToken);
-            return Results.Ok(new { today, through = end, overdue, dueSoon, unscheduled, total, items });
+            return Results.Ok(new { today, through = end, overdue, dueSoon, unscheduled, total, page = currentPage, pageSize = currentPageSize, items });
         }).RequireAuthorization("asset.read");
 
         api.MapPut("/assets/{id:guid}/audit-schedule", async (Guid id, [FromBody] SetAssetAuditScheduleRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
-            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (!TryCompanyId(user, out var companyId) || CurrentUserId(user) is not Guid actorId) return Results.Forbid();
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
             if (request.NextAuditOn is { } date && (date < today || date > today.AddYears(10)))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["nextAuditOn"] = ["Denetim tarihi bugün ile 10 yıl sonrası arasında olmalıdır."] });
             var asset = await db.Assets.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
             if (asset is null) return Results.NotFound();
+            if (!await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, actorId, asset.LocationCatalogId, cancellationToken))
+                return Results.NotFound();
             asset.NextAuditOn = request.NextAuditOn;
             asset.UpdatedAt = DateTimeOffset.UtcNow;
-            var actorId = CurrentUserId(user);
             var scheduleDetails = request.NextAuditOn is { } scheduled
                 ? $"Sonraki fiziksel denetim planlandı · {scheduled:yyyy-MM-dd}"
                 : "Planlı fiziksel denetim kaldırıldı.";
@@ -1794,6 +2274,8 @@ public static class AssetEndpoints
             var asset = await db.Assets.FromSqlInterpolated($"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} AND \"DeletedAt\" IS NULL FOR UPDATE").IgnoreQueryFilters()
                 .SingleOrDefaultAsync(cancellationToken);
             if (asset is null) return Results.NotFound();
+            if (!await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, actorId, asset.LocationCatalogId, cancellationToken))
+                return Results.NotFound();
             if (await db.AssetAttachments.CountAsync(x => x.CompanyId == companyId && x.AssetId == id, cancellationToken) >= 30)
                 return Results.Conflict(new { message = "Bir varlığa en fazla 30 dosya eklenebilir." });
 
@@ -1838,6 +2320,12 @@ public static class AssetEndpoints
             CancellationToken cancellationToken, [FromQuery] bool download = false) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
+            var assetScope = await db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id && x.DeletedAt == null)
+                .Select(x => new { x.LocationCatalogId }).SingleOrDefaultAsync(cancellationToken);
+            if (assetScope is null || !await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, userId,
+                    assetScope.LocationCatalogId, cancellationToken))
+                return Results.NotFound();
             var attachment = await db.AssetAttachments.AsNoTracking().SingleOrDefaultAsync(x =>
                 x.CompanyId == companyId && x.AssetId == id && x.Id == attachmentId, cancellationToken);
             if (attachment is null || !IsSafeAssetAttachmentFileName(attachment.StorageFileName)) return Results.NotFound();
@@ -1854,6 +2342,11 @@ public static class AssetEndpoints
             ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var assetScope = await db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id && x.DeletedAt == null)
+                .Select(x => new { x.LocationCatalogId }).SingleOrDefaultAsync(cancellationToken);
+            if (assetScope is null || !await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, actorId,
+                    assetScope.LocationCatalogId, cancellationToken))
+                return Results.NotFound();
             var attachment = await db.AssetAttachments.SingleOrDefaultAsync(x =>
                 x.CompanyId == companyId && x.AssetId == id && x.Id == attachmentId, cancellationToken);
             if (attachment is null) return Results.NotFound();
@@ -1884,6 +2377,8 @@ public static class AssetEndpoints
 
             var asset = await db.Assets.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
             if (asset is null) return Results.NotFound();
+            if (!await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, actorId, asset.LocationCatalogId, cancellationToken))
+                return Results.NotFound();
 
             var now = DateTimeOffset.UtcNow;
             var assetEvent = new AssetEvent
@@ -1916,8 +2411,10 @@ public static class AssetEndpoints
             var ids = request.AssetIds?.Distinct().ToArray() ?? [];
             if (ids.Length is < 1 or > 100)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["assetIds"] = ["Etiket için 1–100 arası farklı varlık seçin."] });
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
             var rows = await db.Assets.AsNoTracking()
-                .Where(x => x.CompanyId == companyId && ids.Contains(x.Id))
+                .Where(x => x.CompanyId == companyId && ids.Contains(x.Id) &&
+                    (allowedLocations == null || x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value)))
                 .Select(x => new
                 {
                     x.Id, x.AssetTag, x.Name, x.Status, x.SerialNumber, locationName = x.Location,
@@ -1947,6 +2444,8 @@ public static class AssetEndpoints
             var serial = Clean(request.SerialNumber);
             var location = Clean(request.Location) ?? await GetDefaultLocationPathAsync(db, companyId, cancellationToken);
             var notes = Clean(request.Notes);
+            var insuranceProvider = Clean(request.InsuranceProvider);
+            var insurancePolicyNumber = Clean(request.InsurancePolicyNumber);
             if (tag.Length > 80 || name.Length > 240 || request.CategoryId == Guid.Empty)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
@@ -1956,6 +2455,8 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["asset"] = ["Seri numarası ve konum en fazla 160 karakter olabilir."] });
             if (notes?.Length > 4000)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["notes"] = ["Varlık notu en fazla 4.000 karakter olabilir."] });
+            if (insuranceProvider?.Length > 160 || insurancePolicyNumber?.Length > 120)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["insurance"] = ["Sigorta şirketi en fazla 160, poliçe numarası en fazla 120 karakter olabilir."] });
             if (request.PurchaseCost is decimal purchaseCost &&
                 (purchaseCost < 0 || purchaseCost > 9999999999999999.99m))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["purchaseCost"] = ["Alış bedeli 0 ile 9.999.999.999.999.999,99 arasında olmalıdır."] });
@@ -1975,18 +2476,26 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["defaultLocationCatalogId"] = ["Varsayılan konum bu şirkette bulunamadı."] });
 
             var customFields = await AssetCustomFieldEndpoints.NormalizeValuesAsync(db, companyId,
-                request.CustomFields, null, preserveWhenMissing: false, protection: customFieldProtection, ct: cancellationToken);
+                request.CustomFields, null, preserveWhenMissing: false, protection: customFieldProtection, ct: cancellationToken,
+                categoryId: request.CategoryId, modelId: request.ModelId);
             if (customFields.Error is not null)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["customFields"] = [customFields.Error] });
 
             var locationCatalogId = await ResolveLocationCatalogIdAsync(db, companyId, location, cancellationToken);
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            if (!IsLocationInScope(locationCatalogId, allowedLocations))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["location"] = ["Yeni varlığın konumu, konum erişim yetkinizin içinde ve şirket konum kataloğunda olmalıdır."] });
+            if (!IsOptionalLocationInScope(request.DefaultLocationCatalogId, allowedLocations))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["defaultLocationCatalogId"] = ["Varsayılan konum, konum erişim yetkinizin içinde olmalıdır."] });
             var asset = new Asset
             {
                 CompanyId = companyId, AssetTag = tag, Name = name, CategoryId = request.CategoryId,
                 BrandId = request.BrandId, ModelId = request.ModelId,
                 SerialNumber = serial, Location = location, LocationCatalogId = locationCatalogId,
                 DefaultLocationCatalogId = request.DefaultLocationCatalogId,
-                PurchaseDate = request.PurchaseDate, WarrantyExpiresAt = request.WarrantyExpiresAt, PurchaseCost = request.PurchaseCost,
+                PurchaseDate = request.PurchaseDate, WarrantyExpiresAt = request.WarrantyExpiresAt,
+                InsuranceProvider = insuranceProvider, InsurancePolicyNumber = insurancePolicyNumber, InsuranceExpiresAt = request.InsuranceExpiresAt,
+                PurchaseCost = request.PurchaseCost,
                 Currency = currency, IsRequestable = request.IsRequestable == true, IsByod = request.IsByod == true,
                 Notes = notes, CustomFieldsJson = customFields.Json
             };
@@ -2020,7 +2529,8 @@ public static class AssetEndpoints
                 null, asset.AssignedEmployeeId, asset.WarrantyExpiresAt, asset.UpdatedAt, null, asset.LocationCatalogId, asset.IsByod, asset.ExpectedReturnOn,
                 null, asset.ModelId is Guid newAssetModelId ? await db.AssetModels.Where(x => x.CompanyId == companyId && x.Id == newAssetModelId).Select(x => x.ModelNumber).SingleOrDefaultAsync(cancellationToken) : null,
                 null, asset.DefaultLocationCatalogId is Guid newDefaultLocationId ? await db.CompanyLocations.Where(x => x.CompanyId == companyId && x.Id == newDefaultLocationId).Select(x => x.Name).SingleOrDefaultAsync(cancellationToken) : null,
-                await db.Companies.Where(x => x.Id == companyId).Select(x => x.Name).SingleAsync(cancellationToken)));
+                await db.Companies.Where(x => x.Id == companyId).Select(x => x.Name).SingleAsync(cancellationToken),
+                InsuranceProvider: asset.InsuranceProvider, InsurancePolicyNumber: asset.InsurancePolicyNumber, InsuranceExpiresAt: asset.InsuranceExpiresAt));
         }).RequireAuthorization("asset.write");
 
         api.MapPatch("/assets/{id:guid}", async (Guid id, [FromBody] UpdateAssetRequest request,
@@ -2032,6 +2542,8 @@ public static class AssetEndpoints
             var serial = Clean(request.SerialNumber);
             var location = Clean(request.Location);
             var notes = Clean(request.Notes);
+            var insuranceProvider = Clean(request.InsuranceProvider);
+            var insurancePolicyNumber = Clean(request.InsurancePolicyNumber);
             var currency = string.IsNullOrWhiteSpace(request.Currency) ? "TRY" : request.Currency.Trim().ToUpperInvariant();
             if (string.IsNullOrWhiteSpace(tag) || tag.Length > 80 || string.IsNullOrWhiteSpace(name) || name.Length > 240 || request.CategoryId == Guid.Empty)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["asset"] = ["Etiket (en fazla 80 karakter), ad ve kategori zorunludur."] });
@@ -2039,6 +2551,8 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["asset"] = ["Seri numarası ve konum en fazla 160 karakter olabilir."] });
             if (notes?.Length > 4000)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["notes"] = ["Varlık notu en fazla 4.000 karakter olabilir."] });
+            if (insuranceProvider?.Length > 160 || insurancePolicyNumber?.Length > 120)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["insurance"] = ["Sigorta şirketi en fazla 160, poliçe numarası en fazla 120 karakter olabilir."] });
             if (request.PurchaseCost is decimal cost && (cost < 0 || cost > 9999999999999999.99m))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["purchaseCost"] = ["Alış bedeli 0 ile 9.999.999.999.999.999,99 arasında olmalıdır."] });
             if (currency.Length != 3)
@@ -2067,11 +2581,17 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["defaultLocationCatalogId"] = ["Varsayılan konum bu şirkette bulunamadı."] });
 
             var customFields = await AssetCustomFieldEndpoints.NormalizeValuesAsync(db, companyId,
-                request.CustomFields, current.CustomFieldsJson, preserveWhenMissing: true, protection: customFieldProtection, ct: cancellationToken);
+                request.CustomFields, current.CustomFieldsJson, preserveWhenMissing: true, protection: customFieldProtection, ct: cancellationToken,
+                categoryId: request.CategoryId, modelId: request.ModelId);
             if (customFields.Error is not null)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["customFields"] = [customFields.Error] });
 
             var locationCatalogId = await ResolveLocationCatalogIdAsync(db, companyId, location, cancellationToken);
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            if (!IsLocationInScope(locationCatalogId, allowedLocations))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["location"] = ["Varlığın hedef konumu, konum erişim yetkinizin içinde ve şirket konum kataloğunda olmalıdır."] });
+            if (!IsOptionalLocationInScope(request.DefaultLocationCatalogId, allowedLocations))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["defaultLocationCatalogId"] = ["Varsayılan konum, konum erişim yetkinizin içinde olmalıdır."] });
             var changed = new List<string>();
             if (current.AssetTag != tag) changed.Add("etiket");
             if (current.Name != name) changed.Add("ad");
@@ -2084,6 +2604,9 @@ public static class AssetEndpoints
             if (current.DefaultLocationCatalogId != request.DefaultLocationCatalogId) changed.Add("varsayılan konum");
             if (current.PurchaseDate != request.PurchaseDate) changed.Add("alış tarihi");
             if (current.WarrantyExpiresAt != request.WarrantyExpiresAt) changed.Add("garanti bitiş tarihi");
+            if (current.InsuranceProvider != insuranceProvider) changed.Add("sigorta şirketi");
+            if (current.InsurancePolicyNumber != insurancePolicyNumber) changed.Add("sigorta poliçe numarası");
+            if (current.InsuranceExpiresAt != request.InsuranceExpiresAt) changed.Add("sigorta bitiş tarihi");
             if (current.PurchaseCost != request.PurchaseCost || current.Currency != currency) changed.Add("alış bedeli");
             if (current.IsRequestable != isRequestable) changed.Add("talep edilebilir durumu");
             if (current.IsByod != isByod) changed.Add("kişisel cihaz (BYOD) durumu");
@@ -2108,6 +2631,9 @@ public static class AssetEndpoints
                         .SetProperty(x => x.DefaultLocationCatalogId, request.DefaultLocationCatalogId)
                         .SetProperty(x => x.PurchaseDate, request.PurchaseDate)
                         .SetProperty(x => x.WarrantyExpiresAt, request.WarrantyExpiresAt)
+                        .SetProperty(x => x.InsuranceProvider, insuranceProvider)
+                        .SetProperty(x => x.InsurancePolicyNumber, insurancePolicyNumber)
+                        .SetProperty(x => x.InsuranceExpiresAt, request.InsuranceExpiresAt)
                         .SetProperty(x => x.PurchaseCost, request.PurchaseCost)
                         .SetProperty(x => x.Currency, currency)
                         .SetProperty(x => x.IsRequestable, isRequestable)
@@ -2142,22 +2668,30 @@ public static class AssetEndpoints
         api.MapPost("/assets/{id:guid}/audit", async (Guid id, [FromBody] RecordAssetAuditRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
-            if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
-            if (request.AuditDate == default || request.AuditDate > DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) || request.Notes?.Length > 1900)
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["audit"] = ["Denetim tarihi gelecekte olamaz; notlar 1.900 karakteri aşamaz."] });
+            if (!TryCompanyId(user, out var companyId) || CurrentUserId(user) is not Guid actorId) return Results.Forbid();
+            var outcome = string.IsNullOrWhiteSpace(request.Outcome) ? "Accepted" : request.Outcome.Trim();
+            var issueDescription = string.IsNullOrWhiteSpace(request.IssueDescription) ? null : request.IssueDescription.Trim();
+            if (request.AuditDate == default || request.AuditDate > DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) || request.Notes?.Length > 1900 ||
+                outcome is not ("Accepted" or "Unacceptable") || issueDescription?.Length > 1200 ||
+                (outcome == "Unacceptable" && string.IsNullOrWhiteSpace(issueDescription)))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["audit"] = ["Denetim tarihi, sonucu ve notları kontrol edin. Uygun bulunmayan varlık için 1.200 karakteri aşmayan bulgu açıklaması zorunludur."] });
             var asset = await db.Assets.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
             if (asset is null) return Results.NotFound();
+            if (!await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, actorId, asset.LocationCatalogId, cancellationToken))
+                return Results.NotFound();
             if (request.NextAuditOn is { } nextAudit && (nextAudit < DateOnly.FromDateTime(DateTime.UtcNow) || nextAudit > DateOnly.FromDateTime(DateTime.UtcNow.AddYears(10))))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["nextAuditOn"] = ["Sonraki denetim tarihi bugün ile 10 yıl sonrası arasında olmalıdır."] });
             asset.NextAuditOn = request.NextAuditOn;
             asset.UpdatedAt = DateTimeOffset.UtcNow;
-            var details = $"Fiziksel denetim tamamlandı · {request.AuditDate:yyyy-MM-dd}";
+            var details = outcome == "Unacceptable"
+                ? $"Fiziksel denetimde uygun bulunmadı · {request.AuditDate:yyyy-MM-dd} · Bulgu: {issueDescription}"
+                : $"Fiziksel denetim tamamlandı · {request.AuditDate:yyyy-MM-dd}";
             if (!string.IsNullOrWhiteSpace(request.Notes)) details += $" · {request.Notes.Trim()}";
             if (request.NextAuditOn is { } next) details += $" · Sonraki denetim: {next:yyyy-MM-dd}";
             db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = id,
-                ActorUserId = CurrentUserId(user), EventType = "Audited", Details = details });
+                ActorUserId = actorId, EventType = outcome == "Unacceptable" ? "AuditUnacceptable" : "Audited", Details = details });
             await db.SaveChangesAsync(cancellationToken);
-            return Results.NoContent();
+            return Results.Ok(new { id, outcome, issueDescription, auditDate = request.AuditDate, nextAuditOn = asset.NextAuditOn });
         }).RequireAuthorization("asset.write");
 
         api.MapPost("/assets/bulk-update", async ([FromBody] BulkUpdateAssetsRequest request,
@@ -2174,9 +2708,9 @@ public static class AssetEndpoints
                     { ["assets"] = ["Güncel sürüm bilgisiyle 1 ile 100 arasında, tekrarsız varlık seçin."] });
 
             var allowedFields = new HashSet<string>(StringComparer.Ordinal)
-                { "name", "categoryId", "brandId", "modelId", "defaultLocationCatalogId", "purchaseDate", "warrantyExpiresAt", "purchaseCost", "isRequestable", "isByod", "serialNumber", "notes", "customFields" };
+                { "name", "categoryId", "brandId", "modelId", "defaultLocationCatalogId", "purchaseDate", "warrantyExpiresAt", "insuranceProvider", "insurancePolicyNumber", "insuranceExpiresAt", "purchaseCost", "isRequestable", "isByod", "serialNumber", "notes", "customFields" };
             var fields = request.Fields ?? [];
-            if (fields.Length is < 1 or > 13 || fields.Distinct(StringComparer.Ordinal).Count() != fields.Length ||
+            if (fields.Length is < 1 or > 16 || fields.Distinct(StringComparer.Ordinal).Count() != fields.Length ||
                 fields.Any(field => !allowedFields.Contains(field)))
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                     { ["fields"] = ["Uygulanacak en az bir geçerli varlık alanı seçin."] });
@@ -2185,12 +2719,16 @@ public static class AssetEndpoints
             var name = selected.Contains("name") ? request.Name?.Trim() : null;
             var serialNumber = selected.Contains("serialNumber") ? Clean(request.SerialNumber) : null;
             var notes = selected.Contains("notes") ? Clean(request.Notes) : null;
+            var insuranceProvider = selected.Contains("insuranceProvider") ? Clean(request.InsuranceProvider) : null;
+            var insurancePolicyNumber = selected.Contains("insurancePolicyNumber") ? Clean(request.InsurancePolicyNumber) : null;
             if (selected.Contains("name") && (string.IsNullOrWhiteSpace(name) || name.Length > 240))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Varlık adı zorunludur ve 240 karakteri aşamaz."] });
             if (serialNumber?.Length > 160)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["serialNumber"] = ["Seri numarası en fazla 160 karakter olabilir."] });
             if (notes?.Length > 4000)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["notes"] = ["Varlık notu en fazla 4.000 karakter olabilir."] });
+            if (insuranceProvider?.Length > 160 || insurancePolicyNumber?.Length > 120)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["insurance"] = ["Sigorta şirketi en fazla 160, poliçe numarası en fazla 120 karakter olabilir."] });
             if (selected.Contains("categoryId") && (!request.CategoryId.HasValue || request.CategoryId.Value == Guid.Empty))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["categoryId"] = ["Kategori seçimi zorunludur."] });
             var hasCustomFieldsSelection = request.CustomFields is not null;
@@ -2216,6 +2754,9 @@ public static class AssetEndpoints
                 .IgnoreQueryFilters().ToListAsync(cancellationToken);
             if (assets.Count != versions.Length)
                 return Results.NotFound(new { message = "Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil. Hiçbir kayıt değiştirilmedi." });
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, cancellationToken);
+            if (!AssetsInLocationScope(assets, allowedLocations))
+                return Results.NotFound(new { message = "Seçilen varlıklardan biri konum erişim kapsamınızın dışında. Hiçbir kayıt değiştirilmedi." });
             var versionById = versions.ToDictionary(version => version.Id, version => version.UpdatedAt);
             if (assets.Any(asset => asset.UpdatedAt != versionById[asset.Id]))
                 return Results.Conflict(new { message = "Seçilen varlıklardan biri yenilendikten sonra değişti. Listeyi yenileyip seçimi tekrar yapın; hiçbir kayıt değiştirilmedi." });
@@ -2229,6 +2770,8 @@ public static class AssetEndpoints
             if (selected.Contains("defaultLocationCatalogId") && request.DefaultLocationCatalogId is Guid requestedLocationId &&
                 !await db.CompanyLocations.AnyAsync(item => item.CompanyId == companyId && item.Id == requestedLocationId, cancellationToken))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["defaultLocationCatalogId"] = ["Varsayılan konum bu şirkette bulunamadı."] });
+            if (selected.Contains("defaultLocationCatalogId") && !IsOptionalLocationInScope(request.DefaultLocationCatalogId, allowedLocations))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["defaultLocationCatalogId"] = ["Varsayılan konum, konum erişim yetkinizin içinde olmalıdır."] });
 
             if (selected.Overlaps(["categoryId", "brandId", "modelId"]))
             {
@@ -2269,7 +2812,9 @@ public static class AssetEndpoints
                 foreach (var asset in assets)
                 {
                     var existingValues = JsonSerializer.Serialize(customFieldProtection.Read(asset.CustomFieldsJson, definitions, companyId, revealSensitive: true));
-                    var normalized = AssetCustomFieldEndpoints.NormalizeSelectedValues(definitions, request.CustomFields!, existingValues);
+                    var normalized = AssetCustomFieldEndpoints.NormalizeSelectedValues(definitions, request.CustomFields!, existingValues,
+                        selected.Contains("categoryId") ? request.CategoryId : asset.CategoryId,
+                        selected.Contains("modelId") ? request.ModelId : asset.ModelId);
                     if (normalized.Error is not null)
                         return Results.ValidationProblem(new Dictionary<string, string[]> { ["customFields"] = [normalized.Error] });
                     var protectedValues = customFieldProtection.Protect(normalized.Json, asset.CustomFieldsJson, companyId, definitions);
@@ -2297,6 +2842,9 @@ public static class AssetEndpoints
                 { asset.DefaultLocationCatalogId = request.DefaultLocationCatalogId; changed.Add("varsayılan konum"); }
                 if (selected.Contains("purchaseDate") && asset.PurchaseDate != request.PurchaseDate) { asset.PurchaseDate = request.PurchaseDate; changed.Add("alış tarihi"); }
                 if (selected.Contains("warrantyExpiresAt") && asset.WarrantyExpiresAt != request.WarrantyExpiresAt) { asset.WarrantyExpiresAt = request.WarrantyExpiresAt; changed.Add("garanti bitiş tarihi"); }
+                if (selected.Contains("insuranceProvider") && asset.InsuranceProvider != insuranceProvider) { asset.InsuranceProvider = insuranceProvider; changed.Add("sigorta şirketi"); }
+                if (selected.Contains("insurancePolicyNumber") && asset.InsurancePolicyNumber != insurancePolicyNumber) { asset.InsurancePolicyNumber = insurancePolicyNumber; changed.Add("sigorta poliçe numarası"); }
+                if (selected.Contains("insuranceExpiresAt") && asset.InsuranceExpiresAt != request.InsuranceExpiresAt) { asset.InsuranceExpiresAt = request.InsuranceExpiresAt; changed.Add("sigorta bitiş tarihi"); }
                 if (selected.Contains("purchaseCost") && (asset.PurchaseCost != request.PurchaseCost || asset.Currency != currency))
                 { asset.PurchaseCost = request.PurchaseCost; asset.Currency = currency!; changed.Add("alış bedeli"); }
                 if (selected.Contains("isRequestable") && asset.IsRequestable != request.IsRequestable)
@@ -2328,8 +2876,12 @@ public static class AssetEndpoints
             var ids = request.AssetIds ?? [];
             if (ids.Length is < 1 or > 100 || ids.Any(id => id == Guid.Empty) || ids.Distinct().Count() != ids.Length)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["assetIds"] = ["1 ile 100 arasında, tekrarsız varlık seçin."] });
-            if (request.AuditDate == default || request.AuditDate > DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) || request.Notes?.Length > 1900)
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["audit"] = ["Denetim tarihi gelecekte olamaz; toplu denetim notu en fazla 1.900 karakter olabilir."] });
+            var outcome = string.IsNullOrWhiteSpace(request.Outcome) ? "Accepted" : request.Outcome.Trim();
+            var issueDescription = string.IsNullOrWhiteSpace(request.IssueDescription) ? null : request.IssueDescription.Trim();
+            if (request.AuditDate == default || request.AuditDate > DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) ||
+                request.Notes?.Length > 1900 || outcome is not ("Accepted" or "Unacceptable") || issueDescription?.Length > 1200 ||
+                (outcome == "Unacceptable" && string.IsNullOrWhiteSpace(issueDescription)))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["audit"] = ["Denetim tarihi ve sonucu geçerli olmalı; not en fazla 1.900, uygunsuzluk bulgusu en fazla 1.200 karakter olmalı ve uygun değil sonucu için bulgu zorunludur."] });
             if (request.NextAuditOn is { } nextAudit && (nextAudit < DateOnly.FromDateTime(DateTime.UtcNow) || nextAudit > DateOnly.FromDateTime(DateTime.UtcNow.AddYears(10))))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["nextAuditOn"] = ["Sonraki denetim tarihi bugün ile 10 yıl sonrası arasında olmalıdır."] });
 
@@ -2339,23 +2891,28 @@ public static class AssetEndpoints
                 .ToListAsync(cancellationToken);
             if (assets.Count != ids.Length)
                 return Results.NotFound(new { message = "Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil. Hiçbir denetim kaydedilmedi." });
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, cancellationToken);
+            if (!AssetsInLocationScope(assets, allowedLocations))
+                return Results.NotFound(new { message = "Seçilen varlıklardan biri konum erişim kapsamınızın dışında. Hiçbir denetim kaydedilmedi." });
 
             var note = request.Notes?.Trim();
             foreach (var asset in assets)
             {
-                var details = $"Toplu fiziksel denetim tamamlandı · {request.AuditDate:yyyy-MM-dd}";
+                var details = outcome == "Unacceptable"
+                    ? $"Toplu fiziksel denetimde uygun bulunmadı · {request.AuditDate:yyyy-MM-dd} · Bulgu: {issueDescription}"
+                    : $"Toplu fiziksel denetim tamamlandı · {request.AuditDate:yyyy-MM-dd}";
                 if (!string.IsNullOrWhiteSpace(note)) details += $" · {note}";
                 if (request.NextAuditOn is { } scheduled) details += $" · Sonraki denetim: {scheduled:yyyy-MM-dd}";
                 db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = asset.Id,
-                    ActorUserId = actorId, EventType = "Audited", Details = details });
+                    ActorUserId = actorId, EventType = outcome == "Unacceptable" ? "AuditUnacceptable" : "Audited", Details = details });
                 asset.NextAuditOn = request.NextAuditOn;
                 asset.UpdatedAt = DateTimeOffset.UtcNow;
                 db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
-                    TargetType = "Asset", TargetId = asset.Id, Action = "BulkAudited", Details = details });
+                    TargetType = "Asset", TargetId = asset.Id, Action = outcome == "Unacceptable" ? "BulkAuditUnacceptable" : "BulkAudited", Details = details });
             }
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            return Results.Ok(new { recorded = assets.Count, auditDate = request.AuditDate, nextAuditOn = request.NextAuditOn });
+            return Results.Ok(new { recorded = assets.Count, auditDate = request.AuditDate, nextAuditOn = request.NextAuditOn, outcome });
         }).RequireAuthorization("asset.write");
 
         api.MapPost("/assets/{id:guid}/transfer", async (Guid id, [FromBody] TransferAssetRequest request,
@@ -2367,14 +2924,21 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["transfer"] = ["Yeni konum zorunludur (en fazla 160 karakter); transfer notları en fazla 1.600 karakter olabilir."] });
             var asset = await db.Assets.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
             if (asset is null) return Results.NotFound();
+            if (!await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, CurrentUserId(user)!.Value,
+                    asset.LocationCatalogId, cancellationToken))
+                return Results.NotFound();
             if (asset.AssignedEmployeeId is not null || asset.Status != AssetStatuses.Available)
                 return Results.Conflict(new { message = "Transfer için varlık kullanılabilir durumda ve zimmet dışı olmalıdır." });
             var source = asset.Location?.Trim();
             if (string.Equals(source, target, StringComparison.OrdinalIgnoreCase))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["targetLocation"] = ["Yeni konum mevcut konumla aynı olamaz."] });
+            var targetLocationId = await ResolveLocationCatalogIdAsync(db, companyId, target, cancellationToken);
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            if (!IsLocationInScope(targetLocationId, allowedLocations))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["targetLocation"] = ["Hedef konum, etkin şirket konum kataloğunda ve konum erişim yetkinizin içinde olmalıdır."] });
             if (string.IsNullOrWhiteSpace(source)) source = "Konum belirtilmemiş";
             asset.Location = target;
-            asset.LocationCatalogId = await ResolveLocationCatalogIdAsync(db, companyId, target, cancellationToken);
+            asset.LocationCatalogId = targetLocationId;
             asset.UpdatedAt = DateTimeOffset.UtcNow;
             var details = $"Konum transferi: {source} → {target}";
             if (!string.IsNullOrWhiteSpace(request.Notes)) details += $" · {request.Notes.Trim()}";
@@ -2401,6 +2965,9 @@ public static class AssetEndpoints
                 .ToListAsync(cancellationToken);
             if (assets.Count != ids.Length)
                 return Results.NotFound(new { message = "Seçilen varlıklardan biri bulunamadı veya bu şirkete ait değil. Hiçbir kayıt değiştirilmedi." });
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, cancellationToken);
+            if (!AssetsInLocationScope(assets, allowedLocations))
+                return Results.NotFound(new { message = "Seçilen varlıklardan biri konum erişim kapsamınızın dışında. Hiçbir kayıt değiştirilmedi." });
             if (assets.Any(asset => asset.AssignedEmployeeId is not null || asset.Status != AssetStatuses.Available))
                 return Results.Conflict(new { message = "Toplu transfer için seçilen bütün varlıklar kullanılabilir ve zimmet dışı olmalı. Hiçbir kayıt değiştirilmedi." });
             if (assets.Any(asset => string.Equals(
@@ -2409,6 +2976,8 @@ public static class AssetEndpoints
                 return Results.Conflict(new { message = "Hedef konum seçilen varlıklardan en az biri için zaten geçerli. Hiçbir kayıt değiştirilmedi." });
 
             var locationCatalogId = await ResolveLocationCatalogIdAsync(db, companyId, target, cancellationToken);
+            if (!IsLocationInScope(locationCatalogId, allowedLocations))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["targetLocation"] = ["Hedef konum, etkin şirket konum kataloğunda ve konum erişim yetkinizin içinde olmalıdır. Hiçbir kayıt değiştirilmedi."] });
             var now = DateTimeOffset.UtcNow;
             var notes = request.Notes?.Trim();
             foreach (var asset in assets)
@@ -2433,6 +3002,10 @@ public static class AssetEndpoints
             DateOnly? to, string? kind, int? limit, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            var scopedEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId,
+                CurrentUserId(user)!.Value, cancellationToken);
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
             var start = from ?? today.AddDays(-30);
             var end = to ?? today.AddDays(90);
@@ -2451,7 +3024,8 @@ public static class AssetEndpoints
                     from maintenance in db.AssetMaintenances.AsNoTracking()
                     join asset in db.Assets.AsNoTracking() on new { maintenance.CompanyId, maintenance.AssetId } equals new { asset.CompanyId, AssetId = asset.Id }
                     where maintenance.CompanyId == companyId && maintenance.Status == "Scheduled" &&
-                        maintenance.PlannedOn >= start && maintenance.PlannedOn <= end
+                        maintenance.PlannedOn >= start && maintenance.PlannedOn <= end &&
+                        (allowedLocations == null || asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value))
                     select new { maintenance, asset };
                 total += await maintenanceQuery.CountAsync(cancellationToken);
                 var maintenanceEvents = await maintenanceQuery.OrderBy(item => item.maintenance.PlannedOn).ThenBy(item => item.asset.AssetTag).ThenBy(item => item.maintenance.Id)
@@ -2464,6 +3038,15 @@ public static class AssetEndpoints
             {
                 var licenseQuery = db.SoftwareLicenses.AsNoTracking()
                     .Where(license => license.CompanyId == companyId && license.ExpirationDate >= start && license.ExpirationDate <= end);
+                if (allowedLocations is not null)
+                    licenseQuery = licenseQuery.Where(license => db.SoftwareLicenseAssignments.Any(assignment =>
+                        assignment.CompanyId == companyId && assignment.LicenseId == license.Id &&
+                        (assignment.EmployeeId != null || assignment.AssetId != null) &&
+                        (assignment.EmployeeId == null || scopedEmployees.Any(employee => employee.CompanyId == companyId &&
+                            employee.Id == assignment.EmployeeId)) &&
+                        (assignment.AssetId == null || db.Assets.Any(asset => asset.CompanyId == companyId &&
+                            asset.Id == assignment.AssetId && asset.LocationCatalogId.HasValue &&
+                            allowedLocations.Contains(asset.LocationCatalogId.Value)))));
                 total += await licenseQuery.CountAsync(cancellationToken);
                 var licenseEvents = await licenseQuery.OrderBy(item => item.ExpirationDate).ThenBy(item => item.Name).ThenBy(item => item.Id)
                     .Take(maxItems).Select(license => new CalendarEntry("license", license.ExpirationDate!.Value, null, license.Id,
@@ -2474,6 +3057,8 @@ public static class AssetEndpoints
             {
                 var warrantyQuery = db.Assets.AsNoTracking()
                     .Where(asset => asset.CompanyId == companyId && asset.WarrantyExpiresAt >= start && asset.WarrantyExpiresAt <= end);
+                if (allowedLocations is not null)
+                    warrantyQuery = warrantyQuery.Where(asset => asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value));
                 total += await warrantyQuery.CountAsync(cancellationToken);
                 var warrantyEvents = await warrantyQuery.OrderBy(asset => asset.WarrantyExpiresAt).ThenBy(asset => asset.AssetTag).ThenBy(asset => asset.Id)
                     .Take(maxItems).Select(asset => new CalendarEntry("warranty", asset.WarrantyExpiresAt!.Value, asset.Id, asset.Id,
@@ -2486,6 +3071,8 @@ public static class AssetEndpoints
                 var auditQuery = db.Assets.AsNoTracking()
                     .Where(asset => asset.CompanyId == companyId && asset.Status != AssetStatuses.Archived &&
                         asset.NextAuditOn >= start && asset.NextAuditOn <= end);
+                if (allowedLocations is not null)
+                    auditQuery = auditQuery.Where(asset => asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value));
                 total += await auditQuery.CountAsync(cancellationToken);
                 var auditEvents = await auditQuery.OrderBy(asset => asset.NextAuditOn).ThenBy(asset => asset.AssetTag).ThenBy(asset => asset.Id)
                     .Take(maxItems).Select(asset => new CalendarEntry("audit", asset.NextAuditOn!.Value, asset.Id, asset.Id,
@@ -2498,11 +3085,14 @@ public static class AssetEndpoints
                 var returnQuery = db.Assets.AsNoTracking()
                     .Where(asset => asset.CompanyId == companyId && asset.Status == AssetStatuses.Deployed &&
                         asset.AssignedEmployeeId != null && asset.ExpectedReturnOn >= start && asset.ExpectedReturnOn <= end);
+                if (allowedLocations is not null)
+                    returnQuery = returnQuery.Where(asset => asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value) &&
+                        scopedEmployees.Any(employee => employee.CompanyId == companyId && employee.Id == asset.AssignedEmployeeId));
                 total += await returnQuery.CountAsync(cancellationToken);
                 var returnEvents = await returnQuery.OrderBy(asset => asset.ExpectedReturnOn).ThenBy(asset => asset.AssetTag).ThenBy(asset => asset.Id)
                     .Take(maxItems).Select(asset => new CalendarEntry("return", asset.ExpectedReturnOn!.Value, asset.Id, asset.Id,
                         asset.AssetTag + " · " + asset.Name,
-                        db.Employees.Where(employee => employee.CompanyId == companyId && employee.Id == asset.AssignedEmployeeId)
+                        scopedEmployees.Where(employee => employee.CompanyId == companyId && employee.Id == asset.AssignedEmployeeId)
                             .Select(employee => employee.DisplayName).FirstOrDefault(), "ExpectedReturn", null))
                     .ToListAsync(cancellationToken);
                 events.AddRange(returnEvents);
@@ -2511,9 +3101,10 @@ public static class AssetEndpoints
             {
                 var reservationQuery = from reservation in db.AssetReservations.AsNoTracking()
                                       join asset in db.Assets.AsNoTracking() on new { reservation.CompanyId, AssetId = reservation.AssetId } equals new { asset.CompanyId, AssetId = asset.Id }
-                                      join employee in db.Employees.AsNoTracking() on new { reservation.CompanyId, reservation.EmployeeId } equals new { employee.CompanyId, EmployeeId = employee.Id }
+                                      join employee in scopedEmployees.AsNoTracking() on new { reservation.CompanyId, reservation.EmployeeId } equals new { employee.CompanyId, EmployeeId = employee.Id }
                                       where reservation.CompanyId == companyId && reservation.Status == "Approved" &&
-                                            reservation.StartsOn >= start && reservation.StartsOn <= end && asset.DeletedAt == null
+                        reservation.StartsOn >= start && reservation.StartsOn <= end && asset.DeletedAt == null &&
+                        (allowedLocations == null || asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value))
                                       select new { reservation, asset, employee };
                 var role = user.FindFirstValue("company_role");
                 var reviewer = role is "owner" or "admin" or "asset_manager" or "asset_operator";
@@ -2551,11 +3142,16 @@ public static class AssetEndpoints
             DateOnly? from, DateOnly? to, int? page, int? pageSize, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            var scopedEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
+
             if (from.HasValue && to.HasValue && from > to)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Başlangıç tarihi bitiş tarihinden sonra olamaz."] });
             if (q?.Length > 120)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
-            var query = from maintenance in db.AssetMaintenances.AsNoTracking()
+            var scopedMaintenances = db.AssetMaintenances.AsNoTracking().Where(x => x.CompanyId == companyId)
+                .InAssetReadScope(db, companyId, employeeScope);
+            var query = from maintenance in scopedMaintenances
                         join asset in db.Assets.AsNoTracking() on new { maintenance.CompanyId, maintenance.AssetId } equals new { asset.CompanyId, AssetId = asset.Id }
                         where maintenance.CompanyId == companyId
                         select new { maintenance, asset };
@@ -2574,7 +3170,7 @@ public static class AssetEndpoints
                     (x.maintenance.Description != null && x.maintenance.Description.Contains(term)) ||
                     (x.maintenance.Notes != null && x.maintenance.Notes.Contains(term)) ||
                     (x.maintenance.CompletionNotes != null && x.maintenance.CompletionNotes.Contains(term)) ||
-                    db.Employees.Any(employee => employee.CompanyId == companyId && employee.Id == x.maintenance.ResponsibleEmployeeId &&
+                    scopedEmployees.Any(employee => employee.CompanyId == companyId && employee.Id == x.maintenance.ResponsibleEmployeeId &&
                         (employee.DisplayName.Contains(term) || employee.EmployeeNumber.Contains(term))) ||
                     x.asset.AssetTag.Contains(term) || x.asset.Name.Contains(term) ||
                     (x.asset.SerialNumber != null && x.asset.SerialNumber.Contains(term)) ||
@@ -2593,10 +3189,13 @@ public static class AssetEndpoints
                     x.maintenance.Description, x.maintenance.PlannedOn, x.maintenance.StartedOn, x.maintenance.CompletedOn,
                     x.maintenance.Status, x.maintenance.Cost, x.maintenance.Currency,
                     x.maintenance.Notes, x.maintenance.CompletionNotes,
-                    x.maintenance.ResponsibleEmployeeId,
-                    responsibleEmployeeName = db.Employees.Where(employee => employee.CompanyId == companyId && employee.Id == x.maintenance.ResponsibleEmployeeId)
+                    responsibleEmployeeId = scopedEmployees.Where(employee => employee.CompanyId == companyId && employee.Id == x.maintenance.ResponsibleEmployeeId)
+                        .Select(employee => (Guid?)employee.Id).FirstOrDefault(),
+                    responsibleEmployeeName = scopedEmployees.Where(employee => employee.CompanyId == companyId && employee.Id == x.maintenance.ResponsibleEmployeeId)
                         .Select(employee => employee.DisplayName).FirstOrDefault(),
-                    actorName = db.Users.Where(actor => actor.Id == x.maintenance.ActorUserId)
+                    actorName = db.Users.Where(actor => actor.Id == x.maintenance.ActorUserId &&
+                        (!employeeScope.IsRestricted || !db.CompanyMemberships.Any(membership => membership.CompanyId == companyId &&
+                            membership.UserId == actor.Id && membership.EmployeeId.HasValue && !scopedEmployees.Any(employee => employee.Id == membership.EmployeeId.Value))))
                         .Select(actor => actor.DisplayName).FirstOrDefault()
                 }).ToListAsync(cancellationToken);
             return Results.Ok(new { rows, total, page = pageNumber, pageSize = size, pageCount = Math.Max(1, pageCount) });
@@ -2607,6 +3206,9 @@ public static class AssetEndpoints
             CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) { context.Response.StatusCode = 403; return; }
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            var scopedEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
+
             if (q?.Length > 120 || (from.HasValue && to.HasValue && from > to) ||
                 (!string.IsNullOrWhiteSpace(status) && status is not ("Scheduled" or "InProgress" or "Completed" or "Cancelled")))
             {
@@ -2615,7 +3217,9 @@ public static class AssetEndpoints
                 }).ExecuteAsync(context);
                 return;
             }
-            var query = from maintenance in db.AssetMaintenances.AsNoTracking()
+            var scopedMaintenances = db.AssetMaintenances.AsNoTracking().Where(x => x.CompanyId == companyId)
+                .InAssetReadScope(db, companyId, employeeScope);
+            var query = from maintenance in scopedMaintenances
                         join asset in db.Assets.AsNoTracking() on new { maintenance.CompanyId, maintenance.AssetId } equals new { asset.CompanyId, AssetId = asset.Id }
                         where maintenance.CompanyId == companyId
                         select new { maintenance, asset };
@@ -2632,7 +3236,7 @@ public static class AssetEndpoints
                     (x.maintenance.Description != null && x.maintenance.Description.Contains(term)) ||
                     (x.maintenance.Notes != null && x.maintenance.Notes.Contains(term)) ||
                     (x.maintenance.CompletionNotes != null && x.maintenance.CompletionNotes.Contains(term)) ||
-                    db.Employees.Any(employee => employee.CompanyId == companyId && employee.Id == x.maintenance.ResponsibleEmployeeId &&
+                    scopedEmployees.Any(employee => employee.CompanyId == companyId && employee.Id == x.maintenance.ResponsibleEmployeeId &&
                         (employee.DisplayName.Contains(term) || employee.EmployeeNumber.Contains(term))) ||
                     x.asset.AssetTag.Contains(term) || x.asset.Name.Contains(term) ||
                     (x.asset.SerialNumber != null && x.asset.SerialNumber.Contains(term)) ||
@@ -2647,9 +3251,12 @@ public static class AssetEndpoints
                 .Select(x => new { x.asset.AssetTag, AssetName = x.asset.Name, x.asset.Location,
                     x.maintenance.MaintenanceType, x.maintenance.Supplier, x.maintenance.Status,
                     x.maintenance.PlannedOn, x.maintenance.StartedOn, x.maintenance.CompletedOn, x.maintenance.Cost, x.maintenance.Currency,
-                    ResponsibleEmployeeName = db.Employees.Where(employee => employee.CompanyId == companyId && employee.Id == x.maintenance.ResponsibleEmployeeId)
+                    ResponsibleEmployeeName = scopedEmployees.Where(employee => employee.CompanyId == companyId && employee.Id == x.maintenance.ResponsibleEmployeeId)
                         .Select(employee => employee.DisplayName).FirstOrDefault(),
-                    ActorName = db.Users.Where(actor => actor.Id == x.maintenance.ActorUserId).Select(actor => actor.DisplayName).FirstOrDefault(),
+                    ActorName = db.Users.Where(actor => actor.Id == x.maintenance.ActorUserId &&
+                        (!employeeScope.IsRestricted || !db.CompanyMemberships.Any(membership => membership.CompanyId == companyId &&
+                            membership.UserId == actor.Id && membership.EmployeeId.HasValue && !scopedEmployees.Any(employee => employee.Id == membership.EmployeeId.Value))))
+                        .Select(actor => actor.DisplayName).FirstOrDefault(),
                     x.maintenance.Description, x.maintenance.Notes, x.maintenance.CompletionNotes });
             await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
             {
@@ -2669,19 +3276,27 @@ public static class AssetEndpoints
             AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
-            if (!await db.Assets.AnyAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken))
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            var scopedEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+
+            if (!await db.Assets.AnyAsync(x => x.CompanyId == companyId && x.Id == id &&
+                    (allowedLocations == null || x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value)), cancellationToken))
                 return Results.NotFound();
-            var rows = await db.AssetMaintenances.AsNoTracking()
-                .Where(x => x.CompanyId == companyId && x.AssetId == id)
+            var rows = await db.AssetMaintenances.AsNoTracking().Where(x => x.CompanyId == companyId && x.AssetId == id)
+                .InAssetReadScope(db, companyId, employeeScope)
                 .OrderByDescending(x => x.PlannedOn ?? x.StartedOn).ThenByDescending(x => x.CreatedAt)
                 .Select(x => new
                 {
                     x.Id, x.MaintenanceType, x.Supplier, x.Description, x.PlannedOn, x.StartedOn, x.CompletedOn,
                     x.Status, x.Cost, x.Currency, x.Notes, x.CompletionNotes, x.CreatedAt,
-                    x.ResponsibleEmployeeId,
-                    responsibleEmployeeName = db.Employees.Where(employee => employee.CompanyId == companyId && employee.Id == x.ResponsibleEmployeeId)
+                    responsibleEmployeeId = scopedEmployees.Where(employee => employee.CompanyId == companyId && employee.Id == x.ResponsibleEmployeeId)
+                        .Select(employee => (Guid?)employee.Id).FirstOrDefault(),
+                    responsibleEmployeeName = scopedEmployees.Where(employee => employee.CompanyId == companyId && employee.Id == x.ResponsibleEmployeeId)
                         .Select(employee => employee.DisplayName).FirstOrDefault(),
-                    actorName = db.Users.Where(actor => actor.Id == x.ActorUserId)
+                    actorName = db.Users.Where(actor => actor.Id == x.ActorUserId &&
+                        (!employeeScope.IsRestricted || !db.CompanyMemberships.Any(membership => membership.CompanyId == companyId &&
+                            membership.UserId == actor.Id && membership.EmployeeId.HasValue && !scopedEmployees.Any(employee => employee.Id == membership.EmployeeId.Value))))
                         .Select(actor => actor.DisplayName).FirstOrDefault()
                 }).ToListAsync(cancellationToken);
             return Results.Ok(rows);
@@ -2691,6 +3306,9 @@ public static class AssetEndpoints
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            var scopedEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
+
             var type = request.MaintenanceType?.Trim();
             var supplier = request.Supplier?.Trim();
             var description = request.Description?.Trim();
@@ -2701,7 +3319,7 @@ public static class AssetEndpoints
                 request.PlannedOn > today.AddYears(5) || request.Cost is < 0 or > 1_000_000_000m || !IsCurrency(request.Currency))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["maintenance"] = ["Bakım türü, gelecekteki plan tarihi, para birimi veya alan uzunluklarını kontrol edin."] });
             if (request.ResponsibleEmployeeId is Guid scheduledEmployeeId &&
-                !await db.Employees.AnyAsync(employee => employee.CompanyId == companyId && employee.Id == scheduledEmployeeId && employee.IsActive, cancellationToken))
+                !await scopedEmployees.AnyAsync(employee => employee.CompanyId == companyId && employee.Id == scheduledEmployeeId && employee.IsActive, cancellationToken))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["responsibleEmployeeId"] = ["Sorumlu çalışan etkin ve bu şirkete bağlı olmalıdır."] });
 
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
@@ -2709,6 +3327,8 @@ public static class AssetEndpoints
                     $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} AND \"DeletedAt\" IS NULL FOR UPDATE").IgnoreQueryFilters()
                 .SingleOrDefaultAsync(cancellationToken);
             if (asset is null) return Results.NotFound();
+            if (!await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, CurrentUserId(user)!.Value, asset.LocationCatalogId, cancellationToken))
+                return Results.NotFound();
             if (asset.Status is not (AssetStatuses.Available or AssetStatuses.Deployed))
                 return Results.Conflict(new { message = "Yalnızca kullanılabilir veya zimmetli varlık için bakım planlanabilir." });
             if (await db.AssetMaintenances.AnyAsync(x => x.CompanyId == companyId && x.AssetId == id && (x.Status == "InProgress" || x.Status == "Scheduled"), cancellationToken))
@@ -2744,11 +3364,15 @@ public static class AssetEndpoints
             async (Guid assetId, Guid maintenanceId, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
             {
                 if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+                var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId,
+                    CurrentUserId(user)!.Value, cancellationToken);
+
                 await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
                 var maintenance = await db.AssetMaintenances.FromSqlInterpolated(
                         $"SELECT * FROM \"AssetMaintenances\" WHERE \"CompanyId\" = {companyId} AND \"AssetId\" = {assetId} AND \"Id\" = {maintenanceId} FOR UPDATE")
                     .SingleOrDefaultAsync(cancellationToken);
                 if (maintenance is null) return Results.NotFound();
+                if (!await MaintenanceLocationAccess.CanAccessAsync(db, companyId, maintenanceId, employeeScope, cancellationToken)) return Results.NotFound();
                 if (maintenance.Status != "Scheduled") return Results.Conflict(new { message = "Yalnızca planlanmış bakım başlatılabilir." });
                 var asset = await db.Assets.FromSqlInterpolated(
                         $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {assetId} AND \"DeletedAt\" IS NULL FOR UPDATE").IgnoreQueryFilters()
@@ -2772,11 +3396,15 @@ public static class AssetEndpoints
             async (Guid assetId, Guid maintenanceId, ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
             {
                 if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+                var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId,
+                    CurrentUserId(user)!.Value, cancellationToken);
+
                 await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
                 var maintenance = await db.AssetMaintenances.FromSqlInterpolated(
                         $"SELECT * FROM \"AssetMaintenances\" WHERE \"CompanyId\" = {companyId} AND \"AssetId\" = {assetId} AND \"Id\" = {maintenanceId} FOR UPDATE")
                     .SingleOrDefaultAsync(cancellationToken);
                 if (maintenance is null) return Results.NotFound();
+                if (!await MaintenanceLocationAccess.CanAccessAsync(db, companyId, maintenanceId, employeeScope, cancellationToken)) return Results.NotFound();
                 if (maintenance.Status != "Scheduled") return Results.Conflict(new { message = "Yalnızca planlanmış bakım iptal edilebilir." });
                 maintenance.Status = "Cancelled"; maintenance.UpdatedAt = DateTimeOffset.UtcNow;
                 db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = assetId,
@@ -2791,6 +3419,9 @@ public static class AssetEndpoints
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            var scopedEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
+
             var type = request.MaintenanceType?.Trim();
             var supplier = request.Supplier?.Trim();
             var description = request.Description?.Trim();
@@ -2801,7 +3432,7 @@ public static class AssetEndpoints
                 request.Cost is < 0 or > 1_000_000_000m || !IsCurrency(request.Currency))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["maintenance"] = ["Bakım türü, tarih, para birimi veya alan uzunluklarını kontrol edin."] });
             if (request.ResponsibleEmployeeId is Guid activeEmployeeId &&
-                !await db.Employees.AnyAsync(employee => employee.CompanyId == companyId && employee.Id == activeEmployeeId && employee.IsActive, cancellationToken))
+                !await scopedEmployees.AnyAsync(employee => employee.CompanyId == companyId && employee.Id == activeEmployeeId && employee.IsActive, cancellationToken))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["responsibleEmployeeId"] = ["Sorumlu çalışan etkin ve bu şirkete bağlı olmalıdır."] });
 
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
@@ -2809,6 +3440,8 @@ public static class AssetEndpoints
                     $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} AND \"DeletedAt\" IS NULL FOR UPDATE").IgnoreQueryFilters()
                 .SingleOrDefaultAsync(cancellationToken);
             if (asset is null) return Results.NotFound();
+            if (!await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, CurrentUserId(user)!.Value, asset.LocationCatalogId, cancellationToken))
+                return Results.NotFound();
             if (asset.Status is not (AssetStatuses.Available or AssetStatuses.Maintenance) || asset.AssignedEmployeeId is not null)
                 return Results.Conflict(new { message = "Bakım başlatmak için varlık kullanılabilir durumda, zimmet dışı olmalıdır." });
             if (await db.AssetMaintenances.AnyAsync(x => x.CompanyId == companyId && x.AssetId == id && (x.Status == "InProgress" || x.Status == "Scheduled"), cancellationToken))
@@ -2845,6 +3478,9 @@ public static class AssetEndpoints
                 ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
             {
                 if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+                var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId,
+                    CurrentUserId(user)!.Value, cancellationToken);
+
                 if (request.CompletedOn == default || request.CompletedOn > DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)) || request.Notes?.Length > 2000)
                     return Results.ValidationProblem(new Dictionary<string, string[]> { ["completion"] = ["Tamamlanma tarihi veya not uzunluğunu kontrol edin."] });
 
@@ -2853,6 +3489,7 @@ public static class AssetEndpoints
                         $"SELECT * FROM \"AssetMaintenances\" WHERE \"CompanyId\" = {companyId} AND \"AssetId\" = {assetId} AND \"Id\" = {maintenanceId} FOR UPDATE")
                     .SingleOrDefaultAsync(cancellationToken);
                 if (maintenance is null) return Results.NotFound();
+                if (!await MaintenanceLocationAccess.CanAccessAsync(db, companyId, maintenanceId, employeeScope, cancellationToken)) return Results.NotFound();
                 if (maintenance.Status != "InProgress") return Results.Conflict(new { message = "Bu bakım kaydı zaten kapatılmış." });
                 if (request.CompletedOn < maintenance.StartedOn)
                     return Results.ValidationProblem(new Dictionary<string, string[]> { ["completedOn"] = ["Tamamlanma tarihi başlangıç tarihinden önce olamaz."] });
@@ -2877,35 +3514,50 @@ public static class AssetEndpoints
             CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var actorId = CurrentUserId(user);
+            var allowedLocations = actorId is Guid userId
+                ? await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, userId, cancellationToken)
+                : [];
             switch (kind.ToLowerInvariant())
             {
                 case "categories":
                     return Results.Ok((object)await db.AssetCategories.AsNoTracking().Where(x => x.CompanyId == companyId)
                         .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name,
-                            AssetCount = db.Assets.Count(a => a.CompanyId == companyId && a.CategoryId == x.Id),
+                            AssetCount = db.Assets.Count(a => a.CompanyId == companyId && a.CategoryId == x.Id &&
+                                (allowedLocations == null || a.LocationCatalogId.HasValue && allowedLocations.Contains(a.LocationCatalogId.Value))),
                             ModelCount = db.AssetModels.Count(model => model.CompanyId == companyId && model.CategoryId == x.Id) }).ToListAsync(cancellationToken));
                 case "brands":
                     return Results.Ok((object)await db.AssetBrands.AsNoTracking().Where(x => x.CompanyId == companyId)
                         .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name,
                             x.Website, x.SupportUrl, x.WarrantyUrl, x.SupportPhone, x.SupportEmail,
                             HasLogo = x.LogoFileName != null,
-                            AssetCount = db.Assets.Count(a => a.CompanyId == companyId && a.BrandId == x.Id),
+                            AssetCount = db.Assets.Count(a => a.CompanyId == companyId && a.BrandId == x.Id &&
+                                (allowedLocations == null || a.LocationCatalogId.HasValue && allowedLocations.Contains(a.LocationCatalogId.Value))),
                             ModelCount = db.AssetModels.Count(m => m.CompanyId == companyId && m.BrandId == x.Id) + db.AccessoryModels.Count(m => m.CompanyId == companyId && m.BrandId == x.Id) }).ToListAsync(cancellationToken));
                 case "models":
-                    return Results.Ok((object)await db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId)
+                    var models = db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId);
+                    if (allowedLocations is not null)
+                        models = models.Where(model => db.Assets.Any(asset => asset.CompanyId == companyId &&
+                            asset.ModelId == model.Id && asset.DeletedAt == null && asset.LocationCatalogId.HasValue &&
+                            allowedLocations.Contains(asset.LocationCatalogId.Value)));
+                    return Results.Ok((object)await models
                         .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name, x.ModelNumber, x.BrandId,
                             BrandName = db.AssetBrands.Where(b => b.CompanyId == companyId && b.Id == x.BrandId).Select(b => b.Name).FirstOrDefault(),
                             x.CategoryId, CategoryName = db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault(),
                             HasPhoto = x.PhotoFileName != null,
-                            AttachmentCount = db.AssetModelAttachments.Count(a => a.CompanyId == companyId && a.ModelId == x.Id),
+                            AttachmentCount = allowedLocations == null || db.Assets.Any(asset => asset.CompanyId == companyId &&
+                                asset.ModelId == x.Id && asset.DeletedAt == null && asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value))
+                                ? db.AssetModelAttachments.Count(a => a.CompanyId == companyId && a.ModelId == x.Id) : 0,
                             x.DepreciationMonths, x.DepreciationMinimum, x.DepreciationMinimumType, x.DepreciationMethod,
-                            AssetCount = db.Assets.Count(a => a.CompanyId == companyId && a.ModelId == x.Id) }).ToListAsync(cancellationToken));
+                            AssetCount = db.Assets.Count(a => a.CompanyId == companyId && a.ModelId == x.Id &&
+                                a.DeletedAt == null && (allowedLocations == null || a.LocationCatalogId.HasValue && allowedLocations.Contains(a.LocationCatalogId.Value))) }).ToListAsync(cancellationToken));
                 case "accessory-models":
                     return Results.Ok((object)await db.AccessoryModels.AsNoTracking().Where(x => x.CompanyId == companyId)
                         .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name, x.BrandId,
                             BrandName = db.AssetBrands.Where(b => b.CompanyId == companyId && b.Id == x.BrandId).Select(b => b.Name).FirstOrDefault(),
                             HasPhoto = x.PhotoFileName != null,
-                            AccessoryCount = db.Accessories.Count(a => a.CompanyId == companyId && a.ModelId == x.Id) }).ToListAsync(cancellationToken));
+                            AccessoryCount = db.Accessories.Count(a => a.CompanyId == companyId && a.ModelId == x.Id &&
+                                (allowedLocations == null || a.LocationCatalogId.HasValue && allowedLocations.Contains(a.LocationCatalogId.Value))) }).ToListAsync(cancellationToken));
                 default:
                     return Results.NotFound();
             }
@@ -2915,13 +3567,18 @@ public static class AssetEndpoints
             AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            var actorId = CurrentUserId(user);
+            if (actorId is null) return Results.Forbid();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId.Value, cancellationToken);
             object? item = kind.ToLowerInvariant() switch
             {
                 "categories" => await db.AssetCategories.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
                     .Select(x => new { x.Id, x.Name }).SingleOrDefaultAsync(cancellationToken),
                 "brands" => await db.AssetBrands.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
                     .Select(x => new { x.Id, x.Name, x.Website, x.SupportUrl, x.WarrantyUrl, x.SupportPhone, x.SupportEmail, HasLogo = x.LogoFileName != null }).SingleOrDefaultAsync(cancellationToken),
-                "models" => await db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
+                "models" => await db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id &&
+                        (allowedLocations == null || db.Assets.Any(asset => asset.CompanyId == companyId && asset.ModelId == x.Id &&
+                            asset.DeletedAt == null && asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value))))
                     .Select(x => new { x.Id, x.Name, x.BrandId, x.CategoryId, HasPhoto = x.PhotoFileName != null, x.DepreciationMonths, x.DepreciationMinimum, x.DepreciationMinimumType, x.DepreciationMethod }).SingleOrDefaultAsync(cancellationToken),
                 "accessory-models" => await db.AccessoryModels.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
                     .Select(x => new { x.Id, x.Name, x.BrandId, HasPhoto = x.PhotoFileName != null }).SingleOrDefaultAsync(cancellationToken),
@@ -2934,6 +3591,7 @@ public static class AssetEndpoints
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (await IsLocationScopeRestrictedAsync(user, db, companyId, cancellationToken)) return Results.Forbid();
             var name = request.Name?.Trim();
             if (string.IsNullOrWhiteSpace(name) || name.Length > 120)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Ad zorunludur ve en fazla 120 karakter olabilir."] });
@@ -2971,6 +3629,7 @@ public static class AssetEndpoints
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (await IsLocationScopeRestrictedAsync(user, db, companyId, cancellationToken)) return Results.Forbid();
             if (!ValidateDepreciation(request.Months, request.Minimum, request.MinimumType, request.Method, out var errors))
                 return Results.ValidationProblem(errors);
             var model = await db.AssetModels.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
@@ -2993,6 +3652,7 @@ public static class AssetEndpoints
             ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (await IsLocationScopeRestrictedAsync(user, db, companyId, cancellationToken)) return Results.Forbid();
             var name = request.Name?.Trim();
             if (string.IsNullOrWhiteSpace(name) || name.Length > 120)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Ad zorunludur ve en fazla 120 karakter olabilir."] });
@@ -3044,6 +3704,7 @@ public static class AssetEndpoints
             AppDbContext db, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (await IsLocationScopeRestrictedAsync(user, db, companyId, cancellationToken)) return Results.Forbid();
             var normalizedKind = kind.ToLowerInvariant();
             string? deletedName = null;
             switch (normalizedKind)
@@ -3080,7 +3741,7 @@ public static class AssetEndpoints
             return Results.NoContent();
         }).RequireAuthorization("asset.write");
 
-        api.MapGet("/assets/export-all.csv", async ([FromQuery] string? q, [FromQuery] string? status,
+        var exportAllAssets = async ([FromQuery] string? q, [FromQuery] string? status,
             [FromQuery] Guid? categoryId, [FromQuery] Guid? brandId, [FromQuery] Guid? modelId,
             [FromQuery] Guid? employeeId, [FromQuery] string? location, [FromQuery] string? warranty,
             [FromQuery] string? sortBy, [FromQuery] string? sortDirection, [FromQuery] bool? byod, [FromQuery] string? columns,
@@ -3100,13 +3761,17 @@ public static class AssetEndpoints
                 return;
             }
 
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            var scopedEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
             var query = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, CurrentUserId(user)!.Value, cancellationToken);
+            if (allowedLocations is not null) query = query.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
             if (byod.HasValue) query = query.Where(x => x.IsByod == byod.Value);
             if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.Status == status.Trim());
             if (categoryId is Guid selectedCategory) query = query.Where(x => x.CategoryId == selectedCategory);
             if (brandId is Guid selectedBrand) query = query.Where(x => x.BrandId == selectedBrand);
             if (modelId is Guid selectedModel) query = query.Where(x => x.ModelId == selectedModel);
-            if (employeeId is Guid selectedEmployee) query = query.Where(x => x.AssignedEmployeeId == selectedEmployee);
+            if (employeeId is Guid selectedEmployee) query = query.Where(x => x.AssignedEmployeeId == selectedEmployee && scopedEmployees.Any(employee => employee.Id == selectedEmployee));
             if (!string.IsNullOrWhiteSpace(location))
             {
                 var selectedLocation = location.Trim();
@@ -3139,21 +3804,22 @@ public static class AssetEndpoints
                     (x.SerialNumber != null && x.SerialNumber.Contains(term)) ||
                     (x.CustomFieldsJson != null && (x.CustomFieldsJson.Contains(term) || x.CustomFieldsJson.Contains(escapedCustomFieldTerm))) ||
                     (x.Location != null && x.Location.Contains(term)) ||
-                    db.Employees.Any(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId &&
+                    scopedEmployees.Any(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId &&
                         (e.DisplayName.Contains(term) || e.EmployeeNumber.Contains(term))) ||
                     db.AssetCategories.Any(c => c.CompanyId == companyId && c.Id == x.CategoryId && c.Name.Contains(term)) ||
                     db.AssetBrands.Any(b => b.CompanyId == companyId && b.Id == x.BrandId && b.Name.Contains(term)) ||
                     db.AssetModels.Any(m => m.CompanyId == companyId && m.Id == x.ModelId && m.Name.Contains(term)));
             }
 
-            var ordered = OrderAssets(query, db, companyId, sortBy, sortDirection);
+            var ordered = OrderAssets(query, db, companyId, sortBy, sortDirection, scopedEmployees);
             if (ordered is null)
             {
                 await Results.ValidationProblem(new Dictionary<string, string[]> { ["sortBy"] = ["Sıralama alanı veya yönü desteklenmiyor."] }).ExecuteAsync(context);
                 return;
             }
             var total = await query.CountAsync(cancellationToken);
-            if (columns is not null && total > 50000)
+            var isXlsx = context.Request.Path.Value?.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase) == true;
+            if ((columns is not null || isXlsx) && total > 50000)
             {
                 await Results.ValidationProblem(new Dictionary<string, string[]> {
                     ["columns"] = ["Özel rapor tarayıcı belleğini korumak için en fazla 50.000 satır indirebilir; aramayı veya filtreleri daraltın."]
@@ -3168,7 +3834,9 @@ public static class AssetEndpoints
                 ("tag", "Etiket"), ("name", "Ad"), ("status", "Durum"), ("category", "Kategori"),
                 ("brand", "Marka"), ("model", "Model"), ("serial", "Seri No"), ("location", "Konum"),
                 ("employeeNumber", "Personel No"), ("employeeName", "Çalışan"), ("purchaseDate", "Alış Tarihi"),
-                ("warrantyExpiresAt", "Garanti Bitiş Tarihi"), ("purchaseCost", "Alış Bedeli"),
+                ("warrantyExpiresAt", "Garanti Bitiş Tarihi"), ("insuranceProvider", "Sigorta Şirketi"),
+                ("insurancePolicyNumber", "Poliçe Numarası"), ("insuranceExpiresAt", "Sigorta Bitiş Tarihi"),
+                ("purchaseCost", "Alış Bedeli"),
                 ("currency", "Para Birimi"), ("parentAssetTag", "Üst Varlık Etiketi"), ("isByod", "BYOD"),
                 ("modelNumber", "Model Numarası"), ("defaultLocation", "Varsayılan Konum"), ("sourceCompany", "Kaynak Şirket"), ("notes", "Notlar")
             }.Concat(customFields.Select(field => (Key: $"custom:{field.Key}", Header: $"Özel alan: {field.Key}"))).ToArray();
@@ -3187,12 +3855,16 @@ public static class AssetEndpoints
             }
             var selectedColumns = selectedKeys.Select(key => columnsByKey[key]).ToArray();
             context.Response.StatusCode = StatusCodes.Status200OK;
-            context.Response.ContentType = "text/csv; charset=utf-8";
-            context.Response.Headers["Content-Disposition"] = $"attachment; filename=envantertr-varliklar-{DateTime.UtcNow:yyyyMMdd}.csv";
             context.Response.Headers["Cache-Control"] = "no-store";
             context.Response.Headers["X-Total-Count"] = total.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            await using var writer = new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
-            await writer.WriteLineAsync(string.Join(';', selectedColumns.Select(column => CsvCell(column.Header))).AsMemory(), cancellationToken);
+            using var workbook = isXlsx ? new XlsxExportWriter(selectedColumns.Select(column => column.Header).ToArray()) : null;
+            await using var writer = isXlsx ? null : new StreamWriter(context.Response.Body, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 16 * 1024, leaveOpen: true);
+            if (writer is not null)
+            {
+                context.Response.ContentType = "text/csv; charset=utf-8";
+                context.Response.Headers["Content-Disposition"] = $"attachment; filename=envantertr-varliklar-{DateTime.UtcNow:yyyyMMdd}.csv";
+                await writer.WriteLineAsync(string.Join(';', selectedColumns.Select(column => CsvCell(column.Header))).AsMemory(), cancellationToken);
+            }
             var sourceCompanyName = await db.Companies.AsNoTracking().Where(company => company.Id == companyId)
                 .Select(company => company.Name).SingleAsync(cancellationToken);
             var defaultLocationPaths = (await GetActiveLocationPathMapAsync(db, companyId, cancellationToken))
@@ -3205,11 +3877,12 @@ public static class AssetEndpoints
                 x.SerialNumber, x.Location,
                 db.Assets.Where(parent => parent.CompanyId == companyId && parent.Id == x.ParentAssetId)
                     .Select(parent => parent.AssetTag).FirstOrDefault(),
-                db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId)
+                scopedEmployees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId)
                     .Select(e => e.EmployeeNumber).FirstOrDefault(),
-                db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId)
+                scopedEmployees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId)
                     .Select(e => e.DisplayName).FirstOrDefault(),
-                x.PurchaseDate, x.WarrantyExpiresAt, x.PurchaseCost, x.Currency, x.CustomFieldsJson, x.IsByod,
+                x.PurchaseDate, x.WarrantyExpiresAt, x.InsuranceProvider, x.InsurancePolicyNumber, x.InsuranceExpiresAt,
+                x.PurchaseCost, x.Currency, x.CustomFieldsJson, x.IsByod,
                 db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.ModelNumber).FirstOrDefault(),
                 x.DefaultLocationCatalogId,
                 sourceCompanyName, x.Notes));
@@ -3219,7 +3892,7 @@ public static class AssetEndpoints
                 var customValues = AssetCustomFieldEndpoints.ExportValues(row.CustomFieldsJson, customFields).ToArray();
                 var customValuesByKey = customFields.Select((field, index) => (field.Key, Value: customValues[index]))
                     .ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal);
-                var line = string.Join(';', selectedColumns.Select(column => CsvCell(column.Key switch
+                var values = selectedColumns.Select(column => column.Key switch
                 {
                     "tag" => row.AssetTag, "name" => row.Name, "status" => row.Status,
                     "category" => row.Category, "brand" => row.Brand, "model" => row.Model,
@@ -3227,7 +3900,10 @@ public static class AssetEndpoints
                     "employeeNumber" => row.EmployeeNumber, "employeeName" => row.EmployeeName,
                     "purchaseDate" => row.PurchaseDate?.ToString("yyyy-MM-dd"),
                     "warrantyExpiresAt" => row.WarrantyExpiresAt?.ToString("yyyy-MM-dd"),
-                    "purchaseCost" => row.PurchaseCost?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                    "insuranceProvider" => row.InsuranceProvider,
+                    "insurancePolicyNumber" => row.InsurancePolicyNumber,
+                    "insuranceExpiresAt" => row.InsuranceExpiresAt?.ToString("yyyy-MM-dd"),
+                    "purchaseCost" => isXlsx ? (object?)row.PurchaseCost : row.PurchaseCost?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
                     "currency" => row.Currency, "parentAssetTag" => row.ParentAssetTag,
                     "isByod" => row.IsByod ? "Evet" : "Hayır",
                     "modelNumber" => row.ModelNumber,
@@ -3236,18 +3912,26 @@ public static class AssetEndpoints
                     "notes" => row.Notes,
                     _ when column.Key.StartsWith("custom:", StringComparison.Ordinal) => customValuesByKey.GetValueOrDefault(column.Key[7..]),
                     _ => ""
-                })));
-                await writer.WriteLineAsync(line.AsMemory(), cancellationToken);
-                if (++written % 500 == 0) await writer.FlushAsync(cancellationToken);
+                }).ToArray();
+                if (workbook is not null) workbook.WriteRow(values);
+                else if (writer is not null)
+                {
+                    var line = string.Join(';', values.Select(value => CsvCell(Convert.ToString(value, CultureInfo.InvariantCulture))));
+                    await writer.WriteLineAsync(line.AsMemory(), cancellationToken);
+                    if (++written % 500 == 0) await writer.FlushAsync(cancellationToken);
+                }
             }
-            await writer.FlushAsync(cancellationToken);
-        }).RequireAuthorization("asset.read");
+            if (workbook is not null) await workbook.SendAsync(context, $"envantertr-varliklar-{DateTime.UtcNow:yyyyMMdd}.xlsx", cancellationToken);
+            else if (writer is not null) await writer.FlushAsync(cancellationToken);
+        };
+        api.MapGet("/assets/export-all.csv", exportAllAssets).RequireAuthorization("asset.read");
+        api.MapGet("/assets/export-all.xlsx", exportAllAssets).RequireAuthorization("asset.read");
 
         return endpoints;
     }
 
     private static IOrderedQueryable<Asset>? OrderAssets(IQueryable<Asset> query, AppDbContext db,
-        Guid companyId, string? sortBy, string? sortDirection)
+        Guid companyId, string? sortBy, string? sortDirection, IQueryable<Employee> scopedEmployees)
     {
         var sort = (sortBy ?? "tag").Trim().ToLowerInvariant();
         var direction = (sortDirection ?? "asc").Trim().ToLowerInvariant();
@@ -3265,8 +3949,8 @@ public static class AssetEndpoints
             ("category", true) => query.OrderByDescending(x => db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault()),
             ("brand", false) => query.OrderBy(x => db.AssetBrands.Where(b => b.CompanyId == companyId && b.Id == x.BrandId).Select(b => b.Name).FirstOrDefault()).ThenBy(x => db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.Name).FirstOrDefault()),
             ("brand", true) => query.OrderByDescending(x => db.AssetBrands.Where(b => b.CompanyId == companyId && b.Id == x.BrandId).Select(b => b.Name).FirstOrDefault()).ThenByDescending(x => db.AssetModels.Where(m => m.CompanyId == companyId && m.Id == x.ModelId).Select(m => m.Name).FirstOrDefault()),
-            ("employee", false) => query.OrderBy(x => db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.DisplayName).FirstOrDefault()),
-            ("employee", true) => query.OrderByDescending(x => db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.DisplayName).FirstOrDefault()),
+            ("employee", false) => query.OrderBy(x => scopedEmployees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.DisplayName).FirstOrDefault()),
+            ("employee", true) => query.OrderByDescending(x => scopedEmployees.Where(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId).Select(e => e.DisplayName).FirstOrDefault()),
             ("location", false) => query.OrderBy(x => x.Location),
             ("location", true) => query.OrderByDescending(x => x.Location),
             ("warranty", false) => query.OrderBy(x => x.WarrantyExpiresAt),
@@ -3354,15 +4038,16 @@ public static class AssetEndpoints
         CompanyLocation location, CancellationToken cancellationToken)
     {
         var chain = new List<CompanyLocation> { location };
+        var visited = new HashSet<Guid> { location.Id };
         var parentId = location.ParentLocationId;
         while (parentId is Guid id)
         {
             var parent = await db.CompanyLocations.AsNoTracking().SingleOrDefaultAsync(x =>
                 x.CompanyId == companyId && x.Id == id, cancellationToken);
-            if (parent is null) break;
+            if (parent is null || !visited.Add(parent.Id)) break;
             chain.Insert(0, parent);
             parentId = parent.ParentLocationId;
-            if (chain.Count > 3) break;
+            if (chain.Count > 6) break;
         }
         return chain;
     }
@@ -3397,13 +4082,15 @@ public static class AssetEndpoints
         foreach (var location in locations.Where(x => x.IsActive))
         {
             var names = new List<string>();
+            var visited = new HashSet<Guid>();
             var current = location;
             var valid = true;
             while (true)
             {
                 if (!current.IsActive) { valid = false; break; }
+                if (!visited.Add(current.Id)) { valid = false; break; }
                 names.Add(current.Name);
-                if (names.Count > 3) { valid = false; break; }
+                if (names.Count > 6) { valid = false; break; }
                 if (current.ParentLocationId is not Guid parentId) break;
                 if (!byId.TryGetValue(parentId, out var parentLocation)) { valid = false; break; }
                 current = parentLocation;
@@ -3412,6 +4099,31 @@ public static class AssetEndpoints
         }
         return paths;
     }
+
+    private static bool IsLocationInScope(Guid? locationId, HashSet<Guid>? allowedLocations) =>
+        allowedLocations is null || locationId is Guid id && allowedLocations.Contains(id);
+
+    private static bool IsOptionalLocationInScope(Guid? locationId, HashSet<Guid>? allowedLocations) =>
+        allowedLocations is null || locationId is null || allowedLocations.Contains(locationId.Value);
+
+    private static async Task<IQueryable<AccessoryAssignment>> ScopeAccessoryAssignmentsAsync(AppDbContext db,
+        Guid companyId, EmployeeAccessScope scope, IQueryable<AccessoryAssignment> query, CancellationToken cancellationToken)
+    {
+        if (!scope.IsRestricted) return query;
+        var locations = scope.AllowedLocations ?? [];
+        var employeeIds = scope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId))
+            .Select(employee => employee.Id);
+        var locationPaths = await GetActiveLocationPathMapAsync(db, companyId, cancellationToken);
+        var allowedNames = locationPaths.Where(entry => locations.Contains(entry.Value)).Select(entry => entry.Key).ToArray();
+        return query.Where(assignment =>
+            assignment.TargetType == "Employee" && assignment.EmployeeId.HasValue && employeeIds.Contains(assignment.EmployeeId.Value) ||
+            assignment.TargetType == "Asset" && assignment.AssetId.HasValue && db.Assets.Any(asset => asset.CompanyId == companyId &&
+                asset.Id == assignment.AssetId.Value && asset.LocationCatalogId.HasValue && locations.Contains(asset.LocationCatalogId.Value)) ||
+            assignment.TargetType == "Location" && assignment.Location != null && allowedNames.Contains(assignment.Location));
+    }
+
+    private static bool AssetsInLocationScope(IEnumerable<Asset> assets, HashSet<Guid>? allowedLocations) =>
+        allowedLocations is null || assets.All(asset => asset.LocationCatalogId is Guid locationId && allowedLocations.Contains(locationId));
 
     private static bool TryCompanyId(ClaimsPrincipal user, out Guid companyId) =>
         Guid.TryParse(user.FindFirstValue("company_id"), out companyId);
@@ -3424,6 +4136,13 @@ public static class AssetEndpoints
 
     private static Guid? CurrentUserId(ClaimsPrincipal user) =>
         Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : null;
+
+    private static async Task<bool> IsLocationScopeRestrictedAsync(ClaimsPrincipal user, AppDbContext db,
+        Guid companyId, CancellationToken ct)
+    {
+        if (!CurrentUserId(user).HasValue) return true;
+        return await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, CurrentUserId(user)!.Value, ct) is not null;
+    }
 
     private static string AssetAttachmentDirectory(IConfiguration configuration, Guid companyId, Guid assetId) =>
         Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media",
@@ -3495,7 +4214,8 @@ public static class AssetEndpoints
     public sealed record AccessoryCheckinRequest(Guid AssignmentId, int Quantity, string? Notes);
     public sealed record BulkAccessoryCheckinRequest(BulkAccessoryCheckinItem[]? Items, string? Notes);
     public sealed record BulkAccessoryCheckinItem(Guid AssignmentId, int Quantity);
-    public sealed record RecordAssetAuditRequest(DateOnly AuditDate, string? Notes, DateOnly? NextAuditOn = null);
+    public sealed record RecordAssetAuditRequest(DateOnly AuditDate, string? Notes, DateOnly? NextAuditOn = null,
+        string? Outcome = null, string? IssueDescription = null);
     public sealed record TransferAssetRequest(string? TargetLocation, string? Notes);
     public sealed record StartMaintenanceRequest(string? MaintenanceType, string? Supplier, string? Description,
         DateOnly StartedOn, decimal? Cost, string Currency, string? Notes, Guid? ResponsibleEmployeeId = null);
@@ -3506,13 +4226,14 @@ public static class AssetEndpoints
     private sealed record LocationDirectoryEntry(string Name, int AssetCount, int AssignedCount, int AvailableCount,
         int MaintenanceCount, int AccessoryCount, int AccessoryAssignmentCount, int ConsumableCount, int ComponentCount,
         Guid? LocationId, Guid? ParentLocationId, int Depth, bool IsCatalogEntry, bool IsActive, bool IsDefault,
-        Guid? ManagerEmployeeId, string? ManagerName);
+        Guid? ManagerEmployeeId, string? ManagerName, Guid? CompanyUnitId = null, string? CompanyUnitName = null);
     private sealed record CalendarEntry(string Kind, DateOnly Date, Guid? AssetId, Guid RecordId,
         string Title, string? Subtitle, string Status, bool? AutoRenew);
 
     private sealed record AssetExportRow(string AssetTag, string Name, string Status, string? Category,
         string? Brand, string? Model, string? SerialNumber, string? Location, string? ParentAssetTag, string? EmployeeNumber,
-        string? EmployeeName, DateOnly? PurchaseDate, DateOnly? WarrantyExpiresAt, decimal? PurchaseCost, string Currency,
+        string? EmployeeName, DateOnly? PurchaseDate, DateOnly? WarrantyExpiresAt, string? InsuranceProvider,
+        string? InsurancePolicyNumber, DateOnly? InsuranceExpiresAt, decimal? PurchaseCost, string Currency,
         string? CustomFieldsJson, bool IsByod, string? ModelNumber, Guid? DefaultLocationCatalogId, string SourceCompany, string? Notes);
 
     private static string CsvCell(string? value)
@@ -3538,7 +4259,7 @@ public static class AssetEndpoints
     }
 
     private static IQueryable<Asset> FilterWarrantyReportAssets(AppDbContext db, Guid companyId, string state,
-        DateOnly today, DateOnly through, string? q)
+        DateOnly today, DateOnly through, string? q, HashSet<Guid>? allowedLocations, IQueryable<Employee> scopedEmployees)
     {
         var query = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.Status != AssetStatuses.Archived);
         query = state switch
@@ -3553,8 +4274,13 @@ public static class AssetEndpoints
         {
             var term = q.Trim();
             query = query.Where(x => x.AssetTag.Contains(term) || x.Name.Contains(term) ||
-                (x.SerialNumber != null && x.SerialNumber.Contains(term)) || (x.Location != null && x.Location.Contains(term)) ||
-                db.Employees.Any(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId && e.DisplayName.Contains(term)));
+                (x.SerialNumber != null && x.SerialNumber.Contains(term)) ||
+                (allowedLocations == null
+                    ? x.Location != null && x.Location.Contains(term)
+                    : x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value) &&
+                        db.CompanyLocations.Any(location => location.CompanyId == companyId && location.Id == x.LocationCatalogId &&
+                            location.Name.Contains(term))) ||
+                scopedEmployees.Any(e => e.CompanyId == companyId && e.Id == x.AssignedEmployeeId && e.DisplayName.Contains(term)));
         }
         return query;
     }

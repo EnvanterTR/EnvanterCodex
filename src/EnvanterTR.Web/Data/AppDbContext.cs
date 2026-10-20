@@ -8,6 +8,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     : IdentityDbContext<EnvanterUser, IdentityRole<Guid>, Guid>(options)
 {
     public DbSet<Company> Companies => Set<Company>();
+    public DbSet<CompanyMfaEnrollmentChallenge> CompanyMfaEnrollmentChallenges => Set<CompanyMfaEnrollmentChallenge>();
     public DbSet<CompanyApiToken> CompanyApiTokens => Set<CompanyApiToken>();
     public DbSet<SupplierCatalogEntry> SupplierCatalogEntries => Set<SupplierCatalogEntry>();
     public DbSet<AssetContract> AssetContracts => Set<AssetContract>();
@@ -28,6 +29,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<SavedAssetSearch> SavedAssetSearches => Set<SavedAssetSearch>();
     public DbSet<SavedAssetImportMapping> SavedAssetImportMappings => Set<SavedAssetImportMapping>();
     public DbSet<CustomAssetReport> CustomAssetReports => Set<CustomAssetReport>();
+    public DbSet<ScheduledReport> ScheduledReports => Set<ScheduledReport>();
     public DbSet<DashboardPreference> DashboardPreferences => Set<DashboardPreference>();
     public DbSet<OperationalNotificationPreference> OperationalNotificationPreferences => Set<OperationalNotificationPreference>();
     public DbSet<OperationalNotificationEmailDigest> OperationalNotificationEmailDigests => Set<OperationalNotificationEmailDigest>();
@@ -36,6 +38,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AssetEvent> AssetEvents => Set<AssetEvent>();
     public DbSet<AssetAttachment> AssetAttachments => Set<AssetAttachment>();
     public DbSet<EmployeeDocument> EmployeeDocuments => Set<EmployeeDocument>();
+    public DbSet<EmployeeHandoverDocument> EmployeeHandoverDocuments => Set<EmployeeHandoverDocument>();
     public DbSet<AssetMaintenance> AssetMaintenances => Set<AssetMaintenance>();
     public DbSet<AssetMaintenanceAttachment> AssetMaintenanceAttachments => Set<AssetMaintenanceAttachment>();
     public DbSet<Accessory> Accessories => Set<Accessory>();
@@ -50,7 +53,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<StockPurchaseOrder> StockPurchaseOrders => Set<StockPurchaseOrder>();
     public DbSet<StockPurchaseOrderLine> StockPurchaseOrderLines => Set<StockPurchaseOrderLine>();
     public DbSet<AssetPurchaseOrder> AssetPurchaseOrders => Set<AssetPurchaseOrder>();
+    public DbSet<CompanyPurchaseBudget> CompanyPurchaseBudgets => Set<CompanyPurchaseBudget>();
     public DbSet<AssetPurchaseOrderLine> AssetPurchaseOrderLines => Set<AssetPurchaseOrderLine>();
+    public DbSet<PurchaseOrderReturn> PurchaseOrderReturns => Set<PurchaseOrderReturn>();
+    public DbSet<PurchaseOrderReturnLine> PurchaseOrderReturnLines => Set<PurchaseOrderReturnLine>();
     public DbSet<AssetPurchaseOrderAttachment> AssetPurchaseOrderAttachments => Set<AssetPurchaseOrderAttachment>();
     public DbSet<StockPurchaseOrderAttachment> StockPurchaseOrderAttachments => Set<StockPurchaseOrderAttachment>();
     public DbSet<AccessoryPurchaseOrderAttachment> AccessoryPurchaseOrderAttachments => Set<AccessoryPurchaseOrderAttachment>();
@@ -63,16 +69,23 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<SupportTicketMessage> SupportTicketMessages => Set<SupportTicketMessage>();
     public DbSet<SupportTicketEmailOutbox> SupportTicketEmailOutbox => Set<SupportTicketEmailOutbox>();
     public DbSet<SoftwareLicense> SoftwareLicenses => Set<SoftwareLicense>();
+    public DbSet<SoftwareLicensePurchaseOrder> SoftwareLicensePurchaseOrders => Set<SoftwareLicensePurchaseOrder>();
+    public DbSet<AssetInstalledSoftware> AssetInstalledSoftware => Set<AssetInstalledSoftware>();
     public DbSet<SoftwareLicenseAttachment> SoftwareLicenseAttachments => Set<SoftwareLicenseAttachment>();
     public DbSet<SoftwareLicenseAssignment> SoftwareLicenseAssignments => Set<SoftwareLicenseAssignment>();
+    public DbSet<SoftwareLicenseEmployeeEulaAcceptance> SoftwareLicenseEmployeeEulaAcceptances => Set<SoftwareLicenseEmployeeEulaAcceptance>();
     public DbSet<SoftwareLicenseEvent> SoftwareLicenseEvents => Set<SoftwareLicenseEvent>();
     public DbSet<InventoryComponent> InventoryComponents => Set<InventoryComponent>();
     public DbSet<ComponentAllocation> ComponentAllocations => Set<ComponentAllocation>();
     public DbSet<ComponentMovement> ComponentMovements => Set<ComponentMovement>();
     public DbSet<CompanyMembership> CompanyMemberships => Set<CompanyMembership>();
+    public DbSet<CompanyMembershipLocationAccess> CompanyMembershipLocationAccesses => Set<CompanyMembershipLocationAccess>();
+    public DbSet<CompanyMembershipCompanyUnitAccess> CompanyMembershipCompanyUnitAccesses => Set<CompanyMembershipCompanyUnitAccess>();
+    public DbSet<CompanyCustomRole> CompanyCustomRoles => Set<CompanyCustomRole>();
     public DbSet<UserSession> UserSessions => Set<UserSession>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
+    public DbSet<SubscriptionCoupon> SubscriptionCoupons => Set<SubscriptionCoupon>();
     public DbSet<TenantSubscription> TenantSubscriptions => Set<TenantSubscription>();
     public DbSet<CompanyCheckoutOrder> CompanyCheckoutOrders => Set<CompanyCheckoutOrder>();
     public DbSet<PlatformAdministrator> PlatformAdministrators => Set<PlatformAdministrator>();
@@ -80,14 +93,21 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<PublicSiteContent> PublicSiteContents => Set<PublicSiteContent>();
     public DbSet<PlatformDemoRequest> PlatformDemoRequests => Set<PlatformDemoRequest>();
     public DbSet<PlatformAuditEntry> PlatformAuditEntries => Set<PlatformAuditEntry>();
+    public DbSet<PlatformAuditRetentionPolicy> PlatformAuditRetentionPolicies => Set<PlatformAuditRetentionPolicy>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.ApplyConfiguration(new ScheduledReportConfiguration());
         modelBuilder.Entity<Company>().HasKey(x => x.Id);
         modelBuilder.Entity<Company>().Property(x => x.Name).HasMaxLength(200).IsRequired();
         modelBuilder.Entity<Company>().Property(x => x.AssetCount).HasDefaultValue(0);
-        modelBuilder.Entity<Company>().ToTable("Companies", table => table.HasCheckConstraint("CK_Companies_AssetCount", "\"AssetCount\" >= 0"));
+        modelBuilder.Entity<Company>().ToTable("Companies", table =>
+        {
+            table.HasCheckConstraint("CK_Companies_AssetCount", "\"AssetCount\" >= 0");
+            table.HasCheckConstraint("CK_Companies_SecurityPasswordMinimumLength", "\"SecurityPasswordMinimumLength\" BETWEEN 12 AND 64");
+            table.HasCheckConstraint("CK_Companies_SecuritySessionDurationHours", "\"SecuritySessionDurationHours\" BETWEEN 1 AND 720");
+        });
         modelBuilder.Entity<Company>().Property(x => x.CustomerLifecycleStage).HasMaxLength(32).HasDefaultValue("Unclassified").IsRequired();
         modelBuilder.Entity<Company>().HasIndex(x => new { x.CustomerLifecycleStage, x.PlatformNextFollowUpAt });
         modelBuilder.Entity<Company>().HasIndex(x => x.PlatformOwnerUserId);
@@ -112,6 +132,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Company>().Property(x => x.AssetStatusLabelsJson).HasMaxLength(3000);
         modelBuilder.Entity<Company>().Property(x => x.BrandPrimaryColor).HasMaxLength(7).IsRequired();
         modelBuilder.Entity<Company>().Property(x => x.LabelPrintSettingsJson).HasMaxLength(4096);
+        modelBuilder.Entity<CompanyMfaEnrollmentChallenge>().HasKey(x => x.Id);
+        modelBuilder.Entity<CompanyMfaEnrollmentChallenge>().Property(x => x.TicketHash).HasMaxLength(64).IsRequired();
+        modelBuilder.Entity<CompanyMfaEnrollmentChallenge>().HasIndex(x => x.TicketHash).IsUnique();
+        modelBuilder.Entity<CompanyMfaEnrollmentChallenge>().HasIndex(x => new { x.UserId, x.CompletedAt, x.ExpiresAt });
+        modelBuilder.Entity<CompanyMfaEnrollmentChallenge>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CompanyMfaEnrollmentChallenge>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CompanyMfaEnrollmentChallenge>().ToTable("CompanyMfaEnrollmentChallenges", table =>
+            table.HasCheckConstraint("CK_CompanyMfaEnrollmentChallenges_Expiry", "\"ExpiresAt\" > \"CreatedAt\""));
         modelBuilder.Entity<SubscriptionPlan>().HasIndex(x => x.Code).IsUnique();
         modelBuilder.Entity<SubscriptionPlan>().Property(x => x.Code).HasMaxLength(40).IsRequired();
         modelBuilder.Entity<SubscriptionPlan>().Property(x => x.Name).HasMaxLength(120).IsRequired();
@@ -129,6 +159,22 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             table.HasCheckConstraint("CK_SubscriptionPlans_Seats", "\"MaxLoginUsers\" IS NULL OR \"MaxLoginUsers\" > 0");
             table.HasCheckConstraint("CK_SubscriptionPlans_Assets", "\"MaxAssets\" IS NULL OR \"MaxAssets\" > 0");
             table.HasCheckConstraint("CK_SubscriptionPlans_OfflineGrace", "\"OfflineGraceDays\" BETWEEN 0 AND 365");
+        });
+        modelBuilder.Entity<SubscriptionCoupon>().HasIndex(x => x.Code).IsUnique();
+        modelBuilder.Entity<SubscriptionCoupon>().Property(x => x.Code).HasMaxLength(40).IsRequired();
+        modelBuilder.Entity<SubscriptionCoupon>().Property(x => x.DiscountType).HasMaxLength(12).IsRequired();
+        modelBuilder.Entity<SubscriptionCoupon>().Property(x => x.DiscountValue).HasPrecision(18, 2);
+        modelBuilder.Entity<SubscriptionCoupon>().Property(x => x.Currency).HasMaxLength(3);
+        modelBuilder.Entity<SubscriptionCoupon>().HasOne<SubscriptionPlan>().WithMany()
+            .HasForeignKey(x => x.PlanId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<SubscriptionCoupon>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<SubscriptionCoupon>().ToTable("SubscriptionCoupons", table =>
+        {
+            table.HasCheckConstraint("CK_SubscriptionCoupons_Type", "\"DiscountType\" IN ('Percent', 'Fixed')");
+            table.HasCheckConstraint("CK_SubscriptionCoupons_Value", "\"DiscountValue\" > 0 AND ((\"DiscountType\" = 'Percent' AND \"DiscountValue\" <= 100) OR (\"DiscountType\" = 'Fixed' AND \"Currency\" IS NOT NULL AND char_length(\"Currency\") = 3))");
+            table.HasCheckConstraint("CK_SubscriptionCoupons_Period", "\"EndsAt\" IS NULL OR \"StartsAt\" IS NULL OR \"EndsAt\" > \"StartsAt\"");
+            table.HasCheckConstraint("CK_SubscriptionCoupons_Limits", "(\"MaxRedemptions\" IS NULL OR \"MaxRedemptions\" > 0) AND (\"MaxRedemptionsPerCustomer\" IS NULL OR \"MaxRedemptionsPerCustomer\" > 0)");
         });
         modelBuilder.Entity<TenantSubscription>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
@@ -154,6 +200,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
         modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.Status).HasMaxLength(32).IsRequired();
         modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.Amount).HasPrecision(18, 2);
+        modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.SubtotalAmount).HasPrecision(18, 2);
+        modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.DiscountAmount).HasPrecision(18, 2);
+        modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.CouponCode).HasMaxLength(40);
         modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.CheckoutTokenHash).HasMaxLength(64);
         modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.CheckoutPageUrlProtected).HasMaxLength(4096);
         modelBuilder.Entity<CompanyCheckoutOrder>().Property(x => x.PaymentReference).HasMaxLength(180);
@@ -166,12 +215,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasFilter("\"Status\" IN ('Pending', 'PaymentStarted', 'PaymentReview', 'ProvisioningFailed')");
         modelBuilder.Entity<CompanyCheckoutOrder>().HasOne<SubscriptionPlan>().WithMany()
             .HasForeignKey(x => x.PlanId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<CompanyCheckoutOrder>().HasOne<SubscriptionCoupon>().WithMany()
+            .HasForeignKey(x => x.CouponId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<CompanyCheckoutOrder>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<CompanyCheckoutOrder>().ToTable("CompanyCheckoutOrders", table =>
         {
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_Term", "\"TermDays\" IN (30, 365)");
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_Amount", "\"Amount\" > 0");
+            table.HasCheckConstraint("CK_CompanyCheckoutOrders_Pricing", "\"SubtotalAmount\" >= 0 AND \"DiscountAmount\" >= 0 AND \"Amount\" = \"SubtotalAmount\" - \"DiscountAmount\"");
+            table.HasCheckConstraint("CK_CompanyCheckoutOrders_CouponSnapshot", "(\"CouponId\" IS NULL AND \"CouponCode\" IS NULL AND \"DiscountAmount\" = 0) OR (\"CouponId\" IS NOT NULL AND \"CouponCode\" IS NOT NULL)");
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_Period", "\"ExpiresAt\" > \"CreatedAt\"");
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_Status", "\"Status\" IN ('Pending', 'PaymentStarted', 'PaymentReview', 'PaymentFailed', 'Expired', 'Provisioned', 'ProvisioningFailed')");
         });
@@ -218,6 +271,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<PlatformAuditEntry>().Property(x => x.Action).HasMaxLength(80).IsRequired();
         modelBuilder.Entity<PlatformAuditEntry>().Property(x => x.TargetType).HasMaxLength(80).IsRequired();
         modelBuilder.Entity<PlatformAuditEntry>().Property(x => x.Details).HasMaxLength(2000);
+        modelBuilder.Entity<PlatformAuditRetentionPolicy>().HasKey(x => x.Id);
+        modelBuilder.Entity<PlatformAuditRetentionPolicy>().ToTable(table =>
+            table.HasCheckConstraint("CK_PlatformAuditRetentionPolicies_Singleton", "\"Id\" = 1"));
+        modelBuilder.Entity<PlatformAuditRetentionPolicy>().ToTable(table =>
+            table.HasCheckConstraint("CK_PlatformAuditRetentionPolicies_Days", "\"RetentionDays\" IS NULL OR \"RetentionDays\" BETWEEN 1 AND 36500"));
+        modelBuilder.Entity<PlatformAuditRetentionPolicy>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.UpdatedByUserId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<Employee>().Property(x => x.EmployeeNumber).HasMaxLength(80).IsRequired();
         modelBuilder.Entity<Employee>().Property(x => x.DisplayName).HasMaxLength(200).IsRequired();
         modelBuilder.Entity<Employee>().Property(x => x.Email).HasMaxLength(256);
@@ -226,10 +286,34 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Employee>().Property(x => x.Phone).HasMaxLength(40);
         modelBuilder.Entity<Employee>().Property(x => x.Location).HasMaxLength(160);
         modelBuilder.Entity<Employee>().HasIndex(x => new { x.CompanyId, x.LocationCatalogId });
+        modelBuilder.Entity<Employee>().HasIndex(x => new { x.CompanyId, x.CompanyUnitId });
         modelBuilder.Entity<Employee>().HasOne<CompanyLocation>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.LocationCatalogId })
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<Employee>().HasOne<CompanyUnit>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.CompanyUnitId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<Employee>().Property(x => x.PrivateNotes).HasMaxLength(4000);
+        modelBuilder.Entity<EmployeeHandoverDocument>().Property(x => x.DocumentNumber).HasMaxLength(48).IsRequired();
+        modelBuilder.Entity<EmployeeHandoverDocument>().Property(x => x.SnapshotJson).IsRequired();
+        modelBuilder.Entity<EmployeeHandoverDocument>().Property(x => x.SnapshotSha256).HasMaxLength(64).IsRequired();
+        modelBuilder.Entity<EmployeeHandoverDocument>().Property(x => x.RecipientName).HasMaxLength(200);
+        modelBuilder.Entity<EmployeeHandoverDocument>().Property(x => x.RecipientSignaturePngBase64);
+        modelBuilder.Entity<EmployeeHandoverDocument>().Property(x => x.RecipientSignatureSha256).HasMaxLength(64);
+        modelBuilder.Entity<EmployeeHandoverDocument>().Property(x => x.IssuerName).HasMaxLength(200);
+        modelBuilder.Entity<EmployeeHandoverDocument>().Property(x => x.IssuerSignaturePngBase64);
+        modelBuilder.Entity<EmployeeHandoverDocument>().Property(x => x.IssuerSignatureSha256).HasMaxLength(64);
+        modelBuilder.Entity<EmployeeHandoverDocument>().HasIndex(x => new { x.CompanyId, x.EmployeeId, x.CreatedAt });
+        modelBuilder.Entity<EmployeeHandoverDocument>().HasIndex(x => new { x.CompanyId, x.DocumentNumber }).IsUnique();
+        modelBuilder.Entity<EmployeeHandoverDocument>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<EmployeeHandoverDocument>().HasOne<Employee>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.EmployeeId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<EmployeeHandoverDocument>().ToTable("EmployeeHandoverDocuments", table =>
+        {
+            table.HasCheckConstraint("CK_EmployeeHandoverDocuments_SignaturePairs", "(\"RecipientSignaturePngBase64\" IS NULL) = (\"RecipientSignedAt\" IS NULL) AND (\"IssuerSignaturePngBase64\" IS NULL) = (\"IssuerSignedAt\" IS NULL)");
+        });
         modelBuilder.Entity<AssetCategory>().Property(x => x.Name).HasMaxLength(120).IsRequired();
         modelBuilder.Entity<AssetBrand>().Property(x => x.Name).HasMaxLength(120).IsRequired();
         modelBuilder.Entity<AssetBrand>().Property(x => x.Website).HasMaxLength(300);
@@ -253,11 +337,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         });
         modelBuilder.Entity<AssetCustomFieldDefinition>().Property(x => x.Key).HasMaxLength(40).IsRequired();
         modelBuilder.Entity<AssetCustomFieldDefinition>().Property(x => x.Name).HasMaxLength(100).IsRequired();
+        modelBuilder.Entity<AssetCustomFieldDefinition>().Property(x => x.GroupName).HasMaxLength(80).IsRequired();
         modelBuilder.Entity<AssetCustomFieldDefinition>().Property(x => x.FieldType).HasMaxLength(20).IsRequired();
         modelBuilder.Entity<AssetCustomFieldDefinition>().Property(x => x.OptionsJson).HasMaxLength(8000);
         modelBuilder.Entity<AssetCustomFieldDefinition>().HasIndex(x => new { x.CompanyId, x.Key }).IsUnique();
         modelBuilder.Entity<AssetCustomFieldDefinition>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssetCustomFieldDefinition>().HasOne<AssetCategory>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.CategoryId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<AssetCustomFieldDefinition>().HasOne<AssetModel>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ModelId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<AssetCustomFieldDefinition>().ToTable("AssetCustomFieldDefinitions", table =>
             table.HasCheckConstraint("CK_AssetCustomFieldDefinitions_Type", "\"FieldType\" IN ('text', 'number', 'date', 'checkbox', 'select', 'sensitive')"));
         modelBuilder.Entity<Asset>().Property(x => x.CustomFieldsJson).HasMaxLength(16000);
@@ -273,6 +364,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             table.HasCheckConstraint("CK_UserSessions_Expiry", "\"ExpiresAt\" > \"CreatedAt\""));
         modelBuilder.Entity<CompanyMembership>().HasKey(x => new { x.CompanyId, x.UserId });
         modelBuilder.Entity<CompanyMembership>().Property(x => x.RoleKey).HasMaxLength(40).IsRequired();
+        modelBuilder.Entity<CompanyMembership>().Property(x => x.LocationAccessMode).HasMaxLength(16).HasDefaultValue("all").IsRequired();
+        modelBuilder.Entity<CompanyMembership>().Property(x => x.CompanyUnitAccessMode).HasMaxLength(16).HasDefaultValue("all").IsRequired();
         modelBuilder.Entity<CompanyMembership>().HasIndex(x => new { x.UserId, x.CompanyId }).IsUnique();
         modelBuilder.Entity<CompanyMembership>().HasIndex(x => new { x.CompanyId, x.EmployeeId })
             .IsUnique().HasFilter("\"EmployeeId\" IS NOT NULL");
@@ -283,6 +376,35 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<CompanyMembership>().HasOne<Employee>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.EmployeeId })
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+
+        modelBuilder.Entity<CompanyMembershipLocationAccess>().HasKey(x => new { x.CompanyId, x.UserId, x.LocationId });
+        modelBuilder.Entity<CompanyMembershipLocationAccess>().HasOne<CompanyMembership>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.UserId }).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CompanyMembershipLocationAccess>().HasOne<CompanyLocation>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.LocationId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CompanyMembershipLocationAccess>().HasIndex(x => new { x.CompanyId, x.LocationId });
+
+        modelBuilder.Entity<CompanyMembershipCompanyUnitAccess>().HasKey(x => new { x.CompanyId, x.UserId, x.CompanyUnitId });
+        modelBuilder.Entity<CompanyMembershipCompanyUnitAccess>().HasOne<CompanyMembership>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.UserId }).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CompanyMembershipCompanyUnitAccess>().HasOne<CompanyUnit>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.CompanyUnitId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CompanyMembershipCompanyUnitAccess>().HasIndex(x => new { x.CompanyId, x.CompanyUnitId });
+
+        modelBuilder.Entity<CompanyCustomRole>().HasKey(x => x.Id);
+        modelBuilder.Entity<CompanyCustomRole>().Property(x => x.RoleKey).HasMaxLength(40).IsRequired();
+        modelBuilder.Entity<CompanyCustomRole>().Property(x => x.Name).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<CompanyCustomRole>().Property(x => x.NormalizedName).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<CompanyCustomRole>().Property(x => x.PermissionsJson).HasMaxLength(1000).IsRequired();
+        modelBuilder.Entity<CompanyCustomRole>().HasIndex(x => new { x.CompanyId, x.RoleKey }).IsUnique();
+        modelBuilder.Entity<CompanyCustomRole>().HasIndex(x => new { x.CompanyId, x.NormalizedName }).IsUnique();
+        modelBuilder.Entity<CompanyCustomRole>().HasIndex(x => new { x.CompanyId, x.IsActive, x.Name });
+        modelBuilder.Entity<CompanyCustomRole>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CompanyCustomRole>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<SavedAssetSearch>().Property(x => x.Name).HasMaxLength(60).IsRequired();
         modelBuilder.Entity<SavedAssetSearch>().Property(x => x.NormalizedName).HasMaxLength(60).IsRequired();
@@ -375,8 +497,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Consumable>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<InventoryComponent>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<SoftwareLicense>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<SoftwareLicensePurchaseOrder>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<SoftwareLicenseAttachment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<SoftwareLicenseAssignment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<SoftwareLicenseAssignment>().HasAlternateKey(x => new { x.CompanyId, x.LicenseId, x.Id });
         modelBuilder.Entity<ComponentAllocation>().HasAlternateKey(x => new { x.CompanyId, x.Id });
 
         modelBuilder.Entity<Employee>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
@@ -471,13 +595,19 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<CompanyDepartment>().HasOne<CompanyLocation>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.LocationCatalogId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
             .OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<CompanyDepartment>().HasOne<Employee>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ManagerEmployeeId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<CompanyDepartment>().HasIndex(x => new { x.CompanyId, x.ParentDepartmentId });
         modelBuilder.Entity<CompanyDepartment>().HasIndex(x => new { x.CompanyId, x.LocationCatalogId });
+        modelBuilder.Entity<CompanyDepartment>().HasIndex(x => new { x.CompanyId, x.ManagerEmployeeId });
         modelBuilder.Entity<CompanyUnit>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<CompanyUnit>().Property(x => x.Name).HasMaxLength(160).IsRequired();
         modelBuilder.Entity<CompanyUnit>().Property(x => x.NormalizedName).HasMaxLength(160).IsRequired();
         modelBuilder.Entity<CompanyUnit>().Property(x => x.Code).HasMaxLength(40);
+        modelBuilder.Entity<CompanyUnit>().Property(x => x.UnitType).HasMaxLength(32)
+            .HasDefaultValue(CompanyUnitTypes.Organizational).IsRequired();
         modelBuilder.Entity<CompanyUnit>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<CompanyUnit>().HasIndex(x => new { x.CompanyId, x.NormalizedName }).IsUnique();
         modelBuilder.Entity<CompanyUnit>().HasIndex(x => new { x.CompanyId, x.Code }).IsUnique().HasFilter("\"Code\" IS NOT NULL");
@@ -491,6 +621,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<CompanyLocation>().Property(x => x.Name).HasMaxLength(120).IsRequired();
         modelBuilder.Entity<CompanyLocation>().Property(x => x.NormalizedName).HasMaxLength(120).IsRequired();
         modelBuilder.Entity<CompanyLocation>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<CompanyLocation>().HasIndex(x => new { x.CompanyId, x.CompanyUnitId });
+        modelBuilder.Entity<CompanyLocation>().HasOne<CompanyUnit>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.CompanyUnitId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<CompanyLocation>().HasOne<CompanyLocation>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.ParentLocationId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
             .OnDelete(DeleteBehavior.Restrict);
@@ -540,7 +674,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<ConsumableMovement>().ToTable("ConsumableMovements", table =>
         {
             table.HasCheckConstraint("CK_ConsumableMovements_Quantity", "\"Quantity\" > 0");
-            table.HasCheckConstraint("CK_ConsumableMovements_Type", "\"MovementType\" IN ('Received', 'Adjustment', 'Checkout')");
+            table.HasCheckConstraint("CK_ConsumableMovements_Type", "\"MovementType\" IN ('Received', 'Adjustment', 'Checkout', 'SupplierReturned')");
         });
         modelBuilder.Entity<ConsumableMovement>().HasOne<Consumable>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.ConsumableId })
@@ -667,10 +801,44 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.LicenseType).HasMaxLength(32).IsRequired();
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.LicenseReference).HasMaxLength(160);
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.Supplier).HasMaxLength(200);
+        modelBuilder.Entity<SoftwareLicense>().Property(x => x.PurchaseOrderReference).HasMaxLength(120);
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.UnitCost).HasPrecision(18, 2);
         modelBuilder.Entity<SoftwareLicense>().Property(x => x.Notes).HasMaxLength(2000);
         modelBuilder.Entity<SoftwareLicense>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SoftwareLicensePurchaseOrder>().Property(x => x.OrderNumber).HasMaxLength(120).IsRequired();
+        modelBuilder.Entity<SoftwareLicensePurchaseOrder>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
+        modelBuilder.Entity<SoftwareLicensePurchaseOrder>().Property(x => x.UnitCost).HasPrecision(18, 2);
+        modelBuilder.Entity<SoftwareLicensePurchaseOrder>().Property(x => x.Notes).HasMaxLength(2000);
+        modelBuilder.Entity<SoftwareLicensePurchaseOrder>().HasIndex(x => new { x.CompanyId, x.LicenseId, x.IsArchived, x.OrderDate });
+        modelBuilder.Entity<SoftwareLicensePurchaseOrder>().HasIndex(x => new { x.CompanyId, x.SupplierId, x.OrderNumber });
+        modelBuilder.Entity<SoftwareLicensePurchaseOrder>().ToTable("SoftwareLicensePurchaseOrders", table =>
+        {
+            table.HasCheckConstraint("CK_SoftwareLicensePurchaseOrders_Seats", "\"SeatsPurchased\" BETWEEN 1 AND 100000");
+            table.HasCheckConstraint("CK_SoftwareLicensePurchaseOrders_Cost", "\"UnitCost\" IS NULL OR \"UnitCost\" >= 0");
+            table.HasCheckConstraint("CK_SoftwareLicensePurchaseOrders_Currency", "char_length(\"Currency\") = 3");
+        });
+        modelBuilder.Entity<SoftwareLicensePurchaseOrder>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SoftwareLicensePurchaseOrder>().HasOne<SoftwareLicense>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.LicenseId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SoftwareLicensePurchaseOrder>().HasOne<SupplierCatalogEntry>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.SupplierId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AssetInstalledSoftware>().Property(x => x.Fingerprint).HasMaxLength(64).IsRequired();
+        modelBuilder.Entity<AssetInstalledSoftware>().Property(x => x.Name).HasMaxLength(200).IsRequired();
+        modelBuilder.Entity<AssetInstalledSoftware>().Property(x => x.Publisher).HasMaxLength(160);
+        modelBuilder.Entity<AssetInstalledSoftware>().Property(x => x.Version).HasMaxLength(120);
+        modelBuilder.Entity<AssetInstalledSoftware>().Property(x => x.Architecture).HasMaxLength(32);
+        modelBuilder.Entity<AssetInstalledSoftware>().Property(x => x.Source).HasMaxLength(40).IsRequired();
+        modelBuilder.Entity<AssetInstalledSoftware>().HasIndex(x => new { x.CompanyId, x.AssetId, x.IsPresent, x.Name });
+        modelBuilder.Entity<AssetInstalledSoftware>().HasIndex(x => new { x.CompanyId, x.AssetId, x.Fingerprint }).IsUnique();
+        modelBuilder.Entity<AssetInstalledSoftware>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AssetInstalledSoftware>().HasOne<Asset>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.AssetId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<SoftwareLicenseAttachment>().Property(x => x.OriginalFileName).HasMaxLength(255).IsRequired();
         modelBuilder.Entity<SoftwareLicenseAttachment>().Property(x => x.StorageFileName).HasMaxLength(80).IsRequired();
         modelBuilder.Entity<SoftwareLicenseAttachment>().Property(x => x.ContentType).HasMaxLength(80).IsRequired();
@@ -693,6 +861,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<SoftwareLicense>().HasIndex(x => new { x.CompanyId, x.Name });
         modelBuilder.Entity<SoftwareLicense>().HasIndex(x => new { x.CompanyId, x.ExpirationDate });
+        modelBuilder.Entity<SoftwareLicense>().HasIndex(x => new { x.CompanyId, x.IsArchived, x.Name });
         modelBuilder.Entity<SoftwareLicense>().ToTable("SoftwareLicenses", table =>
         {
             table.HasCheckConstraint("CK_SoftwareLicenses_Seats", "\"Seats\" >= 0");
@@ -726,6 +895,29 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<SoftwareLicenseAssignment>().HasOne<SoftwareLicenseAttachment>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.LicenseId, x.EulaAttachmentId })
             .HasPrincipalKey(x => new { x.CompanyId, x.LicenseId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<SoftwareLicenseEmployeeEulaAcceptance>().Property(x => x.AcceptedByEmailSnapshot).HasMaxLength(256).IsRequired();
+        modelBuilder.Entity<SoftwareLicenseEmployeeEulaAcceptance>().Property(x => x.EulaVersion).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<SoftwareLicenseEmployeeEulaAcceptance>().Property(x => x.EulaSha256).HasMaxLength(64).IsRequired();
+        modelBuilder.Entity<SoftwareLicenseEmployeeEulaAcceptance>().HasIndex(x => new { x.CompanyId, x.AssignmentId, x.EulaAttachmentId, x.AcceptedByUserId }).IsUnique();
+        modelBuilder.Entity<SoftwareLicenseEmployeeEulaAcceptance>().HasIndex(x => new { x.CompanyId, x.EmployeeId, x.AcceptedAt });
+        modelBuilder.Entity<SoftwareLicenseEmployeeEulaAcceptance>().ToTable("SoftwareLicenseEmployeeEulaAcceptances", table =>
+        {
+            table.HasCheckConstraint("CK_SoftwareLicenseEmployeeEulaAcceptances_Version", "char_length(\"EulaVersion\") BETWEEN 1 AND 80");
+            table.HasCheckConstraint("CK_SoftwareLicenseEmployeeEulaAcceptances_Sha256", "\"EulaSha256\" ~ '^[a-fA-F0-9]{64}$'");
+            table.HasCheckConstraint("CK_SoftwareLicenseEmployeeEulaAcceptances_Email", "char_length(\"AcceptedByEmailSnapshot\") BETWEEN 3 AND 256");
+        });
+        modelBuilder.Entity<SoftwareLicenseEmployeeEulaAcceptance>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SoftwareLicenseEmployeeEulaAcceptance>().HasOne<SoftwareLicenseAssignment>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.LicenseId, x.AssignmentId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.LicenseId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SoftwareLicenseEmployeeEulaAcceptance>().HasOne<Employee>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.EmployeeId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<SoftwareLicenseEmployeeEulaAcceptance>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.AcceptedByUserId).OnDelete(DeleteBehavior.SetNull).IsRequired(false);
+        modelBuilder.Entity<SoftwareLicenseEmployeeEulaAcceptance>().HasOne<SoftwareLicenseAttachment>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.LicenseId, x.EulaAttachmentId })
+            .HasPrincipalKey(x => new { x.CompanyId, x.LicenseId, x.Id }).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<SoftwareLicenseEvent>().Property(x => x.EventType).HasMaxLength(32).IsRequired();
         modelBuilder.Entity<SoftwareLicenseEvent>().Property(x => x.Details).HasMaxLength(2000);
         modelBuilder.Entity<SoftwareLicenseEvent>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
@@ -779,7 +971,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<ComponentMovement>().ToTable("ComponentMovements", table =>
         {
             table.HasCheckConstraint("CK_ComponentMovements_Quantity", "\"Quantity\" > 0");
-            table.HasCheckConstraint("CK_ComponentMovements_Type", "\"MovementType\" IN ('Received', 'Adjustment', 'Checkout', 'Checkin')");
+            table.HasCheckConstraint("CK_ComponentMovements_Type", "\"MovementType\" IN ('Received', 'Adjustment', 'Checkout', 'Checkin', 'SupplierReturned')");
         });
         modelBuilder.Entity<ComponentMovement>().HasOne<InventoryComponent>().WithMany().HasForeignKey(x => new { x.CompanyId, x.ComponentId })
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
@@ -858,7 +1050,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AccessoryMovement>().ToTable("AccessoryMovements", table =>
         {
             table.HasCheckConstraint("CK_AccessoryMovements_Quantity", "\"Quantity\" > 0");
-            table.HasCheckConstraint("CK_AccessoryMovements_Type", "\"MovementType\" IN ('Received', 'Adjustment', 'Checkout', 'Checkin')");
+            table.HasCheckConstraint("CK_AccessoryMovements_Type", "\"MovementType\" IN ('Received', 'Adjustment', 'Checkout', 'Checkin', 'SupplierReturned')");
         });
         modelBuilder.Entity<AccessoryMovement>().HasOne<Accessory>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.AccessoryId })
@@ -926,10 +1118,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AccessoryPurchaseOrder>().ToTable("AccessoryPurchaseOrders", table =>
         {
             table.HasCheckConstraint("CK_AccessoryPurchaseOrders_Status", "\"Status\" IN ('Ordered', 'PartiallyReceived', 'Received', 'Cancelled')");
+            table.HasCheckConstraint("CK_AccessoryPurchaseOrders_ApprovalStatus", "\"ApprovalStatus\" IN ('NotRequired', 'Pending', 'Approved', 'Rejected')");
             table.HasCheckConstraint("CK_AccessoryPurchaseOrders_Dates", "\"ExpectedOn\" IS NULL OR \"ExpectedOn\" >= \"OrderDate\"");
             table.HasCheckConstraint("CK_AccessoryPurchaseOrders_Currency", "char_length(\"Currency\") = 3");
             table.HasCheckConstraint("CK_AccessoryPurchaseOrders_FinancialAdjustments", "\"TaxRatePercent\" BETWEEN 0 AND 100 AND \"DiscountAmount\" >= 0 AND \"FreightAmount\" >= 0");
         });
+        modelBuilder.Entity<AccessoryPurchaseOrder>().HasIndex(x => new { x.CompanyId, x.ApprovalStatus, x.OrderDate });
+        modelBuilder.Entity<AccessoryPurchaseOrder>().HasOne<EnvanterUser>().WithMany().HasForeignKey(x => x.ReviewedByUserId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<AccessoryPurchaseOrder>().Property(x => x.ApprovalNote).HasMaxLength(2000);
         modelBuilder.Entity<AccessoryPurchaseOrderLine>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AccessoryPurchaseOrderLine>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AccessoryPurchaseOrderLine>().Property(x => x.Notes).HasMaxLength(500);
@@ -938,7 +1134,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AccessoryPurchaseOrderLine>().HasIndex(x => new { x.CompanyId, x.AccessoryId });
         modelBuilder.Entity<AccessoryPurchaseOrderLine>().ToTable("AccessoryPurchaseOrderLines", table =>
         {
-            table.HasCheckConstraint("CK_AccessoryPurchaseOrderLines_Quantity", "\"Quantity\" > 0 AND \"QuantityReceived\" BETWEEN 0 AND \"Quantity\"");
+            table.HasCheckConstraint("CK_AccessoryPurchaseOrderLines_Quantity", "\"Quantity\" > 0 AND \"QuantityReceived\" BETWEEN 0 AND \"Quantity\" AND \"QuantityReturned\" BETWEEN 0 AND \"QuantityReceived\"");
             table.HasCheckConstraint("CK_AccessoryPurchaseOrderLines_Cost", "\"UnitCost\" >= 0");
         });
         modelBuilder.Entity<AccessoryPurchaseOrderLine>().HasOne<AccessoryPurchaseOrder>().WithMany()
@@ -965,10 +1161,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<StockPurchaseOrder>().ToTable("StockPurchaseOrders", table =>
         {
             table.HasCheckConstraint("CK_StockPurchaseOrders_Status", "\"Status\" IN ('Ordered', 'PartiallyReceived', 'Received', 'Cancelled')");
+            table.HasCheckConstraint("CK_StockPurchaseOrders_ApprovalStatus", "\"ApprovalStatus\" IN ('NotRequired', 'Pending', 'Approved', 'Rejected')");
             table.HasCheckConstraint("CK_StockPurchaseOrders_Dates", "\"ExpectedOn\" IS NULL OR \"ExpectedOn\" >= \"OrderDate\"");
             table.HasCheckConstraint("CK_StockPurchaseOrders_Currency", "char_length(\"Currency\") = 3");
             table.HasCheckConstraint("CK_StockPurchaseOrders_FinancialAdjustments", "\"TaxRatePercent\" BETWEEN 0 AND 100 AND \"DiscountAmount\" >= 0 AND \"FreightAmount\" >= 0");
         });
+        modelBuilder.Entity<StockPurchaseOrder>().HasIndex(x => new { x.CompanyId, x.ApprovalStatus, x.OrderDate });
+        modelBuilder.Entity<StockPurchaseOrder>().HasOne<EnvanterUser>().WithMany().HasForeignKey(x => x.ReviewedByUserId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<StockPurchaseOrder>().Property(x => x.ApprovalNote).HasMaxLength(2000);
         modelBuilder.Entity<StockPurchaseOrderLine>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<StockPurchaseOrderLine>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<StockPurchaseOrderLine>().Property(x => x.Notes).HasMaxLength(500);
@@ -979,7 +1179,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<StockPurchaseOrderLine>().ToTable("StockPurchaseOrderLines", table =>
         {
             table.HasCheckConstraint("CK_StockPurchaseOrderLines_ExactlyOneStockItem", "(\"ConsumableId\" IS NOT NULL AND \"ComponentId\" IS NULL) OR (\"ConsumableId\" IS NULL AND \"ComponentId\" IS NOT NULL)");
-            table.HasCheckConstraint("CK_StockPurchaseOrderLines_Quantity", "\"Quantity\" > 0 AND \"QuantityReceived\" BETWEEN 0 AND \"Quantity\"");
+            table.HasCheckConstraint("CK_StockPurchaseOrderLines_Quantity", "\"Quantity\" > 0 AND \"QuantityReceived\" BETWEEN 0 AND \"Quantity\" AND \"QuantityReturned\" BETWEEN 0 AND \"QuantityReceived\"");
             table.HasCheckConstraint("CK_StockPurchaseOrderLines_Cost", "\"UnitCost\" >= 0");
         });
         modelBuilder.Entity<StockPurchaseOrderLine>().HasOne<StockPurchaseOrder>().WithMany()
@@ -999,17 +1199,34 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetPurchaseOrder>().Property(x => x.TaxRatePercent).HasPrecision(5, 2);
         modelBuilder.Entity<AssetPurchaseOrder>().Property(x => x.DiscountAmount).HasPrecision(18, 2);
         modelBuilder.Entity<AssetPurchaseOrder>().Property(x => x.FreightAmount).HasPrecision(18, 2);
+        modelBuilder.Entity<AssetPurchaseOrder>().Property(x => x.ApprovalNote).HasMaxLength(2000);
         modelBuilder.Entity<AssetPurchaseOrder>().HasIndex(x => new { x.CompanyId, x.OrderNumber }).IsUnique();
         modelBuilder.Entity<AssetPurchaseOrder>().HasIndex(x => new { x.CompanyId, x.Status, x.OrderDate });
+        modelBuilder.Entity<AssetPurchaseOrder>().HasIndex(x => new { x.CompanyId, x.ApprovalStatus, x.OrderDate });
         modelBuilder.Entity<AssetPurchaseOrder>().HasOne<EnvanterUser>().WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<AssetPurchaseOrder>().HasOne<EnvanterUser>().WithMany().HasForeignKey(x => x.ReviewedByUserId).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<AssetPurchaseOrder>().HasOne<SupplierCatalogEntry>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.SupplierId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<AssetPurchaseOrder>().ToTable("AssetPurchaseOrders", table =>
         {
             table.HasCheckConstraint("CK_AssetPurchaseOrders_Status", "\"Status\" IN ('Ordered', 'PartiallyReceived', 'Received', 'Cancelled')");
+            table.HasCheckConstraint("CK_AssetPurchaseOrders_ApprovalStatus", "\"ApprovalStatus\" IN ('NotRequired', 'Pending', 'Approved', 'Rejected')");
             table.HasCheckConstraint("CK_AssetPurchaseOrders_Dates", "\"ExpectedOn\" IS NULL OR \"ExpectedOn\" >= \"OrderDate\"");
             table.HasCheckConstraint("CK_AssetPurchaseOrders_Currency", "char_length(\"Currency\") = 3");
             table.HasCheckConstraint("CK_AssetPurchaseOrders_FinancialAdjustments", "\"TaxRatePercent\" BETWEEN 0 AND 100 AND \"DiscountAmount\" >= 0 AND \"FreightAmount\" >= 0");
+        });
+        modelBuilder.Entity<CompanyPurchaseBudget>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<CompanyPurchaseBudget>().HasIndex(x => new { x.CompanyId, x.BudgetYear, x.Currency }).IsUnique();
+        modelBuilder.Entity<CompanyPurchaseBudget>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
+        modelBuilder.Entity<CompanyPurchaseBudget>().Property(x => x.Amount).HasPrecision(18, 2);
+        modelBuilder.Entity<CompanyPurchaseBudget>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CompanyPurchaseBudget>().HasOne<EnvanterUser>().WithMany().HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<CompanyPurchaseBudget>().HasOne<EnvanterUser>().WithMany().HasForeignKey(x => x.UpdatedByUserId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<CompanyPurchaseBudget>().ToTable("CompanyPurchaseBudgets", table =>
+        {
+            table.HasCheckConstraint("CK_CompanyPurchaseBudgets_Year", "\"BudgetYear\" BETWEEN 2000 AND 2100");
+            table.HasCheckConstraint("CK_CompanyPurchaseBudgets_Currency", "char_length(\"Currency\") = 3");
+            table.HasCheckConstraint("CK_CompanyPurchaseBudgets_Amount", "\"Amount\" >= 0");
         });
         modelBuilder.Entity<AssetPurchaseOrderLine>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AssetPurchaseOrderLine>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
@@ -1017,9 +1234,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetPurchaseOrderLine>().Property(x => x.Notes).HasMaxLength(500);
         modelBuilder.Entity<AssetPurchaseOrderLine>().Property(x => x.UnitCost).HasPrecision(18, 2);
         modelBuilder.Entity<AssetPurchaseOrderLine>().HasIndex(x => new { x.CompanyId, x.PurchaseOrderId });
+        modelBuilder.Entity<AssetPurchaseOrderLine>().HasIndex(x => new { x.CompanyId, x.LocationCatalogId });
         modelBuilder.Entity<AssetPurchaseOrderLine>().ToTable("AssetPurchaseOrderLines", table =>
         {
-            table.HasCheckConstraint("CK_AssetPurchaseOrderLines_Quantity", "\"Quantity\" > 0 AND \"QuantityReceived\" BETWEEN 0 AND \"Quantity\"");
+            table.HasCheckConstraint("CK_AssetPurchaseOrderLines_Quantity", "\"Quantity\" > 0 AND \"QuantityReceived\" BETWEEN 0 AND \"Quantity\" AND \"QuantityReturned\" BETWEEN 0 AND \"QuantityReceived\"");
             table.HasCheckConstraint("CK_AssetPurchaseOrderLines_Cost", "\"UnitCost\" >= 0");
         });
         modelBuilder.Entity<AssetPurchaseOrderLine>().HasOne<AssetPurchaseOrder>().WithMany()
@@ -1030,6 +1248,37 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasForeignKey(x => new { x.CompanyId, x.BrandId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         modelBuilder.Entity<AssetPurchaseOrderLine>().HasOne<AssetModel>().WithMany()
             .HasForeignKey(x => new { x.CompanyId, x.ModelId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<AssetPurchaseOrderLine>().HasOne<CompanyLocation>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.LocationCatalogId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<Asset>().HasOne<AssetPurchaseOrderLine>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.PurchaseOrderLineId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+
+        modelBuilder.Entity<PurchaseOrderReturn>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<PurchaseOrderReturn>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PurchaseOrderReturn>().Property(x => x.OrderType).HasMaxLength(16).IsRequired();
+        modelBuilder.Entity<PurchaseOrderReturn>().Property(x => x.ReturnNumber).HasMaxLength(80).IsRequired();
+        modelBuilder.Entity<PurchaseOrderReturn>().Property(x => x.Reason).HasMaxLength(200).IsRequired();
+        modelBuilder.Entity<PurchaseOrderReturn>().Property(x => x.Notes).HasMaxLength(1000);
+        modelBuilder.Entity<PurchaseOrderReturn>().HasIndex(x => new { x.CompanyId, x.OrderType, x.ReturnNumber }).IsUnique();
+        modelBuilder.Entity<PurchaseOrderReturn>().HasIndex(x => new { x.CompanyId, x.OrderType, x.PurchaseOrderId, x.CreatedAt });
+        modelBuilder.Entity<PurchaseOrderReturn>().ToTable("PurchaseOrderReturns", table =>
+            table.HasCheckConstraint("CK_PurchaseOrderReturns_OrderType", "\"OrderType\" IN ('Asset', 'Accessory', 'Stock')"));
+        modelBuilder.Entity<PurchaseOrderReturn>().HasOne<EnvanterUser>().WithMany()
+            .HasForeignKey(x => x.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<PurchaseOrderReturnLine>().HasAlternateKey(x => new { x.CompanyId, x.Id });
+        modelBuilder.Entity<PurchaseOrderReturnLine>().HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PurchaseOrderReturnLine>().HasOne<PurchaseOrderReturn>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.PurchaseOrderReturnId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PurchaseOrderReturnLine>().HasOne<Asset>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.AssetId }).HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<PurchaseOrderReturnLine>().Property(x => x.Quantity).IsRequired();
+        modelBuilder.Entity<PurchaseOrderReturnLine>().HasIndex(x => new { x.CompanyId, x.PurchaseOrderLineId });
+        modelBuilder.Entity<PurchaseOrderReturnLine>().HasIndex(x => new { x.CompanyId, x.AssetId }).IsUnique().HasFilter("\"AssetId\" IS NOT NULL");
+        modelBuilder.Entity<PurchaseOrderReturnLine>().ToTable("PurchaseOrderReturnLines", table =>
+        {
+            table.HasCheckConstraint("CK_PurchaseOrderReturnLines_Quantity", "\"Quantity\" > 0");
+            table.HasCheckConstraint("CK_PurchaseOrderReturnLines_Target", "(\"PurchaseOrderLineId\" IS NOT NULL AND \"AssetId\" IS NULL) OR (\"PurchaseOrderLineId\" IS NULL AND \"AssetId\" IS NOT NULL AND \"Quantity\" = 1)");
+        });
 
         modelBuilder.Entity<AssetPurchaseOrderAttachment>().HasAlternateKey(x => new { x.CompanyId, x.Id });
         modelBuilder.Entity<AssetPurchaseOrderAttachment>().Property(x => x.OriginalFileName).HasMaxLength(255).IsRequired();
@@ -1125,11 +1374,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Asset>().Property(x => x.Status).HasMaxLength(40).IsRequired();
         modelBuilder.Entity<Asset>().Property(x => x.Currency).HasMaxLength(3).IsRequired();
         modelBuilder.Entity<Asset>().Property(x => x.PurchaseCost).HasPrecision(18, 2);
+        modelBuilder.Entity<Asset>().Property(x => x.InsuranceProvider).HasMaxLength(160);
+        modelBuilder.Entity<Asset>().Property(x => x.InsurancePolicyNumber).HasMaxLength(120);
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.WarrantyExpiresAt });
+        modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.InsuranceExpiresAt });
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.NextAuditOn });
         modelBuilder.Entity<Asset>().ToTable("Assets", table =>
         {
-            table.HasCheckConstraint("CK_Assets_Status", "\"Status\" IN ('Available', 'Deployed', 'Pending', 'Maintenance', 'Unusable', 'Archived')");
+            table.HasCheckConstraint("CK_Assets_Status", "\"Status\" IN ('Available', 'Deployed', 'Pending', 'Maintenance', 'Unusable', 'Archived', 'ReturnedToSupplier') OR \"Status\" ~ '^Custom_[a-f0-9]{8}$'");
             table.HasCheckConstraint("CK_Assets_AssignmentStatus", "(\"Status\" = 'Deployed' AND \"AssignedEmployeeId\" IS NOT NULL) OR (\"Status\" <> 'Deployed' AND \"AssignedEmployeeId\" IS NULL)");
             table.HasCheckConstraint("CK_Assets_ExpectedReturn", "\"ExpectedReturnOn\" IS NULL OR (\"Status\" = 'Deployed' AND \"AssignedEmployeeId\" IS NOT NULL)");
             table.HasCheckConstraint("CK_Assets_NonnegativeCost", "\"PurchaseCost\" IS NULL OR \"PurchaseCost\" >= 0");

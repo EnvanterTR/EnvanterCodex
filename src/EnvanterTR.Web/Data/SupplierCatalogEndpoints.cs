@@ -12,8 +12,30 @@ public static class SupplierCatalogEndpoints
         api.MapGet("/suppliers", async ([FromQuery] string? q, [FromQuery] bool? includeArchived,
             ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
-            if (!Scope(user, out var companyId)) return Results.Forbid();
+            if (!Scope(user, out var companyId) || !Actor(user, out var actorId)) return Results.Forbid();
             if (q?.Trim().Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama en fazla 120 karakter olabilir."] });
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
+            var accessoryOrders = db.AccessoryPurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var stockOrders = db.StockPurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var assetOrders = db.AssetPurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var accessories = db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var consumables = db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var components = db.InventoryComponents.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var licenses = db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var licensePurchaseOrders = db.SoftwareLicensePurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var maintenances = db.AssetMaintenances.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (allowedLocations is not null)
+            {
+                accessoryOrders = accessoryOrders.InLocationScope(db, companyId, allowedLocations);
+                stockOrders = stockOrders.InLocationScope(db, companyId, allowedLocations);
+                assetOrders = assetOrders.InLocationScope(db, companyId, allowedLocations);
+                accessories = accessories.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
+                consumables = consumables.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
+                components = components.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
+                licenses = licenses.LicensesInLocationScope(db, companyId, allowedLocations);
+                licensePurchaseOrders = licensePurchaseOrders.Where(order => licenses.Any(license => license.Id == order.LicenseId));
+                maintenances = maintenances.InLocationScope(db, companyId, allowedLocations);
+            }
             var query = db.SupplierCatalogEntries.AsNoTracking().Where(x => x.CompanyId == companyId);
             if (includeArchived != true) query = query.Where(x => x.IsActive);
             if (!string.IsNullOrWhiteSpace(q))
@@ -26,14 +48,12 @@ public static class SupplierCatalogEndpoints
             {
                 x.Id, x.Name, x.ContactName, x.Email, x.Phone, x.Website, x.Notes, x.IsActive, x.CreatedAt, x.UpdatedAt,
                 logoUrl = x.LogoFileName == null ? null : $"/api/suppliers/{x.Id}/logo",
-                orderCount = db.AccessoryPurchaseOrders.Count(o => o.CompanyId == companyId && o.SupplierId == x.Id) +
-                    db.StockPurchaseOrders.Count(o => o.CompanyId == companyId && o.SupplierId == x.Id) +
-                    db.AssetPurchaseOrders.Count(o => o.CompanyId == companyId && o.SupplierId == x.Id),
-                accessoryCount = db.Accessories.Count(a => a.CompanyId == companyId && a.SupplierId == x.Id),
-                consumableCount = db.Consumables.Count(c => c.CompanyId == companyId && c.SupplierId == x.Id),
-                componentCount = db.InventoryComponents.Count(c => c.CompanyId == companyId && c.SupplierId == x.Id),
-                licenseCount = db.SoftwareLicenses.Count(l => l.CompanyId == companyId && l.SupplierId == x.Id),
-                maintenanceCount = db.AssetMaintenances.Count(m => m.CompanyId == companyId && m.SupplierId == x.Id)
+                orderCount = accessoryOrders.Count(o => o.SupplierId == x.Id) + stockOrders.Count(o => o.SupplierId == x.Id) + assetOrders.Count(o => o.SupplierId == x.Id) + licensePurchaseOrders.Count(o => o.SupplierId == x.Id),
+                accessoryCount = accessories.Count(a => a.SupplierId == x.Id),
+                consumableCount = consumables.Count(c => c.SupplierId == x.Id),
+                componentCount = components.Count(c => c.SupplierId == x.Id),
+                licenseCount = licenses.Count(l => l.SupplierId == x.Id),
+                maintenanceCount = maintenances.Count(m => m.SupplierId == x.Id)
             }).ToListAsync(ct);
             return Results.Ok(new { items });
         }).RequireAuthorization("asset.read");
@@ -50,6 +70,7 @@ public static class SupplierCatalogEndpoints
         api.MapPost("/suppliers", async (SupplierRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Scope(user, out var companyId) || !Actor(user, out var actorId)) return Results.Forbid();
+            if (await IsLocationRestrictedAsync(db, companyId, actorId, ct)) return RestrictedCatalogWrite();
             var errors = Validate(request, out var name, out var normalized, out var contact, out var email, out var phone, out var website, out var notes);
             if (errors.Count > 0) return Results.ValidationProblem(errors);
             if (await db.SupplierCatalogEntries.AnyAsync(x => x.CompanyId == companyId && x.NormalizedName == normalized, ct))
@@ -64,6 +85,7 @@ public static class SupplierCatalogEndpoints
         api.MapPut("/suppliers/{id:guid}", async (Guid id, SupplierRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Scope(user, out var companyId) || !Actor(user, out var actorId)) return Results.Forbid();
+            if (await IsLocationRestrictedAsync(db, companyId, actorId, ct)) return RestrictedCatalogWrite();
             var entry = await db.SupplierCatalogEntries.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
             if (entry is null) return Results.NotFound();
             var errors = Validate(request, out var name, out var normalized, out var contact, out var email, out var phone, out var website, out var notes);
@@ -94,6 +116,7 @@ public static class SupplierCatalogEndpoints
         api.MapPost("/suppliers/{id:guid}/archive", async (Guid id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Scope(user, out var companyId) || !Actor(user, out var actorId)) return Results.Forbid();
+            if (await IsLocationRestrictedAsync(db, companyId, actorId, ct)) return RestrictedCatalogWrite();
             var entry = await db.SupplierCatalogEntries.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
             if (entry is null) return Results.NotFound();
             if (entry.IsActive)
@@ -108,6 +131,7 @@ public static class SupplierCatalogEndpoints
         api.MapPost("/suppliers/{id:guid}/restore", async (Guid id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Scope(user, out var companyId) || !Actor(user, out var actorId)) return Results.Forbid();
+            if (await IsLocationRestrictedAsync(db, companyId, actorId, ct)) return RestrictedCatalogWrite();
             var entry = await db.SupplierCatalogEntries.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
             if (entry is null) return Results.NotFound();
             if (!entry.IsActive && await db.SupplierCatalogEntries.AnyAsync(x => x.CompanyId == companyId && x.Id != id && x.IsActive && x.NormalizedName == entry.NormalizedName, ct))
@@ -140,6 +164,12 @@ public static class SupplierCatalogEndpoints
     }
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    internal static async Task<bool> IsLocationRestrictedAsync(AppDbContext db, Guid companyId, Guid userId, CancellationToken ct) =>
+        await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, userId, ct) is not null;
+    private static IResult RestrictedCatalogWrite() => Results.Json(new
+    {
+        message = "Tedarikçi kataloğu şirket genelinde paylaşıldığı için bu işlem yalnızca tüm konumlara erişimi olan üyelerce yapılabilir."
+    }, statusCode: StatusCodes.Status403Forbidden);
     public static async Task<Guid?> ResolveSupplierIdAsync(AppDbContext db, Guid companyId, string? supplier, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(supplier)) return null;

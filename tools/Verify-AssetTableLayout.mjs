@@ -18,7 +18,8 @@ if (!mainRules.some(rule => rule.includes('width:100%') && rule.includes('max-wi
 }
 if (!source.includes('<style id="full-width-inventory-workspace">') ||
     !source.includes('main{padding:0}') ||
-    !source.includes('@media(min-width:1051px){.content{padding-left:16px;padding-right:16px}}')) {
+    !source.includes('@media(min-width:1051px){.content{padding-left:10px;padding-right:10px}}') ||
+    !source.includes('.content .workspace-page{padding-left:10px;padding-right:10px}')) {
   failures.push('Desktop workspace padding must not compound around the asset table; use the available width and retain tighter widths only at responsive breakpoints.');
 }
 

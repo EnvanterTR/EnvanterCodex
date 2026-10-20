@@ -13,12 +13,16 @@ public static class StockPurchaseOrderEndpoints
             [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] bool? overdueOnly, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
             if (from is not null && to is not null && from > to)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Başlangıç tarihi bitiş tarihinden sonra olamaz."] });
             if (q?.Trim().Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama 120 karakteri aşamaz."] });
             if (!string.IsNullOrWhiteSpace(itemType) && itemType is not ("Consumable" or "Component"))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["itemType"] = ["Kalem türü Sarf veya Bileşen olmalıdır."] });
-            var query = from order in db.StockPurchaseOrders.AsNoTracking()
+            var scopedOrders = db.StockPurchaseOrders.AsNoTracking().Where(order => order.CompanyId == companyId)
+                .InLocationScope(db, companyId, allowedLocations);
+            var query = from order in scopedOrders
                         join line in db.StockPurchaseOrderLines.AsNoTracking() on new { order.CompanyId, Id = order.Id } equals new { line.CompanyId, Id = line.PurchaseOrderId }
                         where order.CompanyId == companyId
                         select new { order, line };
@@ -93,13 +97,16 @@ public static class StockPurchaseOrderEndpoints
             [FromQuery] int page = 1, [FromQuery] int pageSize = 25) =>
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
             if (from is not null && to is not null && from > to)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["dateRange"] = ["Başlangıç tarihi bitiş tarihinden sonra olamaz."] });
             if (q?.Trim().Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama 120 karakteri aşamaz."] });
             if (!string.IsNullOrWhiteSpace(itemType) && itemType is not ("Consumable" or "Component"))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["itemType"] = ["Kalem türü Sarf veya Bileşen olmalıdır."] });
             page = Math.Max(1, page); pageSize = Math.Clamp(pageSize == 0 ? 25 : pageSize, 1, 100);
-            var query = db.StockPurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var query = db.StockPurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId)
+                .InLocationScope(db, companyId, allowedLocations);
             if (!string.IsNullOrWhiteSpace(status)) query = query.Where(x => x.Status == status.Trim());
             if (from is not null) query = query.Where(x => x.OrderDate >= from);
             if (to is not null) query = query.Where(x => x.OrderDate <= to);
@@ -122,7 +129,7 @@ public static class StockPurchaseOrderEndpoints
             }
             var total = await query.CountAsync(ct);
             var rows = await query.OrderByDescending(x => x.OrderDate).ThenByDescending(x => x.CreatedAt).Skip((page - 1) * pageSize).Take(pageSize)
-                .Select(x => new { x.Id, x.OrderNumber, x.Supplier, x.Status, x.OrderDate, x.ExpectedOn, x.Currency,
+                .Select(x => new { x.Id, x.OrderNumber, x.Supplier, x.Status, x.ApprovalStatus, x.OrderDate, x.ExpectedOn, x.Currency,
                     lineCount = db.StockPurchaseOrderLines.Count(l => l.CompanyId == companyId && l.PurchaseOrderId == x.Id),
                     quantity = db.StockPurchaseOrderLines.Where(l => l.CompanyId == companyId && l.PurchaseOrderId == x.Id).Sum(l => (int?)l.Quantity) ?? 0,
                     quantityReceived = db.StockPurchaseOrderLines.Where(l => l.CompanyId == companyId && l.PurchaseOrderId == x.Id).Sum(l => (int?)l.QuantityReceived) ?? 0,
@@ -131,7 +138,7 @@ public static class StockPurchaseOrderEndpoints
             var items = rows.Select(x =>
             {
                 var taxAmount = CalculateTax(x.subtotal, x.DiscountAmount, x.TaxRatePercent);
-                return new { x.Id, x.OrderNumber, x.Supplier, x.Status, x.OrderDate, x.ExpectedOn, x.Currency, x.lineCount, x.quantity,
+                return new { x.Id, x.OrderNumber, x.Supplier, x.Status, x.ApprovalStatus, x.OrderDate, x.ExpectedOn, x.Currency, x.lineCount, x.quantity,
                     x.quantityReceived, x.subtotal, x.TaxRatePercent, x.DiscountAmount, x.FreightAmount, taxAmount,
                     totalCost = CalculateTotal(x.subtotal, x.DiscountAmount, taxAmount, x.FreightAmount) };
             }).ToArray();
@@ -141,8 +148,11 @@ public static class StockPurchaseOrderEndpoints
         api.MapGet("/stock-orders/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
             var order = await db.StockPurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
-                .Select(x => new { x.Id, x.OrderNumber, x.Supplier, x.Status, x.OrderDate, x.ExpectedOn, x.Currency, x.Notes,
+                .InLocationScope(db, companyId, allowedLocations)
+                .Select(x => new { x.Id, x.OrderNumber, x.Supplier, x.Status, x.ApprovalStatus, x.ApprovalNote, x.ReviewedByUserId, x.ReviewedAt, x.OrderDate, x.ExpectedOn, x.Currency, x.Notes,
                     x.TaxRatePercent, x.DiscountAmount, x.FreightAmount, x.CreatedAt, x.UpdatedAt }).SingleOrDefaultAsync(ct);
             if (order is null) return Results.NotFound();
             var lines = await db.StockPurchaseOrderLines.AsNoTracking().Where(x => x.CompanyId == companyId && x.PurchaseOrderId == id)
@@ -152,19 +162,44 @@ public static class StockPurchaseOrderEndpoints
                         db.InventoryComponents.Where(i => i.CompanyId == companyId && i.Id == x.ComponentId).Select(i => i.Name).FirstOrDefault(),
                     itemNumber = x.ConsumableId != null ? db.Consumables.Where(i => i.CompanyId == companyId && i.Id == x.ConsumableId).Select(i => i.ItemNumber).FirstOrDefault() :
                         db.InventoryComponents.Where(i => i.CompanyId == companyId && i.Id == x.ComponentId).Select(i => i.ItemNumber).FirstOrDefault(),
-                    x.Quantity, x.QuantityReceived, remaining = x.Quantity - x.QuantityReceived, x.UnitCost, totalCost = x.Quantity * x.UnitCost, x.Notes }).ToListAsync(ct);
+                    x.Quantity, x.QuantityReceived, x.QuantityReturned, remaining = x.Quantity - x.QuantityReceived, x.UnitCost, totalCost = x.Quantity * x.UnitCost, x.Notes }).ToListAsync(ct);
             var attachments = await db.StockPurchaseOrderAttachments.AsNoTracking().Where(x => x.CompanyId == companyId && x.PurchaseOrderId == id)
                 .OrderByDescending(x => x.CreatedAt).Select(x => new { x.Id, x.OriginalFileName, x.ContentType, x.Length, x.CreatedAt,
+                    x.UploadedByUserId,
                     uploadedBy = db.Users.Where(actor => actor.Id == x.UploadedByUserId).Select(actor => actor.DisplayName).FirstOrDefault() }).ToListAsync(ct);
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
+            var hiddenActorIds = await EmployeeAccessIdentityScope.HiddenUserIdsAsync(db, companyId, employeeScope,
+                new Guid?[] { order.ReviewedByUserId }.Concat(attachments.Select(x => x.UploadedByUserId)), ct);
+            var visibleOrder = new
+            {
+                order.Id, order.OrderNumber, order.Supplier, order.Status, order.ApprovalStatus, order.ApprovalNote,
+                ReviewedByUserId = order.ReviewedByUserId is Guid reviewerId && hiddenActorIds.Contains(reviewerId)
+                    ? (Guid?)null : order.ReviewedByUserId,
+                order.ReviewedAt, order.OrderDate, order.ExpectedOn, order.Currency, order.Notes,
+                order.TaxRatePercent, order.DiscountAmount, order.FreightAmount, order.CreatedAt, order.UpdatedAt
+            };
+            var visibleAttachments = attachments.Select(item => new
+            {
+                item.Id, item.OriginalFileName, item.ContentType, item.Length, item.CreatedAt,
+                uploadedBy = item.UploadedByUserId is Guid uploaderId && hiddenActorIds.Contains(uploaderId) ? null : item.uploadedBy
+            }).ToList();
             var subtotal = lines.Sum(x => x.totalCost);
             var taxAmount = CalculateTax(subtotal, order.DiscountAmount, order.TaxRatePercent);
             var landedUnitCosts = CalculateLandedUnitCosts(lines.Select(x => (x.Id, x.Quantity, x.UnitCost)).ToArray(),
                 order.DiscountAmount, taxAmount, order.FreightAmount, subtotal);
             var pricedLines = lines.Select(line => new { line.Id, line.itemType, line.itemId, line.itemName, line.itemNumber,
-                line.Quantity, line.QuantityReceived, line.remaining, line.UnitCost, line.totalCost, line.Notes, landedUnitCost = landedUnitCosts[line.Id] }).ToArray();
-            return Results.Ok(new { order, lines = pricedLines, subtotal, taxableAmount = subtotal - order.DiscountAmount, taxAmount,
-                totalCost = CalculateTotal(subtotal, order.DiscountAmount, taxAmount, order.FreightAmount), quantity = lines.Sum(x => x.Quantity),
-                quantityReceived = lines.Sum(x => x.QuantityReceived), attachments, maxAttachmentCount = 30, maxAttachmentSizeBytes = 10 * 1024 * 1024 });
+                line.Quantity, line.QuantityReceived, line.QuantityReturned, line.remaining, line.UnitCost, line.totalCost, line.Notes, landedUnitCost = landedUnitCosts[line.Id] }).ToArray();
+            var totalCost = CalculateTotal(subtotal, order.DiscountAmount, taxAmount, order.FreightAmount);
+            var budget = allowedLocations is null
+                ? await db.CompanyPurchaseBudgets.AsNoTracking().Where(x => x.CompanyId == companyId &&
+                    x.BudgetYear == order.OrderDate.Year && x.Currency == order.Currency).Select(x => (decimal?)x.Amount).SingleOrDefaultAsync(ct)
+                : null;
+            decimal? committedBeforeThisOrder = budget is null ? null : await PurchaseBudgetQueries.CommittedPurchaseAmountAsync(db,
+                companyId, order.OrderDate.Year, order.Currency, ct, exceptStockOrderId: id);
+            return Results.Ok(new { order = visibleOrder, lines = pricedLines, subtotal, taxableAmount = subtotal - order.DiscountAmount, taxAmount,
+                totalCost, budget = budget is null ? null : new { amount = budget.Value, committedBeforeThisOrder,
+                    projectedCommitted = committedBeforeThisOrder!.Value + totalCost, exceeds = committedBeforeThisOrder!.Value + totalCost > budget.Value }, quantity = lines.Sum(x => x.Quantity),
+                quantityReceived = lines.Sum(x => x.QuantityReceived), attachments = visibleAttachments, maxAttachmentCount = 30, maxAttachmentSizeBytes = 10 * 1024 * 1024 });
         }).RequireAuthorization("asset.read");
 
         api.MapPost("/stock-orders", async (CreateRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
@@ -190,38 +225,56 @@ public static class StockPurchaseOrderEndpoints
                 errors["items"] = ["1–100 farklı sarf/bileşen seçin; adet 1–100.000, birim maliyet 0–1.000.000.000 aralığında olmalı."];
             if (lines.All(x => x.Quantity is >= 1 and <= 100000 && x.UnitCost is >= 0 and <= 1000000000m))
             {
-                var subtotal = lines.Sum(x => x.Quantity * x.UnitCost);
-                if (subtotal > 1000000000000000m) errors["items"] = ["Sipariş ara toplamı 1.000.000.000.000.000 tutarını aşamaz."];
-                if (discountAmount > subtotal) errors["discountAmount"] = ["İskonto sipariş ara toplamından fazla olamaz."];
+                var validatedSubtotal = lines.Sum(x => x.Quantity * x.UnitCost);
+                if (validatedSubtotal > 1000000000000000m) errors["items"] = ["Sipariş ara toplamı 1.000.000.000.000.000 tutarını aşamaz."];
+                if (discountAmount > validatedSubtotal) errors["discountAmount"] = ["İskonto sipariş ara toplamından fazla olamaz."];
             }
             if (errors.Count > 0) return Results.ValidationProblem(errors);
             var consumableIds = lines.Where(x => x.ConsumableId.HasValue).Select(x => x.ConsumableId!.Value).Distinct().ToArray();
             var componentIds = lines.Where(x => x.ComponentId.HasValue).Select(x => x.ComponentId!.Value).Distinct().ToArray();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
+            if (!await PurchaseOrderLocationAccess.CanAccessStockItemsAsync(db, companyId, consumableIds, componentIds, allowedLocations, ct))
+                return Results.NotFound(new { message = "Sipariş kalemlerinden biri erişilebilir konumlarda bulunamadı." });
             if (consumableIds.Length > 0 && await db.Consumables.CountAsync(x => x.CompanyId == companyId && consumableIds.Contains(x.Id), ct) != consumableIds.Length)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["items"] = ["Sarf kalemlerinden biri bu şirkette bulunamadı."] });
             if (componentIds.Length > 0 && await db.InventoryComponents.CountAsync(x => x.CompanyId == companyId && componentIds.Contains(x.Id), ct) != componentIds.Length)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["items"] = ["Bileşen kalemlerinden biri bu şirkette bulunamadı."] });
 
+            await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
             var supplierEntry = await EnsureSupplierAsync(db, companyId, supplier!, ct);
             if (!supplierEntry.Active) return Results.Conflict(new { message = "Tedarikçi arşivlenmiş; önce tedarikçi kataloğundan geri alın." });
             number ??= $"ST-{request.OrderDate:yyyyMMdd}-{Guid.NewGuid():N}"[..20].ToUpperInvariant();
+            var subtotal = lines.Sum(x => x.Quantity * x.UnitCost);
+            var taxAmount = CalculateTax(subtotal, discountAmount, taxRatePercent);
+            var orderTotal = CalculateTotal(subtotal, discountAmount, taxAmount, freightAmount);
+            var budget = await db.CompanyPurchaseBudgets.AsNoTracking().Where(x => x.CompanyId == companyId &&
+                x.BudgetYear == request.OrderDate.Year && x.Currency == currency).Select(x => (decimal?)x.Amount).SingleOrDefaultAsync(ct);
+            var committed = budget is null ? 0m : await PurchaseBudgetQueries.CommittedPurchaseAmountAsync(db, companyId,
+                request.OrderDate.Year, currency, ct);
+            var approvalStatus = budget is not null && committed + orderTotal > budget.Value ? "Pending" : "NotRequired";
             var order = new StockPurchaseOrder { CompanyId = companyId, OrderNumber = number, Supplier = supplierEntry.Name, SupplierId = supplierEntry.Id,
-                Status = "Ordered", OrderDate = request.OrderDate, ExpectedOn = request.ExpectedOn, Currency = currency,
+                Status = "Ordered", ApprovalStatus = approvalStatus, OrderDate = request.OrderDate, ExpectedOn = request.ExpectedOn, Currency = currency,
                 TaxRatePercent = taxRatePercent, DiscountAmount = discountAmount, FreightAmount = freightAmount,
                 Notes = Clean(request.Notes), CreatedByUserId = actorId };
             db.StockPurchaseOrders.Add(order);
             foreach (var line in lines) db.StockPurchaseOrderLines.Add(new StockPurchaseOrderLine { CompanyId = companyId, PurchaseOrderId = order.Id,
                 ConsumableId = line.ConsumableId, ComponentId = line.ComponentId, Quantity = line.Quantity, UnitCost = line.UnitCost, Notes = Clean(line.Notes) });
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "StockPurchaseOrder", TargetId = order.Id,
-                Action = "stock-order.created", Details = $"{order.OrderNumber} · {lines.Length} kalem · vergi %{taxRatePercent:0.##} · iskonto {discountAmount:0.00} · nakliye {freightAmount:0.00} {currency}" });
+                Action = "stock-order.created", Details = $"{order.OrderNumber} · {lines.Length} kalem · vergi %{taxRatePercent:0.##} · iskonto {discountAmount:0.00} · nakliye {freightAmount:0.00} {currency} · bütçe onayı {approvalStatus}" });
             try { await db.SaveChangesAsync(ct); }
             catch (DbUpdateException) { return Results.Conflict(new { message = "Bu sipariş numarası şirkette zaten kullanılıyor." }); }
-            return Results.Created($"/api/stock-orders/{order.Id}", new { order.Id, order.OrderNumber });
+            await tx.CommitAsync(ct);
+            return Results.Created($"/api/stock-orders/{order.Id}", new { order.Id, order.OrderNumber, order.ApprovalStatus,
+                approvalRequired = order.ApprovalStatus == "Pending",
+                budgetAmount = allowedLocations is null ? (decimal?)budget : null,
+                committedBefore = allowedLocations is null ? (decimal?)committed : null,
+                orderTotal });
         }).RequireAuthorization("asset.write");
 
         api.MapPost("/stock-orders/{id:guid}/receive", async (Guid id, ReceiptRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Tenant(user, out var companyId) || !Actor(user, out var actorId)) return Results.Forbid();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
             var items = request.Items ?? [];
             if (items.Length is < 1 or > 100 || items.Any(x => x.LineId == Guid.Empty || x.Quantity is < 1 or > 100000) || items.Select(x => x.LineId).Distinct().Count() != items.Length)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["items"] = ["1–100 farklı sipariş satırı ve her satır için 1–100.000 arası miktar girin."] });
@@ -229,6 +282,10 @@ public static class StockPurchaseOrderEndpoints
             await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
             var order = await db.StockPurchaseOrders.FromSqlInterpolated($"SELECT * FROM \"StockPurchaseOrders\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct);
             if (order is null) return Results.NotFound();
+            if (!await PurchaseOrderLocationAccess.CanAccessStockOrderAsync(db, companyId, id, allowedLocations, ct)) return Results.NotFound();
+            if (order.ApprovalStatus is "Pending" or "Rejected") return Results.Conflict(new { message = order.ApprovalStatus == "Pending"
+                ? "Bütçe aşımındaki sipariş, yetkili yönetici onayından önce teslim alınamaz."
+                : "Bütçe istisnası reddedilen sipariş teslim alınamaz." });
             if (order.Status is "Cancelled" or "Received") return Results.Conflict(new { message = "Bu sipariş artık teslim alınamaz." });
             if (request.ReceivedOn < order.OrderDate) return Results.ValidationProblem(new Dictionary<string, string[]> { ["receivedOn"] = ["Teslim tarihi sipariş tarihinden önce olamaz."] });
             var lineIds = items.Select(x => x.LineId).ToArray();
@@ -282,12 +339,39 @@ public static class StockPurchaseOrderEndpoints
             return Results.Ok(new { order.Status, receivedQuantity = received, orderQuantityReceived = totalReceived, orderQuantity = totalOrdered });
         }).RequireAuthorization("asset.write");
 
+        api.MapPost("/stock-orders/{id:guid}/approval", async (Guid id, ApprovalDecisionRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
+        {
+            if (!Tenant(user, out var companyId) || !Actor(user, out var actorId)) return Results.Forbid();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
+            var decision = request.Decision?.Trim(); var note = Clean(request.Note);
+            if (decision is not ("Approved" or "Rejected"))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["decision"] = ["Karar Approved veya Rejected olmalıdır."] });
+            if (note is null || note.Length is < 10 or > 2000)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Karar gerekçesi 10–2.000 karakter olmalıdır."] });
+            await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+            var order = await db.StockPurchaseOrders.FromSqlInterpolated(
+                $"SELECT * FROM \"StockPurchaseOrders\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct);
+            if (order is null) return Results.NotFound();
+            if (!await PurchaseOrderLocationAccess.CanAccessStockOrderAsync(db, companyId, id, allowedLocations, ct)) return Results.NotFound();
+            if (order.ApprovalStatus != "Pending") return Results.Conflict(new { message = "Yalnızca bekleyen bütçe onayları karara bağlanabilir." });
+            if (order.CreatedByUserId == actorId) return Results.Conflict(new { message = "Siparişi oluşturan kullanıcı kendi bütçe istisnasını onaylayamaz veya reddedemez." });
+            order.ApprovalStatus = decision; order.ReviewedByUserId = actorId; order.ReviewedAt = DateTimeOffset.UtcNow;
+            order.ApprovalNote = note; order.UpdatedAt = DateTimeOffset.UtcNow;
+            db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "StockPurchaseOrder", TargetId = id,
+                Action = decision == "Approved" ? "stock-order.approved" : "stock-order.rejected", Details = $"{order.OrderNumber} · {note}" });
+            await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
+            return Results.Ok(new { order.Id, order.OrderNumber, order.ApprovalStatus, order.ReviewedByUserId, order.ReviewedAt, order.ApprovalNote });
+        }).RequireAuthorization("settings.manage");
+
         api.MapPost("/stock-orders/{id:guid}/cancel", async (Guid id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Tenant(user, out var companyId) || !Actor(user, out var actorId)) return Results.Forbid();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
             await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
             var order = await db.StockPurchaseOrders.FromSqlInterpolated($"SELECT * FROM \"StockPurchaseOrders\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct);
             if (order is null) return Results.NotFound();
+            if (!await PurchaseOrderLocationAccess.CanAccessStockOrderAsync(db, companyId, id, allowedLocations, ct)) return Results.NotFound();
             if (order.Status is "Received" or "Cancelled") return Results.Conflict(new { message = "Tamamlanmış veya iptal edilmiş sipariş değiştirilemez." });
             order.Status = "Cancelled"; order.UpdatedAt = DateTimeOffset.UtcNow;
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "StockPurchaseOrder", TargetId = id, Action = "stock-order.cancelled", Details = order.OrderNumber });
@@ -340,4 +424,5 @@ public static class StockPurchaseOrderEndpoints
     private sealed record CreateLine(Guid? ConsumableId, Guid? ComponentId, int Quantity, decimal UnitCost, string? Notes);
     private sealed record ReceiptRequest(ReceiptLine[]? Items, DateOnly ReceivedOn, string? Notes);
     private sealed record ReceiptLine(Guid LineId, int Quantity);
+    private sealed record ApprovalDecisionRequest(string? Decision, string? Note);
 }

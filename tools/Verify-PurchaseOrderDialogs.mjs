@@ -43,4 +43,11 @@ const accessoryAttachmentRemoval = section("$('#accessoryOrderAttachments').addE
 assertDialogBeforeRequest(accessoryAttachmentRemoval, '/api/accessory-orders/${currentAccessoryOrder.order.id}/attachments/${button.dataset.id}', 'accessory order attachment removal');
 assert.ok(accessoryAttachmentRemoval.includes('loadAccessoryOrderAttachments()'), 'accessory attachment removal must reload the selected order attachments');
 
-console.log('Verified cancellable in-app confirmations precede all three purchase-order cancellation and attachment-removal APIs; success refreshes the selected list/detail.');
+const assetOrderLocation = section('function addAssetOrderLine()', 'function updateAssetOrderTotal()', 'asset order line editor');
+assert.match(assetOrderLocation, /Hedef konum \*<select data-asset-order-location required>/, 'each new asset order line must require a target location');
+const assetOrderCreate = section("$('#assetOrderCreateForm').addEventListener('submit'", "$('#assetOrderRows').addEventListener('click'", 'asset order create action');
+assert.match(assetOrderCreate, /locationCatalogId: row\.querySelector\('\[data-asset-order-location\]'\)\.value/, 'asset order create request must include the selected line location');
+assert.match(html, /escapeHtml\(line\.locationName \|\| 'Konum belirtilmemiş'\)/, 'asset order detail and receipt rows must display the target location');
+assert.match(html, /Hedef konum<\/th>/, 'asset order detail table must label the target location column');
+
+console.log('Verified purchase-order confirmation and refresh actions plus mandatory asset-order target location through create, detail, and receipt UI.');

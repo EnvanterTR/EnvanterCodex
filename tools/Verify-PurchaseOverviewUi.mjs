@@ -1,0 +1,40 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+
+const app = await readFile('src/EnvanterTR.Web/wwwroot/index.html', 'utf8');
+const endpoint = await readFile('src/EnvanterTR.Web/Data/PurchaseOverviewEndpoints.cs', 'utf8');
+const browser = await readFile('deploy/testing/hosted-checkout-browser/asset-detail-actions.mjs', 'utf8');
+const runner = await readFile('deploy/testing/hosted-checkout-browser/hosted-checkout.mjs', 'utf8');
+const docker = await readFile('deploy/testing/Dockerfile.hosted-checkout-browser', 'utf8');
+
+assert.match(app, /data-page="Tüm satın almalar"/);
+assert.match(app, /id="purchaseOverviewPage"/);
+for (const id of ['purchaseOverviewSearch', 'purchaseOverviewType', 'purchaseOverviewStatus', 'purchaseOverviewFrom', 'purchaseOverviewTo', 'purchaseOverviewPageSize', 'purchaseOverviewClear', 'purchaseOverviewExport', 'purchaseOverviewRefresh', 'purchaseOverviewPrev', 'purchaseOverviewNext'])
+  assert.match(app, new RegExp(`id="${id}"`), `Missing unified purchasing UI control ${id}.`);
+assert.match(app, /api\(`\/api\/purchasing\/orders\?\$\{params\}`\)/);
+assert.match(app, /api\(`\/api\/purchasing\/orders\/export\.csv\?\$\{params\}`\)/);
+assert.match(app, /asset: openAssetOrder, accessory: openAccessoryOrder, stock: openStockOrder/);
+assert.match(app, /button\.dataset\.type === 'license'.*openLicense\(button\.dataset\.relatedId\)/);
+assert.match(app, /value="license">Yazılım lisansı/);
+assert.match(app, /value="Recorded">Kaydedildi/);
+assert.match(app, /\{count\} lisans koltuğu/);
+assert.match(app, /requestId !== purchaseOverviewRequestId/);
+assert.match(endpoint, /RequireAuthorization\("asset\.read"\)/);
+assert.match(endpoint, /x\.CompanyId == companyId/);
+assert.match(endpoint, /assetRows, accessoryRows, stockRows, licenseRows/);
+assert.match(endpoint, /LicensesInLocationScope/);
+assert.match(endpoint, /Status = "Recorded", OrderDate = x\.OrderDate/);
+assert.match(endpoint, /ReceiptTracked/);
+assert.match(endpoint, /DetailedCostsTracked/);
+assert.match(endpoint, /OrderNumber\.Contains\(selected\).*PurchaseOrderLines/);
+assert.match(endpoint, /StatusLabel\(x\.Status\)/);
+assert.match(endpoint, /total > 10_000/);
+assert.match(endpoint, /value.StartsWith\('\\n'\)/);
+assert.match(endpoint, /assetIds\.Contains\(x\.PurchaseOrderId\)/);
+assert.match(endpoint, /accessoryIds\.Contains\(x\.PurchaseOrderId\)/);
+assert.match(endpoint, /stockIds\.Contains\(x\.PurchaseOrderId\)/);
+assert.match(browser, /Unified company purchases show asset, accessory, stock, and license records/);
+assert.match(browser, /parent-license detail routing/);
+assert.match(runner, /await import\('\.\/asset-detail-actions\.mjs'\)/);
+assert.match(docker, /COPY deploy\/testing\/hosted-checkout-browser\/asset-detail-actions\.mjs/);
+console.log('Verified unified purchasing navigation, filters, paging, read-only CSV export, order detail routing, tenant-scoped API query and hosted browser acceptance wiring.');

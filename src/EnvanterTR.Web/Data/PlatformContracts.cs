@@ -19,12 +19,18 @@ public sealed record SavePlanRequest(
     int SortOrder,
     string? ChangeReason);
 
+public sealed record SaveSubscriptionCouponRequest(
+    string Code, string DiscountType, decimal DiscountValue, string Currency, Guid? PlanId,
+    DateTimeOffset? StartsAt, DateTimeOffset? EndsAt, int? MaxRedemptions,
+    int? MaxRedemptionsPerCustomer, bool IsActive, string? ChangeReason);
+
 public sealed record GrantDemoRequest(Guid PlanId, int Days, string? Note);
 public sealed record ExtendSubscriptionRequest(DateTimeOffset EndsAt, string? Note);
 public sealed record EditSubscriptionRequest(Guid PlanId, DateTimeOffset StartsAt, DateTimeOffset EndsAt, string? Note);
 public sealed record PlatformInviteMemberRequest(Guid CompanyId, string FullName, string Email, string RoleKey);
 public sealed record UpdatePlatformMemberRoleRequest(string RoleKey, string? Note);
 public sealed record RemovePlatformMembershipRequest(string? Note);
+public sealed record PlatformMemberSecurityActionRequest(string Action, string? Note, int? LockoutDays);
 public sealed record TransferCompanyOwnershipRequest(string NewOwnerEmail, string FormerOwnerRoleKey, string? Note,
     bool ConfirmTransfer);
 public sealed record PlatformMemberTimelineEvent(DateTimeOffset OccurredAt, string EventType, string Title,
@@ -37,6 +43,8 @@ public sealed record RecordCheckoutPaymentFollowUpRequest(string Outcome, DateTi
 public sealed record ProvisionCompanyRequest(string CompanyName, string Slug, string? ContactEmail,
     string OwnerName, string OwnerEmail, Guid PlanId, int TermDays, string PaymentReference, bool PaymentVerified);
 public sealed record SetCompanyActiveRequest(bool IsActive, string? Note);
+public sealed record SetCompaniesActiveRequest(Guid[] CompanyIds, bool IsActive, string? Note);
+public sealed record SetCompaniesPlanRequest(Guid[] CompanyIds, Guid PlanId, string? Note);
 public sealed record UpdatePlatformCustomerLifecycleRequest(string Stage, Guid? AssignedAdminUserId,
     DateTimeOffset? NextFollowUpAt, string? Note);
 public sealed record SaveSiteContentRequest(string Title, string? Body, string? MediaPath, bool IsPublished);

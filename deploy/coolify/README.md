@@ -2,9 +2,51 @@
 
 Use `deploy/coolify/compose.yaml` as the Docker Compose file in a Git-based Coolify application. Keep the base directory at `/` so the web and public-site Docker build contexts can read the repository root.
 
-The stack starts a new PostgreSQL database, the EnvanterTR application, and the public marketing/demo site. The web application and public Nginx service share a private Compose network so `/giris` and `/api` can reach the app; PostgreSQL is on that same non-published network. It uses three explicitly named, EnvanterTR v1-specific persistent volumes for database contents, uploaded company media, and ASP.NET data-protection keys. Those volume names are independent of the Coolify project/resource slug, so a similarly named legacy service cannot silently supply its database or files. Do not rename them to legacy volume names or point this stack at another application's database.
+The stack starts PostgreSQL, the EnvanterTR application, and the public marketing/demo site. The web application and public Nginx service share a private Compose network so `/giris` and `/api` can reach the app; PostgreSQL is on that same non-published network. The Compose source declares three EnvanterTR v1-specific persistent volumes for database contents, uploaded company media, and ASP.NET data-protection keys. **Confirm the deployed mount names with `docker inspect`: Coolify can rewrite these names.** On the current resource the real volumes are `izrckbfan6xop8b6xgigduvt_database-data`, `izrckbfan6xop8b6xgigduvt_company-media-data`, and `izrckbfan6xop8b6xgigduvt_data-protection-keys-data`. Preserve this resource and its verified mounts during updates; do not attach legacy or newly empty volumes by assuming the source names are the deployed names.
 
 ## Request traffic and GitHub are separate
+
+### Current application release — 20 October 2026
+
+Candidate PR #2 was merged as `7c9522e` after all three CI jobs passed, including 231/231 actual PostgreSQL tests. Its source tree equals the tested candidate. Deployment `tip3j749uzcmito18wa1e2p7` started the new application on the existing resource and verified volumes. Production was updated atomically from 92 to 117 migrations after a fresh coupled SQL/media/key/image backup and a successful restored-copy rehearsal. Both apex and firma status endpoints report ready, 117 migrations and zero pending. The Santa owner dashboard also opened with its existing authenticated session. The older 92-migration observations below are historical.
+
+### Shared tenant route and automatic wildcard certificates
+
+The Compose `public-site` labels define one HTTP-to-HTTPS tenant redirect and one shared HTTPS router. The anchored Go regular expression accepts one company subdomain under `envantertr.com`; it excludes the apex, nested names and lookalike suffixes. The `\z` end anchor avoids Docker/Coolify dollar interpolation. Explicit host routers have higher priority; Nginx continues to serve the marketing site on apex/www and proxies company hosts to the private application. The application must still resolve the company slug and enforce membership. A wildcard route never grants company access by itself.
+
+Before deploying these labels, configure the **existing proxy** with resolver `envantertr-dns`:
+
+```text
+--certificatesresolvers.envantertr-dns.acme.email=admin@envantertr.com
+--certificatesresolvers.envantertr-dns.acme.storage=/traefik/envantertr-dns-acme.json
+--certificatesresolvers.envantertr-dns.acme.dnschallenge.provider=cloudflare
+--certificatesresolvers.envantertr-dns.acme.dnschallenge.resolvers=1.1.1.1:53,1.0.0.1:53
+```
+
+Use `CF_DNS_API_TOKEN_FILE=/traefik/secrets/envantertr-cloudflare-dns-token`. Keep the token in a root-private directory with mode 0600, using the existing proxy mount; no token value belongs in Compose, source control, screenshots or logs. Scope its permissions to this zone's DNS Edit and Zone Read, and restrict source IPs to the actual server egress addresses. Back up the existing proxy configuration and ACME storage before restarting it. A separate ACME staging test must pass first; staging certificates must never replace trusted production certificates. Let Traefik renew the production certificate using the same private storage and DNS resolver.
+
+### Preserve proxy network attachments when recreating it
+
+Coolify may attach the proxy to an application's external Docker network at runtime. Such attachments are not necessarily present in the proxy Compose file and are lost when the proxy container is recreated. A healthy proxy alone therefore does not prove that customer requests reach the application.
+
+Before changing the proxy, record its actual Docker network names and the public-site service's network names using `docker inspect`. Preserve each existing required shared network in the proxy Compose service and declare it as an external network with its exact existing name. Do not create a replacement network, publish PostgreSQL, or attach unrelated services. On this resource the required external application network is `izrckbfan6xop8b6xgigduvt`.
+
+Back up the original configuration and a network-preserving rollback configuration. Validate Compose before applying it. After recreation, verify the network intersection again, validate apex and firma `/api/status` through the local origin with normal TLS verification, then load the public company login page through Cloudflare. If the application is unavailable, restore the network-preserving configuration; do not repeatedly recreate a healthy but disconnected proxy.
+
+On 20 October the first proxy recreation exposed this missing persistent attachment and caused a temporary 504. The existing application network was restored and then persisted alongside the DNS resolver. Both origin status endpoints returned ready with 117 migrations and zero pending, the wildcard certificate verified successfully, and the company login page opened through Cloudflare. The shared tenant router still requires its own release and acceptance; certificate success does not prove routing or tenant isolation.
+After the trusted origin certificate and tenant route are verified, check apex/www/firma and a new tenant-shaped host before enabling Cloudflare Full (strict). Keep certificate verification enabled. DNS, TLS and routing are shared infrastructure; new purchases create company/slug/membership/subscription records, rather than changing DNS for every company. SMTP, live payment/provider and complete real-account acceptance remain separate gates.
+
+### Current production routing — 20 October 2026
+
+Coolify resource `izrckbfan6xop8b6xgigduvt` had only apex/www domains. The explicit `firma.envantertr.com` domain was added to `public-site` on container port 80. Deployment `fb9dqiuv5hsi9ndegajdbpv6` successfully redeployed the already-live/main revision `bb7ab41` in 3m14s. Both apex and firma `/api/status` now return HTTP 200, ready, 92 migrations / zero pending. The historical 21/22 pending and firma 503 observations below no longer describe this deployment.
+
+The later 20 October account setup created Santa and its company owner, verified the owner panel on `firma.envantertr.com`, and created the separate platform administrator. Both bootstrap status endpoints now report setup complete. The platform bootstrap token was removed in deployment `qe5ttbjgnbith48ajsswrp7k`. Platform Authenticator is enabled; Santa's separate owner account still has MFA disabled. Published plan count remains zero and checkout is unavailable. The local working tree has 117 migrations and was not pushed/deployed in this routing operation. This explicit firma route does not prove arbitrary tenant wildcard routing or wildcard certificate readiness. No database migration command was run for these redeployments.
+
+### Production backup preparation — 20 October 2026
+
+A private custom-format SQL dump was restored to `envantertr_restorecheck_20261020_065247`; all 81 public-table row counts matched, with 92 migrations, one company and two accounts. Daily SQL task `irsodh1rfb6jx4n6fzin63sn` is enabled on the `database` service; its first execution at 06:58:03 UTC succeeded in two seconds. The maintained script is `daily-postgres-backup.sh`; the deployed copy is in the private PostgreSQL backup directory because Coolify's command field is limited to 255 characters.
+
+Rollback bundle `/var/backups/envantertr/rollback-20261020T070546Z` contains the verified SQL dump, media archive, Data Protection key archive, exact web/public-site image export, image metadata and private runtime-environment files. Seven SHA-256 checks passed; the bundle is about 129 MB and is root-private. It remains on the same host, so encrypted off-host copies and an exact candidate migration rehearsal remain separate gates. Do not upload its private contents to GitHub or a public report. See `tests/reports/live-backup-restore-20261020.md` for the operation record. The primary database is still at 92 migrations.
 
 Customer browsers connect to the configured `envantertr.com` domain, which Coolify routes to `public-site`; Nginx sends application routes to `web`, and `web` talks to PostgreSQL on the private Compose network. Normal page views, sign-ins, inventory operations, and customer uploads are served by this server stack. They do not start GitHub Actions jobs or consume GitHub Actions minutes. GitHub stores the source and sends a deployment change signal; Coolify fetches/builds a new revision when a deployment is triggered. If no deployment runs, the currently deployed revision continues serving traffic.
 
@@ -13,6 +55,27 @@ The repository's `EnvanterTR CI` workflow is separate from Coolify deployment. I
 Database schema changes are a separate operational step. The application does not automatically apply pending migrations during normal startup; take and verify a backup, then explicitly run the approved migration procedure before expecting an older production database to match a newer application schema.
 
 ### Production migration gate (15 October 2026)
+
+#### Current read-only reconciliation (19 October 2026 08:19 TRT)
+
+- `https://envantertr.com/api/status`: HTTP 200, `migration-required`; the deployed application reports 92 migrations and 22 pending.
+- `https://firma.envantertr.com/api/status`: HTTP 503 (`no available server`); the tenant host has no healthy public upstream.
+- The current working tree contains 112 migration source files. `origin/main` contains 92, matching the live application's reported migration count, but the status endpoint does not identify its deployed commit, so an exact revision match is unproven. The 22 pending count applies to the live 92-migration image. If the database has the same 70 known migrations applied and the source lineage is unchanged, upgrading to the current 112-migration source would involve 42 pending migrations; confirm the production migration-history table in the protected environment before any operation.
+- `https://envantertr.com/api/plans` currently returns an empty array and `/api/checkout/status` reports unavailable.
+- A source-only review of the 20 migration files absent from `origin/main` found no destructive operation in their `Up` methods (no `DropTable`, `DropColumn`, row-delete or raw SQL call). That source review does not establish production data safety, lock/disk capacity, or rollback readiness.
+- No current production backup/restore verification or Coolify resource access is available here. The user's earlier approval remains gated on verifying a production-specific backup and restore, exact image/resource, and rollback prerequisites. **No production migration or deployment was performed.**
+
+#### Fresh read-only reconciliation (16 October 2026 09:14 UTC)
+
+`node tools/Check-CoolifyProduction.mjs` returned:
+- `envantertr.com/api/status`: HTTP 200, `migration-required`; deployed application reports 92 migrations and 22 pending.
+- `firma.envantertr.com/api/status`: HTTP 503; public proxy/edge says no available upstream.
+- `envantertr.com/api/plans`: HTTP 200, zero published plans.
+- `envantertr.com/api/checkout/status`: HTTP 200, checkout unavailable.
+
+At that 16 October check, the local repository candidate contained 96 migration files. The local `origin/main` reference contained 92; the live status count also reported 92. This count match is consistent with, but does not prove, the live web image was the exact `origin/main` revision because the status endpoint did not return a commit SHA. Four migrations in that historical candidate were absent from `origin/main`: `20261015133121_ArchiveSoftwareLicenses`, `20261015220403_AddCompanyCustomRoles`, `20261015235925_AddSoftwareLicenseEmployeeEulaAcceptances`, and `20261016033921_AddPlatformAuditRetentionPolicy`. Their `Up` methods add a software-license archive flag/index, a company-role table, versioned employee EULA acceptance storage plus an existing-table unique constraint, and a singleton audit-retention policy table. The reviewed `Up` methods contained no table/column drops or row-deletion operations; live table sizes, index-build duration, lock impact, and disk headroom remained unknown.
+
+This check was read-only. No Coolify credential or production-backup path was available in the current machine environment, and no Coolify browser session was open. The verified local encrypted backup/restore preview is not a production backup. Therefore production backup verification, exact resource/image confirmation, migration, deployment, tenant routing, public plan publication, and checkout remain unverified; do not run the production migration yet. Prior user approval remains applicable only after the runbook's exact-resource backup/restore and revision prerequisites are met.
 
 The last successful apex JSON status (15 October 2026, 10:54 UTC) reported schema `92` with `22` pending migrations. A subsequent readiness check at 10:56 UTC returned HTTP 502 for the apex, HTTP 503 for the tenant host, and HTTP 502 for plan/checkout status, so the live schema cannot currently be re-confirmed. The application deliberately blocks sign-in while the schema is behind. The source has an explicit `dotnet EnvanterTR.Web.dll --migrate` mode; ordinary web startup does not mutate the database. Do not run that command from a developer checkout or against a guessed Coolify resource: a one-off task must use the exact production web image/revision, the production web environment (especially its existing `ConnectionStrings__EnvanterTR`), and the same private network as that resource's PostgreSQL service. Preserve the published `dotnet EnvanterTR.Web.dll` entrypoint and pass `--migrate` as its argument. Never print or copy the connection string into logs or chat.
 
@@ -24,7 +87,7 @@ Required order:
 4. Run the one-off migration task against that exact Coolify resource and wait for process exit code `0` and the explicit “migration completed” log. On failure, stop; capture sanitized diagnostics and execute the reviewed restore plan, never rerun blindly.
 5. Verify `/api/status` reports current schema with zero pending migrations, then check company-host routing/health, authenticated tenant-scoped read and write, asset/company counts, media and data-protection keys. Resume traffic only after acceptance; deploy the matching application revision as required.
 
-Current 22 pending IDs (from the 70-migration production baseline to source schema 92):
+Historical 22 pending IDs reported by the deployed 92-migration image (15 October 2026; from its 70-migration database baseline to image schema 92):
 
 `20261010200000_AddCompanyApiTokens`, `20261010210000_AddAssetModelAttachments`, `20261010215527_AddAssetModelNumbersAndDefaultLocation`, `20261011132002_AddAssetContracts`, `20261011200000_AddAssetNotes`, `20261011210000_AddCompanyTasks`, `20261012003915_AddSupportTickets`, `20261012015637_AddSupportTicketEmailOutbox`, `20261012063154_AddMixedAccessoryKitContents`, `20261012140000_AddSensitiveAssetCustomFieldType`, `20261012150000_AddRevocableUserSessions`, `20261012160000_AddAccessoryKitInventoryRequests`, `20261012170000_AddInventoryRequestKitReturns`, `20261012180000_AddCompanyUnits`, `20261013173746_AddCompanyCheckoutOrders`, `20261013201450_AddPlatformDemoRequests`, `20261013214956_AddAccountRegistrationTimestamp`, `20261013222826_AddCheckoutConsentAndInitializationLease`, `20261013234530_AddPlatformCustomerLifecycle`, `20261014090000_EnforceAssetPlanQuota`, `20261014150000_AddGlobalAuditTimelineIndex`, `20261015082311_AddPlatformFollowUpEmailDigests`.
 
@@ -45,3 +108,9 @@ For a Git-based Compose application, configure both `https://envantertr.com` and
 If a wildcard URL returns HTTP 503 with `no available server`, the request has reached a public proxy/edge that reports no available upstream; a `Server: cloudflare` response header does not establish whether the missing route/health is in Cloudflare configuration, a tunnel/load balancer, or Coolify. Inspect DNS/proxy mode and tunnel/origin health, then the deployed Coolify resource's Domains list, service health, and proxy logs. Do not start by changing application credentials or tenant data. If apex and wildcard both fail, also check the proxy target port and `public-site` health. The repo Nginx config was locally exercised with `Host: firma.envantertr.com` and returned the web app's `/api/status`; this test proves the in-stack proxy path only, not the external route.
 
 For a read-only external readiness report, run `node tools/Check-CoolifyProduction.mjs` from the repository root. It checks the apex and a representative tenant `/api/status`, distinguishes pending database migrations from an external proxy/edge's plain-text `503 no available server`, and checks the public plan count and payment-provider checkout readiness. A 503 diagnostic deliberately does not claim whether Cloudflare, a tunnel/load balancer, or Coolify owns the failing route. It exits nonzero unless the application/schema, tenant host, at least one public plan, and checkout provider all report ready. It never logs response bodies, credentials, or customer data. This check does not modify Coolify, the database, or customer state; a clean report is a prerequisite signal, not a replacement for authenticated tenant-scope acceptance. CI runs `Verify-CoolifyProductionReadiness.mjs` against synthetic HTTP responses for healthy/unavailable plan and checkout cases, migration-pending, proxy-503, malformed-response, credential-bearing URLs, and network-failure cases; CI does not poll the live domains.
+
+### Canlı ortam salt-okunur kontrolü — 18 Ekim 2026 15:31 TRT
+
+`node tools/Check-CoolifyProduction.mjs` yeniden çalıştırıldı. `https://envantertr.com/api/status` HTTP 200 ile `migration-required`, 92 uygulanmış ve 22 bekleyen migration bildirdi; uygulamanın giriş kapısı şema güncellenene kadar kullanıcı/parola girişini reddediyor. `https://firma.envantertr.com/api/status` HTTP 503; dış proxy/edge bu host için kullanılabilir upstream bulamıyor. `/api/plans` sıfır yayımlı plan, `/api/checkout/status` ödeme altyapısı kullanılamıyor döndü.
+
+Güncel çalışma makinesinde Coolify/SFTP/SSH/production kimlik bilgisi ortam değişkeni yok; `deploy` altında tek yedek klasörü `deploy/local/backups` ve içindeki yedek yerel geliştirme DB'sine ait, canlı DB yedeği kanıtı değil. Bu nedenle verilen kontrollü canlı migration onayının önkoşulları henüz sağlanmış sayılamaz: canlı kaynak veriden alınmış, doğrulanmış ve geri yüklemesi denenmiş yedek, exact Coolify resource/image/revision doğrulaması ve geri dönüş planı yok. Canlıya giriş denemesi, parola değişikliği, migration veya deploy yapılmadı. Bu kontrol, 22 migration bekleme sebebini doğrular; 503'ün DNS/proxy/tunnel/Coolify alt nedenini bu makineden ayırt edemez.

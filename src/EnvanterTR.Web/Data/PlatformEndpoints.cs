@@ -4,10 +4,14 @@ using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Diagnostics;
+using System.IO;
+using System.Globalization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace EnvanterTR.Web.Data;
 
@@ -84,6 +88,114 @@ public static class PlatformEndpoints
         }).AllowAnonymous().RequireRateLimiting("login");
 
         var admin = endpoints.MapGroup("/api/platform").RequireAuthorization("platform.admin");
+        admin.MapGet("/system/health", async (AppDbContext db, IConfiguration configuration,
+            IOptions<IyzipayOptions> paymentOptions, ILogger<Program> logger, CancellationToken cancellationToken) =>
+        {
+            using var process = Process.GetCurrentProcess();
+            var startedAt = new DateTimeOffset(process.StartTime.ToUniversalTime());
+            var sampleStarted = Stopwatch.GetTimestamp();
+            var cpuBefore = process.TotalProcessorTime;
+            await Task.Delay(TimeSpan.FromMilliseconds(300), cancellationToken);
+            process.Refresh();
+            var elapsed = Stopwatch.GetElapsedTime(sampleStarted);
+            var cpuUsed = process.TotalProcessorTime - cpuBefore;
+            var processorCount = Math.Max(1, Environment.ProcessorCount);
+            var cpuPercent = elapsed.TotalMilliseconds <= 0 ? 0d :
+                Math.Round(Math.Clamp(cpuUsed.TotalMilliseconds / elapsed.TotalMilliseconds / processorCount * 100d, 0d, 100d), 1);
+            var workingSetBytes = process.WorkingSet64;
+            var managedHeapBytes = GC.GetTotalMemory(false);
+            var memoryLimitBytes = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes;
+            var memoryUsagePercent = memoryLimitBytes > 0
+                ? Math.Round(Math.Clamp(workingSetBytes / (double)memoryLimitBytes * 100d, 0d, 100d), 1)
+                : (double?)null;
+
+            long? databaseSizeBytes = null;
+            int? publishedCloudPlans = null;
+            int? purchasableCloudPlans = null;
+            var databaseStatus = "healthy";
+            try
+            {
+                databaseSizeBytes = await db.Database
+                    .SqlQueryRaw<long>("SELECT pg_database_size(current_database()) AS \"Value\"")
+                    .SingleAsync(cancellationToken);
+                publishedCloudPlans = await db.SubscriptionPlans.AsNoTracking().CountAsync(
+                    plan => plan.IsActive && plan.IsPublic && plan.DeploymentKind == "cloud", cancellationToken);
+                var checkoutCurrencies = CheckoutEndpoints.SupportedCurrencies;
+                purchasableCloudPlans = await db.SubscriptionPlans.AsNoTracking().CountAsync(
+                    plan => plan.IsActive && plan.IsPublic && plan.DeploymentKind == "cloud" &&
+                        (plan.MonthlyPrice > 0 || plan.AnnualPrice > 0) && checkoutCurrencies.Contains(plan.Currency.ToUpper()), cancellationToken);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                databaseStatus = "unavailable";
+                logger.LogWarning(exception, "Platform system health could not read PostgreSQL database size.");
+            }
+
+            long? diskTotalBytes = null;
+            long? diskAvailableBytes = null;
+            double? diskUsedPercent = null;
+            string? diskRoot = null;
+            try
+            {
+                diskRoot = Path.GetPathRoot(AppContext.BaseDirectory);
+                if (!string.IsNullOrWhiteSpace(diskRoot))
+                {
+                    var drive = new DriveInfo(diskRoot);
+                    if (drive.IsReady)
+                    {
+                        diskTotalBytes = drive.TotalSize;
+                        diskAvailableBytes = drive.AvailableFreeSpace;
+                        diskUsedPercent = drive.TotalSize > 0
+                            ? Math.Round(Math.Clamp((drive.TotalSize - drive.AvailableFreeSpace) / (double)drive.TotalSize * 100d, 0d, 100d), 1)
+                            : null;
+                    }
+                }
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                logger.LogDebug(exception, "Platform system health could not read the application container filesystem capacity.");
+            }
+
+            var generatedAt = DateTimeOffset.UtcNow;
+            var checkoutConfiguration = CheckoutEndpoints.GetConfigurationReadiness(paymentOptions.Value);
+            return Results.Ok(new
+            {
+                generatedAt,
+                application = new
+                {
+                    status = "healthy",
+                    cpuPercent,
+                    cpuSampleMilliseconds = Math.Round(elapsed.TotalMilliseconds),
+                    processorCount,
+                    workingSetBytes,
+                    managedHeapBytes,
+                    memoryLimitBytes = memoryLimitBytes > 0 ? memoryLimitBytes : (long?)null,
+                    memoryUsagePercent,
+                    startedAt,
+                    uptimeSeconds = Math.Max(0, (long)(generatedAt - startedAt).TotalSeconds)
+                },
+                database = new { status = databaseStatus, sizeBytes = databaseSizeBytes },
+                disk = new { scope = "application-container-filesystem", root = diskRoot, totalBytes = diskTotalBytes,
+                    availableBytes = diskAvailableBytes, usedPercent = diskUsedPercent },
+                integrations = new
+                {
+                    smtpConfigured = !string.IsNullOrWhiteSpace(configuration["Email:Smtp:Host"]),
+                    iyzicoConfigured = checkoutConfiguration.CredentialsConfigured,
+                    checkout = new
+                    {
+                        configurationReady = checkoutConfiguration.Available,
+                        credentialsConfigured = checkoutConfiguration.CredentialsConfigured,
+                        callbackValid = checkoutConfiguration.CallbackValid,
+                        apiEndpointValid = checkoutConfiguration.ApiEndpointValid,
+                        environment = checkoutConfiguration.Environment,
+                        publishedCloudPlans,
+                        purchasableCloudPlans,
+                        catalogReady = purchasableCloudPlans > 0
+                    }
+                },
+                note = "CPU/RAM ve disk ölçümleri bu web uygulama konteynerine aittir; Docker hostunun genel kaynaklarını göstermez. Disk kapasitesi uygulama konteyneri dosya sistemidir. Veritabanı boyutu PostgreSQL'den okunur. Entegrasyon durumu yalnızca yapılandırılmış olmayı gösterir; sağlayıcı erişimi sınanmaz."
+            });
+        });
         admin.MapGet("/admins", async (AppDbContext db, CancellationToken cancellationToken) =>
             Results.Ok(await (from platformAdmin in db.PlatformAdministrators.AsNoTracking()
                               join account in db.Users.AsNoTracking() on platformAdmin.UserId equals account.Id
@@ -98,6 +210,87 @@ public static class PlatformEndpoints
             try { await antiforgery.ValidateRequestAsync(invocation.HttpContext); }
             catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
             return await next(invocation);
+        });
+
+        admin.MapGet("/audit-retention", async (AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            var policy = await db.PlatformAuditRetentionPolicies.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.Id == 1, cancellationToken);
+            return Results.Ok(new
+            {
+                retentionDays = policy?.RetentionDays,
+                enabled = policy?.RetentionDays is not null,
+                updatedAt = policy?.UpdatedAt,
+                updatedBy = policy is null ? null : await db.Users.AsNoTracking()
+                    .Where(x => x.Id == policy.UpdatedByUserId).Select(x => x.Email).SingleOrDefaultAsync(cancellationToken)
+            });
+        });
+
+        admin.MapGet("/audit-retention/preview", async (int days, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!IsValidAuditRetentionDays(days)) return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["days"] = ["Saklama süresi 1 ile 36.500 gün arasında olmalıdır."]
+            });
+            var cutoff = DateTimeOffset.UtcNow.AddDays(-days);
+            var companyCount = await db.AuditEntries.AsNoTracking().CountAsync(x => x.OccurredAt < cutoff, cancellationToken);
+            var platformCount = await db.PlatformAuditEntries.AsNoTracking().CountAsync(x => x.OccurredAt < cutoff, cancellationToken);
+            return Results.Ok(new { days, cutoff, companyCount, platformCount, totalCount = companyCount + platformCount,
+                message = "Önizleme hiçbir kaydı silmedi. Sayılar uygulama anında yeniden hesaplanır." });
+        });
+
+        admin.MapPut("/audit-retention", async (UpdatePlatformAuditRetentionRequest request, ClaimsPrincipal user,
+            AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            if (request.RetentionDays is int days && !IsValidAuditRetentionDays(days))
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["retentionDays"] = ["Saklama süresi 1 ile 36.500 gün arasında olmalı veya boş bırakılarak kapatılmalıdır."]
+                });
+            var policy = await db.PlatformAuditRetentionPolicies.SingleOrDefaultAsync(x => x.Id == 1, cancellationToken);
+            var previousDays = policy?.RetentionDays;
+            policy ??= new PlatformAuditRetentionPolicy { Id = 1, UpdatedByUserId = actorId };
+            policy.RetentionDays = request.RetentionDays;
+            policy.UpdatedByUserId = actorId;
+            policy.UpdatedAt = DateTimeOffset.UtcNow;
+            if (db.Entry(policy).State == EntityState.Detached) db.PlatformAuditRetentionPolicies.Add(policy);
+            AddAudit(db, user, "AuditRetentionPolicyChanged", "PlatformAuditRetentionPolicy", null, null,
+                $"Önceki gün={previousDays?.ToString() ?? "kapalı"}; yeni gün={request.RetentionDays?.ToString() ?? "kapalı"}. Otomatik silme yok.");
+            await db.SaveChangesAsync(cancellationToken);
+            return Results.Ok(new { retentionDays = policy.RetentionDays, enabled = policy.RetentionDays is not null,
+                updatedAt = policy.UpdatedAt, message = "Politika kaydedildi; bu işlem mevcut denetim kayıtlarını silmedi." });
+        });
+
+        admin.MapPost("/audit-retention/apply", async (ApplyPlatformAuditRetentionRequest request, ClaimsPrincipal user,
+            AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            if (!IsValidAuditRetentionDays(request.RetentionDays) ||
+                !string.Equals(request.Confirmation, $"DENETIM-KAYITLARINI-SIL:{request.RetentionDays}", StringComparison.Ordinal))
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["confirmation"] = ["Süre geçerli olmalı ve onay alanına DENETIM-KAYITLARINI-SIL:<gün> yazılmalıdır."]
+                });
+
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+            var policyDays = await db.PlatformAuditRetentionPolicies.Where(x => x.Id == 1)
+                .Select(x => x.RetentionDays).SingleOrDefaultAsync(cancellationToken);
+            if (policyDays != request.RetentionDays)
+                return Results.Conflict(new { message = "Saklama politikası önizlemeden sonra değişti; önce güncel politikayı kaydedip yeniden önizleyin." });
+            var cutoff = DateTimeOffset.UtcNow.AddDays(-request.RetentionDays);
+            var companyQuery = db.AuditEntries.Where(x => x.OccurredAt < cutoff);
+            var platformQuery = db.PlatformAuditEntries.Where(x => x.OccurredAt < cutoff);
+            var companyCount = await companyQuery.CountAsync(cancellationToken);
+            var platformCount = await platformQuery.CountAsync(cancellationToken);
+            var deletedCompanyCount = await companyQuery.ExecuteDeleteAsync(cancellationToken);
+            var deletedPlatformCount = await platformQuery.ExecuteDeleteAsync(cancellationToken);
+            AddAudit(db, user, "AuditRetentionApplied", "PlatformAuditRetentionPolicy", null, null,
+                $"Saklama eşiği={request.RetentionDays} gün; şirket kayıtları={deletedCompanyCount}; platform kayıtları={deletedPlatformCount}.");
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { days = request.RetentionDays, cutoff, deletedCompanyCount, deletedPlatformCount,
+                previewCompanyCount = companyCount, previewPlatformCount = platformCount });
         });
 
         admin.MapGet("/overview", async (AppDbContext db, CancellationToken cancellationToken) =>
@@ -166,12 +359,68 @@ public static class PlatformEndpoints
                 })
                 .OrderBy(x => x.currency, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
+            var activeSince = now.AddMinutes(-5);
+            var activeSessionsQuery = db.UserSessions.AsNoTracking().Where(x => x.RevokedAt == null &&
+                x.ExpiresAt > now && x.LastSeenAt >= activeSince);
+            var activeSessionCount = await activeSessionsQuery.CountAsync(cancellationToken);
+            var activeUserCount = await activeSessionsQuery.Select(x => x.UserId).Distinct().CountAsync(cancellationToken);
+            var loginSince = now.AddHours(-24);
+            var recentLoginQuery = db.UserSessions.AsNoTracking().Where(x => x.CreatedAt >= loginSince && x.CreatedAt <= now);
+            var loginSessionCount24Hours = await recentLoginQuery.CountAsync(cancellationToken);
+            var loginUserCount24Hours = await recentLoginQuery.Select(x => x.UserId).Distinct().CountAsync(cancellationToken);
+            var recentLogins = await (from session in db.UserSessions.AsNoTracking()
+                join user in db.Users.AsNoTracking() on session.UserId equals user.Id
+                join sessionCompany in db.Companies.AsNoTracking() on session.CompanyId equals (Guid?)sessionCompany.Id into companiesForSession
+                from company in companiesForSession.DefaultIfEmpty()
+                orderby session.CreatedAt descending, session.Id descending
+                select new
+                {
+                    user.DisplayName,
+                    email = user.Email,
+                    companyName = company == null ? null : company.Name,
+                    session.PlatformAdmin,
+                    session.IpAddress,
+                    session.UserAgent,
+                    session.CreatedAt,
+                    session.LastSeenAt,
+                    session.ExpiresAt,
+                    session.RevokedAt
+                }).Take(10).ToListAsync(cancellationToken);
+            var recentPayments = await (from order in db.CompanyCheckoutOrders.AsNoTracking()
+                join plan in db.SubscriptionPlans.AsNoTracking() on order.PlanId equals plan.Id
+                orderby (order.PaidAt ?? order.CreatedAt) descending
+                select new
+                {
+                    order.Id,
+                    order.CompanyName,
+                    order.OwnerName,
+                    order.OwnerEmail,
+                    planName = plan.Name,
+                    order.TermDays,
+                    order.Amount,
+                    order.Currency,
+                    order.Status,
+                    order.CreatedAt,
+                    order.PaidAt,
+                    activityAt = order.PaidAt ?? order.CreatedAt
+                }).Take(10).ToListAsync(cancellationToken);
             return Results.Ok(new
             {
                 generatedAt = now,
                 companies = new { total = companies, active = activeCompanies, suspended = companies - activeCompanies },
                 subscriptions = new { paidActive, customerTrials, demos, expired, renewalsDue },
                 checkout = new { paymentPending, paymentReview, paymentFailed, provisioningFailed },
+                recentPayments,
+                activity = new
+                {
+                    windowMinutes = 5,
+                    activeUsers = activeUserCount,
+                    activeSessions = activeSessionCount,
+                    loginWindowHours = 24,
+                    loginUsers = loginUserCount24Hours,
+                    loginSessions = loginSessionCount24Hours,
+                    recentLogins
+                },
                 recurringRevenue = new
                 {
                     basis = "provider-verified-current-cloud-subscriptions",
@@ -361,6 +610,103 @@ public static class PlatformEndpoints
                 },
                 memberships, membershipCount, membershipsTruncated = membershipCount > memberships.Count
             });
+        });
+
+        admin.MapPost("/members/{userId:guid}/security-actions", async (Guid userId,
+            [FromBody] PlatformMemberSecurityActionRequest request, ClaimsPrincipal actor, AppDbContext db,
+            UserManager<EnvanterUser> userManager, IConfiguration configuration, ILoggerFactory loggerFactory,
+            CancellationToken cancellationToken) =>
+        {
+            var action = request?.Action?.Trim();
+            var note = Clean(request?.Note);
+            if (request is null || userId == Guid.Empty || note is null || note.Length > 1000 ||
+                action is not ("lock" or "unlock" or "revokeSessions" or "sendPasswordReset") ||
+                action == "lock" && request.LockoutDays is not (>= 1 and <= 365) ||
+                action != "lock" && request.LockoutDays is not null)
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["request"] = ["Desteklenen güvenlik işlemi ve en fazla 1000 karakterlik gerekçe gereklidir; kilitleme süresi 1–365 gün olmalıdır."]
+                });
+
+            var account = await db.Users.SingleOrDefaultAsync(x => x.Id == userId, cancellationToken);
+            if (account is null) return Results.NotFound(new { message = "Kullanıcı hesabı bulunamadı." });
+            var actorId = Guid.TryParse(actor.FindFirstValue(ClaimTypes.NameIdentifier), out var parsedActorId)
+                ? parsedActorId : Guid.Empty;
+            if ((action is "lock" or "revokeSessions") && actorId == userId)
+                return Results.Conflict(new { message = "Güvenlik işlemini uygulayan yönetici kendi hesabını kilitleyemez veya oturumunu sonlandıramaz." });
+
+            await using var transaction = action == "sendPasswordReset"
+                ? null
+                : await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken);
+            var now = DateTimeOffset.UtcNow;
+            var changedSessions = 0;
+            var message = "Hesap güvenliği işlemi tamamlandı.";
+            if (action == "lock")
+            {
+                var isPlatformAdmin = await db.PlatformAdministrators.AnyAsync(x => x.UserId == userId, cancellationToken);
+                if (isPlatformAdmin)
+                {
+                    var otherUnlockedPlatformAdmins = await (from adminAccount in db.PlatformAdministrators
+                        join platformUser in db.Users on adminAccount.UserId equals platformUser.Id
+                        where adminAccount.UserId != userId && platformUser.EmailConfirmed &&
+                            (platformUser.LockoutEnd == null || platformUser.LockoutEnd <= now)
+                        select adminAccount.UserId).CountAsync(cancellationToken);
+                    if (otherUnlockedPlatformAdmins == 0)
+                        return Results.Conflict(new { message = "Son kullanılabilir platform yöneticisi kilitlenemez." });
+                }
+
+                account.LockoutEnabled = true;
+                if (string.IsNullOrWhiteSpace(account.SecurityStamp))
+                    account.SecurityStamp = Guid.NewGuid().ToString("N");
+                var lockResult = await userManager.SetLockoutEndDateAsync(account, now.AddDays(request.LockoutDays!.Value));
+                if (!lockResult.Succeeded)
+                    return Results.ValidationProblem(new Dictionary<string, string[]> { ["lock"] = lockResult.Errors.Select(x => x.Description).ToArray() });
+                var activeSessions = await db.UserSessions.Where(x => x.UserId == userId && x.RevokedAt == null).ToListAsync(cancellationToken);
+                foreach (var session in activeSessions) session.RevokedAt = now;
+                changedSessions = activeSessions.Count;
+                message = $"Hesap {request.LockoutDays} gün kilitlendi; {changedSessions} oturum sonlandırıldı.";
+            }
+            else if (action == "unlock")
+            {
+                account.LockoutEnd = null;
+                account.AccessFailedCount = 0;
+                account.LockoutEnabled = true;
+                message = "Hesap kilidi kaldırıldı; giriş deneme sayacı sıfırlandı. Daha önce sonlandırılan oturumlar geri açılmaz.";
+            }
+            else if (action == "revokeSessions")
+            {
+                changedSessions = await db.UserSessions.Where(x => x.UserId == userId && x.RevokedAt == null)
+                    .ExecuteUpdateAsync(update => update.SetProperty(x => x.RevokedAt, now), cancellationToken);
+                message = $"{changedSessions} açık oturum sonlandırıldı.";
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(account.Email) || !account.EmailConfirmed)
+                    return Results.Conflict(new { message = "Parola yenileme bağlantısı yalnızca e-postası doğrulanmış bir hesaba gönderilebilir." });
+                var resetToken = await userManager.GeneratePasswordResetTokenAsync(account);
+                try
+                {
+                    await AccountEndpoints.SendPasswordResetEmailAsync(account.Email, resetToken, configuration, cancellationToken);
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    loggerFactory.CreateLogger("PlatformMemberSecurity").LogError(
+                        "Platform-triggered password reset email delivery failed for account {UserId}. Error type: {ErrorType}",
+                        userId, exception.GetType().Name);
+                    return Results.Problem("Parola yenileme e-postası gönderilemedi. SMTP ayarlarını kontrol edin.",
+                        statusCode: StatusCodes.Status503ServiceUnavailable);
+                }
+                message = "Doğrulanmış e-posta adresine parola yenileme bağlantısı gönderildi; parola değişmedi.";
+            }
+
+            AddAudit(db, actor, "MemberSecurityAction", "Account", userId, null,
+                JsonSerializer.Serialize(new { action, note, lockoutDays = action == "lock" ? request.LockoutDays : null,
+                    revokedSessions = changedSessions, accountEmailConfirmed = account.EmailConfirmed }));
+            await db.SaveChangesAsync(cancellationToken);
+            if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { action, userId, message, revokedSessions = changedSessions,
+                isLockedOut = account.LockoutEnd is DateTimeOffset lockoutEnd && lockoutEnd > DateTimeOffset.UtcNow,
+                accessFailedCount = account.AccessFailedCount });
         });
 
         admin.MapGet("/members/{userId:guid}/timeline", async (Guid userId, AppDbContext db,
@@ -937,6 +1283,65 @@ public static class PlatformEndpoints
                 lead.LastContactedAt, lead.CompanyId, lead.DemoGrantedAt, lead.UpdatedAt });
         }).RequireRateLimiting("login");
 
+        admin.MapGet("/coupons", async (AppDbContext db, CancellationToken cancellationToken) =>
+            Results.Ok(await db.SubscriptionCoupons.AsNoTracking().OrderByDescending(x => x.CreatedAt)
+                .Select(x => new { x.Id, x.Code, x.DiscountType, x.DiscountValue, x.Currency, x.PlanId,
+                    PlanName = x.PlanId == null ? null : db.SubscriptionPlans.Where(p => p.Id == x.PlanId).Select(p => p.Name).FirstOrDefault(),
+                    x.StartsAt, x.EndsAt, x.MaxRedemptions, x.MaxRedemptionsPerCustomer, x.IsActive, x.CreatedAt, x.UpdatedAt,
+                    RedemptionCount = db.CompanyCheckoutOrders.Count(o => o.CouponId == x.Id && o.Status == "Provisioned") })
+                .ToListAsync(cancellationToken)));
+
+        admin.MapPost("/coupons", async ([FromBody] SaveSubscriptionCouponRequest request, ClaimsPrincipal user,
+            AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!ValidateCoupon(request, out var errors)) return Results.ValidationProblem(errors!);
+            var code = request.Code.Trim().ToUpperInvariant();
+            if (await db.SubscriptionCoupons.AnyAsync(x => x.Code == code, cancellationToken))
+                return Results.Conflict(new { message = "Kupon kodu zaten kayıtlı." });
+            if (request.PlanId is Guid planId && !await db.SubscriptionPlans.AnyAsync(x => x.Id == planId && x.DeploymentKind == "cloud", cancellationToken))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["planId"] = ["Kupon yalnız Cloud planına bağlanabilir."] });
+            var coupon = new SubscriptionCoupon { Code = code, DiscountType = request.DiscountType.Trim(),
+                DiscountValue = request.DiscountValue, Currency = request.DiscountType == "Fixed" ? request.Currency.Trim().ToUpperInvariant() : null,
+                PlanId = request.PlanId, StartsAt = request.StartsAt, EndsAt = request.EndsAt,
+                MaxRedemptions = request.MaxRedemptions, MaxRedemptionsPerCustomer = request.MaxRedemptionsPerCustomer,
+                IsActive = request.IsActive, CreatedByUserId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!) };
+            db.SubscriptionCoupons.Add(coupon);
+            AddAudit(db, user, "SubscriptionCouponCreated", "SubscriptionCoupon", coupon.Id, null,
+                JsonSerializer.Serialize(new { reason = Clean(request.ChangeReason), after = new { coupon.Code, coupon.DiscountType,
+                    coupon.DiscountValue, coupon.Currency, coupon.PlanId, coupon.StartsAt, coupon.EndsAt, coupon.MaxRedemptions,
+                    coupon.MaxRedemptionsPerCustomer, coupon.IsActive } }));
+            try { await db.SaveChangesAsync(cancellationToken); }
+            catch (DbUpdateException) { return Results.Conflict(new { message = "Kupon kaydı çakıştı." }); }
+            return Results.Created($"/api/platform/coupons/{coupon.Id}", new { coupon.Id, coupon.Code });
+        });
+
+        admin.MapPut("/coupons/{id:guid}", async (Guid id, [FromBody] SaveSubscriptionCouponRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!ValidateCoupon(request, out var errors)) return Results.ValidationProblem(errors!);
+            var coupon = await db.SubscriptionCoupons.SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+            if (coupon is null) return Results.NotFound();
+            var code = request.Code.Trim().ToUpperInvariant();
+            if (await db.SubscriptionCoupons.AnyAsync(x => x.Id != id && x.Code == code, cancellationToken))
+                return Results.Conflict(new { message = "Kupon kodu zaten kayıtlı." });
+            if (request.PlanId is Guid planId && !await db.SubscriptionPlans.AnyAsync(x => x.Id == planId && x.DeploymentKind == "cloud", cancellationToken))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["planId"] = ["Kupon yalnız Cloud planına bağlanabilir."] });
+            var before = new { coupon.Code, coupon.DiscountType, coupon.DiscountValue, coupon.Currency, coupon.PlanId,
+                coupon.StartsAt, coupon.EndsAt, coupon.MaxRedemptions, coupon.MaxRedemptionsPerCustomer, coupon.IsActive };
+            coupon.Code = code; coupon.DiscountType = request.DiscountType.Trim(); coupon.DiscountValue = request.DiscountValue;
+            coupon.Currency = request.DiscountType == "Fixed" ? request.Currency.Trim().ToUpperInvariant() : null;
+            coupon.PlanId = request.PlanId; coupon.StartsAt = request.StartsAt; coupon.EndsAt = request.EndsAt;
+            coupon.MaxRedemptions = request.MaxRedemptions; coupon.MaxRedemptionsPerCustomer = request.MaxRedemptionsPerCustomer;
+            coupon.IsActive = request.IsActive; coupon.UpdatedAt = DateTimeOffset.UtcNow;
+            var after = new { coupon.Code, coupon.DiscountType, coupon.DiscountValue, coupon.Currency, coupon.PlanId,
+                coupon.StartsAt, coupon.EndsAt, coupon.MaxRedemptions, coupon.MaxRedemptionsPerCustomer, coupon.IsActive };
+            AddAudit(db, user, "SubscriptionCouponUpdated", "SubscriptionCoupon", coupon.Id, null,
+                JsonSerializer.Serialize(new { reason = Clean(request.ChangeReason), before, after }));
+            try { await db.SaveChangesAsync(cancellationToken); }
+            catch (DbUpdateException) { return Results.Conflict(new { message = "Kupon güncellemesi çakıştı." }); }
+            return Results.Ok(new { coupon.Id, coupon.Code, coupon.IsActive });
+        });
+
         admin.MapGet("/plans", async (AppDbContext db, CancellationToken cancellationToken) =>
             Results.Ok(await db.SubscriptionPlans.AsNoTracking().OrderBy(x => x.SortOrder)
                 .Select(x => new { x.Id, x.Code, x.Name, x.Description, x.DeploymentKind,
@@ -1128,14 +1533,24 @@ public static class PlatformEndpoints
         }).RequireRateLimiting("login");
 
         admin.MapGet("/companies", async ([FromQuery] string? q, [FromQuery] bool? active, [FromQuery] string? followUp,
+            [FromQuery] Guid? planId, [FromQuery] string? createdFrom, [FromQuery] string? createdTo,
+            [FromQuery] string? sortBy, [FromQuery] string? sortDirection,
             AppDbContext db, CancellationToken cancellationToken, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {
             page = Math.Clamp(page, 1, 1_000_000);
-            pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 200);
+            pageSize = Math.Clamp(pageSize == 0 ? 50 : pageSize, 1, 250);
             if (!string.IsNullOrWhiteSpace(followUp) && followUp != "overdue")
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["followUp"] = ["Takip filtresi desteklenmiyor."] });
+            if (!TryParseCompanyCreatedRange(createdFrom, createdTo, out var createdStart, out var createdEnd))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["createdFrom/createdTo"] = ["Kayıt tarih aralığı YYYY-MM-DD olmalı ve başlangıç bitişten sonra olamaz."] });
+            if (!TryValidateCompanySort(sortBy, sortDirection, out var sortError))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["sortBy/sortDirection"] = [sortError!] });
             var companies = db.Companies.AsNoTracking().AsQueryable();
             if (active is bool isActive) companies = companies.Where(x => x.IsActive == isActive);
+            if (createdStart is not null) companies = companies.Where(x => x.CreatedAt >= createdStart.Value);
+            if (createdEnd is not null) companies = companies.Where(x => x.CreatedAt < createdEnd.Value);
+            if (planId is Guid selectedPlanId) companies = companies.Where(x => db.TenantSubscriptions
+                .Where(s => s.CompanyId == x.Id).OrderByDescending(s => s.StartsAt).Select(s => (Guid?)s.PlanId).FirstOrDefault() == selectedPlanId);
             if (followUp == "overdue")
             {
                 var now = DateTimeOffset.UtcNow;
@@ -1150,13 +1565,13 @@ public static class PlatformEndpoints
                     (x.ContactEmail != null && x.ContactEmail.Contains(term)));
             }
             var total = await companies.CountAsync(cancellationToken);
-            var orderedCompanies = followUp == "overdue"
-                ? companies.OrderBy(x => x.PlatformNextFollowUpAt).ThenBy(x => x.Name)
-                : companies.OrderBy(x => x.Name);
+            var orderedCompanies = OrderCompanies(companies, followUp, sortBy, sortDirection);
+            var nowForRevenue = DateTimeOffset.UtcNow;
             var rows = await orderedCompanies.Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(x => new
                 {
                     x.Id, x.Name, x.Slug, x.ContactEmail, x.IsActive, x.CreatedAt,
+                    hasBrandLogo = x.BrandLogoPath != null, x.BrandPrimaryColor,
                     lifecycleStage = x.CustomerLifecycleStage,
                     lifecycleOwnerId = x.PlatformOwnerUserId,
                     lifecycleOwnerName = db.Users.Where(account => account.Id == x.PlatformOwnerUserId)
@@ -1168,7 +1583,120 @@ public static class PlatformEndpoints
                     subscription = db.TenantSubscriptions.Where(s => s.CompanyId == x.Id).OrderByDescending(s => s.StartsAt)
                         .Select(s => new { s.Id, PlanName = db.SubscriptionPlans.Where(p => p.Id == s.PlanId).Select(p => p.Name).FirstOrDefault(), s.Status, s.IsDemo, s.StartsAt, s.EndsAt }).FirstOrDefault()
                 }).ToListAsync(cancellationToken);
-            return Results.Ok(new { items = rows, page, pageSize, total });
+            var verifiedRevenue = await LoadVerifiedRecurringRevenueAsync(db, rows.Select(x => x.Id).ToArray(), nowForRevenue, cancellationToken);
+            var items = rows.Select(row =>
+            {
+                var verified = verifiedRevenue.GetValueOrDefault(row.Id);
+                if (verified?.SubscriptionId != row.subscription?.Id) verified = null;
+                return new
+                {
+                    row.Id, row.Name, row.Slug, row.ContactEmail, row.IsActive, row.CreatedAt,
+                    row.hasBrandLogo, row.BrandPrimaryColor, row.lifecycleStage, row.lifecycleOwnerId,
+                    row.lifecycleOwnerName, row.nextFollowUpAt, row.employeeRecords, row.loginAccounts,
+                    row.assetRecords, row.subscription,
+                    verifiedMonthlyRecurringRevenue = verified?.MonthlyAmount,
+                    verifiedMrrCurrency = verified?.Currency
+                };
+            }).ToArray();
+            return Results.Ok(new { items, page, pageSize, total });
+        });
+
+        admin.MapGet("/companies/{companyId:guid}/logo", async (Guid companyId, AppDbContext db,
+            IConfiguration configuration, CancellationToken cancellationToken) =>
+        {
+            var fileName = await db.Companies.AsNoTracking().Where(company => company.Id == companyId)
+                .Select(company => company.BrandLogoPath).SingleOrDefaultAsync(cancellationToken);
+            if (fileName is null || !Regex.IsMatch(fileName, "^[a-fA-F0-9]{32}\\.(png|jpg|webp)$", RegexOptions.CultureInvariant))
+                return Results.NotFound();
+            var companyDirectory = Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media", companyId.ToString("N"));
+            var filePath = Path.Combine(companyDirectory, fileName);
+            if (!System.IO.File.Exists(filePath)) return Results.NotFound();
+            var contentType = Path.GetExtension(fileName) switch { ".png" => "image/png", ".jpg" => "image/jpeg", _ => "image/webp" };
+            return Results.File(await System.IO.File.ReadAllBytesAsync(filePath, cancellationToken), contentType);
+        }).RequireRateLimiting("login");
+
+        admin.MapGet("/companies/export.csv", async (HttpContext context, [FromQuery] string? q, [FromQuery] bool? active,
+            [FromQuery] string? followUp, [FromQuery] Guid? planId, [FromQuery] string? createdFrom,
+            [FromQuery] string? createdTo, [FromQuery] string? sortBy, [FromQuery] string? sortDirection,
+            AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!string.IsNullOrWhiteSpace(followUp) && followUp != "overdue")
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["followUp"] = ["Takip filtresi desteklenmiyor."] });
+            if (!string.IsNullOrWhiteSpace(q) && q.Trim().Length > 120)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama en fazla 120 karakter olabilir."] });
+            if (!TryParseCompanyCreatedRange(createdFrom, createdTo, out var createdStart, out var createdEnd))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["createdFrom/createdTo"] = ["Kayıt tarih aralığı YYYY-MM-DD olmalı ve başlangıç bitişten sonra olamaz."] });
+            if (!TryValidateCompanySort(sortBy, sortDirection, out var sortError))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["sortBy/sortDirection"] = [sortError!] });
+
+            var companies = db.Companies.AsNoTracking().AsQueryable();
+            if (active is bool isActive) companies = companies.Where(x => x.IsActive == isActive);
+            if (createdStart is not null) companies = companies.Where(x => x.CreatedAt >= createdStart.Value);
+            if (createdEnd is not null) companies = companies.Where(x => x.CreatedAt < createdEnd.Value);
+            if (planId is Guid selectedPlanId) companies = companies.Where(x => db.TenantSubscriptions
+                .Where(s => s.CompanyId == x.Id).OrderByDescending(s => s.StartsAt).Select(s => (Guid?)s.PlanId).FirstOrDefault() == selectedPlanId);
+            if (followUp == "overdue")
+            {
+                var now = DateTimeOffset.UtcNow;
+                companies = companies.Where(x => x.PlatformNextFollowUpAt != null && x.PlatformNextFollowUpAt <= now &&
+                    x.CustomerLifecycleStage != "Churned");
+            }
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim();
+                companies = companies.Where(x => x.Name.Contains(term) || (x.Slug != null && x.Slug.Contains(term)) ||
+                    (x.ContactEmail != null && x.ContactEmail.Contains(term)));
+            }
+            var orderedCompanies = OrderCompanies(companies, followUp, sortBy, sortDirection);
+            var nowForRevenue = DateTimeOffset.UtcNow;
+            var verifiedRevenue = await LoadVerifiedRecurringRevenueAsync(db, null, nowForRevenue, cancellationToken);
+            var rows = orderedCompanies.Select(x => new
+            {
+                x.Id, x.Name, x.Slug, x.ContactEmail, x.IsActive, x.CreatedAt,
+                x.BrandLogoPath, x.BrandPrimaryColor,
+                LifecycleStage = x.CustomerLifecycleStage,
+                LifecycleOwnerName = db.Users.Where(account => account.Id == x.PlatformOwnerUserId)
+                    .Select(account => account.DisplayName).FirstOrDefault(),
+                x.PlatformNextFollowUpAt,
+                EmployeeRecords = db.Employees.Count(e => e.CompanyId == x.Id),
+                LoginAccounts = db.CompanyMemberships.Count(m => m.CompanyId == x.Id),
+                AssetRecords = db.Assets.Count(a => a.CompanyId == x.Id),
+                Subscription = db.TenantSubscriptions.Where(s => s.CompanyId == x.Id).OrderByDescending(s => s.StartsAt)
+                    .Select(s => new { s.Id, PlanId = s.PlanId, PlanName = db.SubscriptionPlans.Where(p => p.Id == s.PlanId).Select(p => p.Name).FirstOrDefault(),
+                        s.Status, s.IsDemo, s.StartsAt, s.EndsAt }).FirstOrDefault()
+            }).AsAsyncEnumerable();
+
+            context.Response.ContentType = "text/csv; charset=utf-8";
+            context.Response.Headers.CacheControl = "no-store, private";
+            context.Response.Headers.ContentDisposition = $"attachment; filename=envantertr-firmalar-{DateTime.UtcNow:yyyyMMdd}.csv";
+            await using (var writer = new StreamWriter(context.Response.Body,
+                new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 1024, leaveOpen: true))
+            {
+                await writer.WriteLineAsync("\"Firma\";\"Alt alan adı\";\"Yetkili e-posta\";\"Durum\";\"Kayıt tarihi (UTC)\";\"Logo\";\"Yaşam döngüsü\";\"Sorumlu\";\"Sonraki takip (UTC)\";\"Çalışan kaydı\";\"Giriş hesabı\";\"Varlık\";\"Plan\";\"Abonelik durumu\";\"Demo\";\"Başlangıç (UTC)\";\"Bitiş (UTC)\";\"Doğrulanmış MRR\";\"MRR para birimi\"");
+                await foreach (var row in rows.WithCancellation(cancellationToken))
+                {
+                    var verified = verifiedRevenue.GetValueOrDefault(row.Id);
+                    if (verified?.SubscriptionId != row.Subscription?.Id) verified = null;
+                    var cells = new[]
+                    {
+                        CsvCell(row.Name), CsvCell(row.Slug), CsvCell(row.ContactEmail), CsvCell(row.IsActive ? "Aktif" : "Askıda"),
+                        CsvCell(row.CreatedAt.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture)),
+                        CsvCell(row.BrandLogoPath is null ? "Yok" : "Var"),
+                        CsvCell(row.LifecycleStage), CsvCell(row.LifecycleOwnerName),
+                        CsvCell(row.PlatformNextFollowUpAt?.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture)),
+                        CsvCell(row.EmployeeRecords.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                        CsvCell(row.LoginAccounts.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                        CsvCell(row.AssetRecords.ToString(System.Globalization.CultureInfo.InvariantCulture)), CsvCell(row.Subscription?.PlanName),
+                        CsvCell(row.Subscription?.Status), CsvCell(row.Subscription is null ? "Hayır" : row.Subscription.IsDemo ? "Evet" : "Hayır"),
+                        CsvCell(row.Subscription?.StartsAt.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture)),
+                        CsvCell(row.Subscription?.EndsAt.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture)),
+                        CsvCell(verified?.MonthlyAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)), CsvCell(verified?.Currency)
+                    };
+                    await writer.WriteLineAsync(string.Join(';', cells));
+                }
+                await writer.FlushAsync(cancellationToken);
+            }
+            return Results.Empty;
         });
 
         admin.MapGet("/companies/{companyId:guid}", async (Guid companyId, AppDbContext db, CancellationToken cancellationToken,
@@ -1226,8 +1754,62 @@ public static class PlatformEndpoints
                 orderby audit.OccurredAt descending
                 select new { audit.OccurredAt, audit.Details, actorName = account.DisplayName })
                 .Take(20).ToListAsync(cancellationToken);
+            var usageAt = DateTimeOffset.UtcNow;
+            var activeAssetCount = await db.Assets.AsNoTracking().CountAsync(x => x.CompanyId == companyId && x.DeletedAt == null, cancellationToken);
+            var employeeCount = await db.Employees.AsNoTracking().CountAsync(x => x.CompanyId == companyId && x.IsActive, cancellationToken);
+            var licenseCount = await db.SoftwareLicenses.AsNoTracking().CountAsync(x => x.CompanyId == companyId && !x.IsArchived, cancellationToken);
+            var assignedLicenseSeats = await db.SoftwareLicenseAssignments.AsNoTracking()
+                .CountAsync(x => x.CompanyId == companyId && x.RevokedAt == null, cancellationToken);
+            var activeApiTokenCount = await db.CompanyApiTokens.AsNoTracking().CountAsync(x => x.CompanyId == companyId && x.RevokedAt == null &&
+                (x.ExpiresAt == null || x.ExpiresAt > usageAt), cancellationToken);
+            var currentPlan = await (from subscription in db.TenantSubscriptions.AsNoTracking()
+                join plan in db.SubscriptionPlans.AsNoTracking() on subscription.PlanId equals plan.Id
+                where subscription.CompanyId == companyId && (subscription.Status == "Active" || subscription.Status == "Trial") &&
+                    subscription.StartsAt <= usageAt && subscription.EndsAt > usageAt
+                orderby subscription.StartsAt descending
+                select new { plan.Name, plan.DeploymentKind, plan.MaxAssets, plan.MaxLoginUsers }).FirstOrDefaultAsync(cancellationToken);
+            var attachmentLengths = new long?[]
+            {
+                await db.AssetAttachments.AsNoTracking().Where(x => x.CompanyId == companyId).SumAsync(x => (long?)x.Length, cancellationToken),
+                await db.AssetModelAttachments.AsNoTracking().Where(x => x.CompanyId == companyId).SumAsync(x => (long?)x.Length, cancellationToken),
+                await db.EmployeeDocuments.AsNoTracking().Where(x => x.CompanyId == companyId).SumAsync(x => (long?)x.Length, cancellationToken),
+                await db.AssetMaintenanceAttachments.AsNoTracking().Where(x => x.CompanyId == companyId).SumAsync(x => (long?)x.Length, cancellationToken),
+                await db.AssetContractAttachments.AsNoTracking().Where(x => x.CompanyId == companyId).SumAsync(x => (long?)x.Length, cancellationToken),
+                await db.AssetPurchaseOrderAttachments.AsNoTracking().Where(x => x.CompanyId == companyId).SumAsync(x => (long?)x.Length, cancellationToken),
+                await db.StockPurchaseOrderAttachments.AsNoTracking().Where(x => x.CompanyId == companyId).SumAsync(x => (long?)x.Length, cancellationToken),
+                await db.AccessoryPurchaseOrderAttachments.AsNoTracking().Where(x => x.CompanyId == companyId).SumAsync(x => (long?)x.Length, cancellationToken),
+                await db.SoftwareLicenseAttachments.AsNoTracking().Where(x => x.CompanyId == companyId).SumAsync(x => (long?)x.Length, cancellationToken)
+            };
+            var recordedAttachmentCount =
+                await db.AssetAttachments.CountAsync(x => x.CompanyId == companyId, cancellationToken) +
+                await db.AssetModelAttachments.CountAsync(x => x.CompanyId == companyId, cancellationToken) +
+                await db.EmployeeDocuments.CountAsync(x => x.CompanyId == companyId, cancellationToken) +
+                await db.AssetMaintenanceAttachments.CountAsync(x => x.CompanyId == companyId, cancellationToken) +
+                await db.AssetContractAttachments.CountAsync(x => x.CompanyId == companyId, cancellationToken) +
+                await db.AssetPurchaseOrderAttachments.CountAsync(x => x.CompanyId == companyId, cancellationToken) +
+                await db.StockPurchaseOrderAttachments.CountAsync(x => x.CompanyId == companyId, cancellationToken) +
+                await db.AccessoryPurchaseOrderAttachments.CountAsync(x => x.CompanyId == companyId, cancellationToken) +
+                await db.SoftwareLicenseAttachments.CountAsync(x => x.CompanyId == companyId, cancellationToken);
+            var recordedAttachmentBytes = attachmentLengths.Sum(length => length ?? 0L);
             return Results.Ok(new { company, memberCount, members, ownerMemberExists, membersPage, membersPageSize,
                 membersTotalPages, membersTruncated = membersPage < membersTotalPages,
+                usage = new
+                {
+                    generatedAt = usageAt,
+                    assets = activeAssetCount,
+                    employees = employeeCount,
+                    loginAccounts = memberCount,
+                    licenses = licenseCount,
+                    assignedLicenseSeats,
+                    activeApiTokens = activeApiTokenCount,
+                    planName = currentPlan?.Name,
+                    deploymentKind = currentPlan?.DeploymentKind,
+                    maxAssets = currentPlan?.MaxAssets,
+                    maxLoginUsers = currentPlan?.MaxLoginUsers,
+                    recordedAttachmentCount,
+                    recordedAttachmentBytes,
+                    storageNote = "Eklerin boyut toplamı yalnız veritabanında kayıtlı dosya eklerini kapsar; şirket logoları ve medya dizinindeki dosyalar dahil değildir. Planlarda dosya alanı sınırı tanımlı değildir."
+                },
                 subscriptions, checkoutOrders, lifecycleHistory });
         });
 
@@ -1407,6 +1989,102 @@ public static class PlatformEndpoints
             return Results.Ok(new { company.Id, company.IsActive });
         });
 
+        admin.MapPatch("/companies/bulk-status", async ([FromBody] SetCompaniesActiveRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (request.CompanyIds is null || request.CompanyIds.Length is < 1 or > 100 ||
+                request.CompanyIds.Any(id => id == Guid.Empty) || request.CompanyIds.Distinct().Count() != request.CompanyIds.Length)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["companyIds"] = ["1-100 farklı ve geçerli şirket seçin."] });
+            if (string.IsNullOrWhiteSpace(request.Note) || request.Note.Trim().Length is < 8 or > 1000)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Toplu durum değişikliği için 8-1000 karakterlik gerekçe gereklidir."] });
+
+            var companies = await db.Companies.Where(company => request.CompanyIds.Contains(company.Id))
+                .OrderBy(company => company.Id).ToListAsync(cancellationToken);
+            if (companies.Count != request.CompanyIds.Length)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["companyIds"] = ["Seçili şirketlerden biri bulunamadı; hiçbir değişiklik yapılmadı."] });
+
+            var changed = companies.Where(company => company.IsActive != request.IsActive).ToArray();
+            if (changed.Length == 0) return Results.Ok(new { updated = 0, unchanged = companies.Count });
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            foreach (var company in changed)
+            {
+                company.IsActive = request.IsActive;
+                AddAudit(db, user, request.IsActive ? "CompanyReactivated" : "CompanySuspended",
+                    "Company", company.Id, company.Id, $"Toplu işlem ({companies.Count} şirket): {request.Note.Trim()}");
+            }
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return Results.Ok(new { updated = changed.Length, unchanged = companies.Count - changed.Length });
+        }).RequireRateLimiting("login");
+
+        admin.MapPatch("/companies/bulk-plan", async ([FromBody] SetCompaniesPlanRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (request.CompanyIds is null || request.CompanyIds.Length is < 1 or > 100 ||
+                request.CompanyIds.Any(id => id == Guid.Empty) || request.CompanyIds.Distinct().Count() != request.CompanyIds.Length)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["companyIds"] = ["1-100 farklı ve geçerli şirket seçin."] });
+            if (request.PlanId == Guid.Empty)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["planId"] = ["Etkin bir Cloud planı seçin."] });
+            if (string.IsNullOrWhiteSpace(request.Note) || request.Note.Trim().Length is < 8 or > 1000)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Toplu plan değişikliği için 8-1000 karakterlik gerekçe gereklidir."] });
+
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+            var plan = await db.SubscriptionPlans.SingleOrDefaultAsync(candidate => candidate.Id == request.PlanId &&
+                candidate.IsActive && candidate.DeploymentKind == "cloud", cancellationToken);
+            if (plan is null)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["planId"] = ["Etkin bir Cloud planı seçilmelidir."] });
+
+            var companies = await db.Companies.AsNoTracking().Where(company => request.CompanyIds.Contains(company.Id))
+                .Select(company => company.Id).ToListAsync(cancellationToken);
+            if (companies.Count != request.CompanyIds.Length)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["companyIds"] = ["Seçili şirketlerden biri bulunamadı; hiçbir plan değiştirilmedi."] });
+
+            var now = DateTimeOffset.UtcNow;
+            var currentSubscriptions = await db.TenantSubscriptions.Where(subscription =>
+                    request.CompanyIds.Contains(subscription.CompanyId) &&
+                    (subscription.Status == "Active" || subscription.Status == "Trial") &&
+                    subscription.StartsAt <= now && subscription.EndsAt > now)
+                .OrderBy(subscription => subscription.CompanyId).ThenByDescending(subscription => subscription.StartsAt)
+                .ToListAsync(cancellationToken);
+            var latestByCompany = currentSubscriptions.GroupBy(subscription => subscription.CompanyId)
+                .ToDictionary(group => group.Key, group => group.First());
+            if (latestByCompany.Count != request.CompanyIds.Length)
+                return Results.Conflict(new { message = "Her seçili firmada yürürlükte olan aktif abonelik veya demo bulunmalıdır; hiçbir plan değiştirilmedi." });
+
+            var changed = latestByCompany.Values.Where(subscription => subscription.PlanId != plan.Id).ToArray();
+            if (changed.Length == 0)
+                return Results.Ok(new { updated = 0, unchanged = latestByCompany.Count, billingChanged = false });
+
+            foreach (var subscription in changed)
+            {
+                var previousPlanId = subscription.PlanId;
+                subscription.PlanId = plan.Id;
+                var auditDetails = JsonSerializer.Serialize(new
+                {
+                    previousPlanId,
+                    planId = plan.Id,
+                    planName = plan.Name,
+                    note = Clean(request.Note)
+                });
+                AddAudit(db, user, "SubscriptionBulkPlanChanged", "TenantSubscription", subscription.Id,
+                    subscription.CompanyId, auditDetails);
+            }
+
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return Results.Conflict(new { message = "Toplu plan değişikliği kaydedilemedi; işlem geri alındı. Listeyi yenileyip tekrar deneyin." });
+            }
+
+            return Results.Ok(new { updated = changed.Length, unchanged = latestByCompany.Count - changed.Length,
+                planId = plan.Id, planName = plan.Name, billingChanged = false });
+        }).RequireRateLimiting("login");
+
         admin.MapGet("/site-content", async (AppDbContext db, CancellationToken cancellationToken) =>
             Results.Ok(await db.PublicSiteContents.AsNoTracking().OrderBy(x => x.ContentKey)
                 .Select(x => new { x.Id, x.ContentKey, x.Title, x.Body, x.MediaPath, x.IsPublished, x.UpdatedAt })
@@ -1546,6 +2224,89 @@ public static class PlatformEndpoints
         return errors.Count == 0;
     }
 
+    private static bool TryParseCompanyCreatedRange(string? fromText, string? toText,
+        out DateTimeOffset? from, out DateTimeOffset? toExclusive)
+    {
+        from = null;
+        toExclusive = null;
+        DateOnly? fromDate = null;
+        DateOnly? toDate = null;
+        if (!string.IsNullOrWhiteSpace(fromText))
+        {
+            if (!DateOnly.TryParseExact(fromText, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)) return false;
+            fromDate = parsed;
+        }
+        if (!string.IsNullOrWhiteSpace(toText))
+        {
+            if (!DateOnly.TryParseExact(toText, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)) return false;
+            toDate = parsed;
+        }
+        if (fromDate is not null && toDate is not null && fromDate > toDate) return false;
+        if (fromDate is not null) from = new DateTimeOffset(fromDate.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+        if (toDate is not null) toExclusive = new DateTimeOffset(toDate.Value.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+        return true;
+    }
+
+    private static async Task<Dictionary<Guid, VerifiedRecurringRevenue>> LoadVerifiedRecurringRevenueAsync(
+        AppDbContext db, Guid[]? companyIds, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var candidates =
+            from subscription in db.TenantSubscriptions.AsNoTracking()
+            join plan in db.SubscriptionPlans.AsNoTracking() on subscription.PlanId equals plan.Id
+            from order in db.CompanyCheckoutOrders.AsNoTracking().Where(order =>
+                order.CompanyId == subscription.CompanyId && order.PlanId == subscription.PlanId &&
+                order.Status == "Provisioned" && order.PaidAt != null && order.PaymentReference != null &&
+                order.PaymentReference == subscription.PaymentReference && (order.TermDays == 30 || order.TermDays == 365))
+            where plan.DeploymentKind == "cloud" && !subscription.IsDemo &&
+                (subscription.Status == "Active" || subscription.Status == "Cancelled") &&
+                subscription.StartsAt <= now && subscription.EndsAt > now
+            select new
+            {
+                subscription.Id, subscription.CompanyId, subscription.StartsAt, subscription.EndsAt,
+                order.PaidAt, order.TermDays, order.Amount, order.Currency
+            };
+        if (companyIds is not null) candidates = candidates.Where(candidate => companyIds.Contains(candidate.CompanyId));
+        var payments = await candidates.ToListAsync(cancellationToken);
+        return payments
+            .Where(payment => payment.PaidAt == payment.StartsAt && payment.PaidAt is DateTimeOffset paidAt &&
+                payment.EndsAt == paidAt.AddDays(payment.TermDays))
+            .GroupBy(payment => payment.CompanyId)
+            .Select(group => group.OrderByDescending(payment => payment.PaidAt).First())
+            .ToDictionary(payment => payment.CompanyId, payment => new VerifiedRecurringRevenue(
+                payment.Id, payment.TermDays == 30 ? payment.Amount : payment.Amount / 12m, payment.Currency));
+    }
+
+    private sealed record VerifiedRecurringRevenue(Guid SubscriptionId, decimal MonthlyAmount, string Currency);
+
+    private static bool TryValidateCompanySort(string? sortBy, string? sortDirection, out string? error)
+    {
+        error = null;
+        if (!string.IsNullOrWhiteSpace(sortBy) && sortBy is not ("name" or "createdAt" or "status" or "followUp"))
+            error = "Sıralama alanı name, createdAt, status veya followUp olmalıdır.";
+        else if (!string.IsNullOrWhiteSpace(sortDirection) && sortDirection is not ("asc" or "desc"))
+            error = "Sıralama yönü asc veya desc olmalıdır.";
+        return error is null;
+    }
+
+    private static IOrderedQueryable<Company> OrderCompanies(IQueryable<Company> companies, string? followUp,
+        string? sortBy, string? sortDirection)
+    {
+        var descending = sortDirection == "desc";
+        if (string.IsNullOrWhiteSpace(sortBy) && followUp == "overdue")
+            return companies.OrderBy(x => x.PlatformNextFollowUpAt).ThenBy(x => x.Name);
+        return (sortBy ?? "name", descending) switch
+        {
+            ("name", true) => companies.OrderByDescending(x => x.Name).ThenBy(x => x.Id),
+            ("createdAt", false) => companies.OrderBy(x => x.CreatedAt).ThenBy(x => x.Id),
+            ("createdAt", true) => companies.OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id),
+            ("status", false) => companies.OrderBy(x => x.IsActive).ThenBy(x => x.Name),
+            ("status", true) => companies.OrderByDescending(x => x.IsActive).ThenBy(x => x.Name),
+            ("followUp", false) => companies.OrderBy(x => x.PlatformNextFollowUpAt).ThenBy(x => x.Name),
+            ("followUp", true) => companies.OrderByDescending(x => x.PlatformNextFollowUpAt).ThenBy(x => x.Name),
+            _ => companies.OrderBy(x => x.Name).ThenBy(x => x.Id)
+        };
+    }
+
     private static void Apply(SubscriptionPlan plan, SavePlanRequest request, string code)
     {
         plan.Code = code;
@@ -1566,6 +2327,29 @@ public static class PlatformEndpoints
         plan.SortOrder = request.SortOrder;
     }
 
+    private static bool ValidateCoupon(SaveSubscriptionCouponRequest request, out Dictionary<string, string[]>? errors)
+    {
+        var issues = new Dictionary<string, string[]>();
+        var code = request.Code?.Trim() ?? "";
+        if (!Regex.IsMatch(code, "^[A-Za-z0-9][A-Za-z0-9_-]{1,38}[A-Za-z0-9]$"))
+            issues["code"] = ["Kod 3-40 karakter olmalı; harf veya sayıyla başlamalı/bitmeli, arada harf, sayı, tire ve alt çizgi kullanılabilir."];
+        if (request.DiscountType is not ("Percent" or "Fixed"))
+            issues["discountType"] = ["İndirim türü Percent veya Fixed olmalıdır."];
+        if (request.DiscountValue <= 0 || (request.DiscountType == "Percent" && request.DiscountValue > 100) ||
+            (request.DiscountType == "Fixed" && request.DiscountValue > 100000000))
+            issues["discountValue"] = ["Yüzde indirim 1-100, sabit indirim pozitif tutar olmalıdır."];
+        if (request.DiscountType == "Fixed" && (request.Currency?.Trim().Length != 3 || !request.Currency.Trim().All(char.IsAsciiLetter)))
+            issues["currency"] = ["Sabit indirim için üç harfli para birimi gerekir."];
+        if (request.StartsAt is not null && request.EndsAt is not null && request.EndsAt <= request.StartsAt)
+            issues["endsAt"] = ["Bitiş zamanı başlangıçtan sonra olmalıdır."];
+        if (request.MaxRedemptions is <= 0 || request.MaxRedemptionsPerCustomer is <= 0)
+            issues["limits"] = ["Kullanım sınırları pozitif olmalıdır."];
+        if (string.IsNullOrWhiteSpace(request.ChangeReason) || request.ChangeReason.Trim().Length < 8 || request.ChangeReason.Trim().Length > 500)
+            issues["changeReason"] = ["Denetim kaydı için 8-500 karakterlik değişiklik gerekçesi girin."];
+        errors = issues.Count == 0 ? null : issues;
+        return errors is null;
+    }
+
     private static void AddAudit(AppDbContext db, ClaimsPrincipal user, string action,
         string targetType, Guid? targetId, Guid? companyId, string? details)
     {
@@ -1578,7 +2362,16 @@ public static class PlatformEndpoints
         });
     }
 
+    private static string CsvCell(string? value)
+    {
+        var safe = value?.Trim() ?? "";
+        if (safe.Length > 0 && safe[0] is '=' or '+' or '-' or '@' or '\t' or '\r') safe = "'" + safe;
+        return "\"" + safe.Replace("\"", "\"\"") + "\"";
+    }
+
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static bool IsValidAuditRetentionDays(int days) => days is >= 1 and <= 36500;
 
     private static DateTimeOffset NormalizePostgresTimestamp(DateTimeOffset value)
     {
@@ -1586,3 +2379,6 @@ public static class PlatformEndpoints
         return utc.AddTicks(-(utc.Ticks % 10));
     }
 }
+
+public sealed record UpdatePlatformAuditRetentionRequest(int? RetentionDays);
+public sealed record ApplyPlatformAuditRetentionRequest(int RetentionDays, string Confirmation);

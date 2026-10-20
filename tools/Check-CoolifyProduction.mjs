@@ -1,10 +1,18 @@
 #!/usr/bin/env node
-import { pathToFileURL } from 'node:url';
+import { readdir } from 'node:fs/promises';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const DEFAULT_URLS = [
   'https://envantertr.com/api/status',
   'https://firma.envantertr.com/api/status',
 ];
+
+const SOURCE_MIGRATIONS_DIRECTORY = fileURLToPath(new URL('../src/EnvanterTR.Web/Data/Migrations/', import.meta.url));
+
+export async function countSourceMigrations(directory = SOURCE_MIGRATIONS_DIRECTORY) {
+  const files = await readdir(directory);
+  return files.filter(name => /^\d{14}_.+\.cs$/.test(name) && !name.endsWith('.Designer.cs')).length;
+}
 
 export async function inspectEndpoint(url, fetchImpl = fetch, timeoutMs = 10000) {
   let safeUrl = null;
@@ -177,6 +185,19 @@ export async function inspectCommercialReadiness(baseUrl, fetchImpl = fetch) {
 async function main() {
   const urls = process.argv.slice(2);
   const report = await checkProduction(urls.length ? urls : DEFAULT_URLS);
+  const sourceMigrationCount = await countSourceMigrations();
+  const deployedMigrationCount = report.results.find(result => Number.isInteger(result.migrationCount))?.migrationCount;
+  if (Number.isInteger(deployedMigrationCount)) {
+    const drift = sourceMigrationCount - deployedMigrationCount;
+    console.log(`SOURCE migrations: ${sourceMigrationCount}; deployed app reports: ${deployedMigrationCount}.`);
+    if (drift > 0) {
+      console.log(`  Deployed image reports ${drift} fewer migration(s) than this working tree. Its pending count applies only to the deployed image, not to this working tree.`);
+    } else if (drift < 0) {
+      console.log(`  Deployed application reports ${Math.abs(drift)} migration(s) absent from this working tree; verify the exact deployed revision before planning an upgrade.`);
+    }
+  } else {
+    console.log(`SOURCE migrations: ${sourceMigrationCount}; deployed migration count could not be read.`);
+  }
   for (const result of report.results) {
     const detail = result.appStatus
       ? ` (${result.appStatus})`

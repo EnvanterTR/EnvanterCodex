@@ -1,0 +1,42 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+
+const app = await readFile('src/EnvanterTR.Web/wwwroot/index.html', 'utf8');
+const platformApp = await readFile('src/EnvanterTR.Web/wwwroot/platform-admin.html', 'utf8');
+const browserTest = await readFile('deploy/testing/hosted-checkout-browser/support-tickets.mjs', 'utf8');
+const platformBrowserTest = await readFile('deploy/testing/hosted-checkout-browser/platform-support-tickets.mjs', 'utf8');
+const harness = await readFile('deploy/testing/hosted-checkout-browser/hosted-checkout.mjs', 'utf8');
+const dockerfile = await readFile('deploy/testing/Dockerfile.hosted-checkout-browser', 'utf8');
+
+assert.match(app, /id="supportPage"/);
+assert.match(app, /id="supportNewButton"/);
+assert.match(app, /id="supportForm"[\s\S]*name="subject"[^>]*required[\s\S]*name="message"[^>]*required/);
+assert.match(app, /let supportPageNumber[\s\S]*supportListRequestId\s*=\s*0[\s\S]*supportDetailRequestId\s*=\s*0/);
+assert.match(app, /async function loadSupportTickets\(page = supportPageNumber\)[\s\S]*const requestId = \+\+supportListRequestId[\s\S]*if \(requestId !== supportListRequestId\) return/);
+assert.match(app, /async function loadSupportTicket\(ticketId\)[\s\S]*const requestId = \+\+supportDetailRequestId[\s\S]*if \(requestId !== supportDetailRequestId\) return/);
+assert.match(app, /page !== 'Destek'[\s\S]*\+\+supportListRequestId; \+\+supportDetailRequestId/);
+assert.match(app, /supportDetailClose'[\s\S]*\+\+supportDetailRequestId/);
+assert.match(app, /const body = document\.createElement\('p'\);[\s\S]*body\.textContent = message\.body/);
+assert.ok(app.includes("api('/api/support/tickets', { method: 'POST'"));
+assert.ok(app.includes("api(`/api/support/tickets/${encodeURIComponent(currentSupportTicketId)}/messages`, { method: 'POST'"));
+assert.ok(app.includes("api(`/api/support/tickets/${encodeURIComponent(currentSupportTicketId)}/close`, { method: 'POST'"));
+assert.match(harness, /await import\('\.\/support-tickets\.mjs'\)/);
+assert.match(dockerfile, /hosted-checkout-browser\/support-tickets\.mjs/);
+assert.match(browserTest, /A delayed older search result must not replace the newer filtered support list/);
+assert.match(browserTest, /A delayed detail response for another ticket must not replace the selected ticket/);
+assert.match(browserTest, /Every support write must include the synthetic CSRF token/);
+assert.match(browserTest, /real Chromium support ticket create\/reply\/close/);
+assert.match(platformApp, /supportListRequestId:0,supportDetailRequestId:0/);
+assert.match(platformApp, /async function loadSupportAdminTickets[\s\S]*?const requestId=\+\+state\.supportListRequestId[\s\S]*?if\(requestId!==state\.supportListRequestId\)return/);
+assert.match(platformApp, /async function loadSupportAdminTicket\(id\)[\s\S]*?const requestId=\+\+state\.supportDetailRequestId[\s\S]*?if\(requestId!==state\.supportDetailRequestId\|\|state\.supportTicketId!==id\)return/);
+assert.match(platformApp, /body\.textContent=m\.body/);
+assert.match(platformApp, /function activate\(v\)\{if\(v!==['"]support['"]\)\{state\.supportListRequestId\+\+;state\.supportDetailRequestId\+\+/);
+assert.match(platformBrowserTest, /A delayed older search must not replace the current filtered support queue/);
+assert.match(platformBrowserTest, /A delayed detail response must not replace the currently selected support ticket/);
+assert.match(platformBrowserTest, /requests\.some\(item => item\.method === 'POST'.*?item\.csrf === csrf\)/);
+assert.match(platformBrowserTest, /requests\.some\(item => item\.method === 'PATCH'.*?item\.csrf === csrf\)/);
+assert.match(platformBrowserTest, /PASS: platform support ticket filtering/);
+assert.match(harness, /await import\('\.\/platform-support-tickets\.mjs'\)/);
+assert.match(dockerfile, /hosted-checkout-browser\/platform-support-tickets\.mjs/);
+
+console.log('Verified company and platform support UI guards, safe message rendering, CSRF writes, route cleanup, and hosted Chromium acceptance wiring.');

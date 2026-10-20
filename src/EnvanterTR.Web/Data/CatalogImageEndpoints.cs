@@ -90,6 +90,10 @@ public static class CatalogImageEndpoints
             AppDbContext db, IConfiguration configuration, CancellationToken ct) =>
         {
             if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            if (kind == "suppliers" && await SupplierCatalogEndpoints.IsLocationRestrictedAsync(db, companyId, actorId, ct))
+                return Results.Json(new { message = "Tedarikçi kataloğu şirket genelinde paylaşıldığı için bu işlem yalnızca tüm konumlara erişimi olan üyelerce yapılabilir." }, statusCode: StatusCodes.Status403Forbidden);
+            if (kind != "suppliers" && await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct) is not null)
+                return Results.Forbid();
             if (!request.HasFormContentType) return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
             var upload = (await request.ReadFormAsync(ct)).Files.GetFile("file");
             if (upload is null || upload.Length is < 1 or > MaxBytes)
@@ -117,6 +121,21 @@ public static class CatalogImageEndpoints
             IConfiguration configuration, CancellationToken ct) =>
         {
             if (!TryCompany(user, out var companyId)) return Results.Forbid();
+            if (kind is "models" or "accessory-models")
+            {
+                if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var readerId))
+                    return Results.Forbid();
+                var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, readerId, ct);
+                if (allowedLocations is not null)
+                {
+                    var hasAccessibleItem = kind == "models"
+                        ? await db.Assets.AsNoTracking().AnyAsync(asset => asset.CompanyId == companyId && asset.ModelId == id &&
+                            asset.DeletedAt == null && asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value), ct)
+                        : await db.Accessories.AsNoTracking().AnyAsync(accessory => accessory.CompanyId == companyId && accessory.ModelId == id &&
+                            accessory.LocationCatalogId.HasValue && allowedLocations.Contains(accessory.LocationCatalogId.Value), ct);
+                    if (!hasAccessibleItem) return Results.NotFound();
+                }
+            }
             var fileName = await getName(db, companyId, id, ct);
             if (!SafeName(fileName) || HasReparsePoint(configuration, companyId, kind, id)) return Results.NotFound();
             var path = Path.Combine(ImageDirectory(configuration, companyId, kind, id), fileName!);
@@ -129,6 +148,10 @@ public static class CatalogImageEndpoints
             IConfiguration configuration, CancellationToken ct) =>
         {
             if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            if (kind == "suppliers" && await SupplierCatalogEndpoints.IsLocationRestrictedAsync(db, companyId, actorId, ct))
+                return Results.Json(new { message = "Tedarikçi kataloğu şirket genelinde paylaşıldığı için bu işlem yalnızca tüm konumlara erişimi olan üyelerce yapılabilir." }, statusCode: StatusCodes.Status403Forbidden);
+            if (kind != "suppliers" && await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct) is not null)
+                return Results.Forbid();
             var previous = await removeName(db, companyId, id, actorId, ct);
             if (previous is null) return Results.NotFound();
             DeleteIfSafe(configuration, companyId, kind, id, previous); return Results.NoContent();
