@@ -76,7 +76,7 @@ $accessoryPhotos = @{
     adapter = Get-Image 'accessory-adapter.png' 'https://p2-ofp.static.pub/ShareResource/560x450/SSNP/4X20M26268/4X20M26268-560x450-02.61f5a0696c22551d.png'
 }
 $brandDomains = @{ Lenovo='lenovo.com'; Dell='dell.com'; HP='hp.com'; Cisco='cisco.com'; Fortinet='fortinet.com'; Samsung='samsung.com'; Brother='brother.com'; Yealink='yealink.com'; Eaton='eaton.com'; Ubiquiti='ui.com'; Logitech='logitech.com'; Samsonite='samsonite.com' }
-$supplierDomains = @{ 'Penta Teknoloji'='penta.com.tr'; 'Arena Bilgisayar'='arena.com.tr'; 'Vatan Bilgisayar'='vatanbilgisayar.com'; Teknosa='teknosa.com'; Hepsiburada='hepsiburada.com'; İncehesap='incehesap.com'; 'Amazon Türkiye'='amazon.com.tr'; 'Santa Bilgi Teknolojileri Tedarik'='snipeitapp.com' }
+$supplierDomains = @{ 'Penta Teknoloji'='penta.com.tr'; 'Arena Bilgisayar'='arena.com.tr'; 'Vatan Bilgisayar'='vatanbilgisayar.com'; Teknosa='teknosa.com'; Hepsiburada='hepsiburada.com'; İncehesap='incehesap.com'; 'Amazon Türkiye'='amazon.com.tr' }
 
 foreach ($line in (Invoke-Db 'SELECT e."Id"::text,e."EmployeeNumber" FROM "Employees" e JOIN "Companies" c ON c."Id"=e."CompanyId" WHERE c."Slug"=''santa-demo'' ORDER BY e."EmployeeNumber";')) {
     $parts = $line -split '\|'; $number = [int]($parts[1] -replace '\D',''); $gender = if ($number -le 15) { 'men' } else { 'women' }; $portrait = ($number - 1) % 15 + 1
@@ -118,4 +118,4 @@ foreach ($line in (Invoke-Db 'SELECT s."Id"::text,s."Name" FROM "SupplierCatalog
 Invoke-DockerChecked @('exec','--user','0',$webContainer,'mkdir','-p',"$mediaRoot/$companyPath") | Out-Null
 Invoke-DockerChecked @('cp',(Join-Path $stageRoot '.'),"${webContainer}:$mediaRoot/") | Out-Null
 Invoke-DockerChecked @('exec','--user','0',$webContainer,'chown','-R','app:app',"$mediaRoot/$companyPath") | Out-Null
-Write-Output 'Santa demo çalışan profilleri, model/ürün görselleri, üretici logoları ve tedarikçi logoları kuruldu.'
+Write-Output 'Santa demo çalışan profilleri, model/ürün görselleri ve bilinen üretici/tedarikçi logoları kuruldu.'

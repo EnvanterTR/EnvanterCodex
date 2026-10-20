@@ -16,14 +16,24 @@ public static class AssetPurchaseOrderAttachmentEndpoints
             AppDbContext db, CancellationToken ct) =>
         {
             if (!TryCompany(user, out var companyId)) return Results.Forbid();
-            if (!await db.AssetPurchaseOrders.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == id, ct))
-                return Results.NotFound();
-            var items = await db.AssetPurchaseOrderAttachments.AsNoTracking()
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
+            if (!await PurchaseOrderLocationAccess.CanAccessAssetOrderAsync(db, companyId, id, allowedLocations, ct)) return Results.NotFound();
+            var rows = await db.AssetPurchaseOrderAttachments.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && x.PurchaseOrderId == id)
                 .OrderByDescending(x => x.CreatedAt)
                 .Select(x => new { x.Id, x.OriginalFileName, x.ContentType, x.Length, x.CreatedAt,
+                    x.UploadedByUserId,
                     uploadedBy = db.Users.Where(actor => actor.Id == x.UploadedByUserId).Select(actor => actor.DisplayName).FirstOrDefault() })
                 .ToListAsync(ct);
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
+            var hiddenActorIds = await EmployeeAccessIdentityScope.HiddenUserIdsAsync(db, companyId, employeeScope,
+                rows.Select(row => row.UploadedByUserId), ct);
+            var items = rows.Select(row => new
+            {
+                row.Id, row.OriginalFileName, row.ContentType, row.Length, row.CreatedAt,
+                uploadedBy = row.UploadedByUserId is Guid uploaderId && hiddenActorIds.Contains(uploaderId) ? null : row.uploadedBy
+            }).ToList();
             return Results.Ok(new { items, maxFileCount = MaxFiles, maxFileSizeBytes = MaxBytes });
         }).RequireAuthorization("asset.read");
 
@@ -32,6 +42,7 @@ public static class AssetPurchaseOrderAttachmentEndpoints
         {
             if (!TryCompany(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
                 return Results.Forbid();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
             if (!request.HasFormContentType) return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
             var form = await request.ReadFormAsync(ct);
             var upload = form.Files.GetFile("file");
@@ -49,6 +60,7 @@ public static class AssetPurchaseOrderAttachmentEndpoints
                     $"SELECT * FROM \"AssetPurchaseOrders\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
                 .SingleOrDefaultAsync(ct);
             if (order is null) return Results.NotFound();
+            if (!await PurchaseOrderLocationAccess.CanAccessAssetOrderAsync(db, companyId, id, allowedLocations, ct)) return Results.NotFound();
             if (await db.AssetPurchaseOrderAttachments.CountAsync(x => x.CompanyId == companyId && x.PurchaseOrderId == id, ct) >= MaxFiles)
                 return Results.Conflict(new { message = "Bir siparişe en fazla 30 dosya eklenebilir." });
 
@@ -86,6 +98,9 @@ public static class AssetPurchaseOrderAttachmentEndpoints
             ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken ct) =>
         {
             if (!TryCompany(user, out var companyId)) return Results.Forbid();
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
+            if (!await PurchaseOrderLocationAccess.CanAccessAssetOrderAsync(db, companyId, id, allowedLocations, ct)) return Results.NotFound();
             var item = await db.AssetPurchaseOrderAttachments.AsNoTracking().SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.PurchaseOrderId == id && x.Id == attachmentId, ct);
             if (item is null || !IsSafeStorageName(item.StorageFileName) || HasReparsePoint(configuration, companyId, id)) return Results.NotFound();
@@ -100,6 +115,8 @@ public static class AssetPurchaseOrderAttachmentEndpoints
         {
             if (!TryCompany(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
                 return Results.Forbid();
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
+            if (!await PurchaseOrderLocationAccess.CanAccessAssetOrderAsync(db, companyId, id, allowedLocations, ct)) return Results.NotFound();
             var item = await db.AssetPurchaseOrderAttachments.SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.PurchaseOrderId == id && x.Id == attachmentId, ct);
             if (item is null) return Results.NotFound();

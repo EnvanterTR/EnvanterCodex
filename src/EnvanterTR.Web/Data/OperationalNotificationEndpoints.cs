@@ -13,6 +13,7 @@ public static class OperationalNotificationEndpoints
     private static readonly string[] AllowedKinds = ["maintenance", "audit", "license", "warranty", "return", "reservation"];
     private static readonly string[] AllowedEmailKinds = [.. AllowedKinds, "assignment", "asset-life", "subscription"];
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private sealed record NotificationStateRow(string Kind, Guid RecordId, DateTimeOffset? ReadAt, DateTimeOffset? DismissedAt);
 
     public static void MapOperationalNotificationEndpoints(this RouteGroupBuilder api)
     {
@@ -79,8 +80,11 @@ public static class OperationalNotificationEndpoints
             var ids = parsed.Select(x => x.RecordId).Distinct().ToArray();
             var rows = await db.OperationalNotificationStates.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && x.UserId == userId && kinds.Contains(x.Kind) && ids.Contains(x.RecordId))
-                .Select(x => new { x.Kind, x.RecordId, x.ReadAt, x.DismissedAt }).ToListAsync(ct);
-            return Results.Ok(new { items = rows });
+                .Select(x => new NotificationStateRow(x.Kind, x.RecordId, x.ReadAt, x.DismissedAt)).ToListAsync(ct);
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, userId, ct);
+            var accessibleRecords = await GetAccessibleNotificationRecordsAsync(rows, companyId, userId, user, employeeScope, db, ct);
+            var visibleRows = rows.Where(row => accessibleRecords.Contains((row.Kind, row.RecordId))).ToArray();
+            return Results.Ok(new { items = visibleRows });
         }).RequireAuthorization("asset.read");
 
         api.MapPut("/notifications/states", async ([FromBody] UpdateOperationalNotificationStateRequest request,
@@ -93,19 +97,9 @@ public static class OperationalNotificationEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["notification"] = ["Bildirim türü veya kayıt kimliği geçersiz."] });
             if (action is not ("read" or "unread" or "dismiss" or "restore"))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["action"] = ["İşlem read, unread, dismiss veya restore olmalıdır."] });
-            var belongsToCompany = kind switch
-            {
-                "maintenance" => await db.AssetMaintenances.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == request.RecordId, ct),
-                "license" => await db.SoftwareLicenses.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == request.RecordId, ct),
-                "warranty" => await db.Assets.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == request.RecordId && x.WarrantyExpiresAt != null, ct),
-                "audit" => await db.Assets.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == request.RecordId && x.NextAuditOn != null, ct),
-                "return" => await db.Assets.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == request.RecordId && x.ExpectedReturnOn != null, ct),
-                "reservation" => await db.AssetReservations.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == request.RecordId &&
-                    x.Status == "Approved" && (CanReview(user) || x.RequestedByUserId == userId ||
-                        db.CompanyMemberships.Any(membership => membership.CompanyId == companyId && membership.UserId == userId && membership.EmployeeId == x.EmployeeId)), ct),
-                _ => false
-            };
-            if (!belongsToCompany) return Results.NotFound();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, userId, ct);
+            if (!await CanAccessNotificationRecordAsync(kind, request.RecordId, companyId, userId, user, employeeScope, db, ct))
+                return Results.NotFound();
 
             var row = await db.OperationalNotificationStates.SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.UserId == userId && x.Kind == kind && x.RecordId == request.RecordId, ct);
@@ -160,6 +154,132 @@ public static class OperationalNotificationEndpoints
         var validCompany = Guid.TryParse(user.FindFirstValue("company_id"), out companyId);
         var validUser = Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
         return validCompany && validUser;
+    }
+
+    private static async Task<bool> CanAccessNotificationRecordAsync(string kind, Guid recordId, Guid companyId,
+        Guid userId, ClaimsPrincipal user, EmployeeAccessScope employeeScope, AppDbContext db, CancellationToken ct)
+    {
+        var allowedLocations = employeeScope.AllowedLocations;
+        var accessibleEmployeeIds = employeeScope.Apply(db.Employees.AsNoTracking()
+                .Where(employee => employee.CompanyId == companyId))
+            .Select(employee => employee.Id);
+
+        switch (kind)
+        {
+            case "maintenance":
+                var maintenance = await (from item in db.AssetMaintenances.AsNoTracking()
+                    join asset in db.Assets.AsNoTracking() on new { item.CompanyId, AssetId = item.AssetId } equals new { asset.CompanyId, AssetId = asset.Id }
+                    where item.CompanyId == companyId && item.Id == recordId
+                    select new { asset.LocationCatalogId }).SingleOrDefaultAsync(ct);
+                return maintenance is not null && (allowedLocations is null ||
+                    maintenance.LocationCatalogId is Guid maintenanceLocation && allowedLocations.Contains(maintenanceLocation));
+            case "license":
+                var licenseQuery = db.SoftwareLicenses.AsNoTracking()
+                    .Where(item => item.CompanyId == companyId && item.Id == recordId);
+                if (employeeScope.IsRestricted)
+                    licenseQuery = licenseQuery.Where(item => db.SoftwareLicenseAssignments.Any(assignment =>
+                        assignment.CompanyId == companyId && assignment.LicenseId == item.Id &&
+                        (assignment.EmployeeId != null || assignment.AssetId != null) &&
+                        (assignment.EmployeeId == null || accessibleEmployeeIds.Contains(assignment.EmployeeId.Value)) &&
+                        (assignment.AssetId == null || db.Assets.Any(asset => asset.CompanyId == companyId &&
+                            asset.Id == assignment.AssetId && (allowedLocations == null || asset.LocationCatalogId.HasValue &&
+                                allowedLocations.Contains(asset.LocationCatalogId.Value))))));
+                return await licenseQuery.AnyAsync(ct);
+            case "warranty":
+            case "audit":
+            case "return":
+                var assetQuery = db.Assets.AsNoTracking()
+                    .Where(asset => asset.CompanyId == companyId && asset.Id == recordId);
+                if (kind == "warranty") assetQuery = assetQuery.Where(asset => asset.WarrantyExpiresAt != null);
+                else if (kind == "audit") assetQuery = assetQuery.Where(asset => asset.NextAuditOn != null);
+                else assetQuery = assetQuery.Where(asset => asset.Status == AssetStatuses.Deployed &&
+                    asset.AssignedEmployeeId != null && asset.ExpectedReturnOn != null);
+                if (allowedLocations is not null)
+                    assetQuery = assetQuery.Where(asset => asset.LocationCatalogId.HasValue &&
+                        allowedLocations.Contains(asset.LocationCatalogId.Value));
+                if (kind == "return" && employeeScope.IsRestricted)
+                    assetQuery = assetQuery.Where(asset => asset.AssignedEmployeeId.HasValue &&
+                        accessibleEmployeeIds.Contains(asset.AssignedEmployeeId.Value));
+                return await assetQuery.AnyAsync(ct);
+            case "reservation":
+                var reservationQuery = from reservation in db.AssetReservations.AsNoTracking()
+                    join asset in db.Assets.AsNoTracking() on new { reservation.CompanyId, AssetId = reservation.AssetId } equals new { asset.CompanyId, AssetId = asset.Id }
+                    where reservation.CompanyId == companyId && reservation.Id == recordId && reservation.Status == "Approved" &&
+                        (CanReview(user) || reservation.RequestedByUserId == userId ||
+                            db.CompanyMemberships.Any(membership => membership.CompanyId == companyId && membership.UserId == userId && membership.EmployeeId == reservation.EmployeeId)) &&
+                        (allowedLocations == null || asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value)) &&
+                        accessibleEmployeeIds.Contains(reservation.EmployeeId)
+                    select reservation.Id;
+                return await reservationQuery.AnyAsync(ct);
+            default:
+                return false;
+        }
+    }
+
+    private static async Task<HashSet<(string Kind, Guid RecordId)>> GetAccessibleNotificationRecordsAsync(
+        IReadOnlyCollection<NotificationStateRow> rows, Guid companyId, Guid userId, ClaimsPrincipal user,
+        EmployeeAccessScope employeeScope, AppDbContext db, CancellationToken ct)
+    {
+        var result = new HashSet<(string Kind, Guid RecordId)>();
+        var idsByKind = rows.GroupBy(row => row.Kind)
+            .ToDictionary(group => group.Key, group => group.Select(row => row.RecordId).Distinct().ToArray());
+        var allowedLocations = employeeScope.AllowedLocations;
+        var accessibleEmployeeIds = employeeScope.Apply(db.Employees.AsNoTracking()
+                .Where(employee => employee.CompanyId == companyId))
+            .Select(employee => employee.Id);
+
+        if (idsByKind.TryGetValue("maintenance", out var maintenanceIds))
+        {
+            var accessibleIds = await (from item in db.AssetMaintenances.AsNoTracking()
+                join asset in db.Assets.AsNoTracking() on new { item.CompanyId, AssetId = item.AssetId } equals new { asset.CompanyId, AssetId = asset.Id }
+                where item.CompanyId == companyId && maintenanceIds.Contains(item.Id) &&
+                    (allowedLocations == null || asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value))
+                select item.Id).ToListAsync(ct);
+            foreach (var id in accessibleIds) result.Add(("maintenance", id));
+        }
+
+        if (idsByKind.TryGetValue("license", out var licenseIds))
+        {
+            var accessibleLicenses = db.SoftwareLicenses.AsNoTracking()
+                .Where(item => item.CompanyId == companyId && licenseIds.Contains(item.Id));
+            if (employeeScope.IsRestricted)
+                accessibleLicenses = accessibleLicenses.Where(item => db.SoftwareLicenseAssignments.Any(assignment =>
+                    assignment.CompanyId == companyId && assignment.LicenseId == item.Id &&
+                    (assignment.EmployeeId != null || assignment.AssetId != null) &&
+                    (assignment.EmployeeId == null || accessibleEmployeeIds.Contains(assignment.EmployeeId.Value)) &&
+                    (assignment.AssetId == null || db.Assets.Any(asset => asset.CompanyId == companyId &&
+                        asset.Id == assignment.AssetId && (allowedLocations == null || asset.LocationCatalogId.HasValue &&
+                            allowedLocations.Contains(asset.LocationCatalogId.Value))))));
+            foreach (var id in await accessibleLicenses.Select(item => item.Id).ToListAsync(ct)) result.Add(("license", id));
+        }
+
+        foreach (var kind in new[] { "warranty", "audit", "return" })
+        {
+            if (!idsByKind.TryGetValue(kind, out var assetIds)) continue;
+            var assets = db.Assets.AsNoTracking().Where(asset => asset.CompanyId == companyId && assetIds.Contains(asset.Id));
+            if (kind == "warranty") assets = assets.Where(asset => asset.WarrantyExpiresAt != null);
+            else if (kind == "audit") assets = assets.Where(asset => asset.NextAuditOn != null);
+            else assets = assets.Where(asset => asset.Status == AssetStatuses.Deployed && asset.AssignedEmployeeId != null && asset.ExpectedReturnOn != null);
+            if (allowedLocations is not null)
+                assets = assets.Where(asset => asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value));
+            if (kind == "return" && employeeScope.IsRestricted)
+                assets = assets.Where(asset => asset.AssignedEmployeeId.HasValue && accessibleEmployeeIds.Contains(asset.AssignedEmployeeId.Value));
+            foreach (var id in await assets.Select(asset => asset.Id).ToListAsync(ct)) result.Add((kind, id));
+        }
+
+        if (idsByKind.TryGetValue("reservation", out var reservationIds))
+        {
+            var accessibleReservations = from reservation in db.AssetReservations.AsNoTracking()
+                join asset in db.Assets.AsNoTracking() on new { reservation.CompanyId, AssetId = reservation.AssetId } equals new { asset.CompanyId, AssetId = asset.Id }
+                where reservation.CompanyId == companyId && reservationIds.Contains(reservation.Id) && reservation.Status == "Approved" &&
+                    (CanReview(user) || reservation.RequestedByUserId == userId ||
+                        db.CompanyMemberships.Any(membership => membership.CompanyId == companyId && membership.UserId == userId && membership.EmployeeId == reservation.EmployeeId)) &&
+                    (allowedLocations == null || asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value)) &&
+                    accessibleEmployeeIds.Contains(reservation.EmployeeId)
+                select reservation.Id;
+            foreach (var id in await accessibleReservations.ToListAsync(ct)) result.Add(("reservation", id));
+        }
+        return result;
     }
 
     private static bool CanReview(ClaimsPrincipal user) => user.FindFirstValue("company_role") is "owner" or "admin" or "asset_manager" or "asset_operator";

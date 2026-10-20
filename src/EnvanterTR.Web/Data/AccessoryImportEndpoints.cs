@@ -92,13 +92,28 @@ public static class AccessoryImportEndpoints
         if (existing.Any(x => items.Any(y => string.Equals(x.Name, y.Name, StringComparison.OrdinalIgnoreCase) || y.ItemNumber != null && string.Equals(x.ItemNumber, y.ItemNumber, StringComparison.OrdinalIgnoreCase))))
             return Results.Conflict(new { isValid = false, errors = new[] { "Şirkette aynı ad veya ürün no ile aksesuar bulundu. Yinelenen kayıt eklenmedi." } });
         var locationPaths = await AssetEndpoints.GetActiveLocationPathMapAsync(db, companyId, ct);
+        var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
         var defaultLocation = await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, ct);
         var defaultLocationApplied = defaultLocation is null ? 0 : items.Count(x => x.Location is null);
         foreach (var item in items)
         {
             item.Location ??= defaultLocation;
-            if (item.Location is not null && locationPaths.TryGetValue(item.Location, out var locationCatalogId)) item.LocationCatalogId = locationCatalogId;
+            if (item.Location is null)
+            {
+                if (allowedLocations is not null) AddError(errors, "Konum erişimi sınırlı üyeler için içe aktarılan her aksesuara erişilebilir bir konum atanmalıdır.");
+                continue;
+            }
+            if (locationPaths.TryGetValue(item.Location, out var locationCatalogId))
+            {
+                item.LocationCatalogId = locationCatalogId;
+                if (allowedLocations is not null && !allowedLocations.Contains(locationCatalogId))
+                    AddError(errors, $"\"{item.Location}\" konumu içe aktarımı yapan üye için erişilebilir değil.");
+            }
+            else if (allowedLocations is not null)
+                AddError(errors, $"\"{item.Location}\" etkin şirket konum kataloğunda bulunamadı; kısıtlı üyeler serbest metin konuma aktarım yapamaz.");
         }
+        if (errors.Count > 0)
+            return Results.UnprocessableEntity(new { isValid = false, rowCount = items.Count, errors = errors.Distinct().Take(30), message = "Konum kapsamı doğrulanamadı. Hiçbir aksesuar eklenmedi." });
         var suppliersToCreate = await SupplierImportCatalog.FindMissingNamesAsync(db, companyId, items.Select(x => x.Supplier), ct);
         var allCategories = await db.AccessoryCategories.AsNoTracking().Where(x => x.CompanyId == companyId).ToListAsync(ct);
         var requestedCategories = items.Select(x => x.Category).Where(x => !string.IsNullOrWhiteSpace(x))

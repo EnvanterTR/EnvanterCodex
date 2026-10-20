@@ -1,5 +1,23 @@
 import assert from 'node:assert/strict';
-import { checkProduction, inspectCommercialReadiness, inspectEndpoint } from './Check-CoolifyProduction.mjs';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { checkProduction, countSourceMigrations, inspectCommercialReadiness, inspectEndpoint } from './Check-CoolifyProduction.mjs';
+
+const migrationFixture = await mkdtemp(path.join(tmpdir(), 'envantertr-migrations-'));
+try {
+  await Promise.all([
+    writeFile(path.join(migrationFixture, '20261019080000_Example.cs'), ''),
+    writeFile(path.join(migrationFixture, '20261019080000_Example.Designer.cs'), ''),
+    writeFile(path.join(migrationFixture, 'AppDbContextModelSnapshot.cs'), ''),
+    writeFile(path.join(migrationFixture, 'notes.cs'), ''),
+  ]);
+  assert.equal(await countSourceMigrations(migrationFixture), 1, 'Source migration counting must exclude designer/snapshot/non-migration files.');
+} finally {
+  await rm(migrationFixture, { recursive: true, force: true });
+}
+const currentSourceMigrationCount = await countSourceMigrations();
+assert.ok(currentSourceMigrationCount >= 92, 'The current source tree must report its actual migration count.');
 
 function response(status, contentType, body) {
   return { status, ok: status >= 200 && status < 300, headers: { get: name => name === 'content-type' ? contentType : null }, text: async () => body };

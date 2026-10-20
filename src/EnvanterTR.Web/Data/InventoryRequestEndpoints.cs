@@ -12,9 +12,12 @@ public static class InventoryRequestEndpoints
         api.MapGet("/requests/employees", async ([FromQuery] string? q, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
+            var userId = UserId(user);
+            var locationScope = userId is Guid scopedUserId
+                ? await GetRequestLocationScopeAsync(db, companyId, scopedUserId, ct)
+                : null;
             var term = q?.Trim();
             if (term?.Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
-            var userId = UserId(user);
             var selfEmployee = userId is Guid accountId
                 ? await (from membership in db.CompanyMemberships.AsNoTracking()
                          join employee in db.Employees.AsNoTracking() on new { membership.CompanyId, Id = membership.EmployeeId }
@@ -23,6 +26,11 @@ public static class InventoryRequestEndpoints
                          select new { employee.Id, employee.DisplayName, employee.EmployeeNumber, employee.IsActive }).SingleOrDefaultAsync(ct)
                 : null;
             var employees = db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId && x.IsActive);
+            if (locationScope is not null)
+            {
+                employees = employees.Where(x => locationScope.EmployeeIds.Contains(x.Id));
+                if (selfEmployee is not null && !locationScope.EmployeeIds.Contains(selfEmployee.Id)) selfEmployee = null;
+            }
             if (!CanReviewRequests(user))
             {
                 employees = selfEmployee is { IsActive: true }
@@ -38,6 +46,10 @@ public static class InventoryRequestEndpoints
         api.MapGet("/requests/catalog", async ([FromQuery] string? q, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Tenant(user, out var companyId)) return Results.Forbid();
+            var userId = UserId(user);
+            var locationScope = userId is Guid scopedUserId
+                ? await GetRequestLocationScopeAsync(db, companyId, scopedUserId, ct)
+                : null;
             var term = q?.Trim();
             if (term?.Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
             var accessories = db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && x.IsRequestable && x.TotalQuantity >
@@ -46,6 +58,12 @@ public static class InventoryRequestEndpoints
                 (db.ConsumableMovements.Where(m => m.CompanyId == companyId && m.ConsumableId == x.Id && m.MovementType == "Checkout").Sum(m => (int?)m.Quantity) ?? 0));
             var assets = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.IsRequestable &&
                 x.Status == AssetStatuses.Available && x.AssignedEmployeeId == null);
+            if (locationScope is not null)
+            {
+                accessories = accessories.Where(x => locationScope.AccessoryIds.Contains(x.Id));
+                consumables = consumables.Where(x => locationScope.ConsumableIds.Contains(x.Id));
+                assets = assets.Where(x => locationScope.AssetIds.Contains(x.Id));
+            }
             if (!string.IsNullOrWhiteSpace(term))
             {
                 accessories = accessories.Where(x => x.Name.Contains(term) || (x.Category != null && x.Category.Contains(term)) ||
@@ -55,16 +73,23 @@ public static class InventoryRequestEndpoints
                 assets = assets.Where(x => x.Name.Contains(term) || x.AssetTag.Contains(term) ||
                     (x.SerialNumber != null && x.SerialNumber.Contains(term)));
             }
+            var hasLocationScope = locationScope is not null;
             var accessoryItems = await accessories.OrderBy(x => x.Name).Take(200).Select(x => new RequestCatalogItem(x.Id, "Accessory", x.Name, x.Category, x.ModelNumber,
-                x.Location, x.TotalQuantity - (db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0))).ToListAsync(ct);
+                !hasLocationScope ? x.Location : db.CompanyLocations.Where(location => location.CompanyId == companyId && location.Id == x.LocationCatalogId)
+                    .Select(location => location.Name).FirstOrDefault(),
+                x.TotalQuantity - (db.AccessoryAssignments.Where(a => a.CompanyId == companyId && a.AccessoryId == x.Id).Sum(a => (int?)(a.Quantity - a.ReturnedQuantity)) ?? 0))).ToListAsync(ct);
             var consumableItems = await consumables.OrderBy(x => x.Name).Take(200).Select(x => new RequestCatalogItem(x.Id, "Consumable", x.Name, x.Category, x.ModelNumber,
-                x.Location, x.TotalQuantity - (db.ConsumableMovements.Where(m => m.CompanyId == companyId && m.ConsumableId == x.Id && m.MovementType == "Checkout").Sum(m => (int?)m.Quantity) ?? 0))).ToListAsync(ct);
+                !hasLocationScope ? x.Location : db.CompanyLocations.Where(location => location.CompanyId == companyId && location.Id == x.LocationCatalogId)
+                    .Select(location => location.Name).FirstOrDefault(),
+                x.TotalQuantity - (db.ConsumableMovements.Where(m => m.CompanyId == companyId && m.ConsumableId == x.Id && m.MovementType == "Checkout").Sum(m => (int?)m.Quantity) ?? 0))).ToListAsync(ct);
             var assetItems = await assets.OrderBy(x => x.Name).Take(200).Select(x => new RequestCatalogItem(x.Id, "Asset", x.Name,
                 db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault(), x.AssetTag,
-                x.Location, 1)).ToListAsync(ct);
+                !hasLocationScope ? x.Location : db.CompanyLocations.Where(location => location.CompanyId == companyId && location.Id == x.LocationCatalogId)
+                    .Select(location => location.Name).FirstOrDefault(), 1)).ToListAsync(ct);
             var kitsQuery = db.AccessoryKits.AsNoTracking().Where(x => x.CompanyId == companyId && x.IsActive &&
                 db.AccessoryKitLines.Any(line => line.CompanyId == companyId && line.AccessoryKitId == x.Id));
             if (!string.IsNullOrWhiteSpace(term)) kitsQuery = kitsQuery.Where(x => x.Name.Contains(term) || (x.Description != null && x.Description.Contains(term)));
+            if (locationScope is not null) kitsQuery = kitsQuery.Where(x => locationScope.KitIds.Contains(x.Id));
             var kits = await kitsQuery.OrderBy(x => x.Name).Take(200).Select(x => new { x.Id, x.Name }).ToListAsync(ct);
             var kitAvailability = await AvailableKitsAsync(db, companyId, kits.Select(x => x.Id).ToArray(), ct);
             var kitItems = kits.Where(x => kitAvailability.ContainsKey(x.Id))
@@ -81,6 +106,9 @@ public static class InventoryRequestEndpoints
             page = Math.Max(1, page); pageSize = Math.Clamp(pageSize == 0 ? 25 : pageSize, 1, 100);
             var query = db.InventoryRequests.AsNoTracking().Where(x => x.CompanyId == companyId);
             if (!CanReviewRequests(user)) query = query.Where(x => x.RequestedByUserId == userId);
+            var locationScope = await GetRequestLocationScopeAsync(db, companyId, userId, ct);
+            var canReadRequestNotes = locationScope == null;
+            if (locationScope is not null) query = ApplyRequestLocationScope(query, locationScope);
             if (!string.IsNullOrWhiteSpace(status))
             {
                 var normalized = status.Trim();
@@ -94,7 +122,7 @@ public static class InventoryRequestEndpoints
                 if (term.Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
                 query = query.Where(x => db.Employees.Any(e => e.CompanyId == companyId && e.Id == x.EmployeeId &&
                     (e.DisplayName.Contains(term) || e.EmployeeNumber.Contains(term))) ||
-                    (x.RequestNote != null && x.RequestNote.Contains(term)) ||
+                    (canReadRequestNotes && x.RequestNote != null && x.RequestNote.Contains(term)) ||
                     (x.ItemType == "Accessory" && db.Accessories.Any(a => a.CompanyId == companyId && a.Id == x.ItemId && a.Name.Contains(term))) ||
                     (x.ItemType == "Consumable" && db.Consumables.Any(c => c.CompanyId == companyId && c.Id == x.ItemId && c.Name.Contains(term))) ||
                     (x.ItemType == "AccessoryKit" && db.AccessoryKits.Any(k => k.CompanyId == companyId && k.Id == x.ItemId && k.Name.Contains(term))) ||
@@ -104,9 +132,17 @@ public static class InventoryRequestEndpoints
             var rows = await query.OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(x => new
                 {
-                    x.Id, x.ItemType, x.ItemId, x.Quantity, x.Status, x.RequestNote, x.ReviewNote, x.CreatedAt, x.ReviewedAt,
-                    x.KitReturnedAt, x.KitReturnNote,
-                    x.RequestedByUserId, x.ReviewedByUserId,
+                    x.Id, x.ItemType, x.ItemId, x.Quantity, x.Status,
+                    RequestNote = canReadRequestNotes ? x.RequestNote : null,
+                    ReviewNote = canReadRequestNotes ? x.ReviewNote : null,
+                    x.CreatedAt, x.ReviewedAt, x.KitReturnedAt,
+                    KitReturnNote = canReadRequestNotes ? x.KitReturnNote : null,
+                    RequestedByUserId = locationScope == null || !db.CompanyMemberships.Any(membership =>
+                        membership.CompanyId == companyId && membership.UserId == x.RequestedByUserId && membership.EmployeeId.HasValue &&
+                        !locationScope.EmployeeIds.Contains(membership.EmployeeId.Value)) ? x.RequestedByUserId : null,
+                    ReviewedByUserId = locationScope == null || !db.CompanyMemberships.Any(membership =>
+                        membership.CompanyId == companyId && membership.UserId == x.ReviewedByUserId && membership.EmployeeId.HasValue &&
+                        !locationScope.EmployeeIds.Contains(membership.EmployeeId.Value)) ? x.ReviewedByUserId : null,
                     employee = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
                     employeeNumber = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault(),
                     item = x.ItemType == "Accessory"
@@ -116,8 +152,16 @@ public static class InventoryRequestEndpoints
                             : x.ItemType == "AccessoryKit"
                                 ? db.AccessoryKits.Where(k => k.CompanyId == companyId && k.Id == x.ItemId).Select(k => k.Name).FirstOrDefault()
                                 : db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.ItemId).Select(a => a.Name + " · " + a.AssetTag).FirstOrDefault(),
-                    requestedBy = db.Users.Where(u => u.Id == x.RequestedByUserId).Select(u => u.DisplayName).FirstOrDefault(),
-                    reviewedBy = db.Users.Where(u => u.Id == x.ReviewedByUserId).Select(u => u.DisplayName).FirstOrDefault()
+                    requestedBy = locationScope == null || !db.CompanyMemberships.Any(membership =>
+                        membership.CompanyId == companyId && membership.UserId == x.RequestedByUserId && membership.EmployeeId.HasValue &&
+                        !locationScope.EmployeeIds.Contains(membership.EmployeeId.Value))
+                        ? db.Users.Where(u => u.Id == x.RequestedByUserId).Select(u => u.DisplayName).FirstOrDefault()
+                        : null,
+                    reviewedBy = locationScope == null || !db.CompanyMemberships.Any(membership =>
+                        membership.CompanyId == companyId && membership.UserId == x.ReviewedByUserId && membership.EmployeeId.HasValue &&
+                        !locationScope.EmployeeIds.Contains(membership.EmployeeId.Value))
+                        ? db.Users.Where(u => u.Id == x.ReviewedByUserId).Select(u => u.DisplayName).FirstOrDefault()
+                        : null
                 }).ToListAsync(ct);
             return Results.Ok(new { items = rows, page, pageSize, total });
         }).RequireAuthorization("asset.read");
@@ -128,6 +172,9 @@ public static class InventoryRequestEndpoints
             if (!Tenant(user, out var companyId) || UserId(user) is not Guid userId) return Results.Forbid();
             var query = db.InventoryRequests.AsNoTracking().Where(x => x.CompanyId == companyId);
             if (!CanReviewRequests(user)) query = query.Where(x => x.RequestedByUserId == userId);
+            var locationScope = await GetRequestLocationScopeAsync(db, companyId, userId, ct);
+            var canReadRequestNotes = locationScope == null;
+            if (locationScope is not null) query = ApplyRequestLocationScope(query, locationScope);
             if (!string.IsNullOrWhiteSpace(status))
             {
                 var normalized = status.Trim();
@@ -141,7 +188,7 @@ public static class InventoryRequestEndpoints
                 if (term.Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama metni 120 karakteri aşamaz."] });
                 query = query.Where(x => db.Employees.Any(e => e.CompanyId == companyId && e.Id == x.EmployeeId &&
                     (e.DisplayName.Contains(term) || e.EmployeeNumber.Contains(term))) ||
-                    (x.RequestNote != null && x.RequestNote.Contains(term)) ||
+                    (canReadRequestNotes && x.RequestNote != null && x.RequestNote.Contains(term)) ||
                     (x.ItemType == "Accessory" && db.Accessories.Any(a => a.CompanyId == companyId && a.Id == x.ItemId && a.Name.Contains(term))) ||
                     (x.ItemType == "Consumable" && db.Consumables.Any(c => c.CompanyId == companyId && c.Id == x.ItemId && c.Name.Contains(term))) ||
                     (x.ItemType == "AccessoryKit" && db.AccessoryKits.Any(k => k.CompanyId == companyId && k.Id == x.ItemId && k.Name.Contains(term))) ||
@@ -151,7 +198,11 @@ public static class InventoryRequestEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["export"] = ["Dışa aktarım en fazla 10.000 talep içerir; aramayı veya durumu daraltın."] });
             var rows = await query.OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id).Select(x => new
             {
-                x.ItemType, x.Quantity, x.Status, x.RequestNote, x.ReviewNote, x.CreatedAt, x.ReviewedAt, x.KitReturnedAt, x.KitReturnNote,
+                x.ItemType, x.Quantity, x.Status,
+                RequestNote = canReadRequestNotes ? x.RequestNote : null,
+                ReviewNote = canReadRequestNotes ? x.ReviewNote : null,
+                x.CreatedAt, x.ReviewedAt, x.KitReturnedAt,
+                KitReturnNote = canReadRequestNotes ? x.KitReturnNote : null,
                 employee = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
                 employeeNumber = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.EmployeeNumber).FirstOrDefault(),
                 item = x.ItemType == "Accessory"
@@ -161,8 +212,16 @@ public static class InventoryRequestEndpoints
                         : x.ItemType == "AccessoryKit"
                             ? db.AccessoryKits.Where(k => k.CompanyId == companyId && k.Id == x.ItemId).Select(k => k.Name).FirstOrDefault()
                             : db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.ItemId).Select(a => a.Name + " · " + a.AssetTag).FirstOrDefault(),
-                requestedBy = db.Users.Where(u => u.Id == x.RequestedByUserId).Select(u => u.DisplayName).FirstOrDefault(),
-                reviewedBy = db.Users.Where(u => u.Id == x.ReviewedByUserId).Select(u => u.DisplayName).FirstOrDefault()
+                requestedBy = locationScope == null || !db.CompanyMemberships.Any(membership =>
+                    membership.CompanyId == companyId && membership.UserId == x.RequestedByUserId && membership.EmployeeId.HasValue &&
+                    !locationScope.EmployeeIds.Contains(membership.EmployeeId.Value))
+                    ? db.Users.Where(u => u.Id == x.RequestedByUserId).Select(u => u.DisplayName).FirstOrDefault()
+                    : null,
+                reviewedBy = locationScope == null || !db.CompanyMemberships.Any(membership =>
+                    membership.CompanyId == companyId && membership.UserId == x.ReviewedByUserId && membership.EmployeeId.HasValue &&
+                    !locationScope.EmployeeIds.Contains(membership.EmployeeId.Value))
+                    ? db.Users.Where(u => u.Id == x.ReviewedByUserId).Select(u => u.DisplayName).FirstOrDefault()
+                    : null
             }).ToListAsync(ct);
             var csv = new System.Text.StringBuilder("\uFEFF\"Çalışan\",\"Çalışan numarası\",\"Kalem\",\"Tür\",\"Adet\",\"Durum\",\"Talep eden\",\"Talep tarihi (UTC)\",\"Talep notu\",\"Kararı veren\",\"Karar tarihi (UTC)\",\"Karar notu\"\r\n");
             foreach (var row in rows)
@@ -194,6 +253,9 @@ public static class InventoryRequestEndpoints
             if (linkedEmployeeId is Guid mappedEmployeeId && request.EmployeeId != mappedEmployeeId)
                 return Results.Forbid();
             var employeeId = linkedEmployeeId ?? request.EmployeeId;
+            var locationScope = await GetRequestLocationScopeAsync(db, companyId, userId, ct);
+            if (locationScope is not null && (!locationScope.EmployeeIds.Contains(employeeId) || !locationScope.ContainsItem(request.ItemType, request.ItemId)))
+                return Results.NotFound();
             if (!await db.Employees.AnyAsync(e => e.CompanyId == companyId && e.Id == employeeId && e.IsActive, ct))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["employeeId"] = ["Bu şirketteki etkin bir çalışan seçilmelidir."] });
             var available = await AvailableAsync(db, companyId, request.ItemType, request.ItemId, ct);
@@ -216,6 +278,9 @@ public static class InventoryRequestEndpoints
             var row = await db.InventoryRequests.FromSqlInterpolated(
                 $"SELECT * FROM \"InventoryRequests\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct);
             if (row is null) return Results.NotFound();
+            var locationScope = await GetRequestLocationScopeAsync(db, companyId, userId, ct);
+            if (locationScope is not null && (!locationScope.EmployeeIds.Contains(row.EmployeeId) || !locationScope.ContainsItem(row.ItemType, row.ItemId)))
+                return Results.NotFound();
             if (row.Status != "Pending") return Results.Conflict(new { message = "Bu talep daha önce sonuçlandırılmış." });
             if (request.Approve)
             {
@@ -245,6 +310,9 @@ public static class InventoryRequestEndpoints
                 $"SELECT * FROM \"InventoryRequests\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct);
             if (row is null) return Results.NotFound();
             if (row.RequestedByUserId != userId) return Results.Forbid();
+            var locationScope = await GetRequestLocationScopeAsync(db, companyId, userId, ct);
+            if (locationScope is not null && (!locationScope.EmployeeIds.Contains(row.EmployeeId) || !locationScope.ContainsItem(row.ItemType, row.ItemId)))
+                return Results.NotFound();
             if (row.Status != "Pending") return Results.Conflict(new { message = "Yalnızca bekleyen talepler iptal edilebilir." });
             row.Status = "Cancelled"; row.ReviewedAt = DateTimeOffset.UtcNow;
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = userId, TargetType = "InventoryRequest", TargetId = id,
@@ -264,6 +332,9 @@ public static class InventoryRequestEndpoints
                 $"SELECT * FROM \"InventoryRequests\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
                 .SingleOrDefaultAsync(ct);
             if (inventoryRequest is null) return Results.NotFound();
+            var locationScope = await GetRequestLocationScopeAsync(db, companyId, userId, ct);
+            if (locationScope is not null && (!locationScope.EmployeeIds.Contains(inventoryRequest.EmployeeId) ||
+                !locationScope.ContainsItem(inventoryRequest.ItemType, inventoryRequest.ItemId))) return Results.NotFound();
             if (inventoryRequest.ItemType != "AccessoryKit" || inventoryRequest.Status != "Approved")
                 return Results.Conflict(new { message = "Yalnızca onaylanmış hazır kit talepleri iade alınabilir." });
             if (inventoryRequest.KitReturnedAt is not null)
@@ -344,6 +415,54 @@ public static class InventoryRequestEndpoints
         }).RequireAuthorization("asset.write");
 
         return api;
+    }
+
+    private static async Task<RequestLocationScope?> GetRequestLocationScopeAsync(AppDbContext db, Guid companyId, Guid userId, CancellationToken ct)
+    {
+        var allowed = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, userId, ct);
+        if (allowed is null) return null;
+        var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, userId, ct);
+        var employees = await employeeScope.Apply(db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId))
+            .Select(x => x.Id).ToListAsync(ct);
+        var accessories = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && x.LocationCatalogId.HasValue &&
+            allowed.Contains(x.LocationCatalogId.Value)).Select(x => x.Id).ToListAsync(ct);
+        var consumables = await db.Consumables.AsNoTracking().Where(x => x.CompanyId == companyId && x.LocationCatalogId.HasValue &&
+            allowed.Contains(x.LocationCatalogId.Value)).Select(x => x.Id).ToListAsync(ct);
+        var assets = await db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.LocationCatalogId.HasValue &&
+            allowed.Contains(x.LocationCatalogId.Value)).Select(x => x.Id).ToListAsync(ct);
+        var components = await db.InventoryComponents.AsNoTracking().Where(x => x.CompanyId == companyId && x.LocationCatalogId.HasValue &&
+            allowed.Contains(x.LocationCatalogId.Value)).Select(x => x.Id).ToListAsync(ct);
+        var accessoryIds = accessories.ToHashSet();
+        var consumableIds = consumables.ToHashSet();
+        var assetIds = assets.ToHashSet();
+        var componentIds = components.ToHashSet();
+        var kitLineQuery = db.AccessoryKitLines.AsNoTracking().Where(x => x.CompanyId == companyId);
+        var kitIds = await db.AccessoryKits.AsNoTracking().Where(kit => kit.CompanyId == companyId && kit.IsActive &&
+            kitLineQuery.Any(line => line.AccessoryKitId == kit.Id) &&
+            kitLineQuery.Where(line => line.AccessoryKitId == kit.Id).All(line =>
+                line.ItemType == "Accessory" && line.AccessoryId.HasValue && accessoryIds.Contains(line.AccessoryId.Value) ||
+                line.ItemType == "Consumable" && line.ConsumableId.HasValue && consumableIds.Contains(line.ConsumableId.Value) ||
+                line.ItemType == "Asset" && line.AssetId.HasValue && assetIds.Contains(line.AssetId.Value) ||
+                line.ItemType == "Component" && line.ComponentId.HasValue && componentIds.Contains(line.ComponentId.Value)))
+            .Select(kit => kit.Id).ToHashSetAsync(ct);
+        return new RequestLocationScope(employees.ToHashSet(), accessoryIds, consumableIds, assetIds, componentIds, kitIds);
+    }
+
+    private static IQueryable<InventoryRequest> ApplyRequestLocationScope(IQueryable<InventoryRequest> query, RequestLocationScope scope) =>
+        query.Where(x => scope.EmployeeIds.Contains(x.EmployeeId) &&
+            (x.ItemType == "Accessory" && scope.AccessoryIds.Contains(x.ItemId) ||
+             x.ItemType == "Consumable" && scope.ConsumableIds.Contains(x.ItemId) ||
+             x.ItemType == "Asset" && scope.AssetIds.Contains(x.ItemId) ||
+             x.ItemType == "AccessoryKit" && scope.KitIds.Contains(x.ItemId)));
+
+    private sealed record RequestLocationScope(HashSet<Guid> EmployeeIds, HashSet<Guid> AccessoryIds,
+        HashSet<Guid> ConsumableIds, HashSet<Guid> AssetIds, HashSet<Guid> ComponentIds, HashSet<Guid> KitIds)
+    {
+        public bool ContainsItem(string type, Guid id) => type switch
+        {
+            "Accessory" => AccessoryIds.Contains(id), "Consumable" => ConsumableIds.Contains(id),
+            "Asset" => AssetIds.Contains(id), "AccessoryKit" => KitIds.Contains(id), _ => false
+        };
     }
 
     private static async Task<int?> AvailableAsync(AppDbContext db, Guid companyId, string type, Guid itemId, CancellationToken ct)

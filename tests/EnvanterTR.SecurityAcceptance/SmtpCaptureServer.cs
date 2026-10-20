@@ -64,8 +64,9 @@ internal sealed class SmtpCaptureServer : IAsyncDisposable
                     case "DATA":
                         await writer.WriteLineAsync("354 End data with <CR><LF>.<CR><LF>");
                         var message = new StringBuilder();
+                        // Keep the captured representation stable on both Windows and Linux.
                         while (await reader.ReadLineAsync(cancellationToken) is { } line && line != ".")
-                            message.AppendLine(line.StartsWith("..", StringComparison.Ordinal) ? line[1..] : line);
+                            message.Append(line.StartsWith("..", StringComparison.Ordinal) ? line[1..] : line).Append('\n');
                         _messages.Enqueue(message.ToString());
                         await writer.WriteLineAsync("250 Message accepted");
                         break;

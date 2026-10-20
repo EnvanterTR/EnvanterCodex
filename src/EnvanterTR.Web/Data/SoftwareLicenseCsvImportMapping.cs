@@ -15,13 +15,14 @@ internal static class SoftwareLicenseCsvImportMapping
         ["Alış tarihi", "Alis tarihi", "Purchase Date"],
         ["Bitiş tarihi", "Bitis tarihi", "Expiration Date", "Expiry Date", "License Expiration Date"],
         ["Otomatik yenileme", "Otomatik yenile", "Auto Renew", "Auto-Renew"],
-        ["Notlar", "Notes"]
+        ["Notlar", "Notes"],
+        ["Satın alma sipariş no.", "Purchase Order", "Purchase Order Number", "PO Number", "Order Reference"]
     ];
 
     private static readonly string[] Canonical =
-        ["Lisans", "Yayıncı", "Ürün sürümü", "Tür", "Tedarikçi", "Koltuk", "Birim maliyeti", "Para birimi", "Alış tarihi", "Bitiş tarihi", "Otomatik yenileme", "Notlar"];
+        ["Lisans", "Yayıncı", "Ürün sürümü", "Tür", "Tedarikçi", "Koltuk", "Birim maliyeti", "Para birimi", "Alış tarihi", "Bitiş tarihi", "Otomatik yenileme", "Notlar", "Satın alma sipariş no."];
 
-    private static readonly string[] TargetKeys = ["name", "publisher", "productVersion", "licenseType", "supplier", "seats", "unitCost", "currency", "purchaseDate", "expirationDate", "autoRenew", "notes"];
+    private static readonly string[] TargetKeys = ["name", "publisher", "productVersion", "licenseType", "supplier", "seats", "unitCost", "currency", "purchaseDate", "expirationDate", "autoRenew", "notes", "purchaseOrderReference"];
 
     public static object[] MappingTargets() => TargetKeys.Select((key, index) => new { key, label = Canonical[index] })
         .Append(new { key = "ignore", label = "Bu sütunu yoksay" }).Cast<object>().ToArray();

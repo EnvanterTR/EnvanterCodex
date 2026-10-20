@@ -96,11 +96,14 @@ public static class DashboardPreferenceEndpoints
 
         api.MapGet("/dashboard/charts/{dimension}", async (string dimension, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
-            if (!TryIdentity(user, out var companyId, out _)) return Results.Forbid();
+            if (!TryIdentity(user, out var companyId, out var userId)) return Results.Forbid();
             dimension = dimension.Trim().ToLowerInvariant();
             if (!AllowedChartDimensions.Contains(dimension, StringComparer.Ordinal))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["dimension"] = ["Grafik ölçütü geçersiz."] });
             var assets = db.Assets.AsNoTracking().Where(a => a.CompanyId == companyId && a.DeletedAt == null);
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, userId, ct);
+            if (allowedLocations is not null)
+                assets = assets.Where(a => a.LocationCatalogId.HasValue && allowedLocations.Contains(a.LocationCatalogId.Value));
             var total = await assets.CountAsync(ct);
             List<DashboardChartItem> items;
             if (dimension == "status")
@@ -117,10 +120,25 @@ public static class DashboardPreferenceEndpoints
             }
             else if (dimension == "location")
             {
-                var groups = await assets.GroupBy(a => a.Location).Select(g => new { Key = g.Key, Count = g.Count() })
-                    .OrderByDescending(g => g.Count).Take(10).ToListAsync(ct);
-                items = groups.Select(g => new DashboardChartItem(string.IsNullOrWhiteSpace(g.Key) ? "Konum belirtilmemiş" : g.Key!, g.Count,
-                    string.IsNullOrWhiteSpace(g.Key) ? null : g.Key)).ToList();
+                if (allowedLocations is null)
+                {
+                    var groups = await assets.GroupBy(a => a.Location).Select(g => new { Key = g.Key, Count = g.Count() })
+                        .OrderByDescending(g => g.Count).Take(10).ToListAsync(ct);
+                    items = groups.Select(g => new DashboardChartItem(string.IsNullOrWhiteSpace(g.Key) ? "Konum belirtilmemiş" : g.Key!, g.Count,
+                        string.IsNullOrWhiteSpace(g.Key) ? null : g.Key)).ToList();
+                }
+                else
+                {
+                    var groups = await assets.GroupBy(a => a.LocationCatalogId).Select(g => new { Id = g.Key, Count = g.Count() })
+                        .OrderByDescending(g => g.Count).Take(10).ToListAsync(ct);
+                    var locationIds = groups.Where(group => group.Id.HasValue).Select(group => group.Id!.Value).ToArray();
+                    var labels = await db.CompanyLocations.AsNoTracking()
+                        .Where(location => location.CompanyId == companyId && locationIds.Contains(location.Id))
+                        .ToDictionaryAsync(location => location.Id, location => location.Name, ct);
+                    items = groups.Select(group => group.Id is Guid id && labels.TryGetValue(id, out var label)
+                        ? new DashboardChartItem(label, group.Count, id.ToString())
+                        : new DashboardChartItem("Konum belirtilmemiş", group.Count, null)).ToList();
+                }
             }
             else
             {

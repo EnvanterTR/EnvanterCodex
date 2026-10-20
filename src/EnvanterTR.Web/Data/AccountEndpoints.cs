@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Net;
 using System.Net.Mail;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Identity;
@@ -255,6 +256,30 @@ public static class AccountEndpoints
                     .AnyAsync(x => x.Id == membership.CompanyId && x.IsActive, cancellationToken))
                 return Results.Forbid();
 
+            if (membership is not null && !user.TwoFactorEnabled &&
+                await db.Companies.AsNoTracking().AnyAsync(company => company.Id == membership.CompanyId && company.SecurityRequireMfa, cancellationToken))
+            {
+                var challengeCreatedAt = DateTimeOffset.UtcNow;
+                await db.CompanyMfaEnrollmentChallenges.Where(challenge => challenge.UserId == user.Id &&
+                    (challenge.CompletedAt == null || challenge.CompletedAt < challengeCreatedAt.AddDays(-30)))
+                    .ExecuteDeleteAsync(cancellationToken);
+                var setupTicket = user.Id.ToString("N") + "." + Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+                db.CompanyMfaEnrollmentChallenges.Add(new CompanyMfaEnrollmentChallenge
+                {
+                    CompanyId = membership.CompanyId, UserId = user.Id,
+                    TicketHash = CompanySecurityEndpoints.HashEnrollmentTicket(setupTicket, user.SecurityStamp),
+                    RememberMe = request.RememberMe, CreatedAt = challengeCreatedAt, ExpiresAt = challengeCreatedAt.AddMinutes(15)
+                });
+                await db.SaveChangesAsync(cancellationToken);
+                var companyName = await db.Companies.AsNoTracking().Where(company => company.Id == membership.CompanyId)
+                    .Select(company => company.Name).SingleAsync(cancellationToken);
+                return Results.Conflict(new
+                {
+                    companyMfaSetupRequired = true, setupTicket, companyName,
+                    message = $"{companyName} şirketi giriş için iki aşamalı doğrulama istiyor. Authenticator kurulumunu tamamlayın."
+                });
+            }
+
             if (user.TwoFactorEnabled)
             {
                 var code = request.TwoFactorCode?.Trim();
@@ -298,7 +323,10 @@ public static class AccountEndpoints
                 UserAgent = context.Request.Headers.UserAgent.ToString() is { Length: > 512 } agent ? agent[..512] : context.Request.Headers.UserAgent.ToString(),
                 CreatedAt = now,
                 LastSeenAt = now,
-                ExpiresAt = now.AddDays(request.RememberMe ? 30 : 1)
+                ExpiresAt = now.AddHours(Math.Min(
+                    membership is null ? 720 : await db.Companies.AsNoTracking().Where(company => company.Id == membership.CompanyId)
+                        .Select(company => company.SecuritySessionDurationHours).SingleAsync(cancellationToken),
+                    request.RememberMe ? 720 : membership is null ? 8 : 24))
             };
             db.UserSessions.Add(sessionRecord);
             await db.SaveChangesAsync(cancellationToken);
@@ -314,7 +342,12 @@ public static class AccountEndpoints
                 claims.Add(new Claim("company_role", membership.RoleKey));
             }
             if (isPlatformAdmin) claims.Add(new Claim("platform_admin", "true"));
-            await signInManager.SignInWithClaimsAsync(user, request.RememberMe, claims);
+            await signInManager.SignInWithClaimsAsync(user, new AuthenticationProperties
+            {
+                IsPersistent = request.RememberMe,
+                ExpiresUtc = sessionRecord.ExpiresAt,
+                AllowRefresh = false
+            }, claims);
             return Results.Ok(new { authenticated = true, companyId = membership?.CompanyId, role = membership?.RoleKey,
                 platformAdmin = isPlatformAdmin, name = user.DisplayName });
         }).AllowAnonymous().RequireRateLimiting("login");
@@ -437,6 +470,10 @@ public static class AccountEndpoints
             if (!await userManager.CheckPasswordAsync(user, request.CurrentPassword))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["currentPassword"] = ["Mevcut parola doğrulanamadı."] });
 
+            var minimumPasswordLength = await CompanySecurityEndpoints.GetMinimumPasswordLengthAsync(db, user.Id, cancellationToken);
+            if (request.NewPassword.Length < minimumPasswordLength)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["newPassword"] = [$"Yeni parola en az {minimumPasswordLength} karakter olmalıdır."] });
+
             var validationErrors = new List<string>();
             foreach (var validator in userManager.PasswordValidators)
             {
@@ -471,12 +508,13 @@ public static class AccountEndpoints
                 await db.UserSessions.Where(session => session.UserId == user.Id && session.Id != currentSessionId && session.RevokedAt == null)
                     .ExecuteUpdateAsync(update => update.SetProperty(session => session.RevokedAt, DateTimeOffset.UtcNow), cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
-            await signInManager.RefreshSignInAsync(user);
+            await RefreshApplicationSessionAsync(context, signInManager, user);
             return Results.Ok(new { message = "Parolanız değiştirildi. Diğer cihazlardaki oturumlar en geç 5 dakika içinde kapatılacak." });
         }).RequireAuthorization().RequireRateLimiting("login");
 
         endpoints.MapPost("/api/session/2fa/setup", async ([FromBody] TwoFactorSetupRequest request, ClaimsPrincipal principal,
-            HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager, CancellationToken cancellationToken) =>
+            HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager,
+            SignInManager<EnvanterUser> signInManager, CancellationToken cancellationToken) =>
         {
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
             var user = await userManager.GetUserAsync(principal);
@@ -488,6 +526,7 @@ public static class AccountEndpoints
             if (!reset.Succeeded) return Results.Problem("Authenticator anahtarı oluşturulamadı.", statusCode: StatusCodes.Status500InternalServerError);
             var key = await userManager.GetAuthenticatorKeyAsync(user);
             if (string.IsNullOrWhiteSpace(key)) return Results.Problem("Authenticator anahtarı oluşturulamadı.", statusCode: StatusCodes.Status500InternalServerError);
+            await RefreshApplicationSessionAsync(context, signInManager, user);
             var issuer = "EnvanterTR";
             var account = user.Email ?? user.UserName ?? user.Id.ToString("N");
             var label = Uri.EscapeDataString($"{issuer}:{account}");
@@ -496,7 +535,8 @@ public static class AccountEndpoints
         }).RequireAuthorization().RequireRateLimiting("login");
 
         endpoints.MapPost("/api/session/2fa/enable", async ([FromBody] TwoFactorCodeRequest request, ClaimsPrincipal principal,
-            HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager, AppDbContext db) =>
+            HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager,
+            SignInManager<EnvanterUser> signInManager, AppDbContext db) =>
         {
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
             var user = await userManager.GetUserAsync(principal);
@@ -510,6 +550,7 @@ public static class AccountEndpoints
             var enabled = await userManager.SetTwoFactorEnabledAsync(user, true);
             if (!enabled.Succeeded) return Results.ValidationProblem(new Dictionary<string, string[]> { ["twoFactor"] = enabled.Errors.Select(x => x.Description).ToArray() });
             var recoveryCodes = await userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
+            await RefreshApplicationSessionAsync(context, signInManager, user);
             return recoveryCodes is null
                 ? Results.Problem("Kurtarma kodları oluşturulamadı.", statusCode: StatusCodes.Status500InternalServerError)
                 : Results.Ok(new { enabled = true, recoveryCodes });
@@ -534,13 +575,17 @@ public static class AccountEndpoints
         }).RequireAuthorization().RequireRateLimiting("login");
 
         endpoints.MapPost("/api/session/2fa/disable", async ([FromBody] TwoFactorRecoveryRequest request, ClaimsPrincipal principal,
-            HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager, AppDbContext db) =>
+            HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager, AppDbContext db,
+            SignInManager<EnvanterUser> signInManager, CancellationToken cancellationToken) =>
         {
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
             var user = await userManager.GetUserAsync(principal);
             if (user is null) return Results.Unauthorized();
             if (!user.TwoFactorEnabled || string.IsNullOrEmpty(request.CurrentPassword) ||
                 !await userManager.CheckPasswordAsync(user, request.CurrentPassword)) return Results.Unauthorized();
+            if (await db.CompanyMemberships.AsNoTracking().AnyAsync(member => member.UserId == user.Id &&
+                db.Companies.Any(company => company.Id == member.CompanyId && company.IsActive && company.SecurityRequireMfa), cancellationToken))
+                return Results.Conflict(new { message = "Bu şirket iki aşamalı doğrulamayı zorunlu tutuyor. Önce şirket yöneticiniz bu politikayı kapatmalıdır." });
             var code = request.Code?.Trim();
             var verified = !string.IsNullOrEmpty(code) && await userManager.VerifyTwoFactorTokenAsync(user,
                 TokenOptions.DefaultAuthenticatorProvider, code.Replace(" ", "", StringComparison.Ordinal).Replace("-", "", StringComparison.Ordinal));
@@ -551,6 +596,7 @@ public static class AccountEndpoints
             var disabled = await userManager.SetTwoFactorEnabledAsync(user, false);
             if (!disabled.Succeeded) return Results.ValidationProblem(new Dictionary<string, string[]> { ["twoFactor"] = disabled.Errors.Select(x => x.Description).ToArray() });
             await userManager.ResetAuthenticatorKeyAsync(user);
+            await RefreshApplicationSessionAsync(context, signInManager, user);
             return Results.Ok(new { enabled = false });
         }).RequireAuthorization().RequireRateLimiting("login");
 
@@ -609,6 +655,9 @@ public static class AccountEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> {
                     ["reset"] = ["Bağlantı geçersiz veya süresi dolmuş. Yeni bir parola yenileme bağlantısı isteyin."]
                 });
+            var minimumPasswordLength = await CompanySecurityEndpoints.GetMinimumPasswordLengthAsync(db, user.Id, cancellationToken);
+            if (request.NewPassword.Length < minimumPasswordLength)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["newPassword"] = [$"Yeni parola en az {minimumPasswordLength} karakter olmalıdır."] });
             var result = await userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
             if (!result.Succeeded)
                 return Results.ValidationProblem(new Dictionary<string, string[]> {
@@ -724,6 +773,341 @@ public static class AccountEndpoints
             });
         }).RequireAuthorization();
 
+        endpoints.MapGet("/api/session/data-export", async (ClaimsPrincipal principal, HttpContext context,
+            AppDbContext db, UserManager<EnvanterUser> userManager, CancellationToken cancellationToken) =>
+        {
+            if (!Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+                return Results.Forbid();
+            var account = await userManager.Users.AsNoTracking().Where(x => x.Id == userId)
+                .Select(x => new
+                {
+                    x.Email, x.PhoneNumber, x.EmailConfirmed, x.PhoneNumberConfirmed, x.TwoFactorEnabled,
+                    x.DisplayName, x.AccountCreatedAt
+                }).SingleOrDefaultAsync(cancellationToken);
+            if (account is null) return Results.NotFound();
+
+            var memberships = await (from membership in db.CompanyMemberships.AsNoTracking()
+                join company in db.Companies.AsNoTracking() on membership.CompanyId equals company.Id
+                where membership.UserId == userId
+                orderby company.Name
+                select new
+                {
+                    companyId = company.Id, company.Name, company.Slug, company.IsActive,
+                    membership.RoleKey, membership.EmployeeId, membership.CreatedAt
+                }).ToListAsync(cancellationToken);
+            var companyIds = memberships.Select(x => x.companyId).Distinct().ToArray();
+            var locationAccessByCompany = new Dictionary<Guid, HashSet<Guid>?>();
+            var employeeAccessByCompany = new Dictionary<Guid, EmployeeAccessScope>();
+            foreach (var companyId in companyIds)
+            {
+                var employeeAccess = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(
+                    db, companyId, userId, cancellationToken);
+                employeeAccessByCompany[companyId] = employeeAccess;
+                locationAccessByCompany[companyId] = employeeAccess.AllowedLocations;
+            }
+            bool CanAccessLocation(Guid companyId, Guid? locationId) =>
+                !locationAccessByCompany.TryGetValue(companyId, out var allowed) || allowed is null ||
+                locationId is Guid id && allowed.Contains(id);
+            var linkedEmployeeIds = memberships.Where(x => x.EmployeeId.HasValue)
+                .Select(x => x.EmployeeId!.Value).Distinct().ToArray();
+            var employees = await db.Employees.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && linkedEmployeeIds.Contains(x.Id))
+                .Select(x => new
+                {
+                    x.Id, x.CompanyId, x.LocationCatalogId, x.CompanyUnitId, x.EmployeeNumber, x.DisplayName, x.Email, x.Department, x.JobTitle,
+                    x.Phone, x.Location, x.StartedOn, x.IsActive, x.CreatedAt
+                }).ToListAsync(cancellationToken);
+            var visibleEmployees = employees.Where(x => employeeAccessByCompany.TryGetValue(x.CompanyId, out var scope) &&
+                scope.Allows(x.LocationCatalogId, x.CompanyUnitId)).ToList();
+            var employeeIds = visibleEmployees.Select(x => x.Id).Distinct().ToArray();
+            var visibleEmployeeIdsByCompany = visibleEmployees.GroupBy(x => x.CompanyId)
+                .ToDictionary(x => x.Key, x => x.Select(employee => employee.Id).ToHashSet());
+            bool CanAccessEmployee(Guid companyId, Guid? employeeId) => employeeId is Guid id &&
+                visibleEmployeeIdsByCompany.TryGetValue(companyId, out var visibleIds) && visibleIds.Contains(id);
+            var membershipsForExport = memberships.Select(membership => new
+            {
+                membership.companyId, membership.Name, membership.Slug, membership.IsActive, membership.RoleKey,
+                EmployeeId = CanAccessEmployee(membership.companyId, membership.EmployeeId) ? membership.EmployeeId : null,
+                membership.CreatedAt
+            }).ToArray();
+            var assignedAssets = await db.Assets.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && x.AssignedEmployeeId.HasValue &&
+                    employeeIds.Contains(x.AssignedEmployeeId.Value) && x.DeletedAt == null)
+                .OrderBy(x => x.AssetTag)
+                .Select(x => new
+                {
+                    id = x.Id, x.CompanyId, x.LocationCatalogId, x.AssetTag, x.Name, x.SerialNumber, x.Status,
+                    x.ExpectedReturnOn, x.CreatedAt, x.UpdatedAt
+                }).ToListAsync(cancellationToken);
+            assignedAssets = assignedAssets.Where(x => CanAccessLocation(x.CompanyId, x.LocationCatalogId)).ToList();
+            var assetIds = assignedAssets.Select(x => x.id).Distinct().ToArray();
+            var assignedAssetsForExport = assignedAssets.Select(x => new
+            {
+                x.CompanyId, x.AssetTag, x.Name, x.SerialNumber, x.Status, x.ExpectedReturnOn, x.CreatedAt, x.UpdatedAt
+            }).ToArray();
+            var assignedAccessories = await (from assignment in db.AccessoryAssignments.AsNoTracking()
+                join accessory in db.Accessories.AsNoTracking()
+                    on new { assignment.CompanyId, AccessoryId = assignment.AccessoryId }
+                    equals new { accessory.CompanyId, AccessoryId = accessory.Id }
+                where companyIds.Contains(assignment.CompanyId) && assignment.TargetType == "Employee" &&
+                    assignment.EmployeeId.HasValue && employeeIds.Contains(assignment.EmployeeId.Value)
+                orderby assignment.CheckedOutAt descending
+                select new
+                {
+                    assignment.CompanyId, accessory.LocationCatalogId, accessory.Name, accessory.Category,
+                    assignment.Quantity, assignment.ReturnedQuantity, assignment.CheckedOutAt, assignment.LastReturnedAt
+                }).ToListAsync(cancellationToken);
+            assignedAccessories = assignedAccessories.Where(x => CanAccessLocation(x.CompanyId, x.LocationCatalogId)).ToList();
+            var assignedAccessoriesForExport = assignedAccessories.Select(x => new
+            {
+                x.CompanyId, x.Name, x.Category, x.Quantity, x.ReturnedQuantity, x.CheckedOutAt, x.LastReturnedAt
+            }).ToArray();
+            var consumableMovements = await (from movement in db.ConsumableMovements.AsNoTracking()
+                join consumable in db.Consumables.AsNoTracking()
+                    on new { movement.CompanyId, ConsumableId = movement.ConsumableId }
+                    equals new { consumable.CompanyId, ConsumableId = consumable.Id }
+                where companyIds.Contains(movement.CompanyId) && movement.EmployeeId.HasValue &&
+                    employeeIds.Contains(movement.EmployeeId.Value)
+                orderby movement.OccurredAt descending
+                select new { movement.CompanyId, consumable.LocationCatalogId, consumable.Name, movement.MovementType, movement.Quantity, movement.OccurredAt })
+                .ToListAsync(cancellationToken);
+            consumableMovements = consumableMovements.Where(x => CanAccessLocation(x.CompanyId, x.LocationCatalogId)).ToList();
+            var consumableMovementsForExport = consumableMovements.Select(x => new
+            {
+                x.CompanyId, x.Name, x.MovementType, x.Quantity, x.OccurredAt
+            }).ToArray();
+            var inventoryRequestRows = await db.InventoryRequests.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && employeeIds.Contains(x.EmployeeId))
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(x => new
+                {
+                    x.CompanyId, x.ItemType, x.ItemId, x.Quantity, x.Status, x.RequestNote, x.ReviewNote,
+                    x.CreatedAt, x.ReviewedAt, x.KitReturnedAt, x.KitReturnNote
+                }).ToListAsync(cancellationToken);
+            var requestedKitIds = inventoryRequestRows.Where(x => x.ItemType == "AccessoryKit")
+                .Select(x => x.ItemId).Distinct().ToArray();
+            var requestedKitLines = await db.AccessoryKitLines.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && requestedKitIds.Contains(x.AccessoryKitId))
+                .Select(x => new { x.CompanyId, x.AccessoryKitId, x.ItemType, x.AccessoryId, x.ConsumableId, x.AssetId, x.ComponentId })
+                .ToListAsync(cancellationToken);
+            var requestedAccessoryIds = inventoryRequestRows.Where(x => x.ItemType == "Accessory").Select(x => x.ItemId)
+                .Concat(requestedKitLines.Where(x => x.ItemType == "Accessory" && x.AccessoryId.HasValue).Select(x => x.AccessoryId!.Value))
+                .Distinct().ToArray();
+            var requestedConsumableIds = inventoryRequestRows.Where(x => x.ItemType == "Consumable").Select(x => x.ItemId)
+                .Concat(requestedKitLines.Where(x => x.ItemType == "Consumable" && x.ConsumableId.HasValue).Select(x => x.ConsumableId!.Value))
+                .Distinct().ToArray();
+            var requestedAssetIds = inventoryRequestRows.Where(x => x.ItemType == "Asset").Select(x => x.ItemId)
+                .Concat(requestedKitLines.Where(x => x.ItemType == "Asset" && x.AssetId.HasValue).Select(x => x.AssetId!.Value))
+                .Distinct().ToArray();
+            var requestedComponentIds = requestedKitLines.Where(x => x.ItemType == "Component" && x.ComponentId.HasValue)
+                .Select(x => x.ComponentId!.Value).Distinct().ToArray();
+            var requestAccessoryLocations = await db.Accessories.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && requestedAccessoryIds.Contains(x.Id))
+                .Select(x => new { x.CompanyId, x.Id, x.LocationCatalogId }).ToListAsync(cancellationToken);
+            var requestConsumableLocations = await db.Consumables.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && requestedConsumableIds.Contains(x.Id))
+                .Select(x => new { x.CompanyId, x.Id, x.LocationCatalogId }).ToListAsync(cancellationToken);
+            var requestAssetLocations = await db.Assets.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && requestedAssetIds.Contains(x.Id) && x.DeletedAt == null)
+                .Select(x => new { x.CompanyId, x.Id, x.LocationCatalogId }).ToListAsync(cancellationToken);
+            var requestComponentLocations = await db.InventoryComponents.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && requestedComponentIds.Contains(x.Id))
+                .Select(x => new { x.CompanyId, x.Id, x.LocationCatalogId }).ToListAsync(cancellationToken);
+            bool CanAccessRequestedItem(Guid companyId, string itemType, Guid itemId)
+            {
+                var locationId = itemType switch
+                {
+                    "Accessory" => requestAccessoryLocations.Where(x => x.CompanyId == companyId && x.Id == itemId)
+                        .Select(x => (Guid?)x.LocationCatalogId).SingleOrDefault(),
+                    "Consumable" => requestConsumableLocations.Where(x => x.CompanyId == companyId && x.Id == itemId)
+                        .Select(x => (Guid?)x.LocationCatalogId).SingleOrDefault(),
+                    "Asset" => requestAssetLocations.Where(x => x.CompanyId == companyId && x.Id == itemId)
+                        .Select(x => (Guid?)x.LocationCatalogId).SingleOrDefault(),
+                    "Component" => requestComponentLocations.Where(x => x.CompanyId == companyId && x.Id == itemId)
+                        .Select(x => (Guid?)x.LocationCatalogId).SingleOrDefault(),
+                    _ => null
+                };
+                var exists = itemType switch
+                {
+                    "Accessory" => requestAccessoryLocations.Any(x => x.CompanyId == companyId && x.Id == itemId),
+                    "Consumable" => requestConsumableLocations.Any(x => x.CompanyId == companyId && x.Id == itemId),
+                    "Asset" => requestAssetLocations.Any(x => x.CompanyId == companyId && x.Id == itemId),
+                    "Component" => requestComponentLocations.Any(x => x.CompanyId == companyId && x.Id == itemId),
+                    _ => false
+                };
+                return exists && CanAccessLocation(companyId, locationId);
+            }
+            var inventoryRequests = inventoryRequestRows.Where(request => request.ItemType == "AccessoryKit"
+                ? requestedKitLines.Where(line => line.CompanyId == request.CompanyId && line.AccessoryKitId == request.ItemId).Any() &&
+                    requestedKitLines.Where(line => line.CompanyId == request.CompanyId && line.AccessoryKitId == request.ItemId)
+                        .All(line => line.ItemType switch
+                        {
+                            "Accessory" when line.AccessoryId.HasValue => CanAccessRequestedItem(request.CompanyId, line.ItemType, line.AccessoryId.Value),
+                            "Consumable" when line.ConsumableId.HasValue => CanAccessRequestedItem(request.CompanyId, line.ItemType, line.ConsumableId.Value),
+                            "Asset" when line.AssetId.HasValue => CanAccessRequestedItem(request.CompanyId, line.ItemType, line.AssetId.Value),
+                            "Component" when line.ComponentId.HasValue => CanAccessRequestedItem(request.CompanyId, line.ItemType, line.ComponentId.Value),
+                            _ => false
+                        })
+                : CanAccessRequestedItem(request.CompanyId, request.ItemType, request.ItemId))
+                .Select(x => new
+                {
+                    x.CompanyId, x.ItemType, x.Quantity, x.Status, x.RequestNote, x.ReviewNote,
+                    x.CreatedAt, x.ReviewedAt, x.KitReturnedAt, x.KitReturnNote
+                }).ToList();
+            var reservations = await db.AssetReservations.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && employeeIds.Contains(x.EmployeeId) && assetIds.Contains(x.AssetId))
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(x => new
+                {
+                    x.CompanyId, x.StartsOn, x.EndsOn, x.Status, x.RequestNote, x.ReviewNote, x.CreatedAt, x.ReviewedAt
+                }).ToListAsync(cancellationToken);
+            var assignedMaintenance = await db.AssetMaintenances.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && assetIds.Contains(x.AssetId))
+                .OrderByDescending(x => x.StartedOn)
+                .Select(x => new
+                {
+                    x.CompanyId, x.MaintenanceType, x.Description, x.PlannedOn, x.StartedOn, x.CompletedOn, x.Status, x.CreatedAt
+                }).ToListAsync(cancellationToken);
+            var assetHistory = await db.AssetEvents.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && assetIds.Contains(x.AssetId))
+                .OrderByDescending(x => x.OccurredAt)
+                .Select(x => new { x.CompanyId, x.EventType, x.OccurredAt, x.ActorUserId, x.EmployeeId })
+                .ToListAsync(cancellationToken);
+            var employeeDocuments = await db.EmployeeDocuments.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && employeeIds.Contains(x.EmployeeId))
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(x => new
+                {
+                    x.CompanyId, x.OriginalFileName, x.ContentType, x.Length,
+                    uploadedByYou = x.UploadedByUserId == userId, x.CreatedAt
+                }).ToListAsync(cancellationToken);
+            var assetAttachments = await db.AssetAttachments.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && assetIds.Contains(x.AssetId))
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(x => new
+                {
+                    x.CompanyId, x.OriginalFileName, x.ContentType, x.Length,
+                    x.UploadedByUserId, x.CreatedAt
+                }).ToListAsync(cancellationToken);
+            var assignedLicenses = await (from assignment in db.SoftwareLicenseAssignments.AsNoTracking()
+                join license in db.SoftwareLicenses.AsNoTracking()
+                    on new { assignment.CompanyId, LicenseId = assignment.LicenseId }
+                    equals new { license.CompanyId, LicenseId = license.Id }
+                where companyIds.Contains(assignment.CompanyId) && assignment.EmployeeId.HasValue &&
+                    employeeIds.Contains(assignment.EmployeeId.Value)
+                orderby assignment.AssignedAt descending
+                select new
+                {
+                    assignment.CompanyId, license.Name, license.Publisher, license.ProductVersion,
+                    license.LicenseType, assignment.AssignedAt, assignment.EulaAcceptedAt,
+                    assignment.EulaVersion, assignment.RevokedAt
+                }).ToListAsync(cancellationToken);
+            var assignedTasks = await db.CompanyTasks.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && x.AssignedEmployeeId.HasValue &&
+                    employeeIds.Contains(x.AssignedEmployeeId.Value))
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(x => new { x.CompanyId, x.Title, x.Description, x.Status, x.Priority, x.DueAt, x.CreatedAt, x.CompletedAt })
+                .ToListAsync(cancellationToken);
+            var tickets = await db.SupportTickets.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && x.CreatedByUserId == userId)
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(x => new { x.Id, x.CompanyId, x.Subject, x.Category, x.Status, x.CreatedAt, x.UpdatedAt })
+                .ToListAsync(cancellationToken);
+            var ticketIds = tickets.Select(x => x.Id).ToArray();
+            var ticketMessages = await db.SupportTicketMessages.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && ticketIds.Contains(x.TicketId))
+                .OrderBy(x => x.CreatedAt)
+                .Select(x => new { x.TicketId, x.IsSupportReply, x.Body, x.CreatedAt })
+                .ToListAsync(cancellationToken);
+            var sessions = await db.UserSessions.AsNoTracking().Where(x => x.UserId == userId)
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(x => new { x.CompanyId, x.PlatformAdmin, x.IpAddress, x.UserAgent, x.CreatedAt, x.LastSeenAt, x.ExpiresAt, x.RevokedAt })
+                .ToListAsync(cancellationToken);
+            var accountEvents = await db.AuditEntries.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && x.TargetType == "Account" && x.TargetId == userId)
+                .OrderByDescending(x => x.OccurredAt)
+                .Select(x => new { x.CompanyId, x.Action, x.OccurredAt })
+                .ToListAsync(cancellationToken);
+            var savedSearches = await db.SavedAssetSearches.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && x.UserId == userId)
+                .OrderBy(x => x.Name)
+                .Select(x => new { x.CompanyId, x.Name, x.FiltersJson, x.CreatedAt, x.UpdatedAt })
+                .ToListAsync(cancellationToken);
+            var savedImportMappings = await db.SavedAssetImportMappings.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && x.UserId == userId)
+                .OrderBy(x => x.Name)
+                .Select(x => new { x.CompanyId, x.Family, x.Name, x.MappingJson, x.CreatedAt, x.UpdatedAt })
+                .ToListAsync(cancellationToken);
+            var savedReports = await db.CustomAssetReports.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && x.UserId == userId)
+                .OrderBy(x => x.Name)
+                .Select(x => new { x.CompanyId, x.Name, x.DefinitionJson, x.CreatedAt, x.UpdatedAt })
+                .ToListAsync(cancellationToken);
+            var scheduledReports = await db.ScheduledReports.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && x.UserId == userId).OrderBy(x => x.Name)
+                .Select(x => new { x.CompanyId, x.Name, x.ReportKind, x.Frequency, x.TimeZoneId, x.LocalHour, x.LocalMinute,
+                    x.WeekDay, x.MonthDay, x.Language, x.IsEnabled, x.NextDueAt, x.LastSentAt, x.LastStatus, x.CreatedAt, x.UpdatedAt })
+                .ToListAsync(cancellationToken);
+            var dashboardPreferences = await db.DashboardPreferences.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && x.UserId == userId)
+                .Select(x => new { x.CompanyId, x.VisibleWidgetsJson, x.UpdatedAt })
+                .ToListAsync(cancellationToken);
+            var notificationPreferences = await db.OperationalNotificationPreferences.AsNoTracking()
+                .Where(x => companyIds.Contains(x.CompanyId) && x.UserId == userId)
+                .Select(x => new { x.CompanyId, x.EnabledKindsJson, x.EmailEnabledKindsJson, x.UpdatedAt })
+                .ToListAsync(cancellationToken);
+
+            var payload = new
+            {
+                schemaVersion = 1,
+                exportedAt = DateTimeOffset.UtcNow,
+                scope = "Oturum açmış kullanıcının kendi hesabı ve üyesi olduğu şirketlerde kendisine bağlı kayıtlar.",
+                exclusions = new[]
+                {
+                    "Parola özeti, oturum çerezi/tokenı, MFA gizli anahtarı ve kurtarma kodları dahil değildir.",
+                    "Lisans anahtarı, şirket genelindeki envanter kayıtları ve dosya içerikleri dahil değildir."
+                },
+                account,
+                memberships = membershipsForExport,
+                employees = visibleEmployees.Select(x => new
+                {
+                    x.CompanyId, x.EmployeeNumber, x.DisplayName, x.Email, x.Department, x.JobTitle,
+                    x.Phone, x.Location, x.StartedOn, x.IsActive, x.CreatedAt
+                }),
+                assignedAssets = assignedAssetsForExport,
+                assignedAccessories = assignedAccessoriesForExport,
+                consumableMovements = consumableMovementsForExport,
+                inventoryRequests,
+                reservations,
+                assignedMaintenance,
+                assetHistory,
+                employeeDocuments,
+                assetAttachments,
+                assignedLicenses,
+                assignedTasks,
+                supportTickets = tickets.Select(ticket => new
+                {
+                    ticket.CompanyId, ticket.Subject, ticket.Category, ticket.Status, ticket.CreatedAt, ticket.UpdatedAt,
+                    messages = ticketMessages.Where(message => message.TicketId == ticket.Id)
+                        .Select(message => new { message.IsSupportReply, message.Body, message.CreatedAt })
+                }),
+                sessions,
+                accountEvents,
+                savedSearches,
+                savedImportMappings,
+                savedReports,
+                scheduledReports,
+                dashboardPreferences,
+                notificationPreferences
+            };
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(payload,
+                new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true });
+            context.Response.Headers.CacheControl = "no-store, private";
+            context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+            return Results.File(bytes, "application/json; charset=utf-8",
+                $"envantertr-account-data-{DateTime.UtcNow:yyyyMMdd}.json");
+        }).RequireAuthorization().RequireRateLimiting("customer-api");
+
         endpoints.MapPost("/api/session/photo", async (HttpRequest request, HttpContext context, IAntiforgery antiforgery,
             ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
         {
@@ -826,6 +1210,19 @@ public static class AccountEndpoints
         return endpoints;
     }
 
+    private static async Task RefreshApplicationSessionAsync(HttpContext context,
+        SignInManager<EnvanterUser> signInManager, EnvanterUser user)
+    {
+        var current = await context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+        if (!current.Succeeded || !Guid.TryParse(current.Principal?.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) || userId != user.Id)
+            return;
+        // Credential updates rotate Identity's security stamp. Reissue only the current
+        // cookie, keeping its original expiry and application scope, without step-up claims.
+        var claims = current.Principal!.Claims.Where(claim => claim.Type is
+            "session_id" or "company_id" or "company_role" or "platform_admin").ToArray();
+        await signInManager.SignInWithClaimsAsync(user, current.Properties ?? new AuthenticationProperties(), claims);
+    }
+
     private static IResult LoginCredentialsRejected() =>
         Results.Json(new { message = "Giriş bilgileri geçersiz veya hesap geçici olarak kullanılamıyor." }, statusCode: StatusCodes.Status401Unauthorized);
 
@@ -887,7 +1284,7 @@ public static class AccountEndpoints
         return (null, "");
     }
 
-    private static Task SendPasswordResetEmailAsync(string recipient, string token,
+    public static Task SendPasswordResetEmailAsync(string recipient, string token,
         IConfiguration configuration, CancellationToken cancellationToken) =>
         SendAccountLinkEmailAsync(recipient, token, "EnvanterTR hesap parolası yenileme",
             "EnvanterTR hesabınız için parola yenileme isteği alındı.", null, configuration, cancellationToken);

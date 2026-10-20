@@ -27,7 +27,14 @@ for (const [name, selector] of [
 ]) {
   assert.ok(html.includes(`$('#${selector}').addEventListener('click'`), `custom report ${name} action must be wired`);
 }
-assert.ok(html.includes("api(`/api/assets/export-all.csv?${params}`)"), 'custom report export must call the filtered CSV endpoint');
+const exportStart = html.indexOf('async function exportCustomAssetReport(');
+const exportEnd = html.indexOf('function reportPrintMetadata(', exportStart);
+assert.ok(exportStart >= 0 && exportEnd > exportStart, 'custom report export handler must exist');
+const exportHandler = html.slice(exportStart, exportEnd);
+for (const token of ["new URLSearchParams({ columns: draft.columns.join(','), sortBy: draft.sortBy, sortDirection: draft.sortDirection })",
+  'if (draft.q) params.set(\'q\', draft.q)', 'if (draft.status) params.set(\'status\', draft.status)',
+  'if (draft.warranty) params.set(\'warranty\', draft.warranty)', 'api(`/api/assets/export-all.${format}?${params}`)'])
+  assert.ok(exportHandler.includes(token), `custom report export must include ${token}`);
 assert.ok(html.includes("const fileStem = (draft.name || 'envanter-varlik-raporu')"), 'custom report download must use a sanitized report filename');
 assert.ok(endpoints.includes('.RequireAuthorization("asset.read")'), 'custom report presets must require asset read permission');
 

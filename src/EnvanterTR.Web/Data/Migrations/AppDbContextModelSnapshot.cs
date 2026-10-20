@@ -413,7 +413,7 @@ namespace EnvanterTR.Web.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_AccessoryMovements_Quantity", "\"Quantity\" > 0");
 
-                            t.HasCheckConstraint("CK_AccessoryMovements_Type", "\"MovementType\" IN ('Received', 'Adjustment', 'Checkout', 'Checkin')");
+                            t.HasCheckConstraint("CK_AccessoryMovements_Type", "\"MovementType\" IN ('Received', 'Adjustment', 'Checkout', 'Checkin', 'SupplierReturned')");
                         });
                 });
 
@@ -422,6 +422,14 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<string>("ApprovalNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("ApprovalStatus")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
@@ -460,6 +468,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(24)
@@ -484,15 +498,21 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("CreatedByUserId");
 
+                    b.HasIndex("ReviewedByUserId");
+
                     b.HasIndex("CompanyId", "OrderNumber")
                         .IsUnique();
 
                     b.HasIndex("CompanyId", "SupplierId");
 
+                    b.HasIndex("CompanyId", "ApprovalStatus", "OrderDate");
+
                     b.HasIndex("CompanyId", "Status", "OrderDate");
 
                     b.ToTable("AccessoryPurchaseOrders", null, t =>
                         {
+                            t.HasCheckConstraint("CK_AccessoryPurchaseOrders_ApprovalStatus", "\"ApprovalStatus\" IN ('NotRequired', 'Pending', 'Approved', 'Rejected')");
+
                             t.HasCheckConstraint("CK_AccessoryPurchaseOrders_Currency", "char_length(\"Currency\") = 3");
 
                             t.HasCheckConstraint("CK_AccessoryPurchaseOrders_Dates", "\"ExpectedOn\" IS NULL OR \"ExpectedOn\" >= \"OrderDate\"");
@@ -581,6 +601,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<int>("QuantityReceived")
                         .HasColumnType("integer");
 
+                    b.Property<int>("QuantityReturned")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("UnitCost")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -597,7 +620,7 @@ namespace EnvanterTR.Web.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_AccessoryPurchaseOrderLines_Cost", "\"UnitCost\" >= 0");
 
-                            t.HasCheckConstraint("CK_AccessoryPurchaseOrderLines_Quantity", "\"Quantity\" > 0 AND \"QuantityReceived\" BETWEEN 0 AND \"Quantity\"");
+                            t.HasCheckConstraint("CK_AccessoryPurchaseOrderLines_Quantity", "\"Quantity\" > 0 AND \"QuantityReceived\" BETWEEN 0 AND \"Quantity\" AND \"QuantityReturned\" BETWEEN 0 AND \"QuantityReceived\"");
                         });
                 });
 
@@ -648,6 +671,17 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateOnly?>("ExpectedReturnOn")
                         .HasColumnType("date");
 
+                    b.Property<DateOnly?>("InsuranceExpiresAt")
+                        .HasColumnType("date");
+
+                    b.Property<string>("InsurancePolicyNumber")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("InsuranceProvider")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
                     b.Property<bool>("IsByod")
                         .HasColumnType("boolean");
 
@@ -688,6 +722,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid?>("PurchaseOrderId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("PurchaseOrderLineId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("SerialNumber")
                         .HasColumnType("text");
 
@@ -716,6 +753,8 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("CompanyId", "ExpectedReturnOn");
 
+                    b.HasIndex("CompanyId", "InsuranceExpiresAt");
+
                     b.HasIndex("CompanyId", "Location");
 
                     b.HasIndex("CompanyId", "LocationCatalogId");
@@ -725,6 +764,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasIndex("CompanyId", "ParentAssetId");
 
                     b.HasIndex("CompanyId", "PurchaseOrderId");
+
+                    b.HasIndex("CompanyId", "PurchaseOrderLineId");
 
                     b.HasIndex("CompanyId", "SerialNumber");
 
@@ -746,7 +787,7 @@ namespace EnvanterTR.Web.Data.Migrations
 
                             t.HasCheckConstraint("CK_Assets_NotOwnParent", "\"ParentAssetId\" IS NULL OR \"ParentAssetId\" <> \"Id\"");
 
-                            t.HasCheckConstraint("CK_Assets_Status", "\"Status\" IN ('Available', 'Deployed', 'Pending', 'Maintenance', 'Unusable', 'Archived')");
+                            t.HasCheckConstraint("CK_Assets_Status", "\"Status\" IN ('Available', 'Deployed', 'Pending', 'Maintenance', 'Unusable', 'Archived', 'ReturnedToSupplier') OR \"Status\" ~ '^Custom_[a-f0-9]{8}$'");
                         });
                 });
 
@@ -1073,6 +1114,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
@@ -1084,6 +1128,11 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<string>("GroupName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -1094,6 +1143,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
+
+                    b.Property<Guid?>("ModelId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1112,8 +1164,12 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId", "CategoryId");
+
                     b.HasIndex("CompanyId", "Key")
                         .IsUnique();
+
+                    b.HasIndex("CompanyId", "ModelId");
 
                     b.ToTable("AssetCustomFieldDefinitions", null, t =>
                         {
@@ -1158,6 +1214,67 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasIndex("CompanyId", "AssetId", "OccurredAt");
 
                     b.ToTable("AssetEvents");
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.AssetInstalledSoftware", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Architecture")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("AssetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("FirstSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("InstallDate")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsPresent")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Publisher")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Version")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "AssetId", "Fingerprint")
+                        .IsUnique();
+
+                    b.HasIndex("CompanyId", "AssetId", "IsPresent", "Name");
+
+                    b.ToTable("AssetInstalledSoftware");
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.AssetMaintenance", b =>
@@ -1435,6 +1552,14 @@ namespace EnvanterTR.Web.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ApprovalNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("ApprovalStatus")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
@@ -1472,6 +1597,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(24)
@@ -1496,15 +1627,21 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("CreatedByUserId");
 
+                    b.HasIndex("ReviewedByUserId");
+
                     b.HasIndex("CompanyId", "OrderNumber")
                         .IsUnique();
 
                     b.HasIndex("CompanyId", "SupplierId");
 
+                    b.HasIndex("CompanyId", "ApprovalStatus", "OrderDate");
+
                     b.HasIndex("CompanyId", "Status", "OrderDate");
 
                     b.ToTable("AssetPurchaseOrders", null, t =>
                         {
+                            t.HasCheckConstraint("CK_AssetPurchaseOrders_ApprovalStatus", "\"ApprovalStatus\" IN ('NotRequired', 'Pending', 'Approved', 'Rejected')");
+
                             t.HasCheckConstraint("CK_AssetPurchaseOrders_Currency", "char_length(\"Currency\") = 3");
 
                             t.HasCheckConstraint("CK_AssetPurchaseOrders_Dates", "\"ExpectedOn\" IS NULL OR \"ExpectedOn\" >= \"OrderDate\"");
@@ -1583,6 +1720,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("LocationCatalogId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("ModelId")
                         .HasColumnType("uuid");
 
@@ -1604,6 +1744,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<int>("QuantityReceived")
                         .HasColumnType("integer");
 
+                    b.Property<int>("QuantityReturned")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("UnitCost")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -1613,11 +1756,11 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasAlternateKey("CompanyId", "Id");
-
                     b.HasIndex("CompanyId", "BrandId");
 
                     b.HasIndex("CompanyId", "CategoryId");
+
+                    b.HasIndex("CompanyId", "LocationCatalogId");
 
                     b.HasIndex("CompanyId", "ModelId");
 
@@ -1627,7 +1770,7 @@ namespace EnvanterTR.Web.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_AssetPurchaseOrderLines_Cost", "\"UnitCost\" >= 0");
 
-                            t.HasCheckConstraint("CK_AssetPurchaseOrderLines_Quantity", "\"Quantity\" > 0 AND \"QuantityReceived\" BETWEEN 0 AND \"Quantity\"");
+                            t.HasCheckConstraint("CK_AssetPurchaseOrderLines_Quantity", "\"Quantity\" > 0 AND \"QuantityReceived\" BETWEEN 0 AND \"Quantity\" AND \"QuantityReturned\" BETWEEN 0 AND \"QuantityReceived\"");
                         });
                 });
 
@@ -1801,6 +1944,15 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid?>("PlatformOwnerUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("SecurityPasswordMinimumLength")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("SecurityRequireMfa")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("SecuritySessionDurationHours")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Slug")
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
@@ -1818,6 +1970,10 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("Companies", null, t =>
                         {
                             t.HasCheckConstraint("CK_Companies_AssetCount", "\"AssetCount\" >= 0");
+
+                            t.HasCheckConstraint("CK_Companies_SecurityPasswordMinimumLength", "\"SecurityPasswordMinimumLength\" BETWEEN 12 AND 64");
+
+                            t.HasCheckConstraint("CK_Companies_SecuritySessionDurationHours", "\"SecuritySessionDurationHours\" BETWEEN 1 AND 720");
                         });
                 });
 
@@ -1993,6 +2149,62 @@ namespace EnvanterTR.Web.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.CompanyCustomRole", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("PermissionsJson")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("RoleKey")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("CompanyId", "NormalizedName")
+                        .IsUnique();
+
+                    b.HasIndex("CompanyId", "RoleKey")
+                        .IsUnique();
+
+                    b.HasIndex("CompanyId", "IsActive", "Name");
+
+                    b.ToTable("CompanyCustomRoles");
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.CompanyDepartment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2009,6 +2221,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<Guid?>("LocationCatalogId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ManagerEmployeeId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Name")
@@ -2031,6 +2246,8 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("CompanyId", "LocationCatalogId");
 
+                    b.HasIndex("CompanyId", "ManagerEmployeeId");
+
                     b.HasIndex("CompanyId", "NormalizedName")
                         .IsUnique();
 
@@ -2046,6 +2263,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CompanyUnitId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -2082,6 +2302,8 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsUnique()
                         .HasFilter("\"IsDefault\" = TRUE");
 
+                    b.HasIndex("CompanyId", "CompanyUnitId");
+
                     b.HasIndex("CompanyId", "ManagerEmployeeId");
 
                     b.HasIndex("CompanyId", "NormalizedName")
@@ -2103,11 +2325,25 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CompanyUnitAccessMode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("all");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("EmployeeId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("LocationAccessMode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("all");
 
                     b.Property<string>("RoleKey")
                         .IsRequired()
@@ -2124,6 +2360,143 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("CompanyMemberships");
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.CompanyMembershipCompanyUnitAccess", b =>
+                {
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyUnitId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("CompanyId", "UserId", "CompanyUnitId");
+
+                    b.HasIndex("CompanyId", "CompanyUnitId");
+
+                    b.ToTable("CompanyMembershipCompanyUnitAccesses");
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.CompanyMembershipLocationAccess", b =>
+                {
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("CompanyId", "UserId", "LocationId");
+
+                    b.HasIndex("CompanyId", "LocationId");
+
+                    b.ToTable("CompanyMembershipLocationAccesses");
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.CompanyMfaEnrollmentChallenge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("RememberMe")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("SetupStartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TicketHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("TicketHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "CompletedAt", "ExpiresAt");
+
+                    b.ToTable("CompanyMfaEnrollmentChallenges", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CompanyMfaEnrollmentChallenges_Expiry", "\"ExpiresAt\" > \"CreatedAt\"");
+                        });
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.CompanyPurchaseBudget", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("BudgetYear")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("CompanyId", "Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.HasIndex("CompanyId", "BudgetYear", "Currency")
+                        .IsUnique();
+
+                    b.ToTable("CompanyPurchaseBudgets", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CompanyPurchaseBudgets_Amount", "\"Amount\" >= 0");
+
+                            t.HasCheckConstraint("CK_CompanyPurchaseBudgets_Currency", "char_length(\"Currency\") = 3");
+
+                            t.HasCheckConstraint("CK_CompanyPurchaseBudgets_Year", "\"BudgetYear\" BETWEEN 2000 AND 2100");
+                        });
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.CompanyTask", b =>
@@ -2221,6 +2594,13 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<Guid?>("ParentCompanyUnitId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("UnitType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("organizational");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -2339,7 +2719,7 @@ namespace EnvanterTR.Web.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_ComponentMovements_Quantity", "\"Quantity\" > 0");
 
-                            t.HasCheckConstraint("CK_ComponentMovements_Type", "\"MovementType\" IN ('Received', 'Adjustment', 'Checkout', 'Checkin')");
+                            t.HasCheckConstraint("CK_ComponentMovements_Type", "\"MovementType\" IN ('Received', 'Adjustment', 'Checkout', 'Checkin', 'SupplierReturned')");
                         });
                 });
 
@@ -2484,7 +2864,7 @@ namespace EnvanterTR.Web.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_ConsumableMovements_Quantity", "\"Quantity\" > 0");
 
-                            t.HasCheckConstraint("CK_ConsumableMovements_Type", "\"MovementType\" IN ('Received', 'Adjustment', 'Checkout')");
+                            t.HasCheckConstraint("CK_ConsumableMovements_Type", "\"MovementType\" IN ('Received', 'Adjustment', 'Checkout', 'SupplierReturned')");
                         });
                 });
 
@@ -2563,6 +2943,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CompanyUnitId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -2613,6 +2996,8 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasColumnType("date");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "CompanyUnitId");
 
                     b.HasIndex("CompanyId", "Email");
 
@@ -2676,6 +3061,79 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("EmployeeDocuments", null, t =>
                         {
                             t.HasCheckConstraint("CK_EmployeeDocuments_Length", "\"Length\" BETWEEN 1 AND 10485760");
+                        });
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.EmployeeHandoverDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DocumentNumber")
+                        .IsRequired()
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("IssuerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("IssuerSignaturePngBase64")
+                        .HasColumnType("text");
+
+                    b.Property<string>("IssuerSignatureSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("IssuerSignedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RecipientName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("RecipientSignaturePngBase64")
+                        .HasColumnType("text");
+
+                    b.Property<string>("RecipientSignatureSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("RecipientSignedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SnapshotSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "DocumentNumber")
+                        .IsUnique();
+
+                    b.HasIndex("CompanyId", "EmployeeId", "CreatedAt");
+
+                    b.ToTable("EmployeeHandoverDocuments", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_EmployeeHandoverDocuments_SignaturePairs", "(\"RecipientSignaturePngBase64\" IS NULL) = (\"RecipientSignedAt\" IS NULL) AND (\"IssuerSignaturePngBase64\" IS NULL) = (\"IssuerSignedAt\" IS NULL)");
                         });
                 });
 
@@ -3196,6 +3654,35 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("PlatformAuditEntries");
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.PlatformAuditRetentionPolicy", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("RetentionDays")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UpdatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("PlatformAuditRetentionPolicies", t =>
+                        {
+                            t.HasCheckConstraint("CK_PlatformAuditRetentionPolicies_Days", "\"RetentionDays\" IS NULL OR \"RetentionDays\" BETWEEN 1 AND 36500");
+
+                            t.HasCheckConstraint("CK_PlatformAuditRetentionPolicies_Singleton", "\"Id\" = 1");
+                        });
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.PlatformDemoRequest", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3368,6 +3855,105 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("PublicSiteContents");
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.PurchaseOrderReturn", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("OrderType")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("PurchaseOrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ReturnNumber")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<DateOnly>("ReturnedOn")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("CompanyId", "OrderType", "ReturnNumber")
+                        .IsUnique();
+
+                    b.HasIndex("CompanyId", "OrderType", "PurchaseOrderId", "CreatedAt");
+
+                    b.ToTable("PurchaseOrderReturns", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseOrderReturns_OrderType", "\"OrderType\" IN ('Asset', 'Accessory', 'Stock')");
+                        });
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.PurchaseOrderReturnLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AssetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("PurchaseOrderLineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PurchaseOrderReturnId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("CompanyId", "Id");
+
+                    b.HasIndex("CompanyId", "AssetId")
+                        .IsUnique()
+                        .HasFilter("\"AssetId\" IS NOT NULL");
+
+                    b.HasIndex("CompanyId", "PurchaseOrderLineId");
+
+                    b.HasIndex("CompanyId", "PurchaseOrderReturnId");
+
+                    b.ToTable("PurchaseOrderReturnLines", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseOrderReturnLines_Quantity", "\"Quantity\" > 0");
+
+                            t.HasCheckConstraint("CK_PurchaseOrderReturnLines_Target", "(\"PurchaseOrderLineId\" IS NOT NULL AND \"AssetId\" IS NULL) OR (\"PurchaseOrderLineId\" IS NULL AND \"AssetId\" IS NOT NULL AND \"Quantity\" = 1)");
+                        });
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.SavedAssetImportMapping", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3461,6 +4047,118 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("SavedAssetSearches");
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.ScheduledReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("ClaimToken")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ClaimedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Frequency")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
+
+                    b.Property<DateTimeOffset?>("LastAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastErrorCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("LastSentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastStatus")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("LocalHour")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("LocalMinute")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MonthDay")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<DateTimeOffset>("NextDueAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReportKind")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<DateTimeOffset?>("RetryAfter")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("WeekDay")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "UserId");
+
+                    b.HasIndex("IsEnabled", "NextDueAt");
+
+                    b.ToTable("ScheduledReports", t =>
+                        {
+                            t.HasCheckConstraint("CK_ScheduledReports_Frequency", "\"Frequency\" IN ('daily', 'weekly', 'monthly')");
+
+                            t.HasCheckConstraint("CK_ScheduledReports_Kind", "\"ReportKind\" IN ('inventory', 'maintenance', 'licenses', 'stock')");
+
+                            t.HasCheckConstraint("CK_ScheduledReports_Language", "\"Language\" IN ('tr', 'en', 'ru', 'uk', 'mk')");
+
+                            t.HasCheckConstraint("CK_ScheduledReports_Status", "\"LastStatus\" IN ('Idle', 'Sending', 'Sent', 'Failed', 'Skipped') AND \"AttemptCount\" >= 0");
+
+                            t.HasCheckConstraint("CK_ScheduledReports_Time", "\"LocalHour\" BETWEEN 0 AND 23 AND \"LocalMinute\" BETWEEN 0 AND 59 AND \"WeekDay\" BETWEEN 0 AND 6 AND \"MonthDay\" BETWEEN 1 AND 28");
+                        });
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.SoftwareLicense", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3515,6 +4213,10 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<DateOnly?>("PurchaseDate")
                         .HasColumnType("date");
+
+                    b.Property<string>("PurchaseOrderReference")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
 
                     b.Property<bool>("RequiresEulaAcceptance")
                         .HasColumnType("boolean");
@@ -3706,6 +4408,72 @@ namespace EnvanterTR.Web.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.SoftwareLicenseEmployeeEulaAcceptance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AcceptedByEmailSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid?>("AcceptedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AssignmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EulaAttachmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EulaSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("EulaVersion")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid>("LicenseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AcceptedByUserId");
+
+                    b.HasIndex("CompanyId", "EmployeeId", "AcceptedAt");
+
+                    b.HasIndex("CompanyId", "LicenseId", "AssignmentId");
+
+                    b.HasIndex("CompanyId", "LicenseId", "EulaAttachmentId")
+                        .HasDatabaseName("IX_SoftwareLicenseEmployeeEulaAcceptances_CompanyId_LicenseId~1");
+
+                    b.HasIndex("CompanyId", "AssignmentId", "EulaAttachmentId", "AcceptedByUserId")
+                        .IsUnique();
+
+                    b.ToTable("SoftwareLicenseEmployeeEulaAcceptances", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SoftwareLicenseEmployeeEulaAcceptances_Email", "char_length(\"AcceptedByEmailSnapshot\") BETWEEN 3 AND 256");
+
+                            t.HasCheckConstraint("CK_SoftwareLicenseEmployeeEulaAcceptances_Sha256", "\"EulaSha256\" ~ '^[a-fA-F0-9]{64}$'");
+
+                            t.HasCheckConstraint("CK_SoftwareLicenseEmployeeEulaAcceptances_Version", "char_length(\"EulaVersion\") BETWEEN 1 AND 80");
+                        });
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.SoftwareLicenseEvent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3752,11 +4520,85 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("SoftwareLicenseEvents");
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.SoftwareLicensePurchaseOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("LicenseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateOnly?>("OrderDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("OrderNumber")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int>("SeatsPurchased")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("UnitCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("CompanyId", "Id");
+
+                    b.HasIndex("CompanyId", "SupplierId", "OrderNumber");
+
+                    b.HasIndex("CompanyId", "LicenseId", "IsArchived", "OrderDate");
+
+                    b.ToTable("SoftwareLicensePurchaseOrders", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SoftwareLicensePurchaseOrders_Cost", "\"UnitCost\" IS NULL OR \"UnitCost\" >= 0");
+
+                            t.HasCheckConstraint("CK_SoftwareLicensePurchaseOrders_Currency", "char_length(\"Currency\") = 3");
+
+                            t.HasCheckConstraint("CK_SoftwareLicensePurchaseOrders_Seats", "\"SeatsPurchased\" BETWEEN 1 AND 100000");
+                        });
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.StockPurchaseOrder", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<string>("ApprovalNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("ApprovalStatus")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
@@ -3795,6 +4637,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(24)
@@ -3819,15 +4667,21 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("CreatedByUserId");
 
+                    b.HasIndex("ReviewedByUserId");
+
                     b.HasIndex("CompanyId", "OrderNumber")
                         .IsUnique();
 
                     b.HasIndex("CompanyId", "SupplierId");
 
+                    b.HasIndex("CompanyId", "ApprovalStatus", "OrderDate");
+
                     b.HasIndex("CompanyId", "Status", "OrderDate");
 
                     b.ToTable("StockPurchaseOrders", null, t =>
                         {
+                            t.HasCheckConstraint("CK_StockPurchaseOrders_ApprovalStatus", "\"ApprovalStatus\" IN ('NotRequired', 'Pending', 'Approved', 'Rejected')");
+
                             t.HasCheckConstraint("CK_StockPurchaseOrders_Currency", "char_length(\"Currency\") = 3");
 
                             t.HasCheckConstraint("CK_StockPurchaseOrders_Dates", "\"ExpectedOn\" IS NULL OR \"ExpectedOn\" >= \"OrderDate\"");
@@ -3919,6 +4773,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<int>("QuantityReceived")
                         .HasColumnType("integer");
 
+                    b.Property<int>("QuantityReturned")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("UnitCost")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -3939,7 +4796,7 @@ namespace EnvanterTR.Web.Data.Migrations
 
                             t.HasCheckConstraint("CK_StockPurchaseOrderLines_ExactlyOneStockItem", "(\"ConsumableId\" IS NOT NULL AND \"ComponentId\" IS NULL) OR (\"ConsumableId\" IS NULL AND \"ComponentId\" IS NOT NULL)");
 
-                            t.HasCheckConstraint("CK_StockPurchaseOrderLines_Quantity", "\"Quantity\" > 0 AND \"QuantityReceived\" BETWEEN 0 AND \"Quantity\"");
+                            t.HasCheckConstraint("CK_StockPurchaseOrderLines_Quantity", "\"Quantity\" > 0 AND \"QuantityReceived\" BETWEEN 0 AND \"Quantity\" AND \"QuantityReturned\" BETWEEN 0 AND \"QuantityReceived\"");
                         });
                 });
 
@@ -4663,6 +5520,11 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("EnvanterTR.Web.Data.SupplierCatalogEntry", null)
                         .WithMany()
                         .HasForeignKey("CompanyId", "SupplierId")
@@ -4744,6 +5606,12 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasOne("EnvanterTR.Web.Data.AssetPurchaseOrder", null)
                         .WithMany()
                         .HasForeignKey("CompanyId", "PurchaseOrderId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EnvanterTR.Web.Data.AssetPurchaseOrderLine", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "PurchaseOrderLineId")
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Restrict);
                 });
@@ -4863,6 +5731,18 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.AssetCategory", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "CategoryId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EnvanterTR.Web.Data.AssetModel", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "ModelId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.AssetEvent", b =>
@@ -4872,6 +5752,22 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("ActorUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.Asset", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "AssetId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.AssetInstalledSoftware", b =>
+                {
                     b.HasOne("EnvanterTR.Web.Data.Company", null)
                         .WithMany()
                         .HasForeignKey("CompanyId")
@@ -4983,6 +5879,11 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("EnvanterTR.Web.Data.SupplierCatalogEntry", null)
                         .WithMany()
                         .HasForeignKey("CompanyId", "SupplierId")
@@ -5025,6 +5926,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.CompanyLocation", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "LocationCatalogId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("EnvanterTR.Web.Data.AssetModel", null)
                         .WithMany()
@@ -5117,6 +6024,21 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.CompanyCustomRole", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.CompanyDepartment", b =>
                 {
                     b.HasOne("EnvanterTR.Web.Data.Company", null)
@@ -5128,6 +6050,12 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasOne("EnvanterTR.Web.Data.CompanyLocation", null)
                         .WithMany()
                         .HasForeignKey("CompanyId", "LocationCatalogId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EnvanterTR.Web.Data.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "ManagerEmployeeId")
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Restrict);
 
@@ -5145,6 +6073,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.CompanyUnit", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "CompanyUnitId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("EnvanterTR.Web.Data.Employee", null)
                         .WithMany()
@@ -5178,6 +6112,72 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId", "EmployeeId")
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.CompanyMembershipCompanyUnitAccess", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.CompanyUnit", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "CompanyUnitId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.CompanyMembership", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.CompanyMembershipLocationAccess", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.CompanyLocation", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "LocationId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.CompanyMembership", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.CompanyMfaEnrollmentChallenge", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.CompanyPurchaseBudget", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("EnvanterTR.Web.Data.CompanyTask", b =>
@@ -5362,6 +6362,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("EnvanterTR.Web.Data.CompanyUnit", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "CompanyUnitId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("EnvanterTR.Web.Data.CompanyLocation", null)
                         .WithMany()
                         .HasForeignKey("CompanyId", "LocationCatalogId")
@@ -5387,6 +6393,22 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId", "EmployeeId")
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.EmployeeHandoverDocument", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "EmployeeId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -5554,6 +6576,15 @@ namespace EnvanterTR.Web.Data.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.PlatformAuditRetentionPolicy", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.PlatformDemoRequest", b =>
                 {
                     b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
@@ -5572,6 +6603,42 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.PurchaseOrderReturn", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.PurchaseOrderReturnLine", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.Asset", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "AssetId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EnvanterTR.Web.Data.PurchaseOrderReturn", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "PurchaseOrderReturnId")
+                        .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -5602,6 +6669,15 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.ScheduledReport", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.CompanyMembership", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -5680,6 +6756,41 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.SoftwareLicenseEmployeeEulaAcceptance", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("AcceptedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "EmployeeId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.SoftwareLicenseAssignment", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "LicenseId", "AssignmentId")
+                        .HasPrincipalKey("CompanyId", "LicenseId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.SoftwareLicenseAttachment", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "LicenseId", "EulaAttachmentId")
+                        .HasPrincipalKey("CompanyId", "LicenseId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.SoftwareLicenseEvent", b =>
                 {
                     b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
@@ -5713,6 +6824,28 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("EnvanterTR.Web.Data.SoftwareLicensePurchaseOrder", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.SoftwareLicense", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "LicenseId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.SupplierCatalogEntry", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "SupplierId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("EnvanterTR.Web.Data.StockPurchaseOrder", b =>
                 {
                     b.HasOne("EnvanterTR.Web.Data.Company", null)
@@ -5724,6 +6857,11 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("EnvanterTR.Web.Data.EnvanterUser", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("EnvanterTR.Web.Data.SupplierCatalogEntry", null)

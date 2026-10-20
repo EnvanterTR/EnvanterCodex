@@ -16,6 +16,13 @@ On 13 October 2026, a keyboard-access package added Ctrl/Command+K command searc
 
 ## Release boundary
 
+## 19 October 2026 08:19 TRT — source/live migration drift recheck
+
+- Read-only live status: apex `envantertr.com/api/status` is HTTP 200 but `migration-required` (deployed image reports 92 migrations, 22 pending); `firma.envantertr.com/api/status` is HTTP 503/no available upstream; published plans are empty; checkout is unavailable.
+- Current working tree has 112 migration source files; `origin/main` has 92, matching the live count but not proving the deployed commit is identical. The 22 pending number belongs to the deployed 92-migration image, not the current source tree. If production has the same 70 known migrations applied and shares that lineage, the current 112-migration tree would have 42 pending; verify the exact production migration-history rows before planning the one-off run.
+- The 20 migration files absent from `origin/main` were text-reviewed in their `Up` methods: no table/column drop, row-delete, or raw SQL operation found. This is not a live-data, lock, disk, backup, or rollback test.
+- No production backup path or Coolify resource credentials/session are available in the local environment. The earlier user approval to perform a controlled production update remains conditional on verifying the exact resource, a production backup restored in isolation, and a rollback procedure. No live DB, service, DNS, or deployment was changed.
+
 This source change is local and is not live. The actual `firma.envantertr.com` endpoint remains an external outage until the correct Coolify service/domain binding, wildcard DNS, TLS, and healthy origin are verified. No production host, Cloudflare record, or Coolify resource was changed. A GitHub deployment signal must not be treated as proof of a successful deployment.
 
 The user-designated `ENVANTERTR_MASTER_v4.md` is not present in the local workspace or the current GitHub `main` tree. The existing `docs/USER-REQUEST-CHECKLIST-2026-10-11.md` contains P.9 for the tenant subdomain, and `docs/ROADMAP.md` records the hosted-service gaps. Do not claim the requested 70-item master checklist has been audited until that file is available.
@@ -39,3 +46,11 @@ On 14 October, all 21 source `Up` methods after that baseline were reviewed. Non
 ## 15 October 2026 — readiness recheck (10:56 UTC)
 
 `node tools/Check-CoolifyProduction.mjs` returned HTTP 502 for apex status, HTTP 503 for the tenant status, and HTTP 502 for public plans and checkout. Two minutes earlier, the apex status had returned HTTP 200 with schema 92/22 and the plan endpoint an empty array. Treat the current edge/upstream as intermittent; do not assume the schema is still queryable or start a production migration from this response. The checker now reports a generic public proxy/edge diagnosis for `no available server` rather than attributing the failure specifically to Coolify. This remained read-only; no production change was made.
+
+## 18 Ekim 2026 19:11 TRT — salt okunur canlı hazır olma kontrolü
+
+`node tools/Check-CoolifyProduction.mjs` güncel canlı uçlarda başarısız hazır olma sonucu verdi (kontrol komutu beklenen biçimde exit 1): `envantertr.com/api/status` HTTP 200 ancak `migration-required` ve **22 bekleyen migration**; `firma.envantertr.com/api/status` **503/no available upstream**; yayımlanmış plan **0**; checkout **unavailable**. Bu kontrol yalnız GET istekleri yaptı; canlı veritabanı, konteyner, DNS, Coolify veya kullanıcı kaydı değiştirilmedi. Üretim yükseltme için canlıya özel yedeğin geri yükleme provası ve doğru deploy/rollback erişimi hâlâ yok; bu yüzden önceki canlı geçiş onayı güvenli önkoşullar sağlanana kadar uygulanamaz. Bu dosyadaki 15 Ekim kaydı tarihsel durumdur; bu kontrol daha yenidir.
+
+## 19 Ekim 2026 20:03 TRT — canlı ve yerel ortamların ayrıştırılmış yeniden kontrolü
+
+Salt okunur `GET` kontrolü: `https://envantertr.com/api/status` HTTP 200, `migration-required`, canlı imajın bildirdiği 92 migration / 22 bekleyen; `https://firma.envantertr.com/api/status` HTTP 503. Yerel `http://localhost:8080/api/status` HTTP 200, `ready`, kaynak ağacı/yerel DB 116 migration / 0 bekleyen. Bu sayılar farklı uygulama/veritabanı ortamlarına aittir; 116/0 Cloud durumu değildir ve Cloud için 24 bekleyen varsayımı çıkarmak doğru olmaz, çünkü canlı uygulama imajı eski ve canlı DB migration history doğrudan okunmadı. Windows 11 paketi, Windows Server paketi ve Ubuntu Compose kurulumu da bu iki web adresinden ayrıdır; hedef checklist durumları kendi başlıklarında kalır. Bu kontrol yalnız GET ve yerel okuma yaptı; Cloud, DNS, DB, yedek, Coolify veya yerel servislerde değişiklik yapılmadı. Canlı güncelleme için üretim yedeğinin doğrulanmış geri yükleme provası ve rollback erişimi hâlâ yok.

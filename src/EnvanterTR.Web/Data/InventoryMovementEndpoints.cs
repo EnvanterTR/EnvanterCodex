@@ -27,10 +27,51 @@ public static class InventoryMovementEndpoints
             if (from is { Year: < 1970 or > 2100 } || to is { Year: < 1970 or > 2100 } || (from.HasValue && to.HasValue && from > to))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["date"] = ["Tarih aralığı 1970–2100 arasında ve başlangıç bitişten önce olmalı."] });
 
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
+            var allowedLocations = employeeScope.AllowedLocations;
+            var visibleEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(e => e.CompanyId == companyId));
+            // Movement notes are user-authored free text and can refer to other locations,
+            // people, or records even when the movement itself belongs to an allowed item.
+            var canReadMovementNotes = allowedLocations is null;
+            var allowedLocationNames = Array.Empty<string>();
+            if (allowedLocations is not null)
+            {
+                var locationPaths = await AssetEndpoints.GetActiveLocationPathMapAsync(db, companyId, ct);
+                allowedLocationNames = locationPaths
+                    .Where(entry => allowedLocations.Contains(entry.Value))
+                    .Select(entry => entry.Key)
+                    .ToArray();
+            }
+            var accessoryMovements = db.AccessoryMovements.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var consumableMovements = db.ConsumableMovements.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var componentMovements = db.ComponentMovements.AsNoTracking().Where(x => x.CompanyId == companyId);
+            if (allowedLocations is not null)
+            {
+                accessoryMovements = accessoryMovements.Where(m =>
+                    db.Accessories.Any(i => i.CompanyId == companyId && i.Id == m.AccessoryId && i.LocationCatalogId.HasValue &&
+                        allowedLocations.Contains(i.LocationCatalogId.Value)) &&
+                    (m.EmployeeId == null || visibleEmployees.Any(e => e.Id == m.EmployeeId)) &&
+                    (m.AssignmentId == null || db.AccessoryAssignments.Any(a => a.CompanyId == companyId && a.Id == m.AssignmentId &&
+                        ((a.TargetType == "Employee" && a.EmployeeId.HasValue && visibleEmployees.Any(e => e.Id == a.EmployeeId)) ||
+                         (a.TargetType == "Asset" && a.AssetId.HasValue && db.Assets.Any(asset => asset.CompanyId == companyId && asset.Id == a.AssetId &&
+                            asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value))) ||
+                         (a.TargetType == "Location" && a.Location != null && allowedLocationNames.Contains(a.Location))))));
+                consumableMovements = consumableMovements.Where(m =>
+                    db.Consumables.Any(i => i.CompanyId == companyId && i.Id == m.ConsumableId && i.LocationCatalogId.HasValue &&
+                        allowedLocations.Contains(i.LocationCatalogId.Value)) &&
+                    (m.EmployeeId == null || visibleEmployees.Any(e => e.Id == m.EmployeeId)));
+                componentMovements = componentMovements.Where(m =>
+                    db.InventoryComponents.Any(i => i.CompanyId == companyId && i.Id == m.ComponentId && i.LocationCatalogId.HasValue &&
+                        allowedLocations.Contains(i.LocationCatalogId.Value)) &&
+                    (m.AssetId == null || db.Assets.Any(asset => asset.CompanyId == companyId && asset.Id == m.AssetId &&
+                        asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value))));
+            }
+
             // Keep the union in a server-translatable anonymous projection. Projecting
             // directly into the presentation record before Concat makes EF Core unable
             // to translate the set operation for the combined inventory types.
-            var query = db.AccessoryMovements.AsNoTracking().Where(x => x.CompanyId == companyId && false)
+            var query = accessoryMovements.Where(x => false)
                 .Select(x => new
                 {
                     x.Id,
@@ -46,12 +87,16 @@ public static class InventoryMovementEndpoints
                                 ? db.Assets.Where(asset => asset.CompanyId == companyId && asset.Id == a.AssetId).Select(asset => asset.AssetTag + " · " + asset.Name).FirstOrDefault()
                                 : a.Location).FirstOrDefault()
                         ?? db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
-                    Actor = db.Users.Where(u => u.Id == x.ActorUserId).Select(u => u.DisplayName).FirstOrDefault(),
-                    x.Notes,
+                    Actor = allowedLocations == null || !db.CompanyMemberships.Any(membership =>
+                        membership.CompanyId == companyId && membership.UserId == x.ActorUserId && membership.EmployeeId.HasValue &&
+                        !visibleEmployees.Any(employee => employee.Id == membership.EmployeeId.Value))
+                        ? db.Users.Where(u => u.Id == x.ActorUserId).Select(u => u.DisplayName).FirstOrDefault()
+                        : null,
+                    Notes = canReadMovementNotes ? x.Notes : null,
                     x.OccurredAt
                 });
             if (kind is null or "accessory")
-                query = query.Concat(db.AccessoryMovements.AsNoTracking().Where(x => x.CompanyId == companyId)
+                query = query.Concat(accessoryMovements
                     .Select(x => new
                     {
                         x.Id,
@@ -67,13 +112,17 @@ public static class InventoryMovementEndpoints
                                     ? db.Assets.Where(asset => asset.CompanyId == companyId && asset.Id == a.AssetId).Select(asset => asset.AssetTag + " · " + asset.Name).FirstOrDefault()
                                     : a.Location).FirstOrDefault()
                             ?? db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
-                        Actor = db.Users.Where(u => u.Id == x.ActorUserId).Select(u => u.DisplayName).FirstOrDefault(),
-                        x.Notes,
+                        Actor = allowedLocations == null || !db.CompanyMemberships.Any(membership =>
+                            membership.CompanyId == companyId && membership.UserId == x.ActorUserId && membership.EmployeeId.HasValue &&
+                            !visibleEmployees.Any(employee => employee.Id == membership.EmployeeId.Value))
+                            ? db.Users.Where(u => u.Id == x.ActorUserId).Select(u => u.DisplayName).FirstOrDefault()
+                            : null,
+                        Notes = canReadMovementNotes ? x.Notes : null,
                         x.OccurredAt
                     }));
             if (kind is null or "consumable")
             {
-                var consumables = db.ConsumableMovements.AsNoTracking().Where(x => x.CompanyId == companyId)
+                var consumables = consumableMovements
                     .Select(x => new
                     {
                         x.Id,
@@ -83,15 +132,19 @@ public static class InventoryMovementEndpoints
                         x.MovementType,
                         x.Quantity,
                         Target = db.Employees.Where(e => e.CompanyId == companyId && e.Id == x.EmployeeId).Select(e => e.DisplayName).FirstOrDefault(),
-                        Actor = db.Users.Where(u => u.Id == x.ActorUserId).Select(u => u.DisplayName).FirstOrDefault(),
-                        x.Notes,
+                        Actor = allowedLocations == null || !db.CompanyMemberships.Any(membership =>
+                            membership.CompanyId == companyId && membership.UserId == x.ActorUserId && membership.EmployeeId.HasValue &&
+                            !visibleEmployees.Any(employee => employee.Id == membership.EmployeeId.Value))
+                            ? db.Users.Where(u => u.Id == x.ActorUserId).Select(u => u.DisplayName).FirstOrDefault()
+                            : null,
+                        Notes = canReadMovementNotes ? x.Notes : null,
                         x.OccurredAt
                     });
                 query = query.Concat(consumables);
             }
             if (kind is null or "component")
             {
-                var components = db.ComponentMovements.AsNoTracking().Where(x => x.CompanyId == companyId)
+                var components = componentMovements
                     .Select(x => new
                     {
                         x.Id,
@@ -101,8 +154,12 @@ public static class InventoryMovementEndpoints
                         x.MovementType,
                         x.Quantity,
                         Target = db.Assets.Where(a => a.CompanyId == companyId && a.Id == x.AssetId).Select(a => a.AssetTag + " · " + a.Name).FirstOrDefault(),
-                        Actor = db.Users.Where(u => u.Id == x.ActorUserId).Select(u => u.DisplayName).FirstOrDefault(),
-                        x.Notes,
+                        Actor = allowedLocations == null || !db.CompanyMemberships.Any(membership =>
+                            membership.CompanyId == companyId && membership.UserId == x.ActorUserId && membership.EmployeeId.HasValue &&
+                            !visibleEmployees.Any(employee => employee.Id == membership.EmployeeId.Value))
+                            ? db.Users.Where(u => u.Id == x.ActorUserId).Select(u => u.DisplayName).FirstOrDefault()
+                            : null,
+                        Notes = canReadMovementNotes ? x.Notes : null,
                         x.OccurredAt
                     });
                 query = query.Concat(components);
@@ -110,7 +167,11 @@ public static class InventoryMovementEndpoints
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
-                query = query!.Where(x => x.Item.Contains(term) || (x.Target != null && x.Target.Contains(term)) || (x.Actor != null && x.Actor.Contains(term)) || (x.Notes != null && x.Notes.Contains(term)));
+                query = canReadMovementNotes
+                    ? query!.Where(x => x.Item.Contains(term) || (x.Target != null && x.Target.Contains(term)) ||
+                        (x.Actor != null && x.Actor.Contains(term)) || (x.Notes != null && x.Notes.Contains(term)))
+                    : query!.Where(x => x.Item.Contains(term) || (x.Target != null && x.Target.Contains(term)) ||
+                        (x.Actor != null && x.Actor.Contains(term)));
             }
             if (movementType is not null) query = query!.Where(x => x.MovementType == movementType);
             if (from.HasValue) query = query!.Where(x => x.OccurredAt >= new DateTimeOffset(from.Value.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero));

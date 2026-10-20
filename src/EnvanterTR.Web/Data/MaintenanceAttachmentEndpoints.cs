@@ -15,9 +15,9 @@ public static class MaintenanceAttachmentEndpoints
         api.MapGet("/maintenances/{id:guid}/attachments", async (Guid id, ClaimsPrincipal user,
             AppDbContext db, CancellationToken ct) =>
         {
-            if (!TryCompany(user, out var companyId)) return Results.Forbid();
-            if (!await db.AssetMaintenances.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == id, ct))
-                return Results.NotFound();
+            if (!TryCompany(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
+            if (!await MaintenanceLocationAccess.CanReadAsync(db, companyId, id, employeeScope, ct)) return Results.NotFound();
             var items = await db.AssetMaintenanceAttachments.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && x.MaintenanceId == id)
                 .OrderByDescending(x => x.CreatedAt)
@@ -32,6 +32,7 @@ public static class MaintenanceAttachmentEndpoints
         {
             if (!TryCompany(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
                 return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
             if (!request.HasFormContentType) return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
             var form = await request.ReadFormAsync(ct);
             var upload = form.Files.GetFile("file");
@@ -49,6 +50,7 @@ public static class MaintenanceAttachmentEndpoints
                     $"SELECT * FROM \"AssetMaintenances\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
                 .SingleOrDefaultAsync(ct);
             if (maintenance is null) return Results.NotFound();
+            if (!await MaintenanceLocationAccess.CanAccessAsync(db, companyId, id, employeeScope, ct)) return Results.NotFound();
             if (await db.AssetMaintenanceAttachments.CountAsync(x => x.CompanyId == companyId && x.MaintenanceId == id, ct) >= MaxFiles)
                 return Results.Conflict(new { message = "Bir bakım kaydına en fazla 30 dosya eklenebilir." });
 
@@ -85,7 +87,9 @@ public static class MaintenanceAttachmentEndpoints
         api.MapGet("/maintenances/{id:guid}/attachments/{attachmentId:guid}/file", async (Guid id, Guid attachmentId,
             ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken ct) =>
         {
-            if (!TryCompany(user, out var companyId)) return Results.Forbid();
+            if (!TryCompany(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
+            if (!await MaintenanceLocationAccess.CanReadAsync(db, companyId, id, employeeScope, ct)) return Results.NotFound();
             var item = await db.AssetMaintenanceAttachments.AsNoTracking().SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.MaintenanceId == id && x.Id == attachmentId, ct);
             if (item is null || !IsSafeStorageName(item.StorageFileName)) return Results.NotFound();
@@ -101,6 +105,8 @@ public static class MaintenanceAttachmentEndpoints
         {
             if (!TryCompany(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
                 return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
+            if (!await MaintenanceLocationAccess.CanAccessAsync(db, companyId, id, employeeScope, ct)) return Results.NotFound();
             var item = await db.AssetMaintenanceAttachments.SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.MaintenanceId == id && x.Id == attachmentId, ct);
             if (item is null) return Results.NotFound();

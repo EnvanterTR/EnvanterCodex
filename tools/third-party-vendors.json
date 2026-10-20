@@ -33,5 +33,19 @@
     "LicenseExpression": "OFL-1.1",
     "LicenseFile": "src/EnvanterTR.Web/wwwroot/vendor/BWIP-JS-LICENSE.INCONSOLATA",
     "Source": "https://github.com/metafloor/bwip-js"
+  },
+  {
+    "Package": "@zxing/browser",
+    "Version": "0.2.1",
+    "LicenseExpression": "MIT",
+    "LicenseFile": "src/EnvanterTR.Web/wwwroot/vendor/ZXING-BROWSER-LICENSE",
+    "Source": "https://github.com/zxing-js/browser"
+  },
+  {
+    "Package": "@zxing/library (browser bundled decoder)",
+    "Version": "bundled in @zxing/browser 0.2.1",
+    "LicenseExpression": "Apache-2.0",
+    "LicenseFile": "src/EnvanterTR.Web/wwwroot/vendor/ZXING-LIBRARY-LICENSE",
+    "Source": "https://github.com/zxing-js/library"
   }
 ]

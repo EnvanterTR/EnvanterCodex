@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
-const html = await readFile(new URL('../src/EnvanterTR.Web/wwwroot/index.html', import.meta.url), 'utf8');
+const html = (await readFile(new URL('../src/EnvanterTR.Web/wwwroot/index.html', import.meta.url), 'utf8')).replace(/\r\n/g, '\n');
 const start = html.indexOf("if (item.photoUrl) { const remove = document.createElement('button')");
 assert.notEqual(start, -1, 'Accessory photo removal action must exist');
 const end = html.indexOf('\n      }\n      panel.append(preview, content);', start);

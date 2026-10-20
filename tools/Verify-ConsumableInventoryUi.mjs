@@ -31,8 +31,13 @@ assert.ok(detail.includes('escapeHtml(') && detail.includes('consumableMovements
 const exportStart = html.indexOf("$('#exportConsumablesButton').addEventListener('click'");
 const exportEnd = html.indexOf("$('#consumableRows').addEventListener('click'", exportStart);
 const exportHandler = html.slice(exportStart, exportEnd);
-for (const token of ['/api/consumables/export.csv?', "params.set('q', q)", "params.set('stock', stock)"])
+for (const token of ['/api/consumables/export.csv?', "stockExportParams('consumables')", 'window.location.assign'])
   assert.ok(exportHandler.includes(token), `consumable CSV must preserve ${token}`);
+const stockExportStart = html.indexOf('function stockExportParams(kind)');
+const stockExportEnd = html.indexOf('async function downloadWorkbook(', stockExportStart);
+const stockExportParams = html.slice(stockExportStart, stockExportEnd);
+for (const token of ["params.set('q',q)", "params.set('stock',stock)"])
+  assert.ok(stockExportParams.includes(token), `consumable export filter builder must include ${token}`);
 
 const rowStart = html.indexOf("$('#consumableRows').addEventListener('click'");
 const rowEnd = html.indexOf("$('#consumableSearch').addEventListener('input'", rowStart);

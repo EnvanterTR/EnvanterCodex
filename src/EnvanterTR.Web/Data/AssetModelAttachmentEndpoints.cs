@@ -18,6 +18,11 @@ public static class AssetModelAttachmentEndpoints
             if (!TryCompany(user, out var companyId)) return Results.Forbid();
             if (!await db.AssetModels.AsNoTracking().AnyAsync(x => x.CompanyId == companyId && x.Id == id, ct))
                 return Results.NotFound();
+            var allowedLocations = await GetAllowedLocationsAsync(user, db, companyId, ct);
+            if (allowedLocations is null && !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out _))
+                return Results.NotFound();
+            if (allowedLocations is not null && !await HasAccessibleAssetForModelAsync(db, companyId, id, allowedLocations, ct))
+                return Results.NotFound();
             var items = await db.AssetModelAttachments.AsNoTracking()
                 .Where(x => x.CompanyId == companyId && x.ModelId == id)
                 .OrderByDescending(x => x.CreatedAt)
@@ -31,6 +36,8 @@ public static class AssetModelAttachmentEndpoints
             AppDbContext db, IConfiguration configuration, CancellationToken ct) =>
         {
             if (!TryCompany(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
+                return Results.Forbid();
+            if (await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct) is not null)
                 return Results.Forbid();
             if (!request.HasFormContentType) return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
             var form = await request.ReadFormAsync(ct);
@@ -88,6 +95,11 @@ public static class AssetModelAttachmentEndpoints
             [FromQuery] bool download = false) =>
         {
             if (!TryCompany(user, out var companyId)) return Results.Forbid();
+            var allowedLocations = await GetAllowedLocationsAsync(user, db, companyId, ct);
+            if (allowedLocations is null && !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out _))
+                return Results.NotFound();
+            if (allowedLocations is not null && !await HasAccessibleAssetForModelAsync(db, companyId, id, allowedLocations, ct))
+                return Results.NotFound();
             var item = await db.AssetModelAttachments.AsNoTracking().SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.ModelId == id && x.Id == attachmentId, ct);
             if (item is null || !IsSafeStorageName(item.StorageFileName) || HasReparsePoint(configuration, companyId, id)) return Results.NotFound();
@@ -101,6 +113,8 @@ public static class AssetModelAttachmentEndpoints
             ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken ct) =>
         {
             if (!TryCompany(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
+                return Results.Forbid();
+            if (await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct) is not null)
                 return Results.Forbid();
             var item = await db.AssetModelAttachments.SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.ModelId == id && x.Id == attachmentId, ct);
@@ -122,6 +136,19 @@ public static class AssetModelAttachmentEndpoints
 
     private static bool TryCompany(ClaimsPrincipal user, out Guid companyId) =>
         Guid.TryParse(user.FindFirstValue("company_id"), out companyId);
+
+    private static async Task<HashSet<Guid>?> GetAllowedLocationsAsync(ClaimsPrincipal user, AppDbContext db,
+        Guid companyId, CancellationToken ct)
+    {
+        if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return [];
+        return await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
+    }
+
+    private static Task<bool> HasAccessibleAssetForModelAsync(AppDbContext db, Guid companyId, Guid modelId,
+        HashSet<Guid> allowedLocations, CancellationToken ct) =>
+        db.Assets.AsNoTracking().AnyAsync(asset => asset.CompanyId == companyId && asset.ModelId == modelId &&
+            asset.DeletedAt == null && asset.LocationCatalogId.HasValue &&
+            allowedLocations.Contains(asset.LocationCatalogId.Value), ct);
 
     private static string AttachmentDirectory(IConfiguration configuration, Guid companyId, Guid modelId) =>
         Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media",

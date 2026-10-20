@@ -30,6 +30,8 @@ public static class AccessoryPhotoEndpoints
                     $"SELECT * FROM \"Accessories\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
                 .SingleOrDefaultAsync(ct);
             if (item is null) return Results.NotFound();
+            if (!await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, actorId, item.LocationCatalogId, ct))
+                return Results.NotFound();
             var directory = PhotoDirectory(configuration, companyId, id);
             if (HasReparsePoint(configuration, companyId, id))
                 return Results.Problem("Aksesuar fotoğrafı deposu güvenli bir dizin olmalıdır.", statusCode: StatusCodes.Status500InternalServerError);
@@ -64,8 +66,12 @@ public static class AccessoryPhotoEndpoints
             IConfiguration configuration, CancellationToken ct) =>
         {
             if (!TryCompany(user, out var companyId)) return Results.Forbid();
-            var fileName = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
-                .Select(x => x.PhotoFileName).SingleOrDefaultAsync(ct);
+            if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
+            var item = await db.Accessories.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
+                .Select(x => new { x.PhotoFileName, x.LocationCatalogId }).SingleOrDefaultAsync(ct);
+            if (item is null || !await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, userId, item.LocationCatalogId, ct))
+                return Results.NotFound();
+            var fileName = item.PhotoFileName;
             if (!IsSafePhotoName(fileName) || HasReparsePoint(configuration, companyId, id)) return Results.NotFound();
             var path = Path.Combine(PhotoDirectory(configuration, companyId, id), fileName!);
             if (!System.IO.File.Exists(path)) return Results.NotFound();
@@ -84,6 +90,8 @@ public static class AccessoryPhotoEndpoints
                     $"SELECT * FROM \"Accessories\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
                 .SingleOrDefaultAsync(ct);
             if (item is null || item.PhotoFileName is null) return Results.NotFound();
+            if (!await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, actorId, item.LocationCatalogId, ct))
+                return Results.NotFound();
             var previousFileName = item.PhotoFileName;
             item.PhotoFileName = null;
             item.UpdatedAt = DateTimeOffset.UtcNow;

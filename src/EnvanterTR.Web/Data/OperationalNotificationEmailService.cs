@@ -146,23 +146,34 @@ public sealed class OperationalNotificationEmailService(
         DateOnly rangeStart, DateOnly rangeEnd, CancellationToken cancellationToken)
     {
         var items = new List<OperationalReminderItem>();
+        var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, userId, cancellationToken);
+        var allowedLocations = employeeScope.AllowedLocations;
+        var visibleEmployees = employeeScope.Apply(db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId));
+        var visibleEmployeeIds = visibleEmployees.Select(employee => employee.Id);
         if (kinds.Contains("maintenance", StringComparer.Ordinal))
         {
-            var rows = await (from maintenance in db.AssetMaintenances.AsNoTracking()
+            var maintenanceQuery = from maintenance in db.AssetMaintenances.AsNoTracking()
                               join asset in db.Assets.AsNoTracking() on new { maintenance.CompanyId, maintenance.AssetId } equals new { asset.CompanyId, AssetId = asset.Id }
                               where maintenance.CompanyId == companyId && maintenance.Status == "Scheduled" &&
                                     maintenance.PlannedOn >= rangeStart && maintenance.PlannedOn <= rangeEnd
-                              orderby maintenance.PlannedOn, asset.AssetTag
-                              select new OperationalReminderItem("maintenance", maintenance.PlannedOn!.Value,
-                                  asset.AssetTag + " · " + asset.Name, maintenance.MaintenanceType + (asset.Location == null ? "" : " · " + asset.Location)))
+                              select new { maintenance, asset };
+            if (allowedLocations is not null)
+                maintenanceQuery = maintenanceQuery.Where(item => item.asset.LocationCatalogId.HasValue && allowedLocations.Contains(item.asset.LocationCatalogId.Value));
+            var rows = await (from item in maintenanceQuery
+                              orderby item.maintenance.PlannedOn, item.asset.AssetTag
+                              select new OperationalReminderItem("maintenance", item.maintenance.PlannedOn!.Value,
+                                  item.asset.AssetTag + " · " + item.asset.Name, item.maintenance.MaintenanceType + (item.asset.Location == null ? "" : " · " + item.asset.Location)))
                 .Take(200).ToListAsync(cancellationToken);
             items.AddRange(rows);
         }
         if (kinds.Contains("audit", StringComparer.Ordinal))
         {
-            var rows = await db.Assets.AsNoTracking()
+            var auditQuery = db.Assets.AsNoTracking()
                 .Where(asset => asset.CompanyId == companyId && asset.Status != AssetStatuses.Archived && asset.DeletedAt == null &&
-                    asset.NextAuditOn >= rangeStart && asset.NextAuditOn <= rangeEnd)
+                    asset.NextAuditOn >= rangeStart && asset.NextAuditOn <= rangeEnd);
+            if (allowedLocations is not null)
+                auditQuery = auditQuery.Where(asset => asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value));
+            var rows = await auditQuery
                 .OrderBy(asset => asset.NextAuditOn).ThenBy(asset => asset.AssetTag)
                 .Select(asset => new OperationalReminderItem("audit", asset.NextAuditOn!.Value,
                     asset.AssetTag + " · " + asset.Name, asset.Location))
@@ -171,8 +182,10 @@ public sealed class OperationalNotificationEmailService(
         }
         if (kinds.Contains("license", StringComparer.Ordinal))
         {
-            var rows = await db.SoftwareLicenses.AsNoTracking()
+            var licenseQuery = db.SoftwareLicenses.AsNoTracking()
                 .Where(license => license.CompanyId == companyId && license.ExpirationDate >= rangeStart && license.ExpirationDate <= rangeEnd)
+                .LicensesInEmployeeScope(db, companyId, employeeScope);
+            var rows = await licenseQuery
                 .OrderBy(license => license.ExpirationDate).ThenBy(license => license.Name)
                 .Select(license => new OperationalReminderItem("license", license.ExpirationDate!.Value,
                     license.Name, license.Publisher))
@@ -181,9 +194,12 @@ public sealed class OperationalNotificationEmailService(
         }
         if (kinds.Contains("warranty", StringComparer.Ordinal))
         {
-            var rows = await db.Assets.AsNoTracking()
+            var warrantyQuery = db.Assets.AsNoTracking()
                 .Where(asset => asset.CompanyId == companyId && asset.DeletedAt == null &&
-                    asset.WarrantyExpiresAt >= rangeStart && asset.WarrantyExpiresAt <= rangeEnd)
+                    asset.WarrantyExpiresAt >= rangeStart && asset.WarrantyExpiresAt <= rangeEnd);
+            if (allowedLocations is not null)
+                warrantyQuery = warrantyQuery.Where(asset => asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value));
+            var rows = await warrantyQuery
                 .OrderBy(asset => asset.WarrantyExpiresAt).ThenBy(asset => asset.AssetTag)
                 .Select(asset => new OperationalReminderItem("warranty", asset.WarrantyExpiresAt!.Value,
                     asset.AssetTag + " · " + asset.Name, asset.Location))
@@ -192,9 +208,14 @@ public sealed class OperationalNotificationEmailService(
         }
         if (kinds.Contains("return", StringComparer.Ordinal))
         {
-            var overdue = await db.Assets.AsNoTracking()
+            var overdueQuery = db.Assets.AsNoTracking()
                 .Where(asset => asset.CompanyId == companyId && asset.DeletedAt == null && asset.Status == AssetStatuses.Deployed &&
-                    asset.AssignedEmployeeId != null && asset.ExpectedReturnOn < DateOnly.FromDateTime(DateTime.UtcNow))
+                    asset.AssignedEmployeeId != null && asset.ExpectedReturnOn < DateOnly.FromDateTime(DateTime.UtcNow));
+            if (allowedLocations is not null)
+                overdueQuery = overdueQuery.Where(asset => asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value));
+            if (employeeScope.IsRestricted)
+                overdueQuery = overdueQuery.Where(asset => visibleEmployeeIds.Contains(asset.AssignedEmployeeId!.Value));
+            var overdue = await overdueQuery
                 .OrderByDescending(asset => asset.ExpectedReturnOn).ThenBy(asset => asset.AssetTag)
                 .Select(asset => new OperationalReminderItem("return", asset.ExpectedReturnOn!.Value,
                     asset.AssetTag + " · " + asset.Name,
@@ -202,9 +223,14 @@ public sealed class OperationalNotificationEmailService(
                         .Select(employee => employee.DisplayName).FirstOrDefault() ?? "Çalışan belirtilmemiş")))
                 .Take(100).ToListAsync(cancellationToken);
             items.AddRange(overdue);
-            var upcomingReturns = await db.Assets.AsNoTracking()
+            var upcomingReturnQuery = db.Assets.AsNoTracking()
                 .Where(asset => asset.CompanyId == companyId && asset.DeletedAt == null && asset.Status == AssetStatuses.Deployed &&
-                    asset.AssignedEmployeeId != null && asset.ExpectedReturnOn >= DateOnly.FromDateTime(DateTime.UtcNow) && asset.ExpectedReturnOn <= rangeEnd)
+                    asset.AssignedEmployeeId != null && asset.ExpectedReturnOn >= DateOnly.FromDateTime(DateTime.UtcNow) && asset.ExpectedReturnOn <= rangeEnd);
+            if (allowedLocations is not null)
+                upcomingReturnQuery = upcomingReturnQuery.Where(asset => asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value));
+            if (employeeScope.IsRestricted)
+                upcomingReturnQuery = upcomingReturnQuery.Where(asset => visibleEmployeeIds.Contains(asset.AssignedEmployeeId!.Value));
+            var upcomingReturns = await upcomingReturnQuery
                 .OrderBy(asset => asset.ExpectedReturnOn).ThenBy(asset => asset.AssetTag)
                 .Select(asset => new OperationalReminderItem("return", asset.ExpectedReturnOn!.Value,
                     asset.AssetTag + " · " + asset.Name,
@@ -223,13 +249,15 @@ public sealed class OperationalNotificationEmailService(
                 var reviewer = membership.RoleKey is "owner" or "admin" or "asset_manager" or "asset_operator";
                 var reservationQuery = from reservation in db.AssetReservations.AsNoTracking()
                                        join asset in db.Assets.AsNoTracking() on new { reservation.CompanyId, AssetId = reservation.AssetId } equals new { asset.CompanyId, AssetId = asset.Id }
-                                       join employee in db.Employees.AsNoTracking() on new { reservation.CompanyId, reservation.EmployeeId } equals new { employee.CompanyId, EmployeeId = employee.Id }
+                                       join employee in visibleEmployees on new { reservation.CompanyId, reservation.EmployeeId } equals new { employee.CompanyId, EmployeeId = employee.Id }
                                        where reservation.CompanyId == companyId && reservation.Status == "Approved" &&
                                              reservation.StartsOn >= rangeStart && reservation.StartsOn <= rangeEnd && asset.DeletedAt == null
                                        select new { reservation, asset, employee };
                 if (!reviewer)
                     reservationQuery = reservationQuery.Where(item => item.reservation.RequestedByUserId == userId ||
                         (membership.EmployeeId != null && item.reservation.EmployeeId == membership.EmployeeId));
+                if (allowedLocations is not null)
+                    reservationQuery = reservationQuery.Where(item => item.asset.LocationCatalogId.HasValue && allowedLocations.Contains(item.asset.LocationCatalogId.Value));
                 var rows = await reservationQuery.OrderBy(item => item.reservation.StartsOn).ThenBy(item => item.asset.AssetTag)
                     .Select(item => new OperationalReminderItem("reservation", item.reservation.StartsOn,
                         item.asset.AssetTag + " · " + item.asset.Name,
@@ -242,14 +270,18 @@ public sealed class OperationalNotificationEmailService(
         {
             var rangeStartUtc = new DateTimeOffset(rangeStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
             var rangeEndExclusiveUtc = new DateTimeOffset(rangeEnd.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
-            var rows = await (from assetEvent in db.AssetEvents.AsNoTracking()
+            var assignmentQuery = from assetEvent in db.AssetEvents.AsNoTracking()
                               join asset in db.Assets.AsNoTracking() on new { assetEvent.CompanyId, AssetId = assetEvent.AssetId } equals new { asset.CompanyId, AssetId = asset.Id }
-                              join employee in db.Employees.AsNoTracking() on new { assetEvent.CompanyId, EmployeeId = assetEvent.EmployeeId!.Value } equals new { employee.CompanyId, EmployeeId = employee.Id }
+                              join employee in visibleEmployees on new { assetEvent.CompanyId, EmployeeId = assetEvent.EmployeeId!.Value } equals new { employee.CompanyId, EmployeeId = employee.Id }
                               where assetEvent.CompanyId == companyId && assetEvent.EventType == "Assigned" && assetEvent.EmployeeId != null &&
                                     assetEvent.OccurredAt >= rangeStartUtc && assetEvent.OccurredAt < rangeEndExclusiveUtc &&
                                     asset.DeletedAt == null
-                              orderby assetEvent.OccurredAt descending, asset.AssetTag
-                              select new { assetEvent.OccurredAt, asset.AssetTag, asset.Name, EmployeeName = employee.DisplayName })
+                              select new { assetEvent, asset, employee };
+            if (allowedLocations is not null)
+                assignmentQuery = assignmentQuery.Where(item => item.asset.LocationCatalogId.HasValue && allowedLocations.Contains(item.asset.LocationCatalogId.Value));
+            var rows = await (from item in assignmentQuery
+                              orderby item.assetEvent.OccurredAt descending, item.asset.AssetTag
+                              select new { item.assetEvent.OccurredAt, item.asset.AssetTag, item.asset.Name, EmployeeName = item.employee.DisplayName })
                 .Take(200).ToListAsync(cancellationToken);
             items.AddRange(rows.Select(row => new OperationalReminderItem("assignment",
                 DateOnly.FromDateTime(row.OccurredAt.UtcDateTime), row.AssetTag + " · " + row.Name,
@@ -272,9 +304,12 @@ public sealed class OperationalNotificationEmailService(
                        join model in db.AssetModels.AsNoTracking() on new { asset.CompanyId, Id = asset.ModelId } equals new { model.CompanyId, Id = (Guid?)model.Id }
                        where asset.CompanyId == companyId && asset.DeletedAt == null && asset.Status != AssetStatuses.Archived &&
                              asset.PurchaseDate >= earliestPurchaseDate && asset.PurchaseDate <= rangeEnd && model.DepreciationMonths != null
-                       orderby asset.PurchaseDate, asset.AssetTag
                        select new { asset.PurchaseDate, asset.AssetTag, asset.Name, ModelName = model.Name, Months = model.DepreciationMonths!.Value };
-            await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken))
+            if (allowedLocations is not null)
+                rows = rows.Where(item => db.Assets.Any(asset => asset.CompanyId == companyId && asset.AssetTag == item.AssetTag &&
+                    asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value)));
+            await foreach (var row in rows.OrderBy(item => item.PurchaseDate).ThenBy(item => item.AssetTag)
+                               .AsAsyncEnumerable().WithCancellation(cancellationToken))
             {
                 var date = row.PurchaseDate!.Value.AddMonths(row.Months);
                 if (date >= rangeStart && date <= rangeEnd)

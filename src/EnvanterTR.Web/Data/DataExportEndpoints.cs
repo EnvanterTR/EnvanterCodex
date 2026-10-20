@@ -74,6 +74,8 @@ public static class DataExportEndpoints
         var role = context.User.FindFirstValue("company_role");
         if (!await db.Companies.AsNoTracking().AnyAsync(c => c.Id == companyId && c.IsActive &&
             db.CompanyMemberships.Any(m => m.CompanyId == companyId && m.UserId == actorId && m.RoleKey == role), cancellationToken)) return Results.Forbid();
+        var employeeAccessScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, cancellationToken);
+        var allowedLocations = employeeAccessScope.AllowedLocations;
         try { await antiforgery.ValidateRequestAsync(context); }
         catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
         var isXlsx = IsXlsxRequest(context.Request);
@@ -165,12 +167,14 @@ public static class DataExportEndpoints
         var existingNumbers = await db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId && numbers.Contains(x.EmployeeNumber.ToUpper()))
             .Select(x => x.EmployeeNumber).ToListAsync(cancellationToken);
         if (existingNumbers.Count > 0)
-            AddError(errors, $"Şirkette zaten kayıtlı personel numaraları var: {string.Join(", ", existingNumbers.Take(10))}{(existingNumbers.Count > 10 ? "…" : "")}");
+            AddError(errors, "Dosyadaki personel numaralarından en az biri bu şirkette zaten kayıtlı.");
 
         if (hasExportColumns && hasRoundTripManagerColumn)
         {
             var managerNumberList = managerNumbers.Values.Where(x => x is not null).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-            var existingManagers = await db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId && managerNumberList.Contains(x.EmployeeNumber.ToUpper()))
+            var existingManagersQuery = employeeAccessScope.Apply(db.Employees.AsNoTracking()
+                .Where(x => x.CompanyId == companyId && managerNumberList.Contains(x.EmployeeNumber.ToUpper())));
+            var existingManagers = await existingManagersQuery
                 .Select(x => new { x.Id, x.EmployeeNumber, x.IsActive, x.ManagerEmployeeId }).ToListAsync(cancellationToken);
             var importedByNumber = employees.GroupBy(x => x.EmployeeNumber, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
@@ -191,7 +195,10 @@ public static class DataExportEndpoints
             }
             if (errors.Count == 0)
             {
-                var hierarchy = await db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId)
+                var hierarchyQuery = db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId);
+                if (allowedLocations is not null)
+                    hierarchyQuery = hierarchyQuery.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
+                var hierarchy = await hierarchyQuery
                     .Select(x => new { x.Id, x.ManagerEmployeeId }).ToDictionaryAsync(x => x.Id, x => x.ManagerEmployeeId, cancellationToken);
                 foreach (var employee in employees) hierarchy[employee.Id] = employee.ManagerEmployeeId;
                 var cycleDetected = false;
@@ -221,7 +228,13 @@ public static class DataExportEndpoints
             employee.Location ??= defaultEmployeeLocation;
             if (employee.Location is not null && employeeLocationCatalogPaths.TryGetValue(employee.Location, out var locationCatalogId))
                 employee.LocationCatalogId = locationCatalogId;
+            if (allowedLocations is not null && (employee.LocationCatalogId is not Guid allowedLocationId || !allowedLocations.Contains(allowedLocationId)))
+                AddError(errors, $"{employee.EmployeeNumber} numaralı çalışan için konum erişilebilir etkin bir şirket konumuna eşleşmiyor.");
         }
+
+        cleanErrors = errors.Distinct(StringComparer.Ordinal).Take(30).ToArray();
+        if (cleanErrors.Length > 0)
+            return Results.UnprocessableEntity(new { isValid = false, rowCount = rows.Count - 1, errors = cleanErrors, message = "Dosyada düzeltilmesi gereken alanlar bulundu. Hiçbir çalışan eklenmedi." });
 
         if (!import) return Results.Ok(new { isValid = true, rowCount = employees.Count, errors = Array.Empty<string>(),
             linkedLocations = employees.Count(x => x.LocationCatalogId is not null),
@@ -229,6 +242,9 @@ public static class DataExportEndpoints
             message = $"{employees.Count:N0} yeni çalışan kaydı doğrulandı. Varsayılan konum {defaultEmployeeLocationApplied:N0} boş kayda uygulanacak; katalogla eşleşen {employees.Count(x => x.LocationCatalogId is not null):N0} kayıt bağlanacak. Önizleme hiçbir kayıt eklemedi." });
 
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        var commitEmployeeAccessScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, cancellationToken);
+        if (employees.Any(employee => !commitEmployeeAccessScope.Allows(employee.LocationCatalogId, employee.CompanyUnitId)))
+            return Results.Conflict(new { message = "Çalışan konum veya şirket birimi erişimi önizlemeden sonra değişmiş. Hiçbir kayıt aktarılmadı; önizlemeyi yenileyin." });
         // Recheck under the write transaction so duplicate employee numbers never partially import.
         if (await db.Employees.AnyAsync(x => x.CompanyId == companyId && numbers.Contains(x.EmployeeNumber.ToUpper()), cancellationToken))
             return Results.Conflict(new { message = "Dosyadaki bir personel numarası önizlemeden sonra eklenmiş. Hiçbir kayıt aktarılmadı; önizlemeyi yenileyin." });
@@ -237,7 +253,9 @@ public static class DataExportEndpoints
             var importedIds = employees.Select(x => x.Id).ToHashSet();
             var externalManagerIds = employees.Where(x => x.ManagerEmployeeId.HasValue && !importedIds.Contains(x.ManagerEmployeeId.Value))
                 .Select(x => x.ManagerEmployeeId!.Value).Distinct().ToArray();
-            var activeManagerCount = await db.Employees.CountAsync(x => x.CompanyId == companyId && x.IsActive && externalManagerIds.Contains(x.Id), cancellationToken);
+            var activeManagerCount = await commitEmployeeAccessScope.Apply(db.Employees.AsNoTracking()
+                .Where(x => x.CompanyId == companyId && x.IsActive && externalManagerIds.Contains(x.Id)))
+                .CountAsync(cancellationToken);
             if (activeManagerCount != externalManagerIds.Length)
                 return Results.Conflict(new { message = "Önizlemeden sonra bir yönetici kaydı pasife alınmış veya kaldırılmış. Hiçbir kayıt aktarılmadı; önizlemeyi yenileyin." });
         }
@@ -266,6 +284,8 @@ public static class DataExportEndpoints
         if (!await db.Companies.AsNoTracking().AnyAsync(c => c.Id == companyId && c.IsActive &&
             db.CompanyMemberships.Any(m => m.CompanyId == companyId && m.UserId == userId && m.RoleKey == role), cancellationToken))
             return Results.Forbid();
+        var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, userId, cancellationToken);
+        var employeeAccessScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, userId, cancellationToken);
         try { await antiforgery.ValidateRequestAsync(context); }
         catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
         if (!TryReadAssetImportMappings(context.Request, out var explicitMappings))
@@ -337,7 +357,6 @@ public static class DataExportEndpoints
         var targetCompanyName = await db.Companies.AsNoTracking().Where(x => x.Id == companyId).Select(x => x.Name).SingleAsync(cancellationToken);
         var errors = new List<string>();
         var tags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var customFieldsByRow = new Dictionary<int, string>();
         foreach (var (row, index) in rows.Skip(1).Select((row, index) => (row, index)))
         {
             if (row.Count != expectedHeader.Length) { AddError(errors, $"{index + 2}. satırda {expectedHeader.Length} sütun olmalıdır."); continue; }
@@ -346,14 +365,6 @@ public static class DataExportEndpoints
             if (!AssetCustomFieldEndpoints.CanReadSensitive(context.User) && customFields.Any(field =>
                     field.FieldType == "sensitive" && !string.IsNullOrWhiteSpace(submittedCustomFields.GetValueOrDefault(field.Key))))
                 return Results.Forbid();
-            var normalizedCustomFields = AssetCustomFieldEndpoints.NormalizeValues(customFields, submittedCustomFields);
-            if (normalizedCustomFields.Error is not null) AddError(errors, $"{index + 2}. satır: {normalizedCustomFields.Error}");
-            else
-            {
-                var protectedValues = customFieldProtection.Protect(normalizedCustomFields.Json, null, companyId, customFields);
-                if (protectedValues.Error is not null) AddError(errors, $"{index + 2}. satır: {protectedValues.Error}");
-                else customFieldsByRow[index] = protectedValues.Json ?? "{}";
-            }
             var tag = row[0].Trim();
             if (string.IsNullOrWhiteSpace(tag) || tag.Length > 80 || !tags.Add(tag)) AddError(errors, $"{index + 2}. satırda varlık etiketi boş, uzun veya yineleniyor.");
             if (string.IsNullOrWhiteSpace(row[1].Trim()) || row[1].Trim().Length > 240) AddError(errors, $"{index + 2}. satırda varlık adı boş veya çok uzun.");
@@ -384,14 +395,19 @@ public static class DataExportEndpoints
         var categories = await db.AssetCategories.AsNoTracking().Where(x => x.CompanyId == companyId).ToListAsync(cancellationToken);
         var brands = await db.AssetBrands.AsNoTracking().Where(x => x.CompanyId == companyId).ToListAsync(cancellationToken);
         var models = await db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId).ToListAsync(cancellationToken);
-        var employees = await db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId).ToListAsync(cancellationToken);
+        var employeeQuery = db.Employees.AsNoTracking().Where(x => x.CompanyId == companyId);
+        employeeQuery = employeeAccessScope.Apply(employeeQuery);
+        var employees = await employeeQuery.ToListAsync(cancellationToken);
         var categoryLookup = categories.GroupBy(x => x.Name.Trim(), StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.ToArray(), StringComparer.OrdinalIgnoreCase);
         var brandLookup = brands.GroupBy(x => x.Name.Trim(), StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.ToArray(), StringComparer.OrdinalIgnoreCase);
         var modelLookup = models.GroupBy(x => (x.BrandId, Name: x.Name.Trim()), new BrandModelComparer()).ToDictionary(x => x.Key, x => x.ToArray(), new BrandModelComparer());
         var employeeLookup = employees.GroupBy(x => x.EmployeeNumber.Trim(), StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.ToArray(), StringComparer.OrdinalIgnoreCase);
         var parentTags = hasParentColumn ? rows.Skip(1).Select(row => row[parentIndex].Trim().ToUpperInvariant()).Where(tag => tag.Length > 0).Distinct(StringComparer.Ordinal).ToArray() : [];
+        var parentQuery = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.Status != AssetStatuses.Archived && parentTags.Contains(x.AssetTag.ToUpper()));
+        if (allowedLocations is not null)
+            parentQuery = parentQuery.Where(x => x.LocationCatalogId.HasValue && allowedLocations.Contains(x.LocationCatalogId.Value));
         var parentLookup = parentTags.Length == 0 ? new Dictionary<string, (Guid Id, string Status)>(StringComparer.OrdinalIgnoreCase) :
-            await db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.Status != AssetStatuses.Archived && parentTags.Contains(x.AssetTag.ToUpper()))
+            await parentQuery
                 .Select(x => new { x.Id, x.AssetTag, x.Status }).ToDictionaryAsync(x => x.AssetTag.ToUpper(), x => (x.Id, x.Status), StringComparer.OrdinalIgnoreCase, cancellationToken);
         var locationCatalogPaths = await AssetEndpoints.GetActiveLocationPathMapAsync(db, companyId, cancellationToken);
         var defaultAssetLocation = await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, cancellationToken);
@@ -438,17 +454,29 @@ public static class DataExportEndpoints
                 AddError(errors, $"{index + 2}. satırdaki üst varlık etiketi bu şirkette veya içe aktarma dosyasında bulunamadı.");
             if (categoryLookup.TryGetValue(row[3].Trim(), out categoryMatches) && categoryMatches.Length == 1)
             {
+                var submittedCustomFields = customFields.Select((field, fieldIndex) => (field.Key, Value: row[dataColumnCount + fieldIndex].Trim()))
+                    .ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal);
+                var normalizedCustomFields = AssetCustomFieldEndpoints.NormalizeValues(customFields, submittedCustomFields,
+                    categoryId: categoryMatches[0].Id, modelId: modelId);
+                if (normalizedCustomFields.Error is not null) AddError(errors, $"{index + 2}. satır: {normalizedCustomFields.Error}");
+                var protectedValues = customFieldProtection.Protect(normalizedCustomFields.Json, null, companyId,
+                    customFields.Where(field => AssetCustomFieldEndpoints.AppliesTo(field, categoryMatches[0].Id, modelId)).ToArray());
+                if (protectedValues.Error is not null) AddError(errors, $"{index + 2}. satır: {protectedValues.Error}");
                 DateOnly? purchaseDate = string.IsNullOrWhiteSpace(row[10]) ? null : DateOnly.ParseExact(row[10], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
                 DateOnly? warrantyExpiresAt = hasWarrantyColumn && !string.IsNullOrWhiteSpace(row[11]) ? DateOnly.ParseExact(row[11], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) : null;
                 decimal? purchaseCost = string.IsNullOrWhiteSpace(row[costIndex]) ? null : decimal.Parse(row[costIndex], System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture);
                 var location = CleanCsv(row[7]) ?? defaultAssetLocation;
                 var locationCatalogId = location is not null && locationCatalogPaths.TryGetValue(location, out var catalogLocationId)
                     ? catalogLocationId : (Guid?)null;
+                if (allowedLocations is not null && (locationCatalogId is not Guid allowedLocationId || !allowedLocations.Contains(allowedLocationId)))
+                    AddError(errors, $"{index + 2}. satırdaki konum erişilebilir etkin bir şirket konumuna eşleşmiyor.");
                 var defaultLocation = hasDefaultLocationColumn ? CleanCsv(row[defaultLocationIndex]) : null;
                 var defaultLocationCatalogId = defaultLocation is null ? (Guid?)null :
                     locationCatalogPaths.TryGetValue(defaultLocation, out var defaultCatalogId) ? defaultCatalogId : null;
                 if (defaultLocation is not null && defaultLocationCatalogId is null)
                     AddError(errors, $"{index + 2}. satırdaki varsayılan konum mevcut şirkette bulunamadı.");
+                if (allowedLocations is not null && defaultLocationCatalogId is Guid defaultId && !allowedLocations.Contains(defaultId))
+                    AddError(errors, $"{index + 2}. satırdaki varsayılan konum erişim kapsamı dışında.");
                 importRows.Add((new Asset
                 {
                     CompanyId = companyId, AssetTag = row[0].Trim().ToUpperInvariant(), Name = row[1].Trim(), Status = row[2],
@@ -457,7 +485,7 @@ public static class DataExportEndpoints
                     AssignedEmployeeId = employeeId, PurchaseDate = purchaseDate, WarrantyExpiresAt = warrantyExpiresAt,
                     PurchaseCost = purchaseCost, Currency = row[currencyIndex].Trim().ToUpperInvariant(), IsByod = row[byodIndex] == "true",
                     Notes = hasNotesColumn ? CleanCsv(row[notesIndex]) : null,
-                    CustomFieldsJson = customFieldsByRow.GetValueOrDefault(index, "{}")
+                    CustomFieldsJson = protectedValues.Json ?? "{}"
                 }, employeeId, parentTag));
             }
         }
@@ -494,6 +522,14 @@ public static class DataExportEndpoints
 
         var actorId = userId;
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var commitEmployeeAccessScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, cancellationToken);
+        var assignedEmployeeIds = importRows.Where(item => item.EmployeeId.HasValue)
+            .Select(item => item.EmployeeId!.Value).Distinct().ToArray();
+        var accessibleAssignedEmployeeCount = await commitEmployeeAccessScope.Apply(db.Employees.AsNoTracking()
+                .Where(employee => employee.CompanyId == companyId && assignedEmployeeIds.Contains(employee.Id)))
+            .CountAsync(cancellationToken);
+        if (accessibleAssignedEmployeeCount != assignedEmployeeIds.Length)
+            return Results.Conflict(new { message = "İçe aktarma sırasında çalışan erişim kapsamı değişti. Hiçbir varlık kaydedilmedi; önizlemeyi yenileyin." });
         db.Assets.AddRange(importRows.Select(x => x.Asset));
         foreach (var item in importRows)
             db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = item.Asset.Id, ActorUserId = actorId,
@@ -587,6 +623,8 @@ public static class DataExportEndpoints
         var activeMembership = await db.Companies.AsNoTracking().AnyAsync(c => c.Id == companyId && c.IsActive &&
             db.CompanyMemberships.Any(m => m.CompanyId == companyId && m.UserId == userId && m.RoleKey == role), cancellationToken);
         if (!activeMembership) return Results.Forbid();
+        var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, userId, cancellationToken);
+        var employeeAccessScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, userId, cancellationToken);
         try { await antiforgery.ValidateRequestAsync(context); }
         catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
         if (!TryReadAssetImportMappings(context.Request, out var explicitMappings))
@@ -658,6 +696,7 @@ public static class DataExportEndpoints
 
         var targetName = await db.Companies.AsNoTracking().Where(c => c.Id == companyId).Select(c => c.Name).SingleAsync(cancellationToken);
         var locationCatalogPaths = await AssetEndpoints.GetActiveLocationPathMapAsync(db, companyId, cancellationToken);
+        var defaultAssetLocation = await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, cancellationToken);
         var errors = new List<string>();
         var tags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (row, index) in records.Skip(1).Select((row, index) => (row, index)))
@@ -683,16 +722,23 @@ public static class DataExportEndpoints
             if (hasDefaultLocationColumn && !string.IsNullOrWhiteSpace(row[defaultLocationIndex]) &&
                 !locationCatalogPaths.ContainsKey(row[defaultLocationIndex].Trim()))
                 AddError(errors, $"{index + 2}. satırdaki varsayılan konum bu şirkette bulunamadı.");
+            if (allowedLocations is not null)
+            {
+                var targetLocation = CleanCsv(row[7]) ?? defaultAssetLocation;
+                if (targetLocation is null || !locationCatalogPaths.TryGetValue(targetLocation, out var targetLocationId) ||
+                    !allowedLocations.Contains(targetLocationId))
+                    AddError(errors, $"{index + 2}. satırdaki konum erişilebilir etkin bir şirket konumuna eşleşmiyor.");
+                if (hasDefaultLocationColumn && !string.IsNullOrWhiteSpace(row[defaultLocationIndex]) &&
+                    locationCatalogPaths.TryGetValue(row[defaultLocationIndex].Trim(), out var defaultLocationId) &&
+                    !allowedLocations.Contains(defaultLocationId))
+                    AddError(errors, $"{index + 2}. satırdaki varsayılan konum erişim kapsamı dışında.");
+            }
             if (!string.IsNullOrWhiteSpace(row[10]) && !DateOnly.TryParseExact(row[10], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
                 AddError(errors, $"{index + 2}. satırdaki alış tarihi yyyy-AA-gg biçiminde olmalı.");
             if (hasWarrantyColumn && !string.IsNullOrWhiteSpace(row[11]) && !DateOnly.TryParseExact(row[11], "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _))
                 AddError(errors, $"{index + 2}. satırdaki garanti bitiş tarihi yyyy-AA-gg biçiminde olmalı.");
             if (!string.IsNullOrWhiteSpace(row[costIndex]) && (!decimal.TryParse(row[costIndex], System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var cost) || cost < 0 || cost > 9999999999999999.99m))
                 AddError(errors, $"{index + 2}. satırdaki alış bedeli geçersiz veya negatif.");
-            var submittedCustomFields = customFields.Select((field, fieldIndex) => (field.Key, Value: row[baseColumnCount + fieldIndex].Trim()))
-                .ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal);
-            var normalizedCustomFields = AssetCustomFieldEndpoints.NormalizeValues(customFields, submittedCustomFields);
-            if (normalizedCustomFields.Error is not null) AddError(errors, $"{index + 2}. satır: {normalizedCustomFields.Error}");
         }
 
         var validRows = records.Skip(1).Select((row, index) => (row, index)).Where(item => item.row.Count == columnCount).ToArray();
@@ -701,7 +747,7 @@ public static class DataExportEndpoints
         var modelNames = validRows.Select(item => item.row[5].Trim()).Where(value => value.Length > 0).Select(value => value.ToUpperInvariant()).Distinct().ToArray();
         var employeeNumbers = validRows.Select(item => item.row[8].Trim()).Where(value => value.Length > 0).Select(value => value.ToUpperInvariant()).Distinct().ToArray();
         var availableCategories = await db.AssetCategories.AsNoTracking().Where(item => item.CompanyId == companyId && categoryNames.Contains(item.Name.ToUpper()))
-            .Select(item => item.Name).ToListAsync(cancellationToken);
+            .Select(item => new { item.Id, item.Name }).ToListAsync(cancellationToken);
         var availableBrands = await db.AssetBrands.AsNoTracking().Where(item => item.CompanyId == companyId && brandNames.Contains(item.Name.ToUpper()))
             .Select(item => item.Name).ToListAsync(cancellationToken);
         var matchedBrandIds = await db.AssetBrands.AsNoTracking().Where(item => item.CompanyId == companyId && brandNames.Contains(item.Name.ToUpper()))
@@ -709,17 +755,24 @@ public static class DataExportEndpoints
         var modelNumberValues = hasModelNumberColumn ? validRows.Select(item => item.row[modelNumberIndex].Trim()).Where(value => value.Length > 0).Select(value => value.ToUpperInvariant()).Distinct().ToArray() : [];
         var matchedModels = await db.AssetModels.AsNoTracking().Where(item => item.CompanyId == companyId &&
                 (modelNames.Contains(item.Name.ToUpper()) || (hasModelNumberColumn && item.ModelNumber != null && modelNumberValues.Contains(item.ModelNumber.ToUpper())))
-            ).Select(item => new { item.BrandId, item.Name, item.ModelNumber }).ToListAsync(cancellationToken);
-        var matchedEmployees = await db.Employees.AsNoTracking().Where(item => item.CompanyId == companyId && employeeNumbers.Contains(item.EmployeeNumber.ToUpper()))
+            ).Select(item => new { item.Id, item.BrandId, item.CategoryId, item.Name, item.ModelNumber }).ToListAsync(cancellationToken);
+        var matchedEmployeeQuery = db.Employees.AsNoTracking().Where(item => item.CompanyId == companyId && employeeNumbers.Contains(item.EmployeeNumber.ToUpper()));
+        matchedEmployeeQuery = employeeAccessScope.Apply(matchedEmployeeQuery);
+        var matchedEmployees = await matchedEmployeeQuery
             .Select(item => new { item.EmployeeNumber, item.DisplayName }).ToListAsync(cancellationToken);
         var uploadedAssets = validRows.GroupBy(item => item.row[0].Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First().row[2], StringComparer.OrdinalIgnoreCase);
         var parentTags = hasParentColumn ? validRows.Select(item => item.row[parentIndex].Trim().ToUpperInvariant()).Where(tag => tag.Length > 0).Distinct(StringComparer.Ordinal).ToArray() : [];
+        var availableParentQuery = db.Assets.AsNoTracking().Where(asset => asset.CompanyId == companyId && asset.Status != AssetStatuses.Archived && parentTags.Contains(asset.AssetTag.ToUpper()));
+        if (allowedLocations is not null)
+            availableParentQuery = availableParentQuery.Where(asset => asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value));
         var availableParentTags = parentTags.Length == 0 ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) :
-            (await db.Assets.AsNoTracking().Where(asset => asset.CompanyId == companyId && asset.Status != AssetStatuses.Archived && parentTags.Contains(asset.AssetTag.ToUpper()))
+            (await availableParentQuery
                 .Select(asset => asset.AssetTag.ToUpper()).ToListAsync(cancellationToken)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var categoryCounts = availableCategories.GroupBy(value => value.Trim(), StringComparer.OrdinalIgnoreCase)
+        var categoryCounts = availableCategories.GroupBy(value => value.Name.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
+        var categoryIds = availableCategories.GroupBy(value => value.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Select(item => item.Id).ToArray(), StringComparer.OrdinalIgnoreCase);
         var brandCounts = availableBrands.GroupBy(value => value.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
         var brandIds = matchedBrandIds.GroupBy(item => item.Name.Trim(), StringComparer.OrdinalIgnoreCase)
@@ -729,8 +782,10 @@ public static class DataExportEndpoints
         var modelLookup = matchedModels.Select(item => (item.BrandId, Name: item.Name.Trim())).ToHashSet(new BrandModelComparer());
         foreach (var (row, index) in validRows)
         {
+            Guid? categoryId = null;
             if (string.IsNullOrWhiteSpace(row[3]) || !categoryCounts.TryGetValue(row[3].Trim(), out var categoryCount) || categoryCount != 1)
                 AddError(errors, $"{index + 2}. satırdaki kategori bu şirkette tekil olarak bulunamadı.");
+            else if (categoryIds.TryGetValue(row[3].Trim(), out var categoryMatches) && categoryMatches.Length == 1) categoryId = categoryMatches[0];
             Guid? brandId = null;
             if (!string.IsNullOrWhiteSpace(row[4]))
             {
@@ -739,18 +794,32 @@ public static class DataExportEndpoints
                 else brandId = ids[0];
             }
             var submittedModelNumber = hasModelNumberColumn ? row[modelNumberIndex].Trim() : "";
+            Guid? modelId = null;
             if (!string.IsNullOrWhiteSpace(row[5]))
             {
                 var modelMatches = matchedModels.Where(item => item.BrandId == brandId &&
                     string.Equals(item.Name.Trim(), row[5].Trim(), StringComparison.OrdinalIgnoreCase)).ToArray();
                 if (brandId is null || !modelLookup.Contains((brandId, row[5].Trim())) ||
-                    (submittedModelNumber.Length > 0 && (modelMatches.Length != 1 ||
-                        !string.Equals(modelMatches[0].ModelNumber?.Trim(), submittedModelNumber, StringComparison.OrdinalIgnoreCase))))
+                    modelMatches.Length != 1 || (submittedModelNumber.Length > 0 &&
+                        !string.Equals(modelMatches[0].ModelNumber?.Trim(), submittedModelNumber, StringComparison.OrdinalIgnoreCase)))
                     AddError(errors, $"{index + 2}. satırdaki model ve model numarası seçilen marka altında bulunamadı.");
+                else modelId = modelMatches[0].Id;
             }
-            else if (submittedModelNumber.Length > 0 && (brandId is null || matchedModels.Count(item => item.BrandId == brandId &&
-                         string.Equals(item.ModelNumber?.Trim(), submittedModelNumber, StringComparison.OrdinalIgnoreCase)) != 1))
-                AddError(errors, $"{index + 2}. satırdaki model numarası seçilen marka altında bulunamadı.");
+            else if (submittedModelNumber.Length > 0)
+            {
+                var modelMatches = brandId is null ? [] : matchedModels.Where(item => item.BrandId == brandId &&
+                    string.Equals(item.ModelNumber?.Trim(), submittedModelNumber, StringComparison.OrdinalIgnoreCase)).ToArray();
+                if (modelMatches.Length != 1) AddError(errors, $"{index + 2}. satırdaki model numarası seçilen marka altında bulunamadı.");
+                else modelId = modelMatches[0].Id;
+            }
+            if (modelId is Guid matchedModelId && categoryId is Guid matchedCategoryId &&
+                matchedModels.First(item => item.Id == matchedModelId).CategoryId is Guid modelCategoryId && modelCategoryId != matchedCategoryId)
+                AddError(errors, $"{index + 2}. satırdaki model seçilen kategoriyle eşleşmiyor.");
+            var submittedCustomFields = customFields.Select((field, fieldIndex) => (field.Key, Value: row[baseColumnCount + fieldIndex].Trim()))
+                .ToDictionary(item => item.Key, item => item.Value, StringComparer.Ordinal);
+            var normalizedCustomFields = AssetCustomFieldEndpoints.NormalizeValues(customFields, submittedCustomFields,
+                categoryId: categoryId, modelId: modelId);
+            if (normalizedCustomFields.Error is not null) AddError(errors, $"{index + 2}. satır: {normalizedCustomFields.Error}");
             if (!string.IsNullOrWhiteSpace(row[8]) && (!employeeLookup.TryGetValue(row[8].Trim(), out var names) ||
                 names.Length != 1 || !string.Equals(names[0], row[9].Trim(), StringComparison.OrdinalIgnoreCase)))
                 AddError(errors, $"{index + 2}. satırdaki çalışan numarası ve adı bu şirkette eşleşmiyor.");
@@ -780,9 +849,12 @@ public static class DataExportEndpoints
         var normalizedTags = tags.Select(tag => tag.ToUpperInvariant()).ToArray();
         var existingMatches = 0;
         foreach (var batch in normalizedTags.Chunk(500))
-            existingMatches += await db.Assets.AsNoTracking()
-                .CountAsync(asset => asset.CompanyId == companyId && batch.Contains(asset.AssetTag.ToUpper()), cancellationToken);
-        var defaultAssetLocation = await AssetEndpoints.GetDefaultLocationPathAsync(db, companyId, cancellationToken);
+        {
+            var existingAssetQuery = db.Assets.AsNoTracking().Where(asset => asset.CompanyId == companyId && batch.Contains(asset.AssetTag.ToUpper()));
+            if (allowedLocations is not null)
+                existingAssetQuery = existingAssetQuery.Where(asset => asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value));
+            existingMatches += await existingAssetQuery.CountAsync(cancellationToken);
+        }
         var defaultLocationApplied = defaultAssetLocation is null ? 0 : validRows.Count(item => string.IsNullOrWhiteSpace(item.row[7]));
         var maxAssets = await AssetPlanQuota.GetLimitAsync(db, companyId, cancellationToken);
         var currentAssets = await AssetPlanQuota.GetUsageAsync(db, companyId, cancellationToken);
@@ -877,6 +949,7 @@ public static class DataExportEndpoints
         var activeMembership = await db.Companies.AsNoTracking().AnyAsync(c => c.Id == targetCompanyId && c.IsActive &&
             db.CompanyMemberships.Any(m => m.CompanyId == targetCompanyId && m.UserId == userId && m.RoleKey == role), cancellationToken);
         if (!activeMembership) return Results.Forbid();
+        if (!await HasUnrestrictedLocationAccessAsync(db, targetCompanyId, userId, cancellationToken)) return Results.Forbid();
         try { await antiforgery.ValidateRequestAsync(context); }
         catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
 
@@ -928,6 +1001,7 @@ public static class DataExportEndpoints
             var assetContractAssets = ReadOptionalRows(root, "assetContractAssets", errors, counts);
             var assetContractLicenses = ReadOptionalRows(root, "assetContractLicenses", errors, counts);
             var softwareLicenses = ReadOptionalRows(root, "softwareLicenses", errors, counts);
+            var installedSoftware = ReadOptionalRows(root, "installedSoftware", errors, counts);
             counts.TryAdd("assetPurchaseOrders", 0);
             counts.TryAdd("assetPurchaseOrderLines", 0);
             counts.TryAdd("assetPurchaseOrderAttachments", 0);
@@ -1035,6 +1109,12 @@ public static class DataExportEndpoints
                 if (asset.TryGetProperty("warrantyExpiresAt", out var warrantyDate) && warrantyDate.ValueKind != JsonValueKind.Null &&
                     (warrantyDate.ValueKind != JsonValueKind.String || !DateOnly.TryParseExact(warrantyDate.GetString(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _)))
                     AddError(errors, "Bir varlığın garanti bitiş tarihi yyyy-AA-gg biçiminde olmalı.");
+                if (ReadString(asset, "insuranceProvider") is { Length: > 160 } ||
+                    ReadString(asset, "insurancePolicyNumber") is { Length: > 120 })
+                    AddError(errors, "Bir varlığın sigorta şirketi (160) veya poliçe numarası (120) alanı izin verilen uzunluğu aşıyor.");
+                if (asset.TryGetProperty("insuranceExpiresAt", out var insuranceDate) && insuranceDate.ValueKind != JsonValueKind.Null &&
+                    (insuranceDate.ValueKind != JsonValueKind.String || !DateOnly.TryParseExact(insuranceDate.GetString(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out _)))
+                    AddError(errors, "Bir varlığın sigorta bitiş tarihi yyyy-AA-gg biçiminde olmalı.");
             }
             foreach (var entry in EnumerateRows(root, "assetEvents"))
             {
@@ -1121,6 +1201,32 @@ public static class DataExportEndpoints
                     AddError(errors, "Yazılım lisansının tarih veya metin alanı geçersiz.");
                 if (TryGuid(license, "supplierId", out var licenseSupplierId) && !suppliers.Contains(licenseSupplierId))
                     AddError(errors, "Bir yazılım lisansının tedarikçisi dosyada bulunamadı.");
+            }
+
+            var installedSoftwareIds = new HashSet<Guid>();
+            var installedSoftwareFingerprints = new HashSet<(Guid AssetId, string Fingerprint)>();
+            foreach (var item in installedSoftware)
+            {
+                if (item.ValueKind != JsonValueKind.Object) { AddError(errors, "Kurulu yazılım kaydı nesne değil."); continue; }
+                if (!TryGuid(item, "id", out var itemId) || !installedSoftwareIds.Add(itemId) ||
+                    !TryGuid(item, "companyId", out var itemCompanyId) || itemCompanyId != sourceCompanyId ||
+                    !TryGuid(item, "assetId", out var installedAssetId) || !assets.Contains(installedAssetId))
+                    AddError(errors, "Kurulu yazılım kaydının kimliği, şirketi veya bağlı varlığı geçersiz.");
+                var fingerprint = ReadString(item, "fingerprint");
+                if (string.IsNullOrWhiteSpace(fingerprint) || fingerprint.Length != 64 || fingerprint.Any(c => !Uri.IsHexDigit(c)))
+                    AddError(errors, "Kurulu yazılım parmak izi geçersiz.");
+                else if (TryGuid(item, "assetId", out var fingerprintAssetId) &&
+                         !installedSoftwareFingerprints.Add((fingerprintAssetId, fingerprint)))
+                    AddError(errors, "Aynı varlıkta yinelenen kurulu yazılım parmak izi var.");
+                if (string.IsNullOrWhiteSpace(ReadString(item, "name")) || ReadString(item, "name")!.Length > 200 ||
+                    OptionalTextExceeds(item, "publisher", 160) || OptionalTextExceeds(item, "version", 120) ||
+                    OptionalTextExceeds(item, "architecture", 32) || string.IsNullOrWhiteSpace(ReadString(item, "source")) ||
+                    OptionalTextExceeds(item, "source", 40) ||
+                    !item.TryGetProperty("isPresent", out var isPresent) || isPresent.ValueKind is not (JsonValueKind.True or JsonValueKind.False) ||
+                    !IsValidDateOnly(item, "installDate") || !item.TryGetProperty("firstSeenAt", out var firstSeenAt) ||
+                    !IsValidDateTimeOffset(firstSeenAt) || !item.TryGetProperty("lastSeenAt", out var lastSeenAt) ||
+                    !IsValidDateTimeOffset(lastSeenAt))
+                    AddError(errors, "Kurulu yazılım kaydının alanları geçersiz.");
             }
 
             var contractIds = new HashSet<Guid>();
@@ -1251,6 +1357,7 @@ public static class DataExportEndpoints
         if (!await db.Companies.AsNoTracking().AnyAsync(c => c.Id == targetCompanyId && c.IsActive &&
             db.CompanyMemberships.Any(m => m.CompanyId == targetCompanyId && m.UserId == userId && m.RoleKey == role), cancellationToken))
             return Results.Forbid();
+        if (!await HasUnrestrictedLocationAccessAsync(db, targetCompanyId, userId, cancellationToken)) return Results.Forbid();
         try { await antiforgery.ValidateRequestAsync(context); }
         catch (AntiforgeryValidationException) { return Results.BadRequest(new { message = "İstek doğrulaması başarısız." }); }
         if (context.Request.ContentType?.StartsWith("application/json", StringComparison.OrdinalIgnoreCase) != true)
@@ -1313,6 +1420,10 @@ public static class DataExportEndpoints
             var assetContractAssets = DeserializeRows<AssetContractAsset>(root, "assetContractAssets");
             var assetContractLicenses = DeserializeRows<AssetContractLicense>(root, "assetContractLicenses");
             var softwareLicenses = DeserializeRows<SoftwareLicense>(root, "softwareLicenses");
+            var softwareLicensePurchaseOrders = root.TryGetProperty("softwareLicensePurchaseOrders", out _)
+                ? DeserializeRows<SoftwareLicensePurchaseOrder>(root, "softwareLicensePurchaseOrders") : [];
+            var installedSoftware = root.TryGetProperty("installedSoftware", out _)
+                ? DeserializeRows<AssetInstalledSoftware>(root, "installedSoftware") : [];
             var maintenances = DeserializeRows<AssetMaintenance>(root, "assetMaintenances");
             var events = DeserializeRows<AssetEvent>(root, "assetEvents");
             var audits = DeserializeRows<AuditEntry>(root, "auditEntries");
@@ -1322,7 +1433,7 @@ public static class DataExportEndpoints
             var ids = new Dictionary<Guid, Guid>();
             var sourceIds = new object[] { departments, locations, employees, categories, brands, suppliers, models, assets,
                 requests, maintenances, events, audits, assetPurchaseOrders, assetPurchaseOrderLines, assetPurchaseOrderAttachments,
-                assetContracts, assetContractAssets, assetContractLicenses, softwareLicenses }.SelectMany(rows => ((System.Collections.IEnumerable)rows)
+                assetContracts, assetContractAssets, assetContractLicenses, softwareLicenses, softwareLicensePurchaseOrders, installedSoftware }.SelectMany(rows => ((System.Collections.IEnumerable)rows)
                 .Cast<object>().Select(row => (Guid)row.GetType().GetProperty("Id")!.GetValue(row)!)).ToArray();
             if (sourceIds.Distinct().Count() != sourceIds.Length)
                 return Results.UnprocessableEntity(new { isValid = false, errors = new[] { "Dosyada tablo aileleri arasında yinelenen kayıt kimliği var; hiçbir kayıt aktarılmadı." } });
@@ -1339,7 +1450,8 @@ public static class DataExportEndpoints
             RemapIds(assetPurchaseOrders); RemapIds(assetPurchaseOrderLines);
             RemapIds(assetPurchaseOrderAttachments);
             RemapIds(assetContracts); RemapIds(assetContractAssets); RemapIds(assetContractLicenses);
-            RemapIds(softwareLicenses);
+            RemapIds(softwareLicenses); RemapIds(softwareLicensePurchaseOrders);
+            RemapIds(installedSoftware);
             Guid? Map(Guid? source) => source is Guid id && ids.TryGetValue(id, out var mapped) ? mapped : null;
             void CompanyScope<T>(IEnumerable<T> rows) where T : class
             {
@@ -1352,7 +1464,8 @@ public static class DataExportEndpoints
             CompanyScope(assetPurchaseOrders); CompanyScope(assetPurchaseOrderLines);
             CompanyScope(assetPurchaseOrderAttachments);
             CompanyScope(assetContracts); CompanyScope(assetContractAssets); CompanyScope(assetContractLicenses);
-            CompanyScope(softwareLicenses);
+            CompanyScope(softwareLicenses); CompanyScope(softwareLicensePurchaseOrders);
+            CompanyScope(installedSoftware);
             foreach (var item in locations) { item.ParentLocationId = Map(item.ParentLocationId); item.ManagerEmployeeId = Map(item.ManagerEmployeeId); }
             foreach (var item in employees) { item.LocationCatalogId = Map(item.LocationCatalogId); item.ManagerEmployeeId = Map(item.ManagerEmployeeId); }
             foreach (var item in suppliers)
@@ -1388,6 +1501,8 @@ public static class DataExportEndpoints
             foreach (var item in assetContractAssets) { item.ContractId = Map(item.ContractId) ?? Guid.Empty; item.AssetId = Map(item.AssetId) ?? Guid.Empty; }
             foreach (var item in assetContractLicenses) { item.ContractId = Map(item.ContractId) ?? Guid.Empty; item.LicenseId = Map(item.LicenseId) ?? Guid.Empty; }
             foreach (var item in softwareLicenses) item.SupplierId = Map(item.SupplierId);
+            foreach (var item in softwareLicensePurchaseOrders) { item.LicenseId = Map(item.LicenseId) ?? Guid.Empty; item.SupplierId = Map(item.SupplierId) ?? Guid.Empty; }
+            foreach (var item in installedSoftware) item.AssetId = Map(item.AssetId) ?? Guid.Empty;
 
             db.CompanyDepartments.AddRange(departments); db.CompanyLocations.AddRange(locations);
             db.Employees.AddRange(employees); db.AssetCategories.AddRange(categories); db.AssetBrands.AddRange(brands);
@@ -1399,6 +1514,8 @@ public static class DataExportEndpoints
             db.AssetContracts.AddRange(assetContracts); db.AssetContractAssets.AddRange(assetContractAssets);
             db.AssetContractLicenses.AddRange(assetContractLicenses);
             db.SoftwareLicenses.AddRange(softwareLicenses);
+            db.SoftwareLicensePurchaseOrders.AddRange(softwareLicensePurchaseOrders);
+            db.AssetInstalledSoftware.AddRange(installedSoftware);
             db.AuditEntries.Add(new AuditEntry { CompanyId = targetCompanyId, ActorUserId = userId,
                 TargetType = "Company", TargetId = targetCompanyId, Action = "CompanyDataImported",
                 Details = "Şirket JSON arşivindeki kataloglar, çalışanlar, varlıklar ve ilişkili kayıtlar yeni kimliklerle geri yüklendi." });
@@ -1722,6 +1839,10 @@ public static class DataExportEndpoints
         if (errors.Count < 30 && !errors.Contains(message, StringComparer.Ordinal)) errors.Add(message);
     }
 
+    private static async Task<bool> HasUnrestrictedLocationAccessAsync(AppDbContext db, Guid companyId, Guid userId,
+        CancellationToken cancellationToken) =>
+        (await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, userId, cancellationToken)) is null;
+
     private static async Task<IResult> ExportCompanyAsync(
         HttpContext context, AppDbContext db, CancellationToken cancellationToken)
     {
@@ -1735,9 +1856,12 @@ public static class DataExportEndpoints
         var activeMembership = await db.Companies.AsNoTracking().AnyAsync(c => c.Id == companyId && c.IsActive &&
             db.CompanyMemberships.Any(m => m.CompanyId == companyId && m.UserId == userId && m.RoleKey == role), cancellationToken);
         if (!activeMembership) return Results.Forbid();
+        if (!await HasUnrestrictedLocationAccessAsync(db, companyId, userId, cancellationToken)) return Results.Forbid();
         var company = await db.Companies.AsNoTracking()
             .SingleOrDefaultAsync(x => x.Id == companyId, cancellationToken);
         if (company is null) return Results.NotFound();
+
+        await RecordCompanyExportAsync(db, companyId, userId, "company.export.json", cancellationToken);
 
         context.Response.StatusCode = StatusCodes.Status200OK;
         context.Response.ContentType = "application/json; charset=utf-8";
@@ -1758,6 +1882,7 @@ public static class DataExportEndpoints
                 writer.Flush();
             }
             await responseWriter.FlushAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
         }
         finally
         {
@@ -1775,6 +1900,7 @@ public static class DataExportEndpoints
         var role = context.User.FindFirstValue("company_role");
         if (!await db.Companies.AsNoTracking().AnyAsync(c => c.Id == companyId && c.IsActive &&
             db.CompanyMemberships.Any(m => m.CompanyId == companyId && m.UserId == userId && m.RoleKey == role), cancellationToken)) return Results.Forbid();
+        if (!await HasUnrestrictedLocationAccessAsync(db, companyId, userId, cancellationToken)) return Results.Forbid();
         var company = await db.Companies.AsNoTracking().SingleOrDefaultAsync(x => x.Id == companyId, cancellationToken);
         if (company is null) return Results.NotFound();
 
@@ -1814,6 +1940,8 @@ public static class DataExportEndpoints
                     return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
             }
         }
+
+        await RecordCompanyExportAsync(db, companyId, userId, "company.export.zip", cancellationToken);
 
         var archivePath = Path.Combine(Path.GetTempPath(), $"envantertr-company-export-{Guid.NewGuid():N}.zip");
         try
@@ -1860,6 +1988,7 @@ public static class DataExportEndpoints
             context.Response.Headers.ContentDisposition = $"attachment; filename=envantertr-sirket-arsivi-{DateTime.UtcNow:yyyyMMdd}.zip";
             context.Response.ContentLength = archiveFile.Length;
             await archiveFile.CopyToAsync(context.Response.Body, 64 * 1024, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
         }
         finally
         {
@@ -1868,6 +1997,21 @@ public static class DataExportEndpoints
             catch (UnauthorizedAccessException) { }
         }
         return Results.Empty;
+    }
+
+    private static async Task RecordCompanyExportAsync(AppDbContext db, Guid companyId, Guid userId,
+        string action, CancellationToken cancellationToken)
+    {
+        db.AuditEntries.Add(new AuditEntry
+        {
+            CompanyId = companyId,
+            ActorUserId = userId,
+            TargetType = "CompanyDataExport",
+            TargetId = companyId,
+            Action = action,
+            Details = "Şirket verisi dışa aktarma akışı tamamlandı."
+        });
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     private static async Task WriteCompanyJsonAsync(Utf8JsonWriter writer, AppDbContext db, Company company,
@@ -1905,10 +2049,12 @@ public static class DataExportEndpoints
         await WritePagedAsync(writer, "softwareLicenses", db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id)
             .Select(x => new SoftwareLicense { Id = x.Id, CompanyId = x.CompanyId, Name = x.Name, Publisher = x.Publisher,
                 ProductVersion = x.ProductVersion, LicenseType = x.LicenseType, LicenseReference = null, Supplier = x.Supplier,
-                SupplierId = x.SupplierId, Seats = x.Seats, UnitCost = x.UnitCost, Currency = x.Currency,
+                SupplierId = x.SupplierId, PurchaseOrderReference = x.PurchaseOrderReference, Seats = x.Seats, UnitCost = x.UnitCost, Currency = x.Currency,
                 PurchaseDate = x.PurchaseDate, ExpirationDate = x.ExpirationDate, AutoRenew = x.AutoRenew,
                 RequiresEulaAcceptance = x.RequiresEulaAcceptance, Notes = x.Notes, CreatedAt = x.CreatedAt, UpdatedAt = x.UpdatedAt }),
             cancellationToken, responseWriter);
+        await WritePagedAsync(writer, "softwareLicensePurchaseOrders", db.SoftwareLicensePurchaseOrders.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
+        await WritePagedAsync(writer, "installedSoftware", db.AssetInstalledSoftware.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
         await WritePagedAsync(writer, "auditEntries", db.AuditEntries.AsNoTracking().Where(x => x.CompanyId == companyId).OrderBy(x => x.Id), cancellationToken, responseWriter);
         var members = from membership in db.CompanyMemberships.AsNoTracking().Where(x => x.CompanyId == companyId)
                       join user in db.Users.AsNoTracking() on membership.UserId equals user.Id

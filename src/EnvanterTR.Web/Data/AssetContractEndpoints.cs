@@ -14,13 +14,16 @@ public static class AssetContractEndpoints
             [FromQuery] bool includeArchived, [FromQuery] int page, [FromQuery] int pageSize,
             ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
-            if (!Company(user, out var companyId)) return Results.Forbid();
+            if (!Company(user, out var companyId) || !Actor(user, out var actorId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
+            var allowedLocations = employeeScope.AllowedLocations;
             if (q?.Trim().Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama en fazla 120 karakter olabilir."] });
             if (status is not (null or "" or "all" or "active" or "expired" or "expiring" or "archived"))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["status"] = ["Durum active, expired, expiring, archived veya all olmalıdır."] });
             page = Math.Max(1, page); pageSize = Math.Clamp(pageSize == 0 ? 25 : pageSize, 1, 100);
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
-            var query = db.AssetContracts.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var query = db.AssetContracts.AsNoTracking().Where(x => x.CompanyId == companyId)
+                .InEmployeeScope(db, companyId, employeeScope);
             if (!includeArchived && status != "archived") query = query.Where(x => x.IsActive);
             if (status == "archived") query = query.Where(x => !x.IsActive);
             else if (status == "expired") query = query.Where(x => x.IsActive && x.EndDate != null && x.EndDate < today);
@@ -50,10 +53,14 @@ public static class AssetContractEndpoints
 
         api.MapGet("/contracts/lookups", async ([FromQuery] string? q, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
-            if (!Company(user, out var companyId)) return Results.Forbid();
+            if (!Company(user, out var companyId) || !Actor(user, out var actorId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
+            var allowedLocations = employeeScope.AllowedLocations;
             if (q?.Trim().Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama en fazla 120 karakter olabilir."] });
-            var assets = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.DeletedAt == null);
-            var licenses = db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var assets = db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.DeletedAt == null)
+                .AssetsInLocationScope(companyId, allowedLocations);
+            var licenses = db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId)
+                .LicensesInEmployeeScope(db, companyId, employeeScope);
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
@@ -70,11 +77,14 @@ public static class AssetContractEndpoints
         api.MapGet("/contracts/export.csv", async ([FromQuery] string? q, [FromQuery] string? status,
             ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
-            if (!Company(user, out var companyId)) return Results.Forbid();
+            if (!Company(user, out var companyId) || !Actor(user, out var actorId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
+            var allowedLocations = employeeScope.AllowedLocations;
             if (q?.Trim().Length > 120 || status is not (null or "" or "all" or "active" or "expired" or "expiring" or "archived"))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["filter"] = ["Sözleşme arama veya durum filtresi geçersiz."] });
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
-            var query = db.AssetContracts.AsNoTracking().Where(x => x.CompanyId == companyId);
+            var query = db.AssetContracts.AsNoTracking().Where(x => x.CompanyId == companyId)
+                .InEmployeeScope(db, companyId, employeeScope);
             if (status == "archived") query = query.Where(x => !x.IsActive);
             else if (status is "active" or "expired" or "expiring")
             {
@@ -113,20 +123,25 @@ public static class AssetContractEndpoints
 
         api.MapGet("/contracts/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
-            if (!Company(user, out var companyId)) return Results.Forbid();
+            if (!Company(user, out var companyId) || !Actor(user, out var actorId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
+            var allowedLocations = employeeScope.AllowedLocations;
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
             var contract = await db.AssetContracts.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
+                .InEmployeeScope(db, companyId, employeeScope)
                 .Select(x => new { x.Id, x.Name, x.ContractNumber, x.ContractType, x.Supplier, x.SupplierId, x.StartDate,
                     x.EndDate, x.Cost, x.Currency, x.Notes, x.IsActive, x.CreatedAt, x.UpdatedAt,
                     status = !x.IsActive ? "archived" : x.EndDate != null && x.EndDate < today ? "expired" :
                         x.EndDate != null && x.EndDate <= today.AddDays(30) ? "expiring" : "active" }).SingleOrDefaultAsync(ct);
             if (contract is null) return Results.NotFound();
+            var visibleAssets = db.Assets.AsNoTracking().AssetsInLocationScope(companyId, allowedLocations);
             var assets = await (from link in db.AssetContractAssets.AsNoTracking().Where(x => x.CompanyId == companyId && x.ContractId == id)
-                                join asset in db.Assets.AsNoTracking() on new { link.CompanyId, Id = link.AssetId } equals new { asset.CompanyId, asset.Id }
+                                join asset in visibleAssets on new { link.CompanyId, Id = link.AssetId } equals new { asset.CompanyId, asset.Id }
                                 orderby asset.AssetTag
                                 select new { asset.Id, asset.AssetTag, asset.Name, asset.SerialNumber }).ToListAsync(ct);
+            var visibleLicenses = db.SoftwareLicenses.AsNoTracking().LicensesInEmployeeScope(db, companyId, employeeScope);
             var licenses = await (from link in db.AssetContractLicenses.AsNoTracking().Where(x => x.CompanyId == companyId && x.ContractId == id)
-                                  join license in db.SoftwareLicenses.AsNoTracking() on new { link.CompanyId, Id = link.LicenseId } equals new { license.CompanyId, license.Id }
+                                  join license in visibleLicenses on new { link.CompanyId, Id = link.LicenseId } equals new { license.CompanyId, license.Id }
                                   orderby license.Name
                                   select new { license.Id, license.Name, license.LicenseReference, license.ExpirationDate }).ToListAsync(ct);
             return Results.Ok(new { contract, assets, licenses });
@@ -135,7 +150,9 @@ public static class AssetContractEndpoints
         api.MapPost("/contracts", async (ContractRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Company(user, out var companyId) || !Actor(user, out var actorId)) return Results.Forbid();
-            var error = await ValidateAsync(request, companyId, db, ct);
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
+            var allowedLocations = employeeScope.AllowedLocations;
+            var error = await ValidateAsync(request, companyId, db, employeeScope, ct);
             if (error is not null) return Results.ValidationProblem(error);
             var supplier = request.SupplierId is Guid supplierId
                 ? await db.SupplierCatalogEntries.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == supplierId).Select(x => x.Name).SingleAsync(ct)
@@ -159,10 +176,13 @@ public static class AssetContractEndpoints
         api.MapPut("/contracts/{id:guid}", async (Guid id, ContractRequest request, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Company(user, out var companyId) || !Actor(user, out var actorId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
+            var allowedLocations = employeeScope.AllowedLocations;
+            if (!await AssetContractLocationAccess.CanAccessAsync(db, companyId, id, employeeScope, ct)) return Results.NotFound();
             var item = await db.AssetContracts.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
             if (item is null) return Results.NotFound();
             if (!item.IsActive) return Results.Conflict(new { message = "Arşivlenmiş sözleşmeyi değiştirmeden önce geri yükleyin." });
-            var error = await ValidateAsync(request, companyId, db, ct);
+            var error = await ValidateAsync(request, companyId, db, employeeScope, ct);
             if (error is not null) return Results.ValidationProblem(error);
             var supplier = request.SupplierId is Guid supplierId
                 ? await db.SupplierCatalogEntries.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == supplierId).Select(x => x.Name).SingleAsync(ct)
@@ -183,6 +203,9 @@ public static class AssetContractEndpoints
         api.MapPost("/contracts/{id:guid}/archive", async (Guid id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Company(user, out var companyId) || !Actor(user, out var actorId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
+            var allowedLocations = employeeScope.AllowedLocations;
+            if (!await AssetContractLocationAccess.CanAccessAsync(db, companyId, id, employeeScope, ct)) return Results.NotFound();
             var item = await db.AssetContracts.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
             if (item is null) return Results.NotFound();
             if (item.IsActive)
@@ -198,6 +221,9 @@ public static class AssetContractEndpoints
         api.MapPost("/contracts/{id:guid}/restore", async (Guid id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!Company(user, out var companyId) || !Actor(user, out var actorId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
+            var allowedLocations = employeeScope.AllowedLocations;
+            if (!await AssetContractLocationAccess.CanAccessAsync(db, companyId, id, employeeScope, ct)) return Results.NotFound();
             var item = await db.AssetContracts.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
             if (item is null) return Results.NotFound();
             if (!item.IsActive)
@@ -212,8 +238,10 @@ public static class AssetContractEndpoints
         return api;
     }
 
-    private static async Task<Dictionary<string, string[]>?> ValidateAsync(ContractRequest request, Guid companyId, AppDbContext db, CancellationToken ct)
+    private static async Task<Dictionary<string, string[]>?> ValidateAsync(ContractRequest request, Guid companyId, AppDbContext db,
+        EmployeeAccessScope employeeScope, CancellationToken ct)
     {
+        var allowedLocations = employeeScope.AllowedLocations;
         var errors = new Dictionary<string, string[]>();
         if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length > 200) errors["name"] = ["Sözleşme adı zorunludur ve en fazla 200 karakter olabilir."];
         if (Clean(request.ContractNumber)?.Length > 120) errors["contractNumber"] = ["Sözleşme numarası en fazla 120 karakter olabilir."];
@@ -227,12 +255,16 @@ public static class AssetContractEndpoints
             errors["supplierId"] = ["Seçilen tedarikçi bu şirkette bulunamadı."];
         var assetIds = request.AssetIds ?? [];
         if (assetIds.Count > 2000 || assetIds.Distinct().Count() != assetIds.Count) errors["assetIds"] = ["En fazla 2.000 farklı varlık bağlanabilir."];
-        else if (assetIds.Count > 0 && await db.Assets.CountAsync(x => x.CompanyId == companyId && x.DeletedAt == null && assetIds.Contains(x.Id), ct) != assetIds.Count)
+        else if (assetIds.Count > 0 && await db.Assets.AsNoTracking().Where(x => x.CompanyId == companyId && x.DeletedAt == null)
+                     .AssetsInLocationScope(companyId, allowedLocations).CountAsync(x => assetIds.Contains(x.Id), ct) != assetIds.Count)
             errors["assetIds"] = ["Seçilen varlıklardan biri bu şirkette yok, arşivlenmiş veya silinmiş."];
         var licenseIds = request.LicenseIds ?? [];
         if (licenseIds.Count > 2000 || licenseIds.Distinct().Count() != licenseIds.Count) errors["licenseIds"] = ["En fazla 2.000 farklı lisans bağlanabilir."];
-        else if (licenseIds.Count > 0 && await db.SoftwareLicenses.CountAsync(x => x.CompanyId == companyId && licenseIds.Contains(x.Id), ct) != licenseIds.Count)
+        else if (licenseIds.Count > 0 && await db.SoftwareLicenses.AsNoTracking().Where(x => x.CompanyId == companyId)
+                     .LicensesInEmployeeScope(db, companyId, employeeScope).CountAsync(x => licenseIds.Contains(x.Id), ct) != licenseIds.Count)
             errors["licenseIds"] = ["Seçilen lisanslardan biri bu şirkette bulunamadı."];
+        if (employeeScope.IsRestricted && assetIds.Count + licenseIds.Count == 0)
+            errors["assetIds"] = ["Konumla sınırlı kullanıcılar yalnız erişebildikleri varlık veya lisanslara bağlı sözleşme oluşturabilir."];
         return errors.Count == 0 ? null : errors;
     }
 

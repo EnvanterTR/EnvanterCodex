@@ -20,7 +20,7 @@ jobs:
   linux-security-acceptance:
     name: Linux tenant security acceptance
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -240,11 +240,25 @@ jobs:
         shell: bash
         run: node tools/Verify-HostedCheckoutBrowserAcceptance.mjs
 
+      - name: Verify support ticket UI and race guards
+        shell: bash
+        run: node tools/Verify-SupportUi.mjs
+
       - name: Run hosted Cloud checkout in Chromium
         shell: bash
         run: |
           docker build --tag envantertr-hosted-checkout-browser-ci --file deploy/testing/Dockerfile.hosted-checkout-browser .
           docker run --rm --init envantertr-hosted-checkout-browser-ci
+
+      - name: Verify application scripts and camera policy through Nginx
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker tag envantertr-hosted-checkout-browser-ci envantertr-hosted-checkout-browser-acceptance:local
+          project_name="envantertr-proxy-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          compose_file="deploy/testing/compose.proxy-acceptance.yaml"
+          trap 'docker compose --project-name "$project_name" --file "$compose_file" down --remove-orphans' EXIT
+          docker compose --project-name "$project_name" --file "$compose_file" run --rm checks
 
       - name: Verify payment provider and checkout security contract
         shell: bash
@@ -322,6 +336,10 @@ jobs:
             -Project EnvanterTR.Web
           docker rm "$container_id" >/dev/null
           trap - EXIT
+
+      - name: Verify the built Release image with Production settings
+        shell: pwsh
+        run: ./deploy/testing/run-release-smoke.ps1 -Image envantertr-web-ci
 
       - name: Check Linux deployment script syntax
         shell: bash
@@ -416,6 +434,10 @@ jobs:
       - name: Build the local account recovery utility
         shell: pwsh
         run: dotnet publish tools/EnvanterTR.AccountRecovery/EnvanterTR.AccountRecovery.csproj -c Release -o "$env:RUNNER_TEMP\envantertr-account-recovery"
+
+      - name: Verify deterministic dependency metadata across platforms
+        shell: pwsh
+        run: ./tools/tests/third-party-inventory-determinism.ps1
 
       - name: Rebuild the third-party dependency inventory
         shell: pwsh

@@ -6,6 +6,9 @@
 *.user
 *.suo
 
+# Installed JavaScript dependencies
+**/node_modules/
+
 # Local configuration and secrets
 appsettings.Development.json
 *.local.json

@@ -22,19 +22,13 @@ public static class DepreciationReportEndpoints
             ClaimsPrincipal user, AppDbContext db, CancellationToken ct,
             [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
         {
-            if (!TryCompany(user, out var companyId)) return Results.Forbid();
+            if (!TryCompany(user, out var companyId) || !TryUserId(user, out var userId)) return Results.Forbid();
             if (q?.Trim().Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama 120 karakteri aşamaz."] });
             var effectiveDate = asOf ?? DateOnly.FromDateTime(DateTime.UtcNow);
             if (effectiveDate < new DateOnly(2000, 1, 1) || effectiveDate > new DateOnly(2100, 12, 31))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["asOf"] = ["Rapor tarihi 2000 ile 2100 arasında olmalıdır."] });
-            var sourceQuery = BuildQuery(db, companyId);
-            if (!string.IsNullOrWhiteSpace(q))
-            {
-                var term = q.Trim();
-                sourceQuery = sourceQuery.Where(x => x.AssetTag.Contains(term) || x.Name.Contains(term) ||
-                    (x.SerialNumber != null && x.SerialNumber.Contains(term)) || x.Category.Contains(term) ||
-                    (x.Model != null && x.Model.Contains(term)) || (x.Location != null && x.Location.Contains(term)));
-            }
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, userId, ct);
+            var sourceQuery = BuildQuery(db, companyId, allowedLocations, string.IsNullOrWhiteSpace(q) ? null : q.Trim());
             var total = await sourceQuery.CountAsync(ct);
             if (total > MaximumReportRows)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["report"] = [$"Amortisman raporu bir defada en fazla {MaximumReportRows:N0} uygun varlığı hesaplar. Aramayı daraltın."] });
@@ -60,19 +54,13 @@ public static class DepreciationReportEndpoints
         api.MapGet("/reports/depreciation/export.csv", async ([FromQuery] string? q, [FromQuery] DateOnly? asOf,
             ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
-            if (!TryCompany(user, out var companyId)) return Results.Forbid();
+            if (!TryCompany(user, out var companyId) || !TryUserId(user, out var userId)) return Results.Forbid();
             if (q?.Trim().Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["q"] = ["Arama 120 karakteri aşamaz."] });
             var effectiveDate = asOf ?? DateOnly.FromDateTime(DateTime.UtcNow);
             if (effectiveDate < new DateOnly(2000, 1, 1) || effectiveDate > new DateOnly(2100, 12, 31))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["asOf"] = ["Rapor tarihi 2000 ile 2100 arasında olmalıdır."] });
-            var sourceQuery = BuildQuery(db, companyId);
-            if (!string.IsNullOrWhiteSpace(q))
-            {
-                var term = q.Trim();
-                sourceQuery = sourceQuery.Where(x => x.AssetTag.Contains(term) || x.Name.Contains(term) ||
-                    (x.SerialNumber != null && x.SerialNumber.Contains(term)) || x.Category.Contains(term) ||
-                    (x.Model != null && x.Model.Contains(term)) || (x.Location != null && x.Location.Contains(term)));
-            }
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, userId, ct);
+            var sourceQuery = BuildQuery(db, companyId, allowedLocations, string.IsNullOrWhiteSpace(q) ? null : q.Trim());
             if (await sourceQuery.CountAsync(ct) > MaximumReportRows)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["report"] = [$"CSV dışa aktarma en fazla {MaximumReportRows:N0} uygun varlığı destekler. Aramayı daraltın."] });
             var rows = (await sourceQuery.ToListAsync(ct)).OrderBy(x => x.AssetTag, StringComparer.Ordinal)
@@ -94,13 +82,24 @@ public static class DepreciationReportEndpoints
         }).RequireAuthorization("asset.read");
     }
 
-    private static IQueryable<SourceRow> BuildQuery(AppDbContext db, Guid companyId) =>
+    private static IQueryable<SourceRow> BuildQuery(AppDbContext db, Guid companyId, HashSet<Guid>? allowedLocations, string? searchTerm) =>
         from asset in db.Assets.AsNoTracking()
         join model in db.AssetModels.AsNoTracking() on new { asset.CompanyId, Id = asset.ModelId } equals new { model.CompanyId, Id = (Guid?)model.Id }
         join category in db.AssetCategories.AsNoTracking() on new { asset.CompanyId, asset.CategoryId } equals new { category.CompanyId, CategoryId = category.Id }
         where asset.CompanyId == companyId && asset.DeletedAt == null && asset.PurchaseDate != null && asset.PurchaseCost != null &&
-              model.DepreciationMonths != null
-        select new SourceRow(asset.Id, asset.AssetTag, asset.Name, asset.SerialNumber, category.Name, model.Name, asset.Location,
+              (allowedLocations == null || asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value)) &&
+              model.DepreciationMonths != null &&
+              (searchTerm == null || asset.AssetTag.Contains(searchTerm) || asset.Name.Contains(searchTerm) ||
+               asset.SerialNumber != null && asset.SerialNumber.Contains(searchTerm) || category.Name.Contains(searchTerm) ||
+               model.Name != null && model.Name.Contains(searchTerm) ||
+               (allowedLocations == null
+                   ? asset.Location != null && asset.Location.Contains(searchTerm)
+                   : db.CompanyLocations.Any(location => location.CompanyId == companyId && location.Id == asset.LocationCatalogId &&
+                       location.Name.Contains(searchTerm))))
+        select new SourceRow(asset.Id, asset.AssetTag, asset.Name, asset.SerialNumber, category.Name, model.Name,
+            allowedLocations == null ? asset.Location : db.CompanyLocations
+                .Where(location => location.CompanyId == companyId && location.Id == asset.LocationCatalogId)
+                .Select(location => location.Name).FirstOrDefault(),
             asset.Status, asset.PurchaseDate!.Value, asset.PurchaseCost!.Value, asset.Currency, model.DepreciationMonths!.Value,
             model.DepreciationMinimum, model.DepreciationMinimumType, model.DepreciationMethod);
 
@@ -162,4 +161,6 @@ public static class DepreciationReportEndpoints
     private static string Number(decimal value) => value.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
     private static bool TryCompany(ClaimsPrincipal user, out Guid companyId) =>
         Guid.TryParse(user.FindFirstValue("company_id"), out companyId);
+    private static bool TryUserId(ClaimsPrincipal user, out Guid userId) =>
+        Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
 }

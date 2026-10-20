@@ -4,6 +4,8 @@ Bu doküman, EnvanterTR platform sahibinin kullanacağı yönetim API'sinin mevc
 
 ## Eklenen API temeli
 
+Yerel kaynakta platform girişi normal kullanımda 8 saatlik, açıkça seçilen “Beni hatırla (30 gün)” ile 720 saatlik oturum oluşturur. Seçenek varsayılan kapalıdır. Kimlik çerezi aynı mutlak bitiş tarihini taşır; kayarak süre uzatma kapalıdır. Şirket oturumlarında mevcut şirket güvenlik süresi üst sınır olarak korunur. Hatırlanan oturum yeni bir cihazın MFA kontrolünü atlamaz. Bu değişikliğin canlıya dağıtımı ayrıca izlenir.
+
 Platform yönetim ekranı `src/EnvanterTR.Web/wwwroot/platform-admin.html` dosyasında, `/platform-admin.html` yolunda yer alır. Oturum açma, özet, firma listesi ve arama, firma ayrıntısı/üyelik ve abonelik geçmişi, firma askıya alma/etkinleştirme, demo tanımlama, abonelik süresi uzatma, plan listeleme/oluşturma/düzenleme, site metni düzenleme ve denetim listesi ekranları API uçlarına bağlanmıştır. Ekran platform yöneticisi claim'i olmayan hesabı kabul etmez.
 
 - `GET /api/platform/overview`: firma toplamı, aktif/askıdaki firmalar, aktif ücretli abonelik, demo, süresi dolmuş abonelik ve 30 gün içinde yenilenecek abonelik sayısı. Ödeme verisi olmadığı için gelir uydurmaz.

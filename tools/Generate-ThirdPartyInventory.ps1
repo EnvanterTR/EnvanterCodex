@@ -66,7 +66,7 @@ foreach ($project in $projects) {
             LicenseType = $licenseType
             LicenseUrl = $licenseUrl
             LicenseFile = $licenseFile
-            MetadataSource = "NuGet package nuspec: $($nuspec.Name)"
+            MetadataSource = "NuGet package nuspec: $($packageId.ToLowerInvariant()).nuspec"
         })
     }
 }
@@ -91,5 +91,6 @@ foreach ($vendor in (Get-Content -LiteralPath $vendorManifestPath -Raw | Convert
 $rows = @($rows | Sort-Object -Property Project, Package, Version -Culture 'en-US')
 $missing = @($rows | Where-Object { -not $_.LicenseExpression -and -not $_.LicenseFile -and -not $_.LicenseUrl })
 if ($missing.Count) { throw "License metadata is missing for $($missing.Count) dependencies." }
-$rows | Export-Csv -LiteralPath $OutputPath -NoTypeInformation -Encoding utf8
+$csv = ($rows | ConvertTo-Csv -NoTypeInformation) -join "`n"
+[IO.File]::WriteAllText($OutputPath, $csv + "`n", [Text.UTF8Encoding]::new($false))
 Write-Output "Wrote $($rows.Count) dependency records to $OutputPath ($($projects.Count) NuGet projects plus vendored web assets)."
