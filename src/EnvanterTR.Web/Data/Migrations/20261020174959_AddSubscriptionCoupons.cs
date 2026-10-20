@@ -42,7 +42,7 @@ namespace EnvanterTR.Web.Data.Migrations
                 nullable: false,
                 defaultValue: 0m);
 
-            migrationBuilder.Sql("UPDATE \"CompanyCheckoutOrders\" SET \"SubtotalAmount\" = \"Amount\"");
+            migrationBuilder.Sql("UPDATE \"CompanyCheckoutOrders\" SET \"SubtotalAmount\" = \"Amount\";");
 
             migrationBuilder.CreateTable(
                 name: "SubscriptionCoupons",
