@@ -4954,6 +4954,18 @@ try {
       console.log('PASS: location default can be set/switched with a single company default; active employee can be assigned/removed as location manager with CSRF and refreshed rows.');
     }
     if (name === 'Durum etiketleri') {
+      let concurrentStatusLabelReads = 0;
+      const countStatusLabelRead = route => {
+        if (route.request().method() === 'GET') concurrentStatusLabelReads++;
+        return route.continue();
+      };
+      await page.route('**/api/assets/status-labels', countStatusLabelRead);
+      try {
+        await page.evaluate(() => Promise.all([loadAssetStatusLabels(), loadAssetStatusLabels()]));
+      } finally {
+        await page.unroute('**/api/assets/status-labels', countStatusLabelRead);
+      }
+      assert.equal(concurrentStatusLabelReads, 1, 'Concurrent status-label screen loads must share one request so a late duplicate cannot overwrite an edit.');
       await page.waitForFunction(() => document.querySelectorAll('#assetStatusLabelRows input[data-status]').length === 6
         && document.querySelector('#assetStatusTransitionMatrix table'));
       assert.equal(await page.locator('#assetStatusTransitionMatrix th[title="Archived"]').count(), 0,

@@ -4435,6 +4435,7 @@
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]); }
     const defaultAssetStatusLabels = { Available: 'Kullanılabilir', Deployed: 'Atanmış', Pending: 'Beklemede', Maintenance: 'Bakımda', Unusable: 'Kullanılamaz', Archived: 'Arşiv' };
     let assetStatusLabelRows = Object.entries(defaultAssetStatusLabels).map(([status, defaultLabel]) => ({ status, defaultLabel, label: defaultLabel }));
+    let assetStatusLabelsLoadPromise = null;
     let assetStatusLabelMap = { ...defaultAssetStatusLabels };
     let assetStatusConfiguration = { builtInStatuses: Object.entries(defaultAssetStatusLabels).map(([status,label])=>({status,label,defaultLabel:label})), customStatuses: [], transitions: [] };
     function statusLabel(status) { return assetStatusLabelMap[status] || defaultAssetStatusLabels[status] || status || 'Bilinmiyor'; }
@@ -4453,14 +4454,22 @@
       }
     }
     async function loadAssetStatusLabels() {
-      assetStatusLabelRows = await api('/api/assets/status-labels');
-      assetStatusLabelMap = Object.fromEntries(assetStatusLabelRows.map(item => [item.status, item.label]));
-      assetStatusConfiguration = await api('/api/assets/status-config');
-      document.querySelectorAll('#assetStatusLabelsPage h1, #assetStatusLabelsPage h2, #assetStatusLabelsPage p, #assetStatusLabelsPage button[type="submit"]').forEach(node => { node.textContent = translateUiText(node.textContent); });
-      applyAssetStatusLabelsToOptions();
-      renderAssetStatusLabels();
-      renderAssetStatusConfiguration();
-      return assetStatusLabelRows;
+      if (assetStatusLabelsLoadPromise) return assetStatusLabelsLoadPromise;
+      assetStatusLabelsLoadPromise = (async () => {
+        assetStatusLabelRows = await api('/api/assets/status-labels');
+        assetStatusLabelMap = Object.fromEntries(assetStatusLabelRows.map(item => [item.status, item.label]));
+        assetStatusConfiguration = await api('/api/assets/status-config');
+        document.querySelectorAll('#assetStatusLabelsPage h1, #assetStatusLabelsPage h2, #assetStatusLabelsPage p, #assetStatusLabelsPage button[type="submit"]').forEach(node => { node.textContent = translateUiText(node.textContent); });
+        applyAssetStatusLabelsToOptions();
+        renderAssetStatusLabels();
+        renderAssetStatusConfiguration();
+        return assetStatusLabelRows;
+      })();
+      try {
+        return await assetStatusLabelsLoadPromise;
+      } finally {
+        assetStatusLabelsLoadPromise = null;
+      }
     }
     function renderAssetStatusLabels() {
       const host = $('#assetStatusLabelRows'); if (!host) return;
