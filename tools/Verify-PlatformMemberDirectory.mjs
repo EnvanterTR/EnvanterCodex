@@ -104,7 +104,7 @@ assert.match(acceptance, /Satın alma kaydı oluşturuldu/);
 assert.match(acceptance, /timelinePages > 1/);
 assert.match(acceptance, /checkout-token-hash-must-not-leak/);
 assert.match(acceptance, /protected-checkout-url-must-not-leak/);
-assert.match(acceptance, /pending-member-checkout-reference/);
+assert.match(acceptance, /PaymentReference = \$"pending-member-checkout-\{_companyId:N\}"/);
 assert.match(acceptance, /Unprovisioned Acceptance Company/);
 assert.match(acceptance, /pending-member-token-hash-must-not-leak/);
 console.log('Platform member directory, registration timestamp, timeline, membership management, stale-response guards, and owner transfer verified (93 assertions).');

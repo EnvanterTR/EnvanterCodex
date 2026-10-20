@@ -40,6 +40,7 @@ const context = {
   },
   fetch: async (path, options) => { requests.push({ path, options }); return response; },
   requestToken: '',
+  authSessionGeneration: 0,
   checkLoginConnection: async () => { connectionChecks++; },
   setTimeout,
   translateUiText: value => value,
