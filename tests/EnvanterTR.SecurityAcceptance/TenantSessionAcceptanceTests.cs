@@ -667,16 +667,6 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.StartsWith("https://sandbox-api.iyzipay.com/checkoutform/", initializedPayload.RootElement.GetProperty("checkoutUrl").GetString());
         Assert.Equal(112.95m, provider.InitializedAmount);
         Assert.Equal(1, provider.InitializeCount);
-        using (var retry = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/initialize") { Content = JsonContent.Create(request) })
-        {
-            retry.Headers.Add("X-CSRF-TOKEN", requestToken);
-            retry.Headers.Add("Cookie", antiforgeryCookie);
-            using var retried = await client.SendAsync(retry);
-            Assert.Equal(HttpStatusCode.OK, retried.StatusCode);
-            using var retryPayload = JsonDocument.Parse(await retried.Content.ReadAsStringAsync());
-            Assert.Equal(initializedPayload.RootElement.GetProperty("checkoutUrl").GetString(), retryPayload.RootElement.GetProperty("checkoutUrl").GetString());
-            Assert.Equal(1, provider.InitializeCount);
-        }
         var repeatCustomer = request with
         {
             CheckoutId = Guid.NewGuid(), CompanyName = "Second Synthetic Checkout Ltd",
@@ -692,6 +682,24 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Contains("izin verilen kullanım sayısına ulaştı", await deniedRepeat.Content.ReadAsStringAsync(), StringComparison.Ordinal);
         }
         Assert.Equal(1, provider.InitializeCount);
+
+        await using (var scope = checkoutFactory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            (await db.SubscriptionCoupons.SingleAsync(x => x.Id == coupon.Id)).IsActive = false;
+            await db.SaveChangesAsync();
+        }
+        using (var retryAfterCouponChange = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/initialize")
+               { Content = JsonContent.Create(request) })
+        {
+            retryAfterCouponChange.Headers.Add("X-CSRF-TOKEN", requestToken);
+            retryAfterCouponChange.Headers.Add("Cookie", antiforgeryCookie);
+            using var retriedAfterCouponChange = await client.SendAsync(retryAfterCouponChange);
+            Assert.Equal(HttpStatusCode.OK, retriedAfterCouponChange.StatusCode);
+            using var retryAfterChangePayload = JsonDocument.Parse(await retriedAfterCouponChange.Content.ReadAsStringAsync());
+            Assert.Equal(initializedPayload.RootElement.GetProperty("checkoutUrl").GetString(),
+                retryAfterChangePayload.RootElement.GetProperty("checkoutUrl").GetString());
+        }
 
         await using (var scope = checkoutFactory.Services.CreateAsyncScope())
         {

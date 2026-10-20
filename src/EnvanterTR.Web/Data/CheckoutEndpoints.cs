@@ -151,19 +151,41 @@ public static class CheckoutEndpoints
                 ["checkout"] = ["Firma, alt alan adı, yetkili, fatura bilgileri ve veri işleme bilgilendirmesi onayını kontrol edin."]
             });
 
+        var termDays = request.Term == "annual" ? 365 : 30;
+        var ownerName = $"{firstName} {lastName}";
+        var normalizedCouponCode = string.IsNullOrWhiteSpace(request.CouponCode) ? null : NormalizeCouponCode(request.CouponCode);
+        if (!string.IsNullOrWhiteSpace(request.CouponCode) && normalizedCouponCode is null)
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["couponCode"] = ["Kupon kodu biçimi geçersiz."] });
+
+        var existingOrder = await db.CompanyCheckoutOrders.SingleOrDefaultAsync(x => x.Id == request.CheckoutId, cancellationToken);
+        if (existingOrder is not null && (existingOrder.Status is CheckoutStatusStarted or "PaymentReview") &&
+            !string.IsNullOrWhiteSpace(existingOrder.CheckoutPageUrlProtected))
+        {
+            if (!SameCheckoutIdentity(existingOrder, companyName, slug!, contactEmail, ownerName, ownerEmail!, request.PlanId,
+                    termDays, normalizedCouponCode, CheckoutNoticeVersion))
+                return Results.Conflict(new { message = "Bu satın alma kimliği başka bilgilerle kullanılmış." });
+            try
+            {
+                var url = dataProtectionProvider.CreateProtector("EnvanterTR.Iyzico.CheckoutPage.v1")
+                    .Unprotect(existingOrder.CheckoutPageUrlProtected);
+                return Results.Ok(new { checkoutUrl = url, orderId = existingOrder.Id });
+            }
+            catch (CryptographicException)
+            {
+                return Results.Problem("Ödeme oturumu güvenli biçimde açılamadı. Yeni bir satın alma başlatın.",
+                    statusCode: StatusCodes.Status409Conflict);
+            }
+        }
+
         var plan = await db.SubscriptionPlans.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.PlanId &&
             x.IsActive && x.IsPublic && x.DeploymentKind == "cloud", cancellationToken);
         if (plan is null)
             return Results.ValidationProblem(new Dictionary<string, string[]> { ["planId"] = ["Satın alınabilir Cloud paketi bulunamadı."] });
-        var termDays = request.Term == "annual" ? 365 : 30;
         var subtotal = request.Term == "annual" ? plan.AnnualPrice : plan.MonthlyPrice;
         var currency = plan.Currency.ToUpperInvariant();
         if (subtotal <= 0 || !SupportedCurrencies.Contains(currency))
             return Results.Problem("Seçilen Cloud paketi için ödeme fiyatı veya para birimi kullanılamıyor.",
                 statusCode: StatusCodes.Status503ServiceUnavailable);
-        var normalizedCouponCode = string.IsNullOrWhiteSpace(request.CouponCode) ? null : NormalizeCouponCode(request.CouponCode);
-        if (!string.IsNullOrWhiteSpace(request.CouponCode) && normalizedCouponCode is null)
-            return Results.ValidationProblem(new Dictionary<string, string[]> { ["couponCode"] = ["Kupon kodu biçimi geçersiz."] });
         var coupon = normalizedCouponCode is null ? null : await db.SubscriptionCoupons.AsNoTracking()
             .SingleOrDefaultAsync(x => x.Code == normalizedCouponCode, cancellationToken);
         if (normalizedCouponCode is not null && coupon is null)
@@ -173,8 +195,6 @@ public static class CheckoutEndpoints
             return Results.ValidationProblem(new Dictionary<string, string[]> { ["couponCode"] = [couponError!] });
         var amount = subtotal - discount;
 
-        var ownerName = $"{firstName} {lastName}";
-        var existingOrder = await db.CompanyCheckoutOrders.SingleOrDefaultAsync(x => x.Id == request.CheckoutId, cancellationToken);
         CompanyCheckoutOrder pending;
         if (existingOrder is not null)
         {
@@ -633,6 +653,13 @@ public static class CheckoutEndpoints
         order.PlanId == planId && order.TermDays == termDays && order.SubtotalAmount == subtotal &&
         order.DiscountAmount == discount && order.Amount == amount && order.Currency == currency &&
         order.CouponId == couponId && order.CouponCode == couponCode &&
+        order.DataProcessingAcknowledgedAt is not null && order.DataProcessingNoticeVersion == noticeVersion;
+
+    private static bool SameCheckoutIdentity(CompanyCheckoutOrder order, string companyName, string slug, string contactEmail,
+        string ownerName, string ownerEmail, Guid planId, int termDays, string? couponCode, string noticeVersion) =>
+        order.CompanyName == companyName && order.Slug == slug && order.ContactEmail == contactEmail &&
+        order.OwnerName == ownerName && order.OwnerEmail.Equals(ownerEmail, StringComparison.OrdinalIgnoreCase) &&
+        order.PlanId == planId && order.TermDays == termDays && order.CouponCode == couponCode &&
         order.DataProcessingAcknowledgedAt is not null && order.DataProcessingNoticeVersion == noticeVersion;
 
     private static async Task SetStatusAsync(AppDbContext db, Guid id, string status,
