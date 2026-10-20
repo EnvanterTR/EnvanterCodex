@@ -19,9 +19,9 @@ public static partial class AssetCustomFieldEndpoints
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
             var fields = await db.AssetCustomFieldDefinitions.AsNoTracking()
                 .Where(x => x.CompanyId == companyId).OrderBy(x => x.SortOrder).ThenBy(x => x.Name)
-                .Select(x => new { x.Id, x.Key, x.Name, x.FieldType, x.OptionsJson, x.IsRequired, x.SortOrder, x.IsActive })
+                .Select(x => new { x.Id, x.Key, x.Name, x.GroupName, x.CategoryId, x.ModelId, x.FieldType, x.OptionsJson, x.IsRequired, x.SortOrder, x.IsActive })
                 .ToListAsync(ct);
-            return Results.Ok(fields.Select(x => new { x.Id, x.Key, x.Name, x.FieldType,
+            return Results.Ok(fields.Select(x => new { x.Id, x.Key, x.Name, x.GroupName, x.CategoryId, x.ModelId, x.FieldType,
                 options = ParseOptions(x.OptionsJson), x.IsRequired, x.SortOrder, x.IsActive }));
         }).RequireAuthorization("asset.read");
 
@@ -29,12 +29,16 @@ public static partial class AssetCustomFieldEndpoints
             AppDbContext db, CancellationToken ct) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (await IsLocationScopeRestrictedAsync(user, db, companyId, ct)) return Results.Forbid();
             if (!TryNormalizeDefinition(request, out var key, out var name, out var type, out var options, out var error))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["field"] = [error!] });
             if (type == "sensitive" && !CanReadSensitive(user)) return Results.Forbid();
+            var scopeError = await ValidateScopeAsync(db, companyId, request, ct);
+            if (scopeError is not null) return Results.ValidationProblem(new Dictionary<string, string[]> { ["scope"] = [scopeError] });
             if (await db.AssetCustomFieldDefinitions.AnyAsync(x => x.CompanyId == companyId && x.Key == key, ct))
                 return Results.Conflict(new { message = "Bu şirket içinde özel alan anahtarı zaten kullanılıyor." });
             var field = new AssetCustomFieldDefinition { CompanyId = companyId, Key = key!, Name = name!,
+                GroupName = NormalizeGroupName(request.GroupName), CategoryId = request.CategoryId, ModelId = request.ModelId,
                 FieldType = type!, OptionsJson = options, IsRequired = request.IsRequired,
                 SortOrder = Math.Clamp(request.SortOrder, -10000, 10000) };
             db.AssetCustomFieldDefinitions.Add(field);
@@ -47,9 +51,12 @@ public static partial class AssetCustomFieldEndpoints
             ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (await IsLocationScopeRestrictedAsync(user, db, companyId, ct)) return Results.Forbid();
             if (!TryNormalizeDefinition(request, out var key, out var name, out var type, out var options, out var error))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["field"] = [error!] });
             if ((type == "sensitive" || request.FieldType == "sensitive") && !CanReadSensitive(user)) return Results.Forbid();
+            var scopeError = await ValidateScopeAsync(db, companyId, request, ct);
+            if (scopeError is not null) return Results.ValidationProblem(new Dictionary<string, string[]> { ["scope"] = [scopeError] });
             var field = await db.AssetCustomFieldDefinitions.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
             if (field is null) return Results.NotFound();
             if (field.FieldType == "sensitive" && !CanReadSensitive(user)) return Results.Forbid();
@@ -63,10 +70,12 @@ public static partial class AssetCustomFieldEndpoints
                 try { return JsonSerializer.Deserialize<Dictionary<string, string>>(json)?.ContainsKey(field.Key) == true; }
                 catch (JsonException) { return false; }
             });
-            if (fieldInUse && (field.Key != key || field.FieldType != type || field.OptionsJson != options))
-                return Results.Conflict(new { message = "Bu alan varlık kayıtlarında kullanılıyor. Anahtar, tür ve seçenekler mevcut değerlerle uyumsuz olabileceği için değiştirilemez; yeni alan oluşturup değerleri aktarın." });
+            if (fieldInUse && (field.Key != key || field.FieldType != type || field.OptionsJson != options ||
+                               field.CategoryId != request.CategoryId || field.ModelId != request.ModelId))
+                return Results.Conflict(new { message = "Bu alan varlık kayıtlarında kullanılıyor. Anahtar, tür, seçenek veya model/kategori kapsamı mevcut değerlerle uyumsuz olabileceği için değiştirilemez; yeni alan oluşturup değerleri aktarın." });
             var before = field.Name;
             field.Key = key!; field.Name = name!; field.FieldType = type!; field.OptionsJson = options;
+            field.GroupName = NormalizeGroupName(request.GroupName); field.CategoryId = request.CategoryId; field.ModelId = request.ModelId;
             field.IsRequired = request.IsRequired; field.SortOrder = Math.Clamp(request.SortOrder, -10000, 10000);
             field.UpdatedAt = DateTimeOffset.UtcNow;
             AddAudit(db, user, companyId, field.Id, "AssetCustomFieldUpdated", $"Varlık özel alanı güncellendi: {before} → {field.Name}.");
@@ -78,6 +87,7 @@ public static partial class AssetCustomFieldEndpoints
             ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
+            if (await IsLocationScopeRestrictedAsync(user, db, companyId, ct)) return Results.Forbid();
             var field = await db.AssetCustomFieldDefinitions.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, ct);
             if (field is null) return Results.NotFound();
             if (field.IsActive == request.IsActive) return Results.Ok(new { field.Id, field.IsActive });
@@ -92,10 +102,11 @@ public static partial class AssetCustomFieldEndpoints
 
     public static async Task<(string? Json, string? Error)> NormalizeValuesAsync(AppDbContext db, Guid companyId,
         Dictionary<string, string>? submitted, string? existingJson, bool preserveWhenMissing,
-        AssetCustomFieldProtection protection, CancellationToken ct)
+        AssetCustomFieldProtection protection, CancellationToken ct, Guid? categoryId = null, Guid? modelId = null)
     {
         var fields = await db.AssetCustomFieldDefinitions.AsNoTracking()
             .Where(x => x.CompanyId == companyId && x.IsActive).ToListAsync(ct);
+        fields = fields.Where(field => AppliesTo(field, categoryId, modelId)).ToList();
         var existingValues = preserveWhenMissing
             ? JsonSerializer.Serialize(protection.Read(existingJson, fields, companyId, revealSensitive: true))
             : existingJson;
@@ -106,13 +117,17 @@ public static partial class AssetCustomFieldEndpoints
     }
 
     public static (string? Json, string? Error) NormalizeValues(IReadOnlyCollection<AssetCustomFieldDefinition> fields,
-        Dictionary<string, string>? submitted, string? existingJson = null, bool preserveWhenMissing = false)
+        Dictionary<string, string>? submitted, string? existingJson = null, bool preserveWhenMissing = false,
+        Guid? categoryId = null, Guid? modelId = null)
     {
+        var allDefinitions = fields;
+        fields = allDefinitions.Where(field => field.IsActive && AppliesTo(field, categoryId, modelId)).ToArray();
         if (preserveWhenMissing && submitted is null) return (existingJson, null);
         var input = submitted ?? new Dictionary<string, string>(StringComparer.Ordinal);
         var definitions = fields.ToDictionary(x => x.Key, StringComparer.Ordinal);
         foreach (var key in input.Keys)
-            if (!definitions.ContainsKey(key)) return (null, $"'{key}' bu şirkette etkin bir özel alan değil.");
+            if (!definitions.ContainsKey(key) && !string.IsNullOrWhiteSpace(input[key]))
+                return (null, $"'{key}' bu şirkette etkin bir özel alan değil.");
         Dictionary<string, string> values;
         try
         {
@@ -121,6 +136,9 @@ public static partial class AssetCustomFieldEndpoints
                 : new(StringComparer.Ordinal);
         }
         catch (JsonException) { values = new(StringComparer.Ordinal); }
+        foreach (var definition in allDefinitions.Where(field =>
+                     (field.CategoryId.HasValue || field.ModelId.HasValue) && !AppliesTo(field, categoryId, modelId)))
+            values.Remove(definition.Key);
         foreach (var field in fields)
         {
             if (preserveWhenMissing && !input.ContainsKey(field.Key)) continue;
@@ -152,9 +170,11 @@ public static partial class AssetCustomFieldEndpoints
     }
 
     public static (string? Json, string? Error) NormalizeSelectedValues(
-        IReadOnlyCollection<AssetCustomFieldDefinition> fields, Dictionary<string, string?> submitted, string? existingJson)
+        IReadOnlyCollection<AssetCustomFieldDefinition> fields, Dictionary<string, string?> submitted, string? existingJson,
+        Guid? categoryId = null, Guid? modelId = null)
     {
-        var definitions = fields.Where(field => field.IsActive).ToDictionary(field => field.Key, StringComparer.Ordinal);
+        var definitions = fields.Where(field => field.IsActive && AppliesTo(field, categoryId, modelId))
+            .ToDictionary(field => field.Key, StringComparer.Ordinal);
         if (submitted.Count is < 1 or > 100)
             return (null, "Toplu özel alan güncellemesi 1 ile 100 alan içermelidir.");
         foreach (var key in submitted.Keys)
@@ -233,8 +253,38 @@ public static partial class AssetCustomFieldEndpoints
         return error is null;
     }
 
-    private static object ToResponse(AssetCustomFieldDefinition x) => new { x.Id, x.Key, x.Name, x.FieldType,
+    private static object ToResponse(AssetCustomFieldDefinition x) => new { x.Id, x.Key, x.Name, x.GroupName, x.CategoryId, x.ModelId, x.FieldType,
         options = ParseOptions(x.OptionsJson), x.IsRequired, x.SortOrder, x.IsActive };
+    public static bool AppliesTo(AssetCustomFieldDefinition field, Guid? categoryId, Guid? modelId) =>
+        (!field.CategoryId.HasValue || field.CategoryId == categoryId) &&
+        (!field.ModelId.HasValue || field.ModelId == modelId);
+
+    private static string NormalizeGroupName(string? value)
+    {
+        var group = value?.Trim();
+        return string.IsNullOrWhiteSpace(group) ? "Genel" : group;
+    }
+
+    private static async Task<string?> ValidateScopeAsync(AppDbContext db, Guid companyId,
+        AssetCustomFieldDefinitionRequest request, CancellationToken ct)
+    {
+        if (request.CategoryId == Guid.Empty || request.ModelId == Guid.Empty)
+            return "Model ve kategori kapsamı geçerli bir şirket kaydı olmalıdır.";
+        if (request.GroupName?.Trim().Length > 80)
+            return "Alan grubu en fazla 80 karakter olabilir.";
+        if (request.CategoryId is Guid categoryId && !await db.AssetCategories.AnyAsync(
+                item => item.CompanyId == companyId && item.Id == categoryId, ct))
+            return "Kategori kapsamı bu şirkette bulunamadı.";
+        if (request.ModelId is Guid modelId)
+        {
+            var model = await db.AssetModels.AsNoTracking().Where(item => item.CompanyId == companyId && item.Id == modelId)
+                .Select(item => new { item.CategoryId }).SingleOrDefaultAsync(ct);
+            if (model is null) return "Model kapsamı bu şirkette bulunamadı.";
+            if (request.CategoryId is Guid selectedCategory && model.CategoryId is Guid modelCategory && modelCategory != selectedCategory)
+                return "Model ve kategori kapsamı birbiriyle eşleşmelidir.";
+        }
+        return null;
+    }
     private static string[] ParseOptions(string? json)
     {
         try { return string.IsNullOrWhiteSpace(json) ? [] : JsonSerializer.Deserialize<string[]>(json) ?? []; }
@@ -242,6 +292,13 @@ public static partial class AssetCustomFieldEndpoints
     }
     private static bool TryCompanyId(ClaimsPrincipal user, out Guid companyId) =>
         Guid.TryParse(user.FindFirstValue("company_id"), out companyId);
+
+    private static async Task<bool> IsLocationScopeRestrictedAsync(ClaimsPrincipal user, AppDbContext db,
+        Guid companyId, CancellationToken ct)
+    {
+        if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return true;
+        return await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct) is not null;
+    }
     public static bool CanReadSensitive(ClaimsPrincipal user) =>
         user.HasClaim("company_role", "owner") || user.HasClaim("company_role", "admin");
     public static bool HasSensitiveInput(IReadOnlyCollection<AssetCustomFieldDefinition> fields,

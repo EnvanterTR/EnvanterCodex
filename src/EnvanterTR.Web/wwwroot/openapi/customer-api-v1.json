@@ -3,23 +3,200 @@
   "info": {
     "title": "EnvanterTR Customer API",
     "version": "1.0.0",
-    "description": "Tenant-scoped, read-only endpoints for company assets, accessories and employees. API tokens are user-owned and limited to the selected read scopes."
+    "description": "Tenant-scoped asset, software, accessory and employee API. Installed software snapshots require assets:write."
   },
-  "servers": [{ "url": "/" }],
-  "security": [{ "CustomerBearer": [] }],
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "security": [
+    {
+      "CustomerBearer": []
+    }
+  ],
   "paths": {
     "/api/v1/assets": {
+      "post": {
+        "operationId": "createAsset",
+        "summary": "Create a company asset",
+        "description": "Creates an asset in the token owner's active company. Requires assets:write and a role allowed to write assets. Custom field keys, types, required values and select options are validated against the company's active custom field definitions. Sensitive custom values are encrypted at rest and returned only to owner/admin roles.",
+        "security": [
+          {
+            "CustomerBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAsset"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Asset created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Asset"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "402": {
+            "description": "Asset quota exceeded."
+          },
+          "409": {
+            "description": "Asset tag or related record conflicts."
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      },
       "get": {
         "operationId": "listAssets",
         "summary": "List company assets",
-        "description": "Returns non-deleted assets belonging to the token's active company. Purchase cost and custom fields are omitted.",
-        "parameters": [{ "$ref": "#/components/parameters/Search" }, { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PageSize" }],
+        "description": "Returns non-deleted assets belonging to the token's active company. Purchase cost is omitted. Active non-sensitive custom field values are returned; sensitive values are returned only to owner/admin roles.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Search"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PageSize"
+          }
+        ],
         "responses": {
-          "200": { "description": "Page of company assets.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AssetPage" } } } },
-          "400": { "$ref": "#/components/responses/InvalidRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" },
-          "429": { "$ref": "#/components/responses/RateLimited" }
+          "200": {
+            "description": "Page of company assets.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{id}": {
+      "put": {
+        "operationId": "updateAsset",
+        "summary": "Update a company asset",
+        "description": "Replaces the supported editable asset fields in the token owner's active company. Requires assets:write, expectedUpdatedAt from the latest read to prevent lost updates, and a role allowed to write assets. Supplied custom field keys are validated and merged; omitted custom fields are preserved. Sensitive values can be written only by owner/admin roles and are encrypted at rest.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "security": [
+          {
+            "CustomerBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAsset"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Asset updated with a new updatedAt version."
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Asset not found in the token's company."
+          },
+          "409": {
+            "description": "The asset was changed since the supplied updatedAt, or a unique value conflicts."
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/asset-custom-fields": {
+      "get": {
+        "operationId": "listAssetCustomFieldDefinitions",
+        "summary": "List active company asset custom field definitions",
+        "description": "Returns active custom field keys, types, required flags and select options for the token's company. Sensitive values can be written only when canWriteValue is true (owner/admin role). Requires assets:read.",
+        "security": [
+          {
+            "CustomerBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active company custom field definitions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssetCustomFieldDefinition"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
         }
       }
     },
@@ -28,13 +205,40 @@
         "operationId": "listAccessories",
         "summary": "List company accessories",
         "description": "Returns accessory catalog and stock quantities for the token's active company. Notes and costs are omitted.",
-        "parameters": [{ "$ref": "#/components/parameters/Search" }, { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PageSize" }],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Search"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PageSize"
+          }
+        ],
         "responses": {
-          "200": { "description": "Page of company accessories.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AccessoryPage" } } } },
-          "400": { "$ref": "#/components/responses/InvalidRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" },
-          "429": { "$ref": "#/components/responses/RateLimited" }
+          "200": {
+            "description": "Page of company accessories.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessoryPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
         }
       }
     },
@@ -43,72 +247,734 @@
         "operationId": "listEmployees",
         "summary": "List company employees",
         "description": "Returns employee records for the token's active company. Private HR notes and documents are omitted.",
-        "parameters": [{ "$ref": "#/components/parameters/Search" }, { "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PageSize" }],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Search"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PageSize"
+          }
+        ],
         "responses": {
-          "200": { "description": "Page of company employees.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EmployeePage" } } } },
-          "400": { "$ref": "#/components/responses/InvalidRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" },
-          "429": { "$ref": "#/components/responses/RateLimited" }
+          "200": {
+            "description": "Page of company employees.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/InvalidRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{id}/installed-software": {
+      "put": {
+        "operationId": "syncInstalledSoftware",
+        "summary": "Replace asset installed software snapshot",
+        "description": "Stores a complete software snapshot for one company asset; removed applications remain as historical rows.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "security": [
+          {
+            "CustomerBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "isComplete",
+                  "source",
+                  "items"
+                ],
+                "properties": {
+                  "isComplete": {
+                    "type": "boolean",
+                    "const": true
+                  },
+                  "source": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "items": {
+                    "type": "array",
+                    "maxItems": 3000,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "name"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "publisher": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 160
+                        },
+                        "version": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 120
+                        },
+                        "architecture": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 32
+                        },
+                        "installDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Snapshot recorded."
+          },
+          "400": {
+            "description": "Incomplete or invalid snapshot."
+          },
+          "401": {
+            "description": "Missing or invalid bearer token."
+          },
+          "403": {
+            "description": "Token lacks assets:write."
+          },
+          "404": {
+            "description": "Asset not found in company/location scope."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
         }
       }
     }
   },
   "components": {
     "securitySchemes": {
-      "CustomerBearer": { "type": "http", "scheme": "bearer", "bearerFormat": "etr_live_<secret>", "description": "Create and manage keys in the signed-in EnvanterTR account. The raw secret is shown once." }
+      "CustomerBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "etr_live_<secret>",
+        "description": "Create and manage keys in the signed-in EnvanterTR account. The raw secret is shown once."
+      }
     },
     "parameters": {
-      "Search": { "name": "q", "in": "query", "required": false, "description": "Search within fields supported by this resource; maximum 120 characters.", "schema": { "type": "string", "maxLength": 120 } },
-      "Page": { "name": "page", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "default": 1 } },
-      "PageSize": { "name": "pageSize", "in": "query", "required": false, "description": "Requested page size is clamped to the supported range.", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 50 } }
+      "Search": {
+        "name": "q",
+        "in": "query",
+        "required": false,
+        "description": "Search within fields supported by this resource; maximum 120 characters.",
+        "schema": {
+          "type": "string",
+          "maxLength": 120
+        }
+      },
+      "Page": {
+        "name": "page",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        }
+      },
+      "PageSize": {
+        "name": "pageSize",
+        "in": "query",
+        "required": false,
+        "description": "Requested page size is clamped to the supported range.",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50
+        }
+      }
     },
     "responses": {
-      "InvalidRequest": { "description": "A query parameter is invalid." },
-      "Unauthorized": { "description": "The bearer token is missing, invalid, expired, revoked, or no longer has an active company membership." },
-      "Forbidden": { "description": "The token does not include the read scope required for this resource." },
-      "RateLimited": { "description": "The request limit for the client IP was exceeded." }
+      "InvalidRequest": {
+        "description": "A query parameter is invalid."
+      },
+      "Unauthorized": {
+        "description": "The bearer token is missing, invalid, expired, revoked, or no longer has an active company membership."
+      },
+      "Forbidden": {
+        "description": "The token does not include the read scope required for this resource."
+      },
+      "RateLimited": {
+        "description": "The request limit for the client IP was exceeded."
+      }
     },
     "schemas": {
       "PageMetadata": {
         "type": "object",
-        "required": ["total", "page", "pageSize"],
-        "properties": { "total": { "type": "integer", "minimum": 0 }, "page": { "type": "integer", "minimum": 1 }, "pageSize": { "type": "integer", "minimum": 1, "maximum": 100 } }
+        "required": [
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        }
       },
       "Asset": {
         "type": "object",
-        "required": ["id", "assetTag", "name", "status"],
+        "required": [
+          "id",
+          "assetTag",
+          "name",
+          "status"
+        ],
         "properties": {
-          "id": { "type": "string", "format": "uuid" }, "assetTag": { "type": "string" }, "name": { "type": "string" },
-          "serialNumber": { "type": ["string", "null"] }, "status": { "type": "string" }, "location": { "type": ["string", "null"] },
-          "purchaseDate": { "type": ["string", "null"], "format": "date" }, "warrantyExpiresAt": { "type": ["string", "null"], "format": "date" },
-          "category": { "type": ["string", "null"] }, "model": { "type": ["string", "null"] }, "brand": { "type": ["string", "null"] },
-          "assignedEmployee": { "type": ["string", "null"] }
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetTag": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "serialNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "location": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "purchaseDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "warrantyExpiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "insuranceProvider": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 160
+          },
+          "insurancePolicyNumber": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 120
+          },
+          "insuranceExpiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "brand": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "assignedEmployee": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customFields": {
+            "$ref": "#/components/schemas/CustomFieldValues"
+          }
         }
+      },
+      "CreateAsset": {
+        "type": "object",
+        "required": [
+          "assetTag",
+          "name",
+          "categoryId"
+        ],
+        "properties": {
+          "assetTag": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 240
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "brandId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "modelId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "serialNumber": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 160
+          },
+          "location": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 160
+          },
+          "purchaseDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "warrantyExpiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "insuranceProvider": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 160
+          },
+          "insurancePolicyNumber": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 120
+          },
+          "insuranceExpiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "purchaseCost": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "currency": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "isRequestable": {
+            "type": "boolean"
+          },
+          "isByod": {
+            "type": "boolean"
+          },
+          "defaultLocationCatalogId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 4000
+          },
+          "customFields": {
+            "$ref": "#/components/schemas/CustomFieldValues"
+          }
+        }
+      },
+      "CustomFieldValues": {
+        "type": "object",
+        "description": "Map active company-specific field keys to string values. Empty strings clear optional fields; required fields cannot be cleared. Sensitive values are writeable only by owner/admin roles.",
+        "propertyNames": {
+          "pattern": "^[a-z][a-z0-9_]{1,39}$"
+        },
+        "additionalProperties": {
+          "type": "string",
+          "maxLength": 2000
+        }
+      },
+      "AssetCustomFieldDefinition": {
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "fieldType",
+          "options",
+          "isRequired",
+          "sortOrder",
+          "canWriteValue"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{1,39}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "fieldType": {
+            "type": "string",
+            "enum": [
+              "text",
+              "number",
+              "date",
+              "checkbox",
+              "select",
+              "sensitive"
+            ]
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "isRequired": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "canWriteValue": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateAsset": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CreateAsset"
+          },
+          {
+            "type": "object",
+            "required": [
+              "expectedUpdatedAt"
+            ],
+            "properties": {
+              "expectedUpdatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Exact updatedAt value from the most recent GET /api/v1/assets response."
+              }
+            }
+          }
+        ]
       },
       "Accessory": {
         "type": "object",
-        "required": ["id", "name", "minimumQuantity", "totalQuantity", "checkedOutQuantity"],
+        "required": [
+          "id",
+          "name",
+          "minimumQuantity",
+          "totalQuantity",
+          "checkedOutQuantity"
+        ],
         "properties": {
-          "id": { "type": "string", "format": "uuid" }, "name": { "type": "string" }, "category": { "type": ["string", "null"] },
-          "modelNumber": { "type": ["string", "null"] }, "itemNumber": { "type": ["string", "null"] }, "location": { "type": ["string", "null"] },
-          "minimumQuantity": { "type": "integer" }, "totalQuantity": { "type": "integer" }, "checkedOutQuantity": { "type": "integer" },
-          "purchaseDate": { "type": ["string", "null"], "format": "date" }, "warrantyExpiresAt": { "type": ["string", "null"], "format": "date" }
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "modelNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "itemNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "location": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "minimumQuantity": {
+            "type": "integer"
+          },
+          "totalQuantity": {
+            "type": "integer"
+          },
+          "checkedOutQuantity": {
+            "type": "integer"
+          },
+          "purchaseDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "warrantyExpiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          }
         }
       },
       "Employee": {
         "type": "object",
-        "required": ["id", "employeeNumber", "displayName", "isActive"],
+        "required": [
+          "id",
+          "employeeNumber",
+          "displayName",
+          "isActive"
+        ],
         "properties": {
-          "id": { "type": "string", "format": "uuid" }, "employeeNumber": { "type": "string" }, "displayName": { "type": "string" },
-          "email": { "type": ["string", "null"], "format": "email" }, "department": { "type": ["string", "null"] },
-          "jobTitle": { "type": ["string", "null"] }, "location": { "type": ["string", "null"] },
-          "startedOn": { "type": ["string", "null"], "format": "date" }, "isActive": { "type": "boolean" }
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "employeeNumber": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "email"
+          },
+          "department": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "jobTitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "location": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "companyUnitId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "companyUnitName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "startedOn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
         }
       },
-      "AssetPage": { "$ref": "#/components/schemas/PageMetadata", "allOf": [{ "type": "object", "required": ["items"], "properties": { "items": { "type": "array", "items": { "$ref": "#/components/schemas/Asset" } } } }] },
-      "AccessoryPage": { "$ref": "#/components/schemas/PageMetadata", "allOf": [{ "type": "object", "required": ["items"], "properties": { "items": { "type": "array", "items": { "$ref": "#/components/schemas/Accessory" } } } }] },
-      "EmployeePage": { "$ref": "#/components/schemas/PageMetadata", "allOf": [{ "type": "object", "required": ["items"], "properties": { "items": { "type": "array", "items": { "$ref": "#/components/schemas/Employee" } } } }] }
+      "AssetPage": {
+        "$ref": "#/components/schemas/PageMetadata",
+        "allOf": [
+          {
+            "type": "object",
+            "required": [
+              "items"
+            ],
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Asset"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "AccessoryPage": {
+        "$ref": "#/components/schemas/PageMetadata",
+        "allOf": [
+          {
+            "type": "object",
+            "required": [
+              "items"
+            ],
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Accessory"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "EmployeePage": {
+        "$ref": "#/components/schemas/PageMetadata",
+        "allOf": [
+          {
+            "type": "object",
+            "required": [
+              "items"
+            ],
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Employee"
+                }
+              }
+            }
+          }
+        ]
+      }
     }
   }
 }

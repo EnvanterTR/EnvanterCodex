@@ -10,12 +10,33 @@ const members = await readFile('src/EnvanterTR.Web/wwwroot/platform-admin-member
 const subscriptions = await readFile('src/EnvanterTR.Web/wwwroot/platform-admin-subscriptions.js', 'utf8');
 const demos = await readFile('src/EnvanterTR.Web/wwwroot/platform-admin-demo-requests.js', 'utf8');
 const acceptance = await readFile('tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs', 'utf8');
+const browserAcceptance = await readFile('deploy/testing/hosted-checkout-browser/platform-admin-members.mjs', 'utf8');
+const sessionAcceptance = await readFile('tests/EnvanterTR.SecurityAcceptance/SessionDurationAcceptanceTests.cs', 'utf8');
+
+assert.match(page, /name="rememberMe" type="checkbox"/);
+assert.doesNotMatch(page, /name="rememberMe"[^>]*checked/);
+assert.match(page, /rememberMe:f\.get\('rememberMe'\)==='on'/);
+assert.match(account, /request\.RememberMe \? 720 : membership is null \? 8 : 24/);
+assert.match(account, /ExpiresUtc = sessionRecord\.ExpiresAt/);
+assert.match(sessionAcceptance, /Enabled_mfa_requires_a_code_on_each_fresh_device_even_when_remembered/);
+assert.match(sessionAcceptance, /Login_cookie_and_server_expiry_match_platform_and_company_policy/);
 
 assert.match(page, /<style id="platform-luxe-skin">/);
 assert.match(page, /color-scheme:dark/);
 assert.match(page, /\.nav button\.active[\s\S]*?box-shadow/);
 assert.match(page, /\.card,\.panel[\s\S]*?linear-gradient/);
 assert.match(page, /:where\(button,a,input,select,textarea\):focus-visible/);
+assert.match(page, /id="globalSearch"[^>]*aria-keyshortcuts="Control\+K Meta\+K"/,
+  'The platform administrator search must announce its Ctrl+K / Command+K shortcut.');
+assert.match(page, /document\.addEventListener\('keydown',event=>\{if\(!\(event\.ctrlKey\|\|event\.metaKey\)\|\|event\.altKey\|\|event\.key\.toLowerCase\(\)!=='k'\|\|\$\('#appShell'\)\.hidden\)return;event\.preventDefault\(\);const input=\$\('#globalSearch'\);input\.focus\(\);input\.select\(\)\}\)/,
+  'Ctrl+K / Command+K must focus and select the platform search without hijacking the login screen.');
+assert.match(page, /async function searchPlatformGlobal\(query\)[\s\S]*?Promise\.all\(\[api\('\/api\/platform\/members\?'\+params\),api\('\/api\/platform\/companies\?'\+params\)\]\)[\s\S]*?exactMember[\s\S]*?\$\('#nav \[data-view="members"\]'\)\.click\(\)[\s\S]*?loadCompanies\(\)/,
+  'Platform Ctrl+K search must resolve matching member accounts and companies to their actual result screens.');
+assert.match(page, /let platformGlobalSearchSequence=0/);
+assert.match(page, /if\(sequence!==platformGlobalSearchSequence\)return/,
+  'Out-of-order global-search responses must not change the destination chosen by the latest query.');
+assert.match(page, /if\(sequence===platformGlobalSearchSequence\)toast/,
+  'Only the latest platform-search failure may be shown to the user.');
 assert.match(page, /prefers-reduced-motion:reduce/);
 assert.match(page, /@media\(max-width:950px\)/);
 assert.match(page, /@media\(max-width:650px\)/);
@@ -29,6 +50,48 @@ for (const view of ['overview', 'companies', 'members', 'demo-requests', 'orders
 assert.match(page, /platform-admin-members\.js/);
 assert.match(page, /platform-admin-subscriptions\.js/);
 assert.match(page, /platform-admin-demo-requests\.js/);
+assert.match(page, /id="exportCompanies"[^>]*aria-label="Filtrelenmiş şirket listesini CSV olarak indir"/,
+  'The company directory must provide an accessible CSV export action.');
+assert.match(page, /\$\('#exportCompanies'\)\.addEventListener\('click',[\s\S]*?companySearch[\s\S]*?companyActive[\s\S]*?\/api\/platform\/companies\/export\.csv/,
+  'Company export must carry the active directory search and status filters.');
+assert.match(page, /id="companyPlan"[\s\S]*?id="companyCreatedFrom"[\s\S]*?id="companyCreatedTo"[\s\S]*?id="companySort"[\s\S]*?id="companyPageSize"/,
+  'Company list must expose plan/date/sort/page-size filters.');
+assert.match(page, /async function loadCompanies\(\)[\s\S]*?planId[\s\S]*?createdFrom[\s\S]*?createdTo[\s\S]*?sortBy[\s\S]*?pageSize/,
+  'Company filters must be sent to the pageable API.');
+assert.match(page, /async function loadCompanyPlans\(\)[\s\S]*?\/api\/platform\/plans/,
+  'Company plan filter options must load from the platform plan catalogue.');
+assert.match(api, /admin\.MapGet\("\/companies\/export\.csv"[\s\S]*?RequireAuthorization\("platform\.admin"\)|MapGroup\("\/api\/platform"\)\.RequireAuthorization\("platform\.admin"\)[\s\S]*?admin\.MapGet\("\/companies\/export\.csv"/,
+  'Company CSV must be restricted to platform administrators.');
+assert.match(api, /companies\/export\.csv[\s\S]*?AsAsyncEnumerable\(\)[\s\S]*?context\.Response\.Body[\s\S]*?UTF8Encoding\(encoderShouldEmitUTF8Identifier: true\)[\s\S]*?CsvCell\(row\.Name\)/,
+  'Company CSV must stream the filtered company data with spreadsheet-safe CSV cells.');
+assert.match(api, /MapPatch\("\/companies\/bulk-status"[\s\S]*?Distinct\(\)\.Count\(\)[\s\S]*?BeginTransactionAsync[\s\S]*?AddAudit[\s\S]*?CompanyReactivated/,
+  'Bulk company status must validate the full selection and atomically record each tenant status change.');
+assert.match(page, /data-company-select-all[\s\S]*?data-company-select=[\s\S]*?bulkSuspendCompanies[\s\S]*?bulkReactivateCompanies[\s\S]*?\/api\/platform\/companies\/bulk-status/,
+  'Company list must select visible companies and send a reasoned bulk status action.');
+assert.match(page, /bulkChangeCompanyPlan[\s\S]*?ödeme almaz[\s\S]*?ödem[e]? kaydını değiştirmez[\s\S]*?\/api\/platform\/companies\/bulk-plan/,
+  'Company list must provide a reasoned bulk Cloud plan change and explain that it does not process billing.');
+assert.match(api, /admin\.MapPatch\("\/companies\/bulk-plan"[\s\S]*?IsolationLevel\.Serializable[\s\S]*?candidate\.DeploymentKind == "cloud"[\s\S]*?StartsAt <= now[\s\S]*?EndsAt > now[\s\S]*?SubscriptionBulkPlanChanged[\s\S]*?billingChanged = false/,
+  'Bulk plan changes must be atomic, require a current eligible Cloud subscription, keep billing separate, and write an audit event.');
+assert.match(api, /var activeAssetCount = await db\.Assets[\s\S]*?var employeeCount = await db\.Employees[\s\S]*?var licenseCount = await db\.SoftwareLicenses[\s\S]*?var activeApiTokenCount = await db\.CompanyApiTokens[\s\S]*?recordedAttachmentBytes[\s\S]*?maxLoginUsers/,
+  'Company detail usage must be derived from tenant-scoped live records and active plan limits.');
+assert.match(page, /id="companyUsagePanel"[\s\S]*?Kullanım ve plan sınırları[\s\S]*?Kayıtlı ek dosya[\s\S]*?storageNote/,
+  'Company details must show resource usage and disclose the limits of recorded attachment storage.');
+assert.match(browserAcceptance, /companyUsagePanel[\s\S]*?usagePanel\.innerText\(\)[\s\S]*?Sınırsız[\s\S]*?şirket logoları ve medya dizinindeki dosyalar dahil değildir/i,
+  'Hosted Chromium must verify plan limits, unlimited cloud users, attachment bytes and storage exclusions in company details.');
+assert.match(acceptance, /Platform_company_member_details_are_pageable_beyond_one_hundred_and_include_account_state[\s\S]*?activeApiTokens[\s\S]*?recordedAttachmentBytes/,
+  'The isolated PostgreSQL company-detail acceptance must verify usage counts, plan limits and tenant-scoped recorded file sizes.');
+assert.match(api, /MapPost\("\/members\/\{userId:guid\}\/security-actions"[\s\S]*?request\.LockoutDays[\s\S]*?otherUnlockedPlatformAdmins[\s\S]*?SetLockoutEndDateAsync[\s\S]*?RevokedAt[\s\S]*?GeneratePasswordResetTokenAsync[\s\S]*?SendPasswordResetEmailAsync[\s\S]*?MemberSecurityAction/,
+  'Platform account security must lock/unlock accounts, revoke sessions, send reset links only through verified email and audit each action.');
+assert.match(members, /Hesap güvenliği[\s\S]*?data-member-security="lock"[\s\S]*?data-member-security="revokeSessions"[\s\S]*?data-member-security="sendPasswordReset"[\s\S]*?openMemberSecurityAction[\s\S]*?X-CSRF-TOKEN/,
+  'Member detail must expose all safe, reasoned and CSRF-protected account security operations.');
+assert.match(browserAcceptance, /Canceling a security action must not write[\s\S]*?Synthetic suspicious sign-in response[\s\S]*?Synthetic identity verified[\s\S]*?Synthetic lost device report[\s\S]*?Synthetic user-requested recovery[\s\S]*?Each account-security action must carry the CSRF token/,
+  'Hosted browser acceptance must cover cancel safety and lock, unlock, revoke-session and reset-email actions.');
+assert.match(page, /Doğrulanmış MRR[\s\S]*?data-company-logo[\s\S]*?verifiedMonthlyRecurringRevenue/,
+  'The company list must show logo, registration date, and only verified recurring revenue.');
+assert.match(api, /admin\.MapGet\("\/companies\/\{companyId:guid\}\/logo"[\s\S]*?BrandLogoPath[\s\S]*?Regex\.IsMatch[\s\S]*?RequireRateLimiting\("login"\)/,
+  'Company logos must be read from the company-scoped media path and protected against unsafe filenames.');
+assert.match(api, /LoadVerifiedRecurringRevenueAsync[\s\S]*?order\.Status == "Provisioned"[\s\S]*?payment\.PaidAt == payment\.StartsAt[\s\S]*?payment\.EndsAt == paidAt\.AddDays\(payment\.TermDays\)/,
+  'Company MRR must be tied to a verified provisioned payment and the exact original paid term.');
 assert.ok(setupPage.includes("request('/api/platform/bootstrap/status')"));
 assert.match(setupPage, /setupRequired/);
 assert.match(setupPage, /setupTokenConfigured/);
@@ -37,10 +100,19 @@ assert.match(setupPage, /mevcut parolasını girin; yeni hesapta burada girdiği
 assert.match(page, /id="platformTwoFactorField" hidden/);
 assert.match(page, /\[hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}/, 'hidden platform admin fields must stay hidden despite display rules on their classes');
 assert.match(page, /id="platformLoginReadiness"[^>]*role="status"/);
+assert.match(page, /id="platformCheckConnection"[^>]*type="button">Sunucu bağlantısını test et<\/button>/,
+  'Platform login must keep a manual, password-free server/DB readiness check.');
+assert.match(page, /async function checkPlatformLoginReadiness\(manual=false\)[\s\S]*?cache:'no-store'[\s\S]*?migration-required[\s\S]*?pendingMigrationCount[\s\S]*?manual[\s\S]*?migrationCount[\s\S]*?Sunucu bağlantısı doğrulanamadı/,
+  'Readiness diagnostics must distinguish healthy, pending-migration, and unavailable states without submitting credentials.');
+assert.match(page, /platformReadinessCheckSequence[\s\S]*?sequence!==platformReadinessCheckSequence[\s\S]*?message\.dataset\.manualResult!=='success'/,
+  'An older automatic readiness response must not erase the latest manual result.');
+assert.match(page, /\$\('#platformCheckConnection'\)\.addEventListener\('click',[\s\S]*?checkPlatformLoginReadiness\(true\)/,
+  'The manual connection check must be wired to the same safe readiness routine.');
 assert.match(page, /id="platformLoginSubmit"/);
-assert.match(page, /async function checkPlatformLoginReadiness\(\)/);
+assert.match(page, /async function checkPlatformLoginReadiness\(manual=false\)/);
 assert.match(page, /id="platformBootstrapLink"[^>]*hidden/, 'First-admin bootstrap must not be exposed by default.');
-assert.match(page, /async function checkPlatformBootstrapAvailability\(\)[\s\S]*?link\.hidden=true[\s\S]*?setupRequired===true&&status\.setupTokenConfigured===true/, 'Only a configured first setup may expose the bootstrap link; all failures fail closed.');
+assert.match(page, /id="platformBootstrapReadiness"[^>]*role="status"/, 'Platform login must explain why first-admin setup is unavailable.');
+assert.match(page, /async function checkPlatformBootstrapAvailability\(\)[\s\S]*?status\.setupRequired!==true[\s\S]*?status\.setupTokenConfigured===true[\s\S]*?link\.hidden=false[\s\S]*?SETUP_PLATFORM_BOOTSTRAP_TOKEN/, 'Only a configured first setup may expose the bootstrap link; missing setup configuration must be explained.');
 assert.match(page, /checkPlatformBootstrapAvailability\(\)/);
 assert.match(page, /status\.status==='migration-required'[\s\S]*?pendingMigrationCount[\s\S]*?submit\.disabled=true/);
 assert.match(page, /status\.status==='ready'[\s\S]*?submit\.disabled=false/);
@@ -120,6 +192,38 @@ for (const alert of ['paymentPending', 'paymentReview', 'paymentFailed', 'provis
   assert.match(page, new RegExp(`${alert}`), `${alert} is visible on the platform overview`);
 }
 assert.match(api, /checkout = new \{ paymentPending, paymentReview, paymentFailed, provisioningFailed \}/);
+assert.match(api, /MapGet\("\/system\/health"[\s\S]*?Process\.GetCurrentProcess\(\)[\s\S]*?TotalProcessorTime[\s\S]*?pg_database_size\(current_database\(\)\)[\s\S]*?application-container-filesystem/,
+  'Platform health exposes measured application-process and PostgreSQL metrics with explicit container scope.');
+assert.match(api, /smtpConfigured = !string\.IsNullOrWhiteSpace\(configuration\["Email:Smtp:Host"\]\)[\s\S]*?iyzicoConfigured/,
+  'Health reports integration configuration without exposing secret values.');
+assert.match(page, /id="systemHealthPanel"[\s\S]*?id="refreshSystemHealth"[\s\S]*?id="systemHealthCards"/);
+assert.match(page, /async function loadSystemHealth\(\)[\s\S]*?api\('\/api\/platform\/system\/health'\)[\s\S]*?systemHealthRequestId/);
+assert.match(page, /setInterval\(\(\)=>\{if\(!\$\('#appShell'\)\.hidden&&\$\('#view-overview'\)\.classList\.contains\('active'\)\)void loadSystemHealth\(\)\},30000\)/,
+  'System health refreshes every 30 seconds only while the platform overview is visible.');
+assert.match(acceptance, /Platform_system_health_is_admin_only_and_reports_scoped_runtime_metrics[\s\S]*?HttpStatusCode\.Forbidden[\s\S]*?cpuSampleMilliseconds[\s\S]*?application-container-filesystem/);
+assert.match(browserAcceptance, /systemHealthReads[\s\S]*?\/api\/platform\/system\/health[\s\S]*?7,5%[\s\S]*?refreshSystemHealth[\s\S]*?manualHealthRefresh[\s\S]*?systemHealthReads > healthReadsBeforeManualRefresh/);
+assert.match(api, /activeSince = now\.AddMinutes\(-5\)[\s\S]*?activeUserCount = await activeSessionsQuery\.Select\(x => x\.UserId\)\.Distinct\(\)\.CountAsync[\s\S]*?loginSince = now\.AddHours\(-24\)[\s\S]*?recentLoginQuery\.Select\(x => x\.UserId\)\.Distinct\(\)\.CountAsync[\s\S]*?session\.IpAddress[\s\S]*?\.Take\(10\)\.ToListAsync/,
+  'Platform overview reports distinct active users, 24-hour logins, and only the ten newest session rows from stored sessions.');
+assert.match(page, /id="recentLoginTable"[\s\S]*?function renderRecentLogins\([\s\S]*?IP[\s\S]*?data-recent-login-email[\s\S]*?Aktif kullanıcı · 5 dk[\s\S]*?Giriş yapan hesap · 24 sa/);
+assert.match(api, /orderby session\.CreatedAt descending, session\.Id descending/,
+  'Recent sessions use a deterministic identifier tie-breaker for equal timestamps.');
+assert.match(acceptance, /Platform_overview_reports_active_users_24_hour_logins_and_last_ten_sessions[\s\S]*?Enumerable\.Range\(0, 6\)[\s\S]*?sessionSnapshot[\s\S]*?GetProperty\("generatedAt"\)[\s\S]*?expectedActive[\s\S]*?expectedLogins[\s\S]*?expectedRecent[\s\S]*?Assert\.Equal\(10, recentLogins\.Length\)/,
+  'Session metrics acceptance includes newer competing sessions, evaluates windows at the API timestamp, and checks all ten global results.');
+assert.match(acceptance, /ThenByDescending\(session => session\.Id\.ToString\("D"\), StringComparer\.Ordinal\)[\s\S]*?loginUsers\[expected\.UserId\]\.Email[\s\S]*?expected\.PlatformAdmin[\s\S]*?expected\.IpAddress[\s\S]*?expected\.CreatedAt[\s\S]*?expected\.RevokedAt/,
+  'Every returned recent-session projection is checked against the independent stored-session snapshot.');
+assert.match(browserAcceptance, /activeUsers: 3[\s\S]*?qa-owner@example\.invalid[\s\S]*?192\.0\.2\.10[\s\S]*?Hesabı aç[\s\S]*?memberSearch/,
+  'Browser acceptance verifies rendered session metrics, IP, and opening an account from the recent-login table.');
+assert.match(api, /var recentPayments = await \(from order in db\.CompanyCheckoutOrders\.AsNoTracking\(\)[\s\S]*?join plan in db\.SubscriptionPlans\.AsNoTracking\(\)[\s\S]*?orderby \(order\.PaidAt \?\? order\.CreatedAt\) descending[\s\S]*?order\.Status[\s\S]*?\.Take\(10\)\.ToListAsync/,
+  'Platform overview limits payment activity to the latest ten checkout records, ordered by payment time or creation time.');
+assert.match(api, /select new\s*\{[\s\S]*?order\.Amount[\s\S]*?order\.Currency[\s\S]*?order\.Status[\s\S]*?activityAt = order\.PaidAt \?\? order\.CreatedAt[\s\S]*?\}\)\.Take\(10\)[\s\S]*?recentPayments,/,
+  'Recent payment projection exposes display fields only.');
+assert.match(page, /id="recentPaymentsPanel"[\s\S]*?id="refreshRecentPayments"[\s\S]*?data-go="orders"[\s\S]*?id="recentPaymentsTable"/);
+assert.match(page, /function renderRecentPayments\([\s\S]*?orderStatusLabels\[x\.status\][\s\S]*?recentPaymentsTable/);
+assert.match(acceptance, /recentPayments = payload\.RootElement\.GetProperty\("recentPayments"\)[\s\S]*?Assert\.Equal\(10, recentPayments\.Length\)[\s\S]*?TryGetProperty\("checkoutTokenHash"/);
+assert.match(acceptance, /Assert\.DoesNotContain\("dashboard-secret-token", responseBody[\s\S]*?Assert\.DoesNotContain\("dashboard-protected-checkout", responseBody/,
+  'PostgreSQL acceptance verifies recent payment ordering, maximum row count and no checkout secret exposure.');
+assert.match(browserAcceptance, /recentPayments: \[[\s\S]*?Synthetic Paid Company[\s\S]*?Synthetic Failed Company[\s\S]*?recentPaymentsPanel \[data-go="orders"\][\s\S]*?view-orders/,
+  'Chromium acceptance verifies paid and failed payment rows and the orders navigation shortcut.');
 assert.match(page, /Ödeme bekliyor[\s\S]*?Ödeme incelemesi[\s\S]*?Başarısız ödeme[\s\S]*?Firma açılışı takıldı/);
 assert.match(api, /var verifiedRecurringPayments = await[\s\S]*?order\.Status == "Provisioned"[\s\S]*?order\.PaymentReference == subscription\.PaymentReference/);
 assert.match(api, /x\.PaidAt == x\.StartsAt[\s\S]*?x\.EndsAt == paidAt\.AddDays\(x\.TermDays\)/);

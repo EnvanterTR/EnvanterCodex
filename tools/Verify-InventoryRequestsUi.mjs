@@ -23,6 +23,8 @@ for (const token of [
   "openInventoryRequestAction(item,'cancel')", '/api/requests/${action.id}/cancel',
   '/api/requests/${action.id}/decision', 'approve: action.approve', 'requestAction = null'
 ]) assert.ok(requests.includes(token), `stock request flow must include ${token}`);
+assert.ok(requests.includes("escapeHtml(item.location||'—')"),
+  'the stock request catalog must render the scoped API location safely');
 assert.doesNotMatch(requests, /window\.(?:prompt|confirm)\s*\(/, 'stock request actions must use in-app dialogs');
 assert.ok(requests.includes("$('#inventoryRequestActionDialog').addEventListener('cancel'"), 'Escape must clear the pending stock request action');
 assert.ok(requests.includes('dialog.showModal()'), 'stock request action dialog must open accessibly');

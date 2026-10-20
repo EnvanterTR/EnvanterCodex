@@ -11,5 +11,8 @@ public sealed record TwoFactorCodeRequest(string Code);
 public sealed record TwoFactorRecoveryRequest(string CurrentPassword, string Code);
 public sealed record PlatformReauthenticationRequest(string Password, string Code);
 public sealed record ChangeOwnPasswordRequest(string CurrentPassword, string NewPassword, string ConfirmPassword, string? TwoFactorCode);
+public sealed record CompanySecurityPolicyRequest(int PasswordMinimumLength, int SessionDurationHours, bool RequireMfa);
+public sealed record CompanyMfaEnrollmentRequest(string Ticket);
+public sealed record CompanyMfaVerificationRequest(string Ticket, string Code);
 public sealed record ChangeMemberRoleRequest(string RoleKey);
 public sealed record InviteCompanyMemberRequest(string FullName, string Email, string RoleKey);

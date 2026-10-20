@@ -2,6 +2,25 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const html = await readFile(new URL('../src/EnvanterTR.Web/wwwroot/index.html', import.meta.url), 'utf8');
+const operational = await readFile(new URL('../src/EnvanterTR.Web/Data/OperationalEndpoints.cs', import.meta.url), 'utf8');
+const departmentApiStart = operational.indexOf('api.MapGet("/departments"');
+const departmentApiEnd = operational.indexOf('}).RequireAuthorization("people.read");', departmentApiStart);
+assert.ok(departmentApiStart >= 0 && departmentApiEnd > departmentApiStart, 'department list API must exist');
+const departmentApi = operational.slice(departmentApiStart, departmentApiEnd);
+for (const token of [
+  'GetEffectiveLocationIdsAsync(db, companyId, actorId, cancellationToken)',
+  'allowedLocations.Contains(requestedLocation)',
+  'allowedLocations.Contains(x.LocationCatalogId.Value)',
+  'allowedLocations.Contains(x.Id)',
+  'allowedLocations.Contains(x.LocationCatalogId.Value)))'
+]) assert.ok(departmentApi.includes(token), `department list must enforce member location scope: ${token}`);
+for (const token of [
+  'if (!AssetLocationIsInScope(department.LocationCatalogId, allowedLocations)) return Results.NotFound();',
+  'if (!AssetLocationIsInScope(entry.LocationCatalogId, allowedLocations) ||',
+  'if (!AssetLocationIsInScope(source.LocationCatalogId, allowedLocations) ||',
+  'if (!AssetLocationIsInScope(request.LocationCatalogId, allowedLocations)) return Results.NotFound();',
+  'if (allowedLocations is not null) return Results.Forbid();'
+]) assert.ok(operational.includes(token), `department mutation APIs must enforce location scope: ${token}`);
 const directoryStart = html.indexOf('function openDirectoryLocation(');
 const directoryEnd = html.indexOf('function renderDirectoryRows()', directoryStart);
 assert.ok(directoryStart >= 0 && directoryEnd > directoryStart, 'location destination shortcut must be present');
@@ -46,6 +65,21 @@ for (const token of [
   "$('#addLocationButton').hidden = departments || !canWriteAssets()",
   "$('#directorySearch').addEventListener('input', renderDirectoryRows)"
 ]) assert.ok(loader.includes(token) || html.includes(token), `location/building page must include ${token}`);
+const refreshHandler = html.match(/\$\('#directoryRefresh'\)\.addEventListener\('click', \(\) => ([^;]+);/);
+assert.ok(refreshHandler?.[1].includes('directoryFilterLocationId'), 'Refreshing a location-filtered department directory must retain its location scope.');
+const departmentCreateStart = html.indexOf('async function openCreateDepartment(');
+const departmentCreateEnd = html.indexOf('async function openDirectoryRename(', departmentCreateStart);
+assert.ok(departmentCreateStart >= 0 && departmentCreateEnd > departmentCreateStart, 'department create and edit catalog flows must be present');
+const departments = html.slice(departmentCreateStart, departmentCreateEnd);
+for (const token of [
+  "api('/api/departments')", "api('/api/locations')", "parentSelect.add(new Option(item.departmentPath || item.name, item.departmentId))",
+  "locationSelect.add(new Option(item.name, item.locationId))", "method: 'POST', body: JSON.stringify({ name,",
+  'parentDepartmentId: form.elements.parentDepartmentId.value || null', 'locationCatalogId: form.elements.locationCatalogId.value || null',
+  "$('#createDepartmentDialog').close()", "loadDirectory('departments', '', directoryFilterLocationId)"
+]) assert.ok(departments.includes(token), `department create flow must include ${token}`);
+const departmentRenderer = html.slice(renderStart, renderEnd);
+for (const token of ["item.departmentPath || item.name", "addChild.textContent = 'Alt departman ekle'", "canManagePeople()"])
+  assert.ok(departmentRenderer.includes(token), `department hierarchy row must include ${token}`);
 
 const companyUnitStart = html.indexOf("$('#companyUnitRows').addEventListener('click'");
 const companyUnitEnd = html.indexOf("$('#companyUnitForm').addEventListener('submit'", companyUnitStart);
@@ -60,11 +94,15 @@ for (const token of [
   'id="addLocationButton"',
   'id="locationManagerDialog"',
   'id="locationManagerForm"',
+  'x.depth < 5',
+  "$('#createLocationPreview').textContent = name ? `Konum yolu: ${parent ? `${parent.name} / ` : ''}${name}` : ''",
   "api('/api/locations/catalog', { method: 'POST'",
   'parentLocationId',
-  "method: 'PATCH', body: JSON.stringify({ name: newName })",
+  "api(`/api/locations/catalog/${locationId}`, { method: 'PATCH', body: JSON.stringify({ name: newName,",
+  '...(canManageSettings() ? { companyUnitId: form.elements.companyUnitId.value || null,',
+  'clearCompanyUnit: !form.elements.companyUnitId.value',
   "method: 'POST', body: JSON.stringify({ employeeId: $('#locationManagerEmployee').value || null })",
   "$('#directorySearch').addEventListener('input', renderDirectoryRows)"
 ]) assert.ok(html.includes(token), `location catalog flow must include ${token}`);
 
-console.log('Verified location/building routing, hierarchical create and rename, filtering, count links, default location, manager assignment, archive/restore confirmation, and role-gated creation.');
+console.log('Verified department and company-unit location catalog create/update/clear flow plus location/building routing, hierarchy, filtering, defaults, manager actions, archive/restore confirmation, and role-gated creation.');

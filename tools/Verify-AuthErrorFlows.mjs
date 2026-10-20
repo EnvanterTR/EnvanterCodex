@@ -4,6 +4,8 @@ import vm from 'node:vm';
 
 const source = readFileSync('src/EnvanterTR.Web/wwwroot/index.html', 'utf8');
 const accountApi = readFileSync('src/EnvanterTR.Web/Data/AccountEndpoints.cs', 'utf8');
+const program = readFileSync('src/EnvanterTR.Web/Program.cs', 'utf8');
+const securityTests = readFileSync('tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs', 'utf8');
 const apiStart = source.indexOf('async function api(path, options = {})');
 const apiEnd = source.indexOf('async function refreshCsrf()', apiStart);
 const loginStart = source.indexOf('function showLogin(message = \'\')');
@@ -17,6 +19,12 @@ assert.match(accountApi.slice(loginEndpointStart, credentialLookup), /GetPending
   'Login must report the pending schema update before querying or incrementing credentials.');
 assert.match(source, /if \(readiness\.status === 'migration-required'\) \{\s*\$\('#authError'\)\.textContent = '';/,
   'A pending migration diagnosis must clear any stale bad-credentials message.');
+assert.match(program, /options\.Lockout\.MaxFailedAccessAttempts\s*=\s*5\s*;/,
+  'Identity lockout must activate after exactly five failed attempts.');
+assert.match(program, /options\.Lockout\.DefaultLockoutTimeSpan\s*=\s*TimeSpan\.FromMinutes\(5\)\s*;/,
+  'Identity lockout duration must remain five minutes.');
+assert.match(securityTests, /Account_lockout_matches_five_failed_attempts_and_five_minutes[\s\S]*?Assert\.Equal\(5, lockout\.MaxFailedAccessAttempts\)[\s\S]*?Assert\.Equal\(TimeSpan\.FromMinutes\(5\), lockout\.DefaultLockoutTimeSpan\)/,
+  'The security acceptance suite must exercise both configured lockout thresholds.');
 
 const dialogs = [{ closed: 0, close() { this.closed++; } }, { closed: 0, close() { this.closed++; } }];
 const elements = new Map([
@@ -40,6 +48,7 @@ const context = {
   },
   fetch: async (path, options) => { requests.push({ path, options }); return response; },
   requestToken: '',
+  authSessionGeneration: 0,
   checkLoginConnection: async () => { connectionChecks++; },
   setTimeout,
   translateUiText: value => value,
@@ -114,7 +123,7 @@ assert.equal(emailOnlyUrlContext.window.__envanterCredentialsInUrl, true, 'An em
 assert.equal(emailOnlyHistoryCalls.length, 1, 'An email-only login URL must be scrubbed immediately.');
 assert.equal(emailOnlyHistoryCalls[0][2], '/?keep=1#dashboard', 'Email-only cleanup must preserve unrelated URL state.');
 
-const diagnosticStart = source.indexOf('async function checkLoginConnection()');
+const diagnosticStart = source.indexOf('function showFirstRunSetupNotice(setup)');
 const diagnosticEnd = source.indexOf("$('#loginForm').addEventListener('submit'", diagnosticStart);
 assert.ok(diagnosticStart >= 0 && diagnosticEnd > diagnosticStart, 'Could not find the login connection diagnostic.');
 assert.match(source, /<button class="btn small" id="retryApiButton" type="button"[^>]*>Sunucu bağlantısını test et<\/button>/,
@@ -130,6 +139,7 @@ const diagnosticElements = new Map([
   ['#loginConnectionStatus', { hidden: true, textContent: '' }],
   ['#authError', { textContent: 'Önceki parola reddi' }],
   ['#firstRunSetupNotice', { hidden: true }],
+  ['#firstRunSetupMessage', { textContent: '' }],
   ['#loginForm button[type="submit"]', { disabled: false }],
   ['#forgotPasswordButton', { disabled: false }],
 ]);
@@ -143,7 +153,7 @@ const diagnosticContext = {
     if (diagnosticMode === 'unavailable') throw new Error('API bağlantısı kurulamadı.');
     if (path === '/api/status' && diagnosticMode === 'migration') return { status: 'migration-required', pendingMigrationCount: 19 };
     if (path === '/api/status') return { status: 'ready' };
-    if (path === '/api/setup/status') return { setupRequired: diagnosticMode === 'setup' };
+    if (path === '/api/setup/status') return { setupRequired: diagnosticMode === 'setup', setupTokenConfigured: true };
     throw new Error(`Unexpected diagnostic request: ${path}`);
   },
   refreshCsrf: async () => {},
@@ -170,6 +180,7 @@ assert.equal(diagnosticElements.get('#forgotPasswordButton').disabled, false, 'A
 diagnosticMode = 'setup';
 await diagnosticContext.checkLoginConnection();
 assert.equal(diagnosticElements.get('#firstRunSetupNotice').hidden, false, 'A first-run database must direct the user to company setup.');
+assert.match(diagnosticElements.get('#firstRunSetupMessage').textContent, /tek kullanımlık kurulum anahtarını alın/, 'First-run guidance must explain the required server-provided setup token.');
 assert.equal(diagnosticElements.get('#loginForm button[type="submit"]').disabled, true, 'Login must be disabled until first-run setup is complete.');
 
 diagnosticMode = 'unavailable';

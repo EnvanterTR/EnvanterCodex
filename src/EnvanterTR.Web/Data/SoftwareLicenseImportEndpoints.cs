@@ -11,7 +11,7 @@ public static class SoftwareLicenseImportEndpoints
 {
     private const int MaxBytes = 16 * 1024 * 1024;
     private const int MaxRows = 5000;
-    private static readonly string[] Header = ["Lisans", "Yayıncı", "Ürün sürümü", "Tür", "Tedarikçi", "Koltuk", "Birim maliyeti", "Para birimi", "Alış tarihi", "Bitiş tarihi", "Otomatik yenileme", "Notlar"];
+    private static readonly string[] Header = ["Lisans", "Yayıncı", "Ürün sürümü", "Tür", "Tedarikçi", "Koltuk", "Birim maliyeti", "Para birimi", "Alış tarihi", "Bitiş tarihi", "Otomatik yenileme", "Notlar", "Satın alma sipariş no."];
     private static readonly string[] LicenseTypes = ["Subscription", "Perpetual", "Device", "Site", "Trial", "Other"];
 
     public static RouteGroupBuilder MapSoftwareLicenseImportEndpoints(this RouteGroupBuilder api)
@@ -31,6 +31,8 @@ public static class SoftwareLicenseImportEndpoints
     private static async Task<IResult> Import(HttpContext context, AppDbContext db, bool commit, CancellationToken ct)
     {
         if (!Guid.TryParse(context.User.FindFirstValue("company_id"), out var companyId) || !Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+        if (commit && (await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct)).IsRestricted)
+            return Results.Forbid();
         Dictionary<string, string>? explicitMappings = null;
         var encodedMapping = context.Request.Headers["X-Software-License-Import-Mapping"].ToString();
         if (encodedMapping.Length > 0)
@@ -76,10 +78,10 @@ public static class SoftwareLicenseImportEndpoints
             DateOnly? purchase = Date(8, "alış tarihi"); DateOnly? expiry = Date(9, "bitiş tarihi");
             if (purchase is not null && expiry is not null && expiry < purchase) Error(errors, $"{line}. satırdaki bitiş tarihi alış tarihinden önce olamaz.");
             bool autoRenew; if (Bool(10, out autoRenew)) { } else { autoRenew = false; Error(errors, $"{line}. satırdaki otomatik yenileme evet/hayır olmalıdır."); }
-            if (publisher?.Length > 160 || version?.Length > 120 || supplier?.Length > 200 || C(11)?.Length > 2000) Error(errors, $"{line}. satırdaki metin alanlarından biri uzunluk sınırını aşıyor.");
+            if (publisher?.Length > 160 || version?.Length > 120 || supplier?.Length > 200 || C(11)?.Length > 2000 || C(12)?.Length > 120) Error(errors, $"{line}. satırdaki metin alanlarından biri uzunluk sınırını aşıyor.");
             var key = $"{name}\u001f{publisher}\u001f{version}"; if (!keys.Add(key)) Error(errors, $"{line}. satırdaki lisans adı/yayıncı/sürüm bileşimi dosyada yineleniyor.");
             licenses.Add(new SoftwareLicense { CompanyId = companyId, Name = name, Publisher = publisher, ProductVersion = version, LicenseType = type,
-                Supplier = supplier, Seats = seats, UnitCost = cost, Currency = currency, PurchaseDate = purchase, ExpirationDate = expiry, AutoRenew = autoRenew, Notes = C(11) });
+                Supplier = supplier, PurchaseOrderReference = C(12), Seats = seats, UnitCost = cost, Currency = currency, PurchaseDate = purchase, ExpirationDate = expiry, AutoRenew = autoRenew, Notes = C(11) });
 
             DateOnly? Date(int column, string label) { if (string.IsNullOrWhiteSpace(r[column])) return null; if (DateOnly.TryParseExact(r[column].Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)) return d; Error(errors, $"{line}. satırdaki {label} yyyy-AA-gg biçiminde olmalıdır."); return null; }
             bool Bool(int column, out bool value) { if (r[column].Equals("true", StringComparison.OrdinalIgnoreCase) || r[column].Equals("evet", StringComparison.OrdinalIgnoreCase)) { value = true; return true; } if (r[column].Equals("false", StringComparison.OrdinalIgnoreCase) || r[column].Equals("hayır", StringComparison.OrdinalIgnoreCase) || r[column].Equals("hayir", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(r[column])) { value = false; return true; } value = false; return false; }
@@ -96,7 +98,19 @@ public static class SoftwareLicenseImportEndpoints
         if (Conflict(latest.Select(x => (x.Name, x.Publisher, x.ProductVersion)))) return Results.Conflict(new { message = "Önizlemeden sonra aynı lisans eklendi. Hiçbir kayıt aktarılmadı; önizlemeyi yenileyin." });
         var suppliersCreated = await SupplierImportCatalog.LinkAndCreateAsync(db, companyId, actorId,
             licenses.Select(license => (license.Supplier, (Action<Guid>)(id => license.SupplierId = id))), ct);
-        foreach (var license in licenses) { db.SoftwareLicenses.Add(license); db.SoftwareLicenseEvents.Add(new SoftwareLicenseEvent { CompanyId = companyId, LicenseId = license.Id, ActorUserId = actorId, EventType = "Created", Details = $"{(isXlsx ? "Excel" : "CSV")} içe aktarımı ile lisans kaydı oluşturuldu." }); }
+        foreach (var license in licenses)
+        {
+            db.SoftwareLicenses.Add(license);
+            if (!string.IsNullOrWhiteSpace(license.PurchaseOrderReference))
+                db.SoftwareLicensePurchaseOrders.Add(new SoftwareLicensePurchaseOrder
+                {
+                    CompanyId = companyId, LicenseId = license.Id, SupplierId = license.SupplierId,
+                    OrderNumber = license.PurchaseOrderReference, OrderDate = license.PurchaseDate,
+                    SeatsPurchased = license.Seats, UnitCost = license.UnitCost, Currency = license.Currency,
+                    Notes = "Lisans içe aktarımındaki sipariş referansından oluşturuldu."
+                });
+            db.SoftwareLicenseEvents.Add(new SoftwareLicenseEvent { CompanyId = companyId, LicenseId = license.Id, ActorUserId = actorId, EventType = "Created", Details = $"{(isXlsx ? "Excel" : "CSV")} içe aktarımı ile lisans kaydı oluşturuldu." });
+        }
         db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "SoftwareLicense", Action = isXlsx ? "XlsxImported" : "CsvImported", Details = $"{(isXlsx ? "Excel" : "CSV")} dosyasından {licenses.Count} lisans içe aktarıldı." });
         try { await db.SaveChangesAsync(ct); await tx.CommitAsync(ct); } catch (DbUpdateException) { await tx.RollbackAsync(ct); return Results.Conflict(new { message = "CSV aktarılmadı; bir kayıt çakıştı. Önizlemeyi yenileyip tekrar deneyin." }); }
         return Results.Ok(new { imported = licenses.Count, suppliersCreated, message = $"{licenses.Count:N0} lisans ve denetim geçmişi eklendi; {suppliersCreated:N0} yeni tedarikçi kataloğa bağlandı." });

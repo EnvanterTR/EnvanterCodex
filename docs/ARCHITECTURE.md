@@ -2,6 +2,13 @@
 
 ## İlk teknoloji seçimi
 
+### Geçmişin kanıt sınırı (20 Ekim 2026)
+
+- `C:\Users\Lenovo\Desktop\EnvanterTR\snipe-it-8.7.2\snipe-it-8.7.2` deposunun 25 Eylül Git geçmişi, PHP 8.2 / Laravel 12 tabanlı Snipe-IT 8.7.2 kopyasına EnvanterTR SaaS özelliklerinin eklendiğini gösteriyor.
+- Bugünkü EnvanterTR web deposu ayrıdır; ilk commit'i `38744c6` / 4 Ekim 2026 ve web projesi ASP.NET Core / .NET 10, EF Core, Npgsql ve PostgreSQL kullanır.
+- İncelenen Git ve erişilebilir proje notlarında Snipe/Laravel tabanından ayrı ASP.NET Core deposuna ayrılma kararının sahibi veya gerekçesi kayıtlı bulunmadı. Bu nedenle bu kararı kullanıcıya atfetme.
+- Güncel hedef v24.2'ye göre var olan C# uygulamasını kullan, mevcut veriyi koru ve yeni bir teknoloji geçişi yapma. Snipe-IT işlevsel karşılaştırma kaynağıdır; mevcut C# deposunun eski PHP kodundan otomatik dönüştürüldüğü veya lisans incelemesinin tamamlandığı anlamına gelmez.
+
 - Sunucu uygulaması: ASP.NET Core, .NET 10 LTS.
 - Arayüz: sunucu tarafından sunulan erişilebilir web arayüzü; ilk ince dilimden sonra modül bazında genişletilecek.
 - Veritabanı: PostgreSQL; Windows ve Linux kurulumlarında yerel servis olarak çalışabilir.

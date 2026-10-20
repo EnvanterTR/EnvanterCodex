@@ -69,7 +69,8 @@
           : `<div class="actions"><button class="btn small" type="button" data-member-role="${esc(membership.id)}" data-role="${esc(membership.roleKey)}" data-company="${esc(membership.name)}">Rolü değiştir</button><button class="btn small danger" type="button" data-member-remove="${esc(membership.id)}" data-company="${esc(membership.name)}">Şirketten çıkar</button></div>`;
         return `<tr><td class="company-name">${esc(membership.name)}<span class="sub">${esc(membership.slug || '')}${membership.isActive ? '' : ' · şirket pasif'}</span></td><td>${esc(roleLabel(membership.roleKey))}</td><td>${date(membership.createdAt)}</td><td>${subscriptionInfo}</td><td>${controls}</td></tr>`;
       }).join('');
-      body.innerHTML = `<div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin:0">${details.map(([label, value]) => `<div class="card"><div class="card-top">${esc(label)}</div><strong style="font-size:1rem">${esc(value)}</strong></div>`).join('')}</div><div><h3>Şirket üyelikleri</h3>${result.membershipsTruncated ? '<div class="notice warning">Güvenli görüntüleme sınırı nedeniyle üyeliklerin yalnızca ilk 200 kaydı gösteriliyor.</div>' : ''}${memberships ? `<div class="table-wrap"><table><thead><tr><th>Şirket</th><th>Rol</th><th>Üyelik tarihi</th><th>Plan ve dönem</th><th>Yönetim</th></tr></thead><tbody>${memberships}</tbody></table></div>` : '<div class="empty">Bu hesap herhangi bir şirkete üye değil.</div>'}</div><section class="panel" style="margin-top:18px"><div class="panel-head"><div><h3>Hesap yaşam çizelgesi</h3><p class="muted">Üyelik, demo, satın alma, ödeme ve güvenlik işlemleri</p></div></div><div id="memberTimeline"><div class="empty">Hesap hareketleri yükleniyor…</div></div></section>`;
+      const securityActions = `<section class="panel" style="margin-top:18px"><div class="panel-head"><div><h3>Hesap güvenliği</h3><p class="muted">Kritik işlemler yeniden yönetici doğrulaması ister ve denetim kaydına alınır.</p></div></div><div class="actions">${account.isLockedOut ? `<button class="btn small" type="button" data-member-security="unlock">Hesap kilidini kaldır</button>` : `<button class="btn small danger" type="button" data-member-security="lock">Hesabı geçici kilitle</button>`}<button class="btn small" type="button" data-member-security="revokeSessions">Tüm oturumları sonlandır</button><button class="btn small" type="button" data-member-security="sendPasswordReset">Parola yenileme e-postası gönder</button></div></section>`;
+      body.innerHTML = `<div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin:0">${details.map(([label, value]) => `<div class="card"><div class="card-top">${esc(label)}</div><strong style="font-size:1rem">${esc(value)}</strong></div>`).join('')}</div>${securityActions}<div><h3>Şirket üyelikleri</h3>${result.membershipsTruncated ? '<div class="notice warning">Güvenli görüntüleme sınırı nedeniyle üyeliklerin yalnızca ilk 200 kaydı gösteriliyor.</div>' : ''}${memberships ? `<div class="table-wrap"><table><thead><tr><th>Şirket</th><th>Rol</th><th>Üyelik tarihi</th><th>Plan ve dönem</th><th>Yönetim</th></tr></thead><tbody>${memberships}</tbody></table></div>` : '<div class="empty">Bu hesap herhangi bir şirkete üye değil.</div>'}</div><section class="panel" style="margin-top:18px"><div class="panel-head"><div><h3>Hesap yaşam çizelgesi</h3><p class="muted">Üyelik, demo, satın alma, ödeme ve güvenlik işlemleri</p></div></div><div id="memberTimeline"><div class="empty">Hesap hareketleri yükleniyor…</div></div></section>`;
       await loadMemberTimeline(id, 1, false);
       $('#memberDetail').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
@@ -110,6 +111,50 @@
   function money(value, currency) {
     try { return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency || 'TRY' }).format(value); }
     catch { return `${Number(value).toLocaleString('tr-TR')} ${esc(currency || 'TRY')}`; }
+  }
+
+  function openMemberSecurityAction(userId, action) {
+    const titles = { lock: 'Hesabı geçici kilitle', unlock: 'Hesap kilidini kaldır', revokeSessions: 'Tüm oturumları sonlandır', sendPasswordReset: 'Parola yenileme e-postası gönder' };
+    const dialog = document.createElement('dialog');
+    dialog.className = 'dialog';
+    dialog.style.width = 'min(540px,calc(100% - 24px))';
+    const form = document.createElement('form');
+    const lockField = action === 'lock' ? '<label class="field">Kilit süresi<select name="lockoutDays" required><option value="1">1 gün</option><option value="7" selected>7 gün</option><option value="30">30 gün</option><option value="90">90 gün</option><option value="365">365 gün</option></select></label>' : '';
+    const warning = action === 'sendPasswordReset'
+      ? 'Sadece doğrulanmış e-posta adresine süreli bir parola yenileme bağlantısı gönderilir. Parola değiştirilmez ve bağlantı bu ekranda gösterilmez.'
+      : action === 'lock'
+        ? 'Hesap seçilen süre boyunca oturum açamaz; mevcut oturumları da sonlandırılır. Son kullanılabilir platform yöneticisi kilitlenemez.'
+        : action === 'unlock'
+          ? 'Kilit ve başarısız giriş sayacı kaldırılır. Daha önce sonlandırılmış oturumlar geri açılmaz.'
+          : 'Hesabın açık oturumları hemen sonlandırılır. Kullanıcı yeni oturum açabilir.';
+    form.innerHTML = `<div class="dialog-head"><h2>${esc(titles[action])}</h2><button type="button" class="btn small" data-security-cancel aria-label="Kapat">✕</button></div><div class="dialog-body"><p class="notice ${action === 'lock' ? 'warning' : ''}">${esc(warning)}</p>${lockField}<label class="field">İşlem gerekçesi<textarea name="note" maxlength="1000" required placeholder="Bu işlemin nedenini yazın"></textarea></label><p class="muted" data-security-feedback role="status" aria-live="polite"></p></div><div class="dialog-foot"><button type="button" class="btn" data-security-cancel>Vazgeç</button><button type="submit" class="btn primary">${esc(titles[action])}</button></div>`;
+    dialog.append(form);
+    document.body.append(dialog);
+    dialog.querySelectorAll('[data-security-cancel]').forEach((button) => button.addEventListener('click', () => { dialog.close(); dialog.remove(); }));
+    dialog.addEventListener('click', (event) => { if (event.target === dialog) { dialog.close(); dialog.remove(); } });
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const submit = form.querySelector('[type="submit"]');
+      const feedback = form.querySelector('[data-security-feedback]');
+      submit.disabled = true;
+      feedback.textContent = 'Güvenlik işlemi uygulanıyor…';
+      try {
+        const csrf = await api('/api/session/csrf');
+        const payload = { action, note: form.elements.note.value.trim() };
+        if (action === 'lock') payload.lockoutDays = Number(form.elements.lockoutDays.value);
+        const result = await api(`/api/platform/members/${encodeURIComponent(userId)}/security-actions`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf.requestToken }, body: JSON.stringify(payload)
+        });
+        dialog.close(); dialog.remove();
+        await Promise.all([loadMembers(state.page), loadMemberDetail(userId)]);
+        const toast = $('#toast'); toast.textContent = result.message; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3600);
+      } catch (error) {
+        feedback.textContent = error.message;
+        submit.disabled = false;
+      }
+    });
+    dialog.showModal();
+    form.elements.note.focus();
   }
 
   function openMembershipAction(userId, companyId, companyName, currentRole, action) {
@@ -287,6 +332,11 @@
     if (button) loadMemberDetail(button.dataset.memberDetail);
   });
   $('#memberDetailBody').addEventListener('click', (event) => {
+    const securityButton = event.target.closest('[data-member-security]');
+    if (securityButton) {
+      openMemberSecurityAction($('#memberSearch').dataset.activeUserId, securityButton.dataset.memberSecurity);
+      return;
+    }
     const transferButton = event.target.closest('[data-member-transfer]');
     if (transferButton) {
       openOwnerTransfer($('#memberSearch').dataset.activeUserId,

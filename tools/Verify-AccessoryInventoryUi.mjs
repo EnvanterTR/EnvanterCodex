@@ -27,11 +27,15 @@ const exportStart = html.indexOf("$('#accessoryExport').addEventListener('click'
 const exportEnd = html.indexOf("$('#accessoryRefresh').addEventListener('click'", exportStart);
 assert.ok(exportStart >= 0 && exportEnd > exportStart, 'accessory CSV export handler must be present');
 const exportHandler = html.slice(exportStart, exportEnd);
-for (const token of [
-  '/api/accessories/export.csv?', "params.set('q', q)", "params.set('stock', stock)",
-  "params.set('categoryId', category)", "params.set('location', location)", 'window.location.assign'
-]) assert.ok(exportHandler.includes(token), `accessory export must preserve ${token}`);
-assert.doesNotMatch(exportHandler, /params\.set\('category', category\)/, 'category export must send the category ID expected by the list API');
+for (const token of ['/api/accessories/export.csv?', "stockExportParams('accessories')", 'window.location.assign'])
+  assert.ok(exportHandler.includes(token), `accessory export must include ${token}`);
+const stockExportStart = html.indexOf('function stockExportParams(kind)');
+const stockExportEnd = html.indexOf('async function downloadWorkbook(', stockExportStart);
+assert.ok(stockExportStart >= 0 && stockExportEnd > stockExportStart, 'shared inventory export filter builder must exist');
+const stockExportParams = html.slice(stockExportStart, stockExportEnd);
+for (const token of ["params.set('q',q)", "params.set('stock',stock)", "if (kind === 'accessories')",
+  "params.set('categoryId',$('#accessoryCategoryFilter').value)", "params.set('location',$('#accessoryLocationFilter').value)"])
+  assert.ok(stockExportParams.includes(token), `accessory export filter builder must include ${token}`);
 
 const handlersStart = html.indexOf("$('#accessoryRows').addEventListener('click'");
 const handlersEnd = html.indexOf("$('#accessoryRows').addEventListener('change'", handlersStart);

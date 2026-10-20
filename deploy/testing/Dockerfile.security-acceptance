@@ -5,6 +5,8 @@ COPY src/EnvanterTR.Web/EnvanterTR.Web.csproj src/EnvanterTR.Web/
 COPY tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj tests/EnvanterTR.SecurityAcceptance/
 RUN dotnet restore tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj
 COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
+RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
 COPY tests/EnvanterTR.SecurityAcceptance/ tests/EnvanterTR.SecurityAcceptance/
+RUN dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore
 WORKDIR /source/tests/EnvanterTR.SecurityAcceptance
-ENTRYPOINT ["dotnet", "test", "--no-restore", "--logger", "console;verbosity=normal"]
+ENTRYPOINT ["dotnet", "test", "--no-build", "--no-restore", "--logger", "console;verbosity=normal"]

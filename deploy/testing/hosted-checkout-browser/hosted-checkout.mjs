@@ -132,7 +132,19 @@ try {
 }
 
 await import('./command-palette.mjs');
+await import('./asset-camera.mjs');
 await import('./asset-detail-actions.mjs');
+await import('./company-tasks.mjs');
+await import('./inventory-requests.mjs');
+await import('./support-tickets.mjs');
+await import('./return-queue.mjs');
+await import('./asset-status-queues.mjs');
+await import('./platform-support-tickets.mjs');
 await import('./platform-admin-members.mjs');
 await import('./platform-admin-bootstrap.mjs');
+await import('./platform-audit-retention.mjs');
 await import('./public-site-pricing.mjs');
+await import('./employee-licenses.mjs');
+await import('./employee-records.mjs');
+await import('./accessory-kits.mjs');
+await import('./scheduled-reports.mjs');

@@ -6,13 +6,27 @@ RUN npm ci --omit=dev
 COPY deploy/testing/hosted-checkout-browser/hosted-checkout.mjs ./
 COPY deploy/testing/hosted-checkout-browser/command-palette.mjs ./
 COPY deploy/testing/hosted-checkout-browser/asset-detail-actions.mjs ./
+COPY deploy/testing/hosted-checkout-browser/company-tasks.mjs ./
+COPY deploy/testing/hosted-checkout-browser/inventory-requests.mjs ./
+COPY deploy/testing/hosted-checkout-browser/support-tickets.mjs ./
+COPY deploy/testing/hosted-checkout-browser/return-queue.mjs ./
+COPY deploy/testing/hosted-checkout-browser/asset-status-queues.mjs ./
+COPY deploy/testing/hosted-checkout-browser/platform-support-tickets.mjs ./
+COPY deploy/testing/hosted-checkout-browser/employee-licenses.mjs ./
+COPY deploy/testing/hosted-checkout-browser/employee-records.mjs ./
+COPY deploy/testing/hosted-checkout-browser/accessory-kits.mjs ./
+COPY deploy/testing/hosted-checkout-browser/scheduled-reports.mjs ./
 COPY deploy/testing/hosted-checkout-browser/platform-admin-members.mjs ./
 COPY deploy/testing/hosted-checkout-browser/platform-admin-bootstrap.mjs ./
+COPY deploy/testing/hosted-checkout-browser/asset-camera.mjs ./
+COPY deploy/testing/hosted-checkout-browser/platform-audit-retention.mjs ./
 COPY deploy/testing/hosted-checkout-browser/public-site-pricing.mjs ./
 COPY src/EnvanterTR.PublicSite/checkout.html src/EnvanterTR.PublicSite/checkout.js /checkout-site/
 COPY src/EnvanterTR.PublicSite/index.html /public-site/index.html
 COPY src/EnvanterTR.Web/wwwroot/index.html /checkout-site/company-app.html
 COPY src/EnvanterTR.Web/wwwroot/vendor/qrcodegen.js /checkout-site/vendor/qrcodegen.js
+COPY src/EnvanterTR.Web/wwwroot/vendor/zxing-browser-0.2.1.min.js src/EnvanterTR.Web/wwwroot/vendor/bwip-js-min.js /checkout-site/vendor/
+COPY src/EnvanterTR.Web/wwwroot/report-print.js src/EnvanterTR.Web/wwwroot/scheduled-reports.js /checkout-site/
 COPY src/EnvanterTR.Web/wwwroot/platform-admin.html /platform-site/platform-admin.html
 COPY src/EnvanterTR.Web/wwwroot/platform-setup.html /platform-site/platform-setup.html
 COPY src/EnvanterTR.Web/wwwroot/platform-admin-members.js src/EnvanterTR.Web/wwwroot/platform-admin-subscriptions.js src/EnvanterTR.Web/wwwroot/platform-admin-demo-requests.js src/EnvanterTR.Web/wwwroot/platform-admin-payment-follow-ups.js /platform-site/

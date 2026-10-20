@@ -10,12 +10,28 @@ public sealed class Company
     public string BrandPrimaryColor { get; set; } = "#1769E0";
     public string? LabelPrintSettingsJson { get; set; }
     public string? AssetStatusLabelsJson { get; set; }
+    public int SecurityPasswordMinimumLength { get; set; } = 12;
+    public int SecuritySessionDurationHours { get; set; } = 720;
+    public bool SecurityRequireMfa { get; set; }
     public bool IsActive { get; set; } = true;
     public string CustomerLifecycleStage { get; set; } = "Unclassified";
     public Guid? PlatformOwnerUserId { get; set; }
     public DateTimeOffset? PlatformNextFollowUpAt { get; set; }
     public int AssetCount { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class CompanyMfaEnrollmentChallenge
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid UserId { get; set; }
+    public required string TicketHash { get; set; }
+    public bool RememberMe { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset ExpiresAt { get; set; }
+    public DateTimeOffset? SetupStartedAt { get; set; }
+    public DateTimeOffset? CompletedAt { get; set; }
 }
 
 public sealed class CompanyApiToken
@@ -108,6 +124,7 @@ public sealed class CompanyDepartment
     public Guid CompanyId { get; set; }
     public Guid? ParentDepartmentId { get; set; }
     public Guid? LocationCatalogId { get; set; }
+    public Guid? ManagerEmployeeId { get; set; }
     public required string Name { get; set; }
     public required string NormalizedName { get; set; }
     public bool IsActive { get; set; } = true;
@@ -123,9 +140,18 @@ public sealed class CompanyUnit
     public required string Name { get; set; }
     public required string NormalizedName { get; set; }
     public string? Code { get; set; }
+    public string UnitType { get; set; } = CompanyUnitTypes.Organizational;
     public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public static class CompanyUnitTypes
+{
+    public const string Organizational = "organizational";
+    public const string LegalEntity = "legal_entity";
+    public const string Branch = "branch";
+    public static readonly string[] All = [Organizational, LegalEntity, Branch];
 }
 
 public sealed class CompanyLocation
@@ -133,6 +159,7 @@ public sealed class CompanyLocation
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid CompanyId { get; set; }
     public Guid? ParentLocationId { get; set; }
+    public Guid? CompanyUnitId { get; set; }
     public required string Name { get; set; }
     public required string NormalizedName { get; set; }
     public bool IsDefault { get; set; }
@@ -268,6 +295,14 @@ public sealed class PlatformAuditEntry
     public DateTimeOffset OccurredAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class PlatformAuditRetentionPolicy
+{
+    public int Id { get; set; } = 1;
+    public int? RetentionDays { get; set; }
+    public Guid UpdatedByUserId { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 // Employee records are inventory subjects; they are deliberately not login accounts.
 public sealed class Employee
 {
@@ -281,6 +316,7 @@ public sealed class Employee
     public string? Phone { get; set; }
     public string? Location { get; set; }
     public Guid? LocationCatalogId { get; set; }
+    public Guid? CompanyUnitId { get; set; }
     public DateOnly? StartedOn { get; set; }
     public string? PrivateNotes { get; set; }
     public Guid? ManagerEmployeeId { get; set; }
@@ -340,8 +376,11 @@ public sealed class AssetCustomFieldDefinition
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid CompanyId { get; set; }
+    public Guid? CategoryId { get; set; }
+    public Guid? ModelId { get; set; }
     public required string Key { get; set; }
     public required string Name { get; set; }
+    public string GroupName { get; set; } = "Genel";
     public required string FieldType { get; set; }
     public string? OptionsJson { get; set; }
     public bool IsRequired { get; set; }
@@ -369,8 +408,12 @@ public sealed class Asset
     public Guid? AssignedEmployeeId { get; set; }
     public DateOnly? ExpectedReturnOn { get; set; }
     public Guid? PurchaseOrderId { get; set; }
+    public Guid? PurchaseOrderLineId { get; set; }
     public DateOnly? PurchaseDate { get; set; }
     public DateOnly? WarrantyExpiresAt { get; set; }
+    public string? InsuranceProvider { get; set; }
+    public string? InsurancePolicyNumber { get; set; }
+    public DateOnly? InsuranceExpiresAt { get; set; }
     public DateOnly? NextAuditOn { get; set; }
     public decimal? PurchaseCost { get; set; }
     public string Currency { get; set; } = "TRY";
@@ -531,6 +574,26 @@ public sealed class EmployeeDocument
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class EmployeeHandoverDocument
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid EmployeeId { get; set; }
+    public Guid CreatedByUserId { get; set; }
+    public required string DocumentNumber { get; set; }
+    public required string SnapshotJson { get; set; }
+    public required string SnapshotSha256 { get; set; }
+    public string? RecipientName { get; set; }
+    public string? RecipientSignaturePngBase64 { get; set; }
+    public string? RecipientSignatureSha256 { get; set; }
+    public DateTimeOffset? RecipientSignedAt { get; set; }
+    public string? IssuerName { get; set; }
+    public string? IssuerSignaturePngBase64 { get; set; }
+    public string? IssuerSignatureSha256 { get; set; }
+    public DateTimeOffset? IssuerSignedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class AssetMaintenance
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -675,6 +738,10 @@ public sealed class AccessoryPurchaseOrder
     public required string Supplier { get; set; }
     public Guid? SupplierId { get; set; }
     public string Status { get; set; } = "Ordered";
+    public string ApprovalStatus { get; set; } = "NotRequired";
+    public Guid? ReviewedByUserId { get; set; }
+    public DateTimeOffset? ReviewedAt { get; set; }
+    public string? ApprovalNote { get; set; }
     public DateOnly OrderDate { get; set; }
     public DateOnly? ExpectedOn { get; set; }
     public string Currency { get; set; } = "TRY";
@@ -695,6 +762,7 @@ public sealed class AccessoryPurchaseOrderLine
     public Guid AccessoryId { get; set; }
     public int Quantity { get; set; }
     public int QuantityReceived { get; set; }
+    public int QuantityReturned { get; set; }
     public decimal UnitCost { get; set; }
     public string? Notes { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
@@ -708,6 +776,10 @@ public sealed class StockPurchaseOrder
     public required string Supplier { get; set; }
     public Guid? SupplierId { get; set; }
     public string Status { get; set; } = "Ordered";
+    public string ApprovalStatus { get; set; } = "NotRequired";
+    public Guid? ReviewedByUserId { get; set; }
+    public DateTimeOffset? ReviewedAt { get; set; }
+    public string? ApprovalNote { get; set; }
     public DateOnly OrderDate { get; set; }
     public DateOnly? ExpectedOn { get; set; }
     public string Currency { get; set; } = "TRY";
@@ -729,6 +801,7 @@ public sealed class StockPurchaseOrderLine
     public Guid? ComponentId { get; set; }
     public int Quantity { get; set; }
     public int QuantityReceived { get; set; }
+    public int QuantityReturned { get; set; }
     public decimal UnitCost { get; set; }
     public string? Notes { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
@@ -742,6 +815,10 @@ public sealed class AssetPurchaseOrder
     public required string Supplier { get; set; }
     public Guid? SupplierId { get; set; }
     public string Status { get; set; } = "Ordered";
+    public string ApprovalStatus { get; set; } = "NotRequired";
+    public Guid? ReviewedByUserId { get; set; }
+    public DateTimeOffset? ReviewedAt { get; set; }
+    public string? ApprovalNote { get; set; }
     public DateOnly OrderDate { get; set; }
     public DateOnly? ExpectedOn { get; set; }
     public string Currency { get; set; } = "TRY";
@@ -750,6 +827,19 @@ public sealed class AssetPurchaseOrder
     public decimal FreightAmount { get; set; }
     public string? Notes { get; set; }
     public Guid? CreatedByUserId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class CompanyPurchaseBudget
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public int BudgetYear { get; set; }
+    public required string Currency { get; set; }
+    public decimal Amount { get; set; }
+    public Guid? CreatedByUserId { get; set; }
+    public Guid? UpdatedByUserId { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
@@ -763,8 +853,10 @@ public sealed class AssetPurchaseOrderLine
     public Guid CategoryId { get; set; }
     public Guid? BrandId { get; set; }
     public Guid? ModelId { get; set; }
+    public Guid? LocationCatalogId { get; set; }
     public int Quantity { get; set; }
     public int QuantityReceived { get; set; }
+    public int QuantityReturned { get; set; }
     public decimal UnitCost { get; set; }
     public DateOnly? WarrantyExpiresAt { get; set; }
     public string? Notes { get; set; }
@@ -781,6 +873,31 @@ public sealed class AssetPurchaseOrderAttachment
     public required string StorageFileName { get; set; }
     public required string ContentType { get; set; }
     public long Length { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class PurchaseOrderReturn
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public required string OrderType { get; set; }
+    public Guid PurchaseOrderId { get; set; }
+    public required string ReturnNumber { get; set; }
+    public DateOnly ReturnedOn { get; set; }
+    public required string Reason { get; set; }
+    public string? Notes { get; set; }
+    public Guid? CreatedByUserId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class PurchaseOrderReturnLine
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid PurchaseOrderReturnId { get; set; }
+    public Guid? PurchaseOrderLineId { get; set; }
+    public Guid? AssetId { get; set; }
+    public int Quantity { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
@@ -949,6 +1066,7 @@ public sealed class SoftwareLicense
     public string? LicenseReference { get; set; }
     public string? Supplier { get; set; }
     public Guid? SupplierId { get; set; }
+    public string? PurchaseOrderReference { get; set; }
     public int Seats { get; set; }
     public decimal? UnitCost { get; set; }
     public string Currency { get; set; } = "TRY";
@@ -956,9 +1074,44 @@ public sealed class SoftwareLicense
     public DateOnly? ExpirationDate { get; set; }
     public bool AutoRenew { get; set; }
     public bool RequiresEulaAcceptance { get; set; }
+    public bool IsArchived { get; set; }
     public string? Notes { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class SoftwareLicensePurchaseOrder
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid LicenseId { get; set; }
+    public Guid? SupplierId { get; set; }
+    public required string OrderNumber { get; set; }
+    public DateOnly? OrderDate { get; set; }
+    public int SeatsPurchased { get; set; } = 1;
+    public decimal? UnitCost { get; set; }
+    public string Currency { get; set; } = "TRY";
+    public string? Notes { get; set; }
+    public bool IsArchived { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class AssetInstalledSoftware
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid AssetId { get; set; }
+    public required string Fingerprint { get; set; }
+    public required string Name { get; set; }
+    public string? Publisher { get; set; }
+    public string? Version { get; set; }
+    public string? Architecture { get; set; }
+    public DateOnly? InstallDate { get; set; }
+    public required string Source { get; set; }
+    public DateTimeOffset FirstSeenAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset LastSeenAt { get; set; } = DateTimeOffset.UtcNow;
+    public bool IsPresent { get; set; } = true;
 }
 
 public sealed class SoftwareLicenseAttachment
@@ -993,6 +1146,21 @@ public sealed class SoftwareLicenseAssignment
     public string? EulaVersion { get; set; }
     public DateTimeOffset? RevokedAt { get; set; }
     public string? Notes { get; set; }
+}
+
+public sealed class SoftwareLicenseEmployeeEulaAcceptance
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid LicenseId { get; set; }
+    public Guid AssignmentId { get; set; }
+    public Guid EmployeeId { get; set; }
+    public Guid? AcceptedByUserId { get; set; }
+    public required string AcceptedByEmailSnapshot { get; set; }
+    public Guid EulaAttachmentId { get; set; }
+    public required string EulaVersion { get; set; }
+    public required string EulaSha256 { get; set; }
+    public DateTimeOffset AcceptedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
 public sealed class SoftwareLicenseEvent
@@ -1068,6 +1236,7 @@ public static class AssetStatuses
     public const string Maintenance = "Maintenance";
     public const string Unusable = "Unusable";
     public const string Archived = "Archived";
+    public const string ReturnedToSupplier = "ReturnedToSupplier";
 }
 
 public sealed class AuditEntry

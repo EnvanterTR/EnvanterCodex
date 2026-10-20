@@ -216,6 +216,8 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
     builder.Services.AddScoped<OperationalNotificationEmailService>();
     builder.Services.AddHostedService<OperationalNotificationEmailWorker>();
+    builder.Services.AddScoped<ScheduledReportEmailService>();
+    builder.Services.AddHostedService<ScheduledReportEmailWorker>();
     builder.Services.AddScoped<PlatformCrmFollowUpEmailService>();
     builder.Services.AddHostedService<PlatformCrmFollowUpEmailWorker>();
     builder.Services.AddScoped<SupportTicketEmailService>();
@@ -230,7 +232,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
         options.Password.RequireUppercase = true;
         options.Password.RequireNonAlphanumeric = true;
         options.Lockout.MaxFailedAccessAttempts = 5;
-        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
     }).AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders();
     builder.Services.Configure<SecurityStampValidatorOptions>(options =>
     {
@@ -256,6 +258,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
         options.Cookie.Name = "EnvanterTR.Session";
         options.Cookie.Domain = builder.Configuration["TenantRouting:CookieDomain"];
         options.Cookie.HttpOnly = true;
+        options.SlidingExpiration = false;
         options.Cookie.SameSite = SameSiteMode.Strict;
         options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
             ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
@@ -272,22 +275,14 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     });
     builder.Services.AddAuthorization(options =>
     {
-        options.AddPolicy("asset.read", policy => policy.RequireAuthenticatedUser().RequireClaim("company_role",
-            "owner", "admin", "asset_manager", "asset_operator", "auditor", "viewer"));
-        options.AddPolicy("asset.write", policy => policy.RequireAuthenticatedUser().RequireClaim("company_role",
-            "owner", "admin", "asset_manager", "asset_operator"));
-        options.AddPolicy("settings.manage", policy => policy.RequireAuthenticatedUser().RequireClaim("company_role",
-            "owner", "admin"));
-        options.AddPolicy("people.read", policy => policy.RequireAuthenticatedUser().RequireClaim("company_role",
-            "owner", "admin", "asset_manager", "asset_operator", "auditor", "hr_operator"));
-        options.AddPolicy("people.manage", policy => policy.RequireAuthenticatedUser().RequireClaim("company_role",
-            "owner", "admin", "asset_manager", "hr_operator"));
-        options.AddPolicy("people.files.read", policy => policy.RequireAuthenticatedUser().RequireClaim("company_role",
-            "owner", "admin", "hr_operator"));
-        options.AddPolicy("people.files.manage", policy => policy.RequireAuthenticatedUser().RequireClaim("company_role",
-            "owner", "admin", "hr_operator"));
-        options.AddPolicy("company.member", policy => policy.RequireAuthenticatedUser().RequireClaim("company_role",
-            "owner", "admin", "asset_manager", "asset_operator", "auditor", "viewer", "hr_operator"));
+        options.AddPolicy("asset.read", policy => policy.RequireAuthenticatedUser().RequireClaim("company_permission", "asset.read"));
+        options.AddPolicy("asset.write", policy => policy.RequireAuthenticatedUser().RequireClaim("company_permission", "asset.write"));
+        options.AddPolicy("settings.manage", policy => policy.RequireAuthenticatedUser().RequireClaim("company_permission", "settings.manage"));
+        options.AddPolicy("people.read", policy => policy.RequireAuthenticatedUser().RequireClaim("company_permission", "people.read"));
+        options.AddPolicy("people.manage", policy => policy.RequireAuthenticatedUser().RequireClaim("company_permission", "people.manage"));
+        options.AddPolicy("people.files.read", policy => policy.RequireAuthenticatedUser().RequireClaim("company_permission", "people.files.read"));
+        options.AddPolicy("people.files.manage", policy => policy.RequireAuthenticatedUser().RequireClaim("company_permission", "people.files.manage"));
+        options.AddPolicy("company.member", policy => policy.RequireAuthenticatedUser().RequireClaim("company_member", "true"));
         options.AddPolicy("platform.admin", policy => policy.RequireAuthenticatedUser().RequireClaim("platform_admin", "true"));
     });
 }
@@ -455,6 +450,7 @@ app.Use(async (context, next) =>
     var companyClaim = principal.FindFirst("company_id")?.Value;
     var roleClaim = principal.FindFirst("company_role")?.Value;
     string? currentRole = null;
+    string[] currentPermissionClaims = [];
     if (companyClaim is not null)
     {
         if (!Guid.TryParse(companyClaim, out var companyId) || string.IsNullOrWhiteSpace(roleClaim))
@@ -475,6 +471,14 @@ app.Use(async (context, next) =>
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;
         }
+        var roleAuthorization = await CompanyRoleAuthorization.ResolveAsync(db, companyId, currentRole, context.RequestAborted);
+        if (!roleAuthorization.Valid)
+        {
+            await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+        currentPermissionClaims = CompanyRoleAuthorization.ToPolicyClaims(roleAuthorization.PermissionKeys);
     }
     else if (roleClaim is not null)
     {
@@ -568,14 +572,34 @@ app.Use(async (context, next) =>
             identity.AddClaim(new Claim("company_role", currentRole));
             changed = true;
         }
+        var currentMemberClaim = identity.HasClaim("company_member", "true");
+        if (currentMemberClaim != (currentRole is not null))
+        {
+            foreach (var staleMember in identity.FindAll("company_member").ToArray()) identity.RemoveClaim(staleMember);
+            if (currentRole is not null) identity.AddClaim(new Claim("company_member", "true"));
+            changed = true;
+        }
+        var existingPermissionClaims = identity.FindAll("company_permission").Select(claim => claim.Value)
+            .ToHashSet(StringComparer.Ordinal);
+        var desiredPermissionClaims = currentPermissionClaims.ToHashSet(StringComparer.Ordinal);
+        if (!existingPermissionClaims.SetEquals(desiredPermissionClaims))
+        {
+            foreach (var stalePermission in identity.FindAll("company_permission").ToArray()) identity.RemoveClaim(stalePermission);
+            foreach (var permission in currentPermissionClaims) identity.AddClaim(new Claim("company_permission", permission));
+            changed = true;
+        }
         if (platformAdminClaim && !isPlatformAdmin)
         {
             foreach (var staleAdminClaim in identity.FindAll("platform_admin").ToArray())
                 identity.RemoveClaim(staleAdminClaim);
             changed = true;
         }
-        if (changed)
-            await context.SignInAsync(IdentityConstants.ApplicationScheme, principal);
+        if (changed && string.Equals(identity.AuthenticationType, IdentityConstants.ApplicationScheme, StringComparison.Ordinal))
+        {
+            var authentication = await context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+            await context.SignInAsync(IdentityConstants.ApplicationScheme, principal,
+                authentication.Properties ?? new AuthenticationProperties { AllowRefresh = false });
+        }
     }
 
     await next();
@@ -613,6 +637,9 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     }).AllowAnonymous();
 
     app.MapAccountEndpoints();
+    app.MapCompanySecurityEndpoints();
+    app.MapSoftwareLicenseEmployeeEndpoints();
+    app.MapCompanyRoleEndpoints();
     app.MapAssetEndpoints();
     app.MapDataExportEndpoints();
     app.MapOperationalEndpoints();

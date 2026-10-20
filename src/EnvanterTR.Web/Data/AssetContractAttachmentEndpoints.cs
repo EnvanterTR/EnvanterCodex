@@ -15,8 +15,9 @@ public static partial class AssetContractAttachmentEndpoints
     {
         api.MapGet("/contracts/{id:guid}/attachments", async (Guid id, ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
-            if (!Company(user, out var companyId)) return Results.Forbid();
-            if (!await db.AssetContracts.AnyAsync(x => x.CompanyId == companyId && x.Id == id, ct)) return Results.NotFound();
+            if (!Company(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
+            if (!await AssetContractLocationAccess.CanAccessAsync(db, companyId, id, employeeScope, ct)) return Results.NotFound();
             var files = await db.AssetContractAttachments.AsNoTracking().Where(x => x.CompanyId == companyId && x.ContractId == id)
                 .OrderByDescending(x => x.CreatedAt).Select(x => new
                 {
@@ -31,6 +32,7 @@ public static partial class AssetContractAttachmentEndpoints
         {
             if (!Company(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
                 return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
             if (!request.HasFormContentType) return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
             var form = await request.ReadFormAsync(ct);
             var upload = form.Files.GetFile("file");
@@ -48,6 +50,7 @@ public static partial class AssetContractAttachmentEndpoints
                     $"SELECT * FROM \"AssetContracts\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = {id} FOR UPDATE")
                 .SingleOrDefaultAsync(ct);
             if (contract is null) return Results.NotFound();
+            if (!await AssetContractLocationAccess.CanAccessAsync(db, companyId, id, employeeScope, ct)) return Results.NotFound();
             if (await db.AssetContractAttachments.CountAsync(x => x.CompanyId == companyId && x.ContractId == id, ct) >= MaxFiles)
                 return Results.Conflict(new { message = "Bir sözleşmeye en fazla 30 dosya eklenebilir." });
 
@@ -90,7 +93,9 @@ public static partial class AssetContractAttachmentEndpoints
         api.MapGet("/contracts/{id:guid}/attachments/{attachmentId:guid}/file", async (Guid id, Guid attachmentId,
             ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken ct) =>
         {
-            if (!Company(user, out var companyId)) return Results.Forbid();
+            if (!Company(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
+            if (!await AssetContractLocationAccess.CanAccessAsync(db, companyId, id, employeeScope, ct)) return Results.NotFound();
             var item = await db.AssetContractAttachments.AsNoTracking().SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.ContractId == id && x.Id == attachmentId, ct);
             if (item is null || !SafeStorageName(item.StorageFileName) || HasReparsePoint(configuration, companyId, id)) return Results.NotFound();
@@ -108,6 +113,8 @@ public static partial class AssetContractAttachmentEndpoints
         {
             if (!Company(user, out var companyId) || !Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
                 return Results.Forbid();
+            var employeeScope = await CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, actorId, ct);
+            if (!await AssetContractLocationAccess.CanAccessAsync(db, companyId, id, employeeScope, ct)) return Results.NotFound();
             var item = await db.AssetContractAttachments.SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.ContractId == id && x.Id == attachmentId, ct);
             if (item is null) return Results.NotFound();

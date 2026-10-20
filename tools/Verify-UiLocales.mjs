@@ -147,12 +147,12 @@ const requiredAccessoryLabels = [
 const requiredEmployeeLabels = [
   'Çalışan kayıtları', 'Departmana ve yöneticiye göre ilişki kurun; profilden doğrudan raporlayanları ve zimmetlerini görüntüleyin.',
   'Menü, pano, varlık, çalışan listesi/profili ve zimmet formu ile aksesuar listesi ve oluşturma/düzenleme formu seçilen dile çevrildi. Diğer modüller sırayla ekleniyor.',
-  '↓ CSV dışa aktar', '＋ Çalışan ekle', 'Ad, personel no, e-posta, departman, görev veya konum ara',
+  '↓ CSV dışa aktar', '＋ Çalışan ekle', 'Ad, personel no, e-posta, departman, görev, konum veya şirket birimi ara', 'Şirket birimi',
   'Departman filtresi', 'Departmanı temizle', 'Yönetici adı veya personel no ara', 'Tüm yöneticiler',
   'Tüm çalışanlar', 'Aktif çalışanlar', 'Pasif çalışanlar', 'İşe başlama (başlangıç)',
   'İşlemi onayla', 'Onayla', 'Bu çalışan belgesi silinsin mi?',
   '{name} çalışan kaydı pasife alınsın mı?',
-  'Çalışana bağlı açık kayıtlar var: {items}. Önce iadeleri/kaldırmaları tamamlayın veya devam ederek mevcut bağlantıları koruyun.',
+  'Çalışana bağlı açık kayıtlar var: {items}. Pasife alma sırasında varlık ve aksesuarlar otomatik iade edilir, lisans atamaları kaldırılır; doğrudan raporlayanların yönetici bağı korunur.',
   'Açık zimmet veya etkin lisans yok; geçmiş kayıtlar korunacak.',
   'İşe başlama (bitiş)', 'Tarihleri temizle', 'Şirket çalışan kayıtları', 'Çalışan',
   'Personel no', 'Görev unvanı', 'İşe başlama', 'Durum', 'İşlem', 'Çalışanlar yükleniyor…',
@@ -540,6 +540,13 @@ const requiredRoleLabels = [
   'Şirket ayarları, kullanıcılar ve denetim kayıtları', 'İzin verilir', 'İzin verilmez', 'Şirket sahibi',
   'Envanter yöneticisi', 'Envanter operatörü', 'Denetçi', 'Salt okunur', 'İK operatörü'
 ];
+const requiredSecurityOverviewLabels = [
+  'Authenticator / MFA', 'Etkin oturumlar', 'Güvenlik durumunu yenile', 'Etkin', 'Kapalı',
+  'Etkin oturum', 'Durum yükleniyor…', 'İki aşamalı doğrulama durumu',
+  'Oturum sayısı yüklenemedi. Yenileyerek tekrar deneyin.',
+  'Güvenlik durumu yüklenemedi. Yenileyerek tekrar deneyin.',
+  'Bu hesaba ait etkin oturumlar.'
+];
 const requiredAuthLabels = [
   'Giriş bilgileri adres satırından alınmadı. Güvenlik için URL temizlendi; e-posta ve parolanızı bu forma yazın.',
   'Giriş bilgileri geçersiz veya hesap geçici olarak kullanılamıyor.',
@@ -557,7 +564,10 @@ const requiredRestoreLabels = [
 ];
 const requiredCompanyUnitActionLabels = [
   'Geri yüklenen şirket birimi yeniden etkinleşir.',
-  'Arşivlenen şirket birimi ve geçmişi korunur. Etkin alt birimleri varsa işlem reddedilir.'
+  'Arşivlenen şirket birimi ve geçmişi korunur. Etkin alt birimleri varsa işlem reddedilir.',
+  'Organizasyon birimi', 'Tüzel kişilik', 'Şube', 'Birim türü',
+  'Organizasyon birimlerini, tüzel kişilikleri ve şubeleri hiyerarşik olarak sınıflandırın.',
+  'Birim türü sınıflandırma içindir. Çalışan erişimi birim üyeliğine, varlık erişimi konumun birim hiyerarşisindeki kapsamına göre sınırlandırılır.'
 ];
 const requiredPurchaseOrderDialogLabels = [
   'Sipariş iptal edilsin mi?',
@@ -566,7 +576,12 @@ const requiredPurchaseOrderDialogLabels = [
   'Sipariş belgesi kaldırılsın mı?',
   'Bu işlem yalnız siparişe ekli dosyayı kaldırır; sipariş ve teslimat kayıtları korunur.',
   'Siparişi iptal et',
-  'Belgeyi kaldır'
+  'Belgeyi kaldır',
+  'Tedarikçi iadeleri', 'Tedarikçiye iade et', 'Tedarikçi iadesi', 'Siparişten iade oluştur',
+  'Varlıkları tedarikçiye iade et', 'Stok kalemlerini tedarikçiye iade et', 'İade tarihi *', 'İade gerekçesi *',
+  'Bu siparişte henüz tedarikçi iadesi yok.', 'Bu siparişte iade edilebilir etkin varlık yok.',
+  'Bu siparişte iade edilebilir miktar kalmadı.', 'Tedarikçiye iade edildi',
+  'Tedarikçiye iade edilmiş varlık envantere geri alınamaz.'
 ];
 const requiredStockImportDialogLabels = [
   'Seçili sarf malzemesi eşleme profili silinsin mi?',
@@ -600,7 +615,7 @@ const requiredIntegrationLabels = [
   'API ANAHTARI GÜVENLİĞİ', 'API anahtarı iptal edilsin mi?',
   '“{name}” API anahtarı iptal edilsin mi?', 'İptal edilen anahtar sonraki API isteklerinde kullanılamaz.', 'API anahtarını iptal et',
   'Bu gizli değeri şimdi güvenli bir yere kaydedin. Bu pencereden kapatınca tekrar gösterilemez.',
-  'API anahtarları yalnızca seçtiğiniz salt okunur yetkilere erişir. Gizli anahtar oluşturma yanıtında bir kez gösterilir; veritabanında yalnızca özeti saklanır. Anahtarı URL\'ye veya istemci koduna koymayın.'
+  'API anahtarları yalnızca seçtiğiniz yetkilere erişir. Varlık yazma anahtarı kayıt oluşturabilir; yalnızca güvenilir sunucu tarafı entegrasyonlarında saklayın. Gizli anahtar oluşturma yanıtında bir kez gösterilir; veritabanında yalnızca özeti saklanır. Anahtarı URL\'ye veya istemci koduna koymayın.'
 ];
 const requiredSupportLabels = [
   'ŞİRKET ALANI / YARDIM', 'Destek talepleri', 'Destek isteği oluşturun, yanıtları izleyin ve çözülen talepleri kapatın.',
@@ -614,6 +629,18 @@ const requiredSupportLabels = [
   '{count} talep', 'Destek talebi durumu geçerli değil.', 'Arama metni 120 karakteri aşamaz.',
   'Yanıt 1–8.000 karakter olmalıdır.', 'Konu 1–160 karakter olmalıdır.',
   'Açıklama 1–8.000 karakter olmalıdır.', 'Destek kategorisi geçerli değil.', 'İstek doğrulaması başarısız.'
+];
+const requiredLocationAccessLabels = [
+  'ŞİRKET ERİŞİMİ / KONUM VE BİRİM KAPSAMI', 'Konum ve birim erişimi', 'Konum erişim kapsamı', 'Tüm konumlar',
+  'Yalnız seçilen konumlar', 'Seçilen konumun alt konumları da kapsama girer. Konumu olmayan kayıtlar bu kısıt altında gösterilmez.',
+  'Şirket birimi erişim kapsamı', 'Tüm şirket birimleri', 'Yalnız seçilen şirket birimleri',
+  'Seçilen şirket biriminin alt birimleri ve bu birime bağlı konumlar kapsama girer. Konum ve birim sınırları birlikte uygulanır.',
+  'Şirket birimleri yükleniyor…', 'Önce Şirket birimleri bölümünde birim oluşturun.', 'Şirket birimi erişimi', 'Birim erişimini düzenle',
+  'Bu üyenin erişebildiği konum ve şirket birimlerini seçin.', 'Şirket sahibinin konum veya şirket birimi erişimi sınırlandırılamaz.',
+  'Sınırlı erişim için en az bir etkin şirket birimi seçin.', 'Şirket birimi erişimi kaydedildi ve denetim kaydına işlendi.',
+  'Vazgeç', 'Erişimi kaydet', 'Konumlar yükleniyor…', 'Önce Konumlar bölümünde konum oluşturun.',
+  'Konum erişimi yüklenemedi.', 'Konum erişimini düzenle', 'Kendi konum erişiminiz buradan daraltılamaz.',
+  'Şirket birimi erişimi kaydedilemedi.', 'Sınırlı erişim için en az bir etkin konum seçin.', 'Konum erişimi kaydedilemedi.', 'arşivli'
 ];
 const invalidRows = Object.entries(sandbox.localeRows)
   .filter(([key, values]) => !key.trim() || !Array.isArray(values) || values.length !== 4 || values.some(value => typeof value !== 'string' || !value.trim()))
@@ -631,6 +658,7 @@ const missingAssetEventLabels = requiredAssetEventLabels.filter(key => !sandbox.
 const missingApiFeedbackLabels = requiredApiFeedbackLabels.filter(key => !sandbox.localeRows[key]);
 const missingContractLabels = requiredContractLabels.filter(key => !sandbox.localeRows[key]);
 const missingRoleLabels = requiredRoleLabels.filter(key => !sandbox.localeRows[key]);
+const missingSecurityOverviewLabels = requiredSecurityOverviewLabels.filter(key => !sandbox.localeRows[key]);
 const missingAuthLabels = requiredAuthLabels.filter(key => !sandbox.localeRows[key]);
 const missingRestoreLabels = requiredRestoreLabels.filter(key => !sandbox.localeRows[key]);
 const missingCompanyUnitActionLabels = requiredCompanyUnitActionLabels.filter(key => !sandbox.localeRows[key]);
@@ -640,8 +668,9 @@ const missingAccessoryQuickEntryLabels = requiredAccessoryQuickEntryLabels.filte
 const missingDirectoryMergeLabels = requiredDirectoryMergeLabels.filter(key => !sandbox.localeRows[key]);
 const missingIntegrationLabels = requiredIntegrationLabels.filter(key => !sandbox.localeRows[key]);
 const missingSupportLabels = requiredSupportLabels.filter(key => !sandbox.localeRows[key]);
+const missingLocationAccessLabels = requiredLocationAccessLabels.filter(key => !sandbox.localeRows[key]);
 
-if (loginConnectionDiagnosticsMissing || invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingCheckoutLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingInventoryRequestLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length || missingContractLabels.length || missingRoleLabels.length || missingAuthLabels.length || missingRestoreLabels.length || missingCompanyUnitActionLabels.length || missingPurchaseOrderDialogLabels.length || missingStockImportDialogLabels.length || missingAccessoryQuickEntryLabels.length || missingDirectoryMergeLabels.length || missingIntegrationLabels.length || missingSupportLabels.length) {
+if (loginConnectionDiagnosticsMissing || invalidRows.length || missingAssetLabels.length || missingReservationLabels.length || missingCheckoutLabels.length || missingAccessoryLabels.length || missingEmployeeLabels.length || missingInventoryMovementLabels.length || missingInventoryRequestLabels.length || missingLicenseListLabels.length || missingLicenseImportLabels.length || missingAssetEventLabels.length || missingApiFeedbackLabels.length || missingContractLabels.length || missingRoleLabels.length || missingSecurityOverviewLabels.length || missingAuthLabels.length || missingRestoreLabels.length || missingCompanyUnitActionLabels.length || missingPurchaseOrderDialogLabels.length || missingStockImportDialogLabels.length || missingAccessoryQuickEntryLabels.length || missingDirectoryMergeLabels.length || missingIntegrationLabels.length || missingSupportLabels.length || missingLocationAccessLabels.length) {
   if (invalidRows.length) console.error(`Invalid 4-language locale entries: ${invalidRows.join(', ')}`);
   if (missingAssetLabels.length) console.error(`Missing asset-list locale entries: ${missingAssetLabels.join(', ')}`);
   if (missingReservationLabels.length) console.error(`Missing reservation-page locale entries: ${missingReservationLabels.join(', ')}`);
@@ -656,6 +685,7 @@ if (loginConnectionDiagnosticsMissing || invalidRows.length || missingAssetLabel
   if (missingApiFeedbackLabels.length) console.error(`Missing asset/operations API-feedback locale entries: ${missingApiFeedbackLabels.join(', ')}`);
   if (missingContractLabels.length) console.error(`Missing contract-page locale entries: ${missingContractLabels.join(', ')}`);
   if (missingRoleLabels.length) console.error(`Missing role-matrix locale entries: ${missingRoleLabels.join(', ')}`);
+  if (missingSecurityOverviewLabels.length) console.error(`Missing security-overview locale entries: ${missingSecurityOverviewLabels.join(', ')}`);
   if (missingAuthLabels.length) console.error(`Missing login-security locale entries: ${missingAuthLabels.join(', ')}`);
   if (missingRestoreLabels.length) console.error(`Missing company-restore locale entries: ${missingRestoreLabels.join(', ')}`);
   if (missingCompanyUnitActionLabels.length) console.error(`Missing company-unit action locale entries: ${missingCompanyUnitActionLabels.join(', ')}`);
@@ -665,6 +695,7 @@ if (loginConnectionDiagnosticsMissing || invalidRows.length || missingAssetLabel
   if (missingDirectoryMergeLabels.length) console.error(`Missing directory merge locale entries: ${missingDirectoryMergeLabels.join(', ')}`);
   if (missingIntegrationLabels.length) console.error(`Missing integration-page locale entries: ${missingIntegrationLabels.join(', ')}`);
   if (missingSupportLabels.length) console.error(`Missing support-page locale entries: ${missingSupportLabels.join(', ')}`);
+  if (missingLocationAccessLabels.length) console.error(`Missing location-access locale entries: ${missingLocationAccessLabels.join(', ')}`);
   process.exitCode = 1;
 } else {
   console.log(`Verified ${Object.keys(sandbox.localeRows).length} locale entries in Turkish, English, Russian, Ukrainian, and Macedonian.`);

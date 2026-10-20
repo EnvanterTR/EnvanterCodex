@@ -1,0 +1,60 @@
+# Fresh synthetic data only. No host ports or production/development volumes.
+services:
+  database:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: release_smoke
+      POSTGRES_USER: release_smoke
+      POSTGRES_PASSWORD: synthetic-release-only
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U release_smoke -d release_smoke']
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    networks: [acceptance]
+  migrate:
+    image: ${ENVANTERTR_CANDIDATE_IMAGE:-envantertr-web-v1-candidate:20261020}
+    command: [--migrate]
+    environment:
+      ConnectionStrings__EnvanterTR: Host=database;Database=release_smoke;Username=release_smoke;Password=synthetic-release-only
+    depends_on:
+      database:
+        condition: service_healthy
+    networks: [acceptance]
+  web:
+    image: ${ENVANTERTR_CANDIDATE_IMAGE:-envantertr-web-v1-candidate:20261020}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: 8080
+      ForwardedHeaders__Enabled: 'true'
+      ConnectionStrings__EnvanterTR: Host=database;Database=release_smoke;Username=release_smoke;Password=synthetic-release-only
+      Setup__BootstrapToken: synthetic-release-bootstrap-only
+      DataProtection__KeysPath: /var/lib/envantertr/data-protection-keys
+      Logging__LogLevel__Default: Warning
+      Logging__LogLevel__Microsoft: Warning
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - media:/var/lib/envantertr/company-media
+      - keys:/var/lib/envantertr/data-protection-keys
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    security_opt: [no-new-privileges:true]
+    networks: [acceptance]
+  checks:
+    image: envantertr-hosted-checkout-browser-acceptance:local
+    entrypoint: [node, /release-smoke.mjs]
+    environment:
+      EXPECTED_MIGRATIONS: ${ENVANTERTR_EXPECTED_MIGRATIONS:?run-release-smoke.ps1 must supply the source migration count}
+    volumes:
+      - ./release-smoke.mjs:/release-smoke.mjs:ro
+    depends_on: [web]
+    networks: [acceptance]
+networks:
+  acceptance:
+    internal: true
+volumes:
+  media:
+  keys:

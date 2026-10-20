@@ -56,6 +56,8 @@ public static class CompanyTaskEndpoints
             pageSize = Math.Clamp(pageSize == 0 ? 25 : pageSize, 1, 100);
             var canManage = CanManage(role);
             var visibleTasks = db.CompanyTasks.AsNoTracking().Where(task => task.CompanyId == companyId);
+            var employeeScope = await GetEmployeeScopeAsync(db, companyId, userId, ct);
+            visibleTasks = ApplyEmployeeScope(db, companyId, visibleTasks, employeeScope);
             if (!canManage)
             {
                 var employeeId = await db.CompanyMemberships.AsNoTracking()
@@ -91,7 +93,9 @@ public static class CompanyTaskEndpoints
                 .Select(task => new
                 {
                     task.Id, task.Title, task.Description, task.Status, task.Priority,
-                    task.AssignedEmployeeId, task.CreatedByUserId, task.DueAt,
+                    task.AssignedEmployeeId,
+                    CreatedByUserId = (Guid?)task.CreatedByUserId,
+                    task.DueAt,
                     task.CreatedAt, task.UpdatedAt, task.CompletedAt,
                     employeeName = db.Employees.Where(employee => employee.CompanyId == companyId &&
                         employee.Id == task.AssignedEmployeeId).Select(employee => employee.DisplayName).FirstOrDefault(),
@@ -101,15 +105,52 @@ public static class CompanyTaskEndpoints
                         .Select(user => user.DisplayName).FirstOrDefault()
                 }).ToListAsync(ct);
 
+            if (employeeScope.IsRestricted && items.Count > 0)
+            {
+                var creatorIds = items.Select(item => item.CreatedByUserId).Where(id => id.HasValue)
+                    .Select(id => id!.Value).Distinct().ToArray();
+                if (creatorIds.Length > 0)
+                {
+                    var creatorMemberships = await db.CompanyMemberships.AsNoTracking()
+                        .Where(membership => membership.CompanyId == companyId && creatorIds.Contains(membership.UserId) &&
+                            membership.EmployeeId.HasValue)
+                        .Select(membership => new { membership.UserId, EmployeeId = membership.EmployeeId!.Value })
+                        .ToListAsync(ct);
+                    if (creatorMemberships.Count > 0)
+                    {
+                        var creatorEmployeeIds = creatorMemberships.Select(membership => membership.EmployeeId).Distinct().ToArray();
+                        var visibleEmployeeIds = await employeeScope.Apply(
+                            db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId && employee.IsActive &&
+                                creatorEmployeeIds.Contains(employee.Id)))
+                            .Select(employee => employee.Id).ToListAsync(ct);
+                        var visibleEmployeeIdSet = visibleEmployeeIds.ToHashSet();
+                        var hiddenCreatorIds = creatorMemberships.Where(membership => !visibleEmployeeIdSet.Contains(membership.EmployeeId))
+                            .Select(membership => membership.UserId).ToHashSet();
+                        items = items.Select(item => item.CreatedByUserId is Guid creatorId && hiddenCreatorIds.Contains(creatorId)
+                            ? new
+                            {
+                                item.Id, item.Title, item.Description, item.Status, item.Priority, item.AssignedEmployeeId,
+                                CreatedByUserId = (Guid?)null, item.DueAt, item.CreatedAt, item.UpdatedAt, item.CompletedAt,
+                                item.employeeName, item.employeeNumber, createdBy = (string?)null
+                            }
+                            : item).ToList();
+                    }
+                }
+            }
+
+            var memberEmployeeQuery = from membership in db.CompanyMemberships.AsNoTracking()
+                                      join employee in db.Employees.AsNoTracking()
+                                          on new { membership.CompanyId, Id = membership.EmployeeId }
+                                          equals new { employee.CompanyId, Id = (Guid?)employee.Id }
+                                      where membership.CompanyId == companyId && membership.UserId == userId && employee.IsActive
+                                      select employee;
             var employees = canManage
-                ? await db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId && employee.IsActive)
+                ? await employeeScope.Apply(
+                    db.Employees.AsNoTracking().Where(employee => employee.CompanyId == companyId && employee.IsActive))
                     .OrderBy(employee => employee.DisplayName).Take(500)
                     .Select(employee => new { employee.Id, employee.DisplayName, employee.EmployeeNumber }).ToListAsync(ct)
-                : await (from membership in db.CompanyMemberships.AsNoTracking()
-                         join employee in db.Employees.AsNoTracking() on new { membership.CompanyId, Id = membership.EmployeeId }
-                             equals new { employee.CompanyId, Id = (Guid?)employee.Id }
-                         where membership.CompanyId == companyId && membership.UserId == userId && employee.IsActive
-                         select new { employee.Id, employee.DisplayName, employee.EmployeeNumber }).ToListAsync(ct);
+                : await employeeScope.Apply(memberEmployeeQuery)
+                    .Select(employee => new { employee.Id, employee.DisplayName, employee.EmployeeNumber }).ToListAsync(ct);
 
             return Results.Ok(new { items, employees, page, pageSize, total, canManage, summary });
         }).RequireAuthorization("company.member");
@@ -120,9 +161,12 @@ public static class CompanyTaskEndpoints
             if (!TryScope(principal, out var companyId, out var userId, out _)) return Results.Forbid();
             var validation = Validate(request);
             if (validation.Count > 0) return Results.ValidationProblem(validation);
-            if (request.AssignedEmployeeId is Guid employeeId && !await db.Employees.AsNoTracking()
-                    .AnyAsync(employee => employee.CompanyId == companyId && employee.Id == employeeId && employee.IsActive, ct))
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["assignedEmployeeId"] = ["Atanan çalışan bu şirkette etkin değil."] });
+            var employeeScope = await GetEmployeeScopeAsync(db, companyId, userId, ct);
+            if (employeeScope.IsRestricted && request.AssignedEmployeeId is null)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["assignedEmployeeId"] = ["Erişim kapsamı sınırlı üyeler görevleri yalnızca erişebildikleri etkin bir çalışana atayabilir."] });
+            if (request.AssignedEmployeeId is Guid employeeId &&
+                !await EmployeeIsInScopeAsync(db, companyId, employeeId, employeeScope, ct))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["assignedEmployeeId"] = ["Atanan çalışan etkin ve erişilebilir bir şirket çalışanı olmalıdır."] });
 
             var now = DateTimeOffset.UtcNow;
             var task = new CompanyTask
@@ -149,11 +193,16 @@ public static class CompanyTaskEndpoints
             if (!TryScope(principal, out var companyId, out var userId, out _)) return Results.Forbid();
             var validation = Validate(request);
             if (validation.Count > 0) return Results.ValidationProblem(validation);
-            if (request.AssignedEmployeeId is Guid employeeId && !await db.Employees.AsNoTracking()
-                    .AnyAsync(employee => employee.CompanyId == companyId && employee.Id == employeeId && employee.IsActive, ct))
-                return Results.ValidationProblem(new Dictionary<string, string[]> { ["assignedEmployeeId"] = ["Atanan çalışan bu şirkette etkin değil."] });
+            var employeeScope = await GetEmployeeScopeAsync(db, companyId, userId, ct);
+            if (employeeScope.IsRestricted && request.AssignedEmployeeId is null)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["assignedEmployeeId"] = ["Erişim kapsamı sınırlı üyeler görevleri yalnızca erişebildikleri etkin bir çalışana atayabilir."] });
+            if (request.AssignedEmployeeId is Guid employeeId &&
+                !await EmployeeIsInScopeAsync(db, companyId, employeeId, employeeScope, ct))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["assignedEmployeeId"] = ["Atanan çalışan etkin ve erişilebilir bir şirket çalışanı olmalıdır."] });
 
-            var task = await db.CompanyTasks.SingleOrDefaultAsync(item => item.CompanyId == companyId && item.Id == id, ct);
+            var taskQuery = db.CompanyTasks.Where(item => item.CompanyId == companyId);
+            taskQuery = ApplyEmployeeScope(db, companyId, taskQuery, employeeScope);
+            var task = await taskQuery.SingleOrDefaultAsync(item => item.Id == id, ct);
             if (task is null) return Results.NotFound();
             task.Title = request.Title.Trim();
             task.Description = Clean(request.Description);
@@ -172,7 +221,10 @@ public static class CompanyTaskEndpoints
             if (!TryScope(principal, out var companyId, out var userId, out var role)) return Results.Forbid();
             if (!Statuses.Contains(request.Status, StringComparer.Ordinal))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["status"] = ["Görev durumu geçerli değil."] });
-            var task = await db.CompanyTasks.SingleOrDefaultAsync(item => item.CompanyId == companyId && item.Id == id, ct);
+            var employeeScope = await GetEmployeeScopeAsync(db, companyId, userId, ct);
+            var taskQuery = ApplyEmployeeScope(db, companyId,
+                db.CompanyTasks.Where(item => item.CompanyId == companyId), employeeScope);
+            var task = await taskQuery.SingleOrDefaultAsync(item => item.Id == id, ct);
             if (task is null) return Results.NotFound();
             if (!CanManage(role))
             {
@@ -222,6 +274,24 @@ public static class CompanyTaskEndpoints
     }
 
     private static bool CanManage(string role) => role is "owner" or "admin" or "asset_manager" or "hr_operator";
+
+    private static Task<EmployeeAccessScope> GetEmployeeScopeAsync(AppDbContext db, Guid companyId, Guid userId,
+        CancellationToken ct) => CompanyLocationAccess.GetEmployeeAccessScopeAsync(db, companyId, userId, ct);
+
+    private static IQueryable<CompanyTask> ApplyEmployeeScope(AppDbContext db, Guid companyId,
+        IQueryable<CompanyTask> query, EmployeeAccessScope scope)
+    {
+        if (!scope.IsRestricted) return query;
+        var scopedEmployees = scope.Apply(db.Employees.AsNoTracking()
+            .Where(employee => employee.CompanyId == companyId && employee.IsActive));
+        return query.Where(task => task.AssignedEmployeeId.HasValue &&
+            scopedEmployees.Any(employee => employee.Id == task.AssignedEmployeeId));
+    }
+
+    private static Task<bool> EmployeeIsInScopeAsync(AppDbContext db, Guid companyId, Guid employeeId,
+        EmployeeAccessScope scope, CancellationToken ct) => scope.Apply(db.Employees.AsNoTracking()
+            .Where(employee => employee.CompanyId == companyId && employee.IsActive))
+            .AnyAsync(employee => employee.Id == employeeId, ct);
 
     private static void AddAudit(AppDbContext db, Guid companyId, Guid userId, CompanyTask task, string action, string details) =>
         db.AuditEntries.Add(new AuditEntry

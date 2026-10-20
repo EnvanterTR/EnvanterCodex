@@ -12,6 +12,10 @@ assert.ok(schedule.includes('catch (error) { if (requestId !== auditScheduleRequ
 assert.ok(schedule.includes('api(`/api/assets/audit-schedule?${params}`)'), 'queue must use the company-scoped audit schedule API');
 assert.ok(schedule.includes("$('#auditScheduleState').value"), 'queue must submit the selected state');
 assert.ok(schedule.includes("$('#auditScheduleSearch').value.trim()"), 'queue must submit the search text');
+assert.ok(schedule.includes('page: String(requestedPage)'), 'queue must request its current page');
+assert.ok(schedule.includes('pageSize: String(auditSchedulePageSize)'), 'queue page size must be explicit');
+assert.ok(schedule.includes("$('#auditScheduleNext').disabled = auditSchedulePage >= pageCount"), 'next-page control must disable at the final page');
+assert.ok(schedule.includes("$('#auditSchedulePrev').disabled = auditSchedulePage <= 1"), 'previous-page control must disable at the first page');
 assert.ok(schedule.includes('Math.min(Math.max(Number($(\'#auditScheduleHorizon\').value) || 30, 1), 366)'), 'queue horizon must stay in the supported range');
 assert.ok(schedule.includes('cell.textContent = value'), 'queue values must be rendered as text');
 
@@ -32,7 +36,7 @@ assert.ok(scheduleForm.includes('`/api/assets/${assetId}/audit-schedule`'), 'sch
 assert.ok(scheduleForm.includes('nextAuditOn: form.elements.nextAuditOn.value || null'), 'schedule form must support clearing the planned date');
 assert.ok(scheduleForm.includes("await loadAuditSchedule().catch(() => {})"), 'schedule changes must refresh the queue');
 
-for (const id of ['auditScheduleRefresh', 'auditScheduleHorizon', 'auditScheduleState', 'auditScheduleSearch']) {
+for (const id of ['auditScheduleRefresh', 'auditSchedulePrev', 'auditScheduleNext', 'auditScheduleHorizon', 'auditScheduleState', 'auditScheduleSearch']) {
   assert.ok(html.includes(`$('#${id}').addEventListener(`), `${id} must be wired to the audit queue`);
 }
 

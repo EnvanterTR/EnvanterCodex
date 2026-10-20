@@ -37,14 +37,17 @@ requireSource(handler.includes('api("/api/company/export.json", { responseType: 
 requireSource(handler.includes('link.download = `envantertr-sirket-verisi-') && handler.includes('URL.revokeObjectURL(url)'), 'Company JSON export must download a named file and release its temporary object URL.');
 requireSource(route.includes('.RequireAuthorization("settings.manage")'), 'Company data export must stay restricted to settings managers.');
 requireSource(implementation.includes('ContentDisposition') && implementation.includes('application/json'), 'Company data export must return an attachment with the JSON content type.');
+requireSource(implementation.includes('RecordCompanyExportAsync(db, companyId, userId, "company.export.json"') && implementation.includes('transaction.CommitAsync(cancellationToken)'), 'A completed JSON export must be recorded in the tenant audit log and committed only after streaming succeeds.');
 requireSource(archiveRoute.includes('.RequireAuthorization("settings.manage")'), 'Company media archive must stay restricted to settings managers.');
 requireSource(archiveHandler.includes("api('/api/company/export.zip')") && archiveHandler.includes('response.blob()'), 'Company archive export must fetch the ZIP response and create a download blob.');
 requireSource(archiveHandler.includes('link.download = `envantertr-sirket-arsivi-') && archiveHandler.includes('URL.revokeObjectURL(url)'), 'Company archive export must download a named file and release its temporary object URL.');
 requireSource(archive.includes('application/zip') && archive.includes('manifest.json') && archive.includes('README.txt'), 'Company archive must include a manifest and scope README in the ZIP.');
 requireSource(archive.includes('RepeatableRead') && archive.includes('DeleteOnClose') && archive.includes('finally'), 'Company archive must use a consistent read transaction and clean up its temporary ZIP.');
+requireSource(archive.includes('RecordCompanyExportAsync(db, companyId, userId, "company.export.zip"') && archive.includes('transaction.CommitAsync(cancellationToken)'), 'A completed ZIP export must be recorded in the tenant audit log and committed only after streaming succeeds.');
 requireSource(archive.includes('files.Count > 100_000') && archive.includes('4L * 1024 * 1024 * 1024'), 'Company archive must enforce its file count and total size limits.');
 requireSource(source.includes("const dataPages = ['Tablodan içe aktar','Verileri dışa aktar','Dışa aktarımlar','Yedekleme geçmişi','Geri yükle']") && source.includes("!canManageSettings()"), 'Exports menu must only open for settings managers.');
 requireSource(source.includes("$('#dataDownloadCompany').addEventListener('click', () => $('#exportBackupButton').click())"), 'Data tools JSON download shortcut must invoke the shared export action.');
+requireSource(endpoint.includes('TargetType = "CompanyDataExport"') && endpoint.includes('Action = action'), 'Company exports must record the responsible user, company scope, and export format in audit entries.');
 
 if (failures.length) {
   console.error(failures.map(message => `FAIL ${message}`).join('\n'));
