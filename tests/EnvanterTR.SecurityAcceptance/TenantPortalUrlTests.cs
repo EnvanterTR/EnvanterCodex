@@ -15,7 +15,7 @@ public sealed class TenantPortalUrlTests
             builder.UseSetting("TenantRouting:RootDomain", "envantertr.com"));
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         using var request = new HttpRequestMessage(HttpMethod.Get, "/giris");
-        request.Headers.Host = "firma-farma.envantertr.com";
+        request.Headers.Host = "farma.envantertr.com";
 
         using var response = await client.SendAsync(request);
 
@@ -23,7 +23,7 @@ public sealed class TenantPortalUrlTests
         Assert.Equal("/", response.Headers.Location?.OriginalString);
 
         using var portal = new HttpRequestMessage(HttpMethod.Get, "/");
-        portal.Headers.Host = "firma-farma.envantertr.com";
+        portal.Headers.Host = "farma.envantertr.com";
         using var portalResponse = await client.SendAsync(portal);
         Assert.Equal(HttpStatusCode.OK, portalResponse.StatusCode);
         Assert.Contains("id=\"loginForm\"", await portalResponse.Content.ReadAsStringAsync(), StringComparison.Ordinal);

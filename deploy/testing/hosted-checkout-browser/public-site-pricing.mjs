@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
 const html = await readFile('/public-site/index.html');
+const checkoutHtml = await readFile('/checkout-site/checkout.html');
+const checkoutJs = await readFile('/checkout-site/checkout.js');
 let planResponse = 'slow-empty';
 const publishedPlan = {
   id: '22222222-2222-4222-8222-222222222222',
@@ -27,6 +29,21 @@ const server = createServer(async (request, response) => {
     }
     response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
     response.end(JSON.stringify(planResponse === 'published' ? [publishedPlan] : []));
+    return;
+  }
+  if (request.method === 'GET' && url.pathname === '/api/checkout/status') {
+    response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+    response.end('{"available":true}');
+    return;
+  }
+  if (request.method === 'GET' && url.pathname === '/checkout.html') {
+    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    response.end(checkoutHtml);
+    return;
+  }
+  if (request.method === 'GET' && url.pathname === '/checkout.js') {
+    response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
+    response.end(checkoutJs);
     return;
   }
   if (request.method === 'GET' && url.pathname === '/api/site-content') {
@@ -58,6 +75,32 @@ try {
 
   planResponse = 'slow-empty';
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('heading', { name: 'Kurumsal SaaS: şirketinize özel portal ve güvenli erişim' }).waitFor();
+  await page.waitForFunction(() => document.querySelector('#cloudPortalBody')?.textContent.includes('farma.envantertr.com'));
+  assert.match(await page.locator('#cloudPortalBody').innerText(), /farma\.envantertr\.com/);
+  assert.match(await page.locator('#cloudMfaBody').innerText(), /Authenticator.*6 haneli kod/s);
+  assert.match(await page.locator('#cloudMfaNextBody').innerText(), /yeni bir oturum.*kurtarma kodu/s);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const cloudCards = page.locator('#cloud .feature');
+  assert.equal(await cloudCards.count(), 3, 'The SaaS onboarding section must present portal, first MFA setup, and subsequent MFA sign-ins.');
+  const cloudCardBounds = await cloudCards.evaluateAll(cards => cards.map(card => { const rect = card.getBoundingClientRect(); return { top: rect.top, bottom: rect.bottom, right: rect.right }; }));
+  assert.ok(cloudCardBounds.every((rect, index) => rect.right <= 390 && (index === 0 || rect.top >= cloudCardBounds[index - 1].bottom)),
+    'The onboarding cards must stack without horizontal overflow on a narrow phone viewport.');
+  for (const [language, title, portal, mfa] of [
+    ['tr', 'Kurumsal SaaS:', 'farma.envantertr.com', '6 haneli kod'],
+    ['en', 'Business SaaS:', 'farma.envantertr.com', 'six-digit code'],
+    ['ru', 'Корпоративный SaaS:', 'farma.envantertr.com', 'шестизначный код'],
+    ['uk', 'Корпоративний SaaS:', 'farma.envantertr.com', 'шестизначний код'],
+    ['mk', 'Корпоративен SaaS:', 'farma.envantertr.com', 'шестцифрена шифра']
+  ]) {
+    await page.locator('#homeLanguage').selectOption(language);
+    await page.getByRole('heading', { name: new RegExp(title) }).waitFor();
+    assert.match(await page.locator('#cloudPortalBody').innerText(), new RegExp(portal));
+    assert.ok((await page.locator('#cloudMfaBody').innerText()).includes(mfa), `${language} must explain authenticator enrollment and code verification.`);
+    assert.ok((await page.locator('#cloudMfaNextBody').innerText()).length > 70, `${language} must explain MFA on subsequent sign-ins.`);
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.locator('#homeLanguage').selectOption('tr');
   await page.locator('.pricing-state').getByText('Cloud planları yükleniyor').waitFor({ state: 'visible' });
   assert.equal(await page.locator('.pricing-grid .price-card').filter({ has: page.locator('h3') }).count(), 3,
     'Only the three self-hosted quote cards should exist while Cloud plans are loading.');
@@ -106,8 +149,21 @@ try {
   await card.waitFor({ state: 'visible' });
   assert.equal(await card.locator('p').innerText(), publishedPlan.description);
   assert.match(await card.getByRole('link').getAttribute('href'), new RegExp(`^/checkout\\.html\\?planId=${publishedPlan.id}$`));
-  assert.deepEqual(pageErrors, [], `Public pricing must not throw browser errors: ${pageErrors.join(' | ')}`);
-  console.log('PASS: public Cloud pricing shows loading, empty and API-error states without invented tiers, preserves the quote path, localizes all five languages, and renders only published plan data.');
+  await page.goto(`${baseUrl}/checkout.html?planId=${publishedPlan.id}`, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => !document.querySelector('#checkoutFields').disabled);
+  const companyName = page.locator('[name="companyName"]');
+  const slug = page.locator('[name="slug"]');
+  for (const [company, expected] of [
+    ['Farma A.Ş.', 'farma'], ['Firma Farma A.Ş.', 'farma'], ['Santa', 'santa'], ['Celal', 'celal']
+  ]) {
+    await companyName.fill(company);
+    assert.equal(await slug.inputValue(), expected, `${company} should suggest ${expected}.envantertr.com`);
+  }
+  await slug.fill('celal-ozel');
+  await companyName.fill('Celal Belge');
+  assert.equal(await slug.inputValue(), 'celal-ozel', 'A user-edited portal slug must remain unchanged when the company name changes.');
+  assert.deepEqual(pageErrors, [], `Public homepage and checkout must not throw browser errors: ${pageErrors.join(' | ')}`);
+  console.log('PASS: public Cloud pricing shows loading, empty and API-error states without invented tiers; SaaS/MFA copy is localized; company names suggest concise tenant subdomains; manually edited slugs are preserved.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

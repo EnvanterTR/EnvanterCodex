@@ -3602,6 +3602,7 @@ try {
     'The session-expiry action must produce exactly one failed edit attempt.');
   await page.locator('#loginForm [name="email"]').fill('qa-session@example.invalid');
   await page.locator('#loginForm [name="password"]').fill('Synthetic-session-password');
+  await page.locator('#loginForm [name="rememberMe"]').check();
   await page.evaluate(() => {
     window.__postLoginOverviewReady = false;
     document.addEventListener('click', event => {
@@ -4955,17 +4956,18 @@ try {
     }
     if (name === 'Durum etiketleri') {
       const concurrentStatusLabelReads = await page.evaluate(async () => {
-        const originalApi = window.api;
+        const originalFetch = window.fetch;
         let count = 0;
-        window.api = async (path, ...args) => {
-          if (path === '/api/assets/status-labels') count++;
-          return originalApi(path, ...args);
+        window.fetch = async (input, ...args) => {
+          const requestUrl = typeof input === 'string' || input instanceof URL ? input : input.url;
+          if (new URL(requestUrl, location.href).pathname === '/api/assets/status-labels') count++;
+          return originalFetch(input, ...args);
         };
         try {
           await Promise.all([loadAssetStatusLabels(), loadAssetStatusLabels()]);
           return count;
         } finally {
-          window.api = originalApi;
+          window.fetch = originalFetch;
         }
       });
       assert.equal(concurrentStatusLabelReads, 1, 'Concurrent status-label screen loads must share one request so a late duplicate cannot overwrite an edit.');
