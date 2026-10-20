@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace EnvanterTR.Web.Data;
 
@@ -88,7 +89,7 @@ public static class PlatformEndpoints
 
         var admin = endpoints.MapGroup("/api/platform").RequireAuthorization("platform.admin");
         admin.MapGet("/system/health", async (AppDbContext db, IConfiguration configuration,
-            ILogger<Program> logger, CancellationToken cancellationToken) =>
+            IOptions<IyzipayOptions> paymentOptions, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             using var process = Process.GetCurrentProcess();
             var startedAt = new DateTimeOffset(process.StartTime.ToUniversalTime());
@@ -109,12 +110,20 @@ public static class PlatformEndpoints
                 : (double?)null;
 
             long? databaseSizeBytes = null;
+            int? publishedCloudPlans = null;
+            int? purchasableCloudPlans = null;
             var databaseStatus = "healthy";
             try
             {
                 databaseSizeBytes = await db.Database
                     .SqlQueryRaw<long>("SELECT pg_database_size(current_database()) AS \"Value\"")
                     .SingleAsync(cancellationToken);
+                publishedCloudPlans = await db.SubscriptionPlans.AsNoTracking().CountAsync(
+                    plan => plan.IsActive && plan.IsPublic && plan.DeploymentKind == "cloud", cancellationToken);
+                var checkoutCurrencies = CheckoutEndpoints.SupportedCurrencies;
+                purchasableCloudPlans = await db.SubscriptionPlans.AsNoTracking().CountAsync(
+                    plan => plan.IsActive && plan.IsPublic && plan.DeploymentKind == "cloud" &&
+                        (plan.MonthlyPrice > 0 || plan.AnnualPrice > 0) && checkoutCurrencies.Contains(plan.Currency.ToUpper()), cancellationToken);
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
@@ -148,6 +157,7 @@ public static class PlatformEndpoints
             }
 
             var generatedAt = DateTimeOffset.UtcNow;
+            var checkoutConfiguration = CheckoutEndpoints.GetConfigurationReadiness(paymentOptions.Value);
             return Results.Ok(new
             {
                 generatedAt,
@@ -170,8 +180,18 @@ public static class PlatformEndpoints
                 integrations = new
                 {
                     smtpConfigured = !string.IsNullOrWhiteSpace(configuration["Email:Smtp:Host"]),
-                    iyzicoConfigured = !string.IsNullOrWhiteSpace(configuration["Iyzipay:ApiKey"]) &&
-                        !string.IsNullOrWhiteSpace(configuration["Iyzipay:SecretKey"])
+                    iyzicoConfigured = checkoutConfiguration.CredentialsConfigured,
+                    checkout = new
+                    {
+                        configurationReady = checkoutConfiguration.Available,
+                        credentialsConfigured = checkoutConfiguration.CredentialsConfigured,
+                        callbackValid = checkoutConfiguration.CallbackValid,
+                        apiEndpointValid = checkoutConfiguration.ApiEndpointValid,
+                        environment = checkoutConfiguration.Environment,
+                        publishedCloudPlans,
+                        purchasableCloudPlans,
+                        catalogReady = purchasableCloudPlans > 0
+                    }
                 },
                 note = "CPU/RAM ve disk ölçümleri bu web uygulama konteynerine aittir; Docker hostunun genel kaynaklarını göstermez. Disk kapasitesi uygulama konteyneri dosya sistemidir. Veritabanı boyutu PostgreSQL'den okunur. Entegrasyon durumu yalnızca yapılandırılmış olmayı gösterir; sağlayıcı erişimi sınanmaz."
             });

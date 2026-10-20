@@ -1,0 +1,160 @@
+ Network envantertr-security-acceptance-d3ae4946e0_acceptance Creating
+ Network envantertr-security-acceptance-d3ae4946e0_acceptance Creating
+ Network envantertr-security-acceptance-d3ae4946e0_acceptance Created
+ Network envantertr-security-acceptance-d3ae4946e0_acceptance Created
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Creating
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Created
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Starting
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Started
+ Image envantertr-security-acceptance-d3ae4946e0-acceptance Building
+#1 [internal] load local bake definitions
+#1 reading from stdin 722B 0.1s done
+#1 DONE 0.1s
+
+#2 [internal] load build definition from Dockerfile.security-acceptance
+#2 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile.security-acceptance
+#2 transferring dockerfile: 871B 0.0s done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for mcr.microsoft.com/dotnet/sdk:10.0
+#3 DONE 0.2s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 134B done
+#4 DONE 0.0s
+
+#5 [ 1/11] FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
+#5 resolve mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 14.66MB 5.0s
+#6 transferring context: 24.14MB 8.7s done
+#6 DONE 8.7s
+
+#7 [ 5/11] COPY tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj tests/EnvanterTR.SecurityAcceptance/
+#7 CACHED
+
+#8 [ 2/11] WORKDIR /source
+#8 CACHED
+
+#9 [ 3/11] COPY global.json ./
+#9 CACHED
+
+#10 [ 4/11] COPY src/EnvanterTR.Web/EnvanterTR.Web.csproj src/EnvanterTR.Web/
+#10 CACHED
+
+#11 [ 6/11] RUN dotnet restore tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj
+#11 CACHED
+
+#12 [ 7/11] COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
+#12 DONE 1.1s
+
+#13 [ 8/11] RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
+#13 190.1   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+#13 190.3
+#13 190.3 Build succeeded.
+#13 190.3     0 Warning(s)
+#13 190.3     0 Error(s)
+#13 190.3
+#13 190.3 Time Elapsed 00:03:02.95
+#13 DONE 190.7s
+
+#14 [ 9/11] COPY tests/EnvanterTR.SecurityAcceptance/ tests/EnvanterTR.SecurityAcceptance/
+#14 DONE 0.1s
+
+#15 [10/11] RUN dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore
+#15 4.268   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+#15 57.36   EnvanterTR.SecurityAcceptance -> /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll
+#15 57.56
+#15 57.56 Build succeeded.
+#15 57.56     0 Warning(s)
+#15 57.56     0 Error(s)
+#15 57.56
+#15 57.56 Time Elapsed 00:00:56.54
+#15 DONE 57.7s
+
+#16 [11/11] WORKDIR /source/tests/EnvanterTR.SecurityAcceptance
+#16 DONE 0.1s
+
+#17 exporting to image
+#17 exporting layers
+#17 exporting layers 5.2s done
+#17 exporting manifest sha256:a268faa55e9866f10efe90a8f1f73fabe8f29465281c3b52c668d109a1a94320 0.0s done
+#17 exporting config sha256:234b16029b4a15b89e44d4e6795e7f69b31b5993f4fe48b9a3292a7f80fd6fc6 0.0s done
+#17 exporting attestation manifest sha256:a1b777f2e7810cc5a42abfa0e95a207970bdee7ce7f251625ef78de7d4c264eb 0.0s done
+#17 exporting manifest list sha256:d7f2cdef822e3539f1735dcc958d0269e953ec040b7f79df3b9494d5e936fe59 0.0s done
+#17 naming to docker.io/library/envantertr-security-acceptance-d3ae4946e0-acceptance:latest done
+#17 unpacking to docker.io/library/envantertr-security-acceptance-d3ae4946e0-acceptance:latest
+#17 unpacking to docker.io/library/envantertr-security-acceptance-d3ae4946e0-acceptance:latest 2.3s done
+#17 DONE 7.9s
+
+#18 resolving provenance for metadata file
+#18 DONE 0.1s
+ Image envantertr-security-acceptance-d3ae4946e0-acceptance Built
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Waiting
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Healthy
+ Container envantertr-security-acceptance-d3ae4946e0-acceptance-run-80daddf1ed3b Creating
+ Container envantertr-security-acceptance-d3ae4946e0-acceptance-run-80daddf1ed3b Created
+Test run for /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.01] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.57]   Discovering: EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:00.96]   Discovered:  EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:01.09]   Starting:    EnvanterTR.SecurityAcceptance
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[35]
+      No XML encryptor configured. Key {9f4ed641-b0bd-49f7-a928-fad776cb4606} may be persisted to storage in unencrypted form.
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (131ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_Assets_CompanyId_DefaultLocationCatalogId"
+      ' from migration 'AddAssetModelNumbersAndDefaultLocation' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_AuditEntries_OccurredAt"
+      ' from migration 'AddGlobalAuditTimelineIndex' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Program[0]
+      Signed iyzico checkout webhook did not match the retrieved payment result. Checkout 40c44c70-c769-472d-94a3-e88dd0810cfd
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Public_checkout_uses_server_price_verifies_provider_and_provisions_once [6 s]
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Platform_checkout_readiness_matches_public_gate_without_exposing_provider_secrets [4 s]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+[xUnit.net 00:01:15.01]   Finished:    EnvanterTR.SecurityAcceptance
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Platform_system_health_is_admin_only_and_reports_scoped_runtime_metrics [5 s]
+
+Test Run Successful.
+Total tests: 3
+     Passed: 3
+ Total time: 1.2931 Minutes
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Stopping
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Stopped
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Removing
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Removed
+ Network envantertr-security-acceptance-d3ae4946e0_acceptance Removing
+ Network envantertr-security-acceptance-d3ae4946e0_acceptance Removed

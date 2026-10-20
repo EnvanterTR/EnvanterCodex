@@ -23,6 +23,19 @@ public sealed record InitializeCompanyCheckoutRequest(
 
 public static class CheckoutEndpoints
 {
+    internal static readonly string[] SupportedCurrencies = ["TRY", "USD", "EUR", "GBP", "NOK", "CHF"];
+    internal sealed record ConfigurationReadiness(bool CredentialsConfigured, bool CallbackValid, bool ApiEndpointValid, string Environment)
+    {
+        public bool Available => CredentialsConfigured && CallbackValid && ApiEndpointValid;
+    }
+
+    internal static ConfigurationReadiness GetConfigurationReadiness(IyzipayOptions options)
+    {
+        var trustedApi = IsTrustedApiBase(options.BaseUrl);
+        var environment = !trustedApi ? "unknown" : new Uri(options.BaseUrl).Host == "sandbox-api.iyzipay.com" ? "sandbox" : "production";
+        return new(options.IsConfigured, IsTrustedCallbackUrl(options.CallbackUrl), trustedApi, environment);
+    }
+
     private const string CheckoutStatusStarted = "PaymentStarted";
     private const string CheckoutNoticeVersion = "cloud-checkout-data-v1";
     private static readonly Regex PhonePattern = new("^\\+[1-9][0-9]{7,14}$", RegexOptions.CultureInvariant);
@@ -33,7 +46,7 @@ public static class CheckoutEndpoints
         endpoints.MapGet("/api/checkout/status", (IOptions<IyzipayOptions> configuredOptions) =>
         {
             var options = configuredOptions.Value;
-            var available = options.IsConfigured && IsTrustedCallbackUrl(options.CallbackUrl) && IsTrustedApiBase(options.BaseUrl);
+            var available = GetConfigurationReadiness(options).Available;
             return Results.Ok(new
             {
                 available,
@@ -65,7 +78,7 @@ public static class CheckoutEndpoints
         }
 
         var options = configuredOptions.Value;
-        if (!options.IsConfigured || !IsTrustedCallbackUrl(options.CallbackUrl) || !IsTrustedApiBase(options.BaseUrl))
+        if (!GetConfigurationReadiness(options).Available)
             return Results.Problem("Çevrimiçi ödeme şu anda yapılandırılmamış. Şirket kaydı başlatılmadı.",
                 statusCode: StatusCodes.Status503ServiceUnavailable);
 
@@ -103,7 +116,7 @@ public static class CheckoutEndpoints
         var termDays = request.Term == "annual" ? 365 : 30;
         var amount = request.Term == "annual" ? plan.AnnualPrice : plan.MonthlyPrice;
         var currency = plan.Currency.ToUpperInvariant();
-        if (amount <= 0 || currency is not ("TRY" or "USD" or "EUR" or "GBP" or "NOK" or "CHF"))
+        if (amount <= 0 || !SupportedCurrencies.Contains(currency))
             return Results.Problem("Seçilen Cloud paketi için ödeme fiyatı veya para birimi kullanılamıyor.",
                 statusCode: StatusCodes.Status503ServiceUnavailable);
 
@@ -559,6 +572,7 @@ public static class CheckoutEndpoints
 
     private static bool IsTrustedApiBase(string? value) => Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
         uri.Scheme == Uri.UriSchemeHttps && uri.UserInfo.Length == 0 && uri.AbsolutePath == "/" &&
+        uri.IsDefaultPort && uri.Query.Length == 0 && uri.Fragment.Length == 0 &&
         uri.Host is "api.iyzipay.com" or "sandbox-api.iyzipay.com";
 
     private static string? GetClientIp(HttpContext context)
