@@ -590,7 +590,7 @@ public static class CheckoutEndpoints
     {
         if (string.IsNullOrWhiteSpace(value)) return null;
         var code = value.Trim().ToUpperInvariant();
-        return code.Length <= 40 && Regex.IsMatch(code, "^[A-Z0-9]+(?:-[A-Z0-9]+)*$") ? code : null;
+        return Regex.IsMatch(code, "^[A-Z0-9][A-Z0-9_-]{1,38}[A-Z0-9]$") ? code : null;
     }
 
     private static bool TryCalculateCoupon(SubscriptionCoupon? coupon, SubscriptionPlan plan, decimal subtotal,

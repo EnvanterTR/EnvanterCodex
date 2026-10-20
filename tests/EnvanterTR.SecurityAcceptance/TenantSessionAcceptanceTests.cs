@@ -581,7 +581,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         };
         var coupon = new SubscriptionCoupon
         {
-            Code = $"SAVE{checkoutId.ToString("N")[..8]}".ToUpperInvariant(), DiscountType = "Percent",
+            Code = $"SAVE_{checkoutId.ToString("N")[..8]}".ToUpperInvariant(), DiscountType = "Percent",
             DiscountValue = 10m, PlanId = plan.Id, IsActive = true, MaxRedemptions = 5,
             MaxRedemptionsPerCustomer = 1, CreatedByUserId = _userId
         };

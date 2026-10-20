@@ -13,7 +13,7 @@ public sealed partial class TenantSessionAcceptanceTests
     [Fact]
     public async Task Platform_coupon_management_is_platform_only_validated_and_audited()
     {
-        var code = $"ADMIN{Guid.NewGuid():N}"[..14];
+        var code = $"ADMIN_{Guid.NewGuid():N}"[..14].ToUpperInvariant();
         var plan = new SubscriptionPlan
         {
             Code = $"cp-{Guid.NewGuid():N}", Name = "Coupon Cloud plan", DeploymentKind = "cloud",
@@ -46,6 +46,9 @@ public sealed partial class TenantSessionAcceptanceTests
         using (var invalidValue = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/coupons",
                    JsonContent.Create(Request("Geçersiz indirim değeri", 150m)), token, cookie))
             Assert.Equal(HttpStatusCode.BadRequest, invalidValue.StatusCode);
+        using (var invalidCode = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/coupons",
+                   JsonContent.Create(Request("Geçersiz kupon kodu") with { Code = "BAD-" }), token, cookie))
+            Assert.Equal(HttpStatusCode.BadRequest, invalidCode.StatusCode);
         using (var companyAdmin = await SendAsUserAsync(HttpMethod.Post, "/api/platform/coupons", _userId, _companyId,
                    JsonContent.Create(Request("Platform erişim sınaması")), token, cookie))
             Assert.Equal(HttpStatusCode.Forbidden, companyAdmin.StatusCode);

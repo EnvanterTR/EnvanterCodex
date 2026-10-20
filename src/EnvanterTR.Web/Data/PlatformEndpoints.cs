@@ -2331,8 +2331,8 @@ public static class PlatformEndpoints
     {
         var issues = new Dictionary<string, string[]>();
         var code = request.Code?.Trim() ?? "";
-        if (!Regex.IsMatch(code, "^[A-Za-z0-9][A-Za-z0-9_-]{2,39}$"))
-            issues["code"] = ["Kod 3-40 karakter olmalı; harf, sayı, tire ve alt çizgi kullanılabilir."];
+        if (!Regex.IsMatch(code, "^[A-Za-z0-9][A-Za-z0-9_-]{1,38}[A-Za-z0-9]$"))
+            issues["code"] = ["Kod 3-40 karakter olmalı; harf veya sayıyla başlamalı/bitmeli, arada harf, sayı, tire ve alt çizgi kullanılabilir."];
         if (request.DiscountType is not ("Percent" or "Fixed"))
             issues["discountType"] = ["İndirim türü Percent veya Fixed olmalıdır."];
         if (request.DiscountValue <= 0 || (request.DiscountType == "Percent" && request.DiscountValue > 100) ||
