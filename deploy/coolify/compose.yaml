@@ -65,6 +65,27 @@ services:
       dockerfile: deploy/coolify/Dockerfile.public-site
     restart: unless-stopped
     depends_on: [web]
+    # One shared tenant route; future companies do not need per-host proxy edits.
+    # Go regexp \z anchors the host without Docker/Coolify dollar interpolation.
+    # Configure the envantertr-dns ACME resolver on the existing proxy first.
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.envantertr-tenants-http.entrypoints=http'
+      - 'traefik.http.routers.envantertr-tenants-http.rule=HostRegexp(`^[a-z0-9-]+[.]envantertr[.]com\z`)'
+      - 'traefik.http.routers.envantertr-tenants-http.priority=20'
+      - 'traefik.http.routers.envantertr-tenants-http.service=envantertr-tenants'
+      - 'traefik.http.routers.envantertr-tenants-http.middlewares=envantertr-tenant-https'
+      - 'traefik.http.middlewares.envantertr-tenant-https.redirectscheme.scheme=https'
+      - 'traefik.http.middlewares.envantertr-tenant-https.redirectscheme.permanent=true'
+      - 'traefik.http.routers.envantertr-tenants-https.entrypoints=https'
+      - 'traefik.http.routers.envantertr-tenants-https.rule=HostRegexp(`^[a-z0-9-]+[.]envantertr[.]com\z`)'
+      - 'traefik.http.routers.envantertr-tenants-https.priority=20'
+      - 'traefik.http.routers.envantertr-tenants-https.service=envantertr-tenants'
+      - 'traefik.http.routers.envantertr-tenants-https.tls=true'
+      - 'traefik.http.routers.envantertr-tenants-https.tls.certresolver=envantertr-dns'
+      - 'traefik.http.routers.envantertr-tenants-https.tls.domains[0].main=envantertr.com'
+      - 'traefik.http.routers.envantertr-tenants-https.tls.domains[0].sans=*.envantertr.com'
+      - 'traefik.http.services.envantertr-tenants.loadbalancer.server.port=80'
     networks: [internal]
 
 networks:

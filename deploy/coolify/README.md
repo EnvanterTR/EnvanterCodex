@@ -6,6 +6,27 @@ The stack starts PostgreSQL, the EnvanterTR application, and the public marketin
 
 ## Request traffic and GitHub are separate
 
+### Current application release — 20 October 2026
+
+Candidate PR #2 was merged as `7c9522e` after all three CI jobs passed, including 231/231 actual PostgreSQL tests. Its source tree equals the tested candidate. Deployment `tip3j749uzcmito18wa1e2p7` started the new application on the existing resource and verified volumes. Production was updated atomically from 92 to 117 migrations after a fresh coupled SQL/media/key/image backup and a successful restored-copy rehearsal. Both apex and firma status endpoints report ready, 117 migrations and zero pending. The Santa owner dashboard also opened with its existing authenticated session. The older 92-migration observations below are historical.
+
+### Shared tenant route and automatic wildcard certificates
+
+The Compose `public-site` labels define one HTTP-to-HTTPS tenant redirect and one shared HTTPS router. The anchored Go regular expression accepts one company subdomain under `envantertr.com`; it excludes the apex, nested names and lookalike suffixes. The `\z` end anchor avoids Docker/Coolify dollar interpolation. Explicit host routers have higher priority; Nginx continues to serve the marketing site on apex/www and proxies company hosts to the private application. The application must still resolve the company slug and enforce membership. A wildcard route never grants company access by itself.
+
+Before deploying these labels, configure the **existing proxy** with resolver `envantertr-dns`:
+
+```text
+--certificatesresolvers.envantertr-dns.acme.email=admin@envantertr.com
+--certificatesresolvers.envantertr-dns.acme.storage=/traefik/envantertr-dns-acme.json
+--certificatesresolvers.envantertr-dns.acme.dnschallenge.provider=cloudflare
+--certificatesresolvers.envantertr-dns.acme.dnschallenge.resolvers=1.1.1.1:53,1.0.0.1:53
+```
+
+Use `CF_DNS_API_TOKEN_FILE=/traefik/secrets/envantertr-cloudflare-dns-token`. Keep the token in a root-private directory with mode 0600, using the existing proxy mount; no token value belongs in Compose, source control, screenshots or logs. Scope its permissions to this zone's DNS Edit and Zone Read, and restrict source IPs to the actual server egress addresses. Back up the existing proxy configuration and ACME storage before restarting it. A separate ACME staging test must pass first; staging certificates must never replace trusted production certificates. Let Traefik renew the production certificate using the same private storage and DNS resolver.
+
+After the trusted origin certificate and tenant route are verified, check apex/www/firma and a new tenant-shaped host before enabling Cloudflare Full (strict). Keep certificate verification enabled. DNS, TLS and routing are shared infrastructure; new purchases create company/slug/membership/subscription records, rather than changing DNS for every company. SMTP, live payment/provider and complete real-account acceptance remain separate gates.
+
 ### Current production routing — 20 October 2026
 
 Coolify resource `izrckbfan6xop8b6xgigduvt` had only apex/www domains. The explicit `firma.envantertr.com` domain was added to `public-site` on container port 80. Deployment `fb9dqiuv5hsi9ndegajdbpv6` successfully redeployed the already-live/main revision `bb7ab41` in 3m14s. Both apex and firma `/api/status` now return HTTP 200, ready, 92 migrations / zero pending. The historical 21/22 pending and firma 503 observations below no longer describe this deployment.
