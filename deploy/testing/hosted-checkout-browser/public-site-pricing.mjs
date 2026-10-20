@@ -163,7 +163,7 @@ try {
   await companyName.fill('Celal Belge');
   assert.equal(await slug.inputValue(), 'celal-ozel', 'A user-edited portal slug must remain unchanged when the company name changes.');
   assert.deepEqual(pageErrors, [], `Public homepage and checkout must not throw browser errors: ${pageErrors.join(' | ')}`);
-  console.log('PASS: public Cloud pricing shows loading, empty and API-error states without invented tiers; SaaS/MFA copy is localized; company names suggest concise tenant subdomains; manually edited slugs are preserved.');
+  console.log('PASS: public Cloud pricing shows loading, empty and API-error states without invented tiers, localizes SaaS/MFA copy in all five languages, suggests concise tenant subdomains from company names, and preserves manually edited slugs.');
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));
