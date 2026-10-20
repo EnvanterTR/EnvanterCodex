@@ -30,4 +30,4 @@ Tarih: 20 Ekim 2026
 
 ## Canlı sınır
 
-Portal/MFA onboarding değişikliği yerel dalda doğrulandı; henüz PR/CI/canlı yayın aşamasına ulaşmadı. Salt okunur canlı kontrolünde `/api/checkout/status` `available:false`, `/api/plans` boş liste döndürüyor. Bu nedenle şu an Firma Farma A.Ş. satın alma yapıp giriş başlatamaz. İyzico üretim ayarı, yayımlanmış planlar ve SMTP e-posta teslimi tamamlanıp kabul edilmeden canlı satış akışı çalışıyor denemez.
+Portal/MFA onboarding değişikliği PR #5 içinde; GitHub CI sonucu bekleniyor ve canlıya alınmadı. Salt okunur canlı kontrolünde `/api/checkout/status` `available:false`, `/api/plans` boş liste döndürüyor. Bu nedenle örnek bir müşteri şu anda satın alma yapıp giriş başlatamaz. İyzico üretim ayarı, yayımlanmış planlar ve SMTP e-posta teslimi tamamlanıp kabul edilmeden canlı satış akışı çalışıyor denemez.
