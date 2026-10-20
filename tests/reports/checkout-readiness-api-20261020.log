@@ -1,12 +1,12 @@
- Network envantertr-security-acceptance-d3ae4946e0_acceptance Creating 
- Network envantertr-security-acceptance-d3ae4946e0_acceptance Creating 
- Network envantertr-security-acceptance-d3ae4946e0_acceptance Created 
- Network envantertr-security-acceptance-d3ae4946e0_acceptance Created 
- Container envantertr-security-acceptance-d3ae4946e0-database-1 Creating 
- Container envantertr-security-acceptance-d3ae4946e0-database-1 Created 
- Container envantertr-security-acceptance-d3ae4946e0-database-1 Starting 
- Container envantertr-security-acceptance-d3ae4946e0-database-1 Started 
- Image envantertr-security-acceptance-d3ae4946e0-acceptance Building 
+ Network envantertr-security-acceptance-d3ae4946e0_acceptance Creating
+ Network envantertr-security-acceptance-d3ae4946e0_acceptance Creating
+ Network envantertr-security-acceptance-d3ae4946e0_acceptance Created
+ Network envantertr-security-acceptance-d3ae4946e0_acceptance Created
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Creating
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Created
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Starting
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Started
+ Image envantertr-security-acceptance-d3ae4946e0-acceptance Building
 #1 [internal] load local bake definitions
 #1 reading from stdin 722B 0.1s done
 #1 DONE 0.1s
@@ -54,11 +54,11 @@
 
 #13 [ 8/11] RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
 #13 190.1   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
-#13 190.3 
+#13 190.3
 #13 190.3 Build succeeded.
 #13 190.3     0 Warning(s)
 #13 190.3     0 Error(s)
-#13 190.3 
+#13 190.3
 #13 190.3 Time Elapsed 00:03:02.95
 #13 DONE 190.7s
 
@@ -68,11 +68,11 @@
 #15 [10/11] RUN dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore
 #15 4.268   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
 #15 57.36   EnvanterTR.SecurityAcceptance -> /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll
-#15 57.56 
+#15 57.56
 #15 57.56 Build succeeded.
 #15 57.56     0 Warning(s)
 #15 57.56     0 Error(s)
-#15 57.56 
+#15 57.56
 #15 57.56 Time Elapsed 00:00:56.54
 #15 DONE 57.7s
 
@@ -93,11 +93,11 @@
 
 #18 resolving provenance for metadata file
 #18 DONE 0.1s
- Image envantertr-security-acceptance-d3ae4946e0-acceptance Built 
- Container envantertr-security-acceptance-d3ae4946e0-database-1 Waiting 
- Container envantertr-security-acceptance-d3ae4946e0-database-1 Healthy 
- Container envantertr-security-acceptance-d3ae4946e0-acceptance-run-80daddf1ed3b Creating 
- Container envantertr-security-acceptance-d3ae4946e0-acceptance-run-80daddf1ed3b Created 
+ Image envantertr-security-acceptance-d3ae4946e0-acceptance Built
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Waiting
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Healthy
+ Container envantertr-security-acceptance-d3ae4946e0-acceptance-run-80daddf1ed3b Creating
+ Container envantertr-security-acceptance-d3ae4946e0-acceptance-run-80daddf1ed3b Created
 Test run for /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll (.NETCoreApp,Version=v10.0)
 A total of 1 test files matched the specified pattern.
 [xUnit.net 00:00:00.01] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.13)
@@ -152,9 +152,9 @@ Test Run Successful.
 Total tests: 3
      Passed: 3
  Total time: 1.2931 Minutes
- Container envantertr-security-acceptance-d3ae4946e0-database-1 Stopping 
- Container envantertr-security-acceptance-d3ae4946e0-database-1 Stopped 
- Container envantertr-security-acceptance-d3ae4946e0-database-1 Removing 
- Container envantertr-security-acceptance-d3ae4946e0-database-1 Removed 
- Network envantertr-security-acceptance-d3ae4946e0_acceptance Removing 
- Network envantertr-security-acceptance-d3ae4946e0_acceptance Removed 
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Stopping
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Stopped
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Removing
+ Container envantertr-security-acceptance-d3ae4946e0-database-1 Removed
+ Network envantertr-security-acceptance-d3ae4946e0_acceptance Removing
+ Network envantertr-security-acceptance-d3ae4946e0_acceptance Removed
