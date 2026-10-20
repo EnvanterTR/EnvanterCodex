@@ -429,7 +429,15 @@ try {
   await page.locator('#twoFactorCurrentPassword').fill('Synthetic-only-password');
   await page.locator('#startTwoFactorSetup').click();
   const twoFactorSecret = page.locator('#twoFactorSecret');
-  await page.waitForFunction(() => document.querySelector('#twoFactorSecret')?.textContent === 'JBSWY3DPEHPK3PXP');
+  try {
+    await page.waitForFunction(() => document.querySelector('#twoFactorSecret')?.textContent === 'JBSWY3DPEHPK3PXP');
+  } catch (error) {
+    console.error(JSON.stringify({ stage: 'account-mfa-setup', pageErrors,
+      feedback: await page.locator('#twoFactorFeedback').innerText(),
+      requests: apiRequests.filter(item => item.path.includes('/2fa') || item.path.includes('/csrf'))
+        .map(item => ({ method: item.method, path: item.path, hasCsrf: Boolean(item.csrf) })) }));
+    throw error;
+  }
   const twoFactorQr = page.locator('#twoFactorQr');
   assert.equal(await twoFactorQr.isVisible(), true, 'The account MFA setup must display a locally generated QR code.');
   assert.equal(await twoFactorQr.getAttribute('alt'), 'Authenticator uygulamasıyla taranacak kurulum QR kodu');
