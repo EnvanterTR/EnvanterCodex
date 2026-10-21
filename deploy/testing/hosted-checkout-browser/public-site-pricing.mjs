@@ -98,6 +98,16 @@ try {
     assert.match(await page.locator('#cloudPortalBody').innerText(), new RegExp(portal));
     assert.ok((await page.locator('#cloudMfaBody').innerText()).includes(mfa), `${language} must explain authenticator enrollment and code verification.`);
     assert.ok((await page.locator('#cloudMfaNextBody').innerText()).length > 70, `${language} must explain MFA on subsequent sign-ins.`);
+    const security = page.locator('#hesap-guvenligi');
+    assert.equal(await security.locator('article').count(), 3);
+    assert.match(await security.innerText(), /QR/);
+    assert.match(await security.innerText(), /MFA/);
+    assert.equal((await security.locator('h2').innerText()).startsWith('Kurumsal'), language === 'tr',
+      'Security marketing must use the selected language and restore Turkish when requested.');
+    const bounds = await security.locator('article').evaluateAll(nodes => nodes.map(node => {
+      const rect = node.getBoundingClientRect(); return { left: rect.left, right: rect.right };
+    }));
+    assert.ok(bounds.every(rect => rect.left >= 0 && rect.right <= 390), 'Security cards must fit the phone viewport.');
   }
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.locator('#homeLanguage').selectOption('tr');
