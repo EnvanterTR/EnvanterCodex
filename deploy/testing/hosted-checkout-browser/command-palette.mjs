@@ -572,6 +572,10 @@ try {
   await securityNav.click();
   await page.locator('#companySecurityPolicyPanel').waitFor({ state: 'visible' });
   await page.locator('#securityOverviewPanel').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#securityOverviewPanel [role="button"]').count(), 0,
+    'Security summaries must not inherit inventory navigation or asset-action accessibility labels');
+  assert.equal(await page.locator('#overview .stats .stat[role="button"]').count(), 9,
+    'Inventory dashboard cards retain their real navigation actions');
   await page.waitForFunction(() => document.querySelector('#securityOverviewMfa')?.textContent === 'Kapalı'
     && document.querySelector('#securityOverviewSessions')?.textContent === '0');
   assert.equal(await accountDialog.isVisible(), false,
