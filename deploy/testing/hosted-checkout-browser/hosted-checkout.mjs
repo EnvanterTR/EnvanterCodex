@@ -168,6 +168,7 @@ try {
 }
 
 await import('./command-palette.mjs');
+await import('./company-portal-login.mjs');
 await import('./asset-camera.mjs');
 await import('./company-storage.mjs');
 await import('./asset-detail-actions.mjs');

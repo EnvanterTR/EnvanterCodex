@@ -6,3 +6,5 @@
 - PASS: node tools/Verify-CompanyPortalLogin.mjs (active membership, apex/www, local origins and unsafe targets).
 - PASS: node tools/Verify-CoolifyTenantRouting.mjs; git diff --check.
 - Not yet deployed or proven by an authenticated live browser login. Santa/Farma account mappings and SMTP remain open.
+- Chromium actual HTML acceptance PASS for apex and www: selects active Farma membership, navigates to its HTTPS portal, and makes no asset-data request on the entry host. All network traffic is intercepted with synthetic responses; no production login is claimed.
+- Initial browser run failed because the test fixture omitted existing report scripts. Fixture corrected to serve them; second run exit0. Test included in hosted browser acceptance image and suite.
