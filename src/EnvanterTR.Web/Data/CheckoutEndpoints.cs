@@ -45,10 +45,14 @@ public static class CheckoutEndpoints
 
     public static IEndpointRouteBuilder MapCheckoutEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/checkout/status", (IOptions<IyzipayOptions> configuredOptions) =>
+        endpoints.MapGet("/api/checkout/status", async (IOptions<IyzipayOptions> configuredOptions,
+            AppDbContext db, CancellationToken cancellationToken) =>
         {
             var options = configuredOptions.Value;
-            var available = GetConfigurationReadiness(options).Available;
+            var configurationReady = GetConfigurationReadiness(options).Available;
+            var available = configurationReady && await db.SubscriptionPlans.AsNoTracking().AnyAsync(
+                plan => plan.IsActive && plan.IsPublic && plan.DeploymentKind == "cloud" &&
+                    (plan.MonthlyPrice > 0 || plan.AnnualPrice > 0) && SupportedCurrencies.Contains(plan.Currency.ToUpper()), cancellationToken);
             return Results.Ok(new
             {
                 available,
