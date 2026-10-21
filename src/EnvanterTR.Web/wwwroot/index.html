@@ -11491,7 +11491,7 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
     $('#assetPrev').addEventListener('click', () => loadDashboard($('#globalSearch').value.trim(), assetPage - 1).catch(error => notify(error.message)));
     $('#assetNext').addEventListener('click', () => loadDashboard($('#globalSearch').value.trim(), assetPage + 1).catch(error => notify(error.message)));
     const dashboardStatusFilters = ['', 'Deployed', 'Available', 'Maintenance'];
-    document.querySelectorAll('.stats .stat').forEach((card, index) => {
+    document.querySelectorAll('#overview .stats .stat').forEach((card, index) => {
       const page = card.dataset.dashboardPage || '', status = dashboardStatusFilters[index] || '';
       const label = page ? card.querySelector('.stat-top span')?.textContent || page : status ? statusLabel(status) : 'Tüm varlıklar';
       card.classList.add('stat-actionable'); card.tabIndex = 0; card.setAttribute('role', 'button');
