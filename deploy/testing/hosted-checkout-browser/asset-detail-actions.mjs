@@ -5730,8 +5730,23 @@ try {
   await page.getByRole('button', { name: 'Şirket birimi erişimi' }).click();
   await page.locator('#memberLocationAccessDialog').waitFor({ state: 'visible' });
   const unitMode = page.locator('#memberCompanyUnitAccessMode');
+  // showModal() happens before the access API response populates the unit list.
+  // Wait for the server-provided default scope and both active options before changing it,
+  // otherwise a fast hosted browser can race the response and have its selection overwritten.
+  await page.waitForFunction(({ branchId }) => {
+    const mode = document.querySelector('#memberCompanyUnitAccessMode');
+    const options = [...document.querySelectorAll('#memberCompanyUnitAccessList input[data-company-unit-option="true"]')];
+    const branch = options.find(option => option.value === branchId);
+    return mode?.value === 'all' && options.length === 2 && branch?.disabled === true;
+  }, { branchId: companyUnitBranchId });
   await unitMode.selectOption('restricted');
   const branchScope = page.locator(`#memberCompanyUnitAccessList input[value="${companyUnitBranchId}"]`);
+  await branchScope.waitFor({ state: 'visible' });
+  await page.waitForFunction(branchId => {
+    const mode = document.querySelector('#memberCompanyUnitAccessMode');
+    const branch = document.querySelector(`#memberCompanyUnitAccessList input[value="${CSS.escape(branchId)}"]`);
+    return mode?.value === 'restricted' && branch?.disabled === false;
+  }, companyUnitBranchId);
   await branchScope.check();
   await page.locator('#memberLocationAccessForm button[type="submit"]').click();
   await page.waitForFunction(() => document.querySelector('#memberLocationAccessDialog')?.open === false);
