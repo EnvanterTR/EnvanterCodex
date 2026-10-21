@@ -427,6 +427,10 @@ try {
   assert.match(await accountTwoFactorDialog.innerText(), /Google Authenticator, Microsoft Authenticator veya TOTP uyumlu başka bir uygulama/);
   assert.match(await accountTwoFactorDialog.innerText(), /Google\/Microsoft hesabı, abonelik, SMS ya da ayrıca bir hizmet satın almanız gerekmez/);
   await page.locator('#twoFactorCurrentPassword').fill('Synthetic-only-password');
+  assert.equal(await page.locator('#twoFactorQrSetupHint').isVisible(), true);
+  assert.match(await page.locator('#twoFactorQrSetupHint').innerText(), /QR/);
+  assert.equal(await page.locator('#twoFactorQr').isVisible(), false,
+    'The provisioning QR must not appear before current-password verification.');
   await page.locator('#startTwoFactorSetup').click();
   const twoFactorSecret = page.locator('#twoFactorSecret');
   try {

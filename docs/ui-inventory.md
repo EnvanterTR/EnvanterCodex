@@ -1,6 +1,6 @@
 # EnvanterTR statik arayüz envanteri
 
-Oluşturulma: 2026-10-20T18:16:56.664Z
+Oluşturulma: 2026-10-21T07:48:13.779Z
 
 > Bu dosya mevcut HTML kaynaklarında bulunan statik arayüz öğelerinin dökümüdür. Bir öğenin listelenmesi onun çalıştığını kanıtlamaz. JavaScript ile sonradan oluşturulan kontroller, API/DB davranışı, rol varyasyonları ve erişilebilirlik ayrıca uçtan uca kabul gerektirir. Kaynak değiştikçe `node tools/Generate-UiInventory.mjs` ile yeniden üretin; `node tools/Generate-UiInventory.mjs --check` güncel olup olmadığını doğrular.
 
@@ -10,7 +10,7 @@ Oluşturulma: 2026-10-20T18:16:56.664Z
 |---|---:|
 | Sayfa rotası | 65 |
 | Menü grubu | 10 |
-| Bağlantı | 52 |
+| Bağlantı | 53 |
 | Düğme | 945 |
 | Form | 111 |
 | Girdi alanı | 620 |
@@ -19,7 +19,7 @@ Oluşturulma: 2026-10-20T18:16:56.664Z
 | Modal | 107 |
 | Sekme | 5 |
 | Tablo | 79 |
-| **Toplam kayıt** | **2238** |
+| **Toplam kayıt** | **2239** |
 
 ## Tam döküm
 
@@ -2212,52 +2212,53 @@ Oluşturulma: 2026-10-20T18:16:56.664Z
 | 9 | Bağlantı | Demoyu deneyin | hedef=/demo/ |
 | 10 | Bağlantı | Canlı demoyu aç → | hedef=/demo/; başlangıçta gizli |
 | 11 | Bağlantı | Örnek kayıtları inceleyin → | hedef=/demo/ |
-| 12 | Bağlantı | Bilgi iste | hedef=mailto:admin@envantertr.com?subject=EnvanterTR%20Windows%2011%20kurulum%20paketi |
-| 13 | Bağlantı | Teklif iste | hedef=mailto:admin@envantertr.com?subject=EnvanterTR%20Windows%20Server%20kurulum%20teklifi |
-| 14 | Bağlantı | Teklif iste | hedef=mailto:admin@envantertr.com?subject=EnvanterTR%20Ubuntu%20Linux%20kurulum%20teklifi |
-| 15 | Bağlantı | Teklif isteyin: admin@envantertr.com | hedef=mailto:admin@envantertr.com?subject=EnvanterTR%20plan%20teklifi |
-| 16 | Bağlantı | Etkileşimli ürün demosunu açın | hedef=/demo/ |
-| 17 | Bağlantı | Kurulum seçeneklerini görüşün | hedef=mailto:admin@envantertr.com?subject=EnvanterTR%20kurulum |
-| 18 | Bağlantı | admin@envantertr.com | hedef=mailto:admin@envantertr.com?subject=EnvanterTR%20paket%20ihtiyac%C4%B1 |
-| 19 | Bağlantı | Tanıtım görüşmesi isteyin | hedef=#demo |
-| 20 | Bağlantı | Canlı demoyu aç | hedef=/demo/ |
-| 21 | Bağlantı | E Envanter TR | hedef=#top; başlangıçta gizli |
-| 22 | Bağlantı | ${cell} | hedef=/demo/ |
-| 23 | Bağlantı | Filtreler | hedef=/demo/ |
-| 24 | Bağlantı | Tüm varlıkları aç → | hedef=/demo/ |
-| 25 | Bağlantı | Ekipleri gör | hedef=/demo/ |
-| 26 | Bağlantı | Profilleri incele → | hedef=/demo/ |
-| 27 | Bağlantı | Stok görünümü | hedef=/demo/ |
-| 28 | Bağlantı | Aksesuarları aç → | hedef=/demo/ |
-| 29 | Bağlantı | Konumları gör | hedef=/demo/ |
-| 30 | Bağlantı | Konum envanterini aç → | hedef=/demo/ |
-| 31 | Bağlantı | Rapor ekranını aç → | hedef=/demo/ |
-| 32 | Düğme | Menüyü aç | id=menuToggle; type=button |
-| 33 | Düğme | Tanıtım görüşmesi iste | type=button |
-| 34 | Düğme | ⌂ Genel Bakış | type=button |
-| 35 | Düğme | ▣ Varlıklar | type=button |
-| 36 | Düğme | ♙ Kişiler | type=button |
-| 37 | Düğme | ⌑ Aksesuarlar | type=button |
-| 38 | Düğme | ⌖ Konumlar | type=button |
-| 39 | Düğme | ▤ Raporlar | type=button |
-| 40 | Düğme | Tanıtım iste | type=button |
-| 41 | Düğme | Kapat | id=demoRequestClose; type=button |
-| 42 | Düğme | Vazgeç | id=demoRequestCancel; type=button |
-| 43 | Düğme | Tanıtım isteği gönder | id=demoRequestSubmit; type=submit |
-| 44 | Seçim alanı | Sayfa dili | id=homeLanguage; seçenekler=tr: TR, en: EN, ru: RU, uk: UK, mk: MK |
-| 45 | Seçim alanı | Renk teması | id=homeTheme; seçenekler=forest: Yeşil, navy: Lacivert, gold: Sarı, violet: Mor |
-| 46 | Girdi alanı | companyName | name=companyName |
-| 47 | Girdi alanı | contactName | name=contactName |
-| 48 | Girdi alanı | jobTitle | name=jobTitle |
-| 49 | Girdi alanı | phone | type=tel; name=phone |
-| 50 | Girdi alanı | email | type=email; name=email |
-| 51 | Seçim alanı | teamSize | name=teamSize; seçenekler=(değer yok): Seçin, (değer yok): 1-10, (değer yok): 11-50, (değer yok): 51-200, (değer yok): 201-1000, (değer yok): 1000+ |
-| 52 | Seçim alanı | assetCount | name=assetCount; seçenekler=(değer yok): Belirtmek istemiyorum, (değer yok): 1-50, (değer yok): 51-250, (değer yok): 251-1000, (değer yok): 1001-5000, (değer yok): 5000+ |
-| 53 | Metin alanı | message | name=message |
-| 54 | Girdi alanı | website | name=website |
-| 55 | Girdi alanı | consent | type=checkbox; name=consent |
-| 56 | Form | demoRequestForm | id=demoRequestForm |
-| 57 | Modal | Kapat | id=demoRequestDialog; type=button; name=companyName; başlangıçta gizli |
+| 12 | Bağlantı | Envanter ekranını inceleyin → | id=assetLabelDemo; hedef=/demo/ |
+| 13 | Bağlantı | Bilgi iste | hedef=mailto:admin@envantertr.com?subject=EnvanterTR%20Windows%2011%20kurulum%20paketi |
+| 14 | Bağlantı | Teklif iste | hedef=mailto:admin@envantertr.com?subject=EnvanterTR%20Windows%20Server%20kurulum%20teklifi |
+| 15 | Bağlantı | Teklif iste | hedef=mailto:admin@envantertr.com?subject=EnvanterTR%20Ubuntu%20Linux%20kurulum%20teklifi |
+| 16 | Bağlantı | Teklif isteyin: admin@envantertr.com | hedef=mailto:admin@envantertr.com?subject=EnvanterTR%20plan%20teklifi |
+| 17 | Bağlantı | Etkileşimli ürün demosunu açın | hedef=/demo/ |
+| 18 | Bağlantı | Kurulum seçeneklerini görüşün | hedef=mailto:admin@envantertr.com?subject=EnvanterTR%20kurulum |
+| 19 | Bağlantı | admin@envantertr.com | hedef=mailto:admin@envantertr.com?subject=EnvanterTR%20paket%20ihtiyac%C4%B1 |
+| 20 | Bağlantı | Tanıtım görüşmesi isteyin | hedef=#demo |
+| 21 | Bağlantı | Canlı demoyu aç | hedef=/demo/ |
+| 22 | Bağlantı | E Envanter TR | hedef=#top; başlangıçta gizli |
+| 23 | Bağlantı | ${cell} | hedef=/demo/ |
+| 24 | Bağlantı | Filtreler | hedef=/demo/ |
+| 25 | Bağlantı | Tüm varlıkları aç → | hedef=/demo/ |
+| 26 | Bağlantı | Ekipleri gör | hedef=/demo/ |
+| 27 | Bağlantı | Profilleri incele → | hedef=/demo/ |
+| 28 | Bağlantı | Stok görünümü | hedef=/demo/ |
+| 29 | Bağlantı | Aksesuarları aç → | hedef=/demo/ |
+| 30 | Bağlantı | Konumları gör | hedef=/demo/ |
+| 31 | Bağlantı | Konum envanterini aç → | hedef=/demo/ |
+| 32 | Bağlantı | Rapor ekranını aç → | hedef=/demo/ |
+| 33 | Düğme | Menüyü aç | id=menuToggle; type=button |
+| 34 | Düğme | Tanıtım görüşmesi iste | type=button |
+| 35 | Düğme | ⌂ Genel Bakış | type=button |
+| 36 | Düğme | ▣ Varlıklar | type=button |
+| 37 | Düğme | ♙ Kişiler | type=button |
+| 38 | Düğme | ⌑ Aksesuarlar | type=button |
+| 39 | Düğme | ⌖ Konumlar | type=button |
+| 40 | Düğme | ▤ Raporlar | type=button |
+| 41 | Düğme | Tanıtım iste | type=button |
+| 42 | Düğme | Kapat | id=demoRequestClose; type=button |
+| 43 | Düğme | Vazgeç | id=demoRequestCancel; type=button |
+| 44 | Düğme | Tanıtım isteği gönder | id=demoRequestSubmit; type=submit |
+| 45 | Seçim alanı | Sayfa dili | id=homeLanguage; seçenekler=tr: TR, en: EN, ru: RU, uk: UK, mk: MK |
+| 46 | Seçim alanı | Renk teması | id=homeTheme; seçenekler=forest: Yeşil, navy: Lacivert, gold: Sarı, violet: Mor |
+| 47 | Girdi alanı | companyName | name=companyName |
+| 48 | Girdi alanı | contactName | name=contactName |
+| 49 | Girdi alanı | jobTitle | name=jobTitle |
+| 50 | Girdi alanı | phone | type=tel; name=phone |
+| 51 | Girdi alanı | email | type=email; name=email |
+| 52 | Seçim alanı | teamSize | name=teamSize; seçenekler=(değer yok): Seçin, (değer yok): 1-10, (değer yok): 11-50, (değer yok): 51-200, (değer yok): 201-1000, (değer yok): 1000+ |
+| 53 | Seçim alanı | assetCount | name=assetCount; seçenekler=(değer yok): Belirtmek istemiyorum, (değer yok): 1-50, (değer yok): 51-250, (değer yok): 251-1000, (değer yok): 1001-5000, (değer yok): 5000+ |
+| 54 | Metin alanı | message | name=message |
+| 55 | Girdi alanı | website | name=website |
+| 56 | Girdi alanı | consent | type=checkbox; name=consent |
+| 57 | Form | demoRequestForm | id=demoRequestForm |
+| 58 | Modal | Kapat | id=demoRequestDialog; type=button; name=companyName; başlangıçta gizli |
 
 ### Ödeme sayfası — `src/EnvanterTR.PublicSite/checkout.html`
 

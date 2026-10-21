@@ -1314,6 +1314,7 @@ public static class AccountEndpoints
 
         var roleName = roleKey switch
         {
+            "owner" => "Şirket sahibi",
             "admin" => "Yönetici",
             "asset_manager" => "Varlık yöneticisi",
             "asset_operator" => "Varlık sorumlusu",
