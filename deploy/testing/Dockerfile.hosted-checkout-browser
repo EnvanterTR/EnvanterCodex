@@ -6,6 +6,7 @@ RUN npm ci --omit=dev
 COPY deploy/testing/hosted-checkout-browser/hosted-checkout.mjs ./
 COPY deploy/testing/hosted-checkout-browser/command-palette.mjs ./
 COPY deploy/testing/hosted-checkout-browser/company-portal-login.mjs ./
+COPY deploy/testing/hosted-checkout-browser/company-profile-portal.mjs ./
 COPY deploy/testing/hosted-checkout-browser/asset-detail-actions.mjs ./
 COPY deploy/testing/hosted-checkout-browser/company-tasks.mjs ./
 COPY deploy/testing/hosted-checkout-browser/inventory-requests.mjs ./
