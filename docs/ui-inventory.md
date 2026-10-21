@@ -1,6 +1,6 @@
 # EnvanterTR statik arayüz envanteri
 
-Oluşturulma: 2026-10-21T12:38:40.885Z
+Oluşturulma: 2026-10-21T13:13:12.747Z
 
 > Bu dosya mevcut HTML kaynaklarında bulunan statik arayüz öğelerinin dökümüdür. Bir öğenin listelenmesi onun çalıştığını kanıtlamaz. JavaScript ile sonradan oluşturulan kontroller, API/DB davranışı, rol varyasyonları ve erişilebilirlik ayrıca uçtan uca kabul gerektirir. Kaynak değiştikçe `node tools/Generate-UiInventory.mjs` ile yeniden üretin; `node tools/Generate-UiInventory.mjs --check` güncel olup olmadığını doğrular.
 
@@ -10,16 +10,16 @@ Oluşturulma: 2026-10-21T12:38:40.885Z
 |---|---:|
 | Sayfa rotası | 65 |
 | Menü grubu | 10 |
-| Bağlantı | 53 |
-| Düğme | 953 |
-| Form | 113 |
-| Girdi alanı | 621 |
-| Seçim alanı | 203 |
+| Bağlantı | 57 |
+| Düğme | 955 |
+| Form | 115 |
+| Girdi alanı | 626 |
+| Seçim alanı | 205 |
 | Metin alanı | 42 |
 | Modal | 109 |
 | Sekme | 5 |
 | Tablo | 79 |
-| **Toplam kayıt** | **2253** |
+| **Toplam kayıt** | **2268** |
 
 ## Tam döküm
 
@@ -2300,6 +2300,26 @@ Oluşturulma: 2026-10-21T12:38:40.885Z
 | 20 | Girdi alanı | country | name=country |
 | 21 | Girdi alanı | dataProcessingAcknowledged | type=checkbox; name=dataProcessingAcknowledged |
 | 22 | Form | checkoutForm | id=checkoutForm |
+
+### Deneme kaydı — `src/EnvanterTR.PublicSite/trial.html`
+
+| # | Tür | Etiket / görünen metin | Kaynak ipucu |
+|---:|---|---|---|
+| 1 | Bağlantı | EnvanterTR | hedef=/ |
+| 2 | Bağlantı | Parolanızı belirleyin | id=setupLink; başlangıçta gizli |
+| 3 | Bağlantı | Şirket portalına girin | id=portalLink |
+| 4 | Bağlantı | Ana sayfaya dön | hedef=/ |
+| 5 | Düğme | Doğrulama bağlantısı gönder | id=requestTrial; type=submit |
+| 6 | Düğme | E-postamı doğrula ve denemeyi başlat | id=confirmTrial; type=submit |
+| 7 | Seçim alanı | Language | id=language; seçenekler=tr: Türkçe, en: English, ru: Русский, uk: Українська, mk: Македонски |
+| 8 | Girdi alanı | companyName | name=companyName |
+| 9 | Girdi alanı | slug | name=slug |
+| 10 | Girdi alanı | ownerName | name=ownerName |
+| 11 | Girdi alanı | email | type=email; name=email |
+| 12 | Seçim alanı | planId | name=planId |
+| 13 | Girdi alanı | consent | type=checkbox; name=consent |
+| 14 | Form | registration | id=registration |
+| 15 | Form | confirmation | id=confirmation; başlangıçta gizli |
 
 ## Kapsam notları
 

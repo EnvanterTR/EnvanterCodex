@@ -7,3 +7,12 @@ Creates real non-demo Trial for exactly15days, owner membership, MFArequired and
 Isolated PostgreSQL2/2PASS, process1748exit0: emailcapture, no pre-verificationcompany, exact15dayperiod, owner/MFA, replay, repeat-trial rejection, defaultclosed, CSRF and invalidtoken. Web0warnings/errors,4testhostdeprecationwarnings; disposableDB/networkcleaned. No schema changes or production trial activation.
 
 Incomplete: trial.html/UX and all5languages; expiry/tamper/concurrency/existing-owner tests; deployconfiguration; annual existing-company payment conversion; tax-inclusive final amount; real SMTP/provider acceptance. No full commercial rollout claim.
+
+## Trial UI and annual pricing — continuation
+Added green-theme trial registration and explicit email confirmation UI in TR/EN/RU/UK/MK. Confirmation proof is removed from the address, never sent in request URLs, and no confirmation POST occurs automatically. Same-document email-link navigation exposed a real hash-navigation bug; fixed with hashchange handling and stale-load protection. Custom slugs are preserved; Farma/Santa/Celal suggestions are supported. External portal links are rejected.
+
+Standalone Chromium synthetic-API test PASS after fixing the product bug and two test expectations (disabled fieldset child and retained language). Tests cover unavailable gate, CSRF/consent, duplicate submit, five languages, 390px layout, explicit confirmation and unsafe links. This is not real SMTP delivery proof.
+
+Public pricing browser acceptance PASS: annual-only plans link to trial registration and show annual/12 comparison; legacy monthly checkout is preserved. Production/local Nginx proxy acceptance rerun exited0 with output in trial-proxy-acceptance-20261021.log; previous process output was unavailable after context truncation. Inventory regenerated at2268 controls. CloudTrials environment switch defaults false.
+
+Remaining: expiry/tamper/concurrency/existing-owner coverage, existing-company annual payment conversion, final tax-inclusive checkout, real SMTP/provider acceptance. Trial UI is now implemented; feature remains disabled in production. No production deployment of this branch in this continuation.
