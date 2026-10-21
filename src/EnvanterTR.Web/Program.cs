@@ -298,14 +298,7 @@ if (args.Contains("--recover-local-platform-admin", StringComparer.OrdinalIgnore
 
 if (trustProxyForwardedFor && clientIpNetworks.Length > 0)
 {
-    app.Use(async (context, next) =>
-    {
-        var address = TrustedClientIp.Resolve(context.Connection.RemoteIpAddress,
-            context.Request.Headers["X-Forwarded-For"].ToString(),
-            context.Request.Headers["CF-Connecting-IP"].ToString(), clientIpNetworks, useCloudflareClientIp);
-        if (address is not null) context.Connection.RemoteIpAddress = address;
-        await next();
-    });
+    app.UseTrustedClientIp(clientIpNetworks, useCloudflareClientIp);
 }
 
 if (trustProxyForwardedFor)

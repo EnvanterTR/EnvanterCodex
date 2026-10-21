@@ -1,5 +1,12 @@
 using System.Net;
+using System.Threading.RateLimiting;
 using EnvanterTR.Web.Data;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace EnvanterTR.SecurityAcceptance;
@@ -41,4 +48,44 @@ public sealed class TrustedClientIpTests
     [InlineData("invalid")]
     public void Rejects_global_or_invalid_trust(string network) =>
         Assert.Throws<InvalidOperationException>(() => TrustedClientIp.ParseNetworks(network));
+
+    [Theory]
+    [InlineData("10.0.2.4", "173.245.48.12, 10.0.2.5", true, "198.51.100.1", true)]
+    [InlineData("203.0.113.9", "173.245.48.12, 10.0.2.5", true, "203.0.113.9", false)]
+    [InlineData("10.0.2.4", "203.0.113.9, 10.0.2.5", true, "203.0.113.9", false)]
+    [InlineData("10.0.2.4", "173.245.48.12, 10.0.2.5", false, "10.0.2.4", false)]
+    public async Task Http_pipeline_and_rate_limits_use_only_the_verified_address(string peer, string forwarded,
+        bool configureTrust, string expectedFirstAddress, bool separateClients)
+    {
+        using var server = new TestServer(new WebHostBuilder()
+            .ConfigureServices(services => services.AddRateLimiter(options =>
+            {
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+                    RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress!.ToString(), _ =>
+                        new FixedWindowRateLimiterOptions { PermitLimit = 1, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+            }))
+            .Configure(app =>
+            {
+                app.Use((context, next) => { context.Connection.RemoteIpAddress = IPAddress.Parse(peer); return next(); });
+                app.UseTrustedClientIp(configureTrust ? Ingress : [], true);
+                app.UseRateLimiter();
+                app.Run(context => context.Response.WriteAsync(context.Connection.RemoteIpAddress!.ToString()));
+            }));
+        using var client = server.CreateClient();
+        async Task<HttpResponseMessage> Send(string address)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/");
+            request.Headers.Add("X-Forwarded-For", forwarded);
+            request.Headers.Add("CF-Connecting-IP", address);
+            return await client.SendAsync(request);
+        }
+        using var first = await Send("198.51.100.1");
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal(expectedFirstAddress, await first.Content.ReadAsStringAsync());
+        using var second = await Send("198.51.100.2");
+        Assert.Equal(separateClients ? HttpStatusCode.OK : HttpStatusCode.TooManyRequests, second.StatusCode);
+        using var repeated = await Send("198.51.100.1");
+        Assert.Equal(HttpStatusCode.TooManyRequests, repeated.StatusCode);
+    }
 }

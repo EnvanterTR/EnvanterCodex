@@ -4,6 +4,16 @@ namespace EnvanterTR.Web.Data;
 
 public static class TrustedClientIp
 {
+    public static IApplicationBuilder UseTrustedClientIp(this IApplicationBuilder app,
+        IReadOnlyList<IPNetwork> networks, bool useCloudflare) => app.Use(async (context, next) =>
+    {
+        var address = Resolve(context.Connection.RemoteIpAddress,
+            context.Request.Headers["X-Forwarded-For"].ToString(),
+            context.Request.Headers["CF-Connecting-IP"].ToString(), networks, useCloudflare);
+        if (address is not null) context.Connection.RemoteIpAddress = address;
+        await next();
+    });
+
     // Official https://www.cloudflare.com/ips-v4 and /ips-v6, verified 2026-10-21.
     private static readonly IPNetwork[] CloudflareNetworks =
         ("173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18," +
