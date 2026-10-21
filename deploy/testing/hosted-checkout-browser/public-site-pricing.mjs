@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
 const html = await readFile('/public-site/index.html');
+const labelImage = await readFile('/public-site/assets/images/asset-label-roll-transparent.png');
+assert.equal(labelImage[25], 6, 'The label image must preserve its RGBA transparency.');
 const checkoutHtml = await readFile('/checkout-site/checkout.html');
 const checkoutJs = await readFile('/checkout-site/checkout.js');
 let planResponse = 'slow-empty';
@@ -20,6 +22,9 @@ const publishedPlan = {
 
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || '/', 'http://127.0.0.1');
+  if (url.pathname === '/assets/images/asset-label-roll-transparent.png') {
+    response.writeHead(200, { 'content-type': 'image/png' }); response.end(labelImage); return;
+  }
   if (request.method === 'GET' && url.pathname === '/api/plans') {
     if (planResponse === 'slow-empty') await new Promise(resolve => setTimeout(resolve, 5000));
     if (planResponse === 'error') {
@@ -81,6 +86,12 @@ try {
   assert.match(await page.locator('#cloudMfaBody').innerText(), /Authenticator.*6 haneli kod/s);
   assert.match(await page.locator('#cloudMfaNextBody').innerText(), /yeni bir oturum.*kurtarma kodu/s);
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('#varlik-etiketleri img').scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => document.querySelector('#varlik-etiketleri img')?.naturalWidth === 1200);
+  assert.equal(await page.locator('#assetLabelDemo').getAttribute('href'), '/demo/');
+  const labelBounds = await page.locator('#varlik-etiketleri img').boundingBox();
+  assert.ok(labelBounds && labelBounds.x >= 0 && labelBounds.x + labelBounds.width <= 390,
+    'The transparent label roll must fit the phone viewport.');
   const cloudCards = page.locator('#cloud .feature');
   assert.equal(await cloudCards.count(), 3, 'The SaaS onboarding section must present portal, first MFA setup, and subsequent MFA sign-ins.');
   const cloudCardBounds = await cloudCards.evaluateAll(cards => cards.map(card => { const rect = card.getBoundingClientRect(); return { top: rect.top, bottom: rect.bottom, right: rect.right }; }));
@@ -104,6 +115,8 @@ try {
     assert.match(await security.innerText(), /MFA/);
     assert.equal((await security.locator('h2').innerText()).startsWith('Kurumsal'), language === 'tr',
       'Security marketing must use the selected language and restore Turkish when requested.');
+    assert.equal((await page.locator('#assetLabelTitle').innerText()).startsWith('Fiziksel'), language === 'tr');
+    assert.match(await page.locator('#assetLabelIntro').innerText(), /QR/);
     const bounds = await security.locator('article').evaluateAll(nodes => nodes.map(node => {
       const rect = node.getBoundingClientRect(); return { left: rect.left, right: rect.right };
     }));
