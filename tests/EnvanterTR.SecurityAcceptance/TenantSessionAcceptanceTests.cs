@@ -6716,7 +6716,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Login_rate_limit_partitions_by_forwarded_client_ip()
+    public async Task Login_rate_limit_ignores_untrusted_forwarded_client_ip()
     {
         using var csrfResponse = await _client!.GetAsync("/api/session/csrf");
         Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
@@ -6733,10 +6733,11 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var limitedResponse = await SendLoginAsync("203.0.113.10", requestToken!))
             Assert.Equal(HttpStatusCode.TooManyRequests, limitedResponse.StatusCode);
 
-        // A different client address must receive its own bucket even though
-        // both requests pass through the same TestServer/reverse-proxy hop.
+        // This TestServer has no explicitly trusted ingress chain. A caller-supplied
+        // forwarded address must not create a fresh login bucket. Verified proxy
+        // separation is covered by TrustedClientIpTests using the actual policies.
         using var otherClientResponse = await SendLoginAsync("203.0.113.11", requestToken!);
-        Assert.Equal(HttpStatusCode.Unauthorized, otherClientResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, otherClientResponse.StatusCode);
     }
 
     public async Task DisposeAsync()

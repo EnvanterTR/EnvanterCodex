@@ -3259,6 +3259,11 @@ try {
   };
   await page.locator('#licenseAssignmentSearch').fill('');
   await waitForAssignmentFilter('', params => !params.has('active') && params.get('page') === '1' && params.get('pageSize') === '25');
+  const waitForAssignmentPage = (pageNumber, rowCount) => page.waitForFunction(({ pageNumber, rowCount }) =>
+    /27/.test(document.querySelector('#licenseAssignmentCount')?.textContent || '') &&
+    new RegExp(`${pageNumber}\\s*\\/\\s*2`).test(document.querySelector('#licenseAssignmentPageInfo')?.textContent || '') &&
+    document.querySelectorAll('#licenseAssignmentRows tr').length === rowCount, { pageNumber, rowCount });
+  await waitForAssignmentPage(1, 25);
   assert.match(await page.locator('#licenseAssignmentCount').innerText(), /27/);
   assert.equal(await assignmentRows.count(), 25, 'The all-assignments view must render the first 25 of 27 rows.');
   assert.match(await assignmentPage.innerText(), /1\s*\/\s*2/);
@@ -3267,6 +3272,7 @@ try {
   const assignmentNextResponse = waitAssignmentList(params => !params.has('active') && params.get('page') === '2');
   await page.locator('#licenseAssignmentNext').click();
   assert.equal((await assignmentNextResponse).status(), 200);
+  await waitForAssignmentPage(2, 2);
   assert.equal(await assignmentRows.count(), 2, 'The second page must render only the two remaining assignments.');
   assert.match(await assignmentPage.innerText(), /2\s*\/\s*2/);
   assert.equal(await page.locator('#licenseAssignmentPrev').isDisabled(), false);
@@ -3274,10 +3280,12 @@ try {
   const assignmentPrevResponse = waitAssignmentList(params => !params.has('active') && params.get('page') === '1');
   await page.locator('#licenseAssignmentPrev').click();
   assert.equal((await assignmentPrevResponse).status(), 200);
+  await waitForAssignmentPage(1, 25);
   assert.equal(await assignmentRows.count(), 25);
   const assignmentNextAgainResponse = waitAssignmentList(params => !params.has('active') && params.get('page') === '2');
   await page.locator('#licenseAssignmentNext').click();
   assert.equal((await assignmentNextAgainResponse).status(), 200);
+  await waitForAssignmentPage(2, 2);
   const activeAssignmentsResponse = waitAssignmentList(params => params.get('active') === 'true' && params.get('page') === '1');
   await page.locator('#licenseAssignmentState').selectOption('true');
   assert.equal((await activeAssignmentsResponse).status(), 200);

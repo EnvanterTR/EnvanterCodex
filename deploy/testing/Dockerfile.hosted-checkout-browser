@@ -20,6 +20,7 @@ COPY deploy/testing/hosted-checkout-browser/accessory-kits.mjs ./
 COPY deploy/testing/hosted-checkout-browser/scheduled-reports.mjs ./
 COPY deploy/testing/hosted-checkout-browser/platform-admin-members.mjs ./
 COPY deploy/testing/hosted-checkout-browser/platform-admin-bootstrap.mjs ./
+COPY deploy/testing/hosted-checkout-browser/platform-password-recovery.mjs ./
 COPY deploy/testing/hosted-checkout-browser/asset-camera.mjs ./
 COPY deploy/testing/hosted-checkout-browser/company-storage.mjs ./
 COPY deploy/testing/hosted-checkout-browser/platform-audit-retention.mjs ./
