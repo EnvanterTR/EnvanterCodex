@@ -35,6 +35,10 @@ try {
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
   await page.locator('#loginForm [name="email"]').fill('admin@example.invalid');
   await page.locator('#platformForgotPassword').click();
+  await page.locator('#platformRecoveryForm [name="email"]').fill('invalid-address');
+  await page.locator('#platformRecoverySubmit').click();
+  assert.equal(writes.length, 0, 'Invalid email must not send a recovery request.');
+  await page.locator('#platformRecoveryForm [name="email"]').fill('admin@example.invalid');
   assert.equal(await page.locator('#platformRecoveryForm [name="email"]').inputValue(), 'admin@example.invalid');
   await page.locator('#platformRecoveryCancel').click();
   assert.equal(writes.length, 0);
@@ -60,8 +64,21 @@ try {
   release(); release = null;
   await page.getByText('Gönderim hizmeti geçici olarak kullanılamıyor.', { exact: true }).waitFor();
   assert.equal(await page.locator('#platformRecoveryForm [name="email"]').inputValue(), 'admin@example.invalid');
+  fail = false;
+  const staleReady = prepareRequest();
+  const staleResponse = page.waitForResponse(response => response.url().endsWith('/api/session/password/forgot'));
+  await page.locator('#platformRecoverySubmit').click();
+  await staleReady;
+  const releaseStale = release; release = null;
+  await page.locator('#platformRecoveryCancel').click();
+  await page.locator('#platformForgotPassword').click();
+  releaseStale();
+  await (await staleResponse).finished();
+  assert.equal(await page.locator('#platformRecoveryDialog').isVisible(), true);
+  assert.equal(await page.locator('#platformRecoveryFeedback').innerText(), '', 'A closed request must not update a reopened dialog.');
+  assert.equal(await page.locator('#platformRecoverySubmit').isEnabled(), true);
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.locator('#platformRecoveryClose').click();
-  console.log('PASS: platform password recovery prefills email, cancels without writes, sends one CSRF-protected request, blocks duplicate submission, displays generic acceptance and actionable errors, retains failed input, and fits390px. Synthetic API; no email sent or MFA bypassed.');
+  console.log('PASS: platform password recovery validates/prefills email, cancels without writes, sends one CSRF-protected request, blocks duplicate submission, displays generic acceptance and actionable errors, retains failed input, ignores late responses after reopening, and fits390px. Synthetic API; no email sent or MFA bypassed.');
 } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
