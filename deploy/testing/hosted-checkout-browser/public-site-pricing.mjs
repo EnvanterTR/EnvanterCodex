@@ -5,6 +5,8 @@ import { chromium } from 'playwright';
 
 const html = await readFile('/public-site/index.html');
 const labelImage = await readFile('/public-site/assets/images/asset-label-roll-transparent.png');
+const securityImage = await readFile('/public-site/assets/images/account-security-product-preview.png');
+const portalImage = await readFile('/public-site/assets/images/farma-company-portal-preview.png');
 assert.equal(labelImage[25], 6, 'The label image must preserve its RGBA transparency.');
 const checkoutHtml = await readFile('/checkout-site/checkout.html');
 const checkoutJs = await readFile('/checkout-site/checkout.js');
@@ -22,6 +24,12 @@ const publishedPlan = {
 
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || '/', 'http://127.0.0.1');
+  if (url.pathname === '/assets/images/farma-company-portal-preview.png') {
+    response.writeHead(200, { 'content-type': 'image/png' }); response.end(portalImage); return;
+  }
+  if (url.pathname === '/assets/images/account-security-product-preview.png') {
+    response.writeHead(200, { 'content-type': 'image/png' }); response.end(securityImage); return;
+  }
   if (url.pathname === '/assets/images/asset-label-roll-transparent.png') {
     response.writeHead(200, { 'content-type': 'image/png' }); response.end(labelImage); return;
   }
@@ -89,6 +97,14 @@ try {
   await page.locator('#varlik-etiketleri img').scrollIntoViewIfNeeded();
   await page.waitForFunction(() => document.querySelector('#varlik-etiketleri img')?.naturalWidth === 1200);
   assert.equal(await page.locator('#assetLabelDemo').getAttribute('href'), '/demo/');
+  await page.locator('#guvenlik-ekranlari img').scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => document.querySelector('#guvenlik-ekranlari img')?.naturalWidth === 1536);
+  const securityImageBounds = await page.locator('#guvenlik-ekranlari img').boundingBox();
+  await page.locator('#sirket-portali img').scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => document.querySelector('#sirket-portali img')?.naturalWidth === 1536);
+  assert.match(await page.locator('#companyPortalPreviewIntro').innerText(), /farma\.envantertr\.com/);
+  assert.match(await page.locator('#companyPortalPreviewIntro').innerText(), /santa\.envantertr\.com/);
+  assert.ok(securityImageBounds && securityImageBounds.x >= 0 && securityImageBounds.x + securityImageBounds.width <= 390);
   const labelBounds = await page.locator('#varlik-etiketleri img').boundingBox();
   assert.ok(labelBounds && labelBounds.x >= 0 && labelBounds.x + labelBounds.width <= 390,
     'The transparent label roll must fit the phone viewport.');
