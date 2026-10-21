@@ -1,6 +1,6 @@
 # EnvanterTR statik arayüz envanteri
 
-Oluşturulma: 2026-10-21T08:54:52.188Z
+Oluşturulma: 2026-10-21T12:11:58.942Z
 
 > Bu dosya mevcut HTML kaynaklarında bulunan statik arayüz öğelerinin dökümüdür. Bir öğenin listelenmesi onun çalıştığını kanıtlamaz. JavaScript ile sonradan oluşturulan kontroller, API/DB davranışı, rol varyasyonları ve erişilebilirlik ayrıca uçtan uca kabul gerektirir. Kaynak değiştikçe `node tools/Generate-UiInventory.mjs` ile yeniden üretin; `node tools/Generate-UiInventory.mjs --check` güncel olup olmadığını doğrular.
 

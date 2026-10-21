@@ -22,3 +22,6 @@ Yayın öncesi bekleyen kullanıcı kararı: KDV dahil/hariç; son iki büyük p
 Ticari öneri: Kurumsal tek kart altında kullanıcı kademesi seçici; 1.000/2.000 üzeri talepler için sözleşmeli teklif. Paketler aktif giriş hesabını saymalı; envantere kayıtlı çalışan ile giriş hesabı ayrılmalı. Büyük paketlerde kişi başına fiyat ciddi düşer:250 kullanıcı paketinde4,80 TL/ay;2.000 kullanıcı varsayımında1,50 TL/ay. Destek ve kaynak maliyeti kapasiteyle doğrulanmadan sınırsız kaynak/SLA sözü verilmez.
 
 Gerekli uygulama: plan CRUD/API ve kartlarda Cloud sınırsız kullanıcı zorlamasını kaldır; davet/yeniden etkinleştirme/plan küçültme kontrollerini kota ile eşle; yıllık-only checkout,15 günlük gerçek tenant denemesi ve ödeme sonrası aynı şirketin dönüşümü; süre bitimi ve yinelenen webhook güvenliği; sağlayıcı/SMTP kabulü. Mevcut veri veya erişim otomatik daraltılmaz. Bu dosya yayın veya tamamlanma kanıtı değildir.
+
+## Kullanıcının verdiği karar yetkisi sonrası kesinleştirme
+Fiyatlar KDV hariç. Son iki kademe1.000 ve2.000 kullanıcıya kadar;2.000 üzeri özel teklif. Vergi tutarı/oranı ayrıca uygulamada yapılandırılıp ödeme öncesi gösterilecek; toplam vergi dahil tutar henüz canlıda doğrulanmış değildir. Bu karar eski bekleyen KDV/kota notlarının yerini alır.

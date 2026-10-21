@@ -7,7 +7,7 @@
     "monthlyCollection": false,
     "trialDays": 15,
     "chargeAfterTrial": "annual-payment",
-    "taxTreatment": "awaiting-user",
+    "taxTreatment": "exclusive",
     "assetLimit": "not-specified",
     "plans": [
       {
@@ -54,21 +54,20 @@
       },
       {
         "code": "cloud-corporate-1000",
-        "quotaInterpretation": "awaiting-user",
         "annualPrice": 24000,
         "segment": "Kurumsal",
         "monthlyEquivalent": 2000,
-        "userThreshold": 1000
+        "users": 1000
       },
       {
         "code": "cloud-corporate-2000",
-        "quotaInterpretation": "awaiting-user",
         "annualPrice": 36000,
         "segment": "Kurumsal",
         "monthlyEquivalent": 3000,
-        "userThreshold": 2000
+        "users": 2000
       }
-    ]
+    ],
+    "customQuoteAboveUsers": 2000
   },
   "windowsDesktop": {
     "availability": "after-web-v1",
