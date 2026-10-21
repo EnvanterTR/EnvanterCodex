@@ -576,6 +576,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     app.MapSupportEndpoints();
     app.MapPlatformEndpoints();
     app.MapCheckoutEndpoints();
+    app.MapCloudTrialEndpoints();
     app.MapCustomerApiEndpoints();
 }
 else
