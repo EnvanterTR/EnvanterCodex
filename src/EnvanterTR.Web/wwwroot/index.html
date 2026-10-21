@@ -12672,6 +12672,24 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
     $('#requestStatusFilter').addEventListener('change',()=>loadInventoryRequests(1).catch(error=>notify(error.message)));
     $('#requestExport').addEventListener('click',()=>{const params=new URLSearchParams(),term=$('#requestSearch').value.trim(),status=$('#requestStatusFilter').value;if(term)params.set('q',term);if(status)params.set('status',status);window.location.assign(`/api/requests/export.csv?${params}`);});
     $('#requestPrev').addEventListener('click',()=>loadInventoryRequests(requestPage-1).catch(error=>notify(error.message))); $('#requestNext').addEventListener('click',()=>loadInventoryRequests(requestPage+1).catch(error=>notify(error.message)));
+    function resolveCompanyPortal(session, currentUrl) {
+      const current = new URL(currentUrl);
+      // Local installations retain their own origin. Only the Cloud entry host redirects.
+      if (current.protocol !== 'https:' || !['envantertr.com', 'www.envantertr.com'].includes(current.hostname)) return null;
+      const membership = Array.isArray(session.availableCompanies)
+        ? session.availableCompanies.find(company => company.id === session.companyId) : null;
+      if (!membership?.tenantUrl) return null;
+      try {
+        const target = new URL(membership.tenantUrl);
+        const suffix = '.envantertr.com';
+        const slug = target.hostname.endsWith(suffix) ? target.hostname.slice(0, -suffix.length) : '';
+        if (target.protocol !== 'https:' || target.port || target.username || target.password ||
+            target.pathname !== '/' || target.search || target.hash ||
+            !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])$/.test(slug) ||
+            ['www', 'api', 'admin', 'app', 'auth', 'billing', 'cdn', 'help', 'mail', 'platform', 'support'].includes(slug)) return null;
+        return target.href;
+      } catch { return null; }
+    }
     $('#requestsRefresh').addEventListener('click',()=>Promise.all([loadInventoryRequests(requestPage),loadRequestCatalog()]).then(()=>notify('Talep listeleri yenilendi.')).catch(error=>notify(error.message)));    async function startApp() {
       const readiness = await api('/api/status');
       if (readiness.status !== 'ready') { $('#overview').hidden = true; $('#loginForm button[type="submit"]').disabled = true; $('#forgotPasswordButton').disabled = true; showApiUnavailable(readiness.message || 'Uygulama veritabanı henüz kullanıma hazır değil.'); return; }
@@ -12683,6 +12701,8 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
       const session = await api('/api/session');
       if (!session.companyId) { availableCompanyContexts = []; $('#companySwitchButton').hidden = true; showLogin('Bu ekran şirket hesabı içindir.'); return; }
       availableCompanyContexts = Array.isArray(session.availableCompanies) ? session.availableCompanies : [];
+      const companyPortal = resolveCompanyPortal(session, window.location.href);
+      if (companyPortal) { window.location.replace(companyPortal); return; }
       activeCompanyContextId = session.companyId;
       $('#companySwitchButton').hidden = availableCompanyContexts.length < 2;
       $('#subscriptionExpiryNotice').hidden = session.subscriptionAccess?.mode !== 'readOnly';
