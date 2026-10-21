@@ -1351,6 +1351,41 @@ public static class PlatformEndpoints
                     x.MonthlyPrice, x.AnnualPrice, x.OneTimePrice, x.Currency, x.SupportsOfflineUse, x.OfflineGraceDays,
                     x.FeatureFlagsJson, x.IsPublic, x.IsActive, x.SortOrder }).ToListAsync(cancellationToken)));
 
+        admin.MapGet("/plans/annual-catalog", () => Results.Ok(new
+        {
+            version = AnnualCloudCatalog.Version, trialDays = AnnualCloudCatalog.TrialDays,
+            billingPeriod = "annual", taxIncluded = false, customQuoteAboveUsers = 2000,
+            plans = AnnualCloudCatalog.Tiers
+        }));
+
+        admin.MapPost("/plans/annual-catalog/drafts", async ([FromBody] CreateAnnualCatalogDraftsRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            var reason = request.ChangeReason?.Trim();
+            if (reason is null || reason.Length is < 8 or > 500)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["changeReason"] = ["8-500 karakterlik değişiklik gerekçesi girin."] });
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            var codes = AnnualCloudCatalog.Tiers.Select(tier => tier.Code).ToArray();
+            var existingCodes = await db.SubscriptionPlans.Where(plan => codes.Contains(plan.Code)).Select(plan => plan.Code).ToListAsync(cancellationToken);
+            var created = new List<object>();
+            for (var index = 0; index < AnnualCloudCatalog.Tiers.Count; index++)
+            {
+                var tier = AnnualCloudCatalog.Tiers[index];
+                if (existingCodes.Contains(tier.Code)) continue;
+                var draft = AnnualCloudCatalog.Draft(tier, index + 1, reason);
+                if (!ValidatePlan(draft, out var errors)) return Results.ValidationProblem(errors!);
+                var plan = new SubscriptionPlan { Code = tier.Code, Name = tier.Name, DeploymentKind = "cloud" };
+                Apply(plan, draft, tier.Code);
+                db.SubscriptionPlans.Add(plan);
+                AddAudit(db, user, "AnnualCatalogDraftCreated", "SubscriptionPlan", plan.Id, null,
+                    JsonSerializer.Serialize(new { reason, version = AnnualCloudCatalog.Version, plan.Code, plan.MaxLoginUsers, plan.AnnualPrice, plan.MonthlyPrice, plan.IsPublic }));
+                created.Add(new { plan.Id, plan.Code });
+            }
+            try { await db.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken); }
+            catch (DbUpdateException) { return Results.Conflict(new { message = "Paket taslakları başka bir işlemle çakıştı. Listeyi yenileyin; mevcut kayıtlar korunur." }); }
+            return Results.Ok(new { created, preservedCodes = existingCodes, published = false });
+        });
+
         admin.MapPost("/plans", async ([FromBody] SavePlanRequest request, ClaimsPrincipal user,
             AppDbContext db, CancellationToken cancellationToken) =>
         {
