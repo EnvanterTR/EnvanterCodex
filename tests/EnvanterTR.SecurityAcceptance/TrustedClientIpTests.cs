@@ -50,6 +50,46 @@ public sealed class TrustedClientIpTests
         Assert.Throws<InvalidOperationException>(() => TrustedClientIp.ParseNetworks(network));
 
     [Theory]
+    [InlineData("login", 10, true)]
+    [InlineData("login", 10, false)]
+    [InlineData("step-up", 5, true)]
+    [InlineData("step-up", 5, false)]
+    [InlineData("customer-api", 120, true)]
+    [InlineData("customer-api", 120, false)]
+    [InlineData("checkout", 5, true)]
+    [InlineData("checkout", 5, false)]
+    public async Task Production_named_policy_uses_verified_client_and_ignores_raw_headers(string policy, int permitLimit, bool trustedCloudflare)
+    {
+        using var server = new TestServer(new WebHostBuilder()
+            .ConfigureServices(services => { services.AddRouting(); services.AddRateLimiter(ClientRateLimits.Configure); })
+            .Configure(app =>
+            {
+                app.Use((context, next) => { context.Connection.RemoteIpAddress = IPAddress.Parse("10.0.2.4"); return next(); });
+                app.UseTrustedClientIp(Ingress, true);
+                app.UseRouting();
+                app.UseRateLimiter();
+                app.UseEndpoints(endpoints => endpoints.MapGet("/", context => context.Response.WriteAsync("ok")).RequireRateLimiting(policy));
+            }));
+        using var client = server.CreateClient();
+        async Task<HttpResponseMessage> Send(string address)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/");
+            request.Headers.Add("X-Forwarded-For", trustedCloudflare ? "173.245.48.12, 10.0.2.5" : "203.0.113.9, 10.0.2.5");
+            request.Headers.Add("CF-Connecting-IP", address);
+            return await client.SendAsync(request);
+        }
+        for (var index = 0; index < permitLimit; index++)
+        {
+            using var allowed = await Send("198.51.100.1");
+            Assert.Equal(HttpStatusCode.OK, allowed.StatusCode);
+        }
+        using var secondClient = await Send("198.51.100.2");
+        Assert.Equal(trustedCloudflare ? HttpStatusCode.OK : HttpStatusCode.TooManyRequests, secondClient.StatusCode);
+        using var exhaustedClient = await Send("198.51.100.1");
+        Assert.Equal(HttpStatusCode.TooManyRequests, exhaustedClient.StatusCode);
+    }
+
+    [Theory]
     [InlineData("10.0.2.4", "173.245.48.12, 10.0.2.5", true, "198.51.100.1", true)]
     [InlineData("203.0.113.9", "173.245.48.12, 10.0.2.5", true, "203.0.113.9", false)]
     [InlineData("10.0.2.4", "203.0.113.9, 10.0.2.5", true, "203.0.113.9", false)]
