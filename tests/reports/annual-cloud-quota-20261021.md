@@ -11,3 +11,5 @@ Initial PostgreSQL3case run89759FAIL3/3: two old fixtures still had finite1 in t
 Remaining: actual15day self-service tenant trial, annual-only new catalog persistence, tax-inclusive final payable total, provider/SMTP acceptance, plan downgrade/reactivation and concurrent quota regression, full Chromium/CI and publication. Do not call this complete pricing rollout.
 
 Rerun6555terminal:2/3PASS (newCloudfinitequota and existing-account multi-company acceptance),1FAIL local regression fixture inherited null from uncappedCloud phase. Explicitly reset local phaseMaxLoginUsers=1; not rerun again this turn per bounded retry rule. Disposable DB/networkremoved. No overallPASS claim; full acceptance pending.
+
+Final current-source targetedPG57953PASS3/3: finiteCloudquota, null/unlimitedCloud/localcapregression, existingaccountmulticompany. Testhost2deprecationwarnings; no failures. IsolatedDB/networkcleaned. Does not prove full annual/trial/tax rollout.
