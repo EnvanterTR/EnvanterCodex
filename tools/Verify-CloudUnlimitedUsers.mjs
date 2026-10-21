@@ -1,52 +1,26 @@
-import { readFileSync } from 'node:fs';
-
-const endpoint = readFileSync('src/EnvanterTR.Web/Data/OperationalEndpoints.cs', 'utf8');
-const plans = readFileSync('src/EnvanterTR.Web/Data/PlatformEndpoints.cs', 'utf8');
-const admin = readFileSync('src/EnvanterTR.Web/wwwroot/platform-admin.html', 'utf8');
-const app = readFileSync('src/EnvanterTR.Web/wwwroot/index.html', 'utf8');
-const publicSite = readFileSync('src/EnvanterTR.PublicSite/index.html', 'utf8');
-const acceptance = readFileSync('tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs', 'utf8');
-const failures = [];
-
-if (!endpoint.includes('select new { item.Id, plan.DeploymentKind, plan.MaxLoginUsers }') ||
-    !endpoint.includes('subscription.DeploymentKind != "cloud" && subscription.MaxLoginUsers is int seatLimit')) {
-  failures.push('Company invitations must ignore a login-user cap for Cloud plans while preserving caps for local plans.');
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=path=>readFileSync(path,'utf8');
+const plans=read('src/EnvanterTR.Web/Data/PlatformEndpoints.cs');
+const members=read('src/EnvanterTR.Web/Data/OperationalEndpoints.cs');
+const admin=read('src/EnvanterTR.Web/wwwroot/platform-admin.html');
+const publicSite=read('src/EnvanterTR.PublicSite/index.html');
+assert.ok(!plans.includes('MaxLoginUsers = x.DeploymentKind == "cloud"'));
+assert.ok(plans.includes('plan.MaxLoginUsers = request.MaxLoginUsers;'));
+assert.ok(!plans.includes('request.DeploymentKind == "cloud" && request.MaxLoginUsers is not null'));
+for(const source of [plans,members]){
+  assert.ok(source.includes('subscription.MaxLoginUsers is int seatLimit && memberCount >= seatLimit'));
+  assert.ok(!source.includes('subscription.DeploymentKind != "cloud" && subscription.MaxLoginUsers'));
 }
-if ((plans.match(/MaxLoginUsers = x\.DeploymentKind == "cloud" \? \(int\?\)null : x\.MaxLoginUsers/g) ?? []).length !== 2) {
-  failures.push('Public and platform plan APIs must expose Cloud login-user limits as unlimited, including legacy plan rows.');
-}
-if (!plans.includes('request.DeploymentKind == "cloud" && request.MaxLoginUsers is not null') ||
-    !plans.includes('request.DeploymentKind == "cloud" ? null : request.MaxLoginUsers')) {
-  failures.push('Plan writes must reject finite Cloud seat limits and persist Cloud plans as unlimited.');
-}
-if (!admin.includes('id="planMaxLoginUsers"') || !admin.includes('id="planUserLimitHint"') ||
-    !admin.includes('planUserLimit.disabled=cloud') || !admin.includes("if(d.deploymentKind==='cloud')d.maxLoginUsers=null") ||
-    !admin.includes("p.deploymentKind==='cloud'?'Sınırsız kullanıcı'")) {
-  failures.push('Platform plan UI must communicate, enforce, and display unlimited Cloud users.');
-}
-if (!app.includes('Bulut şirketlerinde kullanıcı sayısı sınırsızdır; yerel lisanslarda tanımlı sınır uygulanabilir.') ||
-    app.includes('Planın giriş hesabı sınırı uygulanır.')) {
-  failures.push('Company user management must not imply a login-user cap on Cloud subscriptions.');
-}
-if (!publicSite.includes("const cloudPlans=publishedPlans.filter(item=>item.deploymentKind==='cloud');") ||
-    !publicSite.includes('if (!cloudPlans.length) {') ||
-    !publicSite.includes("addText(grid, 'p', 'pricing-state', stateCopy[pricingLoadState] || stateCopy.error);") ||
-    !publicSite.includes('cloudPlans.forEach(plan=>{') ||
-    !publicSite.includes("addText(card,'div','price-sub',copy.unlimited);") ||
-    !publicSite.includes('new URLSearchParams({planId:plan.id})') ||
-    !publicSite.includes('else{link.href=`mailto:admin@envantertr.com?subject=') ||
-    !publicSite.includes('Sınırsız kullanıcı ve envanter kaydı') ||
-    /(?:50–200|201–500|501–2[., ]?000)\s*(?:users|kullanıcı|пользователей|користувачів|корисници)/i.test(publicSite) ||
-    /Cloud user packages|Cloud kullanıcı paketleri|Пакеты Cloud по числу пользователей|Пакети Cloud за кількістю користувачів/i.test(publicSite)) {
-  failures.push('Public pricing must select published Cloud plans without user-cap matching and must not advertise finite Cloud user bands.');
-}
-if (!acceptance.includes('Cloud_company_invites_are_unlimited_even_for_legacy_capped_plans_while_local_caps_remain_enforced') ||
-    !acceptance.includes('Assert.Equal(JsonValueKind.Null, cloudPlan.GetProperty("maxLoginUsers").ValueKind)')) {
-  failures.push('PostgreSQL acceptance coverage must exercise legacy Cloud plan invites, public quota output, and local cap enforcement.');
-}
-
-if (failures.length) {
-  for (const failure of failures) console.error(`FAIL: ${failure}`);
-  process.exit(1);
-}
-console.log('PASS: Cloud user limits are unlimited in APIs, plan administration, and company invitations; local limits remain enforced.');
+assert.ok(admin.includes('planUserLimit.disabled=false'));
+assert.ok(!admin.includes("if(d.deploymentKind==='cloud')d.maxLoginUsers=null"));
+assert.ok(publicSite.includes("plan.maxLoginUsers??'∞'"));
+assert.ok(read('tests/EnvanterTR.SecurityAcceptance/CloudSeatQuotaAcceptanceTests.cs').includes('Cloud_plan_user_quota_is_public_and_enforced_without_removing_existing_members'));
+const catalog=JSON.parse(read('docs/COMMERCIAL-CATALOG-20261021.json'));
+assert.equal(catalog.cloud.trialDays,15);
+assert.equal(catalog.cloud.monthlyCollection,false);
+assert.equal(catalog.cloud.taxTreatment,'exclusive');
+assert.equal(catalog.cloud.customQuoteAboveUsers,2000);
+assert.deepEqual(catalog.cloud.plans.map(p=>p.users),[1,4,10,50,100,250,1000,2000]);
+for(const plan of catalog.cloud.plans)assert.equal(plan.annualPrice,plan.monthlyEquivalent*12);
+console.log('PASS: package quotas are preserved by Cloud APIs/admin/invites; annual catalog arithmetic and15-day trial specification match the latest user decision. Source/spec check only.');
