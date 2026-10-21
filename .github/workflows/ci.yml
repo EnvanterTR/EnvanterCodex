@@ -312,6 +312,10 @@ jobs:
         shell: bash
         run: node tools/Verify-CoolifyTenantRouting.mjs
 
+      - name: Verify company portal login routing
+        shell: bash
+        run: node tools/Verify-CompanyPortalLogin.mjs
+
       - name: Verify SaaS tenant slug profile and session binding
         shell: bash
         run: node tools/Verify-TenantSlugProfile.mjs
