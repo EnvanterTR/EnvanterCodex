@@ -89,6 +89,8 @@ if (!string.IsNullOrWhiteSpace(protectedSmtpPasswordPath))
 // Compose network; the web service has no published host port. Keep proxy trust
 // opt-in so forwarded headers are never accepted on a directly public app port.
 var trustProxyForwardedFor = builder.Configuration.GetValue<bool>("ForwardedHeaders:Enabled");
+var clientIpNetworks = TrustedClientIp.ParseNetworks(builder.Configuration["ClientIp:TrustedProxyNetworks"]);
+var useCloudflareClientIp = builder.Configuration.GetValue<bool>("ClientIp:UseCloudflareConnectingIp");
 if (trustProxyForwardedFor)
 {
     builder.Services.Configure<ForwardedHeadersOptions>(options =>
@@ -292,6 +294,18 @@ if (args.Contains("--recover-local-platform-admin", StringComparer.OrdinalIgnore
 {
     Environment.ExitCode = await LocalPlatformAdminRecovery.RunAsync(app.Services, app.Environment.IsDevelopment(), connectionString);
     return;
+}
+
+if (trustProxyForwardedFor && clientIpNetworks.Length > 0)
+{
+    app.Use(async (context, next) =>
+    {
+        var address = TrustedClientIp.Resolve(context.Connection.RemoteIpAddress,
+            context.Request.Headers["X-Forwarded-For"].ToString(),
+            context.Request.Headers["CF-Connecting-IP"].ToString(), clientIpNetworks, useCloudflareClientIp);
+        if (address is not null) context.Connection.RemoteIpAddress = address;
+        await next();
+    });
 }
 
 if (trustProxyForwardedFor)
