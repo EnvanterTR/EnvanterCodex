@@ -1450,7 +1450,8 @@ public static class PlatformEndpoints
                 }
             }
 
-            var company = new Company { Name = companyName, Slug = slug, ContactEmail = contactEmail ?? ownerEmail };
+            var company = new Company { Name = companyName, Slug = slug, ContactEmail = contactEmail ?? ownerEmail,
+                SecurityRequireMfa = true };
             var now = DateTimeOffset.UtcNow;
             var subscription = new TenantSubscription {
                 CompanyId = company.Id, PlanId = plan.Id, Status = "Active", IsDemo = false,

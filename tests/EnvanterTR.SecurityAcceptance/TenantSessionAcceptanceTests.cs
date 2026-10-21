@@ -4651,6 +4651,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var company = await db.Companies.SingleAsync(x => x.Slug == slug);
+            Assert.True(company.SecurityRequireMfa, "Platform-created paid Cloud companies must require first-login MFA enrollment, just like checkout-created companies.");
             companyId = company.Id;
             var membership = await db.CompanyMemberships.SingleAsync(x => x.CompanyId == companyId);
             ownerId = membership.UserId;
