@@ -38,7 +38,8 @@ assert.match(acceptance, /Cloud_plan_entitlements_block_report_and_customer_api_
 assert.match(acceptance, /api\/maintenances/);
 assert.match(acceptance, /assetMaintenances/);
 assert.match(acceptance, /plan_feature_unavailable/);
-assert.match(api, /request\.DeploymentKind == "cloud" && request\.MaxLoginUsers is not null/);
+assert.match(api, /plan\.MaxLoginUsers = request\.MaxLoginUsers/);
+assert.match(api, /request\.MaxLoginUsers is <= 0/);
 assert.match(contract, /string\? ChangeReason/);
 assert.match(page, /id="view-plans"/);
 assert.match(page, /name="changeReason" required minlength="8" maxlength="500"/);
@@ -46,4 +47,4 @@ assert.match(page, /api\/platform\/plans/);
 assert.match(acceptance, /Platform_plan_catalog_requires_reason_and_audits_pricing_changes_before_publishing/);
 assert.match(acceptance, /Maliyet ve yıllık fiyatlandırma güncellendi/);
 assert.match(acceptance, /"monthlyPrice"/);
-console.log('Platform plan management verification passed (32 assertions).');
+console.log('Platform plan management verification passed (33 assertions; positive package quotas are preserved).');
