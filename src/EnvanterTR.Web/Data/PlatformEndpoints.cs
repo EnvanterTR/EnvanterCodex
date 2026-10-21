@@ -1043,6 +1043,7 @@ public static class PlatformEndpoints
             var resent = false;
             Guid invitedUserId;
             string companyName;
+            string? companySlug;
             string displayName;
             bool emailConfirmed;
             await using (var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken))
@@ -1053,6 +1054,7 @@ public static class PlatformEndpoints
                 if (company is null) return Results.NotFound(new { message = "Şirket bulunamadı." });
                 if (!company.IsActive) return Results.Conflict(new { message = "Pasif şirkete kullanıcı eklenemez." });
                 companyName = company.Name;
+                companySlug = company.Slug;
 
                 var now = DateTimeOffset.UtcNow;
                 var subscription = await (from item in db.TenantSubscriptions.AsNoTracking()
@@ -1136,13 +1138,13 @@ public static class PlatformEndpoints
             {
                 if (emailConfirmed)
                     await AccountEndpoints.SendCompanyAccessAddedEmailAsync(email, displayName, companyName, roleKey,
-                        configuration, cancellationToken);
+                        configuration, cancellationToken, companySlug);
                 else
                 {
                     var account = await userManager.FindByIdAsync(invitedUserId.ToString());
                     if (account is null) return Results.Problem("Üyelik kaydedildi ancak davet hesabı bulunamadı.", statusCode: StatusCodes.Status500InternalServerError);
                     var token = await userManager.GeneratePasswordResetTokenAsync(account);
-                    await AccountEndpoints.SendAccountInvitationEmailAsync(email, displayName, token, configuration, cancellationToken);
+                    await AccountEndpoints.SendAccountInvitationEmailAsync(email, displayName, token, configuration, cancellationToken, companySlug);
                 }
                 emailSent = true;
             }
@@ -1475,11 +1477,11 @@ public static class PlatformEndpoints
             {
                 if (wasConfirmed)
                     await AccountEndpoints.SendCompanyAccessAddedEmailAsync(ownerEmail, owner.DisplayName ?? ownerName,
-                        companyName, "owner", configuration, cancellationToken);
+                        companyName, "owner", configuration, cancellationToken, company.Slug);
                 else
                 {
                     var token = await userManager.GeneratePasswordResetTokenAsync(owner);
-                    await AccountEndpoints.SendAccountInvitationEmailAsync(ownerEmail, ownerName, token, configuration, cancellationToken);
+                    await AccountEndpoints.SendAccountInvitationEmailAsync(ownerEmail, ownerName, token, configuration, cancellationToken, company.Slug);
                 }
                 invitationSent = true;
             }
@@ -1507,7 +1509,7 @@ public static class PlatformEndpoints
                 join ownerAccount in db.Users.AsNoTracking() on membership.UserId equals ownerAccount.Id
                 join company in db.Companies.AsNoTracking() on membership.CompanyId equals company.Id
                 where membership.CompanyId == companyId && membership.RoleKey == "owner"
-                select new { AccountId = ownerAccount.Id, ownerAccount.Email, ownerAccount.EmailConfirmed, ownerAccount.DisplayName, CompanyName = company.Name })
+                select new { AccountId = ownerAccount.Id, ownerAccount.Email, ownerAccount.EmailConfirmed, ownerAccount.DisplayName, CompanyName = company.Name, company.Slug })
                 .SingleOrDefaultAsync(cancellationToken);
             if (owner?.Email is null) return Results.NotFound();
             var account = await userManager.FindByIdAsync(owner.AccountId.ToString());
@@ -1516,12 +1518,12 @@ public static class PlatformEndpoints
             {
                 if (owner.EmailConfirmed)
                     await AccountEndpoints.SendCompanyAccessAddedEmailAsync(owner.Email, owner.DisplayName ?? owner.Email,
-                        owner.CompanyName, "owner", configuration, cancellationToken);
+                        owner.CompanyName, "owner", configuration, cancellationToken, owner.Slug);
                 else
                 {
                     var token = await userManager.GeneratePasswordResetTokenAsync(account);
                     await AccountEndpoints.SendAccountInvitationEmailAsync(owner.Email, owner.DisplayName ?? owner.Email,
-                        token, configuration, cancellationToken);
+                        token, configuration, cancellationToken, owner.Slug);
                 }
                 return Results.Ok(new { invitationSent = true, message = "Yetkili erişim e-postası yeniden gönderildi." });
             }

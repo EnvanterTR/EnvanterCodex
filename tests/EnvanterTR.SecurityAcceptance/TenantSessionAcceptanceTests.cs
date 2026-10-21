@@ -3937,9 +3937,12 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
 
         Assert.Equal(3, _smtpCapture.Messages.Count);
         Assert.Contains(_smtpCapture.Messages, message => message.Contains($"To: {email}", StringComparison.OrdinalIgnoreCase));
+        Assert.All(_smtpCapture.Messages.Where(message => message.Contains($"To: {email}", StringComparison.OrdinalIgnoreCase)),
+            message => Assert.Contains($"https://acceptance-{_companyId:N}.envantertr.com/", DecodeMimeBody(message), StringComparison.Ordinal));
         var existingAccountMessage = Assert.Single(_smtpCapture.Messages, message =>
             message.Contains($"To: acceptance-{_userId:N}@example.invalid", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("Other security acceptance company", DecodeMimeBody(existingAccountMessage), StringComparison.Ordinal);
+        Assert.Contains($"https://other-{_otherCompanyId:N}.envantertr.com/", DecodeMimeBody(existingAccountMessage), StringComparison.Ordinal);
         Assert.DoesNotContain("token=", existingAccountMessage, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -4673,6 +4676,23 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var duplicateSlug = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/companies",
                    System.Net.Http.Json.JsonContent.Create(requestBody), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.Conflict, duplicateSlug.StatusCode);
+
+        Assert.All(_smtpCapture.Messages, message =>
+            Assert.Contains($"https://{slug}.envantertr.com/", DecodeMimeBody(message), StringComparison.Ordinal));
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var confirmedOwner = await db.Users.SingleAsync(x => x.Id == ownerId);
+            confirmedOwner.EmailConfirmed = true;
+            await db.SaveChangesAsync();
+        }
+        using (var confirmedResend = await SendAsPlatformAdminRequestAsync(HttpMethod.Post,
+                   $"/api/platform/companies/{companyId}/owner-invitation/resend", new StringContent("{}", Encoding.UTF8, "application/json"),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, confirmedResend.StatusCode);
+        var ownerAccessBody = DecodeMimeBody(_smtpCapture.Messages.Last());
+        Assert.Contains("Şirket sahibi", ownerAccessBody, StringComparison.Ordinal);
+        Assert.Contains($"https://{slug}.envantertr.com/", ownerAccessBody, StringComparison.Ordinal);
 
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
@@ -5759,6 +5779,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Contains($"To: acceptance-{_userId:N}@example.invalid", accessMessage, StringComparison.OrdinalIgnoreCase);
         var accessBody = DecodeMimeBody(accessMessage);
         Assert.Contains("Other security acceptance company", accessBody, StringComparison.Ordinal);
+        Assert.Contains($"https://other-{_otherCompanyId:N}.envantertr.com/", accessBody, StringComparison.Ordinal);
         Assert.Contains("Görüntüleyici", accessBody, StringComparison.Ordinal);
         Assert.Contains("Giriş ekranı şirketin güvenlik ayarlarına göre Authenticator doğrulaması isteyebilir", accessBody, StringComparison.Ordinal);
         Assert.Contains("MFA etkin olduğunda her yeni oturum açışta Authenticator kodu", accessBody, StringComparison.Ordinal);
