@@ -10673,6 +10673,7 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
       const form = $('#companyProfileForm');
       form.elements.name.value = profile.name || '';
       form.elements.slug.value = profile.slug || '';
+      form.dataset.savedSlug = profile.slug || '';
       form.dataset.tenantDomain = profile.tenantDomain || '';
       updateTenantUrlPreview();
       form.elements.contactEmail.value = profile.contactEmail || '';
@@ -10688,12 +10689,12 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
     $('#companyProfileForm').addEventListener('submit', async event => {
       event.preventDefault(); const form = event.currentTarget, button = $('button[type="submit"]', form); button.disabled = true;
       try {
-        const data = new FormData(form), previousSlug = String(data.get('slug') || '').trim().toLowerCase();
+        const data = new FormData(form), previousSlug = form.dataset.savedSlug || '';
         const saved = await api('/api/company/profile', { method: 'PUT', body: JSON.stringify({ name: data.get('name'), slug: data.get('slug') || null, contactEmail: data.get('contactEmail') || null, brandPrimaryColor: data.get('brandPrimaryColor') }) });
-        const tenantDomain = saved.tenantUrl?.match(/^https:\/\/[^/]+?\.([a-z0-9.-]+)$/i)?.[1];
-        if (tenantDomain && previousSlug && saved.slug !== previousSlug && location.hostname.toLowerCase() === `${previousSlug}.${tenantDomain}`) {
+        const nextPortal = resolveChangedCompanyPortal(saved, previousSlug, form.dataset.tenantDomain, location.href);
+        if (nextPortal) {
           notify('Şirket alt alan adı güncellendi; yeni şirket adresine yönlendiriliyorsunuz.');
-          setTimeout(() => location.assign(saved.tenantUrl), 700);
+          location.replace(nextPortal);
           return;
         }
         await loadCompanyProfile(); await loadTenantBranding(); notify('Şirket profili, alt alan adı ve tema rengi kaydedildi.');
@@ -12672,6 +12673,17 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
     $('#requestStatusFilter').addEventListener('change',()=>loadInventoryRequests(1).catch(error=>notify(error.message)));
     $('#requestExport').addEventListener('click',()=>{const params=new URLSearchParams(),term=$('#requestSearch').value.trim(),status=$('#requestStatusFilter').value;if(term)params.set('q',term);if(status)params.set('status',status);window.location.assign(`/api/requests/export.csv?${params}`);});
     $('#requestPrev').addEventListener('click',()=>loadInventoryRequests(requestPage-1).catch(error=>notify(error.message))); $('#requestNext').addEventListener('click',()=>loadInventoryRequests(requestPage+1).catch(error=>notify(error.message)));
+    function resolveChangedCompanyPortal(saved, previousSlug, tenantDomain, currentUrl) {
+      if (!previousSlug || !tenantDomain || !saved.slug || saved.slug === previousSlug ||
+          !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])$/.test(saved.slug)) return null;
+      try {
+        const current = new URL(currentUrl), target = new URL(saved.tenantUrl);
+        if (current.origin !== `https://${previousSlug}.${tenantDomain}` ||
+            target.origin !== `https://${saved.slug}.${tenantDomain}` || target.username || target.password ||
+            target.pathname !== '/' || target.search || target.hash) return null;
+        return target.href;
+      } catch { return null; }
+    }
     function resolveCompanyPortal(session, currentUrl) {
       const current = new URL(currentUrl);
       // Local installations retain their own origin. Only the Cloud entry host redirects.

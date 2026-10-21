@@ -11,7 +11,8 @@ const acceptance = readFileSync('tests/EnvanterTR.SecurityAcceptance/TenantSessi
 
 assert.match(profileUi, /name="slug" maxlength="63"[^>]*required[^>]*aria-describedby="tenantSlugHelp"/, 'Company profile must require and explain a DNS-sized tenant slug.');
 assert.match(profileUi, /JSON\.stringify\(\{[^}]*slug:\s*data\.get\('slug'\)/, 'The profile form must persist the slug through the profile API.');
-assert.match(profileUi, /location\.assign\(saved\.tenantUrl\)/, 'Changing a tenant slug from its current hostname must move the browser to the new tenant URL.');
+assert.match(profileUi, /location\.replace\(nextPortal\)/, 'Changing a tenant slug from its current hostname must move the browser to the validated new tenant URL.');
+assert.match(profileUi, /previousSlug = form\.dataset\.savedSlug/, 'Compare the saved old slug, not the edited new input.');
 assert.match(profileUi, /id="tenantUrlLink"/, 'Company profile must expose the tenant address as a direct link.');
 assert.match(profileUi, /form\.dataset\.tenantDomain = profile\.tenantDomain/, 'Tenant URL preview must use the configured root domain.');
 assert.match(profileApi, /Select\(x => new \{ x\.Name, x\.Slug, x\.ContactEmail/, 'The company profile API must return the current tenant slug.');
