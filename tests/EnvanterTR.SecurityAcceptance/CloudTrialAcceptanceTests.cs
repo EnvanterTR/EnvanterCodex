@@ -6,6 +6,7 @@ using EnvanterTR.Web.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -119,6 +120,106 @@ public sealed partial class TenantSessionAcceptanceTests
         Assert.True(saved.EmailConfirmed); Assert.Equal("Existing owner", saved.DisplayName);
         var company = await db.Companies.SingleAsync(company => company.Slug == slug);
         Assert.Equal(ownerId, (await db.CompanyMemberships.SingleAsync(member => member.CompanyId == company.Id)).UserId);
+    }
+
+    [Fact]
+    public async Task Cloud_trial_expired_email_proof_and_withdrawn_plan_create_no_accounts()
+    {
+        var plan = await SeedTrialPlan();
+        await using var factory = EnabledTrialFactory(); using var client = factory.CreateClient();
+        await ConfigureTrialCsrf(client);
+        var email = $"expired-trial-{Guid.NewGuid():N}@example.invalid";
+        var slug = $"expired-{Guid.NewGuid():N}";
+        using (var sent = await client.PostAsJsonAsync("/api/trials/request",
+            new RequestCloudTrial("Expired proof", slug, "Trial owner", email, plan.Id, true, CloudTrialEndpoints.NoticeVersion)))
+            Assert.Equal(HttpStatusCode.Accepted, sent.StatusCode);
+        var token = LastTrialToken();
+        var protector = factory.Services.GetRequiredService<IDataProtectionProvider>()
+            .CreateProtector("EnvanterTR.CloudTrial.Email.v1").ToTimeLimitedDataProtector();
+        var expired = protector.Protect(protector.Unprotect(token), DateTimeOffset.UtcNow.AddMinutes(-1));
+        using (var denied = await client.PostAsJsonAsync("/api/trials/confirm", new ConfirmCloudTrial(expired)))
+            Assert.Equal(HttpStatusCode.BadRequest, denied.StatusCode);
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            Assert.False(await db.Users.AnyAsync(user => user.Email == email));
+            Assert.False(await db.Companies.AnyAsync(company => company.Slug == slug));
+            await db.SubscriptionPlans.Where(item => item.Id == plan.Id)
+                .ExecuteUpdateAsync(update => update.SetProperty(item => item.IsPublic, false));
+        }
+        using (var denied = await client.PostAsJsonAsync("/api/trials/confirm", new ConfirmCloudTrial(token)))
+            Assert.Equal(HttpStatusCode.Conflict, denied.StatusCode);
+        await using var finalScope = factory.Services.CreateAsyncScope();
+        var finalDb = finalScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.False(await finalDb.Users.AnyAsync(user => user.Email == email));
+        Assert.False(await finalDb.Companies.AnyAsync(company => company.Slug == slug));
+    }
+
+    [Fact]
+    public async Task Concurrent_cloud_trial_confirmation_is_idempotent_without_extending_trial()
+    {
+        var plan = await SeedTrialPlan();
+        await using var factory = EnabledTrialFactory();
+        using var first = factory.CreateClient(); using var second = factory.CreateClient();
+        await ConfigureTrialCsrf(first); await ConfigureTrialCsrf(second);
+        var email = $"concurrent-trial-{Guid.NewGuid():N}@example.invalid";
+        var slug = $"concurrent-{Guid.NewGuid():N}";
+        using (var sent = await first.PostAsJsonAsync("/api/trials/request",
+            new RequestCloudTrial("Concurrent trial", slug, "Trial owner", email, plan.Id, true, CloudTrialEndpoints.NoticeVersion)))
+            Assert.Equal(HttpStatusCode.Accepted, sent.StatusCode);
+        var proof = new ConfirmCloudTrial(LastTrialToken());
+        var responses = await Task.WhenAll(first.PostAsJsonAsync("/api/trials/confirm", proof),
+            second.PostAsJsonAsync("/api/trials/confirm", proof));
+        var companyIds = new List<Guid>(); var endDates = new List<DateTimeOffset>();
+        foreach (var response in responses)
+        {
+            using (response)
+            {
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+                companyIds.Add(json.RootElement.GetProperty("companyId").GetGuid());
+                endDates.Add(json.RootElement.GetProperty("endsAt").GetDateTimeOffset());
+            }
+        }
+        Assert.Equal(companyIds[0], companyIds[1]); Assert.Equal(endDates[0], endDates[1]);
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var company = Assert.Single(await db.Companies.Where(item => item.Slug == slug).ToListAsync());
+        var subscription = Assert.Single(await db.TenantSubscriptions.Where(item => item.CompanyId == company.Id).ToListAsync());
+        Assert.Equal(TimeSpan.FromDays(15), subscription.EndsAt - subscription.StartsAt);
+        Assert.Equal(1, await db.Users.CountAsync(item => item.Email == email));
+        Assert.Equal(1, await db.CompanyMemberships.CountAsync(item => item.CompanyId == company.Id));
+        Assert.Equal(1, await db.AuditEntries.CountAsync(item => item.CompanyId == company.Id && item.Action == "CloudTrialStarted"));
+    }
+
+    [Fact]
+    public async Task Concurrent_distinct_cloud_trials_for_one_email_grant_only_one_trial()
+    {
+        var plan = await SeedTrialPlan();
+        await using var factory = EnabledTrialFactory();
+        using var first = factory.CreateClient(); using var second = factory.CreateClient();
+        await ConfigureTrialCsrf(first); await ConfigureTrialCsrf(second);
+        var email = $"one-trial-{Guid.NewGuid():N}@example.invalid";
+        var request = new RequestCloudTrial("One trial", $"one-{Guid.NewGuid():N}", "Trial owner", email,
+            plan.Id, true, CloudTrialEndpoints.NoticeVersion);
+        using (var sent = await first.PostAsJsonAsync("/api/trials/request", request))
+            Assert.Equal(HttpStatusCode.Accepted, sent.StatusCode);
+        var firstProof = new ConfirmCloudTrial(LastTrialToken());
+        var otherSlug = $"other-{Guid.NewGuid():N}";
+        using (var sent = await second.PostAsJsonAsync("/api/trials/request", request with { Slug = otherSlug }))
+            Assert.Equal(HttpStatusCode.Accepted, sent.StatusCode);
+        var secondProof = new ConfirmCloudTrial(LastTrialToken());
+        var responses = await Task.WhenAll(first.PostAsJsonAsync("/api/trials/confirm", firstProof),
+            second.PostAsJsonAsync("/api/trials/confirm", secondProof));
+        Assert.Equal(1, responses.Count(response => response.StatusCode == HttpStatusCode.OK));
+        Assert.Equal(1, responses.Count(response => response.StatusCode == HttpStatusCode.Conflict));
+        foreach (var response in responses) response.Dispose();
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var owner = await db.Users.SingleAsync(item => item.Email == email);
+        Assert.Equal(1, await db.CompanyMemberships.CountAsync(item => item.UserId == owner.Id));
+        Assert.Equal(1, await db.AuditEntries.CountAsync(item => item.ActorUserId == owner.Id && item.Action == "CloudTrialStarted"));
+        Assert.Equal(1, await db.Companies.CountAsync(item => item.Slug == request.Slug || item.Slug == otherSlug));
     }
 
     [Fact]
