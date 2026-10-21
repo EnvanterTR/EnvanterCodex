@@ -25,6 +25,11 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Verify forwarded IP boundary with real proxies
+        shell: pwsh
+        timeout-minutes: 5
+        run: ./tests/Verify-ProxyIpBoundary.ps1
+
       - name: Verify the static UI inventory matches the source
         shell: bash
         run: node tools/Generate-UiInventory.mjs --check
