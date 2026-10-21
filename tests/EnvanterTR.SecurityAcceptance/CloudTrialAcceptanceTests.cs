@@ -82,6 +82,46 @@ public sealed partial class TenantSessionAcceptanceTests
     }
 
     [Fact]
+    public async Task Verified_cloud_trial_preserves_existing_owner_credentials_and_rejects_tampered_proof()
+    {
+        var plan = await SeedTrialPlan();
+        var email = $"existing-trial-{Guid.NewGuid():N}@example.invalid";
+        Guid ownerId;
+        string passwordHash, securityStamp;
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<EnvanterUser>>();
+            var owner = new EnvanterUser { UserName = email, Email = email, EmailConfirmed = true, DisplayName = "Existing owner" };
+            Assert.True((await users.CreateAsync(owner, "Acceptance-only!92Aa")).Succeeded);
+            ownerId = owner.Id; passwordHash = owner.PasswordHash!; securityStamp = owner.SecurityStamp!;
+        }
+        await using var factory = EnabledTrialFactory(); using var client = factory.CreateClient();
+        await ConfigureTrialCsrf(client);
+        var slug = $"existing-{Guid.NewGuid():N}";
+        using (var sent = await client.PostAsJsonAsync("/api/trials/request",
+            new RequestCloudTrial("Existing owner trial", slug, "Different submitted name", email, plan.Id, true, CloudTrialEndpoints.NoticeVersion)))
+            Assert.Equal(HttpStatusCode.Accepted, sent.StatusCode);
+        var token = LastTrialToken();
+        using (var tampered = await client.PostAsJsonAsync("/api/trials/confirm", new ConfirmCloudTrial("X" + token[1..])))
+            Assert.Equal(HttpStatusCode.BadRequest, tampered.StatusCode);
+        await using (var scope = factory.Services.CreateAsyncScope())
+            Assert.False(await scope.ServiceProvider.GetRequiredService<AppDbContext>().Companies.AnyAsync(company => company.Slug == slug));
+        using (var confirmed = await client.PostAsJsonAsync("/api/trials/confirm", new ConfirmCloudTrial(token)))
+        {
+            Assert.Equal(HttpStatusCode.OK, confirmed.StatusCode);
+            using var payload = JsonDocument.Parse(await confirmed.Content.ReadAsStringAsync());
+            Assert.Equal(JsonValueKind.Null, payload.RootElement.GetProperty("setupUrl").ValueKind);
+        }
+        await using var finalScope = factory.Services.CreateAsyncScope();
+        var db = finalScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var saved = await db.Users.SingleAsync(user => user.Id == ownerId);
+        Assert.Equal(passwordHash, saved.PasswordHash); Assert.Equal(securityStamp, saved.SecurityStamp);
+        Assert.True(saved.EmailConfirmed); Assert.Equal("Existing owner", saved.DisplayName);
+        var company = await db.Companies.SingleAsync(company => company.Slug == slug);
+        Assert.Equal(ownerId, (await db.CompanyMemberships.SingleAsync(member => member.CompanyId == company.Id)).UserId);
+    }
+
+    [Fact]
     public async Task Cloud_trial_defaults_closed_requires_csrf_and_rejects_unverified_tokens()
     {
         using var status = await _client!.GetAsync("/api/trials/status");

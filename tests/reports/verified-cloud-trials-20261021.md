@@ -16,3 +16,8 @@ Standalone Chromium synthetic-API test PASS after fixing the product bug and two
 Public pricing browser acceptance PASS: annual-only plans link to trial registration and show annual/12 comparison; legacy monthly checkout is preserved. Production/local Nginx proxy acceptance rerun exited0 with output in trial-proxy-acceptance-20261021.log; previous process output was unavailable after context truncation. Inventory regenerated at2268 controls. CloudTrials environment switch defaults false.
 
 Remaining: expiry/tamper/concurrency/existing-owner coverage, existing-company annual payment conversion, final tax-inclusive checkout, real SMTP/provider acceptance. Trial UI is now implemented; feature remains disabled in production. No production deployment of this branch in this continuation.
+
+## Existing owner and CI follow-up
+PostgreSQL trial acceptance PASS3/3 (final run c6ceb6c8a8, process31623). New case proves tampered proof creates no company, confirmed existing owner receives no password-setup link, and password hash/security stamp/email confirmation/display name/membership remain intact. Initial new test compilation failed because owner ID was declared string instead of Guid; corrected; original failure log retained. Disposable DB/network removed.
+
+GitHub PR22 and PR23 both failed at Verify platform subscription plan catalog workflow: obsolete source assertion required rejecting finite Cloud quotas. Updated verifier to require preserving requested positive quotas and reject nonpositive values; local33assertionsPASS. Backend runtime quota tests remain separate evidence. No full commercial activation or V1 completion claim.
