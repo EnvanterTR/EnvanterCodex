@@ -272,6 +272,15 @@
         </div>
       </div>
     </section>
+    <section class="section" id="hesap-guvenligi" aria-labelledby="accountSecurityTitle">
+      <div class="wrap"><div class="section-head"><h2 id="accountSecurityTitle">Kurumsal erişim, kontrolünüz altında</h2><p>Şirket portalınızda kullanıcı hesaplarını, doğrulama adımlarını ve açık oturumları tek noktadan yönetin.</p></div>
+        <div class="feature-grid">
+          <article class="feature"><div class="feature-top"><div class="icon" aria-hidden="true">01</div></div><h3>QR koduyla Authenticator kurulumu</h3><p>Mevcut parolanızı doğrulayın, ekrandaki QR kodunu Authenticator uygulamanızla tarayın ve 6 haneli kodla eşleştirmeyi tamamlayın. Kamera kullanamıyorsanız kurulum anahtarını elle ekleyebilirsiniz.</p></article>
+          <article class="feature"><div class="feature-top"><div class="icon" aria-hidden="true">02</div></div><h3>İki aşamalı hesap güvenliği</h3><p>MFA etkin hesaplarda yeni girişler parola ve Authenticator koduyla doğrulanır. Telefonunuza erişemediğinizde tek kullanımlık kurtarma kodlarıyla hesabınıza erişebilirsiniz.</p></article>
+          <article class="feature"><div class="feature-top"><div class="icon" aria-hidden="true">03</div></div><h3>Açık oturumları yönetin</h3><p>Hesabınıza bağlı oturumları ve son etkinliklerini görüntüleyin; kullanmadığınız oturumları kapatın. Şirket yöneticisi, güvenlik politikasından MFA zorunluluğunu belirleyebilir.</p></article>
+        </div>
+      </div>
+    </section>
     <section class="section" id="paketler">
       <div class="wrap"><div class="section-head"><h2 id="content-home-pricing-title">Cloud planınızı inceleyin</h2><p id="content-home-pricing-body">Bilgisayar, sunucu, telefon, ağ cihazı ve çevre birimlerinden; yazılım lisansı, aksesuar, sarf malzemesi ve bileşenlere kadar şirket envanterini yönetin. Cloud planlarını karşılaştırın; müşteri şirketlerinde kullanıcı ve envanter kaydı sınırı yoktur. Kendi bilgisayarınızda Windows 11 seçeneği hazırlanıyor; ekip kurulumu Windows Server veya Ubuntu Linux üzerinde çalışır.</p></div>
         <div class="pricing-grid" id="pricingGrid" aria-live="polite">
@@ -419,6 +428,14 @@
       const defaultDemoLabels = ['Canlı demoyu aç','Tanıtım görüşmesi iste'];
       document.querySelectorAll('#demo .hero-actions .button').forEach((item,index)=>{item.textContent=demoLabels[index]||defaultDemoLabels[index]||'Tanıtım iste';});
       document.querySelector('#paketler .section-head p').textContent=pricingCopy[language]?.intro||pricingCopy.tr.intro;
+      const securityCopy = {
+        en: ['Corporate access, under your control','Manage account verification and active sessions from your company portal.','Set up Authenticator with a QR code','Verify your current password, scan the setup QR code and confirm the six-digit code. A manual setup key is also available.','Two-step account security','MFA-enabled accounts require an authenticator code at new sign-in. One-time recovery codes help if your phone is unavailable.','Manage active sessions','Review active sessions and their last activity; close sessions you no longer use. Company administrators can require MFA.'],
+        ru: ['Корпоративный доступ под вашим контролем','Управляйте проверкой учетных записей и активными сеансами в портале компании.','Настройка Authenticator по QR-коду','Подтвердите текущий пароль, отсканируйте QR-код и введите шестизначный код. Также доступен ключ для ручного ввода.','Двухэтапная защита учетной записи','При новом входе учетные записи с MFA требуют код приложения. Одноразовые коды восстановления помогут при потере доступа к телефону.','Управление активными сеансами','Просматривайте сеансы и последнюю активность; закрывайте ненужные сеансы. Администратор компании может требовать MFA.'],
+        uk: ['Корпоративний доступ під вашим контролем','Керуйте перевіркою облікових записів і активними сеансами в порталі компанії.','Налаштування Authenticator за QR-кодом','Підтвердьте поточний пароль, відскануйте QR-код і введіть шестизначний код. Також доступний ключ для ручного введення.','Двоетапний захист облікового запису','Під час нового входу облікові записи з MFA потребують код застосунку. Одноразові коди відновлення допоможуть без телефона.','Керування активними сеансами','Переглядайте сеанси й останню активність; закривайте непотрібні сеанси. Адміністратор компанії може вимагати MFA.'],
+        mk: ['Корпоративен пристап под ваша контрола','Управувајте со проверката на сметките и активните сесии во порталот на компанијата.','Поставете Authenticator со QR-код','Потврдете ја тековната лозинка, скенирајте го QR-кодот и внесете ја шестцифрената шифра. Достапен е и клуч за рачно внесување.','Двофакторска заштита на сметката','Сметките со MFA бараат код при нова најава. Еднократните кодови за враќање помагаат кога телефонот не е достапен.','Управувајте со активните сесии','Прегледајте ги сесиите и последната активност; затворете ги непотребните сесии. Администраторот може да бара MFA.']
+      };
+      const securityNodes = document.querySelectorAll('#hesap-guvenligi .section-head h2, #hesap-guvenligi .section-head p, #hesap-guvenligi article h3, #hesap-guvenligi article p');
+      securityNodes.forEach((node,index) => { node.dataset.originalTr ??= node.textContent; node.textContent = securityCopy[language]?.[index] || node.dataset.originalTr; });
       const cloudCopy = cloudSaasCopy[language] || cloudSaasCopy.tr;
       document.querySelector('#cloudSaasTitle').textContent = cloudCopy.title;
       document.querySelector('#cloudSaasIntro').textContent = cloudCopy.intro;
