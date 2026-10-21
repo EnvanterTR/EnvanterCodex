@@ -1,0 +1,86 @@
+{
+  "version": "2026-10-21-user-pricing",
+  "status": "draft-not-published",
+  "currency": "TRY",
+  "cloud": {
+    "billingPeriod": "annual",
+    "monthlyCollection": false,
+    "trialDays": 15,
+    "chargeAfterTrial": "annual-payment",
+    "taxTreatment": "awaiting-user",
+    "assetLimit": "not-specified",
+    "plans": [
+      {
+        "annualPrice": 2400,
+        "segment": "Bireysel",
+        "code": "cloud-individual-1",
+        "users": 1,
+        "monthlyEquivalent": 200
+      },
+      {
+        "annualPrice": 4200,
+        "segment": "İşletme",
+        "code": "cloud-business-4",
+        "users": 4,
+        "monthlyEquivalent": 350
+      },
+      {
+        "annualPrice": 6000,
+        "segment": "İşletme",
+        "code": "cloud-business-10",
+        "users": 10,
+        "monthlyEquivalent": 500
+      },
+      {
+        "annualPrice": 9000,
+        "segment": "Kurumsal",
+        "code": "cloud-corporate-50",
+        "users": 50,
+        "monthlyEquivalent": 750
+      },
+      {
+        "annualPrice": 12000,
+        "segment": "Kurumsal",
+        "code": "cloud-corporate-100",
+        "users": 100,
+        "monthlyEquivalent": 1000
+      },
+      {
+        "annualPrice": 14400,
+        "segment": "Kurumsal",
+        "code": "cloud-corporate-250",
+        "users": 250,
+        "monthlyEquivalent": 1200
+      },
+      {
+        "code": "cloud-corporate-1000",
+        "quotaInterpretation": "awaiting-user",
+        "annualPrice": 24000,
+        "segment": "Kurumsal",
+        "monthlyEquivalent": 2000,
+        "userThreshold": 1000
+      },
+      {
+        "code": "cloud-corporate-2000",
+        "quotaInterpretation": "awaiting-user",
+        "annualPrice": 36000,
+        "segment": "Kurumsal",
+        "monthlyEquivalent": 3000,
+        "userThreshold": 2000
+      }
+    ]
+  },
+  "windowsDesktop": {
+    "availability": "after-web-v1",
+    "users": 1,
+    "annualPrice": 10000
+  },
+  "windowsServer": {
+    "pricing": "same-as-cloud",
+    "availability": "after-web-v1"
+  },
+  "linux": {
+    "pricing": "same-as-cloud",
+    "availability": "after-web-v1"
+  }
+}
