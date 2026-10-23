@@ -14,7 +14,10 @@ assert.match(endpoint[0], /RequireRateLimiting\("login"\)/);
 assert.match(endpoint[0], /FOR UPDATE/);
 assert.match(endpoint[0], /company\.IsActive/);
 assert.match(endpoint[0], /TenantSubscriptions/);
-assert.match(endpoint[0], /DeploymentKind != "cloud"/);
+assert.match(endpoint[0], /subscription\.MaxLoginUsers is int seatLimit && memberCount >= seatLimit/,
+  'Platform invitations must enforce the approved Cloud user quota.');
+assert.doesNotMatch(endpoint[0], /DeploymentKind != "cloud"/,
+  'Cloud invitations must not bypass the configured user quota.');
 assert.match(endpoint[0], /MemberInvitationResent/);
 assert.match(endpoint[0], /MemberInvited/);
 assert.match(endpoint[0], /MemberInvitationEmailSent/);
@@ -33,4 +36,4 @@ assert.match(page, /X-CSRF-TOKEN/);
 assert.match(client, /loadInviteCompanies/);
 assert.match(client, /memberInviteFeedback|invitationSent/);
 assert.match(acceptance, /Platform_admin_can_invite_new_and_existing_members_with_company_scope_and_retryable_email/);
-console.log('Platform member invitation source verification passed (21 assertions).');
+console.log('Platform member invitation source verification passed, including Cloud user quota enforcement.');
