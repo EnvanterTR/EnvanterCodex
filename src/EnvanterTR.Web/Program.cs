@@ -137,6 +137,7 @@ var connectionString = builder.Configuration.GetConnectionString("EnvanterTR");
 if (!string.IsNullOrWhiteSpace(connectionString))
 {
     builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+    builder.Services.AddHostedService<CompanyCheckoutOrderExpirationWorker>();
     builder.Services.AddScoped<OperationalNotificationEmailService>();
     builder.Services.AddHostedService<OperationalNotificationEmailWorker>();
     builder.Services.AddScoped<ScheduledReportEmailService>();

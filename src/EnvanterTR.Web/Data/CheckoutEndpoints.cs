@@ -277,7 +277,7 @@ public static class CheckoutEndpoints
                 DataProcessingNoticeVersion = CheckoutNoticeVersion,
                 DataProcessingAcknowledgedAt = now,
                 InitializationLeaseUntil = now.AddMinutes(2),
-                CreatedAt = now, ExpiresAt = now.AddDays(3)
+                CreatedAt = now, ExpiresAt = now.AddHours(24)
             };
             db.CompanyCheckoutOrders.Add(pending);
             try
