@@ -1,6 +1,6 @@
 # EnvanterTR statik arayüz envanteri
 
-Oluşturulma: 2026-10-23T18:32:47.167Z
+Oluşturulma: 2026-10-23T23:00:16.091Z
 
 > Bu dosya mevcut HTML kaynaklarında bulunan statik arayüz öğelerinin dökümüdür. Bir öğenin listelenmesi onun çalıştığını kanıtlamaz. JavaScript ile sonradan oluşturulan kontroller, API/DB davranışı, rol varyasyonları ve erişilebilirlik ayrıca uçtan uca kabul gerektirir. Kaynak değiştikçe `node tools/Generate-UiInventory.mjs` ile yeniden üretin; `node tools/Generate-UiInventory.mjs --check` güncel olup olmadığını doğrular.
 
@@ -11,7 +11,7 @@ Oluşturulma: 2026-10-23T18:32:47.167Z
 | Sayfa rotası | 65 |
 | Menü grubu | 10 |
 | Bağlantı | 58 |
-| Düğme | 955 |
+| Düğme | 958 |
 | Form | 115 |
 | Girdi alanı | 626 |
 | Seçim alanı | 205 |
@@ -19,7 +19,7 @@ Oluşturulma: 2026-10-23T18:32:47.167Z
 | Modal | 109 |
 | Sekme | 5 |
 | Tablo | 79 |
-| **Toplam kayıt** | **2269** |
+| **Toplam kayıt** | **2272** |
 
 ## Tam döküm
 
@@ -2285,22 +2285,25 @@ Oluşturulma: 2026-10-23T18:32:47.167Z
 | 4 | Düğme | Aylık | id=monthlyTerm; type=button |
 | 5 | Düğme | Yıllık | id=annualTerm; type=button |
 | 6 | Düğme | Uygula | id=applyCoupon; type=button |
-| 7 | Düğme | Yeni ödeme denemesi oluştur | id=newAttempt; type=button |
-| 8 | Düğme | Güvenli ödemeye geç | id=checkoutSubmit; type=submit |
-| 9 | Girdi alanı | couponCode | id=couponCode; type=text |
-| 10 | Girdi alanı | companyName | name=companyName |
-| 11 | Girdi alanı | slug | name=slug |
-| 12 | Girdi alanı | ownerFirstName | name=ownerFirstName |
-| 13 | Girdi alanı | ownerLastName | name=ownerLastName |
-| 14 | Girdi alanı | ownerEmail | type=email; name=ownerEmail |
-| 15 | Girdi alanı | phone | type=tel; name=phone |
-| 16 | Girdi alanı | identityNumber | name=identityNumber |
-| 17 | Girdi alanı | zipCode | name=zipCode |
-| 18 | Girdi alanı | billingAddress | name=billingAddress |
-| 19 | Girdi alanı | city | name=city |
-| 20 | Girdi alanı | country | name=country |
-| 21 | Girdi alanı | dataProcessingAcknowledged | type=checkbox; name=dataProcessingAcknowledged |
-| 22 | Form | checkoutForm | id=checkoutForm |
+| 7 | Düğme | Doğrulama bağlantısı gönder | id=sendEmailVerification; type=button |
+| 8 | Düğme | Bu e-postayı doğrula | id=confirmEmailVerification; type=button; başlangıçta gizli |
+| 9 | Düğme | E-postayı değiştir | id=changeVerifiedEmail; type=button; başlangıçta gizli |
+| 10 | Düğme | Yeni ödeme denemesi oluştur | id=newAttempt; type=button |
+| 11 | Düğme | Güvenli ödemeye geç | id=checkoutSubmit; type=submit |
+| 12 | Girdi alanı | couponCode | id=couponCode; type=text |
+| 13 | Girdi alanı | companyName | name=companyName |
+| 14 | Girdi alanı | slug | name=slug |
+| 15 | Girdi alanı | ownerFirstName | name=ownerFirstName |
+| 16 | Girdi alanı | ownerLastName | name=ownerLastName |
+| 17 | Girdi alanı | ownerEmail | type=email; name=ownerEmail |
+| 18 | Girdi alanı | phone | type=tel; name=phone |
+| 19 | Girdi alanı | identityNumber | name=identityNumber |
+| 20 | Girdi alanı | zipCode | name=zipCode |
+| 21 | Girdi alanı | billingAddress | name=billingAddress |
+| 22 | Girdi alanı | city | name=city |
+| 23 | Girdi alanı | country | name=country |
+| 24 | Girdi alanı | dataProcessingAcknowledged | type=checkbox; name=dataProcessingAcknowledged |
+| 25 | Form | checkoutForm | id=checkoutForm |
 
 ### Deneme kaydı — `src/EnvanterTR.PublicSite/trial.html`
 

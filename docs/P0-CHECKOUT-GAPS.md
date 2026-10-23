@@ -20,9 +20,11 @@ The original source audit is retained in commit `3c63980`. Current candidate acc
 
 The separate existing-company browser acceptance is recorded in `tests/reports/existing-company-browser-acceptance-20261024.md` (exit 0). It verifies password/MFA/cookies, server-rendered form submission, failed-password field handling, mobile layout, provider Location, callback replay, paid history and retained tenant data. Real provider acceptance and the complete plan-change lifecycle remain open.
 
-## Email verification before direct paid checkout — INCOMPLETE
+## Email verification before direct paid checkout — LOCAL ACCEPTANCE PASSED
 
-Trial registration verifies a short-lived protected email proof. The separate anonymous `/api/checkout/initialize` path accepts owner email without an equivalent email-verification proof before payment. The goal's registration → email verification → payment sequence is therefore not proven for direct purchases. Existing-account credentials are preserved during provisioning; that does not establish pre-payment email ownership.
+The original audit found that anonymous `/api/checkout/initialize` accepted an unverified owner email. The candidate now sends a 30-minute protected email/plan-bound link, requires explicit CSRF-protected confirmation, and independently validates `emailVerificationToken` before provider initialization. Missing/altered/expired/wrong-purpose or mismatched proof returns 428 with no provider initialization or order for that request. SMTP configuration is required by public readiness and direct initialization; a previously valid proof cannot bypass removed SMTP configuration. Existing-company owner purchase retains its confirmed-account/password/MFA flow.
+
+`tests/reports/checkout-email-verification-acceptance-20261024.md` records 15/15 isolated API/PostgreSQL cases plus Chromium checkout acceptance and the prior quota regression. SMTP is captured locally and iyzico is synthetic. This closes the local pre-payment ownership gap; real inbox/provider acceptance and release gates remain open.
 
 ## Real provider and customer gates — OPEN
 

@@ -639,6 +639,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         var request = new InitializeCompanyCheckoutRequest(checkoutId, "Synthetic Checkout Ltd", $"checkout-{checkoutId:N}"[..20],
             "owner@example.invalid", "Test", "Owner", $"owner-{checkoutId:N}@example.invalid", "+905550000002", "10000000146",
             "Synthetic Street 2", "Istanbul", "Turkey", "34000", plan.Id, "monthly", true, "cloud-checkout-data-v1", coupon.Code);
+        request = request with { EmailVerificationToken = await VerifyCheckoutEmailAsync(client, request.OwnerEmail, plan.Id) };
         var publishedPlans = await client.GetFromJsonAsync<JsonElement>("/api/plans");
         Assert.Contains(publishedPlans.EnumerateArray(), item => item.GetProperty("id").GetGuid() == plan.Id);
         using (var quote = await client.PostAsJsonAsync("/api/checkout/quote", new CheckoutCouponQuoteRequest(plan.Id, "monthly", coupon.Code.ToLowerInvariant())))
@@ -805,7 +806,8 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Contains($"https://{request.Slug}.envantertr.com/", purchaseConfirmation, StringComparison.Ordinal);
         Assert.Contains("Erişim e-postası daha önce gönderilmiş olabilir", purchaseConfirmationText, StringComparison.Ordinal);
         var invitation = Assert.Single(_smtpCapture.Messages, message =>
-            message.Contains($"To: {request.OwnerEmail}", StringComparison.OrdinalIgnoreCase));
+            message.Contains($"To: {request.OwnerEmail}", StringComparison.OrdinalIgnoreCase) &&
+            DecodeMimeBody(message).Contains("ilk girişte Authenticator", StringComparison.Ordinal));
         Assert.Contains($"To: {request.OwnerEmail}", invitation, StringComparison.OrdinalIgnoreCase);
         Assert.Contains($"https://{request.Slug}.envantertr.com/", DecodeMimeBody(invitation), StringComparison.Ordinal);
         var invitationBody = DecodeMimeBody(invitation);
@@ -2127,6 +2129,9 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             "POST /api/session/company-mfa/setup",
             "POST /api/session/company-mfa/verify",
             "POST /api/checkout/initialize",
+            // Pre-payment email ownership uses CSRF, its own bounded request pool and a time-limited protected proof.
+            "POST /api/checkout/email/request",
+            "POST /api/checkout/email/confirm",
             "POST /api/checkout/callback",
             "POST /api/checkout/webhook",
             "GET /api/checkout/status",

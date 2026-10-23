@@ -20,7 +20,8 @@ public sealed record InitializeCompanyCheckoutRequest(
     string OwnerFirstName, string OwnerLastName, string OwnerEmail, string Phone,
     string IdentityNumber, string BillingAddress, string City, string Country, string? ZipCode,
     Guid PlanId, string Term, bool DataProcessingAcknowledged, string? DataProcessingNoticeVersion,
-    string? CouponCode = null, string? CurrentPassword = null, string? TwoFactorCode = null);
+    string? CouponCode = null, string? CurrentPassword = null, string? TwoFactorCode = null,
+    string? EmailVerificationToken = null);
 public sealed record CheckoutCouponQuoteRequest(Guid PlanId, string Term, string? CouponCode);
 public sealed record CompanyCheckoutInitialized(string CheckoutUrl, Guid OrderId);
 
@@ -47,12 +48,14 @@ public static partial class CheckoutEndpoints
     public static IEndpointRouteBuilder MapCheckoutEndpoints(this IEndpointRouteBuilder endpoints)
     {
         MapExistingCompanyCheckoutEndpoints(endpoints);
+        MapCheckoutEmailEndpoints(endpoints);
         endpoints.MapGet("/api/checkout/status", async (IOptions<IyzipayOptions> configuredOptions,
-            AppDbContext db, CancellationToken cancellationToken) =>
+            AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
         {
             var options = configuredOptions.Value;
             var configurationReady = GetConfigurationReadiness(options).Available;
-            var available = configurationReady && await db.SubscriptionPlans.AsNoTracking().AnyAsync(
+            var available = configurationReady && EmailConfigurationReadiness.Evaluate(configuration).ConfigurationReady &&
+                await db.SubscriptionPlans.AsNoTracking().AnyAsync(
                 plan => plan.IsActive && plan.IsPublic && plan.DeploymentKind == "cloud" &&
                     (plan.MonthlyPrice > 0 || plan.AnnualPrice > 0) && SupportedCurrencies.Contains(plan.Currency.ToUpper()), cancellationToken);
             return Results.Ok(new
@@ -136,7 +139,8 @@ public static partial class CheckoutEndpoints
             var authorizationError = await ReauthenticateCheckoutOwnerAsync(existingOwner.Account, request, users, signIn);
             if (authorizationError is not null) return authorizationError;
         }
-        if (!GetConfigurationReadiness(options).Available)
+        if (!GetConfigurationReadiness(options).Available || existingOwner is null &&
+            !EmailConfigurationReadiness.Evaluate(context.RequestServices.GetRequiredService<IConfiguration>()).ConfigurationReady)
             return Results.Problem("Çevrimiçi ödeme şu anda yapılandırılmamış. Şirket kaydı başlatılmadı.",
                 statusCode: StatusCodes.Status503ServiceUnavailable);
 
@@ -178,6 +182,14 @@ public static partial class CheckoutEndpoints
         if (existingOrder is not null && (existingOrder.TargetCompanyId != existingOwner?.Company.Id ||
             existingOrder.RequestedByUserId != existingOwner?.Account.Id))
             return Results.Conflict(new { message = "Bu ödeme kimliği farklı bir şirket veya hesaba ait." });
+        if (existingOwner is null)
+        {
+            var emailProof = ReadCheckoutEmailProof(request.EmailVerificationToken, dataProtectionProvider);
+            if (emailProof is null || emailProof.PlanId != request.PlanId ||
+                !string.Equals(emailProof.Email, ownerEmail, StringComparison.OrdinalIgnoreCase))
+                return Results.Json(new { code = "checkout_email_verification_required",
+                    message = "Ödemeden önce hesap e-postanızı doğrulayın. E-postadaki bağlantıyı açıp doğrulamayı tamamlayın." }, statusCode: 428);
+        }
         if (existingOrder is not null && (existingOrder.Status is CheckoutStatusStarted or "PaymentReview") &&
             !string.IsNullOrWhiteSpace(existingOrder.CheckoutPageUrlProtected))
         {

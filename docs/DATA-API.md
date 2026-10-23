@@ -9,6 +9,14 @@
 
 ## Cloud Checkout Form sağlayıcı dönüşleri
 
+### Yeni şirket için ödeme öncesi e-posta doğrulaması
+
+- `POST /api/checkout/email/request`: `{ email, planId }`, CSRF ve ayrı `checkout-email` sınırı (IP başına 5 istek/10 dakika) ister. SMTP yapılandırması hazır değilse 503 verir. Satın alınabilir plan için 30 dakika geçerli korumalı bağlantı gönderir; kanıt HTTP cevabında dönmez, şirket/sipariş oluşturulmaz.
+- `POST /api/checkout/email/confirm`: `{ token }`, aynı CSRF ve istek sınırıyla korumalı kanıtı doğrular; yalnız doğrulanmış e-posta ve paket kimliği döner. Geçersiz/süresi dolmuş bağlantı 400 verir.
+- Bağlantı anahtarı `checkout.html?planId=...#emailToken=...` fragment'indedir. Tarayıcı onu hemen adres çubuğundan kaldırır, açık kullanıcı onayı ister ve kanıtı yalnız sayfa belleğinde tutar. E-posta değiştirilirse ödeme düğmesi yeniden kilitlenir. Yenilemede bağlantı yeniden açılabilir; süre dolunca yeni bağlantı gerekir.
+- Anonim `POST /api/checkout/initialize` gövdesi `emailVerificationToken` ister. Kanıtın amacı, süresi, paket kimliği ve owner e-postası eşleşmeden 428 `checkout_email_verification_required` döner; sağlayıcı çağrılmaz ve bu isteğe sipariş açılmaz. Ücret, fatura onayı, CSRF ve önceki idempotency kontrolleri ayrıca uygulanır.
+- `GET /api/checkout/status` ödeme/plan kapısına SMTP yapılandırma hazırlığını da katar. Bu, gerçek inbox teslimatı veya tahsilat kanıtı değildir. Oturumdaki doğrulanmış owner'ın mevcut şirket satın alma akışı kendi parola/MFA kontrolünü kullanmaya devam eder.
+
 ### Mevcut şirketin yıllık aboneliği (API)
 
 - `GET /api/subscription/checkout/context`: oturumun gerçek şirketi ve DB'deki owner üyeliğiyle sınırlı şirket/portal/sahip/MFA bilgisi. Başka şirket kimliği parametreyle seçilmez.
