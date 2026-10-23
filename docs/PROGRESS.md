@@ -288,3 +288,13 @@
 - Kanıt yolu: `tests/reports/p0-hosted-browser-acceptance-20261024.md` ve tam çıktı `.log` dosyası.
 - Sınır: Sentetik API/iyzico; gerçek e-posta veya tahsilat yok. Genel yeni şirket checkout testi, `/subscription/checkout` mevcut firma satın alma/dönüş akışını kanıtlamaz. Santa/Farma gerçek hesapları, staging, taze yedek/rollback ve canlı ayar kabulü değildir.
 - Sıradaki iş: Checkout P0-D için mevcut şirket browser dönüş akışını ayrı kabul et; ardından P0-E SMTP/Bölüm 20 müşteri senaryolarına ve kalan platform impersonation kabuline ilerle. Üretime yayın kapıları geçmeden canlıya deploy etme.
+
+### 24 Ekim 2026 — P0-D mevcut şirket gerçek uygulama tarayıcı kabulü
+- Durum: TAMAM (gerçek Kestrel + PostgreSQL + Chromium; sentetik iyzico); gerçek sağlayıcı/canlı kabul açık.
+- Değişen dosyalar: `tests/EnvanterTR.CheckoutBrowser`, browser senaryosu, Dockerfile/Compose/PowerShell runner, CI adımı/kanıt upload'u, checkout gap ve ilerleme belgeleri.
+- Komut + çıktı: `deploy/testing/run-existing-checkout-browser-acceptance.ps1` → exit 0; **1/1 uçtan uca senaryo geçti**. Derleme 0 hata/0 uyarı. `git diff --check` doğrulandı.
+- Test: Gerçek parola/MFA/cookie girişi, süresi dolmuş denemede 4.200 TRY yıllık / 350 TRY aylık eşdeğer, İngilizce/koyu/390px; yanlış parolada 400, fatura koruma ve gizli alanları temizleme; gerçek CSRF formu, güvenilir 302 Location; callback/replay, aktif ödeme geçmişi; ayrı viewer oturumunda 403. DB: tek sağlayıcı initialize ve tek aktif abonelik; şirket UUID'si, iki üyelik, deneme geçmişi ve iki firmanın varlıkları korunuyor.
+- İlk koşular: Onaysız test callback URL'si formu doğru olarak kapattı; test yapılandırması düzeltildi. Sonraki koşu izole ağdan sağlayıcıya yönlendirmede durdu; gerçek Location doğrulanıp yalnız testte yerel sağlayıcı sayfasıyla devam edilecek şekilde browser interception düzeltildi. İki hata logu saklandı; ürün güvenlik kontrolü kaldırılmadı.
+- Kanıt: `tests/reports/existing-company-browser-acceptance-20261024.md`, son/ilk/redirect logları ve `existing-company-browser-20261024/checkout-390.png`. Görsel incelendi. Geçici Compose DB/ağ temizlendi.
+- Sınır: Gerçek iyzico tahsilatı/e-posta yok; staging, taze yedek/rollback, tam ücretli plan değişimi ve canlı Santa/Farma/Demo3 kabulü açık. Canlı deploy yapılmadı.
+- Sıradaki iş: PR #25'te uzak CI doğrulaması; P0-D e-posta doğrulama açığı ve gerçek sağlayıcı, ardından P0-E SMTP/Bölüm 20 kalan adımları.
