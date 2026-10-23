@@ -132,3 +132,11 @@
 - Test: `Platform_checkout_readiness_matches_public_gate_without_exposing_provider_secrets` → 1/1 geçti. Boş BaseUrl, sandbox ve production durumları; secretsız readiness yanıtı ve kapalı checkout doğrulandı. Test PostgreSQL'i ve ağı izoleydi.
 - Kanıt yolu: `tests/reports/p0d-explicit-iyzipay-environment-acceptance-20261023.md`.
 - Sıradaki iş: P0-D staging üzerinde gerçek iyzico sandbox kabulü ve P0-E SMTP/üçüncü firma kabulü. Gerekli sağlayıcı sırları, canlı SMTP ve staging dış koşulları olmadan satış açılmaz; üretim deploy kapısı staging kabulü + taze yedek + geri dönüş provasıdır.
+
+### 23 Ekim 2026 — P0 katalog ve tarayıcı sözleşmesi düzeltmeleri
+- Durum: TAMAM (iki sentetik API/Chromium akışı ve üç kaynak doğrulayıcısı); tam uzak CI ve canlı müşteri kabulü açık.
+- Değişen dosyalar: platform browser fixture, `Verify-AssetModelDetailsUi.mjs`, `Verify-HostedCheckoutBrowserAcceptance.mjs`, `Verify-PlatformAdminExperience.mjs`, denetim/progress ve kabul raporu.
+- Komut + çıktı: Üç Node doğrulayıcı geçti; Docker Chromium `platform-admin-members.mjs` ve `asset-detail-actions.mjs` exit 0.
+- Test: Cloud dört kullanıcı kotası kaydı ve `4 / 4` gösterimi; model ayrıntısı özet/varlık/sipariş/geçmiş/ekler ve bağlantılı varlığa geçiş doğrulandı. Kaynak doğrulayıcıdaki kırılgan metin mesafesi ayrı davranış assertion'larıyla değiştirildi.
+- Kanıt yolu: `tests/reports/p0-catalog-browser-contract-acceptance-20261023.md`.
+- Sıradaki iş: P0-D'de şirket oluşturmanın panel/deneme/ödeme yollarında ortak servis şartını uygulamak. PR #25 CI proxy fixture imaj indirmesinde Docker Hub timeout nedeniyle başarısız; yerel proxy ilk `ResponseEnded` sonrası tek yeniden denemede geçti. Staging/gerçek iyzico/SMTP kapıları devam ediyor.

@@ -17,6 +17,8 @@ assert.match(lookupEndpoint, /case "models":[\s\S]{0,500}asset\.DeletedAt == nul
 assert.match(lookupEndpoint, /"models" => await db\.AssetModels[\s\S]{0,400}allowedLocations\.Contains/, 'Single model lookup must enforce the same location scope.');
 assert.match(endpoint, /line\.CompanyId == companyId &&[\s\S]{0,100}line\.ModelId == id/, 'Purchase lines must be company and model scoped.');
 assert.match(endpoint, /TargetType == "AssetModel" && entry\.TargetId == id/, 'Model history must be scoped to the model target.');
-assert.match(acceptance, /modelDetailsDialog[\s\S]{0,1000}PO-MODEL-001/, 'Chromium acceptance must read the detail summary and linked purchase order.');
+assert.match(acceptance, /modelDetailsDialog'\)\.waitFor\(\{ state: 'visible' \}\)/, 'Chromium acceptance must open the model detail dialog.');
+assert.match(acceptance, /modelDetailsSummary'\)\.innerText\(\), \/MD-TEST\//, 'Chromium acceptance must read the matching model summary.');
+assert.match(acceptance, /modelDetailsOrders'\)\.innerText\(\), \/PO-MODEL-001\//, 'Chromium acceptance must read the linked purchase order from the model details dialog.');
 assert.match(acceptance, /modelDetailsAssets'\)\.getByRole\('button', \{ name: 'QA-ASSET-001' \}\)/, 'Chromium acceptance must traverse a linked asset into its details.');
 console.log('Verified model detail route, company-scoped API, assets/orders/history UI, linked-asset navigation, and Chromium acceptance coverage.');

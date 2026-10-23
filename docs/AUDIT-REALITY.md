@@ -38,6 +38,10 @@ Bu üç dokümandaki yüzdeler güncel V1 tamamlanma ölçüsü değildir. `PROJ
 - Tam hosted Chromium paketi bu dalda exit 1 verdi: `platform-admin-members.mjs:760` eski “Cloud plan kotasız” assertion’ı. Yerel düzeltme henüz yeniden çalıştırılmadı. Bu hata rapor yüzdeleriyle ilgisizdir, ancak test uyumsuzluğunun güncel ve gerçek olduğunu gösterir.
 - Yönetici canlı oturum ve ekran görüntüsü: **ENGELLENDİ**; bilgisayar-kullanım URL güvenlik denetimi açık sekmenin adresini tanıyamadı. Kullanıcı parolası araca girilmedi.
 
+## 23 Ekim — sonraki düzeltme ve kabul
+
+İlk denetimde başarısız bulunan iki kaynak doğrulayıcısı ve platform Chromium kotasız-Cloud varsayımı düzeltildi. Onaylı paketlerde kullanıcı kotası korunuyor; tarayıcı testi dört kullanıcı limitinin POST gövdesinde ve `4 / 4` kullanımında gösterildiğini doğruluyor. Model ayrıntısı denetimi görünür pencere, doğru özet ve satın alma siparişini ayrı ayrı denetliyor. Üç kaynak doğrulayıcısı ve `platform-admin-members.mjs` / `asset-detail-actions.mjs` Chromium senaryoları exit 0 verdi. Kanıt: `tests/reports/p0-catalog-browser-contract-acceptance-20261023.md`. Bu kayıt yalnız söz konusu eski test uyumsuzluklarını kapatır; canlı müşteri kabulü, satış kapıları ve genel V1 tamamlanması hâlâ açık.
+
 ## Denetim komutları
 
 - `rg` ile üç dokümandaki yüzde ifadeleri sayıldı: 11 + 2 + 0 satır.
