@@ -12,6 +12,8 @@ const demos = await readFile('src/EnvanterTR.Web/wwwroot/platform-admin-demo-req
 const acceptance = await readFile('tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs', 'utf8');
 const browserAcceptance = await readFile('deploy/testing/hosted-checkout-browser/platform-admin-members.mjs', 'utf8');
 const sessionAcceptance = await readFile('tests/EnvanterTR.SecurityAcceptance/SessionDurationAcceptanceTests.cs', 'utf8');
+const emailReadiness = await readFile('src/EnvanterTR.Web/Data/EmailConfigurationReadiness.cs', 'utf8');
+const emailAcceptance = await readFile('tests/EnvanterTR.SecurityAcceptance/EmailReadinessAcceptanceTests.cs', 'utf8');
 
 assert.match(page, /name="rememberMe" type="checkbox"/);
 assert.doesNotMatch(page, /name="rememberMe"[^>]*checked/);
@@ -199,8 +201,11 @@ for (const alert of ['paymentPending', 'paymentReview', 'paymentFailed', 'provis
 assert.match(api, /checkout = new \{ paymentPending, paymentReview, paymentFailed, provisioningFailed \}/);
 assert.match(api, /MapGet\("\/system\/health"[\s\S]*?Process\.GetCurrentProcess\(\)[\s\S]*?TotalProcessorTime[\s\S]*?pg_database_size\(current_database\(\)\)[\s\S]*?application-container-filesystem/,
   'Platform health exposes measured application-process and PostgreSQL metrics with explicit container scope.');
-assert.match(api, /smtpConfigured = !string\.IsNullOrWhiteSpace\(configuration\["Email:Smtp:Host"\]\)[\s\S]*?iyzicoConfigured/,
+assert.match(api, /smtpConfigured = smtpConfiguration\.ConfigurationReady,[\s\S]*?smtp = smtpConfiguration,[\s\S]*?iyzicoConfigured/,
   'Health reports integration configuration without exposing secret values.');
+for (const flag of ['HostValid', 'PortValid', 'SenderValid', 'PublicBaseUrlValid', 'AuthenticationConsistent', 'TlsSettingValid'])
+  assert.ok(emailReadiness.includes(flag), `SMTP readiness must validate ${flag}.`);
+assert.match(emailAcceptance, /Smtp_readiness_matches_trial_gate_rejects_malformed_settings_and_exposes_no_secrets/);
 assert.match(page, /id="systemHealthPanel"[\s\S]*?id="refreshSystemHealth"[\s\S]*?id="systemHealthCards"/);
 assert.match(page, /async function loadSystemHealth\(\)[\s\S]*?api\('\/api\/platform\/system\/health'\)[\s\S]*?systemHealthRequestId/);
 assert.match(page, /setInterval\(\(\)=>\{if\(!\$\('#appShell'\)\.hidden&&\$\('#view-overview'\)\.classList\.contains\('active'\)\)void loadSystemHealth\(\)\},30000\)/,

@@ -37,10 +37,7 @@ public static class CloudTrialEndpoints
     }
 
     private static bool Configured(IConfiguration configuration) => configuration.GetValue<bool>("CloudTrials:Enabled") &&
-        !string.IsNullOrWhiteSpace(configuration["Email:Smtp:Host"]) &&
-        !string.IsNullOrWhiteSpace(configuration["Email:FromAddress"]) &&
-        Uri.TryCreate(configuration["Email:PublicBaseUrl"], UriKind.Absolute, out var site) &&
-        site.Scheme == Uri.UriSchemeHttps && site.UserInfo.Length == 0 && site.Query.Length == 0 && site.Fragment.Length == 0;
+        EmailConfigurationReadiness.Evaluate(configuration).ConfigurationReady;
 
     private static async Task<IResult> RequestAsync([FromBody] RequestCloudTrial request, HttpContext context,
         IAntiforgery antiforgery, IConfiguration configuration, IDataProtectionProvider protection,

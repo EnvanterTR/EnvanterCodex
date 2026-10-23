@@ -164,3 +164,11 @@
 - Test: Tenant ve platform yönetici davetinde dolu Cloud kotası reddi, hesap oluşturmama, kota artışıyla kabul, yeniden dolduğunda ret ve mevcut üyeliklerin korunması; davet yeniden gönderme/e-posta senaryosu geçti. CI'ın eski Cloud muafiyeti bekleyen assertion'ı doğru sınır şartıyla değiştirildi.
 - Kanıt yolu: `tests/reports/p0-platform-invite-quota-acceptance-20261023.md`, `tests/reports/platform-invite-seat-quota-20261023.log`, `tests/reports/p0-ci-source-checks-20261023.json`.
 - Sıradaki iş: SMTP yapılandırması hatalıyken trial/public readiness ile platform sağlık bilgisinin tutarlı kapanmasını sağlamak ve gerçek e-posta kabulüne hazırlamak. Önceki hedef turu üç testli commit/push ile ilerleme olarak sınıflandırıldı.
+
+### 23 Ekim 2026 — P0-E ortak SMTP yapılandırma doğrulaması
+- Durum: TAMAM (yapılandırma ve yakalayıcı regresyon kabulü); gerçek SMTP/inbox teslimi açık.
+- Değişen dosyalar: `EmailConfigurationReadiness.cs`, CloudTrial/Platform endpoint'leri, platform sağlık açıklaması, ilgili verifier ve kabul testi/doküman/raporlar.
+- Komut + çıktı: Web build 0 uyarı/0 hata; test build dört mevcut deprecation uyarısı/0 hata. İlk koşu 3/3, mevcut admin-only sağlık regresyonu ayrıca 1/1 geçti. SMTP adayında 78 kaynak kontrolü 78/78 geçti.
+- Test: On yapılandırmada host, port, gönderici, HTTPS bağlantı, eksik credential çifti ve TLS doğrulaması; açık trial durumu ile sağlık tutarlılığı; bozuk ayarda mail gönderilmeden 503; sırların yanıtta bulunmaması; parola kurtarma/gerçek yakalayıcı trial e-postası ve sağlık yetkisi doğrulandı.
+- Kanıt yolu: `tests/reports/p0e-smtp-readiness-acceptance-20261023.md`, SMTP iki logu ve kaynak kontrol JSON'u.
+- Sıradaki iş: Ücretli şirket oluşturulduktan sonra ilk davet e-postası gönderilemezse görünür başarısızlık, güvenli teşhis logu ve yeniden gönderimle aynı şirket/üyelik/aboneliğin korunması kabulünü tamamlamak. Staging/gerçek sağlayıcı/SMTP ve Bölüm 20 kapıları açık.

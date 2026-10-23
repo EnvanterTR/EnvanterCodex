@@ -158,6 +158,8 @@ public static class PlatformEndpoints
 
             var generatedAt = DateTimeOffset.UtcNow;
             var checkoutConfiguration = CheckoutEndpoints.GetConfigurationReadiness(paymentOptions.Value);
+            var smtpConfiguration = EmailConfigurationReadiness.Evaluate(configuration,
+                requireHttps: !string.Equals(configuration["ASPNETCORE_ENVIRONMENT"], "Development", StringComparison.OrdinalIgnoreCase));
             return Results.Ok(new
             {
                 generatedAt,
@@ -179,7 +181,8 @@ public static class PlatformEndpoints
                     availableBytes = diskAvailableBytes, usedPercent = diskUsedPercent },
                 integrations = new
                 {
-                    smtpConfigured = !string.IsNullOrWhiteSpace(configuration["Email:Smtp:Host"]),
+                    smtpConfigured = smtpConfiguration.ConfigurationReady,
+                    smtp = smtpConfiguration,
                     iyzicoConfigured = checkoutConfiguration.CredentialsConfigured,
                     checkout = new
                     {
