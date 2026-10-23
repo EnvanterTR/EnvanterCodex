@@ -6,6 +6,15 @@
 - Kanıt yolu: `docs/AUDIT-REALITY.md`; `node tools/Check-CoolifyProduction.mjs` çıktısı; https://github.com/EnvanterTR/EnvanterCodex/actions/runs/40008494630.
 - Sıradaki iş: P0-B'de canlı migration kimliklerini doğrulanmış kopya DB ile karşılaştır; tam eşitlik public health endpoint'iyle kanıtlanamıyor. Canlı admin görüntüsü için kullanıcı oturum açmalı veya izinli başka doğrulama yolu sağlanmalı.
 
+### 23 Ekim 2026 — P0-B canlı migration kimlik eşleşmesi
+- Durum: TAMAM (dağıtılmış canlı baseline ile `origin/main` birebir eşleşti; aday release migration'ı ayrı ve uygulanmamış).
+- Değişen dosyalar: `docs/AUDIT-REALITY.md`, `tests/reports/p0b-migration-identity-acceptance-20261023.md`, `docs/PROGRESS.md`.
+- Komut + çıktı: Coolify PostgreSQL konteynerinde yalnız `BEGIN READ ONLY`/SELECT/ROLLBACK sorgusu; canlı 118 ID, `origin/main` 118 benzersiz EF migration ID; uç kimlikler ve sıralı ID-listesi MD5 `c8694e4a153c5f81d5cface1e0c9f366` aynı. `git diff --check` doğrulandı.
+- Test: Ek P0-B raporunda canlı ve kaynak kümesi count/range/hash eşitliği; aynı günkü taze dump + medya/anahtar restore eşitliği `coolify-sha-save-triage-20261023.md` ile birlikte. Run `40019065157`, head `217261746e62a5f6debbe6010b71e40a033c7b2d`, Linux tenant security + Linux PostgreSQL + Windows deployment/backup **3/3 success**.
+- Kanıt yolu: `tests/reports/p0b-migration-identity-acceptance-20261023.md`, `tests/reports/coolify-sha-save-triage-20261023.md`, GitHub run `https://github.com/EnvanterTR/EnvanterCodex/actions/runs/40019065157`.
+- Sınır: PR #25 adayı canlı baseline'dan yalnız `20261023190000_AddExistingCompanyCheckoutContext` ile ileride; `Up()` additive/nullable, canlıya uygulanmadı. Staging uygulaması, yeni release için taze yedek/rollback kapısı ve iyzico/SMTP gerçek kabulü hâlâ gerekir.
+- Sıradaki iş: P0-D mevcut şirket checkout'un browser kabulinde provider failure/mismatch/target deletion ve mobil sonucu kapsa; sonra P0-E gerçek sandbox ve Bölüm 20 firma senaryolarına geç. Gerçek staging/provider erişimi olmadan canlı migration/deploy/satış açma.
+
 ## 23 Ekim 2026 — P0-A durum yüzdesi denetimi
 - Durum: ENGELLENDİ
 - Değişen dosyalar: `docs/AUDIT-REALITY.md`, `docs/PROGRESS.md`
