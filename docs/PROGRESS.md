@@ -279,3 +279,12 @@
 - Doğrulanan: Platform rolüyle en az iki şirket görülebiliyor; müşteri tenant yöneticisi platform API'sinden 403 alıyor; ilk platform girişi MFA kurulumu istiyor; MFA olmadan platform overview 428 veriyor; TOTP ve kurtarma kodları testleri geçiyor.
 - Açık: Hedef Bölüm 9.5 / 20.5'teki “Panele gir” impersonation, sarı banner, impersonation audit izi ve platforma geri dönüş mevcut aday kaynakta bulunmadı. Canlı platform/sirket oturumu da kabul edilmedi.
 - Sıradaki iş: Güvenli impersonation tasarımını ve acceptance kapsamını tamamla; ardından gerçek hesap akışı ve P0-E SMTP/Bölüm 20 kalan adımları.
+
+### 24 Ekim 2026 — P0 hosted Chromium kabul paketi
+- Durum: TAMAM (sentetik hosted Chromium suite); mevcut şirket checkout gerçek kullanıcı akışı, gerçek sağlayıcı ve canlı kabul açık.
+- Değişen dosyalar: `tests/reports/p0-hosted-browser-acceptance-20261024.md`, `tests/reports/p0-hosted-browser-acceptance-20261024.log`, `docs/PROGRESS.md`.
+- Komut + çıktı: `deploy/testing/run-hosted-checkout-browser-acceptance.ps1` → exit 0; **74/74 PASS**. Chromium imajı `mcr.microsoft.com/playwright:v1.64.0-noble`.
+- Test: Checkout ödeme kapalıyken kişisel/fatura verisi göndermeme; fiyatı sunucu kotasıyla gösterme; Farma/Santa/Celal slug önerileri ve elle düzenlenmiş slug'ı koruma; CSRF, veri işleme onayı, hassas tutar/kart verisini istemci gövdesine koymama ve yalnız güvenilir sağlayıcıya yönlendirme. Aynı hosted paket diğer şirket portalı, platform UI, varlık, rapor, lisans, satın alma, destek ve zamanlanmış rapor akışlarını da kapsar.
+- Kanıt yolu: `tests/reports/p0-hosted-browser-acceptance-20261024.md` ve tam çıktı `.log` dosyası.
+- Sınır: Sentetik API/iyzico; gerçek e-posta veya tahsilat yok. Genel yeni şirket checkout testi, `/subscription/checkout` mevcut firma satın alma/dönüş akışını kanıtlamaz. Santa/Farma gerçek hesapları, staging, taze yedek/rollback ve canlı ayar kabulü değildir.
+- Sıradaki iş: Checkout P0-D için mevcut şirket browser dönüş akışını ayrı kabul et; ardından P0-E SMTP/Bölüm 20 müşteri senaryolarına ve kalan platform impersonation kabuline ilerle. Üretime yayın kapıları geçmeden canlıya deploy etme.
