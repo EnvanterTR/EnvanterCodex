@@ -1439,7 +1439,7 @@ public static class PlatformEndpoints
 
         admin.MapPost("/companies", async ([FromBody] ProvisionCompanyRequest request, ClaimsPrincipal user,
             AppDbContext db, UserManager<EnvanterUser> userManager, IConfiguration configuration,
-            CancellationToken cancellationToken) =>
+            TenantProvisioningService provisioning, CancellationToken cancellationToken) =>
         {
             var companyName = request.CompanyName?.Trim();
             var slug = request.Slug?.Trim().ToLowerInvariant();
@@ -1471,30 +1471,18 @@ public static class PlatformEndpoints
             if (await db.CompanyCheckoutOrders.AnyAsync(x => x.Slug == slug && checkoutReservedStatuses.Contains(x.Status), cancellationToken))
                 return Results.Conflict(new { message = "Bu alt alan adı tamamlanmamış bir Cloud satın alma işlemi için ayrılmış." });
 
-            var owner = await userManager.FindByEmailAsync(ownerEmail);
-            var wasConfirmed = owner?.EmailConfirmed == true;
-            if (owner is null)
-            {
-                var temporaryPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) + "aA1!";
-                owner = new EnvanterUser { UserName = ownerEmail, Email = ownerEmail, EmailConfirmed = false, DisplayName = ownerName };
-                var created = await userManager.CreateAsync(owner, temporaryPassword);
-                if (!created.Succeeded)
-                {
-                    await transaction.RollbackAsync(cancellationToken);
-                    return Results.Conflict(new { message = "Yetkili hesap oluşturulamadı; e-posta adresini ve hesap durumunu kontrol edin." });
-                }
-            }
-
-            var company = new Company { Name = companyName, Slug = slug, ContactEmail = contactEmail ?? ownerEmail,
-                SecurityRequireMfa = true };
             var now = DateTimeOffset.UtcNow;
-            var subscription = new TenantSubscription {
-                CompanyId = company.Id, PlanId = plan.Id, Status = "Active", IsDemo = false,
-                StartsAt = now, EndsAt = now.AddDays(request.TermDays), PaymentReference = paymentReference
-            };
-            db.Companies.Add(company);
-            db.CompanyMemberships.Add(new CompanyMembership { CompanyId = company.Id, UserId = owner.Id, RoleKey = "owner" });
-            db.TenantSubscriptions.Add(subscription);
+            var provisioned = await provisioning.ProvisionCloudAsync(new(companyName, slug!, contactEmail ?? ownerEmail,
+                ownerName, ownerEmail, plan.Id, now, now.AddDays(request.TermDays), PaymentReference: paymentReference), cancellationToken);
+            if (provisioned is null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return Results.Conflict(new { message = "Yetkili hesap oluşturulamadı; e-posta adresini ve hesap durumunu kontrol edin." });
+            }
+            var company = provisioned.Company;
+            var owner = provisioned.Owner;
+            var subscription = provisioned.Subscription;
+            var wasConfirmed = provisioned.OwnerWasConfirmed;
             AddAudit(db, user, "PaidCompanyProvisioned", "Company", company.Id, company.Id,
                 $"{plan.Code} · {request.TermDays} gün · ödeme platform yöneticisi tarafından doğrulandı.");
             try

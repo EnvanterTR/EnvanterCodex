@@ -140,3 +140,11 @@
 - Test: Cloud dört kullanıcı kotası kaydı ve `4 / 4` gösterimi; model ayrıntısı özet/varlık/sipariş/geçmiş/ekler ve bağlantılı varlığa geçiş doğrulandı. Kaynak doğrulayıcıdaki kırılgan metin mesafesi ayrı davranış assertion'larıyla değiştirildi.
 - Kanıt yolu: `tests/reports/p0-catalog-browser-contract-acceptance-20261023.md`.
 - Sıradaki iş: P0-D'de şirket oluşturmanın panel/deneme/ödeme yollarında ortak servis şartını uygulamak. PR #25 CI proxy fixture imaj indirmesinde Docker Hub timeout nedeniyle başarısız; yerel proxy ilk `ResponseEnded` sonrası tek yeniden denemede geçti. Staging/gerçek iyzico/SMTP kapıları devam ediyor.
+
+### 23 Ekim 2026 — P0-D tek kiracı oluşturma servisi
+- Durum: TAMAM (ortak servis ve izole PostgreSQL kabulü); üretimde yayımlanmadı.
+- Değişen dosyalar: `TenantProvisioningService.cs`, Account/Platform/Checkout/CloudTrial endpoint'leri, DI kaydı, provisioning kabul testleri, ilgili iki kaynak doğrulayıcısı ve kanıt raporu.
+- Komut + çıktı: Docker web build 0 uyarı/0 hata; kabul build 4 mevcut deprecation uyarısı/0 hata. Hedefli PostgreSQL kabulü exit 0, 11/11 geçti, 2.5126 dakika.
+- Test: Şirket ekleme tek ortak metotta; başlangıç kurulumu, panel, deneme ve ödeme yolları servisi çağırıyor. Transaction yoksa işlem reddi; Identity hesabı/şirket/üyelik/aboneliğin birlikte rollback'i; ilk sahip kimlik bilgilerinin korunması; deneme geçerlilik/tekrar/eşzamanlılık, ücretli panel kurulumu, imzalı checkout ve Cloud kullanıcı kotası doğrulandı. Üç kaynak kontrolü geçti.
+- Kanıt yolu: `tests/reports/p0d-shared-tenant-provisioning-acceptance-20261023.md`, `tests/reports/shared-tenant-provisioning-20261023.log`.
+- Sıradaki iş: PR #25 uzak PostgreSQL koşusu 278/279: tek hata yeni trial rotalarının açık API envanterinde bulunmaması; açık rota listesi ve trial rate-limit sözleşmesi güncellenip doğrulanacak. Staging + gerçek iyzico/SMTP ve Bölüm 20 müşteri kabulü açık.

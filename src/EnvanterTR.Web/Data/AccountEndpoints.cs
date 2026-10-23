@@ -55,7 +55,8 @@ public static class AccountEndpoints
 
         endpoints.MapPost("/api/setup/initial-owner", async ([FromBody] InitialOwnerRequest request,
             HttpContext context, IAntiforgery antiforgery, IConfiguration configuration,
-            AppDbContext db, UserManager<EnvanterUser> userManager, CancellationToken cancellationToken) =>
+            AppDbContext db, UserManager<EnvanterUser> userManager, TenantProvisioningService provisioning,
+            CancellationToken cancellationToken) =>
         {
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
             var suppliedToken = context.Request.Headers["X-Setup-Token"].ToString();
@@ -74,7 +75,6 @@ public static class AccountEndpoints
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
             if (await db.Companies.AnyAsync(cancellationToken)) return Results.Conflict(new { message = "İlk kurulum zaten tamamlanmış." });
 
-            var company = new Company { Name = request.CompanyName.Trim() };
             var email = request.Email.Trim();
             var user = await userManager.FindByEmailAsync(email);
             if (user is not null)
@@ -102,12 +102,7 @@ public static class AccountEndpoints
                     });
                 }
             }
-            db.Companies.Add(company);
-
-            db.CompanyMemberships.Add(new CompanyMembership
-            {
-                CompanyId = company.Id, UserId = user.Id, RoleKey = "owner"
-            });
+            var company = provisioning.ProvisionInitialCompany(request.CompanyName.Trim(), user);
             try
             {
                 await db.SaveChangesAsync(cancellationToken);

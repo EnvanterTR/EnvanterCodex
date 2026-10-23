@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 
 const endpoint = readFileSync('src/EnvanterTR.Web/Data/PlatformEndpoints.cs', 'utf8');
+const provisioning = readFileSync('src/EnvanterTR.Web/Data/TenantProvisioningService.cs', 'utf8');
 const ui = readFileSync('src/EnvanterTR.Web/wwwroot/platform-admin.html', 'utf8');
 const acceptance = readFileSync('tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs', 'utf8');
 const failures = [];
@@ -12,12 +13,16 @@ for (const contract of [
   'request.PaymentVerified',
   'x.IsActive && x.DeploymentKind == "cloud"',
   'BeginTransactionAsync(IsolationLevel.Serializable',
-  'Status = "Active", IsDemo = false',
-  'RoleKey = "owner"',
-  'PaymentReference = paymentReference',
+  'provisioning.ProvisionCloudAsync',
   '"/companies/{companyId:guid}/owner-invitation/resend"'
 ]) {
   if (!endpoint.includes(contract)) failures.push(`Server provisioning contract missing: ${contract}`);
+}
+
+for (const contract of ['Status = request.IsTrial ? "Trial" : "Active", IsDemo = false',
+  'RoleKey = "owner"', 'PaymentReference = request.PaymentReference', 'SecurityRequireMfa = true',
+  'db.Database.CurrentTransaction is null']) {
+  if (!provisioning.includes(contract)) failures.push(`Shared provisioning contract missing: ${contract}`);
 }
 
 for (const contract of [

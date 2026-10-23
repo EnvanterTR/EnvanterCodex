@@ -80,7 +80,7 @@ public static class CloudTrialEndpoints
 
     private static async Task<IResult> ConfirmAsync([FromBody] ConfirmCloudTrial request, HttpContext context,
         IAntiforgery antiforgery, IConfiguration configuration, IDataProtectionProvider protection,
-        AppDbContext db, UserManager<EnvanterUser> users, CancellationToken ct)
+        AppDbContext db, UserManager<EnvanterUser> users, TenantProvisioningService provisioning, CancellationToken ct)
     {
         context.Response.Headers.CacheControl = "no-store";
         try { await antiforgery.ValidateRequestAsync(context); }
@@ -110,18 +110,12 @@ public static class CloudTrialEndpoints
         if (await db.Companies.AnyAsync(company => company.Slug == payload.Slug, ct) ||
             await db.CompanyCheckoutOrders.AnyAsync(order => order.Slug == payload.Slug && reserved.Contains(order.Status) && order.ExpiresAt > now, ct))
             return Results.Conflict(new { message = "Bu portal adresi kullanılıyor. Farklı bir adresle yeniden kayıt isteyin." });
-        if (owner is null)
-        {
-            owner = new EnvanterUser { UserName = payload.Email, Email = payload.Email, EmailConfirmed = false, DisplayName = payload.OwnerName };
-            var created = await users.CreateAsync(owner, Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) + "aA1!");
-            if (!created.Succeeded) return Results.Conflict(new { message = "Hesap oluşturulamadı. Yeniden kayıt isteyin." });
-        }
-        var company = new Company { Id = payload.RegistrationId, Name = payload.CompanyName, Slug = payload.Slug,
-            ContactEmail = payload.Email, SecurityRequireMfa = true };
-        db.Companies.Add(company);
-        db.CompanyMemberships.Add(new CompanyMembership { CompanyId = company.Id, UserId = owner.Id, RoleKey = "owner" });
-        db.TenantSubscriptions.Add(new TenantSubscription { CompanyId = company.Id, PlanId = plan.Id, Status = "Trial", IsDemo = false,
-            StartsAt = now, EndsAt = now.AddDays(AnnualCloudCatalog.TrialDays) });
+        var provisioned = await provisioning.ProvisionCloudAsync(new(payload.CompanyName, payload.Slug, payload.Email,
+            payload.OwnerName, payload.Email, plan.Id, now, now.AddDays(AnnualCloudCatalog.TrialDays),
+            IsTrial: true, CompanyId: payload.RegistrationId), ct);
+        if (provisioned is null) return Results.Conflict(new { message = "Hesap oluşturulamadı. Yeniden kayıt isteyin." });
+        var company = provisioned.Company;
+        owner = provisioned.Owner;
         db.AuditEntries.Add(new AuditEntry { CompanyId = company.Id, ActorUserId = owner.Id, Action = "CloudTrialStarted",
             TargetType = "Company", TargetId = company.Id, Details = JsonSerializer.Serialize(new { noticeVersion = NoticeVersion, trialDays = AnnualCloudCatalog.TrialDays, planId = plan.Id }) });
         try { await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); }

@@ -1,0 +1,260 @@
+ Network p0-shared-provision_acceptance Creating 
+ Network p0-shared-provision_acceptance Creating 
+ Network p0-shared-provision_acceptance Created 
+ Network p0-shared-provision_acceptance Created 
+ Container p0-shared-provision-database-1 Creating 
+ Container p0-shared-provision-database-1 Created 
+ Container p0-shared-provision-database-1 Starting 
+ Container p0-shared-provision-database-1 Started 
+ Image p0-shared-provision-acceptance Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 666B 0.1s done
+#1 DONE 0.1s
+
+#2 [internal] load build definition from Dockerfile.security-acceptance
+#2 transferring dockerfile: 871B 0.0s done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for mcr.microsoft.com/dotnet/sdk:10.0
+#3 DONE 0.2s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 134B 0.0s done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 DONE 0.0s
+
+#6 [ 1/11] FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
+#6 resolve mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa 0.1s done
+#6 DONE 0.1s
+
+#5 [internal] load build context
+#5 transferring context: 22.78MB 5.0s
+#5 transferring context: 24.41MB 5.3s done
+#5 DONE 5.3s
+
+#7 [ 5/11] COPY tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj tests/EnvanterTR.SecurityAcceptance/
+#7 CACHED
+
+#8 [ 2/11] WORKDIR /source
+#8 CACHED
+
+#9 [ 3/11] COPY global.json ./
+#9 CACHED
+
+#10 [ 4/11] COPY src/EnvanterTR.Web/EnvanterTR.Web.csproj src/EnvanterTR.Web/
+#10 CACHED
+
+#11 [ 6/11] RUN dotnet restore tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj
+#11 CACHED
+
+#12 [ 7/11] COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
+#12 DONE 0.9s
+
+#13 [ 8/11] RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
+#13 150.6   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+#13 150.7 
+#13 150.8 Build succeeded.
+#13 150.8     0 Warning(s)
+#13 150.8     0 Error(s)
+#13 150.8 
+#13 150.8 Time Elapsed 00:02:28.79
+#13 DONE 151.1s
+
+#14 [ 9/11] COPY tests/EnvanterTR.SecurityAcceptance/ tests/EnvanterTR.SecurityAcceptance/
+#14 DONE 0.1s
+
+#15 [10/11] RUN dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore
+#15 4.412   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+#15 54.10 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 54.10 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 54.10 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 54.10 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 54.51   EnvanterTR.SecurityAcceptance -> /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll
+#15 54.75 
+#15 54.76 Build succeeded.
+#15 54.76 
+#15 54.76 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 54.76 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 54.76 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 54.76 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 54.76     4 Warning(s)
+#15 54.77     0 Error(s)
+#15 54.77 
+#15 54.77 Time Elapsed 00:00:53.87
+#15 DONE 55.0s
+
+#16 [11/11] WORKDIR /source/tests/EnvanterTR.SecurityAcceptance
+#16 DONE 0.1s
+
+#17 exporting to image
+#17 exporting layers
+#17 exporting layers 5.0s done
+#17 exporting manifest sha256:6525499316b5933ed1f78716e2f020fd37abadb9221d5527e46f1a6f0847ddc5 0.0s done
+#17 exporting config sha256:096c61695b9fa05e4c8f596ab8b4f5f37c01aa97de8b0854c8d7834205d9e839 0.0s done
+#17 exporting attestation manifest sha256:41d16ef14da46eb456244fb44b294cd361b1ab76076845dbb8898c065e4da9f5 0.0s done
+#17 exporting manifest list sha256:7aa3b46a0637f0592288a7e0d3f9c6032939b69e8d49353d8d5d5d82c7a1b729 0.0s done
+#17 naming to docker.io/library/p0-shared-provision-acceptance:latest
+#17 naming to docker.io/library/p0-shared-provision-acceptance:latest done
+#17 unpacking to docker.io/library/p0-shared-provision-acceptance:latest
+#17 unpacking to docker.io/library/p0-shared-provision-acceptance:latest 2.0s done
+#17 DONE 7.2s
+
+#18 resolving provenance for metadata file
+#18 DONE 0.1s
+ Image p0-shared-provision-acceptance Built 
+ Container p0-shared-provision-database-1 Waiting 
+ Container p0-shared-provision-database-1 Healthy 
+ Container p0-shared-provision-acceptance-run-af4104e7a6c0 Creating 
+ Container p0-shared-provision-acceptance-run-af4104e7a6c0 Created 
+Test run for /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.01] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.63]   Discovering: EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:01.15]   Discovered:  EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:01.29]   Starting:    EnvanterTR.SecurityAcceptance
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[35]
+      No XML encryptor configured. Key {377b3af9-ad5d-48b5-8842-4a3d69d299d6} may be persisted to storage in unencrypted form.
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (134ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_Assets_CompanyId_DefaultLocationCatalogId"
+      ' from migration 'AddAssetModelNumbersAndDefaultLocation' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_AuditEntries_OccurredAt"
+      ' from migration 'AddGlobalAuditTimelineIndex' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Program[0]
+      Signed iyzico checkout webhook did not match the retrieved payment result. Checkout f9fa65db-e7d8-40bf-8632-0dd13e5a95e4
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Public_checkout_uses_server_price_verifies_provider_and_provisions_once [7 s]
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Shared_tenant_provisioning_requires_transaction_and_rolls_back_all_new_records [247 ms]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Cloud_plan_user_quota_is_public_and_enforced_without_removing_existing_members [3 s]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Cloud_trial_expired_email_proof_and_withdrawn_plan_create_no_accounts [6 s]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Platform_can_provision_a_paid_cloud_company_owner_and_retryable_invitation [3 s]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Verified_cloud_trial_creates_exactly_fifteen_days_once_and_requires_mfa [4 s]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Cloud_trial_defaults_closed_requires_csrf_and_rejects_unverified_tokens [7 s]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Concurrent_distinct_cloud_trials_for_one_email_grant_only_one_trial [4 s]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Shared_initial_company_provisioning_preserves_owner_and_creates_no_subscription [79 ms]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Verified_cloud_trial_preserves_existing_owner_credentials_and_rejects_tampered_proof [6 s]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+[xUnit.net 00:02:28.29]   Finished:    EnvanterTR.SecurityAcceptance
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Concurrent_cloud_trial_confirmation_is_idempotent_without_extending_trial [5 s]
+
+Test Run Successful.
+Total tests: 11
+     Passed: 11
+ Total time: 2.5126 Minutes
