@@ -264,3 +264,10 @@
 - Sonuç: Migration hazır cevabı aday checkout/trial kodunun canlıya dağıtıldığını kanıtlamıyor. Canlıya mutasyon yapılmadı.
 - Sınır: Bu public probe SMTP gerçek teslimatını doğrulamaz. Plan yayınlama, provider/SMTP doğrulaması, staging, yeni yedek ve rollback provası açık.
 - Sıradaki iş: Checkout tarayıcı kabulünü ve Hedef Bölüm 20 müşteri senaryolarını ilerlet; bu kapılar geçmeden üretime dağıtma.
+
+### 24 Ekim 2026 — P0 Bölüm 20.4 tenant sınırı kabulü
+- Durum: TAMAM (sentetik iki şirket/izole PostgreSQL); gerçek Santa/Farma kabulü açık.
+- Test: `Role_downgrade_revocation_and_company_suspension_take_effect_on_the_next_request`, `Asset_single_edit_is_tenant_scoped_version_checked_and_written_to_history`, `Existing_company_sessions_cannot_be_reused_on_another_tenant_subdomain` — **3/3**, exit 0, 2.1753 dakika.
+- Kanıt: `tests/reports/p0-section20-tenant-isolation-acceptance-20261024.md` ve `p0-section20-tenant-isolation-20261024.log`.
+- Sınır: Cross-tenant varlık okuma/yazma 404; başka tenant subdomain'inde oturum 401. Sentetik kabul canlı Santa/Farma, üçüncü şirket veya Bölüm 20'nin kalan iş akışlarını kanıtlamaz. Canlı veriye dokunulmadı.
+- Sıradaki iş: Gerçek/interactive checkout browser akışı ve müşteri E2E; mevcut Windows tarayıcı bilgisayar-kullanım aracı URL politikası hatası verdiği için browser incelemesi yapılamadı. Kullanılabilir başka güvenli kabul yüzeyiyle devam et.
