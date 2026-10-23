@@ -172,3 +172,12 @@
 - Test: On yapılandırmada host, port, gönderici, HTTPS bağlantı, eksik credential çifti ve TLS doğrulaması; açık trial durumu ile sağlık tutarlılığı; bozuk ayarda mail gönderilmeden 503; sırların yanıtta bulunmaması; parola kurtarma/gerçek yakalayıcı trial e-postası ve sağlık yetkisi doğrulandı.
 - Kanıt yolu: `tests/reports/p0e-smtp-readiness-acceptance-20261023.md`, SMTP iki logu ve kaynak kontrol JSON'u.
 - Sıradaki iş: Ücretli şirket oluşturulduktan sonra ilk davet e-postası gönderilemezse görünür başarısızlık, güvenli teşhis logu ve yeniden gönderimle aynı şirket/üyelik/aboneliğin korunması kabulünü tamamlamak. Staging/gerçek sağlayıcı/SMTP ve Bölüm 20 kapıları açık.
+
+### 23 Ekim 2026 — P0-E ücretli şirket davetinde hata ve yeniden gönderim
+- Durum: TAMAM (yakalanmış SMTP ve izole PostgreSQL kabulü); gerçek SMTP teslimi açık.
+- Değişen dosyalar: `PlatformEndpoints.cs`, mevcut provisioning kabul testi, log/rapor ve progress.
+- Komut + çıktı: Web build 0 uyarı/0 hata; test build dört mevcut deprecation uyarısı/0 hata. `p0-owner-mail` Compose kabulü exit 0, 2/2 geçti, 55.0757 saniye. İlgili iki kaynak kontrolü geçti.
+- Test: İlk mail hatasında `201/invitationSent=false` ve görünür mesaj; mail yeniden gönderimi hata durumunda `503`; yapılandırma düzeldikten sonra aynı sahibin daveti gönderiliyor. Tek şirket/owner üyelik/abonelik korunuyor. Güvenli warning yalnız şirket ID ve exception türü içeriyor.
+- Kanıt yolu: `tests/reports/p0e-paid-owner-invitation-retry-20261023.md`, `tests/reports/paid-owner-invitation-failure-20261023.log`.
+- Uzak kontrol: Önceki `06cbd5d` adayında tam PostgreSQL CI 281/281 geçti. Aynı koşunun Linux kaynak işi eski Cloud kotasızlık assertion'ında başarısızdı; bu assertion `17b54f1` içinde düzeltildi. Yeni SMTP adayı için tam CI ayrıca gerekir.
+- Sıradaki iş: Bu turdaki üç testli paketi PR #25'e göndermek; mevcut deneme şirketini/verilerini koruyarak yıllık ücretli aboneliğe geçiren self-servis ödeme açığını kaynak denetimiyle belgelemek ve P0-D kapsamında gidermek.

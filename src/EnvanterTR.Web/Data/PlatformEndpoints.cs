@@ -1442,7 +1442,7 @@ public static class PlatformEndpoints
 
         admin.MapPost("/companies", async ([FromBody] ProvisionCompanyRequest request, ClaimsPrincipal user,
             AppDbContext db, UserManager<EnvanterUser> userManager, IConfiguration configuration,
-            TenantProvisioningService provisioning, CancellationToken cancellationToken) =>
+            TenantProvisioningService provisioning, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var companyName = request.CompanyName?.Trim();
             var slug = request.Slug?.Trim().ToLowerInvariant();
@@ -1514,7 +1514,8 @@ public static class PlatformEndpoints
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                // Company provisioning is committed; platform administrators can retry the owner notice.
+                logger.LogWarning("Paid company owner invitation failed. Company {CompanyId}; error type: {ErrorType}",
+                    company.Id, exception.GetType().Name);
             }
 
             var rootDomain = configuration["TenantRouting:RootDomain"]?.Trim().Trim('.');
@@ -1530,7 +1531,7 @@ public static class PlatformEndpoints
 
         admin.MapPost("/companies/{companyId:guid}/owner-invitation/resend", async (Guid companyId,
             UserManager<EnvanterUser> userManager, AppDbContext db, IConfiguration configuration,
-            CancellationToken cancellationToken) =>
+            ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var owner = await (from membership in db.CompanyMemberships.AsNoTracking()
                 join ownerAccount in db.Users.AsNoTracking() on membership.UserId equals ownerAccount.Id
@@ -1556,6 +1557,8 @@ public static class PlatformEndpoints
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
+                logger.LogWarning("Paid company owner invitation retry failed. Company {CompanyId}; error type: {ErrorType}",
+                    companyId, exception.GetType().Name);
                 return Results.Problem("E-posta gönderilemedi. E-posta sunucusu ayarlarını kontrol edip yeniden deneyin.",
                     statusCode: StatusCodes.Status503ServiceUnavailable);
             }

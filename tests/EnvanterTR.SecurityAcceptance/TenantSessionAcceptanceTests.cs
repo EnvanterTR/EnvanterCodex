@@ -4615,8 +4615,10 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         }
     }
 
-    [Fact]
-    public async Task Platform_can_provision_a_paid_cloud_company_owner_and_retryable_invitation()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Platform_can_provision_a_paid_cloud_company_owner_and_retryable_invitation(bool firstDeliveryFails)
     {
         var plan = new SubscriptionPlan
         {
@@ -4647,16 +4649,22 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             termDays = 365, paymentReference = $"acceptance-{Guid.NewGuid():N}", paymentVerified = true
         };
 
-        using (var created = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/companies",
-                   System.Net.Http.Json.JsonContent.Create(requestBody), requestToken, antiforgeryCookie))
+        var configuration = _factory!.Services.GetRequiredService<IConfiguration>();
+        var originalPort = configuration["Email:Smtp:Port"];
+        if (firstDeliveryFails) configuration["Email:Smtp:Port"] = "invalid";
+        try
         {
+            using var created = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/companies",
+                System.Net.Http.Json.JsonContent.Create(requestBody), requestToken, antiforgeryCookie);
             Assert.Equal(HttpStatusCode.Created, created.StatusCode);
             using var payload = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
             Assert.Equal(slug, payload.RootElement.GetProperty("slug").GetString());
             Assert.Equal(365, (payload.RootElement.GetProperty("endsAt").GetDateTimeOffset() -
                 payload.RootElement.GetProperty("startsAt").GetDateTimeOffset()).Days);
-            Assert.True(payload.RootElement.GetProperty("invitationSent").GetBoolean());
+            Assert.Equal(!firstDeliveryFails, payload.RootElement.GetProperty("invitationSent").GetBoolean());
+            if (firstDeliveryFails) Assert.Contains("e-posta gönderilemedi", payload.RootElement.GetProperty("message").GetString());
         }
+        finally { configuration["Email:Smtp:Port"] = originalPort; }
 
         Guid companyId;
         Guid ownerId;
@@ -4678,7 +4686,20 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(requestBody.paymentReference, subscription.PaymentReference);
         }
 
-        Assert.Contains(_smtpCapture.Messages, message => message.Contains(email, StringComparison.OrdinalIgnoreCase));
+        if (firstDeliveryFails)
+        {
+            Assert.Empty(_smtpCapture.Messages);
+            configuration["Email:Smtp:Port"] = "invalid";
+            try
+            {
+                using var failedRetry = await SendAsPlatformAdminRequestAsync(HttpMethod.Post,
+                    $"/api/platform/companies/{companyId}/owner-invitation/resend", new StringContent("{}", Encoding.UTF8, "application/json"),
+                    requestToken, antiforgeryCookie);
+                Assert.Equal(HttpStatusCode.ServiceUnavailable, failedRetry.StatusCode);
+            }
+            finally { configuration["Email:Smtp:Port"] = originalPort; }
+        }
+        else Assert.Contains(_smtpCapture.Messages, message => message.Contains(email, StringComparison.OrdinalIgnoreCase));
         using (var resent = await SendAsPlatformAdminRequestAsync(HttpMethod.Post,
                    $"/api/platform/companies/{companyId}/owner-invitation/resend", new StringContent("{}", Encoding.UTF8, "application/json"),
                    requestToken, antiforgeryCookie))
