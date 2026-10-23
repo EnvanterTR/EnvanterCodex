@@ -298,3 +298,13 @@
 - Kanıt: `tests/reports/existing-company-browser-acceptance-20261024.md`, son/ilk/redirect logları ve `existing-company-browser-20261024/checkout-390.png`. Görsel incelendi. Geçici Compose DB/ağ temizlendi.
 - Sınır: Gerçek iyzico tahsilatı/e-posta yok; staging, taze yedek/rollback, tam ücretli plan değişimi ve canlı Santa/Farma/Demo3 kabulü açık. Canlı deploy yapılmadı.
 - Sıradaki iş: PR #25'te uzak CI doğrulaması; P0-D e-posta doğrulama açığı ve gerçek sağlayıcı, ardından P0-E SMTP/Bölüm 20 kalan adımları.
+
+### 24 Ekim 2026 — P0-D checkout kullanıcı kotası gösterimi
+- Durum: TAMAM (yerel ürün düzeltmesi + Chromium kabulü); yeni PR CI/canlı kabulü açık.
+- Değişen dosyalar: public `checkout.html/js`, hedefli Chromium senaryosu ve mevcut hosted suite/Docker bağlantısı; kabul raporu ve loglar.
+- Hata: 4 kullanıcılı yayımlı paket sipariş özetinde `Sınırsız` görünüyordu; düzeltme öncesi Chromium exit 1 ile yeniden üretildi. Açıklaması olmayan paket de aynı yanlış ifadeyi gösteriyordu.
+- Düzeltme: Pozitif tamsayı API kotası gösterilir; yalnız açık `null` sınırsızdır. Eksik/geçersiz kota `—`, boş açıklama boş kalır.
+- Test: 1/4/10/2000/null/eksik × 5 dil = **30/30**, exit 0; sıfır ödeme POST'u ve browser JS hatası. Ara testte Node/Chromium ICU ayırıcı farkı yakalandı; sayı değeri bağımsız doğrulandı ve hata logu saklandı. Hosted checkout kaynak doğrulayıcıları ve UI inventory check (2.269 kontrol) geçti. Docker .NET acceptance build exit 0 (değişmeyen C# katmanları cache); `git diff --check` geçti.
+- Kanıt: `tests/reports/checkout-user-quota-acceptance-20261024.md`, before/after/ICU/build logları.
+- CI: Önceki `dfdb36e` run `40035243704` Windows başarılı; iki Linux işi son kontrolde çalışıyor. Bu paket önce yerel commit olur; devam eden CI'ı iptal etmemek için sonraki toplu PR güncellemesine bırakılır.
+- Sıradaki iş: P0-D doğrudan satın almada ödeme öncesi e-posta doğrulaması; aktif CI sonucu ve gerçek iyzico/SMTP kabulü. Canlıya yayın yapılmadı.

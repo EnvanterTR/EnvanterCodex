@@ -167,6 +167,7 @@ try {
   await new Promise(resolve => server.close(resolve));
 }
 
+await import('./checkout-user-quota.mjs');
 await import('./command-palette.mjs');
 await import('./company-portal-login.mjs');
 await import('./company-profile-portal.mjs');

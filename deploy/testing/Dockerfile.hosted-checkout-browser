@@ -4,6 +4,7 @@ WORKDIR /acceptance
 COPY deploy/testing/hosted-checkout-browser/package.json deploy/testing/hosted-checkout-browser/package-lock.json ./
 RUN npm ci --omit=dev
 COPY deploy/testing/hosted-checkout-browser/hosted-checkout.mjs ./
+COPY deploy/testing/hosted-checkout-browser/checkout-user-quota.mjs ./
 COPY deploy/testing/hosted-checkout-browser/command-palette.mjs ./
 COPY deploy/testing/hosted-checkout-browser/company-portal-login.mjs ./
 COPY deploy/testing/hosted-checkout-browser/company-profile-portal.mjs ./

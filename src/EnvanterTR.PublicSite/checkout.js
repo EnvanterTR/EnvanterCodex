@@ -249,7 +249,10 @@
       }
       term = Number(plan.annualPrice) > 0 ? 'annual' : 'monthly';
       $('#planName').textContent = plan.name;
-      $('#planDescription').textContent = plan.description || copy.unlimited;
+      $('#planDescription').textContent = plan.description || '';
+      $('#planUserLimit').textContent = plan.maxLoginUsers === null ? copy.unlimited :
+        Number.isSafeInteger(plan.maxLoginUsers) && plan.maxLoginUsers > 0
+          ? new Intl.NumberFormat(document.documentElement.lang).format(plan.maxLoginUsers) : '—';
       refreshPrice();
       $('#checkoutLayout').classList.remove('hidden');
       if (!paymentAvailable) {
