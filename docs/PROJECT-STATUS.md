@@ -1024,6 +1024,8 @@ Tenant yönlendirme için yerel `public-site` konteynerine `Host: firma.envanter
 Süresi dolmuş denemede şirket sahibi, portal uyarısındaki bağlantıdan `/subscription/checkout` sayfasını açıp yıllık Cloud paketi seçebilir. Fatura ve güvenlik alanları sunucu tarafında doğrulanır; parola/MFA sağlayıcıya gönderilmez. Ödeme başlatıldığında sipariş mevcut şirket UUID'sine ve oturumdaki sahibine bağlanır. Var olan şirket/tenant, portal, üyelik ve varlıklar için yeni hesap açılmaz. Diğer şirket üyeleri ödeme API'sine erişemez.
 
 İzole PostgreSQL kabulünde bu form ve mevcut şirket ödeme akışının testleri 9/9 geçti. Kanıt: `tests/reports/company-checkout-page-acceptance-20261023.md` ve komut logları. Gerçek iyzico, tarayıcı E2E, e-posta teslimi, staging, güncel yedek/geri dönüş provası ve Santa/Farma/Demo3 kabulü henüz yoktur. Yeni tam CI sonucu alınmadan ve üretim güvenlik kapıları geçilmeden canlı deploy/satışa hazır kabulü verilmedi.
+
+PR #25'e gönderilen `23f7d978` commit'inin ilk uzak CI'sında statik UI envanter adımı bayattı. `docs/ui-inventory.md` 2.269 güncel kontrolle yeniden üretildi ve yerel `--check` geçti. İlk run `40003911832` içinde yalnız bu adım başarısız, Windows ve PostgreSQL işleri hâlâ çalışıyordu. Envanter düzeltme commit'i ve güncel head'in 3/3 CI sonucu bekleniyor; sonuç alınmadan PR doğrulanmış sayılmıyor.
 ## 20 Ekim 2026 — gecikmeli seçim yanıtları
 
 - Üst varlık aramasında eski HTTP yanıtının yeni seçenekleri değiştirmesi kontrollü Chromium gecikmesiyle yeniden üretildi. İstek sırası, varlık, açık pencere ve oturum bağlamı denetleniyor; pencereyi kapatıp yeniden açmak eski aramayı geçersiz kılıyor.

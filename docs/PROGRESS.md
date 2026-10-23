@@ -215,3 +215,11 @@
 - Kanıt yolu: `tests/reports/company-checkout-page-build-20261023.log`, `company-checkout-page-regression-20261023.log`, `company-checkout-page-first-build-20261023.log`, `company-checkout-page-acceptance-20261023.md`.
 - Sınır: Gerçek iyzico kart/merchant callback'i, interaktif tarayıcı akışı, SMTP/inbox, staging, yeni doğrulanmış yedek ve geri dönüş provası ile Santa/Farma/Demo3 uçtan uca kabulü yapılmadı. Canlı deploy yapılmadı.
 - Sıradaki iş: Tarayıcıda bu formun tenant sahibi, hata/başarılı ödeme dönüşü ve mobil görünüm kabulini eklemek; açık checkout concurrency/failure senaryolarını tamamlamak. Mevcut PR #25 taslak adayına yeni değişikliği ekleyip tam uzak CI'ı çalıştırmak.
+
+### 23 Ekim 2026 — checkout sayfası envanter CI düzeltmesi
+- Durum: TAMAM (statik envanter yenilendi); tam uzak CI devam ediyor.
+- Değişen dosyalar: `docs/ui-inventory.md`, `docs/PROGRESS.md`.
+- Komut + çıktı: İlk yeni PR CI'da `Verify the static UI inventory matches the source` adımı başarısızdı; kök neden checkout bağlantısı eklendikten sonra üretilmiş statik envanterin eski kalması. `node tools/Generate-UiInventory.mjs` 2.269 kontrol/65 rota/58 bağlantı/955 düğme yazdı; `node tools/Generate-UiInventory.mjs --check` geçti.
+- CI: Run `40003911832` için bu kayıt anında Windows deployment ve Linux PostgreSQL işleri devam ediyordu; Linux statik envanter adımı başarısızdı. Bu alt adım düzeltildi, fakat yeni commit'in tam CI sonucu bekleniyor.
+- Kanıt: `docs/ui-inventory.md`; GitHub run `https://github.com/EnvanterTR/EnvanterCodex/actions/runs/40003911832`.
+- Sıradaki iş: Envanter commit'ini PR #25 taslak dalına itip yeni head revision için 3/3 CI sonucunu doğrulamak.
