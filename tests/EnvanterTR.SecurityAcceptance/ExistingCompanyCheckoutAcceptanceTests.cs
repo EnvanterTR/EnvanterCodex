@@ -315,12 +315,128 @@ public sealed partial class TenantSessionAcceptanceTests
         Assert.DoesNotContain(entity.GetForeignKeys(), key => key.Properties.Any(property => property.Name == nameof(CompanyCheckoutOrder.TargetCompanyId)));
     }
 
+    [Fact]
+    public async Task Existing_company_checkout_rejects_provider_result_mismatch_without_activation()
+    {
+        var seed = await SeedExistingCheckout("trial");
+        var provider = new ExistingCheckoutProvider { ResultCurrency = "USD" };
+        using var factory = ExistingCheckoutFactory(provider);
+        using var owner = ExistingCheckoutClient(factory);
+        await ConfigureTrialCsrf(owner);
+        var request = ExistingPurchase(seed.Plan, seed.Code);
+        using var initialized = await owner.PostAsJsonAsync("/api/subscription/checkout/initialize", request);
+        Assert.Equal(HttpStatusCode.OK, initialized.StatusCode);
+
+        using var anonymous = factory.CreateClient();
+        using var callback = await anonymous.PostAsync("/api/checkout/callback",
+            new FormUrlEncodedContent(new Dictionary<string, string> { ["token"] = provider.Token }));
+
+        Assert.Equal(HttpStatusCode.BadRequest, callback.StatusCode);
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var order = await db.CompanyCheckoutOrders.SingleAsync(item => item.Id == request.CheckoutId);
+        Assert.Equal("PaymentStarted", order.Status);
+        Assert.Equal(_companyId, order.TargetCompanyId);
+        Assert.Null(order.PaymentReference);
+        Assert.Equal(seed.Previous.Id, (await db.TenantSubscriptions.SingleAsync(item => item.CompanyId == _companyId)).Id);
+        Assert.False(await db.TenantSubscriptions.AnyAsync(item => item.CompanyId == _companyId && item.Status == "Active"));
+    }
+
+    [Fact]
+    public async Task Existing_company_checkout_does_not_activate_when_provider_result_is_unavailable()
+    {
+        var seed = await SeedExistingCheckout("trial");
+        var provider = new ExistingCheckoutProvider { ResultStatus = "failure" };
+        using var factory = ExistingCheckoutFactory(provider);
+        using var owner = ExistingCheckoutClient(factory);
+        await ConfigureTrialCsrf(owner);
+        var request = ExistingPurchase(seed.Plan, seed.Code);
+        using var initialized = await owner.PostAsJsonAsync("/api/subscription/checkout/initialize", request);
+        Assert.Equal(HttpStatusCode.OK, initialized.StatusCode);
+
+        using var anonymous = factory.CreateClient();
+        using var callback = await anonymous.PostAsync("/api/checkout/callback",
+            new FormUrlEncodedContent(new Dictionary<string, string> { ["token"] = provider.Token }));
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, callback.StatusCode);
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var order = await db.CompanyCheckoutOrders.SingleAsync(item => item.Id == request.CheckoutId);
+        Assert.Equal("PaymentStarted", order.Status);
+        Assert.Null(order.PaymentReference);
+        Assert.Equal(seed.Previous.Id, (await db.TenantSubscriptions.SingleAsync(item => item.CompanyId == _companyId)).Id);
+        Assert.False(await db.TenantSubscriptions.AnyAsync(item => item.CompanyId == _companyId && item.Status == "Active"));
+    }
+
+    [Fact]
+    public async Task Existing_company_checkout_does_not_activate_when_target_company_is_deactivated_before_callback()
+    {
+        var seed = await SeedExistingCheckout("trial");
+        var provider = new ExistingCheckoutProvider();
+        using var factory = ExistingCheckoutFactory(provider);
+        using var owner = ExistingCheckoutClient(factory);
+        await ConfigureTrialCsrf(owner);
+        var request = ExistingPurchase(seed.Plan, seed.Code);
+        using var initialized = await owner.PostAsJsonAsync("/api/subscription/checkout/initialize", request);
+        Assert.Equal(HttpStatusCode.OK, initialized.StatusCode);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Companies.Where(company => company.Id == _companyId)
+            .ExecuteUpdateAsync(update => update.SetProperty(company => company.IsActive, false));
+        using var anonymous = factory.CreateClient();
+        using var callback = await anonymous.PostAsync("/api/checkout/callback",
+            new FormUrlEncodedContent(new Dictionary<string, string> { ["token"] = provider.Token }));
+
+        Assert.Equal(HttpStatusCode.OK, callback.StatusCode);
+        var order = await db.CompanyCheckoutOrders.SingleAsync(item => item.Id == request.CheckoutId);
+        Assert.Equal("ProvisioningFailed", order.Status);
+        Assert.Null(order.CompanyId);
+        Assert.Equal(_companyId, order.TargetCompanyId);
+        Assert.Equal(provider.PaymentId, order.PaymentReference);
+        Assert.Equal(seed.Previous.Id, (await db.TenantSubscriptions.SingleAsync(item => item.CompanyId == _companyId)).Id);
+        Assert.False(await db.TenantSubscriptions.AnyAsync(item => item.CompanyId == _companyId && item.Status == "Active"));
+    }
+
+    [Fact]
+    public async Task Existing_company_checkout_does_not_create_a_replacement_when_target_company_is_deleted()
+    {
+        var seed = await SeedExistingCheckout("trial");
+        var provider = new ExistingCheckoutProvider();
+        using var factory = ExistingCheckoutFactory(provider);
+        using var owner = ExistingCheckoutClient(factory);
+        await ConfigureTrialCsrf(owner);
+        var request = ExistingPurchase(seed.Plan, seed.Code);
+        using var initialized = await owner.PostAsJsonAsync("/api/subscription/checkout/initialize", request);
+        Assert.Equal(HttpStatusCode.OK, initialized.StatusCode);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var originalSlug = await db.Companies.Where(company => company.Id == _companyId)
+            .Select(company => company.Slug).SingleAsync();
+        Assert.Equal(1, await db.Companies.Where(company => company.Id == _companyId).ExecuteDeleteAsync());
+        using var anonymous = factory.CreateClient();
+        using var callback = await anonymous.PostAsync("/api/checkout/callback",
+            new FormUrlEncodedContent(new Dictionary<string, string> { ["token"] = provider.Token }));
+
+        Assert.Equal(HttpStatusCode.OK, callback.StatusCode);
+        Assert.False(await db.Companies.AnyAsync(company => company.Slug == originalSlug));
+        var order = await db.CompanyCheckoutOrders.SingleAsync(item => item.Id == request.CheckoutId);
+        Assert.Equal("ProvisioningFailed", order.Status);
+        Assert.Null(order.CompanyId);
+        Assert.Equal(_companyId, order.TargetCompanyId);
+        Assert.Equal(provider.PaymentId, order.PaymentReference);
+        Assert.False(await db.TenantSubscriptions.AnyAsync(item => item.CompanyId == _companyId && item.Status == "Active"));
+    }
+
     private sealed class ExistingCheckoutProvider : HttpMessageHandler
     {
         public string Token { get; } = $"existing-token-{Guid.NewGuid():N}";
         public string PaymentId { get; } = $"existing-payment-{Guid.NewGuid():N}";
         public int Initializations { get; private set; }
         public decimal Amount { get; private set; }
+        public string ResultStatus { get; init; } = "success";
+        public string ResultCurrency { get; init; } = "TRY";
         private string? _conversation;
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
@@ -336,8 +452,8 @@ public sealed partial class TenantSessionAcceptanceTests
             else
             {
                 Assert.Equal(Token, body.RootElement.GetProperty("token").GetString());
-                result = new { status = "success", token = Token, conversationId = _conversation, basketId = _conversation,
-                    price = Amount, paidPrice = Amount, currency = "TRY", fraudStatus = 1, paymentStatus = "SUCCESS", paymentId = PaymentId };
+                result = new { status = ResultStatus, token = Token, conversationId = _conversation, basketId = _conversation,
+                    price = Amount, paidPrice = Amount, currency = ResultCurrency, fraudStatus = 1, paymentStatus = "SUCCESS", paymentId = PaymentId };
             }
             return new(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(result), Encoding.UTF8, "application/json") };
         }

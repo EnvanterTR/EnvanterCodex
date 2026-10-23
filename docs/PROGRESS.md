@@ -248,3 +248,12 @@
 - Komut + çıktı: web build 0 uyarı/0 hata, test derlemesi 4 mevcut deprecation uyarısı/0 hata. İzole `p0-checkout-page` PostgreSQL'de paralel callback testi 1/1; bütün existing-company kapsamı 10/10 geçti. Hosted Chromium acceptance imajı exit 0 ile tamamlandı; aynı koşunun tam çıktısı `tests/reports/company-checkout-hosted-chromium-20261023.log` dosyasına alınıyor. 2.246 locale ve 2.269 UI kontrolü doğrulandı; `git diff --check` log sonu whitespace temizliği sonrası tekrarlanacak.
 - Kanıt yolu: `tests/reports/company-checkout-page-concurrent-callback-20261023.log` (ilk race), `company-checkout-concurrent-callback-20261023.log` (düzeltme 1/1), `company-checkout-page-regression-20261023.log` (10/10).
 - Sıradaki iş: Kanıt loglarının satır sonlarını normalize edip paketi PR #25 taslak dalına eklemek; yeni head'de 3/3 CI doğrulamak.
+
+### 24 Ekim 2026 — P0-D mevcut şirket sağlayıcı güvenlik kapıları
+- Durum: TAMAM (hedefli izole API/veritabanı kabulü); tarayıcı/gerçek sağlayıcı/staging hâlâ açık.
+- Değişen dosyalar: `ExistingCompanyCheckoutAcceptanceTests.cs`, `docs/P0-CHECKOUT-GAPS.md`, bu ilerleme kaydı ve `tests/reports/p0d-existing-company-provider-guards-acceptance-20261024.md`.
+- Komut + çıktı: Mevcut şirket checkout hedefli Compose kabulü 7/7 geçti; exit 0, 1.683 dakika. `git diff --check` geçti.
+- Kapsam: Yanlış para birimi sağlayıcı sonucu, başarısız/erişilemeyen sağlayıcı sonucu, callback öncesi şirket devre dışı bırakma ve hedef şirketi callback öncesi gerçekten silme. Hiçbir senaryoda abonelik etkinleşmiyor; silinen kiracı yeniden oluşturulmuyor. Başarısız sağlayıcı sonucu güvenli biçimde 503 veriyor.
+- Kanıt: `tests/reports/p0d-existing-company-provider-guards-acceptance-20261024.md`.
+- Sınır: Sentetik sağlayıcı ve izole API/DB; interaktif browser, gerçek iyzico/SMTP, staging/geri dönüş ve tam plan değişimi yaşam döngüsü kanıtı değildir.
+- Sıradaki iş: Mevcut şirket checkout için gerçek sunucu-rendered sayfa/form tarayıcı kabulünü tamamlamak; değişiklikleri PR #25'e gönderip son head CI'ını doğrulamak.
