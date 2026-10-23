@@ -57,9 +57,9 @@ public sealed partial class TenantSessionAcceptanceTests
             });
         });
 
-    private HttpClient ExistingCheckoutClient(WebApplicationFactory<Program> factory, Guid? company = null)
+    private HttpClient ExistingCheckoutClient(WebApplicationFactory<Program> factory, Guid? company = null, bool allowAutoRedirect = true)
     {
-        var client = factory.CreateClient();
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = allowAutoRedirect });
         client.DefaultRequestHeaders.Add("X-Acceptance-User", _userId.ToString());
         client.DefaultRequestHeaders.Add("X-Acceptance-Company", (company ?? _companyId).ToString());
         client.DefaultRequestHeaders.Add("X-Acceptance-Role", "owner");
@@ -70,6 +70,75 @@ public sealed partial class TenantSessionAcceptanceTests
         Guid.NewGuid(), "Ignored customer supplied company", "ignored-slug", null, "Synthetic", "Owner",
         "ignored@example.invalid", "+905550000002", "10000000146", "Synthetic Street 2", "Istanbul", "Turkey", "34000",
         plan.Id, "annual", true, "cloud-checkout-data-v1", CurrentPassword: ExistingCheckoutPassword, TwoFactorCode: code);
+
+    [Fact]
+    public async Task Existing_company_checkout_page_is_owner_scoped_and_available_after_trial_expiry()
+    {
+        var seed = await SeedExistingCheckout("expired");
+        var provider = new ExistingCheckoutProvider();
+        using var factory = ExistingCheckoutFactory(provider);
+        using var owner = ExistingCheckoutClient(factory);
+
+        using var page = await owner.GetAsync("/subscription/checkout?lang=en&theme=dark");
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        Assert.Equal(true, page.Headers.CacheControl?.NoStore);
+        Assert.True(page.Headers.TryGetValues("Referrer-Policy", out var referrerPolicies));
+        Assert.Equal("no-referrer", referrerPolicies!.Single());
+        var html = await page.Content.ReadAsStringAsync();
+        Assert.Contains("Annual company subscription", html);
+        Assert.Contains("Annual existing company", html);
+        Assert.Contains("4,200.00 TRY", html);
+        Assert.Contains("350.00 TRY", html);
+        Assert.Contains("12-month plan", html);
+        Assert.Contains("/subscription/checkout", html);
+        Assert.Contains("name=\"currentPassword\"", html);
+        Assert.Contains("name=\"twoFactorCode\"", html);
+        Assert.DoesNotContain(ExistingCheckoutPassword, html);
+        Assert.DoesNotContain(seed.Code, html);
+
+        using var nonOwnerFactory = ExistingCheckoutFactory(new ExistingCheckoutProvider());
+        using var nonOwner = ExistingCheckoutClient(nonOwnerFactory);
+        await using (var scope = nonOwnerFactory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await db.CompanyMemberships.Where(member => member.CompanyId == _companyId && member.UserId == _userId)
+                .ExecuteUpdateAsync(update => update.SetProperty(member => member.RoleKey, "admin"));
+        }
+        using var forbidden = await nonOwner.GetAsync("/subscription/checkout");
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+        Assert.Equal(0, provider.Initializations);
+    }
+
+    [Fact]
+    public async Task Existing_company_checkout_form_posts_verified_annual_purchase_to_provider()
+    {
+        var seed = await SeedExistingCheckout("expired");
+        var provider = new ExistingCheckoutProvider();
+        using var factory = ExistingCheckoutFactory(provider);
+        using var owner = ExistingCheckoutClient(factory, allowAutoRedirect: false);
+        await ConfigureTrialCsrf(owner);
+        var checkoutId = Guid.NewGuid();
+        using var response = await owner.PostAsync("/subscription/checkout", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["checkoutId"] = checkoutId.ToString(), ["planId"] = seed.Plan.Id.ToString(), ["lang"] = "tr", ["theme"] = "dark",
+            ["firstName"] = "Farma", ["lastName"] = "Owner", ["phone"] = "+905550000002", ["identityNumber"] = "10000000146",
+            ["billingAddress"] = "Synthetic Street 2", ["city"] = "Istanbul", ["country"] = "Turkey", ["zipCode"] = "34000",
+            ["acknowledged"] = "true", ["currentPassword"] = ExistingCheckoutPassword, ["twoFactorCode"] = seed.Code
+        }));
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("https://sandbox-api.iyzipay.com/checkoutform/synthetic-session", response.Headers.Location!.AbsoluteUri);
+        Assert.Equal(1, provider.Initializations);
+        Assert.Equal(4200m, provider.Amount);
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var order = await db.CompanyCheckoutOrders.SingleAsync(item => item.Id == checkoutId);
+        Assert.Equal(_companyId, order.TargetCompanyId);
+        Assert.Equal(_userId, order.RequestedByUserId);
+        Assert.Equal("PaymentStarted", order.Status);
+        Assert.Equal(4200m, order.Amount);
+        Assert.Equal("TRY", order.Currency);
+        Assert.Equal(0, await db.Companies.CountAsync(company => company.Slug == "ignored-slug"));
+    }
 
     [Theory]
     [InlineData("trial")]

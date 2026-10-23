@@ -243,6 +243,11 @@ app.Use(async (context, next) =>
     {
         headers.CacheControl = "no-store, private";
     }
+    if (context.Request.Path.StartsWithSegments("/subscription/checkout"))
+    {
+        headers.CacheControl = "no-store, private";
+        headers["Referrer-Policy"] = "no-referrer";
+    }
 
     await next();
 });

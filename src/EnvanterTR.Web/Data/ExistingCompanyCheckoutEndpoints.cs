@@ -12,6 +12,7 @@ public static partial class CheckoutEndpoints
 
     private static void MapExistingCompanyCheckoutEndpoints(IEndpointRouteBuilder endpoints)
     {
+        MapExistingCompanyCheckoutPage(endpoints);
         var api = endpoints.MapGroup("/api/subscription/checkout").RequireAuthorization("company.member");
         api.MapPost("/initialize", InitializeAsync).RequireRateLimiting("checkout")
             .WithMetadata(new RequestSizeLimitAttribute(16384), new ExistingCompanyCheckoutMetadata());

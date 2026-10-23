@@ -1018,6 +1018,12 @@ Rapor senkronunda kapsam tutarsızlığı yakalandı: kontrol listesindeki 254 w
 İlk şirket kurulum anahtarı Coolify Compose'ta `SERVICE_PASSWORD_64_SETUP` değişkeninden `Setup__BootstrapToken` olarak uygulamaya aktarılır. Canlı `/api/setup/status` yalnız `setupTokenConfigured=true` bilgisini verir; anahtarın değerini bilerek göstermez. Değer unutulduysa aynı güvenli Coolify kaydında yeni rastgele sır belirlenip web servisi yeniden oluşturulmalı, ardından aynı sır HTTPS üzerindeki `/setup.html` formuna girilmelidir. Bu bir Google/Microsoft ürünü veya normal kullanıcı parolası değildir. Kurulum sonrası bootstrap sırrı servis ortamından kaldırılmalıdır.
 
 Tenant yönlendirme için yerel `public-site` konteynerine `Host: firma.envantertr.com` ile yapılan salt-okunur istek `/api/status` için HTTP 200 `ready` ve 117/0 döndürdü. Canlı aynı host HTTP 503 `no available server` döndürüyor; böylece uygulama içi tenant yakalama yerelde çalışırken canlı Coolify/proxy upstream bağlaması açık kalıyor. Üretim Coolify ayarı değiştirilmedi; bu kanıt canlı tenant kabulü değildir.
+
+## 23 Ekim 2026 — şirket sahibinin yıllık abonelik ekranı
+
+Süresi dolmuş denemede şirket sahibi, portal uyarısındaki bağlantıdan `/subscription/checkout` sayfasını açıp yıllık Cloud paketi seçebilir. Fatura ve güvenlik alanları sunucu tarafında doğrulanır; parola/MFA sağlayıcıya gönderilmez. Ödeme başlatıldığında sipariş mevcut şirket UUID'sine ve oturumdaki sahibine bağlanır. Var olan şirket/tenant, portal, üyelik ve varlıklar için yeni hesap açılmaz. Diğer şirket üyeleri ödeme API'sine erişemez.
+
+İzole PostgreSQL kabulünde bu form ve mevcut şirket ödeme akışının testleri 9/9 geçti. Kanıt: `tests/reports/company-checkout-page-acceptance-20261023.md` ve komut logları. Gerçek iyzico, tarayıcı E2E, e-posta teslimi, staging, güncel yedek/geri dönüş provası ve Santa/Farma/Demo3 kabulü henüz yoktur. Yeni tam CI sonucu alınmadan ve üretim güvenlik kapıları geçilmeden canlı deploy/satışa hazır kabulü verilmedi.
 ## 20 Ekim 2026 — gecikmeli seçim yanıtları
 
 - Üst varlık aramasında eski HTTP yanıtının yeni seçenekleri değiştirmesi kontrollü Chromium gecikmesiyle yeniden üretildi. İstek sırası, varlık, açık pencere ve oturum bağlamı denetleniyor; pencereyi kapatıp yeniden açmak eski aramayı geçersiz kılıyor.

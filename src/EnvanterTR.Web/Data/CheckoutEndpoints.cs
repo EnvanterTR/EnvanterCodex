@@ -22,6 +22,7 @@ public sealed record InitializeCompanyCheckoutRequest(
     Guid PlanId, string Term, bool DataProcessingAcknowledged, string? DataProcessingNoticeVersion,
     string? CouponCode = null, string? CurrentPassword = null, string? TwoFactorCode = null);
 public sealed record CheckoutCouponQuoteRequest(Guid PlanId, string Term, string? CouponCode);
+public sealed record CompanyCheckoutInitialized(string CheckoutUrl, Guid OrderId);
 
 public static partial class CheckoutEndpoints
 {
@@ -187,7 +188,7 @@ public static partial class CheckoutEndpoints
             {
                 var url = dataProtectionProvider.CreateProtector("EnvanterTR.Iyzico.CheckoutPage.v1")
                     .Unprotect(existingOrder.CheckoutPageUrlProtected);
-                return Results.Ok(new { checkoutUrl = url, orderId = existingOrder.Id });
+                return Results.Ok(new CompanyCheckoutInitialized(url, existingOrder.Id));
             }
             catch (CryptographicException)
             {
@@ -229,7 +230,7 @@ public static partial class CheckoutEndpoints
                 {
                     var url = dataProtectionProvider.CreateProtector("EnvanterTR.Iyzico.CheckoutPage.v1")
                         .Unprotect(existingOrder.CheckoutPageUrlProtected);
-                    return Results.Ok(new { checkoutUrl = url, orderId = existingOrder.Id });
+                    return Results.Ok(new CompanyCheckoutInitialized(url, existingOrder.Id));
                 }
                 catch (CryptographicException)
                 {
@@ -353,7 +354,7 @@ public static partial class CheckoutEndpoints
             order.Status = CheckoutStatusStarted;
             order.InitializationLeaseUntil = null;
             await db.SaveChangesAsync(cancellationToken);
-            return Results.Ok(new { checkoutUrl = paymentUri.AbsoluteUri, orderId = order.Id });
+            return Results.Ok(new CompanyCheckoutInitialized(paymentUri.AbsoluteUri, order.Id));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception)
