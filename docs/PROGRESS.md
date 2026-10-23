@@ -188,3 +188,10 @@
 - Komut + çıktı: Checkout şirket-slug kontrolleri ve endpoint envanteri tarandı. `CheckoutEndpoints.cs:247` mevcut şirket slug'ını başlangıçta reddediyor; `:522` doğrulanmış ödeme sonucunda da mevcut şirketi provisioning hatası sayıyor. Yalnız platform yöneticisi için manuel subscription extend/edit rotaları var.
 - Kanıt: `docs/P0-CHECKOUT-GAPS.md` bu iki kod yolunu, eksik mevcut-şirket bağlamını ve doğrudan satın almada ödeme öncesi e-posta doğrulaması açığını listeler. Bu bir kaynak denetimidir; yeni şirket checkout testleri deneme dönüşümünün kanıtı değildir.
 - Sıradaki iş: P0-D'de mevcut şirket sahibiyle bağlı, süresi dolmuş denemede de erişilebilir yıllık ödeme; doğrulanmış sağlayıcı sonucuyla aynı şirket/veri/üyelikleri koruyan atomik abonelik geçişi; replay/eşzamanlılık/tenant güvenliği ve tarayıcı kabulü. Gerçek sağlayıcı/SMTP, staging ve Bölüm 20 kapıları ayrıca açık.
+
+### 23 Ekim 2026 — PR #25 önceki adayın tam uzak CI sonucu
+- Durum: TAMAM (yalnız `3c63980536e11d1712706f882696e24de86b03c8` CI kabulü).
+- Komut + çıktı: GitHub Actions API run `39987675342`: completed/success; Linux kaynak/güvenlik, Linux PostgreSQL ve Windows dağıtım/yedek güvenliği işleri 3/3 success.
+- Kanıt yolu: `tests/reports/p0-pr25-ci-3c63980-20261023.json`, https://github.com/EnvanterTR/EnvanterCodex/actions/runs/39987675342.
+- Sınır: Bu sonuç sonradan yazılan mevcut şirket ödeme dönüşümü kodunu, gerçek iyzico/SMTP'yi veya üretim kabulünü kapsamıyor. Taslak PR satışa hazır veya merge edilebilir sayılmadı.
+- Sıradaki iş: Mevcut şirket yıllık checkout API/transaction/migration kabulünü tamamlamak; ardından müşteri arayüzü ve tarayıcı kabulü.
