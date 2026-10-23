@@ -1,34 +1,34 @@
  Image p0-checkout-page-acceptance Building
 #1 [internal] load local bake definitions
-#1 reading from stdin 660B 0.2s done
-#1 DONE 0.2s
+#1 reading from stdin 660B 0.1s done
+#1 DONE 0.1s
 
 #2 [internal] load build definition from Dockerfile.security-acceptance
 #2 transferring dockerfile: 871B 0.0s done
-#2 DONE 0.1s
+#2 DONE 0.0s
 
 #3 [internal] load metadata for mcr.microsoft.com/dotnet/sdk:10.0
-#3 DONE 0.3s
+#3 DONE 0.2s
 
 #4 [internal] load .dockerignore
-#4 transferring context: 134B 0.0s done
-#4 DONE 0.1s
+#4 transferring context: 134B done
+#4 DONE 0.0s
 
 #5 [ 1/11] FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
-#5 resolve mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa 0.1s done
-#5 DONE 0.1s
+#5 resolve mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa 0.0s done
+#5 DONE 0.0s
 
 #6 [internal] load build context
-#6 transferring context: 37.13kB 0.3s done
-#6 DONE 0.3s
+#6 transferring context: 37.13kB 0.0s done
+#6 DONE 0.0s
 
-#7 [ 3/11] COPY global.json ./
+#7 [ 8/11] RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
 #7 CACHED
 
-#8 [ 4/11] COPY src/EnvanterTR.Web/EnvanterTR.Web.csproj src/EnvanterTR.Web/
+#8 [10/11] RUN dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore
 #8 CACHED
 
-#9 [ 5/11] COPY tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj tests/EnvanterTR.SecurityAcceptance/
+#9 [ 6/11] RUN dotnet restore tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj
 #9 CACHED
 
 #10 [ 7/11] COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
@@ -37,16 +37,16 @@
 #11 [ 2/11] WORKDIR /source
 #11 CACHED
 
-#12 [ 9/11] COPY tests/EnvanterTR.SecurityAcceptance/ tests/EnvanterTR.SecurityAcceptance/
+#12 [ 5/11] COPY tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj tests/EnvanterTR.SecurityAcceptance/
 #12 CACHED
 
-#13 [10/11] RUN dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore
+#13 [ 3/11] COPY global.json ./
 #13 CACHED
 
-#14 [ 6/11] RUN dotnet restore tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj
+#14 [ 4/11] COPY src/EnvanterTR.Web/EnvanterTR.Web.csproj src/EnvanterTR.Web/
 #14 CACHED
 
-#15 [ 8/11] RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
+#15 [ 9/11] COPY tests/EnvanterTR.SecurityAcceptance/ tests/EnvanterTR.SecurityAcceptance/
 #15 CACHED
 
 #16 [11/11] WORKDIR /source/tests/EnvanterTR.SecurityAcceptance
@@ -54,15 +54,14 @@
 
 #17 exporting to image
 #17 exporting layers 0.0s done
-#17 exporting manifest sha256:2466dd4935b40c9f04d065d1bea2d1c648670db1b26d10889fbcaa180b379c6b 0.0s done
-#17 exporting config sha256:ca20a73438f5d591a6a9af6d8aa7ab11978a36354923f8e7e0f4702bb7b3be28 done
-#17 exporting attestation manifest sha256:ec43e34ff26d114b61c9b6491a19ef6cd5017fbaf5da7e2eda0e479d30f4479b 0.0s done
-#17 exporting manifest list sha256:8c9d74d75aa424f8bfecac8459e87483149a6c0f637c21a829e268cc94631500
-#17 exporting manifest list sha256:8c9d74d75aa424f8bfecac8459e87483149a6c0f637c21a829e268cc94631500 0.1s done
+#17 exporting manifest sha256:cbe244425d49ed67c605a7f52b245519a29b70535d6471cedcf0671b15045a95 done
+#17 exporting config sha256:843f38d21f1022467bcf2b6d2344d41f07a0becfc683a96519f830f4e6bb9577 done
+#17 exporting attestation manifest sha256:4633d1a7a184456275979cc3900449702abeac89eeacc974cbc400f1d13ce88a 0.0s done
+#17 exporting manifest list sha256:8fd34152fea55225834783ba534710251fdb2aa81a6cf4bf18f6ef77fba1bbc9 0.0s done
 #17 naming to docker.io/library/p0-checkout-page-acceptance:latest done
-#17 unpacking to docker.io/library/p0-checkout-page-acceptance:latest 0.0s done
-#17 DONE 0.6s
+#17 unpacking to docker.io/library/p0-checkout-page-acceptance:latest done
+#17 DONE 0.2s
 
 #18 resolving provenance for metadata file
-#18 DONE 0.1s
+#18 DONE 0.0s
  Image p0-checkout-page-acceptance Built

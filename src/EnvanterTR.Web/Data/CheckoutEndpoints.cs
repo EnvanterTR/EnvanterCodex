@@ -525,7 +525,10 @@ public static partial class CheckoutEndpoints
             bool invitationNeeded = false;
             try
             {
-                await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+                // Existing-company callback replay is serialized by the order lock and shared company-row lock.
+                // Read committed lets a waiting replay see Provisioned; Serializable aborts it with PostgreSQL 40001.
+                var isolationLevel = order.TargetCompanyId is null ? IsolationLevel.Serializable : IsolationLevel.ReadCommitted;
+                await using var transaction = await db.Database.BeginTransactionAsync(isolationLevel, cancellationToken);
                 var lockedOrder = await db.CompanyCheckoutOrders.FromSqlInterpolated(
                     $"SELECT * FROM \"CompanyCheckoutOrders\" WHERE \"Id\" = {order.Id} FOR UPDATE")
                     .SingleAsync(cancellationToken);

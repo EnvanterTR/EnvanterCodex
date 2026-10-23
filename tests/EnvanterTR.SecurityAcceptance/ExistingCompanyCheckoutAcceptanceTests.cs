@@ -204,6 +204,40 @@ public sealed partial class TenantSessionAcceptanceTests
     }
 
     [Fact]
+    public async Task Existing_company_concurrent_payment_callbacks_activate_once()
+    {
+        var seed = await SeedExistingCheckout("trial");
+        var provider = new ExistingCheckoutProvider();
+        using var factory = ExistingCheckoutFactory(provider);
+        using var owner = ExistingCheckoutClient(factory);
+        await ConfigureTrialCsrf(owner);
+        var request = ExistingPurchase(seed.Plan, seed.Code);
+        using var initialized = await owner.PostAsJsonAsync("/api/subscription/checkout/initialize", request);
+        Assert.Equal(HttpStatusCode.OK, initialized.StatusCode);
+
+        using var callbackClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var callbacks = await Task.WhenAll(Enumerable.Range(0, 2).Select(_ =>
+            callbackClient.PostAsync("/api/checkout/callback", new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["token"] = provider.Token
+            }))));
+        Assert.All(callbacks, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
+        foreach (var callback in callbacks)
+            Assert.Contains("Yıllık aboneliğiniz etkinleştirildi", await callback.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var order = await db.CompanyCheckoutOrders.SingleAsync(item => item.Id == request.CheckoutId);
+        Assert.Equal("Provisioned", order.Status);
+        Assert.Equal(_companyId, order.TargetCompanyId);
+        Assert.Equal(_companyId, order.CompanyId);
+        Assert.Single(await db.TenantSubscriptions.Where(item => item.CompanyId == _companyId && item.Status == "Active").ToListAsync());
+        Assert.Single(await db.AuditEntries.Where(item => item.CompanyId == _companyId && item.Action == "PaidSubscriptionActivated").ToListAsync());
+        Assert.True(await db.Assets.AnyAsync(asset => asset.Id == _ownAssetId && asset.CompanyId == _companyId));
+        Assert.True(await db.Assets.AnyAsync(asset => asset.Id == _otherCompanyAssetId && asset.CompanyId == _otherCompanyId));
+    }
+
+    [Fact]
     public async Task Existing_company_checkout_requires_owner_mfa_reauthentication_and_capacity()
     {
         var seed = await SeedExistingCheckout("expired");
