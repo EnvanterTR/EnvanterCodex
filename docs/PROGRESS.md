@@ -117,3 +117,11 @@
 - Test: Platform admin şirketi ve tenant slug'ını oluşturdu; 365 günlük aktif Cloud aboneliği, owner üyeliği, zorunlu MFA, davet e-postası ve daveti tekrar gönderme doğrulandı; çakışan slug reddedildi. İzole Compose DB/ağı kaldırıldı, canlıya yazma yapılmadı.
 - Kanıt yolu: `tests/reports/p0e-new-company-provisioning-acceptance-20261023.md`, `tests/reports/p0e-new-company-provisioning-acceptance-20261023.log`.
 - Sıradaki iş: Gerçek üçüncü firma için staging ve canlı müşteri akışı, gerçek SMTP teslimi, kiracı verisi ve silme kapsamı. Canlı rota doğrulanmış `origin/main` sürümünde yok; canlı checkout boş plan kataloğu ve Iyzico/SMTP ayarları nedeniyle kullanılamıyor.
+
+### 23 Ekim 2026 — P0-E bulut denemesi Chromium kabulü
+- Durum: TAMAM (yerel sentetik API + Chromium); gerçek SMTP ve canlı deneme rotası doğrulanmadı.
+- Değişen dosyalar: `tests/reports/p0e-cloud-trial-browser-acceptance-20261023.md`, `docs/PROGRESS.md`.
+- Komut + çıktı: Hosted-checkout browser imajı oluşturuldu; `docker run --rm --init --entrypoint node envantertr-hosted-checkout-browser-acceptance:local cloud-trial.mjs` → PASS. Kapalı form, slug önerisi/özel slug, CSRF/onay tek POST, beş dil, 390px taşmasız görünüm, açık kullanıcı onayı, URL'den kanıt temizliği ve dış portal adresi reddi geçti.
+- Test: Gerçek ağ sağlayıcısı ve e-posta kullanılmadı; HTTP istekleri sentetik API'ye yönlendirildi. Üretim verisi/ayarına yazılmadı.
+- Kanıt yolu: `tests/reports/p0e-cloud-trial-browser-acceptance-20261023.md`.
+- Sıradaki iş: Staging ve gerçek SMTP/Iyzico kabul kapıları; canlı trial route 404 ve published plan kataloğu boş.
