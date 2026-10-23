@@ -9,6 +9,15 @@
 
 ## Cloud Checkout Form sağlayıcı dönüşleri
 
+### Mevcut şirketin yıllık aboneliği (API)
+
+- `GET /api/subscription/checkout/context`: oturumun gerçek şirketi ve DB'deki owner üyeliğiyle sınırlı şirket/portal/sahip/MFA bilgisi. Başka şirket kimliği parametreyle seçilmez.
+- `POST /api/subscription/checkout/initialize`: `company.member` oturumu ve DB'de owner, doğrulanmış e-posta, CSRF, güncel parola ve Authenticator veya tek kullanımlık kurtarma kodu gerekir. Checkout rate-limit geçerlidir. Yalnız `annual` kabul edilir. Şirket/slug/sahip e-postası istemciden alınmaz; gerçek oturumdan türetilir. Plan kapasitesi sunucuda kontrol edilir.
+- `GET /api/subscription/checkout/orders/{checkoutId}`: yalnız siparişin aynı şirketi ve isteği başlatan owner durum/tutar/tarihleri görebilir; ödeme URL'si, kimlik/fatura bilgileri ve parola/kod dönmez.
+- Süresi dolmuş denemede yalnız doğrulamalı checkout başlangıcı yazma kilidinden muaftır; diğer envanter yazmaları kilitli kalır. Callback/webhook sağlayıcı doğrulamasından sonra aynı şirketin aboneliğini atomik etkinleştirir. Deneme tarihleri/geçmişi, şirket/portal/üyelikler/varlıklar korunur. Aynı planın devam eden ücretli dönemine 365 gün eklenir; mevcut ücretli dönem sürerken farklı plan seçimi reddedilir.
+- Migration `20261023190000_AddExistingCompanyCheckoutContext` iki nullable UUID ve bağlam bütünlüğü kontrolü ekler. Hedef şirket/istek sahibi kimlikleri silmede temizlenmez; kayıtlı şirket kaybolduğunda ödeme yeni kiracı oluşturma yoluna dönüşmez. Mevcut şirket veya owner yetkisi/kapasitesi ödeme sonrasında uygun değilse `ProvisioningFailed` ve destek sonucu oluşur; başarısızlıkta abonelik/veri değişmez.
+- Bu API'nin müşteri arayüzü, tarayıcı akışı ve gerçek iyzico kabulü ayrıca tamamlanmalıdır; bu bölüm satışa hazır ilanı değildir.
+
 Platform sistem sağlığındaki `integrations.smtp`, host/port/gönderici/public URL/kimlik bilgisi eşleşmesi/TLS ayarları için yalnız boolean durumlar döndürür; `smtpConfigured` bu doğrulamaların tamamını gerektirir. Kullanıcı adı ve parola birlikte yoksa anonim SMTP relay kullanılabilir; tek tarafın eksik olması geçersizdir. Bu kontrol DNS/TCP/SMTP oturumu açmaz ve gerçek e-posta teslimatını kanıtlamaz. Cloud trial kayıt kapısı aynı doğrulamayı HTTPS zorunluluğuyla kullanır.
 
 - `POST /api/checkout/callback` iyzico barındırılan ödeme sayfasının tarayıcı dönüşünü kabul eder; gelen token tek başına başarı sayılmaz, sunucudan iyzico retrieve çağrısı yapılır.

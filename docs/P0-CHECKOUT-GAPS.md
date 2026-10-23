@@ -6,7 +6,7 @@ These are open requirements, not completed features. Local synthetic acceptance 
 
 The approved commercial flow gives the customer a 15-day trial followed by an annual payment. The existing company, portal, memberships and inventory must survive the change.
 
-Current source supports checkout for a new company. `CheckoutEndpoints.cs:247` rejects a slug already in `Companies`; the verified-payment handler at `CheckoutEndpoints.cs:522` also treats an existing slug as a provisioning failure. `InitializeCompanyCheckoutRequest` has no authenticated existing-company purchase context. Platform subscription extension/edit routes exist (`PlatformEndpoints.cs`, `/subscription/extend` and `/subscriptions/{subscriptionId}`), but are platform-admin adjustments, not a customer payment conversion flow.
+The original audit found that the anonymous new-company checkout rejected occupied company slugs both before and after payment. The current candidate adds a distinct authenticated `/api/subscription/checkout` API and immutable existing-company/owner context. It activates the existing company through the shared provisioning service after verified payment. This backend work does not complete the customer-facing conversion flow: a purchase entry point, form, return/status interaction and browser acceptance remain open. Platform subscription extension/edit routes are still separate administrator adjustments.
 
 Required before accepting trial-to-paid sales:
 
@@ -16,7 +16,7 @@ Required before accepting trial-to-paid sales:
 - Reject failed/mismatched payments; replay and concurrent callbacks must not duplicate subscriptions or extend the purchased period twice. Deleting the target company must not turn an existing-company purchase into new-company provisioning.
 - Provide the customer-facing purchase/return/status flow and prove it against the real API/database and browser, including expired trials and tenant-boundary attacks.
 
-Evidence here is a source-route audit, not a runtime conversion acceptance. Existing new-company checkout tests do not cover this requirement.
+The original source audit is retained in commit `3c63980`. Current candidate acceptance is recorded separately under `tests/reports/existing-company-checkout-*`; only a successful final run can establish the covered backend cases. Existing new-company checkout tests alone do not cover this requirement. Concurrent callbacks, target deletion at runtime, provider failure/mismatch in the existing-company context, and full paid-plan change lifecycle still need explicit acceptance; sequential replay and metadata showing no target foreign key are narrower evidence.
 
 ## Email verification before direct paid checkout — INCOMPLETE
 

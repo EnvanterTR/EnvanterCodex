@@ -1,0 +1,242 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
+using EnvanterTR.Web.Data;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
+using Xunit;
+
+namespace EnvanterTR.SecurityAcceptance;
+
+public sealed partial class TenantSessionAcceptanceTests
+{
+    private const string ExistingCheckoutPassword = "Synthetic-Checkout-Owner-43!";
+
+    private async Task<(SubscriptionPlan Plan, TenantSubscription Previous, string Code)> SeedExistingCheckout(string state)
+    {
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.False(db.Database.HasPendingModelChanges());
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<EnvanterUser>>();
+        var owner = (await users.FindByIdAsync(_userId.ToString()))!;
+        Assert.True((await users.AddPasswordAsync(owner, ExistingCheckoutPassword)).Succeeded);
+        Assert.True((await users.ResetAuthenticatorKeyAsync(owner)).Succeeded);
+        var secret = (await users.GetAuthenticatorKeyAsync(owner))!;
+        Assert.True((await users.SetTwoFactorEnabledAsync(owner, true)).Succeeded);
+        await db.CompanyMemberships.Where(member => member.CompanyId == _companyId && member.UserId == _userId)
+            .ExecuteUpdateAsync(update => update.SetProperty(member => member.RoleKey, "owner"));
+        var plan = new SubscriptionPlan { Code = $"ex-{Guid.NewGuid():N}", Name = "Annual existing company",
+            DeploymentKind = "cloud", IsActive = true, IsPublic = true, AnnualPrice = 4200m, Currency = "TRY", MaxLoginUsers = 10 };
+        var previous = new TenantSubscription { CompanyId = _companyId, PlanId = plan.Id,
+            Status = state == "paid" ? "Active" : "Trial", StartsAt = DateTimeOffset.UtcNow.AddDays(-15),
+            EndsAt = DateTimeOffset.UtcNow.AddDays(state == "expired" ? -1 : 10) };
+        db.SubscriptionPlans.Add(plan); db.TenantSubscriptions.Add(previous); await db.SaveChangesAsync();
+        await db.Entry(previous).ReloadAsync();
+        return (plan, previous, GenerateAuthenticatorCode(secret));
+    }
+
+    private WebApplicationFactory<Program> ExistingCheckoutFactory(ExistingCheckoutProvider provider) =>
+        _factory!.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
+                ["Iyzipay:ApiKey"] = "synthetic-key", ["Iyzipay:SecretKey"] = "synthetic-secret",
+                ["Iyzipay:BaseUrl"] = "https://sandbox-api.iyzipay.com",
+                ["Iyzipay:CallbackUrl"] = "https://envantertr.com/api/checkout/callback" }));
+            builder.ConfigureTestServices(services => {
+                services.RemoveAll<IyzipayCheckoutClient>();
+                services.AddSingleton(new IyzipayCheckoutClient(new HttpClient(provider) { BaseAddress = new("https://sandbox-api.iyzipay.com") },
+                    Options.Create(new IyzipayOptions { ApiKey = "synthetic-key", SecretKey = "synthetic-secret",
+                        BaseUrl = "https://sandbox-api.iyzipay.com", CallbackUrl = "https://envantertr.com/api/checkout/callback" })));
+            });
+        });
+
+    private HttpClient ExistingCheckoutClient(WebApplicationFactory<Program> factory, Guid? company = null)
+    {
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Acceptance-User", _userId.ToString());
+        client.DefaultRequestHeaders.Add("X-Acceptance-Company", (company ?? _companyId).ToString());
+        client.DefaultRequestHeaders.Add("X-Acceptance-Role", "owner");
+        return client;
+    }
+
+    private static InitializeCompanyCheckoutRequest ExistingPurchase(SubscriptionPlan plan, string code) => new(
+        Guid.NewGuid(), "Ignored customer supplied company", "ignored-slug", null, "Synthetic", "Owner",
+        "ignored@example.invalid", "+905550000002", "10000000146", "Synthetic Street 2", "Istanbul", "Turkey", "34000",
+        plan.Id, "annual", true, "cloud-checkout-data-v1", CurrentPassword: ExistingCheckoutPassword, TwoFactorCode: code);
+
+    [Theory]
+    [InlineData("trial")]
+    [InlineData("expired")]
+    [InlineData("paid")]
+    public async Task Existing_company_annual_checkout_preserves_data_periods_and_replay(string state)
+    {
+        var seed = await SeedExistingCheckout(state);
+        var provider = new ExistingCheckoutProvider();
+        using var factory = ExistingCheckoutFactory(provider);
+        using var client = ExistingCheckoutClient(factory);
+        using var noCsrf = await client.PostAsJsonAsync("/api/subscription/checkout/initialize", ExistingPurchase(seed.Plan, seed.Code));
+        Assert.Equal(HttpStatusCode.BadRequest, noCsrf.StatusCode);
+        await ConfigureTrialCsrf(client);
+        if (state == "expired")
+        {
+            using var write = await client.PostAsJsonAsync("/api/brands", new { name = "Must remain read only" });
+            Assert.Equal(HttpStatusCode.PaymentRequired, write.StatusCode);
+        }
+        using var context = await client.GetAsync("/api/subscription/checkout/context");
+        Assert.Equal(HttpStatusCode.OK, context.StatusCode);
+        using var payload = JsonDocument.Parse(await context.Content.ReadAsStringAsync());
+        Assert.Equal(_companyId, payload.RootElement.GetProperty("companyId").GetGuid());
+        var request = ExistingPurchase(seed.Plan, seed.Code);
+        using var initialized = await client.PostAsJsonAsync("/api/subscription/checkout/initialize", request);
+        Assert.Equal(HttpStatusCode.OK, initialized.StatusCode);
+        Assert.Equal(4200m, provider.Amount);
+        using var retry = await client.PostAsJsonAsync("/api/subscription/checkout/initialize", request);
+        Assert.Equal(HttpStatusCode.OK, retry.StatusCode); Assert.Equal(1, provider.Initializations);
+        using var trailingSlash = await client.PostAsJsonAsync("/api/subscription/checkout/initialize/", request);
+        Assert.Equal(HttpStatusCode.OK, trailingSlash.StatusCode); Assert.Equal(1, provider.Initializations);
+        // Public checkout cannot reuse an authenticated company's purchase identity.
+        using var anonymous = factory.CreateClient(); await ConfigureTrialCsrf(anonymous);
+        using var stolen = await anonymous.PostAsJsonAsync("/api/checkout/initialize", request);
+        Assert.Equal(HttpStatusCode.Conflict, stolen.StatusCode);
+        using var outside = ExistingCheckoutClient(factory, _otherCompanyId);
+        using var outsideOrder = await outside.GetAsync($"/api/subscription/checkout/orders/{request.CheckoutId}");
+        Assert.Equal(HttpStatusCode.Unauthorized, outsideOrder.StatusCode);
+        for (var replay = 0; replay < 2; replay++)
+        {
+            using var callback = await client.PostAsync("/api/checkout/callback", new FormUrlEncodedContent(new Dictionary<string, string> { ["token"] = provider.Token }));
+            Assert.Equal(HttpStatusCode.OK, callback.StatusCode);
+            Assert.Contains($"https://acceptance-{_companyId:N}.envantertr.com/", await callback.Content.ReadAsStringAsync());
+        }
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var order = await db.CompanyCheckoutOrders.SingleAsync(item => item.Id == request.CheckoutId);
+        Assert.Equal(_companyId, order.TargetCompanyId); Assert.Equal(_userId, order.RequestedByUserId);
+        Assert.Equal(_companyId, order.CompanyId); Assert.Equal("Provisioned", order.Status);
+        Assert.False(await db.Companies.AnyAsync(company => company.Slug == request.Slug));
+        Assert.True(await db.Assets.AnyAsync(asset => asset.Id == _ownAssetId && asset.CompanyId == _companyId));
+        Assert.True(await db.Assets.AnyAsync(asset => asset.Id == _otherCompanyAssetId && asset.CompanyId == _otherCompanyId));
+        var subscriptions = await db.TenantSubscriptions.Where(item => item.CompanyId == _companyId).ToListAsync();
+        Assert.Equal(2, subscriptions.Count);
+        var previous = subscriptions.Single(item => item.Id == seed.Previous.Id);
+        Assert.Equal(seed.Previous.StartsAt, previous.StartsAt); Assert.Equal(seed.Previous.EndsAt, previous.EndsAt);
+        Assert.Equal(state == "expired" ? "Expired" : "Cancelled", previous.Status);
+        var active = Assert.Single(subscriptions, item => item.Status == "Active");
+        Assert.Equal(provider.PaymentId, active.PaymentReference);
+        if (state == "paid") Assert.Equal(previous.EndsAt.AddDays(365), active.EndsAt);
+        else Assert.Equal(TimeSpan.FromDays(365), active.EndsAt - active.StartsAt);
+        Assert.Single(await db.AuditEntries.Where(item => item.CompanyId == _companyId && item.Action == "PaidSubscriptionActivated").ToListAsync());
+    }
+
+    [Fact]
+    public async Task Existing_company_checkout_requires_owner_mfa_reauthentication_and_capacity()
+    {
+        var seed = await SeedExistingCheckout("expired");
+        var provider = new ExistingCheckoutProvider();
+        using var factory = ExistingCheckoutFactory(provider);
+        using var client = ExistingCheckoutClient(factory);
+        await ConfigureTrialCsrf(client);
+        var request = ExistingPurchase(seed.Plan, seed.Code);
+        using var missing = await client.PostAsJsonAsync("/api/subscription/checkout/initialize", request with { CurrentPassword = null });
+        Assert.Equal((HttpStatusCode)428, missing.StatusCode);
+        using var monthly = await client.PostAsJsonAsync("/api/subscription/checkout/initialize", request with { Term = "monthly" });
+        Assert.Equal(HttpStatusCode.BadRequest, monthly.StatusCode);
+        using var wrong = await client.PostAsJsonAsync("/api/subscription/checkout/initialize", request with { CurrentPassword = "wrong" });
+        Assert.Equal(HttpStatusCode.BadRequest, wrong.StatusCode);
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<EnvanterUser>>();
+        var owner = (await users.FindByIdAsync(_userId.ToString()))!;
+        await users.SetTwoFactorEnabledAsync(owner, false);
+        using var noMfa = await client.PostAsJsonAsync("/api/subscription/checkout/initialize", request);
+        Assert.Equal((HttpStatusCode)428, noMfa.StatusCode);
+        await users.SetTwoFactorEnabledAsync(owner, true);
+        await db.SubscriptionPlans.Where(plan => plan.Id == seed.Plan.Id).ExecuteUpdateAsync(update => update.SetProperty(plan => plan.MaxLoginUsers, 1));
+        using var capacity = await client.PostAsJsonAsync("/api/subscription/checkout/initialize", request);
+        Assert.Equal(HttpStatusCode.Conflict, capacity.StatusCode);
+        await db.CompanyMemberships.Where(member => member.CompanyId == _companyId && member.UserId == _userId)
+            .ExecuteUpdateAsync(update => update.SetProperty(member => member.RoleKey, "admin"));
+        using var denied = await client.PostAsJsonAsync("/api/subscription/checkout/initialize", request);
+        Assert.Equal(HttpStatusCode.TooManyRequests, denied.StatusCode);
+        using var ownerOnlyContext = await client.GetAsync("/api/subscription/checkout/context");
+        Assert.Equal(HttpStatusCode.Forbidden, ownerOnlyContext.StatusCode);
+        // Exercise the owner authorization independently of the exhausted limiter.
+        var freshProvider = new ExistingCheckoutProvider();
+        using var freshFactory = ExistingCheckoutFactory(freshProvider);
+        using var nonOwner = ExistingCheckoutClient(freshFactory);
+        await ConfigureTrialCsrf(nonOwner);
+        using var nonOwnerPurchase = await nonOwner.PostAsJsonAsync("/api/subscription/checkout/initialize", request);
+        Assert.Equal(HttpStatusCode.Forbidden, nonOwnerPurchase.StatusCode);
+        Assert.Equal(0, freshProvider.Initializations);
+        Assert.Equal(0, provider.Initializations);
+        Assert.False(await db.CompanyCheckoutOrders.AnyAsync(order => order.TargetCompanyId == _companyId));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Existing_company_payment_rechecks_capacity_and_owner_before_activation(bool revokeOwner)
+    {
+        var seed = await SeedExistingCheckout("trial");
+        var provider = new ExistingCheckoutProvider();
+        using var factory = ExistingCheckoutFactory(provider);
+        using var client = ExistingCheckoutClient(factory);
+        await ConfigureTrialCsrf(client);
+        var request = ExistingPurchase(seed.Plan, seed.Code);
+        using var initialized = await client.PostAsJsonAsync("/api/subscription/checkout/initialize", request);
+        Assert.Equal(HttpStatusCode.OK, initialized.StatusCode);
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        if (revokeOwner)
+            await db.CompanyMemberships.Where(member => member.CompanyId == _companyId && member.UserId == _userId)
+                .ExecuteUpdateAsync(update => update.SetProperty(member => member.RoleKey, "admin"));
+        else
+            await db.SubscriptionPlans.Where(plan => plan.Id == seed.Plan.Id)
+                .ExecuteUpdateAsync(update => update.SetProperty(plan => plan.MaxLoginUsers, 1));
+        using var anonymous = factory.CreateClient();
+        using var callback = await anonymous.PostAsync("/api/checkout/callback", new FormUrlEncodedContent(new Dictionary<string, string> { ["token"] = provider.Token }));
+        Assert.Equal(HttpStatusCode.OK, callback.StatusCode);
+        var order = await db.CompanyCheckoutOrders.SingleAsync(item => item.Id == request.CheckoutId);
+        Assert.Equal("ProvisioningFailed", order.Status); Assert.Null(order.CompanyId);
+        Assert.Equal(_companyId, order.TargetCompanyId); Assert.Equal(provider.PaymentId, order.PaymentReference);
+        var previous = Assert.Single(await db.TenantSubscriptions.Where(item => item.CompanyId == _companyId).ToListAsync());
+        Assert.Equal(seed.Previous.Id, previous.Id); Assert.Equal("Trial", previous.Status);
+        Assert.True(await db.Assets.AnyAsync(asset => asset.Id == _ownAssetId && asset.CompanyId == _companyId));
+        var entity = db.Model.FindEntityType(typeof(CompanyCheckoutOrder))!;
+        Assert.DoesNotContain(entity.GetForeignKeys(), key => key.Properties.Any(property => property.Name == nameof(CompanyCheckoutOrder.TargetCompanyId)));
+    }
+
+    private sealed class ExistingCheckoutProvider : HttpMessageHandler
+    {
+        public string Token { get; } = $"existing-token-{Guid.NewGuid():N}";
+        public string PaymentId { get; } = $"existing-payment-{Guid.NewGuid():N}";
+        public int Initializations { get; private set; }
+        public decimal Amount { get; private set; }
+        private string? _conversation;
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
+            object result;
+            if (request.RequestUri!.AbsolutePath.EndsWith("initialize/auth/ecom", StringComparison.Ordinal))
+            {
+                Initializations++; Amount = body.RootElement.GetProperty("price").GetDecimal();
+                _conversation = body.RootElement.GetProperty("conversationId").GetString();
+                result = new { status = "success", conversationId = _conversation, token = Token,
+                    paymentPageUrl = "https://sandbox-api.iyzipay.com/checkoutform/synthetic-session" };
+            }
+            else
+            {
+                Assert.Equal(Token, body.RootElement.GetProperty("token").GetString());
+                result = new { status = "success", token = Token, conversationId = _conversation, basketId = _conversation,
+                    price = Amount, paidPrice = Amount, currency = "TRY", fraudStatus = 1, paymentStatus = "SUCCESS", paymentId = PaymentId };
+            }
+            return new(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(result), Encoding.UTF8, "application/json") };
+        }
+    }
+}
