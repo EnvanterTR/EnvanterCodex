@@ -1,3 +1,11 @@
+## 23 Ekim 2026 — P0-A gerçeklik denetimi güncellemesi
+- Durum: ENGELLENDİ (yüzde ve canlı sağlık denetimi tamamlandı; yönetici oturum ekranı kanıtı alınamadı).
+- Değişen dosyalar: `docs/AUDIT-REALITY.md`, `docs/PROGRESS.md`.
+- Komut + çıktı: Yüzde iddiaları 11 `PROJECT-STATUS.md` + 2 `PRODUCT-COVERAGE.md` + 0 `ROADMAP.md` olarak doğrulandı. `node tools/Check-CoolifyProduction.mjs` tekrarında apex ve firma HTTP 200 `ready` 118/0; canlı plan sayısı 0; checkout `available:false`. PR #25 HEAD `036b52a654da6cda87f7dec15285373303f4f9e5`; Linux güvenlik, Linux PostgreSQL ve Windows deployment/backup CI işleri 3/3 success (run `40008494630`). Aday migration sayısı 119; `origin/main` 118; fark `20261023190000_AddExistingCompanyCheckoutContext` ve model snapshot.
+- Test: Bu denetim salt-okunur. Yüzde kod/test izleri `docs/AUDIT-REALITY.md` tablosunda; CI sonucu aynı commit için tam üç işin başarılı olduğunu doğruluyor. Canlı admin girişi yapılmadı; mevcut Windows bilgisayar-kullanım yönergesi auth pencerelerini otomatikleştirmeyi yasakladığından ekran görüntüsü adımı ENGELLENDİ.
+- Kanıt yolu: `docs/AUDIT-REALITY.md`; `node tools/Check-CoolifyProduction.mjs` çıktısı; https://github.com/EnvanterTR/EnvanterCodex/actions/runs/40008494630.
+- Sıradaki iş: P0-B'de canlı migration kimliklerini doğrulanmış kopya DB ile karşılaştır; tam eşitlik public health endpoint'iyle kanıtlanamıyor. Canlı admin görüntüsü için kullanıcı oturum açmalı veya izinli başka doğrulama yolu sağlanmalı.
+
 ## 23 Ekim 2026 — P0-A durum yüzdesi denetimi
 - Durum: ENGELLENDİ
 - Değişen dosyalar: `docs/AUDIT-REALITY.md`, `docs/PROGRESS.md`

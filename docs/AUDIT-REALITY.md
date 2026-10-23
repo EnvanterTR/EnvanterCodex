@@ -1,14 +1,14 @@
 # V1 durum iddiaları — kanıt denetimi
 
 **Denetim tarihi:** 23 Ekim 2026
-**Kaynak ağacı:** `feat/verified-cloud-trials-20261021`, HEAD `bb09ba8`
+**Kaynak ağacı:** `feat/verified-cloud-trials-20261021`, HEAD `036b52a654da6cda87f7dec15285373303f4f9e5`
 **Kapsam:** `PROJECT-STATUS.md`, `PRODUCT-COVERAGE.md`, `ROADMAP.md` içindeki yüzde iddiaları; ilişkili kod/test kayıtları; salt-okunur canlı satış ve şema durumu.
 
 ## Sonuç
 
 Bu üç dokümandaki yüzdeler güncel V1 tamamlanma ölçüsü değildir. `PROJECT-STATUS.md` içinde yüzde bulunan 11 satırın, `PRODUCT-COVERAGE.md` içindeki 2 satırın tamamı 15–16 Ekim tarihli rapor veya geçmiş yerel ölçümleridir. `ROADMAP.md` (300 satır) yüzde iddiası içermiyor. Bu çalışma ağacında bu eski yüzde/puanları üreten bir ilerleme sayfası veya güncel hesaplayıcı bulunamadı. Dolayısıyla bu sayılar 23 Ekim’deki kod, canlı yayın veya müşteri kabulü hakkında güncel kanıt sunmaz.
 
-`docs/PROGRESS.md` ve bu denetim dosyası başlangıçta yoktu. Canlı yönetici girişini ve maskeli ekran görüntüsünü alma adımı Windows bilgisayar-kullanım aracı açık sekmenin adresini güvenlik politikasına göre doğrulayamadığı için tamamlanamadı; kimlik bilgileri giriş formuna gönderilmedi ve ekran görüntüsü alınmadı. Bu yüzden P0-A paketi **ENGELLENDİ** olarak kaydedildi; aşağıdaki kaynak ve canlı kontrolleri bağımsız olarak tamamlandı.
+Canlı yönetici girişi ve maskeli ekran görüntüsü bu denetimde de alınmadı. Bilgisayar-kullanım güvenlik yönergesi kullanıcı kimlik doğrulama pencerelerinin otomasyonunu yasakladığından, giriş bilgileri forma gönderilmedi. P0-A'nın yüzde iddialarına ilişkin kaynak denetimi ve salt-okunur canlı sağlık kontrolü tamamlandı; yönetici ekranı adımı **ENGELLENDİ** kaldı.
 
 ## Yüzde iddiaları
 
@@ -31,12 +31,11 @@ Bu üç dokümandaki yüzdeler güncel V1 tamamlanma ölçüsü değildir. `PROJ
 
 ## Güncel doğrulama
 
-- Kaynak çalışma ağacı: **118 EF migration sınıfı** (`AppDbContextModelSnapshot.cs` hariç); `origin/main` ile migration dosyaları aynı. Son commit `bb09ba8`. 2 test dosyası değiştirilmiş ve 1 test logu izlenmiyor; henüz commit/push/deploy edilmedi.
-- Salt-okunur canlı `GET https://envantertr.com/api/status`: `ready`, **118 migration / 0 bekleyen**. Canlı `firma.envantertr.com/api/status`: `ready`, **118/0**. Görünen migration sayısı eşit; public status uygulanan migration kimliklerini döndürmediği için ad/adli migration geçmişi eşitliği burada doğrulanamadı.
-- Salt-okunur canlı `GET /api/plans`: HTTP 200, boş liste. `GET /api/checkout/status`: `available:false`. Gerçek satış/ödeme hazır değil.
-- Mevcut dalda `node tools/Verify-HostedCheckoutBrowserAcceptance.mjs` geçti. `Verify-PlatformAdminExperience.mjs` başarısız: eski doğrulayıcı Cloud planlarında kullanıcı kotasının sınırsız kalmasını bekliyor; güncel onaylı paket kotaları bu beklentiyle çelişiyor. `Verify-AssetModelDetailsUi.mjs` başarısız: beklediği model ayrıntısı/sipariş metni Chromium betiğinde bulunmuyor. İki başarısızlık da kodun kabul edildiği iddiasını desteklemiyor; düzeltme ve gerçek tarayıcı yeniden kabulü açık.
-- Tam hosted Chromium paketi bu dalda exit 1 verdi: `platform-admin-members.mjs:760` eski “Cloud plan kotasız” assertion’ı. Yerel düzeltme henüz yeniden çalıştırılmadı. Bu hata rapor yüzdeleriyle ilgisizdir, ancak test uyumsuzluğunun güncel ve gerçek olduğunu gösterir.
-- Yönetici canlı oturum ve ekran görüntüsü: **ENGELLENDİ**; bilgisayar-kullanım URL güvenlik denetimi açık sekmenin adresini tanıyamadı. Kullanıcı parolası araca girilmedi.
+- Kaynak çalışma ağacı: **119 EF migration sınıfı**; `origin/main` **118**. Tek fark PR #25'teki `20261023190000_AddExistingCompanyCheckoutContext` migration'ı ve model snapshot güncellemesidir. Bu sayı farkı PR henüz main'e alınmadığı için beklenir; canlı migration adları public sağlık endpoint'inden okunamıyor.
+- Salt-okunur canlı `GET https://envantertr.com/api/status` ve `GET https://firma.envantertr.com/api/status`: ikisi de HTTP 200 `ready`, **118 migration / 0 bekleyen**. Bu, çalışan canlı imajın kendi migration setini doğrular; PR'daki 119. migration'ın canlıya uygulandığı anlamına gelmez.
+- Salt-okunur canlı `GET /api/plans`: HTTP 200, **0 yayımlı plan**. `GET /api/checkout/status`: HTTP 200, `available:false`. Satış/ödeme hazır değil.
+- `036b52a654da6cda87f7dec15285373303f4f9e5` PR #25 taslak dalında. Tam GitHub Actions run `40008494630` bu SHA için Linux tenant security, Linux PostgreSQL ve Windows deployment/backup işlerinin **3/3 success** sonucunu verdi. Yerel hosted Chromium acceptance da exit 0 ile tamamlandı; bu gerçek iyzico veya yönetici oturum kabulü değildir.
+- Yönetici canlı oturum ve ekran görüntüsü: **ENGELLENDİ**; bilgisayar-kullanım aracı kimlik doğrulama pencerelerini otomatikleştiremez. Parola araca gönderilmedi ve ekran görüntüsü alınmadı.
 
 ## 23 Ekim — sonraki düzeltme ve kabul
 
@@ -48,4 +47,4 @@ Bu üç dokümandaki yüzdeler güncel V1 tamamlanma ölçüsü değildir. `PROJ
 - Kaynak/test taraması: platform yönetici oturumları, sistem sağlığı ve varlık modeli ayrıntısı için yukarıdaki C# endpoint, UI ve xUnit izleri bulundu.
 - Canlı API kontrolleri salt-okunur HTTP GET’tir; hesap, veri veya yapılandırma değiştirilmedi.
 
-**P0-A sonucu:** yüzde iddialarının hepsi tarihsel ve güncel V1 tamamlanmasını ispatlamıyor. Yeni özellik işine geçmeden önce tarihsel oranlar güncel rapor olarak kullanılmamalı; canlı giriş kabulü ve Windows araç engeli ayrıca çözülmeli. P0-B sayım kontrolünde ilk ham `.cs` dosya sayımı EF model snapshot’ını yanlışlıkla migration olarak saymıştı; düzeltilmiş sayım 118 sınıf, canlı 118/0. Önceki üretim-yedeği kopya provası (`tests/reports/production-clone-118-rehearsal-20261021.md`) 93 özgün tablonun alan/satır projeksiyonlarını koruyup idempotent migrationı 118’de doğruladı; canlı uygulanan migration kimliklerinin birebir karşılaştırması henüz kanıtlanmadı.
+**P0-A sonucu:** Yüzde iddialarının tamamı tarihsel; güncel V1 tamamlanmasını kanıtlamıyor. Aday commit'in CI'sı yeşil, fakat satışa hazır olma durumu doğrulanmadı: canlı 118, taslak aday 119 migration bildiriyor; yayımlı plan yok ve checkout kullanılamıyor. Canlı sağlık API'si yalnız migration sayısını verdiğinden uygulanan migration kimlikleri birebir karşılaştırılamıyor. Yönetici ekranı/giriş adımı, Windows bilgisayar-kullanım aracının kimlik doğrulamasını otomatikleştirmemesi nedeniyle **ENGELLENDİ**. Yeşil CI'dan aday kodun veya checkout migration'ının canlıya alındığı sonucu çıkarılmamalı.
