@@ -2130,6 +2130,11 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             "POST /api/checkout/callback",
             "POST /api/checkout/webhook",
             "GET /api/checkout/status",
+            // Trial enrollment starts before a session exists. Writes require CSRF and the
+            // checkout rate limit; confirmation additionally requires a short-lived email proof.
+            "GET /api/trials/status",
+            "POST /api/trials/request",
+            "POST /api/trials/confirm",
             // Checkout quote is public so unauthenticated buyers can preview coupon-adjusted pricing.
             "POST /api/checkout/quote",
             "GET /api/plans",
@@ -2150,6 +2155,14 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             string.Join(", ", actualPublicRoutes.Except(expectedPublicRoutes).OrderBy(x => x, StringComparer.Ordinal)) +
             "; missing: " +
             string.Join(", ", expectedPublicRoutes.Except(actualPublicRoutes).OrderBy(x => x, StringComparer.Ordinal)));
+
+        foreach (var trialRoute in new[] { "POST /api/trials/request", "POST /api/trials/confirm" })
+        {
+            var endpoint = Assert.Single(endpoints, endpoint => DescribeEndpoint(endpoint) == trialRoute);
+            var rateLimit = endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>();
+            Assert.NotNull(rateLimit);
+            Assert.Equal("checkout", rateLimit.PolicyName);
+        }
 
         var policies = endpoints.SelectMany(endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>())
             .Select(data => data.Policy)

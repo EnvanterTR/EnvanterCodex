@@ -1,5 +1,12 @@
 # İlk varlık veri dilimi
 
+## Doğrulanmış Cloud deneme kaydı
+
+- `GET /api/trials/status` anonim erişime açıktır; özellik bayrağı, SMTP yapılandırması ve uygun yayımlı yıllık Cloud planı hazır değilse kayıt kapalıdır.
+- `POST /api/trials/request` şirket/portal/e-posta/plan ve sürümlü bilgilendirme onayını doğrular. CSRF ve checkout istek sınırı zorunludur. Bu adım şirket oluşturmaz; 30 dakika geçerli doğrulama bağlantısını e-posta ile gönderir.
+- `POST /api/trials/confirm` CSRF, aynı istek sınırı ve e-posta bağlantısındaki zaman sınırlı korumalı kanıtı ister. Şirket, owner üyeliği ve tam 15 günlük Trial aboneliği ortak `TenantProvisioningService` ile aynı transaction içinde oluşturulur. Tekrar onay süreyi uzatmaz; eşzamanlı aynı e-posta denemeleri yalnız bir deneme hakkı verir.
+- Cloud şirketinde MFA zorunludur. Mevcut hesabın parolası veya güvenlik damgası değiştirilmez; yeni hesabın parola kurulum bağlantısı token içeriğini sorgu parametresine taşımayan URL fragment'inde döner. `CloudTrials__Enabled` varsayılan olarak kapalıdır; gerçek SMTP/tenant kabulü tamamlanmadan etkinleştirilmez.
+
 ## Cloud Checkout Form sağlayıcı dönüşleri
 
 - `POST /api/checkout/callback` iyzico barındırılan ödeme sayfasının tarayıcı dönüşünü kabul eder; gelen token tek başına başarı sayılmaz, sunucudan iyzico retrieve çağrısı yapılır.
