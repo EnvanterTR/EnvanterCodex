@@ -271,3 +271,11 @@
 - Kanıt: `tests/reports/p0-section20-tenant-isolation-acceptance-20261024.md` ve `p0-section20-tenant-isolation-20261024.log`.
 - Sınır: Cross-tenant varlık okuma/yazma 404; başka tenant subdomain'inde oturum 401. Sentetik kabul canlı Santa/Farma, üçüncü şirket veya Bölüm 20'nin kalan iş akışlarını kanıtlamaz. Canlı veriye dokunulmadı.
 - Sıradaki iş: Gerçek/interactive checkout browser akışı ve müşteri E2E; mevcut Windows tarayıcı bilgisayar-kullanım aracı URL politikası hatası verdiği için browser incelemesi yapılamadı. Kullanılabilir başka güvenli kabul yüzeyiyle devam et.
+
+### 24 Ekim 2026 — P0 Bölüm 20.5 platform admin güvenlik alt kabulü
+- Durum: KISMİ (izole kabul); tam Bölüm 20.5 açık.
+- Test: `Company_member_and_platform_admin_boundaries_are_enforced_over_http`, `Authenticator_two_factor_requires_second_step_and_recovery_codes_are_single_use`, `Platform_admin_first_login_accepts_password_then_requires_mfa_setup_before_panel` — **3/3**, exit 0, 2.9147 dakika.
+- Kanıt: `tests/reports/p0-section20-platform-admin-acceptance-20261024.md` ve `p0-section20-platform-admin-20261024.log`.
+- Doğrulanan: Platform rolüyle en az iki şirket görülebiliyor; müşteri tenant yöneticisi platform API'sinden 403 alıyor; ilk platform girişi MFA kurulumu istiyor; MFA olmadan platform overview 428 veriyor; TOTP ve kurtarma kodları testleri geçiyor.
+- Açık: Hedef Bölüm 9.5 / 20.5'teki “Panele gir” impersonation, sarı banner, impersonation audit izi ve platforma geri dönüş mevcut aday kaynakta bulunmadı. Canlı platform/sirket oturumu da kabul edilmedi.
+- Sıradaki iş: Güvenli impersonation tasarımını ve acceptance kapsamını tamamla; ardından gerçek hesap akışı ve P0-E SMTP/Bölüm 20 kalan adımları.
