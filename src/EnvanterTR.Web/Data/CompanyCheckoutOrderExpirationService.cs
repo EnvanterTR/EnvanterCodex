@@ -18,21 +18,25 @@ public sealed class CompanyCheckoutOrderExpirationWorker(IServiceScopeFactory sc
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromMinutes(15));
-        do
+        try
         {
-            try
+            while (await timer.WaitForNextTickAsync(stoppingToken))
             {
-                await using var scope = scopeFactory.CreateAsyncScope();
-                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                var expiredCount = await CompanyCheckoutOrderExpiration.ExpireAsync(db, DateTimeOffset.UtcNow, stoppingToken);
-                if (expiredCount > 0)
-                    logger.LogInformation("Expired {CheckoutOrderCount} unpaid checkout orders.", expiredCount);
+                try
+                {
+                    await using var scope = scopeFactory.CreateAsyncScope();
+                    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    var expiredCount = await CompanyCheckoutOrderExpiration.ExpireAsync(db, DateTimeOffset.UtcNow, stoppingToken);
+                    if (expiredCount > 0)
+                        logger.LogInformation("Expired {CheckoutOrderCount} unpaid checkout orders.", expiredCount);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { return; }
+                catch (Exception exception)
+                {
+                    logger.LogError("Checkout order expiration cycle failed ({ErrorType}).", exception.GetType().Name);
+                }
             }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { return; }
-            catch (Exception exception)
-            {
-                logger.LogError("Checkout order expiration cycle failed ({ErrorType}).", exception.GetType().Name);
-            }
-        } while (await timer.WaitForNextTickAsync(stoppingToken));
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { }
     }
 }
