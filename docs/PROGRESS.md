@@ -257,3 +257,10 @@
 - Kanıt: `tests/reports/p0d-existing-company-provider-guards-acceptance-20261024.md`.
 - Sınır: Sentetik sağlayıcı ve izole API/DB; interaktif browser, gerçek iyzico/SMTP, staging/geri dönüş ve tam plan değişimi yaşam döngüsü kanıtı değildir.
 - Sıradaki iş: Mevcut şirket checkout için gerçek sunucu-rendered sayfa/form tarayıcı kabulünü tamamlamak; değişiklikleri PR #25'e gönderip son head CI'ını doğrulamak.
+
+### 24 Ekim 2026 — P0 canlı satış yolu güncel gözlemi
+- Durum: TAMAM (salt okunur canlı kontrol); satış yolu kullanılamıyor.
+- Kanıt: `tests/reports/p0-live-sales-readiness-probe-20261024.md`; `GET /api/status` 200 ve 118/0 migration, `GET /api/plans` boş dizi, `GET /api/checkout/status` `available=false`, `GET /api/trials/status` 404.
+- Sonuç: Migration hazır cevabı aday checkout/trial kodunun canlıya dağıtıldığını kanıtlamıyor. Canlıya mutasyon yapılmadı.
+- Sınır: Bu public probe SMTP gerçek teslimatını doğrulamaz. Plan yayınlama, provider/SMTP doğrulaması, staging, yeni yedek ve rollback provası açık.
+- Sıradaki iş: Checkout tarayıcı kabulünü ve Hedef Bölüm 20 müşteri senaryolarını ilerlet; bu kapılar geçmeden üretime dağıtma.

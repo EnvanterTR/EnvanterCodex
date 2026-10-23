@@ -25,3 +25,5 @@ Trial registration verifies a short-lived protected email proof. The separate an
 ## Real provider and customer gates — OPEN
 
 Real iyzico merchant acceptance, real SMTP/inbox delivery, staging acceptance, fresh verified backup/rollback, and the Santa/Farma/Demo3 acceptance scenario remain required. No production release is authorized by this source audit.
+
+The 24 October read-only public probe is recorded in `tests/reports/p0-live-sales-readiness-probe-20261024.md`: live reports 118 applied migrations, but `/api/plans` is empty, `/api/checkout/status` is unavailable, and the candidate `/api/trials/status` route returns 404. This confirms the candidate sales/onboarding path has not reached production; migration readiness alone does not establish a release.
