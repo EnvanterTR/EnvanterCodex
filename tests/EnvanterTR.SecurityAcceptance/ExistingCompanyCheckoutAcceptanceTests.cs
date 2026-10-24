@@ -203,6 +203,78 @@ public sealed partial class TenantSessionAcceptanceTests
         Assert.Single(await db.AuditEntries.Where(item => item.CompanyId == _companyId && item.Action == "PaidSubscriptionActivated").ToListAsync());
     }
 
+    [Theory]
+    [InlineData("Active", false, true, false)]
+    [InlineData("Cancelled", false, true, false)]
+    [InlineData("Active", true, true, true)]
+    [InlineData("Cancelled", false, false, true)]
+    [InlineData("Suspended", false, false, false)]
+    public async Task Existing_company_annual_lifecycle_preserves_paid_time_and_plan_boundaries(
+        string status, bool expired, bool changePlan, bool allowed)
+    {
+        var seed = await SeedExistingCheckout("paid");
+        DateTimeOffset originalEnd;
+        var target = seed.Plan;
+        await using (var setup = _factory!.Services.CreateAsyncScope())
+        {
+            var db = setup.ServiceProvider.GetRequiredService<AppDbContext>();
+            var previous = await db.TenantSubscriptions.SingleAsync(item => item.Id == seed.Previous.Id);
+            previous.Status = status;
+            previous.EndsAt = DateTimeOffset.UtcNow.AddDays(expired ? -1 : 10);
+            if (changePlan)
+            {
+                target = new SubscriptionPlan { Code = $"life-{Guid.NewGuid():N}", Name = "Lifecycle target",
+                    DeploymentKind = "cloud", IsActive = true, IsPublic = true, AnnualPrice = 6000m,
+                    Currency = "TRY", MaxLoginUsers = 10 };
+                db.SubscriptionPlans.Add(target);
+            }
+            await db.SaveChangesAsync();
+            await db.Entry(previous).ReloadAsync();
+            originalEnd = previous.EndsAt;
+        }
+        var provider = new ExistingCheckoutProvider();
+        using var factory = ExistingCheckoutFactory(provider);
+        using var client = ExistingCheckoutClient(factory);
+        await ConfigureTrialCsrf(client);
+        var request = ExistingPurchase(target, seed.Code);
+        using var initialized = await client.PostAsJsonAsync("/api/subscription/checkout/initialize", request);
+        Assert.Equal(allowed ? HttpStatusCode.OK : HttpStatusCode.Conflict, initialized.StatusCode);
+        if (allowed)
+        {
+            for (var replay = 0; replay < 2; replay++)
+            {
+                using var callback = await client.PostAsync("/api/checkout/callback",
+                    new FormUrlEncodedContent(new Dictionary<string, string> { ["token"] = provider.Token }));
+                Assert.Equal(HttpStatusCode.OK, callback.StatusCode);
+            }
+        }
+        await using var check = factory.Services.CreateAsyncScope();
+        var verify = check.ServiceProvider.GetRequiredService<AppDbContext>();
+        var history = await verify.TenantSubscriptions.Where(item => item.CompanyId == _companyId).ToListAsync();
+        var original = Assert.Single(history, item => item.Id == seed.Previous.Id);
+        Assert.Equal(originalEnd, original.EndsAt);
+        Assert.Equal(seed.Previous.PlanId, original.PlanId);
+        Assert.Equal(allowed ? 1 : 0, provider.Initializations);
+        Assert.Equal(allowed ? 2 : 1, history.Count);
+        if (allowed)
+        {
+            var active = Assert.Single(history, item => item.Status == "Active");
+            Assert.Equal(target.Id, active.PlanId);
+            Assert.Equal(provider.PaymentId, active.PaymentReference);
+            if (!expired) Assert.Equal(originalEnd.AddDays(365), active.EndsAt);
+            else Assert.Equal(TimeSpan.FromDays(365), active.EndsAt - active.StartsAt);
+            Assert.Single(await verify.AuditEntries.Where(item => item.CompanyId == _companyId &&
+                item.Action == "PaidSubscriptionActivated").ToListAsync());
+        }
+        else
+        {
+            Assert.Equal(status, original.Status);
+            Assert.False(await verify.CompanyCheckoutOrders.AnyAsync(item => item.Id == request.CheckoutId));
+        }
+        Assert.True(await verify.Assets.AnyAsync(item => item.Id == _ownAssetId && item.CompanyId == _companyId));
+        Assert.True(await verify.Assets.AnyAsync(item => item.Id == _otherCompanyAssetId && item.CompanyId == _otherCompanyId));
+    }
+
     [Fact]
     public async Task Existing_company_concurrent_payment_callbacks_activate_once()
     {

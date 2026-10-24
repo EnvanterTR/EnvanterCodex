@@ -360,3 +360,9 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Medya/anahtar arşivleri mevcut canlı volume dosyalarıyla tekrar eşleşti; özel migration kanıt arşivi geçerli. Staging üç süreç çalışıyor. ae875b6 tam CI 3/3 success; JSON kanıtı kaydedildi.
 - Farma parolası doğrulandı, MFA istendi; kullanıcı giriş yaptığını bildirse de kontrol edilen sekme MFA ekranında. Giriş/kapsam testi geçti denmedi; kurtarma kodu kullanılmadı, MFA değiştirilmedi.
 - Kanıt: tests/reports/live-auth-sales-followup-20261024.md. Canlı deploy/migration ve satış açılmadı.
+
+### 24 Ekim 2026 — P0-D yıllık abonelik yaşam döngüsü kabulü
+- Durum: TAMAM (izole kapsam); gerçek sağlayıcı/canlı kapsam açık.
+- Beş gerçek API/Identity/PostgreSQL + sentetik sağlayıcı senaryosu 5/5, exit 0, 1.2723 dakika. Aktif/iptal edilmiş dönemde farklı paket reddi; süresi biten hesapta paket geçişi; iptal edilmiş aynı paket yenilemesinde kalan süre +365 gün; askıya alınmış hesapta ödeme öncesi ret. Başarılı callback tekrarları tek aktivasyon; özgün tarih/plan ve iki kiracının varlıkları korundu.
+- Değişiklik: yalnız ExistingCompanyCheckoutAcceptanceTests.cs ve kanıt belgeleri. Ürün kuralı/migration değişmedi. İlk komutta mevcut Docker entrypoint tekrarlandığı için MSB1008; düzeltilen komutla aynı image kabulü geçti. Geçici DB/ağ kaldırıldı.
+- Kanıt: tests/reports/annual-lifecycle-acceptance-20261024.md ve ilk/başarılı loglar. Tam canlı müşteri/SMTP/iyzico kabulü yerine geçmez.
