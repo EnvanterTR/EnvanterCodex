@@ -366,3 +366,9 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Beş gerçek API/Identity/PostgreSQL + sentetik sağlayıcı senaryosu 5/5, exit 0, 1.2723 dakika. Aktif/iptal edilmiş dönemde farklı paket reddi; süresi biten hesapta paket geçişi; iptal edilmiş aynı paket yenilemesinde kalan süre +365 gün; askıya alınmış hesapta ödeme öncesi ret. Başarılı callback tekrarları tek aktivasyon; özgün tarih/plan ve iki kiracının varlıkları korundu.
 - Değişiklik: yalnız ExistingCompanyCheckoutAcceptanceTests.cs ve kanıt belgeleri. Ürün kuralı/migration değişmedi. İlk komutta mevcut Docker entrypoint tekrarlandığı için MSB1008; düzeltilen komutla aynı image kabulü geçti. Geçici DB/ağ kaldırıldı.
 - Kanıt: tests/reports/annual-lifecycle-acceptance-20261024.md ve ilk/başarılı loglar. Tam canlı müşteri/SMTP/iyzico kabulü yerine geçmez.
+
+### 24 Ekim 2026 — P0-D/E kayıtlı sağlayıcı ayarı denetimi
+- Durum: EKSİK GEREKSİNİM DOĞRULANDI; dış sağlayıcı kabulü tamamlanmadı.
+- Coolify production kayıtlarında EMAIL_SMTP_PASSWORD, IYZIPAY_API_KEY ve IYZIPAY_SECRET_KEY yüklenmiş edit alanları hasValue:false. Sadece alan doluluğu okundu; gizli değer, görünür yapma veya kopyalama yok. Üç alan için yalnız uygulanmamış ayar ihtimali elendi. Hiçbir ayar kaydedilmedi/deploy edilmedi.
+- Kullanıcıdan sağlayıcı hesaplarının erişilebilirliği istendi; sohbete secret istenmedi. Farma kontrol edilen IAB sekmesi hâlâ MFA bekliyor; giriş kabulü doğrulanmış sayılmadı.
+- Kanıt: tests/reports/coolify-saved-provider-config-20261024.md ve üç ekran görüntüsü. c328a2a CI run 40077928353 canlı/in_progress; yeniden başlatılmadı.
