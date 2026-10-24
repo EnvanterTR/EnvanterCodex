@@ -15,7 +15,7 @@ using Microsoft.Extensions.Options;
 
 namespace EnvanterTR.Web.Data;
 
-public static class PlatformEndpoints
+public static partial class PlatformEndpoints
 {
     public static IEndpointRouteBuilder MapPlatformEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -89,6 +89,7 @@ public static class PlatformEndpoints
 
         var admin = endpoints.MapGroup("/api/platform").RequireAuthorization("platform.admin");
         PlatformImpersonation.MapEndpoints(admin, endpoints);
+        MapCompanyDeletionEndpoints(admin);
         admin.MapGet("/system/health", async (AppDbContext db, IConfiguration configuration,
             IOptions<IyzipayOptions> paymentOptions, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
@@ -1576,6 +1577,7 @@ public static class PlatformEndpoints
         }).RequireRateLimiting("login");
 
         admin.MapGet("/companies", async ([FromQuery] string? q, [FromQuery] bool? active, [FromQuery] string? followUp,
+            [FromQuery] bool? deleted,
             [FromQuery] Guid? planId, [FromQuery] string? createdFrom, [FromQuery] string? createdTo,
             [FromQuery] string? sortBy, [FromQuery] string? sortDirection,
             AppDbContext db, CancellationToken cancellationToken, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
@@ -1588,7 +1590,7 @@ public static class PlatformEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["createdFrom/createdTo"] = ["Kayıt tarih aralığı YYYY-MM-DD olmalı ve başlangıç bitişten sonra olamaz."] });
             if (!TryValidateCompanySort(sortBy, sortDirection, out var sortError))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["sortBy/sortDirection"] = [sortError!] });
-            var companies = db.Companies.AsNoTracking().AsQueryable();
+            var companies = db.Companies.AsNoTracking().Where(x => deleted == true ? x.DeletedAt != null : x.DeletedAt == null);
             if (active is bool isActive) companies = companies.Where(x => x.IsActive == isActive);
             if (createdStart is not null) companies = companies.Where(x => x.CreatedAt >= createdStart.Value);
             if (createdEnd is not null) companies = companies.Where(x => x.CreatedAt < createdEnd.Value);
@@ -1613,7 +1615,7 @@ public static class PlatformEndpoints
             var rows = await orderedCompanies.Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(x => new
                 {
-                    x.Id, x.Name, x.Slug, x.ContactEmail, x.IsActive, x.CreatedAt,
+                    x.Id, x.Name, x.Slug, x.ContactEmail, x.IsActive, x.CreatedAt, x.DeletedAt,
                     hasBrandLogo = x.BrandLogoPath != null, x.BrandPrimaryColor,
                     lifecycleStage = x.CustomerLifecycleStage,
                     lifecycleOwnerId = x.PlatformOwnerUserId,
@@ -1633,7 +1635,7 @@ public static class PlatformEndpoints
                 if (verified?.SubscriptionId != row.subscription?.Id) verified = null;
                 return new
                 {
-                    row.Id, row.Name, row.Slug, row.ContactEmail, row.IsActive, row.CreatedAt,
+                    row.Id, row.Name, row.Slug, row.ContactEmail, row.IsActive, row.CreatedAt, row.DeletedAt,
                     row.hasBrandLogo, row.BrandPrimaryColor, row.lifecycleStage, row.lifecycleOwnerId,
                     row.lifecycleOwnerName, row.nextFollowUpAt, row.employeeRecords, row.loginAccounts,
                     row.assetRecords, row.subscription,
@@ -1659,6 +1661,7 @@ public static class PlatformEndpoints
         }).RequireRateLimiting("login");
 
         admin.MapGet("/companies/export.csv", async (HttpContext context, [FromQuery] string? q, [FromQuery] bool? active,
+            [FromQuery] bool? deleted,
             [FromQuery] string? followUp, [FromQuery] Guid? planId, [FromQuery] string? createdFrom,
             [FromQuery] string? createdTo, [FromQuery] string? sortBy, [FromQuery] string? sortDirection,
             AppDbContext db, CancellationToken cancellationToken) =>
@@ -1672,7 +1675,7 @@ public static class PlatformEndpoints
             if (!TryValidateCompanySort(sortBy, sortDirection, out var sortError))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["sortBy/sortDirection"] = [sortError!] });
 
-            var companies = db.Companies.AsNoTracking().AsQueryable();
+            var companies = db.Companies.AsNoTracking().Where(x => deleted == true ? x.DeletedAt != null : x.DeletedAt == null);
             if (active is bool isActive) companies = companies.Where(x => x.IsActive == isActive);
             if (createdStart is not null) companies = companies.Where(x => x.CreatedAt >= createdStart.Value);
             if (createdEnd is not null) companies = companies.Where(x => x.CreatedAt < createdEnd.Value);
@@ -1748,7 +1751,7 @@ public static class PlatformEndpoints
             membersPage = Math.Max(membersPage, 1);
             membersPageSize = Math.Clamp(membersPageSize == 0 ? 50 : membersPageSize, 1, 100);
             var company = await db.Companies.AsNoTracking().Where(x => x.Id == companyId)
-                .Select(x => new { x.Id, x.Name, x.Slug, x.ContactEmail, x.IsActive, x.CreatedAt,
+                .Select(x => new { x.Id, x.Name, x.Slug, x.ContactEmail, x.IsActive, x.CreatedAt, x.DeletedAt,
                     x.BrandLogoPath, x.BrandPrimaryColor, lifecycleStage = x.CustomerLifecycleStage,
                     lifecycleOwnerId = x.PlatformOwnerUserId, nextFollowUpAt = x.PlatformNextFollowUpAt,
                     lifecycleOwnerName = db.Users.Where(account => account.Id == x.PlatformOwnerUserId)
@@ -2023,6 +2026,8 @@ public static class PlatformEndpoints
             if (request.Note is { Length: > 1000 }) return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Açıklama 1000 karakteri aşamaz."] });
             var company = await db.Companies.SingleOrDefaultAsync(x => x.Id == companyId, cancellationToken);
             if (company is null) return Results.NotFound();
+            if (company.DeletedAt is not null)
+                return Results.Conflict(new { message = "Silinen şirketi önce çöp kutusundan geri alın." });
             if (company.IsActive == request.IsActive) return Results.Ok(new { company.Id, company.IsActive, unchanged = true });
             if (string.IsNullOrWhiteSpace(request.Note) || request.Note.Trim().Length < 8)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Durum değişikliği için en az 8 karakterlik gerekçe gereklidir."] });
@@ -2045,6 +2050,8 @@ public static class PlatformEndpoints
                 .OrderBy(company => company.Id).ToListAsync(cancellationToken);
             if (companies.Count != request.CompanyIds.Length)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["companyIds"] = ["Seçili şirketlerden biri bulunamadı; hiçbir değişiklik yapılmadı."] });
+            if (companies.Any(company => company.DeletedAt is not null))
+                return Results.Conflict(new { message = "Silinen şirketler için önce çöp kutusundan geri alma gerekir; hiçbir durum değiştirilmedi." });
 
             var changed = companies.Where(company => company.IsActive != request.IsActive).ToArray();
             if (changed.Length == 0) return Results.Ok(new { updated = 0, unchanged = companies.Count });
@@ -2077,7 +2084,7 @@ public static class PlatformEndpoints
             if (plan is null)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["planId"] = ["Etkin bir Cloud planı seçilmelidir."] });
 
-            var companies = await db.Companies.AsNoTracking().Where(company => request.CompanyIds.Contains(company.Id))
+            var companies = await db.Companies.AsNoTracking().Where(company => request.CompanyIds.Contains(company.Id) && company.DeletedAt == null)
                 .Select(company => company.Id).ToListAsync(cancellationToken);
             if (companies.Count != request.CompanyIds.Length)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["companyIds"] = ["Seçili şirketlerden biri bulunamadı; hiçbir plan değiştirilmedi."] });

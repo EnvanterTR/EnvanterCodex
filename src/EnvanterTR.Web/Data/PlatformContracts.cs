@@ -44,6 +44,8 @@ public sealed record ProvisionCompanyRequest(string CompanyName, string Slug, st
     string OwnerName, string OwnerEmail, Guid PlanId, int TermDays, string? PaymentReference, bool PaymentVerified,
     bool IsDemo = false, string? Note = null);
 public sealed record SetCompanyActiveRequest(bool IsActive, string? Note);
+public sealed record DeleteCompanyRequest(string ConfirmSlug, string? Note);
+public sealed record RestoreCompanyRequest(string? Note);
 public sealed record SetCompaniesActiveRequest(Guid[] CompanyIds, bool IsActive, string? Note);
 public sealed record SetCompaniesPlanRequest(Guid[] CompanyIds, Guid PlanId, string? Note);
 public sealed record UpdatePlatformCustomerLifecycleRequest(string Stage, Guid? AssignedAdminUserId,

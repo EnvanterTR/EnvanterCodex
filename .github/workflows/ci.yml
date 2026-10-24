@@ -7,7 +7,6 @@ on:
       - '*.md'
       - '**/*.md'
   pull_request:
-    branches: [main]
 
 permissions:
   contents: read
@@ -298,6 +297,10 @@ jobs:
       - name: Verify platform company provisioning workflow
         shell: bash
         run: node tools/Verify-PlatformCompanyProvisioning.mjs
+
+      - name: Verify recoverable company deletion and migration artifact
+        shell: bash
+        run: node tools/Verify-CompanyDeletion.mjs
 
       - name: Verify platform customer lifecycle workflow
         shell: bash

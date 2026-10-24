@@ -103,6 +103,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Company>().Property(x => x.Name).HasMaxLength(200).IsRequired();
         modelBuilder.Entity<Company>().Property(x => x.AssetCount).HasDefaultValue(0);
         modelBuilder.Entity<Company>().ToTable("Companies", table =>
+            table.HasCheckConstraint("CK_Companies_DeletedInactive", "\"DeletedAt\" IS NULL OR NOT \"IsActive\""));
+        modelBuilder.Entity<Company>().ToTable("Companies", table =>
         {
             table.HasCheckConstraint("CK_Companies_AssetCount", "\"AssetCount\" >= 0");
             table.HasCheckConstraint("CK_Companies_SecurityPasswordMinimumLength", "\"SecurityPasswordMinimumLength\" BETWEEN 12 AND 64");

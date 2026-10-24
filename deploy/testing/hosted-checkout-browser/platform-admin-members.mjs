@@ -1110,6 +1110,65 @@ try {
   assert.equal(writes.filter(write => write.path === '/api/platform/companies').length, 1,
     'Canceling the mobile demo form must not create another company.');
   console.log('PASS: separate unpaid demo form, 15-day default, 60-day cap, required reason, payment fields absent, CSRF payload, mobile fit/scroll/cancel; paid form still requires payment proof.');
+  // Actual platform HTML with a synthetic transport; database isolation is covered separately.
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  directoryCompany.deletedAt = null;
+  const deletionWrites = [];
+  await page.route(/\/api\/platform\/companies\?.*/, async route => {
+    const url = new URL(route.request().url());
+    const inTrash = url.searchParams.get('deleted') === 'true';
+    const items = Boolean(directoryCompany.deletedAt) === inTrash ? [directoryCompany] : [];
+    await route.fulfill({ json: { items, total: items.length, page: 1, pageSize: 50 } });
+  });
+  await page.route(`**/api/platform/companies/${companyId}`, async route => {
+    if (route.request().method() !== 'DELETE') return route.fallback();
+    deletionWrites.push({ method: 'DELETE', body: route.request().postDataJSON(), csrf: route.request().headers()['x-csrf-token'] });
+    directoryCompany.deletedAt = new Date().toISOString(); directoryCompany.isActive = false;
+    await route.fulfill({ json: { id: companyId, deletedAt: directoryCompany.deletedAt, isActive: false, billingChanged: false } });
+  });
+  await page.route(`**/api/platform/companies/${companyId}/restore`, async route => {
+    deletionWrites.push({ method: route.request().method(), body: route.request().postDataJSON(), csrf: route.request().headers()['x-csrf-token'] });
+    directoryCompany.deletedAt = null;
+    await route.fulfill({ json: { id: companyId, isActive: false, billingChanged: false } });
+  });
+  await page.locator('#companyDeleted').selectOption('false');
+  await page.locator(`[data-company-delete="${companyId}"]`).click();
+  const deletionDialog = page.locator('#companyDeletionDialog');
+  await deletionDialog.locator('[type="submit"]').click();
+  assert.equal(deletionWrites.length, 0, 'Missing reason and confirmation must not write.');
+  await deletionDialog.locator('[name="note"]').fill('Synthetic company trash acceptance');
+  await deletionDialog.locator('[name="confirmSlug"]').fill('wrong-slug');
+  await deletionDialog.locator('[type="submit"]').click();
+  assert.equal(deletionWrites.length, 0, 'Wrong company confirmation must not write.');
+  await deletionDialog.locator('[name="confirmSlug"]').fill(directoryCompany.slug);
+  if (process.env.ENVANTERTR_BROWSER_REPORT_DIR)
+    await page.screenshot({ path: `${process.env.ENVANTERTR_BROWSER_REPORT_DIR}/company-deletion-confirmation-20261025.png` });
+  await deletionDialog.locator('[type="submit"]').click();
+  await deletionDialog.waitFor({ state: 'hidden' });
+  assert.deepEqual(deletionWrites[0], { method: 'DELETE', body: { note: 'Synthetic company trash acceptance', confirmSlug: directoryCompany.slug }, csrf: csrfToken });
+  await page.locator('#companyDeleted').selectOption('true');
+  await page.locator(`[data-company-restore="${companyId}"]`).waitFor({ state: 'visible' });
+  assert.equal(await page.locator('[data-action="toggle"],[data-company-delete]').count(), 0, 'Trash must not offer activation or repeated deletion.');
+  await page.locator('[data-company-select]').check();
+  assert.equal(await page.locator('#bulkReactivateCompanies').isVisible(), false, 'Bulk activation must not bypass trash.');
+  await page.locator(`[data-company-restore="${companyId}"]`).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  const deletionBounds = await deletionDialog.evaluate(dialog => {
+    const rect = dialog.getBoundingClientRect();
+    return { width: rect.width, height: rect.height, scrollWidth: dialog.scrollWidth, clientWidth: dialog.clientWidth };
+  });
+  assert.ok(deletionBounds.width <= 390 && deletionBounds.height <= 844 && deletionBounds.scrollWidth <= deletionBounds.clientWidth + 1);
+  if (process.env.ENVANTERTR_BROWSER_REPORT_DIR)
+    await page.screenshot({ path: `${process.env.ENVANTERTR_BROWSER_REPORT_DIR}/company-restoration-mobile-20261025.png` });
+  await deletionDialog.getByRole('button', { name: 'Vazgeç', exact: true }).click();
+  assert.equal(deletionWrites.length, 1, 'Canceling restoration must not write.');
+  await page.locator(`[data-company-restore="${companyId}"]`).click();
+  await deletionDialog.locator('[name="note"]').fill('Synthetic company restoration acceptance');
+  await deletionDialog.locator('[type="submit"]').click();
+  await deletionDialog.waitFor({ state: 'hidden' });
+  assert.deepEqual(deletionWrites[1], { method: 'POST', body: { note: 'Synthetic company restoration acceptance' }, csrf: csrfToken });
+  assert.equal(directoryCompany.isActive, false, 'Restoration must not silently reactivate access.');
+  console.log('PASS: company trash/restore dialog, required reason and exact slug, CSRF payload, current/trash filtering, blocked trash activation, mobile fit and cancel without write.');
   assert.deepEqual(browserErrors, [], `Platform member UI threw: ${browserErrors.join(' | ')}`);
   console.log('PASS: real Chromium account/security/membership/payment timeline; company CSV download with active search/status filters and formula-safe delimited values; demo CRM list/company-search/detail and selected-company fallback stale-response protection plus status, assignment, follow-up, company link, CSRF write and history persistence; member search, cancel-without-write, reauthenticated role update, synthetic invitation, plan create/update/validation/publication reload and maintenance entitlement persistence; audited company subscription plan/date editing with cancel and persistence; platform audit text/source/action/target/date filters, exclusive end-date boundary, clear, paging, event detail, no-match, surfaced 503 and retry behavior without writes.');
 } finally {

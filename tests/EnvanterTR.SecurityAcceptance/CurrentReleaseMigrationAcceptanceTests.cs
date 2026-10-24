@@ -36,14 +36,21 @@ public sealed class CurrentReleaseMigrationAcceptanceTests(ITestOutputHelper out
             Assert.Equal(118, Array.IndexOf(migrations, Baseline) + 1);
             Assert.Equal("c8694e4a153c5f81d5cface1e0c9f366", Convert.ToHexStringLower(
                 MD5.HashData(Encoding.UTF8.GetBytes(string.Join('\n', migrations.Take(118))))));
-            Assert.Equal(new[] { "20261023190000_AddExistingCompanyCheckoutContext", "20261024010000_AddPlatformImpersonationSessions" }, migrations.Skip(118));
+            Assert.Equal(new[] { "20261023190000_AddExistingCompanyCheckoutContext", "20261024010000_AddPlatformImpersonationSessions" }, migrations.Skip(118).Take(2));
+            Assert.Equal("20261024212238_AddRecoverableCompanyDeletion", migrations[120]);
             await db.Database.MigrateAsync(Baseline);
             Assert.Equal(118, (await db.Database.GetAppliedMigrationsAsync()).Count());
 
             var company = new Company { Name = "Synthetic preserved company", Slug = "release-preserved" };
             var user = new EnvanterUser { DisplayName = "Synthetic preserved owner", UserName = "release@example.invalid", Email = "release@example.invalid", EmailConfirmed = true };
             var plan = new SubscriptionPlan { Code = "synthetic-release", Name = "Synthetic release plan", DeploymentKind = "cloud", AnnualPrice = 2400 };
-            db.Companies.Add(company); db.Users.Add(user); db.SubscriptionPlans.Add(plan);
+            // Insert the 118-era company shape: the current CLR model also maps newer columns.
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO "Companies" ("Id", "Name", "Slug", "IsActive", "CreatedAt", "BrandPrimaryColor",
+                    "SecurityPasswordMinimumLength", "SecuritySessionDurationHours", "SecurityRequireMfa")
+                VALUES ({company.Id}, {company.Name}, {company.Slug}, TRUE, now(), '#1769E0', 12, 720, FALSE)
+                """);
+            db.Users.Add(user); db.SubscriptionPlans.Add(plan);
             await db.SaveChangesAsync();
             var sessionId = Guid.NewGuid(); var orderId = Guid.NewGuid();
             await db.Database.ExecuteSqlInterpolatedAsync($"""
@@ -90,7 +97,7 @@ public sealed class CurrentReleaseMigrationAcceptanceTests(ITestOutputHelper out
             var expectedHash = (await File.ReadAllTextAsync(artifact + ".sha256")).Trim().Split(' ')[0];
             Assert.Equal(expectedHash, Convert.ToHexStringLower(SHA256.HashData(bytes)));
             var sql = Encoding.UTF8.GetString(bytes);
-            var generated = db.GetService<IMigrator>().GenerateScript(Baseline, migrations[^1], MigrationsSqlGenerationOptions.Idempotent)
+            var generated = db.GetService<IMigrator>().GenerateScript(Baseline, migrations[119], MigrationsSqlGenerationOptions.Idempotent)
                 .Replace(Quote(schema) + "." + Quote("__EFMigrationsHistory"), Quote("__EFMigrationsHistory"), StringComparison.Ordinal)
                 .Replace(schema + "." + Quote("__EFMigrationsHistory"), Quote("__EFMigrationsHistory"), StringComparison.Ordinal);
             Assert.Equal(generated.Replace("\r\n", "\n").TrimEnd(), sql.Replace("\r\n", "\n").TrimEnd());
@@ -100,7 +107,7 @@ public sealed class CurrentReleaseMigrationAcceptanceTests(ITestOutputHelper out
             Assert.DoesNotContain("DELETE FROM", sql, StringComparison.OrdinalIgnoreCase);
             await using (var apply = new NpgsqlCommand(sql, connection)) await apply.ExecuteNonQueryAsync();
             Assert.Equal(120, (await db.Database.GetAppliedMigrationsAsync()).Count());
-            Assert.Empty(await db.Database.GetPendingMigrationsAsync());
+            Assert.Equal(new[] { migrations[120] }, await db.Database.GetPendingMigrationsAsync());
             Assert.Equal(before, await HashProjections(connection, schema, columns));
             await using (var repeat = new NpgsqlCommand(sql, connection)) await repeat.ExecuteNonQueryAsync();
             Assert.Equal(120, (await db.Database.GetAppliedMigrationsAsync()).Count());
@@ -111,6 +118,27 @@ public sealed class CurrentReleaseMigrationAcceptanceTests(ITestOutputHelper out
             var preservedOrder = await db.CompanyCheckoutOrders.SingleAsync(order => order.Id == orderId);
             Assert.Null(preservedOrder.TargetCompanyId); Assert.Null(preservedOrder.RequestedByUserId);
             Assert.Equal(company.Id, (await db.Assets.SingleAsync(asset => asset.Id == assetId)).CompanyId);
+            var companyArtifact = Path.Combine(AppContext.BaseDirectory, "company-deletion-migration.sql");
+            var companyBytes = await File.ReadAllBytesAsync(companyArtifact);
+            var companyHash = (await File.ReadAllTextAsync(companyArtifact + ".sha256")).Trim().Split(' ')[0];
+            Assert.Equal(companyHash, Convert.ToHexStringLower(SHA256.HashData(companyBytes)));
+            var companySql = Encoding.UTF8.GetString(companyBytes);
+            var generatedCompanySql = db.GetService<IMigrator>().GenerateScript(migrations[119], migrations[120], MigrationsSqlGenerationOptions.Idempotent)
+                .Replace(Quote(schema) + "." + Quote("__EFMigrationsHistory"), Quote("__EFMigrationsHistory"), StringComparison.Ordinal)
+                .Replace(schema + "." + Quote("__EFMigrationsHistory"), Quote("__EFMigrationsHistory"), StringComparison.Ordinal);
+            Assert.Equal(generatedCompanySql.Replace("\r\n", "\n").TrimEnd(), companySql.Replace("\r\n", "\n").TrimEnd());
+            Assert.DoesNotContain("DROP TABLE", companySql, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("DROP COLUMN", companySql, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("DELETE FROM", companySql, StringComparison.OrdinalIgnoreCase);
+            await using (var applyCompany = new NpgsqlCommand(companySql, connection)) await applyCompany.ExecuteNonQueryAsync();
+            Assert.Equal(before, await HashProjections(connection, schema, columns));
+            await using (var repeatCompany = new NpgsqlCommand(companySql, connection)) await repeatCompany.ExecuteNonQueryAsync();
+            Assert.Equal(121, (await db.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Empty(await db.Database.GetPendingMigrationsAsync());
+            Assert.False(db.Database.HasPendingModelChanges());
+            Assert.Null((await db.Companies.SingleAsync(item => item.Id == company.Id)).DeletedAt);
+            Assert.Equal(before, await HashProjections(connection, schema, columns));
+            output.WriteLine($"PRESERVED_COMPANY_DELETION_120_TO_121_OK: repeated idempotent SQL; all original fields/rows unchanged; new DeletedAt null; SQL SHA-256 {companyHash}.");
             output.WriteLine($"PRESERVED_RELEASE_118_TO_120_OK: {columns.Count} original tables; original fields/rows identical after first and repeated SQL; existing session/order/assets preserved.");
             output.WriteLine("Synthetic isolated schema only; not production backup, staging, or live acceptance.");
         }

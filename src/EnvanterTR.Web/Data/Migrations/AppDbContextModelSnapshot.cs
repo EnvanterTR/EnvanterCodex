@@ -1926,6 +1926,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasColumnType("character varying(32)")
                         .HasDefaultValue("Unclassified");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -1970,6 +1973,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("Companies", null, t =>
                         {
                             t.HasCheckConstraint("CK_Companies_AssetCount", "\"AssetCount\" >= 0");
+
+                            t.HasCheckConstraint("CK_Companies_DeletedInactive", "\"DeletedAt\" IS NULL OR NOT \"IsActive\"");
 
                             t.HasCheckConstraint("CK_Companies_SecurityPasswordMinimumLength", "\"SecurityPasswordMinimumLength\" BETWEEN 12 AND 64");
 
@@ -2134,11 +2139,11 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
-                    b.Property<int>("TermDays")
-                        .HasColumnType("integer");
-
                     b.Property<Guid?>("TargetCompanyId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("TermDays")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -2172,8 +2177,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                             t.HasCheckConstraint("CK_CompanyCheckoutOrders_Status", "\"Status\" IN ('Pending', 'PaymentStarted', 'PaymentReview', 'PaymentFailed', 'Expired', 'Provisioned', 'ProvisioningFailed')");
 
-                            t.HasCheckConstraint("CK_CompanyCheckoutOrders_Term", "\"TermDays\" IN (30, 365)");
                             t.HasCheckConstraint("CK_CompanyCheckoutOrders_TargetContext", "(\"TargetCompanyId\" IS NULL AND \"RequestedByUserId\" IS NULL) OR (\"TargetCompanyId\" IS NOT NULL AND \"RequestedByUserId\" IS NOT NULL AND \"TermDays\" = 365)");
+
+                            t.HasCheckConstraint("CK_CompanyCheckoutOrders_Term", "\"TermDays\" IN (30, 365)");
                         });
                 });
 
@@ -5333,6 +5339,7 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("UserSessions", null, t =>
                         {
                             t.HasCheckConstraint("CK_UserSessions_Expiry", "\"ExpiresAt\" > \"CreatedAt\"");
+
                             t.HasCheckConstraint("CK_UserSessions_Impersonation", "(\"ImpersonatorUserId\" IS NULL AND \"ImpersonatorSessionId\" IS NULL AND \"ImpersonatorSecurityStampHash\" IS NULL AND \"ImpersonationReturnTokenHash\" IS NULL AND \"ImpersonatorRememberMe\" IS NULL AND \"ImpersonationReason\" IS NULL AND \"ImpersonationEndedAt\" IS NULL) OR (\"ImpersonatorUserId\" IS NOT NULL AND \"ImpersonatorSessionId\" IS NOT NULL AND \"ImpersonatorSecurityStampHash\" IS NOT NULL AND \"ImpersonatorRememberMe\" IS NOT NULL AND \"ImpersonationReason\" IS NOT NULL AND \"CompanyId\" IS NOT NULL AND NOT \"PlatformAdmin\" AND (\"ImpersonationReturnTokenHash\" IS NOT NULL OR \"ImpersonationEndedAt\" IS NOT NULL))");
                         });
                 });

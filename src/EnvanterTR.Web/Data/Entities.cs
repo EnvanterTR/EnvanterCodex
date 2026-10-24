@@ -14,6 +14,7 @@ public sealed class Company
     public int SecuritySessionDurationHours { get; set; } = 720;
     public bool SecurityRequireMfa { get; set; }
     public bool IsActive { get; set; } = true;
+    public DateTimeOffset? DeletedAt { get; set; }
     public string CustomerLifecycleStage { get; set; } = "Unclassified";
     public Guid? PlatformOwnerUserId { get; set; }
     public DateTimeOffset? PlatformNextFollowUpAt { get; set; }
