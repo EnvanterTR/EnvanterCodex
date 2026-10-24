@@ -377,3 +377,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Mevcut compose ve gerçek endpoint kodundan production ayar eşlemeleri, kullanıcı tarafından güvenli secret girişi, gerçek inbox ve sandbox ödeme doğrulama sırası hazırlandı: deploy/coolify/PROVIDER-ACCEPTANCE.md.
 - Liste tamamlanmış kabul değildir. SMTP 202 ile inbox teslimatını, callback HTTP 200 ile Provisioned siparişini ayırır; dışa kapalı staging'in sağlayıcı kabulüne otomatik uygun olduğunu iddia etmez. Gerçek para tahsilatı kullanıcıya bırakılır.
 - Ürün kodu/migration değişmedi; yeni test/derleme çalıştırılmadı. c328a2a run 40077928353 PostgreSQL işi canlı/in_progress olarak doğrulandı; diğer iki iş başarılı. Açık sağlayıcı/MFA engelleri sürüyor.
+
+### 24 Ekim 2026 — Bölüm 20 Santa canlı giriş adımı
+- Durum: BAŞARISIZ. Hedef 5.3.2 test hesabıyla santa.envantertr.com üzerinde tek giriş denemesi gerçek UI'da “Giriş bilgileri geçersiz veya hesap geçici olarak kullanılamıyor.” döndürdü. Yanlış parola/kilit/üyelik ayrımı bu mesajdan yapılamaz; kök neden iddia edilmedi. Tekrar/reset/MFA bypass yapılmadı.
+- Dashboard ve sonraki 20.2 adımları doğrulanmadı. Farma mevcut çerezle yeniden açıldığında giriş ekranı gösterdi; erişilebilir açık oturum yok. Secret veya hesap değeri rapora alınmadı.
+- Kanıt: tests/reports/santa-live-login-20261024.md. CI 40077928353 PostgreSQL işi hâlâ canlı; diğer iki iş başarılı. Üretim sürümü/şeması değişmedi.
