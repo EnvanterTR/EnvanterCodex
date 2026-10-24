@@ -411,3 +411,9 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Başarılı platform-only parola+MFA girişine mevcut 600 saniyelik platform_reauth_at kanıtı eklendi. Şirket girişi/parola-only oturum bunu alamaz; süre uzatılmadı, mevcut eski oturumlar kendiliğinden yetkilendirilmedi. Migration yok.
 - Gerçek PostgreSQL/Identity çerezleriyle 15/15 kabul, exit 0; iki kaynak doğrulayıcı ve diff kontrolü geçti. İlk testte eski takipli scope okuması düzeltilerek kurtarma kodu tüketimi yeni scope ile kanıtlandı.
 - Kanıt: tests/reports/platform-fresh-login-acceptance-20261024.md ve ilk/başarılı loglar. Canlı c328 hâlâ bu düzeltmeyi içermiyor; yeni CI/staging/yedek/yayın adımları gerekiyor. Gerçek Farma destek kabulü tamamlandı sayılmadı.
+
+### 24 Ekim 2026 — 8db0343 gerçek staging ve güncel geri dönüş provası
+- Tam aday SHA 8db0343753e4e728ce7253ec221af6445118f018 uzak dala gönderildi. CI 40098994968: Linux güvenlik ve Windows deployment/backup başarılı; PostgreSQL kabulü sürüyor. Başarılı iş tekrar başlatılmadı.
+- Sunucuda aday imaj derlemesi exit 0; yeni staging web ayrı medya/anahtar kopyalarıyla internal ağda, host portu yok. Üç host için ready/120/0; CSRF, anonim assets 401, ana alan platform API 401, tenant host platform API 404 doğrulandı. Dış sağlayıcı secret'ları boş.
+- Yayımlı katalog sonrasındaki taze dump 20261024T134018Z ayrı DB'ye restore edildi; 95 tablo sayımı canlıyla aynı. 140 MB rollback paketi 20261024T134137Z; dosya/imaj geri dönüş provası geçti. Migration farkı yok.
+- Kanıt: tests/reports/platform-fresh-login-staging-20261024.md ve üç ekran görüntüsü. CI son işi bitmeden yeni aday canlıya alınmadı; üretim hâlâ c328a2a. Kullanıcıdan yeni OTP istenmedi.
