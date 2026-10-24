@@ -45,16 +45,20 @@ public sealed partial class TenantSessionAcceptanceTests
             System.Globalization.CultureInfo.InvariantCulture);
         Assert.InRange(proof, DateTimeOffset.UtcNow.AddMinutes(-1).ToUnixTimeSeconds(), DateTimeOffset.UtcNow.ToUnixTimeSeconds());
         Assert.Null(ticket.Principal.FindFirstValue("company_id"));
-        for (var index = 0; index < 2; index++)
+        var planCodes = Enumerable.Range(0, 2).Select(index => $"mfa-{_userId:N}-{index}").ToArray();
+        foreach (var planCode in planCodes)
         {
-            using var write = await ImpersonationPost(client, "/api/platform/plans/annual-catalog/drafts",
-                new { changeReason = "Synthetic fresh-login catalog acceptance" });
-            Assert.Equal(HttpStatusCode.OK, write.StatusCode);
+            using var write = await ImpersonationPost(client, "/api/platform/plans",
+                new SavePlanRequest(planCode, "Fresh login acceptance", "Synthetic isolated plan", "cloud", 1, null,
+                    0m, 2400m, 0m, "TRY", false, 0, "{}", false, true, 0,
+                    "Synthetic fresh-login consecutive-write acceptance"));
+            Assert.Equal(HttpStatusCode.Created, write.StatusCode);
         }
         await using var check = factory.Services.CreateAsyncScope();
         var db = check.ServiceProvider.GetRequiredService<AppDbContext>();
-        var codesToCheck = AnnualCloudCatalog.Tiers.Select(tier => tier.Code).ToArray();
-        Assert.Equal(8, await db.SubscriptionPlans.CountAsync(plan => codesToCheck.Contains(plan.Code)));
+        Assert.Equal(2, await db.SubscriptionPlans.CountAsync(plan => planCodes.Contains(plan.Code)));
+        Assert.Equal(2, await db.PlatformAuditEntries.CountAsync(entry => entry.ActorUserId == _userId &&
+            entry.Action == "PlanCreated"));
         Assert.False(await db.PlatformAuditEntries.AnyAsync(entry => entry.ActorUserId == _userId &&
             entry.Action == "PlatformReauthenticated"));
         var refreshed = await client.GetFromJsonAsync<JsonElement>("/api/session");

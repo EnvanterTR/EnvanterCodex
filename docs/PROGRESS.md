@@ -417,3 +417,13 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Sunucuda aday imaj derlemesi exit 0; yeni staging web ayrı medya/anahtar kopyalarıyla internal ağda, host portu yok. Üç host için ready/120/0; CSRF, anonim assets 401, ana alan platform API 401, tenant host platform API 404 doğrulandı. Dış sağlayıcı secret'ları boş.
 - Yayımlı katalog sonrasındaki taze dump 20261024T134018Z ayrı DB'ye restore edildi; 95 tablo sayımı canlıyla aynı. 140 MB rollback paketi 20261024T134137Z; dosya/imaj geri dönüş provası geçti. Migration farkı yok.
 - Kanıt: tests/reports/platform-fresh-login-staging-20261024.md ve üç ekran görüntüsü. CI son işi bitmeden yeni aday canlıya alınmadı; üretim hâlâ c328a2a. Kullanıcıdan yeni OTP istenmedi.
+
+### 24 Ekim 2026 — tam CI test verisi çakışması
+- Run 40098994968 terminal BAŞARISIZ: PostgreSQL kabulü 326/327, diğer iki iş başarılı. Tek hata yıllık katalog testinde IX_SubscriptionPlans_Code; yeni MFA testinin ortak disposable DB'de bıraktığı sabit katalog kodlarıyla çakıştı.
+- Yeni test artık GUID içeren, yayımlanmayan iki ayrı planı gerçek yetkili API ile oluşturur; iki ardışık yazmanın ve iki PlanCreated denetim kaydının başarılı olmasını doğrular. Katalog endpoint'i/ürün MFA kodu/güvenlik süreleri değiştirilmedi. Katalog + MFA + destek testleri birlikte yeniden çalışıyor; henüz geçti sayılmadı.
+- Kanıt: tests/reports/ci-8db-catalog-collision-20261024.log. Üretim yayını yapılmadı; test hata kaydı gizlenmedi, başarısız iş sebepsiz yeniden başlatılmadı.
+
+### 24 Ekim 2026 — katalog/MFA ortak regresyonu düzeltildi
+- Benzersiz test planı kodu 40 karakter sınırına uygun hale getirildi. Temiz disposable DB'de katalog + yeni MFA + şirket oturumu ret + destek oturumu senaryoları **16/16 geçti**, exit 0, 3.4624 dakika. Ara 14/16 başarısız deneme logu da korundu; ürün validasyonu gevşetilmedi.
+- Ürün/runtime kodu staging'deki 8db0343 ile aynı; yalnız test ve kanıt dosyaları değişti. Tam CI yeni başlık için yeniden geçmeden canlı yayın yapılmayacak. Geçici yerel DB'ler test tamamlandıktan sonra kaldırıldı.
+- Kanıt: tests/reports/platform-fresh-login-acceptance-20261024.md, iki ortak regresyon logu, terminal CI JSON ve hata özeti.

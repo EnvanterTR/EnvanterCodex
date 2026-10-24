@@ -16,6 +16,8 @@ Screenshots: `coolify-8db-fresh-restore-20261024.png`, `coolify-8db-stage-restor
 
 ## Pending
 
+Update: run 40098994968 is now terminal failure, 326/327 tests passed. The sole failing test is `Annual_catalog_drafts_are_authorized_csrf_protected_idempotent_and_preserve_existing_plans`: the new freshness tests had left fixed annual catalog codes in the shared disposable database. Evidence: `ci-8db-catalog-collision-20261024.log`. The freshness fixture is being changed to unique unpublished plan writes; product code remains unchanged. Production release remains withheld. The in-progress observation below is historical.
+
 Exact-head CI run 40098994968 remains in progress; Windows deployment/backup and Linux security jobs passed, PostgreSQL tenant acceptance still running at last observation. No production release of 8db0343 has occurred. Production still c328a2a. Local 15/15 authentication/support tests are separate evidence; no synthetic credentials or identity changes were applied to the staging copy of customer accounts.
 
 Existing Farma browser tab showed the login form. No further OTP request, repeated login, recovery-code use, MFA reset or impersonation bypass was attempted. Provider and full customer acceptance remain open.
