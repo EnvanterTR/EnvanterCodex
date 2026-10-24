@@ -330,3 +330,13 @@
 - Sınır/sıradaki iş: Hedef 20'nin gerçek Santa/Farma/Demo3 kabulü, SMTP/iyzico, staging, güncel doğrulanmış yedek/rollback açık. Canlı migration/deploy yapılmadı. PR #25'e gönder; tam CI ve dış ortam kapılarını ilerlet.
 
 24 Ekim CI takibi: 54a0600 run 40045415095 Linux kaynak kontrolü Verify-AuthErrorFlows üzerinde başarısız oldu. Yerel tekrar, yeni destek bandını tanımayan VM fixture seçicisini gösterdi. Fixture güncellendi; 401 sonrası destek kimliğinin sıfırlanması ve bandın gizlenmesi ayrıca doğrulanıyor. CI içindeki 79 Node kaynak komutunun tamamı yerelde geçti (platform-impersonation-all-source-20261024.log); hedefli auth-flow logu da başarılı. Ürün davranışı değiştirilmedi. Yeni commit için tam CI gerekir; eski run sırasında iki diğer iş çalışıyordu.
+
+### 24 Ekim 2026 — P0-B güncel 118 → 120 veri koruma kabulü
+- Durum: TAMAM (izole kabul); gerçek yedek/restore, staging ve canlı kabul açık.
+- Değişen dosyalar: CurrentReleaseMigrationAcceptanceTests.cs, tek komutlu migration kabul runner ve kanıt belgeleri. Ürün/migration kodu değişmedi.
+- Test: Tarihsel 118 kimlik listesi MD5 eşitliği ve iki yeni kimlik; public fallback olmadan rastgele schema; sentetik şirket/kullanıcı/plan/oturum/checkout/varlık; tüm özgün tablo alanı/satır projeksiyonları; idempotent SQL ilk/tekrar eşitliği; eski oturum ve checkout yeni alanları null. 1/1 exit 0, 41.9429 saniye; test build 0 hata ve önceki dört uyarı.
+- İlk hata: sentetik sipariş 0 tutarla mevcut Amount check constraint kuralına takıldı; planla uyumlu 2400 tutar/ara toplam kullanıldı. Ürün kuralı değişmedi. İlk log saklandı, satır sonu boşlukları temizlendi.
+- Kanıt: tests/reports/current-release-migration-acceptance-20261024.md; first/second logları ve salt-okunur production kontrolü. Apex/firma 118/0 ready; kaynak 120; canlı plan boş, checkout kapalı.
+- Sınır: Bu sentetik izole schema, güncel üretim yedeğinin staging provasının yerine geçmez. SSH anahtarlı erişimi reddedildi; kullanıcıdan yönetim bağlantısı bilgisi istendi. Canlı değişmedi.
+- CI: ba39391 run 40045829382 Windows ve Linux güvenlik işleri başarılı, PostgreSQL paketi sürüyor. Yeni migration kabulü henüz bu CI head içinde değil; mevcut canlı koşuyu sırf zaman doldu diye yeniden başlatmadan yerel commit hazırlanıyor.
+- Sıradaki: devam eden tam CI sonucu; bu kabulü PR dalına gönder; erişim sağlanınca taze SQL/medya/anahtar yedeği, gerçek restore/staging ve SMTP/iyzico/Bölüm 20 kabullerini yürüt.
