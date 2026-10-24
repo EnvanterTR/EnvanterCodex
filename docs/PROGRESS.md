@@ -382,3 +382,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Durum: BAŞARISIZ. Hedef 5.3.2 test hesabıyla santa.envantertr.com üzerinde tek giriş denemesi gerçek UI'da “Giriş bilgileri geçersiz veya hesap geçici olarak kullanılamıyor.” döndürdü. Yanlış parola/kilit/üyelik ayrımı bu mesajdan yapılamaz; kök neden iddia edilmedi. Tekrar/reset/MFA bypass yapılmadı.
 - Dashboard ve sonraki 20.2 adımları doğrulanmadı. Farma mevcut çerezle yeniden açıldığında giriş ekranı gösterdi; erişilebilir açık oturum yok. Secret veya hesap değeri rapora alınmadı.
 - Kanıt: tests/reports/santa-live-login-20261024.md. CI 40077928353 PostgreSQL işi hâlâ canlı; diğer iki iş başarılı. Üretim sürümü/şeması değişmedi.
+
+### 24 Ekim 2026 — Santa canlı tenant kaydı eksikliği
+- Salt-okunur gerçek DB sayımı: exact ad Santa 0, slug santa 0, slug farma 1. Santa üyelik/kilit sorgusu 0 satır; bu yüzden kilit/parola kök nedeni iddia edilmedi. Eksik şirket/portal kaydı doğrulandı.
+- Normal denetimli provisioning için platform yönetici parolası doğrulandı; yönetici MFA adımı kullanıcıya bırakıldı. Hesap/üyelik/oturum SQL ile oluşturulmadı, MFA değiştirilmedi.
+- Kanıt: tests/reports/santa-tenant-diagnosis-20261024.md ve coolify-santa-missing-tenant-20261024.png. CI son görülen running; sonraki DNS gözlem hatası terminal sonuç sayılmadı.
