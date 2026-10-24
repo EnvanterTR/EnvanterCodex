@@ -427,3 +427,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Benzersiz test planı kodu 40 karakter sınırına uygun hale getirildi. Temiz disposable DB'de katalog + yeni MFA + şirket oturumu ret + destek oturumu senaryoları **16/16 geçti**, exit 0, 3.4624 dakika. Ara 14/16 başarısız deneme logu da korundu; ürün validasyonu gevşetilmedi.
 - Ürün/runtime kodu staging'deki 8db0343 ile aynı; yalnız test ve kanıt dosyaları değişti. Tam CI yeni başlık için yeniden geçmeden canlı yayın yapılmayacak. Geçici yerel DB'ler test tamamlandıktan sonra kaldırıldı.
 - Kanıt: tests/reports/platform-fresh-login-acceptance-20261024.md, iki ortak regresyon logu, terminal CI JSON ve hata özeti.
+
+### 24 Ekim 2026 — canlı katalog/satış sınırı yeniden doğrulandı
+- Salt-okunur Check-CoolifyProduction: kaynak/canlı 120 migration, apex/firma health 200 ready, public plan 8; checkout unavailable. Tam satış probu beklenen exit 1; katalog yayımlamak ödeme kabulü değildir.
+- PROJECT-STATUS ve AUDIT-REALITY güncel başlıklarındaki eski 'plan yok' bilgisi düzeltildi; başarısız 8db CI ve yeni bf3ed6d CI 40102471823 ayrıldı. Kullanıcıdan yeni kod istenmedi, mevcut destek oturumu kabul edildi sayılmadı.
+- Kanıt: tests/reports/live-catalog-sales-boundaries-20261024.log. Bu salt-okunur kontrol hiçbir ayar/hesap/ödeme değiştirmedi.
