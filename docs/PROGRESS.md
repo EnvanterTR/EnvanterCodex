@@ -443,3 +443,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Coolify kesin SHA kaydı reload ile doğrulandı; is1feyzg0b9enmg0uovqtbtb dağıtımı yeşil Success/Finished. Gerçek web/public imajları bf3ed6d; konteyner son eki 20261024T202457, DB healthy. Apex/Farma HTTPS ready/120/0 exit 0; 8 public plan korundu, checkout kapalı olduğu için tam satış probu exit 1.
 - Kanıt: tests/reports/production-bf3-release-20261024.md, CI terminal JSON, iki probe ve altı ekran görüntüsü. Kullanıcıdan yeni OTP istenmedi; yeni canlı MFA girişi yapılmış gibi raporlanmadı. Eski oturumlar kendiliğinden taze kanıt almıyor.
 - Demo 5790980 uzak dala gönderildi; ayrı tam CI 40129797684 çalışıyor. Demo özelliği bu MFA yayınına dahil değil. Yerel geçici demo DB/ağları temizlendi. Gerçek SMTP/iyzico ve Bölüm 20 hâlâ açık.
+
+### 24 Ekim 2026 — demo adayı gerçek staging'de
+- 5790980 tam kaynak sunucuda exit 0 derlendi; envtr-stage-web-5790980 internal ağda, dış port olmadan ayrı medya/anahtar kopyaları ve staging DB ile açıldı. Apex/Farma/Santa host sağlığı 120/0; yeni demo kontrolü sunulan HTML'de var. Anonim assets/platform API 401, CSRF yanıtı doğrulandı. Sağlayıcı secret'ları boş; üretim verisine/dosyasına bağlanılmadı.
+- CI 40129797684 güvenlik ve Windows işleri başarılı, PostgreSQL işi canlı/in_progress. Üretim bf3ed6d olarak korunuyor; yeni demo yayımlandı sayılmadı. Yeni yayın öncesi bf3ed6d imajlarını kapsayan taze yedek/restore gerekir.
+- Kanıt: tests/reports/platform-demo-staging-20261024.md ve iki staging görüntüsü. Yeni şirket oluşturma veya gerçek sağlayıcı kabulü bu temel staging probuyla kanıtlanmış sayılmaz.
