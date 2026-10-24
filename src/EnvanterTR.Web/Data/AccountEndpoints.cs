@@ -683,6 +683,9 @@ public static class AccountEndpoints
         endpoints.MapPost("/api/session/logout", async (HttpContext context, IAntiforgery antiforgery,
             SignInManager<EnvanterUser> signInManager, AppDbContext db, CancellationToken cancellationToken) =>
         {
+            if (PlatformImpersonation.IsImpersonating(context))
+                return await PlatformImpersonation.StopAsync(context, db, signInManager, antiforgery,
+                    context.RequestServices.GetRequiredService<IConfiguration>(), cancellationToken);
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
             if (Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
             {
@@ -708,11 +711,12 @@ public static class AccountEndpoints
                 ? parsedCompanyId : (Guid?)null;
             var rootDomain = configuration["TenantRouting:RootDomain"]?.Trim().Trim('.');
             IReadOnlyList<object> availableCompanies = Array.Empty<object>();
+            var supportMode = PlatformImpersonation.IsImpersonating(context);
             if (Guid.TryParse(userId, out var parsedUserId) && companyId is not null)
             {
                 var memberships = await (from membership in db.CompanyMemberships.AsNoTracking()
                                          join company in db.Companies.AsNoTracking() on membership.CompanyId equals company.Id
-                                         where membership.UserId == parsedUserId && company.IsActive
+                                         where membership.UserId == parsedUserId && company.IsActive && (!supportMode || company.Id == companyId)
                                          orderby company.Name
                                          select new { id = company.Id, name = company.Name, role = membership.RoleKey, company.Slug })
                     .ToListAsync(cancellationToken);
@@ -749,6 +753,7 @@ public static class AccountEndpoints
                 companyId = companyId?.ToString(),
                 companyName,
                 availableCompanies,
+                impersonation = PlatformImpersonation.GetInfo(context),
                 subscriptionAccess = subscription is null ? null : new
                 {
                     planName = subscription.Name,

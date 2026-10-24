@@ -1,0 +1,1 @@
+PASS: support banner identifies actor and customer; banner and logout each return once with CSRF

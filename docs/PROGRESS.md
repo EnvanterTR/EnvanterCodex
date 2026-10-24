@@ -319,3 +319,12 @@
 - Kanıt: `tests/reports/checkout-email-verification-acceptance-20261024.md`, final API/browser/build/kota ve ilk hata logları. Geçici DB/ağlar temizlendi. Script URL'si yeni doğrulama protokolü için versiyonlandı.
 - CI: Önceki `dfdb36e` run `40035243704` **3/3 success**; kanıt `pr25-ci-dfdb36e-20261024.json`. Yeni kota/e-posta commit'leri için ayrıca uzak CI gerekir.
 - Sınır/sıradaki iş: Gerçek inbox/iyzico, staging, taze yedek/rollback, Santa/Farma/Demo3 ve platform impersonation kabulü açık. Yeni paketi PR #25'e gönderip tam CI'ı takip et; sonra P0-E ve kalan dış servis kabulünü ilerlet. Canlı deploy yapılmadı.
+
+### 24 Ekim 2026 — P0-E / 20.5 platform destek oturumu
+- Durum: TAMAM (yerel uygulama ve hedefli kabul); tam yeni CI, staging ve canlı kabul açık.
+- Değişen dosyalar: süreli UserSession metadata/migration/snapshot; PlatformImpersonation API/middleware; session/logout; yönetici üye eylemi ve gerekçe penceresi; müşteri sarı bandı/dönüş; API/Chromium testleri, runner, envanter ve belgeler.
+- Davranış: MFA + 10 dakikalık step-up; gerçek müşteri rolü ve tek şirket; en fazla 15 dakika; HttpOnly tek kullanımlı dönüş ve asıl oturum yetkisi kontrolü; gerçek yöneticiye bağlı başlangıç/istek/sonuç/bitiş audit'i. Çıkış yöneticiye döner ve sonraki kritik yazma yeniden doğrulama ister.
+- Komut/çıktı: Docker .NET Web build 0 hata/0 uyarı; test build 0 hata, önceki dört deprecation uyarısı. Gerçek Identity/PostgreSQL kabulü 13/13, exit 0 (2.2914 dakika). Chromium müşteri ve yönetici kabulü exit 0; sarı bant ekran görüntüsü incelendi. 2.279 kontrol envanteri, 2.249 locale ve ilgili kaynak doğrulayıcıları geçti.
+- İlk hatalar: yeni test reauth alanları/yanıt beklentisi ve olmayan kategori yolu düzeltildi; browser fixture eksik üye id alanı gerçek DTO'ya eşlendi. İlk hata logları saklandı; kontroller kaldırılmadı.
+- Kanıt: tests/reports/platform-impersonation-acceptance-20261024.md ve bağlı log/görsel. Geçici DB/ağ temizlendi. Önceki 4e4f255 CI run 40040576315 3/3 success; yeni commit CI'ı ayrıca gereklidir.
+- Sınır/sıradaki iş: Hedef 20'nin gerçek Santa/Farma/Demo3 kabulü, SMTP/iyzico, staging, güncel doğrulanmış yedek/rollback açık. Canlı migration/deploy yapılmadı. PR #25'e gönder; tam CI ve dış ortam kapılarını ilerlet.

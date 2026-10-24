@@ -336,6 +336,7 @@ app.Use(async (context, next) =>
     }
 });
 app.UseAuthentication();
+app.UsePlatformImpersonation();
 app.Use(async (context, next) =>
 {
     var tenantSlug = TenantHostResolver.ResolveSlug(context.Request,
@@ -351,6 +352,7 @@ app.Use(async (context, next) =>
         return;
     }
 
+    if (PlatformImpersonation.IsExitRequest(context)) { await next(); return; }
     var principal = context.User;
     if (principal.Identity?.IsAuthenticated != true)
     {

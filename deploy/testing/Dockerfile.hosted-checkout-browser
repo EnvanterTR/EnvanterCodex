@@ -43,3 +43,5 @@ COPY src/EnvanterTR.Web/wwwroot/platform-admin-members.js src/EnvanterTR.Web/www
 
 COPY src/EnvanterTR.PublicSite/trial.html src/EnvanterTR.PublicSite/trial.js /public-site/
 CMD ["node", "hosted-checkout.mjs"]
+
+COPY deploy/testing/hosted-checkout-browser/platform-impersonation.mjs ./

@@ -147,3 +147,13 @@ Ek UI kabulü, platform yönetici ilk girişindeki kod alanının görsel olarak
 ## 15 Ekim 2026 — firma abonelik düzenleme arayüzü kabulü
 
 Şirket ayrıntısındaki abonelik satırında tek “Plan / tarih düzenle” eylemi sunulur. Chromium sentetik kabul akışı iptalin yazma üretmediğini, değişikliğin gerekçe ve CSRF ile gönderildiğini ve sayfa yenilendikten sonra yeni plan/dönemin API'den tekrar yüklendiğini doğrular. Aynı runner'ın tamamı geçti; gerçek abonelik veya canlı veritabanı kullanılmadı. API katmanının plan/tarih doğrulaması ve audit kaydı için `Platform_admin_can_adjust_subscription_plan_and_dates_with_validation_and_audit` izole PostgreSQL kabul testi ayrıca gereklidir.
+
+## 24 Ekim 2026 — süreli müşteri destek oturumu
+
+Firma ayrıntısındaki doğrulanmış üyede “Panele gir” eylemi destek gerekçesi ister. Yönetici MFA ve son 10 dakika içinde parola/MFA doğrulaması olmadan geçiş başlatamaz. Seçilen müşteri hesabının gerçek şirket rolü kullanılır; platform yetkileri taşınmaz ve şirket değiştirme listesi seçilen şirketle sınırlıdır. Destek oturumu en fazla 15 dakika ve asıl yönetici oturumu süresiyle sınırlıdır.
+
+Müşteri ekranında sarı bant yönetici/müşteri kimliğini ve bitiş zamanını gösterir. Banttaki dönüş düğmesi ve normal Çıkış, asıl yönetici oturumuna döner. Dönüş için HttpOnly/SameSite Strict çerezdeki tek kullanımlık anahtar gerekir; veritabanında yalnız özeti tutulur. Tüketilen destek oturumu geri açılamaz. Yöneticiye dönüldüğünde sonraki kritik yazma için yeniden doğrulama gerekir.
+
+Başlangıç, her API isteği ve bitiş gerçek yöneticinin kimliğiyle platform denetim kaydına yazılır. İstek gövdesi ve sorgu dizesi kayda alınmaz. Asıl yönetici oturumu, MFA, güvenlik damgası ve platform yetkisi her istekte yeniden denetlenir. Üyelik kaldırılması veya şirketin askıya alınması doğrudan dönüş isteğini engellemez; asıl yönetici yetkisinin kaldırılması dönüşü de engeller.
+
+Yeni migration eklemelidir. Üretimde TenantRouting:CookieDomain kök alan adıyla eşleşmelidir. Staging, güncel yedek ve geri dönüş provası tamamlanmadan canlıya uygulanmaz. Kabulün güncel durumu tests/reports/platform-impersonation-acceptance-20261024.md dosyasında izlenir.

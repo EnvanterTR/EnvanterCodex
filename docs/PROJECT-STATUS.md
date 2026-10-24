@@ -1050,3 +1050,7 @@ Mevcut şirket callback'lerinin paralel yeniden oynatımı ayrıca sınandı. İ
 Yeni şirket satın alımı, e-postaya gönderilen 30 dakika geçerli korumalı kanıt ve açık CSRF onayı olmadan ödeme sağlayıcısına geçmez. Kanıt e-posta/paket/amaç/süreye bağlıdır; tarayıcı fragment'i kaldırır ve kanıtı depolamaz. SMTP yapılandırması kapatılırsa geçerli eski kanıtla dahi yeni ödeme başlamaz. Mevcut şirket owner parola/MFA akışı korunur.
 
 run-checkout-email-acceptance.ps1: 15/15, exit 0 (5.9858 dakika); hedefli Chromium checkout exit 0; kota regresyonu 30/30. Web build 0 hata/0 uyarı; test build 0 hata ve önceki dört deprecation uyarısı. İlk fixture kapsam hatası ve aynı sekme hash hatası düzeltildi, logları saklandı. Kanıt: tests/reports/checkout-email-verification-acceptance-20261024.md. Önceki dfdb36e CI'ı 3/3 başarılıdır; yeni commit'lerin tam uzak CI'ı ayrıca gereklidir. Gerçek SMTP inbox/iyzico, staging, güncel yedek/rollback ve canlı müşteri kabulü hâlâ açık; canlı deploy yapılmadı.
+
+## 24 Ekim 2026 — süreli yönetici destek oturumu
+
+Hedef 9.5/20.5 yerel kodu eklendi: Panele gir, gerçek müşteri rolü/tek şirket, sarı bant, gerçek yönetici audit kaydı, süreli tek kullanımlı dönüş ve yeni kritik işlemde tekrar doğrulama. Gerçek Identity/PostgreSQL 13/13 exit 0; iki Chromium kabulü exit 0; Web build 0 hata/0 uyarı. Kanıt: tests/reports/platform-impersonation-acceptance-20261024.md. Bu, gerçek müşteri veya canlı kabul değildir. Yeni tam CI, staging, güncel yedek/geri dönüş ve SMTP/iyzico kapıları açık; canlı değişmedi. Önceki 4e4f255 CI üç işte başarılıdır.

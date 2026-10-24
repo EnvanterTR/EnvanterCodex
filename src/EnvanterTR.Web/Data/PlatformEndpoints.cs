@@ -88,6 +88,7 @@ public static class PlatformEndpoints
         }).AllowAnonymous().RequireRateLimiting("login");
 
         var admin = endpoints.MapGroup("/api/platform").RequireAuthorization("platform.admin");
+        PlatformImpersonation.MapEndpoints(admin, endpoints);
         admin.MapGet("/system/health", async (AppDbContext db, IConfiguration configuration,
             IOptions<IyzipayOptions> paymentOptions, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
