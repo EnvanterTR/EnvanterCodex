@@ -401,3 +401,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Platform yönetici oturumu taşındı; yeni Cloud kota ve yıllık katalog önizlemesi gerçek panelde doğrulandı. Sekiz taslak kaydı ek 10dk yönetici reauth istedi; kullanıcıya MFA alanı bırakıldı, henüz oluşturuldu sayılmadı.
 - Tam satış probu beklenen exit 1: 0 public plan, checkout kapalı. Sağlayıcı/inbox ve Bölüm 20 açık; V1/satış tamamlandı denmedi.
 - Kanıt: tests/reports/production-c328-release-20261024.md, CI terminal JSON, iki dış probe logu ve sekiz ekran görüntüsü.
+
+### 24 Ekim 2026 — sekiz yıllık Cloud paketi canlı katalogda
+- Gerçek yönetim akışında 8 taslak oluşturuldu, her paket gerekçeli kayıtla yayımlandı. Public API ve ana sayfa 1/4/10/50/100/250/1000/2000 giriş hesabı için sırasıyla 2400/4200/6000/9000/12000/14400/24000/36000 TRY yıllık fiyatı doğruladı. Aylık çekim yok; gösterilen aylık tutar yıllık fiyatın eşdeğeri. KDV hariç, 2000 üzeri özel teklif.
+- Kanıt: tests/reports/live-annual-catalog-20261024.md, public JSON ve üç ekran görüntüsü. Ödeme/SMTP/trial kabulü tamamlanmadı. Sonraki yayın öncesi bu yeni katalog kayıtlarını içeren yedek alınmalı.
+- Farma destek oturumu kritik doğrulaması başarısız kaldı; destek oturumu başlamadı. Kullanıcıdan aynı kod tekrar istenmedi. İlk yönetici MFA girişinin mevcut 10 dakikalık işlem kanıtı olarak kullanılmasına yönelik dar kapsamlı düzeltme yerelde sınanıyor; henüz canlıda değil.
