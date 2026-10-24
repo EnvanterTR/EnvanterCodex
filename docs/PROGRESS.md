@@ -448,3 +448,13 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - 5790980 tam kaynak sunucuda exit 0 derlendi; envtr-stage-web-5790980 internal ağda, dış port olmadan ayrı medya/anahtar kopyaları ve staging DB ile açıldı. Apex/Farma/Santa host sağlığı 120/0; yeni demo kontrolü sunulan HTML'de var. Anonim assets/platform API 401, CSRF yanıtı doğrulandı. Sağlayıcı secret'ları boş; üretim verisine/dosyasına bağlanılmadı.
 - CI 40129797684 güvenlik ve Windows işleri başarılı, PostgreSQL işi canlı/in_progress. Üretim bf3ed6d olarak korunuyor; yeni demo yayımlandı sayılmadı. Yeni yayın öncesi bf3ed6d imajlarını kapsayan taze yedek/restore gerekir.
 - Kanıt: tests/reports/platform-demo-staging-20261024.md ve iki staging görüntüsü. Yeni şirket oluşturma veya gerçek sağlayıcı kabulü bu temel staging probuyla kanıtlanmış sayılmaz.
+
+### 24 Ekim 2026 — demo yayın kapıları geçti, dağıtım başladı
+- 5790980 CI 40129797684 üç işte terminal success. Gerçek staging aynı commit ve 120/0; yeni migration yok. Yeni 204650Z dump ayrı 2046 restore DB'sinde 95 tablo sayımı eşit. 140 MB rollback 205007Z, dosya/imaj provası 205224Z; hemen önceki bf3ed6d imajları doğrulandı.
+- Coolify SHA 5790980 kaydı reload sonrası korundu; esw998lnesfol9swvgxwq3li dağıtımı doğru commit ile başladı. Henüz tamamlandı iddia edilmedi.
+- Kanıt: tests/reports/production-demo-release-20261024.md ve terminal CI JSON/üç yayın hazırlık görüntüsü. Canlıda istenen üç görsel, galeri kodu, portal, yeşil hesap güvenliği ve şeffaf etiket dosyaları kaynak hash'leriyle eşleşti; bf3-live-product-gallery-integrity-20261024.log. Bu kontrol yeni etkileşimli tarayıcı kabulü olarak sayılmadı.
+
+### 25 Ekim 2026 — demo oluşturma özelliği canlıda
+- 5790980 tam CI 3/3 + gerçek staging + güncel bf3ed6d SQL/medya/anahtar/imaj yedeği ve ayrı geri dönüş provası sonrası esw998lnesfol9swvgxwq3li yayını yeşil Success/Finished. Gerçek web/public imaj etiketleri 5790980; konteyner son eki 20261024T205706, DB healthy.
+- Apex/Farma HTTPS ready/120/0 exit 0. Canlı platform HTML yeni demo düğmesi, açık demo isteği ve 15 gün varsayılanını sunuyor; 8 plan korundu. Checkout eksik sağlayıcı nedeniyle kapalı, tam satış probu exit 1. Canlı yönetici oturumu reload sonrası giriş ekranında kaldı; yeni parola/OTP denemesi yapılmadı.
+- Kanıt: tests/reports/production-demo-release-20261024.md, terminal CI JSON, 25 Ekim sağlık/form/satış sınırı logları ve iki tamamlanma görüntüsü. Gerçek Santa/Demo3 oluşturma veya Bölüm 20 tamamlandı iddia edilmedi. SMTP/iyzico gerçek kabulü ve müşteri işlemleri açık.

@@ -1,0 +1,5 @@
+SOURCE migrations: 120; deployed app reports: 120.
+READY https://envantertr.com/api/status HTTP 200 (ready)
+  Application and database schema report ready.
+READY https://farma.envantertr.com/api/status HTTP 200 (ready)
+  Application and database schema report ready.
