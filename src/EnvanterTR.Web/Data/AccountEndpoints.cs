@@ -336,7 +336,16 @@ public static class AccountEndpoints
                 claims.Add(new Claim("company_id", membership.CompanyId.ToString()));
                 claims.Add(new Claim("company_role", membership.RoleKey));
             }
-            if (isPlatformAdmin) claims.Add(new Claim("platform_admin", "true"));
+            if (isPlatformAdmin)
+            {
+                claims.Add(new Claim("platform_admin", "true"));
+                // This request has just verified both password and the second factor.
+                // Reuse that proof for the existing ten-minute critical-operation window.
+                // Company logins and password-only platform sessions receive no such proof.
+                if (request.PlatformAdminOnly && membership is null && user.TwoFactorEnabled)
+                    claims.Add(new Claim("platform_reauth_at", now.ToUnixTimeSeconds()
+                        .ToString(System.Globalization.CultureInfo.InvariantCulture)));
+            }
             await signInManager.SignInWithClaimsAsync(user, new AuthenticationProperties
             {
                 IsPersistent = request.RememberMe,

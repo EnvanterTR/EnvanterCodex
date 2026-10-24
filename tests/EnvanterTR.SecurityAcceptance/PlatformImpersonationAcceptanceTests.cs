@@ -173,7 +173,23 @@ public sealed partial class TenantSessionAcceptanceTests
     public async Task Impersonation_requires_platform_mfa_and_recent_reauthentication(bool mfa)
     {
         var setup = await ImpersonationActor(mfa: mfa, stepUp: false);
-        using var factory = setup.Factory; using var client = setup.Client;
+        using var factory = setup.Factory; using var originalClient = setup.Client;
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var cookie = setup.RootCookie;
+        if (mfa)
+        {
+            // A fresh MFA login now supplies the same proof as explicit reauthentication.
+            // Exercise an expired proof rather than misclassifying that fresh login.
+            var options = factory.Services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
+                .Get(IdentityConstants.ApplicationScheme);
+            var ticket = options.TicketDataFormat.Unprotect(cookie.Split('=', 2)[1])!;
+            var identity = (ClaimsIdentity)ticket.Principal.Identity!;
+            foreach (var claim in identity.FindAll("platform_reauth_at").ToArray()) identity.RemoveClaim(claim);
+            identity.AddClaim(new Claim("platform_reauth_at", DateTimeOffset.UtcNow.AddMinutes(-11)
+                .ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture)));
+            cookie = "EnvanterTR.Session=" + options.TicketDataFormat.Protect(ticket);
+        }
+        client.DefaultRequestHeaders.Add("Cookie", cookie);
         using var denied = await BeginImpersonation(client);
         Assert.Equal((HttpStatusCode)428, denied.StatusCode);
         Assert.Contains(mfa ? "platform_reauth_required" : "platform_mfa_required", await denied.Content.ReadAsStringAsync());

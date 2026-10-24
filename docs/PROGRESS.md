@@ -406,3 +406,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Gerçek yönetim akışında 8 taslak oluşturuldu, her paket gerekçeli kayıtla yayımlandı. Public API ve ana sayfa 1/4/10/50/100/250/1000/2000 giriş hesabı için sırasıyla 2400/4200/6000/9000/12000/14400/24000/36000 TRY yıllık fiyatı doğruladı. Aylık çekim yok; gösterilen aylık tutar yıllık fiyatın eşdeğeri. KDV hariç, 2000 üzeri özel teklif.
 - Kanıt: tests/reports/live-annual-catalog-20261024.md, public JSON ve üç ekran görüntüsü. Ödeme/SMTP/trial kabulü tamamlanmadı. Sonraki yayın öncesi bu yeni katalog kayıtlarını içeren yedek alınmalı.
 - Farma destek oturumu kritik doğrulaması başarısız kaldı; destek oturumu başlamadı. Kullanıcıdan aynı kod tekrar istenmedi. İlk yönetici MFA girişinin mevcut 10 dakikalık işlem kanıtı olarak kullanılmasına yönelik dar kapsamlı düzeltme yerelde sınanıyor; henüz canlıda değil.
+
+### 24 Ekim 2026 — yönetici girişinden hemen sonra yinelenen MFA istemi düzeltmesi
+- Başarılı platform-only parola+MFA girişine mevcut 600 saniyelik platform_reauth_at kanıtı eklendi. Şirket girişi/parola-only oturum bunu alamaz; süre uzatılmadı, mevcut eski oturumlar kendiliğinden yetkilendirilmedi. Migration yok.
+- Gerçek PostgreSQL/Identity çerezleriyle 15/15 kabul, exit 0; iki kaynak doğrulayıcı ve diff kontrolü geçti. İlk testte eski takipli scope okuması düzeltilerek kurtarma kodu tüketimi yeni scope ile kanıtlandı.
+- Kanıt: tests/reports/platform-fresh-login-acceptance-20261024.md ve ilk/başarılı loglar. Canlı c328 hâlâ bu düzeltmeyi içermiyor; yeni CI/staging/yedek/yayın adımları gerekiyor. Gerçek Farma destek kabulü tamamlandı sayılmadı.
