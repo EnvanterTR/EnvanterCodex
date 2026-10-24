@@ -353,3 +353,10 @@
 ## 24 Ekim 2026 — gerçek yedek, geri dönüş ve staging
 
 Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalışma için çözüldü. Taze 142 MB geri dönüş paketi doğrulandı; gerçek dump ayrı DB'ye geri yüklendi (95 tablo sayımı eşit). 118→120 exact SQL ve tekrarında 94 veri tablosunun özgün alan/satırları korundu. Aday staging imajları derlendi; yalnız internal ağda, dış port olmadan 11 temel HTTP/güvenlik kontrolü geçti. ae875b6 CI 3/3 success (40073522201). Canlı 118/0 olarak kaldı; dağıtım yapılmadı. Tam kimlik doğrulamalı müşteri/provider/Bölüm 20 kabulü açık. Kanıt: tests/reports/real-server-staging-acceptance-20261024.md ve altı Coolify ekran görüntüsü.
+
+### 24 Ekim 2026 — gerçek satış kapıları ve canlı oturum
+- Durum: KISMİ; gerçek SMTP/iyzico ve kimlik doğrulamalı Bölüm 20 açık.
+- Gerçek staging checkout available:false, trial available:false (15 gün/yıllık), plan listesi boş. Canlı runtime SMTP host/kullanıcı/parola/gönderici ve Iyzipay anahtarları boş/yok; gizli değer çıktısı alınmadı. Kaydedilmiş tüm Coolify ayarları denetlenmiş sayılmaz.
+- Medya/anahtar arşivleri mevcut canlı volume dosyalarıyla tekrar eşleşti; özel migration kanıt arşivi geçerli. Staging üç süreç çalışıyor. ae875b6 tam CI 3/3 success; JSON kanıtı kaydedildi.
+- Farma parolası doğrulandı, MFA istendi; kullanıcı giriş yaptığını bildirse de kontrol edilen sekme MFA ekranında. Giriş/kapsam testi geçti denmedi; kurtarma kodu kullanılmadı, MFA değiştirilmedi.
+- Kanıt: tests/reports/live-auth-sales-followup-20261024.md. Canlı deploy/migration ve satış açılmadı.
