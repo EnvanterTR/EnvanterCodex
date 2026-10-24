@@ -52,3 +52,7 @@ Canlı yönetici girişi ve maskeli ekran görüntüsü bu denetimde de alınmad
 ## 24 Ekim — yeni destek oturumu migration adayı
 
 Kaynak migration sayısı artık 120: tarihsel canlı 118 kimlik listesine ExistingCompanyCheckoutContext ve PlatformImpersonationSessions eklenir. Her iki Up yalnız nullable alanlar/constraint/index ekler. İzole 118 → 120 idempotent SQL kabulü özgün satır/alan SHA-256 eşitliğiyle 1/1 geçti; üretim yedeği/staging değildir. Salt-okunur canlı GET kontrolü apex/firma 118/0 ready, public plan 0 ve checkout kapalı gösteriyor. Anahtarlı SSH reddedildi; canlı DB/ayar/deploy değişmedi. Güncel kanıt: tests/reports/current-release-migration-acceptance-20261024.md.
+
+## 24 Ekim 2026 — gerçek yedek, geri dönüş ve staging
+
+Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalışma için çözüldü. Taze 142 MB geri dönüş paketi doğrulandı; gerçek dump ayrı DB'ye geri yüklendi (95 tablo sayımı eşit). 118→120 exact SQL ve tekrarında 94 veri tablosunun özgün alan/satırları korundu. Aday staging imajları derlendi; yalnız internal ağda, dış port olmadan 11 temel HTTP/güvenlik kontrolü geçti. ae875b6 CI 3/3 success (40073522201). Canlı 118/0 olarak kaldı; dağıtım yapılmadı. Tam kimlik doğrulamalı müşteri/provider/Bölüm 20 kabulü açık. Kanıt: tests/reports/real-server-staging-acceptance-20261024.md ve altı Coolify ekran görüntüsü.

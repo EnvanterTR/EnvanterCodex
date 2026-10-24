@@ -349,3 +349,7 @@
 - CI: ba39391 run 40045829382 üç işte 3/3 success; pr25-ci-ba39391-20261024.json. Bu yeni dosya/paket testinin tam CI sonucu ayrıca gerekir.
 - Erişim yeniden doğrulandı: IAB Coolify Terminal sekmesinde açık yönetici oturumu var; localhost sunucu terminaliyle docker ps salt-okunur çalıştı. Yeni credential oluşturulmadı. Kullanıcıdan tekrar bağlantı istemeden mevcut oturumla ilerle.
 - Sıradaki: PR dalını güncelle; mevcut Coolify oturumunda taze SQL/medya/anahtar/imaj yedeği, ayrı restore ve staging; ardından tam gerçek müşteri/SMTP/iyzico kabulü. Canlı DB/ayar/deploy henüz değişmedi.
+
+## 24 Ekim 2026 — gerçek yedek, geri dönüş ve staging
+
+Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalışma için çözüldü. Taze 142 MB geri dönüş paketi doğrulandı; gerçek dump ayrı DB'ye geri yüklendi (95 tablo sayımı eşit). 118→120 exact SQL ve tekrarında 94 veri tablosunun özgün alan/satırları korundu. Aday staging imajları derlendi; yalnız internal ağda, dış port olmadan 11 temel HTTP/güvenlik kontrolü geçti. ae875b6 CI 3/3 success (40073522201). Canlı 118/0 olarak kaldı; dağıtım yapılmadı. Tam kimlik doğrulamalı müşteri/provider/Bölüm 20 kabulü açık. Kanıt: tests/reports/real-server-staging-acceptance-20261024.md ve altı Coolify ekran görüntüsü.
