@@ -31,6 +31,7 @@ const elements = new Map([
   ['#authLayer', { classList: { added: [], add(value) { this.added.push(value); } } }],
   ['#retryApiButton', { hidden: true }],
   ['#authError', { textContent: '' }],
+  ['#impersonationNotice', { hidden: false }],
   ['#loginQueryNotice', { hidden: true, textContent: '' }],
 ]);
 let response;
@@ -49,6 +50,7 @@ const context = {
   fetch: async (path, options) => { requests.push({ path, options }); return response; },
   requestToken: '',
   authSessionGeneration: 0,
+  impersonationSession: { actorName: 'Synthetic administrator' },
   checkLoginConnection: async () => { connectionChecks++; },
   setTimeout,
   translateUiText: value => value,
@@ -67,6 +69,8 @@ await assert.rejects(context.api('/api/assets/asset-id/audit', { method: 'POST',
   return true;
 });
 assert.equal(loginLayerShown, 1, 'An authenticated API 401 must show the login layer.');
+assert.equal(context.impersonationSession, null, 'An expired session must clear support identity state.');
+assert.equal(elements.get('#impersonationNotice').hidden, true, 'An expired session must hide the support banner.');
 assert.equal(connectionChecks, 1, 'Showing the login screen must automatically check API readiness.');
 assert.deepEqual(dialogs.map(dialog => dialog.closed), [1, 1], 'An authenticated API 401 must close open dialogs.');
 assert.equal(elements.get('#retryApiButton').hidden, false, 'The server retry action must remain available.');

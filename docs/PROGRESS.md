@@ -328,3 +328,5 @@
 - İlk hatalar: yeni test reauth alanları/yanıt beklentisi ve olmayan kategori yolu düzeltildi; browser fixture eksik üye id alanı gerçek DTO'ya eşlendi. İlk hata logları saklandı; kontroller kaldırılmadı.
 - Kanıt: tests/reports/platform-impersonation-acceptance-20261024.md ve bağlı log/görsel. Geçici DB/ağ temizlendi. Önceki 4e4f255 CI run 40040576315 3/3 success; yeni commit CI'ı ayrıca gereklidir.
 - Sınır/sıradaki iş: Hedef 20'nin gerçek Santa/Farma/Demo3 kabulü, SMTP/iyzico, staging, güncel doğrulanmış yedek/rollback açık. Canlı migration/deploy yapılmadı. PR #25'e gönder; tam CI ve dış ortam kapılarını ilerlet.
+
+24 Ekim CI takibi: 54a0600 run 40045415095 Linux kaynak kontrolü Verify-AuthErrorFlows üzerinde başarısız oldu. Yerel tekrar, yeni destek bandını tanımayan VM fixture seçicisini gösterdi. Fixture güncellendi; 401 sonrası destek kimliğinin sıfırlanması ve bandın gizlenmesi ayrıca doğrulanıyor. CI içindeki 79 Node kaynak komutunun tamamı yerelde geçti (platform-impersonation-all-source-20261024.log); hedefli auth-flow logu da başarılı. Ürün davranışı değiştirilmedi. Yeni commit için tam CI gerekir; eski run sırasında iki diğer iş çalışıyordu.
