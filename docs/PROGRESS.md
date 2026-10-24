@@ -372,3 +372,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Coolify production kayıtlarında EMAIL_SMTP_PASSWORD, IYZIPAY_API_KEY ve IYZIPAY_SECRET_KEY yüklenmiş edit alanları hasValue:false. Sadece alan doluluğu okundu; gizli değer, görünür yapma veya kopyalama yok. Üç alan için yalnız uygulanmamış ayar ihtimali elendi. Hiçbir ayar kaydedilmedi/deploy edilmedi.
 - Kullanıcıdan sağlayıcı hesaplarının erişilebilirliği istendi; sohbete secret istenmedi. Farma kontrol edilen IAB sekmesi hâlâ MFA bekliyor; giriş kabulü doğrulanmış sayılmadı.
 - Kanıt: tests/reports/coolify-saved-provider-config-20261024.md ve üç ekran görüntüsü. c328a2a CI run 40077928353 canlı/in_progress; yeniden başlatılmadı.
+
+### 24 Ekim 2026 — P0 gerçek sağlayıcı kabulünün uygulanabilir listesi
+- Mevcut compose ve gerçek endpoint kodundan production ayar eşlemeleri, kullanıcı tarafından güvenli secret girişi, gerçek inbox ve sandbox ödeme doğrulama sırası hazırlandı: deploy/coolify/PROVIDER-ACCEPTANCE.md.
+- Liste tamamlanmış kabul değildir. SMTP 202 ile inbox teslimatını, callback HTTP 200 ile Provisioned siparişini ayırır; dışa kapalı staging'in sağlayıcı kabulüne otomatik uygun olduğunu iddia etmez. Gerçek para tahsilatı kullanıcıya bırakılır.
+- Ürün kodu/migration değişmedi; yeni test/derleme çalıştırılmadı. c328a2a run 40077928353 PostgreSQL işi canlı/in_progress olarak doğrulandı; diğer iki iş başarılı. Açık sağlayıcı/MFA engelleri sürüyor.
