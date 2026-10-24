@@ -85,7 +85,16 @@ public sealed class CurrentReleaseMigrationAcceptanceTests(ITestOutputHelper out
             }
             Assert.True(columns.Count > 90);
             var before = await HashProjections(connection, schema, columns);
-            var sql = db.GetService<IMigrator>().GenerateScript(Baseline, migrations[^1], MigrationsSqlGenerationOptions.Idempotent);
+            var artifact = Environment.GetEnvironmentVariable("CURRENT_RELEASE_SQL_PATH") ?? Path.Combine(AppContext.BaseDirectory, "release-migration.sql");
+            var bytes = await File.ReadAllBytesAsync(artifact);
+            var expectedHash = (await File.ReadAllTextAsync(artifact + ".sha256")).Trim().Split(' ')[0];
+            Assert.Equal(expectedHash, Convert.ToHexStringLower(SHA256.HashData(bytes)));
+            var sql = Encoding.UTF8.GetString(bytes);
+            var generated = db.GetService<IMigrator>().GenerateScript(Baseline, migrations[^1], MigrationsSqlGenerationOptions.Idempotent)
+                .Replace(Quote(schema) + "." + Quote("__EFMigrationsHistory"), Quote("__EFMigrationsHistory"), StringComparison.Ordinal)
+                .Replace(schema + "." + Quote("__EFMigrationsHistory"), Quote("__EFMigrationsHistory"), StringComparison.Ordinal);
+            Assert.Equal(generated.Replace("\r\n", "\n").TrimEnd(), sql.Replace("\r\n", "\n").TrimEnd());
+            output.WriteLine("Release SQL SHA-256: " + expectedHash);
             Assert.DoesNotContain("DROP TABLE", sql, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("DROP COLUMN", sql, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("DELETE FROM", sql, StringComparison.OrdinalIgnoreCase);

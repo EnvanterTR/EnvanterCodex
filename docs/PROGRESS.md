@@ -340,3 +340,12 @@
 - Sınır: Bu sentetik izole schema, güncel üretim yedeğinin staging provasının yerine geçmez. SSH anahtarlı erişimi reddedildi; kullanıcıdan yönetim bağlantısı bilgisi istendi. Canlı değişmedi.
 - CI: ba39391 run 40045829382 Windows ve Linux güvenlik işleri başarılı, PostgreSQL paketi sürüyor. Yeni migration kabulü henüz bu CI head içinde değil; mevcut canlı koşuyu sırf zaman doldu diye yeniden başlatmadan yerel commit hazırlanıyor.
 - Sıradaki: devam eden tam CI sonucu; bu kabulü PR dalına gönder; erişim sağlanınca taze SQL/medya/anahtar yedeği, gerçek restore/staging ve SMTP/iyzico/Bölüm 20 kabullerini yürüt.
+
+### 24 Ekim 2026 — P0-B somut release SQL dosyası
+- Durum: TAMAM (dosya/paket/izole kabul); gerçek üretim restore/staging açık.
+- EF CLI 10.0.0 ile 118 → 120 idempotent SQL ve SHA-256 dosyası hazırlandı. Test artık dosya hash'ini ve güncel EF çıktısıyla metin eşitliğini doğrulayıp dosyanın kendisini ilk/tekrar uygular. Test çıktı kopyası ve Docker COPY bağlantısı eklendi.
+- Kabul: run-current-release-migration-acceptance.ps1 güncel image ile 1/1, exit 0; 56.3684 saniye. Web build 0 hata/0 uyarı; test build önceki dört uyarı. İlk startup-project, BOM ve izole schema normalizasyon hataları düzeltilip saklandı; kontroller kaldırılmadı.
+- Kanıt: current-release-migration-acceptance-20261024.md; SQL/checksum ve exact-sql-packaged-verified logu. Geçici DB/ağ temizlendi.
+- CI: ba39391 run 40045829382 üç işte 3/3 success; pr25-ci-ba39391-20261024.json. Bu yeni dosya/paket testinin tam CI sonucu ayrıca gerekir.
+- Erişim yeniden doğrulandı: IAB Coolify Terminal sekmesinde açık yönetici oturumu var; localhost sunucu terminaliyle docker ps salt-okunur çalıştı. Yeni credential oluşturulmadı. Kullanıcıdan tekrar bağlantı istemeden mevcut oturumla ilerle.
+- Sıradaki: PR dalını güncelle; mevcut Coolify oturumunda taze SQL/medya/anahtar/imaj yedeği, ayrı restore ve staging; ardından tam gerçek müşteri/SMTP/iyzico kabulü. Canlı DB/ayar/deploy henüz değişmedi.

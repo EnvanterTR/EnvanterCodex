@@ -29,3 +29,15 @@ Tek komut: `deploy/testing/run-current-release-migration-acceptance.ps1`. İlk h
 `current-release-production-readonly-20261024.log`: yalnız GET istekleri. Apex ve firma HTTP 200/ready; dağıtılmış uygulama 118 migration, kaynak 120. Canlı plan listesi boş ve checkout kapalı. Bu görüntü canlı DB'nin yeni SQL ile güncellendiğini göstermez.
 
 Anahtarlı SSH bağlantısı salt okunur bağlantı denemesinde reddedildi. Bu çalışma üretim migration'ı, yedek, ortam ayarı veya deploy yapmadı. Hedefteki taze SQL/medya/anahtar yedeği, gerçek geri yükleme provası, staging, SMTP/iyzico ve Santa/Farma/Demo3 kabulleri ayrıca tamamlanmalıdır. Eski `rehearse-preserved-data.sh` içindeki 92 → 117 sayıları ve sabit SQL özeti güncel adaya uygulanamaz; araç bu nedenle burada sunucuda çalıştırılmadı.
+
+## Staging için somut SQL dosyası
+
+EF CLI 10.0.0 ile iki açık uç kimliği arasında üretilen idempotent SQL: `current-release-118-to-120-20261024.sql`. Kanonik biçim UTF-8 (BOM yok) ve LF; SHA-256 `cddf35fd830861e61d018fb1885185e921bccfdf04934572391a162e1db77b49`.
+
+Test artık dosya baytlarının checksum eşitliğini, dosyanın güncel EF çıktısıyla tam metin eşitliğini (yalnız izole history schema adı/son satır biçimi normalize edilerek), aynı dosyanın ilk ve tekrar uygulamasını denetler. SQL ve checksum test çıktısına kopyalanır; Docker kabul image'ı ikisini açıkça alır. Önceki 1/1, EF tarafından bellekte üretilen SQL'i sınamıştı; dosyanın paketlenmiş kabulü ayrıca yürütülüyor.
+
+İlk SQL üretiminde startup-project test projesi olarak seçilmişti; Web açıkça seçilerek düzeltildi. İlk tam metin kontrolü EF CLI'ın yazdığı UTF-8 BOM işaretini yakaladı; artifact standart UTF-8'e çevrildi ve checksum yenilendi. Kontrol kaldırılmadı. İlgili ilk hata logları korunur.
+
+Paketlenmiş dosya kabulü: **1/1 başarılı, exit 0**, 56.3684 saniye — `current-release-exact-sql-packaged-verified-20261024.log`. Güncel Docker image sıfır hata ile kuruldu; test build önceki dört deprecation uyarısını içeriyor. SQL checksum eşitliği, güncel EF metniyle tam eşitlik ve gerçek dosyanın ilk/tekrarında özgün veri SHA-256 eşitliği geçti. Testte EF history schema adının hem quoted hem unquoted üretimi aynı izole ada göre normalize edilir; SQL işlemleri değiştirilmez. Önceki paket, kodlama düzeltmesinden önceki build context snapshot'ını almıştı; ilk paket hash/karşılaştırma hatası saklandı. Geçici DB/ağ temizlendi.
+
+Erişim güncellemesi: kullanıcı yönlendirmesinden sonra IAB'deki açık Coolify Terminal sekmesi yeniden incelendi; mevcut yönetici oturumu ve localhost sunucu terminali kullanılabilir bulundu. Yeni SSH/API yetkisi oluşturulmadı. Salt-okunur docker ps, mevcut 4d552708 uygulama imajları ve üretim konteynerlerini doğruladı; yedek/staging sunucuda henüz yürütülmedi. Önceki anahtarlı SSH reddi, mevcut Coolify oturumunu kapsayan bir erişimsizlik değildir.

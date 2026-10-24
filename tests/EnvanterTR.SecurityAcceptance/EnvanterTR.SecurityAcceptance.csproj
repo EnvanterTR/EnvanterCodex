@@ -16,6 +16,10 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="../reports/current-release-118-to-120-20261024.sql" Link="release-migration.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../reports/current-release-118-to-120-20261024.sql.sha256" Link="release-migration.sql.sha256" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../../src/EnvanterTR.Web/EnvanterTR.Web.csproj" />
   </ItemGroup>
 </Project>
