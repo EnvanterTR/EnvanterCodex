@@ -20,6 +20,14 @@ let paymentAvailable = false;
 let initializeCalls = 0;
 let lastInitialize = null;
 let lastQuote = null;
+let verificationRequest = null;
+let verificationConfirm = null;
+let verificationRequests = 0;
+let verificationMailAvailable = false;
+let expireEmailProofOnce = true;
+let releaseSlowConfirmation;
+let notifySlowConfirmation;
+const slowConfirmationStarted = new Promise(resolve => { notifySlowConfirmation = resolve; });
 const html = await readFile('/checkout-site/checkout.html');
 const script = await readFile('/checkout-site/checkout.js');
 
@@ -64,11 +72,38 @@ const server = createServer(async (request, response) => {
     response.end(JSON.stringify({ requestToken: 'synthetic-csrf-token' }));
     return;
   }
+  if (request.method === 'POST' && ['/api/checkout/email/request', '/api/checkout/email/confirm'].includes(url.pathname)) {
+    let body = '';
+    for await (const chunk of request) body += chunk;
+    const payload = JSON.parse(body);
+    assert.equal(request.headers['x-csrf-token'], 'synthetic-csrf-token');
+    if (url.pathname.endsWith('/request')) {
+      verificationRequests++;
+      verificationRequest = payload;
+      response.writeHead(verificationMailAvailable ? 202 : 503, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ message: 'Synthetic email captured.' }));
+    } else {
+      verificationConfirm = payload;
+      if (payload.token === 'synthetic-email-proof-slow') {
+        notifySlowConfirmation();
+        await new Promise(resolve => { releaseSlowConfirmation = resolve; });
+      }
+      response.writeHead(['synthetic-email-proof', 'synthetic-email-proof-renewed', 'synthetic-email-proof-slow'].includes(payload.token) ? 200 : 400, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ email: 'synthetic-owner@example.invalid', planId }));
+    }
+    return;
+  }
   if (request.method === 'POST' && url.pathname === '/api/checkout/initialize') {
     initializeCalls++;
     let body = '';
     for await (const chunk of request) body += chunk;
     lastInitialize = { headers: request.headers, body: JSON.parse(body) };
+    if (expireEmailProofOnce) {
+      expireEmailProofOnce = false;
+      response.writeHead(428, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ code: 'checkout_email_verification_required' }));
+      return;
+    }
     response.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
     response.end(JSON.stringify({ checkoutUrl: 'https://sandbox-api.iyzipay.com/payment/checkout/synthetic', orderId: planId }));
     return;
@@ -103,7 +138,49 @@ try {
   await page.goto(`${baseUrl}/checkout.html?planId=${planId}`, { waitUntil: 'domcontentloaded' });
   await page.locator('#checkoutNotice.success').waitFor();
   assert.equal(await page.locator('#checkoutFields').evaluate(element => element.disabled), false);
+  assert.equal(await page.locator('#checkoutSubmit').isDisabled(), true, 'Payment must wait for email verification.');
+  assert.equal(await page.locator('#confirmEmailVerification').isVisible(), false);
+  await page.locator('[name="ownerEmail"]').fill('synthetic-owner@example.invalid');
+  await page.locator('#sendEmailVerification').click();
+  await page.locator('#emailVerificationFeedback').getByText(/could not be completed/).waitFor();
+  assert.equal(await page.locator('#sendEmailVerification').isDisabled(), false);
+  assert.equal(await page.locator('#checkoutSubmit').isDisabled(), true);
+  verificationMailAvailable = true;
+  await page.locator('#sendEmailVerification').evaluate(button => { button.click(); button.click(); });
+  await page.locator('#emailVerificationFeedback').getByText(/Link sent/).waitFor();
+  assert.deepEqual(verificationRequest, { email: 'synthetic-owner@example.invalid', planId });
+  assert.equal(verificationRequests, 2, 'After one failed delivery, a duplicate retry click must send only one more request.');
+  assert.equal(initializeCalls, 0);
+  await page.goto(`${baseUrl}/checkout.html?planId=${planId}#emailToken=invalid-proof`);
+  await page.waitForFunction(() => location.hash === '');
+  await page.locator('#confirmEmailVerification').click();
+  await page.locator('#emailVerificationFeedback').getByText(/invalid or expired/).waitFor();
+  assert.equal(await page.locator('#checkoutSubmit').isDisabled(), true);
+  await page.goto(`${baseUrl}/checkout.html?planId=${planId}#emailToken=synthetic-email-proof-slow`);
+  await page.waitForFunction(() => location.hash === '');
+  await page.locator('#confirmEmailVerification').click();
+  await slowConfirmationStarted;
+  await page.goto(`${baseUrl}/checkout.html?planId=${planId}#emailToken=synthetic-email-proof`, { waitUntil: 'domcontentloaded' });
+  await page.locator('#checkoutNotice.success').waitFor();
+  await page.waitForFunction(() => location.hash === '');
+  releaseSlowConfirmation();
+  await page.waitForFunction(() => !document.querySelector('#confirmEmailVerification').disabled);
+  assert.equal(await page.locator('[name="ownerEmail"]').evaluate(element => element.readOnly), false,
+    'A late confirmation of an old link must not verify the newly opened link.');
+  assert.equal(new URL(page.url()).hash, '', 'Email proof must be removed from the address immediately.');
+  assert.equal(await page.locator('#checkoutSubmit').isDisabled(), true);
+  await page.locator('#confirmEmailVerification').click();
+  await page.locator('#emailVerificationFeedback').getByText(/Email verified/).waitFor();
+  assert.deepEqual(verificationConfirm, { token: 'synthetic-email-proof' });
+  assert.equal(await page.locator('[name="ownerEmail"]').evaluate(element => element.readOnly), true);
   assert.equal(await page.locator('#checkoutSubmit').isDisabled(), false);
+  await page.locator('#changeVerifiedEmail').click();
+  assert.equal(await page.locator('#checkoutSubmit').isDisabled(), true);
+  assert.equal(await page.locator('[name="ownerEmail"]').evaluate(element => element.readOnly), false);
+  await page.goto(`${baseUrl}/checkout.html?planId=${planId}#emailToken=synthetic-email-proof`);
+  await page.waitForFunction(() => location.hash === '');
+  await page.locator('#confirmEmailVerification').click();
+  await page.locator('#emailVerificationFeedback').getByText(/Email verified/).waitFor();
   assert.match(await page.locator('#planName').innerText(), /Synthetic Cloud plan/);
   assert.equal(await page.locator('#annualTerm').getAttribute('aria-pressed'), 'true');
   await page.locator('#monthlyTerm').click();
@@ -139,24 +216,37 @@ try {
   await page.locator('[name="companyName"]').fill('Synthetic Browser Company');
   await page.locator('[name="ownerFirstName"]').fill('Synthetic');
   await page.locator('[name="ownerLastName"]').fill('Owner');
-  await page.locator('[name="ownerEmail"]').fill('synthetic-owner@example.invalid');
+  assert.equal(await page.locator('[name="ownerEmail"]').inputValue(), 'synthetic-owner@example.invalid');
   await page.locator('[name="phone"]').fill('+905551234567');
   await page.locator('[name="identityNumber"]').fill('11111111111');
   await page.locator('[name="billingAddress"]').fill('1 Synthetic Street');
   await page.locator('[name="city"]').fill('Ankara');
   await page.locator('[name="country"]').fill('Türkiye');
   await page.locator('[name="dataProcessingAcknowledged"]').check();
+  await page.locator('#checkoutSubmit').click();
+  await page.locator('#checkoutFeedback').getByText(/invalid or expired/).waitFor();
+  assert.equal(await page.locator('#checkoutSubmit').isDisabled(), true);
+  assert.equal(await page.locator('#sendEmailVerification').isVisible(), true);
+  assert.equal(await page.locator('[name="billingAddress"]').inputValue(), '1 Synthetic Street');
+  await page.locator('#sendEmailVerification').click();
+  await page.locator('#emailVerificationFeedback').getByText(/Link sent/).waitFor();
+  await page.goto(`${baseUrl}/checkout.html?planId=${planId}#emailToken=synthetic-email-proof-renewed`);
+  await page.waitForFunction(() => location.hash === '');
+  await page.locator('#confirmEmailVerification').click();
+  await page.locator('#emailVerificationFeedback').getByText(/Email verified/).waitFor();
+  assert.equal(await page.locator('#checkoutFeedback').innerText(), '', 'A new proof clears the previous expiry error.');
   const trustedProviderRedirect = page.waitForRequest(request => request.url() === 'https://sandbox-api.iyzipay.com/payment/checkout/synthetic', { timeout: 5000 });
   await page.locator('#checkoutSubmit').click();
   await trustedProviderRedirect;
 
-  assert.equal(initializeCalls, 1);
+  assert.equal(initializeCalls, 2, 'The rejected expired proof is followed by one explicit verified retry.');
   assert.equal(lastInitialize.headers['x-csrf-token'], 'synthetic-csrf-token');
   assert.equal(lastInitialize.body.planId, planId);
   assert.equal(lastInitialize.body.term, 'annual');
   assert.equal(lastInitialize.body.dataProcessingAcknowledged, true);
   assert.equal(lastInitialize.body.dataProcessingNoticeVersion, 'cloud-checkout-data-v1');
   assert.equal(lastInitialize.body.couponCode, 'SAVE15');
+  assert.equal(lastInitialize.body.emailVerificationToken, 'synthetic-email-proof-renewed');
   assert.equal('amount' in lastInitialize.body, false, 'The browser must not supply payment amount.');
   assert.equal('cardNumber' in lastInitialize.body, false, 'Card data must never enter the company checkout form.');
   assert.equal('checkoutId' in lastInitialize.body, true);
@@ -167,6 +257,8 @@ try {
   await new Promise(resolve => server.close(resolve));
 }
 
+if (process.env.HOSTED_CHECKOUT_SCENARIO_ONLY === '1') process.exit(0);
+await import('./checkout-user-quota.mjs');
 await import('./command-palette.mjs');
 await import('./company-portal-login.mjs');
 await import('./company-profile-portal.mjs');
@@ -183,9 +275,12 @@ await import('./platform-admin-members.mjs');
 await import('./platform-admin-bootstrap.mjs');
 await import('./platform-password-recovery.mjs');
 await import('./annual-catalog.mjs');
+await import('./cloud-trial.mjs');
 await import('./platform-audit-retention.mjs');
 await import('./public-site-pricing.mjs');
 await import('./employee-licenses.mjs');
 await import('./employee-records.mjs');
 await import('./accessory-kits.mjs');
 await import('./scheduled-reports.mjs');
+
+await import('./platform-impersonation.mjs');

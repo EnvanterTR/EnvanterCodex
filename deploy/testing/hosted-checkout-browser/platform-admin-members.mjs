@@ -229,12 +229,12 @@ const server = createServer(async (request, response) => {
       }
       return json(response, {
       company: { ...companies[0], isActive: true, createdAt: '2026-09-02T10:00:00Z', contactEmail: 'qa-owner@example.invalid', lifecycleStage: 'AtRisk', lifecycleOwnerId: null, nextFollowUpAt: '2026-10-10T10:00:00Z' },
-      members: [{ displayName: member.displayName, email: member.email, roleKey: 'owner', employeeName: null,
+      members: [{ id: member.id, displayName: member.displayName, email: member.email, roleKey: 'owner', employeeName: null,
         accountCreatedAt: member.accountCreatedAt, createdAt: '2026-09-02T10:00:00Z', emailConfirmed: true, twoFactorEnabled: true }],
       memberCount: 1, membersPage: 1, membersTotalPages: 1, ownerMemberExists: true,
       usage: { generatedAt: '2026-10-16T15:00:00Z', assets: 28, employees: 12, loginAccounts: 4,
         licenses: 3, assignedLicenseSeats: 2, activeApiTokens: 1, planName: 'Cloud Pro', deploymentKind: 'cloud',
-        maxAssets: 500, maxLoginUsers: null, recordedAttachmentCount: 4, recordedAttachmentBytes: 1048576,
+        maxAssets: 500, maxLoginUsers: plans[0]?.maxLoginUsers ?? null, recordedAttachmentCount: 4, recordedAttachmentBytes: 1048576,
         storageNote: 'Eklerin boyut toplamı yalnız veritabanında kayıtlı dosya eklerini kapsar; şirket logoları ve medya dizinindeki dosyalar dahil değildir. Planlarda dosya alanı sınırı tanımlı değildir.' },
       subscriptions: [{ ...companySubscription, name: plans[0]?.name || companySubscription.name, code: plans[0]?.code || companySubscription.code }],
       checkoutOrders: [], lifecycleHistory: []
@@ -757,8 +757,8 @@ try {
   await planForm.locator('[name="deploymentKind"]').selectOption('cloud');
   assert.equal(await planForm.locator('#planMaintenanceEnabled').isChecked(), true,
     'New Cloud plans must include maintenance unless the platform admin disables it.');
-  assert.equal(await planForm.locator('[name="maxLoginUsers"]').isDisabled(), true,
-    'Cloud plans must not receive a local login-user cap.');
+  assert.equal(await planForm.locator('[name="maxLoginUsers"]').isDisabled(), false,
+    'Cloud plans must allow the approved subscription user quota to be configured.');
   await planForm.locator('[name="featureFlagsJson"]').fill('[]');
   const writesBeforeInvalidPlan = writes.length;
   await planForm.getByRole('button', { name: 'Planı Kaydet' }).click();
@@ -771,6 +771,7 @@ try {
   await planForm.locator('[name="name"]').fill('Synthetic Cloud Pro');
   await planForm.locator('[name="deploymentKind"]').selectOption('cloud');
   await planForm.locator('[name="currency"]').selectOption('TRY');
+  await planForm.locator('[name="maxLoginUsers"]').fill('4');
   await planForm.locator('[name="monthlyPrice"]').fill('990');
   await planForm.locator('[name="annualPrice"]').fill('9900');
   await planForm.locator('[name="maxAssets"]').fill('500');
@@ -785,7 +786,7 @@ try {
   await page.locator('#plansTable').getByText('Synthetic Cloud Pro').waitFor({ state: 'visible' });
   assert.equal(writes.length, writesBeforeInvalidPlan + 1);
   assert.deepEqual(writes.at(-1), { method: 'POST', path: '/api/platform/plans', csrf: csrfToken,
-    body: { changeReason: 'Synthetic pricing approval', code: 'synthetic-cloud-pro', name: 'Synthetic Cloud Pro', deploymentKind: 'cloud', currency: 'TRY', maxLoginUsers: null, maxAssets: 500, monthlyPrice: 990, annualPrice: 9900, oneTimePrice: 0, offlineGraceDays: 30, description: '', featureFlagsJson: '{"reports":false,"api":false,"maintenance":false}', supportsOfflineUse: false, isPublic: true, isActive: true, sortOrder: 0 } });
+    body: { changeReason: 'Synthetic pricing approval', code: 'synthetic-cloud-pro', name: 'Synthetic Cloud Pro', deploymentKind: 'cloud', currency: 'TRY', maxLoginUsers: 4, maxAssets: 500, monthlyPrice: 990, annualPrice: 9900, oneTimePrice: 0, offlineGraceDays: 30, description: '', featureFlagsJson: '{"reports":false,"api":false,"maintenance":false}', supportsOfflineUse: false, isPublic: true, isActive: true, sortOrder: 0 } });
 
   await page.locator(`#plansTable [data-edit-plan="${planId}"]`).click();
   assert.equal(await planForm.locator('#planReportsEnabled').isChecked(), false,
@@ -845,10 +846,30 @@ try {
   assert.equal(await companyDialog.locator('#companyDetailTitle').innerText(), 'Synthetic Demo Company',
     'Closing and reopening company details must invalidate the older response.');
   await companyDialog.waitFor({ state: 'visible' });
+  const supportButton=companyDialog.locator('[data-impersonate]').first();
+  await supportButton.click();
+  await page.locator('#impersonationDialog').waitFor({state:'visible'});
+  const beforeSupportCancel=writes.length;
+  await page.locator('#impersonationCancel').click();
+  assert.equal(writes.length,beforeSupportCancel,'Canceling support access must not write.');
+  await supportButton.click();
+  await page.locator('#impersonationForm [name="reason"]').fill('Synthetic support acceptance request');
+  let supportWrites=0;
+  await page.route('**/api/platform/companies/*/impersonations',async route=>{
+    supportWrites++;assert.equal(route.request().headers()['x-csrf-token'],csrfToken);
+    assert.equal(route.request().postDataJSON().reason,'Synthetic support acceptance request');
+    assert.equal(route.request().postDataJSON().userId,member.id);
+    await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Synthetic support unavailable'})});
+  });
+  await page.locator('#impersonationSubmit').click();
+  await page.locator('#impersonationFeedback').getByText('Synthetic support unavailable',{exact:true}).waitFor();
+  assert.equal(supportWrites,1);
+  assert.equal(await page.locator('#impersonationForm [name="reason"]').inputValue(),'Synthetic support acceptance request');
+  await page.locator('#impersonationCancel').click();
   const usagePanel = page.locator('#companyUsagePanel');
   await usagePanel.getByText('Etkin varlık').waitFor({ state: 'visible' });
   assert.match(await usagePanel.innerText(), /28\s*\/\s*500/, 'The company usage view must show asset usage against its active plan limit.');
-  assert.match(await usagePanel.innerText(), /4\s*\/\s*Sınırsız/, 'Cloud login-user quota must be reported as unlimited, not as an invented numeric cap.');
+  assert.match(await usagePanel.innerText(), /4\s*\/\s*4/, 'Cloud login-user usage must be shown against the configured annual package quota.');
   assert.match(await usagePanel.innerText(), /1\s*MB/, 'The usage view must show bytes recorded for attachments.');
   assert.match(await usagePanel.innerText(), /şirket logoları ve medya dizinindeki dosyalar dahil değildir/i, 'The usage view must explain what recorded attachment storage excludes.');
   const listedSubscription = page.locator('#companyDetailBody .panel').filter({ hasText: 'Abonelik geçmişi' }).locator('tbody tr');

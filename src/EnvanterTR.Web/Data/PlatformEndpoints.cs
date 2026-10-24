@@ -88,6 +88,7 @@ public static class PlatformEndpoints
         }).AllowAnonymous().RequireRateLimiting("login");
 
         var admin = endpoints.MapGroup("/api/platform").RequireAuthorization("platform.admin");
+        PlatformImpersonation.MapEndpoints(admin, endpoints);
         admin.MapGet("/system/health", async (AppDbContext db, IConfiguration configuration,
             IOptions<IyzipayOptions> paymentOptions, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
@@ -158,6 +159,8 @@ public static class PlatformEndpoints
 
             var generatedAt = DateTimeOffset.UtcNow;
             var checkoutConfiguration = CheckoutEndpoints.GetConfigurationReadiness(paymentOptions.Value);
+            var smtpConfiguration = EmailConfigurationReadiness.Evaluate(configuration,
+                requireHttps: !string.Equals(configuration["ASPNETCORE_ENVIRONMENT"], "Development", StringComparison.OrdinalIgnoreCase));
             return Results.Ok(new
             {
                 generatedAt,
@@ -179,7 +182,8 @@ public static class PlatformEndpoints
                     availableBytes = diskAvailableBytes, usedPercent = diskUsedPercent },
                 integrations = new
                 {
-                    smtpConfigured = !string.IsNullOrWhiteSpace(configuration["Email:Smtp:Host"]),
+                    smtpConfigured = smtpConfiguration.ConfigurationReady,
+                    smtp = smtpConfiguration,
                     iyzicoConfigured = checkoutConfiguration.CredentialsConfigured,
                     checkout = new
                     {
@@ -1439,7 +1443,7 @@ public static class PlatformEndpoints
 
         admin.MapPost("/companies", async ([FromBody] ProvisionCompanyRequest request, ClaimsPrincipal user,
             AppDbContext db, UserManager<EnvanterUser> userManager, IConfiguration configuration,
-            CancellationToken cancellationToken) =>
+            TenantProvisioningService provisioning, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var companyName = request.CompanyName?.Trim();
             var slug = request.Slug?.Trim().ToLowerInvariant();
@@ -1471,30 +1475,18 @@ public static class PlatformEndpoints
             if (await db.CompanyCheckoutOrders.AnyAsync(x => x.Slug == slug && checkoutReservedStatuses.Contains(x.Status), cancellationToken))
                 return Results.Conflict(new { message = "Bu alt alan adı tamamlanmamış bir Cloud satın alma işlemi için ayrılmış." });
 
-            var owner = await userManager.FindByEmailAsync(ownerEmail);
-            var wasConfirmed = owner?.EmailConfirmed == true;
-            if (owner is null)
-            {
-                var temporaryPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) + "aA1!";
-                owner = new EnvanterUser { UserName = ownerEmail, Email = ownerEmail, EmailConfirmed = false, DisplayName = ownerName };
-                var created = await userManager.CreateAsync(owner, temporaryPassword);
-                if (!created.Succeeded)
-                {
-                    await transaction.RollbackAsync(cancellationToken);
-                    return Results.Conflict(new { message = "Yetkili hesap oluşturulamadı; e-posta adresini ve hesap durumunu kontrol edin." });
-                }
-            }
-
-            var company = new Company { Name = companyName, Slug = slug, ContactEmail = contactEmail ?? ownerEmail,
-                SecurityRequireMfa = true };
             var now = DateTimeOffset.UtcNow;
-            var subscription = new TenantSubscription {
-                CompanyId = company.Id, PlanId = plan.Id, Status = "Active", IsDemo = false,
-                StartsAt = now, EndsAt = now.AddDays(request.TermDays), PaymentReference = paymentReference
-            };
-            db.Companies.Add(company);
-            db.CompanyMemberships.Add(new CompanyMembership { CompanyId = company.Id, UserId = owner.Id, RoleKey = "owner" });
-            db.TenantSubscriptions.Add(subscription);
+            var provisioned = await provisioning.ProvisionCloudAsync(new(companyName, slug!, contactEmail ?? ownerEmail,
+                ownerName, ownerEmail, plan.Id, now, now.AddDays(request.TermDays), PaymentReference: paymentReference), cancellationToken);
+            if (provisioned is null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return Results.Conflict(new { message = "Yetkili hesap oluşturulamadı; e-posta adresini ve hesap durumunu kontrol edin." });
+            }
+            var company = provisioned.Company;
+            var owner = provisioned.Owner;
+            var subscription = provisioned.Subscription;
+            var wasConfirmed = provisioned.OwnerWasConfirmed;
             AddAudit(db, user, "PaidCompanyProvisioned", "Company", company.Id, company.Id,
                 $"{plan.Code} · {request.TermDays} gün · ödeme platform yöneticisi tarafından doğrulandı.");
             try
@@ -1523,7 +1515,8 @@ public static class PlatformEndpoints
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                // Company provisioning is committed; platform administrators can retry the owner notice.
+                logger.LogWarning("Paid company owner invitation failed. Company {CompanyId}; error type: {ErrorType}",
+                    company.Id, exception.GetType().Name);
             }
 
             var rootDomain = configuration["TenantRouting:RootDomain"]?.Trim().Trim('.');
@@ -1539,7 +1532,7 @@ public static class PlatformEndpoints
 
         admin.MapPost("/companies/{companyId:guid}/owner-invitation/resend", async (Guid companyId,
             UserManager<EnvanterUser> userManager, AppDbContext db, IConfiguration configuration,
-            CancellationToken cancellationToken) =>
+            ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var owner = await (from membership in db.CompanyMemberships.AsNoTracking()
                 join ownerAccount in db.Users.AsNoTracking() on membership.UserId equals ownerAccount.Id
@@ -1565,6 +1558,8 @@ public static class PlatformEndpoints
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
+                logger.LogWarning("Paid company owner invitation retry failed. Company {CompanyId}; error type: {ErrorType}",
+                    companyId, exception.GetType().Name);
                 return Results.Problem("E-posta gönderilemedi. E-posta sunucusu ayarlarını kontrol edip yeniden deneyin.",
                     statusCode: StatusCodes.Status503ServiceUnavailable);
             }

@@ -1,0 +1,18 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: mk: a published limit of 2000 must not be advertised as unlimited.
+
+'2,000' !== '2.000'
+
+    at file:///acceptance/checkout-user-quota.mjs:41:14 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: '2,000',
+  expected: '2.000',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

@@ -263,6 +263,24 @@ jobs:
           docker build --tag envantertr-hosted-checkout-browser-ci --file deploy/testing/Dockerfile.hosted-checkout-browser .
           docker run --rm --init envantertr-hosted-checkout-browser-ci
 
+      - name: Run existing company annual checkout with Kestrel PostgreSQL and Chromium
+        shell: pwsh
+        timeout-minutes: 12
+        run: |
+          ./deploy/testing/run-existing-checkout-browser-acceptance.ps1 -EvidencePath tests/reports/existing-checkout-ci *>&1 | Tee-Object -FilePath tests/reports/existing-checkout-ci.log
+          exit $LASTEXITCODE
+
+      - name: Preserve existing company checkout browser evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: existing-company-checkout-browser-${{ github.sha }}
+          path: |
+            tests/reports/existing-checkout-ci.log
+            tests/reports/existing-checkout-ci/
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Verify application scripts and camera policy through Nginx
         shell: bash
         run: |

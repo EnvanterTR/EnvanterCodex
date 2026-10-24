@@ -222,6 +222,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<CompanyCheckoutOrder>().ToTable("CompanyCheckoutOrders", table =>
         {
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_Term", "\"TermDays\" IN (30, 365)");
+            table.HasCheckConstraint("CK_CompanyCheckoutOrders_TargetContext", "(\"TargetCompanyId\" IS NULL AND \"RequestedByUserId\" IS NULL) OR (\"TargetCompanyId\" IS NOT NULL AND \"RequestedByUserId\" IS NOT NULL AND \"TermDays\" = 365)");
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_Amount", "\"Amount\" > 0");
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_Pricing", "\"SubtotalAmount\" >= 0 AND \"DiscountAmount\" >= 0 AND \"Amount\" = \"SubtotalAmount\" - \"DiscountAmount\"");
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_CouponSnapshot", "(\"CouponId\" IS NULL AND \"CouponCode\" IS NULL AND \"DiscountAmount\" = 0) OR (\"CouponId\" IS NOT NULL AND \"CouponCode\" IS NOT NULL)");
@@ -357,11 +358,21 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<UserSession>().HasKey(x => x.Id);
         modelBuilder.Entity<UserSession>().Property(x => x.IpAddress).HasMaxLength(64);
         modelBuilder.Entity<UserSession>().Property(x => x.UserAgent).HasMaxLength(512);
+        modelBuilder.Entity<UserSession>().Property(x => x.ImpersonatorSecurityStampHash).HasMaxLength(64);
+        modelBuilder.Entity<UserSession>().Property(x => x.ImpersonationReturnTokenHash).HasMaxLength(64);
+        modelBuilder.Entity<UserSession>().Property(x => x.ImpersonationReason).HasMaxLength(500);
+        modelBuilder.Entity<UserSession>().HasIndex(x => x.ImpersonationReturnTokenHash).IsUnique()
+            .HasFilter("\"ImpersonationReturnTokenHash\" IS NOT NULL");
+        modelBuilder.Entity<UserSession>().HasIndex(x => x.ImpersonatorSessionId).IsUnique()
+            .HasFilter("\"ImpersonatorSessionId\" IS NOT NULL AND \"ImpersonationEndedAt\" IS NULL AND \"RevokedAt\" IS NULL");
         modelBuilder.Entity<UserSession>().HasIndex(x => new { x.UserId, x.RevokedAt, x.ExpiresAt });
         modelBuilder.Entity<UserSession>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<UserSession>().ToTable("UserSessions", table =>
             table.HasCheckConstraint("CK_UserSessions_Expiry", "\"ExpiresAt\" > \"CreatedAt\""));
+        modelBuilder.Entity<UserSession>().ToTable("UserSessions", table => table.HasCheckConstraint("CK_UserSessions_Impersonation",
+            "(\"ImpersonatorUserId\" IS NULL AND \"ImpersonatorSessionId\" IS NULL AND \"ImpersonatorSecurityStampHash\" IS NULL AND \"ImpersonationReturnTokenHash\" IS NULL AND \"ImpersonatorRememberMe\" IS NULL AND \"ImpersonationReason\" IS NULL AND \"ImpersonationEndedAt\" IS NULL) OR " +
+            "(\"ImpersonatorUserId\" IS NOT NULL AND \"ImpersonatorSessionId\" IS NOT NULL AND \"ImpersonatorSecurityStampHash\" IS NOT NULL AND \"ImpersonatorRememberMe\" IS NOT NULL AND \"ImpersonationReason\" IS NOT NULL AND \"CompanyId\" IS NOT NULL AND NOT \"PlatformAdmin\" AND (\"ImpersonationReturnTokenHash\" IS NOT NULL OR \"ImpersonationEndedAt\" IS NOT NULL))"));
         modelBuilder.Entity<CompanyMembership>().HasKey(x => new { x.CompanyId, x.UserId });
         modelBuilder.Entity<CompanyMembership>().Property(x => x.RoleKey).HasMaxLength(40).IsRequired();
         modelBuilder.Entity<CompanyMembership>().Property(x => x.LocationAccessMode).HasMaxLength(16).HasDefaultValue("all").IsRequired();

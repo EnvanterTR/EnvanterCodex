@@ -4,6 +4,7 @@ WORKDIR /acceptance
 COPY deploy/testing/hosted-checkout-browser/package.json deploy/testing/hosted-checkout-browser/package-lock.json ./
 RUN npm ci --omit=dev
 COPY deploy/testing/hosted-checkout-browser/hosted-checkout.mjs ./
+COPY deploy/testing/hosted-checkout-browser/checkout-user-quota.mjs ./
 COPY deploy/testing/hosted-checkout-browser/command-palette.mjs ./
 COPY deploy/testing/hosted-checkout-browser/company-portal-login.mjs ./
 COPY deploy/testing/hosted-checkout-browser/company-profile-portal.mjs ./
@@ -22,6 +23,7 @@ COPY deploy/testing/hosted-checkout-browser/platform-admin-members.mjs ./
 COPY deploy/testing/hosted-checkout-browser/platform-admin-bootstrap.mjs ./
 COPY deploy/testing/hosted-checkout-browser/platform-password-recovery.mjs ./
 COPY deploy/testing/hosted-checkout-browser/annual-catalog.mjs ./
+COPY deploy/testing/hosted-checkout-browser/cloud-trial.mjs ./
 COPY deploy/testing/hosted-checkout-browser/asset-camera.mjs ./
 COPY deploy/testing/hosted-checkout-browser/company-storage.mjs ./
 COPY deploy/testing/hosted-checkout-browser/platform-audit-retention.mjs ./
@@ -39,4 +41,7 @@ COPY src/EnvanterTR.Web/wwwroot/platform-admin.html /platform-site/platform-admi
 COPY src/EnvanterTR.Web/wwwroot/platform-setup.html /platform-site/platform-setup.html
 COPY src/EnvanterTR.Web/wwwroot/platform-admin-members.js src/EnvanterTR.Web/wwwroot/platform-admin-subscriptions.js src/EnvanterTR.Web/wwwroot/platform-admin-demo-requests.js src/EnvanterTR.Web/wwwroot/platform-admin-payment-follow-ups.js /platform-site/
 
+COPY src/EnvanterTR.PublicSite/trial.html src/EnvanterTR.PublicSite/trial.js /public-site/
 CMD ["node", "hosted-checkout.mjs"]
+
+COPY deploy/testing/hosted-checkout-browser/platform-impersonation.mjs ./

@@ -639,6 +639,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         var request = new InitializeCompanyCheckoutRequest(checkoutId, "Synthetic Checkout Ltd", $"checkout-{checkoutId:N}"[..20],
             "owner@example.invalid", "Test", "Owner", $"owner-{checkoutId:N}@example.invalid", "+905550000002", "10000000146",
             "Synthetic Street 2", "Istanbul", "Turkey", "34000", plan.Id, "monthly", true, "cloud-checkout-data-v1", coupon.Code);
+        request = request with { EmailVerificationToken = await VerifyCheckoutEmailAsync(client, request.OwnerEmail, plan.Id) };
         var publishedPlans = await client.GetFromJsonAsync<JsonElement>("/api/plans");
         Assert.Contains(publishedPlans.EnumerateArray(), item => item.GetProperty("id").GetGuid() == plan.Id);
         using (var quote = await client.PostAsJsonAsync("/api/checkout/quote", new CheckoutCouponQuoteRequest(plan.Id, "monthly", coupon.Code.ToLowerInvariant())))
@@ -805,7 +806,8 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Contains($"https://{request.Slug}.envantertr.com/", purchaseConfirmation, StringComparison.Ordinal);
         Assert.Contains("Erişim e-postası daha önce gönderilmiş olabilir", purchaseConfirmationText, StringComparison.Ordinal);
         var invitation = Assert.Single(_smtpCapture.Messages, message =>
-            message.Contains($"To: {request.OwnerEmail}", StringComparison.OrdinalIgnoreCase));
+            message.Contains($"To: {request.OwnerEmail}", StringComparison.OrdinalIgnoreCase) &&
+            DecodeMimeBody(message).Contains("ilk girişte Authenticator", StringComparison.Ordinal));
         Assert.Contains($"To: {request.OwnerEmail}", invitation, StringComparison.OrdinalIgnoreCase);
         Assert.Contains($"https://{request.Slug}.envantertr.com/", DecodeMimeBody(invitation), StringComparison.Ordinal);
         var invitationBody = DecodeMimeBody(invitation);
@@ -2127,9 +2129,17 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             "POST /api/session/company-mfa/setup",
             "POST /api/session/company-mfa/verify",
             "POST /api/checkout/initialize",
+            // Pre-payment email ownership uses CSRF, its own bounded request pool and a time-limited protected proof.
+            "POST /api/checkout/email/request",
+            "POST /api/checkout/email/confirm",
             "POST /api/checkout/callback",
             "POST /api/checkout/webhook",
             "GET /api/checkout/status",
+            // Trial enrollment starts before a session exists. Writes require CSRF and the
+            // checkout rate limit; confirmation additionally requires a short-lived email proof.
+            "GET /api/trials/status",
+            "POST /api/trials/request",
+            "POST /api/trials/confirm",
             // Checkout quote is public so unauthenticated buyers can preview coupon-adjusted pricing.
             "POST /api/checkout/quote",
             "GET /api/plans",
@@ -2150,6 +2160,14 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             string.Join(", ", actualPublicRoutes.Except(expectedPublicRoutes).OrderBy(x => x, StringComparer.Ordinal)) +
             "; missing: " +
             string.Join(", ", expectedPublicRoutes.Except(actualPublicRoutes).OrderBy(x => x, StringComparer.Ordinal)));
+
+        foreach (var trialRoute in new[] { "POST /api/trials/request", "POST /api/trials/confirm" })
+        {
+            var endpoint = Assert.Single(endpoints, endpoint => DescribeEndpoint(endpoint) == trialRoute);
+            var rateLimit = endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>();
+            Assert.NotNull(rateLimit);
+            Assert.Equal("checkout", rateLimit.PolicyName);
+        }
 
         var policies = endpoints.SelectMany(endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>())
             .Select(data => data.Policy)
@@ -4602,8 +4620,10 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         }
     }
 
-    [Fact]
-    public async Task Platform_can_provision_a_paid_cloud_company_owner_and_retryable_invitation()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Platform_can_provision_a_paid_cloud_company_owner_and_retryable_invitation(bool firstDeliveryFails)
     {
         var plan = new SubscriptionPlan
         {
@@ -4634,16 +4654,22 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             termDays = 365, paymentReference = $"acceptance-{Guid.NewGuid():N}", paymentVerified = true
         };
 
-        using (var created = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/companies",
-                   System.Net.Http.Json.JsonContent.Create(requestBody), requestToken, antiforgeryCookie))
+        var configuration = _factory!.Services.GetRequiredService<IConfiguration>();
+        var originalPort = configuration["Email:Smtp:Port"];
+        if (firstDeliveryFails) configuration["Email:Smtp:Port"] = "invalid";
+        try
         {
+            using var created = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/companies",
+                System.Net.Http.Json.JsonContent.Create(requestBody), requestToken, antiforgeryCookie);
             Assert.Equal(HttpStatusCode.Created, created.StatusCode);
             using var payload = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
             Assert.Equal(slug, payload.RootElement.GetProperty("slug").GetString());
             Assert.Equal(365, (payload.RootElement.GetProperty("endsAt").GetDateTimeOffset() -
                 payload.RootElement.GetProperty("startsAt").GetDateTimeOffset()).Days);
-            Assert.True(payload.RootElement.GetProperty("invitationSent").GetBoolean());
+            Assert.Equal(!firstDeliveryFails, payload.RootElement.GetProperty("invitationSent").GetBoolean());
+            if (firstDeliveryFails) Assert.Contains("e-posta gönderilemedi", payload.RootElement.GetProperty("message").GetString());
         }
+        finally { configuration["Email:Smtp:Port"] = originalPort; }
 
         Guid companyId;
         Guid ownerId;
@@ -4665,7 +4691,20 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(requestBody.paymentReference, subscription.PaymentReference);
         }
 
-        Assert.Contains(_smtpCapture.Messages, message => message.Contains(email, StringComparison.OrdinalIgnoreCase));
+        if (firstDeliveryFails)
+        {
+            Assert.Empty(_smtpCapture.Messages);
+            configuration["Email:Smtp:Port"] = "invalid";
+            try
+            {
+                using var failedRetry = await SendAsPlatformAdminRequestAsync(HttpMethod.Post,
+                    $"/api/platform/companies/{companyId}/owner-invitation/resend", new StringContent("{}", Encoding.UTF8, "application/json"),
+                    requestToken, antiforgeryCookie);
+                Assert.Equal(HttpStatusCode.ServiceUnavailable, failedRetry.StatusCode);
+            }
+            finally { configuration["Email:Smtp:Port"] = originalPort; }
+        }
+        else Assert.Contains(_smtpCapture.Messages, message => message.Contains(email, StringComparison.OrdinalIgnoreCase));
         using (var resent = await SendAsPlatformAdminRequestAsync(HttpMethod.Post,
                    $"/api/platform/companies/{companyId}/owner-invitation/resend", new StringContent("{}", Encoding.UTF8, "application/json"),
                    requestToken, antiforgeryCookie))

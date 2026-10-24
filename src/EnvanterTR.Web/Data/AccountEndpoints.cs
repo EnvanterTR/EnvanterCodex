@@ -55,7 +55,8 @@ public static class AccountEndpoints
 
         endpoints.MapPost("/api/setup/initial-owner", async ([FromBody] InitialOwnerRequest request,
             HttpContext context, IAntiforgery antiforgery, IConfiguration configuration,
-            AppDbContext db, UserManager<EnvanterUser> userManager, CancellationToken cancellationToken) =>
+            AppDbContext db, UserManager<EnvanterUser> userManager, TenantProvisioningService provisioning,
+            CancellationToken cancellationToken) =>
         {
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
             var suppliedToken = context.Request.Headers["X-Setup-Token"].ToString();
@@ -74,7 +75,6 @@ public static class AccountEndpoints
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
             if (await db.Companies.AnyAsync(cancellationToken)) return Results.Conflict(new { message = "İlk kurulum zaten tamamlanmış." });
 
-            var company = new Company { Name = request.CompanyName.Trim() };
             var email = request.Email.Trim();
             var user = await userManager.FindByEmailAsync(email);
             if (user is not null)
@@ -102,12 +102,7 @@ public static class AccountEndpoints
                     });
                 }
             }
-            db.Companies.Add(company);
-
-            db.CompanyMemberships.Add(new CompanyMembership
-            {
-                CompanyId = company.Id, UserId = user.Id, RoleKey = "owner"
-            });
+            var company = provisioning.ProvisionInitialCompany(request.CompanyName.Trim(), user);
             try
             {
                 await db.SaveChangesAsync(cancellationToken);
@@ -688,6 +683,9 @@ public static class AccountEndpoints
         endpoints.MapPost("/api/session/logout", async (HttpContext context, IAntiforgery antiforgery,
             SignInManager<EnvanterUser> signInManager, AppDbContext db, CancellationToken cancellationToken) =>
         {
+            if (PlatformImpersonation.IsImpersonating(context))
+                return await PlatformImpersonation.StopAsync(context, db, signInManager, antiforgery,
+                    context.RequestServices.GetRequiredService<IConfiguration>(), cancellationToken);
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
             if (Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
             {
@@ -713,11 +711,12 @@ public static class AccountEndpoints
                 ? parsedCompanyId : (Guid?)null;
             var rootDomain = configuration["TenantRouting:RootDomain"]?.Trim().Trim('.');
             IReadOnlyList<object> availableCompanies = Array.Empty<object>();
+            var supportMode = PlatformImpersonation.IsImpersonating(context);
             if (Guid.TryParse(userId, out var parsedUserId) && companyId is not null)
             {
                 var memberships = await (from membership in db.CompanyMemberships.AsNoTracking()
                                          join company in db.Companies.AsNoTracking() on membership.CompanyId equals company.Id
-                                         where membership.UserId == parsedUserId && company.IsActive
+                                         where membership.UserId == parsedUserId && company.IsActive && (!supportMode || company.Id == companyId)
                                          orderby company.Name
                                          select new { id = company.Id, name = company.Name, role = membership.RoleKey, company.Slug })
                     .ToListAsync(cancellationToken);
@@ -754,6 +753,7 @@ public static class AccountEndpoints
                 companyId = companyId?.ToString(),
                 companyName,
                 availableCompanies,
+                impersonation = PlatformImpersonation.GetInfo(context),
                 subscriptionAccess = subscription is null ? null : new
                 {
                     planName = subscription.Name,

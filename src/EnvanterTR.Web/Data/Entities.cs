@@ -243,6 +243,9 @@ public sealed class CompanyCheckoutOrder
     public string? PaymentReference { get; set; }
     public Guid? CompanyId { get; set; }
     public string? DataProcessingNoticeVersion { get; set; }
+    // Immutable purchase context; deliberately not cleared if a company/account is deleted.
+    public Guid? TargetCompanyId { get; set; }
+    public Guid? RequestedByUserId { get; set; }
     public DateTimeOffset? DataProcessingAcknowledgedAt { get; set; }
     public DateTimeOffset? InitializationLeaseUntil { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;

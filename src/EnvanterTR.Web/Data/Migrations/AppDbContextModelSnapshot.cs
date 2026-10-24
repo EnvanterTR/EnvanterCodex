@@ -2117,6 +2117,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("PlanId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("RequestedByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(63)
@@ -2133,6 +2136,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<int>("TermDays")
                         .HasColumnType("integer");
+
+                    b.Property<Guid?>("TargetCompanyId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -2167,6 +2173,7 @@ namespace EnvanterTR.Web.Data.Migrations
                             t.HasCheckConstraint("CK_CompanyCheckoutOrders_Status", "\"Status\" IN ('Pending', 'PaymentStarted', 'PaymentReview', 'PaymentFailed', 'Expired', 'Provisioned', 'ProvisioningFailed')");
 
                             t.HasCheckConstraint("CK_CompanyCheckoutOrders_Term", "\"TermDays\" IN (30, 365)");
+                            t.HasCheckConstraint("CK_CompanyCheckoutOrders_TargetContext", "(\"TargetCompanyId\" IS NULL AND \"RequestedByUserId\" IS NULL) OR (\"TargetCompanyId\" IS NOT NULL AND \"RequestedByUserId\" IS NOT NULL AND \"TermDays\" = 365)");
                         });
                 });
 
@@ -5267,6 +5274,30 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateTimeOffset>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("ImpersonationEndedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ImpersonationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ImpersonationReturnTokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool?>("ImpersonatorRememberMe")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ImpersonatorSecurityStampHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("ImpersonatorSessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ImpersonatorUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("IpAddress")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
@@ -5289,11 +5320,20 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ImpersonationReturnTokenHash")
+                        .IsUnique()
+                        .HasFilter("\"ImpersonationReturnTokenHash\" IS NOT NULL");
+
+                    b.HasIndex("ImpersonatorSessionId")
+                        .IsUnique()
+                        .HasFilter("\"ImpersonatorSessionId\" IS NOT NULL AND \"ImpersonationEndedAt\" IS NULL AND \"RevokedAt\" IS NULL");
+
                     b.HasIndex("UserId", "RevokedAt", "ExpiresAt");
 
                     b.ToTable("UserSessions", null, t =>
                         {
                             t.HasCheckConstraint("CK_UserSessions_Expiry", "\"ExpiresAt\" > \"CreatedAt\"");
+                            t.HasCheckConstraint("CK_UserSessions_Impersonation", "(\"ImpersonatorUserId\" IS NULL AND \"ImpersonatorSessionId\" IS NULL AND \"ImpersonatorSecurityStampHash\" IS NULL AND \"ImpersonationReturnTokenHash\" IS NULL AND \"ImpersonatorRememberMe\" IS NULL AND \"ImpersonationReason\" IS NULL AND \"ImpersonationEndedAt\" IS NULL) OR (\"ImpersonatorUserId\" IS NOT NULL AND \"ImpersonatorSessionId\" IS NOT NULL AND \"ImpersonatorSecurityStampHash\" IS NOT NULL AND \"ImpersonatorRememberMe\" IS NOT NULL AND \"ImpersonationReason\" IS NOT NULL AND \"CompanyId\" IS NOT NULL AND NOT \"PlatformAdmin\" AND (\"ImpersonationReturnTokenHash\" IS NOT NULL OR \"ImpersonationEndedAt\" IS NOT NULL))");
                         });
                 });
 

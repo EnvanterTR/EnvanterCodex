@@ -1,0 +1,231 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.hosted-checkout-browser
+#1 transferring dockerfile: 3.50kB 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for mcr.microsoft.com/playwright:v1.64.0-noble
+#2 DONE 0.2s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 134B done
+#3 DONE 0.0s
+
+#4 [ 1/41] FROM mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+#4 resolve mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f 0.0s done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 3.94kB 0.0s done
+#5 DONE 0.0s
+
+#6 [37/41] COPY src/EnvanterTR.Web/wwwroot/report-print.js src/EnvanterTR.Web/wwwroot/scheduled-reports.js /checkout-site/
+#6 CACHED
+
+#7 [25/41] COPY deploy/testing/hosted-checkout-browser/asset-camera.mjs ./
+#7 CACHED
+
+#8 [24/41] COPY deploy/testing/hosted-checkout-browser/cloud-trial.mjs ./
+#8 CACHED
+
+#9 [ 5/41] COPY deploy/testing/hosted-checkout-browser/hosted-checkout.mjs ./
+#9 CACHED
+
+#10 [36/41] COPY src/EnvanterTR.Web/wwwroot/vendor/zxing-browser-0.2.1.min.js src/EnvanterTR.Web/wwwroot/vendor/bwip-js-min.js /checkout-site/vendor/
+#10 CACHED
+
+#11 [33/41] COPY src/EnvanterTR.PublicSite/assets/images/farma-company-portal-preview.png /public-site/assets/images/farma-company-portal-preview.png
+#11 CACHED
+
+#12 [ 3/41] COPY deploy/testing/hosted-checkout-browser/package.json deploy/testing/hosted-checkout-browser/package-lock.json ./
+#12 CACHED
+
+#13 [10/41] COPY deploy/testing/hosted-checkout-browser/company-tasks.mjs ./
+#13 CACHED
+
+#14 [19/41] COPY deploy/testing/hosted-checkout-browser/scheduled-reports.mjs ./
+#14 CACHED
+
+#15 [12/41] COPY deploy/testing/hosted-checkout-browser/support-tickets.mjs ./
+#15 CACHED
+
+#16 [30/41] COPY src/EnvanterTR.PublicSite/index.html /public-site/index.html
+#16 CACHED
+
+#17 [34/41] COPY src/EnvanterTR.Web/wwwroot/index.html /checkout-site/company-app.html
+#17 CACHED
+
+#18 [20/41] COPY deploy/testing/hosted-checkout-browser/platform-admin-members.mjs ./
+#18 CACHED
+
+#19 [23/41] COPY deploy/testing/hosted-checkout-browser/annual-catalog.mjs ./
+#19 CACHED
+
+#20 [39/41] COPY src/EnvanterTR.Web/wwwroot/platform-setup.html /platform-site/platform-setup.html
+#20 CACHED
+
+#21 [35/41] COPY src/EnvanterTR.Web/wwwroot/vendor/qrcodegen.js /checkout-site/vendor/qrcodegen.js
+#21 CACHED
+
+#22 [11/41] COPY deploy/testing/hosted-checkout-browser/inventory-requests.mjs ./
+#22 CACHED
+
+#23 [22/41] COPY deploy/testing/hosted-checkout-browser/platform-password-recovery.mjs ./
+#23 CACHED
+
+#24 [29/41] COPY src/EnvanterTR.PublicSite/checkout.html src/EnvanterTR.PublicSite/checkout.js /checkout-site/
+#24 CACHED
+
+#25 [38/41] COPY src/EnvanterTR.Web/wwwroot/platform-admin.html /platform-site/platform-admin.html
+#25 CACHED
+
+#26 [15/41] COPY deploy/testing/hosted-checkout-browser/platform-support-tickets.mjs ./
+#26 CACHED
+
+#27 [17/41] COPY deploy/testing/hosted-checkout-browser/employee-records.mjs ./
+#27 CACHED
+
+#28 [26/41] COPY deploy/testing/hosted-checkout-browser/company-storage.mjs ./
+#28 CACHED
+
+#29 [16/41] COPY deploy/testing/hosted-checkout-browser/employee-licenses.mjs ./
+#29 CACHED
+
+#30 [ 7/41] COPY deploy/testing/hosted-checkout-browser/company-portal-login.mjs ./
+#30 CACHED
+
+#31 [40/41] COPY src/EnvanterTR.Web/wwwroot/platform-admin-members.js src/EnvanterTR.Web/wwwroot/platform-admin-subscriptions.js src/EnvanterTR.Web/wwwroot/platform-admin-demo-requests.js src/EnvanterTR.Web/wwwroot/platform-admin-payment-follow-ups.js /platform-site/
+#31 CACHED
+
+#32 [18/41] COPY deploy/testing/hosted-checkout-browser/accessory-kits.mjs ./
+#32 CACHED
+
+#33 [ 6/41] COPY deploy/testing/hosted-checkout-browser/command-palette.mjs ./
+#33 CACHED
+
+#34 [21/41] COPY deploy/testing/hosted-checkout-browser/platform-admin-bootstrap.mjs ./
+#34 CACHED
+
+#35 [32/41] COPY src/EnvanterTR.PublicSite/assets/images/account-security-product-preview.png /public-site/assets/images/account-security-product-preview.png
+#35 CACHED
+
+#36 [27/41] COPY deploy/testing/hosted-checkout-browser/platform-audit-retention.mjs ./
+#36 CACHED
+
+#37 [28/41] COPY deploy/testing/hosted-checkout-browser/public-site-pricing.mjs ./
+#37 CACHED
+
+#38 [ 8/41] COPY deploy/testing/hosted-checkout-browser/company-profile-portal.mjs ./
+#38 CACHED
+
+#39 [ 4/41] RUN npm ci --omit=dev
+#39 CACHED
+
+#40 [13/41] COPY deploy/testing/hosted-checkout-browser/return-queue.mjs ./
+#40 CACHED
+
+#41 [ 2/41] WORKDIR /acceptance
+#41 CACHED
+
+#42 [14/41] COPY deploy/testing/hosted-checkout-browser/asset-status-queues.mjs ./
+#42 CACHED
+
+#43 [ 9/41] COPY deploy/testing/hosted-checkout-browser/asset-detail-actions.mjs ./
+#43 CACHED
+
+#44 [31/41] COPY src/EnvanterTR.PublicSite/assets/images/asset-label-roll-transparent.png /public-site/assets/images/asset-label-roll-transparent.png
+#44 CACHED
+
+#45 [41/41] COPY src/EnvanterTR.PublicSite/trial.html src/EnvanterTR.PublicSite/trial.js /public-site/
+#45 CACHED
+
+#46 exporting to image
+#46 exporting layers 0.0s done
+#46 exporting manifest sha256:f861197f993fe3c46c2682c44825bb3bba87b0a5f092d9477296b4bd30292767 done
+#46 exporting config sha256:e663d34e10319dabf7444edb33114005b664e5c5dcb99c6334fc5994451a7c43 done
+#46 exporting attestation manifest sha256:5ce65f15b503fee3682d4551eaced544a3ea6669be3b3a70cd19aafeeb49acb3 0.0s done
+#46 exporting manifest list sha256:532224955e1891bc466d11e7d17471bb408f0a5bb2c7916e28b74ecba89b3c1a
+#46 exporting manifest list sha256:532224955e1891bc466d11e7d17471bb408f0a5bb2c7916e28b74ecba89b3c1a 0.0s done
+#46 naming to docker.io/library/envantertr-hosted-checkout-browser-acceptance:local done
+#46 unpacking to docker.io/library/envantertr-hosted-checkout-browser-acceptance:local done
+#46 DONE 0.3s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/e1qbc1r68ioi91yv9a1ov1ru9
+PASS: real Chromium checkout UI fails closed when unavailable, applies a server-quoted coupon in the selected language/term, sends only the coupon code (never the amount), suggests correct company slugs, preserves manual edits, validates company data, posts with CSRF and consent, and redirects only to the trusted iyzico host.
+PASS: account session UI lists current and remote devices, preserves canceled revocation, confirms a CSRF-protected remote revoke, and refreshes the remaining session list.
+PASS: integration API key menu validates scopes, posts CSRF, masks and clears the one-time secret, preserves cancellation, confirms/reloads revocation, and persists the synthetic state.
+PASS: synthetic viewer/admin visibility; keyboard/sidebar navigation; company security policy load/save with CSRF and persistence; notification cancel/save persistence; profile security and appearance preferences; five-language expiry notice; signed-out login distinguishes credential rejection from schema lockout, clears stale errors, blocks login/recovery until ready, tests first-time company MFA QR/secret/verification/recovery codes, and never silently retries credentials.
+PASS: actual HTML apex/www existing sessions and signed-out CSRF login redirect active membership to Farma, without entry-host tenant data or credential retries
+PASS: real profile form persists new slug once with CSRF and moves to new portal without old-host reload
+PASS: camera permission denial, missing device and busy device each show an actionable status and unlock retry.
+PASS: unanswered permission reaches a bounded deadline, unlocks retry and releases a stream granted after timeout.
+PASS: closing during camera permission releases a late stream and cannot resurrect the hidden scanner.
+PASS: without native BarcodeDetector, actual QR and Code128 video frames decode locally, return exact codes and release camera tracks. No physical camera or external decoder service used.
+PASS: a failed local decoder download shows its error and permits an explicit retry before requesting camera access.
+PASS: actual storage UI renders measured bytes without an invented quota, hides unauthorized data, reports failure and rejects late cross-company responses.
+PASS: inventory uses desktop width (left/right insets 10/10px); table scroll stays local at desktop and 390px mobile width.
+PASS: asset list print paginates all 205 filtered assets across the 200-row boundary, preserves visible columns, invokes print; fullscreen enters/exits and synchronizes its accessible state.
+PASS: asset CSV and XLSX map/profile/preview/apply routes preserve the selected files, use CSRF and refresh both synthetic rows; profile deletion cancel/confirm is safe.
+PASS: asset detail category, brand, model, employee, and location references each open the matching company-scoped filter; clearing restores the complete asset list.
+PASS: delayed parent searches cannot overwrite a newer query or a reopened asset dialog.
+PASS: asset hierarchy search, CSRF/version-checked parent save, refreshed parent/child relationships, and visible cycle rejection preserving the previous link.
+PASS: asset relations tab renders only active accessory deliveries and installed components with remaining/total quantities, dates, notes, and counts.
+PASS: asset history note saves a CSRF-protected NoteAdded movement, accepts exactly 2,000 characters, refreshes the timeline, and clears the editor.
+PASS: software license employee assignment updates seat usage and detail; assignment list search, cancel-safe and confirmed revocation, inactive history filter, and CSRF are verified.
+PASS: software license EULA settings, versioned document upload, required consent, cancel-safe rejection, accepted-version attribution, and CSRF are verified.
+PASS: software license assignment list active/revoked/all filters, employee-number search, empty state, 25-row pagination, and stale-response protection are verified.
+PASS: bulk software license employee assignment supports multi-select, safe cancel, required EULA consent, single CSRF-protected atomic request, duplicate-submit blocking, capacity refresh, and accepted-version attribution.
+PASS: software license create/edit required-field validation, cancel-safe dialogs, CSRF-scoped writes, detail edit prefill, archive/restore confirmation, active/archive filters, archived action locks, persisted list/detail refresh, and search.
+PASS: multi-scan rejects ambiguous/missing codes, surfaces lookup failure and permits retry, de-duplicates repeated tag/QR scans, synchronizes row checks, and preserves selection after explicit completion.
+PASS: bulk asset status change confirms two selected records, cancellation performs no write, confirmed CSRF submission persists both statuses and refreshes the list.
+PASS: multi-field asset edit is opt-in, cancel-safe, versioned, CSRF-protected, persisted to both selected records, preserves unchecked fields, and refreshes the list.
+PASS: bulk asset return preserves assignments on cancel, submits selected records with CSRF and note, and refreshes both returned rows.
+PASS: bulk asset assignment dialog cancellation writes nothing; confirmed assignment persists both rows with employee, due date, note, and CSRF.
+PASS: bulk asset transfer cancellation preserves locations; confirmed transfer moves both selected rows with note and CSRF.
+PASS: bulk asset audit cancellation writes nothing; confirmed audit records date/note and persists the next schedule for both selected assets.
+PASS: bulk unacceptable audit requires a finding, preserves CSRF, records findings for every selected asset, and supports clearing its schedule.
+PASS: reservations reject invalid date ranges without writing; create with CSRF; approve/reject notes persist; approve/cancel dismissal writes nothing; confirmed cancellation uses CSRF and persists; status/search filters reload correctly; refresh is read-only.
+PASS: Transferler preset and general history routes; activity search/date/paging, keyboard-linked asset opening, empty/error recovery, retry, and read-only behavior.
+PASS: warranty route, default/state/horizon/search filters, 50-row pagination, safe text rendering, filtered CSV download, asset-detail shortcut, refresh, and read-only behavior.
+PASS: 9 prepared report PDF previews render data, apply A3 portrait settings and invoke the browser print action.
+PASS: report CSV parser preserves UTF-8/BOM, escaped quotes, embedded separators and newlines; rejects malformed, uneven and over-50,000-row data; cancels stale reads.
+PASS: prepared asset/component reports and CSVs; pending-delivery states/search/paging/CSV/refresh; depreciation date/search/paging/per-currency summaries/filtered CSV/refresh; audit-report filters, 25-row paging, filtered CSV; maintenance aggregates, cost currencies, date filter/clear and refresh; purchase reports and summary export.
+PASS: custom asset report safe-column discovery, empty-column validation, CSRF preset create/update/load/delete, filter/sort persistence, filtered CSV content and read-only export.
+PASS: hosted Chromium creates a priced order, safe cancel/partial receipt flows, and four explicit CSRF-protected purchase document uploads with cancel-safe deletion and refreshed list.
+PASS: fixed status label edit, CSRF persistence, all refreshed status selectors, custom status create/color, transition matrix, protected archive boundary, and refreshed inventory/bulk/report/detail selectors.
+PASS: Chromium shows shared accessory commitments, blocks over-budget stock receipt, records a justified CSRF approval, and unlocks receipt after refresh.
+PASS: Chromium custom-role create, owner-only permission choice, CSRF-protected edit, deactivation, reactivation and refreshed role matrix.
+PASS: location create/edit forms bind catalog locations to company units and send the selected unit with CSRF.
+PASS: location catalog creates six nested levels with complete path previews, CSRF and refreshed rows; the sixth level is excluded as a parent so UI cannot offer level seven.
+PASS: location default can be set/switched with a single company default; active employee can be assigned/removed as location manager with CSRF and refreshed rows.
+PASS: model detail shows scoped summary, linked assets, purchase orders, history and technical attachments; linked asset opens and modal closes safely.
+PASS: Unified company purchases show asset, accessory, stock, and license records; license seat/status/unknown-cost display, filters, 25-row paging, CSV, asset detail, parent-license detail routing, and read-only behavior.
+PASS: License purchase form cancel, failed-save data retention, create/edit/archive/restore, CSRF, null cost, duplicate-submit protection and stale supplier response protection.
+PASS: Chromium opens all three purchase-order detail and return modals, validates selectable return rows, posts date/reason/quantity with CSRF once, closes on success, and renders refreshed return history.
+PASS: Chromium company-unit workflow creates a legal entity and child branch, posts selected types with CSRF, displays the hierarchy, and preserves type/parent on edit.
+PASS: Chromium member access dialog saves a CSRF-protected company-unit restriction, then reloads the persisted unit and hierarchy selection.
+PASS: owner Ctrl+N; asset edit/status/trash/audit/maintenance/transfer/assignment; expired-session dialog closure, deliberate re-login, and no stale-write replay; company JSON restore preview and confirmations; company contract list/search/filter/detail/create/cancel/archive/restore with CSRF; license attachment delete cancel/confirm persistence; license CSV preview, stale-file rejection, import cancel, error retry, confirmed CSRF apply and list persistence; all 52 sidebar destinations render; 1 open the explicit feature/module status surface (Güvenlik); browser error-free completion.
+PASS: manager task flows and assigned-employee Chromium flow, including role-specific controls, private task visibility, start/complete transitions and summary refresh, with synthetic API.
+PASS: real Chromium renders the request catalog location returned by the scoped API for assets, accessories, and consumables.
+PASS: Chromium audit queues split scheduled/completed history, page/search/refresh safely, open the correct asset, cancel quick audits without writes, reject stale assets after load failure, and hide write actions from viewers.
+PASS: real Chromium support ticket create/reply/close, required form validation, category/status/search/refresh, CSRF write scope, and protection from stale list/detail responses.
+PASS: returns queue separates overdue/due/undated/later states, searches and paginates safely, ignores stale responses, and performs cancel-safe CSRF returns that refresh the queue.
+PASS: real Chromium asset list exposes all six built-in status queues, sends the selected filter, renders only matching company records, and keeps filtering read-only.
+PASS: platform support ticket filtering, stale response guards, safe message rendering, CSRF reply/status updates, and refresh.
+SYNTHETIC role response: 428
+SYNTHETIC role response: 428
+SYNTHETIC reauthentication response: 204
+SYNTHETIC role response: 204
+PASS: real Chromium account/security/membership/payment timeline; company CSV download with active search/status filters and formula-safe delimited values; demo CRM list/company-search/detail and selected-company fallback stale-response protection plus status, assignment, follow-up, company link, CSRF write and history persistence; member search, cancel-without-write, reauthenticated role update, synthetic invitation, plan create/update/validation/publication reload and maintenance entitlement persistence; audited company subscription plan/date editing with cancel and persistence; platform audit text/source/action/target/date filters, exclusive end-date boundary, clear, paging, event detail, no-match, surfaced 503 and retry behavior without writes.
+PASS: platform login defaults to a session cookie; explicit remember choice and MFA code survive the second login step.
+PASS: platform Ctrl+K resolves company searches to the company list and exact account emails to the member directory, preserving query and server filters.
+PASS: platform bootstrap distinguishes existing-admin, missing-token, and first-setup states; hides the first-admin link unless setup is genuinely available; binds an existing account with its current password; submits once with CSRF and setup token without URL secrets.
+PASS: platform password recovery validates/prefills email, cancels without writes, sends one CSRF-protected request, blocks duplicate submission, displays generic acceptance and actionable errors, retains failed input, ignores late responses after reopening, and fits390px. Synthetic API; no email sent or MFA bypassed.
+PASS: annual catalog preview shows8tiers, cancel writes nothing, explicit reason/CSRF creates once, duplicate submit is blocked, plans refresh as unpublished and390px fits. SyntheticAPI.
+PASS: trial registration fails closed, preserves custom slugs, sends one CSRF/consent POST, supports5languages/390px, requires explicit email confirmation, removes fragment proof from address, and rejects external portal links. SyntheticAPI.
+PASS: platform audit retention is disabled by default, saving never deletes, preview is read-only, exact phrase and fresh password+MFA are required, CSRF is sent, and the audit view fits 390px.
+PASS: public Cloud pricing shows loading, empty and API-error states without invented tiers, localizes SaaS/MFA copy in all five languages, suggests concise tenant subdomains from company names, and preserves manually edited slugs.
+PASS: employee license Chromium flow opens the scoped EULA, requires explicit consent, posts the current attachment with CSRF, refreshes accepted state, and prevents duplicate acceptance (synthetic API).
+PASS: Chromium verifies employee CSV export/import, company member-to-employee link/unlink with CSRF, stale-search protection and refresh, and the department catalog: cancel-safe creation/archive, department manager assign/clear with CSRF and refreshed status, parent/floor create/edit, full-path/floor rendering, employee shortcut, 100-record staged migration with residual counts, archived department suggestions, restore, floor shortcut and refresh preservation, alongside employee profile/import/export/offboarding flows (synthetic API).
+PASS: Chromium covers mixed-kit CRUD/history/export plus purchase-order kit-recipe navigation, received/returned line eligibility, per-kit quantities, asset requirement, CSRF write, no-stock-change feedback, and English localization.
+PASS: scheduled-report create/retry, preview, formula-safe CSV, edit, disable, confirmed delete, CSRF and optimistic concurrency work in Chromium.

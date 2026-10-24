@@ -1,0 +1,109 @@
+ Network annual-lifecycle-20261024_acceptance Creating
+ Network annual-lifecycle-20261024_acceptance Creating
+ Network annual-lifecycle-20261024_acceptance Created
+ Network annual-lifecycle-20261024_acceptance Created
+ Container annual-lifecycle-20261024-database-1 Creating
+ Container annual-lifecycle-20261024-database-1 Created
+ Container annual-lifecycle-20261024-database-1 Starting
+ Container annual-lifecycle-20261024-database-1 Started
+ Image annual-lifecycle-20261024-acceptance Building
+#1 [internal] load local bake definitions
+#1 reading from stdin 678B 0.1s done
+#1 DONE 0.1s
+
+#2 [internal] load build definition from Dockerfile.security-acceptance
+#2 transferring dockerfile: 1.01kB 0.0s done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for mcr.microsoft.com/dotnet/sdk:10.0
+#3 DONE 0.2s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 134B done
+#4 DONE 0.0s
+
+#5 [ 1/12] FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
+#5 resolve mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 71.99kB 0.0s done
+#6 DONE 0.1s
+
+#7 [ 3/12] COPY global.json ./
+#7 CACHED
+
+#8 [ 4/12] COPY src/EnvanterTR.Web/EnvanterTR.Web.csproj src/EnvanterTR.Web/
+#8 CACHED
+
+#9 [ 7/12] COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
+#9 CACHED
+
+#10 [ 8/12] RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
+#10 CACHED
+
+#11 [ 2/12] WORKDIR /source
+#11 CACHED
+
+#12 [ 5/12] COPY tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj tests/EnvanterTR.SecurityAcceptance/
+#12 CACHED
+
+#13 [ 6/12] RUN dotnet restore tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj
+#13 CACHED
+
+#14 [ 9/12] COPY tests/reports/current-release-118-to-120-20261024.sql tests/reports/current-release-118-to-120-20261024.sql.sha256 tests/reports/
+#14 CACHED
+
+#15 [10/12] COPY tests/EnvanterTR.SecurityAcceptance/ tests/EnvanterTR.SecurityAcceptance/
+#15 DONE 0.1s
+
+#16 [11/12] RUN dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore
+#16 9.628   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+#16 62.47 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#16 62.47 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#16 62.48 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#16 62.48 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#16 63.23   EnvanterTR.SecurityAcceptance -> /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll
+#16 63.60
+#16 63.60 Build succeeded.
+#16 63.60
+#16 63.60 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#16 63.60 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#16 63.60 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#16 63.60 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#16 63.60     4 Warning(s)
+#16 63.60     0 Error(s)
+#16 63.60
+#16 63.60 Time Elapsed 00:01:00.78
+#16 DONE 63.9s
+
+#17 [12/12] WORKDIR /source/tests/EnvanterTR.SecurityAcceptance
+#17 DONE 0.1s
+
+#18 exporting to image
+#18 exporting layers
+#18 exporting layers 3.5s done
+#18 exporting manifest sha256:152b4468ccee4e754b008e3dd856971c15abf0b4a8fac86a1a310f6e89b4fd78 0.0s done
+#18 exporting config sha256:26e36c6a053e4b2ce0964a581f80aa80c4af1f47d0dc9c05721cc70b0ed75915 0.0s done
+#18 exporting attestation manifest sha256:4941788eba779c1dd687fc7a749fc73a00f354622595fc91babe2ceed75f2e09 0.0s done
+#18 exporting manifest list sha256:d4a9c0d723768ff372c9753f4184830095448cf704c76925af16f3826b3a91a6 0.0s done
+#18 naming to docker.io/library/annual-lifecycle-20261024-acceptance:latest
+#18 naming to docker.io/library/annual-lifecycle-20261024-acceptance:latest done
+#18 unpacking to docker.io/library/annual-lifecycle-20261024-acceptance:latest
+#18 unpacking to docker.io/library/annual-lifecycle-20261024-acceptance:latest 1.0s done
+#18 DONE 4.8s
+
+#19 resolving provenance for metadata file
+#19 DONE 0.1s
+ Image annual-lifecycle-20261024-acceptance Built
+ Container annual-lifecycle-20261024-database-1 Waiting
+ Container annual-lifecycle-20261024-database-1 Healthy
+ Container annual-lifecycle-20261024-acceptance-run-a5f7cf4f70ea Creating
+ Container annual-lifecycle-20261024-acceptance-run-a5f7cf4f70ea Created
+MSBUILD : error MSB1008: Only one project can be specified.
+    Full command line: '/usr/share/dotnet/sdk/10.0.402/MSBuild -maxcpucount --verbosity:m -tlp:default=auto --property:VSTestTestCaseFilter="FullyQualifiedName~Existing_company_annual_lifecycle" --property:VSTestLogger="console%3bverbosity=normal;console%3bverbosity=normal" --property:VSTestNoBuild=true --property:VSTestNoLogo=true --property:NuGetInteractive=false --property:VSTestArtifactsProcessingMode=collect --property:VSTestSessionCorrelationId=1_f7288abe-f35e-4fd2-88e3-5f09ea49e166 --target:VSTest --nologo -nodereuse:false -restore:false dotnet test tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj -distributedlogger:Microsoft.DotNet.Cli.Commands.MSBuild.MSBuildLogger,/usr/share/dotnet/sdk/10.0.402/dotnet.dll*Microsoft.DotNet.Cli.Commands.MSBuild.MSBuildForwardingLogger,/usr/share/dotnet/sdk/10.0.402/dotnet.dll'
+  Switches appended by response files:
+Switch: test
+
+For switch syntax, type "MSBuild -help"
+
