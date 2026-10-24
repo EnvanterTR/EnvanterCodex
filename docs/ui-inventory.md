@@ -1,6 +1,6 @@
 # EnvanterTR statik arayüz envanteri
 
-Oluşturulma: 2026-10-24T00:23:55.491Z
+Oluşturulma: 2026-10-24T20:22:01.499Z
 
 > Bu dosya mevcut HTML kaynaklarında bulunan statik arayüz öğelerinin dökümüdür. Bir öğenin listelenmesi onun çalıştığını kanıtlamaz. JavaScript ile sonradan oluşturulan kontroller, API/DB davranışı, rol varyasyonları ve erişilebilirlik ayrıca uçtan uca kabul gerektirir. Kaynak değiştikçe `node tools/Generate-UiInventory.mjs` ile yeniden üretin; `node tools/Generate-UiInventory.mjs --check` güncel olup olmadığını doğrular.
 
@@ -11,15 +11,15 @@ Oluşturulma: 2026-10-24T00:23:55.491Z
 | Sayfa rotası | 65 |
 | Menü grubu | 10 |
 | Bağlantı | 58 |
-| Düğme | 962 |
+| Düğme | 963 |
 | Form | 116 |
 | Girdi alanı | 626 |
 | Seçim alanı | 205 |
-| Metin alanı | 43 |
+| Metin alanı | 44 |
 | Modal | 110 |
 | Sekme | 5 |
 | Tablo | 79 |
-| **Toplam kayıt** | **2279** |
+| **Toplam kayıt** | **2281** |
 
 ## Tam döküm
 
@@ -1989,223 +1989,225 @@ Oluşturulma: 2026-10-24T00:23:55.491Z
 | 27 | Düğme | Tüm siparişleri aç | type=button |
 | 28 | Düğme | Firma listesini aç |  |
 | 29 | Düğme | Yenile | id=refreshFollowUps |
-| 30 | Düğme | ＋ Ücretli firma oluştur | id=provisionCompany |
-| 31 | Düğme | Uygula | id=searchCompanies |
-| 32 | Düğme | Seçilenleri askıya al | id=bulkSuspendCompanies; type=button; başlangıçta gizli |
-| 33 | Düğme | Seçilenleri etkinleştir | id=bulkReactivateCompanies; type=button; başlangıçta gizli |
-| 34 | Düğme | Seçilenlerin planını değiştir | id=bulkChangeCompanyPlan; type=button; başlangıçta gizli |
-| 35 | Düğme | Filtrelenmiş şirket listesini CSV olarak indir | id=exportCompanies; type=button |
-| 36 | Düğme | ← Önceki | id=prevCompanies |
-| 37 | Düğme | Sonraki → | id=nextCompanies |
-| 38 | Düğme | Yenile | id=refreshOrders |
-| 39 | Düğme | Ara | id=searchOrders |
-| 40 | Düğme | ← Önceki | id=prevOrders |
-| 41 | Düğme | Sonraki → | id=nextOrders |
-| 42 | Düğme | Yıllık paketleri hazırla | id=openAnnualCatalog; type=button |
-| 43 | Düğme | ＋ Yeni Plan | id=newPlan |
-| 44 | Düğme | Kuponu kaydet | type=submit |
-| 45 | Düğme | Temizle | id=clearCoupon; type=button |
-| 46 | Düğme | Formu Temizle | id=clearPlan; type=button |
-| 47 | Düğme | Planı Kaydet | type=submit |
-| 48 | Düğme | Yeni içerik | id=clearContent; type=button |
-| 49 | Düğme | İçeriği Kaydet | type=submit |
-| 50 | Düğme | Yenile | id=refreshAudit |
-| 51 | Düğme | Süreyi kaydet | id=saveAuditRetention |
-| 52 | Düğme | Silinecek kayıtları önizle | id=previewAuditRetention |
-| 53 | Düğme | Önizlenen eski kayıtları sil | id=applyAuditRetention |
-| 54 | Düğme | Filtrele | id=searchAudit |
-| 55 | Düğme | Temizle | id=clearAudit |
-| 56 | Düğme | ← Önceki | id=prevAudit |
-| 57 | Düğme | Sonraki → | id=nextAudit |
-| 58 | Düğme | + Üye davet et | id=openMemberInvite |
-| 59 | Düğme | Yenile | id=refreshMembers |
-| 60 | Düğme | Ara | id=searchMembers |
-| 61 | Düğme | ← Önceki | id=prevMembers |
-| 62 | Düğme | Sonraki → | id=nextMembers |
-| 63 | Düğme | Kapat | id=closeMemberDetail |
-| 64 | Düğme | Yenile | id=refreshDemoLeads |
-| 65 | Düğme | Ara | id=searchDemoLeads |
-| 66 | Düğme | ← Önceki | id=prevDemoLeads |
-| 67 | Düğme | Sonraki → | id=nextDemoLeads |
-| 68 | Düğme | Kapat | id=closeDemoLeadDetail |
-| 69 | Düğme | Yenile | id=refreshSupport |
-| 70 | Düğme | ← Önceki | id=prevSupport |
-| 71 | Düğme | Sonraki → | id=nextSupport |
-| 72 | Düğme | Kapat | id=hideSupportDetail |
-| 73 | Düğme | Yanıt gönder | id=supportAdminReplyButton; type=submit |
-| 74 | Düğme | Durumu kaydet | type=submit |
-| 75 | Düğme | ✕ | type=button |
-| 76 | Düğme | Vazgeç | type=button |
-| 77 | Düğme | İşlemi Uygula | type=submit |
-| 78 | Düğme | Kapat | id=platformRecoveryClose; type=button |
-| 79 | Düğme | İptal | id=platformRecoveryCancel; type=button |
-| 80 | Düğme | Bağlantı iste | id=platformRecoverySubmit; type=submit |
-| 81 | Düğme | Kapat | id=closeAnnualCatalog; type=button |
-| 82 | Düğme | İptal | id=cancelAnnualCatalog; type=button |
-| 83 | Düğme | Taslakları oluştur | id=applyAnnualCatalog; type=submit |
-| 84 | Düğme | Kapat | id=platformReauthClose; type=button |
-| 85 | Düğme | İptal | id=platformReauthCancel; type=button |
-| 86 | Düğme | Doğrula ve devam et | id=platformReauthSubmit; type=submit |
-| 87 | Düğme | Vazgeç | id=impersonationCancel; type=button |
-| 88 | Düğme | Panele gir | id=impersonationSubmit; type=submit |
-| 89 | Düğme | ✕ | type=button |
-| 90 | Düğme | Kapat | type=button |
-| 91 | Düğme | Kapat | id=closeMemberInvite; type=button |
-| 92 | Düğme | İptal | id=cancelMemberInvite; type=button |
-| 93 | Düğme | Davet gönder | id=submitMemberInvite; type=submit |
-| 94 | Düğme | Kapat | id=closePaymentFollowUp; type=button |
-| 95 | Düğme | Vazgeç | id=cancelPaymentFollowUp; type=button |
-| 96 | Düğme | Takip kaydını ekle | type=submit |
-| 97 | Düğme | Hesabı aç | type=button |
-| 98 | Düğme | Aç | id=${esc(x.id)} |
-| 99 | Düğme | Takip kaydı |  |
-| 100 | Düğme | Detay | id=${c.id}; action=details |
-| 101 | Düğme | ${c.isActive?'Askıya al':'Etkinleştir'} | id=${c.id}; action=toggle |
-| 102 | Düğme | Demo | id=${c.id}; action=demo |
-| 103 | Düğme | Uzat | id=${c.id}; action=extend |
-| 104 | Düğme | Yaşam döngüsünü kaydet | type=submit |
-| 105 | Düğme | ${esc(m.displayName)} | name=${esc(m.displayName)} |
-| 106 | Düğme | Önceki sayfa |  |
-| 107 | Düğme | =d.membersTotalPages?'disabled':''}>Sonraki sayfa |  |
-| 108 | Düğme | Yetkili erişim e-postasını yeniden gönder |  |
-| 109 | Düğme | Düzenle |  |
+| 30 | Düğme | ＋ Demo firma oluştur | id=provisionDemoCompany |
+| 31 | Düğme | ＋ Ücretli firma oluştur | id=provisionCompany |
+| 32 | Düğme | Uygula | id=searchCompanies |
+| 33 | Düğme | Seçilenleri askıya al | id=bulkSuspendCompanies; type=button; başlangıçta gizli |
+| 34 | Düğme | Seçilenleri etkinleştir | id=bulkReactivateCompanies; type=button; başlangıçta gizli |
+| 35 | Düğme | Seçilenlerin planını değiştir | id=bulkChangeCompanyPlan; type=button; başlangıçta gizli |
+| 36 | Düğme | Filtrelenmiş şirket listesini CSV olarak indir | id=exportCompanies; type=button |
+| 37 | Düğme | ← Önceki | id=prevCompanies |
+| 38 | Düğme | Sonraki → | id=nextCompanies |
+| 39 | Düğme | Yenile | id=refreshOrders |
+| 40 | Düğme | Ara | id=searchOrders |
+| 41 | Düğme | ← Önceki | id=prevOrders |
+| 42 | Düğme | Sonraki → | id=nextOrders |
+| 43 | Düğme | Yıllık paketleri hazırla | id=openAnnualCatalog; type=button |
+| 44 | Düğme | ＋ Yeni Plan | id=newPlan |
+| 45 | Düğme | Kuponu kaydet | type=submit |
+| 46 | Düğme | Temizle | id=clearCoupon; type=button |
+| 47 | Düğme | Formu Temizle | id=clearPlan; type=button |
+| 48 | Düğme | Planı Kaydet | type=submit |
+| 49 | Düğme | Yeni içerik | id=clearContent; type=button |
+| 50 | Düğme | İçeriği Kaydet | type=submit |
+| 51 | Düğme | Yenile | id=refreshAudit |
+| 52 | Düğme | Süreyi kaydet | id=saveAuditRetention |
+| 53 | Düğme | Silinecek kayıtları önizle | id=previewAuditRetention |
+| 54 | Düğme | Önizlenen eski kayıtları sil | id=applyAuditRetention |
+| 55 | Düğme | Filtrele | id=searchAudit |
+| 56 | Düğme | Temizle | id=clearAudit |
+| 57 | Düğme | ← Önceki | id=prevAudit |
+| 58 | Düğme | Sonraki → | id=nextAudit |
+| 59 | Düğme | + Üye davet et | id=openMemberInvite |
+| 60 | Düğme | Yenile | id=refreshMembers |
+| 61 | Düğme | Ara | id=searchMembers |
+| 62 | Düğme | ← Önceki | id=prevMembers |
+| 63 | Düğme | Sonraki → | id=nextMembers |
+| 64 | Düğme | Kapat | id=closeMemberDetail |
+| 65 | Düğme | Yenile | id=refreshDemoLeads |
+| 66 | Düğme | Ara | id=searchDemoLeads |
+| 67 | Düğme | ← Önceki | id=prevDemoLeads |
+| 68 | Düğme | Sonraki → | id=nextDemoLeads |
+| 69 | Düğme | Kapat | id=closeDemoLeadDetail |
+| 70 | Düğme | Yenile | id=refreshSupport |
+| 71 | Düğme | ← Önceki | id=prevSupport |
+| 72 | Düğme | Sonraki → | id=nextSupport |
+| 73 | Düğme | Kapat | id=hideSupportDetail |
+| 74 | Düğme | Yanıt gönder | id=supportAdminReplyButton; type=submit |
+| 75 | Düğme | Durumu kaydet | type=submit |
+| 76 | Düğme | ✕ | type=button |
+| 77 | Düğme | Vazgeç | type=button |
+| 78 | Düğme | İşlemi Uygula | type=submit |
+| 79 | Düğme | Kapat | id=platformRecoveryClose; type=button |
+| 80 | Düğme | İptal | id=platformRecoveryCancel; type=button |
+| 81 | Düğme | Bağlantı iste | id=platformRecoverySubmit; type=submit |
+| 82 | Düğme | Kapat | id=closeAnnualCatalog; type=button |
+| 83 | Düğme | İptal | id=cancelAnnualCatalog; type=button |
+| 84 | Düğme | Taslakları oluştur | id=applyAnnualCatalog; type=submit |
+| 85 | Düğme | Kapat | id=platformReauthClose; type=button |
+| 86 | Düğme | İptal | id=platformReauthCancel; type=button |
+| 87 | Düğme | Doğrula ve devam et | id=platformReauthSubmit; type=submit |
+| 88 | Düğme | Vazgeç | id=impersonationCancel; type=button |
+| 89 | Düğme | Panele gir | id=impersonationSubmit; type=submit |
+| 90 | Düğme | ✕ | type=button |
+| 91 | Düğme | Kapat | type=button |
+| 92 | Düğme | Kapat | id=closeMemberInvite; type=button |
+| 93 | Düğme | İptal | id=cancelMemberInvite; type=button |
+| 94 | Düğme | Davet gönder | id=submitMemberInvite; type=submit |
+| 95 | Düğme | Kapat | id=closePaymentFollowUp; type=button |
+| 96 | Düğme | Vazgeç | id=cancelPaymentFollowUp; type=button |
+| 97 | Düğme | Takip kaydını ekle | type=submit |
+| 98 | Düğme | Hesabı aç | type=button |
+| 99 | Düğme | Aç | id=${esc(x.id)} |
+| 100 | Düğme | Takip kaydı |  |
+| 101 | Düğme | Detay | id=${c.id}; action=details |
+| 102 | Düğme | ${c.isActive?'Askıya al':'Etkinleştir'} | id=${c.id}; action=toggle |
+| 103 | Düğme | Demo | id=${c.id}; action=demo |
+| 104 | Düğme | Uzat | id=${c.id}; action=extend |
+| 105 | Düğme | Yaşam döngüsünü kaydet | type=submit |
+| 106 | Düğme | ${esc(m.displayName)} | name=${esc(m.displayName)} |
+| 107 | Düğme | Önceki sayfa |  |
+| 108 | Düğme | =d.membersTotalPages?'disabled':''}>Sonraki sayfa |  |
+| 109 | Düğme | Yetkili erişim e-postasını yeniden gönder |  |
 | 110 | Düğme | Düzenle |  |
 | 111 | Düğme | Düzenle |  |
-| 112 | Düğme | Aç |  |
-| 113 | Girdi alanı | email | type=email; name=email |
-| 114 | Girdi alanı | password | type=password; name=password |
-| 115 | Girdi alanı | twoFactorCode | type=text; name=twoFactorCode |
-| 116 | Girdi alanı | rememberMe | type=checkbox; name=rememberMe |
-| 117 | Girdi alanı | currentPassword | type=password; name=currentPassword |
-| 118 | Girdi alanı | platformMfaSecret | id=platformMfaSecret |
-| 119 | Girdi alanı | platformMfaCode | id=platformMfaCode |
-| 120 | Girdi alanı | platformMfaSavedRecovery | id=platformMfaSavedRecovery; type=checkbox |
-| 121 | Girdi alanı | Firma veya e-posta ara (Ctrl+K) | id=globalSearch |
-| 122 | Girdi alanı | companySearch | id=companySearch |
-| 123 | Seçim alanı | (değer yok): Tüm durumlar, true: Aktif, false: Askıdaki | id=companyActive; seçenekler=(değer yok): Tüm durumlar, true: Aktif, false: Askıdaki |
-| 124 | Seçim alanı | Paket filtresi | id=companyPlan; seçenekler=(değer yok): Tüm paketler |
-| 125 | Girdi alanı | Kayıt tarihi başlangıcı | id=companyCreatedFrom; type=date |
-| 126 | Girdi alanı | Kayıt tarihi bitişi | id=companyCreatedTo; type=date |
-| 127 | Seçim alanı | Sıralama | id=companySort; seçenekler=name:asc: Firma adı A–Z, name:desc: Firma adı Z–A, createdAt:desc: En yeni kayıt, createdAt:asc: En eski kayıt, status:asc: Durum: askıdaki önce, status:desc: Durum: aktif önce, followUp:asc: Takip tarihi artan, followUp:desc: Takip tarihi azalan |
-| 128 | Seçim alanı | Sayfa başına firma | id=companyPageSize; seçenekler=50: 50 / sayfa, 100: 100 / sayfa, 250: 250 / sayfa |
-| 129 | Girdi alanı | orderSearch | id=orderSearch |
-| 130 | Seçim alanı | (değer yok): Tüm durumlar, Provisioned: Şirket açıldı, PaymentStarted: Ödeme başladı, PaymentReview: İnceleme bekliyor, PaymentFailed: Ödeme başarısız, ProvisioningFailed: Şirket açılamadı, Expired: Süresi doldu, Pending: Bekliyor | id=orderStatus; seçenekler=(değer yok): Tüm durumlar, Provisioned: Şirket açıldı, PaymentStarted: Ödeme başladı, PaymentReview: İnceleme bekliyor, PaymentFailed: Ödeme başarısız, ProvisioningFailed: Şirket açılamadı, Expired: Süresi doldu, Pending: Bekliyor |
-| 131 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
-| 132 | Girdi alanı | code | name=code |
-| 133 | Seçim alanı | discountType | name=discountType; seçenekler=Percent: Yüzde, Fixed: Sabit tutar |
-| 134 | Girdi alanı | discountValue | type=number; name=discountValue |
-| 135 | Girdi alanı | currency | name=currency |
-| 136 | Seçim alanı | planId | name=planId; seçenekler=(değer yok): Tüm Cloud planları |
-| 137 | Girdi alanı | startsAt | type=datetime-local; name=startsAt |
-| 138 | Girdi alanı | endsAt | type=datetime-local; name=endsAt |
-| 139 | Girdi alanı | maxRedemptions | type=number; name=maxRedemptions |
-| 140 | Girdi alanı | maxRedemptionsPerCustomer | type=number; name=maxRedemptionsPerCustomer |
-| 141 | Seçim alanı | isActive | name=isActive; seçenekler=true: Etkin, false: Pasif |
-| 142 | Metin alanı | changeReason | name=changeReason |
+| 112 | Düğme | Düzenle |  |
+| 113 | Düğme | Aç |  |
+| 114 | Girdi alanı | email | type=email; name=email |
+| 115 | Girdi alanı | password | type=password; name=password |
+| 116 | Girdi alanı | twoFactorCode | type=text; name=twoFactorCode |
+| 117 | Girdi alanı | rememberMe | type=checkbox; name=rememberMe |
+| 118 | Girdi alanı | currentPassword | type=password; name=currentPassword |
+| 119 | Girdi alanı | platformMfaSecret | id=platformMfaSecret |
+| 120 | Girdi alanı | platformMfaCode | id=platformMfaCode |
+| 121 | Girdi alanı | platformMfaSavedRecovery | id=platformMfaSavedRecovery; type=checkbox |
+| 122 | Girdi alanı | Firma veya e-posta ara (Ctrl+K) | id=globalSearch |
+| 123 | Girdi alanı | companySearch | id=companySearch |
+| 124 | Seçim alanı | (değer yok): Tüm durumlar, true: Aktif, false: Askıdaki | id=companyActive; seçenekler=(değer yok): Tüm durumlar, true: Aktif, false: Askıdaki |
+| 125 | Seçim alanı | Paket filtresi | id=companyPlan; seçenekler=(değer yok): Tüm paketler |
+| 126 | Girdi alanı | Kayıt tarihi başlangıcı | id=companyCreatedFrom; type=date |
+| 127 | Girdi alanı | Kayıt tarihi bitişi | id=companyCreatedTo; type=date |
+| 128 | Seçim alanı | Sıralama | id=companySort; seçenekler=name:asc: Firma adı A–Z, name:desc: Firma adı Z–A, createdAt:desc: En yeni kayıt, createdAt:asc: En eski kayıt, status:asc: Durum: askıdaki önce, status:desc: Durum: aktif önce, followUp:asc: Takip tarihi artan, followUp:desc: Takip tarihi azalan |
+| 129 | Seçim alanı | Sayfa başına firma | id=companyPageSize; seçenekler=50: 50 / sayfa, 100: 100 / sayfa, 250: 250 / sayfa |
+| 130 | Girdi alanı | orderSearch | id=orderSearch |
+| 131 | Seçim alanı | (değer yok): Tüm durumlar, Provisioned: Şirket açıldı, PaymentStarted: Ödeme başladı, PaymentReview: İnceleme bekliyor, PaymentFailed: Ödeme başarısız, ProvisioningFailed: Şirket açılamadı, Expired: Süresi doldu, Pending: Bekliyor | id=orderStatus; seçenekler=(değer yok): Tüm durumlar, Provisioned: Şirket açıldı, PaymentStarted: Ödeme başladı, PaymentReview: İnceleme bekliyor, PaymentFailed: Ödeme başarısız, ProvisioningFailed: Şirket açılamadı, Expired: Süresi doldu, Pending: Bekliyor |
+| 132 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
+| 133 | Girdi alanı | code | name=code |
+| 134 | Seçim alanı | discountType | name=discountType; seçenekler=Percent: Yüzde, Fixed: Sabit tutar |
+| 135 | Girdi alanı | discountValue | type=number; name=discountValue |
+| 136 | Girdi alanı | currency | name=currency |
+| 137 | Seçim alanı | planId | name=planId; seçenekler=(değer yok): Tüm Cloud planları |
+| 138 | Girdi alanı | startsAt | type=datetime-local; name=startsAt |
+| 139 | Girdi alanı | endsAt | type=datetime-local; name=endsAt |
+| 140 | Girdi alanı | maxRedemptions | type=number; name=maxRedemptions |
+| 141 | Girdi alanı | maxRedemptionsPerCustomer | type=number; name=maxRedemptionsPerCustomer |
+| 142 | Seçim alanı | isActive | name=isActive; seçenekler=true: Etkin, false: Pasif |
 | 143 | Metin alanı | changeReason | name=changeReason |
-| 144 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
-| 145 | Girdi alanı | code | name=code |
-| 146 | Girdi alanı | name | name=name |
-| 147 | Seçim alanı | deploymentKind | name=deploymentKind; seçenekler=cloud: Bulut, local-windows: Windows 11 Yerel, windows-server: Windows Server, linux: Linux |
-| 148 | Seçim alanı | currency | name=currency; seçenekler=(değer yok): TRY, (değer yok): EUR, (değer yok): USD, (değer yok): GBP, (değer yok): RSD, (değer yok): MKD, (değer yok): UAH, (değer yok): RUB, (değer yok): CHF |
-| 149 | Girdi alanı | maxLoginUsers | id=planMaxLoginUsers; type=number; name=maxLoginUsers |
-| 150 | Girdi alanı | maxAssets | type=number; name=maxAssets |
-| 151 | Girdi alanı | monthlyPrice | type=number; name=monthlyPrice |
-| 152 | Girdi alanı | annualPrice | type=number; name=annualPrice |
-| 153 | Girdi alanı | oneTimePrice | type=number; name=oneTimePrice |
-| 154 | Girdi alanı | offlineGraceDays | type=number; name=offlineGraceDays |
-| 155 | Metin alanı | description | name=description |
-| 156 | Metin alanı | featureFlagsJson | name=featureFlagsJson |
-| 157 | Girdi alanı | planReportsEnabled | id=planReportsEnabled; type=checkbox |
-| 158 | Girdi alanı | planApiEnabled | id=planApiEnabled; type=checkbox |
-| 159 | Girdi alanı | planMaintenanceEnabled | id=planMaintenanceEnabled; type=checkbox |
-| 160 | Girdi alanı | supportsOfflineUse | type=checkbox; name=supportsOfflineUse |
-| 161 | Girdi alanı | isPublic | type=checkbox; name=isPublic |
-| 162 | Girdi alanı | isActive | type=checkbox; name=isActive |
-| 163 | Girdi alanı | sortOrder | type=number; name=sortOrder |
-| 164 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
-| 165 | Girdi alanı | key | name=key |
-| 166 | Girdi alanı | title | name=title |
-| 167 | Metin alanı | body | name=body |
-| 168 | Girdi alanı | mediaPath | name=mediaPath |
-| 169 | Girdi alanı | isPublished | type=checkbox; name=isPublished |
-| 170 | Girdi alanı | auditRetentionDays | id=auditRetentionDays; type=number |
-| 171 | Girdi alanı | auditRetentionConfirmation | id=auditRetentionConfirmation; type=text |
-| 172 | Girdi alanı | auditSearch | id=auditSearch; type=search |
-| 173 | Seçim alanı | (değer yok): Tüm kaynaklar, platform: Platform, company: Şirket | id=auditSource; seçenekler=(değer yok): Tüm kaynaklar, platform: Platform, company: Şirket |
-| 174 | Girdi alanı | auditAction | id=auditAction |
-| 175 | Girdi alanı | auditTargetType | id=auditTargetType |
-| 176 | Girdi alanı | auditFrom | id=auditFrom; type=date |
-| 177 | Girdi alanı | auditTo | id=auditTo; type=date |
-| 178 | Girdi alanı | memberSearch | id=memberSearch |
-| 179 | Girdi alanı | demoLeadSearch | id=demoLeadSearch |
-| 180 | Seçim alanı | (değer yok): Tüm durumlar, New: Yeni, Contacted: İletişime geçildi, Qualified: Nitelikli, DemoScheduled: Demo planlandı, DemoGranted: Demo açıldı, Converted: Müşteri oldu, Closed: Kapalı | id=demoLeadStatus; seçenekler=(değer yok): Tüm durumlar, New: Yeni, Contacted: İletişime geçildi, Qualified: Nitelikli, DemoScheduled: Demo planlandı, DemoGranted: Demo açıldı, Converted: Müşteri oldu, Closed: Kapalı |
-| 181 | Seçim alanı | Takip tarihi filtresi | id=demoLeadFollowUp; seçenekler=(değer yok): Tüm takipler, overdue: Takibi gecikenler |
-| 182 | Girdi alanı | supportSearch | id=supportSearch |
-| 183 | Seçim alanı | (değer yok): Tüm durumlar, Open: Açık, InProgress: İşlemde, AwaitingCustomer: Müşteri yanıtı bekleniyor, Resolved: Çözüldü, Closed: Kapatıldı | id=supportStatus; seçenekler=(değer yok): Tüm durumlar, Open: Açık, InProgress: İşlemde, AwaitingCustomer: Müşteri yanıtı bekleniyor, Resolved: Çözüldü, Closed: Kapatıldı |
-| 184 | Metin alanı | body | name=body |
-| 185 | Seçim alanı | status | name=status; seçenekler=Open: Açık, InProgress: İşlemde, AwaitingCustomer: Müşteri yanıtı bekleniyor, Resolved: Çözüldü, Closed: Kapatıldı |
-| 186 | Girdi alanı | email | type=email; name=email |
-| 187 | Metin alanı | changeReason | name=changeReason |
-| 188 | Girdi alanı | password | type=password; name=password |
-| 189 | Girdi alanı | code | type=text; name=code |
-| 190 | Metin alanı | reason | name=reason |
-| 191 | Girdi alanı | memberInviteCompanySearch | id=memberInviteCompanySearch; type=search |
-| 192 | Seçim alanı | companyId | id=memberInviteCompany; name=companyId; seçenekler=(değer yok): Önce şirketleri yükleyin |
-| 193 | Girdi alanı | fullName | name=fullName |
-| 194 | Girdi alanı | email | type=email; name=email |
-| 195 | Seçim alanı | roleKey | name=roleKey; seçenekler=viewer: Salt okunur, asset_operator: Varlık sorumlusu, asset_manager: Varlık yöneticisi, auditor: Denetçi, hr_operator: Ekip yöneticisi, admin: Şirket yöneticisi |
-| 196 | Seçim alanı | outcome | name=outcome; seçenekler=Contacted: Müşteriyle iletişim kuruldu, NoResponse: Yanıt alınamadı, ReminderScheduled: Hatırlatma planlandı, CustomerRequestedCallback: Müşteri geri arama istedi, Other: Diğer |
-| 197 | Girdi alanı | nextFollowUpAt | type=datetime-local; name=nextFollowUpAt |
-| 198 | Metin alanı | note | name=note |
-| 199 | Girdi alanı | Bu sayfadaki tüm firmaları seç | type=checkbox |
-| 200 | Girdi alanı | ${esc(c.name)} firmasını seç | type=checkbox |
-| 201 | Seçim alanı | stage | name=stage |
-| 202 | Seçim alanı | assignedAdminUserId | name=assignedAdminUserId; seçenekler=(değer yok): Atanmamış |
-| 203 | Girdi alanı | nextFollowUpAt | type=datetime-local; name=nextFollowUpAt |
-| 204 | Metin alanı | note | name=note |
+| 144 | Metin alanı | changeReason | name=changeReason |
+| 145 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
+| 146 | Girdi alanı | code | name=code |
+| 147 | Girdi alanı | name | name=name |
+| 148 | Seçim alanı | deploymentKind | name=deploymentKind; seçenekler=cloud: Bulut, local-windows: Windows 11 Yerel, windows-server: Windows Server, linux: Linux |
+| 149 | Seçim alanı | currency | name=currency; seçenekler=(değer yok): TRY, (değer yok): EUR, (değer yok): USD, (değer yok): GBP, (değer yok): RSD, (değer yok): MKD, (değer yok): UAH, (değer yok): RUB, (değer yok): CHF |
+| 150 | Girdi alanı | maxLoginUsers | id=planMaxLoginUsers; type=number; name=maxLoginUsers |
+| 151 | Girdi alanı | maxAssets | type=number; name=maxAssets |
+| 152 | Girdi alanı | monthlyPrice | type=number; name=monthlyPrice |
+| 153 | Girdi alanı | annualPrice | type=number; name=annualPrice |
+| 154 | Girdi alanı | oneTimePrice | type=number; name=oneTimePrice |
+| 155 | Girdi alanı | offlineGraceDays | type=number; name=offlineGraceDays |
+| 156 | Metin alanı | description | name=description |
+| 157 | Metin alanı | featureFlagsJson | name=featureFlagsJson |
+| 158 | Girdi alanı | planReportsEnabled | id=planReportsEnabled; type=checkbox |
+| 159 | Girdi alanı | planApiEnabled | id=planApiEnabled; type=checkbox |
+| 160 | Girdi alanı | planMaintenanceEnabled | id=planMaintenanceEnabled; type=checkbox |
+| 161 | Girdi alanı | supportsOfflineUse | type=checkbox; name=supportsOfflineUse |
+| 162 | Girdi alanı | isPublic | type=checkbox; name=isPublic |
+| 163 | Girdi alanı | isActive | type=checkbox; name=isActive |
+| 164 | Girdi alanı | sortOrder | type=number; name=sortOrder |
+| 165 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
+| 166 | Girdi alanı | key | name=key |
+| 167 | Girdi alanı | title | name=title |
+| 168 | Metin alanı | body | name=body |
+| 169 | Girdi alanı | mediaPath | name=mediaPath |
+| 170 | Girdi alanı | isPublished | type=checkbox; name=isPublished |
+| 171 | Girdi alanı | auditRetentionDays | id=auditRetentionDays; type=number |
+| 172 | Girdi alanı | auditRetentionConfirmation | id=auditRetentionConfirmation; type=text |
+| 173 | Girdi alanı | auditSearch | id=auditSearch; type=search |
+| 174 | Seçim alanı | (değer yok): Tüm kaynaklar, platform: Platform, company: Şirket | id=auditSource; seçenekler=(değer yok): Tüm kaynaklar, platform: Platform, company: Şirket |
+| 175 | Girdi alanı | auditAction | id=auditAction |
+| 176 | Girdi alanı | auditTargetType | id=auditTargetType |
+| 177 | Girdi alanı | auditFrom | id=auditFrom; type=date |
+| 178 | Girdi alanı | auditTo | id=auditTo; type=date |
+| 179 | Girdi alanı | memberSearch | id=memberSearch |
+| 180 | Girdi alanı | demoLeadSearch | id=demoLeadSearch |
+| 181 | Seçim alanı | (değer yok): Tüm durumlar, New: Yeni, Contacted: İletişime geçildi, Qualified: Nitelikli, DemoScheduled: Demo planlandı, DemoGranted: Demo açıldı, Converted: Müşteri oldu, Closed: Kapalı | id=demoLeadStatus; seçenekler=(değer yok): Tüm durumlar, New: Yeni, Contacted: İletişime geçildi, Qualified: Nitelikli, DemoScheduled: Demo planlandı, DemoGranted: Demo açıldı, Converted: Müşteri oldu, Closed: Kapalı |
+| 182 | Seçim alanı | Takip tarihi filtresi | id=demoLeadFollowUp; seçenekler=(değer yok): Tüm takipler, overdue: Takibi gecikenler |
+| 183 | Girdi alanı | supportSearch | id=supportSearch |
+| 184 | Seçim alanı | (değer yok): Tüm durumlar, Open: Açık, InProgress: İşlemde, AwaitingCustomer: Müşteri yanıtı bekleniyor, Resolved: Çözüldü, Closed: Kapatıldı | id=supportStatus; seçenekler=(değer yok): Tüm durumlar, Open: Açık, InProgress: İşlemde, AwaitingCustomer: Müşteri yanıtı bekleniyor, Resolved: Çözüldü, Closed: Kapatıldı |
+| 185 | Metin alanı | body | name=body |
+| 186 | Seçim alanı | status | name=status; seçenekler=Open: Açık, InProgress: İşlemde, AwaitingCustomer: Müşteri yanıtı bekleniyor, Resolved: Çözüldü, Closed: Kapatıldı |
+| 187 | Girdi alanı | email | type=email; name=email |
+| 188 | Metin alanı | changeReason | name=changeReason |
+| 189 | Girdi alanı | password | type=password; name=password |
+| 190 | Girdi alanı | code | type=text; name=code |
+| 191 | Metin alanı | reason | name=reason |
+| 192 | Girdi alanı | memberInviteCompanySearch | id=memberInviteCompanySearch; type=search |
+| 193 | Seçim alanı | companyId | id=memberInviteCompany; name=companyId; seçenekler=(değer yok): Önce şirketleri yükleyin |
+| 194 | Girdi alanı | fullName | name=fullName |
+| 195 | Girdi alanı | email | type=email; name=email |
+| 196 | Seçim alanı | roleKey | name=roleKey; seçenekler=viewer: Salt okunur, asset_operator: Varlık sorumlusu, asset_manager: Varlık yöneticisi, auditor: Denetçi, hr_operator: Ekip yöneticisi, admin: Şirket yöneticisi |
+| 197 | Seçim alanı | outcome | name=outcome; seçenekler=Contacted: Müşteriyle iletişim kuruldu, NoResponse: Yanıt alınamadı, ReminderScheduled: Hatırlatma planlandı, CustomerRequestedCallback: Müşteri geri arama istedi, Other: Diğer |
+| 198 | Girdi alanı | nextFollowUpAt | type=datetime-local; name=nextFollowUpAt |
+| 199 | Metin alanı | note | name=note |
+| 200 | Girdi alanı | Bu sayfadaki tüm firmaları seç | type=checkbox |
+| 201 | Girdi alanı | ${esc(c.name)} firmasını seç | type=checkbox |
+| 202 | Seçim alanı | stage | name=stage |
+| 203 | Seçim alanı | assignedAdminUserId | name=assignedAdminUserId; seçenekler=(değer yok): Atanmamış |
+| 204 | Girdi alanı | nextFollowUpAt | type=datetime-local; name=nextFollowUpAt |
 | 205 | Metin alanı | note | name=note |
-| 206 | Seçim alanı | planId | name=planId; seçenekler=${esc(plan.id)}: ${esc(plan.name)} · ${esc(plan.code)} |
-| 207 | Metin alanı | note | name=note |
+| 206 | Metin alanı | note | name=note |
+| 207 | Seçim alanı | planId | name=planId; seçenekler=${esc(plan.id)}: ${esc(plan.name)} · ${esc(plan.code)} |
 | 208 | Metin alanı | note | name=note |
-| 209 | Seçim alanı | planId | name=planId; seçenekler=${esc(p.id)}: ${esc(p.name)} — ${esc(p.deploymentKind)} |
-| 210 | Girdi alanı | days | type=number; name=days |
-| 211 | Girdi alanı | note | name=note |
-| 212 | Girdi alanı | companyName | name=companyName |
-| 213 | Girdi alanı | slug | name=slug |
-| 214 | Girdi alanı | contactEmail | type=email; name=contactEmail |
-| 215 | Girdi alanı | ownerName | name=ownerName |
-| 216 | Girdi alanı | ownerEmail | type=email; name=ownerEmail |
-| 217 | Seçim alanı | planId | name=planId; seçenekler=${esc(p.id)}: ${esc(p.name)} · ${esc(p.code)} |
-| 218 | Girdi alanı | termDays | type=number; name=termDays |
-| 219 | Girdi alanı | paymentReference | name=paymentReference |
-| 220 | Girdi alanı | paymentVerified | type=checkbox; name=paymentVerified |
-| 221 | Girdi alanı | endsAt | type=datetime-local; name=endsAt |
-| 222 | Girdi alanı | note | name=note |
-| 223 | Form | loginForm | id=loginForm |
-| 224 | Form | platformMfaSetupForm | id=platformMfaSetupForm |
-| 225 | Form | couponForm | id=couponForm |
-| 226 | Form | planForm | id=planForm |
-| 227 | Form | contentForm | id=contentForm |
-| 228 | Form | supportAdminReply | id=supportAdminReply |
-| 229 | Form | supportAdminStatus | id=supportAdminStatus |
-| 230 | Form | actionForm | id=actionForm |
-| 231 | Form | platformRecoveryForm | id=platformRecoveryForm |
-| 232 | Form | annualCatalogForm | id=annualCatalogForm |
-| 233 | Form | platformReauthForm | id=platformReauthForm |
-| 234 | Form | impersonationForm | id=impersonationForm |
-| 235 | Form | memberInviteForm | id=memberInviteForm |
-| 236 | Form | paymentFollowUpForm | id=paymentFollowUpForm |
-| 237 | Form | companyLifecycleForm | id=companyLifecycleForm |
-| 238 | Modal | İşlem | id=actionDialog; type=button |
-| 239 | Modal | Kapat | id=platformRecoveryDialog; type=button; name=email |
-| 240 | Modal | Kapat | id=annualCatalogDialog; type=button; name=changeReason |
-| 241 | Modal | Kapat | id=platformReauthDialog; type=button; name=password |
-| 242 | Modal | reason | id=impersonationDialog; type=button; name=reason |
-| 243 | Modal | Firma ayrıntısı | id=companyDetailDialog; type=button |
-| 244 | Modal | companyId | id=memberInviteDialog; type=button; name=companyId |
-| 245 | Modal | Kapat | id=paymentFollowUpDialog; type=button; name=outcome |
-| 246 | Tablo | ${x} |  |
+| 209 | Metin alanı | note | name=note |
+| 210 | Seçim alanı | planId | name=planId; seçenekler=${esc(p.id)}: ${esc(p.name)} — ${esc(p.deploymentKind)} |
+| 211 | Girdi alanı | days | type=number; name=days |
+| 212 | Girdi alanı | note | name=note |
+| 213 | Girdi alanı | companyName | name=companyName |
+| 214 | Girdi alanı | slug | name=slug |
+| 215 | Girdi alanı | contactEmail | type=email; name=contactEmail |
+| 216 | Girdi alanı | ownerName | name=ownerName |
+| 217 | Girdi alanı | ownerEmail | type=email; name=ownerEmail |
+| 218 | Seçim alanı | planId | name=planId; seçenekler=${esc(p.id)}: ${esc(p.name)} · ${esc(p.code)} |
+| 219 | Girdi alanı | termDays | type=number; name=termDays |
+| 220 | Metin alanı | note | name=note |
+| 221 | Girdi alanı | paymentReference | name=paymentReference |
+| 222 | Girdi alanı | paymentVerified | type=checkbox; name=paymentVerified |
+| 223 | Girdi alanı | endsAt | type=datetime-local; name=endsAt |
+| 224 | Girdi alanı | note | name=note |
+| 225 | Form | loginForm | id=loginForm |
+| 226 | Form | platformMfaSetupForm | id=platformMfaSetupForm |
+| 227 | Form | couponForm | id=couponForm |
+| 228 | Form | planForm | id=planForm |
+| 229 | Form | contentForm | id=contentForm |
+| 230 | Form | supportAdminReply | id=supportAdminReply |
+| 231 | Form | supportAdminStatus | id=supportAdminStatus |
+| 232 | Form | actionForm | id=actionForm |
+| 233 | Form | platformRecoveryForm | id=platformRecoveryForm |
+| 234 | Form | annualCatalogForm | id=annualCatalogForm |
+| 235 | Form | platformReauthForm | id=platformReauthForm |
+| 236 | Form | impersonationForm | id=impersonationForm |
+| 237 | Form | memberInviteForm | id=memberInviteForm |
+| 238 | Form | paymentFollowUpForm | id=paymentFollowUpForm |
+| 239 | Form | companyLifecycleForm | id=companyLifecycleForm |
+| 240 | Modal | İşlem | id=actionDialog; type=button |
+| 241 | Modal | Kapat | id=platformRecoveryDialog; type=button; name=email |
+| 242 | Modal | Kapat | id=annualCatalogDialog; type=button; name=changeReason |
+| 243 | Modal | Kapat | id=platformReauthDialog; type=button; name=password |
+| 244 | Modal | reason | id=impersonationDialog; type=button; name=reason |
+| 245 | Modal | Firma ayrıntısı | id=companyDetailDialog; type=button |
+| 246 | Modal | companyId | id=memberInviteDialog; type=button; name=companyId |
+| 247 | Modal | Kapat | id=paymentFollowUpDialog; type=button; name=outcome |
+| 248 | Tablo | ${x} |  |
 
 ### Platform kurulumu — `src/EnvanterTR.Web/wwwroot/platform-setup.html`
 

@@ -803,7 +803,7 @@ public static class PlatformEndpoints
             var relevantActions = new[] { "LoginSucceeded", "LoginFailed", "PasswordChanged", "PasswordReset",
                 "MemberInvited", "MemberInvitationResent", "MemberInvitationEmailSent", "MemberInvitationEmailFailed",
                 "DemoGranted", "SubscriptionExtended", "SubscriptionManuallyAdjusted", "CompanySuspended",
-                "CompanyReactivated", "PaidCompanyProvisioned", "DemoRequestUpdated", "DemoRequestStatusChanged",
+                "CompanyReactivated", "PaidCompanyProvisioned", "DemoCompanyProvisioned", "DemoRequestUpdated", "DemoRequestStatusChanged",
                 "MemberOwnerTransferred" };
             var platformAudits = await (from audit in db.PlatformAuditEntries.AsNoTracking()
                                         join actor in db.Users.AsNoTracking() on audit.ActorUserId equals actor.Id into actors
@@ -832,6 +832,7 @@ public static class PlatformEndpoints
                     "DemoGranted" => "Demo erişimi tanımlandı", "SubscriptionExtended" => "Abonelik süresi uzatıldı",
                     "SubscriptionManuallyAdjusted" => "Abonelik elle düzenlendi", "CompanySuspended" => "Şirket askıya alındı",
                     "CompanyReactivated" => "Şirket yeniden etkinleştirildi", "PaidCompanyProvisioned" => "Ücretli şirket hesabı oluşturuldu",
+                    "DemoCompanyProvisioned" => "Demo şirket hesabı oluşturuldu",
                     "DemoRequestUpdated" => "Demo talebi güncellendi", "DemoRequestStatusChanged" => "Demo talebi aşaması değişti",
                     "MemberOwnerTransferred" => "Şirket sahipliği devredildi",
                     "MemberRoleChanged" => "Şirket üyelik rolü değiştirildi", "MemberRemoved" => "Şirket üyeliği kaldırıldı",
@@ -1456,10 +1457,15 @@ public static class PlatformEndpoints
                 (contactEmail is { Length: > 256 } || (contactEmail is not null && !MailAddress.TryCreate(contactEmail, out _))) ||
                 string.IsNullOrWhiteSpace(ownerName) || ownerName.Length > 160 ||
                 string.IsNullOrWhiteSpace(ownerEmail) || ownerEmail.Length > 256 || !MailAddress.TryCreate(ownerEmail, out _) ||
-                request.TermDays is < 1 or > 1095 || string.IsNullOrWhiteSpace(paymentReference) || paymentReference.Length > 180 ||
-                !request.PaymentVerified)
+                request.TermDays is < 1 or > 1095 ||
+                (request.IsDemo
+                    ? request.TermDays > 60 || request.PaymentVerified || !string.IsNullOrWhiteSpace(paymentReference) ||
+                      string.IsNullOrWhiteSpace(request.Note) || request.Note.Trim().Length is < 8 or > 1000
+                    : string.IsNullOrWhiteSpace(paymentReference) || paymentReference.Length > 180 || !request.PaymentVerified))
                 return Results.ValidationProblem(new Dictionary<string, string[]> {
-                    ["company"] = ["Firma, geçerli alt alan adı, yetkili kişi ve doğrulanmış ödeme referansı gereklidir; abonelik süresi 1-1095 gün olmalıdır."]
+                    ["company"] = [request.IsDemo
+                        ? "Firma, geçerli alt alan adı, yetkili kişi ve 8-1000 karakterlik demo gerekçesi gereklidir; demo 1-60 gün olmalı ve ödeme bilgisi içermemelidir."
+                        : "Firma, geçerli alt alan adı, yetkili kişi ve doğrulanmış ödeme referansı gereklidir; abonelik süresi 1-1095 gün olmalıdır."]
                 });
 
             var plan = await db.SubscriptionPlans.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.PlanId &&
@@ -1477,7 +1483,8 @@ public static class PlatformEndpoints
 
             var now = DateTimeOffset.UtcNow;
             var provisioned = await provisioning.ProvisionCloudAsync(new(companyName, slug!, contactEmail ?? ownerEmail,
-                ownerName, ownerEmail, plan.Id, now, now.AddDays(request.TermDays), PaymentReference: paymentReference), cancellationToken);
+                ownerName, ownerEmail, plan.Id, now, now.AddDays(request.TermDays),
+                PaymentReference: request.IsDemo ? null : paymentReference, IsDemo: request.IsDemo), cancellationToken);
             if (provisioned is null)
             {
                 await transaction.RollbackAsync(cancellationToken);
@@ -1487,8 +1494,9 @@ public static class PlatformEndpoints
             var owner = provisioned.Owner;
             var subscription = provisioned.Subscription;
             var wasConfirmed = provisioned.OwnerWasConfirmed;
-            AddAudit(db, user, "PaidCompanyProvisioned", "Company", company.Id, company.Id,
-                $"{plan.Code} · {request.TermDays} gün · ödeme platform yöneticisi tarafından doğrulandı.");
+            AddAudit(db, user, request.IsDemo ? "DemoCompanyProvisioned" : "PaidCompanyProvisioned", "Company", company.Id, company.Id,
+                request.IsDemo ? $"{plan.Code} · {request.TermDays} gün · {request.Note!.Trim()}" :
+                    $"{plan.Code} · {request.TermDays} gün · ödeme platform yöneticisi tarafından doğrulandı.");
             try
             {
                 await db.SaveChangesAsync(cancellationToken);
@@ -1515,7 +1523,7 @@ public static class PlatformEndpoints
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                logger.LogWarning("Paid company owner invitation failed. Company {CompanyId}; error type: {ErrorType}",
+                logger.LogWarning("Company owner invitation failed. Company {CompanyId}; error type: {ErrorType}",
                     company.Id, exception.GetType().Name);
             }
 
@@ -1523,9 +1531,11 @@ public static class PlatformEndpoints
             var tenantUrl = string.IsNullOrWhiteSpace(rootDomain) ? null : $"https://{slug}.{rootDomain}";
             return Results.Created($"/api/platform/companies/{company.Id}", new {
                 company.Id, company.Name, company.Slug, company.ContactEmail, ownerId = owner.Id,
-                plan = plan.Name, subscription.Status, subscription.StartsAt, subscription.EndsAt,
+                plan = plan.Name, subscription.Status, subscription.IsDemo, subscription.StartsAt, subscription.EndsAt,
                 tenantUrl, invitationSent,
-                message = invitationSent ? "Şirket ve ücretli Cloud aboneliği oluşturuldu; yetkiliye erişim e-postası gönderildi." :
+                message = invitationSent ? (request.IsDemo
+                    ? "Şirket ve süreli demo oluşturuldu; yetkiliye erişim e-postası gönderildi."
+                    : "Şirket ve ücretli Cloud aboneliği oluşturuldu; yetkiliye erişim e-postası gönderildi.") :
                     "Şirket ve abonelik oluşturuldu; e-posta gönderilemedi. Yetkili davetini firma ayrıntılarından yeniden gönderebilirsiniz."
             });
         }).RequireRateLimiting("login");

@@ -9,6 +9,7 @@ const acceptance = readFileSync(new URL('../tests/EnvanterTR.SecurityAcceptance/
 const plans = readFileSync(new URL('../src/EnvanterTR.Web/Data/PlatformEndpoints.cs', import.meta.url), 'utf8');
 const signature = readFileSync(new URL('../src/EnvanterTR.Web/Data/IyzipayWebhookSignature.cs', import.meta.url), 'utf8');
 const provisioning = readFileSync(new URL('../src/EnvanterTR.Web/Data/TenantProvisioningService.cs', import.meta.url), 'utf8');
+const paidProvisioningCall = endpoint.match(/provisioning\.ProvisionCloudAsync\(new\(lockedOrder\.CompanyName[\s\S]*?\), cancellationToken\)/)?.[0] || '';
 const failures = [];
 
 for (const [label, condition] of [
@@ -22,7 +23,7 @@ for (const [label, condition] of [
   ['checkout URL host is verified and its stored form is protected', endpoint.includes('paymentUri.Host != new Uri(options.BaseUrl).Host') && endpoint.includes('CreateProtector("EnvanterTR.Iyzico.CheckoutPage.v1")')],
   ['callback retrieves provider result and matches immutable order fields', endpoint.includes('iyzipay.RetrieveAsync') && endpoint.includes('price != order.Amount') && endpoint.includes('paidPrice != order.Amount') && endpoint.includes('fraudStatus != 1')],
   ['order token is stored only as a hash, not raw token or identity/address fields', db.includes('CheckoutTokenHash') && !entity.includes('IdentityNumber') && !entity.includes('BillingAddress') && !entity.includes('CheckoutToken {')],
-  ['company and active paid subscription are created after verified payment', endpoint.includes('provisioning.ProvisionCloudAsync') && provisioning.includes('Status = request.IsTrial ? "Trial" : "Active", IsDemo = false') && endpoint.includes('lockedOrder.Status = "Provisioned"')],
+  ['company and active paid subscription are created after verified payment', paidProvisioningCall.includes('PaymentReference: paymentReference') && !paidProvisioningCall.includes('IsDemo: true') && !paidProvisioningCall.includes('IsTrial: true') && provisioning.includes('bool IsDemo = false') && provisioning.includes('Status = request.IsTrial || request.IsDemo ? "Trial" : "Active", IsDemo = request.IsDemo') && endpoint.includes('lockedOrder.Status = "Provisioned"')],
   ['synthetic fail-closed acceptance covers missing CSRF/provider configuration', acceptance.includes('Public_checkout_requires_csrf_and_fails_closed_without_provider_configuration')],
   ['synthetic end-to-end acceptance covers public plan IDs, acknowledgement, idempotent initialization, invalid webhook rejection, signed provisioning, replay and browser callback', acceptance.includes('Public_checkout_uses_server_price_verifies_provider_and_provisions_once') && acceptance.includes('SyntheticIyzipayHandler') && acceptance.includes('InitializeCount') && acceptance.includes('retried') && acceptance.includes('invalidWebhook') && acceptance.includes('webhookReplayRequest') && acceptance.includes('/api/checkout/webhook')]
 ]) {

@@ -432,3 +432,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Salt-okunur Check-CoolifyProduction: kaynak/canlı 120 migration, apex/firma health 200 ready, public plan 8; checkout unavailable. Tam satış probu beklenen exit 1; katalog yayımlamak ödeme kabulü değildir.
 - PROJECT-STATUS ve AUDIT-REALITY güncel başlıklarındaki eski 'plan yok' bilgisi düzeltildi; başarısız 8db CI ve yeni bf3ed6d CI 40102471823 ayrıldı. Kullanıcıdan yeni kod istenmedi, mevcut destek oturumu kabul edildi sayılmadı.
 - Kanıt: tests/reports/live-catalog-sales-boundaries-20261024.log. Bu salt-okunur kontrol hiçbir ayar/hesap/ödeme değiştirmedi.
+
+### 24 Ekim 2026 — P0 yeni demo şirketinin normal yönetim akışı
+- Eksik bulundu: yeni şirket yalnız ücretli satış doğrulamasıyla açılabiliyordu; mevcut demo işlemi şirket önceden var olmasını gerektiriyordu. Aynı route/transaction/TenantProvisioningService üzerinden açık demo modu eklendi. 15 gün varsayılan, 1–60 gün sınırı, zorunlu gerekçe; ödeme bilgisi reddi, Trial/IsDemo ve ayrı audit/timeline kaydı. MFA/CSRF/rol kontrolleri korundu; yeni sahibi e-posta doğrulanmış sayma veya parolasını değiştirme yok.
+- API/Identity/PostgreSQL **11/11**, masaüstü+390×844 Chromium exit 0, **79/79** CI kaynak komutu geçti. İlk eski UI inventory çıktısı yenilendi; ilk/son loglar korundu. Migration eklenmedi. Geçici yerel test kaynakları kabul sonrası temizlenecek.
+- Kanıt: tests/reports/platform-demo-provisioning-acceptance-20261024.md ve log/iki form görüntüsü. Bu ekleme henüz canlı değil; Santa/Demo3 gerçek kabulü tamamlandı sayılmaz. bf3ed6d MFA-only CI 40102471823 ayrı olarak 3/3 başarılı; yeni demo için kendi tam CI/staging/yayın kabulü gerekir.

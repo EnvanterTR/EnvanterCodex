@@ -6,7 +6,7 @@ namespace EnvanterTR.Web.Data;
 
 public sealed record CloudTenantProvisioningRequest(string CompanyName, string Slug, string ContactEmail,
     string OwnerName, string OwnerEmail, Guid PlanId, DateTimeOffset StartsAt, DateTimeOffset EndsAt,
-    bool IsTrial = false, string? PaymentReference = null, Guid? CompanyId = null);
+    bool IsTrial = false, string? PaymentReference = null, Guid? CompanyId = null, bool IsDemo = false);
 
 public sealed record TenantProvisioningResult(Company Company, EnvanterUser Owner,
     TenantSubscription Subscription, bool OwnerWasConfirmed);
@@ -33,6 +33,8 @@ public sealed class TenantProvisioningService(AppDbContext db, UserManager<Envan
             request.CompanyId == Guid.Empty || request.EndsAt <= request.StartsAt)
             throw new ArgumentException("Tenant provisioning requires a valid portal, plan and subscription period.", nameof(request));
         cancellationToken.ThrowIfCancellationRequested();
+        if (request.IsDemo && !string.IsNullOrWhiteSpace(request.PaymentReference))
+            throw new ArgumentException("A demo cannot contain a paid payment reference.", nameof(request));
         var owner = await users.FindByEmailAsync(request.OwnerEmail);
         var wasConfirmed = owner?.EmailConfirmed == true;
         if (owner is null)
@@ -47,7 +49,7 @@ public sealed class TenantProvisioningService(AppDbContext db, UserManager<Envan
             Slug = request.Slug, ContactEmail = request.ContactEmail, SecurityRequireMfa = true };
         StageCompany(company, owner);
         var subscription = new TenantSubscription { CompanyId = company.Id, PlanId = request.PlanId,
-            Status = request.IsTrial ? "Trial" : "Active", IsDemo = false, StartsAt = request.StartsAt,
+            Status = request.IsTrial || request.IsDemo ? "Trial" : "Active", IsDemo = request.IsDemo, StartsAt = request.StartsAt,
             EndsAt = request.EndsAt, PaymentReference = request.PaymentReference };
         db.TenantSubscriptions.Add(subscription);
         return new(company, owner, subscription, wasConfirmed);

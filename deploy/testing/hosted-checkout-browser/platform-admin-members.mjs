@@ -260,6 +260,11 @@ const server = createServer(async (request, response) => {
   }
 
   if (request.method !== 'GET' && request.headers['x-csrf-token'] !== csrfToken) return json(response, { message: 'Missing synthetic CSRF token.' }, 400);
+  if (path === '/api/platform/companies' && request.method === 'POST') {
+    writes.push({ method: request.method, path, body, csrf: request.headers['x-csrf-token'] });
+    return json(response, { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', isDemo: body.isDemo,
+      invitationSent: false, message: 'Şirket ve demo oluşturuldu; e-posta gönderilemedi.' }, 201);
+  }
   if (path === '/api/platform/companies/bulk-status' && request.method === 'PATCH') {
     writes.push({ method: request.method, path, body, csrf: request.headers['x-csrf-token'] });
     return json(response, { updated: body.companyIds.length, unchanged: 0 });
@@ -1057,6 +1062,54 @@ try {
   assert.equal(writes.filter(write => write.path === '/api/platform/companies/bulk-plan').length, 1,
     'The bulk plan control must stay unavailable when a selected company has no current Active/Trial subscription.');
 
+  await page.locator('#provisionCompany').click();
+  const provisioningDialog = page.locator('#actionDialog');
+  await provisioningDialog.locator('input[name="paymentReference"]').waitFor({ state: 'visible' });
+  assert.equal(await provisioningDialog.locator('input[name="paymentVerified"]').getAttribute('required'), '');
+  await provisioningDialog.getByRole('button', { name: 'Vazgeç' }).click();
+  const writesBeforeDemo = writes.length;
+  await page.locator('#provisionDemoCompany').click();
+  await provisioningDialog.getByText('Süreli demo şirketi oluştur', { exact: true }).waitFor({ state: 'visible' });
+  assert.equal(await provisioningDialog.locator('[name="termDays"]').inputValue(), '15');
+  assert.equal(await provisioningDialog.locator('[name="termDays"]').getAttribute('max'), '60');
+  assert.equal(await provisioningDialog.locator('[name="paymentReference"], [name="paymentVerified"]').count(), 0);
+  await provisioningDialog.locator('[name="companyName"]').fill('Synthetic new demo');
+  await provisioningDialog.locator('[name="slug"]').fill('synthetic-new-demo');
+  await provisioningDialog.locator('[name="ownerName"]').fill('Synthetic demo owner');
+  await provisioningDialog.locator('[name="ownerEmail"]').fill('new-demo@example.invalid');
+  await provisioningDialog.locator('[name="termDays"]').fill('61');
+  assert.equal(await provisioningDialog.locator('form').evaluate(form => form.checkValidity()), false);
+  await provisioningDialog.locator('[name="termDays"]').fill('15');
+  await provisioningDialog.locator('button[type="submit"]').click();
+  assert.equal(writes.length, writesBeforeDemo, 'Missing demo reason must not submit a write.');
+  await provisioningDialog.locator('[name="note"]').fill('Synthetic requested product demonstration');
+  if (process.env.ENVANTERTR_BROWSER_REPORT_DIR)
+    await page.screenshot({ path: `${process.env.ENVANTERTR_BROWSER_REPORT_DIR}/platform-demo-provisioning-form-20261024.png` });
+  const demoResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/platform/companies' && response.request().method() === 'POST');
+  await provisioningDialog.locator('button[type="submit"]').click();
+  assert.equal((await demoResponse).status(), 201);
+  assert.deepEqual(writes.at(-1), { method: 'POST', path: '/api/platform/companies', csrf: csrfToken,
+    body: { companyName: 'Synthetic new demo', slug: 'synthetic-new-demo', contactEmail: null,
+      ownerName: 'Synthetic demo owner', ownerEmail: 'new-demo@example.invalid', planId: plans[0].id,
+      termDays: 15, paymentReference: null, paymentVerified: false, isDemo: true,
+      note: 'Synthetic requested product demonstration' } });
+  await provisioningDialog.waitFor({ state: 'hidden' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('#provisionDemoCompany').click();
+  await provisioningDialog.getByText('Süreli demo şirketi oluştur', { exact: true }).waitFor({ state: 'visible' });
+  const demoBounds = await provisioningDialog.evaluate(dialog => {
+    const rect = dialog.getBoundingClientRect();
+    return { width: rect.width, height: rect.height, scrollWidth: dialog.scrollWidth, clientWidth: dialog.clientWidth };
+  });
+  assert.ok(demoBounds.width <= 390 && demoBounds.height <= 844, 'Mobile demo dialog must fit the viewport.');
+  assert.ok(demoBounds.scrollWidth <= demoBounds.clientWidth + 1, 'Mobile demo dialog must not overflow horizontally.');
+  await provisioningDialog.locator('button[type="submit"]').scrollIntoViewIfNeeded();
+  if (process.env.ENVANTERTR_BROWSER_REPORT_DIR)
+    await page.screenshot({ path: `${process.env.ENVANTERTR_BROWSER_REPORT_DIR}/platform-demo-provisioning-mobile-20261024.png` });
+  await provisioningDialog.getByRole('button', { name: 'Vazgeç' }).click();
+  assert.equal(writes.filter(write => write.path === '/api/platform/companies').length, 1,
+    'Canceling the mobile demo form must not create another company.');
+  console.log('PASS: separate unpaid demo form, 15-day default, 60-day cap, required reason, payment fields absent, CSRF payload, mobile fit/scroll/cancel; paid form still requires payment proof.');
   assert.deepEqual(browserErrors, [], `Platform member UI threw: ${browserErrors.join(' | ')}`);
   console.log('PASS: real Chromium account/security/membership/payment timeline; company CSV download with active search/status filters and formula-safe delimited values; demo CRM list/company-search/detail and selected-company fallback stale-response protection plus status, assignment, follow-up, company link, CSRF write and history persistence; member search, cancel-without-write, reauthenticated role update, synthetic invitation, plan create/update/validation/publication reload and maintenance entitlement persistence; audited company subscription plan/date editing with cancel and persistence; platform audit text/source/action/target/date filters, exclusive end-date boundary, clear, paging, event detail, no-match, surfaced 503 and retry behavior without writes.');
 } finally {
