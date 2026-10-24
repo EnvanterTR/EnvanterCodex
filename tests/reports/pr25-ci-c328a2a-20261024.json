@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Linux PostgreSQL tenant acceptance",
+    "status": "completed",
+    "conclusion": "success",
+    "html_url": "https://github.com/EnvanterTR/EnvanterCodex/actions/runs/40077928353/job/120825269979"
+  },
+  {
+    "name": "Linux tenant security acceptance",
+    "status": "completed",
+    "conclusion": "success",
+    "html_url": "https://github.com/EnvanterTR/EnvanterCodex/actions/runs/40077928353/job/120825270170"
+  },
+  {
+    "name": "Windows deployment and backup safety",
+    "status": "completed",
+    "conclusion": "success",
+    "html_url": "https://github.com/EnvanterTR/EnvanterCodex/actions/runs/40077928353/job/120825270190"
+  }
+]

@@ -1,3 +1,6 @@
+## 24 Ekim 2026 — güncel canlı aday sürüm
+
+Canlı web/ana sayfa c328a2a0568d6659add87062a2d708cf1fd38653, şema 120/0, apex ve Farma HTTPS health 200/ready. CI 3/3, yeni gerçek SQL/medya/anahtar/imaj yedeği, ayrı restore ve 118→120 veri koruma provası sonrası Coolify we99jqgmmvgojjbf4yj1qrjp yayını başarılı. Ana dala merge iddia edilmez: sabitlenmiş aday dal/commit dağıtıldı. Ücretli satış ve gerçek sağlayıcı/Bölüm 20 kabulü tamamlanmadı; yayımlanmış plan yok, checkout kapalı. Kanıt: tests/reports/production-c328-release-20261024.md. Aşağıdaki 118/eski canlı sürüm notları tarihsel kayıttır.
 # V1 durum iddiaları — kanıt denetimi
 
 **Denetim tarihi:** 23 Ekim 2026

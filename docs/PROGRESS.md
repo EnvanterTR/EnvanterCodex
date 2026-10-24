@@ -387,3 +387,17 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Salt-okunur gerçek DB sayımı: exact ad Santa 0, slug santa 0, slug farma 1. Santa üyelik/kilit sorgusu 0 satır; bu yüzden kilit/parola kök nedeni iddia edilmedi. Eksik şirket/portal kaydı doğrulandı.
 - Normal denetimli provisioning için platform yönetici parolası doğrulandı; yönetici MFA adımı kullanıcıya bırakıldı. Hesap/üyelik/oturum SQL ile oluşturulmadı, MFA değiştirilmedi.
 - Kanıt: tests/reports/santa-tenant-diagnosis-20261024.md ve coolify-santa-missing-tenant-20261024.png. CI son görülen running; sonraki DNS gözlem hatası terminal sonuç sayılmadı.
+
+### 24 Ekim 2026 — yönetici oturumu ve doğrulanmış yayın adayı
+- Yönetici MFA oturumu gerçek panelde açıldı. Sistem sağlığı SMTP/iyzico eksikliğini ve Cloud planı olmadığını gösterdi. Santa oluşturma eylemi etkin Cloud planı istedi; eski canlı UI Cloud kullanıcılarını hâlâ sınırsız gösterdiği için eski sürümde ücretli katalog yayınlanmadı.
+- c328a2a0568d6659add87062a2d708cf1fd38653 tam CI run 40077928353 artık 3/3 success; JSON kanıtı kaydedildi. Adayın src/deploy-coolify/Dockerfile dosyaları gerçek staging'de sınanan ae875b6 ile aynı (git diff boş).
+- Yeni dump: pre-web-v1-20261024T103444Z.dump. 142 MB özel rollback paketi /var/backups/envantertr/rollback-20261024T103525Z; yedi checksum ve dosya/imaj restore provası geçti. Yeni dump ayrı env..._1035 DB'ye restore edildi, 95 tablo sayımı canlıyla eşleşti; 118→120 ilk/tekrar provasında 94 özgün veri tablosunun alan/satırları aynı.
+- Hash'i doğrulanmış SQL canlıya uygulandı: 118→120 başarılı. Özgün 94 veri tablosunun satır sayımları migration öncesi/sonrası eşit.
+- Coolify dalı feat/verified-cloud-trials-20261021, SHA c328a2a olarak kaydedildi ve sayfa reload sonrası korundu. Changes not applied, yeniden yayın bekleyen kayıtlı yapılandırma anlamında görüldü. Deploy we99jqgmmvgojjbf4yj1qrjp başlatıldı; şu anda derleniyor, başarı iddia edilmiyor.
+- Ödeme/SMTP/deneme açılmadı; gerçek sağlayıcı ve Bölüm 20 kabulü açık. Üretim şeması artık 120; eski notlardaki 'canlı değişmedi/118' bu andan öncesinin tarihsel durumudur.
+
+### 24 Ekim 2026 — c328a2a canlı kabul yayını başarılı
+- Coolify we99jqgmmvgojjbf4yj1qrjp 4dk45sn, yeşil Finished. Çalışan web/public image tag'leri c328a2a, DB healthy; HTTPS apex ve Farma ready/120/0. Eski 'canlı değişmedi' kayıtları tarihsel kaldı.
+- Platform yönetici oturumu taşındı; yeni Cloud kota ve yıllık katalog önizlemesi gerçek panelde doğrulandı. Sekiz taslak kaydı ek 10dk yönetici reauth istedi; kullanıcıya MFA alanı bırakıldı, henüz oluşturuldu sayılmadı.
+- Tam satış probu beklenen exit 1: 0 public plan, checkout kapalı. Sağlayıcı/inbox ve Bölüm 20 açık; V1/satış tamamlandı denmedi.
+- Kanıt: tests/reports/production-c328-release-20261024.md, CI terminal JSON, iki dış probe logu ve sekiz ekran görüntüsü.
