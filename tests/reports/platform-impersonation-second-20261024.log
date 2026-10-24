@@ -1,12 +1,12 @@
- Network envantertr-impersonation-final-20261024_acceptance Creating 
- Network envantertr-impersonation-final-20261024_acceptance Creating 
- Network envantertr-impersonation-final-20261024_acceptance Created 
- Network envantertr-impersonation-final-20261024_acceptance Created 
- Container envantertr-impersonation-final-20261024-database-1 Creating 
- Container envantertr-impersonation-final-20261024-database-1 Created 
- Container envantertr-impersonation-final-20261024-database-1 Starting 
- Container envantertr-impersonation-final-20261024-database-1 Started 
- Image envantertr-impersonation-final-20261024-acceptance Building 
+ Network envantertr-impersonation-final-20261024_acceptance Creating
+ Network envantertr-impersonation-final-20261024_acceptance Creating
+ Network envantertr-impersonation-final-20261024_acceptance Created
+ Network envantertr-impersonation-final-20261024_acceptance Created
+ Container envantertr-impersonation-final-20261024-database-1 Creating
+ Container envantertr-impersonation-final-20261024-database-1 Created
+ Container envantertr-impersonation-final-20261024-database-1 Starting
+ Container envantertr-impersonation-final-20261024-database-1 Started
+ Image envantertr-impersonation-final-20261024-acceptance Building
 #1 [internal] load local bake definitions
 #1 reading from stdin 706B 0.2s done
 #1 DONE 0.2s
@@ -53,11 +53,11 @@
 
 #13 [ 8/11] RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
 #13 156.5   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
-#13 156.5 
+#13 156.5
 #13 156.5 Build succeeded.
 #13 156.5     0 Warning(s)
 #13 156.5     0 Error(s)
-#13 156.5 
+#13 156.5
 #13 156.5 Time Elapsed 00:02:34.80
 #13 DONE 156.8s
 
@@ -71,16 +71,16 @@
 #15 51.10 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
 #15 51.10 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
 #15 51.37   EnvanterTR.SecurityAcceptance -> /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll
-#15 51.49 
+#15 51.49
 #15 51.49 Build succeeded.
-#15 51.49 
+#15 51.49
 #15 51.49 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
 #15 51.49 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
 #15 51.49 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
 #15 51.49 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
 #15 51.49     4 Warning(s)
 #15 51.49     0 Error(s)
-#15 51.49 
+#15 51.49
 #15 51.49 Time Elapsed 00:00:50.44
 #15 DONE 51.6s
 
@@ -101,11 +101,11 @@
 
 #18 resolving provenance for metadata file
 #18 DONE 0.1s
- Image envantertr-impersonation-final-20261024-acceptance Built 
- Container envantertr-impersonation-final-20261024-database-1 Waiting 
- Container envantertr-impersonation-final-20261024-database-1 Healthy 
- Container envantertr-impersonation-final-20261024-acceptance-run-f7209072f5cd Creating 
- Container envantertr-impersonation-final-20261024-acceptance-run-f7209072f5cd Created 
+ Image envantertr-impersonation-final-20261024-acceptance Built
+ Container envantertr-impersonation-final-20261024-database-1 Waiting
+ Container envantertr-impersonation-final-20261024-database-1 Healthy
+ Container envantertr-impersonation-final-20261024-acceptance-run-f7209072f5cd Creating
+ Container envantertr-impersonation-final-20261024-acceptance-run-f7209072f5cd Created
 Test run for /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll (.NETCoreApp,Version=v10.0)
 A total of 1 test files matched the specified pattern.
 [xUnit.net 00:00:00.01] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.13)

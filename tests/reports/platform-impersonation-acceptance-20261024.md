@@ -33,3 +33,5 @@ Yeniden üretim: `deploy/testing/run-platform-impersonation-acceptance.ps1`. Son
 ## Yayın sınırı
 
 Yeni migration yalnız eklemeli Up işlemleri içerir; canlıya uygulanmadı. Üretimde ortak kök cookie domain zorunludur. Staging, güncel doğrulanmış yedek/geri dönüş provası, gerçek müşteri ve dış servis kabulü açıktır. Önceki `4e4f255` CI run 40040576315 üç işte başarılıdır (`pr25-ci-4e4f255-20261024.json`); bu yeni değişikliklerin CI sonucu değildir.
+
+Ham komut çıktılarındaki satır sonu boşlukları commit sonrası diff denetimi için temizlendi; test içeriği ve sonuçları değiştirilmedi.
