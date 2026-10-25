@@ -1,3 +1,9 @@
+## 25 Ekim 2026 — Farma dış alıcı e-posta teslimatı
+- Durum: TAMAM (gerçek uygulama iletisinin Hotmail SMTP sunucusuna teslimi); inbox/spam konumu ve tam owner kabulü doğrulanmadı.
+- Normal Farma portalındaki kurtarma formu tek istekte kullanıldı. Google günlüğü19:20:48 TRT Microsoft52.101.60.70/TLS teslim1/1, kaynak169.58.53.189/TLS gösterdi. Parola değişmedi, token okunmadı.
+- Kanıt: google-relay-farma-hotmail-delivered-20261025.png ve google-relay-production-acceptance-20261025.md ek bölümü.
+- Santa davet yeniden gönderimi normal kritik doğrulama bekliyor; açık soru tekrar edilmedi, yeni MFA atlatma/süre uzatma yok. Sıradaki: bu doğrulama sonrası Santa daveti, aktivasyon ve Bölüm20 normal kullanıcı kabulü; gerçek iyzico açık.
+
 ## 25 Ekim 2026 — gerçek SMTP ve uygulama parola yenileme teslimatı
 - Durum: TAMAM (relay + runtime + gerçek parola yenileme e-posta teslimi); tam P0/Bölüm20/ödeme açık.
 - Kullanıcının eylem anı onayı sonrası Google tek IPv4/kayıtlı kullanıcı/TLS kuralı etkinleşti; yeni credential veya MFA değişikliği yok. IPv6 host denemesi reddi korundu, yetki genişletilmedi; IPv4 testi gerçek posta kutusuna teslim.

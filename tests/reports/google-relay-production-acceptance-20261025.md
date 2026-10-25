@@ -22,6 +22,12 @@
 
 ## Kapsam sınırı
 
+### Farma gerçek dış alıcı teslimatı — sonraki kabul
+
+Normal `https://farma.envantertr.com/` → Parolamı unuttum akışında Hedef test hesabı c.belge@hotmail.com adresine tek kurtarma isteği gönderildi. Uygulama genel güvenli yanıtı döndü. Google ileti günlüğünde 25 Ekim19:20:48 TRT, **Teslim Edilen1/1**, Microsoft/Hotmail SMTP52.101.60.70 sunucusuna TLS etkin teslim kaydı görüldü; kaynak169.58.53.189/TLS. Bu dış SMTP sunucusunun kabul kanıtıdır; Hotmail gelen kutusu veya spam klasörü konumu doğrulanmadı. Reset bağlantısı/token okunmadı, parola değişmedi. Kanıt: google-relay-farma-hotmail-delivered-20261025.png.
+
+Santa detayındaki normal Yetkili erişim e-postasını yeniden gönder eylemi mevcut600s kritik yetki dolduğu için Yönetici doğrulaması açtı; henüz davet gönderilmedi. Parola hazırlandı, mevcut kullanıcı sorusunda yalnız güncel kodun sayfada girilmesi isteniyor. MFA veya süre değişmedi. SMTP çalışıyor olsa da Santa aktivasyon/normal owner kabulü tamam sayılmaz.
+
 Bu gerçek SMTP ve uygulama parola yenileme e-postası teslimatını kanıtlar. Santa davet teslimatı/aktivasyonu, normal owner girişleri, tüm Bölüm20, gerçek iyzico ve satış kabulü açık. Deneme özelliği veya ödeme ayrıca açılmadı. Yedek yerel hosttadır; off-host felaket kurtarma iddiası değildir.
 
 Kanıtlar: google-relay-enabled-20261025.png; google-relay-first-ipv6-rejection-20261025.png; google-relay-ipv4-send-accepted-20261025.png; google-relay-mailbox-delivered-20261025.png; google-relay-coolify-deploy-finished-20261025.png; google-relay-runtime-config-20261025.png; google-relay-app-reset-delivered-20261025.png.
