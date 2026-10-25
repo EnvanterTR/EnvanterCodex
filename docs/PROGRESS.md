@@ -525,3 +525,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 ### 25 Ekim 2026 — kullanıcının doğrulama bağlamı kalıcılaştırıldı
 - Google 2 Adımlı Doğrulama'nın testlerdeki tekrarlar nedeniyle kapatıldığı kullanıcı açıklaması, Google/platform MFA ayrımı, kaydedilmiş fakat deploy edilmemiş SMTP ayarları ve Demo3 geri alma bekleyişi docs/ACCOUNT-SETUP-CONTEXT.md içine kaydedildi. USER-REQUEST-TRACKER başına bağlantı eklendi; parola/OTP/secret yazılmadı.
 - Gerçek platform penceresi yeniden kontrol edildi: reauth hâlâ bekliyor, geri alma gerçekleşmemiş. Yeni kod sorusu veya tekrar parola denemesi yapılmadı; mevcut handoff korundu. Tam Hedef tamamlandı sayılmadı.
+
+### 25 Ekim 2026 — Demo3 geri alma ve gerçek platform destek kabulü
+- Kullanıcı doğrulamayı tamamladı. CompanyRestored 17:18 TRT; ayrı gerekçeli CompanyReactivated 17:21 TRT. Gerçek listede Demo3/Farma/Santa aktif; geri alma önce askıda bıraktı, eski oturumlar geri açılmış sayılmadı.
+- Normal Panele gir formuyla Demo3'e 15 dakikalık destek oturumu açıldı; gerçek alt alan adı, Demo3 şirket bağlamı ve sarı destek bandı görüldü. Platform yönetimine dön ile gerçek root Genel Bakışına dönüldü. ImpersonationStarted/Ended 17:23 TRT audit kayıtları aynı oturum için ayrı filtrelerle doğrulandı.
+- Kanıt: tests/reports/santa-e2e-20261025/README.md ek kabul ve sekiz yeni ekran. Bu destek oturumu owner girişinin/canlı çapraz GET-PUT kabulünün yerine geçirilmedi; HTTP 428 negatif kanıtı açık. SMTP/Google güvenlik ayarı değişmedi, gerçek teslimat/ödeme ve tam Hedef açık. Eski bekleyen geri alma bilgileri güncel context/status/audit notlarında düzeltildi.

@@ -1,3 +1,7 @@
+## 25 Ekim 2026 — Demo3 geri alındı, gerçek destek oturumu kabulü geçti
+
+Kullanıcının kritik doğrulaması sonrası Demo3 normal akıştan geri alındı ve ayrı gerekçeli işlemle etkinleştirildi; Demo3/Farma/Santa üçü de aktif. Demo3 sahibinin rolüyle 15 dakikalık yönetici destek oturumu gerçek demo3.envantertr.com üzerinde açıldı; sarı destek bandı görüldü, platform Genel Bakışına dönüldü. CompanyRestored, CompanyReactivated, ImpersonationStarted/Ended audit kayıtları doğrulandı. Bu normal owner girişi veya canlı GET/PUT izolasyon saldırı kabulü değildir. SMTP/Google kurulumu değiştirilmedi; gerçek teslimat/ödeme ve tam Bölüm 20 hâlâ açık. Kanıt: tests/reports/santa-e2e-20261025/README.md ek kabul bölümü. Aşağıdaki çöp kutusu/bekleyen doğrulama başlıkları tarihsel durumdur.
+
 ## 25 Ekim 2026 — gerçek Santa/Demo3 yönetim kabulü
 
 Normal platform girişinden sonra Santa ve Demo3, 15 günlük İşletme 4 kullanıcı demosu olarak ürün formuyla oluşturuldu. Her ikisinde davet e-postası gönderilemedi. Demo3 normal Sil akışıyla çöp kutusuna taşındı; Santa/Farma kapsamındaki 80 tablo ile şirket ve ortak kimlik projeksiyonları dahil 82 karşılaştırma eşit. İki oluşturma ve bir silme audit kaydı görüldü. Geri alma, 10 dakikalık yetki süresi dolduğu için tamamlanmadı: Demo3 çöp kutusunda/pasif; Santa/Farma aktif. Santa sahibinin e-postası doğrulanmamış. Owner girişleri, canlı GET/PUT izolasyonu, support kabulü, gerçek SMTP/ödeme ve tam Bölüm 20 açık. Kanıt: tests/reports/santa-e2e-20261025/README.md. Aşağıdaki önceki şirket varlığı kayıtları tarihsel durumdur.

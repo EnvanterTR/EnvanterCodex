@@ -1,5 +1,19 @@
 # Gerçek şirket kabulü — 25 Ekim 2026, kısmi
 
+## Güncel ek kabul — 17:18–17:23 TRT
+
+Kullanıcı bekleyen normal yönetici doğrulamasını tamamladı. Demo3 geri alma işlemi sonuçlandı; ilk aşamada erişim askıda kaldı. Ardından ayrı, gerekçeli “Erişimi yeniden aç” işlemi başarıyla uygulandı. Güncel firma listesi **Demo3, Farma ve Santa'yı aktif** gösterdi. `CompanyRestored` (17:18) ve `CompanyReactivated` (17:21) gerçek denetim kayıtları doğrulandı.
+
+Demo3 ayrıntısından, mevcut sahibin rolüyle ve kayıtlı gerekçeyle **15 dakikalık yönetici destek oturumu** açıldı. Tarayıcı gerçek `https://demo3.envantertr.com/` adresine geçti; Demo3 bağlamındaki boş envanter ve sarı “Yönetici destek oturumu” bandı görüldü. “Platform yönetimine dön” ile gerçek yönetici Genel Bakış ekranına dönüldü; üç aktif firma görünür kaldı. İlk yüklemedeki geçici giriş formu, sonraki nihai oturum kontrolünde yönetim paneline dönüştü; oturum kaybı veya başarısız dönüş diye sayılmadı.
+
+`ImpersonationStarted` ve `ImpersonationEnded` (17:23) kayıtları aynı destek oturumu hedefiyle gerçek Yönetici İşlem Kaydı ekranında ayrı ayrı doğrulandı. Destek sırasında otomatik API okumalarının `ImpersonationRequest` kayıtları da listelendi; bunlar ayrı kullanıcı eylemleri veya ayrı kabul testleri sayılmaz.
+
+Bu, 20.5'in gerçek şirket görünürlüğü/destek oturumu/sarı bandı/audit/dönüş alt adımları için kanıttır. **Normal owner parola+MFA girişi değildir.** Boş bir şirketin boş pano göstermesi, Santa/Farma kayıtlarının çapraz erişim saldırı testini kanıtlamaz. Canlı HTTP 428 negatif yazma ve 20.4 GET/PUT kabulü hâlâ açık. SMTP teslimatında bir iyileşme veya Google ayarı değişikliği yapılmadı.
+
+Yeni kanıtlar: `live-demo3-restored-suspended-20261025.png`, `live-demo3-reactivated-20261025.png`, `live-demo3-support-banner-20261025.png`, `live-platform-returned-20261025.png`, `live-support-start-audit-20261025.png`, `live-support-end-audit-20261025.png`, `live-company-restored-audit-20261025.png`, `live-company-reactivated-audit-20261025.png`.
+
+Aşağıdaki oluşturma/silme kanıtları ve DB tablosu önceki kabul anını kaydeder; Demo3'ün güncel UI durumu artık aktiftir.
+
 Canlı sürüm `124b2d1e93af2a13c393d68353c271671c856de8`. Kullanıcı normal platform MFA girişini tamamladı; uygulama Genel Bakış ve firma yönetimini açtı. Yeni kişisel kod alınmadı, eski kurtarma kodları kullanılmadı. Aşağıdaki işlemler doğrudan ürünün normal formundan yapıldı; DB yazması, özel token veya test-auth başlığı kullanılmadı.
 
 ## Gerçekleşen işlemler
@@ -11,11 +25,11 @@ Canlı sürüm `124b2d1e93af2a13c393d68353c271671c856de8`. Kullanıcı normal pl
 5. **Diğer şirketlerin korunması doğrulandı** — işlemden önce/sonra gerçek üretim DB'sinde 80 CompanyId içeren tablonun Santa/Farma satırları için sayı+tam satır içerik parmak izleri, ayrıca şirket satırları ve ilişkili kimliklerin parola/stamp/MFA alan parmak izleri karşılaştırıldı. **82 projeksiyonun tamamı eşit**. Bu bir test sayısı değildir. Ham değerler ve parmak izleri yalnız sunucudaki özel dosyalarda kaldı; rapora taşınmadı. MD5 yalnız tutarlılık karşılaştırmasıdır, güvenlik özeti değildir.
 6. **Denetim kayıtları doğrulandı** — Yönetici İşlem Kaydı ekranında iki `DemoCompanyProvisioned` (Santa 11:44, Demo3 11:45 TRT) ve bir `CompanySoftDeleted` (Demo3 11:51 TRT) kaydı görüldü.
 
-## Geri alma tamamlanmadı
+## İlk geri alma denemesi — tarihsel engel
 
 Demo3'ü kalan kabul adımları için geri alma formu gönderildiğinde sunucu 10 dakikalık kritik işlem yetkisinin yeniden doğrulanmasını istedi. Doğrulama iptal edildi; ürün “Kritik işlem iptal edildi; hiçbir değişiklik uygulanmadı” gösterdi. Geri alma veya etkinleştirme gerçekleşmiş gibi raporlanmaz. Demo3 **çöp kutusunda/pasif** bırakıldı; kayıtlar geri alınabilir. MFA süresi uzatılmadı veya kapatılmadı.
 
-## Salt okunur DB son durumu
+## Silme sonrasındaki salt okunur DB ara durumu
 
 | Slug | Aktif | Çöp kutusunda | Sahip üyeliği | Sahibin e-postası doğrulanmış |
 | --- | --- | --- | ---: | --- |
@@ -32,7 +46,7 @@ Sorgu `live-company-state-after-provision-20261025.sql`, ekran çıktısı aynı
 | 20.2 Santa'nın 10 kullanıcı adımı | Tamamlanmadı; yalnız normal şirket oluşturma kanıtlandı |
 | 20.3 Farma'nın 10 kullanıcı adımı | Bu adımda yapılmadı |
 | 20.4 canlı karşılıklı GET/PUT saldırı testi | Yapılmadı; izole kabulün yerine geçirilmedi |
-| 20.5 platform iki şirketi görür / audit | Gerçek listede üç şirket ve gerçek oluşturma/silme audit kayıtları görüldü; support impersonation/return ve HTTP 428 API kanıtı tamamlanmadı |
+| 20.5 platform iki şirketi görür / audit | Yukarıdaki ek kabulde gerçek destek oturumu, sarı bant, audit ve dönüş doğrulandı; canlı HTTP 428 negatif API kanıtı açık |
 | 20.9.1 normal Demo3 oluşturma | Gerçek yönetim formuyla geçti |
 | 20.9.2 DNS/TLS | Önceki dış DNS/TLS kanıtı var; bu adımda sahibiyle portal girişi yapılmadı |
 | 20.9.3 yönetici hesabı/giriş | Sahip üyeliği var, gerçek owner girişi yapılmadı |

@@ -20,8 +20,8 @@ Google hesap doğrulaması ile EnvanterTR platform Authenticator doğrulaması i
 
 - Canlı uygulama 124b2d1, şema 121; gerçek rollout kanıtı release raporunda.
 - Santa normal formdan oluşturuldu ve aktif; sahibinin e-postası son DB kontrolünde doğrulanmamıştı. Davet gönderilemedi; giriş tamamlandı sayılmadı.
-- Demo3 normal formdan oluşturuldu, silme kabulünde geri alınabilir çöp kutusuna taşındı. Santa/Farma ve ortak kimlik alanları için 82 özel projeksiyon aynı kaldı. Demo3 geri alma/etkinleştirme henüz gerçekleşmedi.
+- Demo3 normal formdan oluşturuldu, silme kabulünde geri alınabilir çöp kutusuna taşındı. Santa/Farma ve ortak kimlik alanları için 82 özel projeksiyon aynı kaldı. Sonraki kullanıcı doğrulamasından sonra Demo3 geri alındı ve normal formdan yeniden etkinleştirildi; üç firma aktif.
 - Root oturumu açık olsa bile kritik işlem için ayrı 10 dakikalık güncel kanıt gerekebilir. Parola+MFA ile yeni normal giriş bu kanıtı açar; eski oturumlara kendiliğinden süre verilmez. Süreyi uzatma, MFA'yı atlama veya eski kurtarma kodlarını kullanma.
-- Son kullanıcı “girdim” mesajından sonra açık paylaşılan platform oturumu bulundu; Demo3 geri alma yine “Yönetici doğrulaması” istedi. Parola hazır, mevcut tek kod sorusu açık bırakıldı. Kullanıcı yanıtı gelmeden tekrar soru açma veya giriş denemelerini tekrarlama.
+- Kullanıcı son bekleyen “Yönetici doğrulaması”nı tamamladı; Demo3 geri alma ve erişim açma başarıyla yapıldı. Sonra Demo3'e normal 15 dakikalık destek oturumu açıldı, sarı bant doğrulandı, platforma dönüldü ve başlangıç/bitiş audit kayıtları görüldü. Bu destek erişimi normal owner girişi yerine geçirilmez. Artık eski geri alma kod sorusunu tekrar açma. Destekten dönüş kritik işlem tazeliğini temizler; yeni yazma gerekirse gerçek sunucu durumunu kontrol et.
 
 İlgili kanıtlar: `tests/reports/santa-e2e-20261025/README.md`, `tests/reports/google-smtp-preparation-20261025.md`, `tests/reports/production-asset-put-release-20261025.md`. Geri alma sonradan tamamlanırsa bu durum notu ve release/kabul raporu birlikte güncellenir.
