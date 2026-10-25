@@ -510,3 +510,9 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 ### 25 Ekim 2026 08:25 UTC — yayın sonrası sağlık ve gerçek kabul engeli
 - Yeni yayın sonrası salt-okunur üç-host sağlık kontrolü 08:25:37 UTC: apex/Farma/Santa 200 ready/121/0, exit 0. Kanıt: put-postrelease-health-20261025T082537Z.log. Önceki 08:14 kontrolü ile bu kontrol arasındaki süre sürekli gözlenmiş sayılmadı; 24 saat tamamlanmadı.
 - Normal platform girişinde mevcut parola önceki turda doğrulandı; bu tur gerçek sekme hâlâ Authenticator adımında, yönetim oturumu açılmamış. Mevcut kullanıcı sorusu açık bırakıldı, tekrar kod isteği veya parola denemesi yapılmadı. Santa/Demo3 normal provisioning henüz yürütülemiyor; MFA atlanmadı ve eski kurtarma kodları kullanılmadı.
+
+### 25 Ekim 2026 — gerçek normal şirket oluşturma ve silme koruması
+- Kullanıcı platform MFA girişini tamamladı. Normal Demo firma oluştur formundan Santa (Hedef yetkilisi) ve Demo3 (mevcut Farma yetkilisi), 15 gün/4 kullanıcı ile oluşturuldu. İki davet e-postası başarısız; gerçek teslimat kabulü olarak sayılmadı.
+- Demo3 normal Sil formundan çöp kutusuna taşındı. Önce/sonra Santa/Farma'nın CompanyId içeren 80 tablo satırı + şirket + ortak parola/stamp/MFA projeksiyonları dahil 82 içerik karşılaştırması eşit; özel fingerprint değerleri sunucuda kaldı. İki DemoCompanyProvisioned ve bir CompanySoftDeleted audit kaydı gerçek panelde görüldü.
+- Geri alma denemesi 10 dakikalık kritik yetki dolduğunda yeni doğrulama istedi; iptal edildi, geri alma olmadı. Demo3 çöp kutusunda/pasif, Santa/Farma aktif; her şirkette bir owner üyeliği var, Santa sahibinin e-postası doğrulanmamış. Yeni kod istenmedi, MFA gevşetilmedi.
+- Kanıt: tests/reports/santa-e2e-20261025/README.md, UI görüntüleri ve salt-okunur SQL. Owner girişleri/10 adım/canlı saldırı testi ve tam Bölüm 20 hâlâ açık. Güncel status/audit başlıkları şirket varlığına göre yenilendi; sonraki işlem Demo3 geri alma ve gerçek hesap/SMTP kabulü.
