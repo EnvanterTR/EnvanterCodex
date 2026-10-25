@@ -485,3 +485,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Salt-okunur public DNS-over-HTTPS ve normal sertifika doğrulamalı HTTPS ile demo3, santa ve yeni acceptance-20261025 alt alan adları dışarıdan doğrulandı: DNS cevapları var, /api/status 200 ready. DNS/proxy/sertifika ayarı veya şirket kaydı değiştirilmedi.
 - Bu, önceki staging Host-header kanıtından daha güçlü gerçek dış erişim kanıtıdır; şirket provisioning/giriş/izolasyon/silme kabulü değildir. İlk Windows demo3 DNS sorgusundaki paket hatası bağımsız resolver ve gerçek HTTPS ile yeniden kontrol edildi, kesinti sayılmadı.
 - Kanıt: tests/reports/tenant-public-dns-tls-20261025.md ve JSON. Kişisel OTP gerektirmedi. 124b2d1 PostgreSQL CI işi halen çalışıyor; diğer iki iş başarılı, yayın bekliyor.
+
+### 25 Ekim 2026 — gerçek şirket varlığı ile DNS kanıtı ayrıldı
+- Güncel üretim PostgreSQL salt-okunur slug agregası: farma 1 aktif kayıt; santa 0, demo3 0. Sadece istenen üç slug sayıldı, kullanıcı/kimlik/credential veya müşteri envanteri çıkarılmadı, yazma yapılmadı.
+- Böylece public DNS/HTTPS sağlık başarısının şirket oluşturma kanıtı olmadığı gerçek DB çıktısıyla doğrulandı. Sıradaki gerçek kabul işi normal platform akışından Santa/Demo3 oluşturulmasıdır; DNS/proxy yeniden ayarı gerekçesi yok. Farma'nın 10 müşteri adımı hâlâ ayrı kabul gerektirir.
+- Kanıt: tests/reports/tenant-public-dns-tls-20261025.md, live-section20-company-presence-20261025.sql ve görüntüsü. CI PostgreSQL işi 121065583776 halen çalışıyor; yeni OTP istenmedi.
