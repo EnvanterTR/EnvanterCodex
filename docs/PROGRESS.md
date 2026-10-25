@@ -1,3 +1,10 @@
+## 26 Ekim 2026 — Santa lisans, CSV ve gerçek Arşivden geri alma
+- Durum: TAMAM (20.2.5/.7/.9); Santa7/10, tam Bölüm20/ödeme açık.
+- Normal owner ile iki koltuklu lisans/çalışana1atama; UI1/2 ve DB2toplam/1atanmış/1kalan, CompanyId eşitlikleri true. CSV indirildi; tek Santa satırı ve aynı sayımlar dosyadan doğrulandı.
+- Ayrı çöp kutusu/geri al ve gerçek Archived→Arşivden geri al→Available normal formlardan geçti. Aynı varlık alanları(Status/UpdatedAt hariç) tutarlılık özeti eşit, bakım1korundu, geçmiş6→8→9→10. READONLY sorgular exit0. Liste arşiv eyleminin çöp kutusu açması adlandırma tutarsızlığı olarak kaydedildi.
+- Kanıt: tests/reports/santa-e2e-20261025/license-csv-archive-20261026.md;CSV,SQLve10ekran.
+- Sıradaki: PDF/imza/e-posta; Editör için c.belge hesabına mevcut asset_operator sınırlı Santa erişimi taslağı hazır, eylem anı kullanıcı onayı bekleniyor. Henüz davet/üyelik eklenmedi. Logout en sonda; Farma/cross-tenant/gerçek ödeme açık.
+
 ## 25 Ekim 2026 — normal Santa owner, varlık, zimmet ve bakım kabulü
 - Durum: TAMAM (20.2.1/.2/.3/.6); tam Bölüm20 ve ödeme açık.
 - Kullanıcı Santa QR kurulumunu tamamladı; gerçek normalowner dashboard Santa adıyla açıldı. Yeni varlık/kategori, kabul çalışanı ve normal zimmet oluşturuldu. Bakım planı, çalışan iadesi, başlatma ve tamamlama normal ürün formlarından geçti.
