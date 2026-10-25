@@ -1,3 +1,11 @@
+## 25 Ekim 2026 — gerçek SMTP ve uygulama parola yenileme teslimatı
+- Durum: TAMAM (relay + runtime + gerçek parola yenileme e-posta teslimi); tam P0/Bölüm20/ödeme açık.
+- Kullanıcının eylem anı onayı sonrası Google tek IPv4/kayıtlı kullanıcı/TLS kuralı etkinleşti; yeni credential veya MFA değişikliği yok. IPv6 host denemesi reddi korundu, yetki genişletilmedi; IPv4 testi gerçek posta kutusuna teslim.
+- Coolify p0flhitgplemaxbk2548ll8a Success/Finished, aynı124 SHA; runtime160415. Yeni SQL/rollback/restore gate'i kullanıldı. Sır göstermeyen çalışma zamanı SMTP eşitlik kontrolleri geçti; üç HTTPS host200/121/0.
+- Normal uygulama Parolamı unuttum akışının admin adresine iletisi Google günlüğünde19:10:59 TRT Gmail posta kutusuna teslim1/1, kaynakIPv4/TLS. Reset bağlantısı açılmadı ve parola değişmedi.
+- Kanıt: tests/reports/google-relay-production-acceptance-20261025.md ve yedi ekran; health logu.
+- Sıradaki: Santa davet/aktivasyon ve normal owner kabulü; gerçek iyzico. Eski uygulama parolası/SMTP engeli artık güncel değildir.
+
 ## 25 Ekim 2026 — son şirket durumunu içeren güncel kurtarma noktası
 - Durum: TAMAM (yedek + ayrı dosya/imaj provası + izole SQL restore); gerçek SMTP/ödeme ve tam Bölüm 20 açık.
 - Değişen dosyalar: relay-preparation-recovery-20261025.md, ACCOUNT-SETUP-CONTEXT.md ve üç kanıt görüntüsü.

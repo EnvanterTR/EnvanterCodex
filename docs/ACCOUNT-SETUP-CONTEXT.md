@@ -1,5 +1,9 @@
 # Hesap kurulumu ve doğrulama bağlamı — 25 Ekim 2026
 
+## Güncel SMTP sonucu — önceki boş parola engeli çözüldü
+
+Kullanıcının relay sorusuna “Sana bırakıyorum” onayı sonrası Google Workspace tek IPv4 169.58.53.189, kayıtlı Apps kullanıcıları, TLS zorunlu relay kuralı kaydedildi. Uygulama parolası gerekmedi; Google/EnvanterTR MFA ayarları değiştirilmedi. Coolify smtp-relay.gmail.com/587/TLS ve boş SMTP kullanıcı/parola ile aynı124 SHA'yı p0flhitgplemaxbk2548ll8a dağıtımında başarılı yayımladı; runtime160415. Gerçek uygulama parola yenileme e-postası Google günlüğünde 19:10:59 TRT posta kutusuna teslim1/1. Normal Google parolası SMTP alanına konmadı. Aşağıdaki smtp.gmail.com/boş uygulama parolası ve kaydedilmemiş taslak paragrafları tarihsel hazırlıktır; tekrar uygulama parolası isteme. Santa davet/owner ve gerçek ödeme kabulü ayrı olarak açık. Kanıt: tests/reports/google-relay-production-acceptance-20261025.md.
+
 Bu dosya kullanıcının konuşmada düzelttiği bağlamı korur; canlı hesap ayarlarının yerine geçmez. Yeni işlemden önce ilgili gerçek ekran yeniden kontrol edilir.
 
 ## Kullanıcının kararı ve tarihsel neden

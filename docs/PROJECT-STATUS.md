@@ -1,3 +1,7 @@
+## 25 Ekim 2026 — gerçek SMTP teslimatı canlıda doğrulandı
+
+Kullanıcı onayıyla Google Workspace tek sunucu IPv4/kayıtlı kullanıcı/TLS relay kuralı etkin. Coolify p0flhitgplemaxbk2548ll8a Success/Finished; aynı124 SHA, runtime160415, şema121/0, üç host200ready. Normal uygulama parola yenileme iletisi admin posta kutusuna19:10:59 TRT Google günlüğünde teslim1/1; parola veya MFA değişmedi. SMTP artık eski uygulama parolası engelinde değildir. Gerçek iyzico, Santa davet/aktivasyon/normal owner ve tam Bölüm20 açık. Kanıt: tests/reports/google-relay-production-acceptance-20261025.md. Aşağıdaki SMTP eksikliği kayıtları tarihseldir.
+
 ## 25 Ekim 2026 — Demo3 geri alındı, gerçek destek oturumu kabulü geçti
 
 Kullanıcının kritik doğrulaması sonrası Demo3 normal akıştan geri alındı ve ayrı gerekçeli işlemle etkinleştirildi; Demo3/Farma/Santa üçü de aktif. Demo3 sahibinin rolüyle 15 dakikalık yönetici destek oturumu gerçek demo3.envantertr.com üzerinde açıldı; sarı destek bandı görüldü, platform Genel Bakışına dönüldü. CompanyRestored, CompanyReactivated, ImpersonationStarted/Ended audit kayıtları doğrulandı. Bu normal owner girişi veya canlı GET/PUT izolasyon saldırı kabulü değildir. SMTP/Google kurulumu değiştirilmedi; gerçek teslimat/ödeme ve tam Bölüm 20 hâlâ açık. Kanıt: tests/reports/santa-e2e-20261025/README.md ek kabul bölümü. Aşağıdaki çöp kutusu/bekleyen doğrulama başlıkları tarihsel durumdur.
