@@ -1,3 +1,10 @@
+## 26 Ekim 2026 — onaylı Santa operatör üyeliği ve aktif zimmet belgesi
+- Durum: TAMAM (onaylanan üyelik ekleme/DBrol koruma ve imzasız aktif teslim snapshot); tam Editör ve imza/PDF kabulü açık.
+- Kullanıcının açık eylem anı onayıyla c.belge normal davet formundan Santa asset_operator oldu. DB Demo3owner/Farmaowner/Santaasset_operator, her biri1üyelik; diğer roller korundu. Ürün e-posta gönderim yanıtı verdi, teslimat henüz ayrı doğrulanmadı.
+- Varlık yeniden kabul çalışanına normal zimmetlendi; ilk boşimzasız taslak iptal edilip yeni ZMB-20261025-a11cc2306 oluşturuldu. DB1doğru varlık/Santa kapsamı, iki imza bekliyor. Kullanıcıya iki imza alanı ve print adımı bırakıldı.
+- Farma normal parola doğrulandı; açık sekme c.belge Authenticator kodu bekliyor. Santa owner korunuyor. Kurtarma kodları veya yeni credential kullanılmadı.
+- Kanıt: tests/reports/santa-e2e-20261025/operator-handover-preparation-20261026.md;4ekran/2SQL. Santa7/10değişmedi; userimza ve FarmaMFA soruları açık. SonraPDF/e-posta ve gerçekoperatör yetki/Farma/cross-tenant.
+
 ## 26 Ekim 2026 — Santa lisans, CSV ve gerçek Arşivden geri alma
 - Durum: TAMAM (20.2.5/.7/.9); Santa7/10, tam Bölüm20/ödeme açık.
 - Normal owner ile iki koltuklu lisans/çalışana1atama; UI1/2 ve DB2toplam/1atanmış/1kalan, CompanyId eşitlikleri true. CSV indirildi; tek Santa satırı ve aynı sayımlar dosyadan doğrulandı.
