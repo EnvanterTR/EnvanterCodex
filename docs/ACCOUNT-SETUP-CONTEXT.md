@@ -18,6 +18,12 @@ Google hesap doğrulaması ile EnvanterTR platform Authenticator doğrulaması i
 
 ## Platform ve şirket kabulü
 
+### Google relay alternatifi — kaydedilmemiş taslak
+
+Google Workspace yönetici konsoluna erişim ve Gmail hizmetinin açık olduğu doğrulandı. SMTP relay henüz yapılandırılmamıştı. Sunucu genel IPv4 adresi 169.58.53.189; Google relay 465 TLS ve IPv4 587 STARTTLS bağlantıları TLS 1.3, sertifika/host doğrulaması başarılı, çıkış 0. İlk varsayılan 587 denemesi zaman aşımına uğradı; sonraki başarı bu geçmiş sonucu silmez.
+
+Kayıtlı Apps kullanıcıları, yalnız tek sunucu IP ve zorunlu TLS seçili taslak hazırlandı; SMTP AUTH kapalı. IP ekleme alt penceresi dolduruldu, hiçbir KAYDET basılmadı. Yeni gönderim yetkisi açacağı için eylem anı kullanıcı onayı istendi. Onay gelmeden Google veya Coolify relay ayarı uygulanmaz. Mevcut Coolify Gmail hazırlığı ve çalışan uygulama değişmedi; gerçek teslimat hâlâ kanıtlanmadı. Taslak görseli: tests/reports/google-relay-ip-draft-20261025.png.
+
 - Canlı uygulama 124b2d1, şema 121; gerçek rollout kanıtı release raporunda.
 - Santa normal formdan oluşturuldu ve aktif; sahibinin e-postası son DB kontrolünde doğrulanmamıştı. Davet gönderilemedi; giriş tamamlandı sayılmadı.
 - Demo3 normal formdan oluşturuldu, silme kabulünde geri alınabilir çöp kutusuna taşındı. Santa/Farma ve ortak kimlik alanları için 82 özel projeksiyon aynı kaldı. Sonraki kullanıcı doğrulamasından sonra Demo3 geri alındı ve normal formdan yeniden etkinleştirildi; üç firma aktif.

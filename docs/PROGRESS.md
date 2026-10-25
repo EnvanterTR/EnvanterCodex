@@ -1,3 +1,11 @@
+## 25 Ekim 2026 — son şirket durumunu içeren güncel kurtarma noktası
+- Durum: TAMAM (yedek + ayrı dosya/imaj provası + izole SQL restore); gerçek SMTP/ödeme ve tam Bölüm 20 açık.
+- Değişen dosyalar: relay-preparation-recovery-20261025.md, ACCOUNT-SETUP-CONTEXT.md ve üç kanıt görüntüsü.
+- Komut + çıktı: taze 145446Z SQL SHA doğrulandı; 140 MB 145517Z bundle exit 0; 145609Z drill exit 0; ayrı restore DB başarıyla oluşturuldu.
+- Test: gerçek canlı/restore 95 public tablo sayımı eşit, COUNT_COMPARE_EXIT=0. Bu satır içerik eşitliği veya uygulama E2E değildir.
+- Kanıt yolu: tests/reports/relay-preparation-recovery-20261025.md.
+- Sıradaki iş: eylem anı onayı gelince sınırlı Google relay ayarını kaydetmek; henüz Google/Coolify relay veya çalışan imaj değiştirilmedi. Yeni OTP istenmedi.
+
 ## 23 Ekim 2026 — P0-A gerçeklik denetimi güncellemesi
 - Durum: ENGELLENDİ (yüzde ve canlı sağlık denetimi tamamlandı; yönetici oturum ekranı kanıtı alınamadı).
 - Değişen dosyalar: `docs/AUDIT-REALITY.md`, `docs/PROGRESS.md`.
