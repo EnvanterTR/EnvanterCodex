@@ -506,3 +506,7 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - İlk Farma health gözlemi 10 saniye zaman aşımı verdi; log korundu. Bağımsız normal-TLS HTTP isteği ve ardından iki-host Node probu apex/Farma 200 ready/121/0, exit 0 verdi; tek gözlem gecikmesinde yayın yeniden başlatılmadı.
 - 8 public plan korundu, checkout eksik sağlayıcı nedeniyle kapalı. 8 görsel/galeri kaynağı SHA256 ile birebir eşleşti. Kanıt: production-asset-put-release-20261025.md, ilk/son health ve commercial/assets logları, tamamlanma/imaj görüntüleri.
 - Güncel status/audit başlıkları yenilendi, 24 saat planındaki geri dönüş paketi 080518Z olarak güncellendi. Tam Hedef/Bölüm 20/SMTP/ödeme kabulü hâlâ açık. Kişisel OTP istenmedi.
+
+### 25 Ekim 2026 08:25 UTC — yayın sonrası sağlık ve gerçek kabul engeli
+- Yeni yayın sonrası salt-okunur üç-host sağlık kontrolü 08:25:37 UTC: apex/Farma/Santa 200 ready/121/0, exit 0. Kanıt: put-postrelease-health-20261025T082537Z.log. Önceki 08:14 kontrolü ile bu kontrol arasındaki süre sürekli gözlenmiş sayılmadı; 24 saat tamamlanmadı.
+- Normal platform girişinde mevcut parola önceki turda doğrulandı; bu tur gerçek sekme hâlâ Authenticator adımında, yönetim oturumu açılmamış. Mevcut kullanıcı sorusu açık bırakıldı, tekrar kod isteği veya parola denemesi yapılmadı. Santa/Demo3 normal provisioning henüz yürütülemiyor; MFA atlanmadı ve eski kurtarma kodları kullanılmadı.
