@@ -66,3 +66,8 @@ Bu klasörde UI ekranları ve salt-okunur SQL kanıtı vardır. Bu adımda ham H
 Özel sunucu dosyaları: `/var/backups/envantertr/rollback-20261025T080518Z/{tenant-preservation.sql,before-demo3-delete.private,after-demo3-delete.private}`. Bunlar raw kimlik veya parmak izi verileriyle birlikte public repoya eklenmedi.
 
 Tarayıcı terminalinde ilk uzun metin girişi gözlem zaman aşımıyla yarıda kaldı; komut çalışmış sayılmadı. Yeni işlem başlatılmadan terminal görüntüsü incelendi, aynı giriş temizlenip tek parça paste ile tamamlandı; gerçek `BASELINE_CAPTURED 82` ve `SANTA_FARMA_AND_SHARED_IDENTITY_UNCHANGED` çıktıları doğrulandı.
+# Santa daveti gerçek gönderim — 25 Ekim 2026 devamı
+
+Kullanıcının “girdi” mesajı sonrası yeni platform sekmesinin oturum kontrolü gerçek yönetici Genel Bakışına geçti. Normal Müşteriler/Firmalar → Santa Detay → Yetkili erişim e-postasını yeniden gönder kullanıldı. Yeni MFA sorusu açılmadı. Google ileti günlüğü **EnvanterTR şirket alanı daveti**, alıcı cloudmailhome@gmail.com, 22:39:30 TRT alınış / 22:39:31 TRT **Google dahili sunucusuna teslim**, Teslim Edilen1/1, kaynak169.58.53.189/TLS gösterdi. Bu posta kutusu/spam konumu veya hesabın etkinleştiği kanıtı değildir.
+
+Kanıt: ../santa-owner-invitation-google-delivered-20261025.png. Davet normal parola belirleme/etkinleştirme akışıdır; yeni credential giriş ve gönderim adımı kullanıcıya bırakıldı. Davet token'ı veya yeni parola okunmadı, DB EmailConfirmed doğrudan değiştirilmedi. Owner girişi ve kalan10adım/cross-tenant kabulü açık. Önceki davet gönderilemedi ve MFA bekliyor kayıtları tarihseldir.

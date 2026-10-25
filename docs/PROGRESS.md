@@ -1,3 +1,9 @@
+## 25 Ekim 2026 — Santa erişim daveti gerçek gönderildi
+- Durum: TAMAM (normal platform eylemi + Google dahili sunucusuna teslim1/1); hesap aktivasyonu/owner girişi henüz doğrulanmadı.
+- Kullanıcının girişinden sonra Santa Detay → Yetkili erişim e-postasını yeniden gönder kullanıldı. Google günlüğü22:39:31 TRT cloudmailhome alıcısı, IPv4/TLS ile teslim gösterdi; inbox/spam konumu iddia edilmedi.
+- Kanıt: tests/reports/santa-owner-invitation-google-delivered-20261025.png; santa-e2e-20261025/README.md ek bölümü.
+- Sıradaki: kullanıcı davet bağlantısından parolasını belirleyip hesabı etkinleştirecek (credential handoff); ardından normal Santa owner ve Bölüm20. Davet token'ı okunmadı, DB doğrulaması atlanmadı, yeni OTP sorusu açılmadı.
+
 ## 25 Ekim 2026 — Farma dış alıcı e-posta teslimatı
 - Durum: TAMAM (gerçek uygulama iletisinin Hotmail SMTP sunucusuna teslimi); inbox/spam konumu ve tam owner kabulü doğrulanmadı.
 - Normal Farma portalındaki kurtarma formu tek istekte kullanıldı. Google günlüğü19:20:48 TRT Microsoft52.101.60.70/TLS teslim1/1, kaynak169.58.53.189/TLS gösterdi. Parola değişmedi, token okunmadı.
