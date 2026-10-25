@@ -475,3 +475,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - İzole gerçek PostgreSQL ve sentetik kimlikli endpoint kabulü iki yöntem için 2/2 geçti. Her iki yönde yabancı GET/güncelleme 404; kendi şirketinde güncelleme/geçmiş, CSRF/izleyici/stale-version retleri doğrulandı. İlk koşudaki yeniden kullanılabilen CSRF çerezi test beklentisi düzeltildi; başarısız log korundu.
 - Kanıt: tests/reports/asset-put-section20-acceptance-20261025.md ve ilk/son koşu logları. Canlı 6198ef6 korunuyor; bu değişiklik tam CI/staging/yayın ve gerçek Santa/Farma kabulü yerine geçmez. Kişisel OTP istenmedi.
 - Önceki canlı görsel kabulü de kayda alındı: otomatik sola kayan galeri, sabit çerçeve/yazı, orijinal kaynakla tam ekran portal, Escape/fokus/Enter kontrolleri. Kanıt: tests/reports/live-visual-and-mfa-followup-20261025.md.
+
+### 25 Ekim 2026 — PUT adayının sunucu staging ve geri dönüş kapıları
+- Kesin 124b2d1 kaynağı sunucuda exit 0 derlendi. Yeni staging veritabanı güncel 034105Z üretim yedeğinden restore edildi; 95 tablo sayımı eşit. Ayrı medya/anahtar kopyaları, internal ağ ve dış portsuz/read-only yeni uygulama ile apex/Farma/Santa host sağlığı 121/0, anonim GET/PUT/PATCH 401 ve Secure CSRF kontrolü geçti.
+- Güncel 6198ef6 imajlarını içeren 140 MB 034258Z rollback paketi ve 034349Z dosya/imaj geri dönüş provası geçti. İlk yanlış public konteyner zaman damgası preflight'ta reddedildi; gerçek envanterden düzeltilerek paket tamamlandı.
+- CI 40158737966 Linux güvenlik ve Windows işleri başarılı; PostgreSQL işi 121065583776 çalışıyor. Sonuç beklenmeden üretim değiştirilmedi. Kanıt: tests/reports/asset-put-server-preparation-20261025.md, CI JSON ve beş sunucu görüntüsü. Kişisel OTP istenmedi; gerçek SMTP/ödeme/Bölüm 20 kabulü açık.
