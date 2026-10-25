@@ -1,3 +1,10 @@
+## 25 Ekim 2026 — normal Santa owner, varlık, zimmet ve bakım kabulü
+- Durum: TAMAM (20.2.1/.2/.3/.6); tam Bölüm20 ve ödeme açık.
+- Kullanıcı Santa QR kurulumunu tamamladı; gerçek normalowner dashboard Santa adıyla açıldı. Yeni varlık/kategori, kabul çalışanı ve normal zimmet oluşturuldu. Bakım planı, çalışan iadesi, başlatma ve tamamlama normal ürün formlarından geçti.
+- SQL: gerçek varlık8041958a-e66b-4b7d-a2d1-4748235a08c2 SantaCompanyId3526d59e-d0bb-4755-a90e-6f3e7eccc341; kategori/çalışan/olay kapsamları true. BakımCompleted, varlıkAvailable,6olay aynıCompanyId. İki READONLY sorgu exit0.
+- Kanıt: tests/reports/santa-e2e-20261025/normal-owner-asset-maintenance.md;6ekran ve2SQL. Credential/QR/kurtarma kodları kullanılmadı veya kaydedilmedi.
+- Sıradaki: PDF/imza/e-posta alt adımları, lisans/koltuk, CSV, Editör, arşiv/restore/logout, Farma ve canlıGET/PUT. Mevcut Santa normal oturumu açık; tekrar giriş gereksiz.
+
 ## 25 Ekim 2026 — Santa aktif, gerçek parola kabul edildi; token tekrar kullanımı incelendi
 - Durum: TAMAM (gerçek EmailConfirmed + parola doğrulaması ve izole token ret/retry/replay testi); Santa MFA/dashboard/kalan Bölüm20 açık.
 - Taze ayrı platform sekmesi Santa Doğrulandı gösterdi; eski cache kanıt sayılmadı. Yeni davet reauth iptal edildi, ikinci e-posta gönderilmedi. Normal Santa parolası kabul edilip ilk MFA QR kurulumu açıldı; kullanıcıya Santa QR adımı bırakıldı. Yeni platform kodu/davet gerekmez.
