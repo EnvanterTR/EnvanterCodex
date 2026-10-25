@@ -1,3 +1,10 @@
+## 25 Ekim 2026 — Santa aktif, gerçek parola kabul edildi; token tekrar kullanımı incelendi
+- Durum: TAMAM (gerçek EmailConfirmed + parola doğrulaması ve izole token ret/retry/replay testi); Santa MFA/dashboard/kalan Bölüm20 açık.
+- Taze ayrı platform sekmesi Santa Doğrulandı gösterdi; eski cache kanıt sayılmadı. Yeni davet reauth iptal edildi, ikinci e-posta gönderilmedi. Normal Santa parolası kabul edilip ilk MFA QR kurulumu açıldı; kullanıcıya Santa QR adımı bırakıldı. Yeni platform kodu/davet gerekmez.
+- Test: gerçek SMTP e-postasındaki fragment token ile kısa ve Identity kuralı retleri, kimlik alanı koruma, aynı token'la aktivasyon ve tekrar reddi; son kapsam1/1 exit0,1.1185dk. Ürün değişmedi/deploy yok. İzole Compose temizlendi.
+- Kanıt: tests/reports/invitation-password-retry-20261025.md, genişletilmiş test logu ve santa-owner-email-confirmed-20261025.png. Credential/QR/token repoya alınmadı.
+- Sıradaki: kullanıcının Santa QR kurulumu; sonra normal owner dashboard ve10adım. Gerçek ödeme açık.
+
 ## 25 Ekim 2026 — Santa erişim daveti gerçek gönderildi
 - Durum: TAMAM (normal platform eylemi + Google dahili sunucusuna teslim1/1); hesap aktivasyonu/owner girişi henüz doğrulanmadı.
 - Kullanıcının girişinden sonra Santa Detay → Yetkili erişim e-postasını yeniden gönder kullanıldı. Google günlüğü22:39:31 TRT cloudmailhome alıcısı, IPv4/TLS ile teslim gösterdi; inbox/spam konumu iddia edilmedi.
