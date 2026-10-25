@@ -490,3 +490,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Güncel üretim PostgreSQL salt-okunur slug agregası: farma 1 aktif kayıt; santa 0, demo3 0. Sadece istenen üç slug sayıldı, kullanıcı/kimlik/credential veya müşteri envanteri çıkarılmadı, yazma yapılmadı.
 - Böylece public DNS/HTTPS sağlık başarısının şirket oluşturma kanıtı olmadığı gerçek DB çıktısıyla doğrulandı. Sıradaki gerçek kabul işi normal platform akışından Santa/Demo3 oluşturulmasıdır; DNS/proxy yeniden ayarı gerekçesi yok. Farma'nın 10 müşteri adımı hâlâ ayrı kabul gerektirir.
 - Kanıt: tests/reports/tenant-public-dns-tls-20261025.md, live-section20-company-presence-20261025.sql ve görüntüsü. CI PostgreSQL işi 121065583776 halen çalışıyor; yeni OTP istenmedi.
+
+### 25 Ekim 2026 — Hedef 15.10 yayın sonrası gözlem planı
+- docs/PRODUCTION-24H-OBSERVATION.md eklendi: T0/5 dakika/ilk saat/24 saat kontrol aralıkları, UTC kanıt dosyaları, health ile ticari kapı ayrımı, müdahale eşikleri, şema 121'i koruyan geri dönüş ve gözlem boşluğu kuralları.
+- Mevcut salt-okunur health komutu gerçek apex/Farma/Santa HTTPS üzerinde 200 ready/121/0, exit 0 verdi; pre-put-release-health-baseline-20261025.log. Bu tek anlık yayın öncesi ölçümdür, 24 saat tamamlandı sayılmadı; sürekli görev veya nöbetçi atanmış gibi gösterilmedi.
+- 124b2d1 CI PostgreSQL işi çalışıyor. Diğer kapılar hazır; tam Hedef/Bölüm 20/gerçek sağlayıcı kabulü açık.
