@@ -469,3 +469,9 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Kaynak SHA gerçek reload sonrası korundu. Üretime yalnız eklemeli 120→121 SQL uygulandı; q7up7i4mglpe1w1ismqpnmzn Success/Finished. Gerçek web/public imajları 6198ef6, konteyner son eki 20261025T025226, DB healthy. Apex/Farma HTTPS 200 ready/121/0; canlı çöp kutusu kontrolleri sunuluyor.
 - 8 plan korundu, checkout eksik sağlayıcı yüzünden kapalı. Galeri JS/CSS + üç cihaz görseli + portal + portreli güvenlik görseli + şeffaf etiket dosyaları birebir kaynak hash'leriyle eşleşti. Bu, yeni oturumlu müşteri akışı veya yeni canlı etkileşimli galeri testi değildir.
 - Yeni kişisel OTP istenmedi. Gerçek Demo3/Santa/Farma ve SMTP/ödeme kabulü açık; tam Hedef veya ana dala merge tamamlandı sayılmıyor. Kanıt: tests/reports/production-company-deletion-release-20261025.md ve ilişkili canlı log/görüntüler.
+
+### 25 Ekim 2026 — P0 Bölüm 20.4 PUT ve çift yönlü izolasyon
+- Hedefteki PUT saldırı isteği varlık güncelleme route'unda desteklenmiyordu. PATCH ve PUT aynı mevcut güncelleme handler'ına bağlandı; şirket/rol/CSRF/sürüm/geçmiş denetimleri ortak kaldı. Migration veya UI değişikliği yok.
+- İzole gerçek PostgreSQL ve sentetik kimlikli endpoint kabulü iki yöntem için 2/2 geçti. Her iki yönde yabancı GET/güncelleme 404; kendi şirketinde güncelleme/geçmiş, CSRF/izleyici/stale-version retleri doğrulandı. İlk koşudaki yeniden kullanılabilen CSRF çerezi test beklentisi düzeltildi; başarısız log korundu.
+- Kanıt: tests/reports/asset-put-section20-acceptance-20261025.md ve ilk/son koşu logları. Canlı 6198ef6 korunuyor; bu değişiklik tam CI/staging/yayın ve gerçek Santa/Farma kabulü yerine geçmez. Kişisel OTP istenmedi.
+- Önceki canlı görsel kabulü de kayda alındı: otomatik sola kayan galeri, sabit çerçeve/yazı, orijinal kaynakla tam ekran portal, Escape/fokus/Enter kontrolleri. Kanıt: tests/reports/live-visual-and-mfa-followup-20261025.md.

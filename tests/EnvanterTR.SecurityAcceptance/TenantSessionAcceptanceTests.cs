@@ -9990,9 +9990,12 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             item => item.Action == "Restored");
     }
 
-    [Fact]
-    public async Task Asset_single_edit_is_tenant_scoped_version_checked_and_written_to_history()
+    [Theory]
+    [InlineData("PATCH")]
+    [InlineData("PUT")]
+    public async Task Asset_single_edit_is_tenant_scoped_version_checked_and_written_to_history(string method)
     {
+        var updateMethod = new HttpMethod(method);
         Asset current;
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
@@ -10028,32 +10031,58 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             notes = current.Notes
         };
 
-        using (var missingCsrf = await SendAsRoleAsync(HttpMethod.Patch, $"/api/assets/{_ownAssetId}", "admin",
+        using (var missingCsrf = await SendAsRoleAsync(updateMethod, $"/api/assets/{_ownAssetId}", "admin",
                    System.Net.Http.Json.JsonContent.Create(Request(current.UpdatedAt, current.CategoryId))))
             Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
         await SetCompanyRoleAsync("viewer");
-        using (var readOnly = await SendAsRoleAsync(HttpMethod.Patch, $"/api/assets/{_ownAssetId}", "viewer",
+        using (var readOnly = await SendAsRoleAsync(updateMethod, $"/api/assets/{_ownAssetId}", "viewer",
                    System.Net.Http.Json.JsonContent.Create(Request(current.UpdatedAt, current.CategoryId)), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.Forbidden, readOnly.StatusCode);
         await SetCompanyRoleAsync("admin");
-        using (var crossTenant = await SendAsRoleAsync(HttpMethod.Patch, $"/api/assets/{_otherCompanyAssetId}", "admin",
+        using (var crossTenant = await SendAsRoleAsync(updateMethod, $"/api/assets/{_otherCompanyAssetId}", "admin",
                    System.Net.Http.Json.JsonContent.Create(Request(current.UpdatedAt, current.CategoryId)), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
-        using (var invalidCategory = await SendAsRoleAsync(HttpMethod.Patch, $"/api/assets/{_ownAssetId}", "admin",
+        using (var foreignRead = await SendAsAdminAsync($"/api/assets/{_otherCompanyAssetId}"))
+            Assert.Equal(HttpStatusCode.NotFound, foreignRead.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.CompanyMemberships.Add(new CompanyMembership { CompanyId = _otherCompanyId, UserId = _userId, RoleKey = "admin" });
+            await db.SaveChangesAsync();
+        }
+        using (var reverseCsrf = await SendAsUserAsync(HttpMethod.Get, "/api/session/csrf", _userId, _otherCompanyId))
+        {
+            Assert.Equal(HttpStatusCode.OK, reverseCsrf.StatusCode);
+            using var payload = JsonDocument.Parse(await reverseCsrf.Content.ReadAsStringAsync());
+            var reverseToken = payload.RootElement.GetProperty("requestToken").GetString()!;
+            var reverseCookie = reverseCsrf.Headers.TryGetValues("Set-Cookie", out var cookies)
+                ? cookies.Select(value => value.Split(';', 2)[0])
+                    .FirstOrDefault(value => value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase)) ?? antiforgeryCookie
+                : antiforgeryCookie;
+            using var ownRead = await SendAsUserAsync(HttpMethod.Get, $"/api/assets/{_otherCompanyAssetId}", _userId, _otherCompanyId);
+            Assert.Equal(HttpStatusCode.OK, ownRead.StatusCode);
+            using var reverseRead = await SendAsUserAsync(HttpMethod.Get, $"/api/assets/{_ownAssetId}", _userId, _otherCompanyId);
+            Assert.Equal(HttpStatusCode.NotFound, reverseRead.StatusCode);
+            using var reverseWrite = await SendAsUserAsync(updateMethod, $"/api/assets/{_ownAssetId}", _userId, _otherCompanyId,
+                JsonContent.Create(Request(current.UpdatedAt, current.CategoryId, "Foreign overwrite")), reverseToken, reverseCookie);
+            Assert.Equal(HttpStatusCode.NotFound, reverseWrite.StatusCode);
+        }
+        using (var invalidCategory = await SendAsRoleAsync(updateMethod, $"/api/assets/{_ownAssetId}", "admin",
                    System.Net.Http.Json.JsonContent.Create(Request(current.UpdatedAt, Guid.NewGuid())), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.BadRequest, invalidCategory.StatusCode);
-        using (var staleVersion = await SendAsRoleAsync(HttpMethod.Patch, $"/api/assets/{_ownAssetId}", "admin",
+        using (var staleVersion = await SendAsRoleAsync(updateMethod, $"/api/assets/{_ownAssetId}", "admin",
                    System.Net.Http.Json.JsonContent.Create(Request(current.UpdatedAt.AddTicks(-1), current.CategoryId)), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.Conflict, staleVersion.StatusCode);
 
-        using (var updated = await SendAsRoleAsync(HttpMethod.Patch, $"/api/assets/{_ownAssetId}", "admin",
+        using (var updated = await SendAsRoleAsync(updateMethod, $"/api/assets/{_ownAssetId}", "admin",
                    System.Net.Http.Json.JsonContent.Create(Request(current.UpdatedAt, current.CategoryId)), requestToken, antiforgeryCookie))
         {
             Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
             using var payload = JsonDocument.Parse(await updated.Content.ReadAsStringAsync());
             Assert.True(payload.RootElement.GetProperty("changed").GetBoolean());
         }
-        using (var replay = await SendAsRoleAsync(HttpMethod.Patch, $"/api/assets/{_ownAssetId}", "admin",
+        using (var replay = await SendAsRoleAsync(updateMethod, $"/api/assets/{_ownAssetId}", "admin",
                    System.Net.Http.Json.JsonContent.Create(Request(current.UpdatedAt, current.CategoryId, "Stale overwrite")), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.Conflict, replay.StatusCode);
 

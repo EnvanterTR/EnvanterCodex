@@ -2533,7 +2533,7 @@ public static class AssetEndpoints
                 InsuranceProvider: asset.InsuranceProvider, InsurancePolicyNumber: asset.InsurancePolicyNumber, InsuranceExpiresAt: asset.InsuranceExpiresAt));
         }).RequireAuthorization("asset.write");
 
-        api.MapPatch("/assets/{id:guid}", async (Guid id, [FromBody] UpdateAssetRequest request,
+        api.MapMethods("/assets/{id:guid}", ["PATCH", "PUT"], async (Guid id, [FromBody] UpdateAssetRequest request,
             ClaimsPrincipal user, AppDbContext db, AssetCustomFieldProtection customFieldProtection, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
