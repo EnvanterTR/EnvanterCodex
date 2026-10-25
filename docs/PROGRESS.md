@@ -480,3 +480,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Kesin 124b2d1 kaynağı sunucuda exit 0 derlendi. Yeni staging veritabanı güncel 034105Z üretim yedeğinden restore edildi; 95 tablo sayımı eşit. Ayrı medya/anahtar kopyaları, internal ağ ve dış portsuz/read-only yeni uygulama ile apex/Farma/Santa host sağlığı 121/0, anonim GET/PUT/PATCH 401 ve Secure CSRF kontrolü geçti.
 - Güncel 6198ef6 imajlarını içeren 140 MB 034258Z rollback paketi ve 034349Z dosya/imaj geri dönüş provası geçti. İlk yanlış public konteyner zaman damgası preflight'ta reddedildi; gerçek envanterden düzeltilerek paket tamamlandı.
 - CI 40158737966 Linux güvenlik ve Windows işleri başarılı; PostgreSQL işi 121065583776 çalışıyor. Sonuç beklenmeden üretim değiştirilmedi. Kanıt: tests/reports/asset-put-server-preparation-20261025.md, CI JSON ve beş sunucu görüntüsü. Kişisel OTP istenmedi; gerçek SMTP/ödeme/Bölüm 20 kabulü açık.
+
+### 25 Ekim 2026 — Bölüm 20.9 dış DNS/TLS kanıtı
+- Salt-okunur public DNS-over-HTTPS ve normal sertifika doğrulamalı HTTPS ile demo3, santa ve yeni acceptance-20261025 alt alan adları dışarıdan doğrulandı: DNS cevapları var, /api/status 200 ready. DNS/proxy/sertifika ayarı veya şirket kaydı değiştirilmedi.
+- Bu, önceki staging Host-header kanıtından daha güçlü gerçek dış erişim kanıtıdır; şirket provisioning/giriş/izolasyon/silme kabulü değildir. İlk Windows demo3 DNS sorgusundaki paket hatası bağımsız resolver ve gerçek HTTPS ile yeniden kontrol edildi, kesinti sayılmadı.
+- Kanıt: tests/reports/tenant-public-dns-tls-20261025.md ve JSON. Kişisel OTP gerektirmedi. 124b2d1 PostgreSQL CI işi halen çalışıyor; diğer iki iş başarılı, yayın bekliyor.
