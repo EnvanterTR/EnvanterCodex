@@ -495,3 +495,14 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - docs/PRODUCTION-24H-OBSERVATION.md eklendi: T0/5 dakika/ilk saat/24 saat kontrol aralıkları, UTC kanıt dosyaları, health ile ticari kapı ayrımı, müdahale eşikleri, şema 121'i koruyan geri dönüş ve gözlem boşluğu kuralları.
 - Mevcut salt-okunur health komutu gerçek apex/Farma/Santa HTTPS üzerinde 200 ready/121/0, exit 0 verdi; pre-put-release-health-baseline-20261025.log. Bu tek anlık yayın öncesi ölçümdür, 24 saat tamamlandı sayılmadı; sürekli görev veya nöbetçi atanmış gibi gösterilmedi.
 - 124b2d1 CI PostgreSQL işi çalışıyor. Diğer kapılar hazır; tam Hedef/Bölüm 20/gerçek sağlayıcı kabulü açık.
+
+### 25 Ekim 2026 — PUT sürümü CI kapısını geçti, üretim yayını başladı
+- 124b2d1 CI 40158737966 tam 3/3 success. Kalıcı kaynak SHA reload ile doğrulandı. Gözlem kesintisi sonrası mevcut üretim/staging imajları yeniden doğrulandı; yeni dağıtım yoktu.
+- Yayın öncesi yedekler tazelendi: 080433Z SQL dump, 140 MB 080518Z bundle, 080618Z dosya/imaj provası ve ayrı 0804 restore DB'de 95 tablo sayımı eşit. Mevcut apex/Farma health ready/121/0.
+- Coolify 8eyikaefpne2tcfuetcloj3n, 08:08:22 UTC, kesin 124b2d1 ile başladı; henüz tamamlandı sayılmadı. Kanıt: tests/reports/production-asset-put-release-20261025.md ve dört güncel kurtarma görüntüsü. Kişisel OTP istenmedi; gerçek Bölüm 20/sağlayıcı kabulü açık.
+
+### 25 Ekim 2026 — PUT ve çift yönlü izolasyon sürümü canlıda
+- Coolify 8eyikaefpne2tcfuetcloj3n Success/Finished. Gerçek web/public imajları 124b2d1, konteyner son eki 20261025T080842; DB 080841 healthy. Şema 121 korunuyor, migration yapılmadı.
+- İlk Farma health gözlemi 10 saniye zaman aşımı verdi; log korundu. Bağımsız normal-TLS HTTP isteği ve ardından iki-host Node probu apex/Farma 200 ready/121/0, exit 0 verdi; tek gözlem gecikmesinde yayın yeniden başlatılmadı.
+- 8 public plan korundu, checkout eksik sağlayıcı nedeniyle kapalı. 8 görsel/galeri kaynağı SHA256 ile birebir eşleşti. Kanıt: production-asset-put-release-20261025.md, ilk/son health ve commercial/assets logları, tamamlanma/imaj görüntüleri.
+- Güncel status/audit başlıkları yenilendi, 24 saat planındaki geri dönüş paketi 080518Z olarak güncellendi. Tam Hedef/Bölüm 20/SMTP/ödeme kabulü hâlâ açık. Kişisel OTP istenmedi.

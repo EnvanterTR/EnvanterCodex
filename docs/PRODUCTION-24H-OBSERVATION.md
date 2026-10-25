@@ -5,7 +5,7 @@ Hedef 15.10 için uygulanacak plan. Planın bulunması, 24 saatlik gözlemin tam
 ## Yayın kaydı ve sorumluluk
 
 - Yayını yürüten operatör, T0, kesin SHA, CI sonucu, staging kabulü, güncel yedek/restore ve geri dönüş paketi yollarını aynı release raporuna yazar.
-- 124b2d1 adayı için önceki sürüm 6198ef6; doğrulanmış geri dönüş paketi `/var/backups/envantertr/rollback-20261025T034258Z`. Şema 121; bu aday yeni migration içermez. Daha sonraki yayınlarda bu yollar güncel paketle değiştirilir.
+- 124b2d1 sürümü için önceki sürüm 6198ef6; yayın öncesi tazelenmiş geri dönüş paketi `/var/backups/envantertr/rollback-20261025T080518Z`. Şema 121; bu sürüm yeni migration içermez. Daha sonraki yayınlarda bu yollar güncel paketle değiştirilir.
 - Kontrolü yapan operatör her gözlem zamanını ve sonucu kaydeder. Sürekli çalışan izleyici veya nöbetçi atanmamışsa aradaki süre gözlenmiş sayılmaz. Bu belge bir zamanlanmış görev oluşturmaz.
 
 ## Kontrol takvimi

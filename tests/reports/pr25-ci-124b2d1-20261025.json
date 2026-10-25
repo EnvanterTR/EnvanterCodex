@@ -1,9 +1,9 @@
 {
-  "checkedAt": "2026-10-25T03:48:01.4168357+00:00",
+  "checkedAt": "2026-10-25T04:08:10.9785282+00:00",
   "id": 40158737966,
   "sha": "124b2d1e93af2a13c393d68353c271671c856de8",
-  "status": "in_progress",
-  "conclusion": null,
+  "status": "completed",
+  "conclusion": "success",
   "jobs": [
     {
       "id": 121065583698,
@@ -14,8 +14,8 @@
     {
       "id": 121065583776,
       "name": "Linux PostgreSQL tenant acceptance",
-      "status": "in_progress",
-      "conclusion": null
+      "status": "completed",
+      "conclusion": "success"
     },
     {
       "id": 121065583791,
