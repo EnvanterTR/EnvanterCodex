@@ -521,3 +521,7 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Google resmi SMTP belgesine göre smtp.gmail.com / TLS 587 profili hazırlandı. Coolify production UI'de host, SMTP kullanıcı ve gönderici admin@envantertr.com, public HTTPS URL kaydedildi; port/TLS/ad Compose varsayılanları korundu, preview alanları değiştirilmedi. Host gerçek reload sonrası yeniden açılıp doğrulandı.
 - EMAIL_SMTP_PASSWORD korumalı alanı boş. Kullanıcıdan bir kez yalnız bu alana Google uygulama parolasını kaydetmesi istendi; sohbete secret istenmedi, platform parolası Google parolası sayılmadı. Yeni credential agent tarafından oluşturulmadı.
 - Henüz redeploy yok; kaydedilmiş ayarlar çalışan runtime veya gerçek teslimat kanıtı değildir. Cloud trial/checkout açılmadı, iyzico değiştirilmedi. Kanıt: tests/reports/google-smtp-preparation-20261025.md ve yalnız gizli olmayan host görüntüsü. Yeni ortam yayını öncesi Santa/Demo3'ü içeren güncel yedek gerekir.
+
+### 25 Ekim 2026 — kullanıcının doğrulama bağlamı kalıcılaştırıldı
+- Google 2 Adımlı Doğrulama'nın testlerdeki tekrarlar nedeniyle kapatıldığı kullanıcı açıklaması, Google/platform MFA ayrımı, kaydedilmiş fakat deploy edilmemiş SMTP ayarları ve Demo3 geri alma bekleyişi docs/ACCOUNT-SETUP-CONTEXT.md içine kaydedildi. USER-REQUEST-TRACKER başına bağlantı eklendi; parola/OTP/secret yazılmadı.
+- Gerçek platform penceresi yeniden kontrol edildi: reauth hâlâ bekliyor, geri alma gerçekleşmemiş. Yeni kod sorusu veya tekrar parola denemesi yapılmadı; mevcut handoff korundu. Tam Hedef tamamlandı sayılmadı.

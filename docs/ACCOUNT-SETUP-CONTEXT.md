@@ -1,0 +1,27 @@
+# Hesap kurulumu ve doğrulama bağlamı — 25 Ekim 2026
+
+Bu dosya kullanıcının konuşmada düzelttiği bağlamı korur; canlı hesap ayarlarının yerine geçmez. Yeni işlemden önce ilgili gerçek ekran yeniden kontrol edilir.
+
+## Kullanıcının kararı ve tarihsel neden
+
+Kullanıcı, Google'daki 2 Adımlı Doğrulama'nın testler sırasında sürekli giriş istenmesi nedeniyle kapatıldığını bildirdi. Bunu yeni keşfedilmiş veya açıklanmamış bir hesap sorunu gibi tekrar anlatma. Son doğrudan Google güvenlik ekranı gözleminde `admin@envantertr.com` hesabı için “2 Adımlı Doğrulama kapalı” ve uygulama şifreleri ekranında “Aradığınız ayar, hesabınızda kullanılamıyor” görüldü. Kullanıcının sonraki “girdim” mesajları platform yönetimi ekranı da içerebilir; bunu Google 2 Adımlı Doğrulama'nın yeniden açıldığına kanıt sayma.
+
+Google hesap doğrulaması ile EnvanterTR platform Authenticator doğrulaması iki ayrı sistemdir. Birindeki oturum veya ayar diğerindeki kritik işlem yetkisini açmaz. Google güvenlik ayarlarını kullanıcının yerine kendiliğinden açıp kapatma.
+
+## SMTP durumu
+
+- Kullanıcının seçtiği gönderici `admin@envantertr.com`.
+- Coolify production ayarlarında `smtp.gmail.com`, bu SMTP kullanıcı/gönderici adresi ve `https://envantertr.com` bağlantı kökü kaydedildi. Port 587/TLS açık Compose varsayılanı korunuyor. Bu hazırlık için redeploy yapılmadı.
+- Son doğrulamada `EMAIL_SMTP_PASSWORD` alanı boştu. Normal Google veya platform parolası bu alana yazılmadı; parola/OTP/recovery code bu dosyada tutulmaz.
+- Uygulama anahtarı eksikliği gerçek davet/parola kurtarma teslimatını engelliyor. Google uygulama anahtarı üretilemiyorsa aynı talimatı sürekli tekrarlama; gerçek hesap koşulunu kontrol et. Kullanıcının telefon/hesap kurulumu gerektiren adımı onun tamamlaması gerekir.
+- Google uygulama şifresi için 2 Adımlı Doğrulama önkoşulu: https://support.google.com/accounts/answer/185833?hl=tr.
+
+## Platform ve şirket kabulü
+
+- Canlı uygulama 124b2d1, şema 121; gerçek rollout kanıtı release raporunda.
+- Santa normal formdan oluşturuldu ve aktif; sahibinin e-postası son DB kontrolünde doğrulanmamıştı. Davet gönderilemedi; giriş tamamlandı sayılmadı.
+- Demo3 normal formdan oluşturuldu, silme kabulünde geri alınabilir çöp kutusuna taşındı. Santa/Farma ve ortak kimlik alanları için 82 özel projeksiyon aynı kaldı. Demo3 geri alma/etkinleştirme henüz gerçekleşmedi.
+- Root oturumu açık olsa bile kritik işlem için ayrı 10 dakikalık güncel kanıt gerekebilir. Parola+MFA ile yeni normal giriş bu kanıtı açar; eski oturumlara kendiliğinden süre verilmez. Süreyi uzatma, MFA'yı atlama veya eski kurtarma kodlarını kullanma.
+- Son kullanıcı “girdim” mesajından sonra açık paylaşılan platform oturumu bulundu; Demo3 geri alma yine “Yönetici doğrulaması” istedi. Parola hazır, mevcut tek kod sorusu açık bırakıldı. Kullanıcı yanıtı gelmeden tekrar soru açma veya giriş denemelerini tekrarlama.
+
+İlgili kanıtlar: `tests/reports/santa-e2e-20261025/README.md`, `tests/reports/google-smtp-preparation-20261025.md`, `tests/reports/production-asset-put-release-20261025.md`. Geri alma sonradan tamamlanırsa bu durum notu ve release/kabul raporu birlikte güncellenir.
