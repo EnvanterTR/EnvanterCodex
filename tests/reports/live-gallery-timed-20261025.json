@@ -1,0 +1,59 @@
+[
+  {
+    "at": 1792897850293,
+    "copy": [
+      "QR kod ve barkod etiketleriyle cihazlarınızı benzersiz envanter kayıtlarıyla eşleştirin. Etiketi okutarak ilgili kayda ulaşın; konum, durum ve zimmet bilgilerini yetkiniz kapsamında görüntüleyin.",
+      "Kurumsal etiket tasarımı: varlık kodu, QR ve barkod bir arada.",
+      "Saha erişimi: kamera veya uyumlu okuyucuyla hızlı kayıt arama.",
+      "İzlenebilirlik: fiziksel cihaz ile kayıtlı hareket geçmişi arasında bağlantı."
+    ],
+    "heading": "Fiziksel varlıktan dijital kayda, tek taramayla",
+    "height": 503.0625,
+    "pressed": [
+      "true",
+      "false",
+      "false",
+      "false"
+    ],
+    "transform": "matrix(1, 0, 0, 1, 0, 0)",
+    "width": 505.890625
+  },
+  {
+    "at": 1792897856825,
+    "copy": [
+      "QR kod ve barkod etiketleriyle cihazlarınızı benzersiz envanter kayıtlarıyla eşleştirin. Etiketi okutarak ilgili kayda ulaşın; konum, durum ve zimmet bilgilerini yetkiniz kapsamında görüntüleyin.",
+      "Kurumsal etiket tasarımı: varlık kodu, QR ve barkod bir arada.",
+      "Saha erişimi: kamera veya uyumlu okuyucuyla hızlı kayıt arama.",
+      "İzlenebilirlik: fiziksel cihaz ile kayıtlı hareket geçmişi arasında bağlantı."
+    ],
+    "heading": "Fiziksel varlıktan dijital kayda, tek taramayla",
+    "height": 503.0625,
+    "pressed": [
+      "false",
+      "true",
+      "false",
+      "false"
+    ],
+    "transform": "matrix(1, 0, 0, 1, -390, 0)",
+    "width": 505.890625
+  },
+  {
+    "at": 1792897863406,
+    "copy": [
+      "QR kod ve barkod etiketleriyle cihazlarınızı benzersiz envanter kayıtlarıyla eşleştirin. Etiketi okutarak ilgili kayda ulaşın; konum, durum ve zimmet bilgilerini yetkiniz kapsamında görüntüleyin.",
+      "Kurumsal etiket tasarımı: varlık kodu, QR ve barkod bir arada.",
+      "Saha erişimi: kamera veya uyumlu okuyucuyla hızlı kayıt arama.",
+      "İzlenebilirlik: fiziksel cihaz ile kayıtlı hareket geçmişi arasında bağlantı."
+    ],
+    "heading": "Fiziksel varlıktan dijital kayda, tek taramayla",
+    "height": 503.0625,
+    "pressed": [
+      "false",
+      "false",
+      "false",
+      "true"
+    ],
+    "transform": "matrix(1, 0, 0, 1, -1117.94, 0)",
+    "width": 505.890625
+  }
+]
