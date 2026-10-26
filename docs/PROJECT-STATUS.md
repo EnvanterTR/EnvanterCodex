@@ -1,3 +1,9 @@
+## 26 Ekim 2026 — güncel durum ve açık kapılar
+
+Canlı SHA `124b2d1`, şema 121/0. Aday `4237b57`: izole sunucu derlemesi ve üç host HTTP/güvenlik kabulü başarılı; taze SQL/medya/anahtar/imaj yedeği ve geri dönüş provası tamam, geri yüklenen 95 tablo sayımı eşit. CI 40253374749 Windows ve Linux security başarılı; PostgreSQL işi devam ediyor. Henüz yeni dağıtım yok. Kanıt: `tests/reports/4237-server-staging-20261026.md`.
+
+Santa/Farma/Demo3 aktiftir. Santa normal sahibi etkinleştirildi, MFA kuruldu; Bölüm 20.2 adımları 1, 2, 3, 5, 6, 7, 9 kanıtlı (7/10). İmzalar/PDF, operatör giriş/yetki ve çıkış açık. Aktif teslim belgesi `ZMB-20261025-a11cc2306` hazır ama imzasız. Kullanıcı şu an Farma MFA yapamıyor; yeni kod istenmedi. Gerçek iki yönlü tenant saldırı testi, Farma tam senaryosu, Demo3 normal owner ve iyzico kabulü açık. Google relay ile gerçek e-posta teslimatı doğrulandı. Aşağıdaki önceki eksiklik ve sürüm kayıtları tarihseldir; güncel kanıtlar `tests/reports/santa-e2e-20261025/` altında.
+
 ## 25 Ekim 2026 — gerçek SMTP teslimatı canlıda doğrulandı
 
 Kullanıcı onayıyla Google Workspace tek sunucu IPv4/kayıtlı kullanıcı/TLS relay kuralı etkin. Coolify p0flhitgplemaxbk2548ll8a Success/Finished; aynı124 SHA, runtime160415, şema121/0, üç host200ready. Normal uygulama parola yenileme iletisi admin posta kutusuna19:10:59 TRT Google günlüğünde teslim1/1; parola veya MFA değişmedi. SMTP artık eski uygulama parolası engelinde değildir. Gerçek iyzico, Santa davet/aktivasyon/normal owner ve tam Bölüm20 açık. Kanıt: tests/reports/google-relay-production-acceptance-20261025.md. Aşağıdaki SMTP eksikliği kayıtları tarihseldir.

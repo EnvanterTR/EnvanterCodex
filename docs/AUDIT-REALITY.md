@@ -1,3 +1,11 @@
+## 26 Ekim 2026 — güncel kabul durumu
+
+Bu bölüm aşağıdaki tarihsel kayıtların yerine güncel durumu gösterir. Canlı SHA `124b2d1`, şema 121/0. Aday `4237b57` ayrıca derlenip gerçek izole sunucuda sınandı; üç host hazır, anonim GET/PUT/PATCH 401, CSRF/Secure çerez mevcut. Taze SQL geri yüklemesinde 95 tablo sayımı üretimle aynı. Güncel CI 40253374749 Windows ve Linux security başarılı; PostgreSQL işi çalışıyor. Yeni sürüm henüz canlı değil. Kanıt: `tests/reports/4237-server-staging-20261026.md`.
+
+Santa, Farma ve Demo3 aktiftir. Santa normal sahibi kullanıcı tarafından etkinleştirildi ve MFA kuruldu. Bölüm 20.2'nin 1, 2, 3, 5, 6, 7, 9 adımları kanıtlıdır (7/10); imza/PDF/e-posta, operatör normal girişi/yetki ve çıkış adımları tamamlanmadı. Aktif teslimi içeren `ZMB-20261025-a11cc2306` belgesi imzasızdır. Operatör erişim iletisi Microsoft SMTP tarafından kabul edildi; inbox konumu doğrulanmadı. Kanıt: `tests/reports/santa-e2e-20261025/normal-owner-asset-maintenance.md`, `license-csv-archive-20261026.md`, `operator-handover-preparation-20261026.md`.
+
+Kullanıcı şu an Farma MFA adımını yapamıyor; yeni kod istenmedi. Gerçek Farma tam kabulü, iki yönlü canlı GET/PUT 404/403 saldırı testi, Demo3 normal owner kabulü ve gerçek iyzico ödemesi hâlâ açık. Yanlış hostun geçerli ortak çerezi silmesi gerçek Identity/PostgreSQL testinde yeniden üretildi; düzeltme 5/5 izole senaryoda geçti. Bu, canlı tenant izolasyon kabulünün yerine sayılmaz. SMTP artık uygulama parolası engelinde değildir; Google relay gerçek iletileri teslim ediyor.
+
 ## 25 Ekim 2026 — gerçek SMTP teslimatı canlıda doğrulandı
 
 Kullanıcı onayıyla Google Workspace tek sunucu IPv4/kayıtlı kullanıcı/TLS relay kuralı etkin. Coolify p0flhitgplemaxbk2548ll8a Success/Finished; aynı124 SHA, runtime160415, şema121/0, üç host200ready. Normal uygulama parola yenileme iletisi admin posta kutusuna19:10:59 TRT Google günlüğünde teslim1/1; parola veya MFA değişmedi. SMTP artık eski uygulama parolası engelinde değildir. Gerçek iyzico, Santa davet/aktivasyon/normal owner ve tam Bölüm20 açık. Kanıt: tests/reports/google-relay-production-acceptance-20261025.md. Aşağıdaki SMTP eksikliği kayıtları tarihseldir.
