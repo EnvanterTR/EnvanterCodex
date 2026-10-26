@@ -1,0 +1,20 @@
+ Network onboarding-proxy-20261026_acceptance Creating
+ Network onboarding-proxy-20261026_acceptance Creating
+ Network onboarding-proxy-20261026_acceptance Created
+ Network onboarding-proxy-20261026_acceptance Created
+ Container onboarding-proxy-20261026-web-1 Creating
+ Container onboarding-proxy-20261026-web-1 Created
+ Container onboarding-proxy-20261026-production-1 Creating
+ Container onboarding-proxy-20261026-local-1 Creating
+ Container onboarding-proxy-20261026-local-1 Created
+ Container onboarding-proxy-20261026-production-1 Created
+ Container onboarding-proxy-20261026-web-1 Starting
+ Container onboarding-proxy-20261026-web-1 Started
+ Container onboarding-proxy-20261026-local-1 Starting
+ Container onboarding-proxy-20261026-production-1 Starting
+ Container onboarding-proxy-20261026-local-1 Started
+ Container onboarding-proxy-20261026-production-1 Started
+ Container onboarding-proxy-20261026-checks-run-94d2f2ed137c Creating
+ Container onboarding-proxy-20261026-checks-run-94d2f2ed137c Created
+PASS: production nginx serves the app, QR/decoder and all six application modules; camera is self-only on /giris, disabled on marketing; security headers retained.
+PASS: local nginx serves the app, QR/decoder and all six application modules; camera is self-only on /giris, disabled on marketing; security headers retained.

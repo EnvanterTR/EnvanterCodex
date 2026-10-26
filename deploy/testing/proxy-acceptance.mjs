@@ -13,6 +13,10 @@ for (const proxy of ['production', 'local']) {
   assert.equal(app.headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
   assert.match(await app.text(), /id="startAssetCamera"/);
   const trial = await request('/trial.html');
+  const onboardingStyle = await request('/company-onboarding.css');
+  assert.equal(onboardingStyle.status, 200);
+  assert.match(onboardingStyle.headers.get('content-type'), /text\/css/);
+  assert.match(await onboardingStyle.text(), /\.onboarding-panel/);
   assert.equal(trial.status, 200);
   assert.match(await trial.text(), /id="confirmation"/);
   const trialScript = await request('/trial.js');

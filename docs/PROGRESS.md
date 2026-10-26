@@ -1,3 +1,8 @@
+## 26 Ekim 2026 — onboarding CSS proxy yolu
+- Yayınöncesikaynakincelemesi /girisapexaliasında yeniCSSiçin pazarlamaHTMLfallback riskinibuldu. Production/localNginx'e yalnız /company-onboarding.css geçişieklendi;tenantwildcardzaten tümuygulamayollarınıiletiyor.
+- GerçekikiNginxizoleproxytesti HTTP200/text-css/içerikiddialarıyla exit0geçti;testkonteyner/ağıtemizlendi. onboarding-proxy-20261026.logvecleanupkanıtı. Eskiadaystagebaşarısıyeniadayyerinesayılmaz;canlı56edeğişmedi.
+- Sıradaki kesinCI/yeniadaystage/tazegeri dönüşveyayın.
+
 ## 26 Ekim 2026 — onboarding mevcut tarayıcı seçicisi düzeltmesi
 - c51394dCI40344206355Linuxgüvenlik121647308303mevcutfirma-profili testindeki belirsiz[data-page]seçicisini yakaladı. Rehberin yeni düğmesiyle ikieşleşmevardı;test #sidebar ilehedeflendi,işlevseliddialarazaltılmadı.
 - Tamhostedbrowserimajı yeniden derlendi,tümmevcutentrypoint exit0/78PASSsatırıverdi;78benzersiztestiddiasıyok. Kanıt: onboarding-browser-build/regression-20261026.log. Ürünkodudeğişmedi;kesinyeniCIbekliyor.
