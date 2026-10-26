@@ -1,3 +1,10 @@
+## 26 Ekim 2026 — yanlış host isteğinin geçerli oturumu silmesi düzeltildi
+- Durum: TAMAM (yerel kod+izole5senaryo); yeni tam uzakCI/staging/yayın açık, canlı124değişmedi.
+- Ortak domain cookie ile başka şirket hostuna gelen geçerli oturum isteğinde SignOut üretildiği gerçek Identity/PostgreSQL testinde1/1başarısızlıkla yeniden üretildi. Üyelik/rol geçerliliği ve hostuyumu ayrıldı; geçerli kendi-şirket/rootadmin oturumu yanlışhost401sonrasında korunur.
+- Son test5/5exit0,1.7294dk: iki geçerli kimlik, üç geçersiz (revoked/suspended/removedmembership), yabancıGET/PUTreddi, cookie ve kendi-host dönüşü. İlk2/2ara kapsam ayrılogda. MFA/süre/CSRF/domain değişmedi. İzoleCompose temizlendi.
+- Kanıt: tests/reports/tenant-host-session-continuity-20261026.md ve red/green/expandedloglar. Üç kaynak doğrulaması+diffkontrolü geçti.
+- Sıradaki: mevcutPR25'e gönder, tamCI; sonra güncelstaging/yedek/restore ve aynıkanıtlıSHAyayını. Kullanıcı şu anMFAyapamıyor, tekraristenmedi. Santa7/10vefullHedef açık; imza/operatör/Farma/cross-tenant/iyzico tamamlanmadı.
+
 ## 26 Ekim 2026 — Santa operatör erişim e-postası gerçek dış teslimatı
 - Durum: TAMAM (yeni erişim iletisinin Microsoft SMTP kabulü); operatör login/yetki ve imza/PDF açık.
 - Google günlüğü26Ekim01:18:45TRT c.belge alıcısı için52.101.202.157/TLS teslim1/1, kaynak169.58.53.189/TLS. Inbox/spam konumu doğrulanmadı.

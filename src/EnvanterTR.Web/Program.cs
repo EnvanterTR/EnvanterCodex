@@ -397,21 +397,28 @@ app.Use(async (context, next) =>
             return;
         }
 
-        currentRole = await (from membership in db.CompanyMemberships.AsNoTracking()
+        var currentMembership = await (from membership in db.CompanyMemberships.AsNoTracking()
             join company in db.Companies.AsNoTracking() on membership.CompanyId equals company.Id
-            where membership.CompanyId == companyId && membership.UserId == userId && company.IsActive &&
-                (tenantSlug == null || company.Slug == tenantSlug)
-            select membership.RoleKey).SingleOrDefaultAsync(context.RequestAborted);
-        if (currentRole is null)
+            where membership.CompanyId == companyId && membership.UserId == userId && company.IsActive
+            select new { membership.RoleKey, company.Slug }).SingleOrDefaultAsync(context.RequestAborted);
+        if (currentMembership is null)
         {
             await context.SignOutAsync(IdentityConstants.ApplicationScheme);
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;
         }
+        currentRole = currentMembership.RoleKey;
         var roleAuthorization = await CompanyRoleAuthorization.ResolveAsync(db, companyId, currentRole, context.RequestAborted);
         if (!roleAuthorization.Valid)
         {
             await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+        if (tenantSlug is not null && currentMembership.Slug != tenantSlug)
+        {
+            // The shared cookie is still valid on its own company portal. Reject this
+            // host without signing that unrelated portal out of every open tab.
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;
         }
@@ -444,7 +451,9 @@ app.Use(async (context, next) =>
     }
     if (tenantSlug is not null && companyClaim is null)
     {
-        await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+        // A valid platform session cannot access a company portal directly, but a
+        // mistaken portal visit must not erase its root-domain administrator login.
+        if (!isPlatformAdmin) await context.SignOutAsync(IdentityConstants.ApplicationScheme);
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
         return;
     }
