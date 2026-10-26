@@ -8,6 +8,7 @@ COPY deploy/testing/hosted-checkout-browser/checkout-user-quota.mjs ./
 COPY deploy/testing/hosted-checkout-browser/command-palette.mjs ./
 COPY deploy/testing/hosted-checkout-browser/company-portal-login.mjs ./
 COPY deploy/testing/hosted-checkout-browser/company-profile-portal.mjs ./
+COPY deploy/testing/hosted-checkout-browser/company-onboarding.mjs ./
 COPY deploy/testing/hosted-checkout-browser/asset-detail-actions.mjs ./
 COPY deploy/testing/hosted-checkout-browser/company-tasks.mjs ./
 COPY deploy/testing/hosted-checkout-browser/inventory-requests.mjs ./
@@ -34,6 +35,8 @@ COPY src/EnvanterTR.PublicSite/assets/images/asset-label-roll-transparent.png /p
 COPY src/EnvanterTR.PublicSite/assets/images/account-security-product-preview.png /public-site/assets/images/account-security-product-preview.png
 COPY src/EnvanterTR.PublicSite/assets/images/farma-company-portal-preview.png /public-site/assets/images/farma-company-portal-preview.png
 COPY src/EnvanterTR.Web/wwwroot/index.html /checkout-site/company-app.html
+COPY src/EnvanterTR.Web/wwwroot/index.html /checkout-site/index.html
+COPY src/EnvanterTR.Web/wwwroot/company-onboarding.css /checkout-site/company-onboarding.css
 COPY src/EnvanterTR.Web/wwwroot/vendor/qrcodegen.js /checkout-site/vendor/qrcodegen.js
 COPY src/EnvanterTR.Web/wwwroot/vendor/zxing-browser-0.2.1.min.js src/EnvanterTR.Web/wwwroot/vendor/bwip-js-min.js /checkout-site/vendor/
 COPY src/EnvanterTR.Web/wwwroot/report-print.js src/EnvanterTR.Web/wwwroot/scheduled-reports.js /checkout-site/

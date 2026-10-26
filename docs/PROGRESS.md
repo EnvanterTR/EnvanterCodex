@@ -1,3 +1,11 @@
+## 26 Ekim 2026 — beş adımlı şirket kurulumu yerel kabulü
+- Durum: TAMAM (yerel kod/API/UI kabulü); tamCI/staging/yayın henüz açık. Canlı56e/schema122korunuyor.
+- GenelBakış'a gerçek firma profili/konum/çalışan/varlık/zimmet kayıtlarından hesaplanan5adımlı rehber eklendi. Mevcut formlara gider; boş/mükerrer başlangıç verisi veya kullanıcı hesabı oluşturmaz. settings.manage+üyelik+CSRFve normal sınırlar; şirket satırkilidiyle tek tamamlama audit'i. Migration/auth değişikliği yok.
+- İlk API1/3ardından timestamp düzeltmesiyle6/6regresyon44.3536sgeçti. Yetkisizmembership401,viewer403,CSRF400,eksik409; diğerşirket/pasif/arşiv/silinen kayıtlar sayılmaz,paralel tamamlama tekolay/timestamp. İlk hatalar saklandı.
+- Chromium sentetiktransportta5rota,kısmi/tamhazır/hata/yenileme,CSRFPOST,tekraraçılışta tamamlandı,viewerhidden,açık/koyutema,390pxtaşmasızlık veJSerrorsız geçti. Birleşik gerçek müşteri kabulü sayılmaz.
+- Kanıt: tests/reports/company-onboarding-20261026.md, API/build/UIlogları veonboarding-ui-20261026PNGleri. Yeni tarayıcı senaryosu CI'a eklendi. Sıradaki kesinCIveyayınkapıları; merchant/Santaimza açık.
+- TAMAM dediğim1yerel iş paketinin1'i test çıktısıyla doğrulanmıştır.
+
 ## 26 Ekim 2026 — ücretli/deneme e-posta düzeltmeleri canlıda
 - Durum: TAMAM (bu iki düzeltmenin sürüm yayını ve anlık canlı kontrolü); bütün hedef/satış hazır değil.
 - Exact56e4083 üç CI işi başarılı. İzole gerçek sunucu build/staging, taze134409ZSQLrestore,95tablo eski alan koruması ve143MB135152Zgeri dönüş paketinin135452Zdosya/imaj kurtarma provası geçti. Migration yok.

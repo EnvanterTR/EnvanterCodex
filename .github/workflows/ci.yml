@@ -262,6 +262,21 @@ jobs:
           docker build --tag envantertr-hosted-checkout-browser-ci --file deploy/testing/Dockerfile.hosted-checkout-browser .
           docker run --rm --init envantertr-hosted-checkout-browser-ci
 
+      - name: Run five-step company onboarding UI in Chromium
+        shell: bash
+        run: |
+          mkdir -p tests/reports/onboarding-ci
+          docker run --rm --init --network none --mount "type=bind,source=$PWD/tests/reports/onboarding-ci,target=/evidence" --entrypoint node envantertr-hosted-checkout-browser-ci /acceptance/company-onboarding.mjs
+
+      - name: Preserve company onboarding UI evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: company-onboarding-${{ github.sha }}
+          path: tests/reports/onboarding-ci/
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Run existing company annual checkout with Kestrel PostgreSQL and Chromium
         shell: pwsh
         timeout-minutes: 12

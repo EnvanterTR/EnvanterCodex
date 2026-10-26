@@ -1,6 +1,6 @@
 ## 26 Ekim 2026 — P0 onboarding maddesi ayrıca açık
 
-Hedef12.1'in beş adımlı müşteri kurulum akışı için mevcut uygulamada yeterli kod/test kanıtı bulunamadı. CRM Onboarding etiketi ve MFA/hesap aktivasyonu bu gerekliliği kapatmaz. Bulgular ve mevcut formları yeniden kullanacak uygulama yönü: docs/P0-ONBOARDING-GAP.md. Henüz uygulanmış veya tamamlanmış sayılmaz. Merchant hesabı beklenirken P0 içinde yapılabilecek sonraki somut iştir.
+Hedef12.1'in beş adımlı müşteri kurulum rehberi artık yerel kodda mevcut;6/6PostgreSQL regresyonu ve açık/koyu/mobil Chromium etkileşim kabulü geçti. CRM etiketi veya MFA aktivasyonu bunun yerine sayılmadı. ExactCI/staging/yedek/kurtarma ve yayın henüz açık; canlı56e'de rehber yok. Kanıt/sınırlar: tests/reports/company-onboarding-20261026.md; tarihsel bulgular: docs/P0-ONBOARDING-GAP.md.
 
 ## 26 Ekim 2026 — kullanıcı iyzico hesabı olmadığını doğruladı
 

@@ -64,6 +64,8 @@ public static class OperationalEndpoints
             return await next(invocation);
         });
 
+        api.MapCompanyOnboardingEndpoints();
+
         api.MapGet("/company/storage-usage", (ClaimsPrincipal user, IConfiguration configuration,
             ILoggerFactory loggerFactory, CancellationToken cancellationToken) =>
         {
@@ -2919,6 +2921,7 @@ public static class OperationalEndpoints
         "BulkStatusChanged" => "Toplu durum değişikliği", "BulkAssigned" => "Toplu zimmet", "BulkReturned" => "Toplu iade",
         "BulkAudited" => "Toplu denetim", "BulkTransferred" => "Toplu konum transferi", "BulkUpdated" => "Toplu varlık düzenleme", "ProfileUpdated" => "Profil güncellendi",
         "BrandLogoUpdated" => "Şirket logosu güncellendi", "LabelSettingsUpdated" => "Etiket ayarları güncellendi",
+        "CompanyOnboardingCompleted" => "Şirket kurulumu tamamlandı",
         "LabelTemplatesUpdated" => "Yazıcı ve etiket şablonları güncellendi",
         "Invited" => "Kullanıcı davet edildi", "RoleChanged" => "Kullanıcı rolü değiştirildi", "ManagerChanged" => "Yönetici bağlantısı değiştirildi",
         "CsvImported" => "CSV içe aktarıldı", "XlsxImported" => "Excel içe aktarıldı", "AuditScheduled" => "Denetim planlandı", "AuditScheduleCleared" => "Denetim planı kaldırıldı",
