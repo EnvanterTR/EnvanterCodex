@@ -1,3 +1,8 @@
+## 26 Ekim 2026 — onboarding ilkCI envanter düzeltmesi
+- 6cd4f0ePR25'egönderildi;run40342129450Linuxgüvenlik12163934488216s'de statikUIenvanterinin eskiolduğunu buldu. TamCIgeçti sayılmadı,canlıdeğişmedi.
+- docs/ui-inventory.md kaynaktan yenidenüretildi:2304kontrol/71rotakontrolü/976düğme. Envanter--check ve2260satırlık5dildictionarykontrolü geçti;korumalargevşetilmedi. Kanıt: tests/reports/company-onboarding-20261026.md eki.
+- Sıradaki kesin yeniCI;tamstagingveyayınkapıları açık.
+
 ## 26 Ekim 2026 — beş adımlı şirket kurulumu yerel kabulü
 - Durum: TAMAM (yerel kod/API/UI kabulü); tamCI/staging/yayın henüz açık. Canlı56e/schema122korunuyor.
 - GenelBakış'a gerçek firma profili/konum/çalışan/varlık/zimmet kayıtlarından hesaplanan5adımlı rehber eklendi. Mevcut formlara gider; boş/mükerrer başlangıç verisi veya kullanıcı hesabı oluşturmaz. settings.manage+üyelik+CSRFve normal sınırlar; şirket satırkilidiyle tek tamamlama audit'i. Migration/auth değişikliği yok.

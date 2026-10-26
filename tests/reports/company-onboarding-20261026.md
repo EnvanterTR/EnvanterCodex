@@ -18,3 +18,7 @@ GET /api/company/onboarding projects the five readiness flags from one tenant-fi
 - Existing navigation verifier passed52destinations/10groups; all3inline scripts parse. CI now runs the onboarding browser scenario and preserves its screenshots; PostgreSQL suite discovers the new tests normally.
 
 Current live remains56e4083/schema122. No onboarding deployment or new real customer email/payment occurred during this package. Full exact CI and fresh deployment gates are next.
+
+## First CI and inventory correction
+
+Candidate6cd4f0e run40342129450 Linux security job121639344882 failed after16s at Generate-UiInventory --check: docs/ui-inventory.md was stale after adding8buttons/6route controls. No runtime failure or successful full-CI claim. Regenerated the artifact from source:2304controls,71route controls,976buttons. --check now passes; unchanged locale dictionary verifier passes2260entries across5languages. The verifier was not weakened or bypassed. A successor commit/CI is required before release.
