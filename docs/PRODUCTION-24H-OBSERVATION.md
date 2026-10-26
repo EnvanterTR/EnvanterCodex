@@ -2,7 +2,7 @@
 
 ## Güncel yayın: 26 Ekim 2026
 
-`4237b5735859cb9c2672ddc5a2f3a5ef22ba566c`, Coolify `wbhegg8zyeiziogdpr401ycm`, Success/Finished. Gerçek web/public SHA ve DB health doğrulandı. Doğrulama kaydı 01:55:56 UTC; tam bitiş saniyesi ayrıca çıkarılmadı. İlk yayın sonrası üç-host sağlık, görsel bütünlük ve kapalı ticari sınır kontrolleri başarılıdır. Henüz 24 saat tamamlandı iddiası yoktur. Kanıt: `tests/reports/production-session-continuity-release-20261026.md`. Güncel geri dönüş imajı **124b2d1**, şema **121** korunur; aşağıdaki 124→6198 geri dönüş kaydı önceki yayın içindir.
+`5018bc595684fe4410a9412755b39b2ada9cde0b`, Coolify `zsmt40hqy0qdjaha4eiu5mab`, Success/Finished, süre4m15s. Doğrulama09:42:17UTC; tam bitiş saniyesi ayrıca çıkarılmadı. Gerçek web/public imajları,DB sağlığı,üç host122/0,8plan/kapalı satış sınırları,görsel ve company HTML hashleri doğrulandı. Yeni24saat gözlem tamamlandı sayılmaz; aradaki süre sürekli izlenmiş değildir. Kanıt: `tests/reports/production-handover-pdf-email-release-20261026.md`. Güncel rollback `/var/backups/envantertr/rollback-20261026T092057Z`; önceki uygulama4237, yeni şema122eklemelidir. Canlıda yıkıcı Down/DBgeri yükleme yapılmadı. Aşağıdaki eski yayın yolları tarihsel örnektir.
 
 Hedef 15.10 için uygulanacak plan. Planın bulunması, 24 saatlik gözlemin tamamlandığı anlamına gelmez. Yeni sürümün Coolify `Success / Finished` zamanı **T0** olarak kaydedilir; gerçek imaj SHA'sı ve dış HTTPS sağlığı ayrıca doğrulanır.
 

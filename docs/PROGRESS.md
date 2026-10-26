@@ -1,3 +1,10 @@
+## 26 Ekim 2026 — imzalı PDF/e-posta sürümü canlıda
+- Durum: TAMAM (CI, eklemeli migration, kesin sürüm yayını ve ilk kontroller).
+- CI 40296954613 üç işte başarılı; PostgreSQL işi 24m54s. Kaynak 5018bc5 kaydedilip yeniden yüklenerek doğrulandı. Doğrulanmış SQL üretimde exit0; şema122, yeni gönderim tablosu boş.
+- Coolify zsmt40hqy0qdjaha4eiu5mab Success/Finished. Gerçek web/public imajları5018; DB healthy, restart0, SMTP relay TLS587 korundu. Dış üç host122/0, anonim belge uçları401, sekiz plan ve kapalı checkout/deneme sınırı, sekiz görsel ve şirket HTML hashleri, tam ekran aç/kapat kontrolleri geçti.
+- Kanıt: tests/reports/production-handover-pdf-email-release-20261026.md. Sıradaki: gerçek Santa imza/PDF/e-posta ve kalan Bölüm20/iyzico kabulü. 24 saat gözlem tamamlanmadı; kullanıcıdan tekrar kod istenmedi.
+- TAMAM dediğim 3 yayın maddesinin 3'ü test/dağıtım çıktısıyla doğrulanmıştır; gerçek müşteri belge kabulü bu üç maddeye dahil değildir.
+
 ## 26 Ekim 2026 — 5018 için taze geri dönüş provası
 - Durum: TAMAM (yedek/dosya/imaj kurtarma); yeni canlı yayın yok.
 - Güncel091423Z SQL yedeğiyle141MB rollback-20261026T092057Z oluşturuldu,exit0. Ayrı-drill-20261026T092201Z dizinine medya/anahtar arşivleri açılıp karşılaştırıldı;önceki iki uygulama imajı yüklendi,exit0.

@@ -1,0 +1,9 @@
+PASS /product-gallery.css SHA256=57650744598cd1acc5cf026599203cc4be3a561d104ae3269f9971f5a4f6d28d
+PASS /product-gallery.js SHA256=88912a4d3dfa5b0255fcbfd3995e166680fb64395c97cb2f16fdfc5db0995291
+PASS /assets/images/farma-company-portal-preview.png SHA256=28a60fb8c014820cfee4e35b525f500aac3ea7673deacaabde899a269567337f
+PASS /assets/images/account-security-product-preview.png SHA256=7899e8b733f8b1e159010109284e90eb3400ae7ecebfbf2982a733dcfd29d1cf
+PASS /assets/images/asset-label-roll-transparent.png SHA256=ea8a3ef3276b24098ef22e0a00d77d38f452fb3922ab785ed23566b8b77f9840
+PASS /assets/images/asset-label-devices.png SHA256=bc07dff188df71bee1a7aa6bb0c24a11f5eb9bba68328c4c24a052a79957c3da
+PASS /assets/images/asset-label-desktop.png SHA256=9f3bcc70f28a0bd37d9c5e69e66b406b8b7e6d110f4735590b0bccb321b9d6d0
+PASS /assets/images/asset-label-hardware.png SHA256=7303ff93ea7a718409b2b8daea3fbf071ec379894357ac96ea11beb1b128a802
+PASS live company HTML matches PDF/email source SHA256=741fa51db959d612bd882bdf8c8bf631dfdef862260451dce23298b74abbc5eb
