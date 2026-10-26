@@ -613,3 +613,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Yeni SHA ayrıca derlendi (çıkış 0), dışa kapalı ağda ayrı SQL/medya/anahtar kopyalarıyla başlatıldı. Üç host ready/121/0; anonim GET/PUT/PATCH 401; CSRF/Secure çerez doğrulandı.
 - Taze dump, 140 MB rollback ve dosya/imaj provası başarılı. Geri yüklenen kopyada 95 tablonun satır sayıları üretimle aynı. Kanıt: `tests/reports/4237-server-staging-20261026.md`.
 - Güncel CI 40253374749: Windows ve Linux security geçti, PostgreSQL kabul işi sürüyor. Üretim hâlâ 124; yayın kapısı henüz kapanmadı. Kullanıcının imza/MFA adımları bekliyor; yeni kod istenmedi.
+## 26 Ekim 2026 — ortak oturum sürekliliği canlıda
+
+- TAMAM: 4237 tam CI 40253374749 üç işte başarılı; gerçek kesin aday staging, taze yedek/restore/rollback ve yayın öncesi 95 tablo sayımı geçti. Coolify wbhegg8zyeiziogdpr401ycm Success/Finished.
+- Canlı web/public tam SHA 4237b5735859cb9c2672ddc5a2f3a5ef22ba566c, DB healthy, restart 0; üç HTTPS host ready/121/0. SMTP relay korundu. Sekiz kaynak SHA256 eşit, portal tam ekran aç/kapat ve galeri ilerlemesi canlıda gözlendi. Sekiz plan ve kapalı checkout/deneme sınırı korundu.
+- Kanıt: tests/reports/production-session-continuity-release-20261026.md ve bağlı log/ekranlar. Kullanıcının imzası/Farma MFA, tam müşteri ve gerçek iyzico kabulü açık. 24 saat gözlem tamamlanmadı; Hedef aktif.

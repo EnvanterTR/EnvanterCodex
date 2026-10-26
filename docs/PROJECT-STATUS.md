@@ -1,5 +1,7 @@
 ## 26 Ekim 2026 — güncel durum ve açık kapılar
 
+**Güncelleme:** 4237 tam CI 3/3 geçti ve güncel staging/yedek/geri dönüş sonrası canlıya alındı. Coolify `wbhegg8zyeiziogdpr401ycm` Success/Finished; web/public gerçek tam SHA `4237b5735859cb9c2672ddc5a2f3a5ef22ba566c`, DB healthy, üç HTTPS host ready/121/0. Görseller kaynak SHA256 eşit, portal tam ekran aç/kapat geçti. Kanıt: `tests/reports/production-session-continuity-release-20261026.md`. Alttaki 124/CI sürüyor paragrafı bu yayının öncesindeki gözlemdir.
+
 Canlı SHA `124b2d1`, şema 121/0. Aday `4237b57`: izole sunucu derlemesi ve üç host HTTP/güvenlik kabulü başarılı; taze SQL/medya/anahtar/imaj yedeği ve geri dönüş provası tamam, geri yüklenen 95 tablo sayımı eşit. CI 40253374749 Windows ve Linux security başarılı; PostgreSQL işi devam ediyor. Henüz yeni dağıtım yok. Kanıt: `tests/reports/4237-server-staging-20261026.md`.
 
 Santa/Farma/Demo3 aktiftir. Santa normal sahibi etkinleştirildi, MFA kuruldu; Bölüm 20.2 adımları 1, 2, 3, 5, 6, 7, 9 kanıtlı (7/10). İmzalar/PDF, operatör giriş/yetki ve çıkış açık. Aktif teslim belgesi `ZMB-20261025-a11cc2306` hazır ama imzasız. Kullanıcı şu an Farma MFA yapamıyor; yeni kod istenmedi. Gerçek iki yönlü tenant saldırı testi, Farma tam senaryosu, Demo3 normal owner ve iyzico kabulü açık. Google relay ile gerçek e-posta teslimatı doğrulandı. Aşağıdaki önceki eksiklik ve sürüm kayıtları tarihseldir; güncel kanıtlar `tests/reports/santa-e2e-20261025/` altında.

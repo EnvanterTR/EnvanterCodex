@@ -1,5 +1,9 @@
 # Yayın sonrası 24 saatlik gözlem planı
 
+## Güncel yayın: 26 Ekim 2026
+
+`4237b5735859cb9c2672ddc5a2f3a5ef22ba566c`, Coolify `wbhegg8zyeiziogdpr401ycm`, Success/Finished. Gerçek web/public SHA ve DB health doğrulandı. Doğrulama kaydı 01:55:56 UTC; tam bitiş saniyesi ayrıca çıkarılmadı. İlk yayın sonrası üç-host sağlık, görsel bütünlük ve kapalı ticari sınır kontrolleri başarılıdır. Henüz 24 saat tamamlandı iddiası yoktur. Kanıt: `tests/reports/production-session-continuity-release-20261026.md`. Güncel geri dönüş imajı **124b2d1**, şema **121** korunur; aşağıdaki 124→6198 geri dönüş kaydı önceki yayın içindir.
+
 Hedef 15.10 için uygulanacak plan. Planın bulunması, 24 saatlik gözlemin tamamlandığı anlamına gelmez. Yeni sürümün Coolify `Success / Finished` zamanı **T0** olarak kaydedilir; gerçek imaj SHA'sı ve dış HTTPS sağlığı ayrıca doğrulanır.
 
 ## Yayın kaydı ve sorumluluk
