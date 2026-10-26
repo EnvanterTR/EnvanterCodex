@@ -21,6 +21,8 @@ Bu, aynı tarayıcıda farklı kullanıcıların eşzamanlı bağımsız ortak �
 
 ## Yayın durumu
 
+Kod/evidence commit `c22ce1c` mevcutPR25dalına normal push ile gönderildi. GitHub gerçekPRekranı bu head'i ve üç çalışanCIişini gösterdi: run **40251402034**, PostgreSQLjob **121343907721**. PRdraft kaldı; açıklaması son kapsam,5/5kanıt ve açık canlı kapılarıyla güncellendi. Bu üç işin bitişi henüz görülmedi. Kanıt: tenant-host-continuity-pr25-20261026.png. Yeni bir PR/merge/deploy yapılmadı.
+
 Ürün kodu yerelde düzeltildi; yeni tam uzakCI, staging, taze yedek/restore ve üretim rollout kapıları ayrıca gereklidir. Canlı halen124b2d1; bu rapor yayını yapılmış saymaz. Kullanıcı FarmaMFA'yı şimdi tamamlayamıyor; imza sekmesi loginForm'a dönmüştü. Yeni kod isteği gönderilmedi, imza/PDFve normaloperatör/Farma kabulü tamamlanmadı.
 
 TAMAM dediğim5izole güvenlik senaryosunun5'i gerçek test çıktısıyla doğrulanmıştır.

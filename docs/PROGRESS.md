@@ -1,3 +1,7 @@
+## 26 Ekim 2026 — oturum sürekliliği düzeltmesi PR25/CI'da
+- c22ce1c normal push ile mevcutfeat/verified-cloud-trials-20261021dalına gitti. GerçekPR25aynıhead'i ve üççalışanCIişini gösterdi:40251402034/PostgreSQLjob121343907721. PRdraftkorundu, açıklama sonkapsam/5test/açıkyayınkapılarıyla güncellendi.
+- Kanıt: tenant-host-session-continuity-20261026.md eki ve tenant-host-continuity-pr25-20261026.png. CIhenüzbitmedi; eski124başarısı yeniheadyerine sayılmaz. Sonrakiadım aynıCI'ıtamamlananakadartakip ve kesinadayıstaging/güncelyedek/restore ilehazırlamak. Üretim ve kullanıcıMFAayarları değişmedi.
+
 ## 26 Ekim 2026 — yanlış host isteğinin geçerli oturumu silmesi düzeltildi
 - Durum: TAMAM (yerel kod+izole5senaryo); yeni tam uzakCI/staging/yayın açık, canlı124değişmedi.
 - Ortak domain cookie ile başka şirket hostuna gelen geçerli oturum isteğinde SignOut üretildiği gerçek Identity/PostgreSQL testinde1/1başarısızlıkla yeniden üretildi. Üyelik/rol geçerliliği ve hostuyumu ayrıldı; geçerli kendi-şirket/rootadmin oturumu yanlışhost401sonrasında korunur.
