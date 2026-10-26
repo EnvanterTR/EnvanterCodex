@@ -22,3 +22,7 @@ The existing advisory lock/idempotent registrationID path serializes parallel co
 No schema migration or frontend layout change. Existing mail templates are reused. As with paid provisioning, this is database rollback on notification failure, not an atomic transaction with an external SMTP server: an already accepted message cannot be unsent after a later DB failure, and no real inbox delivery or exactly-once SMTP guarantee is claimed.
 
 Next:full remote CI for the combined paid/trial correction, exact staging and refreshed backup/recovery before deployment. Real merchant and Santa/Farma/Demo3 acceptance remain open.
+
+## Full CI dispatched
+
+Commit56e40838f702063203178915145770de7010a009 pushed normally to PR25. Actual PR showed all three jobs started for run40331368345; PostgreSQL job121601340401 was bound to the continuing CI tab. The PR description now distinguishes this pending candidate from production5018. Screenshottrial-welcome-pr-ci-started-20261026.png. No complete remote CI or release success has yet been claimed for56e4083. Local32-case and11-case regression groups overlap; they are not43distinct tests.

@@ -1,3 +1,9 @@
+## 26 Ekim 2026 — ücretli/deneme e-posta düzeltmeleri CI'da
+- Durum: TAMAM (PR/CI sevki); tam uzak kabul ve yayın bekliyor.
+- 56e40838f702063203178915145770de7010a009 normal push ile mevcut PR25'e gitti. Gerçek PR üç işi başlatılmış gösterdi: run40331368345,PostgreSQLjob121601340401. PR açıklaması son SMTP/rollback kapsamı ve32/11yerel grup kanıtlarıyla güncellendi; gruplar örtüşür,43benzersiztest iddiası yok.
+- Kanıt: tests/reports/trial-welcome-20261026.md eki ve trial-welcome-pr-ci-started-20261026.png. Yerel sentetik Compose DB/ağı temizlendi; iki test imajı korunuyor. Canlı5018/schema122 ve ödeme/deneme kapalı durumu değişmedi.
+- Sıradaki: aynı CI sonucunu izleme, exact56e staging/taze kurtarma ve yayın. Yeni OTP veya merchant sorusu açılmadı.
+
 ## 26 Ekim 2026 — deneme kaydına erişim e-postası ve hata geri alması
 - Durum: TAMAM (yerel kod ve kabul); canlıya alınmadı.
 - Önceki akış son erişim e-postasını göndermeden şirketi kesinleştiriyordu. İlk iki test bunu200/503uyuşmazlığıyla üretti. SMTP kabulü25s sınırla mevcut transaction içine alındı; hata503döndürür ve deneme hakkını tüketmeden yeni kayıtlar geri alınır.
