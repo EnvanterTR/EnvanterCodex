@@ -1,3 +1,11 @@
+## 26 Ekim 2026 — beş adımlı şirket kurulumu canlıda
+- Durum: TAMAM (bu rehberin yayını ve anlık canlı doğrulama); tam hedef ve gerçek merchant/müşteri kabulü açık.
+- Exact9585fae1d97980f861dbe519252bc1c422230476 CI40379203209 üç işte başarılı; PostgreSQL12177114011427m45s. Exact app/proxy staging, taze183807ZSQLrestore/95tablo alan koruması ve143MB184132Zdosya/imaj kurtarma sonrası Coolifyagpas6gyxqytnjbriqb20gpp Success3m17s.
+- Gerçek web/public9585imajları, DBhealthy, restart0, webreadonly, SMTPrelayTLS587vekapalı ödeme/deneme sınırları19:12:37UTCdoğrulandı. Üçhostready122/0,8plan,8eski galeri dosyası kaynak hash eşitliği, şirketHTMLi ve yeniCSSbayt eşitliği; yeniGET/POSTanonim401. Migration/productionrestoreyok.
+- Mevcut Santa sekmesi loginForm; yeniMFAistenmedi, gerçek müşteri kurulum tamamlama/mail/ödeme/imza yapılmadı. Kanıt: tests/reports/onboarding-production-release-20261026.mdve9585ekleri. Yerel API/UI ile canlı statik/runtimekanıtlarının sınırı ayrı yazıldı.
+- Sıradaki: HedefP0'daki kalan gerçek merchant/müşteri ve doğrulanmamış teknik maddelerin denetimi; bitmiş rehberi tekrarlama.
+- TAMAM dediğim1yayının1'i test/komut çıktısıyla doğrulanmıştır.
+
 ## 26 Ekim 2026 — kesin onboarding9585 staging ve kurtarma
 - Durum: TAMAM (exactstage/tazeyedek/kurtarma);tamCI/yayınbekliyor. 9585fae1d97980f861dbe519252bc1c422230476webveNginxderlemeleri exit0.
 - Taze183807ZSQLrestore,95tabloözgünalankoruması,izoleruntimeveüçhostready122/0geçti. YeniGET/POSTanonim401;gerçekstageproxyüçhosttanCSS200/text-cssveriyor. Migrationveproductionrestoreyok.

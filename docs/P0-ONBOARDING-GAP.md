@@ -1,8 +1,8 @@
 # Hedef12.1 — five-step customer onboarding, 26 October 2026
 
-Status: local implementation and acceptance passed; exact CI/staging/release remain DOĞRULANMADI. This is a P0 requirement, not a reason to stop all code work while real merchant onboarding waits.
+Status: guide implemented, tested and deployed in9585fae/schema122. This closes the source/UI guide gap, not the full Hedef12.1 real merchant-to-customer flow. Real provider/customer acceptance remains open.
 
-26 October continuation: implemented the five-step guide using the existing company dashboard/routes/forms. Tenant-derived GET and CSRF/settings-protected completion POST use a company-row lock and one persisted audit event, without migration. Local6/6PostgreSQL regression and Chromium light/dark/mobile interaction acceptance passed. Full evidence/limits: tests/reports/company-onboarding-20261026.md. The original gap discovery below is historical evidence; it is no longer an assertion that source implementation is absent. Current live56e does not yet include this guide.
+26 October continuation: implemented the five-step guide using the existing company dashboard/routes/forms. Tenant-derived GET and CSRF/settings-protected completion POST use a company-row lock and one persisted audit event, without migration. Local6/6PostgreSQL regression and Chromium light/dark/mobile interaction acceptance passed. Exact CI40379203209all3jobs, isolated app/proxy staging, fresh SQL restore/95table preservation and143MBrollback recovery passed before production deployment. Actual image/source/CSS/anonymous boundaries verified on all3hosts. Evidence/limits: tests/reports/company-onboarding-20261026.md and onboarding-production-release-20261026.md. The original gap discovery below is historical; it is no longer an assertion that implementation is absent. No real signed-in customer completion was claimed.
 
 Hedef12.1 explicitly ends the public registration/email/payment/provisioning flow with “onboarding (5 adım)”. The current source audit did not locate a five-step customer setup state/API/guide or corresponding acceptance tests. Case-insensitive searches covered onboarding/getting-started/setup-wizard/setup-step and Turkish setup-guide/five-step labels across Web C#,HTML,JS,Razor files and acceptance tests.
 
@@ -20,4 +20,4 @@ Use the existing C#/HTML application and real tenant-scoped data/actions. A reas
 
 The guide should be usable by authorized company owners/admins, preserve existing accounts/data, and avoid blocking normal existing-company operations. Persist actual completion where required; distinguish readiness from completion/dismissal. Test cross-company and role denial, empty/partial/complete state, idempotent completion, retained records and UI navigation/mobile behavior. Additive schema changes require the same exact CI/staging/backup/recovery gates. Do not silently expand these five steps into a new billing or authentication architecture.
 
-Next: exact candidate CI, staging and fresh backup/recovery before deployment. Candidate56e4083 was separately released and verified before this implementation started.
+Next: remaining real merchant and customer acceptance in Hedef12.1/Bölüm20; do not rebuild/redeploy this completed guide merely because those external gates are open.

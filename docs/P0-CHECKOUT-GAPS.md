@@ -1,6 +1,6 @@
-## 26 Ekim 2026 — P0 onboarding maddesi ayrıca açık
+## 26 Ekim 2026 — P0 onboarding rehberi yayımlandı; gerçek akış kabulü açık
 
-Hedef12.1'in beş adımlı müşteri kurulum rehberi artık yerel kodda mevcut;6/6PostgreSQL regresyonu ve açık/koyu/mobil Chromium etkileşim kabulü geçti. CRM etiketi veya MFA aktivasyonu bunun yerine sayılmadı. ExactCI/staging/yedek/kurtarma ve yayın henüz açık; canlı56e'de rehber yok. Kanıt/sınırlar: tests/reports/company-onboarding-20261026.md; tarihsel bulgular: docs/P0-ONBOARDING-GAP.md.
+Hedef12.1'in beş adımlı müşteri kurulum rehberi9585fae/schema122ile canlıda. Yerel6/6API, Chromium açık/koyu/mobil, tam3CIişi, exactstaging/95tablo korunması ve taze yedek/kurtarma geçti. Üçhostta yeniCSSbaytları, şirketHTMLi, runtimeimajı ve anonim401sınırları doğrulandı. Gerçek oturumlu müşteri tamamlama/merchant uçtanuca kabulü sayılmaz. Kanıt/sınırlar: tests/reports/onboarding-production-release-20261026.md; tarihsel bulgular: docs/P0-ONBOARDING-GAP.md.
 
 ## 26 Ekim 2026 — kullanıcı iyzico hesabı olmadığını doğruladı
 

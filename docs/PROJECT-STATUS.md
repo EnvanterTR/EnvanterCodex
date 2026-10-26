@@ -1,3 +1,9 @@
+## 26 Ekim 2026 — beş adımlı şirket kurulumu canlıda
+
+Canlı web/ana sayfa **9585fae1d97980f861dbe519252bc1c422230476**, şema **122/0**. Beş adımlı kurulum rehberi firma yöneticilerinin Genel Bakış ekranında: firma bilgileri, konum, çalışan, varlık ve zimmet. İlerleme gerçek şirket verisinden hesaplanır; tamamlama tek denetim kaydıdır. Yerel6/6API ve Chromium etkileşim/tema/mobil kabulü, tamCI40379203209üçiş, exactstaging/tazeSQLrestore/95tablo koruması ve143MBkurtarma provasından sonra Coolify **agpas6gyxqytnjbriqb20gpp Success/Finished3m17s**. Gerçek imajlar, üçhostHTTPS, kaynakHTML/CSS ve anonim yetki sınırları doğrulandı. Migration/auth değişikliği yok. Kanıt: `tests/reports/onboarding-production-release-20261026.md`.
+
+Gerçek iyzico işyeri hesabı yok; ödeme ve public deneme kapalı. Santa imzası/PDF alıcı teslimi, operatör/Farma/iki yönlü canlı izolasyon ve Demo3 normalowner kabulü açık. Gerçek müşteri kurulum tamamlama yapılmadı; tamHedef/satışa hazır iddiası yok. Aşağıdaki başlıklar tarihsel kayıtlardır.
+
 ## 26 Ekim 2026 — PDF/e-posta sürümü canlıda
 
 Canlı web/ana sayfa **5018bc595684fe4410a9412755b39b2ada9cde0b**, şema **122/0**. Tam CI40296954613 üç işte başarılı; exact staging, iki SQL uygulamasında94 mevcut tablonun özgün alanları korunması, taze091423Z SQL yedeği,141MB092057Z rollback ve092201Z dosya/imaj kurtarma sonrası Coolify **zsmt40hqy0qdjaha4eiu5mab Success/Finished**. Gerçek imajlar/DB sağlığı ve dış üç-host HTTPS doğrulandı. PDF indirme ve açık onaylı/yinelenmeyen e-posta gönderimi yayımlandı. Yeni belge uçları anonim401; şirket HTML ve8görsel kaynağı hash eşit;portal tam ekran aç/kapat geçti. Sekiz plan/kapalı checkout-deneme sınırı korundu. Kanıt: `tests/reports/production-handover-pdf-email-release-20261026.md`. Gerçek Santa imzası/PDF teslimi, operatör/Farma/iki yönlü canlı izolasyon,Demo3 normalowner,iyzico kabulü açık;24saat izleme planı mevcut. Tam hedef tamamlanmadı.
