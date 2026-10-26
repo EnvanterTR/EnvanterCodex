@@ -1,5 +1,11 @@
 # Santa sınırlı üyelik ve aktif teslim belgesi
 
+## Güncel teslimat ve kullanıcı handoff durumu
+
+Google Workspace günlüğü yeni “EnvanterTR şirket erişimi eklendi” iletisini c.belge alıcısı için26Ekim01:18:45TRT, Microsoft52.101.202.157/TLS teslim1/1 olarak doğruladı. Kaynak169.58.53.189/TLS. Bu dış SMTP sunucusunun kabulüdür, inbox/spam klasörü konumu değildir. Kanıt: santa-operator-access-mail-delivered-20261026.png. Aşağıdaki henüz sorgulanmadı notu önceki hazırlık anıdır.
+
+Kullanıcı imza penceresini bulamadığını ve Farma MFA'yı şu an tamamlayamayacağını bildirdi. Gerçek Santa belge sekmesi loginForm'a dönmüştü; imza/PDF yapılmış sayılmadı. Yeni kod sorusu açılmadı. Ortak domain çereziyle yanlış tenant hostuna gelen isteğin çerezi silmesi kodda bulundu ve yeni gerçek Identity/PostgreSQL kabulüyle başarısızlık yeniden üretildi; düzeltme ayrı iş paketidir. Canlı oturum kaybının kesin tek nedeni olarak kanıtsız ilan edilmedi. İki farklı hesabın aynı tarayıcıda aynı ortak çerezle eşzamanlı bağımsız oturum açabileceği iddia edilmez.
+
 ## Onaylanan şirket üyeliği
 
 Kullanıcı c.belge@hotmail.com hesabına Santa Envanter operatörü erişimi sorusuna açıkça “Evet, bu sınırlı Santa erişimini ekle” dedi. Önceden hazırlanmış normal Kullanıcı davet et formunda asset_operator seçimiyle Daveti gönder kullanıldı. Ürün “Mevcut hesap şirket alanına eklendi; erişim bilgisi e-postayla gönderildi” döndürdü. Bu gönderim yanıtıdır; yeni iletinin alıcı teslimat kaydı henüz ayrıca sorgulanmadı.

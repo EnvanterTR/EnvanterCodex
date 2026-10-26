@@ -1,3 +1,9 @@
+## 26 Ekim 2026 — Santa operatör erişim e-postası gerçek dış teslimatı
+- Durum: TAMAM (yeni erişim iletisinin Microsoft SMTP kabulü); operatör login/yetki ve imza/PDF açık.
+- Google günlüğü26Ekim01:18:45TRT c.belge alıcısı için52.101.202.157/TLS teslim1/1, kaynak169.58.53.189/TLS. Inbox/spam konumu doğrulanmadı.
+- Kanıt: santa-e2e-20261025/santa-operator-access-mail-delivered-20261026.png ve operator-handover-preparation-20261026.md eki.
+- Kullanıcı imza penceresini bulamadı/FarmaMFAşimdi yapamıyor. Santa belge sekmesi gerçektenloginForm'a dönmüş. Yeniden kod istenmedi; ortak çerezin yanlış tenant isteğinde silinmesi ayrı gerçek Identity testinde yeniden üretildi. Sıradaki: erişim reddini koruyarak geçerli oturumun gereksiz silinmesini düzeltmek; henüz canlı değişmedi.
+
 ## 26 Ekim 2026 — onaylı Santa operatör üyeliği ve aktif zimmet belgesi
 - Durum: TAMAM (onaylanan üyelik ekleme/DBrol koruma ve imzasız aktif teslim snapshot); tam Editör ve imza/PDF kabulü açık.
 - Kullanıcının açık eylem anı onayıyla c.belge normal davet formundan Santa asset_operator oldu. DB Demo3owner/Farmaowner/Santaasset_operator, her biri1üyelik; diğer roller korundu. Ürün e-posta gönderim yanıtı verdi, teslimat henüz ayrı doğrulanmadı.
