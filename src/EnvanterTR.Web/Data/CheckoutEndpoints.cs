@@ -530,11 +530,7 @@ public static partial class CheckoutEndpoints
             if (fraudStatus != 1 || string.IsNullOrWhiteSpace(paymentReference) || paymentReference.Length > 180)
                 return Results.BadRequest(new { message = "Ödeme henüz onaylanmadı; şirket hesabı açılmadı." });
 
-            string? invitationEmail = null;
-            string? invitationName = null;
-            string? companyName = null;
             var invitationEmailSent = false;
-            bool invitationNeeded = false;
             try
             {
                 // Existing-company callback replay is serialized by the order lock and shared company-row lock.
@@ -603,46 +599,37 @@ public static partial class CheckoutEndpoints
                 lockedOrder.PaymentReference = paymentReference;
                 lockedOrder.PaidAt = now;
                 lockedOrder.Status = "Provisioned";
+                db.AuditEntries.Add(new AuditEntry { CompanyId = company.Id, ActorUserId = owner.Id,
+                    Action = "PaidCompanyProvisioned", TargetType = "Company", TargetId = company.Id,
+                    Details = JsonSerializer.Serialize(new { checkoutId = lockedOrder.Id, planId = plan.Id }) });
                 await db.SaveChangesAsync(cancellationToken);
+                logger.LogInformation("Paid company record, slug reservation and owner role staged for checkout {CheckoutId}; commit pending.", lockedOrder.Id);
+                // A new paid portal is not complete until SMTP accepts its access notice.
+                // A rejected/timed-out send rolls back only these staged records; the verified payment is retained below.
+                using var invitationTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                invitationTimeout.CancelAfter(TimeSpan.FromSeconds(25));
+                if (owner.EmailConfirmed)
+                    await AccountEndpoints.SendCompanyAccessAddedEmailAsync(owner.Email!, owner.DisplayName,
+                        company.Name, "owner", configuration, invitationTimeout.Token, company.Slug);
+                else
+                {
+                    var resetToken = await userManager.GeneratePasswordResetTokenAsync(owner);
+                    await AccountEndpoints.SendAccountInvitationEmailAsync(owner.Email!, owner.DisplayName,
+                        resetToken, configuration, invitationTimeout.Token, company.Slug);
+                }
+                invitationEmailSent = true;
+                logger.LogInformation("Paid company access notice accepted by SMTP for checkout {CheckoutId}; recipient delivery is not yet verified.", lockedOrder.Id);
                 await transaction.CommitAsync(cancellationToken);
-
-                invitationEmail = owner.Email;
-                invitationName = owner.DisplayName;
-                companyName = company.Name;
-                invitationNeeded = true;
+                logger.LogInformation("Paid company provisioning committed for checkout {CheckoutId}.", lockedOrder.Id);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
             catch (Exception exception)
             {
-                logger.LogError("Verified checkout payment provisioning failed. Error type: {ErrorType}", exception.GetType().Name);
+                logger.LogError("Verified checkout payment provisioning failed for checkout {CheckoutId}. Error type: {ErrorType}", order.Id, exception.GetType().Name);
                 await RecordProvisioningFailureAsync(db, order.Id, paymentReference, cancellationToken);
                 return CheckoutResult("support");
             }
 
-            if (invitationNeeded && invitationEmail is not null)
-            {
-                try
-                {
-                    var owner = await userManager.FindByEmailAsync(invitationEmail);
-                    if (owner?.EmailConfirmed == true)
-                    {
-                        await AccountEndpoints.SendCompanyAccessAddedEmailAsync(invitationEmail, invitationName ?? invitationEmail,
-                            companyName ?? "şirket alanı", "owner", configuration, cancellationToken, order.Slug);
-                        invitationEmailSent = true;
-                    }
-                    else if (owner is not null)
-                    {
-                        var resetToken = await userManager.GeneratePasswordResetTokenAsync(owner);
-                        await AccountEndpoints.SendAccountInvitationEmailAsync(invitationEmail, invitationName ?? invitationEmail,
-                            resetToken, configuration, cancellationToken, order.Slug);
-                        invitationEmailSent = true;
-                    }
-                }
-                catch (Exception exception) when (exception is not OperationCanceledException)
-                {
-                    logger.LogWarning("Paid company owner invitation could not be sent. Error type: {ErrorType}", exception.GetType().Name);
-                }
-            }
             return CheckoutResult("success", order.Slug, configuration, invitationEmailSent);
         }
     }

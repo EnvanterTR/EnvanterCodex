@@ -1,3 +1,11 @@
+## 26 Ekim 2026 — ücretli yeni şirket kurulumunda SMTP hata geri alması
+- Durum: TAMAM (yerel düzeltme ve kabul); canlıya alınmadı.
+- İlk iki test gerçek hatayı izole ortamda üretti: SMTP reddinde sipariş Provisioned kalıyordu. Yeni şirket kaydı/rol/abonelik, SMTP kabulünden önce commit edilmiyor;25s sınır var. Hata rollback sonrası doğrulanmış ödeme referansı ProvisioningFailed olarak korunur.
+- Son hedefli2/2 ve ilgili geniş regresyon32/32 geçti; başarılı tek audit kaydı, aynı ödemeyle yeniden deneme, yeni/mevcut owner ve parola/stamp koruması denetlendi. Web build0hata/0uyarı; iki kaynak denetimi başarılı.
+- Kanıt: tests/reports/paid-provisioning-email-20261026.md ve ilk/son/regresyon/build/source logları. Migration yok, canlı5018/schema122 ve kapalı ödeme/deneme sınırı korundu.
+- Sıradaki: deneme kaydının hoş geldin bildirimi; ardından tam uzak CI ve yayın kapıları. SMTP dış yan etkisinin DB ile atomik geri alınabileceği iddia edilmedi.
+- TAMAM dediğim1düzeltmenin1'i test çıktısıyla doğrulanmıştır.
+
 ## 26 Ekim 2026 — gerçek merchant bağımlılığı kullanıcıdan doğrulandı
 - Durum: ENGELLENDİ (yalnız gerçek iyzico kabulü; ürün entegrasyonunun yerel testiyle karıştırılmadı).
 - Kullanıcı henüz iyzico hesabı olmadığını bildirdi. Resmî Türkçe başvuru sayfası kontrol edilip boş form hazır bırakıldı. Kişisel bilgi/credential gönderilmedi, sözleşme kabulü veya hesap oluşturma yapılmadı.

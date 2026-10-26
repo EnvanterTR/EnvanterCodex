@@ -13,7 +13,8 @@ public sealed record TenantProvisioningResult(Company Company, EnvanterUser Owne
 
 /// <summary>
 /// Stages every new company and owner membership in the caller's transaction.
-/// The caller commits its payment/audit records with these records, then sends the appropriate notice.
+/// The caller owns the payment/audit transaction and notification ordering.
+/// Public paid provisioning requires SMTP acceptance before committing a newly staged portal.
 /// </summary>
 public sealed class TenantProvisioningService(AppDbContext db, UserManager<EnvanterUser> users)
 {
