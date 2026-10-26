@@ -1,3 +1,8 @@
+## 26 Ekim 2026 — CI'daki eski tenant host sözleşmesi düzeltildi
+- 40251402034Linuxsecurity121343907959, eskiSQL-içi slugkarşılaştırmasıregexinde başarısız; Windows121343907875başarılı, PostgreSQL121343907721inceleme anında sürüyor. Yerelde aynı Nodehatası yeniden üretildi; ürünC# kodu değiştirilmedi.
+- Kontrol kaldırılmadı: ayrıhostguard401/return, çerezsilmemesi, öncesindeüyelik/rol geçerliliği ve5gerçekkabultestinin varlığı zorunlu oldu. CIyml80benzersizNodetools komutu yerelde tamamıexit0;5/5Identitykabul mevcutürünkoduiçingeçerli.
+- Kanıt: tenant-host-session-continuity-20261026.md eki, stale/fixed/all-ci-source logları, c22-ci-source-contract-failed-20261026.png. Yeni kontrolcommit'i için tamCIbaşlatılacak; mevcutbaşarısızlık saklandı, canlı124değişmedi.
+
 ## 26 Ekim 2026 — oturum sürekliliği düzeltmesi PR25/CI'da
 - c22ce1c normal push ile mevcutfeat/verified-cloud-trials-20261021dalına gitti. GerçekPR25aynıhead'i ve üççalışanCIişini gösterdi:40251402034/PostgreSQLjob121343907721. PRdraftkorundu, açıklama sonkapsam/5test/açıkyayınkapılarıyla güncellendi.
 - Kanıt: tenant-host-session-continuity-20261026.md eki ve tenant-host-continuity-pr25-20261026.png. CIhenüzbitmedi; eski124başarısı yeniheadyerine sayılmaz. Sonrakiadım aynıCI'ıtamamlananakadartakip ve kesinadayıstaging/güncelyedek/restore ilehazırlamak. Üretim ve kullanıcıMFAayarları değişmedi.

@@ -21,6 +21,12 @@ Bu, aynı tarayıcıda farklı kullanıcıların eşzamanlı bağımsız ortak �
 
 ## Yayın durumu
 
+### İlk uzak CI ve kaynak sözleşmesi düzeltmesi
+
+40251402034'te Windows işi121343907875başarılı; Linux security121343907959, “Verify SaaS tenant slug profile and session binding” adımında başarısız. Kaynak kontrolü eski `/company\\.Slug == tenantSlug/` biçimini zorunlu tuttuğundan yeni ayrı host guard'ını tanımadı. Aynı hata yerelde `tenant-slug-profile-stale-check-20261026.log` ile yeniden üretildi. Kontrol kaldırılmadı: yeni guard401/return, SignOut olmaması, üyelik/rol geçerliliğinin önce çalışması ve gerçek5senaryo kapsamı zorunlu kılındı. `tenant-slug-profile-fixed-check-20261026.log` geçti; CIyml'deki **80** benzersiz Node tools komutunun tamamı yerelde exit0, `tenant-host-all-ci-source-checks-20261026.log`.
+
+Bu düzeltmede ürün C# kodu değişmedi; önceki5/5kabul geçerlidir. Önceki PostgreSQL işi121343907721inceleme anında çalışıyordu; sonucu başarılı sayılmadı veya gözlem gecikmesiyle yeniden başlatılmadı. Yeni gerçek kontrol düzeltmesi commit'i için tamCIgereklidir. Workflow, yeni push geldiğinde aynıPR'ın eski devam eden işini concurrency politikasıyla iptal edebilir; bu başarısız kaydı silmez.
+
 Kod/evidence commit `c22ce1c` mevcutPR25dalına normal push ile gönderildi. GitHub gerçekPRekranı bu head'i ve üç çalışanCIişini gösterdi: run **40251402034**, PostgreSQLjob **121343907721**. PRdraft kaldı; açıklaması son kapsam,5/5kanıt ve açık canlı kapılarıyla güncellendi. Bu üç işin bitişi henüz görülmedi. Kanıt: tenant-host-continuity-pr25-20261026.png. Yeni bir PR/merge/deploy yapılmadı.
 
 Ürün kodu yerelde düzeltildi; yeni tam uzakCI, staging, taze yedek/restore ve üretim rollout kapıları ayrıca gereklidir. Canlı halen124b2d1; bu rapor yayını yapılmış saymaz. Kullanıcı FarmaMFA'yı şimdi tamamlayamıyor; imza sekmesi loginForm'a dönmüştü. Yeni kod isteği gönderilmedi, imza/PDFve normaloperatör/Farma kabulü tamamlanmadı.

@@ -1,0 +1,220 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Authenticated sessions must stay bound to the hostname company.
+    at file:///C:/Users/Lenovo/Desktop/EnvanterTR/.worktrees/web-v1-next-work/tools/Verify-TenantSlugProfile.mjs:24:8
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'using EnvanterTR.Web.Data;\n' +
+    'using EnvanterTR.Web;\n' +
+    'using Microsoft.AspNetCore.Authentication;\n' +
+    'using Microsoft.AspNetCore.DataProtection;\n' +
+    'using Microsoft.AspNetCore.HttpOverrides;\n' +
+    'using Microsoft.AspNetCore.Identity;\n' +
+    'using Microsoft.AspNetCore.RateLimiting;\n' +
+    'using Microsoft.Extensions.Options;\n' +
+    'using Microsoft.EntityFrameworkCore;\n' +
+    'using System.Security.Claims;\n' +
+    'using System.Security.Cryptography;\n' +
+    'using System.Threading.RateLimiting;\n' +
+    'using System.Text;\n' +
+    '\n' +
+    'var builder = WebApplication.CreateBuilder(args);\n' +
+    'builder.Host.UseWindowsService();\n' +
+    '\n' +
+    '// Windows Server installs keep the PostgreSQL password in a LocalMachine DPAPI\n' +
+    '// blob under ProgramData. Only the service identity and administrators can read it.\n' +
+    'var protectedConnectionStringPath = builder.Configuration["WindowsSecrets:ConnectionStringPath"];\n' +
+    'if (!string.IsNullOrWhiteSpace(protectedConnectionStringPath))\n' +
+    '{\n' +
+    '    if (!OperatingSystem.IsWindows())\n' +
+    '        throw new InvalidOperationException("Windows DPAPI connection secrets can only be loaded on Windows.");\n' +
+    '    if (!File.Exists(protectedConnectionStringPath))\n' +
+    '        throw new InvalidOperationException("The protected PostgreSQL connection secret is missing.");\n' +
+    '\n' +
+    '    var protectedConnectionString = File.ReadAllBytes(protectedConnectionStringPath);\n' +
+    '    byte[]? clearConnectionString = null;\n' +
+    '    try\n' +
+    '    {\n' +
+    '        clearConnectionString = ProtectedData.Unprotect(protectedConnectionString, null, DataProtectionScope.LocalMachine);\n' +
+    '        var clearConnectionStringText = new UTF8Encoding(false, true).GetString(clearConnectionString);\n' +
+    '        if (string.IsNullOrWhiteSpace(clearConnectionStringText))\n' +
+    '            throw new InvalidOperationException("The protected PostgreSQL connection secret is empty.");\n' +
+    '        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>\n' +
+    '        {\n' +
+    '            ["ConnectionStrings:EnvanterTR"] = clearConnectionStringText\n' +
+    '        });\n' +
+    '    }\n' +
+    '    catch (Exception exception) when (exception is CryptographicException or DecoderFallbackException)\n' +
+    '    {\n' +
+    '        throw new InvalidOperationException("The protected PostgreSQL connection secret could not be opened on this machine.", exception);\n' +
+    '    }\n' +
+    '    finally\n' +
+    '    {\n' +
+    '        CryptographicOperations.ZeroMemory(protectedConnectionString);\n' +
+    '        if (clearConnectionString is not null)\n' +
+    '            CryptographicOperations.ZeroMemory(clearConnectionString);\n' +
+    '    }\n' +
+    '}\n' +
+    '\n' +
+    '// Windows Server SMTP credentials are stored separately from appsettings and\n' +
+    '// protected with machine-scoped DPAPI by configure-email.ps1.\n' +
+    'var protectedSmtpPasswordPath = builder.Configuration["WindowsSecrets:SmtpPasswordPath"];\n' +
+    'if (!string.IsNullOrWhiteSpace(protectedSmtpPasswordPath))\n' +
+    '{\n' +
+    '    if (!OperatingSystem.IsWindows())\n' +
+    '        throw new InvalidOperationException("Windows DPAPI SMTP secrets can only be loaded on Windows.");\n' +
+    '    if (!File.Exists(protectedSmtpPasswordPath))\n' +
+    '        throw new InvalidOperationException("The protected SMTP password secret is missing.");\n' +
+    '\n' +
+    '    var protectedSmtpPassword = File.ReadAllBytes(protectedSmtpPasswordPath);\n' +
+    '    byte[]? clearSmtpPassword = null;\n' +
+    '    try\n' +
+    '    {\n' +
+    '        clearSmtpPassword = ProtectedData.Unprotect(protectedSmtpPassword, null, DataProtectionScope.LocalMachine);\n' +
+    '        var clearSmtpPasswordText = new UTF8Encoding(false, true).GetString(clearSmtpPassword);\n' +
+    '        if (string.IsNullOrWhiteSpace(clearSmtpPasswordText))\n' +
+    '            throw new InvalidOperationException("The protected SMTP password secret is empty.");\n' +
+    '        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>\n' +
+    '        {\n' +
+    '            ["Email:Smtp:Password"] = clearSmtpPasswordText\n' +
+    '        });\n' +
+    '    }\n' +
+    '    catch (Exception exception) when (exception is CryptographicException or DecoderFallbackException)\n' +
+    '    {\n' +
+    '        throw new InvalidOperationException("The protected SMTP password secret could not be opened on this machine.", exception);\n' +
+    '    }\n' +
+    '    finally\n' +
+    '    {\n' +
+    '        CryptographicOperations.ZeroMemory(protectedSmtpPassword);\n' +
+    '        if (clearSmtpPassword is not null)\n' +
+    '            CryptographicOperations.ZeroMemory(clearSmtpPassword);\n' +
+    '    }\n' +
+    '}\n' +
+    '\n' +
+    '// The Linux deployment enables this only for the web container on its private\n' +
+    '// Compose network; the web service has no published host port. Keep proxy trust\n' +
+    '// opt-in so forwarded headers are never accepted on a directly public app port.\n' +
+    'var trustProxyForwardedFor = builder.Configuration.GetValue<bool>("ForwardedHeaders:Enabled");\n' +
+    'var clientIpNetworks = TrustedClientIp.ParseNetworks(builder.Configuration["ClientIp:TrustedProxyNetworks"]);\n' +
+    'var useCloudflareClientIp = builder.Configuration.GetValue<bool>("ClientIp:UseCloudflareConnectingIp");\n' +
+    'if (trustProxyForwardedFor)\n' +
+    '{\n' +
+    '    builder.Services.Configure<ForwardedHeadersOptions>(options =>\n' +
+    '    {\n' +
+    '        options.ForwardedHeaders = ForwardedHeaders.XForwardedProto;\n' +
+    '        options.KnownIPNetworks.Clear();\n' +
+    '        options.KnownProxies.Clear();\n' +
+    '        options.ForwardLimit = 1;\n' +
+    '    });\n' +
+    '}\n' +
+    '\n' +
+    'var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];\n' +
+    'if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))\n' +
+    '{\n' +
+    '    Directory.CreateDirectory(dataProtectionKeysPath);\n' +
+    '    builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));\n' +
+    '}\n' +
+    'builder.Services.AddSingleton<AssetCustomFieldProtection>();\n' +
+    'builder.Services.Configure<IyzipayOptions>(builder.Configuration.GetSection("Iyzipay"));\n' +
+    'builder.Services.AddHttpClient<IyzipayCheckoutClient>((services, client) =>\n' +
+    '{\n' +
+    '    var options = services.GetRequiredService<IOptions<IyzipayOptions>>().Value;\n' +
+    '    if (Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out var apiUri) &&\n' +
+    '        apiUri.Scheme == Uri.UriSchemeHttps && apiUri.UserInfo.Length == 0 && apiUri.AbsolutePath == "/" &&\n' +
+    '        apiUri.Host is "api.iyzipay.com" or "sandbox-api.iyzipay.com")\n' +
+    '        client.BaseAddress = apiUri;\n' +
+    '    client.Timeout = TimeSpan.FromSeconds(20);\n' +
+    '}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });\n' +
+    '\n' +
+    'builder.Services.AddHealthChecks();\n' +
+    'builder.Services.AddAntiforgery(options =>\n' +
+    '{\n' +
+    '    options.HeaderName = "X-CSRF-TOKEN";\n' +
+    '    options.Cookie.HttpOnly = true;\n' +
+    '    options.Cookie.SameSite = SameSiteMode.Strict;\n' +
+    '    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()\n' +
+    '        ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;\n' +
+    '});\n' +
+    'builder.Services.AddAuthentication();\n' +
+    'builder.Services.AddAuthorization();\n' +
+    'builder.Services.AddRateLimiter(ClientRateLimits.Configure);\n' +
+    '\n' +
+    'var connectionString = builder.Configuration.GetConnectionString("EnvanterTR");\n' +
+    'if (!string.IsNullOrWhiteSpace(connectionString))\n' +
+    '{\n' +
+    '    builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));\n' +
+    '    builder.Services.AddScoped<TenantProvisioningService>();\n' +
+    '    builder.Services.AddHostedService<CompanyCheckoutOrderExpirationWorker>();\n' +
+    '    builder.Services.AddScoped<OperationalNotificationEmailService>();\n' +
+    '    builder.Services.AddHostedService<OperationalNotificationEmailWorker>();\n' +
+    '    builder.Services.AddScoped<ScheduledReportEmailService>();\n' +
+    '    builder.Services.AddHostedService<ScheduledReportEmailWorker>();\n' +
+    '    builder.Services.AddScoped<PlatformCrmFollowUpEmailService>();\n' +
+    '    builder.Services.AddHostedService<PlatformCrmFollowUpEmailWorker>();\n' +
+    '    builder.Services.AddScoped<SupportTicketEmailService>();\n' +
+    '    builder.Services.AddHostedService<SupportTicketEmailWorker>();\n' +
+    '    builder.Services.AddIdentity<EnvanterUser, IdentityRole<Guid>>(options =>\n' +
+    '    {\n' +
+    '        options.User.RequireUniqueEmail = true;\n' +
+    '        options.SignIn.RequireConfirmedAccount = false;\n' +
+    '        options.Password.RequiredLength = 12;\n' +
+    '        options.Password.RequireDigit = true;\n' +
+    '        options.Password.RequireLowercase = true;\n' +
+    '        options.Password.RequireUppercase = true;\n' +
+    '        options.Password.RequireNonAlphanumeric = true;\n' +
+    '        options.Lockout.MaxFailedAccessAttempts = 5;\n' +
+    '        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);\n' +
+    '    }).AddEntityFrameworkStores<AppDbContext>().AddDefaultTokenProviders();\n' +
+    '    builder.Services.Configure<SecurityStampValidatorOptions>(options =>\n' +
+    '    {\n' +
+    '        options.ValidationInterval = TimeSpan.FromMinutes(5);\n' +
+    '        options.OnRefreshingPrincipal = context =>\n' +
+    '        {\n' +
+    '            if (context.CurrentPrincipal?.Identity is ClaimsIdentity currentIdentity &&\n' +
+    '                context.NewPrincipal?.Identity is ClaimsIdentity refreshedIdentity)\n' +
+    '            {\n' +
+    '                // Identity rebuilds the principal when it refreshes the security stamp.\n' +
+    '                // Carry only the claims owned by this application; the request middleware\n' +
+    '                // below revalidates the session, company membership, role, and admin status.\n' +
+    '                foreach (var claimType in new[] { "session_id", "company_id", "company_role", "platform_admin", "platform_reauth_at" })\n' +
+    '                    foreach (var claim in currentIdentity.FindAll(claimType))\n' +
+    '                        refreshedIdentity.AddClaim(claim);\n' +
+    '            }\n' +
+    '\n' +
+    '            return Task.CompletedTask;\n' +
+    '        };\n' +
+    '    });\n' +
+    '    builder.Services.ConfigureApplicationCookie(options =>\n' +
+    '    {\n' +
+    '        options.Cookie.Name = "EnvanterTR.Session";\n' +
+    '        options.Cookie.Domain = builder.Configuration["TenantRouting:CookieDomain"];\n' +
+    '        options.Cookie.HttpOnly = true;\n' +
+    '        options.SlidingExpiration = false;\n' +
+    '        options.Cookie.SameSite = SameSiteMode.Strict;\n' +
+    '        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()\n' +
+    '            ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;\n' +
+    '        options.Events.OnRedirectToLogin = context =>\n' +
+    '        {\n' +
+    '            context.Response.StatusCode = StatusCodes.Status401Unauthorized;\n' +
+    '            return Task.CompletedTask;\n' +
+    '        };\n' +
+    '        options.Events.OnRedirectToAccessDenied = context =>\n' +
+    '        {\n' +
+    '            context.Response.StatusCode = StatusCodes.Status403Forbidden;\n' +
+    '            return Task.CompletedTask;\n' +
+    '        };\n' +
+    '    });\n' +
+    '    builder.Services.AddAuthorization(options =>\n' +
+    '    {\n' +
+    '        options.AddPolicy("asset.read"'... 20416 more characters,
+  expected: /company\.Slug == tenantSlug/,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v24.21.0
