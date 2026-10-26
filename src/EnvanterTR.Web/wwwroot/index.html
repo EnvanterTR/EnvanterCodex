@@ -1444,6 +1444,7 @@
       'Stok hareketleri':['Stock movements','Движения запасов','Рух запасів','Движења на залихите'],
       'Aksesuar, sarf malzemesi ve bileşen girişlerini, çıkışlarını ve atamalarını birlikte inceleyin.':['Review accessory, consumable, and component receipts, issues, and assignments together.','Просматривайте поступления, выдачи и назначения аксессуаров, расходных материалов и компонентов.','Переглядайте надходження, видачі та призначення аксесуарів, витратних матеріалів і компонентів разом.','Прегледајте ги приемите, издавањата и задолжувањата на додатоците, потрошниот материјал и компонентите заедно.'],
       'CSV indir':['Download CSV','Скачать CSV','Завантажити CSV','Преземи CSV'],
+      'PDF indir':['Download PDF','Скачать PDF','Завантажити PDF','Преземи PDF'],
       'Ürün, çalışan, varlık veya not ara':['Search item, employee, asset, or note','Поиск по товару, сотруднику, активу или примечанию','Пошук за товаром, працівником, активом або приміткою','Пребарај производ, вработен, средство или белешка'],
       'Stok hareketlerinde ara':['Search stock movements','Поиск движений запасов','Пошук рухів запасів','Пребарај движења на залихи'],
       'Tüm stok türleri':['All stock types','Все типы запасов','Усі типи запасів','Сите видови залихи'],
@@ -7435,6 +7436,21 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       try { const result = await api(`/api/employees/${encodeURIComponent(employee.id)}/handover-documents`); const list = $('#employeeHandoverHistory');
         if (!result.length) list.innerHTML = `<p class="muted">${escapeHtml(translateUiText('Henüz imzalı zimmet belgesi yok.'))}</p>`;
         for (const item of result) { const row = document.createElement('div'); row.className = 'panel'; row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;margin:8px 0'; const status = translateUiText(item.isFullySigned ? 'İmzalı' : 'İmza bekliyor'); row.innerHTML = `<span><strong>${escapeHtml(item.documentNumber)}</strong><br><small>${new Date(item.createdAt).toLocaleString(selectedLocale)} · ${status}</small></span><button class="btn small" type="button" data-handover-id="${escapeHtml(item.id)}">${translateUiText(item.isFullySigned ? 'Görüntüle / yazdır' : 'Devam et')}</button>`; list.append(row); }
+        for (const item of result.filter(entry => entry.isFullySigned)) {
+          const row = list.querySelector(`[data-handover-id="${CSS.escape(item.id)}"]`)?.parentElement;
+          if (!row) continue;
+          row.style.flexWrap = 'wrap';
+          const download = document.createElement('button'); download.type = 'button'; download.className = 'btn small'; download.textContent = translateUiText('PDF indir');
+          download.addEventListener('click', async () => {
+            download.disabled = true;
+            try {
+              const response = await api(`/api/employees/${encodeURIComponent(employee.id)}/handover-documents/${encodeURIComponent(item.id)}/pdf`);
+              const url = URL.createObjectURL(await response.blob()), link = document.createElement('a');
+              link.href = url; link.download = `${item.documentNumber}.pdf`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+            } catch (error) { notify(error.message); } finally { download.disabled = false; }
+          });
+          row.append(download);
+        }
         list.querySelectorAll('[data-handover-id]').forEach(button => button.addEventListener('click', () => { const item = result.find(entry => entry.id === button.dataset.handoverId); if (item?.isFullySigned) printEmployeeHandoverDocument(item.id); else openEmployeeHandover(button.dataset.handoverId); }));
         $('#employeeHandoverStatus').textContent = `${fmt.format(result.length)} belge · imza durumu ve kayıt özeti`;
       } catch (error) { $('#employeeHandoverStatus').textContent = `Belgeler yüklenemedi: ${error.message}`; }

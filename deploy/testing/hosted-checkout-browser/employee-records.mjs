@@ -32,6 +32,7 @@ let syntheticRole = 'admin';
 let privateNotes = '';
 let employeeDocuments = [];
 const handoverDocuments = [];
+let handoverPdfDownloadBytes = null;
 let employeeImportPreview = null;
 const employeePhotos = new Map();
 const floorOneId = '66666666-6666-4666-8666-666666666661';
@@ -155,6 +156,15 @@ const server = createServer(async (request, response) => {
     }
     const handoverCollectionMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/handover-documents$/i);
     const handoverDetailMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/handover-documents\/([0-9a-f-]+)$/i);
+    const handoverPdfMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/handover-documents\/([0-9a-f-]+)\/pdf$/i);
+    if (handoverPdfMatch) {
+      const record = handoverDocuments.find(item => item.employeeId === handoverPdfMatch[1] && item.id === handoverPdfMatch[2]);
+      if (!record) return json(response, 404, { message: 'Document not found' });
+      if (!record.isFullySigned || !handoverPdfDownloadBytes) return json(response, 409, { message: 'Signatures required' });
+      response.writeHead(200, { 'content-type': 'application/pdf', 'cache-control': 'no-store',
+        'content-disposition': `attachment; filename="${record.documentNumber}.pdf"` });
+      response.end(handoverPdfDownloadBytes); return;
+    }
     if (handoverCollectionMatch) return json(response, 200, handoverDocuments.filter(item => item.employeeId === handoverCollectionMatch[1]).map(({ snapshot, ...item }) => item));
     if (handoverDetailMatch) {
       const handover = handoverDocuments.find(item => item.employeeId === handoverDetailMatch[1] && item.id === handoverDetailMatch[2]);
@@ -707,6 +717,8 @@ try {
   await page.locator('#createEmployeeHandover').click();
   assert.equal((await handoverCreateResponse).status(), 201, 'Creating an immutable handover snapshot must persist through the API.');
   await page.locator('#employeeHandoverSigning').waitFor({ state: 'visible' });
+  assert.equal(await handoverDialog.getByRole('button', { name: 'PDF indir', exact: true }).count(), 0,
+    'An unsigned document must not offer the server PDF download action.');
   assert.equal(await page.locator('#employeeHandoverDocumentNumber').innerText(), 'QA-HO-001 · QA Employee Updated');
   const handoverCreateRequest = requests.find(item => item.method === 'POST' && item.path === `/api/employees/${employeeId}/handover-documents`);
   assert.equal(handoverCreateRequest?.csrf, csrfToken, 'Creating a handover document must send CSRF protection.');
@@ -742,6 +754,7 @@ try {
   assert.match(await printPopup.locator('.foot').innerText(), /nitelikli elektronik imza|qualified electronic signature/i,
     'The print form must explain the legal scope of a drawn signature.');
   const pdfBytes = await printPopup.pdf({ format: 'A4', printBackground: true });
+  handoverPdfDownloadBytes = pdfBytes;
   assert.ok(pdfBytes.subarray(0, 5).equals(Buffer.from('%PDF-')) && pdfBytes.length > 1_000,
     'The browser print document must produce a non-empty PDF file.');
   const handoverSignWrites = requests.filter(item => item.method === 'POST' && item.path === `/api/employee-handover-documents/${handoverDocuments[0].id}/sign`);
@@ -767,6 +780,21 @@ try {
   assert.ok(archivedPdfBytes.subarray(0, 5).equals(Buffer.from('%PDF-')) && archivedPdfBytes.length > 1_000,
     'An archived signed document must remain exportable as a non-empty PDF.');
   await archivedPrint.close();
+  const serverPdfDownload = page.waitForEvent('download');
+  await handoverDialog.getByRole('button', { name: 'PDF indir', exact: true }).click();
+  const downloadedPdf = await serverPdfDownload;
+  assert.equal(downloadedPdf.suggestedFilename(), `${handoverDocuments[0].documentNumber}.pdf`);
+  assert.deepEqual(await readFile(await downloadedPdf.path()), pdfBytes,
+    'The download action must save the authenticated API PDF bytes without regenerating or altering them.');
+  if (process.env.ENVANTERTR_HANDOVER_UI_EVIDENCE)
+    await page.screenshot({ path: process.env.ENVANTERTR_HANDOVER_UI_EVIDENCE, fullPage: false });
+  const handoverViewport = page.viewportSize();
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await handoverDialog.evaluate(element => element.scrollWidth <= element.clientWidth + 1),
+    'The signed handover actions must fit the mobile dialog without horizontal overflow.');
+  if (process.env.ENVANTERTR_HANDOVER_UI_EVIDENCE)
+    await page.screenshot({ path: process.env.ENVANTERTR_HANDOVER_UI_EVIDENCE.replace(/\.png$/, '-mobile.png'), fullPage: false });
+  await page.setViewportSize(handoverViewport);
   await handoverDialog.getByRole('button', { name: 'Kapat' }).click();
   await handoverDialog.waitFor({ state: 'hidden' });
 

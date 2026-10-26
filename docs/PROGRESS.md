@@ -618,3 +618,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - TAMAM: 4237 tam CI 40253374749 üç işte başarılı; gerçek kesin aday staging, taze yedek/restore/rollback ve yayın öncesi 95 tablo sayımı geçti. Coolify wbhegg8zyeiziogdpr401ycm Success/Finished.
 - Canlı web/public tam SHA 4237b5735859cb9c2672ddc5a2f3a5ef22ba566c, DB healthy, restart 0; üç HTTPS host ready/121/0. SMTP relay korundu. Sekiz kaynak SHA256 eşit, portal tam ekran aç/kapat ve galeri ilerlemesi canlıda gözlendi. Sekiz plan ve kapalı checkout/deneme sınırı korundu.
 - Kanıt: tests/reports/production-session-continuity-release-20261026.md ve bağlı log/ekranlar. Kullanıcının imzası/Farma MFA, tam müşteri ve gerçek iyzico kabulü açık. 24 saat gözlem tamamlanmadı; Hedef aktif.
+## 26 Ekim 2026 — sunucu üretimli zimmet PDF'si yerel kabulü
+
+- Yerel kod/API/UI/görsel kabul geçti; tam CI ve canlı yayın açık. İmzalı kayıt satırında PDF indir; şirket/çalışan/konum sınırı, iki imza ve üç SHA256 özeti, no-store/attachment. Gömülü Türkçe font, sayfalama, imzalar ve kaynak özetleri PDF'de.
+- Son gerçek PostgreSQL API 2/2, çıkış 0; Chromium indirme/390px kabulü çıkış 0; 8 sayfalı PDF'de 85/85 seri birer kez, Türkçe ve iki imza/özet korundu. İlk iki API hatası ve sonra görsel/parser ile bulunan başlık/tekrarlanan satır hataları saklandı ve düzeltildi. Kaynak/JS/UI envanteri/diff kontrolü geçti.
+- Kanıt: tests/reports/handover-pdf-20261026.md ve ilgili log/PNG/PDF. Yeni migration yok, canlı 4237 değişmedi; gerçek kullanıcı imzası veya MFA kullanılmadı. Sıradaki P0: aynı doğrulanmış PDF'nin açık eylemle e-posta eki; sonra tam CI ve yayın kapıları.

@@ -1,0 +1,105 @@
+ Container handover-pdf-20261026-database-1 Running
+ Container handover-pdf-20261026-database-1 Waiting
+ Container handover-pdf-20261026-database-1 Healthy
+ Container handover-pdf-20261026-acceptance-run-bac1c8172d6f Creating
+ Container handover-pdf-20261026-acceptance-run-bac1c8172d6f Created
+Test run for /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.18]   Discovering: EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:00.31]   Discovered:  EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:00.35]   Starting:    EnvanterTR.SecurityAcceptance
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[35]
+      No XML encryptor configured. Key {b044f0cd-1bd2-4475-a6ff-80d2ab844b3b} may be persisted to storage in unencrypted form.
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (64ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_Assets_CompanyId_DefaultLocationCatalogId"
+      ' from migration 'AddAssetModelNumbersAndDefaultLocation' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_AuditEntries_OccurredAt"
+      ' from migration 'AddGlobalAuditTimelineIndex' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+[xUnit.net 00:00:26.83]     EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Handover_pdf_is_signed_scoped_integrity_checked_and_paginated [FAIL]
+[xUnit.net 00:00:26.83]       Assert.Equal() Failure: Values differ
+[xUnit.net 00:00:26.84]       Expected: NotFound
+[xUnit.net 00:00:26.84]       Actual:   Unauthorized
+[xUnit.net 00:00:26.84]       Stack Trace:
+[xUnit.net 00:00:26.84]         /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverPdf.cs(62,0): at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Handover_pdf_is_signed_scoped_integrity_checked_and_paginated()
+[xUnit.net 00:00:26.84]         /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverPdf.cs(97,0): at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Handover_pdf_is_signed_scoped_integrity_checked_and_paginated()
+[xUnit.net 00:00:26.84]         --- End of stack trace from previous location ---
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+  Failed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Handover_pdf_is_signed_scoped_integrity_checked_and_paginated [3 s]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: NotFound
+Actual:   Unauthorized
+  Stack Trace:
+     at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Handover_pdf_is_signed_scoped_integrity_checked_and_paginated() in /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverPdf.cs:line 62
+   at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Handover_pdf_is_signed_scoped_integrity_checked_and_paginated() in /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverPdf.cs:line 97
+--- End of stack trace from previous location ---
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+fail: Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddleware[1]
+      An unhandled exception has occurred while executing the request.
+      System.InvalidOperationException: The font 'Courier New' cannot be resolved for predefined error font. Use another font name or fix your font resolver. See https://docs.pdfsharp.net/link/migradoc-font-resolving-6.2.html and https://docs.pdfsharp.net/link/font-resolving.html for further information.
+       ---> System.InvalidOperationException: No appropriate font found for family name 'Courier New'.
+         at PdfSharp.Drawing.XGlyphTypeface.GetOrCreateFrom(String familyName, FontResolvingOptions fontResolvingOptions)
+         at PdfSharp.Drawing.XFont.Initialize()
+         at PdfSharp.Drawing.XFont..ctor(String familyName, Double emSize, XFontStyleEx style, XPdfFontOptions pdfOptions)
+         at PdfSharp.Drawing.XFont..ctor(String familyName, Double emSize, XFontStyleEx style)
+         at MigraDoc.Rendering.DocumentRenderer.PredefinedFontsAndChars.CreateFont(String familyName, Double emSize, XFontStyleEx style, String propertyDescription)
+         --- End of inner exception stack trace ---
+         at MigraDoc.Rendering.DocumentRenderer.PredefinedFontsAndChars.CreateFont(String familyName, Double emSize, XFontStyleEx style, String propertyDescription)
+         at MigraDoc.Rendering.DocumentRenderer.PredefinedFontsAndChars.get_ErrorFont()
+         at MigraDoc.Rendering.DocumentRenderer.PredefinedFontsAndChars.CreateAllFixedFonts()
+         at MigraDoc.Rendering.PdfDocumentRenderer.PrepareDocumentRenderer(Boolean prepareCompletely)
+         at MigraDoc.Rendering.PdfDocumentRenderer.PrepareRenderPages()
+         at MigraDoc.Rendering.PdfDocumentRenderer.RenderDocument()
+         at EnvanterTR.Web.Data.EmployeeHandoverEndpoints.CreateHandoverPdf(EmployeeHandoverDocument record, HandoverSnapshot snapshot, String companyName) in /source/src/EnvanterTR.Web/Data/EmployeeHandoverPdf.cs:line 147
+         at EnvanterTR.Web.Data.EmployeeHandoverEndpoints.DownloadPdfAsync(Guid employeeId, Guid documentId, ClaimsPrincipal user, HttpContext context, AppDbContext db, CancellationToken cancellationToken) in /source/src/EnvanterTR.Web/Data/EmployeeHandoverPdf.cs:line 35
+         at Microsoft.AspNetCore.Http.RequestDelegateFactory.<TaskOfTToValueTaskOfObject>g__ExecuteAwaited|92_0[T](Task`1 task)
+         at EnvanterTR.Web.Data.AssetEndpoints.<>c.<<MapAssetEndpoints>b__3_0>d.MoveNext() in /source/src/EnvanterTR.Web/Data/AssetEndpoints.cs:line 65
+      --- End of stack trace from previous location ---
+         at Microsoft.AspNetCore.Http.RequestDelegateFactory.<ExecuteValueTaskOfObject>g__ExecuteAwaited|130_0(ValueTask`1 valueTask, HttpContext httpContext, JsonTypeInfo`1 jsonTypeInfo)
+         at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+         at Program.<>c.<<<Main>$>b__0_12>d.MoveNext() in /source/src/EnvanterTR.Web/Program.cs:line 554
+      --- End of stack trace from previous location ---
+         at EnvanterTR.Web.Data.PlatformImpersonation.<>c.<<UsePlatformImpersonation>b__17_0>d.MoveNext() in /source/src/EnvanterTR.Web/Data/PlatformImpersonation.cs:line 189
+      --- End of stack trace from previous location ---
+         at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+         at Program.<>c.<<<Main>$>b__0_11>d.MoveNext() in /source/src/EnvanterTR.Web/Program.cs:line 319
+      --- End of stack trace from previous location ---
+         at Program.<>c__DisplayClass0_0.<<<Main>$>b__10>d.MoveNext() in /source/src/EnvanterTR.Web/Program.cs:line 274
+      --- End of stack trace from previous location ---
+         at Program.<>c.<<<Main>$>b__0_9>d.MoveNext() in /source/src/EnvanterTR.Web/Program.cs:line 252
+      --- End of stack trace from previous location ---
+         at Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddlewareImpl.Invoke(HttpContext context)
+[xUnit.net 00:00:32.90]       Assert.Equal() Failure: Values differ
+[xUnit.net 00:00:32.90]     EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Employee_handover_documents_snapshot_company_inventory_and_keep_signatures_immutable [FAIL]
+[xUnit.net 00:00:32.90]       Expected: OK
+[xUnit.net 00:00:32.90]       Actual:   InternalServerError
+[xUnit.net 00:00:32.90]       Stack Trace:
+[xUnit.net 00:00:32.90]         /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs(7533,0): at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Employee_handover_documents_snapshot_company_inventory_and_keep_signatures_immutable()
+[xUnit.net 00:00:32.90]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:32.91]   Finished:    EnvanterTR.SecurityAcceptance
+  Failed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Employee_handover_documents_snapshot_company_inventory_and_keep_signatures_immutable [2 s]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: OK
+Actual:   InternalServerError
+  Stack Trace:
+     at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Employee_handover_documents_snapshot_company_inventory_and_keep_signatures_immutable() in /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs:line 7533
+--- End of stack trace from previous location ---
+
+Total tests: 2
+Test Run Failed.
+     Failed: 2
+ Total time: 33.6775 Seconds

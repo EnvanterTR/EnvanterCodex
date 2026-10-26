@@ -7500,7 +7500,10 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(64, payload.RootElement.GetProperty("snapshotSha256").GetString()!.Length);
         }
 
-        const string png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p8sAAAAASUVORK5CYII=";
+        const string png = "data:image/png;base64," + HandoverPdfTestSignaturePng;
+        using (var unsignedPdf = await SendAsRoleAsync(HttpMethod.Get,
+                   $"/api/employees/{employeeId}/handover-documents/{documentId}/pdf", "admin"))
+            Assert.Equal(HttpStatusCode.Conflict, unsignedPdf.StatusCode);
         using (var badRecipientName = await SendAsRoleAsync(HttpMethod.Post, $"/api/employee-handover-documents/{documentId}/sign", "admin",
                    JsonContent.Create(new { signerType = "recipient", signerName = "Başka kişi", signaturePngDataUrl = png }), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.BadRequest, badRecipientName.StatusCode);
@@ -7523,6 +7526,19 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.True(payload.RootElement.GetProperty("isFullySigned").GetBoolean());
             Assert.Equal("Security Acceptance User", payload.RootElement.GetProperty("issuer").GetProperty("issuerName").GetString());
             Assert.StartsWith("data:image/png;base64,", payload.RootElement.GetProperty("issuer").GetProperty("signaturePngDataUrl").GetString());
+        }
+        using (var pdf = await SendAsRoleAsync(HttpMethod.Get,
+                   $"/api/employees/{employeeId}/handover-documents/{documentId}/pdf", "admin"))
+        {
+            Assert.Equal(HttpStatusCode.OK, pdf.StatusCode);
+            Assert.Equal("application/pdf", pdf.Content.Headers.ContentType?.MediaType);
+            Assert.True(pdf.Headers.CacheControl?.NoStore);
+            var bytes = await pdf.Content.ReadAsByteArrayAsync();
+            Assert.StartsWith("%PDF-", Encoding.ASCII.GetString(bytes, 0, 8));
+            using var output = new MemoryStream(bytes);
+            using var parsed = PdfSharp.Pdf.IO.PdfReader.Open(output, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
+            Assert.True(parsed.PageCount > 0);
+            Assert.Contains("Zimmet teslim belgesi", parsed.Info.Title, StringComparison.Ordinal);
         }
         using (var replay = await SendAsRoleAsync(HttpMethod.Post, $"/api/employee-handover-documents/{documentId}/sign", "admin",
                    JsonContent.Create(new { signerType = "recipient", signerName = $"Handover Employee {suffix[..8]}", signaturePngDataUrl = png }), requestToken, antiforgeryCookie))
