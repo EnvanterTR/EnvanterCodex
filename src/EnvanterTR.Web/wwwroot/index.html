@@ -1445,6 +1445,16 @@
       'Aksesuar, sarf malzemesi ve bileşen girişlerini, çıkışlarını ve atamalarını birlikte inceleyin.':['Review accessory, consumable, and component receipts, issues, and assignments together.','Просматривайте поступления, выдачи и назначения аксессуаров, расходных материалов и компонентов.','Переглядайте надходження, видачі та призначення аксесуарів, витратних матеріалів і компонентів разом.','Прегледајте ги приемите, издавањата и задолжувањата на додатоците, потрошниот материјал и компонентите заедно.'],
       'CSV indir':['Download CSV','Скачать CSV','Завантажити CSV','Преземи CSV'],
       'PDF indir':['Download PDF','Скачать PDF','Завантажити PDF','Преземи PDF'],
+      'E-postayla gönder':['Send by email','Отправить по почте','Надіслати поштою','Испрати по е-пошта'],
+      'İmzalı PDF gönderimi':['Send signed PDF','Отправка подписанного PDF','Надсилання підписаного PDF','Испраќање потпишан PDF'],
+      'Gönderim sonucunu kontrol et':['Check delivery result','Проверить результат отправки','Перевірити результат надсилання','Провери резултат од испраќањето'],
+      'İmzalı PDF aşağıdaki kayıtlı alıcıya gönderilecek.':['The signed PDF will be sent to the registered recipient below.','Подписанный PDF будет отправлен указанному ниже получателю.','Підписаний PDF буде надіслано вказаному нижче отримувачу.','Потпишаниот PDF ќе се испрати до регистрираниот примач подолу.'],
+      'Bu belge daha önce gönderildi. Aynı alıcıya yeniden gönderilsin mi?':['This document was sent before. Send it to the same recipient again?','Документ уже отправлялся. Отправить тому же получателю повторно?','Цей документ уже надсилали. Надіслати тому самому отримувачу повторно?','Документот веќе е испратен. Да се испрати повторно до истиот примач?'],
+      'Önceki gönderimin sonucu kesinleşmedi. Posta kutusunu ve iletim kaydını kontrol edin. Yeniden gönderilsin mi?':['The previous delivery result is uncertain. Check the mailbox and delivery log. Send again?','Результат предыдущей отправки неизвестен. Проверьте почту и журнал доставки. Отправить повторно?','Результат попереднього надсилання невідомий. Перевірте пошту та журнал доставки. Надіслати повторно?','Резултатот од претходното испраќање е неизвесен. Проверете ги поштенското сандаче и дневникот. Да се испрати повторно?'],
+      'E-posta gönderimi şu anda kullanılamıyor. Şirket yöneticinizle iletişime geçin.':['Email delivery is currently unavailable. Contact your company administrator.','Отправка почты сейчас недоступна. Обратитесь к администратору компании.','Надсилання пошти зараз недоступне. Зверніться до адміністратора компанії.','Испраќањето е-пошта е недостапно. Контактирајте со администраторот на компанијата.'],
+      'İmzalı PDF gönderici SMTP sunucusu tarafından kabul edildi. Alıcıya teslimi ayrıca doğrulanmalıdır.':['The sender SMTP server accepted the signed PDF. Delivery to the recipient must be verified separately.','SMTP-сервер отправителя принял подписанный PDF. Доставку получателю следует проверить отдельно.','SMTP-сервер відправника прийняв підписаний PDF. Доставку отримувачу слід перевірити окремо.','SMTP-серверот на испраќачот го прифати потпишаниот PDF. Доставата до примачот се проверува одделно.'],
+      'Gönderim sürüyor. Aynı isteği tekrarlamak ikinci bir ileti oluşturmaz.':['Sending is in progress. Repeating the same request will not create another message.','Отправка выполняется. Повтор того же запроса не создаёт второе письмо.','Надсилання триває. Повтор того самого запиту не створить другий лист.','Испраќањето е во тек. Повторувањето на истото барање не создава втора порака.'],
+      'Gönderim sonucu doğrulanamadı. Yeniden göndermeden önce iletim günlüğünü ve alıcı posta kutusunu kontrol edin.':['The delivery result could not be verified. Check the delivery log and recipient mailbox before resending.','Результат отправки не подтверждён. Перед повторной отправкой проверьте журнал и почту получателя.','Результат надсилання не підтверджено. Перед повторним надсиланням перевірте журнал і пошту отримувача.','Резултатот не е потврден. Пред повторно испраќање проверете ги дневникот и сандачето на примачот.'],
       'Ürün, çalışan, varlık veya not ara':['Search item, employee, asset, or note','Поиск по товару, сотруднику, активу или примечанию','Пошук за товаром, працівником, активом або приміткою','Пребарај производ, вработен, средство или белешка'],
       'Stok hareketlerinde ara':['Search stock movements','Поиск движений запасов','Пошук рухів запасів','Пребарај движења на залихи'],
       'Tüm stok türleri':['All stock types','Все типы запасов','Усі типи запасів','Сите видови залихи'],
@@ -7450,6 +7460,43 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
             } catch (error) { notify(error.message); } finally { download.disabled = false; }
           });
           row.append(download);
+          if (canWriteAssets()) {
+            const email = document.createElement('button'); email.type = 'button'; email.className = 'btn small';
+            email.textContent = translateUiText('E-postayla gönder');
+            let pendingEmailRequest = null;
+            email.addEventListener('click', async () => {
+              email.disabled = true;
+              const endpoint = `/api/employees/${encodeURIComponent(employee.id)}/handover-documents/${encodeURIComponent(item.id)}/email`;
+              try {
+                if (!pendingEmailRequest) {
+                  const delivery = await api(endpoint);
+                  if (!email.isConnected || !$('#employeeHandoverDialog').open || currentEmployeeProfile?.employee?.id !== employee.id) return;
+                  if (!delivery.ready || !delivery.recipient) throw new Error(translateUiText('E-posta gönderimi şu anda kullanılamıyor. Şirket yöneticinizle iletişime geçin.'));
+                  if (delivery.latestAttempt?.status === 'Sending') { notify(translateUiText(delivery.latestAttempt.message)); return; }
+                  const warning = delivery.latestAttempt?.status === 'Uncertain'
+                    ? 'Önceki gönderimin sonucu kesinleşmedi. Posta kutusunu ve iletim kaydını kontrol edin. Yeniden gönderilsin mi?'
+                    : delivery.latestAttempt ? 'Bu belge daha önce gönderildi. Aynı alıcıya yeniden gönderilsin mi?'
+                    : 'İmzalı PDF aşağıdaki kayıtlı alıcıya gönderilecek.';
+                  const confirmed = await confirmEmployeeAction({ title: 'İmzalı PDF gönderimi',
+                    summary: `${employee.displayName}\n${delivery.recipient}\n${item.documentNumber}\n\n${translateUiText(warning)}`,
+                    confirmLabel: 'E-postayla gönder', danger: false });
+                  if (!confirmed || !email.isConnected || !$('#employeeHandoverDialog').open || currentEmployeeProfile?.employee?.id !== employee.id) return;
+                  pendingEmailRequest = { idempotencyKey: crypto.randomUUID(), expectedRecipient: delivery.recipient,
+                    snapshotSha256: delivery.snapshotSha256, resendOfAttemptId: delivery.latestAttempt?.id || null };
+                }
+                const result = await api(endpoint, { method: 'POST', timeoutMs: 40000, body: JSON.stringify(pendingEmailRequest) });
+                pendingEmailRequest = null;
+                if (email.isConnected && currentEmployeeProfile?.employee?.id === employee.id)
+                  $('#employeeHandoverStatus').textContent = translateUiText(result.message);
+                notify(translateUiText(result.message));
+              } catch (error) {
+                // Preserve an ambiguous request key so a retry cannot send a duplicate message.
+                if (error.status && error.status < 500) pendingEmailRequest = null;
+                notify(error.message);
+              } finally { email.disabled = false; email.textContent = translateUiText(pendingEmailRequest ? 'Gönderim sonucunu kontrol et' : 'E-postayla gönder'); }
+            });
+            row.append(email);
+          }
         }
         list.querySelectorAll('[data-handover-id]').forEach(button => button.addEventListener('click', () => { const item = result.find(entry => entry.id === button.dataset.handoverId); if (item?.isFullySigned) printEmployeeHandoverDocument(item.id); else openEmployeeHandover(button.dataset.handoverId); }));
         $('#employeeHandoverStatus').textContent = `${fmt.format(result.length)} belge · imza durumu ve kayıt özeti`;

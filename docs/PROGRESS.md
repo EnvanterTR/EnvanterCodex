@@ -1,3 +1,9 @@
+## 26 Ekim 2026 — imzalı PDF için kontrollü e-posta gönderimi
+- Yerel uygulama ve kabul tamamlandı; canlıya çıkmadı. Kayıtlı çalışan adresi ve belge gösterilerek açık onay alınır; şirket/konum/rol/CSRF ve imza bütünlüğü korunur.
+- Kalıcı gönderim kaydı aynı anahtarla paralel/tekrar istekte ikinci SMTP gönderimini engeller. Belirsiz sonuç otomatik tekrarlanmaz; yeniden gönderim ayrı onay ister. SMTP kabulü alıcı teslimi olarak sunulmaz.
+- Beş API/PDF senaryosu, ayrı migration testi ve Chromium akışı başarılı. 121→122 eklemeli SQL iki kez uygulanarak mevcut alan hashleri korundu. Tam uzak CI/staging/güncel yedek ve geri dönüş kapıları açık; canlı4237/schema121.
+- Kanıt: tests/reports/handover-email-20261026.md. Gerçek Santa imzası ve Farma MFA kullanıcı adımları bekliyor; yeniden kod istenmedi.
+
 ## 26 Ekim 2026 — CI'daki eski tenant host sözleşmesi düzeltildi
 - 40251402034Linuxsecurity121343907959, eskiSQL-içi slugkarşılaştırmasıregexinde başarısız; Windows121343907875başarılı, PostgreSQL121343907721inceleme anında sürüyor. Yerelde aynı Nodehatası yeniden üretildi; ürünC# kodu değiştirilmedi.
 - Kontrol kaldırılmadı: ayrıhostguard401/return, çerezsilmemesi, öncesindeüyelik/rol geçerliliği ve5gerçekkabultestinin varlığı zorunlu oldu. CIyml80benzersizNodetools komutu yerelde tamamıexit0;5/5Identitykabul mevcutürünkoduiçingeçerli.

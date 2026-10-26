@@ -38,6 +38,7 @@ public sealed class CurrentReleaseMigrationAcceptanceTests(ITestOutputHelper out
                 MD5.HashData(Encoding.UTF8.GetBytes(string.Join('\n', migrations.Take(118))))));
             Assert.Equal(new[] { "20261023190000_AddExistingCompanyCheckoutContext", "20261024010000_AddPlatformImpersonationSessions" }, migrations.Skip(118).Take(2));
             Assert.Equal("20261024212238_AddRecoverableCompanyDeletion", migrations[120]);
+            Assert.Equal("20261026083058_AddHandoverEmailAttempts", migrations[121]);
             await db.Database.MigrateAsync(Baseline);
             Assert.Equal(118, (await db.Database.GetAppliedMigrationsAsync()).Count());
 
@@ -107,7 +108,7 @@ public sealed class CurrentReleaseMigrationAcceptanceTests(ITestOutputHelper out
             Assert.DoesNotContain("DELETE FROM", sql, StringComparison.OrdinalIgnoreCase);
             await using (var apply = new NpgsqlCommand(sql, connection)) await apply.ExecuteNonQueryAsync();
             Assert.Equal(120, (await db.Database.GetAppliedMigrationsAsync()).Count());
-            Assert.Equal(new[] { migrations[120] }, await db.Database.GetPendingMigrationsAsync());
+            Assert.Equal(new[] { migrations[120], migrations[121] }, await db.Database.GetPendingMigrationsAsync());
             Assert.Equal(before, await HashProjections(connection, schema, columns));
             await using (var repeat = new NpgsqlCommand(sql, connection)) await repeat.ExecuteNonQueryAsync();
             Assert.Equal(120, (await db.Database.GetAppliedMigrationsAsync()).Count());
@@ -134,11 +135,28 @@ public sealed class CurrentReleaseMigrationAcceptanceTests(ITestOutputHelper out
             Assert.Equal(before, await HashProjections(connection, schema, columns));
             await using (var repeatCompany = new NpgsqlCommand(companySql, connection)) await repeatCompany.ExecuteNonQueryAsync();
             Assert.Equal(121, (await db.Database.GetAppliedMigrationsAsync()).Count());
+            var handoverArtifact = Path.Combine(AppContext.BaseDirectory, "handover-email-migration.sql");
+            var handoverBytes = await File.ReadAllBytesAsync(handoverArtifact);
+            var handoverHash = (await File.ReadAllTextAsync(handoverArtifact + ".sha256")).Trim().Split(' ')[0];
+            Assert.Equal(handoverHash, Convert.ToHexStringLower(SHA256.HashData(handoverBytes)));
+            var handoverSql = Encoding.UTF8.GetString(handoverBytes);
+            var generatedHandoverSql = db.GetService<IMigrator>().GenerateScript(migrations[120], migrations[121], MigrationsSqlGenerationOptions.Idempotent)
+                .Replace(Quote(schema) + "." + Quote("__EFMigrationsHistory"), Quote("__EFMigrationsHistory"), StringComparison.Ordinal)
+                .Replace(schema + "." + Quote("__EFMigrationsHistory"), Quote("__EFMigrationsHistory"), StringComparison.Ordinal);
+            Assert.Equal(generatedHandoverSql.Replace("\r\n", "\n").TrimEnd(), handoverSql.Replace("\r\n", "\n").TrimEnd());
+            foreach (var destructive in new[] { "DROP TABLE", "DROP COLUMN", "DELETE FROM" })
+                Assert.DoesNotContain(destructive, handoverSql, StringComparison.OrdinalIgnoreCase);
+            await using (var applyHandover = new NpgsqlCommand(handoverSql, connection)) await applyHandover.ExecuteNonQueryAsync();
+            Assert.Equal(before, await HashProjections(connection, schema, columns));
+            await using (var repeatHandover = new NpgsqlCommand(handoverSql, connection)) await repeatHandover.ExecuteNonQueryAsync();
+            Assert.Equal(122, (await db.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Empty(await db.EmployeeHandoverEmailAttempts.ToListAsync());
             Assert.Empty(await db.Database.GetPendingMigrationsAsync());
             Assert.False(db.Database.HasPendingModelChanges());
             Assert.Null((await db.Companies.SingleAsync(item => item.Id == company.Id)).DeletedAt);
             Assert.Equal(before, await HashProjections(connection, schema, columns));
             output.WriteLine($"PRESERVED_COMPANY_DELETION_120_TO_121_OK: repeated idempotent SQL; all original fields/rows unchanged; new DeletedAt null; SQL SHA-256 {companyHash}.");
+            output.WriteLine($"PRESERVED_HANDOVER_EMAIL_121_TO_122_OK: repeated exact SQL; all original fields/rows unchanged; delivery table empty; SQL SHA-256 {handoverHash}.");
             output.WriteLine($"PRESERVED_RELEASE_118_TO_120_OK: {columns.Count} original tables; original fields/rows identical after first and repeated SQL; existing session/order/assets preserved.");
             output.WriteLine("Synthetic isolated schema only; not production backup, staging, or live acceptance.");
         }

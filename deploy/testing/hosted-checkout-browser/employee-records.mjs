@@ -33,6 +33,9 @@ let privateNotes = '';
 let employeeDocuments = [];
 const handoverDocuments = [];
 let handoverPdfDownloadBytes = null;
+const handoverEmailAttempts = [];
+let handoverEmailSendCount = 0;
+let loseFirstHandoverEmailResponse = true;
 let employeeImportPreview = null;
 const employeePhotos = new Map();
 const floorOneId = '66666666-6666-4666-8666-666666666661';
@@ -157,6 +160,14 @@ const server = createServer(async (request, response) => {
     const handoverCollectionMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/handover-documents$/i);
     const handoverDetailMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/handover-documents\/([0-9a-f-]+)$/i);
     const handoverPdfMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/handover-documents\/([0-9a-f-]+)\/pdf$/i);
+    const handoverEmailMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/handover-documents\/([0-9a-f-]+)\/email$/i);
+    if (handoverEmailMatch) {
+      const record = handoverDocuments.find(item => item.employeeId === handoverEmailMatch[1] && item.id === handoverEmailMatch[2]);
+      if (!record) return json(response, 404, { message: 'Document not found' });
+      return json(response, 200, { recipient: employees.find(item => item.id === record.employeeId).email,
+        snapshotSha256: record.snapshotSha256, ready: record.isFullySigned,
+        latestAttempt: handoverEmailAttempts.at(-1) || null });
+    }
     if (handoverPdfMatch) {
       const record = handoverDocuments.find(item => item.employeeId === handoverPdfMatch[1] && item.id === handoverPdfMatch[2]);
       if (!record) return json(response, 404, { message: 'Document not found' });
@@ -238,6 +249,21 @@ const server = createServer(async (request, response) => {
   }
 
   if (request.headers['x-csrf-token'] !== csrfToken) return json(response, 400, { message: 'CSRF required' });
+  const handoverEmailSendMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/handover-documents\/([0-9a-f-]+)\/email$/i);
+  if (request.method === 'POST' && handoverEmailSendMatch) {
+    const replay = handoverEmailAttempts.find(item => item.idempotencyKey === body.idempotencyKey);
+    if (replay) return json(response, 200, replay);
+    const record = handoverDocuments.find(item => item.employeeId === handoverEmailSendMatch[1] && item.id === handoverEmailSendMatch[2]);
+    if (!record?.isFullySigned) return json(response, 409, { message: 'Signatures required' });
+    const last = handoverEmailAttempts.at(-1);
+    if (last && last.id !== body.resendOfAttemptId) return json(response, 409, { message: 'Resend confirmation required' });
+    const delivery = { id: `dddddddd-dddd-4ddd-8ddd-${String(++handoverEmailSendCount).padStart(12, '0')}`,
+      idempotencyKey: body.idempotencyKey, status: 'Accepted', createdAt: new Date().toISOString(), acceptedAt: new Date().toISOString(),
+      message: 'İmzalı PDF gönderici SMTP sunucusu tarafından kabul edildi. Alıcıya teslimi ayrıca doğrulanmalıdır.' };
+    handoverEmailAttempts.push(delivery);
+    if (loseFirstHandoverEmailResponse) { loseFirstHandoverEmailResponse = false; return json(response, 503, { message: 'Synthetic response lost after delivery' }); }
+    return json(response, 200, delivery);
+  }
   const handoverCreateMatch = url.pathname.match(/^\/api\/employees\/([0-9a-f-]+)\/handover-documents$/i);
   if (request.method === 'POST' && handoverCreateMatch) {
     if (!['owner', 'admin', 'hr_operator'].includes(syntheticRole)) return json(response, 403, { message: 'Forbidden' });
@@ -786,6 +812,40 @@ try {
   assert.equal(downloadedPdf.suggestedFilename(), `${handoverDocuments[0].documentNumber}.pdf`);
   assert.deepEqual(await readFile(await downloadedPdf.path()), pdfBytes,
     'The download action must save the authenticated API PDF bytes without regenerating or altering them.');
+  const emailEndpoint = `/api/employees/${employeeId}/handover-documents/${handoverDocuments[0].id}/email`;
+  const emailAction = handoverDialog.getByRole('button', { name: 'E-postayla gönder', exact: true });
+  await emailAction.click();
+  const emailConfirmation = page.locator('#employeeActionDialog');
+  await emailConfirmation.waitFor({ state: 'visible' });
+  assert.ok((await page.locator('#employeeActionSummary').innerText()).includes(employees.find(item => item.id === employeeId).email),
+    'The confirmation must show the actual registered recipient.');
+  if (process.env.ENVANTERTR_HANDOVER_EMAIL_UI_EVIDENCE)
+    await page.screenshot({ path: process.env.ENVANTERTR_HANDOVER_EMAIL_UI_EVIDENCE });
+  await emailConfirmation.locator('[data-close-employee-action]').first().click();
+  assert.equal(requests.filter(item => item.method === 'POST' && item.path === emailEndpoint).length, 0,
+    'Cancelling the visible recipient confirmation must not send anything.');
+  await emailAction.click();
+  await emailConfirmation.waitFor({ state: 'visible' });
+  await page.locator('#employeeActionSubmit').click();
+  const recoverEmail = handoverDialog.getByRole('button', { name: 'Gönderim sonucunu kontrol et', exact: true });
+  await recoverEmail.waitFor({ state: 'visible' });
+  assert.equal(handoverEmailSendCount, 1);
+  await recoverEmail.click();
+  await emailAction.waitFor({ state: 'visible' });
+  const replayedEmailRequests = requests.filter(item => item.method === 'POST' && item.path === emailEndpoint);
+  assert.equal(replayedEmailRequests.length, 2);
+  assert.deepEqual(replayedEmailRequests[0].body, replayedEmailRequests[1].body,
+    'Recovering a lost response must reuse the exact confirmed request key and payload.');
+  assert.ok(replayedEmailRequests.every(item => item.csrf === csrfToken));
+  assert.equal(handoverEmailSendCount, 1, 'Transport retry must not create a second delivery.');
+  await emailAction.click();
+  await emailConfirmation.waitFor({ state: 'visible' });
+  assert.match(await page.locator('#employeeActionSummary').innerText(), /daha önce gönderildi/);
+  const confirmedResendResponse = page.waitForResponse(response => response.request().method() === 'POST' &&
+    new URL(response.url()).pathname === emailEndpoint);
+  await page.locator('#employeeActionSubmit').click();
+  await confirmedResendResponse;
+  assert.equal(handoverEmailSendCount, 2, 'Only an explicit resend confirmation may create another delivery.');
   if (process.env.ENVANTERTR_HANDOVER_UI_EVIDENCE)
     await page.screenshot({ path: process.env.ENVANTERTR_HANDOVER_UI_EVIDENCE, fullPage: false });
   const handoverViewport = page.viewportSize();

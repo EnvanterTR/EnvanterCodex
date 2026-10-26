@@ -22,6 +22,8 @@ public static partial class EmployeeHandoverEndpoints
         var write = api.MapGroup("/employees/{employeeId:guid}/handover-documents")
             .RequireAuthorization("asset.write");
         write.MapPost("", CreateAsync);
+        write.MapGet("/{documentId:guid}/email", GetEmailDeliveryAsync);
+        write.MapPost("/{documentId:guid}/email", SendEmailDeliveryAsync).RequireRateLimiting("handover-email");
 
         api.MapPost("/employee-handover-documents/{documentId:guid}/sign", SignAsync)
             .RequireAuthorization("asset.write");

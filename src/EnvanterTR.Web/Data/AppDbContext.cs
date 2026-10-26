@@ -39,6 +39,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AssetAttachment> AssetAttachments => Set<AssetAttachment>();
     public DbSet<EmployeeDocument> EmployeeDocuments => Set<EmployeeDocument>();
     public DbSet<EmployeeHandoverDocument> EmployeeHandoverDocuments => Set<EmployeeHandoverDocument>();
+    public DbSet<EmployeeHandoverEmailAttempt> EmployeeHandoverEmailAttempts => Set<EmployeeHandoverEmailAttempt>();
     public DbSet<AssetMaintenance> AssetMaintenances => Set<AssetMaintenance>();
     public DbSet<AssetMaintenanceAttachment> AssetMaintenanceAttachments => Set<AssetMaintenanceAttachment>();
     public DbSet<Accessory> Accessories => Set<Accessory>();
@@ -308,6 +309,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<EmployeeHandoverDocument>().Property(x => x.IssuerSignatureSha256).HasMaxLength(64);
         modelBuilder.Entity<EmployeeHandoverDocument>().HasIndex(x => new { x.CompanyId, x.EmployeeId, x.CreatedAt });
         modelBuilder.Entity<EmployeeHandoverDocument>().HasIndex(x => new { x.CompanyId, x.DocumentNumber }).IsUnique();
+        modelBuilder.Entity<EmployeeHandoverDocument>().HasAlternateKey(x => new { x.CompanyId, x.EmployeeId, x.Id });
         modelBuilder.Entity<EmployeeHandoverDocument>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<EmployeeHandoverDocument>().HasOne<Employee>().WithMany()
@@ -316,6 +318,27 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<EmployeeHandoverDocument>().ToTable("EmployeeHandoverDocuments", table =>
         {
             table.HasCheckConstraint("CK_EmployeeHandoverDocuments_SignaturePairs", "(\"RecipientSignaturePngBase64\" IS NULL) = (\"RecipientSignedAt\" IS NULL) AND (\"IssuerSignaturePngBase64\" IS NULL) = (\"IssuerSignedAt\" IS NULL)");
+        });
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().Property(x => x.RecipientEmail).HasMaxLength(254).IsRequired();
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().Property(x => x.SnapshotSha256).HasMaxLength(64).IsRequired();
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().Property(x => x.PdfSha256).HasMaxLength(64).IsRequired();
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().Property(x => x.Status).HasMaxLength(16).IsRequired();
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().Property(x => x.ErrorType).HasMaxLength(128);
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().HasIndex(x => new { x.CompanyId, x.DocumentId, x.IdempotencyKey }).IsUnique();
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().HasIndex(x => new { x.CompanyId, x.DocumentId, x.CreatedAt });
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().HasOne<EmployeeHandoverDocument>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.EmployeeId, x.DocumentId }).HasPrincipalKey(x => new { x.CompanyId, x.EmployeeId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().HasOne<Employee>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.EmployeeId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().ToTable("EmployeeHandoverEmailAttempts", table =>
+        {
+            table.HasCheckConstraint("CK_HandoverEmail_Status", "\"Status\" IN ('Sending', 'Accepted', 'Uncertain')");
+            table.HasCheckConstraint("CK_HandoverEmail_AcceptedAt", "(\"Status\" = 'Accepted') = (\"AcceptedAt\" IS NOT NULL)");
+            table.HasCheckConstraint("CK_HandoverEmail_RequestKey", "\"IdempotencyKey\" <> '00000000-0000-0000-0000-000000000000'::uuid");
         });
         modelBuilder.Entity<AssetCategory>().Property(x => x.Name).HasMaxLength(120).IsRequired();
         modelBuilder.Entity<AssetBrand>().Property(x => x.Name).HasMaxLength(120).IsRequired();
