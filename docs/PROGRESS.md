@@ -608,3 +608,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Kullanıcı doğrulamayı tamamladı. CompanyRestored 17:18 TRT; ayrı gerekçeli CompanyReactivated 17:21 TRT. Gerçek listede Demo3/Farma/Santa aktif; geri alma önce askıda bıraktı, eski oturumlar geri açılmış sayılmadı.
 - Normal Panele gir formuyla Demo3'e 15 dakikalık destek oturumu açıldı; gerçek alt alan adı, Demo3 şirket bağlamı ve sarı destek bandı görüldü. Platform yönetimine dön ile gerçek root Genel Bakışına dönüldü. ImpersonationStarted/Ended 17:23 TRT audit kayıtları aynı oturum için ayrı filtrelerle doğrulandı.
 - Kanıt: tests/reports/santa-e2e-20261025/README.md ek kabul ve sekiz yeni ekran. Bu destek oturumu owner girişinin/canlı çapraz GET-PUT kabulünün yerine geçirilmedi; HTTP 428 negatif kanıtı açık. SMTP/Google güvenlik ayarı değişmedi, gerçek teslimat/ödeme ve tam Hedef açık. Eski bekleyen geri alma bilgileri güncel context/status/audit notlarında düzeltildi.
+## 26 Ekim 2026 — 4237 kesin adayı izole sunucu kabulünden geçti
+
+- Yeni SHA ayrıca derlendi (çıkış 0), dışa kapalı ağda ayrı SQL/medya/anahtar kopyalarıyla başlatıldı. Üç host ready/121/0; anonim GET/PUT/PATCH 401; CSRF/Secure çerez doğrulandı.
+- Taze dump, 140 MB rollback ve dosya/imaj provası başarılı. Geri yüklenen kopyada 95 tablonun satır sayıları üretimle aynı. Kanıt: `tests/reports/4237-server-staging-20261026.md`.
+- Güncel CI 40253374749: Windows ve Linux security geçti, PostgreSQL kabul işi sürüyor. Üretim hâlâ 124; yayın kapısı henüz kapanmadı. Kullanıcının imza/MFA adımları bekliyor; yeni kod istenmedi.
