@@ -1,3 +1,14 @@
+## 26 Ekim 2026 — 5018 için taze geri dönüş provası
+- Durum: TAMAM (yedek/dosya/imaj kurtarma); yeni canlı yayın yok.
+- Güncel091423Z SQL yedeğiyle141MB rollback-20261026T092057Z oluşturuldu,exit0. Ayrı-drill-20261026T092201Z dizinine medya/anahtar arşivleri açılıp karşılaştırıldı;önceki iki uygulama imajı yüklendi,exit0.
+- Kanıt:tests/reports/5018-server-staging-20261026.md,5018-rollback-drill-pass-20261026.png. CI40296954613PostgreSQL121485218470son gözlemde17dakikada sürüyor;yeniden başlatılmadı. Sıradaki:aynı koşunun sonucu ve ancak başarı sonrası canlı122 geçişi.
+
+## 26 Ekim 2026 — 5018 kesin aday sunucu provasından geçti
+- Durum: TAMAM (yalnız izole staging/veri koruma); canlı yayın açık.
+- PR25 head5018bc5 gönderildi. CI40296954613 Linux security ve Windows başarılı, PostgreSQL işi son gözlemde sürüyor.
+- Exact imaj build exit0. Taze üretim SQL yedeği ayrı DB kopyasına yüklendi;121→122 SQL iki kez çalıştı,94 mevcut tablonun özgün alan projeksiyonları eşit kaldı. İzole runtime üç host ready122/0, anonim varlık ve PDF/e-posta401,CSRF/Secure kontrolleri başarılı.
+- Kanıt: tests/reports/5018-server-staging-20261026.md ve5018-stage-http-pass-20261026.png. Sıradaki: aynı CI tamamlanması, taze rollback/dosya-imaj provası ve yayın. Üretim4237/schema121.
+
 ## 26 Ekim 2026 — imzalı PDF için kontrollü e-posta gönderimi
 - Yerel uygulama ve kabul tamamlandı; canlıya çıkmadı. Kayıtlı çalışan adresi ve belge gösterilerek açık onay alınır; şirket/konum/rol/CSRF ve imza bütünlüğü korunur.
 - Kalıcı gönderim kaydı aynı anahtarla paralel/tekrar istekte ikinci SMTP gönderimini engeller. Belirsiz sonuç otomatik tekrarlanmaz; yeniden gönderim ayrı onay ister. SMTP kabulü alıcı teslimi olarak sunulmaz.

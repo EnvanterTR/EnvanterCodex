@@ -1,3 +1,7 @@
+## 26 Ekim 2026 — 5018 PDF/e-posta adayı, canlıdan ayrı
+
+Canlı hâlâ4237/schema121. Yeni5018bc5 PDF indirme ve açık onaylı, yinelenmeyen e-posta gönderimi yerel API/migration/Chromium kabulünden geçti. PR25'e gönderildi;CI40296954613Linux security/Windows başarılı,PostgreSQL işi sürüyor. Exact sunucu build0, ayrı veritabanında121→122 iki uygulamada94 mevcut tablonun özgün alanları korundu;internal staging üç host ready122/0,anonim belge/varlık401,CSRF/Secure başarılı. Taze091423Z SQL yedeği,141MB092057Z rollback ve092201Z dosya/imaj provası geçti. Kanıt: tests/reports/5018-server-staging-20261026.md. Henüz yeni canlı deploy yok;CI tamamlanması ve son yayın kontrolleri açık.
+
 ## 26 Ekim 2026 — güncel durum ve açık kapılar
 
 **Güncelleme:** 4237 tam CI 3/3 geçti ve güncel staging/yedek/geri dönüş sonrası canlıya alındı. Coolify `wbhegg8zyeiziogdpr401ycm` Success/Finished; web/public gerçek tam SHA `4237b5735859cb9c2672ddc5a2f3a5ef22ba566c`, DB healthy, üç HTTPS host ready/121/0. Görseller kaynak SHA256 eşit, portal tam ekran aç/kapat geçti. Kanıt: `tests/reports/production-session-continuity-release-20261026.md`. Alttaki 124/CI sürüyor paragrafı bu yayının öncesindeki gözlemdir.
