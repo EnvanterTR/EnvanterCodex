@@ -1,3 +1,9 @@
+## 26 Ekim 2026 — kesin onboarding9585 staging ve kurtarma
+- Durum: TAMAM (exactstage/tazeyedek/kurtarma);tamCI/yayınbekliyor. 9585fae1d97980f861dbe519252bc1c422230476webveNginxderlemeleri exit0.
+- Taze183807ZSQLrestore,95tabloözgünalankoruması,izoleruntimeveüçhostready122/0geçti. YeniGET/POSTanonim401;gerçekstageproxyüçhosttanCSS200/text-cssveriyor. Migrationveproductionrestoreyok.
+- 143MBrollback184132Zpaketiveayrıdosya/imajkurtarmaprovası exit0. Kanıt: tests/reports/onboarding-server-staging-20261026.mdve9585ekleri. Canlı56edeğişmedi.
+- KesinCI40379203209PostgreSQL121771140114canlıçalışırken doğrulandı;3işhenüzdevam. Sıradaki aynıCIsonucu,ardındanreleasegatesgeçersetekyayın. YenikullanıcıOTPsiistenmedi.
+
 ## 26 Ekim 2026 — onboarding CSS proxy yolu
 - Yayınöncesikaynakincelemesi /girisapexaliasında yeniCSSiçin pazarlamaHTMLfallback riskinibuldu. Production/localNginx'e yalnız /company-onboarding.css geçişieklendi;tenantwildcardzaten tümuygulamayollarınıiletiyor.
 - GerçekikiNginxizoleproxytesti HTTP200/text-css/içerikiddialarıyla exit0geçti;testkonteyner/ağıtemizlendi. onboarding-proxy-20261026.logvecleanupkanıtı. Eskiadaystagebaşarısıyeniadayyerinesayılmaz;canlı56edeğişmedi.
