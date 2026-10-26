@@ -1,3 +1,7 @@
+## 26 Ekim 2026 — onboarding mevcut tarayıcı seçicisi düzeltmesi
+- c51394dCI40344206355Linuxgüvenlik121647308303mevcutfirma-profili testindeki belirsiz[data-page]seçicisini yakaladı. Rehberin yeni düğmesiyle ikieşleşmevardı;test #sidebar ilehedeflendi,işlevseliddialarazaltılmadı.
+- Tamhostedbrowserimajı yeniden derlendi,tümmevcutentrypoint exit0/78PASSsatırıverdi;78benzersiztestiddiasıyok. Kanıt: onboarding-browser-build/regression-20261026.log. Ürünkodudeğişmedi;kesinyeniCIbekliyor.
+
 ## 26 Ekim 2026 — onboarding ilkCI envanter düzeltmesi
 - 6cd4f0ePR25'egönderildi;run40342129450Linuxgüvenlik12163934488216s'de statikUIenvanterinin eskiolduğunu buldu. TamCIgeçti sayılmadı,canlıdeğişmedi.
 - docs/ui-inventory.md kaynaktan yenidenüretildi:2304kontrol/71rotakontrolü/976düğme. Envanter--check ve2260satırlık5dildictionarykontrolü geçti;korumalargevşetilmedi. Kanıt: tests/reports/company-onboarding-20261026.md eki.
