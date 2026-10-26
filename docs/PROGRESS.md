@@ -1,3 +1,11 @@
+## 26 Ekim 2026 — ücretli/deneme e-posta düzeltmeleri canlıda
+- Durum: TAMAM (bu iki düzeltmenin sürüm yayını ve anlık canlı kontrolü); bütün hedef/satış hazır değil.
+- Exact56e4083 üç CI işi başarılı. İzole gerçek sunucu build/staging, taze134409ZSQLrestore,95tablo eski alan koruması ve143MB135152Zgeri dönüş paketinin135452Zdosya/imaj kurtarma provası geçti. Migration yok.
+- Coolify0woxca0tgg33mdcozvfyga2q Success4m37s; gerçek web/public56eimajları, DBhealthy, sıfırrestart, webreadonly, SMTPrelayTLS587 ve kapalı ödeme/deneme sınırları doğrulandı. Kaydedilmiş HTTPScallbackruntime'a uygulandı; merchantAPI/secret hâlâ eksik.
+- Üçhostready122/0;8plan,8galeridosyası kaynak hash eşitliği, uygulamaHTML eşitliği ve anonimPDF/e-posta401kontrolü geçti. Kanıt: tests/reports/paid-trial-notification-release-20261026.md ve56eekleri. Gerçek müşteri kaydı/maili/ödemesi oluşturulmadı.
+- Kullanıcı iyzico hesabı olmadığını doğruladı; anahtar tekrar istenmez. Sıradaki P0: Hedef12.1beşadımlı onboarding; docs/P0-ONBOARDING-GAP.md. Gerçek Santa/imza/merchant kabulü açık.
+- TAMAM dediğim1yayının1'i test çıktısıyla doğrulanmıştır.
+
 ## 26 Ekim 2026 — ücretli/deneme e-posta düzeltmeleri CI'da
 - Durum: TAMAM (PR/CI sevki); tam uzak kabul ve yayın bekliyor.
 - 56e40838f702063203178915145770de7010a009 normal push ile mevcut PR25'e gitti. Gerçek PR üç işi başlatılmış gösterdi: run40331368345,PostgreSQLjob121601340401. PR açıklaması son SMTP/rollback kapsamı ve32/11yerel grup kanıtlarıyla güncellendi; gruplar örtüşür,43benzersiztest iddiası yok.

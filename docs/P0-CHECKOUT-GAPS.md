@@ -1,3 +1,7 @@
+## 26 Ekim 2026 — P0 onboarding maddesi ayrıca açık
+
+Hedef12.1'in beş adımlı müşteri kurulum akışı için mevcut uygulamada yeterli kod/test kanıtı bulunamadı. CRM Onboarding etiketi ve MFA/hesap aktivasyonu bu gerekliliği kapatmaz. Bulgular ve mevcut formları yeniden kullanacak uygulama yönü: docs/P0-ONBOARDING-GAP.md. Henüz uygulanmış veya tamamlanmış sayılmaz. Merchant hesabı beklenirken P0 içinde yapılabilecek sonraki somut iştir.
+
 ## 26 Ekim 2026 — kullanıcı iyzico hesabı olmadığını doğruladı
 
 Kullanıcı doğrudan “Henüz iyzico hesabım yok” yanıtını verdi. Eksiklik, kaybolmuş/parolası bilinmeyen bir hesap olarak ele alınmaz; API anahtarı tekrar tekrar istenmez. Gerçek ödeme için işyeri başvurusu ve onay gereklidir. Resmî Türkçe sayfa https://www.iyzico.com/isim-icin/hesap-olustur adresinde kontrol edildi ve IAB'de kullanıcı için boş bırakıldı; hiçbir kimlik/vergi/telefon/parola bilgisi gönderilmedi, sözleşme kabul edilmedi ve hesap oluşturulmadı. Başvurunun kimlik/sözleşme adımı kullanıcıya aittir.
