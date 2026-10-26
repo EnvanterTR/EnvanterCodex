@@ -1,3 +1,8 @@
+## 26 Ekim 2026 — P0 açıklarının kanıtla güncellenmesi
+- P0-CHECKOUT-GAPS başına güncel kanıt özeti eklendi: callback runtime'a uygulanmış, SMTP gerçek teslimatı kanıtlı, yıllık yaşam döngüsü5/5 yerel kabulü mevcut. Tarihsel kayıtlar korundu; gerçek merchant/müşteri kabulü kapanmış sayılmadı.
+- PR25 açıklaması27e atomik reset/görünür sonuç kapsamı,6/6 yerel API,79PASS satırlı browser ve exact staging/kurtarma ile güncellendi. CI40390600764 Linux security/Windows başarılı, PostgreSQL121810276595 aynı çalışmada23m8s sürerken doğrulandı; yeniden başlatılmadı ve deploy yapılmadı.
+- Yayın sonrası exact27e runtime/source kontrol betikleri hazırlandı, Node sözdizimi geçti; henüz canlıda çalıştırılmadı. Kanıt:27e-pr-pending-release-20261026.png ve ilgili iki canlı kontrol betiği. TAMAM dediğim1kanıt güncelleme paketinin1'i kaynak/rapor ve gerçek PR/CI gözlemiyle doğrulanmıştır.
+
 ## 26 Ekim 2026 — kesin davet/parola düzeltmesi staging kabulü
 - `27e9120d6edd1095d7f87e0b7e99449ef69a2169` PR25'e gönderildi. CI40390600764/PostgreSQL121810276595 çalışıyor; ilk gözlemde Windows başarılı, iki iş sürüyordu. Tam CI geçti sayılmadı.
 - Exact web/public sunucu build exit0; taze195451ZSQLrestore,95tablo alan koruması, üçhost122/0 ve anonim yetki sınırları geçti. Gerçek stage proxy resetHTMLinde mesajın form dışında olması ve yeniCSS yolu doğrulandı. İlk başlatma derleme bitmeden precondition'da durdu; aynı derleme tamamlanınca kullanıldı, yeniden başlatılmadı.

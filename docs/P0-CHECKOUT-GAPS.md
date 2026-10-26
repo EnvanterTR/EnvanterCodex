@@ -1,3 +1,11 @@
+## 26 Ekim 2026 — güncel kanıt özeti; alttaki eski açıklar tarihsel
+
+- Canlı temel sürüm `9585fae`, şema122/0. Sekiz plan yayımlı; checkout ve public deneme kapalı. HTTPS callback çalışan ortama uygulanmıştır; önceki “runtime'a uygulanmadı” kaydı artık güncel değildir. Kanıt: `tests/reports/paid-trial-notification-release-20261026.md`, `tests/reports/onboarding-production-release-20261026.md`.
+- SMTP genel olarak engelli değildir: uygulama parola yenileme iletisi Google posta kutusuna, Farma iletisi dış Microsoft SMTP sunucusuna TLS ile teslim edilmiştir. Dış SMTP kabulü gelen kutusu konumu veya her belge e-postasının teslim kanıtı değildir. Kanıt: `tests/reports/google-relay-production-acceptance-20261025.md`.
+- Yıllık yaşam döngüsünün beş belirli senaryosu gerçek Identity/API/PostgreSQL ve sentetik sağlayıcıyla5/5 geçti: kalan ücretli sürede plan değişimi reddi, süre dolunca plan değişimi, iptal edilmiş dönemde aynı planla yenileme ve askıdaki şirket reddi. Bu yerel kapsam yeniden eksikmiş gibi ele alınmaz; gerçek sağlayıcı ve tam müşteri kabulü açıktır. Kanıt: `tests/reports/annual-lifecycle-acceptance-20261024.md`.
+- Son davet/parola düzeltmesi `27e9120` yerel6/6 API, tarayıcı ve exact sunucu staging/kurtarma kabulünden geçti. Tam CI40390600764 PostgreSQL işi sürerken doğrulandı; düzeltme henüz canlı değildir. Kanıt: `tests/reports/activation-atomicity-20261026.md`, `tests/reports/activation-atomicity-server-staging-20261026.md`.
+- Gerçek iyzico hesabı/ödeme, Santa imzası ve PDF alıcı teslimi, operatör/Farma/tam üçüncü şirket ve iki yönlü canlı GET/PUT izolasyonu açık kalır. Bu özet tam P0 veya satışa hazır kabulü değildir.
+
 ## 26 Ekim 2026 — P0 onboarding rehberi yayımlandı; gerçek akış kabulü açık
 
 Hedef12.1'in beş adımlı müşteri kurulum rehberi9585fae/schema122ile canlıda. Yerel6/6API, Chromium açık/koyu/mobil, tam3CIişi, exactstaging/95tablo korunması ve taze yedek/kurtarma geçti. Üçhostta yeniCSSbaytları, şirketHTMLi, runtimeimajı ve anonim401sınırları doğrulandı. Gerçek oturumlu müşteri tamamlama/merchant uçtanuca kabulü sayılmaz. Kanıt/sınırlar: tests/reports/onboarding-production-release-20261026.md; tarihsel bulgular: docs/P0-ONBOARDING-GAP.md.
