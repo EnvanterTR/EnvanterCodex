@@ -77,7 +77,7 @@ public static class CloudTrialEndpoints
 
     private static async Task<IResult> ConfirmAsync([FromBody] ConfirmCloudTrial request, HttpContext context,
         IAntiforgery antiforgery, IConfiguration configuration, IDataProtectionProvider protection,
-        AppDbContext db, UserManager<EnvanterUser> users, TenantProvisioningService provisioning, CancellationToken ct)
+        AppDbContext db, UserManager<EnvanterUser> users, TenantProvisioningService provisioning, ILoggerFactory logs, CancellationToken ct)
     {
         context.Response.Headers.CacheControl = "no-store";
         try { await antiforgery.ValidateRequestAsync(context); }
@@ -115,8 +115,32 @@ public static class CloudTrialEndpoints
         owner = provisioned.Owner;
         db.AuditEntries.Add(new AuditEntry { CompanyId = company.Id, ActorUserId = owner.Id, Action = "CloudTrialStarted",
             TargetType = "Company", TargetId = company.Id, Details = JsonSerializer.Serialize(new { noticeVersion = NoticeVersion, trialDays = AnnualCloudCatalog.TrialDays, planId = plan.Id }) });
-        try { await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); }
+        try
+        {
+            await db.SaveChangesAsync(ct);
+            logs.CreateLogger("CloudTrialProvisioning").LogInformation("Trial company, portal and owner role staged for registration {RegistrationId}; commit pending.", payload.RegistrationId);
+            using var invitationTimeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            invitationTimeout.CancelAfter(TimeSpan.FromSeconds(25));
+            if (owner.EmailConfirmed)
+                await AccountEndpoints.SendCompanyAccessAddedEmailAsync(owner.Email!, owner.DisplayName,
+                    company.Name, "owner", configuration, invitationTimeout.Token, company.Slug);
+            else
+            {
+                var resetToken = await users.GeneratePasswordResetTokenAsync(owner);
+                await AccountEndpoints.SendAccountInvitationEmailAsync(owner.Email!, owner.DisplayName,
+                    resetToken, configuration, invitationTimeout.Token, company.Slug);
+            }
+            logs.CreateLogger("CloudTrialProvisioning").LogInformation("Trial access notice accepted by SMTP for registration {RegistrationId}; recipient delivery is not yet verified.", payload.RegistrationId);
+            await transaction.CommitAsync(ct);
+            logs.CreateLogger("CloudTrialProvisioning").LogInformation("Trial provisioning committed for registration {RegistrationId}.", payload.RegistrationId);
+        }
         catch (DbUpdateException) { return Results.Conflict(new { message = "Deneme kaydı başka bir işlemle çakıştı. Portal adresini kontrol edin." }); }
+        catch (Exception error) when (error is SmtpException or InvalidOperationException or FormatException or ArgumentException ||
+            error is OperationCanceledException && !ct.IsCancellationRequested)
+        {
+            logs.CreateLogger("CloudTrialProvisioning").LogError("Trial welcome delivery failed for registration {RegistrationId}. Error type: {ErrorType}", payload.RegistrationId, error.GetType().Name);
+            return Results.Json(new { message = "Hoş geldin e-postası gönderilemedi; şirket kaydı tamamlanmadı. Aynı doğrulama bağlantısıyla yeniden deneyin." }, statusCode: 503);
+        }
         return await ConfirmationResult(company, owner, db, users, configuration, ct);
     }
 

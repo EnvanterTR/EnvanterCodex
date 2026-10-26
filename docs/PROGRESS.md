@@ -1,3 +1,11 @@
+## 26 Ekim 2026 — deneme kaydına erişim e-postası ve hata geri alması
+- Durum: TAMAM (yerel kod ve kabul); canlıya alınmadı.
+- Önceki akış son erişim e-postasını göndermeden şirketi kesinleştiriyordu. İlk iki test bunu200/503uyuşmazlığıyla üretti. SMTP kabulü25s sınırla mevcut transaction içine alındı; hata503döndürür ve deneme hakkını tüketmeden yeni kayıtlar geri alınır.
+- Son regresyon11/11geçti: yeni/mevcut owner, aynı proof ile paralel yeniden denemede tek şirket/tek15gün/tekmail, doğruportal, parola/stamp, eskiCSRF/plan/süre/kota/SMTPgizlilik ve ücretli kurulum regresyonları. Web build0hata/0uyarı; iki kaynak denetimi başarılı.
+- Kanıt: tests/reports/trial-welcome-20261026.md ve ilk/build/regresyon/source logları. Migration veya arayüz değişikliği yok. Canlı5018/schema122,değişmedi.
+- Sıradaki: ücretli+deneme düzeltmelerinin tam uzak CI'ı, exact staging ve taze yedek/geri dönüş; gerçek merchant ve Bölüm20kabulü açık.
+- TAMAM dediğim1düzeltmenin1'i test çıktısıyla doğrulanmıştır.
+
 ## 26 Ekim 2026 — ücretli yeni şirket kurulumunda SMTP hata geri alması
 - Durum: TAMAM (yerel düzeltme ve kabul); canlıya alınmadı.
 - İlk iki test gerçek hatayı izole ortamda üretti: SMTP reddinde sipariş Provisioned kalıyordu. Yeni şirket kaydı/rol/abonelik, SMTP kabulünden önce commit edilmiyor;25s sınır var. Hata rollback sonrası doğrulanmış ödeme referansı ProvisioningFailed olarak korunur.
