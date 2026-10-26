@@ -4,7 +4,7 @@
 
 `5018bc595684fe4410a9412755b39b2ada9cde0b`, Coolify `zsmt40hqy0qdjaha4eiu5mab`, Success/Finished, süre4m15s. Doğrulama09:42:17UTC; tam bitiş saniyesi ayrıca çıkarılmadı. Gerçek web/public imajları,DB sağlığı,üç host122/0,8plan/kapalı satış sınırları,görsel ve company HTML hashleri doğrulandı. Yeni24saat gözlem tamamlandı sayılmaz; aradaki süre sürekli izlenmiş değildir. Kanıt: `tests/reports/production-handover-pdf-email-release-20261026.md`. Güncel rollback `/var/backups/envantertr/rollback-20261026T092057Z`; önceki uygulama4237, yeni şema122eklemelidir. Canlıda yıkıcı Down/DBgeri yükleme yapılmadı. Aşağıdaki eski yayın yolları tarihsel örnektir.
 
-Hedef 15.10 için uygulanacak plan. Planın bulunması, 24 saatlik gözlemin tamamlandığı anlamına gelmez. Yeni sürümün Coolify `Success / Finished` zamanı **T0** olarak kaydedilir; gerçek imaj SHA'sı ve dış HTTPS sağlığı ayrıca doğrulanır.
+Hedef 15.10 için uygulanacak plan. Bu maddenin metni bir izleme planı ister; tamamlanmış 24 saatlik kayıt ayrı kanıttır ve ek bir bekleme şartı olarak uydurulmaz. Planın bulunması, 24 saatlik gözlemin tamamlandığı anlamına gelmez. Yeni sürümün Coolify `Success / Finished` zamanı **T0** olarak kaydedilir; gerçek imaj SHA'sı ve dış HTTPS sağlığı ayrıca doğrulanır.
 
 ## Yayın kaydı ve sorumluluk
 

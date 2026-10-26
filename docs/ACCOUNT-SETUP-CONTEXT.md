@@ -1,3 +1,9 @@
+## 26 Ekim 2026 — güncel ödeme ve şirket oturumu
+
+Canlı5018/schema122 sağlıklı. API/secret iyzico anahtarları runtime'da eksik. Yalnız gizli olmayan üretim callback https://envantertr.com/api/checkout/callback Coolify'ye kaydedildi ve reload sonrası doğrulandı; preview değişmedi. Henüz bu ayar için redeploy yapılmadı; ödeme ve denemeler kapalı. Anahtar oluşturulmadı veya sohbete istenmedi.
+
+Santa canlı sekmesi loginForm gösteriyor. Kullanıcının FarmaMFA'yı şimdi yapamama ve imza penceresini bulamama bağlamı korunur; yeniden OTP/kurtarma kodu istenmedi. Mevcut belgeye erişim çalışan profili → İmzalı zimmet belgeleri → Devam et. Gerçek imzayı kullanıcı atar. Gate8raporu tests/reports/gate-8-20261026.md; kapı geçmedi.
+
 # Hesap kurulumu ve doğrulama bağlamı — 25 Ekim 2026
 
 ## Güncel SMTP sonucu — önceki boş parola engeli çözüldü

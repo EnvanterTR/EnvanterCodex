@@ -1,3 +1,10 @@
+## 26 Ekim 2026 — Kapı8 kanıtı ve iyzico callback hazırlığı
+- Durum: TAMAM (callback ayarının kalıcı kaydı ve15.9kapı raporu); Kapı8GEÇMEDİ.
+- Kodun kabul ettiği HTTPS callback mevcut üretim değişkenine kaydedildi, reload sonrası doğrulandı. Preview değişmedi;redeploy yok,runtimeAPI/secret eksik,checkout/deneme kapalı.
+- Gate8dosyasında15.10'un dört alt şartı doğrudan kaynak kanıtlarıyla eşlendi. 24saatlik plan gerekliliği tamamlanmış24saatgözlemle karıştırılmıyor;gereksizbeklemeşartıyok.
+- Yeni gerçek Santa sekmesi loginForm gösterdi. Mevcut çalışan profili/belge Devam et yolu kodda doğrulandı;gereksiz yeni yönlendirme/yetki gevşetmesi yapılmadı. Kullanıcıdan yeniden MFAistenmedi.
+- Kanıt: tests/reports/gate-8-20261026.md,iyzico-callback-saved-20261026.png. Sıradaki:gerçek merchant yapılandırması ve kullanıcıya ait şirket/imza kabulü.09:57:18UTCüçhostready122/0.
+
 ## 26 Ekim 2026 — imzalı PDF/e-posta sürümü canlıda
 - Durum: TAMAM (CI, eklemeli migration, kesin sürüm yayını ve ilk kontroller).
 - CI 40296954613 üç işte başarılı; PostgreSQL işi 24m54s. Kaynak 5018bc5 kaydedilip yeniden yüklenerek doğrulandı. Doğrulanmış SQL üretimde exit0; şema122, yeni gönderim tablosu boş.
