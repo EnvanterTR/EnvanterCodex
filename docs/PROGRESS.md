@@ -1,3 +1,8 @@
+## 26 Ekim 2026 — kesin davet/parola düzeltmesi staging kabulü
+- `27e9120d6edd1095d7f87e0b7e99449ef69a2169` PR25'e gönderildi. CI40390600764/PostgreSQL121810276595 çalışıyor; ilk gözlemde Windows başarılı, iki iş sürüyordu. Tam CI geçti sayılmadı.
+- Exact web/public sunucu build exit0; taze195451ZSQLrestore,95tablo alan koruması, üçhost122/0 ve anonim yetki sınırları geçti. Gerçek stage proxy resetHTMLinde mesajın form dışında olması ve yeniCSS yolu doğrulandı. İlk başlatma derleme bitmeden precondition'da durdu; aynı derleme tamamlanınca kullanıldı, yeniden başlatılmadı.
+- 143MB200148Zgeri dönüş paketi ve ayrı dosya/imaj kurtarma exit0. Migration/productionrestore yok. Kanıt: tests/reports/activation-atomicity-server-staging-20261026.md ve27eekleri. Canlı9585değişmedi; kalan kapı tamCI ve sonrasında yayın.
+
 ## 26 Ekim 2026 — davet/parola yenilemede atomik tamamlama ve görünür sonuç
 - Durum: TAMAM (yerel kod/API/UI/regresyon); kesin uzak CI/staging/yayın henüz açık. Canlı9585/schema122 korunuyor.
 - İzole PostgreSQL hatası, e-posta onayı reddedildiğinde eski akışın parolayı değiştirmiş bıraktığını üretti (ilk1/1başarısız). Identity kayıtları, oturum iptali, şirket/platform audit ve hesap onayı tek transaction içine alındı. Ön-commit hata503ve güvenli tekrar; başarı tek kullanımlı token/MFA davranışını korur. Migration yok.
