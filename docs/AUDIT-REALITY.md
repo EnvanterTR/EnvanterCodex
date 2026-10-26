@@ -1,4 +1,10 @@
-## 26 Ekim 2026 — güncel kabul durumu
+## 26 Ekim 2026 — güncel teknik yayın ve açık P0 kabulü
+
+Canlı web/ana sayfa **9585fae1d97980f861dbe519252bc1c422230476**, şema **122/0**. Kurulum rehberi, önceki e-posta bildirim geri alma düzeltmeleri ve PDF/e-posta özellikleri yayımlı. Son exactCI40379203209üçiş başarılı; taze SQLrestore/95tablo koruması ve143MBkurtarma sonrası Coolifyagpas6gyxqytnjbriqb20gppSuccess/Finished. Üçhostsağlık, imaj/source/CSS ve anonim yetki sınırları doğrulandı; bu gerçek müşteri tamamlama değildir. Kanıt: tests/reports/onboarding-production-release-20261026.md.
+
+Yeni P0-E hata testi davet etkinleştirmede kısmi parola kaydını ve gizlenen başarı mesajını ortaya çıkardı; yerel6/6API ve Chromium regresyonu geçti, bu yeni düzeltme henüz canlıda değil. Kanıt: tests/reports/activation-atomicity-20261026.md. Kullanıcı iyzico hesabı olmadığını doğruladı; gerçek ödeme ve Bölüm20'nin açık müşteri/imza/MFA adımları tamamlanmadı. Aşağıdaki müşteri gözlemleri son bilinen tarihsel kanıtlardır; yeniden yapılmış gibi sayılmaz.
+
+## 26 Ekim 2026 — önceki PDF/e-posta yayını kabul durumu
 
 Canlı web/ana sayfa **5018bc595684fe4410a9412755b39b2ada9cde0b**, şema **122/0**. Tam CI40296954613 üç işte başarılı; exact staging, iki SQL uygulamasında94 mevcut tablonun özgün alanları korunması, taze091423Z SQL yedeği,141MB092057Z rollback ve092201Z dosya/imaj kurtarma sonrası Coolify **zsmt40hqy0qdjaha4eiu5mab Success/Finished**. Gerçek imajlar/DB sağlığı ve dış üç-host HTTPS doğrulandı. PDF indirme ve açık onaylı/yinelenmeyen e-posta gönderimi yayımlandı. Yeni belge uçları anonim401; şirket HTML ve8görsel kaynağı hash eşit;portal tam ekran aç/kapat geçti. Sekiz plan/kapalı checkout-deneme sınırı korundu. Kanıt: `tests/reports/production-handover-pdf-email-release-20261026.md`. Gerçek Santa imzası/PDF teslimi, operatör/Farma/iki yönlü canlı izolasyon,Demo3 normalowner,iyzico kabulü açık;24saat izleme planı mevcut. Tam hedef tamamlanmadı.
 

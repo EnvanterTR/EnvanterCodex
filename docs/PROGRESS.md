@@ -1,3 +1,11 @@
+## 26 Ekim 2026 — davet/parola yenilemede atomik tamamlama ve görünür sonuç
+- Durum: TAMAM (yerel kod/API/UI/regresyon); kesin uzak CI/staging/yayın henüz açık. Canlı9585/schema122 korunuyor.
+- İzole PostgreSQL hatası, e-posta onayı reddedildiğinde eski akışın parolayı değiştirmiş bıraktığını üretti (ilk1/1başarısız). Identity kayıtları, oturum iptali, şirket/platform audit ve hesap onayı tek transaction içine alındı. Ön-commit hata503ve güvenli tekrar; başarı tek kullanımlı token/MFA davranışını korur. Migration yok.
+- Tarayıcı ilk denemede başarı mesajının gizlenen formun içinde kaldığını yakaladı. Mesaj form dışına alındı;503tekrarı, görünür başarı ve eksik-link bildirimi,CSRF,fragment temizliği,390px kabulü geçti. Gerçek hesap parolası değiştirilmedi; eski Santa olayının sebebi buymuş gibi gösterilmedi.
+- Hedefli2/2ardından son6/6API/PostgreSQL1.0976dk; Web0hata/0uyarı,test10mevcutuyarı. Tam hostedbrowser entrypoint exit0/79PASSsatırı;79benzersiztestiddiasıyok. GeçiciDB/ağtemizlendi.
+- Kanıt: tests/reports/activation-atomicity-20261026.md ve ilk/son/API/UI/build/regresyon log/PNGleri. Sıradaki kesinCI ve taze yayın kapıları. Önceki yüzde tahmini ölçülmüş ilerleme sayılmıyor.
+- TAMAM dediğim1yerel iş paketinin1'i test çıktısıyla doğrulanmıştır.
+
 ## 26 Ekim 2026 — beş adımlı şirket kurulumu canlıda
 - Durum: TAMAM (bu rehberin yayını ve anlık canlı doğrulama); tam hedef ve gerçek merchant/müşteri kabulü açık.
 - Exact9585fae1d97980f861dbe519252bc1c422230476 CI40379203209 üç işte başarılı; PostgreSQL12177114011427m45s. Exact app/proxy staging, taze183807ZSQLrestore/95tablo alan koruması ve143MB184132Zdosya/imaj kurtarma sonrası Coolifyagpas6gyxqytnjbriqb20gpp Success3m17s.

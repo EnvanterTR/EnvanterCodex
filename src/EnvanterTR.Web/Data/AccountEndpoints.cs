@@ -642,7 +642,7 @@ public static class AccountEndpoints
 
         endpoints.MapPost("/api/session/password/reset", async ([FromBody] ResetPasswordRequest request,
             HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager,
-            AppDbContext db,
+            AppDbContext db, ILoggerFactory loggerFactory,
             CancellationToken cancellationToken) =>
         {
             if (!await HasValidCsrfAsync(context, antiforgery))
@@ -662,31 +662,48 @@ public static class AccountEndpoints
             var minimumPasswordLength = await CompanySecurityEndpoints.GetMinimumPasswordLengthAsync(db, user.Id, cancellationToken);
             if (request.NewPassword.Length < minimumPasswordLength)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["newPassword"] = [$"Yeni parola en az {minimumPasswordLength} karakter olmalıdır."] });
-            var result = await userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
-            if (!result.Succeeded)
-                return Results.ValidationProblem(new Dictionary<string, string[]> {
-                    ["reset"] = result.Errors.Select(error => error.Description).ToArray()
-                });
-            var companyIds = await db.CompanyMemberships.AsNoTracking().Where(x => x.UserId == user.Id)
-                .Select(x => x.CompanyId).Distinct().ToListAsync(cancellationToken);
-            foreach (var companyId in companyIds)
-                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = user.Id,
-                    TargetType = "Account", TargetId = user.Id, Action = "PasswordReset",
-                    Details = "E-posta doğrulamalı parola yenileme tamamlandı; diğer oturumlar geçersiz kılındı." });
-            db.PlatformAuditEntries.Add(new PlatformAuditEntry { ActorUserId = user.Id,
-                CompanyId = companyIds.Count == 1 ? companyIds[0] : null, TargetType = "Account", TargetId = user.Id,
-                Action = "PasswordReset", Details = "E-posta doğrulamalı parola yenileme tamamlandı." });
-            await db.UserSessions.Where(session => session.UserId == user.Id && session.RevokedAt == null)
-                .ExecuteUpdateAsync(update => update.SetProperty(session => session.RevokedAt, DateTimeOffset.UtcNow), cancellationToken);
-            await db.SaveChangesAsync(cancellationToken);
-            if (!user.EmailConfirmed)
+            // Identity stores use this same scoped AppDbContext. Keep its saves, session revocation,
+            // account activation and audit records atomic: a failed activation must not consume the link.
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            try
             {
-                user.EmailConfirmed = true;
-                var confirmResult = await userManager.UpdateAsync(user);
-                if (!confirmResult.Succeeded)
-                    return Results.Problem("Parolanız kaydedildi ancak davet hesabı etkinleştirilemedi. Aynı bağlantıyla yeniden deneyin.", statusCode: StatusCodes.Status500InternalServerError);
+                var result = await userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+                if (!result.Succeeded)
+                    return Results.ValidationProblem(new Dictionary<string, string[]> {
+                        ["reset"] = result.Errors.Select(error => error.Description).ToArray()
+                    });
+                var companyIds = await db.CompanyMemberships.AsNoTracking().Where(x => x.UserId == user.Id)
+                    .Select(x => x.CompanyId).Distinct().ToListAsync(cancellationToken);
+                foreach (var companyId in companyIds)
+                    db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = user.Id,
+                        TargetType = "Account", TargetId = user.Id, Action = "PasswordReset",
+                        Details = "E-posta doğrulamalı parola yenileme tamamlandı; diğer oturumlar geçersiz kılındı." });
+                db.PlatformAuditEntries.Add(new PlatformAuditEntry { ActorUserId = user.Id,
+                    CompanyId = companyIds.Count == 1 ? companyIds[0] : null, TargetType = "Account", TargetId = user.Id,
+                    Action = "PasswordReset", Details = "E-posta doğrulamalı parola yenileme tamamlandı." });
+                await db.UserSessions.Where(session => session.UserId == user.Id && session.RevokedAt == null)
+                    .ExecuteUpdateAsync(update => update.SetProperty(session => session.RevokedAt, DateTimeOffset.UtcNow), cancellationToken);
+                await db.SaveChangesAsync(cancellationToken);
+                if (!user.EmailConfirmed)
+                {
+                    user.EmailConfirmed = true;
+                    var confirmResult = await userManager.UpdateAsync(user);
+                    if (!confirmResult.Succeeded)
+                    {
+                        loggerFactory.CreateLogger("PasswordReset").LogWarning("Account activation update was rejected; reset transaction will not be committed.");
+                        return Results.Json(new { message = "Parola yenileme kaydedilemedi. Aynı bağlantıyla yeniden deneyin." },
+                            statusCode: StatusCodes.Status503ServiceUnavailable);
+                    }
+                }
+                await transaction.CommitAsync(cancellationToken);
+                return Results.Ok(new { message = "Parolanız yenilendi. Yeni parolanızla giriş yapabilirsiniz." });
             }
-            return Results.Ok(new { message = "Parolanız yenilendi. Yeni parolanızla giriş yapabilirsiniz." });
+            catch (Exception error) when (error is DbUpdateException or System.Data.Common.DbException)
+            {
+                loggerFactory.CreateLogger("PasswordReset").LogWarning("Password reset database transaction failed ({ErrorType}).", error.GetType().Name);
+                return Results.Json(new { message = "Parola yenileme sırasında bir veritabanı sorunu oluştu. Lütfen yeniden deneyin." },
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
         }).AllowAnonymous().RequireRateLimiting("login");
 
         endpoints.MapPost("/api/session/logout", async (HttpContext context, IAntiforgery antiforgery,
