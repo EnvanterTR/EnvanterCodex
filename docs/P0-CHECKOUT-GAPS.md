@@ -1,3 +1,11 @@
+## 26 Ekim 2026 — kullanıcı iyzico hesabı olmadığını doğruladı
+
+Kullanıcı doğrudan “Henüz iyzico hesabım yok” yanıtını verdi. Eksiklik, kaybolmuş/parolası bilinmeyen bir hesap olarak ele alınmaz; API anahtarı tekrar tekrar istenmez. Gerçek ödeme için işyeri başvurusu ve onay gereklidir. Resmî Türkçe sayfa https://www.iyzico.com/isim-icin/hesap-olustur adresinde kontrol edildi ve IAB'de kullanıcı için boş bırakıldı; hiçbir kimlik/vergi/telefon/parola bilgisi gönderilmedi, sözleşme kabul edilmedi ve hesap oluşturulmadı. Başvurunun kimlik/sözleşme adımı kullanıcıya aittir.
+
+Mevcut EnvanterTR callback hazırlığı kalıcı kaydedildi fakat runtime'a uygulanmadı. API/secret yok; gerçek ödeme ve yeni denemeler kapalı kalır. Yerel sentetik sağlayıcı testleri resmî sandbox veya canlı merchant kabulü değildir. Resmî sandbox dokümanı ayrı hesap/anahtar çifti öngörür: https://docs.iyzico.com/en/getting-started/preliminaries/sandbox. Canlı ortam test anahtarıyla açıkmış gibi gösterilmez.
+
+Önceki teknik denetim ve yerel kabul kayıtları aşağıdadır; tarihsel canlı118 bilgileri son5018yayınıyla karıştırılmaz.
+
 # P0 checkout release gaps — 23 October 2026
 
 These are open requirements, not completed features. Local synthetic acceptance and a green PostgreSQL suite do not establish live sales readiness.

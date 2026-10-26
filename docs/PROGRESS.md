@@ -1,3 +1,9 @@
+## 26 Ekim 2026 — gerçek merchant bağımlılığı kullanıcıdan doğrulandı
+- Durum: ENGELLENDİ (yalnız gerçek iyzico kabulü; ürün entegrasyonunun yerel testiyle karıştırılmadı).
+- Kullanıcı henüz iyzico hesabı olmadığını bildirdi. Resmî Türkçe başvuru sayfası kontrol edilip boş form hazır bırakıldı. Kişisel bilgi/credential gönderilmedi, sözleşme kabulü veya hesap oluşturma yapılmadı.
+- Kalıcı bağlam ACCOUNT-SETUP-CONTEXT ve P0-CHECKOUT-GAPS başına yazıldı; aynı APIanahtarı sorusu yeniden açılmayacak. Gate8raporu güncellendi. Callback hazırlığı kaydedilmiş durumda;runtime değişmedi,ödeme/deneme kapalı.
+- Sıradaki bağımlılık: kullanıcının merchant başvurusu/onayı ve kendi şirket oturumu/imza kabulü. Tek bu engelde tüm hedef blocked olarak işaretlenmedi; eşik denetimi korunur.
+
 ## 26 Ekim 2026 — Kapı8 kanıtı ve iyzico callback hazırlığı
 - Durum: TAMAM (callback ayarının kalıcı kaydı ve15.9kapı raporu); Kapı8GEÇMEDİ.
 - Kodun kabul ettiği HTTPS callback mevcut üretim değişkenine kaydedildi, reload sonrası doğrulandı. Preview değişmedi;redeploy yok,runtimeAPI/secret eksik,checkout/deneme kapalı.
