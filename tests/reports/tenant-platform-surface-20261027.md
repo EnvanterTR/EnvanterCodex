@@ -15,3 +15,5 @@ Logs:tenant-platform-surface-red-build/red/fixed-build/fixed-20261027.log,tenant
 ## Final local regression
 
 The same full hosted-browser process completed exit0, including the newly imported platform-link scenario. Its earlier running status is historical. Web build0warnings/0errors; test build0errors/10existingwarnings. Routing checks Verify-CoolifyTenantRouting,Verify-TenantWildcardRouting,Verify-TenantSubscriptionAccess passed (the last17assertions). The earlier auth verifier failure was corrected by extending its mock and assertions, not by removing the feature check. Disposable test project cleanup recorded in tenant-platform-cleanup-20261027.log. These results do not change production or close real customer/merchant acceptance.
+
+Committed/pushed candidate cbcdc71 on the existing PR25 draft. Exact run40439829700, PostgreSQLjob121977248403, all3jobs confirmed started. No remote success/deployment claimed. Full browser log has80PASS lines, not80distincttestcases. Earlier feature-matrix commit1d4e0f9 was included in the same push.

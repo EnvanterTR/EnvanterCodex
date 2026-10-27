@@ -1,3 +1,13 @@
+## 27 Ekim 2026 — exacttenantplatform staging/proxy/kurtarma geçti
+- AynıPID1160030buildexit0; kesinapp/publickonteynerleriizoleağdaçalıştı. GerçekNginxSanta/Farma/bağımsızhostnameplatformsayfa/betik/admin/API404; kökplatform200,normalşirketgirişivekökloginURLkorundu. Üçhost122/0/anonimsınırlar/CSRF/CSS/resetHTMLtestlerigeçti.
+- Başlangıç/problar95tablonunözgünalanlarınıkorudu;migrationyok.143MB025113Zrollbackpaketiveayrıdosya/imajkurtarmaexit0;productionrestoreyok. Kanıt:tenant-platform-server-staging-20261027.mdvecbc-stage-and-recovery-pass-20261027.png.
+- KesinCI40439829700Linuxsecurity8dk/Windows4dkbaşarılı;PostgreSQL121977248403aynıçalışmada12dksürüyor. Canlı27edeğişmedi. SıradakitamCIsonucuveyayınöncesiyedekgüncelliğikontrolü. TAMAM dediğim1staging/kurtarmapaketinin1'ikomut/ekrançıktısıyla doğrulanmıştır.
+
+## 27 Ekim 2026 — kesin tenant platform adayı sunucu hazırlığında
+- cbcdc71d10f119c42502d6d1f05d8a7d9bbc1741PR25'e gönderildi; CI40439829700/PostgreSQL121977248403canlı çalışıyor. Windows4dkbaşarılı; ikiLinuxişi sürerken doğrulandı. PR kapsamı yeni404sınırı/local7/7/browser80PASSsatırıveyayınbekliyor olarak güncellendi.
+- ExactarşivsunucuderlemesiPID1160030başladı; aynıişin dotnetpublishadımı görüldü. Taze002600ZSQLdumpdoğrulandı,ayrıcloneDB'yerestoreve95tabloözgünalanbaselineıalındı. Medya/anahtar/envayrı;yanetkilerkapalı. Canlırestore/migration/yayınyok.
+- Kanıt:tenant-platform-server-staging-20261027.mdvecbcreçeteleri/PRgörüntüsü. Derlemebitimi/proxy404/95tablokorunması/rollbackhenüzbekliyor; öncekistagingyenisürümkanıtısayılmadı. Sıradakiaynıbuild/CIsonuçlarıveadaystaging.
+
 ## 27 Ekim 2026 — tenant platform sınırı yerel tam regresyonu geçti
 - Tamhostedbrowser31915exit0; yeni tenant/kökalanyönetici bağlantısı senaryosu anaentrypointtedir. API/PostgreSQL7/7vebrowser/sourceverifier/locale/UIinventory geçti. Webbuild0hata/0uyarı;test10mevcutuyarı. GeçicikabulComposeDB/ağı temizlendi; imajlar korundu.
 - Kaynak:Program.csstatiköncesi404guard,AccountEndpoints.cssetupstatusplatformURL,index.htmlgüvenliyönetici bağlantısı. Kanıt:tenant-platform-surface-20261027.mdveilk/son/API/browser/build/cleanuplogları. Canlı27edeğişmedi; kesin yeniCI/staging/tazekurtarma/yayın henüz açık. TAMAM dediğim1yereldüzeltmepaketinin1'i test çıktısıyla doğrulanmıştır.

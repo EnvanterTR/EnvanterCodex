@@ -1,0 +1,13 @@
+# Exact tenant platform boundary staging — passed
+
+Final staging result: exactcandidate app/public builds exit0; containers started on internal-only network. Runtime isolation/side-effect guards passed. Actual stagedNginx returned404 for platform pages/assets/admin/API on Santa,Farma and an independent third hostname; normal company HTML and configured root-login URL passed. Apex platform pages remained200. Other three-host122/0health,asset401,CSRF/Secure,onboarding/PDF/emaildenials,newCSS/resetHTML checks passed. Startup/probes preserved all95original data-table field projections; no migration.143MBbundle `/var/backups/envantertr/rollback-20261027T025113Z` preparation and independent file/image recovery drill exit0; no productionrestore. Evidence:cbc-stage-and-recovery-pass-20261027.png. Earlier pending observations below are chronological; fullCI/deployment still pending.
+
+Candidate `cbcdc71d10f119c42502d6d1f05d8a7d9bbc1741`; production remains27e9120/schema122. Root `/var/lib/envantertr-staging/cbcdc71-20261027`, buildPID1160030. Exact archive app/public build started once; later log shows dotnet publish running. No start/restart of another build.
+
+Fresh SQL `pre-web-v1-20261027T002600Z.dump` validated bypg_restorelist/SHA256 and restored into independent `envantertr_stage_cbcdc71`. All95original data-table column projections fingerprinted privately. Media/key/environment copies prepared; side effects disabled and no host ports intended. No production restore/migration. PrivateSQL/env/keys/fingerprints stay server-side.
+
+Build completion, stage container start, real proxy boundary checks,95table startup preservation and freshrollback recovery are pending. Existing27estaging does not prove this newcandidate. Reproducible recipes:cbc-stage-*.py,cbc-prepare-isolated-stage-20261027.py,cbc-rollback-drill-20261027.py. Current production container names separately verified from terminal inventory: web/public20261026T202413, database20261026T202412.
+
+CI40439829700/PostgreSQL121977248403 was confirmed live; Windows success4m, twoLinuxjobs running at observation. No completeCI or deployment claimed. PR description updated with exactcandidate/local7/7and80PASS-line browser evidence and pending gates; cbc-pr-ci-staging-pending-20261027.png.
+
+Latest same-run observation: Linuxsecurity success8m and Windowssuccess4m; PostgreSQLjob121977248403stillrunning12m. No restart. Previousstage data/backup age must be reviewed before final deployment; freshening the pre-release backup is allowed without substituting oldsource acceptance for this exactcandidate.
