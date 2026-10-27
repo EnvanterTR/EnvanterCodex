@@ -991,3 +991,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Yeni PostgreSQL testi kendi bekleyen siparişi için 200/PaymentStarted, yabancı şirket hedefi ve başka kullanıcı için 404 doğruladı. Güncel kaynakta 3/3 test, 1.9053 dakika, exit0 ve geçici DB/ağ temizliği tamamlandı.
 - Gerçek Kestrel/PostgreSQL/Chromium kabulü exit0: form, callback/replay, tek ücretli dönem, aktif geçmiş, viewer reddi, 390px görünüm, sıfır tarayıcı hatası; iki şirketin varlıkları/üyelikleri/deneme geçmişi korundu. Sağlayıcı sentetik; canlı ödeme veya e-posta yok.
 - e80370c CI40525316976/PG122263185564 ve staging yalnız önceki form düzeltmesini kapsar; yeni sipariş düzeltmesinin kanıtı sayılmaz. Sonraki güncel kaynağın tam CI/staging kapıları; canlı f073/122 korunuyor. Ayrıntı tenant-filter-checkout-regression-20261027.md.
+
+## 27 Ekim 2026 — son P1 adayı CI ve staging hazırlığında
+- Son uzak aday 1d49ac17082c861ec52e67f3214ad117d983fc50; tam CI40528142372, PostgreSQL122273675144 başladı. Önceki e80370c/2ee892b sonuçları bu adayın sonucu sayılmayacak.
+- Sunucuda exact-source PID2286289 dotnet publish aşamasında; build.exit henüz yok. SQL151041Z bağımsız klon restore122,95tablo baseline ve ayrı medya/anahtar/no-side-effect ortam hazır. Yeni konteyner/runtime/HTTP/verikoruma/geri dönüş/yayın kapıları açık.
+- Hedef devam ediyor. Bu tur iki gerçek regresyonu düzeltti ve PostgreSQL/Chromium kanıtı üretti; canlı f073 değişmedi. Kanıt tenant-filter-checkout-regression-20261027.md.
