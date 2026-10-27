@@ -1,3 +1,13 @@
+## 27 Ekim 2026 — son90cCIgeçti,tazekurtarma sonrası yayınbaşladı
+- KesinCI40442423575üçişbaşarılı;PG12198589182642m34s. Son test sayısı henüzvirtualizedlogdanokunmadı; eskisayıtaşınmadı. PRAllcheckshavepassed/3successgösterdi.
+- Yeniden taze054146ZSQLdump/hash/list/ayrıclone122/95restoreve143MB054153Zmevcut27eSQL/medya/anahtar/imajkurtarmasıgeçti. Kaynak90cSHAreloadilekalıcıdoğrulandı.
+- TekCoolifydwypxqvea2jk2sa1pwfwc9lr05:43:04UTCbaşladı;gerçekimport90c. Bitim/runtime/canlı404/sağlıkkabulühenüzbekliyor; migrationyok. Ayrıfbeadminentrypaketibuyayındayok. Kanıt:tenant-platform-production-release-20261027.mdve90cCI/freshrecoverygörüntüleri.
+
+## 27 Ekim 2026 — platformtenant404sınırı canlıda doğrulandı
+- Kesin90cCI40442423575üçişbaşarılı;PG42m34s. Exactstaging/95tablokorunması,tazelenmiş054146ZSQLrestoreve143MB054153Zdosya/imajkurtarmasonrasıtekCoolifydwypxqvea2jk2sa1pwfwc9lrSuccess/Finished.
+- Gerçekweb/public90cimajları/DBhealthy/zerorestart/webreadonly/SMTPrelay/HTTPS callback05:48:45UTCgeçti. Üçhost122/0,8plan/kapalıödeme-deneme,8galeribaytıveHTML/CSS/resetkaynaklarıkorundu. Santa/Farmaplatformsayfa/betik/API/adminveplatformreauthPOST404;rootlogin200vekökplatformURLcanlıgeçti.
+- Kanıt:tenant-platform-production-release-20261027.mdve90clive/deploy/healthlogları. Migration/productionrestoregerçekmüşteriparolası/imzasıyok. Ayrıfbe10f9/adminpaketihâlâlokalde,sıradakiintegrasyon/CI/staging. TAMAM dediğim1yayının1'itest/komutçıktısıyla doğrulanmıştır.
+
 ## 27 Ekim 2026 — CI beklerken ayrı /admin giriş paketi hazırlandı
 - Ana90cadayınıdeğiştirmeden ayrıadmin-entry-20261027worktree(90cbase)oluşturuldu. Hedef9root/adminve/admin/canlıda200marketingdönüyordu. App302mevcutplatformloginine; ikiNginxrootrotasınıappupstream'eiletiyor,tenant404korunuyor.
 - Ayrıcommitfbe10f9:yerelAPI/PostgreSQL2/2,40.1117s;production/localgerçekNginx/root-www/trailingslash/query/Host/relativeLocationkabulügeçti. İlkproxyfetchHostfixturehatasıstrictassertionkorunaraknode:httpdüzeltildi. GeçiciDB/ağlartemizlendi;remotepush/CI/yayınyok.

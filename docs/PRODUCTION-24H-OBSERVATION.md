@@ -2,6 +2,8 @@
 
 ## Güncel yayın: 27 Ekim 2026 TRT
 
+Güncelleme: canlı90cc105, Coolifydwypxqvea2jk2sa1pwfwc9lrSuccess/Finished;başlangıç05:43:04UTC,runtime05:48:45UTC,HTTP05:49:08UTC. Tam bitiş saniyesi ayrıca çıkarılmadı. Güncelrollback `/var/backups/envantertr/rollback-20261027T054153Z`;önceki27eimajları,054146ZtazeSQLdump,medya/anahtarlarveayrıclone/kurtarmaprovasıkanıtlı. Şema122/migrationyok. Eski90cstaging031252Zpaketiyerineyayınöncesitazelenmiş054153Zesas alınır. Kanıt:tests/reports/tenant-platform-production-release-20261027.md. Kesintisiz24saatgözlemiddiasıyok. Alttaki27eyeyayınbilgisitarihseldir.
+
 Kesin kaynak `27e9120d6edd1095d7f87e0b7e99449ef69a2169`; Coolify `toqnlyqqdou4kgufmblabdfa`, Success/Finished. Yayın başlangıcı26Ekim20:23:46UTC; tam bitiş saniyesi ayrıca çıkarılmadı. İlk gerçek runtime doğrulaması20:29:10UTC, dış kaynak/sınır probu20:29:25UTC. Şema122korundu, migrationyok. Güncel geri dönüş paketi `/var/backups/envantertr/rollback-20261026T200148Z`; önceki üretim9585imajları, SQL/medya/anahtarlar ve ayrı kurtarma provası bu pakete aittir. Kanıt: `tests/reports/activation-atomicity-production-release-20261026.md`. Bu başlangıç ölçümleri kesintisiz24saat gözlem sayılmaz. Aşağıdaki5018sürüm/yedek yolu tarihsel kayıttır; gerçek geri dönüşte güncel27eyayın raporu esas alınır.
 
 ## Önceki yayın: 26 Ekim 2026

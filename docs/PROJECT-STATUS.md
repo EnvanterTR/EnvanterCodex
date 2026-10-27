@@ -1,3 +1,7 @@
+## 27 Ekim 2026 — platformtenant404sınırı canlıda
+
+Canlı `90cc10503eb0aa6d929f7e077b376fdd1e001b81`,şema122/0. Platformsayfaları/betikleri/APIveayrıplatformreauthPOSTşirkethostlarında404;platformlinkikökalana,localhostyereldekalır. KesinCI40442423575üçiş,exactstaging/95tablokorunması,taze054146ZSQLrestoreve143MB054153ZkurtarmasonrasıCoolifydwypxqvea2jk2sa1pwfwc9lrSuccess/Finished. Gerçekimaj/runtimeveüçhostHTTPkaynak/sınırkontrolleri geçti. Kanıt:`tests/reports/tenant-platform-production-release-20261027.md`. Ayrı/adminrootaliaspaketifbe10f9henüzyayımlanmadı. Gerçekmüşteri/merchantkabulüaçık;tamHedefbitmedi. Alttakisürümlertarihsel.
+
 ## 27 Ekim 2026 — davet/parola düzeltmesi canlıda
 
 Canlı kaynak `27e9120d6edd1095d7f87e0b7e99449ef69a2169`, şema122/0. Davet/parola sıfırlamanın hesap/parola/oturum/audit değişimleri tek transaction; sonuç mesajı gizlenen form dışında. CI40390600764 üç iş başarılı, PostgreSQL356/356; exact staging/taze yedek/kurtarma sonrası Coolifytoqnlyqqdou4kgufmblabdfaSuccess/Finished. Gerçek imajlar/runtime20:29UTC, üçhost sağlık ve resetHTML kaynak eşitliği geçti. Kanıt: `tests/reports/activation-atomicity-production-release-20261026.md`. Gerçek kullanıcı parolası/MFA değiştirilmedi; aşağıdaki müşteri/merchant kabul açıkları sürüyor. Alttaki sürümler tarihsel.

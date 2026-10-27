@@ -1,3 +1,7 @@
+## 27 Ekim 2026 — güncel platformtenant sınırı yayını
+
+Canlı90cc105/schema122. KesinCI40442423575üçiş/exactstaging/tazeSQLrestore/95tablokorunması/güncelkurtarmasonrasıCoolifydwypxqvea2jk2sa1pwfwc9lrSuccess/Finished. Santa/FarmaplatformHTML/betik/APIveplatformreauthPOST404canlıdadoğrulandı;kökplatformlogin200. Kaynak/runtime/healthvegalerikorundu. Kanıt:tests/reports/tenant-platform-production-release-20261027.md. Bu,Hedef10.3belirtilenplatformyollarınınanonimhostdenialkanıtıdır;Bölüm20karşılıklıkayıtGET-PUTkabulüyerinesayılmaz. /adminrootaliasfbe10f9ayrılokaldehazır,henüzcanlıdadeğil. Alttakicanlı27ekaydıtarihseldir.
+
 ## 27 Ekim 2026 — güncel canlı kaynak ve kalan kabul sınırı
 
 Canlı `27e9120d6edd1095d7f87e0b7e99449ef69a2169`, şema122/0. Atomik davet/parola düzeltmesi CI40390600764üçiş/356PostgreSQLtesti, exactstaging/tazeyedek/kurtarma sonrası yayımlandı. Coolifytoqnlyqqdou4kgufmblabdfaSuccess/Finished; gerçek27eimajları ve üçhost statik/runtime/anonim sınırlar geçti. Kanıt: `tests/reports/activation-atomicity-production-release-20261026.md`.
