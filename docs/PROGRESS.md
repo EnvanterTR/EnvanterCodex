@@ -896,3 +896,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 ## 27 Ekim 2026 — kupon fiyatı sonrası geçerlilik tekrar kontrolü
 - Yeni2durum: başarılı3780TRYquote sonrası expiry/deactivate; normal sentetikownerparola/MFA/CSRF ile initialize400couponCode, sağlayıcı0çağrı, siparişyok ve mevcutabonelikstatus/plan/tarihler eşit. Önceki3quotedurumuyla5/5,50.8805s,exit0.
 - İzolecoupon-recheckDB/ağcleanup0. Ürün/canlıf073değişmedi. Kanıt coupon-recheck-20261027.md ve3log. Yeni2testhenüzuzakCI'dadeğil;85c4f8cCI40464013357yenidenbaşlatılmadı. Gerçekmerchant/müşterikapıları açık.
+
+## 27 Ekim 2026 — zorunlu Kapı5 kayıt/demo raporu oluşturuldu
+- Hedef15.9'un gate-N dosya şartında gate5yoktu. İncelenen6/6deneme,11/11demoprovisioning,6/6onboarding veatomikaktivasyon raporları gerçekmüşteri/merchant kabulünden ayrılarak gate-5-20261027.md oluşturuldu.
+- Sonuç GEÇMEDİ; normalDemo3owner ve gerçek kayıt/ödeme/beşadım tamamlanması açık. Tarihsel testler yeniden koşulmadı, supportowner yerine sayılmadı. Yeni ürün/canlı değişikliği yok.
+- AynıCI40464013357 PostgreSQL12205499372011m21s'de çalışıyor olarak doğrulandı; yeni yerelrecheck testleri nedeniyle restart yapılmadı. TamHedef açık.
