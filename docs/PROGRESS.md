@@ -1,3 +1,8 @@
+## 27 Ekim 2026 — eksik Hedef7.8 özellik matrisi oluşturuldu
+- docs/FEATURE-MATRIX.md Bölüm7.1–7.7için74satır; her birinde kod/test izi ve tamkapsamın eksik kabulü ayrı. Üstbölümler henüz tam satırlandırılmadı; genelpayda/yüzde çıkarılmadı. İzin bulunanözellikler yok sayılmadı, sırfdosya/testadı bulundu diye TAMAMatanmadı.
+- Referans denetimi34C#dosya/38testyöntemi, eksik0/0. Testler yeniden koşulmadı; bu kod/test iz dökümüdür. LDAP/SAML/GoogleOAuth dar kayıtaraması boş; kesin yokluk yerine DOĞRULANMADI. Kanıt:tests/reports/feature-matrix-initial-audit-20261027.md.
+- Ürün/canlı değişmedi. Sıradaki P0teknik açıkların tamkanıt eşlemesi ve mevcutkabul; giriş/imza/merchant gerektiren adımlar açık. TAMAM dediğim1kapsam/izpaketinin1'i kaynak kontrol çıktısıyla doğrulanmıştır.
+
 ## 27 Ekim 2026 — güncel geri dönüş referansı ve oturum engeli
 - Normal platform yönetimi de loginFormgösterdi; kullanılabilir yönetici/müşteri oturumu yok. YeniOTPistenmedi, güvenlik süresi değiştirilmedi. P0 gerçekmüşteri kabulü bu oturumlarla ilerletilemiyor; gerçekmerchant hesabı da yok.
 - 24saat gözlem planının eski5018yedek referansı güncel27eyayını/200148Zrollbackpaketi/9585öncekiimajlarıyla güncellendi. Sonrapordaki gerçek runtime20:29:10UTCveHTTP20:29:25UTCayrıbaşlangıçölçümleri olarak aktarıldı; kesintisizgözlemveya tamT0saniyesi uydurulmadı.
