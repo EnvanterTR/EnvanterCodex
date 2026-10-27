@@ -1,3 +1,6 @@
+## 27 Ekim 2026 — güncel canlı yönetici giriş sürümü
+
+Canlı kaynak f073752a40072bdc0a515f3156bfc785dbaffe0d, şema122/0. TamCI40458121020 üçiş, kesin staging95tablo korunması ve taze063327ZSQL/143MB063335Zkurtarma sonrası Coolifytg8vi2aspz7yt8qzousehh7s Success/Finished. Root/www /admin artık yönetici girişine302; Santa/Farma404. Gerçekimaj/runtime, üçhostsağlık, kaynak/galeri eşitliği ve anonim yetki sınırları geçti. Kanıt: tests/reports/admin-entry-production-release-20261027.md. Gerçekmerchant/müşteri/imza/operatör/Farma/canlıçaprazkayıt/Demo3owner ve tamHedef açık; alttaki sürüm notları tarihseldir.
 ## 27 Ekim 2026 — güncel platformtenant sınırı yayını
 
 Canlı90cc105/schema122. KesinCI40442423575üçiş/exactstaging/tazeSQLrestore/95tablokorunması/güncelkurtarmasonrasıCoolifydwypxqvea2jk2sa1pwfwc9lrSuccess/Finished. Santa/FarmaplatformHTML/betik/APIveplatformreauthPOST404canlıdadoğrulandı;kökplatformlogin200. Kaynak/runtime/healthvegalerikorundu. Kanıt:tests/reports/tenant-platform-production-release-20261027.md. Bu,Hedef10.3belirtilenplatformyollarınınanonimhostdenialkanıtıdır;Bölüm20karşılıklıkayıtGET-PUTkabulüyerinesayılmaz. /adminrootaliasfbe10f9ayrılokaldehazır,henüzcanlıdadeğil. Alttakicanlı27ekaydıtarihseldir.

@@ -869,3 +869,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - f073752 CI40458121020 üçiş başarılı; PostgreSQL36m21s. Kesin staging/veri korunması sonrası taze063327ZSQLrestore ve143MB063335Z SQL/medya/anahtar/imaj recovery geçti.
 - Coolify kaynakSHA reload ilef073752 doğrulandı. tg8vi2aspz7yt8qzousehh7s06:35:17UTC başladı; import exactf073. Genel unapplied uyarısı yeni işin doğruSHAimport kanıtını geçersiz kılmıyor; tekrar deploy yapılmadı.
 - Kanıt: admin-entry-production-release-20261027.md ve3CI/recovery/deployment PNG. Yayın sonucu/runtime/canlıHTTP henüz açık; tamHedef tamamlanmadı. Sıradaki aynıdeployment tamamlanması ve hazırlanan canlıprob.
+
+## 27 Ekim 2026 — yönetici giriş rotası canlıda doğrulandı
+- Coolifytg8vi2aspz7yt8qzousehh7s Success/Finished; gerçekweb/publicf073752, üçkonteyner063543. Runtime06:40:56UTC passed; dışhealth06:42:19UTCüçhost200ready122/0.
+- Canlı root/www admin302relativeLocation/noCookie; Santa/Farmaadmin404. Galeri8kaynakSHA256eşit, şirket/resetHTML/CSSveanonimPDF/email/onboarding/platform sınırları korundu. f073-live-boundaries çıkış0. Migration/üretimrestore yok.
+- Kanıt: admin-entry-production-release-20261027.md, iki yeniPNG veiki log. Güncelstatus/audit başlıkları yenilendi. TamHedef ve gerçekmüşteri/merchant kapıları açık; sıradakiP0 kalan kabul/teknik açıklar. YeniMFAistenmedi.
