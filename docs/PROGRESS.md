@@ -921,3 +921,7 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 ## 27 Ekim 2026 — kupon recheck ve platform kilit paketi CI'a alındı
 - 5712d70 push başarılı. YeniCI40508232603 PostgreSQL122202999688 ve diğerikiiş başladı;3inprogress doğrudan PR'da görüldü. ÖncekitamamlananCI iptal/restart edilmedi.
 - Yeni aday yereldekanıtlı kuponrecheck ve parola/ikinci aşamakilit testlerini içerir. Henüz uzakCI başarılısayılmadı; yeniüründeğişikliği/migration/deployyok. Canlıf073 korunuyor.
+
+## 27 Ekim 2026 — zorunlu giriş/rol/kurtarma Kapı1 kaydı
+- gate-1-20261027.md mevcutlockout3/3,atomikreset6/6,SMTPcapture1/1,ortakoturum5/5,MFA/freshlogin ve gerçekyayın kanıtlarını tamrol/müşteri kapsamından ayırır. EskiSMTPyok notları tarihsel olarak elealındı.
+- SonuçGEÇMEDİ: tamrol/UIeşlemesi, normaloperatör/çıkış ve belirtilen canlıkanıtlar eksik. Tarihsel test yeniden koşulmadı; canlıayar/parola/MFA değiştirilmedi. TamHedef açık.
