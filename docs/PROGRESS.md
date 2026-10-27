@@ -948,3 +948,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Gerçekdaily-20261027T000014Z.dumpSHA256sidecar/list ve özelkopyahashgeçti. Ayrıinternal/nohostportstageDB'deenvantertr_daily_restore_20261027restore0;122migration/95tablo ve üyelikFKbütünlüğü geçti,13:22:37UTC.
 - Kanıt daily-backup-restore-20261027.md,betikvePNG; Kapı7ekkanıtı güncellendi. ÜretimeSQLrestore/yazma/deployyok; özelkopya/clonefollowupiçinsunucudakaldı,genelrepoyaalınmadı. Tamoffhost/tek-tık/medyaDRiddiasıyok.
 - CI40508232603 PostgreSQL23m14sçalışıyor,diğerikiişbaşarılı; yenidenbaşlatılmadı. TamHedef açık.
+
+## 27 Ekim 2026 — tenant mimarisi ve zorunlu Kapı2 kaydı
+- AppDbContextmodelkaydında tekglobalfilterAsset.DeletedAtnull;CompanyIdtenantglobalfiltresi değil. Mevcut endpointscope/testleri korunuyor; bu bulgu sızıntıvariddiası değil,Hedef6.2ekkatmaneksikliği.
+- gate-2-20261027.md host401,gerçekplatform404,sentetikGET/PUT404 ve canlıiki-hesapgereklerini ayırdı. Cache/queue/dosya/tümentityalanları ve gerçek20.4açık. Ürünmodeli/tenantyetkileri değişmedi; P0önceliği korunarakP1işi tariflendi.
+- Kanıt kaynaksatırıAppDbContext.cs1355 ve raporda listelenen mevcut kabul dosyaları. Yeni test/deploy yok; genelhedef tamamlanmadı.
