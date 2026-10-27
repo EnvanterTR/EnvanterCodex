@@ -977,3 +977,7 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - AppDbContext tüm Guid/nullableGuid CompanyId kök entityleri ve Company.Id için runtime bağlamlı named TenantScope filtresi ekler; Asset SoftDelete korunur. Doğrulanmış ordinary şirket handlerına middleware scope bağlar/finally temizler; hesap/platform/doğrulanmışödeme ve altyapı yolları mevcut system kontrollerini korur.
 - Tracked yabancı/taşınmış CompanyId yazması kayıttan önce reddedilir. Yerel gerçekPG7/7,52.2370s,build0 ve disposableDB/ağcleanup0. Kanıt tenant-query-filter-20261027.md ve3log. Modelmigrationfarkıyok; hamSQL/IgnoreQueryFilters için mevcut endpoint sınırları hâlâ zorunlu.
 - Yeni ürünkodu henüz uzakCI/staging/yayın görmedi; canlıf073korunuyor. Sonraki aynı kod adayının tamCI ve daha geniş kritik yol doğrulaması; tam P1/Hedef tamamlanmadı.
+
+## 27 Ekim 2026 — P1 adayının izole sunucu kabulü
+- Kesin2ee892b uzakCI40516313967 sürüyor; yeniden başlatılmadı. İki serverbuild0, internal/noports/readonly stage, SQL135745Z bağımsızrestore122/0; HTTP/proxy/anonim/CSRF/platformsınırları geçti.
+- 95tablo alanprojeksiyonu korundu. İlk143MB140745Zgeri dönüş dosya/imajprovası0; canlıya restore/deployyok. TamCIvefreshreleasekapıları açık. 27IgnoreQueryFilters kaynak yeri incelendi; açıkCompanyIdkontrolleri korunuyor, tamP1kanıtı sayılmadı. Ayrıntı tenant-query-filter-20261027.md.
