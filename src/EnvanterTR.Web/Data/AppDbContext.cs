@@ -1,12 +1,60 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace EnvanterTR.Web.Data;
 
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     : IdentityDbContext<EnvanterUser, IdentityRole<Guid>, Guid>(options)
 {
+    // Contexts created by migration/provisioning/background infrastructure start
+    // in system scope. Request middleware binds a company only after validating
+    // its live session, membership and host; no scope is taken from input alone.
+    public bool IsSystemQueryScope { get; private set; } = true;
+    public Guid QueryCompanyId { get; private set; }
+
+    public void UseCompanyQueryScope(Guid companyId)
+    {
+        if (companyId == Guid.Empty) throw new ArgumentException("A company query scope requires an identifier.", nameof(companyId));
+        QueryCompanyId = companyId;
+        IsSystemQueryScope = false;
+    }
+
+    public void ClearCompanyQueryScope()
+    {
+        QueryCompanyId = Guid.Empty;
+        IsSystemQueryScope = false;
+    }
+
+    private void ValidateCompanyWrites()
+    {
+        if (IsSystemQueryScope) return;
+        foreach (var entry in ChangeTracker.Entries().Where(entry =>
+                     entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted))
+        {
+            var property = entry.Metadata.ClrType == typeof(Company)
+                ? entry.Property(nameof(Company.Id))
+                : entry.Metadata.FindProperty("CompanyId") is not null ? entry.Property("CompanyId") : null;
+            if (property is null) continue;
+            if (QueryCompanyId == Guid.Empty || property.CurrentValue is not Guid current || current != QueryCompanyId ||
+                (entry.State != EntityState.Added && (property.OriginalValue is not Guid original || original != QueryCompanyId)))
+                throw new InvalidOperationException("The tracked write is outside the validated company scope.");
+        }
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        ValidateCompanyWrites();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        ValidateCompanyWrites();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<CompanyMfaEnrollmentChallenge> CompanyMfaEnrollmentChallenges => Set<CompanyMfaEnrollmentChallenge>();
     public DbSet<CompanyApiToken> CompanyApiTokens => Set<CompanyApiToken>();
@@ -1352,7 +1400,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AccessoryPurchaseOrderAttachment>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.SetNull);
 
-        modelBuilder.Entity<Asset>().HasQueryFilter(x => x.DeletedAt == null);
+        modelBuilder.Entity<Asset>().HasQueryFilter("SoftDelete", x => x.DeletedAt == null);
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.AssetTag }).IsUnique().HasFilter("\"DeletedAt\" IS NULL");
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.DeletedAt, x.UpdatedAt });
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.SerialNumber });
@@ -1538,5 +1586,19 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AssetMaintenanceAttachment>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.SetNull);
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes().Where(entity => entity.BaseType is null))
+        {
+            var companyProperty = entityType.ClrType == typeof(Company)
+                ? entityType.FindProperty(nameof(Company.Id)) : entityType.FindProperty("CompanyId");
+            if (companyProperty is null || (companyProperty.ClrType != typeof(Guid) && companyProperty.ClrType != typeof(Guid?)))
+                continue;
+            var row = Expression.Parameter(entityType.ClrType, "row");
+            var rowCompany = Expression.Call(typeof(EF), nameof(EF.Property), [companyProperty.ClrType],
+                row, Expression.Constant(companyProperty.Name));
+            var contextCompany = Expression.Convert(Expression.Property(Expression.Constant(this), nameof(QueryCompanyId)), companyProperty.ClrType);
+            var systemScope = Expression.Property(Expression.Constant(this), nameof(IsSystemQueryScope));
+            modelBuilder.Entity(entityType.ClrType).HasQueryFilter("TenantScope",
+                Expression.Lambda(Expression.OrElse(systemScope, Expression.Equal(rowCompany, contextCompany)), row));
+        }
     }
 }

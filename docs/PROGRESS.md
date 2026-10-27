@@ -971,3 +971,9 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Aynı engel üç ardışıkhedef turunda tekrarlandı: gerçekiyzicoişyerihesabıyok, normalmüşteri/imza/operatör/çaprazkayıt/Demo3owner kabulüaçık; Santa sonnormaloturumkontrolündeloginForm. Canlıcheckoutsonsaltokunurkontrolde13:37:29UTC200/availablefalse.
 - Hedef17.3P0bitmedenP1/P2'yegeçişiyasaklıyor. DışadımlarıayırıpP1filtreyegeçmesorusu pending; otomatikcontinue metni kullanıcıtercihi sayılmadı. Hazırfiltrekapsamı tenant-query-filter-preparation-20261027.md; bağlıuygulama başlamadı.
 - TamCI40508232603terminalbaşarılı; yereltest/build/kurtarmaişikalmadı. Canlıf073/122 ve önceki doğrulanmışyayınkorunuyor. Genelhedef tamamlanmadı; kullanıcı/haricidurumdeğişikliği olmadan izinlisırada anlamlıP0ilerleyiş için gerçekengeller sürdüğünden goalblocked işaretlenecek. YeniMFA/parola/sır istenmedi; gerçekimza/ödeme taklit edilmedi.
+
+## 27 Ekim 2026 — kullanıcı P1'e geçişi yetkilendirdi; tenant filtresi ilk uygulama
+- Kullanıcı açıkça P1'e geçilmesini ve tamamlanmış kontrollerin gereksiz tekrarlanmamasını istedi. P0 dış ödeme/müşteri kabulü ayrı açık kalır; eski faz-sırası bekleyişi bu talimatla aşıldı.
+- AppDbContext tüm Guid/nullableGuid CompanyId kök entityleri ve Company.Id için runtime bağlamlı named TenantScope filtresi ekler; Asset SoftDelete korunur. Doğrulanmış ordinary şirket handlerına middleware scope bağlar/finally temizler; hesap/platform/doğrulanmışödeme ve altyapı yolları mevcut system kontrollerini korur.
+- Tracked yabancı/taşınmış CompanyId yazması kayıttan önce reddedilir. Yerel gerçekPG7/7,52.2370s,build0 ve disposableDB/ağcleanup0. Kanıt tenant-query-filter-20261027.md ve3log. Modelmigrationfarkıyok; hamSQL/IgnoreQueryFilters için mevcut endpoint sınırları hâlâ zorunlu.
+- Yeni ürünkodu henüz uzakCI/staging/yayın görmedi; canlıf073korunuyor. Sonraki aynı kod adayının tamCI ve daha geniş kritik yol doğrulaması; tam P1/Hedef tamamlanmadı.

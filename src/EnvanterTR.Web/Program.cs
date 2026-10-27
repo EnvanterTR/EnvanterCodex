@@ -570,7 +570,14 @@ app.Use(async (context, next) =>
         }
     }
 
-    await next();
+    // Account operations resolve a user's other memberships explicitly; verified
+    // checkout callbacks and platform operations use their existing system scope.
+    // All ordinary company handlers receive the already validated tenant scope.
+    if (Guid.TryParse(companyClaim, out var queryCompanyId) && !isAccountEndpoint &&
+        !isPlatformEndpoint && !isVerifiedCheckoutEndpoint)
+        db.UseCompanyQueryScope(queryCompanyId);
+    try { await next(); }
+    finally { db.ClearCompanyQueryScope(); }
 });
 app.UseAuthorization();
 app.UseRateLimiter();
