@@ -953,3 +953,7 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - AppDbContextmodelkaydında tekglobalfilterAsset.DeletedAtnull;CompanyIdtenantglobalfiltresi değil. Mevcut endpointscope/testleri korunuyor; bu bulgu sızıntıvariddiası değil,Hedef6.2ekkatmaneksikliği.
 - gate-2-20261027.md host401,gerçekplatform404,sentetikGET/PUT404 ve canlıiki-hesapgereklerini ayırdı. Cache/queue/dosya/tümentityalanları ve gerçek20.4açık. Ürünmodeli/tenantyetkileri değişmedi; P0önceliği korunarakP1işi tariflendi.
 - Kanıt kaynaksatırıAppDbContext.cs1355 ve raporda listelenen mevcut kabul dosyaları. Yeni test/deploy yok; genelhedef tamamlanmadı.
+
+## 27 Ekim 2026 — envanter ve arayüz zorunlu kabul raporları
+- gate3vegate4numaralıdosyaları oluşturuldu; ikisiGEÇMEDİ. FEATURE-MATRIX74satır veui-inventory2304kayıt testtamamlanması sayılmadı; Hedef7.9CRUD/rol/tenant/boşhata ve13A–Mkategori/%95kanıt boşlukları açıklandı.
+- Galeri/390px/reset/onboarding/PDFgibi gerçek altkanıtlar tümürün kabulü yerine geçirilmedi. YeniP2kod/ui/testkoşusu/deployyok. Böylece1–8kapıdosyalarımevcut, fakat varlıkları kapılarıngeçtiği anlamınagelmiyor. TamHedef açık.
