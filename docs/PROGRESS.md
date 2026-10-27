@@ -938,3 +938,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 ## 27 Ekim 2026 — yedek/kurtarma numaralı Kapı7 kaydı
 - gate-7-20261027.md sonf073yayının063327ZSQL/063335Z143MBrestore-file-imagekanıtını ürüntek-tık/scheduler/farklıhedefkurtarma kapsamından ayırır. SonuçtamkapıDOĞRULANMADI, mevcutyayınkurtarmasıkanıtlı.
 - Hedef15.10izlemeplanı tamamlanmış24saat yerine geçirilmedi; scriptvarlığı gerçekschedulerkoşusu sayılmadı. YeniSQLrestore/deploy/ürünverisiyazması yapılmadı. TamHedef açık.
+
+## 27 Ekim 2026 — gerçek günlük otomatik yedek görevi doğrulandı
+- Cron/systemd saltokunurtaraması eşleşmeyince yokiddiası yapılmadı; Coolifydailybackup taskirsodh1rfb6jx4n6fzin63sn bulundu. Etkin,günlük,database,300s ve kurulu günlük scriptkomutu görüldü. ExecuteNow/ayar değişikliği yapılmadı.
+- 21–27Ekim günlükSuccess; son27Ekim00:00:10UTC5sSuccess veDAILY_SQL_BACKUP_OK doğrudanloggörüntüsü. Kanıt daily-backup-executions-20261027.png,daily-backup-last-success-20261027.png; Kapı7ekkanıtıgüncellendi.
+- Sonotomatikdumpınbağımsızrestore/retention/arıza bildirimi ayrı açık. Genelhedef/kapı tamamlanmadı; üretimeveriyazılmadı.
