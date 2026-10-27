@@ -957,3 +957,7 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 ## 27 Ekim 2026 — envanter ve arayüz zorunlu kabul raporları
 - gate3vegate4numaralıdosyaları oluşturuldu; ikisiGEÇMEDİ. FEATURE-MATRIX74satır veui-inventory2304kayıt testtamamlanması sayılmadı; Hedef7.9CRUD/rol/tenant/boşhata ve13A–Mkategori/%95kanıt boşlukları açıklandı.
 - Galeri/390px/reset/onboarding/PDFgibi gerçek altkanıtlar tümürün kabulü yerine geçirilmedi. YeniP2kod/ui/testkoşusu/deployyok. Böylece1–8kapıdosyalarımevcut, fakat varlıkları kapılarıngeçtiği anlamınagelmiyor. TamHedef açık.
+
+## 27 Ekim 2026 — kupon recheck ve giriş kilidi tam CI geçti
+- 5712d70 CI40508232603 tümübaşarılı: PostgreSQL29m10s,Linuxsecurity8m15s,Windows4m53s. Yereldekanıtlı kuponrecheckveiki-faktörkilit testlerinin uzakCIaçığı kapandı; toplamtestsayısıçıkarılmadı.
+- Kanıt coupon-lockout-ci-20261027.md ve coupon-lockout-ci-success-20261027.png. Test-onlyiçinyenideployyok; canlıf073/122korunuyor. Gerçekmerchant/müşteriveaçıkmimariparite/UIkapıları tamamlanmış sayılmadı.
