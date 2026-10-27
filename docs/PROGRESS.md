@@ -892,3 +892,7 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 ## 27 Ekim 2026 — PR son sürüm ve kupon kabulüyle eşlendi
 - PR25 kaydedilen açıklamasında canlı f073752, tamamlanan deployment/recovery ve gerçek root302/tenant404 ayrımı doğrulandı. Yeni kupon test-only5/5 ve çalışanCI40464013357 ayrı belirtildi; taslak/gerçekmüşteri/merchant açık kapıları korundu. Kanıt coupon-period-pr-status-20261027.png.
 - PostgreSQL122054993720 yeniCI içinde2m12s'de In progress olarak doğrulandı. Tekrar deploy veya CIrestart yok. Yeni ürün değişikliği yok; mevcut tam hedef açık.
+
+## 27 Ekim 2026 — kupon fiyatı sonrası geçerlilik tekrar kontrolü
+- Yeni2durum: başarılı3780TRYquote sonrası expiry/deactivate; normal sentetikownerparola/MFA/CSRF ile initialize400couponCode, sağlayıcı0çağrı, siparişyok ve mevcutabonelikstatus/plan/tarihler eşit. Önceki3quotedurumuyla5/5,50.8805s,exit0.
+- İzolecoupon-recheckDB/ağcleanup0. Ürün/canlıf073değişmedi. Kanıt coupon-recheck-20261027.md ve3log. Yeni2testhenüzuzakCI'dadeğil;85c4f8cCI40464013357yenidenbaşlatılmadı. Gerçekmerchant/müşterikapıları açık.
