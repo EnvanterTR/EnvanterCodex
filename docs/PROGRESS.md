@@ -1,3 +1,7 @@
+## 27 Ekim 2026 — güncel geri dönüş referansı ve oturum engeli
+- Normal platform yönetimi de loginFormgösterdi; kullanılabilir yönetici/müşteri oturumu yok. YeniOTPistenmedi, güvenlik süresi değiştirilmedi. P0 gerçekmüşteri kabulü bu oturumlarla ilerletilemiyor; gerçekmerchant hesabı da yok.
+- 24saat gözlem planının eski5018yedek referansı güncel27eyayını/200148Zrollbackpaketi/9585öncekiimajlarıyla güncellendi. Sonrapordaki gerçek runtime20:29:10UTCveHTTP20:29:25UTCayrıbaşlangıçölçümleri olarak aktarıldı; kesintisizgözlemveya tamT0saniyesi uydurulmadı.
+
 ## 27 Ekim 2026 — kalan P0 müşteri kabulü ve Kapı8 denetimi
 - NormalSanta portalı yeni kontrolde loginFormgösterdi; gerçek müşteri oturumu yok. Önceki7/10kanıtı korundu; kalan imza/operatör/çıkış ve Farma/çaprazGET-PUT/Demo3normalowner adımları tamamlandı sayılmadı. YeniMFAistenmedi.
 - AUDIT-REALITY ve gate-8raporlarına exact27ecanlı/CI/staging/tazekurtarma kanıtı eklendi; eskicallback/SMTP/yayın bilgileri tarihsel ayrıldı. Kapı8geçmedi; merchant ve insan katılımı gereken gerçek kabul açık. Sıradaki bu oturumlarla erişilemeyen kabulün yeniden yetkili müşteri oturumu olduğunda tamamlanması; imza kullanıcıya aittir.

@@ -1,6 +1,10 @@
 # Yayın sonrası 24 saatlik gözlem planı
 
-## Güncel yayın: 26 Ekim 2026
+## Güncel yayın: 27 Ekim 2026 TRT
+
+Kesin kaynak `27e9120d6edd1095d7f87e0b7e99449ef69a2169`; Coolify `toqnlyqqdou4kgufmblabdfa`, Success/Finished. Yayın başlangıcı26Ekim20:23:46UTC; tam bitiş saniyesi ayrıca çıkarılmadı. İlk gerçek runtime doğrulaması20:29:10UTC, dış kaynak/sınır probu20:29:25UTC. Şema122korundu, migrationyok. Güncel geri dönüş paketi `/var/backups/envantertr/rollback-20261026T200148Z`; önceki üretim9585imajları, SQL/medya/anahtarlar ve ayrı kurtarma provası bu pakete aittir. Kanıt: `tests/reports/activation-atomicity-production-release-20261026.md`. Bu başlangıç ölçümleri kesintisiz24saat gözlem sayılmaz. Aşağıdaki5018sürüm/yedek yolu tarihsel kayıttır; gerçek geri dönüşte güncel27eyayın raporu esas alınır.
+
+## Önceki yayın: 26 Ekim 2026
 
 `5018bc595684fe4410a9412755b39b2ada9cde0b`, Coolify `zsmt40hqy0qdjaha4eiu5mab`, Success/Finished, süre4m15s. Doğrulama09:42:17UTC; tam bitiş saniyesi ayrıca çıkarılmadı. Gerçek web/public imajları,DB sağlığı,üç host122/0,8plan/kapalı satış sınırları,görsel ve company HTML hashleri doğrulandı. Yeni24saat gözlem tamamlandı sayılmaz; aradaki süre sürekli izlenmiş değildir. Kanıt: `tests/reports/production-handover-pdf-email-release-20261026.md`. Güncel rollback `/var/backups/envantertr/rollback-20261026T092057Z`; önceki uygulama4237, yeni şema122eklemelidir. Canlıda yıkıcı Down/DBgeri yükleme yapılmadı. Aşağıdaki eski yayın yolları tarihsel örnektir.
 
