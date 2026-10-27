@@ -11,3 +11,7 @@ First run2passed/3failed39.9608seconds: new fixture omitted CreatedByUserId and 
 Evidence: coupon-period-build-20261027.log; coupon-period-acceptance-20261027.log(firstfixturefailure); coupon-period-fixed-build-20261027.log; coupon-period-fixed-acceptance-20261027.log; coupon-period-cleanup-20261027.log. RemoteCI for new test is pending; no new deploy needed for test-only acceptance. FullHedef12.5 real customer/coupon lifecycle and merchant gates remain open.
 
 TAMAM dediğim1yerel kabul paketinin1'i gerçekAPI/PostgreSQLtest çıktısıyla doğrulanmıştır.
+
+## Full CI for initial coupon period cases
+
+Candidate85c4f8c CI40464013357 completed successfully in allthree jobs: PostgreSQL36m50s, Linuxsecurity7m21s, Windowsdeployment4m6s. Direct workflow summary verified; screenshotcoupon-period-ci-success-20261027.png. Final aggregate test count was not read, so no total is inferred. This validates the initial quote-period test candidate; later local coupon-recheck/platform-lockout extensions require their own successorCI. No production deployment is required or performed for these test-only changes.

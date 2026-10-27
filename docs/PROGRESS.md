@@ -913,3 +913,7 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 ## 27 Ekim 2026 — ikinci aşama kodunda kalıcı kilit doğrulandı
 - Login kilit testi theoryoldu: yanlışparola ve doğruparola/yanlışikinci aşama ayrı. İkinci akışta1–4HTTP400/sayaç,5HTTP423/kalıcıbeşdakikakilit; sonra doğruparola401 ve panel401.
 - Ayartestiyle3/3,39.3283s,exit0; build0,disposableDB/ağcleanup0. Kanıt platform-lockout-20261027.md ekbölümve3factorlog. SentetikMFAkaydıkullanıldı, gerçekOTP/yedekkodkullanılmadı; ürün/canlıgüvenlikayarları değişmedi. Yeni testler henüzuzakCI'dadeğil.
+
+## 27 Ekim 2026 — ilk kupon kabulünün tam CI sonucu başarılı
+- 85c4f8c CI40464013357 üçişbaşarılı: PostgreSQL36m50s,Linuxsecurity7m21s,Windows4m6s. İlk UI gözlem zaman aşımı sonrası aynı sayfa gerçeksonuçla kontrol edildi; iş yeniden başlatılmadı. Toplamtestsayısı çıkarılmadı.
+- Kanıt coupon-period-ci-success-20261027.png ve coupon-period-20261027.md ekkayıt. Sonraki yerelkuponrecheckveplatformkilit testleri tek yeniadaya gönderiliyor; bunlar85CI'ındageçmiş sayılmadı. Üretimf073, yeni deploygerekmiyor.
