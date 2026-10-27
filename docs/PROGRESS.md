@@ -966,3 +966,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Hedef17.3önceliği tekrarokundu; gerçekmerchant/müşterikabulüolmadanP1'egeçişyasak. Dışadımlarıayırıpfiltredüzeltmesinegeçme tercihi kullanıcıya tekmetinsorusuyla soruldu;yanıthenüzgelmedi,bağımlıuygulamabaşlamadı.
 - Constructor/DI/designfactory/migrationve5workerincelendi; tenant-query-filter-preparation-20261027.md explicitvalidatedscope/platform/system,modelcache,softdelete/rawSQL/write/provisioning ayrımlarını ve gerekli regresyonu tarifler. Ürün değişmedi,globaltenantfiltresi TAMAM sayılmadı.
 - TamCI40508232603öncekikombinepaketibaşarıylatamamlandı. Aktifyenitest/deployyok; P0kişiselimza/MFA/merchantgerçekengelleri sürüyor. Hedefaktif,ilkresmiyenidenöncelikbeklemeaşaması.
+
+## 27 Ekim 2026 — P0 dış kabul ve faz sırası engeli, üçüncü ardışık kontrol
+- Aynı engel üç ardışıkhedef turunda tekrarlandı: gerçekiyzicoişyerihesabıyok, normalmüşteri/imza/operatör/çaprazkayıt/Demo3owner kabulüaçık; Santa sonnormaloturumkontrolündeloginForm. Canlıcheckoutsonsaltokunurkontrolde13:37:29UTC200/availablefalse.
+- Hedef17.3P0bitmedenP1/P2'yegeçişiyasaklıyor. DışadımlarıayırıpP1filtreyegeçmesorusu pending; otomatikcontinue metni kullanıcıtercihi sayılmadı. Hazırfiltrekapsamı tenant-query-filter-preparation-20261027.md; bağlıuygulama başlamadı.
+- TamCI40508232603terminalbaşarılı; yereltest/build/kurtarmaişikalmadı. Canlıf073/122 ve önceki doğrulanmışyayınkorunuyor. Genelhedef tamamlanmadı; kullanıcı/haricidurumdeğişikliği olmadan izinlisırada anlamlıP0ilerleyiş için gerçekengeller sürdüğünden goalblocked işaretlenecek. YeniMFA/parola/sır istenmedi; gerçekimza/ödeme taklit edilmedi.
