@@ -874,3 +874,12 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Coolifytg8vi2aspz7yt8qzousehh7s Success/Finished; gerçekweb/publicf073752, üçkonteyner063543. Runtime06:40:56UTC passed; dışhealth06:42:19UTCüçhost200ready122/0.
 - Canlı root/www admin302relativeLocation/noCookie; Santa/Farmaadmin404. Galeri8kaynakSHA256eşit, şirket/resetHTML/CSSveanonimPDF/email/onboarding/platform sınırları korundu. f073-live-boundaries çıkış0. Migration/üretimrestore yok.
 - Kanıt: admin-entry-production-release-20261027.md, iki yeniPNG veiki log. Güncelstatus/audit başlıkları yenilendi. TamHedef ve gerçekmüşteri/merchant kapıları açık; sıradakiP0 kalan kabul/teknik açıklar. YeniMFAistenmedi.
+
+## 27 Ekim 2026 — P0 kupon dönem kabulü hazırlanıyor
+- CouponQuotePeriodAcceptanceTests.cs üç gerçek API/PostgreSQL senaryosu eklendi: expired/future/inactive kupon reddi, kuponsuz yıllık fiyatın korunması, sipariş oluşmaması ve mevcut şirket/varlık/kupon verisinin değişmemesi. Henüz geçti sayılmadı; ürün davranışı değiştirilmedi.
+- İzole coupon-period-20261027 acceptance imajı build session85959 çalışıyor; son çıktı test projesi dotnetbuild adımında. Log: tests/reports/coupon-period-build-20261027.log. Aynı session takip edilecek; build0 sonrası yalnız yeni filtre ve uygun komşu regresyonlar çalıştırılacak, sonra disposableDB/network temizlenecek.
+- Üretimf073752 doğrulanmış olarak kalır. Yeni test/source push/deploy yapılmadı. Gerçek merchant ve müşteri kapıları açık.
+
+## 27 Ekim 2026 — P0 kupon dönem ve veri koruma kabulü geçti
+- Yeni3kuponquote senaryosu + mevcutkuponyönetimi + expiredsubscriptionread/write/verikoruma toplam5/5,32.3547s,exit0. İlkfixtureCreatedByUserId eksikliği2/5sonucu üretti; düzeltildi, başarısız ve başarılıloglar saklandı.
+- Disposablecoupon-period-20261027 DB/ağ cleanup0. Test-only; üretimf073752, ürün/migration/ayar değişmedi. Kanıt tests/reports/coupon-period-20261027.md ve5log. Yeni testin uzakCI kabulü açık; gerçekmerchant/müşteri/Hedef tamamlanmış sayılmadı.

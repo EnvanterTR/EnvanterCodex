@@ -162,3 +162,7 @@ Bu bölüm tarihsel kabulü güncel oturum veya yeni sürüm kabulü saymaz. Hed
 | 20.9.5 silme diğerlerine zarar vermez | README gerçek soft-delete/audit; live-demo3-preservation-query-20261025.sql;82projeksiyon eşit | Belirtilen soft-delete kapsamı tarihsel kanıtlı; kalıcı veri silme yapılmadı |
 
 Bu ek bir kabul planı ve kanıt eşlemesidir; yeni TAMAM ürün maddesi ilan etmez. 20.7/20.8/20.10 gereği tamP0 müşteri kapısı açık kalır. Eksik kişisel imza/MFA taklit edilmez; teknik işler sürdürülür.
+
+### 12.5 ek teknik kanıt — kupon dönem sorgusu
+
+CouponQuotePeriodAcceptanceTests.cs üç gerçekAPI/PostgreSQL durumda expired/future/inactive kuponu400 ile reddederken kuponsuz yıllık fiyat200 ve şirket/varlık/kupon verisi korunur, sipariş oluşmaz. Aynı koşuda mevcut abonelik bitişi veri koruma ve platformkupon yönetimi testleriyle5/5geçti. Kanıt: tests/reports/coupon-period-20261027.md. Bu quotekapsamıdır; gerçek ödeme/kupon kullanım ömrünün tamamını kapatmaz,12.5tamdurumuDOĞRULANMADI kalır.
