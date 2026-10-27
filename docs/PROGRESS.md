@@ -828,3 +828,9 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - admin-entry-20261027checkout90cüzerindeayrıldı;mainCI/yayınadayıdeğişmedi. Canlı/adminve/admin/200marketinghatasıgörüldü. Approot302ilemevcutplatformlogininegider;Nginxikiayarındarotauygulamayailetilir,tenant404korunur.
 - YerelAPI/PostgreSQL2/2,40.1117s;iki gerçekNginxproxytesti/root-www/trailingslash/query/Host/relativeLocationgeçti. İlkfetchHostfixturehatasıstrictassertionkorunaraknode:httpile düzeltildi; kaynakrouteverifierleri/syntax/diffgeçti. GeçiciDB/ağlartemizlendi.
 - Kanıt:tests/reports/admin-entry-20261027.mdveloglar. Bu ayrıpakethenüzremoteye/canlıyagönderilmedi;90cCIbittiktensonraintegrasyon/CI/staginggerekiyor. TAMAM dediğim1yerelpaketin1'itest çıktısıyla doğrulanmıştır.
+
+## 27 Ekim 2026 — root yönetici girişinin kesin adayı gönderildi
+- Yerel API/PostgreSQL ve iki Nginx proxy kabulü geçmiş fbe10f9 paketi ana çalışma dalına f073752 olarak çatışmasız alındı; push başarılı. Ürün kaynağı f073752a40072bdc0a515f3156bfc785dbaffe0d.
+- GitHub run 40458121020, PostgreSQL job 122036098775: üç işin başladığı PR üzerinde doğrulandı; başarı henüz iddia edilmedi.
+- Kesin kaynak sunucuda ayrı /var/lib/envantertr-staging/f073752-20261027 dizinine indirildi; bağımsız image derlemesi PID1453548 ile başlatıldı. Kanıt: tests/reports/f073-stage-build-started-20261027.png ve bootstrap betiği. İzole çalışma henüz tamamlanmadı; üretim90cc105 değişmedi.
+- Sıradaki iş: aynı derleme/CI işini takip et; güncel90c verisinden ayrı staging ve kurtarma kapıları sonrası yayın. Yeni push ile aktif CI yeniden başlatılmayacak.
