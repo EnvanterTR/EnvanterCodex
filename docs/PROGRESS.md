@@ -961,3 +961,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 ## 27 Ekim 2026 — kupon recheck ve giriş kilidi tam CI geçti
 - 5712d70 CI40508232603 tümübaşarılı: PostgreSQL29m10s,Linuxsecurity8m15s,Windows4m53s. Yereldekanıtlı kuponrecheckveiki-faktörkilit testlerinin uzakCIaçığı kapandı; toplamtestsayısıçıkarılmadı.
 - Kanıt coupon-lockout-ci-20261027.md ve coupon-lockout-ci-success-20261027.png. Test-onlyiçinyenideployyok; canlıf073/122korunuyor. Gerçekmerchant/müşteriveaçıkmimariparite/UIkapıları tamamlanmış sayılmadı.
+
+## 27 Ekim 2026 — P0 sıra kuralı ve P1 filtre hazırlığı
+- Hedef17.3önceliği tekrarokundu; gerçekmerchant/müşterikabulüolmadanP1'egeçişyasak. Dışadımlarıayırıpfiltredüzeltmesinegeçme tercihi kullanıcıya tekmetinsorusuyla soruldu;yanıthenüzgelmedi,bağımlıuygulamabaşlamadı.
+- Constructor/DI/designfactory/migrationve5workerincelendi; tenant-query-filter-preparation-20261027.md explicitvalidatedscope/platform/system,modelcache,softdelete/rawSQL/write/provisioning ayrımlarını ve gerekli regresyonu tarifler. Ürün değişmedi,globaltenantfiltresi TAMAM sayılmadı.
+- TamCI40508232603öncekikombinepaketibaşarıylatamamlandı. Aktifyenitest/deployyok; P0kişiselimza/MFA/merchantgerçekengelleri sürüyor. Hedefaktif,ilkresmiyenidenöncelikbeklemeaşaması.
