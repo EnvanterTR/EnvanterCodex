@@ -917,3 +917,7 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 ## 27 Ekim 2026 — ilk kupon kabulünün tam CI sonucu başarılı
 - 85c4f8c CI40464013357 üçişbaşarılı: PostgreSQL36m50s,Linuxsecurity7m21s,Windows4m6s. İlk UI gözlem zaman aşımı sonrası aynı sayfa gerçeksonuçla kontrol edildi; iş yeniden başlatılmadı. Toplamtestsayısı çıkarılmadı.
 - Kanıt coupon-period-ci-success-20261027.png ve coupon-period-20261027.md ekkayıt. Sonraki yerelkuponrecheckveplatformkilit testleri tek yeniadaya gönderiliyor; bunlar85CI'ındageçmiş sayılmadı. Üretimf073, yeni deploygerekmiyor.
+
+## 27 Ekim 2026 — kupon recheck ve platform kilit paketi CI'a alındı
+- 5712d70 push başarılı. YeniCI40508232603 PostgreSQL122202999688 ve diğerikiiş başladı;3inprogress doğrudan PR'da görüldü. ÖncekitamamlananCI iptal/restart edilmedi.
+- Yeni aday yereldekanıtlı kuponrecheck ve parola/ikinci aşamakilit testlerini içerir. Henüz uzakCI başarılısayılmadı; yeniüründeğişikliği/migration/deployyok. Canlıf073 korunuyor.
