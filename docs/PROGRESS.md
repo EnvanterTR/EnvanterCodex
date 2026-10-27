@@ -1,3 +1,7 @@
+## 27 Ekim 2026 — yayın öncesi taze kurtarma reçetesi hazır
+- cbc-refresh-release-recovery-20261027.pykesinadaybuildbaşarısı/mevcut27eimajıkapılarıyla tazeSQLdump/hash/list,ayrıclone122/95restore,mevcutmedya/anahtar/imajpaketivekurtarmaprovasınıhazırlıyor. Henüzçalıştırılmadı; üretimrestore/deployiçermiyor.9Pythonreçetesininsözdizimigeçti.
+- AynıCI40439829700/PostgreSQL12197724840317m15sçalışırken yeniden doğrulandı; kasıtlıDB/SMTPnegatifloglarınınsonuçlarıPASS. YeniCI/derlemebaşlatılmadı;canlı27ekorunuyor. SıradakiaynıCIsonucu,sonratazeyedek/kurtarma/yayın.
+
 ## 27 Ekim 2026 — exacttenantplatform staging/proxy/kurtarma geçti
 - AynıPID1160030buildexit0; kesinapp/publickonteynerleriizoleağdaçalıştı. GerçekNginxSanta/Farma/bağımsızhostnameplatformsayfa/betik/admin/API404; kökplatform200,normalşirketgirişivekökloginURLkorundu. Üçhost122/0/anonimsınırlar/CSRF/CSS/resetHTMLtestlerigeçti.
 - Başlangıç/problar95tablonunözgünalanlarınıkorudu;migrationyok.143MB025113Zrollbackpaketiveayrıdosya/imajkurtarmaexit0;productionrestoreyok. Kanıt:tenant-platform-server-staging-20261027.mdvecbc-stage-and-recovery-pass-20261027.png.
