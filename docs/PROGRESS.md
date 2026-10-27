@@ -1,3 +1,8 @@
+## 27 Ekim 2026 — CI beklerken ayrı /admin giriş paketi hazırlandı
+- Ana90cadayınıdeğiştirmeden ayrıadmin-entry-20261027worktree(90cbase)oluşturuldu. Hedef9root/adminve/admin/canlıda200marketingdönüyordu. App302mevcutplatformloginine; ikiNginxrootrotasınıappupstream'eiletiyor,tenant404korunuyor.
+- Ayrıcommitfbe10f9:yerelAPI/PostgreSQL2/2,40.1117s;production/localgerçekNginx/root-www/trailingslash/query/Host/relativeLocationkabulügeçti. İlkproxyfetchHostfixturehatasıstrictassertionkorunaraknode:httpdüzeltildi. GeçiciDB/ağlartemizlendi;remotepush/CI/yayınyok.
+- Kanıtayrıcheckouttests/reports/admin-entry-20261027.mdveloglarındadır. 90cCI40442423575/PostgreSQL121985891826aynıişte29m19ssonrasında hâlârunningolarakreloadiledoğrulandı. fbe10f9henüzanaçalışmadalınaalınmaz;90ctamCI/yayınındansonracherry-pickvesonrakiCI/staginggerekir. Böylecehazıradaytestiyenidenbaşlatılmadı.
+
 ## 27 Ekim 2026 — P0 kayıt/ödeme maddelerinin kanıt kapsamı eşlendi
 - FEATURE-MATRIX'eHedef12.1–12.5için beşsatır eklendi: tamakış,webhookreplay,unpaid24ssüredolumu,provisioning/SMTPgeri alma,abonelikbitimiverikoruması. İncelenenkod/test/raporvegerçeksağlayıcı/müşteri kabulüayrı. SentetikreplayveDBrollbackkanıtları yok sayılmadı; gerçekiyzicoyadatümkuponkapsamıyerinesayılmadı.
 - KaynaktaPublic_checkout_uses_server_price_verifies_provider_and_provisions_onceveilgilisüredolumu/abonelik/provisioningtestleribulundu; öncekigerçekregresyon/yayınraporlarıokundu. Yeniürünkodu/testtekrarıyok; genelpayda/yüzdeüretilmedi.
