@@ -943,3 +943,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Cron/systemd saltokunurtaraması eşleşmeyince yokiddiası yapılmadı; Coolifydailybackup taskirsodh1rfb6jx4n6fzin63sn bulundu. Etkin,günlük,database,300s ve kurulu günlük scriptkomutu görüldü. ExecuteNow/ayar değişikliği yapılmadı.
 - 21–27Ekim günlükSuccess; son27Ekim00:00:10UTC5sSuccess veDAILY_SQL_BACKUP_OK doğrudanloggörüntüsü. Kanıt daily-backup-executions-20261027.png,daily-backup-last-success-20261027.png; Kapı7ekkanıtıgüncellendi.
 - Sonotomatikdumpınbağımsızrestore/retention/arıza bildirimi ayrı açık. Genelhedef/kapı tamamlanmadı; üretimeveriyazılmadı.
+
+## 27 Ekim 2026 — otomatik günlük SQL yedeği ayrı DB'de geri yüklendi
+- Gerçekdaily-20261027T000014Z.dumpSHA256sidecar/list ve özelkopyahashgeçti. Ayrıinternal/nohostportstageDB'deenvantertr_daily_restore_20261027restore0;122migration/95tablo ve üyelikFKbütünlüğü geçti,13:22:37UTC.
+- Kanıt daily-backup-restore-20261027.md,betikvePNG; Kapı7ekkanıtı güncellendi. ÜretimeSQLrestore/yazma/deployyok; özelkopya/clonefollowupiçinsunucudakaldı,genelrepoyaalınmadı. Tamoffhost/tek-tık/medyaDRiddiasıyok.
+- CI40508232603 PostgreSQL23m14sçalışıyor,diğerikiişbaşarılı; yenidenbaşlatılmadı. TamHedef açık.
