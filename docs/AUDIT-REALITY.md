@@ -1,3 +1,9 @@
+## 27 Ekim 2026 — güncel canlı kaynak ve kalan kabul sınırı
+
+Canlı `27e9120d6edd1095d7f87e0b7e99449ef69a2169`, şema122/0. Atomik davet/parola düzeltmesi CI40390600764üçiş/356PostgreSQLtesti, exactstaging/tazeyedek/kurtarma sonrası yayımlandı. Coolifytoqnlyqqdou4kgufmblabdfaSuccess/Finished; gerçek27eimajları ve üçhost statik/runtime/anonim sınırlar geçti. Kanıt: `tests/reports/activation-atomicity-production-release-20261026.md`.
+
+Normal Santa portalı27Ekim kontrolünde loginFormgösteriyor. Bu gözlem önceki kanıtlı7/10adımı geri almaz; kalan imza/operatör/çıkış ve Farma/çapraz canlı GET-PUT/Demo3owner kabulünü de tamamlamaz. Kullanıcıdan tekrarMFAistenmedi; saklanmış kurtarma kodları kullanılmadı. Gerçek merchant hesabı yok. Alttaki9585ve “düzeltme canlı değil” kayıtları tarihsel aşamadır.
+
 ## 26 Ekim 2026 — güncel teknik yayın ve açık P0 kabulü
 
 Canlı web/ana sayfa **9585fae1d97980f861dbe519252bc1c422230476**, şema **122/0**. Kurulum rehberi, önceki e-posta bildirim geri alma düzeltmeleri ve PDF/e-posta özellikleri yayımlı. Son exactCI40379203209üçiş başarılı; taze SQLrestore/95tablo koruması ve143MBkurtarma sonrası Coolifyagpas6gyxqytnjbriqb20gppSuccess/Finished. Üçhostsağlık, imaj/source/CSS ve anonim yetki sınırları doğrulandı; bu gerçek müşteri tamamlama değildir. Kanıt: tests/reports/onboarding-production-release-20261026.md.

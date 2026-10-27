@@ -1,3 +1,7 @@
+## 27 Ekim 2026 — kalan P0 müşteri kabulü ve Kapı8 denetimi
+- NormalSanta portalı yeni kontrolde loginFormgösterdi; gerçek müşteri oturumu yok. Önceki7/10kanıtı korundu; kalan imza/operatör/çıkış ve Farma/çaprazGET-PUT/Demo3normalowner adımları tamamlandı sayılmadı. YeniMFAistenmedi.
+- AUDIT-REALITY ve gate-8raporlarına exact27ecanlı/CI/staging/tazekurtarma kanıtı eklendi; eskicallback/SMTP/yayın bilgileri tarihsel ayrıldı. Kapı8geçmedi; merchant ve insan katılımı gereken gerçek kabul açık. Sıradaki bu oturumlarla erişilemeyen kabulün yeniden yetkili müşteri oturumu olduğunda tamamlanması; imza kullanıcıya aittir.
+
 ## 27 Ekim 2026 — atomik davet/parola düzeltmesi canlıda
 - TAMAM: exact27e CI40390600764 üç iş başarılı, PostgreSQL356/35629m33s. TazeSQL/staging95tablo korunması ve143MBkurtarma sonrası Coolifytoqnlyqqdou4kgufmblabdfaSuccess/Finished; gerçek web/public27eimajları20:29:10UTCdoğrulandı.
 - Üçhostready122/0,8plan/kapalıcheckout-deneme, sekizgalerikaynak hash eşitliği, şirketHTML/CSS ve yeniresetHTML exact eşitliği, anonim belge/onboarding401 geçti. DBhealthy/sıfırrestart/webreadonly/SMTPrelay/HTTPS callback korundu. Migration/productionrestore yok.
