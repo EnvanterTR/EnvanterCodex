@@ -1,3 +1,11 @@
+## 27 Ekim 2026 — platformreauth404ek sınırı yerel regresyondan geçti
+- SonC#buildexit0; genişletilmişplatformsınırı/5ortakIdentityoturum/URLcredentialtestleri7/7,1.3658dkgeçti. TenantplatformreauthPOST404ayrıcaassertedildi. UIkaynağı80PASSsatırlıfullbrowserdan sonra değişmedi; geçicifinalkabulDB/ağıtemizlendi.
+- Kanıt:tenant-platform-final-build/acceptance/cleanup-20261027.log;tenant-platform-surface-20261027.md. Öncekicbcdc71CI/stagingyeniC#değişikliğiyerinesayılmadı. SıradakikesincommitCIveaynıkaynağınstagingi;canlı27ekorunuyor.
+
+## 27 Ekim 2026 — Hedef10.3 son rota kapsamı ek kontrolü
+- Kaynaktaki/api/session/platform-reauthplatformrotası/api/platformdışında; aynışirkethost404guardınavePOSTkabulüneeeklendi. Bu ürünkodudeğişikliği nedeniylecbcdc71CI/stagingyenisonkaynakyerinesayılmaz. Canlıdeployyapılmadı.
+- Geçiciyenitestprojesitenant-platform-final-20261027buildsession32115çalışıyor; eskikonteyner/volumeyenidenbaşlatılmadı. ÖncekiCI40439829700aynıPGişinde21m12ssürüyor; bu genişregresyonkanıtıolabilir,fakatnewpathkesinCIdeğildir. Sıradakiyenibuild/APIsonucuvekesincommitsevki.
+
 ## 27 Ekim 2026 — yayın öncesi taze kurtarma reçetesi hazır
 - cbc-refresh-release-recovery-20261027.pykesinadaybuildbaşarısı/mevcut27eimajıkapılarıyla tazeSQLdump/hash/list,ayrıclone122/95restore,mevcutmedya/anahtar/imajpaketivekurtarmaprovasınıhazırlıyor. Henüzçalıştırılmadı; üretimrestore/deployiçermiyor.9Pythonreçetesininsözdizimigeçti.
 - AynıCI40439829700/PostgreSQL12197724840317m15sçalışırken yeniden doğrulandı; kasıtlıDB/SMTPnegatifloglarınınsonuçlarıPASS. YeniCI/derlemebaşlatılmadı;canlı27ekorunuyor. SıradakiaynıCIsonucu,sonratazeyedek/kurtarma/yayın.

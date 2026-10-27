@@ -307,7 +307,8 @@ app.Use(async (context, next) =>
         context.RequestServices.GetRequiredService<IConfiguration>()["TenantRouting:RootDomain"]);
     var path = context.Request.Path;
     if (tenant is not null &&
-        (path.StartsWithSegments("/api/platform") || path.StartsWithSegments("/admin") ||
+        (path.StartsWithSegments("/api/platform") || path.StartsWithSegments("/api/session/platform-reauth") ||
+         path.StartsWithSegments("/admin") ||
          path.StartsWithSegments("/platform-admin.html") || path.StartsWithSegments("/platform-setup.html") ||
          (path.Value?.StartsWith("/platform-admin-", StringComparison.OrdinalIgnoreCase) ?? false)))
     {

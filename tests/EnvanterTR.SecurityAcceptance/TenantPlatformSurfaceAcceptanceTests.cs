@@ -36,6 +36,9 @@ public sealed partial class TenantSessionAcceptanceTests
         using var companyLogin = await browser.GetAsync("https://north.envantertr.com/");
         Assert.Equal(HttpStatusCode.OK, companyLogin.StatusCode);
         Assert.Contains("loginForm", await companyLogin.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        using var platformReauth = await browser.PostAsync("https://north.envantertr.com/api/session/platform-reauth",
+            new StringContent("{}", System.Text.Encoding.UTF8, "application/json"));
+        Assert.Equal(HttpStatusCode.NotFound, platformReauth.StatusCode);
         foreach (var host in new[] { "envantertr.com", "north.envantertr.com", "localhost" })
         {
             using var setup = await browser.GetAsync($"https://{host}/api/setup/status");
