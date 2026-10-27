@@ -859,3 +859,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - CI40458121020: Linux tenant security6m19s ve Windows deployment/backup5m13s başarılı; PostgreSQL17m10s'de çalışıyor. Aynı workflow korunuyor; yeniden başlatılmadı.
 - PR25 açıklaması gerçek90cc105/schema122 canlı yayınına ve ayrı bekleyenf073752 adayına göre düzeltildi. Kaydetme sonrası DOM'da Production is90cc105 doğrulandı; ekran f073-pr-release-status-20261027.png. Eski27eaktif/90cpending bilgisi giderildi; taslak ve gerçek müşteri/merchant kapıları korundu.
 - Sıradaki iş aynıPostgreSQL sonucu, ardından taze kurtarma ve yayın. Üretime yeni deploy yapılmadı.
+
+## 27 Ekim 2026 — kesin adayın ilk kurtarma provası geçti
+- Güncel90c SQL/medya/anahtar/web-public imaj paketi143MB, rollback-20261027T062301Z. Ayrı dosya/imaj kurtarma prepare/verify çıkış0. Üretime restore/deploy yok.
+- Kanıt: admin-entry-server-staging-20261027.md, f073-rollback-drill-20261027.py, f073-stage-recovery-pass-20261027.png. Bu ilkstagingprovasıdır; CI sonrası yayın öncesi taze dump/recovery ayrıca hazırlanacak.
+- AynıCI40458121020 PostgreSQL28m18s'de sürüyor; iki diğer işbaşarılı. Yeni push/restart yok.

@@ -19,3 +19,7 @@ After startup/probes, all95 original table field fingerprints equaled the pre-st
 CI40458121020 PostgreSQL122036098775 was visibly running at9m4s. FullCI, fresh pre-release independent SQL/file/image recovery and production release remain open. Recovery recipe prepared with current90c image guard but not executed before CI.
 
 TAMAM dediğim1 izole sunucu kabul paketinin1'i gerçek HTTP/runtime/veri karşılaştırması çıktısıyla doğrulanmıştır. Genel Hedef tamamlanmadı.
+
+## Initial exact-candidate recovery drill passed
+
+Current90c SQL/media/data-protection keys and web/public images were bundled under /var/backups/envantertr/rollback-20261027T062301Z (143MB). The source SQL dump is the already validated/restored060041Z snapshot. prepare-rollback-bundle and verify-rollback-bundle both exited0; file/image recovery marker verified. Screenshot f073-stage-recovery-pass-20261027.png. Production was not restored or deployed. This is the initial staging recovery gate, not the final fresh pre-deploy snapshot. CI40458121020 PostgreSQL still running at28m18s; two other jobs passed.
