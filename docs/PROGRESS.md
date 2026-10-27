@@ -883,3 +883,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 ## 27 Ekim 2026 — P0 kupon dönem ve veri koruma kabulü geçti
 - Yeni3kuponquote senaryosu + mevcutkuponyönetimi + expiredsubscriptionread/write/verikoruma toplam5/5,32.3547s,exit0. İlkfixtureCreatedByUserId eksikliği2/5sonucu üretti; düzeltildi, başarısız ve başarılıloglar saklandı.
 - Disposablecoupon-period-20261027 DB/ağ cleanup0. Test-only; üretimf073752, ürün/migration/ayar değişmedi. Kanıt tests/reports/coupon-period-20261027.md ve5log. Yeni testin uzakCI kabulü açık; gerçekmerchant/müşteri/Hedef tamamlanmış sayılmadı.
+
+## 27 Ekim 2026 — kupon kabulü ve yayın kanıtları uzak CI'a gönderildi
+- Mevcut PR25 dalına85c4f8c push başarılı; yeniCI40464013357 PostgreSQL122054993720 ve diğerikiişin başladığı doğrulandı. Önceki40458121020 tam başarılı kalır; yeni test için sonuç henüz yok.
+- Observationplan veKapı8 güncel f073yayını/063335Zrecovery ile eşlendi; Kapı8gerçekmüşteri/merchant eksikleriyleGEÇMEDİ. Test-only yeni aday için yeni üretimdeploy yapılmadı; canlıf073 korunuyor.
+- Sıradaki aynıCI sonucu veP0 teknik/gerçekkabul ayrımına göre ilerleme. Yerelde kupon5/5kanıtlıdır; genel hedef oranı veya tamamlanma iddiası yok.
