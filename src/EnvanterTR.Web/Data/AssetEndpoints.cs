@@ -2284,6 +2284,8 @@ public static class AssetEndpoints
             var storageFileName = $"{attachmentId:N}.{detected.Value.Extension}";
             var directory = AssetAttachmentDirectory(configuration, companyId, id);
             var destination = Path.Combine(directory, storageFileName);
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, destination))
+                return Results.Conflict(new { message = "Dosya alanı güvenli biçimde kullanılamıyor. Şirket yöneticinize başvurun." });
             var attachment = new AssetAttachment { Id = attachmentId, CompanyId = companyId, AssetId = id,
                 AssetEventId = Guid.TryParse(form["assetEventId"], out var eventId) ? eventId : null,
                 UploadedByUserId = actorId, OriginalFileName = originalName, StorageFileName = storageFileName,
@@ -2330,7 +2332,8 @@ public static class AssetEndpoints
                 x.CompanyId == companyId && x.AssetId == id && x.Id == attachmentId, cancellationToken);
             if (attachment is null || !IsSafeAssetAttachmentFileName(attachment.StorageFileName)) return Results.NotFound();
             var path = Path.Combine(AssetAttachmentDirectory(configuration, companyId, id), attachment.StorageFileName);
-            if (!System.IO.File.Exists(path)) return Results.NotFound();
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path) || !System.IO.File.Exists(path))
+                return Results.NotFound();
             var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024,
                 FileOptions.Asynchronous | FileOptions.SequentialScan);
             var fileName = download || !attachment.ContentType.StartsWith("image/", StringComparison.Ordinal)
@@ -2350,13 +2353,15 @@ public static class AssetEndpoints
             var attachment = await db.AssetAttachments.SingleOrDefaultAsync(x =>
                 x.CompanyId == companyId && x.AssetId == id && x.Id == attachmentId, cancellationToken);
             if (attachment is null) return Results.NotFound();
+            if (!IsSafeAssetAttachmentFileName(attachment.StorageFileName)) return Results.NotFound();
+            var path = Path.Combine(AssetAttachmentDirectory(configuration, companyId, id), attachment.StorageFileName);
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path)) return Results.NotFound();
             db.AssetAttachments.Remove(attachment);
             db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = id, ActorUserId = actorId,
                 EventType = "AttachmentRemoved", Details = $"Dosya kaldırıldı: {attachment.OriginalFileName}" });
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Asset",
                 TargetId = id, Action = "AttachmentRemoved", Details = attachment.OriginalFileName });
             await db.SaveChangesAsync(cancellationToken);
-            var path = Path.Combine(AssetAttachmentDirectory(configuration, companyId, id), attachment.StorageFileName);
             try { if (System.IO.File.Exists(path)) System.IO.File.Delete(path); }
             catch (IOException) { /* The row is removed, so an orphaned file cannot be accessed through the app. */ }
             catch (UnauthorizedAccessException) { /* The row is removed, so an orphaned file cannot be accessed through the app. */ }

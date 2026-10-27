@@ -1006,3 +1006,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Tek Coolifydxlkeknxdqygasopecsv5kim Success/Finished4m21s; gerçekweb/public1d49, üç konteyner192405 suffix, restart0/DBhealthy/webreadonly. SMTP relayTLS587/noAUTH, HTTPS callback, kapalı gerçeködeme/deneme korundu. Runtime19:30:10UTC.
 - DışHTTP/source19:30:27UTC exit0; üçhost200ready122/0,8plan ve8galeri kaynak baytı, HTML/CSS/reset, anonim401/platform404/rootadmin302 sınırları geçti. Migration veya productionrestore yok.
 - Kanıt tenant-filter-production-release-20261027.md ve final-live log/PNG. PROJECT-STATUS/AUDIT/OBSERVATION/gate2/gate8 güncellendi; tüm Hedef/P1 ve gerçekmüşteri/merchant açıkları kapanmadı.
+
+## 27 Ekim 2026 — varlık eki dosya yönlendirme sınırı düzeltildi
+- CompanyMediaPathGuard gerçek şirket klasörü altında canonical path ve bütün mevcut reparse bileşenlerini kontrol eder. Varlık eki yükleme409, okuma/silme404; reddedilen silmede metadata/audit değişmez. Yapılandırılmış kök güvenilirdir; yetkili host aktörünün path-race/hardlink saldırısına karşı tam OS garantisi iddia edilmez.
+- İki yeni gerçek API/PostgreSQL senaryosu klasör ve dosya symlink'iyle başka şirket dosyasına yönlendirmeyi reddetti; yabancı baytlar ve asıl kayıtlar korundu, bağlantı kaldırılınca asıl dosya yeniden indirildi. Normal ek kabulüyle3/3,1.2033dk,exit0+cleanup.
+- Yalnız varlık eki yollarına bağlandı; diğer14 medya sağlayıcı dosyası, cache/queue ve tüm6.4 kapsamı kapanmadı. Kanıt asset-media-namespace-20261027.md/log. Canlı1d49/122 henüz değişmedi; sonraki kesin CI ve yayın kapıları.
