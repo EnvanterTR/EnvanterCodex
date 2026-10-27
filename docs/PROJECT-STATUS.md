@@ -1,3 +1,7 @@
+## 27 Ekim 2026 — davet/parola düzeltmesi canlıda
+
+Canlı kaynak `27e9120d6edd1095d7f87e0b7e99449ef69a2169`, şema122/0. Davet/parola sıfırlamanın hesap/parola/oturum/audit değişimleri tek transaction; sonuç mesajı gizlenen form dışında. CI40390600764 üç iş başarılı, PostgreSQL356/356; exact staging/taze yedek/kurtarma sonrası Coolifytoqnlyqqdou4kgufmblabdfaSuccess/Finished. Gerçek imajlar/runtime20:29UTC, üçhost sağlık ve resetHTML kaynak eşitliği geçti. Kanıt: `tests/reports/activation-atomicity-production-release-20261026.md`. Gerçek kullanıcı parolası/MFA değiştirilmedi; aşağıdaki müşteri/merchant kabul açıkları sürüyor. Alttaki sürümler tarihsel.
+
 ## 26 Ekim 2026 — beş adımlı şirket kurulumu canlıda
 
 Canlı web/ana sayfa **9585fae1d97980f861dbe519252bc1c422230476**, şema **122/0**. Beş adımlı kurulum rehberi firma yöneticilerinin Genel Bakış ekranında: firma bilgileri, konum, çalışan, varlık ve zimmet. İlerleme gerçek şirket verisinden hesaplanır; tamamlama tek denetim kaydıdır. Yerel6/6API ve Chromium etkileşim/tema/mobil kabulü, tamCI40379203209üçiş, exactstaging/tazeSQLrestore/95tablo koruması ve143MBkurtarma provasından sonra Coolify **agpas6gyxqytnjbriqb20gpp Success/Finished3m17s**. Gerçek imajlar, üçhostHTTPS, kaynakHTML/CSS ve anonim yetki sınırları doğrulandı. Migration/auth değişikliği yok. Kanıt: `tests/reports/onboarding-production-release-20261026.md`.

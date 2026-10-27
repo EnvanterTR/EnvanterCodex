@@ -1,3 +1,8 @@
+## 27 Ekim 2026 — atomik davet/parola düzeltmesi canlıda
+- TAMAM: exact27e CI40390600764 üç iş başarılı, PostgreSQL356/35629m33s. TazeSQL/staging95tablo korunması ve143MBkurtarma sonrası Coolifytoqnlyqqdou4kgufmblabdfaSuccess/Finished; gerçek web/public27eimajları20:29:10UTCdoğrulandı.
+- Üçhostready122/0,8plan/kapalıcheckout-deneme, sekizgalerikaynak hash eşitliği, şirketHTML/CSS ve yeniresetHTML exact eşitliği, anonim belge/onboarding401 geçti. DBhealthy/sıfırrestart/webreadonly/SMTPrelay/HTTPS callback korundu. Migration/productionrestore yok.
+- Kanıt:tests/reports/activation-atomicity-production-release-20261026.mdve27eCI/runtime/deploy/HTTPekleri. Gerçek müşteri parolası/MFA/imza değiştirilmedi. TamHedef ve gerçek müşteri/merchant kabulü açık; biten düzeltme tekrarlanmaz. TAMAM dediğim1yayının1'i test/komut çıktısıyla doğrulanmıştır.
+
 ## 26 Ekim 2026 — P0 açıklarının kanıtla güncellenmesi
 - P0-CHECKOUT-GAPS başına güncel kanıt özeti eklendi: callback runtime'a uygulanmış, SMTP gerçek teslimatı kanıtlı, yıllık yaşam döngüsü5/5 yerel kabulü mevcut. Tarihsel kayıtlar korundu; gerçek merchant/müşteri kabulü kapanmış sayılmadı.
 - PR25 açıklaması27e atomik reset/görünür sonuç kapsamı,6/6 yerel API,79PASS satırlı browser ve exact staging/kurtarma ile güncellendi. CI40390600764 Linux security/Windows başarılı, PostgreSQL121810276595 aynı çalışmada23m8s sürerken doğrulandı; yeniden başlatılmadı ve deploy yapılmadı.
