@@ -834,3 +834,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - GitHub run 40458121020, PostgreSQL job 122036098775: üç işin başladığı PR üzerinde doğrulandı; başarı henüz iddia edilmedi.
 - Kesin kaynak sunucuda ayrı /var/lib/envantertr-staging/f073752-20261027 dizinine indirildi; bağımsız image derlemesi PID1453548 ile başlatıldı. Kanıt: tests/reports/f073-stage-build-started-20261027.png ve bootstrap betiği. İzole çalışma henüz tamamlanmadı; üretim90cc105 değişmedi.
 - Sıradaki iş: aynı derleme/CI işini takip et; güncel90c verisinden ayrı staging ve kurtarma kapıları sonrası yayın. Yeni push ile aktif CI yeniden başlatılmayacak.
+
+## 27 Ekim 2026 — yönetici girişi için güncel ayrı veri kopyası
+- Taze060041Z SQL dump ayrı f073752 test veritabanına geri yüklendi;122 şema ve95 tablonun özel başlangıç karşılaştırması kaydedildi. Medya/anahtarlar ayrı kopyalandı, üretim değiştirilmedi.
+- Derleme PID1453548 hâlâ çalışıyor; dotnet publish DLL adımına ulaştı, tamamlanma henüz yok. Aynı süreç korunuyor. Gerçek proxy admin302/tenant404 ve veri koruma tarifleri hazır; henüz çalıştı sayılmadı.
+- Kanıt: tests/reports/admin-entry-server-staging-20261027.md ve f073 hazırlık betikleri. CI40458121020 sonucu ve tam staging/recovery/yayın kapıları açık.
