@@ -985,3 +985,9 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 ## 27 Ekim 2026 — P1 geniş CI checkout regresyonu düzeltildi
 - 2ee892bCI40516313967 terminal: PG366passed/1failed38m29s; Linuxsecurity6m14saynıcheckoutformhatası; Windowsbaşarılı. TrackedguardverifiedAPIcheckoutmuafiyetindentarayıcı/subscription/checkoutyolueksikti. NullableCompanyIdpendingorderkaydınıreddediyordu.
 - Tamnormalizeformyoluaynıverifiedcheckoutkapsamınaalındı;owner/parola/MFA/CSRF/price/providerkontrollerikorundu. YerelPG10/10,3.0354dk,exit0+cleanup;aynıChromiumregresyonusürüyor. Canlıf073korunuyor; eskistageyenikodyerinesayılmayacak. Kanıt tenant-filter-checkout-regression-20261027.md.
+
+## 27 Ekim 2026 — ödeme formu ve bekleyen sipariş görünürlüğü doğrulandı
+- İlk form düzeltmesinin Chromium testinde, nullable CompanyId nedeniyle bekleyen sipariş GET isteğinin 404 aldığı görüldü. Sipariş sorgusu yalnız named TenantScope filtresini atlıyor; doğrulanmış sahip + sipariş kimliği + TargetCompanyId + RequestedByUserId koşulları aynı sorguda zorunlu.
+- Yeni PostgreSQL testi kendi bekleyen siparişi için 200/PaymentStarted, yabancı şirket hedefi ve başka kullanıcı için 404 doğruladı. Güncel kaynakta 3/3 test, 1.9053 dakika, exit0 ve geçici DB/ağ temizliği tamamlandı.
+- Gerçek Kestrel/PostgreSQL/Chromium kabulü exit0: form, callback/replay, tek ücretli dönem, aktif geçmiş, viewer reddi, 390px görünüm, sıfır tarayıcı hatası; iki şirketin varlıkları/üyelikleri/deneme geçmişi korundu. Sağlayıcı sentetik; canlı ödeme veya e-posta yok.
+- e80370c CI40525316976/PG122263185564 ve staging yalnız önceki form düzeltmesini kapsar; yeni sipariş düzeltmesinin kanıtı sayılmaz. Sonraki güncel kaynağın tam CI/staging kapıları; canlı f073/122 korunuyor. Ayrıntı tenant-filter-checkout-regression-20261027.md.

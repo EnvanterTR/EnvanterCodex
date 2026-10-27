@@ -28,7 +28,9 @@ public static partial class CheckoutEndpoints
         {
             var owner = await ResolveExistingCheckoutOwnerAsync(user, db, users, ct);
             if (owner is null) return Results.Forbid();
-            var order = await db.CompanyCheckoutOrders.AsNoTracking().Where(item => item.Id == checkoutId &&
+            // Pending orders have no provisioned CompanyId yet. Read only the
+            // verified owner's target-company order, retaining both boundaries.
+            var order = await db.CompanyCheckoutOrders.IgnoreQueryFilters(["TenantScope"]).AsNoTracking().Where(item => item.Id == checkoutId &&
                 item.TargetCompanyId == owner.Company.Id && item.RequestedByUserId == owner.Account.Id)
                 .Select(item => new { orderId = item.Id, item.Status, item.Amount, item.Currency, item.CreatedAt, item.PaidAt }).SingleOrDefaultAsync(ct);
             return order is null ? Results.NotFound() : Results.Ok(order);

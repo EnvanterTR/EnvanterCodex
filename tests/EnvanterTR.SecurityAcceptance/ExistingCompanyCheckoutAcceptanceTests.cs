@@ -138,6 +138,23 @@ public sealed partial class TenantSessionAcceptanceTests
         Assert.Equal(4200m, order.Amount);
         Assert.Equal("TRY", order.Currency);
         Assert.Equal(0, await db.Companies.CountAsync(company => company.Slug == "ignored-slug"));
+        Assert.Null(order.CompanyId);
+        var orderPath = $"/api/subscription/checkout/orders/{checkoutId}";
+        using (var pendingOrder = await owner.GetAsync(orderPath))
+        {
+            Assert.Equal(HttpStatusCode.OK, pendingOrder.StatusCode);
+            using var json = JsonDocument.Parse(await pendingOrder.Content.ReadAsStringAsync());
+            Assert.Equal("PaymentStarted", json.RootElement.GetProperty("status").GetString());
+        }
+        await db.CompanyCheckoutOrders.Where(item => item.Id == checkoutId)
+            .ExecuteUpdateAsync(update => update.SetProperty(item => item.TargetCompanyId, _otherCompanyId));
+        using (var foreignCompanyOrder = await owner.GetAsync(orderPath))
+            Assert.Equal(HttpStatusCode.NotFound, foreignCompanyOrder.StatusCode);
+        await db.CompanyCheckoutOrders.Where(item => item.Id == checkoutId)
+            .ExecuteUpdateAsync(update => update.SetProperty(item => item.TargetCompanyId, _companyId)
+                .SetProperty(item => item.RequestedByUserId, _sameCompanyOtherUserId));
+        using (var otherUserOrder = await owner.GetAsync(orderPath))
+            Assert.Equal(HttpStatusCode.NotFound, otherUserOrder.StatusCode);
     }
 
     [Theory]
