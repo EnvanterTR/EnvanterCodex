@@ -1001,3 +1001,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Kesin1d49 CI40528142372 üç iş başarılı: PostgreSQL367/367 (26m40s), Linux güvenlik8m23s, Windows5m6s. Exact app/public staging, 95tablo korunması ve122/0 erişim/CSRF/platform sınırları geçti.
 - CI sonrası SQL192154Z bağımsız restore/hash/list; mevcutf073 SQL/medya/anahtar/imaj143MB192200Z geri dönüş provası geçti. Production restore yok. Coolify kaynak1d49 kaydedilip yeniden açılarak doğrulandı.
 - Tek yayın dxlkeknxdqygasopecsv5kim19:23:38UTC başladı; import tam1d49. Hâlâ build aşaması; canlı tamamlandı denmez. Sıradaki aynı yayın bitimi, gerçek imaj/runtime ve dışHTTP doğrulaması. Kanıt tenant-filter-production-release-20261027.md. TamHedef/P1/gerçek müşteri-ödeme açık.
+
+## 27 Ekim 2026 — şirket filtresi ve checkout koruması canlıda doğrulandı
+- Tek Coolifydxlkeknxdqygasopecsv5kim Success/Finished4m21s; gerçekweb/public1d49, üç konteyner192405 suffix, restart0/DBhealthy/webreadonly. SMTP relayTLS587/noAUTH, HTTPS callback, kapalı gerçeködeme/deneme korundu. Runtime19:30:10UTC.
+- DışHTTP/source19:30:27UTC exit0; üçhost200ready122/0,8plan ve8galeri kaynak baytı, HTML/CSS/reset, anonim401/platform404/rootadmin302 sınırları geçti. Migration veya productionrestore yok.
+- Kanıt tenant-filter-production-release-20261027.md ve final-live log/PNG. PROJECT-STATUS/AUDIT/OBSERVATION/gate2/gate8 güncellendi; tüm Hedef/P1 ve gerçekmüşteri/merchant açıkları kapanmadı.

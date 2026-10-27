@@ -1,3 +1,7 @@
+## 27 Ekim 2026 — güncel gözlem sürümü
+
+Güncel canlı **1d49ac1 / şema122/0**, Coolifydxlkeknxdqygasopecsv5kim Success/Finished4m21s. Runtime19:30:10UTC; dışHTTPS/erişim/kaynak sağlık başlangıç gözlemi **19:30:27UTC** geçti. Bu saat doğrulanmış gözlem başlangıcıdır; tamamlanmış24saatlik kayıt iddiası değildir. Güncel geri dönüş paketi `/var/backups/envantertr/rollback-20261027T192200Z`, SQL `pre-web-v1-20261027T192154Z.dump`. Kesin CI367/367+Linux/Windows, staging95tablo ve bağımsızrestore/kurtarma kanıtı `tests/reports/tenant-filter-production-release-20261027.md` içindedir. Aşağıdaki eski yayın yolları tarihseldir; mevcut izleme planı bu sürüm için uygulanır.
+
 # Yayın sonrası 24 saatlik gözlem planı
 
 ## Güncel yayın: 27 Ekim 2026 TRT

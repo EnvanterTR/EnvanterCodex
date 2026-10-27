@@ -1,3 +1,9 @@
+## 27 Ekim 2026 — güncel canlı şirket izolasyonu sürümü
+
+Canlı kaynak **1d49ac17082c861ec52e67f3214ad117d983fc50**, şema **122/0**. Doğrulanmış şirket bağlamına global sorgu filtresi ve tracked kayıt koruması eklendi; mevcut şirketin ödeme formu/bekleyen sipariş akışı sahiplik sınırlarıyla korundu. Tam CI40528142372: PostgreSQL367/367, Linux güvenlik ve Windows güvenliği başarılı. Kesin staging/95tablo korunması, güncel192154ZSQL bağımsız restore ve143MB192200Zgeri dönüş provası sonrası Coolifydxlkeknxdqygasopecsv5kim Success/Finished4m21s. Gerçek imaj/runtime ve üç alan adı HTTPS/source/erişim sınırları19:30UTC doğrulandı.
+
+Kanıt: `tests/reports/tenant-filter-production-release-20261027.md`. Gerçek merchant/müşteri/imza/operatör/Farma/iki yönlü canlı yabancı kayıt/Demo3owner, bütün tablo audit alanları ve cache/queue/dosya kapsamı açık; tam Hedef veya bütün P1 tamamlandı denmiyor. Kullanıcı P0 dış adımları beklerken P1'e geçişi açıkça yetkilendirdi. Aşağıdaki sürüm başlıkları tarihsel kayıtlardır.
+
 ## 27 Ekim 2026 — güncel canlı yönetici giriş sürümü
 
 Canlı kaynak f073752a40072bdc0a515f3156bfc785dbaffe0d, şema122/0. TamCI40458121020 üçiş, kesin staging95tablo korunması ve taze063327ZSQL/143MB063335Zkurtarma sonrası Coolifytg8vi2aspz7yt8qzousehh7s Success/Finished. Root/www /admin artık yönetici girişine302; Santa/Farma404. Gerçekimaj/runtime, üçhostsağlık, kaynak/galeri eşitliği ve anonim yetki sınırları geçti. Kanıt: tests/reports/admin-entry-production-release-20261027.md. Gerçekmerchant/müşteri/imza/operatör/Farma/canlıçaprazkayıt/Demo3owner ve tamHedef açık; alttaki sürüm notları tarihseldir.

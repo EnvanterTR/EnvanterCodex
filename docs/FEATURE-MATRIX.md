@@ -170,3 +170,7 @@ CouponQuotePeriodAcceptanceTests.cs üç gerçekAPI/PostgreSQL durumda expired/f
 ## Rol adları için somut kapsam farkı
 
 `named-role-scope-20261027.md` kaynak/assertion incelemesi: şirket kataloğu owner/admin/asset_manager/asset_operator/auditor/viewer/hr_operator içeriyor. Hedefteki Muhasebe adında hazır rol yok; özel rol olanağı bu şartın tamamlandığı anlamına gelmez. Sınırlı rol için konum/kişi/izin birleşiminin ayrı kabulü gerekir. Mevcut yedi rol testi temsili erişim sınırlarını sınar; bazı izinli hatalı-payload yanıtlarının403olmaması başarılıCRUD kanıtı değildir. Tamrolparitesi açık; P0/P1 bitmedenP2 uygulamasına geçilmedi.
+
+## 6.2 — global şirket filtresi ilk uygulaması, 27 Ekim 2026
+
+Canlı1d49ac1: AppDbContext named TenantScope/SoftDelete, doğrulanmış middleware şirket bağlamı ve tracked yazma koruması. Sharedmodel/eşzamanlı iki bağlam, softdelete-onlybypass, yabancı yazmada kısmi kayıt olmaması; bekleyen ödeme siparişinde hedef şirket+kullanıcı sınırları; gerçek Chromium callback/replay ve viewer reddi doğrulandı. TamCI40528142372 PostgreSQL367/367+Linux/Windows, exactstaging ve canlıruntime/HTTP kanıtı tenant-filter-production-release-20261027.md içindedir. Kullanıcı P1'e geçişi onayladı; gerçek20.4, bütün tablo alanları/cache/queue/dosya ve tamKapı2 açık. Bu alt paket bütün6/P1 veya genel yüzde yerine sayılmaz.

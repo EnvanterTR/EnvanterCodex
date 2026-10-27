@@ -11,3 +11,11 @@ After CI: fresh SQL pre-web-v1-20261027T192154Z.dump SHA/list/independent restor
 Single Coolify deployment dxlkeknxdqygasopecsv5kim started2026-10-27 19:23:38UTC; actual import log confirms1d49 fullSHA. It is currently building. Do not trigger another deployment from the generic configuration banner. Completion/runtime/external verification pending. Production is not yet claimed updated.
 
 Full Hedef/P1 and real customer/merchant acceptance remain open. This release evidence does not substitute for unsigned customer documents, normal customer MFA/role acceptance or real iyzico merchant configuration.
+
+## Completed release and external checks
+
+Coolify dxlkeknxdqygasopecsv5kim Success/Finished, displayed duration4m21s. Actual web/public/database names use suffix20261027T192405. Live runtime19:30:10UTC passed exact1d49 web/public images, all running/restart0, healthy database, read-only web, Google SMTP relayTLS587/noSMTPAUTH, expected HTTPS callback, no merchant API keys and public trialsfalse.
+
+External boundary/source verification19:30:27UTC exited0: eight plans, real checkout/publictrials unavailable; anonymous PDF/email/onboarding401; all eight gallery asset/style/script SHA256 match; company/resetHTML and onboardingCSS exact; Santa/Farma platform HTML/JS/API/reauth404; root/www admin302relativeLocation/noCookie and tenantadmin404; root platform remains available. Three HTTPS health responses200ready122/0. No migration/production restore. See tenant-filter-final-live-boundaries-20261027.log and tenant-filter-final-live-health-20261027.log, runtime/deployment PNGs.
+
+Earlier pending notes above describe intermediate state. This specific tenant filter/checkout preservation release is verified live; full Hedef and Kapı2/Kapı8 remain incomplete for the explicit wider requirements.
