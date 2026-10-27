@@ -905,3 +905,7 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 ## 27 Ekim 2026 — platformun zorunlu Kapı6 kapsamı eşlendi
 - gate-6-20261027.md Hedef9.1–9.13 ve15.9 için oluşturuldu; sonuçGEÇMEDİ/tamkapsamdoğrulanmadı. Rootgiriş/MFA/support altkanıtları tüm panelkart/sekme/aksiyonları yerine geçirilmedi.
 - Eski24Ekimimpersonationyok bulgusu sonraki13/13vegerçekDemo3support ile tarihselolarak uzlaştırıldı. Kalan5denemekilit/oturumsüre/alanmatrisi ve tümUI kapsamı ayrı; yeni ürünTAMAM veya testkoşusu iddiası yok. Üretim değişmedi.
+
+## 27 Ekim 2026 — platform beş başarısız giriş kilidi doğrulandı
+- Mevcut ayar testine gerçek login/Identity/PostgreSQL senaryosu eklendi: ilk dört hata sayılır, beşincide kilit; gerçek bitiş beş dakika aralığında; doğru parola ve panel kilit sırasında401, kalıcı kilit tarihi değişmez.
+- Yerel2/2,34.3449s,exit0; build0 ve disposableDB/ağcleanup0. Kanıt platform-lockout-20261027.md ve3log; Kapı6 ekkanıt eklendi. Ürün/canlı değişmedi; kilit sonrası başarılı giriş veya tüm panel kapsamı ilan edilmedi. UzakCI için test yerelde bekliyor, aktifCI yeniden başlatılmadı.
