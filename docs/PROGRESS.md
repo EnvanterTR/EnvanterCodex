@@ -854,3 +854,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - CI40458121020 PostgreSQL12203609877514m30s'de hâlâ In progress; terminal sonuç yok, yeniden başlatılmadı. Önceki tur gerçek izole sunucu kabulü tamamlanmıştır.
 - f073-live-boundaries-20261027.mjs önceki galeri/source/anonim/platform sınır kontrollerine root/www admin302 relativeLocation/noCookie ve Santa/Farma404 matrisini ekler. Node syntax exit0. Runtime tarifi exactf073 imajları/SMTP/readonly/DB sağlık/kapalı ödeme-deneme sınırını kontrol edecek.
 - Bunlar henüz canlıda çalıştırılmadı; geçiş veya yayın iddiası yok. Hazırlık mevcut CI'ı bozmamak için yalnız yerel commit; yeni push yok. Üretim90c kalıyor, aynıCI ve son taze recovery bekleniyor.
+
+## 27 Ekim 2026 — CI iki kontrol başarılı; PR yayın durumu güncellendi
+- CI40458121020: Linux tenant security6m19s ve Windows deployment/backup5m13s başarılı; PostgreSQL17m10s'de çalışıyor. Aynı workflow korunuyor; yeniden başlatılmadı.
+- PR25 açıklaması gerçek90cc105/schema122 canlı yayınına ve ayrı bekleyenf073752 adayına göre düzeltildi. Kaydetme sonrası DOM'da Production is90cc105 doğrulandı; ekran f073-pr-release-status-20261027.png. Eski27eaktif/90cpending bilgisi giderildi; taslak ve gerçek müşteri/merchant kapıları korundu.
+- Sıradaki iş aynıPostgreSQL sonucu, ardından taze kurtarma ve yayın. Üretime yeni deploy yapılmadı.
