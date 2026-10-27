@@ -996,3 +996,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Son uzak aday 1d49ac17082c861ec52e67f3214ad117d983fc50; tam CI40528142372, PostgreSQL122273675144 başladı. Önceki e80370c/2ee892b sonuçları bu adayın sonucu sayılmayacak.
 - Sunucuda exact-source PID2286289 dotnet publish aşamasında; build.exit henüz yok. SQL151041Z bağımsız klon restore122,95tablo baseline ve ayrı medya/anahtar/no-side-effect ortam hazır. Yeni konteyner/runtime/HTTP/verikoruma/geri dönüş/yayın kapıları açık.
 - Hedef devam ediyor. Bu tur iki gerçek regresyonu düzeltti ve PostgreSQL/Chromium kanıtı üretti; canlı f073 değişmedi. Kanıt tenant-filter-checkout-regression-20261027.md.
+
+## 27 Ekim 2026 — P1 ilk yayın kapıları geçti, tek yayın başladı
+- Kesin1d49 CI40528142372 üç iş başarılı: PostgreSQL367/367 (26m40s), Linux güvenlik8m23s, Windows5m6s. Exact app/public staging, 95tablo korunması ve122/0 erişim/CSRF/platform sınırları geçti.
+- CI sonrası SQL192154Z bağımsız restore/hash/list; mevcutf073 SQL/medya/anahtar/imaj143MB192200Z geri dönüş provası geçti. Production restore yok. Coolify kaynak1d49 kaydedilip yeniden açılarak doğrulandı.
+- Tek yayın dxlkeknxdqygasopecsv5kim19:23:38UTC başladı; import tam1d49. Hâlâ build aşaması; canlı tamamlandı denmez. Sıradaki aynı yayın bitimi, gerçek imaj/runtime ve dışHTTP doğrulaması. Kanıt tenant-filter-production-release-20261027.md. TamHedef/P1/gerçek müşteri-ödeme açık.
