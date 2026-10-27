@@ -844,3 +844,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - f073752 iki imaj derlemesi çıkış0; gerçek izole uygulama/Nginx ile root/www admin302 ve tenant404 geçti. Önceki sağlık/yetki/CSRF/reset/onboarding/platform yüzey kontrolleri de geçti.
 - Runtime izolasyonu/yan etki kapatma ve95 tablonun özgün alan-satır karşılaştırması başarılı;122 şema korunuyor. Kanıt: admin-entry-server-staging-20261027.md ve iki f073 PNG.
 - CI40458121020 aynı PostgreSQL işinde9m4s çalışıyordu. Üretim90c; tamCI ve taze SQL/medya/anahtar/imaj geri dönüş provası sonrası yayın bekliyor. Hazırlanan yeni recovery betiği henüz çalıştırılmadı.
+
+## 27 Ekim 2026 — P0 müşteri kabulü madde bazında eşlendi
+- Hedef20.2/20.3/20.4/20.5/20.6/20.9 birleşik şartları FEATURE-MATRIX içine ayrı kanıt/eksik kabul satırlarıyla eklendi.22adı geçen PNG/SQL/CSV dosyasının tümü mevcut; tarihsel kabul güncel oturum sayılmadı.
+- Davet/üyelik normal operatör girişi yerine, destek oturumu Demo3owner yerine, anonim401 yabancı tenantGET/PUT yerine veya sentetikPDF gerçek imza/alıcı teslimi yerine geçirilmedi. Yeni ürün TAMAM satırı ilan edilmedi, genel oran hesaplanmadı.
+- CI40458121020 PostgreSQL12203609877511m8s'de hâlâ çalışıyor olarak doğrudan doğrulandı. Yeni push/restart yapılmadı; aynı aday staging kabulü geçmiş durumda. Sıradaki iş aynıCI sonucu, ardından taze bağımsız recovery/yayın.

@@ -136,3 +136,29 @@ Bu tablo7.1–7.7'nin kapsamıdır; tüm Hedefin yerine geçmez. Bölüm6tenant/
 - Sekiz kapı: yalnız gate-8raporunun varlığı diğer yedi kapıyı kapatmaz; gate-p0c/gate-p0d adları gate1–7yerine geçmez.
 
 İlk inceleme sırasında doğrulanmış şey bu kapsam/iz dökümüdür. Hiçbir ürün satırı sırf dosya veya yöntem adı bulundu diye TAMAM'a yükseltilmedi. Sonraki inceleme önce P0 açıklarını ve mevcut somut hata kanıtlarını ele alır; entegrasyon/parite P2sırası korunur.
+
+## 20 — P0 gerçek müşteri kabulü, madde bazında açık kanıtlar
+
+Bu bölüm tarihsel kabulü güncel oturum veya yeni sürüm kabulü saymaz. Hedef20.2'nin birleşik adımları, yalnız bir alt eylemi geçti diye kapanmaz. Santa7/10 önceki status kaydıdır; bu inceleme yeniden canlı7adım yürütmedi ve tümproje oranı üretmez.
+
+| Gereksinim | Doğrudan mevcut kanıt | Eksik / sonraki kabul |
+|---|---|---|
+| 20.2.1–3 Santa giriş/pano/varlık CompanyId | santa-e2e-20261025/santa-normal-owner-dashboard.png; santa-asset-created.png; santa-asset-scope.sql; santa-asset-scope-db.png | Tarihsel gerçek kabul; güncel login ekranı yeni giriş kanıtı değildir |
+| 20.2.4 zimmet + imza/PDF/e-posta | santa-asset-assigned.png; santa-handover-active-asset-db-20261026.png; santa-handover-signature-pending-20261026.png | ENGELLENDİ: ZMB-20261025-a11cc2306 kullanıcı imzası bekliyor; gerçek imzalı PDF ve alıcı teslimi yok. Sunucu PDF sentetik kabulü bunun yerine geçmez |
+| 20.2.5 lisans/koltuk | santa-license-seat-assigned-20261026.png; santa-license-scope-db-20261026.png; santa-licenses-export-20261026.csv | Tarihsel kapsam; Farma adına sayılmaz |
+| 20.2.6 bakım/geçmiş | santa-maintenance-completed.png; santa-maintenance-scope.sql; santa-maintenance-scope-db.png | Tarihsel gerçek Santa kapsamı |
+| 20.2.7 yalnız Santa rapor/CSV | santa-licenses-export-20261026.csv ve Santa kapsam SQL kanıtları | Tarihsel Santa export kabulü; tüm rapor paritesinin yerine geçmez |
+| 20.2.8 Editör davet/giriş/yetki | santa-operator-member-added-20261026.png; santa-operator-membership-scope-20261026.sql; santa-operator-access-mail-delivered-20261026.png | DOĞRULANMADI: üyelik ve mail var, normal operatör girişi/izin-red matrisi yok |
+| 20.2.9 arşiv/geri alma | santa-status-archived-20261026.png; santa-status-restored-20261026.png; santa-trash-restored-db-20261026.png; santa-archive-preservation-20261026.sql | Tarihsel gerçek kapsam; diğer tenantlar için otomatik puan yok |
+| 20.2.10 çıkış/oturum reddi | Tam doğrudan kabul yok | DOĞRULANMADI: açık normal oturumdan çıkış ve ardından korumalı API reddi kaydedilecek |
+| 20.3 Farma aynı10adım | Kullanıcının önceki Farma giriş görüntüsü tek başına yeterli değil | ENGELLENDİ: normal Farma MFA kullanıcı şu an tamamlayamıyor; yeni kod istenmedi.10adım açık |
+| 20.4 iki yönlü yabancı GET/PUT | İzole güvenlik testleri ve anonim401 var; gerçek iki oturum kabulü yok | DOĞRULANMADI: Santaid→FarmaGET/PUT ve Farmaid→SantaGET/PUT dört yanıtı403/404; mevcut kendi kayıtları korunmalı |
+| 20.5 platform görünürlük/destek/sarı bant/audit/dönüş | santa-e2e-20261025/README.md ve live-demo3-support-banner/live-support-start-audit/live-support-end-audit/live-platform-returned PNG | Canlı MFA'sız yazmada428 doğrudan API kanıtı açık; destek oturumu owner girişi değildir |
+| 20.6 UI+API+DB kanıt paketi | santa-e2e-20261025 klasöründe UI/SQL ve CSV mevcut | DOĞRULANMADI: tüm adımların ham HTTP/DB/UI üçlüsü eksik |
+| 20.9.1 normal Demo3 oluşturma | README normal yönetim formu; live-demo3-provisioned-20261025.png | Tarihsel gerçek işlem; yeni elleSQLprovisioning yok |
+| 20.9.2 otomatik DNS/TLS | Önceki dış DNS/TLS ve gerçek demo3HTTPS destek portalı | Normal owner kabulü ayrı; destek oturumu yerine geçmez |
+| 20.9.3 hesap + normal giriş | Sahip üyeliği/ortak hesap kaydı var | DOĞRULANMADI: normal Demo3owner giriş/MFA |
+| 20.9.4 diğer veri görünmez | Destek portalında boş pano var | DOĞRULANMADI: normal owner görünürlük ve bilinen yabancı kayıtlara red; boş pano tek başına izolasyon değildir |
+| 20.9.5 silme diğerlerine zarar vermez | README gerçek soft-delete/audit; live-demo3-preservation-query-20261025.sql;82projeksiyon eşit | Belirtilen soft-delete kapsamı tarihsel kanıtlı; kalıcı veri silme yapılmadı |
+
+Bu ek bir kabul planı ve kanıt eşlemesidir; yeni TAMAM ürün maddesi ilan etmez. 20.7/20.8/20.10 gereği tamP0 müşteri kapısı açık kalır. Eksik kişisel imza/MFA taklit edilmez; teknik işler sürdürülür.
