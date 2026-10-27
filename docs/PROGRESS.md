@@ -849,3 +849,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Hedef20.2/20.3/20.4/20.5/20.6/20.9 birleşik şartları FEATURE-MATRIX içine ayrı kanıt/eksik kabul satırlarıyla eklendi.22adı geçen PNG/SQL/CSV dosyasının tümü mevcut; tarihsel kabul güncel oturum sayılmadı.
 - Davet/üyelik normal operatör girişi yerine, destek oturumu Demo3owner yerine, anonim401 yabancı tenantGET/PUT yerine veya sentetikPDF gerçek imza/alıcı teslimi yerine geçirilmedi. Yeni ürün TAMAM satırı ilan edilmedi, genel oran hesaplanmadı.
 - CI40458121020 PostgreSQL12203609877511m8s'de hâlâ çalışıyor olarak doğrudan doğrulandı. Yeni push/restart yapılmadı; aynı aday staging kabulü geçmiş durumda. Sıradaki iş aynıCI sonucu, ardından taze bağımsız recovery/yayın.
+
+## 27 Ekim 2026 — aynı CI beklenirken canlı kabul hazırlandı
+- CI40458121020 PostgreSQL12203609877514m30s'de hâlâ In progress; terminal sonuç yok, yeniden başlatılmadı. Önceki tur gerçek izole sunucu kabulü tamamlanmıştır.
+- f073-live-boundaries-20261027.mjs önceki galeri/source/anonim/platform sınır kontrollerine root/www admin302 relativeLocation/noCookie ve Santa/Farma404 matrisini ekler. Node syntax exit0. Runtime tarifi exactf073 imajları/SMTP/readonly/DB sağlık/kapalı ödeme-deneme sınırını kontrol edecek.
+- Bunlar henüz canlıda çalıştırılmadı; geçiş veya yayın iddiası yok. Hazırlık mevcut CI'ı bozmamak için yalnız yerel commit; yeni push yok. Üretim90c kalıyor, aynıCI ve son taze recovery bekleniyor.
