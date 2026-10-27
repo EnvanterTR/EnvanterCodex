@@ -888,3 +888,7 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Mevcut PR25 dalına85c4f8c push başarılı; yeniCI40464013357 PostgreSQL122054993720 ve diğerikiişin başladığı doğrulandı. Önceki40458121020 tam başarılı kalır; yeni test için sonuç henüz yok.
 - Observationplan veKapı8 güncel f073yayını/063335Zrecovery ile eşlendi; Kapı8gerçekmüşteri/merchant eksikleriyleGEÇMEDİ. Test-only yeni aday için yeni üretimdeploy yapılmadı; canlıf073 korunuyor.
 - Sıradaki aynıCI sonucu veP0 teknik/gerçekkabul ayrımına göre ilerleme. Yerelde kupon5/5kanıtlıdır; genel hedef oranı veya tamamlanma iddiası yok.
+
+## 27 Ekim 2026 — PR son sürüm ve kupon kabulüyle eşlendi
+- PR25 kaydedilen açıklamasında canlı f073752, tamamlanan deployment/recovery ve gerçek root302/tenant404 ayrımı doğrulandı. Yeni kupon test-only5/5 ve çalışanCI40464013357 ayrı belirtildi; taslak/gerçekmüşteri/merchant açık kapıları korundu. Kanıt coupon-period-pr-status-20261027.png.
+- PostgreSQL122054993720 yeniCI içinde2m12s'de In progress olarak doğrulandı. Tekrar deploy veya CIrestart yok. Yeni ürün değişikliği yok; mevcut tam hedef açık.
