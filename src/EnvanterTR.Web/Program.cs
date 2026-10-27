@@ -299,6 +299,24 @@ if (args.Contains("--migrate", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
+// Tenant platform boundaries must run before the static-file middleware:
+// otherwise platform HTML/JavaScript is served before the API host guard.
+app.Use(async (context, next) =>
+{
+    var tenant = TenantHostResolver.ResolveSlug(context.Request,
+        context.RequestServices.GetRequiredService<IConfiguration>()["TenantRouting:RootDomain"]);
+    var path = context.Request.Path;
+    if (tenant is not null &&
+        (path.StartsWithSegments("/api/platform") || path.StartsWithSegments("/admin") ||
+         path.StartsWithSegments("/platform-admin.html") || path.StartsWithSegments("/platform-setup.html") ||
+         (path.Value?.StartsWith("/platform-admin-", StringComparison.OrdinalIgnoreCase) ?? false)))
+    {
+        context.Response.Headers.CacheControl = "no-store";
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+    await next();
+});
 app.UseDefaultFiles();
 app.UseStaticFiles(new StaticFileOptions
 {

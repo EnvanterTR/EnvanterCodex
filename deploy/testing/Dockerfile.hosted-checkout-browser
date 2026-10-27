@@ -10,6 +10,7 @@ COPY deploy/testing/hosted-checkout-browser/company-portal-login.mjs ./
 COPY deploy/testing/hosted-checkout-browser/company-profile-portal.mjs ./
 COPY deploy/testing/hosted-checkout-browser/company-onboarding.mjs ./
 COPY deploy/testing/hosted-checkout-browser/password-reset-retry.mjs ./
+COPY deploy/testing/hosted-checkout-browser/tenant-platform-link.mjs ./
 COPY deploy/testing/hosted-checkout-browser/asset-detail-actions.mjs ./
 COPY deploy/testing/hosted-checkout-browser/company-tasks.mjs ./
 COPY deploy/testing/hosted-checkout-browser/inventory-requests.mjs ./

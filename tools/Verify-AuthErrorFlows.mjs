@@ -146,9 +146,12 @@ const diagnosticElements = new Map([
   ['#firstRunSetupMessage', { textContent: '' }],
   ['#loginForm button[type="submit"]', { disabled: false }],
   ['#forgotPasswordButton', { disabled: false }],
+  ['#platformLoginLink', { hidden: true, href: '/platform-admin.html' }],
 ]);
 let diagnosticMode = 'ready';
 const diagnosticContext = {
+  URL,
+  window: { location: { origin: 'https://north.example.invalid' } },
   $: selector => {
     assert.ok(diagnosticElements.has(selector), `Unexpected connection diagnostic selector: ${selector}`);
     return diagnosticElements.get(selector);
@@ -157,7 +160,8 @@ const diagnosticContext = {
     if (diagnosticMode === 'unavailable') throw new Error('API bağlantısı kurulamadı.');
     if (path === '/api/status' && diagnosticMode === 'migration') return { status: 'migration-required', pendingMigrationCount: 19 };
     if (path === '/api/status') return { status: 'ready' };
-    if (path === '/api/setup/status') return { setupRequired: diagnosticMode === 'setup', setupTokenConfigured: true };
+    if (path === '/api/setup/status') return { setupRequired: diagnosticMode === 'setup', setupTokenConfigured: true,
+      platformLoginUrl: diagnosticMode === 'unsafe-platform-link' ? 'https://user:secret@example.invalid/platform-admin.html' : 'https://example.invalid/platform-admin.html' };
     throw new Error(`Unexpected diagnostic request: ${path}`);
   },
   refreshCsrf: async () => {},
@@ -168,6 +172,11 @@ await diagnosticContext.checkLoginConnection();
 assert.equal(diagnosticElements.get('#loginConnectionStatus').hidden, false, 'A successful server check must reveal its result.');
 assert.match(diagnosticElements.get('#loginConnectionStatus').textContent, /giriş hatası bağlantıdan kaynaklanmıyor/, 'A ready server must distinguish credential failure from connectivity failure.');
 assert.equal(diagnosticElements.get('#retryApiButton').disabled, false, 'The retry control must be restored after a successful check.');
+assert.equal(diagnosticElements.get('#platformLoginLink').href, 'https://example.invalid/platform-admin.html');
+assert.equal(diagnosticElements.get('#platformLoginLink').hidden, false);
+diagnosticMode = 'unsafe-platform-link';
+await diagnosticContext.checkLoginConnection();
+assert.equal(diagnosticElements.get('#platformLoginLink').hidden, true, 'Credential-bearing platform links must stay hidden.');
 
 diagnosticMode = 'migration';
 await diagnosticContext.checkLoginConnection();

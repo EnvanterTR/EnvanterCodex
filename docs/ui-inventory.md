@@ -1,6 +1,6 @@
 # EnvanterTR statik arayüz envanteri
 
-Oluşturulma: 2026-10-26T14:45:45.618Z
+Oluşturulma: 2026-10-27T02:29:26.628Z
 
 > Bu dosya mevcut HTML kaynaklarında bulunan statik arayüz öğelerinin dökümüdür. Bir öğenin listelenmesi onun çalıştığını kanıtlamaz. JavaScript ile sonradan oluşturulan kontroller, API/DB davranışı, rol varyasyonları ve erişilebilirlik ayrıca uçtan uca kabul gerektirir. Kaynak değiştikçe `node tools/Generate-UiInventory.mjs` ile yeniden üretin; `node tools/Generate-UiInventory.mjs --check` güncel olup olmadığını doğrular.
 
@@ -34,7 +34,7 @@ Oluşturulma: 2026-10-26T14:45:45.618Z
 | 5 | Bağlantı | E Envanter TR | hedef=# |
 | 6 | Bağlantı | İlk şirket kurulumunu başlat | hedef=/setup.html |
 | 7 | Bağlantı | İlk şirket kurulumunu başlat | hedef=/setup.html |
-| 8 | Bağlantı | Platform yönetici girişi | hedef=/platform-admin.html |
+| 8 | Bağlantı | Platform yönetici girişi | id=platformLoginLink; hedef=/platform-admin.html; başlangıçta gizli |
 | 9 | Bağlantı | licenseEulaDocumentLink | id=licenseEulaDocumentLink |
 | 10 | Bağlantı | Verilerimi indir (JSON) | id=downloadAccountData; hedef=/api/session/data-export |
 | 11 | Bağlantı | ${escapeHtml(a.eulaVersion\|\|'EULA')} | hedef=/api/software-licenses/${id}/attachments/${a.eulaAttachmentId}/file |

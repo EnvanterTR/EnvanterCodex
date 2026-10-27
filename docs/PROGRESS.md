@@ -1,3 +1,12 @@
+## 27 Ekim 2026 — tenant platform sınırı yerel tam regresyonu geçti
+- Tamhostedbrowser31915exit0; yeni tenant/kökalanyönetici bağlantısı senaryosu anaentrypointtedir. API/PostgreSQL7/7vebrowser/sourceverifier/locale/UIinventory geçti. Webbuild0hata/0uyarı;test10mevcutuyarı. GeçicikabulComposeDB/ağı temizlendi; imajlar korundu.
+- Kaynak:Program.csstatiköncesi404guard,AccountEndpoints.cssetupstatusplatformURL,index.htmlgüvenliyönetici bağlantısı. Kanıt:tenant-platform-surface-20261027.mdveilk/son/API/browser/build/cleanuplogları. Canlı27edeğişmedi; kesin yeniCI/staging/tazekurtarma/yayın henüz açık. TAMAM dediğim1yereldüzeltmepaketinin1'i test çıktısıyla doğrulanmıştır.
+
+## 27 Ekim 2026 — Hedef10.3 platform sayfasının tenantta sunulması düzeltmesi
+- Gerçek salt-okunur canlı gözlemde Santa/platform-admin.htmlveFarma/platform-setup.html200HTML; mevcut APIguardstatikdosyadan sonra çalışıyordu. İzole test1/1aynı200hatasıyla başarısız. Statiköncesi404/no-storeguard eklendi; normalgiriş/rootplatform korunuyor, kimlik/MFAgevşetilmedi.
+- Şirketgirişindeki yöneticilinki setupstatusile kökalana yönleniyor; localhost/apexyerelkalır, geçersiz/credentialiçerenlinkgizli. SonAPI/PostgreSQL7/7, mobilgerçekHTML/sentetiktransport ve kaynakauth/UIinventory/locale geçti. İlkVMfixturehatası saklandı/düzeltildi. Tamhostedbrowserregresyonu31915çalışıyor; tamamlandı sayılmadı.
+- Kanıt:tests/reports/tenant-platform-surface-20261027.mdveilgiliilk/sonloglar. Canlı27edeğişmedi; yeniadayCI/staging/tazegeri dönüş/yayın açık. GeçicikabulDBtemizliği tamregresyonsonrası. Sıradaki aynıtarayıcısonucu ve kesinaday sevki.
+
 ## 27 Ekim 2026 — eksik Hedef7.8 özellik matrisi oluşturuldu
 - docs/FEATURE-MATRIX.md Bölüm7.1–7.7için74satır; her birinde kod/test izi ve tamkapsamın eksik kabulü ayrı. Üstbölümler henüz tam satırlandırılmadı; genelpayda/yüzde çıkarılmadı. İzin bulunanözellikler yok sayılmadı, sırfdosya/testadı bulundu diye TAMAMatanmadı.
 - Referans denetimi34C#dosya/38testyöntemi, eksik0/0. Testler yeniden koşulmadı; bu kod/test iz dökümüdür. LDAP/SAML/GoogleOAuth dar kayıtaraması boş; kesin yokluk yerine DOĞRULANMADI. Kanıt:tests/reports/feature-matrix-initial-audit-20261027.md.

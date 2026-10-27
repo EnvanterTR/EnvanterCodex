@@ -19,7 +19,7 @@ public static class AccountEndpoints
     private const long AccountPhotoMaxSizeBytes = 2_097_152;
     public static IEndpointRouteBuilder MapAccountEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/setup/status", async (AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
+        endpoints.MapGet("/api/setup/status", async (HttpContext context, AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
         {
             var migrations = db.Database.GetMigrations().ToArray();
             if (migrations.Length == 0)
@@ -27,11 +27,14 @@ public static class AccountEndpoints
             if ((await db.Database.GetPendingMigrationsAsync(cancellationToken)).Any())
                 return Results.Problem("Bekleyen veritabanı güncellemesi var; önce yedek alıp kontrollü güncelleme uygulayın.", statusCode: StatusCodes.Status503ServiceUnavailable);
             var configured = await db.Companies.AnyAsync(cancellationToken);
+            var rootDomain = (configuration["TenantRouting:RootDomain"] ?? "envantertr.com").Trim().Trim('.');
+            var tenantHost = TenantHostResolver.ResolveSlug(context.Request, rootDomain) is { Length: > 0 };
             return Results.Ok(new
             {
                 setupRequired = !configured,
                 setupTokenRequired = !configured,
-                setupTokenConfigured = !string.IsNullOrWhiteSpace(configuration["Setup:BootstrapToken"])
+                setupTokenConfigured = !string.IsNullOrWhiteSpace(configuration["Setup:BootstrapToken"]),
+                platformLoginUrl = tenantHost ? $"https://{rootDomain}/platform-admin.html" : "/platform-admin.html"
             });
         }).AllowAnonymous();
 
