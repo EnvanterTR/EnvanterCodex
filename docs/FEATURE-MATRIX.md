@@ -113,6 +113,18 @@ Kod yolları `src/EnvanterTR.Web/Data/` altındadır. T = `tests/EnvanterTR.Secu
 | SQL yedeği | deploy/coolify yedek/kurtarma betikleri | activation-atomicity-server-staging-20261026.md: gerçek dump/restore/kurtarma | DOĞRULANMADI — ürünün tek tık yetkili yedek UI kabulü ayrı |
 | Excel/CSV/JSON yedeği | DataExportEndpoints.cs | Modül export/restore testleri ayrı eşlenecek | DOĞRULANMADI — export tam kurtarılabilir yedek yerine geçmez |
 
+## 12 — P0 kayıt/ödeme/kurulum kanıt ayrımı
+
+Bu beş satır, üstteki74parite satırına yeni tamamlanma puanı eklemez. API düzeyindeki test kapsamı ile gerçek sağlayıcı/müşteri kabulü ayrı gösterilir. Tarihsel raporların “henüz deploy edilmedi” notları kendi tarihlerine aittir; sonraki üretim raporu ayrıca verilir.
+
+| Madde | Kod | İncelenen test/sonuç kanıtı | Gerçek kapsam durumu |
+|---|---|---|---|
+| 12.1 Kayıt → subdomain → e-posta → plan → ödeme → webhook → provisioning → 5adım | CloudTrialEndpoints.cs; CheckoutEndpoints.cs; TenantProvisioningService.cs; CompanyOnboardingEndpoints.cs | p0-cloud-trial-acceptance-20261023.md; checkout-email-verification-acceptance-20261024.md; company-onboarding-20261026.md; onboarding-production-release-20261026.md | ENGELLENDİ — teknik alt akışlar ve5adımrehberi mevcut; gerçek merchant ve müşterinin baştan sona tamamlama kabulü yok |
+| 12.2 AynıpaymentIdikinci tenant açmaz | CheckoutEndpoints.cs; TenantProvisioningService.cs | T: Public_checkout_uses_server_price_verifies_provider_and_provisions_once; p0d-checkout-webhook-provisioning-acceptance-20261023.md:1/1 sentetik sağlayıcı/PostgreSQL; annual-lifecycle-acceptance-20261024.md:callbackreplay | DOĞRULANMADI — belirtilen sentetik replay kabulü geçti; gerçek iyzico webhook kabulü açık |
+| 12.3 Başarısız ödeme tenant açmaz; unpaidpending24saattensonratemizlenir | CheckoutEndpoints.cs; CompanyCheckoutOrderExpirationService.cs | CheckoutOrderExpirationAcceptanceTests.cs:Checkout_expiration_marks_only_overdue_unpaid_orders_and_releases_initialization_leases; p0d-checkout-order-expiration-acceptance-20261023.md:1/1; ücretli bildirim regresyonu32/32 | DOĞRULANMADI — süre dolumu kayıt silmek yerineExpiredyapar ve leasebırakır; gerçek başarısız ödeme kabulü açık. Ödenmiş/inceleme/provisioninghatası kayıtları süpürülmez |
+| 12.4 Tek provisioning; slug/ownerrolü/hoşgeldin; hata geri alması/log | TenantProvisioningService.cs; CheckoutEndpoints.cs; CloudTrialEndpoints.cs | TenantProvisioningAcceptanceTests.cs:Shared_tenant_provisioning_requires_transaction_and_rolls_back_all_new_records; paid-provisioning-email-20261026.md:32/32; trial-welcome-20261026.md:11/11örtüşen grup; paid-trial-notification-release-20261026.md:yayın | DOĞRULANMADI — DBgeri alması veSMTPkabulzorunluluğu kanıtlı. Kabul edilmiş dışe-posta geri alınamaz; dağıtıkexactly-onceiddiasıyok; gerçekmerchant akışı açık |
+| 12.5 Deneme/kupon bitince erişim kısıtlanır, veri korunur | TenantSubscriptionAccess.cs; TenantPlanFeatures.cs | T:Expired_cloud_subscription_preserves_read_access_and_blocks_company_writes; Current_cloud_subscription_is_selected_when_company_keeps_expired_subscription_history; CloudTrialAcceptanceTests.cs | DOĞRULANMADI — süresi dolanabonelikte okuma korunur/yazma kapanır testi var; kuponun tam kapsamı ve gerçek müşteri bitiş davranışı ayrı kabul ister |
+
 ## Diğer bölümler için zorunlu üst kabul bağlantıları
 
 Bu tablo7.1–7.7'nin kapsamıdır; tüm Hedefin yerine geçmez. Bölüm6tenant/globalfilter/cache/queue/dosya, Bölüm8modern özellik/flag, Bölüm9platformun tüm kart/sekme/aksiyonları, Bölüm10portal, Bölüm11satış sitesi, Bölüm12ödeme/provisioning/onboarding, Bölüm13UI kategori matrisi ve Bölüm20gerçekmüşteri kabulü ayrıca tam satırlandırılmalıdır. Bu üst kapsamlar eksikken bu tablodan genel yüzde hesaplanamaz.

@@ -1,3 +1,8 @@
+## 27 Ekim 2026 — P0 kayıt/ödeme maddelerinin kanıt kapsamı eşlendi
+- FEATURE-MATRIX'eHedef12.1–12.5için beşsatır eklendi: tamakış,webhookreplay,unpaid24ssüredolumu,provisioning/SMTPgeri alma,abonelikbitimiverikoruması. İncelenenkod/test/raporvegerçeksağlayıcı/müşteri kabulüayrı. SentetikreplayveDBrollbackkanıtları yok sayılmadı; gerçekiyzicoyadatümkuponkapsamıyerinesayılmadı.
+- KaynaktaPublic_checkout_uses_server_price_verifies_provider_and_provisions_onceveilgilisüredolumu/abonelik/provisioningtestleribulundu; öncekigerçekregresyon/yayınraporlarıokundu. Yeniürünkodu/testtekrarıyok; genelpayda/yüzdeüretilmedi.
+- Sonaday90cCI40442423575/PostgreSQL121985891826aynıişte10m8ssürüyor; Linuxsecurity8dk/Windows4dkbaşarılı. Exactstaging/kurtarmahazır; canlı27ehenüzdeğişmedi. SıradakiaynıCIsonucuveyayınkapısı.
+
 ## 27 Ekim 2026 — son90cplatformsınırı exactstaging/kurtarma geçti
 - AynıPID1200044buildexit0; kesinapp/publicstagebaşlatıldı. GerçekNginxplatformsayfa/betik/admin/API404veekplatformreauthPOST404Santa/Farma/bağımsızhosttageçti. Kökplatform200/normalşirketgirişivekökURLkorundu;diğer122/0/anonim/CSRF/CSS/resetkontrollerigeçti.
 - 95özgünveritablosualanprojeksiyonlarıaynı;143MB031252Zrollbackveayrıdosya/imajkurtarmaexit0. Productionrestore/migration/deployyok. Kanıt:tenant-platform-final-server-staging-20261027.mdve90c-stage-and-recovery-pass-20261027.png.
