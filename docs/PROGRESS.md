@@ -1011,3 +1011,7 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - CompanyMediaPathGuard gerçek şirket klasörü altında canonical path ve bütün mevcut reparse bileşenlerini kontrol eder. Varlık eki yükleme409, okuma/silme404; reddedilen silmede metadata/audit değişmez. Yapılandırılmış kök güvenilirdir; yetkili host aktörünün path-race/hardlink saldırısına karşı tam OS garantisi iddia edilmez.
 - İki yeni gerçek API/PostgreSQL senaryosu klasör ve dosya symlink'iyle başka şirket dosyasına yönlendirmeyi reddetti; yabancı baytlar ve asıl kayıtlar korundu, bağlantı kaldırılınca asıl dosya yeniden indirildi. Normal ek kabulüyle3/3,1.2033dk,exit0+cleanup.
 - Yalnız varlık eki yollarına bağlandı; diğer14 medya sağlayıcı dosyası, cache/queue ve tüm6.4 kapsamı kapanmadı. Kanıt asset-media-namespace-20261027.md/log. Canlı1d49/122 henüz değişmedi; sonraki kesin CI ve yayın kapıları.
+
+## 27 Ekim 2026 — dosya namespace paketi exact staging geçti
+- Uzak5d1e261, CI40571788211/PG122427631396 aynı çalışan işte8m12s doğrulandı. İki sunucu build0; internal/noports/readonly/disabledSMTP-payment stage başladı. Güncel1d49 SQL194540Z bağımsızrestore122 ve95tablo korunması, HTTP/CSRF/platform sınırları geçti.
+- Yerel gerçek PostgreSQL3/3 negatif filesystem+normal ek kabulü yeniden çalıştırılmadı. Yeni ürün kodu gereksiz CI restart olmadan tek adayda tutuldu. Sıradaki aynı tamCI sonucu ve güncel geri dönüş/yayın. Canlı1d49/122 hâlâ korunuyor; tamHedef açık.
