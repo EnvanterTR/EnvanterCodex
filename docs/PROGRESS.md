@@ -839,3 +839,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Taze060041Z SQL dump ayrı f073752 test veritabanına geri yüklendi;122 şema ve95 tablonun özel başlangıç karşılaştırması kaydedildi. Medya/anahtarlar ayrı kopyalandı, üretim değiştirilmedi.
 - Derleme PID1453548 hâlâ çalışıyor; dotnet publish DLL adımına ulaştı, tamamlanma henüz yok. Aynı süreç korunuyor. Gerçek proxy admin302/tenant404 ve veri koruma tarifleri hazır; henüz çalıştı sayılmadı.
 - Kanıt: tests/reports/admin-entry-server-staging-20261027.md ve f073 hazırlık betikleri. CI40458121020 sonucu ve tam staging/recovery/yayın kapıları açık.
+
+## 27 Ekim 2026 — yönetici girişi kesin sunucu kabulü geçti
+- f073752 iki imaj derlemesi çıkış0; gerçek izole uygulama/Nginx ile root/www admin302 ve tenant404 geçti. Önceki sağlık/yetki/CSRF/reset/onboarding/platform yüzey kontrolleri de geçti.
+- Runtime izolasyonu/yan etki kapatma ve95 tablonun özgün alan-satır karşılaştırması başarılı;122 şema korunuyor. Kanıt: admin-entry-server-staging-20261027.md ve iki f073 PNG.
+- CI40458121020 aynı PostgreSQL işinde9m4s çalışıyordu. Üretim90c; tamCI ve taze SQL/medya/anahtar/imaj geri dönüş provası sonrası yayın bekliyor. Hazırlanan yeni recovery betiği henüz çalıştırılmadı.
