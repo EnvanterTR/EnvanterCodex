@@ -864,3 +864,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Güncel90c SQL/medya/anahtar/web-public imaj paketi143MB, rollback-20261027T062301Z. Ayrı dosya/imaj kurtarma prepare/verify çıkış0. Üretime restore/deploy yok.
 - Kanıt: admin-entry-server-staging-20261027.md, f073-rollback-drill-20261027.py, f073-stage-recovery-pass-20261027.png. Bu ilkstagingprovasıdır; CI sonrası yayın öncesi taze dump/recovery ayrıca hazırlanacak.
 - AynıCI40458121020 PostgreSQL28m18s'de sürüyor; iki diğer işbaşarılı. Yeni push/restart yok.
+
+## 27 Ekim 2026 — yönetici girişi tamCI geçti ve doğruSHA yayını başladı
+- f073752 CI40458121020 üçiş başarılı; PostgreSQL36m21s. Kesin staging/veri korunması sonrası taze063327ZSQLrestore ve143MB063335Z SQL/medya/anahtar/imaj recovery geçti.
+- Coolify kaynakSHA reload ilef073752 doğrulandı. tg8vi2aspz7yt8qzousehh7s06:35:17UTC başladı; import exactf073. Genel unapplied uyarısı yeni işin doğruSHAimport kanıtını geçersiz kılmıyor; tekrar deploy yapılmadı.
+- Kanıt: admin-entry-production-release-20261027.md ve3CI/recovery/deployment PNG. Yayın sonucu/runtime/canlıHTTP henüz açık; tamHedef tamamlanmadı. Sıradaki aynıdeployment tamamlanması ve hazırlanan canlıprob.
