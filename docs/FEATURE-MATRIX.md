@@ -166,3 +166,7 @@ Bu ek bir kabul planı ve kanıt eşlemesidir; yeni TAMAM ürün maddesi ilan et
 ### 12.5 ek teknik kanıt — kupon dönem sorgusu
 
 CouponQuotePeriodAcceptanceTests.cs üç gerçekAPI/PostgreSQL durumda expired/future/inactive kuponu400 ile reddederken kuponsuz yıllık fiyat200 ve şirket/varlık/kupon verisi korunur, sipariş oluşmaz. Aynı koşuda mevcut abonelik bitişi veri koruma ve platformkupon yönetimi testleriyle5/5geçti. Kanıt: tests/reports/coupon-period-20261027.md. Bu quotekapsamıdır; gerçek ödeme/kupon kullanım ömrünün tamamını kapatmaz,12.5tamdurumuDOĞRULANMADI kalır.
+
+## Rol adları için somut kapsam farkı
+
+`named-role-scope-20261027.md` kaynak/assertion incelemesi: şirket kataloğu owner/admin/asset_manager/asset_operator/auditor/viewer/hr_operator içeriyor. Hedefteki Muhasebe adında hazır rol yok; özel rol olanağı bu şartın tamamlandığı anlamına gelmez. Sınırlı rol için konum/kişi/izin birleşiminin ayrı kabulü gerekir. Mevcut yedi rol testi temsili erişim sınırlarını sınar; bazı izinli hatalı-payload yanıtlarının403olmaması başarılıCRUD kanıtı değildir. Tamrolparitesi açık; P0/P1 bitmedenP2 uygulamasına geçilmedi.

@@ -925,3 +925,7 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 ## 27 Ekim 2026 — zorunlu giriş/rol/kurtarma Kapı1 kaydı
 - gate-1-20261027.md mevcutlockout3/3,atomikreset6/6,SMTPcapture1/1,ortakoturum5/5,MFA/freshlogin ve gerçekyayın kanıtlarını tamrol/müşteri kapsamından ayırır. EskiSMTPyok notları tarihsel olarak elealındı.
 - SonuçGEÇMEDİ: tamrol/UIeşlemesi, normaloperatör/çıkış ve belirtilen canlıkanıtlar eksik. Tarihsel test yeniden koşulmadı; canlıayar/parola/MFA değiştirilmedi. TamHedef açık.
+
+## 27 Ekim 2026 — adlandırılmış rol kapsamındaki fark tespit edildi
+- CompanyRoleAuthorization/CompanyRoleEndpoints ve yediroltestinin assertionları incelendi. Muhasebe hazırrolü yok; sınırlırol custom/konumaltyapısıyla otomatik TAMAM sayılamaz. Temsilimutasyon!=403assertionı başarılıCRUD değildir.
+- Kanıt named-role-scope-20261027.md; FEATURE-MATRIX açıkfarkla güncellendi. Yenirol/izin/üyelik değişmedi; P2işisessizceönealınmadı. P0 gerçekoperatör/müşterikabulü ve tamHedef açık.
