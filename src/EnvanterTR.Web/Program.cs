@@ -490,6 +490,7 @@ app.Use(async (context, next) =>
     var isPlatformEndpoint = requestPath.StartsWithSegments("/api/platform");
     var checkoutPath = new PathString(requestPath.Value?.TrimEnd('/'));
     var isVerifiedCheckoutEndpoint = checkoutPath == "/api/subscription/checkout/initialize" ||
+        checkoutPath == "/subscription/checkout" ||
         checkoutPath == "/api/checkout/callback" || checkoutPath == "/api/checkout/webhook";
     if (isPlatformAdmin && isPlatformEndpoint && isWriteRequest)
     {

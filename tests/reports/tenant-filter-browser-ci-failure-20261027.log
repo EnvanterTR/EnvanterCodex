@@ -1,0 +1,401 @@
+Skip to content
+EnvanterTR
+EnvanterCodex
+Type / to search
+Repository navigation
+Code
+Issues
+Pull requests
+3
+ (3)
+Agents
+Actions
+Projects
+Wiki
+Security and quality
+Insights
+Settings
+Back to pull request #25
+Cloud trial onboarding, tenant provisioning, and checkout hardening #790
+Re-run jobs
+Summary
+All jobs
+Linux tenant security acceptance
+Linux PostgreSQL tenant acceptance
+Windows deployment and backup safety
+Run details
+Usage
+Workflow file
+Lockfile
+Annotations
+1 error, 1 warning, and 1 notice
+Linux tenant security acceptance
+failed  in 6m 14s
+Explain error
+Set up job
+1s
+Check out source
+3s
+Verify forwarded IP boundary with real proxies
+11s
+Verify the static UI inventory matches the source
+1s
+Verify user interface locale dictionary coverage
+0s
+Verify shared tenant wildcard routing contract
+0s
+Verify sidebar navigation destinations and status copy
+0s
+Prevent browser-native blocking dialogs in application surfaces
+0s
+Verify read-only Coolify production readiness diagnostics
+0s
+Verify keyboard shortcuts and command palette contracts
+0s
+Verify asset row context menu and keyboard actions
+0s
+Verify company asset table sizing and row numbering
+0s
+Verify asset row shortcuts
+0s
+Verify asset trash UI
+0s
+Verify unlimited Cloud company users
+0s
+Verify multi-company user invitations
+0s
+Verify asset status label editor and option refresh
+0s
+Verify QR and barcode settings UI contracts
+0s
+Verify async form references and assignment date rendering
+0s
+Verify reservation decision and cancellation dialogs
+0s
+Verify activity history filters and shortcuts
+1s
+Verify software license assignment revocation dialog
+0s
+Verify software license action confirmation dialog
+0s
+Verify software license import profile deletion dialog
+0s
+Verify contract archive and attachment dialogs
+0s
+Verify warranty report menu actions
+0s
+Verify accessory inventory menu actions
+0s
+Verify accessory photo removal dialog
+0s
+Verify catalog and custom field dialogs
+0s
+Verify directory merge dialogs
+0s
+Verify accessory catalog quick-entry dialogs
+0s
+Verify accessory check-in and stock count dialogs
+0s
+Verify accessory purchase order menu actions
+0s
+Verify consumable inventory menu actions
+0s
+Verify stock request menu actions
+0s
+Verify component inventory menu actions
+0s
+Verify ready-made kit menu actions
+0s
+Verify inventory movement menu actions
+0s
+Verify employee records menu actions
+1s
+Verify location catalog and building menu actions
+0s
+Verify maintenance attachment menu actions
+0s
+Verify maintenance plan menu actions
+0s
+Verify physical audit queue and form actions
+0s
+Verify prepared reports request ordering and filters
+0s
+Verify custom asset report session and action flows
+0s
+Verify company task menu actions
+0s
+Verify authentication error and dialog flows
+0s
+Verify session and API key revocation dialogs
+0s
+Verify company JSON export download contract
+0s
+Verify dashboard preferences remain drafts until saved
+0s
+Verify asset import preview count and apply gate
+0s
+Verify company data restore UI
+0s
+Verify company app mobile layout
+0s
+Verify Cloud subscription expiry access policy
+0s
+Verify public demo full-width asset tables
+0s
+Verify public demo request and platform lead workflow
+1s
+Verify platform subscription plan catalog workflow
+0s
+Verify hosted Cloud checkout contract
+0s
+Verify hosted checkout browser acceptance harness
+0s
+Verify support ticket UI and race guards
+0s
+Run hosted Cloud checkout in Chromium
+3m 22s
+Run five-step company onboarding UI in Chromium
+4s
+Preserve company onboarding UI evidence
+2s
+Run existing company annual checkout with Kestrel PostgreSQL and Chromium
+2m 21s
+250
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+
+251
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+
+252
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+
+253
+fail: Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddleware[1]
+
+254
+      An unhandled exception has occurred while executing the request.
+
+255
+      System.InvalidOperationException: The tracked write is outside the validated company scope.
+
+256
+         at EnvanterTR.Web.Data.AppDbContext.ValidateCompanyWrites() in /source/src/EnvanterTR.Web/Data/AppDbContext.cs:line 42
+
+257
+         at EnvanterTR.Web.Data.AppDbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken) in /source/src/EnvanterTR.Web/Data/AppDbContext.cs:line 54
+
+258
+         at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(CancellationToken cancellationToken)
+
+259
+         at EnvanterTR.Web.Data.CheckoutEndpoints.InitializeAsync(InitializeCompanyCheckoutRequest request, HttpContext context, IAntiforgery antiforgery, AppDbContext db, IyzipayCheckoutClient iyzipay, IOptions`1 configuredOptions, IDataProtectionProvider dataProtectionProvider, UserManager`1 users, SignInManager`1 signIn, TenantProvisioningService provisioning, CancellationToken cancellationToken) in /source/src/EnvanterTR.Web/Data/CheckoutEndpoints.cs:line 317
+
+260
+         at EnvanterTR.Web.Data.CheckoutEndpoints.InitializeAsync(InitializeCompanyCheckoutRequest request, HttpContext context, IAntiforgery antiforgery, AppDbContext db, IyzipayCheckoutClient iyzipay, IOptions`1 configuredOptions, IDataProtectionProvider dataProtectionProvider, UserManager`1 users, SignInManager`1 signIn, TenantProvisioningService provisioning, CancellationToken cancellationToken) in /source/src/EnvanterTR.Web/Data/CheckoutEndpoints.cs:line 323
+
+261
+         at EnvanterTR.Web.Data.CheckoutEndpoints.SubmitCompanyCheckoutPageAsync(HttpContext context, AppDbContext db, UserManager`1 users, SignInManager`1 signIn, IAntiforgery antiforgery, TenantProvisioningService provisioning, IyzipayCheckoutClient iyzipay, IOptions`1 options, IDataProtectionProvider protection, IConfiguration configuration, CancellationToken cancellationToken) in /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs:line 49
+
+262
+         at Microsoft.AspNetCore.Http.RequestDelegateFactory.ExecuteTaskResult[T](Task`1 task, HttpContext httpContext)
+
+263
+         at Microsoft.AspNetCore.RateLimiting.RateLimitingMiddleware.InvokeInternal(HttpContext context, EnableRateLimitingAttribute enableRateLimitingAttribute)
+
+264
+         at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+
+265
+         at Program.<>c.<<<Main>$>b__0_13>d.MoveNext() in /source/src/EnvanterTR.Web/Program.cs:line 579
+
+266
+      --- End of stack trace from previous location ---
+
+267
+         at EnvanterTR.Web.Data.PlatformImpersonation.<>c.<<UsePlatformImpersonation>b__17_0>d.MoveNext() in /source/src/EnvanterTR.Web/Data/PlatformImpersonation.cs:line 189
+
+268
+      --- End of stack trace from previous location ---
+
+269
+         at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+
+270
+         at Program.<>c.<<<Main>$>b__0_12>d.MoveNext() in /source/src/EnvanterTR.Web/Program.cs:line 338
+
+271
+      --- End of stack trace from previous location ---
+
+272
+         at Program.<>c.<<<Main>$>b__0_11>d.MoveNext() in /source/src/EnvanterTR.Web/Program.cs:line 319
+
+273
+      --- End of stack trace from previous location ---
+
+274
+         at Program.<>c__DisplayClass0_0.<<<Main>$>b__10>d.MoveNext() in /source/src/EnvanterTR.Web/Program.cs:line 274
+
+275
+      --- End of stack trace from previous location ---
+
+276
+         at Program.<>c.<<<Main>$>b__0_9>d.MoveNext() in /source/src/EnvanterTR.Web/Program.cs:line 252
+
+277
+      --- End of stack trace from previous location ---
+
+278
+         at Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddlewareImpl.Invoke(HttpContext context)
+
+279
+node:internal/modules/run_main:107
+
+280
+    triggerUncaughtException(
+
+281
+    ^
+
+282
+
+
+283
+page.waitForURL: Timeout 10000ms exceeded.
+
+284
+=========================== logs ===========================
+
+285
+waiting for navigation to "http://localhost:5000/__synthetic-provider" until "load"
+
+286
+============================================================
+
+287
+    at /browser/existing-company-checkout.mjs:84:14 {
+
+288
+  log: [],
+
+289
+  name: 'TimeoutError'
+
+290
+}
+
+291
+
+
+292
+Node.js v24.21.0
+
+293
+Unhandled exception. System.InvalidOperationException: Chromium checkout acceptance failed.
+
+294
+   at EnvanterTR.CheckoutBrowser.BrowserAcceptance.Require(Boolean value, String message) in /source/tests/EnvanterTR.CheckoutBrowser/BrowserAcceptance.cs:line 23
+
+295
+   at EnvanterTR.CheckoutBrowser.BrowserAcceptance.Main() in /source/tests/EnvanterTR.CheckoutBrowser/BrowserAcceptance.cs:line 107
+
+296
+   at EnvanterTR.CheckoutBrowser.BrowserAcceptance.<Main>()
+
+297
+
+
+298
+ Container envantertr-checkout-browser-eedf2d7e49-database-1 Stopping
+
+299
+ Container envantertr-checkout-browser-eedf2d7e49-database-1 Stopped
+
+300
+ Container envantertr-checkout-browser-eedf2d7e49-database-1 Removing
+
+301
+ Container envantertr-checkout-browser-eedf2d7e49-database-1 Removed
+
+302
+ Network envantertr-checkout-browser-eedf2d7e49_acceptance Removing
+
+303
+ Network envantertr-checkout-browser-eedf2d7e49_acceptance Removed
+
+304
+Error: Process completed with exit code 1.
+
+Preserve existing company checkout browser evidence
+2s
+Verify application scripts and camera policy through Nginx
+0s
+Verify payment provider and checkout security contract
+0s
+Verify platform company provisioning workflow
+0s
+Verify recoverable company deletion and migration artifact
+0s
+Verify platform customer lifecycle workflow
+0s
+Verify platform subscription adjustment workflow
+0s
+Verify platform admin dashboard experience
+0s
+Verify isolated platform MFA browser acceptance harness
+0s
+Verify platform member directory and account details
+0s
+Verify platform member invitation workflow
+0s
+Verify platform audit search workflow
+0s
+Verify platform checkout order directory
+0s
+Verify Coolify wildcard tenant routing
+0s
+Verify company portal login routing
+0s
+Verify SaaS tenant slug profile and session binding
+0s
+Build Linux application image and verify PostgreSQL native dependency
+0s
+Verify the built Release image with Production settings
+0s
+Check Linux deployment script syntax
+0s
+Test media and key archive validation
+0s
+Test Linux backup health decisions
+0s
+Validate Linux restore safety ordering
+0s
+Validate Linux update safety ordering
+0s
+Validate resumable Linux first install
+0s
+Verify asset checkout and return workflows
+0s
+Verify asset detail actions
+0s
+Verify asset plan quotas
+0s
+Verify bulk asset action workflows
+0s
+Verify iyzico checkout client contracts
+0s
+Verify purchase order dialogs
+0s
+Verify role matrix contracts
+0s
+Verify saved asset search workflows
+0s
+Verify stock import dialogs
+0s
+Package the tested Linux server source release
+0s
+Preserve the Linux server release package and checksum
+0s
+Post Check out source
+0s
+Complete job
+0s

@@ -981,3 +981,7 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 ## 27 Ekim 2026 — P1 adayının izole sunucu kabulü
 - Kesin2ee892b uzakCI40516313967 sürüyor; yeniden başlatılmadı. İki serverbuild0, internal/noports/readonly stage, SQL135745Z bağımsızrestore122/0; HTTP/proxy/anonim/CSRF/platformsınırları geçti.
 - 95tablo alanprojeksiyonu korundu. İlk143MB140745Zgeri dönüş dosya/imajprovası0; canlıya restore/deployyok. TamCIvefreshreleasekapıları açık. 27IgnoreQueryFilters kaynak yeri incelendi; açıkCompanyIdkontrolleri korunuyor, tamP1kanıtı sayılmadı. Ayrıntı tenant-query-filter-20261027.md.
+
+## 27 Ekim 2026 — P1 geniş CI checkout regresyonu düzeltildi
+- 2ee892bCI40516313967 terminal: PG366passed/1failed38m29s; Linuxsecurity6m14saynıcheckoutformhatası; Windowsbaşarılı. TrackedguardverifiedAPIcheckoutmuafiyetindentarayıcı/subscription/checkoutyolueksikti. NullableCompanyIdpendingorderkaydınıreddediyordu.
+- Tamnormalizeformyoluaynıverifiedcheckoutkapsamınaalındı;owner/parola/MFA/CSRF/price/providerkontrollerikorundu. YerelPG10/10,3.0354dk,exit0+cleanup;aynıChromiumregresyonusürüyor. Canlıf073korunuyor; eskistageyenikodyerinesayılmayacak. Kanıt tenant-filter-checkout-regression-20261027.md.
