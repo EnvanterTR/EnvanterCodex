@@ -901,3 +901,7 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Hedef15.9'un gate-N dosya şartında gate5yoktu. İncelenen6/6deneme,11/11demoprovisioning,6/6onboarding veatomikaktivasyon raporları gerçekmüşteri/merchant kabulünden ayrılarak gate-5-20261027.md oluşturuldu.
 - Sonuç GEÇMEDİ; normalDemo3owner ve gerçek kayıt/ödeme/beşadım tamamlanması açık. Tarihsel testler yeniden koşulmadı, supportowner yerine sayılmadı. Yeni ürün/canlı değişikliği yok.
 - AynıCI40464013357 PostgreSQL12205499372011m21s'de çalışıyor olarak doğrulandı; yeni yerelrecheck testleri nedeniyle restart yapılmadı. TamHedef açık.
+
+## 27 Ekim 2026 — platformun zorunlu Kapı6 kapsamı eşlendi
+- gate-6-20261027.md Hedef9.1–9.13 ve15.9 için oluşturuldu; sonuçGEÇMEDİ/tamkapsamdoğrulanmadı. Rootgiriş/MFA/support altkanıtları tüm panelkart/sekme/aksiyonları yerine geçirilmedi.
+- Eski24Ekimimpersonationyok bulgusu sonraki13/13vegerçekDemo3support ile tarihselolarak uzlaştırıldı. Kalan5denemekilit/oturumsüre/alanmatrisi ve tümUI kapsamı ayrı; yeni ürünTAMAM veya testkoşusu iddiası yok. Üretim değişmedi.
