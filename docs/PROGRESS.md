@@ -1,3 +1,13 @@
+## 27 Ekim 2026 — son90cplatformsınırı exactstaging/kurtarma geçti
+- AynıPID1200044buildexit0; kesinapp/publicstagebaşlatıldı. GerçekNginxplatformsayfa/betik/admin/API404veekplatformreauthPOST404Santa/Farma/bağımsızhosttageçti. Kökplatform200/normalşirketgirişivekökURLkorundu;diğer122/0/anonim/CSRF/CSS/resetkontrollerigeçti.
+- 95özgünveritablosualanprojeksiyonlarıaynı;143MB031252Zrollbackveayrıdosya/imajkurtarmaexit0. Productionrestore/migration/deployyok. Kanıt:tenant-platform-final-server-staging-20261027.mdve90c-stage-and-recovery-pass-20261027.png.
+- PRson90cadayıyla güncellendi. AynıCI40442423575/PostgreSQL1219858918265m29sçalışıyor;tamCIhenüzgeçmedi. Canlı27ekorunuyor. TAMAM dediğim1staging/kurtarmapaketinin1'ikomut/ekrançıktısıyla doğrulanmıştır.
+
+## 27 Ekim 2026 — son platformtenant adayı90cCI/staging başladı
+- Kesin90cc10503eb0aa6d929f7e077b376fdd1e001b81PR25'e gönderildi. YeniCI40442423575/PostgreSQL121985891826üçişbaşladı. Öncekicbcdc71CI/stagingbuadayyerinesayılmadı.
+- ExactarşivsunucubuildPID1200044başladı;030900ZtazeSQLdump/list/hashgeçti,ayrıcloneDBrestoreve95tabloözgünalanbaselinealındı.90creçeteleri yeniplatformreauthPOST404proxykabulünü içeriyor. Buildbitimi/proxy/preservation/kurtarmahenüzbekliyor;canlı27edeğişmedi.
+- Kanıt:tenant-platform-final-server-staging-20261027.mdve90c-stage-backup-started-20261027.png. Sıradakiaynıbuild/CIsonucu;ürünkoduincelenenbuadaydasabit.
+
 ## 27 Ekim 2026 — platformreauth404ek sınırı yerel regresyondan geçti
 - SonC#buildexit0; genişletilmişplatformsınırı/5ortakIdentityoturum/URLcredentialtestleri7/7,1.3658dkgeçti. TenantplatformreauthPOST404ayrıcaassertedildi. UIkaynağı80PASSsatırlıfullbrowserdan sonra değişmedi; geçicifinalkabulDB/ağıtemizlendi.
 - Kanıt:tenant-platform-final-build/acceptance/cleanup-20261027.log;tenant-platform-surface-20261027.md. Öncekicbcdc71CI/stagingyeniC#değişikliğiyerinesayılmadı. SıradakikesincommitCIveaynıkaynağınstagingi;canlı27ekorunuyor.
