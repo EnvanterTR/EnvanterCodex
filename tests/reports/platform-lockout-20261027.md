@@ -9,3 +9,9 @@ This covers the active lock boundary; it does not claim successful login after e
 Evidence: platform-lockout-build-20261027.log, platform-lockout-acceptance-20261027.log, platform-lockout-cleanup-20261027.log. New test remains local until an appropriate next CI push; existing85c4f8cCI was not restarted. Full Kapı6/Hedef remain open.
 
 TAMAM dediğim1yerel kilit kabul paketinin1'i gerçekAPI/Identity/PostgreSQLçıktısıyla doğrulanmıştır.
+
+## Second-factor lockout extension
+
+The functional case is now a theory named Platform_login_locks_after_five_failed_factors_and_rejects_correct_password_during_five_minute_lock. It covers wrong-password and correct-password/invalid-second-factor input separately. The latter uses synthetic MFA enrollment plus a deterministic invalid recovery/token string (no actual user code), observes400 on attempts1–4,423 on5, persisted five-minute lock, and401 for a later correct-password request. Fresh scopes show AccessFailedCount accumulating despite password verification. This proves the rejection path including failed recovery fallback; it does not claim every six-digit TOTP boundary or recovery-code success behavior.
+
+Combined final run3/3passed39.3283seconds,exit0; build0 and disposable platform-factor-lockout-20261027 DB/network cleanup0. Logs platform-factor-lockout-build-20261027.log, platform-factor-lockout-acceptance-20261027.log, platform-factor-lockout-cleanup-20261027.log. Earlier2/2 run remains historical supporting evidence, not an additional three cases. No product/production/authentication policy change. RemoteCI for this local extension remains pending.

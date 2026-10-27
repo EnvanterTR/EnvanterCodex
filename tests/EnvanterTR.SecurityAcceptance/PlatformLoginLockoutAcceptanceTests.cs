@@ -14,8 +14,10 @@ namespace EnvanterTR.SecurityAcceptance;
 
 public sealed partial class TenantSessionAcceptanceTests
 {
-    [Fact]
-    public async Task Platform_login_locks_after_five_bad_passwords_and_rejects_correct_password_during_five_minute_lock()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Platform_login_locks_after_five_failed_factors_and_rejects_correct_password_during_five_minute_lock(bool secondFactor)
     {
         const string password = "Synthetic-Lockout-Password-43!";
         string email;
@@ -26,6 +28,11 @@ public sealed partial class TenantSessionAcceptanceTests
             email = user.Email!;
             Assert.True((await users.AddPasswordAsync(user, password)).Succeeded);
             Assert.True((await users.SetLockoutEnabledAsync(user, true)).Succeeded);
+            if (secondFactor)
+            {
+                Assert.True((await users.ResetAuthenticatorKeyAsync(user)).Succeeded);
+                Assert.True((await users.SetTwoFactorEnabledAsync(user, true)).Succeeded);
+            }
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.PlatformAdministrators.Add(new PlatformAdministrator { UserId = _userId });
             await db.SaveChangesAsync();
@@ -51,11 +58,15 @@ public sealed partial class TenantSessionAcceptanceTests
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, "/api/session/login")
             {
-                Content = JsonContent.Create(new { email, password = "wrong-synthetic-password", platformAdminOnly = true })
+                Content = JsonContent.Create(new { email,
+                    password = secondFactor ? password : "wrong-synthetic-password", platformAdminOnly = true,
+                    twoFactorCode = secondFactor ? "INVALID-SYNTHETIC-RECOVERY" : null })
             };
             request.Headers.Add("X-CSRF-TOKEN", csrfToken);
             using var response = await client.SendAsync(request);
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+            Assert.Equal(secondFactor
+                ? attempt == 5 ? HttpStatusCode.Locked : HttpStatusCode.BadRequest
+                : HttpStatusCode.Unauthorized, response.StatusCode);
             await using var scope = factory.Services.CreateAsyncScope();
             var users = scope.ServiceProvider.GetRequiredService<UserManager<EnvanterUser>>();
             var user = (await users.FindByIdAsync(_userId.ToString()))!;
