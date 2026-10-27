@@ -823,3 +823,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Yerel kod/API/UI/görsel kabul geçti; tam CI ve canlı yayın açık. İmzalı kayıt satırında PDF indir; şirket/çalışan/konum sınırı, iki imza ve üç SHA256 özeti, no-store/attachment. Gömülü Türkçe font, sayfalama, imzalar ve kaynak özetleri PDF'de.
 - Son gerçek PostgreSQL API 2/2, çıkış 0; Chromium indirme/390px kabulü çıkış 0; 8 sayfalı PDF'de 85/85 seri birer kez, Türkçe ve iki imza/özet korundu. İlk iki API hatası ve sonra görsel/parser ile bulunan başlık/tekrarlanan satır hataları saklandı ve düzeltildi. Kaynak/JS/UI envanteri/diff kontrolü geçti.
 - Kanıt: tests/reports/handover-pdf-20261026.md ve ilgili log/PNG/PDF. Yeni migration yok, canlı 4237 değişmedi; gerçek kullanıcı imzası veya MFA kullanılmadı. Sıradaki P0: aynı doğrulanmış PDF'nin açık eylemle e-posta eki; sonra tam CI ve yayın kapıları.
+
+## 27 Ekim 2026 — Hedef9 /admin girişi ayrı çalışma kopyasında hazır
+- admin-entry-20261027checkout90cüzerindeayrıldı;mainCI/yayınadayıdeğişmedi. Canlı/adminve/admin/200marketinghatasıgörüldü. Approot302ilemevcutplatformlogininegider;Nginxikiayarındarotauygulamayailetilir,tenant404korunur.
+- YerelAPI/PostgreSQL2/2,40.1117s;iki gerçekNginxproxytesti/root-www/trailingslash/query/Host/relativeLocationgeçti. İlkfetchHostfixturehatasıstrictassertionkorunaraknode:httpile düzeltildi; kaynakrouteverifierleri/syntax/diffgeçti. GeçiciDB/ağlartemizlendi.
+- Kanıt:tests/reports/admin-entry-20261027.mdveloglar. Bu ayrıpakethenüzremoteye/canlıyagönderilmedi;90cCIbittiktensonraintegrasyon/CI/staginggerekiyor. TAMAM dediğim1yerelpaketin1'itest çıktısıyla doğrulanmıştır.

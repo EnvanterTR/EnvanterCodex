@@ -1,6 +1,22 @@
 import assert from 'node:assert/strict';
+import {request as httpRequest} from 'node:http';
+
+const adminRequest=(proxy,host,path)=>new Promise((resolve,reject)=>{
+  const req=httpRequest({hostname:proxy,port:80,path,headers:{Host:host}},response=>{
+    response.resume();response.on('end',()=>resolve({status:response.statusCode,headers:response.headers}));
+  });
+  req.on('error',reject);req.end();
+});
 
 for (const proxy of ['production', 'local']) {
+  for(const host of ['envantertr.com','www.envantertr.com'])
+  for(const path of ['/admin','/admin/','/admin?view=ignored']) {
+    const response=await adminRequest(proxy,host,path);
+    assert.equal(response.status,302,`${proxy} ${host}${path}`);
+    assert.equal(response.headers.location,'/platform-admin.html','Keep redirect relative across TLS offload.');
+    assert.equal(response.headers['x-acceptance-upstream'],'web','Admin entry must reach app upstream, not marketing fallback.');
+    assert.equal(response.headers['x-acceptance-host'],host,'Preserve original root host.');
+  }
   const request = path => fetch(`http://${proxy}${path}`, { headers: { host: 'envantertr.com' } });
   const marketing = await request('/');
   assert.equal(marketing.status, 200);
