@@ -1015,3 +1015,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 ## 27 Ekim 2026 — dosya namespace paketi exact staging geçti
 - Uzak5d1e261, CI40571788211/PG122427631396 aynı çalışan işte8m12s doğrulandı. İki sunucu build0; internal/noports/readonly/disabledSMTP-payment stage başladı. Güncel1d49 SQL194540Z bağımsızrestore122 ve95tablo korunması, HTTP/CSRF/platform sınırları geçti.
 - Yerel gerçek PostgreSQL3/3 negatif filesystem+normal ek kabulü yeniden çalıştırılmadı. Yeni ürün kodu gereksiz CI restart olmadan tek adayda tutuldu. Sıradaki aynı tamCI sonucu ve güncel geri dönüş/yayın. Canlı1d49/122 hâlâ korunuyor; tamHedef açık.
+
+## 29 Ekim 2026 — lisans dosya namespace düzeltmesi hazır
+- Varlık eki5d1e CI beklerken lisans eklerinin aynı eksik kontrolü düzeltildi. Tam dosya yolu upload/read/delete guard; silme reddinde metadata/audit korunur. Arşiv/EULA/atama koruma koşulları kaldırılmadı.
+- İki yeni yönlendirme senaryosu + normal lisans eki + çalışan EULA kabulü4/4,1.5080dk,exit0+cleanup. İlk komut tarihi27Ekim logunda; sonuç29Ekimde toplandı. Asset testleri yerelde yeniden çalıştırılmadı.
+- Ayrı lisans kaynağının tamCI/yayın kapıları açık.5d1e varlık adayının PostgreSQL369/369 terminal başarı sonucu görüldü; önce onun kesin diğerCI/geri dönüş/yayını tamamlanacak. Hedef bütünü açık.
