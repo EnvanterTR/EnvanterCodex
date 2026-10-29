@@ -1020,3 +1020,17 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Varlık eki5d1e CI beklerken lisans eklerinin aynı eksik kontrolü düzeltildi. Tam dosya yolu upload/read/delete guard; silme reddinde metadata/audit korunur. Arşiv/EULA/atama koruma koşulları kaldırılmadı.
 - İki yeni yönlendirme senaryosu + normal lisans eki + çalışan EULA kabulü4/4,1.5080dk,exit0+cleanup. İlk komut tarihi27Ekim logunda; sonuç29Ekimde toplandı. Asset testleri yerelde yeniden çalıştırılmadı.
 - Ayrı lisans kaynağının tamCI/yayın kapıları açık.5d1e varlık adayının PostgreSQL369/369 terminal başarı sonucu görüldü; önce onun kesin diğerCI/geri dönüş/yayını tamamlanacak. Hedef bütünü açık.
+
+## 29 Ekim 2026 — varlık eki CI geçti; tek canlı yayın başladı
+-5d1e tamCI40571788211 başarılı: PostgreSQL369/36937m42s, Linux7m59s, Windows10m11s. Önceki exactstaging/95tablo koruması kaydı aynı kaynağa ait.
+- Güncel1d49 canlı koruması sonrası SQL28Ekim235051Z bağımsızrestore/hash/list;143MB235105Z SQL/medya/anahtar/imaj kurtarma geçti. Production restore yok.
+- Coolify5d1e kaynak kaydı reload ile doğrulandı; tek fx6eu4ebhzvwmc10xpfi1or6 yayını28Ekim23:52:52UTC başladı. Bitiş/runtime/canlı HTTP bekleniyor. Ayrı859b303 lisans CI40789878719/PG123172159726 sürüyor; bu yayına katılmadı.
+
+## 29 Ekim 2026 — varlık eki namespace koruması canlıda
+- Tekfx6eu4ebhzvwmc10xpfi1or6 Success/Finished4m49s; gerçekweb/public5d1e,konteyner suffix20261028T235342. Runtime28Ekim23:58:33UTC exactimage/healthy/restart0/readonly/SMTP ve ödeme korumaları geçti.
+- DışHTTP23:58:54UTCexit0; üçhost200ready122/0,8plan/8galeri kaynak baytı, HTML/CSS/reset/anonim401/tenant404/rootadmin302 korundu. Migration veya productionrestore yok. Kanıt asset-media-production-release-20261029.md.
+- Sıradaki859b303 lisans kaynağı: yerel4/4geçmiş, CI40789878719/PG123172159726 hâlâ çalışıyor; stagePID99792504m09saktif, build.exit yok. SQL29Ekim000220Z independentrestore122 ve95tablo baseline/özelmedyaanahtarenv hazır; app henüzbaşlatılmadı. Hedef kapsamı korunur.
+
+## 29 Ekim 2026 — lisans dosya paketi exact staging geçti
+-859b303 serverbuild0 ve izole app/public çalışıyor. Güncel5d1e SQL000220Z bağımsızrestore122/95tablo baseline; runtime/HTTP/CSRF/platform sınırları ve95tablo korunması acceptance-probes.exit0 ile geçti. Gerçek filesystem4/4 yerel kanıt ayrı tutuldu.
+- CI40789878719/PG123172159726 aynı işte25m57s çalışıyor; yeniden başlatılmadı. Canlı5d1e tamamlandı, lisans henüzyayınlanmadı. TamHedef/P1/diğer medya ve gerçek kabul açık.

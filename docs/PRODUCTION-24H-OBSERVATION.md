@@ -1,3 +1,7 @@
+## 29 Ekim 2026 — güncel gözlem kaydı
+
+Canlı5d1e261/122, Coolifyfx6eu4ebhzvwmc10xpfi1or6 Success/Finished4m49s. Runtime28Ekim23:58:33UTC; dışHTTPS/erişim/kaynak başlangıç gözlemi23:58:54UTC geçti. Güncel geri dönüş `/var/backups/envantertr/rollback-20261028T235105Z`, SQL `pre-web-v1-20261028T235051Z.dump`. Bu kayıt tamamlanmış24saatlik gözlem iddiası değildir. Kanıt `tests/reports/asset-media-production-release-20261029.md`; aşağıdakiler tarihsel.
+
 ## 27 Ekim 2026 — güncel gözlem sürümü
 
 Güncel canlı **1d49ac1 / şema122/0**, Coolifydxlkeknxdqygasopecsv5kim Success/Finished4m21s. Runtime19:30:10UTC; dışHTTPS/erişim/kaynak sağlık başlangıç gözlemi **19:30:27UTC** geçti. Bu saat doğrulanmış gözlem başlangıcıdır; tamamlanmış24saatlik kayıt iddiası değildir. Güncel geri dönüş paketi `/var/backups/envantertr/rollback-20261027T192200Z`, SQL `pre-web-v1-20261027T192154Z.dump`. Kesin CI367/367+Linux/Windows, staging95tablo ve bağımsızrestore/kurtarma kanıtı `tests/reports/tenant-filter-production-release-20261027.md` içindedir. Aşağıdaki eski yayın yolları tarihseldir; mevcut izleme planı bu sürüm için uygulanır.

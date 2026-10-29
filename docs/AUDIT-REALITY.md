@@ -1,3 +1,9 @@
+## 29 Ekim 2026 — güncel canlı sürüm
+
+Canlı **5d1e261 / şema122/0**: varlık eklerinde yönlendirilmiş klasör/dosya üzerinden şirket sınırının aşılması engellendi. Yerel3/3 ve tamCI369/369+Linux/Windows, exactstaging ve güncel yedek/kurtarma sonrasında tek yayın/live runtime/üçhostHTTP kontrolleri geçti. Kanıt: `tests/reports/asset-media-production-release-20261029.md`.
+
+Lisans eki düzeltmesi859b303 ayrı pakettir: yerel4/4 geçti, CI/sunucu hazırlığı sürüyor; henüz canlı değil. TamHedef/P1, diğer medya yolları ve gerçekmerchant/müşteri kabulü açık. Aşağıdaki yayın kayıtları tarihseldir.
+
 ## 27 Ekim 2026 — güncel canlı şirket izolasyonu sürümü
 
 Canlı kaynak **1d49ac17082c861ec52e67f3214ad117d983fc50**, şema **122/0**. Doğrulanmış şirket bağlamına global sorgu filtresi ve tracked kayıt koruması eklendi; mevcut şirketin ödeme formu/bekleyen sipariş akışı sahiplik sınırlarıyla korundu. Tam CI40528142372: PostgreSQL367/367, Linux güvenlik ve Windows güvenliği başarılı. Kesin staging/95tablo korunması, güncel192154ZSQL bağımsız restore ve143MB192200Zgeri dönüş provası sonrası Coolifydxlkeknxdqygasopecsv5kim Success/Finished4m21s. Gerçek imaj/runtime ve üç alan adı HTTPS/source/erişim sınırları19:30UTC doğrulandı.
