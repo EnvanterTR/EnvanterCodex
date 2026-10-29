@@ -798,7 +798,9 @@ public static class AccountEndpoints
                 platformAdmin = user.HasClaim("platform_admin", "true"),
                 name = user.Identity?.Name,
                 hasPhoto = Guid.TryParse(userId, out var photoUserId) && new[] { "png", "jpg", "webp" }
-                    .Any(extension => System.IO.File.Exists(AccountPhotoPath(configuration, photoUserId, extension)))
+                    .Any(extension => CompanyMediaPathGuard.IsSafeAccountPath(configuration, photoUserId,
+                        AccountPhotoPath(configuration, photoUserId, extension)) &&
+                        System.IO.File.Exists(AccountPhotoPath(configuration, photoUserId, extension)))
             });
         }).RequireAuthorization();
 
@@ -1155,6 +1157,8 @@ public static class AccountEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Yalnızca doğrulanmış PNG, JPEG veya WebP fotoğraf yüklenebilir."] });
 
             var directory = AccountPhotoDirectory(configuration, userId);
+            if (!AccountPhotoPathsAreSafe(configuration, userId))
+                return Results.Conflict(new { message = "Profil fotoğrafı alanı güvenli biçimde kullanılamıyor." });
             Directory.CreateDirectory(directory);
             var tempPath = Path.Combine(directory, $"upload-{Guid.NewGuid():N}.tmp");
             var destination = AccountPhotoPath(configuration, userId, detected.Extension);
@@ -1196,6 +1200,7 @@ public static class AccountEndpoints
             foreach (var candidate in new[] { ("png", "image/png"), ("jpg", "image/jpeg"), ("webp", "image/webp") })
             {
                 var path = AccountPhotoPath(configuration, userId, candidate.Item1);
+                if (!CompanyMediaPathGuard.IsSafeAccountPath(configuration, userId, path)) return Results.NotFound();
                 if (!System.IO.File.Exists(path)) continue;
                 var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024,
                     FileOptions.Asynchronous | FileOptions.SequentialScan);
@@ -1210,6 +1215,7 @@ public static class AccountEndpoints
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
             if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
             var directory = AccountPhotoDirectory(configuration, userId);
+            if (!AccountPhotoPathsAreSafe(configuration, userId)) return Results.NotFound();
             var staged = new List<(string Original, string Temporary)>();
             try
             {
@@ -1304,6 +1310,10 @@ public static class AccountEndpoints
 
     private static string AccountPhotoPath(IConfiguration configuration, Guid userId, string extension) =>
         Path.Combine(AccountPhotoDirectory(configuration, userId), $"profile.{extension}");
+
+    private static bool AccountPhotoPathsAreSafe(IConfiguration configuration, Guid userId) =>
+        new[] { "png", "jpg", "webp" }.All(extension => CompanyMediaPathGuard.IsSafeAccountPath(configuration, userId,
+            AccountPhotoPath(configuration, userId, extension)));
 
     private static (string? ContentType, string Extension) DetectProfileImage(ReadOnlySpan<byte> bytes)
     {

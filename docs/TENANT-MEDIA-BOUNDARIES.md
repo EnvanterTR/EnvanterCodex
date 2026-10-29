@@ -20,7 +20,7 @@ Evidence date:29 October2026. This inventory tracks Hedef6.4/6.5; it does not ma
 | Accessory photos | AccessoryPhotoEndpoints.cs | CompanyId/accessories/id/photo | Same68f4d88 candidate; not yet live |
 | Company logo | OperationalEndpoints.cs | CompanyId/logo-file | Localf04d7a7; logo form500 fixed; combined company/employee photo6/6 passed; not pushed/deployed |
 | Employee photo | OperationalEndpoints.cs | CompanyId/employees/id/profile.ext | Localf04d7a7; all supported profile extensions validated before mutation; same6/6; not pushed/deployed |
-| Account profile photo | AccountEndpoints.cs:1302 | accounts/UserId | Account identity namespace, shared across memberships. Unchanged. Needs separate path/security evidence; not counted as a company-prefixed provider or closed requirement. |
+| Account profile photo | AccountEndpoints.cs:1302 | accounts/UserId | Account identity namespace retained across memberships. Local account-scope guard and archive checks passed7/7 focused tests; not yet pushed/deployed. It is not relabeled as a CompanyId-prefixed provider. |
 
 The configured root is trusted. The common guard checks each existing component below it, including the final file. This is not a claim of race-proof protection against a privileged host attacker.
 

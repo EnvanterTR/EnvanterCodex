@@ -2,16 +2,21 @@ namespace EnvanterTR.Web.Data;
 
 internal static class CompanyMediaPathGuard
 {
-    public static bool IsSafePath(IConfiguration configuration, Guid companyId, string path)
+    public static bool IsSafePath(IConfiguration configuration, Guid companyId, string path) =>
+        companyId != Guid.Empty && IsSafeScopedPath(configuration, companyId.ToString("N"), path);
+
+    public static bool IsSafeAccountPath(IConfiguration configuration, Guid userId, string path) =>
+        userId != Guid.Empty && IsSafeScopedPath(configuration, Path.Combine("accounts", userId.ToString("N")), path);
+
+    private static bool IsSafeScopedPath(IConfiguration configuration, string namespacePath, string path)
     {
-        if (companyId == Guid.Empty) return false;
         try
         {
             var root = Path.GetFullPath(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media");
-            var company = Path.Combine(root, companyId.ToString("N"));
+            var scope = Path.Combine(root, namespacePath);
             var fullPath = Path.GetFullPath(path);
             var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-            if (!fullPath.StartsWith(company + Path.DirectorySeparatorChar, comparison)) return false;
+            if (!fullPath.StartsWith(scope + Path.DirectorySeparatorChar, comparison)) return false;
 
             // The configured root is trusted. No existing component below it,
             // including the final file, may redirect into another namespace.

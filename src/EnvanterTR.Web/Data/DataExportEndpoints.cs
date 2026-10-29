@@ -1933,7 +1933,8 @@ public static class DataExportEndpoints
             foreach (var extension in new[] { "png", "jpg", "webp" })
             {
                 var profile = Path.Combine(profileDirectory, $"profile.{extension}");
-                if (!File.Exists(profile) || (File.GetAttributes(profile) & FileAttributes.ReparsePoint) != 0) continue;
+                if (!CompanyMediaPathGuard.IsSafeAccountPath(configuration, memberUserId, profile) ||
+                    !File.Exists(profile) || (File.GetAttributes(profile) & FileAttributes.ReparsePoint) != 0) continue;
                 files.Add((profile, $"media/account-profiles/{memberUserId:N}/profile.{extension}"));
                 totalBytes += new FileInfo(profile).Length;
                 if (files.Count > 100_000 || totalBytes > 4L * 1024 * 1024 * 1024)
