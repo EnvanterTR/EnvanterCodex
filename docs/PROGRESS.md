@@ -1044,3 +1044,5 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 29Ekim devam: kişisel çalışanEULAindirme alias düzeltmesi1/1yerelPostgreSQLsenaryosu2.1850dk/exit0geçti. Klasör+sondosyayönlendirmesi404,normalPDFgeri dönüşü,versiyon/onay/CSRF/audit/revocationkorundu. Kanıt:employee-eula-media-namespace-20261029.md; henüzcanlıdeğil.
 
 29Ekim: model/sözleşme/aksesuar ve stok siparişi ekleri ortakşirketdosya kontrolüne bağlandı.9/9yerelPostgreSQL4.0087dk/exit0 geçti:8klasör+dosyayönlendirmesi/normalgeri dönüş/silme,mevcutsözleşmeyetki/auditregresyonu. Kanıt:remaining-attachment-media-namespace-20261029.md. 2997062yayınındanayrı;henüzcanlıdeğil.
+
+29Ekim canlı2997062:CI40795019484üçişbaşarılı;exactstaging95tablokorunması,taze011055ZSQLrestoreve143MB011113Zkurtarmasısonrasıtekni0i63hoyapevy7ouo0cjgh3Success/Finished4m43s. Gerçekruntime01:19:20Zveüçhost/kaynak/galeri/sınırlar01:19:37Zexit0. Ayrıc386113yerel15testgeçmişpaketpush edildi;henüzcanlıdeğil. TamHedefaçık. Kanıt:employee-media-production-release-20261029.md.

@@ -1,3 +1,9 @@
+## 29 Ekim 2026 — lisans eki ve çalışan belgesi koruması canlıda
+
+Canlı **2997062290267e857ef489b14a8191ba404dd62a / şema122/0**. CI40795019484üçişbaşarılı;exactstaging95tablo özgün alan korunması;011055ZSQLhash/list/bağımsızrestoreve143MB011113ZSQL/medya/anahtar/imajkurtarması sonrası tekCoolifyni0i63hoyapevy7ouo0cjgh3Success/Finished4m43s. Gerçekimaj/runtime01:19:20Z,üçalanadıHTTP/kaynak/galeri/anonimvetenantplatformsınırları01:19:37Zdoğrulandı. Kanıt:tests/reports/employee-media-production-release-20261029.md.
+
+Ayrı **c386113** paketinde bakım/varlık siparişi,kişiselçalışanEULA,model/sözleşme/aksesuar+stoksiparişieklerikoruması yerel5/5+1/1+9/9geçti veGitHub'agönderildi;henüzcanlıdeğil. TamHedef/P1,diğermedya/fotoğrafyolları,gerçekmerchant/müşteri/imza/operatör/canlıçaprazkayıt/Demo3owner kabulü açık. Aşağıdakikayıtlartarihseldir.
+
 ## 29 Ekim 2026 — güncel canlı sürüm
 
 Canlı **5d1e261 / şema122/0**: varlık eklerinde yönlendirilmiş klasör/dosya üzerinden şirket sınırının aşılması engellendi. Yerel3/3 ve tamCI369/369+Linux/Windows, exactstaging ve güncel yedek/kurtarma sonrasında tek yayın/live runtime/üçhostHTTP kontrolleri geçti. Kanıt: `tests/reports/asset-media-production-release-20261029.md`.
