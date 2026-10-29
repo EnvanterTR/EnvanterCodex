@@ -1,8 +1,12 @@
+## 30 Ekim 2026 — model kapsamı denemesi ayrıldı
+
+BAŞARISIZ:ikiçalışmada4/7geçti,3/7IdentityPasskeyDatamodelhatası. İkiden fazla deneme yapılmadı. AppDbContextbağlantısıgeriçıkarıldı;ürünkodufarkıyok. Öneri/testlerderlemedışındaki.cs.txtartefaktlarındakorundu. Mevcutşirketsorgufiltreleriaynı;canlıvedeğerlendirilmiş8a07paketietkilenmedi. Hedef6.1açık. Kanıt:tests/reports/tenant-model-scope-20261030.md. ÜçüncüdenemedenöncefinalizeedilmişEFmodelikapsamıtasarlanmalı.
+
 ## 30 Ekim 2026 — profil/logo paketi staging kabulü
 
 Kesin8a07aec staging build0/prepare0; bellek sınırları ve yan etki engelleri, üçhostHTTP/erişim,95tablonun özgün alan korunması geçti(acceptance-probes.exit0,şema122/0). CI40971020704Linux/Windowsbaşarılı,PostgreSQLsürüyor;henüzcanlı68değişmedi. Kanıt:tests/reports/profile-media-stage-progress-20261030.md.
 
-Yeni TenantDataModelScope şirket verisinde eksik/geçersiz/boş bırakılabilir şirket kimliğini modelkurulumunda reddetmek üzere yerelde eklendi; ortakkimlik/paket ve4koşullutürkorundu. İlgili model+gerçekqueryscope testleri17734oturumunda sürüyor;DOĞRULANMADI. Şema/tarih/silmealanı değişikliği yok;Hedef6.1tamamlanmadı.
+Yeni TenantDataModelScope şirket verisinde eksik/geçersiz/boş bırakılabilir şirket kimliğini modelkurulumunda reddetmek üzere yerelde eklendi; ortakkimlik/paket ve4koşullutürkorundu. İlk model+queryscope testi4/7geçti;Identitypasskeyownedverisinde3başlangıçhatasıyereldekorundu. Sahipkapsamısınıflandırmasıdüzeltildi;6791oturumundakidüzeltilmiştestDOĞRULANMADI. Şema/tarih/silmealanı değişikliği yok;Hedef6.1tamamlanmadı.
 
 ## 30 Ekim 2026 — katalog görselleri yayını doğrulandı
 
