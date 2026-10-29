@@ -38,7 +38,8 @@ public sealed class SupportTicketEmailService(IConfiguration configuration, ISer
         string eventType, string? statusSnapshot, CancellationToken cancellationToken)
     {
         var recipient = await db.Users.AsNoTracking()
-            .Where(user => user.Id == ticket.CreatedByUserId && user.EmailConfirmed && user.Email != null)
+            .Where(user => user.Id == ticket.CreatedByUserId && user.EmailConfirmed && user.Email != null &&
+                db.CompanyMemberships.Any(member => member.CompanyId == ticket.CompanyId && member.UserId == user.Id))
             .Select(user => user.Email)
             .SingleOrDefaultAsync(cancellationToken);
         recipient = ValidAddress(recipient);
@@ -98,8 +99,26 @@ public sealed class SupportTicketEmailService(IConfiguration configuration, ISer
                                     join company in db.Companies.AsNoTracking() on ticket.CompanyId equals company.Id
                                     join requester in db.Users.AsNoTracking() on ticket.CreatedByUserId equals requester.Id
                                     where ticket.CompanyId == queued.CompanyId && ticket.Id == queued.TicketId
-                                    select new { ticket.Subject, company.Name, requester.DisplayName })
+                                    select new
+                                    {
+                                        ticket.Subject, company.Name, requester.DisplayName,
+                                        company.DeletedAt, requester.Email, requester.EmailConfirmed,
+                                        IsMember = db.CompanyMemberships.Any(member =>
+                                            member.CompanyId == queued.CompanyId && member.UserId == requester.Id)
+                                    })
                 .SingleOrDefaultAsync(cancellationToken);
+
+            // Queueing is not a lasting authorization grant. Recheck the destination
+            // before loading message content or transmitting it to the SMTP server.
+            if (ticketData is not null && (ticketData.DeletedAt is not null ||
+                (queued.IsSupportMailbox
+                    ? !string.Equals(ValidAddress(configuration["Support:Email"]), ValidAddress(queued.RecipientEmail), StringComparison.OrdinalIgnoreCase)
+                    : !ticketData.IsMember || !ticketData.EmailConfirmed ||
+                      !string.Equals(ValidAddress(ticketData.Email), ValidAddress(queued.RecipientEmail), StringComparison.OrdinalIgnoreCase))))
+            {
+                await RetryLaterAsync(db, queued, "SupportEmailRecipientNoLongerAuthorized", claimedAt, cancellationToken);
+                continue;
+            }
             var messageBody = queued.MessageId is null ? null : await db.SupportTicketMessages.AsNoTracking()
                 .Where(message => message.CompanyId == queued.CompanyId && message.TicketId == queued.TicketId && message.Id == queued.MessageId)
                 .Select(message => message.Body).SingleOrDefaultAsync(cancellationToken);

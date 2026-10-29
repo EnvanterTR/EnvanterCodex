@@ -1,3 +1,7 @@
+## 30 Ekim 2026 — destek e-postasında güncel alıcı yetkisi
+
+Destek kuyruğu gönderim öncesi şirket üyeliğini, e-posta doğrulamasını/adres eşleşmesini, silinmemiş şirketi ve güncel destek posta kutusunu yeniden kontrol ediyor. Yetkisiz alıcıya SMTP yok; mevcut retry/backoff korunuyor. Beş izin değişimi ve mevcut tam destek akışı:6/6PostgreSQL/SMTPkabulü,1.1612dakika,exit0/temizlik başarılı. Yerelde;henüzcanlıdeğil. Kanıt:tests/reports/support-email-recipient-scope-20261030.md. TamHedef/P1açık.
+
 ## 30 Ekim 2026 — model kapsamı denemesi ayrıldı
 
 BAŞARISIZ:ikiçalışmada4/7geçti,3/7IdentityPasskeyDatamodelhatası. İkiden fazla deneme yapılmadı. AppDbContextbağlantısıgeriçıkarıldı;ürünkodufarkıyok. Öneri/testlerderlemedışındaki.cs.txtartefaktlarındakorundu. Mevcutşirketsorgufiltreleriaynı;canlıvedeğerlendirilmiş8a07paketietkilenmedi. Hedef6.1açık. Kanıt:tests/reports/tenant-model-scope-20261030.md. ÜçüncüdenemedenöncefinalizeedilmişEFmodelikapsamıtasarlanmalı.
