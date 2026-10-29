@@ -1,3 +1,11 @@
+## 29 Ekim 2026 — ek dosyası korumaları canlıda
+
+Canlı kaynak **c386113671eed23ef564deb4ba904378cbd7130e**, şema **122/0**. Bakım, model, sözleşme ve üç satın alma siparişi ekleri ile çalışanın EULA indirme yolu ortak şirket dosya kontrolüne bağlandı. CI40799655866 üç işte başarılı. Kesin kaynak staging ve 95 tablonun özgün alan korunması geçti. Taze172949Z SQL bağımsız geri yüklemesi ve143MB172956Z SQL/medya/anahtar/imaj geri dönüş provasından sonra Coolify `pjm2ptmwauornyistja3brsa` tek yayında Success/Finished4m42s tamamlandı.
+
+Gerçek imaj ve çalışma ayarları17:38:39UTC, üç alan adı sağlık/kaynak/galeri/yetki sınırları17:39:02UTC doğrulandı. Kanıt: `tests/reports/attachment-media-production-release-20261029.md`.
+
+Ayrı `68f4d88` katalog ve aksesuar görseli paketi12/12 yerel testten geçti, CI sürecinde; henüz canlı değil. Şirket logosu/çalışan fotoğrafı koruması ayrı yerel testte. Tam Hedef/P1, kalan medya kanıtları ve gerçek merchant/müşteri/imza/operatör/iki yönlü canlı kayıt/Demo3owner kabulü açık. Aşağıdaki kayıtlar tarihseldir.
+
 ## 29 Ekim 2026 — lisans eki ve çalışan belgesi koruması canlıda
 
 Canlı **2997062290267e857ef489b14a8191ba404dd62a / şema122/0**. CI40795019484üçişbaşarılı;exactstaging95tablo özgün alan korunması;011055ZSQLhash/list/bağımsızrestoreve143MB011113ZSQL/medya/anahtar/imajkurtarması sonrası tekCoolifyni0i63hoyapevy7ouo0cjgh3Success/Finished4m43s. Gerçekimaj/runtime01:19:20Z,üçalanadıHTTP/kaynak/galeri/anonimvetenantplatformsınırları01:19:37Zdoğrulandı. Kanıt:tests/reports/employee-media-production-release-20261029.md.
