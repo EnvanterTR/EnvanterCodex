@@ -1,3 +1,9 @@
+## 29 Ekim 2026 — yayın sırasında erişim kesintisi, sonuç doğrulanamadı
+
+`68f4d88` tam CI ve exact staging/kurtarma provasından sonra tek Coolify yayını `a2deghcp2kp3g4o6bqgpxwtw` ile başlatıldı. Sonraki gözlemde site522, Coolify502/504, SSH banner zaman aşımı verdi. Yayının bitişi ve çalışan sürüm henüz doğrulanamadı; son tam doğrulanmış üretimc386113. Yeni yayın/rollback/üretimrestore yapılmadı. Öncelik sunucu erişimi ve mevcut dağıtımın durumudur. Kanıt: `tests/reports/catalog-media-production-release-20261029.md`.
+
+Ayrıa946a7e CI40929215538: Linux güvenlik ve Windows başarılı, PostgreSQL sürüyor. Tam Hedef/P1 ve gerçek müşteri/merchant kabulü açık. Aşağıdaki kayıtlar tarihseldir.
+
 ## 27 Ekim 2026 — son90cCIgeçti,tazekurtarma sonrası yayınbaşladı
 - KesinCI40442423575üçişbaşarılı;PG12198589182642m34s. Son test sayısı henüzvirtualizedlogdanokunmadı; eskisayıtaşınmadı. PRAllcheckshavepassed/3successgösterdi.
 - Yeniden taze054146ZSQLdump/hash/list/ayrıclone122/95restoreve143MB054153Zmevcut27eSQL/medya/anahtar/imajkurtarmasıgeçti. Kaynak90cSHAreloadilekalıcıdoğrulandı.
