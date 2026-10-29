@@ -1034,3 +1034,9 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 ## 29 Ekim 2026 — lisans dosya paketi exact staging geçti
 -859b303 serverbuild0 ve izole app/public çalışıyor. Güncel5d1e SQL000220Z bağımsızrestore122/95tablo baseline; runtime/HTTP/CSRF/platform sınırları ve95tablo korunması acceptance-probes.exit0 ile geçti. Gerçek filesystem4/4 yerel kanıt ayrı tutuldu.
 - CI40789878719/PG123172159726 aynı işte25m57s çalışıyor; yeniden başlatılmadı. Canlı5d1e tamamlandı, lisans henüzyayınlanmadı. TamHedef/P1/diğer medya ve gerçek kabul açık.
+
+## 29 Ekim 2026 — çalışan belgesi staging ve operasyonel ekler
+- 2997062 exact staging build exit0; izole web/public açıldı. Runtime, üçhost HTTP yetki sınırları ve95tablo özgün alan korunması exit0; şema122/0. Taze004736ZSQL bağımsızclone restore geçti. CI40795019484 Linux8m00s/Windows3m17s başarılı; PostgreSQL aynıjob123189271005 sürüyor. Canlı5d1e261 korunuyor.
+- Ayrı1822c2a bakım/satınalma eki şirket dosya koruması:5/5yerelPostgreSQLtesti,exit0,1.9645dk. Normalupload/audit/arşiv/silme veikiendpoint için klasör/sondosya yönlendirmesi kapsamı. CI kesilmesin diye henüzpush edilmedi.
+- Kişisel çalışan EULA indirme alias'ında eksik fullpath kontrolü bulundu; kaynak düzeltildi, mevcutEULAversiyon/onay/audit testine klasör+sondosya sızıntı regresyonu eklendi; yereltest henüz çalışıyor. Geçti denmiyor.
+- Kanıt: employee-media-stage-progress-20261029.md; operational-attachment-media-namespace-20261029.md. TamHedef/P1/diğermedyayolları ve gerçekmerchant/müşteri kabulü açık.

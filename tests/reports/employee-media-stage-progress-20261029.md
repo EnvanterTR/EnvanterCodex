@@ -13,3 +13,7 @@ Clone: envantertr_stage_2997062 in existing isolated stage database. Media and k
 Remaining: observe same build to terminal result, start exact stage containers, run runtime/HTTP/95-table-preservation probes, wait same CI to terminal result, fresh release recovery drill before any production deployment. Current production remains5d1e261.
 
 Separate local follow-up1822c2a: maintenance/purchase-order media protection,5/5local tests passed, not pushed while this CI is running; not part of2997062 stage.
+
+## Exact staging completed (subsequent observation)
+
+Build exit0; envtr-stage-web-2997062 and envtr-stage-public-2997062 started on internal network without public ports. Runtime isolation/side-effect guards, three-host HTTP boundaries and all95table original-field preservation probes completed with acceptance-probes.exit0. Schema122/0, no migration applied. Evidence: employee-media-stage-pass-20261029.png; exact scripts stage-start/runtime-guards/http-probe/preservation. This does not close full Hedef or real-customer acceptance. CI PostgreSQL remains pending; no production deployment performed.
