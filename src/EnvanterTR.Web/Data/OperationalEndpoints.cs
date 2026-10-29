@@ -218,10 +218,12 @@ public static class OperationalEndpoints
                 tenantUrl = string.IsNullOrWhiteSpace(rootDomain) ? null : $"https://{company.Slug}.{rootDomain}" });
         }).RequireAuthorization("settings.manage");
 
-        api.MapPost("/company/branding/logo", async ([FromForm] IFormFile? logo, ClaimsPrincipal user,
+        api.MapPost("/company/branding/logo", async (HttpRequest request, ClaimsPrincipal user,
             AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
         {
             if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            if (!request.HasFormContentType) return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
+            var logo = (await request.ReadFormAsync(cancellationToken)).Files.GetFile("logo");
             if (logo is null || logo.Length is < 1 or > 2_097_152)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["logo"] = ["Logo 1 bayt ile 2 MB arasında olmalıdır."] });
             await using var buffer = new MemoryStream();
@@ -234,11 +236,15 @@ public static class OperationalEndpoints
             var company = await db.Companies.SingleOrDefaultAsync(x => x.Id == companyId, cancellationToken);
             if (company is null) return Results.NotFound();
             var directory = Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media", companyId.ToString("N"));
-            Directory.CreateDirectory(directory);
             var fileName = $"{Guid.NewGuid():N}.{extension}";
             var destination = Path.Combine(directory, fileName);
-            await System.IO.File.WriteAllBytesAsync(destination, bytes, cancellationToken);
             var previous = company.BrandLogoPath;
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, destination) ||
+                (previous is not null && (!Regex.IsMatch(previous, "^[a-fA-F0-9]{32}\\.(png|jpg|webp)$", RegexOptions.CultureInvariant) ||
+                    !CompanyMediaPathGuard.IsSafePath(configuration, companyId, Path.Combine(directory, previous)))))
+                return Results.Conflict(new { message = "Logo alanı güvenli biçimde kullanılamıyor. Şirket yöneticinize başvurun." });
+            Directory.CreateDirectory(directory);
+            await System.IO.File.WriteAllBytesAsync(destination, bytes, cancellationToken);
             company.BrandLogoPath = fileName;
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
                 TargetType = "Company", TargetId = companyId, Action = "BrandLogoUpdated", Details = "Şirket logosu değiştirildi." });
@@ -261,7 +267,8 @@ public static class OperationalEndpoints
             if (fileName is null || !Regex.IsMatch(fileName, "^[a-fA-F0-9]{32}\\.(png|jpg|webp)$", RegexOptions.CultureInvariant))
                 return Results.NotFound();
             var path = Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media", companyId.ToString("N"), fileName);
-            if (!System.IO.File.Exists(path)) return Results.NotFound();
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path) || !System.IO.File.Exists(path))
+                return Results.NotFound();
             var contentType = Path.GetExtension(fileName) switch { ".png" => "image/png", ".jpg" => "image/jpeg", _ => "image/webp" };
             return Results.File(await System.IO.File.ReadAllBytesAsync(path, cancellationToken), contentType,
                 enableRangeProcessing: false);
@@ -737,6 +744,8 @@ public static class OperationalEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Yalnızca doğrulanmış PNG, JPEG veya WebP fotoğraf yüklenebilir."] });
 
             var directory = EmployeePhotoDirectory(configuration, companyId, id);
+            if (!EmployeePhotoPathsAreSafe(configuration, companyId, id))
+                return Results.Conflict(new { message = "Fotoğraf alanı güvenli biçimde kullanılamıyor. Şirket yöneticinize başvurun." });
             Directory.CreateDirectory(directory);
             var temporaryPath = Path.Combine(directory, $"upload-{Guid.NewGuid():N}.tmp");
             var destination = Path.Combine(directory, $"profile.{detected.Extension}");
@@ -793,6 +802,7 @@ public static class OperationalEndpoints
             foreach (var candidate in new[] { ("png", "image/png"), ("jpg", "image/jpeg"), ("webp", "image/webp") })
             {
                 var path = Path.Combine(directory, $"profile.{candidate.Item1}");
+                if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path)) return Results.NotFound();
                 if (!System.IO.File.Exists(path)) continue;
                 var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024,
                     FileOptions.Asynchronous | FileOptions.SequentialScan);
@@ -810,6 +820,7 @@ public static class OperationalEndpoints
             if (employee is null || !await CompanyLocationAccess.CanAccessEmployeeAsync(db, companyId, actorId, employee.LocationCatalogId, employee.CompanyUnitId, cancellationToken))
                 return Results.NotFound();
             var directory = EmployeePhotoDirectory(configuration, companyId, id);
+            if (!EmployeePhotoPathsAreSafe(configuration, companyId, id)) return Results.NotFound();
             var quarantined = new List<(string Original, string Temporary)>();
             try
             {
@@ -2874,6 +2885,10 @@ public static class OperationalEndpoints
     private static string EmployeePhotoDirectory(IConfiguration configuration, Guid companyId, Guid employeeId) =>
         Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media",
             companyId.ToString("N"), "employees", employeeId.ToString("N"));
+
+    private static bool EmployeePhotoPathsAreSafe(IConfiguration configuration, Guid companyId, Guid employeeId) =>
+        new[] { "png", "jpg", "webp" }.All(extension => CompanyMediaPathGuard.IsSafePath(configuration, companyId,
+            Path.Combine(EmployeePhotoDirectory(configuration, companyId, employeeId), $"profile.{extension}")));
 
     private static string EmployeeDocumentDirectory(IConfiguration configuration, Guid companyId, Guid employeeId) =>
         Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media",
