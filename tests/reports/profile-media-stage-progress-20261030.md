@@ -11,3 +11,5 @@ Previous30 obsolete stage apps are stopped; no deletion. Current68 stage retaine
 ## Final staging result
 
 Both builds exited0; prepare.exit0. Bounded web/public containers started. Runtime side-effect and memory limits, three-host HTTP/proxy/CSRF/anonymous/platform boundaries and all95 original table field projections passed; acceptance-probes.exit0, schema122/0. Evidence:profile-media-stage-pass-20261030.png. CI40971020704 remains running: Linuxsecurity7m54s and Windows5m21s completed; PostgreSQL still active. No new live deployment. Do not rerun passed stage probes.
+
+Release recovery and post-release runtime/health/boundary scripts prepared for exact8a07aec, current production68f4d883. Do not execute release recovery or change Coolify SHA until CI40971020704 is terminal-success. PostgreSQL job123787478853 is still producing passing tests (observed log3618); do not restart/push. The failed model-scope proposal is isolated outside product/test projects and is not part of this release.
