@@ -7,3 +7,7 @@ Private stage/var/lib/envantertr-staging/8a07aec-20261030. Single build process3
 Build completion, starting the bounded-memory containers, runtime/HTTP/preservation probes, fullCI, fresh release recovery and deployment remain open. Proposed web limit768MiB/1CPU, public128MiB/0.25CPU; scripts prepared but not executed. Current production remains68f4d883.
 
 Previous30 obsolete stage apps are stopped; no deletion. Current68 stage retained. FullHedef/P1/realcustomer/merchant acceptance remains open. This staging preparation is not a live completion claim.
+
+## Final staging result
+
+Both builds exited0; prepare.exit0. Bounded web/public containers started. Runtime side-effect and memory limits, three-host HTTP/proxy/CSRF/anonymous/platform boundaries and all95 original table field projections passed; acceptance-probes.exit0, schema122/0. Evidence:profile-media-stage-pass-20261030.png. CI40971020704 remains running: Linuxsecurity7m54s and Windows5m21s completed; PostgreSQL still active. No new live deployment. Do not rerun passed stage probes.

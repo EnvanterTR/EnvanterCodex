@@ -1,3 +1,9 @@
+## 30 Ekim 2026 — profil/logo paketi staging kabulü
+
+Kesin8a07aec staging build0/prepare0; bellek sınırları ve yan etki engelleri, üçhostHTTP/erişim,95tablonun özgün alan korunması geçti(acceptance-probes.exit0,şema122/0). CI40971020704Linux/Windowsbaşarılı,PostgreSQLsürüyor;henüzcanlı68değişmedi. Kanıt:tests/reports/profile-media-stage-progress-20261030.md.
+
+Yeni TenantDataModelScope şirket verisinde eksik/geçersiz/boş bırakılabilir şirket kimliğini modelkurulumunda reddetmek üzere yerelde eklendi; ortakkimlik/paket ve4koşullutürkorundu. İlgili model+gerçekqueryscope testleri17734oturumunda sürüyor;DOĞRULANMADI. Şema/tarih/silmealanı değişikliği yok;Hedef6.1tamamlanmadı.
+
 ## 30 Ekim 2026 — katalog görselleri yayını doğrulandı
 
 Aynı Coolifya2deghcp2kp3g4o6bqgpxwtw yayını Success/Finished40m58s tamamlandı. Gerçek web/public imajı68f4d883; üçservis running/zero restart,DBhealthy,şema122/0. Ana alan/Santa/Farma sağlık,galeri/kaynak ve erişim sınırı kontrolleri exit0. Kesinti sonrası yeni deploy/restore yapılmadı. Kanıt:tests/reports/catalog-media-production-release-20261029.md.
