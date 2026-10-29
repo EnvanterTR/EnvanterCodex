@@ -102,7 +102,7 @@ public sealed class SupportTicketEmailService(IConfiguration configuration, ISer
                                     select new
                                     {
                                         ticket.Subject, company.Name, requester.DisplayName,
-                                        company.DeletedAt, requester.Email, requester.EmailConfirmed,
+                                        company.IsActive, company.DeletedAt, requester.Email, requester.EmailConfirmed,
                                         IsMember = db.CompanyMemberships.Any(member =>
                                             member.CompanyId == queued.CompanyId && member.UserId == requester.Id)
                                     })
@@ -110,7 +110,7 @@ public sealed class SupportTicketEmailService(IConfiguration configuration, ISer
 
             // Queueing is not a lasting authorization grant. Recheck the destination
             // before loading message content or transmitting it to the SMTP server.
-            if (ticketData is not null && (ticketData.DeletedAt is not null ||
+            if (ticketData is not null && (!ticketData.IsActive || ticketData.DeletedAt is not null ||
                 (queued.IsSupportMailbox
                     ? !string.Equals(ValidAddress(configuration["Support:Email"]), ValidAddress(queued.RecipientEmail), StringComparison.OrdinalIgnoreCase)
                     : !ticketData.IsMember || !ticketData.EmailConfirmed ||

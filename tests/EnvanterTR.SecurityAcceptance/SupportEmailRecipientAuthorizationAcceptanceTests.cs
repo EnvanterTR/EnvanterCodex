@@ -12,6 +12,7 @@ public sealed partial class TenantSessionAcceptanceTests
     [InlineData("email")]
     [InlineData("confirmation")]
     [InlineData("deleted-company")]
+    [InlineData("inactive-company")]
     [InlineData("support-mailbox")]
     public async Task Queued_support_email_rechecks_current_recipient_access_before_sending(string change)
     {
@@ -37,10 +38,11 @@ public sealed partial class TenantSessionAcceptanceTests
                 await db.CompanyMemberships.Where(member => member.CompanyId == _companyId && member.UserId == requester.Id).ExecuteDeleteAsync();
             if (change == "email") requester.Email = $"changed-{Guid.NewGuid():N}@example.invalid";
             if (change == "confirmation") requester.EmailConfirmed = false;
-            if (change == "deleted-company")
+            if (change is "deleted-company" or "inactive-company")
             {
                 var company = await db.Companies.SingleAsync(row => row.Id == _companyId);
-                company.IsActive = false; company.DeletedAt = DateTimeOffset.UtcNow;
+                company.IsActive = false;
+                if (change == "deleted-company") company.DeletedAt = DateTimeOffset.UtcNow;
             }
             db.SupportTickets.Add(ticket); db.SupportTicketEmailOutbox.Add(queued);
             await db.SaveChangesAsync(); await transaction.CommitAsync();
@@ -65,7 +67,7 @@ public sealed partial class TenantSessionAcceptanceTests
             requester.Email = recipient; requester.EmailConfirmed = true;
             if (change == "membership") db.CompanyMemberships.Add(new CompanyMembership
             { CompanyId = _companyId, UserId = requester.Id, RoleKey = "viewer" });
-            if (change == "deleted-company")
+            if (change is "deleted-company" or "inactive-company")
             {
                 var company = await db.Companies.SingleAsync(row => row.Id == _companyId);
                 company.DeletedAt = null; company.IsActive = true;

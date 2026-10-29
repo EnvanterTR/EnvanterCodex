@@ -1,3 +1,7 @@
+## 30 Ekim 2026 — pasif şirket e-postası da bekletiliyor
+
+Destek API'sinin aktifşirket kuralı SMTPgönderimiyleeşlendi. Ayrıpasifşirket vakası ve önceki kontroller:7/7PostgreSQL/SMTPtesti,1.1964dakika,exit0/temizlikbaşarılı. Yerelkod,testvekanıtkaydedildi;henüzcanlıdeğil. Profil/logo canlı8a07ilekarıştırılmamalı. Kanıt:tests/reports/support-email-recipient-scope-20261030.md. TamHedef/P1açık.
+
 ## 30 Ekim 2026 — profil ve logo dosya korumaları canlıda
 
 Canlı8a07aec93969c42abb0fc0ac272be358ebd11e40,şema122/0. Hesapfotoğrafı/ZIP,şirketlogosu,çalışanfotoğrafıveplatformlogo yolları korundu;şirketlogo multipart500düzeltildi,CSRFkorundu. TamCI40971020704üçişbaşarılı;exactstaging95tabloözgünalankorunması;taze234551ZSQLbağımsızrestore/143MB234600ZkurtarmasonrasıtekCoolifytnxno2lve07vbiehbcu8orakSuccess/Finished4m02s. Gerçekimaj/runtime23:53:31Z,üçhostsağlık/kaynak/galeri/erişimsınırları23:53:49Zdoğrulandı. Kanıt:tests/reports/profile-media-production-release-20261030.md.
