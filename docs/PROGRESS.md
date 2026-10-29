@@ -1040,3 +1040,5 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Ayrı1822c2a bakım/satınalma eki şirket dosya koruması:5/5yerelPostgreSQLtesti,exit0,1.9645dk. Normalupload/audit/arşiv/silme veikiendpoint için klasör/sondosya yönlendirmesi kapsamı. CI kesilmesin diye henüzpush edilmedi.
 - Kişisel çalışan EULA indirme alias'ında eksik fullpath kontrolü bulundu; kaynak düzeltildi, mevcutEULAversiyon/onay/audit testine klasör+sondosya sızıntı regresyonu eklendi; yereltest henüz çalışıyor. Geçti denmiyor.
 - Kanıt: employee-media-stage-progress-20261029.md; operational-attachment-media-namespace-20261029.md. TamHedef/P1/diğermedyayolları ve gerçekmerchant/müşteri kabulü açık.
+
+29Ekim devam: kişisel çalışanEULAindirme alias düzeltmesi1/1yerelPostgreSQLsenaryosu2.1850dk/exit0geçti. Klasör+sondosyayönlendirmesi404,normalPDFgeri dönüşü,versiyon/onay/CSRF/audit/revocationkorundu. Kanıt:employee-eula-media-namespace-20261029.md; henüzcanlıdeğil.

@@ -11960,6 +11960,36 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Contains("no-store", ownFile.Headers.CacheControl?.ToString() ?? "", StringComparison.OrdinalIgnoreCase);
             Assert.Contains("Employee EULA version 1", await ownFile.Content.ReadAsStringAsync());
         }
+        var ownEulaDirectory = Path.Combine(_mediaPath, _companyId.ToString("N"), "licenses", _ownLicenseId.ToString("N"), "attachments");
+        var ownEulaPath = Path.Combine(ownEulaDirectory, $"{eulaId:N}.pdf");
+        var foreignEulaDirectory = Path.Combine(_mediaPath, _otherCompanyId.ToString("N"), "licenses", _otherCompanyLicenseId.ToString("N"), "attachments");
+        Directory.CreateDirectory(foreignEulaDirectory);
+        var foreignEulaPath = Path.Combine(foreignEulaDirectory, $"{eulaId:N}.pdf");
+        var foreignEulaBytes = Encoding.ASCII.GetBytes("%PDF-1.7\nForeign employee EULA must remain private\n%%EOF");
+        await File.WriteAllBytesAsync(foreignEulaPath, foreignEulaBytes);
+        foreach (var directoryLink in new[] { true, false })
+        {
+            var link = directoryLink ? ownEulaDirectory : ownEulaPath;
+            var original = link + ".original";
+            if (directoryLink) { Directory.Move(link, original); Directory.CreateSymbolicLink(link, foreignEulaDirectory); }
+            else { File.Move(link, original); File.CreateSymbolicLink(link, foreignEulaPath); }
+            try
+            {
+                using var redirected = await SendAsUserAsync(HttpMethod.Get,
+                    $"/api/session/software-licenses/{assignmentId}/eula", _userId, _companyId);
+                Assert.Equal(HttpStatusCode.NotFound, redirected.StatusCode);
+                Assert.Equal(foreignEulaBytes, await File.ReadAllBytesAsync(foreignEulaPath));
+            }
+            finally
+            {
+                if (directoryLink) { Directory.Delete(link); Directory.Move(original, link); }
+                else { File.Delete(link); File.Move(original, link); }
+            }
+            using var restoredEula = await SendAsUserAsync(HttpMethod.Get,
+                $"/api/session/software-licenses/{assignmentId}/eula", _userId, _companyId);
+            Assert.Equal(HttpStatusCode.OK, restoredEula.StatusCode);
+            Assert.Contains("Employee EULA version 1", await restoredEula.Content.ReadAsStringAsync());
+        }
         using (var noCsrf = await SendAsUserAsync(HttpMethod.Post, $"/api/session/software-licenses/{assignmentId}/eula/accept", _userId, _companyId,
                    JsonContent.Create(new { eulaAttachmentId = eulaId, confirmed = true })))
             Assert.Equal(HttpStatusCode.BadRequest, noCsrf.StatusCode);
