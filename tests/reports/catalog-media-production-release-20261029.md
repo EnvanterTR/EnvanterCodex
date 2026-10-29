@@ -23,3 +23,15 @@ Evidence: `catalog-media-deployment-unavailable-20261029.png`. Preserve the same
 Remotea946a7e includes company-logo/employee-photo and account-photo/ZIP guards (focused6/6 and7/7). CI40929215538: Linux security8m03s and Windows4m18s succeeded; PostgreSQL job123642847553 still running at19minutes. No restart/push while this run is active.
 
 Hedef/P1 and real merchant/customer acceptance remain open. Tenant audit field counts are recorded separately; no schema mutation was made.
+
+## Final live verification — 30 October2026 (Europe/Istanbul)
+
+The same deployment completed Success/Finished in40m58s, started29October18:23:03UTC. No replacement deployment or production restore was launched. Production web/public/database suffix20261029T182336.
+
+Runtime verification29October23:00:57UTC passed: exact68f4d883 image tags for web/public, all three running with zero restarts, database healthy, read-only web root, Google TLS relay587 without SMTP authentication, correct HTTPS callback, no real merchant keys and public trials disabled. Evidence:catalog-media-live-runtime-pass-20261030.png.
+
+External health/source/access checks29October22:59UTC passed with exit0: apex/Santa/Farma200ready122/0; eightplans; checkout/trials unavailable; gallery CSS/JS/siximages exactSHA256; company/resetHTML/onboardingCSS exactsource; anonymous protected endpoints401; tenant platform pages/API/reauth404; root/wwwadmin relative302/no session cookie. Logs:catalog-media-live-health-20261029.log andcatalog-media-live-boundaries-20261029.log. Finished deployment screenshot:catalog-media-deployment-finished-20261030.png.
+
+Current verified production is68f4d883. Earlier outage observations above are retained, not erased. Kernel logs show OOM-killed dotnet processes; the exact causal chain for the deployment outage has not been proved. Old private stage applications were inventoried for reversible cleanup separately.
+
+Separatea946a7e CI40929215538 finished all three jobs successfully: Linuxsecurity8m03s, PostgreSQL45m39s, Windows4m18s. No final test count inferred. This separate account/branding candidate is not live. Platform-logo8a07aec subsequently passed2/2 local tests and is not part ofa946CI or live68. Full Hedef remains open.

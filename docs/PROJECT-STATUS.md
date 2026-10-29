@@ -1,3 +1,9 @@
+## 30 Ekim 2026 — katalog görselleri yayını doğrulandı
+
+Aynı Coolifya2deghcp2kp3g4o6bqgpxwtw yayını Success/Finished40m58s tamamlandı. Gerçek web/public imajı68f4d883; üçservis running/zero restart,DBhealthy,şema122/0. Ana alan/Santa/Farma sağlık,galeri/kaynak ve erişim sınırı kontrolleri exit0. Kesinti sonrası yeni deploy/restore yapılmadı. Kanıt:tests/reports/catalog-media-production-release-20261029.md.
+
+Ayrıa946CI40929215538üçişbaşarılı. Sonraki platformlogo8a07aec yerel2/2geçti,henüzCI/canlıdeğil. TamHedef/P1,müşteri kabulü,tablo audit alanları ve gerçekmerchant açık. Alttaki kesinti ve eski sürüm kayıtları tarihseldir.
+
 ## 29 Ekim 2026 — yayın sırasında erişim kesintisi, sonuç doğrulanamadı
 
 `68f4d88` tam CI ve exact staging/kurtarma provasından sonra tek Coolify yayını `a2deghcp2kp3g4o6bqgpxwtw` ile başlatıldı. Sonraki gözlemde site522, Coolify502/504, SSH banner zaman aşımı verdi. Yayının bitişi ve çalışan sürüm henüz doğrulanamadı; son tam doğrulanmış üretimc386113. Yeni yayın/rollback/üretimrestore yapılmadı. Öncelik sunucu erişimi ve mevcut dağıtımın durumudur. Kanıt: `tests/reports/catalog-media-production-release-20261029.md`.
