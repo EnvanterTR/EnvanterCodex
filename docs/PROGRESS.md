@@ -1042,3 +1042,5 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Kanıt: employee-media-stage-progress-20261029.md; operational-attachment-media-namespace-20261029.md. TamHedef/P1/diğermedyayolları ve gerçekmerchant/müşteri kabulü açık.
 
 29Ekim devam: kişisel çalışanEULAindirme alias düzeltmesi1/1yerelPostgreSQLsenaryosu2.1850dk/exit0geçti. Klasör+sondosyayönlendirmesi404,normalPDFgeri dönüşü,versiyon/onay/CSRF/audit/revocationkorundu. Kanıt:employee-eula-media-namespace-20261029.md; henüzcanlıdeğil.
+
+29Ekim: model/sözleşme/aksesuar ve stok siparişi ekleri ortakşirketdosya kontrolüne bağlandı.9/9yerelPostgreSQL4.0087dk/exit0 geçti:8klasör+dosyayönlendirmesi/normalgeri dönüş/silme,mevcutsözleşmeyetki/auditregresyonu. Kanıt:remaining-attachment-media-namespace-20261029.md. 2997062yayınındanayrı;henüzcanlıdeğil.

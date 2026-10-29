@@ -58,12 +58,10 @@ public static partial class AssetContractAttachmentEndpoints
             var storageName = $"{attachmentId:N}.{detected.Value.Extension}";
             var originalName = CleanName(upload.FileName, detected.Value.Extension);
             var directory = AttachmentDirectory(configuration, companyId, id);
-            if (HasReparsePoint(configuration, companyId, id))
-                return Results.Problem("Sözleşme eki deposu güvenli bir dizin olmalıdır.", statusCode: StatusCodes.Status500InternalServerError);
-            Directory.CreateDirectory(directory);
-            if (HasReparsePoint(configuration, companyId, id))
-                return Results.Problem("Sözleşme eki deposu güvenli bir dizin olmalıdır.", statusCode: StatusCodes.Status500InternalServerError);
             var path = Path.Combine(directory, storageName);
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path))
+                return Results.Conflict(new { message = "Dosya alanı güvenli biçimde kullanılamıyor. Şirket yöneticinize başvurun." });
+            Directory.CreateDirectory(directory);
             var attachment = new AssetContractAttachment
             {
                 Id = attachmentId, CompanyId = companyId, ContractId = id, UploadedByUserId = actorId,
@@ -98,9 +96,9 @@ public static partial class AssetContractAttachmentEndpoints
             if (!await AssetContractLocationAccess.CanAccessAsync(db, companyId, id, employeeScope, ct)) return Results.NotFound();
             var item = await db.AssetContractAttachments.AsNoTracking().SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.ContractId == id && x.Id == attachmentId, ct);
-            if (item is null || !SafeStorageName(item.StorageFileName) || HasReparsePoint(configuration, companyId, id)) return Results.NotFound();
+            if (item is null || !SafeStorageName(item.StorageFileName)) return Results.NotFound();
             var path = Path.Combine(AttachmentDirectory(configuration, companyId, id), item.StorageFileName);
-            if (!System.IO.File.Exists(path)) return Results.NotFound();
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path) || !System.IO.File.Exists(path)) return Results.NotFound();
             var bytes = await System.IO.File.ReadAllBytesAsync(path, ct);
             if (bytes.LongLength != item.Length || !ValidSha256(item.Sha256) ||
                 !CryptographicOperations.FixedTimeEquals(SHA256.HashData(bytes), Convert.FromHexString(item.Sha256!)))
@@ -118,16 +116,15 @@ public static partial class AssetContractAttachmentEndpoints
             var item = await db.AssetContractAttachments.SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.ContractId == id && x.Id == attachmentId, ct);
             if (item is null) return Results.NotFound();
+            if (!SafeStorageName(item.StorageFileName)) return Results.NotFound();
+            var path = Path.Combine(AttachmentDirectory(configuration, companyId, id), item.StorageFileName);
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path)) return Results.NotFound();
             db.AssetContractAttachments.Remove(item);
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "AssetContract",
                 TargetId = id, Action = "contract.attachment-removed", Details = $"Sözleşme eki kaldırıldı ({item.ContentType}, {item.Length} bayt)." });
             await db.SaveChangesAsync(ct);
-            if (SafeStorageName(item.StorageFileName) && !HasReparsePoint(configuration, companyId, id))
-            {
-                var path = Path.Combine(AttachmentDirectory(configuration, companyId, id), item.StorageFileName);
-                try { if (System.IO.File.Exists(path)) System.IO.File.Delete(path); }
-                catch (IOException) { } catch (UnauthorizedAccessException) { }
-            }
+            try { if (System.IO.File.Exists(path)) System.IO.File.Delete(path); }
+            catch (IOException) { } catch (UnauthorizedAccessException) { }
             return Results.NoContent();
         }).RequireAuthorization("asset.write");
         return api;
@@ -137,21 +134,6 @@ public static partial class AssetContractAttachmentEndpoints
     private static string AttachmentDirectory(IConfiguration configuration, Guid companyId, Guid contractId) =>
         Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media",
             companyId.ToString("N"), "contracts", contractId.ToString("N"), "attachments");
-
-    private static bool HasReparsePoint(IConfiguration configuration, Guid companyId, Guid contractId)
-    {
-        var root = Path.GetFullPath(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media");
-        var company = Path.GetFullPath(Path.Combine(root, companyId.ToString("N")));
-        var contracts = Path.GetFullPath(Path.Combine(company, "contracts"));
-        var contract = Path.GetFullPath(Path.Combine(contracts, contractId.ToString("N")));
-        var directory = Path.GetFullPath(Path.Combine(contract, "attachments"));
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        if (!company.StartsWith(root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, comparison) ||
-            !directory.StartsWith(company.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, comparison)) return true;
-        foreach (var path in new[] { company, contracts, contract, directory })
-            if (Directory.Exists(path) && (System.IO.File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0) return true;
-        return false;
-    }
 
     private static bool SafeStorageName(string name) => SafeStorageNameRegex().IsMatch(name);
     private static bool ValidSha256(string? value) => value is { Length: 64 } && value.All(Uri.IsHexDigit);

@@ -63,10 +63,10 @@ public static class AssetModelAttachmentEndpoints
             var storageName = $"{attachmentId:N}.{detected.Value.Extension}";
             var originalName = CleanName(upload.FileName, detected.Value.Extension);
             var directory = AttachmentDirectory(configuration, companyId, id);
-            Directory.CreateDirectory(directory);
-            if (HasReparsePoint(configuration, companyId, id))
-                return Results.Problem("Model dosyası deposu güvenli bir dizin olmalıdır.", statusCode: StatusCodes.Status500InternalServerError);
             var path = Path.Combine(directory, storageName);
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path))
+                return Results.Conflict(new { message = "Dosya alanı güvenli biçimde kullanılamıyor. Şirket yöneticinize başvurun." });
+            Directory.CreateDirectory(directory);
             var attachment = new AssetModelAttachment { Id = attachmentId, CompanyId = companyId, ModelId = id,
                 UploadedByUserId = actorId, OriginalFileName = originalName, StorageFileName = storageName,
                 ContentType = detected.Value.ContentType, Length = bytes.LongLength };
@@ -102,9 +102,9 @@ public static class AssetModelAttachmentEndpoints
                 return Results.NotFound();
             var item = await db.AssetModelAttachments.AsNoTracking().SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.ModelId == id && x.Id == attachmentId, ct);
-            if (item is null || !IsSafeStorageName(item.StorageFileName) || HasReparsePoint(configuration, companyId, id)) return Results.NotFound();
+            if (item is null || !IsSafeStorageName(item.StorageFileName)) return Results.NotFound();
             var path = Path.Combine(AttachmentDirectory(configuration, companyId, id), item.StorageFileName);
-            if (!System.IO.File.Exists(path)) return Results.NotFound();
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path) || !System.IO.File.Exists(path)) return Results.NotFound();
             return Results.File(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read), item.ContentType,
                 download ? item.OriginalFileName : null, enableRangeProcessing: false);
         }).RequireAuthorization("asset.read");
@@ -119,16 +119,15 @@ public static class AssetModelAttachmentEndpoints
             var item = await db.AssetModelAttachments.SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.ModelId == id && x.Id == attachmentId, ct);
             if (item is null) return Results.NotFound();
+            if (!IsSafeStorageName(item.StorageFileName)) return Results.NotFound();
+            var path = Path.Combine(AttachmentDirectory(configuration, companyId, id), item.StorageFileName);
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path)) return Results.NotFound();
             db.AssetModelAttachments.Remove(item);
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "AssetModel",
                 TargetId = id, Action = "AttachmentRemoved", Details = $"Model dosyası kaldırıldı ({item.ContentType}, {item.Length} bayt)." });
             await db.SaveChangesAsync(ct);
-            if (IsSafeStorageName(item.StorageFileName) && !HasReparsePoint(configuration, companyId, id))
-            {
-                var path = Path.Combine(AttachmentDirectory(configuration, companyId, id), item.StorageFileName);
-                try { if (System.IO.File.Exists(path)) System.IO.File.Delete(path); }
-                catch (IOException) { } catch (UnauthorizedAccessException) { }
-            }
+            try { if (System.IO.File.Exists(path)) System.IO.File.Delete(path); }
+            catch (IOException) { } catch (UnauthorizedAccessException) { }
             return Results.NoContent();
         }).RequireAuthorization("asset.write");
         return api;
@@ -153,20 +152,6 @@ public static class AssetModelAttachmentEndpoints
     private static string AttachmentDirectory(IConfiguration configuration, Guid companyId, Guid modelId) =>
         Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media",
             companyId.ToString("N"), "asset-models", modelId.ToString("N"), "attachments");
-
-    private static bool HasReparsePoint(IConfiguration configuration, Guid companyId, Guid modelId)
-    {
-        var root = Path.GetFullPath(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media");
-        var company = Path.GetFullPath(Path.Combine(root, companyId.ToString("N")));
-        var directory = Path.GetFullPath(Path.Combine(company, "asset-models", modelId.ToString("N"), "attachments"));
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        if (!company.StartsWith(root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, comparison) ||
-            !directory.StartsWith(company.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, comparison)) return true;
-        foreach (var path in new[] { company, Path.Combine(company, "asset-models"),
-                     Path.Combine(company, "asset-models", modelId.ToString("N")), directory })
-            if (Directory.Exists(path) && (System.IO.File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0) return true;
-        return false;
-    }
 
     private static string CleanName(string? fileName, string extension)
     {
