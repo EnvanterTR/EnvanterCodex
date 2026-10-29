@@ -1,0 +1,42 @@
+PASS: inventory uses desktop width (left/right insets 10/10px); table scroll stays local at desktop and 390px mobile width.
+PASS: asset list print paginates all 205 filtered assets across the 200-row boundary, preserves visible columns, invokes print; fullscreen enters/exits and synchronizes its accessible state.
+PASS: asset CSV and XLSX map/profile/preview/apply routes preserve the selected files, use CSRF and refresh both synthetic rows; profile deletion cancel/confirm is safe.
+PASS: asset detail category, brand, model, employee, and location references each open the matching company-scoped filter; clearing restores the complete asset list.
+PASS: delayed parent searches cannot overwrite a newer query or a reopened asset dialog.
+PASS: asset hierarchy search, CSRF/version-checked parent save, refreshed parent/child relationships, and visible cycle rejection preserving the previous link.
+PASS: asset relations tab renders only active accessory deliveries and installed components with remaining/total quantities, dates, notes, and counts.
+PASS: asset history note saves a CSRF-protected NoteAdded movement, accepts exactly 2,000 characters, refreshes the timeline, and clears the editor.
+PASS: software license employee assignment updates seat usage and detail; assignment list search, cancel-safe and confirmed revocation, inactive history filter, and CSRF are verified.
+PASS: software license EULA settings, versioned document upload, required consent, cancel-safe rejection, accepted-version attribution, and CSRF are verified.
+PASS: software license assignment list active/revoked/all filters, employee-number search, empty state, 25-row pagination, and stale-response protection are verified.
+PASS: bulk software license employee assignment supports multi-select, safe cancel, required EULA consent, single CSRF-protected atomic request, duplicate-submit blocking, capacity refresh, and accepted-version attribution.
+PASS: software license create/edit required-field validation, cancel-safe dialogs, CSRF-scoped writes, detail edit prefill, archive/restore confirmation, active/archive filters, archived action locks, persisted list/detail refresh, and search.
+PASS: multi-scan rejects ambiguous/missing codes, surfaces lookup failure and permits retry, de-duplicates repeated tag/QR scans, synchronizes row checks, and preserves selection after explicit completion.
+PASS: bulk asset status change confirms two selected records, cancellation performs no write, confirmed CSRF submission persists both statuses and refreshes the list.
+PASS: multi-field asset edit is opt-in, cancel-safe, versioned, CSRF-protected, persisted to both selected records, preserves unchecked fields, and refreshes the list.
+PASS: bulk asset return preserves assignments on cancel, submits selected records with CSRF and note, and refreshes both returned rows.
+PASS: bulk asset assignment dialog cancellation writes nothing; confirmed assignment persists both rows with employee, due date, note, and CSRF.
+PASS: bulk asset transfer cancellation preserves locations; confirmed transfer moves both selected rows with note and CSRF.
+PASS: bulk asset audit cancellation writes nothing; confirmed audit records date/note and persists the next schedule for both selected assets.
+PASS: bulk unacceptable audit requires a finding, preserves CSRF, records findings for every selected asset, and supports clearing its schedule.
+PASS: reservations reject invalid date ranges without writing; create with CSRF; approve/reject notes persist; approve/cancel dismissal writes nothing; confirmed cancellation uses CSRF and persists; status/search filters reload correctly; refresh is read-only.
+PASS: Transferler preset and general history routes; activity search/date/paging, keyboard-linked asset opening, empty/error recovery, retry, and read-only behavior.
+PASS: warranty route, default/state/horizon/search filters, 50-row pagination, safe text rendering, filtered CSV download, asset-detail shortcut, refresh, and read-only behavior.
+PASS: 9 prepared report PDF previews render data, apply A3 portrait settings and invoke the browser print action.
+PASS: report CSV parser preserves UTF-8/BOM, escaped quotes, embedded separators and newlines; rejects malformed, uneven and over-50,000-row data; cancels stale reads.
+PASS: prepared asset/component reports and CSVs; pending-delivery states/search/paging/CSV/refresh; depreciation date/search/paging/per-currency summaries/filtered CSV/refresh; audit-report filters, 25-row paging, filtered CSV; maintenance aggregates, cost currencies, date filter/clear and refresh; purchase reports and summary export.
+PASS: custom asset report safe-column discovery, empty-column validation, CSRF preset create/update/load/delete, filter/sort persistence, filtered CSV content and read-only export.
+PASS: hosted Chromium creates a priced order, safe cancel/partial receipt flows, and four explicit CSRF-protected purchase document uploads with cancel-safe deletion and refreshed list.
+PASS: fixed status label edit, CSRF persistence, all refreshed status selectors, custom status create/color, transition matrix, protected archive boundary, and refreshed inventory/bulk/report/detail selectors.
+PASS: Chromium shows shared accessory commitments, blocks over-budget stock receipt, records a justified CSRF approval, and unlocks receipt after refresh.
+PASS: Chromium custom-role create, owner-only permission choice, CSRF-protected edit, deactivation, reactivation and refreshed role matrix.
+PASS: location create/edit forms bind catalog locations to company units and send the selected unit with CSRF.
+PASS: location catalog creates six nested levels with complete path previews, CSRF and refreshed rows; the sixth level is excluded as a parent so UI cannot offer level seven.
+PASS: location default can be set/switched with a single company default; active employee can be assigned/removed as location manager with CSRF and refreshed rows.
+PASS: model detail shows scoped summary, linked assets, purchase orders, history and technical attachments; linked asset opens and modal closes safely.
+PASS: Unified company purchases show asset, accessory, stock, and license records; license seat/status/unknown-cost display, filters, 25-row paging, CSV, asset detail, parent-license detail routing, and read-only behavior.
+PASS: License purchase form cancel, failed-save data retention, create/edit/archive/restore, CSRF, null cost, duplicate-submit protection and stale supplier response protection.
+PASS: Chromium opens all three purchase-order detail and return modals, validates selectable return rows, posts date/reason/quantity with CSRF once, closes on success, and renders refreshed return history.
+PASS: Chromium company-unit workflow creates a legal entity and child branch, posts selected types with CSRF, displays the hierarchy, and preserves type/parent on edit.
+PASS: Chromium member access dialog saves a CSRF-protected company-unit restriction, then reloads the persisted unit and hierarchy selection.
+PASS: owner Ctrl+N; asset edit/status/trash/audit/maintenance/transfer/assignment; expired-session dialog closure, deliberate re-login, and no stale-write replay; company JSON restore preview and confirmations; company contract list/search/filter/detail/create/cancel/archive/restore with CSRF; license attachment delete cancel/confirm persistence; license CSV preview, stale-file rejection, import cancel, error retry, confirmed CSRF apply and list persistence; all 52 sidebar destinations render; 1 open the explicit feature/module status surface (Güvenlik); browser error-free completion.

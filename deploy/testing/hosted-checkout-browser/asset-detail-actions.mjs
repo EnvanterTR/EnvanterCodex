@@ -4030,20 +4030,26 @@ try {
   const reservationForm = page.locator('#reservationForm');
   await reservationForm.locator('[name="assetId"]').selectOption(reservationAssets[2].id);
   await reservationForm.locator('[name="employeeId"]').selectOption(employeeId);
-  await reservationForm.locator('[name="startsOn"]').fill('2026-10-27');
-  await reservationForm.locator('[name="endsOn"]').fill('2026-10-26');
+  // Keep dates valid as the real calendar advances, using the browser's date floor.
+  const reservationToday = await reservationForm.locator('[name="startsOn"]').getAttribute('min');
+  assert.match(reservationToday, /^\d{4}-\d{2}-\d{2}$/);
+  const reservationDateAfter = days => new Date(Date.parse(`${reservationToday}T00:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
+  const reservationStartsOn = reservationDateAfter(2);
+  const reservationEndsOn = reservationDateAfter(3);
+  await reservationForm.locator('[name="startsOn"]').fill(reservationStartsOn);
+  await reservationForm.locator('[name="endsOn"]').fill(reservationDateAfter(1));
   await reservationForm.locator('[name="requestNote"]').fill('Synthetic date validation');
   const reservationWritesBeforeInvalidDate = reservationWrites.length;
   await reservationForm.locator('#reservationSubmit').click();
   assert.equal(reservationWrites.length, reservationWritesBeforeInvalidDate, 'An end date before the start date must not create a reservation.');
-  await reservationForm.locator('[name="endsOn"]').fill('2026-10-28');
+  await reservationForm.locator('[name="endsOn"]').fill(reservationEndsOn);
   await reservationForm.locator('[name="requestNote"]').fill('Synthetic reservation request');
   await reservationForm.locator('#reservationSubmit').click();
   await page.locator('#reservationRows tr').filter({ hasText: 'QA-RES-003' }).waitFor();
   const createdReservationWrite = reservationWrites.find(item => item.path === '/api/reservations' && item.body?.assetId === reservationAssets[2].id);
   assert.equal(createdReservationWrite?.method, 'POST');
   assert.deepEqual(createdReservationWrite?.body, {
-    assetId: reservationAssets[2].id, employeeId, startsOn: '2026-10-27', endsOn: '2026-10-28', requestNote: 'Synthetic reservation request'
+    assetId: reservationAssets[2].id, employeeId, startsOn: reservationStartsOn, endsOn: reservationEndsOn, requestNote: 'Synthetic reservation request'
   });
   assert.equal(createdReservationWrite?.csrf, 'synthetic-asset-csrf');
   assert.equal(await reservationForm.locator('[name="assetId"]').inputValue(), '', 'Successful creation must reset the form.');

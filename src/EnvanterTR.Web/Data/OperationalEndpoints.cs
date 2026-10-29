@@ -885,8 +885,10 @@ public static class OperationalEndpoints
             var storageFileName = $"{documentId:N}.{detected.Value.Extension}";
             var originalFileName = CleanEmployeeDocumentFileName(upload.FileName, detected.Value.Extension);
             var directory = EmployeeDocumentDirectory(configuration, companyId, id);
-            Directory.CreateDirectory(directory);
             var destination = Path.Combine(directory, storageFileName);
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, destination))
+                return Results.Conflict(new { message = "Dosya alanı güvenli biçimde kullanılamıyor. Şirket yöneticinize başvurun." });
+            Directory.CreateDirectory(directory);
             var document = new EmployeeDocument { Id = documentId, CompanyId = companyId, EmployeeId = id,
                 UploadedByUserId = actorId, OriginalFileName = originalFileName, StorageFileName = storageFileName,
                 ContentType = detected.Value.ContentType, Length = bytes.LongLength };
@@ -925,7 +927,8 @@ public static class OperationalEndpoints
                 x.CompanyId == companyId && x.EmployeeId == id && x.Id == documentId, cancellationToken);
             if (document is null || !IsSafeEmployeeDocumentFileName(document.StorageFileName)) return Results.NotFound();
             var path = Path.Combine(EmployeeDocumentDirectory(configuration, companyId, id), document.StorageFileName);
-            if (!System.IO.File.Exists(path)) return Results.NotFound();
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path) || !System.IO.File.Exists(path))
+                return Results.NotFound();
             var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024,
                 FileOptions.Asynchronous | FileOptions.SequentialScan);
             return Results.File(stream, document.ContentType, document.OriginalFileName, enableRangeProcessing: false);
@@ -943,11 +946,13 @@ public static class OperationalEndpoints
             if (employee is null || !await CompanyLocationAccess.CanAccessEmployeeAsync(db, companyId, actorId,
                     employee.LocationCatalogId, employee.CompanyUnitId, cancellationToken))
                 return Results.NotFound();
+            if (!IsSafeEmployeeDocumentFileName(document.StorageFileName)) return Results.NotFound();
+            var path = Path.Combine(EmployeeDocumentDirectory(configuration, companyId, id), document.StorageFileName);
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path)) return Results.NotFound();
             db.EmployeeDocuments.Remove(document);
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Employee",
                 TargetId = id, Action = "DocumentRemoved", Details = $"Çalışan belgesi kaldırıldı ({document.ContentType}, {document.Length} bayt)." });
             await db.SaveChangesAsync(cancellationToken);
-            var path = Path.Combine(EmployeeDocumentDirectory(configuration, companyId, id), document.StorageFileName);
             try { if (System.IO.File.Exists(path)) System.IO.File.Delete(path); }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
