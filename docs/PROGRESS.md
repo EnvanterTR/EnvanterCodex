@@ -1,3 +1,7 @@
+## 30 Ekim 2026 — platform şirket logosu dosya sınırı
+
+Platform logo okumasına ortak tam yol kontrolü eklendi. Normal okuma, şirket yöneticisi yetki reddi, yabancı klasör/dosya bağlantısında404 ve yabancı veri/metadata korunması:2/2 PostgreSQL testi,1.8974dakika,exit0/temizlik başarılı. Henüz canlı değil. Kanıt:tests/reports/platform-logo-media-namespace-20261030.md. Tam Hedef açık.
+
 ## 29 Ekim 2026 — yayın sırasında erişim kesintisi, sonuç doğrulanamadı
 
 `68f4d88` tam CI ve exact staging/kurtarma provasından sonra tek Coolify yayını `a2deghcp2kp3g4o6bqgpxwtw` ile başlatıldı. Sonraki gözlemde site522, Coolify502/504, SSH banner zaman aşımı verdi. Yayının bitişi ve çalışan sürüm henüz doğrulanamadı; son tam doğrulanmış üretimc386113. Yeni yayın/rollback/üretimrestore yapılmadı. Öncelik sunucu erişimi ve mevcut dağıtımın durumudur. Kanıt: `tests/reports/catalog-media-production-release-20261029.md`.

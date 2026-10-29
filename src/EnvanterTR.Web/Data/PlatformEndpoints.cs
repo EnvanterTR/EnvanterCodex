@@ -1655,7 +1655,8 @@ public static partial class PlatformEndpoints
                 return Results.NotFound();
             var companyDirectory = Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media", companyId.ToString("N"));
             var filePath = Path.Combine(companyDirectory, fileName);
-            if (!System.IO.File.Exists(filePath)) return Results.NotFound();
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, filePath) ||
+                !System.IO.File.Exists(filePath)) return Results.NotFound();
             var contentType = Path.GetExtension(fileName) switch { ".png" => "image/png", ".jpg" => "image/jpeg", _ => "image/webp" };
             return Results.File(await System.IO.File.ReadAllBytesAsync(filePath, cancellationToken), contentType);
         }).RequireRateLimiting("login");
