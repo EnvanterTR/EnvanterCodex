@@ -33,14 +33,14 @@ public static class AccessoryPhotoEndpoints
             if (!await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, actorId, item.LocationCatalogId, ct))
                 return Results.NotFound();
             var directory = PhotoDirectory(configuration, companyId, id);
-            if (HasReparsePoint(configuration, companyId, id))
-                return Results.Problem("Aksesuar fotoğrafı deposu güvenli bir dizin olmalıdır.", statusCode: StatusCodes.Status500InternalServerError);
-            Directory.CreateDirectory(directory);
-            if (HasReparsePoint(configuration, companyId, id))
-                return Results.Problem("Aksesuar fotoğrafı deposu güvenli bir dizin olmalıdır.", statusCode: StatusCodes.Status500InternalServerError);
             var fileName = $"{Guid.NewGuid():N}.{image.Value.Extension}";
             var path = Path.Combine(directory, fileName);
             var previousFileName = item.PhotoFileName;
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path) ||
+                (previousFileName is not null && (!IsSafePhotoName(previousFileName) ||
+                    !CompanyMediaPathGuard.IsSafePath(configuration, companyId, Path.Combine(directory, previousFileName)))))
+                return Results.Conflict(new { message = "Fotoğraf alanı güvenli biçimde kullanılamıyor. Şirket yöneticinize başvurun." });
+            Directory.CreateDirectory(directory);
             try
             {
                 await System.IO.File.WriteAllBytesAsync(path, bytes, ct);
@@ -54,7 +54,7 @@ public static class AccessoryPhotoEndpoints
             }
             catch
             {
-                try { if (System.IO.File.Exists(path)) System.IO.File.Delete(path); }
+                try { if (CompanyMediaPathGuard.IsSafePath(configuration, companyId, path) && System.IO.File.Exists(path)) System.IO.File.Delete(path); }
                 catch (IOException) { } catch (UnauthorizedAccessException) { }
                 throw;
             }
@@ -72,9 +72,9 @@ public static class AccessoryPhotoEndpoints
             if (item is null || !await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, userId, item.LocationCatalogId, ct))
                 return Results.NotFound();
             var fileName = item.PhotoFileName;
-            if (!IsSafePhotoName(fileName) || HasReparsePoint(configuration, companyId, id)) return Results.NotFound();
+            if (!IsSafePhotoName(fileName)) return Results.NotFound();
             var path = Path.Combine(PhotoDirectory(configuration, companyId, id), fileName!);
-            if (!System.IO.File.Exists(path)) return Results.NotFound();
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path) || !System.IO.File.Exists(path)) return Results.NotFound();
             var contentType = Path.GetExtension(fileName) switch
             { ".png" => "image/png", ".jpg" => "image/jpeg", ".webp" => "image/webp", _ => "application/octet-stream" };
             return Results.File(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read), contentType,
@@ -93,6 +93,8 @@ public static class AccessoryPhotoEndpoints
             if (!await CompanyLocationAccess.CanAccessLocationAsync(db, companyId, actorId, item.LocationCatalogId, ct))
                 return Results.NotFound();
             var previousFileName = item.PhotoFileName;
+            if (!IsSafePhotoName(previousFileName) || !CompanyMediaPathGuard.IsSafePath(configuration, companyId,
+                    Path.Combine(PhotoDirectory(configuration, companyId, id), previousFileName))) return Results.NotFound();
             item.PhotoFileName = null;
             item.UpdatedAt = DateTimeOffset.UtcNow;
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId,
@@ -120,25 +122,14 @@ public static class AccessoryPhotoEndpoints
         Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media",
             companyId.ToString("N"), "accessories", accessoryId.ToString("N"), "photo");
 
-    private static bool HasReparsePoint(IConfiguration configuration, Guid companyId, Guid accessoryId)
-    {
-        var root = Path.GetFullPath(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media");
-        var company = Path.GetFullPath(Path.Combine(root, companyId.ToString("N")));
-        var directory = Path.GetFullPath(Path.Combine(company, "accessories", accessoryId.ToString("N"), "photo"));
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        if (!company.StartsWith(root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, comparison) ||
-            !directory.StartsWith(company.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, comparison)) return true;
-        var paths = new[] { company, Path.Combine(company, "accessories"), Path.Combine(company, "accessories", accessoryId.ToString("N")), directory };
-        return paths.Any(path => Directory.Exists(path) && (System.IO.File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0);
-    }
-
     private static bool IsSafePhotoName(string? fileName) => fileName is not null &&
         Regex.IsMatch(fileName, "^[A-Za-z0-9][A-Za-z0-9._-]{0,79}\\.(png|jpg|webp)$", RegexOptions.CultureInvariant);
 
     private static void DeletePhotoIfSafe(IConfiguration configuration, Guid companyId, Guid accessoryId, string? fileName)
     {
-        if (!IsSafePhotoName(fileName) || HasReparsePoint(configuration, companyId, accessoryId)) return;
+        if (!IsSafePhotoName(fileName)) return;
         var path = Path.Combine(PhotoDirectory(configuration, companyId, accessoryId), fileName!);
+        if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path)) return;
         try { if (System.IO.File.Exists(path)) System.IO.File.Delete(path); }
         catch (IOException) { } catch (UnauthorizedAccessException) { }
     }
