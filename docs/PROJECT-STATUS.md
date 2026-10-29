@@ -1,3 +1,9 @@
+## 30 Ekim 2026 — profil ve logo dosya korumaları canlıda
+
+Canlı8a07aec93969c42abb0fc0ac272be358ebd11e40,şema122/0. Hesapfotoğrafı/ZIP,şirketlogosu,çalışanfotoğrafıveplatformlogo yolları korundu;şirketlogo multipart500düzeltildi,CSRFkorundu. TamCI40971020704üçişbaşarılı;exactstaging95tabloözgünalankorunması;taze234551ZSQLbağımsızrestore/143MB234600ZkurtarmasonrasıtekCoolifytnxno2lve07vbiehbcu8orakSuccess/Finished4m02s. Gerçekimaj/runtime23:53:31Z,üçhostsağlık/kaynak/galeri/erişimsınırları23:53:49Zdoğrulandı. Kanıt:tests/reports/profile-media-production-release-20261030.md.
+
+Ayrıdestekeposta yetkidüzeltmesiilk6/6geçti;pasifşirketeksenaryosu24602oturumundatestte,henüzcanlıdeğil. Modelguardönerisibaşarısızolduveüründerlemesindenayrıldı. TamHedef/P1,tarih/silmealanları,gerçekmüşteri/merchantkabulüaçık. Alttakikayıtlartarihseldir.
+
 ## 30 Ekim 2026 — katalog görselleri yayını doğrulandı
 
 Aynı Coolifya2deghcp2kp3g4o6bqgpxwtw yayını Success/Finished40m58s tamamlandı. Gerçek web/public imajı68f4d883; üçservis running/zero restart,DBhealthy,şema122/0. Ana alan/Santa/Farma sağlık,galeri/kaynak ve erişim sınırı kontrolleri exit0. Kesinti sonrası yeni deploy/restore yapılmadı. Kanıt:tests/reports/catalog-media-production-release-20261029.md.

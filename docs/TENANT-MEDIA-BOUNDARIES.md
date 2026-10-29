@@ -16,12 +16,12 @@ Evidence date:29 October2026. This inventory tracks Hedef6.4/6.5; it does not ma
 | Model attachments | AssetModelAttachmentEndpoints.cs | CompanyId/asset-models/id/attachments | Full-path guard; live in c386113 |
 | Accessory order attachments | AccessoryPurchaseOrderAttachmentEndpoints.cs | CompanyId/accessory-purchase-orders/id/attachments | Full-path guard; live in c386113 |
 | Stock order attachments | StockPurchaseOrderAttachmentEndpoints.cs | CompanyId/stock-purchase-orders/id/attachments | Full-path guard; live in c386113; combined last four providers9/9 |
-| Brand/supplier logos and asset/accessory-model photos | CatalogImageEndpoints.cs | CompanyId/catalog/kind/id | Five-provider image package68f4d88; focused12/12, complete CI40921546389 and exact staging passed. Single deploymenta2deghcp2kp3g4o6bqgpxwtw started; subsequent server outage prevents confirmation of live completion. |
-| Accessory photos | AccessoryPhotoEndpoints.cs | CompanyId/accessories/id/photo | Same68f4d88 candidate; deployment completion unverified during server outage. |
-| Company logo | OperationalEndpoints.cs | CompanyId/logo-file | f04d7a7 included in remotea946a7e; logo form500 fixed; combined company/employee photo6/6 passed; full CI40929215538 running, not deployed |
-| Platform company logo preview | PlatformEndpoints.cs | CompanyId/logo-file | Separate full-path guard added after discovering the administrator preview bypassed the company-logo reader. Directory/file redirection acceptance passed2/2 in1.8974minutes; not deployed. |
-| Employee photo | OperationalEndpoints.cs | CompanyId/employees/id/profile.ext | f04d7a7 included in remotea946a7e; all supported profile extensions validated before mutation; same6/6; full CI40929215538 running, not deployed |
-| Account profile photo | AccountEndpoints.cs:1302 | accounts/UserId | Account identity namespace retained across memberships. Account-scope guard and archive checks passed7/7 focused tests; included in remotea946a7e, full CI40929215538 running, not deployed. It is not relabeled as a CompanyId-prefixed provider. |
+| Brand/supplier logos and asset/accessory-model photos | CatalogImageEndpoints.cs | CompanyId/catalog/kind/id | Live68f4d88 and retained in8a07aec; focused12/12, completeCI and exact staging passed. Release/outage recovery evidence is in catalog-media-production-release-20261029.md. |
+| Accessory photos | AccessoryPhotoEndpoints.cs | CompanyId/accessories/id/photo | Live68f4d88; retained in8a07aec. |
+| Company logo | OperationalEndpoints.cs | CompanyId/logo-file | Live8a07aec; logo form500 fixed; combined company/employee photo6/6, fullCI40971020704, stage and live runtime/access passed |
+| Platform company logo preview | PlatformEndpoints.cs | CompanyId/logo-file | Separate full-path guard added after discovering the administrator preview bypassed the company-logo reader. Live8a07aec; directory/file redirection acceptance2/2/fullCI/stage/live verification passed. |
+| Employee photo | OperationalEndpoints.cs | CompanyId/employees/id/profile.ext | Live8a07aec; all supported profile extensions validated before mutation; same6/6/fullCI/stage/live verification |
+| Account profile photo | AccountEndpoints.cs:1302 | accounts/UserId | Account identity namespace retained across memberships. Live8a07aec; account-scope guard/archive checks passed7/7/fullCI/stage/live verification. It is not relabeled as a CompanyId-prefixed provider. |
 
 The configured root is trusted. The common guard checks each existing component below it, including the final file. This is not a claim of race-proof protection against a privileged host attacker.
 
@@ -40,3 +40,5 @@ Three Queue<Guid> uses were located: AssetEndpoints.cs:1324 and CompanyLocationA
 ## Remaining completion evidence
 
 Account identity media, full export/restore/lifecycle coverage, all-table audit fields, runtime services and real customer isolation acceptance remain open. A green test for one provider is not used to close the others.
+
+Persisted queues are separate from method-local Queue<Guid> traversals. SupportTicketEmailOutbox stores CompanyId and rechecks ticket/message company IDs, but a recipient revocation gap was found separately. Localb95d10a initial6/6 acceptance covers current membership, confirmed address, company deletion and configured support mailbox; inactive-company expansion is pending. Scheduled report, operational digest and platform follow-up workers still require their own complete scope/key review. The earlier memory-cache search does not close database-outbox coverage.

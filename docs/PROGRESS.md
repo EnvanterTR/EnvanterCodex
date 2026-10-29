@@ -1,3 +1,9 @@
+## 30 Ekim 2026 — profil ve logo dosya korumaları canlıda
+
+Canlı8a07aec93969c42abb0fc0ac272be358ebd11e40,şema122/0. Hesapfotoğrafı/ZIP,şirketlogosu,çalışanfotoğrafıveplatformlogo yolları korundu;şirketlogo multipart500düzeltildi,CSRFkorundu. TamCI40971020704üçişbaşarılı;exactstaging95tabloözgünalankorunması;taze234551ZSQLbağımsızrestore/143MB234600ZkurtarmasonrasıtekCoolifytnxno2lve07vbiehbcu8orakSuccess/Finished4m02s. Gerçekimaj/runtime23:53:31Z,üçhostsağlık/kaynak/galeri/erişimsınırları23:53:49Zdoğrulandı. Kanıt:tests/reports/profile-media-production-release-20261030.md.
+
+Ayrıdestekeposta yetkidüzeltmesiilk6/6geçti;pasifşirketeksenaryosu24602oturumundatestte,henüzcanlıdeğil. Modelguardönerisibaşarısızolduveüründerlemesindenayrıldı. TamHedef/P1,tarih/silmealanları,gerçekmüşteri/merchantkabulüaçık. Alttakikayıtlartarihseldir.
+
 ## 30 Ekim 2026 — destek e-postasında güncel alıcı yetkisi
 
 Destek kuyruğu gönderim öncesi şirket üyeliğini, e-posta doğrulamasını/adres eşleşmesini, silinmemiş şirketi ve güncel destek posta kutusunu yeniden kontrol ediyor. Yetkisiz alıcıya SMTP yok; mevcut retry/backoff korunuyor. Beş izin değişimi ve mevcut tam destek akışı:6/6PostgreSQL/SMTPkabulü,1.1612dakika,exit0/temizlik başarılı. Yerelde;henüzcanlıdeğil. Kanıt:tests/reports/support-email-recipient-scope-20261030.md. TamHedef/P1açık.
