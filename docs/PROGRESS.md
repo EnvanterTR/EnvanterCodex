@@ -1119,3 +1119,5 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - 5/5 PostgreSQL/SMTP testi, 1.1806 dakika, exit 0; rol/özel izin/pasif özel rol reddi, izni geri verme ve tek gönderim, mevcut birim/konum sınırları geçti. Geçici DB/ağ temizlendi.
 - Kanıt: operational-email-role-authorization-20261030.md/.log. Yerel paket; mevcut CI 40980530003 bu değişikliği içermez. CI bitmeden push yapılmaz.
 - Kullanıcı eksik eski tarihleri kendisinin sağlayacağını belirtti. Tahmini backfill veya kalıcı bilinmiyor istisnası uygulanmayacak; özel kayıt anahtarı listesi/şablonu hazırlanmalı. Hedef 6.1 açık.
+
+30 Ekim: CI 40980530003 (#801), candidate 07f7b98, üç iş başarılı: Linux security 6m53s, Windows 4m36s, PostgreSQL 30m36s. Bu koşu destek e-postası + tarayıcı saat düzeltmesini kapsar. Operasyonel e-posta rol kontrolü 120c9a2, 5/5 yerel test geçmiş ayrı sonraki adaydır; önceki yeşil CI bunun kanıtı değildir. Önceki koşu terminal olduktan sonra yeni aday gönderilir; canlı 8a07aec değişmedi.
