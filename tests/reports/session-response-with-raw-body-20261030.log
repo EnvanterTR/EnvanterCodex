@@ -1,0 +1,21 @@
+PASS reject successful headers from the old session before delivering company data
+PASS reject JSON body finishing after session change
+PASS reject stale empty response
+PASS reject stale raw response
+PASS old unauthorized response never opens login over the new account
+PASS current unauthorized response retains login behavior
+PASS reject old error details parsed after session change
+PASS current JSON, empty and raw responses retain original results
+PASS current error retains status and payload
+PASS late old request cannot replace a new-session consumer result
+PASS reject stale raw blob body after headers were accepted
+PASS current raw blob body remains usable
+PASS reject stale raw text body after headers were accepted
+PASS current raw text body remains usable
+PASS reject stale raw arrayBuffer body after headers were accepted
+PASS current raw arrayBuffer body remains usable
+PASS reject stale raw formData body after headers were accepted
+PASS current raw formData body remains usable
+PASS reject stale raw json body after headers were accepted
+PASS current raw json body remains usable
+SESSION_RESPONSE_ISOLATION 20/20 passed

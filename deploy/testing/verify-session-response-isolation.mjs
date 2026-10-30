@@ -28,6 +28,11 @@ if (baseline) {
   const pending=h.call('/api/assets'); h.changeSession(); gate.resolve(response());
   assert.equal((await pending).company,'original');
   console.log('BASELINE_REPRODUCED: old successful response reaches the consumer after session change');
+  const body=deferred(),raw=response(); raw.blob=()=>body.promise;
+  const download=harness(async()=>raw),received=await download.call('/export',{responseType:'raw'});
+  const reading=received.blob();download.changeSession();body.resolve('old private export');
+  assert.equal(await reading,'old private export');
+  console.log('BASELINE_REPRODUCED: old raw export body reaches consumer after session change');
 } else {
   await check('reject successful headers from the old session before delivering company data', async()=>{
     const gate=deferred(), h=harness(()=>gate.promise);
@@ -73,5 +78,18 @@ if (baseline) {
     h.changeSession();selected=(await h.call('/new')).company;gate.resolve(response());
     await assert.rejects(old,{code:'STALE_SESSION_RESPONSE'});assert.equal(selected,'new');
   });
+  for(const method of ['blob','text','arrayBuffer','formData','json']) {
+    await check('reject stale raw '+method+' body after headers were accepted',async()=>{
+      const body=deferred(),raw=response();raw[method]=()=>body.promise;
+      const h=harness(async()=>raw),received=await h.call('/export',{responseType:'raw'});
+      const reading=received[method]();h.changeSession();body.resolve('private original export');
+      await assert.rejects(reading,{code:'STALE_SESSION_RESPONSE'});
+    });
+    await check('current raw '+method+' body remains usable',async()=>{
+      const value={current:true},raw=response();raw[method]=async()=>value;
+      const h=harness(async()=>raw),received=await h.call('/export',{responseType:'raw'});
+      assert.equal(await received[method](),value);
+    });
+  }
   console.log(`SESSION_RESPONSE_ISOLATION ${passed}/${passed} passed`);
 }

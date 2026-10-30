@@ -3618,8 +3618,21 @@
         const error = new Error(message); error.status = response.status; error.payload = payload; throw error;
       }
       if (response.status === 204) return null;
-      if (options.responseType === 'raw') return response;
-      const result = response.headers.get('content-type')?.includes('application/json') ? await response.json() : response;
+      const scopedResponse = () => {
+        for (const method of ['blob', 'text', 'arrayBuffer', 'formData', 'json']) {
+          const read = response[method];
+          if (typeof read !== 'function') continue;
+          response[method] = async (...args) => {
+            ensureCurrentSession();
+            const body = await read.apply(response, args);
+            ensureCurrentSession();
+            return body;
+          };
+        }
+        return response;
+      };
+      if (options.responseType === 'raw') return scopedResponse();
+      const result = response.headers.get('content-type')?.includes('application/json') ? await response.json() : scopedResponse();
       ensureCurrentSession();
       return result;
     }

@@ -1155,3 +1155,9 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Önceki d19stagingweb/public2uygulamasıgeri alınabilirdurduruldu; canlıkimliklerkorundu, dosya/volume/DBsilinmedi; available5799MiB. Kanıtpost-operational-role-stage-stop-pass-20261030.png. Canlıd19sağlıklı.
 
 30 Ekim oturumizolasyonu8cdb77cstage: tekbuildPID3620837sürüyor; preparePID3623670exit0,taze055542ZSQLhash/list/bağımsızrestore122/95orijinalalanfingerprintikaydedildi. Stageappbaşlatılmadı/probekoşulmadı. CI41009579015PGjob123912172427aynıiş18m52ssürüyor; LinuxeskiAuthverifierpatternhatasıyereldeçözüldü,Windows5m06sgeçti. Kanıt session-isolation-stage-progress-20261030.md. Canlıd19sağlıklı; düzeltilmişremoteCIsonucubekleniyor.
+
+## 30 Ekim 2026 — dosya gövdesi okunurken oturum değişimi
+- Eski d19rawexportgövdesinin oturumdeğişimindensonrailetildiğiyenidenüretildi. api()raw/nonJSONResponseblob/text/arrayBuffer/formData/json metotlarıgövdeöncesi+sonrasıgenerationkontrolüylekorundu.
+- 20/20async+10/10gerçekChromiumnativeResponsegeçti; değişmeyenoturumdakigövdelerkorundu. Authverifier/UI2304/5dil2260/browserharnesscheckgeçti. Yeni browsercase standardpaketeeklendi. Kanıt session-export-body-20261030.md/.log.
+- 8cdbara stage runtime/HTTP/95tablo korunması exit0,PId3636215,şema122/0; fakatbuSONrawbodydeğişikliğiniiçermez. Artıkgüncelürünle eşdeğildeğil; finalkarmaadayyenidenbuild/staging/CIgerektirir. Öncekifullbrowserpassdabugövdeekindensonraki tamsonuçyerinesayılmaz.
+- CI41009579015 aynıPGjob12391217242729m44ssürüyor;iptal/yenidenbaşlatma/pushyok. Canlıd19korunuyor. TamHedef/P1açık.

@@ -13,6 +13,7 @@ COPY deploy/testing/hosted-checkout-browser/password-reset-retry.mjs ./
 COPY deploy/testing/hosted-checkout-browser/tenant-platform-link.mjs ./
 COPY deploy/testing/hosted-checkout-browser/asset-detail-actions.mjs ./
 COPY deploy/testing/hosted-checkout-browser/session-workspace-reset.mjs ./
+COPY deploy/testing/hosted-checkout-browser/session-export-body.mjs ./
 COPY deploy/testing/hosted-checkout-browser/company-tasks.mjs ./
 COPY deploy/testing/hosted-checkout-browser/inventory-requests.mjs ./
 COPY deploy/testing/hosted-checkout-browser/support-tickets.mjs ./
