@@ -171,7 +171,7 @@ assert.match(page, /platformMfaRecoveryCodes/);
 assert.match(page, /platformMfaSavedRecovery/);
 assert.match(page, /data\?\.code==='platform_mfa_required'[\s\S]*?showPlatformMfaSetup/);
 assert.match(page, /async function showApp\(name\)[\s\S]*?\/api\/session\/2fa[\s\S]*?if\(!security\.enabled\)\{showPlatformMfaSetup\(\);return\}/);
-assert.match(page, /if\(!s\.platformAdmin\)throw Error\('Bu hesapta platform yöneticisi yetkisi yok\.'\);state\.authGeneration\+\+;state\.csrf=null;window\.location\.reload\(\);return/,
+assert.match(page, /if\(!s\.platformAdmin\)throw Error\('Bu hesapta platform yöneticisi yetkisi yok\.'\);state\.authGeneration\+\+;state\.csrf=null;publishPlatformSessionChange\(\);window\.location\.reload\(\);return/,
   'Invalidate old responses and replace the previous administrator document after successful login.');
 assert.match(page, /async function checkSession\(\)\{try\{await csrf\(\);const s=await api\('\/api\/session'\)/,
   'The fresh document must obtain an antiforgery token under the authenticated identity before loading the workspace.');

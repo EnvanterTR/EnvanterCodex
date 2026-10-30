@@ -1205,3 +1205,12 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 30 Ekim yönetici oturum izolasyonu5409c35 exact staging kabulü tamam: buildPID82507exit0/preparePID83989exit0/probesPID94132exit0. Taze132825ZSQL hash/list/bağımsızrestore122/95; boundedinternalweb/public, runtime/HTTP/CSRF/anonim/platform sınırları, rootplatformHTMLexactbytes ve95orijinaltabloalankorunması geçti. Eski f12 ikiapp geri alınabilir durduruldu; canlıkimliklerkorundu/DBdosyasilinmedi,avail5804MiB.
 
 Taze release recoveryPID100368exit0:133543ZSQL hash/list/bağımsızrestore122/95,143MBrollback-20261030T133550Zmevcut3b98183SQL/medya/anahtar/imajkurtarması geçti. CI41062817250Linux7m36s/Windows4m57sbaşarılı;PG124086540816aynıiş15m25ssürüyor. Yeni push/restart/cancelyok. Canlı3b98183korunuyor,5409c35henüzyayında değil. Kanıt platform-session-stage-progress-20261030.md+üçPNG. TamHedef/P1/tarihbackfill/gerçekmüşterikabulüaçık.
+
+## 30 Ekim 2026 — yönetici sekmeleri arasında oturum değişimi
+- Aynı Chromium context'inde iki gerçek ürün sekmesi: birinde actual logout sonrası diğerinin eski privatebody kabulü ve eskiworkspacegörünürlüğü2/2baselineyenidenüretildi.
+- Başarılı platform login/logout same-originBroadcastChannel bildirimi, desteklenmezse storage-eventnonce; alıcı mevcutshowLogin ilegeneration/CSRF/dialog/ekrankorumasınıuygular,tekraryayınlamaz. Payloadda hesap/şirket/veri/secret yok.
+- Final15/15Chromium(local11+cross-tablogout/loginikiiletişimyolu),20/20actualAPIasync veiki platformverifierexit0. Tamtarayıcıexec24479sürüyor;henüztamCI/staging/canlıyok.
+- AktifCI41062817250PG12408654081624m49saynıişsürüyor;Linux7m36s/Windows4m57sbaşarılı.5409staging/kurtarmayenibu değişikliği içermez;live3b98183. Yeni push/iptal/yenidenbaşlatmayok.
+- Kanıt:platform-cross-tab-20261030.md veüçhedeflilog. Sıradaki:fullbrowser sonucu,mevcut5409CI/yayınkapısı,şirketsayfasıcross-tabauditi;tamP1açık.
+
+30 Ekim yönetici cross-tab son tam yerel tarayıcı paketi exec24479exit0 tamamlandı; mevcut tüm orchestrator ve final15/15 geçti. Yeni ürünle20/20APIasync,iki platformverifier de başarılı. Kaynak/test saltokunur eskiPlaywrightimajına mount; temizimage/remoteCI/staging/canlıdeğil. CI41062817250PG124086540816aynıiş28m49ssürüyor;Linux7m36s/Windows4m57sbaşarılı. Cross-tab yerelcommitte ayrı saklanacak, aktifCI'yıiptaledenpushyok. Sonrakişirketsayfasıcross-tabauditiaçık. Kanıt platform-cross-tab-20261030.md ve full-browserlog.

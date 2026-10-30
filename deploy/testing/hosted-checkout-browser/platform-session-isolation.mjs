@@ -33,7 +33,9 @@ const server=createServer(async(req,res)=>{
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const browser=await chromium.launch({headless:true});
+const crossTabBaseline=process.argv.includes('--cross-tab-baseline');
 try{
+  if(!crossTabBaseline){
   for(const method of ['blob','text','arrayBuffer','formData','json'])for(const signOut of [true,false]){
     const page=await browser.newPage();
     await page.goto('http://127.0.0.1:'+server.address().port+'/');
@@ -82,7 +84,51 @@ try{
   assert.ok(authenticatedCsrfReads>0,'Reload must fetch a fresh CSRF token under the authenticated identity');
   console.log('PASS successful platform sign-in replaces previous administrator DOM and JavaScript cache');
   await page.close();
-  console.log('PLATFORM_SESSION_ISOLATION_BROWSER 11/11 passed');
+  }
+  for(const storageFallback of [false,true])for(const action of crossTabBaseline?['logout']:['logout','login']){
+    const context=await browser.newContext();
+    if(storageFallback)await context.addInitScript(()=>{window.BroadcastChannel=undefined;});
+    const first=await context.newPage(),second=await context.newPage();
+    const origin='http://127.0.0.1:'+server.address().port+'/';
+    await Promise.all([first.goto(origin),second.goto(origin)]);
+    await first.locator('#appShell').waitFor({state:'visible'});
+    await second.locator('#appShell').waitFor({state:'visible'});
+    if(action==='login'){
+      await first.locator('#logout').click();
+      await first.locator('#loginForm').waitFor({state:'visible'});
+      await second.reload();
+      await second.locator('#appShell').waitFor({state:'visible'});
+    }
+    const reading=second.evaluate(async()=>{
+      const response=await window.platformAdminApi('/api/test-private?method=json',{responseType:'raw'});
+      window.privateBodyStarted=true;
+      try{return {value:(await response.json()).company};}catch(error){return {code:error.code};}
+    });
+    await second.waitForFunction(()=>window.privateBodyStarted===true);
+    if(action==='logout'){
+      await first.locator('#logout').click();
+      await first.locator('#appShell').waitFor({state:'hidden'});
+    }else{
+      await first.locator('#loginForm [name="email"]').fill('next-admin@example.invalid');
+      await first.locator('#loginForm [name="password"]').fill('SyntheticFixtureOnly-456!');
+      await Promise.all([first.waitForEvent('load'),first.locator('#loginForm button[type="submit"]').click()]);
+      await first.locator('#appShell').waitFor({state:'visible'});
+    }
+    if(!crossTabBaseline)await second.locator('#appShell').waitFor({state:'hidden'});
+    pending.get('json').end('"previous-admin"}');pending.delete('json');
+    const result=await reading;
+    if(crossTabBaseline){
+      assert.equal(result.value,'previous-admin');
+      assert.equal(await second.locator('#appShell').isVisible(),true);
+      console.log('BASELINE_OTHER_PLATFORM_TAB_ACCEPTS_PRIVATE_BODY_AFTER_LOGOUT '+(storageFallback?'storage':'broadcast'));
+    }else{
+      assert.equal(result.code,'STALE_PLATFORM_RESPONSE');
+      await second.locator('#loginForm').waitFor({state:'visible'});
+      console.log('PASS another platform tab rejects old private body after actual '+action+' '+(storageFallback?'storage fallback':'BroadcastChannel'));
+    }
+    await context.close();
+  }
+  console.log(crossTabBaseline?'PLATFORM_CROSS_TAB_BASELINE 2/2 reproduced':'PLATFORM_SESSION_ISOLATION_BROWSER 15/15 passed');
 }finally{
   for(const response of pending.values())response.end();
   await browser.close();await new Promise(resolve=>server.close(resolve));
