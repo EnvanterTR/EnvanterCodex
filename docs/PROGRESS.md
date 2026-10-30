@@ -1161,3 +1161,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - 20/20async+10/10gerçekChromiumnativeResponsegeçti; değişmeyenoturumdakigövdelerkorundu. Authverifier/UI2304/5dil2260/browserharnesscheckgeçti. Yeni browsercase standardpaketeeklendi. Kanıt session-export-body-20261030.md/.log.
 - 8cdbara stage runtime/HTTP/95tablo korunması exit0,PId3636215,şema122/0; fakatbuSONrawbodydeğişikliğiniiçermez. Artıkgüncelürünle eşdeğildeğil; finalkarmaadayyenidenbuild/staging/CIgerektirir. Öncekifullbrowserpassdabugövdeekindensonraki tamsonuçyerinesayılmaz.
 - CI41009579015 aynıPGjob12391217242729m44ssürüyor;iptal/yenidenbaşlatma/pushyok. Canlıd19korunuyor. TamHedef/P1açık.
+
+## 30 Ekim 2026 — birleşik oturum koruması son tam yerel tarayıcı koşusu
+- SonrawbodyekidahilgerçekürünHTMLveiki yeni testlehosted-checkout.mjs tamorchestrationexit0. Finalworkspace4/4+nativebody10/10. Yeni kaynak saltokunur mevcutPlaywright1.64imajınamounted; temizimage/remoteCI/gerçekmüşterikabulüdeğil. Kanıt session-isolation-final-full-browser-20261030.md/.log.
+- EskiCI41009579015terminal:LinuxeskiAuthverifierlocator30sbaşarısız,PG37m10s/Windows5m06sbaşarılı. Aynıkoşuiptal/yenidenbaşlatılmadı;yereldüzeltme+birleşikadayşimditekpushile yeniCI'ye gönderilecek.
+- Ara8cdbstagefinalrawHTML'yi içermez; sonkaynakstagegerekiyor. Platform-adminayrıapi/directCSVlifecyclescopeaudit sonrakiP1işiolarak açık;şirketUItestlerirootadminizolasyonunukanıtlamaz. TamHedef/P1/tarihbackfill/gerçekmüşteri açık. Canlıd19korunuyor.
