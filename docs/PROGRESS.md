@@ -1312,3 +1312,10 @@ BirleşikP1adayf8340d9fa6887a6c8745f152670a72879dee1419tekpush'lagönderildi;CI4
 - Test3/3exit0,38.2000s:exactdosyahash/EFkaynak eşitliği,yıkıcıkomutyokluğu;bozuklegacy'deSQLret/historykorunması;syntheticdüzeltmesonrasıaynıdosyaikiuygulama;missing/foreigntargetret/validkabul. Kanıt catalog-fk-sql-acceptance-20261031.log.
 - ÜretimphysicalFK/preflight/backup/stagingkapılarıaçık. Buadımgerçekveridüzeltmesi/yayınveyaP1tamamlanmasıdeğil. AynıCI41135298896f834takibisürüyor;aktifCI'yıiptaledecekpushyok.
 - TAMAM dediğim1yerelartefaktpaketinin1'i test çıktısıyla doğrulanmıştır.
+
+## 31 Ekim 2026 — FK124 normal kullanım uyumluluğu
+- Durum: yerel kabul TAMAM; uzakCI/staging/canlı DOĞRULANMADI.
+- YeniFK'nınnormalyollarıbozmamasıkaygısınayönelikdörtmevcuttest--no-build/no-restore4/4exit0,46.7713s:model/üreticisıralaması,customfieldmodel/categoryscope,modelayrıntı/asset/order/historytenantayrımı,genişinheritedlocationaccess. Ürün/fixturedeğişmedi. Kanıt catalog-fk-compatibility-20261031.log.
+- Dörtyolreadonlypreflightgerçekyerelapplicationşemasındatestlersonrası0row;catalog-fk-local-preflight-20261031.log. Canlıveriyerinesayılmaz. Bucapsamıyenisebepyoktekrarlama.
+- AynıCI41135298896f834öncekiadayındaPG124336149134sürüyor;Windows/Linuxsecuritygeçti. Yeni124paketleribitimiiptaletmedenayrıtutuluyor. Serverphysicalpreflight/yedek/stagingvegenelDeletedAt/P1açık.
+- TAMAM dediğim1yereluyumlulukpaketinin1'i test çıktısıyla doğrulanmıştır.
