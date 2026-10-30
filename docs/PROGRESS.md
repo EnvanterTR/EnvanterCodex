@@ -1104,3 +1104,10 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 29 Ekim — hesap fotoğrafı/arşiv koruması: hesap-kapsamlı dosya kontrolü, okuma/yükleme/silme, fotoğraf varlık bayrağı ve şirket ZIP profil eklemesi korundu. Accounts klasörü/kullanıcı klasörü/son dosya yönlendirmeleri ile normal fotoğraf, şirket export ve varlık eki regresyonları7/7,1.6026dk/exit0 geçti. Mevcut gerçek profil fotoğrafı değiştirilmedi. Kanıt:account-photo-media-namespace-20261029.md. Yerel paket; CI40921546389 henüz bitmediği için push edilmedi.
 
 29 Ekim — Hedef6.1 salt okunur şema envanteri: schema122/95tablo kopyasında CompanyId81/95, CreatedAt59/95, UpdatedAt34/95, DeletedAt3/95; dört sütunun tamamı yalnız Assets veEmployeeHandoverEmailAttempts tablolarında. Madde tamamlanmadı; nullable/default/backfill ve davranış ayrıca değerlendirilecek. Veri/şema değiştirilmedi. Kanıt:tenant-schema-field-audit-20261029.md ve iki ekran görüntüsü.
+
+## 30 Ekim 2026 — destek e-postası staging ve tarih kapsamı
+- Destek alıcısı yetki kontrolü eae37c7: yerel PostgreSQL/SMTP 7/7; exact staging build, hazırlık, runtime/HTTP ve 95 tablonun özgün alan korunması exit 0. Canlı sürüm 8a07aec korunuyor.
+- CI 40976671612 PostgreSQL job 123806302264 hâlâ çalışıyor. Linux tarayıcı testi UTC gece yarısı farkında başarısız; 8dbae85 test saati düzeltmesi tam yerel Chromium senaryosunda exit 0. Koşu bitmeden push yapılmadı.
+- Salt okunur tarih envanteri: CreatedAt eksik 36 tablonun 11'inde 138 eski kayıt var. Eski tarihler uydurulmadı; şema değiştirilmedi. Hedef 6.1 tamamlanmadı.
+- Kanıt: support-recipient-stage-progress-20261030.md, legacy-date-coverage-audit-20261030.md, browser-business-clock-20261030.md.
+- Sıradaki: aynı CI koşusunun terminal sonucunu al, düzeltmeyi gönder, yeni tam CI'yi doğrula; ardından yayın kapılarını tamamla.
