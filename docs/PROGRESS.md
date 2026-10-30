@@ -1225,3 +1225,12 @@ Taze release recoveryPID100368exit0:133543ZSQL hash/list/bağımsızrestore122/9
 - CI41062817250 (#807): Linux7m36s, Windows4m57s başarılı; PostgreSQL124086540816 aynı işte43m46s sürüyor. İş logunda yeni tenant/MFA/kota test geçişleri görüldü. İptal/yeniden başlatma yok.
 - Sonraki yerel platform cross-tab kaynağı040619c ve bu şirket değişikliği henüz uzak CI/staging/canlıda değil. Hedef.txt bütünü/P1 tamamlanmadı.
 - Eski tarih CSV'si kullanıcıda; tarih uydurulmadı. Gerçek ödeme için iyzico hesabı yok. Gerçek müşteri/imza kabul adımları açık.
+
+## 31 Ekim 2026 — canlı dış kabul ve cross-tab CI sonucu
+- Önceki tur: bekleyen yayının terminal sonucu kanıtlanmamıştı; şimdi yeni dış kanıt toplandı. Yeniden deploy/CI başlatılmadı.
+- TAMAM (yalnız dış kabul kapsamı): 2026-10-30T20:59Z node tests/reports/platform-session-live-health-20261030.mjs ve platform-session-live-boundaries-20261030.mjs exit0. Üç host ready122/0; şirket ve root yönetici HTML exact5409c35 kaynaklarıyla eşit; galeri CSS/JS ve altı PNG hash eşit; anonim401, tenant platform404 ve root admin302 sınırları geçti.
+- DOĞRULANMADI: rs4lmqzb2mwjyfsuswzrb9bd Coolify terminal durumu ve actual sunucu imaj/runtime kontrolü. Dış HTML eşitliği container kimliği/sağlığı yerine sayılmadı. Eski tarayıcı oturumu artık mevcut değil; mevcut Windows pencere envanteri ayrı tarayıcı göstermedi. Hiçbir yeni yayın başlatılmadı.
+- TAMAM (CI kapsamı): GitHub API run41069892486 exact10c03e71 completed/success. PostgreSQL46m25, Windows5m12, Linux8m33; üç iş başarılı. Kanıt tests/reports/cross-tab-ci-success-20261030.json.
+- Cross-tab10c03e7 staging ve canlı kabulü henüz yapılmadı; 5409 dış kabulü buna sayılmaz. Tam Hedef/P1, kullanıcı tarih girdileri ve müşteri kabulü açık.
+- Sıradaki iş: rs4 Coolify terminal/runtime doğrulaması, ardından başarılı10c03e7 için ayrı staging ve yayın kapısı. Aynı CI/testleri gerekçesiz tekrarlama.
+- TAMAM dediğim 2 maddenin 2'si test çıktısıyla doğrulanmıştır.

@@ -1230,3 +1230,9 @@ Taze release recoveryPID100368exit0:133543ZSQL hash/list/bağımsızrestore122/9
 - CI41062817250 (#807): Linux7m36s, Windows4m57s başarılı; PostgreSQL124086540816 aynı işte43m46s sürüyor. İş logunda yeni tenant/MFA/kota test geçişleri görüldü. İptal/yeniden başlatma yok.
 - Sonraki yerel platform cross-tab kaynağı040619c ve bu şirket değişikliği henüz uzak CI/staging/canlıda değil. Hedef.txt bütünü/P1 tamamlanmadı.
 - Eski tarih CSV'si kullanıcıda; tarih uydurulmadı. Gerçek ödeme için iyzico hesabı yok. Gerçek müşteri/imza kabul adımları açık.
+
+## 31 Ekim 2026 — son doğrulanan durum (önceki kayıtların güncellemesi)
+- Dış canlı kabul: 5409c35 root yönetici ve şirket HTML byte eşitliği, üç host ready122/0, galeri6görsel/hash ve erişim sınırları 20:59UTC exit0. Yeni deploy başlatılmadı.
+- Coolify rs4 dağıtımının terminal durumu ve sunucu imaj/runtime kimlikleri DOĞRULANMADI; dış içerik eşitliği bu eksik kanıtı tamamlamaz.
+- Cross-tab10c03e71 CI41069892486 completed/success; üç job geçti. Kanıt cross-tab-ci-success-20261030.json. Staging/canlı kapıları açık; henüz yayımlandı denmedi.
+- Hedef.txt bütünü bitmedi; geçerli genel yüzde yok. Tarihler kullanıcı girdisi bekliyor, iyzico hesabı yok, gerçek müşteri/imza kabulü açık.
