@@ -13,3 +13,5 @@ Evidence:support-email-recipient-scope-20261030.log; SupportEmailRecipientAuthor
 TAMAM dediğim 1 maddenin 1'i test çıktısıyla doğrulanmıştır.
 
 The initial six-case run passed before adding the inactive-company case; retained in commitb95d10a. The added guard matches SupportEndpoints company.member active-company policy. The final seven-case run passed after that source change; it was not a blind retry of unchanged passing checks.
+
+Remote sourceeae37c7c6ac6453bc7972f1eac5a7f3a73085087 was pushed once after the previous CI completed. FullCI40976671612(#800) is confirmed in progress; continue observing the same run. No release of this candidate has started. Current production8a07aec is separately verified. Do not restart or push while this run is active.
