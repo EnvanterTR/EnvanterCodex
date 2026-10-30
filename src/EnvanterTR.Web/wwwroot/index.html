@@ -3603,16 +3603,25 @@
         throw error;
       } finally { clearTimeout(timeoutId); }
       if (response.status === 401 && path !== '/api/session/login') { const isCurrentSession = requestSessionGeneration === authSessionGeneration; if (isCurrentSession) showLogin(); const error = new Error(translateUiText('Oturum açmanız gerekiyor.')); error.code = isCurrentSession ? 'AUTH_REQUIRED' : 'STALE_AUTH_REQUIRED'; error.status = 401; throw error; }
+      const ensureCurrentSession = () => {
+        if (requestSessionGeneration === authSessionGeneration) return;
+        const error = new Error(translateUiText('Oturum açmanız gerekiyor.'));
+        error.code = 'STALE_SESSION_RESPONSE'; throw error;
+      };
+      ensureCurrentSession();
       if (!response.ok) {
         const fallbackKey = ({ 400: 'İsteğiniz doğrulanamadı. Sayfayı yenileyip yeniden deneyin.', 402: 'Şirket aboneliği yazma işlemlerine kapalı. Veriler görüntülenebilir; uzatma için platform yöneticinize başvurun.', 403: 'Bu işlem için yetkiniz yok.', 404: 'Kayıt bulunamadı.', 409: 'İşlem mevcut kayıtlarla çakışıyor. Bilgileri yenileyip yeniden deneyin.', 413: 'İstek gövdesi izin verilen boyutu aşıyor.', 429: 'İstek sınırı aşıldı. Daha sonra yeniden deneyin.' })[response.status] || 'İstek başarısız ({status}).';
         let message = translateUiText(fallbackKey).replace('{status}', response.status), payload = null;
         try { payload = await response.json(); const details = Array.isArray(payload.errors) ? payload.errors : Object.values(payload.errors || {}).flat(); message = [payload.message, ...details].filter(Boolean).join('\n') || message; } catch {}
+        ensureCurrentSession();
         message = message.split('\n').map(line => translateUiText(line)).join('\n');
         const error = new Error(message); error.status = response.status; error.payload = payload; throw error;
       }
       if (response.status === 204) return null;
       if (options.responseType === 'raw') return response;
-      return response.headers.get('content-type')?.includes('application/json') ? response.json() : response;
+      const result = response.headers.get('content-type')?.includes('application/json') ? await response.json() : response;
+      ensureCurrentSession();
+      return result;
     }
     async function refreshCsrf() { const result = await api('/api/session/csrf'); requestToken = result.requestToken; }
     async function readImportFile(file) { const isXlsx = /\.xlsx$/i.test(file.name); return { body: isXlsx ? await file.arrayBuffer() : await file.text(), contentType: isXlsx ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/csv; charset=utf-8', format: isXlsx ? 'xlsx' : 'csv' }; }

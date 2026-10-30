@@ -256,6 +256,10 @@ jobs:
         shell: bash
         run: node tools/Verify-SupportUi.mjs
 
+      - name: Verify session response isolation
+        shell: bash
+        run: node deploy/testing/verify-session-response-isolation.mjs
+
       - name: Run hosted Cloud checkout in Chromium
         shell: bash
         run: |
