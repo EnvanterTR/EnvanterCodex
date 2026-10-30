@@ -1249,3 +1249,5 @@ Taze release recoveryPID100368exit0:133543ZSQL hash/list/bağımsızrestore122/9
 31 Ekim bulk scope regresyonu: PostgreSQL1/1exit0,foreignkategoribulkupdate/delete0,own1; clearscopeokuma/yazma0; sadeceSoftDeletekapatılsa tenantasset sınırı korunur. tenant-bulk-query-scope-20261031.log. Yeni ürün değişikliği değil, P1kabul kapsamıdır. TamP1/staging/canlıaçık.
 
 31 Ekim çöp/katalog düzeltmesi: çöpvarlığıBrand/Modelsilme204baselineyenidenüretildi; APIbağımlılıkguardlarıçöpkutusunudakapsar. Son4/4HTTP/PostgreSQLgeçti;restorebağlarıkorunur. trash-catalog-retention-fixed-20261031.log. Henüzcanlıdeğil;genelDeletedAt/FK/P1açık.
+
+31 Ekim 429feedback: beklemesüresiJSONmessage/Retry-Afterheaderve no-store eklendi;limitleraynı.8/8üretimpolicyTestServerkabulüexit0(rate-limit-retry-feedback-20261031.log). Tarihadayıb31CI41129884651üçişbaşarılı;sonrakibeşpaketbukanıtayerinesayılamaz,ayrıCIgerektirir. Canlıdeğişmedi/tamP1açık.

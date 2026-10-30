@@ -1279,3 +1279,11 @@ Tarih adayı b31a97a12f8f7508a034701b81773186ac0d2570 tekpush ile yayımlanan br
 - Son4/4PostgreSQL/HTTPexit0,41.6310s: kategori/marka/model409,foreignID404;gerçekrestore-from-trash200vebağlantılarmevcut. MevcutBrand_model_category_and_imagesregresyonugeçti. Kanıt trash-catalog-retention-fixed-20261031.log/.md.
 - TamDeletedAt/P1veAssetBrand/ModelveritabanıFKeksikleriaçık; bunun içinlivereferansauditistaginggerekir. Tarih123CI41129884651artıkcompleted/success;sonrakiaynıpush'tabekleyenpaketlergönderilecek. 429feedbackayrıpaket/testolaraksürüyor.
 - TAMAM dediğim1yereldüzeltmenin1'i test çıktısıyla doğrulanmıştır.
+
+## 31 Ekim 2026 — 429 giriş hatasında bekleme süresi
+- Durum: yerel kod/kabul TAMAM; uzakCI/staging/canlı DOĞRULANMADI.
+- ClientRateLimits.OnRejected JSONmessage+retryAfterSeconds ve limiterleaseRetryAfterheader döndürür; no-store. MevcutplatformAPIhelpermessagealanınıgösterir. Limitler/IPdoğrulamasıdeğişmedi; auth/MFA/ratelimitsıfırlanmadı.
+- Test: Production_named_policy_uses_verified_client_and_ignores_raw_headers,8/8exit0,3.1711s. Login/step-up/customer-api/checkout trusted+untrusted8senaryo;permitsayısı,spoofguard,429header/bodybeklemesüresieşitliği/no-storegeçti. Gerçekhesap/parola/OTPtesttekullanılmadı; hassasbilgipersistedilmedi.
+- Kanıt rate-limit-retry-feedback-20261031.log/.md. MevcutbuildNuget/deprecation/analyzeruyarılarıvar. Canlıgiriş/başarılıdeploykanıtıdeğil.
+- Öncekitarihadayıb31a97aCI41129884651tümüsuccess:Windows4m53,Linux7m23,PG31m15. Kanıt company-audit-ci-success-20261031.json. BuyeşilCIsonrakiSQLartefakt/modelguard/bulktest/katalogdüzeltmesi/429değişikliğinikapsamaz;şimdihepsitekpushileCI'aalınacak.
+- TAMAM dediğim1yerelpaketin1'i test çıktısıyla doğrulanmıştır.
