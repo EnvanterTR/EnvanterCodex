@@ -1241,3 +1241,5 @@ Taze release recoveryPID100368exit0:133543ZSQL hash/list/bağımsızrestore122/9
 - Migration123,54tabloda75eksikCreatedAt/UpdatedAt; geçmiş tarih uydurulmaz. Tracked ve raw/bulk yazma timestamp kapsamı eklendi.
 - Son PostgreSQL4/4exit0;118-era veri projeksiyon koruması ve tenant/softdelete regresyonu geçti. Kanıt company-audit-final-acceptance-20261031.log. UzakCI/staging/canlı henüz yok.
 - Canlı dış kabul5409c35/schema122 olarak önceki kanıtta kalır; yeni migration canlıya uygulanmadı. Hedef6.1tamamlanmadı; DeletedAt ve ortak audit tablolari/tarih girdileri açık.
+
+31 Ekim SQL artefaktı: exact122-to123 idempotentSQL+SHA hazır. Son yerel1/1exit0, aynı dosya iki kez izole şemada uygulandı; company-audit-sql-acceptance-20261031.log. CI41129884651b31adayındaWindowsbaşarılı,ikiLinuxişisürüyor. Artefakt takip commit'i bu aktif CI'dan ayrıdır; push ile iptal edilmeyecek. Canlı/staging/yedek kabulü açık.

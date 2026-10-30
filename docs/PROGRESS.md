@@ -1244,3 +1244,13 @@ Taze release recoveryPID100368exit0:133543ZSQL hash/list/bağımsızrestore122/9
 - Veri koruma:118-era tüm orijinal alan projeksiyonları123'e kadar korundu; model snapshot drift yok; bilinmeyen eskiCreatedAt edit sonrası null; yeniCreatedAt edit/bulk sonrası aynı; şirketdışı yazma reddedildi. Kullanıcı CSV'si import edilmedi.
 - Sıradaki: tek commit/uzakCI; yayın bağlantısı ve exact staging/recovery açık. DeletedAt/softdelete, ortak tablo audit alanları, tarih girdisi ve tam müşteri kabulü açık.
 - TAMAM dediğim1iş paketinin1'i test çıktısıyla doğrulanmıştır.
+
+Tarih adayı b31a97a12f8f7508a034701b81773186ac0d2570 tekpush ile yayımlanan branch'e alındı. GitHub CI41129884651 in_progress; aktif işi iptal edecek yeni push/restart yapılmayacak. Kanıt company-audit-ci-start-20261031.json. Canlıya deploy/migration yapılmadı. Önceki cross-tab CI808 başarılıdır; yeni tarih adayı için CI sonucu yerine sayılamaz.
+
+## 31 Ekim 2026 — tarih migration SQL yayın dosyası
+- Durum: yerel artefakt kabulü TAMAM; staging/canlı DOĞRULANMADI.
+- Yeni dosya: company-audit-122-to-123-20261031.sql ve SHA256 c9d687d9d1a5408fddbd651842ede9df4c10fef6cc3de597686bb5e7727df865. Test paketine/SDK Dockerfile'a iki dosya eklendi; ürün migration kaynağı değişmedi.
+- Test: CompanyAuditTimestampAcceptanceTests, exit0,1/1,32.4469s. SHA/source eşitliği, yıkıcı tablo/sütun/satır komutu yokluğu, aynı SQL'in iki kez izole şemada uygulanması, eski bilinmeyen tarihler/new/raw/bulk/tenant ret/snapshot kontrolleri geçti. Kanıt company-audit-sql-acceptance-20261031.log.
+- CI41129884651 exactb31a97a: Windows124317801079success; Linux124317801179 ve PG124317801194 son gözlemde in_progress. Bu işi iptal edecek push/restart yapılmadı. Artefakt takip commit'i yerelde tutulacak; mevcut CI bu takip commit'ini içermez.
+- Sıradaki: aynıCI terminal sonucu; ardından takip commit'ini push/CI ve server staging/recovery. Canlı halen önceki kabulde schema122;123uygulanmadı. TamHedef/P1açık.
+- TAMAM dediğim1artefakt paketinin1'i test çıktısıyla doğrulanmıştır.

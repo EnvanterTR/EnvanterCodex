@@ -1,6 +1,10 @@
 using EnvanterTR.Web.Data;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Xunit;
 
 namespace EnvanterTR.SecurityAcceptance;
@@ -35,8 +39,29 @@ public sealed class CompanyAuditTimestampAcceptanceTests
                 INSERT INTO "AssetCategories" ("Id", "CompanyId", "Name")
                 VALUES ({oldCategory}, {company}, 'Historical category')
                 """);
-            await db.Database.MigrateAsync();
-            await db.Database.MigrateAsync();
+            var artifact = Path.Combine(AppContext.BaseDirectory, "company-audit-migration.sql");
+            var bytes = await File.ReadAllBytesAsync(artifact);
+            var expectedHash = (await File.ReadAllTextAsync(artifact + ".sha256")).Trim().Split(' ')[0];
+            Assert.Equal(expectedHash, Convert.ToHexStringLower(SHA256.HashData(bytes)));
+            var sql = Encoding.UTF8.GetString(bytes);
+            var generated = db.GetService<IMigrator>().GenerateScript(
+                "20261026083058_AddHandoverEmailAttempts", "20261030210807_AddMissingCompanyAuditTimestamps",
+                MigrationsSqlGenerationOptions.Idempotent)
+                .Replace('"' + schema + "\".\"__EFMigrationsHistory\"", "\"__EFMigrationsHistory\"", StringComparison.Ordinal)
+                .Replace(schema + ".\"__EFMigrationsHistory\"", "\"__EFMigrationsHistory\"", StringComparison.Ordinal);
+            Assert.Equal(generated.Replace("\r\n", "\n").TrimEnd(), sql.Replace("\r\n", "\n").TrimEnd());
+            foreach (var destructive in new[] { "DROP TABLE", "DROP COLUMN", "DELETE FROM", "TRUNCATE" })
+                Assert.DoesNotContain(destructive, sql, StringComparison.OrdinalIgnoreCase);
+            await using (var sqlConnection = new NpgsqlConnection(isolated.ConnectionString))
+            {
+                await sqlConnection.OpenAsync();
+                for (var attempt = 0; attempt < 2; attempt++)
+                {
+                    await using var apply = new NpgsqlCommand(sql, sqlConnection);
+                    await apply.ExecuteNonQueryAsync();
+                }
+            }
+            Assert.Empty(await db.Database.GetPendingMigrationsAsync());
             Assert.False(db.Database.HasPendingModelChanges());
             foreach (var entity in db.Model.GetEntityTypes().Where(e => e.BaseType is null &&
                          (e.ClrType == typeof(Company) || e.FindProperty("CompanyId")?.ClrType is { } type &&
