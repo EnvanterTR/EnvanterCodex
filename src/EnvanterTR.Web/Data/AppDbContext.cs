@@ -1099,6 +1099,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetBrand>().HasIndex(x => new { x.CompanyId, x.Name }).IsUnique();
         modelBuilder.Entity<AssetModel>().HasIndex(x => new { x.CompanyId, x.BrandId, x.Name }).IsUnique();
         modelBuilder.Entity<AssetModel>().HasIndex(x => new { x.CompanyId, x.CategoryId });
+        modelBuilder.Entity<AssetModel>().HasOne<AssetBrand>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.BrandId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<Asset>().HasOne<AssetBrand>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.BrandId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<Asset>().HasOne<AssetModel>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ModelId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict).IsRequired(false);
 
         modelBuilder.Entity<Accessory>().Property(x => x.Name).HasMaxLength(200).IsRequired();
         modelBuilder.Entity<AccessoryCategory>().Property(x => x.Name).HasMaxLength(120).IsRequired();

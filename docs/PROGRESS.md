@@ -1296,3 +1296,12 @@ BirleşikP1adayf8340d9fa6887a6c8745f152670a72879dee1419tekpush'lagönderildi;CI4
 - PostgreSQL17fixture exit0: dörtbozukyolun4'übulundu,2CrossCompany+2MissingTarget;geçerlivarlıkdışlandı. GeçicitablolarROLLBACKiledönüldü. Kanıt catalog-reference-preflight-20261031.log/.md;tekrarlanabilirSQLsnapshot catalog-reference-preflight-acceptance-20261031.sql.
 - Sonraki: güncelserverclone/physicalFK ve gerçekreferans sonuçları; veriuydurmadan kısıtmigrationhazırlığı. Bu dosya canlıdaçalıştırılmadı. CI41135298896aynıf834adayındasonokumadain_progress;iptal/restart/pushyok.
 - TAMAM dediğim1yerelpaketin1'i test çıktısıyla doğrulanmıştır.
+
+## 31 Ekim 2026 — şirket bazlı katalog yabancı anahtarları
+- Durum: yerel migration/build/kabul TAMAM; uzakCI/staging/canlı DOĞRULANMADI.
+- Migration124(20261030220901) üçRestrict compositeFKekler:AssetBrand,AssetModel,AssetModelBrand;(CompanyId,Id)hedef. İkiassetindeksi. ModelCategoryFKzatenvar;yinelenmeyenmappingkorundu,preflightbelgesidüzeltildi. Sütun/kayıtsilme,veritahmini/backfillyok.
+- PostgreSQL8/8exit0,1.1680min:bozuklegacyFKmigrationbaşarısızlığı/historyveverikoruma;yalnızsyntheticbozukbağdüzeltilinceupgrade;crosscompany/missingreddi/validkabul;123exactSQLartefaktı,118-eraorijinalalanprojeksiyonları,3HTTPtrash/restoresenaryosu.
+- İlk5/8:eskiyerelbaselineDB'dekasıtlıbırakılmışkopukçöpbağlarıüçappfixturemigration'ınıdurdurdu. Eskiverisilmeden/düzeltilmeden,yeniportyayınlamayangeçiciPGcontainerileaynıkaynak--no-buildtekrar8/8geçti. Kanıt catalog-foreign-keys-existing-fixture-20261031.log, catalog-foreign-keys-final-20261031.log/.md.
+- CompanyAuditTimestampAcceptanceTests exact123SQLkanıtınıkoruyupsonrakimigration'larsonrasımodelkontrolüyapar. Gerçekserverpreflight/physicalFK/yeniyedekvebağımsızrestoregerekiyor;genelDeletedAt/tamP1açık.
+- CI41135298896f834öncekiadaydasonkontroldein_progress;aktifişiiptaledecekpush/restartyok. YenimigrationbuCI'dayok.
+- TAMAM dediğim1yerelpaketin1'i test çıktısıyla doğrulanmıştır.

@@ -1253,3 +1253,5 @@ Taze release recoveryPID100368exit0:133543ZSQL hash/list/bağımsızrestore122/9
 31 Ekim 429feedback: beklemesüresiJSONmessage/Retry-Afterheaderve no-store eklendi;limitleraynı.8/8üretimpolicyTestServerkabulüexit0(rate-limit-retry-feedback-20261031.log). Tarihadayıb31CI41129884651üçişbaşarılı;sonrakibeşpaketbukanıtayerinesayılamaz,ayrıCIgerektirir. Canlıdeğişmedi/tamP1açık.
 
 31 Ekim katalogFKpreflight: dörtEFreferansyolu içinreadonlySQLhazır;localPGfixture4bozukyoluayırtetti,geçerli/null/çöpsemantiğigeçti. catalog-reference-preflight-20261031.log. Gerçekserververisi/physicalFKhenüzincelenmedi;FKmigration/tamP1açık.
+
+31 Ekim migration124:üçyenişirketbazlıkatalogFK+ikiindeks;modelCategoryFKöncedenvar. FreshPG8/8exit0,legacybozukluktaatomicret,valid/missing/foreign,118/123preservationveHTTPrestoregeçti(catalog-foreign-keys-final-20261031.log). EskiyerelbaselineDBdeğiştirilmedi. HenüzCI/staging/canlıdeğil;fullP1açık.

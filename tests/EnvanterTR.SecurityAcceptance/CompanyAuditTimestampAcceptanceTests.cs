@@ -61,6 +61,8 @@ public sealed class CompanyAuditTimestampAcceptanceTests
                     await apply.ExecuteNonQueryAsync();
                 }
             }
+            Assert.Contains("20261030210807_AddMissingCompanyAuditTimestamps", await db.Database.GetAppliedMigrationsAsync());
+            await db.Database.MigrateAsync();
             Assert.Empty(await db.Database.GetPendingMigrationsAsync());
             Assert.False(db.Database.HasPendingModelChanges());
             foreach (var entity in db.Model.GetEntityTypes().Where(e => e.BaseType is null &&
