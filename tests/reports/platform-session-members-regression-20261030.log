@@ -1,0 +1,7 @@
+SYNTHETIC role response: 428
+SYNTHETIC role response: 428
+SYNTHETIC reauthentication response: 204
+SYNTHETIC role response: 204
+PASS: separate unpaid demo form, 15-day default, 60-day cap, required reason, payment fields absent, CSRF payload, mobile fit/scroll/cancel; paid form still requires payment proof.
+PASS: company trash/restore dialog, required reason and exact slug, CSRF payload, current/trash filtering, blocked trash activation, mobile fit and cancel without write.
+PASS: real Chromium account/security/membership/payment timeline; company CSV download with active search/status filters and formula-safe delimited values; demo CRM list/company-search/detail and selected-company fallback stale-response protection plus status, assignment, follow-up, company link, CSRF write and history persistence; member search, cancel-without-write, reauthenticated role update, synthetic invitation, plan create/update/validation/publication reload and maintenance entitlement persistence; audited company subscription plan/date editing with cancel and persistence; platform audit text/source/action/target/date filters, exclusive end-date boundary, clear, paging, event detail, no-match, surfaced 503 and retry behavior without writes.

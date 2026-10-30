@@ -260,6 +260,10 @@ jobs:
         shell: bash
         run: node deploy/testing/verify-session-response-isolation.mjs
 
+        - name: Verify platform session response isolation
+          shell: bash
+          run: node deploy/testing/verify-platform-session-isolation.mjs
+
       - name: Run hosted Cloud checkout in Chromium
         shell: bash
         run: |

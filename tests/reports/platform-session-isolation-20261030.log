@@ -1,0 +1,21 @@
+PASS drop successful platform response after actual showLogin
+PASS drop platform JSON body completing after logout
+PASS stale 401 cannot reopen login over a later session
+PASS current 401 retains status and login behavior
+PASS stale 403 cannot reopen login over a later session
+PASS current 403 retains status and login behavior
+PASS logout during CSRF prevents token assignment and protected write
+PASS logout during step-up never resends an old protected action
+PASS current step-up retries exactly once and strips custom options
+PASS current and stale empty responses remain distinct
+PASS platform raw blob rejects after logout
+PASS current platform raw blob remains readable
+PASS platform raw text rejects after logout
+PASS current platform raw text remains readable
+PASS platform raw arrayBuffer rejects after logout
+PASS current platform raw arrayBuffer remains readable
+PASS platform raw formData rejects after logout
+PASS current platform raw formData remains readable
+PASS platform raw json rejects after logout
+PASS current platform raw json remains readable
+PLATFORM_SESSION_ISOLATION 20/20 passed

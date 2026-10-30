@@ -288,3 +288,4 @@ await import('./password-reset-retry.mjs');
 await import('./tenant-platform-link.mjs');
 await import('./session-workspace-reset.mjs');
 await import('./session-export-body.mjs');
+await import('./platform-session-isolation.mjs');

@@ -1180,3 +1180,18 @@ Hedef 9.5/20.5 yerel kodu eklendi: Panele gir, gerçek müşteri rolü/tek şirk
 ## 24 Ekim 2026 — gerçek yedek, geri dönüş ve staging
 
 Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalışma için çözüldü. Taze 142 MB geri dönüş paketi doğrulandı; gerçek dump ayrı DB'ye geri yüklendi (95 tablo sayımı eşit). 118→120 exact SQL ve tekrarında 94 veri tablosunun özgün alan/satırları korundu. Aday staging imajları derlendi; yalnız internal ağda, dış port olmadan 11 temel HTTP/güvenlik kontrolü geçti. ae875b6 CI 3/3 success (40073522201). Canlı 118/0 olarak kaldı; dağıtım yapılmadı. Tam kimlik doğrulamalı müşteri/provider/Bölüm 20 kabulü açık. Kanıt: tests/reports/real-server-staging-acceptance-20261024.md ve altı Coolify ekran görüntüsü.
+
+## 30 Ekim 2026 — platform oturum yanıtlarının izolasyonu (yerel)
+- Durum: DOĞRULANMADI (tam tarayıcı/CI/yayın kapıları açık).
+- Platform API yanıtları, CSRF bekleyişi ve kritik işlem yeniden denemeleri oturum nesline bağlandı. Çıkışta açık diyaloglar kapanır; eski yanıtlar yeni oturuma taşınmaz.
+- Şirket CSV indirmesi aynı korumalı API üzerinden raw Response olarak okunur; blob/text/arrayBuffer/formData/json gövdeleri okuma öncesi ve sonrası denetlenir.
+- Test: node deploy/testing/verify-platform-session-isolation.mjs — 20/20 passed, exit0; node tools/Verify-PlatformAdminExperience.mjs — exit0.
+- Önceki kaynakta özel yanıtın çıkış sonrası dönmesi ve CSRF beklerken çıkış sonrası eski yazmanın gönderilmesi baseline ile yeniden üretildi.
+- Kanıt: tests/reports/platform-session-baseline-20261030.log; tests/reports/platform-session-isolation-20261030.log.
+- Sıradaki iş: gerçek Chromium çıkış/gövde kabulü, başarılı girişte eski çalışma alanının temizlenmesi; mevcut company-session CI sonucunu aynı işten takip et. Bu platform değişikliği canlıya alınmadı.
+
+30 Ekim platform oturum izolasyonu yerel devamı: actual logout/nativeResponse10case ve yeni girişte eski DOM/cache yokluğu+authenticatedCSRF toplam11/11Chromium,exit0. Son ürünle mevcut platform-admin-members regresyonu exit0 (CSV/reauth/rol/davet/paket/abonelik/çöp/audit). 20/20async korundu. Başarılı girişte belge reload, yeni belgede csrf/session/MFA kontrolleri; iki eski literal verifier güncel semantiğe bağlandı. Standart browser/CI adımları eklendi. Full local browser exec82141 sürüyor; yeni platform değişikliği henüzCI/staging/canlı değil. Kanıt platform-session-isolation-20261030.md.
+
+30 Ekim company-session CI41056615352 üç iş başarılı: Linux8m11s,PostgreSQL32m07s,Windows4m51s. Exact acceptedf12dd9b ürününün tested3b98183 ile src/deploycoolify/Dockerfileeşitliği yeniden doğrulandı. Taze124926ZSQL/143MB124934Zkurtarma ve95tablo staging kabulü hazır. Coolify kaynakSHA3b98183 kaydedilip reload ile doğrulandı, tekRedeploy gbeeuqd5vzbzm6l98v9z0rh5 13:12:14UTCbaşladı; logexact3b98183 importdoğrulandı. Bitim/runtime/dışkabul henüz yok; yeni platform ürünü bu yayına dahil değil.
+
+30 Ekim platform final tam yerel tarayıcı paketi exec82141 exit0 tamamlandı; son11/11platformoturum testi dahil tüm mevcut orchestrator akışı geçti. Kaynak/test salt okunur eskiPlaywrightimajına mount; temizimaj/remoteCI/staging/canlı kabulü değildir. Yeni platform kaynakları ayrıcommitlenecek; canlı dağıtım3b98183 sürüyor. Kanıt platform-session-full-browser-20261030.log.
