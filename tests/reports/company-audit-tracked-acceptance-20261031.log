@@ -1,0 +1,851 @@
+  Determining projects to restore...
+/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj : warning NU1900: Error occurred while getting package vulnerability data: Unable to load the service index for source https://api.nuget.org/v3/index.json.
+  Restored /source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj (in 6.19 sec).
+  1 of 2 projects are up-to-date for restore.
+/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj : warning NU1900: Error occurred while getting package vulnerability data: Unable to load the service index for source https://api.nuget.org/v3/index.json.
+  EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+/source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+/source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+/source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+/source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+/source/tests/EnvanterTR.SecurityAcceptance/TenantHostSessionContinuityAcceptanceTests.cs(35,23): warning CS8600: Converting null literal or possible null value to non-nullable type. [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+/source/tests/EnvanterTR.SecurityAcceptance/TenantHostSessionContinuityAcceptanceTests.cs(36,27): warning CS8600: Converting null literal or possible null value to non-nullable type. [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+/source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(102,20): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+/source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(174,9): warning xUnit2029: Do not use Assert.Empty to check if a value does not exist in a collection. Use Assert.DoesNotContain instead. (https://xunit.net/xunit.analyzers/rules/xUnit2029) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+/source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(202,9): warning xUnit2029: Do not use Assert.Empty to check if a value does not exist in a collection. Use Assert.DoesNotContain instead. (https://xunit.net/xunit.analyzers/rules/xUnit2029) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+/source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(213,9): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+  EnvanterTR.SecurityAcceptance -> /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll
+Test run for /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.01] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.83]   Discovering: EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:01.28]   Discovered:  EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:01.40]   Starting:    EnvanterTR.SecurityAcceptance
+  Passed EnvanterTR.SecurityAcceptance.CompanyAuditTimestampAcceptanceTests.Company_audit_upgrade_preserves_unknown_history_and_stamps_new_writes [30 s]
+  Passed EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently [31 s]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+info: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[62]
+      User profile is available. Using '/root/.aspnet/DataProtection-Keys' as key repository; keys will not be encrypted at rest.
+info: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[58]
+      Creating key {13cbe0e4-109b-4d65-ab49-6e43fd6af3d7} with creation date 2026-10-30 21:11:54Z, activation date 2026-10-30 21:11:54Z, and expiration date 2027-01-28 21:11:54Z.
+warn: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[35]
+      No XML encryptor configured. Key {13cbe0e4-109b-4d65-ab49-6e43fd6af3d7} may be persisted to storage in unencrypted form.
+info: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[39]
+      Writing data to file '/root/.aspnet/DataProtection-Keys/key-13cbe0e4-109b-4d65-ab49-6e43fd6af3d7.xml'.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (33ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT s."Value"
+      FROM (
+          SELECT EXISTS (
+              SELECT 1 FROM information_schema.tables
+              WHERE table_schema = current_schema() AND table_name = 'SupportTicketEmailOutbox'
+          ) AS "Value"
+      ) AS s
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (33ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT s."Value"
+      FROM (
+          SELECT EXISTS (SELECT 1 FROM information_schema.tables
+              WHERE table_schema = current_schema() AND table_name = 'ScheduledReports') AS "Value"
+      ) AS s
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (40ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT s."Value"
+      FROM (
+          SELECT EXISTS (
+              SELECT 1 FROM information_schema.columns
+              WHERE table_schema = current_schema()
+                AND table_name = 'OperationalNotificationPreferences'
+                AND column_name = 'EmailEnabledKindsJson'
+          ) AND EXISTS (
+              SELECT 1 FROM information_schema.tables
+              WHERE table_schema = current_schema()
+                AND table_name = 'OperationalNotificationEmailDigests'
+          ) AS "Value"
+      ) AS s
+      LIMIT 2
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (5ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT o."CompanyId", o."UserId", o."CreatedAt", o."EmailEnabledKindsJson", o."EnabledKindsJson", o."UpdatedAt"
+      FROM "OperationalNotificationPreferences" AS o
+      WHERE (@ef_filter__IsSystemQueryScope0 OR o."CompanyId" = @ef_filter__QueryCompanyId) AND o."EmailEnabledKindsJson" <> '[]'
+      ORDER BY o."CompanyId", o."UserId"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (14ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid), @now='?' (DbType = DateTime), @staleBefore='?' (DbType = DateTime), @p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT s."Id"
+      FROM "SupportTicketEmailOutbox" AS s
+      WHERE (@ef_filter__IsSystemQueryScope0 OR s."CompanyId" = @ef_filter__QueryCompanyId) AND ((s."Status" = 'Pending' AND s."NextAttemptAt" <= @now) OR (s."Status" = 'Sending' AND s."LastAttemptAt" < @staleBefore))
+      ORDER BY s."NextAttemptAt", s."CreatedAt"
+      LIMIT @p
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (18ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid), @selectionTime='?' (DbType = DateTime), @selectionTime0='?' (DbType = DateTime), @stale='?' (DbType = DateTime), @p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT s."Id"
+      FROM "ScheduledReports" AS s
+      WHERE (@ef_filter__IsSystemQueryScope0 OR s."CompanyId" = @ef_filter__QueryCompanyId) AND s."IsEnabled" AND s."NextDueAt" <= @selectionTime AND (s."RetryAfter" IS NULL OR s."RetryAfter" <= @selectionTime0) AND (s."ClaimedAt" IS NULL OR s."ClaimedAt" < @stale)
+      ORDER BY s."NextDueAt", s."Id"
+      LIMIT @p
+fail: Microsoft.EntityFrameworkCore.Query[10100]
+      An exception occurred while iterating over the results of a query for context type 'EnvanterTR.Web.Data.AppDbContext'.
+      Npgsql.PostgresException (0x80004005): 42703: column o.CreatedAt does not exist
+      POSITION: 35
+         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.InitializeReaderAsync(AsyncEnumerator enumerator, CancellationToken cancellationToken)
+         at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.MoveNextAsync()
+        Exception data:
+          Severity: ERROR
+          SqlState: 42703
+          MessageText: column o.CreatedAt does not exist
+          Hint: Perhaps you meant to reference the column "o.UpdatedAt".
+          Position: 35
+          File: parse_relation.c
+          Line: 3723
+          Routine: errorMissingColumn
+      Npgsql.PostgresException (0x80004005): 42703: column o.CreatedAt does not exist
+      POSITION: 35
+         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+         at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.InitializeReaderAsync(AsyncEnumerator enumerator, CancellationToken cancellationToken)
+         at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+         at Microsoft.EntityFrameworkCore.Query.Internal.SingleQueryingEnumerable`1.AsyncEnumerator.MoveNextAsync()
+        Exception data:
+          Severity: ERROR
+          SqlState: 42703
+          MessageText: column o.CreatedAt does not exist
+          Hint: Perhaps you meant to reference the column "o.UpdatedAt".
+          Position: 35
+          File: parse_relation.c
+          Line: 3723
+          Routine: errorMissingColumn
+fail: EnvanterTR.Web.Data.OperationalNotificationEmailWorker[0]
+      Operational email reminder cycle failed (PostgresException).
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://*:8080
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /source/src/EnvanterTR.Web
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (6ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+          "MigrationId" character varying(150) NOT NULL,
+          "ProductVersion" character varying(32) NOT NULL,
+          CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+info: Microsoft.EntityFrameworkCore.Migrations[20402]
+      Applying migration '20261024010000_AddPlatformImpersonationSessions'.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (16ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "UserSessions" ADD "ImpersonatorUserId" uuid;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "UserSessions" ADD "ImpersonatorSessionId" uuid;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "UserSessions" ADD "ImpersonatorSecurityStampHash" character varying(64);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "UserSessions" ADD "ImpersonationReturnTokenHash" character varying(64);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "UserSessions" ADD "ImpersonatorRememberMe" boolean;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "UserSessions" ADD "ImpersonationReason" character varying(500);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "UserSessions" ADD "ImpersonationEndedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (6ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE UNIQUE INDEX "IX_UserSessions_ImpersonationReturnTokenHash" ON "UserSessions" ("ImpersonationReturnTokenHash") WHERE "ImpersonationReturnTokenHash" IS NOT NULL;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE UNIQUE INDEX "IX_UserSessions_ImpersonatorSessionId" ON "UserSessions" ("ImpersonatorSessionId") WHERE "ImpersonatorSessionId" IS NOT NULL AND "ImpersonationEndedAt" IS NULL AND "RevokedAt" IS NULL;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "UserSessions" ADD CONSTRAINT "CK_UserSessions_Impersonation" CHECK (("ImpersonatorUserId" IS NULL AND "ImpersonatorSessionId" IS NULL AND "ImpersonatorSecurityStampHash" IS NULL AND "ImpersonationReturnTokenHash" IS NULL AND "ImpersonatorRememberMe" IS NULL AND "ImpersonationReason" IS NULL AND "ImpersonationEndedAt" IS NULL) OR ("ImpersonatorUserId" IS NOT NULL AND "ImpersonatorSessionId" IS NOT NULL AND "ImpersonatorSecurityStampHash" IS NOT NULL AND "ImpersonatorRememberMe" IS NOT NULL AND "ImpersonationReason" IS NOT NULL AND "CompanyId" IS NOT NULL AND NOT "PlatformAdmin" AND ("ImpersonationReturnTokenHash" IS NOT NULL OR "ImpersonationEndedAt" IS NOT NULL)));
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+      VALUES ('20261024010000_AddPlatformImpersonationSessions', '10.0.0');
+info: Microsoft.EntityFrameworkCore.Migrations[20402]
+      Applying migration '20261024212238_AddRecoverableCompanyDeletion'.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (9ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "Companies" ADD "DeletedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "Companies" ADD CONSTRAINT "CK_Companies_DeletedInactive" CHECK ("DeletedAt" IS NULL OR NOT "IsActive");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+      VALUES ('20261024212238_AddRecoverableCompanyDeletion', '10.0.0');
+info: Microsoft.EntityFrameworkCore.Migrations[20402]
+      Applying migration '20261026083058_AddHandoverEmailAttempts'.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (6ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "EmployeeHandoverDocuments" ADD CONSTRAINT "AK_EmployeeHandoverDocuments_CompanyId_EmployeeId_Id" UNIQUE ("CompanyId", "EmployeeId", "Id");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (20ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE "EmployeeHandoverEmailAttempts" (
+          "Id" uuid NOT NULL,
+          "CompanyId" uuid NOT NULL,
+          "DocumentId" uuid NOT NULL,
+          "EmployeeId" uuid NOT NULL,
+          "RequestedByUserId" uuid NOT NULL,
+          "IdempotencyKey" uuid NOT NULL,
+          "RecipientEmail" character varying(254) NOT NULL,
+          "SnapshotSha256" character varying(64) NOT NULL,
+          "PdfSha256" character varying(64) NOT NULL,
+          "Status" character varying(16) NOT NULL,
+          "ErrorType" character varying(128),
+          "CreatedAt" timestamp with time zone NOT NULL,
+          "UpdatedAt" timestamp with time zone NOT NULL,
+          "AcceptedAt" timestamp with time zone,
+          "DeletedAt" timestamp with time zone,
+          CONSTRAINT "PK_EmployeeHandoverEmailAttempts" PRIMARY KEY ("Id"),
+          CONSTRAINT "CK_HandoverEmail_AcceptedAt" CHECK (("Status" = 'Accepted') = ("AcceptedAt" IS NOT NULL)),
+          CONSTRAINT "CK_HandoverEmail_RequestKey" CHECK ("IdempotencyKey" <> '00000000-0000-0000-0000-000000000000'::uuid),
+          CONSTRAINT "CK_HandoverEmail_Status" CHECK ("Status" IN ('Sending', 'Accepted', 'Uncertain')),
+          CONSTRAINT "FK_EmployeeHandoverEmailAttempts_Companies_CompanyId" FOREIGN KEY ("CompanyId") REFERENCES "Companies" ("Id") ON DELETE CASCADE,
+          CONSTRAINT "FK_EmployeeHandoverEmailAttempts_EmployeeHandoverDocuments_Com~" FOREIGN KEY ("CompanyId", "EmployeeId", "DocumentId") REFERENCES "EmployeeHandoverDocuments" ("CompanyId", "EmployeeId", "Id") ON DELETE RESTRICT,
+          CONSTRAINT "FK_EmployeeHandoverEmailAttempts_Employees_CompanyId_EmployeeId" FOREIGN KEY ("CompanyId", "EmployeeId") REFERENCES "Employees" ("CompanyId", "Id") ON DELETE RESTRICT
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX "IX_EmployeeHandoverEmailAttempts_CompanyId_DocumentId_CreatedAt" ON "EmployeeHandoverEmailAttempts" ("CompanyId", "DocumentId", "CreatedAt");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE UNIQUE INDEX "IX_EmployeeHandoverEmailAttempts_CompanyId_DocumentId_Idempote~" ON "EmployeeHandoverEmailAttempts" ("CompanyId", "DocumentId", "IdempotencyKey");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE INDEX "IX_EmployeeHandoverEmailAttempts_CompanyId_EmployeeId_Document~" ON "EmployeeHandoverEmailAttempts" ("CompanyId", "EmployeeId", "DocumentId");
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+      VALUES ('20261026083058_AddHandoverEmailAttempts', '10.0.0');
+info: Microsoft.EntityFrameworkCore.Migrations[20402]
+      Applying migration '20261030210807_AddMissingCompanyAuditTimestamps'.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "UserSessions" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "TenantSubscriptions" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "SupportTicketMessages" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "SupportTicketEmailOutbox" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (5ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "StockPurchaseOrderLines" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "StockPurchaseOrderAttachments" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "SoftwareLicenseEvents" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "SoftwareLicenseEvents" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "SoftwareLicenseEmployeeEulaAcceptances" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "SoftwareLicenseEmployeeEulaAcceptances" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "SoftwareLicenseAttachments" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (5ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "SoftwareLicenseAssignments" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "SoftwareLicenseAssignments" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "PurchaseOrderReturns" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "PurchaseOrderReturnLines" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "PlatformAuditEntries" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "PlatformAuditEntries" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "OperationalNotificationStates" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "OperationalNotificationPreferences" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "OperationalNotificationEmailDigests" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "OperationalNotificationEmailDigests" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "LocalLicenseGrants" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (6ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "InventoryRequests" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "InventoryRequestKitFulfillmentLines" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "InventoryRequestKitFulfillmentLines" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "Employees" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "EmployeeHandoverDocuments" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "EmployeeDocuments" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (5ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "DashboardPreferences" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "ConsumableMovements" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (10ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "ConsumableMovements" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "ComponentMovements" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "ComponentMovements" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "ComponentAllocations" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "ComponentAllocations" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "CompanyMfaEnrollmentChallenges" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "CompanyMemberships" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "CompanyMembershipLocationAccesses" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "CompanyMembershipLocationAccesses" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "CompanyMembershipCompanyUnitAccesses" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "CompanyMembershipCompanyUnitAccesses" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "CompanyCheckoutOrders" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "CompanyApiTokens" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "Companies" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AuditEntries" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AuditEntries" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (5ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AssetPurchaseOrderLines" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AssetPurchaseOrderAttachments" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AssetModels" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AssetModels" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AssetModelAttachments" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AssetMaintenanceAttachments" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AssetInstalledSoftware" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AssetInstalledSoftware" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AssetEvents" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AssetEvents" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AssetContractLicenses" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AssetContractAttachments" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AssetContractAssets" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AssetCategories" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AssetCategories" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AssetBrands" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AssetBrands" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AssetAttachments" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AccessoryPurchaseOrderLines" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AccessoryPurchaseOrderAttachments" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AccessoryMovements" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AccessoryMovements" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AccessoryModels" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AccessoryModels" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AccessoryKitLines" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AccessoryKitLines" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AccessoryCategories" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AccessoryAssignments" ADD "CreatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      ALTER TABLE "AccessoryAssignments" ADD "UpdatedAt" timestamp with time zone;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+      VALUES ('20261030210807_AddMissingCompanyAuditTimestamps', '10.0.0');
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (209ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = Int32), @p2='?' (DbType = DateTime), @p3='?', @p4='?', @p5='?', @p6='?' (DbType = Boolean), @p7='?' (DbType = Boolean), @p8='?' (DbType = DateTime), @p9='?', @p10='?', @p11='?', @p12='?', @p13='?' (DbType = Boolean), @p14='?', @p15='?' (DbType = Boolean), @p16='?', @p17='?' (DbType = Guid), @p18='?' (DbType = Int32), @p19='?' (DbType = DateTime), @p20='?', @p21='?', @p22='?', @p23='?' (DbType = Boolean), @p24='?' (DbType = Boolean), @p25='?' (DbType = DateTime), @p26='?', @p27='?', @p28='?', @p29='?', @p30='?' (DbType = Boolean), @p31='?', @p32='?' (DbType = Boolean), @p33='?', @p34='?' (DbType = Guid), @p35='?' (DbType = Int32), @p36='?' (DbType = DateTime), @p37='?', @p38='?', @p39='?', @p40='?' (DbType = Boolean), @p41='?' (DbType = Boolean), @p42='?' (DbType = DateTime), @p43='?', @p44='?', @p45='?', @p46='?', @p47='?' (DbType = Boolean), @p48='?', @p49='?' (DbType = Boolean), @p50='?', @p51='?' (DbType = Guid), @p52='?', @p53='?', @p54='?', @p55='?', @p56='?' (DbType = DateTime), @p57='?', @p58='?' (DbType = DateTime), @p59='?' (DbType = Boolean), @p60='?', @p61='?', @p62='?' (DbType = DateTime), @p63='?' (DbType = Guid), @p64='?' (DbType = Int32), @p65='?' (DbType = Boolean), @p66='?' (DbType = Int32), @p67='?', @p68='?' (DbType = DateTime), @p69='?' (DbType = Guid), @p70='?', @p71='?', @p72='?', @p73='?', @p74='?' (DbType = DateTime), @p75='?', @p76='?' (DbType = DateTime), @p77='?' (DbType = Boolean), @p78='?', @p79='?', @p80='?' (DbType = DateTime), @p81='?' (DbType = Guid), @p82='?' (DbType = Int32), @p83='?' (DbType = Boolean), @p84='?' (DbType = Int32), @p85='?', @p86='?' (DbType = DateTime), @p87='?' (DbType = Guid), @p88='?' (DbType = Guid), @p89='?' (DbType = DateTime), @p90='?' (DbType = Boolean), @p91='?', @p92='?' (DbType = DateTime), @p93='?' (DbType = Guid), @p94='?' (DbType = Guid), @p95='?' (DbType = DateTime), @p96='?' (DbType = Boolean), @p97='?', @p98='?' (DbType = DateTime), @p99='?' (DbType = Guid), @p100='?' (DbType = Guid), @p101='?' (DbType = DateTime), @p102='?', @p103='?' (DbType = DateTime), @p104='?' (DbType = Guid), @p105='?' (DbType = Guid), @p106='?' (DbType = DateTime), @p107='?', @p108='?' (DbType = DateTime), @p109='?' (DbType = Guid), @p110='?' (DbType = Guid), @p111='?', @p112='?' (DbType = DateTime), @p113='?' (DbType = Guid), @p114='?', @p115='?', @p116='?' (DbType = DateTime), @p117='?' (DbType = Guid), @p118='?' (DbType = Guid), @p119='?', @p120='?' (DbType = DateTime), @p121='?' (DbType = Guid), @p122='?', @p123='?', @p124='?' (DbType = DateTime), @p125='?' (DbType = Guid), @p126='?' (DbType = Guid), @p127='?', @p128='?' (DbType = DateTime), @p129='?' (DbType = Guid), @p130='?', @p131='?', @p132='?' (DbType = DateTime), @p133='?' (DbType = Guid), @p134='?', @p135='?' (DbType = Guid), @p136='?' (DbType = DateTime), @p137='?', @p138='?' (DbType = Boolean), @p139='?', @p140='?', @p141='?' (DbType = Guid), @p142='?' (DbType = Int32), @p143='?', @p144='?', @p145='?', @p146='?' (DbType = Date), @p147='?', @p148='?' (DbType = Guid), @p149='?' (DbType = Int32), @p150='?' (DbType = Decimal), @p151='?' (DbType = DateTime), @p152='?' (DbType = Date), @p153='?' (DbType = Guid), @p154='?', @p155='?' (DbType = Guid), @p156='?' (DbType = DateTime), @p157='?', @p158='?' (DbType = Boolean), @p159='?', @p160='?', @p161='?' (DbType = Guid), @p162='?' (DbType = Int32), @p163='?', @p164='?', @p165='?', @p166='?' (DbType = Date), @p167='?', @p168='?' (DbType = Guid), @p169='?' (DbType = Int32), @p170='?' (DbType = Decimal), @p171='?' (DbType = DateTime), @p172='?' (DbType = Date), @p173='?' (DbType = Guid), @p174='?' (DbType = Guid), @p175='?' (DbType = Guid), @p176='?' (DbType = DateTime), @p177='?', @p178='?', @p179='?', @p180='?', @p181='?' (DbType = Boolean), @p182='?', @p183='?', @p184='?' (DbType = Guid), @p185='?' (DbType = Guid), @p186='?', @p187='?', @p188='?' (DbType = Date), @p189='?' (DbType = DateTime), @p190='?' (DbType = Guid), @p191='?' (DbType = Guid), @p192='?' (DbType = Guid), @p193='?' (DbType = DateTime), @p194='?', @p195='?', @p196='?', @p197='?', @p198='?' (DbType = Boolean), @p199='?', @p200='?', @p201='?' (DbType = Guid), @p202='?' (DbType = Guid), @p203='?', @p204='?', @p205='?' (DbType = Date), @p206='?' (DbType = DateTime), @p207='?' (DbType = Guid), @p208='?', @p209='?' (DbType = Guid), @p210='?' (DbType = DateTime), @p211='?', @p212='?', @p213='?', @p214='?' (DbType = Guid), @p215='?' (DbType = Int32), @p216='?', @p217='?', @p218='?', @p219='?' (DbType = Date), @p220='?', @p221='?', @p222='?' (DbType = Guid), @p223='?' (DbType = Int32), @p224='?' (DbType = Decimal), @p225='?' (DbType = DateTime), @p226='?' (DbType = Date), @p227='?' (DbType = Guid), @p228='?', @p229='?' (DbType = Guid), @p230='?' (DbType = DateTime), @p231='?', @p232='?', @p233='?', @p234='?' (DbType = Guid), @p235='?' (DbType = Int32), @p236='?', @p237='?', @p238='?', @p239='?' (DbType = Date), @p240='?', @p241='?', @p242='?' (DbType = Guid), @p243='?' (DbType = Int32), @p244='?' (DbType = Decimal), @p245='?' (DbType = DateTime), @p246='?' (DbType = Date), @p247='?' (DbType = Guid), @p248='?' (DbType = Boolean), @p249='?' (DbType = Guid), @p250='?' (DbType = DateTime), @p251='?', @p252='?' (DbType = Date), @p253='?' (DbType = Boolean), @p254='?', @p255='?', @p256='?', @p257='?', @p258='?', @p259='?', @p260='?' (DbType = Date), @p261='?', @p262='?' (DbType = Boolean), @p263='?' (DbType = Int32), @p264='?', @p265='?' (DbType = Guid), @p266='?' (DbType = Decimal), @p267='?' (DbType = DateTime), @p268='?' (DbType = Guid), @p269='?' (DbType = Boolean), @p270='?' (DbType = Guid), @p271='?' (DbType = DateTime), @p272='?', @p273='?' (DbType = Date), @p274='?' (DbType = Boolean), @p275='?', @p276='?', @p277='?', @p278='?', @p279='?', @p280='?', @p281='?' (DbType = Date), @p282='?', @p283='?' (DbType = Boolean), @p284='?' (DbType = Int32), @p285='?', @p286='?' (DbType = Guid), @p287='?' (DbType = Decimal), @p288='?' (DbType = DateTime), @p289='?' (DbType = Guid), @p290='?' (DbType = Guid), @p291='?', @p292='?' (DbType = Guid), @p293='?' (DbType = Guid), @p294='?' (DbType = DateTime), @p295='?', @p296='?' (DbType = Boolean), @p297='?', @p298='?', @p299='?' (DbType = Guid), @p300='?' (DbType = Int32), @p301='?' (DbType = Guid), @p302='?', @p303='?', @p304='?', @p305='?', @p306='?' (DbType = Date), @p307='?', @p308='?' (DbType = Guid), @p309='?' (DbType = Int32), @p310='?' (DbType = Decimal), @p311='?' (DbType = DateTime), @p312='?' (DbType = Date), @p313='?' (DbType = Guid), @p314='?' (DbType = Guid), @p315='?', @p316='?' (DbType = Guid), @p317='?' (DbType = Guid), @p318='?' (DbType = DateTime), @p319='?', @p320='?' (DbType = Boolean), @p321='?', @p322='?', @p323='?' (DbType = Guid), @p324='?' (DbType = Int32), @p325='?' (DbType = Guid), @p326='?', @p327='?', @p328='?', @p329='?', @p330='?' (DbType = Date), @p331='?', @p332='?' (DbType = Guid), @p333='?' (DbType = Int32), @p334='?' (DbType = Decimal), @p335='?' (DbType = DateTime), @p336='?' (DbType = Date), @p337='?' (DbType = Guid), @p338='?', @p339='?' (DbType = Guid), @p340='?' (DbType = Guid), @p341='?' (DbType = Guid), @p342='?' (DbType = Guid), @p343='?' (DbType = DateTime), @p344='?', @p345='?', @p346='?' (DbType = Guid), @p347='?' (DbType = DateTime), @p348='?' (DbType = Guid), @p349='?' (DbType = Date), @p350='?' (DbType = Date), @p351='?', @p352='?', @p353='?' (DbType = Boolean), @p354='?' (DbType = Boolean), @p355='?', @p356='?' (DbType = Guid), @p357='?' (DbType = Guid), @p358='?', @p359='?' (DbType = Date), @p360='?', @p361='?' (DbType = Guid), @p362='?' (DbType = Decimal), @p363='?' (DbType = Date), @p364='?' (DbType = Guid), @p365='?' (DbType = Guid), @p366='?', @p367='?', @p368='?' (DbType = DateTime), @p369='?' (DbType = Date), @p370='?' (DbType = Guid), @p371='?', @p372='?' (DbType = Guid), @p373='?' (DbType = Guid), @p374='?' (DbType = Guid), @p375='?' (DbType = Guid), @p376='?' (DbType = DateTime), @p377='?', @p378='?', @p379='?' (DbType = Guid), @p380='?' (DbType = DateTime), @p381='?' (DbType = Guid), @p382='?' (DbType = Date), @p383='?' (DbType = Date), @p384='?', @p385='?', @p386='?' (DbType = Boolean), @p387='?' (DbType = Boolean), @p388='?', @p389='?' (DbType = Guid), @p390='?' (DbType = Guid), @p391='?', @p392='?' (DbType = Date), @p393='?', @p394='?' (DbType = Guid), @p395='?' (DbType = Decimal), @p396='?' (DbType = Date), @p397='?' (DbType = Guid), @p398='?' (DbType = Guid), @p399='?', @p400='?', @p401='?' (DbType = DateTime), @p402='?' (DbType = Date), @p403='?' (DbType = Guid), @p404='?' (DbType = Guid), @p405='?' (DbType = Guid), @p406='?' (DbType = Guid), @p407='?' (DbType = Guid), @p408='?' (DbType = Guid), @p409='?' (DbType = DateTime), @p410='?', @p411='?', @p412='?' (DbType = DateTime), @p413='?' (DbType = Int32), @p414='?' (DbType = DateTime), @p415='?' (DbType = Guid), @p416='?' (DbType = Guid), @p417='?' (DbType = Guid), @p418='?' (DbType = Guid), @p419='?' (DbType = Guid), @p420='?' (DbType = Guid), @p421='?' (DbType = DateTime), @p422='?', @p423='?', @p424='?' (DbType = DateTime), @p425='?' (DbType = Int32), @p426='?' (DbType = DateTime), @p427='?' (DbType = Guid), @p428='?' (DbType = Guid), @p429='?' (DbType = Guid), @p430='?' (DbType = Guid), @p431='?' (DbType = DateTime), @p432='?' (DbType = Guid), @p433='?', @p434='?', @p435='?' (DbType = DateTime), @p436='?' (DbType = Int32), @p437='?' (DbType = DateTime), @p438='?' (DbType = Guid), @p439='?' (DbType = Guid), @p440='?' (DbType = Guid), @p441='?' (DbType = Guid), @p442='?' (DbType = DateTime), @p443='?' (DbType = Guid), @p444='?', @p445='?', @p446='?' (DbType = DateTime), @p447='?' (DbType = Int32), @p448='?' (DbType = DateTime), @p449='?' (DbType = Guid), @p450='?' (DbType = Guid), @p451='?' (DbType = Guid), @p452='?' (DbType = DateTime), @p453='?' (DbType = Guid), @p454='?' (DbType = DateTime), @p455='?' (DbType = Guid), @p456='?' (DbType = DateTime), @p457='?', @p458='?', @p459='?' (DbType = Int32), @p460='?' (DbType = Int32), @p461='?', @p462='?' (DbType = DateTime), @p463='?' (DbType = Guid), @p464='?' (DbType = Guid), @p465='?' (DbType = Guid), @p466='?' (DbType = DateTime), @p467='?' (DbType = Guid), @p468='?' (DbType = DateTime), @p469='?' (DbType = Guid), @p470='?' (DbType = DateTime), @p471='?', @p472='?', @p473='?' (DbType = Int32), @p474='?' (DbType = Int32), @p475='?', @p476='?' (DbType = DateTime), @p477='?' (DbType = Guid), @p478='?' (DbType = Guid), @p479='?' (DbType = Guid), @p480='?' (DbType = Guid), @p481='?' (DbType = Guid), @p482='?' (DbType = DateTime), @p483='?' (DbType = Guid), @p484='?', @p485='?', @p486='?' (DbType = DateTime), @p487='?' (DbType = Int32), @p488='?' (DbType = DateTime), @p489='?' (DbType = Guid), @p490='?' (DbType = Guid), @p491='?' (DbType = Guid), @p492='?' (DbType = Guid), @p493='?' (DbType = Guid), @p494='?' (DbType = DateTime), @p495='?' (DbType = Guid), @p496='?', @p497='?', @p498='?' (DbType = DateTime), @p499='?' (DbType = Int32), @p500='?' (DbType = DateTime), @p501='?' (DbType = Guid), @p502='?' (DbType = Guid), @p503='?' (DbType = Guid), @p504='?' (DbType = Guid), @p505='?' (DbType = DateTime), @p506='?', @p507='?' (DbType = Guid), @p508='?', @p509='?' (DbType = DateTime), @p510='?' (DbType = DateTime), @p511='?' (DbType = Guid), @p512='?' (DbType = Guid), @p513='?' (DbType = Guid), @p514='?' (DbType = Guid), @p515='?' (DbType = DateTime), @p516='?', @p517='?' (DbType = Guid), @p518='?', @p519='?' (DbType = DateTime), @p520='?' (DbType = DateTime), @p521='?' (DbType = Guid), @p522='?' (DbType = Guid), @p523='?' (DbType = DateTime), @p524='?' (DbType = Guid), @p525='?' (DbType = Guid), @p526='?' (DbType = Guid), @p527='?' (DbType = DateTime), @p528='?' (DbType = DateTime), @p529='?', @p530='?' (DbType = Int32), @p531='?' (DbType = Int32), @p532='?' (DbType = DateTime), @p533='?' (DbType = Guid), @p534='?' (DbType = Guid), @p535='?' (DbType = DateTime), @p536='?' (DbType = Guid), @p537='?' (DbType = Guid), @p538='?' (DbType = Guid), @p539='?' (DbType = DateTime), @p540='?' (DbType = DateTime), @p541='?', @p542='?' (DbType = Int32), @p543='?' (DbType = Int32), @p544='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "AspNetUsers" ("Id", "AccessFailedCount", "AccountCreatedAt", "ConcurrencyStamp", "DisplayName", "Email", "EmailConfirmed", "LockoutEnabled", "LockoutEnd", "NormalizedEmail", "NormalizedUserName", "PasswordHash", "PhoneNumber", "PhoneNumberConfirmed", "SecurityStamp", "TwoFactorEnabled", "UserName")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16);
+      INSERT INTO "AspNetUsers" ("Id", "AccessFailedCount", "AccountCreatedAt", "ConcurrencyStamp", "DisplayName", "Email", "EmailConfirmed", "LockoutEnabled", "LockoutEnd", "NormalizedEmail", "NormalizedUserName", "PasswordHash", "PhoneNumber", "PhoneNumberConfirmed", "SecurityStamp", "TwoFactorEnabled", "UserName")
+      VALUES (@p17, @p18, @p19, @p20, @p21, @p22, @p23, @p24, @p25, @p26, @p27, @p28, @p29, @p30, @p31, @p32, @p33);
+      INSERT INTO "AspNetUsers" ("Id", "AccessFailedCount", "AccountCreatedAt", "ConcurrencyStamp", "DisplayName", "Email", "EmailConfirmed", "LockoutEnabled", "LockoutEnd", "NormalizedEmail", "NormalizedUserName", "PasswordHash", "PhoneNumber", "PhoneNumberConfirmed", "SecurityStamp", "TwoFactorEnabled", "UserName")
+      VALUES (@p34, @p35, @p36, @p37, @p38, @p39, @p40, @p41, @p42, @p43, @p44, @p45, @p46, @p47, @p48, @p49, @p50);
+      INSERT INTO "Companies" ("Id", "AssetStatusLabelsJson", "BrandLogoPath", "BrandPrimaryColor", "ContactEmail", "CreatedAt", "CustomerLifecycleStage", "DeletedAt", "IsActive", "LabelPrintSettingsJson", "Name", "PlatformNextFollowUpAt", "PlatformOwnerUserId", "SecurityPasswordMinimumLength", "SecurityRequireMfa", "SecuritySessionDurationHours", "Slug", "UpdatedAt")
+      VALUES (@p51, @p52, @p53, @p54, @p55, @p56, @p57, @p58, @p59, @p60, @p61, @p62, @p63, @p64, @p65, @p66, @p67, @p68)
+      RETURNING "AssetCount";
+      INSERT INTO "Companies" ("Id", "AssetStatusLabelsJson", "BrandLogoPath", "BrandPrimaryColor", "ContactEmail", "CreatedAt", "CustomerLifecycleStage", "DeletedAt", "IsActive", "LabelPrintSettingsJson", "Name", "PlatformNextFollowUpAt", "PlatformOwnerUserId", "SecurityPasswordMinimumLength", "SecurityRequireMfa", "SecuritySessionDurationHours", "Slug", "UpdatedAt")
+      VALUES (@p69, @p70, @p71, @p72, @p73, @p74, @p75, @p76, @p77, @p78, @p79, @p80, @p81, @p82, @p83, @p84, @p85, @p86)
+      RETURNING "AssetCount";
+      INSERT INTO "AccessoryCategories" ("Id", "CompanyId", "CreatedAt", "IsArchived", "Name", "UpdatedAt")
+      VALUES (@p87, @p88, @p89, @p90, @p91, @p92);
+      INSERT INTO "AccessoryCategories" ("Id", "CompanyId", "CreatedAt", "IsArchived", "Name", "UpdatedAt")
+      VALUES (@p93, @p94, @p95, @p96, @p97, @p98);
+      INSERT INTO "AssetCategories" ("Id", "CompanyId", "CreatedAt", "Name", "UpdatedAt")
+      VALUES (@p99, @p100, @p101, @p102, @p103);
+      INSERT INTO "AssetCategories" ("Id", "CompanyId", "CreatedAt", "Name", "UpdatedAt")
+      VALUES (@p104, @p105, @p106, @p107, @p108);
+      INSERT INTO "CompanyMemberships" ("CompanyId", "UserId", "CompanyUnitAccessMode", "CreatedAt", "EmployeeId", "LocationAccessMode", "RoleKey", "UpdatedAt")
+      VALUES (@p109, @p110, @p111, @p112, @p113, @p114, @p115, @p116);
+      INSERT INTO "CompanyMemberships" ("CompanyId", "UserId", "CompanyUnitAccessMode", "CreatedAt", "EmployeeId", "LocationAccessMode", "RoleKey", "UpdatedAt")
+      VALUES (@p117, @p118, @p119, @p120, @p121, @p122, @p123, @p124);
+      INSERT INTO "CompanyMemberships" ("CompanyId", "UserId", "CompanyUnitAccessMode", "CreatedAt", "EmployeeId", "LocationAccessMode", "RoleKey", "UpdatedAt")
+      VALUES (@p125, @p126, @p127, @p128, @p129, @p130, @p131, @p132);
+      INSERT INTO "Consumables" ("Id", "Category", "CompanyId", "CreatedAt", "Currency", "IsRequestable", "ItemNumber", "Location", "LocationCatalogId", "MinimumQuantity", "ModelNumber", "Name", "Notes", "PurchaseDate", "Supplier", "SupplierId", "TotalQuantity", "UnitCost", "UpdatedAt", "WarrantyExpiresAt")
+      VALUES (@p133, @p134, @p135, @p136, @p137, @p138, @p139, @p140, @p141, @p142, @p143, @p144, @p145, @p146, @p147, @p148, @p149, @p150, @p151, @p152);
+      INSERT INTO "Consumables" ("Id", "Category", "CompanyId", "CreatedAt", "Currency", "IsRequestable", "ItemNumber", "Location", "LocationCatalogId", "MinimumQuantity", "ModelNumber", "Name", "Notes", "PurchaseDate", "Supplier", "SupplierId", "TotalQuantity", "UnitCost", "UpdatedAt", "WarrantyExpiresAt")
+      VALUES (@p153, @p154, @p155, @p156, @p157, @p158, @p159, @p160, @p161, @p162, @p163, @p164, @p165, @p166, @p167, @p168, @p169, @p170, @p171, @p172);
+      INSERT INTO "Employees" ("Id", "CompanyId", "CompanyUnitId", "CreatedAt", "Department", "DisplayName", "Email", "EmployeeNumber", "IsActive", "JobTitle", "Location", "LocationCatalogId", "ManagerEmployeeId", "Phone", "PrivateNotes", "StartedOn", "UpdatedAt")
+      VALUES (@p173, @p174, @p175, @p176, @p177, @p178, @p179, @p180, @p181, @p182, @p183, @p184, @p185, @p186, @p187, @p188, @p189);
+      INSERT INTO "Employees" ("Id", "CompanyId", "CompanyUnitId", "CreatedAt", "Department", "DisplayName", "Email", "EmployeeNumber", "IsActive", "JobTitle", "Location", "LocationCatalogId", "ManagerEmployeeId", "Phone", "PrivateNotes", "StartedOn", "UpdatedAt")
+      VALUES (@p190, @p191, @p192, @p193, @p194, @p195, @p196, @p197, @p198, @p199, @p200, @p201, @p202, @p203, @p204, @p205, @p206);
+      INSERT INTO "InventoryComponents" ("Id", "Category", "CompanyId", "CreatedAt", "Currency", "ItemNumber", "Location", "LocationCatalogId", "MinimumQuantity", "ModelNumber", "Name", "Notes", "PurchaseDate", "SerialNumber", "Supplier", "SupplierId", "TotalQuantity", "UnitCost", "UpdatedAt", "WarrantyExpiresAt")
+      VALUES (@p207, @p208, @p209, @p210, @p211, @p212, @p213, @p214, @p215, @p216, @p217, @p218, @p219, @p220, @p221, @p222, @p223, @p224, @p225, @p226);
+      INSERT INTO "InventoryComponents" ("Id", "Category", "CompanyId", "CreatedAt", "Currency", "ItemNumber", "Location", "LocationCatalogId", "MinimumQuantity", "ModelNumber", "Name", "Notes", "PurchaseDate", "SerialNumber", "Supplier", "SupplierId", "TotalQuantity", "UnitCost", "UpdatedAt", "WarrantyExpiresAt")
+      VALUES (@p227, @p228, @p229, @p230, @p231, @p232, @p233, @p234, @p235, @p236, @p237, @p238, @p239, @p240, @p241, @p242, @p243, @p244, @p245, @p246);
+      INSERT INTO "SoftwareLicenses" ("Id", "AutoRenew", "CompanyId", "CreatedAt", "Currency", "ExpirationDate", "IsArchived", "LicenseReference", "LicenseType", "Name", "Notes", "ProductVersion", "Publisher", "PurchaseDate", "PurchaseOrderReference", "RequiresEulaAcceptance", "Seats", "Supplier", "SupplierId", "UnitCost", "UpdatedAt")
+      VALUES (@p247, @p248, @p249, @p250, @p251, @p252, @p253, @p254, @p255, @p256, @p257, @p258, @p259, @p260, @p261, @p262, @p263, @p264, @p265, @p266, @p267);
+      INSERT INTO "SoftwareLicenses" ("Id", "AutoRenew", "CompanyId", "CreatedAt", "Currency", "ExpirationDate", "IsArchived", "LicenseReference", "LicenseType", "Name", "Notes", "ProductVersion", "Publisher", "PurchaseDate", "PurchaseOrderReference", "RequiresEulaAcceptance", "Seats", "Supplier", "SupplierId", "UnitCost", "UpdatedAt")
+      VALUES (@p268, @p269, @p270, @p271, @p272, @p273, @p274, @p275, @p276, @p277, @p278, @p279, @p280, @p281, @p282, @p283, @p284, @p285, @p286, @p287, @p288);
+      INSERT INTO "Accessories" ("Id", "BrandId", "Category", "CategoryId", "CompanyId", "CreatedAt", "Currency", "IsRequestable", "ItemNumber", "Location", "LocationCatalogId", "MinimumQuantity", "ModelId", "ModelNumber", "Name", "Notes", "PhotoFileName", "PurchaseDate", "Supplier", "SupplierId", "TotalQuantity", "UnitCost", "UpdatedAt", "WarrantyExpiresAt")
+      VALUES (@p289, @p290, @p291, @p292, @p293, @p294, @p295, @p296, @p297, @p298, @p299, @p300, @p301, @p302, @p303, @p304, @p305, @p306, @p307, @p308, @p309, @p310, @p311, @p312);
+      INSERT INTO "Accessories" ("Id", "BrandId", "Category", "CategoryId", "CompanyId", "CreatedAt", "Currency", "IsRequestable", "ItemNumber", "Location", "LocationCatalogId", "MinimumQuantity", "ModelId", "ModelNumber", "Name", "Notes", "PhotoFileName", "PurchaseDate", "Supplier", "SupplierId", "TotalQuantity", "UnitCost", "UpdatedAt", "WarrantyExpiresAt")
+      VALUES (@p313, @p314, @p315, @p316, @p317, @p318, @p319, @p320, @p321, @p322, @p323, @p324, @p325, @p326, @p327, @p328, @p329, @p330, @p331, @p332, @p333, @p334, @p335, @p336);
+      INSERT INTO "Assets" ("Id", "AssetTag", "AssignedEmployeeId", "BrandId", "CategoryId", "CompanyId", "CreatedAt", "Currency", "CustomFieldsJson", "DefaultLocationCatalogId", "DeletedAt", "DeletedByUserId", "ExpectedReturnOn", "InsuranceExpiresAt", "InsurancePolicyNumber", "InsuranceProvider", "IsByod", "IsRequestable", "Location", "LocationCatalogId", "ModelId", "Name", "NextAuditOn", "Notes", "ParentAssetId", "PurchaseCost", "PurchaseDate", "PurchaseOrderId", "PurchaseOrderLineId", "SerialNumber", "Status", "UpdatedAt", "WarrantyExpiresAt")
+      VALUES (@p337, @p338, @p339, @p340, @p341, @p342, @p343, @p344, @p345, @p346, @p347, @p348, @p349, @p350, @p351, @p352, @p353, @p354, @p355, @p356, @p357, @p358, @p359, @p360, @p361, @p362, @p363, @p364, @p365, @p366, @p367, @p368, @p369);
+      INSERT INTO "Assets" ("Id", "AssetTag", "AssignedEmployeeId", "BrandId", "CategoryId", "CompanyId", "CreatedAt", "Currency", "CustomFieldsJson", "DefaultLocationCatalogId", "DeletedAt", "DeletedByUserId", "ExpectedReturnOn", "InsuranceExpiresAt", "InsurancePolicyNumber", "InsuranceProvider", "IsByod", "IsRequestable", "Location", "LocationCatalogId", "ModelId", "Name", "NextAuditOn", "Notes", "ParentAssetId", "PurchaseCost", "PurchaseDate", "PurchaseOrderId", "PurchaseOrderLineId", "SerialNumber", "Status", "UpdatedAt", "WarrantyExpiresAt")
+      VALUES (@p370, @p371, @p372, @p373, @p374, @p375, @p376, @p377, @p378, @p379, @p380, @p381, @p382, @p383, @p384, @p385, @p386, @p387, @p388, @p389, @p390, @p391, @p392, @p393, @p394, @p395, @p396, @p397, @p398, @p399, @p400, @p401, @p402);
+      INSERT INTO "ComponentMovements" ("Id", "ActorUserId", "AllocationId", "AssetId", "CompanyId", "ComponentId", "CreatedAt", "MovementType", "Notes", "OccurredAt", "Quantity", "UpdatedAt")
+      VALUES (@p403, @p404, @p405, @p406, @p407, @p408, @p409, @p410, @p411, @p412, @p413, @p414);
+      INSERT INTO "ComponentMovements" ("Id", "ActorUserId", "AllocationId", "AssetId", "CompanyId", "ComponentId", "CreatedAt", "MovementType", "Notes", "OccurredAt", "Quantity", "UpdatedAt")
+      VALUES (@p415, @p416, @p417, @p418, @p419, @p420, @p421, @p422, @p423, @p424, @p425, @p426);
+      INSERT INTO "ConsumableMovements" ("Id", "ActorUserId", "CompanyId", "ConsumableId", "CreatedAt", "EmployeeId", "MovementType", "Notes", "OccurredAt", "Quantity", "UpdatedAt")
+      VALUES (@p427, @p428, @p429, @p430, @p431, @p432, @p433, @p434, @p435, @p436, @p437);
+      INSERT INTO "ConsumableMovements" ("Id", "ActorUserId", "CompanyId", "ConsumableId", "CreatedAt", "EmployeeId", "MovementType", "Notes", "OccurredAt", "Quantity", "UpdatedAt")
+      VALUES (@p438, @p439, @p440, @p441, @p442, @p443, @p444, @p445, @p446, @p447, @p448);
+      INSERT INTO "AccessoryAssignments" ("Id", "AccessoryId", "AssetId", "CheckedOutAt", "CompanyId", "CreatedAt", "EmployeeId", "LastReturnedAt", "Location", "Notes", "Quantity", "ReturnedQuantity", "TargetType", "UpdatedAt")
+      VALUES (@p449, @p450, @p451, @p452, @p453, @p454, @p455, @p456, @p457, @p458, @p459, @p460, @p461, @p462);
+      INSERT INTO "AccessoryAssignments" ("Id", "AccessoryId", "AssetId", "CheckedOutAt", "CompanyId", "CreatedAt", "EmployeeId", "LastReturnedAt", "Location", "Notes", "Quantity", "ReturnedQuantity", "TargetType", "UpdatedAt")
+      VALUES (@p463, @p464, @p465, @p466, @p467, @p468, @p469, @p470, @p471, @p472, @p473, @p474, @p475, @p476);
+      INSERT INTO "AccessoryMovements" ("Id", "AccessoryId", "ActorUserId", "AssignmentId", "CompanyId", "CreatedAt", "EmployeeId", "MovementType", "Notes", "OccurredAt", "Quantity", "UpdatedAt")
+      VALUES (@p477, @p478, @p479, @p480, @p481, @p482, @p483, @p484, @p485, @p486, @p487, @p488);
+      INSERT INTO "AccessoryMovements" ("Id", "AccessoryId", "ActorUserId", "AssignmentId", "CompanyId", "CreatedAt", "EmployeeId", "MovementType", "Notes", "OccurredAt", "Quantity", "UpdatedAt")
+      VALUES (@p489, @p490, @p491, @p492, @p493, @p494, @p495, @p496, @p497, @p498, @p499, @p500);
+      INSERT INTO "AssetEvents" ("Id", "ActorUserId", "AssetId", "CompanyId", "CreatedAt", "Details", "EmployeeId", "EventType", "OccurredAt", "UpdatedAt")
+      VALUES (@p501, @p502, @p503, @p504, @p505, @p506, @p507, @p508, @p509, @p510);
+      INSERT INTO "AssetEvents" ("Id", "ActorUserId", "AssetId", "CompanyId", "CreatedAt", "Details", "EmployeeId", "EventType", "OccurredAt", "UpdatedAt")
+      VALUES (@p511, @p512, @p513, @p514, @p515, @p516, @p517, @p518, @p519, @p520);
+      INSERT INTO "ComponentAllocations" ("Id", "ActorUserId", "AllocatedAt", "AssetId", "CompanyId", "ComponentId", "CreatedAt", "LastRemovedAt", "Notes", "Quantity", "RemovedQuantity", "UpdatedAt")
+      VALUES (@p521, @p522, @p523, @p524, @p525, @p526, @p527, @p528, @p529, @p530, @p531, @p532);
+      INSERT INTO "ComponentAllocations" ("Id", "ActorUserId", "AllocatedAt", "AssetId", "CompanyId", "ComponentId", "CreatedAt", "LastRemovedAt", "Notes", "Quantity", "RemovedQuantity", "UpdatedAt")
+      VALUES (@p533, @p534, @p535, @p536, @p537, @p538, @p539, @p540, @p541, @p542, @p543, @p544);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (9ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid), @_otherCompanyAssetId='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT a."Id", a."AssetTag", a."AssignedEmployeeId", a."BrandId", a."CategoryId", a."CompanyId", a."CreatedAt", a."Currency", a."CustomFieldsJson", a."DefaultLocationCatalogId", a."DeletedAt", a."DeletedByUserId", a."ExpectedReturnOn", a."InsuranceExpiresAt", a."InsurancePolicyNumber", a."InsuranceProvider", a."IsByod", a."IsRequestable", a."Location", a."LocationCatalogId", a."ModelId", a."Name", a."NextAuditOn", a."Notes", a."ParentAssetId", a."PurchaseCost", a."PurchaseDate", a."PurchaseOrderId", a."PurchaseOrderLineId", a."SerialNumber", a."Status", a."UpdatedAt", a."WarrantyExpiresAt"
+      FROM "Assets" AS a
+      WHERE a."DeletedAt" IS NULL AND (@ef_filter__IsSystemQueryScope0 OR a."CompanyId" = @ef_filter__QueryCompanyId) AND a."Id" = @_otherCompanyAssetId
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (8ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid), @_ownAssetId='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT a."Id", a."AssetTag", a."AssignedEmployeeId", a."BrandId", a."CategoryId", a."CompanyId", a."CreatedAt", a."Currency", a."CustomFieldsJson", a."DefaultLocationCatalogId", a."DeletedAt", a."DeletedByUserId", a."ExpectedReturnOn", a."InsuranceExpiresAt", a."InsurancePolicyNumber", a."InsuranceProvider", a."IsByod", a."IsRequestable", a."Location", a."LocationCatalogId", a."ModelId", a."Name", a."NextAuditOn", a."Notes", a."ParentAssetId", a."PurchaseCost", a."PurchaseDate", a."PurchaseOrderId", a."PurchaseOrderLineId", a."SerialNumber", a."Status", a."UpdatedAt", a."WarrantyExpiresAt"
+      FROM "Assets" AS a
+      WHERE a."DeletedAt" IS NULL AND (@ef_filter__IsSystemQueryScope0 OR a."CompanyId" = @ef_filter__QueryCompanyId) AND a."Id" = @_ownAssetId
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid), @own_Id='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT a."Name"
+      FROM "Assets" AS a
+      WHERE a."DeletedAt" IS NULL AND (@ef_filter__IsSystemQueryScope0 OR a."CompanyId" = @ef_filter__QueryCompanyId) AND a."Id" = @own_Id
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid), @foreign_Id='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT a."Name"
+      FROM "Assets" AS a
+      WHERE a."DeletedAt" IS NULL AND (@ef_filter__IsSystemQueryScope0 OR a."CompanyId" = @ef_filter__QueryCompanyId) AND a."Id" = @foreign_Id
+      LIMIT 2
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Tenant_query_scope_rejects_tracked_foreign_writes_without_saving_own_changes [80 ms]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+info: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[62]
+      User profile is available. Using '/root/.aspnet/DataProtection-Keys' as key repository; keys will not be encrypted at rest.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT s."Value"
+      FROM (
+          SELECT EXISTS (SELECT 1 FROM information_schema.tables
+              WHERE table_schema = current_schema() AND table_name = 'ScheduledReports') AS "Value"
+      ) AS s
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT s."Value"
+      FROM (
+          SELECT EXISTS (
+              SELECT 1 FROM information_schema.tables
+              WHERE table_schema = current_schema() AND table_name = 'SupportTicketEmailOutbox'
+          ) AS "Value"
+      ) AS s
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (7ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid), @now='?' (DbType = DateTime), @staleBefore='?' (DbType = DateTime), @p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT s."Id"
+      FROM "SupportTicketEmailOutbox" AS s
+      WHERE (@ef_filter__IsSystemQueryScope0 OR s."CompanyId" = @ef_filter__QueryCompanyId) AND ((s."Status" = 'Pending' AND s."NextAttemptAt" <= @now) OR (s."Status" = 'Sending' AND s."LastAttemptAt" < @staleBefore))
+      ORDER BY s."NextAttemptAt", s."CreatedAt"
+      LIMIT @p
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (9ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid), @selectionTime='?' (DbType = DateTime), @selectionTime0='?' (DbType = DateTime), @stale='?' (DbType = DateTime), @p='?' (DbType = Int32)], CommandType='Text', CommandTimeout='30']
+      SELECT s."Id"
+      FROM "ScheduledReports" AS s
+      WHERE (@ef_filter__IsSystemQueryScope0 OR s."CompanyId" = @ef_filter__QueryCompanyId) AND s."IsEnabled" AND s."NextDueAt" <= @selectionTime AND (s."RetryAfter" IS NULL OR s."RetryAfter" <= @selectionTime0) AND (s."ClaimedAt" IS NULL OR s."ClaimedAt" < @stale)
+      ORDER BY s."NextDueAt", s."Id"
+      LIMIT @p
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (34ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT s."Value"
+      FROM (
+          SELECT EXISTS (
+              SELECT 1 FROM information_schema.columns
+              WHERE table_schema = current_schema()
+                AND table_name = 'OperationalNotificationPreferences'
+                AND column_name = 'EmailEnabledKindsJson'
+          ) AND EXISTS (
+              SELECT 1 FROM information_schema.tables
+              WHERE table_schema = current_schema()
+                AND table_name = 'OperationalNotificationEmailDigests'
+          ) AS "Value"
+      ) AS s
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (6ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT o."CompanyId", o."UserId", o."CreatedAt", o."EmailEnabledKindsJson", o."EnabledKindsJson", o."UpdatedAt"
+      FROM "OperationalNotificationPreferences" AS o
+      WHERE (@ef_filter__IsSystemQueryScope0 OR o."CompanyId" = @ef_filter__QueryCompanyId) AND o."EmailEnabledKindsJson" <> '[]'
+      ORDER BY o."CompanyId", o."UserId"
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://*:8080
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /source/src/EnvanterTR.Web
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+          "MigrationId" character varying(150) NOT NULL,
+          "ProductVersion" character varying(32) NOT NULL,
+          CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+      );
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+info: Microsoft.EntityFrameworkCore.Migrations[20405]
+      No migrations were applied. The database is already up to date.
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (49ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = Int32), @p2='?' (DbType = DateTime), @p3='?', @p4='?', @p5='?', @p6='?' (DbType = Boolean), @p7='?' (DbType = Boolean), @p8='?' (DbType = DateTime), @p9='?', @p10='?', @p11='?', @p12='?', @p13='?' (DbType = Boolean), @p14='?', @p15='?' (DbType = Boolean), @p16='?', @p17='?' (DbType = Guid), @p18='?' (DbType = Int32), @p19='?' (DbType = DateTime), @p20='?', @p21='?', @p22='?', @p23='?' (DbType = Boolean), @p24='?' (DbType = Boolean), @p25='?' (DbType = DateTime), @p26='?', @p27='?', @p28='?', @p29='?', @p30='?' (DbType = Boolean), @p31='?', @p32='?' (DbType = Boolean), @p33='?', @p34='?' (DbType = Guid), @p35='?' (DbType = Int32), @p36='?' (DbType = DateTime), @p37='?', @p38='?', @p39='?', @p40='?' (DbType = Boolean), @p41='?' (DbType = Boolean), @p42='?' (DbType = DateTime), @p43='?', @p44='?', @p45='?', @p46='?', @p47='?' (DbType = Boolean), @p48='?', @p49='?' (DbType = Boolean), @p50='?', @p51='?' (DbType = Guid), @p52='?', @p53='?', @p54='?', @p55='?', @p56='?' (DbType = DateTime), @p57='?', @p58='?' (DbType = DateTime), @p59='?' (DbType = Boolean), @p60='?', @p61='?', @p62='?' (DbType = DateTime), @p63='?' (DbType = Guid), @p64='?' (DbType = Int32), @p65='?' (DbType = Boolean), @p66='?' (DbType = Int32), @p67='?', @p68='?' (DbType = DateTime), @p69='?' (DbType = Guid), @p70='?', @p71='?', @p72='?', @p73='?', @p74='?' (DbType = DateTime), @p75='?', @p76='?' (DbType = DateTime), @p77='?' (DbType = Boolean), @p78='?', @p79='?', @p80='?' (DbType = DateTime), @p81='?' (DbType = Guid), @p82='?' (DbType = Int32), @p83='?' (DbType = Boolean), @p84='?' (DbType = Int32), @p85='?', @p86='?' (DbType = DateTime), @p87='?' (DbType = Guid), @p88='?' (DbType = Guid), @p89='?' (DbType = DateTime), @p90='?' (DbType = Boolean), @p91='?', @p92='?' (DbType = DateTime), @p93='?' (DbType = Guid), @p94='?' (DbType = Guid), @p95='?' (DbType = DateTime), @p96='?' (DbType = Boolean), @p97='?', @p98='?' (DbType = DateTime), @p99='?' (DbType = Guid), @p100='?' (DbType = Guid), @p101='?' (DbType = DateTime), @p102='?', @p103='?' (DbType = DateTime), @p104='?' (DbType = Guid), @p105='?' (DbType = Guid), @p106='?' (DbType = DateTime), @p107='?', @p108='?' (DbType = DateTime), @p109='?' (DbType = Guid), @p110='?' (DbType = Guid), @p111='?', @p112='?' (DbType = DateTime), @p113='?' (DbType = Guid), @p114='?', @p115='?', @p116='?' (DbType = DateTime), @p117='?' (DbType = Guid), @p118='?' (DbType = Guid), @p119='?', @p120='?' (DbType = DateTime), @p121='?' (DbType = Guid), @p122='?', @p123='?', @p124='?' (DbType = DateTime), @p125='?' (DbType = Guid), @p126='?' (DbType = Guid), @p127='?', @p128='?' (DbType = DateTime), @p129='?' (DbType = Guid), @p130='?', @p131='?', @p132='?' (DbType = DateTime), @p133='?' (DbType = Guid), @p134='?', @p135='?' (DbType = Guid), @p136='?' (DbType = DateTime), @p137='?', @p138='?' (DbType = Boolean), @p139='?', @p140='?', @p141='?' (DbType = Guid), @p142='?' (DbType = Int32), @p143='?', @p144='?', @p145='?', @p146='?' (DbType = Date), @p147='?', @p148='?' (DbType = Guid), @p149='?' (DbType = Int32), @p150='?' (DbType = Decimal), @p151='?' (DbType = DateTime), @p152='?' (DbType = Date), @p153='?' (DbType = Guid), @p154='?', @p155='?' (DbType = Guid), @p156='?' (DbType = DateTime), @p157='?', @p158='?' (DbType = Boolean), @p159='?', @p160='?', @p161='?' (DbType = Guid), @p162='?' (DbType = Int32), @p163='?', @p164='?', @p165='?', @p166='?' (DbType = Date), @p167='?', @p168='?' (DbType = Guid), @p169='?' (DbType = Int32), @p170='?' (DbType = Decimal), @p171='?' (DbType = DateTime), @p172='?' (DbType = Date), @p173='?' (DbType = Guid), @p174='?' (DbType = Guid), @p175='?' (DbType = Guid), @p176='?' (DbType = DateTime), @p177='?', @p178='?', @p179='?', @p180='?', @p181='?' (DbType = Boolean), @p182='?', @p183='?', @p184='?' (DbType = Guid), @p185='?' (DbType = Guid), @p186='?', @p187='?', @p188='?' (DbType = Date), @p189='?' (DbType = DateTime), @p190='?' (DbType = Guid), @p191='?' (DbType = Guid), @p192='?' (DbType = Guid), @p193='?' (DbType = DateTime), @p194='?', @p195='?', @p196='?', @p197='?', @p198='?' (DbType = Boolean), @p199='?', @p200='?', @p201='?' (DbType = Guid), @p202='?' (DbType = Guid), @p203='?', @p204='?', @p205='?' (DbType = Date), @p206='?' (DbType = DateTime), @p207='?' (DbType = Guid), @p208='?', @p209='?' (DbType = Guid), @p210='?' (DbType = DateTime), @p211='?', @p212='?', @p213='?', @p214='?' (DbType = Guid), @p215='?' (DbType = Int32), @p216='?', @p217='?', @p218='?', @p219='?' (DbType = Date), @p220='?', @p221='?', @p222='?' (DbType = Guid), @p223='?' (DbType = Int32), @p224='?' (DbType = Decimal), @p225='?' (DbType = DateTime), @p226='?' (DbType = Date), @p227='?' (DbType = Guid), @p228='?', @p229='?' (DbType = Guid), @p230='?' (DbType = DateTime), @p231='?', @p232='?', @p233='?', @p234='?' (DbType = Guid), @p235='?' (DbType = Int32), @p236='?', @p237='?', @p238='?', @p239='?' (DbType = Date), @p240='?', @p241='?', @p242='?' (DbType = Guid), @p243='?' (DbType = Int32), @p244='?' (DbType = Decimal), @p245='?' (DbType = DateTime), @p246='?' (DbType = Date), @p247='?' (DbType = Guid), @p248='?' (DbType = Boolean), @p249='?' (DbType = Guid), @p250='?' (DbType = DateTime), @p251='?', @p252='?' (DbType = Date), @p253='?' (DbType = Boolean), @p254='?', @p255='?', @p256='?', @p257='?', @p258='?', @p259='?', @p260='?' (DbType = Date), @p261='?', @p262='?' (DbType = Boolean), @p263='?' (DbType = Int32), @p264='?', @p265='?' (DbType = Guid), @p266='?' (DbType = Decimal), @p267='?' (DbType = DateTime), @p268='?' (DbType = Guid), @p269='?' (DbType = Boolean), @p270='?' (DbType = Guid), @p271='?' (DbType = DateTime), @p272='?', @p273='?' (DbType = Date), @p274='?' (DbType = Boolean), @p275='?', @p276='?', @p277='?', @p278='?', @p279='?', @p280='?', @p281='?' (DbType = Date), @p282='?', @p283='?' (DbType = Boolean), @p284='?' (DbType = Int32), @p285='?', @p286='?' (DbType = Guid), @p287='?' (DbType = Decimal), @p288='?' (DbType = DateTime), @p289='?' (DbType = Guid), @p290='?' (DbType = Guid), @p291='?', @p292='?' (DbType = Guid), @p293='?' (DbType = Guid), @p294='?' (DbType = DateTime), @p295='?', @p296='?' (DbType = Boolean), @p297='?', @p298='?', @p299='?' (DbType = Guid), @p300='?' (DbType = Int32), @p301='?' (DbType = Guid), @p302='?', @p303='?', @p304='?', @p305='?', @p306='?' (DbType = Date), @p307='?', @p308='?' (DbType = Guid), @p309='?' (DbType = Int32), @p310='?' (DbType = Decimal), @p311='?' (DbType = DateTime), @p312='?' (DbType = Date), @p313='?' (DbType = Guid), @p314='?' (DbType = Guid), @p315='?', @p316='?' (DbType = Guid), @p317='?' (DbType = Guid), @p318='?' (DbType = DateTime), @p319='?', @p320='?' (DbType = Boolean), @p321='?', @p322='?', @p323='?' (DbType = Guid), @p324='?' (DbType = Int32), @p325='?' (DbType = Guid), @p326='?', @p327='?', @p328='?', @p329='?', @p330='?' (DbType = Date), @p331='?', @p332='?' (DbType = Guid), @p333='?' (DbType = Int32), @p334='?' (DbType = Decimal), @p335='?' (DbType = DateTime), @p336='?' (DbType = Date), @p337='?' (DbType = Guid), @p338='?', @p339='?' (DbType = Guid), @p340='?' (DbType = Guid), @p341='?' (DbType = Guid), @p342='?' (DbType = Guid), @p343='?' (DbType = DateTime), @p344='?', @p345='?', @p346='?' (DbType = Guid), @p347='?' (DbType = DateTime), @p348='?' (DbType = Guid), @p349='?' (DbType = Date), @p350='?' (DbType = Date), @p351='?', @p352='?', @p353='?' (DbType = Boolean), @p354='?' (DbType = Boolean), @p355='?', @p356='?' (DbType = Guid), @p357='?' (DbType = Guid), @p358='?', @p359='?' (DbType = Date), @p360='?', @p361='?' (DbType = Guid), @p362='?' (DbType = Decimal), @p363='?' (DbType = Date), @p364='?' (DbType = Guid), @p365='?' (DbType = Guid), @p366='?', @p367='?', @p368='?' (DbType = DateTime), @p369='?' (DbType = Date), @p370='?' (DbType = Guid), @p371='?', @p372='?' (DbType = Guid), @p373='?' (DbType = Guid), @p374='?' (DbType = Guid), @p375='?' (DbType = Guid), @p376='?' (DbType = DateTime), @p377='?', @p378='?', @p379='?' (DbType = Guid), @p380='?' (DbType = DateTime), @p381='?' (DbType = Guid), @p382='?' (DbType = Date), @p383='?' (DbType = Date), @p384='?', @p385='?', @p386='?' (DbType = Boolean), @p387='?' (DbType = Boolean), @p388='?', @p389='?' (DbType = Guid), @p390='?' (DbType = Guid), @p391='?', @p392='?' (DbType = Date), @p393='?', @p394='?' (DbType = Guid), @p395='?' (DbType = Decimal), @p396='?' (DbType = Date), @p397='?' (DbType = Guid), @p398='?' (DbType = Guid), @p399='?', @p400='?', @p401='?' (DbType = DateTime), @p402='?' (DbType = Date), @p403='?' (DbType = Guid), @p404='?' (DbType = Guid), @p405='?' (DbType = Guid), @p406='?' (DbType = Guid), @p407='?' (DbType = Guid), @p408='?' (DbType = Guid), @p409='?' (DbType = DateTime), @p410='?', @p411='?', @p412='?' (DbType = DateTime), @p413='?' (DbType = Int32), @p414='?' (DbType = DateTime), @p415='?' (DbType = Guid), @p416='?' (DbType = Guid), @p417='?' (DbType = Guid), @p418='?' (DbType = Guid), @p419='?' (DbType = Guid), @p420='?' (DbType = Guid), @p421='?' (DbType = DateTime), @p422='?', @p423='?', @p424='?' (DbType = DateTime), @p425='?' (DbType = Int32), @p426='?' (DbType = DateTime), @p427='?' (DbType = Guid), @p428='?' (DbType = Guid), @p429='?' (DbType = Guid), @p430='?' (DbType = Guid), @p431='?' (DbType = DateTime), @p432='?' (DbType = Guid), @p433='?', @p434='?', @p435='?' (DbType = DateTime), @p436='?' (DbType = Int32), @p437='?' (DbType = DateTime), @p438='?' (DbType = Guid), @p439='?' (DbType = Guid), @p440='?' (DbType = Guid), @p441='?' (DbType = Guid), @p442='?' (DbType = DateTime), @p443='?' (DbType = Guid), @p444='?', @p445='?', @p446='?' (DbType = DateTime), @p447='?' (DbType = Int32), @p448='?' (DbType = DateTime), @p449='?' (DbType = Guid), @p450='?' (DbType = Guid), @p451='?' (DbType = Guid), @p452='?' (DbType = DateTime), @p453='?' (DbType = Guid), @p454='?' (DbType = DateTime), @p455='?' (DbType = Guid), @p456='?' (DbType = DateTime), @p457='?', @p458='?', @p459='?' (DbType = Int32), @p460='?' (DbType = Int32), @p461='?', @p462='?' (DbType = DateTime), @p463='?' (DbType = Guid), @p464='?' (DbType = Guid), @p465='?' (DbType = Guid), @p466='?' (DbType = DateTime), @p467='?' (DbType = Guid), @p468='?' (DbType = DateTime), @p469='?' (DbType = Guid), @p470='?' (DbType = DateTime), @p471='?', @p472='?', @p473='?' (DbType = Int32), @p474='?' (DbType = Int32), @p475='?', @p476='?' (DbType = DateTime), @p477='?' (DbType = Guid), @p478='?' (DbType = Guid), @p479='?' (DbType = Guid), @p480='?' (DbType = Guid), @p481='?' (DbType = Guid), @p482='?' (DbType = DateTime), @p483='?' (DbType = Guid), @p484='?', @p485='?', @p486='?' (DbType = DateTime), @p487='?' (DbType = Int32), @p488='?' (DbType = DateTime), @p489='?' (DbType = Guid), @p490='?' (DbType = Guid), @p491='?' (DbType = Guid), @p492='?' (DbType = Guid), @p493='?' (DbType = Guid), @p494='?' (DbType = DateTime), @p495='?' (DbType = Guid), @p496='?', @p497='?', @p498='?' (DbType = DateTime), @p499='?' (DbType = Int32), @p500='?' (DbType = DateTime), @p501='?' (DbType = Guid), @p502='?' (DbType = Guid), @p503='?' (DbType = Guid), @p504='?' (DbType = Guid), @p505='?' (DbType = DateTime), @p506='?', @p507='?' (DbType = Guid), @p508='?', @p509='?' (DbType = DateTime), @p510='?' (DbType = DateTime), @p511='?' (DbType = Guid), @p512='?' (DbType = Guid), @p513='?' (DbType = Guid), @p514='?' (DbType = Guid), @p515='?' (DbType = DateTime), @p516='?', @p517='?' (DbType = Guid), @p518='?', @p519='?' (DbType = DateTime), @p520='?' (DbType = DateTime), @p521='?' (DbType = Guid), @p522='?' (DbType = Guid), @p523='?' (DbType = DateTime), @p524='?' (DbType = Guid), @p525='?' (DbType = Guid), @p526='?' (DbType = Guid), @p527='?' (DbType = DateTime), @p528='?' (DbType = DateTime), @p529='?', @p530='?' (DbType = Int32), @p531='?' (DbType = Int32), @p532='?' (DbType = DateTime), @p533='?' (DbType = Guid), @p534='?' (DbType = Guid), @p535='?' (DbType = DateTime), @p536='?' (DbType = Guid), @p537='?' (DbType = Guid), @p538='?' (DbType = Guid), @p539='?' (DbType = DateTime), @p540='?' (DbType = DateTime), @p541='?', @p542='?' (DbType = Int32), @p543='?' (DbType = Int32), @p544='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "AspNetUsers" ("Id", "AccessFailedCount", "AccountCreatedAt", "ConcurrencyStamp", "DisplayName", "Email", "EmailConfirmed", "LockoutEnabled", "LockoutEnd", "NormalizedEmail", "NormalizedUserName", "PasswordHash", "PhoneNumber", "PhoneNumberConfirmed", "SecurityStamp", "TwoFactorEnabled", "UserName")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16);
+      INSERT INTO "AspNetUsers" ("Id", "AccessFailedCount", "AccountCreatedAt", "ConcurrencyStamp", "DisplayName", "Email", "EmailConfirmed", "LockoutEnabled", "LockoutEnd", "NormalizedEmail", "NormalizedUserName", "PasswordHash", "PhoneNumber", "PhoneNumberConfirmed", "SecurityStamp", "TwoFactorEnabled", "UserName")
+      VALUES (@p17, @p18, @p19, @p20, @p21, @p22, @p23, @p24, @p25, @p26, @p27, @p28, @p29, @p30, @p31, @p32, @p33);
+      INSERT INTO "AspNetUsers" ("Id", "AccessFailedCount", "AccountCreatedAt", "ConcurrencyStamp", "DisplayName", "Email", "EmailConfirmed", "LockoutEnabled", "LockoutEnd", "NormalizedEmail", "NormalizedUserName", "PasswordHash", "PhoneNumber", "PhoneNumberConfirmed", "SecurityStamp", "TwoFactorEnabled", "UserName")
+      VALUES (@p34, @p35, @p36, @p37, @p38, @p39, @p40, @p41, @p42, @p43, @p44, @p45, @p46, @p47, @p48, @p49, @p50);
+      INSERT INTO "Companies" ("Id", "AssetStatusLabelsJson", "BrandLogoPath", "BrandPrimaryColor", "ContactEmail", "CreatedAt", "CustomerLifecycleStage", "DeletedAt", "IsActive", "LabelPrintSettingsJson", "Name", "PlatformNextFollowUpAt", "PlatformOwnerUserId", "SecurityPasswordMinimumLength", "SecurityRequireMfa", "SecuritySessionDurationHours", "Slug", "UpdatedAt")
+      VALUES (@p51, @p52, @p53, @p54, @p55, @p56, @p57, @p58, @p59, @p60, @p61, @p62, @p63, @p64, @p65, @p66, @p67, @p68)
+      RETURNING "AssetCount";
+      INSERT INTO "Companies" ("Id", "AssetStatusLabelsJson", "BrandLogoPath", "BrandPrimaryColor", "ContactEmail", "CreatedAt", "CustomerLifecycleStage", "DeletedAt", "IsActive", "LabelPrintSettingsJson", "Name", "PlatformNextFollowUpAt", "PlatformOwnerUserId", "SecurityPasswordMinimumLength", "SecurityRequireMfa", "SecuritySessionDurationHours", "Slug", "UpdatedAt")
+      VALUES (@p69, @p70, @p71, @p72, @p73, @p74, @p75, @p76, @p77, @p78, @p79, @p80, @p81, @p82, @p83, @p84, @p85, @p86)
+      RETURNING "AssetCount";
+      INSERT INTO "AccessoryCategories" ("Id", "CompanyId", "CreatedAt", "IsArchived", "Name", "UpdatedAt")
+      VALUES (@p87, @p88, @p89, @p90, @p91, @p92);
+      INSERT INTO "AccessoryCategories" ("Id", "CompanyId", "CreatedAt", "IsArchived", "Name", "UpdatedAt")
+      VALUES (@p93, @p94, @p95, @p96, @p97, @p98);
+      INSERT INTO "AssetCategories" ("Id", "CompanyId", "CreatedAt", "Name", "UpdatedAt")
+      VALUES (@p99, @p100, @p101, @p102, @p103);
+      INSERT INTO "AssetCategories" ("Id", "CompanyId", "CreatedAt", "Name", "UpdatedAt")
+      VALUES (@p104, @p105, @p106, @p107, @p108);
+      INSERT INTO "CompanyMemberships" ("CompanyId", "UserId", "CompanyUnitAccessMode", "CreatedAt", "EmployeeId", "LocationAccessMode", "RoleKey", "UpdatedAt")
+      VALUES (@p109, @p110, @p111, @p112, @p113, @p114, @p115, @p116);
+      INSERT INTO "CompanyMemberships" ("CompanyId", "UserId", "CompanyUnitAccessMode", "CreatedAt", "EmployeeId", "LocationAccessMode", "RoleKey", "UpdatedAt")
+      VALUES (@p117, @p118, @p119, @p120, @p121, @p122, @p123, @p124);
+      INSERT INTO "CompanyMemberships" ("CompanyId", "UserId", "CompanyUnitAccessMode", "CreatedAt", "EmployeeId", "LocationAccessMode", "RoleKey", "UpdatedAt")
+      VALUES (@p125, @p126, @p127, @p128, @p129, @p130, @p131, @p132);
+      INSERT INTO "Consumables" ("Id", "Category", "CompanyId", "CreatedAt", "Currency", "IsRequestable", "ItemNumber", "Location", "LocationCatalogId", "MinimumQuantity", "ModelNumber", "Name", "Notes", "PurchaseDate", "Supplier", "SupplierId", "TotalQuantity", "UnitCost", "UpdatedAt", "WarrantyExpiresAt")
+      VALUES (@p133, @p134, @p135, @p136, @p137, @p138, @p139, @p140, @p141, @p142, @p143, @p144, @p145, @p146, @p147, @p148, @p149, @p150, @p151, @p152);
+      INSERT INTO "Consumables" ("Id", "Category", "CompanyId", "CreatedAt", "Currency", "IsRequestable", "ItemNumber", "Location", "LocationCatalogId", "MinimumQuantity", "ModelNumber", "Name", "Notes", "PurchaseDate", "Supplier", "SupplierId", "TotalQuantity", "UnitCost", "UpdatedAt", "WarrantyExpiresAt")
+      VALUES (@p153, @p154, @p155, @p156, @p157, @p158, @p159, @p160, @p161, @p162, @p163, @p164, @p165, @p166, @p167, @p168, @p169, @p170, @p171, @p172);
+      INSERT INTO "Employees" ("Id", "CompanyId", "CompanyUnitId", "CreatedAt", "Department", "DisplayName", "Email", "EmployeeNumber", "IsActive", "JobTitle", "Location", "LocationCatalogId", "ManagerEmployeeId", "Phone", "PrivateNotes", "StartedOn", "UpdatedAt")
+      VALUES (@p173, @p174, @p175, @p176, @p177, @p178, @p179, @p180, @p181, @p182, @p183, @p184, @p185, @p186, @p187, @p188, @p189);
+      INSERT INTO "Employees" ("Id", "CompanyId", "CompanyUnitId", "CreatedAt", "Department", "DisplayName", "Email", "EmployeeNumber", "IsActive", "JobTitle", "Location", "LocationCatalogId", "ManagerEmployeeId", "Phone", "PrivateNotes", "StartedOn", "UpdatedAt")
+      VALUES (@p190, @p191, @p192, @p193, @p194, @p195, @p196, @p197, @p198, @p199, @p200, @p201, @p202, @p203, @p204, @p205, @p206);
+      INSERT INTO "InventoryComponents" ("Id", "Category", "CompanyId", "CreatedAt", "Currency", "ItemNumber", "Location", "LocationCatalogId", "MinimumQuantity", "ModelNumber", "Name", "Notes", "PurchaseDate", "SerialNumber", "Supplier", "SupplierId", "TotalQuantity", "UnitCost", "UpdatedAt", "WarrantyExpiresAt")
+      VALUES (@p207, @p208, @p209, @p210, @p211, @p212, @p213, @p214, @p215, @p216, @p217, @p218, @p219, @p220, @p221, @p222, @p223, @p224, @p225, @p226);
+      INSERT INTO "InventoryComponents" ("Id", "Category", "CompanyId", "CreatedAt", "Currency", "ItemNumber", "Location", "LocationCatalogId", "MinimumQuantity", "ModelNumber", "Name", "Notes", "PurchaseDate", "SerialNumber", "Supplier", "SupplierId", "TotalQuantity", "UnitCost", "UpdatedAt", "WarrantyExpiresAt")
+      VALUES (@p227, @p228, @p229, @p230, @p231, @p232, @p233, @p234, @p235, @p236, @p237, @p238, @p239, @p240, @p241, @p242, @p243, @p244, @p245, @p246);
+      INSERT INTO "SoftwareLicenses" ("Id", "AutoRenew", "CompanyId", "CreatedAt", "Currency", "ExpirationDate", "IsArchived", "LicenseReference", "LicenseType", "Name", "Notes", "ProductVersion", "Publisher", "PurchaseDate", "PurchaseOrderReference", "RequiresEulaAcceptance", "Seats", "Supplier", "SupplierId", "UnitCost", "UpdatedAt")
+      VALUES (@p247, @p248, @p249, @p250, @p251, @p252, @p253, @p254, @p255, @p256, @p257, @p258, @p259, @p260, @p261, @p262, @p263, @p264, @p265, @p266, @p267);
+      INSERT INTO "SoftwareLicenses" ("Id", "AutoRenew", "CompanyId", "CreatedAt", "Currency", "ExpirationDate", "IsArchived", "LicenseReference", "LicenseType", "Name", "Notes", "ProductVersion", "Publisher", "PurchaseDate", "PurchaseOrderReference", "RequiresEulaAcceptance", "Seats", "Supplier", "SupplierId", "UnitCost", "UpdatedAt")
+      VALUES (@p268, @p269, @p270, @p271, @p272, @p273, @p274, @p275, @p276, @p277, @p278, @p279, @p280, @p281, @p282, @p283, @p284, @p285, @p286, @p287, @p288);
+      INSERT INTO "Accessories" ("Id", "BrandId", "Category", "CategoryId", "CompanyId", "CreatedAt", "Currency", "IsRequestable", "ItemNumber", "Location", "LocationCatalogId", "MinimumQuantity", "ModelId", "ModelNumber", "Name", "Notes", "PhotoFileName", "PurchaseDate", "Supplier", "SupplierId", "TotalQuantity", "UnitCost", "UpdatedAt", "WarrantyExpiresAt")
+      VALUES (@p289, @p290, @p291, @p292, @p293, @p294, @p295, @p296, @p297, @p298, @p299, @p300, @p301, @p302, @p303, @p304, @p305, @p306, @p307, @p308, @p309, @p310, @p311, @p312);
+      INSERT INTO "Accessories" ("Id", "BrandId", "Category", "CategoryId", "CompanyId", "CreatedAt", "Currency", "IsRequestable", "ItemNumber", "Location", "LocationCatalogId", "MinimumQuantity", "ModelId", "ModelNumber", "Name", "Notes", "PhotoFileName", "PurchaseDate", "Supplier", "SupplierId", "TotalQuantity", "UnitCost", "UpdatedAt", "WarrantyExpiresAt")
+      VALUES (@p313, @p314, @p315, @p316, @p317, @p318, @p319, @p320, @p321, @p322, @p323, @p324, @p325, @p326, @p327, @p328, @p329, @p330, @p331, @p332, @p333, @p334, @p335, @p336);
+      INSERT INTO "Assets" ("Id", "AssetTag", "AssignedEmployeeId", "BrandId", "CategoryId", "CompanyId", "CreatedAt", "Currency", "CustomFieldsJson", "DefaultLocationCatalogId", "DeletedAt", "DeletedByUserId", "ExpectedReturnOn", "InsuranceExpiresAt", "InsurancePolicyNumber", "InsuranceProvider", "IsByod", "IsRequestable", "Location", "LocationCatalogId", "ModelId", "Name", "NextAuditOn", "Notes", "ParentAssetId", "PurchaseCost", "PurchaseDate", "PurchaseOrderId", "PurchaseOrderLineId", "SerialNumber", "Status", "UpdatedAt", "WarrantyExpiresAt")
+      VALUES (@p337, @p338, @p339, @p340, @p341, @p342, @p343, @p344, @p345, @p346, @p347, @p348, @p349, @p350, @p351, @p352, @p353, @p354, @p355, @p356, @p357, @p358, @p359, @p360, @p361, @p362, @p363, @p364, @p365, @p366, @p367, @p368, @p369);
+      INSERT INTO "Assets" ("Id", "AssetTag", "AssignedEmployeeId", "BrandId", "CategoryId", "CompanyId", "CreatedAt", "Currency", "CustomFieldsJson", "DefaultLocationCatalogId", "DeletedAt", "DeletedByUserId", "ExpectedReturnOn", "InsuranceExpiresAt", "InsurancePolicyNumber", "InsuranceProvider", "IsByod", "IsRequestable", "Location", "LocationCatalogId", "ModelId", "Name", "NextAuditOn", "Notes", "ParentAssetId", "PurchaseCost", "PurchaseDate", "PurchaseOrderId", "PurchaseOrderLineId", "SerialNumber", "Status", "UpdatedAt", "WarrantyExpiresAt")
+      VALUES (@p370, @p371, @p372, @p373, @p374, @p375, @p376, @p377, @p378, @p379, @p380, @p381, @p382, @p383, @p384, @p385, @p386, @p387, @p388, @p389, @p390, @p391, @p392, @p393, @p394, @p395, @p396, @p397, @p398, @p399, @p400, @p401, @p402);
+      INSERT INTO "ComponentMovements" ("Id", "ActorUserId", "AllocationId", "AssetId", "CompanyId", "ComponentId", "CreatedAt", "MovementType", "Notes", "OccurredAt", "Quantity", "UpdatedAt")
+      VALUES (@p403, @p404, @p405, @p406, @p407, @p408, @p409, @p410, @p411, @p412, @p413, @p414);
+      INSERT INTO "ComponentMovements" ("Id", "ActorUserId", "AllocationId", "AssetId", "CompanyId", "ComponentId", "CreatedAt", "MovementType", "Notes", "OccurredAt", "Quantity", "UpdatedAt")
+      VALUES (@p415, @p416, @p417, @p418, @p419, @p420, @p421, @p422, @p423, @p424, @p425, @p426);
+      INSERT INTO "ConsumableMovements" ("Id", "ActorUserId", "CompanyId", "ConsumableId", "CreatedAt", "EmployeeId", "MovementType", "Notes", "OccurredAt", "Quantity", "UpdatedAt")
+      VALUES (@p427, @p428, @p429, @p430, @p431, @p432, @p433, @p434, @p435, @p436, @p437);
+      INSERT INTO "ConsumableMovements" ("Id", "ActorUserId", "CompanyId", "ConsumableId", "CreatedAt", "EmployeeId", "MovementType", "Notes", "OccurredAt", "Quantity", "UpdatedAt")
+      VALUES (@p438, @p439, @p440, @p441, @p442, @p443, @p444, @p445, @p446, @p447, @p448);
+      INSERT INTO "AccessoryAssignments" ("Id", "AccessoryId", "AssetId", "CheckedOutAt", "CompanyId", "CreatedAt", "EmployeeId", "LastReturnedAt", "Location", "Notes", "Quantity", "ReturnedQuantity", "TargetType", "UpdatedAt")
+      VALUES (@p449, @p450, @p451, @p452, @p453, @p454, @p455, @p456, @p457, @p458, @p459, @p460, @p461, @p462);
+      INSERT INTO "AccessoryAssignments" ("Id", "AccessoryId", "AssetId", "CheckedOutAt", "CompanyId", "CreatedAt", "EmployeeId", "LastReturnedAt", "Location", "Notes", "Quantity", "ReturnedQuantity", "TargetType", "UpdatedAt")
+      VALUES (@p463, @p464, @p465, @p466, @p467, @p468, @p469, @p470, @p471, @p472, @p473, @p474, @p475, @p476);
+      INSERT INTO "AccessoryMovements" ("Id", "AccessoryId", "ActorUserId", "AssignmentId", "CompanyId", "CreatedAt", "EmployeeId", "MovementType", "Notes", "OccurredAt", "Quantity", "UpdatedAt")
+      VALUES (@p477, @p478, @p479, @p480, @p481, @p482, @p483, @p484, @p485, @p486, @p487, @p488);
+      INSERT INTO "AccessoryMovements" ("Id", "AccessoryId", "ActorUserId", "AssignmentId", "CompanyId", "CreatedAt", "EmployeeId", "MovementType", "Notes", "OccurredAt", "Quantity", "UpdatedAt")
+      VALUES (@p489, @p490, @p491, @p492, @p493, @p494, @p495, @p496, @p497, @p498, @p499, @p500);
+      INSERT INTO "AssetEvents" ("Id", "ActorUserId", "AssetId", "CompanyId", "CreatedAt", "Details", "EmployeeId", "EventType", "OccurredAt", "UpdatedAt")
+      VALUES (@p501, @p502, @p503, @p504, @p505, @p506, @p507, @p508, @p509, @p510);
+      INSERT INTO "AssetEvents" ("Id", "ActorUserId", "AssetId", "CompanyId", "CreatedAt", "Details", "EmployeeId", "EventType", "OccurredAt", "UpdatedAt")
+      VALUES (@p511, @p512, @p513, @p514, @p515, @p516, @p517, @p518, @p519, @p520);
+      INSERT INTO "ComponentAllocations" ("Id", "ActorUserId", "AllocatedAt", "AssetId", "CompanyId", "ComponentId", "CreatedAt", "LastRemovedAt", "Notes", "Quantity", "RemovedQuantity", "UpdatedAt")
+      VALUES (@p521, @p522, @p523, @p524, @p525, @p526, @p527, @p528, @p529, @p530, @p531, @p532);
+      INSERT INTO "ComponentAllocations" ("Id", "ActorUserId", "AllocatedAt", "AssetId", "CompanyId", "ComponentId", "CreatedAt", "LastRemovedAt", "Notes", "Quantity", "RemovedQuantity", "UpdatedAt")
+      VALUES (@p533, @p534, @p535, @p536, @p537, @p538, @p539, @p540, @p541, @p542, @p543, @p544);
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT a."Id", a."AssetTag", a."AssignedEmployeeId", a."BrandId", a."CategoryId", a."CompanyId", a."CreatedAt", a."Currency", a."CustomFieldsJson", a."DefaultLocationCatalogId", a."DeletedAt", a."DeletedByUserId", a."ExpectedReturnOn", a."InsuranceExpiresAt", a."InsurancePolicyNumber", a."InsuranceProvider", a."IsByod", a."IsRequestable", a."Location", a."LocationCatalogId", a."ModelId", a."Name", a."NextAuditOn", a."Notes", a."ParentAssetId", a."PurchaseCost", a."PurchaseDate", a."PurchaseOrderId", a."PurchaseOrderLineId", a."SerialNumber", a."Status", a."UpdatedAt", a."WarrantyExpiresAt"
+      FROM "Assets" AS a
+      WHERE a."DeletedAt" IS NULL AND (@ef_filter__IsSystemQueryScope0 OR a."CompanyId" = @ef_filter__QueryCompanyId)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT a."Id", a."AssetTag", a."AssignedEmployeeId", a."BrandId", a."CategoryId", a."CompanyId", a."CreatedAt", a."Currency", a."CustomFieldsJson", a."DefaultLocationCatalogId", a."DeletedAt", a."DeletedByUserId", a."ExpectedReturnOn", a."InsuranceExpiresAt", a."InsurancePolicyNumber", a."InsuranceProvider", a."IsByod", a."IsRequestable", a."Location", a."LocationCatalogId", a."ModelId", a."Name", a."NextAuditOn", a."Notes", a."ParentAssetId", a."PurchaseCost", a."PurchaseDate", a."PurchaseOrderId", a."PurchaseOrderLineId", a."SerialNumber", a."Status", a."UpdatedAt", a."WarrantyExpiresAt"
+      FROM "Assets" AS a
+      WHERE a."DeletedAt" IS NULL AND (@ef_filter__IsSystemQueryScope0 OR a."CompanyId" = @ef_filter__QueryCompanyId)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT a."Id", a."AssetTag", a."AssignedEmployeeId", a."BrandId", a."CategoryId", a."CompanyId", a."CreatedAt", a."Currency", a."CustomFieldsJson", a."DefaultLocationCatalogId", a."DeletedAt", a."DeletedByUserId", a."ExpectedReturnOn", a."InsuranceExpiresAt", a."InsurancePolicyNumber", a."InsuranceProvider", a."IsByod", a."IsRequestable", a."Location", a."LocationCatalogId", a."ModelId", a."Name", a."NextAuditOn", a."Notes", a."ParentAssetId", a."PurchaseCost", a."PurchaseDate", a."PurchaseOrderId", a."PurchaseOrderLineId", a."SerialNumber", a."Status", a."UpdatedAt", a."WarrantyExpiresAt"
+      FROM "Assets" AS a
+      WHERE a."DeletedAt" IS NULL AND (@ef_filter__IsSystemQueryScope0 OR a."CompanyId" = @ef_filter__QueryCompanyId)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid), @_otherCompanyAssetId='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "Assets" AS a
+          WHERE a."DeletedAt" IS NULL AND (@ef_filter__IsSystemQueryScope0 OR a."CompanyId" = @ef_filter__QueryCompanyId) AND a."Id" = @_otherCompanyAssetId)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT c."Id", c."AssetCount", c."AssetStatusLabelsJson", c."BrandLogoPath", c."BrandPrimaryColor", c."ContactEmail", c."CreatedAt", c."CustomerLifecycleStage", c."DeletedAt", c."IsActive", c."LabelPrintSettingsJson", c."Name", c."PlatformNextFollowUpAt", c."PlatformOwnerUserId", c."SecurityPasswordMinimumLength", c."SecurityRequireMfa", c."SecuritySessionDurationHours", c."Slug", c."UpdatedAt"
+      FROM "Companies" AS c
+      WHERE @ef_filter__IsSystemQueryScope0 OR c."Id" = @ef_filter__QueryCompanyId
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT c."Id", c."AssetCount", c."AssetStatusLabelsJson", c."BrandLogoPath", c."BrandPrimaryColor", c."ContactEmail", c."CreatedAt", c."CustomerLifecycleStage", c."DeletedAt", c."IsActive", c."LabelPrintSettingsJson", c."Name", c."PlatformNextFollowUpAt", c."PlatformOwnerUserId", c."SecurityPasswordMinimumLength", c."SecurityRequireMfa", c."SecuritySessionDurationHours", c."Slug", c."UpdatedAt"
+      FROM "Companies" AS c
+      WHERE @ef_filter__IsSystemQueryScope0 OR c."Id" = @ef_filter__QueryCompanyId
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid), @_ownAssetId='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT a."Id", a."AssetTag", a."AssignedEmployeeId", a."BrandId", a."CategoryId", a."CompanyId", a."CreatedAt", a."Currency", a."CustomFieldsJson", a."DefaultLocationCatalogId", a."DeletedAt", a."DeletedByUserId", a."ExpectedReturnOn", a."InsuranceExpiresAt", a."InsurancePolicyNumber", a."InsuranceProvider", a."IsByod", a."IsRequestable", a."Location", a."LocationCatalogId", a."ModelId", a."Name", a."NextAuditOn", a."Notes", a."ParentAssetId", a."PurchaseCost", a."PurchaseDate", a."PurchaseOrderId", a."PurchaseOrderLineId", a."SerialNumber", a."Status", a."UpdatedAt", a."WarrantyExpiresAt"
+      FROM "Assets" AS a
+      WHERE a."DeletedAt" IS NULL AND (@ef_filter__IsSystemQueryScope0 OR a."CompanyId" = @ef_filter__QueryCompanyId) AND a."Id" = @_ownAssetId
+      LIMIT 2
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (3ms) [Parameters=[@p1='?' (DbType = Guid), @p0='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+      UPDATE "Assets" SET "DeletedAt" = @p0
+      WHERE "Id" = @p1;
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid), @_ownAssetId='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "Assets" AS a
+          WHERE a."DeletedAt" IS NULL AND (@ef_filter__IsSystemQueryScope0 OR a."CompanyId" = @ef_filter__QueryCompanyId) AND a."Id" = @_ownAssetId)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT a."Id", a."AssetTag", a."AssignedEmployeeId", a."BrandId", a."CategoryId", a."CompanyId", a."CreatedAt", a."Currency", a."CustomFieldsJson", a."DefaultLocationCatalogId", a."DeletedAt", a."DeletedByUserId", a."ExpectedReturnOn", a."InsuranceExpiresAt", a."InsurancePolicyNumber", a."InsuranceProvider", a."IsByod", a."IsRequestable", a."Location", a."LocationCatalogId", a."ModelId", a."Name", a."NextAuditOn", a."Notes", a."ParentAssetId", a."PurchaseCost", a."PurchaseDate", a."PurchaseOrderId", a."PurchaseOrderLineId", a."SerialNumber", a."Status", a."UpdatedAt", a."WarrantyExpiresAt"
+      FROM "Assets" AS a
+      WHERE @ef_filter__IsSystemQueryScope0 OR a."CompanyId" = @ef_filter__QueryCompanyId
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT a."Id", a."AssetTag", a."AssignedEmployeeId", a."BrandId", a."CategoryId", a."CompanyId", a."CreatedAt", a."Currency", a."CustomFieldsJson", a."DefaultLocationCatalogId", a."DeletedAt", a."DeletedByUserId", a."ExpectedReturnOn", a."InsuranceExpiresAt", a."InsurancePolicyNumber", a."InsuranceProvider", a."IsByod", a."IsRequestable", a."Location", a."LocationCatalogId", a."ModelId", a."Name", a."NextAuditOn", a."Notes", a."ParentAssetId", a."PurchaseCost", a."PurchaseDate", a."PurchaseOrderId", a."PurchaseOrderLineId", a."SerialNumber", a."Status", a."UpdatedAt", a."WarrantyExpiresAt"
+      FROM "Assets" AS a
+      WHERE a."DeletedAt" IS NULL AND (@ef_filter__IsSystemQueryScope0 OR a."CompanyId" = @ef_filter__QueryCompanyId)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT c."Id", c."AssetCount", c."AssetStatusLabelsJson", c."BrandLogoPath", c."BrandPrimaryColor", c."ContactEmail", c."CreatedAt", c."CustomerLifecycleStage", c."DeletedAt", c."IsActive", c."LabelPrintSettingsJson", c."Name", c."PlatformNextFollowUpAt", c."PlatformOwnerUserId", c."SecurityPasswordMinimumLength", c."SecurityRequireMfa", c."SecuritySessionDurationHours", c."Slug", c."UpdatedAt"
+      FROM "Companies" AS c
+      WHERE @ef_filter__IsSystemQueryScope0 OR c."Id" = @ef_filter__QueryCompanyId
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (2ms) [Parameters=[@ef_filter__IsSystemQueryScope0='?' (DbType = Boolean), @ef_filter__QueryCompanyId='?' (DbType = Guid), @_otherCompanyAssetId='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "Assets" AS a
+          WHERE a."DeletedAt" IS NULL AND (@ef_filter__IsSystemQueryScope0 OR a."CompanyId" = @ef_filter__QueryCompanyId) AND a."Id" = @_otherCompanyAssetId)
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+[xUnit.net 00:00:41.40]   Finished:    EnvanterTR.SecurityAcceptance
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Tenant_query_scopes_use_runtime_context_values_and_preserve_soft_delete [262 ms]
+
+Test Run Successful.
+Total tests: 4
+     Passed: 4
+ Total time: 43.7905 Seconds

@@ -108,15 +108,17 @@ public sealed class CurrentReleaseMigrationAcceptanceTests(ITestOutputHelper out
             Assert.DoesNotContain("DELETE FROM", sql, StringComparison.OrdinalIgnoreCase);
             await using (var apply = new NpgsqlCommand(sql, connection)) await apply.ExecuteNonQueryAsync();
             Assert.Equal(120, (await db.Database.GetAppliedMigrationsAsync()).Count());
-            Assert.Equal(new[] { migrations[120], migrations[121] }, await db.Database.GetPendingMigrationsAsync());
+            Assert.Equal(migrations.Skip(120), await db.Database.GetPendingMigrationsAsync());
             Assert.Equal(before, await HashProjections(connection, schema, columns));
             await using (var repeat = new NpgsqlCommand(sql, connection)) await repeat.ExecuteNonQueryAsync();
             Assert.Equal(120, (await db.Database.GetAppliedMigrationsAsync()).Count());
             Assert.Equal(before, await HashProjections(connection, schema, columns));
             db.ChangeTracker.Clear();
-            var preservedSession = await db.UserSessions.SingleAsync(session => session.Id == sessionId);
+            var preservedSession = await db.UserSessions.Where(session => session.Id == sessionId)
+                .Select(session => new { session.ImpersonatorUserId, session.ImpersonationReturnTokenHash }).SingleAsync();
             Assert.Null(preservedSession.ImpersonatorUserId); Assert.Null(preservedSession.ImpersonationReturnTokenHash);
-            var preservedOrder = await db.CompanyCheckoutOrders.SingleAsync(order => order.Id == orderId);
+            var preservedOrder = await db.CompanyCheckoutOrders.Where(order => order.Id == orderId)
+                .Select(order => new { order.TargetCompanyId, order.RequestedByUserId }).SingleAsync();
             Assert.Null(preservedOrder.TargetCompanyId); Assert.Null(preservedOrder.RequestedByUserId);
             Assert.Equal(company.Id, (await db.Assets.SingleAsync(asset => asset.Id == assetId)).CompanyId);
             var companyArtifact = Path.Combine(AppContext.BaseDirectory, "company-deletion-migration.sql");
@@ -150,7 +152,11 @@ public sealed class CurrentReleaseMigrationAcceptanceTests(ITestOutputHelper out
             Assert.Equal(before, await HashProjections(connection, schema, columns));
             await using (var repeatHandover = new NpgsqlCommand(handoverSql, connection)) await repeatHandover.ExecuteNonQueryAsync();
             Assert.Equal(122, (await db.Database.GetAppliedMigrationsAsync()).Count());
-            Assert.Empty(await db.EmployeeHandoverEmailAttempts.ToListAsync());
+            Assert.Empty(await db.EmployeeHandoverEmailAttempts.Select(attempt => attempt.Id).ToListAsync());
+            Assert.Equal(migrations.Skip(122), await db.Database.GetPendingMigrationsAsync());
+            Assert.Null(await db.Companies.Where(item => item.Id == company.Id).Select(item => item.DeletedAt).SingleAsync());
+            Assert.Equal(before, await HashProjections(connection, schema, columns));
+            await db.Database.MigrateAsync();
             Assert.Empty(await db.Database.GetPendingMigrationsAsync());
             Assert.False(db.Database.HasPendingModelChanges());
             Assert.Null((await db.Companies.SingleAsync(item => item.Id == company.Id)).DeletedAt);

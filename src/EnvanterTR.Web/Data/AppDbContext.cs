@@ -46,13 +46,34 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         ValidateCompanyWrites();
+        StampMissingAuditFields();
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
     public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
         ValidateCompanyWrites();
+        StampMissingAuditFields();
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void StampMissingAuditFields()
+    {
+        var now = DateTimeOffset.UtcNow;
+        foreach (var entry in ChangeTracker.Entries().Where(e =>
+                     e.State is EntityState.Added or EntityState.Modified))
+        {
+            // Existing CLR timestamps retain their endpoint/concurrency semantics.
+            // Newly added audit columns have no historical default: old dates stay unknown.
+            foreach (var name in new[] { "CreatedAt", "UpdatedAt" })
+            {
+                var property = entry.Metadata.FindProperty(name);
+                if (property is null || !property.IsShadowProperty() ||
+                    property.ClrType != typeof(DateTimeOffset?)) continue;
+                if (name == "UpdatedAt" || entry.State == EntityState.Added)
+                    entry.Property(name).CurrentValue = now;
+            }
+        }
     }
 
     public DbSet<Company> Companies => Set<Company>();
@@ -1592,6 +1613,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
                 ? entityType.FindProperty(nameof(Company.Id)) : entityType.FindProperty("CompanyId");
             if (companyProperty is null || (companyProperty.ClrType != typeof(Guid) && companyProperty.ClrType != typeof(Guid?)))
                 continue;
+            foreach (var auditName in new[] { "CreatedAt", "UpdatedAt" })
+                if (entityType.FindProperty(auditName) is null)
+                    modelBuilder.Entity(entityType.ClrType).Property<DateTimeOffset?>(auditName);
             var row = Expression.Parameter(entityType.ClrType, "row");
             var rowCompany = Expression.Call(typeof(EF), nameof(EF.Property), [companyProperty.ClrType],
                 row, Expression.Constant(companyProperty.Name));

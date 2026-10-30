@@ -1234,3 +1234,13 @@ Taze release recoveryPID100368exit0:133543ZSQL hash/list/bağımsızrestore122/9
 - Cross-tab10c03e7 staging ve canlı kabulü henüz yapılmadı; 5409 dış kabulü buna sayılmaz. Tam Hedef/P1, kullanıcı tarih girdileri ve müşteri kabulü açık.
 - Sıradaki iş: rs4 Coolify terminal/runtime doğrulaması, ardından başarılı10c03e7 için ayrı staging ve yayın kapısı. Aynı CI/testleri gerekçesiz tekrarlama.
 - TAMAM dediğim 2 maddenin 2'si test çıktısıyla doğrulanmıştır.
+
+## 31 Ekim 2026 — eksik şirket kayıt tarihleri
+- Durum: yerel kod/build/PostgreSQL kabulü TAMAM; uzak CI/staging/canlı DOĞRULANMADI. Bu paket Hedef6.1/P1 bütünü değildir.
+- Değişen: AppDbContext,123. migration/model snapshot, tarih kabul testi ve mevcut118-era veri koruma testi.
+- 54 şirket kapsamlı tabloda eksik24CreatedAt+51UpdatedAt eklendi. Tarihler nullable; geçmiş kayıtlar backfill/default ile değiştirilmedi. Yeni tracked sync/async yazmalar ve PostgreSQL trigger ile raw/bulk yazmalar tarih tutar. Mevcut CLR/concurrency alanlarının davranışı korunur.
+- Komut: DockerSDK dotnet test --no-restore --filter CompanyAuditTimestampAcceptanceTests|CurrentReleaseMigrationAcceptanceTests|Tenant_query_scope; exit0,4/4,39.2998s. Build başarılı; mevcut NU1900/deprecation/analyzer uyarıları var.
+- Kanıt: tests/reports/company-audit-final-acceptance-20261031.log ve company-audit-timestamps-20261031.md. İlk tracked sürüm4/4; raw/bulk kapsamı eklenince son sürüm4/4 geçti. Gereksiz aynı test tekrarı değil, değişen kapsam doğrulaması.
+- Veri koruma:118-era tüm orijinal alan projeksiyonları123'e kadar korundu; model snapshot drift yok; bilinmeyen eskiCreatedAt edit sonrası null; yeniCreatedAt edit/bulk sonrası aynı; şirketdışı yazma reddedildi. Kullanıcı CSV'si import edilmedi.
+- Sıradaki: tek commit/uzakCI; yayın bağlantısı ve exact staging/recovery açık. DeletedAt/softdelete, ortak tablo audit alanları, tarih girdisi ve tam müşteri kabulü açık.
+- TAMAM dediğim1iş paketinin1'i test çıktısıyla doğrulanmıştır.
