@@ -17,3 +17,9 @@ Full CI, completed staging and fresh release recovery remain required before dep
 Build PID3509927 completed build.exit0. Prepare PID3515314 completed prepare.exit0. Both bounded stage applications started once. Runtime/HTTP/proxy/CSRF/anonymous access and all95 original table field projections passed acceptance-probes.exit0. Schema122/0, no migration applied; no production deployment. Screenshot: operational-role-stage-pass-20261030.png. These completed steps must not be restarted solely for observation or documentation updates.
 
 At the latest observation CI41004287391 PostgreSQL job123895528789 is still running at16m58s; Linux8m18s and Windows3m14s passed. The fresh release recovery script is prepared but not run because full CI is not yet terminal/successful. Do not deploy or push while this job remains active.
+
+## Fresh release recovery passed
+
+After exact staging acceptance, the independent backup/recovery gate was completed while full CI continued. This is read-only with respect to production records and does not authorize deployment before successful full CI. Recovery PID3538550 exited0. Fresh dump pre-web-v1-20261030T050211Z.dump passed hash/list/independent restore, schema122/95tables. Current8a07 SQL/media/data-protection keys/images recovered successfully from /var/backups/envantertr/rollback-20261030T050216Z,143MB. No production restore or deployment occurred. Evidence: operational-role-fresh-recovery-pass-20261030.png.
+
+CI41004287391 PostgreSQL job123895528789 remains running at22m47s; Linux/Windows passed. No rerun/restart. Prepared live verification scripts are not yet executed; they assert exact d19cfe5 runtime/source after deployment. FullHedef/P1 remains open.

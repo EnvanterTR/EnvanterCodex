@@ -1,11 +1,11 @@
 import datetime, hashlib, json, os, pathlib, re, subprocess
 
-# Run only after exact-candidate CI passes. This refreshes recovery evidence;
+# Run after exact staging acceptance. Full CI must pass before deployment;
 # it does not deploy, mutate production records, or restore production.
 stage = pathlib.Path('/var/lib/envantertr-staging/d19cfe5-20261030')
 resource = 'izrckbfan6xop8b6xgigduvt'
 previous = '8a07aec93969c42abb0fc0ac272be358ebd11e40'
-assert stage.is_dir() and (stage/'build.exit').read_text().strip() == '0'
+assert stage.is_dir() and all((stage/(name+'.exit')).read_text().strip() == '0' for name in ['build','prepare','acceptance-probes'])
 assert not (stage/'release-recovery-path.txt').exists(), 'Inspect existing release recovery before repeating'
 ids = subprocess.check_output(['docker','ps','-q','--filter','name='+resource],text=True).split()
 containers = json.loads(subprocess.check_output(['docker','inspect',*ids]))

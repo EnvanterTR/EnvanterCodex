@@ -1129,3 +1129,5 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Kanıt: operational-role-stage-progress-20261030.md; legacy-date-input-guide-20261030.md; legacy-date-input-ready-20261030.png.
 
 30 Ekim d19cfe5 exact staging kabulü tamamlandı: build0/prepare0/acceptance-probes0; boundedweb/public, runtime/HTTP/proxy/CSRF/anonim/platform sınırları ve95tablonun özgün alan korunması geçti. Şema122/0. Kanıt operational-role-stage-pass-20261030.png. CI41004287391 PostgreSQLjob123895528789 aynı işte16m58s sürüyor; Linux/Windows başarılı. Fresh release recovery script hazır, henüz çalıştırılmadı; canlı8a07aec değişmedi. TamHedef/P1 hâlâ açık.
+
+30 Ekim d19cfe5 yayın öncesi bağımsız kurtarma tamamlandı: PID3538550 exit0; taze050211ZSQL hash/list/bağımsız restore122/95;143MBrollback-20261030T050216Z mevcut8a07SQL/medya/anahtar/imaj geri dönüşü geçti. Canlıya restore/deploy yapılmadı. CI41004287391 PostgreSQLjob123895528789 aynı işte22m47s sürüyor; Linux/Windows geçti. CI bitmeden deploy veya yeni push yapılmayacak. Kanıt: operational-role-fresh-recovery-pass-20261030.png.
