@@ -1166,3 +1166,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - SonrawbodyekidahilgerçekürünHTMLveiki yeni testlehosted-checkout.mjs tamorchestrationexit0. Finalworkspace4/4+nativebody10/10. Yeni kaynak saltokunur mevcutPlaywright1.64imajınamounted; temizimage/remoteCI/gerçekmüşterikabulüdeğil. Kanıt session-isolation-final-full-browser-20261030.md/.log.
 - EskiCI41009579015terminal:LinuxeskiAuthverifierlocator30sbaşarısız,PG37m10s/Windows5m06sbaşarılı. Aynıkoşuiptal/yenidenbaşlatılmadı;yereldüzeltme+birleşikadayşimditekpushile yeniCI'ye gönderilecek.
 - Ara8cdbstagefinalrawHTML'yi içermez; sonkaynakstagegerekiyor. Platform-adminayrıapi/directCSVlifecyclescopeaudit sonrakiP1işiolarak açık;şirketUItestlerirootadminizolasyonunukanıtlamaz. TamHedef/P1/tarihbackfill/gerçekmüşteri açık. Canlıd19korunuyor.
+
+## 30 Ekim 2026 — korumalı ham yanıt sözleşmesi kontrolü
+- CI41013278745terminal:Linux37sCompanyDataExporteskiunscopedreturnresponsebeklentisindebaşarısız; PG43m36s/Windows4m55sbaşarılı. İptal/yenidenbaşlatmayok.
+- VerifierkorumalıscopedResponsebekliyor veönce/sonrageneration/native-receiverkontrolünüekzorunlututuyor;mevcutyetki/audit/ZIPkontrollerikorundu. Finalrawkaynaksonrası12downstreamstatikcheckyereldeexit0geçti. Kanıt raw-session-verifier-fix-20261030.md ve raw-session-final-Verify-*logları.
+- Ürünsrc/deploycoolify/Dockerfilef12dd9bileeșitliği gitdiff--quietiledoğrulandı. Ara8cdbstage2appgeri alınabilirdurduruldu, canlıkimliklerkorundu,avail5735MiB;silme/DBdeğişimiyok. Finalf12stagebootstraptekbaşlatıldı;sonuçbekleniyor. Düzeltilmişverifiertestkodu/kanıtcommittekpushileyeniCI'ye gönderilecek.

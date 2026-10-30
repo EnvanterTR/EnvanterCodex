@@ -31,8 +31,12 @@ const archiveEnd = endpoint.indexOf('private static async Task WriteCompanyJsonA
 const archive = archiveStart >= 0 && archiveEnd > archiveStart ? endpoint.slice(archiveStart, archiveEnd) : '';
 
 const apiErrorBranch = api.indexOf('if (!response.ok)');
-const rawResponseBranch = api.indexOf("if (options.responseType === 'raw') return response;");
+const rawResponseBranch = api.indexOf("if (options.responseType === 'raw') return scopedResponse();");
 requireSource(api.includes('responseType: _responseType') && apiErrorBranch >= 0 && rawResponseBranch > apiErrorBranch, 'The API helper must return raw responses only after its shared HTTP/auth error handling and must not forward the custom option to fetch.');
+const bodyScope = api.slice(api.indexOf('const scopedResponse ='), rawResponseBranch);
+requireSource(bodyScope.includes("['blob', 'text', 'arrayBuffer', 'formData', 'json']") &&
+  /ensureCurrentSession\(\);\s*const body = await read\.apply\(response, args\);\s*ensureCurrentSession\(\);/.test(bodyScope),
+  'Raw export body readers must retain their native response receiver and check the session before and after asynchronous body consumption.');
 requireSource(handler.includes('api("/api/company/export.json", { responseType: "raw" })') && handler.includes('response.blob()'), 'Company JSON export must request the raw response before creating its download blob.');
 requireSource(handler.includes('link.download = `envantertr-sirket-verisi-') && handler.includes('URL.revokeObjectURL(url)'), 'Company JSON export must download a named file and release its temporary object URL.');
 requireSource(route.includes('.RequireAuthorization("settings.manage")'), 'Company data export must stay restricted to settings managers.');
