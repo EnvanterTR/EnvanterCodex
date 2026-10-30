@@ -123,7 +123,11 @@ const maintenanceReportItems = [
   { status: 'Completed', startedOn: '2026-10-12', maintenanceType: 'Repair', cost: 800, currency: 'TRY' },
   { status: 'Planned', startedOn: '2026-10-12', maintenanceType: 'Inspection', cost: 300, currency: 'TRY' }
 ];
-const licenseReportToday = new Date();
+// Fixtures and the browser share one business clock, including across UTC midnight.
+// Node's real clock remains available for bounded waits and mutation version tokens.
+const scenarioNow = new Date(process.env.ENVANTERTR_UI_TEST_NOW || Date.now());
+assert.ok(Number.isFinite(scenarioNow.getTime()), 'The UI scenario clock must be a valid instant.');
+const licenseReportToday = new Date(scenarioNow);
 licenseReportToday.setUTCHours(0, 0, 0, 0);
 const licenseReportDay = offset => new Date(licenseReportToday.getTime() + offset * 86400000).toISOString().slice(0, 10);
 const licenseExpiryReportItems = [
@@ -852,7 +856,7 @@ const server = createServer(async (request, response) => {
     else if (url.pathname === `/api/accessory-orders/${unifiedPurchaseAccessoryId}/returns`) result = supplierReturnHistory.accessory;
     else if (url.pathname === `/api/stock-orders/${unifiedPurchaseStockId}/returns`) result = supplierReturnHistory.stock;
     else if (url.pathname === '/api/reports/warranties') {
-      const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+      const today = new Date(scenarioNow); today.setUTCHours(0, 0, 0, 0);
       const through = url.searchParams.get('through') || new Date(today.getTime() + 90 * 86400000).toISOString().slice(0, 10);
       const throughDate = new Date(`${through}T00:00:00Z`);
       const isoDay = offset => new Date(today.getTime() + offset * 86400000).toISOString().slice(0, 10);
@@ -1797,7 +1801,7 @@ const server = createServer(async (request, response) => {
   }
   if (request.method === 'POST' && url.pathname === `/api/assets/${assetId}/maintenances/${maintenanceId}/start`) {
     maintenanceRows[0].status = 'InProgress';
-    maintenanceRows[0].startedOn = new Date().toISOString().slice(0, 10);
+    maintenanceRows[0].startedOn = new Date(scenarioNow).toISOString().slice(0, 10);
     asset.status = 'Maintenance';
     response.writeHead(204); response.end(); return;
   }
@@ -1844,7 +1848,9 @@ await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const address = server.address();
 assert.ok(address && typeof address === 'object');
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
-const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, timezoneId: 'UTC' });
+await page.clock.setFixedTime(scenarioNow);
+console.log(`SCENARIO_CLOCK ${scenarioNow.toISOString()} NODE_WALL_CLOCK ${new Date().toISOString()}`);
 await page.context().addInitScript(() => {
   window.__syntheticClipboard = '';
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async text => { window.__syntheticClipboard = String(text); } } });
@@ -2392,8 +2398,8 @@ try {
   assert.equal(apiRequests.length, beforeScheduleCancel, 'Canceling the schedule must not send a write request.');
 
   await page.locator('#scheduleAssetAuditButton').click();
-  const date = new Date(); date.setDate(date.getDate() + 7);
-  const nextAuditOn = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const date = new Date(scenarioNow); date.setUTCDate(date.getUTCDate() + 7);
+  const nextAuditOn = date.toISOString().slice(0, 10);
   await page.locator('#assetAuditScheduleForm [name="nextAuditOn"]').fill(nextAuditOn);
   assert.equal(await page.locator('#assetAuditScheduleForm [name="nextAuditOn"]').inputValue(), nextAuditOn);
   assert.equal(await page.locator('#assetAuditScheduleForm [name="nextAuditOn"]').evaluate(input => input.checkValidity()), true);
@@ -5171,7 +5177,7 @@ try {
         'The company purchasing budget list must expose budget, committed and remaining values.');
       const budgetForm = page.locator('#assetOrderBudgetForm');
       await budgetForm.locator('[name="amount"]').fill('1500');
-      const budgetResponse = page.waitForResponse(response => new URL(response.url()).pathname === `/api/asset-purchase-budgets/${new Date().getFullYear()}/TRY`
+      const budgetResponse = page.waitForResponse(response => new URL(response.url()).pathname === `/api/asset-purchase-budgets/${scenarioNow.getUTCFullYear()}/TRY`
         && response.request().method() === 'PUT');
       await budgetForm.locator('button[type="submit"]').click();
       assert.equal((await budgetResponse).status(), 200);

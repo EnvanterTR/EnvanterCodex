@@ -1,0 +1,179 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.hosted-checkout-browser
+#1 transferring dockerfile: 4.11kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for mcr.microsoft.com/playwright:v1.64.0-noble
+#2 DONE 0.4s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 134B done
+#3 DONE 0.0s
+
+#4 [ 1/49] FROM mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+#4 resolve mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f 0.0s done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 6.26MB 0.8s done
+#5 DONE 0.8s
+
+#6 [ 9/49] COPY deploy/testing/hosted-checkout-browser/company-profile-portal.mjs ./
+#6 CACHED
+
+#7 [ 5/49] COPY deploy/testing/hosted-checkout-browser/hosted-checkout.mjs ./
+#7 CACHED
+
+#8 [10/49] COPY deploy/testing/hosted-checkout-browser/company-onboarding.mjs ./
+#8 CACHED
+
+#9 [ 2/49] WORKDIR /acceptance
+#9 CACHED
+
+#10 [ 4/49] RUN npm ci --omit=dev
+#10 CACHED
+
+#11 [ 7/49] COPY deploy/testing/hosted-checkout-browser/command-palette.mjs ./
+#11 CACHED
+
+#12 [11/49] COPY deploy/testing/hosted-checkout-browser/password-reset-retry.mjs ./
+#12 CACHED
+
+#13 [ 3/49] COPY deploy/testing/hosted-checkout-browser/package.json deploy/testing/hosted-checkout-browser/package-lock.json ./
+#13 CACHED
+
+#14 [ 6/49] COPY deploy/testing/hosted-checkout-browser/checkout-user-quota.mjs ./
+#14 CACHED
+
+#15 [ 8/49] COPY deploy/testing/hosted-checkout-browser/company-portal-login.mjs ./
+#15 CACHED
+
+#16 [12/49] COPY deploy/testing/hosted-checkout-browser/tenant-platform-link.mjs ./
+#16 CACHED
+
+#17 [13/49] COPY deploy/testing/hosted-checkout-browser/asset-detail-actions.mjs ./
+#17 DONE 0.1s
+
+#18 [14/49] COPY deploy/testing/hosted-checkout-browser/company-tasks.mjs ./
+#18 DONE 0.0s
+
+#19 [15/49] COPY deploy/testing/hosted-checkout-browser/inventory-requests.mjs ./
+#19 DONE 0.0s
+
+#20 [16/49] COPY deploy/testing/hosted-checkout-browser/support-tickets.mjs ./
+#20 DONE 0.0s
+
+#21 [17/49] COPY deploy/testing/hosted-checkout-browser/return-queue.mjs ./
+#21 DONE 0.0s
+
+#22 [18/49] COPY deploy/testing/hosted-checkout-browser/asset-status-queues.mjs ./
+#22 DONE 0.0s
+
+#23 [19/49] COPY deploy/testing/hosted-checkout-browser/platform-support-tickets.mjs ./
+#23 DONE 0.1s
+
+#24 [20/49] COPY deploy/testing/hosted-checkout-browser/employee-licenses.mjs ./
+#24 DONE 0.0s
+
+#25 [21/49] COPY deploy/testing/hosted-checkout-browser/employee-records.mjs ./
+#25 DONE 0.1s
+
+#26 [22/49] COPY deploy/testing/hosted-checkout-browser/accessory-kits.mjs ./
+#26 DONE 0.1s
+
+#27 [23/49] COPY deploy/testing/hosted-checkout-browser/scheduled-reports.mjs ./
+#27 DONE 0.1s
+
+#28 [24/49] COPY deploy/testing/hosted-checkout-browser/platform-admin-members.mjs ./
+#28 DONE 0.0s
+
+#29 [25/49] COPY deploy/testing/hosted-checkout-browser/platform-admin-bootstrap.mjs ./
+#29 DONE 0.1s
+
+#30 [26/49] COPY deploy/testing/hosted-checkout-browser/platform-password-recovery.mjs ./
+#30 DONE 0.1s
+
+#31 [27/49] COPY deploy/testing/hosted-checkout-browser/annual-catalog.mjs ./
+#31 DONE 0.1s
+
+#32 [28/49] COPY deploy/testing/hosted-checkout-browser/cloud-trial.mjs ./
+#32 DONE 0.1s
+
+#33 [29/49] COPY deploy/testing/hosted-checkout-browser/asset-camera.mjs ./
+#33 DONE 0.1s
+
+#34 [30/49] COPY deploy/testing/hosted-checkout-browser/company-storage.mjs ./
+#34 DONE 0.1s
+
+#35 [31/49] COPY deploy/testing/hosted-checkout-browser/platform-audit-retention.mjs ./
+#35 DONE 0.1s
+
+#36 [32/49] COPY deploy/testing/hosted-checkout-browser/public-site-pricing.mjs ./
+#36 DONE 0.1s
+
+#37 [33/49] COPY src/EnvanterTR.PublicSite/checkout.html src/EnvanterTR.PublicSite/checkout.js /checkout-site/
+#37 DONE 0.1s
+
+#38 [34/49] COPY src/EnvanterTR.PublicSite/index.html /public-site/index.html
+#38 DONE 0.1s
+
+#39 [35/49] COPY src/EnvanterTR.PublicSite/assets/images/asset-label-roll-transparent.png /public-site/assets/images/asset-label-roll-transparent.png
+#39 DONE 3.4s
+
+#40 [36/49] COPY src/EnvanterTR.PublicSite/assets/images/account-security-product-preview.png /public-site/assets/images/account-security-product-preview.png
+#40 DONE 0.1s
+
+#41 [37/49] COPY src/EnvanterTR.PublicSite/assets/images/farma-company-portal-preview.png /public-site/assets/images/farma-company-portal-preview.png
+#41 DONE 0.1s
+
+#42 [38/49] COPY src/EnvanterTR.Web/wwwroot/index.html /checkout-site/company-app.html
+#42 DONE 0.1s
+
+#43 [39/49] COPY src/EnvanterTR.Web/wwwroot/index.html /checkout-site/index.html
+#43 DONE 0.1s
+
+#44 [40/49] COPY src/EnvanterTR.Web/wwwroot/company-onboarding.css /checkout-site/company-onboarding.css
+#44 DONE 0.1s
+
+#45 [41/49] COPY src/EnvanterTR.Web/wwwroot/reset-password.html /checkout-site/reset-password.html
+#45 DONE 0.1s
+
+#46 [42/49] COPY src/EnvanterTR.Web/wwwroot/vendor/qrcodegen.js /checkout-site/vendor/qrcodegen.js
+#46 DONE 0.1s
+
+#47 [43/49] COPY src/EnvanterTR.Web/wwwroot/vendor/zxing-browser-0.2.1.min.js src/EnvanterTR.Web/wwwroot/vendor/bwip-js-min.js /checkout-site/vendor/
+#47 DONE 0.1s
+
+#48 [44/49] COPY src/EnvanterTR.Web/wwwroot/report-print.js src/EnvanterTR.Web/wwwroot/scheduled-reports.js /checkout-site/
+#48 DONE 0.1s
+
+#49 [45/49] COPY src/EnvanterTR.Web/wwwroot/platform-admin.html /platform-site/platform-admin.html
+#49 DONE 0.1s
+
+#50 [46/49] COPY src/EnvanterTR.Web/wwwroot/platform-setup.html /platform-site/platform-setup.html
+#50 DONE 0.1s
+
+#51 [47/49] COPY src/EnvanterTR.Web/wwwroot/platform-admin-members.js src/EnvanterTR.Web/wwwroot/platform-admin-subscriptions.js src/EnvanterTR.Web/wwwroot/platform-admin-demo-requests.js src/EnvanterTR.Web/wwwroot/platform-admin-payment-follow-ups.js /platform-site/
+#51 DONE 0.1s
+
+#52 [48/49] COPY src/EnvanterTR.PublicSite/trial.html src/EnvanterTR.PublicSite/trial.js /public-site/
+#52 DONE 0.1s
+
+#53 [49/49] COPY deploy/testing/hosted-checkout-browser/platform-impersonation.mjs ./
+#53 DONE 0.1s
+
+#54 exporting to image
+#54 exporting layers
+#54 exporting layers 3.4s done
+#54 exporting manifest sha256:6abc1b50987730d226892cb9efa0bad2b6f0dd00aed04d27b4aa81499b47e590 0.0s done
+#54 exporting config sha256:2433f0abc935128ff3aa80273f1b6473ff44d781e4f417cfbf7a8abb7c39e746 0.0s done
+#54 exporting attestation manifest sha256:15ef18e98dd79ca4a5543f10029d3875288e5d3a1a5d901fdb77f3320286a422
+#54 exporting attestation manifest sha256:15ef18e98dd79ca4a5543f10029d3875288e5d3a1a5d901fdb77f3320286a422 0.0s done
+#54 exporting manifest list sha256:f5c950e0aa15a8b364dd9f1d1f3bf6d1ad99707cc8b2eb6af75b2d320837e951 0.0s done
+#54 naming to docker.io/library/envantertr-hosted-checkout-browser-acceptance:midnight done
+#54 unpacking to docker.io/library/envantertr-hosted-checkout-browser-acceptance:midnight
+#54 unpacking to docker.io/library/envantertr-hosted-checkout-browser-acceptance:midnight 1.6s done
+#54 DONE 5.4s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/i6czf879z1z616c3x9rtxu7ba

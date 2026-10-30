@@ -1,3 +1,7 @@
+## 30 Ekim 2026 — Chromium gece yarısı saat kayması
+
+CI40976671612Linuxişi90günlisansufkunugeceyarısı91güngörerekhatalandı. Ürünhesabıdeğişmedi;tarayıcıvefikstürtekUTCsenaryosaatinebağlandı. Nodegerçeksaati30Ekimiken29Ekim23:59:50senaryosuylaasset-detail-actionstamChromiumakışıexit0geçti;90günassertionaynı. PostgreSQLCIişihâlâsürerkenrestart/pushyok. Kanıt:tests/reports/browser-business-clock-20261030.md. Supportemailhenüzcanlıdeğil;canlı8a07.
+
 ## 30 Ekim 2026 — pasif şirket e-postası da bekletiliyor
 
 Destek API'sinin aktifşirket kuralı SMTPgönderimiyleeşlendi. Ayrıpasifşirket vakası ve önceki kontroller:7/7PostgreSQL/SMTPtesti,1.1964dakika,exit0/temizlikbaşarılı. Yerelkod,testvekanıtkaydedildi;henüzcanlıdeğil. Profil/logo canlı8a07ilekarıştırılmamalı. Kanıt:tests/reports/support-email-recipient-scope-20261030.md. TamHedef/P1açık.
