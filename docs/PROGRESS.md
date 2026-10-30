@@ -1111,3 +1111,5 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Salt okunur tarih envanteri: CreatedAt eksik 36 tablonun 11'inde 138 eski kayıt var. Eski tarihler uydurulmadı; şema değiştirilmedi. Hedef 6.1 tamamlanmadı.
 - Kanıt: support-recipient-stage-progress-20261030.md, legacy-date-coverage-audit-20261030.md, browser-business-clock-20261030.md.
 - Sıradaki: aynı CI koşusunun terminal sonucunu al, düzeltmeyi gönder, yeni tam CI'yi doğrula; ardından yayın kapılarını tamamla.
+
+30 Ekim CI 40976671612 terminal: PostgreSQL job 123806302264 başarılı, 34m48s; Windows başarılı, 5m22s. Linux security 1m47s UTC gece yarısı tarayıcı tarih varsayımında başarısız. Aynı koşu iptal edilmedi/yeniden başlatılmadı. 8dbae85 düzeltmesi ve staging kanıtı yeni tam CI için gönderiliyor; ürün kodu eae37c7 ile aynı.
