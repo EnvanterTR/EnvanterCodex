@@ -8,6 +8,49 @@ namespace EnvanterTR.SecurityAcceptance;
 public sealed partial class TenantSessionAcceptanceTests
 {
     [Fact]
+    public async Task Tenant_query_scopes_protect_bulk_update_delete_and_cleared_context()
+    {
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var own = new AssetCategory { CompanyId = _companyId, Name = "Own bulk scope sentinel" };
+        var foreign = new AssetCategory { CompanyId = _otherCompanyId, Name = "Foreign bulk scope sentinel" };
+        db.AssetCategories.AddRange(own, foreign);
+        await db.SaveChangesAsync();
+        var originalForeignAssetName = await db.Assets.Where(row => row.Id == _otherCompanyAssetId)
+            .Select(row => row.Name).SingleAsync();
+        db.ChangeTracker.Clear();
+        db.UseCompanyQueryScope(_companyId);
+
+        Assert.False(await db.AssetCategories.AnyAsync(row => row.Id == foreign.Id));
+        Assert.Equal(0, await db.AssetCategories.Where(row => row.Id == foreign.Id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.Name, "Foreign mutation forbidden")));
+        Assert.Equal(0, await db.AssetCategories.Where(row => row.Id == foreign.Id).ExecuteDeleteAsync());
+        Assert.Equal(0, await db.Assets.IgnoreQueryFilters(["SoftDelete"]).Where(row => row.Id == _otherCompanyAssetId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.Name, "Foreign asset forbidden")));
+        Assert.Equal(1, await db.AssetCategories.Where(row => row.Id == own.Id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.Name, "Own bulk update accepted")));
+
+        db.ClearCompanyQueryScope();
+        Assert.Equal(0, await db.AssetCategories.Where(row => row.Id == own.Id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.Name, "Cleared scope forbidden")));
+        Assert.Equal(0, await db.AssetCategories.Where(row => row.Id == own.Id).ExecuteDeleteAsync());
+        Assert.Empty(await db.AssetCategories.ToListAsync());
+
+        await using var verifyScope = _factory.Services.CreateAsyncScope();
+        var verify = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal("Foreign bulk scope sentinel", await verify.AssetCategories.Where(row => row.Id == foreign.Id)
+            .Select(row => row.Name).SingleAsync());
+        Assert.Equal("Own bulk update accepted", await verify.AssetCategories.Where(row => row.Id == own.Id)
+            .Select(row => row.Name).SingleAsync());
+        var foreignAssetName = await verify.Assets.Where(row => row.Id == _otherCompanyAssetId).Select(row => row.Name).SingleAsync();
+        Assert.Equal(originalForeignAssetName, foreignAssetName);
+        verify.UseCompanyQueryScope(_companyId);
+        Assert.Equal(1, await verify.AssetCategories.Where(row => row.Id == own.Id).ExecuteDeleteAsync());
+        verify.UseCompanyQueryScope(_otherCompanyId);
+        Assert.True(await verify.AssetCategories.AnyAsync(row => row.Id == foreign.Id));
+    }
+
+    [Fact]
     public async Task Tenant_query_scopes_use_runtime_context_values_and_preserve_soft_delete()
     {
         await using var scopeA = _factory!.Services.CreateAsyncScope();

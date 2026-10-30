@@ -1263,3 +1263,11 @@ Tarih adayı b31a97a12f8f7508a034701b81773186ac0d2570 tekpush ile yayımlanan br
 - MevcutNU1900/deprecation/analyzer/disposable-key uyarıları var. Başlangıç doğrulaması filter semantiğinin tümünü veyaendpoint yetkilerinin bütününü kanıtlamaz; tamP1/Hedef açık. Bu paket migration eklemez.
 - AynıCI41129884651(b31tarih adayı): Windows/Linuxsecuritysuccess,PG124317801194sondoğrulamada sürüyor. Son APIokumasıDNS hatası verdi; terminalsonuç sayılmadı/işyenidenbaşlatılmadı. Takipcommitler yerelde, aktifCI'yıiptaledecekpushyok.
 - TAMAM dediğim1yerelpaketin1'i test çıktısıyla doğrulanmıştır.
+
+## 31 Ekim 2026 — bulk yazma ve temizlenmiş tenant scope kabulü
+- Durum: yerel kabul TAMAM; uzakCI/staging/canlı DOĞRULANMADI.
+- Test: Tenant_query_scopes_protect_bulk_update_delete_and_cleared_context; PostgreSQL exit0,1/1,24.7209s.
+- İki şirket kategorisi: foreignreadfalse, bulkupdate/delete0; ownupdate/delete1. YalnızAssetSoftDelete filtresi kapatıldığında foreignassetupdate0 ve orijinaladı korunur. ClearCompanyQueryScope sonrası kategoriokuma boş/bulkyazmalar0. Bkendi kaydını hâlâgörür.
+- Kanıt: tenant-bulk-query-scope-20261031.log/.md. Yeni ürün hatası bulunmadı; mevcut globalfilterin SaveChanges dışı bulk yolundaki regresyon kapsamı eklendi. Bütünendpointler/P1kanıtıyerinesayılmaz.
+- Sonraki: aynıCI41129884651PG124317801194terminalsonuç; takipcommitleriaktifCI'yıiptaletmedenilerlet. Yayınbağlantısı/staging/recoveryaçık. Aynıiğdişedilmiştesttekrarı/CIrestartyok.
+- TAMAM dediğim1kabulpaketinin1'i test çıktısıyla doğrulanmıştır.
