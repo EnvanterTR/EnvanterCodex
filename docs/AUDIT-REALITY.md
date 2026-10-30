@@ -1,3 +1,8 @@
+## 30 Ekim 2026 — son doğrulanmış canlı sürüm d19cfe5
+
+Canlı **d19cfe549dfab76c2088ed1425d9733456db360e / şema122/0**. Destek e-postasında güncel üyelik/adres/şirket durumu, operasyonel hatırlatmada güncel varlık okuma yetkisi kontrol ediliyor. Yerel7/7+5/5, tamCI41004287391üçiş, exactstaging/95tablo korunması, taze050211ZSQL ve143MB050216Zkurtarma sonrası tekCoolifyqfut0dslqw1dlnybzxcp8lluSuccess4m49s. Gerçekimaj/runtime05:43:48UTC ve üçhostHTTP/kaynak/görsel/erişim sınırları05:44:07UTCexit0. Kanıt: `tests/reports/operational-role-production-release-20261030.md`.
+
+Sonraki API yanıtı/eskiDOM izolasyonu değişiklikleri bu yayında yok. Yerel10async+4Chromiumgeçti; yeniCI41009579015statikloginverifier eskiakışbeklentisinde başarısız, yereldüzeltmegeçti; PostgreSQLaynıiştesürüyor. Hedef6.1, tamP1/parite ve gerçekmüşteri/merchantkabulü açık. Eksik tarihlerin özel CSV'si kullanıcı masaüstüne doğrulanarak teslim edildi; tarih backfill yapılmadı. Aşağıdaki kayıtlar tarihseldir.
 ## 30 Ekim 2026 — doğrulanmış canlı durum ve açık aday
 
 Canlı sürüm **8a07aec93969c42abb0fc0ac272be358ebd11e40**, şema **122 uygulanmış / 0 bekleyen migration**. Tam CI, izole staging, 95 tablonun özgün alanlarının korunması, taze SQL bağımsız geri yükleme ve kurtarma provasından sonra Coolify `tnxno2lve07vbiehbcu8orak` yayını tamamlandı. Üç alan adının sağlık/kaynak/erişim sınırları doğrulandı. Kanıt: `tests/reports/profile-media-production-release-20261030.md`.

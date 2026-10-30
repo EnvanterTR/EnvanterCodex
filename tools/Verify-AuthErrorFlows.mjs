@@ -134,8 +134,11 @@ assert.match(source, /<button class="btn small" id="retryApiButton" type="button
   'The login screen must keep a visible server-test action.');
 assert.match(source, /\$\('#retryApiButton'\)\.addEventListener\('click', \(\) => \{ void checkLoginConnection\(\); \}\);/,
   'The server-test action must run the live readiness and setup diagnostic when clicked.');
-const successfulLoginStart = source.indexOf("hideLogin(); await startApp();", loginStart);
+const loginSubmitStart = source.indexOf("$('#loginForm').addEventListener('submit'");
+const successfulLoginStart = source.indexOf('await startApp();', loginSubmitStart);
 assert.ok(successfulLoginStart >= 0, 'Could not find the successful login transition.');
+assert.doesNotMatch(source.slice(loginSubmitStart, successfulLoginStart), /hideLogin\(\)/,
+  'Login must keep the cover until startApp validates and resets any previous workspace identity.');
 assert.match(source.slice(successfulLoginStart, successfulLoginStart + 420), /document\.querySelector\('#sidebar \[data-page="Genel Bakış"\]'\)\?\.click\(\)/,
   'Successful login must use the normal overview navigation handler to clear a stale menu/page overlay.');
 const diagnosticElements = new Map([
