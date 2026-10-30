@@ -213,6 +213,11 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 }
 
 var app = builder.Build();
+if (!string.IsNullOrWhiteSpace(connectionString))
+{
+    using var modelScope = app.Services.CreateScope();
+    FinalizedTenantModelScope.Validate(modelScope.ServiceProvider.GetRequiredService<AppDbContext>().Model);
+}
 if (args.Contains("--recover-local-platform-admin", StringComparer.OrdinalIgnoreCase))
 {
     Environment.ExitCode = await LocalPlatformAdminRecovery.RunAsync(app.Services, app.Environment.IsDevelopment(), connectionString);

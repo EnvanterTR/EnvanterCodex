@@ -1254,3 +1254,12 @@ Tarih adayı b31a97a12f8f7508a034701b81773186ac0d2570 tekpush ile yayımlanan br
 - CI41129884651 exactb31a97a: Windows124317801079success; Linux124317801179 ve PG124317801194 son gözlemde in_progress. Bu işi iptal edecek push/restart yapılmadı. Artefakt takip commit'i yerelde tutulacak; mevcut CI bu takip commit'ini içermez.
 - Sıradaki: aynıCI terminal sonucu; ardından takip commit'ini push/CI ve server staging/recovery. Canlı halen önceki kabulde schema122;123uygulanmadı. TamHedef/P1açık.
 - TAMAM dediğim1artefakt paketinin1'i test çıktısıyla doğrulanmıştır.
+
+## 31 Ekim 2026 — tamamlanmış veri modeli şirket kapsamı başlangıç kontrolü
+- Durum: yerel kod/build/kabul TAMAM; uzakCI/staging/canlı DOĞRULANMADI.
+- FinalizedTenantModelScope, Program başlangıcında final provider tablo/view eşlemelerini migration/recovery öncesi denetler. Şirket kökü/Guid şirket kimliği/nullability ve TenantScope filter varlığı gerekir; açık ortak/koşullu türler korunur. Owned/derived kapsam kökten çözülür. Eski başarısız OnModelCreating çağrısı geri getirilmedi; IdentityPasskeyData için keyfi istisna eklenmedi.
+- Test: FinalizedTenantModelScopeTests|Tenant_query_scope, son13/13exit0,27.4121s. Gerçekmodel/snapshot, Identityschema3passkeyJSON, missing/nullable/text/eksikfilter, view/owned ve ikiPostgreSQL tenant/softdelete/yazmaret regresyonu geçti.
+- İlk11/13:iki view fixture hemHasKey hemHasNoKey tanımladığım için başarısızdı; yalnız fixture konfigürasyonu düzeltildi. İkinci13/13başarılı; üçüncüdeneme yok. Kanıt finalized-tenant-model-first-20261031.log, finalized-tenant-model-final-20261031.log, finalized-tenant-model-scope-20261031.md.
+- MevcutNU1900/deprecation/analyzer/disposable-key uyarıları var. Başlangıç doğrulaması filter semantiğinin tümünü veyaendpoint yetkilerinin bütününü kanıtlamaz; tamP1/Hedef açık. Bu paket migration eklemez.
+- AynıCI41129884651(b31tarih adayı): Windows/Linuxsecuritysuccess,PG124317801194sondoğrulamada sürüyor. Son APIokumasıDNS hatası verdi; terminalsonuç sayılmadı/işyenidenbaşlatılmadı. Takipcommitler yerelde, aktifCI'yıiptaledecekpushyok.
+- TAMAM dediğim1yerelpaketin1'i test çıktısıyla doğrulanmıştır.

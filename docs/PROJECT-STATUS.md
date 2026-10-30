@@ -1243,3 +1243,5 @@ Taze release recoveryPID100368exit0:133543ZSQL hash/list/bağımsızrestore122/9
 - Canlı dış kabul5409c35/schema122 olarak önceki kanıtta kalır; yeni migration canlıya uygulanmadı. Hedef6.1tamamlanmadı; DeletedAt ve ortak audit tablolari/tarih girdileri açık.
 
 31 Ekim SQL artefaktı: exact122-to123 idempotentSQL+SHA hazır. Son yerel1/1exit0, aynı dosya iki kez izole şemada uygulandı; company-audit-sql-acceptance-20261031.log. CI41129884651b31adayındaWindowsbaşarılı,ikiLinuxişisürüyor. Artefakt takip commit'i bu aktif CI'dan ayrıdır; push ile iptal edilmeyecek. Canlı/staging/yedek kabulü açık.
+
+31 Ekim finalized model guard: yeni başlangıç kontrolü final tablo/view/ownership üzerinde çalışır; şirketkimliği/filter eksiğini reddeder. Son13/13yereltestexit0; uygulama/snapshot veIdentityschema3passkeyJSONgeçti. finalized-tenant-model-final-20261031.log. HenüzuzakCI/staging/canlıdeğil. EskiOnModelCreatingdenemesigerigetirilmedi;tamP1açık.
