@@ -11,3 +11,9 @@ CI 41004287391 (#802): Linux security succeeded 8m18s, Windows succeeded 3m14s, 
 The separate legacy-date export produced138 empty-date rows on the accepted eae clone without changing database/production state. The private CSV is not in Git or a public web root. Safe delivery to the user remains open; see legacy-date-input-guide-20261030.md.
 
 Full CI, completed staging and fresh release recovery remain required before deployment. FullHedef/P1 is incomplete.
+
+## Staging accepted
+
+Build PID3509927 completed build.exit0. Prepare PID3515314 completed prepare.exit0. Both bounded stage applications started once. Runtime/HTTP/proxy/CSRF/anonymous access and all95 original table field projections passed acceptance-probes.exit0. Schema122/0, no migration applied; no production deployment. Screenshot: operational-role-stage-pass-20261030.png. These completed steps must not be restarted solely for observation or documentation updates.
+
+At the latest observation CI41004287391 PostgreSQL job123895528789 is still running at16m58s; Linux8m18s and Windows3m14s passed. The fresh release recovery script is prepared but not run because full CI is not yet terminal/successful. Do not deploy or push while this job remains active.

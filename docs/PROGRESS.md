@@ -1127,3 +1127,5 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - CI41004287391: Linux8m18s,Windows3m14s başarılı; PostgreSQLjob123895528789 aynı işte sürüyor. Yeni push/iptal yok.
 - Kullanıcının sağlayacağı tarihler için kabul edilmiş özel kopyada138kayıtlık boş tarih CSV üretildi; yalnız birincil anahtarlar veCompanyId, hiçbir parola/token değeri seçilmedi. DB değiştirilmedi. Dosya henüz kullanıcıya aktarılmadı.
 - Kanıt: operational-role-stage-progress-20261030.md; legacy-date-input-guide-20261030.md; legacy-date-input-ready-20261030.png.
+
+30 Ekim d19cfe5 exact staging kabulü tamamlandı: build0/prepare0/acceptance-probes0; boundedweb/public, runtime/HTTP/proxy/CSRF/anonim/platform sınırları ve95tablonun özgün alan korunması geçti. Şema122/0. Kanıt operational-role-stage-pass-20261030.png. CI41004287391 PostgreSQLjob123895528789 aynı işte16m58s sürüyor; Linux/Windows başarılı. Fresh release recovery script hazır, henüz çalıştırılmadı; canlı8a07aec değişmedi. TamHedef/P1 hâlâ açık.
