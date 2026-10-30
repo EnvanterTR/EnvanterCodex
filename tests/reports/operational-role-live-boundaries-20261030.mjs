@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
-import {readFile,writeFile} from 'node:fs/promises';
+import {writeFile} from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 const lines=[new Date().toISOString()];
+const candidate='d19cfe549dfab76c2088ed1425d9733456db360e';
+const readFile=async(path,encoding)=>{
+ const bytes=execFileSync('git',['show',candidate+':'+path],{maxBuffer:32*1024*1024});
+ return encoding?bytes.toString(encoding):bytes;
+};
 const root='https://envantertr.com';
 const get=async p=>{const r=await fetch(root+p);assert.equal(r.status,200,p);return r.json();};
 assert.equal((await get('/api/plans')).length,8);
@@ -15,7 +21,7 @@ for(const [suffix,method] of [['pdf','GET'],['email','GET'],['email','POST']]){
 for(const p of ['/product-gallery.css','/product-gallery.js',...['farma-company-portal-preview','account-security-product-preview','asset-label-roll-transparent','asset-label-devices','asset-label-desktop','asset-label-hardware'].map(n=>'/assets/images/'+n+'.png')]){
  const r=await fetch(root+p);assert.equal(r.status,200,p);
  const hash=b=>createHash('sha256').update(b).digest('hex');
- const local=await readFile('src/EnvanterTR.PublicSite/wwwroot'+p).catch(async()=>readFile('src/EnvanterTR.PublicSite'+p));
+ const local=await readFile('src/EnvanterTR.PublicSite'+p);
  assert.equal(hash(Buffer.from(await r.arrayBuffer())),hash(local),p);lines.push('PASS '+p+' SHA256='+hash(local));
 }
 const app=await fetch('https://santa.envantertr.com/index.html');assert.equal(app.status,200);
