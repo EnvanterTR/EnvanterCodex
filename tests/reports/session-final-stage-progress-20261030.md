@@ -9,3 +9,11 @@ The two accepted intermediate8cdb stage apps were stopped reversibly, with uncha
 Corrected fullCI41056615352 (#805) confirmed in progress after prior41013278745 terminal. Linuxsecurity job124065634266, PostgreSQL124065634481, Windows124065634565. Prior run PostgreSQL43m36s/Windows4m55s succeeded, Linux37s failed obsolete raw-response source locator. Verifier now requires stronger scoped body checks; all12 downstream static checks passed locally. Current combined full hosted browser local exit0 remains valid because product source did not change for that verifier fix.
 
 Do not cancel/restart/push while the confirmed CI is active. Final stage runtime/HTTP/95-table preservation, full corrected CI, fresh release recovery and exact deployment/live checks remain open. Current verified production d19cfe5, fullHedef/P1 incomplete. Platform-admin cache lifecycle audit and user-supplied historical dates remain separate open work.
+
+## Final-source staging accepted and recovery passed
+
+Final f12dd9b source build/prepare/acceptance-probes all exited0. Both bounded apps started once; runtime/HTTP/proxy/CSRF/anonymous/tenant-platform boundaries and all95 original table field projections passed, schema122/0. Terminal connection closed after probe start; reconnecting to the same server and reading the existing exit/log confirmed completion. No test/build/restore was restarted due to terminal disconnection. Source equivalence f12dd9b to tested3b98183 remains verified; new raw-body guards are included.
+
+Recovery PID23282 completed exit0. Fresh pre-web-v1-20261030T124926Z.dump hash/list/independent restore122/95 passed. Currentd19 SQL/media/keys/images restored independently from /var/backups/envantertr/rollback-20261030T124934Z,143MB. No production restore or deployment. Evidence: session-final-stage-pass-20261030.png, session-final-fresh-recovery-pass-20261030.png.
+
+CI41056615352 (#805): Linuxsecurity8m11s and Windows4m51s succeeded. PostgreSQLjob124065634481 is still running at16m07s, not terminal; no cancel/restart/new push. Prepared exact3b98183 live probes have not been run before deployment. Production remainsd19cfe5; full corrected CI and actual release/live checks remain open. FullHedef/P1 and separate platform-admin lifecycle/historical dates/customer acceptance remain incomplete.
