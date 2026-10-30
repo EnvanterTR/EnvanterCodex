@@ -286,3 +286,4 @@ await import('./scheduled-reports.mjs');
 await import('./platform-impersonation.mjs');
 await import('./password-reset-retry.mjs');
 await import('./tenant-platform-link.mjs');
+await import('./session-workspace-reset.mjs');

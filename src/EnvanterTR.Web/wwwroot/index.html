@@ -3814,7 +3814,7 @@
         authSessionGeneration++;
         companyMfaEnrollmentTicket = null;
         $('#companyMfaEnrollmentDialog').close();
-        hideLogin(); await startApp();
+        await startApp();
         document.querySelector('#sidebar [data-page="Genel Bakış"]')?.click();
       } catch (error) {
         $('#companyMfaEnrollmentFeedback').textContent = translateUiText('MFA etkinleştirildi; oturum başlatılamadı. Normal giriş yapın. {error}').replace('{error}', error.message);
@@ -12623,7 +12623,7 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
         authSessionGeneration++;
         await refreshCsrf();
         $('#loginForm [name="password"]').value = ''; $('#loginForm [name="twoFactorCode"]').value = '';
-        hideLogin(); await startApp();
+        await startApp();
         // A prior signed-out page can leave a workspace menu selected. Re-enter through the
         // normal navigation handler so it hides stale workspace panels before showing the dashboard.
         document.querySelector('#sidebar [data-page="Genel Bakış"]')?.click();
@@ -12856,6 +12856,13 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
       $('#loginForm button[type="submit"]').disabled = false; $('#forgotPasswordButton').disabled = false;
       const session = await api('/api/session');
       if (!session.companyId) { availableCompanyContexts = []; $('#companySwitchButton').hidden = true; showLogin('Bu ekran şirket hesabı içindir.'); return; }
+      // Existing DOM and module state belong to the previous identity. Keep the
+      // authentication cover until a fresh document replaces that workspace.
+      if (activeCompanyContextId && (activeCompanyContextId !== session.companyId ||
+          requestCurrentUserId && requestCurrentUserId !== session.userId ||
+          sessionRole && sessionRole !== (session.role || ''))) {
+        window.location.reload(); return;
+      }
       availableCompanyContexts = Array.isArray(session.availableCompanies) ? session.availableCompanies : [];
       const companyPortal = resolveCompanyPortal(session, window.location.href);
       if (companyPortal) { window.location.replace(companyPortal); return; }

@@ -1138,3 +1138,8 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - d19cfe5 api() ile eski başarılı yanıtın oturum değişiminden sonra tüketiciye verildiği yerelde yeniden üretildi. auth generation kontrolü başarılı yanıt/JSONbody/errorbody sonrasına eklendi; eski401 davranışı korundu.
 - Gerçek ürün fonksiyonu kontrollü async fetch/body ile10/10,exit0 geçti. Yeni CI adımı eklendi; tam tarayıcı/CI/staging henüz yok. Kanıt session-response-isolation-20261030.md/.log ve baseline log.
 - Ayrı sonraki adaydır; aktif CI41004287391/stagingd19cfe5 bunu içermez. Devam eden CI iptal edilmedi, yeni push yok. Önce doğrulanmış d19cfe5 yayın kapısı tamamlanacak.
+
+## 30 Ekim 2026 — hesap değişiminde eski DOM/önbellek çalışma alanı
+- Gerçek ürün HTML Chromium fixture'ında şirket/hesap/rol değişince eski kayıt satırının görünür kaldığı yeniden üretildi. startApp eski çalışma kimliği farklıysa belgeyi yeniliyor; login/MFA callback erken hideLogin yapmıyor. Aynı kimlikte normal belge korunuyor.
+- 4/4Chromium,exit0; yeni kaynaktan api() async10/10,UIenvanter2304,beşdil2260vebrowserharnessverifier geçti. Kaynak/test salt okunur mevcutPlaywrightimajına mount edildi; gerçek hesap/veri yok. Test standardbrowserrunner'a eklendi.
+- Kanıt:workspace-reset-browser-20261030.md/.log,baselinebrowserlog. Ayrı sonraki aday;CI/staging/canlı henüz yok. d19cfe5CI41004287391 aynıPostgreSQLişi51m04s sürüyor; Linux/Windows geçti, iptal/yenidenbaşlatma/yeni push yok.
