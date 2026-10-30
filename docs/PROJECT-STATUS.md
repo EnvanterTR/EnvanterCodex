@@ -1259,3 +1259,5 @@ Taze release recoveryPID100368exit0:133543ZSQL hash/list/bağımsızrestore122/9
 31 Ekim124SQLartefaktıhazır,exacthash/source/bozuklegacyatomicret/ikiuygulama/missingforeignvalid3/3exit0(catalog-fk-sql-acceptance-20261031.log). Ürünmigrationaynı;SQLpaketlemeayrıtaki̇pcommitinde. Staging/backup/canlı/P1açık.
 
 31 Ekim FK124uyumluluk:mevcut4HTTP/PGsenaryosukod/fixturedeğişmeden4/4exit0(46.7713s);gerçekyerelappşemasıpreflight0row. catalog-fk-compatibility-20261031.log,catalog-fk-local-preflight-20261031.log. Server/live/P1kanıtıdeğil;yenigerekçesiztekraryok.
+
+31EkimCI41135298896f834completed/success. SonrakiCIiçin432case4ayrıPGshardınaayrıldı;actualVSTestseçicileri104/99/122/107birebir,eskiaggregatecheckadıvehepsiningeçmeşartıkorunur. Localmock/syntaxgeçti;gerçekparalelCI/sürekazanımıhenüzdoğrulanmadı(security-ci-shards-20261031.md). Migration124staging/live/P1açık.

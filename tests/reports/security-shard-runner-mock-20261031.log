@@ -1,0 +1,4 @@
+Shard 0 executes 104/432 discovered cases.
+PASS mocked runner build/discovery/execution/filter/cleanup
+Shard 0 executes 104/432 discovered cases.
+PASS mocked test failure propagates and cleanup runs

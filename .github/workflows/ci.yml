@@ -469,26 +469,43 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  linux-postgresql-acceptance:
-    name: Linux PostgreSQL tenant acceptance
+  linux-postgresql-shards:
+    name: PostgreSQL tenant shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
     steps:
       - name: Check out source
         uses: actions/checkout@v4
 
       - name: Run isolated PostgreSQL acceptance suite
-        shell: bash
-        run: |
-          set -euo pipefail
-          project_name="envantertr-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          compose_file="deploy/testing/compose.security-acceptance.yaml"
-          cleanup() {
-            docker compose --project-name "$project_name" --file "$compose_file" down --volumes --remove-orphans
-          }
-          trap cleanup EXIT
-          docker compose --project-name "$project_name" --file "$compose_file" up \
-            --build --abort-on-container-exit --exit-code-from acceptance
+        shell: pwsh
+        run: ./deploy/testing/run-security-shard.ps1 -ShardIndex ${{ matrix.shard }}
+
+      - name: Save test selection evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-shard-${{ matrix.shard }}
+          path: |
+            ${{ runner.temp }}/security-discovery-${{ matrix.shard }}.txt
+            ${{ runner.temp }}/security-shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  linux-postgresql-acceptance:
+    name: Linux PostgreSQL tenant acceptance
+    if: always()
+    needs: linux-postgresql-shards
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every PostgreSQL shard to succeed
+        env:
+          SHARD_RESULT: ${{ needs.linux-postgresql-shards.result }}
+        run: test "$SHARD_RESULT" = success
 
   windows-deployment-safety:
     name: Windows deployment and backup safety
