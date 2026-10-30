@@ -1209,3 +1209,19 @@ Taze release recoveryPID100368exit0:133543ZSQL hash/list/bağımsızrestore122/9
 - Kanıt:platform-cross-tab-20261030.md veüçhedeflilog. Sıradaki:fullbrowser sonucu,mevcut5409CI/yayınkapısı,şirketsayfasıcross-tabauditi;tamP1açık.
 
 30 Ekim yönetici cross-tab son tam yerel tarayıcı paketi exec24479exit0 tamamlandı; mevcut tüm orchestrator ve final15/15 geçti. Yeni ürünle20/20APIasync,iki platformverifier de başarılı. Kaynak/test saltokunur eskiPlaywrightimajına mount; temizimage/remoteCI/staging/canlıdeğil. CI41062817250PG124086540816aynıiş28m49ssürüyor;Linux7m36s/Windows4m57sbaşarılı. Cross-tab yerelcommitte ayrı saklanacak, aktifCI'yıiptaledenpushyok. Sonrakişirketsayfasıcross-tabauditiaçık. Kanıt platform-cross-tab-20261030.md ve full-browserlog.
+
+## 30 Ekim 2026 — şirket sekmeleri arasında oturum değişimi
+- Durum: yerel kod ve kabul testleri geçti; uzak CI, staging ve canlı yayın henüz yok.
+- Önceki şirket HTML'sinde, aynı origin'deki iki Chromium sekmesinden birinde çıkış sonrası diğerinde eski özel gövdenin kabulü 2/2 baseline ile yeniden üretildi.
+- Şirket ekranı ortak same-origin oturum bildirimini alır: yanıt nesli/CSRF sıfırlanır, operasyon uyarıları ve rapor dışa aktarma durumu temizlenir, açık diyaloglar kapanır ve giriş örtüsü açılır. Başarılı login/MFA, logout/şirket değiştirme ve doğrulanmış destek oturumu dönüşü bildirim yayımlar. Payload hesap/şirket/veri/secret taşımaz.
+- Test: Chromium 6/6; dört same-origin login/logout + iki farklı-origin bağımsızlık kontrolü, BroadcastChannel ve storage fallback. Gerçek api/body guard ve bağlı UI handler kullanıldı; başlangıç oturumu fixture'da anonimdi, hideLogin yalnız görünüm hazırlığıdır. Gerçek müşteri kabulü değildir.
+- Regresyon: API helper20/20, AuthErrorFlows, UI inventory2304, beş dil2260 ve browser harness kontrolleri geçti. Birleşik tam browser exec11348 exit0; son platform15/15 ve şirket6/6 dahil. Kaynaklar mevcut Playwright imajına salt okunur mount edildi; temiz imaj/uzak CI sonucu değildir.
+- Kanıt: tests/reports/company-cross-tab-20261030.md ve dört log.
+- Sıradaki iş: mevcut 5409c35 CI/yayın kapısını aynı işten tamamlamak, sonra birleşik cross-tab adayını yeni CI/staging'e taşımak. Aktif işi iptal edecek push yapılmayacak.
+
+### Yayın durumu — bu kayıtta doğrulanan
+- Canlı ve Coolify pini: 3b98183bd11e6300da70ca99de385328e47ae11d, konteyner suffix20261030T131248; önceki canlı sağlık/kaynak sınırları geçti.
+- Yayın adayı: 5409c35fbb7397d77133eeacf94dee2b437a31df. Exact staging ve143MB133550Z bağımsız kurtarma geçti; bu aday sonraki platform/şirket cross-tab değişikliklerini içermez.
+- CI41062817250 (#807): Linux7m36s, Windows4m57s başarılı; PostgreSQL124086540816 aynı işte43m46s sürüyor. İş logunda yeni tenant/MFA/kota test geçişleri görüldü. İptal/yeniden başlatma yok.
+- Sonraki yerel platform cross-tab kaynağı040619c ve bu şirket değişikliği henüz uzak CI/staging/canlıda değil. Hedef.txt bütünü/P1 tamamlanmadı.
+- Eski tarih CSV'si kullanıcıda; tarih uydurulmadı. Gerçek ödeme için iyzico hesabı yok. Gerçek müşteri/imza kabul adımları açık.

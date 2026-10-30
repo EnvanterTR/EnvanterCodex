@@ -3640,6 +3640,23 @@
     async function readImportFile(file) { const isXlsx = /\.xlsx$/i.test(file.name); return { body: isXlsx ? await file.arrayBuffer() : await file.text(), contentType: isXlsx ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/csv; charset=utf-8', format: isXlsx ? 'xlsx' : 'csv' }; }
     function importPreviewMessage(result) { const names = Array.isArray(result?.suppliersToCreate) ? result.suppliersToCreate : []; return `${result?.message || `${fmt.format(result?.rowCount || 0)} satır incelendi.`}${names.length ? ` Yeni tedarikçi adları: ${names.join(', ')}.` : ''}`; }
     function showLogin(message = '') { impersonationSession=null; $('#impersonationNotice').hidden=true; document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close()); document.body.classList.add('auth-required'); $('#authLayer').classList.add('show'); $('#retryApiButton').hidden = false; $('#authError').textContent = message; const queryNotice = $('#loginQueryNotice'); queryNotice.hidden = !window.__envanterCredentialsInUrl; if (!queryNotice.hidden) queryNotice.textContent = translateUiText('Giriş bilgileri adres satırından alınmadı. Güvenlik için URL temizlendi; e-posta ve parolanızı bu forma yazın.'); void checkLoginConnection(); }
+    const companySessionStorageKey = 'envantertr:session-invalidation';
+    let companySessionChannel = null;
+    try { if (typeof BroadcastChannel === 'function') companySessionChannel = new BroadcastChannel('envantertr:session'); } catch { }
+    function invalidateSiblingCompanySession() {
+      authSessionGeneration++; requestToken = '';
+      operationalAlertRequestId++; operationalAlertItems = [];
+      if (operationalAlertTimer) { clearInterval(operationalAlertTimer); operationalAlertTimer = 0; }
+      closeOperationalAlerts(); $('#notificationButton').hidden = true; $('#notificationCount').hidden = true;
+      latestAssetReport = null; $('#reportExport').disabled = true; $('#reportXlsxExport').disabled = true; $('#reportPrint').disabled = true;
+      showLogin(translateUiText('Oturum açmanız gerekiyor.'));
+    }
+    if (companySessionChannel) companySessionChannel.addEventListener('message', event => { if (event.data === 'session-invalidated') invalidateSiblingCompanySession(); });
+    window.addEventListener('storage', event => { if (event.key === companySessionStorageKey && event.newValue) invalidateSiblingCompanySession(); });
+    function publishCompanySessionChange() {
+      try { if (companySessionChannel) { companySessionChannel.postMessage('session-invalidated'); return; } } catch { }
+      try { localStorage.setItem(companySessionStorageKey, Date.now() + ':' + Math.random()); } catch { }
+    }
     function showApiUnavailable(message = 'Uygulama API’sine ulaşılamıyor. Sunucu ve veritabanı bağlantısını kontrol edin.') {
       showLogin(message); $('#retryApiButton').hidden = false;
     }
@@ -3826,6 +3843,7 @@
         await refreshCsrf();
         authSessionGeneration++;
         companyMfaEnrollmentTicket = null;
+        publishCompanySessionChange();
         $('#companyMfaEnrollmentDialog').close();
         await startApp();
         document.querySelector('#sidebar [data-page="Genel Bakış"]')?.click();
@@ -12634,6 +12652,7 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
         const session = await api('/api/session/login', { method: 'POST', body: JSON.stringify({ email: form.get('email'), password: form.get('password'), companyId, rememberMe: form.get('rememberMe') === 'on', twoFactorCode: form.get('twoFactorCode')?.trim() || null }) });
         if (!session.companyId) throw new Error('Bu hesap platform yöneticisi. Müşteri şirket alanı için şirket kullanıcı hesabıyla giriş yapın.');
         authSessionGeneration++;
+        publishCompanySessionChange();
         await refreshCsrf();
         $('#loginForm [name="password"]').value = ''; $('#loginForm [name="twoFactorCode"]').value = '';
         await startApp();
@@ -12699,6 +12718,7 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
       try {
         await api('/api/session/logout', { method: 'POST' });
         authSessionGeneration++;
+        publishCompanySessionChange();
         operationalAlertRequestId++; operationalAlertItems = [];
         if (operationalAlertTimer) { clearInterval(operationalAlertTimer); operationalAlertTimer = 0; }
         closeOperationalAlerts(); $('#notificationButton').hidden = true; $('#notificationCount').hidden = true;
@@ -12718,11 +12738,11 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
     let impersonationSession=null,impersonationReturning=false;
     async function returnToPlatform(){
       if(impersonationReturning)return;impersonationReturning=true;$('#impersonationReturn').disabled=true;
-      try{const result=await api('/api/session/impersonation/stop',{method:'POST'});const target=new URL(result.platformUrl);if(target.protocol!=='https:'||target.pathname!=='/platform-admin.html'||target.username||target.password||target.search||target.hash)throw new Error('Geçersiz yönetici adresi.');window.location.assign(target.href)}
+      try{const result=await api('/api/session/impersonation/stop',{method:'POST'});const target=new URL(result.platformUrl);if(target.protocol!=='https:'||target.pathname!=='/platform-admin.html'||target.username||target.password||target.search||target.hash)throw new Error('Geçersiz yönetici adresi.');publishCompanySessionChange();window.location.assign(target.href)}
       catch(error){notify(error.message)}finally{impersonationReturning=false;$('#impersonationReturn').disabled=false}
     }
     $('#impersonationReturn').addEventListener('click',returnToPlatform);
-    $('#logoutButton').addEventListener('click', async () => { if(impersonationSession){await returnToPlatform();return;} try { await api('/api/session/logout', { method: 'POST' }); authSessionGeneration++; operationalAlertRequestId++; operationalAlertItems = []; if (operationalAlertTimer) { clearInterval(operationalAlertTimer); operationalAlertTimer = 0; } closeOperationalAlerts(); $('#notificationButton').hidden = true; $('#notificationCount').hidden = true; latestAssetReport = null; $('#reportExport').disabled = true; $('#reportXlsxExport').disabled = true; $('#reportPrint').disabled = true; $('#loginForm [name="password"]').value = ''; $('#loginForm [name="twoFactorCode"]').value = ''; showLogin('Oturumunuz kapatıldı.'); } catch (error) { notify(error.message); } });
+    $('#logoutButton').addEventListener('click', async () => { if(impersonationSession){await returnToPlatform();return;} try { await api('/api/session/logout', { method: 'POST' }); authSessionGeneration++; publishCompanySessionChange(); operationalAlertRequestId++; operationalAlertItems = []; if (operationalAlertTimer) { clearInterval(operationalAlertTimer); operationalAlertTimer = 0; } closeOperationalAlerts(); $('#notificationButton').hidden = true; $('#notificationCount').hidden = true; latestAssetReport = null; $('#reportExport').disabled = true; $('#reportXlsxExport').disabled = true; $('#reportPrint').disabled = true; $('#loginForm [name="password"]').value = ''; $('#loginForm [name="twoFactorCode"]').value = ''; showLogin('Oturumunuz kapatıldı.'); } catch (error) { notify(error.message); } });
     async function loadSupplierNameSuggestions() {
       try {
         const result = await api('/api/accessory-orders/suppliers');
