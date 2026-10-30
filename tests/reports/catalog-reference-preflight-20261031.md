@@ -1,0 +1,7 @@
+# Catalog reference foreign-key preflight — 31 October 2026
+
+Read-only query: deploy/testing/catalog-reference-preflight.sql. Four paths: Assets.BrandId, Assets.ModelId, AssetModels.BrandId and AssetModels.CategoryId. A missing same-company target is classified as CrossCompany when its identifier exists in another company, otherwise MissingTarget. Null optional references and valid links are excluded; trashed assets are included. Output has identifiers only. No live query or live constraint inventory has been performed; source EF mappings lack these relationships, which is not itself proof of the current physical production constraints.
+
+Local PostgreSQL17 fixture passed,exit0: one valid asset, a trashed asset with foreign brand/missing model, and a model with missing brand/foreign category. Exactly four rows/four paths were reported, two of each reason, and the valid asset was excluded. All fixture writes used temporary tables in a rolled-back transaction. Evidence catalog-reference-preflight-20261031.log. Self-contained test snapshot catalog-reference-preflight-acceptance-20261031.sql embeds the exact query tested; setup-only fixture also retained.
+
+Next gate: run the read-only query on a consistent current staging/production snapshot, inspect physical constraints, and resolve any rows without deleting records or guessing reference replacements before a separate restrictive composite-FK migration. Zero findings do not prove absence of every possible data-integrity issue or full P1 completion. No production data was read, changed, or repaired here.

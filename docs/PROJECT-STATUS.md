@@ -1251,3 +1251,5 @@ Taze release recoveryPID100368exit0:133543ZSQL hash/list/bağımsızrestore122/9
 31 Ekim çöp/katalog düzeltmesi: çöpvarlığıBrand/Modelsilme204baselineyenidenüretildi; APIbağımlılıkguardlarıçöpkutusunudakapsar. Son4/4HTTP/PostgreSQLgeçti;restorebağlarıkorunur. trash-catalog-retention-fixed-20261031.log. Henüzcanlıdeğil;genelDeletedAt/FK/P1açık.
 
 31 Ekim 429feedback: beklemesüresiJSONmessage/Retry-Afterheaderve no-store eklendi;limitleraynı.8/8üretimpolicyTestServerkabulüexit0(rate-limit-retry-feedback-20261031.log). Tarihadayıb31CI41129884651üçişbaşarılı;sonrakibeşpaketbukanıtayerinesayılamaz,ayrıCIgerektirir. Canlıdeğişmedi/tamP1açık.
+
+31 Ekim katalogFKpreflight: dörtEFreferansyolu içinreadonlySQLhazır;localPGfixture4bozukyoluayırtetti,geçerli/null/çöpsemantiğigeçti. catalog-reference-preflight-20261031.log. Gerçekserververisi/physicalFKhenüzincelenmedi;FKmigration/tamP1açık.

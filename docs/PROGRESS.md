@@ -1287,3 +1287,12 @@ Tarih adayı b31a97a12f8f7508a034701b81773186ac0d2570 tekpush ile yayımlanan br
 - Kanıt rate-limit-retry-feedback-20261031.log/.md. MevcutbuildNuget/deprecation/analyzeruyarılarıvar. Canlıgiriş/başarılıdeploykanıtıdeğil.
 - Öncekitarihadayıb31a97aCI41129884651tümüsuccess:Windows4m53,Linux7m23,PG31m15. Kanıt company-audit-ci-success-20261031.json. BuyeşilCIsonrakiSQLartefakt/modelguard/bulktest/katalogdüzeltmesi/429değişikliğinikapsamaz;şimdihepsitekpushileCI'aalınacak.
 - TAMAM dediğim1yerelpaketin1'i test çıktısıyla doğrulanmıştır.
+
+BirleşikP1adayf8340d9fa6887a6c8745f152670a72879dee1419tekpush'lagönderildi;CI41135298896in_progress,https://github.com/EnvanterTR/EnvanterCodex/actions/runs/41135298896. Öncekib31CIbaşarıylaterminalolduktansonragönderildi;iptal/restartyok. SQLartefakt/modelguard/bulkkabul/katalogkoruma/429feedbackaynıadayda. Sonuç/staging/yayın/runtime henüzdoğrulanmadı. AktifCI'yıiptaledecekyenipushyapma.
+
+## 31 Ekim 2026 — katalog FK öncesi salt okunur referans taraması
+- Durum: yerel sorgu/kabul TAMAM; canlı/staging verisi/physicalFK denetimi DOĞRULANMADI.
+- deploy/testing/catalog-reference-preflight.sql dört yolda eksik hedef ve başka şirket hedefini ayırır; nullopsiyonel/geçerli bağlantıhariç,çöpvarlıklarıdahil. İsim/secretçıktısıyok,sadecekimlikler. EFmappingeksikliği canlıphysicalFKyokluğukanıtıdeğil.
+- PostgreSQL17fixture exit0: dörtbozukyolun4'übulundu,2CrossCompany+2MissingTarget;geçerlivarlıkdışlandı. GeçicitablolarROLLBACKiledönüldü. Kanıt catalog-reference-preflight-20261031.log/.md;tekrarlanabilirSQLsnapshot catalog-reference-preflight-acceptance-20261031.sql.
+- Sonraki: güncelserverclone/physicalFK ve gerçekreferans sonuçları; veriuydurmadan kısıtmigrationhazırlığı. Bu dosya canlıdaçalıştırılmadı. CI41135298896aynıf834adayındasonokumadain_progress;iptal/restart/pushyok.
+- TAMAM dediğim1yerelpaketin1'i test çıktısıyla doğrulanmıştır.
