@@ -1,0 +1,174 @@
+ Network envantertr-security-acceptance-d25345d75e_acceptance Creating
+ Network envantertr-security-acceptance-d25345d75e_acceptance Creating
+ Network envantertr-security-acceptance-d25345d75e_acceptance Created
+ Network envantertr-security-acceptance-d25345d75e_acceptance Created
+ Container envantertr-security-acceptance-d25345d75e-database-1 Creating
+ Container envantertr-security-acceptance-d25345d75e-database-1 Created
+ Container envantertr-security-acceptance-d25345d75e-database-1 Starting
+ Container envantertr-security-acceptance-d25345d75e-database-1 Started
+ Image envantertr-security-acceptance-d25345d75e-acceptance Building
+#1 [internal] load local bake definitions
+#1 reading from stdin 710B 0.1s done
+#1 DONE 0.1s
+
+#2 [internal] load build definition from Dockerfile.security-acceptance
+#2 transferring dockerfile: 1.28kB 0.0s done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for mcr.microsoft.com/dotnet/sdk:10.0
+#3 DONE 0.2s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 134B done
+#4 DONE 0.0s
+
+#5 [ 1/14] FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
+#5 resolve mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 22.06MB 5.1s
+#6 transferring context: 26.59MB 6.9s done
+#6 DONE 6.9s
+
+#7 [ 2/14] WORKDIR /source
+#7 CACHED
+
+#8 [ 3/14] COPY global.json ./
+#8 CACHED
+
+#9 [ 4/14] COPY src/EnvanterTR.Web/EnvanterTR.Web.csproj src/EnvanterTR.Web/
+#9 CACHED
+
+#10 [ 5/14] COPY tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj tests/EnvanterTR.SecurityAcceptance/
+#10 CACHED
+
+#11 [ 6/14] RUN dotnet restore tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj
+#11 CACHED
+
+#12 [ 7/14] COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
+#12 DONE 0.9s
+
+#13 [ 8/14] RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
+#13 156.6   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+#13 156.8
+#13 156.8 Build succeeded.
+#13 156.8     0 Warning(s)
+#13 156.8     0 Error(s)
+#13 156.8
+#13 156.8 Time Elapsed 00:02:35.47
+#13 DONE 157.2s
+
+#14 [ 9/14] COPY tests/reports/current-release-118-to-120-20261024.sql tests/reports/current-release-118-to-120-20261024.sql.sha256 tests/reports/
+#14 DONE 0.1s
+
+#15 [10/14] COPY tests/reports/company-deletion-120-to-121-20261025.sql tests/reports/company-deletion-120-to-121-20261025.sql.sha256 tests/reports/
+#15 DONE 0.1s
+
+#16 [11/14] COPY tests/reports/handover-email-121-to-122-20261026.sql tests/reports/handover-email-121-to-122-20261026.sql.sha256 tests/reports/
+#16 DONE 0.1s
+
+#17 [12/14] COPY tests/EnvanterTR.SecurityAcceptance/ tests/EnvanterTR.SecurityAcceptance/
+#17 DONE 0.1s
+
+#18 [13/14] RUN dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore
+#18 3.633   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+#18 59.82 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 59.82 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 59.82 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 59.82 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 59.82 /source/tests/EnvanterTR.SecurityAcceptance/TenantHostSessionContinuityAcceptanceTests.cs(35,23): warning CS8600: Converting null literal or possible null value to non-nullable type. [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 59.82 /source/tests/EnvanterTR.SecurityAcceptance/TenantHostSessionContinuityAcceptanceTests.cs(36,27): warning CS8600: Converting null literal or possible null value to non-nullable type. [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 59.82 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(102,20): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 59.82 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(174,9): warning xUnit2029: Do not use Assert.Empty to check if a value does not exist in a collection. Use Assert.DoesNotContain instead. (https://xunit.net/xunit.analyzers/rules/xUnit2029) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 59.82 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(202,9): warning xUnit2029: Do not use Assert.Empty to check if a value does not exist in a collection. Use Assert.DoesNotContain instead. (https://xunit.net/xunit.analyzers/rules/xUnit2029) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 59.82 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(213,9): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 60.26   EnvanterTR.SecurityAcceptance -> /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll
+#18 60.53
+#18 60.53 Build succeeded.
+#18 60.53
+#18 60.53 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 60.53 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 60.53 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 60.53 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 60.53 /source/tests/EnvanterTR.SecurityAcceptance/TenantHostSessionContinuityAcceptanceTests.cs(35,23): warning CS8600: Converting null literal or possible null value to non-nullable type. [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 60.53 /source/tests/EnvanterTR.SecurityAcceptance/TenantHostSessionContinuityAcceptanceTests.cs(36,27): warning CS8600: Converting null literal or possible null value to non-nullable type. [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 60.53 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(102,20): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 60.53 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(174,9): warning xUnit2029: Do not use Assert.Empty to check if a value does not exist in a collection. Use Assert.DoesNotContain instead. (https://xunit.net/xunit.analyzers/rules/xUnit2029) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 60.53 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(202,9): warning xUnit2029: Do not use Assert.Empty to check if a value does not exist in a collection. Use Assert.DoesNotContain instead. (https://xunit.net/xunit.analyzers/rules/xUnit2029) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 60.53 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(213,9): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 60.53     10 Warning(s)
+#18 60.53     0 Error(s)
+#18 60.53
+#18 60.53 Time Elapsed 00:00:59.37
+#18 DONE 60.8s
+
+#19 [14/14] WORKDIR /source/tests/EnvanterTR.SecurityAcceptance
+#19 DONE 0.1s
+
+#20 exporting to image
+#20 exporting layers
+#20 exporting layers 6.7s done
+#20 exporting manifest sha256:c65839e958560b040600430d4ea592fea0c2991a6d93121991d228af7aff5b80 0.0s done
+#20 exporting config sha256:13473f4611e50ff7c9962b6dfce9ca486e81a0bd78a3c1c0525e12151393b213 0.0s done
+#20 exporting attestation manifest sha256:7cd41c674ea307e126dc3d0cf492c36b7b9c67103fb39d05b58d38dba64e25b6 0.0s done
+#20 exporting manifest list sha256:212882730c4c6ddeba88511c9fe7be0e0151777db91479166f9e1c82085e7ccd 0.0s done
+#20 naming to docker.io/library/envantertr-security-acceptance-d25345d75e-acceptance:latest
+#20 naming to docker.io/library/envantertr-security-acceptance-d25345d75e-acceptance:latest done
+#20 unpacking to docker.io/library/envantertr-security-acceptance-d25345d75e-acceptance:latest
+#20 unpacking to docker.io/library/envantertr-security-acceptance-d25345d75e-acceptance:latest 2.5s done
+#20 DONE 9.6s
+
+#21 resolving provenance for metadata file
+#21 DONE 0.2s
+ Image envantertr-security-acceptance-d25345d75e-acceptance Built
+ Container envantertr-security-acceptance-d25345d75e-database-1 Waiting
+ Container envantertr-security-acceptance-d25345d75e-database-1 Healthy
+ Container envantertr-security-acceptance-d25345d75e-acceptance-run-ca290ce5bc5c Creating
+ Container envantertr-security-acceptance-d25345d75e-acceptance-run-ca290ce5bc5c Created
+Test run for /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.01] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.56]   Discovering: EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:01.06]   Discovered:  EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:01.19]   Starting:    EnvanterTR.SecurityAcceptance
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[35]
+      No XML encryptor configured. Key {dd2bb408-5065-42b1-a5db-2e5d10677c5f} may be persisted to storage in unencrypted form.
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (288ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_Assets_CompanyId_DefaultLocationCatalogId"
+      ' from migration 'AddAssetModelNumbersAndDefaultLocation' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_AuditEntries_OccurredAt"
+      ' from migration 'AddGlobalAuditTimelineIndex' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Operational_email_respects_direct_units_and_explicit_locations_for_employee_relationships(restrictLocations: True) [1 s]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Operational_email_respects_direct_units_and_explicit_locations_for_employee_relationships(restrictLocations: False) [466 ms]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Operational_email_rechecks_current_inventory_read_permission(change: "custom-inactive") [469 ms]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Operational_email_rechecks_current_inventory_read_permission(change: "built-in") [410 ms]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+[xUnit.net 00:01:08.86]   Finished:    EnvanterTR.SecurityAcceptance
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Operational_email_rechecks_current_inventory_read_permission(change: "custom-permission") [486 ms]
+
+Test Run Successful.
+Total tests: 5
+     Passed: 5
+ Total time: 1.1806 Minutes
+ Container envantertr-security-acceptance-d25345d75e-database-1 Stopping
+ Container envantertr-security-acceptance-d25345d75e-database-1 Stopped
+ Container envantertr-security-acceptance-d25345d75e-database-1 Removing
+ Container envantertr-security-acceptance-d25345d75e-database-1 Removed
+ Network envantertr-security-acceptance-d25345d75e_acceptance Removing
+ Network envantertr-security-acceptance-d25345d75e_acceptance Removed

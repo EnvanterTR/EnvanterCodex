@@ -12,6 +12,6 @@ Populated tables missingCreatedAt:AspNetUserTokens6,AspNetUsers3,AssetCategories
 
 Some have other date columns(AccountCreatedAt,OccurredAt,UpdatedAt,GrantedAt,AssignedAt/RevokedAt/EulaAcceptedAt). Column existence alone does not establish that another timestamp is the original row-creation date; no blanket backfill was performed. Some contain no alternative date column. Historical creation times cannot be invented.
 
-A plain-language requirement question is pending: keep unavailable historical timestamps explicitly unknown while automatically requiring timestamps for new records, or have the user supply the missing historical dates. This is a necessary interpretation of the strict timestamp requirement with existing data; it does not silently relaxHedef or change the shared-account architecture.
+User decision, 30 October 2026: the user will supply missing historical dates. Do not invent dates or treat missing history as an approved permanent exception. Prepare a private record-key inventory/template before requesting those values; no backfill has been applied. The mandatory-date requirement remains open.
 
 Source runner:legacy-date-coverage-audit-20261030.py. Private full metadata/count report:/var/lib/envantertr-staging/eae37c7-20261030/legacy-date-coverage.private.json. The report contains counts and column names, not customer values or credentials.

@@ -1,3 +1,10 @@
+## 30 Ekim 2026 — doğrulanmış canlı durum ve açık aday
+
+Canlı sürüm **8a07aec93969c42abb0fc0ac272be358ebd11e40**, şema **122 uygulanmış / 0 bekleyen migration**. Tam CI, izole staging, 95 tablonun özgün alanlarının korunması, taze SQL bağımsız geri yükleme ve kurtarma provasından sonra Coolify `tnxno2lve07vbiehbcu8orak` yayını tamamlandı. Üç alan adının sağlık/kaynak/erişim sınırları doğrulandı. Kanıt: `tests/reports/profile-media-production-release-20261030.md`.
+
+Destek e-postası alıcısının güncel üyelik/adres/şirket durumunu kontrol eden **eae37c7** adayının yerel 7/7 ve staging kabulü geçti; henüz canlı değil. İlk uzak koşuda PostgreSQL ve Windows başarılı, Linux tarayıcı testi UTC gece yarısı tarih varsayımında başarısız. Yerelde geçen `8dbae85` saat düzeltmesi `07f7b98` ile gönderildi; tam CI **40980530003** çalışıyor. Sonuç alınmadan satışa hazır veya yayınlandı denmez.
+
+Hedef 6.1 açık: eski tarih alanları eksik, geçmiş tarihler uydurulmadı. Bütün P1, tam özellik paritesi ve gerçek müşteri kabulü tamamlanmadı. İyzico işyeri hesabı yok; gerçek ödeme kapalı. Aşağıdaki kayıtlar tarihseldir.
 ## 30 Ekim 2026 — profil ve logo dosya korumaları canlıda
 
 Canlı8a07aec93969c42abb0fc0ac272be358ebd11e40,şema122/0. Hesapfotoğrafı/ZIP,şirketlogosu,çalışanfotoğrafıveplatformlogo yolları korundu;şirketlogo multipart500düzeltildi,CSRFkorundu. TamCI40971020704üçişbaşarılı;exactstaging95tabloözgünalankorunması;taze234551ZSQLbağımsızrestore/143MB234600ZkurtarmasonrasıtekCoolifytnxno2lve07vbiehbcu8orakSuccess/Finished4m02s. Gerçekimaj/runtime23:53:31Z,üçhostsağlık/kaynak/galeri/erişimsınırları23:53:49Zdoğrulandı. Kanıt:tests/reports/profile-media-production-release-20261030.md.

@@ -1113,3 +1113,9 @@ Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalı�
 - Sıradaki: aynı CI koşusunun terminal sonucunu al, düzeltmeyi gönder, yeni tam CI'yi doğrula; ardından yayın kapılarını tamamla.
 
 30 Ekim CI 40976671612 terminal: PostgreSQL job 123806302264 başarılı, 34m48s; Windows başarılı, 5m22s. Linux security 1m47s UTC gece yarısı tarayıcı tarih varsayımında başarısız. Aynı koşu iptal edilmedi/yeniden başlatılmadı. 8dbae85 düzeltmesi ve staging kanıtı yeni tam CI için gönderiliyor; ürün kodu eae37c7 ile aynı.
+
+## 30 Ekim 2026 — operasyonel e-posta güncel rol kontrolü
+- Güncel şirket rolünde assets.read yoksa hatırlatma verisi toplanmadan ve digest sahiplenilmeden gönderim durdurulur. Üyelik tek başına yeterli değildir.
+- 5/5 PostgreSQL/SMTP testi, 1.1806 dakika, exit 0; rol/özel izin/pasif özel rol reddi, izni geri verme ve tek gönderim, mevcut birim/konum sınırları geçti. Geçici DB/ağ temizlendi.
+- Kanıt: operational-email-role-authorization-20261030.md/.log. Yerel paket; mevcut CI 40980530003 bu değişikliği içermez. CI bitmeden push yapılmaz.
+- Kullanıcı eksik eski tarihleri kendisinin sağlayacağını belirtti. Tahmini backfill veya kalıcı bilinmiyor istisnası uygulanmayacak; özel kayıt anahtarı listesi/şablonu hazırlanmalı. Hedef 6.1 açık.
