@@ -1247,3 +1247,5 @@ Taze release recoveryPID100368exit0:133543ZSQL hash/list/bağımsızrestore122/9
 31 Ekim finalized model guard: yeni başlangıç kontrolü final tablo/view/ownership üzerinde çalışır; şirketkimliği/filter eksiğini reddeder. Son13/13yereltestexit0; uygulama/snapshot veIdentityschema3passkeyJSONgeçti. finalized-tenant-model-final-20261031.log. HenüzuzakCI/staging/canlıdeğil. EskiOnModelCreatingdenemesigerigetirilmedi;tamP1açık.
 
 31 Ekim bulk scope regresyonu: PostgreSQL1/1exit0,foreignkategoribulkupdate/delete0,own1; clearscopeokuma/yazma0; sadeceSoftDeletekapatılsa tenantasset sınırı korunur. tenant-bulk-query-scope-20261031.log. Yeni ürün değişikliği değil, P1kabul kapsamıdır. TamP1/staging/canlıaçık.
+
+31 Ekim çöp/katalog düzeltmesi: çöpvarlığıBrand/Modelsilme204baselineyenidenüretildi; APIbağımlılıkguardlarıçöpkutusunudakapsar. Son4/4HTTP/PostgreSQLgeçti;restorebağlarıkorunur. trash-catalog-retention-fixed-20261031.log. Henüzcanlıdeğil;genelDeletedAt/FK/P1açık.

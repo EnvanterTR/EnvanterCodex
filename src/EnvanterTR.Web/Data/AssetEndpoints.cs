@@ -3717,18 +3717,18 @@ public static class AssetEndpoints
                 case "categories":
                     var category = await db.AssetCategories.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
                     if (category is null) return Results.NotFound();
-                    if (await db.Assets.AnyAsync(x => x.CompanyId == companyId && x.CategoryId == id, cancellationToken)) return Results.Conflict(new { message = "Bu kategori varlıklarda kullanılıyor; silinemez." });
+                    if (await db.Assets.IgnoreQueryFilters(["SoftDelete"]).AnyAsync(x => x.CompanyId == companyId && x.CategoryId == id, cancellationToken)) return Results.Conflict(new { message = "Bu kategori varlıklarda kullanılıyor (çöp kutusundakiler dahil); silinemez." });
                     if (await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.CategoryId == id, cancellationToken)) return Results.Conflict(new { message = "Bu kategori modellerde kullanılıyor; önce ilişkili modelleri düzenleyin." });
                     deletedName = category.Name; db.AssetCategories.Remove(category); break;
                 case "brands":
                     var brand = await db.AssetBrands.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
                     if (brand is null) return Results.NotFound();
-                    if (await db.Assets.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken) || await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken) || await db.Accessories.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken) || await db.AccessoryModels.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken)) return Results.Conflict(new { message = "Bu marka varlıklarda veya modellerde kullanılıyor; önce ilişkili kayıtları düzenleyin." });
+                    if (await db.Assets.IgnoreQueryFilters(["SoftDelete"]).AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken) || await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken) || await db.Accessories.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken) || await db.AccessoryModels.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken)) return Results.Conflict(new { message = "Bu marka varlıklarda veya modellerde kullanılıyor (çöp kutusundakiler dahil); önce ilişkili kayıtları düzenleyin." });
                     deletedName = brand.Name; db.AssetBrands.Remove(brand); break;
                 case "models":
                     var model = await db.AssetModels.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
                     if (model is null) return Results.NotFound();
-                    if (await db.Assets.AnyAsync(x => x.CompanyId == companyId && x.ModelId == id, cancellationToken)) return Results.Conflict(new { message = "Bu model varlıklarda kullanılıyor; silinemez." });
+                    if (await db.Assets.IgnoreQueryFilters(["SoftDelete"]).AnyAsync(x => x.CompanyId == companyId && x.ModelId == id, cancellationToken)) return Results.Conflict(new { message = "Bu model varlıklarda kullanılıyor (çöp kutusundakiler dahil); silinemez." });
                     if (await db.AssetModelAttachments.AnyAsync(x => x.CompanyId == companyId && x.ModelId == id, cancellationToken)) return Results.Conflict(new { message = "Bu modelde teknik dosyalar var; önce dosyaları kaldırın." });
                     deletedName = model.Name; db.AssetModels.Remove(model); break;
                 case "accessory-models":
