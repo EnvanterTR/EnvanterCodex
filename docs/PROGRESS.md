@@ -1305,3 +1305,10 @@ BirleşikP1adayf8340d9fa6887a6c8745f152670a72879dee1419tekpush'lagönderildi;CI4
 - CompanyAuditTimestampAcceptanceTests exact123SQLkanıtınıkoruyupsonrakimigration'larsonrasımodelkontrolüyapar. Gerçekserverpreflight/physicalFK/yeniyedekvebağımsızrestoregerekiyor;genelDeletedAt/tamP1açık.
 - CI41135298896f834öncekiadaydasonkontroldein_progress;aktifişiiptaledecekpush/restartyok. YenimigrationbuCI'dayok.
 - TAMAM dediğim1yerelpaketin1'i test çıktısıyla doğrulanmıştır.
+
+## 31 Ekim 2026 — FK migration yayın SQL artefaktı
+- Durum: yerelSQLkabulü TAMAM; uzakCI/staging/canlı DOĞRULANMADI.
+- catalog-fk-123-to-124-20261031.sql+SHAaaebcbbc6f1f8927538c455e1d5af44c3e421835aea6508148bcfa25f97560c6. Testprojesi/SDKDockerfilepaketlemeyeeklendi;04670d2ürünmigrationdeğişmedi.
+- Test3/3exit0,38.2000s:exactdosyahash/EFkaynak eşitliği,yıkıcıkomutyokluğu;bozuklegacy'deSQLret/historykorunması;syntheticdüzeltmesonrasıaynıdosyaikiuygulama;missing/foreigntargetret/validkabul. Kanıt catalog-fk-sql-acceptance-20261031.log.
+- ÜretimphysicalFK/preflight/backup/stagingkapılarıaçık. Buadımgerçekveridüzeltmesi/yayınveyaP1tamamlanmasıdeğil. AynıCI41135298896f834takibisürüyor;aktifCI'yıiptaledecekpushyok.
+- TAMAM dediğim1yerelartefaktpaketinin1'i test çıktısıyla doğrulanmıştır.

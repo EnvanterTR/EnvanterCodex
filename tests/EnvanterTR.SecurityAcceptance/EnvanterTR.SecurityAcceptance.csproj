@@ -16,6 +16,8 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="../reports/catalog-fk-123-to-124-20261031.sql" Link="catalog-fk-migration.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../reports/catalog-fk-123-to-124-20261031.sql.sha256" Link="catalog-fk-migration.sql.sha256" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../reports/company-audit-122-to-123-20261031.sql" Link="company-audit-migration.sql" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../reports/company-audit-122-to-123-20261031.sql.sha256" Link="company-audit-migration.sql.sha256" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../reports/current-release-118-to-120-20261024.sql" Link="release-migration.sql" CopyToOutputDirectory="PreserveNewest" />
