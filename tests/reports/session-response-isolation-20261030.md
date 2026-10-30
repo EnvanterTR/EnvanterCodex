@@ -11,3 +11,5 @@ This is focused API-helper evidence, not full browser E2E or proof that every di
 Not pushed, staged or deployed. The active CI41004287391 and accepted d19cfe5 staging do not contain this new source change. Keep candidates separate; no cancellation/restart of the active run. FullHedef/P1 remains incomplete.
 
 TAMAM dediğim 1 maddenin 1'i test çıktısıyla doğrulanmıştır.
+
+Additional local checks after the API-helper change passed: Generate-UiInventory.mjs --check (2304 controls) and Verify-UiLocales.mjs (2260 entries across five languages). No DOM controls were added. A separate remaining UI lifecycle audit is needed for already-rendered/cached data when accounts change; rejecting late HTTP responses alone does not prove all existing DOM state is cleared. This remains open and must not be counted as complete P1 cache isolation.
