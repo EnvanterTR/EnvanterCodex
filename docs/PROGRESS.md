@@ -1343,6 +1343,11 @@ BirleşikP1adayf8340d9fa6887a6c8745f152670a72879dee1419tekpush'lagönderildi;CI4
 - Önceki50c808a CI41140642006 yedi işin tümünde success; bu CI migration125 öncesi SHA olduğu için yeni migration'ı doğrulamaz. Migration125 CI/staging/live bekliyor.
 - Hedef17.3 P1-F hâlâ tamamlanmadı; G/H, genel `DeletedAt`, canlı physical FK/preflight/yedek-restore ve P0 kapıları açık. Üretime migration uygulanmadı.
 
+## 31 Ekim 2026 — P1-H güncel release izole smoke
+- Güncel `ca59fb5869a08d69ab57658e4cca4a406bb95a74` kaynak kodundan üretim `Dockerfile` imajı başarıyla üretildi; digest ve tam doğrulama kapsamı `tests/reports/p1-h-release-smoke-20261031.md` içinde.
+- İzole smoke 125 migration, Release/runtime güvenlik ayarları, tenant/platform ayrımı, login/session/CSRF/logout kontrolleriyle geçti; geçici Compose kaynakları temizlendi.
+- Bu, canlı yedek/geri yükleme veya rollback provası değildir. Mevcut kanıt 27 Ekim snapshot'ına ait ve güncel canlı durum/sürüm için yeterli değil. P1-H açık; canlı veriye dokunulmadı.
+
 ## 31 Ekim 2026 — migration 125 model-wide timestamp regression ve FK uyumluluğu
 - Yeni model regresyonu her persisted relational table mapping'de `CreatedAt` ve `UpdatedAt` arar. `FinalizedTenantModelScopeTests` 12/12 geçti (12.9663s); model drift yok.
 - CI41196018439 shard3, katalog FK testinin migration124 SQL'sinden sonra hiç pending migration beklemesi nedeniyle başarısız oldu; migration125 beklemesi doğru durumdu. FK/veri davranış hatası değildi.
