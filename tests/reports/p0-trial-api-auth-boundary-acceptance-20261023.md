@@ -1,0 +1,11 @@
+# P0 trial API authentication inventory — 2026-10-23
+
+- Status: PASS for the corrected endpoint inventory and trial enrollment guard tests. Full remote CI remains a separate gate.
+- Reproduction: GitHub run `39980282634`, PostgreSQL job `120505480412`, completed with 278/279 passing. Its sole assertion failure was `Every_api_endpoint_declares_an_explicit_authentication_boundary`: the three intentionally anonymous trial routes were absent from the approved public-route inventory. Job log was read through the existing repository GitHub credential; no credential was printed or persisted.
+- Change: Explicitly enumerate `GET /api/trials/status`, `POST /api/trials/request`, `POST /api/trials/confirm`. Keep exact set equality for all public API routes and the existing authorization-policy inventory. Additionally require both trial write endpoints to declare the `checkout` rate-limit policy. Document flag, CSRF, email-proof and transaction behavior in `docs/DATA-API.md`.
+- Command: `docker compose -f deploy/testing/compose.security-acceptance.yaml -p p0-api-boundary run --build --rm acceptance --filter "FullyQualifiedName~Every_api_endpoint_declares_an_explicit_authentication_boundary|FullyQualifiedName~Cloud_trial_defaults_closed_requires_csrf_and_rejects_unverified_tokens"` exited 0.
+- Results: 2/2 passed; final run 41.6320 seconds. The first local run also passed 2/2 but reported an added xUnit analyzer warning; using the predicate overload of `Assert.Single` removed that warning, and the final build/run passed with only the four pre-existing ASP.NET deprecation warnings and zero errors. The web build is the unchanged successful cached build with zero warnings/errors.
+- Scope: The inventory checks every mapped API endpoint, the exact anonymous-route set and the named authorization policies. The trial guard test verifies that registration defaults closed, missing CSRF is rejected, and unverified tokens cannot create an account/company. No authentication policy was weakened in product code.
+- Evidence: `tests/reports/trial-api-auth-boundary-20261023.log`. Isolated test database/network removed after the final run. No live configuration or customer records changed.
+
+TAMAM dediğim 2 kabul testinin 2'si test çıktısıyla doğrulanmıştır.

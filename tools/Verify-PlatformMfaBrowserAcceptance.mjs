@@ -16,7 +16,8 @@ assert.match(compose, /Setup__PlatformBootstrapToken:\s*ui-acceptance-platform-o
 assert.match(compose, /migrate:[\s\S]*?command:\s*\["--migrate"\][\s\S]*?web:[\s\S]*?condition:\s*service_completed_successfully/);
 assert.match(setupPage, /type="submit" disabled/);
 assert.match(setupPage, /csrfToken=\(await request\('\/api\/session\/csrf'\)\)\.requestToken;form\.querySelector\('button\[type="submit"\]'\)\.disabled=false/);
-assert.match(adminPage, /if\(!s\.platformAdmin\)throw Error\('Bu hesapta platform yöneticisi yetkisi yok\.'\);await csrf\(\);await showApp\(s\.name\)/);
+assert.match(adminPage, /if\(!s\.platformAdmin\)throw Error\('Bu hesapta platform yöneticisi yetkisi yok\.'\);state\.authGeneration\+\+;state\.csrf=null;publishPlatformSessionChange\(\);window\.location\.reload\(\);return/);
+assert.match(adminPage, /async function checkSession\(\)\{try\{await csrf\(\);const s=await api\('\/api\/session'\)/);
 assert.match(adminPage, /\.login-wrap\{[^}]*overflow-y:auto;place-items:safe center/);
 assert.match(dockerfile, /^FROM mcr\.microsoft\.com\/playwright:v1\.64\.0-noble$/m);
 assert.equal(packageJson.dependencies.playwright, '1.64.0');

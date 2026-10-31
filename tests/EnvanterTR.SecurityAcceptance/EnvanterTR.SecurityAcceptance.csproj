@@ -16,6 +16,18 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="../reports/catalog-fk-123-to-124-20261031.sql" Link="catalog-fk-migration.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../reports/catalog-fk-123-to-124-20261031.sql.sha256" Link="catalog-fk-migration.sql.sha256" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../reports/company-audit-122-to-123-20261031.sql" Link="company-audit-migration.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../reports/company-audit-122-to-123-20261031.sql.sha256" Link="company-audit-migration.sql.sha256" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../reports/current-release-118-to-120-20261024.sql" Link="release-migration.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../reports/current-release-118-to-120-20261024.sql.sha256" Link="release-migration.sql.sha256" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../reports/company-deletion-120-to-121-20261025.sql" Link="company-deletion-migration.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../reports/company-deletion-120-to-121-20261025.sql.sha256" Link="company-deletion-migration.sql.sha256" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../reports/handover-email-121-to-122-20261026.sql" Link="handover-email-migration.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../reports/handover-email-121-to-122-20261026.sql.sha256" Link="handover-email-migration.sql.sha256" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../../src/EnvanterTR.Web/EnvanterTR.Web.csproj" />
   </ItemGroup>
 </Project>

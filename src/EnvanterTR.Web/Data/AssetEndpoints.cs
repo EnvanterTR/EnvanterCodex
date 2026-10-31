@@ -2284,6 +2284,8 @@ public static class AssetEndpoints
             var storageFileName = $"{attachmentId:N}.{detected.Value.Extension}";
             var directory = AssetAttachmentDirectory(configuration, companyId, id);
             var destination = Path.Combine(directory, storageFileName);
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, destination))
+                return Results.Conflict(new { message = "Dosya alanı güvenli biçimde kullanılamıyor. Şirket yöneticinize başvurun." });
             var attachment = new AssetAttachment { Id = attachmentId, CompanyId = companyId, AssetId = id,
                 AssetEventId = Guid.TryParse(form["assetEventId"], out var eventId) ? eventId : null,
                 UploadedByUserId = actorId, OriginalFileName = originalName, StorageFileName = storageFileName,
@@ -2330,7 +2332,8 @@ public static class AssetEndpoints
                 x.CompanyId == companyId && x.AssetId == id && x.Id == attachmentId, cancellationToken);
             if (attachment is null || !IsSafeAssetAttachmentFileName(attachment.StorageFileName)) return Results.NotFound();
             var path = Path.Combine(AssetAttachmentDirectory(configuration, companyId, id), attachment.StorageFileName);
-            if (!System.IO.File.Exists(path)) return Results.NotFound();
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path) || !System.IO.File.Exists(path))
+                return Results.NotFound();
             var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024,
                 FileOptions.Asynchronous | FileOptions.SequentialScan);
             var fileName = download || !attachment.ContentType.StartsWith("image/", StringComparison.Ordinal)
@@ -2350,13 +2353,15 @@ public static class AssetEndpoints
             var attachment = await db.AssetAttachments.SingleOrDefaultAsync(x =>
                 x.CompanyId == companyId && x.AssetId == id && x.Id == attachmentId, cancellationToken);
             if (attachment is null) return Results.NotFound();
+            if (!IsSafeAssetAttachmentFileName(attachment.StorageFileName)) return Results.NotFound();
+            var path = Path.Combine(AssetAttachmentDirectory(configuration, companyId, id), attachment.StorageFileName);
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path)) return Results.NotFound();
             db.AssetAttachments.Remove(attachment);
             db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = id, ActorUserId = actorId,
                 EventType = "AttachmentRemoved", Details = $"Dosya kaldırıldı: {attachment.OriginalFileName}" });
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Asset",
                 TargetId = id, Action = "AttachmentRemoved", Details = attachment.OriginalFileName });
             await db.SaveChangesAsync(cancellationToken);
-            var path = Path.Combine(AssetAttachmentDirectory(configuration, companyId, id), attachment.StorageFileName);
             try { if (System.IO.File.Exists(path)) System.IO.File.Delete(path); }
             catch (IOException) { /* The row is removed, so an orphaned file cannot be accessed through the app. */ }
             catch (UnauthorizedAccessException) { /* The row is removed, so an orphaned file cannot be accessed through the app. */ }
@@ -2533,7 +2538,7 @@ public static class AssetEndpoints
                 InsuranceProvider: asset.InsuranceProvider, InsurancePolicyNumber: asset.InsurancePolicyNumber, InsuranceExpiresAt: asset.InsuranceExpiresAt));
         }).RequireAuthorization("asset.write");
 
-        api.MapPatch("/assets/{id:guid}", async (Guid id, [FromBody] UpdateAssetRequest request,
+        api.MapMethods("/assets/{id:guid}", ["PATCH", "PUT"], async (Guid id, [FromBody] UpdateAssetRequest request,
             ClaimsPrincipal user, AppDbContext db, AssetCustomFieldProtection customFieldProtection, CancellationToken cancellationToken) =>
         {
             if (!TryCompanyId(user, out var companyId)) return Results.Forbid();
@@ -3712,18 +3717,18 @@ public static class AssetEndpoints
                 case "categories":
                     var category = await db.AssetCategories.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
                     if (category is null) return Results.NotFound();
-                    if (await db.Assets.AnyAsync(x => x.CompanyId == companyId && x.CategoryId == id, cancellationToken)) return Results.Conflict(new { message = "Bu kategori varlıklarda kullanılıyor; silinemez." });
+                    if (await db.Assets.IgnoreQueryFilters(["SoftDelete"]).AnyAsync(x => x.CompanyId == companyId && x.CategoryId == id, cancellationToken)) return Results.Conflict(new { message = "Bu kategori varlıklarda kullanılıyor (çöp kutusundakiler dahil); silinemez." });
                     if (await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.CategoryId == id, cancellationToken)) return Results.Conflict(new { message = "Bu kategori modellerde kullanılıyor; önce ilişkili modelleri düzenleyin." });
                     deletedName = category.Name; db.AssetCategories.Remove(category); break;
                 case "brands":
                     var brand = await db.AssetBrands.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
                     if (brand is null) return Results.NotFound();
-                    if (await db.Assets.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken) || await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken) || await db.Accessories.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken) || await db.AccessoryModels.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken)) return Results.Conflict(new { message = "Bu marka varlıklarda veya modellerde kullanılıyor; önce ilişkili kayıtları düzenleyin." });
+                    if (await db.Assets.IgnoreQueryFilters(["SoftDelete"]).AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken) || await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken) || await db.Accessories.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken) || await db.AccessoryModels.AnyAsync(x => x.CompanyId == companyId && x.BrandId == id, cancellationToken)) return Results.Conflict(new { message = "Bu marka varlıklarda veya modellerde kullanılıyor (çöp kutusundakiler dahil); önce ilişkili kayıtları düzenleyin." });
                     deletedName = brand.Name; db.AssetBrands.Remove(brand); break;
                 case "models":
                     var model = await db.AssetModels.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
                     if (model is null) return Results.NotFound();
-                    if (await db.Assets.AnyAsync(x => x.CompanyId == companyId && x.ModelId == id, cancellationToken)) return Results.Conflict(new { message = "Bu model varlıklarda kullanılıyor; silinemez." });
+                    if (await db.Assets.IgnoreQueryFilters(["SoftDelete"]).AnyAsync(x => x.CompanyId == companyId && x.ModelId == id, cancellationToken)) return Results.Conflict(new { message = "Bu model varlıklarda kullanılıyor (çöp kutusundakiler dahil); silinemez." });
                     if (await db.AssetModelAttachments.AnyAsync(x => x.CompanyId == companyId && x.ModelId == id, cancellationToken)) return Results.Conflict(new { message = "Bu modelde teknik dosyalar var; önce dosyaları kaldırın." });
                     deletedName = model.Name; db.AssetModels.Remove(model); break;
                 case "accessory-models":

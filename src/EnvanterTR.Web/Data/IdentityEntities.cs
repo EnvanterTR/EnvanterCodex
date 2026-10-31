@@ -22,6 +22,13 @@ public sealed class UserSession
     public DateTimeOffset LastSeenAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset ExpiresAt { get; set; }
     public DateTimeOffset? RevokedAt { get; set; }
+    public Guid? ImpersonatorUserId { get; set; }
+    public Guid? ImpersonatorSessionId { get; set; }
+    public string? ImpersonatorSecurityStampHash { get; set; }
+    public string? ImpersonationReturnTokenHash { get; set; }
+    public bool? ImpersonatorRememberMe { get; set; }
+    public string? ImpersonationReason { get; set; }
+    public DateTimeOffset? ImpersonationEndedAt { get; set; }
 }
 
 public sealed class CompanyMembership

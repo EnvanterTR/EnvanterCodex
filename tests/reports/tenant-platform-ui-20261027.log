@@ -1,0 +1,1 @@
+PASS tenant platform login uses root host, local login stays local, and credential-bearing URLs remain hidden (synthetic transport).

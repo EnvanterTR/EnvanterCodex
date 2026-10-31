@@ -19,7 +19,7 @@ public static class AccountEndpoints
     private const long AccountPhotoMaxSizeBytes = 2_097_152;
     public static IEndpointRouteBuilder MapAccountEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/setup/status", async (AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
+        endpoints.MapGet("/api/setup/status", async (HttpContext context, AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
         {
             var migrations = db.Database.GetMigrations().ToArray();
             if (migrations.Length == 0)
@@ -27,11 +27,14 @@ public static class AccountEndpoints
             if ((await db.Database.GetPendingMigrationsAsync(cancellationToken)).Any())
                 return Results.Problem("Bekleyen veritabanı güncellemesi var; önce yedek alıp kontrollü güncelleme uygulayın.", statusCode: StatusCodes.Status503ServiceUnavailable);
             var configured = await db.Companies.AnyAsync(cancellationToken);
+            var rootDomain = (configuration["TenantRouting:RootDomain"] ?? "envantertr.com").Trim().Trim('.');
+            var tenantHost = TenantHostResolver.ResolveSlug(context.Request, rootDomain) is { Length: > 0 };
             return Results.Ok(new
             {
                 setupRequired = !configured,
                 setupTokenRequired = !configured,
-                setupTokenConfigured = !string.IsNullOrWhiteSpace(configuration["Setup:BootstrapToken"])
+                setupTokenConfigured = !string.IsNullOrWhiteSpace(configuration["Setup:BootstrapToken"]),
+                platformLoginUrl = tenantHost ? $"https://{rootDomain}/platform-admin.html" : "/platform-admin.html"
             });
         }).AllowAnonymous();
 
@@ -55,7 +58,8 @@ public static class AccountEndpoints
 
         endpoints.MapPost("/api/setup/initial-owner", async ([FromBody] InitialOwnerRequest request,
             HttpContext context, IAntiforgery antiforgery, IConfiguration configuration,
-            AppDbContext db, UserManager<EnvanterUser> userManager, CancellationToken cancellationToken) =>
+            AppDbContext db, UserManager<EnvanterUser> userManager, TenantProvisioningService provisioning,
+            CancellationToken cancellationToken) =>
         {
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
             var suppliedToken = context.Request.Headers["X-Setup-Token"].ToString();
@@ -74,7 +78,6 @@ public static class AccountEndpoints
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
             if (await db.Companies.AnyAsync(cancellationToken)) return Results.Conflict(new { message = "İlk kurulum zaten tamamlanmış." });
 
-            var company = new Company { Name = request.CompanyName.Trim() };
             var email = request.Email.Trim();
             var user = await userManager.FindByEmailAsync(email);
             if (user is not null)
@@ -102,12 +105,7 @@ public static class AccountEndpoints
                     });
                 }
             }
-            db.Companies.Add(company);
-
-            db.CompanyMemberships.Add(new CompanyMembership
-            {
-                CompanyId = company.Id, UserId = user.Id, RoleKey = "owner"
-            });
+            var company = provisioning.ProvisionInitialCompany(request.CompanyName.Trim(), user);
             try
             {
                 await db.SaveChangesAsync(cancellationToken);
@@ -341,7 +339,16 @@ public static class AccountEndpoints
                 claims.Add(new Claim("company_id", membership.CompanyId.ToString()));
                 claims.Add(new Claim("company_role", membership.RoleKey));
             }
-            if (isPlatformAdmin) claims.Add(new Claim("platform_admin", "true"));
+            if (isPlatformAdmin)
+            {
+                claims.Add(new Claim("platform_admin", "true"));
+                // This request has just verified both password and the second factor.
+                // Reuse that proof for the existing ten-minute critical-operation window.
+                // Company logins and password-only platform sessions receive no such proof.
+                if (request.PlatformAdminOnly && membership is null && user.TwoFactorEnabled)
+                    claims.Add(new Claim("platform_reauth_at", now.ToUnixTimeSeconds()
+                        .ToString(System.Globalization.CultureInfo.InvariantCulture)));
+            }
             await signInManager.SignInWithClaimsAsync(user, new AuthenticationProperties
             {
                 IsPersistent = request.RememberMe,
@@ -638,7 +645,7 @@ public static class AccountEndpoints
 
         endpoints.MapPost("/api/session/password/reset", async ([FromBody] ResetPasswordRequest request,
             HttpContext context, IAntiforgery antiforgery, UserManager<EnvanterUser> userManager,
-            AppDbContext db,
+            AppDbContext db, ILoggerFactory loggerFactory,
             CancellationToken cancellationToken) =>
         {
             if (!await HasValidCsrfAsync(context, antiforgery))
@@ -658,36 +665,56 @@ public static class AccountEndpoints
             var minimumPasswordLength = await CompanySecurityEndpoints.GetMinimumPasswordLengthAsync(db, user.Id, cancellationToken);
             if (request.NewPassword.Length < minimumPasswordLength)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["newPassword"] = [$"Yeni parola en az {minimumPasswordLength} karakter olmalıdır."] });
-            var result = await userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
-            if (!result.Succeeded)
-                return Results.ValidationProblem(new Dictionary<string, string[]> {
-                    ["reset"] = result.Errors.Select(error => error.Description).ToArray()
-                });
-            var companyIds = await db.CompanyMemberships.AsNoTracking().Where(x => x.UserId == user.Id)
-                .Select(x => x.CompanyId).Distinct().ToListAsync(cancellationToken);
-            foreach (var companyId in companyIds)
-                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = user.Id,
-                    TargetType = "Account", TargetId = user.Id, Action = "PasswordReset",
-                    Details = "E-posta doğrulamalı parola yenileme tamamlandı; diğer oturumlar geçersiz kılındı." });
-            db.PlatformAuditEntries.Add(new PlatformAuditEntry { ActorUserId = user.Id,
-                CompanyId = companyIds.Count == 1 ? companyIds[0] : null, TargetType = "Account", TargetId = user.Id,
-                Action = "PasswordReset", Details = "E-posta doğrulamalı parola yenileme tamamlandı." });
-            await db.UserSessions.Where(session => session.UserId == user.Id && session.RevokedAt == null)
-                .ExecuteUpdateAsync(update => update.SetProperty(session => session.RevokedAt, DateTimeOffset.UtcNow), cancellationToken);
-            await db.SaveChangesAsync(cancellationToken);
-            if (!user.EmailConfirmed)
+            // Identity stores use this same scoped AppDbContext. Keep its saves, session revocation,
+            // account activation and audit records atomic: a failed activation must not consume the link.
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            try
             {
-                user.EmailConfirmed = true;
-                var confirmResult = await userManager.UpdateAsync(user);
-                if (!confirmResult.Succeeded)
-                    return Results.Problem("Parolanız kaydedildi ancak davet hesabı etkinleştirilemedi. Aynı bağlantıyla yeniden deneyin.", statusCode: StatusCodes.Status500InternalServerError);
+                var result = await userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+                if (!result.Succeeded)
+                    return Results.ValidationProblem(new Dictionary<string, string[]> {
+                        ["reset"] = result.Errors.Select(error => error.Description).ToArray()
+                    });
+                var companyIds = await db.CompanyMemberships.AsNoTracking().Where(x => x.UserId == user.Id)
+                    .Select(x => x.CompanyId).Distinct().ToListAsync(cancellationToken);
+                foreach (var companyId in companyIds)
+                    db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = user.Id,
+                        TargetType = "Account", TargetId = user.Id, Action = "PasswordReset",
+                        Details = "E-posta doğrulamalı parola yenileme tamamlandı; diğer oturumlar geçersiz kılındı." });
+                db.PlatformAuditEntries.Add(new PlatformAuditEntry { ActorUserId = user.Id,
+                    CompanyId = companyIds.Count == 1 ? companyIds[0] : null, TargetType = "Account", TargetId = user.Id,
+                    Action = "PasswordReset", Details = "E-posta doğrulamalı parola yenileme tamamlandı." });
+                await db.UserSessions.Where(session => session.UserId == user.Id && session.RevokedAt == null)
+                    .ExecuteUpdateAsync(update => update.SetProperty(session => session.RevokedAt, DateTimeOffset.UtcNow), cancellationToken);
+                await db.SaveChangesAsync(cancellationToken);
+                if (!user.EmailConfirmed)
+                {
+                    user.EmailConfirmed = true;
+                    var confirmResult = await userManager.UpdateAsync(user);
+                    if (!confirmResult.Succeeded)
+                    {
+                        loggerFactory.CreateLogger("PasswordReset").LogWarning("Account activation update was rejected; reset transaction will not be committed.");
+                        return Results.Json(new { message = "Parola yenileme kaydedilemedi. Aynı bağlantıyla yeniden deneyin." },
+                            statusCode: StatusCodes.Status503ServiceUnavailable);
+                    }
+                }
+                await transaction.CommitAsync(cancellationToken);
+                return Results.Ok(new { message = "Parolanız yenilendi. Yeni parolanızla giriş yapabilirsiniz." });
             }
-            return Results.Ok(new { message = "Parolanız yenilendi. Yeni parolanızla giriş yapabilirsiniz." });
+            catch (Exception error) when (error is DbUpdateException or System.Data.Common.DbException)
+            {
+                loggerFactory.CreateLogger("PasswordReset").LogWarning("Password reset database transaction failed ({ErrorType}).", error.GetType().Name);
+                return Results.Json(new { message = "Parola yenileme sırasında bir veritabanı sorunu oluştu. Lütfen yeniden deneyin." },
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
         }).AllowAnonymous().RequireRateLimiting("login");
 
         endpoints.MapPost("/api/session/logout", async (HttpContext context, IAntiforgery antiforgery,
             SignInManager<EnvanterUser> signInManager, AppDbContext db, CancellationToken cancellationToken) =>
         {
+            if (PlatformImpersonation.IsImpersonating(context))
+                return await PlatformImpersonation.StopAsync(context, db, signInManager, antiforgery,
+                    context.RequestServices.GetRequiredService<IConfiguration>(), cancellationToken);
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
             if (Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId))
             {
@@ -713,11 +740,12 @@ public static class AccountEndpoints
                 ? parsedCompanyId : (Guid?)null;
             var rootDomain = configuration["TenantRouting:RootDomain"]?.Trim().Trim('.');
             IReadOnlyList<object> availableCompanies = Array.Empty<object>();
+            var supportMode = PlatformImpersonation.IsImpersonating(context);
             if (Guid.TryParse(userId, out var parsedUserId) && companyId is not null)
             {
                 var memberships = await (from membership in db.CompanyMemberships.AsNoTracking()
                                          join company in db.Companies.AsNoTracking() on membership.CompanyId equals company.Id
-                                         where membership.UserId == parsedUserId && company.IsActive
+                                         where membership.UserId == parsedUserId && company.IsActive && (!supportMode || company.Id == companyId)
                                          orderby company.Name
                                          select new { id = company.Id, name = company.Name, role = membership.RoleKey, company.Slug })
                     .ToListAsync(cancellationToken);
@@ -754,6 +782,7 @@ public static class AccountEndpoints
                 companyId = companyId?.ToString(),
                 companyName,
                 availableCompanies,
+                impersonation = PlatformImpersonation.GetInfo(context),
                 subscriptionAccess = subscription is null ? null : new
                 {
                     planName = subscription.Name,
@@ -769,7 +798,9 @@ public static class AccountEndpoints
                 platformAdmin = user.HasClaim("platform_admin", "true"),
                 name = user.Identity?.Name,
                 hasPhoto = Guid.TryParse(userId, out var photoUserId) && new[] { "png", "jpg", "webp" }
-                    .Any(extension => System.IO.File.Exists(AccountPhotoPath(configuration, photoUserId, extension)))
+                    .Any(extension => CompanyMediaPathGuard.IsSafeAccountPath(configuration, photoUserId,
+                        AccountPhotoPath(configuration, photoUserId, extension)) &&
+                        System.IO.File.Exists(AccountPhotoPath(configuration, photoUserId, extension)))
             });
         }).RequireAuthorization();
 
@@ -1126,6 +1157,8 @@ public static class AccountEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Yalnızca doğrulanmış PNG, JPEG veya WebP fotoğraf yüklenebilir."] });
 
             var directory = AccountPhotoDirectory(configuration, userId);
+            if (!AccountPhotoPathsAreSafe(configuration, userId))
+                return Results.Conflict(new { message = "Profil fotoğrafı alanı güvenli biçimde kullanılamıyor." });
             Directory.CreateDirectory(directory);
             var tempPath = Path.Combine(directory, $"upload-{Guid.NewGuid():N}.tmp");
             var destination = AccountPhotoPath(configuration, userId, detected.Extension);
@@ -1167,6 +1200,7 @@ public static class AccountEndpoints
             foreach (var candidate in new[] { ("png", "image/png"), ("jpg", "image/jpeg"), ("webp", "image/webp") })
             {
                 var path = AccountPhotoPath(configuration, userId, candidate.Item1);
+                if (!CompanyMediaPathGuard.IsSafeAccountPath(configuration, userId, path)) return Results.NotFound();
                 if (!System.IO.File.Exists(path)) continue;
                 var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024,
                     FileOptions.Asynchronous | FileOptions.SequentialScan);
@@ -1181,6 +1215,7 @@ public static class AccountEndpoints
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
             if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
             var directory = AccountPhotoDirectory(configuration, userId);
+            if (!AccountPhotoPathsAreSafe(configuration, userId)) return Results.NotFound();
             var staged = new List<(string Original, string Temporary)>();
             try
             {
@@ -1275,6 +1310,10 @@ public static class AccountEndpoints
 
     private static string AccountPhotoPath(IConfiguration configuration, Guid userId, string extension) =>
         Path.Combine(AccountPhotoDirectory(configuration, userId), $"profile.{extension}");
+
+    private static bool AccountPhotoPathsAreSafe(IConfiguration configuration, Guid userId) =>
+        new[] { "png", "jpg", "webp" }.All(extension => CompanyMediaPathGuard.IsSafeAccountPath(configuration, userId,
+            AccountPhotoPath(configuration, userId, extension)));
 
     private static (string? ContentType, string Extension) DetectProfileImage(ReadOnlySpan<byte> bytes)
     {

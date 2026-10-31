@@ -40,7 +40,7 @@ try {
   });
   await page.goto('https://santa.envantertr.com/');
   await page.locator('[data-group="settings"]').click();
-  await page.locator('[data-page="Firma profili"]').click();
+  await page.locator('#sidebar [data-page="Firma profili"]').click();
   await page.waitForFunction(() => document.querySelector('#companyProfileForm')?.dataset.savedSlug === 'santa');
   await page.locator('#companyProfileForm [name="name"]').fill('Farma');
   await page.locator('#companyProfileForm [name="slug"]').fill('farma');

@@ -15,7 +15,7 @@ using Microsoft.Extensions.Options;
 
 namespace EnvanterTR.Web.Data;
 
-public static class PlatformEndpoints
+public static partial class PlatformEndpoints
 {
     public static IEndpointRouteBuilder MapPlatformEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -88,6 +88,8 @@ public static class PlatformEndpoints
         }).AllowAnonymous().RequireRateLimiting("login");
 
         var admin = endpoints.MapGroup("/api/platform").RequireAuthorization("platform.admin");
+        PlatformImpersonation.MapEndpoints(admin, endpoints);
+        MapCompanyDeletionEndpoints(admin);
         admin.MapGet("/system/health", async (AppDbContext db, IConfiguration configuration,
             IOptions<IyzipayOptions> paymentOptions, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
@@ -158,6 +160,8 @@ public static class PlatformEndpoints
 
             var generatedAt = DateTimeOffset.UtcNow;
             var checkoutConfiguration = CheckoutEndpoints.GetConfigurationReadiness(paymentOptions.Value);
+            var smtpConfiguration = EmailConfigurationReadiness.Evaluate(configuration,
+                requireHttps: !string.Equals(configuration["ASPNETCORE_ENVIRONMENT"], "Development", StringComparison.OrdinalIgnoreCase));
             return Results.Ok(new
             {
                 generatedAt,
@@ -179,7 +183,8 @@ public static class PlatformEndpoints
                     availableBytes = diskAvailableBytes, usedPercent = diskUsedPercent },
                 integrations = new
                 {
-                    smtpConfigured = !string.IsNullOrWhiteSpace(configuration["Email:Smtp:Host"]),
+                    smtpConfigured = smtpConfiguration.ConfigurationReady,
+                    smtp = smtpConfiguration,
                     iyzicoConfigured = checkoutConfiguration.CredentialsConfigured,
                     checkout = new
                     {
@@ -799,7 +804,7 @@ public static class PlatformEndpoints
             var relevantActions = new[] { "LoginSucceeded", "LoginFailed", "PasswordChanged", "PasswordReset",
                 "MemberInvited", "MemberInvitationResent", "MemberInvitationEmailSent", "MemberInvitationEmailFailed",
                 "DemoGranted", "SubscriptionExtended", "SubscriptionManuallyAdjusted", "CompanySuspended",
-                "CompanyReactivated", "PaidCompanyProvisioned", "DemoRequestUpdated", "DemoRequestStatusChanged",
+                "CompanyReactivated", "PaidCompanyProvisioned", "DemoCompanyProvisioned", "DemoRequestUpdated", "DemoRequestStatusChanged",
                 "MemberOwnerTransferred" };
             var platformAudits = await (from audit in db.PlatformAuditEntries.AsNoTracking()
                                         join actor in db.Users.AsNoTracking() on audit.ActorUserId equals actor.Id into actors
@@ -828,6 +833,7 @@ public static class PlatformEndpoints
                     "DemoGranted" => "Demo erişimi tanımlandı", "SubscriptionExtended" => "Abonelik süresi uzatıldı",
                     "SubscriptionManuallyAdjusted" => "Abonelik elle düzenlendi", "CompanySuspended" => "Şirket askıya alındı",
                     "CompanyReactivated" => "Şirket yeniden etkinleştirildi", "PaidCompanyProvisioned" => "Ücretli şirket hesabı oluşturuldu",
+                    "DemoCompanyProvisioned" => "Demo şirket hesabı oluşturuldu",
                     "DemoRequestUpdated" => "Demo talebi güncellendi", "DemoRequestStatusChanged" => "Demo talebi aşaması değişti",
                     "MemberOwnerTransferred" => "Şirket sahipliği devredildi",
                     "MemberRoleChanged" => "Şirket üyelik rolü değiştirildi", "MemberRemoved" => "Şirket üyeliği kaldırıldı",
@@ -1439,7 +1445,7 @@ public static class PlatformEndpoints
 
         admin.MapPost("/companies", async ([FromBody] ProvisionCompanyRequest request, ClaimsPrincipal user,
             AppDbContext db, UserManager<EnvanterUser> userManager, IConfiguration configuration,
-            CancellationToken cancellationToken) =>
+            TenantProvisioningService provisioning, ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var companyName = request.CompanyName?.Trim();
             var slug = request.Slug?.Trim().ToLowerInvariant();
@@ -1452,10 +1458,15 @@ public static class PlatformEndpoints
                 (contactEmail is { Length: > 256 } || (contactEmail is not null && !MailAddress.TryCreate(contactEmail, out _))) ||
                 string.IsNullOrWhiteSpace(ownerName) || ownerName.Length > 160 ||
                 string.IsNullOrWhiteSpace(ownerEmail) || ownerEmail.Length > 256 || !MailAddress.TryCreate(ownerEmail, out _) ||
-                request.TermDays is < 1 or > 1095 || string.IsNullOrWhiteSpace(paymentReference) || paymentReference.Length > 180 ||
-                !request.PaymentVerified)
+                request.TermDays is < 1 or > 1095 ||
+                (request.IsDemo
+                    ? request.TermDays > 60 || request.PaymentVerified || !string.IsNullOrWhiteSpace(paymentReference) ||
+                      string.IsNullOrWhiteSpace(request.Note) || request.Note.Trim().Length is < 8 or > 1000
+                    : string.IsNullOrWhiteSpace(paymentReference) || paymentReference.Length > 180 || !request.PaymentVerified))
                 return Results.ValidationProblem(new Dictionary<string, string[]> {
-                    ["company"] = ["Firma, geçerli alt alan adı, yetkili kişi ve doğrulanmış ödeme referansı gereklidir; abonelik süresi 1-1095 gün olmalıdır."]
+                    ["company"] = [request.IsDemo
+                        ? "Firma, geçerli alt alan adı, yetkili kişi ve 8-1000 karakterlik demo gerekçesi gereklidir; demo 1-60 gün olmalı ve ödeme bilgisi içermemelidir."
+                        : "Firma, geçerli alt alan adı, yetkili kişi ve doğrulanmış ödeme referansı gereklidir; abonelik süresi 1-1095 gün olmalıdır."]
                 });
 
             var plan = await db.SubscriptionPlans.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.PlanId &&
@@ -1471,32 +1482,22 @@ public static class PlatformEndpoints
             if (await db.CompanyCheckoutOrders.AnyAsync(x => x.Slug == slug && checkoutReservedStatuses.Contains(x.Status), cancellationToken))
                 return Results.Conflict(new { message = "Bu alt alan adı tamamlanmamış bir Cloud satın alma işlemi için ayrılmış." });
 
-            var owner = await userManager.FindByEmailAsync(ownerEmail);
-            var wasConfirmed = owner?.EmailConfirmed == true;
-            if (owner is null)
-            {
-                var temporaryPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) + "aA1!";
-                owner = new EnvanterUser { UserName = ownerEmail, Email = ownerEmail, EmailConfirmed = false, DisplayName = ownerName };
-                var created = await userManager.CreateAsync(owner, temporaryPassword);
-                if (!created.Succeeded)
-                {
-                    await transaction.RollbackAsync(cancellationToken);
-                    return Results.Conflict(new { message = "Yetkili hesap oluşturulamadı; e-posta adresini ve hesap durumunu kontrol edin." });
-                }
-            }
-
-            var company = new Company { Name = companyName, Slug = slug, ContactEmail = contactEmail ?? ownerEmail,
-                SecurityRequireMfa = true };
             var now = DateTimeOffset.UtcNow;
-            var subscription = new TenantSubscription {
-                CompanyId = company.Id, PlanId = plan.Id, Status = "Active", IsDemo = false,
-                StartsAt = now, EndsAt = now.AddDays(request.TermDays), PaymentReference = paymentReference
-            };
-            db.Companies.Add(company);
-            db.CompanyMemberships.Add(new CompanyMembership { CompanyId = company.Id, UserId = owner.Id, RoleKey = "owner" });
-            db.TenantSubscriptions.Add(subscription);
-            AddAudit(db, user, "PaidCompanyProvisioned", "Company", company.Id, company.Id,
-                $"{plan.Code} · {request.TermDays} gün · ödeme platform yöneticisi tarafından doğrulandı.");
+            var provisioned = await provisioning.ProvisionCloudAsync(new(companyName, slug!, contactEmail ?? ownerEmail,
+                ownerName, ownerEmail, plan.Id, now, now.AddDays(request.TermDays),
+                PaymentReference: request.IsDemo ? null : paymentReference, IsDemo: request.IsDemo), cancellationToken);
+            if (provisioned is null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                return Results.Conflict(new { message = "Yetkili hesap oluşturulamadı; e-posta adresini ve hesap durumunu kontrol edin." });
+            }
+            var company = provisioned.Company;
+            var owner = provisioned.Owner;
+            var subscription = provisioned.Subscription;
+            var wasConfirmed = provisioned.OwnerWasConfirmed;
+            AddAudit(db, user, request.IsDemo ? "DemoCompanyProvisioned" : "PaidCompanyProvisioned", "Company", company.Id, company.Id,
+                request.IsDemo ? $"{plan.Code} · {request.TermDays} gün · {request.Note!.Trim()}" :
+                    $"{plan.Code} · {request.TermDays} gün · ödeme platform yöneticisi tarafından doğrulandı.");
             try
             {
                 await db.SaveChangesAsync(cancellationToken);
@@ -1523,23 +1524,26 @@ public static class PlatformEndpoints
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                // Company provisioning is committed; platform administrators can retry the owner notice.
+                logger.LogWarning("Company owner invitation failed. Company {CompanyId}; error type: {ErrorType}",
+                    company.Id, exception.GetType().Name);
             }
 
             var rootDomain = configuration["TenantRouting:RootDomain"]?.Trim().Trim('.');
             var tenantUrl = string.IsNullOrWhiteSpace(rootDomain) ? null : $"https://{slug}.{rootDomain}";
             return Results.Created($"/api/platform/companies/{company.Id}", new {
                 company.Id, company.Name, company.Slug, company.ContactEmail, ownerId = owner.Id,
-                plan = plan.Name, subscription.Status, subscription.StartsAt, subscription.EndsAt,
+                plan = plan.Name, subscription.Status, subscription.IsDemo, subscription.StartsAt, subscription.EndsAt,
                 tenantUrl, invitationSent,
-                message = invitationSent ? "Şirket ve ücretli Cloud aboneliği oluşturuldu; yetkiliye erişim e-postası gönderildi." :
+                message = invitationSent ? (request.IsDemo
+                    ? "Şirket ve süreli demo oluşturuldu; yetkiliye erişim e-postası gönderildi."
+                    : "Şirket ve ücretli Cloud aboneliği oluşturuldu; yetkiliye erişim e-postası gönderildi.") :
                     "Şirket ve abonelik oluşturuldu; e-posta gönderilemedi. Yetkili davetini firma ayrıntılarından yeniden gönderebilirsiniz."
             });
         }).RequireRateLimiting("login");
 
         admin.MapPost("/companies/{companyId:guid}/owner-invitation/resend", async (Guid companyId,
             UserManager<EnvanterUser> userManager, AppDbContext db, IConfiguration configuration,
-            CancellationToken cancellationToken) =>
+            ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             var owner = await (from membership in db.CompanyMemberships.AsNoTracking()
                 join ownerAccount in db.Users.AsNoTracking() on membership.UserId equals ownerAccount.Id
@@ -1565,12 +1569,15 @@ public static class PlatformEndpoints
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
+                logger.LogWarning("Paid company owner invitation retry failed. Company {CompanyId}; error type: {ErrorType}",
+                    companyId, exception.GetType().Name);
                 return Results.Problem("E-posta gönderilemedi. E-posta sunucusu ayarlarını kontrol edip yeniden deneyin.",
                     statusCode: StatusCodes.Status503ServiceUnavailable);
             }
         }).RequireRateLimiting("login");
 
         admin.MapGet("/companies", async ([FromQuery] string? q, [FromQuery] bool? active, [FromQuery] string? followUp,
+            [FromQuery] bool? deleted,
             [FromQuery] Guid? planId, [FromQuery] string? createdFrom, [FromQuery] string? createdTo,
             [FromQuery] string? sortBy, [FromQuery] string? sortDirection,
             AppDbContext db, CancellationToken cancellationToken, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
@@ -1583,7 +1590,7 @@ public static class PlatformEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["createdFrom/createdTo"] = ["Kayıt tarih aralığı YYYY-MM-DD olmalı ve başlangıç bitişten sonra olamaz."] });
             if (!TryValidateCompanySort(sortBy, sortDirection, out var sortError))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["sortBy/sortDirection"] = [sortError!] });
-            var companies = db.Companies.AsNoTracking().AsQueryable();
+            var companies = db.Companies.AsNoTracking().Where(x => deleted == true ? x.DeletedAt != null : x.DeletedAt == null);
             if (active is bool isActive) companies = companies.Where(x => x.IsActive == isActive);
             if (createdStart is not null) companies = companies.Where(x => x.CreatedAt >= createdStart.Value);
             if (createdEnd is not null) companies = companies.Where(x => x.CreatedAt < createdEnd.Value);
@@ -1608,7 +1615,7 @@ public static class PlatformEndpoints
             var rows = await orderedCompanies.Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(x => new
                 {
-                    x.Id, x.Name, x.Slug, x.ContactEmail, x.IsActive, x.CreatedAt,
+                    x.Id, x.Name, x.Slug, x.ContactEmail, x.IsActive, x.CreatedAt, x.DeletedAt,
                     hasBrandLogo = x.BrandLogoPath != null, x.BrandPrimaryColor,
                     lifecycleStage = x.CustomerLifecycleStage,
                     lifecycleOwnerId = x.PlatformOwnerUserId,
@@ -1628,7 +1635,7 @@ public static class PlatformEndpoints
                 if (verified?.SubscriptionId != row.subscription?.Id) verified = null;
                 return new
                 {
-                    row.Id, row.Name, row.Slug, row.ContactEmail, row.IsActive, row.CreatedAt,
+                    row.Id, row.Name, row.Slug, row.ContactEmail, row.IsActive, row.CreatedAt, row.DeletedAt,
                     row.hasBrandLogo, row.BrandPrimaryColor, row.lifecycleStage, row.lifecycleOwnerId,
                     row.lifecycleOwnerName, row.nextFollowUpAt, row.employeeRecords, row.loginAccounts,
                     row.assetRecords, row.subscription,
@@ -1648,12 +1655,14 @@ public static class PlatformEndpoints
                 return Results.NotFound();
             var companyDirectory = Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media", companyId.ToString("N"));
             var filePath = Path.Combine(companyDirectory, fileName);
-            if (!System.IO.File.Exists(filePath)) return Results.NotFound();
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, filePath) ||
+                !System.IO.File.Exists(filePath)) return Results.NotFound();
             var contentType = Path.GetExtension(fileName) switch { ".png" => "image/png", ".jpg" => "image/jpeg", _ => "image/webp" };
             return Results.File(await System.IO.File.ReadAllBytesAsync(filePath, cancellationToken), contentType);
         }).RequireRateLimiting("login");
 
         admin.MapGet("/companies/export.csv", async (HttpContext context, [FromQuery] string? q, [FromQuery] bool? active,
+            [FromQuery] bool? deleted,
             [FromQuery] string? followUp, [FromQuery] Guid? planId, [FromQuery] string? createdFrom,
             [FromQuery] string? createdTo, [FromQuery] string? sortBy, [FromQuery] string? sortDirection,
             AppDbContext db, CancellationToken cancellationToken) =>
@@ -1667,7 +1676,7 @@ public static class PlatformEndpoints
             if (!TryValidateCompanySort(sortBy, sortDirection, out var sortError))
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["sortBy/sortDirection"] = [sortError!] });
 
-            var companies = db.Companies.AsNoTracking().AsQueryable();
+            var companies = db.Companies.AsNoTracking().Where(x => deleted == true ? x.DeletedAt != null : x.DeletedAt == null);
             if (active is bool isActive) companies = companies.Where(x => x.IsActive == isActive);
             if (createdStart is not null) companies = companies.Where(x => x.CreatedAt >= createdStart.Value);
             if (createdEnd is not null) companies = companies.Where(x => x.CreatedAt < createdEnd.Value);
@@ -1743,7 +1752,7 @@ public static class PlatformEndpoints
             membersPage = Math.Max(membersPage, 1);
             membersPageSize = Math.Clamp(membersPageSize == 0 ? 50 : membersPageSize, 1, 100);
             var company = await db.Companies.AsNoTracking().Where(x => x.Id == companyId)
-                .Select(x => new { x.Id, x.Name, x.Slug, x.ContactEmail, x.IsActive, x.CreatedAt,
+                .Select(x => new { x.Id, x.Name, x.Slug, x.ContactEmail, x.IsActive, x.CreatedAt, x.DeletedAt,
                     x.BrandLogoPath, x.BrandPrimaryColor, lifecycleStage = x.CustomerLifecycleStage,
                     lifecycleOwnerId = x.PlatformOwnerUserId, nextFollowUpAt = x.PlatformNextFollowUpAt,
                     lifecycleOwnerName = db.Users.Where(account => account.Id == x.PlatformOwnerUserId)
@@ -2018,6 +2027,8 @@ public static class PlatformEndpoints
             if (request.Note is { Length: > 1000 }) return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Açıklama 1000 karakteri aşamaz."] });
             var company = await db.Companies.SingleOrDefaultAsync(x => x.Id == companyId, cancellationToken);
             if (company is null) return Results.NotFound();
+            if (company.DeletedAt is not null)
+                return Results.Conflict(new { message = "Silinen şirketi önce çöp kutusundan geri alın." });
             if (company.IsActive == request.IsActive) return Results.Ok(new { company.Id, company.IsActive, unchanged = true });
             if (string.IsNullOrWhiteSpace(request.Note) || request.Note.Trim().Length < 8)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Durum değişikliği için en az 8 karakterlik gerekçe gereklidir."] });
@@ -2040,6 +2051,8 @@ public static class PlatformEndpoints
                 .OrderBy(company => company.Id).ToListAsync(cancellationToken);
             if (companies.Count != request.CompanyIds.Length)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["companyIds"] = ["Seçili şirketlerden biri bulunamadı; hiçbir değişiklik yapılmadı."] });
+            if (companies.Any(company => company.DeletedAt is not null))
+                return Results.Conflict(new { message = "Silinen şirketler için önce çöp kutusundan geri alma gerekir; hiçbir durum değiştirilmedi." });
 
             var changed = companies.Where(company => company.IsActive != request.IsActive).ToArray();
             if (changed.Length == 0) return Results.Ok(new { updated = 0, unchanged = companies.Count });
@@ -2072,7 +2085,7 @@ public static class PlatformEndpoints
             if (plan is null)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["planId"] = ["Etkin bir Cloud planı seçilmelidir."] });
 
-            var companies = await db.Companies.AsNoTracking().Where(company => request.CompanyIds.Contains(company.Id))
+            var companies = await db.Companies.AsNoTracking().Where(company => request.CompanyIds.Contains(company.Id) && company.DeletedAt == null)
                 .Select(company => company.Id).ToListAsync(cancellationToken);
             if (companies.Count != request.CompanyIds.Length)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["companyIds"] = ["Seçili şirketlerden biri bulunamadı; hiçbir plan değiştirilmedi."] });

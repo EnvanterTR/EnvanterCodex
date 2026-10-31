@@ -1,0 +1,113 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.security-acceptance
+#1 transferring dockerfile: 1.28kB 0.0s done
+#1 DONE 0.1s
+
+#2 [internal] load metadata for mcr.microsoft.com/dotnet/sdk:10.0
+#2 DONE 0.2s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 134B 0.0s done
+#3 DONE 0.0s
+
+#4 [internal] load build context
+#4 DONE 0.0s
+
+#5 [ 1/14] FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
+#5 resolve mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa 0.0s done
+#5 DONE 0.0s
+
+#4 [internal] load build context
+#4 transferring context: 138.51kB 0.1s done
+#4 DONE 0.1s
+
+#6 [ 2/14] WORKDIR /source
+#6 CACHED
+
+#7 [ 3/14] COPY global.json ./
+#7 CACHED
+
+#8 [ 4/14] COPY src/EnvanterTR.Web/EnvanterTR.Web.csproj src/EnvanterTR.Web/
+#8 CACHED
+
+#9 [ 5/14] COPY tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj tests/EnvanterTR.SecurityAcceptance/
+#9 CACHED
+
+#10 [ 6/14] RUN dotnet restore tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj
+#10 CACHED
+
+#11 [ 7/14] COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
+#11 DONE 1.2s
+
+#12 [ 8/14] RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
+#12 118.8   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+#12 119.0
+#12 119.0 Build succeeded.
+#12 119.0     0 Warning(s)
+#12 119.0     0 Error(s)
+#12 119.0
+#12 119.0 Time Elapsed 00:01:55.01
+#12 DONE 119.3s
+
+#13 [ 9/14] COPY tests/reports/current-release-118-to-120-20261024.sql tests/reports/current-release-118-to-120-20261024.sql.sha256 tests/reports/
+#13 DONE 0.1s
+
+#14 [10/14] COPY tests/reports/company-deletion-120-to-121-20261025.sql tests/reports/company-deletion-120-to-121-20261025.sql.sha256 tests/reports/
+#14 DONE 0.1s
+
+#15 [11/14] COPY tests/reports/handover-email-121-to-122-20261026.sql tests/reports/handover-email-121-to-122-20261026.sql.sha256 tests/reports/
+#15 DONE 0.1s
+
+#16 [12/14] COPY tests/EnvanterTR.SecurityAcceptance/ tests/EnvanterTR.SecurityAcceptance/
+#16 DONE 0.2s
+
+#17 [13/14] RUN dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore
+#17 4.441   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+#17 74.99 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 74.99 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 74.99 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 74.99 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 74.99 /source/tests/EnvanterTR.SecurityAcceptance/TenantHostSessionContinuityAcceptanceTests.cs(35,23): warning CS8600: Converting null literal or possible null value to non-nullable type. [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 74.99 /source/tests/EnvanterTR.SecurityAcceptance/TenantHostSessionContinuityAcceptanceTests.cs(36,27): warning CS8600: Converting null literal or possible null value to non-nullable type. [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 74.99 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(102,20): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 74.99 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(174,9): warning xUnit2029: Do not use Assert.Empty to check if a value does not exist in a collection. Use Assert.DoesNotContain instead. (https://xunit.net/xunit.analyzers/rules/xUnit2029) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 74.99 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(202,9): warning xUnit2029: Do not use Assert.Empty to check if a value does not exist in a collection. Use Assert.DoesNotContain instead. (https://xunit.net/xunit.analyzers/rules/xUnit2029) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 74.99 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(213,9): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 75.71   EnvanterTR.SecurityAcceptance -> /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll
+#17 76.14
+#17 76.15 Build succeeded.
+#17 76.15
+#17 76.15 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 76.15 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 76.15 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 76.15 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 76.15 /source/tests/EnvanterTR.SecurityAcceptance/TenantHostSessionContinuityAcceptanceTests.cs(35,23): warning CS8600: Converting null literal or possible null value to non-nullable type. [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 76.15 /source/tests/EnvanterTR.SecurityAcceptance/TenantHostSessionContinuityAcceptanceTests.cs(36,27): warning CS8600: Converting null literal or possible null value to non-nullable type. [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 76.15 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(102,20): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 76.15 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(174,9): warning xUnit2029: Do not use Assert.Empty to check if a value does not exist in a collection. Use Assert.DoesNotContain instead. (https://xunit.net/xunit.analyzers/rules/xUnit2029) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 76.15 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(202,9): warning xUnit2029: Do not use Assert.Empty to check if a value does not exist in a collection. Use Assert.DoesNotContain instead. (https://xunit.net/xunit.analyzers/rules/xUnit2029) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 76.15 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(213,9): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 76.15     10 Warning(s)
+#17 76.15     0 Error(s)
+#17 76.15
+#17 76.15 Time Elapsed 00:01:15.15
+#17 DONE 76.4s
+
+#18 [14/14] WORKDIR /source/tests/EnvanterTR.SecurityAcceptance
+#18 DONE 0.1s
+
+#19 exporting to image
+#19 exporting layers
+#19 exporting layers 8.6s done
+#19 exporting manifest sha256:5d514221bec24be75f1f3a4494ca99116144595eae524fa4b016f06a297d8376 0.0s done
+#19 exporting config sha256:ba52e3df7fbbad4771d4ebc358d25540af27f0685e35d49ef773a70b7c3cf975 0.0s done
+#19 exporting attestation manifest sha256:dd69ccc5fa64498999353d8c8a6036eb0b1c1d59cbc72e5ef891cce94b233ee5
+#19 exporting attestation manifest sha256:dd69ccc5fa64498999353d8c8a6036eb0b1c1d59cbc72e5ef891cce94b233ee5 0.0s done
+#19 exporting manifest list sha256:246bec05fb9e20c8f1286ddcbd83ea5671e3c9993c9492671e6379fc1e98ba5b 0.0s done
+#19 naming to docker.io/library/paid-provisioning-20261026-acceptance:latest done
+#19 unpacking to docker.io/library/paid-provisioning-20261026-acceptance:latest
+#19 unpacking to docker.io/library/paid-provisioning-20261026-acceptance:latest 2.9s done
+#19 DONE 11.8s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/cshea3lba35nqanxvw609zgbh

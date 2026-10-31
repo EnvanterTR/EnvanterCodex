@@ -1,6 +1,32 @@
 # İlk varlık veri dilimi
 
+## Doğrulanmış Cloud deneme kaydı
+
+- `GET /api/trials/status` anonim erişime açıktır; özellik bayrağı, SMTP yapılandırması ve uygun yayımlı yıllık Cloud planı hazır değilse kayıt kapalıdır.
+- `POST /api/trials/request` şirket/portal/e-posta/plan ve sürümlü bilgilendirme onayını doğrular. CSRF ve checkout istek sınırı zorunludur. Bu adım şirket oluşturmaz; 30 dakika geçerli doğrulama bağlantısını e-posta ile gönderir.
+- `POST /api/trials/confirm` CSRF, aynı istek sınırı ve e-posta bağlantısındaki zaman sınırlı korumalı kanıtı ister. Şirket, owner üyeliği ve tam 15 günlük Trial aboneliği ortak `TenantProvisioningService` ile aynı transaction içinde oluşturulur. Tekrar onay süreyi uzatmaz; eşzamanlı aynı e-posta denemeleri yalnız bir deneme hakkı verir.
+- Cloud şirketinde MFA zorunludur. Mevcut hesabın parolası veya güvenlik damgası değiştirilmez; yeni hesabın parola kurulum bağlantısı token içeriğini sorgu parametresine taşımayan URL fragment'inde döner. `CloudTrials__Enabled` varsayılan olarak kapalıdır; gerçek SMTP/tenant kabulü tamamlanmadan etkinleştirilmez.
+
 ## Cloud Checkout Form sağlayıcı dönüşleri
+
+### Yeni şirket için ödeme öncesi e-posta doğrulaması
+
+- `POST /api/checkout/email/request`: `{ email, planId }`, CSRF ve ayrı `checkout-email` sınırı (IP başına 5 istek/10 dakika) ister. SMTP yapılandırması hazır değilse 503 verir. Satın alınabilir plan için 30 dakika geçerli korumalı bağlantı gönderir; kanıt HTTP cevabında dönmez, şirket/sipariş oluşturulmaz.
+- `POST /api/checkout/email/confirm`: `{ token }`, aynı CSRF ve istek sınırıyla korumalı kanıtı doğrular; yalnız doğrulanmış e-posta ve paket kimliği döner. Geçersiz/süresi dolmuş bağlantı 400 verir.
+- Bağlantı anahtarı `checkout.html?planId=...#emailToken=...` fragment'indedir. Tarayıcı onu hemen adres çubuğundan kaldırır, açık kullanıcı onayı ister ve kanıtı yalnız sayfa belleğinde tutar. E-posta değiştirilirse ödeme düğmesi yeniden kilitlenir. Yenilemede bağlantı yeniden açılabilir; süre dolunca yeni bağlantı gerekir.
+- Anonim `POST /api/checkout/initialize` gövdesi `emailVerificationToken` ister. Kanıtın amacı, süresi, paket kimliği ve owner e-postası eşleşmeden 428 `checkout_email_verification_required` döner; sağlayıcı çağrılmaz ve bu isteğe sipariş açılmaz. Ücret, fatura onayı, CSRF ve önceki idempotency kontrolleri ayrıca uygulanır.
+- `GET /api/checkout/status` ödeme/plan kapısına SMTP yapılandırma hazırlığını da katar. Bu, gerçek inbox teslimatı veya tahsilat kanıtı değildir. Oturumdaki doğrulanmış owner'ın mevcut şirket satın alma akışı kendi parola/MFA kontrolünü kullanmaya devam eder.
+
+### Mevcut şirketin yıllık aboneliği (API)
+
+- `GET /api/subscription/checkout/context`: oturumun gerçek şirketi ve DB'deki owner üyeliğiyle sınırlı şirket/portal/sahip/MFA bilgisi. Başka şirket kimliği parametreyle seçilmez.
+- `POST /api/subscription/checkout/initialize`: `company.member` oturumu ve DB'de owner, doğrulanmış e-posta, CSRF, güncel parola ve Authenticator veya tek kullanımlık kurtarma kodu gerekir. Checkout rate-limit geçerlidir. Yalnız `annual` kabul edilir. Şirket/slug/sahip e-postası istemciden alınmaz; gerçek oturumdan türetilir. Plan kapasitesi sunucuda kontrol edilir.
+- `GET /api/subscription/checkout/orders/{checkoutId}`: yalnız siparişin aynı şirketi ve isteği başlatan owner durum/tutar/tarihleri görebilir; ödeme URL'si, kimlik/fatura bilgileri ve parola/kod dönmez.
+- Süresi dolmuş denemede yalnız doğrulamalı checkout başlangıcı yazma kilidinden muaftır; diğer envanter yazmaları kilitli kalır. Callback/webhook sağlayıcı doğrulamasından sonra aynı şirketin aboneliğini atomik etkinleştirir. Deneme tarihleri/geçmişi, şirket/portal/üyelikler/varlıklar korunur. Aynı planın devam eden ücretli dönemine 365 gün eklenir; mevcut ücretli dönem sürerken farklı plan seçimi reddedilir.
+- Migration `20261023190000_AddExistingCompanyCheckoutContext` iki nullable UUID ve bağlam bütünlüğü kontrolü ekler. Hedef şirket/istek sahibi kimlikleri silmede temizlenmez; kayıtlı şirket kaybolduğunda ödeme yeni kiracı oluşturma yoluna dönüşmez. Mevcut şirket veya owner yetkisi/kapasitesi ödeme sonrasında uygun değilse `ProvisioningFailed` ve destek sonucu oluşur; başarısızlıkta abonelik/veri değişmez.
+- Bu API'nin müşteri arayüzü, tarayıcı akışı ve gerçek iyzico kabulü ayrıca tamamlanmalıdır; bu bölüm satışa hazır ilanı değildir.
+
+Platform sistem sağlığındaki `integrations.smtp`, host/port/gönderici/public URL/kimlik bilgisi eşleşmesi/TLS ayarları için yalnız boolean durumlar döndürür; `smtpConfigured` bu doğrulamaların tamamını gerektirir. Kullanıcı adı ve parola birlikte yoksa anonim SMTP relay kullanılabilir; tek tarafın eksik olması geçersizdir. Bu kontrol DNS/TCP/SMTP oturumu açmaz ve gerçek e-posta teslimatını kanıtlamaz. Cloud trial kayıt kapısı aynı doğrulamayı HTTPS zorunluluğuyla kullanır.
 
 - `POST /api/checkout/callback` iyzico barındırılan ödeme sayfasının tarayıcı dönüşünü kabul eder; gelen token tek başına başarı sayılmaz, sunucudan iyzico retrieve çağrısı yapılır.
 - `POST /api/checkout/webhook` iyzico `CHECKOUT_FORM_AUTH` olaylarını `X-IYZ-SIGNATURE-V3` başlığıyla doğrular. İmzalı token, ödeme kimliği ve konuşma kimliği yerel siparişle; ödeme durumu ve ödeme kimliği de iyzico retrieve sonucuyla eşleşmeden firma oluşturulmaz. Desteklenmeyen ama geçerli imzalı olaylar siparişi değiştirmeden HTTP 200 ile onaylanır; geçersiz imza reddedilir.

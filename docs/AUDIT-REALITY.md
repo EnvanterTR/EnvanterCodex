@@ -1,0 +1,139 @@
+## 31 Ekim 2026 14:11–14:12 UTC — salt-okunur canlı gerçeklik denetimi
+
+- `node tools/Check-CoolifyProduction.mjs` yalnız HTTPS GET yaptı. `https://envantertr.com/api/status` ve `https://firma.envantertr.com/api/status`: HTTP 200, `ready`; dağıtılmış uygulama 122 migration / 0 bekleyen bildirdi. Kaynak dalı 125 migration içeriyor; bu fark tek başına canlı imajın tam commit'ini kanıtlamaz. Aday-canlı migration kimliği karşılaştırması için `tests/reports/p0-b-migration-diff-live-vs-candidate-20261031.md` kullanılmalı.
+- Ayrı, salt-okunur GET ile `https://santa.envantertr.com/api/status` ve `https://farma.envantertr.com/api/status` da HTTP 200, `ready`, 122/0 verdi. `https://firma.envantertr.com/` HTTP 200 ve `EnvanterTR — Şirket Alanı` başlığını döndürdü.
+- Apex `/api/plans` sekiz yayımlı Cloud planı döndürdü. `/api/checkout/status` HTTP 200 olsa da `available:false`, `provider:null`; iyzico checkout, webhook ve gerçek ödeme/provisioning kabulü açık değil.
+- Bu denetimde hiçbir oturum açılmadı; müşteri verisi, Coolify ayarı, migration, şirket veya ödeme değiştirilmedi. Sağlık endpoint'leri canlı commit/imaj kimliğini veya yedek kurtarılabilirliğini kanıtlamaz. P0-A için güncel tablo budur; P0-D ve P1-H kapıları hâlâ açık.
+
+## 30 Ekim 2026 — son doğrulanmış canlı sürüm d19cfe5
+
+Canlı **d19cfe549dfab76c2088ed1425d9733456db360e / şema122/0**. Destek e-postasında güncel üyelik/adres/şirket durumu, operasyonel hatırlatmada güncel varlık okuma yetkisi kontrol ediliyor. Yerel7/7+5/5, tamCI41004287391üçiş, exactstaging/95tablo korunması, taze050211ZSQL ve143MB050216Zkurtarma sonrası tekCoolifyqfut0dslqw1dlnybzxcp8lluSuccess4m49s. Gerçekimaj/runtime05:43:48UTC ve üçhostHTTP/kaynak/görsel/erişim sınırları05:44:07UTCexit0. Kanıt: `tests/reports/operational-role-production-release-20261030.md`.
+
+Sonraki API yanıtı/eskiDOM izolasyonu değişiklikleri bu yayında yok. Yerel10async+4Chromiumgeçti; yeniCI41009579015statikloginverifier eskiakışbeklentisinde başarısız, yereldüzeltmegeçti; PostgreSQLaynıiştesürüyor. Hedef6.1, tamP1/parite ve gerçekmüşteri/merchantkabulü açık. Eksik tarihlerin özel CSV'si kullanıcı masaüstüne doğrulanarak teslim edildi; tarih backfill yapılmadı. Aşağıdaki kayıtlar tarihseldir.
+## 30 Ekim 2026 — doğrulanmış canlı durum ve açık aday
+
+Canlı sürüm **8a07aec93969c42abb0fc0ac272be358ebd11e40**, şema **122 uygulanmış / 0 bekleyen migration**. Tam CI, izole staging, 95 tablonun özgün alanlarının korunması, taze SQL bağımsız geri yükleme ve kurtarma provasından sonra Coolify `tnxno2lve07vbiehbcu8orak` yayını tamamlandı. Üç alan adının sağlık/kaynak/erişim sınırları doğrulandı. Kanıt: `tests/reports/profile-media-production-release-20261030.md`.
+
+Destek e-postası alıcısının güncel üyelik/adres/şirket durumunu kontrol eden **eae37c7** adayının yerel 7/7 ve staging kabulü geçti; henüz canlı değil. İlk uzak koşuda PostgreSQL ve Windows başarılı, Linux tarayıcı testi UTC gece yarısı tarih varsayımında başarısız. Yerelde geçen `8dbae85` saat düzeltmesi `07f7b98` ile gönderildi; tam CI **40980530003** çalışıyor. Sonuç alınmadan satışa hazır veya yayınlandı denmez.
+
+Hedef 6.1 açık: eski tarih alanları eksik, geçmiş tarihler uydurulmadı. Bütün P1, tam özellik paritesi ve gerçek müşteri kabulü tamamlanmadı. İyzico işyeri hesabı yok; gerçek ödeme kapalı. Aşağıdaki kayıtlar tarihseldir.
+## 29 Ekim 2026 — güncel canlı sürüm
+
+Canlı **5d1e261 / şema122/0**: varlık eklerinde yönlendirilmiş klasör/dosya üzerinden şirket sınırının aşılması engellendi. Yerel3/3 ve tamCI369/369+Linux/Windows, exactstaging ve güncel yedek/kurtarma sonrasında tek yayın/live runtime/üçhostHTTP kontrolleri geçti. Kanıt: `tests/reports/asset-media-production-release-20261029.md`.
+
+Lisans eki düzeltmesi859b303 ayrı pakettir: yerel4/4 geçti, CI/sunucu hazırlığı sürüyor; henüz canlı değil. TamHedef/P1, diğer medya yolları ve gerçekmerchant/müşteri kabulü açık. Aşağıdaki yayın kayıtları tarihseldir.
+
+## 27 Ekim 2026 — güncel canlı şirket izolasyonu sürümü
+
+Canlı kaynak **1d49ac17082c861ec52e67f3214ad117d983fc50**, şema **122/0**. Doğrulanmış şirket bağlamına global sorgu filtresi ve tracked kayıt koruması eklendi; mevcut şirketin ödeme formu/bekleyen sipariş akışı sahiplik sınırlarıyla korundu. Tam CI40528142372: PostgreSQL367/367, Linux güvenlik ve Windows güvenliği başarılı. Kesin staging/95tablo korunması, güncel192154ZSQL bağımsız restore ve143MB192200Zgeri dönüş provası sonrası Coolifydxlkeknxdqygasopecsv5kim Success/Finished4m21s. Gerçek imaj/runtime ve üç alan adı HTTPS/source/erişim sınırları19:30UTC doğrulandı.
+
+Kanıt: `tests/reports/tenant-filter-production-release-20261027.md`. Gerçek merchant/müşteri/imza/operatör/Farma/iki yönlü canlı yabancı kayıt/Demo3owner, bütün tablo audit alanları ve cache/queue/dosya kapsamı açık; tam Hedef veya bütün P1 tamamlandı denmiyor. Kullanıcı P0 dış adımları beklerken P1'e geçişi açıkça yetkilendirdi. Aşağıdaki sürüm başlıkları tarihsel kayıtlardır.
+
+## 27 Ekim 2026 — güncel canlı yönetici giriş sürümü
+
+Canlı kaynak f073752a40072bdc0a515f3156bfc785dbaffe0d, şema122/0. TamCI40458121020 üçiş, kesin staging95tablo korunması ve taze063327ZSQL/143MB063335Zkurtarma sonrası Coolifytg8vi2aspz7yt8qzousehh7s Success/Finished. Root/www /admin artık yönetici girişine302; Santa/Farma404. Gerçekimaj/runtime, üçhostsağlık, kaynak/galeri eşitliği ve anonim yetki sınırları geçti. Kanıt: tests/reports/admin-entry-production-release-20261027.md. Gerçekmerchant/müşteri/imza/operatör/Farma/canlıçaprazkayıt/Demo3owner ve tamHedef açık; alttaki sürüm notları tarihseldir.
+## 27 Ekim 2026 — güncel platformtenant sınırı yayını
+
+Canlı90cc105/schema122. KesinCI40442423575üçiş/exactstaging/tazeSQLrestore/95tablokorunması/güncelkurtarmasonrasıCoolifydwypxqvea2jk2sa1pwfwc9lrSuccess/Finished. Santa/FarmaplatformHTML/betik/APIveplatformreauthPOST404canlıdadoğrulandı;kökplatformlogin200. Kaynak/runtime/healthvegalerikorundu. Kanıt:tests/reports/tenant-platform-production-release-20261027.md. Bu,Hedef10.3belirtilenplatformyollarınınanonimhostdenialkanıtıdır;Bölüm20karşılıklıkayıtGET-PUTkabulüyerinesayılmaz. /adminrootaliasfbe10f9ayrılokaldehazır,henüzcanlıdadeğil. Alttakicanlı27ekaydıtarihseldir.
+
+## 27 Ekim 2026 — güncel canlı kaynak ve kalan kabul sınırı
+
+Canlı `27e9120d6edd1095d7f87e0b7e99449ef69a2169`, şema122/0. Atomik davet/parola düzeltmesi CI40390600764üçiş/356PostgreSQLtesti, exactstaging/tazeyedek/kurtarma sonrası yayımlandı. Coolifytoqnlyqqdou4kgufmblabdfaSuccess/Finished; gerçek27eimajları ve üçhost statik/runtime/anonim sınırlar geçti. Kanıt: `tests/reports/activation-atomicity-production-release-20261026.md`.
+
+Normal Santa portalı27Ekim kontrolünde loginFormgösteriyor. Bu gözlem önceki kanıtlı7/10adımı geri almaz; kalan imza/operatör/çıkış ve Farma/çapraz canlı GET-PUT/Demo3owner kabulünü de tamamlamaz. Kullanıcıdan tekrarMFAistenmedi; saklanmış kurtarma kodları kullanılmadı. Gerçek merchant hesabı yok. Alttaki9585ve “düzeltme canlı değil” kayıtları tarihsel aşamadır.
+
+## 26 Ekim 2026 — güncel teknik yayın ve açık P0 kabulü
+
+Canlı web/ana sayfa **9585fae1d97980f861dbe519252bc1c422230476**, şema **122/0**. Kurulum rehberi, önceki e-posta bildirim geri alma düzeltmeleri ve PDF/e-posta özellikleri yayımlı. Son exactCI40379203209üçiş başarılı; taze SQLrestore/95tablo koruması ve143MBkurtarma sonrası Coolifyagpas6gyxqytnjbriqb20gppSuccess/Finished. Üçhostsağlık, imaj/source/CSS ve anonim yetki sınırları doğrulandı; bu gerçek müşteri tamamlama değildir. Kanıt: tests/reports/onboarding-production-release-20261026.md.
+
+Yeni P0-E hata testi davet etkinleştirmede kısmi parola kaydını ve gizlenen başarı mesajını ortaya çıkardı; yerel6/6API ve Chromium regresyonu geçti, bu yeni düzeltme henüz canlıda değil. Kanıt: tests/reports/activation-atomicity-20261026.md. Kullanıcı iyzico hesabı olmadığını doğruladı; gerçek ödeme ve Bölüm20'nin açık müşteri/imza/MFA adımları tamamlanmadı. Aşağıdaki müşteri gözlemleri son bilinen tarihsel kanıtlardır; yeniden yapılmış gibi sayılmaz.
+
+## 26 Ekim 2026 — önceki PDF/e-posta yayını kabul durumu
+
+Canlı web/ana sayfa **5018bc595684fe4410a9412755b39b2ada9cde0b**, şema **122/0**. Tam CI40296954613 üç işte başarılı; exact staging, iki SQL uygulamasında94 mevcut tablonun özgün alanları korunması, taze091423Z SQL yedeği,141MB092057Z rollback ve092201Z dosya/imaj kurtarma sonrası Coolify **zsmt40hqy0qdjaha4eiu5mab Success/Finished**. Gerçek imajlar/DB sağlığı ve dış üç-host HTTPS doğrulandı. PDF indirme ve açık onaylı/yinelenmeyen e-posta gönderimi yayımlandı. Yeni belge uçları anonim401; şirket HTML ve8görsel kaynağı hash eşit;portal tam ekran aç/kapat geçti. Sekiz plan/kapalı checkout-deneme sınırı korundu. Kanıt: `tests/reports/production-handover-pdf-email-release-20261026.md`. Gerçek Santa imzası/PDF teslimi, operatör/Farma/iki yönlü canlı izolasyon,Demo3 normalowner,iyzico kabulü açık;24saat izleme planı mevcut. Tam hedef tamamlanmadı.
+
+Santa, Farma ve Demo3 aktiftir. Santa normal sahibi kullanıcı tarafından etkinleştirildi ve MFA kuruldu. Bölüm 20.2'nin 1, 2, 3, 5, 6, 7, 9 adımları kanıtlıdır (7/10); imza/PDF/e-posta, operatör normal girişi/yetki ve çıkış adımları tamamlanmadı. Aktif teslimi içeren `ZMB-20261025-a11cc2306` belgesi imzasızdır. Operatör erişim iletisi Microsoft SMTP tarafından kabul edildi; inbox konumu doğrulanmadı. Kanıt: `tests/reports/santa-e2e-20261025/normal-owner-asset-maintenance.md`, `license-csv-archive-20261026.md`, `operator-handover-preparation-20261026.md`.
+
+Kullanıcı şu an Farma MFA adımını yapamıyor; yeni kod istenmedi. Gerçek Farma tam kabulü, iki yönlü canlı GET/PUT 404/403 saldırı testi, Demo3 normal owner kabulü ve gerçek iyzico ödemesi hâlâ açık. Yanlış hostun geçerli ortak çerezi silmesi gerçek Identity/PostgreSQL testinde yeniden üretildi; düzeltme 5/5 izole senaryoda geçti. Bu, canlı tenant izolasyon kabulünün yerine sayılmaz. SMTP artık uygulama parolası engelinde değildir; Google relay gerçek iletileri teslim ediyor.
+
+## 25 Ekim 2026 — gerçek SMTP teslimatı canlıda doğrulandı
+
+Kullanıcı onayıyla Google Workspace tek sunucu IPv4/kayıtlı kullanıcı/TLS relay kuralı etkin. Coolify p0flhitgplemaxbk2548ll8a Success/Finished; aynı124 SHA, runtime160415, şema121/0, üç host200ready. Normal uygulama parola yenileme iletisi admin posta kutusuna19:10:59 TRT Google günlüğünde teslim1/1; parola veya MFA değişmedi. SMTP artık eski uygulama parolası engelinde değildir. Gerçek iyzico, Santa davet/aktivasyon/normal owner ve tam Bölüm20 açık. Kanıt: tests/reports/google-relay-production-acceptance-20261025.md. Aşağıdaki SMTP eksikliği kayıtları tarihseldir.
+
+## 25 Ekim 2026 — Demo3 geri alındı, gerçek destek oturumu kabulü geçti
+
+Kullanıcının kritik doğrulaması sonrası Demo3 normal akıştan geri alındı ve ayrı gerekçeli işlemle etkinleştirildi; Demo3/Farma/Santa üçü de aktif. Demo3 sahibinin rolüyle 15 dakikalık yönetici destek oturumu gerçek demo3.envantertr.com üzerinde açıldı; sarı destek bandı görüldü, platform Genel Bakışına dönüldü. CompanyRestored, CompanyReactivated, ImpersonationStarted/Ended audit kayıtları doğrulandı. Bu normal owner girişi veya canlı GET/PUT izolasyon saldırı kabulü değildir. SMTP/Google kurulumu değiştirilmedi; gerçek teslimat/ödeme ve tam Bölüm 20 hâlâ açık. Kanıt: tests/reports/santa-e2e-20261025/README.md ek kabul bölümü. Aşağıdaki çöp kutusu/bekleyen doğrulama başlıkları tarihsel durumdur.
+
+## 25 Ekim 2026 — gerçek Santa/Demo3 yönetim kabulü
+
+Normal platform girişinden sonra Santa ve Demo3, 15 günlük İşletme 4 kullanıcı demosu olarak ürün formuyla oluşturuldu. Her ikisinde davet e-postası gönderilemedi. Demo3 normal Sil akışıyla çöp kutusuna taşındı; Santa/Farma kapsamındaki 80 tablo ile şirket ve ortak kimlik projeksiyonları dahil 82 karşılaştırma eşit. İki oluşturma ve bir silme audit kaydı görüldü. Geri alma, 10 dakikalık yetki süresi dolduğu için tamamlanmadı: Demo3 çöp kutusunda/pasif; Santa/Farma aktif. Santa sahibinin e-postası doğrulanmamış. Owner girişleri, canlı GET/PUT izolasyonu, support kabulü, gerçek SMTP/ödeme ve tam Bölüm 20 açık. Kanıt: tests/reports/santa-e2e-20261025/README.md. Aşağıdaki önceki şirket varlığı kayıtları tarihsel durumdur.
+
+## 25 Ekim 2026 — güncel canlı PUT ve izolasyon sürümü
+
+Canlı web/ana sayfa **124b2d1e93af2a13c393d68353c271671c856de8**, şema **121/0**. Tam CI 40158737966 üç işte başarılı; gerçek izole staging, taze 080433Z SQL yedeği, 140 MB 080518Z rollback, 080618Z dosya/imaj provası ve ayrı DB'de 95 tablo sayımı eşitliği sonrası Coolify **8eyikaefpne2tcfuetcloj3n Success/Finished**. Gerçek imaj etiketleri doğrulandı. İlk Farma 10 saniyelik gözlem zaman aşımı bağımsız HTTPS ve iki-host probe ile yeniden kontrol edildi; 200 ready/121/0. 8 plan ve 8 görsel/galeri kaynağı korundu. Checkout eksik sağlayıcı nedeniyle kapalı. Santa/Demo3 şirketleri henüz yok; normal provisioning ve gerçek Bölüm 20/SMTP/ödeme kabulü açık. 24 saatlik gözlem planı var, 24 saat tamamlandı iddiası yok. Kanıt: tests/reports/production-asset-put-release-20261025.md. Önceki başlıklar tarihsel kayıttır.
+
+## 25 Ekim 2026 — güncel canlı firma silme/geri alma sürümü
+
+Canlı web ve ana sayfa **6198ef6bc424ac44e9e74c9ab39357b2d6c162b9**, SQL şeması **121**, apex/Farma HTTPS ready ve 0 bekleyen. CI 40135536734 üç işte başarılı; gerçek izole staging, iki SQL uygulamasında 94 veri tablosunun özgün alan içeriklerinin korunması, güncel 023647Z SQL/medya/anahtar/imaj yedeği ve ayrı geri dönüş provası sonrası Coolify q7up7i4mglpe1w1ismqpnmzn yayını Success/Finished. Firma çöp kutusu/geri alma ve önceki demo/MFA özellikleri sunuluyor. 8 plan ve istenen görseller kaynak hash'leriyle korundu. Checkout sağlayıcı eksikliği nedeniyle kapalı; gerçek SMTP/ödeme ve Bölüm 20 müşteri kabulü tamamlanmadı. Ana dala merge veya tam Hedef tamamlanması iddia edilmiyor. Kanıt: tests/reports/production-company-deletion-release-20261025.md. Aşağıdaki sürümler tarihsel kayıttır.
+
+## 25 Ekim 2026 — önceki canlı demo ve MFA sürümü
+
+Canlı web/ana sayfa 5790980f8f8a298b720287260a37b7f972bd1e57, şema 120/0, apex ve Farma HTTPS health 200/ready. Tam CI 40129797684 3/3 success; gerçek staging ve hemen önceki bf3ed6d imajlarını içeren güncel SQL/medya/anahtar/imaj yedeği, ayrı 95 tablo restore sayımı ve dosya/imaj provası sonrası Coolify esw998lnesfol9swvgxwq3li yayını başarılı. MFA giriş kanıtı ve gerekçeli süreli demo oluşturma canlıda; yeni demo kontrolü sunulan platform HTML’de doğrulandı. 8 yıllık Cloud planı yayımlı, checkout sağlayıcı eksikliği nedeniyle kapalı. Canlı yönetici oturumu giriş ekranında; yeni OTP istenmedi. Gerçek şirket oluşturma/müşteri işlemleri ve SMTP/iyzico/Bölüm 20 kabulü tamamlanmadı; ana dala merge iddia edilmiyor. Kanıt: tests/reports/production-demo-release-20261024.md ve 25 Ekim canlı probe logları. Aşağıdaki önceki canlı sürüm notları tarihsel kayıttır.
+# V1 durum iddiaları — kanıt denetimi
+
+**Denetim tarihi:** 23 Ekim 2026
+**Kaynak ağacı:** `feat/verified-cloud-trials-20261021`, HEAD `036b52a654da6cda87f7dec15285373303f4f9e5`
+**Kapsam:** `PROJECT-STATUS.md`, `PRODUCT-COVERAGE.md`, `ROADMAP.md` içindeki yüzde iddiaları; ilişkili kod/test kayıtları; salt-okunur canlı satış ve şema durumu.
+
+## Sonuç
+
+Bu üç dokümandaki yüzdeler güncel V1 tamamlanma ölçüsü değildir. `PROJECT-STATUS.md` içinde yüzde bulunan 11 satırın, `PRODUCT-COVERAGE.md` içindeki 2 satırın tamamı 15–16 Ekim tarihli rapor veya geçmiş yerel ölçümleridir. `ROADMAP.md` (300 satır) yüzde iddiası içermiyor. Bu çalışma ağacında bu eski yüzde/puanları üreten bir ilerleme sayfası veya güncel hesaplayıcı bulunamadı. Dolayısıyla bu sayılar 23 Ekim’deki kod, canlı yayın veya müşteri kabulü hakkında güncel kanıt sunmaz.
+
+Canlı yönetici girişi ve maskeli ekran görüntüsü bu denetimde de alınmadı. Bilgisayar-kullanım güvenlik yönergesi kullanıcı kimlik doğrulama pencerelerinin otomasyonunu yasakladığından, giriş bilgileri forma gönderilmedi. P0-A'nın yüzde iddialarına ilişkin kaynak denetimi ve salt-okunur canlı sağlık kontrolü tamamlandı; yönetici ekranı adımı **ENGELLENDİ** kaldı.
+
+## Yüzde iddiaları
+
+| Kaynak | Tarihsel iddia | Kod/test bağı | 23 Ekim durumu |
+|---|---|---|---|
+| `PROJECT-STATUS.md:63` | 88 izlenen / 81 kapsam / 17 tamamlanan; 67,06% eşit ağırlıklı puan | Platform oturum verisi bugün de `PlatformEndpoints.cs:362-422` içinde; kabul testi `TenantSessionAcceptanceTests.cs:4767` | Puan ve payda eski rapor anlık görüntüsüdür. Güncel ölçüm kodu veya bu yüzdeleri yeniden üreten rapor bulunamadı. Oturum işlevi için geçmişte test kaydedilmiş; bu denetimde yeniden çalıştırılmadı. |
+| `PROJECT-STATUS.md:64` | 87/80/16; 66,65% | Sistem sağlığı endpoint’i `PlatformEndpoints.cs:91` ve UI `platform-admin.html:148,249`; test `TenantSessionAcceptanceTests.cs:4734` | İşlevin kod/test izi mevcut; yüzde tarihsel rapor sayacıdır. Mevcut çalışma ağacında 100 migration varsayımı güncel değil. |
+| `PROJECT-STATUS.md:572` | 84 kapsam maddesi, 13/13 tamamlanan, 65,35% | Bu dalda ilgili ilerleme raporu UI’si ve 13 satırlı güncel kabul listesi bulunamadı. | Tarihsel Chromium sonucu; güncel V1 tamamlanma göstergesi olarak doğrulanamaz. |
+| `PROJECT-STATUS.md:573` | 13/13 filtre, gösterim 65% | Aynı rapor UI’si/kapsam kaynağı bu dalda yok. | Tarihsel tarayıcı gözlemi; bugünkü kod için tekrar üretilebilir kanıt yok. |
+| `PROJECT-STATUS.md:586` | 85 toplam, 78 kapsam, 14 tamamlanan; 65,79% | Metin 77 kaynak doğrulayıcısı ve kısmi Chromium senaryosu kaydediyor; bugünkü hesaplayıcı/çıktı dosyası yok. | Tarihsel araç sayısı; mevcut kod/test durumunu veya canlı yayını ölçmüyor. |
+| `PROJECT-STATUS.md:593` | Yerel çalışma durumu %60’tan %65’e düzeltildi | Metindeki yerel migration sayısı 93/96 ve rapor UI’si mevcut değil. | Yerel puan eski anlık görüntü; güncel tam puan hesaplanamaz. |
+| `PROJECT-STATUS.md:608` | 87/80/16; 66,65% (başlık 67%) | Aynı oturum ve sağlık endpoint’leri yukarıda; bu satır tarihsel pano hesabını anlatıyor. | Rapor tekrar sayımı ve geçmiş oran; güncel ürün kapsaması değil. |
+| `PROJECT-STATUS.md:702` | 110 izlenen, 103 kapsam, 39 tamamlanan (%37,86); tahmin %74,10 | Yerel rapor/snapshot kodu bu dalda yok. | Tarihsel tahmin; güncel kanıt bulunmuyor. |
+| `PROJECT-STATUS.md:708` | 111 izlenen, 104 kapsam, 40 tamamlanan (%38,46); tahmin %74,35 | Yerel saatlik rapor snapshot’ı bu dalda yok. | Tarihsel tahmin; güncel kanıt bulunmuyor. |
+| `PROJECT-STATUS.md:721` | 113 izlenen, 106 kapsam, 42 tamamlanan (%39,62); tahmin %74,83 | İlgili geçmiş rapor UI’si bu dalda yok. | Tarihsel tahmin; güncel kanıt bulunmuyor. |
+| `PROJECT-STATUS.md:727` | 114 izlenen, 107 kapsam, 43 tamamlanan (%40,19); tahmin %75,07 | Satır hosted Chromium ve 80 verifier’ın eski çalışmasını kaydediyor; bugünkü V1 raporu değil. | Tarihsel test/puan kaydı; güncel CI veya tamamlanma kanıtı sayılamaz. |
+| `PRODUCT-COVERAGE.md:26` | 87/80/16; 66,65% | Sistem sağlığı kodu ve testi `PlatformEndpoints.cs:91`, `platform-admin.html:148,249`, `TenantSessionAcceptanceTests.cs:4734` | Tarihsel, aynı eski rapor sayacı; P0 ticari kapıları açık. |
+| `PRODUCT-COVERAGE.md:675` | 85 kapsam maddesi içinden 66,23% | Model ayrıntısı endpoint’i `AssetModelDetailEndpoints.cs:8-10`; tenant kabul testi `TenantSessionAcceptanceTests.cs:17855`; kaynak denetimi `Verify-AssetModelDetailsUi.mjs` | Özellik izi mevcut fakat eski verifier bu dalda başarısız (beklediği Chromium dizesi yok). Bu nedenle tarihsel 66,23% ve model özelliğinin bugünkü tarayıcı kabulü doğrulanmış sayılamaz. |
+| `ROADMAP.md` | Yüzde iddiası yok | 300 satır tarandı. | Yüzde denetimi gerekmiyor. |
+
+## Güncel doğrulama
+
+- Kaynak çalışma ağacı: **119 EF migration kimliği**; `origin/main` **118**. Tek fark PR #25'teki `20261023190000_AddExistingCompanyCheckoutContext` migration'ı ve model snapshot güncellemesidir.
+- Salt-okunur canlı `GET https://envantertr.com/api/status` ve `GET https://firma.envantertr.com/api/status`: ikisi de HTTP 200 `ready`, **118 migration / 0 bekleyen**. Coolify terminalindeki production PostgreSQL konteynerinde `BEGIN READ ONLY` sorgusuyla `__EFMigrationsHistory` listesi ayrıca karşılaştırıldı: canlı ve `origin/main` aynı **118** benzersiz migration kimliğine, aynı ilk/son kimliğe ve sıralı liste MD5 `c8694e4a153c5f81d5cface1e0c9f366` değerine sahip. PR'daki 119. migration canlıya uygulanmadı. Ayrıntı: `tests/reports/p0b-migration-identity-acceptance-20261023.md`.
+- Salt-okunur canlı `GET /api/plans`: HTTP 200, **0 yayımlı plan**. `GET /api/checkout/status`: HTTP 200, `available:false`. Satış/ödeme hazır değil.
+- `036b52a654da6cda87f7dec15285373303f4f9e5` PR #25 taslak dalında. Tam GitHub Actions run `40008494630` bu SHA için üç işi **3/3 success** tamamladı. Gerçeklik denetimi commit'i `217261746e62a5f6debbe6010b71e40a033c7b2d` için run `40019065157` de üç işi **3/3 success** tamamladı. Yerel hosted Chromium acceptance exit 0'dır; bu gerçek iyzico veya yönetici oturum kabulü değildir.
+- Yönetici canlı oturum ve ekran görüntüsü: **ENGELLENDİ**; bilgisayar-kullanım aracı kimlik doğrulama pencerelerini otomatikleştiremez. Parola araca gönderilmedi ve ekran görüntüsü alınmadı.
+
+## 23 Ekim — sonraki düzeltme ve kabul
+
+İlk denetimde başarısız bulunan iki kaynak doğrulayıcısı ve platform Chromium kotasız-Cloud varsayımı düzeltildi. Onaylı paketlerde kullanıcı kotası korunuyor; tarayıcı testi dört kullanıcı limitinin POST gövdesinde ve `4 / 4` kullanımında gösterildiğini doğruluyor. Model ayrıntısı denetimi görünür pencere, doğru özet ve satın alma siparişini ayrı ayrı denetliyor. Üç kaynak doğrulayıcısı ve `platform-admin-members.mjs` / `asset-detail-actions.mjs` Chromium senaryoları exit 0 verdi. Kanıt: `tests/reports/p0-catalog-browser-contract-acceptance-20261023.md`. Bu kayıt yalnız söz konusu eski test uyumsuzluklarını kapatır; canlı müşteri kabulü, satış kapıları ve genel V1 tamamlanması hâlâ açık.
+
+## Denetim komutları
+
+- `rg` ile üç dokümandaki yüzde ifadeleri sayıldı: 11 + 2 + 0 satır.
+- Kaynak/test taraması: platform yönetici oturumları, sistem sağlığı ve varlık modeli ayrıntısı için yukarıdaki C# endpoint, UI ve xUnit izleri bulundu.
+- Canlı API kontrolleri salt-okunur HTTP GET’tir; hesap, veri veya yapılandırma değiştirilmedi.
+
+**P0-A sonucu:** Yüzde iddialarının tamamı tarihsel; güncel V1 tamamlanmasını kanıtlamıyor. Dağıtılmış canlı migration kümesinin 118 kimliği `origin/main` ile eşleşiyor; release adayı bir ek migration içeriyor. CI yeşil olsa da yayımlı plan yok, checkout kullanılamıyor ve gerçek iyzico/SMTP kabulü tamamlanmadı. Yönetici ekranı/giriş adımı, Windows bilgisayar-kullanım aracının kimlik doğrulamasını otomatikleştirmemesi nedeniyle **ENGELLENDİ**. Yeşil CI'dan aday kodun veya checkout migration'ının canlıya alındığı sonucu çıkarılmamalı.
+
+## 24 Ekim — yeni destek oturumu migration adayı
+
+Kaynak migration sayısı artık 120: tarihsel canlı 118 kimlik listesine ExistingCompanyCheckoutContext ve PlatformImpersonationSessions eklenir. Her iki Up yalnız nullable alanlar/constraint/index ekler. İzole 118 → 120 idempotent SQL kabulü özgün satır/alan SHA-256 eşitliğiyle 1/1 geçti; üretim yedeği/staging değildir. Salt-okunur canlı GET kontrolü apex/firma 118/0 ready, public plan 0 ve checkout kapalı gösteriyor. Anahtarlı SSH reddedildi; canlı DB/ayar/deploy değişmedi. Güncel kanıt: tests/reports/current-release-migration-acceptance-20261024.md.
+
+## 24 Ekim 2026 — gerçek yedek, geri dönüş ve staging
+
+Mevcut Coolify oturumuyla erişim sağlandı; SSH/API erişimi engeli bu çalışma için çözüldü. Taze 142 MB geri dönüş paketi doğrulandı; gerçek dump ayrı DB'ye geri yüklendi (95 tablo sayımı eşit). 118→120 exact SQL ve tekrarında 94 veri tablosunun özgün alan/satırları korundu. Aday staging imajları derlendi; yalnız internal ağda, dış port olmadan 11 temel HTTP/güvenlik kontrolü geçti. ae875b6 CI 3/3 success (40073522201). Canlı 118/0 olarak kaldı; dağıtım yapılmadı. Tam kimlik doğrulamalı müşteri/provider/Bölüm 20 kabulü açık. Kanıt: tests/reports/real-server-staging-acceptance-20261024.md ve altı Coolify ekran görüntüsü.

@@ -1,0 +1,20 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Email proof must be removed from the address immediately.
++ actual - expected
+
++ '#emailToken=synthetic-email-proof'
+- ''
+
+    at file:///acceptance/hosted-checkout.mjs:133:10 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: '#emailToken=synthetic-email-proof',
+  expected: '',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

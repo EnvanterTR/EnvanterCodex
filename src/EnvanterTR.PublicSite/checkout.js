@@ -130,8 +130,15 @@
     }
   };
 
+  const verificationTranslations = {
+    tr: { verifyHelp: 'Ödemeden önce hesap e-postanızı doğrulayın. Bağlantı 30 dakika geçerlidir; bu adım ödeme almaz.', verifySend: 'Doğrulama bağlantısı gönder', verifyConfirm: 'Bu e-postayı doğrula', verifyChange: 'E-postayı değiştir', verifySent: 'Bağlantı gönderildi. E-postadaki bağlantıyı açıp doğrulamayı tamamlayın.', verifyDone: 'E-posta doğrulandı. Fatura bilgilerini tamamlayıp ödemeye devam edebilirsiniz.', verifyInvalid: 'Bağlantı geçersiz veya süresi dolmuş. Yeni bağlantı isteyin.', verifyError: 'E-posta doğrulaması tamamlanamadı. Daha sonra tekrar deneyin.' },
+    en: { verifyHelp: 'Verify your account email before payment. The link lasts 30 minutes; this step does not charge you.', verifySend: 'Send verification link', verifyConfirm: 'Verify this email', verifyChange: 'Change email', verifySent: 'Link sent. Open the email link and confirm your address.', verifyDone: 'Email verified. Complete billing details and continue to payment.', verifyInvalid: 'The link is invalid or expired. Request a new link.', verifyError: 'Email verification could not be completed. Try again later.' },
+    mk: { verifyHelp: 'Потврдете ја е-поштата пред уплата. Врската важи 30 минути; овој чекор не наплаќа.', verifySend: 'Испрати врска за потврда', verifyConfirm: 'Потврди ја е-поштата', verifyChange: 'Промени е-пошта', verifySent: 'Врската е испратена. Отворете ја од пораката и потврдете.', verifyDone: 'Е-поштата е потврдена. Пополнете ги податоците и продолжете со уплата.', verifyInvalid: 'Врската е неважечка или истечена. Побарајте нова.', verifyError: 'Потврдата не успеа. Обидете се подоцна.' },
+    ru: { verifyHelp: 'Подтвердите адрес перед оплатой. Ссылка действует 30 минут; этот шаг не списывает деньги.', verifySend: 'Отправить ссылку', verifyConfirm: 'Подтвердить адрес', verifyChange: 'Изменить адрес', verifySent: 'Ссылка отправлена. Откройте её из письма и подтвердите адрес.', verifyDone: 'Адрес подтверждён. Заполните платёжные данные и продолжите.', verifyInvalid: 'Ссылка недействительна или истекла. Запросите новую.', verifyError: 'Не удалось подтвердить адрес. Повторите позже.' },
+    uk: { verifyHelp: 'Підтвердьте адресу перед оплатою. Посилання діє 30 хвилин; цей крок не стягує кошти.', verifySend: 'Надіслати посилання', verifyConfirm: 'Підтвердити адресу', verifyChange: 'Змінити адресу', verifySent: 'Посилання надіслано. Відкрийте його з листа й підтвердьте адресу.', verifyDone: 'Адресу підтверджено. Заповніть платіжні дані та продовжте.', verifyInvalid: 'Посилання недійсне або прострочене. Запросіть нове.', verifyError: 'Не вдалося підтвердити адресу. Спробуйте пізніше.' }
+  };
   const language = localStorage.getItem('envantertr-home-language') || 'tr';
-  const copy = translations[language] || translations.tr;
+  const copy = { ...(translations[language] || translations.tr), ...(verificationTranslations[language] || verificationTranslations.tr) };
   const $ = selector => document.querySelector(selector);
   const form = $('#checkoutForm');
   const fields = $('#checkoutFields');
@@ -139,6 +146,24 @@
   const submit = $('#checkoutSubmit');
   const feedback = $('#checkoutFeedback');
   const newAttempt = $('#newAttempt');
+  const sendVerification = $('#sendEmailVerification');
+  const confirmVerification = $('#confirmEmailVerification');
+  const changeEmail = $('#changeVerifiedEmail');
+  const verificationFeedback = $('#emailVerificationFeedback');
+  let pendingEmailToken = null;
+  let emailVerificationToken = null;
+  const consumeEmailFragment = () => {
+    const token = new URLSearchParams(location.hash.slice(1)).get('emailToken');
+    if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+    if (!token) return;
+    pendingEmailToken = token; emailVerificationToken = null;
+    verificationFeedback.textContent = copy.verifyHelp;
+    feedback.textContent = '';
+    confirmVerification.hidden = false; sendVerification.hidden = false; changeEmail.hidden = true;
+    form.elements.ownerEmail.readOnly = false; submit.disabled = true;
+  };
+  window.addEventListener('hashchange', consumeEmailFragment);
+  consumeEmailFragment();
   const params = new URLSearchParams(location.search);
   const planId = params.get('planId');
   let plan = null;
@@ -249,7 +274,10 @@
       }
       term = Number(plan.annualPrice) > 0 ? 'annual' : 'monthly';
       $('#planName').textContent = plan.name;
-      $('#planDescription').textContent = plan.description || copy.unlimited;
+      $('#planDescription').textContent = plan.description || '';
+      $('#planUserLimit').textContent = plan.maxLoginUsers === null ? copy.unlimited :
+        Number.isSafeInteger(plan.maxLoginUsers) && plan.maxLoginUsers > 0
+          ? new Intl.NumberFormat(document.documentElement.lang).format(plan.maxLoginUsers) : '—';
       refreshPrice();
       $('#checkoutLayout').classList.remove('hidden');
       if (!paymentAvailable) {
@@ -264,12 +292,58 @@
         return;
       }
       fields.disabled = false;
-      submit.disabled = false;
+      submit.disabled = !emailVerificationToken;
       setNotice(language === 'tr' ? 'Plan fiyatı sunucudan yüklendi. Form gönderilmeden ödeme yapılandırması ve paket geçerliliği kontrol edildi.' : 'The server loaded the plan price and verified checkout availability before collecting or sending your details.', 'success');
     } catch (error) {
       setNotice(error.message || copy.loadError, 'error');
     }
   }
+
+  async function verificationPost(path, data) {
+    const csrfResponse = await fetch('/api/session/csrf', { credentials: 'same-origin', cache: 'no-store' });
+    if (!csrfResponse.ok) throw new Error(copy.verifyError);
+    const csrf = await csrfResponse.json();
+    const response = await fetch(path, { method: 'POST', credentials: 'same-origin', cache: 'no-store',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf.requestToken }, body: JSON.stringify(data) });
+    if (!response.ok) throw new Error(response.status === 400 ? copy.verifyInvalid : copy.verifyError);
+    return response.json();
+  }
+  sendVerification.addEventListener('click', async () => {
+    if (!paymentAvailable || !plan || !form.elements.ownerEmail.reportValidity()) return;
+    const pendingAtStart = pendingEmailToken;
+    sendVerification.disabled = true;
+    try {
+      await verificationPost('/api/checkout/email/request', { email: form.elements.ownerEmail.value.trim(), planId: plan.id });
+      if (pendingEmailToken !== pendingAtStart || emailVerificationToken) return;
+      pendingEmailToken = null; confirmVerification.hidden = true;
+      verificationFeedback.textContent = copy.verifySent;
+    } catch (error) { if (pendingEmailToken === pendingAtStart && !emailVerificationToken) verificationFeedback.textContent = error.message; }
+    finally { sendVerification.disabled = false; }
+  });
+  confirmVerification.addEventListener('click', async () => {
+    if (!paymentAvailable || !pendingEmailToken || !plan) return;
+    const confirmingToken = pendingEmailToken;
+    confirmVerification.disabled = true;
+    try {
+      const verified = await verificationPost('/api/checkout/email/confirm', { token: confirmingToken });
+      if (pendingEmailToken !== confirmingToken) return;
+      if (verified.planId !== plan.id || typeof verified.email !== 'string') throw new Error(copy.verifyInvalid);
+      emailVerificationToken = confirmingToken;
+      form.elements.ownerEmail.value = verified.email;
+      form.elements.ownerEmail.readOnly = true;
+      confirmVerification.hidden = true; sendVerification.hidden = true; changeEmail.hidden = false;
+      verificationFeedback.textContent = copy.verifyDone;
+      submit.disabled = false;
+    } catch (error) { if (pendingEmailToken === confirmingToken) verificationFeedback.textContent = error.message; }
+    finally { confirmVerification.disabled = false; }
+  });
+  changeEmail.addEventListener('click', () => {
+    emailVerificationToken = null; pendingEmailToken = null;
+    form.elements.ownerEmail.readOnly = false;
+    changeEmail.hidden = true; sendVerification.hidden = false; submit.disabled = true;
+    verificationFeedback.textContent = copy.verifyHelp;
+    form.elements.ownerEmail.focus();
+  });
 
   $('#monthlyTerm').addEventListener('click', () => { if (Number(plan?.monthlyPrice) > 0) { term = 'monthly'; couponCode = null; couponDiscount = 0; refreshPrice(); if ($('#couponCode').value.trim()) quoteCoupon(); } });
   $('#annualTerm').addEventListener('click', () => { if (Number(plan?.annualPrice) > 0) { term = 'annual'; couponCode = null; couponDiscount = 0; refreshPrice(); if ($('#couponCode').value.trim()) quoteCoupon(); } });
@@ -289,7 +363,7 @@
     event.preventDefault();
     feedback.textContent = '';
     newAttempt.classList.remove('show');
-    if (!paymentAvailable || !plan || selectedPrice() <= 0) return;
+    if (!paymentAvailable || !plan || !emailVerificationToken || selectedPrice() <= 0) return;
     if (!form.reportValidity()) { feedback.textContent = copy.fillFields; return; }
 
     submit.disabled = true;
@@ -313,7 +387,8 @@
       term,
       dataProcessingAcknowledged: data.get('dataProcessingAcknowledged') === 'on',
       dataProcessingNoticeVersion: noticeVersion,
-      couponCode
+      couponCode,
+      emailVerificationToken
     };
 
     try {
@@ -329,6 +404,14 @@
       try { result = await response.json(); } catch { /* Keep safe generic message. */ }
       if (!response.ok) {
         feedback.textContent = result.message || result.detail || (result.errors ? Object.values(result.errors).flat().join(' ') : copy.loadError);
+        if (response.status === 428 && result.code === 'checkout_email_verification_required') {
+          emailVerificationToken = null; pendingEmailToken = null;
+          form.elements.ownerEmail.readOnly = false;
+          sendVerification.hidden = false; changeEmail.hidden = true; confirmVerification.hidden = true;
+          verificationFeedback.textContent = copy.verifyInvalid;
+          feedback.textContent = copy.verifyInvalid;
+          return;
+        }
         if (response.status === 409) {
           const initializing = (result.message || '').includes('hazırlanıyor');
           feedback.textContent = initializing ? copy.sameAttempt : feedback.textContent;
@@ -349,7 +432,7 @@
       feedback.textContent = error.message || copy.loadError;
       newAttempt.classList.add('show');
     } finally {
-      submit.disabled = !paymentAvailable;
+      submit.disabled = !paymentAvailable || !emailVerificationToken;
       submit.textContent = copy.pay;
     }
   });

@@ -190,6 +190,13 @@ try {
   assert.equal(await card.locator('p').innerText(), publishedPlan.description);
   assert.match(await card.locator('.price-user-quota').innerText(), /^10\s/, 'Published account quota must be shown instead of an unlimited claim.');
   assert.match(await card.getByRole('link').getAttribute('href'), new RegExp(`^/checkout\\.html\\?planId=${publishedPlan.id}$`));
+  publishedPlan.monthlyPrice=0;
+  await page.reload({waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>[...document.querySelectorAll('.price-card a')].some(link=>link.pathname==='/trial.html'));
+  const trialLink=new URL(await card.getByRole('link').getAttribute('href'),baseUrl);
+  assert.equal(trialLink.pathname,'/trial.html');assert.equal(trialLink.searchParams.get('planId'),publishedPlan.id);
+  assert.match(await card.locator('.price-comparison').innerText(),/825/);
+  publishedPlan.monthlyPrice=990;
   await page.goto(`${baseUrl}/checkout.html?planId=${publishedPlan.id}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => !document.querySelector('#checkoutFields').disabled);
   const companyName = page.locator('[name="companyName"]');

@@ -1,0 +1,147 @@
+ Network p0-owner-mail_acceptance Creating 
+ Network p0-owner-mail_acceptance Creating 
+ Network p0-owner-mail_acceptance Created 
+ Network p0-owner-mail_acceptance Created 
+ Container p0-owner-mail-database-1 Creating 
+ Container p0-owner-mail-database-1 Created 
+ Container p0-owner-mail-database-1 Starting 
+ Container p0-owner-mail-database-1 Started 
+ Image p0-owner-mail-acceptance Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 654B 0.1s done
+#1 DONE 0.1s
+
+#2 [internal] load build definition from Dockerfile.security-acceptance
+#2 transferring dockerfile: 871B 0.0s done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for mcr.microsoft.com/dotnet/sdk:10.0
+#3 DONE 0.2s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 134B 0.0s done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 DONE 0.0s
+
+#6 [ 1/11] FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
+#6 resolve mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa 0.1s done
+#6 DONE 0.1s
+
+#5 [internal] load build context
+#5 transferring context: 1.70MB 0.3s done
+#5 DONE 0.3s
+
+#7 [ 2/11] WORKDIR /source
+#7 CACHED
+
+#8 [ 3/11] COPY global.json ./
+#8 CACHED
+
+#9 [ 4/11] COPY src/EnvanterTR.Web/EnvanterTR.Web.csproj src/EnvanterTR.Web/
+#9 CACHED
+
+#10 [ 5/11] COPY tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj tests/EnvanterTR.SecurityAcceptance/
+#10 CACHED
+
+#11 [ 6/11] RUN dotnet restore tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj
+#11 CACHED
+
+#12 [ 7/11] COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
+#12 DONE 0.6s
+
+#13 [ 8/11] RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
+#13 115.7   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+#13 115.9 
+#13 115.9 Build succeeded.
+#13 115.9     0 Warning(s)
+#13 115.9     0 Error(s)
+#13 115.9 
+#13 115.9 Time Elapsed 00:01:54.32
+#13 DONE 116.3s
+
+#14 [ 9/11] COPY tests/EnvanterTR.SecurityAcceptance/ tests/EnvanterTR.SecurityAcceptance/
+#14 DONE 0.1s
+
+#15 [10/11] RUN dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore
+#15 3.886   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+#15 44.69 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 44.69 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 44.69 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 44.69 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 44.95   EnvanterTR.SecurityAcceptance -> /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll
+#15 45.11 
+#15 45.11 Build succeeded.
+#15 45.11 
+#15 45.11 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 45.11 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 45.11 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 45.11 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 45.11     4 Warning(s)
+#15 45.11     0 Error(s)
+#15 45.11 
+#15 45.11 Time Elapsed 00:00:44.34
+#15 DONE 45.2s
+
+#16 [11/11] WORKDIR /source/tests/EnvanterTR.SecurityAcceptance
+#16 DONE 0.1s
+
+#17 exporting to image
+#17 exporting layers
+#17 exporting layers 5.4s done
+#17 exporting manifest sha256:067b25822890185e4de8e028f5f87fe00e5326dda64bbf1f696e650b0b8a757e 0.0s done
+#17 exporting config sha256:69286eee0a46e3c0a9b4dfdc35524b7a296cd0830cd0910d50387d27a64e4a68 0.0s done
+#17 exporting attestation manifest sha256:102133e448ea51b6f2e79e760e168defe32cea7387f20d61111ca86d8a90fc81 0.0s done
+#17 exporting manifest list sha256:f468831a18306cdf98efb6be8a23079edfeefc00ee4d3e3188d8994c992c5a00 0.0s done
+#17 naming to docker.io/library/p0-owner-mail-acceptance:latest done
+#17 unpacking to docker.io/library/p0-owner-mail-acceptance:latest
+#17 unpacking to docker.io/library/p0-owner-mail-acceptance:latest 2.0s done
+#17 DONE 7.6s
+
+#18 resolving provenance for metadata file
+#18 DONE 0.1s
+ Image p0-owner-mail-acceptance Built 
+ Container p0-owner-mail-database-1 Waiting 
+ Container p0-owner-mail-database-1 Healthy 
+ Container p0-owner-mail-acceptance-run-c29dfccd27d7 Creating 
+ Container p0-owner-mail-acceptance-run-c29dfccd27d7 Created 
+Test run for /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.01] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.58]   Discovering: EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:01.11]   Discovered:  EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:01.24]   Starting:    EnvanterTR.SecurityAcceptance
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[35]
+      No XML encryptor configured. Key {ae8be26a-595c-451a-a28c-9cba517083c1} may be persisted to storage in unencrypted form.
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (130ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_Assets_CompanyId_DefaultLocationCatalogId"
+      ' from migration 'AddAssetModelNumbersAndDefaultLocation' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_AuditEntries_OccurredAt"
+      ' from migration 'AddGlobalAuditTimelineIndex' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+warn: Program[0]
+      Paid company owner invitation failed. Company 9aaad6b7-a585-41f5-97cb-0a50d13769b7; error type: InvalidOperationException
+warn: Program[0]
+      Paid company owner invitation retry failed. Company 9aaad6b7-a585-41f5-97cb-0a50d13769b7; error type: InvalidOperationException
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Platform_can_provision_a_paid_cloud_company_owner_and_retryable_invitation(firstDeliveryFails: True) [3 s]
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+[xUnit.net 00:00:53.32]   Finished:    EnvanterTR.SecurityAcceptance
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Platform_can_provision_a_paid_cloud_company_owner_and_retryable_invitation(firstDeliveryFails: False) [2 s]
+
+Test Run Successful.
+Total tests: 2
+     Passed: 2
+ Total time: 55.0757 Seconds

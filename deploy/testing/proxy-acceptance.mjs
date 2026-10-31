@@ -1,6 +1,22 @@
 import assert from 'node:assert/strict';
+import {request as httpRequest} from 'node:http';
+
+const adminRequest=(proxy,host,path)=>new Promise((resolve,reject)=>{
+  const req=httpRequest({hostname:proxy,port:80,path,headers:{Host:host}},response=>{
+    response.resume();response.on('end',()=>resolve({status:response.statusCode,headers:response.headers}));
+  });
+  req.on('error',reject);req.end();
+});
 
 for (const proxy of ['production', 'local']) {
+  for(const host of ['envantertr.com','www.envantertr.com'])
+  for(const path of ['/admin','/admin/','/admin?view=ignored']) {
+    const response=await adminRequest(proxy,host,path);
+    assert.equal(response.status,302,`${proxy} ${host}${path}`);
+    assert.equal(response.headers.location,'/platform-admin.html','Keep redirect relative across TLS offload.');
+    assert.equal(response.headers['x-acceptance-upstream'],'web','Admin entry must reach app upstream, not marketing fallback.');
+    assert.equal(response.headers['x-acceptance-host'],host,'Preserve original root host.');
+  }
   const request = path => fetch(`http://${proxy}${path}`, { headers: { host: 'envantertr.com' } });
   const marketing = await request('/');
   assert.equal(marketing.status, 200);
@@ -12,6 +28,17 @@ for (const proxy of ['production', 'local']) {
   assert.equal(app.headers.get('x-frame-options'), 'DENY');
   assert.equal(app.headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
   assert.match(await app.text(), /id="startAssetCamera"/);
+  const trial = await request('/trial.html');
+  const onboardingStyle = await request('/company-onboarding.css');
+  assert.equal(onboardingStyle.status, 200);
+  assert.match(onboardingStyle.headers.get('content-type'), /text\/css/);
+  assert.match(await onboardingStyle.text(), /\.onboarding-panel/);
+  assert.equal(trial.status, 200);
+  assert.match(await trial.text(), /id="confirmation"/);
+  const trialScript = await request('/trial.js');
+  assert.equal(trialScript.status, 200);
+  assert.match(trialScript.headers.get('content-type'), /javascript/);
+  assert.match(await trialScript.text(), /\/api\/trials\/confirm/);
   for (const path of ['/vendor/qrcodegen.js', '/vendor/zxing-browser-0.2.1.min.js', '/platform-admin-members.js',
     '/platform-admin-subscriptions.js', '/platform-admin-demo-requests.js', '/platform-admin-payment-follow-ups.js', '/report-print.js', '/scheduled-reports.js']) {
     const response = await request(path);

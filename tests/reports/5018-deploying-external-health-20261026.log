@@ -1,0 +1,8 @@
+SOURCE migrations: 122; deployed app reports: 121.
+  Deployed image reports 1 fewer migration(s) than this working tree. Its pending count applies only to the deployed image, not to this working tree.
+READY https://envantertr.com/api/status HTTP 200 (ready)
+  Application and database schema report ready.
+READY https://santa.envantertr.com/api/status HTTP 200 (ready)
+  Application and database schema report ready.
+READY https://farma.envantertr.com/api/status HTTP 200 (ready)
+  Application and database schema report ready.

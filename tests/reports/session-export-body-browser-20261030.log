@@ -1,0 +1,11 @@
+PASS native Response.blob rejects body after session change
+PASS native Response.blob preserves current-session body
+PASS native Response.text rejects body after session change
+PASS native Response.text preserves current-session body
+PASS native Response.arrayBuffer rejects body after session change
+PASS native Response.arrayBuffer preserves current-session body
+PASS native Response.formData rejects body after session change
+PASS native Response.formData preserves current-session body
+PASS native Response.json rejects body after session change
+PASS native Response.json preserves current-session body
+SESSION_EXPORT_BODY_BROWSER 10/10 passed

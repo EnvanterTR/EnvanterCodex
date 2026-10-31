@@ -1,0 +1,41 @@
+{
+  "images": [
+    {
+      "complete": true,
+      "naturalHeight": 1311,
+      "naturalWidth": 1200,
+      "objectFit": "contain",
+      "src": "/assets/images/asset-label-roll-transparent.png"
+    },
+    {
+      "complete": true,
+      "naturalHeight": 1025,
+      "naturalWidth": 1537,
+      "objectFit": "contain",
+      "src": "/assets/images/asset-label-devices.png"
+    },
+    {
+      "complete": true,
+      "naturalHeight": 942,
+      "naturalWidth": 1673,
+      "objectFit": "contain",
+      "src": "/assets/images/asset-label-hardware.png"
+    },
+    {
+      "complete": true,
+      "naturalHeight": 1087,
+      "naturalWidth": 1449,
+      "objectFit": "contain",
+      "src": "/assets/images/asset-label-desktop.png"
+    },
+    {
+      "complete": true,
+      "naturalHeight": 1311,
+      "naturalWidth": 1200,
+      "objectFit": "contain",
+      "src": "/assets/images/asset-label-roll-transparent.png"
+    }
+  ],
+  "viewportHeight": 720,
+  "viewportWidth": 1265
+}

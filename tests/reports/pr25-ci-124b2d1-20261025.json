@@ -1,0 +1,27 @@
+{
+  "checkedAt": "2026-10-25T04:08:10.9785282+00:00",
+  "id": 40158737966,
+  "sha": "124b2d1e93af2a13c393d68353c271671c856de8",
+  "status": "completed",
+  "conclusion": "success",
+  "jobs": [
+    {
+      "id": 121065583698,
+      "name": "Linux tenant security acceptance",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 121065583776,
+      "name": "Linux PostgreSQL tenant acceptance",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 121065583791,
+      "name": "Windows deployment and backup safety",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ]
+}

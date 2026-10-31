@@ -1,0 +1,104 @@
+ Container handover-email-20261026-database-1 Running
+ Container handover-email-20261026-database-1 Waiting
+ Container handover-email-20261026-database-1 Healthy
+ Container handover-email-20261026-acceptance-run-c0129d3aaec3 Creating
+ Container handover-email-20261026-acceptance-run-c0129d3aaec3 Created
+Test run for /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.20]   Discovering: EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:00.38]   Discovered:  EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:00.45]   Starting:    EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:20.21]     EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently [FAIL]
+[xUnit.net 00:00:20.21]       Assert.Equal() Failure: Collections differ
+[xUnit.net 00:00:20.21]       Expected: string[]    ["20261024212238_AddRecoverableCompanyDeletion"]
+[xUnit.net 00:00:20.21]       Actual:   <generated> ["20261024212238_AddRecoverableCompanyDeletion", "20261026083058_AddHandoverEmailAttempts"]
+[xUnit.net 00:00:20.21]                                                                              ↑ (pos 1)
+[xUnit.net 00:00:20.21]       Stack Trace:
+[xUnit.net 00:00:20.21]         /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs(111,0): at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently()
+[xUnit.net 00:00:20.21]         /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs(161,0): at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently()
+[xUnit.net 00:00:20.21]         /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs(161,0): at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently()
+[xUnit.net 00:00:20.21]         /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs(168,0): at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently()
+[xUnit.net 00:00:20.21]         /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs(168,0): at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently()
+[xUnit.net 00:00:20.21]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:20.21]       Output:
+[xUnit.net 00:00:20.21]         Release SQL SHA-256: cddf35fd830861e61d018fb1885185e921bccfdf04934572391a162e1db77b49
+  Failed EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently [19 s]
+  Error Message:
+   Assert.Equal() Failure: Collections differ
+Expected: string[]    ["20261024212238_AddRecoverableCompanyDeletion"]
+Actual:   <generated> ["20261024212238_AddRecoverableCompanyDeletion", "20261026083058_AddHandoverEmailAttempts"]
+                                                                       ↑ (pos 1)
+  Stack Trace:
+     at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently() in /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs:line 111
+   at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently() in /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs:line 161
+   at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently() in /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs:line 161
+   at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently() in /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs:line 168
+   at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently() in /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs:line 168
+--- End of stack trace from previous location ---
+  Standard Output Messages:
+ Release SQL SHA-256: cddf35fd830861e61d018fb1885185e921bccfdf04934572391a162e1db77b49
+
+
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[35]
+      No XML encryptor configured. Key {6048d0df-15ce-4720-8eb5-4ec456b9f1a9} may be persisted to storage in unencrypted form.
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_Assets_CompanyId_DefaultLocationCatalogId"
+      ' from migration 'AddAssetModelNumbersAndDefaultLocation' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_AuditEntries_OccurredAt"
+      ' from migration 'AddGlobalAuditTimelineIndex' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Handover_email_sends_pdf_once_under_parallel_and_replayed_requests [5 s]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+warn: HandoverEmail[0]
+      Handover email attempt 43ae0e38-e5d8-496e-98f8-a2f6f0f70b87 outcome is uncertain: SmtpException.
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Handover_email_uncertain_delivery_never_retries_without_new_explicit_resend [3 s]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Handover_pdf_is_signed_scoped_integrity_checked_and_paginated [2 s]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Employee_handover_documents_snapshot_company_inventory_and_keep_signatures_immutable [3 s]
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+[xUnit.net 00:00:59.85]       Assert.Equal() Failure: Values differ
+[xUnit.net 00:00:59.85]     EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Handover_email_rejects_unauthorized_stale_or_unsigned_delivery_and_insecure_production_transport [FAIL]
+[xUnit.net 00:00:59.85]       Expected: Forbidden
+[xUnit.net 00:00:59.85]       Actual:   OK
+[xUnit.net 00:00:59.85]       Stack Trace:
+[xUnit.net 00:00:59.85]         /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(130,0): at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Handover_email_rejects_unauthorized_stale_or_unsigned_delivery_and_insecure_production_transport()
+[xUnit.net 00:00:59.85]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:59.86]   Finished:    EnvanterTR.SecurityAcceptance
+  Failed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Handover_email_rejects_unauthorized_stale_or_unsigned_delivery_and_insecure_production_transport [2 s]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: Forbidden
+Actual:   OK
+  Stack Trace:
+     at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Handover_email_rejects_unauthorized_stale_or_unsigned_delivery_and_insecure_production_transport() in /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs:line 130
+--- End of stack trace from previous location ---
+
+Total tests: 6
+Test Run Failed.
+     Passed: 4
+     Failed: 2
+ Total time: 1.0110 Minutes
+

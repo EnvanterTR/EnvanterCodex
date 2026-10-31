@@ -1,0 +1,378 @@
+ Network envantertr-security-acceptance-76200bcfd8_acceptance Creating
+ Network envantertr-security-acceptance-76200bcfd8_acceptance Creating
+ Network envantertr-security-acceptance-76200bcfd8_acceptance Created
+ Network envantertr-security-acceptance-76200bcfd8_acceptance Created
+ Container envantertr-security-acceptance-76200bcfd8-database-1 Creating
+ Container envantertr-security-acceptance-76200bcfd8-database-1 Created
+ Container envantertr-security-acceptance-76200bcfd8-database-1 Starting
+ Container envantertr-security-acceptance-76200bcfd8-database-1 Started
+ Image envantertr-security-acceptance-76200bcfd8-acceptance Building
+#1 [internal] load local bake definitions
+#1 reading from stdin 710B 0.1s done
+#1 DONE 0.1s
+
+#2 [internal] load build definition from Dockerfile.security-acceptance
+#2 transferring dockerfile: 1.28kB 0.0s done
+#2 DONE 0.1s
+
+#3 [internal] load metadata for mcr.microsoft.com/dotnet/sdk:10.0
+#3 DONE 0.2s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 134B 0.0s done
+#4 DONE 0.1s
+
+#5 [ 1/14] FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
+#5 resolve mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa 0.1s done
+#5 DONE 0.1s
+
+#6 [internal] load build context
+#6 transferring context: 198.85kB 0.2s done
+#6 DONE 0.2s
+
+#7 [ 3/14] COPY global.json ./
+#7 CACHED
+
+#8 [ 4/14] COPY src/EnvanterTR.Web/EnvanterTR.Web.csproj src/EnvanterTR.Web/
+#8 CACHED
+
+#9 [ 5/14] COPY tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj tests/EnvanterTR.SecurityAcceptance/
+#9 CACHED
+
+#10 [ 2/14] WORKDIR /source
+#10 CACHED
+
+#11 [ 6/14] RUN dotnet restore tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj
+#11 CACHED
+
+#12 [ 7/14] COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
+#12 DONE 1.9s
+
+#13 [ 8/14] RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
+#13 162.8   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+#13 163.0
+#13 163.0 Build succeeded.
+#13 163.0     0 Warning(s)
+#13 163.0     0 Error(s)
+#13 163.0
+#13 163.0 Time Elapsed 00:02:39.56
+#13 DONE 163.4s
+
+#14 [ 9/14] COPY tests/reports/current-release-118-to-120-20261024.sql tests/reports/current-release-118-to-120-20261024.sql.sha256 tests/reports/
+#14 DONE 0.1s
+
+#15 [10/14] COPY tests/reports/company-deletion-120-to-121-20261025.sql tests/reports/company-deletion-120-to-121-20261025.sql.sha256 tests/reports/
+#15 DONE 0.1s
+
+#16 [11/14] COPY tests/reports/handover-email-121-to-122-20261026.sql tests/reports/handover-email-121-to-122-20261026.sql.sha256 tests/reports/
+#16 DONE 0.1s
+
+#17 [12/14] COPY tests/EnvanterTR.SecurityAcceptance/ tests/EnvanterTR.SecurityAcceptance/
+#17 DONE 0.1s
+
+#18 [13/14] RUN dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore
+#18 5.287   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+#18 69.94 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 69.94 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 69.94 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 69.94 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 69.94 /source/tests/EnvanterTR.SecurityAcceptance/TenantHostSessionContinuityAcceptanceTests.cs(35,23): warning CS8600: Converting null literal or possible null value to non-nullable type. [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 69.94 /source/tests/EnvanterTR.SecurityAcceptance/TenantHostSessionContinuityAcceptanceTests.cs(36,27): warning CS8600: Converting null literal or possible null value to non-nullable type. [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 69.94 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(102,20): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 69.94 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(174,9): warning xUnit2029: Do not use Assert.Empty to check if a value does not exist in a collection. Use Assert.DoesNotContain instead. (https://xunit.net/xunit.analyzers/rules/xUnit2029) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 69.94 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(202,9): warning xUnit2029: Do not use Assert.Empty to check if a value does not exist in a collection. Use Assert.DoesNotContain instead. (https://xunit.net/xunit.analyzers/rules/xUnit2029) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 69.94 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(213,9): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 70.51   EnvanterTR.SecurityAcceptance -> /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll
+#18 70.73
+#18 70.73 Build succeeded.
+#18 70.74
+#18 70.74 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 70.74 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 70.74 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 70.74 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 70.74 /source/tests/EnvanterTR.SecurityAcceptance/TenantHostSessionContinuityAcceptanceTests.cs(35,23): warning CS8600: Converting null literal or possible null value to non-nullable type. [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 70.74 /source/tests/EnvanterTR.SecurityAcceptance/TenantHostSessionContinuityAcceptanceTests.cs(36,27): warning CS8600: Converting null literal or possible null value to non-nullable type. [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 70.74 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(102,20): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 70.74 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(174,9): warning xUnit2029: Do not use Assert.Empty to check if a value does not exist in a collection. Use Assert.DoesNotContain instead. (https://xunit.net/xunit.analyzers/rules/xUnit2029) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 70.74 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(202,9): warning xUnit2029: Do not use Assert.Empty to check if a value does not exist in a collection. Use Assert.DoesNotContain instead. (https://xunit.net/xunit.analyzers/rules/xUnit2029) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 70.74 /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.HandoverEmail.cs(213,9): warning xUnit2031: Do not use a Where clause to filter before calling Assert.Single. Use the overload of Assert.Single that accepts a filtering function. (https://xunit.net/xunit.analyzers/rules/xUnit2031) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#18 70.74     10 Warning(s)
+#18 70.74     0 Error(s)
+#18 70.74
+#18 70.74 Time Elapsed 00:01:09.85
+#18 DONE 70.9s
+
+#19 [14/14] WORKDIR /source/tests/EnvanterTR.SecurityAcceptance
+#19 DONE 0.1s
+
+#20 exporting to image
+#20 exporting layers
+#20 exporting layers 6.5s done
+#20 exporting manifest sha256:c162c98878f54af56dabc618ca14343ff21869397d047d4f196d053e7d570437 0.0s done
+#20 exporting config sha256:2a78e8a3e226394ef728aa35f2e374a453c52e017197c102ae7c97ec4225074e 0.0s done
+#20 exporting attestation manifest sha256:7a259f496e302bc08c5323afee2b96989a2aa16d1e7c2b05850aaf9fcb348246 0.0s done
+#20 exporting manifest list sha256:919a8b8e135d477bbf8933cf895f4715c699561a9c353717bdab01703ac5aa7d
+#20 exporting manifest list sha256:919a8b8e135d477bbf8933cf895f4715c699561a9c353717bdab01703ac5aa7d 0.0s done
+#20 naming to docker.io/library/envantertr-security-acceptance-76200bcfd8-acceptance:latest done
+#20 unpacking to docker.io/library/envantertr-security-acceptance-76200bcfd8-acceptance:latest
+#20 unpacking to docker.io/library/envantertr-security-acceptance-76200bcfd8-acceptance:latest 2.8s done
+#20 DONE 9.6s
+
+#21 resolving provenance for metadata file
+#21 DONE 0.1s
+ Image envantertr-security-acceptance-76200bcfd8-acceptance Built
+ Container envantertr-security-acceptance-76200bcfd8-database-1 Waiting
+ Container envantertr-security-acceptance-76200bcfd8-database-1 Healthy
+ Container envantertr-security-acceptance-76200bcfd8-acceptance-run-d8bfba33e361 Creating
+ Container envantertr-security-acceptance-76200bcfd8-acceptance-run-d8bfba33e361 Created
+Test run for /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.01] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.70]   Discovering: EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:01.31]   Discovered:  EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:01.44]   Starting:    EnvanterTR.SecurityAcceptance
+  Passed EnvanterTR.SecurityAcceptance.TenantDataModelScopeTests.New_business_entity_with_a_required_company_identifier_is_allowed [178 ms]
+  Passed EnvanterTR.SecurityAcceptance.TenantDataModelScopeTests.New_business_entity_without_a_required_company_identifier_is_rejected(kind: "nullable") [9 ms]
+  Passed EnvanterTR.SecurityAcceptance.TenantDataModelScopeTests.New_business_entity_without_a_required_company_identifier_is_rejected(kind: "text") [1 ms]
+  Passed EnvanterTR.SecurityAcceptance.TenantDataModelScopeTests.New_business_entity_without_a_required_company_identifier_is_rejected(kind: "missing") [< 1 ms]
+[xUnit.net 00:00:07.32]     EnvanterTR.SecurityAcceptance.TenantDataModelScopeTests.Current_model_keeps_shared_accounts_and_plans_without_changing_the_schema [FAIL]
+[xUnit.net 00:00:07.32]       System.InvalidOperationException : Entity 'Microsoft.AspNetCore.Identity.IdentityPasskeyData' requires a Guid CompanyId or an explicit shared scope.
+[xUnit.net 00:00:07.34]       Stack Trace:
+[xUnit.net 00:00:07.34]         /source/src/EnvanterTR.Web/Data/TenantDataModelScope.cs(30,0): at EnvanterTR.Web.Data.TenantDataModelScope.Validate(IReadOnlyEntityType entity)
+[xUnit.net 00:00:07.34]         /source/src/EnvanterTR.Web/Data/AppDbContext.cs(1591,0): at EnvanterTR.Web.Data.AppDbContext.OnModelCreating(ModelBuilder modelBuilder)
+[xUnit.net 00:00:07.34]            at Microsoft.EntityFrameworkCore.Infrastructure.ModelCustomizer.Customize(ModelBuilder modelBuilder, DbContext context)
+[xUnit.net 00:00:07.34]            at Microsoft.EntityFrameworkCore.Infrastructure.ModelSource.CreateModel(DbContext context, IConventionSetBuilder conventionSetBuilder, ModelDependencies modelDependencies)
+[xUnit.net 00:00:07.34]            at Microsoft.EntityFrameworkCore.Infrastructure.ModelSource.CreateModel(DbContext context, ModelCreationDependencies modelCreationDependencies, Boolean designTime)
+[xUnit.net 00:00:07.34]            at Microsoft.EntityFrameworkCore.Infrastructure.ModelSource.GetModel(DbContext context, ModelCreationDependencies modelCreationDependencies, Boolean designTime)
+[xUnit.net 00:00:07.34]            at Microsoft.EntityFrameworkCore.Internal.DbContextServices.CreateModel(Boolean designTime)
+[xUnit.net 00:00:07.34]            at Microsoft.EntityFrameworkCore.Internal.DbContextServices.get_Model()
+[xUnit.net 00:00:07.34]            at Microsoft.EntityFrameworkCore.Infrastructure.EntityFrameworkServicesBuilder.<>c.<TryAddCoreServices>b__8_4(IServiceProvider p)
+[xUnit.net 00:00:07.34]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+[xUnit.net 00:00:07.34]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+[xUnit.net 00:00:07.35]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+[xUnit.net 00:00:07.35]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+[xUnit.net 00:00:07.35]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+[xUnit.net 00:00:07.35]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+[xUnit.net 00:00:07.35]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+[xUnit.net 00:00:07.35]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+[xUnit.net 00:00:07.35]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+[xUnit.net 00:00:07.35]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+[xUnit.net 00:00:07.35]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+[xUnit.net 00:00:07.35]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.DynamicServiceProviderEngine.<>c__DisplayClass2_0.<RealizeService>b__0(ServiceProviderEngineScope scope)
+[xUnit.net 00:00:07.35]            at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+[xUnit.net 00:00:07.35]            at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+[xUnit.net 00:00:07.35]            at Microsoft.EntityFrameworkCore.DbContext.get_DbContextDependencies()
+[xUnit.net 00:00:07.35]            at Microsoft.EntityFrameworkCore.DbContext.get_ContextServices()
+[xUnit.net 00:00:07.35]            at Microsoft.EntityFrameworkCore.DbContext.get_Model()
+[xUnit.net 00:00:07.35]         /source/tests/EnvanterTR.SecurityAcceptance/TenantDataModelScopeTests.cs(14,0): at EnvanterTR.SecurityAcceptance.TenantDataModelScopeTests.Current_model_keeps_shared_accounts_and_plans_without_changing_the_schema()
+[xUnit.net 00:00:07.35]            at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+[xUnit.net 00:00:07.35]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed EnvanterTR.SecurityAcceptance.TenantDataModelScopeTests.Current_model_keeps_shared_accounts_and_plans_without_changing_the_schema [5 s]
+  Error Message:
+   System.InvalidOperationException : Entity 'Microsoft.AspNetCore.Identity.IdentityPasskeyData' requires a Guid CompanyId or an explicit shared scope.
+  Stack Trace:
+     at EnvanterTR.Web.Data.TenantDataModelScope.Validate(IReadOnlyEntityType entity) in /source/src/EnvanterTR.Web/Data/TenantDataModelScope.cs:line 30
+   at EnvanterTR.Web.Data.AppDbContext.OnModelCreating(ModelBuilder modelBuilder) in /source/src/EnvanterTR.Web/Data/AppDbContext.cs:line 1591
+   at Microsoft.EntityFrameworkCore.Infrastructure.ModelCustomizer.Customize(ModelBuilder modelBuilder, DbContext context)
+   at Microsoft.EntityFrameworkCore.Infrastructure.ModelSource.CreateModel(DbContext context, IConventionSetBuilder conventionSetBuilder, ModelDependencies modelDependencies)
+   at Microsoft.EntityFrameworkCore.Infrastructure.ModelSource.CreateModel(DbContext context, ModelCreationDependencies modelCreationDependencies, Boolean designTime)
+   at Microsoft.EntityFrameworkCore.Infrastructure.ModelSource.GetModel(DbContext context, ModelCreationDependencies modelCreationDependencies, Boolean designTime)
+   at Microsoft.EntityFrameworkCore.Internal.DbContextServices.CreateModel(Boolean designTime)
+   at Microsoft.EntityFrameworkCore.Internal.DbContextServices.get_Model()
+   at Microsoft.EntityFrameworkCore.Infrastructure.EntityFrameworkServicesBuilder.<>c.<TryAddCoreServices>b__8_4(IServiceProvider p)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.DynamicServiceProviderEngine.<>c__DisplayClass2_0.<RealizeService>b__0(ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+   at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+   at Microsoft.EntityFrameworkCore.DbContext.get_DbContextDependencies()
+   at Microsoft.EntityFrameworkCore.DbContext.get_ContextServices()
+   at Microsoft.EntityFrameworkCore.DbContext.get_Model()
+   at EnvanterTR.SecurityAcceptance.TenantDataModelScopeTests.Current_model_keeps_shared_accounts_and_plans_without_changing_the_schema() in /source/tests/EnvanterTR.SecurityAcceptance/TenantDataModelScopeTests.cs:line 14
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[35]
+      No XML encryptor configured. Key {21587ba3-ab3d-4632-9521-be317e8e1721} may be persisted to storage in unencrypted form.
+warn: EnvanterTR.Web.Data.ScheduledReportEmailWorker[0]
+      Scheduled report cycle failed (InvalidOperationException).
+warn: EnvanterTR.Web.Data.SupportTicketEmailWorker[0]
+      Support email queue cycle failed (InvalidOperationException).
+fail: EnvanterTR.Web.Data.OperationalNotificationEmailWorker[0]
+      Operational email reminder cycle failed (InvalidOperationException).
+[xUnit.net 00:00:20.48]     EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Tenant_query_scope_rejects_tracked_foreign_writes_without_saving_own_changes [FAIL]
+[xUnit.net 00:00:20.48]       System.InvalidOperationException : Entity 'Microsoft.AspNetCore.Identity.IdentityPasskeyData' requires a Guid CompanyId or an explicit shared scope.
+[xUnit.net 00:00:20.49]       Stack Trace:
+[xUnit.net 00:00:20.49]         /source/src/EnvanterTR.Web/Data/TenantDataModelScope.cs(30,0): at EnvanterTR.Web.Data.TenantDataModelScope.Validate(IReadOnlyEntityType entity)
+[xUnit.net 00:00:20.49]         /source/src/EnvanterTR.Web/Data/AppDbContext.cs(1591,0): at EnvanterTR.Web.Data.AppDbContext.OnModelCreating(ModelBuilder modelBuilder)
+[xUnit.net 00:00:20.49]            at Microsoft.EntityFrameworkCore.Infrastructure.ModelCustomizer.Customize(ModelBuilder modelBuilder, DbContext context)
+[xUnit.net 00:00:20.49]            at Microsoft.EntityFrameworkCore.Infrastructure.ModelSource.CreateModel(DbContext context, IConventionSetBuilder conventionSetBuilder, ModelDependencies modelDependencies)
+[xUnit.net 00:00:20.49]            at Microsoft.EntityFrameworkCore.Infrastructure.ModelSource.CreateModel(DbContext context, ModelCreationDependencies modelCreationDependencies, Boolean designTime)
+[xUnit.net 00:00:20.49]            at Microsoft.EntityFrameworkCore.Infrastructure.ModelSource.GetModel(DbContext context, ModelCreationDependencies modelCreationDependencies, Boolean designTime)
+[xUnit.net 00:00:20.49]            at Microsoft.EntityFrameworkCore.Internal.DbContextServices.CreateModel(Boolean designTime)
+[xUnit.net 00:00:20.49]            at Microsoft.EntityFrameworkCore.Internal.DbContextServices.get_Model()
+[xUnit.net 00:00:20.49]            at Microsoft.EntityFrameworkCore.Infrastructure.EntityFrameworkServicesBuilder.<>c.<TryAddCoreServices>b__8_4(IServiceProvider p)
+[xUnit.net 00:00:20.49]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+[xUnit.net 00:00:20.49]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+[xUnit.net 00:00:20.49]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+[xUnit.net 00:00:20.49]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+[xUnit.net 00:00:20.49]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+[xUnit.net 00:00:20.49]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+[xUnit.net 00:00:20.49]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+[xUnit.net 00:00:20.49]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+[xUnit.net 00:00:20.49]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+[xUnit.net 00:00:20.49]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+[xUnit.net 00:00:20.49]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+[xUnit.net 00:00:20.49]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.DynamicServiceProviderEngine.<>c__DisplayClass2_0.<RealizeService>b__0(ServiceProviderEngineScope scope)
+[xUnit.net 00:00:20.49]            at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+[xUnit.net 00:00:20.49]            at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+[xUnit.net 00:00:20.49]            at Microsoft.EntityFrameworkCore.DbContext.get_DbContextDependencies()
+[xUnit.net 00:00:20.49]            at Microsoft.EntityFrameworkCore.DbContext.get_ContextServices()
+[xUnit.net 00:00:20.49]            at Microsoft.EntityFrameworkCore.DbContext.get_InternalServiceProvider()
+[xUnit.net 00:00:20.49]            at Microsoft.EntityFrameworkCore.DbContext.Microsoft.EntityFrameworkCore.Infrastructure.IInfrastructure<System.IServiceProvider>.get_Instance()
+[xUnit.net 00:00:20.49]            at Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade.Microsoft.EntityFrameworkCore.Infrastructure.IInfrastructure<System.IServiceProvider>.get_Instance()
+[xUnit.net 00:00:20.49]            at Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetRelationalService[TService](IInfrastructure`1 databaseFacade)
+[xUnit.net 00:00:20.49]            at Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.MigrateAsync(DatabaseFacade databaseFacade, CancellationToken cancellationToken)
+[xUnit.net 00:00:20.49]         /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs(5600,0): at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.InitializeAsync()
+[xUnit.net 00:00:20.49]         /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs(5685,0): at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.InitializeAsync()
+  Failed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Tenant_query_scope_rejects_tracked_foreign_writes_without_saving_own_changes [1 ms]
+  Error Message:
+   System.InvalidOperationException : Entity 'Microsoft.AspNetCore.Identity.IdentityPasskeyData' requires a Guid CompanyId or an explicit shared scope.
+  Stack Trace:
+     at EnvanterTR.Web.Data.TenantDataModelScope.Validate(IReadOnlyEntityType entity) in /source/src/EnvanterTR.Web/Data/TenantDataModelScope.cs:line 30
+   at EnvanterTR.Web.Data.AppDbContext.OnModelCreating(ModelBuilder modelBuilder) in /source/src/EnvanterTR.Web/Data/AppDbContext.cs:line 1591
+   at Microsoft.EntityFrameworkCore.Infrastructure.ModelCustomizer.Customize(ModelBuilder modelBuilder, DbContext context)
+   at Microsoft.EntityFrameworkCore.Infrastructure.ModelSource.CreateModel(DbContext context, IConventionSetBuilder conventionSetBuilder, ModelDependencies modelDependencies)
+   at Microsoft.EntityFrameworkCore.Infrastructure.ModelSource.CreateModel(DbContext context, ModelCreationDependencies modelCreationDependencies, Boolean designTime)
+   at Microsoft.EntityFrameworkCore.Infrastructure.ModelSource.GetModel(DbContext context, ModelCreationDependencies modelCreationDependencies, Boolean designTime)
+   at Microsoft.EntityFrameworkCore.Internal.DbContextServices.CreateModel(Boolean designTime)
+   at Microsoft.EntityFrameworkCore.Internal.DbContextServices.get_Model()
+   at Microsoft.EntityFrameworkCore.Infrastructure.EntityFrameworkServicesBuilder.<>c.<TryAddCoreServices>b__8_4(IServiceProvider p)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.DynamicServiceProviderEngine.<>c__DisplayClass2_0.<RealizeService>b__0(ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService(IServiceProvider provider, Type serviceType)
+   at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+   at Microsoft.EntityFrameworkCore.DbContext.get_DbContextDependencies()
+   at Microsoft.EntityFrameworkCore.DbContext.get_ContextServices()
+   at Microsoft.EntityFrameworkCore.DbContext.get_InternalServiceProvider()
+   at Microsoft.EntityFrameworkCore.DbContext.Microsoft.EntityFrameworkCore.Infrastructure.IInfrastructure<System.IServiceProvider>.get_Instance()
+   at Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade.Microsoft.EntityFrameworkCore.Infrastructure.IInfrastructure<System.IServiceProvider>.get_Instance()
+   at Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetRelationalService[TService](IInfrastructure`1 databaseFacade)
+   at Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.MigrateAsync(DatabaseFacade databaseFacade, CancellationToken cancellationToken)
+   at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.InitializeAsync() in /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs:line 5600
+   at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.InitializeAsync() in /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs:line 5685
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+fail: EnvanterTR.Web.Data.OperationalNotificationEmailWorker[0]
+      Operational email reminder cycle failed (InvalidOperationException).
+warn: EnvanterTR.Web.Data.ScheduledReportEmailWorker[0]
+      Scheduled report cycle failed (InvalidOperationException).
+warn: EnvanterTR.Web.Data.SupportTicketEmailWorker[0]
+      Support email queue cycle failed (InvalidOperationException).
+warn: EnvanterTR.Web.Data.SupportTicketEmailWorker[0]
+      Support email queue cycle failed (InvalidOperationException).
+[xUnit.net 00:00:30.72]     EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Tenant_query_scopes_use_runtime_context_values_and_preserve_soft_delete [FAIL]
+[xUnit.net 00:00:30.72]       System.InvalidOperationException : Entity 'Microsoft.AspNetCore.Identity.IdentityPasskeyData' requires a Guid CompanyId or an explicit shared scope.
+[xUnit.net 00:00:30.72]       Stack Trace:
+[xUnit.net 00:00:30.72]         /source/src/EnvanterTR.Web/Data/TenantDataModelScope.cs(30,0): at EnvanterTR.Web.Data.TenantDataModelScope.Validate(IReadOnlyEntityType entity)
+[xUnit.net 00:00:30.72]         /source/src/EnvanterTR.Web/Data/AppDbContext.cs(1591,0): at EnvanterTR.Web.Data.AppDbContext.OnModelCreating(ModelBuilder modelBuilder)
+[xUnit.net 00:00:30.72]            at Microsoft.EntityFrameworkCore.Infrastructure.ModelCustomizer.Customize(ModelBuilder modelBuilder, DbContext context)
+[xUnit.net 00:00:30.72]            at Microsoft.EntityFrameworkCore.Infrastructure.ModelSource.CreateModel(DbContext context, IConventionSetBuilder conventionSetBuilder, ModelDependencies modelDependencies)
+[xUnit.net 00:00:30.72]            at Microsoft.EntityFrameworkCore.Infrastructure.ModelSource.CreateModel(DbContext context, ModelCreationDependencies modelCreationDependencies, Boolean designTime)
+[xUnit.net 00:00:30.72]            at Microsoft.EntityFrameworkCore.Infrastructure.ModelSource.GetModel(DbContext context, ModelCreationDependencies modelCreationDependencies, Boolean designTime)
+[xUnit.net 00:00:30.72]            at Microsoft.EntityFrameworkCore.Internal.DbContextServices.CreateModel(Boolean designTime)
+[xUnit.net 00:00:30.72]            at Microsoft.EntityFrameworkCore.Internal.DbContextServices.get_Model()
+[xUnit.net 00:00:30.72]            at Microsoft.EntityFrameworkCore.Infrastructure.EntityFrameworkServicesBuilder.<>c.<TryAddCoreServices>b__8_4(IServiceProvider p)
+[xUnit.net 00:00:30.72]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+[xUnit.net 00:00:30.72]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+[xUnit.net 00:00:30.72]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+[xUnit.net 00:00:30.72]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+[xUnit.net 00:00:30.72]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+[xUnit.net 00:00:30.72]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+[xUnit.net 00:00:30.72]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+[xUnit.net 00:00:30.72]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+[xUnit.net 00:00:30.72]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+[xUnit.net 00:00:30.72]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+[xUnit.net 00:00:30.72]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+[xUnit.net 00:00:30.72]            at Microsoft.Extensions.DependencyInjection.ServiceLookup.DynamicServiceProviderEngine.<>c__DisplayClass2_0.<RealizeService>b__0(ServiceProviderEngineScope scope)
+[xUnit.net 00:00:30.72]            at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+[xUnit.net 00:00:30.72]            at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+[xUnit.net 00:00:30.72]            at Microsoft.EntityFrameworkCore.DbContext.get_DbContextDependencies()
+[xUnit.net 00:00:30.72]            at Microsoft.EntityFrameworkCore.DbContext.get_ContextServices()
+[xUnit.net 00:00:30.73]            at Microsoft.EntityFrameworkCore.DbContext.get_InternalServiceProvider()
+[xUnit.net 00:00:30.73]            at Microsoft.EntityFrameworkCore.DbContext.Microsoft.EntityFrameworkCore.Infrastructure.IInfrastructure<System.IServiceProvider>.get_Instance()
+[xUnit.net 00:00:30.74]            at Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade.Microsoft.EntityFrameworkCore.Infrastructure.IInfrastructure<System.IServiceProvider>.get_Instance()
+[xUnit.net 00:00:30.74]            at Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetRelationalService[TService](IInfrastructure`1 databaseFacade)
+[xUnit.net 00:00:30.74]            at Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.MigrateAsync(DatabaseFacade databaseFacade, CancellationToken cancellationToken)
+[xUnit.net 00:00:30.74]         /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs(5600,0): at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.InitializeAsync()
+[xUnit.net 00:00:30.74]         /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs(5685,0): at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.InitializeAsync()
+[xUnit.net 00:00:30.75]   Finished:    EnvanterTR.SecurityAcceptance
+  Failed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Tenant_query_scopes_use_runtime_context_values_and_preserve_soft_delete [1 ms]
+  Error Message:
+   System.InvalidOperationException : Entity 'Microsoft.AspNetCore.Identity.IdentityPasskeyData' requires a Guid CompanyId or an explicit shared scope.
+  Stack Trace:
+     at EnvanterTR.Web.Data.TenantDataModelScope.Validate(IReadOnlyEntityType entity) in /source/src/EnvanterTR.Web/Data/TenantDataModelScope.cs:line 30
+   at EnvanterTR.Web.Data.AppDbContext.OnModelCreating(ModelBuilder modelBuilder) in /source/src/EnvanterTR.Web/Data/AppDbContext.cs:line 1591
+   at Microsoft.EntityFrameworkCore.Infrastructure.ModelCustomizer.Customize(ModelBuilder modelBuilder, DbContext context)
+   at Microsoft.EntityFrameworkCore.Infrastructure.ModelSource.CreateModel(DbContext context, IConventionSetBuilder conventionSetBuilder, ModelDependencies modelDependencies)
+   at Microsoft.EntityFrameworkCore.Infrastructure.ModelSource.CreateModel(DbContext context, ModelCreationDependencies modelCreationDependencies, Boolean designTime)
+   at Microsoft.EntityFrameworkCore.Infrastructure.ModelSource.GetModel(DbContext context, ModelCreationDependencies modelCreationDependencies, Boolean designTime)
+   at Microsoft.EntityFrameworkCore.Internal.DbContextServices.CreateModel(Boolean designTime)
+   at Microsoft.EntityFrameworkCore.Internal.DbContextServices.get_Model()
+   at Microsoft.EntityFrameworkCore.Infrastructure.EntityFrameworkServicesBuilder.<>c.<TryAddCoreServices>b__8_4(IServiceProvider p)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitConstructor(ConstructorCallSite constructorCallSite, RuntimeResolverContext context)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.CallSiteRuntimeResolver.VisitCache(ServiceCallSite callSite, RuntimeResolverContext context, ServiceProviderEngineScope serviceProviderEngine, RuntimeResolverLock lockType)
+   at Microsoft.Extensions.DependencyInjection.ServiceLookup.DynamicServiceProviderEngine.<>c__DisplayClass2_0.<RealizeService>b__0(ServiceProviderEngineScope scope)
+   at Microsoft.Extensions.DependencyInjection.ServiceProvider.GetService(ServiceIdentifier serviceIdentifier, ServiceProviderEngineScope serviceProviderEngineScope)
+   at Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService[T](IServiceProvider provider)
+   at Microsoft.EntityFrameworkCore.DbContext.get_DbContextDependencies()
+   at Microsoft.EntityFrameworkCore.DbContext.get_ContextServices()
+   at Microsoft.EntityFrameworkCore.DbContext.get_InternalServiceProvider()
+   at Microsoft.EntityFrameworkCore.DbContext.Microsoft.EntityFrameworkCore.Infrastructure.IInfrastructure<System.IServiceProvider>.get_Instance()
+   at Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade.Microsoft.EntityFrameworkCore.Infrastructure.IInfrastructure<System.IServiceProvider>.get_Instance()
+   at Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetRelationalService[TService](IInfrastructure`1 databaseFacade)
+   at Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.MigrateAsync(DatabaseFacade databaseFacade, CancellationToken cancellationToken)
+   at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.InitializeAsync() in /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs:line 5600
+   at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.InitializeAsync() in /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs:line 5685
+
+Total tests: 7
+     Passed: 4
+     Failed: 3
+ Total time: 33.3542 Seconds
+Test Run Failed.
+
+ Container envantertr-security-acceptance-76200bcfd8-database-1 Stopping
+ Container envantertr-security-acceptance-76200bcfd8-database-1 Stopped
+ Container envantertr-security-acceptance-76200bcfd8-database-1 Removing
+ Container envantertr-security-acceptance-76200bcfd8-database-1 Removed
+ Network envantertr-security-acceptance-76200bcfd8_acceptance Removing
+ Network envantertr-security-acceptance-76200bcfd8_acceptance Removed

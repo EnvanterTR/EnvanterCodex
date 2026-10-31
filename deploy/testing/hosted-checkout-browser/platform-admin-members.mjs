@@ -229,12 +229,12 @@ const server = createServer(async (request, response) => {
       }
       return json(response, {
       company: { ...companies[0], isActive: true, createdAt: '2026-09-02T10:00:00Z', contactEmail: 'qa-owner@example.invalid', lifecycleStage: 'AtRisk', lifecycleOwnerId: null, nextFollowUpAt: '2026-10-10T10:00:00Z' },
-      members: [{ displayName: member.displayName, email: member.email, roleKey: 'owner', employeeName: null,
+      members: [{ id: member.id, displayName: member.displayName, email: member.email, roleKey: 'owner', employeeName: null,
         accountCreatedAt: member.accountCreatedAt, createdAt: '2026-09-02T10:00:00Z', emailConfirmed: true, twoFactorEnabled: true }],
       memberCount: 1, membersPage: 1, membersTotalPages: 1, ownerMemberExists: true,
       usage: { generatedAt: '2026-10-16T15:00:00Z', assets: 28, employees: 12, loginAccounts: 4,
         licenses: 3, assignedLicenseSeats: 2, activeApiTokens: 1, planName: 'Cloud Pro', deploymentKind: 'cloud',
-        maxAssets: 500, maxLoginUsers: null, recordedAttachmentCount: 4, recordedAttachmentBytes: 1048576,
+        maxAssets: 500, maxLoginUsers: plans[0]?.maxLoginUsers ?? null, recordedAttachmentCount: 4, recordedAttachmentBytes: 1048576,
         storageNote: 'Eklerin boyut toplamı yalnız veritabanında kayıtlı dosya eklerini kapsar; şirket logoları ve medya dizinindeki dosyalar dahil değildir. Planlarda dosya alanı sınırı tanımlı değildir.' },
       subscriptions: [{ ...companySubscription, name: plans[0]?.name || companySubscription.name, code: plans[0]?.code || companySubscription.code }],
       checkoutOrders: [], lifecycleHistory: []
@@ -260,6 +260,11 @@ const server = createServer(async (request, response) => {
   }
 
   if (request.method !== 'GET' && request.headers['x-csrf-token'] !== csrfToken) return json(response, { message: 'Missing synthetic CSRF token.' }, 400);
+  if (path === '/api/platform/companies' && request.method === 'POST') {
+    writes.push({ method: request.method, path, body, csrf: request.headers['x-csrf-token'] });
+    return json(response, { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', isDemo: body.isDemo,
+      invitationSent: false, message: 'Şirket ve demo oluşturuldu; e-posta gönderilemedi.' }, 201);
+  }
   if (path === '/api/platform/companies/bulk-status' && request.method === 'PATCH') {
     writes.push({ method: request.method, path, body, csrf: request.headers['x-csrf-token'] });
     return json(response, { updated: body.companyIds.length, unchanged: 0 });
@@ -757,8 +762,8 @@ try {
   await planForm.locator('[name="deploymentKind"]').selectOption('cloud');
   assert.equal(await planForm.locator('#planMaintenanceEnabled').isChecked(), true,
     'New Cloud plans must include maintenance unless the platform admin disables it.');
-  assert.equal(await planForm.locator('[name="maxLoginUsers"]').isDisabled(), true,
-    'Cloud plans must not receive a local login-user cap.');
+  assert.equal(await planForm.locator('[name="maxLoginUsers"]').isDisabled(), false,
+    'Cloud plans must allow the approved subscription user quota to be configured.');
   await planForm.locator('[name="featureFlagsJson"]').fill('[]');
   const writesBeforeInvalidPlan = writes.length;
   await planForm.getByRole('button', { name: 'Planı Kaydet' }).click();
@@ -771,6 +776,7 @@ try {
   await planForm.locator('[name="name"]').fill('Synthetic Cloud Pro');
   await planForm.locator('[name="deploymentKind"]').selectOption('cloud');
   await planForm.locator('[name="currency"]').selectOption('TRY');
+  await planForm.locator('[name="maxLoginUsers"]').fill('4');
   await planForm.locator('[name="monthlyPrice"]').fill('990');
   await planForm.locator('[name="annualPrice"]').fill('9900');
   await planForm.locator('[name="maxAssets"]').fill('500');
@@ -785,7 +791,7 @@ try {
   await page.locator('#plansTable').getByText('Synthetic Cloud Pro').waitFor({ state: 'visible' });
   assert.equal(writes.length, writesBeforeInvalidPlan + 1);
   assert.deepEqual(writes.at(-1), { method: 'POST', path: '/api/platform/plans', csrf: csrfToken,
-    body: { changeReason: 'Synthetic pricing approval', code: 'synthetic-cloud-pro', name: 'Synthetic Cloud Pro', deploymentKind: 'cloud', currency: 'TRY', maxLoginUsers: null, maxAssets: 500, monthlyPrice: 990, annualPrice: 9900, oneTimePrice: 0, offlineGraceDays: 30, description: '', featureFlagsJson: '{"reports":false,"api":false,"maintenance":false}', supportsOfflineUse: false, isPublic: true, isActive: true, sortOrder: 0 } });
+    body: { changeReason: 'Synthetic pricing approval', code: 'synthetic-cloud-pro', name: 'Synthetic Cloud Pro', deploymentKind: 'cloud', currency: 'TRY', maxLoginUsers: 4, maxAssets: 500, monthlyPrice: 990, annualPrice: 9900, oneTimePrice: 0, offlineGraceDays: 30, description: '', featureFlagsJson: '{"reports":false,"api":false,"maintenance":false}', supportsOfflineUse: false, isPublic: true, isActive: true, sortOrder: 0 } });
 
   await page.locator(`#plansTable [data-edit-plan="${planId}"]`).click();
   assert.equal(await planForm.locator('#planReportsEnabled').isChecked(), false,
@@ -845,10 +851,30 @@ try {
   assert.equal(await companyDialog.locator('#companyDetailTitle').innerText(), 'Synthetic Demo Company',
     'Closing and reopening company details must invalidate the older response.');
   await companyDialog.waitFor({ state: 'visible' });
+  const supportButton=companyDialog.locator('[data-impersonate]').first();
+  await supportButton.click();
+  await page.locator('#impersonationDialog').waitFor({state:'visible'});
+  const beforeSupportCancel=writes.length;
+  await page.locator('#impersonationCancel').click();
+  assert.equal(writes.length,beforeSupportCancel,'Canceling support access must not write.');
+  await supportButton.click();
+  await page.locator('#impersonationForm [name="reason"]').fill('Synthetic support acceptance request');
+  let supportWrites=0;
+  await page.route('**/api/platform/companies/*/impersonations',async route=>{
+    supportWrites++;assert.equal(route.request().headers()['x-csrf-token'],csrfToken);
+    assert.equal(route.request().postDataJSON().reason,'Synthetic support acceptance request');
+    assert.equal(route.request().postDataJSON().userId,member.id);
+    await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Synthetic support unavailable'})});
+  });
+  await page.locator('#impersonationSubmit').click();
+  await page.locator('#impersonationFeedback').getByText('Synthetic support unavailable',{exact:true}).waitFor();
+  assert.equal(supportWrites,1);
+  assert.equal(await page.locator('#impersonationForm [name="reason"]').inputValue(),'Synthetic support acceptance request');
+  await page.locator('#impersonationCancel').click();
   const usagePanel = page.locator('#companyUsagePanel');
   await usagePanel.getByText('Etkin varlık').waitFor({ state: 'visible' });
   assert.match(await usagePanel.innerText(), /28\s*\/\s*500/, 'The company usage view must show asset usage against its active plan limit.');
-  assert.match(await usagePanel.innerText(), /4\s*\/\s*Sınırsız/, 'Cloud login-user quota must be reported as unlimited, not as an invented numeric cap.');
+  assert.match(await usagePanel.innerText(), /4\s*\/\s*4/, 'Cloud login-user usage must be shown against the configured annual package quota.');
   assert.match(await usagePanel.innerText(), /1\s*MB/, 'The usage view must show bytes recorded for attachments.');
   assert.match(await usagePanel.innerText(), /şirket logoları ve medya dizinindeki dosyalar dahil değildir/i, 'The usage view must explain what recorded attachment storage excludes.');
   const listedSubscription = page.locator('#companyDetailBody .panel').filter({ hasText: 'Abonelik geçmişi' }).locator('tbody tr');
@@ -1036,6 +1062,113 @@ try {
   assert.equal(writes.filter(write => write.path === '/api/platform/companies/bulk-plan').length, 1,
     'The bulk plan control must stay unavailable when a selected company has no current Active/Trial subscription.');
 
+  await page.locator('#provisionCompany').click();
+  const provisioningDialog = page.locator('#actionDialog');
+  await provisioningDialog.locator('input[name="paymentReference"]').waitFor({ state: 'visible' });
+  assert.equal(await provisioningDialog.locator('input[name="paymentVerified"]').getAttribute('required'), '');
+  await provisioningDialog.getByRole('button', { name: 'Vazgeç' }).click();
+  const writesBeforeDemo = writes.length;
+  await page.locator('#provisionDemoCompany').click();
+  await provisioningDialog.getByText('Süreli demo şirketi oluştur', { exact: true }).waitFor({ state: 'visible' });
+  assert.equal(await provisioningDialog.locator('[name="termDays"]').inputValue(), '15');
+  assert.equal(await provisioningDialog.locator('[name="termDays"]').getAttribute('max'), '60');
+  assert.equal(await provisioningDialog.locator('[name="paymentReference"], [name="paymentVerified"]').count(), 0);
+  await provisioningDialog.locator('[name="companyName"]').fill('Synthetic new demo');
+  await provisioningDialog.locator('[name="slug"]').fill('synthetic-new-demo');
+  await provisioningDialog.locator('[name="ownerName"]').fill('Synthetic demo owner');
+  await provisioningDialog.locator('[name="ownerEmail"]').fill('new-demo@example.invalid');
+  await provisioningDialog.locator('[name="termDays"]').fill('61');
+  assert.equal(await provisioningDialog.locator('form').evaluate(form => form.checkValidity()), false);
+  await provisioningDialog.locator('[name="termDays"]').fill('15');
+  await provisioningDialog.locator('button[type="submit"]').click();
+  assert.equal(writes.length, writesBeforeDemo, 'Missing demo reason must not submit a write.');
+  await provisioningDialog.locator('[name="note"]').fill('Synthetic requested product demonstration');
+  if (process.env.ENVANTERTR_BROWSER_REPORT_DIR)
+    await page.screenshot({ path: `${process.env.ENVANTERTR_BROWSER_REPORT_DIR}/platform-demo-provisioning-form-20261024.png` });
+  const demoResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/platform/companies' && response.request().method() === 'POST');
+  await provisioningDialog.locator('button[type="submit"]').click();
+  assert.equal((await demoResponse).status(), 201);
+  assert.deepEqual(writes.at(-1), { method: 'POST', path: '/api/platform/companies', csrf: csrfToken,
+    body: { companyName: 'Synthetic new demo', slug: 'synthetic-new-demo', contactEmail: null,
+      ownerName: 'Synthetic demo owner', ownerEmail: 'new-demo@example.invalid', planId: plans[0].id,
+      termDays: 15, paymentReference: null, paymentVerified: false, isDemo: true,
+      note: 'Synthetic requested product demonstration' } });
+  await provisioningDialog.waitFor({ state: 'hidden' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('#provisionDemoCompany').click();
+  await provisioningDialog.getByText('Süreli demo şirketi oluştur', { exact: true }).waitFor({ state: 'visible' });
+  const demoBounds = await provisioningDialog.evaluate(dialog => {
+    const rect = dialog.getBoundingClientRect();
+    return { width: rect.width, height: rect.height, scrollWidth: dialog.scrollWidth, clientWidth: dialog.clientWidth };
+  });
+  assert.ok(demoBounds.width <= 390 && demoBounds.height <= 844, 'Mobile demo dialog must fit the viewport.');
+  assert.ok(demoBounds.scrollWidth <= demoBounds.clientWidth + 1, 'Mobile demo dialog must not overflow horizontally.');
+  await provisioningDialog.locator('button[type="submit"]').scrollIntoViewIfNeeded();
+  if (process.env.ENVANTERTR_BROWSER_REPORT_DIR)
+    await page.screenshot({ path: `${process.env.ENVANTERTR_BROWSER_REPORT_DIR}/platform-demo-provisioning-mobile-20261024.png` });
+  await provisioningDialog.getByRole('button', { name: 'Vazgeç' }).click();
+  assert.equal(writes.filter(write => write.path === '/api/platform/companies').length, 1,
+    'Canceling the mobile demo form must not create another company.');
+  console.log('PASS: separate unpaid demo form, 15-day default, 60-day cap, required reason, payment fields absent, CSRF payload, mobile fit/scroll/cancel; paid form still requires payment proof.');
+  // Actual platform HTML with a synthetic transport; database isolation is covered separately.
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  directoryCompany.deletedAt = null;
+  const deletionWrites = [];
+  await page.route(/\/api\/platform\/companies\?.*/, async route => {
+    const url = new URL(route.request().url());
+    const inTrash = url.searchParams.get('deleted') === 'true';
+    const items = Boolean(directoryCompany.deletedAt) === inTrash ? [directoryCompany] : [];
+    await route.fulfill({ json: { items, total: items.length, page: 1, pageSize: 50 } });
+  });
+  await page.route(`**/api/platform/companies/${companyId}`, async route => {
+    if (route.request().method() !== 'DELETE') return route.fallback();
+    deletionWrites.push({ method: 'DELETE', body: route.request().postDataJSON(), csrf: route.request().headers()['x-csrf-token'] });
+    directoryCompany.deletedAt = new Date().toISOString(); directoryCompany.isActive = false;
+    await route.fulfill({ json: { id: companyId, deletedAt: directoryCompany.deletedAt, isActive: false, billingChanged: false } });
+  });
+  await page.route(`**/api/platform/companies/${companyId}/restore`, async route => {
+    deletionWrites.push({ method: route.request().method(), body: route.request().postDataJSON(), csrf: route.request().headers()['x-csrf-token'] });
+    directoryCompany.deletedAt = null;
+    await route.fulfill({ json: { id: companyId, isActive: false, billingChanged: false } });
+  });
+  await page.locator('#companyDeleted').selectOption('false');
+  await page.locator(`[data-company-delete="${companyId}"]`).click();
+  const deletionDialog = page.locator('#companyDeletionDialog');
+  await deletionDialog.locator('[type="submit"]').click();
+  assert.equal(deletionWrites.length, 0, 'Missing reason and confirmation must not write.');
+  await deletionDialog.locator('[name="note"]').fill('Synthetic company trash acceptance');
+  await deletionDialog.locator('[name="confirmSlug"]').fill('wrong-slug');
+  await deletionDialog.locator('[type="submit"]').click();
+  assert.equal(deletionWrites.length, 0, 'Wrong company confirmation must not write.');
+  await deletionDialog.locator('[name="confirmSlug"]').fill(directoryCompany.slug);
+  if (process.env.ENVANTERTR_BROWSER_REPORT_DIR)
+    await page.screenshot({ path: `${process.env.ENVANTERTR_BROWSER_REPORT_DIR}/company-deletion-confirmation-20261025.png` });
+  await deletionDialog.locator('[type="submit"]').click();
+  await deletionDialog.waitFor({ state: 'hidden' });
+  assert.deepEqual(deletionWrites[0], { method: 'DELETE', body: { note: 'Synthetic company trash acceptance', confirmSlug: directoryCompany.slug }, csrf: csrfToken });
+  await page.locator('#companyDeleted').selectOption('true');
+  await page.locator(`[data-company-restore="${companyId}"]`).waitFor({ state: 'visible' });
+  assert.equal(await page.locator('[data-action="toggle"],[data-company-delete]').count(), 0, 'Trash must not offer activation or repeated deletion.');
+  await page.locator('[data-company-select]').check();
+  assert.equal(await page.locator('#bulkReactivateCompanies').isVisible(), false, 'Bulk activation must not bypass trash.');
+  await page.locator(`[data-company-restore="${companyId}"]`).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  const deletionBounds = await deletionDialog.evaluate(dialog => {
+    const rect = dialog.getBoundingClientRect();
+    return { width: rect.width, height: rect.height, scrollWidth: dialog.scrollWidth, clientWidth: dialog.clientWidth };
+  });
+  assert.ok(deletionBounds.width <= 390 && deletionBounds.height <= 844 && deletionBounds.scrollWidth <= deletionBounds.clientWidth + 1);
+  if (process.env.ENVANTERTR_BROWSER_REPORT_DIR)
+    await page.screenshot({ path: `${process.env.ENVANTERTR_BROWSER_REPORT_DIR}/company-restoration-mobile-20261025.png` });
+  await deletionDialog.getByRole('button', { name: 'Vazgeç', exact: true }).click();
+  assert.equal(deletionWrites.length, 1, 'Canceling restoration must not write.');
+  await page.locator(`[data-company-restore="${companyId}"]`).click();
+  await deletionDialog.locator('[name="note"]').fill('Synthetic company restoration acceptance');
+  await deletionDialog.locator('[type="submit"]').click();
+  await deletionDialog.waitFor({ state: 'hidden' });
+  assert.deepEqual(deletionWrites[1], { method: 'POST', body: { note: 'Synthetic company restoration acceptance' }, csrf: csrfToken });
+  assert.equal(directoryCompany.isActive, false, 'Restoration must not silently reactivate access.');
+  console.log('PASS: company trash/restore dialog, required reason and exact slug, CSRF payload, current/trash filtering, blocked trash activation, mobile fit and cancel without write.');
   assert.deepEqual(browserErrors, [], `Platform member UI threw: ${browserErrors.join(' | ')}`);
   console.log('PASS: real Chromium account/security/membership/payment timeline; company CSV download with active search/status filters and formula-safe delimited values; demo CRM list/company-search/detail and selected-company fallback stale-response protection plus status, assignment, follow-up, company link, CSRF write and history persistence; member search, cancel-without-write, reauthenticated role update, synthetic invitation, plan create/update/validation/publication reload and maintenance entitlement persistence; audited company subscription plan/date editing with cancel and persistence; platform audit text/source/action/target/date filters, exclusive end-date boundary, clear, paging, event detail, no-match, surfaced 503 and retry behavior without writes.');
 } finally {

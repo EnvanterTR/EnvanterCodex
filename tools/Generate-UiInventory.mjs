@@ -8,7 +8,8 @@ const sources = [
   ['Platform yönetimi', 'src/EnvanterTR.Web/wwwroot/platform-admin.html'],
   ['Platform kurulumu', 'src/EnvanterTR.Web/wwwroot/platform-setup.html'],
   ['Satış sitesi', 'src/EnvanterTR.PublicSite/index.html'],
-  ['Ödeme sayfası', 'src/EnvanterTR.PublicSite/checkout.html']
+  ['Ödeme sayfası', 'src/EnvanterTR.PublicSite/checkout.html'],
+  ['Deneme kaydı', 'src/EnvanterTR.PublicSite/trial.html']
 ];
 
 const decode = value => value.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<')

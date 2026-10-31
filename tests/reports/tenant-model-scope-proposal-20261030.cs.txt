@@ -1,0 +1,40 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore.Metadata;
+
+namespace EnvanterTR.Web.Data;
+
+/// <summary>Requires an explicit scope for every root entity before the model can be used.</summary>
+public static class TenantDataModelScope
+{
+    // Accounts and platform configuration are shared across company memberships.
+    private static readonly HashSet<Type> SharedTypes =
+    [
+        typeof(EnvanterUser), typeof(IdentityRole<Guid>), typeof(IdentityRoleClaim<Guid>),
+        typeof(IdentityUserClaim<Guid>), typeof(IdentityUserLogin<Guid>),
+        typeof(IdentityUserRole<Guid>), typeof(IdentityUserToken<Guid>), typeof(IdentityUserPasskey<Guid>),
+        typeof(PlatformAdministrator), typeof(PlatformAuditRetentionPolicy),
+        typeof(PlatformFollowUpEmailDigest), typeof(PublicSiteContent),
+        typeof(SubscriptionCoupon), typeof(SubscriptionPlan)
+    ];
+
+    // These records also exist before provisioning, or for platform-only activity.
+    private static readonly HashSet<Type> ConditionalTypes =
+    [typeof(CompanyCheckoutOrder), typeof(PlatformDemoRequest), typeof(PlatformAuditEntry), typeof(UserSession)];
+
+    public static void Validate(IReadOnlyEntityType entity)
+    {
+        // Owned values inherit their owner's scope; e.g. Identity's JSON passkey data.
+        if (entity.FindOwnership() is { } ownership)
+        {
+            Validate(ownership.PrincipalEntityType);
+            return;
+        }
+        if (SharedTypes.Contains(entity.ClrType)) return;
+        var name = entity.ClrType == typeof(Company) ? nameof(Company.Id) : "CompanyId";
+        var property = entity.FindProperty(name);
+        if (property is null || (property.ClrType != typeof(Guid) && property.ClrType != typeof(Guid?)))
+            throw new InvalidOperationException($"Entity '{entity.Name}' requires a Guid {name} or an explicit shared scope.");
+        if (property.IsNullable && !ConditionalTypes.Contains(entity.ClrType))
+            throw new InvalidOperationException($"Entity '{entity.Name}' requires a non-null company identifier.");
+    }
+}

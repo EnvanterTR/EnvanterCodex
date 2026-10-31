@@ -1,4 +1,6 @@
 using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using System.Threading.RateLimiting;
 using EnvanterTR.Web.Data;
 using Microsoft.AspNetCore.Builder;
@@ -87,6 +89,13 @@ public sealed class TrustedClientIpTests
         Assert.Equal(trustedCloudflare ? HttpStatusCode.OK : HttpStatusCode.TooManyRequests, secondClient.StatusCode);
         using var exhaustedClient = await Send("198.51.100.1");
         Assert.Equal(HttpStatusCode.TooManyRequests, exhaustedClient.StatusCode);
+        Assert.Equal("no-store", exhaustedClient.Headers.CacheControl?.ToString());
+        var retrySeconds = exhaustedClient.Headers.RetryAfter?.Delta?.TotalSeconds;
+        Assert.NotNull(retrySeconds);
+        Assert.InRange(retrySeconds.Value, 1, 600);
+        var rejection = await exhaustedClient.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal((int)retrySeconds.Value, rejection.GetProperty("retryAfterSeconds").GetInt32());
+        Assert.Contains("saniye sonra yeniden deneyin", rejection.GetProperty("message").GetString());
     }
 
     [Theory]

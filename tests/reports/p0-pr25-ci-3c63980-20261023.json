@@ -1,0 +1,33 @@
+{
+  "headSha": "3c63980536e11d1712706f882696e24de86b03c8",
+  "runId": 39987675342,
+  "conclusion": "success",
+  "jobs": [
+    {
+      "id": 120530991900,
+      "name": "Linux tenant security acceptance",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-23T16:33:03Z",
+      "completed_at": "2026-10-23T16:38:50Z"
+    },
+    {
+      "id": 120530992264,
+      "name": "Linux PostgreSQL tenant acceptance",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-23T16:32:59Z",
+      "completed_at": "2026-10-23T16:49:24Z"
+    },
+    {
+      "id": 120530992329,
+      "name": "Windows deployment and backup safety",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-23T16:32:58Z",
+      "completed_at": "2026-10-23T16:36:08Z"
+    }
+  ],
+  "status": "completed",
+  "url": "https://github.com/EnvanterTR/EnvanterCodex/actions/runs/39987675342"
+}

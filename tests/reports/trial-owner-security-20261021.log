@@ -1,0 +1,124 @@
+ Network envantertr-security-acceptance-72ca6af3ba_acceptance Creating 
+ Network envantertr-security-acceptance-72ca6af3ba_acceptance Creating 
+ Network envantertr-security-acceptance-72ca6af3ba_acceptance Created 
+ Network envantertr-security-acceptance-72ca6af3ba_acceptance Created 
+ Container envantertr-security-acceptance-72ca6af3ba-database-1 Creating 
+ Container envantertr-security-acceptance-72ca6af3ba-database-1 Created 
+ Container envantertr-security-acceptance-72ca6af3ba-database-1 Starting 
+ Container envantertr-security-acceptance-72ca6af3ba-database-1 Started 
+ Image envantertr-security-acceptance-72ca6af3ba-acceptance Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 710B 0.2s done
+#1 DONE 0.2s
+
+#2 [internal] load build definition from Dockerfile.security-acceptance
+#2 transferring dockerfile: 871B 0.0s done
+#2 DONE 0.1s
+
+#3 [internal] load metadata for mcr.microsoft.com/dotnet/sdk:10.0
+#3 DONE 0.3s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 134B 0.0s done
+#4 DONE 0.1s
+
+#5 [internal] load build context
+#5 DONE 0.0s
+
+#6 [ 1/11] FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
+#6 resolve mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa 0.1s done
+#6 DONE 0.2s
+
+#5 [internal] load build context
+#5 transferring context: 45.35kB 0.2s done
+#5 DONE 0.2s
+
+#7 [ 4/11] COPY src/EnvanterTR.Web/EnvanterTR.Web.csproj src/EnvanterTR.Web/
+#7 CACHED
+
+#8 [ 5/11] COPY tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj tests/EnvanterTR.SecurityAcceptance/
+#8 CACHED
+
+#9 [ 6/11] RUN dotnet restore tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj
+#9 CACHED
+
+#10 [ 7/11] COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
+#10 CACHED
+
+#11 [ 2/11] WORKDIR /source
+#11 CACHED
+
+#12 [ 3/11] COPY global.json ./
+#12 CACHED
+
+#13 [ 8/11] RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
+#13 CACHED
+
+#14 [ 9/11] COPY tests/EnvanterTR.SecurityAcceptance/ tests/EnvanterTR.SecurityAcceptance/
+#14 DONE 0.4s
+
+#15 [10/11] RUN dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore
+#15 17.44   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+#15 71.66 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 71.66 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 71.66 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 71.66 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 71.66 /source/tests/EnvanterTR.SecurityAcceptance/CloudTrialAcceptanceTests.cs(95,23): error CS0029: Cannot implicitly convert type 'System.Guid' to 'string' [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 71.66 /source/tests/EnvanterTR.SecurityAcceptance/CloudTrialAcceptanceTests.cs(116,56): error CS0019: Operator '==' cannot be applied to operands of type 'Guid' and 'string' [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 71.66 /source/tests/EnvanterTR.SecurityAcceptance/CloudTrialAcceptanceTests.cs(120,31): error CS1503: Argument 2: cannot convert from 'System.Guid' to 'System.Collections.Generic.IAsyncEnumerable<char>?' [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 71.70 
+#15 71.70 Build FAILED.
+#15 71.70 
+#15 71.70 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 71.70 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 71.70 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 71.70 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 71.70 /source/tests/EnvanterTR.SecurityAcceptance/CloudTrialAcceptanceTests.cs(95,23): error CS0029: Cannot implicitly convert type 'System.Guid' to 'string' [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 71.70 /source/tests/EnvanterTR.SecurityAcceptance/CloudTrialAcceptanceTests.cs(116,56): error CS0019: Operator '==' cannot be applied to operands of type 'Guid' and 'string' [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 71.70 /source/tests/EnvanterTR.SecurityAcceptance/CloudTrialAcceptanceTests.cs(120,31): error CS1503: Argument 2: cannot convert from 'System.Guid' to 'System.Collections.Generic.IAsyncEnumerable<char>?' [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#15 71.70     4 Warning(s)
+#15 71.70     3 Error(s)
+#15 71.70 
+#15 71.70 Time Elapsed 00:01:04.88
+#15 ERROR: process "/bin/sh -c dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore" did not complete successfully: exit code: 1
+------
+ > [10/11] RUN dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore:
+71.70 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+71.70 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+71.70 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+71.70 /source/tests/EnvanterTR.SecurityAcceptance/CloudTrialAcceptanceTests.cs(95,23): error CS0029: Cannot implicitly convert type 'System.Guid' to 'string' [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+71.70 /source/tests/EnvanterTR.SecurityAcceptance/CloudTrialAcceptanceTests.cs(116,56): error CS0019: Operator '==' cannot be applied to operands of type 'Guid' and 'string' [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+71.70 /source/tests/EnvanterTR.SecurityAcceptance/CloudTrialAcceptanceTests.cs(120,31): error CS1503: Argument 2: cannot convert from 'System.Guid' to 'System.Collections.Generic.IAsyncEnumerable<char>?' [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+71.70     4 Warning(s)
+71.70     3 Error(s)
+71.70 
+71.70 Time Elapsed 00:01:04.88
+------
+Dockerfile.security-acceptance:10
+
+--------------------
+
+   8 |     RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
+
+   9 |     COPY tests/EnvanterTR.SecurityAcceptance/ tests/EnvanterTR.SecurityAcceptance/
+
+  10 | >>> RUN dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore
+
+  11 |     WORKDIR /source/tests/EnvanterTR.SecurityAcceptance
+
+  12 |     ENTRYPOINT ["dotnet", "test", "--no-build", "--no-restore", "--logger", "console;verbosity=normal"]
+
+--------------------
+
+failed to solve: process "/bin/sh -c dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore" did not complete successfully: exit code: 1
+
+
+
+View build details: docker-desktop://dashboard/build/default/default/vwhop9cpzf8v81bezjmf58k9j
+
+ Container envantertr-security-acceptance-72ca6af3ba-database-1 Stopping 
+ Container envantertr-security-acceptance-72ca6af3ba-database-1 Stopped 
+ Container envantertr-security-acceptance-72ca6af3ba-database-1 Removing 
+ Container envantertr-security-acceptance-72ca6af3ba-database-1 Removed 
+ Network envantertr-security-acceptance-72ca6af3ba_acceptance Removing 
+ Network envantertr-security-acceptance-72ca6af3ba_acceptance Removed 

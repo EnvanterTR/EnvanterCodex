@@ -102,7 +102,8 @@ public static class SoftwareLicenseEmployeeEndpoints
                 .SingleOrDefaultAsync(ct);
             if (file is null || !SoftwareLicenseEndpoints.IsSafeLicenseAttachmentName(file.StorageFileName)) return Results.NotFound();
             var path = Path.Combine(SoftwareLicenseEndpoints.LicenseAttachmentDirectory(configuration, companyId, file.Id), file.StorageFileName);
-            if (!System.IO.File.Exists(path)) return Results.NotFound();
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path) || !System.IO.File.Exists(path))
+                return Results.NotFound();
             var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024,
                 FileOptions.Asynchronous | FileOptions.SequentialScan);
             context.Response.Headers.CacheControl = "no-store";

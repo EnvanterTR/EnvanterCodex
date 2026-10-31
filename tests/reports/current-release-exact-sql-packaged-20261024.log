@@ -1,0 +1,160 @@
+ Network envantertr-release-migration-9c3a305768_acceptance Creating
+ Network envantertr-release-migration-9c3a305768_acceptance Creating
+ Network envantertr-release-migration-9c3a305768_acceptance Created
+ Network envantertr-release-migration-9c3a305768_acceptance Created
+ Container envantertr-release-migration-9c3a305768-database-1 Creating
+ Container envantertr-release-migration-9c3a305768-database-1 Created
+ Container envantertr-release-migration-9c3a305768-database-1 Starting
+ Container envantertr-release-migration-9c3a305768-database-1 Started
+ Image envantertr-release-migration-9c3a305768-acceptance Building
+#1 [internal] load local bake definitions
+#1 reading from stdin 706B 0.2s done
+#1 DONE 0.2s
+
+#2 [internal] load build definition from Dockerfile.security-acceptance
+#2 transferring dockerfile: 1.01kB 0.0s done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for mcr.microsoft.com/dotnet/sdk:10.0
+#3 DONE 0.2s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 134B 0.0s done
+#4 DONE 0.1s
+
+#5 [internal] load build context
+#5 DONE 0.0s
+
+#6 [ 1/12] FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
+#6 resolve mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa 0.1s done
+#6 DONE 0.1s
+
+#5 [internal] load build context
+#5 transferring context: 2.28MB 1.4s done
+#5 DONE 1.5s
+
+#7 [ 2/12] WORKDIR /source
+#7 CACHED
+
+#8 [ 3/12] COPY global.json ./
+#8 CACHED
+
+#9 [ 4/12] COPY src/EnvanterTR.Web/EnvanterTR.Web.csproj src/EnvanterTR.Web/
+#9 CACHED
+
+#10 [ 5/12] COPY tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj tests/EnvanterTR.SecurityAcceptance/
+#10 DONE 0.1s
+
+#11 [ 6/12] RUN dotnet restore tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj
+#11 3.206   Determining projects to restore...
+#11 23.28   Restored /source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj (in 17.79 sec).
+#11 23.58   Restored /source/src/EnvanterTR.Web/EnvanterTR.Web.csproj (in 18.15 sec).
+#11 DONE 24.4s
+
+#12 [ 7/12] COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
+#12 DONE 0.4s
+
+#13 [ 8/12] RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
+#13 127.3   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+#13 127.4
+#13 127.4 Build succeeded.
+#13 127.4     0 Warning(s)
+#13 127.4     0 Error(s)
+#13 127.4
+#13 127.4 Time Elapsed 00:02:06.24
+#13 DONE 127.7s
+
+#14 [ 9/12] COPY tests/reports/current-release-118-to-120-20261024.sql tests/reports/current-release-118-to-120-20261024.sql.sha256 tests/reports/
+#14 DONE 0.1s
+
+#15 [10/12] COPY tests/EnvanterTR.SecurityAcceptance/ tests/EnvanterTR.SecurityAcceptance/
+#15 DONE 0.1s
+
+#16 [11/12] RUN dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore
+#16 2.684   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+#16 48.35 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#16 48.35 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#16 48.35 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#16 48.35 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#16 48.73   EnvanterTR.SecurityAcceptance -> /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll
+#16 48.95
+#16 48.95 Build succeeded.
+#16 48.95
+#16 48.95 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#16 48.95 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#16 48.95 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#16 48.95 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#16 48.96     4 Warning(s)
+#16 48.96     0 Error(s)
+#16 48.96
+#16 48.96 Time Elapsed 00:00:48.22
+#16 DONE 49.1s
+
+#17 [12/12] WORKDIR /source/tests/EnvanterTR.SecurityAcceptance
+#17 DONE 0.1s
+
+#18 exporting to image
+#18 exporting layers
+#18 exporting layers 27.3s done
+#18 exporting manifest sha256:3f29bf8fca6cdcf4082d2b3a2458e3f7a5c82b5fdcbfab29b0ce7a6941a77ee9 0.0s done
+#18 exporting config sha256:0b3dc3118600632916d16f1475b939fb9c93081b26b35988b146f2f75cdeb7ac 0.1s done
+#18 exporting attestation manifest sha256:71716c930c2bea2eefd3ef171092d7e9a2546f18cc0b11184a1d949a12fde9fb 0.1s done
+#18 exporting manifest list sha256:3e8f2d2273ffaa2741734aebf5b1f94f82ea9d64a859effb4b9d3b7fc5ddcaa9 0.0s done
+#18 naming to docker.io/library/envantertr-release-migration-9c3a305768-acceptance:latest 0.0s done
+#18 unpacking to docker.io/library/envantertr-release-migration-9c3a305768-acceptance:latest
+#18 unpacking to docker.io/library/envantertr-release-migration-9c3a305768-acceptance:latest 11.4s done
+#18 DONE 39.2s
+
+#19 resolving provenance for metadata file
+#19 DONE 0.2s
+ Image envantertr-release-migration-9c3a305768-acceptance Built
+ Container envantertr-release-migration-9c3a305768-database-1 Waiting
+ Container envantertr-release-migration-9c3a305768-database-1 Healthy
+ Container envantertr-release-migration-9c3a305768-acceptance-run-3807ad493817 Creating
+ Container envantertr-release-migration-9c3a305768-acceptance-run-3807ad493817 Created
+Test run for /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.01] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.71]   Discovering: EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:01.06]   Discovered:  EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:01.16]   Starting:    EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:57.27]     EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently [FAIL]
+[xUnit.net 00:00:57.27]       Assert.Equal() Failure: Strings differ
+[xUnit.net 00:00:57.27]                  ↓ (pos 0)
+[xUnit.net 00:00:57.27]       Expected: "START TRANSACTION;\n\nDO $EF$\nBEGIN\n    IF "···
+[xUnit.net 00:00:57.27]       Actual:   "﻿START TRANSACTION;\n\nDO $EF$\nBEGIN\n    IF"···
+[xUnit.net 00:00:57.27]                  ↑ (pos 0)
+[xUnit.net 00:00:57.28]       Stack Trace:
+[xUnit.net 00:00:57.28]         /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs(95,0): at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently()
+[xUnit.net 00:00:57.28]         /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs(114,0): at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently()
+[xUnit.net 00:00:57.28]         /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs(114,0): at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently()
+[xUnit.net 00:00:57.28]         /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs(121,0): at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently()
+[xUnit.net 00:00:57.28]         /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs(121,0): at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently()
+[xUnit.net 00:00:57.28]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:57.35]   Finished:    EnvanterTR.SecurityAcceptance
+  Failed EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently [55 s]
+  Error Message:
+   Assert.Equal() Failure: Strings differ
+           ↓ (pos 0)
+Expected: "START TRANSACTION;\n\nDO $EF$\nBEGIN\n    IF "···
+Actual:   "﻿START TRANSACTION;\n\nDO $EF$\nBEGIN\n    IF"···
+           ↑ (pos 0)
+  Stack Trace:
+     at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently() in /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs:line 95
+   at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently() in /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs:line 114
+   at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently() in /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs:line 114
+   at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently() in /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs:line 121
+   at EnvanterTR.SecurityAcceptance.CurrentReleaseMigrationAcceptanceTests.Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently() in /source/tests/EnvanterTR.SecurityAcceptance/CurrentReleaseMigrationAcceptanceTests.cs:line 121
+--- End of stack trace from previous location ---
+
+Test Run Failed.
+Total tests: 1
+     Failed: 1
+ Total time: 59.6182 Seconds
+
+ Container envantertr-release-migration-9c3a305768-database-1 Stopping
+ Container envantertr-release-migration-9c3a305768-database-1 Stopped
+ Container envantertr-release-migration-9c3a305768-database-1 Removing
+ Container envantertr-release-migration-9c3a305768-database-1 Removed
+ Network envantertr-release-migration-9c3a305768_acceptance Removing
+ Network envantertr-release-migration-9c3a305768_acceptance Removed

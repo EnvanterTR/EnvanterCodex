@@ -1,0 +1,1 @@
+BEGIN READ ONLY; SELECT c."Slug",m."RoleKey",count(*) AS membership_count FROM "CompanyMemberships" m JOIN "Companies" c ON c."Id"=m."CompanyId" JOIN "AspNetUsers" u ON u."Id"=m."UserId" WHERE u."NormalizedEmail"='C.BELGE@HOTMAIL.COM' AND c."Slug" IN ('santa','farma','demo3') GROUP BY c."Slug",m."RoleKey" ORDER BY c."Slug"; COMMIT;

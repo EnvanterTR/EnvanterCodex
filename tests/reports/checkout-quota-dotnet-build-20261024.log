@@ -1,0 +1,63 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.security-acceptance
+#1 transferring dockerfile: 871B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for mcr.microsoft.com/dotnet/sdk:10.0
+#2 DONE 0.2s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 134B done
+#3 DONE 0.0s
+
+#4 [ 1/11] FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
+#4 resolve mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa 0.0s done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 24.51MB 1.7s done
+#5 DONE 1.7s
+
+#6 [ 4/11] COPY src/EnvanterTR.Web/EnvanterTR.Web.csproj src/EnvanterTR.Web/
+#6 CACHED
+
+#7 [ 5/11] COPY tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj tests/EnvanterTR.SecurityAcceptance/
+#7 CACHED
+
+#8 [ 7/11] COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
+#8 CACHED
+
+#9 [ 9/11] COPY tests/EnvanterTR.SecurityAcceptance/ tests/EnvanterTR.SecurityAcceptance/
+#9 CACHED
+
+#10 [ 6/11] RUN dotnet restore tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj
+#10 CACHED
+
+#11 [ 8/11] RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
+#11 CACHED
+
+#12 [10/11] RUN dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore
+#12 CACHED
+
+#13 [ 2/11] WORKDIR /source
+#13 CACHED
+
+#14 [ 3/11] COPY global.json ./
+#14 CACHED
+
+#15 [11/11] WORKDIR /source/tests/EnvanterTR.SecurityAcceptance
+#15 CACHED
+
+#16 exporting to image
+#16 exporting layers 0.0s done
+#16 exporting manifest sha256:3b32d310521e77ffbb8d2d031e1341db975b73ba85ede29e17be7b40abaf6934 0.0s done
+#16 exporting config sha256:b14591f94c4dccc27b0f62cd98bbb9f0cf738d4e774c2ef77786933aea18c5c0 0.0s done
+#16 exporting attestation manifest sha256:85b7408b3a2e2b32c4703e813163a506024fa0698d63d446881829554ba803e3
+#16 exporting attestation manifest sha256:85b7408b3a2e2b32c4703e813163a506024fa0698d63d446881829554ba803e3 0.0s done
+#16 exporting manifest list sha256:a8c63040c82dddd09aeed1e94208bbf2636a0e17ae806c65245b237888550d40 0.0s done
+#16 naming to docker.io/library/envantertr-checkout-quota-dotnet:local done
+#16 unpacking to docker.io/library/envantertr-checkout-quota-dotnet:local 0.0s done
+#16 DONE 0.2s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/n3utm6vr19l3ygovuyor5sbb1

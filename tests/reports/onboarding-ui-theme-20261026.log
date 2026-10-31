@@ -1,0 +1,1 @@
+PASS onboarding UI: five real navigation targets, partial/ready state, rejected completion, CSRF POST, persisted completion display, 390px no overflow, viewer hidden, no JS errors. Synthetic transport; API/PostgreSQL verified separately.

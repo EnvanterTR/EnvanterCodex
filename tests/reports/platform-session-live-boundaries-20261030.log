@@ -1,0 +1,54 @@
+2026-10-30T20:59:23.174Z
+PASS eight plans; real checkout and public trials unavailable
+PASS anonymous GET /pdf 401
+PASS anonymous GET /email 401
+PASS anonymous POST /email 401
+PASS /product-gallery.css SHA256=57650744598cd1acc5cf026599203cc4be3a561d104ae3269f9971f5a4f6d28d
+PASS /product-gallery.js SHA256=88912a4d3dfa5b0255fcbfd3995e166680fb64395c97cb2f16fdfc5db0995291
+PASS /assets/images/farma-company-portal-preview.png SHA256=28a60fb8c014820cfee4e35b525f500aac3ea7673deacaabde899a269567337f
+PASS /assets/images/account-security-product-preview.png SHA256=7899e8b733f8b1e159010109284e90eb3400ae7ecebfbf2982a733dcfd29d1cf
+PASS /assets/images/asset-label-roll-transparent.png SHA256=ea8a3ef3276b24098ef22e0a00d77d38f452fb3922ab785ed23566b8b77f9840
+PASS /assets/images/asset-label-devices.png SHA256=bc07dff188df71bee1a7aa6bb0c24a11f5eb9bba68328c4c24a052a79957c3da
+PASS /assets/images/asset-label-desktop.png SHA256=9f3bcc70f28a0bd37d9c5e69e66b406b8b7e6d110f4735590b0bccb321b9d6d0
+PASS /assets/images/asset-label-hardware.png SHA256=7303ff93ea7a718409b2b8daea3fbf071ec379894357ac96ea11beb1b128a802
+PASS live company HTML equals candidate
+PASS envantertr.com onboarding CSS 200 text/css and exact source bytes
+PASS envantertr.com anonymous onboarding GET 401
+PASS envantertr.com anonymous onboarding POST/complete 401
+PASS santa.envantertr.com onboarding CSS 200 text/css and exact source bytes
+PASS santa.envantertr.com anonymous onboarding GET 401
+PASS santa.envantertr.com anonymous onboarding POST/complete 401
+PASS farma.envantertr.com onboarding CSS 200 text/css and exact source bytes
+PASS farma.envantertr.com anonymous onboarding GET 401
+PASS farma.envantertr.com anonymous onboarding POST/complete 401
+PASS envantertr.com reset page 200 and exact candidate source
+PASS santa.envantertr.com reset page 200 and exact candidate source
+PASS farma.envantertr.com reset page 200 and exact candidate source
+PASS santa.envantertr.com/platform-admin.html platform boundary404
+PASS santa.envantertr.com/platform-setup.html platform boundary404
+PASS santa.envantertr.com/admin platform boundary404
+PASS santa.envantertr.com/platform-admin-members.js platform boundary404
+PASS santa.envantertr.com/api/platform/overview platform boundary404
+PASS santa.envantertr.com platform login URL uses root domain
+PASS farma.envantertr.com/platform-admin.html platform boundary404
+PASS farma.envantertr.com/platform-setup.html platform boundary404
+PASS farma.envantertr.com/admin platform boundary404
+PASS farma.envantertr.com/platform-admin-members.js platform boundary404
+PASS farma.envantertr.com/api/platform/overview platform boundary404
+PASS farma.envantertr.com platform login URL uses root domain
+PASS santa.envantertr.com platform reauth POST404
+PASS farma.envantertr.com platform reauth POST404
+PASS apex platform login remains available
+PASS envantertr.com/admin admin 302 relative location or tenant denial; no session cookie
+PASS envantertr.com/admin/ admin 302 relative location or tenant denial; no session cookie
+PASS envantertr.com/admin?view=ignored admin 302 relative location or tenant denial; no session cookie
+PASS www.envantertr.com/admin admin 302 relative location or tenant denial; no session cookie
+PASS www.envantertr.com/admin/ admin 302 relative location or tenant denial; no session cookie
+PASS www.envantertr.com/admin?view=ignored admin 302 relative location or tenant denial; no session cookie
+PASS santa.envantertr.com/admin admin 404 relative location or tenant denial; no session cookie
+PASS santa.envantertr.com/admin/ admin 404 relative location or tenant denial; no session cookie
+PASS santa.envantertr.com/admin?view=ignored admin 404 relative location or tenant denial; no session cookie
+PASS farma.envantertr.com/admin admin 404 relative location or tenant denial; no session cookie
+PASS farma.envantertr.com/admin/ admin 404 relative location or tenant denial; no session cookie
+PASS farma.envantertr.com/admin?view=ignored admin 404 relative location or tenant denial; no session cookie
+PASS root platform HTML equals pinned candidate with administrator response/workspace isolation

@@ -14,6 +14,7 @@ public sealed class Company
     public int SecuritySessionDurationHours { get; set; } = 720;
     public bool SecurityRequireMfa { get; set; }
     public bool IsActive { get; set; } = true;
+    public DateTimeOffset? DeletedAt { get; set; }
     public string CustomerLifecycleStage { get; set; } = "Unclassified";
     public Guid? PlatformOwnerUserId { get; set; }
     public DateTimeOffset? PlatformNextFollowUpAt { get; set; }
@@ -243,6 +244,9 @@ public sealed class CompanyCheckoutOrder
     public string? PaymentReference { get; set; }
     public Guid? CompanyId { get; set; }
     public string? DataProcessingNoticeVersion { get; set; }
+    // Immutable purchase context; deliberately not cleared if a company/account is deleted.
+    public Guid? TargetCompanyId { get; set; }
+    public Guid? RequestedByUserId { get; set; }
     public DateTimeOffset? DataProcessingAcknowledgedAt { get; set; }
     public DateTimeOffset? InitializationLeaseUntil { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
@@ -614,6 +618,25 @@ public sealed class EmployeeHandoverDocument
     public string? IssuerSignatureSha256 { get; set; }
     public DateTimeOffset? IssuerSignedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class EmployeeHandoverEmailAttempt
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid DocumentId { get; set; }
+    public Guid EmployeeId { get; set; }
+    public Guid RequestedByUserId { get; set; }
+    public Guid IdempotencyKey { get; set; }
+    public required string RecipientEmail { get; set; }
+    public required string SnapshotSha256 { get; set; }
+    public required string PdfSha256 { get; set; }
+    public string Status { get; set; } = "Sending";
+    public string? ErrorType { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? AcceptedAt { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
 }
 
 public sealed class AssetMaintenance
