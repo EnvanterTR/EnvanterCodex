@@ -1,3 +1,10 @@
+## 31 Ekim 2026 14:11–14:12 UTC — salt-okunur canlı gerçeklik denetimi
+
+- `node tools/Check-CoolifyProduction.mjs` yalnız HTTPS GET yaptı. `https://envantertr.com/api/status` ve `https://firma.envantertr.com/api/status`: HTTP 200, `ready`; dağıtılmış uygulama 122 migration / 0 bekleyen bildirdi. Kaynak dalı 125 migration içeriyor; bu fark tek başına canlı imajın tam commit'ini kanıtlamaz. Aday-canlı migration kimliği karşılaştırması için `tests/reports/p0-b-migration-diff-live-vs-candidate-20261031.md` kullanılmalı.
+- Ayrı, salt-okunur GET ile `https://santa.envantertr.com/api/status` ve `https://farma.envantertr.com/api/status` da HTTP 200, `ready`, 122/0 verdi. `https://firma.envantertr.com/` HTTP 200 ve `EnvanterTR — Şirket Alanı` başlığını döndürdü.
+- Apex `/api/plans` sekiz yayımlı Cloud planı döndürdü. `/api/checkout/status` HTTP 200 olsa da `available:false`, `provider:null`; iyzico checkout, webhook ve gerçek ödeme/provisioning kabulü açık değil.
+- Bu denetimde hiçbir oturum açılmadı; müşteri verisi, Coolify ayarı, migration, şirket veya ödeme değiştirilmedi. Sağlık endpoint'leri canlı commit/imaj kimliğini veya yedek kurtarılabilirliğini kanıtlamaz. P0-A için güncel tablo budur; P0-D ve P1-H kapıları hâlâ açık.
+
 ## 30 Ekim 2026 — son doğrulanmış canlı sürüm d19cfe5
 
 Canlı **d19cfe549dfab76c2088ed1425d9733456db360e / şema122/0**. Destek e-postasında güncel üyelik/adres/şirket durumu, operasyonel hatırlatmada güncel varlık okuma yetkisi kontrol ediliyor. Yerel7/7+5/5, tamCI41004287391üçiş, exactstaging/95tablo korunması, taze050211ZSQL ve143MB050216Zkurtarma sonrası tekCoolifyqfut0dslqw1dlnybzxcp8lluSuccess4m49s. Gerçekimaj/runtime05:43:48UTC ve üçhostHTTP/kaynak/görsel/erişim sınırları05:44:07UTCexit0. Kanıt: `tests/reports/operational-role-production-release-20261030.md`.
