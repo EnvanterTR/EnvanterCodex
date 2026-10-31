@@ -1377,3 +1377,10 @@ BirleşikP1adayf8340d9fa6887a6c8745f152670a72879dee1419tekpush'lagönderildi;CI4
 - CI41196018439 shard3, katalog FK testinin migration124 SQL'sinden sonra hiç pending migration beklemesi nedeniyle başarısız oldu; migration125 beklemesi doğru durumdu. FK/veri davranış hatası değildi.
 - Test exact124 SQL/hash, bozuk legacy atomiklik, iki kez apply ve FK assertions korunarak düzeltildi:124 uygulandı diye doğrula, son migration'a yükselt, ardından pending/model drift kontrolü. Güncel yerel PG17 kabulü 3/3 geçti (1.2698dk). Kanıt `tests/reports/migration-125-follow-up-20261031.md`.
 - Düzeltme henüz commit/push ve uzakCI görmedi. 28b0276 CI başarısız; yeni doğrulanmış yeşilCI olmadan release/staging yok.
+
+## 31 Ekim 2026 — P0-B exact canlı migration sorgusu hazırlandı
+- Durum: preflight aracı ve yerel kabul TAMAM; üretim veritabanı karşılaştırması DOĞRULANMADI.
+- `deploy/testing/production-migration-history-preflight.sql`, adayın 125 tam migration kimliğini `__EFMigrationsHistory` ile eksik/fazla yönlerinde karşılaştırır. Sorgu `REPEATABLE READ READ ONLY` transaction'ında çalışır ve `ROLLBACK` ile biter; şirket/iş verisi okumaz.
+- İzole PostgreSQL 17 Compose kabulü exit 0: 125/122 sentetik geçmişte 3 eksik/0 fazla; negatif kontrolde sentetik bilinmeyen canlı kimliğini bulup 3 eksik/1 fazla verdi. Geçici proje/volume kaldırıldı.
+- Kanıt `tests/reports/p0-b-migration-history-preflight-20261031.md`. Bu sentetik kabul canlı geçmişi kanıtlamaz. `deploy/testing/catalog-reference-preflight.sql` ile beraber gerçek üretim DB'sine salt okunur çalıştırma gerekiyor; migration/yayın uygulanmadı.
+- TAMAM dediğim 1 yerel preflight paketinin 1'i test çıktısıyla doğrulanmıştır.
