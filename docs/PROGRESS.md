@@ -1349,6 +1349,11 @@ BirleşikP1adayf8340d9fa6887a6c8745f152670a72879dee1419tekpush'lagönderildi;CI4
 - Tekrarlanabilir yedek/restore runner'ı CI Linux job'ına eklendi; ilk uzak CI sonucu bekleniyor.
 - Bu, canlı yedek/geri yükleme veya rollback provası değildir. Mevcut kanıt 27 Ekim snapshot'ına ait ve güncel canlı durum/sürüm için yeterli değil. P1-H açık; canlı veriye dokunulmadı.
 
+## 31 Ekim 2026 — P1-H sentetik restore CI sonucu ve teşhis
+- CI run `41203306948` / PR #25: Linux tenant security acceptance job'ında yeni “Back up and restore...” adımı başarısız; Windows deployment/backup job'ı geçti. GitHub run sayfası 3/4 job ve “In progress” durumunda kaldı; ayrıntılı job logu bu oturumdan alınamadı. Kök neden doğrulanmış değil.
+- `run-release-backup-restore.ps1` aşama işaretleri ve stage-specific hata çıktısıyla genişletildi. Aynı image ile temiz yerel tekrar tüm aşamalardan geçti: ayrı PostgreSQL 17 restore, 96 tablo satır sayısı eşleşmesi, medya ve Data Protection anahtar arşivlerinin güvenli çıkarımı ve byte kontrolü. Bu yalnız yerel sentetik kanıttır; CI Linux hatasını açıklamaz.
+- Tanılama değişikliği henüz commit edilip CI'da çalıştırılmadı. P1-H açık; sonraki iş Linux CI logunu erişilebilir kılmak/diagnostic CI çalıştırmak, sonra güncel canlı yedek ve rollback kabulüne ilerlemektir. Üretim ve staging değişmedi.
+
 ## 31 Ekim 2026 — P0-B canlı/adayı migration karşılaştırması
 - Salt-okunur `/api/status` gözlemi: apex, firma, Santa ve Farma `ready`, 122 migration/0 bekleyen. Aday kaynak `ca59fb5` 125 migration; canlı kaynak `d19cfe5` ile exact ID kümesi farkı yalnız migration 123, 124 ve 125.
 - Üç aday `Up()` gövdesinde veri/tablo/sütun silme, doğrudan veri güncelleme veya backfill bulunmadı. 124 şirket kapsamlı restrict FK eklediği için canlı yetim/şirketler arası referans preflight'ı zorunlu.

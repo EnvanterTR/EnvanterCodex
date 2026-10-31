@@ -34,18 +34,27 @@ $archiveCreated = $false
 $extractCreated = $false
 $mediaCreated = $false
 $keysCreated = $false
+$stage = 'prepare isolated workspace'
 
 try {
     New-Item -ItemType Directory -Path $backupDirectory | Out-Null
     $env:ENVANTERTR_CANDIDATE_IMAGE = $Image
     $env:ENVANTERTR_EXPECTED_MIGRATIONS = [string]$migrationCount
     $compose = @('compose', '--project-name', $project, '--file', $composeFile)
+    $stage = 'start synthetic Release services'
+    Write-Output "STAGE: $stage"
     Invoke-Docker ($compose + @('up', '--detach', 'database', 'migrate', 'web'))
+    $stage = 'Release smoke and synthetic owner setup'
+    Write-Output "STAGE: $stage"
     Invoke-Docker ($compose + @('run', '--rm', 'checks'))
 
     # Add only synthetic markers to these new, unique test volumes.
+    $stage = 'create synthetic media and key fixture files'
+    Write-Output "STAGE: $stage"
     Invoke-Docker @('run', '--rm', '--network', 'none', '--volume', "${mediaVolume}:/media", '--volume', "${keysVolume}:/keys", 'postgres:17-alpine', 'sh', '-ec', 'mkdir -p /media/synthetic /keys/synthetic; printf "release-media-fixture\n" > /media/synthetic/marker.txt; printf "release-key-fixture\n" > /keys/synthetic/marker.txt')
 
+    $stage = 'create and validate PostgreSQL dump'
+    Write-Output "STAGE: $stage"
     $sourceDatabase = Get-DockerText ($compose + @('ps', '--quiet', 'database'))
     if ([string]::IsNullOrWhiteSpace($sourceDatabase)) { throw 'Synthetic source database container was not found.' }
     Invoke-Docker @('exec', $sourceDatabase, 'pg_dump', '--no-owner', '--no-acl', '--format=custom', '-U', 'release_smoke', '-d', 'release_smoke', '-f', '/tmp/release-backup.dump')
@@ -54,6 +63,8 @@ try {
     $dump = Join-Path $backupDirectory 'database.dump'
     Invoke-Docker @('cp', "${sourceDatabase}:/tmp/release-backup.dump", $dump)
 
+    $stage = 'archive source media and Data Protection key volumes'
+    Write-Output "STAGE: $stage"
     Invoke-Docker @('create', '--name', $archiveContainer, '--network', 'none', '--volume', "${mediaVolume}:/source-media:ro", '--volume', "${keysVolume}:/source-keys:ro", 'postgres:17-alpine', 'sh', '-ec', 'tar -czf /tmp/company-media.tar.gz -C /source-media .; tar -tzf /tmp/company-media.tar.gz >/dev/null; tar -czf /tmp/data-protection-keys.tar.gz -C /source-keys .; tar -tzf /tmp/data-protection-keys.tar.gz >/dev/null') | Out-Null
     $archiveCreated = $true
     Invoke-Docker @('start', '--attach', $archiveContainer)
@@ -68,6 +79,8 @@ try {
     $mediaCreated = $true
     Invoke-Docker @('volume', 'create', $restoredKeysVolume) | Out-Null
     $keysCreated = $true
+    $stage = 'start isolated PostgreSQL restore target'
+    Write-Output "STAGE: $stage"
     Invoke-Docker @('run', '--detach', '--name', $restoreContainer, '--network', $network, '--env', 'POSTGRES_USER=restore_smoke', '--env', 'POSTGRES_DB=restore_smoke', '--env', "POSTGRES_PASSWORD=$restorePassword", 'postgres:17-alpine') | Out-Null
     $restoreCreated = $true
     $ready = $false
@@ -78,6 +91,8 @@ try {
     }
     if (-not $ready) { throw 'Disposable restore database did not become ready.' }
     Invoke-Docker @('cp', $dump, "${restoreContainer}:/tmp/release-backup.dump")
+    $stage = 'restore dump and compare exact table row counts'
+    Write-Output "STAGE: $stage"
     Invoke-Docker @('exec', $restoreContainer, 'pg_restore', '--exit-on-error', '--no-owner', '--no-acl', '-U', 'restore_smoke', '-d', 'restore_smoke', '/tmp/release-backup.dump')
 
     $generateCounts = "SELECT string_agg(format('SELECT %L::text AS table_name, count(*)::bigint AS row_count FROM %I.%I', tablename, schemaname, tablename), ' UNION ALL ' ORDER BY tablename) FROM pg_tables WHERE schemaname = 'public'"
@@ -86,8 +101,13 @@ try {
     $countsQuery = "SELECT table_name || '|' || row_count::text FROM ($countSql) AS counts ORDER BY table_name"
     $sourceCounts = Get-DockerText @('exec', $sourceDatabase, 'psql', '-X', '-A', '-t', '-U', 'release_smoke', '-d', 'release_smoke', '-c', $countsQuery)
     $restoredCounts = Get-DockerText @('exec', $restoreContainer, 'psql', '-X', '-A', '-t', '-U', 'restore_smoke', '-d', 'restore_smoke', '-c', $countsQuery)
-    if ($sourceCounts -cne $restoredCounts) { throw 'Exact source and restored table row counts differ.' }
+    if ($sourceCounts -cne $restoredCounts) {
+        $difference = @(Compare-Object ($sourceCounts -split "`r?`n") ($restoredCounts -split "`r?`n") | Select-Object -First 1)
+        throw "Exact source and restored table row counts differ: $($difference | ConvertTo-Json -Compress)."
+    }
 
+    $stage = 'validate media and key archive paths'
+    Write-Output "STAGE: $stage"
     foreach ($archive in @($mediaArchive, $keysArchive)) {
         $entries = @(& tar -tzf $archive)
         if ($LASTEXITCODE -ne 0) { throw 'A media/key archive could not be listed.' }
@@ -99,6 +119,8 @@ try {
         }
     }
 
+    $stage = 'extract restored media and key archives and verify bytes'
+    Write-Output "STAGE: $stage"
     Invoke-Docker @('create', '--name', $extractContainer, '--network', 'none', '--volume', "${restoredMediaVolume}:/media", '--volume', "${restoredKeysVolume}:/keys", 'postgres:17-alpine', 'sh', '-ec', 'mkdir -p /media /keys; tar -xzf /tmp/company-media.tar.gz -C /media --no-same-owner --no-same-permissions; tar -xzf /tmp/data-protection-keys.tar.gz -C /keys --no-same-owner --no-same-permissions; printf "release-media-fixture\n" > /tmp/expected-media; printf "release-key-fixture\n" > /tmp/expected-key; cmp /tmp/expected-media /media/synthetic/marker.txt; cmp /tmp/expected-key /keys/synthetic/marker.txt') | Out-Null
     $extractCreated = $true
     Invoke-Docker @('cp', $mediaArchive, "${extractContainer}:/tmp/company-media.tar.gz")
@@ -113,6 +135,10 @@ try {
     Write-Output 'PASS: media and Data Protection key archives passed traversal validation and restored fixture-byte comparison.'
     Write-Output "PASS: backup artifact SHA-256: $($hashes -join ', ')."
     Write-Output 'SCOPE: disposable synthetic data only; this is not the live backup/restore or production rollback acceptance.'
+}
+catch {
+    [Console]::Error.WriteLine("Release backup/restore drill failed in stage '$stage': $($_.Exception.Message)")
+    throw
 }
 finally {
     if ($extractCreated) { & docker rm --force $extractContainer *> $null }
