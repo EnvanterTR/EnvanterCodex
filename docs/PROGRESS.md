@@ -1348,6 +1348,11 @@ BirleşikP1adayf8340d9fa6887a6c8745f152670a72879dee1419tekpush'lagönderildi;CI4
 - İzole smoke 125 migration, Release/runtime güvenlik ayarları, tenant/platform ayrımı, login/session/CSRF/logout kontrolleriyle geçti; geçici Compose kaynakları temizlendi.
 - Bu, canlı yedek/geri yükleme veya rollback provası değildir. Mevcut kanıt 27 Ekim snapshot'ına ait ve güncel canlı durum/sürüm için yeterli değil. P1-H açık; canlı veriye dokunulmadı.
 
+## 31 Ekim 2026 — P0-B canlı/adayı migration karşılaştırması
+- Salt-okunur `/api/status` gözlemi: apex, firma, Santa ve Farma `ready`, 122 migration/0 bekleyen. Aday kaynak `ca59fb5` 125 migration; canlı kaynak `d19cfe5` ile exact ID kümesi farkı yalnız migration 123, 124 ve 125.
+- Üç aday `Up()` gövdesinde veri/tablo/sütun silme, doğrudan veri güncelleme veya backfill bulunmadı. 124 şirket kapsamlı restrict FK eklediği için canlı yetim/şirketler arası referans preflight'ı zorunlu.
+- Ayrıntı `tests/reports/p0-b-migration-diff-live-vs-candidate-20261031.md`. Canlı endpoint tam migration ID listesini vermiyor; doğrudan salt-okunur history sorgusu ve gerçek katalog preflight'ı bekliyor. Migration veya canlı yayın uygulanmadı.
+
 ## 31 Ekim 2026 — migration 125 model-wide timestamp regression ve FK uyumluluğu
 - Yeni model regresyonu her persisted relational table mapping'de `CreatedAt` ve `UpdatedAt` arar. `FinalizedTenantModelScopeTests` 12/12 geçti (12.9663s); model drift yok.
 - CI41196018439 shard3, katalog FK testinin migration124 SQL'sinden sonra hiç pending migration beklemesi nedeniyle başarısız oldu; migration125 beklemesi doğru durumdu. FK/veri davranış hatası değildi.
