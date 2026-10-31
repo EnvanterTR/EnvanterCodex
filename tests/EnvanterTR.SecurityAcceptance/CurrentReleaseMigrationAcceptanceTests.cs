@@ -218,8 +218,19 @@ public sealed class CurrentReleaseMigrationAcceptanceTests(ITestOutputHelper out
             Assert.True(await db.Users.Where(item => item.Id == sqlUser.Id)
                 .Select(item => EF.Property<DateTimeOffset?>(item, "UpdatedAt")).SingleAsync() > sqlFirstUpdatedAt);
             await db.GetService<IMigrator>().MigrateAsync("20261030220901_AddCompanyScopedCatalogForeignKeys");
-            await using (var triggerCheck = new NpgsqlCommand("SELECT count(*) FROM pg_trigger WHERE tgname = 'envtr_shared_audit_v125' AND NOT tgisinternal", connection))
+            await using (var triggerCheck = new NpgsqlCommand("""
+                SELECT count(*)
+                FROM pg_trigger trigger
+                JOIN pg_class relation ON relation.oid = trigger.tgrelid
+                JOIN pg_namespace schema ON schema.oid = relation.relnamespace
+                WHERE trigger.tgname = 'envtr_shared_audit_v125'
+                    AND NOT trigger.tgisinternal
+                    AND schema.nspname = @schema
+                """, connection))
+            {
+                triggerCheck.Parameters.AddWithValue("schema", schema);
                 Assert.Equal(0L, (long)(await triggerCheck.ExecuteScalarAsync())!);
+            }
             await db.Database.MigrateAsync();
             Assert.Empty(await db.Database.GetPendingMigrationsAsync());
             Assert.Null(await db.Users.Where(item => item.Id == auditedUser.Id)
