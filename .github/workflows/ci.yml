@@ -392,6 +392,11 @@ jobs:
         shell: pwsh
         run: ./deploy/testing/run-release-smoke.ps1 -Image envantertr-web-ci
 
+      - name: Back up and restore the isolated Release database, media, and keys
+        shell: pwsh
+        timeout-minutes: 10
+        run: ./deploy/testing/run-release-backup-restore.ps1 -Image envantertr-web-ci
+
       - name: Check Linux deployment script syntax
         shell: bash
         run: |

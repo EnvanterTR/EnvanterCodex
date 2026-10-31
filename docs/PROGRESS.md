@@ -1345,7 +1345,8 @@ BirleşikP1adayf8340d9fa6887a6c8745f152670a72879dee1419tekpush'lagönderildi;CI4
 
 ## 31 Ekim 2026 — P1-H güncel release izole smoke
 - Güncel `ca59fb5869a08d69ab57658e4cca4a406bb95a74` kaynak kodundan üretim `Dockerfile` imajı başarıyla üretildi; digest ve tam doğrulama kapsamı `tests/reports/p1-h-release-smoke-20261031.md` içinde.
-- İzole smoke 125 migration, Release/runtime güvenlik ayarları, tenant/platform ayrımı, login/session/CSRF/logout kontrolleriyle geçti; geçici Compose kaynakları temizlendi.
+- İzole smoke 125 migration, Release/runtime güvenlik ayarları, tenant/platform ayrımı, login/session/CSRF/logout kontrolleriyle geçti. Ardından mevcut Release uygulamasından alınan sentetik pg_dump, ayrı PostgreSQL 17 restore konteynerine yüklendi; 96 tablonun tam satır sayıları eşleşti, sentetik medya/anahtar arşivleri açıldı ve fixture baytları doğrulandı. GUID'li geçici kaynaklar temizlendi.
+- Tekrarlanabilir yedek/restore runner'ı CI Linux job'ına eklendi; ilk uzak CI sonucu bekleniyor.
 - Bu, canlı yedek/geri yükleme veya rollback provası değildir. Mevcut kanıt 27 Ekim snapshot'ına ait ve güncel canlı durum/sürüm için yeterli değil. P1-H açık; canlı veriye dokunulmadı.
 
 ## 31 Ekim 2026 — P0-B canlı/adayı migration karşılaştırması
