@@ -1355,6 +1355,10 @@ BirleşikP1adayf8340d9fa6887a6c8745f152670a72879dee1419tekpush'lagönderildi;CI4
 - Tanılama değişikliği `8bd0eb0` olarak PR #25'e gönderildi. CI run `41205017241` tamamlandı ve yedi job'ın tümü geçti; Linux yedek/restore adımı ile dört PostgreSQL shard'ı başarılı. İlk tekil CI hatası tekrarlanmadı; kök neden kesinleştirilmedi.
 - P1-H açık: yalnız sentetik izole yedek/restore doğrulandı. Güncel canlı yedek, ayrı veritabanına restore/row comparison ve rollback provası henüz yok; canlıya veya staging'e dokunulmadı. `deploy/local/.env` ve SSH özel anahtarı bulunmadı, Docker'da yalnız yerel context'ler var.
 
+## 31 Ekim 2026 — P1-F/G güncel otomatik CI kabulü
+- PR #25'in `8bd0eb0` kaynaklı CI run `41205017241` yedi işin tümünde success verdi; Linux tenant security, Linux PostgreSQL kabulü, dört tenant PostgreSQL shard'ı ve Windows güvenlik/paket işi geçti. Daha yeni `be5b387` ve `a9ba5f1` commit'leri yalnız dokümantasyon güncelledi.
+- Bu, depo kaynaklı sentetik çapraz-kiracı, MFA/oturum/CSRF regresyon kanıtını güçlendirir. Santa/Farma gerçek hesaplarıyla saldırı kabulü, fiziksel üretim FK/preflight ve Hedef Bölüm 20 müşteri akışlarını kanıtlamaz; canlıya erişilmedi. P1-F/G otomatik alt kapsamı geçti, daha geniş Hedef kabulü açık.
+
 ## 31 Ekim 2026 — P0-B canlı/adayı migration karşılaştırması
 - Salt-okunur `/api/status` gözlemi: apex, firma, Santa ve Farma `ready`, 122 migration/0 bekleyen. Aday kaynak `ca59fb5` 125 migration; canlı kaynak `d19cfe5` ile exact ID kümesi farkı yalnız migration 123, 124 ve 125.
 - Üç aday `Up()` gövdesinde veri/tablo/sütun silme, doğrudan veri güncelleme veya backfill bulunmadı. 124 şirket kapsamlı restrict FK eklediği için canlı yetim/şirketler arası referans preflight'ı zorunlu.
