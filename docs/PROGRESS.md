@@ -1342,3 +1342,9 @@ BirleşikP1adayf8340d9fa6887a6c8745f152670a72879dee1419tekpush'lagönderildi;CI4
 - 118-era izole şema yükseltme kabulü 1/1 geçti (34.3064s): eski fiziksel alan/satır projeksiyonu korundu, bilinmeyen eski tarihler null kaldı, yeni EF ve SQL yazımları doğrulandı, pending model change yok. Kanıt `tests/reports/shared-audit-125-acceptance-20261031.md`.
 - Önceki50c808a CI41140642006 yedi işin tümünde success; bu CI migration125 öncesi SHA olduğu için yeni migration'ı doğrulamaz. Migration125 CI/staging/live bekliyor.
 - Hedef17.3 P1-F hâlâ tamamlanmadı; G/H, genel `DeletedAt`, canlı physical FK/preflight/yedek-restore ve P0 kapıları açık. Üretime migration uygulanmadı.
+
+## 31 Ekim 2026 — migration 125 model-wide timestamp regression ve FK uyumluluğu
+- Yeni model regresyonu her persisted relational table mapping'de `CreatedAt` ve `UpdatedAt` arar. `FinalizedTenantModelScopeTests` 12/12 geçti (12.9663s); model drift yok.
+- CI41196018439 shard3, katalog FK testinin migration124 SQL'sinden sonra hiç pending migration beklemesi nedeniyle başarısız oldu; migration125 beklemesi doğru durumdu. FK/veri davranış hatası değildi.
+- Test exact124 SQL/hash, bozuk legacy atomiklik, iki kez apply ve FK assertions korunarak düzeltildi:124 uygulandı diye doğrula, son migration'a yükselt, ardından pending/model drift kontrolü. Güncel yerel PG17 kabulü 3/3 geçti (1.2698dk). Kanıt `tests/reports/migration-125-follow-up-20261031.md`.
+- Düzeltme henüz commit/push ve uzakCI görmedi. 28b0276 CI başarısız; yeni doğrulanmış yeşilCI olmadan release/staging yok.

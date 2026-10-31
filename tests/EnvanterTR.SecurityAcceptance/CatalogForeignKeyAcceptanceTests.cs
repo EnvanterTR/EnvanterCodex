@@ -75,6 +75,10 @@ public sealed class CatalogForeignKeyAcceptanceTests
             db.ChangeTracker.Clear();
             await ApplyPublishedSql();
             await ApplyPublishedSql();
+            Assert.Equal("20261030220901_AddCompanyScopedCatalogForeignKeys",
+                (await db.Database.GetAppliedMigrationsAsync()).Last());
+            Assert.Equal(new[] { "20261030225548_AddSharedAuditTimestamps" }, await db.Database.GetPendingMigrationsAsync());
+            await db.Database.MigrateAsync();
             Assert.Empty(await db.Database.GetPendingMigrationsAsync());
             Assert.False(db.Database.HasPendingModelChanges());
             foreach (var target in new[] { kind == "asset-model" ? foreignModel.Id : foreignBrand.Id, Guid.NewGuid() })

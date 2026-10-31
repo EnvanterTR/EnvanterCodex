@@ -23,6 +23,19 @@ public sealed class FinalizedTenantModelScopeTests
     }
 
     [Fact]
+    public void Every_persisted_application_table_has_creation_and_update_timestamps()
+    {
+        using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(ModelOnlyConnection).Options);
+        var missing = db.Model.GetRelationalModel().Tables
+            .Where(table => !table.Columns.Any(column => column.Name == "CreatedAt") ||
+                            !table.Columns.Any(column => column.Name == "UpdatedAt"))
+            .Select(table => table.Name + ":" + string.Join(',', table.Columns.Select(column => column.Name)
+                .Where(name => name is "CreatedAt" or "UpdatedAt")))
+            .ToArray();
+        Assert.Empty(missing);
+    }
+
+    [Fact]
     public void Identity_schema3_passkey_JSON_inherits_its_explicit_shared_owner()
     {
         var services = new ServiceCollection();
