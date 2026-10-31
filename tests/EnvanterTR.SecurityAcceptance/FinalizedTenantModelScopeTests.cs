@@ -36,6 +36,18 @@ public sealed class FinalizedTenantModelScopeTests
     }
 
     [Fact]
+    public void Every_persisted_application_table_has_a_nullable_deletion_timestamp()
+    {
+        using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(ModelOnlyConnection).Options);
+        var missing = db.Model.GetRelationalModel().Tables
+            .Where(table => !table.Columns.Any(column => column.Name == "DeletedAt" && column.IsNullable))
+            .Select(table => table.Name)
+            .OrderBy(name => name)
+            .ToArray();
+        Assert.True(missing.Length == 0, $"Persisted tables without nullable DeletedAt: {string.Join(", ", missing)}");
+    }
+
+    [Fact]
     public void Identity_schema3_passkey_JSON_inherits_its_explicit_shared_owner()
     {
         var services = new ServiceCollection();

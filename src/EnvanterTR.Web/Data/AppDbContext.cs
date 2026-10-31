@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using System.Linq.Expressions;
 
 namespace EnvanterTR.Web.Data;
@@ -1638,6 +1639,20 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             var systemScope = Expression.Property(Expression.Constant(this), nameof(IsSystemQueryScope));
             modelBuilder.Entity(entityType.ClrType).HasQueryFilter("TenantScope",
                 Expression.Lambda(Expression.OrElse(systemScope, Expression.Equal(rowCompany, contextCompany)), row));
+        }
+
+        foreach (var tableGroup in modelBuilder.Model.GetEntityTypes()
+                     .Where(entity => entity.GetTableName() is not null)
+                     .GroupBy(entity => new { entitySchema = entity.GetSchema(), tableName = entity.GetTableName() }))
+        {
+            if (tableGroup.Any(entity => entity.FindProperty("DeletedAt") is not null)) continue;
+            // Do not promote an owned JSON/value type (for example Identity's
+            // schema-v3 passkey payload) to an independent entity when adding
+            // a table-level shadow column.
+            var tableEntity = tableGroup.FirstOrDefault(entity => entity.FindOwnership() is null && entity.BaseType is null)
+                              ?? tableGroup.FirstOrDefault(entity => entity.FindOwnership() is null);
+            if (tableEntity is null) continue;
+            tableEntity.AddProperty("DeletedAt", typeof(DateTimeOffset?));
         }
     }
 }

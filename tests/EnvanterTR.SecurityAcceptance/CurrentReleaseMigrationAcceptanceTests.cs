@@ -169,6 +169,36 @@ public sealed class CurrentReleaseMigrationAcceptanceTests(ITestOutputHelper out
             Assert.Null((await db.Companies.SingleAsync(item => item.Id == company.Id)).DeletedAt);
             Assert.Equal(before, await HashProjections(connection, schema, columns));
 
+            var expectedDeletionTables = db.Model.GetRelationalModel().Tables
+                .Select(table => table.Name)
+                .Where(name => name != "__EFMigrationsHistory")
+                .ToHashSet(StringComparer.Ordinal);
+            async Task<HashSet<string>> ReadDeletionTablesAsync()
+            {
+                var found = new HashSet<string>(StringComparer.Ordinal);
+                await using var command = new NpgsqlCommand("""
+                    SELECT table_name FROM information_schema.columns
+                    WHERE table_schema = @schema AND column_name = 'DeletedAt'
+                    """, connection);
+                command.Parameters.AddWithValue("schema", schema);
+                await using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync()) found.Add(reader.GetString(0));
+                return found;
+            }
+
+            Assert.Equal(expectedDeletionTables.OrderBy(name => name, StringComparer.Ordinal),
+                (await ReadDeletionTablesAsync()).OrderBy(name => name, StringComparer.Ordinal));
+            await db.GetService<IMigrator>().MigrateAsync("20261030225548_AddSharedAuditTimestamps");
+            Assert.Equal(125, (await db.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(new[] { "Assets", "Companies", "EmployeeHandoverEmailAttempts" },
+                (await ReadDeletionTablesAsync()).OrderBy(name => name, StringComparer.Ordinal));
+            Assert.Equal(before, await HashProjections(connection, schema, columns));
+            await db.Database.MigrateAsync();
+            Assert.Empty(await db.Database.GetPendingMigrationsAsync());
+            Assert.Equal(expectedDeletionTables.OrderBy(name => name, StringComparer.Ordinal),
+                (await ReadDeletionTablesAsync()).OrderBy(name => name, StringComparer.Ordinal));
+            Assert.Equal(before, await HashProjections(connection, schema, columns));
+
             // Old shared rows have no trustworthy source date; new tracked and
             // direct-SQL writes must be timestamped after migration 125.
             Assert.Null(await db.Users.Where(item => item.Id == user.Id)

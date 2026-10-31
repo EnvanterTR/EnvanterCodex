@@ -28,6 +28,8 @@ public sealed class CatalogForeignKeyAcceptanceTests
             var scoped = new NpgsqlConnectionStringBuilder(connection) { SearchPath = schema };
             await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(scoped.ConnectionString,
                 sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", schema)).Options);
+            await using var legacyConnection = new NpgsqlConnection(scoped.ConnectionString);
+            await legacyConnection.OpenAsync();
             const string previous = "20261030210807_AddMissingCompanyAuditTimestamps";
             var artifact = Path.Combine(AppContext.BaseDirectory, "catalog-fk-migration.sql");
             var bytes = await File.ReadAllBytesAsync(artifact);
@@ -48,6 +50,17 @@ public sealed class CatalogForeignKeyAcceptanceTests
                 await using var apply = new NpgsqlCommand(sql, sqlConnection);
                 await apply.ExecuteNonQueryAsync();
             }
+            async Task InsertLegacyRowAsync(string table, object row)
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(row,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = null });
+                await using var insert = new NpgsqlCommand($"""
+                    INSERT INTO {Quote(schema)}.{Quote(table)}
+                    SELECT * FROM jsonb_populate_record(NULL::{Quote(schema)}.{Quote(table)}, @row::jsonb)
+                    """, legacyConnection);
+                insert.Parameters.AddWithValue("row", json);
+                await insert.ExecuteNonQueryAsync();
+            }
             await db.Database.MigrateAsync(previous);
             var own = new Company { Name = "Own catalog constraint company" };
             var other = new Company { Name = "Other catalog constraint company" };
@@ -56,11 +69,15 @@ public sealed class CatalogForeignKeyAcceptanceTests
             var foreignBrand = new AssetBrand { CompanyId = other.Id, Name = "Other brand" };
             var model = new AssetModel { CompanyId = own.Id, Name = "Own model" };
             var foreignModel = new AssetModel { CompanyId = other.Id, Name = "Other model" };
-            db.AddRange(own, other, category, brand, foreignBrand, model, foreignModel);
-            await db.SaveChangesAsync();
+            await InsertLegacyRowAsync("Companies", own);
+            await InsertLegacyRowAsync("Companies", other);
+            await InsertLegacyRowAsync("AssetCategories", category);
+            await InsertLegacyRowAsync("AssetBrands", brand);
+            await InsertLegacyRowAsync("AssetBrands", foreignBrand);
+            await InsertLegacyRowAsync("AssetModels", model);
+            await InsertLegacyRowAsync("AssetModels", foreignModel);
             var bad = NewRecord(kind, kind == "asset-model" ? foreignModel.Id : foreignBrand.Id);
-            db.Add(bad);
-            await db.SaveChangesAsync();
+            await InsertLegacyRowAsync(bad is Asset ? "Assets" : "AssetModels", bad);
             db.ChangeTracker.Clear();
             var migrationFailure = await Assert.ThrowsAsync<PostgresException>(ApplyPublishedSql);
             Assert.Equal(PostgresErrorCodes.ForeignKeyViolation, migrationFailure.SqlState);
@@ -69,15 +86,19 @@ public sealed class CatalogForeignKeyAcceptanceTests
             Assert.True(kind.StartsWith("asset-") ? await db.Assets.IgnoreQueryFilters().AnyAsync(a => a.Id == badId)
                 : await db.AssetModels.AnyAsync(m => m.Id == badId));
             // Repair only this synthetic fixture's explicitly introduced invalid reference.
-            db.Attach(bad);
-            db.Entry(bad).Property(kind.EndsWith("brand") ? "BrandId" : "ModelId").CurrentValue = null;
-            await db.SaveChangesAsync();
-            db.ChangeTracker.Clear();
+            var badTable = bad is Asset ? "Assets" : "AssetModels";
+            var badLink = kind.EndsWith("brand") ? "BrandId" : "ModelId";
+            await using (var repair = new NpgsqlCommand($"UPDATE {Quote(schema)}.{Quote(badTable)} SET {Quote(badLink)} = NULL WHERE \"Id\" = @id", legacyConnection))
+            {
+                repair.Parameters.AddWithValue("id", (Guid)db.Entry(bad).Property("Id").CurrentValue!);
+                await repair.ExecuteNonQueryAsync();
+            }
             await ApplyPublishedSql();
             await ApplyPublishedSql();
             Assert.Equal("20261030220901_AddCompanyScopedCatalogForeignKeys",
                 (await db.Database.GetAppliedMigrationsAsync()).Last());
-            Assert.Equal(new[] { "20261030225548_AddSharedAuditTimestamps" }, await db.Database.GetPendingMigrationsAsync());
+            Assert.Equal(new[] { "20261030225548_AddSharedAuditTimestamps", "20261031000100_AddDeletedAtToAllTables" },
+                await db.Database.GetPendingMigrationsAsync());
             await db.Database.MigrateAsync();
             Assert.Empty(await db.Database.GetPendingMigrationsAsync());
             Assert.False(db.Database.HasPendingModelChanges());
@@ -104,4 +125,6 @@ public sealed class CatalogForeignKeyAcceptanceTests
             await drop.ExecuteNonQueryAsync();
         }
     }
+
+    private static string Quote(string identifier) => "\"" + identifier.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
 }

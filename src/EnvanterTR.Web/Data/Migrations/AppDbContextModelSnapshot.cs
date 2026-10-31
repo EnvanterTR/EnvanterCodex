@@ -7608,6 +7608,17 @@ namespace EnvanterTR.Web.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
+
+            foreach (var tableGroup in modelBuilder.Model.GetEntityTypes()
+                         .Where(entity => entity.GetTableName() is not null)
+                         .GroupBy(entity => new { entitySchema = entity.GetSchema(), tableName = entity.GetTableName() }))
+            {
+                if (tableGroup.Any(entity => entity.FindProperty("DeletedAt") is not null)) continue;
+                var tableEntity = tableGroup.FirstOrDefault(entity => entity.FindOwnership() is null && entity.BaseType is null)
+                                  ?? tableGroup.FirstOrDefault(entity => entity.FindOwnership() is null);
+                if (tableEntity is null) continue;
+                tableEntity.AddProperty("DeletedAt", typeof(DateTimeOffset?));
+            }
 #pragma warning restore 612, 618
         }
     }

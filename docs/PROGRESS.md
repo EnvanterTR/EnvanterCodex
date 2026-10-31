@@ -1384,3 +1384,14 @@ BirleşikP1adayf8340d9fa6887a6c8745f152670a72879dee1419tekpush'lagönderildi;CI4
 - İzole PostgreSQL 17 Compose kabulü exit 0: 125/122 sentetik geçmişte 3 eksik/0 fazla; negatif kontrolde sentetik bilinmeyen canlı kimliğini bulup 3 eksik/1 fazla verdi. Geçici proje/volume kaldırıldı.
 - Kanıt `tests/reports/p0-b-migration-history-preflight-20261031.md`. Bu sentetik kabul canlı geçmişi kanıtlamaz. `deploy/testing/catalog-reference-preflight.sql` ile beraber gerçek üretim DB'sine salt okunur çalıştırma gerekiyor; migration/yayın uygulanmadı.
 - TAMAM dediğim 1 yerel preflight paketinin 1'i test çıktısıyla doğrulanmıştır.
+
+## 31 Ekim 2026 — Hedef 6.1 eksik `DeletedAt` alanları
+- Durum: izole şema paketi TAMAM; migration 126 yerel acceptance ile doğrulandı, üretim/staging DOĞRULANMADI.
+- 95 tabloluk şema denetiminde `DeletedAt` eksik olan 92 tabloya nullable `timestamp with time zone` alanı ekleyen `20261031000100_AddDeletedAtToAllTables` üretildi. Üç mevcut kolon korunur. Tarih varsayılanı/backfill'i, veri güncelleme veya silme yok; mevcut soft-delete davranışı değiştirilmedi.
+- `AppDbContext` ve snapshot tüm kalıcı model tablolarına nullable alanı metadata üzerinden ekler. Identity passkey JSON modelinin sahiplik ilişkisini korumak için model builder'da yeni entity keşfi yapılmaz.
+- FK kabul fixture'ı güncel EF modeliyle 126 öncesi tarihsel schema üzerinde çalışacak biçimde schema-qualified raw SQL'e geçirildi; önceki 124 migration corruption atomiklik sınaması korunur.
+- Docker Compose PostgreSQL 17 son kabul komutu: modelde tüm tablolarda `DeletedAt`, shared-account/no-drift, 118→126 veri/kolon preservation, 126 Down→125→126 tekrar uygulama ve üç FK corruption senaryosu. Sonuç: 6/6 geçti; web build 0 warning/0 error, test build mevcut 10 warning/0 error.
+- Kanıt: `tests/reports/deletedat-126-acceptance-20261031.md`. Geçici kabul veritabanı kullanıldı; canlı veriye dokunulmadı.
+- Hedef 6.1'in şema alanı kapsamı kanıtlandı. Tarih kaynağı olmayan eski kayıtların değerleri `NULL`; kullanıcıdan alınacak tarih envanteri ve üretim şeması/yedek doğrulaması hâlâ gerekli. Ortak kullanıcı, plan ve platform tabloları şirket kaydı olarak yeniden tasarlanmadı.
+- Sıradaki: bu paketi ayrı commit ve CI ile doğrulamak; P1 güvenlik ve geri dönüş açıklarını sürdürmek. Prod/staging deploy yok.
+- TAMAM dediğim 1 izole şema paketinin 1'i test çıktısıyla doğrulanmıştır.
