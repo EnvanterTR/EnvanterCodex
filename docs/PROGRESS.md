@@ -1357,6 +1357,10 @@ BirleşikP1adayf8340d9fa6887a6c8745f152670a72879dee1419tekpush'lagönderildi;CI4
 - `https://firma.envantertr.com/` anonim GET 200, şirket alanı başlığı ve giriş işaretlemesi döndürdü; `/api/status` ready/122/0. Önceki 503 belirtisi bu gözlemde tekrarlanmadı.
 - Bu yalnızca sayfanın/sağlık endpoint'inin erişilebilirliğidir; giriş ve şirket içi müşteri kabulü kanıtı değildir. Ayrıntı `tests/reports/p0-c-firma-live-probe-20261031.md`.
 
+## 31 Ekim 2026 — P0-D canlı plan/ödeme durumu
+- Canlı `/api/plans` 8 yıllık TRY Cloud planı döndürdü; API yıllık tek çekim ve KDV hariç fiyat bilgisini içeriyor. Tutarlar ve kullanıcı limitleri `tests/reports/p0-d-live-plan-checkout-20261031.md` içinde.
+- `/api/checkout/status` `available:false`, `provider:null`. Plan kataloğu yayımlı; iyzico işyeri hesabı/anahtarları olmadığı için gerçek checkout, webhook ve ödeme sonrası provisioning kapalı kalıyor. P0-D tamamlanmadı.
+
 ## 31 Ekim 2026 — migration 125 model-wide timestamp regression ve FK uyumluluğu
 - Yeni model regresyonu her persisted relational table mapping'de `CreatedAt` ve `UpdatedAt` arar. `FinalizedTenantModelScopeTests` 12/12 geçti (12.9663s); model drift yok.
 - CI41196018439 shard3, katalog FK testinin migration124 SQL'sinden sonra hiç pending migration beklemesi nedeniyle başarısız oldu; migration125 beklemesi doğru durumdu. FK/veri davranış hatası değildi.
