@@ -1333,3 +1333,12 @@ BirleşikP1adayf8340d9fa6887a6c8745f152670a72879dee1419tekpush'lagönderildi;CI4
 - Öncekizorunlucheckadıaggregateolarakkorundu;4shardbaşarılıdeğilsefail.Failfastfalse;runnerlarbağımsız. Gerçekparalelçalışma/sürekazanımıhenüzölçülmedi.
 - MevcutCI41135298896f834tümücompleted/successdoğrulandı(terminalJSON). Aktifişiptaledilmeden124preflight/migration/SQL/kabulveCIhızlandırmatekpush'lagönderilecek. YeniCIserverstaging/liveyerinesayılmaz;fullHedef/P1açık.
 - TAMAM dediğim1yerelaltyapıpaketinin1'i doğrulama çıktılarıyla desteklenmiştir.
+
+50c808a192ecbe3052126e8d400dc06557522882 CI41140642006 terminal durumda yedi işin yedisinde success (dört PostgreSQL tenant shardı dahil); önceki 41135298896 tamamlandıktan sonra başlatıldı. Bu CI 124 FK/SQL/preflight/compat ve partitioning kapsamını doğrular; 125 migration değişikliklerini içermez. Yeni ortak tarih migrationı ayrı kabul/CI gerektirir. Staging/live/restore henüz yok; tam Hedef/P1 açık.
+
+## 31 Ekim 2026 — ortak hesap ve platform tablolarında tarih alanları
+- Durum: migration125 yerel build/yükseltme kabulü TAMAM; yeni migration için uzakCI/staging/canlı DOĞRULANMADI.
+- `20261030225548_AddSharedAuditTimestamps`: 12 nullable `CreatedAt` + 10 nullable `UpdatedAt`; eski kayıtlara tarih uydurulmadı/backfill yok. EF shadow alanları ve v123 PostgreSQL trigger fonksiyonunu kullanan yeni125 trigger ile EF/direct SQL insert-update tarihleri. Kimlik/plan mimarisi değişmedi.
+- 118-era izole şema yükseltme kabulü 1/1 geçti (34.3064s): eski fiziksel alan/satır projeksiyonu korundu, bilinmeyen eski tarihler null kaldı, yeni EF ve SQL yazımları doğrulandı, pending model change yok. Kanıt `tests/reports/shared-audit-125-acceptance-20261031.md`.
+- Önceki50c808a CI41140642006 yedi işin tümünde success; bu CI migration125 öncesi SHA olduğu için yeni migration'ı doğrulamaz. Migration125 CI/staging/live bekliyor.
+- Hedef17.3 P1-F hâlâ tamamlanmadı; G/H, genel `DeletedAt`, canlı physical FK/preflight/yedek-restore ve P0 kapıları açık. Üretime migration uygulanmadı.

@@ -21,6 +21,8 @@ public static class FinalizedTenantModelScope
     private static readonly HashSet<Type> ConditionalTypes =
     [typeof(CompanyCheckoutOrder), typeof(PlatformDemoRequest), typeof(PlatformAuditEntry), typeof(UserSession)];
 
+    internal static bool IsSharedType(Type type) => SharedTypes.Contains(type);
+
     public static void Validate(IModel model)
     {
         // Resolve the provider's actual mappings, not OnModelCreating's transient types.

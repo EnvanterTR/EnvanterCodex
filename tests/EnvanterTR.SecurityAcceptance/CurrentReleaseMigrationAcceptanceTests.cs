@@ -51,8 +51,15 @@ public sealed class CurrentReleaseMigrationAcceptanceTests(ITestOutputHelper out
                     "SecurityPasswordMinimumLength", "SecuritySessionDurationHours", "SecurityRequireMfa")
                 VALUES ({company.Id}, {company.Name}, {company.Slug}, TRUE, now(), '#1769E0', 12, 720, FALSE)
                 """);
-            db.Users.Add(user); db.SubscriptionPlans.Add(plan);
-            await db.SaveChangesAsync();
+            // Populate only the physical 118-era columns; newer shadow audit fields do not exist yet.
+            var userJson = System.Text.Json.JsonSerializer.Serialize(user);
+            var planJson = System.Text.Json.JsonSerializer.Serialize(plan);
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO "AspNetUsers" SELECT * FROM jsonb_populate_record(NULL::"AspNetUsers", {userJson}::jsonb)
+                """);
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO "SubscriptionPlans" SELECT * FROM jsonb_populate_record(NULL::"SubscriptionPlans", {planJson}::jsonb)
+                """);
             var sessionId = Guid.NewGuid(); var orderId = Guid.NewGuid();
             await db.Database.ExecuteSqlInterpolatedAsync($"""
                 INSERT INTO "UserSessions" ("Id", "UserId", "CompanyId", "PlatformAdmin", "CreatedAt", "LastSeenAt", "ExpiresAt", "UserAgent")
@@ -161,8 +168,65 @@ public sealed class CurrentReleaseMigrationAcceptanceTests(ITestOutputHelper out
             Assert.False(db.Database.HasPendingModelChanges());
             Assert.Null((await db.Companies.SingleAsync(item => item.Id == company.Id)).DeletedAt);
             Assert.Equal(before, await HashProjections(connection, schema, columns));
+
+            // Old shared rows have no trustworthy source date; new tracked and
+            // direct-SQL writes must be timestamped after migration 125.
+            Assert.Null(await db.Users.Where(item => item.Id == user.Id)
+                .Select(item => EF.Property<DateTimeOffset?>(item, "CreatedAt")).SingleAsync());
+            Assert.Null(await db.SubscriptionPlans.Where(item => item.Id == plan.Id)
+                .Select(item => EF.Property<DateTimeOffset?>(item, "CreatedAt")).SingleAsync());
+            var auditedUser = new EnvanterUser
+            {
+                DisplayName = "New audited owner", UserName = "audited@example.invalid",
+                Email = "audited@example.invalid", EmailConfirmed = true
+            };
+            db.Users.Add(auditedUser);
+            await db.SaveChangesAsync();
+            var createdAt = await db.Users.Where(item => item.Id == auditedUser.Id)
+                .Select(item => EF.Property<DateTimeOffset?>(item, "CreatedAt")).SingleAsync();
+            var firstUpdatedAt = await db.Users.Where(item => item.Id == auditedUser.Id)
+                .Select(item => EF.Property<DateTimeOffset?>(item, "UpdatedAt")).SingleAsync();
+            Assert.NotNull(createdAt);
+            Assert.NotNull(firstUpdatedAt);
+            await Task.Delay(5);
+            auditedUser.DisplayName = "Updated audited owner";
+            await db.SaveChangesAsync();
+            Assert.Equal(createdAt, await db.Users.Where(item => item.Id == auditedUser.Id)
+                .Select(item => EF.Property<DateTimeOffset?>(item, "CreatedAt")).SingleAsync());
+            Assert.True(await db.Users.Where(item => item.Id == auditedUser.Id)
+                .Select(item => EF.Property<DateTimeOffset?>(item, "UpdatedAt")).SingleAsync() > firstUpdatedAt);
+
+            var sqlUser = new EnvanterUser
+            {
+                DisplayName = "Direct SQL owner", UserName = "direct-sql@example.invalid",
+                Email = "direct-sql@example.invalid", EmailConfirmed = true
+            };
+            var sqlUserJson = System.Text.Json.JsonSerializer.Serialize(sqlUser);
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO "AspNetUsers" SELECT * FROM jsonb_populate_record(NULL::"AspNetUsers", {sqlUserJson}::jsonb)
+                """);
+            var sqlCreatedAt = await db.Users.Where(item => item.Id == sqlUser.Id)
+                .Select(item => EF.Property<DateTimeOffset?>(item, "CreatedAt")).SingleAsync();
+            var sqlFirstUpdatedAt = await db.Users.Where(item => item.Id == sqlUser.Id)
+                .Select(item => EF.Property<DateTimeOffset?>(item, "UpdatedAt")).SingleAsync();
+            Assert.NotNull(sqlCreatedAt);
+            Assert.NotNull(sqlFirstUpdatedAt);
+            await Task.Delay(5);
+            await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE \"AspNetUsers\" SET \"DisplayName\" = 'Direct SQL updated' WHERE \"Id\" = {sqlUser.Id}");
+            Assert.Equal(sqlCreatedAt, await db.Users.Where(item => item.Id == sqlUser.Id)
+                .Select(item => EF.Property<DateTimeOffset?>(item, "CreatedAt")).SingleAsync());
+            Assert.True(await db.Users.Where(item => item.Id == sqlUser.Id)
+                .Select(item => EF.Property<DateTimeOffset?>(item, "UpdatedAt")).SingleAsync() > sqlFirstUpdatedAt);
+            await db.GetService<IMigrator>().MigrateAsync("20261030220901_AddCompanyScopedCatalogForeignKeys");
+            await using (var triggerCheck = new NpgsqlCommand("SELECT count(*) FROM pg_trigger WHERE tgname = 'envtr_shared_audit_v125' AND NOT tgisinternal", connection))
+                Assert.Equal(0L, (long)(await triggerCheck.ExecuteScalarAsync())!);
+            await db.Database.MigrateAsync();
+            Assert.Empty(await db.Database.GetPendingMigrationsAsync());
+            Assert.Null(await db.Users.Where(item => item.Id == auditedUser.Id)
+                .Select(item => EF.Property<DateTimeOffset?>(item, "CreatedAt")).SingleAsync());
             output.WriteLine($"PRESERVED_COMPANY_DELETION_120_TO_121_OK: repeated idempotent SQL; all original fields/rows unchanged; new DeletedAt null; SQL SHA-256 {companyHash}.");
             output.WriteLine($"PRESERVED_HANDOVER_EMAIL_121_TO_122_OK: repeated exact SQL; all original fields/rows unchanged; delivery table empty; SQL SHA-256 {handoverHash}.");
+            output.WriteLine("SHARED_AUDIT_125_OK: legacy dates remain unknown; tracked/direct-SQL inserts and updates are timestamped; Down removes triggers/columns and re-upgrade remains clean.");
             output.WriteLine($"PRESERVED_RELEASE_118_TO_120_OK: {columns.Count} original tables; original fields/rows identical after first and repeated SQL; existing session/order/assets preserved.");
             output.WriteLine("Synthetic isolated schema only; not production backup, staging, or live acceptance.");
         }

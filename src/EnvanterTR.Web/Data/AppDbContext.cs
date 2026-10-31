@@ -1616,6 +1616,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AssetMaintenanceAttachment>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.SetNull);
+        foreach (var sharedType in modelBuilder.Model.GetEntityTypes().Where(entity => entity.BaseType is null &&
+                     FinalizedTenantModelScope.IsSharedType(entity.ClrType)))
+            foreach (var auditName in new[] { "CreatedAt", "UpdatedAt" })
+                if (sharedType.FindProperty(auditName) is null)
+                    modelBuilder.Entity(sharedType.ClrType).Property<DateTimeOffset?>(auditName);
+
         foreach (var entityType in modelBuilder.Model.GetEntityTypes().Where(entity => entity.BaseType is null))
         {
             var companyProperty = entityType.ClrType == typeof(Company)
