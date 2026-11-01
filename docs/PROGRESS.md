@@ -20,3 +20,10 @@
 - Public HTTP recheck: `firma.envantertr.com/health`, `farma.envantertr.com/health`, `santa.envantertr.com/health` each returned HTTP 200 `Healthy`; this resolves only the old §4.6.2 outage observation for these endpoints at this timestamp, not account workflow acceptance.
 - `https://envantertr.com/api/plans` returned 8 Cloud annual plans with annual prices 2,400 / 4,200 / 6,000 / 9,000 / 12,000 / 14,400 / 24,000 / 36,000 TRY and `monthlyPrice=0`. `/api/checkout/status` returned `available=false`, provider `null`; live purchase remains unavailable. The user confirmed there is no iyzico merchant account; production checkout cannot be declared complete until provider credentials/account are configured and end-to-end payment/webhook acceptance passes.
 - This read-only check does not verify admin area, database migration count, email delivery, customer data, or backup restoration. It made no production writes.
+
+## 2026-11-01 — P1 background scheduled-report tenant boundary
+- Changed: added `Background_scheduled_report_data_is_limited_to_the_report_company`, which constructs inventory, license, and stock report data using the non-request `AppDbContext` and asserts that own-company totals exclude the existing other-company fixtures. Added test-assembly access to the report data helper while keeping the helper itself internal.
+- Build: `dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore` → succeeded, 0 errors; four existing ASP.NET deprecation warnings remain in `TrustedClientIpTests.cs`.
+- Database test: not run locally because `ENVANTERTR_SECURITY_TEST_CONNECTION` is unset. The PostgreSQL-backed test must pass in CI before this requirement can be marked complete.
+- `git diff --check` passed. No production DB or live service changes.
+- Next: push this focused acceptance test to PR #30 and wait for terminal PostgreSQL/security CI results.
