@@ -10,5 +10,6 @@ Extended `deploy/testing/platform-mfa-browser/platform-mfa-first-login.mjs` to s
 - `node --check deploy/testing/platform-mfa-browser/platform-mfa-first-login.mjs`: PASS.
 - `git diff --check`: PASS.
 - `dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore`: PASS, 0 warnings / 0 errors, 2m17s.
-- The full disposable PostgreSQL/browser acceptance cannot run in this Windows session: Docker Engine named pipe `//./pipe/dockerDesktopLinuxEngine` is unavailable. CI is required to execute this new scenario.
-- This report describes added coverage, not a passed run. It is not deployed.
+- Local full disposable PostgreSQL/browser acceptance could not run in this Windows session because Docker Engine named pipe `//./pipe/dockerDesktopLinuxEngine` is unavailable.
+- GitHub Actions run `41332041275` on commit `1e72c47ef30876c51a765db028b27a9a82213470` completed **success, 5/5**. The Platform MFA browser acceptance job passed in 2m23s and executed the new mocked-429 plus reload assertions; the other four workflow jobs also passed.
+- This is source/CI acceptance only. The PR remains unmerged and the change is not deployed.
