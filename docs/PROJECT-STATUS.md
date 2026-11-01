@@ -1030,3 +1030,9 @@ Tenant yönlendirme için yerel `public-site` konteynerine `Host: firma.envanter
 - Son girişler CreatedAt ve Id ile sabit sıralanıyor. Kabul testi tüm oturumların bağımsız DB anlık görüntüsünü API generatedAt zamanında değerlendiriyor; dört metriği, küresel son on kaydın sırasını ve bütün görüntüleme alanlarını karşılaştırıyor. Eski beş oturumun 24 saat sayımına ve ikisinin etkin oturum sayımına katıldığı ayrıca doğrulanıyor.
 - İstek/kod kontrolü: derleme 0 hata/0 uyarı; 82/82 kaynak sözleşmesi. Gerçek API/PostgreSQL hedefli kabul 5308, 1/1 exit 0; önceki 56794 aynı bağlamla 1/1 başarısızdı. Yeni tam GitHub CI ve canlı kabul ayrı kapılardır; önceki yerel 231/231 sonucu yeni tam koşunun yerini tutmaz.
 - Yeni deploy/coolify/rehearse-preserved-data.sh yalnız doğrulanmış SQL ve geri yüklenmiş kopya DB üzerinde çalışır. Taze canlı dump'ın ayrı kopyasında 80 özgün tablonun eski satır/alan projeksiyonları 92 -> 117 ve idempotent tekrardan sonra byte düzeyinde eşleşti. Ana DB ve doğrulanmamış SQL yolu negatif kontrolleri geçti. Ham müşteri içerikleri yalnız özel yedek dizininde tutulur; genel kanıta taşınmaz.
+
+## 1 Kasım 2026 — profil fotoğrafı depolama hatası
+- Üretimden önceki kullanıcı hata bildirimi için `/api/session/photo` dosya depolama hatası yakalama/503 düzeltmesi ile marker korumalı HTTP regresyon testi eklendi.
+- Web build başarılı (0 uyarı/0 hata); SecurityAcceptance projesi build başarılı (4 mevcut ASPDEPR uyarısı/0 hata).
+- Gerçek HTTP testi yerelde çalıştırılmadı: `ENVANTERTR_SECURITY_TEST_CONNECTION` ve disposable PostgreSQL mevcut değil. Canlı davranış kanıtlanmış değildir; PR CI sonucu beklenecek.
+- Ayrıntı: `tests/reports/profile-photo-storage-20261101.md`.
