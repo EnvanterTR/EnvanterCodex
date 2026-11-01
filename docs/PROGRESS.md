@@ -1420,8 +1420,9 @@ BirleşikP1adayf8340d9fa6887a6c8745f152670a72879dee1419tekpush'lagönderildi;CI4
 ## 1 Kasım 2026 — tanıtım galerisi tam ekran ve CI kapsamı
 - `product-gallery.js`: özgün etiket rulosu ile sonradan eklenen üç resme aynı erişilebilir tam ekran davranışı bağlandı. Enter/Space, Escape ve kapatınca odağı görsele döndürme destekleniyor.
 - `product-gallery.mjs`: dört slaydın tümünü açıp kapatma, kaynak doğruluğu, focus restoration, carousel autoplay, manuel geçiş ve mobil taşmama Chromium testi eklendi; yerel Chromium testi PASS.
-- `Dockerfile.hosted-checkout-browser`: daha önce eksik olan test ve public-site script/style/üç görseli imaja kopyalayıp mevcut CI komutunda testi çalıştıracak şekilde bağlandı. Eski CI sonucu bu davranışı kapsamıyordu; yeni commit CI'si sonucu gelmeden CI kapısı geçti denmeyecek.
-- Görsel kanıt `tests/reports/product-gallery-20261101/`, kabul kaydı `tests/reports/product-gallery-20261101.md`. Canlıya yayın yapılmadı.
+- `Dockerfile.hosted-checkout-browser`: test ve public-site script/style/üç görseli imaja alır. Galeri için bağımsız görünür CI işi eklendi.
+- Yerel gerçek Chromium ve PR #27 run `41265318193` (head `e9ffb5335f67dc4784d24cc7c3d2eff90de6ee36`) geçti: galeri, Linux güvenlik, Linux PostgreSQL ve Windows yayın/yedek olmak üzere 4/4 iş success.
+- Canlı kaynak bu kayıtta henüz eskiydi; yayından sonra ayrıca HTTP kaynak kontrolü yapılacak. Görsel kanıt `tests/reports/product-gallery-20261101/`, kabul kaydı `tests/reports/product-gallery-20261101.md`.
 
 ## 1 Kasım 2026 — P0 canlı gerçeklik kontrolü
 - Durum: salt-okunur canlı sağlık/satış uçları TAMAM; P0-B üretim migration karşılaştırması ve P0-D gerçek checkout AÇIK.
