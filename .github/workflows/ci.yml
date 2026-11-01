@@ -263,10 +263,6 @@ jobs:
           docker build --tag envantertr-hosted-checkout-browser-ci --file deploy/testing/Dockerfile.hosted-checkout-browser .
           docker run --rm --init envantertr-hosted-checkout-browser-ci
 
-      - name: Run homepage gallery browser acceptance
-        shell: bash
-        run: docker run --rm --init --entrypoint node envantertr-hosted-checkout-browser-ci /acceptance/product-gallery.mjs
-
       - name: Verify application scripts and camera policy through Nginx
         shell: bash
         run: |
@@ -428,6 +424,22 @@ jobs:
           path: ${{ runner.temp }}/envantertr-linux-release
           if-no-files-found: error
           retention-days: 14
+
+  homepage-gallery-acceptance:
+    name: Homepage gallery browser acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build browser acceptance image
+        shell: bash
+        run: docker build --tag envantertr-homepage-gallery-ci --file deploy/testing/Dockerfile.hosted-checkout-browser .
+
+      - name: Run homepage gallery browser acceptance
+        shell: bash
+        run: docker run --rm --init --entrypoint node envantertr-homepage-gallery-ci /acceptance/product-gallery.mjs
 
   linux-postgresql-acceptance:
     name: Linux PostgreSQL tenant acceptance
