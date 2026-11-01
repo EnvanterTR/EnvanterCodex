@@ -1397,3 +1397,22 @@ BirleşikP1adayf8340d9fa6887a6c8745f152670a72879dee1419tekpush'lagönderildi;CI4
 - Hedef 6.1'in şema alanı kapsamı kanıtlandı. Tarih kaynağı olmayan eski kayıtların değerleri `NULL`; kullanıcıdan alınacak tarih envanteri ve üretim şeması/yedek doğrulaması hâlâ gerekli. Ortak kullanıcı, plan ve platform tabloları şirket kaydı olarak yeniden tasarlanmadı.
 - Sıradaki: uzak Release backup/restore CI adımının yeni run ile yeşil sonucunu almak; tekrarlarsa kullanıcının bağlı GitHub oturumundan log erişimi gerekli. Prod/staging deploy yok.
 - TAMAM dediğim 1 izole şema paketinin 1'i test çıktısıyla doğrulanmıştır.
+
+## 1 Kasım 2026 — aday Windows web build doğrulaması
+- Aday: `cecd8c0c716cc8506834a502364e8c010e2d611e` (`feat/verified-cloud-trials-20261021`).
+- İlk `dotnet build --no-restore` NuGet cache eksikliği nedeniyle `NETSDK1064` ile durdu (Microsoft.CodeAnalysis.Analyzers 3.11.0). Bu ürün derleme hatası değildi.
+- Kullanıcıya ait .NET 10.0.100 SDK ile `dotnet restore src/EnvanterTR.Web/EnvanterTR.Web.csproj` başarılı oldu; ardından web projesi `dotnet build ... --no-restore` başarılı: 0 warning, 0 error; `EnvanterTR.Web.dll` üretildi.
+- Bu, Windows üzerinde web projesi build kanıtıdır; tam test paketi, staging, canlı veritabanı, migration uygulaması veya üretim yayını değildir. Son bilinen aynı SHA CI'si ayrıca 7/7 başarılıdır.
+
+## 1 Kasım 2026 — güncel canlı ve PR doğrulaması
+- Salt-okunur sağlık çağrıları: envantertr.com, firma, Santa, Farma — her biri HTTP 200, `ready`, `migrationCount=122`, `pendingMigrationCount=0`.
+- Checkout status: envantertr.com ve firma — `available=false`; ödeme sağlayıcısı etkin değil.
+- GitHub REST: #22 ve #23 open/merged=false; #25 open/draft=true/merged=false, head `cecd8c0c716cc8506834a502364e8c010e2d611e`, base `feat/annual-catalog-drafts-20261021`. Run `41217735738` bu SHA'da success.
+- Docker named pipe ve yerel psql bulunmadığından canlı migration kimliği karşılaştırması veya yeni yerel PostgreSQL provası bu oturumda yapılamadı. Canlı şemaya yazma yapılmadı.
+
+## 1 Kasım 2026 — profil fotoğrafı depolama hatası paketi
+- Durum: kod ve regresyon testi eklendi; uygulama/test derlemesi başarılı. HTTP kabul testi yerelde çalıştırılmadı: bu Windows oturumunda `ENVANTERTR_SECURITY_TEST_CONNECTION` yok ve Docker PostgreSQL daemon'ı çalışmıyor.
+- `AccountEndpoints.cs`: dizin oluşturma, önceki fotoğraf tespiti ve yazma işlemleri tek geri alma korumasına alındı. Dosya sistemi `IOException`/`UnauthorizedAccessException` üretirse ham HTTP 500 yerine genel bir 503 dönüyor; ayrıntı yalnız sunucu loguna yazılıyor. Veritabanı veya beklenmeyen hatalar gizlenmeden yeniden fırlatılıyor.
+- `AccountPhotoMediaNamespaceAcceptanceTests.cs`: `/accounts` dizin yolu yerine dosya konmasıyla yazılamaz depolama senaryosu ekleniyor; 503, hassas path sızmaması ve marker dosyanın korunması kontrol ediliyor.
+- Windows web build: başarılı, 0 warning/0 error. SecurityAcceptance test projesi build: başarılı, 10 mevcut analyzer/nullability warning, 0 error. Testin gerçek HTTP sonucu CI'da doğrulanmalı.
+- Canlıya yayın yapılmadı; bu değişiklik kullanıcıdaki önceki 500'ün kesin kök nedeni olarak sunulmuyor, yalnız kanıtlanabilir storage failure davranışını düzeltir.

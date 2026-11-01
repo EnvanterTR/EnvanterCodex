@@ -1140,7 +1140,8 @@ public static class AccountEndpoints
         }).RequireAuthorization().RequireRateLimiting("customer-api");
 
         endpoints.MapPost("/api/session/photo", async (HttpRequest request, HttpContext context, IAntiforgery antiforgery,
-            ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
+            ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, ILogger<Program> logger,
+            CancellationToken cancellationToken) =>
         {
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
             if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
@@ -1159,14 +1160,16 @@ public static class AccountEndpoints
             var directory = AccountPhotoDirectory(configuration, userId);
             if (!AccountPhotoPathsAreSafe(configuration, userId))
                 return Results.Conflict(new { message = "Profil fotoğrafı alanı güvenli biçimde kullanılamıyor." });
-            Directory.CreateDirectory(directory);
             var tempPath = Path.Combine(directory, $"upload-{Guid.NewGuid():N}.tmp");
             var destination = AccountPhotoPath(configuration, userId, detected.Extension);
-            var previousPath = new[] { "png", "jpg", "webp" }.Select(extension => AccountPhotoPath(configuration, userId, extension))
-                .FirstOrDefault(System.IO.File.Exists);
-            var previousBackupPath = previousPath is null ? null : Path.Combine(directory, $"replace-{Guid.NewGuid():N}.tmp");
+            string? previousPath = null;
+            string? previousBackupPath = null;
             try
             {
+                Directory.CreateDirectory(directory);
+                previousPath = new[] { "png", "jpg", "webp" }.Select(extension => AccountPhotoPath(configuration, userId, extension))
+                    .FirstOrDefault(System.IO.File.Exists);
+                previousBackupPath = previousPath is null ? null : Path.Combine(directory, $"replace-{Guid.NewGuid():N}.tmp");
                 await System.IO.File.WriteAllBytesAsync(tempPath, bytes, cancellationToken);
                 if (previousPath is not null) System.IO.File.Move(previousPath, previousBackupPath!);
                 System.IO.File.Move(tempPath, destination);
@@ -1178,11 +1181,17 @@ public static class AccountEndpoints
                     await db.SaveChangesAsync(cancellationToken);
                 }
             }
-            catch
+            catch (Exception exception)
             {
                 try { if (System.IO.File.Exists(tempPath)) System.IO.File.Delete(tempPath); } catch (IOException) { } catch (UnauthorizedAccessException) { }
                 try { if (System.IO.File.Exists(destination)) System.IO.File.Delete(destination); } catch (IOException) { } catch (UnauthorizedAccessException) { }
                 try { if (previousPath is not null && previousBackupPath is not null && System.IO.File.Exists(previousBackupPath)) System.IO.File.Move(previousBackupPath, previousPath, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+                if (exception is IOException or UnauthorizedAccessException)
+                {
+                    logger.LogError(exception, "Profile photo storage operation failed.");
+                    return Results.Problem("Profil fotoğrafı şu anda kaydedilemiyor. Depolama alanı kullanılamıyor.",
+                        statusCode: StatusCodes.Status503ServiceUnavailable);
+                }
                 throw;
             }
             foreach (var extension in new[] { "png", "jpg", "webp" })
