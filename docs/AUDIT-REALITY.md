@@ -142,7 +142,8 @@ Bu ek, yukarıdaki 23 Ekim tarihli sayısal/altyapı anlık görüntüsünü gü
 54 normalize edilmiş sayısal değer üç kaynak belgedeki yüzde yazımlarının tamamını satır konumlarına bağlar. `%x` ve `x%` biçimleri aynı değerde birleştirildi. `M1`–`M6`, yukarıdaki beş sütunlu denetim tablosunun id'leridir; her değerin kod/test hükmü ilgili aile satırında yer alır.
 
 | Normalize değer (%) | Kaynak satırlar | Denetim satırı |
-|---|---|---|| 100 (hedef) | `PROJECT-STATUS.md:8,11,935`; `ROADMAP.md:5` | M2 |
+|---|---|---|
+| 100 (hedef) | `PROJECT-STATUS.md:8,11,935`; `ROADMAP.md:5` | M2 |
 | 100 (tarihli tekil pano sonucu) | `PROJECT-STATUS.md:63,593`; `PRODUCT-COVERAGE.md:23` | M3 |
 | 15 | `PROJECT-STATUS.md:273` | M1 |
 | 20 | `PRODUCT-COVERAGE.md:10` | M6 |
