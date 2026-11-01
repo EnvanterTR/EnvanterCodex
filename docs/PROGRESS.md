@@ -171,3 +171,12 @@ Bu kayıt, `docs/ACTIVE-WEB-V1-GOAL.md` ve depo kökündeki kullanıcı hedefiyl
 - Yorum: `%42,06` (45/107) kabul alt-sayacı ve `%70,87` (180/254) kontrol-listesi oranı farklı paydalardır; birleştirilmedi. İyzico hesabı olmadığına dair önceki kullanıcı beyanı nedeniyle gerçek ödeme kapısı açık. Bugün yeni DB yedeği/restore provası yapılmadı.
 - Test/kanıt: canlı tarayıcı galeri tıklama ve Kapat gözlemi; salt-okunur HTTPS API çıktıları; Coolify deployment Success. Uygulama kodu bu ilerleme kaydında değiştirilmedi; build veya ürün testi çalıştırılmadı.
 - Sıradaki iş: P0-A'da `PROJECT-STATUS.md`, `PRODUCT-COVERAGE.md`, `ROADMAP.md` içindeki güncel ve tarihsel tamamlanma/ilerleme metriklerini gruplayıp her metrik ailesine kod, test ve güncel hüküm bağlamak; sonra P0-B güncel migration kimlik farkı.
+
+## 2026-11-01 09:08 UTC — canlı galeri uçtan uca gözlem
+- Durum: **TAMAM (ana sayfa görsel isteği); P0-A genel denetimi açık.**
+- Değişen dosyalar: `docs/AUDIT-REALITY.md`, `docs/PROGRESS.md`, `tests/reports/live-gallery-runtime-acceptance-20261101.md`.
+- Kanıt: canlı script HTTP 200 ve 5.078 karakter; üretimdeki dosya `cda5cf6` kaynak blob'u ile birebir eşleşiyor; deploy commit `4789b509c0b719c1bf71a0b8032f7224bae9fd43`.
+- Canlı tarayıcı: etiket slaydı tıklama → tam ekran dialog açıldı; kaynak görselin 1200×1311 doğal çözünürlüğü korundu; Kapat ile kapandı ve odak geri döndü. 5,4 saniyede otomatik döngü ilerledi; 555 px genişlikte yatay taşma görülmedi.
+- Read-only sağlık: apex/firma/farma/santa dört host HTTP 200 `ready`, 122 migration / 0 pending.
+- Komut/test: canlı HTML/JS HTTP kontrolleri ve kaynak blob karşılaştırması geçti; public browser live acceptance adımları geçti. Build veya uygulama testi bu dokümantasyon doğrulama paketinde çalıştırılmadı.
+- Sıradaki iş: P0-A'daki ilerleme metriği satırlarının tam source/test eşlemesini bitir; ardından P0-B için migration kimliklerini karşılaştır. Canlı yedek/restore ve gerçek ödeme kapıları açık kalır.
