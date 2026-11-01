@@ -188,3 +188,11 @@ Bu kayıt, `docs/ACTIVE-WEB-V1-GOAL.md` ve depo kökündeki kullanıcı hedefiyl
 - Read-only sağlık: apex/firma/farma/santa dört host HTTP 200 `ready`, 122 migration / 0 pending.
 - Komut/test: canlı HTML/JS HTTP kontrolleri ve kaynak blob karşılaştırması geçti; public browser live acceptance adımları geçti. Build veya uygulama testi bu dokümantasyon doğrulama paketinde çalıştırılmadı.
 - Sıradaki iş: P0-A'daki ilerleme metriği satırlarının tam source/test eşlemesini bitir; ardından P0-B için migration kimliklerini karşılaştır. Canlı yedek/restore ve gerçek ödeme kapıları açık kalır.
+
+## 2026-11-01 — P0-A yüzde tablosu kod/test sütunlarıyla düzeltildi
+- Durum: Yüzde satırları ölçüm aileleri ve gerçek hükümleriyle sınıflandı; admin ekranı kanıtı ile tarihli kabul satırlarının birebir kaynak eşlemesi hâlâ açık.
+- Değişen dosyalar: `docs/AUDIT-REALITY.md`, `docs/PROGRESS.md`.
+- Komut + çıktı: İki yüzde yazımı biçimiyle üç belge tarandı; 144 + 21 + 1 = 166 yüzde içeren kaynak satırı. Sonuçlar Hedef §4.2'nin istediği 5 sütuna ayrıldı: madde, iddia, kod, test, gerçek durum.
+- Kanıt: %20 KDV örneği `AssetPurchaseOrderEndpoints.cs:61,431` ve `TenantSessionAcceptanceTests.cs:16648–16753` ile eşlendi; tarihsel ortalama/alt sayaçlar için ortak hesaplayıcı bulunmadığı açıkça yazıldı.
+- Test: Ürün testi çalıştırılmadı; doküman için `git diff --check` çalıştırılacak. 166, yalnız doküman taramasında bulunan yüzde içeren satır sayısıdır; ürün test sonucu değildir.
+- Sıradaki iş: `git diff --check` sonucunu kaydet; P0-A için her tarihli oranı Hedef maddesi ve kendi test artifact'ına bağla. Bölüm 19 giriş/ekran kanıtı çözülmeden P0-B'ye geçme.
