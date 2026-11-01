@@ -20,6 +20,15 @@ public sealed class AppDbContextTenantFilterTests
             .Options;
         using var db = new AppDbContext(options, accessor);
 
+        var companyScopedEntityTypes = db.Model.GetEntityTypes()
+            .Where(entity => entity.BaseType is null &&
+                entity.FindProperty("CompanyId") is { ClrType: var type } &&
+                (type == typeof(Guid) || type == typeof(Guid?)))
+            .ToArray();
+        Assert.NotEmpty(companyScopedEntityTypes);
+        Assert.All(companyScopedEntityTypes, entity => Assert.NotEmpty(entity.GetDeclaredQueryFilters()));
+        Assert.Null(db.Model.FindEntityType(typeof(EnvanterUser))!.FindProperty("CompanyId"));
+
         accessor.HttpContext!.User = TenantPrincipal(firstCompanyId);
         var firstTenantSql = db.Assets.AsNoTracking().ToQueryString();
         Assert.Contains(firstCompanyId.ToString(), firstTenantSql, StringComparison.OrdinalIgnoreCase);
