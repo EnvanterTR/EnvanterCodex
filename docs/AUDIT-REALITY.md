@@ -230,3 +230,10 @@ PR #30 remains a draft on a branch, not main or production. This test is narrow 
 - Canlı otomatik döngü ölçümünde 5,4 saniyede slayt indeksi son slayttan başa geçti; geçişin ardından 555 px viewport için `scrollWidth <= innerWidth` idi. Görsel sıkıştırma veya dönüştürme yapılmadı.
 - Aynı salt-okunur kontrolde apex, `firma`, `farma`, `santa` `/api/status`: HTTP 200 `ready`, 122 migration, 0 bekleyen.
 - Bu, kullanıcı galeri isteğini canlıda doğrular; tüm SaaS V1, ödeme, migration içerik paritesi, yeni DB yedeği/restore veya Santa/Farma/Demo3 kabulini kapatmaz. P0-A yüzde kaydı ve P0-B migration kimlik karşılaştırması sürüyor.
+
+## 2026-11-01 — canlıya alma kapsamının netleştirilmesi
+
+- Kullanıcının istediği ana sayfa görsel galerisi ve tıklayınca tam ekran açılma özelliği yukarıdaki canlı kabulde doğrulandı; bunun için yeni bir canlı yayın beklemiyor.
+- Bu denetim dalındaki son commit'ler yalnızca dokümantasyon güncellemeleridir; yeni uygulama kodu içermediğinden üretime dağıtılacak yeni bir özellik oluşturmaz. Coolify'deki galerinin çalışan SHA'sı `4789b509c0b719c1bf71a0b8032f7224bae9fd43` olarak kayıtlıdır.
+- Projenin tamamını canlıya alma durumu **AÇIK**: P0-A denetimi kapanmadı; canlı migration içerik farkı ve bu yayına özgü taze yedek/geri dönüş kanıtı da tamamlanmış değildir. Bu nedenle bu turda yeni üretim deployment'ı veya migration yapılmadı.
+- P0-A'nın kalan kanıtı Hedef §19.4/§473'teki süper-admin ekran görüntüsü ve tarihli kabul metriklerinin kaynak/testlerle atomik izlenebilirliğidir. Açık yönetici oturumu mevcut browser envanterinde yoktu; parola kullanılmadı.
