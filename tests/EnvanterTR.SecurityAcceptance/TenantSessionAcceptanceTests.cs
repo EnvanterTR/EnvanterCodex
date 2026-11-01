@@ -4674,6 +4674,14 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             using var payload = JsonDocument.Parse(await resent.Content.ReadAsStringAsync());
             Assert.True(payload.RootElement.GetProperty("invitationSent").GetBoolean());
         }
+        var latestInvitation = _smtpCapture.Messages.Last(message => message.Contains($"To: {email}", StringComparison.OrdinalIgnoreCase));
+        var (invitationEmail, invitationToken) = ExtractAccountLink(latestInvitation);
+        Assert.Equal(email, invitationEmail);
+        const string ownerPassword = "Invitation.Acceptance-Password-42!";
+        using (var acceptedInvitation = await SendAsRoleAsync(HttpMethod.Post, "/api/session/password/reset", "admin",
+                   JsonContent.Create(new { email = invitationEmail, token = invitationToken, newPassword = ownerPassword }), requestToken, antiforgeryCookie))
+            Assert.True(acceptedInvitation.StatusCode == HttpStatusCode.OK,
+                $"The latest resent owner invitation must be usable; returned {(int)acceptedInvitation.StatusCode}: {await acceptedInvitation.Content.ReadAsStringAsync()}");
         using (var duplicateSlug = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/companies",
                    System.Net.Http.Json.JsonContent.Create(requestBody), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.Conflict, duplicateSlug.StatusCode);
@@ -4701,6 +4709,9 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(1, await db.Companies.CountAsync(x => x.Slug == slug));
             Assert.Equal(1, await db.CompanyMemberships.CountAsync(x => x.CompanyId == companyId && x.UserId == ownerId));
             Assert.Equal(1, await db.TenantSubscriptions.CountAsync(x => x.CompanyId == companyId));
+            var owner = await db.Users.SingleAsync(x => x.Id == ownerId);
+            Assert.True(owner.EmailConfirmed);
+            Assert.True(await scope.ServiceProvider.GetRequiredService<UserManager<EnvanterUser>>().CheckPasswordAsync(owner, ownerPassword));
         }
     }
 
@@ -18593,15 +18604,9 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Contains("reset-password.html", htmlBody, StringComparison.Ordinal);
         Assert.Contains("#email", htmlBody, StringComparison.Ordinal);
         Assert.DoesNotContain("?email=", htmlBody, StringComparison.OrdinalIgnoreCase);
-
-        string resetToken;
-        await using (var scope = _factory!.Services.CreateAsyncScope())
-        {
-            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<EnvanterUser>>();
-            var user = await userManager.FindByIdAsync(_userId.ToString());
-            Assert.NotNull(user);
-            resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
-        }
+        var (resetEmail, resetToken) = ExtractAccountLink(deliveredMessage);
+        Assert.Equal(accountEmail, resetEmail);
+        Assert.False(string.IsNullOrWhiteSpace(resetToken));
 
         const string newPassword = "New.Acceptance-Password-42!";
         var resetContent = () => System.Net.Http.Json.JsonContent.Create(new
@@ -19480,6 +19485,22 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             decoded.Write(Encoding.UTF8.GetBytes([character]));
         }
         return Encoding.UTF8.GetString(decoded.ToArray());
+    }
+
+    private static (string Email, string Token) ExtractAccountLink(string message)
+    {
+        var html = WebUtility.HtmlDecode(DecodeMimeBody(message));
+        var linkMatch = Regex.Match(html, @"href=[^>]*reset-password\.html#[^>]*", RegexOptions.IgnoreCase);
+        Assert.True(linkMatch.Success, "The delivered account email must contain a usable activation or password reset link.");
+        var link = linkMatch.Value["href=".Length..].Trim().Trim('"');
+        var uri = new Uri(link);
+        var values = uri.Fragment.TrimStart('#').Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Select(part => part.Split('=', 2))
+            .Where(parts => parts.Length == 2)
+            .ToDictionary(parts => Uri.UnescapeDataString(parts[0]), parts => Uri.UnescapeDataString(parts[1]), StringComparer.Ordinal);
+        Assert.Contains("email", values.Keys);
+        Assert.Contains("token", values.Keys);
+        return (values["email"], values["token"]);
     }
 
     private async Task<HttpResponseMessage> SendProfilePhotoUploadAsync(byte[] bytes, string requestToken, string antiforgeryCookie)
