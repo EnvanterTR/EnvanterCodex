@@ -1,0 +1,172 @@
+COMMAND node tools/Generate-UiInventory.mjs
+Inventory matches current source: C:\Users\Lenovo\Desktop\EnvanterTR\.worktrees\web-v1-next-work\docs\ui-inventory.md
+Static controls inventoried: 2281
+Sayfa rotası: 65
+Menü grubu: 10
+Bağlantı: 58
+Düğme: 963
+Form: 116
+Girdi alanı: 626
+Seçim alanı: 205
+Metin alanı: 44
+Modal: 110
+Sekme: 5
+Tablo: 79
+COMMAND node tools/Verify-UiLocales.mjs
+Verified 2249 locale entries in Turkish, English, Russian, Ukrainian, and Macedonian.
+COMMAND node tools/Verify-TenantWildcardRouting.mjs
+Tenant wildcard routing source contract passed: TLS, redirect, host boundary, upstream and priority.
+COMMAND node tools/Verify-AppNavigation.mjs
+Verified 52 sidebar destinations and 10 expandable groups, login diagnostics, asset location and detail theme contracts, and company-unit hierarchy workflows; unfinished modules have explicit status copy.
+COMMAND node tools/Verify-NoNativeBrowserDialogs.mjs
+Verified 14 application HTML/JavaScript files contain no native alert(), confirm(), or prompt() calls.
+COMMAND node tools/Verify-CoolifyProductionReadiness.mjs
+Verified application and tenant health, migrations, wildcard 503, public plan availability, checkout provider readiness, malformed payloads, credential-safe diagnostics, and HTTPS-only requests.
+COMMAND node tools/Verify-KeyboardShortcuts.mjs
+Verified Ctrl/Command+K, Ctrl/Command+N, /, ?, and Escape; accessible command search/navigation; sidebar route activation; and authorized quick actions.
+COMMAND node tools/Verify-AssetContextMenu.mjs
+Verified asset row right-click and keyboard context menu, permission-gated existing actions, localized labels, viewport positioning, and dismissal/navigation behavior.
+COMMAND node tools/Verify-AssetTableLayout.mjs
+Verified full-width main/content workspace, page-aware asset row numbering, all 19 company asset column widths, content-based table sizing, and wrapper-only horizontal scrolling.
+COMMAND node tools/Verify-AssetRowActions.mjs
+Verified 7 asset-row shortcuts; clone preserves catalog data and non-sensitive fields, clears unique identifiers, omits secrets, and stays permission-gated.
+COMMAND node tools/Verify-AssetTrashUi.mjs
+Verified asset trash empty state, API count, visible row insertion, restore action, and pagination boundaries.
+COMMAND node tools/Verify-CloudUnlimitedUsers.mjs
+PASS: package quotas are preserved by Cloud APIs/admin/invites; annual catalog arithmetic and15-day trial specification match the latest user decision. Source/spec check only.
+COMMAND node tools/Verify-MultiCompanyInvites.mjs
+PASS: Existing EnvanterTR accounts can be invited to another company with an isolated role and tested company selection.
+COMMAND node tools/Verify-StatusLabelsUi.mjs
+Verified built-in labels, company custom statuses, transition matrix, protected archive workflow, role-gated saves, and refreshed status selectors.
+COMMAND node tools/Verify-LabelSettingsUi.mjs
+Verified 15 QR/barcode UI contracts: format options, company settings/templates, previews, reset, sheet layout, and asset shortcut.
+COMMAND node tools/Verify-AsyncUiForms.mjs
+Async form references and assignment/return date rendering contracts passed.
+COMMAND node tools/Verify-ReservationUi.mjs
+Verified reservation request, filtering/paging/export controls, and accessible approve/reject/cancel dialog flows.
+COMMAND node tools/Verify-ActivityHistoryUi.mjs
+Verified activity history filters, local date boundaries, pagination, safe rendering, keyboard asset shortcuts, and menu presets.
+COMMAND node tools/Verify-LicenseAssignmentUi.mjs
+Verified license assignment actions and the employee EULA self-service menu, document access, explicit acceptance gating, and CSRF-protected submission.
+COMMAND node tools/Verify-LicenseActionDialogs.mjs
+Verified accessible, cancellable license confirmation flow, identity revalidation, scoped API requests, and inline error/result reporting.
+COMMAND node tools/Verify-LicenseImportProfileUi.mjs
+Verified accessible license import profile deletion, selected ID scoping, refresh/reset behavior, and dismissal cleanup.
+COMMAND node tools/Verify-ContractActionUi.mjs
+Verified localized contract archive and attachment deletion dialogs, endpoint wiring, list/detail refresh, and dismissal cleanup.
+COMMAND node tools/Verify-WarrantyReportUi.mjs
+Verified warranty filters, horizons, debounced search, stale-response guard, safe asset shortcut rendering, pagination, refresh, and filtered CSV export.
+COMMAND node tools/Verify-AccessoryInventoryUi.mjs
+Verified accessory search, stock/category/location filters, stable paging, sorting, safe row rendering, shortcuts, role-gated selection, CSV filter parity, column preferences, print, and fullscreen wiring.
+COMMAND node tools/Verify-AccessoryPhotoRemovalDialog.mjs
+Accessory photo removal confirmation, cancellation, selected-record scope, and refresh passed.
+COMMAND node tools/Verify-CatalogAndCustomFieldDialogs.mjs
+Catalog attachment, unused lookup, custom-field edit/group/category-model scope, and asset import-profile dialogs passed.
+COMMAND node tools/Verify-DirectoryMergeDialogs.mjs
+Directory known-conflict and server-conflict merge confirmation flows passed.
+COMMAND node tools/Verify-AccessoryCatalogQuickEntry.mjs
+Accessory and catalog quick-entry dialog contracts passed.
+COMMAND node tools/Verify-AccessoryCheckinDialog.mjs
+Verified accessory single and bulk returns, count-reduction confirmation, role-gated quantity validation, notes, cancellation cleanup, scoped API request, and refresh behavior.
+COMMAND node tools/Verify-AccessoryOrdersUi.mjs
+Verified purchase order filters, overdue date handling, paging race guard, safe detail rendering, create/receive/cancel actions, attachment workflow, and CSV filter parity.
+COMMAND node tools/Verify-ConsumableInventoryUi.mjs
+Verified consumable search, stock filtering, stale-response guards, safe detail/movement rendering, row shortcuts, CSV parity, and create/stock/checkout/import refresh flows.
+COMMAND node tools/Verify-InventoryRequestsUi.mjs
+Verified stock request catalog/list/search filters/paging/export, employee scoping, stale-response guards, submission, and in-app approve/reject/cancel dialog flows.
+COMMAND node tools/Verify-ComponentInventoryUi.mjs
+Verified component list/search/stock filters/paging/export, stale-response guards, detail actions, bulk stock/allocation, import preview/profile/commit, and in-app confirmations.
+COMMAND node tools/Verify-AccessoryKitsUi.mjs
+Verified ready-made kit search/race guards, multi-type catalog/form validation, create/edit/archive/restore, filtered safe CSV, history loading/dismissal, and in-app archive confirmation.
+COMMAND node tools/Verify-InventoryMovementsUi.mjs
+Verified movement list/filter/page/export wiring, stale-response protection, and escaped row rendering.
+COMMAND node tools/Verify-EmployeeRecordsUi.mjs
+Verified employee list and profile flows, scoped assignments/media, import/offboarding, immutable handover and EULA acceptance snapshots, two-part PNG signature capture, tenant/location authorization, atomic one-time signatures, document hashes, archived history, PDF printing, and JavaScript syntax.
+COMMAND node tools/Verify-LocationDirectoryUi.mjs
+Verified department and company-unit location catalog create/update/clear flow plus location/building routing, hierarchy, filtering, defaults, manager actions, archive/restore confirmation, and role-gated creation.
+COMMAND node tools/Verify-MaintenanceAttachmentsUi.mjs
+Verified maintenance attachment listing, selected-file download, localized in-app removal confirmation, delete request, and list refresh.
+COMMAND node tools/Verify-MaintenancePlanUi.mjs
+Verified accessible maintenance-plan cancellation across detail/list/calendar and race-safe company maintenance filtering and paging.
+COMMAND node tools/Verify-AuditScheduleUi.mjs
+Verified audit queue request ordering, horizon/state/search filters, safe row output, and single/scheduled audit form wiring.
+COMMAND node tools/Verify-PreparedReportsUi.mjs
+Verified prepared report request ordering, shared timezone-safe date formatting, current-error handling, date/search filters, paging, refresh, and report API wiring.
+COMMAND node tools/Verify-CustomAssetReportUi.mjs
+Verified custom report preset actions, safe field columns, company/user session isolation, stale request protection, and CSV export wiring.
+COMMAND node tools/Verify-CompanyTasksUi.mjs
+Verified task filtering/paging, stale-request protection, role-gated create/edit/status actions, assigned-member transitions, and safe task rendering.
+COMMAND node tools/Verify-AuthErrorFlows.mjs
+Verified authenticated 401 closes open dialogs and shows login; 403 stays a permission error; rejected login does not recurse; URL credentials are scrubbed; login exposes a wired server-test button; readiness distinguishes ready, first-run, pending-migration, and unavailable states.
+COMMAND node tools/Verify-SessionAndTokenDialogs.mjs
+Verified session/API-key revocation, MFA provider guidance, locally rendered TOTP QR, and dialog-secret cleanup.
+COMMAND node tools/Verify-CompanyDataExport.mjs
+Verified company JSON export raw-response handling, attachment download contract, temporary URL cleanup, and settings authorization.
+COMMAND node tools/Verify-DashboardPreferences.mjs
+Verified dashboard order edits, reset, and drag-and-drop stay in a dialog draft until the server confirms save.
+COMMAND node tools/Verify-AssetImportPreviewUi.mjs
+Verified asset import preview routes, accurate row-count fallback, and explicit valid-preview gating before any apply action.
+COMMAND node tools/Verify-DataRestoreUi.mjs
+Verified company restore shortcut, JSON-only mode, role-scoped asset controls, valid-preview gating, cancellable in-app confirmation, irreversibility copy, and server authorization.
+COMMAND node tools/Verify-AppMobileLayout.mjs
+Verified the mobile app shell, sign-in card, two-row top bar, and dashboard welcome status fit narrow viewports.
+COMMAND node tools/Verify-TenantSubscriptionAccess.mjs
+Tenant subscription access verification passed (17 assertions).
+COMMAND node tools/Verify-PublicDemoLayout.mjs
+Verified full-width public demo content, 19 distinct asset columns, sticky actions, responsive table overflow, mobile header wrapping, and demo HTML revalidation.
+COMMAND node tools/Verify-PlatformDemoRequests.mjs
+Platform demo request and no-plan sales fallback source verification passed (55 assertions).
+COMMAND node tools/Verify-PlatformPlanManagement.mjs
+Platform plan management verification passed (33 assertions; positive package quotas are preserved).
+COMMAND node tools/Verify-HostedCheckoutUi.mjs
+PASS: hosted checkout UI is price-driven, consent-aware, CSRF-protected, fail-closed, and responsive.
+COMMAND node tools/Verify-HostedCheckoutBrowserAcceptance.mjs
+Hosted checkout, role-filtered command palette, login and company flows, tenant-scoped asset-return queue and asset/accessory/stock supplier-return APIs and Chromium UI acceptance coverage verified.
+COMMAND node tools/Verify-SupportUi.mjs
+Verified company and platform support UI guards, safe message rendering, CSRF writes, route cleanup, and hosted Chromium acceptance wiring.
+COMMAND node tools/Verify-IyzipayCheckoutFlow.mjs
+PASS: hosted Cloud checkout is server-priced, anti-forgery protected, provider-verified, idempotent, and fails closed without configuration.
+COMMAND node tools/Verify-PlatformCompanyProvisioning.mjs
+PASS: Platform company provisioning validates payment attestation, creates a Cloud tenant and owner, and supports invitation retry.
+COMMAND node tools/Verify-PlatformCustomerLifecycle.mjs
+Platform customer lifecycle and overdue follow-up queue verification passed (29 assertions).
+COMMAND node tools/Verify-PlatformSubscriptionEditor.mjs
+Platform subscription editor, corrective date validation, single action, required adjustment rationale, impact preview, and safe retries verified (40 assertions).
+COMMAND node tools/Verify-PlatformAdminExperience.mjs
+Platform admin premium skin, pageable member/account details, reasoned idempotent company status workflow, demo/purchase/subscription workflows, responsive/accessibility affordances, and two-factor sign-in verified.
+COMMAND node tools/Verify-PlatformMfaBrowserAcceptance.mjs
+PASS: isolated Playwright image and synthetic first-login MFA browser acceptance are version-aligned and disposable.
+COMMAND node tools/Verify-PlatformMemberDirectory.mjs
+Platform member directory, registration timestamp, timeline, membership management, stale-response guards, and owner transfer verified (93 assertions).
+COMMAND node tools/Verify-PlatformMemberInvites.mjs
+Platform member invitation source verification passed, including Cloud user quota enforcement.
+COMMAND node tools/Verify-PlatformAuditSearch.mjs
+Unified platform and company audit search verification passed (25 assertions).
+COMMAND node tools/Verify-PlatformCheckoutOrders.mjs
+Platform checkout orders UI/source verification passed (14 assertions).
+COMMAND node tools/Verify-CoolifyTenantRouting.mjs
+Verified apex/www and tenant proxy rules, internal forwarding, wildcard Coolify service/port/redeploy setup, 503 proxy troubleshooting, TLS/DNS guidance, production acceptance checklist, and marketing fallback.
+COMMAND node tools/Verify-CompanyPortalLogin.mjs
+PASS: Cloud company portal login routing, membership selection, local origins and unsafe URL rejection
+PASS: persisted old slug, changed company host, slash variants, local origin and unsafe target rejection
+COMMAND node tools/Verify-TenantSlugProfile.mjs
+Verified the SaaS company-slug profile flow, unique/reserved validation, tenant-host login/session binding, shared tenant cookie configuration, redirect behavior, and security acceptance coverage.
+COMMAND node tools/Verify-AssetCheckoutReturnUi.mjs
+Verified asset return actions from both detail and returns list, cancel/backdrop behavior, role-gated POST, refresh, and isolated history acceptance.
+COMMAND node tools/Verify-AssetDetailActions.mjs
+Verified 5 asset-detail tabs and 13 asset-detail actions; asset trash is role-gated, localized, bound to the tenant API, and covered by the security acceptance suite.
+COMMAND node tools/Verify-AssetPlanQuota.mjs
+PASS: PostgreSQL plan asset quota protects direct writes, imports, purchase receipts, and tenant moves with atomic counters.
+COMMAND node tools/Verify-BulkAssetActions.mjs
+Verified in-app cancellation and submission for bulk assignment, return, status change, audit, and location transfer, with tenant API/PostgreSQL acceptance coverage.
+COMMAND node tools/Verify-IyzipayCheckoutClient.mjs
+PASS: iyzico Checkout Form transport is signed, HTTPS host-restricted, bounded, configurable, and covered by synthetic acceptance tests.
+COMMAND node tools/Verify-PurchaseOrderDialogs.mjs
+Verified purchase-order confirmation and refresh actions plus mandatory asset-order target location through create, detail, and receipt UI.
+COMMAND node tools/Verify-RoleMatrix.mjs
+Verified 7 built-in roles, six UI capabilities, tenant-scoped custom-role resolution, and seven server permission policies.
+COMMAND node tools/Verify-SavedAssetSearchUi.mjs
+Verified saved-search create/update/delete dialogs, cancel/backdrop behavior, explicit API submission, overwrite confirmation, and tenant/user/CSRF acceptance coverage.
+COMMAND node tools/Verify-StockImportDialogs.mjs
+Verified consumable/accessory import profile deletion and commit confirmations; cancellation preserves previews and success refreshes imported lists.
+SOURCE_CHECKS=79 FAILED=0

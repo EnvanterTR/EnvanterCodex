@@ -1,0 +1,22 @@
+ Container p0-smtp-ready-database-1 Running 
+ Container p0-smtp-ready-database-1 Waiting 
+ Container p0-smtp-ready-database-1 Healthy 
+ Container p0-smtp-ready-acceptance-run-42b79313babd Creating 
+ Container p0-smtp-ready-acceptance-run-42b79313babd Created 
+Test run for /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.33]   Discovering: EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:00.57]   Discovered:  EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:00.64]   Starting:    EnvanterTR.SecurityAcceptance
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[35]
+      No XML encryptor configured. Key {3820dc43-b6be-46eb-9b3f-2012e72c2d60} may be persisted to storage in unencrypted form.
+[xUnit.net 00:00:15.58]   Finished:    EnvanterTR.SecurityAcceptance
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Platform_system_health_is_admin_only_and_reports_scoped_runtime_metrics [3 s]
+
+Test Run Successful.
+Total tests: 1
+     Passed: 1
+ Total time: 16.8422 Seconds

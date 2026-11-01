@@ -137,6 +137,8 @@ var connectionString = builder.Configuration.GetConnectionString("EnvanterTR");
 if (!string.IsNullOrWhiteSpace(connectionString))
 {
     builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+    builder.Services.AddScoped<TenantProvisioningService>();
+    builder.Services.AddHostedService<CompanyCheckoutOrderExpirationWorker>();
     builder.Services.AddScoped<OperationalNotificationEmailService>();
     builder.Services.AddHostedService<OperationalNotificationEmailWorker>();
     builder.Services.AddScoped<ScheduledReportEmailService>();
@@ -211,6 +213,11 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 }
 
 var app = builder.Build();
+if (!string.IsNullOrWhiteSpace(connectionString))
+{
+    using var modelScope = app.Services.CreateScope();
+    FinalizedTenantModelScope.Validate(modelScope.ServiceProvider.GetRequiredService<AppDbContext>().Model);
+}
 if (args.Contains("--recover-local-platform-admin", StringComparer.OrdinalIgnoreCase))
 {
     Environment.ExitCode = await LocalPlatformAdminRecovery.RunAsync(app.Services, app.Environment.IsDevelopment(), connectionString);
@@ -240,6 +247,11 @@ app.Use(async (context, next) =>
     if (context.Request.Path.StartsWithSegments("/api"))
     {
         headers.CacheControl = "no-store, private";
+    }
+    if (context.Request.Path.StartsWithSegments("/subscription/checkout"))
+    {
+        headers.CacheControl = "no-store, private";
+        headers["Referrer-Policy"] = "no-referrer";
     }
 
     await next();
@@ -292,6 +304,25 @@ if (args.Contains("--migrate", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
+// Tenant platform boundaries must run before the static-file middleware:
+// otherwise platform HTML/JavaScript is served before the API host guard.
+app.Use(async (context, next) =>
+{
+    var tenant = TenantHostResolver.ResolveSlug(context.Request,
+        context.RequestServices.GetRequiredService<IConfiguration>()["TenantRouting:RootDomain"]);
+    var path = context.Request.Path;
+    if (tenant is not null &&
+        (path.StartsWithSegments("/api/platform") || path.StartsWithSegments("/api/session/platform-reauth") ||
+         path.StartsWithSegments("/admin") ||
+         path.StartsWithSegments("/platform-admin.html") || path.StartsWithSegments("/platform-setup.html") ||
+         (path.Value?.StartsWith("/platform-admin-", StringComparison.OrdinalIgnoreCase) ?? false)))
+    {
+        context.Response.Headers.CacheControl = "no-store";
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+    await next();
+});
 app.UseDefaultFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
@@ -329,6 +360,7 @@ app.Use(async (context, next) =>
     }
 });
 app.UseAuthentication();
+app.UsePlatformImpersonation();
 app.Use(async (context, next) =>
 {
     var tenantSlug = TenantHostResolver.ResolveSlug(context.Request,
@@ -344,6 +376,7 @@ app.Use(async (context, next) =>
         return;
     }
 
+    if (PlatformImpersonation.IsExitRequest(context)) { await next(); return; }
     var principal = context.User;
     if (principal.Identity?.IsAuthenticated != true)
     {
@@ -388,21 +421,28 @@ app.Use(async (context, next) =>
             return;
         }
 
-        currentRole = await (from membership in db.CompanyMemberships.AsNoTracking()
+        var currentMembership = await (from membership in db.CompanyMemberships.AsNoTracking()
             join company in db.Companies.AsNoTracking() on membership.CompanyId equals company.Id
-            where membership.CompanyId == companyId && membership.UserId == userId && company.IsActive &&
-                (tenantSlug == null || company.Slug == tenantSlug)
-            select membership.RoleKey).SingleOrDefaultAsync(context.RequestAborted);
-        if (currentRole is null)
+            where membership.CompanyId == companyId && membership.UserId == userId && company.IsActive
+            select new { membership.RoleKey, company.Slug }).SingleOrDefaultAsync(context.RequestAborted);
+        if (currentMembership is null)
         {
             await context.SignOutAsync(IdentityConstants.ApplicationScheme);
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;
         }
+        currentRole = currentMembership.RoleKey;
         var roleAuthorization = await CompanyRoleAuthorization.ResolveAsync(db, companyId, currentRole, context.RequestAborted);
         if (!roleAuthorization.Valid)
         {
             await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+        if (tenantSlug is not null && currentMembership.Slug != tenantSlug)
+        {
+            // The shared cookie is still valid on its own company portal. Reject this
+            // host without signing that unrelated portal out of every open tab.
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;
         }
@@ -435,7 +475,9 @@ app.Use(async (context, next) =>
     }
     if (tenantSlug is not null && companyClaim is null)
     {
-        await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+        // A valid platform session cannot access a company portal directly, but a
+        // mistaken portal visit must not erase its root-domain administrator login.
+        if (!isPlatformAdmin) await context.SignOutAsync(IdentityConstants.ApplicationScheme);
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
         return;
     }
@@ -451,6 +493,10 @@ app.Use(async (context, next) =>
         HttpMethods.IsPatch(context.Request.Method) || HttpMethods.IsDelete(context.Request.Method);
     var isAccountEndpoint = requestPath.StartsWithSegments("/api/session");
     var isPlatformEndpoint = requestPath.StartsWithSegments("/api/platform");
+    var checkoutPath = new PathString(requestPath.Value?.TrimEnd('/'));
+    var isVerifiedCheckoutEndpoint = checkoutPath == "/api/subscription/checkout/initialize" ||
+        checkoutPath == "/subscription/checkout" ||
+        checkoutPath == "/api/checkout/callback" || checkoutPath == "/api/checkout/webhook";
     if (isPlatformAdmin && isPlatformEndpoint && isWriteRequest)
     {
         var reauthenticatedAtClaim = principal.FindFirstValue("platform_reauth_at");
@@ -469,7 +515,7 @@ app.Use(async (context, next) =>
         }
     }
     if (companyClaim is not null && isWriteRequest && requestPath.StartsWithSegments("/api") &&
-        !isAccountEndpoint && !isPlatformEndpoint && Guid.TryParse(companyClaim, out var subscriptionCompanyId))
+        !isAccountEndpoint && !isPlatformEndpoint && !isVerifiedCheckoutEndpoint && Guid.TryParse(companyClaim, out var subscriptionCompanyId))
     {
         var subscription = await (from item in db.TenantSubscriptions.AsNoTracking()
             join plan in db.SubscriptionPlans.AsNoTracking() on item.PlanId equals plan.Id
@@ -530,11 +576,19 @@ app.Use(async (context, next) =>
         }
     }
 
-    await next();
+    // Account operations resolve a user's other memberships explicitly; verified
+    // checkout callbacks and platform operations use their existing system scope.
+    // All ordinary company handlers receive the already validated tenant scope.
+    if (Guid.TryParse(companyClaim, out var queryCompanyId) && !isAccountEndpoint &&
+        !isPlatformEndpoint && !isVerifiedCheckoutEndpoint)
+        db.UseCompanyQueryScope(queryCompanyId);
+    try { await next(); }
+    finally { db.ClearCompanyQueryScope(); }
 });
 app.UseAuthorization();
 app.UseRateLimiter();
 app.MapGet("/giris", () => Results.Redirect("/")).AllowAnonymous();
+app.MapGet("/admin", () => Results.Redirect("/platform-admin.html")).AllowAnonymous();
 app.MapHealthChecks("/health");
 
 if (!string.IsNullOrWhiteSpace(connectionString))
@@ -576,6 +630,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     app.MapSupportEndpoints();
     app.MapPlatformEndpoints();
     app.MapCheckoutEndpoints();
+    app.MapCloudTrialEndpoints();
     app.MapCustomerApiEndpoints();
 }
 else

@@ -1,12 +1,82 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
+using System.Linq.Expressions;
 
 namespace EnvanterTR.Web.Data;
 
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     : IdentityDbContext<EnvanterUser, IdentityRole<Guid>, Guid>(options)
 {
+    // Contexts created by migration/provisioning/background infrastructure start
+    // in system scope. Request middleware binds a company only after validating
+    // its live session, membership and host; no scope is taken from input alone.
+    public bool IsSystemQueryScope { get; private set; } = true;
+    public Guid QueryCompanyId { get; private set; }
+
+    public void UseCompanyQueryScope(Guid companyId)
+    {
+        if (companyId == Guid.Empty) throw new ArgumentException("A company query scope requires an identifier.", nameof(companyId));
+        QueryCompanyId = companyId;
+        IsSystemQueryScope = false;
+    }
+
+    public void ClearCompanyQueryScope()
+    {
+        QueryCompanyId = Guid.Empty;
+        IsSystemQueryScope = false;
+    }
+
+    private void ValidateCompanyWrites()
+    {
+        if (IsSystemQueryScope) return;
+        foreach (var entry in ChangeTracker.Entries().Where(entry =>
+                     entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted))
+        {
+            var property = entry.Metadata.ClrType == typeof(Company)
+                ? entry.Property(nameof(Company.Id))
+                : entry.Metadata.FindProperty("CompanyId") is not null ? entry.Property("CompanyId") : null;
+            if (property is null) continue;
+            if (QueryCompanyId == Guid.Empty || property.CurrentValue is not Guid current || current != QueryCompanyId ||
+                (entry.State != EntityState.Added && (property.OriginalValue is not Guid original || original != QueryCompanyId)))
+                throw new InvalidOperationException("The tracked write is outside the validated company scope.");
+        }
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        ValidateCompanyWrites();
+        StampMissingAuditFields();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        ValidateCompanyWrites();
+        StampMissingAuditFields();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void StampMissingAuditFields()
+    {
+        var now = DateTimeOffset.UtcNow;
+        foreach (var entry in ChangeTracker.Entries().Where(e =>
+                     e.State is EntityState.Added or EntityState.Modified))
+        {
+            // Existing CLR timestamps retain their endpoint/concurrency semantics.
+            // Newly added audit columns have no historical default: old dates stay unknown.
+            foreach (var name in new[] { "CreatedAt", "UpdatedAt" })
+            {
+                var property = entry.Metadata.FindProperty(name);
+                if (property is null || !property.IsShadowProperty() ||
+                    property.ClrType != typeof(DateTimeOffset?)) continue;
+                if (name == "UpdatedAt" || entry.State == EntityState.Added)
+                    entry.Property(name).CurrentValue = now;
+            }
+        }
+    }
+
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<CompanyMfaEnrollmentChallenge> CompanyMfaEnrollmentChallenges => Set<CompanyMfaEnrollmentChallenge>();
     public DbSet<CompanyApiToken> CompanyApiTokens => Set<CompanyApiToken>();
@@ -39,6 +109,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<AssetAttachment> AssetAttachments => Set<AssetAttachment>();
     public DbSet<EmployeeDocument> EmployeeDocuments => Set<EmployeeDocument>();
     public DbSet<EmployeeHandoverDocument> EmployeeHandoverDocuments => Set<EmployeeHandoverDocument>();
+    public DbSet<EmployeeHandoverEmailAttempt> EmployeeHandoverEmailAttempts => Set<EmployeeHandoverEmailAttempt>();
     public DbSet<AssetMaintenance> AssetMaintenances => Set<AssetMaintenance>();
     public DbSet<AssetMaintenanceAttachment> AssetMaintenanceAttachments => Set<AssetMaintenanceAttachment>();
     public DbSet<Accessory> Accessories => Set<Accessory>();
@@ -102,6 +173,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Company>().HasKey(x => x.Id);
         modelBuilder.Entity<Company>().Property(x => x.Name).HasMaxLength(200).IsRequired();
         modelBuilder.Entity<Company>().Property(x => x.AssetCount).HasDefaultValue(0);
+        modelBuilder.Entity<Company>().ToTable("Companies", table =>
+            table.HasCheckConstraint("CK_Companies_DeletedInactive", "\"DeletedAt\" IS NULL OR NOT \"IsActive\""));
         modelBuilder.Entity<Company>().ToTable("Companies", table =>
         {
             table.HasCheckConstraint("CK_Companies_AssetCount", "\"AssetCount\" >= 0");
@@ -222,6 +295,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<CompanyCheckoutOrder>().ToTable("CompanyCheckoutOrders", table =>
         {
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_Term", "\"TermDays\" IN (30, 365)");
+            table.HasCheckConstraint("CK_CompanyCheckoutOrders_TargetContext", "(\"TargetCompanyId\" IS NULL AND \"RequestedByUserId\" IS NULL) OR (\"TargetCompanyId\" IS NOT NULL AND \"RequestedByUserId\" IS NOT NULL AND \"TermDays\" = 365)");
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_Amount", "\"Amount\" > 0");
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_Pricing", "\"SubtotalAmount\" >= 0 AND \"DiscountAmount\" >= 0 AND \"Amount\" = \"SubtotalAmount\" - \"DiscountAmount\"");
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_CouponSnapshot", "(\"CouponId\" IS NULL AND \"CouponCode\" IS NULL AND \"DiscountAmount\" = 0) OR (\"CouponId\" IS NOT NULL AND \"CouponCode\" IS NOT NULL)");
@@ -305,6 +379,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<EmployeeHandoverDocument>().Property(x => x.IssuerSignatureSha256).HasMaxLength(64);
         modelBuilder.Entity<EmployeeHandoverDocument>().HasIndex(x => new { x.CompanyId, x.EmployeeId, x.CreatedAt });
         modelBuilder.Entity<EmployeeHandoverDocument>().HasIndex(x => new { x.CompanyId, x.DocumentNumber }).IsUnique();
+        modelBuilder.Entity<EmployeeHandoverDocument>().HasAlternateKey(x => new { x.CompanyId, x.EmployeeId, x.Id });
         modelBuilder.Entity<EmployeeHandoverDocument>().HasOne<Company>().WithMany()
             .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<EmployeeHandoverDocument>().HasOne<Employee>().WithMany()
@@ -313,6 +388,27 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<EmployeeHandoverDocument>().ToTable("EmployeeHandoverDocuments", table =>
         {
             table.HasCheckConstraint("CK_EmployeeHandoverDocuments_SignaturePairs", "(\"RecipientSignaturePngBase64\" IS NULL) = (\"RecipientSignedAt\" IS NULL) AND (\"IssuerSignaturePngBase64\" IS NULL) = (\"IssuerSignedAt\" IS NULL)");
+        });
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().Property(x => x.RecipientEmail).HasMaxLength(254).IsRequired();
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().Property(x => x.SnapshotSha256).HasMaxLength(64).IsRequired();
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().Property(x => x.PdfSha256).HasMaxLength(64).IsRequired();
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().Property(x => x.Status).HasMaxLength(16).IsRequired();
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().Property(x => x.ErrorType).HasMaxLength(128);
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().HasIndex(x => new { x.CompanyId, x.DocumentId, x.IdempotencyKey }).IsUnique();
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().HasIndex(x => new { x.CompanyId, x.DocumentId, x.CreatedAt });
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().HasOne<Company>().WithMany()
+            .HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().HasOne<EmployeeHandoverDocument>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.EmployeeId, x.DocumentId }).HasPrincipalKey(x => new { x.CompanyId, x.EmployeeId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().HasOne<Employee>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.EmployeeId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<EmployeeHandoverEmailAttempt>().ToTable("EmployeeHandoverEmailAttempts", table =>
+        {
+            table.HasCheckConstraint("CK_HandoverEmail_Status", "\"Status\" IN ('Sending', 'Accepted', 'Uncertain')");
+            table.HasCheckConstraint("CK_HandoverEmail_AcceptedAt", "(\"Status\" = 'Accepted') = (\"AcceptedAt\" IS NOT NULL)");
+            table.HasCheckConstraint("CK_HandoverEmail_RequestKey", "\"IdempotencyKey\" <> '00000000-0000-0000-0000-000000000000'::uuid");
         });
         modelBuilder.Entity<AssetCategory>().Property(x => x.Name).HasMaxLength(120).IsRequired();
         modelBuilder.Entity<AssetBrand>().Property(x => x.Name).HasMaxLength(120).IsRequired();
@@ -357,11 +453,21 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<UserSession>().HasKey(x => x.Id);
         modelBuilder.Entity<UserSession>().Property(x => x.IpAddress).HasMaxLength(64);
         modelBuilder.Entity<UserSession>().Property(x => x.UserAgent).HasMaxLength(512);
+        modelBuilder.Entity<UserSession>().Property(x => x.ImpersonatorSecurityStampHash).HasMaxLength(64);
+        modelBuilder.Entity<UserSession>().Property(x => x.ImpersonationReturnTokenHash).HasMaxLength(64);
+        modelBuilder.Entity<UserSession>().Property(x => x.ImpersonationReason).HasMaxLength(500);
+        modelBuilder.Entity<UserSession>().HasIndex(x => x.ImpersonationReturnTokenHash).IsUnique()
+            .HasFilter("\"ImpersonationReturnTokenHash\" IS NOT NULL");
+        modelBuilder.Entity<UserSession>().HasIndex(x => x.ImpersonatorSessionId).IsUnique()
+            .HasFilter("\"ImpersonatorSessionId\" IS NOT NULL AND \"ImpersonationEndedAt\" IS NULL AND \"RevokedAt\" IS NULL");
         modelBuilder.Entity<UserSession>().HasIndex(x => new { x.UserId, x.RevokedAt, x.ExpiresAt });
         modelBuilder.Entity<UserSession>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<UserSession>().ToTable("UserSessions", table =>
             table.HasCheckConstraint("CK_UserSessions_Expiry", "\"ExpiresAt\" > \"CreatedAt\""));
+        modelBuilder.Entity<UserSession>().ToTable("UserSessions", table => table.HasCheckConstraint("CK_UserSessions_Impersonation",
+            "(\"ImpersonatorUserId\" IS NULL AND \"ImpersonatorSessionId\" IS NULL AND \"ImpersonatorSecurityStampHash\" IS NULL AND \"ImpersonationReturnTokenHash\" IS NULL AND \"ImpersonatorRememberMe\" IS NULL AND \"ImpersonationReason\" IS NULL AND \"ImpersonationEndedAt\" IS NULL) OR " +
+            "(\"ImpersonatorUserId\" IS NOT NULL AND \"ImpersonatorSessionId\" IS NOT NULL AND \"ImpersonatorSecurityStampHash\" IS NOT NULL AND \"ImpersonatorRememberMe\" IS NOT NULL AND \"ImpersonationReason\" IS NOT NULL AND \"CompanyId\" IS NOT NULL AND NOT \"PlatformAdmin\" AND (\"ImpersonationReturnTokenHash\" IS NOT NULL OR \"ImpersonationEndedAt\" IS NOT NULL))"));
         modelBuilder.Entity<CompanyMembership>().HasKey(x => new { x.CompanyId, x.UserId });
         modelBuilder.Entity<CompanyMembership>().Property(x => x.RoleKey).HasMaxLength(40).IsRequired();
         modelBuilder.Entity<CompanyMembership>().Property(x => x.LocationAccessMode).HasMaxLength(16).HasDefaultValue("all").IsRequired();
@@ -994,6 +1100,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetBrand>().HasIndex(x => new { x.CompanyId, x.Name }).IsUnique();
         modelBuilder.Entity<AssetModel>().HasIndex(x => new { x.CompanyId, x.BrandId, x.Name }).IsUnique();
         modelBuilder.Entity<AssetModel>().HasIndex(x => new { x.CompanyId, x.CategoryId });
+        modelBuilder.Entity<AssetModel>().HasOne<AssetBrand>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.BrandId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<Asset>().HasOne<AssetBrand>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.BrandId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict).IsRequired(false);
+        modelBuilder.Entity<Asset>().HasOne<AssetModel>().WithMany()
+            .HasForeignKey(x => new { x.CompanyId, x.ModelId }).HasPrincipalKey(x => new { x.CompanyId, x.Id })
+            .OnDelete(DeleteBehavior.Restrict).IsRequired(false);
 
         modelBuilder.Entity<Accessory>().Property(x => x.Name).HasMaxLength(200).IsRequired();
         modelBuilder.Entity<AccessoryCategory>().Property(x => x.Name).HasMaxLength(120).IsRequired();
@@ -1316,7 +1431,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AccessoryPurchaseOrderAttachment>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.SetNull);
 
-        modelBuilder.Entity<Asset>().HasQueryFilter(x => x.DeletedAt == null);
+        modelBuilder.Entity<Asset>().HasQueryFilter("SoftDelete", x => x.DeletedAt == null);
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.AssetTag }).IsUnique().HasFilter("\"DeletedAt\" IS NULL");
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.DeletedAt, x.UpdatedAt });
         modelBuilder.Entity<Asset>().HasIndex(x => new { x.CompanyId, x.SerialNumber });
@@ -1502,5 +1617,42 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AssetMaintenanceAttachment>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.SetNull);
+        foreach (var sharedType in modelBuilder.Model.GetEntityTypes().Where(entity => entity.BaseType is null &&
+                     FinalizedTenantModelScope.IsSharedType(entity.ClrType)))
+            foreach (var auditName in new[] { "CreatedAt", "UpdatedAt" })
+                if (sharedType.FindProperty(auditName) is null)
+                    modelBuilder.Entity(sharedType.ClrType).Property<DateTimeOffset?>(auditName);
+
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes().Where(entity => entity.BaseType is null))
+        {
+            var companyProperty = entityType.ClrType == typeof(Company)
+                ? entityType.FindProperty(nameof(Company.Id)) : entityType.FindProperty("CompanyId");
+            if (companyProperty is null || (companyProperty.ClrType != typeof(Guid) && companyProperty.ClrType != typeof(Guid?)))
+                continue;
+            foreach (var auditName in new[] { "CreatedAt", "UpdatedAt" })
+                if (entityType.FindProperty(auditName) is null)
+                    modelBuilder.Entity(entityType.ClrType).Property<DateTimeOffset?>(auditName);
+            var row = Expression.Parameter(entityType.ClrType, "row");
+            var rowCompany = Expression.Call(typeof(EF), nameof(EF.Property), [companyProperty.ClrType],
+                row, Expression.Constant(companyProperty.Name));
+            var contextCompany = Expression.Convert(Expression.Property(Expression.Constant(this), nameof(QueryCompanyId)), companyProperty.ClrType);
+            var systemScope = Expression.Property(Expression.Constant(this), nameof(IsSystemQueryScope));
+            modelBuilder.Entity(entityType.ClrType).HasQueryFilter("TenantScope",
+                Expression.Lambda(Expression.OrElse(systemScope, Expression.Equal(rowCompany, contextCompany)), row));
+        }
+
+        foreach (var tableGroup in modelBuilder.Model.GetEntityTypes()
+                     .Where(entity => entity.GetTableName() is not null)
+                     .GroupBy(entity => new { entitySchema = entity.GetSchema(), tableName = entity.GetTableName() }))
+        {
+            if (tableGroup.Any(entity => entity.FindProperty("DeletedAt") is not null)) continue;
+            // Do not promote an owned JSON/value type (for example Identity's
+            // schema-v3 passkey payload) to an independent entity when adding
+            // a table-level shadow column.
+            var tableEntity = tableGroup.FirstOrDefault(entity => entity.FindOwnership() is null && entity.BaseType is null)
+                              ?? tableGroup.FirstOrDefault(entity => entity.FindOwnership() is null);
+            if (tableEntity is null) continue;
+            tableEntity.AddProperty("DeletedAt", typeof(DateTimeOffset?));
+        }
     }
 }

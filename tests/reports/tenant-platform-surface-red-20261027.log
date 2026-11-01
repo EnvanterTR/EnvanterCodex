@@ -1,0 +1,50 @@
+ Network tenant-platform-surface-20261027_acceptance Creating
+ Network tenant-platform-surface-20261027_acceptance Creating
+ Network tenant-platform-surface-20261027_acceptance Created
+ Network tenant-platform-surface-20261027_acceptance Created
+ Container tenant-platform-surface-20261027-database-1 Creating
+ Container tenant-platform-surface-20261027-database-1 Created
+ Container tenant-platform-surface-20261027-database-1 Starting
+ Container tenant-platform-surface-20261027-database-1 Started
+ Container tenant-platform-surface-20261027-database-1 Waiting
+ Container tenant-platform-surface-20261027-database-1 Healthy
+ Container tenant-platform-surface-20261027-acceptance-run-6eb3e14f0cee Creating
+ Container tenant-platform-surface-20261027-acceptance-run-6eb3e14f0cee Created
+Test run for /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.32]   Discovering: EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:00.52]   Discovered:  EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:00.57]   Starting:    EnvanterTR.SecurityAcceptance
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[35]
+      No XML encryptor configured. Key {a8350785-1aea-47f3-b8df-e43e4433b5a2} may be persisted to storage in unencrypted form.
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (68ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_Assets_CompanyId_DefaultLocationCatalogId"
+      ' from migration 'AddAssetModelNumbersAndDefaultLocation' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_AuditEntries_OccurredAt"
+      ' from migration 'AddGlobalAuditTimelineIndex' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+[xUnit.net 00:00:31.93]     EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Tenant_hosts_hide_platform_pages_assets_and_apis_before_static_files [FAIL]
+[xUnit.net 00:00:31.93]       north.envantertr.com/platform-admin.html: expected404, actual200
+[xUnit.net 00:00:31.93]       Stack Trace:
+[xUnit.net 00:00:31.94]         /source/tests/EnvanterTR.SecurityAcceptance/TenantPlatformSurfaceAcceptanceTests.cs(32,0): at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Tenant_hosts_hide_platform_pages_assets_and_apis_before_static_files()
+[xUnit.net 00:00:31.94]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:31.97]   Finished:    EnvanterTR.SecurityAcceptance
+  Failed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Tenant_hosts_hide_platform_pages_assets_and_apis_before_static_files [2 s]
+  Error Message:
+   north.envantertr.com/platform-admin.html: expected404, actual200
+  Stack Trace:
+     at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Tenant_hosts_hide_platform_pages_assets_and_apis_before_static_files() in /source/tests/EnvanterTR.SecurityAcceptance/TenantPlatformSurfaceAcceptanceTests.cs:line 32
+--- End of stack trace from previous location ---
+
+Total tests: 1
+Test Run Failed.
+     Failed: 1
+ Total time: 33.6740 Seconds

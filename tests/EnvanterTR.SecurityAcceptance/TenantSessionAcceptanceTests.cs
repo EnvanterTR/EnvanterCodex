@@ -639,6 +639,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         var request = new InitializeCompanyCheckoutRequest(checkoutId, "Synthetic Checkout Ltd", $"checkout-{checkoutId:N}"[..20],
             "owner@example.invalid", "Test", "Owner", $"owner-{checkoutId:N}@example.invalid", "+905550000002", "10000000146",
             "Synthetic Street 2", "Istanbul", "Turkey", "34000", plan.Id, "monthly", true, "cloud-checkout-data-v1", coupon.Code);
+        request = request with { EmailVerificationToken = await VerifyCheckoutEmailAsync(client, request.OwnerEmail, plan.Id) };
         var publishedPlans = await client.GetFromJsonAsync<JsonElement>("/api/plans");
         Assert.Contains(publishedPlans.EnumerateArray(), item => item.GetProperty("id").GetGuid() == plan.Id);
         using (var quote = await client.PostAsJsonAsync("/api/checkout/quote", new CheckoutCouponQuoteRequest(plan.Id, "monthly", coupon.Code.ToLowerInvariant())))
@@ -805,7 +806,8 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Contains($"https://{request.Slug}.envantertr.com/", purchaseConfirmation, StringComparison.Ordinal);
         Assert.Contains("Erişim e-postası daha önce gönderilmiş olabilir", purchaseConfirmationText, StringComparison.Ordinal);
         var invitation = Assert.Single(_smtpCapture.Messages, message =>
-            message.Contains($"To: {request.OwnerEmail}", StringComparison.OrdinalIgnoreCase));
+            message.Contains($"To: {request.OwnerEmail}", StringComparison.OrdinalIgnoreCase) &&
+            DecodeMimeBody(message).Contains("ilk girişte Authenticator", StringComparison.Ordinal));
         Assert.Contains($"To: {request.OwnerEmail}", invitation, StringComparison.OrdinalIgnoreCase);
         Assert.Contains($"https://{request.Slug}.envantertr.com/", DecodeMimeBody(invitation), StringComparison.Ordinal);
         var invitationBody = DecodeMimeBody(invitation);
@@ -2127,9 +2129,17 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             "POST /api/session/company-mfa/setup",
             "POST /api/session/company-mfa/verify",
             "POST /api/checkout/initialize",
+            // Pre-payment email ownership uses CSRF, its own bounded request pool and a time-limited protected proof.
+            "POST /api/checkout/email/request",
+            "POST /api/checkout/email/confirm",
             "POST /api/checkout/callback",
             "POST /api/checkout/webhook",
             "GET /api/checkout/status",
+            // Trial enrollment starts before a session exists. Writes require CSRF and the
+            // checkout rate limit; confirmation additionally requires a short-lived email proof.
+            "GET /api/trials/status",
+            "POST /api/trials/request",
+            "POST /api/trials/confirm",
             // Checkout quote is public so unauthenticated buyers can preview coupon-adjusted pricing.
             "POST /api/checkout/quote",
             "GET /api/plans",
@@ -2150,6 +2160,14 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             string.Join(", ", actualPublicRoutes.Except(expectedPublicRoutes).OrderBy(x => x, StringComparer.Ordinal)) +
             "; missing: " +
             string.Join(", ", expectedPublicRoutes.Except(actualPublicRoutes).OrderBy(x => x, StringComparer.Ordinal)));
+
+        foreach (var trialRoute in new[] { "POST /api/trials/request", "POST /api/trials/confirm" })
+        {
+            var endpoint = Assert.Single(endpoints, endpoint => DescribeEndpoint(endpoint) == trialRoute);
+            var rateLimit = endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>();
+            Assert.NotNull(rateLimit);
+            Assert.Equal("checkout", rateLimit.PolicyName);
+        }
 
         var policies = endpoints.SelectMany(endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>())
             .Select(data => data.Policy)
@@ -4602,8 +4620,10 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         }
     }
 
-    [Fact]
-    public async Task Platform_can_provision_a_paid_cloud_company_owner_and_retryable_invitation()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Platform_can_provision_a_paid_cloud_company_owner_and_retryable_invitation(bool firstDeliveryFails)
     {
         var plan = new SubscriptionPlan
         {
@@ -4634,16 +4654,22 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             termDays = 365, paymentReference = $"acceptance-{Guid.NewGuid():N}", paymentVerified = true
         };
 
-        using (var created = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/companies",
-                   System.Net.Http.Json.JsonContent.Create(requestBody), requestToken, antiforgeryCookie))
+        var configuration = _factory!.Services.GetRequiredService<IConfiguration>();
+        var originalPort = configuration["Email:Smtp:Port"];
+        if (firstDeliveryFails) configuration["Email:Smtp:Port"] = "invalid";
+        try
         {
+            using var created = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/companies",
+                System.Net.Http.Json.JsonContent.Create(requestBody), requestToken, antiforgeryCookie);
             Assert.Equal(HttpStatusCode.Created, created.StatusCode);
             using var payload = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
             Assert.Equal(slug, payload.RootElement.GetProperty("slug").GetString());
             Assert.Equal(365, (payload.RootElement.GetProperty("endsAt").GetDateTimeOffset() -
                 payload.RootElement.GetProperty("startsAt").GetDateTimeOffset()).Days);
-            Assert.True(payload.RootElement.GetProperty("invitationSent").GetBoolean());
+            Assert.Equal(!firstDeliveryFails, payload.RootElement.GetProperty("invitationSent").GetBoolean());
+            if (firstDeliveryFails) Assert.Contains("e-posta gönderilemedi", payload.RootElement.GetProperty("message").GetString());
         }
+        finally { configuration["Email:Smtp:Port"] = originalPort; }
 
         Guid companyId;
         Guid ownerId;
@@ -4665,7 +4691,20 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(requestBody.paymentReference, subscription.PaymentReference);
         }
 
-        Assert.Contains(_smtpCapture.Messages, message => message.Contains(email, StringComparison.OrdinalIgnoreCase));
+        if (firstDeliveryFails)
+        {
+            Assert.Empty(_smtpCapture.Messages);
+            configuration["Email:Smtp:Port"] = "invalid";
+            try
+            {
+                using var failedRetry = await SendAsPlatformAdminRequestAsync(HttpMethod.Post,
+                    $"/api/platform/companies/{companyId}/owner-invitation/resend", new StringContent("{}", Encoding.UTF8, "application/json"),
+                    requestToken, antiforgeryCookie);
+                Assert.Equal(HttpStatusCode.ServiceUnavailable, failedRetry.StatusCode);
+            }
+            finally { configuration["Email:Smtp:Port"] = originalPort; }
+        }
+        else Assert.Contains(_smtpCapture.Messages, message => message.Contains(email, StringComparison.OrdinalIgnoreCase));
         using (var resent = await SendAsPlatformAdminRequestAsync(HttpMethod.Post,
                    $"/api/platform/companies/{companyId}/owner-invitation/resend", new StringContent("{}", Encoding.UTF8, "application/json"),
                    requestToken, antiforgeryCookie))
@@ -7461,7 +7500,10 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(64, payload.RootElement.GetProperty("snapshotSha256").GetString()!.Length);
         }
 
-        const string png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p8sAAAAASUVORK5CYII=";
+        const string png = "data:image/png;base64," + HandoverPdfTestSignaturePng;
+        using (var unsignedPdf = await SendAsRoleAsync(HttpMethod.Get,
+                   $"/api/employees/{employeeId}/handover-documents/{documentId}/pdf", "admin"))
+            Assert.Equal(HttpStatusCode.Conflict, unsignedPdf.StatusCode);
         using (var badRecipientName = await SendAsRoleAsync(HttpMethod.Post, $"/api/employee-handover-documents/{documentId}/sign", "admin",
                    JsonContent.Create(new { signerType = "recipient", signerName = "Başka kişi", signaturePngDataUrl = png }), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.BadRequest, badRecipientName.StatusCode);
@@ -7484,6 +7526,19 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.True(payload.RootElement.GetProperty("isFullySigned").GetBoolean());
             Assert.Equal("Security Acceptance User", payload.RootElement.GetProperty("issuer").GetProperty("issuerName").GetString());
             Assert.StartsWith("data:image/png;base64,", payload.RootElement.GetProperty("issuer").GetProperty("signaturePngDataUrl").GetString());
+        }
+        using (var pdf = await SendAsRoleAsync(HttpMethod.Get,
+                   $"/api/employees/{employeeId}/handover-documents/{documentId}/pdf", "admin"))
+        {
+            Assert.Equal(HttpStatusCode.OK, pdf.StatusCode);
+            Assert.Equal("application/pdf", pdf.Content.Headers.ContentType?.MediaType);
+            Assert.True(pdf.Headers.CacheControl?.NoStore);
+            var bytes = await pdf.Content.ReadAsByteArrayAsync();
+            Assert.StartsWith("%PDF-", Encoding.ASCII.GetString(bytes, 0, 8));
+            using var output = new MemoryStream(bytes);
+            using var parsed = PdfSharp.Pdf.IO.PdfReader.Open(output, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
+            Assert.True(parsed.PageCount > 0);
+            Assert.Contains("Zimmet teslim belgesi", parsed.Info.Title, StringComparison.Ordinal);
         }
         using (var replay = await SendAsRoleAsync(HttpMethod.Post, $"/api/employee-handover-documents/{documentId}/sign", "admin",
                    JsonContent.Create(new { signerType = "recipient", signerName = $"Handover Employee {suffix[..8]}", signaturePngDataUrl = png }), requestToken, antiforgeryCookie))
@@ -9951,9 +10006,12 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             item => item.Action == "Restored");
     }
 
-    [Fact]
-    public async Task Asset_single_edit_is_tenant_scoped_version_checked_and_written_to_history()
+    [Theory]
+    [InlineData("PATCH")]
+    [InlineData("PUT")]
+    public async Task Asset_single_edit_is_tenant_scoped_version_checked_and_written_to_history(string method)
     {
+        var updateMethod = new HttpMethod(method);
         Asset current;
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
@@ -9989,32 +10047,58 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             notes = current.Notes
         };
 
-        using (var missingCsrf = await SendAsRoleAsync(HttpMethod.Patch, $"/api/assets/{_ownAssetId}", "admin",
+        using (var missingCsrf = await SendAsRoleAsync(updateMethod, $"/api/assets/{_ownAssetId}", "admin",
                    System.Net.Http.Json.JsonContent.Create(Request(current.UpdatedAt, current.CategoryId))))
             Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
         await SetCompanyRoleAsync("viewer");
-        using (var readOnly = await SendAsRoleAsync(HttpMethod.Patch, $"/api/assets/{_ownAssetId}", "viewer",
+        using (var readOnly = await SendAsRoleAsync(updateMethod, $"/api/assets/{_ownAssetId}", "viewer",
                    System.Net.Http.Json.JsonContent.Create(Request(current.UpdatedAt, current.CategoryId)), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.Forbidden, readOnly.StatusCode);
         await SetCompanyRoleAsync("admin");
-        using (var crossTenant = await SendAsRoleAsync(HttpMethod.Patch, $"/api/assets/{_otherCompanyAssetId}", "admin",
+        using (var crossTenant = await SendAsRoleAsync(updateMethod, $"/api/assets/{_otherCompanyAssetId}", "admin",
                    System.Net.Http.Json.JsonContent.Create(Request(current.UpdatedAt, current.CategoryId)), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
-        using (var invalidCategory = await SendAsRoleAsync(HttpMethod.Patch, $"/api/assets/{_ownAssetId}", "admin",
+        using (var foreignRead = await SendAsAdminAsync($"/api/assets/{_otherCompanyAssetId}"))
+            Assert.Equal(HttpStatusCode.NotFound, foreignRead.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.CompanyMemberships.Add(new CompanyMembership { CompanyId = _otherCompanyId, UserId = _userId, RoleKey = "admin" });
+            await db.SaveChangesAsync();
+        }
+        using (var reverseCsrf = await SendAsUserAsync(HttpMethod.Get, "/api/session/csrf", _userId, _otherCompanyId))
+        {
+            Assert.Equal(HttpStatusCode.OK, reverseCsrf.StatusCode);
+            using var payload = JsonDocument.Parse(await reverseCsrf.Content.ReadAsStringAsync());
+            var reverseToken = payload.RootElement.GetProperty("requestToken").GetString()!;
+            var reverseCookie = reverseCsrf.Headers.TryGetValues("Set-Cookie", out var cookies)
+                ? cookies.Select(value => value.Split(';', 2)[0])
+                    .FirstOrDefault(value => value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase)) ?? antiforgeryCookie
+                : antiforgeryCookie;
+            using var ownRead = await SendAsUserAsync(HttpMethod.Get, $"/api/assets/{_otherCompanyAssetId}", _userId, _otherCompanyId);
+            Assert.Equal(HttpStatusCode.OK, ownRead.StatusCode);
+            using var reverseRead = await SendAsUserAsync(HttpMethod.Get, $"/api/assets/{_ownAssetId}", _userId, _otherCompanyId);
+            Assert.Equal(HttpStatusCode.NotFound, reverseRead.StatusCode);
+            using var reverseWrite = await SendAsUserAsync(updateMethod, $"/api/assets/{_ownAssetId}", _userId, _otherCompanyId,
+                JsonContent.Create(Request(current.UpdatedAt, current.CategoryId, "Foreign overwrite")), reverseToken, reverseCookie);
+            Assert.Equal(HttpStatusCode.NotFound, reverseWrite.StatusCode);
+        }
+        using (var invalidCategory = await SendAsRoleAsync(updateMethod, $"/api/assets/{_ownAssetId}", "admin",
                    System.Net.Http.Json.JsonContent.Create(Request(current.UpdatedAt, Guid.NewGuid())), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.BadRequest, invalidCategory.StatusCode);
-        using (var staleVersion = await SendAsRoleAsync(HttpMethod.Patch, $"/api/assets/{_ownAssetId}", "admin",
+        using (var staleVersion = await SendAsRoleAsync(updateMethod, $"/api/assets/{_ownAssetId}", "admin",
                    System.Net.Http.Json.JsonContent.Create(Request(current.UpdatedAt.AddTicks(-1), current.CategoryId)), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.Conflict, staleVersion.StatusCode);
 
-        using (var updated = await SendAsRoleAsync(HttpMethod.Patch, $"/api/assets/{_ownAssetId}", "admin",
+        using (var updated = await SendAsRoleAsync(updateMethod, $"/api/assets/{_ownAssetId}", "admin",
                    System.Net.Http.Json.JsonContent.Create(Request(current.UpdatedAt, current.CategoryId)), requestToken, antiforgeryCookie))
         {
             Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
             using var payload = JsonDocument.Parse(await updated.Content.ReadAsStringAsync());
             Assert.True(payload.RootElement.GetProperty("changed").GetBoolean());
         }
-        using (var replay = await SendAsRoleAsync(HttpMethod.Patch, $"/api/assets/{_ownAssetId}", "admin",
+        using (var replay = await SendAsRoleAsync(updateMethod, $"/api/assets/{_ownAssetId}", "admin",
                    System.Net.Http.Json.JsonContent.Create(Request(current.UpdatedAt, current.CategoryId, "Stale overwrite")), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.Conflict, replay.StatusCode);
 
@@ -11875,6 +11959,36 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal("application/pdf", ownFile.Content.Headers.ContentType?.MediaType);
             Assert.Contains("no-store", ownFile.Headers.CacheControl?.ToString() ?? "", StringComparison.OrdinalIgnoreCase);
             Assert.Contains("Employee EULA version 1", await ownFile.Content.ReadAsStringAsync());
+        }
+        var ownEulaDirectory = Path.Combine(_mediaPath, _companyId.ToString("N"), "licenses", _ownLicenseId.ToString("N"), "attachments");
+        var ownEulaPath = Path.Combine(ownEulaDirectory, $"{eulaId:N}.pdf");
+        var foreignEulaDirectory = Path.Combine(_mediaPath, _otherCompanyId.ToString("N"), "licenses", _otherCompanyLicenseId.ToString("N"), "attachments");
+        Directory.CreateDirectory(foreignEulaDirectory);
+        var foreignEulaPath = Path.Combine(foreignEulaDirectory, $"{eulaId:N}.pdf");
+        var foreignEulaBytes = Encoding.ASCII.GetBytes("%PDF-1.7\nForeign employee EULA must remain private\n%%EOF");
+        await File.WriteAllBytesAsync(foreignEulaPath, foreignEulaBytes);
+        foreach (var directoryLink in new[] { true, false })
+        {
+            var link = directoryLink ? ownEulaDirectory : ownEulaPath;
+            var original = link + ".original";
+            if (directoryLink) { Directory.Move(link, original); Directory.CreateSymbolicLink(link, foreignEulaDirectory); }
+            else { File.Move(link, original); File.CreateSymbolicLink(link, foreignEulaPath); }
+            try
+            {
+                using var redirected = await SendAsUserAsync(HttpMethod.Get,
+                    $"/api/session/software-licenses/{assignmentId}/eula", _userId, _companyId);
+                Assert.Equal(HttpStatusCode.NotFound, redirected.StatusCode);
+                Assert.Equal(foreignEulaBytes, await File.ReadAllBytesAsync(foreignEulaPath));
+            }
+            finally
+            {
+                if (directoryLink) { Directory.Delete(link); Directory.Move(original, link); }
+                else { File.Delete(link); File.Move(original, link); }
+            }
+            using var restoredEula = await SendAsUserAsync(HttpMethod.Get,
+                $"/api/session/software-licenses/{assignmentId}/eula", _userId, _companyId);
+            Assert.Equal(HttpStatusCode.OK, restoredEula.StatusCode);
+            Assert.Contains("Employee EULA version 1", await restoredEula.Content.ReadAsStringAsync());
         }
         using (var noCsrf = await SendAsUserAsync(HttpMethod.Post, $"/api/session/software-licenses/{assignmentId}/eula/accept", _userId, _companyId,
                    JsonContent.Create(new { eulaAttachmentId = eulaId, confirmed = true })))

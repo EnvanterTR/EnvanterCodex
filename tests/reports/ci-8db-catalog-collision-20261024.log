@@ -1,0 +1,26 @@
+sync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+2026-10-24T14:03:54.3410315Z acceptance-1  | [xUnit.net 00:23:30.69]     EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Annual_catalog_drafts_are_authorized_csrf_protected_idempotent_and_preserve_existing_plans [FAIL]
+2026-10-24T14:03:54.3430572Z acceptance-1  | [xUnit.net 00:23:30.69]       Microsoft.EntityFrameworkCore.DbUpdateException : An error occurred while saving the entity changes. See the inner exception for details.
+2026-10-24T14:03:54.3432994Z acceptance-1  | [xUnit.net 00:23:30.69]       ---- Npgsql.PostgresException : 23505: duplicate key value violates unique constraint "IX_SubscriptionPlans_Code"
+2026-10-24T14:03:54.3434173Z acceptance-1  | [xUnit.net 00:23:30.69]       
+2026-10-24T14:03:54.3435514Z acceptance-1  | [xUnit.net 00:23:30.69]       DETAIL: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+2026-10-24T14:03:54.3436933Z acceptance-1  | [xUnit.net 00:23:30.69]       Stack Trace:
+2026-10-24T14:03:54.3437983Z acceptance-1  | warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+2026-10-24T14:03:54.3440290Z acceptance-1  |       Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+2026-10-24T14:03:54.3470659Z acceptance-1  | [xUnit.net 00:23:30.69]            at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+2026-10-24T14:03:54.3475676Z acceptance-1  | [xUnit.net 00:23:30.69]            at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+2026-10-24T14:03:54.3483759Z acceptance-1  | [xUnit.net 00:23:30.69]            at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+2026-10-24T14:03:54.3486790Z acceptance-1  | [xUnit.net 00:23:30.69]            at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+2026-10-24T14:03:54.3489558Z acceptance-1  | [xUnit.net 00:23:30.69]            at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
+2026-10-24T14:03:54.3498742Z acceptance-1  | [xUnit.net 00:23:30.69]            at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+2026-10-24T14:03:54.3502844Z acceptance-1  | [xUnit.net 00:23:30.69]            at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+2026-10-24T14:03:54.3511987Z acceptance-1  | [xUnit.net 00:23:30.69]            at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+2026-10-24T14:03:54.3520792Z acceptance-1  | [xUnit.net 00:23:30.69]            at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+2026-10-24T14:03:54.3523687Z acceptance-1  | [xUnit.net 00:23:30.69]            at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+2026-10-24T14:03:54.3526974Z acceptance-1  | [xUnit.net 00:23:30.69]         /source/tests/EnvanterTR.SecurityAcceptance/AnnualCatalogAcceptanceTests.cs(24,0): at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Annual_catalog_drafts_are_authorized_csrf_protected_idempotent_and_preserve_existing_plans()
+2026-10-24T14:03:54.3555216Z acceptance-1  | [xUnit.net 00:23:30.69]         /source/tests/EnvanterTR.SecurityAcceptance/AnnualCatalogAcceptanceTests.cs(25,0): at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Annual_catalog_drafts_are_authorized_csrf_protected_idempotent_and_preserve_existing_plans()
+2026-10-24T14:03:54.3556708Z acceptance-1  | [xUnit.net 00:23:30.69]         --- End of stack trace from previous location ---
+2026-10-24T14:03:54.3557282Z acceptance-1  | [xUnit.net 00:23:30.69]         ----- Inner Stack Trace -----
+2026-10-24T14:03:54.3558330Z acceptance-1  | [xUnit.net 00:23:30.69]            at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean read
+
+Run 40098994968: 327 total, 326 passed, 1 failed.

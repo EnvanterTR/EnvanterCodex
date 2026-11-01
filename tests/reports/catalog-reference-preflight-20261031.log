@@ -1,0 +1,20 @@
+BEGIN
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 2
+INSERT 0 2
+CREATE VIEW
+DO
+       reference        |    reason
+------------------------+---------------
+ AssetModels.BrandId    | MissingTarget
+ AssetModels.CategoryId | CrossCompany
+ Assets.BrandId         | CrossCompany
+ Assets.ModelId         | MissingTarget
+(4 rows)
+
+ROLLBACK

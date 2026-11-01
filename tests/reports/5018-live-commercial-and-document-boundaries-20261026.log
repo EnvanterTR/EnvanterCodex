@@ -1,0 +1,4 @@
+PASS eight public plans; checkout unavailable; trials unavailable
+PASS anonymous GET /pdf 401
+PASS anonymous GET /email 401
+PASS anonymous POST /email 401

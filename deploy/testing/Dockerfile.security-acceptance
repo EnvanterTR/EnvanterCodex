@@ -6,6 +6,11 @@ COPY tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj te
 RUN dotnet restore tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj
 COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
 RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
+COPY tests/reports/current-release-118-to-120-20261024.sql tests/reports/current-release-118-to-120-20261024.sql.sha256 tests/reports/
+COPY tests/reports/company-deletion-120-to-121-20261025.sql tests/reports/company-deletion-120-to-121-20261025.sql.sha256 tests/reports/
+COPY tests/reports/handover-email-121-to-122-20261026.sql tests/reports/handover-email-121-to-122-20261026.sql.sha256 tests/reports/
+COPY tests/reports/company-audit-122-to-123-20261031.sql tests/reports/company-audit-122-to-123-20261031.sql.sha256 tests/reports/
+COPY tests/reports/catalog-fk-123-to-124-20261031.sql tests/reports/catalog-fk-123-to-124-20261031.sql.sha256 tests/reports/
 COPY tests/EnvanterTR.SecurityAcceptance/ tests/EnvanterTR.SecurityAcceptance/
 RUN dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore
 WORKDIR /source/tests/EnvanterTR.SecurityAcceptance

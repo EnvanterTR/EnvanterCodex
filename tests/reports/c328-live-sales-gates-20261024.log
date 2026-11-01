@@ -1,0 +1,9 @@
+SOURCE migrations: 120; deployed app reports: 120.
+READY https://envantertr.com/api/status HTTP 200 (ready)
+  Application and database schema report ready.
+READY https://firma.envantertr.com/api/status HTTP 200 (ready)
+  Application and database schema report ready.
+NOT READY https://envantertr.com/api/plans HTTP 200 (0 public plan(s))
+  No published Cloud plans; publish an active public plan before opening online sales.
+NOT READY https://envantertr.com/api/checkout/status HTTP 200 (checkout unavailable)
+  Online checkout is unavailable; payment provider keys, API base, and trusted callback must be configured.

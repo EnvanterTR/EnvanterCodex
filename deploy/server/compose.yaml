@@ -47,7 +47,7 @@ services:
       Email__PublicBaseUrl: ${EMAIL_PUBLIC_BASE_URL:-}
       Iyzipay__ApiKey: ${IYZIPAY_API_KEY:-}
       Iyzipay__SecretKey: ${IYZIPAY_SECRET_KEY:-}
-      Iyzipay__BaseUrl: ${IYZIPAY_BASE_URL:-https://sandbox-api.iyzipay.com}
+      Iyzipay__BaseUrl: ${IYZIPAY_BASE_URL:-}
       Iyzipay__CallbackUrl: ${IYZIPAY_CALLBACK_URL:-}
     depends_on:
       database:

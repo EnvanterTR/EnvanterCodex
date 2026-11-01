@@ -1,0 +1,79 @@
+AssertionError [ERR_ASSERTION]: The default license expiry horizon must be 90 days.
+
+305
++ actual - expected
+
+306
+
+
+307
++ 7862400000
+
+308
+- 7776000000
+
+309
+
+
+310
+    at file:///acceptance/asset-detail-actions.mjs:4291:10 {
+
+311
+  generatedMessage: false,
+
+312
+  code: 'ERR_ASSERTION',
+
+313
+  actual: 7862400000,
+
+314
+  expected: 7776000000,
+
+315
+  operator: 'strictEqual',
+
+316
+  diff: 'simple'
+
+317
+}
+
+318
+
+
+319
+Node.js v24.21.0
+
+320
+Error: Process completed with exit code 1.
+
+Run five-step company onboarding UI in Chromium
+0s
+Preserve company onboarding UI evidence
+1s
+Run existing company annual checkout with Kestrel PostgreSQL and Chromium
+0s
+Preserve existing company checkout browser evidence
+0s
+Verify application scripts and camera policy through Nginx
+0s
+Verify payment provider and checkout security contract
+0s
+Verify platform company provisioning workflow
+0s
+Verify recoverable company deletion and migration artifact
+0s
+Verify platform customer lifecycle workflow
+0s
+Verify platform subscription adjustment workflow
+0s
+Verify platform admin dashboard experience
+0s
+Verify isolated platform MFA browser acceptance harness
+0s
+Verify platform member directory and account details
+0s
+Verify platform member invitation workflow
+0s
+Verify p

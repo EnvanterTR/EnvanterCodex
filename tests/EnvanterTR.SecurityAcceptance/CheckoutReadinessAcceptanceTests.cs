@@ -32,6 +32,7 @@ public sealed partial class TenantSessionAcceptanceTests
         var options = _factory!.Services.GetRequiredService<IOptions<IyzipayOptions>>().Value;
         var cases = new[]
         {
+            (Api: "", Callback: callback, Key: true, CallbackValid: true, ApiValid: false, Environment: "unknown"),
             (Api: "https://sandbox-api.iyzipay.com", Callback: callback, Key: false, CallbackValid: true, ApiValid: true, Environment: "sandbox"),
             (Api: "https://sandbox-api.iyzipay.com", Callback: "", Key: true, CallbackValid: false, ApiValid: true, Environment: "sandbox"),
             (Api: "https://sandbox-api.iyzipay.com", Callback: "https://example.test/api/checkout/callback", Key: true, CallbackValid: false, ApiValid: true, Environment: "sandbox"),

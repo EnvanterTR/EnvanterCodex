@@ -336,8 +336,10 @@ public static class SoftwareLicenseEndpoints
             var storageName = $"{attachmentId:N}.{detected.Value.Extension}";
             var originalName = CleanLicenseAttachmentName(upload.FileName, detected.Value.Extension);
             var directory = LicenseAttachmentDirectory(configuration, companyId, id);
-            Directory.CreateDirectory(directory);
             var destination = Path.Combine(directory, storageName);
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, destination))
+                return Results.Conflict(new { message = "Dosya alanı güvenli biçimde kullanılamıyor. Şirket yöneticinize başvurun." });
+            Directory.CreateDirectory(directory);
             var attachment = new SoftwareLicenseAttachment { Id = attachmentId, CompanyId = companyId, LicenseId = id, UploadedByUserId = actorId,
                 OriginalFileName = originalName, StorageFileName = storageName, ContentType = detected.Value.ContentType, Length = bytes.LongLength,
                 IsEulaDocument = isEulaDocument, IsCurrentEula = isEulaDocument, EulaVersion = eulaVersion,
@@ -371,7 +373,8 @@ public static class SoftwareLicenseEndpoints
                 x.CompanyId == companyId && x.LicenseId == id && x.Id == attachmentId, ct);
             if (attachment is null || !IsSafeLicenseAttachmentName(attachment.StorageFileName)) return Results.NotFound();
             var path = Path.Combine(LicenseAttachmentDirectory(configuration, companyId, id), attachment.StorageFileName);
-            if (!System.IO.File.Exists(path)) return Results.NotFound();
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path) || !System.IO.File.Exists(path))
+                return Results.NotFound();
             var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 64 * 1024,
                 FileOptions.Asynchronous | FileOptions.SequentialScan);
             return Results.File(stream, attachment.ContentType, attachment.OriginalFileName, enableRangeProcessing: false);
@@ -392,11 +395,13 @@ public static class SoftwareLicenseEndpoints
                 return Results.Conflict(new { message = "Atamada zorunlu tutulan geçerli EULA silinemez. Önce yeni bir EULA sürümü yükleyin veya lisans ayarını kapatın." });
             if (await db.SoftwareLicenseAssignments.AnyAsync(x => x.CompanyId == companyId && x.LicenseId == id && x.EulaAttachmentId == attachmentId, ct))
                 return Results.Conflict(new { message = "Kabul kaydında kullanılan EULA sürümü silinemez; denetim kaydı için saklanmalıdır." });
+            if (!IsSafeLicenseAttachmentName(attachment.StorageFileName)) return Results.NotFound();
+            var path = Path.Combine(LicenseAttachmentDirectory(configuration, companyId, id), attachment.StorageFileName);
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path)) return Results.NotFound();
             db.SoftwareLicenseAttachments.Remove(attachment);
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "SoftwareLicense", TargetId = id,
                 Action = "AttachmentRemoved", Details = $"Lisans dosyası kaldırıldı ({attachment.ContentType}, {attachment.Length} bayt)." });
             await db.SaveChangesAsync(ct);
-            var path = Path.Combine(LicenseAttachmentDirectory(configuration, companyId, id), attachment.StorageFileName);
             try { if (System.IO.File.Exists(path)) System.IO.File.Delete(path); } catch (IOException) { } catch (UnauthorizedAccessException) { }
             return Results.NoContent();
         }).RequireAuthorization("asset.write");

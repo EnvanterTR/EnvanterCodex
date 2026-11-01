@@ -1,0 +1,15 @@
+services:
+  checkout-browser:
+    build:
+      context: ../..
+      dockerfile: deploy/testing/Dockerfile.existing-checkout-browser
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      ENVANTERTR_SECURITY_TEST_CONNECTION: "Host=database;Port=5432;Database=envantertr_security_acceptance;Username=envantertr_test;Password=security-acceptance-only"
+    volumes:
+      - type: bind
+        source: ${CHECKOUT_BROWSER_EVIDENCE}
+        target: /evidence
+    networks: [acceptance]

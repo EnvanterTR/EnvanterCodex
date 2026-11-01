@@ -1,0 +1,10 @@
+							103 link Description: 56e4083, Value: github.com/EnvanterTR/EnvanterCodex/com…
+							105 link Description: CI40331368345, Value: github.com/EnvanterTR/EnvanterCodex/act…
+			341 link Description: 56e4083, Value: …
+						470 text 3 successful checks
+								477 container EnvanterTR CI / Linux PostgreSQL tenant acceptance (pull_request) successful in 25m
+										482 text Successful in 25m
+								484 container EnvanterTR CI / Linux tenant security acceptance (pull_request) successful in 6m
+										489 text Successful in 6m
+								491 container EnvanterTR CI / Windows deployment and backup safety (pull_request) successful in 4m
+										496 text Successful in 4m

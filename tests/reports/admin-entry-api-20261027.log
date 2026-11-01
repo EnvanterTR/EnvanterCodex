@@ -1,0 +1,43 @@
+ Network admin-entry-20261027_acceptance Creating
+ Network admin-entry-20261027_acceptance Creating
+ Network admin-entry-20261027_acceptance Created
+ Network admin-entry-20261027_acceptance Created
+ Container admin-entry-20261027-database-1 Creating
+ Container admin-entry-20261027-database-1 Created
+ Container admin-entry-20261027-database-1 Starting
+ Container admin-entry-20261027-database-1 Started
+ Container admin-entry-20261027-database-1 Waiting
+ Container admin-entry-20261027-database-1 Healthy
+ Container admin-entry-20261027-acceptance-run-01ee9f85c647 Creating
+ Container admin-entry-20261027-acceptance-run-01ee9f85c647 Created
+Test run for /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.20]   Discovering: EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:00.38]   Discovered:  EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:00.43]   Starting:    EnvanterTR.SecurityAcceptance
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[35]
+      No XML encryptor configured. Key {131e0195-559e-49a8-9ceb-8d001c4d1483} may be persisted to storage in unencrypted form.
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (83ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_Assets_CompanyId_DefaultLocationCatalogId"
+      ' from migration 'AddAssetModelNumbersAndDefaultLocation' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_AuditEntries_OccurredAt"
+      ' from migration 'AddGlobalAuditTimelineIndex' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Root_admin_entry_redirects_to_existing_platform_login_while_tenant_entry_stays_hidden [2 s]
+[xUnit.net 00:00:39.19]   Finished:    EnvanterTR.SecurityAcceptance
+  Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Tenant_hosts_hide_platform_pages_assets_and_apis_before_static_files [2 s]
+
+Test Run Successful.
+Total tests: 2
+     Passed: 2
+ Total time: 40.1117 Seconds

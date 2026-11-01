@@ -1,0 +1,9 @@
+# P0-E tenant host and slug acceptance — 2026-10-23
+
+- Status: PASS for isolated host/session/slug checks and live wildcard DNS/TLS reachability. The complete Section 20 customer workflow is still incomplete.
+- Isolated command: `docker compose -f deploy/testing/compose.security-acceptance.yaml -p p0e-tenant run --build --rm acceptance --filter "FullyQualifiedName~Login_company_choices_are_limited_to_the_accounts_active_memberships|FullyQualifiedName~Existing_company_sessions_cannot_be_reused_on_another_tenant_subdomain|FullyQualifiedName~Company_profile_rejects_reserved_and_duplicate_tenant_slugs_and_persists_a_valid_slug"`
+- Isolated result: exit 0; 3 passed, 0 failed, total 1.1070 minutes. The suite verifies tenant-host/session matching, rejection of a company session on another or unknown tenant host, valid/reserved/duplicate slug behavior, and membership-limited company selection.
+- Live read-only probe: `demo3.envantertr.com` resolved to Cloudflare A records `104.21.10.9` and `172.67.189.218`; HTTPS `/api/status` returned HTTP 200 with TLS verify result 0. No company was created and no production data or configuration was changed. A wildcard DNS/certificate and generic health response do not prove Demo3 exists or receives the intended tenant data.
+- Evidence: `tests/reports/p0e-tenant-host-slug-acceptance-20261023.log` and the command output recorded for the live DNS/TLS probe.
+- Remaining Section 20.9: create Demo3 through the real purchase/admin flow; verify owner login, tenant-only data, and deleting Demo3 cannot affect Santa/Farma. Section 20.2–20.5 lifecycle, asset, assignment/PDF/signature/email, license, maintenance, report, invitation, archive/restore, MFA and super-admin scenarios also remain incomplete.
+- Next: complete P0-D real Iyzico sandbox and P0-E live SMTP plus third-company acceptance. Live checkout remains unavailable because the published plan catalog is empty and provider/mail configuration is absent.

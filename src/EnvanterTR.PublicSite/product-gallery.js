@@ -5,18 +5,19 @@
   const dialog=document.createElement('dialog');dialog.className='product-preview-dialog';
   const close=document.createElement('button');close.type='button';close.className='product-preview-close';
   const large=document.createElement('img');dialog.append(close,large);document.body.append(dialog);
-  let opener;
+  let opener;const registered=new WeakSet();
   function open(image){opener=image;large.src=image.currentSrc||image.src;large.alt=image.alt;dialog.showModal();document.documentElement.classList.add('product-preview-open');close.focus();}
+  function registerExpandable(image){if(registered.has(image))return;registered.add(image);image.dataset.previewExpand='';image.tabIndex=0;image.setAttribute('role','button');image.addEventListener('click',()=>open(image));image.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();open(image);}});}
   close.addEventListener('click',()=>dialog.close());
   dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close();});
   dialog.addEventListener('close',()=>{document.documentElement.classList.remove('product-preview-open');large.removeAttribute('src');opener?.focus();});
-  document.querySelectorAll('[data-preview-expand]').forEach(image=>{image.addEventListener('click',()=>open(image));image.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();open(image);}});});
+  document.querySelectorAll('[data-preview-expand]').forEach(registerExpandable);
   const figure=document.querySelector('#assetLabelGallery');if(!figure)return;
   const original=figure.querySelector('img'),windowBox=document.createElement('div'),track=document.createElement('div');
   windowBox.className='label-gallery-window';track.className='label-gallery-track';original.before(windowBox);windowBox.append(track);track.append(original);
   const sources=[['asset-label-devices.png','QR ve barkod etiketlerinin farklı cihazlarda kullanım örnekleri'],['asset-label-hardware.png','Dizüstü bilgisayar, sunucu ve monitör envanter etiketleri'],['asset-label-desktop.png','Masaüstü bilgisayarda QR ve barkod envanter etiketi']];
-  original.classList.add('label-gallery-slide');
-  for(const [file,alt] of sources){const image=document.createElement('img');image.src='/assets/images/'+file;image.alt=alt;image.loading='lazy';image.decoding='async';image.className='label-gallery-slide';track.append(image);}
+  original.classList.add('label-gallery-slide');registerExpandable(original);
+  for(const [file,alt] of sources){const image=document.createElement('img');image.src='/assets/images/'+file;image.alt=alt;image.loading='lazy';image.decoding='async';image.className='label-gallery-slide';registerExpandable(image);track.append(image);}
   const slides=[...track.children],clone=original.cloneNode(true);clone.alt='';clone.setAttribute('aria-hidden','true');track.append(clone);
   const controls=document.createElement('div');controls.className='label-gallery-controls';windowBox.after(controls);
   let index=0,paused=matchMedia('(prefers-reduced-motion: reduce)').matches,hover=false,focused=false,timer;

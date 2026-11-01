@@ -1,5 +1,12 @@
 [
   {
+    "Package": "Noto Sans Regular/Bold",
+    "Version": "archived official static TTF snapshot",
+    "LicenseExpression": "OFL-1.1",
+    "LicenseFile": "src/EnvanterTR.Web/Resources/Fonts/LICENSE.txt",
+    "Source": "https://github.com/notofonts/noto-fonts/tree/main/hinted/ttf/NotoSans"
+  },
+  {
     "Package": "Project Nayuki QR Code generator",
     "Version": "vendored snapshot",
     "LicenseExpression": "MIT",

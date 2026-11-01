@@ -1,0 +1,12 @@
+# P0-D shared tenant provisioning — 2026-10-23
+
+- Status: PASS for isolated PostgreSQL acceptance. Production deployment and real provider/SMTP acceptance remain open.
+- Change: Bootstrap, platform-paid creation, verified Cloud trials, and verified payment callback/webhook now use `TenantProvisioningService`. Company and owner-membership insertion occurs in one shared method. Cloud owner creation, mandatory MFA, subscription dates/status/payment reference are staged by the service in the caller's existing transaction. Existing owners' credentials are preserved. Callers retain their authorization, token validation, slug checks, payment/order locking, audit, commit, and notification boundaries.
+- No schema change: No migration or production setting was changed.
+- Build: Web build 0 warnings / 0 errors. Acceptance build 4 existing ASP.NET deprecation warnings / 0 errors, in the Docker SDK image.
+- Tests: 11/11 passed, 2.5126 minutes. Two added tests prove transaction-required behavior, rollback of the newly persisted Identity owner plus company/membership/subscription, and initial provisioning without a subscription or credential change. Existing tests cover six trial validity/replay/concurrency boundaries, platform-paid provisioning/invitation retry, signed checkout/replay, and Cloud user quota enforcement.
+- Source checks: `Verify-PlatformCompanyProvisioning.mjs`, `Verify-IyzipayCheckoutFlow.mjs`, `Verify-AuthErrorFlows.mjs` passed. A scan of application C# found the sole company insertion in `TenantProvisioningService.cs`.
+- Command: `docker compose -f deploy/testing/compose.security-acceptance.yaml -p p0-shared-provision run --build --rm acceptance --filter "FullyQualifiedName~Shared_tenant_provisioning|FullyQualifiedName~Shared_initial_company_provisioning|FullyQualifiedName~Verified_cloud_trial|FullyQualifiedName~Cloud_trial|FullyQualifiedName~Concurrent_cloud_trial|FullyQualifiedName~Concurrent_distinct_cloud_trials|FullyQualifiedName~Platform_can_provision_a_paid_cloud_company_owner_and_retryable_invitation|FullyQualifiedName~Public_checkout_uses_server_price_verifies_provider_and_provisions_once|FullyQualifiedName~Cloud_plan_user_quota"` exited 0.
+- Evidence: `tests/reports/shared-tenant-provisioning-20261023.log`. Test database/network removed after completion. Tests used synthetic SMTP/payment responses; this is not real merchant or real inbox acceptance.
+
+TAMAM dediğim 11 kabul testinin 11'i test çıktısıyla doğrulanmıştır.

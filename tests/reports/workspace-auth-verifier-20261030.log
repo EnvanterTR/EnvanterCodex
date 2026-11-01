@@ -1,0 +1,1 @@
+Verified authenticated 401 closes open dialogs and shows login; 403 stays a permission error; rejected login does not recurse; URL credentials are scrubbed; login exposes a wired server-test button; readiness distinguishes ready, first-run, pending-migration, and unavailable states.

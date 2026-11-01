@@ -7,7 +7,6 @@ on:
       - '*.md'
       - '**/*.md'
   pull_request:
-    branches: [main]
 
 permissions:
   contents: read
@@ -257,11 +256,52 @@ jobs:
         shell: bash
         run: node tools/Verify-SupportUi.mjs
 
+      - name: Verify session response isolation
+        shell: bash
+        run: node deploy/testing/verify-session-response-isolation.mjs
+
+      - name: Verify platform session response isolation
+        shell: bash
+        run: node deploy/testing/verify-platform-session-isolation.mjs
+
       - name: Run hosted Cloud checkout in Chromium
         shell: bash
         run: |
           docker build --tag envantertr-hosted-checkout-browser-ci --file deploy/testing/Dockerfile.hosted-checkout-browser .
           docker run --rm --init envantertr-hosted-checkout-browser-ci
+
+      - name: Run five-step company onboarding UI in Chromium
+        shell: bash
+        run: |
+          mkdir -p tests/reports/onboarding-ci
+          docker run --rm --init --network none --mount "type=bind,source=$PWD/tests/reports/onboarding-ci,target=/evidence" --entrypoint node envantertr-hosted-checkout-browser-ci /acceptance/company-onboarding.mjs
+
+      - name: Preserve company onboarding UI evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: company-onboarding-${{ github.sha }}
+          path: tests/reports/onboarding-ci/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Run existing company annual checkout with Kestrel PostgreSQL and Chromium
+        shell: pwsh
+        timeout-minutes: 12
+        run: |
+          ./deploy/testing/run-existing-checkout-browser-acceptance.ps1 -EvidencePath tests/reports/existing-checkout-ci *>&1 | Tee-Object -FilePath tests/reports/existing-checkout-ci.log
+          exit $LASTEXITCODE
+
+      - name: Preserve existing company checkout browser evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: existing-company-checkout-browser-${{ github.sha }}
+          path: |
+            tests/reports/existing-checkout-ci.log
+            tests/reports/existing-checkout-ci/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Verify application scripts and camera policy through Nginx
         shell: bash
@@ -280,6 +320,10 @@ jobs:
       - name: Verify platform company provisioning workflow
         shell: bash
         run: node tools/Verify-PlatformCompanyProvisioning.mjs
+
+      - name: Verify recoverable company deletion and migration artifact
+        shell: bash
+        run: node tools/Verify-CompanyDeletion.mjs
 
       - name: Verify platform customer lifecycle workflow
         shell: bash
@@ -347,6 +391,11 @@ jobs:
       - name: Verify the built Release image with Production settings
         shell: pwsh
         run: ./deploy/testing/run-release-smoke.ps1 -Image envantertr-web-ci
+
+      - name: Back up and restore the isolated Release database, media, and keys
+        shell: pwsh
+        timeout-minutes: 10
+        run: ./deploy/testing/run-release-backup-restore.ps1 -Image envantertr-web-ci
 
       - name: Check Linux deployment script syntax
         shell: bash
@@ -425,26 +474,43 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  linux-postgresql-acceptance:
-    name: Linux PostgreSQL tenant acceptance
+  linux-postgresql-shards:
+    name: PostgreSQL tenant shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
     steps:
       - name: Check out source
         uses: actions/checkout@v4
 
       - name: Run isolated PostgreSQL acceptance suite
-        shell: bash
-        run: |
-          set -euo pipefail
-          project_name="envantertr-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          compose_file="deploy/testing/compose.security-acceptance.yaml"
-          cleanup() {
-            docker compose --project-name "$project_name" --file "$compose_file" down --volumes --remove-orphans
-          }
-          trap cleanup EXIT
-          docker compose --project-name "$project_name" --file "$compose_file" up \
-            --build --abort-on-container-exit --exit-code-from acceptance
+        shell: pwsh
+        run: ./deploy/testing/run-security-shard.ps1 -ShardIndex ${{ matrix.shard }}
+
+      - name: Save test selection evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-shard-${{ matrix.shard }}
+          path: |
+            ${{ runner.temp }}/security-discovery-${{ matrix.shard }}.txt
+            ${{ runner.temp }}/security-shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  linux-postgresql-acceptance:
+    name: Linux PostgreSQL tenant acceptance
+    if: always()
+    needs: linux-postgresql-shards
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every PostgreSQL shard to succeed
+        env:
+          SHARD_RESULT: ${{ needs.linux-postgresql-shards.result }}
+        run: test "$SHARD_RESULT" = success
 
   windows-deployment-safety:
     name: Windows deployment and backup safety

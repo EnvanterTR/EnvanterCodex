@@ -1,0 +1,15 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: The confirmation must show the actual registered recipient.
+    at file:///acceptance/employee-records.mjs:820:10 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'QA Employee Updated qa.employee@example.invalid QA-HO-001 İmzalı PDF aşağıdaki kayıtlı alıcıya gönderilecek.',
+  expected: /qa\.employee@example\.test/,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

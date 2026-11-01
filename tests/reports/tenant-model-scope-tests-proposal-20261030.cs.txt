@@ -1,0 +1,46 @@
+using EnvanterTR.Web.Data;
+using Microsoft.EntityFrameworkCore;
+using Xunit;
+
+namespace EnvanterTR.SecurityAcceptance;
+
+public sealed class TenantDataModelScopeTests
+{
+    [Fact]
+    public void Current_model_keeps_shared_accounts_and_plans_without_changing_the_schema()
+    {
+        using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+            .UseNpgsql("Host=localhost;Database=model_only;Username=unused;Password=unused").Options);
+        var model = db.Model; // Builds the real provider model without connecting to a database.
+        Assert.Null(model.FindEntityType(typeof(EnvanterUser))!.FindProperty("CompanyId"));
+        Assert.Null(model.FindEntityType(typeof(SubscriptionPlan))!.FindProperty("CompanyId"));
+        Assert.True(model.FindEntityType(typeof(UserSession))!.FindProperty("CompanyId")!.IsNullable);
+        Assert.False(model.FindEntityType(typeof(Asset))!.FindProperty("CompanyId")!.IsNullable);
+        Assert.False(db.Database.HasPendingModelChanges());
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("nullable")]
+    [InlineData("text")]
+    public void New_business_entity_without_a_required_company_identifier_is_rejected(string kind)
+    {
+        var builder = new ModelBuilder();
+        var entity = builder.Entity<FutureBusinessRecord>();
+        entity.Property<Guid>("Id");
+        if (kind == "nullable") entity.Property<Guid?>("CompanyId");
+        if (kind == "text") entity.Property<string>("CompanyId");
+        Assert.Throws<InvalidOperationException>(() => TenantDataModelScope.Validate(entity.Metadata));
+    }
+
+    [Fact]
+    public void New_business_entity_with_a_required_company_identifier_is_allowed()
+    {
+        var entity = new ModelBuilder().Entity<FutureBusinessRecord>();
+        entity.Property<Guid>("Id");
+        entity.Property<Guid>("CompanyId").IsRequired();
+        TenantDataModelScope.Validate(entity.Metadata);
+    }
+
+    private sealed class FutureBusinessRecord { }
+}

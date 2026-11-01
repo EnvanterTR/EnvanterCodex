@@ -1,0 +1,25 @@
+{
+  "before": {
+    "complete": true,
+    "height": 1024,
+    "src": "https://envantertr.com/assets/images/farma-company-portal-preview.png",
+    "width": 1536
+  },
+  "expanded": {
+    "dialogHeight": 720,
+    "dialogWidth": 1280,
+    "focusTag": "BUTTON",
+    "naturalHeight": 1024,
+    "naturalWidth": 1536,
+    "open": true,
+    "src": "https://envantertr.com/assets/images/farma-company-portal-preview.png",
+    "viewportHeight": 720,
+    "viewportWidth": 1280
+  },
+  "escapeClose": {
+    "focusRestored": true,
+    "open": false,
+    "sourceCleared": true
+  },
+  "keyboardReopened": true
+}

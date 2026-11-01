@@ -1,0 +1,58 @@
+[
+  {
+    "code": "cloud-individual-1",
+    "maxLoginUsers": 1,
+    "monthlyPrice": 0.0,
+    "annualPrice": 2400.0,
+    "currency": "TRY"
+  },
+  {
+    "code": "cloud-business-4",
+    "maxLoginUsers": 4,
+    "monthlyPrice": 0.0,
+    "annualPrice": 4200.0,
+    "currency": "TRY"
+  },
+  {
+    "code": "cloud-business-10",
+    "maxLoginUsers": 10,
+    "monthlyPrice": 0.0,
+    "annualPrice": 6000.0,
+    "currency": "TRY"
+  },
+  {
+    "code": "cloud-corporate-50",
+    "maxLoginUsers": 50,
+    "monthlyPrice": 0.0,
+    "annualPrice": 9000.0,
+    "currency": "TRY"
+  },
+  {
+    "code": "cloud-corporate-100",
+    "maxLoginUsers": 100,
+    "monthlyPrice": 0.0,
+    "annualPrice": 12000.0,
+    "currency": "TRY"
+  },
+  {
+    "code": "cloud-corporate-250",
+    "maxLoginUsers": 250,
+    "monthlyPrice": 0.0,
+    "annualPrice": 14400.0,
+    "currency": "TRY"
+  },
+  {
+    "code": "cloud-corporate-1000",
+    "maxLoginUsers": 1000,
+    "monthlyPrice": 0.0,
+    "annualPrice": 24000.0,
+    "currency": "TRY"
+  },
+  {
+    "code": "cloud-corporate-2000",
+    "maxLoginUsers": 2000,
+    "monthlyPrice": 0.0,
+    "annualPrice": 36000.0,
+    "currency": "TRY"
+  }
+]

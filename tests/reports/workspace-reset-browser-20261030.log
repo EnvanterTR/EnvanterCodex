@@ -1,0 +1,5 @@
+PASS fresh document removes previous workspace on company change
+PASS fresh document removes previous workspace on account change
+PASS fresh document removes previous workspace on role change
+PASS same authorized context retains document same-context
+WORKSPACE_RESET_BROWSER 4/4 passed

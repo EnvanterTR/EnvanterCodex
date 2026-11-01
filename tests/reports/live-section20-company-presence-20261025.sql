@@ -1,0 +1,1 @@
+WITH requested(slug) AS (VALUES ('santa'),('farma'),('demo3')) SELECT r.slug, count(c."Id") AS company_rows, count(c."Id") FILTER (WHERE c."IsActive" AND c."DeletedAt" IS NULL) AS active_rows FROM requested r LEFT JOIN "Companies" c ON lower(c."Slug") = r.slug GROUP BY r.slug ORDER BY r.slug;

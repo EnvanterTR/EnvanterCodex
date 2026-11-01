@@ -1,0 +1,1 @@
+PASS synthetic reset UI: fragment removed; CSRF; 503 retains form and same token for explicit retry; success and missing-link messages remain visible with hidden form;390px/no JS errors. No real account reset.

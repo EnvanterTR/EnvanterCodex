@@ -1,0 +1,182 @@
+ Network asset-put-section20-20261025_acceptance Creating 
+ Network asset-put-section20-20261025_acceptance Creating 
+ Network asset-put-section20-20261025_acceptance Created 
+ Network asset-put-section20-20261025_acceptance Created 
+ Container asset-put-section20-20261025-database-1 Creating 
+ Container asset-put-section20-20261025-database-1 Created 
+ Container asset-put-section20-20261025-database-1 Starting 
+ Container asset-put-section20-20261025-database-1 Started 
+ Image asset-put-section20-20261025-acceptance Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 684B 0.4s done
+#1 DONE 0.4s
+
+#2 [internal] load build definition from Dockerfile.security-acceptance
+#2 transferring dockerfile: 1.14kB 0.1s done
+#2 DONE 0.2s
+
+#3 [internal] load metadata for mcr.microsoft.com/dotnet/sdk:10.0
+#3 DONE 0.4s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 134B 0.1s done
+#4 DONE 0.1s
+
+#5 [internal] load build context
+#5 DONE 0.0s
+
+#6 [ 1/13] FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
+#6 resolve mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa 0.1s done
+#6 DONE 0.2s
+
+#5 [internal] load build context
+#5 transferring context: 1.90MB 0.7s done
+#5 DONE 0.8s
+
+#7 [ 2/13] WORKDIR /source
+#7 CACHED
+
+#8 [ 3/13] COPY global.json ./
+#8 CACHED
+
+#9 [ 4/13] COPY src/EnvanterTR.Web/EnvanterTR.Web.csproj src/EnvanterTR.Web/
+#9 CACHED
+
+#10 [ 5/13] COPY tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj tests/EnvanterTR.SecurityAcceptance/
+#10 DONE 0.2s
+
+#11 [ 6/13] RUN dotnet restore tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj
+#11 9.547   Determining projects to restore...
+#11 40.03   Restored /source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj (in 27.27 sec).
+#11 40.73   Restored /source/src/EnvanterTR.Web/EnvanterTR.Web.csproj (in 28.1 sec).
+#11 DONE 42.1s
+
+#12 [ 7/13] COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
+#12 DONE 2.2s
+
+#13 [ 8/13] RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
+#13 172.3   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+#13 172.5 
+#13 172.5 Build succeeded.
+#13 172.5     0 Warning(s)
+#13 172.5     0 Error(s)
+#13 172.5 
+#13 172.5 Time Elapsed 00:02:50.98
+#13 DONE 172.9s
+
+#14 [ 9/13] COPY tests/reports/current-release-118-to-120-20261024.sql tests/reports/current-release-118-to-120-20261024.sql.sha256 tests/reports/
+#14 DONE 0.1s
+
+#15 [10/13] COPY tests/reports/company-deletion-120-to-121-20261025.sql tests/reports/company-deletion-120-to-121-20261025.sql.sha256 tests/reports/
+#15 DONE 0.1s
+
+#16 [11/13] COPY tests/EnvanterTR.SecurityAcceptance/ tests/EnvanterTR.SecurityAcceptance/
+#16 DONE 0.2s
+
+#17 [12/13] RUN dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore
+#17 7.344   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+#17 65.69 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 65.69 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 65.69 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 65.69 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 66.19   EnvanterTR.SecurityAcceptance -> /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll
+#17 66.48 
+#17 66.48 Build succeeded.
+#17 66.48 
+#17 66.48 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 66.48 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(63,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 66.48 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,47): warning ASPDEPR004: 'WebHostBuilder' is obsolete: 'WebHostBuilder is deprecated in favor of HostBuilder and WebApplicationBuilder. For more information, visit https://aka.ms/aspnet/deprecate/004.' (https://aka.ms/aspnet/deprecate/004) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 66.48 /source/tests/EnvanterTR.SecurityAcceptance/TrustedClientIpTests.cs(100,28): warning ASPDEPR008: 'TestServer.TestServer(IWebHostBuilder)' is obsolete: 'IWebHost, which this method uses, is obsolete. Use one of the ctors that takes an IServiceProvider instead. For more information, visit https://aka.ms/aspnet/deprecate/008.' (https://aka.ms/aspnet/deprecate/008) [/source/tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj]
+#17 66.48     4 Warning(s)
+#17 66.48     0 Error(s)
+#17 66.48 
+#17 66.48 Time Elapsed 00:01:05.12
+#17 DONE 66.7s
+
+#18 [13/13] WORKDIR /source/tests/EnvanterTR.SecurityAcceptance
+#18 DONE 0.1s
+
+#19 exporting to image
+#19 exporting layers
+#19 exporting layers 34.1s done
+#19 exporting manifest sha256:b00f55881df5335dca473d625f64c2c1be8601c13a53106b603fcef8f4c97f06 0.0s done
+#19 exporting config sha256:c192389212a3856492da70346bbb66fa02f1980d8016ac278d059f55f4719796 0.0s done
+#19 exporting attestation manifest sha256:d271d682703d7a55a45387a271ddb9e16cf185a8e1e62492aba5f993d5b9f5d2 0.0s done
+#19 exporting manifest list sha256:b7f92f3ed484cbe61c4658286fdeb66150a3b281188611aeb8cbec4f18b46144
+#19 exporting manifest list sha256:b7f92f3ed484cbe61c4658286fdeb66150a3b281188611aeb8cbec4f18b46144 0.0s done
+#19 naming to docker.io/library/asset-put-section20-20261025-acceptance:latest done
+#19 unpacking to docker.io/library/asset-put-section20-20261025-acceptance:latest
+#19 unpacking to docker.io/library/asset-put-section20-20261025-acceptance:latest 11.5s done
+#19 DONE 45.8s
+
+#20 resolving provenance for metadata file
+#20 DONE 0.2s
+ Image asset-put-section20-20261025-acceptance Built 
+ Container asset-put-section20-20261025-database-1 Waiting 
+ Container asset-put-section20-20261025-database-1 Healthy 
+ Container asset-put-section20-20261025-acceptance-run-26664b935977 Creating 
+ Container asset-put-section20-20261025-acceptance-run-26664b935977 Created 
+Test run for /source/tests/EnvanterTR.SecurityAcceptance/bin/Debug/net10.0/EnvanterTR.SecurityAcceptance.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.04] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.82]   Discovering: EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:01.53]   Discovered:  EnvanterTR.SecurityAcceptance
+[xUnit.net 00:00:01.75]   Starting:    EnvanterTR.SecurityAcceptance
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+warn: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[35]
+      No XML encryptor configured. Key {93891a62-1303-42a4-9145-107c2b9c4a4b} may be persisted to storage in unencrypted form.
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (146ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_Assets_CompanyId_DefaultLocationCatalogId"
+      ' from migration 'AddAssetModelNumbersAndDefaultLocation' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_AuditEntries_OccurredAt"
+      ' from migration 'AddGlobalAuditTimelineIndex' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+[xUnit.net 00:01:14.65]     EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Asset_single_edit_is_tenant_scoped_version_checked_and_written_to_history(method: "PATCH") [FAIL]
+[xUnit.net 00:01:14.65]       System.InvalidOperationException : The given header was not found.
+[xUnit.net 00:01:14.65]       Stack Trace:
+[xUnit.net 00:01:14.66]            at System.Net.Http.Headers.HttpHeaders.GetValues(HeaderDescriptor descriptor)
+[xUnit.net 00:01:14.66]         /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs(10059,0): at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Asset_single_edit_is_tenant_scoped_version_checked_and_written_to_history(String method)
+[xUnit.net 00:01:14.66]         --- End of stack trace from previous location ---
+warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+      Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+  Failed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Asset_single_edit_is_tenant_scoped_version_checked_and_written_to_history(method: "PATCH") [5 s]
+  Error Message:
+   System.InvalidOperationException : The given header was not found.
+  Stack Trace:
+     at System.Net.Http.Headers.HttpHeaders.GetValues(HeaderDescriptor descriptor)
+   at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Asset_single_edit_is_tenant_scoped_version_checked_and_written_to_history(String method) in /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs:line 10059
+--- End of stack trace from previous location ---
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+[xUnit.net 00:01:26.21]       System.InvalidOperationException : The given header was not found.
+[xUnit.net 00:01:26.21]     EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Asset_single_edit_is_tenant_scoped_version_checked_and_written_to_history(method: "PUT") [FAIL]
+[xUnit.net 00:01:26.21]       Stack Trace:
+[xUnit.net 00:01:26.21]            at System.Net.Http.Headers.HttpHeaders.GetValues(HeaderDescriptor descriptor)
+[xUnit.net 00:01:26.21]         /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs(10059,0): at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Asset_single_edit_is_tenant_scoped_version_checked_and_written_to_history(String method)
+[xUnit.net 00:01:26.21]         --- End of stack trace from previous location ---
+[xUnit.net 00:01:26.25]   Finished:    EnvanterTR.SecurityAcceptance
+  Failed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Asset_single_edit_is_tenant_scoped_version_checked_and_written_to_history(method: "PUT") [4 s]
+  Error Message:
+   System.InvalidOperationException : The given header was not found.
+  Stack Trace:
+     at System.Net.Http.Headers.HttpHeaders.GetValues(HeaderDescriptor descriptor)
+   at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Asset_single_edit_is_tenant_scoped_version_checked_and_written_to_history(String method) in /source/tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs:line 10059
+--- End of stack trace from previous location ---
+
+Total tests: 2
+Test Run Failed.
+     Failed: 2
+ Total time: 1.4992 Minutes
+

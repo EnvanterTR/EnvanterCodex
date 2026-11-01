@@ -1,0 +1,155 @@
+ Network envantertr-checkout-browser-8568168d66_acceptance Creating
+ Network envantertr-checkout-browser-8568168d66_acceptance Creating
+ Network envantertr-checkout-browser-8568168d66_acceptance Created
+ Network envantertr-checkout-browser-8568168d66_acceptance Created
+ Container envantertr-checkout-browser-8568168d66-database-1 Creating
+ Container envantertr-checkout-browser-8568168d66-database-1 Created
+ Container envantertr-checkout-browser-8568168d66-database-1 Starting
+ Container envantertr-checkout-browser-8568168d66-database-1 Started
+ Image envantertr-checkout-browser-8568168d66-checkout-browser Building
+#1 [internal] load local bake definitions
+#1 reading from stdin 734B 0.1s done
+#1 DONE 0.1s
+
+#2 [internal] load build definition from Dockerfile.existing-checkout-browser
+#2 transferring dockerfile: 915B 0.0s done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for mcr.microsoft.com/dotnet/sdk:10.0
+#3 ...
+
+#4 [internal] load metadata for mcr.microsoft.com/playwright:v1.64.0-noble
+#4 DONE 0.2s
+
+#3 [internal] load metadata for mcr.microsoft.com/dotnet/sdk:10.0
+#3 DONE 0.3s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 134B 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 DONE 0.0s
+
+#7 [build 1/6] FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
+#7 resolve mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa 0.1s done
+#7 DONE 0.1s
+
+#8 [stage-1 1/8] FROM mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+#8 resolve mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f 0.1s done
+#8 DONE 0.1s
+
+#6 [internal] load build context
+#6 transferring context: 51.05kB 0.1s done
+#6 DONE 0.1s
+
+#9 [build 2/6] WORKDIR /source
+#9 CACHED
+
+#10 [build 3/6] COPY global.json ./
+#10 CACHED
+
+#11 [build 4/6] COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
+#11 CACHED
+
+#12 [build 5/6] COPY tests/EnvanterTR.CheckoutBrowser/ tests/EnvanterTR.CheckoutBrowser/
+#12 DONE 0.3s
+
+#13 [build 6/6] RUN dotnet build tests/EnvanterTR.CheckoutBrowser/EnvanterTR.CheckoutBrowser.csproj
+#13 3.656   Determining projects to restore...
+#13 18.89   Restored /source/tests/EnvanterTR.CheckoutBrowser/EnvanterTR.CheckoutBrowser.csproj (in 12.55 sec).
+#13 23.28   Restored /source/src/EnvanterTR.Web/EnvanterTR.Web.csproj (in 17 sec).
+#13 174.7   EnvanterTR.Web -> /source/src/EnvanterTR.Web/bin/Debug/net10.0/EnvanterTR.Web.dll
+#13 175.7   EnvanterTR.CheckoutBrowser -> /source/tests/EnvanterTR.CheckoutBrowser/bin/Debug/net10.0/EnvanterTR.CheckoutBrowser.dll
+#13 176.0
+#13 176.0 Build succeeded.
+#13 176.0     0 Warning(s)
+#13 176.0     0 Error(s)
+#13 176.0
+#13 176.0 Time Elapsed 00:02:54.15
+#13 DONE 176.6s
+
+#14 [stage-1 2/8] COPY --from=build /usr/share/dotnet /usr/share/dotnet
+#14 CACHED
+
+#15 [stage-1 3/8] WORKDIR /browser
+#15 CACHED
+
+#16 [stage-1 4/8] COPY deploy/testing/hosted-checkout-browser/package.json deploy/testing/hosted-checkout-browser/package-lock.json ./
+#16 CACHED
+
+#17 [stage-1 5/8] RUN npm ci --omit=dev
+#17 CACHED
+
+#18 [stage-1 6/8] COPY deploy/testing/hosted-checkout-browser/existing-company-checkout.mjs ./
+#18 DONE 0.1s
+
+#19 [stage-1 7/8] COPY --from=build /source /source
+#19 DONE 0.7s
+
+#20 [stage-1 8/8] WORKDIR /source/tests/EnvanterTR.CheckoutBrowser/bin/Debug/net10.0
+#20 DONE 0.1s
+
+#21 exporting to image
+#21 exporting layers
+#21 exporting layers 11.0s done
+#21 exporting manifest sha256:1bcb41a0aebbaf1f2fbd13e7ab9318827bfb4fcc1a6e4a63fb6a253de62d5edd 0.0s done
+#21 exporting config sha256:1f961390f8cf1779459e091d78794b0cdf1c75d6b0f0f1ad6a984bd0ef734aff 0.0s done
+#21 exporting attestation manifest sha256:115be0d552ca946fa6fbd75585ffb35dd2be5b528e5c426f1644397f531a4a07 0.0s done
+#21 exporting manifest list sha256:b2781f3d789339a9697b6d66f8de73bdc6858068473db39163a7d800ddb88ec7 0.0s done
+#21 naming to docker.io/library/envantertr-checkout-browser-8568168d66-checkout-browser:latest
+#21 naming to docker.io/library/envantertr-checkout-browser-8568168d66-checkout-browser:latest done
+#21 unpacking to docker.io/library/envantertr-checkout-browser-8568168d66-checkout-browser:latest
+#21 unpacking to docker.io/library/envantertr-checkout-browser-8568168d66-checkout-browser:latest 2.1s done
+#21 DONE 13.3s
+
+#22 resolving provenance for metadata file
+#22 DONE 0.1s
+ Image envantertr-checkout-browser-8568168d66-checkout-browser Built
+ Container envantertr-checkout-browser-8568168d66-database-1 Waiting
+ Container envantertr-checkout-browser-8568168d66-database-1 Healthy
+ Container envantertr-checkout-browser-8568168d66-checkout-browser-run-b6ace3e0bd9f Creating
+ Container envantertr-checkout-browser-8568168d66-checkout-browser-run-b6ace3e0bd9f Created
+warn: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[35]
+      No XML encryptor configured. Key {0e8a7a6d-51cb-45cf-a2ef-2a4495671cc5} may be persisted to storage in unencrypted form.
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+      Failed executing DbCommand (95ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_Assets_CompanyId_DefaultLocationCatalogId"
+      ' from migration 'AddAssetModelNumbersAndDefaultLocation' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+warn: Microsoft.EntityFrameworkCore.Migrations[20410]
+      The migration operation 'DROP INDEX CONCURRENTLY IF EXISTS "IX_AuditEntries_OccurredAt"
+      ' from migration 'AddGlobalAuditTimelineIndex' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+page.waitForURL: Timeout 10000ms exceeded.
+=========================== logs ===========================
+waiting for navigation to "https://sandbox-api.iyzipay.com/checkoutform/isolated-browser" until "load"
+  navigated to "chrome-error://chromewebdata/"
+============================================================
+    at /browser/existing-company-checkout.mjs:72:14 {
+  log: [],
+  name: 'TimeoutError'
+}
+
+Node.js v24.21.0
+Unhandled exception. System.InvalidOperationException: Chromium checkout acceptance failed.
+   at EnvanterTR.CheckoutBrowser.BrowserAcceptance.Require(Boolean value, String message) in /source/tests/EnvanterTR.CheckoutBrowser/BrowserAcceptance.cs:line 23
+   at EnvanterTR.CheckoutBrowser.BrowserAcceptance.Main() in /source/tests/EnvanterTR.CheckoutBrowser/BrowserAcceptance.cs:line 107
+   at EnvanterTR.CheckoutBrowser.BrowserAcceptance.<Main>()
+
+ Container envantertr-checkout-browser-8568168d66-database-1 Stopping
+ Container envantertr-checkout-browser-8568168d66-database-1 Stopped
+ Container envantertr-checkout-browser-8568168d66-database-1 Removing
+ Container envantertr-checkout-browser-8568168d66-database-1 Removed
+ Network envantertr-checkout-browser-8568168d66_acceptance Removing
+ Network envantertr-checkout-browser-8568168d66_acceptance Removed

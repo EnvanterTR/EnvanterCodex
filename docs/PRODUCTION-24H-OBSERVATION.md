@@ -1,0 +1,82 @@
+## 29 Ekim 2026 — güncel gözlem kaydı
+
+Canlı5d1e261/122, Coolifyfx6eu4ebhzvwmc10xpfi1or6 Success/Finished4m49s. Runtime28Ekim23:58:33UTC; dışHTTPS/erişim/kaynak başlangıç gözlemi23:58:54UTC geçti. Güncel geri dönüş `/var/backups/envantertr/rollback-20261028T235105Z`, SQL `pre-web-v1-20261028T235051Z.dump`. Bu kayıt tamamlanmış24saatlik gözlem iddiası değildir. Kanıt `tests/reports/asset-media-production-release-20261029.md`; aşağıdakiler tarihsel.
+
+## 27 Ekim 2026 — güncel gözlem sürümü
+
+Güncel canlı **1d49ac1 / şema122/0**, Coolifydxlkeknxdqygasopecsv5kim Success/Finished4m21s. Runtime19:30:10UTC; dışHTTPS/erişim/kaynak sağlık başlangıç gözlemi **19:30:27UTC** geçti. Bu saat doğrulanmış gözlem başlangıcıdır; tamamlanmış24saatlik kayıt iddiası değildir. Güncel geri dönüş paketi `/var/backups/envantertr/rollback-20261027T192200Z`, SQL `pre-web-v1-20261027T192154Z.dump`. Kesin CI367/367+Linux/Windows, staging95tablo ve bağımsızrestore/kurtarma kanıtı `tests/reports/tenant-filter-production-release-20261027.md` içindedir. Aşağıdaki eski yayın yolları tarihseldir; mevcut izleme planı bu sürüm için uygulanır.
+
+# Yayın sonrası 24 saatlik gözlem planı
+
+## Güncel yayın: 27 Ekim 2026 TRT
+
+Güncel sürüm **f073752a40072bdc0a515f3156bfc785dbaffe0d**. Coolify `tg8vi2aspz7yt8qzousehh7s` başarıyla tamamlandı; başlangıç 27 Ekim 2026 06:35:17 UTC, runtime doğrulaması 06:40:56 UTC, dış sağlık kontrolü 06:42:19 UTC. Şema 122/0; migration uygulanmadı. Güncel geri dönüş paketi `/var/backups/envantertr/rollback-20261027T063335Z`, önceki 90cc105 imajları ve `pre-web-v1-20261027T063327Z.dump` ile medya/anahtarları içerir. Ayrı SQL restore ve dosya/imaj kurtarma provası geçti. Kanıt: `tests/reports/admin-entry-production-release-20261027.md`. Kesintisiz 24 saat gözlem iddia edilmiyor; aşağıdaki yayınlar tarihsel kayıtlardır.
+### Önceki 90cc105 yayını
+
+Güncelleme: canlı90cc105, Coolifydwypxqvea2jk2sa1pwfwc9lrSuccess/Finished;başlangıç05:43:04UTC,runtime05:48:45UTC,HTTP05:49:08UTC. Tam bitiş saniyesi ayrıca çıkarılmadı. Güncelrollback `/var/backups/envantertr/rollback-20261027T054153Z`;önceki27eimajları,054146ZtazeSQLdump,medya/anahtarlarveayrıclone/kurtarmaprovasıkanıtlı. Şema122/migrationyok. Eski90cstaging031252Zpaketiyerineyayınöncesitazelenmiş054153Zesas alınır. Kanıt:tests/reports/tenant-platform-production-release-20261027.md. Kesintisiz24saatgözlemiddiasıyok. Alttaki27eyeyayınbilgisitarihseldir.
+
+Kesin kaynak `27e9120d6edd1095d7f87e0b7e99449ef69a2169`; Coolify `toqnlyqqdou4kgufmblabdfa`, Success/Finished. Yayın başlangıcı26Ekim20:23:46UTC; tam bitiş saniyesi ayrıca çıkarılmadı. İlk gerçek runtime doğrulaması20:29:10UTC, dış kaynak/sınır probu20:29:25UTC. Şema122korundu, migrationyok. Güncel geri dönüş paketi `/var/backups/envantertr/rollback-20261026T200148Z`; önceki üretim9585imajları, SQL/medya/anahtarlar ve ayrı kurtarma provası bu pakete aittir. Kanıt: `tests/reports/activation-atomicity-production-release-20261026.md`. Bu başlangıç ölçümleri kesintisiz24saat gözlem sayılmaz. Aşağıdaki5018sürüm/yedek yolu tarihsel kayıttır; gerçek geri dönüşte güncel27eyayın raporu esas alınır.
+
+## Önceki yayın: 26 Ekim 2026
+
+`5018bc595684fe4410a9412755b39b2ada9cde0b`, Coolify `zsmt40hqy0qdjaha4eiu5mab`, Success/Finished, süre4m15s. Doğrulama09:42:17UTC; tam bitiş saniyesi ayrıca çıkarılmadı. Gerçek web/public imajları,DB sağlığı,üç host122/0,8plan/kapalı satış sınırları,görsel ve company HTML hashleri doğrulandı. Yeni24saat gözlem tamamlandı sayılmaz; aradaki süre sürekli izlenmiş değildir. Kanıt: `tests/reports/production-handover-pdf-email-release-20261026.md`. Güncel rollback `/var/backups/envantertr/rollback-20261026T092057Z`; önceki uygulama4237, yeni şema122eklemelidir. Canlıda yıkıcı Down/DBgeri yükleme yapılmadı. Aşağıdaki eski yayın yolları tarihsel örnektir.
+
+Hedef 15.10 için uygulanacak plan. Bu maddenin metni bir izleme planı ister; tamamlanmış 24 saatlik kayıt ayrı kanıttır ve ek bir bekleme şartı olarak uydurulmaz. Planın bulunması, 24 saatlik gözlemin tamamlandığı anlamına gelmez. Yeni sürümün Coolify `Success / Finished` zamanı **T0** olarak kaydedilir; gerçek imaj SHA'sı ve dış HTTPS sağlığı ayrıca doğrulanır.
+
+## Yayın kaydı ve sorumluluk
+
+- Yayını yürüten operatör, T0, kesin SHA, CI sonucu, staging kabulü, güncel yedek/restore ve geri dönüş paketi yollarını aynı release raporuna yazar.
+- 124b2d1 sürümü için önceki sürüm 6198ef6; yayın öncesi tazelenmiş geri dönüş paketi `/var/backups/envantertr/rollback-20261025T080518Z`. Şema 121; bu sürüm yeni migration içermez. Daha sonraki yayınlarda bu yollar güncel paketle değiştirilir.
+- Kontrolü yapan operatör her gözlem zamanını ve sonucu kaydeder. Sürekli çalışan izleyici veya nöbetçi atanmamışsa aradaki süre gözlenmiş sayılmaz. Bu belge bir zamanlanmış görev oluşturmaz.
+
+## Kontrol takvimi
+
+| Zaman | Kontrol |
+| --- | --- |
+| T0 ve T0+5 dakika | Kesin web/public SHA, DB sağlığı, üç HTTPS health, katalog, kapalı satış/deneme sınırları, ana sayfa görselleri |
+| İlk 60 dakika | Her 5 dakikada HTTPS health; her 15 dakikada konteyner yeniden başlama sayıları ve yeni hata kayıtları |
+| 1–24 saat | Her 15 dakikada HTTPS health; her saat katalog ve satış/deneme durumları, konteyner/DB durumu |
+| T0+24 saat | Son kontrol, gözlem boşlukları, hata/olay listesi, kalan ticari ve müşteri kabul kapıları |
+
+## Salt okunur dış kontroller
+
+Repo kökünden, UTC zamanlı ayrı dosyaya kaydedilir:
+
+```powershell
+$checkStamp = [DateTimeOffset]::UtcNow.ToString('yyyyMMddTHHmmssZ')
+node tools/Check-CoolifyProduction.mjs https://envantertr.com/api/status https://farma.envantertr.com/api/status https://santa.envantertr.com/api/status *> "tests/reports/health-$checkStamp.log"
+$healthExit = $LASTEXITCODE
+```
+
+Health için her hostta HTTP 200, `ready`, bekleyen migration 0 ve beklenen kaynak şema sayısı aranır. Santa host sağlığı şirket hesabının varlığını kanıtlamaz. Sunucu bağlantısında sertifika doğrulaması kapatılmaz.
+
+Katalog/ticari sınır kontrolü ayrı koşulur:
+
+```powershell
+node tools/Check-CoolifyProduction.mjs *> "tests/reports/commercial-$checkStamp.log"
+$commercialExit = $LASTEXITCODE
+Invoke-RestMethod 'https://envantertr.com/api/trials/status' | ConvertTo-Json -Compress
+```
+
+Mevcut onaylı başlangıç durumu: **8** yayımlı yıllık Cloud planı; checkout `available:false`, deneme `available:false`. Ticari kontrolün bu nedenle exit 1 vermesi uygulama kesintisi değildir; satış kabulü henüz geçilmemiştir ve ödeme akışı kapalı bırakılmalıdır. Yapılandırma hazır görünmesi gerçek ödeme/e-posta kabulü yerine geçmez. Herhangi bir checkout veya deneme durumunun beklenmedik biçimde açılması ayrıca araştırılır.
+
+## Sunucu kontrolleri ve kanıt gizliliği
+
+Coolify'de gerçek çalışan konteynerler üzerinden imaj SHA, durum, yeniden başlama sayısı, DB health ve yeni uygulama/proxy hataları incelenir. Eski konteyner adları tekrar kullanılmadan önce canlı envanter doğrulanır. Kayıtlar UTC zamanlarıyla ve hata sayısı/türüyle özetlenir; cookie, token, parola, özel environment, ham müşteri satırı ve bağlantı dizeleri rapora konmaz. Yönetim hesabı sürekli canlı tutulmak veya MFA süresi uzatılmak zorunda değildir; anonim sağlık kontrolleri MFA gerektirmez.
+
+## Müdahale eşikleri
+
+- İlk başarısız sağlık kontrolünde 30–60 saniye içinde ikinci bağımsız kontrol yapılır; DNS/TLS/proxy/uygulama/DB ayrımı kaydedilir. Tek bir gözlem zaman aşımı, dağıtımın durduğu veya başarısız olduğu anlamına gelmez.
+- İki ardışık health başarısızlığı, yeniden başlayan uygulama/sağlıksız DB, bekleyen migration veya sürekli yeni 5xx: yeni yayını durdur, hata ve zaman aralığını kaydet, mevcut release raporundaki geri dönüş planını uygula.
+- Yabancı şirket verisi görünmesi, yetkisiz yazma veya yanlış firmaya e-posta/ödeme bağlanması: kritik kabul hatası; diğer kabul yazmalarını derhal durdur ve olayı P0 olarak ele al.
+- Eksik sağlayıcı nedeniyle kapalı ödeme/deneme: var olan P0 ticari engeli olarak kalır; sistemi satılabilir ilan etme.
+
+## Geri dönüş sınırı
+
+124b2d1 kodundan 6198ef6 imajlarına geri dönüşte şema 121 korunur; yıkıcı `Down`, DropColumn veya DropTable çalıştırılmaz. Doğrulanmış özel paketteki medya/anahtarlar gerekirse ayrı dizinde tekrar prova edilir. DB restore, yayın sonrasında oluşan veriyi kaybettirebileceğinden otomatik yapılmaz; önce yeni kurtarma yedeği, etki değerlendirmesi ve tutarlılık planı gerekir. Sorunu gizlemek için yeni müşteri verisi silinmez veya MFA kapatılmaz.
+
+## Kapanış kaydı
+
+24 saat sonunda gerçek kontrol zamanları, eksik aralıklar, her olayın sonucu ve son sağlık durumu release raporuna eklenir. Gözlenmeyen zaman dilimi tamamlandı sayılmaz. SMTP/ödeme ve Bölüm 20 kabulü bitmemişse 24 saatlik sağlık başarısı V1 veya satış kabulünü kapatmaz.
+
+Başlangıç kanıtı: `tests/reports/pre-put-release-health-baseline-20261025.log` üç host için 200/ready/121/0, exit 0. Bu **yayın öncesi tek anlık** kontroldür; yeni yayın sonrası 24 saatlik kayıt değildir.

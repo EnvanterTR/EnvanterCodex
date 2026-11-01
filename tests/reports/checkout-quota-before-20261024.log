@@ -1,0 +1,18 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: tr: a published limit of 4 must not be advertised as unlimited.
+
+'Sınırsız' !== '4'
+
+    at file:///acceptance/checkout-user-quota.mjs:41:14 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'Sınırsız',
+  expected: '4',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

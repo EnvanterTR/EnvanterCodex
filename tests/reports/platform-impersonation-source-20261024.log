@@ -1,0 +1,18 @@
+Inventory matches current source: C:\Users\Lenovo\Desktop\EnvanterTR\.worktrees\web-v1-next-work\docs\ui-inventory.md
+Static controls inventoried: 2279
+Sayfa rotası: 65
+Menü grubu: 10
+Bağlantı: 58
+Düğme: 962
+Form: 116
+Girdi alanı: 626
+Seçim alanı: 205
+Metin alanı: 43
+Modal: 110
+Sekme: 5
+Tablo: 79
+Verified 2249 locale entries in Turkish, English, Russian, Ukrainian, and Macedonian.
+Platform admin premium skin, pageable member/account details, reasoned idempotent company status workflow, demo/purchase/subscription workflows, responsive/accessibility affordances, and two-factor sign-in verified.
+Platform member directory, registration timestamp, timeline, membership management, stale-response guards, and owner transfer verified (93 assertions).
+Verified session/API-key revocation, MFA provider guidance, locally rendered TOTP QR, and dialog-secret cleanup.
+warning: in the working copy of 'docs/PLATFORM-ADMIN.md', CRLF will be replaced by LF the next time Git touches it

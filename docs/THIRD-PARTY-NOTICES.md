@@ -25,6 +25,13 @@ components are retained beside the file as `BWIP-JS-LICENSE*`.
 
 ## Resolved NuGet dependencies
 
+PDF handover output uses PDFsharp-MigraDoc 6.2.3 (MIT), from the official
+<https://github.com/empira/PDFsharp> project. Noto Sans Regular/Bold are embedded
+for consistent Turkish text on Linux and Windows, from
+<https://github.com/notofonts/noto-fonts/tree/main/hinted/ttf/NotoSans>.
+Their SIL Open Font License 1.1 is retained and published with the application
+at `src/EnvanterTR.Web/Resources/Fonts/LICENSE.txt`.
+
 `Microsoft.EntityFrameworkCore.Design` is used by the Entity Framework CLI for
 development and migration generation. It is marked `PrivateAssets=all` and is
 excluded from Release deployment output together with its MSBuild and Roslyn

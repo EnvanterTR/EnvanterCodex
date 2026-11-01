@@ -1,0 +1,7 @@
+ Container admin-entry-proxy-20261027-web-1 Running
+ Container admin-entry-proxy-20261027-production-1 Running
+ Container admin-entry-proxy-20261027-local-1 Running
+ Container admin-entry-proxy-20261027-checks-run-4352efae8f0e Creating
+ Container admin-entry-proxy-20261027-checks-run-4352efae8f0e Created
+PASS: production nginx serves the app, QR/decoder and all six application modules; camera is self-only on /giris, disabled on marketing; security headers retained.
+PASS: local nginx serves the app, QR/decoder and all six application modules; camera is self-only on /giris, disabled on marketing; security headers retained.

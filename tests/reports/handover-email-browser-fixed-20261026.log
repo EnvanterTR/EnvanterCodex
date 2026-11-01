@@ -1,0 +1,14 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+locator.click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator('#employeeActionCancel')
+
+    at /acceptance/employee-records.mjs:824:47 {
+  log: [ "  - waiting for locator('#employeeActionCancel')" ],
+  name: 'TimeoutError'
+}
+
+Node.js v24.21.0

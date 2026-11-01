@@ -1,0 +1,173 @@
+ Image p0-checkout-page-acceptance Building
+#1 [internal] load local bake definitions
+#1 reading from stdin 660B 0.1s done
+#1 DONE 0.1s
+
+#2 [internal] load build definition from Dockerfile.security-acceptance
+#2 transferring dockerfile: 871B 0.0s done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for mcr.microsoft.com/dotnet/sdk:10.0
+#3 DONE 0.2s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 134B 0.0s done
+#4 DONE 0.0s
+
+#5 [ 1/11] FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
+#5 resolve mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 159.40kB 0.0s done
+#6 DONE 0.1s
+
+#7 [ 4/11] COPY src/EnvanterTR.Web/EnvanterTR.Web.csproj src/EnvanterTR.Web/
+#7 CACHED
+
+#8 [ 5/11] COPY tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj tests/EnvanterTR.SecurityAcceptance/
+#8 CACHED
+
+#9 [ 2/11] WORKDIR /source
+#9 CACHED
+
+#10 [ 3/11] COPY global.json ./
+#10 CACHED
+
+#11 [ 6/11] RUN dotnet restore tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj
+#11 CACHED
+
+#12 [ 7/11] COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
+#12 DONE 0.2s
+
+#13 [ 8/11] RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
+#13 9.470 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(131,2465): error CS9007: The interpolated raw string literal does not start with enough '$' characters to allow this many consecutive closing braces as content. [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.472 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(132,76): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.472 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(132,116): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.472 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(132,177): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.472 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(133,26): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.472 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(133,54): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.472 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(133,233): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.472 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(134,47): error CS1733: Expected expression [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.472 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(134,47): error CS1003: Syntax error, ':' expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.472 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(134,47): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.472 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(138,35): error CS1733: Expected expression [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.476 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(138,35): error CS1003: Syntax error, ':' expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.481 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(138,35): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.481 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(138,71): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.481 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(138,104): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.481 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(139,65): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.482 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(140,21): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.482 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(141,21): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(142,21): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(142,79): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(143,21): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(143,77): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(144,29): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(144,90): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(145,29): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(145,96): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(146,42): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(146,150): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(147,32): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(147,63): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(148,29): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(149,29): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(150,25): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(150,138): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(151,91): error CS1733: Expected expression [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(151,91): error CS1003: Syntax error, ':' expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(151,91): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(152,35): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(152,65): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(152,137): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(152,165): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(152,195): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(152,326): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.483 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(153,30): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.536
+#13 9.539 Build FAILED.
+#13 9.539
+#13 9.539 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(131,2465): error CS9007: The interpolated raw string literal does not start with enough '$' characters to allow this many consecutive closing braces as content. [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.539 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(132,76): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.540 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(132,116): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.540 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(132,177): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.540 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(133,26): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.540 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(133,54): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.540 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(133,233): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.540 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(134,47): error CS1733: Expected expression [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.540 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(134,47): error CS1003: Syntax error, ':' expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.540 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(134,47): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.541 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(138,35): error CS1733: Expected expression [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.541 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(138,35): error CS1003: Syntax error, ':' expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.541 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(138,35): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.541 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(138,71): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(138,104): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(139,65): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(140,21): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(141,21): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(142,21): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(142,79): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(143,21): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(143,77): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(144,29): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(144,90): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(145,29): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(145,96): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(146,42): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(146,150): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(147,32): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(147,63): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(148,29): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(149,29): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(150,25): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(150,138): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(151,91): error CS1733: Expected expression [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(151,91): error CS1003: Syntax error, ':' expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(151,91): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(152,35): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(152,65): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(152,137): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(152,165): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(152,195): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(152,326): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(153,30): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+#13 9.550     0 Warning(s)
+#13 9.550     44 Error(s)
+#13 9.553
+#13 9.553 Time Elapsed 00:00:08.73
+#13 ERROR: process "/bin/sh -c dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore" did not complete successfully: exit code: 1
+------
+ > [ 8/11] RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore:
+9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(152,65): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(152,137): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(152,165): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(152,195): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(152,326): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+9.543 /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs(153,30): error CS1026: ) expected [/source/src/EnvanterTR.Web/EnvanterTR.Web.csproj]
+9.550     0 Warning(s)
+9.550     44 Error(s)
+9.553
+9.553 Time Elapsed 00:00:08.73
+------
+Dockerfile.security-acceptance:8
+
+--------------------
+
+   6 |     RUN dotnet restore tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj
+
+   7 |     COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
+
+   8 | >>> RUN dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore
+
+   9 |     COPY tests/EnvanterTR.SecurityAcceptance/ tests/EnvanterTR.SecurityAcceptance/
+
+  10 |     RUN dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore
+
+--------------------
+
+failed to solve: process "/bin/sh -c dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore" did not complete successfully: exit code: 1
+
+
+
+View build details: docker-desktop://dashboard/build/default/default/do8z8ykx0cq05kpffbqcil3ad

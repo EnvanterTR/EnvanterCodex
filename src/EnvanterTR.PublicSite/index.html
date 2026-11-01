@@ -633,9 +633,12 @@
         addText(card,'h3','',plan.name);addText(card,'p','',plan.description||'');
         addText(card,'div','price-sub price-user-quota',`${plan.maxLoginUsers??'∞'} ${({tr:'giriş hesabı',en:'login accounts',ru:'учётных записей',uk:'облікових записів',mk:'сметки за најава'})[language]||'login accounts'}`);
         const published=publishedPrice(plan,language);addText(card,'div','price-main',published?.amount||copy.quote);addText(card,'div','price-sub',published?.term||copy.quotePeriod);
+        const annualOnly=Number(plan.monthlyPrice)===0&&Number(plan.annualPrice)>0&&Number(plan.maxLoginUsers)>0&&plan.currency==='TRY';
+        if(annualOnly){const equivalent=new Intl.NumberFormat(language,{style:'currency',currency:'TRY'}).format(Number(plan.annualPrice)/12);addText(card,'small','price-comparison',`${equivalent} ${({tr:'aylık karşılığı · Yıllık tek ödeme · KDV hariç',en:'monthly equivalent · One annual payment · VAT excluded',ru:'в месяц в пересчёте · Одна оплата в год · Без НДС',uk:'місячний еквівалент · Одна оплата на рік · Без ПДВ',mk:'месечен еквивалент · Едно годишно плаќање · Без ДДВ'})[language]}`);}
         const list=document.createElement('ul');list.className='price-list';copy.features.forEach(item=>addText(list,'li','',item));card.append(list);addText(card,'small','price-tech',`${copy.technology}: ${copy.cloudTech}`);
         const link=document.createElement('a');link.className='button secondary';
-        if(plan.id&&published&&(Number(plan.monthlyPrice)>0||Number(plan.annualPrice)>0)){link.href=`/checkout.html?${new URLSearchParams({planId:plan.id})}`;link.textContent=cloudPurchaseLabels[language]||cloudPurchaseLabels.tr;}
+        if(plan.id&&published&&annualOnly){link.href=`/trial.html?${new URLSearchParams({planId:plan.id,lang:language})}`;link.textContent=({tr:'15 gün ücretsiz deneyin',en:'Start a 15-day trial',ru:'Попробовать 15 дней',uk:'Спробувати 15 днів',mk:'Пробајте 15 дена'})[language];}
+        else if(plan.id&&published&&(Number(plan.monthlyPrice)>0||Number(plan.annualPrice)>0)){link.href=`/checkout.html?${new URLSearchParams({planId:plan.id})}`;link.textContent=cloudPurchaseLabels[language]||cloudPurchaseLabels.tr;}
         else{link.href=`mailto:admin@envantertr.com?subject=${encodeURIComponent(`EnvanterTR Cloud · ${plan.name}`)}`;link.textContent=copy.request;}
         link.title=`${plan.name} · ${link.textContent}`;card.append(link);grid.append(card);
       });

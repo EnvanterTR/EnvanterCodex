@@ -153,6 +153,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid?>("EmployeeId")
                         .HasColumnType("uuid");
 
@@ -179,6 +182,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)")
                         .HasDefaultValue("Employee");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -215,6 +221,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -285,6 +294,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid?>("ConsumableId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("ItemType")
                         .IsRequired()
                         .HasMaxLength(24)
@@ -292,6 +304,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -346,6 +361,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(120)
@@ -354,6 +372,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<string>("PhotoFileName")
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -381,6 +402,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid?>("EmployeeId")
                         .HasColumnType("uuid");
 
@@ -398,6 +422,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -556,6 +583,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid?>("UploadedByUserId")
                         .HasColumnType("uuid");
 
@@ -607,6 +637,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<decimal>("UnitCost")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -747,6 +780,8 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasIndex("CompanyId", "AssignedEmployeeId");
 
+                    b.HasIndex("CompanyId", "BrandId");
+
                     b.HasIndex("CompanyId", "CategoryId");
 
                     b.HasIndex("CompanyId", "DefaultLocationCatalogId");
@@ -758,6 +793,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasIndex("CompanyId", "Location");
 
                     b.HasIndex("CompanyId", "LocationCatalogId");
+
+                    b.HasIndex("CompanyId", "ModelId");
 
                     b.HasIndex("CompanyId", "NextAuditOn");
 
@@ -827,6 +864,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid?>("UploadedByUserId")
                         .HasColumnType("uuid");
 
@@ -855,6 +895,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("LogoFileName")
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
@@ -875,6 +918,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<string>("SupportUrl")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("WarrantyUrl")
                         .HasMaxLength(300)
@@ -901,10 +947,16 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -1012,6 +1064,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.HasAlternateKey("CompanyId", "Id");
@@ -1061,6 +1116,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid?>("UploadedByUserId")
                         .HasColumnType("uuid");
 
@@ -1095,6 +1153,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<Guid>("LicenseId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -1192,6 +1253,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Details")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -1205,6 +1269,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasColumnType("character varying(60)");
 
                     b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
@@ -1231,6 +1298,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Fingerprint")
                         .IsRequired()
@@ -1262,6 +1332,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Version")
                         .HasMaxLength(120)
@@ -1415,6 +1488,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid?>("UploadedByUserId")
                         .HasColumnType("uuid");
 
@@ -1447,6 +1523,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("DepreciationMethod")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -1476,6 +1555,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<string>("PhotoFileName")
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -1528,6 +1610,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("UploadedByUserId")
                         .HasColumnType("uuid");
@@ -1685,6 +1770,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid?>("UploadedByUserId")
                         .HasColumnType("uuid");
 
@@ -1750,6 +1838,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<decimal>("UnitCost")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateOnly?>("WarrantyExpiresAt")
                         .HasColumnType("date");
@@ -1862,6 +1953,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Details")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -1876,6 +1970,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -1926,6 +2023,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasColumnType("character varying(32)")
                         .HasDefaultValue("Unclassified");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -1957,6 +2057,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.HasIndex("PlatformOwnerUserId");
@@ -1970,6 +2073,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("Companies", null, t =>
                         {
                             t.HasCheckConstraint("CK_Companies_AssetCount", "\"AssetCount\" >= 0");
+
+                            t.HasCheckConstraint("CK_Companies_DeletedInactive", "\"DeletedAt\" IS NULL OR NOT \"IsActive\"");
 
                             t.HasCheckConstraint("CK_Companies_SecurityPasswordMinimumLength", "\"SecurityPasswordMinimumLength\" BETWEEN 12 AND 64");
 
@@ -2017,6 +2122,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(24)
                         .HasColumnType("character varying(24)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
@@ -2117,6 +2225,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("PlanId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("RequestedByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(63)
@@ -2131,8 +2242,14 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<Guid?>("TargetCompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("TermDays")
                         .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -2165,6 +2282,8 @@ namespace EnvanterTR.Web.Data.Migrations
                             t.HasCheckConstraint("CK_CompanyCheckoutOrders_Pricing", "\"SubtotalAmount\" >= 0 AND \"DiscountAmount\" >= 0 AND \"Amount\" = \"SubtotalAmount\" - \"DiscountAmount\"");
 
                             t.HasCheckConstraint("CK_CompanyCheckoutOrders_Status", "\"Status\" IN ('Pending', 'PaymentStarted', 'PaymentReview', 'PaymentFailed', 'Expired', 'Provisioned', 'ProvisioningFailed')");
+
+                            t.HasCheckConstraint("CK_CompanyCheckoutOrders_TargetContext", "(\"TargetCompanyId\" IS NULL AND \"RequestedByUserId\" IS NULL) OR (\"TargetCompanyId\" IS NOT NULL AND \"RequestedByUserId\" IS NOT NULL AND \"TermDays\" = 365)");
 
                             t.HasCheckConstraint("CK_CompanyCheckoutOrders_Term", "\"TermDays\" IN (30, 365)");
                         });
@@ -2371,6 +2490,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("CompanyId", "UserId");
 
                     b.HasIndex("CompanyId", "EmployeeId")
@@ -2394,6 +2516,12 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("CompanyUnitId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("CompanyId", "UserId", "CompanyUnitId");
 
                     b.HasIndex("CompanyId", "CompanyUnitId");
@@ -2411,6 +2539,12 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<Guid>("LocationId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("CompanyId", "UserId", "LocationId");
 
@@ -2447,6 +2581,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
@@ -2661,6 +2798,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("ComponentId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTimeOffset?>("LastRemovedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -2673,6 +2813,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<int>("RemovedQuantity")
                         .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -2711,6 +2854,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("ComponentId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("MovementType")
                         .IsRequired()
                         .HasMaxLength(24)
@@ -2725,6 +2871,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -2855,6 +3004,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("ConsumableId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid?>("EmployeeId")
                         .HasColumnType("uuid");
 
@@ -2872,6 +3024,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -2939,6 +3094,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -3016,6 +3174,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateOnly?>("StartedOn")
                         .HasColumnType("date");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId", "CompanyUnitId");
@@ -3067,6 +3228,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("UploadedByUserId")
                         .HasColumnType("uuid");
@@ -3145,6 +3309,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId", "DocumentNumber")
@@ -3155,6 +3322,82 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("EmployeeHandoverDocuments", null, t =>
                         {
                             t.HasCheckConstraint("CK_EmployeeHandoverDocuments_SignaturePairs", "(\"RecipientSignaturePngBase64\" IS NULL) = (\"RecipientSignedAt\" IS NULL) AND (\"IssuerSignaturePngBase64\" IS NULL) = (\"IssuerSignedAt\" IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.EmployeeHandoverEmailAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ErrorType")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PdfSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("RecipientEmail")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<Guid>("RequestedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SnapshotSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "DocumentId", "CreatedAt");
+
+                    b.HasIndex("CompanyId", "DocumentId", "IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("CompanyId", "EmployeeId", "DocumentId");
+
+                    b.ToTable("EmployeeHandoverEmailAttempts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_HandoverEmail_AcceptedAt", "(\"Status\" = 'Accepted') = (\"AcceptedAt\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_HandoverEmail_RequestKey", "\"IdempotencyKey\" <> '00000000-0000-0000-0000-000000000000'::uuid");
+
+                            t.HasCheckConstraint("CK_HandoverEmail_Status", "\"Status\" IN ('Sending', 'Accepted', 'Uncertain')");
                         });
                 });
 
@@ -3173,6 +3416,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
@@ -3214,6 +3460,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("UserName")
                         .HasMaxLength(256)
@@ -3383,6 +3632,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(24)
                         .HasColumnType("character varying(24)");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.HasIndex("RequestedByUserId");
@@ -3425,6 +3677,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid?>("ComponentAllocationId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("InventoryRequestId")
                         .HasColumnType("uuid");
 
@@ -3440,6 +3695,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasColumnType("integer");
 
                     b.Property<DateTimeOffset?>("ReturnedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
@@ -3503,6 +3761,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateTimeOffset>("StartsAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId");
@@ -3533,6 +3794,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("LastError")
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
@@ -3547,6 +3811,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("CompanyId", "UserId", "DeliveryDate");
 
@@ -3565,6 +3832,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("EmailEnabledKindsJson")
                         .IsRequired()
@@ -3601,6 +3871,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("RecordId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTimeOffset?>("DismissedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -3624,7 +3897,13 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTimeOffset>("GrantedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("UserId");
@@ -3649,6 +3928,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid?>("CompanyId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Details")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -3663,6 +3945,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -3682,6 +3967,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int?>("RetentionDays")
                         .HasColumnType("integer");
@@ -3815,6 +4103,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("LastError")
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
@@ -3829,6 +4120,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("UserId", "DeliveryDate");
 
@@ -3852,6 +4146,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsPublished")
                         .HasColumnType("boolean");
@@ -3916,6 +4213,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateOnly>("ReturnedOn")
                         .HasColumnType("date");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedByUserId");
@@ -3954,6 +4254,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -4299,6 +4602,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid?>("EmployeeId")
                         .HasColumnType("uuid");
 
@@ -4323,6 +4629,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasColumnType("character varying(2000)");
 
                     b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
@@ -4404,6 +4713,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid?>("UploadedByUserId")
                         .HasColumnType("uuid");
 
@@ -4452,6 +4764,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("EmployeeId")
                         .HasColumnType("uuid");
 
@@ -4470,6 +4785,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<Guid>("LicenseId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -4510,6 +4828,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Details")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -4526,6 +4847,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
@@ -4746,6 +5070,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid?>("UploadedByUserId")
                         .HasColumnType("uuid");
 
@@ -4800,6 +5127,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<decimal>("UnitCost")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -4908,6 +5238,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Currency")
                         .IsRequired()
                         .HasMaxLength(3)
@@ -4959,6 +5292,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<bool>("SupportsOfflineUse")
                         .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -5146,6 +5482,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("TicketId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId", "TicketId", "CreatedAt");
@@ -5190,6 +5529,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("TicketId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AuthorUserId");
@@ -5232,6 +5574,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasMaxLength(24)
                         .HasColumnType("character varying(24)");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId")
@@ -5267,6 +5612,30 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateTimeOffset>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("ImpersonationEndedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ImpersonationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ImpersonationReturnTokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool?>("ImpersonatorRememberMe")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ImpersonatorSecurityStampHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("ImpersonatorSessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ImpersonatorUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("IpAddress")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
@@ -5280,6 +5649,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateTimeOffset?>("RevokedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("UserAgent")
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");
@@ -5289,11 +5661,21 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ImpersonationReturnTokenHash")
+                        .IsUnique()
+                        .HasFilter("\"ImpersonationReturnTokenHash\" IS NOT NULL");
+
+                    b.HasIndex("ImpersonatorSessionId")
+                        .IsUnique()
+                        .HasFilter("\"ImpersonatorSessionId\" IS NOT NULL AND \"ImpersonationEndedAt\" IS NULL AND \"RevokedAt\" IS NULL");
+
                     b.HasIndex("UserId", "RevokedAt", "ExpiresAt");
 
                     b.ToTable("UserSessions", null, t =>
                         {
                             t.HasCheckConstraint("CK_UserSessions_Expiry", "\"ExpiresAt\" > \"CreatedAt\"");
+
+                            t.HasCheckConstraint("CK_UserSessions_Impersonation", "(\"ImpersonatorUserId\" IS NULL AND \"ImpersonatorSessionId\" IS NULL AND \"ImpersonatorSecurityStampHash\" IS NULL AND \"ImpersonationReturnTokenHash\" IS NULL AND \"ImpersonatorRememberMe\" IS NULL AND \"ImpersonationReason\" IS NULL AND \"ImpersonationEndedAt\" IS NULL) OR (\"ImpersonatorUserId\" IS NOT NULL AND \"ImpersonatorSessionId\" IS NOT NULL AND \"ImpersonatorSecurityStampHash\" IS NOT NULL AND \"ImpersonatorRememberMe\" IS NOT NULL AND \"ImpersonationReason\" IS NOT NULL AND \"CompanyId\" IS NOT NULL AND NOT \"PlatformAdmin\" AND (\"ImpersonationReturnTokenHash\" IS NOT NULL OR \"ImpersonationEndedAt\" IS NOT NULL))");
                         });
                 });
 
@@ -5307,6 +5689,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("text");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Name")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
@@ -5314,6 +5699,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<string>("NormalizedName")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -5338,8 +5726,14 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<string>("ClaimValue")
                         .HasColumnType("text");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("RoleId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -5362,6 +5756,12 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<string>("ClaimValue")
                         .HasColumnType("text");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
@@ -5380,8 +5780,14 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<string>("ProviderKey")
                         .HasColumnType("text");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("ProviderDisplayName")
                         .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
@@ -5401,6 +5807,12 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("RoleId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("UserId", "RoleId");
 
                     b.HasIndex("RoleId");
@@ -5418,6 +5830,12 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<string>("Name")
                         .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Value")
                         .HasColumnType("text");
@@ -5671,6 +6089,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("EnvanterTR.Web.Data.AssetBrand", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "BrandId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("EnvanterTR.Web.Data.AssetCategory", null)
                         .WithMany()
                         .HasForeignKey("CompanyId", "CategoryId")
@@ -5687,6 +6111,12 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.HasOne("EnvanterTR.Web.Data.CompanyLocation", null)
                         .WithMany()
                         .HasForeignKey("CompanyId", "LocationCatalogId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EnvanterTR.Web.Data.AssetModel", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "ModelId")
                         .HasPrincipalKey("CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Restrict);
 
@@ -5936,6 +6366,12 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.AssetBrand", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "BrandId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("EnvanterTR.Web.Data.AssetCategory", null)
                         .WithMany()
@@ -6506,6 +6942,29 @@ namespace EnvanterTR.Web.Data.Migrations
                         .WithMany()
                         .HasForeignKey("CompanyId", "EmployeeId")
                         .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.EmployeeHandoverEmailAttempt", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "EmployeeId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.EmployeeHandoverDocument", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "EmployeeId", "DocumentId")
+                        .HasPrincipalKey("CompanyId", "EmployeeId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -7149,6 +7608,17 @@ namespace EnvanterTR.Web.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
+
+            foreach (var tableGroup in modelBuilder.Model.GetEntityTypes()
+                         .Where(entity => entity.GetTableName() is not null)
+                         .GroupBy(entity => new { entitySchema = entity.GetSchema(), tableName = entity.GetTableName() }))
+            {
+                if (tableGroup.Any(entity => entity.FindProperty("DeletedAt") is not null)) continue;
+                var tableEntity = tableGroup.FirstOrDefault(entity => entity.FindOwnership() is null && entity.BaseType is null)
+                                  ?? tableGroup.FirstOrDefault(entity => entity.FindOwnership() is null);
+                if (tableEntity is null) continue;
+                tableEntity.AddProperty("DeletedAt", typeof(DateTimeOffset?));
+            }
 #pragma warning restore 612, 618
         }
     }

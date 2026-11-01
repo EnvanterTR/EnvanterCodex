@@ -1,0 +1,7 @@
+PASS company other tab rejects previous body after actual logout BroadcastChannel
+PASS company other tab rejects previous body after actual login BroadcastChannel
+PASS company other tab rejects previous body after actual logout storage fallback
+PASS company other tab rejects previous body after actual login storage fallback
+PASS different-origin company document remains independent BroadcastChannel
+PASS different-origin company document remains independent storage fallback
+COMPANY_CROSS_TAB_BROWSER 6/6 passed

@@ -1,0 +1,39 @@
+ Network admin-entry-proxy-20261027_acceptance Creating
+ Network admin-entry-proxy-20261027_acceptance Creating
+ Network admin-entry-proxy-20261027_acceptance Created
+ Network admin-entry-proxy-20261027_acceptance Created
+ Container admin-entry-proxy-20261027-web-1 Creating
+ Container admin-entry-proxy-20261027-web-1 Created
+ Container admin-entry-proxy-20261027-production-1 Creating
+ Container admin-entry-proxy-20261027-local-1 Creating
+ Container admin-entry-proxy-20261027-local-1 Created
+ Container admin-entry-proxy-20261027-production-1 Created
+ Container admin-entry-proxy-20261027-web-1 Starting
+ Container admin-entry-proxy-20261027-web-1 Started
+ Container admin-entry-proxy-20261027-local-1 Starting
+ Container admin-entry-proxy-20261027-production-1 Starting
+ Container admin-entry-proxy-20261027-local-1 Started
+ Container admin-entry-proxy-20261027-production-1 Started
+ Container admin-entry-proxy-20261027-checks-run-4a18d892d77b Creating
+ Container admin-entry-proxy-20261027-checks-run-4a18d892d77b Created
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Preserve original root host.
++ actual - expected
+
++ 'production'
+- 'envantertr.com'
+
+    at file:///proxy-acceptance.mjs:10:12
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'production',
+  expected: 'envantertr.com',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.21.0

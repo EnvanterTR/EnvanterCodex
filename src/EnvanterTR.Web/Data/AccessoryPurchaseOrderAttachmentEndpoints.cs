@@ -68,12 +68,10 @@ public static class AccessoryPurchaseOrderAttachmentEndpoints
             var storageName = $"{attachmentId:N}.{detected.Value.Extension}";
             var originalName = CleanName(upload.FileName, detected.Value.Extension);
             var directory = AttachmentDirectory(configuration, companyId, id);
-            if (HasReparsePoint(configuration, companyId, id))
-                return Results.Problem("Sipariş eki deposu güvenli bir dizin olmalıdır.", statusCode: StatusCodes.Status500InternalServerError);
-            Directory.CreateDirectory(directory);
-            if (HasReparsePoint(configuration, companyId, id))
-                return Results.Problem("Sipariş eki deposu güvenli bir dizin olmalıdır.", statusCode: StatusCodes.Status500InternalServerError);
             var path = Path.Combine(directory, storageName);
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path))
+                return Results.Conflict(new { message = "Dosya alanı güvenli biçimde kullanılamıyor. Şirket yöneticinize başvurun." });
+            Directory.CreateDirectory(directory);
             var attachment = new AccessoryPurchaseOrderAttachment { Id = attachmentId, CompanyId = companyId, PurchaseOrderId = id,
                 UploadedByUserId = actorId, OriginalFileName = originalName, StorageFileName = storageName,
                 ContentType = detected.Value.ContentType, Length = bytes.LongLength };
@@ -105,9 +103,9 @@ public static class AccessoryPurchaseOrderAttachmentEndpoints
             if (!await PurchaseOrderLocationAccess.CanAccessAccessoryOrderAsync(db, companyId, id, allowedLocations, ct)) return Results.NotFound();
             var item = await db.AccessoryPurchaseOrderAttachments.AsNoTracking().SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.PurchaseOrderId == id && x.Id == attachmentId, ct);
-            if (item is null || !IsSafeStorageName(item.StorageFileName) || HasReparsePoint(configuration, companyId, id)) return Results.NotFound();
+            if (item is null || !IsSafeStorageName(item.StorageFileName)) return Results.NotFound();
             var path = Path.Combine(AttachmentDirectory(configuration, companyId, id), item.StorageFileName);
-            if (!System.IO.File.Exists(path)) return Results.NotFound();
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path) || !System.IO.File.Exists(path)) return Results.NotFound();
             return Results.File(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read), item.ContentType,
                 item.OriginalFileName, enableRangeProcessing: false);
         }).RequireAuthorization("asset.read");
@@ -122,16 +120,15 @@ public static class AccessoryPurchaseOrderAttachmentEndpoints
             var item = await db.AccessoryPurchaseOrderAttachments.SingleOrDefaultAsync(
                 x => x.CompanyId == companyId && x.PurchaseOrderId == id && x.Id == attachmentId, ct);
             if (item is null) return Results.NotFound();
+            if (!IsSafeStorageName(item.StorageFileName)) return Results.NotFound();
+            var path = Path.Combine(AttachmentDirectory(configuration, companyId, id), item.StorageFileName);
+            if (!CompanyMediaPathGuard.IsSafePath(configuration, companyId, path)) return Results.NotFound();
             db.AccessoryPurchaseOrderAttachments.Remove(item);
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "AccessoryPurchaseOrder",
                 TargetId = id, Action = "AttachmentRemoved", Details = $"Aksesuar sipariş eki kaldırıldı ({item.ContentType}, {item.Length} bayt)." });
             await db.SaveChangesAsync(ct);
-            if (IsSafeStorageName(item.StorageFileName) && !HasReparsePoint(configuration, companyId, id))
-            {
-                var path = Path.Combine(AttachmentDirectory(configuration, companyId, id), item.StorageFileName);
-                try { if (System.IO.File.Exists(path)) System.IO.File.Delete(path); }
-                catch (IOException) { } catch (UnauthorizedAccessException) { }
-            }
+            try { if (System.IO.File.Exists(path)) System.IO.File.Delete(path); }
+            catch (IOException) { } catch (UnauthorizedAccessException) { }
             return Results.NoContent();
         }).RequireAuthorization("asset.write");
         return api;
@@ -143,20 +140,6 @@ public static class AccessoryPurchaseOrderAttachmentEndpoints
     private static string AttachmentDirectory(IConfiguration configuration, Guid companyId, Guid orderId) =>
         Path.Combine(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media",
             companyId.ToString("N"), "accessory-purchase-orders", orderId.ToString("N"), "attachments");
-
-    private static bool HasReparsePoint(IConfiguration configuration, Guid companyId, Guid orderId)
-    {
-        var root = Path.GetFullPath(configuration["Storage:CompanyMediaPath"] ?? "/var/lib/envantertr/company-media");
-        var company = Path.GetFullPath(Path.Combine(root, companyId.ToString("N")));
-        var directory = Path.GetFullPath(Path.Combine(company, "accessory-purchase-orders", orderId.ToString("N"), "attachments"));
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        if (!company.StartsWith(root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, comparison) ||
-            !directory.StartsWith(company.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, comparison)) return true;
-        foreach (var path in new[] { company, Path.Combine(company, "accessory-purchase-orders"),
-                     Path.Combine(company, "accessory-purchase-orders", orderId.ToString("N")), directory })
-            if (Directory.Exists(path) && (System.IO.File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0) return true;
-        return false;
-    }
 
     private static string CleanName(string? fileName, string extension)
     {

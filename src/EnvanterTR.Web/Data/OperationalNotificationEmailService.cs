@@ -58,9 +58,14 @@ public sealed class OperationalNotificationEmailService(
                                    join company in db.Companies.AsNoTracking() on membership.CompanyId equals company.Id
                                    where membership.CompanyId == preference.CompanyId && membership.UserId == preference.UserId &&
                                          company.IsActive && user.EmailConfirmed && user.Email != null
-                                   select new { user.Email, user.DisplayName }).SingleOrDefaultAsync(cancellationToken);
+                                   select new { user.Email, user.DisplayName, membership.RoleKey }).SingleOrDefaultAsync(cancellationToken);
             if (recipient is null || !MailAddress.TryCreate(recipient.Email, out var parsedAddress) ||
                 !string.Equals(parsedAddress.Address, recipient.Email, StringComparison.OrdinalIgnoreCase)) continue;
+
+            // Preferences survive role changes; they do not grant continuing access
+            // to company inventory after the current read permission is revoked.
+            var permissions = await CompanyRoleAuthorization.ResolveAsync(db, preference.CompanyId, recipient.RoleKey, cancellationToken);
+            if (!permissions.Valid || !permissions.PermissionKeys.Contains(CompanyRoleAuthorization.AssetsRead)) continue;
 
             var items = await GetUpcomingItemsAsync(preference.CompanyId, preference.UserId, kinds, from, to, cancellationToken);
             if (items.Count == 0) continue;

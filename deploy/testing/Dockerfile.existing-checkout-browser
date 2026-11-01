@@ -1,0 +1,18 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /source
+COPY global.json ./
+COPY src/EnvanterTR.Web/ src/EnvanterTR.Web/
+COPY tests/EnvanterTR.CheckoutBrowser/ tests/EnvanterTR.CheckoutBrowser/
+RUN dotnet build tests/EnvanterTR.CheckoutBrowser/EnvanterTR.CheckoutBrowser.csproj
+
+FROM mcr.microsoft.com/playwright:v1.64.0-noble
+COPY --from=build /usr/share/dotnet /usr/share/dotnet
+ENV DOTNET_ROOT=/usr/share/dotnet
+ENV PATH="/usr/share/dotnet:${PATH}"
+WORKDIR /browser
+COPY deploy/testing/hosted-checkout-browser/package.json deploy/testing/hosted-checkout-browser/package-lock.json ./
+RUN npm ci --omit=dev
+COPY deploy/testing/hosted-checkout-browser/existing-company-checkout.mjs ./
+COPY --from=build /source /source
+WORKDIR /source/tests/EnvanterTR.CheckoutBrowser/bin/Debug/net10.0
+ENTRYPOINT ["dotnet", "EnvanterTR.CheckoutBrowser.dll"]

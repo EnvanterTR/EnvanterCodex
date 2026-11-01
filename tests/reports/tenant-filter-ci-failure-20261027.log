@@ -1,0 +1,192 @@
+Skip to content
+EnvanterTR
+EnvanterCodex
+Type / to search
+Repository navigation
+Code
+Issues
+Pull requests
+3
+ (3)
+Agents
+Actions
+Projects
+Wiki
+Security and quality
+Insights
+Settings
+Back to pull request #25
+Cloud trial onboarding, tenant provisioning, and checkout hardening #790
+Re-run jobs
+Summary
+All jobs
+Linux tenant security acceptance
+Linux PostgreSQL tenant acceptance
+Windows deployment and backup safety
+Run details
+Usage
+Workflow file
+Lockfile
+Linux PostgreSQL tenant acceptance
+failed  in 38m 29s
+1/1
+Set up job
+1s
+Check out source
+4s
+Run isolated PostgreSQL acceptance suite
+38m 20s
+2284
+acceptance-1  | warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+
+2285
+acceptance-1  |       A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+
+2286
+acceptance-1  | fail: Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddleware[1]
+
+2287
+acceptance-1  |       An unhandled exception has occurred while executing the request.
+
+2288
+acceptance-1  |       System.InvalidOperationException: The tracked write is outside the validated company scope.
+
+2289
+acceptance-1  |          at EnvanterTR.Web.Data.AppDbContext.ValidateCompanyWrites() in /source/src/EnvanterTR.Web/Data/AppDbContext.cs:line 42
+
+2290
+acceptance-1  |          at EnvanterTR.Web.Data.AppDbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken) in /source/src/EnvanterTR.Web/Data/AppDbContext.cs:line 54
+
+2291
+acceptance-1  |          at EnvanterTR.Web.Data.CheckoutEndpoints.InitializeAsync(InitializeCompanyCheckoutRequest request, HttpContext context, IAntiforgery antiforgery, AppDbContext db, IyzipayCheckoutClient iyzipay, IOptions`1 configuredOptions, IDataProtectionProvider dataProtectionProvider, UserManager`1 users, SignInManager`1 signIn, TenantProvisioningService provisioning, CancellationToken cancellationToken) in /source/src/EnvanterTR.Web/Data/CheckoutEndpoints.cs:line 317
+
+2292
+acceptance-1  |          at EnvanterTR.Web.Data.CheckoutEndpoints.InitializeAsync(InitializeCompanyCheckoutRequest request, HttpContext context, IAntiforgery antiforgery, AppDbContext db, IyzipayCheckoutClient iyzipay, IOptions`1 configuredOptions, IDataProtectionProvider dataProtectionProvider, UserManager`1 users, SignInManager`1 signIn, TenantProvisioningService provisioning, CancellationToken cancellationToken) in /source/src/EnvanterTR.Web/Data/CheckoutEndpoints.cs:line 323
+
+2293
+acceptance-1  |          at EnvanterTR.Web.Data.CheckoutEndpoints.SubmitCompanyCheckoutPageAsync(HttpContext context, AppDbContext db, UserManager`1 users, SignInManager`1 signIn, IAntiforgery antiforgery, TenantProvisioningService provisioning, IyzipayCheckoutClient iyzipay, IOptions`1 options, IDataProtectionProvider protection, IConfiguration configuration, CancellationToken cancellationToken) in /source/src/EnvanterTR.Web/Data/ExistingCompanyCheckoutPage.cs:line 49
+
+2294
+acceptance-1  |          at Microsoft.AspNetCore.Http.RequestDelegateFactory.ExecuteTaskResult[T](Task`1 task, HttpContext httpContext)
+
+2295
+acceptance-1  |          at Microsoft.AspNetCore.RateLimiting.RateLimitingMiddleware.InvokeInternal(HttpContext context, EnableRateLimitingAttribute enableRateLimitingAttribute)
+
+2296
+acceptance-1  |          at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+
+2297
+acceptance-1  |          at Program.<>c.<<<Main>$>b__0_13>d.MoveNext() in /source/src/EnvanterTR.Web/Program.cs:line 579
+
+2298
+acceptance-1  |       --- End of stack trace from previous location ---
+
+2299
+acceptance-1  |          at EnvanterTR.Web.Data.PlatformImpersonation.<>c.<<UsePlatformImpersonation>b__17_0>d.MoveNext() in /source/src/EnvanterTR.Web/Data/PlatformImpersonation.cs:line 189
+
+2300
+acceptance-1  |       --- End of stack trace from previous location ---
+
+2301
+acceptance-1  |          at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+
+2302
+acceptance-1  |          at Program.<>c.<<<Main>$>b__0_12>d.MoveNext() in /source/src/EnvanterTR.Web/Program.cs:line 338
+
+2303
+acceptance-1  |       --- End of stack trace from previous location ---
+
+2304
+acceptance-1  |          at Program.<>c.<<<Main>$>b__0_11>d.MoveNext() in /source/src/EnvanterTR.Web/Program.cs:line 319
+
+2305
+acceptance-1  |       --- End of stack trace from previous location ---
+
+2306
+acceptance-1  |          at Program.<>c__DisplayClass0_0.<<<Main>$>b__10>d.MoveNext() in /source/src/EnvanterTR.Web/Program.cs:line 274
+
+2307
+acceptance-1  |       --- End of stack trace from previous location ---
+
+2308
+acceptance-1  |          at Program.<>c.<<<Main>$>b__0_9>d.MoveNext() in /source/src/EnvanterTR.Web/Program.cs:line 252
+
+2309
+acceptance-1  |       --- End of stack trace from previous location ---
+
+2310
+acceptance-1  |          at Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddlewareImpl.Invoke(HttpContext context)
+
+2311
+acceptance-1  | [xUnit.net 00:19:35.57]     EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Existing_company_checkout_form_posts_verified_annual_purchase_to_provider [FAIL]
+
+2312
+acceptance-1  | [xUnit.net 00:19:35.57]       Assert.Equal() Failure: Values differ
+
+2313
+acceptance-1  | [xUnit.net 00:19:35.57]       Expected: Found
+
+2314
+acceptance-1  | [xUnit.net 00:19:35.57]       Actual:   InternalServerError
+
+2315
+acceptance-1  | [xUnit.net 00:19:35.57]       Stack Trace:
+
+2316
+acceptance-1  | [xUnit.net 00:19:35.57]         /source/tests/EnvanterTR.SecurityAcceptance/ExistingCompanyCheckoutAcceptanceTests.cs(128,0): at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Existing_company_checkout_form_posts_verified_annual_purchase_to_provider()
+
+2317
+acceptance-1  | [xUnit.net 00:19:35.57]         --- End of stack trace from previous location ---
+
+2318
+acceptance-1  |   Failed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Existing_company_checkout_form_posts_verified_annual_purchase_to_provider [6 s]
+
+2319
+acceptance-1  |   Error Message:
+
+2320
+acceptance-1  |    Assert.Equal() Failure: Values differ
+
+2321
+acceptance-1  | Expected: Found
+
+2322
+acceptance-1  | Actual:   InternalServerError
+
+2323
+acceptance-1  |   Stack Trace:
+
+2324
+acceptance-1  |      at EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Existing_company_checkout_form_posts_verified_annual_purchase_to_provider() in /source/tests/EnvanterTR.SecurityAcceptance/ExistingCompanyCheckoutAcceptanceTests.cs:line 128
+
+2325
+acceptance-1  | --- End of stack trace from previous location ---
+
+2326
+acceptance-1  | warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+
+2327
+acceptance-1  |       Storing keys in a directory '/root/.aspnet/DataProtection-Keys' that may not be persisted outside of the container. Protected data will be unavailable when container is destroyed. For more information go to https://aka.ms/aspnet/dataprotectionwarning
+
+2328
+acceptance-1  | warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]
+
+2329
+acceptance-1  |       The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.
+
+2330
+acceptance-1  | warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]
+
+2331
+acceptance-1  |       A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.
+
+2332
+acceptance-1  |   Passed EnvanterTR.SecurityAcceptance.TenantSessionAcceptanceTests.Software_license_scope_allows_location_inherited_unit_but_rejects_conflicting_employee_unit [3 s]
+
+2333
+acceptance-1  | warn: Microsoft.AspNetCore.DataProtection.Repositories.FileSystemXmlRepository[60]
+
+Post Check out source
+0s
+Complete job
+0s

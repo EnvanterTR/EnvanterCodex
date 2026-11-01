@@ -1,0 +1,6 @@
+ Container tenant-filter-20261027-database-1 Stopping
+ Container tenant-filter-20261027-database-1 Stopped
+ Container tenant-filter-20261027-database-1 Removing
+ Container tenant-filter-20261027-database-1 Removed
+ Network tenant-filter-20261027_acceptance Removing
+ Network tenant-filter-20261027_acceptance Removed

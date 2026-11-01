@@ -1,0 +1,12 @@
+PASS actual platform logout/native Response.blob rejects old body
+PASS actual platform logout/native Response.blob preserves current body
+PASS actual platform logout/native Response.text rejects old body
+PASS actual platform logout/native Response.text preserves current body
+PASS actual platform logout/native Response.arrayBuffer rejects old body
+PASS actual platform logout/native Response.arrayBuffer preserves current body
+PASS actual platform logout/native Response.formData rejects old body
+PASS actual platform logout/native Response.formData preserves current body
+PASS actual platform logout/native Response.json rejects old body
+PASS actual platform logout/native Response.json preserves current body
+PASS successful platform sign-in replaces previous administrator DOM and JavaScript cache
+PLATFORM_SESSION_ISOLATION_BROWSER 11/11 passed

@@ -1,0 +1,2 @@
+PASS: hosted Cloud checkout is server-priced, anti-forgery protected, provider-verified, idempotent, and fails closed without configuration.
+PASS: Platform company provisioning validates payment attestation, creates a Cloud tenant and owner, and supports invitation retry.

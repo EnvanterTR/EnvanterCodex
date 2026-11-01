@@ -1,0 +1,1 @@
+PASS: real Chromium checkout UI fails closed when unavailable, applies a server-quoted coupon in the selected language/term, sends only the coupon code (never the amount), suggests correct company slugs, preserves manual edits, validates company data, posts with CSRF and consent, and redirects only to the trusted iyzico host.

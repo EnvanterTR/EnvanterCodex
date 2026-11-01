@@ -31,6 +31,7 @@ const elements = new Map([
   ['#authLayer', { classList: { added: [], add(value) { this.added.push(value); } } }],
   ['#retryApiButton', { hidden: true }],
   ['#authError', { textContent: '' }],
+  ['#impersonationNotice', { hidden: false }],
   ['#loginQueryNotice', { hidden: true, textContent: '' }],
 ]);
 let response;
@@ -49,6 +50,7 @@ const context = {
   fetch: async (path, options) => { requests.push({ path, options }); return response; },
   requestToken: '',
   authSessionGeneration: 0,
+  impersonationSession: { actorName: 'Synthetic administrator' },
   checkLoginConnection: async () => { connectionChecks++; },
   setTimeout,
   translateUiText: value => value,
@@ -67,6 +69,8 @@ await assert.rejects(context.api('/api/assets/asset-id/audit', { method: 'POST',
   return true;
 });
 assert.equal(loginLayerShown, 1, 'An authenticated API 401 must show the login layer.');
+assert.equal(context.impersonationSession, null, 'An expired session must clear support identity state.');
+assert.equal(elements.get('#impersonationNotice').hidden, true, 'An expired session must hide the support banner.');
 assert.equal(connectionChecks, 1, 'Showing the login screen must automatically check API readiness.');
 assert.deepEqual(dialogs.map(dialog => dialog.closed), [1, 1], 'An authenticated API 401 must close open dialogs.');
 assert.equal(elements.get('#retryApiButton').hidden, false, 'The server retry action must remain available.');
@@ -130,8 +134,11 @@ assert.match(source, /<button class="btn small" id="retryApiButton" type="button
   'The login screen must keep a visible server-test action.');
 assert.match(source, /\$\('#retryApiButton'\)\.addEventListener\('click', \(\) => \{ void checkLoginConnection\(\); \}\);/,
   'The server-test action must run the live readiness and setup diagnostic when clicked.');
-const successfulLoginStart = source.indexOf("hideLogin(); await startApp();", loginStart);
+const loginSubmitStart = source.indexOf("$('#loginForm').addEventListener('submit'");
+const successfulLoginStart = source.indexOf('await startApp();', loginSubmitStart);
 assert.ok(successfulLoginStart >= 0, 'Could not find the successful login transition.');
+assert.doesNotMatch(source.slice(loginSubmitStart, successfulLoginStart), /hideLogin\(\)/,
+  'Login must keep the cover until startApp validates and resets any previous workspace identity.');
 assert.match(source.slice(successfulLoginStart, successfulLoginStart + 420), /document\.querySelector\('#sidebar \[data-page="Genel Bakış"\]'\)\?\.click\(\)/,
   'Successful login must use the normal overview navigation handler to clear a stale menu/page overlay.');
 const diagnosticElements = new Map([
@@ -142,9 +149,12 @@ const diagnosticElements = new Map([
   ['#firstRunSetupMessage', { textContent: '' }],
   ['#loginForm button[type="submit"]', { disabled: false }],
   ['#forgotPasswordButton', { disabled: false }],
+  ['#platformLoginLink', { hidden: true, href: '/platform-admin.html' }],
 ]);
 let diagnosticMode = 'ready';
 const diagnosticContext = {
+  URL,
+  window: { location: { origin: 'https://north.example.invalid' } },
   $: selector => {
     assert.ok(diagnosticElements.has(selector), `Unexpected connection diagnostic selector: ${selector}`);
     return diagnosticElements.get(selector);
@@ -153,7 +163,8 @@ const diagnosticContext = {
     if (diagnosticMode === 'unavailable') throw new Error('API bağlantısı kurulamadı.');
     if (path === '/api/status' && diagnosticMode === 'migration') return { status: 'migration-required', pendingMigrationCount: 19 };
     if (path === '/api/status') return { status: 'ready' };
-    if (path === '/api/setup/status') return { setupRequired: diagnosticMode === 'setup', setupTokenConfigured: true };
+    if (path === '/api/setup/status') return { setupRequired: diagnosticMode === 'setup', setupTokenConfigured: true,
+      platformLoginUrl: diagnosticMode === 'unsafe-platform-link' ? 'https://user:secret@example.invalid/platform-admin.html' : 'https://example.invalid/platform-admin.html' };
     throw new Error(`Unexpected diagnostic request: ${path}`);
   },
   refreshCsrf: async () => {},
@@ -164,6 +175,11 @@ await diagnosticContext.checkLoginConnection();
 assert.equal(diagnosticElements.get('#loginConnectionStatus').hidden, false, 'A successful server check must reveal its result.');
 assert.match(diagnosticElements.get('#loginConnectionStatus').textContent, /giriş hatası bağlantıdan kaynaklanmıyor/, 'A ready server must distinguish credential failure from connectivity failure.');
 assert.equal(diagnosticElements.get('#retryApiButton').disabled, false, 'The retry control must be restored after a successful check.');
+assert.equal(diagnosticElements.get('#platformLoginLink').href, 'https://example.invalid/platform-admin.html');
+assert.equal(diagnosticElements.get('#platformLoginLink').hidden, false);
+diagnosticMode = 'unsafe-platform-link';
+await diagnosticContext.checkLoginConnection();
+assert.equal(diagnosticElements.get('#platformLoginLink').hidden, true, 'Credential-bearing platform links must stay hidden.');
 
 diagnosticMode = 'migration';
 await diagnosticContext.checkLoginConnection();
