@@ -1,0 +1,167 @@
+# EnvanterTR — gerçek durum denetimi
+
+**Kontrol tarihi:** 2026-11-01 (Europe/Istanbul)
+**Kapsam:** `../../../Hedef.txt` v30, mevcut `origin/main`, PR/CI ve salt-okunur canlı kontroller.
+**Durum:** Başlangıç kesiti; Hedef'in her alt maddesi henüz kod/test/canlı kanıtına bağlanmadı. Bu rapor tamamlanma ilanı değildir.
+
+## Hedef v30 bölüm bazlı denetim indeksi
+
+Bu 22 satır, Hedef'in her bölümü denetimden geçirecek indekstir; satır “TAMAM” demek için değil, ilgili kabulün doğru kanıt alanına yönlenmek içindir. Ürün kapsamlı bölümlerde bölüm düzeyinde kapanış için alt maddeler ve test kapsamı matrise eklenmelidir.
+
+| Bölüm | Gereksinim grubu | Başlangıç kanıtı | Güncel durum |
+|---|---|---|---|
+| 0 | Çalışma sözleşmesi, kanıt ve dürüstlük | Hedef v30 §§0.1–0.6; yeni tamamlama talimatı | Süreç kuralı mevcut; tüm V1 maddeleri denetlenmedi. |
+| 1 | Teknoloji ve oturum hafızası | `git log --reverse` ilk main commit'i `38744c6`; ASP.NET Core main CI | Aktif ürün C#/.NET; ilk tarihçede ayrı PHP/Snipe referansı var. İki repo geçmişi ayrıştırıldı. |
+| 2 | Satılabilir V1 ve öncelik | Hedef §2; ödeme status `available:false` | V1 tamamlanmadı; ödeme sağlayıcısı dış bağımlılığı açık. |
+| 3 | İlerleme ve kod kalitesi | `PROGRESS.md`, `AUDIT-REALITY.md`, CI | Güncel kayıtlar eklendi; eski yüzdelerin izlenebilir kabul matrisi tamam değil. |
+| 4 | Mevcut gerçeklik ve eski oran denetimi | `AUDIT-REALITY.md`; canlı sağlık/plan/ödeme GET; eski snapshot taraması | Başlangıç ve yüzde iddiaları indekslendi; her alt özellik için kod/test/canlı denetimi sürüyor. |
+| 5 | Ürün, müşteri, platform ve test hesapları | Tarihli Santa/Farma raporları ve sohbet kayıtları | Hesap etkileşimi kanıtları var; tüm roller ve işlemler canlı müşteri kabulinden geçmedi. |
+| 6 | Tenant / CompanyId izolasyonu | Main CI run 41270953843 4/4; PR #30 head `fdff917` run 41282512318 4/4; güncel kullanıcı kararı: CompanyId şirket verisinde zorunlu, ortak kullanıcı/plan/platform kök kayıtlarında ortak | PR #30 tenant query filter ve PostgreSQL/endpoint regression suite'i yeşil, ancak draft/open ve merge edilmedi. Ortak-kök / tenant-verisi entity envanteri, main'e alma, prod rollout ve canlı karşılıklı ID kabulü açık. Hedef §6.1'in “her tabloda” metni güncel kullanıcı kararıyla açıklanmıştır. |
+| 7 | Snipe-IT özellik paritesi | `PRODUCT-COVERAGE.md`, tarihli modül UI/PG raporları | Kapsam kataloğu var; bütün Snipe menü/form/işlevlerini kapatan güncel regresyon kabulü yok. |
+| 8 | 2026 modern özellikleri | Hedef §8 ve dağınık tarihli raporlar | Özelliklerin tekil kullanıcı kabul matrisi kurulmadı; bölüm açık. |
+| 9 | Platform yönetim paneli | Tarihli platform admin PostgreSQL/Chromium raporları; main CI | Alt özellik kanıtı var; tüm kritik yazma/MFA/audit işlemleri canlıda uçtan uca doğrulanmadı. |
+| 10 | Müşteri firma portalı | Wildcard live report; apex/firma güncel health | Yönlendirme/sağlık kanıtı var; Santa/Farma tam iş akışı ve erişim sınırı kabulü açık. |
+| 11 | Satış ve pazarlama sitesi | Main gallery CI; public-site bundle SHA uyuşmazlığı | Kaynak CI'da geçti; güncel main canlı dosyayla aynı değil. |
+| 12 | Kayıt, onboarding, ödeme, provisioning | `/api/plans` mevcut, checkout disabled | Gerçek satın alma ve otomatik provision tamamlanmadı; iyzico hesabı yok. |
+| 13 | UI test matrisi | `ui-inventory.md`/hosted Chromium tarihli raporlar | Geçmiş UI kapsamı geniş; güncel main'de Hedef A–M maddelerinin tam kapsamı kanıtlanmadı. |
+| 14 | İstek/kod/UI/regresyon kalite kontrolü | Main run 41270953843: 4/4 success | Bu merge için CI kapısı geçti; tüm ürün modüllerine yönelik QA dörtlemesi henüz kanıtlanmadı. |
+| 15 | Sekiz V1 kabul kapısı | Bu rapordaki Hedef §15 tablosu | Sekiz kapının hiçbiri bölüm kapsamıyla tamamen kapanmış kanıta sahip değil; detay satırları tabloda. |
+| 16 | Teknik mimari | Main source ve CI; canlı migration status 122/0 | Ana teknoloji/sağlık biliniyor; tam mimari, operasyon ve güvenlik gereksinimleri ayrı kabul edilmeli. |
+| 17 | Çalışma yöntemi ve fazlar | Tamamlatma promptu, progress kaydı | Sıra ve devam yöntemi tanımlandı; ürün teslimatı yerine geçmez. |
+| 18 | Rapor formatı ve delil | `AUDIT-REALITY.md`, `PROGRESS.md` | Kayıt var; tüm kabul kanıtları henüz tek tabloya bağlanmadı. |
+| 19 | Başlangıç/proje kapsamı | Hedef başlangıç komutu; ilk commit geçmişi | Bu tur için audit uygulanıyor; Hedef'in tüm teslimatları henüz sağlanmadı. |
+| 20 | Santa/Farma/üçüncü firma canlı kabulü | Tarihli canlı MFA/portal raporları; main tenant CI | Demo3 üretimden provision/silme ve tam Santa/Farma iş akışları kanıtlanmadı. |
+| 21 | Sohbetten bağlayıcı ürün kararları | Güncel tamamlama promptu ve önceki karar kayıtları | Fiyat, SaaS/slug, görseller, profil ve Authenticator talepleri izleniyor; her biri canlı kabul edilmedi. |
+
+## İlk günden bugüne doğrulanmış tarihçe
+
+| Dönem | Kanıt | Sonuç |
+|---|---|---|
+| 2026-10-04 | `git log --reverse origin/main` | Aktif EnvanterTR deposunun ilk commit'i `38744c6 Initial EnvanterTR project`. Ana dal geçmişi envanter uygulaması, web/satış, güvenlik ve modül geliştirmeleriyle devam ediyor. |
+| 2026-09 / 2026-10 başlangıcı | Üst dizindeki `snipe-it-8.7.2` arşiv ve repo kayıtları (önceki inceleme notları) | PHP/Laravel tabanlı referans/önceki çalışma ile mevcut C# ürün ağacı aynı uygulama/depo değil. Geçiş kararının tam konuşma anı Git geçmişinden kanıtlanmıyor. |
+| 2026-10-20/21 | `tests/reports/web-release-118-20261021.md`, `wildcard-live-acceptance-20261020.md` | 118 migrationlı kontrollü yayın, yedek/restore provası ve wildcard alt alan yönlendirme kabulü tarihli raporlanmış. Bunlar 2026-11-01'deki canlı SHA veya tam ürün kabulü yerine geçmez. |
+| 2026-10-21 | `origin/main` commitleri ve PR #24 | Dönen etiket galerisi, portal önizlemesi ve tam ekran akışının ilk birleşimi ana dala alınmış. |
+| 2026-11-01 | PR #28/#29 merge kayıtları | Tam ekran güvenlik önizlemesi ve profil fotoğrafı depolama hata ele alma ana dala alınmış. |
+
+## Güncel doğrulanmış kaynak ve canlı durumu
+
+| Alan | Kanıt | Durum |
+|---|---|---|
+| Ana kaynak | `origin/main` SHA `d16f2fb2a6e4f333b617ea4a9bf1cf673d58946d`; #28 merge `4d8d2bccc89cbf0ba4a09911b860c050cf078282`; #29 merge SHA ile aynı | PR'lar main'de. |
+| CI | GitHub Actions run [41270953843](https://github.com/EnvanterTR/EnvanterCodex/actions/runs/41270953843), head `d16f2fb2a6e4f333b617ea4a9bf1cf673d58946d` | 4/4 iş terminal `success`: Linux tenant security, homepage gallery browser, Linux PostgreSQL tenant acceptance ve Windows deployment/backup safety. |
+| Canlı sağlık | `GET https://envantertr.com/api/status`, `GET https://firma.envantertr.com/api/status` | İki uç da HTTP 200 `ready`, 122 migration / 0 bekleyen. Bu, `main` SHA'sının yayında olduğunu kanıtlamaz. |
+| Canlı ödeme | `GET https://envantertr.com/api/checkout/status` | HTTP 200, `available:false`; kullanıcı iyzico hesabı olmadığını bildirdi. Gerçek ödeme kapısı açık. |
+| Canlı paketler | `GET https://envantertr.com/api/plans` | HTTP 200; yıllık Cloud paketleri listeleniyor. Katalog görünmesi ödeme tahsilatı/provisioning kabulü değildir. |
+| Ana sayfa görselleri | Canlı ana sayfa HTML, `GET /product-gallery.js`, dört PNG'nin HTTP yanıtı; origin/main kaynak ve CI | Taze kontrol: ana sayfa ve `/product-gallery.js` HTTP 200; rulo ve üç kullanıcı görseli `/assets/images/` altında HTTP 200 `image/png`. Canlı JS 5 saniyelik sola kayan galeri ve dialog kabuğu içeriyor; ancak HTML'deki rulo img üzerinde `data-preview-expand` yok, JS selector boş koleksiyona bağlanıyor ve dinamik üç slayta `registerExpandable` çağrısı yapılmıyor. Bu nedenle canlıdaki tıklama/klavye ile tam ekran davranışı kanıtlanmış değil ve mevcut kaynak akışında bağlı görünmüyor. `origin/main` `product-gallery.js`, `registerExpandable` ile hem original hem üretilen slaytları bağlıyor; PR #30 gallery CI dahil 4/4 geçmiştir. Üretim yayını henüz doğrulanmadı. |
+| Çalışma ağacı | `git status --short --branch` ve `git worktree list` | Ana repo checkout'u `feat/platform-checkout-readiness-20261020` dalında, `36c5937`; 219 mevcut değişiklik/dosya kaydı. Bunlara reset/stash/toplu temizlik uygulanmamalı. `origin/main` farklı commit. |
+
+## Hedef v30 kritik kapıları
+
+| Hedef maddesi | Mevcut kanıt | Gerçek durum |
+|---|---|---|
+| Üretim migration farkı (4.6.1, 15.10) | Canlı health 122/0; `origin/main` kaynak ağacında 118 migration dosyası | Canlı süreç kendi sürümüne göre pending bildirmiyor; source/live migration sayısı ve SHA farklı görünüyor. Tam migration listesi/SHA/SQL karşılaştırması ve güncel yedek+restore provası açık. |
+| Firma portalı 503 (4.6.2) | Canlı `firma` health HTTP 200, `ready` | Eski 503 bulgusu bu uç için artık güncel değil. Alt alan login, tenant kimliği ve veri izolasyon kabulü ayrı açık. |
+| Plan/ödeme/checkout (4.6.3, 12, 17.3 P0-D) | 8 Cloud planı ve checkout `available:false`; kullanıcı iyzico hesabı olmadığını söyledi | Paket kataloğu var; tahsilat, sağlayıcı webhook'u ve otomatik satın alma/provisioning tamamlanmış değil. Sağlayıcı hesabı dış bağımlılık. |
+| SMTP ve gerçek müşteri kabulü (4.6.4–4.6.5, 20) | Google Admin mail log ekranı geçmişte bir iletinin TLS ile teslimini gösterdi; sohbet kaydında davet token'ında `Invalid token` sorunu bildirildi | Tek e-posta teslimi tüm parola sıfırlama/davet akışlarının veya Santa/Farma uçtan uca kabulünün geçtiğini kanıtlamaz. Taze test/rapor gerekli. |
+| Güvenli yedek/geri dönüş ve canlı deploy (4.6.6–4.6.7, 15.10) | Tarihli 2026-10-21 release/restore raporları; canlı bundle SHA main ile farklı | Geçmiş prova kanıtı var, fakat güncel kaynak deploy'u ve bugünkü taze yedek/geri dönüş kapısı doğrulanmadı. |
+| Santa, Farma, üçüncü tenant (20.2–20.10) | Önceki canlı giriş/tenant yönlendirme gözlemleri ve kullanıcı hesap etkileşimleri var | Her iki firmanın 10 adımı, karşılıklı ID saldırı testi, platform MFA yazma sınırı ve Demo3 sıfırdan otomatik provision/silme testi bu oturumda kanıtlanmadı. Kapı açık. |
+| Görsel galerisi ve tam ekran (kullanıcı isteği, 11. bölüm) | CI main galeri kabulü başarılı; #28 tam ekran güvenlik önizlemesi main'de | Kaynak CI var; canlı galeri bundle'ı main ile eşleşmiyor. Canlı ürün kabulü açık. |
+| Profil fotoğrafı depolama (PR #29) | Main CI run `41270953843` 4/4 `success`, Linux PostgreSQL tenant acceptance dahil | Birleşik CI kabul kanıtı var; canlıya deploy ve gerçek hesap kabulü yok. |
+
+## 2026-11-01 — canlı readiness yeniden kontrolü ve tek provisioning akışı
+
+- Read-only GET sonuçları: apex, `firma`, Farma ve Santa `/api/status` HTTP 200 `ready`, her biri `migrationCount=122`, `pendingMigrationCount=0`. `GET /api/plans` HTTP 200 ile sekiz Cloud planı döndürdü; `GET /api/checkout/status` `available:false`, `provider:null`. Bu sonuçlar eski 503/boş plan bulgusunu bu endpoint'ler için geçersiz kılar; canlı SHA, migration SQL içeriği, kullanıcı girişi ve gerçek ödeme kabulü kanıtı değildir.
+- `origin/main` SHA `d16f2fb2a6e4f333b617ea4a9bf1cf673d58946d` migration source count: 118; all live status endpoints report 122. The earlier “22 pending” symptom is absent, but the four-migration count divergence means live/source alignment remains unresolved.
+- Hedef §6.9 için kaynak taraması (`rg 'Companies\.Add|new Company \{' src/EnvanterTR.Web/Data`) başlangıçta ilk-owner setup, platform şirket API'si ve checkout callback/webhook yollarını gösterdi. Branch `codex/tenant-provisioning-service`, head `1e2b51d` hepsini `TenantProvisioningService` çağrılarına yönlendiriyor; `Companies.Add` yalnız servis içinde kaldı.
+- `dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --no-restore`: 0 uyarı, 0 hata; `git diff --check` geçti. İlgili mevcut platform/checkout PostgreSQL kabul testleri çağrıldı, ancak disposable `ENVANTERTR_SECURITY_TEST_CONNECTION` eksik olduğundan fixture aşamasında durdu; ürün assertion çalışmadı. Ayrıntı `tests/reports/tenant-provisioning-20261101.md`. Bu branch için PR açılmadı, dolayısıyla CI çalışmadı; merge veya canlı dağıtım yapılmadı. §6.9 `DOĞRULANMADI` kalır.
+- Ödeme hesabı kullanıcının önceki beyanına göre mevcut değil. Bu bağımlılık gerçek tahsilat kabulini engelliyor; şirket açma altyapısı, testler ve diğer bağımsız kapsam işleri sürüyor.
+
+## Hedef §15 — sekiz V1 kabul kapısı
+
+| Kapı | Kapsam | Şu anki kanıt ve durum |
+|---|---|---|
+| 1 | Giriş, rol, parola kurtarma | Giriş ve MFA özellikleri kaynakta/tarihli CI'da var; canlı Santa/Farma gerçek oturum + parola kurtarma kabul kanıtı eksik. **Açık.** |
+| 2 | Tenant izolasyonu | Main CI Linux tenant security geçti; PostgreSQL acceptance aynı run'da hâlâ çalışıyor; canlı karşılıklı ID saldırı kabulü yok. **Açık.** |
+| 3 | Envanter ve ilişkiler | Tarihli izole PostgreSQL/Chromium raporları çok sayıda modülü kapsıyor; Hedef'in tüm varlık, zimmet, satın alma, lisans ve stok ilişkileri tek güncel kabul paketinde yeniden bağlanmadı. **Açık.** |
+| 4 | Arayüz matrisi | Eski 52 sidebar hedefi ve modül bazlı tarayıcı raporları mevcut; current main için Hedef §13'teki A–M tam matrisi ve %95 eşiğinin güncel sonucu yok. **Açık.** |
+| 5 | Demo ve kayıt | Canlı plan listesi mevcut ama gerçek checkout kapalı; Demo3 sıfırdan satın alma/provision kabul kanıtı yok. **Açık.** |
+| 6 | Platform yönetimi | Kaynak, platform admin CI ve tarihli test kanıtları mevcut; canlıdaki tüm kritik işlemler/MFA ve audit sınırı güncel uçtan uca kabul edilmedi. **Açık.** |
+| 7 | Yedekleme ve kurtarma | 2026-10-21 tarihli canlı DB/medya/anahtar yedek ve izole restore raporu mevcut; bugün geçerli taze yedek/rollback paketi ve güncel main deploy provası doğrulanmadı. **Açık.** |
+| 8 | Canlı Cloud SaaS | Apex/firma health hazır, ancak checkout devre dışı, bundle SHA main'den farklı ve gerçek müşteri/Demo3 kabulü eksik. **Açık.** |
+
+## Eski ilerleme yüzdelerinin denetimi
+
+Üç durum belgesinde `%` kullanımlarını taradım. Bulunan satırlar aşağıda tekilleştirilmiştir; `ROADMAP.md`'de yüzde iddiası yok. Her sayı bir tarihli rapor görünümüne ilişkindir. Satırdaki test ve payda o tarihte ilgili ilerleme raporunu doğrular; bugünkü Hedef kapsamının tamamlandığını kanıtlamaz. Bunları güncel oran olarak sunmak doğru değildir.
+
+| Kaynak/satır | İddia edilen oran ve payda | Satırın kendi kanıtı | Bugünkü hüküm |
+|---|---|---|---|
+| `docs/PROJECT-STATUS.md:63` | 67,06%; 88 toplam / 81 kapsam / 17 tamam / 8 açık | Local API, PostgreSQL ve Chromium tarihli testleri; 16 Ekim 2026 | Tarihsel snapshot; üretim ve Hedef §15 kapılarını göstermez. |
+| `docs/PROJECT-STATUS.md:64`, `docs/PRODUCT-COVERAGE.md:24` | 66,65%; 87 / 80 / 16 / 12 | 16 Ekim tarihli rapor aritmetiği ve o günkü local testleri | Tek tarihli aynı snapshot'ın iki belgede tekrarı; güncel oran değildir. |
+| `docs/PROJECT-STATUS.md:572–573` | 65,35% / 65%; 84–87 satır, 13 tamam | Progress filtresi için hosted Chromium kabulü; 15 Ekim 2026 | Ekran filtresi testi, tüm modüllerin kabulü değildir. |
+| `docs/PROJECT-STATUS.md:586`; `docs/PRODUCT-COVERAGE.md:673` | 65,79%→66,23%; 85→86, sonra 78 kapsam içi / 14 tamam | İlgili varlık modeli için PG 1/1, Chromium, source verifier; 16 Ekim 2026 | O modülün tarihli kabulidir; genel V1 tamamlanması değildir. |
+| `docs/PROJECT-STATUS.md:593` | 65%; local ortam satırı %60 bekliyor | Rapor JavaScript/Chromium kontrolü; 16 Ekim 2026 | Rapor gösteriminin testidir, ürünün tamamlanma kanıtı değildir. |
+| `docs/PROJECT-STATUS.md:608` | 66,65%; 87 / 80 / 16 / 12 | Tarihli rapor aritmetiği ve rapor Chromium kontrolü; 16 Ekim 2026 | Tekrarlı snapshot; güncel durum değildir. |
+| `docs/PROJECT-STATUS.md:702` | Tahmin 74,10%; ayrıca 39/103 = 37,86% kanıtlı | Yerel rapor satırı/Playwright; tarihli snapshot | Tahmin güvenilir tamamlanma oranı değildir; kanıtlı payda da farklıdır. |
+| `docs/PROJECT-STATUS.md:708` | Tahmin 74,35%; ayrıca 40/104 = 38,46% kanıtlı | Playwright rapor kontrolü; tarihli snapshot | Farklı payda ve tahmin yöntemi; güncel oran değildir. |
+| `docs/PROJECT-STATUS.md:721` | Tahmin 74,83%; ayrıca 42/106 = 39,62% kanıtlı | Playwright rapor kontrolü; tarihli snapshot | Farklı payda; güncel oran değildir. |
+| `docs/PROJECT-STATUS.md:727` | Tahmin 75,07%; ayrıca 43/107 = 40,19% kanıtlı | Tam hosted Chromium, 80/80 source verifier; tarihli snapshot | Source/UI regression yeşil olması tüm Hedef maddelerini kapatmaz. |
+
+Satır numaraları kaynak değişince kayabilir; her yeni denetimde `rg` ile tekrar bulunmalıdır. Hedef v30 §4.1–4.2'nin esas istediği kod dosyası + test + gerçek durum eşlemesi, aşağıdaki kabul kapılarıyla sürüyor; geçmişteki tahmini skorları bugüne kopyalamayacağım. Güncel Hedef kabul matrisi kurulmadan yeni genel yüzde hesaplanmayacak.
+
+## Açık denetim işi
+
+Hedef'in 54 bölüm/alt başlık kapsamı atomik kabul maddelerine dönüştürülmeli ve mevcut test raporları, main CI, ilgili kaynak dosyaları ve canlı kabul ile eşleştirilmelidir. Bu başlangıç raporu yalnız güncel dağıtım/ana satış kapılarını kanıtlar; tam Hedef matrisi değildir. Bir sonraki teknik adım: run `41270953843` terminal sonucunu al, Coolify release SHA ile canlı bundle farkını açıklığa kavuştur, sonra hedefin kalan P0/P1 gereksinimlerini tek kabul tablosuna bağla.
+
+## 2026-11-01 — canlı galeri yayını ve güncel P0 durumu
+
+Bu ek, yukarıdaki 23 Ekim tarihli sayısal/altyapı anlık görüntüsünü güncel durum gibi göstermemek için eklendi. Önceki kayıt tarihsel kalır; bu canlı kontrol yeni kaynak/payda hesabı veya V1 kabulü değildir.
+
+| Gereksinim | Kaynak/test/kanıt | Güncel sonuç |
+|---|---|---|
+| Ana sayfada müşteri görsellerinin otomatik kayması ve tıklanınca tam ekran açılması | Üretim commit'i `4789b509c0b719c1bf71a0b8032f7224bae9fd43`; `src/EnvanterTR.PublicSite/product-gallery.js` ve `src/EnvanterTR.PublicSite/index.html` (`product-gallery.js?v=cda5cf6`); canlı tarayıcıda galeri görseline tıklama ve “Kapat” kontrolü; Coolify deployment `bjkynxtfewzdddggcqz15tbv` Success/Finished | **TAMAM (canlı görsel isteği):** ana sayfadaki galeri açıldı, carousel ve tam ekran penceresi gözle görüldü. Bu, V1 genel kabulü değildir. |
+| Firma/tenant host sağlık durumu | Salt-okunur `GET /api/status`, 2026-11-01 08:49 UTC; apex, `firma`, `farma`, `santa` | Dört host HTTP 200, `ready`, 122 migration, 0 bekleyen. Bu, migration kimliklerinin repository ile eşitliğini veya tam müşteri akışını tek başına kanıtlamaz. |
+| Canlı plan kataloğu | Salt-okunur `GET https://envantertr.com/api/plans`, aynı zaman | HTTP 200, 8 plan; yıllık Cloud fiyatları API yanıtında mevcut. |
+| Gerçek ödeme ve satın alma | Salt-okunur `GET /api/checkout/status`; kullanıcı önceki açık beyanında iyzico işyeri hesabı bulunmadığını söyledi | HTTP 200, `available:false`, `provider:null`. **ENGELLENDİ:** onaylı merchant hesabı/anahtarları ve gerçek ödeme kabulü yok; satın alma tamamlanmış sayılamaz. |
+| SMTP ve müşteri kabulü | Tarihli `tests/reports/google-relay-production-acceptance-20261025.md`; Bölüm 20 kabul kayıtları | Google relay için 1 ileti teslim kanıtı var. Bu, Bölüm 20'nin tüm Santa/Farma/Demo3 akışlarını tamamlamaz; gerçek tam kabul açık. |
+| Veritabanı yedeği ve geri dönüş | Önceki yedek/restore raporları 20–21 Ekim tarihli; bu denetimde yeni yedek alınmadı veya restore edilmedi | **DOĞRULANMADI (bugün):** tarihli eski prova güncel yayın kapısının taze yedeği sayılmaz. |
+
+### Yüzde denetiminin kapsamı
+
+23 Ekim tablosu `PROJECT-STATUS.md` ve `PRODUCT-COVERAGE.md`'de o tarihteki 11 + 2 tarihsel yüzde satırını kapsıyordu. `PROJECT-STATUS.md` sonradan uzatıldığı için satır numaraları ve kapsam eskidi. 2026-11-01 itibarıyla yeni kayıtlar en az iki ayrı, aynı amaca gelmeyen ölçümü içeriyor: 19 Ekim kabul alt sayacı `45/107 = %42,06`; 20 Ekim web kontrol listesi `180/254 = %70,87`. Bunlar farklı paydalı göstergelerdir ve proje/V1 yüzdesi olarak birleştirilemez. 20 Ekim için yazılan `%80` ve 10–15 / 20–30 iş günü ifadeleri planlama tahminidir, teslimat kanıtı değildir. `PROJECT-STATUS.md` içindeki eski yaklaşık `%39,7` işlev puanı ve `%30 (±5)` ürün tahmini de tarihsel, ağırlıklı ve öznel tahminlerdir; bugünkü kabul oranı olarak kullanılamaz.
+
+**P0-A durumu: KISMEN TAMAM.** Eski 15–16 Ekim oranlarının ve yeni 19–20 Ekim metriklerinin tarihsel/ayrı paydalı niteliği kanıtlandı; canlı satış ve gallery durumu güncellendi. Bu ek her yüzde satırının güncel kod/test eşlemesini atomik biçimde tamamlamaz. Yönetici girişini veya MFA'yı otomatikleştirmek için açığa çıkmış kimlik bilgileri kullanılmadı. Sıradaki P0-A işi, üç durum dokümanındaki tüm progress-metric satırlarını tarayıp aynı tarihli/idli metrikleri gruplayan tam izlenebilir tabloyu ve eksik kod/test bağlarını tamamlamaktır.
+
+### Yüzde iddiaları için 1 Kasım kapsam sınıflaması
+
+Güncel yerel `docs/PROJECT-STATUS.md`, `docs/PRODUCT-COVERAGE.md` ve `docs/ROADMAP.md` üzerinde tam dosya taramasıyla şu **ölçüm aileleri** ayrıştırıldı. Bir ailedeki aynı sayıların tekrar edilmesi ayrı V1 kabulü sayılmadı.
+
+| Kaynak ve metrik ailesi | Kod/test bağlantısı | Bugünkü hüküm |
+|---|---|---|
+| `PROJECT-STATUS.md:22–29`, `727–750`; `PRODUCT-COVERAGE.md:6`, `704–814`: 43/107 (%40,19), 44/107 (%41,12), 45/107 (%42,06) kabul-alt-sayaçları | Tarihli satırlar belirli tenant-güvenlik/ürün senaryoları için test loglarına atıf yapar; aynı alt-sayaç `PROJECT-STATUS.md` içinde tekrar kullanılır. Payda, Hedef v30'un tüm 21 bölüm/sekiz V1 kapısı değildir. | **TARİHSEL / SINIRLI:** Alt kabul kanıtı olarak okunabilir; tam proje/V1 yüzdesi veya bugünkü kabul sayısı değildir. Her satırı bağlayan test kayıtları tarih ve kapsamıyla incelenmeli; yeni canlı deploy bu paydayı otomatik artırmaz. |
+| `PROJECT-STATUS.md:572–728`, `PRODUCT-COVERAGE.md:23–26, 673`: 65–75,07 aralığındaki eski ilerleme raporu ortalamaları (ayrıca 37,86–40,19 kanıt sayacı) | Bazı snapshot satırları geçmiş UI/Chromium raporunu, `PlatformEndpoints.cs`, `platform-admin.html` ve `TenantSessionAcceptanceTests.cs` test izlerini verir. Raporu üreten kod ve aynı kapsamlı güncel puan kaynağı bu taramada bulunmadı. | **TARİHSEL / HESAPLANAMAZ:** Özellik testi, ortalama ilerleme tahminini doğrulamaz. Güncel tamamlanma oranı olarak kullanılamaz. |
+| `PROJECT-STATUS.md:271–273`: yaklaşık %40/%39,7 işlev puanı ve %30 (±5) teslim edilebilir ürün tahmini | Ağırlıklar metin içinde verilmiş; müşteri kabulü, ödeme ve gerçek kurulum teslimatı için yürütülen tekil test setinden türetilmemiş. | **TAHMİN:** CEO/planlama bağlamı için eski kaba tahmindir; kanıtlı tamamlanma sayılmaz. |
+| `PROJECT-STATUS.md:941–947`: 180/279 (%64,52) eski kontrol listesi, 180/254 (%70,87) kullanıcı kotası maddesi çıkarıldıktan sonraki işaretli web listesi; 204/254=%80 eşiği ve 10–15 / 20–30 iş günü | Liste rapor/ayrıştırıcı kabul kayıtları mevcut; kaynakta `src`, `tools`, `deploy` için `PRODUCT-COVERAGE.md`/`PROGRESS.md` üreten güncel bir skor motoru eşleşmesi aranıp bulunmadı. Yüzde, check işaretlerini sayar; gereksinim başına uçtan uca kanıtı denetlemez. | **KONTROL LİSTESİ / TAHMİN:** %70,87 işaretli satır oranıdır, V1 kabul oranı değildir; %80 ve süreler planlama varsayımıdır, garanti değildir. |
+| `ROADMAP.md:5` %100 hedefi | Ürün kabul/test sonucu değil, hedef cümlesi. | **HEDEF:** tamamlanma kanıtı olarak sayılmaz. |
+
+Sınıflama için ölçüm/snapshot arama komutu: `rg -n '45/107|44/107|43/107|180/254|180/279|%74,10|%74,35|%75,07|%39,7|%30 \(±5\)' docs/PROJECT-STATUS.md docs/PRODUCT-COVERAGE.md docs/ROADMAP.md`. Sonuçlar bu tablodaki ailelerin kaynak konumlarını gösterdi; aynı ailelerin satır tekrarı tarihsel günlük kaydıdır. Bu tarama tam satır-bazlı test eşlemesi değildir; P0-A açık tutuldu.
+
+## 2026-11-01 continuation — PR #30 tenant security and live readiness
+
+- Branch `codex/p1-tenant-query-filter`, PR #30 head `25599a1e6d94342ed028353d7f175911cbb7f423`. GitHub Actions run [41277184261](https://github.com/EnvanterTR/EnvanterCodex/actions/runs/41277184261) finished `success` for all 4 jobs: Linux PostgreSQL tenant acceptance, Linux tenant security acceptance, Windows deployment/backup safety, and homepage gallery browser acceptance. This applies to the PR head, not current production `main`.
+- The PostgreSQL suite initially caught two regressions in company-choice/session membership visibility and cross-company MFA policy enforcement. Login/session lookups were corrected to bypass the global tenant filter only where user identity/active membership explicitly constrain the result. The full PG acceptance suite then passed on PR head. Live two-company cross-ID authorization remains untested.
+- Public read-only probes at this timestamp: `/health` returned HTTP 200 `Healthy` on `firma.envantertr.com`, `farma.envantertr.com`, and `santa.envantertr.com`. `/api/plans` returned eight Cloud annual plans (2,400; 4,200; 6,000; 9,000; 12,000; 14,400; 24,000; 36,000 TRY; monthly price 0). `/api/checkout/status` returned `available:false`, `provider:null`. User has stated no iyzico merchant account exists; paid checkout and real purchase acceptance remain open.
+- No production write/deploy occurred. These probes do not prove current migration parity, user login/role workflows, e-mail delivery, live backup/restore, customer acceptance, or main deployment.
+- Current progress note: PR #30 CI proves the code change is regression-clean in the isolated test suite; V1 remains incomplete and this PR remains draft.
+- Additional GET recheck of `https://envantertr.com/api/status`, `https://farma.envantertr.com/api/status`, and `https://firma.envantertr.com/api/status`: all returned HTTP 200 `ready`, `migrationCount=122`, `pendingMigrationCount=0`. This resolves Hedef §4.6.1's historical “22 pending” observation for the current live endpoints at this timestamp; it does not establish the local-vs-live migration-content diff or certify the latest PR was deployed.
+
+## 2026-11-01 continuation — tenant query-filter PR terminal result
+
+GitHub API recheck of Actions run [41278497378](https://github.com/EnvanterTR/EnvanterCodex/actions/runs/41278497378) reports `completed/success` at head `a13fd84c84a85e2589859e9b9aa3133a59779af9`, all four jobs successful (Linux PostgreSQL tenant acceptance, Linux tenant security acceptance, Windows deployment/backup safety, homepage gallery browser acceptance). PR [#30](https://github.com/EnvanterTR/EnvanterCodex/pull/30) is still open/draft, base `main`, mergeable. No merge, production write, or deployment was performed.
+
+Read-only source audit enumerated production `IgnoreQueryFilters()` call sites in the PR tree and inspected them for explicit tenant/identity predicates. Inspected tenant-sensitive usages included company ID in asset locks, exports, archived-asset lookup, asset reservations, inventory requests, purchase returns and asset-event joins; account/session exceptions constrain by authenticated user and active membership. This is code review evidence only; it does not close live cross-tenant endpoint adversarial acceptance or P1 backup/restore.
+
+## 2026-11-01 — background report tenant test result
+
+PR #30 commit `730defae087cdb2af03bb8a84b3a002f5e07f86c` adds a PostgreSQL-backed acceptance test for tenant scoping of scheduled inventory, license and stock aggregates in a background context without a request tenant. Hosted run [41280818308](https://github.com/EnvanterTR/EnvanterCodex/actions/runs/41280818308) completed successfully; PostgreSQL tenant acceptance passed in 19m41s and the other three CI jobs also passed. The local test project compiled successfully (0 errors; four existing ASP.NET deprecation warnings); local database execution was unavailable.
+
+PR #30 remains a draft on a branch, not main or production. This test is narrow evidence for scheduled report aggregate isolation; it does not establish full live cross-tenant attack acceptance, live backup/restore, or release deployment.
