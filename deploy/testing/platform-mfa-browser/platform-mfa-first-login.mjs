@@ -222,6 +222,13 @@ try {
     'Reusing a recovery code must show a login error.');
   assert.equal(await page.locator('#appShell').isVisible(), false);
 
+  // Editing the password to recover from a failed login must not hide the MFA challenge.
+  const mfaInputAfterFailure = page.locator('#loginForm [name="twoFactorCode"]');
+  await mfaInputAfterFailure.waitFor({ state: 'visible' });
+  await page.locator('#loginForm [name="password"]').fill(password);
+  assert.equal(await mfaInputAfterFailure.isVisible(), true,
+    'Correcting the password must preserve the visible authenticator field.');
+
   // A fresh TOTP still works after the failed recovery-code replay.
   await submitLogin(page, totp(secret));
   await page.locator('#appShell').waitFor({ state: 'visible' });
