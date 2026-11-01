@@ -103,6 +103,14 @@ Bu kayıt, `docs/ACTIVE-WEB-V1-GOAL.md` ve depo kökündeki kullanıcı hedefiyl
 
 - CompanyId yorumuna ait güncel kullanıcı kararı izleyiciye işlendi: CompanyId yalnız şirketin tenant verisinde zorunlu; ortak kullanıcı, plan ve platform kayıtları ortak/kök kalır. Bu karar Hedef §6.1'in eski mutlak cümlesinden önceliklidir. `docs/AUDIT-REALITY.md` ve `docs/REQUIREMENT-TRACEABILITY.md` §6.1/§6 satırları bunu not ediyor; kapsamlı entity/endpoints doğrulaması henüz açık.
 
+## 2026-11-01 — P0-A yüzde iddiaları envanteri güncellendi
+- Durum: Kapsam sınıflaması tamamlandı; Hedef maddeleriyle kod/test izlenebilirliği açık.
+- Değişen dosyalar: `docs/AUDIT-REALITY.md`, `docs/PROGRESS.md`.
+- Komut + çıktı: `Select-String -Pattern '\d+(?:[,.]\d+)?\s?%'` ile `PROJECT-STATUS.md`, `PRODUCT-COVERAGE.md`, `ROADMAP.md` tarandı; 13 satır bulundu (11 + 2 + 0). Tarihsel pano ortalamaları, tarihli kabul alt sayaçları, tahminler ve yinelenen notlar ayrı gruplandı. `ROADMAP.md` içindeki tek %100 ifade hedeftir.
+- Test: Ürün testi çalıştırılmadı; yalnız doküman taraması ve sınıflaması yapıldı. `git diff --check` ile doküman değişikliği doğrulanacak.
+- Kanıt yolu: `docs/AUDIT-REALITY.md` → “Yüzde iddiaları için 1 Kasım kapsam sınıflaması”.
+- Sıradaki iş: P0-A için her tarihli kabul iddiasını kaynak/test artifact ve Hedef maddesiyle satır satır eşle; ardından P0-B'de repository/live migration kimliği farkını güvenli salt-okunur kanıtla çöz.
+
 ## 2026-11-01 — PR #30 tenant regression closeout
 
 - Commit `25599a1e6d94342ed028353d7f175911cbb7f423` on `codex/p1-tenant-query-filter` is the tested PR head. After the two PostgreSQL regressions were corrected, GitHub Actions run `41277184261` passed 4/4: Linux PostgreSQL tenant acceptance, Linux tenant security acceptance, Windows deployment and backup safety, homepage gallery browser acceptance.
