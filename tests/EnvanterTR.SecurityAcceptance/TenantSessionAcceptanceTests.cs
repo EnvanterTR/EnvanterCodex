@@ -12998,6 +12998,37 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Account_photo_upload_reports_unavailable_storage_without_a_server_error()
+    {
+        using var csrf = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrf.StatusCode);
+        using var csrfJson = JsonDocument.Parse(await csrf.Content.ReadAsStringAsync());
+        var token = csrfJson.RootElement.GetProperty("requestToken").GetString()!;
+        var cookie = csrf.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        Directory.CreateDirectory(_mediaPath);
+        var accountsPath = Path.Combine(_mediaPath, "accounts");
+        byte[] preservedMarker = "storage-conflict-marker"u8.ToArray();
+        await File.WriteAllBytesAsync(accountsPath, preservedMarker);
+        try
+        {
+            byte[] image = [137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3];
+            using var response = await SendProfilePhotoUploadAsync(image, token, cookie);
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+            var body = await response.Content.ReadAsStringAsync();
+            Assert.Contains("Profil fotoğrafı şu anda kaydedilemiyor", body, StringComparison.Ordinal);
+            Assert.DoesNotContain(accountsPath, body, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(preservedMarker, await File.ReadAllBytesAsync(accountsPath));
+            Assert.False(Directory.Exists(Path.Combine(accountsPath, _userId.ToString("N"))));
+        }
+        finally
+        {
+            File.Delete(accountsPath);
+        }
+    }
+
+    [Fact]
     public async Task Account_profile_photo_enforces_the_two_mib_limit_and_preserves_the_existing_photo()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
