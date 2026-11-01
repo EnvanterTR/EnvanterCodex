@@ -1,12 +1,40 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http;
+using System.Linq.Expressions;
 
 namespace EnvanterTR.Web.Data;
 
-public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
+public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IHttpContextAccessor? httpContextAccessor = null)
     : IdentityDbContext<EnvanterUser, IdentityRole<Guid>, Guid>(options)
 {
+    private readonly IHttpContextAccessor? _httpContextAccessor = httpContextAccessor;
+
+    private Guid? CurrentTenantCompanyId
+    {
+        get
+        {
+            var rawCompanyId = _httpContextAccessor?.HttpContext?.User.FindFirst("company_id")?.Value;
+            return Guid.TryParse(rawCompanyId, out var companyId) ? companyId : null;
+        }
+    }
+
+    private bool ShouldApplyTenantQueryFilters =>
+        _httpContextAccessor?.HttpContext is { } context &&
+        context.User.Identity?.IsAuthenticated == true &&
+        Guid.TryParse(context.User.FindFirst("company_id")?.Value, out _) &&
+        !context.Items.ContainsKey(PlatformTenantQueryFilterBypassKey);
+
+    private const string PlatformTenantQueryFilterBypassKey = "EnvanterTR.PlatformTenantQueryFilterBypass";
+
+    internal void DisableTenantQueryFiltersForVerifiedPlatformRequest()
+    {
+        var context = _httpContextAccessor?.HttpContext;
+        if (context is not null)
+            context.Items[PlatformTenantQueryFilterBypassKey] = true;
+    }
+
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<CompanyMfaEnrollmentChallenge> CompanyMfaEnrollmentChallenges => Set<CompanyMfaEnrollmentChallenge>();
     public DbSet<CompanyApiToken> CompanyApiTokens => Set<CompanyApiToken>();
@@ -1502,5 +1530,61 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasPrincipalKey(x => new { x.CompanyId, x.Id }).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AssetMaintenanceAttachment>().HasOne<EnvanterUser>().WithMany()
             .HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.SetNull);
+
+        ApplyCompanyScopeQueryFilters(modelBuilder);
+    }
+
+    private void ApplyCompanyScopeQueryFilters(ModelBuilder modelBuilder)
+    {
+        var queryFilterMethod = typeof(AppDbContext).GetMethod(
+            nameof(ApplyCompanyScopeQueryFilter),
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes()
+                     .Where(entity => entity.BaseType is null && entity.FindProperty("CompanyId") is not null))
+        {
+            queryFilterMethod.MakeGenericMethod(entityType.ClrType).Invoke(this, [modelBuilder, entityType]);
+        }
+    }
+
+    private void ApplyCompanyScopeQueryFilter<TEntity>(ModelBuilder modelBuilder, Microsoft.EntityFrameworkCore.Metadata.IMutableEntityType entityType)
+        where TEntity : class
+    {
+        var companyProperty = entityType.FindProperty("CompanyId")!;
+        if (companyProperty.ClrType != typeof(Guid) && companyProperty.ClrType != typeof(Guid?))
+            return;
+
+        var entity = Expression.Parameter(typeof(TEntity), "entity");
+        var propertyMethod = typeof(EF).GetMethods()
+            .Single(method => method.Name == nameof(EF.Property) && method.IsGenericMethodDefinition);
+        var companyId = Expression.Call(propertyMethod.MakeGenericMethod(companyProperty.ClrType), entity,
+            Expression.Constant("CompanyId"));
+        var tenantCompanyId = Expression.Property(Expression.Constant(this), nameof(CurrentTenantCompanyId));
+        var hasTenant = Expression.Property(tenantCompanyId, nameof(Nullable<Guid>.HasValue));
+        Expression matchesTenant = companyProperty.ClrType == typeof(Guid)
+            ? Expression.Equal(companyId, Expression.Call(tenantCompanyId, nameof(Nullable<Guid>.GetValueOrDefault), Type.EmptyTypes))
+            : Expression.OrElse(
+                Expression.Equal(companyId, tenantCompanyId),
+                Expression.Equal(companyId, Expression.Constant(null, typeof(Guid?))));
+        var scopedToTenant = Expression.AndAlso(hasTenant, matchesTenant);
+        var scopeIsActive = Expression.Property(Expression.Constant(this), nameof(ShouldApplyTenantQueryFilters));
+        Expression body = Expression.OrElse(Expression.Not(scopeIsActive), scopedToTenant);
+
+        foreach (var existingFilter in entityType.GetDeclaredQueryFilters())
+        {
+            var filterExpression = existingFilter.Expression!;
+            var existingBody = new QueryFilterParameterReplacer(filterExpression.Parameters[0], entity)
+                .Visit(filterExpression.Body)!;
+            body = Expression.AndAlso(existingBody, body);
+        }
+
+        modelBuilder.Entity(typeof(TEntity)).HasQueryFilter(Expression.Lambda(body, entity));
+    }
+
+    private sealed class QueryFilterParameterReplacer(ParameterExpression source, ParameterExpression target)
+        : ExpressionVisitor
+    {
+        protected override Expression VisitParameter(ParameterExpression node) =>
+            node == source ? target : base.VisitParameter(node);
     }
 }

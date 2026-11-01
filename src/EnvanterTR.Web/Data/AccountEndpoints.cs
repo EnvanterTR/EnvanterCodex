@@ -215,7 +215,7 @@ public static class AccountEndpoints
             Guid? tenantCompanyId = null;
             if (tenantSlug is not null)
             {
-                tenantCompanyId = await db.Companies.AsNoTracking()
+                tenantCompanyId = await db.Companies.IgnoreQueryFilters().AsNoTracking()
                     .Where(company => company.IsActive && company.Slug == tenantSlug)
                     .Select(company => (Guid?)company.Id)
                     .SingleOrDefaultAsync(cancellationToken);
@@ -229,9 +229,9 @@ public static class AccountEndpoints
                 return Results.Forbid();
             var memberships = request.PlatformAdminOnly
                 ? new List<CompanyMembership>()
-                : await db.CompanyMemberships.AsNoTracking().Where(x => x.UserId == user.Id &&
+                : await db.CompanyMemberships.IgnoreQueryFilters().AsNoTracking().Where(x => x.UserId == user.Id &&
                     (tenantCompanyId == null || x.CompanyId == tenantCompanyId) &&
-                    db.Companies.Any(company => company.Id == x.CompanyId && company.IsActive)).ToListAsync(cancellationToken);
+                    db.Companies.IgnoreQueryFilters().Any(company => company.Id == x.CompanyId && company.IsActive)).ToListAsync(cancellationToken);
             var membership = tenantCompanyId is not null
                 ? memberships.SingleOrDefault(x => x.CompanyId == tenantCompanyId)
                 : request.CompanyId is Guid selected
@@ -244,7 +244,7 @@ public static class AccountEndpoints
             if (!request.PlatformAdminOnly && tenantCompanyId is null && memberships.Count > 1 && request.CompanyId is null)
             {
                 var companyIds = memberships.Select(x => x.CompanyId).ToArray();
-                var companies = await db.Companies.AsNoTracking().Where(x => companyIds.Contains(x.Id))
+                var companies = await db.Companies.IgnoreQueryFilters().AsNoTracking().Where(x => companyIds.Contains(x.Id))
                     .OrderBy(x => x.Name).Select(x => new { id = x.Id, name = x.Name }).ToListAsync(cancellationToken);
                 return Results.Conflict(new { message = "Devam etmek için çalışacağınız şirketi seçin.", companies });
             }
@@ -252,7 +252,7 @@ public static class AccountEndpoints
                 return memberships.Count == 0
                     ? Results.Forbid()
                     : Results.ValidationProblem(new Dictionary<string, string[]> { ["companyId"] = ["Birden fazla şirket erişiminiz var; şirket seçin."] });
-            if (membership is not null && !await db.Companies.AsNoTracking()
+            if (membership is not null && !await db.Companies.IgnoreQueryFilters().AsNoTracking()
                     .AnyAsync(x => x.Id == membership.CompanyId && x.IsActive, cancellationToken))
                 return Results.Forbid();
 
@@ -583,8 +583,8 @@ public static class AccountEndpoints
             if (user is null) return Results.Unauthorized();
             if (!user.TwoFactorEnabled || string.IsNullOrEmpty(request.CurrentPassword) ||
                 !await userManager.CheckPasswordAsync(user, request.CurrentPassword)) return Results.Unauthorized();
-            if (await db.CompanyMemberships.AsNoTracking().AnyAsync(member => member.UserId == user.Id &&
-                db.Companies.Any(company => company.Id == member.CompanyId && company.IsActive && company.SecurityRequireMfa), cancellationToken))
+            if (await db.CompanyMemberships.IgnoreQueryFilters().AsNoTracking().AnyAsync(member => member.UserId == user.Id &&
+                db.Companies.IgnoreQueryFilters().Any(company => company.Id == member.CompanyId && company.IsActive && company.SecurityRequireMfa), cancellationToken))
                 return Results.Conflict(new { message = "Bu şirket iki aşamalı doğrulamayı zorunlu tutuyor. Önce şirket yöneticiniz bu politikayı kapatmalıdır." });
             var code = request.Code?.Trim();
             var verified = !string.IsNullOrEmpty(code) && await userManager.VerifyTwoFactorTokenAsync(user,
@@ -715,8 +715,8 @@ public static class AccountEndpoints
             IReadOnlyList<object> availableCompanies = Array.Empty<object>();
             if (Guid.TryParse(userId, out var parsedUserId) && companyId is not null)
             {
-                var memberships = await (from membership in db.CompanyMemberships.AsNoTracking()
-                                         join company in db.Companies.AsNoTracking() on membership.CompanyId equals company.Id
+                var memberships = await (from membership in db.CompanyMemberships.IgnoreQueryFilters().AsNoTracking()
+                                         join company in db.Companies.IgnoreQueryFilters().AsNoTracking() on membership.CompanyId equals company.Id
                                          where membership.UserId == parsedUserId && company.IsActive
                                          orderby company.Name
                                          select new { id = company.Id, name = company.Name, role = membership.RoleKey, company.Slug })
@@ -730,7 +730,7 @@ public static class AccountEndpoints
                 }).ToArray();
             }
             var companyName = companyId is Guid id
-                ? await db.Companies.AsNoTracking().Where(x => x.Id == id && x.IsActive)
+                ? await db.Companies.IgnoreQueryFilters().AsNoTracking().Where(x => x.Id == id && x.IsActive)
                     .Select(x => x.Name).SingleOrDefaultAsync(cancellationToken)
                 : null;
             var now = DateTimeOffset.UtcNow;
