@@ -347,7 +347,8 @@ public static class CheckoutEndpoints
 
     private static async Task<IResult> CallbackAsync(
         HttpContext context, AppDbContext db, IyzipayCheckoutClient iyzipay,
-        UserManager<EnvanterUser> userManager, IConfiguration configuration, ILogger<Program> logger,
+        UserManager<EnvanterUser> userManager, TenantProvisioningService tenantProvisioning,
+        IConfiguration configuration, ILogger<Program> logger,
         CancellationToken cancellationToken)
     {
         if (!context.Request.HasFormContentType)
@@ -356,13 +357,14 @@ public static class CheckoutEndpoints
         var token = form["token"].ToString();
         if (string.IsNullOrWhiteSpace(token) || token.Length > 256)
             return Results.BadRequest(new { message = "Ödeme bildirimi doğrulanamadı." });
-        return await ProcessCheckoutTokenAsync(token, null, null, context, db, iyzipay, userManager,
+        return await ProcessCheckoutTokenAsync(token, null, null, context, db, iyzipay, userManager, tenantProvisioning,
             configuration, logger, cancellationToken);
     }
 
     private static async Task<IResult> WebhookAsync(
         HttpContext context, AppDbContext db, IyzipayCheckoutClient iyzipay,
-        UserManager<EnvanterUser> userManager, IConfiguration configuration, IOptions<IyzipayOptions> configuredOptions,
+        UserManager<EnvanterUser> userManager, TenantProvisioningService tenantProvisioning,
+        IConfiguration configuration, IOptions<IyzipayOptions> configuredOptions,
         ILogger<Program> logger, CancellationToken cancellationToken)
     {
         var options = configuredOptions.Value;
@@ -418,7 +420,7 @@ public static class CheckoutEndpoints
             }
 
             var processingResult = await ProcessCheckoutTokenAsync(token, paymentId, status.ToUpperInvariant(), context, db,
-                iyzipay, userManager, configuration, logger, cancellationToken);
+                iyzipay, userManager, tenantProvisioning, configuration, logger, cancellationToken);
             if (processingResult is IStatusCodeHttpResult httpResult && (httpResult.StatusCode ?? StatusCodes.Status200OK) is >= 200 and < 300)
                 return Results.Ok(new { received = true });
             return processingResult;
@@ -427,7 +429,8 @@ public static class CheckoutEndpoints
 
     private static async Task<IResult> ProcessCheckoutTokenAsync(string token, string? expectedPaymentId,
         string? expectedPaymentStatus, HttpContext context, AppDbContext db, IyzipayCheckoutClient iyzipay,
-        UserManager<EnvanterUser> userManager, IConfiguration configuration, ILogger<Program> logger,
+        UserManager<EnvanterUser> userManager, TenantProvisioningService tenantProvisioning,
+        IConfiguration configuration, ILogger<Program> logger,
         CancellationToken cancellationToken)
     {
         var tokenHash = HashToken(token);
@@ -541,38 +544,22 @@ public static class CheckoutEndpoints
                     return CheckoutResult("support");
                 }
 
-                var owner = await userManager.FindByEmailAsync(lockedOrder.OwnerEmail);
-                var wasConfirmed = owner?.EmailConfirmed == true;
-                if (owner is null)
-                {
-                    var temporaryPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) + "aA1!";
-                    owner = new EnvanterUser { UserName = lockedOrder.OwnerEmail, Email = lockedOrder.OwnerEmail,
-                        EmailConfirmed = false, DisplayName = lockedOrder.OwnerName };
-                    var created = await userManager.CreateAsync(owner, temporaryPassword);
-                    if (!created.Succeeded)
-                        throw new InvalidOperationException("Owner account creation failed.");
-                }
-
                 var now = DateTimeOffset.UtcNow;
-                var company = new Company { Name = lockedOrder.CompanyName, Slug = lockedOrder.Slug,
-                    ContactEmail = lockedOrder.ContactEmail, SecurityRequireMfa = true };
-                db.Companies.Add(company);
-                db.CompanyMemberships.Add(new CompanyMembership { CompanyId = company.Id, UserId = owner.Id, RoleKey = "owner" });
-                db.TenantSubscriptions.Add(new TenantSubscription { CompanyId = company.Id, PlanId = plan.Id,
-                    Status = "Active", IsDemo = false, StartsAt = now, EndsAt = now.AddDays(lockedOrder.TermDays),
-                    PaymentReference = paymentReference });
-                lockedOrder.CompanyId = company.Id;
+                var provisioned = await tenantProvisioning.ProvisionCloudCompanyAsync(
+                    lockedOrder.CompanyName, lockedOrder.Slug, lockedOrder.ContactEmail,
+                    lockedOrder.OwnerName, lockedOrder.OwnerEmail, plan, lockedOrder.TermDays,
+                    paymentReference, now, cancellationToken);
+                lockedOrder.CompanyId = provisioned.Company.Id;
                 lockedOrder.PaymentReference = paymentReference;
                 lockedOrder.PaidAt = now;
                 lockedOrder.Status = "Provisioned";
                 await db.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
 
-                invitationEmail = owner.Email;
-                invitationName = owner.DisplayName;
-                companyName = company.Name;
-                invitationNeeded = !wasConfirmed;
-                if (wasConfirmed) invitationNeeded = true;
+                invitationEmail = provisioned.Owner.Email;
+                invitationName = provisioned.Owner.DisplayName;
+                companyName = provisioned.Company.Name;
+                invitationNeeded = true;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
             catch (Exception exception)
