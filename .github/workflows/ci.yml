@@ -263,6 +263,10 @@ jobs:
           docker build --tag envantertr-hosted-checkout-browser-ci --file deploy/testing/Dockerfile.hosted-checkout-browser .
           docker run --rm --init envantertr-hosted-checkout-browser-ci
 
+      - name: Run homepage gallery browser acceptance
+        shell: bash
+        run: docker run --rm --init --entrypoint node envantertr-hosted-checkout-browser-ci /acceptance/product-gallery.mjs
+
       - name: Verify application scripts and camera policy through Nginx
         shell: bash
         run: |

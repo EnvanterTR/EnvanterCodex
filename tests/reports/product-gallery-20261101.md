@@ -9,5 +9,5 @@
 - Yerel gerçek Chromium kabul testi: `node product-gallery.mjs` → PASS.
 - Test ortamı: Node 24.21.0, Playwright 1.64.0; kaynak `src/EnvanterTR.PublicSite` üzerinden sunuldu.
 - Masaüstü ve mobil görüntüler: `product-gallery-20261101/home-gallery-desktop.png`, `product-gallery-20261101/home-gallery-mobile.png`.
-- `Dockerfile.hosted-checkout-browser` artık galeri JS/CSS'ini, üç ek görseli ve Playwright galeri kabulünü aynı CI imajına dahil eder. Bu commit için GitHub CI sonucu ayrıca bekleniyor; önceki yeşil CI galeriyi çalıştırmıyordu.
+- `Dockerfile.hosted-checkout-browser` galeri JS/CSS'ini ve üç ek görseli CI imajına dahil eder. GitHub Actions galeri kabulini ayrı, görünür `Run homepage gallery browser acceptance` adımında çalıştırır; PowerShell yerel runner da aynı komutu çağırır.
 - Canlıya henüz yayınlanmadı.
