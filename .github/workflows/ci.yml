@@ -425,6 +425,22 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  homepage-gallery-acceptance:
+    name: Homepage gallery browser acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build browser acceptance image
+        shell: bash
+        run: docker build --tag envantertr-homepage-gallery-ci --file deploy/testing/Dockerfile.hosted-checkout-browser .
+
+      - name: Run homepage gallery browser acceptance
+        shell: bash
+        run: docker run --rm --init --entrypoint node envantertr-homepage-gallery-ci /acceptance/product-gallery.mjs
+
   linux-postgresql-acceptance:
     name: Linux PostgreSQL tenant acceptance
     runs-on: ubuntu-latest
