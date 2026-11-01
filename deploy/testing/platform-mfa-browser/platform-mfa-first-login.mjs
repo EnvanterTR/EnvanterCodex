@@ -228,6 +228,10 @@ try {
   await page.locator('#loginForm [name="password"]').fill(password);
   assert.equal(await mfaInputAfterFailure.isVisible(), true,
     'Correcting the password must preserve the visible authenticator field.');
+  await page.reload();
+  await mfaInputAfterFailure.waitFor({ state: 'visible' });
+  assert.equal(await mfaInputAfterFailure.isVisible(), true,
+    'Reloading after an MFA challenge must preserve the authenticator field for this browser tab.');
 
   // A fresh TOTP still works after the failed recovery-code replay.
   await submitLogin(page, totp(secret));
