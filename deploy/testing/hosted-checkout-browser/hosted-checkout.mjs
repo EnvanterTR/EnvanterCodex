@@ -182,6 +182,7 @@ await import('./platform-support-tickets.mjs');
 await import('./platform-admin-members.mjs');
 await import('./platform-admin-bootstrap.mjs');
 await import('./platform-password-recovery.mjs');
+await import('./annual-catalog.mjs');
 await import('./platform-audit-retention.mjs');
 await import('./public-site-pricing.mjs');
 await import('./employee-licenses.mjs');

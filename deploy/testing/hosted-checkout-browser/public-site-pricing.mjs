@@ -16,6 +16,7 @@ const publishedPlan = {
   name: 'Synthetic published Cloud plan',
   description: 'Synthetic description from the public plan API.',
   deploymentKind: 'cloud',
+  maxLoginUsers: 10,
   monthlyPrice: 990,
   annualPrice: 9900,
   oneTimePrice: 0,
@@ -187,6 +188,7 @@ try {
   const card = page.locator('.price-card').filter({ has: page.getByRole('heading', { name: publishedPlan.name }) });
   await card.waitFor({ state: 'visible' });
   assert.equal(await card.locator('p').innerText(), publishedPlan.description);
+  assert.match(await card.locator('.price-user-quota').innerText(), /^10\s/, 'Published account quota must be shown instead of an unlimited claim.');
   assert.match(await card.getByRole('link').getAttribute('href'), new RegExp(`^/checkout\\.html\\?planId=${publishedPlan.id}$`));
   await page.goto(`${baseUrl}/checkout.html?planId=${publishedPlan.id}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => !document.querySelector('#checkoutFields').disabled);

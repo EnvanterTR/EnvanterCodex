@@ -24,7 +24,7 @@ public static class PlatformEndpoints
             var plans = await db.SubscriptionPlans.AsNoTracking()
                 .Where(x => x.IsActive && x.IsPublic).OrderBy(x => x.SortOrder)
                 .Select(x => new { x.Id, x.Code, x.Name, x.Description, x.DeploymentKind,
-                    MaxLoginUsers = x.DeploymentKind == "cloud" ? (int?)null : x.MaxLoginUsers, x.MaxAssets,
+                    x.MaxLoginUsers, x.MaxAssets,
                     x.MonthlyPrice, x.AnnualPrice, x.OneTimePrice, x.Currency, x.SupportsOfflineUse, x.OfflineGraceDays, x.FeatureFlagsJson })
                 .ToListAsync(cancellationToken);
             return Results.Ok(plans);
@@ -1086,7 +1086,7 @@ public static class PlatformEndpoints
                 else
                 {
                     var memberCount = await db.CompanyMemberships.CountAsync(item => item.CompanyId == request.CompanyId, cancellationToken);
-                    if (subscription.DeploymentKind != "cloud" && subscription.MaxLoginUsers is int seatLimit && memberCount >= seatLimit)
+                    if (subscription.MaxLoginUsers is int seatLimit && memberCount >= seatLimit)
                         return Results.Conflict(new { message = $"Bu plan {seatLimit} giriş hesabıyla sınırlı. Kullanıcı eklemek için planı yükseltin." });
 
                     if (account is null)
@@ -1347,9 +1347,44 @@ public static class PlatformEndpoints
         admin.MapGet("/plans", async (AppDbContext db, CancellationToken cancellationToken) =>
             Results.Ok(await db.SubscriptionPlans.AsNoTracking().OrderBy(x => x.SortOrder)
                 .Select(x => new { x.Id, x.Code, x.Name, x.Description, x.DeploymentKind,
-                    MaxLoginUsers = x.DeploymentKind == "cloud" ? (int?)null : x.MaxLoginUsers, x.MaxAssets,
+                    x.MaxLoginUsers, x.MaxAssets,
                     x.MonthlyPrice, x.AnnualPrice, x.OneTimePrice, x.Currency, x.SupportsOfflineUse, x.OfflineGraceDays,
                     x.FeatureFlagsJson, x.IsPublic, x.IsActive, x.SortOrder }).ToListAsync(cancellationToken)));
+
+        admin.MapGet("/plans/annual-catalog", () => Results.Ok(new
+        {
+            version = AnnualCloudCatalog.Version, trialDays = AnnualCloudCatalog.TrialDays,
+            billingPeriod = "annual", taxIncluded = false, customQuoteAboveUsers = 2000,
+            plans = AnnualCloudCatalog.Tiers
+        }));
+
+        admin.MapPost("/plans/annual-catalog/drafts", async ([FromBody] CreateAnnualCatalogDraftsRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            var reason = request.ChangeReason?.Trim();
+            if (reason is null || reason.Length is < 8 or > 500)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["changeReason"] = ["8-500 karakterlik değişiklik gerekçesi girin."] });
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+            var codes = AnnualCloudCatalog.Tiers.Select(tier => tier.Code).ToArray();
+            var existingCodes = await db.SubscriptionPlans.Where(plan => codes.Contains(plan.Code)).Select(plan => plan.Code).ToListAsync(cancellationToken);
+            var created = new List<object>();
+            for (var index = 0; index < AnnualCloudCatalog.Tiers.Count; index++)
+            {
+                var tier = AnnualCloudCatalog.Tiers[index];
+                if (existingCodes.Contains(tier.Code)) continue;
+                var draft = AnnualCloudCatalog.Draft(tier, index + 1, reason);
+                if (!ValidatePlan(draft, out var errors)) return Results.ValidationProblem(errors!);
+                var plan = new SubscriptionPlan { Code = tier.Code, Name = tier.Name, DeploymentKind = "cloud" };
+                Apply(plan, draft, tier.Code);
+                db.SubscriptionPlans.Add(plan);
+                AddAudit(db, user, "AnnualCatalogDraftCreated", "SubscriptionPlan", plan.Id, null,
+                    JsonSerializer.Serialize(new { reason, version = AnnualCloudCatalog.Version, plan.Code, plan.MaxLoginUsers, plan.AnnualPrice, plan.MonthlyPrice, plan.IsPublic }));
+                created.Add(new { plan.Id, plan.Code });
+            }
+            try { await db.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken); }
+            catch (DbUpdateException) { return Results.Conflict(new { message = "Paket taslakları başka bir işlemle çakıştı. Listeyi yenileyin; mevcut kayıtlar korunur." }); }
+            return Results.Ok(new { created, preservedCodes = existingCodes, published = false });
+        });
 
         admin.MapPost("/plans", async ([FromBody] SavePlanRequest request, ClaimsPrincipal user,
             AppDbContext db, CancellationToken cancellationToken) =>
@@ -2201,8 +2236,6 @@ public static class PlatformEndpoints
         if (request.Description is { Length: > 2000 }) errors["description"] = ["Açıklama en fazla 2000 karakter olabilir."];
         if (request.DeploymentKind is not ("cloud" or "local-windows" or "windows-server" or "linux")) errors["deploymentKind"] = ["Dağıtım türü geçersiz."];
         if (request.MaxLoginUsers is <= 0 || request.MaxAssets is <= 0) errors["limits"] = ["Kullanıcı ve varlık sınırı pozitif sayı veya sınırsız için boş olmalıdır."];
-        if (request.DeploymentKind == "cloud" && request.MaxLoginUsers is not null)
-            errors["maxLoginUsers"] = ["Bulut planlarında giriş kullanıcısı sınırı yoktur; tüm şirket kullanıcıları dahildir."];
         const decimal maximumPrice = 9999999999999999.99m;
         if (request.MonthlyPrice < 0 || request.AnnualPrice < 0 || request.OneTimePrice < 0 ||
             request.MonthlyPrice > maximumPrice || request.AnnualPrice > maximumPrice || request.OneTimePrice > maximumPrice)
@@ -2316,7 +2349,7 @@ public static class PlatformEndpoints
         plan.Name = request.Name.Trim();
         plan.Description = Clean(request.Description);
         plan.DeploymentKind = request.DeploymentKind;
-        plan.MaxLoginUsers = request.DeploymentKind == "cloud" ? null : request.MaxLoginUsers;
+        plan.MaxLoginUsers = request.MaxLoginUsers;
         plan.MaxAssets = request.MaxAssets;
         plan.MonthlyPrice = request.MonthlyPrice;
         plan.AnnualPrice = request.AnnualPrice;

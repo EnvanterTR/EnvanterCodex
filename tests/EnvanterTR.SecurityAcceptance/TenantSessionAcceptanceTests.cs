@@ -3039,7 +3039,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                    JsonContent.Create(Request("Plan açılış gerekçesi"))))
             Assert.Equal(HttpStatusCode.BadRequest, noCsrf.StatusCode);
         using (var invalidCloudLimit = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/plans",
-                   JsonContent.Create(Request("Plan açılış gerekçesi", maxLoginUsers: 10)), requestToken, antiforgeryCookie))
+                   JsonContent.Create(Request("Plan açılış gerekçesi", maxLoginUsers: 0)), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.BadRequest, invalidCloudLimit.StatusCode);
         using (var missingReason = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/plans",
                    JsonContent.Create(Request("   ")), requestToken, antiforgeryCookie))
@@ -5647,12 +5647,12 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Cloud_company_invites_are_unlimited_even_for_legacy_capped_plans_while_local_caps_remain_enforced()
+    public async Task Uncapped_cloud_company_invites_work_while_local_caps_remain_enforced()
     {
         var plan = new SubscriptionPlan
         {
             Code = $"c-{_companyId:N}", Name = "Cloud invite regression", DeploymentKind = "cloud",
-            MaxLoginUsers = 1, IsActive = true, IsPublic = true
+            MaxLoginUsers = null, IsActive = true, IsPublic = true
         };
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
@@ -5699,6 +5699,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                 select membership).AnyAsync());
             plan = await db.SubscriptionPlans.SingleAsync(x => x.Id == plan.Id);
             plan.DeploymentKind = "local-windows";
+            plan.MaxLoginUsers = 1;
             await db.SaveChangesAsync();
         }
 
@@ -5720,7 +5721,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         var plan = new SubscriptionPlan
         {
             Code = $"m-{_companyId:N}", Name = "Multi-company invite", DeploymentKind = "cloud",
-            MaxLoginUsers = 1, IsActive = true, IsPublic = true
+            MaxLoginUsers = null, IsActive = true, IsPublic = true
         };
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
