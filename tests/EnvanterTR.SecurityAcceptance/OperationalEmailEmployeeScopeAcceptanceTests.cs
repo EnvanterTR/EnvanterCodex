@@ -8,6 +8,45 @@ namespace EnvanterTR.SecurityAcceptance;
 
 public sealed partial class TenantSessionAcceptanceTests
 {
+    [Fact]
+    public async Task Operational_notification_background_emails_keep_each_company_digest_separate()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var ownMarker = $"OWN-DIGEST-{suffix}";
+        var otherMarker = $"OTHER-DIGEST-{suffix}";
+        var tomorrow = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1);
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.CompanyMemberships.Add(new CompanyMembership { CompanyId = _otherCompanyId, UserId = _userId, RoleKey = "admin" });
+        var ownAsset = await db.Assets.SingleAsync(asset => asset.Id == _ownAssetId);
+        ownAsset.Name = ownMarker;
+        ownAsset.NextAuditOn = tomorrow;
+        var otherAsset = await db.Assets.SingleAsync(asset => asset.Id == _otherCompanyAssetId);
+        otherAsset.Name = otherMarker;
+        otherAsset.NextAuditOn = tomorrow;
+        db.OperationalNotificationPreferences.AddRange(
+            new OperationalNotificationPreference { CompanyId = _companyId, UserId = _userId,
+                EnabledKindsJson = "[]", EmailEnabledKindsJson = "[\"audit\"]" },
+            new OperationalNotificationPreference { CompanyId = _otherCompanyId, UserId = _userId,
+                EnabledKindsJson = "[]", EmailEnabledKindsJson = "[\"audit\"]" });
+        await db.SaveChangesAsync();
+
+        var service = scope.ServiceProvider.GetRequiredService<OperationalNotificationEmailService>();
+        await service.RunOnceAsync(CancellationToken.None);
+
+        var delivered = _smtpCapture.Messages.Select(message => DecodeMimeBody(message)).ToArray();
+        var ownDigest = Assert.Single(delivered, body => body.Contains(ownMarker, StringComparison.Ordinal));
+        var otherDigest = Assert.Single(delivered, body => body.Contains(otherMarker, StringComparison.Ordinal));
+        Assert.DoesNotContain(otherMarker, ownDigest, StringComparison.Ordinal);
+        Assert.DoesNotContain(ownMarker, otherDigest, StringComparison.Ordinal);
+
+        var digests = await db.OperationalNotificationEmailDigests.AsNoTracking()
+            .Where(digest => digest.UserId == _userId && (digest.CompanyId == _companyId || digest.CompanyId == _otherCompanyId))
+            .ToListAsync();
+        Assert.Equal(2, digests.Count);
+        Assert.All(digests, digest => Assert.Equal("Sent", digest.Status));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

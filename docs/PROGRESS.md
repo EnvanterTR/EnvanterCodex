@@ -27,3 +27,9 @@
 - Database test: not run locally because `ENVANTERTR_SECURITY_TEST_CONNECTION` is unset. The PostgreSQL-backed test must pass in CI before this requirement can be marked complete.
 - `git diff --check` passed. No production DB or live service changes.
 - Next: push this focused acceptance test to PR #30 and wait for terminal PostgreSQL/security CI results.
+
+## 2026-11-01 — P1 operational notification tenant-boundary acceptance
+- Added `Operational_notification_background_emails_keep_each_company_digest_separate`: the same authorized user receives two scheduled audit digests, each company-specific; the test asserts that company A's email excludes B's asset marker and vice versa, and both digest records reach `Sent`.
+- Build: `dotnet build tests/EnvanterTR.SecurityAcceptance/EnvanterTR.SecurityAcceptance.csproj --no-restore` → succeeded, 0 errors; 4 existing ASP.NET deprecation warnings. `git diff --check` passed.
+- Local database execution remains unavailable (no `ENVANTERTR_SECURITY_TEST_CONNECTION`; Docker Desktop engine unavailable). Hosted PostgreSQL CI required; this test is not yet passed.
+- Next: push focused regression to PR #30 and inspect the hosted PostgreSQL result.
