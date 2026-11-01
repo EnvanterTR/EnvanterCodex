@@ -1416,3 +1416,9 @@ BirleşikP1adayf8340d9fa6887a6c8745f152670a72879dee1419tekpush'lagönderildi;CI4
 - `AccountPhotoMediaNamespaceAcceptanceTests.cs`: `/accounts` dizin yolu yerine dosya konmasıyla yazılamaz depolama senaryosu ekleniyor; 503, hassas path sızmaması ve marker dosyanın korunması kontrol ediliyor.
 - Windows web build: başarılı, 0 warning/0 error. SecurityAcceptance test projesi build: başarılı, 10 mevcut analyzer/nullability warning, 0 error. Testin gerçek HTTP sonucu CI'da doğrulanmalı.
 - Canlıya yayın yapılmadı; bu değişiklik kullanıcıdaki önceki 500'ün kesin kök nedeni olarak sunulmuyor, yalnız kanıtlanabilir storage failure davranışını düzeltir.
+
+## 1 Kasım 2026 — tanıtım galerisi tam ekran ve CI kapsamı
+- `product-gallery.js`: özgün etiket rulosu ile sonradan eklenen üç resme aynı erişilebilir tam ekran davranışı bağlandı. Enter/Space, Escape ve kapatınca odağı görsele döndürme destekleniyor.
+- `product-gallery.mjs`: dört slaydın tümünü açıp kapatma, kaynak doğruluğu, focus restoration, carousel autoplay, manuel geçiş ve mobil taşmama Chromium testi eklendi; yerel Chromium testi PASS.
+- `Dockerfile.hosted-checkout-browser`: daha önce eksik olan test ve public-site script/style/üç görseli imaja kopyalayıp mevcut CI komutunda testi çalıştıracak şekilde bağlandı. Eski CI sonucu bu davranışı kapsamıyordu; yeni commit CI'si sonucu gelmeden CI kapısı geçti denmeyecek.
+- Görsel kanıt `tests/reports/product-gallery-20261101/`, kabul kaydı `tests/reports/product-gallery-20261101.md`. Canlıya yayın yapılmadı.

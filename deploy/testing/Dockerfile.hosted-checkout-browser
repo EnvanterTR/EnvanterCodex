@@ -4,6 +4,7 @@ WORKDIR /acceptance
 COPY deploy/testing/hosted-checkout-browser/package.json deploy/testing/hosted-checkout-browser/package-lock.json ./
 RUN npm ci --omit=dev
 COPY deploy/testing/hosted-checkout-browser/hosted-checkout.mjs ./
+COPY deploy/testing/hosted-checkout-browser/product-gallery.mjs ./
 COPY deploy/testing/hosted-checkout-browser/checkout-user-quota.mjs ./
 COPY deploy/testing/hosted-checkout-browser/command-palette.mjs ./
 COPY deploy/testing/hosted-checkout-browser/company-portal-login.mjs ./
@@ -37,7 +38,9 @@ COPY deploy/testing/hosted-checkout-browser/platform-audit-retention.mjs ./
 COPY deploy/testing/hosted-checkout-browser/public-site-pricing.mjs ./
 COPY src/EnvanterTR.PublicSite/checkout.html src/EnvanterTR.PublicSite/checkout.js /checkout-site/
 COPY src/EnvanterTR.PublicSite/index.html /public-site/index.html
+COPY src/EnvanterTR.PublicSite/product-gallery.js src/EnvanterTR.PublicSite/product-gallery.css /public-site/
 COPY src/EnvanterTR.PublicSite/assets/images/asset-label-roll-transparent.png /public-site/assets/images/asset-label-roll-transparent.png
+COPY src/EnvanterTR.PublicSite/assets/images/asset-label-devices.png src/EnvanterTR.PublicSite/assets/images/asset-label-hardware.png src/EnvanterTR.PublicSite/assets/images/asset-label-desktop.png /public-site/assets/images/
 COPY src/EnvanterTR.PublicSite/assets/images/account-security-product-preview.png /public-site/assets/images/account-security-product-preview.png
 COPY src/EnvanterTR.PublicSite/assets/images/farma-company-portal-preview.png /public-site/assets/images/farma-company-portal-preview.png
 COPY src/EnvanterTR.Web/wwwroot/index.html /checkout-site/company-app.html
@@ -52,6 +55,7 @@ COPY src/EnvanterTR.Web/wwwroot/platform-setup.html /platform-site/platform-setu
 COPY src/EnvanterTR.Web/wwwroot/platform-admin-members.js src/EnvanterTR.Web/wwwroot/platform-admin-subscriptions.js src/EnvanterTR.Web/wwwroot/platform-admin-demo-requests.js src/EnvanterTR.Web/wwwroot/platform-admin-payment-follow-ups.js /platform-site/
 
 COPY src/EnvanterTR.PublicSite/trial.html src/EnvanterTR.PublicSite/trial.js /public-site/
-CMD ["node", "hosted-checkout.mjs"]
+RUN mkdir -p /artifacts
+CMD ["sh", "-c", "node hosted-checkout.mjs && node product-gallery.mjs"]
 
 COPY deploy/testing/hosted-checkout-browser/platform-impersonation.mjs ./
