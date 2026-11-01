@@ -139,7 +139,7 @@ Bu ek, yukarıdaki 23 Ekim tarihli sayısal/altyapı anlık görüntüsünü gü
 | M6 — Finans örneği; `PRODUCT-COVERAGE.md:10` | Satın alma siparişinde %20 KDV | `src/EnvanterTR.Web/Data/AssetPurchaseOrderEndpoints.cs:61,431` | `tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs:16648–16753`, `Asset_purchase_orders_are_tenant_scoped_export_formula_safe_and_receive_assets_atomically`; Chromium notu `PRODUCT-COVERAGE.md:10`. | **İLERLEME YÜZDESİ DEĞİL:** Finans test girdisi; sipariş tutarı hesabı doğrulanmış. |
 ### Değer-kaynak indeksi
 
-54 normalize edilmiş sayısal değer üç kaynak belgedeki yüzde yazımlarının tamamını satır konumlarına bağlar. `%x` ve `x%` biçimleri aynı değerde birleştirildi. `M1`–`M6`, yukarıdaki beş sütunlu denetim tablosunun id'leridir; her değerin kod/test hükmü ilgili aile satırında yer alır.
+54 normalize edilmiş sayısal değer üç kaynak belgedeki yüzde yazımlarının tamamını satır konumlarına bağlar. `%x` ve `x%` biçimleri aynı değerde birleştirildi. `M1`–`M6`, yukarıdaki beş sütunlu denetim tablosunun id'leridir; her değerin kod/test hükmü ilgili aile satırında yer alır. 2026-11-01 yeniden üretiminde 166 yüzde içeren kaynak satırı, 54 kaynak sayısal değer, 55 indeks girdisi (100 hedefi ve tarihli pano sonucu ayrı), 0 boş kaynak referansı ve 0 indekste eksik/fazla sayısal değer bulundu. Karşılaştırma `74,10` / `74,1` gibi gösterim farklarını ondalık sayısal normalizasyonla birleştirir.
 
 | Normalize değer (%) | Kaynak satırlar | Denetim satırı |
 |---|---|---|
