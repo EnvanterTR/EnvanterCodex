@@ -14,6 +14,7 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseWindowsService();
+builder.Services.AddHttpContextAccessor();
 
 // Windows Server installs keep the PostgreSQL password in a LocalMachine DPAPI
 // blob under ProgramData. Only the service identity and administrators can read it.
@@ -418,6 +419,8 @@ app.Use(async (context, next) =>
     var platformAdminClaim = principal.HasClaim("platform_admin", "true");
     var isPlatformAdmin = platformAdminClaim && await db.PlatformAdministrators.AsNoTracking()
         .AnyAsync(x => x.UserId == userId, context.RequestAborted);
+    if (isPlatformAdmin && context.Request.Path.StartsWithSegments("/api/platform"))
+        db.DisableTenantQueryFiltersForVerifiedPlatformRequest();
     if (isPlatformAdmin && context.Request.Path.StartsWithSegments("/api/platform"))
     {
         var platformMfaEnabled = await db.Users.AsNoTracking().Where(x => x.Id == userId)
