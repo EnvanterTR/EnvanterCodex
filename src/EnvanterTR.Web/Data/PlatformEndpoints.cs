@@ -1453,7 +1453,7 @@ public static class PlatformEndpoints
 
             var company = provisioned.Company;
             var owner = provisioned.Owner;
-            var subscription = provisioned.Subscription;
+            var subscription = provisioned.Subscription!;
             AddAudit(db, user, "PaidCompanyProvisioned", "Company", company.Id, company.Id,
                 $"{plan.Code} · {request.TermDays} gün · ödeme platform yöneticisi tarafından doğrulandı.");
             try

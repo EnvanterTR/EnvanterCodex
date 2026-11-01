@@ -55,7 +55,8 @@ public static class AccountEndpoints
 
         endpoints.MapPost("/api/setup/initial-owner", async ([FromBody] InitialOwnerRequest request,
             HttpContext context, IAntiforgery antiforgery, IConfiguration configuration,
-            AppDbContext db, UserManager<EnvanterUser> userManager, CancellationToken cancellationToken) =>
+            AppDbContext db, UserManager<EnvanterUser> userManager, TenantProvisioningService tenantProvisioning,
+            CancellationToken cancellationToken) =>
         {
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
             var suppliedToken = context.Request.Headers["X-Setup-Token"].ToString();
@@ -102,12 +103,7 @@ public static class AccountEndpoints
                     });
                 }
             }
-            db.Companies.Add(company);
-
-            db.CompanyMemberships.Add(new CompanyMembership
-            {
-                CompanyId = company.Id, UserId = user.Id, RoleKey = "owner"
-            });
+            tenantProvisioning.ProvisionInitialCompany(company, user);
             try
             {
                 await db.SaveChangesAsync(cancellationToken);

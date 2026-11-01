@@ -68,6 +68,24 @@ public sealed class TenantProvisioningService(
             PaymentReference = paymentReference
         };
 
+        AddCompanyOwner(company, owner);
+        db.TenantSubscriptions.Add(subscription);
+
+        return new TenantProvisioningResult(company, owner, subscription, ownerEmailConfirmed);
+    }
+
+    public TenantProvisioningResult ProvisionInitialCompany(
+        Company company,
+        EnvanterUser owner)
+    {
+        ArgumentNullException.ThrowIfNull(company);
+        ArgumentNullException.ThrowIfNull(owner);
+        AddCompanyOwner(company, owner);
+        return new TenantProvisioningResult(company, owner, null, owner.EmailConfirmed);
+    }
+
+    private void AddCompanyOwner(Company company, EnvanterUser owner)
+    {
         db.Companies.Add(company);
         db.CompanyMemberships.Add(new CompanyMembership
         {
@@ -75,16 +93,13 @@ public sealed class TenantProvisioningService(
             UserId = owner.Id,
             RoleKey = "owner"
         });
-        db.TenantSubscriptions.Add(subscription);
-
-        return new TenantProvisioningResult(company, owner, subscription, ownerEmailConfirmed);
     }
 }
 
 public sealed record TenantProvisioningResult(
     Company Company,
     EnvanterUser Owner,
-    TenantSubscription Subscription,
+    TenantSubscription? Subscription,
     bool OwnerEmailConfirmed);
 
 public sealed class TenantOwnerCreationException : Exception { }
