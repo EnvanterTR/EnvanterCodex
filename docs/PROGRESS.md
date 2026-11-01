@@ -1422,3 +1422,11 @@ BirleşikP1adayf8340d9fa6887a6c8745f152670a72879dee1419tekpush'lagönderildi;CI4
 - `product-gallery.mjs`: dört slaydın tümünü açıp kapatma, kaynak doğruluğu, focus restoration, carousel autoplay, manuel geçiş ve mobil taşmama Chromium testi eklendi; yerel Chromium testi PASS.
 - `Dockerfile.hosted-checkout-browser`: daha önce eksik olan test ve public-site script/style/üç görseli imaja kopyalayıp mevcut CI komutunda testi çalıştıracak şekilde bağlandı. Eski CI sonucu bu davranışı kapsamıyordu; yeni commit CI'si sonucu gelmeden CI kapısı geçti denmeyecek.
 - Görsel kanıt `tests/reports/product-gallery-20261101/`, kabul kaydı `tests/reports/product-gallery-20261101.md`. Canlıya yayın yapılmadı.
+
+## 1 Kasım 2026 — P0 canlı gerçeklik kontrolü
+- Durum: salt-okunur canlı sağlık/satış uçları TAMAM; P0-B üretim migration karşılaştırması ve P0-D gerçek checkout AÇIK.
+- Komut: `node tools/Check-CoolifyProduction.mjs` → kaynak 126 / çalışan uygulama 122; apex ve firma health HTTP 200 `ready`; plan listesi 8; checkout `available:false`.
+- Ek doğrudan salt-okunur GET: envantertr.com, firma, Santa ve Farma `/api/status` her biri HTTP 200 `ready`, 122 migration, 0 bekleyen.
+- Kanıt: `tests/reports/p0-live-reality-20261101.md`.
+- Canlı DB'ye sorgu, migration, Coolify ayarı veya ödeme yazımı yapılmadı. Hedef P0-B exact migration history + katalog preflight için üretim DB salt-okunur bağlantısı gerektiriyor; P0-D iyzico işyeri hesabı/anahtarları gerektiriyor.
+- Sıradaki: PR #27 tam CI sonucunu al; ardından P0/B erişim bağımsız işlerini ve Hedef sırasını sürdür.
