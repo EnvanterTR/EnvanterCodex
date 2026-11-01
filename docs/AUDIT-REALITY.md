@@ -131,12 +131,73 @@ Bu ek, yukarıdaki 23 Ekim tarihli sayısal/altyapı anlık görüntüsünü gü
 
 | Madde | İddia | Kodda karşılığı (dosya:satır) | Test | Gerçek durum |
 |---|---|---|---|---|
-| Hedef §4.1; `PROJECT-STATUS.md:271–273, 941–947` | “%66 tamamlandı” savı; karşılaştırmalardaki %40/%39,7 işlev tahmini ve %30±5 teslim edilebilir ürün tahmini; hesabın elle seçtiği %70/%15/%15 ağırlıkları ve %25 operasyon varsayımı | **Yüzde hesaplayıcı yok.** 271–273 satırlarındaki puanlar elle seçilmiş ağırlıklara dayanıyor; 941–947 checklist sayımı ürün kabul algoritması değil. | %66'yı üreten veya 118 Hedef maddesini ortak paydada sayan güncel test bulunmadı. | **DOĞRULANMADI:** %66 kanıtlanmadı; farklı tahminler birbirini doğrulamıyor. |
-| Tamamlanma hedefi; `PROJECT-STATUS.md:8,11,935`, `ROADMAP.md:5` | Web V1 için %100 hedefi | Hedefi ölçen ürün kodu yok. | Hedef yüzdesi testi yok; özellik testleri ayrı tutuluyor. | **HEDEF:** ölçüm veya bitmiş olma iddiası değil. |
-| Tarihli pano ve alt metrikler; `PROJECT-STATUS.md:59–64, 572–728`, tekrarlar `PRODUCT-COVERAGE.md:23–24, 673` | 23,81; 33,33; 34,02; 36,63; 37,25; 56; 59; 60; 65; 65,35; 65,79; 66; 66,23; 66,65; 67; 67,06; 67,46; 68; 68,24; 68,98; 69; 69,33; 71,31; 71,62; 72; 72,21; 72,49; 72,78; 73,58; 73,84; 74; 74,10; 74,35; 74,59; 74,83; 75,07 ve tekil %100 | Bu ortalama/alt puanları Hedef kapsamından hesaplayan kanonik kaynak bulunmadı; değerler tarihli durum metinlerinde elle raporlanmış. | `tests/reports/ui-test-results-2026-10-19.md` ve `tests/reports/d19-company-unit-types-2026-10-18.md` pano görünümü/filtrelerini kontrol ediyor; hesaplama paydasını ya da ürünün tamamlanmasını doğrulamıyor. | **TARİHSEL / SINIRLI:** Pano görüntüleme kanıtı var; puan hesabı ve V1 geneline uygulanması doğrulanmadı. |
-| Birikimli kabul alt sayaçları; `PROJECT-STATUS.md:22–41, 727–928, 1012`, tekrarlar `PRODUCT-COVERAGE.md:6, 704–814` | 39/103=%37,86; 40/104=%38,46; 41/105=%39,05; 42/106=%39,62; 43/107=%40,19; 44/107=%41,12; 45/107=%42,06 | Sayacı üreten kanonik kod yok; tekil özellik kaynakları ilgili tarihli günlük satırlarında anılıyor. | Günlük notlarında dar Chromium/PostgreSQL testleri var; paydadaki tüm maddeleri aynı Hedef kapsamıyla doğrulayan tek test paketi yok. | **TARİHSEL ALT KABUL:** O gün belirtilen senaryolara dair kanıttır; güncel güvenlik/canlı durumu veya V1 tamamlanma oranı değildir. |
-| Checklist ve teslim süresi tahmini; `PROJECT-STATUS.md:941–947` | 180/279=%64,52; P.7 çıkarılınca 180/254=%70,87; 204/254=%80 eşiği; 10–15 / 20–30 iş günü tahmini | Bu sayıları oluşturan güncel kaynak dosyası bulunmadı; pay/payda manuel checklist sayımı. | Checklist satır sayımı ürün akışlarının uçtan uca çalışmasını doğrulamaz; süre tahminini kanıtlayan test yok. | **CHECKLIST / PLAN:** Güncel ürün oranı veya süre garantisi değil. |
-| Finans örneği; `PRODUCT-COVERAGE.md:10` | Satın alma siparişinde %20 KDV | `src/EnvanterTR.Web/Data/AssetPurchaseOrderEndpoints.cs:61,431` | `tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs:16648–16753`, `Asset_purchase_orders_are_tenant_scoped_export_formula_safe_and_receive_assets_atomically`; Chromium notu `PRODUCT-COVERAGE.md:10`. | **İLERLEME YÜZDESİ DEĞİL:** Finans test girdisi; sipariş tutarı hesabı doğrulanmış. |
+| M1 — Hedef §4.1; `PROJECT-STATUS.md:271–273, 941–947` | “%66 tamamlandı” savı; karşılaştırmalardaki %40/%39,7 işlev tahmini ve %30±5 teslim edilebilir ürün tahmini; hesabın elle seçtiği %70/%15/%15 ağırlıkları ve %25 operasyon varsayımı | **Yüzde hesaplayıcı yok.** 271–273 satırlarındaki puanlar elle seçilmiş ağırlıklara dayanıyor; 941–947 checklist sayımı ürün kabul algoritması değil. | %66'yı üreten veya 118 Hedef maddesini ortak paydada sayan güncel test bulunmadı. | **DOĞRULANMADI:** %66 kanıtlanmadı; farklı tahminler birbirini doğrulamıyor. |
+| M2 — Tamamlanma hedefi; `PROJECT-STATUS.md:8,11,935`, `ROADMAP.md:5` | Web V1 için %100 hedefi | Hedefi ölçen ürün kodu yok. | Hedef yüzdesi testi yok; özellik testleri ayrı tutuluyor. | **HEDEF:** ölçüm veya bitmiş olma iddiası değil. |
+| M3 — Tarihli pano ve alt metrikler; `PROJECT-STATUS.md:59–64, 572–728`, tekrarlar `PRODUCT-COVERAGE.md:23–24, 673` | 23,81; 33,33; 34,02; 36,63; 37,25; 56; 59; 60; 65; 65,35; 65,79; 66; 66,23; 66,65; 67; 67,06; 67,46; 68; 68,24; 68,98; 69; 69,33; 71,31; 71,62; 72; 72,21; 72,49; 72,78; 73,58; 73,84; 74; 74,10; 74,35; 74,59; 74,83; 75,07 ve tekil %100 | Bu ortalama/alt puanları Hedef kapsamından hesaplayan kanonik kaynak bulunmadı; değerler tarihli durum metinlerinde elle raporlanmış. | `tests/reports/ui-test-results-2026-10-19.md` ve `tests/reports/d19-company-unit-types-2026-10-18.md` pano görünümü/filtrelerini kontrol ediyor; hesaplama paydasını ya da ürünün tamamlanmasını doğrulamıyor. | **TARİHSEL / SINIRLI:** Pano görüntüleme kanıtı var; puan hesabı ve V1 geneline uygulanması doğrulanmadı. |
+| M4 — Birikimli kabul alt sayaçları; `PROJECT-STATUS.md:22–41, 727–928, 1012`, tekrarlar `PRODUCT-COVERAGE.md:6, 704–814` | 39/103=%37,86; 40/104=%38,46; 41/105=%39,05; 42/106=%39,62; 43/107=%40,19; 44/107=%41,12; 45/107=%42,06 | Sayacı üreten kanonik kod yok; tekil özellik kaynakları ilgili tarihli günlük satırlarında anılıyor. | Günlük notlarında dar Chromium/PostgreSQL testleri var; paydadaki tüm maddeleri aynı Hedef kapsamıyla doğrulayan tek test paketi yok. | **TARİHSEL ALT KABUL:** O gün belirtilen senaryolara dair kanıttır; güncel güvenlik/canlı durumu veya V1 tamamlanma oranı değildir. |
+| M5 — Checklist ve teslim süresi tahmini; `PROJECT-STATUS.md:941–947` | 180/279=%64,52; P.7 çıkarılınca 180/254=%70,87; 204/254=%80 eşiği; 10–15 / 20–30 iş günü tahmini | Bu sayıları oluşturan güncel kaynak dosyası bulunmadı; pay/payda manuel checklist sayımı. | Checklist satır sayımı ürün akışlarının uçtan uca çalışmasını doğrulamaz; süre tahminini kanıtlayan test yok. | **CHECKLIST / PLAN:** Güncel ürün oranı veya süre garantisi değil. |
+| M6 — Finans örneği; `PRODUCT-COVERAGE.md:10` | Satın alma siparişinde %20 KDV | `src/EnvanterTR.Web/Data/AssetPurchaseOrderEndpoints.cs:61,431` | `tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs:16648–16753`, `Asset_purchase_orders_are_tenant_scoped_export_formula_safe_and_receive_assets_atomically`; Chromium notu `PRODUCT-COVERAGE.md:10`. | **İLERLEME YÜZDESİ DEĞİL:** Finans test girdisi; sipariş tutarı hesabı doğrulanmış. |
+### Değer-kaynak indeksi
+
+54 normalize edilmiş sayısal değer üç kaynak belgedeki yüzde yazımlarının tamamını satır konumlarına bağlar. `%x` ve `x%` biçimleri aynı değerde birleştirildi. `M1`–`M6`, yukarıdaki beş sütunlu denetim tablosunun id'leridir; her değerin kod/test hükmü ilgili aile satırında yer alır.
+
+| Normalize değer (%) | Kaynak satırlar | Denetim satırı |
+|---|---|---|| 100 (hedef) | `PROJECT-STATUS.md:8,11,935`; `ROADMAP.md:5` | M2 |
+| 100 (tarihli tekil pano sonucu) | `PROJECT-STATUS.md:63,593`; `PRODUCT-COVERAGE.md:23` | M3 |
+| 15 | `PROJECT-STATUS.md:273` | M1 |
+| 20 | `PRODUCT-COVERAGE.md:10` | M6 |
+| 23,81 | `PROJECT-STATUS.md:624` | M3 |
+| 25 | `PROJECT-STATUS.md:273` | M1 |
+| 30 | `PROJECT-STATUS.md:273` | M1 |
+| 33,33 | `PROJECT-STATUS.md:662` | M3 |
+| 34,02 | `PROJECT-STATUS.md:667, 680` | M3 |
+| 36,63 | `PROJECT-STATUS.md:695` | M3 |
+| 37,25 | `PROJECT-STATUS.md:695` | M3 |
+| 37,86 | `PROJECT-STATUS.md:702` | M4 |
+| 38,46 | `PROJECT-STATUS.md:708, 714` | M4 |
+| 39,05 | `PROJECT-STATUS.md:714, 721` | M4 |
+| 39,62 | `PROJECT-STATUS.md:721, 728` | M4 |
+| 39,7 | `PROJECT-STATUS.md:271, 273` | M1 |
+| 40 | `PROJECT-STATUS.md:271` | M1 |
+| 40,19 | `PROJECT-STATUS.md:727–728, 747–770, 772–792`; `PRODUCT-COVERAGE.md:6, 704, 708` | M4 |
+| 41,12 | `PROJECT-STATUS.md:25–41, 805–810, 812, 816, 818, 820, 822, 824, 827, 831–833`; `PRODUCT-COVERAGE.md:721, 763, 767, 771, 775, 779, 783, 787, 791, 795, 803` | M4 |
+| 42,06 | `PROJECT-STATUS.md:22–24, 834–844, 848, 852, 854, 857, 861, 865, 877, 887, 892, 897, 902, 907, 913, 917, 1012`; `PRODUCT-COVERAGE.md:806, 810, 814` | M4 |
+| 56 | `PROJECT-STATUS.md:620, 638, 702` | M3 |
+| 59 | `PROJECT-STATUS.md:572, 620, 702` | M3 |
+| 60 | `PROJECT-STATUS.md:593` | M3 |
+| 64,52 | `PROJECT-STATUS.md:941, 946` | M5 |
+| 65 | `PROJECT-STATUS.md:572–573, 593` | M3 |
+| 65,35 | `PROJECT-STATUS.md:572` | M3 |
+| 65,79 | `PROJECT-STATUS.md:586`; `PRODUCT-COVERAGE.md:673` | M3 |
+| 66 | `PROJECT-STATUS.md:586` | M3 |
+| 66,23 | `PROJECT-STATUS.md:608`; `PRODUCT-COVERAGE.md:673` | M3 |
+| 66,65 | `PROJECT-STATUS.md:63–64, 608`; `PRODUCT-COVERAGE.md:24` | M3 |
+| 67 | `PROJECT-STATUS.md:64, 608, 620` | M3 |
+| 67,06 | `PROJECT-STATUS.md:63`; `PRODUCT-COVERAGE.md:23` | M3 |
+| 67,46 | `PROJECT-STATUS.md:59–62, 612, 618` | M3 |
+| 68 | `PROJECT-STATUS.md:620` | M3 |
+| 68,24 | `PROJECT-STATUS.md:618, 620` | M3 |
+| 68,98 | `PROJECT-STATUS.md:629` | M3 |
+| 69 | `PROJECT-STATUS.md:629` | M3 |
+| 69,33 | `PROJECT-STATUS.md:629` | M3 |
+| 70 | `PROJECT-STATUS.md:273` | M1 |
+| 70,87 | `PROJECT-STATUS.md:946` | M5 |
+| 71,31 | `PROJECT-STATUS.md:644` | M3 |
+| 71,62 | `PROJECT-STATUS.md:650` | M3 |
+| 72 | `PROJECT-STATUS.md:662, 667, 680` | M3 |
+| 72,21 | `PROJECT-STATUS.md:662` | M3 |
+| 72,49 | `PROJECT-STATUS.md:667, 680` | M3 |
+| 72,78 | `PROJECT-STATUS.md:680` | M3 |
+| 73,58 | `PROJECT-STATUS.md:695` | M3 |
+| 73,84 | `PROJECT-STATUS.md:695` | M3 |
+| 74 | `PROJECT-STATUS.md:638, 695, 702` | M3 |
+| 74,10 | `PROJECT-STATUS.md:702` | M3 |
+| 74,35 | `PROJECT-STATUS.md:708, 714` | M3 |
+| 74,59 | `PROJECT-STATUS.md:714, 721` | M3 |
+| 74,83 | `PROJECT-STATUS.md:721, 728` | M3 |
+| 75,07 | `PROJECT-STATUS.md:727–728` | M3 |
+| 80 | `PROJECT-STATUS.md:947` | M5 |
+
 Tarama çıktısı bu 166 satırı ve dosya dağılımını sayısal olarak doğrular; yukarıdaki aralıklar aynı tarihli kayıt ailelerinin tam kaynak konumlarıdır. P0-A tablosu, tarihsel oranların kapsamını sınıflandırır; her tarihli kabul kaydının gerçek kaynak/test dosyası ve Hedef atomik maddesiyle satır-bazlı eşlemesi henüz bitmedi. Süper-admin giriş ekranı bu oturumda açık değil; açığa çıkmış parola kullanılmayacak. Bu nedenle P0-A **KISMEN TAMAM**, Hedef §4.2 izlenebilirlik ve §473 başlangıç kanıtı **DOĞRULANMADI**; yeni özellik veya P0-B'ye geçilmeyecek.
 
 ## 2026-11-01 continuation — PR #30 tenant security and live readiness

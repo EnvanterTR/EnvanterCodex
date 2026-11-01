@@ -196,3 +196,11 @@ Bu kayıt, `docs/ACTIVE-WEB-V1-GOAL.md` ve depo kökündeki kullanıcı hedefiyl
 - Kanıt: %20 KDV örneği `AssetPurchaseOrderEndpoints.cs:61,431` ve `TenantSessionAcceptanceTests.cs:16648–16753` ile eşlendi; tarihsel ortalama/alt sayaçlar için ortak hesaplayıcı bulunmadığı açıkça yazıldı.
 - Test: Ürün testi çalıştırılmadı; doküman için `git diff --check` çalıştırılacak. 166, yalnız doküman taramasında bulunan yüzde içeren satır sayısıdır; ürün test sonucu değildir.
 - Sıradaki iş: `git diff --check` sonucunu kaydet; P0-A için her tarihli oranı Hedef maddesi ve kendi test artifact'ına bağla. Bölüm 19 giriş/ekran kanıtı çözülmeden P0-B'ye geçme.
+
+## 2026-11-01 — P0-A yüzde değerleri için tam kaynak satırı indeksi
+- Durum: 54 normalize edilmiş değer 166 belge satırına ve M1–M6 denetim ailelerine bağlandı; P0-A kapanış kapısı açık.
+- Değişen dosyalar: `docs/AUDIT-REALITY.md`, `docs/PROGRESS.md`.
+- Komut + çıktı: Tam tarama yeniden üretildi; indeks 55 satır içeriyor (100 değeri hedef ve tarihli pano kullanımı olarak ayrıldı), boş kaynak referansı 0. Kaynak dağılımı 144 `PROJECT-STATUS`, 21 `PRODUCT-COVERAGE`, 1 `ROADMAP` satırı.
+- Test: Ürün testi yok; belge tutarlılığı için `git diff --check` geçti. İndeks doğrulaması 55 değer/kaynak satırı ve 0 boş referans verdi; bu kayıt uygulama testi değildir.
+- Kanıt: `docs/AUDIT-REALITY.md` → “Yüzde denetimi” ve “Değer-kaynak indeksi”.
+- Sıradaki iş: Diff kontrolünü kaydet; Hedef §4.2'deki tarihli kabul notlarının code/test artifact'larını atomik maddelere bağlamayı tamamla. Yönetici ekranı kanıtı gelmeden P0-B'ye geçme.
