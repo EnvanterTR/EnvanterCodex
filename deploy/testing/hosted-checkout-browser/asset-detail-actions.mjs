@@ -18,6 +18,9 @@ const bulkEmployeeTwoId = '88888888-8888-4888-8888-888888888882';
 const bulkEmployeeThreeId = '77777777-7777-4777-8777-777777777773';
 const companyUnitRootId = '12121212-1212-4121-8121-121212121212';
 const companyUnitBranchId = '13131313-1313-4131-8131-131313131313';
+const reservationStartOn = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
+const reservationInvalidEndOn = new Date(Date.parse(`${reservationStartOn}T12:00:00Z`) - 86400000).toISOString().slice(0, 10);
+const reservationEndOn = new Date(Date.parse(`${reservationStartOn}T12:00:00Z`) + 86400000).toISOString().slice(0, 10);
 let companyUnitItems = [];
 const companyUnitWrites = [];
 const memberAccessTestUserId = '14141414-1414-4141-8141-141414141414';
@@ -4022,20 +4025,20 @@ try {
   const reservationForm = page.locator('#reservationForm');
   await reservationForm.locator('[name="assetId"]').selectOption(reservationAssets[2].id);
   await reservationForm.locator('[name="employeeId"]').selectOption(employeeId);
-  await reservationForm.locator('[name="startsOn"]').fill('2026-10-27');
-  await reservationForm.locator('[name="endsOn"]').fill('2026-10-26');
+  await reservationForm.locator('[name="startsOn"]').fill(reservationStartOn);
+  await reservationForm.locator('[name="endsOn"]').fill(reservationInvalidEndOn);
   await reservationForm.locator('[name="requestNote"]').fill('Synthetic date validation');
   const reservationWritesBeforeInvalidDate = reservationWrites.length;
   await reservationForm.locator('#reservationSubmit').click();
   assert.equal(reservationWrites.length, reservationWritesBeforeInvalidDate, 'An end date before the start date must not create a reservation.');
-  await reservationForm.locator('[name="endsOn"]').fill('2026-10-28');
+  await reservationForm.locator('[name="endsOn"]').fill(reservationEndOn);
   await reservationForm.locator('[name="requestNote"]').fill('Synthetic reservation request');
   await reservationForm.locator('#reservationSubmit').click();
   await page.locator('#reservationRows tr').filter({ hasText: 'QA-RES-003' }).waitFor();
   const createdReservationWrite = reservationWrites.find(item => item.path === '/api/reservations' && item.body?.assetId === reservationAssets[2].id);
   assert.equal(createdReservationWrite?.method, 'POST');
   assert.deepEqual(createdReservationWrite?.body, {
-    assetId: reservationAssets[2].id, employeeId, startsOn: '2026-10-27', endsOn: '2026-10-28', requestNote: 'Synthetic reservation request'
+    assetId: reservationAssets[2].id, employeeId, startsOn: reservationStartOn, endsOn: reservationEndOn, requestNote: 'Synthetic reservation request'
   });
   assert.equal(createdReservationWrite?.csrf, 'synthetic-asset-csrf');
   assert.equal(await reservationForm.locator('[name="assetId"]').inputValue(), '', 'Successful creation must reset the form.');
@@ -4752,7 +4755,7 @@ try {
 
   const sidebarDestinations = page.locator('#sidebar button[data-page]');
   const destinationCount = await sidebarDestinations.count();
-  assert.equal(destinationCount, 52, 'The owner navigation smoke acceptance must cover all 52 documented sidebar destinations, including the unified purchasing overview.');
+  assert.equal(destinationCount, 53, 'The owner navigation smoke acceptance must cover all 53 documented sidebar destinations, including the unified purchasing overview and invoices.');
   const expectedSurfaceByDestination = {
     'Genel Bakış': 'overview', 'Varlıklar': 'overview',
     'Tüm satın almalar': 'purchaseOverviewPage',
@@ -4767,7 +4770,7 @@ try {
     'Bakım kayıtları': 'maintenancePage', 'Bakım planları': 'calendarPage', 'Denetimler': 'auditPage', 'Takvim': 'calendarPage', 'Görevler': 'tasksPage',
     'Hazır raporlar': 'reportPage', 'Özel rapor oluştur': 'customReportPage', 'Dışa aktarımlar': 'dataToolsPage',
     'Tablodan içe aktar': 'dataToolsPage', 'Verileri dışa aktar': 'dataToolsPage', 'Yedekleme geçmişi': 'dataToolsPage', 'Geri yükle': 'dataToolsPage',
-    'Firma profili': 'companySettingsPage', 'Logo ve tema': 'companySettingsPage', 'Bildirimler': 'notificationPreferencesPage', 'Entegrasyonlar': 'integrationsPage',
+    'Firma profili': 'companySettingsPage', 'Logo ve tema': 'companySettingsPage', 'Faturalar': 'companyInvoicesPage', 'Bildirimler': 'notificationPreferencesPage', 'Entegrasyonlar': 'integrationsPage',
     'Güvenlik': 'featureStatusPage', 'Denetim kayıtları': 'auditPage', 'Destek': 'supportPage'
   };
   assert.equal(Object.keys(expectedSurfaceByDestination).length, destinationCount, 'Every documented sidebar destination must have an exact expected screen surface.');
