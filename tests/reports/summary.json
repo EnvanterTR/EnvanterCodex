@@ -1015,6 +1015,20 @@
     "onlySource": [],
     "productionWrites": false
   },
+  "currentFeatureBranchReleaseBuild": {
+    "measuredAtUtc": "2026-11-02T21:23:09Z",
+    "branch": "feat/platform-checkout-readiness-20261020",
+    "head": "af63cf5b8fccacb4391b052dbe456a89fc5ff031",
+    "worktreeChangesIncluded": true,
+    "command": "C:\\Users\\Lenovo\\.dotnet\\dotnet.exe build src/EnvanterTR.Web/EnvanterTR.Web.csproj --configuration Release",
+    "status": "PASS",
+    "exitCode": 0,
+    "warnings": 0,
+    "errors": 0,
+    "elapsed": "00:02:56.38",
+    "ciOrAcceptanceImplied": false,
+    "productionWrites": false
+  },
   "localRestoreRunner": {
     "status": "SYNTHETIC_E2E_PASS",
     "file": "deploy/testing/Restore-CoolifyBackupToIsolatedDocker.ps1",
