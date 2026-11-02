@@ -36,8 +36,11 @@ const server = createServer(async (request, response) => {
     response.end(JSON.stringify({ requestToken: csrf })); return;
   }
   if (request.method === 'GET' && url.pathname === '/api/platform/audit') return json(response, { entries: [], total: 0, page: 1, pageSize: 50 });
-  if (request.method === 'GET' && url.pathname === '/api/platform/audit-retention')
+  if (request.method === 'GET' && url.pathname === '/api/platform/audit-retention') {
+    // Keep loading observable so the acceptance test cannot depend on response timing.
+    await new Promise(resolve => setTimeout(resolve, 150));
     return json(response, { retentionDays, enabled: retentionDays !== null, updatedAt: null, updatedBy: null });
+  }
   if (request.method === 'GET' && url.pathname === '/api/platform/audit-retention/preview') {
     const days = Number(url.searchParams.get('days'));
     return json(response, { days, cutoff: new Date(Date.now() - days * 86400000).toISOString(), companyCount: 3, platformCount: 2, totalCount: 5 });
@@ -82,6 +85,7 @@ try {
   await page.locator('#appShell').waitFor({ state: 'visible' });
   await page.locator('#nav [data-view="audit"]').click();
   await page.locator('#auditRetentionStatus').waitFor({ state: 'visible' });
+  await page.waitForFunction(() => document.querySelector('#auditRetentionStatus')?.textContent === 'Kapalı');
   assert.equal(await page.locator('#auditRetentionStatus').innerText(), 'Kapalı');
 
   await page.locator('#auditRetentionDays').fill('30');

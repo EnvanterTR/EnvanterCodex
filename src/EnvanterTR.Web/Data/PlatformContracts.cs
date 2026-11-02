@@ -19,6 +19,11 @@ public sealed record SavePlanRequest(
     int SortOrder,
     string? ChangeReason);
 
+public sealed record SaveSubscriptionCouponRequest(
+    string Code, string DiscountType, decimal DiscountValue, string Currency, Guid? PlanId,
+    DateTimeOffset? StartsAt, DateTimeOffset? EndsAt, int? MaxRedemptions,
+    int? MaxRedemptionsPerCustomer, bool IsActive, string? ChangeReason);
+
 public sealed record GrantDemoRequest(Guid PlanId, int Days, string? Note);
 public sealed record ExtendSubscriptionRequest(DateTimeOffset EndsAt, string? Note);
 public sealed record EditSubscriptionRequest(Guid PlanId, DateTimeOffset StartsAt, DateTimeOffset EndsAt, string? Note);

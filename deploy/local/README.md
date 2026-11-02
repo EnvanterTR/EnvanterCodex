@@ -1,5 +1,9 @@
 # Yerel geliştirme kurulumu (Windows + Docker Desktop)
 
+## Eski medya volume'unda fotoğraf yükleme izni
+
+Yerel fotoğraf yüklemesi `Access to the path .../company-media/accounts is denied` hatası veriyorsa eski volume'un kök dizini `root` kullanıcısında kalmış olabilir. Çalışan uygulamayı root olarak başlatmayın veya herkese yazma izni vermeyin. `./deploy/local/repair-media-permissions.ps1` komutu önce yazılabilir adlandırılmış medya volume'unu ve uygulamanın gerçek UID/GID değerini doğrular; yalnız medya kökü ve varsa `accounts` dizininin sahipliğini düzeltir. Mevcut fotoğrafları ve şirket dosyalarını silmez, alt dizinlere özyinelemeli işlem uygulamaz. Ardından uygulama kullanıcısıyla geçici dosya yazma/okuma kontrolü yapar. Bu işlem yerel dosya iznini düzeltir; veritabanını ve canlı sunucuyu değiştirmez.
+
 Bu paket geliştirici önizlemesi içindir; müşteriye dağıtılacak son Windows kurulum programı değildir. Uygulama `localhost` ile sınırlıdır. PostgreSQL portu Windows ana makinesine yayımlanmaz. Şirket veritabanı, medya dosyaları ve oturum şifreleme anahtarları ayrı Docker adlandırılmış volume'larında kalır; konteyneri durdurmak volume'ları silmez.
 
 ## İlk çalıştırma

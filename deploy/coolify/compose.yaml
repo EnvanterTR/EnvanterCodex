@@ -27,6 +27,8 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_HTTP_PORTS: 8080
       ForwardedHeaders__Enabled: "true"
+      ClientIp__TrustedProxyNetworks: ${CLIENT_IP_TRUSTED_PROXY_NETWORKS:-}
+      ClientIp__UseCloudflareConnectingIp: ${CLIENT_IP_USE_CLOUDFLARE_CONNECTING_IP:-false}
       TenantRouting__RootDomain: envantertr.com
       TenantRouting__CookieDomain: .envantertr.com
       DataProtection__KeysPath: /var/lib/envantertr/data-protection-keys

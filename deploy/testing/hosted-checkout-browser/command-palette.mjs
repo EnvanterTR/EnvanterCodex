@@ -427,9 +427,21 @@ try {
   assert.match(await accountTwoFactorDialog.innerText(), /Google Authenticator, Microsoft Authenticator veya TOTP uyumlu başka bir uygulama/);
   assert.match(await accountTwoFactorDialog.innerText(), /Google\/Microsoft hesabı, abonelik, SMS ya da ayrıca bir hizmet satın almanız gerekmez/);
   await page.locator('#twoFactorCurrentPassword').fill('Synthetic-only-password');
+  assert.equal(await page.locator('#twoFactorQrSetupHint').isVisible(), true);
+  assert.match(await page.locator('#twoFactorQrSetupHint').innerText(), /QR/);
+  assert.equal(await page.locator('#twoFactorQr').isVisible(), false,
+    'The provisioning QR must not appear before current-password verification.');
   await page.locator('#startTwoFactorSetup').click();
   const twoFactorSecret = page.locator('#twoFactorSecret');
-  await page.waitForFunction(() => document.querySelector('#twoFactorSecret')?.textContent === 'JBSWY3DPEHPK3PXP');
+  try {
+    await page.waitForFunction(() => document.querySelector('#twoFactorSecret')?.textContent === 'JBSWY3DPEHPK3PXP');
+  } catch (error) {
+    console.error(JSON.stringify({ stage: 'account-mfa-setup', pageErrors,
+      feedback: await page.locator('#twoFactorFeedback').innerText(),
+      requests: apiRequests.filter(item => item.path.includes('/2fa') || item.path.includes('/csrf'))
+        .map(item => ({ method: item.method, path: item.path, hasCsrf: Boolean(item.csrf) })) }));
+    throw error;
+  }
   const twoFactorQr = page.locator('#twoFactorQr');
   assert.equal(await twoFactorQr.isVisible(), true, 'The account MFA setup must display a locally generated QR code.');
   assert.equal(await twoFactorQr.getAttribute('alt'), 'Authenticator uygulamasıyla taranacak kurulum QR kodu');
@@ -560,6 +572,10 @@ try {
   await securityNav.click();
   await page.locator('#companySecurityPolicyPanel').waitFor({ state: 'visible' });
   await page.locator('#securityOverviewPanel').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#securityOverviewPanel [role="button"]').count(), 0,
+    'Security summaries must not inherit inventory navigation or asset-action accessibility labels');
+  assert.equal(await page.locator('#overview .stats .stat[role="button"]').count(), 9,
+    'Inventory dashboard cards retain their real navigation actions');
   await page.waitForFunction(() => document.querySelector('#securityOverviewMfa')?.textContent === 'Kapalı'
     && document.querySelector('#securityOverviewSessions')?.textContent === '0');
   assert.equal(await accountDialog.isVisible(), false,

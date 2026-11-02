@@ -1,0 +1,7 @@
+# Public checkout availability — 2026-10-21
+
+Public status previously treated provider configuration alone as purchase availability, even when the published catalog had no payable Cloud plan. Availability now also requires an active public Cloud plan with a positive monthly or annual price and a supported currency. No credentials, prices or plan publication settings were changed.
+
+Acceptance: isolated PostgreSQL, process48541 exit0,3/3PASS: Platform_checkout_readiness_matches_public_gate_without_exposing_provider_secrets; Public_checkout_requires_csrf_and_fails_closed_without_provider_configuration; Public_checkout_uses_server_price_verifies_provider_and_provisions_once. Price scenarios cover positive monthly/annual, lowercase supported currency, unsupported currency and zero price. Web and test builds0warnings/0errors; normal disposable-host runtime warnings occurred. Disposable database/network removed. No production migration/deployment or real payment performed.
+
+CI39591151701 failed Chromium assignment pagination assertion (27 expected, transient1 read); PostgreSQL and Windows passed. The test observed response headers before DOM rendering completed. Added state-based waits for total27/page1-or2/rowcount25-or2 before original assertions. No fixed delay, retries or removed assertions. Full hosted Chromium package process52059exit0 after correction; includes checkout, company52menu destinations, assignment pagination, platform, camera, reports and kit flows with syntheticAPI. Syntax/diffcheckPASS. This is not live customer acceptance.

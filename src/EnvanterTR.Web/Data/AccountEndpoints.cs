@@ -200,10 +200,14 @@ public static class AccountEndpoints
             var user = await userManager.FindByEmailAsync(request.Email.Trim());
             if (user is null) return LoginCredentialsRejected();
             var accountWasLocked = await userManager.IsLockedOutAsync(user);
-            var passwordCheck = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
+            // Persist the audit row before Identity mutates the user concurrency stamp below.
+            // Saving audit entries after AccessFailedAsync can re-save a stale tracked user and
+            // turn an ordinary rejected login into an HTTP 500 concurrency exception.
+            var passwordCheck = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: false);
             if (!passwordCheck.Succeeded)
             {
                 if (!accountWasLocked) await RecordFailedLoginAsync(db, user, cancellationToken);
+                if (!accountWasLocked) await userManager.AccessFailedAsync(user);
                 return LoginCredentialsRejected();
             }
             if (!user.EmailConfirmed)
@@ -293,8 +297,8 @@ public static class AccountEndpoints
                     var recovery = await userManager.RedeemTwoFactorRecoveryCodeAsync(user, code);
                     if (!recovery.Succeeded)
                     {
-                        await userManager.AccessFailedAsync(user);
                         if (!accountWasLockedBeforeCodeCheck) await RecordFailedLoginAsync(db, user, cancellationToken);
+                        if (!accountWasLockedBeforeCodeCheck) await userManager.AccessFailedAsync(user);
                         return await userManager.IsLockedOutAsync(user)
                             ? Results.Json(new { message = "Çok sayıda hatalı doğrulama kodu. Bir süre sonra tekrar deneyin." }, statusCode: StatusCodes.Status423Locked)
                             : Results.Json(new { twoFactorRequired = true, message = "Doğrulama kodu geçersiz veya kullanılmış. Yeniden deneyin." }, statusCode: StatusCodes.Status400BadRequest);
@@ -1109,7 +1113,8 @@ public static class AccountEndpoints
         }).RequireAuthorization().RequireRateLimiting("customer-api");
 
         endpoints.MapPost("/api/session/photo", async (HttpRequest request, HttpContext context, IAntiforgery antiforgery,
-            ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, CancellationToken cancellationToken) =>
+            ClaimsPrincipal user, AppDbContext db, IConfiguration configuration, ILogger<Program> logger,
+            CancellationToken cancellationToken) =>
         {
             if (!await HasValidCsrfAsync(context, antiforgery)) return Results.BadRequest(new { message = "İstek doğrulaması başarısız." });
             if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Forbid();
@@ -1126,14 +1131,16 @@ public static class AccountEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = ["Yalnızca doğrulanmış PNG, JPEG veya WebP fotoğraf yüklenebilir."] });
 
             var directory = AccountPhotoDirectory(configuration, userId);
-            Directory.CreateDirectory(directory);
             var tempPath = Path.Combine(directory, $"upload-{Guid.NewGuid():N}.tmp");
             var destination = AccountPhotoPath(configuration, userId, detected.Extension);
-            var previousPath = new[] { "png", "jpg", "webp" }.Select(extension => AccountPhotoPath(configuration, userId, extension))
-                .FirstOrDefault(System.IO.File.Exists);
-            var previousBackupPath = previousPath is null ? null : Path.Combine(directory, $"replace-{Guid.NewGuid():N}.tmp");
+            string? previousPath = null;
+            string? previousBackupPath = null;
             try
             {
+                Directory.CreateDirectory(directory);
+                previousPath = new[] { "png", "jpg", "webp" }.Select(extension => AccountPhotoPath(configuration, userId, extension))
+                    .FirstOrDefault(System.IO.File.Exists);
+                previousBackupPath = previousPath is null ? null : Path.Combine(directory, $"replace-{Guid.NewGuid():N}.tmp");
                 await System.IO.File.WriteAllBytesAsync(tempPath, bytes, cancellationToken);
                 if (previousPath is not null) System.IO.File.Move(previousPath, previousBackupPath!);
                 System.IO.File.Move(tempPath, destination);
@@ -1145,11 +1152,17 @@ public static class AccountEndpoints
                     await db.SaveChangesAsync(cancellationToken);
                 }
             }
-            catch
+            catch (Exception exception)
             {
                 try { if (System.IO.File.Exists(tempPath)) System.IO.File.Delete(tempPath); } catch (IOException) { } catch (UnauthorizedAccessException) { }
                 try { if (System.IO.File.Exists(destination)) System.IO.File.Delete(destination); } catch (IOException) { } catch (UnauthorizedAccessException) { }
                 try { if (previousPath is not null && previousBackupPath is not null && System.IO.File.Exists(previousBackupPath)) System.IO.File.Move(previousBackupPath, previousPath, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+                if (exception is IOException or UnauthorizedAccessException)
+                {
+                    logger.LogError(exception, "Profile photo storage operation failed.");
+                    return Results.Problem("Profil fotoğrafı şu anda kaydedilemiyor. Depolama alanı kullanılamıyor.",
+                        statusCode: StatusCodes.Status503ServiceUnavailable);
+                }
                 throw;
             }
             foreach (var extension in new[] { "png", "jpg", "webp" })
@@ -1314,6 +1327,7 @@ public static class AccountEndpoints
 
         var roleName = roleKey switch
         {
+            "owner" => "Şirket sahibi",
             "admin" => "Yönetici",
             "asset_manager" => "Varlık yöneticisi",
             "asset_operator" => "Varlık sorumlusu",

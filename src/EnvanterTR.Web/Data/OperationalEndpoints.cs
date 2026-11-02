@@ -2337,9 +2337,11 @@ public static class OperationalEndpoints
                     if (existingMembership.RoleKey != roleKey)
                         return Results.Conflict(new { message = "Bekleyen davetin rolünü önce kullanıcı listesinden güncelleyin." });
                     var resendToken = await userManager.GeneratePasswordResetTokenAsync(existingUser);
+                    var invitationCompanySlug = await db.Companies.AsNoTracking().Where(x => x.Id == companyId)
+                        .Select(x => x.Slug).SingleAsync(cancellationToken);
                     try
                     {
-                        await AccountEndpoints.SendAccountInvitationEmailAsync(email, name, resendToken, configuration, cancellationToken);
+                        await AccountEndpoints.SendAccountInvitationEmailAsync(email, name, resendToken, configuration, cancellationToken, invitationCompanySlug);
                         return Results.Ok(new { invitationSent = true, resent = true, message = "Bekleyen davet yeniden gönderildi." });
                     }
                     catch (Exception exception) when (exception is not OperationCanceledException)
@@ -2410,7 +2412,7 @@ public static class OperationalEndpoints
                 try
                 {
                     await AccountEndpoints.SendCompanyAccessAddedEmailAsync(email, invitedUser.DisplayName ?? name,
-                        lockedCompany.Name, roleKey, configuration, cancellationToken);
+                        lockedCompany.Name, roleKey, configuration, cancellationToken, lockedCompany.Slug);
                     return Results.Created($"/api/members/{invitedUser.Id}", new { invitationSent = true, userId = invitedUser.Id,
                         message = "Mevcut hesap şirket alanına eklendi; erişim bilgisi e-postayla gönderildi." });
                 }
@@ -2424,7 +2426,7 @@ public static class OperationalEndpoints
             var token = await userManager.GeneratePasswordResetTokenAsync(invitedUser);
             try
             {
-                await AccountEndpoints.SendAccountInvitationEmailAsync(email, name, token, configuration, cancellationToken);
+                await AccountEndpoints.SendAccountInvitationEmailAsync(email, name, token, configuration, cancellationToken, lockedCompany.Slug);
                 return Results.Created($"/api/members/{invitedUser.Id}", new { invitationSent = true, userId = invitedUser.Id, message = "Davet oluşturuldu; kullanıcıya parola belirleme bağlantısı gönderildi." });
             }
             catch (Exception exception) when (exception is not OperationCanceledException)

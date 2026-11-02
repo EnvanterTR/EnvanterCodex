@@ -579,10 +579,17 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Code = $"co-{checkoutId:N}", Name = "Synthetic Cloud", DeploymentKind = "cloud",
             MonthlyPrice = 125.50m, AnnualPrice = 1200m, Currency = "TRY", IsActive = true, IsPublic = true
         };
+        var coupon = new SubscriptionCoupon
+        {
+            Code = $"SAVE_{checkoutId.ToString("N")[..8]}".ToUpperInvariant(), DiscountType = "Percent",
+            DiscountValue = 10m, PlanId = plan.Id, IsActive = true, MaxRedemptions = 5,
+            MaxRedemptionsPerCustomer = 1, CreatedByUserId = _userId
+        };
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.SubscriptionPlans.Add(plan);
+            db.SubscriptionCoupons.Add(coupon);
             await db.SaveChangesAsync();
         }
 
@@ -631,9 +638,18 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
         var request = new InitializeCompanyCheckoutRequest(checkoutId, "Synthetic Checkout Ltd", $"checkout-{checkoutId:N}"[..20],
             "owner@example.invalid", "Test", "Owner", $"owner-{checkoutId:N}@example.invalid", "+905550000002", "10000000146",
-            "Synthetic Street 2", "Istanbul", "Turkey", "34000", plan.Id, "monthly", true, "cloud-checkout-data-v1");
+            "Synthetic Street 2", "Istanbul", "Turkey", "34000", plan.Id, "monthly", true, "cloud-checkout-data-v1", coupon.Code);
         var publishedPlans = await client.GetFromJsonAsync<JsonElement>("/api/plans");
         Assert.Contains(publishedPlans.EnumerateArray(), item => item.GetProperty("id").GetGuid() == plan.Id);
+        using (var quote = await client.PostAsJsonAsync("/api/checkout/quote", new CheckoutCouponQuoteRequest(plan.Id, "monthly", coupon.Code.ToLowerInvariant())))
+        {
+            Assert.Equal(HttpStatusCode.OK, quote.StatusCode);
+            using var quotePayload = JsonDocument.Parse(await quote.Content.ReadAsStringAsync());
+            Assert.Equal(125.50m, quotePayload.RootElement.GetProperty("subtotal").GetDecimal());
+            Assert.Equal(12.55m, quotePayload.RootElement.GetProperty("discount").GetDecimal());
+            Assert.Equal(112.95m, quotePayload.RootElement.GetProperty("amount").GetDecimal());
+            Assert.Equal(coupon.Code, quotePayload.RootElement.GetProperty("couponCode").GetString());
+        }
         using (var unacknowledgedMessage = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/initialize")
                { Content = JsonContent.Create(request with { DataProcessingAcknowledged = false }) })
         {
@@ -649,24 +665,51 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, initialized.StatusCode);
         using var initializedPayload = JsonDocument.Parse(await initialized.Content.ReadAsStringAsync());
         Assert.StartsWith("https://sandbox-api.iyzipay.com/checkoutform/", initializedPayload.RootElement.GetProperty("checkoutUrl").GetString());
-        Assert.Equal(125.50m, provider.InitializedAmount);
+        Assert.Equal(112.95m, provider.InitializedAmount);
         Assert.Equal(1, provider.InitializeCount);
-        using (var retry = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/initialize") { Content = JsonContent.Create(request) })
+        var repeatCustomer = request with
         {
-            retry.Headers.Add("X-CSRF-TOKEN", requestToken);
-            retry.Headers.Add("Cookie", antiforgeryCookie);
-            using var retried = await client.SendAsync(retry);
-            Assert.Equal(HttpStatusCode.OK, retried.StatusCode);
-            using var retryPayload = JsonDocument.Parse(await retried.Content.ReadAsStringAsync());
-            Assert.Equal(initializedPayload.RootElement.GetProperty("checkoutUrl").GetString(), retryPayload.RootElement.GetProperty("checkoutUrl").GetString());
-            Assert.Equal(1, provider.InitializeCount);
+            CheckoutId = Guid.NewGuid(), CompanyName = "Second Synthetic Checkout Ltd",
+            Slug = $"second-{Guid.NewGuid():N}"[..20]
+        };
+        using (var repeatCustomerMessage = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/initialize")
+               { Content = JsonContent.Create(repeatCustomer) })
+        {
+            repeatCustomerMessage.Headers.Add("X-CSRF-TOKEN", requestToken);
+            repeatCustomerMessage.Headers.Add("Cookie", antiforgeryCookie);
+            using var deniedRepeat = await client.SendAsync(repeatCustomerMessage);
+            Assert.Equal(HttpStatusCode.BadRequest, deniedRepeat.StatusCode);
+            Assert.Contains("izin verilen kullanım sayısına ulaştı", await deniedRepeat.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        }
+        Assert.Equal(1, provider.InitializeCount);
+
+        await using (var scope = checkoutFactory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            (await db.SubscriptionCoupons.SingleAsync(x => x.Id == coupon.Id)).IsActive = false;
+            await db.SaveChangesAsync();
+        }
+        using (var retryAfterCouponChange = new HttpRequestMessage(HttpMethod.Post, "/api/checkout/initialize")
+               { Content = JsonContent.Create(request) })
+        {
+            retryAfterCouponChange.Headers.Add("X-CSRF-TOKEN", requestToken);
+            retryAfterCouponChange.Headers.Add("Cookie", antiforgeryCookie);
+            using var retriedAfterCouponChange = await client.SendAsync(retryAfterCouponChange);
+            Assert.Equal(HttpStatusCode.OK, retriedAfterCouponChange.StatusCode);
+            using var retryAfterChangePayload = JsonDocument.Parse(await retriedAfterCouponChange.Content.ReadAsStringAsync());
+            Assert.Equal(initializedPayload.RootElement.GetProperty("checkoutUrl").GetString(),
+                retryAfterChangePayload.RootElement.GetProperty("checkoutUrl").GetString());
         }
 
         await using (var scope = checkoutFactory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var order = await db.CompanyCheckoutOrders.SingleAsync(x => x.Id == checkoutId);
-            Assert.Equal(125.50m, order.Amount);
+            Assert.Equal(125.50m, order.SubtotalAmount);
+            Assert.Equal(12.55m, order.DiscountAmount);
+            Assert.Equal(112.95m, order.Amount);
+            Assert.Equal(coupon.Id, order.CouponId);
+            Assert.Equal(coupon.Code, order.CouponCode);
             Assert.Equal("PaymentStarted", order.Status);
             Assert.Equal("cloud-checkout-data-v1", order.DataProcessingNoticeVersion);
             Assert.NotNull(order.DataProcessingAcknowledgedAt);
@@ -2087,6 +2130,8 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             "POST /api/checkout/callback",
             "POST /api/checkout/webhook",
             "GET /api/checkout/status",
+            // Checkout quote is public so unauthenticated buyers can preview coupon-adjusted pricing.
+            "POST /api/checkout/quote",
             "GET /api/plans",
             "GET /api/site-content",
             "POST /api/demo-requests",
@@ -2842,7 +2887,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                 Id = Guid.NewGuid(), CompanyId = baselineCompanyId, CompanyName = "Prior verified revenue",
                 Slug = $"baseline-{baselineCompanyId:N}", ContactEmail = "billing@example.invalid",
                 OwnerName = "Prior verified revenue", OwnerEmail = $"baseline-{baselineCompanyId:N}@example.invalid",
-                PlanId = baselinePlanId, TermDays = 30, Amount = 125.50m, Currency = "TRY", Status = "Provisioned",
+                PlanId = baselinePlanId, TermDays = 30, SubtotalAmount = 125.50m, Amount = 125.50m, Currency = "TRY", Status = "Provisioned",
                 PaymentReference = baselinePaymentReference, PaidAt = baselinePaidAt,
                 CreatedAt = baselinePaidAt, ExpiresAt = baselinePaidAt.AddDays(30)
             });
@@ -2911,27 +2956,27 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             {
                 Id = Guid.NewGuid(), CompanyName = $"Overview checkout {index}", Slug = $"overview-{index}-{_companyId:N}",
                 ContactEmail = "billing@example.invalid", OwnerName = "Overview Owner", OwnerEmail = "overview@example.invalid",
-                PlanId = plan.Id, TermDays = 365, Amount = 100m, Currency = "TRY", Status = status,
+                PlanId = plan.Id, TermDays = 365, SubtotalAmount = 100m, Amount = 100m, Currency = "TRY", Status = status,
                 CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-index), ExpiresAt = DateTimeOffset.UtcNow.AddDays(2)
             }).Append(new CompanyCheckoutOrder
             {
                 Id = Guid.NewGuid(), CompanyName = "Verified monthly revenue", Slug = $"monthly-{monthlyCompanyId:N}",
                 ContactEmail = "billing@example.invalid", OwnerName = "Monthly Owner", OwnerEmail = "monthly@example.invalid",
-                PlanId = plan.Id, TermDays = 30, Amount = 1200m, Currency = "TRY", Status = "Provisioned",
+                PlanId = plan.Id, TermDays = 30, SubtotalAmount = 1200m, Amount = 1200m, Currency = "TRY", Status = "Provisioned",
                 CompanyId = monthlyCompanyId, PaymentReference = monthlyPaymentReference, PaidAt = paidAt,
                 CreatedAt = paidAt, ExpiresAt = paidAt.AddDays(30)
             }).Append(new CompanyCheckoutOrder
             {
                 Id = Guid.NewGuid(), CompanyName = "Verified annual revenue", Slug = $"annual-{annualCompanyId:N}",
                 ContactEmail = "billing@example.invalid", OwnerName = "Annual Owner", OwnerEmail = "annual@example.invalid",
-                PlanId = annualPlan.Id, TermDays = 365, Amount = 24000m, Currency = "USD", Status = "Provisioned",
+                PlanId = annualPlan.Id, TermDays = 365, SubtotalAmount = 24000m, Amount = 24000m, Currency = "USD", Status = "Provisioned",
                 CompanyId = annualCompanyId, PaymentReference = annualPaymentReference, PaidAt = paidAt,
                 CreatedAt = paidAt, ExpiresAt = paidAt.AddDays(365)
             }).Append(new CompanyCheckoutOrder
             {
                 Id = Guid.NewGuid(), CompanyName = "Comped extension revenue", Slug = $"extended-{extendedCompanyId:N}",
                 ContactEmail = "billing@example.invalid", OwnerName = "Extended Owner", OwnerEmail = "extended@example.invalid",
-                PlanId = plan.Id, TermDays = 30, Amount = 1200m, Currency = "TRY", Status = "Provisioned",
+                PlanId = plan.Id, TermDays = 30, SubtotalAmount = 1200m, Amount = 1200m, Currency = "TRY", Status = "Provisioned",
                 CompanyId = extendedCompanyId, PaymentReference = extendedPaymentReference, PaidAt = paidAt,
                 CreatedAt = paidAt, ExpiresAt = paidAt.AddDays(30)
             }));
@@ -3265,7 +3310,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                 {
                     Id = Guid.NewGuid(), CompanyName = "Order Search Company", Slug = $"order-search-{_companyId:N}",
                     ContactEmail = "contact@example.invalid", OwnerName = "Order Search Owner", OwnerEmail = "owner@example.invalid",
-                    PlanId = plan.Id, TermDays = 365, Amount = 12000, Currency = "TRY", Status = "Provisioned",
+                    PlanId = plan.Id, TermDays = 365, SubtotalAmount = 12000, Amount = 12000, Currency = "TRY", Status = "Provisioned",
                     PaymentReference = marker, CheckoutTokenHash = "provider-token-hash-must-not-leak",
                     CheckoutPageUrlProtected = "protected-provider-url-must-not-leak", CompanyId = _companyId,
                     CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-2), ExpiresAt = DateTimeOffset.UtcNow.AddDays(1),
@@ -3275,7 +3320,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                 {
                     Id = Guid.NewGuid(), CompanyName = "Unrelated Order Company", Slug = $"unrelated-{_companyId:N}",
                     ContactEmail = "other@example.invalid", OwnerName = "Other Owner", OwnerEmail = "other-owner@example.invalid",
-                    PlanId = plan.Id, TermDays = 30, Amount = 1500, Currency = "TRY", Status = "PaymentFailed",
+                    PlanId = plan.Id, TermDays = 30, SubtotalAmount = 1500, Amount = 1500, Currency = "TRY", Status = "PaymentFailed",
                     CheckoutTokenHash = "second-secret", CheckoutPageUrlProtected = "second-protected-url",
                     CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-1), ExpiresAt = DateTimeOffset.UtcNow.AddDays(1)
                 });
@@ -3317,14 +3362,14 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             {
                 Id = orderId, CompanyName = "Failed Payment Acceptance", Slug = $"failed-{_companyId:N}",
                 ContactEmail = "billing@example.invalid", OwnerName = "Synthetic Billing Owner", OwnerEmail = "owner@example.invalid",
-                PlanId = plan.Id, TermDays = 30, Amount = 1500, Currency = "TRY", Status = "PaymentFailed",
+                PlanId = plan.Id, TermDays = 30, SubtotalAmount = 1500, Amount = 1500, Currency = "TRY", Status = "PaymentFailed",
                 CompanyId = _companyId, CreatedAt = DateTimeOffset.UtcNow.AddDays(-1), ExpiresAt = DateTimeOffset.UtcNow.AddDays(1)
             });
             db.CompanyCheckoutOrders.Add(new CompanyCheckoutOrder
             {
                 Id = paidOrderId, CompanyName = "Already Paid Acceptance", Slug = $"paid-{_companyId:N}",
                 ContactEmail = "paid@example.invalid", OwnerName = "Synthetic Paid Owner", OwnerEmail = "paid@example.invalid",
-                PlanId = plan.Id, TermDays = 30, Amount = 1500, Currency = "TRY", Status = "Provisioned",
+                PlanId = plan.Id, TermDays = 30, SubtotalAmount = 1500, Amount = 1500, Currency = "TRY", Status = "Provisioned",
                 CompanyId = _otherCompanyId, PaymentReference = $"paid-order-{_companyId:N}", PaidAt = DateTimeOffset.UtcNow,
                 CreatedAt = DateTimeOffset.UtcNow.AddDays(-1), ExpiresAt = DateTimeOffset.UtcNow.AddDays(1)
             });
@@ -3528,7 +3573,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             {
                 Id = Guid.NewGuid(), CompanyName = "Directory Acceptance Company", Slug = $"member-{userId:N}",
                 ContactEmail = $"{marker}@example.invalid", OwnerName = "Directory Acceptance Member",
-                OwnerEmail = $"{marker}@example.invalid", PlanId = plan.Id, TermDays = 365, Amount = 4200,
+                OwnerEmail = $"{marker}@example.invalid", PlanId = plan.Id, TermDays = 365, SubtotalAmount = 4200, Amount = 4200,
                 Currency = "TRY", Status = "Provisioned", PaymentReference = $"member-directory-order-{_companyId:N}",
                 CheckoutTokenHash = "checkout-token-hash-must-not-leak",
                 CheckoutPageUrlProtected = "protected-checkout-url-must-not-leak",
@@ -3539,7 +3584,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             {
                 Id = Guid.NewGuid(), CompanyName = "Unprovisioned Acceptance Company", Slug = $"pending-{userId:N}",
                 ContactEmail = "billing-contact@example.invalid", OwnerName = "Directory Acceptance Member",
-                OwnerEmail = $"{marker}@example.invalid", PlanId = plan.Id, TermDays = 30, Amount = 1200,
+                OwnerEmail = $"{marker}@example.invalid", PlanId = plan.Id, TermDays = 30, SubtotalAmount = 1200, Amount = 1200,
                 Currency = "TRY", Status = "PaymentStarted", PaymentReference = $"pending-member-checkout-{_companyId:N}",
                 CheckoutTokenHash = "pending-member-token-hash-must-not-leak",
                 CheckoutPageUrlProtected = "pending-member-protected-url-must-not-leak",
@@ -3892,9 +3937,12 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
 
         Assert.Equal(3, _smtpCapture.Messages.Count);
         Assert.Contains(_smtpCapture.Messages, message => message.Contains($"To: {email}", StringComparison.OrdinalIgnoreCase));
+        Assert.All(_smtpCapture.Messages.Where(message => message.Contains($"To: {email}", StringComparison.OrdinalIgnoreCase)),
+            message => Assert.Contains($"https://acceptance-{_companyId:N}.envantertr.com/", DecodeMimeBody(message), StringComparison.Ordinal));
         var existingAccountMessage = Assert.Single(_smtpCapture.Messages, message =>
             message.Contains($"To: acceptance-{_userId:N}@example.invalid", StringComparison.OrdinalIgnoreCase));
         Assert.Contains("Other security acceptance company", DecodeMimeBody(existingAccountMessage), StringComparison.Ordinal);
+        Assert.Contains($"https://other-{_otherCompanyId:N}.envantertr.com/", DecodeMimeBody(existingAccountMessage), StringComparison.Ordinal);
         Assert.DoesNotContain("token=", existingAccountMessage, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -4184,7 +4232,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             {
                 CompanyName = ownCompany.Name, Slug = ownCompany.Slug!, ContactEmail = ownCompany.ContactEmail!,
                 OwnerName = "CSV Owner", OwnerEmail = "csv-owner@example.invalid", PlanId = plan.Id,
-                TermDays = 365, Amount = 1200m, Currency = "TRY", Status = "Provisioned",
+                TermDays = 365, SubtotalAmount = 1200m, Amount = 1200m, Currency = "TRY", Status = "Provisioned",
                 PaymentReference = paymentReference, CompanyId = ownCompany.Id, PaidAt = paidAt,
                 ExpiresAt = paidAt.AddDays(365)
             });
@@ -4372,7 +4420,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             {
                 Id = Guid.NewGuid(), CompanyName = "Acceptance Company", Slug = $"purchase-{_companyId:N}",
                 ContactEmail = "billing@example.invalid", OwnerName = "Acceptance Owner", OwnerEmail = "owner@example.invalid",
-                PlanId = originalPlan.Id, TermDays = 365, Amount = 1299.50m, Currency = "TRY", Status = "Provisioned",
+                PlanId = originalPlan.Id, TermDays = 365, SubtotalAmount = 1299.50m, Amount = 1299.50m, Currency = "TRY", Status = "Provisioned",
                 PaymentReference = $"verified-purchase-{_companyId:N}", CompanyId = _companyId,
                 CreatedAt = now.AddDays(-11), ExpiresAt = now.AddDays(-10), PaidAt = now.AddDays(-10)
             });
@@ -4380,7 +4428,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             {
                 Id = Guid.NewGuid(), CompanyName = "Other Acceptance Company", Slug = $"purchase-other-{_otherCompanyId:N}",
                 ContactEmail = "other-billing@example.invalid", OwnerName = "Other Acceptance Owner", OwnerEmail = "other-owner@example.invalid",
-                PlanId = originalPlan.Id, TermDays = 30, Amount = 9999m, Currency = "TRY", Status = "Provisioned",
+                PlanId = originalPlan.Id, TermDays = 30, SubtotalAmount = 9999m, Amount = 9999m, Currency = "TRY", Status = "Provisioned",
                 PaymentReference = $"other-company-payment-{_otherCompanyId:N}", CompanyId = _otherCompanyId,
                 CreatedAt = now.AddDays(-1), ExpiresAt = now, PaidAt = now
             });
@@ -4603,6 +4651,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var company = await db.Companies.SingleAsync(x => x.Slug == slug);
+            Assert.True(company.SecurityRequireMfa, "Platform-created paid Cloud companies must require first-login MFA enrollment, just like checkout-created companies.");
             companyId = company.Id;
             var membership = await db.CompanyMemberships.SingleAsync(x => x.CompanyId == companyId);
             ownerId = membership.UserId;
@@ -4625,9 +4674,34 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             using var payload = JsonDocument.Parse(await resent.Content.ReadAsStringAsync());
             Assert.True(payload.RootElement.GetProperty("invitationSent").GetBoolean());
         }
+        var latestInvitation = _smtpCapture.Messages.Last(message => message.Contains($"To: {email}", StringComparison.OrdinalIgnoreCase));
+        var (invitationEmail, invitationToken) = ExtractAccountLink(latestInvitation);
+        Assert.Equal(email, invitationEmail);
+        const string ownerPassword = "Invitation.Acceptance-Password-42!";
+        using (var acceptedInvitation = await SendAsRoleAsync(HttpMethod.Post, "/api/session/password/reset", "admin",
+                   JsonContent.Create(new { email = invitationEmail, token = invitationToken, newPassword = ownerPassword }), requestToken, antiforgeryCookie))
+            Assert.True(acceptedInvitation.StatusCode == HttpStatusCode.OK,
+                $"The latest resent owner invitation must be usable; returned {(int)acceptedInvitation.StatusCode}: {await acceptedInvitation.Content.ReadAsStringAsync()}");
         using (var duplicateSlug = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/companies",
                    System.Net.Http.Json.JsonContent.Create(requestBody), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.Conflict, duplicateSlug.StatusCode);
+
+        Assert.All(_smtpCapture.Messages, message =>
+            Assert.Contains($"https://{slug}.envantertr.com/", DecodeMimeBody(message), StringComparison.Ordinal));
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var confirmedOwner = await db.Users.SingleAsync(x => x.Id == ownerId);
+            confirmedOwner.EmailConfirmed = true;
+            await db.SaveChangesAsync();
+        }
+        using (var confirmedResend = await SendAsPlatformAdminRequestAsync(HttpMethod.Post,
+                   $"/api/platform/companies/{companyId}/owner-invitation/resend", new StringContent("{}", Encoding.UTF8, "application/json"),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.OK, confirmedResend.StatusCode);
+        var ownerAccessBody = DecodeMimeBody(_smtpCapture.Messages.Last());
+        Assert.Contains("Şirket sahibi", ownerAccessBody, StringComparison.Ordinal);
+        Assert.Contains($"https://{slug}.envantertr.com/", ownerAccessBody, StringComparison.Ordinal);
 
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
@@ -4635,6 +4709,9 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(1, await db.Companies.CountAsync(x => x.Slug == slug));
             Assert.Equal(1, await db.CompanyMemberships.CountAsync(x => x.CompanyId == companyId && x.UserId == ownerId));
             Assert.Equal(1, await db.TenantSubscriptions.CountAsync(x => x.CompanyId == companyId));
+            var owner = await db.Users.SingleAsync(x => x.Id == ownerId);
+            Assert.True(owner.EmailConfirmed);
+            Assert.True(await scope.ServiceProvider.GetRequiredService<UserManager<EnvanterUser>>().CheckPasswordAsync(owner, ownerPassword));
         }
     }
 
@@ -4778,7 +4855,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                 Id = Guid.NewGuid(), CompanyName = $"{paymentMarker}-company-{index:D2}",
                 Slug = $"dashboard-payment-{index:D2}-{trackedUserId:N}", ContactEmail = trackedEmail,
                 OwnerName = $"Dashboard Payment Owner {index:D2}", OwnerEmail = trackedEmail,
-                PlanId = paymentPlan.Id, TermDays = 30, Amount = 100m + index,
+                PlanId = paymentPlan.Id, TermDays = 30, SubtotalAmount = 100m + index, Amount = 100m + index,
                 Currency = index % 2 == 0 ? "TRY" : "USD",
                 Status = index == 0 ? "Provisioned" : index == 1 ? "PaymentFailed" : "PaymentReview",
                 PaymentReference = $"synthetic-payment-reference-{index:D2}",
@@ -5714,6 +5791,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Contains($"To: acceptance-{_userId:N}@example.invalid", accessMessage, StringComparison.OrdinalIgnoreCase);
         var accessBody = DecodeMimeBody(accessMessage);
         Assert.Contains("Other security acceptance company", accessBody, StringComparison.Ordinal);
+        Assert.Contains($"https://other-{_otherCompanyId:N}.envantertr.com/", accessBody, StringComparison.Ordinal);
         Assert.Contains("Görüntüleyici", accessBody, StringComparison.Ordinal);
         Assert.Contains("Giriş ekranı şirketin güvenlik ayarlarına göre Authenticator doğrulaması isteyebilir", accessBody, StringComparison.Ordinal);
         Assert.Contains("MFA etkin olduğunda her yeni oturum açışta Authenticator kodu", accessBody, StringComparison.Ordinal);
@@ -6648,7 +6726,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Login_rate_limit_partitions_by_forwarded_client_ip()
+    public async Task Login_rate_limit_ignores_untrusted_forwarded_client_ip()
     {
         using var csrfResponse = await _client!.GetAsync("/api/session/csrf");
         Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
@@ -6665,10 +6743,11 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         using (var limitedResponse = await SendLoginAsync("203.0.113.10", requestToken!))
             Assert.Equal(HttpStatusCode.TooManyRequests, limitedResponse.StatusCode);
 
-        // A different client address must receive its own bucket even though
-        // both requests pass through the same TestServer/reverse-proxy hop.
+        // This TestServer has no explicitly trusted ingress chain. A caller-supplied
+        // forwarded address must not create a fresh login bucket. Verified proxy
+        // separation is covered by TrustedClientIpTests using the actual policies.
         using var otherClientResponse = await SendLoginAsync("203.0.113.11", requestToken!);
-        Assert.Equal(HttpStatusCode.Unauthorized, otherClientResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, otherClientResponse.StatusCode);
     }
 
     public async Task DisposeAsync()
@@ -12930,6 +13009,37 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Account_photo_upload_reports_unavailable_storage_without_a_server_error()
+    {
+        using var csrf = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrf.StatusCode);
+        using var csrfJson = JsonDocument.Parse(await csrf.Content.ReadAsStringAsync());
+        var token = csrfJson.RootElement.GetProperty("requestToken").GetString()!;
+        var cookie = csrf.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        Directory.CreateDirectory(_mediaPath);
+        var accountsPath = Path.Combine(_mediaPath, "accounts");
+        byte[] preservedMarker = "storage-conflict-marker"u8.ToArray();
+        await File.WriteAllBytesAsync(accountsPath, preservedMarker);
+        try
+        {
+            byte[] image = [137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3];
+            using var response = await SendProfilePhotoUploadAsync(image, token, cookie);
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+            var body = await response.Content.ReadAsStringAsync();
+            Assert.Contains("Profil fotoğrafı şu anda kaydedilemiyor", body, StringComparison.Ordinal);
+            Assert.DoesNotContain(accountsPath, body, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(preservedMarker, await File.ReadAllBytesAsync(accountsPath));
+            Assert.False(Directory.Exists(Path.Combine(accountsPath, _userId.ToString("N"))));
+        }
+        finally
+        {
+            File.Delete(accountsPath);
+        }
+    }
+
+    [Fact]
     public async Task Account_profile_photo_enforces_the_two_mib_limit_and_preserves_the_existing_photo()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
@@ -13848,7 +13958,8 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                 Name = "D18 outside department", NormalizedName = "D18 OUTSIDE DEPARTMENT", LocationCatalogId = outside.Id });
             db.Assets.AddRange(
                 new Asset { Id = childAssetId, CompanyId = _companyId, AssetTag = "D18-CHILD", Name = "D18 child asset", CategoryId = categoryId,
-                    ModelId = modelDetailsModelId, LocationCatalogId = child.Id, Location = "D18 Site A / D18 Room 1", IsRequestable = true, WarrantyExpiresAt = new DateOnly(2026, 11, 1),
+                    ModelId = modelDetailsModelId, LocationCatalogId = child.Id, Location = "D18 Site A / D18 Room 1", IsRequestable = true,
+                    WarrantyExpiresAt = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(15),
                     NextAuditOn = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1) },
                 new Asset { Id = scopedAssetWithOutsideEmployeeId, CompanyId = _companyId, AssetTag = "D18-SCOPED-OUTSIDE-EMPLOYEE",
                     Name = "D18 scoped asset assigned outside", CategoryId = categoryId, ModelId = modelDetailsModelId, LocationCatalogId = root.Id, Location = "D18 Site A",
@@ -18494,15 +18605,9 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         Assert.Contains("reset-password.html", htmlBody, StringComparison.Ordinal);
         Assert.Contains("#email", htmlBody, StringComparison.Ordinal);
         Assert.DoesNotContain("?email=", htmlBody, StringComparison.OrdinalIgnoreCase);
-
-        string resetToken;
-        await using (var scope = _factory!.Services.CreateAsyncScope())
-        {
-            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<EnvanterUser>>();
-            var user = await userManager.FindByIdAsync(_userId.ToString());
-            Assert.NotNull(user);
-            resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
-        }
+        var (resetEmail, resetToken) = ExtractAccountLink(deliveredMessage);
+        Assert.Equal(accountEmail, resetEmail);
+        Assert.False(string.IsNullOrWhiteSpace(resetToken));
 
         const string newPassword = "New.Acceptance-Password-42!";
         var resetContent = () => System.Net.Http.Json.JsonContent.Create(new
@@ -18833,11 +18938,33 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Contains(await db.AuditEntries.Where(entry => entry.CompanyId == _companyId).ToListAsync(),
                 entry => entry.Action == "MfaEnabledByCompanyPolicy");
         }
-        using (var secondLogin = await SendAnonymousLoginAsync(loginClient, email, password, null, token, cookie, _companyId))
-        using (var payload = JsonDocument.Parse(await secondLogin.Content.ReadAsStringAsync()))
+        // Model a genuinely separate device: a new client with its own antiforgery
+        // cookie must still complete the account's TOTP step on every new login.
+        using var secondDeviceClient = _factory.CreateClient(new WebApplicationFactoryClientOptions
         {
-            Assert.Equal(HttpStatusCode.Conflict, secondLogin.StatusCode);
+            HandleCookies = false,
+            AllowAutoRedirect = false
+        });
+        using var secondDeviceCsrf = await secondDeviceClient.GetAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, secondDeviceCsrf.StatusCode);
+        using var secondDeviceCsrfPayload = JsonDocument.Parse(await secondDeviceCsrf.Content.ReadAsStringAsync());
+        var secondDeviceToken = secondDeviceCsrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var secondDeviceCookie = secondDeviceCsrf.Headers.GetValues("Set-Cookie").Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        using (var secondDeviceChallenge = await SendAnonymousLoginAsync(secondDeviceClient, email, password, null,
+                   secondDeviceToken, secondDeviceCookie, _companyId))
+        using (var payload = JsonDocument.Parse(await secondDeviceChallenge.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, secondDeviceChallenge.StatusCode);
             Assert.True(payload.RootElement.GetProperty("twoFactorRequired").GetBoolean());
+        }
+        using (var secondDeviceLogin = await SendAnonymousLoginAsync(secondDeviceClient, email, password,
+                   GenerateAuthenticatorCode(secret), secondDeviceToken, secondDeviceCookie, _companyId))
+        using (var payload = JsonDocument.Parse(await secondDeviceLogin.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal(HttpStatusCode.OK, secondDeviceLogin.StatusCode);
+            Assert.Equal(_companyId, payload.RootElement.GetProperty("companyId").GetGuid());
         }
     }
 
@@ -19359,6 +19486,22 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             decoded.Write(Encoding.UTF8.GetBytes([character]));
         }
         return Encoding.UTF8.GetString(decoded.ToArray());
+    }
+
+    private static (string Email, string Token) ExtractAccountLink(string message)
+    {
+        var html = WebUtility.HtmlDecode(DecodeMimeBody(message));
+        var linkMatch = Regex.Match(html, @"href=[^>]*reset-password\.html#[^>]*", RegexOptions.IgnoreCase);
+        Assert.True(linkMatch.Success, "The delivered account email must contain a usable activation or password reset link.");
+        var link = linkMatch.Value["href=".Length..].Trim().Trim('"');
+        var uri = new Uri(link);
+        var values = uri.Fragment.TrimStart('#').Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Select(part => part.Split('=', 2))
+            .Where(parts => parts.Length == 2)
+            .ToDictionary(parts => Uri.UnescapeDataString(parts[0]), parts => Uri.UnescapeDataString(parts[1]), StringComparer.Ordinal);
+        Assert.Contains("email", values.Keys);
+        Assert.Contains("token", values.Keys);
+        return (values["email"], values["token"]);
     }
 
     private async Task<HttpResponseMessage> SendProfilePhotoUploadAsync(byte[] bytes, string requestToken, string antiforgeryCookie)

@@ -133,7 +133,15 @@ assert.match(page, /QR kodunu tarayamıyorsanız aşağıdaki kurulum anahtarın
   'Manual setup-key entry must remain available as a fallback.');
 assert.match(page, /twoFactorCode:f\.get\('twoFactorCode'\)\|\|null/);
 assert.match(page, /platformAdminOnly:true/, 'Platform login must request an explicitly scoped platform session.');
-assert.match(page, /if\(x\.twoFactorRequired\)[\s\S]*?platformTwoFactorField\.hidden=false/);
+assert.match(page, /if\(x\.twoFactorRequired\)\{setPlatformMfaChallenge\(f\.get\('email'\)\)/,
+  'The platform login must persist an MFA challenge once the server confirms the account requires it.');
+assert.match(page, /sessionStorage\.setItem\(platformMfaChallengeKey,normalizePlatformLoginEmail\(email\)\)/,
+  'The MFA challenge may persist only the account identifier in this browser tab.');
+assert.match(page, /sessionStorage\.getItem\(platformMfaChallengeKey\)/);
+assert.match(page, /if\(challengedEmail&&normalizePlatformLoginEmail\(f\.get\('email'\)\)!==challengedEmail\)clearPlatformMfaChallenge\(\)/,
+  'Changing accounts must clear the previous account MFA challenge.');
+assert.doesNotMatch(page, /sessionStorage\.setItem\([^\n]*(?:password|twoFactorCode)/i,
+  'Passwords and authenticator codes must never be stored in sessionStorage.');
 assert.match(page, /error\.twoFactorRequired=data\?\.twoFactorRequired===true/);
 assert.match(account, /request\.PlatformAdminOnly && \(tenantSlug is not null \|\| !isPlatformAdmin \|\| request\.CompanyId is not null\)/,
   'Platform-only login must require a platform administrator and reject company-scoped hosts/IDs.');
@@ -147,7 +155,10 @@ assert.match(page, /abonelik gibi kritik platform değişiklikleri/);
 assert.match(page, /async function api\([\s\S]*?platform_reauth_required[\s\S]*?requestPlatformReauthentication\(\)[\s\S]*?_skipReauth:true/);
 assert.ok(page.includes("function requestPlatformReauthentication()") && page.includes("Kritik işlem iptal edildi; hiçbir değişiklik uygulanmadı."), 'step-up prompt supports reauthentication and safe cancellation');
 assert.match(program, /isPlatformAdmin && isPlatformEndpoint && isWriteRequest[\s\S]*?platform_reauth_at[\s\S]*?nowUnix - 600[\s\S]*?Status428PreconditionRequired[\s\S]*?platform_reauth_required/);
-assert.match(program, /AddPolicy\("step-up"[\s\S]*?PermitLimit = 5[\s\S]*?TimeSpan\.FromMinutes\(5\)/);
+const rateLimits = await readFile('src/EnvanterTR.Web/Data/ClientRateLimits.cs', 'utf8');
+assert.ok(program.includes('AddRateLimiter(ClientRateLimits.Configure)'));
+assert.match(rateLimits, /AddPolicy\("step-up"[\s\S]*?PermitLimit = 5[\s\S]*?TimeSpan\.FromMinutes\(5\)/);
+assert.ok(!rateLimits.includes('X-Forwarded-For'), 'Named policies must use the middleware-verified connection address');
 assert.match(program, /"platform_reauth_at"/);
 assert.match(account, /MapPost\("\/api\/session\/platform-reauth"[\s\S]*?CheckPasswordAsync[\s\S]*?VerifyTwoFactorTokenAsync[\s\S]*?PlatformReauthenticated[\s\S]*?RequireRateLimiting\("step-up"\)/);
 assert.match(account, /platform_reauth_at/);

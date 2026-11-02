@@ -1043,6 +1043,7 @@ public static class PlatformEndpoints
             var resent = false;
             Guid invitedUserId;
             string companyName;
+            string? companySlug;
             string displayName;
             bool emailConfirmed;
             await using (var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken))
@@ -1053,6 +1054,7 @@ public static class PlatformEndpoints
                 if (company is null) return Results.NotFound(new { message = "Şirket bulunamadı." });
                 if (!company.IsActive) return Results.Conflict(new { message = "Pasif şirkete kullanıcı eklenemez." });
                 companyName = company.Name;
+                companySlug = company.Slug;
 
                 var now = DateTimeOffset.UtcNow;
                 var subscription = await (from item in db.TenantSubscriptions.AsNoTracking()
@@ -1136,13 +1138,13 @@ public static class PlatformEndpoints
             {
                 if (emailConfirmed)
                     await AccountEndpoints.SendCompanyAccessAddedEmailAsync(email, displayName, companyName, roleKey,
-                        configuration, cancellationToken);
+                        configuration, cancellationToken, companySlug);
                 else
                 {
                     var account = await userManager.FindByIdAsync(invitedUserId.ToString());
                     if (account is null) return Results.Problem("Üyelik kaydedildi ancak davet hesabı bulunamadı.", statusCode: StatusCodes.Status500InternalServerError);
                     var token = await userManager.GeneratePasswordResetTokenAsync(account);
-                    await AccountEndpoints.SendAccountInvitationEmailAsync(email, displayName, token, configuration, cancellationToken);
+                    await AccountEndpoints.SendAccountInvitationEmailAsync(email, displayName, token, configuration, cancellationToken, companySlug);
                 }
                 emailSent = true;
             }
@@ -1283,6 +1285,65 @@ public static class PlatformEndpoints
                 lead.LastContactedAt, lead.CompanyId, lead.DemoGrantedAt, lead.UpdatedAt });
         }).RequireRateLimiting("login");
 
+        admin.MapGet("/coupons", async (AppDbContext db, CancellationToken cancellationToken) =>
+            Results.Ok(await db.SubscriptionCoupons.AsNoTracking().OrderByDescending(x => x.CreatedAt)
+                .Select(x => new { x.Id, x.Code, x.DiscountType, x.DiscountValue, x.Currency, x.PlanId,
+                    PlanName = x.PlanId == null ? null : db.SubscriptionPlans.Where(p => p.Id == x.PlanId).Select(p => p.Name).FirstOrDefault(),
+                    x.StartsAt, x.EndsAt, x.MaxRedemptions, x.MaxRedemptionsPerCustomer, x.IsActive, x.CreatedAt, x.UpdatedAt,
+                    RedemptionCount = db.CompanyCheckoutOrders.Count(o => o.CouponId == x.Id && o.Status == "Provisioned") })
+                .ToListAsync(cancellationToken)));
+
+        admin.MapPost("/coupons", async ([FromBody] SaveSubscriptionCouponRequest request, ClaimsPrincipal user,
+            AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!ValidateCoupon(request, out var errors)) return Results.ValidationProblem(errors!);
+            var code = request.Code.Trim().ToUpperInvariant();
+            if (await db.SubscriptionCoupons.AnyAsync(x => x.Code == code, cancellationToken))
+                return Results.Conflict(new { message = "Kupon kodu zaten kayıtlı." });
+            if (request.PlanId is Guid planId && !await db.SubscriptionPlans.AnyAsync(x => x.Id == planId && x.DeploymentKind == "cloud", cancellationToken))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["planId"] = ["Kupon yalnız Cloud planına bağlanabilir."] });
+            var coupon = new SubscriptionCoupon { Code = code, DiscountType = request.DiscountType.Trim(),
+                DiscountValue = request.DiscountValue, Currency = request.DiscountType == "Fixed" ? request.Currency.Trim().ToUpperInvariant() : null,
+                PlanId = request.PlanId, StartsAt = request.StartsAt, EndsAt = request.EndsAt,
+                MaxRedemptions = request.MaxRedemptions, MaxRedemptionsPerCustomer = request.MaxRedemptionsPerCustomer,
+                IsActive = request.IsActive, CreatedByUserId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!) };
+            db.SubscriptionCoupons.Add(coupon);
+            AddAudit(db, user, "SubscriptionCouponCreated", "SubscriptionCoupon", coupon.Id, null,
+                JsonSerializer.Serialize(new { reason = Clean(request.ChangeReason), after = new { coupon.Code, coupon.DiscountType,
+                    coupon.DiscountValue, coupon.Currency, coupon.PlanId, coupon.StartsAt, coupon.EndsAt, coupon.MaxRedemptions,
+                    coupon.MaxRedemptionsPerCustomer, coupon.IsActive } }));
+            try { await db.SaveChangesAsync(cancellationToken); }
+            catch (DbUpdateException) { return Results.Conflict(new { message = "Kupon kaydı çakıştı." }); }
+            return Results.Created($"/api/platform/coupons/{coupon.Id}", new { coupon.Id, coupon.Code });
+        });
+
+        admin.MapPut("/coupons/{id:guid}", async (Guid id, [FromBody] SaveSubscriptionCouponRequest request,
+            ClaimsPrincipal user, AppDbContext db, CancellationToken cancellationToken) =>
+        {
+            if (!ValidateCoupon(request, out var errors)) return Results.ValidationProblem(errors!);
+            var coupon = await db.SubscriptionCoupons.SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+            if (coupon is null) return Results.NotFound();
+            var code = request.Code.Trim().ToUpperInvariant();
+            if (await db.SubscriptionCoupons.AnyAsync(x => x.Id != id && x.Code == code, cancellationToken))
+                return Results.Conflict(new { message = "Kupon kodu zaten kayıtlı." });
+            if (request.PlanId is Guid planId && !await db.SubscriptionPlans.AnyAsync(x => x.Id == planId && x.DeploymentKind == "cloud", cancellationToken))
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["planId"] = ["Kupon yalnız Cloud planına bağlanabilir."] });
+            var before = new { coupon.Code, coupon.DiscountType, coupon.DiscountValue, coupon.Currency, coupon.PlanId,
+                coupon.StartsAt, coupon.EndsAt, coupon.MaxRedemptions, coupon.MaxRedemptionsPerCustomer, coupon.IsActive };
+            coupon.Code = code; coupon.DiscountType = request.DiscountType.Trim(); coupon.DiscountValue = request.DiscountValue;
+            coupon.Currency = request.DiscountType == "Fixed" ? request.Currency.Trim().ToUpperInvariant() : null;
+            coupon.PlanId = request.PlanId; coupon.StartsAt = request.StartsAt; coupon.EndsAt = request.EndsAt;
+            coupon.MaxRedemptions = request.MaxRedemptions; coupon.MaxRedemptionsPerCustomer = request.MaxRedemptionsPerCustomer;
+            coupon.IsActive = request.IsActive; coupon.UpdatedAt = DateTimeOffset.UtcNow;
+            var after = new { coupon.Code, coupon.DiscountType, coupon.DiscountValue, coupon.Currency, coupon.PlanId,
+                coupon.StartsAt, coupon.EndsAt, coupon.MaxRedemptions, coupon.MaxRedemptionsPerCustomer, coupon.IsActive };
+            AddAudit(db, user, "SubscriptionCouponUpdated", "SubscriptionCoupon", coupon.Id, null,
+                JsonSerializer.Serialize(new { reason = Clean(request.ChangeReason), before, after }));
+            try { await db.SaveChangesAsync(cancellationToken); }
+            catch (DbUpdateException) { return Results.Conflict(new { message = "Kupon güncellemesi çakıştı." }); }
+            return Results.Ok(new { coupon.Id, coupon.Code, coupon.IsActive });
+        });
+
         admin.MapGet("/plans", async (AppDbContext db, CancellationToken cancellationToken) =>
             Results.Ok(await db.SubscriptionPlans.AsNoTracking().OrderBy(x => x.SortOrder)
                 .Select(x => new { x.Id, x.Code, x.Name, x.Description, x.DeploymentKind,
@@ -1389,7 +1450,8 @@ public static class PlatformEndpoints
                 }
             }
 
-            var company = new Company { Name = companyName, Slug = slug, ContactEmail = contactEmail ?? ownerEmail };
+            var company = new Company { Name = companyName, Slug = slug, ContactEmail = contactEmail ?? ownerEmail,
+                SecurityRequireMfa = true };
             var now = DateTimeOffset.UtcNow;
             var subscription = new TenantSubscription {
                 CompanyId = company.Id, PlanId = plan.Id, Status = "Active", IsDemo = false,
@@ -1416,11 +1478,11 @@ public static class PlatformEndpoints
             {
                 if (wasConfirmed)
                     await AccountEndpoints.SendCompanyAccessAddedEmailAsync(ownerEmail, owner.DisplayName ?? ownerName,
-                        companyName, "owner", configuration, cancellationToken);
+                        companyName, "owner", configuration, cancellationToken, company.Slug);
                 else
                 {
                     var token = await userManager.GeneratePasswordResetTokenAsync(owner);
-                    await AccountEndpoints.SendAccountInvitationEmailAsync(ownerEmail, ownerName, token, configuration, cancellationToken);
+                    await AccountEndpoints.SendAccountInvitationEmailAsync(ownerEmail, ownerName, token, configuration, cancellationToken, company.Slug);
                 }
                 invitationSent = true;
             }
@@ -1448,7 +1510,7 @@ public static class PlatformEndpoints
                 join ownerAccount in db.Users.AsNoTracking() on membership.UserId equals ownerAccount.Id
                 join company in db.Companies.AsNoTracking() on membership.CompanyId equals company.Id
                 where membership.CompanyId == companyId && membership.RoleKey == "owner"
-                select new { AccountId = ownerAccount.Id, ownerAccount.Email, ownerAccount.EmailConfirmed, ownerAccount.DisplayName, CompanyName = company.Name })
+                select new { AccountId = ownerAccount.Id, ownerAccount.Email, ownerAccount.EmailConfirmed, ownerAccount.DisplayName, CompanyName = company.Name, company.Slug })
                 .SingleOrDefaultAsync(cancellationToken);
             if (owner?.Email is null) return Results.NotFound();
             var account = await userManager.FindByIdAsync(owner.AccountId.ToString());
@@ -1457,12 +1519,12 @@ public static class PlatformEndpoints
             {
                 if (owner.EmailConfirmed)
                     await AccountEndpoints.SendCompanyAccessAddedEmailAsync(owner.Email, owner.DisplayName ?? owner.Email,
-                        owner.CompanyName, "owner", configuration, cancellationToken);
+                        owner.CompanyName, "owner", configuration, cancellationToken, owner.Slug);
                 else
                 {
                     var token = await userManager.GeneratePasswordResetTokenAsync(account);
                     await AccountEndpoints.SendAccountInvitationEmailAsync(owner.Email, owner.DisplayName ?? owner.Email,
-                        token, configuration, cancellationToken);
+                        token, configuration, cancellationToken, owner.Slug);
                 }
                 return Results.Ok(new { invitationSent = true, message = "Yetkili erişim e-postası yeniden gönderildi." });
             }
@@ -2266,6 +2328,29 @@ public static class PlatformEndpoints
         plan.IsPublic = request.IsPublic;
         plan.IsActive = request.IsActive;
         plan.SortOrder = request.SortOrder;
+    }
+
+    private static bool ValidateCoupon(SaveSubscriptionCouponRequest request, out Dictionary<string, string[]>? errors)
+    {
+        var issues = new Dictionary<string, string[]>();
+        var code = request.Code?.Trim() ?? "";
+        if (!Regex.IsMatch(code, "^[A-Za-z0-9][A-Za-z0-9_-]{1,38}[A-Za-z0-9]$"))
+            issues["code"] = ["Kod 3-40 karakter olmalı; harf veya sayıyla başlamalı/bitmeli, arada harf, sayı, tire ve alt çizgi kullanılabilir."];
+        if (request.DiscountType is not ("Percent" or "Fixed"))
+            issues["discountType"] = ["İndirim türü Percent veya Fixed olmalıdır."];
+        if (request.DiscountValue <= 0 || (request.DiscountType == "Percent" && request.DiscountValue > 100) ||
+            (request.DiscountType == "Fixed" && request.DiscountValue > 100000000))
+            issues["discountValue"] = ["Yüzde indirim 1-100, sabit indirim pozitif tutar olmalıdır."];
+        if (request.DiscountType == "Fixed" && (request.Currency?.Trim().Length != 3 || !request.Currency.Trim().All(char.IsAsciiLetter)))
+            issues["currency"] = ["Sabit indirim için üç harfli para birimi gerekir."];
+        if (request.StartsAt is not null && request.EndsAt is not null && request.EndsAt <= request.StartsAt)
+            issues["endsAt"] = ["Bitiş zamanı başlangıçtan sonra olmalıdır."];
+        if (request.MaxRedemptions is <= 0 || request.MaxRedemptionsPerCustomer is <= 0)
+            issues["limits"] = ["Kullanım sınırları pozitif olmalıdır."];
+        if (string.IsNullOrWhiteSpace(request.ChangeReason) || request.ChangeReason.Trim().Length < 8 || request.ChangeReason.Trim().Length > 500)
+            issues["changeReason"] = ["Denetim kaydı için 8-500 karakterlik değişiklik gerekçesi girin."];
+        errors = issues.Count == 0 ? null : issues;
+        return errors is null;
     }
 
     private static void AddAudit(AppDbContext db, ClaimsPrincipal user, string action,

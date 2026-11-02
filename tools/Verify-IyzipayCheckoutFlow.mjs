@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 const endpoint = readFileSync(new URL('../src/EnvanterTR.Web/Data/CheckoutEndpoints.cs', import.meta.url), 'utf8');
 const db = readFileSync(new URL('../src/EnvanterTR.Web/Data/AppDbContext.cs', import.meta.url), 'utf8');
 const program = readFileSync(new URL('../src/EnvanterTR.Web/Program.cs', import.meta.url), 'utf8');
+const rateLimits = readFileSync(new URL('../src/EnvanterTR.Web/Data/ClientRateLimits.cs', import.meta.url), 'utf8');
 const entity = readFileSync(new URL('../src/EnvanterTR.Web/Data/Entities.cs', import.meta.url), 'utf8');
 const acceptance = readFileSync(new URL('../tests/EnvanterTR.SecurityAcceptance/TenantSessionAcceptanceTests.cs', import.meta.url), 'utf8');
 const plans = readFileSync(new URL('../src/EnvanterTR.Web/Data/PlatformEndpoints.cs', import.meta.url), 'utf8');
@@ -13,7 +14,7 @@ for (const [label, condition] of [
   ['public initialization, browser callback and signed webhook are mapped', endpoint.includes('/api/checkout/initialize') && endpoint.includes('/api/checkout/callback') && endpoint.includes('/api/checkout/webhook') && endpoint.includes('X-IYZ-SIGNATURE-V3') && program.includes('app.MapCheckoutEndpoints()')],
   ['iyzico webhook V3 signature is canonical and compared in constant time', signature.includes('eventType') && signature.includes('paymentConversationId') && signature.includes('FixedTimeEquals') && endpoint.includes('IyzipayWebhookSignature.Verify')],
   ['public checkout readiness reports provider availability without exposing configuration', endpoint.includes('/api/checkout/status') && endpoint.includes('available') && endpoint.includes('IsTrustedCallbackUrl') && endpoint.includes('IsTrustedApiBase')],
-  ['checkout initialization validates anti-forgery and has a dedicated rate limit', endpoint.includes('antiforgery.ValidateRequestAsync(context)') && endpoint.includes('RequireRateLimiting("checkout")') && program.includes('PermitLimit = 5, Window = TimeSpan.FromMinutes(10)')],
+  ['checkout initialization validates anti-forgery and has a dedicated rate limit', endpoint.includes('antiforgery.ValidateRequestAsync(context)') && endpoint.includes('RequireRateLimiting("checkout")') && program.includes('AddRateLimiter(ClientRateLimits.Configure)') && rateLimits.includes('PermitLimit = 5, Window = TimeSpan.FromMinutes(10)')],
   ['price is selected from an active public Cloud plan on the server', endpoint.includes('x.IsActive && x.IsPublic && x.DeploymentKind == "cloud"') && endpoint.includes('request.Term == "annual" ? plan.AnnualPrice : plan.MonthlyPrice')],
   ['public plan API includes stable identifiers required by checkout', plans.includes('Select(x => new { x.Id, x.Code, x.Name')],
   ['checkout records versioned data notice acknowledgement and uses an expiring initialization lease', endpoint.includes('DataProcessingNoticeVersion != CheckoutNoticeVersion') && endpoint.includes('DataProcessingAcknowledgedAt = now') && endpoint.includes('InitializationLeaseUntil') && acceptance.includes('DataProcessingAcknowledged = false')],

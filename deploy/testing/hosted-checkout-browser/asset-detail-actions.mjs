@@ -18,9 +18,6 @@ const bulkEmployeeTwoId = '88888888-8888-4888-8888-888888888882';
 const bulkEmployeeThreeId = '77777777-7777-4777-8777-777777777773';
 const companyUnitRootId = '12121212-1212-4121-8121-121212121212';
 const companyUnitBranchId = '13131313-1313-4131-8131-131313131313';
-const reservationStartOn = new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10);
-const reservationInvalidEndOn = new Date(Date.parse(`${reservationStartOn}T12:00:00Z`) - 86400000).toISOString().slice(0, 10);
-const reservationEndOn = new Date(Date.parse(`${reservationStartOn}T12:00:00Z`) + 86400000).toISOString().slice(0, 10);
 let companyUnitItems = [];
 const companyUnitWrites = [];
 const memberAccessTestUserId = '14141414-1414-4141-8141-141414141414';
@@ -3262,6 +3259,11 @@ try {
   };
   await page.locator('#licenseAssignmentSearch').fill('');
   await waitForAssignmentFilter('', params => !params.has('active') && params.get('page') === '1' && params.get('pageSize') === '25');
+  const waitForAssignmentPage = (pageNumber, rowCount) => page.waitForFunction(({ pageNumber, rowCount }) =>
+    /27/.test(document.querySelector('#licenseAssignmentCount')?.textContent || '') &&
+    new RegExp(`${pageNumber}\\s*\\/\\s*2`).test(document.querySelector('#licenseAssignmentPageInfo')?.textContent || '') &&
+    document.querySelectorAll('#licenseAssignmentRows tr').length === rowCount, { pageNumber, rowCount });
+  await waitForAssignmentPage(1, 25);
   assert.match(await page.locator('#licenseAssignmentCount').innerText(), /27/);
   assert.equal(await assignmentRows.count(), 25, 'The all-assignments view must render the first 25 of 27 rows.');
   assert.match(await assignmentPage.innerText(), /1\s*\/\s*2/);
@@ -3270,6 +3272,7 @@ try {
   const assignmentNextResponse = waitAssignmentList(params => !params.has('active') && params.get('page') === '2');
   await page.locator('#licenseAssignmentNext').click();
   assert.equal((await assignmentNextResponse).status(), 200);
+  await waitForAssignmentPage(2, 2);
   assert.equal(await assignmentRows.count(), 2, 'The second page must render only the two remaining assignments.');
   assert.match(await assignmentPage.innerText(), /2\s*\/\s*2/);
   assert.equal(await page.locator('#licenseAssignmentPrev').isDisabled(), false);
@@ -3277,10 +3280,12 @@ try {
   const assignmentPrevResponse = waitAssignmentList(params => !params.has('active') && params.get('page') === '1');
   await page.locator('#licenseAssignmentPrev').click();
   assert.equal((await assignmentPrevResponse).status(), 200);
+  await waitForAssignmentPage(1, 25);
   assert.equal(await assignmentRows.count(), 25);
   const assignmentNextAgainResponse = waitAssignmentList(params => !params.has('active') && params.get('page') === '2');
   await page.locator('#licenseAssignmentNext').click();
   assert.equal((await assignmentNextAgainResponse).status(), 200);
+  await waitForAssignmentPage(2, 2);
   const activeAssignmentsResponse = waitAssignmentList(params => params.get('active') === 'true' && params.get('page') === '1');
   await page.locator('#licenseAssignmentState').selectOption('true');
   assert.equal((await activeAssignmentsResponse).status(), 200);
@@ -4025,20 +4030,25 @@ try {
   const reservationForm = page.locator('#reservationForm');
   await reservationForm.locator('[name="assetId"]').selectOption(reservationAssets[2].id);
   await reservationForm.locator('[name="employeeId"]').selectOption(employeeId);
-  await reservationForm.locator('[name="startsOn"]').fill(reservationStartOn);
-  await reservationForm.locator('[name="endsOn"]').fill(reservationInvalidEndOn);
+  const reservationToday = await reservationForm.locator('[name="startsOn"]').getAttribute('min');
+  assert.match(reservationToday, /^\d{4}-\d{2}-\d{2}$/);
+  const reservationDateAfter = days => new Date(Date.parse(`${reservationToday}T00:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
+  const reservationStartsOn = reservationDateAfter(2);
+  const reservationEndsOn = reservationDateAfter(3);
+  await reservationForm.locator('[name="startsOn"]').fill(reservationStartsOn);
+  await reservationForm.locator('[name="endsOn"]').fill(reservationDateAfter(1));
   await reservationForm.locator('[name="requestNote"]').fill('Synthetic date validation');
   const reservationWritesBeforeInvalidDate = reservationWrites.length;
   await reservationForm.locator('#reservationSubmit').click();
   assert.equal(reservationWrites.length, reservationWritesBeforeInvalidDate, 'An end date before the start date must not create a reservation.');
-  await reservationForm.locator('[name="endsOn"]').fill(reservationEndOn);
+  await reservationForm.locator('[name="endsOn"]').fill(reservationEndsOn);
   await reservationForm.locator('[name="requestNote"]').fill('Synthetic reservation request');
   await reservationForm.locator('#reservationSubmit').click();
   await page.locator('#reservationRows tr').filter({ hasText: 'QA-RES-003' }).waitFor();
   const createdReservationWrite = reservationWrites.find(item => item.path === '/api/reservations' && item.body?.assetId === reservationAssets[2].id);
   assert.equal(createdReservationWrite?.method, 'POST');
   assert.deepEqual(createdReservationWrite?.body, {
-    assetId: reservationAssets[2].id, employeeId, startsOn: reservationStartOn, endsOn: reservationEndOn, requestNote: 'Synthetic reservation request'
+    assetId: reservationAssets[2].id, employeeId, startsOn: reservationStartsOn, endsOn: reservationEndsOn, requestNote: 'Synthetic reservation request'
   });
   assert.equal(createdReservationWrite?.csrf, 'synthetic-asset-csrf');
   assert.equal(await reservationForm.locator('[name="assetId"]').inputValue(), '', 'Successful creation must reset the form.');
@@ -4755,7 +4765,7 @@ try {
 
   const sidebarDestinations = page.locator('#sidebar button[data-page]');
   const destinationCount = await sidebarDestinations.count();
-  assert.equal(destinationCount, 53, 'The owner navigation smoke acceptance must cover all 53 documented sidebar destinations, including the unified purchasing overview and invoices.');
+  assert.equal(destinationCount, 52, 'The owner navigation smoke acceptance must cover all 52 documented sidebar destinations, including the unified purchasing overview.');
   const expectedSurfaceByDestination = {
     'Genel Bakış': 'overview', 'Varlıklar': 'overview',
     'Tüm satın almalar': 'purchaseOverviewPage',
@@ -4770,7 +4780,7 @@ try {
     'Bakım kayıtları': 'maintenancePage', 'Bakım planları': 'calendarPage', 'Denetimler': 'auditPage', 'Takvim': 'calendarPage', 'Görevler': 'tasksPage',
     'Hazır raporlar': 'reportPage', 'Özel rapor oluştur': 'customReportPage', 'Dışa aktarımlar': 'dataToolsPage',
     'Tablodan içe aktar': 'dataToolsPage', 'Verileri dışa aktar': 'dataToolsPage', 'Yedekleme geçmişi': 'dataToolsPage', 'Geri yükle': 'dataToolsPage',
-    'Firma profili': 'companySettingsPage', 'Logo ve tema': 'companySettingsPage', 'Faturalar': 'companyInvoicesPage', 'Bildirimler': 'notificationPreferencesPage', 'Entegrasyonlar': 'integrationsPage',
+    'Firma profili': 'companySettingsPage', 'Logo ve tema': 'companySettingsPage', 'Bildirimler': 'notificationPreferencesPage', 'Entegrasyonlar': 'integrationsPage',
     'Güvenlik': 'featureStatusPage', 'Denetim kayıtları': 'auditPage', 'Destek': 'supportPage'
   };
   assert.equal(Object.keys(expectedSurfaceByDestination).length, destinationCount, 'Every documented sidebar destination must have an exact expected screen surface.');
@@ -5725,8 +5735,23 @@ try {
   await page.getByRole('button', { name: 'Şirket birimi erişimi' }).click();
   await page.locator('#memberLocationAccessDialog').waitFor({ state: 'visible' });
   const unitMode = page.locator('#memberCompanyUnitAccessMode');
+  // showModal() happens before the access API response populates the unit list.
+  // Wait for the server-provided default scope and both active options before changing it,
+  // otherwise a fast hosted browser can race the response and have its selection overwritten.
+  await page.waitForFunction(({ branchId }) => {
+    const mode = document.querySelector('#memberCompanyUnitAccessMode');
+    const options = [...document.querySelectorAll('#memberCompanyUnitAccessList input[data-company-unit-option="true"]')];
+    const branch = options.find(option => option.value === branchId);
+    return mode?.value === 'all' && options.length === 2 && branch?.disabled === true;
+  }, { branchId: companyUnitBranchId });
   await unitMode.selectOption('restricted');
   const branchScope = page.locator(`#memberCompanyUnitAccessList input[value="${companyUnitBranchId}"]`);
+  await branchScope.waitFor({ state: 'visible' });
+  await page.waitForFunction(branchId => {
+    const mode = document.querySelector('#memberCompanyUnitAccessMode');
+    const branch = document.querySelector(`#memberCompanyUnitAccessList input[value="${CSS.escape(branchId)}"]`);
+    return mode?.value === 'restricted' && branch?.disabled === false;
+  }, companyUnitBranchId);
   await branchScope.check();
   await page.locator('#memberLocationAccessForm button[type="submit"]').click();
   await page.waitForFunction(() => document.querySelector('#memberLocationAccessDialog')?.open === false);

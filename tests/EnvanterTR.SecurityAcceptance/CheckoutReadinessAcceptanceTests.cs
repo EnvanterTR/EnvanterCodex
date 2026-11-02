@@ -66,8 +66,8 @@ public sealed partial class TenantSessionAcceptanceTests
             Assert.Equal(HttpStatusCode.OK, publicResponse.StatusCode);
             using var publicPayload = JsonDocument.Parse(await publicResponse.Content.ReadAsStringAsync());
             var available = publicPayload.RootElement.GetProperty("available").GetBoolean();
-            Assert.Equal(item.Key && item.CallbackValid && item.ApiValid, available);
-            Assert.Equal(available, readiness.GetProperty("configurationReady").GetBoolean());
+            Assert.False(available);
+            Assert.Equal(item.Key && item.CallbackValid && item.ApiValid, readiness.GetProperty("configurationReady").GetBoolean());
             Assert.False(publicPayload.RootElement.TryGetProperty("checkout", out _));
         }
         foreach (var priceCase in new[] { (Monthly: 49m, Annual: 0m, Currency: "TRY", Expected: 1),
@@ -87,6 +87,10 @@ public sealed partial class TenantSessionAcceptanceTests
             Assert.Equal(1, readiness.GetProperty("publishedCloudPlans").GetInt32());
             Assert.Equal(priceCase.Expected, readiness.GetProperty("purchasableCloudPlans").GetInt32());
             Assert.Equal(priceCase.Expected > 0, readiness.GetProperty("catalogReady").GetBoolean());
+            using var publicResponse = await SendAsAdminAsync("/api/checkout/status");
+            Assert.Equal(HttpStatusCode.OK, publicResponse.StatusCode);
+            using var publicPayload = JsonDocument.Parse(await publicResponse.Content.ReadAsStringAsync());
+            Assert.Equal(priceCase.Expected > 0, publicPayload.RootElement.GetProperty("available").GetBoolean());
         }
     }
 }

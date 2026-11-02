@@ -89,6 +89,8 @@ if (!string.IsNullOrWhiteSpace(protectedSmtpPasswordPath))
 // Compose network; the web service has no published host port. Keep proxy trust
 // opt-in so forwarded headers are never accepted on a directly public app port.
 var trustProxyForwardedFor = builder.Configuration.GetValue<bool>("ForwardedHeaders:Enabled");
+var clientIpNetworks = TrustedClientIp.ParseNetworks(builder.Configuration["ClientIp:TrustedProxyNetworks"]);
+var useCloudflareClientIp = builder.Configuration.GetValue<bool>("ClientIp:UseCloudflareConnectingIp");
 if (trustProxyForwardedFor)
 {
     builder.Services.Configure<ForwardedHeadersOptions>(options =>
@@ -129,86 +131,7 @@ builder.Services.AddAntiforgery(options =>
 });
 builder.Services.AddAuthentication();
 builder.Services.AddAuthorization();
-builder.Services.AddRateLimiter(options =>
-{
-    options.AddPolicy("login", context =>
-    {
-        var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        if (trustProxyForwardedFor)
-        {
-            var forwarded = context.Request.Headers["X-Forwarded-For"].ToString()
-                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                .LastOrDefault();
-            if (System.Net.IPAddress.TryParse(forwarded, out var parsedForwardedIp))
-                clientIp = parsedForwardedIp.ToString();
-        }
-
-        return RateLimitPartition.GetFixedWindowLimiter(
-            clientIp,
-            _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 10,
-                Window = TimeSpan.FromMinutes(5),
-                QueueLimit = 0,
-                AutoReplenishment = true
-            });
-    });
-    options.AddPolicy("step-up", context =>
-    {
-        var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        if (trustProxyForwardedFor)
-        {
-            var forwarded = context.Request.Headers["X-Forwarded-For"].ToString()
-                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                .LastOrDefault();
-            if (System.Net.IPAddress.TryParse(forwarded, out var parsedForwardedIp))
-                clientIp = parsedForwardedIp.ToString();
-        }
-
-        return RateLimitPartition.GetFixedWindowLimiter(
-            clientIp,
-            _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 5,
-                Window = TimeSpan.FromMinutes(5),
-                QueueLimit = 0,
-                AutoReplenishment = true
-            });
-    });
-    options.AddPolicy("customer-api", context =>
-    {
-        var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        if (trustProxyForwardedFor)
-        {
-            var forwarded = context.Request.Headers["X-Forwarded-For"].ToString()
-                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
-            if (System.Net.IPAddress.TryParse(forwarded, out var parsedForwardedIp)) clientIp = parsedForwardedIp.ToString();
-        }
-        return RateLimitPartition.GetFixedWindowLimiter(clientIp, _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 120, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true
-        });
-    });
-    options.AddPolicy("checkout", context =>
-    {
-        var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        if (trustProxyForwardedFor)
-        {
-            var forwarded = context.Request.Headers["X-Forwarded-For"].ToString()
-                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
-            if (System.Net.IPAddress.TryParse(forwarded, out var parsedForwardedIp)) clientIp = parsedForwardedIp.ToString();
-        }
-        return RateLimitPartition.GetFixedWindowLimiter(clientIp, _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 5, Window = TimeSpan.FromMinutes(10), QueueLimit = 0, AutoReplenishment = true
-        });
-    });
-    options.OnRejected = (context, _) =>
-    {
-        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-        return ValueTask.CompletedTask;
-    };
-});
+builder.Services.AddRateLimiter(ClientRateLimits.Configure);
 
 var connectionString = builder.Configuration.GetConnectionString("EnvanterTR");
 if (!string.IsNullOrWhiteSpace(connectionString))
@@ -292,6 +215,11 @@ if (args.Contains("--recover-local-platform-admin", StringComparer.OrdinalIgnore
 {
     Environment.ExitCode = await LocalPlatformAdminRecovery.RunAsync(app.Services, app.Environment.IsDevelopment(), connectionString);
     return;
+}
+
+if (trustProxyForwardedFor && clientIpNetworks.Length > 0)
+{
+    app.UseTrustedClientIp(clientIpNetworks, useCloudflareClientIp);
 }
 
 if (trustProxyForwardedFor)

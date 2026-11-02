@@ -1,0 +1,11 @@
+http:
+  routers:
+    probe:
+      entryPoints: [web]
+      rule: PathPrefix(`/`)
+      service: ingress
+  services:
+    ingress:
+      loadBalancer:
+        servers:
+          - url: http://ingress

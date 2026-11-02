@@ -222,6 +222,32 @@ try {
     'Reusing a recovery code must show a login error.');
   assert.equal(await page.locator('#appShell').isVisible(), false);
 
+  // Editing the password to recover from a failed login must not hide the MFA challenge.
+  const mfaInputAfterFailure = page.locator('#loginForm [name="twoFactorCode"]');
+  await mfaInputAfterFailure.waitFor({ state: 'visible' });
+  await page.locator('#loginForm [name="password"]').fill(password);
+  assert.equal(await mfaInputAfterFailure.isVisible(), true,
+    'Correcting the password must preserve the visible authenticator field.');
+  const rateLimitedLogin = async route => {
+    if (route.request().method() !== 'POST') return route.continue();
+    await route.fulfill({
+      status: 429,
+      contentType: 'application/json',
+      body: JSON.stringify({ message: 'İstek sınırı aşıldı. Daha sonra yeniden deneyin.' }),
+    });
+  };
+  await page.route('**/api/session/login', rateLimitedLogin);
+  await page.getByRole('button', { name: 'Güvenli giriş yap' }).click();
+  await page.locator('#loginError').waitFor({ state: 'visible' });
+  assert.match(await page.locator('#loginError').innerText(), /İstek sınırı aşıldı/);
+  assert.equal(await mfaInputAfterFailure.isVisible(), true,
+    'A 429 login response must not hide the pending authenticator field.');
+  await page.reload();
+  await mfaInputAfterFailure.waitFor({ state: 'visible' });
+  assert.equal(await mfaInputAfterFailure.isVisible(), true,
+    'Reloading after a rate-limited MFA challenge must preserve the authenticator field for this browser tab.');
+  await page.unroute('**/api/session/login', rateLimitedLogin);
+
   // A fresh TOTP still works after the failed recovery-code replay.
   await submitLogin(page, totp(secret));
   await page.locator('#appShell').waitFor({ state: 'visible' });
