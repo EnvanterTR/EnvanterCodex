@@ -107,6 +107,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             table.HasCheckConstraint("CK_Companies_AssetCount", "\"AssetCount\" >= 0");
             table.HasCheckConstraint("CK_Companies_SecurityPasswordMinimumLength", "\"SecurityPasswordMinimumLength\" BETWEEN 12 AND 64");
             table.HasCheckConstraint("CK_Companies_SecuritySessionDurationHours", "\"SecuritySessionDurationHours\" BETWEEN 1 AND 720");
+            table.HasCheckConstraint("CK_Companies_DeletedInactive", "\"DeletedAt\" IS NULL OR NOT \"IsActive\"");
         });
         modelBuilder.Entity<Company>().Property(x => x.CustomerLifecycleStage).HasMaxLength(32).HasDefaultValue("Unclassified").IsRequired();
         modelBuilder.Entity<Company>().HasIndex(x => new { x.CustomerLifecycleStage, x.PlatformNextFollowUpAt });

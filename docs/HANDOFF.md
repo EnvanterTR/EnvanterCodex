@@ -2,11 +2,11 @@
 
 ## Son tamamlanan çalışma paketi
 
-WP-006–WP-011 tamamlandı. Canlı dağıtım SHA'sından türetilen temiz aday `release/v1-candidate-20261102` (`1a676b2ae2dce9416fdd918ba8c26472f49ec316`) tam hosted Chromium kabulinden exit 0 ile geçti. Aday, gerçek canlı yedeğindeki 122 migration ID'siyle birebir eşleşti. Önceki aday kabulinde Release build (0 uyarı/0 hata), 85/85 kaynak doğrulayıcı, 2.304 kontrol / 71 rota UI envanteri ve izole PostgreSQL güvenlik kabulü (413/413) da geçti. F1 geri dönüş prosedürü de app-only rollback ile şema geri yüklemeyi ayırarak kaydedildi. Güncel kirli özellik dalının Release derlemesi 0 uyarı/0 hata verdi ve EF model snapshot karşılaştırmasında pending model change yok. Bu dalın live migration ID setiyle parity'si hâlâ çözülmedi; CI/regresyon ve canlı kabulü ayrı kanıtlanmalı.
+WP-006–WP-018 tamamlandı. WP-012–WP-017'de `origin/main` uzlaştırması, checkout ve audited platform impersonation backend/UI slice'ları işlendi; ayrıntılar çalışma ledger'ında. Canlı dağıtım SHA'sından türetilen temiz aday `release/v1-candidate-20261102` (`1a676b2ae2dce9416fdd918ba8c26472f49ec316`) tam hosted Chromium kabulinden exit 0 ile geçti ve gerçek canlı yedeğindeki 122 migration ID'siyle birebir eşleşti. WP-018'de tarihsel geri alınabilir şirket silme dilimi 9 dosyada taşındı; Release build 0 uyarı/0 hata ve hedefli PostgreSQL kabulü 4/4 PASS. Yeni migration yalnız izole test DB'sinde uygulandı. Eski migration kaynağı korunarak stale snapshot alanı giderildi; migration legacy `Accessories.DeletedAt` sütununu düşürmez. Birleşik preview dalı deploy edilmedi; canlı migration ID parity'si, CI/tam regresyon, müşteri kabulü ve SMTP teslimatı hâlâ ayrı kanıt kapılarıdır.
 
 Kanıt: `tests/reports/live-derived-candidate-hosted-chromium-20261102.md`, `tests/reports/live-derived-candidate-security-20261102.md` ve `tests/reports/summary.json`.
 
-Canlı deploy veya production DB yazımı yapılmadı. Browser kabul koşucusu sentetik API verisi kullandı.
+Canlı deploy veya production DB yazımı yapılmadı. Browser kabul koşucusu sentetik API verisi kullandı. Sonraki iş: `EmployeeHandoverEmailAttempt` migration/source parity ve birleşik dalın canlı ID setiyle tüm farkları; ardından F1 için aday build/CI ve izole gerçek-yedek migration/rollback provası. Uygulama release'i ayrıca onay gerektirir.
 
 ## Gerçek kalan kapılar
 
