@@ -539,6 +539,7 @@ app.MapHealthChecks("/health");
 
 if (!string.IsNullOrWhiteSpace(connectionString))
 {
+    app.MapGet("/health/ready", CheckDatabaseReadinessAsync).AllowAnonymous();
     app.MapGet("/api/status", async (AppDbContext db, ILogger<Program> logger, CancellationToken cancellationToken) =>
     {
         try
@@ -580,6 +581,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 }
 else
 {
+    app.MapGet("/health/ready", () => Results.Json(new { status = "not-ready" }, statusCode: StatusCodes.Status503ServiceUnavailable)).AllowAnonymous();
     app.MapGet("/api/status", () => Results.Ok(new
     {
         product = "EnvanterTR", status = "database-not-configured",
@@ -590,6 +592,25 @@ else
 }
 
 app.Run();
+
+static async Task<IResult> CheckDatabaseReadinessAsync(AppDbContext db, ILogger<Program> logger, CancellationToken cancellationToken)
+{
+    try
+    {
+        if (!await db.Database.CanConnectAsync(cancellationToken))
+            return Results.Json(new { status = "not-ready" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+        if ((await db.Database.GetPendingMigrationsAsync(cancellationToken)).Any())
+            return Results.Json(new { status = "not-ready" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+
+        return Results.Ok(new { status = "ready" });
+    }
+    catch (Exception exception) when (exception is not OperationCanceledException)
+    {
+        logger.LogError("Database readiness probe failed. Error type: {ErrorType}", exception.GetType().Name);
+        return Results.Json(new { status = "not-ready" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+}
 
 static bool HasSerializationFailure(Exception exception)
 {
