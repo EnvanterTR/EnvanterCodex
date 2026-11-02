@@ -2,7 +2,7 @@
 
 ## Son tamamlanan çalışma paketi
 
-WP-006–WP-010 tamamlandı. Canlı dağıtım SHA'sından türetilen temiz aday `release/v1-candidate-20261102` (`1a676b2ae2dce9416fdd918ba8c26472f49ec316`) tam hosted Chromium kabulinden exit 0 ile geçti. Aday, gerçek canlı yedeğindeki 122 migration ID'siyle birebir eşleşti. Önceki aday kabulinde Release build (0 uyarı/0 hata), 85/85 kaynak doğrulayıcı, 2.304 kontrol / 71 rota UI envanteri ve izole PostgreSQL güvenlik kabulü (413/413) da geçti. F1 geri dönüş prosedürü de app-only rollback ile şema geri yüklemeyi ayırarak kaydedildi. Güncel kirli özellik dalının Release build'i de 0 uyarı/0 hata ile tamamlandı; CI/regresyon ve canlı kabulü hâlâ ayrı kanıtlanmalı.
+WP-006–WP-011 tamamlandı. Canlı dağıtım SHA'sından türetilen temiz aday `release/v1-candidate-20261102` (`1a676b2ae2dce9416fdd918ba8c26472f49ec316`) tam hosted Chromium kabulinden exit 0 ile geçti. Aday, gerçek canlı yedeğindeki 122 migration ID'siyle birebir eşleşti. Önceki aday kabulinde Release build (0 uyarı/0 hata), 85/85 kaynak doğrulayıcı, 2.304 kontrol / 71 rota UI envanteri ve izole PostgreSQL güvenlik kabulü (413/413) da geçti. F1 geri dönüş prosedürü de app-only rollback ile şema geri yüklemeyi ayırarak kaydedildi. Güncel kirli özellik dalının Release derlemesi 0 uyarı/0 hata verdi ve EF model snapshot karşılaştırmasında pending model change yok. Bu dalın live migration ID setiyle parity'si hâlâ çözülmedi; CI/regresyon ve canlı kabulü ayrı kanıtlanmalı.
 
 Kanıt: `tests/reports/live-derived-candidate-hosted-chromium-20261102.md`, `tests/reports/live-derived-candidate-security-20261102.md` ve `tests/reports/summary.json`.
 

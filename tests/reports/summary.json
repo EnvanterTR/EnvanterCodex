@@ -1029,6 +1029,18 @@
     "ciOrAcceptanceImplied": false,
     "productionWrites": false
   },
+  "currentFeatureBranchEfSnapshotCheck": {
+    "measuredAtUtc": "2026-11-02T21:28:03Z",
+    "branch": "feat/platform-checkout-readiness-20261020",
+    "head": "af63cf5b8fccacb4391b052dbe456a89fc5ff031",
+    "worktreeChangesIncluded": true,
+    "command": "dotnet ef migrations has-pending-model-changes --project src/EnvanterTR.Web/EnvanterTR.Web.csproj --startup-project src/EnvanterTR.Web/EnvanterTR.Web.csproj --configuration Release",
+    "status": "PASS",
+    "result": "No changes have been made to the model since the last migration.",
+    "databaseConnected": false,
+    "migrationExecuted": false,
+    "liveMigrationSetParityProven": false
+  },
   "localRestoreRunner": {
     "status": "SYNTHETIC_E2E_PASS",
     "file": "deploy/testing/Restore-CoolifyBackupToIsolatedDocker.ps1",
