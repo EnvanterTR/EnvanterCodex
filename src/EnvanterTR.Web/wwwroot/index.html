@@ -12670,7 +12670,8 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
       if (!loginCompanyField.hidden) { loginCompanyField.hidden = true; loginCompanySelect.value = ''; loginCompanyButton.textContent = 'Giriş yap'; }
       $('#loginTwoFactorField').hidden = true; $('input[name="twoFactorCode"]', $('#loginForm')).value = '';
     });
-    $('input[name="password"]', $('#loginForm')).addEventListener('input', () => { $('#loginTwoFactorField').hidden = true; $('input[name="twoFactorCode"]', $('#loginForm')).value = ''; });
+    // Keep the MFA challenge visible while the user corrects a rejected password.
+    $('input[name="password"]', $('#loginForm')).addEventListener('input', () => { $('input[name="twoFactorCode"]', $('#loginForm')).value = ''; });
     $('#retryApiButton').addEventListener('click', () => { void checkLoginConnection(); });
     $('#forgotPasswordButton').addEventListener('click', () => { $('#forgotFeedback').textContent = ''; $('#forgotPasswordDialog').showModal(); });
     $('#closeForgotPassword').addEventListener('click', () => $('#forgotPasswordDialog').close());
