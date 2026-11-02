@@ -1,14 +1,14 @@
 # EnvanterTR — geçerli durum
 
-Kaynak: CODEX-HEDEF-4.md v4; güncelleme 2026-11-02T09:41:34.288Z.199Z.581Z. Anlık kanıta dayanır; yüzde/tahmin kullanılmaz.
+Kaynak: CODEX-HEDEF-4.md v4; güncelleme 2026-11-02T12:04:00Z. Anlık kanıta dayanır; yüzde/tahmin kullanılmaz.
 
 | Hedef | Kapsam | Durum | Kanıt / kalan kabul |
 |---|---|---|---|
-| F0 | Ölçüm baz çizgisi | MEASURED | Özellik dalı baz çizgisi: Release build 0 uyarı/0 hata; PostgreSQL 244/244; tam hosted Chromium exit 0; kaynak doğrulayıcı 83/83. Canlı SHA tabanlı temiz aday dal: Release build 0 uyarı/0 hata; PostgreSQL 413/413; kaynak doğrulayıcı 85/85; UI envanteri 2.304 kontrol / 71 rota. Aday için ayrı hosted Chromium çalıştırılmadı; canlı yedek/restore provası yok. |
-| F1 | Güvenli migration / yedek / geri dönüş | BLOCKED | Coolify son başarılı SHA 4789b509c0b719c1bf71a0b8032f7224bae9fd43; canlıda bu SHA 122 migration ile hazır. SHA'da çalışma ağacında olmayan 5 migration; çalışma ağacında SHA'da olmayan 4 farklı 1 Kasım migration'ı var. `origin/main` ile bu feature branch'i 74/13 commit ayrıştırıyor ve worktree kirli. Canlı SHA tabanlı temiz aday dal 1a676b2ae2dce9416fdd918ba8c26472f49ec316 oluşturuldu ve 122 migration ID seti canlıyla eşleşti; build, statik doğrulayıcılar ve 413/413 PostgreSQL kabulü geçti. Aday henüz hosted Chromium ile doğrulanmadı; feature branch kirli/ayrışmış durumda. Canlı kopyada yedek/geri yükleme/rollback provası hâlâ gerekli. Ayrıntı: tests/reports/summary.json. |
+| F0 | Ölçüm baz çizgisi | MEASURED | Özellik dalı baz çizgisi: Release build 0 uyarı/0 hata; PostgreSQL 244/244; tam hosted Chromium exit 0; kaynak doğrulayıcı 83/83. Canlı SHA tabanlı temiz aday: Release build 0/0; PostgreSQL 413/413; hosted Chromium exit 0; kaynak doğrulayıcı 85/85; UI envanteri 2.304 kontrol / 71 rota. Canlı yedek/restore provası yok. Aday kanıtları `tests/reports/live-derived-candidate-*-20261102.md`. |
+| F1 | Güvenli migration / yedek / geri dönüş | BLOCKED | Canlı SHA 4789b509c0b719c1bf71a0b8032f7224bae9fd43 ile adayın 122 migration ID seti aynı. Aday release build, 85/85 verifier, 2.304/71 UI inventory, 413/413 PostgreSQL security ve hosted Chromium exit 0 geçti. Feature branch `origin/main` ile 74/13 ayrışıyor ve worktree kirli; 5 canlı migration feature worktree'de yok, 4 yerel migration canlı revision'da yok. Aday testleri migration setinin güvenliğini canlı klon üzerinde kanıtlamaz. Canlı DB kopyasında taze yedek/restore/rollback provası hâlâ yapılmalı; production'a yazılmadı. Ayrıntı: `tests/reports/summary.json`. |
 | F2 | Plan, kayıt, ödemesiz aktivasyon | ÇALIŞTIRILMADI | Canlı uçtan uca yeni firma kaydı ve manuel aktivasyon kabulü yok. |
 | F3 | SMTP ve davet / parola e-postaları | KISMEN | SMTP teslimat yapılandırması geçmiş kanıtı var; yeni kullanıcı akışının güncel uçtan uca kabulü yok. |
-| F4 | Kiracı sızıntı testi, rota envanteri, CI | KISMEN | Canlı tabanlı adayda izole PostgreSQL güvenlik kabulü 413/413 PASS; özellik dalının tam Chromium paketi PASS. Aday Chromium ve güncel zorunlu CI ayrıca doğrulanmadı. |
+| F4 | Kiracı sızıntı testi, rota envanteri, CI | KISMEN | Adayda izole PostgreSQL güvenlik kabulü 413/413 ve tam hosted Chromium exit 0; kaynak/UI denetimleri PASS. Kiracı güvenlik matrisi ve güncel zorunlu CI kanıtlarının tümü tekil hedef maddelerine eşlenmedi. |
 | F5 | A–G özellikleri ve UI matrisi | KISMEN | Tam hosted Chromium geçti; kaynak doğrulayıcı 83/83 ve UI envanteri 2.240 statik kontrol ile güncel; kategori başına %95 PASS UI matrisi henüz ölçülmedi. |
 | F6 | Teknik güvenlik / KVKK listesi | ÇALIŞTIRILMADI | Güncel tam kontrol listesi ve hukuki onay bu oturumda yok. |
 | F7 | Canlı gerçek firma kabulü | ÇALIŞTIRILMADI | Farma/Santa/Demo3 canlı müşteri kabul adımları bu oturumda yürütülmedi. |

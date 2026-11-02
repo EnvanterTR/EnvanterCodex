@@ -2,23 +2,17 @@
 
 ## Son tamamlanan çalışma paketi
 
-WP-005 tamamlandı. Canlıdaki başarılı revision'ın temiz worktree'sinden elease/v1-candidate-20261102 dalı hazırlandı: 1a676b2ae2dce9416fdd918ba8c26472f49ec316. Adayın migration ID seti canlı SHA 4789b509c0b719c1bf71a0b8032f7224bae9fd43 ile birebir aynı (122).
+WP-006 tamamlandı. Canlı dağıtım SHA'sından türetilen temiz aday `release/v1-candidate-20261102` (`1a676b2ae2dce9416fdd918ba8c26472f49ec316`) tam hosted Chromium kabulinden exit 0 ile geçti. Aday, canlı sürümle aynı 122 migration ID'sini içeriyor. Önceki aday kabulinde Release build (0 uyarı/0 hata), 85/85 kaynak doğrulayıcı, 2.304 kontrol / 71 rota UI envanteri ve izole PostgreSQL güvenlik kabulü (413/413) da geçti.
 
-- Release build: PASS, 0 warning / 0 error.
-- Kaynak doğrulayıcılar: 85/85 PASS.
-- UI inventory: 2,304 kontrol / 71 rota, güncel.
-- PostgreSQL security acceptance: 413/413 PASS, 1.9849 saat, izole DB.
-- Test konteynerleri, network ve volume kaldırıldı.
-- Canlıya deploy veya production DB yazımı yapılmadı.
+Kanıt: `tests/reports/live-derived-candidate-hosted-chromium-20261102.md`, `tests/reports/live-derived-candidate-security-20261102.md` ve `tests/reports/summary.json`.
 
-Kanıt: 	ests/reports/live-derived-candidate-security-20261102.md ve 	ests/reports/summary.json.
+Canlı deploy veya production DB yazımı yapılmadı. Browser kabul koşucusu sentetik API verisi kullandı.
 
 ## Gerçek kalan kapılar
 
-1. F1: Bu adayın ayrı hosted Chromium tam tarayıcı kabulü henüz çalıştırılmadı.
-2. Kirli feature branch (eat/platform-checkout-readiness-20261020) ile canlı tabanlı aday arasındaki kullanıcı değişikliklerini seçerek entegre et; migration dosyalarını körlemesine kopyalama. Çalışma ağacı korunmalı.
-3. Canlı veritabanının klonunda güncel yedek, restore ve migration/rollback provası yap; production veritabanına yazma.
-4. SMTP gerçek alıcı teslimi ve Santa/Farma/Demo3 canlı kabulü ayrıca kanıtlanmalı.
-5. İyzico gerçek ödeme kapısı şirket kuruluşu ve onaylı işyeri hesabı olmadan kapalı kalır.
+1. F1: Canlı veritabanının izole klonunda güncel yedek, restore ve migration/rollback provası.
+2. Kirli feature branch (`feat/platform-checkout-readiness-20261020`) ile canlı tabanlı aday arasındaki kullanıcı değişikliklerini seçerek entegre et; migration dosyalarını körlemesine kopyalama. Mevcut kirli çalışma ağacını koru.
+3. SMTP gerçek alıcı teslimi ve Santa/Farma/Demo3 canlı kabulü ayrıca kanıtlanmalı.
+4. İyzico gerçek ödeme kapısı şirket kuruluşu ve onaylı işyeri hesabı olmadan kapalı kalır.
 
-Bir sonraki eylem: aday dal için tam hosted Chromium suite'ini çalıştır ve sonucu kaydet; sonra F1'in canlı DB kopyası backup/restore provasına geç. docs/PROJECT-STATUS.md tek durum tablosudur; docs/LEDGER.md bu çalışma paketlerini kaydeder; summary.json test/ölçüm kanıtının kaynağıdır. Yüzde raporlama.
+Bir sonraki eylem: F1 için canlı veritabanının izole klonunu güvenli biçimde hazırla ve taze yedek/restore/migration rollback provasını yürüt. Klon erişimi veya güvenli veri alma yolu yoksa mevcut erişim kanıtını kaydet ve engeli netleştir. Production DB'ye yazma. `docs/PROJECT-STATUS.md` tek durum tablosudur; `docs/LEDGER.md` çalışma paketlerini, `tests/reports/summary.json` makine kanıtını tutar. Yüzde raporlama.

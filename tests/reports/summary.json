@@ -123,8 +123,12 @@
         "menuGroups": 10
       },
       "hostedChromiumAcceptance": {
-        "note": "This candidate was not run through a separate hosted Chromium suite in WP-005.",
-        "status": "NOT_RUN"
+        "note": "Full hosted Chromium acceptance runner completed on this candidate; exit code 0; synthetic API fixtures; no production writes.",
+        "status": "PASS",
+        "exitCode": 0,
+        "fullSuite": true,
+        "productionWrites": false,
+        "evidence": "tests/reports/live-derived-candidate-hosted-chromium-20261102.md"
       },
       "migrationIdSetMatchesBase": true,
       "sourceVerifiers": {
