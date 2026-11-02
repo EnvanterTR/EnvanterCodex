@@ -200,10 +200,14 @@ public static class AccountEndpoints
             var user = await userManager.FindByEmailAsync(request.Email.Trim());
             if (user is null) return LoginCredentialsRejected();
             var accountWasLocked = await userManager.IsLockedOutAsync(user);
-            var passwordCheck = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
+            // Persist the audit row before Identity mutates the user concurrency stamp below.
+            // Saving audit entries after AccessFailedAsync can re-save a stale tracked user and
+            // turn an ordinary rejected login into an HTTP 500 concurrency exception.
+            var passwordCheck = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: false);
             if (!passwordCheck.Succeeded)
             {
                 if (!accountWasLocked) await RecordFailedLoginAsync(db, user, cancellationToken);
+                if (!accountWasLocked) await userManager.AccessFailedAsync(user);
                 return LoginCredentialsRejected();
             }
             if (!user.EmailConfirmed)
@@ -293,8 +297,8 @@ public static class AccountEndpoints
                     var recovery = await userManager.RedeemTwoFactorRecoveryCodeAsync(user, code);
                     if (!recovery.Succeeded)
                     {
-                        await userManager.AccessFailedAsync(user);
                         if (!accountWasLockedBeforeCodeCheck) await RecordFailedLoginAsync(db, user, cancellationToken);
+                        if (!accountWasLockedBeforeCodeCheck) await userManager.AccessFailedAsync(user);
                         return await userManager.IsLockedOutAsync(user)
                             ? Results.Json(new { message = "Çok sayıda hatalı doğrulama kodu. Bir süre sonra tekrar deneyin." }, statusCode: StatusCodes.Status423Locked)
                             : Results.Json(new { twoFactorRequired = true, message = "Doğrulama kodu geçersiz veya kullanılmış. Yeniden deneyin." }, statusCode: StatusCodes.Status400BadRequest);
