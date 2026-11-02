@@ -2117,6 +2117,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("PlanId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("RequestedByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(63)
@@ -2133,6 +2136,9 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.Property<int>("TermDays")
                         .HasColumnType("integer");
+
+                    b.Property<Guid?>("TargetCompanyId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -2167,6 +2173,7 @@ namespace EnvanterTR.Web.Data.Migrations
                             t.HasCheckConstraint("CK_CompanyCheckoutOrders_Status", "\"Status\" IN ('Pending', 'PaymentStarted', 'PaymentReview', 'PaymentFailed', 'Expired', 'Provisioned', 'ProvisioningFailed')");
 
                             t.HasCheckConstraint("CK_CompanyCheckoutOrders_Term", "\"TermDays\" IN (30, 365)");
+                            t.HasCheckConstraint("CK_CompanyCheckoutOrders_TargetContext", "(\"TargetCompanyId\" IS NULL AND \"RequestedByUserId\" IS NULL) OR (\"TargetCompanyId\" IS NOT NULL AND \"RequestedByUserId\" IS NOT NULL AND \"TermDays\" = 365)");
                         });
                 });
 

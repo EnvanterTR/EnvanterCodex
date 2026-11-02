@@ -137,6 +137,7 @@ var connectionString = builder.Configuration.GetConnectionString("EnvanterTR");
 if (!string.IsNullOrWhiteSpace(connectionString))
 {
     builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+    builder.Services.AddScoped<TenantProvisioningService>();
     builder.Services.AddScoped<OperationalNotificationEmailService>();
     builder.Services.AddHostedService<OperationalNotificationEmailWorker>();
     builder.Services.AddScoped<ScheduledReportEmailService>();
@@ -451,6 +452,9 @@ app.Use(async (context, next) =>
         HttpMethods.IsPatch(context.Request.Method) || HttpMethods.IsDelete(context.Request.Method);
     var isAccountEndpoint = requestPath.StartsWithSegments("/api/session");
     var isPlatformEndpoint = requestPath.StartsWithSegments("/api/platform");
+    var checkoutPath = new PathString(requestPath.Value?.TrimEnd('/'));
+    var isVerifiedCheckoutEndpoint = checkoutPath == "/api/subscription/checkout/initialize" ||
+        checkoutPath == "/api/checkout/callback" || checkoutPath == "/api/checkout/webhook";
     if (isPlatformAdmin && isPlatformEndpoint && isWriteRequest)
     {
         var reauthenticatedAtClaim = principal.FindFirstValue("platform_reauth_at");
@@ -469,7 +473,7 @@ app.Use(async (context, next) =>
         }
     }
     if (companyClaim is not null && isWriteRequest && requestPath.StartsWithSegments("/api") &&
-        !isAccountEndpoint && !isPlatformEndpoint && Guid.TryParse(companyClaim, out var subscriptionCompanyId))
+        !isAccountEndpoint && !isPlatformEndpoint && !isVerifiedCheckoutEndpoint && Guid.TryParse(companyClaim, out var subscriptionCompanyId))
     {
         var subscription = await (from item in db.TenantSubscriptions.AsNoTracking()
             join plan in db.SubscriptionPlans.AsNoTracking() on item.PlanId equals plan.Id

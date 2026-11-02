@@ -222,6 +222,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<CompanyCheckoutOrder>().ToTable("CompanyCheckoutOrders", table =>
         {
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_Term", "\"TermDays\" IN (30, 365)");
+            table.HasCheckConstraint("CK_CompanyCheckoutOrders_TargetContext", "(\"TargetCompanyId\" IS NULL AND \"RequestedByUserId\" IS NULL) OR (\"TargetCompanyId\" IS NOT NULL AND \"RequestedByUserId\" IS NOT NULL AND \"TermDays\" = 365)");
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_Amount", "\"Amount\" > 0");
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_Pricing", "\"SubtotalAmount\" >= 0 AND \"DiscountAmount\" >= 0 AND \"Amount\" = \"SubtotalAmount\" - \"DiscountAmount\"");
             table.HasCheckConstraint("CK_CompanyCheckoutOrders_CouponSnapshot", "(\"CouponId\" IS NULL AND \"CouponCode\" IS NULL AND \"DiscountAmount\" = 0) OR (\"CouponId\" IS NOT NULL AND \"CouponCode\" IS NOT NULL)");

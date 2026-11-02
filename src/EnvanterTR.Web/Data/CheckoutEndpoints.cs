@@ -20,10 +20,10 @@ public sealed record InitializeCompanyCheckoutRequest(
     string OwnerFirstName, string OwnerLastName, string OwnerEmail, string Phone,
     string IdentityNumber, string BillingAddress, string City, string Country, string? ZipCode,
     Guid PlanId, string Term, bool DataProcessingAcknowledged, string? DataProcessingNoticeVersion,
-    string? CouponCode = null);
+    string? CouponCode = null, string? CurrentPassword = null, string? TwoFactorCode = null);
 public sealed record CheckoutCouponQuoteRequest(Guid PlanId, string Term, string? CouponCode);
 
-public static class CheckoutEndpoints
+public static partial class CheckoutEndpoints
 {
     internal static readonly string[] SupportedCurrencies = ["TRY", "USD", "EUR", "GBP", "NOK", "CHF"];
     internal sealed record ConfigurationReadiness(bool CredentialsConfigured, bool CallbackValid, bool ApiEndpointValid, string Environment)
@@ -45,6 +45,7 @@ public static class CheckoutEndpoints
 
     public static IEndpointRouteBuilder MapCheckoutEndpoints(this IEndpointRouteBuilder endpoints)
     {
+        MapExistingCompanyCheckoutEndpoints(endpoints);
         endpoints.MapGet("/api/checkout/status", async (IOptions<IyzipayOptions> configuredOptions,
             AppDbContext db, CancellationToken cancellationToken) =>
         {
@@ -115,7 +116,8 @@ public static class CheckoutEndpoints
         [FromBody] InitializeCompanyCheckoutRequest request,
         HttpContext context, IAntiforgery antiforgery, AppDbContext db,
         IyzipayCheckoutClient iyzipay, IOptions<IyzipayOptions> configuredOptions,
-        IDataProtectionProvider dataProtectionProvider, CancellationToken cancellationToken)
+        IDataProtectionProvider dataProtectionProvider, UserManager<EnvanterUser> users,
+        SignInManager<EnvanterUser> signIn, TenantProvisioningService provisioning, CancellationToken cancellationToken)
     {
         try { await antiforgery.ValidateRequestAsync(context); }
         catch (AntiforgeryValidationException)
@@ -124,16 +126,26 @@ public static class CheckoutEndpoints
         }
 
         var options = configuredOptions.Value;
+        ExistingCheckoutOwner? existingOwner = null;
+        if (context.GetEndpoint()?.Metadata.GetMetadata<ExistingCompanyCheckoutMetadata>() is not null)
+        {
+            existingOwner = await ResolveExistingCheckoutOwnerAsync(context.User, db, users, cancellationToken);
+            if (existingOwner is null) return Results.Forbid();
+            if (request.Term != "annual") return Results.BadRequest(new { message = "Mevcut şirket aboneliği yıllık tek ödemeyle satın alınır." });
+            var authorizationError = await ReauthenticateCheckoutOwnerAsync(existingOwner.Account, request, users, signIn);
+            if (authorizationError is not null) return authorizationError;
+        }
         if (!GetConfigurationReadiness(options).Available)
             return Results.Problem("Çevrimiçi ödeme şu anda yapılandırılmamış. Şirket kaydı başlatılmadı.",
                 statusCode: StatusCodes.Status503ServiceUnavailable);
 
-        var companyName = request.CompanyName?.Trim();
-        var slug = request.Slug?.Trim().ToLowerInvariant();
+        var companyName = existingOwner?.Company.Name ?? request.CompanyName?.Trim();
+        var slug = existingOwner?.Company.Slug ?? request.Slug?.Trim().ToLowerInvariant();
         var firstName = request.OwnerFirstName?.Trim();
         var lastName = request.OwnerLastName?.Trim();
-        var ownerEmail = request.OwnerEmail?.Trim();
-        var contactEmail = string.IsNullOrWhiteSpace(request.ContactEmail) ? ownerEmail : request.ContactEmail.Trim();
+        var ownerEmail = existingOwner?.Account.Email ?? request.OwnerEmail?.Trim();
+        var contactEmail = existingOwner is null ? string.IsNullOrWhiteSpace(request.ContactEmail) ? ownerEmail : request.ContactEmail.Trim()
+            : existingOwner.Company.ContactEmail ?? ownerEmail;
         var phone = request.Phone?.Trim();
         var identityNumber = request.IdentityNumber?.Trim();
         var billingAddress = request.BillingAddress?.Trim();
@@ -162,6 +174,9 @@ public static class CheckoutEndpoints
             return Results.ValidationProblem(new Dictionary<string, string[]> { ["couponCode"] = ["Kupon kodu biçimi geçersiz."] });
 
         var existingOrder = await db.CompanyCheckoutOrders.SingleOrDefaultAsync(x => x.Id == request.CheckoutId, cancellationToken);
+        if (existingOrder is not null && (existingOrder.TargetCompanyId != existingOwner?.Company.Id ||
+            existingOrder.RequestedByUserId != existingOwner?.Account.Id))
+            return Results.Conflict(new { message = "Bu ödeme kimliği farklı bir şirket veya hesaba ait." });
         if (existingOrder is not null && (existingOrder.Status is CheckoutStatusStarted or "PaymentReview") &&
             !string.IsNullOrWhiteSpace(existingOrder.CheckoutPageUrlProtected))
         {
@@ -185,6 +200,8 @@ public static class CheckoutEndpoints
             x.IsActive && x.IsPublic && x.DeploymentKind == "cloud", cancellationToken);
         if (plan is null)
             return Results.ValidationProblem(new Dictionary<string, string[]> { ["planId"] = ["Satın alınabilir Cloud paketi bulunamadı."] });
+        if (existingOwner is not null && !await provisioning.CanPurchaseAnnualPlanAsync(existingOwner.Company.Id, plan, cancellationToken))
+            return Results.Conflict(new { message = "Paket kapasitesini ve abonelik durumunu kontrol edin. Devam eden ücretli dönemde aynı paket yenilenebilir; farklı paket seçimi dönem sonunda veya denemeden geçişte yapılır." });
         var subtotal = request.Term == "annual" ? plan.AnnualPrice : plan.MonthlyPrice;
         var currency = plan.Currency.ToUpperInvariant();
         if (subtotal <= 0 || !SupportedCurrencies.Contains(currency))
@@ -244,7 +261,7 @@ public static class CheckoutEndpoints
                 (x.Status == "Pending" || x.Status == CheckoutStatusStarted) && x.ExpiresAt <= now).ToListAsync(cancellationToken);
             foreach (var expired in abandoned) expired.Status = "Expired";
             if (abandoned.Count > 0) await db.SaveChangesAsync(cancellationToken);
-            if (await db.Companies.AnyAsync(x => x.Slug == slug, cancellationToken) ||
+            if (existingOwner is null && await db.Companies.AnyAsync(x => x.Slug == slug, cancellationToken) ||
                 await db.CompanyCheckoutOrders.AnyAsync(x => x.Slug == slug && reservedStatuses.Contains(x.Status), cancellationToken))
                 return Results.Conflict(new { message = "Bu şirket adresi zaten kullanılıyor veya başka bir ödeme işlemi için ayrılmış." });
 
@@ -277,8 +294,10 @@ public static class CheckoutEndpoints
                 DataProcessingNoticeVersion = CheckoutNoticeVersion,
                 DataProcessingAcknowledgedAt = now,
                 InitializationLeaseUntil = now.AddMinutes(2),
-                CreatedAt = now, ExpiresAt = now.AddDays(3)
+                CreatedAt = now, ExpiresAt = now.AddHours(24)
             };
+            pending.TargetCompanyId = existingOwner?.Company.Id;
+            pending.RequestedByUserId = existingOwner?.Account.Id;
             db.CompanyCheckoutOrders.Add(pending);
             try
             {
@@ -348,6 +367,7 @@ public static class CheckoutEndpoints
     private static async Task<IResult> CallbackAsync(
         HttpContext context, AppDbContext db, IyzipayCheckoutClient iyzipay,
         UserManager<EnvanterUser> userManager, IConfiguration configuration, ILogger<Program> logger,
+        TenantProvisioningService provisioning,
         CancellationToken cancellationToken)
     {
         if (!context.Request.HasFormContentType)
@@ -357,13 +377,13 @@ public static class CheckoutEndpoints
         if (string.IsNullOrWhiteSpace(token) || token.Length > 256)
             return Results.BadRequest(new { message = "Ödeme bildirimi doğrulanamadı." });
         return await ProcessCheckoutTokenAsync(token, null, null, context, db, iyzipay, userManager,
-            configuration, logger, cancellationToken);
+            configuration, logger, provisioning, cancellationToken);
     }
 
     private static async Task<IResult> WebhookAsync(
         HttpContext context, AppDbContext db, IyzipayCheckoutClient iyzipay,
         UserManager<EnvanterUser> userManager, IConfiguration configuration, IOptions<IyzipayOptions> configuredOptions,
-        ILogger<Program> logger, CancellationToken cancellationToken)
+        ILogger<Program> logger, TenantProvisioningService provisioning, CancellationToken cancellationToken)
     {
         var options = configuredOptions.Value;
         if (!options.IsConfigured) return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
@@ -418,7 +438,7 @@ public static class CheckoutEndpoints
             }
 
             var processingResult = await ProcessCheckoutTokenAsync(token, paymentId, status.ToUpperInvariant(), context, db,
-                iyzipay, userManager, configuration, logger, cancellationToken);
+                iyzipay, userManager, configuration, logger, provisioning, cancellationToken);
             if (processingResult is IStatusCodeHttpResult httpResult && (httpResult.StatusCode ?? StatusCodes.Status200OK) is >= 200 and < 300)
                 return Results.Ok(new { received = true });
             return processingResult;
@@ -428,7 +448,7 @@ public static class CheckoutEndpoints
     private static async Task<IResult> ProcessCheckoutTokenAsync(string token, string? expectedPaymentId,
         string? expectedPaymentStatus, HttpContext context, AppDbContext db, IyzipayCheckoutClient iyzipay,
         UserManager<EnvanterUser> userManager, IConfiguration configuration, ILogger<Program> logger,
-        CancellationToken cancellationToken)
+        TenantProvisioningService provisioning, CancellationToken cancellationToken)
     {
         var tokenHash = HashToken(token);
         var order = await db.CompanyCheckoutOrders.AsNoTracking()
@@ -442,7 +462,7 @@ public static class CheckoutEndpoints
                 expectedPaymentStatus is not null && !string.Equals(terminalPaymentStatus, expectedPaymentStatus, StringComparison.Ordinal))
                 return Results.Conflict(new { message = "Ödeme bildirimi kayıtlı sağlayıcı sonucu ile eşleşmedi." });
             return CheckoutResult(order.Status == "Provisioned" ? "success" : "failed",
-                order.Status == "Provisioned" ? order.Slug : null, configuration);
+                order.Status == "Provisioned" ? order.Slug : null, configuration, existingCompany: order.TargetCompanyId is not null);
         }
         if (order.Status is not (CheckoutStatusStarted or "PaymentReview" or "ProvisioningFailed" or "Expired"))
             return Results.Conflict(new { message = "Ödeme henüz doğrulanabilir durumda değil." });
@@ -511,14 +531,14 @@ public static class CheckoutEndpoints
                 if (lockedOrder.Status == "Provisioned")
                 {
                     await transaction.CommitAsync(cancellationToken);
-                    return CheckoutResult("success", lockedOrder.Slug, configuration);
+                    return CheckoutResult("success", lockedOrder.Slug, configuration, existingCompany: lockedOrder.TargetCompanyId is not null);
                 }
                 if (lockedOrder.Status == "PaymentFailed")
                 {
                     await transaction.CommitAsync(cancellationToken);
                     return CheckoutResult("failed");
                 }
-                if (await db.Companies.AnyAsync(x => x.Slug == lockedOrder.Slug, cancellationToken))
+                if (lockedOrder.TargetCompanyId is null && await db.Companies.AnyAsync(x => x.Slug == lockedOrder.Slug, cancellationToken))
                 {
                     lockedOrder.Status = "ProvisioningFailed";
                     lockedOrder.PaymentReference = paymentReference;
@@ -541,26 +561,28 @@ public static class CheckoutEndpoints
                     return CheckoutResult("support");
                 }
 
-                var owner = await userManager.FindByEmailAsync(lockedOrder.OwnerEmail);
-                var wasConfirmed = owner?.EmailConfirmed == true;
-                if (owner is null)
-                {
-                    var temporaryPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) + "aA1!";
-                    owner = new EnvanterUser { UserName = lockedOrder.OwnerEmail, Email = lockedOrder.OwnerEmail,
-                        EmailConfirmed = false, DisplayName = lockedOrder.OwnerName };
-                    var created = await userManager.CreateAsync(owner, temporaryPassword);
-                    if (!created.Succeeded)
-                        throw new InvalidOperationException("Owner account creation failed.");
-                }
-
                 var now = DateTimeOffset.UtcNow;
-                var company = new Company { Name = lockedOrder.CompanyName, Slug = lockedOrder.Slug,
-                    ContactEmail = lockedOrder.ContactEmail, SecurityRequireMfa = true };
-                db.Companies.Add(company);
-                db.CompanyMemberships.Add(new CompanyMembership { CompanyId = company.Id, UserId = owner.Id, RoleKey = "owner" });
-                db.TenantSubscriptions.Add(new TenantSubscription { CompanyId = company.Id, PlanId = plan.Id,
-                    Status = "Active", IsDemo = false, StartsAt = now, EndsAt = now.AddDays(lockedOrder.TermDays),
-                    PaymentReference = paymentReference });
+                lockedOrder.PaymentReference = paymentReference;
+                if (lockedOrder.TargetCompanyId is not null)
+                {
+                    var existingCompany = await provisioning.ActivateExistingCompanyAsync(lockedOrder, plan, cancellationToken);
+                    lockedOrder.PaidAt = now;
+                    lockedOrder.Status = existingCompany is null ? "ProvisioningFailed" : "Provisioned";
+                    if (existingCompany is not null)
+                    {
+                        lockedOrder.CompanyId = existingCompany.Id;
+                        lockedOrder.Slug = existingCompany.Slug!;
+                    }
+                    await db.SaveChangesAsync(cancellationToken);
+                    await transaction.CommitAsync(cancellationToken);
+                    return existingCompany is null ? CheckoutResult("support") : CheckoutResult("success", existingCompany.Slug, configuration, existingCompany: true);
+                }
+                var provisioned = await provisioning.ProvisionCloudAsync(new(lockedOrder.CompanyName, lockedOrder.Slug,
+                    lockedOrder.ContactEmail, lockedOrder.OwnerName, lockedOrder.OwnerEmail, plan.Id, now,
+                    now.AddDays(lockedOrder.TermDays), PaymentReference: paymentReference), cancellationToken)
+                    ?? throw new InvalidOperationException("Owner account creation failed.");
+                var company = provisioned.Company;
+                var owner = provisioned.Owner;
                 lockedOrder.CompanyId = company.Id;
                 lockedOrder.PaymentReference = paymentReference;
                 lockedOrder.PaidAt = now;
@@ -571,8 +593,7 @@ public static class CheckoutEndpoints
                 invitationEmail = owner.Email;
                 invitationName = owner.DisplayName;
                 companyName = company.Name;
-                invitationNeeded = !wasConfirmed;
-                if (wasConfirmed) invitationNeeded = true;
+                invitationNeeded = true;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
             catch (Exception exception)
@@ -693,10 +714,11 @@ public static class CheckoutEndpoints
     }
 
     private static IResult CheckoutResult(string state, string? companySlug = null,
-        IConfiguration? configuration = null, bool invitationEmailSent = false)
+        IConfiguration? configuration = null, bool invitationEmailSent = false, bool existingCompany = false)
     {
         var (title, message) = state switch
         {
+            "success" when existingCompany => ("Yıllık aboneliğiniz etkinleştirildi", "Ödeme doğrulandı. Şirket portalınız, kullanıcılarınız ve envanter kayıtlarınız korunarak yıllık aboneliğiniz etkinleştirildi. Mevcut hesabınızla devam edebilirsiniz."),
             "success" => ("Ödeme alındı", invitationEmailSent
                 ? "Ödeme doğrulandı ve şirket alanınız açıldı. Parola belirleme veya şirket erişimi e-postası gönderildi. E-posta görünmüyorsa gereksiz klasörünü kontrol edin."
                 : "Ödeme doğrulandı ve şirket alanınız açıldı. Erişim e-postası daha önce gönderilmiş olabilir; gelen kutusu ve gereksiz klasörünü kontrol edin. Portalı açın; giriş bağlantısı yoksa parola yenileme seçeneğini kullanın."),
