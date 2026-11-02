@@ -133,7 +133,15 @@ assert.match(page, /QR kodunu tarayamıyorsanız aşağıdaki kurulum anahtarın
   'Manual setup-key entry must remain available as a fallback.');
 assert.match(page, /twoFactorCode:f\.get\('twoFactorCode'\)\|\|null/);
 assert.match(page, /platformAdminOnly:true/, 'Platform login must request an explicitly scoped platform session.');
-assert.match(page, /if\(x\.twoFactorRequired\)[\s\S]*?platformTwoFactorField\.hidden=false/);
+assert.match(page, /if\(x\.twoFactorRequired\)\{setPlatformMfaChallenge\(f\.get\('email'\)\)/,
+  'The platform login must persist an MFA challenge once the server confirms the account requires it.');
+assert.match(page, /sessionStorage\.setItem\(platformMfaChallengeKey,normalizePlatformLoginEmail\(email\)\)/,
+  'The MFA challenge may persist only the account identifier in this browser tab.');
+assert.match(page, /sessionStorage\.getItem\(platformMfaChallengeKey\)/);
+assert.match(page, /if\(challengedEmail&&normalizePlatformLoginEmail\(f\.get\('email'\)\)!==challengedEmail\)clearPlatformMfaChallenge\(\)/,
+  'Changing accounts must clear the previous account MFA challenge.');
+assert.doesNotMatch(page, /sessionStorage\.setItem\([^\n]*(?:password|twoFactorCode)/i,
+  'Passwords and authenticator codes must never be stored in sessionStorage.');
 assert.match(page, /error\.twoFactorRequired=data\?\.twoFactorRequired===true/);
 assert.match(account, /request\.PlatformAdminOnly && \(tenantSlug is not null \|\| !isPlatformAdmin \|\| request\.CompanyId is not null\)/,
   'Platform-only login must require a platform administrator and reject company-scoped hosts/IDs.');

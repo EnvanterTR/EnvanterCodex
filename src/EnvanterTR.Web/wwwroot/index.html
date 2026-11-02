@@ -12497,7 +12497,9 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
         $('#retryApiButton').hidden = false;
         if (error.payload?.twoFactorRequired) {
           $('#loginTwoFactorField').hidden = false;
-          $('input[name="twoFactorCode"]', $('#loginForm')).focus();
+          const twoFactorInput = $('input[name="twoFactorCode"]', $('#loginForm'));
+          twoFactorInput.required = true;
+          twoFactorInput.focus();
           loginCompanyButton.textContent = 'Kodu doğrula ve giriş yap';
         }
         if (Array.isArray(error.payload?.companies) && error.payload.companies.length > 1) {
@@ -12518,9 +12520,17 @@ $('#licensePurchaseOrderForm').addEventListener('submit',async event=>{
     });
     $('input[name="email"]', $('#loginForm')).addEventListener('input', () => {
       if (!loginCompanyField.hidden) { loginCompanyField.hidden = true; loginCompanySelect.value = ''; loginCompanyButton.textContent = 'Giriş yap'; }
-      $('#loginTwoFactorField').hidden = true; $('input[name="twoFactorCode"]', $('#loginForm')).value = '';
+      $('#loginTwoFactorField').hidden = true;
+      const twoFactorInput = $('input[name="twoFactorCode"]', $('#loginForm'));
+      twoFactorInput.required = false;
+      twoFactorInput.value = '';
+      loginCompanyButton.textContent = 'Giriş yap';
     });
-    $('input[name="password"]', $('#loginForm')).addEventListener('input', () => { $('#loginTwoFactorField').hidden = true; $('input[name="twoFactorCode"]', $('#loginForm')).value = ''; });
+    // A rejected password must not dismiss an MFA challenge: users need to be able to
+    // correct their password and then complete the same account's second-factor step.
+    $('input[name="password"]', $('#loginForm')).addEventListener('input', () => {
+      $('input[name="twoFactorCode"]', $('#loginForm')).value = '';
+    });
     $('#retryApiButton').addEventListener('click', () => { void checkLoginConnection(); });
     $('#forgotPasswordButton').addEventListener('click', () => { $('#forgotFeedback').textContent = ''; $('#forgotPasswordDialog').showModal(); });
     $('#closeForgotPassword').addEventListener('click', () => $('#forgotPasswordDialog').close());

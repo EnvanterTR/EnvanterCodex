@@ -441,6 +441,30 @@ jobs:
         shell: bash
         run: docker run --rm --init --entrypoint node envantertr-homepage-gallery-ci /acceptance/product-gallery.mjs
 
+  platform-mfa-browser-acceptance:
+    name: Platform MFA browser acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build isolated web application image
+        shell: bash
+        run: docker build --tag envantertr-product-dev-web:latest --file Dockerfile .
+
+      - name: Run platform MFA setup and login browser acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_name="envantertr-platform-mfa-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          compose_file="deploy/testing/compose.ui-acceptance.yaml"
+          cleanup() {
+            docker compose --project-name "$project_name" --profile browser --file "$compose_file" down --volumes --remove-orphans
+          }
+          trap cleanup EXIT
+          docker compose --project-name "$project_name" --profile browser --file "$compose_file" run --build --rm platform-mfa-browser
+
   linux-postgresql-acceptance:
     name: Linux PostgreSQL tenant acceptance
     runs-on: ubuntu-latest
