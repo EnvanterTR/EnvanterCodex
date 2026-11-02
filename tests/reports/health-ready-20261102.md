@@ -9,6 +9,7 @@
 ## Kanıt
 
 - `HealthReadinessAcceptanceTests`: 2/2 geçti. Liveness 200 kalırken DB yapılandırması yok ve DB portuna erişilemiyor durumlarının ikisinde de readiness `503` döndü.
+- Yalıtılmış PostgreSQL 17 üzerinde `Database_readiness_is_healthy_after_current_migrations_are_applied`: 1/1 geçti; güncel migration'larla readiness `200` ve `{"status":"ready"}` döndü.
 - `Dockerfile` ile Release uygulama imajı `envantertr-health-ready:20261102` başarıyla üretildi.
 - İmajdan ağsız, portsuz, volumesuz tek kullanımlık konteyner başlatıldı. Docker health status `unhealthy` oldu ve her health probe `/health/ready` kaynaklı HTTP 503 kaydetti. Bu, DB'siz imajın yanlışlıkla sağlıklı görünmediğini doğrular.
 - Test konteyneri kaldırıldı. Yerel geliştirme konteynerlerine, staging'e ve production'a dokunulmadı.
@@ -16,4 +17,4 @@
 
 ## Sınır
 
-Hazır PostgreSQL + güncel şema ile `200/healthy` kolu bu pakette çalıştırılmadı. Kod değişikliği henüz CI, PR, staging veya production'dan geçmedi; canlıya konmuş değildir.
+DB'siz Docker imajının `unhealthy` durumu ve güncel PostgreSQL şemasının HTTP `200` readiness yanıtı ayrı ayrı doğrulandı. Kod değişikliği henüz CI, PR, staging veya production'dan geçmedi; canlıya konmuş değildir.
