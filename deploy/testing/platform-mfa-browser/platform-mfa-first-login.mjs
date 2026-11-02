@@ -222,7 +222,28 @@ try {
     'Reusing a recovery code must show a login error.');
   assert.equal(await page.locator('#appShell').isVisible(), false);
 
-  // A fresh TOTP still works after the failed recovery-code replay.
+  // Keep the platform MFA prompt after a throttled retry and after reload.
+  const challengedFactor = page.locator('#loginForm [name="twoFactorCode"]');
+  await challengedFactor.waitFor({ state: 'visible' });
+  const rateLimitedLogin = async route => {
+    if (route.request().method() !== 'POST') return route.continue();
+    await route.fulfill({
+      status: 429,
+      contentType: 'application/json',
+      body: JSON.stringify({ message: 'İstek sınırı aşıldı. Daha sonra yeniden deneyin.' }),
+    });
+  };
+  await page.route('**/api/session/login', rateLimitedLogin);
+  await page.locator('#loginForm [name="password"]').fill('Synthetic-Wrong-Password-47!');
+  await page.getByRole('button', { name: 'Güvenli giriş yap' }).click();
+  await page.locator('#loginError').waitFor({ state: 'visible' });
+  assert.equal(await challengedFactor.isVisible(), true,
+    'A rate-limited login must not hide an MFA challenge after editing the password.');
+  await page.reload();
+  await challengedFactor.waitFor({ state: 'visible' });
+  await page.unroute('**/api/session/login', rateLimitedLogin);
+
+  // A fresh TOTP still works after the failed recovery-code replay and rate-limited retry.
   await submitLogin(page, totp(secret));
   await page.locator('#appShell').waitFor({ state: 'visible' });
   await page.getByRole('heading', { name: 'Genel Bakış' }).waitFor();

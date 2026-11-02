@@ -137,7 +137,14 @@ assert.match(page, /QR kodunu tarayamıyorsanız aşağıdaki kurulum anahtarın
   'Manual setup-key entry must remain available as a fallback.');
 assert.match(page, /twoFactorCode:f\.get\('twoFactorCode'\)\|\|null/);
 assert.match(page, /platformAdminOnly:true/, 'Platform login must request an explicitly scoped platform session.');
-assert.match(page, /if\(x\.twoFactorRequired\)[\s\S]*?platformTwoFactorField\.hidden=false/);
+assert.match(page, /if\(x\.twoFactorRequired\)[\s\S]*?setPlatformMfaChallenge\(f\.get\('email'\)\)/,
+  'The discovered MFA step must be saved for this tab after a rejected login.');
+assert.match(page, /platformMfaChallengeKey='envantertr-platform-login-mfa-email'/,
+  'The tab-scoped challenge marker must identify only the challenged account.');
+assert.match(page, /sessionStorage\.removeItem\(platformMfaChallengeKey\)/,
+  'A successful login must remove the pending challenge marker.');
+assert.match(page, /function clearPlatformMfaChallenge\(\)[\s\S]*?platformTwoFactorField\.hidden=true/,
+  'The challenge may clear when the user changes accounts.');
 assert.match(page, /error\.twoFactorRequired=data\?\.twoFactorRequired===true/);
 assert.match(account, /request\.PlatformAdminOnly && \(tenantSlug is not null \|\| !isPlatformAdmin \|\| request\.CompanyId is not null\)/,
   'Platform-only login must require a platform administrator and reject company-scoped hosts/IDs.');
