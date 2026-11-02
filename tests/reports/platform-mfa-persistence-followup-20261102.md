@@ -16,4 +16,4 @@
 ## Scope and release
 
 - No production account, MFA code, database, or service was accessed or changed.
-- This is local work on the existing platform-MFA draft branch. It has not been committed, pushed, merged, or deployed.
+- Committed as `1477a63` and pushed to the existing PR #31 draft branch for review. It is not merged or deployed.
