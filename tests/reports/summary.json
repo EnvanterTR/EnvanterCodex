@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "measuredAt": "2026-11-02T09:22:07.428Z",
+  "measuredAt": "2026-11-02T09:29:40.581Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "feat/platform-checkout-readiness-20261020",
@@ -54,7 +54,24 @@
       "checkout": "unavailable",
       "applicationReportedMigrations": 122,
       "sourceLiveMigrationDifference": 1,
-      "checkedBy": "node tools/Check-CoolifyProduction.mjs"
+      "checkedBy": "node tools/Check-CoolifyProduction.mjs",
+      "deployedSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
+      "deploymentHistory": "Coolify latest successful deployment 2026-11-01 08:42 UTC",
+      "liveCommitMigrationCount": 122,
+      "liveCommitLatestMigration": "20261026083058_AddHandoverEmailAttempts",
+      "liveCommitOnlyMigrations": [
+        "20261020174959_AddSubscriptionCoupons",
+        "20261023190000_AddExistingCompanyCheckoutContext",
+        "20261024010000_AddPlatformImpersonationSessions",
+        "20261024212238_AddRecoverableCompanyDeletion",
+        "20261026083058_AddHandoverEmailAttempts"
+      ],
+      "worktreeOnlyMigrations": [
+        "20261101212918_AddCheckoutWebhookReceipts",
+        "20261101214246_AddCompanyPayments",
+        "20261101220912_AddCompanyInvoices",
+        "20261101230628_AddPlatformAnnouncements"
+      ]
     }
   },
   "catalog": [
@@ -880,6 +897,7 @@
   ],
   "knownLimitations": [
     "Iyzico/real payment remains locked: owner has no Iyzico merchant account and goal requires legal company confirmation.",
-    "Live deploy, live DB migration, current backup/restore rehearsal, and real tenant acceptance were not performed in this run."
+    "Live deploy, live DB migration, current backup/restore rehearsal, and real tenant acceptance were not performed in this run.",
+    "F1 is blocked on source-history reconciliation: Coolify latest successful SHA 4789b509c0b719c1bf71a0b8032f7224bae9fd43 has five migration IDs absent from this worktree; the worktree has four different Nov 1 migration IDs. Count parity cannot authorize migration. Current live migration set is exactly the SHA set, and no live write was performed."
   ]
 }

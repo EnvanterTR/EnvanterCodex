@@ -1,9 +1,8 @@
 # Sonraki adım
 
-- Hedef: F0 ölçüm WP-001 kapatıldı; ilk sıradaki iş F1 güvenli migration provasıdır.
-- Build: Release, 0 uyarı / 0 hata.
-- Test: izole PostgreSQL/security 244/244 PASS; tam hosted Chromium paketi exit 0.
-- Açık ölçüm: 3/83 source verifier FAIL; docs/ui-inventory.md eski; bunlar F0 tablosunda kayıtlı.
-- Canlı salt-okunur: envantertr.com ve firma.envantertr.com ready; 8 plan; checkout unavailable; canlı 122 migration / kaynak 121.
-- Üretim verisi/deploy değiştirilmedi. F1 başlamadan önce migration farkının tam ID'si ve canlı kopya yedek/restore provası çözülmeli.
-- Kaynak ağaç başta kirliydi; bu oturumun hedefle ilgili değişikliklerini diğer mevcut değişikliklerden ayır.
+- F0 WP-001 ölçüm baz çizgisi tamamlandı.
+- F1 WP-002 dağıtım kaynağı denetimi tamamlandı: Coolify son başarılı SHA 4789b509c0b719c1bf71a0b8032f7224bae9fd43 (2026-11-01 08:42 UTC); kaynak 122 migration ve canlı ready/122/0 ile eşleşiyor.
+- Mevcut çalışma ağacı bu SHA ile migration seti bakımından farklı: canlıda 5 eski migration mevcut değil; çalışma ağacında 4 farklı 2026-11-01 migration mevcut. Migration sayısı tek başına uyumluluk kanıtı değildir. İki listedeki tam ID'ler summary.json içindedir.
+- F1 sonraki iş: istenen aday branch/SHA'yı canlı çizgisiyle uzlaştır, sonra yalnız canlı kopya DB üzerinde yedek→migration→veri karşılaştırma→restore→rollback provası. Canlıya deploy etme veya canlı DB'ye migration çalıştırma.
+- Baz testler: Release build 0 uyarı/0 hata; PostgreSQL/security 244/244; hosted Chromium tam paket exit 0, 53 sidebar hedefi; source verifier 80/83 ve UI inventory eski.
+- Üretim DB/deploy değiştirilmedi. Çalışma ağacındaki başka değişiklikleri koru.
