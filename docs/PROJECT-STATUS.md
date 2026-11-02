@@ -1,15 +1,15 @@
 # EnvanterTR — geçerli durum
 
-Kaynak: CODEX-HEDEF-4.md v4; güncelleme 2026-11-02T09:29:40.581Z. Anlık kanıta dayanır; yüzde/tahmin kullanılmaz.
+Kaynak: CODEX-HEDEF-4.md v4; güncelleme 2026-11-02T09:39:44.199Z.581Z. Anlık kanıta dayanır; yüzde/tahmin kullanılmaz.
 
 | Hedef | Kapsam | Durum | Kanıt / kalan kabul |
 |---|---|---|---|
-| F0 | Ölçüm baz çizgisi | MEASURED | Release build 0 uyarı/0 hata; PostgreSQL kabul 244/244; tam hosted Chromium exit 0; kaynak doğrulayıcı 80/83; deployment/source migration geçmişi ayrışıyor. |
+| F0 | Ölçüm baz çizgisi | MEASURED | Release build 0 uyarı/0 hata; PostgreSQL kabul 244/244; tam hosted Chromium exit 0; kaynak doğrulayıcı 83/83; UI envanteri 2.240 kontrol / 66 rota güncel; deployment/source migration geçmişi ayrışıyor. |
 | F1 | Güvenli migration / yedek / geri dönüş | BLOCKED | Coolify son başarılı SHA 4789b509c0b719c1bf71a0b8032f7224bae9fd43; canlıda bu SHA 122 migration ile hazır. Bu SHA'da çalışma ağacında olmayan 5 migration; çalışma ağacında ise bu SHA'da olmayan 4 farklı 1 Kasım migration'ı var. Ayrıntı: tests/reports/summary.json. Canlı migration öncesi branch uzlaştırması ve canlı kopyada yedek/geri yükleme/rollback provası gerekir. |
 | F2 | Plan, kayıt, ödemesiz aktivasyon | ÇALIŞTIRILMADI | Canlı uçtan uca yeni firma kaydı ve manuel aktivasyon kabulü yok. |
 | F3 | SMTP ve davet / parola e-postaları | KISMEN | SMTP teslimat yapılandırması geçmiş kanıtı var; yeni kullanıcı akışının güncel uçtan uca kabulü yok. |
 | F4 | Kiracı sızıntı testi, rota envanteri, CI | KISMEN | 244/244 izole güvenlik kabulü ve Chromium rotaları PASS; güncel zorunlu CI ve her endpoint kapsamı doğrulanmadı. |
-| F5 | A–G özellikleri ve UI matrisi | KISMEN | Tam hosted Chromium geçti; kaynak doğrulayıcı 80/83, UI envanteri eski ve %95 kategori ölçümü yapılmadı. |
+| F5 | A–G özellikleri ve UI matrisi | KISMEN | Tam hosted Chromium geçti; kaynak doğrulayıcı 83/83 ve UI envanteri 2.240 statik kontrol ile güncel; kategori başına %95 PASS UI matrisi henüz ölçülmedi. |
 | F6 | Teknik güvenlik / KVKK listesi | ÇALIŞTIRILMADI | Güncel tam kontrol listesi ve hukuki onay bu oturumda yok. |
 | F7 | Canlı gerçek firma kabulü | ÇALIŞTIRILMADI | Farma/Santa/Demo3 canlı müşteri kabul adımları bu oturumda yürütülmedi. |
 | F8–F13 | V1 sonrası kurulum, ölçek ve operasyon işleri | ÇALIŞTIRILMADI | Bu fazlar henüz başlamadı. |

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "measuredAt": "2026-11-02T09:29:40.581Z",
+  "measuredAt": "2026-11-02T09:39:44.199Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "feat/platform-checkout-readiness-20261020",
@@ -31,20 +31,27 @@
       "testedSidebarDestinations": 53
     },
     "sourceVerifiers": {
-      "status": "PARTIAL",
-      "passed": 80,
-      "failed": 3,
+      "status": "PASS",
+      "passed": 83,
+      "failed": 0,
       "total": 83,
-      "failures": [
-        "Verify-AssetModelDetailsUi.mjs: stale source-string expectation; correlated PostgreSQL behavior passed",
-        "Verify-PlatformAdminExperience.mjs: inline CSRF-refresh source regex does not match restructured flow",
-        "Verify-PlatformMfaBrowserAcceptance.mjs: source regex expectation does not match restructured MFA flow"
-      ]
+      "failures": []
     },
     "uiInventory": {
-      "status": "STALE",
+      "status": "CURRENT",
       "command": "node tools/Generate-UiInventory.mjs --check",
-      "note": "docs/ui-inventory.md regeneration required"
+      "staticControls": 2240,
+      "pageRoutes": 66,
+      "menuGroups": 10,
+      "links": 52,
+      "buttons": 950,
+      "forms": 111,
+      "inputs": 616,
+      "selects": 202,
+      "textareas": 41,
+      "modals": 107,
+      "tabs": 5,
+      "tables": 80
     },
     "migrationSourceCount": 121,
     "liveReadOnly": {

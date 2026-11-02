@@ -164,8 +164,10 @@ assert.match(page, /platformMfaRecoveryCodes/);
 assert.match(page, /platformMfaSavedRecovery/);
 assert.match(page, /data\?\.code==='platform_mfa_required'[\s\S]*?showPlatformMfaSetup/);
 assert.match(page, /async function showApp\(name\)[\s\S]*?\/api\/session\/2fa[\s\S]*?if\(!security\.enabled\)\{showPlatformMfaSetup\(\);return\}/);
-assert.match(page, /if\(!s\.platformAdmin\)throw Error\('Bu hesapta platform yöneticisi yetkisi yok\.'\);await csrf\(\);await showApp\(s\.name\)/,
-  'Refresh the antiforgery token after login because the authenticated identity changed.');
+assert.match(page, /if\(!s\.platformAdmin\)throw Error\('Bu hesapta platform yöneticisi yetkisi yok\.'\);/,
+  'The platform login must reject a non-platform administrator.');
+assert.match(page, /sessionStorage\.removeItem\(platformMfaChallengeStorageKey\)[\s\S]{0,160}await csrf\(\);await showApp\(s\.name\)/,
+  'Refresh the antiforgery token after successful login and before loading the authenticated platform app.');
 assert.match(page, /platformMfaSetupForm'\)\.addEventListener\('submit',async e=>\{e\.preventDefault\(\);const form=e\.currentTarget[\s\S]*?await api\('\/api\/session\/2fa\/setup'[\s\S]*?form\.elements\.currentPassword\.value=''/,
   'Keep a stable form reference across the asynchronous MFA setup request.');
 assert.match(members, /loadMemberTimeline\(id, 1, false\)/);
