@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "measuredAt": "2026-11-02T09:41:34.288Z",
+  "measuredAt": "2026-11-02T11:52:40.086Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "feat/platform-checkout-readiness-20261020",
-    "commit": "6fea3933612130f3a15fe028e2f22c18b4553128",
+    "commit": "eb5b93a",
     "workingTreeHasPreexistingChanges": true
   },
   "baseline": {
@@ -89,6 +89,54 @@
       "featureBranch": "feat/platform-checkout-readiness-20261020",
       "worktreeDirty": true,
       "mergeOrDeployPerformed": false
+    },
+    "liveDerivedReleaseCandidate": {
+      "releaseBuild": {
+        "errors": 0,
+        "warnings": 0,
+        "status": "PASS"
+      },
+      "postgresSecurityAcceptance": {
+        "failed": 0,
+        "duration": "1.9849 hours",
+        "cleanup": "Compose containers, network, and volume removed",
+        "isolatedDatabase": true,
+        "status": "PASS",
+        "productionWrites": false,
+        "passed": 413
+      },
+      "evidence": "tests/reports/live-derived-candidate-security-20261102.md",
+      "branch": "release/v1-candidate-20261102",
+      "uiInventory": {
+        "forms": 117,
+        "tabs": 5,
+        "links": 58,
+        "textareas": 45,
+        "staticControls": 2304,
+        "inputs": 627,
+        "selects": 206,
+        "buttons": 976,
+        "modals": 110,
+        "pageRoutes": 71,
+        "status": "CURRENT",
+        "tables": 79,
+        "menuGroups": 10
+      },
+      "hostedChromiumAcceptance": {
+        "note": "This candidate was not run through a separate hosted Chromium suite in WP-005.",
+        "status": "NOT_RUN"
+      },
+      "migrationIdSetMatchesBase": true,
+      "sourceVerifiers": {
+        "passed": 85,
+        "failed": 0,
+        "total": 85,
+        "status": "PASS"
+      },
+      "commit": "1a676b2ae2dce9416fdd918ba8c26472f49ec316",
+      "migrationCount": 122,
+      "baseDeploymentSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
+      "productionDeployment": false
     }
   },
   "catalog": [
