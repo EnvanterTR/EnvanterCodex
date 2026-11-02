@@ -13957,7 +13957,8 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                 Name = "D18 outside department", NormalizedName = "D18 OUTSIDE DEPARTMENT", LocationCatalogId = outside.Id });
             db.Assets.AddRange(
                 new Asset { Id = childAssetId, CompanyId = _companyId, AssetTag = "D18-CHILD", Name = "D18 child asset", CategoryId = categoryId,
-                    ModelId = modelDetailsModelId, LocationCatalogId = child.Id, Location = "D18 Site A / D18 Room 1", IsRequestable = true, WarrantyExpiresAt = new DateOnly(2026, 11, 1),
+                    ModelId = modelDetailsModelId, LocationCatalogId = child.Id, Location = "D18 Site A / D18 Room 1", IsRequestable = true,
+                    WarrantyExpiresAt = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(10),
                     NextAuditOn = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(1) },
                 new Asset { Id = scopedAssetWithOutsideEmployeeId, CompanyId = _companyId, AssetTag = "D18-SCOPED-OUTSIDE-EMPLOYEE",
                     Name = "D18 scoped asset assigned outside", CategoryId = categoryId, ModelId = modelDetailsModelId, LocationCatalogId = root.Id, Location = "D18 Site A",
