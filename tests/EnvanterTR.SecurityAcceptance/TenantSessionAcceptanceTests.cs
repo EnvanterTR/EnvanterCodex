@@ -61,6 +61,16 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
     private readonly Guid _otherCompanyEmployeeId = Guid.NewGuid();
 
     [Fact]
+    public async Task Database_readiness_is_healthy_after_current_migrations_are_applied()
+    {
+        using var response = await _client!.GetAsync("/health/ready");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("ready", body.RootElement.GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task Credential_query_strings_are_removed_before_a_page_is_served()
     {
         using var client = _factory!.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
