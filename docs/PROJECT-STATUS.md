@@ -1,11 +1,11 @@
 # EnvanterTR — geçerli durum
 
-Kaynak: CODEX-HEDEF-4.md v4; güncelleme 2026-11-02T09:39:44.199Z.581Z. Anlık kanıta dayanır; yüzde/tahmin kullanılmaz.
+Kaynak: CODEX-HEDEF-4.md v4; güncelleme 2026-11-02T09:41:34.288Z.199Z.581Z. Anlık kanıta dayanır; yüzde/tahmin kullanılmaz.
 
 | Hedef | Kapsam | Durum | Kanıt / kalan kabul |
 |---|---|---|---|
 | F0 | Ölçüm baz çizgisi | MEASURED | Release build 0 uyarı/0 hata; PostgreSQL kabul 244/244; tam hosted Chromium exit 0; kaynak doğrulayıcı 83/83; UI envanteri 2.240 kontrol / 66 rota güncel; deployment/source migration geçmişi ayrışıyor. |
-| F1 | Güvenli migration / yedek / geri dönüş | BLOCKED | Coolify son başarılı SHA 4789b509c0b719c1bf71a0b8032f7224bae9fd43; canlıda bu SHA 122 migration ile hazır. Bu SHA'da çalışma ağacında olmayan 5 migration; çalışma ağacında ise bu SHA'da olmayan 4 farklı 1 Kasım migration'ı var. Ayrıntı: tests/reports/summary.json. Canlı migration öncesi branch uzlaştırması ve canlı kopyada yedek/geri yükleme/rollback provası gerekir. |
+| F1 | Güvenli migration / yedek / geri dönüş | BLOCKED | Coolify son başarılı SHA 4789b509c0b719c1bf71a0b8032f7224bae9fd43; canlıda bu SHA 122 migration ile hazır. SHA'da çalışma ağacında olmayan 5 migration; çalışma ağacında SHA'da olmayan 4 farklı 1 Kasım migration'ı var. `origin/main` ile bu feature branch'i 74/13 commit ayrıştırıyor ve worktree kirli. Önce aday branch/SHA uzlaştırılmalı; ardından canlı kopyada yedek/geri yükleme/rollback provası yapılmalı. Ayrıntı: tests/reports/summary.json. |
 | F2 | Plan, kayıt, ödemesiz aktivasyon | ÇALIŞTIRILMADI | Canlı uçtan uca yeni firma kaydı ve manuel aktivasyon kabulü yok. |
 | F3 | SMTP ve davet / parola e-postaları | KISMEN | SMTP teslimat yapılandırması geçmiş kanıtı var; yeni kullanıcı akışının güncel uçtan uca kabulü yok. |
 | F4 | Kiracı sızıntı testi, rota envanteri, CI | KISMEN | 244/244 izole güvenlik kabulü ve Chromium rotaları PASS; güncel zorunlu CI ve her endpoint kapsamı doğrulanmadı. |

@@ -1,8 +1,7 @@
 # Sonraki adım
 
-- F0 WP-001 ölçüm baz çizgisi tamamlandı.
-- F1 WP-002 dağıtım kaynağı denetimi tamamlandı: Coolify son başarılı SHA 4789b509c0b719c1bf71a0b8032f7224bae9fd43 (2026-11-01 08:42 UTC); kaynak 122 migration ve canlı ready/122/0 ile eşleşiyor.
-- Mevcut çalışma ağacı bu SHA ile migration seti bakımından farklı: canlıda 5 eski migration mevcut değil; çalışma ağacında 4 farklı 2026-11-01 migration mevcut. Migration sayısı tek başına uyumluluk kanıtı değildir. İki listedeki tam ID'ler summary.json içindedir.
-- F1 sonraki iş: istenen aday branch/SHA'yı canlı çizgisiyle uzlaştır, sonra yalnız canlı kopya DB üzerinde yedek→migration→veri karşılaştırma→restore→rollback provası. Canlıya deploy etme veya canlı DB'ye migration çalıştırma.
-- Baz testler: Release build 0 uyarı/0 hata; PostgreSQL/security 244/244; hosted Chromium tam paket exit 0, 53 sidebar hedefi; source verifier 83/83; UI inventory güncel: 2.240 kontrol ve 66 rota.
-- Üretim DB/deploy değiştirilmedi. Çalışma ağacındaki başka değişiklikleri koru.
+- F0 WP-001 ölçüm baz çizgisi tamamlandı; Release build, 244/244 PostgreSQL/security, tam hosted Chromium, 83/83 source verifier ve güncel UI envanteri kanıtlandı.
+- F1: Coolify son başarılı SHA 4789b509c0b719c1bf71a0b8032f7224bae9fd43. Canlı 122 migration ile ready; committe çalışma ağacında olmayan 5 migration, çalışma ağacında ise committe olmayan 4 migration var.
+- Kaynak geçmişi de ayrışıyor: origin/main ile feature branch 36c5937 ortak atasından sonra 74/13 commit ayrılmış; çalışma ağacı kirli ve checkout/ödeme/fatura değişiklikleri içeriyor. Bu nedenle merge/deploy/migration yapılmadı. Tam karşılaştırma summary.json içinde.
+- Güvenli sonraki işlem: hedef release branch/SHA'yı seçip ayrı temiz worktree'de entegre et; mevcut iş ağacını koru; testleri çalıştır; sonra ayrı bir canlı DB kopyasında backup→migration→data comparison→restore/rollback provası. Canlıya deploy/migration owner yapar.
+- Ödeme kapısı kilitli: şirket kuruluşu ve iyzico işyeri hesabı yok.

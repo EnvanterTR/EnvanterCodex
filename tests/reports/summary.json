@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "measuredAt": "2026-11-02T09:39:44.199Z",
+  "measuredAt": "2026-11-02T09:41:34.288Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "feat/platform-checkout-readiness-20261020",
@@ -79,6 +79,16 @@
         "20261101220912_AddCompanyInvoices",
         "20261101230628_AddPlatformAnnouncements"
       ]
+    },
+    "sourceLineage": {
+      "deployedSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
+      "mergeBaseWithFeatureHead": "36c5937440229b6105c3c8b5f9e86cafa655e2c0",
+      "originMainMergeBaseWithDeployedSha": "4d55270827be312775ebffe60c5a6d74011d7802",
+      "originMainOnlyCommits": 74,
+      "featureBranchOnlyCommits": 13,
+      "featureBranch": "feat/platform-checkout-readiness-20261020",
+      "worktreeDirty": true,
+      "mergeOrDeployPerformed": false
     }
   },
   "catalog": [
