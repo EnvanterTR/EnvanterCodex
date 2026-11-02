@@ -1001,6 +1001,20 @@
     "companyCount": 3,
     "assetCount": 1
   },
+  "restoredBackupMigrationHistoryComparison": {
+    "measuredAtUtc": "2026-11-02T21:15:43Z",
+    "source": "envantertr-f1-restore-20261102 / envantertr_restorecheck / public.__EFMigrationsHistory",
+    "target": "clean release candidate source migration IDs",
+    "candidateCommit": "1a676b2ae2dce9416fdd918ba8c26472f49ec316",
+    "candidateLiveDeploymentSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
+    "comparison": "exact sorted ID set equality",
+    "status": "PASS",
+    "backupMigrationIds": 122,
+    "sourceMigrationIds": 122,
+    "onlyBackup": [],
+    "onlySource": [],
+    "productionWrites": false
+  },
   "localRestoreRunner": {
     "status": "SYNTHETIC_E2E_PASS",
     "file": "deploy/testing/Restore-CoolifyBackupToIsolatedDocker.ps1",
