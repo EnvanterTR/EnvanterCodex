@@ -1,11 +1,11 @@
 # EnvanterTR — geçerli durum
 
-Kaynak: CODEX-HEDEF-4.md v4; güncelleme 2026-11-02T12:04:00Z. Anlık kanıta dayanır; yüzde/tahmin kullanılmaz.
+Kaynak: CODEX-HEDEF-4.md v4; güncelleme 2026-11-02T13:16:00Z. Anlık kanıta dayanır; yüzde/tahmin kullanılmaz.
 
 | Hedef | Kapsam | Durum | Kanıt / kalan kabul |
 |---|---|---|---|
 | F0 | Ölçüm baz çizgisi | MEASURED | Özellik dalı baz çizgisi: Release build 0 uyarı/0 hata; PostgreSQL 244/244; tam hosted Chromium exit 0; kaynak doğrulayıcı 83/83. Canlı SHA tabanlı temiz aday: Release build 0/0; PostgreSQL 413/413; hosted Chromium exit 0; kaynak doğrulayıcı 85/85; UI envanteri 2.304 kontrol / 71 rota. Canlı yedek/restore provası yok. Aday kanıtları `tests/reports/live-derived-candidate-*-20261102.md`. |
-| F1 | Güvenli migration / yedek / geri dönüş | BLOCKED | Canlı SHA 4789b509c0b719c1bf71a0b8032f7224bae9fd43 ile adayın 122 migration ID seti aynı. Aday release build, 85/85 verifier, 2.304/71 UI inventory, 413/413 PostgreSQL security ve hosted Chromium exit 0 geçti. Feature branch `origin/main` ile 74/13 ayrışıyor ve worktree kirli; 5 canlı migration feature worktree'de yok, 4 yerel migration canlı revision'da yok. Aday testleri migration setinin güvenliğini canlı klon üzerinde kanıtlamaz. Canlı DB kopyasında taze yedek/restore/rollback provası hâlâ yapılmalı; production'a yazılmadı. Ayrıntı: `tests/reports/summary.json`. |
+| F1 | Güvenli migration / yedek / geri dönüş | IN_PROGRESS | WP-007 current release candidate için tamamlandı: Coolify arşivinin SHA-256 yerelde manifest ile eşleşti; ağsız, portsuz ve mountsuz PostgreSQL 17 klonuna restore PASS (96 public tablo, 122 migration, 3 şirket, 1 varlık). Temiz aday canlıyla aynı 122 migration ID'sine sahip; pending migration yok. No-op migration tekrar uygulaması ve untouched baseline'dan rollback clone karşılaştırması PASS. Üretim DB'sine yazılmadı. Ayrıntı: `tests/reports/live-backup-restore-rollback-20261102.md`. F1'in feature branch'e uygulanması hâlâ engelli: 121/122 parity ve 5 eksik + 4 fazla migration/model drift'i uzlaştırılmadı. Full-history EF idempotent SQL üretimi ayrıca uygulanmış migration'daki eksik semikolon nedeniyle başarısız; dosya değiştirilmedi. |
 | F2 | Plan, kayıt, ödemesiz aktivasyon | ÇALIŞTIRILMADI | Canlı uçtan uca yeni firma kaydı ve manuel aktivasyon kabulü yok. |
 | F3 | SMTP ve davet / parola e-postaları | KISMEN | SMTP teslimat yapılandırması geçmiş kanıtı var; yeni kullanıcı akışının güncel uçtan uca kabulü yok. |
 | F4 | Kiracı sızıntı testi, rota envanteri, CI | KISMEN | Adayda izole PostgreSQL güvenlik kabulü 413/413 ve tam hosted Chromium exit 0; kaynak/UI denetimleri PASS. Kiracı güvenlik matrisi ve güncel zorunlu CI kanıtlarının tümü tekil hedef maddelerine eşlenmedi. |

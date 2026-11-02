@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "measuredAt": "2026-11-02T11:52:40.086Z",
+  "measuredAt": "2026-11-02T21:03:48Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "feat/platform-checkout-readiness-20261020",
@@ -964,9 +964,185 @@
       "evidence": "Geniş kapsamın parçaları bu oturumda test edildi; 244/244 PostgreSQL/security ve tam hosted Chromium paketi PASS. Ancak Q maddelerinin her biri tekil kanıtla eşleştirilmedi."
     }
   ],
+  "liveBackup": {
+    "status": "LOCALLY_HASHED_AND_RESTORED",
+    "coolifyTask": "EnvanterTR daily consistent PostgreSQL backup",
+    "taskId": "irsodh1rfb6jx4n6fzin63sn",
+    "executedAtUtc": "2026-11-02T12:21:17Z",
+    "durationSeconds": 5,
+    "result": "Success",
+    "sanitizedOutput": "DAILY_SQL_BACKUP_OK",
+    "archiveSizeDisplayed": "453.55 KB",
+    "archiveName": "daily-20261102T122121Z.dump",
+    "archivePermissions": "600",
+    "sha256Manifest": "331eb93292dfb97fbb780007a6a39c86e7c25537f109df97d63344dc8911dd55",
+    "sha256RecomputedLocally": true,
+    "pgRestoreListValidatedByTask": true,
+    "independentRestore": true,
+    "isolatedClone": true,
+    "productionDatabaseWrites": false,
+    "note": "Archive downloaded only to the authorized isolated-rehearsal workflow; local SHA-256 matched the Coolify manifest. pg_restore --list and restore into the isolated clone passed. Production DB was not written.",
+    "productionDataTransferred": true
+  },
+  "isolatedRestoreTarget": {
+    "status": "REAL_ARCHIVE_RESTORED_AND_MIGRATION_ROLLBACK_REHEARSED",
+    "container": "envantertr-f1-restore-20261102",
+    "image": "postgres:17-alpine",
+    "networkMode": "none",
+    "publishedPorts": [],
+    "persistentVolumes": [],
+    "dataStorage": "temporary tmpfs",
+    "database": "envantertr_restorecheck",
+    "publicTableCount": 96,
+    "readyCheck": "pg_isready PASS",
+    "productionDataTransferred": true,
+    "migrationRows": 122,
+    "latestMigration": "20261026083058_AddHandoverEmailAttempts",
+    "companyCount": 3,
+    "assetCount": 1
+  },
+  "localRestoreRunner": {
+    "status": "SYNTHETIC_E2E_PASS",
+    "file": "deploy/testing/Restore-CoolifyBackupToIsolatedDocker.ps1",
+    "purpose": "Verify manifest SHA-256, enforce an isolated local PostgreSQL target, and restore without writing to production.",
+    "powerShellParse": "PASS",
+    "productionBackupUsed": false,
+    "restoreCompleted": true,
+    "syntheticFixtureCounts": {
+      "publicTables": 3,
+      "migrationRows": 1,
+      "companies": 1,
+      "assets": 1
+    },
+    "argumentPassingBugFoundAndFixed": true,
+    "realArchiveRestore": {
+      "status": "PASS",
+      "archiveName": "daily-20261102T122121Z.dump",
+      "archiveBytes": 464439,
+      "localSha256": "331eb93292dfb97fbb780007a6a39c86e7c25537f109df97d63344dc8911dd55",
+      "manifestMatch": true,
+      "pgRestoreList": "PASS",
+      "publicTables": 96,
+      "migrationRows": 122,
+      "latestMigration": "20261026083058_AddHandoverEmailAttempts",
+      "companies": 3,
+      "assets": 1,
+      "productionWrites": false
+    }
+  },
+  "currentReleaseMigrationAcceptance": {
+    "measuredAtUtc": "2026-11-02T13:40:38Z",
+    "candidateCommit": "1a676b2ae2dce9416fdd918ba8c26472f49ec316",
+    "command": "deploy/testing/run-current-release-migration-acceptance.ps1",
+    "test": "Current_release_preserves_all_original_fields_from_118_and_repeats_idempotently",
+    "status": "PASS",
+    "passed": 1,
+    "failed": 0,
+    "durationSeconds": 52.7033,
+    "isolatedSyntheticDatabase": true,
+    "temporaryComposeResourcesRemoved": true,
+    "productionDataTransferred": false,
+    "productionWrites": false
+  },
+  "migrationRehearsalHarness": {
+    "measuredAtUtc": "2026-11-02T21:03:48Z",
+    "file": "deploy/coolify/rehearse-migrations.sh",
+    "status": "REAL_BACKUP_NO_PENDING_MIGRATION_AND_ROLLBACK_PASS",
+    "syntheticBaseline": {
+      "migrationCount": 122,
+      "latestMigration": "20261026083058_AddHandoverEmailAttempts",
+      "companies": 1,
+      "assets": 1
+    },
+    "syntheticCandidate": {
+      "migrationCount": 123,
+      "latestMigration": "20261102000000_F1SyntheticProof"
+    },
+    "firstApply": "PASS",
+    "repeatApplyIdempotency": "PASS",
+    "existingTableRowCountsPreserved": true,
+    "rollbackCloneMatchesUntouchedBaseline": true,
+    "temporaryCandidateAndRollbackDatabasesCleaned": true,
+    "restoredBaseDatabaseRetained": true,
+    "productionArchiveUsed": false,
+    "productionWrites": false,
+    "firstRunCleanupDefectFoundAndFixed": true,
+    "realBackup": {
+      "archiveSha256": "331eb93292dfb97fbb780007a6a39c86e7c25537f109df97d63344dc8911dd55",
+      "candidateCommit": "1a676b2ae2dce9416fdd918ba8c26472f49ec316",
+      "candidateMigrationCount": 122,
+      "latestMigration": "20261026083058_AddHandoverEmailAttempts",
+      "pendingMigrations": 0,
+      "candidateSql": "latest-to-latest 3-byte no-op",
+      "candidateSqlSha256": "F1945CD6C19E56B3C1C78943EF5EC18116907A4CA1EFC40A57D48AB1DB7ADFC5",
+      "firstApply": "PASS",
+      "repeatApplyIdempotency": "PASS",
+      "existingPublicTableRowCountsPreserved": true,
+      "rollbackCloneMatchesRestoredBaseline": true,
+      "restoredBaselineRetained": true,
+      "temporaryCandidateAndRollbackDatabasesCleaned": true,
+      "productionWrites": false
+    }
+  },
   "knownLimitations": [
     "Iyzico/real payment remains locked: owner has no Iyzico merchant account and goal requires legal company confirmation.",
-    "Live deploy, live DB migration, current backup/restore rehearsal, and real tenant acceptance were not performed in this run.",
-    "F1 is blocked on source-history reconciliation: Coolify latest successful SHA 4789b509c0b719c1bf71a0b8032f7224bae9fd43 has five migration IDs absent from this worktree; the worktree has four different Nov 1 migration IDs. Count parity cannot authorize migration. Current live migration set is exactly the SHA set, and no live write was performed."
-  ]
+    "Live deploy and live DB migration were not performed. The authorized Coolify archive SHA-256 was recomputed locally and matched; real archive restore and current-candidate no-pending migration/rollback rehearsal passed in an isolated network-none PostgreSQL clone. Real tenant acceptance was not performed in this run.",
+    "F1 feature-branch migration parity is unresolved: live/candidate have 122 EF migration IDs; dirty feature has 121, with five live IDs absent and four Nov 1 IDs not deployed. Static source search also found no SubscriptionCoupon, EmployeeHandoverEmailAttempt, or PlatformImpersonationSession model references in the feature worktree; the drift includes application model/source, not only migration files. Exact IDs are recorded in migrationParity; no migration was run or copied blindly.",
+    "Full-history EF idempotent SQL generation failed at already-applied migration 20261010215527_AddAssetModelNumbersAndDefaultLocation because raw SQL statements omit semicolons inside generated DO blocks. The applied migration was not edited; current candidate has no pending migrations. Feature-branch migration/model parity remains unresolved."
+  ],
+  "migrationParity": {
+    "measuredAtUtc": "2026-11-02T13:16:07Z",
+    "candidateCommit": "1a676b2ae2dce9416fdd918ba8c26472f49ec316",
+    "liveDeploymentSha": "4789b509c0b719c1bf71a0b8032f7224bae9fd43",
+    "candidateMigrationIdCount": 122,
+    "featureMigrationIdCount": 121,
+    "candidateMatchesLive": true,
+    "liveIdsMissingFromFeature": [
+      "20261020174959_AddSubscriptionCoupons",
+      "20261023190000_AddExistingCompanyCheckoutContext",
+      "20261024010000_AddPlatformImpersonationSessions",
+      "20261024212238_AddRecoverableCompanyDeletion",
+      "20261026083058_AddHandoverEmailAttempts"
+    ],
+    "featureOnlyMigrationIds": [
+      "20261101212918_AddCheckoutWebhookReceipts",
+      "20261101214246_AddCompanyPayments",
+      "20261101220912_AddCompanyInvoices",
+      "20261101230628_AddPlatformAnnouncements"
+    ],
+    "liveMigrationOrProductionChanges": false,
+    "featureSourceDrift": {
+      "type": "STATIC_SEARCH",
+      "featureWorktreeContainsReferences": {
+        "SubscriptionCoupon": false,
+        "EmployeeHandoverEmailAttempt": false,
+        "PlatformImpersonationSession": false
+      },
+      "meaning": "The five missing live migration IDs are not only absent migration files; at least three feature model/source changes are also absent. Do not copy migration files alone.",
+      "executedDatabaseChanges": false
+    }
+  },
+  "featureMigrationReview": {
+    "type": "SOURCE_ONLY_STATIC_REVIEW",
+    "reviewedMigrationIds": [
+      "20261101212918_AddCheckoutWebhookReceipts",
+      "20261101214246_AddCompanyPayments",
+      "20261101220912_AddCompanyInvoices",
+      "20261101230628_AddPlatformAnnouncements"
+    ],
+    "upOperations": "All four create new tables/indexes and foreign keys; no destructive Up operation found by source inspection.",
+    "dependencies": [
+      "CheckoutWebhookReceipts -> Companies, CompanyCheckoutOrders",
+      "CompanyPayments -> Companies, CompanyCheckoutOrders",
+      "CompanyInvoices -> Companies, CompanyPayments, AspNetUsers",
+      "PlatformAnnouncements -> Companies, AspNetUsers"
+    ],
+    "downOrder": [
+      "AddPlatformAnnouncements",
+      "AddCompanyInvoices",
+      "AddCompanyPayments",
+      "AddCheckoutWebhookReceipts"
+    ],
+    "caveat": "Down methods drop these tables; this is not a DB execution test or production authorization. Payment-related schema remains behind locked F14."
+  }
 }
