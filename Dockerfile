@@ -12,10 +12,12 @@ WORKDIR /app
 ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libgssapi-krb5-2 \
+    && apt-get install -y --no-install-recommends curl libgssapi-krb5-2 \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /var/lib/envantertr/company-media /var/lib/envantertr/data-protection-keys \
     && chown -R $APP_UID:$APP_UID /var/lib/envantertr
 COPY --from=build /out ./
 USER $APP_UID
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl --fail --silent --show-error http://127.0.0.1:8080/health/ready || exit 1
 ENTRYPOINT ["dotnet", "EnvanterTR.Web.dll"]
