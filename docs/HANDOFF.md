@@ -6,7 +6,7 @@ WP-006–WP-020 tamamlandı. WP-012–WP-017'de `origin/main` uzlaştırması, c
 
 Kanıt: `tests/reports/live-derived-candidate-hosted-chromium-20261102.md`, `tests/reports/live-derived-candidate-security-20261102.md` ve `tests/reports/summary.json`.
 
-Canlı deploy veya production DB yazımı yapılmadı. Browser kabul koşucusu sentetik API verisi kullandı. Sonraki iş: handover müşteri UI'sini eklemek; sonra birleşik dalın tam CI/regresyon ve hosted browser kabulini koşmak. Uygulama release'i ayrıca onay gerektirir.
+Canlı deploy veya production DB yazımı yapılmadı. Browser kabul koşucusu sentetik API verisi kullandı. Bu tarihsel sonraki-adım notu WP-028 ile güncellendi; mevcut durum ve sıradaki adım aşağıdaki WP-028 bölümündedir.
 
 ## Gerçek kalan kapılar
 
@@ -15,7 +15,7 @@ Canlı deploy veya production DB yazımı yapılmadı. Browser kabul koşucusu s
 3. Handover müşteri UI'si; gerçek SMTP alıcı teslim kabulü; Santa/Farma/Demo3 canlı kabulü ayrıca tamamlanmalı. WP-020 SMTP testleri yalnız sentetik yakalayıcı kullandı.
 4. İyzico gerçek ödeme kapısı şirket kuruluşu ve onaylı işyeri hesabı olmadan kapalı kalır.
 
-Sonraki WP: WP-021 arayüzünü hosted Chromium'da doğrulamak (alıcı onayı iptali, yanıt kaybında aynı idempotency anahtarı, yalnız explicit resend), sonra birleşik preview dalında tam CI/regresyon ve hosted browser kabulini koşmak. SMTP gerçek alıcı teslimi ve Iyzico onayı ayrı operasyonel/ticari kapılardır. WP-020 backend kanıtı `tests/reports/handover-email-backend-acceptance-20261103.md`; WP-019 migration parity kanıtı `tests/reports/handover-email-migration-clone-parity-20261103.md`. `docs/PROJECT-STATUS.md` tek durum tablosudur; `docs/LEDGER.md` çalışma paketlerini tutar.
+Bu tarihsel sonraki-adım notu WP-028 ile güncellendi: handover tarayıcı alt senaryosu WP-022'de BLOCKED olarak kalıyor; GitHub CI resmi olarak PASS. WP-020 backend kanıtı `tests/reports/handover-email-backend-acceptance-20261103.md`; WP-019 migration parity kanıtı `tests/reports/handover-email-migration-clone-parity-20261103.md`. `docs/PROJECT-STATUS.md` tek durum tablosudur; `docs/LEDGER.md` çalışma paketlerini tutar.
 
 ## F1 geri dönüş prosedürü
 
@@ -51,9 +51,13 @@ Güncel branch `codex/feature-main-reconcile-20261103` @ `8367c6432b20ca89753620
 
 `deploy/testing/run-hosted-checkout-browser-acceptance.ps1` exit 0. Güncel dalda checkout ve hosted portal/platform Chromium senaryoları geçti. Ayrı public-site galeri kabul testi beş slaytı, otomatik sola geçişi, tam ekran görsel açmayı, Esc/klavye odağını, mobil taşmayı ve sayfa hatası olmadığını doğruladı. Bu testler yerel/sentetik fixture kullandı; hiçbir e-posta gönderilmedi ve canlıya bağlanılmadı.
 
-## Sonraki bağımsız adım
+## WP-028 — DONE
 
-F1 sırasını koruyarak birleşik dalın GitHub Actions CI sonucunu doğrula (Release derleme, kaynak doğrulayıcılar, 297 PostgreSQL kabul testi ve hosted Chromium sonuçları bu worktree'de yerel olarak PASS). Sonra canlı rollout sahibi için F1 kontrol listesini sun ve yalnız yayın sonrası sağlık/tenant smoke kabuline ilerle. Üç eski kaynak doğrulayıcı WP-026'da ayrı yeni pakette güncellendi: güncel suite 84/84 PASS; WP-023'ün tarihsel blokajı aynı pakette yeniden açılmadı. Daha sonraki F2/F3 kabulinde ödemesiz yeni firma kaydı/manuel aktivasyonı ve SMTP-capture akışını gerçek alıcı tesliminden ayrı doğrula. Gerçek SMTP teslimi, müşteri kabulü ve deploy kanıtları ayrıca gerekir. İyzico, şirket/işyeri hesabı kurulana kadar kilitli kalır.
+PR #34 (`codex/feature-main-reconcile-20261103` → `main`) açık/taslak/birleştirilmemiş. PR baş commit'i `7446037f249487581f3acbe655b05c95ca92b29f`, GitHub Actions run `41573283182` baş SHA'sıyla eşleşiyor; beş zorunlu işin tamamı `success`. Docker restore klonu `envantertr-f1-restore-20261102` yeniden kontrol edildi: `NetworkMode=none`, port binding yok, mount yok; PostgreSQL agregaları 96 public tablo, 122 migration, 3 şirket, 1 varlık. Üretim değişmedi.
+
+## Sonraki adım / F1 sınırı
+
+Kod/CI ve restore provası hazır; PR hâlâ taslak olduğu için birleştirilmiş veya canlıya alınmış değil. Hedef 4, Coolify canlı rollout ve sonrası `/api/status`, apex/firma HTTPS, login ve tenant smoke işlemlerini sahibine bırakıyor. Sahip bu adımları tamamlayıp kanıtı sağladığında F1 kapanışını doğrula; ondan önce F2'ye geçme. Yayın öncesi checklist bu dosyanın “F1 geri dönüş prosedürü” bölümünde. Full-history EF idempotent SQL üretimindeki `20261010215527_AddAssetModelNumbersAndDefaultLocation` ayraç sorunu çözülmedi; uygulanmış migration'ı düzenleme, mevcut 122/122 bazda migration çalıştırma.
 
 ## WP-026 — DONE
 
@@ -63,6 +67,6 @@ F1 sırasını koruyarak birleşik dalın GitHub Actions CI sonucunu doğrula (R
 
 Hedef 4'teki `CODEX-HEDEF-4.md` dosyası Desktop kökünde bulundu; SHA-256'sı worktree `AGENTS.md` ile birebir aynı. Windows CI job'ının yerel eşdeğer adımları `4ee470984e21ceaa3daece9a0e48b265bf310509` üzerinde geçti: AccountRecovery, deterministik üçüncü taraf envanteri, self-contained win-x64 publish, bağımlılık lisans eşlemesi, DPAPI startup, yedek şifreleme/tamper, ACL, alert, restore/update/install safety, SMTP config ve ZIP checksum. CI sırasında `PDFsharp` ile `PDFsharp-MigraDoc` için eksik lisans envanter satırları bulundu ve eklendi. Paket SHA-256 `248bcee390827b0cff3a4b95caf9d700cff60916afcfa5ae7c2709218728fbcd`. Bu bir yerel Windows kabulidir, resmi GitHub Actions sonucu değildir; üretim deploy veya DB değişikliği yoktur.
 
-### Sonraki iş
+### WP-027 kapanışında kaydedilen sonraki adım (WP-028 ile tamamlandı)
 
-F1/F4'ün kalan resmi kanıtı için bu dal adına main hedefli PR açılıp GitHub Actions CI'nın çalışması gerekir. Daha önce verilen PR #23 talimatı şu anki repository gerçekliğiyle örtüşmüyor: PR #23 başka `feat/annual-catalog-drafts-20261021` dalında. Mevcut feature branch için PR yaratma erişimi bu oturumda yok; GitHub Actions `pull_request` tetikleyicisi bu nedenle oluşmadı. PR compare adresi: `https://github.com/EnvanterTR/EnvanterCodex/compare/main...codex/feature-main-reconcile-20261103?expand=1`. Hedef gereği Coolify canlı rollout'u sahibi gerçekleştirir; yayın sonrası `/api/status`, apex/tenant HTTPS, giriş ve tenant yönlendirmesi kanıtlanmadan F1 kapanmaz.
+Bu tarihsel nottaki PR/CI bekleyişi artık geçerli değil: PR #34 açıldı ve workflow `41573283182` aynı SHA'da 5/5 başarıyla tamamlandı. Güncel kalan F1 operasyon kapısı Coolify canlı rollout ve sahibi tarafından yayın sonrası health/tenant smoke kanıtıdır; WP-028 bölümü güncel kayıttır.
