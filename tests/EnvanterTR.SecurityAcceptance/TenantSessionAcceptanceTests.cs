@@ -19295,6 +19295,16 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Contains(tenantCompanies, company => company.GetProperty("id").GetGuid() == _companyId);
             var selectedTenant = Assert.Single(tenantCompanies, company => company.GetProperty("id").GetGuid() == additionalCompanyId);
             Assert.Equal($"https://authorized-{additionalCompanyId:N}.envantertr.com/", selectedTenant.GetProperty("tenantUrl").GetString());
+            using var mismatchedTenantRequest = new HttpRequestMessage(HttpMethod.Get, "/api/session");
+            mismatchedTenantRequest.Headers.Host = $"other-{_otherCompanyId:N}.envantertr.com";
+            using var mismatchedTenant = await authenticatedClient.SendAsync(mismatchedTenantRequest);
+            Assert.Equal(HttpStatusCode.Forbidden, mismatchedTenant.StatusCode);
+            Assert.False(mismatchedTenant.Headers.TryGetValues("Set-Cookie", out var deniedCookies) &&
+                deniedCookies.Any(value => value.StartsWith("EnvanterTR.Session=;", StringComparison.OrdinalIgnoreCase) ||
+                    (value.Contains("EnvanterTR.Session=", StringComparison.OrdinalIgnoreCase) &&
+                     value.Contains("max-age=0", StringComparison.OrdinalIgnoreCase))));
+            using var preservedSession = await authenticatedClient.GetAsync("/api/session");
+            Assert.Equal(HttpStatusCode.OK, preservedSession.StatusCode);
         }
 
         using var unrelatedChoice = await SendAnonymousLoginAsync(loginClient, email, password, null,
@@ -19354,11 +19364,11 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
 
         using (var otherTenant = await SendAsUserAsync(HttpMethod.Get, "/api/assets?page=1&pageSize=5",
             _userId, _companyId, host: $"other-{_otherCompanyId:N}.envantertr.com"))
-            Assert.Equal(HttpStatusCode.Unauthorized, otherTenant.StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, otherTenant.StatusCode);
 
         using (var unknownTenant = await SendAsUserAsync(HttpMethod.Get, "/api/assets?page=1&pageSize=5",
             _userId, _companyId, host: "missing-company.envantertr.com"))
-            Assert.Equal(HttpStatusCode.Unauthorized, unknownTenant.StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, unknownTenant.StatusCode);
 
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {

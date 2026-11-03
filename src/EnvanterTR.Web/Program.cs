@@ -393,13 +393,19 @@ app.Use(async (context, next) =>
 
         currentRole = await (from membership in db.CompanyMemberships.AsNoTracking()
             join company in db.Companies.AsNoTracking() on membership.CompanyId equals company.Id
-            where membership.CompanyId == companyId && membership.UserId == userId && company.IsActive &&
-                (tenantSlug == null || company.Slug == tenantSlug)
+            where membership.CompanyId == companyId && membership.UserId == userId && company.IsActive
             select membership.RoleKey).SingleOrDefaultAsync(context.RequestAborted);
         if (currentRole is null)
         {
             await context.SignOutAsync(IdentityConstants.ApplicationScheme);
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+        // A different tenant host denies this request without destroying the valid shared-domain session.
+        if (tenantSlug is not null && !await db.Companies.AsNoTracking().AnyAsync(
+                company => company.Id == companyId && company.Slug == tenantSlug, context.RequestAborted))
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
             return;
         }
         var roleAuthorization = await CompanyRoleAuthorization.ResolveAsync(db, companyId, currentRole, context.RequestAborted);
