@@ -58,3 +58,11 @@ F1 sırasını koruyarak birleşik dalın GitHub Actions CI sonucunu doğrula (R
 ## WP-026 — DONE
 
 Üç statik doğrulayıcı beklentisi gerçek kaynakla eşleştirildi: 401 login fixture'ına güncel `#impersonationNotice` eklendi; platform MFA challenge depolama anahtarı beklentisi `platformMfaChallengeKey` yapıldı. Hedefli 3 doğrulayıcı ve tam `tools/Verify-*.mjs` turu 84/84 PASS. Yalnız test araçları ve durum dokümanları değişti; uygulama davranışı, üretim ve yedek klonu değişmedi.
+
+## WP-027 — DONE
+
+Hedef 4'teki `CODEX-HEDEF-4.md` dosyası Desktop kökünde bulundu; SHA-256'sı worktree `AGENTS.md` ile birebir aynı. Windows CI job'ının yerel eşdeğer adımları `4ee470984e21ceaa3daece9a0e48b265bf310509` üzerinde geçti: AccountRecovery, deterministik üçüncü taraf envanteri, self-contained win-x64 publish, bağımlılık lisans eşlemesi, DPAPI startup, yedek şifreleme/tamper, ACL, alert, restore/update/install safety, SMTP config ve ZIP checksum. CI sırasında `PDFsharp` ile `PDFsharp-MigraDoc` için eksik lisans envanter satırları bulundu ve eklendi. Paket SHA-256 `248bcee390827b0cff3a4b95caf9d700cff60916afcfa5ae7c2709218728fbcd`. Bu bir yerel Windows kabulidir, resmi GitHub Actions sonucu değildir; üretim deploy veya DB değişikliği yoktur.
+
+### Sonraki iş
+
+F1/F4'ün kalan resmi kanıtı için bu dal adına main hedefli PR açılıp GitHub Actions CI'nın çalışması gerekir. Daha önce verilen PR #23 talimatı şu anki repository gerçekliğiyle örtüşmüyor: PR #23 başka `feat/annual-catalog-drafts-20261021` dalında. Mevcut feature branch için PR yaratma erişimi bu oturumda yok; GitHub Actions `pull_request` tetikleyicisi bu nedenle oluşmadı. PR compare adresi: `https://github.com/EnvanterTR/EnvanterCodex/compare/main...codex/feature-main-reconcile-20261103?expand=1`. Hedef gereği Coolify canlı rollout'u sahibi gerçekleştirir; yayın sonrası `/api/status`, apex/tenant HTTPS, giriş ve tenant yönlendirmesi kanıtlanmadan F1 kapanmaz.
