@@ -31,6 +31,7 @@ const elements = new Map([
   ['#authLayer', { classList: { added: [], add(value) { this.added.push(value); } } }],
   ['#retryApiButton', { hidden: true }],
   ['#authError', { textContent: '' }],
+  ['#impersonationNotice', { hidden: true }],
   ['#loginQueryNotice', { hidden: true, textContent: '' }],
 ]);
 let response;

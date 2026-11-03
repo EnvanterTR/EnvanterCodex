@@ -17,7 +17,7 @@ assert.match(compose, /migrate:[\s\S]*?command:\s*\["--migrate"\][\s\S]*?web:[\s
 assert.match(setupPage, /type="submit" disabled/);
 assert.match(setupPage, /csrfToken=\(await request\('\/api\/session\/csrf'\)\)\.requestToken;form\.querySelector\('button\[type="submit"\]'\)\.disabled=false/);
 assert.match(adminPage, /if\(!s\.platformAdmin\)throw Error\('Bu hesapta platform yöneticisi yetkisi yok\.'\);/);
-assert.match(adminPage, /sessionStorage\.removeItem\(platformMfaChallengeStorageKey\)[\s\S]{0,160}await csrf\(\);await showApp\(s\.name\)/,
+assert.match(adminPage, /sessionStorage\.removeItem\(platformMfaChallengeKey\)[\s\S]{0,160}await csrf\(\);await showApp\(s\.name\)/,
   'The login must refresh CSRF after authentication before showing the admin app.');
 assert.match(adminPage, /\.login-wrap\{[^}]*overflow-y:auto;place-items:safe center/);
 assert.match(dockerfile, /^FROM mcr\.microsoft\.com\/playwright:v1\.64\.0-noble$/m);

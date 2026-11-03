@@ -34,3 +34,27 @@ Sonraki WP: WP-021 arayüzünü hosted Chromium'da doğrulamak (alıcı onayı i
 4. Geri dönüşten sonra migration geçmişi, temel satır sayıları, `/api/status`, portal girişi ve tenant sınırlarını doğrula; sonuçları aynı release kaydına ekle.
 
 Mevcut F1 provası uygulama rollback klonunu ve geri yüklenmiş baz satır sayılarını doğruladı; bu, henüz canlı rollout/rollback yapıldığı anlamına gelmez.
+
+## WP-022 — BLOCKED
+
+Zimmet PDF/e-posta arşivi için ayrı Chromium retry senaryosu üç denemede tamamlanmadı: yanıt kaybı sonrası metni değişen düğme eski metinle seçildi ve POST tetiklenmedi (30 sn yanıt zaman aşımı). Test ekleri geri alındı; ürün kodu, SMTP, yedek klonu ve canlı değişmedi. Aynı testi dördüncü kez çalıştırma.
+
+## WP-023 — BLOCKED
+
+Güncel branch `codex/feature-main-reconcile-20261103` @ `8367c6432b20ca897536202db6da66dea942d8a9`. Release build 0 uyarı/0 hata; UI inventory `--check` 2.252 kontrol/65 rota. İki eski verifier beklentisi düzeltildi ve hedefli kontroller geçti. Tam kaynak doğrulayıcı turu 81/84: `Verify-AuthErrorFlows` fixture'ında yeni `#impersonationNotice` yok; `Verify-PlatformAdminExperience` ve `Verify-PlatformMfaBrowserAcceptance` kodda artık kullanılmayan `platformMfaChallengeStorageKey` adını arıyor. Üç deneme sınırı doldu; aynı verifier'lar tekrar denenmeyecek. Uygulama ve canlı değişmedi.
+
+## WP-024 — DONE
+
+İzole PostgreSQL güvenlik/tenant kabul koşusu 297/297 geçti, exit 0 (1.0484 saat). Tek kullanımlık test DB'si ve Docker ağı temizlendi; canlıya ve yedek klonuna bağlanılmadı/yazılmadı.
+
+## WP-025 — DONE
+
+`deploy/testing/run-hosted-checkout-browser-acceptance.ps1` exit 0. Güncel dalda checkout ve hosted portal/platform Chromium senaryoları geçti. Ayrı public-site galeri kabul testi beş slaytı, otomatik sola geçişi, tam ekran görsel açmayı, Esc/klavye odağını, mobil taşmayı ve sayfa hatası olmadığını doğruladı. Bu testler yerel/sentetik fixture kullandı; hiçbir e-posta gönderilmedi ve canlıya bağlanılmadı.
+
+## Sonraki bağımsız adım
+
+F1 sırasını koruyarak birleşik dalın GitHub Actions CI sonucunu doğrula (Release derleme, kaynak doğrulayıcılar, 297 PostgreSQL kabul testi ve hosted Chromium sonuçları bu worktree'de yerel olarak PASS). Sonra canlı rollout sahibi için F1 kontrol listesini sun ve yalnız yayın sonrası sağlık/tenant smoke kabuline ilerle. Üç eski kaynak doğrulayıcı WP-026'da ayrı yeni pakette güncellendi: güncel suite 84/84 PASS; WP-023'ün tarihsel blokajı aynı pakette yeniden açılmadı. Daha sonraki F2/F3 kabulinde ödemesiz yeni firma kaydı/manuel aktivasyonı ve SMTP-capture akışını gerçek alıcı tesliminden ayrı doğrula. Gerçek SMTP teslimi, müşteri kabulü ve deploy kanıtları ayrıca gerekir. İyzico, şirket/işyeri hesabı kurulana kadar kilitli kalır.
+
+## WP-026 — DONE
+
+Üç statik doğrulayıcı beklentisi gerçek kaynakla eşleştirildi: 401 login fixture'ına güncel `#impersonationNotice` eklendi; platform MFA challenge depolama anahtarı beklentisi `platformMfaChallengeKey` yapıldı. Hedefli 3 doğrulayıcı ve tam `tools/Verify-*.mjs` turu 84/84 PASS. Yalnız test araçları ve durum dokümanları değişti; uygulama davranışı, üretim ve yedek klonu değişmedi.

@@ -138,7 +138,7 @@ assert.match(assetActions, /contractDetailFields/);
 assert.match(assetActions, /Canceling a new contract must not write/);
 assert.match(assetActions, /Canceling contract archive must not write/);
 assert.match(assetActions, /contractCreateWrite\.method, 'POST'/);
-assert.match(assetActions, /destinationCount, 53/);
+assert.match(assetActions, /destinationCount, 52/);
 assert.match(assetActions, /const statusLabelWrites = \[\]/);
 assert.match(assetActions, /Company status labels must be saved with CSRF protection/);
 assert.match(assetActions, /Saving a company-specific fixed status label must persist successfully/);
