@@ -1070,7 +1070,9 @@ try {
 
   await page.locator('#provisionCompany').click();
   const pilotDialog = page.locator('#actionDialog');
+  await pilotDialog.waitFor({ state: 'visible' });
   const pilotMode = pilotDialog.locator('select[name="provisioningMode"]');
+  await pilotMode.waitFor({ state: 'visible' });
   assert.equal(await pilotMode.count(), 1, 'Company provisioning must offer an explicit free trial mode.');
   assert.equal(await pilotMode.inputValue(), 'trial');
   assert.equal(await pilotDialog.locator('input[name="paymentReference"]').isVisible(), false);
