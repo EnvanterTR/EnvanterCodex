@@ -1,6 +1,6 @@
 # EnvanterTR statik arayüz envanteri
 
-Oluşturulma: 2026-11-03T01:07:09.025Z
+Oluşturulma: 2026-11-03T21:31:31.306Z
 
 > Bu dosya mevcut HTML kaynaklarında bulunan statik arayüz öğelerinin dökümüdür. Bir öğenin listelenmesi onun çalıştığını kanıtlamaz. JavaScript ile sonradan oluşturulan kontroller, API/DB davranışı, rol varyasyonları ve erişilebilirlik ayrıca uçtan uca kabul gerektirir. Kaynak değiştikçe `node tools/Generate-UiInventory.mjs` ile yeniden üretin; `node tools/Generate-UiInventory.mjs --check` güncel olup olmadığını doğrular.
 
@@ -14,12 +14,12 @@ Oluşturulma: 2026-11-03T01:07:09.025Z
 | Düğme | 952 |
 | Form | 113 |
 | Girdi alanı | 621 |
-| Seçim alanı | 203 |
+| Seçim alanı | 204 |
 | Metin alanı | 42 |
 | Modal | 109 |
 | Sekme | 5 |
 | Tablo | 79 |
-| **Toplam kayıt** | **2252** |
+| **Toplam kayıt** | **2253** |
 
 ## Tam döküm
 
@@ -1987,7 +1987,7 @@ Oluşturulma: 2026-11-03T01:07:09.025Z
 | 27 | Düğme | Tüm siparişleri aç | type=button |
 | 28 | Düğme | Firma listesini aç |  |
 | 29 | Düğme | Yenile | id=refreshFollowUps |
-| 30 | Düğme | ＋ Ücretli firma oluştur | id=provisionCompany |
+| 30 | Düğme | ＋ Firma oluştur | id=provisionCompany |
 | 31 | Düğme | Uygula | id=searchCompanies |
 | 32 | Düğme | Seçilenleri askıya al | id=bulkSuspendCompanies; type=button; başlangıçta gizli |
 | 33 | Düğme | Seçilenleri etkinleştir | id=bulkReactivateCompanies; type=button; başlangıçta gizli |
@@ -2164,39 +2164,40 @@ Oluşturulma: 2026-11-03T01:07:09.025Z
 | 204 | Seçim alanı | planId | name=planId; seçenekler=${esc(p.id)}: ${esc(p.name)} — ${esc(p.deploymentKind)} |
 | 205 | Girdi alanı | days | type=number; name=days |
 | 206 | Girdi alanı | note | name=note |
-| 207 | Girdi alanı | companyName | name=companyName |
-| 208 | Girdi alanı | slug | name=slug |
-| 209 | Girdi alanı | contactEmail | type=email; name=contactEmail |
-| 210 | Girdi alanı | ownerName | name=ownerName |
-| 211 | Girdi alanı | ownerEmail | type=email; name=ownerEmail |
-| 212 | Seçim alanı | planId | name=planId; seçenekler=${esc(p.id)}: ${esc(p.name)} · ${esc(p.code)} |
-| 213 | Girdi alanı | termDays | type=number; name=termDays |
-| 214 | Girdi alanı | paymentReference | name=paymentReference |
-| 215 | Girdi alanı | paymentVerified | type=checkbox; name=paymentVerified |
-| 216 | Girdi alanı | endsAt | type=datetime-local; name=endsAt |
-| 217 | Girdi alanı | note | name=note |
-| 218 | Form | loginForm | id=loginForm |
-| 219 | Form | platformMfaSetupForm | id=platformMfaSetupForm |
-| 220 | Form | couponForm | id=couponForm |
-| 221 | Form | planForm | id=planForm |
-| 222 | Form | contentForm | id=contentForm |
-| 223 | Form | supportAdminReply | id=supportAdminReply |
-| 224 | Form | supportAdminStatus | id=supportAdminStatus |
-| 225 | Form | actionForm | id=actionForm |
-| 226 | Form | platformRecoveryForm | id=platformRecoveryForm |
-| 227 | Form | platformReauthForm | id=platformReauthForm |
-| 228 | Form | impersonationForm | id=impersonationForm |
-| 229 | Form | memberInviteForm | id=memberInviteForm |
-| 230 | Form | paymentFollowUpForm | id=paymentFollowUpForm |
-| 231 | Form | companyLifecycleForm | id=companyLifecycleForm |
-| 232 | Modal | İşlem | id=actionDialog; type=button |
-| 233 | Modal | Kapat | id=platformRecoveryDialog; type=button; name=email |
-| 234 | Modal | Kapat | id=platformReauthDialog; type=button; name=password |
-| 235 | Modal | reason | id=impersonationDialog; type=button; name=reason |
-| 236 | Modal | Firma ayrıntısı | id=companyDetailDialog; type=button |
-| 237 | Modal | companyId | id=memberInviteDialog; type=button; name=companyId |
-| 238 | Modal | Kapat | id=paymentFollowUpDialog; type=button; name=outcome |
-| 239 | Tablo | ${x} |  |
+| 207 | Seçim alanı | provisioningMode | name=provisioningMode; seçenekler=trial: 15 günlük ücretsiz deneme, paid: Harici ödemesi doğrulanmış abonelik |
+| 208 | Girdi alanı | companyName | name=companyName |
+| 209 | Girdi alanı | slug | name=slug |
+| 210 | Girdi alanı | contactEmail | type=email; name=contactEmail |
+| 211 | Girdi alanı | ownerName | name=ownerName |
+| 212 | Girdi alanı | ownerEmail | type=email; name=ownerEmail |
+| 213 | Seçim alanı | planId | name=planId; seçenekler=${esc(p.id)}: ${esc(p.name)} · ${esc(p.code)} |
+| 214 | Girdi alanı | termDays | type=number; name=termDays |
+| 215 | Girdi alanı | paymentReference | name=paymentReference |
+| 216 | Girdi alanı | paymentVerified | type=checkbox; name=paymentVerified |
+| 217 | Girdi alanı | endsAt | type=datetime-local; name=endsAt |
+| 218 | Girdi alanı | note | name=note |
+| 219 | Form | loginForm | id=loginForm |
+| 220 | Form | platformMfaSetupForm | id=platformMfaSetupForm |
+| 221 | Form | couponForm | id=couponForm |
+| 222 | Form | planForm | id=planForm |
+| 223 | Form | contentForm | id=contentForm |
+| 224 | Form | supportAdminReply | id=supportAdminReply |
+| 225 | Form | supportAdminStatus | id=supportAdminStatus |
+| 226 | Form | actionForm | id=actionForm |
+| 227 | Form | platformRecoveryForm | id=platformRecoveryForm |
+| 228 | Form | platformReauthForm | id=platformReauthForm |
+| 229 | Form | impersonationForm | id=impersonationForm |
+| 230 | Form | memberInviteForm | id=memberInviteForm |
+| 231 | Form | paymentFollowUpForm | id=paymentFollowUpForm |
+| 232 | Form | companyLifecycleForm | id=companyLifecycleForm |
+| 233 | Modal | İşlem | id=actionDialog; type=button |
+| 234 | Modal | Kapat | id=platformRecoveryDialog; type=button; name=email |
+| 235 | Modal | Kapat | id=platformReauthDialog; type=button; name=password |
+| 236 | Modal | reason | id=impersonationDialog; type=button; name=reason |
+| 237 | Modal | Firma ayrıntısı | id=companyDetailDialog; type=button |
+| 238 | Modal | companyId | id=memberInviteDialog; type=button; name=companyId |
+| 239 | Modal | Kapat | id=paymentFollowUpDialog; type=button; name=outcome |
+| 240 | Tablo | ${x} |  |
 
 ### Platform kurulumu — `src/EnvanterTR.Web/wwwroot/platform-setup.html`
 
