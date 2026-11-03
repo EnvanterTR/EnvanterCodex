@@ -1926,6 +1926,9 @@ namespace EnvanterTR.Web.Data.Migrations
                         .HasColumnType("character varying(32)")
                         .HasDefaultValue("Unclassified");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -1970,6 +1973,8 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("Companies", null, t =>
                         {
                             t.HasCheckConstraint("CK_Companies_AssetCount", "\"AssetCount\" >= 0");
+
+                            t.HasCheckConstraint("CK_Companies_DeletedInactive", "\"DeletedAt\" IS NULL OR NOT \"IsActive\"");
 
                             t.HasCheckConstraint("CK_Companies_SecurityPasswordMinimumLength", "\"SecurityPasswordMinimumLength\" BETWEEN 12 AND 64");
 
@@ -2117,6 +2122,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<Guid>("PlanId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("RequestedByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(63)
@@ -2130,6 +2138,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<decimal>("SubtotalAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid?>("TargetCompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("TermDays")
                         .HasColumnType("integer");
@@ -2165,6 +2176,8 @@ namespace EnvanterTR.Web.Data.Migrations
                             t.HasCheckConstraint("CK_CompanyCheckoutOrders_Pricing", "\"SubtotalAmount\" >= 0 AND \"DiscountAmount\" >= 0 AND \"Amount\" = \"SubtotalAmount\" - \"DiscountAmount\"");
 
                             t.HasCheckConstraint("CK_CompanyCheckoutOrders_Status", "\"Status\" IN ('Pending', 'PaymentStarted', 'PaymentReview', 'PaymentFailed', 'Expired', 'Provisioned', 'ProvisioningFailed')");
+
+                            t.HasCheckConstraint("CK_CompanyCheckoutOrders_TargetContext", "(\"TargetCompanyId\" IS NULL AND \"RequestedByUserId\" IS NULL) OR (\"TargetCompanyId\" IS NOT NULL AND \"RequestedByUserId\" IS NOT NULL AND \"TermDays\" = 365)");
 
                             t.HasCheckConstraint("CK_CompanyCheckoutOrders_Term", "\"TermDays\" IN (30, 365)");
                         });
@@ -3155,6 +3168,82 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.ToTable("EmployeeHandoverDocuments", null, t =>
                         {
                             t.HasCheckConstraint("CK_EmployeeHandoverDocuments_SignaturePairs", "(\"RecipientSignaturePngBase64\" IS NULL) = (\"RecipientSignedAt\" IS NULL) AND (\"IssuerSignaturePngBase64\" IS NULL) = (\"IssuerSignedAt\" IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.EmployeeHandoverEmailAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ErrorType")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PdfSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("RecipientEmail")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<Guid>("RequestedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SnapshotSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "DocumentId", "CreatedAt");
+
+                    b.HasIndex("CompanyId", "DocumentId", "IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("CompanyId", "EmployeeId", "DocumentId");
+
+                    b.ToTable("EmployeeHandoverEmailAttempts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_HandoverEmail_AcceptedAt", "(\"Status\" = 'Accepted') = (\"AcceptedAt\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_HandoverEmail_RequestKey", "\"IdempotencyKey\" <> '00000000-0000-0000-0000-000000000000'::uuid");
+
+                            t.HasCheckConstraint("CK_HandoverEmail_Status", "\"Status\" IN ('Sending', 'Accepted', 'Uncertain')");
                         });
                 });
 
@@ -5267,6 +5356,30 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<DateTimeOffset>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("ImpersonationEndedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ImpersonationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ImpersonationReturnTokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool?>("ImpersonatorRememberMe")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ImpersonatorSecurityStampHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("ImpersonatorSessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ImpersonatorUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("IpAddress")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
@@ -5289,11 +5402,21 @@ namespace EnvanterTR.Web.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ImpersonationReturnTokenHash")
+                        .IsUnique()
+                        .HasFilter("\"ImpersonationReturnTokenHash\" IS NOT NULL");
+
+                    b.HasIndex("ImpersonatorSessionId")
+                        .IsUnique()
+                        .HasFilter("\"ImpersonatorSessionId\" IS NOT NULL AND \"ImpersonationEndedAt\" IS NULL AND \"RevokedAt\" IS NULL");
+
                     b.HasIndex("UserId", "RevokedAt", "ExpiresAt");
 
                     b.ToTable("UserSessions", null, t =>
                         {
                             t.HasCheckConstraint("CK_UserSessions_Expiry", "\"ExpiresAt\" > \"CreatedAt\"");
+
+                            t.HasCheckConstraint("CK_UserSessions_Impersonation", "(\"ImpersonatorUserId\" IS NULL AND \"ImpersonatorSessionId\" IS NULL AND \"ImpersonatorSecurityStampHash\" IS NULL AND \"ImpersonationReturnTokenHash\" IS NULL AND \"ImpersonatorRememberMe\" IS NULL AND \"ImpersonationReason\" IS NULL AND \"ImpersonationEndedAt\" IS NULL) OR (\"ImpersonatorUserId\" IS NOT NULL AND \"ImpersonatorSessionId\" IS NOT NULL AND \"ImpersonatorSecurityStampHash\" IS NOT NULL AND \"ImpersonatorRememberMe\" IS NOT NULL AND \"ImpersonationReason\" IS NOT NULL AND \"CompanyId\" IS NOT NULL AND NOT \"PlatformAdmin\" AND (\"ImpersonationReturnTokenHash\" IS NOT NULL OR \"ImpersonationEndedAt\" IS NOT NULL))");
                         });
                 });
 
@@ -6506,6 +6629,29 @@ namespace EnvanterTR.Web.Data.Migrations
                         .WithMany()
                         .HasForeignKey("CompanyId", "EmployeeId")
                         .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EnvanterTR.Web.Data.EmployeeHandoverEmailAttempt", b =>
+                {
+                    b.HasOne("EnvanterTR.Web.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "EmployeeId")
+                        .HasPrincipalKey("CompanyId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EnvanterTR.Web.Data.EmployeeHandoverDocument", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId", "EmployeeId", "DocumentId")
+                        .HasPrincipalKey("CompanyId", "EmployeeId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EnvanterTR.Web.Data;
 
-public static class EmployeeHandoverEndpoints
+public static partial class EmployeeHandoverEndpoints
 {
     private const int MaxSignatureBytes = 256 * 1024;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -17,10 +17,13 @@ public static class EmployeeHandoverEndpoints
             .RequireAuthorization("asset.read");
         read.MapGet("", ListAsync);
         read.MapGet("/{documentId:guid}", GetAsync);
+        read.MapGet("/{documentId:guid}/pdf", DownloadPdfAsync);
 
         var write = api.MapGroup("/employees/{employeeId:guid}/handover-documents")
             .RequireAuthorization("asset.write");
         write.MapPost("", CreateAsync);
+        write.MapGet("/{documentId:guid}/email", GetEmailDeliveryAsync);
+        write.MapPost("/{documentId:guid}/email", SendEmailDeliveryAsync).RequireRateLimiting("handover-email");
 
         api.MapPost("/employee-handover-documents/{documentId:guid}/sign", SignAsync)
             .RequireAuthorization("asset.write");

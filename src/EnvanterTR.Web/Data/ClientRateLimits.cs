@@ -8,6 +8,12 @@ public static class ClientRateLimits
     // TrustedClientIp is the sole authority for forwarded client addresses.
     public static void Configure(RateLimiterOptions options)
     {
+        options.AddPolicy("handover-email", context => RateLimitPartition.GetFixedWindowLimiter(
+            $"{context.User.FindFirst("company_id")?.Value}:{context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value}",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10, Window = TimeSpan.FromMinutes(10), QueueLimit = 0, AutoReplenishment = true
+            }));
     options.AddPolicy("login", context =>
         {
             var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
