@@ -1414,13 +1414,20 @@ public static partial class PlatformEndpoints
             var ownerName = request.OwnerName?.Trim();
             var ownerEmail = request.OwnerEmail?.Trim();
             var paymentReference = request.PaymentReference?.Trim();
+            var provisioningMode = request.ProvisioningMode?.Trim().ToLowerInvariant() ?? "paid";
+            var isTrial = provisioningMode == "trial";
+            if (provisioningMode is not ("paid" or "trial") ||
+                (isTrial && (request.TermDays != 15 || request.PaymentVerified || !string.IsNullOrWhiteSpace(paymentReference))))
+                return Results.ValidationProblem(new Dictionary<string, string[]> {
+                    ["provisioningMode"] = ["Ücretsiz deneme 15 gündür; ödeme doğrulaması veya ödeme referansı içeremez."]
+                });
             if (string.IsNullOrWhiteSpace(companyName) || companyName.Length > 200 ||
                 !TenantHostResolver.IsValidSlug(slug) ||
                 (contactEmail is { Length: > 256 } || (contactEmail is not null && !MailAddress.TryCreate(contactEmail, out _))) ||
                 string.IsNullOrWhiteSpace(ownerName) || ownerName.Length > 160 ||
                 string.IsNullOrWhiteSpace(ownerEmail) || ownerEmail.Length > 256 || !MailAddress.TryCreate(ownerEmail, out _) ||
-                request.TermDays is < 1 or > 1095 || string.IsNullOrWhiteSpace(paymentReference) || paymentReference.Length > 180 ||
-                !request.PaymentVerified)
+                request.TermDays is < 1 or > 1095 || (!isTrial && (string.IsNullOrWhiteSpace(paymentReference) || paymentReference.Length > 180 ||
+                !request.PaymentVerified)))
                 return Results.ValidationProblem(new Dictionary<string, string[]> {
                     ["company"] = ["Firma, geçerli alt alan adı, yetkili kişi ve doğrulanmış ödeme referansı gereklidir; abonelik süresi 1-1095 gün olmalıdır."]
                 });
@@ -1456,14 +1463,15 @@ public static partial class PlatformEndpoints
                 SecurityRequireMfa = true };
             var now = DateTimeOffset.UtcNow;
             var subscription = new TenantSubscription {
-                CompanyId = company.Id, PlanId = plan.Id, Status = "Active", IsDemo = false,
-                StartsAt = now, EndsAt = now.AddDays(request.TermDays), PaymentReference = paymentReference
+                CompanyId = company.Id, PlanId = plan.Id, Status = isTrial ? "Trial" : "Active", IsDemo = isTrial,
+                StartsAt = now, EndsAt = now.AddDays(request.TermDays), PaymentReference = isTrial ? null : paymentReference
             };
             db.Companies.Add(company);
             db.CompanyMemberships.Add(new CompanyMembership { CompanyId = company.Id, UserId = owner.Id, RoleKey = "owner" });
             db.TenantSubscriptions.Add(subscription);
-            AddAudit(db, user, "PaidCompanyProvisioned", "Company", company.Id, company.Id,
-                $"{plan.Code} · {request.TermDays} gün · ödeme platform yöneticisi tarafından doğrulandı.");
+            AddAudit(db, user, isTrial ? "TrialCompanyProvisioned" : "PaidCompanyProvisioned", "Company", company.Id, company.Id,
+                isTrial ? $"{plan.Code} · 15 gün ücretsiz deneme · ödeme alınmadı." :
+                    $"{plan.Code} · {request.TermDays} gün · ödeme platform yöneticisi tarafından doğrulandı.");
             try
             {
                 await db.SaveChangesAsync(cancellationToken);
@@ -1499,7 +1507,9 @@ public static partial class PlatformEndpoints
                 company.Id, company.Name, company.Slug, company.ContactEmail, ownerId = owner.Id,
                 plan = plan.Name, subscription.Status, subscription.StartsAt, subscription.EndsAt,
                 tenantUrl, invitationSent,
-                message = invitationSent ? "Şirket ve ücretli Cloud aboneliği oluşturuldu; yetkiliye erişim e-postası gönderildi." :
+                message = isTrial ? (invitationSent ? "Şirket ve 15 günlük ücretsiz deneme oluşturuldu; yetkiliye erişim e-postası gönderildi." :
+                    "Şirket ve 15 günlük ücretsiz deneme oluşturuldu; erişim e-postası yeniden gönderilmelidir.") :
+                    invitationSent ? "Şirket ve ücretli Cloud aboneliği oluşturuldu; yetkiliye erişim e-postası gönderildi." :
                     "Şirket ve abonelik oluşturuldu; e-posta gönderilemedi. Yetkili davetini firma ayrıntılarından yeniden gönderebilirsiniz."
             });
         }).RequireRateLimiting("login");

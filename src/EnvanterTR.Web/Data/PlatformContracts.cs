@@ -41,7 +41,8 @@ public sealed record UpdatePlatformDemoRequest(string Status, Guid? AssignedAdmi
     Guid? CompanyId, string? Note);
 public sealed record RecordCheckoutPaymentFollowUpRequest(string Outcome, DateTimeOffset? NextFollowUpAt, string Note);
 public sealed record ProvisionCompanyRequest(string CompanyName, string Slug, string? ContactEmail,
-    string OwnerName, string OwnerEmail, Guid PlanId, int TermDays, string PaymentReference, bool PaymentVerified);
+    string OwnerName, string OwnerEmail, Guid PlanId, int TermDays, string? PaymentReference, bool PaymentVerified,
+    string? ProvisioningMode = null);
 public sealed record SetCompanyActiveRequest(bool IsActive, string? Note);
 public sealed record DeleteCompanyRequest(string ConfirmSlug, string? Note);
 public sealed record RestoreCompanyRequest(string? Note);

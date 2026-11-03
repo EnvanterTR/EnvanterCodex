@@ -12,9 +12,9 @@ for (const contract of [
   'request.PaymentVerified',
   'x.IsActive && x.DeploymentKind == "cloud"',
   'BeginTransactionAsync(IsolationLevel.Serializable',
-  'Status = "Active", IsDemo = false',
+  'Status = isTrial ? "Trial" : "Active", IsDemo = isTrial',
   'RoleKey = "owner"',
-  'PaymentReference = paymentReference',
+  'PaymentReference = isTrial ? null : paymentReference',
   '"/companies/{companyId:guid}/owner-invitation/resend"'
 ]) {
   if (!endpoint.includes(contract)) failures.push(`Server provisioning contract missing: ${contract}`);
@@ -22,10 +22,11 @@ for (const contract of [
 
 for (const contract of [
   'id="provisionCompany"',
-  "openAction('Ücretli Cloud şirketi oluştur',null,'provision')",
+  "openAction('Cloud şirketi oluştur',null,'provision')",
   "p.isActive&&p.deploymentKind==='cloud'",
   "api('/api/platform/companies',{method:'POST'",
-  "paymentVerified:f.get('paymentVerified')==='on'",
+  "paymentVerified:f.get('provisioningMode')==='paid'&&f.get('paymentVerified')==='on'",
+  'name="provisioningMode"',
   'name="paymentVerified" type="checkbox" required',
   'data-resend-owner',
   '/owner-invitation/resend'

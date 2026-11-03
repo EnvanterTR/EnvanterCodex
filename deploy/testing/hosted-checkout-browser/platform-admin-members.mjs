@@ -276,6 +276,10 @@ const server = createServer(async (request, response) => {
     reauthenticated = true;
     response.writeHead(204); response.end(); return;
   }
+  if (path === '/api/platform/companies' && request.method === 'POST') {
+    writes.push({ method: request.method, path, body, csrf: request.headers['x-csrf-token'] });
+    return json(response, { id: 'synthetic-pilot-company', message: '15 günlük ücretsiz deneme oluşturuldu.' }, 201);
+  }
   if (path.startsWith('/api/platform/members/') && request.method === 'PATCH' && path.endsWith('/role')) {
     if (!reauthenticated) return json(response, { code: 'platform_reauth_required', message: 'Synthetic reauthentication required.' }, 428);
     writes.push({ method: request.method, path, body, csrf: request.headers['x-csrf-token'] });
@@ -1064,6 +1068,31 @@ try {
   assert.equal(writes.filter(write => write.path === '/api/platform/companies/bulk-plan').length, 1,
     'The bulk plan control must stay unavailable when a selected company has no current Active/Trial subscription.');
 
+  await page.locator('#provisionCompany').click();
+  const pilotDialog = page.locator('#actionDialog');
+  const pilotMode = pilotDialog.locator('select[name="provisioningMode"]');
+  assert.equal(await pilotMode.count(), 1, 'Company provisioning must offer an explicit free trial mode.');
+  assert.equal(await pilotMode.inputValue(), 'trial');
+  assert.equal(await pilotDialog.locator('input[name="paymentReference"]').isVisible(), false);
+  await pilotMode.selectOption('paid');
+  assert.equal(await pilotDialog.locator('input[name="paymentReference"]').isVisible(), true);
+  await pilotDialog.locator('input[name="paymentReference"]').fill('stale-paid-reference');
+  await pilotDialog.locator('input[name="paymentVerified"]').check();
+  await pilotMode.selectOption('trial');
+  await pilotDialog.locator('input[name="companyName"]').fill('Synthetic free pilot');
+  await pilotDialog.locator('input[name="slug"]').fill('synthetic-free-pilot');
+  await pilotDialog.locator('input[name="ownerName"]').fill('Synthetic pilot owner');
+  await pilotDialog.locator('input[name="ownerEmail"]').fill('pilot@example.invalid');
+  const pilotResponse = page.waitForResponse(r => new URL(r.url()).pathname === '/api/platform/companies' && r.request().method() === 'POST');
+  await pilotDialog.locator('button[type="submit"]').click();
+  assert.equal((await pilotResponse).status(), 201);
+  const pilotWrite = writes.at(-1);
+  assert.equal(pilotWrite.csrf, csrfToken);
+  assert.equal(pilotWrite.body.provisioningMode, 'trial');
+  assert.equal(pilotWrite.body.termDays, 15);
+  assert.equal(pilotWrite.body.paymentVerified, false);
+  assert.equal(pilotWrite.body.paymentReference, null);
+  await pilotDialog.waitFor({ state: 'hidden' });
   assert.deepEqual(browserErrors, [], `Platform member UI threw: ${browserErrors.join(' | ')}`);
   console.log('PASS: real Chromium account/security/membership/payment timeline; company CSV download with active search/status filters and formula-safe delimited values; demo CRM list/company-search/detail and selected-company fallback stale-response protection plus status, assignment, follow-up, company link, CSRF write and history persistence; member search, cancel-without-write, reauthenticated role update, synthetic invitation, plan create/update/validation/publication reload and maintenance entitlement persistence; audited company subscription plan/date editing with cancel and persistence; platform audit text/source/action/target/date filters, exclusive end-date boundary, clear, paging, event detail, no-match, surfaced 503 and retry behavior without writes.');
 } finally {
