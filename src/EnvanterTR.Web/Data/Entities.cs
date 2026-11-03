@@ -620,6 +620,25 @@ public sealed class EmployeeHandoverDocument
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+public sealed class EmployeeHandoverEmailAttempt
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid CompanyId { get; set; }
+    public Guid DocumentId { get; set; }
+    public Guid EmployeeId { get; set; }
+    public Guid RequestedByUserId { get; set; }
+    public Guid IdempotencyKey { get; set; }
+    public required string RecipientEmail { get; set; }
+    public required string SnapshotSha256 { get; set; }
+    public required string PdfSha256 { get; set; }
+    public string Status { get; set; } = "Sending";
+    public string? ErrorType { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset? AcceptedAt { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
+}
+
 public sealed class AssetMaintenance
 {
     public Guid Id { get; set; } = Guid.NewGuid();
