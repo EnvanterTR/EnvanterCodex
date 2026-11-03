@@ -55,9 +55,13 @@ Güncel branch `codex/feature-main-reconcile-20261103` @ `8367c6432b20ca89753620
 
 PR #34 (`codex/feature-main-reconcile-20261103` → `main`) açık/taslak/birleştirilmemiş. PR baş commit'i `7446037f249487581f3acbe655b05c95ca92b29f`, GitHub Actions run `41573283182` baş SHA'sıyla eşleşiyor; beş zorunlu işin tamamı `success`. Docker restore klonu `envantertr-f1-restore-20261102` yeniden kontrol edildi: `NetworkMode=none`, port binding yok, mount yok; PostgreSQL agregaları 96 public tablo, 122 migration, 3 şirket, 1 varlık. Üretim değişmedi.
 
+## WP-029 — DONE
+
+Durum dokümanı güncellemesini taşıyan PR SHA `4eb9ab5a147dc615ff575385dad7fe46494cc1f6` için Actions run `41576129281` tamamlandı ve beş işin tamamı `success`. Commit WP-028'in dokümantasyon kaydını yeniledi; uygulama kaynak kodunda değişiklik yok. PR açık/taslak/birleştirilmemiş.
+
 ## Sonraki adım / F1 sınırı
 
-Kod/CI ve restore provası hazır; PR hâlâ taslak olduğu için birleştirilmiş veya canlıya alınmış değil. Hedef 4, Coolify canlı rollout ve sonrası `/api/status`, apex/firma HTTPS, login ve tenant smoke işlemlerini sahibine bırakıyor. Sahip bu adımları tamamlayıp kanıtı sağladığında F1 kapanışını doğrula; ondan önce F2'ye geçme. Yayın öncesi checklist bu dosyanın “F1 geri dönüş prosedürü” bölümünde. Full-history EF idempotent SQL üretimindeki `20261010215527_AddAssetModelNumbersAndDefaultLocation` ayraç sorunu çözülmedi; uygulanmış migration'ı düzenleme, mevcut 122/122 bazda migration çalıştırma.
+PR kodu ve iki CI SHA'sı PASS; PR hâlâ taslak olduğu için birleştirilmiş veya canlıya alınmış değil. Sıradaki teknik WP: F1'de kaydedilen `20261010215527_AddAssetModelNumbersAndDefaultLocation` kaynak SQL'indeki ayraç sorununun, uygulanmış migration dosyasına dokunmadan gelecek incremental migration script oluşturmayı etkileyip etkilemediğini izole testle yeniden üret; gerekiyorsa runner'ı düzelt. Güncel aday 122/122 olduğundan mevcut canlı-baseline sürümü için migration çalıştırma. Bundan sonra sahibi Coolify rollout yapar; yayın sonrası `/api/status`, apex/firma HTTPS, login ve tenant smoke kanıtı olmadan F1 kapanmaz ve F2'ye geçilmez. Yayın prosedürü bu dosyanın “F1 geri dönüş prosedürü” bölümündedir.
 
 ## WP-026 — DONE
 
