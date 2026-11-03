@@ -15,7 +15,7 @@ Canlı deploy veya production DB yazımı yapılmadı. Browser kabul koşucusu s
 3. Handover müşteri UI'si; gerçek SMTP alıcı teslim kabulü; Santa/Farma/Demo3 canlı kabulü ayrıca tamamlanmalı. WP-020 SMTP testleri yalnız sentetik yakalayıcı kullandı.
 4. İyzico gerçek ödeme kapısı şirket kuruluşu ve onaylı işyeri hesabı olmadan kapalı kalır.
 
-Sonraki WP: imzalı zimmet PDF/e-posta akışının çalışan detayındaki UI'sini eklemek; sonra birleşik preview dalında tam CI/regresyon ve hosted browser kabulini koşmak. SMTP gerçek alıcı teslimi ve Iyzico onayı ayrı operasyonel/ticari kapılardır. WP-020 backend kanıtı `tests/reports/handover-email-backend-acceptance-20261103.md`; WP-019 migration parity kanıtı `tests/reports/handover-email-migration-clone-parity-20261103.md`. `docs/PROJECT-STATUS.md` tek durum tablosudur; `docs/LEDGER.md` çalışma paketlerini tutar.
+Sonraki WP: WP-021 arayüzünü hosted Chromium'da doğrulamak (alıcı onayı iptali, yanıt kaybında aynı idempotency anahtarı, yalnız explicit resend), sonra birleşik preview dalında tam CI/regresyon ve hosted browser kabulini koşmak. SMTP gerçek alıcı teslimi ve Iyzico onayı ayrı operasyonel/ticari kapılardır. WP-020 backend kanıtı `tests/reports/handover-email-backend-acceptance-20261103.md`; WP-019 migration parity kanıtı `tests/reports/handover-email-migration-clone-parity-20261103.md`. `docs/PROJECT-STATUS.md` tek durum tablosudur; `docs/LEDGER.md` çalışma paketlerini tutar.
 
 ## F1 geri dönüş prosedürü
 

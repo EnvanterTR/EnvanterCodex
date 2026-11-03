@@ -1443,6 +1443,17 @@
       'ŞİRKET ALANI / STOK':['COMPANY WORKSPACE / STOCK','РАЗДЕЛ КОМПАНИИ / ЗАПАСЫ','РОБОЧАЯ ЗОНА КОМПАНІЇ / ЗАПАСИ','РАБОТНА ОБЛАСТ НА КОМПАНИЈАТА / ЗАЛИХИ'],
       'Stok hareketleri':['Stock movements','Движения запасов','Рух запасів','Движења на залихите'],
       'Aksesuar, sarf malzemesi ve bileşen girişlerini, çıkışlarını ve atamalarını birlikte inceleyin.':['Review accessory, consumable, and component receipts, issues, and assignments together.','Просматривайте поступления, выдачи и назначения аксессуаров, расходных материалов и компонентов.','Переглядайте надходження, видачі та призначення аксесуарів, витратних матеріалів і компонентів разом.','Прегледајте ги приемите, издавањата и задолжувањата на додатоците, потрошниот материјал и компонентите заедно.'],
+      'İmzalı PDF indir':['Download signed PDF','Скачать подписанный PDF','Завантажити підписаний PDF','Преземи потпишан PDF'],
+      'E-postayla gönder':['Send by email','Отправить по почте','Надіслати поштою','Испрати по е-пошта'],
+      'Gönderim sonucunu kontrol et':['Check delivery result','Проверить результат отправки','Перевірити результат надсилання','Провери резултат од испраќањето'],
+      'İmzalı PDF gönderimi':['Send signed PDF','Отправка подписанного PDF','Надсилання підписаного PDF','Испраќање потпишан PDF'],
+      'İmzalı PDF aşağıdaki kayıtlı alıcıya gönderilecek.':['The signed PDF will be sent to the registered recipient below.','Подписанный PDF будет отправлен указанному ниже получателю.','Підписаний PDF буде надіслано вказаному нижче отримувачу.','Потпишаниот PDF ќе се испрати до регистрираниот примач подолу.'],
+      'Bu belge daha önce gönderildi. Aynı alıcıya yeniden gönderilsin mi?':['This document was sent before. Send it to the same recipient again?','Документ уже отправлялся. Отправить тому же получателю повторно?','Цей документ уже надсилали. Надіслати тому самому отримувачу повторно?','Документот веќе е испратен. Да се испрати повторно до истиот примач?'],
+      'Önceki gönderimin sonucu kesinleşmedi. Posta kutusunu ve iletim kaydını kontrol edin. Yeniden gönderilsin mi?':['The previous result is uncertain. Check the mailbox and delivery log before resending.','Результат предыдущей отправки неизвестен. Перед повторной отправкой проверьте почту и журнал.','Результат попереднього надсилання невідомий. Перед повторним надсиланням перевірте пошту та журнал.','Резултатот од претходното испраќање е неизвесен. Пред повторно испраќање проверете го сандачето и дневникот.'],
+      'E-posta gönderimi şu anda kullanılamıyor. Şirket yöneticinizle iletişime geçin.':['Email delivery is currently unavailable. Contact your company administrator.','Отправка почты сейчас недоступна. Обратитесь к администратору компании.','Надсилання пошти зараз недоступне. Зверніться до адміністратора компанії.','Испраќањето е-пошта е недостапно. Контактирајте со администраторот на компанијата.'],
+      'İmzalı PDF gönderici SMTP sunucusu tarafından kabul edildi. Alıcıya teslimi ayrıca doğrulanmalıdır.':['The sender SMTP server accepted the signed PDF. Verify delivery to the recipient separately.','SMTP-сервер отправителя принял PDF. Доставку получателю нужно проверить отдельно.','SMTP-сервер відправника прийняв PDF. Доставку отримувачу слід перевірити окремо.','SMTP-серверот го прифати PDF. Доставата до примачот проверете ја одделно.'],
+      'Gönderim sürüyor. Aynı isteği tekrarlamak ikinci bir ileti oluşturmaz.':['Sending is in progress. Repeating this request will not create another message.','Отправка выполняется. Повтор запроса не создаст второе письмо.','Надсилання триває. Повтор запиту не створить другого листа.','Испраќањето е во тек. Повторувањето нема да создаде втора порака.'],
+      'Gönderim sonucu doğrulanamadı. Yeniden göndermeden önce iletim günlüğünü ve alıcı posta kutusunu kontrol edin.':['The result could not be verified. Check the delivery log and recipient mailbox before resending.','Результат не подтверждён. Перед повторной отправкой проверьте журнал и почту.','Результат не підтверджено. Перед повторним надсиланням перевірте журнал і пошту.','Резултатот не е потврден. Пред повторно испраќање проверете го дневникот и сандачето.'],
       'CSV indir':['Download CSV','Скачать CSV','Завантажити CSV','Преземи CSV'],
       'Ürün, çalışan, varlık veya not ara':['Search item, employee, asset, or note','Поиск по товару, сотруднику, активу или примечанию','Пошук за товаром, працівником, активом або приміткою','Пребарај производ, вработен, средство или белешка'],
       'Stok hareketlerinde ara':['Search stock movements','Поиск движений запасов','Пошук рухів запасів','Пребарај движења на залихи'],
@@ -7427,7 +7438,53 @@ async function loadDashboard(query = $('#globalSearch').value.trim(), requestedP
       $('#employeeHandoverSigning').hidden = true; $('#employeeHandoverDialog').showModal();
       try { const result = await api(`/api/employees/${encodeURIComponent(employee.id)}/handover-documents`); const list = $('#employeeHandoverHistory');
         if (!result.length) list.innerHTML = `<p class="muted">${escapeHtml(translateUiText('Henüz imzalı zimmet belgesi yok.'))}</p>`;
-        for (const item of result) { const row = document.createElement('div'); row.className = 'panel'; row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;margin:8px 0'; const status = translateUiText(item.isFullySigned ? 'İmzalı' : 'İmza bekliyor'); row.innerHTML = `<span><strong>${escapeHtml(item.documentNumber)}</strong><br><small>${new Date(item.createdAt).toLocaleString(selectedLocale)} · ${status}</small></span><button class="btn small" type="button" data-handover-id="${escapeHtml(item.id)}">${translateUiText(item.isFullySigned ? 'Görüntüle / yazdır' : 'Devam et')}</button>`; list.append(row); }
+        for (const item of result) {
+          const row = document.createElement('div'); row.className = 'panel'; row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;margin:8px 0;flex-wrap:wrap';
+          const status = translateUiText(item.isFullySigned ? 'İmzalı' : 'İmza bekliyor');
+          row.innerHTML = `<span><strong>${escapeHtml(item.documentNumber)}</strong><br><small>${new Date(item.createdAt).toLocaleString(selectedLocale)} · ${status}</small></span>`;
+          const actions = document.createElement('div'); actions.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap';
+          const open = document.createElement('button'); open.className = 'btn small'; open.type = 'button'; open.dataset.handoverId = item.id; open.textContent = translateUiText(item.isFullySigned ? 'Görüntüle / yazdır' : 'Devam et'); actions.append(open);
+          if (item.isFullySigned) {
+            const download = document.createElement('a'); download.className = 'btn small'; download.textContent = translateUiText('İmzalı PDF indir');
+            download.href = `/api/employees/${encodeURIComponent(employee.id)}/handover-documents/${encodeURIComponent(item.id)}/pdf`;
+            download.target = '_blank'; download.rel = 'noopener noreferrer'; actions.append(download);
+            if (canWriteAssets()) {
+              const email = document.createElement('button'); email.type = 'button'; email.className = 'btn small'; email.textContent = translateUiText('E-postayla gönder');
+              let pendingEmailRequest = null;
+              email.addEventListener('click', async () => {
+                email.disabled = true;
+                const endpoint = `/api/employees/${encodeURIComponent(employee.id)}/handover-documents/${encodeURIComponent(item.id)}/email`;
+                try {
+                  if (!pendingEmailRequest) {
+                    const delivery = await api(endpoint);
+                    if (!email.isConnected || currentEmployeeProfile?.employee?.id !== employee.id) return;
+                    if (!delivery.ready || !delivery.recipient) throw new Error(translateUiText('E-posta gönderimi şu anda kullanılamıyor. Şirket yöneticinizle iletişime geçin.'));
+                    if (delivery.latestAttempt?.status === 'Sending') { notify(translateUiText(delivery.latestAttempt.message)); return; }
+                    const warning = delivery.latestAttempt?.status === 'Uncertain'
+                      ? 'Önceki gönderimin sonucu kesinleşmedi. Posta kutusunu ve iletim kaydını kontrol edin. Yeniden gönderilsin mi?'
+                      : delivery.latestAttempt ? 'Bu belge daha önce gönderildi. Aynı alıcıya yeniden gönderilsin mi?'
+                      : 'İmzalı PDF aşağıdaki kayıtlı alıcıya gönderilecek.';
+                    const confirmed = await confirmEmployeeAction({ title: translateUiText('İmzalı PDF gönderimi'),
+                      summary: `${employee.displayName}\n${delivery.recipient}\n${item.documentNumber}\n\n${translateUiText(warning)}`,
+                      confirmLabel: translateUiText('E-postayla gönder'), danger: false });
+                    if (!confirmed || !email.isConnected || currentEmployeeProfile?.employee?.id !== employee.id) return;
+                    pendingEmailRequest = { idempotencyKey: crypto.randomUUID(), expectedRecipient: delivery.recipient,
+                      snapshotSha256: delivery.snapshotSha256, resendOfAttemptId: delivery.latestAttempt?.id || null };
+                  }
+                  const sent = await api(endpoint, { method: 'POST', timeoutMs: 40000, body: JSON.stringify(pendingEmailRequest) });
+                  pendingEmailRequest = null;
+                  if (email.isConnected && currentEmployeeProfile?.employee?.id === employee.id) $('#employeeHandoverStatus').textContent = translateUiText(sent.message);
+                  notify(translateUiText(sent.message));
+                } catch (error) {
+                  if (error.status && error.status < 500) pendingEmailRequest = null;
+                  notify(error.message);
+                } finally { email.disabled = false; email.textContent = translateUiText(pendingEmailRequest ? 'Gönderim sonucunu kontrol et' : 'E-postayla gönder'); }
+              });
+              actions.append(email);
+            }
+          }
+          row.append(actions); list.append(row);
+        }
         list.querySelectorAll('[data-handover-id]').forEach(button => button.addEventListener('click', () => { const item = result.find(entry => entry.id === button.dataset.handoverId); if (item?.isFullySigned) printEmployeeHandoverDocument(item.id); else openEmployeeHandover(button.dataset.handoverId); }));
         $('#employeeHandoverStatus').textContent = `${fmt.format(result.length)} belge · imza durumu ve kayıt özeti`;
       } catch (error) { $('#employeeHandoverStatus').textContent = `Belgeler yüklenemedi: ${error.message}`; }

@@ -1,6 +1,6 @@
 # EnvanterTR statik arayüz envanteri
 
-Oluşturulma: 2026-10-21T11:51:06.218Z
+Oluşturulma: 2026-11-03T01:07:09.025Z
 
 > Bu dosya mevcut HTML kaynaklarında bulunan statik arayüz öğelerinin dökümüdür. Bir öğenin listelenmesi onun çalıştığını kanıtlamaz. JavaScript ile sonradan oluşturulan kontroller, API/DB davranışı, rol varyasyonları ve erişilebilirlik ayrıca uçtan uca kabul gerektirir. Kaynak değiştikçe `node tools/Generate-UiInventory.mjs` ile yeniden üretin; `node tools/Generate-UiInventory.mjs --check` güncel olup olmadığını doğrular.
 
@@ -11,15 +11,15 @@ Oluşturulma: 2026-10-21T11:51:06.218Z
 | Sayfa rotası | 65 |
 | Menü grubu | 10 |
 | Bağlantı | 53 |
-| Düğme | 949 |
-| Form | 112 |
+| Düğme | 952 |
+| Form | 113 |
 | Girdi alanı | 621 |
 | Seçim alanı | 203 |
-| Metin alanı | 41 |
-| Modal | 108 |
+| Metin alanı | 42 |
+| Modal | 109 |
 | Sekme | 5 |
 | Tablo | 79 |
-| **Toplam kayıt** | **2246** |
+| **Toplam kayıt** | **2252** |
 
 ## Tam döküm
 
@@ -120,640 +120,640 @@ Oluşturulma: 2026-10-21T11:51:06.218Z
 | 91 | Düğme | Şirket takvimini aç → | id=openNotificationCalendar; type=button |
 | 92 | Düğme | Profil fotoğrafını yönet | id=userAvatar; type=button |
 | 93 | Düğme | Çıkış | id=logoutButton; type=button |
-| 94 | Düğme | ▥ Barkod okut | id=scanAssetButton; type=button |
-| 95 | Düğme | ＋ Yeni varlık | id=newAssetButton |
-| 96 | Düğme | Panoyu düzenle | id=dashboardCustomizeButton; type=button |
-| 97 | Düğme | Varlık CSV indir | id=exportButton; type=button |
-| 98 | Düğme | Varlık Excel indir | id=exportXlsxButton; type=button |
-| 99 | Düğme | Çöp kutusu | id=openAssetTrash; type=button |
-| 100 | Düğme | Şirket verisini indir | id=exportBackupButton; type=button; başlangıçta gizli |
-| 101 | Düğme | Aktarma dosyasını kontrol et | id=importPreviewButton; type=button; başlangıçta gizli |
-| 102 | Düğme | Varlıklar | hedef=Varlıklar |
-| 103 | Düğme | Aramayı kaydet | id=saveAssetSearch; type=button |
-| 104 | Düğme | Kaydı sil | id=deleteAssetSearch; type=button |
-| 105 | Düğme | İlişki ve garanti filtrelerini temizle | id=clearAssetRelationFilter; type=button; başlangıçta gizli |
-| 106 | Düğme | Varsayılan sütunlar | id=resetAssetColumns; type=button |
-| 107 | Düğme | Filtreli varlık listesini yazdır | id=assetPrintButton; type=button |
-| 108 | Düğme | Varlık listesini tam ekranda aç | id=assetFullscreenButton; type=button |
-| 109 | Düğme | Durumu uygula | id=applyBulkAssetStatus; type=button |
-| 110 | Düğme | Seçileni CSV indir | id=exportSelectedAssets; type=button |
-| 111 | Düğme | Seçimi temizle | id=clearSelectedAssets; type=button |
-| 112 | Düğme | Demirbaş Etiketi | type=button |
-| 113 | Düğme | Model | type=button |
-| 114 | Düğme | Kategori | type=button |
-| 115 | Düğme | Durum | type=button |
-| 116 | Düğme | Çıkış Yapılmış Olan Kişi | type=button |
-| 117 | Düğme | Konum | type=button |
-| 118 | Düğme | Üretici | type=button |
-| 119 | Düğme | ← Önceki | id=assetPrev |
-| 120 | Düğme | Sonraki → | id=assetNext |
-| 121 | Düğme | Hareket geçmişi | hedef=Hareket geçmişi |
-| 122 | Düğme | Takvim | hedef=Takvim |
-| 123 | Düğme | Hazır raporlar | hedef=Hazır raporlar |
-| 124 | Düğme | ↓ CSV dışa aktar | id=exportEmployeesButton; type=button |
-| 125 | Düğme | Excel (.xlsx) | id=employeeXlsxExport; type=button |
-| 126 | Düğme | ↑ CSV içe aktar | id=employeeImportOpen; type=button; başlangıçta gizli |
-| 127 | Düğme | ＋ Çalışan ekle | id=newEmployeeButton |
-| 128 | Düğme | Departmanı temizle | id=clearEmployeeDepartmentFilter; type=button; başlangıçta gizli |
-| 129 | Düğme | Yöneticiyi temizle | id=clearEmployeeManagerFilter; type=button; başlangıçta gizli |
-| 130 | Düğme | Tarihleri temizle | id=clearEmployeeStartedDateFilter; type=button; başlangıçta gizli |
-| 131 | Düğme | Sayfadakileri seç | id=selectEmployeesOnPage; type=button; başlangıçta gizli |
-| 132 | Düğme | Seçilenleri güncelle | id=applyEmployeeBulkActive; type=button; başlangıçta gizli |
-| 133 | Düğme | ← Önceki | id=employeePrev |
-| 134 | Düğme | Sonraki → | id=employeeNext |
-| 135 | Düğme | + Departman ekle | id=addDepartmentButton; type=button; başlangıçta gizli |
-| 136 | Düğme | + Konum ekle | id=addLocationButton; type=button; başlangıçta gizli |
-| 137 | Düğme | ↻ Yenile | id=directoryRefresh; type=button |
-| 138 | Düğme | ＋ Birim ekle | id=addCompanyUnitButton; type=button; başlangıçta gizli |
-| 139 | Düğme | ↻ Yenile | id=companyUnitsRefresh; type=button |
-| 140 | Düğme | Kapat | id=companyUnitDialogClose; type=button |
-| 141 | Düğme | İptal | id=companyUnitCancel; type=button |
-| 142 | Düğme | Kaydet | type=submit |
-| 143 | Düğme | Varlıkları aç | id=moduleGoAssets; type=button |
-| 144 | Düğme | Çalışanları aç | id=moduleGoPeople; type=button |
-| 145 | Düğme | CSV indir | id=accessoryExport; type=button |
-| 146 | Düğme | Excel (.xlsx) | id=accessoryXlsxExport; type=button |
-| 147 | Düğme | ↑ CSV içe aktar | id=accessoryImportOpen; type=button; başlangıçta gizli |
-| 148 | Düğme | ↻ Yenile | id=accessoryRefresh; type=button |
-| 149 | Düğme | Kategorileri yönet | id=manageAccessoryCategories; type=button; başlangıçta gizli |
-| 150 | Düğme | ＋ Aksesuar ekle | id=newAccessoryButton; type=button |
-| 151 | Düğme | Varsayılan sütunlar | id=resetAccessoryColumns; type=button |
-| 152 | Düğme | Yazdır | id=accessoryPrint; type=button |
-| 153 | Düğme | Tam ekran | id=accessoryFullscreen; type=button |
-| 154 | Düğme | Filtreleri temizle | id=clearAccessoryAdvancedFilters; type=button |
-| 155 | Düğme | ← Önceki | id=accessoryPrev; type=button |
-| 156 | Düğme | Sonraki → | id=accessoryNext; type=button |
-| 157 | Düğme | Sarf / bileşen siparişleri | id=openStockOrders; type=button |
-| 158 | Düğme | CSV indir | id=accessoryOrderExport; type=button |
-| 159 | Düğme | ↻ Yenile | id=accessoryOrdersRefresh; type=button |
-| 160 | Düğme | Tedarikçiler | id=supplierCatalogButton; type=button |
-| 161 | Düğme | ＋ Sipariş oluştur | id=newAccessoryOrderButton; type=button |
-| 162 | Düğme | Filtreleri temizle | id=clearAccessoryOrderFilters; type=button |
-| 163 | Düğme | ← Önceki | id=accessoryOrderPrev; type=button |
-| 164 | Düğme | Sonraki → | id=accessoryOrderNext; type=button |
-| 165 | Düğme | CSV indir | id=exportAccessoryKitsButton; type=button |
-| 166 | Düğme | ↻ Yenile | id=accessoryKitsRefresh; type=button |
-| 167 | Düğme | ＋ Kit oluştur | id=newAccessoryKitButton; type=button |
-| 168 | Düğme | CSV indir | id=exportConsumablesButton; type=button |
-| 169 | Düğme | Excel (.xlsx) | id=consumableXlsxExport; type=button |
-| 170 | Düğme | ↑ CSV içe aktar | id=importConsumablesButton; type=button; başlangıçta gizli |
-| 171 | Düğme | ＋ Sarf malzemesi ekle | id=newConsumableButton; type=button |
-| 172 | Düğme | ← Önceki | id=consumablePrev; type=button |
-| 173 | Düğme | Sonraki → | id=consumableNext; type=button |
-| 174 | Düğme | ↓ Filtrelenmiş CSV | id=requestExport; type=button |
-| 175 | Düğme | ↻ Yenile | id=requestsRefresh; type=button |
-| 176 | Düğme | ← Önceki | id=requestPrev; type=button |
-| 177 | Düğme | Sonraki → | id=requestNext; type=button |
-| 178 | Düğme | Kapat | type=button |
-| 179 | Düğme | Vazgeç | type=button |
-| 180 | Düğme | Kaydet | id=inventoryRequestActionSubmit; type=submit |
-| 181 | Düğme | ↓ CSV dışa aktar | id=licenseExportButton; type=button |
-| 182 | Düğme | Excel (.xlsx) | id=licenseXlsxExport; type=button |
-| 183 | Düğme | ↑ CSV içe aktar | id=licenseImportOpen; type=button; başlangıçta gizli |
-| 184 | Düğme | ＋ Lisans ekle | id=newLicenseButton; type=button |
-| 185 | Düğme | ← Önceki | id=licensePrev |
-| 186 | Düğme | Sonraki → | id=licenseNext |
-| 187 | Düğme | Yazılım lisansları | type=button; hedef=Yazılım lisansları |
-| 188 | Düğme | ← Önceki | id=licenseAssignmentPrev |
-| 189 | Düğme | Sonraki → | id=licenseAssignmentNext |
-| 190 | Düğme | Yenile | id=myLicensesRefresh; type=button |
-| 191 | Düğme | Yenile | id=companyNotificationPreferencesRefresh; type=button |
-| 192 | Düğme | Değişiklikleri geri al | id=companyNotificationPreferencesReset; type=button |
-| 193 | Düğme | Tercihleri kaydet | id=companyNotificationPreferencesSave; type=submit |
-| 194 | Düğme | CSV indir | id=exportComponentsButton; type=button |
-| 195 | Düğme | Excel (.xlsx) | id=componentXlsxExport; type=button |
-| 196 | Düğme | ↑ CSV içe aktar | id=importComponentsButton; type=button; başlangıçta gizli |
-| 197 | Düğme | ＋ Bileşen ekle | id=newComponentButton; type=button |
-| 198 | Düğme | ← Önceki | id=componentPrev |
-| 199 | Düğme | Sonraki → | id=componentNext |
-| 200 | Düğme | CSV indir | id=exportInventoryMovementsButton; type=button |
-| 201 | Düğme | ← Önceki | id=inventoryMovementPrev; type=button |
-| 202 | Düğme | Sonraki → | id=inventoryMovementNext; type=button |
-| 203 | Düğme | Varsayılanlara dön | id=labelSettingsReset; type=button |
-| 204 | Düğme | Şablon ayarlarını yükle | id=labelStockTemplateLoad; type=button |
-| 205 | Düğme | Şablonu kaydet | id=labelStockTemplateSave; type=button |
-| 206 | Düğme | Şablonu sil | id=labelStockTemplateDelete; type=button |
-| 207 | Düğme | Ayarları kaydet | id=labelSettingsSave; type=submit |
-| 208 | Düğme | Varlık listesini aç | id=labelSettingsGoAssets; type=button |
-| 209 | Düğme | Değişiklikleri kaydet | id=assetStatusLabelsSave; type=submit |
-| 210 | Düğme | ＋ Özel durum ekle | id=addAssetCustomStatus; type=button |
-| 211 | Düğme | Durum ve geçiş kurallarını kaydet | id=assetStatusConfigSave; type=submit |
-| 212 | Düğme | ↻ Yenile | id=membersRefresh |
-| 213 | Düğme | ＋ Kullanıcı davet et | id=inviteMemberButton |
-| 214 | Düğme | ↻ Yenile | id=catalogRefresh; type=button |
-| 215 | Düğme | ＋ Yeni marka ekle | id=catalogQuickBrand; type=button |
-| 216 | Düğme | Kaydı ekle | type=submit |
-| 217 | Düğme | Değişiklikleri kaydet | type=submit |
-| 218 | Düğme | Logoyu güvenli şekilde yükle | type=submit |
-| 219 | Düğme | Varlıklar | type=button; hedef=Varlıklar |
-| 220 | Düğme | ← Önceki | id=assignmentPrev; type=button |
-| 221 | Düğme | Sonraki → | id=assignmentNext; type=button |
-| 222 | Düğme | ↻ Yenile | id=returnsRefresh; type=button |
-| 223 | Düğme | ← Önceki | id=returnsPrev; type=button |
-| 224 | Düğme | Sonraki → | id=returnsNext; type=button |
-| 225 | Düğme | ↻ Yenile | id=activityRefresh |
-| 226 | Düğme | ← Önceki | id=activityPrev |
-| 227 | Düğme | Sonraki → | id=activityNext |
-| 228 | Düğme | ↓ CSV dışa aktar | id=reservationExportCsv; type=button |
-| 229 | Düğme | ↻ Yenile | id=reservationRefresh; type=button |
-| 230 | Düğme | Rezervasyon iste | id=reservationSubmit; type=submit |
-| 231 | Düğme | ← Önceki | id=reservationPrev; type=button |
-| 232 | Düğme | Sonraki → | id=reservationNext; type=button |
-| 233 | Düğme | Kapat | id=reservationActionClose; type=button |
-| 234 | Düğme | Vazgeç | id=reservationActionCancel; type=button |
-| 235 | Düğme | Kaydet | id=reservationActionSubmit; type=submit |
-| 236 | Düğme | ↻ Yenile | id=auditRefresh |
-| 237 | Düğme | ↻ Yenile | id=auditScheduleRefresh; type=button |
-| 238 | Düğme | ← Önceki | id=auditSchedulePrev; type=button |
-| 239 | Düğme | Sonraki → | id=auditScheduleNext; type=button |
-| 240 | Düğme | CSV dışa aktar | id=auditExportCsv; type=button |
-| 241 | Düğme | ← Önceki | id=auditPrev |
-| 242 | Düğme | Sonraki → | id=auditNext |
-| 243 | Düğme | Şirket verisini indir (JSON) | id=dataDownloadCompany; type=button |
-| 244 | Düğme | Şirket verisi ve dosyaları (ZIP) | id=dataDownloadCompanyArchive; type=button |
-| 245 | Düğme | Varlık listesini indir (CSV) | id=dataDownloadAssets; type=button |
-| 246 | Düğme | Varlıklar | type=button; hedef=Varlıklar |
-| 247 | Düğme | Çalışan kayıtları | type=button; hedef=Çalışan kayıtları |
-| 248 | Düğme | Aksesuarlar | type=button; hedef=Aksesuarlar |
-| 249 | Düğme | Sarf malzemeleri | type=button; hedef=Sarf malzemeleri |
-| 250 | Düğme | Bileşenler | type=button; hedef=Bileşenler |
-| 251 | Düğme | Yazılım lisansları | type=button; hedef=Yazılım lisansları |
-| 252 | Düğme | JSON dosyasını kontrol et | id=dataValidateFile; type=button |
-| 253 | Düğme | ↓ CSV dışa aktar | id=exportContractsButton; type=button |
-| 254 | Düğme | ↻ Yenile | id=refreshContractsButton; type=button |
-| 255 | Düğme | ＋ Sözleşme ekle | id=newContractButton; type=button |
-| 256 | Düğme | ← Önceki | id=contractPrev; type=button |
-| 257 | Düğme | Sonraki → | id=contractNext; type=button |
-| 258 | Düğme | ↻ Yenile | id=tasksRefresh; type=button |
-| 259 | Düğme | ＋ Görev oluştur | id=taskNewButton; type=button |
-| 260 | Düğme | Kapat | id=taskEditorClose; type=button |
-| 261 | Düğme | Görevi kaydet | id=taskSaveButton; type=submit |
-| 262 | Düğme | Vazgeç | id=taskEditorCancel; type=button |
-| 263 | Düğme | ← Önceki | id=taskPrev; type=button |
-| 264 | Düğme | Sonraki → | id=taskNext; type=button |
-| 265 | Düğme | ↻ Yenile | id=supportRefresh; type=button |
-| 266 | Düğme | ＋ Yeni destek talebi | id=supportNewButton; type=button |
-| 267 | Düğme | Kapat | id=supportEditorClose; type=button |
-| 268 | Düğme | Talebi gönder | id=supportSaveButton; type=submit |
-| 269 | Düğme | ← Önceki | id=supportPrev; type=button |
-| 270 | Düğme | Sonraki → | id=supportNext; type=button |
-| 271 | Düğme | Talebi kapat | id=supportCloseTicket; type=button |
-| 272 | Düğme | Kapat | id=supportDetailClose; type=button |
-| 273 | Düğme | Yanıt gönder | id=supportReplyButton; type=submit |
-| 274 | Düğme | ↻ Güvenlik durumunu yenile | id=securityOverviewRefresh; type=button; başlangıçta gizli |
-| 275 | Düğme | Kendi hesap güvenliğini aç | id=featureStatusAccountSecurityButton; type=button; başlangıçta gizli |
-| 276 | Düğme | Departmanları aç | id=featureStatusDepartmentsButton; type=button; başlangıçta gizli |
-| 277 | Düğme | Genel Bakış | type=button; hedef=Genel Bakış |
-| 278 | Düğme | ↻ Oturumları yenile | id=securitySessionsRefresh; type=button |
-| 279 | Düğme | Güvenlik politikasını kaydet | id=companySecurityPolicySave; type=submit |
-| 280 | Düğme | ↻ Yenile | id=integrationsRefresh; type=button |
-| 281 | Düğme | API anahtarı oluştur | id=createIntegrationToken; type=submit |
-| 282 | Düğme | Kapat | id=closeIntegrationSecret; type=button |
-| 283 | Düğme | Göster | id=toggleIntegrationSecret; type=button |
-| 284 | Düğme | Anahtarı kopyala | id=copyIntegrationSecret; type=button |
-| 285 | Düğme | Kapat | id=dismissIntegrationSecret; type=button |
-| 286 | Düğme | ⇩ CSV indir | id=maintenanceExport; type=button |
-| 287 | Düğme | ↻ Yenile | id=maintenanceRefresh; type=button |
-| 288 | Düğme | Filtrele | id=applyMaintenanceFilters; type=button |
-| 289 | Düğme | Temizle | id=clearMaintenanceFilters; type=button |
-| 290 | Düğme | ← Önceki | id=maintenancePrev; type=button |
-| 291 | Düğme | Sonraki → | id=maintenanceNext; type=button |
-| 292 | Düğme | ⇩ CSV indir | id=calendarExport; type=button |
-| 293 | Düğme | ↻ Yenile | id=calendarRefresh; type=button |
-| 294 | Düğme | Takvimi göster | id=applyCalendarFilters; type=button |
-| 295 | Düğme | Önceki dönem | id=calendarPeriodPrev; type=button |
-| 296 | Düğme | Bugün | id=calendarPeriodToday; type=button |
-| 297 | Düğme | Sonraki dönem | id=calendarPeriodNext; type=button |
-| 298 | Düğme | CSV indir | id=reportExport; type=button |
-| 299 | Düğme | Excel (.xlsx) | id=reportXlsxExport; type=button |
-| 300 | Düğme | Yazdır / PDF | id=reportPrint; type=button |
-| 301 | Düğme | Rapor takvimi | id=reportScheduleOpen; type=button |
-| 302 | Düğme | ↻ Verileri yenile | id=reportRefresh; type=button |
-| 303 | Düğme | Tarih aralığını uygula | id=applyReportDateFilter; type=button |
-| 304 | Düğme | Temizle | id=clearReportDateFilter; type=button |
-| 305 | Düğme | Alış kayıtlarını CSV indir | id=assetPurchaseReportExport; type=button |
-| 306 | Düğme | Yazdır / PDF | id=assetPurchaseReportPrint; type=button |
-| 307 | Düğme | ← Önceki | id=assetPurchaseReportPrev; type=button |
-| 308 | Düğme | Sonraki → | id=assetPurchaseReportNext; type=button |
-| 309 | Düğme | Bileşen CSV indir | id=componentReportExport; type=button |
-| 310 | Düğme | Yazdır / PDF | id=componentReportPrint; type=button |
-| 311 | Düğme | Denetimleri CSV indir | id=auditReportExport; type=button |
-| 312 | Düğme | Yazdır / PDF | id=auditReportPrint; type=button |
-| 313 | Düğme | Filtrele | id=auditReportApply; type=button |
-| 314 | Düğme | ← Önceki | id=auditReportPrev; type=button |
-| 315 | Düğme | Sonraki → | id=auditReportNext; type=button |
-| 316 | Düğme | CSV indir | id=warrantyReportExport; type=button |
-| 317 | Düğme | Yazdır / PDF | id=warrantyReportPrint; type=button |
-| 318 | Düğme | ↻ Yenile | id=warrantyReportRefresh; type=button |
-| 319 | Düğme | ← Önceki | id=warrantyReportPrev |
-| 320 | Düğme | Sonraki → | id=warrantyReportNext |
-| 321 | Düğme | ↻ Yenile | id=maintenanceReportRefresh; type=button |
-| 322 | Düğme | Yazdır / PDF | id=maintenanceReportPrint; type=button |
-| 323 | Düğme | Filtrele | id=applyMaintenanceReportFilter; type=button |
-| 324 | Düğme | Temizle | id=clearMaintenanceReportFilter; type=button |
-| 325 | Düğme | CSV indir | id=licenseReportExport; type=button |
-| 326 | Düğme | Yazdır / PDF | id=licenseReportPrint; type=button |
-| 327 | Düğme | ↻ Yenile | id=licenseReportRefresh; type=button |
-| 328 | Düğme | ← Önceki | id=licenseReportPrev |
-| 329 | Düğme | Sonraki → | id=licenseReportNext |
-| 330 | Düğme | ↻ Yenile | id=pendingDeliveryRefresh; type=button |
-| 331 | Düğme | CSV indir | id=pendingDeliveryExport; type=button |
-| 332 | Düğme | Yazdır / PDF | id=pendingDeliveryPrint; type=button |
-| 333 | Düğme | ← Önceki | id=pendingDeliveryPrev; type=button |
-| 334 | Düğme | Sonraki → | id=pendingDeliveryNext; type=button |
-| 335 | Düğme | ↻ Hesapla | id=depreciationReportRefresh; type=button |
-| 336 | Düğme | CSV indir | id=depreciationReportExport; type=button |
-| 337 | Düğme | Yazdır / PDF | id=depreciationReportPrint; type=button |
-| 338 | Düğme | ← Önceki | id=depreciationReportPrev; type=button |
-| 339 | Düğme | Sonraki → | id=depreciationReportNext; type=button |
-| 340 | Düğme | Taslağı yükle | id=customReportLoadPreset; type=button |
-| 341 | Düğme | Taslağı kaydet | id=customReportSavePreset; type=button |
-| 342 | Düğme | Taslağı sil | id=customReportDeletePreset; type=button |
-| 343 | Düğme | Özel raporu CSV indir | id=customReportExport; type=button |
-| 344 | Düğme | Özel raporu Excel indir | id=customReportXlsxExport; type=button |
-| 345 | Düğme | Yazdır / PDF | id=customReportPrint; type=button |
-| 346 | Düğme | Aksesuar siparişleri | id=backAccessoryOrders; type=button |
-| 347 | Düğme | CSV dışa aktar | id=exportStockOrders; type=button |
-| 348 | Düğme | ↻ Yenile | id=stockOrdersRefresh; type=button |
-| 349 | Düğme | ＋ Sipariş oluştur | id=newStockOrderButton; type=button |
-| 350 | Düğme | Filtreleri temizle | id=clearStockOrderFilters; type=button |
-| 351 | Düğme | ← Önceki | id=stockOrderPrev; type=button |
-| 352 | Düğme | Sonraki → | id=stockOrderNext; type=button |
-| 353 | Düğme | ↻ Yenile | id=purchaseOverviewRefresh; type=button |
-| 354 | Düğme | CSV indir | id=purchaseOverviewExport; type=button |
-| 355 | Düğme | Filtreleri temizle | id=purchaseOverviewClear; type=button |
-| 356 | Düğme | ← Önceki | id=purchaseOverviewPrev; type=button |
-| 357 | Düğme | Sonraki → | id=purchaseOverviewNext; type=button |
-| 358 | Düğme | Yıllık bütçe | id=assetOrderBudgetButton; type=button |
-| 359 | Düğme | ↻ Yenile | id=assetOrdersRefresh; type=button |
-| 360 | Düğme | CSV indir | id=exportAssetOrdersButton; type=button |
-| 361 | Düğme | Tedarikçiler | id=assetOrdersSupplierCatalog; type=button |
-| 362 | Düğme | ＋ Sipariş oluştur | id=newAssetOrderButton; type=button |
-| 363 | Düğme | Filtreleri temizle | id=clearAssetOrderFilters; type=button |
-| 364 | Düğme | ← Önceki | id=assetOrderPrev; type=button |
-| 365 | Düğme | Sonraki → | id=assetOrderNext; type=button |
-| 366 | Düğme | Uygulama kullanıcıları | id=rolesManageMembersButton; type=button |
-| 367 | Düğme | Özel rol oluştur | id=createCompanyRoleButton; type=button; başlangıçta gizli |
-| 368 | Düğme | Kapat | id=closeCompanyRoleDialog; type=button |
-| 369 | Düğme | Vazgeç | id=cancelCompanyRoleDialog; type=button |
-| 370 | Düğme | Kaydet | id=saveCompanyRoleButton; type=submit |
-| 371 | Düğme | Kapat | id=closeDeactivateCompanyRole; type=button |
-| 372 | Düğme | Vazgeç | id=cancelDeactivateCompanyRole; type=button |
-| 373 | Düğme | Devre dışı bırak | id=confirmDeactivateCompanyRole; type=button |
-| 374 | Düğme | Kapat | id=licenseRevokeClose; type=button |
-| 375 | Düğme | Vazgeç | id=licenseRevokeCancel; type=button |
-| 376 | Düğme | Atamayı kaldır | id=licenseRevokeSubmit; type=submit |
-| 377 | Düğme | Kapat | id=licenseImportProfileDeleteClose; type=button |
-| 378 | Düğme | Vazgeç | id=licenseImportProfileDeleteCancel; type=button |
-| 379 | Düğme | Profili sil | id=licenseImportProfileDeleteSubmit; type=submit |
-| 380 | Düğme | Kapat | id=commandPaletteClose; type=button |
-| 381 | Düğme | Kapat | id=keyboardShortcutsClose; type=button |
-| 382 | Düğme | Kapat | type=button |
-| 383 | Düğme | Vazgeç | type=button |
-| 384 | Düğme | Kaydet | type=submit |
-| 385 | Düğme | Kapat | id=closeContractDetail; type=button |
-| 386 | Düğme | Kapat | id=closeContractDetailFooter; type=button |
-| 387 | Düğme | Kapat | id=contractActionClose; type=button |
-| 388 | Düğme | Vazgeç | id=contractActionCancel; type=button |
-| 389 | Düğme | Onayla | id=contractActionSubmit; type=submit |
-| 390 | Düğme | Kapat | id=appearanceClose; type=button |
-| 391 | Düğme | Sistem ayarını izle | type=button |
-| 392 | Düğme | Açık | type=button |
-| 393 | Düğme | Koyu | type=button |
-| 394 | Düğme | Vazgeç | id=appearanceCancel; type=button |
-| 395 | Düğme | Tercihleri kaydet | id=appearanceSave; type=button |
-| 396 | Düğme | Kapat | id=closeDialog |
-| 397 | Düğme | Genel bakış | id=assetTabOverviewButton; type=button |
-| 398 | Düğme | İlişkiler | id=assetTabRelationsButton; type=button |
-| 399 | Düğme | Bakım kayıtları | id=assetTabMaintenanceButton; type=button |
-| 400 | Düğme | Hareket geçmişi | id=assetTabHistoryButton; type=button |
-| 401 | Düğme | Fotoğraf ve dosyalar | id=assetTabAttachmentsButton; type=button |
-| 402 | Düğme | detailPurchaseOrder | id=detailPurchaseOrder; type=button |
-| 403 | Düğme | Etiketi kopyala | id=copyAssetTag; type=button |
-| 404 | Düğme | Etiket kartını yazdır | id=printAssetLabel; type=button |
-| 405 | Düğme | Bağlantıyı kaydet | id=saveAssetParent; type=button |
-| 406 | Düğme | Not ekle | type=submit |
-| 407 | Düğme | Dosya ekle | id=uploadAssetAttachment; type=submit |
-| 408 | Düğme | Bilgileri düzenle | id=editAssetButton; type=button |
-| 409 | Düğme | Denetimi kaydet | id=auditAssetButton; type=button |
-| 410 | Düğme | Denetim planla | id=scheduleAssetAuditButton; type=button |
-| 411 | Düğme | Bakım başlat | id=addMaintenanceButton; type=button |
-| 412 | Düğme | Konum transferi | id=transferAssetButton; type=button |
-| 413 | Düğme | Çalışana zimmetle | id=assignAssetButton; type=button |
-| 414 | Düğme | İade al | id=returnAssetButton; type=button |
-| 415 | Düğme | Arşivden geri al | id=restoreAssetButton; type=button; başlangıçta gizli |
-| 416 | Düğme | Çöp kutusuna taşı | id=trashAssetButton; type=button |
-| 417 | Düğme | Kapat | type=button |
-| 418 | Düğme | Vazgeç | type=button |
-| 419 | Düğme | Denetimi kaydet | type=submit |
-| 420 | Düğme | Kapat | type=button |
-| 421 | Düğme | Vazgeç | type=button |
-| 422 | Düğme | Planı kaydet | type=submit |
-| 423 | Düğme | Kapat | type=button |
-| 424 | Düğme | Vazgeç | type=button |
-| 425 | Düğme | Bakımı başlat | id=maintenanceSubmit; type=submit |
-| 426 | Düğme | Kapat | type=button |
-| 427 | Düğme | Vazgeç | type=button |
-| 428 | Düğme | Bakımı tamamla | type=submit |
-| 429 | Düğme | Kapat | type=button |
-| 430 | Düğme | Vazgeç | type=button |
-| 431 | Düğme | Transferi kaydet | type=submit |
-| 432 | Düğme | Kapat | type=button |
-| 433 | Düğme | Vazgeç | type=button |
-| 434 | Düğme | Değişiklikleri kaydet | type=submit |
-| 435 | Düğme | Kapat | type=button |
-| 436 | Düğme | Vazgeç | type=button |
-| 437 | Düğme | Zimmeti kaydet | type=submit |
-| 438 | Düğme | Kapat | type=button |
-| 439 | Düğme | Vazgeç | type=button |
-| 440 | Düğme | Çalışanı kaydet | type=submit |
-| 441 | Düğme | Kapat | id=closeEmployeeImport; type=button |
-| 442 | Düğme | Şablonu indir | id=downloadEmployeeImportTemplate; type=button |
-| 443 | Düğme | Dosyayı doğrula | id=previewEmployeeImport; type=button |
-| 444 | Düğme | Doğrulanmış kayıtları ekle | id=commitEmployeeImport; type=button |
-| 445 | Düğme | Kapat | id=closeConsumableImport; type=button |
-| 446 | Düğme | Şablonu indir | id=downloadConsumableImportTemplate; type=button |
-| 447 | Düğme | Eşlemeyi kaydet | id=saveConsumableImportProfile; type=button |
-| 448 | Düğme | Profili sil | id=deleteConsumableImportProfile; type=button |
-| 449 | Düğme | Eşlemeyi kullan ve yeniden doğrula | id=applyConsumableImportMapping; type=button |
-| 450 | Düğme | Dosyayı doğrula | id=previewConsumableImport; type=button |
-| 451 | Düğme | Doğrulanmış kayıtları ekle | id=commitConsumableImport; type=button |
-| 452 | Düğme | Kapat | id=closeAccessoryImport; type=button |
-| 453 | Düğme | Şablonu indir | id=downloadAccessoryImportTemplate; type=button |
-| 454 | Düğme | Eşlemeyi kaydet | id=saveAccessoryImportProfile; type=button |
-| 455 | Düğme | Profili sil | id=deleteAccessoryImportProfile; type=button |
-| 456 | Düğme | Eşlemeyi kullan ve yeniden doğrula | id=applyAccessoryImportMapping; type=button |
-| 457 | Düğme | Dosyayı doğrula | id=previewAccessoryImport; type=button |
-| 458 | Düğme | Doğrulanmış kayıtları ekle | id=commitAccessoryImport; type=button |
-| 459 | Düğme | Kapat | type=button |
-| 460 | Düğme | Vazgeç | type=button |
-| 461 | Düğme | Değişiklikleri kaydet | type=submit |
-| 462 | Düğme | Kapat | type=button |
-| 463 | Düğme | Vazgeç | type=button |
-| 464 | Düğme | Onayla | id=employeeActionSubmit; type=submit |
-| 465 | Düğme | Kapat | type=button |
-| 466 | Düğme | Vazgeç | type=button |
-| 467 | Düğme | Kaydet | id=textEntrySubmit; type=submit |
-| 468 | Düğme | İmzalı zimmet belgeleri | id=printEmployeeHandoff; type=button |
-| 469 | Düğme | Kapat | id=closeEmployeeDetails; type=button |
-| 470 | Düğme | Kaydet | id=saveEmployeeManager; type=button |
-| 471 | Düğme | Kaldır | id=clearEmployeeManager; type=button |
-| 472 | Düğme | Kapat | id=closeInviteMember; type=button |
-| 473 | Düğme | Vazgeç | id=cancelInviteMember; type=button |
-| 474 | Düğme | Daveti gönder | type=submit |
-| 475 | Düğme | Kapat | id=closeMemberLocationAccess; type=button |
-| 476 | Düğme | Vazgeç | id=cancelMemberLocationAccess; type=button |
-| 477 | Düğme | Erişimi kaydet | type=submit |
-| 478 | Düğme | Kapat | type=button |
-| 479 | Düğme | ＋ Ekle | type=button |
+| 94 | Düğme | Platform yönetimine dön | id=impersonationReturn; type=button |
+| 95 | Düğme | ▥ Barkod okut | id=scanAssetButton; type=button |
+| 96 | Düğme | ＋ Yeni varlık | id=newAssetButton |
+| 97 | Düğme | Panoyu düzenle | id=dashboardCustomizeButton; type=button |
+| 98 | Düğme | Varlık CSV indir | id=exportButton; type=button |
+| 99 | Düğme | Varlık Excel indir | id=exportXlsxButton; type=button |
+| 100 | Düğme | Çöp kutusu | id=openAssetTrash; type=button |
+| 101 | Düğme | Şirket verisini indir | id=exportBackupButton; type=button; başlangıçta gizli |
+| 102 | Düğme | Aktarma dosyasını kontrol et | id=importPreviewButton; type=button; başlangıçta gizli |
+| 103 | Düğme | Varlıklar | hedef=Varlıklar |
+| 104 | Düğme | Aramayı kaydet | id=saveAssetSearch; type=button |
+| 105 | Düğme | Kaydı sil | id=deleteAssetSearch; type=button |
+| 106 | Düğme | İlişki ve garanti filtrelerini temizle | id=clearAssetRelationFilter; type=button; başlangıçta gizli |
+| 107 | Düğme | Varsayılan sütunlar | id=resetAssetColumns; type=button |
+| 108 | Düğme | Filtreli varlık listesini yazdır | id=assetPrintButton; type=button |
+| 109 | Düğme | Varlık listesini tam ekranda aç | id=assetFullscreenButton; type=button |
+| 110 | Düğme | Durumu uygula | id=applyBulkAssetStatus; type=button |
+| 111 | Düğme | Seçileni CSV indir | id=exportSelectedAssets; type=button |
+| 112 | Düğme | Seçimi temizle | id=clearSelectedAssets; type=button |
+| 113 | Düğme | Demirbaş Etiketi | type=button |
+| 114 | Düğme | Model | type=button |
+| 115 | Düğme | Kategori | type=button |
+| 116 | Düğme | Durum | type=button |
+| 117 | Düğme | Çıkış Yapılmış Olan Kişi | type=button |
+| 118 | Düğme | Konum | type=button |
+| 119 | Düğme | Üretici | type=button |
+| 120 | Düğme | ← Önceki | id=assetPrev |
+| 121 | Düğme | Sonraki → | id=assetNext |
+| 122 | Düğme | Hareket geçmişi | hedef=Hareket geçmişi |
+| 123 | Düğme | Takvim | hedef=Takvim |
+| 124 | Düğme | Hazır raporlar | hedef=Hazır raporlar |
+| 125 | Düğme | ↓ CSV dışa aktar | id=exportEmployeesButton; type=button |
+| 126 | Düğme | Excel (.xlsx) | id=employeeXlsxExport; type=button |
+| 127 | Düğme | ↑ CSV içe aktar | id=employeeImportOpen; type=button; başlangıçta gizli |
+| 128 | Düğme | ＋ Çalışan ekle | id=newEmployeeButton |
+| 129 | Düğme | Departmanı temizle | id=clearEmployeeDepartmentFilter; type=button; başlangıçta gizli |
+| 130 | Düğme | Yöneticiyi temizle | id=clearEmployeeManagerFilter; type=button; başlangıçta gizli |
+| 131 | Düğme | Tarihleri temizle | id=clearEmployeeStartedDateFilter; type=button; başlangıçta gizli |
+| 132 | Düğme | Sayfadakileri seç | id=selectEmployeesOnPage; type=button; başlangıçta gizli |
+| 133 | Düğme | Seçilenleri güncelle | id=applyEmployeeBulkActive; type=button; başlangıçta gizli |
+| 134 | Düğme | ← Önceki | id=employeePrev |
+| 135 | Düğme | Sonraki → | id=employeeNext |
+| 136 | Düğme | + Departman ekle | id=addDepartmentButton; type=button; başlangıçta gizli |
+| 137 | Düğme | + Konum ekle | id=addLocationButton; type=button; başlangıçta gizli |
+| 138 | Düğme | ↻ Yenile | id=directoryRefresh; type=button |
+| 139 | Düğme | ＋ Birim ekle | id=addCompanyUnitButton; type=button; başlangıçta gizli |
+| 140 | Düğme | ↻ Yenile | id=companyUnitsRefresh; type=button |
+| 141 | Düğme | Kapat | id=companyUnitDialogClose; type=button |
+| 142 | Düğme | İptal | id=companyUnitCancel; type=button |
+| 143 | Düğme | Kaydet | type=submit |
+| 144 | Düğme | Varlıkları aç | id=moduleGoAssets; type=button |
+| 145 | Düğme | Çalışanları aç | id=moduleGoPeople; type=button |
+| 146 | Düğme | CSV indir | id=accessoryExport; type=button |
+| 147 | Düğme | Excel (.xlsx) | id=accessoryXlsxExport; type=button |
+| 148 | Düğme | ↑ CSV içe aktar | id=accessoryImportOpen; type=button; başlangıçta gizli |
+| 149 | Düğme | ↻ Yenile | id=accessoryRefresh; type=button |
+| 150 | Düğme | Kategorileri yönet | id=manageAccessoryCategories; type=button; başlangıçta gizli |
+| 151 | Düğme | ＋ Aksesuar ekle | id=newAccessoryButton; type=button |
+| 152 | Düğme | Varsayılan sütunlar | id=resetAccessoryColumns; type=button |
+| 153 | Düğme | Yazdır | id=accessoryPrint; type=button |
+| 154 | Düğme | Tam ekran | id=accessoryFullscreen; type=button |
+| 155 | Düğme | Filtreleri temizle | id=clearAccessoryAdvancedFilters; type=button |
+| 156 | Düğme | ← Önceki | id=accessoryPrev; type=button |
+| 157 | Düğme | Sonraki → | id=accessoryNext; type=button |
+| 158 | Düğme | Sarf / bileşen siparişleri | id=openStockOrders; type=button |
+| 159 | Düğme | CSV indir | id=accessoryOrderExport; type=button |
+| 160 | Düğme | ↻ Yenile | id=accessoryOrdersRefresh; type=button |
+| 161 | Düğme | Tedarikçiler | id=supplierCatalogButton; type=button |
+| 162 | Düğme | ＋ Sipariş oluştur | id=newAccessoryOrderButton; type=button |
+| 163 | Düğme | Filtreleri temizle | id=clearAccessoryOrderFilters; type=button |
+| 164 | Düğme | ← Önceki | id=accessoryOrderPrev; type=button |
+| 165 | Düğme | Sonraki → | id=accessoryOrderNext; type=button |
+| 166 | Düğme | CSV indir | id=exportAccessoryKitsButton; type=button |
+| 167 | Düğme | ↻ Yenile | id=accessoryKitsRefresh; type=button |
+| 168 | Düğme | ＋ Kit oluştur | id=newAccessoryKitButton; type=button |
+| 169 | Düğme | CSV indir | id=exportConsumablesButton; type=button |
+| 170 | Düğme | Excel (.xlsx) | id=consumableXlsxExport; type=button |
+| 171 | Düğme | ↑ CSV içe aktar | id=importConsumablesButton; type=button; başlangıçta gizli |
+| 172 | Düğme | ＋ Sarf malzemesi ekle | id=newConsumableButton; type=button |
+| 173 | Düğme | ← Önceki | id=consumablePrev; type=button |
+| 174 | Düğme | Sonraki → | id=consumableNext; type=button |
+| 175 | Düğme | ↓ Filtrelenmiş CSV | id=requestExport; type=button |
+| 176 | Düğme | ↻ Yenile | id=requestsRefresh; type=button |
+| 177 | Düğme | ← Önceki | id=requestPrev; type=button |
+| 178 | Düğme | Sonraki → | id=requestNext; type=button |
+| 179 | Düğme | Kapat | type=button |
+| 180 | Düğme | Vazgeç | type=button |
+| 181 | Düğme | Kaydet | id=inventoryRequestActionSubmit; type=submit |
+| 182 | Düğme | ↓ CSV dışa aktar | id=licenseExportButton; type=button |
+| 183 | Düğme | Excel (.xlsx) | id=licenseXlsxExport; type=button |
+| 184 | Düğme | ↑ CSV içe aktar | id=licenseImportOpen; type=button; başlangıçta gizli |
+| 185 | Düğme | ＋ Lisans ekle | id=newLicenseButton; type=button |
+| 186 | Düğme | ← Önceki | id=licensePrev |
+| 187 | Düğme | Sonraki → | id=licenseNext |
+| 188 | Düğme | Yazılım lisansları | type=button; hedef=Yazılım lisansları |
+| 189 | Düğme | ← Önceki | id=licenseAssignmentPrev |
+| 190 | Düğme | Sonraki → | id=licenseAssignmentNext |
+| 191 | Düğme | Yenile | id=myLicensesRefresh; type=button |
+| 192 | Düğme | Yenile | id=companyNotificationPreferencesRefresh; type=button |
+| 193 | Düğme | Değişiklikleri geri al | id=companyNotificationPreferencesReset; type=button |
+| 194 | Düğme | Tercihleri kaydet | id=companyNotificationPreferencesSave; type=submit |
+| 195 | Düğme | CSV indir | id=exportComponentsButton; type=button |
+| 196 | Düğme | Excel (.xlsx) | id=componentXlsxExport; type=button |
+| 197 | Düğme | ↑ CSV içe aktar | id=importComponentsButton; type=button; başlangıçta gizli |
+| 198 | Düğme | ＋ Bileşen ekle | id=newComponentButton; type=button |
+| 199 | Düğme | ← Önceki | id=componentPrev |
+| 200 | Düğme | Sonraki → | id=componentNext |
+| 201 | Düğme | CSV indir | id=exportInventoryMovementsButton; type=button |
+| 202 | Düğme | ← Önceki | id=inventoryMovementPrev; type=button |
+| 203 | Düğme | Sonraki → | id=inventoryMovementNext; type=button |
+| 204 | Düğme | Varsayılanlara dön | id=labelSettingsReset; type=button |
+| 205 | Düğme | Şablon ayarlarını yükle | id=labelStockTemplateLoad; type=button |
+| 206 | Düğme | Şablonu kaydet | id=labelStockTemplateSave; type=button |
+| 207 | Düğme | Şablonu sil | id=labelStockTemplateDelete; type=button |
+| 208 | Düğme | Ayarları kaydet | id=labelSettingsSave; type=submit |
+| 209 | Düğme | Varlık listesini aç | id=labelSettingsGoAssets; type=button |
+| 210 | Düğme | Değişiklikleri kaydet | id=assetStatusLabelsSave; type=submit |
+| 211 | Düğme | ＋ Özel durum ekle | id=addAssetCustomStatus; type=button |
+| 212 | Düğme | Durum ve geçiş kurallarını kaydet | id=assetStatusConfigSave; type=submit |
+| 213 | Düğme | ↻ Yenile | id=membersRefresh |
+| 214 | Düğme | ＋ Kullanıcı davet et | id=inviteMemberButton |
+| 215 | Düğme | ↻ Yenile | id=catalogRefresh; type=button |
+| 216 | Düğme | ＋ Yeni marka ekle | id=catalogQuickBrand; type=button |
+| 217 | Düğme | Kaydı ekle | type=submit |
+| 218 | Düğme | Değişiklikleri kaydet | type=submit |
+| 219 | Düğme | Logoyu güvenli şekilde yükle | type=submit |
+| 220 | Düğme | Varlıklar | type=button; hedef=Varlıklar |
+| 221 | Düğme | ← Önceki | id=assignmentPrev; type=button |
+| 222 | Düğme | Sonraki → | id=assignmentNext; type=button |
+| 223 | Düğme | ↻ Yenile | id=returnsRefresh; type=button |
+| 224 | Düğme | ← Önceki | id=returnsPrev; type=button |
+| 225 | Düğme | Sonraki → | id=returnsNext; type=button |
+| 226 | Düğme | ↻ Yenile | id=activityRefresh |
+| 227 | Düğme | ← Önceki | id=activityPrev |
+| 228 | Düğme | Sonraki → | id=activityNext |
+| 229 | Düğme | ↓ CSV dışa aktar | id=reservationExportCsv; type=button |
+| 230 | Düğme | ↻ Yenile | id=reservationRefresh; type=button |
+| 231 | Düğme | Rezervasyon iste | id=reservationSubmit; type=submit |
+| 232 | Düğme | ← Önceki | id=reservationPrev; type=button |
+| 233 | Düğme | Sonraki → | id=reservationNext; type=button |
+| 234 | Düğme | Kapat | id=reservationActionClose; type=button |
+| 235 | Düğme | Vazgeç | id=reservationActionCancel; type=button |
+| 236 | Düğme | Kaydet | id=reservationActionSubmit; type=submit |
+| 237 | Düğme | ↻ Yenile | id=auditRefresh |
+| 238 | Düğme | ↻ Yenile | id=auditScheduleRefresh; type=button |
+| 239 | Düğme | ← Önceki | id=auditSchedulePrev; type=button |
+| 240 | Düğme | Sonraki → | id=auditScheduleNext; type=button |
+| 241 | Düğme | CSV dışa aktar | id=auditExportCsv; type=button |
+| 242 | Düğme | ← Önceki | id=auditPrev |
+| 243 | Düğme | Sonraki → | id=auditNext |
+| 244 | Düğme | Şirket verisini indir (JSON) | id=dataDownloadCompany; type=button |
+| 245 | Düğme | Şirket verisi ve dosyaları (ZIP) | id=dataDownloadCompanyArchive; type=button |
+| 246 | Düğme | Varlık listesini indir (CSV) | id=dataDownloadAssets; type=button |
+| 247 | Düğme | Varlıklar | type=button; hedef=Varlıklar |
+| 248 | Düğme | Çalışan kayıtları | type=button; hedef=Çalışan kayıtları |
+| 249 | Düğme | Aksesuarlar | type=button; hedef=Aksesuarlar |
+| 250 | Düğme | Sarf malzemeleri | type=button; hedef=Sarf malzemeleri |
+| 251 | Düğme | Bileşenler | type=button; hedef=Bileşenler |
+| 252 | Düğme | Yazılım lisansları | type=button; hedef=Yazılım lisansları |
+| 253 | Düğme | JSON dosyasını kontrol et | id=dataValidateFile; type=button |
+| 254 | Düğme | ↓ CSV dışa aktar | id=exportContractsButton; type=button |
+| 255 | Düğme | ↻ Yenile | id=refreshContractsButton; type=button |
+| 256 | Düğme | ＋ Sözleşme ekle | id=newContractButton; type=button |
+| 257 | Düğme | ← Önceki | id=contractPrev; type=button |
+| 258 | Düğme | Sonraki → | id=contractNext; type=button |
+| 259 | Düğme | ↻ Yenile | id=tasksRefresh; type=button |
+| 260 | Düğme | ＋ Görev oluştur | id=taskNewButton; type=button |
+| 261 | Düğme | Kapat | id=taskEditorClose; type=button |
+| 262 | Düğme | Görevi kaydet | id=taskSaveButton; type=submit |
+| 263 | Düğme | Vazgeç | id=taskEditorCancel; type=button |
+| 264 | Düğme | ← Önceki | id=taskPrev; type=button |
+| 265 | Düğme | Sonraki → | id=taskNext; type=button |
+| 266 | Düğme | ↻ Yenile | id=supportRefresh; type=button |
+| 267 | Düğme | ＋ Yeni destek talebi | id=supportNewButton; type=button |
+| 268 | Düğme | Kapat | id=supportEditorClose; type=button |
+| 269 | Düğme | Talebi gönder | id=supportSaveButton; type=submit |
+| 270 | Düğme | ← Önceki | id=supportPrev; type=button |
+| 271 | Düğme | Sonraki → | id=supportNext; type=button |
+| 272 | Düğme | Talebi kapat | id=supportCloseTicket; type=button |
+| 273 | Düğme | Kapat | id=supportDetailClose; type=button |
+| 274 | Düğme | Yanıt gönder | id=supportReplyButton; type=submit |
+| 275 | Düğme | ↻ Güvenlik durumunu yenile | id=securityOverviewRefresh; type=button; başlangıçta gizli |
+| 276 | Düğme | Kendi hesap güvenliğini aç | id=featureStatusAccountSecurityButton; type=button; başlangıçta gizli |
+| 277 | Düğme | Departmanları aç | id=featureStatusDepartmentsButton; type=button; başlangıçta gizli |
+| 278 | Düğme | Genel Bakış | type=button; hedef=Genel Bakış |
+| 279 | Düğme | ↻ Oturumları yenile | id=securitySessionsRefresh; type=button |
+| 280 | Düğme | Güvenlik politikasını kaydet | id=companySecurityPolicySave; type=submit |
+| 281 | Düğme | ↻ Yenile | id=integrationsRefresh; type=button |
+| 282 | Düğme | API anahtarı oluştur | id=createIntegrationToken; type=submit |
+| 283 | Düğme | Kapat | id=closeIntegrationSecret; type=button |
+| 284 | Düğme | Göster | id=toggleIntegrationSecret; type=button |
+| 285 | Düğme | Anahtarı kopyala | id=copyIntegrationSecret; type=button |
+| 286 | Düğme | Kapat | id=dismissIntegrationSecret; type=button |
+| 287 | Düğme | ⇩ CSV indir | id=maintenanceExport; type=button |
+| 288 | Düğme | ↻ Yenile | id=maintenanceRefresh; type=button |
+| 289 | Düğme | Filtrele | id=applyMaintenanceFilters; type=button |
+| 290 | Düğme | Temizle | id=clearMaintenanceFilters; type=button |
+| 291 | Düğme | ← Önceki | id=maintenancePrev; type=button |
+| 292 | Düğme | Sonraki → | id=maintenanceNext; type=button |
+| 293 | Düğme | ⇩ CSV indir | id=calendarExport; type=button |
+| 294 | Düğme | ↻ Yenile | id=calendarRefresh; type=button |
+| 295 | Düğme | Takvimi göster | id=applyCalendarFilters; type=button |
+| 296 | Düğme | Önceki dönem | id=calendarPeriodPrev; type=button |
+| 297 | Düğme | Bugün | id=calendarPeriodToday; type=button |
+| 298 | Düğme | Sonraki dönem | id=calendarPeriodNext; type=button |
+| 299 | Düğme | CSV indir | id=reportExport; type=button |
+| 300 | Düğme | Excel (.xlsx) | id=reportXlsxExport; type=button |
+| 301 | Düğme | Yazdır / PDF | id=reportPrint; type=button |
+| 302 | Düğme | Rapor takvimi | id=reportScheduleOpen; type=button |
+| 303 | Düğme | ↻ Verileri yenile | id=reportRefresh; type=button |
+| 304 | Düğme | Tarih aralığını uygula | id=applyReportDateFilter; type=button |
+| 305 | Düğme | Temizle | id=clearReportDateFilter; type=button |
+| 306 | Düğme | Alış kayıtlarını CSV indir | id=assetPurchaseReportExport; type=button |
+| 307 | Düğme | Yazdır / PDF | id=assetPurchaseReportPrint; type=button |
+| 308 | Düğme | ← Önceki | id=assetPurchaseReportPrev; type=button |
+| 309 | Düğme | Sonraki → | id=assetPurchaseReportNext; type=button |
+| 310 | Düğme | Bileşen CSV indir | id=componentReportExport; type=button |
+| 311 | Düğme | Yazdır / PDF | id=componentReportPrint; type=button |
+| 312 | Düğme | Denetimleri CSV indir | id=auditReportExport; type=button |
+| 313 | Düğme | Yazdır / PDF | id=auditReportPrint; type=button |
+| 314 | Düğme | Filtrele | id=auditReportApply; type=button |
+| 315 | Düğme | ← Önceki | id=auditReportPrev; type=button |
+| 316 | Düğme | Sonraki → | id=auditReportNext; type=button |
+| 317 | Düğme | CSV indir | id=warrantyReportExport; type=button |
+| 318 | Düğme | Yazdır / PDF | id=warrantyReportPrint; type=button |
+| 319 | Düğme | ↻ Yenile | id=warrantyReportRefresh; type=button |
+| 320 | Düğme | ← Önceki | id=warrantyReportPrev |
+| 321 | Düğme | Sonraki → | id=warrantyReportNext |
+| 322 | Düğme | ↻ Yenile | id=maintenanceReportRefresh; type=button |
+| 323 | Düğme | Yazdır / PDF | id=maintenanceReportPrint; type=button |
+| 324 | Düğme | Filtrele | id=applyMaintenanceReportFilter; type=button |
+| 325 | Düğme | Temizle | id=clearMaintenanceReportFilter; type=button |
+| 326 | Düğme | CSV indir | id=licenseReportExport; type=button |
+| 327 | Düğme | Yazdır / PDF | id=licenseReportPrint; type=button |
+| 328 | Düğme | ↻ Yenile | id=licenseReportRefresh; type=button |
+| 329 | Düğme | ← Önceki | id=licenseReportPrev |
+| 330 | Düğme | Sonraki → | id=licenseReportNext |
+| 331 | Düğme | ↻ Yenile | id=pendingDeliveryRefresh; type=button |
+| 332 | Düğme | CSV indir | id=pendingDeliveryExport; type=button |
+| 333 | Düğme | Yazdır / PDF | id=pendingDeliveryPrint; type=button |
+| 334 | Düğme | ← Önceki | id=pendingDeliveryPrev; type=button |
+| 335 | Düğme | Sonraki → | id=pendingDeliveryNext; type=button |
+| 336 | Düğme | ↻ Hesapla | id=depreciationReportRefresh; type=button |
+| 337 | Düğme | CSV indir | id=depreciationReportExport; type=button |
+| 338 | Düğme | Yazdır / PDF | id=depreciationReportPrint; type=button |
+| 339 | Düğme | ← Önceki | id=depreciationReportPrev; type=button |
+| 340 | Düğme | Sonraki → | id=depreciationReportNext; type=button |
+| 341 | Düğme | Taslağı yükle | id=customReportLoadPreset; type=button |
+| 342 | Düğme | Taslağı kaydet | id=customReportSavePreset; type=button |
+| 343 | Düğme | Taslağı sil | id=customReportDeletePreset; type=button |
+| 344 | Düğme | Özel raporu CSV indir | id=customReportExport; type=button |
+| 345 | Düğme | Özel raporu Excel indir | id=customReportXlsxExport; type=button |
+| 346 | Düğme | Yazdır / PDF | id=customReportPrint; type=button |
+| 347 | Düğme | Aksesuar siparişleri | id=backAccessoryOrders; type=button |
+| 348 | Düğme | CSV dışa aktar | id=exportStockOrders; type=button |
+| 349 | Düğme | ↻ Yenile | id=stockOrdersRefresh; type=button |
+| 350 | Düğme | ＋ Sipariş oluştur | id=newStockOrderButton; type=button |
+| 351 | Düğme | Filtreleri temizle | id=clearStockOrderFilters; type=button |
+| 352 | Düğme | ← Önceki | id=stockOrderPrev; type=button |
+| 353 | Düğme | Sonraki → | id=stockOrderNext; type=button |
+| 354 | Düğme | ↻ Yenile | id=purchaseOverviewRefresh; type=button |
+| 355 | Düğme | CSV indir | id=purchaseOverviewExport; type=button |
+| 356 | Düğme | Filtreleri temizle | id=purchaseOverviewClear; type=button |
+| 357 | Düğme | ← Önceki | id=purchaseOverviewPrev; type=button |
+| 358 | Düğme | Sonraki → | id=purchaseOverviewNext; type=button |
+| 359 | Düğme | Yıllık bütçe | id=assetOrderBudgetButton; type=button |
+| 360 | Düğme | ↻ Yenile | id=assetOrdersRefresh; type=button |
+| 361 | Düğme | CSV indir | id=exportAssetOrdersButton; type=button |
+| 362 | Düğme | Tedarikçiler | id=assetOrdersSupplierCatalog; type=button |
+| 363 | Düğme | ＋ Sipariş oluştur | id=newAssetOrderButton; type=button |
+| 364 | Düğme | Filtreleri temizle | id=clearAssetOrderFilters; type=button |
+| 365 | Düğme | ← Önceki | id=assetOrderPrev; type=button |
+| 366 | Düğme | Sonraki → | id=assetOrderNext; type=button |
+| 367 | Düğme | Uygulama kullanıcıları | id=rolesManageMembersButton; type=button |
+| 368 | Düğme | Özel rol oluştur | id=createCompanyRoleButton; type=button; başlangıçta gizli |
+| 369 | Düğme | Kapat | id=closeCompanyRoleDialog; type=button |
+| 370 | Düğme | Vazgeç | id=cancelCompanyRoleDialog; type=button |
+| 371 | Düğme | Kaydet | id=saveCompanyRoleButton; type=submit |
+| 372 | Düğme | Kapat | id=closeDeactivateCompanyRole; type=button |
+| 373 | Düğme | Vazgeç | id=cancelDeactivateCompanyRole; type=button |
+| 374 | Düğme | Devre dışı bırak | id=confirmDeactivateCompanyRole; type=button |
+| 375 | Düğme | Kapat | id=licenseRevokeClose; type=button |
+| 376 | Düğme | Vazgeç | id=licenseRevokeCancel; type=button |
+| 377 | Düğme | Atamayı kaldır | id=licenseRevokeSubmit; type=submit |
+| 378 | Düğme | Kapat | id=licenseImportProfileDeleteClose; type=button |
+| 379 | Düğme | Vazgeç | id=licenseImportProfileDeleteCancel; type=button |
+| 380 | Düğme | Profili sil | id=licenseImportProfileDeleteSubmit; type=submit |
+| 381 | Düğme | Kapat | id=commandPaletteClose; type=button |
+| 382 | Düğme | Kapat | id=keyboardShortcutsClose; type=button |
+| 383 | Düğme | Kapat | type=button |
+| 384 | Düğme | Vazgeç | type=button |
+| 385 | Düğme | Kaydet | type=submit |
+| 386 | Düğme | Kapat | id=closeContractDetail; type=button |
+| 387 | Düğme | Kapat | id=closeContractDetailFooter; type=button |
+| 388 | Düğme | Kapat | id=contractActionClose; type=button |
+| 389 | Düğme | Vazgeç | id=contractActionCancel; type=button |
+| 390 | Düğme | Onayla | id=contractActionSubmit; type=submit |
+| 391 | Düğme | Kapat | id=appearanceClose; type=button |
+| 392 | Düğme | Sistem ayarını izle | type=button |
+| 393 | Düğme | Açık | type=button |
+| 394 | Düğme | Koyu | type=button |
+| 395 | Düğme | Vazgeç | id=appearanceCancel; type=button |
+| 396 | Düğme | Tercihleri kaydet | id=appearanceSave; type=button |
+| 397 | Düğme | Kapat | id=closeDialog |
+| 398 | Düğme | Genel bakış | id=assetTabOverviewButton; type=button |
+| 399 | Düğme | İlişkiler | id=assetTabRelationsButton; type=button |
+| 400 | Düğme | Bakım kayıtları | id=assetTabMaintenanceButton; type=button |
+| 401 | Düğme | Hareket geçmişi | id=assetTabHistoryButton; type=button |
+| 402 | Düğme | Fotoğraf ve dosyalar | id=assetTabAttachmentsButton; type=button |
+| 403 | Düğme | detailPurchaseOrder | id=detailPurchaseOrder; type=button |
+| 404 | Düğme | Etiketi kopyala | id=copyAssetTag; type=button |
+| 405 | Düğme | Etiket kartını yazdır | id=printAssetLabel; type=button |
+| 406 | Düğme | Bağlantıyı kaydet | id=saveAssetParent; type=button |
+| 407 | Düğme | Not ekle | type=submit |
+| 408 | Düğme | Dosya ekle | id=uploadAssetAttachment; type=submit |
+| 409 | Düğme | Bilgileri düzenle | id=editAssetButton; type=button |
+| 410 | Düğme | Denetimi kaydet | id=auditAssetButton; type=button |
+| 411 | Düğme | Denetim planla | id=scheduleAssetAuditButton; type=button |
+| 412 | Düğme | Bakım başlat | id=addMaintenanceButton; type=button |
+| 413 | Düğme | Konum transferi | id=transferAssetButton; type=button |
+| 414 | Düğme | Çalışana zimmetle | id=assignAssetButton; type=button |
+| 415 | Düğme | İade al | id=returnAssetButton; type=button |
+| 416 | Düğme | Arşivden geri al | id=restoreAssetButton; type=button; başlangıçta gizli |
+| 417 | Düğme | Çöp kutusuna taşı | id=trashAssetButton; type=button |
+| 418 | Düğme | Kapat | type=button |
+| 419 | Düğme | Vazgeç | type=button |
+| 420 | Düğme | Denetimi kaydet | type=submit |
+| 421 | Düğme | Kapat | type=button |
+| 422 | Düğme | Vazgeç | type=button |
+| 423 | Düğme | Planı kaydet | type=submit |
+| 424 | Düğme | Kapat | type=button |
+| 425 | Düğme | Vazgeç | type=button |
+| 426 | Düğme | Bakımı başlat | id=maintenanceSubmit; type=submit |
+| 427 | Düğme | Kapat | type=button |
+| 428 | Düğme | Vazgeç | type=button |
+| 429 | Düğme | Bakımı tamamla | type=submit |
+| 430 | Düğme | Kapat | type=button |
+| 431 | Düğme | Vazgeç | type=button |
+| 432 | Düğme | Transferi kaydet | type=submit |
+| 433 | Düğme | Kapat | type=button |
+| 434 | Düğme | Vazgeç | type=button |
+| 435 | Düğme | Değişiklikleri kaydet | type=submit |
+| 436 | Düğme | Kapat | type=button |
+| 437 | Düğme | Vazgeç | type=button |
+| 438 | Düğme | Zimmeti kaydet | type=submit |
+| 439 | Düğme | Kapat | type=button |
+| 440 | Düğme | Vazgeç | type=button |
+| 441 | Düğme | Çalışanı kaydet | type=submit |
+| 442 | Düğme | Kapat | id=closeEmployeeImport; type=button |
+| 443 | Düğme | Şablonu indir | id=downloadEmployeeImportTemplate; type=button |
+| 444 | Düğme | Dosyayı doğrula | id=previewEmployeeImport; type=button |
+| 445 | Düğme | Doğrulanmış kayıtları ekle | id=commitEmployeeImport; type=button |
+| 446 | Düğme | Kapat | id=closeConsumableImport; type=button |
+| 447 | Düğme | Şablonu indir | id=downloadConsumableImportTemplate; type=button |
+| 448 | Düğme | Eşlemeyi kaydet | id=saveConsumableImportProfile; type=button |
+| 449 | Düğme | Profili sil | id=deleteConsumableImportProfile; type=button |
+| 450 | Düğme | Eşlemeyi kullan ve yeniden doğrula | id=applyConsumableImportMapping; type=button |
+| 451 | Düğme | Dosyayı doğrula | id=previewConsumableImport; type=button |
+| 452 | Düğme | Doğrulanmış kayıtları ekle | id=commitConsumableImport; type=button |
+| 453 | Düğme | Kapat | id=closeAccessoryImport; type=button |
+| 454 | Düğme | Şablonu indir | id=downloadAccessoryImportTemplate; type=button |
+| 455 | Düğme | Eşlemeyi kaydet | id=saveAccessoryImportProfile; type=button |
+| 456 | Düğme | Profili sil | id=deleteAccessoryImportProfile; type=button |
+| 457 | Düğme | Eşlemeyi kullan ve yeniden doğrula | id=applyAccessoryImportMapping; type=button |
+| 458 | Düğme | Dosyayı doğrula | id=previewAccessoryImport; type=button |
+| 459 | Düğme | Doğrulanmış kayıtları ekle | id=commitAccessoryImport; type=button |
+| 460 | Düğme | Kapat | type=button |
+| 461 | Düğme | Vazgeç | type=button |
+| 462 | Düğme | Değişiklikleri kaydet | type=submit |
+| 463 | Düğme | Kapat | type=button |
+| 464 | Düğme | Vazgeç | type=button |
+| 465 | Düğme | Onayla | id=employeeActionSubmit; type=submit |
+| 466 | Düğme | Kapat | type=button |
+| 467 | Düğme | Vazgeç | type=button |
+| 468 | Düğme | Kaydet | id=textEntrySubmit; type=submit |
+| 469 | Düğme | İmzalı zimmet belgeleri | id=printEmployeeHandoff; type=button |
+| 470 | Düğme | Kapat | id=closeEmployeeDetails; type=button |
+| 471 | Düğme | Kaydet | id=saveEmployeeManager; type=button |
+| 472 | Düğme | Kaldır | id=clearEmployeeManager; type=button |
+| 473 | Düğme | Kapat | id=closeInviteMember; type=button |
+| 474 | Düğme | Vazgeç | id=cancelInviteMember; type=button |
+| 475 | Düğme | Daveti gönder | type=submit |
+| 476 | Düğme | Kapat | id=closeMemberLocationAccess; type=button |
+| 477 | Düğme | Vazgeç | id=cancelMemberLocationAccess; type=button |
+| 478 | Düğme | Erişimi kaydet | type=submit |
+| 479 | Düğme | Kapat | type=button |
 | 480 | Düğme | ＋ Ekle | type=button |
 | 481 | Düğme | ＋ Ekle | type=button |
-| 482 | Düğme | Vazgeç | type=button |
-| 483 | Düğme | Kaydı oluştur | type=submit |
-| 484 | Düğme | Sunucu bağlantısını test et | id=retryApiButton; type=button |
-| 485 | Düğme | Giriş yap | type=submit |
-| 486 | Düğme | Parolamı unuttum | id=forgotPasswordButton; type=button |
-| 487 | Düğme | Kapat | id=closeDashboardCustomize; type=button |
-| 488 | Düğme | Özet kartlarını yukarı taşı | type=button |
-| 489 | Düğme | Özet kartlarını aşağı taşı | type=button |
-| 490 | Düğme | Varlık listesini yukarı taşı | type=button |
-| 491 | Düğme | Varlık listesini aşağı taşı | type=button |
-| 492 | Düğme | Son hareketleri yukarı taşı | type=button |
-| 493 | Düğme | Son hareketleri aşağı taşı | type=button |
-| 494 | Düğme | Yaklaşan işlemleri yukarı taşı | type=button |
-| 495 | Düğme | Yaklaşan işlemleri aşağı taşı | type=button |
-| 496 | Düğme | Varlık durumu grafiğini yukarı taşı | type=button |
-| 497 | Düğme | Varlık durumu grafiğini aşağı taşı | type=button |
-| 498 | Düğme | + Grafik ekle | id=addDashboardChart; type=button |
-| 499 | Düğme | Tümünü göster | id=resetDashboardCustomize; type=button |
-| 500 | Düğme | İptal | id=cancelDashboardCustomize; type=button |
-| 501 | Düğme | Tercihleri kaydet | type=submit |
-| 502 | Düğme | Kapat | id=closeForgotPassword; type=button |
-| 503 | Düğme | İptal | type=button |
-| 504 | Düğme | Bağlantı iste | type=submit |
-| 505 | Düğme | Kapat | id=closeImportPreview; type=button |
-| 506 | Düğme | CSV şablonunu indir | id=downloadAssetCsvTemplate; type=button |
-| 507 | Düğme | Eşlemeyi kaydet | id=saveAssetImportProfile; type=button |
-| 508 | Düğme | Profili sil | id=deleteAssetImportProfile; type=button |
-| 509 | Düğme | Eşlemeyi kullan ve yeniden doğrula | id=applyAssetImportMapping; type=button |
-| 510 | Düğme | Kapat | id=cancelImportPreview; type=button |
-| 511 | Düğme | Dosyayı doğrula | id=runImportPreview; type=submit |
-| 512 | Düğme | Doğrula ve içe aktar | id=applyCsvImport; type=button; başlangıçta gizli |
-| 513 | Düğme | Şirkete geri yükle | id=applyCompanyImport; type=button; başlangıçta gizli |
-| 514 | Düğme | Kapat | id=closeAccessoryDetail; type=button |
-| 515 | Düğme | Tüm siparişleri aç | id=accessoryOrdersFromDetail; type=button |
-| 516 | Düğme | Kapat | id=accessoryCheckinClose; type=button |
-| 517 | Düğme | Vazgeç | id=accessoryCheckinCancel; type=button |
-| 518 | Düğme | İadeyi kaydet | id=accessoryCheckinSubmit; type=submit |
-| 519 | Düğme | Kapat | type=button |
-| 520 | Düğme | Bütçe istisnasını reddet | id=rejectAccessoryOrderApproval; type=button |
-| 521 | Düğme | Bütçe istisnasını onayla | id=approveAccessoryOrderApproval; type=button |
-| 522 | Düğme | Dosya yükle | type=submit |
-| 523 | Düğme | Tedarikçiye iade et | id=returnAccessoryOrderFromDetail; type=button |
-| 524 | Düğme | Teslim al | id=receiveAccessoryOrderFromDetail; type=button |
-| 525 | Düğme | Kapat | type=button |
+| 482 | Düğme | ＋ Ekle | type=button |
+| 483 | Düğme | Vazgeç | type=button |
+| 484 | Düğme | Kaydı oluştur | type=submit |
+| 485 | Düğme | Sunucu bağlantısını test et | id=retryApiButton; type=button |
+| 486 | Düğme | Giriş yap | type=submit |
+| 487 | Düğme | Parolamı unuttum | id=forgotPasswordButton; type=button |
+| 488 | Düğme | Kapat | id=closeDashboardCustomize; type=button |
+| 489 | Düğme | Özet kartlarını yukarı taşı | type=button |
+| 490 | Düğme | Özet kartlarını aşağı taşı | type=button |
+| 491 | Düğme | Varlık listesini yukarı taşı | type=button |
+| 492 | Düğme | Varlık listesini aşağı taşı | type=button |
+| 493 | Düğme | Son hareketleri yukarı taşı | type=button |
+| 494 | Düğme | Son hareketleri aşağı taşı | type=button |
+| 495 | Düğme | Yaklaşan işlemleri yukarı taşı | type=button |
+| 496 | Düğme | Yaklaşan işlemleri aşağı taşı | type=button |
+| 497 | Düğme | Varlık durumu grafiğini yukarı taşı | type=button |
+| 498 | Düğme | Varlık durumu grafiğini aşağı taşı | type=button |
+| 499 | Düğme | + Grafik ekle | id=addDashboardChart; type=button |
+| 500 | Düğme | Tümünü göster | id=resetDashboardCustomize; type=button |
+| 501 | Düğme | İptal | id=cancelDashboardCustomize; type=button |
+| 502 | Düğme | Tercihleri kaydet | type=submit |
+| 503 | Düğme | Kapat | id=closeForgotPassword; type=button |
+| 504 | Düğme | İptal | type=button |
+| 505 | Düğme | Bağlantı iste | type=submit |
+| 506 | Düğme | Kapat | id=closeImportPreview; type=button |
+| 507 | Düğme | CSV şablonunu indir | id=downloadAssetCsvTemplate; type=button |
+| 508 | Düğme | Eşlemeyi kaydet | id=saveAssetImportProfile; type=button |
+| 509 | Düğme | Profili sil | id=deleteAssetImportProfile; type=button |
+| 510 | Düğme | Eşlemeyi kullan ve yeniden doğrula | id=applyAssetImportMapping; type=button |
+| 511 | Düğme | Kapat | id=cancelImportPreview; type=button |
+| 512 | Düğme | Dosyayı doğrula | id=runImportPreview; type=submit |
+| 513 | Düğme | Doğrula ve içe aktar | id=applyCsvImport; type=button; başlangıçta gizli |
+| 514 | Düğme | Şirkete geri yükle | id=applyCompanyImport; type=button; başlangıçta gizli |
+| 515 | Düğme | Kapat | id=closeAccessoryDetail; type=button |
+| 516 | Düğme | Tüm siparişleri aç | id=accessoryOrdersFromDetail; type=button |
+| 517 | Düğme | Kapat | id=accessoryCheckinClose; type=button |
+| 518 | Düğme | Vazgeç | id=accessoryCheckinCancel; type=button |
+| 519 | Düğme | İadeyi kaydet | id=accessoryCheckinSubmit; type=submit |
+| 520 | Düğme | Kapat | type=button |
+| 521 | Düğme | Bütçe istisnasını reddet | id=rejectAccessoryOrderApproval; type=button |
+| 522 | Düğme | Bütçe istisnasını onayla | id=approveAccessoryOrderApproval; type=button |
+| 523 | Düğme | Dosya yükle | type=submit |
+| 524 | Düğme | Tedarikçiye iade et | id=returnAccessoryOrderFromDetail; type=button |
+| 525 | Düğme | Teslim al | id=receiveAccessoryOrderFromDetail; type=button |
 | 526 | Düğme | Kapat | type=button |
-| 527 | Düğme | ＋ Kalem ekle | id=addAccessoryOrderLine; type=button |
-| 528 | Düğme | Vazgeç | type=button |
-| 529 | Düğme | Siparişi kaydet | type=submit |
-| 530 | Düğme | Kapat | type=button |
-| 531 | Düğme | ＋ Kalem ekle | id=addStockOrderLine; type=button |
-| 532 | Düğme | Vazgeç | type=button |
-| 533 | Düğme | Siparişi kaydet | type=submit |
-| 534 | Düğme | Kapat | type=button |
-| 535 | Düğme | Bütçe istisnasını reddet | id=rejectStockOrderApproval; type=button |
-| 536 | Düğme | Bütçe istisnasını onayla | id=approveStockOrderApproval; type=button |
-| 537 | Düğme | Belge yükle | type=submit |
-| 538 | Düğme | Tedarikçiye iade et | id=returnStockOrderFromDetail; type=button |
-| 539 | Düğme | Bu siparişten kit reçetesi oluştur | id=createKitFromStockOrder; type=button; başlangıçta gizli |
-| 540 | Düğme | Teslim al | id=receiveStockOrderFromDetail; type=button |
-| 541 | Düğme | Kapat | type=button |
+| 527 | Düğme | Kapat | type=button |
+| 528 | Düğme | ＋ Kalem ekle | id=addAccessoryOrderLine; type=button |
+| 529 | Düğme | Vazgeç | type=button |
+| 530 | Düğme | Siparişi kaydet | type=submit |
+| 531 | Düğme | Kapat | type=button |
+| 532 | Düğme | ＋ Kalem ekle | id=addStockOrderLine; type=button |
+| 533 | Düğme | Vazgeç | type=button |
+| 534 | Düğme | Siparişi kaydet | type=submit |
+| 535 | Düğme | Kapat | type=button |
+| 536 | Düğme | Bütçe istisnasını reddet | id=rejectStockOrderApproval; type=button |
+| 537 | Düğme | Bütçe istisnasını onayla | id=approveStockOrderApproval; type=button |
+| 538 | Düğme | Belge yükle | type=submit |
+| 539 | Düğme | Tedarikçiye iade et | id=returnStockOrderFromDetail; type=button |
+| 540 | Düğme | Bu siparişten kit reçetesi oluştur | id=createKitFromStockOrder; type=button; başlangıçta gizli |
+| 541 | Düğme | Teslim al | id=receiveStockOrderFromDetail; type=button |
 | 542 | Düğme | Kapat | type=button |
-| 543 | Düğme | Vazgeç | type=button |
-| 544 | Düğme | Teslim al ve stoğa ekle | type=submit |
-| 545 | Düğme | Kapat | type=button |
-| 546 | Düğme | Vazgeç | type=button |
-| 547 | Düğme | Kit reçetesini kaydet | type=submit |
-| 548 | Düğme | Kapat | type=button |
+| 543 | Düğme | Kapat | type=button |
+| 544 | Düğme | Vazgeç | type=button |
+| 545 | Düğme | Teslim al ve stoğa ekle | type=submit |
+| 546 | Düğme | Kapat | type=button |
+| 547 | Düğme | Vazgeç | type=button |
+| 548 | Düğme | Kit reçetesini kaydet | type=submit |
 | 549 | Düğme | Kapat | type=button |
-| 550 | Düğme | Bütçeyi kaydet | type=submit |
-| 551 | Düğme | Kapat | type=button |
-| 552 | Düğme | ＋ Cihaz kalemi ekle | id=addAssetOrderLine; type=button |
-| 553 | Düğme | Vazgeç | type=button |
-| 554 | Düğme | Siparişi kaydet | type=submit |
-| 555 | Düğme | Kapat | type=button |
-| 556 | Düğme | Bütçe istisnasını reddet | id=rejectAssetOrderApproval; type=button |
-| 557 | Düğme | Bütçe istisnasını onayla | id=approveAssetOrderApproval; type=button |
-| 558 | Düğme | Belgeleri yükle | id=uploadAssetOrderAttachments; type=button |
-| 559 | Düğme | Tedarikçiye iade et | id=returnAssetOrderFromDetail; type=button |
-| 560 | Düğme | Teslim al | id=receiveAssetOrderFromDetail; type=button |
-| 561 | Düğme | Kapat | type=button |
+| 550 | Düğme | Kapat | type=button |
+| 551 | Düğme | Bütçeyi kaydet | type=submit |
+| 552 | Düğme | Kapat | type=button |
+| 553 | Düğme | ＋ Cihaz kalemi ekle | id=addAssetOrderLine; type=button |
+| 554 | Düğme | Vazgeç | type=button |
+| 555 | Düğme | Siparişi kaydet | type=submit |
+| 556 | Düğme | Kapat | type=button |
+| 557 | Düğme | Bütçe istisnasını reddet | id=rejectAssetOrderApproval; type=button |
+| 558 | Düğme | Bütçe istisnasını onayla | id=approveAssetOrderApproval; type=button |
+| 559 | Düğme | Belgeleri yükle | id=uploadAssetOrderAttachments; type=button |
+| 560 | Düğme | Tedarikçiye iade et | id=returnAssetOrderFromDetail; type=button |
+| 561 | Düğme | Teslim al | id=receiveAssetOrderFromDetail; type=button |
 | 562 | Düğme | Kapat | type=button |
-| 563 | Düğme | Vazgeç | type=button |
-| 564 | Düğme | Teslim al ve varlıkları oluştur | type=submit |
-| 565 | Düğme | Kapat | type=button |
-| 566 | Düğme | Vazgeç | type=button |
-| 567 | Düğme | Stoğa al | type=submit |
-| 568 | Düğme | Kapat | id=closeConsumableDetail; type=button |
-| 569 | Düğme | Kapat | type=button |
-| 570 | Düğme | Vazgeç | type=button |
-| 571 | Düğme | Kaydet | type=submit |
-| 572 | Düğme | Kapat | type=button |
-| 573 | Düğme | Vazgeç | type=button |
-| 574 | Düğme | Stok hareketini kaydet | type=submit |
-| 575 | Düğme | Kapat | type=button |
-| 576 | Düğme | Vazgeç | type=button |
-| 577 | Düğme | Tüketim çıkışını kaydet | type=submit |
-| 578 | Düğme | Kapat | id=closeLicenseDetail; type=button |
-| 579 | Düğme | Dosya yükle | type=submit |
-| 580 | Düğme | Kapat | type=button |
-| 581 | Düğme | Vazgeç | type=button |
-| 582 | Düğme | Kaydet | type=submit |
-| 583 | Düğme | Kapat | type=button |
-| 584 | Düğme | Vazgeç | type=button |
-| 585 | Düğme | Kaydet | type=submit |
-| 586 | Düğme | Kapat | id=closeLicenseImport; type=button |
-| 587 | Düğme | Şablonu indir | id=downloadLicenseImportTemplate; type=button |
-| 588 | Düğme | Eşlemeyi kaydet | id=saveLicenseImportProfile; type=button |
-| 589 | Düğme | Profili sil | id=deleteLicenseImportProfile; type=button |
-| 590 | Düğme | Eşlemeyi kullan ve yeniden doğrula | id=applyLicenseImportMapping; type=button |
-| 591 | Düğme | Dosyayı doğrula | id=previewLicenseImport; type=button |
-| 592 | Düğme | Doğrulanmış kayıtları ekle | id=commitLicenseImport; type=button |
-| 593 | Düğme | Kapat | id=licenseActionClose; type=button |
-| 594 | Düğme | Vazgeç | id=licenseActionCancel; type=button |
-| 595 | Düğme | Onayla | id=licenseActionSubmit; type=submit |
-| 596 | Düğme | Kapat | type=button |
-| 597 | Düğme | Vazgeç | type=button |
-| 598 | Düğme | Atamayı kaydet | type=submit |
-| 599 | Düğme | Kapat | type=button |
-| 600 | Düğme | Vazgeç | type=button |
-| 601 | Düğme | Devam et | id=componentActionSubmit; type=submit |
-| 602 | Düğme | Kapat | id=closeComponentDetail; type=button |
-| 603 | Düğme | Kapat | id=closeComponentImport; type=button |
-| 604 | Düğme | Şablonu indir | id=downloadComponentImportTemplate; type=button |
-| 605 | Düğme | Eşlemeyi kaydet | id=saveComponentImportProfile; type=button |
-| 606 | Düğme | Profili sil | id=deleteComponentImportProfile; type=button |
-| 607 | Düğme | Eşlemeyi kullan ve yeniden doğrula | id=applyComponentImportMapping; type=button |
-| 608 | Düğme | Dosyayı doğrula | id=previewComponentImport; type=button |
-| 609 | Düğme | Doğrulanmış kayıtları ekle | id=commitComponentImport; type=button |
-| 610 | Düğme | Kapat | type=button |
-| 611 | Düğme | Vazgeç | type=button |
-| 612 | Düğme | Kaydet | type=submit |
-| 613 | Düğme | ✕ | type=button |
-| 614 | Düğme | Vazgeç | type=button |
-| 615 | Düğme | Kaydet | type=submit |
-| 616 | Düğme | ✕ | type=button |
-| 617 | Düğme | Vazgeç | type=button |
-| 618 | Düğme | Atamayı kaydet | type=submit |
-| 619 | Düğme | Kapat | type=button |
-| 620 | Düğme | Vazgeç | type=button |
-| 621 | Düğme | Çıkarmayı kaydet | type=submit |
-| 622 | Düğme | Kapat | type=button |
-| 623 | Düğme | ＋ Stok kalemi ekle | id=addAccessoryKitLine; type=button |
-| 624 | Düğme | Vazgeç | type=button |
-| 625 | Düğme | Kiti kaydet | type=submit |
-| 626 | Düğme | Kapat | id=closeAccessoryKitHistory; type=button |
-| 627 | Düğme | Kapat | id=closeAccessoryKitHistoryFooter; type=button |
-| 628 | Düğme | Kapat | type=button |
-| 629 | Düğme | Vazgeç | type=button |
-| 630 | Düğme | Arşivle | id=accessoryKitActionSubmit; type=submit |
-| 631 | Düğme | Kapat | type=button |
-| 632 | Düğme | ＋ Kategori oluştur | id=accessoryQuickCategory; type=button |
-| 633 | Düğme | ＋ Marka oluştur | id=accessoryQuickBrand; type=button |
-| 634 | Düğme | ＋ Model oluştur | id=accessoryQuickModel; type=button |
-| 635 | Düğme | Vazgeç | type=button |
-| 636 | Düğme | Kaydet | type=submit |
-| 637 | Düğme | Kapat | id=closeAccessoryCategoryManager; type=button |
-| 638 | Düğme | Kapat | id=cancelAccessoryCategoryManager; type=button |
-| 639 | Düğme | ＋ Kategori ekle | id=addAccessoryCategory; type=button |
-| 640 | Düğme | Kapat | type=button |
-| 641 | Düğme | Vazgeç | type=button |
-| 642 | Düğme | Stok hareketini kaydet | type=submit |
-| 643 | Düğme | Kapat | type=button |
-| 644 | Düğme | Vazgeç | type=button |
-| 645 | Düğme | Teslimi kaydet | type=submit |
-| 646 | Düğme | Kapat | id=closeAssetScanner; type=button |
-| 647 | Düğme | Kamerayı başlat | id=startAssetCamera; type=button |
-| 648 | Düğme | Varlığı bul | type=submit |
-| 649 | Düğme | Kapat | id=closeDirectoryRename; type=button |
-| 650 | Düğme | Vazgeç | id=cancelDirectoryRename; type=button |
-| 651 | Düğme | Değişiklikleri kaydet | id=saveDirectoryRename; type=submit |
-| 652 | Düğme | Kapat | id=closeCreateDepartment; type=button |
-| 653 | Düğme | Vazgeç | id=cancelCreateDepartment; type=button |
-| 654 | Düğme | Departmanı kaydet | id=saveDepartment; type=submit |
-| 655 | Düğme | Kapat | id=closeDepartmentMove; type=button |
-| 656 | Düğme | Kapat | id=cancelDepartmentMove; type=button |
-| 657 | Düğme | Sonraki 100 çalışanı taşı | id=moveDepartmentEmployees; type=submit |
-| 658 | Düğme | Kapat | id=closeCreateLocation; type=button |
-| 659 | Düğme | Vazgeç | id=cancelCreateLocation; type=button |
-| 660 | Düğme | Konumu kaydet | id=saveLocation; type=submit |
-| 661 | Düğme | Kapat | id=closeLocationManager; type=button |
-| 662 | Düğme | Vazgeç | id=cancelLocationManager; type=button |
-| 663 | Düğme | Sorumluyu kaydet | id=saveLocationManager; type=submit |
-| 664 | Düğme | Kapat | id=closeDepartmentManager; type=button |
-| 665 | Düğme | Vazgeç | id=cancelDepartmentManager; type=button |
-| 666 | Düğme | Yetkiliyi kaydet | id=saveDepartmentManager; type=submit |
-| 667 | Düğme | Kapat | id=cancelQuickLookup; type=button |
-| 668 | Düğme | Vazgeç | id=cancelQuickLookupAction; type=button |
-| 669 | Düğme | Kaydet | type=submit |
-| 670 | Düğme | Kapat | id=cancelAssetReturn; type=button |
-| 671 | Düğme | Vazgeç | id=cancelAssetReturnAction; type=button |
-| 672 | Düğme | İade al | id=submitAssetReturn; type=submit |
-| 673 | Düğme | Kapat | id=closeAssetTrashConfirm; type=button |
-| 674 | Düğme | Vazgeç | id=cancelAssetTrashConfirm; type=button |
-| 675 | Düğme | Varlığı çöp kutusuna taşı | id=submitAssetTrashConfirm; type=submit |
-| 676 | Düğme | Kapat | id=closeAssetStatusDialog; type=button |
-| 677 | Düğme | Vazgeç | id=cancelAssetStatus; type=button |
-| 678 | Düğme | Durumu güncelle | id=submitAssetStatus; type=submit |
-| 679 | Düğme | Kapat | id=closeAssetAttachmentRemove; type=button |
-| 680 | Düğme | Vazgeç | id=cancelAssetAttachmentRemove; type=button |
-| 681 | Düğme | Dosyayı kaldır | id=submitAssetAttachmentRemove; type=submit |
-| 682 | Düğme | Kapat | id=closeSavedAssetSearchDialog; type=button |
-| 683 | Düğme | Vazgeç | id=cancelSavedAssetSearch; type=button |
-| 684 | Düğme | Aramayı kaydet | id=submitSavedAssetSearch; type=submit |
-| 685 | Düğme | Kapat | id=closeCompanyMfaEnrollment; type=button |
-| 686 | Düğme | Doğrula ve devam et | id=verifyCompanyMfaEnrollment; type=submit |
-| 687 | Düğme | Kodları kopyala | id=copyCompanyMfaRecoveryCodes; type=button |
-| 688 | Düğme | Kodları kaydettim ve giriş yap | id=finishCompanyMfaEnrollment; type=button |
-| 689 | Düğme | Kapat | id=closeSupplierCatalog; type=button |
-| 690 | Düğme | Temizle | id=resetSupplierForm; type=button |
-| 691 | Düğme | Tedarikçiyi kaydet | type=submit |
-| 692 | Düğme | Kapat | id=closeCompanySwitch; type=button |
-| 693 | Düğme | Vazgeç | id=cancelCompanySwitch; type=button |
-| 694 | Düğme | Çıkış yap ve şirket seç | id=confirmCompanySwitch; type=button |
-| 695 | Düğme | Kapat | id=closeAccountPhoto; type=button |
-| 696 | Düğme | Fotoğraf seç | id=chooseAccountPhoto; type=button |
-| 697 | Düğme | Fotoğrafı kaldır | id=removeAccountPhoto; type=button; başlangıçta gizli |
-| 698 | Düğme | Parolayı değiştir | id=changeOwnPassword; type=button |
-| 699 | Düğme | Güvenlik ayarları | id=openAccountTwoFactor; type=button |
-| 700 | Düğme | Yenile | id=refreshAccountSessions; type=button |
-| 701 | Düğme | Kapat | id=closeAccountTwoFactor; type=button |
-| 702 | Düğme | Authenticator kurulumu başlat | id=startTwoFactorSetup; type=button |
-| 703 | Düğme | Doğrula ve etkinleştir | id=enableTwoFactor; type=button; başlangıçta gizli |
-| 704 | Düğme | Kurtarma kodlarını yenile | id=rotateTwoFactorCodes; type=button; başlangıçta gizli |
-| 705 | Düğme | İki aşamalı doğrulamayı kapat | id=disableTwoFactor; type=button; başlangıçta gizli |
-| 706 | Düğme | Kodları kopyala | id=copyTwoFactorRecoveryCodes; type=button |
-| 707 | Düğme | Kapat | type=button |
-| 708 | Düğme | Vazgeç | type=button |
-| 709 | Düğme | Talebi gönder | type=submit |
-| 710 | Düğme | Kapat | id=closeAssetTrash; type=button |
-| 711 | Düğme | ← Önceki | id=assetTrashPrev; type=button |
-| 712 | Düğme | Sonraki → | id=assetTrashNext; type=button |
-| 713 | Düğme | Kapat | id=closeImagePreview; type=button |
-| 714 | Düğme | Kapat | id=closeModelDetails; type=button |
-| 715 | Düğme | Kapat | id=closeModelAttachments; type=button |
-| 716 | Düğme | Teknik dosya ekle | id=uploadModelAttachment; type=submit |
-| 717 | Düğme | Yazdır | id=assetLabelPreviewPrint; type=button |
-| 718 | Düğme | Kapat | id=assetLabelPreviewClose; type=button |
-| 719 | Düğme | Kapat | type=button |
-| 720 | Düğme | Vazgeç | type=button |
-| 721 | Düğme | İadeyi kaydet | id=submitPurchaseOrderReturn; type=submit |
-| 722 | Düğme | ${escapeHtml(translateUiText('Aç'))} | type=button |
-| 723 | Düğme | Kapat | type=button |
-| 724 | Düğme | Vazgeç | type=button |
-| 725 | Düğme | Seçilenleri güncelle | type=submit |
-| 726 | Düğme | ${escapeHtml(text)} ile eşleşen kayıtları filtrele | type=button |
-| 727 | Düğme | ${translateUiText(item.isFullySigned ? 'Görüntüle / yazdır' : 'Devam et')} | id=${escapeHtml(item.id)}; type=button |
+| 563 | Düğme | Kapat | type=button |
+| 564 | Düğme | Vazgeç | type=button |
+| 565 | Düğme | Teslim al ve varlıkları oluştur | type=submit |
+| 566 | Düğme | Kapat | type=button |
+| 567 | Düğme | Vazgeç | type=button |
+| 568 | Düğme | Stoğa al | type=submit |
+| 569 | Düğme | Kapat | id=closeConsumableDetail; type=button |
+| 570 | Düğme | Kapat | type=button |
+| 571 | Düğme | Vazgeç | type=button |
+| 572 | Düğme | Kaydet | type=submit |
+| 573 | Düğme | Kapat | type=button |
+| 574 | Düğme | Vazgeç | type=button |
+| 575 | Düğme | Stok hareketini kaydet | type=submit |
+| 576 | Düğme | Kapat | type=button |
+| 577 | Düğme | Vazgeç | type=button |
+| 578 | Düğme | Tüketim çıkışını kaydet | type=submit |
+| 579 | Düğme | Kapat | id=closeLicenseDetail; type=button |
+| 580 | Düğme | Dosya yükle | type=submit |
+| 581 | Düğme | Kapat | type=button |
+| 582 | Düğme | Vazgeç | type=button |
+| 583 | Düğme | Kaydet | type=submit |
+| 584 | Düğme | Kapat | type=button |
+| 585 | Düğme | Vazgeç | type=button |
+| 586 | Düğme | Kaydet | type=submit |
+| 587 | Düğme | Kapat | id=closeLicenseImport; type=button |
+| 588 | Düğme | Şablonu indir | id=downloadLicenseImportTemplate; type=button |
+| 589 | Düğme | Eşlemeyi kaydet | id=saveLicenseImportProfile; type=button |
+| 590 | Düğme | Profili sil | id=deleteLicenseImportProfile; type=button |
+| 591 | Düğme | Eşlemeyi kullan ve yeniden doğrula | id=applyLicenseImportMapping; type=button |
+| 592 | Düğme | Dosyayı doğrula | id=previewLicenseImport; type=button |
+| 593 | Düğme | Doğrulanmış kayıtları ekle | id=commitLicenseImport; type=button |
+| 594 | Düğme | Kapat | id=licenseActionClose; type=button |
+| 595 | Düğme | Vazgeç | id=licenseActionCancel; type=button |
+| 596 | Düğme | Onayla | id=licenseActionSubmit; type=submit |
+| 597 | Düğme | Kapat | type=button |
+| 598 | Düğme | Vazgeç | type=button |
+| 599 | Düğme | Atamayı kaydet | type=submit |
+| 600 | Düğme | Kapat | type=button |
+| 601 | Düğme | Vazgeç | type=button |
+| 602 | Düğme | Devam et | id=componentActionSubmit; type=submit |
+| 603 | Düğme | Kapat | id=closeComponentDetail; type=button |
+| 604 | Düğme | Kapat | id=closeComponentImport; type=button |
+| 605 | Düğme | Şablonu indir | id=downloadComponentImportTemplate; type=button |
+| 606 | Düğme | Eşlemeyi kaydet | id=saveComponentImportProfile; type=button |
+| 607 | Düğme | Profili sil | id=deleteComponentImportProfile; type=button |
+| 608 | Düğme | Eşlemeyi kullan ve yeniden doğrula | id=applyComponentImportMapping; type=button |
+| 609 | Düğme | Dosyayı doğrula | id=previewComponentImport; type=button |
+| 610 | Düğme | Doğrulanmış kayıtları ekle | id=commitComponentImport; type=button |
+| 611 | Düğme | Kapat | type=button |
+| 612 | Düğme | Vazgeç | type=button |
+| 613 | Düğme | Kaydet | type=submit |
+| 614 | Düğme | ✕ | type=button |
+| 615 | Düğme | Vazgeç | type=button |
+| 616 | Düğme | Kaydet | type=submit |
+| 617 | Düğme | ✕ | type=button |
+| 618 | Düğme | Vazgeç | type=button |
+| 619 | Düğme | Atamayı kaydet | type=submit |
+| 620 | Düğme | Kapat | type=button |
+| 621 | Düğme | Vazgeç | type=button |
+| 622 | Düğme | Çıkarmayı kaydet | type=submit |
+| 623 | Düğme | Kapat | type=button |
+| 624 | Düğme | ＋ Stok kalemi ekle | id=addAccessoryKitLine; type=button |
+| 625 | Düğme | Vazgeç | type=button |
+| 626 | Düğme | Kiti kaydet | type=submit |
+| 627 | Düğme | Kapat | id=closeAccessoryKitHistory; type=button |
+| 628 | Düğme | Kapat | id=closeAccessoryKitHistoryFooter; type=button |
+| 629 | Düğme | Kapat | type=button |
+| 630 | Düğme | Vazgeç | type=button |
+| 631 | Düğme | Arşivle | id=accessoryKitActionSubmit; type=submit |
+| 632 | Düğme | Kapat | type=button |
+| 633 | Düğme | ＋ Kategori oluştur | id=accessoryQuickCategory; type=button |
+| 634 | Düğme | ＋ Marka oluştur | id=accessoryQuickBrand; type=button |
+| 635 | Düğme | ＋ Model oluştur | id=accessoryQuickModel; type=button |
+| 636 | Düğme | Vazgeç | type=button |
+| 637 | Düğme | Kaydet | type=submit |
+| 638 | Düğme | Kapat | id=closeAccessoryCategoryManager; type=button |
+| 639 | Düğme | Kapat | id=cancelAccessoryCategoryManager; type=button |
+| 640 | Düğme | ＋ Kategori ekle | id=addAccessoryCategory; type=button |
+| 641 | Düğme | Kapat | type=button |
+| 642 | Düğme | Vazgeç | type=button |
+| 643 | Düğme | Stok hareketini kaydet | type=submit |
+| 644 | Düğme | Kapat | type=button |
+| 645 | Düğme | Vazgeç | type=button |
+| 646 | Düğme | Teslimi kaydet | type=submit |
+| 647 | Düğme | Kapat | id=closeAssetScanner; type=button |
+| 648 | Düğme | Kamerayı başlat | id=startAssetCamera; type=button |
+| 649 | Düğme | Varlığı bul | type=submit |
+| 650 | Düğme | Kapat | id=closeDirectoryRename; type=button |
+| 651 | Düğme | Vazgeç | id=cancelDirectoryRename; type=button |
+| 652 | Düğme | Değişiklikleri kaydet | id=saveDirectoryRename; type=submit |
+| 653 | Düğme | Kapat | id=closeCreateDepartment; type=button |
+| 654 | Düğme | Vazgeç | id=cancelCreateDepartment; type=button |
+| 655 | Düğme | Departmanı kaydet | id=saveDepartment; type=submit |
+| 656 | Düğme | Kapat | id=closeDepartmentMove; type=button |
+| 657 | Düğme | Kapat | id=cancelDepartmentMove; type=button |
+| 658 | Düğme | Sonraki 100 çalışanı taşı | id=moveDepartmentEmployees; type=submit |
+| 659 | Düğme | Kapat | id=closeCreateLocation; type=button |
+| 660 | Düğme | Vazgeç | id=cancelCreateLocation; type=button |
+| 661 | Düğme | Konumu kaydet | id=saveLocation; type=submit |
+| 662 | Düğme | Kapat | id=closeLocationManager; type=button |
+| 663 | Düğme | Vazgeç | id=cancelLocationManager; type=button |
+| 664 | Düğme | Sorumluyu kaydet | id=saveLocationManager; type=submit |
+| 665 | Düğme | Kapat | id=closeDepartmentManager; type=button |
+| 666 | Düğme | Vazgeç | id=cancelDepartmentManager; type=button |
+| 667 | Düğme | Yetkiliyi kaydet | id=saveDepartmentManager; type=submit |
+| 668 | Düğme | Kapat | id=cancelQuickLookup; type=button |
+| 669 | Düğme | Vazgeç | id=cancelQuickLookupAction; type=button |
+| 670 | Düğme | Kaydet | type=submit |
+| 671 | Düğme | Kapat | id=cancelAssetReturn; type=button |
+| 672 | Düğme | Vazgeç | id=cancelAssetReturnAction; type=button |
+| 673 | Düğme | İade al | id=submitAssetReturn; type=submit |
+| 674 | Düğme | Kapat | id=closeAssetTrashConfirm; type=button |
+| 675 | Düğme | Vazgeç | id=cancelAssetTrashConfirm; type=button |
+| 676 | Düğme | Varlığı çöp kutusuna taşı | id=submitAssetTrashConfirm; type=submit |
+| 677 | Düğme | Kapat | id=closeAssetStatusDialog; type=button |
+| 678 | Düğme | Vazgeç | id=cancelAssetStatus; type=button |
+| 679 | Düğme | Durumu güncelle | id=submitAssetStatus; type=submit |
+| 680 | Düğme | Kapat | id=closeAssetAttachmentRemove; type=button |
+| 681 | Düğme | Vazgeç | id=cancelAssetAttachmentRemove; type=button |
+| 682 | Düğme | Dosyayı kaldır | id=submitAssetAttachmentRemove; type=submit |
+| 683 | Düğme | Kapat | id=closeSavedAssetSearchDialog; type=button |
+| 684 | Düğme | Vazgeç | id=cancelSavedAssetSearch; type=button |
+| 685 | Düğme | Aramayı kaydet | id=submitSavedAssetSearch; type=submit |
+| 686 | Düğme | Kapat | id=closeCompanyMfaEnrollment; type=button |
+| 687 | Düğme | Doğrula ve devam et | id=verifyCompanyMfaEnrollment; type=submit |
+| 688 | Düğme | Kodları kopyala | id=copyCompanyMfaRecoveryCodes; type=button |
+| 689 | Düğme | Kodları kaydettim ve giriş yap | id=finishCompanyMfaEnrollment; type=button |
+| 690 | Düğme | Kapat | id=closeSupplierCatalog; type=button |
+| 691 | Düğme | Temizle | id=resetSupplierForm; type=button |
+| 692 | Düğme | Tedarikçiyi kaydet | type=submit |
+| 693 | Düğme | Kapat | id=closeCompanySwitch; type=button |
+| 694 | Düğme | Vazgeç | id=cancelCompanySwitch; type=button |
+| 695 | Düğme | Çıkış yap ve şirket seç | id=confirmCompanySwitch; type=button |
+| 696 | Düğme | Kapat | id=closeAccountPhoto; type=button |
+| 697 | Düğme | Fotoğraf seç | id=chooseAccountPhoto; type=button |
+| 698 | Düğme | Fotoğrafı kaldır | id=removeAccountPhoto; type=button; başlangıçta gizli |
+| 699 | Düğme | Parolayı değiştir | id=changeOwnPassword; type=button |
+| 700 | Düğme | Güvenlik ayarları | id=openAccountTwoFactor; type=button |
+| 701 | Düğme | Yenile | id=refreshAccountSessions; type=button |
+| 702 | Düğme | Kapat | id=closeAccountTwoFactor; type=button |
+| 703 | Düğme | Authenticator kurulumu başlat | id=startTwoFactorSetup; type=button |
+| 704 | Düğme | Doğrula ve etkinleştir | id=enableTwoFactor; type=button; başlangıçta gizli |
+| 705 | Düğme | Kurtarma kodlarını yenile | id=rotateTwoFactorCodes; type=button; başlangıçta gizli |
+| 706 | Düğme | İki aşamalı doğrulamayı kapat | id=disableTwoFactor; type=button; başlangıçta gizli |
+| 707 | Düğme | Kodları kopyala | id=copyTwoFactorRecoveryCodes; type=button |
+| 708 | Düğme | Kapat | type=button |
+| 709 | Düğme | Vazgeç | type=button |
+| 710 | Düğme | Talebi gönder | type=submit |
+| 711 | Düğme | Kapat | id=closeAssetTrash; type=button |
+| 712 | Düğme | ← Önceki | id=assetTrashPrev; type=button |
+| 713 | Düğme | Sonraki → | id=assetTrashNext; type=button |
+| 714 | Düğme | Kapat | id=closeImagePreview; type=button |
+| 715 | Düğme | Kapat | id=closeModelDetails; type=button |
+| 716 | Düğme | Kapat | id=closeModelAttachments; type=button |
+| 717 | Düğme | Teknik dosya ekle | id=uploadModelAttachment; type=submit |
+| 718 | Düğme | Yazdır | id=assetLabelPreviewPrint; type=button |
+| 719 | Düğme | Kapat | id=assetLabelPreviewClose; type=button |
+| 720 | Düğme | Kapat | type=button |
+| 721 | Düğme | Vazgeç | type=button |
+| 722 | Düğme | İadeyi kaydet | id=submitPurchaseOrderReturn; type=submit |
+| 723 | Düğme | ${escapeHtml(translateUiText('Aç'))} | type=button |
+| 724 | Düğme | Kapat | type=button |
+| 725 | Düğme | Vazgeç | type=button |
+| 726 | Düğme | Seçilenleri güncelle | type=submit |
+| 727 | Düğme | ${escapeHtml(text)} ile eşleşen kayıtları filtrele | type=button |
 | 728 | Düğme | ${escapeHtml(translateUiText('Yenile'))} | id=refreshAssetSoftwareInventory; type=button |
 | 729 | Düğme | ${escapeHtml(c.name)} | type=button |
 | 730 | Düğme | Ayrıntı | type=button |
@@ -2040,157 +2040,163 @@ Oluşturulma: 2026-10-21T11:51:06.218Z
 | 80 | Düğme | Kapat | id=platformReauthClose; type=button |
 | 81 | Düğme | İptal | id=platformReauthCancel; type=button |
 | 82 | Düğme | Doğrula ve devam et | id=platformReauthSubmit; type=submit |
-| 83 | Düğme | ✕ | type=button |
-| 84 | Düğme | Kapat | type=button |
-| 85 | Düğme | Kapat | id=closeMemberInvite; type=button |
-| 86 | Düğme | İptal | id=cancelMemberInvite; type=button |
-| 87 | Düğme | Davet gönder | id=submitMemberInvite; type=submit |
-| 88 | Düğme | Kapat | id=closePaymentFollowUp; type=button |
-| 89 | Düğme | Vazgeç | id=cancelPaymentFollowUp; type=button |
-| 90 | Düğme | Takip kaydını ekle | type=submit |
-| 91 | Düğme | Hesabı aç | type=button |
-| 92 | Düğme | Aç | id=${esc(x.id)} |
-| 93 | Düğme | Takip kaydı |  |
-| 94 | Düğme | Detay | id=${c.id}; action=details |
-| 95 | Düğme | ${c.isActive?'Askıya al':'Etkinleştir'} | id=${c.id}; action=toggle |
-| 96 | Düğme | Demo | id=${c.id}; action=demo |
-| 97 | Düğme | Uzat | id=${c.id}; action=extend |
-| 98 | Düğme | Yaşam döngüsünü kaydet | type=submit |
-| 99 | Düğme | Önceki sayfa |  |
-| 100 | Düğme | =d.membersTotalPages?'disabled':''}>Sonraki sayfa |  |
-| 101 | Düğme | Yetkili erişim e-postasını yeniden gönder |  |
-| 102 | Düğme | Düzenle |  |
-| 103 | Düğme | Düzenle |  |
-| 104 | Düğme | Düzenle |  |
-| 105 | Düğme | Aç |  |
-| 106 | Girdi alanı | email | type=email; name=email |
-| 107 | Girdi alanı | password | type=password; name=password |
-| 108 | Girdi alanı | twoFactorCode | type=text; name=twoFactorCode |
-| 109 | Girdi alanı | rememberMe | type=checkbox; name=rememberMe |
-| 110 | Girdi alanı | currentPassword | type=password; name=currentPassword |
-| 111 | Girdi alanı | platformMfaSecret | id=platformMfaSecret |
-| 112 | Girdi alanı | platformMfaCode | id=platformMfaCode |
-| 113 | Girdi alanı | platformMfaSavedRecovery | id=platformMfaSavedRecovery; type=checkbox |
-| 114 | Girdi alanı | Firma veya e-posta ara (Ctrl+K) | id=globalSearch |
-| 115 | Girdi alanı | companySearch | id=companySearch |
-| 116 | Seçim alanı | (değer yok): Tüm durumlar, true: Aktif, false: Askıdaki | id=companyActive; seçenekler=(değer yok): Tüm durumlar, true: Aktif, false: Askıdaki |
-| 117 | Seçim alanı | Paket filtresi | id=companyPlan; seçenekler=(değer yok): Tüm paketler |
-| 118 | Girdi alanı | Kayıt tarihi başlangıcı | id=companyCreatedFrom; type=date |
-| 119 | Girdi alanı | Kayıt tarihi bitişi | id=companyCreatedTo; type=date |
-| 120 | Seçim alanı | Sıralama | id=companySort; seçenekler=name:asc: Firma adı A–Z, name:desc: Firma adı Z–A, createdAt:desc: En yeni kayıt, createdAt:asc: En eski kayıt, status:asc: Durum: askıdaki önce, status:desc: Durum: aktif önce, followUp:asc: Takip tarihi artan, followUp:desc: Takip tarihi azalan |
-| 121 | Seçim alanı | Sayfa başına firma | id=companyPageSize; seçenekler=50: 50 / sayfa, 100: 100 / sayfa, 250: 250 / sayfa |
-| 122 | Girdi alanı | orderSearch | id=orderSearch |
-| 123 | Seçim alanı | (değer yok): Tüm durumlar, Provisioned: Şirket açıldı, PaymentStarted: Ödeme başladı, PaymentReview: İnceleme bekliyor, PaymentFailed: Ödeme başarısız, ProvisioningFailed: Şirket açılamadı, Expired: Süresi doldu, Pending: Bekliyor | id=orderStatus; seçenekler=(değer yok): Tüm durumlar, Provisioned: Şirket açıldı, PaymentStarted: Ödeme başladı, PaymentReview: İnceleme bekliyor, PaymentFailed: Ödeme başarısız, ProvisioningFailed: Şirket açılamadı, Expired: Süresi doldu, Pending: Bekliyor |
-| 124 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
-| 125 | Girdi alanı | code | name=code |
-| 126 | Seçim alanı | discountType | name=discountType; seçenekler=Percent: Yüzde, Fixed: Sabit tutar |
-| 127 | Girdi alanı | discountValue | type=number; name=discountValue |
-| 128 | Girdi alanı | currency | name=currency |
-| 129 | Seçim alanı | planId | name=planId; seçenekler=(değer yok): Tüm Cloud planları |
-| 130 | Girdi alanı | startsAt | type=datetime-local; name=startsAt |
-| 131 | Girdi alanı | endsAt | type=datetime-local; name=endsAt |
-| 132 | Girdi alanı | maxRedemptions | type=number; name=maxRedemptions |
-| 133 | Girdi alanı | maxRedemptionsPerCustomer | type=number; name=maxRedemptionsPerCustomer |
-| 134 | Seçim alanı | isActive | name=isActive; seçenekler=true: Etkin, false: Pasif |
-| 135 | Metin alanı | changeReason | name=changeReason |
-| 136 | Metin alanı | changeReason | name=changeReason |
-| 137 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
-| 138 | Girdi alanı | code | name=code |
-| 139 | Girdi alanı | name | name=name |
-| 140 | Seçim alanı | deploymentKind | name=deploymentKind; seçenekler=cloud: Bulut, local-windows: Windows 11 Yerel, windows-server: Windows Server, linux: Linux |
-| 141 | Seçim alanı | currency | name=currency; seçenekler=(değer yok): TRY, (değer yok): EUR, (değer yok): USD, (değer yok): GBP, (değer yok): RSD, (değer yok): MKD, (değer yok): UAH, (değer yok): RUB, (değer yok): CHF |
-| 142 | Girdi alanı | maxLoginUsers | id=planMaxLoginUsers; type=number; name=maxLoginUsers |
-| 143 | Girdi alanı | maxAssets | type=number; name=maxAssets |
-| 144 | Girdi alanı | monthlyPrice | type=number; name=monthlyPrice |
-| 145 | Girdi alanı | annualPrice | type=number; name=annualPrice |
-| 146 | Girdi alanı | oneTimePrice | type=number; name=oneTimePrice |
-| 147 | Girdi alanı | offlineGraceDays | type=number; name=offlineGraceDays |
-| 148 | Metin alanı | description | name=description |
-| 149 | Metin alanı | featureFlagsJson | name=featureFlagsJson |
-| 150 | Girdi alanı | planReportsEnabled | id=planReportsEnabled; type=checkbox |
-| 151 | Girdi alanı | planApiEnabled | id=planApiEnabled; type=checkbox |
-| 152 | Girdi alanı | planMaintenanceEnabled | id=planMaintenanceEnabled; type=checkbox |
-| 153 | Girdi alanı | supportsOfflineUse | type=checkbox; name=supportsOfflineUse |
-| 154 | Girdi alanı | isPublic | type=checkbox; name=isPublic |
-| 155 | Girdi alanı | isActive | type=checkbox; name=isActive |
-| 156 | Girdi alanı | sortOrder | type=number; name=sortOrder |
-| 157 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
-| 158 | Girdi alanı | key | name=key |
-| 159 | Girdi alanı | title | name=title |
-| 160 | Metin alanı | body | name=body |
-| 161 | Girdi alanı | mediaPath | name=mediaPath |
-| 162 | Girdi alanı | isPublished | type=checkbox; name=isPublished |
-| 163 | Girdi alanı | auditRetentionDays | id=auditRetentionDays; type=number |
-| 164 | Girdi alanı | auditRetentionConfirmation | id=auditRetentionConfirmation; type=text |
-| 165 | Girdi alanı | auditSearch | id=auditSearch; type=search |
-| 166 | Seçim alanı | (değer yok): Tüm kaynaklar, platform: Platform, company: Şirket | id=auditSource; seçenekler=(değer yok): Tüm kaynaklar, platform: Platform, company: Şirket |
-| 167 | Girdi alanı | auditAction | id=auditAction |
-| 168 | Girdi alanı | auditTargetType | id=auditTargetType |
-| 169 | Girdi alanı | auditFrom | id=auditFrom; type=date |
-| 170 | Girdi alanı | auditTo | id=auditTo; type=date |
-| 171 | Girdi alanı | memberSearch | id=memberSearch |
-| 172 | Girdi alanı | demoLeadSearch | id=demoLeadSearch |
-| 173 | Seçim alanı | (değer yok): Tüm durumlar, New: Yeni, Contacted: İletişime geçildi, Qualified: Nitelikli, DemoScheduled: Demo planlandı, DemoGranted: Demo açıldı, Converted: Müşteri oldu, Closed: Kapalı | id=demoLeadStatus; seçenekler=(değer yok): Tüm durumlar, New: Yeni, Contacted: İletişime geçildi, Qualified: Nitelikli, DemoScheduled: Demo planlandı, DemoGranted: Demo açıldı, Converted: Müşteri oldu, Closed: Kapalı |
-| 174 | Seçim alanı | Takip tarihi filtresi | id=demoLeadFollowUp; seçenekler=(değer yok): Tüm takipler, overdue: Takibi gecikenler |
-| 175 | Girdi alanı | supportSearch | id=supportSearch |
-| 176 | Seçim alanı | (değer yok): Tüm durumlar, Open: Açık, InProgress: İşlemde, AwaitingCustomer: Müşteri yanıtı bekleniyor, Resolved: Çözüldü, Closed: Kapatıldı | id=supportStatus; seçenekler=(değer yok): Tüm durumlar, Open: Açık, InProgress: İşlemde, AwaitingCustomer: Müşteri yanıtı bekleniyor, Resolved: Çözüldü, Closed: Kapatıldı |
-| 177 | Metin alanı | body | name=body |
-| 178 | Seçim alanı | status | name=status; seçenekler=Open: Açık, InProgress: İşlemde, AwaitingCustomer: Müşteri yanıtı bekleniyor, Resolved: Çözüldü, Closed: Kapatıldı |
-| 179 | Girdi alanı | email | type=email; name=email |
-| 180 | Girdi alanı | password | type=password; name=password |
-| 181 | Girdi alanı | code | type=text; name=code |
-| 182 | Girdi alanı | memberInviteCompanySearch | id=memberInviteCompanySearch; type=search |
-| 183 | Seçim alanı | companyId | id=memberInviteCompany; name=companyId; seçenekler=(değer yok): Önce şirketleri yükleyin |
-| 184 | Girdi alanı | fullName | name=fullName |
-| 185 | Girdi alanı | email | type=email; name=email |
-| 186 | Seçim alanı | roleKey | name=roleKey; seçenekler=viewer: Salt okunur, asset_operator: Varlık sorumlusu, asset_manager: Varlık yöneticisi, auditor: Denetçi, hr_operator: Ekip yöneticisi, admin: Şirket yöneticisi |
-| 187 | Seçim alanı | outcome | name=outcome; seçenekler=Contacted: Müşteriyle iletişim kuruldu, NoResponse: Yanıt alınamadı, ReminderScheduled: Hatırlatma planlandı, CustomerRequestedCallback: Müşteri geri arama istedi, Other: Diğer |
-| 188 | Girdi alanı | nextFollowUpAt | type=datetime-local; name=nextFollowUpAt |
-| 189 | Metin alanı | note | name=note |
-| 190 | Girdi alanı | Bu sayfadaki tüm firmaları seç | type=checkbox |
-| 191 | Girdi alanı | ${esc(c.name)} firmasını seç | type=checkbox |
-| 192 | Seçim alanı | stage | name=stage |
-| 193 | Seçim alanı | assignedAdminUserId | name=assignedAdminUserId; seçenekler=(değer yok): Atanmamış |
-| 194 | Girdi alanı | nextFollowUpAt | type=datetime-local; name=nextFollowUpAt |
-| 195 | Metin alanı | note | name=note |
-| 196 | Metin alanı | note | name=note |
-| 197 | Seçim alanı | planId | name=planId; seçenekler=${esc(plan.id)}: ${esc(plan.name)} · ${esc(plan.code)} |
-| 198 | Metin alanı | note | name=note |
+| 83 | Düğme | Vazgeç | id=impersonationCancel; type=button |
+| 84 | Düğme | Panele gir | id=impersonationSubmit; type=submit |
+| 85 | Düğme | ✕ | type=button |
+| 86 | Düğme | Kapat | type=button |
+| 87 | Düğme | Kapat | id=closeMemberInvite; type=button |
+| 88 | Düğme | İptal | id=cancelMemberInvite; type=button |
+| 89 | Düğme | Davet gönder | id=submitMemberInvite; type=submit |
+| 90 | Düğme | Kapat | id=closePaymentFollowUp; type=button |
+| 91 | Düğme | Vazgeç | id=cancelPaymentFollowUp; type=button |
+| 92 | Düğme | Takip kaydını ekle | type=submit |
+| 93 | Düğme | Hesabı aç | type=button |
+| 94 | Düğme | Aç | id=${esc(x.id)} |
+| 95 | Düğme | Takip kaydı |  |
+| 96 | Düğme | Detay | id=${c.id}; action=details |
+| 97 | Düğme | ${c.isActive?'Askıya al':'Etkinleştir'} | id=${c.id}; action=toggle |
+| 98 | Düğme | Demo | id=${c.id}; action=demo |
+| 99 | Düğme | Uzat | id=${c.id}; action=extend |
+| 100 | Düğme | Yaşam döngüsünü kaydet | type=submit |
+| 101 | Düğme | ${esc(m.displayName)} | name=${esc(m.displayName)} |
+| 102 | Düğme | Önceki sayfa |  |
+| 103 | Düğme | =d.membersTotalPages?'disabled':''}>Sonraki sayfa |  |
+| 104 | Düğme | Yetkili erişim e-postasını yeniden gönder |  |
+| 105 | Düğme | Düzenle |  |
+| 106 | Düğme | Düzenle |  |
+| 107 | Düğme | Düzenle |  |
+| 108 | Düğme | Aç |  |
+| 109 | Girdi alanı | email | type=email; name=email |
+| 110 | Girdi alanı | password | type=password; name=password |
+| 111 | Girdi alanı | twoFactorCode | type=text; name=twoFactorCode |
+| 112 | Girdi alanı | rememberMe | type=checkbox; name=rememberMe |
+| 113 | Girdi alanı | currentPassword | type=password; name=currentPassword |
+| 114 | Girdi alanı | platformMfaSecret | id=platformMfaSecret |
+| 115 | Girdi alanı | platformMfaCode | id=platformMfaCode |
+| 116 | Girdi alanı | platformMfaSavedRecovery | id=platformMfaSavedRecovery; type=checkbox |
+| 117 | Girdi alanı | Firma veya e-posta ara (Ctrl+K) | id=globalSearch |
+| 118 | Girdi alanı | companySearch | id=companySearch |
+| 119 | Seçim alanı | (değer yok): Tüm durumlar, true: Aktif, false: Askıdaki | id=companyActive; seçenekler=(değer yok): Tüm durumlar, true: Aktif, false: Askıdaki |
+| 120 | Seçim alanı | Paket filtresi | id=companyPlan; seçenekler=(değer yok): Tüm paketler |
+| 121 | Girdi alanı | Kayıt tarihi başlangıcı | id=companyCreatedFrom; type=date |
+| 122 | Girdi alanı | Kayıt tarihi bitişi | id=companyCreatedTo; type=date |
+| 123 | Seçim alanı | Sıralama | id=companySort; seçenekler=name:asc: Firma adı A–Z, name:desc: Firma adı Z–A, createdAt:desc: En yeni kayıt, createdAt:asc: En eski kayıt, status:asc: Durum: askıdaki önce, status:desc: Durum: aktif önce, followUp:asc: Takip tarihi artan, followUp:desc: Takip tarihi azalan |
+| 124 | Seçim alanı | Sayfa başına firma | id=companyPageSize; seçenekler=50: 50 / sayfa, 100: 100 / sayfa, 250: 250 / sayfa |
+| 125 | Girdi alanı | orderSearch | id=orderSearch |
+| 126 | Seçim alanı | (değer yok): Tüm durumlar, Provisioned: Şirket açıldı, PaymentStarted: Ödeme başladı, PaymentReview: İnceleme bekliyor, PaymentFailed: Ödeme başarısız, ProvisioningFailed: Şirket açılamadı, Expired: Süresi doldu, Pending: Bekliyor | id=orderStatus; seçenekler=(değer yok): Tüm durumlar, Provisioned: Şirket açıldı, PaymentStarted: Ödeme başladı, PaymentReview: İnceleme bekliyor, PaymentFailed: Ödeme başarısız, ProvisioningFailed: Şirket açılamadı, Expired: Süresi doldu, Pending: Bekliyor |
+| 127 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
+| 128 | Girdi alanı | code | name=code |
+| 129 | Seçim alanı | discountType | name=discountType; seçenekler=Percent: Yüzde, Fixed: Sabit tutar |
+| 130 | Girdi alanı | discountValue | type=number; name=discountValue |
+| 131 | Girdi alanı | currency | name=currency |
+| 132 | Seçim alanı | planId | name=planId; seçenekler=(değer yok): Tüm Cloud planları |
+| 133 | Girdi alanı | startsAt | type=datetime-local; name=startsAt |
+| 134 | Girdi alanı | endsAt | type=datetime-local; name=endsAt |
+| 135 | Girdi alanı | maxRedemptions | type=number; name=maxRedemptions |
+| 136 | Girdi alanı | maxRedemptionsPerCustomer | type=number; name=maxRedemptionsPerCustomer |
+| 137 | Seçim alanı | isActive | name=isActive; seçenekler=true: Etkin, false: Pasif |
+| 138 | Metin alanı | changeReason | name=changeReason |
+| 139 | Metin alanı | changeReason | name=changeReason |
+| 140 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
+| 141 | Girdi alanı | code | name=code |
+| 142 | Girdi alanı | name | name=name |
+| 143 | Seçim alanı | deploymentKind | name=deploymentKind; seçenekler=cloud: Bulut, local-windows: Windows 11 Yerel, windows-server: Windows Server, linux: Linux |
+| 144 | Seçim alanı | currency | name=currency; seçenekler=(değer yok): TRY, (değer yok): EUR, (değer yok): USD, (değer yok): GBP, (değer yok): RSD, (değer yok): MKD, (değer yok): UAH, (değer yok): RUB, (değer yok): CHF |
+| 145 | Girdi alanı | maxLoginUsers | id=planMaxLoginUsers; type=number; name=maxLoginUsers |
+| 146 | Girdi alanı | maxAssets | type=number; name=maxAssets |
+| 147 | Girdi alanı | monthlyPrice | type=number; name=monthlyPrice |
+| 148 | Girdi alanı | annualPrice | type=number; name=annualPrice |
+| 149 | Girdi alanı | oneTimePrice | type=number; name=oneTimePrice |
+| 150 | Girdi alanı | offlineGraceDays | type=number; name=offlineGraceDays |
+| 151 | Metin alanı | description | name=description |
+| 152 | Metin alanı | featureFlagsJson | name=featureFlagsJson |
+| 153 | Girdi alanı | planReportsEnabled | id=planReportsEnabled; type=checkbox |
+| 154 | Girdi alanı | planApiEnabled | id=planApiEnabled; type=checkbox |
+| 155 | Girdi alanı | planMaintenanceEnabled | id=planMaintenanceEnabled; type=checkbox |
+| 156 | Girdi alanı | supportsOfflineUse | type=checkbox; name=supportsOfflineUse |
+| 157 | Girdi alanı | isPublic | type=checkbox; name=isPublic |
+| 158 | Girdi alanı | isActive | type=checkbox; name=isActive |
+| 159 | Girdi alanı | sortOrder | type=number; name=sortOrder |
+| 160 | Girdi alanı | id | type=hidden; name=id; başlangıçta gizli |
+| 161 | Girdi alanı | key | name=key |
+| 162 | Girdi alanı | title | name=title |
+| 163 | Metin alanı | body | name=body |
+| 164 | Girdi alanı | mediaPath | name=mediaPath |
+| 165 | Girdi alanı | isPublished | type=checkbox; name=isPublished |
+| 166 | Girdi alanı | auditRetentionDays | id=auditRetentionDays; type=number |
+| 167 | Girdi alanı | auditRetentionConfirmation | id=auditRetentionConfirmation; type=text |
+| 168 | Girdi alanı | auditSearch | id=auditSearch; type=search |
+| 169 | Seçim alanı | (değer yok): Tüm kaynaklar, platform: Platform, company: Şirket | id=auditSource; seçenekler=(değer yok): Tüm kaynaklar, platform: Platform, company: Şirket |
+| 170 | Girdi alanı | auditAction | id=auditAction |
+| 171 | Girdi alanı | auditTargetType | id=auditTargetType |
+| 172 | Girdi alanı | auditFrom | id=auditFrom; type=date |
+| 173 | Girdi alanı | auditTo | id=auditTo; type=date |
+| 174 | Girdi alanı | memberSearch | id=memberSearch |
+| 175 | Girdi alanı | demoLeadSearch | id=demoLeadSearch |
+| 176 | Seçim alanı | (değer yok): Tüm durumlar, New: Yeni, Contacted: İletişime geçildi, Qualified: Nitelikli, DemoScheduled: Demo planlandı, DemoGranted: Demo açıldı, Converted: Müşteri oldu, Closed: Kapalı | id=demoLeadStatus; seçenekler=(değer yok): Tüm durumlar, New: Yeni, Contacted: İletişime geçildi, Qualified: Nitelikli, DemoScheduled: Demo planlandı, DemoGranted: Demo açıldı, Converted: Müşteri oldu, Closed: Kapalı |
+| 177 | Seçim alanı | Takip tarihi filtresi | id=demoLeadFollowUp; seçenekler=(değer yok): Tüm takipler, overdue: Takibi gecikenler |
+| 178 | Girdi alanı | supportSearch | id=supportSearch |
+| 179 | Seçim alanı | (değer yok): Tüm durumlar, Open: Açık, InProgress: İşlemde, AwaitingCustomer: Müşteri yanıtı bekleniyor, Resolved: Çözüldü, Closed: Kapatıldı | id=supportStatus; seçenekler=(değer yok): Tüm durumlar, Open: Açık, InProgress: İşlemde, AwaitingCustomer: Müşteri yanıtı bekleniyor, Resolved: Çözüldü, Closed: Kapatıldı |
+| 180 | Metin alanı | body | name=body |
+| 181 | Seçim alanı | status | name=status; seçenekler=Open: Açık, InProgress: İşlemde, AwaitingCustomer: Müşteri yanıtı bekleniyor, Resolved: Çözüldü, Closed: Kapatıldı |
+| 182 | Girdi alanı | email | type=email; name=email |
+| 183 | Girdi alanı | password | type=password; name=password |
+| 184 | Girdi alanı | code | type=text; name=code |
+| 185 | Metin alanı | reason | name=reason |
+| 186 | Girdi alanı | memberInviteCompanySearch | id=memberInviteCompanySearch; type=search |
+| 187 | Seçim alanı | companyId | id=memberInviteCompany; name=companyId; seçenekler=(değer yok): Önce şirketleri yükleyin |
+| 188 | Girdi alanı | fullName | name=fullName |
+| 189 | Girdi alanı | email | type=email; name=email |
+| 190 | Seçim alanı | roleKey | name=roleKey; seçenekler=viewer: Salt okunur, asset_operator: Varlık sorumlusu, asset_manager: Varlık yöneticisi, auditor: Denetçi, hr_operator: Ekip yöneticisi, admin: Şirket yöneticisi |
+| 191 | Seçim alanı | outcome | name=outcome; seçenekler=Contacted: Müşteriyle iletişim kuruldu, NoResponse: Yanıt alınamadı, ReminderScheduled: Hatırlatma planlandı, CustomerRequestedCallback: Müşteri geri arama istedi, Other: Diğer |
+| 192 | Girdi alanı | nextFollowUpAt | type=datetime-local; name=nextFollowUpAt |
+| 193 | Metin alanı | note | name=note |
+| 194 | Girdi alanı | Bu sayfadaki tüm firmaları seç | type=checkbox |
+| 195 | Girdi alanı | ${esc(c.name)} firmasını seç | type=checkbox |
+| 196 | Seçim alanı | stage | name=stage |
+| 197 | Seçim alanı | assignedAdminUserId | name=assignedAdminUserId; seçenekler=(değer yok): Atanmamış |
+| 198 | Girdi alanı | nextFollowUpAt | type=datetime-local; name=nextFollowUpAt |
 | 199 | Metin alanı | note | name=note |
-| 200 | Seçim alanı | planId | name=planId; seçenekler=${esc(p.id)}: ${esc(p.name)} — ${esc(p.deploymentKind)} |
-| 201 | Girdi alanı | days | type=number; name=days |
-| 202 | Girdi alanı | note | name=note |
-| 203 | Girdi alanı | companyName | name=companyName |
-| 204 | Girdi alanı | slug | name=slug |
-| 205 | Girdi alanı | contactEmail | type=email; name=contactEmail |
-| 206 | Girdi alanı | ownerName | name=ownerName |
-| 207 | Girdi alanı | ownerEmail | type=email; name=ownerEmail |
-| 208 | Seçim alanı | planId | name=planId; seçenekler=${esc(p.id)}: ${esc(p.name)} · ${esc(p.code)} |
-| 209 | Girdi alanı | termDays | type=number; name=termDays |
-| 210 | Girdi alanı | paymentReference | name=paymentReference |
-| 211 | Girdi alanı | paymentVerified | type=checkbox; name=paymentVerified |
-| 212 | Girdi alanı | endsAt | type=datetime-local; name=endsAt |
-| 213 | Girdi alanı | note | name=note |
-| 214 | Form | loginForm | id=loginForm |
-| 215 | Form | platformMfaSetupForm | id=platformMfaSetupForm |
-| 216 | Form | couponForm | id=couponForm |
-| 217 | Form | planForm | id=planForm |
-| 218 | Form | contentForm | id=contentForm |
-| 219 | Form | supportAdminReply | id=supportAdminReply |
-| 220 | Form | supportAdminStatus | id=supportAdminStatus |
-| 221 | Form | actionForm | id=actionForm |
-| 222 | Form | platformRecoveryForm | id=platformRecoveryForm |
-| 223 | Form | platformReauthForm | id=platformReauthForm |
-| 224 | Form | memberInviteForm | id=memberInviteForm |
-| 225 | Form | paymentFollowUpForm | id=paymentFollowUpForm |
-| 226 | Form | companyLifecycleForm | id=companyLifecycleForm |
-| 227 | Modal | İşlem | id=actionDialog; type=button |
-| 228 | Modal | Kapat | id=platformRecoveryDialog; type=button; name=email |
-| 229 | Modal | Kapat | id=platformReauthDialog; type=button; name=password |
-| 230 | Modal | Firma ayrıntısı | id=companyDetailDialog; type=button |
-| 231 | Modal | companyId | id=memberInviteDialog; type=button; name=companyId |
-| 232 | Modal | Kapat | id=paymentFollowUpDialog; type=button; name=outcome |
-| 233 | Tablo | ${x} |  |
+| 200 | Metin alanı | note | name=note |
+| 201 | Seçim alanı | planId | name=planId; seçenekler=${esc(plan.id)}: ${esc(plan.name)} · ${esc(plan.code)} |
+| 202 | Metin alanı | note | name=note |
+| 203 | Metin alanı | note | name=note |
+| 204 | Seçim alanı | planId | name=planId; seçenekler=${esc(p.id)}: ${esc(p.name)} — ${esc(p.deploymentKind)} |
+| 205 | Girdi alanı | days | type=number; name=days |
+| 206 | Girdi alanı | note | name=note |
+| 207 | Girdi alanı | companyName | name=companyName |
+| 208 | Girdi alanı | slug | name=slug |
+| 209 | Girdi alanı | contactEmail | type=email; name=contactEmail |
+| 210 | Girdi alanı | ownerName | name=ownerName |
+| 211 | Girdi alanı | ownerEmail | type=email; name=ownerEmail |
+| 212 | Seçim alanı | planId | name=planId; seçenekler=${esc(p.id)}: ${esc(p.name)} · ${esc(p.code)} |
+| 213 | Girdi alanı | termDays | type=number; name=termDays |
+| 214 | Girdi alanı | paymentReference | name=paymentReference |
+| 215 | Girdi alanı | paymentVerified | type=checkbox; name=paymentVerified |
+| 216 | Girdi alanı | endsAt | type=datetime-local; name=endsAt |
+| 217 | Girdi alanı | note | name=note |
+| 218 | Form | loginForm | id=loginForm |
+| 219 | Form | platformMfaSetupForm | id=platformMfaSetupForm |
+| 220 | Form | couponForm | id=couponForm |
+| 221 | Form | planForm | id=planForm |
+| 222 | Form | contentForm | id=contentForm |
+| 223 | Form | supportAdminReply | id=supportAdminReply |
+| 224 | Form | supportAdminStatus | id=supportAdminStatus |
+| 225 | Form | actionForm | id=actionForm |
+| 226 | Form | platformRecoveryForm | id=platformRecoveryForm |
+| 227 | Form | platformReauthForm | id=platformReauthForm |
+| 228 | Form | impersonationForm | id=impersonationForm |
+| 229 | Form | memberInviteForm | id=memberInviteForm |
+| 230 | Form | paymentFollowUpForm | id=paymentFollowUpForm |
+| 231 | Form | companyLifecycleForm | id=companyLifecycleForm |
+| 232 | Modal | İşlem | id=actionDialog; type=button |
+| 233 | Modal | Kapat | id=platformRecoveryDialog; type=button; name=email |
+| 234 | Modal | Kapat | id=platformReauthDialog; type=button; name=password |
+| 235 | Modal | reason | id=impersonationDialog; type=button; name=reason |
+| 236 | Modal | Firma ayrıntısı | id=companyDetailDialog; type=button |
+| 237 | Modal | companyId | id=memberInviteDialog; type=button; name=companyId |
+| 238 | Modal | Kapat | id=paymentFollowUpDialog; type=button; name=outcome |
+| 239 | Tablo | ${x} |  |
 
 ### Platform kurulumu — `src/EnvanterTR.Web/wwwroot/platform-setup.html`
 
