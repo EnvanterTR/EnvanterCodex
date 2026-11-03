@@ -3039,7 +3039,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                    JsonContent.Create(Request("Plan açılış gerekçesi"))))
             Assert.Equal(HttpStatusCode.BadRequest, noCsrf.StatusCode);
         using (var invalidCloudLimit = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/plans",
-                   JsonContent.Create(Request("Plan açılış gerekçesi", maxLoginUsers: 10)), requestToken, antiforgeryCookie))
+                   JsonContent.Create(Request("Plan açılış gerekçesi", maxLoginUsers: 0)), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.BadRequest, invalidCloudLimit.StatusCode);
         using (var missingReason = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/plans",
                    JsonContent.Create(Request("   ")), requestToken, antiforgeryCookie))
@@ -3049,7 +3049,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             Assert.Equal(HttpStatusCode.Forbidden, companyAdminDenied.StatusCode);
 
         using var create = await SendAsPlatformAdminRequestAsync(HttpMethod.Post, "/api/platform/plans",
-            JsonContent.Create(Request("Cloud paket kataloğunu başlat")), requestToken, antiforgeryCookie);
+            JsonContent.Create(Request("Cloud paket kataloğunu başlat", maxLoginUsers: 10)), requestToken, antiforgeryCookie);
         Assert.Equal(HttpStatusCode.Created, create.StatusCode);
         using var createdPayload = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
         var planId = createdPayload.RootElement.GetProperty("id").GetGuid();
@@ -3064,14 +3064,14 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             using var payload = JsonDocument.Parse(await publicPlans.Content.ReadAsStringAsync());
             var published = payload.RootElement.EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == planId);
             Assert.Equal(1200m, published.GetProperty("monthlyPrice").GetDecimal());
-            Assert.Equal(JsonValueKind.Null, published.GetProperty("maxLoginUsers").ValueKind);
+            Assert.Equal(10, published.GetProperty("maxLoginUsers").GetInt32());
         }
 
         using (var tooShortReason = await SendAsPlatformAdminRequestAsync(HttpMethod.Put, $"/api/platform/plans/{planId}",
                    JsonContent.Create(Request("kısa", monthly: 1800m)), requestToken, antiforgeryCookie))
             Assert.Equal(HttpStatusCode.BadRequest, tooShortReason.StatusCode);
         using var update = await SendAsPlatformAdminRequestAsync(HttpMethod.Put, $"/api/platform/plans/{planId}",
-            JsonContent.Create(Request("Maliyet ve yıllık fiyatlandırma güncellendi", "Cloud package v2", 1800m, 18000m, isPublic: false)),
+            JsonContent.Create(Request("Maliyet ve yıllık fiyatlandırma güncellendi", "Cloud package v2", 1800m, 18000m, isPublic: false, maxLoginUsers: 20)),
             requestToken, antiforgeryCookie);
         Assert.Equal(HttpStatusCode.OK, update.StatusCode);
         using (var publicPlans = await _client.GetAsync("/api/plans"))
@@ -3085,6 +3085,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             var updated = payload.RootElement.EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == planId);
             Assert.Equal("Cloud package v2", updated.GetProperty("name").GetString());
             Assert.Equal(1800m, updated.GetProperty("monthlyPrice").GetDecimal());
+            Assert.Equal(20, updated.GetProperty("maxLoginUsers").GetInt32());
             Assert.Equal("{\"reports\":true,\"api\":true,\"maintenance\":true}", updated.GetProperty("featureFlagsJson").GetString());
             Assert.False(updated.GetProperty("isPublic").GetBoolean());
         }
@@ -5658,12 +5659,12 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Cloud_company_invites_are_unlimited_even_for_legacy_capped_plans_while_local_caps_remain_enforced()
+    public async Task Cloud_company_invites_obey_plan_seat_caps_while_local_caps_remain_enforced()
     {
         var plan = new SubscriptionPlan
         {
             Code = $"c-{_companyId:N}", Name = "Cloud invite regression", DeploymentKind = "cloud",
-            MaxLoginUsers = 1, IsActive = true, IsPublic = true
+            MaxLoginUsers = 4, IsActive = true, IsPublic = true
         };
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
@@ -5692,7 +5693,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
             var cloudPlan = plansPayload.RootElement.EnumerateArray()
                 .Single(x => x.GetProperty("code").GetString() == plan.Code);
             Assert.Equal("cloud", cloudPlan.GetProperty("deploymentKind").GetString());
-            Assert.Equal(JsonValueKind.Null, cloudPlan.GetProperty("maxLoginUsers").ValueKind);
+            Assert.Equal(4, cloudPlan.GetProperty("maxLoginUsers").GetInt32());
         }
 
         var cloudInviteEmail = $"cloud-invite-{Guid.NewGuid():N}@example.invalid";
@@ -5700,6 +5701,15 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
                    System.Net.Http.Json.JsonContent.Create(new { fullName = "Cloud invite regression", email = cloudInviteEmail, roleKey = "viewer" }),
                    requestToken, antiforgeryCookie, role: "admin"))
             Assert.Equal(HttpStatusCode.Created, cloudInvite.StatusCode);
+
+        var overLimitInviteEmail = $"cloud-over-limit-{Guid.NewGuid():N}@example.invalid";
+        using (var overLimitInvite = await SendAsUserAsync(HttpMethod.Post, "/api/members/invite", _userId, _companyId,
+                   System.Net.Http.Json.JsonContent.Create(new { fullName = "Over limit invite", email = overLimitInviteEmail, roleKey = "viewer" }),
+                   requestToken, antiforgeryCookie, role: "admin"))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, overLimitInvite.StatusCode);
+            Assert.Contains("4 giriş hesabıyla sınırlı", await overLimitInvite.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        }
 
         await using (var scope = _factory!.Services.CreateAsyncScope())
         {
@@ -5720,7 +5730,7 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
         {
             Assert.Equal(HttpStatusCode.Conflict, localInvite.StatusCode);
             var body = await localInvite.Content.ReadAsStringAsync();
-            Assert.Contains("1 giriş hesabıyla sınırlı", body, StringComparison.Ordinal);
+            Assert.Contains("4 giriş hesabıyla sınırlı", body, StringComparison.Ordinal);
         }
     }
 

@@ -7,7 +7,7 @@
       secure: 'Güvenli ödeme adımı', back: '← Paketlere dön', eyebrow: 'ENVANTERTR CLOUD · SATIN ALMA',
       title: 'Şirket alanınızı oluşturun', intro: 'Planınızı seçin, firma ve fatura bilgilerini girin. Ödeme sağlayıcısında doğrulandıktan sonra şirket hesabınız açılır.',
       loading: 'Plan ve ödeme durumu kontrol ediliyor…', summary: 'Sipariş özeti', monthly: 'Aylık', annual: 'Yıllık',
-      users: 'Cloud kullanıcı sayısı', unlimited: 'Sınırsız', paymentNote: 'Tutar etkin plan fiyatından sunucuda hesaplanır. Kart bilgileri iyzico’nun güvenli ödeme ekranında girilir.',
+      users: 'Paket kapasitesi', paymentNote: 'Tutar etkin plan fiyatından sunucuda hesaplanır. Kart bilgileri iyzico’nun güvenli ödeme ekranında girilir.',
       companyDetails: 'Şirket ve fatura bilgileri', formIntro: 'Şirket hesabının sahibi bu e-posta ile davet edilir. Burada parola veya kart bilgisi istenmez.',
       companyName: 'Şirket adı', slug: 'Şirket web adresi', slugHelp: 'Şirket adından önerilir: Farma A.Ş. → farma.envantertr.com. Adresi değiştirebilirsiniz.', firstName: 'Yetkili adı', lastName: 'Yetkili soyadı', email: 'Hesap e-postası',
       phone: 'Telefon · ülke koduyla', identity: 'T.C. kimlik numarası', zip: 'Posta kodu', address: 'Fatura adresi', city: 'Şehir', country: 'Ülke',
@@ -32,7 +32,7 @@
       secure: 'Secure payment step', back: '← Back to plans', eyebrow: 'ENVANTERTR CLOUD · CHECKOUT',
       title: 'Create your company workspace', intro: 'Choose a plan and enter company and billing details. Your workspace opens after the payment provider verifies the payment.',
       loading: 'Checking plan and payment availability…', summary: 'Order summary', monthly: 'Monthly', annual: 'Annual',
-      users: 'Cloud users', unlimited: 'Unlimited', paymentNote: 'The server calculates the amount from the active plan. Card details are entered on iyzico’s secure payment page.',
+      users: 'Plan capacity', paymentNote: 'The server calculates the amount from the active plan. Card details are entered on iyzico’s secure payment page.',
       companyDetails: 'Company and billing details', formIntro: 'The workspace owner will receive an invitation at this email. No password or card details are collected here.',
       companyName: 'Company name', slug: 'Workspace web address', slugHelp: 'Suggested from the company name: Farma A.Ş. → farma.envantertr.com. You can edit the address.', firstName: 'Contact first name', lastName: 'Contact last name', email: 'Account email',
       phone: 'Phone · include country code', identity: 'National identity number', zip: 'Postal code', address: 'Billing address', city: 'City', country: 'Country',
@@ -57,7 +57,7 @@
       secure: 'Безопасный шаг оплаты', back: '← Назад к планам', eyebrow: 'ENVANTERTR CLOUD · ПОКУПКА',
       title: 'Создайте рабочее пространство компании', intro: 'Выберите план и заполните сведения о компании и оплате. Пространство откроется после подтверждения платежа провайдером.',
       loading: 'Проверка плана и доступности оплаты…', summary: 'Сводка заказа', monthly: 'Месяц', annual: 'Год',
-      users: 'Пользователи Cloud', unlimited: 'Без ограничений', paymentNote: 'Сумма рассчитывается сервером по действующему плану. Данные карты вводятся на защищённой странице iyzico.',
+      users: 'Лимиты плана', paymentNote: 'Сумма рассчитывается сервером по действующему плану. Данные карты вводятся на защищённой странице iyzico.',
       companyDetails: 'Данные компании и оплаты', formIntro: 'Владелец компании получит приглашение на этот адрес. Пароль и данные карты здесь не запрашиваются.',
       companyName: 'Название компании', slug: 'Веб-адрес компании', slugHelp: 'Предлагается по названию компании: Farma A.Ş. → farma.envantertr.com. Адрес можно изменить.', firstName: 'Имя контактного лица', lastName: 'Фамилия контактного лица', email: 'Электронная почта аккаунта',
       phone: 'Телефон · с кодом страны', identity: 'Идентификационный номер', zip: 'Почтовый индекс', address: 'Адрес для оплаты', city: 'Город', country: 'Страна',
@@ -82,7 +82,7 @@
       secure: 'Безпечний етап оплати', back: '← Повернутися до планів', eyebrow: 'ENVANTERTR CLOUD · ПРИДБАННЯ',
       title: 'Створіть простір компанії', intro: 'Оберіть план і введіть дані компанії та оплати. Простір відкриється після підтвердження платежу провайдером.',
       loading: 'Перевіряємо план і доступність оплати…', summary: 'Підсумок замовлення', monthly: 'Місяць', annual: 'Рік',
-      users: 'Користувачі Cloud', unlimited: 'Без обмежень', paymentNote: 'Суму сервер обчислює за активним планом. Дані картки вводяться на захищеній сторінці iyzico.',
+      users: 'Ліміти плану', paymentNote: 'Суму сервер обчислює за активним планом. Дані картки вводяться на захищеній сторінці iyzico.',
       companyDetails: 'Дані компанії та оплати', formIntro: 'Власник компанії отримає запрошення на цю адресу. Пароль і дані картки тут не збираються.',
       companyName: 'Назва компанії', slug: 'Вебадреса компанії', slugHelp: 'Пропонується за назвою компанії: Farma A.Ş. → farma.envantertr.com. Адресу можна змінити.', firstName: 'Ім’я контактної особи', lastName: 'Прізвище контактної особи', email: 'Електронна пошта облікового запису',
       phone: 'Телефон · із кодом країни', identity: 'Ідентифікаційний номер', zip: 'Поштовий індекс', address: 'Платіжна адреса', city: 'Місто', country: 'Країна',
@@ -107,7 +107,7 @@
       secure: 'Безбеден чекор за плаќање', back: '← Назад кон пакетите', eyebrow: 'ENVANTERTR CLOUD · КУПУВАЊЕ',
       title: 'Создадете простор за вашата компанија', intro: 'Изберете пакет и внесете податоци за компанијата и наплатата. Просторот се отвора откако давателот ќе го потврди плаќањето.',
       loading: 'Се проверуваат пакетот и плаќањето…', summary: 'Преглед на нарачката', monthly: 'Месечно', annual: 'Годишно',
-      users: 'Cloud корисници', unlimited: 'Неограничено', paymentNote: 'Серверот ја пресметува сумата од активниот пакет. Податоците за картичката се внесуваат на безбедната страница на iyzico.',
+      users: 'Ограничувања на планот', paymentNote: 'Серверот ја пресметува сумата од активниот пакет. Податоците за картичката се внесуваат на безбедната страница на iyzico.',
       companyDetails: 'Податоци за компанијата и наплатата', formIntro: 'Сопственикот ќе добие покана на оваа е-пошта. Тука не се бара лозинка или број на картичка.',
       companyName: 'Име на компанијата', slug: 'Веб-адреса на компанијата', slugHelp: 'Се предлага според името на компанијата: Farma A.Ş. → farma.envantertr.com. Адресата може да се измени.', firstName: 'Име на контакт-лицето', lastName: 'Презиме на контакт-лицето', email: 'Е-пошта за сметката',
       phone: 'Телефон · со код на државата', identity: 'Идентификациски број', zip: 'Поштенски број', address: 'Адреса за наплата', city: 'Град', country: 'Држава',
@@ -161,6 +161,17 @@
     notice.className = `notice${kind ? ` ${kind}` : ''}`;
     notice.replaceChildren(document.createTextNode(message));
   };
+  const formatPlanLimits = (userCount, assetCount) => {
+    const values = {
+      tr: ['Sınırsız', 'kullanıcı', 'varlık'], en: ['Unlimited', 'users', 'assets'],
+      ru: ['Без ограничений', 'пользователей', 'активов'], uk: ['Без обмежень', 'користувачів', 'активів'],
+      mk: ['Неограничено', 'корисници', 'средства']
+    }[language] || ['Unlimited', 'users', 'assets'];
+    const userLabel = userCount == null ? values[0] : `${userCount} ${values[1]}`;
+    const assetLabel = assetCount == null ? values[0] : `${assetCount} ${values[2]}`;
+    return `${userLabel} · ${assetLabel}`;
+  };
+
   const money = value => {
     try { return new Intl.NumberFormat(language === 'tr' ? 'tr-TR' : language === 'mk' ? 'mk-MK' : `${language}-${language.toUpperCase()}`, { style: 'currency', currency: plan.currency || 'TRY' }).format(value); }
     catch { return `${Number(value).toLocaleString()} ${plan.currency || 'TRY'}`; }
@@ -249,7 +260,8 @@
       }
       term = Number(plan.annualPrice) > 0 ? 'annual' : 'monthly';
       $('#planName').textContent = plan.name;
-      $('#planDescription').textContent = plan.description || copy.unlimited;
+      $('#planDescription').textContent = plan.description || '';
+      $('#planLimits').textContent = formatPlanLimits(plan.maxLoginUsers, plan.maxAssets);
       refreshPrice();
       $('#checkoutLayout').classList.remove('hidden');
       if (!paymentAvailable) {

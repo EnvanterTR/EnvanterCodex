@@ -74,3 +74,11 @@ Hedef 4'teki `CODEX-HEDEF-4.md` dosyası Desktop kökünde bulundu; SHA-256'sı 
 ### WP-027 kapanışında kaydedilen sonraki adım (WP-028 ile tamamlandı)
 
 Bu tarihsel nottaki PR/CI bekleyişi artık geçerli değil: PR #34 açıldı ve workflow `41573283182` aynı SHA'da 5/5 başarıyla tamamlandı. Güncel kalan F1 operasyon kapısı Coolify canlı rollout ve sahibi tarafından yayın sonrası health/tenant smoke kanıtıdır; WP-028 bölümü güncel kayıttır.
+
+## WP-031 — DONE (yerel kod paketi; canlı F2 açık)
+
+F2 Cloud seat-limit uyumsuzluğu düzeltildi. `SubscriptionPlan.MaxLoginUsers` Cloud planları için API create/update/get/public yanıtlarında korunuyor; platform paneli bu değeri düzenleyebiliyor; iki davet endpoint'i Cloud ve self-hosted planda mevcut üyelik sayısını sınıra göre denetliyor. Ana sayfa ve checkout, API'den gelen kullanıcı/varlık sınırını gösteriyor; ana sayfa checkout bağlantısını yalnız `/api/checkout/status` `available:true` döndürürse sunuyor. Beş dildeki eski sınırsız kapasite iddiaları kaldırıldı.
+
+Kanıt: önce iki hedefli security acceptance kırmızıydı; düzeltme sonrası `deploy/testing/run-security-acceptance.ps1 -Filter ...` 2/2 PASS. Acceptance web build 0 uyarı/0 hata; `Verify-PlatformPlanManagement.mjs` ve `Verify-HostedCheckoutUi.mjs` PASS; `node --check src/EnvanterTR.PublicSite/checkout.js`, `git diff --check` PASS. Test DB ve ağı runner kaldırdı. Migration, canlı DB, ödeme veya müşteri e-postası yok.
+
+Branch `codex/f2-cloud-seat-limits-20261104`; push/PR/merge/deploy yapılmadı. F2 canlı kabul için kodun release edilmesi, platform yönetiminde sekiz mevcut Cloud planının kararlaştırılan kullanıcı sayılarıyla düzenlenmesi ve ödemesiz şirket kaydı/manuel aktivasyonunun gerçek firmada kabul edilmesi gerekir. Bu oturumda Farma owner oturumu doğrulandı; platform-admin yetkisi doğrulanmadı.
