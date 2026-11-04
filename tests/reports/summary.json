@@ -1,16 +1,12 @@
 {
   "schemaVersion": 2,
-  "measuredAt": "2026-11-04T03:08:04Z",
+  "measuredAt": "2026-11-04T03:26:30Z",
   "source": {
     "repository": "EnvanterTR/EnvanterCodex",
     "branch": "codex/f2-cloud-seat-limits-20261104",
-    "commit": "ee710088cd7a56b7176bf68218cfa6bfef7bd2ca",
-    "workingTreeCleanAtRun": false,
-    "workingTreeChangesAtMeasurement": [
-      "docs/LEDGER.md",
-      "docs/PROJECT-STATUS.md",
-      "tests/reports/summary.json"
-    ]
+    "commit": "105e932",
+    "workingTreeCleanAtRun": true,
+    "workingTreeChangesAtMeasurement": []
   },
   "currentVerification": {
     "releaseBuild": {
@@ -97,13 +93,28 @@
       "runnerCleanup": "Temporary database container and network removed"
     },
     "prCiObservation": {
-      "status": "FAIL",
-      "runId": "41763218442",
-      "headSha": "00e4e8e8bafbbecbf219baabcb217f3856d0e4e9",
-      "failedJob": "Linux tenant security acceptance",
-      "failure": "Verify-PlatformAdminExperience expected the obsolete unlimited Cloud user-cap copy",
-      "postgresJobAtLastObservation": "in_progress",
-      "note": "This run predates verifier fix 56c0fae; rerun required after push."
+      "status": "IN_PROGRESS",
+      "runId": "41765272026",
+      "headSha": "aefde3088f8368b22aea7b43dd601c32e5a5157a",
+      "observedAt": "2026-11-04T03:26:30Z",
+      "requiredJobs": 5,
+      "successfulJobs": 4,
+      "inProgressJobs": 1,
+      "failedJobs": 0,
+      "jobResults": {
+        "Platform MFA browser acceptance": "success",
+        "Linux PostgreSQL tenant acceptance": "in_progress",
+        "Windows deployment and backup safety": "success",
+        "Homepage gallery browser acceptance": "success",
+        "Linux tenant security acceptance": "success"
+      },
+      "previousRun": {
+        "runId": "41763218442",
+        "headSha": "00e4e8e8bafbbecbf219baabcb217f3856d0e4e9",
+        "status": "FAIL",
+        "cause": "Obsolete Cloud unlimited-user verifier assertion; fixed in 56c0fae"
+      },
+      "note": "Current exact-SHA CI is not terminal. Do not call the run PASS until PostgreSQL tenant acceptance completes."
     },
     "catalogCoverageAudit": {
       "status": "PASS",
