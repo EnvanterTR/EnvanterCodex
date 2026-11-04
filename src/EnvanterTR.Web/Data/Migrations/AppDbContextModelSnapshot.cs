@@ -1467,6 +1467,9 @@ namespace EnvanterTR.Web.Data.Migrations
                     b.Property<int?>("DepreciationMonths")
                         .HasColumnType("integer");
 
+                    b.Property<DateOnly?>("EndOfLifeOn")
+                        .HasColumnType("date");
+
                     b.Property<string>("ModelNumber")
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");

@@ -906,7 +906,7 @@ const server = createServer(async (request, response) => {
         })) };
     }
     else if (url.pathname === `/api/models/${modelId}/details`) result = {
-      model: { id: modelId, name: 'Synthetic Model Detail', modelNumber: 'MD-TEST', brandName: 'Synthetic Brand', categoryName: 'Synthetic equipment', depreciationMonths: 36, depreciationMinimum: null, depreciationMinimumType: 'amount', depreciationMethod: 'linear' },
+      model: { id: modelId, name: 'Synthetic Model Detail', modelNumber: 'MD-TEST', endOfLifeOn: '2030-06-30', brandName: 'Synthetic Brand', categoryName: 'Synthetic equipment', depreciationMonths: 36, depreciationMinimum: null, depreciationMinimumType: 'amount', depreciationMethod: 'linear' },
       summary: { assetTotal: 1, statuses: [{ status: 'Available', count: 1 }] },
       assets: [{ id: assetId, assetTag: asset.assetTag, name: asset.name, status: asset.status, serialNumber: asset.serialNumber, location: asset.location, employeeName: null, updatedAt: asset.updatedAt }],
       assetTotal: 1, assetListLimit: 100,
@@ -5525,6 +5525,8 @@ try {
     await page.unroute(`**/api/models/${modelId}/details`, delayModelDetails);
   }
   assert.match(await page.locator('#modelDetailsSummary').innerText(), /MD-TEST/);
+  assert.match(await page.locator('#modelDetailsSummary').innerText(), /Ömür sonu \(EOL\)/);
+  assert.match(await page.locator('#modelDetailsSummary').innerText(), /30\.06\.2030/);
   assert.match(await page.locator('#modelDetailsSummary').innerText(), /Teknik dosyalar/);
   assert.match(await page.locator('#modelDetailsAssets').innerText(), /QA-ASSET-001/);
   assert.match(await page.locator('#modelDetailsOrders').innerText(), /PO-MODEL-001/);

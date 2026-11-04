@@ -3576,7 +3576,7 @@ public static class AssetEndpoints
                             asset.ModelId == model.Id && asset.DeletedAt == null && asset.LocationCatalogId.HasValue &&
                             allowedLocations.Contains(asset.LocationCatalogId.Value)));
                     return Results.Ok((object)await models
-                        .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name, x.ModelNumber, x.BrandId,
+                        .OrderBy(x => x.Name).Select(x => new { x.Id, x.Name, x.ModelNumber, x.EndOfLifeOn, x.BrandId,
                             BrandName = db.AssetBrands.Where(b => b.CompanyId == companyId && b.Id == x.BrandId).Select(b => b.Name).FirstOrDefault(),
                             x.CategoryId, CategoryName = db.AssetCategories.Where(c => c.CompanyId == companyId && c.Id == x.CategoryId).Select(c => c.Name).FirstOrDefault(),
                             HasPhoto = x.PhotoFileName != null,
@@ -3614,7 +3614,7 @@ public static class AssetEndpoints
                 "models" => await db.AssetModels.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id &&
                         (allowedLocations == null || db.Assets.Any(asset => asset.CompanyId == companyId && asset.ModelId == x.Id &&
                             asset.DeletedAt == null && asset.LocationCatalogId.HasValue && allowedLocations.Contains(asset.LocationCatalogId.Value))))
-                    .Select(x => new { x.Id, x.Name, x.BrandId, x.CategoryId, HasPhoto = x.PhotoFileName != null, x.DepreciationMonths, x.DepreciationMinimum, x.DepreciationMinimumType, x.DepreciationMethod }).SingleOrDefaultAsync(cancellationToken),
+                    .Select(x => new { x.Id, x.Name, x.BrandId, x.CategoryId, HasPhoto = x.PhotoFileName != null, x.EndOfLifeOn, x.DepreciationMonths, x.DepreciationMinimum, x.DepreciationMinimumType, x.DepreciationMethod }).SingleOrDefaultAsync(cancellationToken),
                 "accessory-models" => await db.AccessoryModels.AsNoTracking().Where(x => x.CompanyId == companyId && x.Id == id)
                     .Select(x => new { x.Id, x.Name, x.BrandId, HasPhoto = x.PhotoFileName != null }).SingleOrDefaultAsync(cancellationToken),
                 _ => null
@@ -3644,12 +3644,14 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(depreciationErrors);
             if (kind.Equals("models", StringComparison.OrdinalIgnoreCase) && request.DepreciationMonths is not null &&
                 user.FindFirstValue("company_role") is not ("owner" or "admin")) return Results.Forbid();
+            if (kind.Equals("models", StringComparison.OrdinalIgnoreCase) && request.EndOfLifeOn is not null &&
+                user.FindFirstValue("company_role") is not ("owner" or "admin")) return Results.Forbid();
             object? created = kind.ToLowerInvariant() switch
             {
                 "categories" => AddCategory(db, companyId, name),
                 "brands" => AddBrand(db, companyId, name, request),
                 "models" => AddModel(db, companyId, name, request.BrandId, request.CategoryId,
-                    request.DepreciationMonths, request.DepreciationMinimum, request.DepreciationMinimumType, request.DepreciationMethod, request.ModelNumber),
+                    request.DepreciationMonths, request.DepreciationMinimum, request.DepreciationMinimumType, request.DepreciationMethod, request.ModelNumber, request.EndOfLifeOn),
                 "accessory-models" => AddAccessoryModel(db, companyId, name, request.BrandId.GetValueOrDefault()),
                 _ => null
             };
@@ -3693,6 +3695,8 @@ public static class AssetEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["name"] = ["Ad zorunludur ve en fazla 120 karakter olabilir."] });
             var normalizedKind = kind.ToLowerInvariant();
             string? previous = null;
+            var auditAction = "Renamed";
+            string? auditDetails = null;
             switch (normalizedKind)
             {
                 case "categories":
@@ -3719,7 +3723,18 @@ public static class AssetEndpoints
                     if (model is null) return Results.NotFound();
                     if (await db.AssetModels.AnyAsync(x => x.CompanyId == companyId && x.Id != id && x.BrandId == model.BrandId && x.Name.ToUpper() == name.ToUpper(), cancellationToken)) return Results.Conflict(new { message = "Bu marka altında aynı isimde model zaten var." });
                     if (request.ModelNumber?.Trim().Length > 120) return Results.ValidationProblem(new Dictionary<string, string[]> { ["modelNumber"] = ["Model numarası en fazla 120 karakter olabilir."] });
-                    previous = model.Name; model.Name = name; model.ModelNumber = Clean(request.ModelNumber); break;
+                    if ((request.EndOfLifeOn is not null || request.ClearEndOfLifeOn) && user.FindFirstValue("company_role") is not ("owner" or "admin")) return Results.Forbid();
+                    previous = model.Name;
+                    var previousEndOfLife = model.EndOfLifeOn?.ToString("yyyy-MM-dd") ?? "—";
+                    model.Name = name; model.ModelNumber = Clean(request.ModelNumber);
+                    if (request.EndOfLifeOn is not null || request.ClearEndOfLifeOn) model.EndOfLifeOn = request.EndOfLifeOn;
+                    if (request.EndOfLifeOn is not null || request.ClearEndOfLifeOn)
+                    {
+                        auditAction = "Updated";
+                        var updatedEndOfLife = model.EndOfLifeOn?.ToString("yyyy-MM-dd") ?? "—";
+                        auditDetails = $"Model EOL updated: {previousEndOfLife} → {updatedEndOfLife}.";
+                    }
+                    break;
                 case "accessory-models":
                     var accessoryModel = await db.AccessoryModels.SingleOrDefaultAsync(x => x.CompanyId == companyId && x.Id == id, cancellationToken);
                     if (accessoryModel is null) return Results.NotFound();
@@ -3729,7 +3744,7 @@ public static class AssetEndpoints
             }
             db.AuditEntries.Add(new AuditEntry { CompanyId = companyId,
                 ActorUserId = Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId) ? actorId : null,
-                TargetType = normalizedKind, TargetId = id, Action = "Renamed", Details = $"{previous} → {name}" });
+                TargetType = normalizedKind, TargetId = id, Action = auditAction, Details = auditDetails ?? $"{previous} → {name}" });
             try { await db.SaveChangesAsync(cancellationToken); }
             catch (DbUpdateException) { return Results.Conflict(new { message = "Aynı isimde kayıt zaten var." }); }
             return Results.Ok(new { id, name });
@@ -4035,15 +4050,15 @@ public static class AssetEndpoints
     }
 
     private static object AddModel(AppDbContext db, Guid companyId, string name, Guid? brandId, Guid? categoryId, int? depreciationMonths,
-        decimal? depreciationMinimum, string? depreciationMinimumType, string? depreciationMethod, string? modelNumber)
+        decimal? depreciationMinimum, string? depreciationMinimumType, string? depreciationMethod, string? modelNumber, DateOnly? endOfLifeOn)
     {
         var row = new AssetModel { CompanyId = companyId, Name = name, BrandId = brandId, CategoryId = categoryId,
-            ModelNumber = Clean(modelNumber),
+            ModelNumber = Clean(modelNumber), EndOfLifeOn = endOfLifeOn,
             DepreciationMonths = depreciationMonths, DepreciationMinimum = depreciationMonths is null ? null : depreciationMinimum,
             DepreciationMinimumType = depreciationMinimumType is "percent" ? "percent" : "amount",
             DepreciationMethod = depreciationMethod ?? "linear" };
         db.AssetModels.Add(row);
-        return new { row.Id, row.Name, row.ModelNumber, row.BrandId, row.CategoryId, row.DepreciationMonths, row.DepreciationMinimum,
+        return new { row.Id, row.Name, row.ModelNumber, row.EndOfLifeOn, row.BrandId, row.CategoryId, row.DepreciationMonths, row.DepreciationMinimum,
             row.DepreciationMinimumType, row.DepreciationMethod };
     }
 

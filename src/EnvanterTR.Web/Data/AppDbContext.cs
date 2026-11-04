@@ -349,6 +349,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<AssetBrand>().Property(x => x.LogoFileName).HasMaxLength(40);
         modelBuilder.Entity<AssetModel>().Property(x => x.Name).HasMaxLength(120).IsRequired();
         modelBuilder.Entity<AssetModel>().Property(x => x.ModelNumber).HasMaxLength(120);
+        modelBuilder.Entity<AssetModel>().Property(x => x.EndOfLifeOn);
         modelBuilder.Entity<AssetModel>().Property(x => x.PhotoFileName).HasMaxLength(40);
         modelBuilder.Entity<AssetModel>().Property(x => x.DepreciationMinimum).HasPrecision(18, 2);
         modelBuilder.Entity<AssetModel>().Property(x => x.DepreciationMinimumType).HasMaxLength(12).IsRequired();

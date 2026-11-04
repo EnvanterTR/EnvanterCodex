@@ -77,19 +77,22 @@
     "uiInventory": {
       "status": "CURRENT",
       "command": "node tools/Generate-UiInventory.mjs --check",
-      "staticControls": 2255,
+      "staticControls": 2258,
       "pageRoutes": 65,
       "menuGroups": 10,
       "links": 53,
       "buttons": 954,
       "forms": 113,
-      "inputs": 621,
+      "inputs": 624,
       "selects": 204,
       "textareas": 42,
       "modals": 109,
       "tabs": 5,
       "tables": 79,
-      "measuredCommit": "99245393f4ba74437e3019f363575d1945a72a1b"
+      "measuredCommit": "99245393f4ba74437e3019f363575d1945a72a1b",
+      "measuredBaseCommit": "172d9af",
+      "workingTreeModified": true,
+      "note": "WP-095 added model EOL create/edit date controls; regenerated inventory and --check passed on working tree."
     },
     "gitDiffCheck": {
       "status": "PASS",
@@ -162,23 +165,27 @@
       "invalid": 0,
       "classification": {
         "notRun": 75,
-        "partial": 14,
-        "implemented": 26
+        "partial": 12,
+        "implemented": 28
       },
       "command": "Node inline parser: CODEX-HEDEF-4.md A–O IDs vs docs/PROJECT-STATUS.md",
       "measuredCommit": "a0b7674",
       "scopeNote": "115 A–O catalog rows classified from docs/PROJECT-STATUS.md; F14/F15 phase gates are excluded. Counts describe evidence status, not product completion.",
-      "latestStatusWp": "WP-086"
+      "latestStatusWp": "WP-095",
+      "measuredBaseCommit": "172d9af",
+      "workingTreeModified": true,
+      "note": "115 A–O catalog rows, unique and complete. WP-095 moves A02 from partial to evidence-backed implemented. Counts describe evidence classification, not product completion."
     },
     "sourceMigrationInventory": {
       "status": "PASS",
-      "count": 124,
+      "count": 125,
       "first": "20261002192729_InitialSchema",
-      "last": "20261104112743_ArchiveEmployeeRecords",
+      "last": "20261104161606_AddAssetModelEndOfLife",
       "command": "Count distinct timestamped EF migration IDs by normalizing .Designer files",
-      "measuredCommit": "bba69b2",
+      "measuredBaseCommit": "172d9af",
+      "workingTreeModified": true,
       "databaseConnected": false,
-      "note": "Current source branch contains 124 unique timestamped EF migration IDs. The last previously verified live/backup history was 122; two migrations differ. No live database or restored clone was connected in this measurement."
+      "note": "The measured source working tree after base commit 172d9af contains 125 IDs. The latest previously verified live/backup history is 122; exact ID parity has not been compared. WP-095 migration is source-only and not applied."
     },
     "f2HostedBrowserAcceptance": {
       "status": "PASS",
@@ -402,6 +409,65 @@
       "liveCompanyAcceptance": false,
       "runnerCleanup": "Temporary Docker test container removed with --rm",
       "note": "This is one targeted F5 user-interface slice; it does not measure the full 2,255-control/65-route matrix or the F5 pass threshold."
+    },
+    "wp095AssetModelEndOfLifeAcceptance": {
+      "status": "PASS",
+      "measuredAt": "2026-11-04T16:42:34.238Z",
+      "measuredBaseCommit": "172d9af",
+      "workingTreeModified": true,
+      "isolatedDatabaseAcceptance": {
+        "status": "PASS",
+        "passed": 1,
+        "failed": 0,
+        "isolatedDatabase": true,
+        "productionWrites": false,
+        "test": "Asset_model_end_of_life_is_company_scoped_and_round_trips_through_catalog_and_details",
+        "command": "deploy/testing/run-security-acceptance.ps1 -Filter 'FullyQualifiedName~Asset_model_end_of_life_is_company_scoped'",
+        "scope": [
+          "create",
+          "list",
+          "detail",
+          "model detail",
+          "update",
+          "clear",
+          "audit",
+          "cross-company 404"
+        ],
+        "runnerCleanup": "Temporary PostgreSQL container and network removed"
+      },
+      "hostedChromium": {
+        "status": "PASS",
+        "command": "docker run --rm --init --entrypoint node envantertr-hosted-checkout-browser-acceptance:local /acceptance/asset-detail-actions.mjs",
+        "syntheticApi": true,
+        "productionWrites": false,
+        "eolDisplayedInModelDetails": true
+      },
+      "staticVerifier": {
+        "status": "PASS",
+        "command": "node tools/Verify-AssetModelDetailsUi.mjs"
+      },
+      "syntaxAndDiff": {
+        "status": "PASS",
+        "nodeCheck": 2,
+        "gitDiffCheck": true
+      },
+      "releaseBuild": {
+        "status": "PASS",
+        "sdk": "10.0.100",
+        "warnings": 0,
+        "errors": 0,
+        "command": "dotnet build src/EnvanterTR.Web/EnvanterTR.Web.csproj --configuration Release"
+      },
+      "migration": {
+        "id": "20261104161606_AddAssetModelEndOfLife",
+        "sourceCount": 125,
+        "applied": false,
+        "lastObservedLiveCount": 122,
+        "exactIdParityCompared": false
+      },
+      "productionWrites": false,
+      "deployPerformed": false,
+      "paymentTouched": false
     }
   },
   "historicalBaseline": {

@@ -18260,6 +18260,83 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Asset_model_end_of_life_is_company_scoped_and_round_trips_through_catalog_and_details()
+    {
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString();
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        var originalEndOfLife = new DateOnly(2030, 6, 30);
+        using var create = await SendAsRoleAsync(HttpMethod.Post, "/api/lookups/models", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = $"EOL-MODEL-{_userId:N}", endOfLifeOn = originalEndOfLife }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        using var createdPayload = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
+        var modelId = createdPayload.RootElement.GetProperty("id").GetGuid();
+        Assert.Equal(originalEndOfLife.ToString("yyyy-MM-dd"), createdPayload.RootElement.GetProperty("endOfLifeOn").GetString());
+
+        using (var list = await SendAsAdminAsync("/api/lookups/models"))
+        {
+            Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+            using var listPayload = JsonDocument.Parse(await list.Content.ReadAsStringAsync());
+            var model = Assert.Single(listPayload.RootElement.EnumerateArray(), row => row.GetProperty("id").GetGuid() == modelId);
+            Assert.Equal(originalEndOfLife.ToString("yyyy-MM-dd"), model.GetProperty("endOfLifeOn").GetString());
+        }
+
+        using (var detail = await SendAsAdminAsync($"/api/lookups/models/{modelId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, detail.StatusCode);
+            using var detailPayload = JsonDocument.Parse(await detail.Content.ReadAsStringAsync());
+            Assert.Equal(originalEndOfLife.ToString("yyyy-MM-dd"), detailPayload.RootElement.GetProperty("endOfLifeOn").GetString());
+        }
+
+        using (var modelDetails = await SendAsAdminAsync($"/api/models/{modelId}/details"))
+        {
+            Assert.Equal(HttpStatusCode.OK, modelDetails.StatusCode);
+            using var detailPayload = JsonDocument.Parse(await modelDetails.Content.ReadAsStringAsync());
+            Assert.Equal(originalEndOfLife.ToString("yyyy-MM-dd"), detailPayload.RootElement.GetProperty("model").GetProperty("endOfLifeOn").GetString());
+        }
+
+        var updatedEndOfLife = new DateOnly(2032, 12, 31);
+        using var update = await SendAsRoleAsync(HttpMethod.Patch, $"/api/lookups/models/{modelId}", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = $"EOL-MODEL-{_userId:N}", endOfLifeOn = updatedEndOfLife, modelNumber = "EOL-2032" }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+        using (var updated = await SendAsAdminAsync($"/api/lookups/models/{modelId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
+            using var updatedPayload = JsonDocument.Parse(await updated.Content.ReadAsStringAsync());
+            Assert.Equal(updatedEndOfLife.ToString("yyyy-MM-dd"), updatedPayload.RootElement.GetProperty("endOfLifeOn").GetString());
+        }
+
+        using var clear = await SendAsRoleAsync(HttpMethod.Patch, $"/api/lookups/models/{modelId}", "admin",
+            System.Net.Http.Json.JsonContent.Create(new { name = $"EOL-MODEL-{_userId:N}", modelNumber = "EOL-2032", clearEndOfLifeOn = true }), requestToken, antiforgeryCookie);
+        Assert.Equal(HttpStatusCode.OK, clear.StatusCode);
+        using (var cleared = await SendAsAdminAsync($"/api/lookups/models/{modelId}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, cleared.StatusCode);
+            using var clearedPayload = JsonDocument.Parse(await cleared.Content.ReadAsStringAsync());
+            Assert.Equal(JsonValueKind.Null, clearedPayload.RootElement.GetProperty("endOfLifeOn").ValueKind);
+        }
+
+        await using var scope = _factory!.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.CompanyMemberships.Add(new CompanyMembership { CompanyId = _otherCompanyId, UserId = _userId, RoleKey = "admin" });
+        await db.SaveChangesAsync();
+
+        using var crossTenant = await SendAsAdminAsync($"/api/lookups/models/{modelId}", _otherCompanyId);
+        Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
+        using var crossTenantDetails = await SendAsAdminAsync($"/api/models/{modelId}/details", _otherCompanyId);
+        Assert.Equal(HttpStatusCode.NotFound, crossTenantDetails.StatusCode);
+
+        var audit = await db.AuditEntries.Where(entry => entry.CompanyId == _companyId && entry.TargetType == "models" && entry.TargetId == modelId && entry.Action == "Updated")
+            .OrderByDescending(entry => entry.OccurredAt).FirstAsync();
+        Assert.Contains("2032-12-31 → —", audit.Details, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Brand_model_category_and_images_are_company_scoped_and_reusable()
     {
         using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");

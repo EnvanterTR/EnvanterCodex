@@ -379,6 +379,7 @@ public sealed class AssetModel
     public Guid? CategoryId { get; set; }
     public required string Name { get; set; }
     public string? ModelNumber { get; set; }
+    public DateOnly? EndOfLifeOn { get; set; }
     public string? PhotoFileName { get; set; }
     public int? DepreciationMonths { get; set; }
     public decimal? DepreciationMinimum { get; set; }

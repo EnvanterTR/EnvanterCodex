@@ -57,11 +57,11 @@ public sealed record AssetCustomFieldDefinitionRequest(
 public sealed record CreateLookupRequest(string Name, Guid? BrandId = null, int? DepreciationMonths = null,
     decimal? DepreciationMinimum = null, string? DepreciationMinimumType = null, string? DepreciationMethod = null,
     Guid? CategoryId = null, string? Website = null, string? SupportUrl = null, string? WarrantyUrl = null,
-    string? SupportPhone = null, string? SupportEmail = null, string? ModelNumber = null);
+    string? SupportPhone = null, string? SupportEmail = null, string? ModelNumber = null, DateOnly? EndOfLifeOn = null);
 public sealed record SetModelDepreciationRequest(int? Months, decimal? Minimum, string? MinimumType, string? Method);
 public sealed record RenameLookupRequest(string Name, string? Website = null, string? SupportUrl = null,
     string? WarrantyUrl = null, string? SupportPhone = null, string? SupportEmail = null, bool UpdateBrandDetails = false,
-    string? ModelNumber = null);
+    string? ModelNumber = null, DateOnly? EndOfLifeOn = null, bool ClearEndOfLifeOn = false);
 public sealed record RenameDirectoryEntryRequest(string CurrentName, string NewName, bool Merge = false);
 public sealed record LocationCatalogRequest(string? Name, Guid? ParentLocationId = null,
     Guid? CompanyUnitId = null, bool ClearCompanyUnit = false);
