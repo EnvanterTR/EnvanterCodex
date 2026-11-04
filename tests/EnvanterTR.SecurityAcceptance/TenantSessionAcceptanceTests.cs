@@ -9181,6 +9181,122 @@ public sealed partial class TenantSessionAcceptanceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Bulk_asset_trash_is_atomic_tenant_scoped_and_audited()
+    {
+        var assetIds = new[] { Guid.NewGuid(), Guid.NewGuid() };
+        var hiddenAssetId = Guid.NewGuid();
+        var allowedLocationId = Guid.NewGuid();
+        var hiddenLocationId = Guid.NewGuid();
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var categoryId = await db.Assets.Where(x => x.CompanyId == _companyId && x.Id == _ownAssetId)
+                .Select(x => x.CategoryId).SingleAsync();
+            db.CompanyLocations.AddRange(
+                new CompanyLocation { Id = allowedLocationId, CompanyId = _companyId, Name = "Bulk trash allowed", NormalizedName = "BULK TRASH ALLOWED" },
+                new CompanyLocation { Id = hiddenLocationId, CompanyId = _companyId, Name = "Bulk trash hidden", NormalizedName = "BULK TRASH HIDDEN" });
+            db.Assets.AddRange(assetIds.Select((id, index) => new Asset
+            {
+                Id = id, CompanyId = _companyId, AssetTag = $"BULK-TRASH-{Guid.NewGuid():N}",
+                Name = $"Bulk trash acceptance {index + 1}", CategoryId = categoryId, LocationCatalogId = allowedLocationId
+            }).Append(new Asset
+            {
+                Id = hiddenAssetId, CompanyId = _companyId, AssetTag = $"BULK-TRASH-HIDDEN-{Guid.NewGuid():N}",
+                Name = "Bulk trash out-of-scope acceptance", CategoryId = categoryId, LocationCatalogId = hiddenLocationId
+            }));
+            var membership = await db.CompanyMemberships.SingleAsync(x => x.CompanyId == _companyId && x.UserId == _userId);
+            membership.LocationAccessMode = CompanyLocationAccess.Restricted;
+            db.CompanyMembershipLocationAccesses.Add(new CompanyMembershipLocationAccess
+                { CompanyId = _companyId, UserId = _userId, LocationId = allowedLocationId });
+            (await db.Assets.IgnoreQueryFilters().SingleAsync(x => x.CompanyId == _companyId && x.Id == _ownAssetId)).LocationCatalogId = allowedLocationId;
+            await db.SaveChangesAsync();
+        }
+
+        using var csrfResponse = await SendAsAdminAsync("/api/session/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrfResponse.StatusCode);
+        using var csrfPayload = JsonDocument.Parse(await csrfResponse.Content.ReadAsStringAsync());
+        var requestToken = csrfPayload.RootElement.GetProperty("requestToken").GetString()!;
+        var antiforgeryCookie = csrfResponse.Headers.GetValues("Set-Cookie")
+            .Select(value => value.Split(';', 2)[0])
+            .First(value => value.Contains('=') && value.Split('=', 2)[0].Contains("Antiforgery", StringComparison.OrdinalIgnoreCase));
+
+        await SetCompanyRoleAsync("viewer");
+        using (var readOnly = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-trash", "viewer",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds, note = "read-only role" }), requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Forbidden, readOnly.StatusCode);
+        await SetCompanyRoleAsync("admin");
+
+        using (var crossTenant = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { assetIds[0], _otherCompanyAssetId }, note = "must be atomic" }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, crossTenant.StatusCode);
+
+        using (var outOfLocation = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { assetIds[0], hiddenAssetId }, note = "must be atomic" }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.NotFound, outOfLocation.StatusCode);
+
+        using (var missingCsrf = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds, note = "csrf required" })))
+            Assert.Equal(HttpStatusCode.BadRequest, missingCsrf.StatusCode);
+
+        using (var duplicateIds = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { assetIds[0], assetIds[0] }, note = "duplicate" }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, duplicateIds.StatusCode);
+
+        using (var emptySelection = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = Array.Empty<Guid>(), note = "empty" }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, emptySelection.StatusCode);
+
+        using (var oversizedSelection = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = Enumerable.Range(0, 101).Select(_ => Guid.NewGuid()).ToArray(), note = "too many" }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.BadRequest, oversizedSelection.StatusCode);
+
+        using (var blockedRelation = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds = new[] { assetIds[0], _ownAssetId }, note = "must be atomic" }),
+                   requestToken, antiforgeryCookie))
+            Assert.Equal(HttpStatusCode.Conflict, blockedRelation.StatusCode);
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var unchanged = await db.Assets.IgnoreQueryFilters().Where(x => assetIds.Contains(x.Id))
+                .Select(x => x.DeletedAt).ToArrayAsync();
+            Assert.Equal(2, unchanged.Length);
+            Assert.All(unchanged, deletedAt => Assert.Null(deletedAt));
+            Assert.Null(await db.Assets.IgnoreQueryFilters().Where(x => x.Id == hiddenAssetId).Select(x => x.DeletedAt).SingleAsync());
+        }
+
+        using (var completed = await SendAsRoleAsync(HttpMethod.Post, "/api/assets/bulk-trash", "admin",
+                   System.Net.Http.Json.JsonContent.Create(new { assetIds, note = "retired batch" }),
+                   requestToken, antiforgeryCookie))
+        {
+            Assert.Equal(HttpStatusCode.OK, completed.StatusCode);
+            using var result = JsonDocument.Parse(await completed.Content.ReadAsStringAsync());
+            Assert.Equal(assetIds.Length, result.RootElement.GetProperty("trashedCount").GetInt32());
+            Assert.Equal(assetIds.Order().ToArray(), result.RootElement.GetProperty("assetIds").EnumerateArray()
+                .Select(value => value.GetGuid()).Order().ToArray());
+        }
+
+        await using (var scope = _factory!.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var trashed = await db.Assets.IgnoreQueryFilters().Where(x => assetIds.Contains(x.Id)).ToListAsync();
+            Assert.Equal(2, trashed.Count);
+            Assert.All(trashed, asset =>
+            {
+                Assert.NotNull(asset.DeletedAt);
+                Assert.Equal(_userId, asset.DeletedByUserId);
+            });
+            Assert.Equal(2, await db.AssetEvents.CountAsync(x => assetIds.Contains(x.AssetId) && x.EventType == "Trashed"));
+            Assert.Equal(2, await db.AuditEntries.CountAsync(x => x.TargetId.HasValue && assetIds.Contains(x.TargetId.Value) && x.Action == "Trashed"));
+        }
+    }
+
+    [Fact]
     public async Task Calendar_feed_for_upcoming_work_contains_only_the_active_company_records()
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);

@@ -100,6 +100,7 @@ public sealed record AssignAssetRequest(Guid EmployeeId, string? Note, DateOnly?
 public sealed record ReturnAssetRequest(string? Note);
 public sealed record ChangeAssetStatusRequest(string Status, string? Note);
 public sealed record AssetTrashRequest(string? Note);
+public sealed record BulkAssetTrashRequest(Guid[]? AssetIds, string? Note);
 public sealed record BulkChangeAssetStatusRequest(Guid[] AssetIds, string Status, string? Note);
 public sealed record BulkAssignAssetsRequest(Guid[] AssetIds, Guid EmployeeId, string? Note, DateOnly? ExpectedReturnOn = null);
 public sealed record BulkReturnAssetsRequest(Guid[] AssetIds, string? Note);

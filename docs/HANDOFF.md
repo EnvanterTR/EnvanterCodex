@@ -14,7 +14,7 @@ A–O katalog durumu: 75 `ÇALIŞTIRILMADI`, 14 `KISMEN`, 26 `VAR` (115 benzersi
 
 **WP-092 sonucu: BLOCKED, 3/3 deneme.** Günlük PostgreSQL görevi `Success` ve kaynak kodundaki beklenen dump/hash yolu bulundu; ancak Coolify'de 3 Kasım dump/hash dosyasını salt okunur görme imkânı bu oturumda doğrulanmadı. Üç farklı `cua.getTab` çağrısı aynı `browser.user is unavailable` hatası verdi. Bu, yedeğin başka saklama alanında olmadığı anlamına gelmez. Restore yapılmadı; canlı veritabanına, migration'a, ortama veya yayına dokunulmadı.
 
-**Sıradaki WP-093:** F0/A01'de henüz kanıtlanmamış varlık klonlama ve toplu silme davranışlarını izole kabul testleriyle ölç. Önce mevcut API, UI ve test kapsamını bul; gerekiyorsa önce kırmızı kabul testi yaz. Testler klon alan/ilişki kurallarını, toplu silme onayı/iptalini, rol/CSRF/tenant sınırını, atomikliği ve audit kaydını doğrulamalı. Üretim ve canlı veriye dokunma. Bitti tanımını LEDGER'a işe başlamadan kaydet.
+**WP-093 DONE:** F0/A01 company-scoped reversible bulk-trash API added and acceptance/regression passed 2/2 in isolated PostgreSQL. Verified viewer 403, CSRF 400, tenant/location 404, relation conflict 409, atomic failure behavior, invalid selection limits and per-asset history/audit. No migration or live changes. F0/A01 stays partial until the UI bulk-trash action is implemented and accepted.
 
 
 # Güncel devam noktası — 4 Kasım 2026
@@ -224,4 +224,4 @@ Kanıt: `Company_roles_follow_the_asset_stock_employee_and_settings_policy_matri
 
 ## Sıradaki iş
 
-WP-087: F5 UI matrisi; envanterden yüksek riskli sayfa/akışları seç, tekrar yeşil kabul koşusu yapmadan gerçek etkileşimleri PASS/FAIL/BLOCKED sayılarıyla ölç. F1 exact migration-ID eşleşmesi/restore provası ve yayımlama kapısı ayrıca açık. Yeni canlı yayın veya PR açma/birleştirme yok.
+WP-094: F0/A01 bulk-trash UI. Önce başarısız hosted Chromium kabulini ekle; sonra seçili varlık sayısı, açık onay, iptal/no-write, başarılı çöp kutusu POST ve liste/geri bildirim akışını doğrula. Kapsamı 5 dil ve klavye/Esc ile incele; mevcut API kabulini tekrar koşturmadan UI regresyonu çalıştır. A01 KISMEN kalır; canlı/deploy/DB/migration/ödeme değişikliği yok.

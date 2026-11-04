@@ -1868,6 +1868,52 @@ public static class OperationalEndpoints
             return Results.Ok(new { asset.Id, asset.AssetTag, asset.DeletedAt });
         }).RequireAuthorization("asset.write");
 
+        api.MapPost("/assets/bulk-trash", async ([FromBody] BulkAssetTrashRequest request, ClaimsPrincipal user,
+            AppDbContext db, CancellationToken ct) =>
+        {
+            if (!TryScope(user, out var companyId, out var actorId)) return Results.Forbid();
+            var assetIds = request.AssetIds ?? [];
+            if (assetIds.Length is < 1 or > 100 || assetIds.Distinct().Count() != assetIds.Length)
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["assetIds"] = ["1 ile 100 arasında tekrarsız varlık seçin."] });
+            if (request.Note is { Length: > 1500 })
+                return Results.ValidationProblem(new Dictionary<string, string[]> { ["note"] = ["Not en fazla 1.500 karakter olabilir."] });
+
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            var assets = await db.Assets.FromSqlInterpolated(
+                $"SELECT * FROM \"Assets\" WHERE \"CompanyId\" = {companyId} AND \"Id\" = ANY ({assetIds}) AND \"DeletedAt\" IS NULL ORDER BY \"Id\" FOR UPDATE")
+                .IgnoreQueryFilters().ToListAsync(ct);
+            if (assets.Count != assetIds.Length) return Results.NotFound();
+
+            var allowedLocations = await CompanyLocationAccess.GetEffectiveLocationIdsAsync(db, companyId, actorId, ct);
+            if (assets.Any(asset => !AssetLocationIsInScope(asset.LocationCatalogId, allowedLocations))) return Results.NotFound();
+            if (assets.Any(asset => asset.AssignedEmployeeId is not null || asset.Status == AssetStatuses.Deployed))
+                return Results.Conflict(new { message = "Önce varlıkları çalışanlardan iade alın; zimmetli kayıtlar çöp kutusuna taşınamaz." });
+            if (await db.Assets.AnyAsync(x => x.CompanyId == companyId && x.ParentAssetId.HasValue && assetIds.Contains(x.ParentAssetId.Value), ct))
+                return Results.Conflict(new { message = "Alt varlıkları bulunan kayıtlar taşınamaz. Önce alt varlık bağlantılarını kaldırın veya taşıyın." });
+            if (await db.AssetMaintenances.AnyAsync(x => x.CompanyId == companyId && assetIds.Contains(x.AssetId) && (x.Status == "InProgress" || x.Status == "Scheduled"), ct))
+                return Results.Conflict(new { message = "Açık veya planlanmış bakım kaydı bulunan varlık taşınamaz." });
+            if (await db.AccessoryAssignments.AnyAsync(x => x.CompanyId == companyId && x.AssetId.HasValue && assetIds.Contains(x.AssetId.Value) && x.Quantity > x.ReturnedQuantity, ct) ||
+                await db.ComponentAllocations.AnyAsync(x => x.CompanyId == companyId && assetIds.Contains(x.AssetId) && x.Quantity > x.RemovedQuantity, ct) ||
+                await db.SoftwareLicenseAssignments.AnyAsync(x => x.CompanyId == companyId && x.AssetId.HasValue && assetIds.Contains(x.AssetId.Value) && x.RevokedAt == null, ct) ||
+                await db.InventoryRequests.AnyAsync(x => x.CompanyId == companyId && x.ItemType == "Asset" && assetIds.Contains(x.ItemId) && x.Status == "Pending", ct))
+                return Results.Conflict(new { message = "Açık talep, aksesuar, bileşen veya lisans ilişkileri çözülmeden varlıklar taşınamaz." });
+
+            var now = DateTimeOffset.UtcNow;
+            var note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+            foreach (var asset in assets)
+            {
+                asset.DeletedAt = now;
+                asset.DeletedByUserId = actorId;
+                asset.UpdatedAt = now;
+                var details = note is null ? "Varlık toplu işlemle çöp kutusuna taşındı." : $"Varlık toplu işlemle çöp kutusuna taşındı. {note}";
+                db.AssetEvents.Add(new AssetEvent { CompanyId = companyId, AssetId = asset.Id, ActorUserId = actorId, EventType = "Trashed", Details = details });
+                db.AuditEntries.Add(new AuditEntry { CompanyId = companyId, ActorUserId = actorId, TargetType = "Asset", TargetId = asset.Id, Action = "Trashed", Details = $"{asset.AssetTag}: {details}" });
+            }
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+            return Results.Ok(new { trashedCount = assets.Count, assetIds = assets.Select(asset => asset.Id).ToArray(), trashedAt = now });
+        }).RequireAuthorization("asset.write");
+
         api.MapPost("/assets/{id:guid}/restore-from-trash", async (Guid id, [FromBody] AssetTrashRequest request,
             ClaimsPrincipal user, AppDbContext db, CancellationToken ct) =>
         {
